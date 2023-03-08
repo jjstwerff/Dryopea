@@ -252,7 +252,7 @@ pub fn append(s: &mut String, val: &str) {
     *s += val;
 }
 
-pub fn force_string_functions(val: &str) -> String {
+pub fn __force_string_functions(val: &str) -> String {
     let mut b = String::new();
     let s = &mut b;
     format_int(s, 123, 8, 7, 32, 1, 1);
@@ -260,6 +260,8 @@ pub fn force_string_functions(val: &str) -> String {
     append(s, val);
     s.push(')');
     format_long(s, 12345, 8, 7, 32, 1, 1);
+    format_float(s, 12.3, 5, 1);
+    format_single(s, 12.3, 5, 1);
     format_text(s, val, 8, 0, b'*' as u32);
     b
 }
@@ -277,8 +279,8 @@ mod test {
     #[test]
     fn test_forced() {
         assert_eq!(
-            " +0o173(123)+0o30071**123***",
-            force_string_functions("123")
+            " +0o173(123)+0o30071 12.3 12.3**123***",
+            __force_string_functions("123")
         );
     }
 }

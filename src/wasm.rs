@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 extern crate strum;
 extern crate strum_macros;
+use std::fs::File;
+use std::io::prelude::*;
 
 use crate::data::{Data, Type, Value};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[allow(dead_code)]
 enum Operator {
@@ -197,7 +199,9 @@ enum Operator {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, PartialEq)]
 enum TypeCode {
+    Unknown,
     I32 = 0x7F,
     I64 = 0x7E,
     F32 = 0x7D,
@@ -208,18 +212,38 @@ enum TypeCode {
     ResultType = 0x40,
 }
 
+impl TypeCode {
+    fn from_ordinal(ord: u8) -> TypeCode {
+        match ord {
+            0x7F => TypeCode::I32,
+            0x7E => TypeCode::I64,
+            0x7D => TypeCode::F32,
+            0x7C => TypeCode::F64,
+            0x70 => TypeCode::FuncRef,
+            0x6F => TypeCode::ExternRef,
+            0x60 => TypeCode::FuncType,
+            0x40 => TypeCode::ResultType,
+            _ => TypeCode::Unknown,
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub struct Sections {
     // Each current section on id to (position, size).
     current: HashMap<u8, (u32, u32)>,
+    // The function numbers to export again
+    exports: BTreeMap<u32, String>,
     old: Vec<u8>,
     // Type definition to number, to deduplicate them.
     type_hash: HashMap<Vec<u8>, u32>,
     types: Vec<Vec<u8>>,
     // Maximal found type
     max_type: u32,
-    // Known functions with type and exported name
-    functions: Vec<(u32, String)>,
+    // Known function types, including imports
+    functions: Vec<u32>,
+    // Import functions
+    imports: u32,
     // Number of parameters (inside variable structure)
     parameters: u32,
     // Function variables, including parameters
@@ -236,10 +260,12 @@ impl Sections {
     fn new() -> Sections {
         Sections {
             current: HashMap::new(),
+            exports: BTreeMap::new(),
             old: Vec::new(),
             type_hash: HashMap::new(),
             types: Vec::new(),
             max_type: 0,
+            imports: 0,
             functions: Vec::new(),
             parameters: 0,
             variables: Vec::new(),
@@ -249,7 +275,54 @@ impl Sections {
         }
     }
 
-    pub fn write(&mut self, data: &Data) {
+    pub fn fix_export(&mut self, filename: &str) {
+        self.data
+            .extend([0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00]);
+        // types
+        self.current(1);
+        // import
+        self.current(2);
+        // types per function
+        self.current(3);
+        // table
+        self.current(4);
+        // memory limits
+        self.current(5);
+        // globals
+        self.current(6);
+        // export
+        self.data.push(7);
+        let size_pos = self.data.len();
+        set_u32_full(&mut self.data, 0, 0);
+        let data_pos = self.data.len();
+        set_u32(&mut self.data, 1 + self.exports.len() as u32);
+        // Export memory to allow javascript to write strings
+        set_str(&mut self.data, "memory");
+        set_u32(&mut self.data, 2);
+        set_u32(&mut self.data, 0);
+        for (index, name) in &self.exports {
+            set_str(&mut self.data, &name);
+            // Export function
+            set_u32(&mut self.data, 0);
+            set_u32(&mut self.data, *index);
+        }
+        let size = (self.data.len() - data_pos) as u32;
+        set_u32_full(&mut self.data, size_pos, size);
+        // start function
+        self.current(8);
+        // elements for the table
+        self.current(9);
+        // data count section
+        self.current(12);
+        // function code
+        self.current(10);
+        // data segments: for memory, possibly with static code, ignored for now
+        self.current(11);
+        let mut file = File::create(filename).unwrap();
+        file.write_all(&self.data).unwrap();
+    }
+
+    pub fn write(&mut self, _data: &Data) {
         self.data
             .extend([0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00]);
         let mut v = Vec::new();
@@ -278,7 +351,7 @@ impl Sections {
         // Function section, the type per function
         self.data.push(3);
         set_u32(&mut v, self.functions.len() as u32);
-        for (type_idx, _) in &self.functions {
+        for type_idx in &self.functions {
             set_u32(&mut v, *type_idx);
         }
         set_u32(&mut self.data, v.len() as u32);
@@ -290,6 +363,7 @@ impl Sections {
         // global, ignored for now, maybe the global $0 is needed in the future as temporary memory
         self.current(6);
         // export, pub functions and memory allocation
+        self.current(7);
         /*
             let exports = get_u32(&s.old, &mut sec);
             for _ in 0..exports {
@@ -319,7 +393,8 @@ impl Sections {
 
     fn current(&mut self, section: u8) {
         let Some((pos, size)) = self.current.get(&section) else {
-            panic!("Unknown section {section}")
+            // Skip unknown sections
+            return;
         };
         self.data.push(section);
         set_u32(&mut self.data, *size);
@@ -362,7 +437,7 @@ impl Sections {
 
     pub fn const_long(&mut self, val: i64) {
         self.op(Operator::I64Const);
-        self.convert(val as i64);
+        self.convert(val);
     }
 
     pub fn const_float(&mut self, val: f64) {
@@ -458,8 +533,7 @@ impl Sections {
     }
 }
 
-pub fn parse_wasm() -> Sections {
-    let filename = "webassembly/pkg/scriptlib_bg.wasm";
+pub fn parse_wasm(filename: &str) -> Sections {
     let mut s = Sections::new();
     let Ok(data) = std::fs::read(filename) else {
         panic!("Could not read {filename}")
@@ -488,6 +562,19 @@ fn set_u32(data: &mut Vec<u8>, val: u32) {
         data.push(byte as u8 + if value != 0 { 128 } else { 0 });
         if value == 0 {
             return;
+        }
+    }
+}
+
+fn set_u32_full(data: &mut Vec<u8>, to: usize, val: u32) {
+    let mut value = val;
+    for i in 0..5 {
+        let vl = (value & 127) as u8 + if i < 4 { 128 } else { 0 };
+        value >>= 7;
+        if to == 0 {
+            data.push(vl);
+        } else {
+            data[to as usize + i as usize] = vl;
         }
     }
 }
@@ -545,13 +632,12 @@ fn parse_elements(s: &mut Sections, pos: &mut usize) {
         let section = s.old[*pos];
         *pos += 1;
         let size = get_u32(&s.old, pos);
+        let to = size as usize + *pos;
         s.current.insert(section, (*pos as u32, size));
         let mut sec = *pos;
         match section {
-            // skip custom sections
             0 => {
-                get_str(&s.old, &mut sec);
-                //println!("custom {} size {size}", get_str(data, &mut sec));
+                custom_section(s, &mut sec);
             }
             // types
             1 => {
@@ -571,30 +657,32 @@ fn parse_elements(s: &mut Sections, pos: &mut usize) {
                     s.types.push(parameters.clone());
                     s.type_hash.insert(parameters, tp);
                 }
+                assert_eq!(to, sec);
             }
             // import
             2 => {
-                let imports = get_u32(&s.old, &mut sec);
-                for _ in 0..imports {
+                s.imports = get_u32(&s.old, &mut sec);
+                for _ in 0..s.imports {
                     let _module = get_str(&s.old, &mut sec);
                     let _name = get_str(&s.old, &mut sec);
                     let tp = s.old[sec];
                     sec += 1;
-                    // function
-                    let _type_index = if tp == 0 {
-                        get_u32(&s.old, &mut sec)
+                    if tp == 0 {
+                        s.functions.push(get_u32(&s.old, &mut sec));
                     } else {
                         panic!("Unknown import {}", tp)
                     };
                 }
+                assert_eq!(to, sec);
             }
             // function, remember the type per function
             3 => {
                 let functions = get_u32(&s.old, &mut sec);
+                //println!("functions {functions}");
                 for _ in 0..functions {
-                    let type_idx = get_u32(&s.old, &mut sec);
-                    s.functions.push((type_idx, "".to_string()));
+                    s.functions.push(get_u32(&s.old, &mut sec));
                 }
+                assert_eq!(to, sec);
             }
             // table, lookup table of functions, ignored for now
             4 => {}
@@ -606,20 +694,14 @@ fn parse_elements(s: &mut Sections, pos: &mut usize) {
             7 => {
                 let exports = get_u32(&s.old, &mut sec);
                 for _ in 0..exports {
-                    let name = get_str(&s.old, &mut sec);
-                    let tp = s.old[sec];
-                    sec += 1;
-                    if tp == 0 {
-                        let function_idx = get_u32(&s.old, &mut sec) as usize;
-                        s.functions[function_idx].1 = name;
-                    } else if tp == 2 {
-                        // ignore memory index
-                        get_u32(&s.old, &mut sec);
-                    } else {
-                        panic!("Unknown export {tp} at {sec}");
+                    let nm = get_str(&s.old, &mut sec);
+                    let tp = get_u32(&s.old, &mut sec);
+                    let link = get_u32(&s.old, &mut sec);
+                    if tp == 0 && nm.starts_with("__wbindgen_") {
+                        s.exports.insert(link, nm.clone());
                     }
+                    //if tp != 0 { println!("nm {nm} tp {tp} link {link}"); }
                 }
-                //println!("functions {:?}", s.functions);
             }
             // start function, ignored for now, possibly interesting for store setup.
             8 => {
@@ -682,6 +764,46 @@ fn parse_elements(s: &mut Sections, pos: &mut usize) {
         *pos += size as usize;
         if *pos == s.old.len() {
             break;
+        }
+    }
+}
+
+fn custom_section(s: &mut Sections, sec: &mut usize) {
+    let nm = get_str(&s.old, sec);
+    if nm == "name" {
+        get_u32(&s.old, sec);
+        get_u32(&s.old, sec);
+        let count = get_u32(&s.old, sec);
+        for i in 0..count {
+            get_u32(&s.old, sec);
+            let v = get_str(&s.old, sec);
+            if !v.starts_with("scriptlib::") {
+                continue;
+            }
+            let mut v = v[11..v.len() - 19].to_string();
+            if v.starts_with("format::") {
+                v = v[8..].to_string();
+            }
+            if v.starts_with("__") {
+                continue;
+            }
+            // Why to we have an extra function here? Import!! has not definition
+            let tp = s.functions[i as usize];
+            let mut typ = "(".to_string();
+            let tps = s.types[tp as usize].len();
+            for gtp in 0..(tps - 1) {
+                typ += &format!("{:?}", TypeCode::from_ordinal(s.types[tp as usize][gtp]));
+                if gtp < tps - 2 {
+                    typ += ", ";
+                }
+            }
+            typ += ")";
+            let result = TypeCode::from_ordinal(s.types[tp as usize][tps - 1]);
+            if result == TypeCode::ResultType {
+            } else {
+                typ += &format!(" -> {:?}", result)
+            }
+            s.exports.insert(i, v);
         }
     }
 }

@@ -63,17 +63,5 @@ pub fn pi() -> f64 {
 
 #[wasm_bindgen]
 pub fn __force_string_functions(val: &str) -> String {
-    format::force_string_functions(val)
-}
-
-const
-
-#[wasm_bindgen]
-pub fn format_text(db: &store::Store, db_ref: u32, val: &str) {
-    // nothing yet
-}
-
-#[wasm_bindgen]
-pub fn __split(val: u64) -> u32 {
-    val as u32 + (val >> 32) as u32
+    format::__force_string_functions(val)
 }

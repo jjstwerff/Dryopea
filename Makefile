@@ -28,7 +28,13 @@ clippy:
 	rustfmt src/*.rs
 	rustfmt tests/*.rs
 
+target/debug/webassembly: src/webassembly.rs src/wasm.rs
+	cargo build --bin webassembly
+
 webassembly/pkg/scriptlib_bg.wasm: webassembly/src/lib.rs src/format.rs
 	cd webassembly; rustfmt src/*.rs
 	cd webassembly; wasm-pack build --dev --no-typescript
 
+webassembly/pkg/scriptlib.wasm: target/debug/webassembly webassembly/pkg/scriptlib_bg.wasm
+	target/debug/webassembly
+	cd webassembly/pkg; wasm-opt scriptlib_exp.wasm -Oz -o scriptlib.wasm

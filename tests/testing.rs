@@ -140,7 +140,7 @@ impl Drop for Test {
             assert_eq!(p.data.returned(p.data.def_nr("test")), self.tp);
         }
         let i = Inter::new(&p.data);
-        parse_wasm();
+        parse_wasm("webassembly/pkg/scriptlib.wasm");
         let res = i.calculate("test", None).unwrap();
         // Only write the interpreter log when a different result is found.
         if res != self.result {

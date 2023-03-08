@@ -4,7 +4,7 @@ fn OpAnd(v1: bool, v2: bool, ) -> bool  {}
 
 fn OpOr(v1: bool, v2: bool, ) -> bool  {}
 
-fn OpFormatBool(val: bool, radix: i32, width: i32, dir: i32, token: i32, ) -> String  {}
+fn OpFormatBool(db: i32, text: i32, val: bool, radix: i32, width: i32, dir: i32, token: i32, )  {}
 
 fn OpConvIntFromNull() -> i32  {}
 
@@ -46,7 +46,7 @@ fn OpGtInt(v1: i32, v2: i32, ) -> bool  {}
 
 fn OpGeInt(v1: i32, v2: i32, ) -> bool  {}
 
-fn OpFormatInt(v1: String, val: i32, radix: i32, width: i32, token: i32, plus: bool, note: bool, )  {}
+fn OpFormatInt(db: i32, text: i32, val: i32, radix: i32, width: i32, token: i32, plus: bool, note: bool, )  {}
 
 fn OpConvLongFromNull() -> i64  {}
 
