@@ -14,8 +14,6 @@ use std::iter::Peekable;
 use std::rc::Rc;
 use std::vec::IntoIter;
 
-// TODO REL_0013 allow for more complete escaped tokens like /042
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Mode {
     /// Expect code with spaces, line ends and remarks removed.
@@ -128,7 +126,7 @@ impl Drop for Link {
 fn hex_parse(val: &str) -> Option<u64> {
     let mut res: u64 = 0;
     for ch in val.chars() {
-        if ('0'..='9').contains(&ch) {
+        if ch.is_ascii_digit() {
             res = res * 16 + ch as u64 - '0' as u64;
         } else if ('a'..='f').contains(&ch) {
             res = res * 16 + 10 + ch as u64 - 'a' as u64;
@@ -418,9 +416,9 @@ impl Lexer {
     fn get_identifier(&mut self) -> String {
         let mut string = String::new();
         while let Some(&ident) = self.iter.peek() {
-            if ('a'..='z').contains(&ident)
-                || ('A'..='Z').contains(&ident)
-                || ('0'..='9').contains(&ident)
+            if ident.is_ascii_lowercase()
+                || ident.is_ascii_uppercase()
+                || ident.is_ascii_digit()
                 || ident == '_'
             {
                 string.push(ident);
@@ -436,7 +434,7 @@ impl Lexer {
         let mut number = String::new();
         let mut hex = false;
         while let Some(&c) = self.iter.peek() {
-            if ('0'..='9').contains(&c) {
+            if c.is_ascii_digit() {
                 number.push(c);
                 self.next_char();
             } else if c == 'x' && !hex && number == "0" {
@@ -561,7 +559,9 @@ impl Lexer {
 
     /// Create a lexer from a line iterator, useful for parsing text file content.
     pub fn lines(it: impl Iterator<Item = IoResult<String>> + 'static, filename: &str) -> Lexer {
-        Lexer::new(it, filename)
+        let mut l = Lexer::new(it, filename);
+        l.cont();
+        l
     }
 
     fn err(&mut self, level: Level, error: &str) {
@@ -587,6 +587,16 @@ impl Lexer {
             has: LexItem::None,
             position: self.position.clone(),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.link = 0;
+        self.position = Position {
+            file: self.position.file.clone(),
+            line: 0,
+            pos: 0,
+        };
+        self.cont();
     }
 
     /// Continue the lexer to the next step.
@@ -744,6 +754,14 @@ impl Lexer {
 
 #[cfg(test)]
 mod test {
+    fn test_id(lexer: &Lexer, id: &str) {
+        assert_eq!(lexer.peek().has, LexItem::Identifier(String::from(id)));
+    }
+
+    fn links(lexer: &Lexer, nr: u32) {
+        assert_eq!(lexer.count_links(), nr);
+    }
+
     #[allow(unreachable_code)]
     fn array(lexer: &mut Lexer) -> Vec<LexItem> {
         let mut rest = Vec::new();
@@ -773,7 +791,7 @@ mod test {
     fn tokens(s: &'static str, t: &'static [&'static str]) {
         let mut data: Vec<LexItem> = Vec::new();
         for s in t {
-            if ('0'..='9').contains(&s.chars().next().unwrap()) {
+            if s.chars().next().unwrap().is_ascii_digit() {
                 if let Ok(res) = s.parse::<u32>() {
                     data.push(LexItem::Integer(res, false))
                 } else {
@@ -840,22 +858,22 @@ mod test {
         assert_eq!(lex.peek().has, LexItem::Token(String::from("{")));
         {
             lex.cont();
-            assert_eq!(lex.peek().has, LexItem::Identifier(String::from("num")));
+            test_id(&lex, "num");
             let l1 = lex.link();
-            assert_eq!(lex.count_links(), 1);
-            assert_eq!(lex.peek().has, LexItem::Identifier(String::from("num")));
+            links(&lex, 1);
+            test_id(&lex, "num");
             lex.cont();
             assert!(lex.has_token(":"));
             assert_eq!(lex.peek().has, LexItem::Integer(1, false));
-            assert_eq!(lex.count_links(), 1);
+            links(&lex, 1);
             lex.revert(l1);
-            assert_eq!(lex.peek().has, LexItem::Identifier(String::from("num")));
-            assert_eq!(lex.count_links(), 0);
+            test_id(&lex, "num");
+            links(&lex, 0);
         }
-        assert_eq!(lex.count_links(), 0);
-        assert_eq!(lex.peek().has, LexItem::Identifier(String::from("num")));
+        links(&lex, 0);
+        test_id(&lex, "num");
         lex.cont();
-        assert_eq!(lex.count_links(), 0);
+        links(&lex, 0);
         assert_eq!(lex.peek().has, LexItem::Token(":".to_string()));
         lex.mode = Mode::Code;
         assert!(lex.has_token(":"));

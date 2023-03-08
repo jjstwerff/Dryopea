@@ -1,5 +1,5 @@
-Scripting
-=========
+FEA0001_scripting
+=================
 
 Summary
 -------
@@ -51,6 +51,7 @@ Out-of-scope
 ------------
 Conversion of types on second assign to variables.
 Identifier names consisting of Unicode characters.
+More complete string escaping including \042 or \x22, \u0000
 
 Comments
 --------

@@ -34,6 +34,7 @@ pub struct Parser<'a> {
     primary_link: HashSet<u32>,
     pub diagnostics: Diagnostics,
     default: bool,
+    first_pass: bool,
 }
 
 // Operators ordered on their precedence
@@ -128,7 +129,8 @@ impl<'a> Parser<'a> {
             sub_names: HashMap::new(),
             primary_link: HashSet::new(),
             diagnostics: Diagnostics::new(),
-            default: true,
+            default: false,
+            first_pass: true,
         }
     }
 
@@ -147,8 +149,12 @@ impl<'a> Parser<'a> {
             }
         };
         self.lexer = Lexer::lines(BufReader::new(fp).lines(), filename);
-        self.lexer.cont();
         self.parse_file();
+        if !default {
+            self.first_pass = true;
+            self.lexer.reset();
+            self.parse_file();
+        }
         self.diagnostics.fill(self.lexer.diagnostics());
         self.diagnostics.is_empty()
     }
@@ -209,9 +215,11 @@ impl<'a> Parser<'a> {
     pub fn parse_str(&mut self, text: &str, filename: &str) {
         self.default = false;
         self.lexer = Lexer::from_str(text, filename);
-        self.lexer.cont();
         self.parse_file();
         self.diagnostics.fill(self.lexer.diagnostics());
+        self.lexer.reset();
+        self.first_pass = false;
+        self.parse_file();
     }
 
     // ********************
@@ -243,16 +251,19 @@ impl<'a> Parser<'a> {
                     self.lexer.pos(),
                 );
                 self.var_nr += 1;
-                let size = self.data.def_size(self.data.type_elm(tp));
                 let i = Value::Var(iter_var);
+                let vec_tp = self.data.type_def_nr(tp);
                 let mut ref_expr = self.cl(
                     "OpGetVector",
-                    &[code.clone(), Value::Int(size as i32), i.clone()],
+                    &[
+                        code.clone(),
+                        Value::Int(self.data.def_size(vec_tp) as i32),
+                        i.clone(),
+                    ],
                 );
                 if let Type::Reference(_) = *tp.clone() {
                 } else {
-                    ref_expr =
-                        Value::Field(self.data.type_def_nr(tp), u16::MAX, Box::new(ref_expr));
+                    ref_expr = self.get_field(vec_tp, u16::MAX, ref_expr);
                 }
                 let next = vec![
                     v_set(res_var, ref_expr),
@@ -438,14 +449,51 @@ impl<'a> Parser<'a> {
         code
     }
 
+    fn get_field(&mut self, d_nr: u32, f_nr: u16, code: Value) -> Value {
+        let pos = self.data.attr_pos(d_nr, f_nr) as i32;
+        self.get_val(&self.data.attr_type(d_nr, f_nr), pos, code)
+    }
+
+    fn get_val(&mut self, tp: &Type, pos: i32, code: Value) -> Value {
+        match tp {
+            Type::Integer => self.cl("OpGetInt", &[code, Value::Int(pos)]),
+            Type::Boolean => self.cl("OpGetByte", &[code, Value::Int(pos), Value::Int(0)]),
+            Type::Long => self.cl("OpGetLong", &[code, Value::Int(pos)]),
+            Type::Float => self.cl("OpGetFloat", &[code, Value::Int(pos)]),
+            Type::Single => self.cl("OpGetSingle", &[code, Value::Int(pos)]),
+            Type::Text => self.cl("OpGetText", &[code, Value::Int(pos)]),
+            Type::Vector(_) => self.cl("OpGet", &[code, Value::Int(pos)]),
+            Type::Reference(_) => self.cl("OpGet", &[code, Value::Int(pos)]),
+            _ => panic!("Not implemented on {}", tp),
+        }
+    }
+
+    fn set_field(&mut self, d_nr: u32, f_nr: u16, ref_code: Value, val_code: Value) -> Value {
+        let pos = self.data.attr_pos(d_nr, f_nr) as i32;
+        match self.data.attr_type(d_nr, f_nr) {
+            Type::Integer | Type::Vector(_) => {
+                self.cl("OpSetInt", &[ref_code, Value::Int(pos), val_code])
+            }
+            Type::Boolean => self.cl(
+                "OpSetByte",
+                &[ref_code, Value::Int(pos), Value::Int(0), val_code],
+            ),
+            Type::Long => self.cl("OpSetLong", &[ref_code, Value::Int(pos), val_code]),
+            Type::Float => self.cl("OpSetFloat", &[ref_code, Value::Int(pos), val_code]),
+            Type::Single => self.cl("OpSetSingle", &[ref_code, Value::Int(pos), val_code]),
+            Type::Text => self.cl("OpSetText", &[ref_code, Value::Int(pos), val_code]),
+            _ => panic!("Not implemented on {}", self.data.attr_type(d_nr, f_nr)),
+        }
+    }
+
     fn cl(&mut self, op: &str, list: &[Value]) -> Value {
         let d_nr = self.data.def_nr(op);
-        return if d_nr != u32::MAX {
+        if d_nr != u32::MAX {
             Value::Call(d_nr, list.to_vec())
         } else {
             diagnostic!(self.lexer, Level::Error, "Call to unknown {op}");
             Value::Null
-        };
+        }
     }
 
     /// Try to find a matching defined operator. There can be multiple possible definitions for each operator.
@@ -502,6 +550,11 @@ impl<'a> Parser<'a> {
                 let Type::Routine(r_nr) = self.data.attr_type(d_nr, a_nr) else {
                     panic!("Incorrect Dynamic function {}", self.data.def_name(d_nr));
                 };
+                if let (Type::Vector(_), Type::Vector(_)) =
+                    (self.data.attr_type(r_nr, 0), &types[0])
+                {
+                    return self.call_nr(code, r_nr, list, types, report);
+                }
                 if self.data.attr_type(r_nr, 0) == types[0] {
                     return self.call_nr(code, r_nr, list, types, report);
                 }
@@ -771,7 +824,8 @@ impl<'a> Parser<'a> {
             }
             attributes = self.data.attributes(d_nr);
         }
-        if !self.lexer.has_token(";") {
+        // Do only allowed header only functions inside the default header file.
+        if !self.default || !self.lexer.has_token(";") {
             self.parse_code(d_nr);
         }
         self.types.clear(attributes, &mut self.diagnostics);
@@ -857,20 +911,24 @@ impl<'a> Parser<'a> {
         if !self.lexer.has_token("struct") {
             return false;
         }
-        let Some(_id) = self.lexer.has_identifier() else {
+        let Some(id) = self.lexer.has_identifier() else {
             diagnostic!(self.lexer, Level::Error, "Expect attribute");
             return true;
         };
+        let d_nr = self
+            .data
+            .add_def(id, self.lexer.pos(), DefType::Struct, u32::MAX);
         self.lexer.token("{");
         loop {
             let mut defined = false;
+            let mut a_type: Type = Type::Unknown;
             let Some(a_name) = self.lexer.has_identifier() else {
                 diagnostic!(self.lexer, Level::Error, "Expect attribute");
                 return true;
             };
             if self.lexer.has_token(":") {
                 defined = true;
-                self.parse_type(true);
+                a_type = self.parse_type(true);
             }
             if self.lexer.has_token("[") {
                 loop {
@@ -914,7 +972,10 @@ impl<'a> Parser<'a> {
                 if tp == Type::Unknown {
                     diagnostic!(self.lexer, Level::Error, "Expecting a clear type");
                 }
+                a_type = tp.clone();
             }
+            self.data
+                .add_attribute(&mut self.lexer, d_nr, &a_name, a_type);
             if !defined {
                 diagnostic!(
                     self.lexer,
@@ -926,7 +987,8 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        // typedef::finish_attributes(&mut self.data, d_nr);
+        self.data.set_returned(d_nr, Type::Reference(d_nr));
+        typedef::finish_attributes(&mut self.data, d_nr);
         self.lexer.token("}");
         true
     }
@@ -984,65 +1046,53 @@ impl<'a> Parser<'a> {
     fn parse_assign(&mut self, code: &mut Value) -> Type {
         let f_type = self.parse_operators(code, 0);
         let to = code.clone();
-        let mut operator = "";
         for op in ["=", "+=", "-=", "*=", "%=", "/="] {
             if self.lexer.has_token(op) {
-                operator = op;
-                break;
+                let s_type = self.parse_operators(code, 0);
+                self.types.change_var_type(&mut self.lexer, &to, &s_type);
+                *code = self.towards_set(to, code, &f_type, &op[0..1]);
+                return Type::Void;
             }
         }
-        if operator.is_empty() {
-            *code = to;
-            return f_type;
-        }
-        let mut vector = false;
-        let mut val = if let Type::Vector(_) = f_type {
-            vector = true;
-            code.clone()
-        } else {
-            Value::Null
-        };
-        let s_type = self.parse_operators(&mut val, 0);
-        self.types.change_var_type(&mut self.lexer, &to, &s_type);
-        if operator == "=" {
-            if let Value::Call(df, ls) = &to {
-                if *df == self.data.def_nr("OpGetInt") {
-                    *code = Value::Call(
-                        self.data.def_nr("OpSetInt"),
-                        vec![ls[0].clone(), ls[1].clone(), val],
-                    );
-                } else if vector {
-                    *code =
-                        Value::Block(vec![self.cl("OpClearVector", &[code.clone()]), val.clone()]);
+        *code = to;
+        f_type
+    }
+
+    fn towards_set(&mut self, to: Value, val: &Value, f_type: &Type, op: &str) -> Value {
+        if let Type::Vector(_) = f_type {
+            if let Value::Call(_, args) = &to {
+                let app = self.cl("OpAppendVector", args);
+                return if op == "=" {
+                    Value::Block(vec![self.cl("OpClearVector", &[to.clone()]), app])
                 } else {
-                    panic!("Assign {} {to:?} = {val:?}", self.data.def_name(*df));
-                }
-            } else {
-                let v_nr = if let Value::Var(nr) = to { nr } else { 0 };
-                self.types.assign(v_nr);
-                *code = v_set(v_nr, val);
+                    app
+                };
             }
-        } else if operator == "+=" {
-            if let Type::Vector(_) = f_type {
-                *code = val;
-            } else if let Type::Sorted(_, _) = f_type {
-                *code = val;
-            } else if let Value::Var(var) = &to {
-                let add = self.op("+", Value::Var(*var), val, f_type);
-                *code = v_set(*var, add);
-            } else if let Value::Field(td, fnr, rec) = &to {
-                // TODO find some way to address adding to Texts
-                *code = Value::Write(*td, *fnr, rec.clone(), Box::new(val));
-            } else if let Value::Vector(td, rec, _) = &to {
-                *code = Value::Append(*td, rec.clone());
-            } else {
-                panic!(
-                    "Unknown += for types {f_type} and {s_type} values {:?}",
-                    vec![to, val]
-                );
-            }
+            panic!("Vector assign");
         }
-        Type::Void
+        let code = if op != "=" {
+            self.op(op, to.clone(), val.clone(), f_type.clone())
+        } else {
+            val.clone()
+        };
+        if let Value::Call(d_nr, args) = &to {
+            let name = self.data.def_name(*d_nr);
+            match &name as &str {
+                "OpGetInt" => self.cl("OpSetInt", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetByte" => self.cl("OpSetByte", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetShort" => self.cl("OpSetShort", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetLong" => self.cl("OpSetLong", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetFloat" => self.cl("OpSetFloat", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetSingle" => self.cl("OpSetSingle", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetText" => self.cl("OpSetText", &[args[0].clone(), args[1].clone(), code]),
+                _ => panic!("Unknown {op}= for {name}"),
+            }
+        } else if let Value::Var(nr) = to {
+            self.types.assign(nr);
+            v_set(nr, code)
+        } else {
+            panic!("Unknown assign");
+        }
     }
 
     // <block> ::= '}' | <expression> {';' <expression} '}'
@@ -1220,7 +1270,7 @@ impl<'a> Parser<'a> {
         self.var_nr += 1;
         let vec = self.types.create_var(
             format!("vec_{}", self.var_nr),
-            Type::Vector(Box::new(Type::Unknown)),
+            Type::Unknown,
             self.lexer.pos(),
         );
         self.var_nr += 1;
@@ -1230,6 +1280,9 @@ impl<'a> Parser<'a> {
         loop {
             let mut p = Value::Var(elm);
             let t = self.expression(&mut p);
+            if in_t == Type::Unknown {
+                in_t = t.clone();
+            }
             if let Type::Reference(dnr) = t {
                 let d_nr = if self.data.def_parent(dnr) != 0 {
                     self.data.def_parent(dnr)
@@ -1246,9 +1299,6 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // double conversion check.. can t become in_t or vice versa
-                if in_t == Type::Unknown {
-                    in_t = t.clone();
-                }
                 if !self.convert(&mut p, &t, &in_t) {
                     if self.convert(&mut p, &in_t, &t) {
                         in_t = t;
@@ -1268,8 +1318,11 @@ impl<'a> Parser<'a> {
         if in_t == Type::Null {
             return in_t;
         }
-        self.types
-            .change_var_type(&mut self.lexer, &Value::Var(vec), &in_t);
+        self.types.change_var_type(
+            &mut self.lexer,
+            &Value::Var(vec),
+            &Type::Vector(Box::new(in_t.clone())),
+        );
         let mut ls = Vec::new();
         let ed_nr = self.data.type_def_nr(&in_t);
         let attr = self.data.def_type(ed_nr) == DefType::Type;
@@ -1279,15 +1332,12 @@ impl<'a> Parser<'a> {
             self.data.def_inline(ed_nr)
         };
         for p in res {
-            let app_v = Value::Append(self.data.type_def_nr(&in_t), Box::new(Value::Var(vec)));
+            let vec_tp = self.data.type_def_nr(&in_t);
+            let vec_size = self.data.def_size(vec_tp) as i32;
+            let app_v = self.cl("OpAppendVector", &[Value::Var(vec), Value::Int(vec_size)]);
             if attr {
                 ls.push(v_set(elm, app_v));
-                ls.push(Value::Write(
-                    self.data.type_def_nr(&in_t),
-                    u16::MAX,
-                    Box::new(Value::Var(elm)),
-                    Box::new(p.clone()),
-                ));
+                ls.push(self.set_field(vec_tp, u16::MAX, Value::Var(elm), p.clone()));
             } else if inline {
                 ls.push(v_set(elm, app_v));
                 if let Value::Block(bl) = p {
@@ -1300,7 +1350,7 @@ impl<'a> Parser<'a> {
             } else {
                 ls.push(v_set(
                     elm,
-                    Value::Claim(self.data.type_def_nr(&in_t), Box::new(Value::Var(vec))),
+                    self.cl("OpAppend", &[Value::Var(vec), Value::Int(vec_size)]),
                 ));
                 if let Value::Block(bl) = p {
                     for e in bl {
@@ -1324,14 +1374,10 @@ impl<'a> Parser<'a> {
                 0,
                 v_set(db, self.cl("OpDatabase", &[Value::Int(size as i32)])),
             );
-            ls.insert(
-                1,
-                v_set(vec, self.cl("OpGetField", &[Value::Var(db), Value::Int(4)])),
-            );
-            ls.insert(
-                2,
-                self.cl("OpSetInt", &[Value::Var(vec), Value::Int(0), Value::Int(0)]),
-            );
+            // Reference to vector field.
+            ls.insert(1, v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
+            // Write 0 into this reference.
+            ls.insert(2, self.set_field(vec_def, 0, Value::Var(db), Value::Int(0)));
         } else {
             ls.insert(0, v_set(vec, val.clone()));
         }
@@ -1348,6 +1394,7 @@ impl<'a> Parser<'a> {
         let mut t = t;
         if let Some(field) = self.lexer.has_identifier() {
             let enr = self.data.type_elm(&t);
+            let e_size = self.data.def_size(enr) as i32;
             let dnr = self.data.type_def_nr(&t);
             if let Type::Vector(et) = t.clone() {
                 if field == "remove" {
@@ -1357,7 +1404,7 @@ impl<'a> Parser<'a> {
                     if tps.len() != 1 || self.convert(&mut cd, &tps[0], &Type::Integer) {
                         diagnostic!(self.lexer, Level::Error, "Invalid index in remove");
                     }
-                    *code = Value::Remove(enr, Box::new(code.clone()), Box::new(cd));
+                    *code = self.cl("OpRemoveVector", &[code.clone(), Value::Int(e_size), cd]);
                 } else if field == "insert" {
                     let (tps, ls) = self.parse_parameters();
                     let mut cd = ls[0].clone();
@@ -1369,7 +1416,7 @@ impl<'a> Parser<'a> {
                     if !self.convert(&mut vl, &tps[1], &et) {
                         diagnostic!(self.lexer, Level::Error, "Invalid value in insert");
                     }
-                    *code = Value::Insert(enr, Box::new(code.clone()), Box::new(cd));
+                    *code = self.cl("OpInsertVector", &[code.clone(), Value::Int(e_size), cd]);
                     // TODO copy vl into newly created vector element
                     // Inner should be different from Reference
                 }
@@ -1389,7 +1436,7 @@ impl<'a> Parser<'a> {
                     *code = if pos == 0 {
                         self.data.attr_value(dnr, fnr)
                     } else {
-                        Value::Field(dnr, fnr, Box::new(code.clone()))
+                        self.get_field(dnr, fnr, code.clone())
                     };
                 }
                 fnr
@@ -1432,16 +1479,9 @@ impl<'a> Parser<'a> {
             self.first_match(code, p, t);
         } else if let Type::Vector(etp) = t {
             let elm_td = self.data.type_elm(&etp);
-            *code = Value::Vector(elm_td, Box::new(code.clone()), Box::new(p));
-            if let Type::Reference(_) = *etp {
-            } else {
-                self.call_op(
-                    code,
-                    "Get",
-                    vec![code.clone(), Value::Int(0)],
-                    vec![Type::Reference(elm_td), Type::Integer],
-                );
-            }
+            let elm_size = self.data.def_size(elm_td) as i32;
+            *code = self.cl("OpGetVector", &[code.clone(), Value::Int(elm_size), p]);
+            *code = self.get_val(&etp, 0, code.clone());
         } else {
             self.call_op(code, "Get", vec![code.clone(), p], vec![t, index_t]);
         }
@@ -1457,11 +1497,10 @@ impl<'a> Parser<'a> {
             t = self.data.returned(d_nr);
             if self.data.def_type(d_nr) == DefType::Function {
                 t = Type::Routine(d_nr)
+            } else if self.data.def_type(d_nr) == DefType::Struct {
+                return self.parse_object(d_nr, code);
             }
-            if let Type::Reference(_) | Type::Inner(_) = t {
-                self.parse_object(d_nr, code);
-                return t;
-            } else if let Type::Enum(en) = t {
+            if let Type::Enum(en) = t {
                 for a_nr in 0..self.data.attributes(en) {
                     if self.data.attr_name(en, a_nr) == name {
                         *code = self.data.attr_value(en, a_nr);
@@ -2024,10 +2063,10 @@ impl<'a> Parser<'a> {
     }
 
     // <object> ::= '{' [ <identifier> ':' <expression> { ',' <identifier> ':' <expression> } ] '}'
-    fn parse_object(&mut self, td_nr: u32, code: &mut Value) {
+    fn parse_object(&mut self, td_nr: u32, code: &mut Value) -> Type {
         let link = self.lexer.link();
         if !self.lexer.token("{") {
-            return;
+            return Type::Unknown;
         }
         let v = self.types.create_var(
             "val".to_string(),
@@ -2039,7 +2078,10 @@ impl<'a> Parser<'a> {
         list.push(v_set(
             v,
             if let Value::Reference(_, _, _) = code {
-                Value::Claim(td_nr, Box::new(code.clone()))
+                self.cl(
+                    "OpAppend",
+                    &[Value::Int(self.data.def_size(td_nr) as i32), code.clone()],
+                )
             } else {
                 self.cl("OpDatabase", &[rec_size])
             },
@@ -2052,7 +2094,7 @@ impl<'a> Parser<'a> {
             if let Some(field) = self.lexer.has_identifier() {
                 if !self.lexer.has_token(":") {
                     self.lexer.revert(link);
-                    return;
+                    return Type::Unknown;
                 }
                 let nr = self.data.attr(td_nr, &field);
                 if nr != u16::MAX {
@@ -2076,12 +2118,7 @@ impl<'a> Parser<'a> {
                             }
                         }
                     } else {
-                        list.push(Value::Write(
-                            td_nr,
-                            nr,
-                            Box::new(Value::Var(v)),
-                            Box::new(value),
-                        ));
+                        list.push(self.set_field(td_nr, nr, Value::Var(v), value));
                     }
                 } else {
                     diagnostic!(
@@ -2094,7 +2131,7 @@ impl<'a> Parser<'a> {
             } else {
                 // We have not encountered an identifier
                 self.lexer.revert(link);
-                return;
+                return Type::Unknown;
             }
             if !self.lexer.has_token(",") {
                 break;
@@ -2106,15 +2143,11 @@ impl<'a> Parser<'a> {
             if found_fields.contains(&self.data.attr_name(td_nr, aid)) {
                 continue;
             }
-            list.push(Value::Write(
-                td_nr,
-                aid,
-                Box::new(Value::Var(v)),
-                Box::new(self.data.attr_value(td_nr, aid)),
-            ));
+            list.push(self.set_field(td_nr, aid, Value::Var(v), self.data.attr_value(td_nr, aid)));
         }
         list.push(Value::Var(v));
         *code = Value::Block(list);
+        Type::Reference(td_nr)
     }
 
     // <if> ::= <expression> '{' <block> [ 'else' ( 'if' <if> | '{' <block> ) ]

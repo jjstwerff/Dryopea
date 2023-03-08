@@ -2,7 +2,8 @@ Roadmap:
 - FEA0001_scripting (v)
 - FEA0020_enum      (v)
 - FEA0002_struct    (!)
-- FEA0003_vector
+- FEA0003_vector    (!)
+- FEA0028_interpreter
 - FEA0004_map
 - FEA0005_material
 - FEA0006_wall

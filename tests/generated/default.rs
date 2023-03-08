@@ -290,6 +290,10 @@ fn OpFormatEnum(val: u8, width: i32, ) Null
 }
 fn OpDatabase(size: i32, ) Null
 
+fn OpAppend(db: (u32, u32), size: i32, ) Null
+
+fn OpGet(v1: (u32, u32), fld: i32, ) Null
+
 fn OpConvRefFromNull() Null
 
 fn OpConvBoolFromRef(v1: (u32, u32), ) Null
@@ -332,11 +336,38 @@ fn reference::remove(self: (u32, u32), ) Null
 
 fn OpFormatRef(val: (u32, u32), width: i32, ) Null
 
+fn OpGetInt(v1: (u32, u32), fld: i32, ) Null
+
+fn OpGetLong(v1: (u32, u32), fld: i32, ) Null
+
+fn OpGetSingle(v1: (u32, u32), fld: i32, ) Null
+
+fn OpGetFloat(v1: (u32, u32), fld: i32, ) Null
+
+fn OpGetByte(v1: (u32, u32), fld: i32, min: i32, ) Null
+
+fn OpGetShort(v1: (u32, u32), fld: i32, min: i32, ) Null
+
+fn OpGetText(v1: (u32, u32), fld: i32, ) Null
+
+fn OpSetInt(v1: (u32, u32), fld: i32, val: i32, ) Null
+
+fn OpSetLong(v1: (u32, u32), fld: i32, val: i64, ) Null
+
+fn OpSetSingle(v1: (u32, u32), fld: i32, val: f32, ) Null
+
+fn OpSetFloat(v1: (u32, u32), fld: i32, val: f64, ) Null
+
+fn OpSetByte(v1: (u32, u32), fld: i32, min: i32, val: i32, ) Null
+
+fn OpSetShort(v1: (u32, u32), fld: i32, min: i32, val: i32, ) Null
+
+fn OpSetText(v1: (u32, u32), fld: i32, val: String, ) Null
+
 {
   let d = Definition::new("vector");
   d.add_attribute("len", Type::fn vector::len mutable);
   d.add_attribute("clear", Type::fn vector::clear mutable);
-  d.add_attribute("remove", Type::fn vector::remove mutable);
   d.returned = Type::vector<unknown>;
   d.size = 4;
 }
@@ -354,17 +385,13 @@ fn vector::clear(self: (u32, u32), ) {
 
 fn OpFinishSorted(r: (u32, u32), ) Null
 
-fn OpInsertVector(r: (u32, u32), content: T, ) Null
+fn OpGetVector(r: (u32, u32), size: i32, index: i32, ) Null
 
-fn OpRemoveVector(r: (u32, u32), index: i32, ) Null
+fn OpRemoveVector(r: (u32, u32), size: i32, index: i32, ) Null
 
-fn vector::remove(self: (u32, u32), index: i32, ) {
-  OpRemoveVector(var_0, var_1);
-}
+fn OpInsertVector(r: (u32, u32), size: i32, index: i32, ) Null
 
-fn OpGetVector(r: (u32, u32), index: i32, ) Null
-
-fn OpFormatVector(val: String, width: i32, ) Null
+fn OpAppendVector(r: (u32, u32), size: i32, ) Null
 
 {
   let d = Definition::new("hash");
@@ -384,10 +411,6 @@ fn OpClearHash(r: (u32, u32), ) Null
 fn hash::clear(self: (u32, u32), ) {
   OpClearHash(var_0);
 }
-
-fn OpInsertHash(r: (u32, u32), content: T, ) Null
-
-fn OpRemoveHash(r: (u32, u32), content: T, ) Null
 
 fn OpFormatHash(val: (u32, u32), width: i32, ) Null
 
@@ -410,10 +433,6 @@ fn index::clear(self: (u32, u32), ) {
   OpClearIndex(var_0);
 }
 
-fn OpInsertIndex(r: (u32, u32), content: T, ) Null
-
-fn OpRemoveIndex(r: (u32, u32), content: T, ) Null
-
 fn OpFormatIndex(val: (u32, u32), width: i32, ) Null
 
 {
@@ -434,10 +453,6 @@ fn OpClearRadix(r: (u32, u32), ) Null
 fn radix::clear(self: (u32, u32), ) {
   OpClearRadix(var_0);
 }
-
-fn OpInsertRadix(r: (u32, u32), content: T, ) Null
-
-fn OpRemoveRadix(r: (u32, u32), content: T, ) Null
 
 fn OpFormatRadix(val: (u32, u32), width: i32, ) Null
 

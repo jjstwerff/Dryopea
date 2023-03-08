@@ -1,5 +1,5 @@
-Scripting
-=========
+FEA0002_struct
+==============
 
 Summary
 -------
@@ -19,9 +19,24 @@ Use-cases
 
 Design
 ------
+Dual parser passes:
+- Prevent code generation inside blocks on first pass (function calls can produce errors here)
+- Already define the function header.
+- Prevent defining structs/enum/type twice
+- Test a calling a later defined function, struct, enum or type.
+
+Inner structs
+- Find links between structs: convert to Type::Inner when needed
+- Remember the min/max sizes on structs due to child implementation
+- Test a link towards structs and switch from Inner.
+- Test big differences in min/max size to prevent Inner.
+- Test struct sizes / alignments.
+
 Structures with a variable number of fields via sub-structures.
-Sub structures can have their on unique method implementations as long as they share the same type.
+Sub structures can have unique method implementations, but share the same type.
 Default values on structure fields.
+Restriction on numbered type fields.
+Use these restrictions to create byte and short type fields.
 
 Examples
 --------
@@ -31,13 +46,14 @@ Consistency
 
 Development
 -----------
-repair or comment out current tests
+Construct objects on a struct type.
 
-output to own language notation
+Output to own language notation
 
-duplicate field names
+Duplicate field names
 
-allow restrictions on integer limits, not null
+Allow restrictions on integer limits, not null
+
 struct Data {
     val: integer limit 1..=100,
     byte: integer limit 0..256,

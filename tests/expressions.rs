@@ -84,6 +84,13 @@ fn expr_long() {
 }
 
 #[test]
+fn mutating_operators() {
+    expr!("a = 12; a -= 6; a *= 3; a /= 2; a += 1; a")
+        .result(Value::Int(10))
+        .tp(Type::Integer);
+}
+
+#[test]
 fn for_loop() {
     expr!("b = 0; for a in 0..5 { b+=a }; b").result(Value::Int(10));
 }

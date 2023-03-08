@@ -114,30 +114,46 @@ fn OpFormatText(val: text, width: integer, dir: integer, token: integer) -> text
 type enumerate;
 fn OpConvBoolFromEnum(v1: enumerate) -> boolean;
 fn OpConvEnumFromNull() -> enumerate;
-fn OpEqEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpNeEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpLtEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpLeEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpGtEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpGeEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
+fn OpEqEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpNeEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpLtEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpLeEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpGtEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpGeEnum(v1: enumerate, v2: enumerate) -> boolean;
 fn OpFormatEnum(val: enumerate, width: integer) -> text;
 
 type reference;
 fn OpDatabase(size: integer) -> reference;
+fn OpAppend(db: reference, size: integer) -> reference;
+fn OpGet(v1: reference, fld: integer) -> reference;
 fn OpConvRefFromNull() -> reference;
 fn OpConvBoolFromRef(v1: reference) -> boolean;
 fn OpLengthRef(v: reference) -> integer;
 pub fn size(both: reference) -> integer { OpLengthRef(both) };
 fn OpAlignRef(v: reference) -> integer;
 pub fn align(both: reference) -> integer { OpAlignRef(both) };
-fn OpEqRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpNeRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpLtRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpLeRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpGtRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpGeRef(v1: reference<R>, v2: reference<R>) -> boolean;
+fn OpEqRef(v1: reference, v2: reference) -> boolean;
+fn OpNeRef(v1: reference, v2: reference) -> boolean;
+fn OpLtRef(v1: reference, v2: reference) -> boolean;
+fn OpLeRef(v1: reference, v2: reference) -> boolean;
+fn OpGtRef(v1: reference, v2: reference) -> boolean;
+fn OpGeRef(v1: reference, v2: reference) -> boolean;
 pub fn remove(self: reference);
 fn OpFormatRef(val: reference, width: integer) -> text;
+fn OpGetInt(v1: reference, fld: integer) -> integer;
+fn OpGetLong(v1: reference, fld: integer) -> long;
+fn OpGetSingle(v1: reference, fld: integer) -> single;
+fn OpGetFloat(v1: reference, fld: integer) -> float;
+fn OpGetByte(v1: reference, fld: integer, min: integer) -> integer;
+fn OpGetShort(v1: reference, fld: integer, min: integer) -> integer;
+fn OpGetText(v1: reference, fld: integer) -> text;
+fn OpSetInt(v1: reference, fld: integer, val: integer);
+fn OpSetLong(v1: reference, fld: integer, val: long);
+fn OpSetSingle(v1: reference, fld: integer, val: single);
+fn OpSetFloat(v1: reference, fld: integer, val: float);
+fn OpSetByte(v1: reference, fld: integer, min: integer, val: integer);
+fn OpSetShort(v1: reference, fld: integer, min: integer, val: integer);
+fn OpSetText(v1: reference, fld: integer, val: text);
 
 pub type vector;
 fn OpLengthVector(r: vector) -> integer;
@@ -145,20 +161,16 @@ pub fn len(both: vector) -> integer { OpLengthVector(both) }
 fn OpClearVector(r: vector);
 pub fn clear(self: vector) { OpClearVector(self) }
 fn OpFinishSorted(r: vector);
-fn OpInsertVector(r: vector<R>, content: R);
-fn OpRemoveVector(r: vector, index: integer);
-pub fn remove(self: vector, index: integer) { OpRemoveVector(self, index) }
-fn OpGetVector(r: vector<R>, index: integer) -> R;
-fn OpFormatVector(val: text, width: integer) -> text;
+fn OpGetVector(r: vector, size: integer, index: integer) -> reference;
+fn OpRemoveVector(r: vector, size: integer, index: integer) -> boolean;
+fn OpInsertVector(r: vector, size: integer, index: integer) -> reference;
+fn OpAppendVector(r: vector, size: integer) -> reference;
 
 pub type hash;
 fn OpLengthHash(r: hash) -> integer;
 pub fn len(both: hash) -> integer { OpLengthHash(both) }
 fn OpClearHash(r: hash);
 pub fn clear(self: hash) { OpClearHash(self); }
-fn OpInsertHash(r: hash<R>, content: R);
-fn OpRemoveHash(r: hash<R>, content: R);
-// pub fn remove(self: hash<R>, content: R) { OpRemoveHash(self, content) }
 fn OpFormatHash(val: hash, width: integer) -> text;
 
 pub type index;
@@ -166,9 +178,6 @@ fn OpLengthIndex(r: index) -> integer;
 pub fn len(both: index) -> integer { OpLengthIndex(both) }
 fn OpClearIndex(r: index);
 pub fn clear(self: index) { OpClearIndex(self) }
-fn OpInsertIndex(r: index<R>, content: R);
-fn OpRemoveIndex(r: index<R>, content: R);
-// pub fn remove(self: index, content: R) { OpRemoveIndex(self, content) }
 fn OpFormatIndex(val: index, width: integer) -> text;
 
 pub type radix;
@@ -176,9 +185,6 @@ fn OpLengthRadix(r: radix) -> integer;
 pub fn len(both: radix) -> integer { OpLengthRadix(both) }
 fn OpClearRadix(r: radix);
 pub fn clear(self: radix) { OpClearRadix(self) }
-fn OpInsertRadix(r: radix<R>, content: R);
-fn OpRemoveRadix(r: radix<R>, content: R);
-// pub fn remove(self: index, content: R) { OpRemoveRadix(self, content) }
 fn OpFormatRadix(val: radix, width: integer) -> text;
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;

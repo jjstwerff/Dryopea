@@ -38,6 +38,7 @@ use std::io::Write;
 // Many parts can remain empty for each given test.
 pub struct Test {
     name: String,
+    file: String,
     expr: String,
     code: String,
     warnings: Vec<String>,
@@ -93,6 +94,14 @@ impl Test {
         self.tp = tp;
         self
     }
+
+    fn test(&self) -> String {
+        if self.return_type() == "" {
+            format!("fn test() {{\n{}\n}}", self.expr)
+        } else {
+            format!("fn test() -> {} {{\n{}\n}}", self.return_type(), self.expr)
+        }
+    }
 }
 
 impl Drop for Test {
@@ -106,21 +115,16 @@ impl Drop for Test {
             p.parse_str(&self.code, &self.name);
         }
         if !self.expr.is_empty() {
-            if self.return_type() == "" {
-                p.parse_str(&format!("fn test() {{\n{}\n}}", self.expr), &self.name);
-            } else {
-                p.parse_str(
-                    &format!("fn test() -> {} {{\n{}\n}}", self.return_type(), self.expr),
-                    &self.name,
-                );
-            }
+            p.parse_str(&self.test(), &self.name);
             p.data.def_used(p.data.def_nr("test"));
         }
         for (d, s) in &self.sizes {
             assert_eq!(p.data.def_size(p.data.def_nr(d)), *s, "Size of {}", *d);
         }
         if !p.diagnostics.is_empty() {
-            if let Ok(mut f) = std::fs::File::create(format!("tests/generated/{}.txt", self.name)) {
+            if let Ok(mut f) =
+                std::fs::File::create(format!("tests/generated/{}_{}.txt", self.file, self.name))
+            {
                 writeln!(f, "{}", p.diagnostics).unwrap();
             }
         }
@@ -132,7 +136,9 @@ impl Drop for Test {
         for d in 0..start {
             p.data.output_def(w, d);
         }
-        let w = &mut std::fs::File::create(format!("tests/generated/{}.rs", self.name)).unwrap();
+        let w =
+            &mut std::fs::File::create(format!("tests/generated/{}_{}.rs", self.file, self.name))
+                .unwrap();
         for d in start..p.data.definitions() {
             p.data.output_def(w, d);
         }
@@ -159,7 +165,7 @@ impl Test {
             if expected.contains(l) {
                 expected.remove(l);
             } else {
-                found += &l;
+                found += l;
                 found += "\n";
             }
         }
@@ -169,6 +175,12 @@ impl Test {
             was += "\n";
         }
         if !found.is_empty() || !was.is_empty() {
+            if !self.code.is_empty() {
+                println!("{}", self.code);
+            }
+            if !self.expr.is_empty() {
+                println!("{}", self.test());
+            }
             panic!("Found {found} Expected {was}");
         }
     }
@@ -211,9 +223,15 @@ fn short(name: &str) -> String {
     s[s.len() - 1].to_string()
 }
 
+fn front(name: &str) -> String {
+    let s: Vec<&str> = name.split("::").collect();
+    s[s.len() - 2].to_string()
+}
+
 pub fn testing_code(code: &str, test: &str) -> Test {
     Test {
         name: short(test),
+        file: front(test),
         expr: "".to_string(),
         code: code.to_string(),
         warnings: vec![],
@@ -227,6 +245,7 @@ pub fn testing_code(code: &str, test: &str) -> Test {
 pub fn testing_expr(expr: &str, test: &str) -> Test {
     Test {
         name: short(test),
+        file: front(test),
         expr: expr.to_string(),
         code: "".to_string(),
         warnings: vec![],

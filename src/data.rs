@@ -49,22 +49,6 @@ pub enum Value {
     If(Box<Value>, Box<Value>, Box<Value>),
     /// Loop through the block till Break is encountered
     Loop(Vec<Value>),
-    /// Read a field from a definition: Definition-nr, field-nr, reference
-    /// field-nr u16::MAX means reading the given type from a vector reference
-    Field(u32, u16, Box<Value>),
-    /// Write a field from a definition: Definition-nr, field-nr, reference, value
-    Write(u32, u16, Box<Value>, Box<Value>),
-    /// Claim a record on definition-nr on database-reference
-    /// Reference with db 0 means start new database
-    Claim(u32, Box<Value>),
-    /// Get vector: Definition-nr, reference, index
-    Vector(u32, Box<Value>, Box<Value>),
-    /// Remove vector element: Definition-nr, reference, index
-    Remove(u32, Box<Value>, Box<Value>),
-    /// Insert vector element: Definition-nr, reference, index
-    Insert(u32, Box<Value>, Box<Value>),
-    /// Append vector element: Definition-nr, reference, index
-    Append(u32, Box<Value>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -392,7 +376,11 @@ impl Data {
     }
 
     pub fn attr_pos(&self, d_nr: u32, a_nr: u16) -> u32 {
-        self.def(d_nr).attributes[a_nr as usize].position
+        if a_nr == u16::MAX {
+            0
+        } else {
+            self.def(d_nr).attributes[a_nr as usize].position
+        }
     }
 
     pub fn set_attr_pos(&mut self, d_nr: u32, a_nr: u16, pos: u32) {
@@ -403,7 +391,11 @@ impl Data {
     }
 
     pub fn attr_type(&self, d_nr: u32, a_nr: u16) -> Type {
-        self.def(d_nr).attributes[a_nr as usize].typedef.clone()
+        if a_nr == u16::MAX {
+            self.def(d_nr).returned.clone()
+        } else {
+            self.def(d_nr).attributes[a_nr as usize].typedef.clone()
+        }
     }
 
     pub fn attr_value(&self, d_nr: u32, a_nr: u16) -> Value {
@@ -506,7 +498,7 @@ impl Data {
     /// Get a vector definition. This is a record with a single field pointing towards this vector.
     /// We need this definition as the primary record of a database holding a vector and its child records/vectors.
     pub fn vector_def(&mut self, lexer: &mut Lexer, dnr: u32, tp: &Type) -> u32 {
-        let name = self.show_type(tp);
+        let name = format!("{tp:?}");
         let d_nr = self.def_nr(&name);
         if d_nr != u32::MAX {
             d_nr
