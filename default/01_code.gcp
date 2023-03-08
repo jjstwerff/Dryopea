@@ -10,164 +10,277 @@ pub type text;
 
 // Boolean operations
 fn OpNot(v1: boolean) -> boolean;
-wasm 0 1 &v1 select
+#rust "!@v1"
 
 fn OpAnd(v1: boolean, v2: boolean) -> boolean;
-wasm &v1 If &v2 Else 0 End
+#rust "(@v1 $$ @v2)"
 
 fn OpOr(v1: boolean, v2: boolean) -> boolean;
-wasm &v1 If 1 Else &v2 End
+#rust "(@v1 || @v2)"
 
-fn OpFormatBool(db: integer, text: integer, val: boolean, radix: integer, width: integer, dir: integer, token: integer);
-wasm &db &text "true" "false" &val Select 4 5 &val Select &width &dir &token Call:format_text
+fn OpFormatBool(res: text, val: boolean, radix: integer, width: integer, dir: integer, token: integer);
+#rust "format_text(&mut @res, if @val {{\"true\"}} else {{\"false\"}}, @width, @dir, @token)"
 
 // Integer operations
 fn OpConvIntFromNull() -> integer;
-wasm Call:i32_null
+#rust "i32::MIN"
 
-fn OpAbsInteger(v1: integer) -> integer;
-wasm &v1 0 &v1 I32Sub &v1 0 I32GeS &v1 Call:i32_null I32Eq I32Add Select
-pub fn abs(both: integer) -> integer { OpAbsInteger(both) };
+fn OpAbsInt(v1: integer) -> integer;
+#rust "op_abs_int(@v1)"
+pub fn abs(both: integer) -> integer { OpAbsInt(both) }
 
 fn OpMinSingleInt(v1: integer) -> integer;
-wasm 0 &v1 I32Sub Call:i32_null &v1 Call:i32_null I32Ne Select
+#rust "op_min_single_int(@v1)"
 
 fn OpConvLongFromInt(v1: integer) -> long;
-wasm &v1 I64ExtendI32S Call:i64_null &v1 Call:i32_null I32Ne Select
+#rust "op_conv_long_from_int(@v1)"
 
 fn OpConvFloatFromInt(v1: integer) -> float;
-wasm &v1 F64ConvertI32S Call:f32_null &v1 Call:i32_null I32Ne Select
+#rust "op_conv_float_from_int(@v1)"
 
 fn OpConvSingleFromInt(v1: integer) -> single;
-wasm &v1 F32ConvertI32S Call:f64_null &v1 Call:i32_null I32Ne Select
+#rust "op_conv_single_from_int(@v1)"
 
 fn OpConvBoolFromInt(v1: integer) -> boolean;
-wasm &v1
+#rust "op_conv_bool_from_int(@v1)"
 
 fn OpAddInt(v1: integer, v2: integer) -> integer;
-wasm &v1 &v2 I32Add Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+#rust "op_add_int(@v1, @v2)"
 
 fn OpMinInt(v1: integer, v2: integer) -> integer;
-wasm &v1 &v2 I32Sub Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+#rust "op_min_int(@v1, @v2)"
 
 fn OpMulInt(v1: integer, v2: integer) -> integer;
-wasm &v1 &v2 I32Mul Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+#rust "op_mul_int(@v1, @v2)"
 
 fn OpDivInt(v1: integer, v2: integer) -> integer;
-wasm &v1 &v2 I32Div Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add &v2 0 I32Eq I32Add Select
+#rust "op_div_int(@v1, @v2)"
 
 fn OpRemInt(v1: integer, v2: integer) -> integer;
-wasm &v1 &v2 I32Rem Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add &v2 0 I32Eq I32Add Select
+#rust "op_rem_int(@v1, @v2)"
 
 fn OpEqInt(v1: integer, v2: integer) -> boolean;
-wasm &v1 &v2 I32Eq
+#rust "op_eq_int(@v1, @v2)"
 
 fn OpNeInt(v1: integer, v2: integer) -> boolean;
-wasm &v1 &v2 I32Ne
+#rust "op_ne_int(@v1, @v2)"
 
 fn OpLtInt(v1: integer, v2: integer) -> boolean;
-wasm &v1 &v2 I32LtS Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+#rust "op_lt_int(@v1, @v2)"
 
 fn OpLeInt(v1: integer, v2: integer) -> boolean;
-wasm &v1 &v2 I32LeS Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+#rust "op_le_int(@v1, @v2)"
 
 fn OpGtInt(v1: integer, v2: integer) -> boolean;
-wasm &v1 &v2 I32GtS Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+#rust "op_lt_int(@v2, @v1)"
 
 fn OpGeInt(v1: integer, v2: integer) -> boolean;
-wasm &v1 &v2 I32GeS Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+#rust "op_le_int(@v2, @v1)"
 
-fn OpFormatInt(db: integer, text: integer, val: integer, radix: integer, width: integer, token: integer, plus: boolean, note: boolean);
-wasm &db &text &val &radix &width &token &plus &note Call:format_int
+fn OpFormatInt(val: integer, radix: integer, width: integer, token: integer, plus: boolean, note: boolean) -> text;
+#rust "format_int(@val, @width, @token, @plus, @note)"
 
 // Long operations
 fn OpConvLongFromNull() -> long;
-wasm Call:i64_null
+#rust "i64::MIN"
 
 fn OpAbsLong(v1: long) -> long;
+#rust "op_abs_long(@v1)"
 pub fn abs(both: long) -> long { OpAbsLong(both) }
-fn OpMinSingleLong(v1: long) -> long;
-fn OpCastIntFromLong(v1: long) -> integer;
-fn OpConvFloatFromLong(v1: long) -> float;
-fn OpConvBoolFromLong(v1: long) -> boolean;
-fn OpAddLong(v1: long, v2: long) -> long;
-fn OpMinLong(v1: long, v2: long) -> long;
-fn OpMulLong(v1: long, v2: long) -> long;
-fn OpDivLong(v1: long, v2: long) -> long;
-fn OpRemLong(v1: long, v2: long) -> long;
-fn OpEqLong(v1: long, v2: long) -> boolean;
-fn OpNeLong(v1: long, v2: long) -> boolean;
-fn OpLtLong(v1: long, v2: long) -> boolean;
-fn OpLeLong(v1: long, v2: long) -> boolean;
-fn OpGtLong(v1: long, v2: long) -> boolean;
-fn OpGeLong(v1: long, v2: long) -> boolean;
-fn OpFormatLong(v1: text, val: long, radix: integer, width: integer, token: integer, plus: boolean, note: boolean);
 
+fn OpMinSingleLong(v1: long) -> long;
+#rust "op_min_single_long(@v1)"
+
+fn OpCastIntFromLong(v1: long) -> integer;
+#rust "op_cast_int_from_long(@v1)"
+
+fn OpConvFloatFromLong(v1: long) -> float;
+#rust "op_conv_float_from_long(@v1)"
+
+fn OpConvBoolFromLong(v1: long) -> boolean;
+#rust "op_conv_bool_from_long(@v1)"
+
+fn OpAddLong(v1: long, v2: long) -> long;
+#rust "op_add_long(@v1, @v2)"
+
+fn OpMinLong(v1: long, v2: long) -> long;
+#rust "op_min_long(@v1, @v2)"
+
+fn OpMulLong(v1: long, v2: long) -> long;
+#rust "op_mul_long(@v1, @v2)"
+
+fn OpDivLong(v1: long, v2: long) -> long;
+#rust "op_div_long(@v1, @v2)"
+
+fn OpRemLong(v1: long, v2: long) -> long;
+#rust "op_rem_long(@v1, @v2)"
+
+fn OpEqLong(v1: long, v2: long) -> boolean;
+#rust "op_eq_long(@v1, @v2)"
+
+fn OpNeLong(v1: long, v2: long) -> boolean;
+#rust "op_ne_long(@v1, @v2)"
+
+fn OpLtLong(v1: long, v2: long) -> boolean;
+#rust "op_lt_long(@v1, @v2)"
+
+fn OpLeLong(v1: long, v2: long) -> boolean;
+#rust "op_le_long(@v1, @v2)"
+
+fn OpGtLong(v1: long, v2: long) -> boolean;
+#rust "op_lt_long(@v2, @v1)"
+
+fn OpGeLong(v1: long, v2: long) -> boolean;
+#rust "op_le_long(@v2, @v1)"
+
+fn OpFormatLong(val: long, radix: integer, width: integer, token: integer, plus: boolean, note: boolean) -> text;
+#rust "format_long(&mut @res, @val, @width, @token, @plus, @note)"
+
+// Single operations
 fn OpConvSingleFromNull() -> single;
+#rust "f32::NAN"
+
 fn OpAbsSingle(v1: single) -> single;
+#rust "@v1.abs()"
 pub fn abs(both: single) -> single { OpAbsSingle(both) }
+
 fn OpMinSingleSingle(v1: single) -> single;
+#rust "(-@v1)"
+
 fn OpCastIntFromSingle(v1: single) -> integer;
+#rust "op_cast_int_from_single(@v1)"
+
 fn OpCastLongFromSingle(v1: single) -> long;
+#rust "op_cast_long_from_single(@v1)"
+
 fn OpConvFloatFromSingle(v1: single) -> float;
+#rust "(@v1 as f64)"
+
 fn OpConvBoolFromSingle(v1: single) -> boolean;
+#rust "(!@v1.is_nan())"
+
 fn OpAddSingle(v1: single, v2: single) -> single;
+#rust "(@v1 + @v2)"
+
 fn OpMinSingle(v1: single, v2: single) -> single;
+#rust "(@v1 - @v2)"
+
 fn OpMulSingle(v1: single, v2: single) -> single;
+#rust "(@v1 * @v2)"
+
 fn OpDivSingle(v1: single, v2: single) -> single;
+#rust "(@v1 / @v2)"
+
 fn OpRemSingle(v1: single, v2: single) -> single;
+#rust "(@v1 % @v2)"
+
 fn OpEqSingle(v1: single, v2: single) -> boolean;
+#rust "(@v1 == @v2)"
+
 fn OpNeSingle(v1: single, v2: single) -> boolean;
+#rust "(@v1 != @v2)"
+
 fn OpLtSingle(v1: single, v2: single) -> boolean;
+#rust "(@v1 < @v2)"
+
 fn OpLeSingle(v1: single, v2: single) -> boolean;
+#rust "(@v1 <= @v2)"
+
 fn OpGtSingle(v1: single, v2: single) -> boolean;
+#rust "(@v1 > @v2)"
+
 fn OpGeSingle(v1: single, v2: single) -> boolean;
-fn OpFormatSingle(v1: text, val: single, width: integer, precision: integer);
+#rust "(@v1 >= @v2)"
+
+fn OpFormatSingle(val: single, width: integer, precision: integer) -> text;
+#rust "format_single(@val, @width, @precision)"
 
 fn OpConvFloatFromNull() -> float;
+#rust "f64::NAN"
+
 fn OpAbsFloat(v1: float) -> float;
+#rust "@v1.abs()"
 pub fn abs(both: float) -> float { OpAbsFloat(both) }
+
 fn OpMinSingleFloat(v1: float) -> float;
+#rust "(-@v1)"
+
 fn OpCastSingleFromFloat(v1: float) -> single;
+#rust "(@v1 as f32)"
+
 fn OpCastIntFromFloat(v1: float) -> integer;
+#rust "op_cast_int_from_float(@v1)"
+
 fn OpCastLongFromFloat(v1: float) -> long;
+#rust "op_cast_long_from_float(@v1)"
+
 fn OpConvBoolFromFloat(v1: float) -> boolean;
+#rust "(!@v1.is_nan())"
+
 fn OpAddFloat(v1: float, v2: float) -> float;
+#rust "(@v1 + @v2)"
+
 fn OpMinFloat(v1: float, v2: float) -> float;
+#rust "(@v1 - @v2)"
+
 fn OpMulFloat(v1: float, v2: float) -> float;
+#rust "(@v1 * @v2)"
+
 fn OpDivFloat(v1: float, v2: float) -> float;
+#rust "(@v1 / @v2)"
+
 fn OpRemFloat(v1: float, v2: float) -> float;
+#rust "(@v1 % @v2)"
+
 fn OpEqFloat(v1: float, v2: float) -> boolean;
+#rust "(@v1 == @v2)"
+
 fn OpNeFloat(v1: float, v2: float) -> boolean;
+#rust "(@v1 != @v2)"
+
 fn OpLtFloat(v1: float, v2: float) -> boolean;
+#rust "(@v1 < @v2)"
+
 fn OpLeFloat(v1: float, v2: float) -> boolean;
+#rust "(@v1 <= @v2)"
+
 fn OpGtFloat(v1: float, v2: float) -> boolean;
+#rust "(@v1 > @v2)"
+
 fn OpGeFloat(v1: float, v2: float) -> boolean;
+#rust "(@v1 >= @v2)"
+
 fn OpFormatFloat(v1: text, val: float, width: integer, precision: integer);
+#rust "format_float(@val, @width, @precision)"
 
 fn OpConvTextFromNull() -> text;
+#rust "\"\""
+
 fn OpLengthText(v1: text) -> integer;
+#rust "(@v1.len() as i32)"
+
 pub fn len(both: text) -> integer { OpLengthText(both) }
 fn OpConvBoolFromText(v1: text) -> boolean;
-fn OpAddText(v1: text, v2: text);
-fn OpAddData(v1: text, pos: integer, length: integer);
+#rust "!@v1.is_empty()"
+fn OpAddText(v1: text, v2: text) -> text;
+#rust "(@v1 + &@v2)"
 fn OpClearText(v1: text);
+#rust "@v1.clear()"
 pub fn clear(self: text) { OpClearText(self) }
 fn OpEqText(v1: text, v2: text) -> boolean;
+#rust "(@v1 == @v2)"
 fn OpNeText(v1: text, v2: text) -> boolean;
+#rust "(@v1 != @v2)"
 fn OpLtText(v1: text, v2: text) -> boolean;
+#rust "(@v1 < @v2)"
 fn OpLeText(v1: text, v2: text) -> boolean;
+#rust "(@v1 <= @v2)"
 fn OpGtText(v1: text, v2: text) -> boolean;
+#rust "(@v1 > @v2)"
 fn OpGeText(v1: text, v2: text) -> boolean;
-fn OpEqData(v1: text, v2: integer, l2: integer) -> boolean;
-fn OpNeData(v1: text, v2: integer, l2: integer) -> boolean;
-fn OpLtData(v1: text, v2: integer, l2: integer) -> boolean;
-fn OpLeData(v1: text, v2: integer, l2: integer) -> boolean;
-fn OpGtData(v1: text, v2: integer, l2: integer) -> boolean;
-fn OpGeData(v1: text, v2: integer, l2: integer) -> boolean;
-
-fn OpFormatText(v1: text, val: text, width: integer, dir: integer, token: integer);
-wasm call($format_text, val, width, dir, token)
+#rust "(@v1 >= @v2)"
+fn OpFormatText(val: text, width: integer, dir: integer, token: integer) -> text;
+#rust "format_text(@val, @width, @dir, @token)"
 
 type enumerate;
 fn OpConvBoolFromEnum(v1: enumerate) -> boolean;
@@ -213,9 +326,13 @@ fn OpSetReference(v1: reference, fld: integer, val: reference);
 
 pub type vector;
 fn OpLengthVector(r: vector) -> integer;
+#rust "@r.len()"
 pub fn len(both: vector) -> integer { OpLengthVector(both) }
+
 fn OpClearVector(r: vector);
+#rust "@r.len()"
 pub fn clear(self: vector) { OpClearVector(self) }
+
 fn OpFinishSorted(r: vector);
 fn OpGetVector<T>(r: vector<T>, size: integer, index: integer) -> T;
 fn OpRemoveVector(r: vector, size: integer, index: integer) -> boolean;
@@ -224,24 +341,40 @@ fn OpAppendVector<T>(r: vector<T>, size: integer) -> T;
 
 pub type hash;
 fn OpLengthHash(r: hash) -> integer;
+#rust "@r.len()"
 pub fn len(both: hash) -> integer { OpLengthHash(both) }
 fn OpClearHash(r: hash);
+#rust "@r.clear()"
 pub fn clear(self: hash) { OpClearHash(self); }
 fn OpFormatHash(v1: text, val: hash, width: integer);
 
 pub type index;
 fn OpLengthIndex(r: index) -> integer;
+#rust "@r.len()"
 pub fn len(both: index) -> integer { OpLengthIndex(both) }
 fn OpClearIndex(r: index);
+#rust "@r.clear()"
+
 pub fn clear(self: index) { OpClearIndex(self) }
 fn OpFormatIndex(v1: text, val: index, width: integer);
 
 pub type radix;
 fn OpLengthRadix(r: radix) -> integer;
+#rust "@r.len()"
 pub fn len(both: radix) -> integer { OpLengthRadix(both) }
+
 fn OpClearRadix(r: radix);
+#rust "@r.clear()"
 pub fn clear(self: radix) { OpClearRadix(self) }
 fn OpFormatRadix(v1: text, val: radix, width: integer);
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
 fn OpNeBool(v1: boolean, v2: boolean) -> boolean;
+
+fn OpAssert(v1: boolean, v2: text);
+#rust "if !@v1 {{ panic!(\"{{}}\", @v2); }};"
+fn assert(v1: boolean, v2: text) { OpAssert(v1, v2); }
+
+fn OpPrint(v1: text);
+#rust "print!(\"{{}}\", @v1)"
+fn print(v1: text) { OpPrint(v1); }

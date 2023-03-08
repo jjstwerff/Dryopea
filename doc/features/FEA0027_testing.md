@@ -23,12 +23,19 @@ State
 
 Use-cases
 ---------
+Simple expression tests. Allow multiple tests in a single file.
+For loop tests.
+Conversions tests.
+Strings tests.
+Simple object test.
 
 Design
 ------
 Create assertion functions for our language.
 A test that runs all of these tests.
-A separate executable that can run all or a part of these tests. 
+A separate executable that can run all or a part of these tests.
+
+Generate rust code & unit tests from our script.
 
 Examples
 --------

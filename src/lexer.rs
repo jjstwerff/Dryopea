@@ -683,21 +683,6 @@ impl Lexer {
         }
     }
 
-    /// Return the rest of the current line
-    #[allow(clippy::while_let_on_iterator)]
-    pub fn line(&mut self, keyword: &'static str) -> String {
-        if self.peek.has == LexItem::Identifier(keyword.to_string()) {
-            let mut s = "".to_string();
-            while let Some(ch) = self.iter.next() {
-                s.push(ch);
-            }
-            self.cont();
-            s
-        } else {
-            "".to_string()
-        }
-    }
-
     /// Shorthand test if the current element is a number and skip it if found.
     pub fn has_integer(&mut self) -> Option<u32> {
         if let LexItem::Integer(n, _) = self.peek().has {

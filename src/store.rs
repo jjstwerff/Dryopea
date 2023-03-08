@@ -16,7 +16,9 @@ static A: System = System;
 const SIGNATURE: u32 = 0x53_74_6f_31;
 pub const PRIMARY: u32 = 1;
 
+// TODO move reference operations to this class eventually to remove 'pub' here
 pub struct Store {
+    pub references: Vec<(u32, u32)>,
     // format 0 = SIGNATURE, 4 = free_space_index, 8 = record_size, 12 = content
     ptr: *mut u8,
     size: u32,
@@ -45,6 +47,7 @@ impl Store {
         let l = Layout::from_size_align(size as usize * 8, 8).expect("Problem");
         let ptr = unsafe { A.alloc(l) };
         let mut store = Store {
+            references: vec![],
             ptr,
             size,
             #[cfg(not(no_mmap))]
@@ -66,6 +69,7 @@ impl Store {
         };
         let ptr = std::ptr::addr_of!(file.as_slice()[0]) as *mut u8;
         let mut store = Store {
+            references: vec![],
             file: Some(file),
             ptr,
             size,

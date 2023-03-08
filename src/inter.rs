@@ -9,8 +9,7 @@ extern crate strum;
 extern crate strum_macros;
 
 use crate::data::{Data, Value};
-use crate::external::*;
-use crate::format;
+use crate::external;
 use crate::store::{Store, PRIMARY};
 use std::collections::HashMap;
 use std::fs::File;
@@ -18,6 +17,11 @@ use std::io::Write;
 
 // was 999_999_999;
 const MAX_LOOPING: u32 = 999;
+
+pub struct DataStore {
+    pub records: Store,
+    pub text: Store,
+}
 
 pub struct State {
     c_function: u32,
@@ -162,7 +166,7 @@ const EXTERN: &[(&str, Extern)] = &[
     ("OpFinishSorted", int_finish_sorted),
     ("OpLengthText", int_length_text),
     ("OpAddText", int_add_text),
-    ("OpAbsInteger", int_abs_integer),
+    ("OpAbsInt", int_abs_integer),
     ("OpAbsLong", int_abs_long),
     ("OpAbsFloat", int_abs_float),
     ("OpAbsSingle", int_abs_single),
@@ -192,6 +196,8 @@ const EXTERN: &[(&str, Extern)] = &[
     ("OpRemoveVector", int_remove_vector),
     ("OpInsertVector", int_insert_vector),
     ("OpGetVector", int_get_vector),
+    ("OpAssert", int_assert),
+    ("OpPrint", int_print),
 ];
 
 impl<'d> Inter<'d> {
@@ -295,7 +301,7 @@ impl<'d> Inter<'d> {
                 r
             }
             Value::Loop(code) => self.do_loop(code, state),
-            Value::Set(var_nr, value) => {
+            Value::Set(var_nr, value) | Value::Let(var_nr, value) => {
                 let pos = (state.c_function + var_nr) as usize;
                 while state.stack.len() <= pos {
                     state.stack.push(Value::Null);
@@ -1127,19 +1133,27 @@ fn int_clear_text(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
 }
 
 fn int_clear_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let Value::Reference(db, v_nr, pos) = i.calc(&code[0], state) {
-        let records = &mut state.databases[db as usize].records;
-        op_clear_vector(records, v_nr, pos as isize);
+    if let Value::Mutable(db, ref_nr) = i.calc(&code[0], state) {
+        let store = &mut state.databases[db as usize].records;
+        let (v_nr, _) = store.references[ref_nr as usize];
+        external::op_clear_vector(store, v_nr);
     }
     Value::Null
 }
 
 fn int_length_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let Value::Reference(db, v_nr, pos) = i.calc(&code[0], state) {
-        let records = &mut state.databases[db as usize].records;
-        return Value::Int(op_length_vector(records, v_nr, pos as isize));
+    match i.calc(&code[0], state) {
+        Value::Reference(db, rec, _) => {
+            let store = &state.databases[db as usize].records;
+            Value::Int(external::op_length_vector(store, rec))
+        }
+        Value::Mutable(db, ref_nr) => {
+            let store = &state.databases[db as usize].records;
+            let (v_nr, _) = store.references[ref_nr as usize];
+            Value::Int(external::op_length_vector(store, v_nr))
+        }
+        _ => Value::Null,
     }
-    Value::Null
 }
 
 fn int_finish_sorted(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
@@ -1161,11 +1175,11 @@ fn int_format_bool(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[2], state),
         i.calc(&code[3], state),
     ) {
-        return Value::Text(format::format_text_str(
+        return Value::Text(external::format_text(
             if val == 0 { "true" } else { "false" },
-            width as u8,
-            dir as i8,
-            token as u8 as char,
+            width,
+            dir,
+            token,
         ));
     }
     Value::Null
@@ -1178,12 +1192,7 @@ fn int_format_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[2], state),
         i.calc(&code[3], state),
     ) {
-        return Value::Text(format::format_text_str(
-            &val,
-            width as u8,
-            dir as i8,
-            token as u8 as char,
-        ));
+        return Value::Text(external::format_text(&val, width, dir, token));
     }
     Value::Null
 }
@@ -1204,11 +1213,11 @@ fn int_format_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[4], state),
         i.calc(&code[5], state),
     ) {
-        return Value::Text(format::format_int_str(
+        return Value::Text(external::format_int(
             val,
-            radix as u8,
-            width as u8,
-            token as u8 as char,
+            radix,
+            width,
+            token,
             plus == 1,
             note == 1,
         ));
@@ -1232,11 +1241,11 @@ fn int_format_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[4], state),
         i.calc(&code[5], state),
     ) {
-        return Value::Text(format::format_long_str(
+        return Value::Text(external::format_long(
             val,
-            radix as u8,
-            width as u8,
-            token as u8 as char,
+            radix,
+            width,
+            token,
             plus == 1,
             note == 1,
         ));
@@ -1250,7 +1259,7 @@ fn int_format_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        return Value::Text(format::format_float_str(val, width as u8, precision as u8));
+        return Value::Text(external::format_float(val, width, precision));
     }
     Value::Null
 }
@@ -1261,7 +1270,7 @@ fn int_format_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        return Value::Text(format::format_single_str(val, width as u8, precision as u8));
+        return Value::Text(external::format_single(val, width, precision));
     }
     Value::Null
 }
@@ -1487,7 +1496,7 @@ fn int_append_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size)) = (i.calc(&code[0], state), &code[1])
     {
         let records = &mut state.databases[db as usize].records;
-        let (r, p) = op_append_vector(records, v_nr, pos as isize, *size as u32);
+        let (r, p) = external::op_append_vector(records, v_nr, pos as isize, *size as u32);
         Value::Reference(db, r, p)
     } else {
         Value::Null
@@ -1499,7 +1508,7 @@ fn int_remove_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
         (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
     {
         let records = &mut state.databases[db as usize].records;
-        op_remove_vector(records, v_nr, pos as isize, *size as u32, index);
+        external::op_remove_vector(records, v_nr, pos as isize, *size as u32, index);
     }
     Value::Null
 }
@@ -1509,7 +1518,7 @@ fn int_insert_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
         (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
     {
         let records = &mut state.databases[db as usize].records;
-        let (r, p) = op_insert_vector(records, v_nr, pos as isize, *size as u32, index);
+        let (r, p) = external::op_insert_vector(records, v_nr, pos as isize, *size as u32, index);
         Value::Reference(db, r, p)
     } else {
         Value::Null
@@ -1523,9 +1532,25 @@ fn int_get_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[2], state),
     ) {
         let records = &mut state.databases[db as usize].records;
-        let (r, p) = op_get_vector(records, v_nr, pos as isize, size as u32, index);
+        let (r, p) = external::op_get_vector(records, v_nr, pos as isize, size as u32, index);
         Value::Reference(db, r, p)
     } else {
         Value::Null
     }
+}
+
+fn int_assert(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(0) = i.calc(&code[0], state) {
+        if let Value::Text(t) = i.calc(&code[1], state) {
+            panic!("{}", t)
+        }
+    }
+    Value::Null
+}
+
+fn int_print(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Text(v) = i.calc(&code[0], state) {
+        print!("{}", v);
+    }
+    Value::Null
 }

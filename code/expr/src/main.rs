@@ -1,3 +1,8 @@
+#![allow(unused_parens)]
+mod external;
+mod store;
+
+use external::*;
 fn _tp_integer_abs(var_0: i32, ) -> i32 {
   op_abs_int(var_0)
 }
@@ -62,5 +67,20 @@ fn assert(var_0: bool, var_1: String, ) {
 
 fn print(var_0: String, ) {
   print!("{}", var_0)
+}
+
+fn main() {
+  assert(({
+    let var_0 = "a".to_string();
+    var_0 = (var_0 + &format_int(12_i32, 0_i32, 32_i32, 0_i32, 0_i32));
+    var_0 = (var_0 + &"b".to_string());
+    var_0
+  } == "a12b".to_string()), "Formatting problem".to_string());
+  assert(({
+    let var_1 = "a".to_string();
+    var_1 = (var_1 + &format_int(op_add_int(1_i32, op_mul_int(2_i32, 3_i32)), 0_i32, 32_i32, 0_i32, 1_i32));
+    var_1 = (var_1 + &"b".to_string());
+    var_1
+  } == "a0x7b".to_string()), "Hex formatting".to_string())
 }
 

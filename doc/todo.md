@@ -1,3 +1,52 @@
+TODO:
+- Simple store test, Ignoring all current not correct tests
+- Remove current databases list code from interpreter
+- Linked mutable record type
+- Linked mutable element reference
+- Json output of record
+- Json parsing of record
+- Constant elements in a list with implicit object names
+- Json output of list
+- Json parsing of list
+- Detect mutability in code
+- Record reference in function call
+- Allow multiple references to the same store (parser)
+- Detect illegal calls to multiple reference functions
+- Linked immutable record type
+- Linked immutable element type
+- Iterator for immutable records
+- Iterator for immutable elements
+- Fix all current unit-tests & create more
+- Allow multiple variant structs (parser)
+- Test list with multiple variant records
+- Test element with multiple variant records
+- Test ordered list with fields in definition
+- Test index
+- Test radix
+- Test hash
+- Json parsing of linked records
+- Test deleted linked records (only with record types that need it)
+- Test rebuilding store to remove deleted records
+- List slice with two references both mutable and readonly.
+
+- Code
+  . separate compiler main
+        read all .gcp files in the indicated directory
+        generate .rs files in the same directory (this will override current one)
+  . generate enum types
+  . generate field enums
+  . record constructors, non-structure fields with null for default value.
+        update indexes, enum when construction fails (with field that failed)
+        duplicate key check
+  . generate get/set/add/clear/insert/remove/iter methods on typed structures
+        getters on the parent
+        setters on the parent; return Enum (Ok, Invalid(nr), Undefined(nr))
+        allow to remember unresolved keys to references inside the store, this is useful for json imports
+        resolve unresolved keys when an object is inserted that matches this key
+        remaining unresolved keys
+        correct references to rebuild hash tables or changed lists
+- create the outline code for the graphical routines (map arrays, map items/materials)
+
 Roadmap:
 - FEA0001_scripting (v)
 - FEA0020_enum      (v)

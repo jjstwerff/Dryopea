@@ -30,7 +30,6 @@ use dryopea::data::{Type, Value};
 use dryopea::diagnostics::Level;
 use dryopea::inter::Inter;
 use dryopea::parser::Parser;
-use dryopea::wasm::parse_wasm;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -140,7 +139,6 @@ impl Drop for Test {
             assert_eq!(p.data.returned(p.data.def_nr("test")), self.tp);
         }
         let i = Inter::new(&p.data);
-        parse_wasm("webassembly/pkg/scriptlib.wasm");
         let res = i.calculate("test", None).unwrap();
         // Only write the interpreter log when a different result is found.
         if res != self.result {
@@ -256,4 +254,24 @@ pub fn testing_expr(expr: &str, test: &str) -> Test {
         tp: Type::Unknown(0),
         sizes: HashMap::new(),
     }
+}
+
+#[test]
+fn dir() -> std::io::Result<()> {
+    for f in std::fs::read_dir("tests/suite")? {
+        let filename = f.unwrap().file_name().to_string_lossy().to_string();
+        if !filename.ends_with(".gcp") {
+            continue;
+        }
+        let mut p = Parser::new();
+        p.parse_dir("default", true);
+        p.parse(&format!("tests/suite/{filename}"), false);
+        for l in p.diagnostics.lines() {
+            panic!("{l}");
+        }
+        let file = &filename[..filename.len() - 4];
+        p.data.output_program(file)?;
+        //let i = Inter::new(&p.data); i.calculate("main", None).unwrap();
+    }
+    Ok(())
 }

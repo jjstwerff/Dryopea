@@ -38,7 +38,7 @@ lazy_static::lazy_static! {
         ("OpMin", "-"), ("OpAdd", "+"), ("OpMul", "*"), ("OpDiv", "/"), ("OpRem", "%"), ("OpNot", "!"), ("OpAppend", "+="),
         ("OpConv", "Conv"), ("OpCast", "Cast"),
         ("OpGet", "Get"), ("OpSet", "Set"), ("OpInsert", "Insert"), ("OpRemove", "Remove"), ("OpClear", "Clear"),
-        ("OpLength", "Len"), ("OpFormat", "Format"), ("OpFinish", "Finish"), ("OpAlign", "Align"),
+        ("OpLength", "Len"), ("OpFormat", "Format"), ("OpFinish", "Finish"), ("OpAlign", "Align"), ("OpAssert", "Assert"), ("OpPrint", "Print")
     ].iter().copied().collect();
 }
 
@@ -128,14 +128,15 @@ impl<'a> Types<'a> {
     }
 
     /// A new local variable gets its type via assignment instead of explicit.
-    pub fn change_var_type(&mut self, lexer: &mut Lexer, val: &Value, tp: &Type) {
+    pub fn change_var_type(&mut self, lexer: &mut Lexer, val: &Value, tp: &Type) -> bool {
         // do not expect a field because that should already be a correct value
         if tp.is_unknown() {
-            return;
+            return false;
         }
         if let Value::Var(vnr) = val {
             if self.var_nrs.get_mut(vnr).unwrap().var_type.is_unknown() {
                 self.var_nrs.get_mut(vnr).unwrap().var_type = tp.clone();
+                true
             } else if &self.var_nrs.get_mut(vnr).unwrap().var_type != tp {
                 diagnostic!(
                     lexer,
@@ -143,7 +144,12 @@ impl<'a> Types<'a> {
                     "Cannot change type of variable {}",
                     self.name(*vnr)
                 );
+                false
+            } else {
+                false
             }
+        } else {
+            false
         }
     }
 

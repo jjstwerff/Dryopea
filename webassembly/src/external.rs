@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //! The standard operations for GameEngine
+#![allow(dead_code)]
 use crate::store::Store;
 use std::cmp::Ordering;
 
@@ -46,6 +47,137 @@ pub fn format_text(val: &str, width: i32, dir: i32, token: i32) -> String {
 }
 
 #[inline]
+pub fn op_abs_int(val: i32) -> i32 {
+    if val == i32::MIN {
+        val
+    } else {
+        val.abs()
+    }
+}
+
+#[inline]
+pub fn op_min_single_int(val: i32) -> i32 {
+    if val == i32::MIN {
+        val
+    } else {
+        -val
+    }
+}
+
+#[inline]
+pub fn op_conv_long_from_int(val: i32) -> i64 {
+    if val == i32::MIN {
+        i64::MIN
+    } else {
+        val as i64
+    }
+}
+
+#[inline]
+pub fn op_conv_float_from_int(val: i32) -> f64 {
+    if val == i32::MIN {
+        f64::NAN
+    } else {
+        val as f64
+    }
+}
+
+#[inline]
+pub fn op_conv_single_from_int(val: i32) -> f32 {
+    if val == i32::MIN {
+        f32::NAN
+    } else {
+        val as f32
+    }
+}
+
+#[inline]
+pub fn op_conv_bool_from_int(v: i32) -> bool {
+    v != i32::MIN
+}
+
+#[inline]
+pub fn op_add_int(v1: i32, v2: i32) -> i32 {
+    if v1 != i32::MIN && v2 != i32::MIN {
+        v1 + v2
+    } else {
+        i32::MIN
+    }
+}
+
+#[inline]
+pub fn op_min_int(v1: i32, v2: i32) -> i32 {
+    if v1 != i32::MIN && v2 != i32::MIN {
+        v1 - v2
+    } else {
+        i32::MIN
+    }
+}
+
+#[inline]
+pub fn op_mul_int(v1: i32, v2: i32) -> i32 {
+    if v1 != i32::MIN && v2 != i32::MIN {
+        v1 * v2
+    } else {
+        i32::MIN
+    }
+}
+
+#[inline]
+pub fn op_div_int(v1: i32, v2: i32) -> i32 {
+    if v1 != i32::MIN && v2 != i32::MIN && v2 != 0 {
+        v1 / v2
+    } else {
+        i32::MIN
+    }
+}
+
+#[inline]
+pub fn op_rem_int(v1: i32, v2: i32) -> i32 {
+    if v1 != i32::MIN && v2 != i32::MIN && v2 != 0 {
+        v1 % v2
+    } else {
+        i32::MIN
+    }
+}
+
+#[inline]
+pub fn op_eq_int(v1: i32, v2: i32) -> bool {
+    if v1 != i32::MIN && v2 != i32::MIN {
+        v1 == v2
+    } else {
+        false
+    }
+}
+
+#[inline]
+pub fn op_ne_int(v1: i32, v2: i32) -> bool {
+    if v1 != i32::MIN && v2 != i32::MIN {
+        v1 != v2
+    } else {
+        false
+    }
+}
+
+#[inline]
+pub fn op_lt_int(v1: i32, v2: i32) -> bool {
+    if v1 != i32::MIN && v2 != i32::MIN {
+        v1 < v2
+    } else {
+        false
+    }
+}
+
+#[inline]
+pub fn op_le_int(v1: i32, v2: i32) -> bool {
+    if v1 != i32::MIN && v2 != i32::MIN {
+        v1 <= v2
+    } else {
+        false
+    }
+}
+
+#[inline]
 pub fn format_int(val: i32, radix: i32, width: i32, token: i32, plus: bool, note: bool) -> String {
     let mut res = String::new();
     format_text(
@@ -85,6 +217,128 @@ pub fn format_int(val: i32, radix: i32, width: i32, token: i32, plus: bool, note
         1,
         token,
     )
+}
+
+#[inline]
+pub fn op_abs_long(val: i64) -> i64 {
+    if val == i64::MIN {
+        val
+    } else {
+        val.abs()
+    }
+}
+
+#[inline]
+pub fn op_min_single_long(val: i64) -> i64 {
+    if val == i64::MIN {
+        val
+    } else {
+        -val
+    }
+}
+
+#[inline]
+pub fn op_cast_int_from_long(val: i64) -> i32 {
+    if val == i64::MIN {
+        i32::MIN
+    } else {
+        val as i32
+    }
+}
+
+#[inline]
+pub fn op_conv_float_from_long(val: i64) -> f64 {
+    if val == i64::MIN {
+        f64::NAN
+    } else {
+        val as f64
+    }
+}
+
+#[inline]
+pub fn op_conv_bool_from_long(val: i64) -> bool {
+    val != i64::MIN
+}
+
+#[inline]
+pub fn op_add_long(v1: i64, v2: i64) -> i64 {
+    if v1 != i64::MIN && v2 != i64::MIN {
+        v1 + v2
+    } else {
+        i64::MIN
+    }
+}
+
+#[inline]
+pub fn op_min_long(v1: i64, v2: i64) -> i64 {
+    if v1 != i64::MIN && v2 != i64::MIN {
+        v1 - v2
+    } else {
+        i64::MIN
+    }
+}
+
+#[inline]
+pub fn op_mul_long(v1: i64, v2: i64) -> i64 {
+    if v1 != i64::MIN && v2 != i64::MIN {
+        v1 * v2
+    } else {
+        i64::MIN
+    }
+}
+
+#[inline]
+pub fn op_div_long(v1: i64, v2: i64) -> i64 {
+    if v1 != i64::MIN && v2 != i64::MIN && v2 != 0 {
+        v1 / v2
+    } else {
+        i64::MIN
+    }
+}
+
+#[inline]
+pub fn op_rem_long(v1: i64, v2: i64) -> i64 {
+    if v1 != i64::MIN && v2 != i64::MIN && v2 != 0 {
+        v1 % v2
+    } else {
+        i64::MIN
+    }
+}
+
+#[inline]
+pub fn op_eq_long(v1: i64, v2: i64) -> bool {
+    if v1 != i64::MIN && v2 != i64::MIN {
+        v1 == v2
+    } else {
+        false
+    }
+}
+
+#[inline]
+pub fn op_ne_long(v1: i64, v2: i64) -> bool {
+    if v1 != i64::MIN && v2 != i64::MIN {
+        v1 != v2
+    } else {
+        false
+    }
+}
+
+#[inline]
+pub fn op_lt_long(v1: i64, v2: i64) -> bool {
+    if v1 != i64::MIN && v2 != i64::MIN {
+        v1 < v2
+    } else {
+        false
+    }
+}
+
+#[inline]
+pub fn op_le_long(v1: i64, v2: i64) -> bool {
+    if v1 != i64::MIN && v2 != i64::MIN {
+        v1 <= v2
+    } else {
+        false
+    }
 }
 
 #[inline]
@@ -131,6 +385,92 @@ pub fn format_long(val: i64, radix: i32, width: i32, token: i32, plus: bool, not
         1,
         token,
     )
+}
+
+#[inline]
+pub fn op_cast_int_from_single(v1: f32) -> i32 {
+    if v1.is_nan() {
+        i32::MIN
+    } else {
+        v1 as i32
+    }
+}
+
+#[inline]
+pub fn op_cast_long_from_single(v1: f32) -> i64 {
+    if v1.is_nan() {
+        i64::MIN
+    } else {
+        v1 as i64
+    }
+}
+
+pub fn format_single(val: f32, width: i32, precision: i32) -> String {
+    let mut s = String::new();
+    if precision != 0 {
+        write!(
+            s,
+            "{val:width$.pre$}",
+            width = width as usize,
+            pre = precision as usize,
+            val = val
+        )
+            .unwrap();
+    } else {
+        write!(s, "{val:width$}", width = width as usize, val = val).unwrap();
+    };
+    s
+}
+
+#[inline]
+pub fn op_cast_int_from_float(v1: f64) -> i32 {
+    if v1.is_nan() {
+        i32::MIN
+    } else {
+        v1 as i32
+    }
+}
+
+#[inline]
+pub fn op_cast_long_from_float(v1: f64) -> i64 {
+    if v1.is_nan() {
+        i64::MIN
+    } else {
+        v1 as i64
+    }
+}
+
+pub fn format_float(val: f64, width: i32, precision: i32) -> String {
+    let mut s = String::new();
+    if precision != 0 {
+        write!(
+            s,
+            "{val:width$.pre$}",
+            width = width as usize,
+            pre = precision as usize,
+            val = val
+        )
+            .unwrap();
+    } else {
+        write!(s, "{val:width$}", width = width as usize, val = val).unwrap();
+    };
+    s
+}
+
+pub fn op_eq_text(v1: u32, v2: u32) -> bool {
+    if v1 != 0 && v2 != 0 {
+        v1 == v2
+    } else {
+        false
+    }
+}
+
+pub fn op_ne_text(v1: u32, v2: u32) -> bool {
+    if v1 != 0 && v2 != 0 {
+        v1 != v2
+    } else {
+        false
+    }
 }
 
 pub fn op_clear_vector(store: &mut Store, rec: u32) {
@@ -216,40 +556,14 @@ pub fn op_length_vector(store: &Store, rec: u32) -> i32 {
     }
 }
 
-use std::fmt::Write as _;
-
-pub fn format_float(val: f64, width: i32, precision: i32) -> String {
-    let mut s = String::new();
-    if precision != 0 {
-        write!(
-            s,
-            "{val:width$.pre$}",
-            width = width as usize,
-            pre = precision as usize,
-            val = val
-        )
-        .unwrap();
-    } else {
-        write!(s, "{val:width$}", width = width as usize, val = val).unwrap();
-    };
-    s
+fn op_remove_record(store: &mut Store, rec: u32) {
+    store.delete(rec);
 }
 
-pub fn format_single(val: f32, width: i32, precision: i32) -> String {
-    let mut s = String::new();
-    if precision != 0 {
-        write!(
-            s,
-            "{val:width$.pre$}",
-            width = width as usize,
-            pre = precision as usize,
-            val = val
-        )
-        .unwrap();
-    } else {
-        write!(s, "{val:width$}", width = width as usize, val = val).unwrap();
-    };
-    s
+use std::fmt::Write as _;
+
+pub fn append(s: &mut String, val: &str) {
+    *s += val;
 }
 
 #[cfg(test)]
@@ -262,3 +576,4 @@ mod test {
         assert_eq!("0x1234", format_int(0x1234, 16, 0, ' ' as i32, false, true));
     }
 }
+

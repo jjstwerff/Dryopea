@@ -1,0 +1,85 @@
+struct Social {
+    items: index<Item[name,type]>,
+    ages: index<Person[age,name]>,
+    positions: radix<Item[x,y]>,
+    quick: hash<Item[name]>
+}
+
+struct Item {
+    name: text,
+    history: ordered<History[moment,other]>,
+    x: single,
+    y: single
+}
+
+struct History {
+    moment: integer,
+    other: reference<Item>,
+    action: Action
+}
+
+enum RelationType {
+    Parent,
+    Child,
+    Owner, // or leader
+    Member,
+    Teacher,
+    Friend,
+    Married,
+    Sibling,
+    Enemy
+}
+
+struct Relation {
+    to: reference<Item>,
+    type: RelationType,
+    historic: boolean // not anymore
+}
+
+enum Action {
+    Started,
+    Ended,
+    Created,
+    Destroyed,
+    Home
+}
+
+enum Sex {
+    Male,
+    Female,
+    NonBinary
+}
+
+struct Person: Item {
+    relations: ordered<Relation[item,type]>,
+    age: integer,
+    sex: Sex
+}
+
+struct Artefact: Item {
+    relations: ordered<Relation[item,type]>,
+    weight: byte,
+    bulk: byte
+}
+
+enum Group: Item {
+    relations: ordered<Relation[item,type]>,
+    formal: boolean
+}
+
+enum Place: Item {
+    terrain: byte,
+    roughness: byte
+}
+
+fn main() {
+    s = Social {};
+    elmsville = s.Place { name: "Elmsville", x: 100.0, y: 100.0};
+    eric = s.Person { name: "Eric", age: 32, sex: Male, relation: [{to: elmsville, type: Home}]};
+    liz = s.Person { name: "Liz", age: 30, sex: Female, relation: [{to: elmsville, type: Home}]};
+    debra = s.Person { name: "Debra", age: 8, sex: Female, relation: [
+        {to: eric, type: Parent},
+        {to: liz, type: Parent},
+        {to: elmsville, type: Home}
+    ]};
+}

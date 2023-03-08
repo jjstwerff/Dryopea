@@ -7,7 +7,6 @@ pub mod data;
 mod lexer;
 
 mod external;
-mod format;
 mod hash;
 pub mod inter;
 mod logger;
@@ -17,4 +16,3 @@ mod rb_tree;
 mod store;
 mod typedef;
 mod types;
-pub mod wasm;

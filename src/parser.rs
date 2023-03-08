@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
         self.diagnostics.is_empty()
     }
 
-    /// Parse all .md files found in a directory tree in alphabetical ordering.
+    /// Parse all .gcp files found in a directory tree in alphabetical ordering.
     pub fn parse_dir(&mut self, dir: &str, default: bool) -> bool {
         let paths = match read_dir(dir) {
             Ok(p) => p,
@@ -319,7 +319,7 @@ impl<'a> Parser<'a> {
                         self.lexer.pos(),
                     );
                     self.var_nr += 1;
-                    *code = Value::Set(iter_var, minimum);
+                    *code = Value::Let(iter_var, minimum);
                     let res_var = self.types.create_var(
                         format!("res_{}", self.var_nr),
                         it.clone(),
@@ -859,10 +859,15 @@ impl<'a> Parser<'a> {
         }
         self.types.clear();
         self.lexer.has_token(";");
-        if self.default {
-            let s = self.lexer.line("wasm");
-            if !s.is_empty() {
-                self.data.set_wasm(self.current_fn, s);
+        if self.default && self.lexer.has_token("#") {
+            if self.lexer.has_identifier() == Some("rust".to_string()) {
+                if let Some(c) = self.lexer.has_cstring() {
+                    self.data.set_rust(self.current_fn, c);
+                } else {
+                    diagnostic!(self.lexer, Level::Error, "Expect rust string");
+                }
+            } else {
+                diagnostic!(self.lexer, Level::Error, "Expect #rust");
             }
         }
         self.current_fn = u32::MAX;
@@ -1169,13 +1174,13 @@ impl<'a> Parser<'a> {
         for op in ["=", "+=", "-=", "*=", "%=", "/="] {
             if self.lexer.has_token(op) {
                 let s_type = self.parse_operators(code, 0);
-                self.types.change_var_type(&mut self.lexer, &to, &s_type);
+                let new = self.types.change_var_type(&mut self.lexer, &to, &s_type);
                 /*
                 println!(
                     "op {op} s_type {s_type} code {code:?} to {to:?} at {}",
                     self.lexer.pos()
                 );*/
-                *code = self.towards_set(to, code, &f_type, &op[0..1]);
+                *code = self.towards_set(to, code, &f_type, &op[0..1], new);
                 return Type::Void;
             }
         }
@@ -1183,7 +1188,7 @@ impl<'a> Parser<'a> {
         f_type
     }
 
-    fn towards_set(&mut self, to: Value, val: &Value, f_type: &Type, op: &str) -> Value {
+    fn towards_set(&mut self, to: Value, val: &Value, f_type: &Type, op: &str, new: bool) -> Value {
         if let Type::Vector(_) = f_type {
             if let Value::Call(_, args) = &to {
                 let app = self.cl("OpAppendVector", args);
@@ -1214,7 +1219,11 @@ impl<'a> Parser<'a> {
             }
         } else if let Value::Var(nr) = to {
             self.types.assign(nr);
-            v_set(nr, code)
+            if op == "=" && new {
+                v_let(nr, code)
+            } else {
+                v_set(nr, code)
+            }
         } else {
             panic!("Unknown assign");
         }
@@ -1741,7 +1750,7 @@ impl<'a> Parser<'a> {
                 Type::Text,
                 self.lexer.pos(),
             );
-            list.push(v_set(var, code.clone()));
+            list.push(v_let(var, code.clone()));
         }
         while self.lexer.mode() == Mode::Formatting {
             self.lexer.set_mode(Mode::Code);
@@ -2206,7 +2215,7 @@ impl<'a> Parser<'a> {
         );
         let mut list = vec![];
         let rec_size = Value::Int(self.data.def_size(td_nr) as i32);
-        list.push(v_set(
+        list.push(v_let(
             v,
             if let Value::Reference(_, _, _) = code {
                 self.cl(

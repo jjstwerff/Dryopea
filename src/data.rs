@@ -15,6 +15,7 @@ use crate::lexer::{Lexer, Position};
 use crate::types::Types;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
+use std::io::Write;
 
 /// A value that can be assigned to attributes on a definition of instance
 #[derive(Debug, PartialEq, Clone)]
@@ -24,6 +25,8 @@ pub enum Value {
     /// An record or field with 1:database, 2:allocation, 3:field_position.
     /// The position is in bytes relative the the allocation start. Updated on insert/remove of vector elements.
     Reference(u16, u32, u32),
+    /// Reference stored in the related stack store.
+    Mutable(u32, u32),
     /// A range
     Range(Box<Value>, Box<Value>),
     Float(f64),
@@ -31,8 +34,6 @@ pub enum Value {
     Single(f32),
     /// Dynamic text with an efficient appender.
     Text(String),
-    /// Part of the static data with position and length.
-    Data(u32, u32),
     /// Call an outside routine with values.
     Call(u32, Vec<Value>),
     /// Block with number of variables and steps.
@@ -41,6 +42,8 @@ pub enum Value {
     Var(u32),
     /// Set a variable with an expressions
     Set(u32, Box<Value>),
+    /// Set a new variable with an expressions
+    Let(u32, Box<Value>),
     /// Return from a routine with optionally a Value
     Return(Box<Value>),
     /// Break out of the n-th loop
@@ -73,8 +76,10 @@ pub enum Type {
     Data,
     /// An enum value. There is always a single parent definition with enum type itself.
     Enum(u32),
-    /// A reference to a record instance in a store.
+    /// A readonly reference to a record instance in a store.
     Reference(u32),
+    /// A mutable reference to a record instance in a store.
+    Mutable(u32),
     /// A record that is placed inside another object. Like compact vectors or parent objects.
     Inner(u32),
     /// A dynamic vector of a specific type
@@ -187,8 +192,8 @@ struct Definition {
     size: u32,
     /// Related type for in fields, and return type of a function
     returned: Type,
-    /// Wasm code
-    wasm: String,
+    /// Rust code
+    rust: String,
 }
 
 #[allow(dead_code)]
@@ -211,6 +216,10 @@ pub fn v_if(test: Value, t: Value, f: Value) -> Value {
 
 pub fn v_set(var: u32, val: Value) -> Value {
     Value::Set(var, Box::new(val))
+}
+
+pub fn v_let(var: u32, val: Value) -> Value {
+    Value::Let(var, Box::new(val))
 }
 
 pub fn text(s: &str) -> Value {
@@ -308,7 +317,7 @@ impl Data {
             alignment: 1,
             size: 0,
             returned: Type::Unknown(rec),
-            wasm: "".to_string(),
+            rust: "".to_string(),
         });
         rec
     }
@@ -368,12 +377,12 @@ impl Data {
         self.def(d_nr).alignment
     }
 
-    pub fn wasm(&mut self, d_nr: u32) -> String {
-        self.def(d_nr).wasm.clone()
+    pub fn rust(&mut self, d_nr: u32) -> String {
+        self.def(d_nr).rust.clone()
     }
 
-    pub fn set_wasm(&mut self, d_nr: u32, wasm: String) {
-        self.definitions[d_nr as usize].wasm = wasm;
+    pub fn set_rust(&mut self, d_nr: u32, rust: String) {
+        self.definitions[d_nr as usize].rust = rust;
     }
 
     pub fn set_returned(&mut self, d_nr: u32, tp: Type) {
@@ -456,7 +465,7 @@ impl Data {
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].1);
             if type_nr != u32::MAX {
-                name = format!("{}::{fn_name}", self.def_name(type_nr));
+                name = format!("_tp_{}_{fn_name}", self.def_name(type_nr));
             } else {
                 diagnostic!(
                     lexer,
@@ -492,6 +501,9 @@ impl Data {
                 main = self.add_def(fn_name, lexer.pos(), DefType::Dynamic);
             }
             let type_nr = self.type_def_nr(&arguments[0].1);
+            if type_nr == u32::MAX {
+                panic!("Unknown type {:?} at {}", arguments[0].1, lexer.pos());
+            }
             self.add_attribute(lexer, main, &self.def_name(type_nr), Type::Routine(d_nr));
         }
         d_nr
@@ -611,6 +623,7 @@ impl Data {
             Type::Sorted(_, _) => self.def_nr("reference"),
             Type::Index(_, _) => self.def_nr("index"),
             Type::Hash(_, _) => self.def_nr("hash"),
+            Type::Unknown(nr) => *nr,
             _ => u32::MAX,
         }
     }
@@ -680,12 +693,51 @@ impl Data {
         }
     }
 
+    pub fn output_program(&self, dir: &str) -> std::io::Result<()> {
+        let program = "code/".to_string() + dir;
+        let source = "code/".to_string() + dir + "/src";
+        std::fs::create_dir_all(&source)?;
+        std::fs::copy(
+            "webassembly/src/external.rs",
+            source.clone() + "/external.rs",
+        )?;
+        std::fs::copy("webassembly/src/store.rs", source.clone() + "/store.rs")?;
+        let cw = &mut std::fs::File::create(program + "/Cargo.toml")?;
+        cw.write_all(
+            "[package]
+name = \"scriptlib\"
+version = \"0.1.0\"
+"
+            .as_bytes(),
+        )?;
+        let w = &mut std::fs::File::create(source + "/main.rs")?;
+        w.write_all(
+            "#![allow(unused_parens)]
+mod external;
+mod store;
+
+use external::*;
+"
+            .as_bytes(),
+        )?;
+        for d in 0..self.definitions() {
+            self.output_def(w, d);
+        }
+        Ok(())
+    }
+
     pub fn output_def(&self, w: &mut dyn std::io::Write, dnr: u32) {
         let def = self.def(dnr);
+        if def.position.file == "default/01_code.gcp"
+            && def.name.starts_with("Op")
+            && def.code == Value::Null
+        {
+            return;
+        }
         if def.def_type == DefType::Function {
             write!(w, "fn {}(", def.name).unwrap();
-            for a in &def.attributes {
-                write!(w, "{}: {}, ", a.name, self.rust_type(&a.typedef)).unwrap()
+            for (anr, a) in def.attributes.iter().enumerate() {
+                write!(w, "var_{}: {}, ", anr, self.rust_type(&a.typedef)).unwrap()
             }
             write!(w, ") ").unwrap();
             if def.returned != Type::Void {
@@ -740,24 +792,42 @@ impl Data {
 
     pub fn output_code(&self, w: &mut dyn std::io::Write, code: &Value, indent: u32) {
         match code {
+            Value::Text(txt) => {
+                write!(w, "\"{}\".to_string()", txt).unwrap();
+            }
+            Value::Long(v) => {
+                write!(w, "{}_i64", v).unwrap();
+            }
+            Value::Int(v) => {
+                write!(w, "{}_i32", v).unwrap();
+            }
+            Value::Float(v) => {
+                write!(w, "{}_f64", v).unwrap();
+            }
+            Value::Single(v) => {
+                write!(w, "{}_f32", v).unwrap();
+            }
             Value::Reference(_, rec, pos) => {
                 write!(w, "{}.{}", rec, pos).unwrap();
             }
             Value::Block(vals) => {
                 writeln!(w, "{{").unwrap();
-                for v in vals {
+                for (vnr, v) in vals.iter().enumerate() {
                     for _i in 0..=indent {
                         write!(w, "  ").unwrap();
                     }
                     self.output_code(w, v, indent + 1);
-                    writeln!(w, ";").unwrap();
+                    if vnr < vals.len() - 1 {
+                        writeln!(w, ";").unwrap();
+                    } else {
+                        writeln!(w).unwrap();
+                    }
                 }
                 for _i in 0..indent {
                     write!(w, "  ").unwrap();
                 }
                 write!(w, "}}").unwrap()
             }
-            Value::Int(i) => write!(w, "{}", i).unwrap(),
             Value::Loop(vals) => {
                 writeln!(w, "loop {{").unwrap();
                 for v in vals {
@@ -774,6 +844,10 @@ impl Data {
             }
             Value::Set(var, to) => {
                 write!(w, "var_{} = ", var).unwrap();
+                self.output_code(w, to, indent);
+            }
+            Value::Let(var, to) => {
+                write!(w, "let var_{} = ", var).unwrap();
                 self.output_code(w, to, indent);
             }
             Value::Var(v) => {
@@ -804,17 +878,32 @@ impl Data {
                 }
             }
             Value::Call(d_nr, vals) => {
-                write!(w, "{}(", self.def(*d_nr).name).unwrap();
-                let mut first = true;
-                for v in vals {
-                    if first {
-                        first = false;
-                    } else {
-                        write!(w, ", ").unwrap();
+                let def_fn = self.def(*d_nr);
+                if def_fn.rust.is_empty() {
+                    write!(w, "{}(", self.def(*d_nr).name).unwrap();
+                    let mut first = true;
+                    for v in vals {
+                        if first {
+                            first = false;
+                        } else {
+                            write!(w, ", ").unwrap();
+                        }
+                        self.output_code(w, v, indent);
                     }
-                    self.output_code(w, v, indent);
+                    write!(w, ")").unwrap();
+                } else {
+                    let mut res = def_fn.rust.clone();
+                    for (a_nr, a) in def_fn.attributes.iter().enumerate() {
+                        let name = "@".to_string() + &a.name;
+                        let mut val_code = std::io::BufWriter::new(Vec::new());
+                        self.output_code(&mut val_code, &vals[a_nr], indent);
+                        res = res.replace(
+                            &name,
+                            &String::from_utf8(val_code.into_inner().unwrap()).unwrap(),
+                        );
+                    }
+                    write!(w, "{}", res).unwrap();
                 }
-                write!(w, ")").unwrap();
             }
             Value::Return(val) => {
                 write!(w, "return ").unwrap();

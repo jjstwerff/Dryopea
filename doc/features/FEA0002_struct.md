@@ -16,6 +16,62 @@ State
 
 Use-cases
 ---------
+Depend on FEA0027_testing with actual rust code generation
+
+Create list of tests:
+- Class with setting & getting fields of different types
+    Introduce separate store variables (and parameters) with references linking towards it
+    Keep writable references inside the store
+- Test multiple references
+- Output to json-like format
+- Import from json-like format
+- Creation of linked records (export / import)
+- Removal of linked record & keep references correct & null reference to removed record
+- Validate that we do not reuse the removed record space, still as much space as possible
+- Call function with linked arguments to the same store
+- Call function with reference function return value
+- Optimize store after removal & validate store sizes & validate references
+- De-fragment store after removals & reuse of open space
+- Call function with multiple read-only store references from mutable references
+- Return value with a read-only reference
+
+Introduce arrays on top of these structures.
+Introduce indexes inside the top record.
+Introduce indexes on other layers though they will be less efficient due to extra stored parent references.
+Keep checking optimization routines on these structures.
+
+Static database: game & world
+Thread local database: actor & player
+
+Analyze if we need a mutable reference in a routine:
+- change something here
+- call a routine that changes something
+
+A readonly reference is more efficient. We do not have to use a registered one.
+- Can we generalize this code? Values with the different references.
+- Reference code to a field needs a constant and a version for the different field types & set or get
+- Array operations need the constant of the field to alter this potentially.
+
+Mutable Reference to separate record.
+Mutable reference to array element.
+- Request a registered element with a field reference & an index
+Mutable slice from an array.
+- A double array element with custom logic if the element itself is removed from the array.
+
+Readonly Reference to separate record.
+Readonly reference to array element.
+- A field reference & an index number
+Readonly slice from an array.
+- A field reference & two index numbers.
+
+Field references this is not an explicit reference:
+- Constant of the field position in code or 0 on single field arrays.
+- Record of array element with a type definition containing the field position and possibly validation logic.
+
+Dynamic actions:
+- resize of database
+- resize of array
+- insert/remove from an array
 
 Design
 ------
