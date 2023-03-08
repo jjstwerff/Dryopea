@@ -5,10 +5,11 @@
 
 extern crate strum;
 
-use crate::data::{Data, Type};
+use crate::data::{Data, DefType, Type};
+use crate::diagnostics::Level;
 use crate::lexer::Lexer;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Set the correct type and initial size in definitions.
 /// This will not factor in the space for attributes for records
@@ -17,7 +18,7 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
     match data.def_name(d_nr).as_str() {
         "vector" => {
             data.def_set_size(d_nr, 4, 4);
-            data.set_returned(d_nr, Type::Vector(Box::new(Type::Unknown)));
+            data.set_returned(d_nr, Type::Vector(Box::new(Type::Unknown(0))));
         }
         "long" => {
             data.def_set_size(d_nr, 8, 8);
@@ -51,72 +52,54 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Routine(d_nr));
         }
-        _ => {
-            if data.returned(d_nr) == Type::Unknown {
-                data.def_set_size(d_nr, 4, 4);
-                data.set_returned(d_nr, Type::Reference(d_nr));
+        "radix" | "hash" | "reference" | "index" => {
+            data.def_set_size(d_nr, 4, 4);
+            data.set_returned(d_nr, Type::Reference(d_nr));
+        }
+        _ => {}
+    }
+}
+
+pub fn actual_types(data: &mut Data, lexer: &mut Lexer, start_def: u32) {
+    // Determine the actual type of structs regarding their use
+    for d in start_def..data.definitions() {
+        if data.def_type(d) == DefType::Struct {
+            if data.def_referenced(d) {
+                data.set_returned(d, Type::Reference(d));
+            } else {
+                data.set_returned(d, Type::Inner(d));
             }
         }
     }
-}
-
-/// Possibly move References to records on attributes to Inner.
-/// Calculate positions of attributes within definitions.
-#[allow(dead_code)]
-pub fn analyze(data: &mut Data) {
-    for d_nr in 0..data.definitions() {
-        finish(d_nr, data);
-    }
-}
-
-fn finish(d_nr: u32, data: &mut Data) {
-    if data.finished(d_nr) {
-        return;
-    }
-    data.finish(d_nr);
-    if let Type::Enum(_) = data.returned(d_nr) {
-        finish_attributes(data, d_nr);
-        calculate_positions(data, d_nr);
-    }
-    if let Type::Reference(_) = data.returned(d_nr) {
-        finish_attributes(data, d_nr);
-        if data.def_inline(d_nr) {
-            data.set_returned(d_nr, Type::Inner(d_nr));
-        }
-        inner_records(data, d_nr);
-        calculate_positions(data, d_nr);
-    }
-}
-
-// This should not be run on routines.
-/// Check if a Reference to a record could be moved from their own allocation to an Inner record.
-fn inner_records(data: &mut Data, d_nr: u32) {
-    for anr in 0..data.attributes(d_nr) {
-        let atd = &data.attr_type(d_nr, anr);
-        if let Type::Reference(sub) = atd {
-            if data.def_inline(*sub) {
-                data.set_returned(d_nr, Type::Inner(*sub));
+    for d in start_def..data.definitions() {
+        match data.def_type(d) {
+            DefType::Unknown => {
+                lexer.pos_diagnostic(
+                    Level::Error,
+                    data.def_pos(d),
+                    &format!("Error: Undefined type {}", data.def_name(d)),
+                );
             }
-        } else if let Type::Vector(cont) = atd {
-            if let Type::Reference(sub) = &(**cont) {
-                if data.def_inline(*sub) {
-                    data.set_returned(d_nr, Type::Vector(Box::new(Type::Inner(*sub))));
+            DefType::Function => {
+                for a in 0..data.attributes(d) {
+                    if let Type::Unknown(was) = data.attr_type(d, a) {
+                        data.set_attr_type(d, a, data.returned(was))
+                    }
+                }
+                if let Type::Unknown(was) = data.returned(d) {
+                    data.set_returned(d, data.returned(was))
                 }
             }
+            DefType::Struct => {
+                for nr in 0..data.attributes(d) {
+                    if let Type::Unknown(was) = data.attr_type(d, nr) {
+                        data.set_attr_type(d, nr, data.returned(was));
+                    }
+                }
+                calculate_positions(data, d);
+            }
+            _ => {}
         }
-    }
-}
-
-pub fn finish_attributes(data: &mut Data, d_nr: u32) {
-    let mut todo = HashSet::new();
-    for a in 0..data.attributes(d_nr) {
-        let elm = data.type_elm(&data.attr_type(d_nr, a));
-        if !data.finished(elm) {
-            todo.insert(elm);
-        }
-    }
-    for elm in todo {
-        finish(elm, data);
     }
 }
 
@@ -129,7 +112,7 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
     if data.attr(d_nr, "reference") == u16::MAX {
         gaps.insert(4, 4);
     }
-    let mut align = 1;
+    let mut struct_align = 1;
     let mut positions = HashMap::new();
     // fill positions with immutable fields with known positions
     for nr in 0..data.attributes(d_nr) {
@@ -150,16 +133,25 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
     for al in [8, 4, 2, 1] {
         for nr in 0..data.attributes(d_nr) {
             let a_pos = data.attr_pos(d_nr, nr);
-            if a_pos > 0 && a_pos < u32::MAX {
+            if a_pos != u32::MAX {
                 continue;
             }
-            let sub = data.type_def_nr(&data.attr_type(d_nr, nr));
-            let size = data.def_size(sub);
+            let tp = data.attr_type(d_nr, nr);
+            let size;
+            let align;
+            if tp == Type::Link {
+                size = 9;
+                align = 4;
+            } else {
+                let sub = data.type_def_nr(&tp);
+                size = data.def_size(sub);
+                align = data.def_align(sub);
+            }
             let sub_size = if let Type::Inner(_) = data.attr_type(d_nr, nr) {
                 if data.attr(d_nr, "reference") == u16::MAX {
                     // this for example a parent
                     size - 8
-                } else if data.def_align(sub) != 8 {
+                } else if align != 8 {
                     // only claim 4 less when we already are on a 4 byte or lower alignment
                     size - 4
                 } else {
@@ -168,7 +160,7 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
             } else {
                 size
             };
-            if data.def_align(sub) == al {
+            if align == al {
                 let mut first = 0;
                 let mut first_size = 0;
                 for (&gap_pos, &size) in &gaps {
@@ -192,8 +184,8 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
                     Ordering::Less => {
                         positions.insert(nr, pos);
                         pos += sub_size;
-                        if align == 1 {
-                            align = al;
+                        if struct_align == 1 {
+                            struct_align = al;
                         }
                     }
                 }
@@ -203,5 +195,5 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
     for (n, pos) in positions {
         data.set_attr_pos(d_nr, n, pos);
     }
-    data.def_set_size(d_nr, pos, align);
+    data.def_set_size(d_nr, pos, struct_align);
 }

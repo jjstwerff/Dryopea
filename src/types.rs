@@ -130,11 +130,11 @@ impl<'a> Types<'a> {
     /// A new local variable gets its type via assignment instead of explicit.
     pub fn change_var_type(&mut self, lexer: &mut Lexer, val: &Value, tp: &Type) {
         // do not expect a field because that should already be a correct value
-        if *tp == Type::Unknown {
+        if tp.is_unknown() {
             return;
         }
         if let Value::Var(vnr) = val {
-            if self.var_nrs.get_mut(vnr).unwrap().var_type == Type::Unknown {
+            if self.var_nrs.get_mut(vnr).unwrap().var_type.is_unknown() {
                 self.var_nrs.get_mut(vnr).unwrap().var_type = tp.clone();
             } else if &self.var_nrs.get_mut(vnr).unwrap().var_type != tp {
                 diagnostic!(
@@ -220,7 +220,12 @@ impl<'a> Types<'a> {
     }
 
     /// At the end of routine code, clear the currently known variables.
-    pub fn clear(&mut self, parameters: u16, diagnostics: &mut Diagnostics) {
+    pub fn clear(&mut self) {
+        self.variables.clear();
+        self.var_nrs.clear();
+    }
+
+    pub fn test_used(&self, parameters: u16, diagnostics: &mut Diagnostics) {
         for blocks in &self.variables {
             for (name, nr) in blocks {
                 let var = &self.var_nrs[nr];
@@ -244,8 +249,6 @@ impl<'a> Types<'a> {
                 }
             }
         }
-        self.variables.clear();
-        self.var_nrs.clear();
     }
 
     pub fn validate(&self, lexer: &mut Lexer) -> bool {

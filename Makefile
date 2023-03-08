@@ -5,8 +5,8 @@ all:
 	RUSTFLAGS=-g cargo build --release >result.txt 2>&1 ; sed -i 's/; finished in [0-9]\+.[0-9]\+s//g' result.txt  ; sed -i 's/ in [0-9]\+.[0-9]\+s//g' result.txt
 	RUST_BACKTRACE=1 time -v ./target/release/dryopea auto > auto.txt 2>&1
 
-test: clippy
-	rm tests/generated/*.rs tests/generated/*.txt -f
+test: clippy webassembly/pkg/scriptlib_bg.wasm
+	rm tests/generated/* -f
 	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f
 	RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1 ; sed -i 's/; finished in [0-9]\+.[0-9]\+s//g' result.txt  ; sed -i 's/ in [0-9]\+.[0-9]\+s//g' result.txt
 
@@ -20,9 +20,15 @@ profile:
 	flamegraph -o profiler.svg -- target/release/dryopea auto
 
 clean:
-	rm result.txt tests/result/* tests/generated/* pkg target/* perf.data perf.data.old profiler.svg -rf
+	rm result.txt tests/result/* tests/generated/* pkg target/* perf.data perf.data.old profiler.svg webassembly/pkg/* -rf
 
 clippy:
 	cargo clippy -- -W clippy::all -W clippy::cognitive_complexity > result.txt 2>&1
+	cargo clippy --tests -- -W clippy::all -W clippy::cognitive_complexity >>result.txt 2>&1
 	rustfmt src/*.rs
 	rustfmt tests/*.rs
+
+webassembly/pkg/scriptlib_bg.wasm: webassembly/src/lib.rs src/format.rs
+	cd webassembly; rustfmt src/*.rs
+	cd webassembly; wasm-pack build --dev --no-typescript
+

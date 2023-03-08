@@ -8,33 +8,82 @@ pub type single;
 pub type float;
 pub type text;
 
+// Boolean operations
 fn OpNot(v1: boolean) -> boolean;
+wasm 0 1 &v1 select
+
 fn OpAnd(v1: boolean, v2: boolean) -> boolean;
+wasm &v1 If &v2 Else 0 End
+
 fn OpOr(v1: boolean, v2: boolean) -> boolean;
-fn OpFormatBool(val: boolean, radix: integer, width: integer, token: integer, plus: boolean, note: boolean) -> text;
+wasm &v1 If 1 Else &v2 End
 
+fn OpFormatBool(db: integer, text: integer, val: boolean, radix: integer, width: integer, dir: integer, token: integer);
+wasm &db &text "true" "false" &val Select 4 5 &val Select &width &dir &token Call:format_text
+
+// Integer operations
 fn OpConvIntFromNull() -> integer;
-fn OpAbsInteger(v1: integer) -> integer;
-pub fn abs(both: integer) -> integer { OpAbsInteger(both) }
-fn OpMinSingleInt(v1: integer) -> integer;
-fn OpConvLongFromInt(v1: integer) -> long;
-fn OpConvFloatFromInt(v1: integer) -> float;
-fn OpConvSingleFromInt(v1: integer) -> single;
-fn OpConvBoolFromInt(v1: integer) -> boolean;
-fn OpAddInt(v1: integer, v2: integer) -> integer;
-fn OpMinInt(v1: integer, v2: integer) -> integer;
-fn OpMulInt(v1: integer, v2: integer) -> integer;
-fn OpDivInt(v1: integer, v2: integer) -> integer;
-fn OpRemInt(v1: integer, v2: integer) -> integer;
-fn OpEqInt(v1: integer, v2: integer) -> boolean;
-fn OpNeInt(v1: integer, v2: integer) -> boolean;
-fn OpLtInt(v1: integer, v2: integer) -> boolean;
-fn OpLeInt(v1: integer, v2: integer) -> boolean;
-fn OpGtInt(v1: integer, v2: integer) -> boolean;
-fn OpGeInt(v1: integer, v2: integer) -> boolean;
-fn OpFormatInt(val: integer, radix: integer, width: integer, token: integer, plus: boolean, note: boolean) -> text;
+wasm Call:i32_null
 
+fn OpAbsInteger(v1: integer) -> integer;
+wasm &v1 0 &v1 I32Sub &v1 0 I32GeS &v1 Call:i32_null I32Eq I32Add Select
+pub fn abs(both: integer) -> integer { OpAbsInteger(both) };
+
+fn OpMinSingleInt(v1: integer) -> integer;
+wasm 0 &v1 I32Sub Call:i32_null &v1 Call:i32_null I32Ne Select
+
+fn OpConvLongFromInt(v1: integer) -> long;
+wasm &v1 I64ExtendI32S Call:i64_null &v1 Call:i32_null I32Ne Select
+
+fn OpConvFloatFromInt(v1: integer) -> float;
+wasm &v1 F64ConvertI32S Call:f32_null &v1 Call:i32_null I32Ne Select
+
+fn OpConvSingleFromInt(v1: integer) -> single;
+wasm &v1 F32ConvertI32S Call:f64_null &v1 Call:i32_null I32Ne Select
+
+fn OpConvBoolFromInt(v1: integer) -> boolean;
+wasm &v1
+
+fn OpAddInt(v1: integer, v2: integer) -> integer;
+wasm &v1 &v2 I32Add Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+
+fn OpMinInt(v1: integer, v2: integer) -> integer;
+wasm &v1 &v2 I32Sub Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+
+fn OpMulInt(v1: integer, v2: integer) -> integer;
+wasm &v1 &v2 I32Mul Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+
+fn OpDivInt(v1: integer, v2: integer) -> integer;
+wasm &v1 &v2 I32Div Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add &v2 0 I32Eq I32Add Select
+
+fn OpRemInt(v1: integer, v2: integer) -> integer;
+wasm &v1 &v2 I32Rem Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add &v2 0 I32Eq I32Add Select
+
+fn OpEqInt(v1: integer, v2: integer) -> boolean;
+wasm &v1 &v2 I32Eq
+
+fn OpNeInt(v1: integer, v2: integer) -> boolean;
+wasm &v1 &v2 I32Ne
+
+fn OpLtInt(v1: integer, v2: integer) -> boolean;
+wasm &v1 &v2 I32LtS Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+
+fn OpLeInt(v1: integer, v2: integer) -> boolean;
+wasm &v1 &v2 I32LeS Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+
+fn OpGtInt(v1: integer, v2: integer) -> boolean;
+wasm &v1 &v2 I32GtS Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+
+fn OpGeInt(v1: integer, v2: integer) -> boolean;
+wasm &v1 &v2 I32GeS Call:i32_null &v1 Call:i32_null I32Eq &v2 Call:i32_null I32Eq I32Add Select
+
+fn OpFormatInt(db: integer, text: integer, val: integer, radix: integer, width: integer, token: integer, plus: boolean, note: boolean);
+wasm &db &text &val &radix &width &token &plus &note Call:format_int
+
+// Long operations
 fn OpConvLongFromNull() -> long;
+wasm Call:i64_null
+
 fn OpAbsLong(v1: long) -> long;
 pub fn abs(both: long) -> long { OpAbsLong(both) }
 fn OpMinSingleLong(v1: long) -> long;
@@ -52,7 +101,7 @@ fn OpLtLong(v1: long, v2: long) -> boolean;
 fn OpLeLong(v1: long, v2: long) -> boolean;
 fn OpGtLong(v1: long, v2: long) -> boolean;
 fn OpGeLong(v1: long, v2: long) -> boolean;
-fn OpFormatLong(val: long, radix: integer, width: integer, token: integer, plus: boolean, note: boolean) -> text;
+fn OpFormatLong(v1: text, val: long, radix: integer, width: integer, token: integer, plus: boolean, note: boolean);
 
 fn OpConvSingleFromNull() -> single;
 fn OpAbsSingle(v1: single) -> single;
@@ -73,7 +122,7 @@ fn OpLtSingle(v1: single, v2: single) -> boolean;
 fn OpLeSingle(v1: single, v2: single) -> boolean;
 fn OpGtSingle(v1: single, v2: single) -> boolean;
 fn OpGeSingle(v1: single, v2: single) -> boolean;
-fn OpFormatSingle(val: single, width: integer, precision: integer) -> text;
+fn OpFormatSingle(v1: text, val: single, width: integer, precision: integer);
 
 fn OpConvFloatFromNull() -> float;
 fn OpAbsFloat(v1: float) -> float;
@@ -94,14 +143,15 @@ fn OpLtFloat(v1: float, v2: float) -> boolean;
 fn OpLeFloat(v1: float, v2: float) -> boolean;
 fn OpGtFloat(v1: float, v2: float) -> boolean;
 fn OpGeFloat(v1: float, v2: float) -> boolean;
-fn OpFormatFloat(val: float, width: integer, precision: integer) -> text;
+fn OpFormatFloat(v1: text, val: float, width: integer, precision: integer);
 
 fn OpConvTextFromNull() -> text;
 fn OpLengthText(v1: text) -> integer;
 pub fn len(both: text) -> integer { OpLengthText(both) }
 fn OpConvBoolFromText(v1: text) -> boolean;
-fn OpAddText(v1: text, v2: text) -> text;
-fn OpClearText(v1: text) -> integer;
+fn OpAddText(v1: text, v2: text);
+fn OpAddData(v1: text, pos: integer, length: integer);
+fn OpClearText(v1: text);
 pub fn clear(self: text) { OpClearText(self) }
 fn OpEqText(v1: text, v2: text) -> boolean;
 fn OpNeText(v1: text, v2: text) -> boolean;
@@ -109,35 +159,57 @@ fn OpLtText(v1: text, v2: text) -> boolean;
 fn OpLeText(v1: text, v2: text) -> boolean;
 fn OpGtText(v1: text, v2: text) -> boolean;
 fn OpGeText(v1: text, v2: text) -> boolean;
-fn OpFormatText(val: text, width: integer, dir: integer, token: integer) -> text;
+fn OpEqData(v1: text, v2: integer, l2: integer) -> boolean;
+fn OpNeData(v1: text, v2: integer, l2: integer) -> boolean;
+fn OpLtData(v1: text, v2: integer, l2: integer) -> boolean;
+fn OpLeData(v1: text, v2: integer, l2: integer) -> boolean;
+fn OpGtData(v1: text, v2: integer, l2: integer) -> boolean;
+fn OpGeData(v1: text, v2: integer, l2: integer) -> boolean;
+
+fn OpFormatText(v1: text, val: text, width: integer, dir: integer, token: integer);
+wasm call($format_text, val, width, dir, token)
 
 type enumerate;
 fn OpConvBoolFromEnum(v1: enumerate) -> boolean;
 fn OpConvEnumFromNull() -> enumerate;
-fn OpEqEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpNeEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpLtEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpLeEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpGtEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpGeEnum(v1: enumerate<R>, v2: enumerate<R>) -> boolean;
-fn OpFormatEnum(val: enumerate, width: integer) -> text;
+fn OpEqEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpNeEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpLtEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpLeEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpGtEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpGeEnum(v1: enumerate, v2: enumerate) -> boolean;
+fn OpFormatEnum(v1: text, val: enumerate, width: integer);
 
 type reference;
 fn OpDatabase(size: integer) -> reference;
+fn OpAppend(db: reference, size: integer) -> reference;
+fn OpGet(v1: reference, fld: integer) -> reference;
 fn OpConvRefFromNull() -> reference;
 fn OpConvBoolFromRef(v1: reference) -> boolean;
-fn OpLengthRef(v: reference) -> integer;
-pub fn size(both: reference) -> integer { OpLengthRef(both) };
-fn OpAlignRef(v: reference) -> integer;
-pub fn align(both: reference) -> integer { OpAlignRef(both) };
-fn OpEqRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpNeRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpLtRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpLeRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpGtRef(v1: reference<R>, v2: reference<R>) -> boolean;
-fn OpGeRef(v1: reference<R>, v2: reference<R>) -> boolean;
+fn OpEqRef(v1: reference, v2: reference) -> boolean;
+fn OpNeRef(v1: reference, v2: reference) -> boolean;
+fn OpLtRef(v1: reference, v2: reference) -> boolean;
+fn OpLeRef(v1: reference, v2: reference) -> boolean;
+fn OpGtRef(v1: reference, v2: reference) -> boolean;
+fn OpGeRef(v1: reference, v2: reference) -> boolean;
 pub fn remove(self: reference);
-fn OpFormatRef(val: reference, width: integer) -> text;
+fn OpFormatRef(v1: text, val: reference, width: integer);
+fn OpGetInt(v1: reference, fld: integer) -> integer;
+fn OpGetLong(v1: reference, fld: integer) -> long;
+fn OpGetSingle(v1: reference, fld: integer) -> single;
+fn OpGetFloat(v1: reference, fld: integer) -> float;
+fn OpGetByte(v1: reference, fld: integer, min: integer) -> integer;
+fn OpGetShort(v1: reference, fld: integer, min: integer) -> integer;
+fn OpGetText(v1: reference, fld: integer) -> text;
+fn OpSetInt(v1: reference, fld: integer, val: integer);
+fn OpSetLong(v1: reference, fld: integer, val: long);
+fn OpSetSingle(v1: reference, fld: integer, val: single);
+fn OpSetFloat(v1: reference, fld: integer, val: float);
+fn OpSetByte(v1: reference, fld: integer, min: integer, val: integer);
+fn OpSetShort(v1: reference, fld: integer, min: integer, val: integer);
+fn OpSetText(v1: reference, fld: integer, val: text);
+fn OpGetReference(v1: reference, fld: integer) -> reference;
+fn OpSetReference(v1: reference, fld: integer, val: reference);
 
 pub type vector;
 fn OpLengthVector(r: vector) -> integer;
@@ -145,41 +217,31 @@ pub fn len(both: vector) -> integer { OpLengthVector(both) }
 fn OpClearVector(r: vector);
 pub fn clear(self: vector) { OpClearVector(self) }
 fn OpFinishSorted(r: vector);
-fn OpInsertVector(r: vector<R>, content: R);
-fn OpRemoveVector(r: vector, index: integer);
-pub fn remove(self: vector, index: integer) { OpRemoveVector(self, index) }
-fn OpGetVector(r: vector<R>, index: integer) -> R;
-fn OpFormatVector(val: text, width: integer) -> text;
+fn OpGetVector<T>(r: vector<T>, size: integer, index: integer) -> T;
+fn OpRemoveVector(r: vector, size: integer, index: integer) -> boolean;
+fn OpInsertVector<T>(r: vector<T>, size: integer, index: integer) -> T;
+fn OpAppendVector<T>(r: vector<T>, size: integer) -> T;
 
 pub type hash;
 fn OpLengthHash(r: hash) -> integer;
 pub fn len(both: hash) -> integer { OpLengthHash(both) }
 fn OpClearHash(r: hash);
 pub fn clear(self: hash) { OpClearHash(self); }
-fn OpInsertHash(r: hash<R>, content: R);
-fn OpRemoveHash(r: hash<R>, content: R);
-// pub fn remove(self: hash<R>, content: R) { OpRemoveHash(self, content) }
-fn OpFormatHash(val: hash, width: integer) -> text;
+fn OpFormatHash(v1: text, val: hash, width: integer);
 
 pub type index;
 fn OpLengthIndex(r: index) -> integer;
 pub fn len(both: index) -> integer { OpLengthIndex(both) }
 fn OpClearIndex(r: index);
 pub fn clear(self: index) { OpClearIndex(self) }
-fn OpInsertIndex(r: index<R>, content: R);
-fn OpRemoveIndex(r: index<R>, content: R);
-// pub fn remove(self: index, content: R) { OpRemoveIndex(self, content) }
-fn OpFormatIndex(val: index, width: integer) -> text;
+fn OpFormatIndex(v1: text, val: index, width: integer);
 
 pub type radix;
 fn OpLengthRadix(r: radix) -> integer;
 pub fn len(both: radix) -> integer { OpLengthRadix(both) }
 fn OpClearRadix(r: radix);
 pub fn clear(self: radix) { OpClearRadix(self) }
-fn OpInsertRadix(r: radix<R>, content: R);
-fn OpRemoveRadix(r: radix<R>, content: R);
-// pub fn remove(self: index, content: R) { OpRemoveRadix(self, content) }
-fn OpFormatRadix(val: radix, width: integer) -> text;
+fn OpFormatRadix(v1: text, val: radix, width: integer);
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
 fn OpNeBool(v1: boolean, v2: boolean) -> boolean;

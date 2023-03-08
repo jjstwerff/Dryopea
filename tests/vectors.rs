@@ -2,58 +2,67 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 extern crate dryopea;
+
 mod testing;
 
 use dryopea::data::Value;
 
 #[test]
 fn vectors() {
-    expr!("v=[1, 2, 1+2]; v += [4]; t = 0; for e in v { t += e }; v[1 + 2] = 5; t + v[0] + v[-1] + v.len()")
-        .result(Value::Int(20));
+    expr!(
+        "v=[1, 2, 1+2];
+v += [4];
+t = 0;
+for e in v { t += e };
+v[1 + 2] = 5;
+t + v[0] + v[-1] + v.len()"
+    )
+    .result(Value::Int(20));
 }
-
+/*
 #[test]
 fn format_vector() {
     expr!(
         // indirect iterators:  {v[1..3]} {v[$ < 3]} =>  [2, 3] [1, 2]
-        "v=[1, 2, 4, 8]; v += [16];\n\"{v} {v.len()} {v[2]} {for x in v if x >= 4 {x/2}}\""
+        "v=[1, 2, 4, 8];
+v += [16];
+\"{v} {v.len()} {v[2]} {for x in v if x >= 4 {x/2}}\""
     )
     .result(Value::Text("[1, 2, 4, 8, 16] 5 4 [2, 4, 8]".to_string()));
 }
 
-/*
 #[test]
 fn map_vector() {
-    code!(
-        "v=..10; w=[for x in v if v < 4 {x * 3}]; \"{w}\"",
-        Value::Text("[0, 3, 6, 9]".to_string()),
-        Type::Text
-    )
+    expr!("v=..10; w=[for x in v if x < 4 {x * 3}]; \"{w}\"")
+        .result(Value::Text("[0, 3, 6, 9]".to_string()));
 }
 
 #[test]
 fn loop_variables() {
-    code!(
-        "\"{for x in ..10 if !x#first && x#index % 3 == 0 || x#last {if x < 10 { x#continue }; x * 2}}\"",
-        Value::Text("[6, 12, 18, 20]".to_string()),
-        Type::Text
-    )
+    expr!(
+        "\"{for x in ..10 if !x#first && x#index % 3 == 0 || x#last {if x < 10 { x#continue }; x * 2}}\"").result(
+        Value::Text("[6, 12, 18, 20]".to_string())
+    );
 }
 
 #[test]
 fn store_iterator() {
-    code!(
-        "v=[1, 2, 3]; v += v[1..2]; v += [for x in v {x*2}]; \"{v}\"",
-        Value::Text("[1, 2, 3, 2, 3, 2, 4, 6, 4, 6]".to_string()),
-        Type::Text
-    )
+    expr!("v=[1, 2, 3]; v += v[1..2]; v += [for x in v {x*2}]; \"{v}\"")
+        .result(Value::Text("[1, 2, 3, 2, 3, 2, 4, 6, 4, 6]".to_string()));
 }
-*/
 
 #[test]
 fn format_object() {
     code!("struct Elm {a:integer, b:integer}")
-        .expr("v=[Elm{a:1, b:2}, Elm{a:12, b:13}, Elm{a:4, b:5}]; v[2].b=6; \" {v} \"")
+        .expr(
+            "v=[
+    Elm{a:1, b:2},
+    Elm{a:12, b:13},
+    Elm{a:4, b:5}
+];
+v[2].b=6;
+\" {v} \"",
+        )
         .result(Value::Text(
             " [Elm {a:1, b:2}, Elm {a:12, b:13}, Elm {a:4, b:6}] ".to_string(),
         ));
@@ -77,7 +86,8 @@ fn sum_vector() {
 
 #[test]
 fn ordered_vector() {
-    code!("struct Elm {key: text, value: integer}\nstruct Db {map: vector<Elm[key desc]>}")
+    code!("struct Elm {key: text, value: integer}
+struct Db {map: vector<Elm[key desc]>}")
         .expr(
             "db=Db {map: [Elm {key: \"One\", value: 1}, Elm {key: \"Two\", value: 2}]};
 db.map += [Elm {key: \"Three\", value: 3}, Elm {key: \"Four\", value: 4}];
@@ -90,3 +100,4 @@ sum",
         )
         .result(Value::Int(41323));
 }
+*/

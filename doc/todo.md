@@ -2,11 +2,15 @@ Roadmap:
 - FEA0001_scripting (v)
 - FEA0020_enum      (v)
 - FEA0002_struct    (!)
-- FEA0003_vector
+- FEA0003_vector    (!)
+- Move to feature branches and merge policies on main.
 - FEA0004_map
 - FEA0005_material
 - FEA0006_wall
 - FEA0009_item
-- FEA0006_radix
 - FEA0022_vulcan
+- FEA0028_interpreter
+- FEA0006_radix
+- FEA0030_libraries
 - FEA0023_web_gl
+- Move feature development and documentation out of the tree as this is far more volatile in nature.

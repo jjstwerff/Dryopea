@@ -30,10 +30,11 @@ pub struct Parser<'a> {
     file: u32,
     /// Sub type names in the current function definition
     sub_names: HashMap<String, u32>,
-    /// Does a specific definition already have a primary link?
-    primary_link: HashSet<u32>,
     pub diagnostics: Diagnostics,
     default: bool,
+    /// The function that is currently parsed
+    current_fn: u32,
+    first_pass: bool,
 }
 
 // Operators ordered on their precedence
@@ -126,9 +127,10 @@ impl<'a> Parser<'a> {
             in_loop: false,
             file: 1,
             sub_names: HashMap::new(),
-            primary_link: HashSet::new(),
             diagnostics: Diagnostics::new(),
-            default: true,
+            default: false,
+            current_fn: u32::MAX,
+            first_pass: true,
         }
     }
 
@@ -147,8 +149,18 @@ impl<'a> Parser<'a> {
             }
         };
         self.lexer = Lexer::lines(BufReader::new(fp).lines(), filename);
-        self.lexer.cont();
+        self.first_pass = true;
         self.parse_file();
+        if !default {
+            let lvl = self.lexer.diagnostics().level();
+            if lvl != Level::Error && lvl != Level::Fatal {
+                self.lexer = Lexer::lines(
+                    BufReader::new(File::open(filename).unwrap()).lines(),
+                    filename,
+                );
+                self.parse_file();
+            }
+        }
         self.diagnostics.fill(self.lexer.diagnostics());
         self.diagnostics.is_empty()
     }
@@ -181,7 +193,7 @@ impl<'a> Parser<'a> {
                     return false;
                 }
             };
-            if file_name.ends_with(".md") || data.is_dir() {
+            if file_name.ends_with(".gcp") || data.is_dir() {
                 files.insert(file_name);
             }
         }
@@ -207,9 +219,16 @@ impl<'a> Parser<'a> {
 
     /// Only parse a specific string, only useful for parser tests.
     pub fn parse_str(&mut self, text: &str, filename: &str) {
+        self.first_pass = true;
         self.default = false;
         self.lexer = Lexer::from_str(text, filename);
-        self.lexer.cont();
+        self.parse_file();
+        let lvl = self.lexer.diagnostics().level();
+        if lvl == Level::Error || lvl == Level::Fatal {
+            self.diagnostics.fill(self.lexer.diagnostics());
+            return;
+        }
+        self.lexer = Lexer::from_str(text, filename);
         self.parse_file();
         self.diagnostics.fill(self.lexer.diagnostics());
     }
@@ -243,16 +262,19 @@ impl<'a> Parser<'a> {
                     self.lexer.pos(),
                 );
                 self.var_nr += 1;
-                let size = self.data.def_size(self.data.type_elm(tp));
                 let i = Value::Var(iter_var);
+                let vec_tp = self.data.type_def_nr(tp);
                 let mut ref_expr = self.cl(
                     "OpGetVector",
-                    &[code.clone(), Value::Int(size as i32), i.clone()],
+                    &[
+                        code.clone(),
+                        Value::Int(self.data.def_size(vec_tp) as i32),
+                        i.clone(),
+                    ],
                 );
                 if let Type::Reference(_) = *tp.clone() {
                 } else {
-                    ref_expr =
-                        Value::Field(self.data.type_def_nr(tp), u16::MAX, Box::new(ref_expr));
+                    ref_expr = self.get_field(vec_tp, u16::MAX, ref_expr);
                 }
                 let next = vec![
                     v_set(res_var, ref_expr),
@@ -326,7 +348,7 @@ impl<'a> Parser<'a> {
         let mut check_type = is_type;
         if let Type::Vector(_nr) = is_type {
             if let Type::Vector(v) = should {
-                if **v == Type::Unknown {
+                if v.is_unknown() {
                     return true;
                 }
             }
@@ -388,7 +410,7 @@ impl<'a> Parser<'a> {
 
     /// Validate that two types are equal, show an error when impossible
     fn can_convert(&mut self, test_type: &Type, should: &Type) -> bool {
-        if *test_type != *should && *test_type != Type::Unknown {
+        if *test_type != *should && !test_type.is_unknown() {
             if let (Type::Enum(_e), Type::Enum(o)) = (test_type, should) {
                 if self.data.def_name(*o) == "enumerate" {
                     return true;
@@ -406,7 +428,7 @@ impl<'a> Parser<'a> {
     }
 
     fn validate_convert(&mut self, context: &str, test_type: &Type, should: &Type) {
-        if !self.can_convert(test_type, should) {
+        if !self.first_pass && !self.can_convert(test_type, should) {
             let res = self.lexer.peek();
             specific!(
                 &mut self.lexer,
@@ -423,12 +445,15 @@ impl<'a> Parser<'a> {
     fn call(&mut self, code: &mut Value, name: &str, list: &[Value], types: &[Type]) -> Type {
         // Create a new list of parameters based on the current ones
         // We still need to know the types though.
+        if self.first_pass && !self.default {
+            return Type::Unknown(0);
+        }
         let d_nr = self.data.def_nr(name);
         if d_nr != u32::MAX {
             self.call_nr(code, d_nr, list, types, true)
         } else {
-            diagnostic!(self.lexer, Level::Error, "Unknown definition {name}");
-            Type::Unknown
+            diagnostic!(self.lexer, Level::Error, "Unknown function {name}");
+            Type::Unknown(0)
         }
     }
 
@@ -438,14 +463,56 @@ impl<'a> Parser<'a> {
         code
     }
 
+    fn get_field(&mut self, d_nr: u32, f_nr: u16, code: Value) -> Value {
+        let pos = self.data.attr_pos(d_nr, f_nr) as i32;
+        self.get_val(&self.data.attr_type(d_nr, f_nr), pos, code)
+    }
+
+    fn get_val(&mut self, tp: &Type, pos: i32, code: Value) -> Value {
+        match tp {
+            Type::Integer => self.cl("OpGetInt", &[code, Value::Int(pos)]),
+            Type::Boolean => self.cl("OpGetByte", &[code, Value::Int(pos), Value::Int(0)]),
+            Type::Long => self.cl("OpGetLong", &[code, Value::Int(pos)]),
+            Type::Float => self.cl("OpGetFloat", &[code, Value::Int(pos)]),
+            Type::Single => self.cl("OpGetSingle", &[code, Value::Int(pos)]),
+            Type::Text => self.cl("OpGetText", &[code, Value::Int(pos)]),
+            Type::Vector(_) => self.cl("OpGet", &[code, Value::Int(pos)]),
+            Type::Reference(_) => self.cl("OpGet", &[code, Value::Int(pos)]),
+            _ => panic!("Get not implemented on {}", tp),
+        }
+    }
+
+    fn set_field(&mut self, d_nr: u32, f_nr: u16, ref_code: Value, val_code: Value) -> Value {
+        let pos = self.data.attr_pos(d_nr, f_nr) as i32;
+        match self.data.attr_type(d_nr, f_nr) {
+            Type::Integer
+            | Type::Vector(_)
+            | Type::Hash(_, _)
+            | Type::Index(_, _)
+            | Type::Radix(_, _)
+            | Type::Inner(_)
+            | Type::Reference(_)
+            | Type::Sorted(_, _) => self.cl("OpSetInt", &[ref_code, Value::Int(pos), val_code]),
+            Type::Boolean => self.cl(
+                "OpSetByte",
+                &[ref_code, Value::Int(pos), Value::Int(0), val_code],
+            ),
+            Type::Long => self.cl("OpSetLong", &[ref_code, Value::Int(pos), val_code]),
+            Type::Float => self.cl("OpSetFloat", &[ref_code, Value::Int(pos), val_code]),
+            Type::Single => self.cl("OpSetSingle", &[ref_code, Value::Int(pos), val_code]),
+            Type::Text => self.cl("OpSetText", &[ref_code, Value::Int(pos), val_code]),
+            _ => panic!("Set not implemented on {}", self.data.attr_type(d_nr, f_nr)),
+        }
+    }
+
     fn cl(&mut self, op: &str, list: &[Value]) -> Value {
         let d_nr = self.data.def_nr(op);
-        return if d_nr != u32::MAX {
+        if d_nr != u32::MAX {
             Value::Call(d_nr, list.to_vec())
         } else {
             diagnostic!(self.lexer, Level::Error, "Call to unknown {op}");
             Value::Null
-        };
+        }
     }
 
     /// Try to find a matching defined operator. There can be multiple possible definitions for each operator.
@@ -484,7 +551,7 @@ impl<'a> Parser<'a> {
                 self.data.show_type(&types[0])
             );
         }
-        Type::Unknown
+        Type::Unknown(0)
     }
 
     /// Call a specific definition
@@ -502,6 +569,11 @@ impl<'a> Parser<'a> {
                 let Type::Routine(r_nr) = self.data.attr_type(d_nr, a_nr) else {
                     panic!("Incorrect Dynamic function {}", self.data.def_name(d_nr));
                 };
+                if let (Type::Vector(_), Type::Vector(_)) =
+                    (self.data.attr_type(r_nr, 0), &types[0])
+                {
+                    return self.call_nr(code, r_nr, list, types, report);
+                }
                 if self.data.attr_type(r_nr, 0) == types[0] {
                     return self.call_nr(code, r_nr, list, types, report);
                 }
@@ -542,7 +614,7 @@ impl<'a> Parser<'a> {
                 let tp = self.data.attr_type(d_nr, nr as u16);
                 // Remember the subtype of a vector
                 if let Type::Vector(vtp) = tp.clone() {
-                    if *vtp == Type::Unknown {
+                    if vtp.is_unknown() {
                         if let Some(Type::Vector(tp)) = types.get(nr) {
                             sub_types.push(*tp.clone());
                         }
@@ -584,6 +656,7 @@ impl<'a> Parser<'a> {
 
     /// Parse data from the current lexer.
     fn parse_file(&mut self) {
+        let start_def = self.data.definitions();
         self.file += 1;
         loop {
             self.lexer.has_token("pub");
@@ -597,9 +670,13 @@ impl<'a> Parser<'a> {
             }
         }
         let res = self.lexer.peek();
-        if res.has != LexItem::None {
+        if res.has != LexItem::None && self.lexer.diagnostics().level() != Level::Fatal {
             diagnostic!(self.lexer, Level::Fatal, "Syntax error")
+        };
+        if self.first_pass {
+            typedef::actual_types(&mut self.data, &mut self.lexer, start_def);
         }
+        self.first_pass = false;
     }
 
     // <typedef> ::= 'enum' <identifier> '{' <value> {, <value>} '}' [';']
@@ -618,10 +695,21 @@ impl<'a> Parser<'a> {
                 "Expect enum definitions to be in camel case style"
             );
         }
-        let d_nr = self
-            .data
-            .add_def(type_name, self.lexer.pos(), DefType::Enum, u32::MAX);
-        self.data.set_returned(d_nr, Type::Enum(d_nr));
+        let mut d_nr = self.data.def_nr(&type_name);
+        if d_nr == u32::MAX {
+            let pos = self.lexer.pos();
+            d_nr = self.data.add_def(type_name, pos, DefType::Enum);
+            self.data.def_set_size(d_nr, 1, 1);
+        } else if self.first_pass && self.data.def_type(d_nr) == DefType::Unknown {
+            self.data.set_def_type(d_nr, DefType::Enum);
+            self.data.set_def_pos(d_nr, self.lexer.pos());
+            self.data.def_set_size(d_nr, 1, 1);
+        } else if self.first_pass {
+            diagnostic!(self.lexer, Level::Error, "Cannot redefine {type_name}");
+        }
+        if self.first_pass {
+            self.data.set_returned(d_nr, Type::Enum(d_nr));
+        }
         if !self.lexer.token("{") {
             return false;
         }
@@ -638,17 +726,17 @@ impl<'a> Parser<'a> {
                     "Expect enum values to be in camel case style"
                 );
             }
-            let v_nr = self.data.add_def(
-                value_name.clone(),
-                self.lexer.pos(),
-                DefType::EnumValue,
-                u32::MAX,
-            );
+            let v_nr = self
+                .data
+                .add_def(value_name.clone(), self.lexer.pos(), DefType::EnumValue);
             self.data.set_returned(v_nr, Type::Enum(d_nr));
+            self.data.def_set_size(v_nr, 1, 1);
             let a_nr =
                 self.data
                     .add_attribute(&mut self.lexer, d_nr, &value_name, Type::Enum(d_nr));
-            self.data.set_attr_value(d_nr, a_nr, Value::Int(nr));
+            if self.first_pass {
+                self.data.set_attr_value(d_nr, a_nr, Value::Int(nr));
+            }
             nr += 1;
             if !self.lexer.has_token(",") {
                 break;
@@ -677,10 +765,17 @@ impl<'a> Parser<'a> {
         }
         let d_nr = self
             .data
-            .add_def(type_name, self.lexer.pos(), DefType::Type, u32::MAX);
+            .add_def(type_name, self.lexer.pos(), DefType::Type);
         if self.lexer.has_token("=") {
-            let tp = self.parse_type(false);
-            self.data.set_returned(d_nr, tp);
+            if let Some(type_name) = self.lexer.has_identifier() {
+                if let Some(tp) = self.parse_type(d_nr, &type_name) {
+                    self.data.set_returned(d_nr, tp);
+                } else if !self.first_pass {
+                    panic!("Incorrect handling of unknown types");
+                }
+            } else {
+                diagnostic!(self.lexer, Level::Error, "Expected a type after =");
+            }
         }
         complete_definition(&mut self.lexer, &mut self.data, d_nr);
         self.lexer.token(";");
@@ -705,150 +800,219 @@ impl<'a> Parser<'a> {
                 "Expect function names to be in lower case style"
             );
         }
-        let mut arguments = Vec::new();
-        if self.lexer.token("(") {
+        if self.lexer.has_token("<") {
+            let mut nr = 0;
             loop {
-                if self.lexer.peek_token(")") {
-                    break;
+                if let Some(id) = self.lexer.has_identifier() {
+                    self.sub_names.insert(id, nr);
+                    nr += 1;
                 }
-                let Some(attr_name) = self.lexer.has_identifier() else {
-                    diagnostic!(self.lexer, Level::Error, "Expect attribute");
-                    return true;
-                };
-                if !is_lower(&attr_name) {
-                    diagnostic!(
-                        self.lexer,
-                        Level::Error,
-                        "Expect function attributes to be in lower case style"
-                    );
-                }
-                let typedef = if self.lexer.has_token(":") {
-                    self.parse_type(true)
-                } else {
-                    Type::Unknown
-                };
-                let val = if self.lexer.has_token("=") {
-                    let mut t = Value::Null;
-                    self.expression(&mut t);
-                    t
-                } else {
-                    Value::Null
-                };
-                if typedef == Type::Unknown && val == Value::Null {
-                    diagnostic!(self.lexer, Level::Error, "Expecting a clear type");
-                }
-                arguments.push((attr_name, typedef, val));
                 if !self.lexer.has_token(",") {
                     break;
                 }
             }
+            self.lexer.token(">");
+        }
+        let mut arguments: Arguments = Vec::new();
+        if self.lexer.token("(") {
+            if !self.parse_fn_arguments(&fn_name, &mut arguments) {
+                return true;
+            }
             self.lexer.token(")");
         }
         let result = if self.lexer.has_token("->") {
-            self.parse_type(false)
+            // Will be the correct def_nr on the second pass
+            if let Some(type_name) = self.lexer.has_identifier() {
+                let Some(tp) = self.parse_type(self.data.def_nr(&fn_name), &type_name) else {
+                    // Message
+                    return false;
+                };
+                tp
+            } else {
+                // message
+                Type::Void
+            }
         } else {
             Type::Void
         };
-        let d_nr = if self.default && is_op(&fn_name) {
+        self.current_fn = if self.default && is_op(&fn_name) {
             self.data
-                .add_op(&mut self.lexer, &mut self.types, fn_name.clone(), arguments)
+                .add_op(&mut self.lexer, &mut self.types, fn_name, arguments)
+        } else if self.default || self.first_pass {
+            self.data.add_fn(&mut self.lexer, fn_name, arguments)
         } else {
-            self.data
-                .add_fn(&mut self.lexer, fn_name.clone(), arguments)
+            self.data.def_nr(&fn_name)
         };
         let mut attributes = 0;
-        if d_nr != u32::MAX {
-            if self.data.returned(d_nr) != Type::Unknown {
-                if self.data.returned(d_nr) != result {
+        if self.current_fn != u32::MAX {
+            if self.default || self.first_pass {
+                self.data.set_returned(self.current_fn, result);
+            }
+            attributes = self.data.attributes(self.current_fn);
+        }
+        // Do only allowed header only functions inside the default header file.
+        if !self.default || !self.lexer.has_token(";") {
+            self.parse_code();
+        }
+        if self.default || !self.first_pass {
+            self.types.test_used(attributes, &mut self.diagnostics);
+        }
+        self.types.clear();
+        self.lexer.has_token(";");
+        if self.default {
+            let s = self.lexer.line("wasm");
+            if !s.is_empty() {
+                self.data.set_wasm(self.current_fn, s);
+            }
+        }
+        self.current_fn = u32::MAX;
+        true
+    }
+
+    fn parse_fn_arguments(&mut self, fn_name: &str, arguments: &mut Arguments) -> bool {
+        loop {
+            if self.lexer.peek_token(")") {
+                break;
+            }
+            let Some(attr_name) = self.lexer.has_identifier() else {
+                diagnostic!(self.lexer, Level::Error, "Expect attribute");
+                return false;
+            };
+            if !is_lower(&attr_name) {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Expect function attributes to be in lower case style"
+                );
+            }
+            for (nm, _, _) in arguments.iter() {
+                if attr_name == *nm {
                     diagnostic!(
                         self.lexer,
                         Level::Error,
-                        "Cannot change the return type on {fn_name}"
+                        "Double attribute '{fn_name}.{attr_name}'"
                     );
                 }
-            } else {
-                self.data.set_returned(d_nr, result);
             }
-            attributes = self.data.attributes(d_nr);
+            let typedef = if self.lexer.has_token(":") {
+                // Will be the correct def_nr on the second pass
+                if let Some(type_name) = self.lexer.has_identifier() {
+                    if let Some(tp) = self.parse_type(self.data.def_nr(fn_name), &type_name) {
+                        tp
+                    } else if !self.first_pass {
+                        panic!("Incorrect handling of unknown types");
+                    } else {
+                        Type::Unknown(0)
+                    }
+                } else {
+                    diagnostic!(self.lexer, Level::Error, "Expecting a type");
+                    return true;
+                }
+            } else {
+                Type::Unknown(0)
+            };
+            let val = if self.lexer.has_token("=") {
+                let mut t = Value::Null;
+                self.expression(&mut t);
+                t
+            } else {
+                Value::Null
+            };
+            if !self.first_pass && typedef.is_unknown() && val == Value::Null {
+                diagnostic!(self.lexer, Level::Error, "Expecting a clear type");
+            }
+            (*arguments).push((attr_name, typedef, val));
+            if !self.lexer.has_token(",") {
+                break;
+            }
         }
-        if !self.lexer.has_token(";") {
-            self.parse_code(d_nr);
-        }
-        self.types.clear(attributes, &mut self.diagnostics);
-        self.lexer.has_token(";");
         true
     }
 
     // <type> ::= <identifier> [ '<' ( <sub_type> | <type> ) '>' [ '[' <identifier> { ',' <identifier> } ']' ]]
-    fn parse_type(&mut self, on_fn: bool) -> Type {
-        let mut sub_type = Type::Unknown;
-        let Some(type_name) = self.lexer.has_identifier() else {
-            diagnostic!(self.lexer, Level::Error, "Expected a type");
-            return Type::Unknown;
-        };
-        if self.sub_names.contains_key(&type_name) {
-            return Type::Subtype(self.sub_names[&type_name]);
+    fn parse_type(&mut self, on_d: u32, type_name: &str) -> Option<Type> {
+        if self.sub_names.contains_key(type_name) {
+            return Some(Type::Subtype(self.sub_names[type_name]));
         }
-        let mut fields = Vec::new();
+        let tp_nr = self.data.def_nr(type_name);
+        if self.first_pass && tp_nr == u32::MAX {
+            let u_nr = self
+                .data
+                .add_def(type_name.to_string(), self.lexer.pos(), DefType::Unknown);
+            return Some(Type::Unknown(u_nr));
+        }
+        if tp_nr != u32::MAX && self.data.def_type(tp_nr) == DefType::Unknown {
+            return Some(Type::Unknown(tp_nr));
+        }
         if self.lexer.has_token("<") {
-            if on_fn {
-                let Some(sub_name) = self.lexer.has_identifier() else {
-                    diagnostic!(self.lexer, Level::Error, "Expecting a sub-type name");
-                    return Type::Unknown;
-                };
-                sub_type = if let Some(nr) = self.sub_names.get(&sub_name) {
-                    Type::Subtype(*nr)
-                } else {
-                    let s_nr = self.sub_names.len() as u32;
-                    self.sub_names.insert(sub_name, s_nr);
-                    Type::Subtype(s_nr)
-                };
-            } else {
-                sub_type = self.parse_type(false);
-            }
-            self.lexer.token(">");
-            // Allow to define fields for types 'sorted', 'index' or 'hash'
-            if self.lexer.has_token("[") {
-                let Some(_fld_name) = self.lexer.has_identifier() else {
-                    diagnostic!(self.lexer, Level::Error, "Expecting a field name");
-                    return Type::Unknown;
-                };
-                // TODO find field nr in given struct (eventually this might be a sub-structure)
-                fields.push((0, false));
-                while self.lexer.has_token(",") {
-                    let Some(_fld_name) = self.lexer.has_identifier() else {
-                        diagnostic!(self.lexer, Level::Error, "Expecting a field name");
-                        return Type::Unknown;
+            if let Some(sub_name) = self.lexer.has_identifier() {
+                if let Some(tp) = self.parse_type(on_d, &sub_name) {
+                    self.lexer.token(">");
+                    let sub_nr = if let Type::Unknown(d) = tp {
+                        d
+                    } else {
+                        self.data.type_def_nr(&tp)
                     };
-                    // TODO find field nr in given struct (eventually this might be a sub-structure)
-                    fields.push((0, false));
+                    return Some(match type_name {
+                        "index" => {
+                            if sub_nr != u32::MAX {
+                                let link = self.data.attr(sub_nr, "continue");
+                                if link == u16::MAX {
+                                    self.data.add_attribute(
+                                        &mut self.lexer,
+                                        sub_nr,
+                                        "continue",
+                                        Type::Link,
+                                    );
+                                }
+                                self.data.set_referenced(sub_nr, on_d, Value::Null);
+                            }
+                            Type::Index(self.data.type_def_nr(&tp), vec![])
+                        }
+                        "hash" => {
+                            self.data.set_referenced(sub_nr, on_d, Value::Null);
+                            Type::Hash(sub_nr, vec![])
+                        }
+                        "vector" => {
+                            self.data.set_referenced(sub_nr, on_d, Value::Null);
+                            Type::Vector(Box::new(tp))
+                        }
+                        "sorted" => {
+                            self.data.set_referenced(sub_nr, on_d, Value::Null);
+                            Type::Sorted(sub_nr, vec![])
+                        }
+                        "radix" => {
+                            self.data.set_referenced(sub_nr, on_d, Value::Null);
+                            Type::Radix(sub_nr, vec![])
+                        }
+                        "reference" => {
+                            self.data.set_referenced(sub_nr, on_d, Value::Null);
+                            Type::Reference(sub_nr)
+                        }
+                        _ => {
+                            diagnostic!(
+                                self.lexer,
+                                Level::Error,
+                                "Sub-type only allowed on structures"
+                            );
+                            Type::Unknown(0)
+                        }
+                    });
                 }
-                self.lexer.token("]");
+                if !self.first_pass {
+                    panic!("Incorrect handling of unknown types");
+                }
+            } else {
+                diagnostic!(self.lexer, Level::Error, "Expected a type between <>");
             }
         }
-        let t_nr = self.data.def_nr(&type_name);
-        if t_nr != u32::MAX {
-            if self.data.def_type(t_nr) != DefType::Type && self.primary_link.contains(&t_nr) {
-                self.primary_link.insert(t_nr);
-            }
-            if let Type::Vector(_) = self.data.returned(t_nr) {
-                if fields.is_empty() {
-                    Type::Vector(Box::new(sub_type))
-                } else if let Type::Reference(d_nr) = sub_type {
-                    Type::Sorted(d_nr, fields)
-                } else {
-                    Type::Sorted(0, fields)
-                }
-            } else if type_name == "hash" {
-                Type::Hash(self.data.type_def_nr(&sub_type), fields)
-            } else if type_name == "index" {
-                Type::Index(self.data.type_def_nr(&sub_type), fields)
-            } else {
-                self.data.returned(t_nr)
-            }
+        let dt = self.data.def_type(tp_nr);
+        if tp_nr != u32::MAX
+            && (dt == DefType::Type || dt == DefType::Enum || dt == DefType::Struct)
+        {
+            Some(self.data.returned(tp_nr))
         } else {
-            diagnostic!(self.lexer, Level::Error, "Unknown type {type_name}");
-            Type::Unknown
+            None
         }
     }
 
@@ -857,20 +1021,32 @@ impl<'a> Parser<'a> {
         if !self.lexer.has_token("struct") {
             return false;
         }
-        let Some(_id) = self.lexer.has_identifier() else {
+        let Some(id) = self.lexer.has_identifier() else {
             diagnostic!(self.lexer, Level::Error, "Expect attribute");
             return true;
+        };
+        let mut d_nr = self.data.def_nr(&id);
+        if d_nr == u32::MAX {
+            d_nr = self.data.add_def(id, self.lexer.pos(), DefType::Struct);
+        } else if self.first_pass {
+            self.data.set_def_pos(d_nr, self.lexer.pos());
+            self.data.set_def_type(d_nr, DefType::Struct);
         };
         self.lexer.token("{");
         loop {
             let mut defined = false;
+            let mut a_type: Type = Type::Unknown(0);
             let Some(a_name) = self.lexer.has_identifier() else {
                 diagnostic!(self.lexer, Level::Error, "Expect attribute");
                 return true;
             };
             if self.lexer.has_token(":") {
                 defined = true;
-                self.parse_type(true);
+                if let Some(id) = self.lexer.has_identifier() {
+                    if let Some(tp) = self.parse_type(d_nr, &id) {
+                        a_type = tp;
+                    }
+                }
             }
             if self.lexer.has_token("[") {
                 loop {
@@ -878,6 +1054,9 @@ impl<'a> Parser<'a> {
                         diagnostic!(self.lexer, Level::Error, "Expect attribute");
                         return true;
                     };
+                    if self.lexer.has_keyword("desc") {
+                        // descending ordered field on index
+                    }
                     // validate known parameters
                     if !self.lexer.has_token(",") {
                         break;
@@ -911,9 +1090,14 @@ impl<'a> Parser<'a> {
                 let mut t = Value::Null;
                 // TODO EXT_0005 allows field to be read during the expression = give the current definition as context
                 let tp = self.expression(&mut t);
-                if tp == Type::Unknown {
+                if tp.is_unknown() {
                     diagnostic!(self.lexer, Level::Error, "Expecting a clear type");
                 }
+                a_type = tp.clone();
+            }
+            if self.first_pass {
+                self.data
+                    .add_attribute(&mut self.lexer, d_nr, &a_name, a_type);
             }
             if !defined {
                 diagnostic!(
@@ -926,28 +1110,26 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        // typedef::finish_attributes(&mut self.data, d_nr);
         self.lexer.token("}");
+        self.lexer.has_token(";");
         true
     }
 
     // <code> = '{' <block> '}'
     /// Parse the code on the last inserted definition.
     /// This way we can use recursion with the definition itself.
-    fn parse_code(&mut self, d_nr: u32) -> Type {
+    fn parse_code(&mut self) -> Type {
         self.lexer.token("{");
-        if *self.data.code(d_nr) != Value::Null {
-            diagnostic!(
-                self.lexer,
-                Level::Error,
-                "Cannot change previously defined routine {}",
-                self.data.def_name(d_nr)
-            );
-        }
         let mut v = Value::Null;
-        let result = self.types.parameters(&self.data, d_nr);
+        let result = if self.current_fn != u32::MAX {
+            self.types.parameters(&self.data, self.current_fn)
+        } else {
+            Type::Void
+        };
         let t = self.parse_block(&mut v, result);
-        self.data.set_code(d_nr, v);
+        if self.current_fn != u32::MAX && (self.default || !self.first_pass) {
+            self.data.set_code(self.current_fn, v);
+        }
         t
     }
 
@@ -984,65 +1166,58 @@ impl<'a> Parser<'a> {
     fn parse_assign(&mut self, code: &mut Value) -> Type {
         let f_type = self.parse_operators(code, 0);
         let to = code.clone();
-        let mut operator = "";
         for op in ["=", "+=", "-=", "*=", "%=", "/="] {
             if self.lexer.has_token(op) {
-                operator = op;
-                break;
+                let s_type = self.parse_operators(code, 0);
+                self.types.change_var_type(&mut self.lexer, &to, &s_type);
+                /*
+                println!(
+                    "op {op} s_type {s_type} code {code:?} to {to:?} at {}",
+                    self.lexer.pos()
+                );*/
+                *code = self.towards_set(to, code, &f_type, &op[0..1]);
+                return Type::Void;
             }
         }
-        if operator.is_empty() {
-            *code = to;
-            return f_type;
-        }
-        let mut vector = false;
-        let mut val = if let Type::Vector(_) = f_type {
-            vector = true;
-            code.clone()
-        } else {
-            Value::Null
-        };
-        let s_type = self.parse_operators(&mut val, 0);
-        self.types.change_var_type(&mut self.lexer, &to, &s_type);
-        if operator == "=" {
-            if let Value::Call(df, ls) = &to {
-                if *df == self.data.def_nr("OpGetInt") {
-                    *code = Value::Call(
-                        self.data.def_nr("OpSetInt"),
-                        vec![ls[0].clone(), ls[1].clone(), val],
-                    );
-                } else if vector {
-                    *code =
-                        Value::Block(vec![self.cl("OpClearVector", &[code.clone()]), val.clone()]);
+        *code = to;
+        f_type
+    }
+
+    fn towards_set(&mut self, to: Value, val: &Value, f_type: &Type, op: &str) -> Value {
+        if let Type::Vector(_) = f_type {
+            if let Value::Call(_, args) = &to {
+                let app = self.cl("OpAppendVector", args);
+                return if op == "=" {
+                    Value::Block(vec![self.cl("OpClearVector", &[to.clone()]), app])
                 } else {
-                    panic!("Assign {} {to:?} = {val:?}", self.data.def_name(*df));
-                }
-            } else {
-                let v_nr = if let Value::Var(nr) = to { nr } else { 0 };
-                self.types.assign(v_nr);
-                *code = v_set(v_nr, val);
+                    app
+                };
             }
-        } else if operator == "+=" {
-            if let Type::Vector(_) = f_type {
-                *code = val;
-            } else if let Type::Sorted(_, _) = f_type {
-                *code = val;
-            } else if let Value::Var(var) = &to {
-                let add = self.op("+", Value::Var(*var), val, f_type);
-                *code = v_set(*var, add);
-            } else if let Value::Field(td, fnr, rec) = &to {
-                // TODO find some way to address adding to Texts
-                *code = Value::Write(*td, *fnr, rec.clone(), Box::new(val));
-            } else if let Value::Vector(td, rec, _) = &to {
-                *code = Value::Append(*td, rec.clone());
-            } else {
-                panic!(
-                    "Unknown += for types {f_type} and {s_type} values {:?}",
-                    vec![to, val]
-                );
-            }
+            panic!("Vector assign {:?} at {:?}", to, self.lexer.pos());
         }
-        Type::Void
+        let code = if op != "=" {
+            self.op(op, to.clone(), val.clone(), f_type.clone())
+        } else {
+            val.clone()
+        };
+        if let Value::Call(d_nr, args) = &to {
+            let name = self.data.def_name(*d_nr);
+            match &name as &str {
+                "OpGetInt" => self.cl("OpSetInt", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetByte" => self.cl("OpSetByte", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetShort" => self.cl("OpSetShort", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetLong" => self.cl("OpSetLong", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetFloat" => self.cl("OpSetFloat", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetSingle" => self.cl("OpSetSingle", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetText" => self.cl("OpSetText", &[args[0].clone(), args[1].clone(), code]),
+                _ => panic!("Unknown {op}= for {name}"),
+            }
+        } else if let Value::Var(nr) = to {
+            self.types.assign(nr);
+            v_set(nr, code)
+        } else {
+            panic!("Unknown assign");
+        }
     }
 
     // <block> ::= '}' | <expression> {';' <expression} '}'
@@ -1125,9 +1300,8 @@ impl<'a> Parser<'a> {
                         diagnostic!(
                             self.lexer,
                             Level::Error,
-                            "Unknown cast from {} to {}",
+                            "Unknown cast from {} to {tps}",
                             self.data.show_type(&current_type),
-                            self.data.show_type(&tp)
                         );
                     }
                     return tp;
@@ -1137,6 +1311,7 @@ impl<'a> Parser<'a> {
             } else {
                 let mut second_code = Value::Null;
                 let second_type = self.parse_operators(&mut second_code, precedence + 1);
+                self.test_var(&second_type, &second_code);
                 if operator == ".." {
                     // Force the creation of an actual iterator later, only then it will become an integer iterator.
                     current_type = Type::Iterator(Box::new(Type::Null));
@@ -1204,14 +1379,13 @@ impl<'a> Parser<'a> {
             *val = Value::Null;
             Type::Null
         } else {
-            diagnostic!(self.lexer, Level::Fatal, "Syntax error");
-            Type::Unknown
+            Type::Unknown(0)
         }
     }
 
     // <vector> ::= '[' <expr> { ',' <expr> } ']'
     fn parse_vector(&mut self, val: &mut Value) -> Type {
-        let mut in_t = Type::Unknown;
+        let mut in_t = Type::Unknown(0);
         let elm = self.types.create_var(
             format!("elm_{}", self.var_nr),
             Type::Reference(0),
@@ -1220,7 +1394,7 @@ impl<'a> Parser<'a> {
         self.var_nr += 1;
         let vec = self.types.create_var(
             format!("vec_{}", self.var_nr),
-            Type::Vector(Box::new(Type::Unknown)),
+            Type::Unknown(0),
             self.lexer.pos(),
         );
         self.var_nr += 1;
@@ -1230,13 +1404,16 @@ impl<'a> Parser<'a> {
         loop {
             let mut p = Value::Var(elm);
             let t = self.expression(&mut p);
+            if in_t.is_unknown() {
+                in_t = t.clone();
+            }
             if let Type::Reference(dnr) = t {
                 let d_nr = if self.data.def_parent(dnr) != 0 {
                     self.data.def_parent(dnr)
                 } else {
                     dnr
                 };
-                let s = if self.data.def_inline(d_nr) {
+                let s = if self.data.def_referenced(d_nr) {
                     self.data.def_size(d_nr)
                 } else {
                     4
@@ -1246,9 +1423,6 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // double conversion check.. can t become in_t or vice versa
-                if in_t == Type::Unknown {
-                    in_t = t.clone();
-                }
                 if !self.convert(&mut p, &t, &in_t) {
                     if self.convert(&mut p, &in_t, &t) {
                         in_t = t;
@@ -1268,26 +1442,26 @@ impl<'a> Parser<'a> {
         if in_t == Type::Null {
             return in_t;
         }
-        self.types
-            .change_var_type(&mut self.lexer, &Value::Var(vec), &in_t);
+        self.types.change_var_type(
+            &mut self.lexer,
+            &Value::Var(vec),
+            &Type::Vector(Box::new(in_t.clone())),
+        );
         let mut ls = Vec::new();
         let ed_nr = self.data.type_def_nr(&in_t);
         let attr = self.data.def_type(ed_nr) == DefType::Type;
         let inline = if attr {
             false
         } else {
-            self.data.def_inline(ed_nr)
+            self.data.def_referenced(ed_nr)
         };
         for p in res {
-            let app_v = Value::Append(self.data.type_def_nr(&in_t), Box::new(Value::Var(vec)));
+            let vec_tp = self.data.type_def_nr(&in_t);
+            let vec_size = self.data.def_size(vec_tp) as i32;
+            let app_v = self.cl("OpAppendVector", &[Value::Var(vec), Value::Int(vec_size)]);
             if attr {
                 ls.push(v_set(elm, app_v));
-                ls.push(Value::Write(
-                    self.data.type_def_nr(&in_t),
-                    u16::MAX,
-                    Box::new(Value::Var(elm)),
-                    Box::new(p.clone()),
-                ));
+                ls.push(self.set_field(vec_tp, u16::MAX, Value::Var(elm), p.clone()));
             } else if inline {
                 ls.push(v_set(elm, app_v));
                 if let Value::Block(bl) = p {
@@ -1300,7 +1474,7 @@ impl<'a> Parser<'a> {
             } else {
                 ls.push(v_set(
                     elm,
-                    Value::Claim(self.data.type_def_nr(&in_t), Box::new(Value::Var(vec))),
+                    self.cl("OpAppend", &[Value::Var(vec), Value::Int(vec_size)]),
                 ));
                 if let Value::Block(bl) = p {
                     for e in bl {
@@ -1324,14 +1498,10 @@ impl<'a> Parser<'a> {
                 0,
                 v_set(db, self.cl("OpDatabase", &[Value::Int(size as i32)])),
             );
-            ls.insert(
-                1,
-                v_set(vec, self.cl("OpGetField", &[Value::Var(db), Value::Int(4)])),
-            );
-            ls.insert(
-                2,
-                self.cl("OpSetInt", &[Value::Var(vec), Value::Int(0), Value::Int(0)]),
-            );
+            // Reference to vector field.
+            ls.insert(1, v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
+            // Write 0 into this reference.
+            ls.insert(2, self.set_field(vec_def, 0, Value::Var(db), Value::Int(0)));
         } else {
             ls.insert(0, v_set(vec, val.clone()));
         }
@@ -1348,6 +1518,7 @@ impl<'a> Parser<'a> {
         let mut t = t;
         if let Some(field) = self.lexer.has_identifier() {
             let enr = self.data.type_elm(&t);
+            let e_size = self.data.def_size(enr) as i32;
             let dnr = self.data.type_def_nr(&t);
             if let Type::Vector(et) = t.clone() {
                 if field == "remove" {
@@ -1357,7 +1528,7 @@ impl<'a> Parser<'a> {
                     if tps.len() != 1 || self.convert(&mut cd, &tps[0], &Type::Integer) {
                         diagnostic!(self.lexer, Level::Error, "Invalid index in remove");
                     }
-                    *code = Value::Remove(enr, Box::new(code.clone()), Box::new(cd));
+                    *code = self.cl("OpRemoveVector", &[code.clone(), Value::Int(e_size), cd]);
                 } else if field == "insert" {
                     let (tps, ls) = self.parse_parameters();
                     let mut cd = ls[0].clone();
@@ -1369,7 +1540,7 @@ impl<'a> Parser<'a> {
                     if !self.convert(&mut vl, &tps[1], &et) {
                         diagnostic!(self.lexer, Level::Error, "Invalid value in insert");
                     }
-                    *code = Value::Insert(enr, Box::new(code.clone()), Box::new(cd));
+                    *code = self.cl("OpInsertVector", &[code.clone(), Value::Int(e_size), cd]);
                     // TODO copy vl into newly created vector element
                     // Inner should be different from Reference
                 }
@@ -1389,7 +1560,7 @@ impl<'a> Parser<'a> {
                     *code = if pos == 0 {
                         self.data.attr_value(dnr, fnr)
                     } else {
-                        Value::Field(dnr, fnr, Box::new(code.clone()))
+                        self.get_field(dnr, fnr, code.clone())
                     };
                 }
                 fnr
@@ -1417,7 +1588,7 @@ impl<'a> Parser<'a> {
             self.data.returned(d_nr)
         } else {
             diagnostic!(self.lexer, Level::Error, "Indexing a non vector");
-            Type::Unknown
+            Type::Unknown(0)
         };
         if let Some((nr, _)) = self.types.var_name("$") {
             self.types.assign(nr);
@@ -1432,16 +1603,9 @@ impl<'a> Parser<'a> {
             self.first_match(code, p, t);
         } else if let Type::Vector(etp) = t {
             let elm_td = self.data.type_elm(&etp);
-            *code = Value::Vector(elm_td, Box::new(code.clone()), Box::new(p));
-            if let Type::Reference(_) = *etp {
-            } else {
-                self.call_op(
-                    code,
-                    "Get",
-                    vec![code.clone(), Value::Int(0)],
-                    vec![Type::Reference(elm_td), Type::Integer],
-                );
-            }
+            let elm_size = self.data.def_size(elm_td) as i32;
+            *code = self.cl("OpGetVector", &[code.clone(), Value::Int(elm_size), p]);
+            *code = self.get_val(&etp, 0, code.clone());
         } else {
             self.call_op(code, "Get", vec![code.clone(), p], vec![t, index_t]);
         }
@@ -1457,11 +1621,10 @@ impl<'a> Parser<'a> {
             t = self.data.returned(d_nr);
             if self.data.def_type(d_nr) == DefType::Function {
                 t = Type::Routine(d_nr)
+            } else if self.data.def_type(d_nr) == DefType::Struct {
+                return self.parse_object(d_nr, code);
             }
-            if let Type::Reference(_) | Type::Inner(_) = t {
-                self.parse_object(d_nr, code);
-                return t;
-            } else if let Type::Enum(en) = t {
+            if let Type::Enum(en) = t {
                 for a_nr in 0..self.data.attributes(en) {
                     if self.data.attr_name(en, a_nr) == name {
                         *code = self.data.attr_value(en, a_nr);
@@ -1471,7 +1634,11 @@ impl<'a> Parser<'a> {
             }
         }
         if self.lexer.has_token("(") {
-            t = self.parse_call(code, &name);
+            if name == "sizeof" || name == "alignment" {
+                t = self.parse_size(code, &name);
+            } else {
+                t = self.parse_call(code, &name);
+            }
         } else if let Some((var_nr, tp)) = self.types.var_name(&name) {
             t = tp;
             *code = Value::Var(var_nr);
@@ -1485,8 +1652,11 @@ impl<'a> Parser<'a> {
                 t = Type::Null;
             };
         } else {
-            *code = Value::Var(self.types.create_var(name, Type::Unknown, self.lexer.pos()));
-            t = Type::Unknown;
+            *code = Value::Var(
+                self.types
+                    .create_var(name, Type::Unknown(0), self.lexer.pos()),
+            );
+            t = Type::Unknown(0);
         }
         while self.lexer.peek_token(".") || self.lexer.peek_token("[") {
             self.test_var(&t, code);
@@ -1501,7 +1671,7 @@ impl<'a> Parser<'a> {
     }
 
     fn test_var(&mut self, tp: &Type, code: &Value) {
-        if tp == &Type::Unknown {
+        if !self.first_pass && tp.is_unknown() {
             if let Value::Var(nr) = *code {
                 diagnostic!(
                     self.lexer,
@@ -1585,7 +1755,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.expression(&mut format)
             };
-            if tp == Type::Unknown {
+            if tp.is_unknown() {
                 diagnostic!(self.lexer, Level::Error, "Incorrect expression in string");
                 return;
             }
@@ -1698,7 +1868,7 @@ impl<'a> Parser<'a> {
             self.lexer.token("in");
             let mut in_expr = Value::Null;
             let in_type = self.expression(&mut in_expr);
-            let mut var_type = Type::Unknown;
+            let mut var_type = Type::Unknown(0);
             if let Type::Vector(t_nr) | Type::Iterator(t_nr) = &in_type {
                 var_type = *t_nr.clone();
             }
@@ -2024,10 +2194,10 @@ impl<'a> Parser<'a> {
     }
 
     // <object> ::= '{' [ <identifier> ':' <expression> { ',' <identifier> ':' <expression> } ] '}'
-    fn parse_object(&mut self, td_nr: u32, code: &mut Value) {
+    fn parse_object(&mut self, td_nr: u32, code: &mut Value) -> Type {
         let link = self.lexer.link();
         if !self.lexer.token("{") {
-            return;
+            return Type::Unknown(0);
         }
         let v = self.types.create_var(
             "val".to_string(),
@@ -2039,8 +2209,13 @@ impl<'a> Parser<'a> {
         list.push(v_set(
             v,
             if let Value::Reference(_, _, _) = code {
-                Value::Claim(td_nr, Box::new(code.clone()))
+                self.cl(
+                    "OpAppend",
+                    &[Value::Int(self.data.def_size(td_nr) as i32), code.clone()],
+                )
             } else {
+                self.data
+                    .set_referenced(td_nr, self.current_fn, Value::Null);
                 self.cl("OpDatabase", &[rec_size])
             },
         ));
@@ -2052,7 +2227,7 @@ impl<'a> Parser<'a> {
             if let Some(field) = self.lexer.has_identifier() {
                 if !self.lexer.has_token(":") {
                     self.lexer.revert(link);
-                    return;
+                    return Type::Unknown(0);
                 }
                 let nr = self.data.attr(td_nr, &field);
                 if nr != u16::MAX {
@@ -2076,12 +2251,7 @@ impl<'a> Parser<'a> {
                             }
                         }
                     } else {
-                        list.push(Value::Write(
-                            td_nr,
-                            nr,
-                            Box::new(Value::Var(v)),
-                            Box::new(value),
-                        ));
+                        list.push(self.set_field(td_nr, nr, Value::Var(v), value));
                     }
                 } else {
                     diagnostic!(
@@ -2094,7 +2264,7 @@ impl<'a> Parser<'a> {
             } else {
                 // We have not encountered an identifier
                 self.lexer.revert(link);
-                return;
+                return Type::Unknown(0);
             }
             if !self.lexer.has_token(",") {
                 break;
@@ -2106,15 +2276,11 @@ impl<'a> Parser<'a> {
             if found_fields.contains(&self.data.attr_name(td_nr, aid)) {
                 continue;
             }
-            list.push(Value::Write(
-                td_nr,
-                aid,
-                Box::new(Value::Var(v)),
-                Box::new(self.data.attr_value(td_nr, aid)),
-            ));
+            list.push(self.set_field(td_nr, aid, Value::Var(v), self.data.attr_value(td_nr, aid)));
         }
         list.push(Value::Var(v));
         *code = Value::Block(list);
+        Type::Reference(td_nr)
     }
 
     // <if> ::= <expression> '{' <block> [ 'else' ( 'if' <if> | '{' <block> ) ]
@@ -2214,8 +2380,7 @@ impl<'a> Parser<'a> {
     fn parse_return(&mut self, val: &mut Value) {
         // validate if there is a defined return value
         let mut v = Value::Null;
-        let last = self.data.definitions() - 1;
-        let r_type = self.data.returned(last);
+        let r_type = self.data.returned(self.current_fn);
         if !self.lexer.peek_token(";") && !self.lexer.peek_token("}") {
             let t = self.expression(&mut v);
             if r_type == Type::Void {
@@ -2230,7 +2395,7 @@ impl<'a> Parser<'a> {
             if !self.convert(val, &t, &r_type) {
                 self.validate_convert("return", &t, &r_type);
             }
-        } else if r_type != Type::Void {
+        } else if !self.first_pass && r_type != Type::Void {
             diagnostic!(self.lexer, Level::Error, "Expect expression after return")
         }
         *val = Value::Return(Box::new(v));
@@ -2253,6 +2418,57 @@ impl<'a> Parser<'a> {
         }
         self.lexer.token(")");
         self.call(val, name, &list, &types)
+    }
+
+    // <size> ::= ( <type> | <var> ) ')'
+    fn parse_size(&mut self, val: &mut Value, name: &str) -> Type {
+        let sizeof = name == "sizeof";
+        let mut found = false;
+        let lnk = self.lexer.link();
+        if let Some(id) = self.lexer.has_identifier() {
+            let d_nr = self.data.def_nr(&id);
+            if d_nr != u32::MAX && self.data.def_type(d_nr) != DefType::EnumValue {
+                if !self.first_pass && self.data.def_type(d_nr) == DefType::Unknown {
+                    found = true;
+                } else if let Some(tp) = self.parse_type(u32::MAX, &id) {
+                    if let Type::Reference(_) = tp {
+                        found = true;
+                        *val = Value::Int(4);
+                    } else {
+                        found = true;
+                        if sizeof {
+                            *val = Value::Int(self.data.def_size(self.data.type_elm(&tp)) as i32);
+                        } else {
+                            *val = Value::Int(self.data.def_align(self.data.type_elm(&tp)) as i32);
+                        }
+                    }
+                }
+            }
+        }
+        if !found {
+            let mut drop = Value::Null;
+            self.lexer.revert(lnk);
+            let tp = self.expression(&mut drop);
+            // TODO FEA0002 call function to get size or alignment of correct child
+            let e_tp = self.data.type_elm(&tp);
+            if e_tp != u32::MAX {
+                found = true;
+                if sizeof {
+                    *val = Value::Int(self.data.def_size(e_tp) as i32);
+                } else {
+                    *val = Value::Int(self.data.def_align(e_tp) as i32);
+                }
+            }
+        }
+        if !self.first_pass && !found {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "Expect a variable or type after {name}"
+            );
+        }
+        self.lexer.token(")");
+        Type::Integer
     }
 
     // <call> ::= [ <expression> { ',' <expression> } ] ')'

@@ -1,7 +1,8 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2021-2023 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 extern crate dryopea;
+
 mod testing;
 
 use dryopea::data::{Type, Value};
@@ -84,6 +85,13 @@ fn expr_long() {
 }
 
 #[test]
+fn mutating_operators() {
+    expr!("a = 12; a -= 6; a *= 3; a /= 2; a += 1; a")
+        .result(Value::Int(10))
+        .tp(Type::Integer);
+}
+
+#[test]
 fn for_loop() {
     expr!("b = 0; for a in 0..5 { b+=a }; b").result(Value::Int(10));
 }
@@ -123,4 +131,34 @@ fn compare() {
     code!("enum T{A, C, B}\nfn count(v: T) -> integer { if v > C { 2 } else { 1 } }")
         .expr("count(A) + count(B) + count(B)")
         .result(Value::Int(5));
+}
+
+#[test]
+fn recursion() {
+    code!(
+        "fn first(s: State, c: integer) -> integer {
+	if s == Start {
+		s = Ongoing
+	} else if c > 10 {
+		s = Halt
+	}
+	second(s, c)
+}
+
+fn second(s: State, c: integer) -> integer {
+	if s != Halt {
+		first(s, c + 1)
+	} else {
+		1 + c
+	}
+}
+
+enum State {
+	Start,
+	Ongoing,
+	Halt
+}"
+    )
+    .expr("first(Start, 0)")
+    .result(Value::Int(12));
 }

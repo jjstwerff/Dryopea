@@ -1,5 +1,5 @@
-Scripting
-=========
+FEA0019 Function
+================
 
 Summary
 -------
@@ -26,6 +26,16 @@ Default values on function arguments and named parameters in calls.
 Limited template definitions, only on the first field.
 Allow the attributes & code to use the given templates type names.
 Automatic detection of methods via first 'self' field.
+
+Possible conversion of second assign to a variable.
+
+Allow unicode definition and variable names.
+
+Allow functions to be passed as a parameter.
+
+Out-of-scope
+------------
+FEA0031 Lambda calculus and closures into function parameters.
 
 Examples
 --------

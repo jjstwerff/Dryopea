@@ -1,5 +1,5 @@
-Scripting
-=========
+FEA0031 Closures
+================
 
 Summary
 -------
@@ -19,7 +19,14 @@ Use-cases
 
 Design
 ------
-Do not allow <> or [] on every type definition, only on structure types: vectors for now.
+Allow to define closures.
+This will make certain programming paradigms much simpler.
+
+However, closures should not need a separate template notation like in rust.
+It should be allowed to function as a call as a function typed argument.
+
+Out-of-scope
+------------
 
 Examples
 --------
@@ -29,18 +36,6 @@ Consistency
 
 Development
 -----------
-Allow ".." in any vector context.
-Allow ".." with only the end parameter, assume start at 0.
-Allow for/if inside a vector definition.
-Allow #first #index #last #continue on the loop variable.
-
-json
-
-iterators
-
-import json
-
-mutable
 
 Comments
 --------

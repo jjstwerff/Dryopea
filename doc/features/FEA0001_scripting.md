@@ -1,5 +1,5 @@
-Scripting
-=========
+FEA0001_scripting
+=================
 
 Summary
 -------
@@ -29,6 +29,13 @@ Mutability is checked by the compiler, it doesn't have to be given by the progra
 There is no 'let' keyword, variables can be defined without it.
 A set of methods like len, abs, sin, cos may be used as a function too without explicitly declaring its type.
 
+Out-of-scope
+------------
+FEA0027 Introduce asserts in scripts for more clean tests and to allow efficient validation on projects.
+FEA0019 Conversion of types on second assign to variables.
+FEA0019 Identifier names consisting of Unicode characters.
+FEA0029 More complete string escaping including \042 or \x22, \u0000
+
 Examples
 --------
 
@@ -37,6 +44,7 @@ Consistency
 
 Development
 -----------
+
 We need to still clearly document the changes versus normal rust code.
 - Possible types
 - No references
@@ -46,11 +54,6 @@ We need to still clearly document the changes versus normal rust code.
 - Variable declarations
 - Automatic conversions
 - Simple functions 'len', 'abs', 'sin', 'cos' etc
-
-Out-of-scope
-------------
-Conversion of types on second assign to variables.
-Identifier names consisting of Unicode characters.
 
 Comments
 --------

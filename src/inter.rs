@@ -7,9 +7,8 @@
 
 extern crate strum;
 extern crate strum_macros;
-use self::strum::IntoEnumIterator;
-use self::strum_macros::EnumIter;
-use crate::data::{Data, Type, Value};
+
+use crate::data::{Data, Value};
 use crate::external::*;
 use crate::format;
 use crate::store::{Store, PRIMARY};
@@ -54,148 +53,167 @@ fn ind(indent: u32) -> String {
     res
 }
 
+type Extern = fn(&Inter, &[Value], &mut State) -> Value;
+
 pub struct Inter<'a> {
-    pub data: &'a Data,               // immutable definitions
-    external: HashMap<u32, External>, // immutable known external routines
+    pub data: &'a Data,
+    external: HashMap<u32, Extern>,
 }
 
-#[derive(Debug, EnumIter)]
-pub enum External {
-    Database,
-    Not,
-    CastSingleFromFloat,
-    CastIntFromFloat,
-    CastLongFromFloat,
-    CastIntFromSingle,
-    CastLongFromSingle,
-    CastIntFromLong,
-    ConvLongFromInt,
-    ConvFloatFromInt,
-    ConvFloatFromLong,
-    ConvFloatFromSingle,
-    ConvSingleFromInt,
-    ConvBoolFromInt,
-    ConvBoolFromLong,
-    ConvBoolFromFloat,
-    ConvBoolFromSingle,
-    ConvBoolFromRef,
-    ConvBoolFromEnum,
-    ConvBoolFromText,
-    ConvIntFromNull,
-    ConvLongFromNull,
-    ConvFloatFromNull,
-    ConvSingleFromNull,
-    ConvRefFromNull,
-    ConvEnumFromNull,
-    ConvTextFromNull,
-    AddInt,
-    MinSingleInt,
-    MinInt,
-    MulInt,
-    DivInt,
-    RemInt,
-    AddLong,
-    MinSingleLong,
-    MinLong,
-    MulLong,
-    DivLong,
-    RemLong,
-    AddFloat,
-    MinSingleFloat,
-    MinFloat,
-    MulFloat,
-    DivFloat,
-    RemFloat,
-    AddSingle,
-    MinSingleSingle,
-    MinSingle,
-    MulSingle,
-    DivSingle,
-    RemSingle,
-    And,
-    Or,
-    EqLong,
-    NeLong,
-    LtLong,
-    LeLong,
-    GtLong,
-    GeLong,
-    EqInt,
-    NeInt,
-    LtInt,
-    LeInt,
-    GtInt,
-    GeInt,
-    EqFloat,
-    NeFloat,
-    LtFloat,
-    LeFloat,
-    GtFloat,
-    GeFloat,
-    EqSingle,
-    NeSingle,
-    LtSingle,
-    LeSingle,
-    GtSingle,
-    GeSingle,
-    EqBool,
-    NeBool,
-    EqRef,
-    NeRef,
-    EqEnum,
-    NeEnum,
-    LtEnum,
-    GtEnum,
-    LeEnum,
-    GeEnum,
-    EqText,
-    NeText,
-    LtText,
-    LeText,
-    GtText,
-    GeText,
-    ClearText,
-    ClearVector,
-    LengthVector,
-    FinishSorted,
-    LengthText,
-    AddText,
-    AbsInteger,
-    AbsLong,
-    AbsFloat,
-    AbsSingle,
-    FormatText,
-    FormatInt,
-    FormatLong,
-    FormatFloat,
-    FormatSingle,
-}
-
-impl External {
-    pub fn name(&self) -> String {
-        format!("{:?}", self)
-    }
-}
+const EXTERN: &[(&str, Extern)] = &[
+    ("OpDatabase", int_database),
+    ("OpNot", int_not),
+    ("OpAppend", int_append),
+    ("OpGet", int_get),
+    ("OpCastSingleFromFloat", int_cast_single_from_float),
+    ("OpCastIntFromFloat", int_cast_int_from_float),
+    ("OpCastLongFromFloat", int_cast_long_from_float),
+    ("OpCastIntFromSingle", int_cast_int_from_single),
+    ("OpCastLongFromSingle", int_cast_long_from_single),
+    ("OpCastIntFromLong", int_cast_int_from_long),
+    ("OpConvLongFromInt", int_conv_long_from_int),
+    ("OpConvFloatFromInt", int_conv_float_from_int),
+    ("OpConvFloatFromLong", int_conv_float_from_long),
+    ("OpConvFloatFromSingle", int_conv_float_from_single),
+    ("OpConvSingleFromInt", int_conv_single_from_int),
+    ("OpConvBoolFromInt", int_conv_bool_from_int),
+    ("OpConvBoolFromLong", int_conv_bool_from_long),
+    ("OpConvBoolFromFloat", int_conv_bool_from_float),
+    ("OpConvBoolFromSingle", int_conv_bool_from_single),
+    ("OpConvBoolFromRef", int_conv_bool_from_ref),
+    ("OpConvBoolFromEnum", int_conv_bool_from_enum),
+    ("OpConvBoolFromText", int_conv_bool_from_text),
+    ("OpConvIntFromNull", int_conv_int_from_null),
+    ("OpConvLongFromNull", int_conv_long_from_null),
+    ("OpConvFloatFromNull", int_conv_float_from_null),
+    ("OpConvSingleFromNull", int_conv_single_from_null),
+    ("OpConvRefFromNull", int_conv_ref_from_null),
+    ("OpConvEnumFromNull", int_conv_enum_from_null),
+    ("OpConvTextFromNull", int_conv_text_from_null),
+    ("OpAddInt", int_add_int),
+    ("OpMinSingleInt", int_min_single_int),
+    ("OpMinInt", int_min_int),
+    ("OpMulInt", int_mul_int),
+    ("OpDivInt", int_div_int),
+    ("OpRemInt", int_rem_int),
+    ("OpAddLong", int_add_long),
+    ("OpMinSingleLong", int_min_single_long),
+    ("OpMinLong", int_min_long),
+    ("OpMulLong", int_mul_long),
+    ("OpDivLong", int_div_long),
+    ("OpRemLong", int_rem_long),
+    ("OpAddFloat", int_add_float),
+    ("OpMinSingleFloat", int_min_single_float),
+    ("OpMinFloat", int_min_float),
+    ("OpMulFloat", int_mul_float),
+    ("OpDivFloat", int_div_float),
+    ("OpRemFloat", int_rem_float),
+    ("OpAddSingle", int_add_single),
+    ("OpMinSingleSingle", int_min_single_single),
+    ("OpMinSingle", int_min_single),
+    ("OpMulSingle", int_mul_single),
+    ("OpDivSingle", int_div_single),
+    ("OpRemSingle", int_rem_single),
+    ("OpAnd", int_and),
+    ("OpOr", int_or),
+    ("OpEqLong", int_eq_long),
+    ("OpNeLong", int_ne_long),
+    ("OpLtLong", int_lt_long),
+    ("OpLeLong", int_le_long),
+    ("OpGtLong", int_gt_long),
+    ("OpGeLong", int_ge_long),
+    ("OpEqInt", int_eq_int),
+    ("OpNeInt", int_ne_int),
+    ("OpLtInt", int_lt_int),
+    ("OpLeInt", int_le_int),
+    ("OpGtInt", int_gt_int),
+    ("OpGeInt", int_ge_int),
+    ("OpEqFloat", int_eq_float),
+    ("OpNeFloat", int_ne_float),
+    ("OpLtFloat", int_lt_float),
+    ("OpLeFloat", int_le_float),
+    ("OpGtFloat", int_gt_float),
+    ("OpGeFloat", int_ge_float),
+    ("OpEqSingle", int_eq_single),
+    ("OpNeSingle", int_ne_single),
+    ("OpLtSingle", int_lt_single),
+    ("OpLeSingle", int_le_single),
+    ("OpGtSingle", int_gt_single),
+    ("OpGeSingle", int_ge_single),
+    ("OpEqBool", int_eq_bool),
+    ("OpNeBool", int_ne_bool),
+    ("OpEqRef", int_eq_ref),
+    ("OpNeRef", int_ne_ref),
+    ("OpEqEnum", int_eq_enum),
+    ("OpNeEnum", int_ne_enum),
+    ("OpLtEnum", int_lt_enum),
+    ("OpGtEnum", int_gt_enum),
+    ("OpLeEnum", int_le_enum),
+    ("OpGeEnum", int_ge_enum),
+    ("OpEqText", int_eq_text),
+    ("OpNeText", int_ne_text),
+    ("OpLtText", int_lt_text),
+    ("OpLeText", int_le_text),
+    ("OpGtText", int_gt_text),
+    ("OpGeText", int_ge_text),
+    ("OpClearText", int_clear_text),
+    ("OpClearVector", int_clear_vector),
+    ("OpLengthVector", int_length_vector),
+    ("OpFinishSorted", int_finish_sorted),
+    ("OpLengthText", int_length_text),
+    ("OpAddText", int_add_text),
+    ("OpAbsInteger", int_abs_integer),
+    ("OpAbsLong", int_abs_long),
+    ("OpAbsFloat", int_abs_float),
+    ("OpAbsSingle", int_abs_single),
+    ("OpFormatText", int_format_text),
+    ("OpFormatBool", int_format_bool),
+    ("OpFormatInt", int_format_int),
+    ("OpFormatLong", int_format_long),
+    ("OpFormatFloat", int_format_float),
+    ("OpFormatSingle", int_format_single),
+    ("OpGetByte", int_get_byte),
+    ("OpGetShort", int_get_short),
+    ("OpGetInt", int_get_int),
+    ("OpGetText", int_get_text),
+    ("OpGetSingle", int_get_single),
+    ("OpGetFloat", int_get_float),
+    ("OpGetLong", int_get_long),
+    ("OpSetByte", int_set_byte),
+    ("OpSetShort", int_set_short),
+    ("OpSetInt", int_set_int),
+    ("OpGetReference", int_get_reference),
+    ("OpSetReference", int_set_reference),
+    ("OpSetText", int_set_text),
+    ("OpSetSingle", int_set_single),
+    ("OpSetFloat", int_set_float),
+    ("OpSetLong", int_set_long),
+    ("OpAppendVector", int_append_vector),
+    ("OpRemoveVector", int_remove_vector),
+    ("OpInsertVector", int_insert_vector),
+    ("OpGetVector", int_get_vector),
+];
 
 impl<'d> Inter<'d> {
     pub fn new(data: &'d Data) -> Inter<'d> {
         let mut external = HashMap::new();
-        for ext in External::iter() {
-            let nr = data.def_nr(&format!("Op{}", &ext.name()));
+        for (name, ext) in EXTERN {
+            let nr = data.def_nr(name);
             if nr != u32::MAX {
-                external.insert(nr, ext);
+                external.insert(nr, *ext);
             } else {
-                panic!("Could not find definition @Op{}", ext.name());
+                panic!("Could not find definition @{name}");
             }
         }
         Inter { data, external }
     }
 
     /// Start the interpreter on a specific piece of code
-    pub fn calculate(&self, name: &str) -> Result<Value, String> {
+    pub fn calculate(&self, name: &str, log: Option<File>) -> Result<Value, String> {
         let dnr = self.data.def_nr(name);
         if dnr != u32::MAX {
             let state = &mut State::new();
+            state.logging = log;
             let res = self.calc(self.data.code(dnr), state);
             Ok(res)
         } else {
@@ -232,157 +250,13 @@ impl<'d> Inter<'d> {
         Value::Null
     }
 
-    fn field(&self, td: u32, fld: u16, rec: &Value, state: &mut State) -> Value {
-        let pos = if fld == u16::MAX {
-            0
-        } else {
-            self.data.attr_pos(td, fld) as isize
-        };
-        let td = if fld == u16::MAX {
-            self.data.returned(td)
-        } else {
-            self.data.attr_type(td, fld)
-        };
-        if let Value::Reference(db, rec, add) = self.calc(rec, state) {
-            let DataStore { records, text } = &mut state.databases[db as usize];
-            match td {
-                Type::Integer => {
-                    let v = records.get_int(rec, pos + add as isize);
-                    if v != i32::MIN {
-                        return Value::Int(v);
-                    }
-                }
-                Type::Float => {
-                    let v = records.get_float(rec, pos + add as isize);
-                    if !v.is_nan() {
-                        return Value::Float(v);
-                    }
-                }
-                Type::Single => {
-                    let v = records.get_single(rec, pos + add as isize);
-                    if !v.is_nan() {
-                        return Value::Single(v);
-                    }
-                }
-                Type::Long => {
-                    let v = records.get_long(rec, pos + add as isize);
-                    if v != i64::MIN {
-                        return Value::Long(v);
-                    }
-                }
-                Type::Boolean => {
-                    let v = records.get_byte(rec, pos + add as isize, 0);
-                    if v != i32::MIN {
-                        return Value::Int(v);
-                    }
-                }
-                Type::Enum(_) => {
-                    let v = records.get_byte(rec, pos + add as isize, 0);
-                    if v != i32::MIN {
-                        return Value::Int(v);
-                    }
-                }
-                Type::Text => {
-                    let v = records.get_int(rec, pos + add as isize);
-                    if v != i32::MIN {
-                        return Value::Text(text.get_str(v as u32).to_string());
-                    }
-                }
-                Type::Reference(_) => {
-                    let v = records.get_int(rec, pos + add as isize);
-                    if v != i32::MIN {
-                        return Value::Reference(db, v as u32, 0);
-                    }
-                }
-                Type::Inner(_)
-                | Type::Vector(_)
-                | Type::Sorted(_, _)
-                | Type::Index(_, _)
-                | Type::Hash(_, _) => {
-                    return Value::Reference(db, rec, pos as u32 + add);
-                }
-                _ => {
-                    panic!("Not implemented");
-                }
-            }
-        }
-        Value::Null
-    }
-
-    fn write(&self, td: u32, fld: u16, rec: &Value, val: &Value, state: &mut State) -> Value {
-        let pos = self.data.attr_pos(td, fld) as isize;
-        let td = self.data.attr_type(td, fld);
-        if let (Value::Reference(db, rec, add), v) = (self.calc(rec, state), self.calc(val, state))
-        {
-            let DataStore { records, text } = &mut state.databases[db as usize];
-            match td {
-                Type::Integer => {
-                    let val = if let Value::Int(vv) = v { vv } else { i32::MIN };
-                    records.set_int(rec, pos + add as isize, val);
-                }
-                Type::Float => {
-                    let val = if let Value::Float(vv) = v {
-                        vv
-                    } else {
-                        f64::NAN
-                    };
-                    records.set_float(rec, pos + add as isize, val);
-                }
-                Type::Single => {
-                    let val = if let Value::Single(vv) = v {
-                        vv
-                    } else {
-                        f32::NAN
-                    };
-                    records.set_single(rec, pos + add as isize, val);
-                }
-                Type::Long => {
-                    let val = if let Value::Long(vv) = v {
-                        vv
-                    } else {
-                        i64::MIN
-                    };
-                    records.set_long(rec, pos + add as isize, val);
-                }
-                Type::Boolean => {
-                    let val = if let Value::Int(vv) = v { vv } else { i32::MIN };
-                    records.set_byte(rec, pos + add as isize, 0, val);
-                }
-                Type::Enum(_) => {
-                    let val = if let Value::Int(vv) = v { vv } else { i32::MIN };
-                    records.set_byte(rec, pos + add as isize, 0, val);
-                }
-                Type::Text => {
-                    let val = if let Value::Text(str_val) = v {
-                        text.set_str(&str_val) as i32
-                    } else {
-                        i32::MIN
-                    };
-                    records.set_int(rec, pos + add as isize, val);
-                }
-                Type::Reference(_) => {
-                    let val = if let Value::Reference(_, rec, _) = v {
-                        rec as i32
-                    } else {
-                        i32::MIN
-                    };
-                    records.set_int(rec, pos + add as isize, val);
-                }
-                _ => {
-                    panic!("Not implemented");
-                }
-            }
-        }
-        Value::Null
-    }
-
     fn calc(&self, code: &Value, state: &mut State) -> Value {
         match code {
             Value::Call(nr, call_code) => {
-                if let Some(e) = self.external.get(nr) {
-                    let res = self.call_external(e, call_code, state);
+                if let Some(ext) = self.external.get(nr) {
+                    let res = ext(self, call_code, state);
                     if let Some(f) = &mut state.logging {
-                        write!(f, "{}{:?}(", ind(state.indent), e).unwrap();
+                        write!(f, "{}{:?}(", ind(state.indent), nr).unwrap();
                         for (v, c) in call_code.iter().enumerate() {
                             if v > 0 {
                                 write!(f, ", ").unwrap();
@@ -451,61 +325,6 @@ impl<'d> Inter<'d> {
                 let v = self.calc(def, state);
                 Value::Return(Box::new(v))
             }
-            Value::Field(td, fld, rec) => self.field(*td, *fld, rec, state),
-            Value::Write(td, fld, rec, val) => self.write(*td, *fld, rec, val, state),
-            Value::Claim(td, db) => {
-                if let Value::Reference(db, _, _) = self.calc(db, state) {
-                    let size = self.data.def_size(*td);
-                    let records = &mut state.databases[db as usize].records;
-                    Value::Reference(db, records.claim(size), 0)
-                } else {
-                    Value::Null
-                }
-            }
-            Value::Vector(td, rec, idx) => {
-                if let (Value::Reference(db, v_nr, pos), Value::Int(index)) =
-                    (self.calc(rec, state), self.calc(idx, state))
-                {
-                    let size = self.data.def_size(*td);
-                    let records = &mut state.databases[db as usize].records;
-                    let (r, p) = op_get_vector(records, v_nr, pos as isize, size, index);
-                    Value::Reference(db, r, p)
-                } else {
-                    Value::Null
-                }
-            }
-            Value::Remove(td, rec, idx) => {
-                if let (Value::Reference(db, v_nr, pos), Value::Int(index)) =
-                    (self.calc(rec, state), self.calc(idx, state))
-                {
-                    let size = self.data.def_size(*td);
-                    let records = &mut state.databases[db as usize].records;
-                    op_remove_vector(records, v_nr, pos as isize, size, index);
-                }
-                Value::Null
-            }
-            Value::Insert(td, rec, idx) => {
-                if let (Value::Reference(db, v_nr, pos), Value::Int(index)) =
-                    (self.calc(rec, state), self.calc(idx, state))
-                {
-                    let size = self.data.def_size(*td);
-                    let records = &mut state.databases[db as usize].records;
-                    let (r, p) = op_insert_vector(records, v_nr, pos as isize, size, index);
-                    Value::Reference(db, r, p)
-                } else {
-                    Value::Null
-                }
-            }
-            Value::Append(td, rec) => {
-                if let Value::Reference(db, v_nr, pos) = self.calc(rec, state) {
-                    let size = self.data.def_size(*td);
-                    let records = &mut state.databases[db as usize].records;
-                    let (r, p) = op_append_vector(records, v_nr, pos as isize, size);
-                    Value::Reference(db, r, p)
-                } else {
-                    Value::Null
-                }
-            }
             _ => code.clone(),
         }
     }
@@ -547,787 +366,1166 @@ impl<'d> Inter<'d> {
             ret
         }
     }
+}
 
-    #[allow(clippy::cognitive_complexity)]
-    fn call_external(&self, e: &External, code: &[Value], state: &mut State) -> Value {
-        match e {
-            External::Database => {
-                if let Value::Int(size) = &code[0] {
-                    let mut records = Store::new(50);
-                    let p = records.claim(*size as u32);
-                    assert_eq!(p, PRIMARY);
-                    let db = state.databases.len() as u16;
-                    state.databases.push(DataStore {
-                        records,
-                        text: Store::new(50),
-                    });
-                    return Value::Reference(db, PRIMARY, 0);
-                }
-            }
-            External::AbsInteger => {
-                if let Value::Int(x) = self.calc(&code[0], state) {
-                    return Value::Int(x.abs());
-                }
-            }
-            External::AbsLong => {
-                if let Value::Long(x) = self.calc(&code[0], state) {
-                    return Value::Long(x.abs());
-                }
-            }
-            External::AbsFloat => {
-                if let Value::Float(x) = self.calc(&code[0], state) {
-                    return Value::Float(x.abs());
-                }
-            }
-            External::AbsSingle => {
-                if let Value::Single(x) = self.calc(&code[0], state) {
-                    return Value::Single(x.abs());
-                }
-            }
-            External::Not => {
-                if let Value::Int(x) = self.calc(&code[0], state) {
-                    return Value::Int(1 - x);
-                }
-            }
-            External::CastSingleFromFloat => {
-                if let Value::Float(x) = self.calc(&code[0], state) {
-                    return Value::Single(x as f32);
-                }
-            }
-            External::CastIntFromFloat => {
-                if let Value::Float(x) = self.calc(&code[0], state) {
-                    return Value::Int(x as i32);
-                }
-            }
-            External::CastLongFromFloat => {
-                if let Value::Float(x) = self.calc(&code[0], state) {
-                    return Value::Long(x as i64);
-                }
-            }
-            External::CastIntFromSingle => {
-                if let Value::Single(x) = self.calc(&code[0], state) {
-                    return Value::Int(x as i32);
-                }
-            }
-            External::CastLongFromSingle => {
-                if let Value::Single(x) = self.calc(&code[0], state) {
-                    return Value::Long(x as i64);
-                }
-            }
-            External::CastIntFromLong => {
-                if let Value::Long(x) = self.calc(&code[0], state) {
-                    return Value::Int(x as i32);
-                }
-            }
-            External::ConvLongFromInt => {
-                if let Value::Int(x) = self.calc(&code[0], state) {
-                    return Value::Long(x as i64);
-                }
-            }
-            External::ConvFloatFromInt => {
-                if let Value::Int(x) = self.calc(&code[0], state) {
-                    return Value::Float(x as f64);
-                }
-            }
-            External::ConvFloatFromLong => {
-                if let Value::Long(x) = self.calc(&code[0], state) {
-                    return Value::Float(x as f64);
-                }
-            }
-            External::ConvFloatFromSingle => {
-                if let Value::Single(x) = self.calc(&code[0], state) {
-                    return Value::Float(x as f64);
-                }
-            }
-            External::ConvSingleFromInt => {
-                if let Value::Int(x) = self.calc(&code[0], state) {
-                    return Value::Single(x as f32);
-                }
-            }
-            External::ConvBoolFromInt => {
-                return Value::Int(if let Value::Int(_x) = self.calc(&code[0], state) {
-                    1
-                } else {
-                    0
-                })
-            }
-            External::ConvBoolFromLong => {
-                return Value::Int(if let Value::Long(_x) = self.calc(&code[0], state) {
-                    1
-                } else {
-                    0
-                })
-            }
-            External::ConvBoolFromFloat => {
-                return Value::Int(if let Value::Float(x) = self.calc(&code[0], state) {
-                    if x.is_nan() {
-                        0
-                    } else {
-                        1
-                    }
-                } else {
-                    0
-                })
-            }
-            External::ConvBoolFromSingle => {
-                return Value::Int(if let Value::Single(x) = self.calc(&code[0], state) {
-                    if x.is_nan() {
-                        0
-                    } else {
-                        1
-                    }
-                } else {
-                    0
-                })
-            }
-            External::ConvBoolFromRef => {
-                return Value::Int(
-                    if let Value::Reference(_, _, _) = self.calc(&code[0], state) {
-                        1
-                    } else {
-                        0
-                    },
-                )
-            }
-            External::ConvBoolFromEnum => {
-                return Value::Int(if let Value::Int(_x) = self.calc(&code[0], state) {
-                    1
-                } else {
-                    0
-                })
-            }
-            External::ConvBoolFromText => {
-                return Value::Int(if let Value::Text(_x) = self.calc(&code[0], state) {
-                    1
-                } else {
-                    0
-                })
-            }
-            External::ConvIntFromNull => return Value::Null,
-            External::ConvLongFromNull => return Value::Null,
-            External::ConvFloatFromNull => return Value::Null,
-            External::ConvSingleFromNull => return Value::Null,
-            External::ConvRefFromNull => return Value::Null,
-            External::ConvEnumFromNull => return Value::Null,
-            External::ConvTextFromNull => return Value::Null,
-            External::AddInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(x + y);
-                }
-            }
-            External::MinSingleInt => {
-                if let Value::Int(x) = self.calc(&code[0], state) {
-                    return Value::Int(-x);
-                }
-            }
-            External::MinInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(x - y);
-                }
-            }
-            External::MulInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(x * y);
-                }
-            }
-            External::DivInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    if y != 0 {
-                        return Value::Int(x / y);
-                    }
-                }
-            }
-            External::RemInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    if y != 0 {
-                        return Value::Int(x % y);
-                    }
-                }
-            }
-            External::AddLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Long(x + y);
-                }
-            }
-            External::MinSingleLong => {
-                if let Value::Long(x) = self.calc(&code[0], state) {
-                    return Value::Long(-x);
-                }
-            }
-            External::MinLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Long(x - y);
-                }
-            }
-            External::MulLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Long(x * y);
-                }
-            }
-            External::DivLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    if y != 0 {
-                        return Value::Long(x / y);
-                    }
-                }
-            }
-            External::RemLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    if y != 0 {
-                        return Value::Long(x % y);
-                    }
-                }
-            }
-            External::AddFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Float(x + y);
-                }
-            }
-            External::MinSingleFloat => {
-                if let Value::Float(x) = self.calc(&code[0], state) {
-                    return Value::Float(-x);
-                }
-            }
-            External::MinFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Float(x - y);
-                }
-            }
-            External::MulFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Float(x * y);
-                }
-            }
-            External::DivFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    if y != 0.0 {
-                        return Value::Float(x / y);
-                    }
-                }
-            }
-            External::RemFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    if y != 0.0 {
-                        return Value::Float(x % y);
-                    }
-                }
-            }
-            External::AddSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Single(x + y);
-                }
-            }
-            External::AddText => {
-                if let (Value::Text(x), Value::Text(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Text(x + &y);
-                }
-            }
-            External::MinSingleSingle => {
-                if let Value::Single(x) = self.calc(&code[0], state) {
-                    return Value::Single(-x);
-                }
-            }
-            External::MinSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Single(x - y);
-                }
-            }
-            External::MulSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Single(x * y);
-                }
-            }
-            External::DivSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    if y != 0.0 {
-                        return Value::Single(x / y);
-                    }
-                }
-            }
-            External::RemSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    if y != 0.0 {
-                        return Value::Single(x % y);
-                    }
-                }
-            }
-            External::And => {
-                if let Value::Int(x) = self.calc(&code[0], state) {
-                    return if x == 1 {
-                        self.calc(&code[1], state)
-                    } else {
-                        Value::Int(0)
-                    };
-                }
-            }
-            External::Or => {
-                if let Value::Int(x) = self.calc(&code[0], state) {
-                    return if x == 0 {
-                        self.calc(&code[1], state)
-                    } else {
-                        Value::Int(1)
-                    };
-                }
-            }
-            External::EqInt => {
-                return Value::Int(
-                    if self.calc(&code[0], state) == self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::NeInt => {
-                return Value::Int(
-                    if self.calc(&code[0], state) != self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::LtInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x < y { 1 } else { 0 });
-                }
-            }
-            External::LeInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x <= y { 1 } else { 0 });
-                }
-            }
-            External::GtInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x > y { 1 } else { 0 });
-                }
-            }
-            External::GeInt => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x >= y { 1 } else { 0 });
-                }
-            }
-            External::EqLong => {
-                return Value::Int(
-                    if self.calc(&code[0], state) == self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::NeLong => {
-                return Value::Int(
-                    if self.calc(&code[0], state) != self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::LtLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x < y { 1 } else { 0 });
-                }
-            }
-            External::LeLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x <= y { 1 } else { 0 });
-                }
-            }
-            External::GtLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x > y { 1 } else { 0 });
-                }
-            }
-            External::GeLong => {
-                if let (Value::Long(x), Value::Long(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x >= y { 1 } else { 0 });
-                }
-            }
-            External::EqFloat => {
-                return Value::Int(
-                    if self.calc(&code[0], state) == self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::NeFloat => {
-                return Value::Int(
-                    if self.calc(&code[0], state) != self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::LtFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x < y { 1 } else { 0 });
-                }
-            }
-            External::LeFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x <= y { 1 } else { 0 });
-                }
-            }
-            External::GtFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x > y { 1 } else { 0 });
-                }
-            }
-            External::GeFloat => {
-                if let (Value::Float(x), Value::Float(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x >= y { 1 } else { 0 });
-                }
-            }
-            External::EqSingle => {
-                return Value::Int(
-                    if self.calc(&code[0], state) == self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::NeSingle => {
-                return Value::Int(
-                    if self.calc(&code[0], state) != self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::LtSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x < y { 1 } else { 0 });
-                }
-            }
-            External::LeSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x <= y { 1 } else { 0 });
-                }
-            }
-            External::GtSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x > y { 1 } else { 0 });
-                }
-            }
-            External::GeSingle => {
-                if let (Value::Single(x), Value::Single(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x >= y { 1 } else { 0 });
-                }
-            }
-            External::EqBool => {
-                return Value::Int(
-                    if self.calc(&code[0], state) == self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::NeBool => {
-                return Value::Int(
-                    if self.calc(&code[0], state) != self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::EqRef => {
-                return Value::Int(
-                    if self.calc(&code[0], state) == self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::NeRef => {
-                return Value::Int(
-                    if self.calc(&code[0], state) != self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::EqEnum => {
-                return Value::Int(
-                    if self.calc(&code[0], state) == self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::NeEnum => {
-                return Value::Int(
-                    if self.calc(&code[0], state) != self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::GtEnum => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x > y { 1 } else { 0 });
-                }
-            }
-            External::GeEnum => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x >= y { 1 } else { 0 });
-                }
-            }
-            External::LtEnum => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x < y { 1 } else { 0 });
-                }
-            }
-            External::LeEnum => {
-                if let (Value::Int(x), Value::Int(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x <= y { 1 } else { 0 });
-                }
-            }
-            External::EqText => {
-                return Value::Int(
-                    if self.calc(&code[0], state) == self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::NeText => {
-                return Value::Int(
-                    if self.calc(&code[0], state) != self.calc(&code[1], state) {
-                        1
-                    } else {
-                        0
-                    },
-                );
-            }
-            External::LtText => {
-                if let (Value::Text(x), Value::Text(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x < y { 1 } else { 0 });
-                }
-            }
-            External::LeText => {
-                if let (Value::Text(x), Value::Text(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x <= y { 1 } else { 0 });
-                }
-            }
-            External::GtText => {
-                if let (Value::Text(x), Value::Text(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x > y { 1 } else { 0 });
-                }
-            }
-            External::GeText => {
-                if let (Value::Text(x), Value::Text(y)) =
-                    (self.calc(&code[0], state), self.calc(&code[1], state))
-                {
-                    return Value::Int(if x >= y { 1 } else { 0 });
-                }
-            }
-            External::ClearText => {}
-            External::ClearVector => {
-                if let Value::Reference(db, v_nr, pos) = self.calc(&code[0], state) {
-                    let records = &mut state.databases[db as usize].records;
-                    op_clear_vector(records, v_nr, pos as isize);
-                }
-            }
-            External::LengthVector => {
-                if let Value::Reference(db, v_nr, pos) = self.calc(&code[0], state) {
-                    let records = &mut state.databases[db as usize].records;
-                    return Value::Int(op_length_vector(records, v_nr, pos as isize));
-                }
-            }
-            External::FinishSorted => {}
-            External::LengthText => {
-                if let Value::Text(x) = self.calc(&code[0], state) {
-                    return Value::Int(x.len() as i32);
-                }
-            }
-            External::FormatText => {
-                if let (Value::Text(val), Value::Int(width), Value::Int(dir), Value::Int(token)) = (
-                    self.calc(&code[0], state),
-                    self.calc(&code[1], state),
-                    self.calc(&code[2], state),
-                    self.calc(&code[3], state),
-                ) {
-                    return Value::Text(format::format_text(
-                        &val,
-                        width as u8,
-                        dir as i8,
-                        token as u8 as char,
-                    ));
-                }
-            }
-            External::FormatInt => {
-                if let (
-                    Value::Int(val),
-                    Value::Int(radix),
-                    Value::Int(width),
-                    Value::Int(token),
-                    Value::Int(plus),
-                    Value::Int(note),
-                ) = (
-                    self.calc(&code[0], state),
-                    self.calc(&code[1], state),
-                    self.calc(&code[2], state),
-                    self.calc(&code[3], state),
-                    self.calc(&code[4], state),
-                    self.calc(&code[5], state),
-                ) {
-                    return Value::Text(format::format_int(
-                        val,
-                        radix as u8,
-                        width as u8,
-                        token as u8 as char,
-                        plus == 1,
-                        note == 1,
-                    ));
-                }
-            }
-            External::FormatLong => {
-                if let (
-                    Value::Long(val),
-                    Value::Int(radix),
-                    Value::Int(width),
-                    Value::Int(token),
-                    Value::Int(plus),
-                    Value::Int(note),
-                ) = (
-                    self.calc(&code[0], state),
-                    self.calc(&code[1], state),
-                    self.calc(&code[2], state),
-                    self.calc(&code[3], state),
-                    self.calc(&code[4], state),
-                    self.calc(&code[5], state),
-                ) {
-                    return Value::Text(format::format_long(
-                        val,
-                        radix as u8,
-                        width as u8,
-                        token as u8 as char,
-                        plus == 1,
-                        note == 1,
-                    ));
-                }
-            }
-            External::FormatFloat => {
-                if let (Value::Float(val), Value::Int(width), Value::Int(precision)) = (
-                    self.calc(&code[0], state),
-                    self.calc(&code[1], state),
-                    self.calc(&code[2], state),
-                ) {
-                    return Value::Text(format::format_float(val, width as u8, precision as u8));
-                }
-            }
-            External::FormatSingle => {
-                if let (Value::Single(val), Value::Int(width), Value::Int(precision)) = (
-                    self.calc(&code[0], state),
-                    self.calc(&code[1], state),
-                    self.calc(&code[2], state),
-                ) {
-                    return Value::Text(format::format_single(val, width as u8, precision as u8));
-                }
-            }
+fn int_database(_i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(size) = &code[0] {
+        let mut records = Store::new(50);
+        let p = records.claim(*size as u32);
+        assert_eq!(p, PRIMARY);
+        let db = state.databases.len() as u16;
+        state.databases.push(DataStore {
+            records,
+            text: Store::new(50),
+        });
+        return Value::Reference(db, PRIMARY, 0);
+    }
+    Value::Null
+}
+
+fn int_append(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, _rec, _add), Value::Int(size)) =
+        (i.calc(&code[0], state), &code[1])
+    {
+        return Value::Reference(
+            db,
+            state.databases[db as usize].records.claim(*size as u32),
+            0,
+        );
+    }
+    Value::Null
+}
+
+fn int_get(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, add), Value::Int(pos)) = (i.calc(&code[0], state), &code[1]) {
+        return Value::Reference(db, rec, add + *pos as u32);
+    }
+    Value::Null
+}
+
+fn int_abs_integer(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(x) = i.calc(&code[0], state) {
+        return Value::Int(x.abs());
+    }
+    Value::Null
+}
+
+fn int_abs_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Long(x) = i.calc(&code[0], state) {
+        return Value::Long(x.abs());
+    }
+    Value::Null
+}
+
+fn int_abs_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Float(x) = i.calc(&code[0], state) {
+        return Value::Float(x.abs());
+    }
+    Value::Null
+}
+
+fn int_abs_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Single(x) = i.calc(&code[0], state) {
+        return Value::Single(x.abs());
+    }
+    Value::Null
+}
+
+fn int_not(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(x) = i.calc(&code[0], state) {
+        return Value::Int(1 - x);
+    }
+    Value::Null
+}
+
+fn int_cast_single_from_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Float(x) = i.calc(&code[0], state) {
+        return Value::Single(x as f32);
+    }
+    Value::Null
+}
+
+fn int_cast_int_from_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Float(x) = i.calc(&code[0], state) {
+        return Value::Int(x as i32);
+    }
+    Value::Null
+}
+
+fn int_cast_long_from_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Float(x) = i.calc(&code[0], state) {
+        return Value::Long(x as i64);
+    }
+    Value::Null
+}
+
+fn int_cast_int_from_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Single(x) = i.calc(&code[0], state) {
+        return Value::Int(x as i32);
+    }
+    Value::Null
+}
+
+fn int_cast_long_from_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Single(x) = i.calc(&code[0], state) {
+        return Value::Long(x as i64);
+    }
+    Value::Null
+}
+
+fn int_cast_int_from_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Long(x) = i.calc(&code[0], state) {
+        return Value::Int(x as i32);
+    }
+    Value::Null
+}
+
+fn int_conv_long_from_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(x) = i.calc(&code[0], state) {
+        return Value::Long(x as i64);
+    }
+    Value::Null
+}
+
+fn int_conv_float_from_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(x) = i.calc(&code[0], state) {
+        return Value::Float(x as f64);
+    }
+    Value::Null
+}
+
+fn int_conv_float_from_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Long(x) = i.calc(&code[0], state) {
+        return Value::Float(x as f64);
+    }
+    Value::Null
+}
+
+fn int_conv_float_from_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Single(x) = i.calc(&code[0], state) {
+        return Value::Float(x as f64);
+    }
+    Value::Null
+}
+
+fn int_conv_single_from_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(x) = i.calc(&code[0], state) {
+        return Value::Single(x as f32);
+    }
+    Value::Null
+}
+
+fn int_conv_bool_from_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if let Value::Int(_x) = i.calc(&code[0], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_conv_bool_from_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if let Value::Long(_x) = i.calc(&code[0], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_conv_bool_from_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if let Value::Long(_x) = i.calc(&code[0], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_conv_bool_from_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if let Value::Single(x) = i.calc(&code[0], state) {
+        if x.is_nan() {
+            0
+        } else {
+            1
+        }
+    } else {
+        0
+    })
+}
+
+fn int_conv_bool_from_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if let Value::Reference(_, _, _) = i.calc(&code[0], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_conv_bool_from_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if let Value::Int(_x) = i.calc(&code[0], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_conv_bool_from_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if let Value::Text(_x) = i.calc(&code[0], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_conv_int_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    Value::Null
+}
+
+fn int_conv_long_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    Value::Null
+}
+
+fn int_conv_float_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    Value::Null
+}
+
+fn int_conv_single_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    Value::Null
+}
+
+fn int_conv_text_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    Value::Null
+}
+
+fn int_conv_ref_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    Value::Null
+}
+
+fn int_conv_enum_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    Value::Null
+}
+
+fn int_add_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(x + y);
+    }
+    Value::Null
+}
+
+fn int_min_single_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(x) = i.calc(&code[0], state) {
+        return Value::Int(-x);
+    }
+    Value::Null
+}
+
+fn int_min_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(x - y);
+    }
+    Value::Null
+}
+
+fn int_mul_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(x * y);
+    }
+    Value::Null
+}
+
+fn int_div_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        if y != 0 {
+            return Value::Int(x / y);
+        }
+    }
+    Value::Null
+}
+
+fn int_rem_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        if y != 0 {
+            return Value::Int(x % y);
+        }
+    }
+    Value::Null
+}
+
+fn int_add_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Long(x + y);
+    }
+    Value::Null
+}
+
+fn int_min_single_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Long(x) = i.calc(&code[0], state) {
+        return Value::Long(-x);
+    }
+    Value::Null
+}
+
+fn int_min_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Long(x - y);
+    }
+    Value::Null
+}
+
+fn int_mul_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Long(x * y);
+    }
+    Value::Null
+}
+
+fn int_div_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        if y != 0 {
+            return Value::Long(x / y);
+        }
+    }
+    Value::Null
+}
+
+fn int_rem_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        if y != 0 {
+            return Value::Long(x % y);
+        }
+    }
+    Value::Null
+}
+
+fn int_add_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Float(x + y);
+    }
+    Value::Null
+}
+
+fn int_min_single_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Float(x) = i.calc(&code[0], state) {
+        return Value::Float(-x);
+    }
+    Value::Null
+}
+
+fn int_min_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Float(x - y);
+    }
+    Value::Null
+}
+
+fn int_mul_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Float(x * y);
+    }
+    Value::Null
+}
+
+fn int_div_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        if y != 0.0 {
+            return Value::Float(x / y);
+        }
+    }
+    Value::Null
+}
+
+fn int_rem_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        if y != 0.0 {
+            return Value::Float(x % y);
+        }
+    }
+    Value::Null
+}
+
+fn int_add_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Single(x + y);
+    }
+    Value::Null
+}
+
+fn int_add_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Text(x + &y);
+    }
+    Value::Null
+}
+
+fn int_min_single_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Single(x) = i.calc(&code[0], state) {
+        return Value::Single(-x);
+    }
+    Value::Null
+}
+
+fn int_min_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Single(x - y);
+    }
+    Value::Null
+}
+
+fn int_mul_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Single(x * y);
+    }
+    Value::Null
+}
+
+fn int_div_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        if y != 0.0 {
+            return Value::Single(x / y);
+        }
+    }
+    Value::Null
+}
+
+fn int_rem_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        if y != 0.0 {
+            return Value::Single(x % y);
+        }
+    }
+    Value::Null
+}
+
+fn int_and(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(x) = i.calc(&code[0], state) {
+        return if x == 1 {
+            i.calc(&code[1], state)
+        } else {
+            Value::Int(0)
         };
+    }
+    Value::Null
+}
+
+fn int_or(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Int(x) = i.calc(&code[0], state) {
+        return if x == 0 {
+            i.calc(&code[1], state)
+        } else {
+            Value::Int(1)
+        };
+    }
+    Value::Null
+}
+
+fn int_eq_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) == i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_ne_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) != i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_lt_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x < y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_le_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x <= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_gt_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x > y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_ge_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x >= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_eq_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) == i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_ne_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) != i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_lt_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x < y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_le_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x <= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_gt_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x > y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_ge_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Long(x), Value::Long(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x >= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_eq_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) == i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_ne_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) != i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_lt_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x < y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_le_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x <= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_gt_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x > y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_ge_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(x), Value::Float(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x >= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_eq_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) == i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_ne_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) != i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_lt_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Int(if x < y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_le_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Int(if x <= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_gt_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Int(if x > y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_ge_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(x), Value::Single(y)) = (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Int(if x >= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_eq_bool(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) == i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_ne_bool(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) != i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_eq_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) == i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_ne_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) != i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_eq_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) == i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_ne_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) != i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_gt_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x > y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_ge_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x >= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_lt_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x < y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_le_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x <= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_eq_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) == i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_ne_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    Value::Int(if i.calc(&code[0], state) != i.calc(&code[1], state) {
+        1
+    } else {
+        0
+    })
+}
+
+fn int_lt_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x < y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_le_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x <= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_gt_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x > y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_ge_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Int(if x >= y { 1 } else { 0 });
+    }
+    Value::Null
+}
+
+fn int_clear_text(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    // TODO clear the specific variable
+    Value::Null
+}
+
+fn int_clear_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Reference(db, v_nr, pos) = i.calc(&code[0], state) {
+        let records = &mut state.databases[db as usize].records;
+        op_clear_vector(records, v_nr, pos as isize);
+    }
+    Value::Null
+}
+
+fn int_length_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Reference(db, v_nr, pos) = i.calc(&code[0], state) {
+        let records = &mut state.databases[db as usize].records;
+        return Value::Int(op_length_vector(records, v_nr, pos as isize));
+    }
+    Value::Null
+}
+
+fn int_finish_sorted(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+    // TODO implement me, move last element to the correct spot
+    Value::Null
+}
+
+fn int_length_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Text(x) = i.calc(&code[0], state) {
+        return Value::Int(x.len() as i32);
+    }
+    Value::Null
+}
+
+fn int_format_bool(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Int(val), Value::Int(width), Value::Int(dir), Value::Int(token)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+        i.calc(&code[3], state),
+    ) {
+        return Value::Text(format::format_text_str(
+            if val == 0 { "true" } else { "false" },
+            width as u8,
+            dir as i8,
+            token as u8 as char,
+        ));
+    }
+    Value::Null
+}
+
+fn int_format_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Text(val), Value::Int(width), Value::Int(dir), Value::Int(token)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+        i.calc(&code[3], state),
+    ) {
+        return Value::Text(format::format_text_str(
+            &val,
+            width as u8,
+            dir as i8,
+            token as u8 as char,
+        ));
+    }
+    Value::Null
+}
+
+fn int_format_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (
+        Value::Int(val),
+        Value::Int(radix),
+        Value::Int(width),
+        Value::Int(token),
+        Value::Int(plus),
+        Value::Int(note),
+    ) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+        i.calc(&code[3], state),
+        i.calc(&code[4], state),
+        i.calc(&code[5], state),
+    ) {
+        return Value::Text(format::format_int_str(
+            val,
+            radix as u8,
+            width as u8,
+            token as u8 as char,
+            plus == 1,
+            note == 1,
+        ));
+    }
+    Value::Null
+}
+
+fn int_format_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (
+        Value::Long(val),
+        Value::Int(radix),
+        Value::Int(width),
+        Value::Int(token),
+        Value::Int(plus),
+        Value::Int(note),
+    ) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+        i.calc(&code[3], state),
+        i.calc(&code[4], state),
+        i.calc(&code[5], state),
+    ) {
+        return Value::Text(format::format_long_str(
+            val,
+            radix as u8,
+            width as u8,
+            token as u8 as char,
+            plus == 1,
+            note == 1,
+        ));
+    }
+    Value::Null
+}
+
+fn int_format_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Float(val), Value::Int(width), Value::Int(precision)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        return Value::Text(format::format_float_str(val, width as u8, precision as u8));
+    }
+    Value::Null
+}
+
+fn int_format_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Single(val), Value::Int(width), Value::Int(precision)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        return Value::Text(format::format_single_str(val, width as u8, precision as u8));
+    }
+    Value::Null
+}
+
+fn int_get_byte(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Int(min)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        return Value::Int(state.databases[db as usize].records.get_byte(
+            rec,
+            pos as isize + fld as isize,
+            min,
+        ));
+    }
+    Value::Null
+}
+
+fn int_get_short(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Int(min)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        return Value::Int(state.databases[db as usize].records.get_short(
+            rec,
+            pos as isize + fld as isize,
+            min,
+        ));
+    }
+    Value::Null
+}
+
+fn int_get_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
+        (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Int(
+            state.databases[db as usize]
+                .records
+                .get_int(rec, pos as isize + fld as isize),
+        );
+    }
+    Value::Null
+}
+
+fn int_get_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
+        (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        let dbs = &state.databases[db as usize];
+        return Value::Text(String::from(
+            dbs.text
+                .get_str(dbs.records.get_int(rec, pos as isize + fld as isize) as u32),
+        ));
+    }
+    Value::Null
+}
+
+fn int_get_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
+        (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Long(
+            state.databases[db as usize]
+                .records
+                .get_long(rec, pos as isize + fld as isize),
+        );
+    }
+    Value::Null
+}
+
+fn int_get_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
+        (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Single(
+            state.databases[db as usize]
+                .records
+                .get_single(rec, pos as isize + fld as isize),
+        );
+    }
+    Value::Null
+}
+
+fn int_get_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
+        (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Float(
+            state.databases[db as usize]
+                .records
+                .get_float(rec, pos as isize + fld as isize),
+        );
+    }
+    Value::Null
+}
+
+fn int_set_byte(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Int(min), Value::Int(val)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+        i.calc(&code[3], state),
+    ) {
+        state.databases[db as usize]
+            .records
+            .set_byte(rec, pos as isize + fld as isize, min, val);
+    }
+    Value::Null
+}
+
+fn int_set_short(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Int(min), Value::Int(val)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+        i.calc(&code[3], state),
+    ) {
+        state.databases[db as usize]
+            .records
+            .set_short(rec, pos as isize + fld as isize, min, val);
+    }
+    Value::Null
+}
+
+fn int_set_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Int(val)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        state.databases[db as usize]
+            .records
+            .set_int(rec, pos as isize + fld as isize, val);
+    }
+    Value::Null
+}
+
+fn int_get_reference(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
+        (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        return Value::Reference(
+            db,
+            state.databases[db as usize]
+                .records
+                .get_int(rec, pos as isize + fld as isize) as u32,
+            0,
+        );
+    }
+    Value::Null
+}
+
+fn int_set_reference(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Reference(_, val, _)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        state.databases[db as usize]
+            .records
+            .set_int(rec, pos as isize + fld as isize, val as i32);
+    }
+    Value::Null
+}
+
+fn int_set_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Text(val)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let dbs = &mut state.databases[db as usize];
+        let txt = dbs.text.set_str(&val);
+        dbs.records
+            .set_int(rec, pos as isize + fld as isize, txt as i32);
+    }
+    Value::Null
+}
+
+fn int_set_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Long(val)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        state.databases[db as usize]
+            .records
+            .set_long(rec, pos as isize + fld as isize, val);
+    }
+    Value::Null
+}
+
+fn int_set_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Single(val)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        state.databases[db as usize]
+            .records
+            .set_single(rec, pos as isize + fld as isize, val);
+    }
+    Value::Null
+}
+
+fn int_set_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Float(val)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        state.databases[db as usize]
+            .records
+            .set_float(rec, pos as isize + fld as isize, val);
+    }
+    Value::Null
+}
+
+fn int_append_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size)) = (i.calc(&code[0], state), &code[1])
+    {
+        let records = &mut state.databases[db as usize].records;
+        let (r, p) = op_append_vector(records, v_nr, pos as isize, *size as u32);
+        Value::Reference(db, r, p)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_remove_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) =
+        (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
+    {
+        let records = &mut state.databases[db as usize].records;
+        op_remove_vector(records, v_nr, pos as isize, *size as u32, index);
+    }
+    Value::Null
+}
+
+fn int_insert_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) =
+        (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
+    {
+        let records = &mut state.databases[db as usize].records;
+        let (r, p) = op_insert_vector(records, v_nr, pos as isize, *size as u32, index);
+        Value::Reference(db, r, p)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_get_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let records = &mut state.databases[db as usize].records;
+        let (r, p) = op_get_vector(records, v_nr, pos as isize, size as u32, index);
+        Value::Reference(db, r, p)
+    } else {
         Value::Null
     }
 }

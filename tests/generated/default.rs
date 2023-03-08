@@ -1,447 +1,364 @@
-{
-  let d = Definition::new("boolean");
-  d.add_attribute("abs", Type::fn boolean::abs mutable);
-  d.returned = Type::boolean;
-  d.size = 1;
-}
-{
-  let d = Definition::new("integer");
-  d.add_attribute("abs", Type::fn integer::abs mutable);
-  d.returned = Type::integer;
-  d.size = 4;
-}
-{
-  let d = Definition::new("long");
-  d.add_attribute("abs", Type::fn long::abs mutable);
-  d.returned = Type::long;
-  d.size = 8;
-}
-{
-  let d = Definition::new("single");
-  d.returned = Type::single;
-  d.size = 4;
-}
-{
-  let d = Definition::new("float");
-  d.add_attribute("abs", Type::fn float::abs mutable);
-  d.returned = Type::float;
-  d.size = 8;
-}
-{
-  let d = Definition::new("text");
-  d.add_attribute("len", Type::fn text::len mutable);
-  d.add_attribute("clear", Type::fn text::clear mutable);
-  d.returned = Type::text;
-  d.size = 4;
-}
-fn OpNot(v1: bool, ) Null
+fn OpNot(v1: bool, ) -> bool  {}
 
-fn OpAnd(v1: bool, v2: bool, ) Null
+fn OpAnd(v1: bool, v2: bool, ) -> bool  {}
 
-fn OpOr(v1: bool, v2: bool, ) Null
+fn OpOr(v1: bool, v2: bool, ) -> bool  {}
 
-fn OpFormatBool(val: bool, radix: i32, width: i32, token: i32, plus: bool, note: bool, ) Null
+fn OpFormatBool(val: bool, radix: i32, width: i32, dir: i32, token: i32, ) -> String  {}
 
-fn OpConvIntFromNull() Null
+fn OpConvIntFromNull() -> i32  {}
 
-fn OpAbsInteger(v1: i32, ) Null
+fn OpAbsInteger(v1: i32, ) -> i32  {}
 
-fn integer::abs(both: i32, ) {
+fn integer::abs(both: i32, ) -> i32 {
   OpAbsInteger(var_0);
 }
 
-{
-  let d = Definition::new("abs");
-  d.add_attribute("integer", Type::fn integer::abs mutable);
-  d.add_attribute("long", Type::fn long::abs mutable);
-  d.add_attribute("boolean", Type::fn boolean::abs mutable);
-  d.add_attribute("float", Type::fn float::abs mutable);
-  d.size = 0;
-}
-fn OpMinSingleInt(v1: i32, ) Null
+fn OpMinSingleInt(v1: i32, ) -> i32  {}
 
-fn OpConvLongFromInt(v1: i32, ) Null
+fn OpConvLongFromInt(v1: i32, ) -> i64  {}
 
-fn OpConvFloatFromInt(v1: i32, ) Null
+fn OpConvFloatFromInt(v1: i32, ) -> f64  {}
 
-fn OpConvSingleFromInt(v1: i32, ) Null
+fn OpConvSingleFromInt(v1: i32, ) -> f32  {}
 
-fn OpConvBoolFromInt(v1: i32, ) Null
+fn OpConvBoolFromInt(v1: i32, ) -> bool  {}
 
-fn OpAddInt(v1: i32, v2: i32, ) Null
+fn OpAddInt(v1: i32, v2: i32, ) -> i32  {}
 
-fn OpMinInt(v1: i32, v2: i32, ) Null
+fn OpMinInt(v1: i32, v2: i32, ) -> i32  {}
 
-fn OpMulInt(v1: i32, v2: i32, ) Null
+fn OpMulInt(v1: i32, v2: i32, ) -> i32  {}
 
-fn OpDivInt(v1: i32, v2: i32, ) Null
+fn OpDivInt(v1: i32, v2: i32, ) -> i32  {}
 
-fn OpRemInt(v1: i32, v2: i32, ) Null
+fn OpRemInt(v1: i32, v2: i32, ) -> i32  {}
 
-fn OpEqInt(v1: i32, v2: i32, ) Null
+fn OpEqInt(v1: i32, v2: i32, ) -> bool  {}
 
-fn OpNeInt(v1: i32, v2: i32, ) Null
+fn OpNeInt(v1: i32, v2: i32, ) -> bool  {}
 
-fn OpLtInt(v1: i32, v2: i32, ) Null
+fn OpLtInt(v1: i32, v2: i32, ) -> bool  {}
 
-fn OpLeInt(v1: i32, v2: i32, ) Null
+fn OpLeInt(v1: i32, v2: i32, ) -> bool  {}
 
-fn OpGtInt(v1: i32, v2: i32, ) Null
+fn OpGtInt(v1: i32, v2: i32, ) -> bool  {}
 
-fn OpGeInt(v1: i32, v2: i32, ) Null
+fn OpGeInt(v1: i32, v2: i32, ) -> bool  {}
 
-fn OpFormatInt(val: i32, radix: i32, width: i32, token: i32, plus: bool, note: bool, ) Null
+fn OpFormatInt(v1: String, val: i32, radix: i32, width: i32, token: i32, plus: bool, note: bool, )  {}
 
-fn OpConvLongFromNull() Null
+fn OpConvLongFromNull() -> i64  {}
 
-fn OpAbsLong(v1: i64, ) Null
+fn OpAbsLong(v1: i64, ) -> i64  {}
 
-fn long::abs(both: i64, ) {
+fn long::abs(both: i64, ) -> i64 {
   OpAbsLong(var_0);
 }
 
-fn OpMinSingleLong(v1: i64, ) Null
+fn OpMinSingleLong(v1: i64, ) -> i64  {}
 
-fn OpCastIntFromLong(v1: i64, ) Null
+fn OpCastIntFromLong(v1: i64, ) -> i32  {}
 
-fn OpConvFloatFromLong(v1: i64, ) Null
+fn OpConvFloatFromLong(v1: i64, ) -> f64  {}
 
-fn OpConvBoolFromLong(v1: i64, ) Null
+fn OpConvBoolFromLong(v1: i64, ) -> bool  {}
 
-fn OpAddLong(v1: i64, v2: i64, ) Null
+fn OpAddLong(v1: i64, v2: i64, ) -> i64  {}
 
-fn OpMinLong(v1: i64, v2: i64, ) Null
+fn OpMinLong(v1: i64, v2: i64, ) -> i64  {}
 
-fn OpMulLong(v1: i64, v2: i64, ) Null
+fn OpMulLong(v1: i64, v2: i64, ) -> i64  {}
 
-fn OpDivLong(v1: i64, v2: i64, ) Null
+fn OpDivLong(v1: i64, v2: i64, ) -> i64  {}
 
-fn OpRemLong(v1: i64, v2: i64, ) Null
+fn OpRemLong(v1: i64, v2: i64, ) -> i64  {}
 
-fn OpEqLong(v1: i64, v2: i64, ) Null
+fn OpEqLong(v1: i64, v2: i64, ) -> bool  {}
 
-fn OpNeLong(v1: i64, v2: i64, ) Null
+fn OpNeLong(v1: i64, v2: i64, ) -> bool  {}
 
-fn OpLtLong(v1: i64, v2: i64, ) Null
+fn OpLtLong(v1: i64, v2: i64, ) -> bool  {}
 
-fn OpLeLong(v1: i64, v2: i64, ) Null
+fn OpLeLong(v1: i64, v2: i64, ) -> bool  {}
 
-fn OpGtLong(v1: i64, v2: i64, ) Null
+fn OpGtLong(v1: i64, v2: i64, ) -> bool  {}
 
-fn OpGeLong(v1: i64, v2: i64, ) Null
+fn OpGeLong(v1: i64, v2: i64, ) -> bool  {}
 
-fn OpFormatLong(val: i64, radix: i32, width: i32, token: i32, plus: bool, note: bool, ) Null
+fn OpFormatLong(v1: String, val: i64, radix: i32, width: i32, token: i32, plus: bool, note: bool, )  {}
 
-fn OpConvSingleFromNull() Null
+fn OpConvSingleFromNull() -> f32  {}
 
-fn OpAbsSingle(v1: f32, ) Null
+fn OpAbsSingle(v1: f32, ) -> f32  {}
 
-fn boolean::abs(both: f32, ) {
+fn single::abs(both: f32, ) -> f32 {
   OpAbsSingle(var_0);
 }
 
-fn OpMinSingleSingle(v1: f32, ) Null
+fn OpMinSingleSingle(v1: f32, ) -> f32  {}
 
-fn OpCastIntFromSingle(v1: f32, ) Null
+fn OpCastIntFromSingle(v1: f32, ) -> i32  {}
 
-fn OpCastLongFromSingle(v1: f32, ) Null
+fn OpCastLongFromSingle(v1: f32, ) -> i64  {}
 
-fn OpConvFloatFromSingle(v1: f32, ) Null
+fn OpConvFloatFromSingle(v1: f32, ) -> f64  {}
 
-fn OpConvBoolFromSingle(v1: f32, ) Null
+fn OpConvBoolFromSingle(v1: f32, ) -> bool  {}
 
-fn OpAddSingle(v1: f32, v2: f32, ) Null
+fn OpAddSingle(v1: f32, v2: f32, ) -> f32  {}
 
-fn OpMinSingle(v1: f32, v2: f32, ) Null
+fn OpMinSingle(v1: f32, v2: f32, ) -> f32  {}
 
-fn OpMulSingle(v1: f32, v2: f32, ) Null
+fn OpMulSingle(v1: f32, v2: f32, ) -> f32  {}
 
-fn OpDivSingle(v1: f32, v2: f32, ) Null
+fn OpDivSingle(v1: f32, v2: f32, ) -> f32  {}
 
-fn OpRemSingle(v1: f32, v2: f32, ) Null
+fn OpRemSingle(v1: f32, v2: f32, ) -> f32  {}
 
-fn OpEqSingle(v1: f32, v2: f32, ) Null
+fn OpEqSingle(v1: f32, v2: f32, ) -> bool  {}
 
-fn OpNeSingle(v1: f32, v2: f32, ) Null
+fn OpNeSingle(v1: f32, v2: f32, ) -> bool  {}
 
-fn OpLtSingle(v1: f32, v2: f32, ) Null
+fn OpLtSingle(v1: f32, v2: f32, ) -> bool  {}
 
-fn OpLeSingle(v1: f32, v2: f32, ) Null
+fn OpLeSingle(v1: f32, v2: f32, ) -> bool  {}
 
-fn OpGtSingle(v1: f32, v2: f32, ) Null
+fn OpGtSingle(v1: f32, v2: f32, ) -> bool  {}
 
-fn OpGeSingle(v1: f32, v2: f32, ) Null
+fn OpGeSingle(v1: f32, v2: f32, ) -> bool  {}
 
-fn OpFormatSingle(val: f32, width: i32, precision: i32, ) Null
+fn OpFormatSingle(v1: String, val: f32, width: i32, precision: i32, )  {}
 
-fn OpConvFloatFromNull() Null
+fn OpConvFloatFromNull() -> f64  {}
 
-fn OpAbsFloat(v1: f64, ) Null
+fn OpAbsFloat(v1: f64, ) -> f64  {}
 
-fn float::abs(both: f64, ) {
+fn float::abs(both: f64, ) -> f64 {
   OpAbsFloat(var_0);
 }
 
-fn OpMinSingleFloat(v1: f64, ) Null
+fn OpMinSingleFloat(v1: f64, ) -> f64  {}
 
-fn OpCastSingleFromFloat(v1: f64, ) Null
+fn OpCastSingleFromFloat(v1: f64, ) -> f32  {}
 
-fn OpCastIntFromFloat(v1: f64, ) Null
+fn OpCastIntFromFloat(v1: f64, ) -> i32  {}
 
-fn OpCastLongFromFloat(v1: f64, ) Null
+fn OpCastLongFromFloat(v1: f64, ) -> i64  {}
 
-fn OpConvBoolFromFloat(v1: f64, ) Null
+fn OpConvBoolFromFloat(v1: f64, ) -> bool  {}
 
-fn OpAddFloat(v1: f64, v2: f64, ) Null
+fn OpAddFloat(v1: f64, v2: f64, ) -> f64  {}
 
-fn OpMinFloat(v1: f64, v2: f64, ) Null
+fn OpMinFloat(v1: f64, v2: f64, ) -> f64  {}
 
-fn OpMulFloat(v1: f64, v2: f64, ) Null
+fn OpMulFloat(v1: f64, v2: f64, ) -> f64  {}
 
-fn OpDivFloat(v1: f64, v2: f64, ) Null
+fn OpDivFloat(v1: f64, v2: f64, ) -> f64  {}
 
-fn OpRemFloat(v1: f64, v2: f64, ) Null
+fn OpRemFloat(v1: f64, v2: f64, ) -> f64  {}
 
-fn OpEqFloat(v1: f64, v2: f64, ) Null
+fn OpEqFloat(v1: f64, v2: f64, ) -> bool  {}
 
-fn OpNeFloat(v1: f64, v2: f64, ) Null
+fn OpNeFloat(v1: f64, v2: f64, ) -> bool  {}
 
-fn OpLtFloat(v1: f64, v2: f64, ) Null
+fn OpLtFloat(v1: f64, v2: f64, ) -> bool  {}
 
-fn OpLeFloat(v1: f64, v2: f64, ) Null
+fn OpLeFloat(v1: f64, v2: f64, ) -> bool  {}
 
-fn OpGtFloat(v1: f64, v2: f64, ) Null
+fn OpGtFloat(v1: f64, v2: f64, ) -> bool  {}
 
-fn OpGeFloat(v1: f64, v2: f64, ) Null
+fn OpGeFloat(v1: f64, v2: f64, ) -> bool  {}
 
-fn OpFormatFloat(val: f64, width: i32, precision: i32, ) Null
+fn OpFormatFloat(v1: String, val: f64, width: i32, precision: i32, )  {}
 
-fn OpConvTextFromNull() Null
+fn OpConvTextFromNull() -> String  {}
 
-fn OpLengthText(v1: String, ) Null
+fn OpLengthText(v1: String, ) -> i32  {}
 
-fn text::len(both: String, ) {
+fn text::len(both: String, ) -> i32 {
   OpLengthText(var_0);
 }
 
-{
-  let d = Definition::new("len");
-  d.add_attribute("text", Type::fn text::len mutable);
-  d.add_attribute("vector", Type::fn vector::len mutable);
-  d.add_attribute("hash", Type::fn hash::len mutable);
-  d.add_attribute("index", Type::fn index::len mutable);
-  d.add_attribute("radix", Type::fn radix::len mutable);
-  d.size = 0;
-}
-fn OpConvBoolFromText(v1: String, ) Null
+fn OpConvBoolFromText(v1: String, ) -> bool  {}
 
-fn OpAddText(v1: String, v2: String, ) Null
+fn OpAddText(v1: String, v2: String, )  {}
 
-fn OpClearText(v1: String, ) Null
+fn OpAddData(v1: String, pos: i32, length: i32, )  {}
+
+fn OpClearText(v1: String, )  {}
 
 fn text::clear(self: String, ) {
   OpClearText(var_0);
 }
 
-fn OpEqText(v1: String, v2: String, ) Null
+fn OpEqText(v1: String, v2: String, ) -> bool  {}
 
-fn OpNeText(v1: String, v2: String, ) Null
+fn OpNeText(v1: String, v2: String, ) -> bool  {}
 
-fn OpLtText(v1: String, v2: String, ) Null
+fn OpLtText(v1: String, v2: String, ) -> bool  {}
 
-fn OpLeText(v1: String, v2: String, ) Null
+fn OpLeText(v1: String, v2: String, ) -> bool  {}
 
-fn OpGtText(v1: String, v2: String, ) Null
+fn OpGtText(v1: String, v2: String, ) -> bool  {}
 
-fn OpGeText(v1: String, v2: String, ) Null
+fn OpGeText(v1: String, v2: String, ) -> bool  {}
 
-fn OpFormatText(val: String, width: i32, dir: i32, token: i32, ) Null
+fn OpEqData(v1: String, v2: i32, l2: i32, ) -> bool  {}
 
-{
-  let d = Definition::new("enumerate");
-  d.returned = Type::enumerate;
-  d.size = 1;
-}
-fn OpConvBoolFromEnum(v1: u8, ) Null
+fn OpNeData(v1: String, v2: i32, l2: i32, ) -> bool  {}
 
-fn OpConvEnumFromNull() Null
+fn OpLtData(v1: String, v2: i32, l2: i32, ) -> bool  {}
 
-fn OpEqEnum(v1: u8, v2: u8, ) Null
+fn OpLeData(v1: String, v2: i32, l2: i32, ) -> bool  {}
 
-fn OpNeEnum(v1: u8, v2: u8, ) Null
+fn OpGtData(v1: String, v2: i32, l2: i32, ) -> bool  {}
 
-fn OpLtEnum(v1: u8, v2: u8, ) Null
+fn OpGeData(v1: String, v2: i32, l2: i32, ) -> bool  {}
 
-fn OpLeEnum(v1: u8, v2: u8, ) Null
+fn OpFormatText(v1: String, val: String, width: i32, dir: i32, token: i32, )  {}
 
-fn OpGtEnum(v1: u8, v2: u8, ) Null
+fn OpConvBoolFromEnum(v1: u8, ) -> bool  {}
 
-fn OpGeEnum(v1: u8, v2: u8, ) Null
+fn OpConvEnumFromNull() -> u8  {}
 
-fn OpFormatEnum(val: u8, width: i32, ) Null
+fn OpEqEnum(v1: u8, v2: u8, ) -> bool  {}
 
-{
-  let d = Definition::new("reference");
-  d.add_attribute("size", Type::fn reference::size mutable);
-  d.add_attribute("align", Type::fn reference::align mutable);
-  d.add_attribute("remove", Type::fn reference::remove mutable);
-  d.returned = Type::reference;
-  d.size = 4;
-}
-fn OpDatabase(size: i32, ) Null
+fn OpNeEnum(v1: u8, v2: u8, ) -> bool  {}
 
-fn OpConvRefFromNull() Null
+fn OpLtEnum(v1: u8, v2: u8, ) -> bool  {}
 
-fn OpConvBoolFromRef(v1: (u32, u32), ) Null
+fn OpLeEnum(v1: u8, v2: u8, ) -> bool  {}
 
-fn OpLengthRef(v: (u32, u32), ) Null
+fn OpGtEnum(v1: u8, v2: u8, ) -> bool  {}
 
-fn reference::size(both: (u32, u32), ) {
-  OpLengthRef(var_0);
-}
+fn OpGeEnum(v1: u8, v2: u8, ) -> bool  {}
 
-{
-  let d = Definition::new("size");
-  d.add_attribute("reference", Type::fn reference::size mutable);
-  d.size = 0;
-}
-fn OpAlignRef(v: (u32, u32), ) Null
+fn OpFormatEnum(v1: String, val: u8, width: i32, )  {}
 
-fn reference::align(both: (u32, u32), ) {
-  OpAlignRef(var_0);
-}
+fn OpDatabase(size: i32, ) -> (u32, u32)  {}
 
-{
-  let d = Definition::new("align");
-  d.add_attribute("reference", Type::fn reference::align mutable);
-  d.size = 0;
-}
-fn OpEqRef(v1: (u32, u32), v2: (u32, u32), ) Null
+fn OpAppend(db: (u32, u32), size: i32, ) -> (u32, u32)  {}
 
-fn OpNeRef(v1: (u32, u32), v2: (u32, u32), ) Null
+fn OpGet(v1: (u32, u32), fld: i32, ) -> (u32, u32)  {}
 
-fn OpLtRef(v1: (u32, u32), v2: (u32, u32), ) Null
+fn OpConvRefFromNull() -> (u32, u32)  {}
 
-fn OpLeRef(v1: (u32, u32), v2: (u32, u32), ) Null
+fn OpConvBoolFromRef(v1: (u32, u32), ) -> bool  {}
 
-fn OpGtRef(v1: (u32, u32), v2: (u32, u32), ) Null
+fn OpEqRef(v1: (u32, u32), v2: (u32, u32), ) -> bool  {}
 
-fn OpGeRef(v1: (u32, u32), v2: (u32, u32), ) Null
+fn OpNeRef(v1: (u32, u32), v2: (u32, u32), ) -> bool  {}
 
-fn reference::remove(self: (u32, u32), ) Null
+fn OpLtRef(v1: (u32, u32), v2: (u32, u32), ) -> bool  {}
 
-fn OpFormatRef(val: (u32, u32), width: i32, ) Null
+fn OpLeRef(v1: (u32, u32), v2: (u32, u32), ) -> bool  {}
 
-{
-  let d = Definition::new("vector");
-  d.add_attribute("len", Type::fn vector::len mutable);
-  d.add_attribute("clear", Type::fn vector::clear mutable);
-  d.add_attribute("remove", Type::fn vector::remove mutable);
-  d.returned = Type::vector<unknown>;
-  d.size = 4;
-}
-fn OpLengthVector(r: (u32, u32), ) Null
+fn OpGtRef(v1: (u32, u32), v2: (u32, u32), ) -> bool  {}
 
-fn vector::len(both: (u32, u32), ) {
+fn OpGeRef(v1: (u32, u32), v2: (u32, u32), ) -> bool  {}
+
+fn reference::remove(self: (u32, u32), )  {}
+
+fn OpFormatRef(v1: String, val: (u32, u32), width: i32, )  {}
+
+fn OpGetInt(v1: (u32, u32), fld: i32, ) -> i32  {}
+
+fn OpGetLong(v1: (u32, u32), fld: i32, ) -> i64  {}
+
+fn OpGetSingle(v1: (u32, u32), fld: i32, ) -> f32  {}
+
+fn OpGetFloat(v1: (u32, u32), fld: i32, ) -> f64  {}
+
+fn OpGetByte(v1: (u32, u32), fld: i32, min: i32, ) -> i32  {}
+
+fn OpGetShort(v1: (u32, u32), fld: i32, min: i32, ) -> i32  {}
+
+fn OpGetText(v1: (u32, u32), fld: i32, ) -> String  {}
+
+fn OpSetInt(v1: (u32, u32), fld: i32, val: i32, )  {}
+
+fn OpSetLong(v1: (u32, u32), fld: i32, val: i64, )  {}
+
+fn OpSetSingle(v1: (u32, u32), fld: i32, val: f32, )  {}
+
+fn OpSetFloat(v1: (u32, u32), fld: i32, val: f64, )  {}
+
+fn OpSetByte(v1: (u32, u32), fld: i32, min: i32, val: i32, )  {}
+
+fn OpSetShort(v1: (u32, u32), fld: i32, min: i32, val: i32, )  {}
+
+fn OpSetText(v1: (u32, u32), fld: i32, val: String, )  {}
+
+fn OpGetReference(v1: (u32, u32), fld: i32, ) -> (u32, u32)  {}
+
+fn OpSetReference(v1: (u32, u32), fld: i32, val: (u32, u32), )  {}
+
+fn OpLengthVector(r: (u32, u32), ) -> i32  {}
+
+fn vector::len(both: (u32, u32), ) -> i32 {
   OpLengthVector(var_0);
 }
 
-fn OpClearVector(r: (u32, u32), ) Null
+fn OpClearVector(r: (u32, u32), )  {}
 
 fn vector::clear(self: (u32, u32), ) {
   OpClearVector(var_0);
 }
 
-fn OpFinishSorted(r: (u32, u32), ) Null
+fn OpFinishSorted(r: (u32, u32), )  {}
 
-fn OpInsertVector(r: (u32, u32), content: T, ) Null
+fn OpGetVector(r: (u32, u32), size: i32, index: i32, ) -> T  {}
 
-fn OpRemoveVector(r: (u32, u32), index: i32, ) Null
+fn OpRemoveVector(r: (u32, u32), size: i32, index: i32, ) -> bool  {}
 
-fn vector::remove(self: (u32, u32), index: i32, ) {
-  OpRemoveVector(var_0, var_1);
-}
+fn OpInsertVector(r: (u32, u32), size: i32, index: i32, ) -> T  {}
 
-fn OpGetVector(r: (u32, u32), index: i32, ) Null
+fn OpAppendVector(r: (u32, u32), size: i32, ) -> T  {}
 
-fn OpFormatVector(val: String, width: i32, ) Null
+fn OpLengthHash(r: (u32, u32), ) -> i32  {}
 
-{
-  let d = Definition::new("hash");
-  d.add_attribute("len", Type::fn hash::len mutable);
-  d.add_attribute("clear", Type::fn hash::clear mutable);
-  d.returned = Type::hash;
-  d.size = 4;
-}
-fn OpLengthHash(r: (u32, u32), ) Null
-
-fn hash::len(both: (u32, u32), ) {
+fn hash::len(both: (u32, u32), ) -> i32 {
   OpLengthHash(var_0);
 }
 
-fn OpClearHash(r: (u32, u32), ) Null
+fn OpClearHash(r: (u32, u32), )  {}
 
 fn hash::clear(self: (u32, u32), ) {
   OpClearHash(var_0);
 }
 
-fn OpInsertHash(r: (u32, u32), content: T, ) Null
+fn OpFormatHash(v1: String, val: (u32, u32), width: i32, )  {}
 
-fn OpRemoveHash(r: (u32, u32), content: T, ) Null
+fn OpLengthIndex(r: (u32, u32), ) -> i32  {}
 
-fn OpFormatHash(val: (u32, u32), width: i32, ) Null
-
-{
-  let d = Definition::new("index");
-  d.add_attribute("len", Type::fn index::len mutable);
-  d.add_attribute("clear", Type::fn index::clear mutable);
-  d.returned = Type::index;
-  d.size = 4;
-}
-fn OpLengthIndex(r: (u32, u32), ) Null
-
-fn index::len(both: (u32, u32), ) {
+fn index::len(both: (u32, u32), ) -> i32 {
   OpLengthIndex(var_0);
 }
 
-fn OpClearIndex(r: (u32, u32), ) Null
+fn OpClearIndex(r: (u32, u32), )  {}
 
 fn index::clear(self: (u32, u32), ) {
   OpClearIndex(var_0);
 }
 
-fn OpInsertIndex(r: (u32, u32), content: T, ) Null
+fn OpFormatIndex(v1: String, val: (u32, u32), width: i32, )  {}
 
-fn OpRemoveIndex(r: (u32, u32), content: T, ) Null
+fn OpLengthRadix(r: (u32, u32), ) -> i32  {}
 
-fn OpFormatIndex(val: (u32, u32), width: i32, ) Null
-
-{
-  let d = Definition::new("radix");
-  d.add_attribute("len", Type::fn radix::len mutable);
-  d.add_attribute("clear", Type::fn radix::clear mutable);
-  d.returned = Type::radix;
-  d.size = 4;
-}
-fn OpLengthRadix(r: (u32, u32), ) Null
-
-fn radix::len(both: (u32, u32), ) {
+fn radix::len(both: (u32, u32), ) -> i32 {
   OpLengthRadix(var_0);
 }
 
-fn OpClearRadix(r: (u32, u32), ) Null
+fn OpClearRadix(r: (u32, u32), )  {}
 
 fn radix::clear(self: (u32, u32), ) {
   OpClearRadix(var_0);
 }
 
-fn OpInsertRadix(r: (u32, u32), content: T, ) Null
+fn OpFormatRadix(v1: String, val: (u32, u32), width: i32, )  {}
 
-fn OpRemoveRadix(r: (u32, u32), content: T, ) Null
+fn OpEqBool(v1: bool, v2: bool, ) -> bool  {}
 
-fn OpFormatRadix(val: (u32, u32), width: i32, ) Null
-
-fn OpEqBool(v1: bool, v2: bool, ) Null
-
-fn OpNeBool(v1: bool, v2: bool, ) Null
+fn OpNeBool(v1: bool, v2: bool, ) -> bool  {}
 

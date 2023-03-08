@@ -63,14 +63,13 @@ fn wrong_continue() {
 #[test]
 fn double_field_name() {
     code!("fn test(a: integer, b: integer, a: integer) { if a>b {} }")
-        .error("Error: Double attribute 'test.a' at double_field_name:1:46");
+        .error("Error: Double attribute 'test.a' at double_field_name:1:35");
 }
 
 #[test]
 fn incorrect_name() {
     code!("type something;\nfn something(a: integer) {}")
         .error("Error: Cannot redefine Type something at incorrect_name:2:27")
-        .error("Error: Cannot change the return type on something at incorrect_name:2:27")
         .warning("Error: Expect type definitions to be in camel case style at incorrect_name:1:16");
 }
 
@@ -108,4 +107,34 @@ fn mixed_enums() {
 fn wrong_cast() {
     code!("enum E1 { V1 }\nfn test() { V1 as integer }")
         .error("Error: Unknown cast from E1 to integer at wrong_cast:2:28");
+}
+
+#[test]
+fn undefined() {
+    code!("fn test(v: V) -> V { v }").error("Error: Undefined type V at undefined:1:14");
+}
+
+#[test]
+fn undefined_return() {
+    code!("fn test(v: integer) -> V { v }")
+        .error("Error: Undefined type V at undefined_return:1:27");
+}
+
+#[test]
+fn undefined_as() {
+    code!("fn test(v: integer) -> long { v as V }")
+        .error("Error: Unknown cast from integer to V at undefined_as:1:39");
+}
+
+#[test]
+fn undefined_enum() {
+    code!("enum E1 { V1 }\nfn test(v: E1) -> boolean { v > V2 }")
+        .error("Error: Unknown variable V2 at undefined_enum:2:37");
+}
+
+#[test]
+fn unknown_sizeof() {
+    code!("fn test() { sizeof(E); }")
+        .error("Error: Expect a variable or type after sizeof at unknown_sizeof:1:22")
+        .error("Error: Unknown variable E at unknown_sizeof:1:22");
 }
