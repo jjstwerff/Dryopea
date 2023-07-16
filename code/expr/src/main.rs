@@ -27,39 +27,7 @@ fn _tp_text_clear(var_0: String, ) {
   var_0.clear()
 }
 
-fn _tp_reference_remove(var_0: (u32, u32), )  {}
-
-fn _tp_vector_len(var_0: (u32, u32), ) -> i32 {
-  var_0.len()
-}
-
-fn _tp_vector_clear(var_0: (u32, u32), ) {
-  var_0.len()
-}
-
-fn _tp_hash_len(var_0: (u32, u32), ) -> i32 {
-  var_0.len()
-}
-
-fn _tp_hash_clear(var_0: (u32, u32), ) {
-  var_0.clear()
-}
-
-fn _tp_index_len(var_0: (u32, u32), ) -> i32 {
-  var_0.len()
-}
-
-fn _tp_index_clear(var_0: (u32, u32), ) {
-  var_0.clear()
-}
-
-fn _tp_radix_len(var_0: (u32, u32), ) -> i32 {
-  var_0.len()
-}
-
-fn _tp_radix_clear(var_0: (u32, u32), ) {
-  var_0.clear()
-}
+fn _tp_mutable_remove(var_0: ??, )  {}
 
 fn assert(var_0: bool, var_1: String, ) {
   if !var_0 { panic!("{}", var_1); };

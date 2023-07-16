@@ -218,6 +218,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Only parse a specific string, only useful for parser tests.
+    #[allow(dead_code)]
     pub fn parse_str(&mut self, text: &str, filename: &str) {
         self.first_pass = true;
         self.default = false;
@@ -901,7 +902,9 @@ impl<'a> Parser<'a> {
             }
             let typedef = if self.lexer.has_token(":") {
                 // Will be the correct def_nr on the second pass
-                if let Some(type_name) = self.lexer.has_identifier() {
+                if self.lexer.has_token("fn") {
+                    self.parse_fn_type(self.data.def_nr(fn_name))
+                } else if let Some(type_name) = self.lexer.has_identifier() {
                     if let Some(tp) = self.parse_type(self.data.def_nr(fn_name), &type_name) {
                         tp
                     } else if !self.first_pass {
@@ -932,6 +935,31 @@ impl<'a> Parser<'a> {
             }
         }
         true
+    }
+
+    fn parse_fn_type(&mut self, d_nr: u32) -> Type {
+        let mut r_type = Type::Void;
+        let mut args = Vec::new();
+        self.lexer.token("(");
+        loop {
+            if let Some(id) = self.lexer.has_identifier() {
+                if let Some(tp) = self.parse_type(d_nr, &id) {
+                    args.push(tp);
+                }
+            }
+            if !self.lexer.has_token(",") {
+                break;
+            }
+        }
+        self.lexer.token(")");
+        if self.lexer.has_token("->") {
+            if let Some(id) = self.lexer.has_identifier() {
+                if let Some(tp) = self.parse_type(d_nr, &id) {
+                    r_type = tp;
+                }
+            }
+        }
+        Type::Function(args, Box::new(r_type))
     }
 
     // <type> ::= <identifier> [ '<' ( <sub_type> | <type> ) '>' [ '[' <identifier> { ',' <identifier> } ']' ]]

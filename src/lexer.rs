@@ -350,6 +350,7 @@ impl Lexer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn whitespace(&mut self) {
         while self.peek_token(" ") || self.peek_token("\t") {
             self.cont();

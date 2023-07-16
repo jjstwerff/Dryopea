@@ -10,7 +10,7 @@ extern crate strum_macros;
 
 use crate::data::{Data, Value};
 use crate::external;
-use crate::store::{Store, PRIMARY};
+use crate::store::Store;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -18,15 +18,10 @@ use std::io::Write;
 // was 999_999_999;
 const MAX_LOOPING: u32 = 999;
 
-pub struct DataStore {
-    pub records: Store,
-    pub text: Store,
-}
-
 pub struct State {
     c_function: u32,
     stack: Vec<Value>,
-    databases: Vec<DataStore>,
+    database: Vec<Store>,
     logging: Option<File>,
     indent: u32,
 }
@@ -42,7 +37,7 @@ impl State {
         State {
             c_function: 0,
             stack: Vec::new(),
-            databases: Vec::new(),
+            database: Vec::new(),
             logging: None,
             indent: 0,
         }
@@ -65,10 +60,10 @@ pub struct Inter<'a> {
 }
 
 const EXTERN: &[(&str, Extern)] = &[
-    ("OpDatabase", int_database),
+    ("OpDatabase", int_db_new),
+    ("OpConvRefFromMut", int_db_ro),
     ("OpNot", int_not),
     ("OpAppend", int_append),
-    ("OpGet", int_get),
     ("OpCastSingleFromFloat", int_cast_single_from_float),
     ("OpCastIntFromFloat", int_cast_int_from_float),
     ("OpCastLongFromFloat", int_cast_long_from_float),
@@ -186,8 +181,9 @@ const EXTERN: &[(&str, Extern)] = &[
     ("OpSetByte", int_set_byte),
     ("OpSetShort", int_set_short),
     ("OpSetInt", int_set_int),
-    ("OpGetReference", int_get_reference),
-    ("OpSetReference", int_set_reference),
+    ("OpGetRef", int_get_ref),
+    ("OpGetMut", int_mut_ref),
+    ("OpSetRef", int_set_ref),
     ("OpSetText", int_set_text),
     ("OpSetSingle", int_set_single),
     ("OpSetFloat", int_set_float),
@@ -196,6 +192,15 @@ const EXTERN: &[(&str, Extern)] = &[
     ("OpRemoveVector", int_remove_vector),
     ("OpInsertVector", int_insert_vector),
     ("OpGetVector", int_get_vector),
+    ("OpGetMutVector", int_mut_vector),
+    ("OpGetSorted", int_get_sorted),
+    ("OpGetMutSorted", int_mut_sorted),
+    ("OpGetHash", int_get_hash),
+    ("OpGetMutHash", int_mut_hash),
+    ("OpGetIndex", int_get_index),
+    ("OpGetMutIndex", int_mut_index),
+    ("OpGetRadix", int_get_radix),
+    ("OpGetMutRadix", int_mut_radix),
     ("OpAssert", int_assert),
     ("OpPrint", int_print),
 ];
@@ -267,7 +272,7 @@ impl<'d> Inter<'d> {
                             if v > 0 {
                                 write!(f, ", ").unwrap();
                             }
-                            self.data.output_code(f, c, state.indent + 1);
+                            self.data.output_code(f, c, state.indent + 1).unwrap();
                         }
                         writeln!(f, ") -> {:?}", res).unwrap();
                     }
@@ -374,37 +379,32 @@ impl<'d> Inter<'d> {
     }
 }
 
-fn int_database(_i: &Inter, code: &[Value], state: &mut State) -> Value {
+fn int_db_new(_i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Int(size) = &code[0] {
-        let mut records = Store::new(50);
-        let p = records.claim(*size as u32);
-        assert_eq!(p, PRIMARY);
-        let db = state.databases.len() as u16;
-        state.databases.push(DataStore {
-            records,
-            text: Store::new(50),
-        });
-        return Value::Reference(db, PRIMARY, 0);
+        let mut store = Store::new(50);
+        let rec = store.claim(*size as u32);
+        store.references.push((rec, 0));
+        let db = state.database.len() as u16;
+        return Value::Mutable(db, 0);
+    }
+    Value::Null
+}
+
+fn int_db_ro(_i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let Value::Mutable(db, r) = &code[0] {
+        let (rec, fld) = state.database[*db as usize].references[*r as usize];
+        return Value::Reference(*db, rec, fld);
     }
     Value::Null
 }
 
 fn int_append(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db, _rec, _add), Value::Int(size)) =
-        (i.calc(&code[0], state), &code[1])
-    {
-        return Value::Reference(
-            db,
-            state.databases[db as usize].records.claim(*size as u32),
-            0,
-        );
-    }
-    Value::Null
-}
-
-fn int_get(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db, rec, add), Value::Int(pos)) = (i.calc(&code[0], state), &code[1]) {
-        return Value::Reference(db, rec, add + *pos as u32);
+    if let (Value::Mutable(db, _), Value::Int(size)) = (i.calc(&code[0], state), &code[1]) {
+        let store = &mut state.database[db as usize];
+        let r = store.references.len();
+        let rec = store.claim(*size as u32);
+        store.references.push((rec, 0));
+        return Value::Mutable(db, r as u32);
     }
     Value::Null
 }
@@ -1134,7 +1134,7 @@ fn int_clear_text(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
 
 fn int_clear_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Mutable(db, ref_nr) = i.calc(&code[0], state) {
-        let store = &mut state.databases[db as usize].records;
+        let store = &mut state.database[db as usize];
         let (v_nr, _) = store.references[ref_nr as usize];
         external::op_clear_vector(store, v_nr);
     }
@@ -1144,11 +1144,11 @@ fn int_clear_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
 fn int_length_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     match i.calc(&code[0], state) {
         Value::Reference(db, rec, _) => {
-            let store = &state.databases[db as usize].records;
+            let store = &state.database[db as usize];
             Value::Int(external::op_length_vector(store, rec))
         }
         Value::Mutable(db, ref_nr) => {
-            let store = &state.databases[db as usize].records;
+            let store = &state.database[db as usize];
             let (v_nr, _) = store.references[ref_nr as usize];
             Value::Int(external::op_length_vector(store, v_nr))
         }
@@ -1281,7 +1281,7 @@ fn int_get_byte(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        return Value::Int(state.databases[db as usize].records.get_byte(
+        return Value::Int(state.database[db as usize].get_byte(
             rec,
             pos as isize + fld as isize,
             min,
@@ -1296,7 +1296,7 @@ fn int_get_short(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        return Value::Int(state.databases[db as usize].records.get_short(
+        return Value::Int(state.database[db as usize].get_short(
             rec,
             pos as isize + fld as isize,
             min,
@@ -1309,11 +1309,7 @@ fn int_get_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
         (i.calc(&code[0], state), i.calc(&code[1], state))
     {
-        return Value::Int(
-            state.databases[db as usize]
-                .records
-                .get_int(rec, pos as isize + fld as isize),
-        );
+        return Value::Int(state.database[db as usize].get_int(rec, pos as isize + fld as isize));
     }
     Value::Null
 }
@@ -1322,10 +1318,9 @@ fn int_get_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
         (i.calc(&code[0], state), i.calc(&code[1], state))
     {
-        let dbs = &state.databases[db as usize];
+        let store = &state.database[db as usize];
         return Value::Text(String::from(
-            dbs.text
-                .get_str(dbs.records.get_int(rec, pos as isize + fld as isize) as u32),
+            store.get_str(store.get_int(rec, pos as isize + fld as isize) as u32),
         ));
     }
     Value::Null
@@ -1335,11 +1330,7 @@ fn int_get_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
         (i.calc(&code[0], state), i.calc(&code[1], state))
     {
-        return Value::Long(
-            state.databases[db as usize]
-                .records
-                .get_long(rec, pos as isize + fld as isize),
-        );
+        return Value::Long(state.database[db as usize].get_long(rec, pos as isize + fld as isize));
     }
     Value::Null
 }
@@ -1349,9 +1340,7 @@ fn int_get_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
         (i.calc(&code[0], state), i.calc(&code[1], state))
     {
         return Value::Single(
-            state.databases[db as usize]
-                .records
-                .get_single(rec, pos as isize + fld as isize),
+            state.database[db as usize].get_single(rec, pos as isize + fld as isize),
         );
     }
     Value::Null
@@ -1362,9 +1351,7 @@ fn int_get_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
         (i.calc(&code[0], state), i.calc(&code[1], state))
     {
         return Value::Float(
-            state.databases[db as usize]
-                .records
-                .get_float(rec, pos as isize + fld as isize),
+            state.database[db as usize].get_float(rec, pos as isize + fld as isize),
         );
     }
     Value::Null
@@ -1377,9 +1364,7 @@ fn int_set_byte(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[2], state),
         i.calc(&code[3], state),
     ) {
-        state.databases[db as usize]
-            .records
-            .set_byte(rec, pos as isize + fld as isize, min, val);
+        state.database[db as usize].set_byte(rec, pos as isize + fld as isize, min, val);
     }
     Value::Null
 }
@@ -1391,9 +1376,7 @@ fn int_set_short(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[2], state),
         i.calc(&code[3], state),
     ) {
-        state.databases[db as usize]
-            .records
-            .set_short(rec, pos as isize + fld as isize, min, val);
+        state.database[db as usize].set_short(rec, pos as isize + fld as isize, min, val);
     }
     Value::Null
 }
@@ -1404,37 +1387,44 @@ fn int_set_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        state.databases[db as usize]
-            .records
-            .set_int(rec, pos as isize + fld as isize, val);
+        state.database[db as usize].set_int(rec, pos as isize + fld as isize, val);
     }
     Value::Null
 }
 
-fn int_get_reference(i: &Inter, code: &[Value], state: &mut State) -> Value {
+fn int_get_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
         (i.calc(&code[0], state), i.calc(&code[1], state))
     {
         return Value::Reference(
             db,
-            state.databases[db as usize]
-                .records
-                .get_int(rec, pos as isize + fld as isize) as u32,
+            state.database[db as usize].get_int(rec, pos as isize + fld as isize) as u32,
             0,
         );
     }
     Value::Null
 }
 
-fn int_set_reference(i: &Inter, code: &[Value], state: &mut State) -> Value {
+fn int_mut_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
+        (i.calc(&code[0], state), i.calc(&code[1], state))
+    {
+        let store = &mut state.database[db as usize];
+        let r = store.references.len() as u32;
+        let p = store.get_int(rec, pos as isize + fld as isize) as u32;
+        store.references.push((p, 0));
+        return Value::Mutable(db, r);
+    }
+    Value::Null
+}
+
+fn int_set_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Reference(_, val, _)) = (
         i.calc(&code[0], state),
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        state.databases[db as usize]
-            .records
-            .set_int(rec, pos as isize + fld as isize, val as i32);
+        state.database[db as usize].set_int(rec, pos as isize + fld as isize, val as i32);
     }
     Value::Null
 }
@@ -1445,10 +1435,9 @@ fn int_set_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        let dbs = &mut state.databases[db as usize];
-        let txt = dbs.text.set_str(&val);
-        dbs.records
-            .set_int(rec, pos as isize + fld as isize, txt as i32);
+        let store = &mut state.database[db as usize];
+        let txt = store.set_str(&val);
+        store.set_int(rec, pos as isize + fld as isize, txt as i32);
     }
     Value::Null
 }
@@ -1459,9 +1448,7 @@ fn int_set_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        state.databases[db as usize]
-            .records
-            .set_long(rec, pos as isize + fld as isize, val);
+        state.database[db as usize].set_long(rec, pos as isize + fld as isize, val);
     }
     Value::Null
 }
@@ -1472,9 +1459,7 @@ fn int_set_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        state.databases[db as usize]
-            .records
-            .set_single(rec, pos as isize + fld as isize, val);
+        state.database[db as usize].set_single(rec, pos as isize + fld as isize, val);
     }
     Value::Null
 }
@@ -1485,9 +1470,7 @@ fn int_set_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        state.databases[db as usize]
-            .records
-            .set_float(rec, pos as isize + fld as isize, val);
+        state.database[db as usize].set_float(rec, pos as isize + fld as isize, val);
     }
     Value::Null
 }
@@ -1495,8 +1478,8 @@ fn int_set_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
 fn int_append_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size)) = (i.calc(&code[0], state), &code[1])
     {
-        let records = &mut state.databases[db as usize].records;
-        let (r, p) = external::op_append_vector(records, v_nr, pos as isize, *size as u32);
+        let store = &mut state.database[db as usize];
+        let (r, p) = external::op_append_vector(store, v_nr, pos as isize, *size as u32);
         Value::Reference(db, r, p)
     } else {
         Value::Null
@@ -1507,8 +1490,8 @@ fn int_remove_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) =
         (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
     {
-        let records = &mut state.databases[db as usize].records;
-        external::op_remove_vector(records, v_nr, pos as isize, *size as u32, index);
+        let store = &mut state.database[db as usize];
+        external::op_remove_vector(store, v_nr, pos as isize, *size as u32, index);
     }
     Value::Null
 }
@@ -1517,8 +1500,8 @@ fn int_insert_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) =
         (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
     {
-        let records = &mut state.databases[db as usize].records;
-        let (r, p) = external::op_insert_vector(records, v_nr, pos as isize, *size as u32, index);
+        let store = &mut state.database[db as usize];
+        let (r, p) = external::op_insert_vector(store, v_nr, pos as isize, *size as u32, index);
         Value::Reference(db, r, p)
     } else {
         Value::Null
@@ -1531,9 +1514,142 @@ fn int_get_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        let records = &mut state.databases[db as usize].records;
-        let (r, p) = external::op_get_vector(records, v_nr, pos as isize, size as u32, index);
+        let store = &mut state.database[db as usize];
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
         Value::Reference(db, r, p)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_mut_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let rnr = store.references.len() as u32;
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        store.references.push((r, p));
+        Value::Mutable(db, rnr)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_get_sorted(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        Value::Reference(db, r, p)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_mut_sorted(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let rnr = store.references.len() as u32;
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        store.references.push((r, p));
+        Value::Mutable(db, rnr)
+    } else {
+        Value::Null
+    }
+}
+fn int_get_hash(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        Value::Reference(db, r, p)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_mut_hash(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let rnr = store.references.len() as u32;
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        store.references.push((r, p));
+        Value::Mutable(db, rnr)
+    } else {
+        Value::Null
+    }
+}
+fn int_get_index(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        Value::Reference(db, r, p)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_mut_index(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let rnr = store.references.len() as u32;
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        store.references.push((r, p));
+        Value::Mutable(db, rnr)
+    } else {
+        Value::Null
+    }
+}
+fn int_get_radix(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        Value::Reference(db, r, p)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_mut_radix(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
+        i.calc(&code[0], state),
+        i.calc(&code[1], state),
+        i.calc(&code[2], state),
+    ) {
+        let store = &mut state.database[db as usize];
+        let rnr = store.references.len() as u32;
+        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
+        store.references.push((r, p));
+        Value::Mutable(db, rnr)
     } else {
         Value::Null
     }

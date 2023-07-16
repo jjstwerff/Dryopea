@@ -10,6 +10,7 @@
 extern crate mmap_storage;
 use log::*;
 use std::alloc::{GlobalAlloc, Layout, System};
+use std::fmt::{Debug, Formatter};
 
 #[allow(dead_code)]
 static A: System = System;
@@ -18,12 +19,25 @@ pub const PRIMARY: u32 = 1;
 
 // TODO move reference operations to this class eventually to remove 'pub' here
 pub struct Store {
+    // Reference to a record with store position and inner array record position
     pub references: Vec<(u32, u32)>,
     // format 0 = SIGNATURE, 4 = free_space_index, 8 = record_size, 12 = content
     ptr: *mut u8,
     size: u32,
     #[cfg(not(no_mmap))]
     file: Option<mmap_storage::file::Storage>,
+}
+
+impl Debug for Store {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("Store[{}]", self.size))
+    }
+}
+
+impl Clone for Store {
+    fn clone(&self) -> Self {
+        todo!()
+    }
 }
 
 impl PartialEq for Store {

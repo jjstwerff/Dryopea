@@ -1,21 +1,14 @@
 TODO:
-- Simple store test, Ignoring all current not correct tests
-- Remove current databases list code from interpreter
-- Linked mutable record type
-- Linked mutable element reference
-- Json output of record
-- Json parsing of record
+- List test
+- Remove stored mutable references when out of scope (explicit code)
+- Differentiate stored references to elements versus records?
+- Test with closures sorting a list, short notation for this specific closure (only how to get the order fields)
+- Json output of records
+- Json parsing of records
 - Constant elements in a list with implicit object names
 - Json output of list
 - Json parsing of list
-- Detect mutability in code
-- Record reference in function call
-- Allow multiple references to the same store (parser)
-- Detect illegal calls to multiple reference functions
-- Linked immutable record type
-- Linked immutable element type
-- Iterator for immutable records
-- Iterator for immutable elements
+- Detect mutability in code back to the function definition
 - Fix all current unit-tests & create more
 - Allow multiple variant structs (parser)
 - Test list with multiple variant records
@@ -28,6 +21,8 @@ TODO:
 - Test deleted linked records (only with record types that need it)
 - Test rebuilding store to remove deleted records
 - List slice with two references both mutable and readonly.
+- Allow to define multiple references to the same store (parser)
+- Detect illegal calls to multiple reference functions
 
 - Code
   . separate compiler main

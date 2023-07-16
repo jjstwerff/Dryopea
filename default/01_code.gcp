@@ -294,10 +294,14 @@ fn OpGeEnum(v1: enumerate, v2: enumerate) -> boolean;
 fn OpFormatEnum(v1: text, val: enumerate, width: integer);
 
 type reference;
-fn OpDatabase(size: integer) -> reference;
-fn OpAppend(db: reference, size: integer) -> reference;
-fn OpGet(v1: reference, fld: integer) -> reference;
+type mutable;
+
+fn OpDatabase(size: integer) -> mutable;
+fn OpAppend(db: mutable, size: integer) -> mutable;
+pub fn remove(self: mutable);
+
 fn OpConvRefFromNull() -> reference;
+fn OpConvRefFromMut(v1: mutable) -> reference;
 fn OpConvBoolFromRef(v1: reference) -> boolean;
 fn OpEqRef(v1: reference, v2: reference) -> boolean;
 fn OpNeRef(v1: reference, v2: reference) -> boolean;
@@ -305,7 +309,10 @@ fn OpLtRef(v1: reference, v2: reference) -> boolean;
 fn OpLeRef(v1: reference, v2: reference) -> boolean;
 fn OpGtRef(v1: reference, v2: reference) -> boolean;
 fn OpGeRef(v1: reference, v2: reference) -> boolean;
-pub fn remove(self: reference);
+fn OpGetRef(v1: reference, fld: integer) -> reference;
+fn OpGetMut(v1: mutable, fld: integer) -> mutable;
+fn OpSetRef(v1: mutable, fld: integer, val: reference);
+
 fn OpFormatRef(v1: text, val: reference, width: integer);
 fn OpGetInt(v1: reference, fld: integer) -> integer;
 fn OpGetLong(v1: reference, fld: integer) -> long;
@@ -314,59 +321,54 @@ fn OpGetFloat(v1: reference, fld: integer) -> float;
 fn OpGetByte(v1: reference, fld: integer, min: integer) -> integer;
 fn OpGetShort(v1: reference, fld: integer, min: integer) -> integer;
 fn OpGetText(v1: reference, fld: integer) -> text;
-fn OpSetInt(v1: reference, fld: integer, val: integer);
-fn OpSetLong(v1: reference, fld: integer, val: long);
-fn OpSetSingle(v1: reference, fld: integer, val: single);
-fn OpSetFloat(v1: reference, fld: integer, val: float);
-fn OpSetByte(v1: reference, fld: integer, min: integer, val: integer);
-fn OpSetShort(v1: reference, fld: integer, min: integer, val: integer);
-fn OpSetText(v1: reference, fld: integer, val: text);
-fn OpGetReference(v1: reference, fld: integer) -> reference;
-fn OpSetReference(v1: reference, fld: integer, val: reference);
+fn OpSetInt(v1: mutable, fld: integer, val: integer);
+fn OpSetLong(v1: mutable, fld: integer, val: long);
+fn OpSetSingle(v1: mutable, fld: integer, val: single);
+fn OpSetFloat(v1: mutable, fld: integer, val: float);
+fn OpSetByte(v1: mutable, fld: integer, min: integer, val: integer);
+fn OpSetShort(v1: mutable, fld: integer, min: integer, val: integer);
+fn OpSetText(v1: mutable, fld: integer, val: text);
 
-pub type vector;
-fn OpLengthVector(r: vector) -> integer;
-#rust "@r.len()"
-pub fn len(both: vector) -> integer { OpLengthVector(both) }
+type vector;
+type sorted;
 
-fn OpClearVector(r: vector);
-#rust "@r.len()"
-pub fn clear(self: vector) { OpClearVector(self) }
+fn OpLengthVector(r: reference, fld: integer) -> integer;
+fn OpClearVector(r: mutable, fld: integer);
+fn OpFinishSorted(r: mutable, fld: integer);
+fn OpGetVector(r: reference, fld: integer, index: integer) -> reference;
+fn OpGetMutVector(r: mutable, fld: integer, index: integer) -> mutable;
+fn OpGetSorted(r: reference, fld: integer, match: fn(reference) -> integer) -> reference;
+fn OpGetMutSorted(r: mutable, fld: integer, match: fn(reference) -> integer) -> mutable;
+fn OpRemoveVector(r: mutable, fld: integer, index: integer) -> boolean;
+fn OpInsertVector(r: mutable, fld: integer, index: integer) -> mutable;
+fn OpAppendVector(r: mutable, fld: integer) -> mutable;
 
-fn OpFinishSorted(r: vector);
-fn OpGetVector<T>(r: vector<T>, size: integer, index: integer) -> T;
-fn OpRemoveVector(r: vector, size: integer, index: integer) -> boolean;
-fn OpInsertVector<T>(r: vector<T>, size: integer, index: integer) -> T;
-fn OpAppendVector<T>(r: vector<T>, size: integer) -> T;
+type hash;
 
-pub type hash;
-fn OpLengthHash(r: hash) -> integer;
-#rust "@r.len()"
-pub fn len(both: hash) -> integer { OpLengthHash(both) }
-fn OpClearHash(r: hash);
-#rust "@r.clear()"
-pub fn clear(self: hash) { OpClearHash(self); }
-fn OpFormatHash(v1: text, val: hash, width: integer);
+fn OpLengthHash(r: reference, fld: integer) -> integer;
+fn OpClearHash(r: mutable, fld: integer);
+fn OpAppendHash(r: mutable, fld: integer, val: reference, code: fn(reference) -> integer);
+fn OpRemoveHash(r: mutable, fld: integer, code: integer, match: fn(reference) -> boolean);
+fn OpGetHash(r: reference, fld: integer, code: integer, match: fn(reference) -> boolean) -> reference;
+fn OpGetMutHash(r: mutable, fld: integer, code: integer, match: fn(reference) -> boolean) -> mutable;
 
-pub type index;
-fn OpLengthIndex(r: index) -> integer;
-#rust "@r.len()"
-pub fn len(both: index) -> integer { OpLengthIndex(both) }
-fn OpClearIndex(r: index);
-#rust "@r.clear()"
+type index;
 
-pub fn clear(self: index) { OpClearIndex(self) }
-fn OpFormatIndex(v1: text, val: index, width: integer);
+fn OpLengthIndex(r: reference, fld: integer) -> integer;
+fn OpClearIndex(r: mutable, fld: integer);
+fn OpAppendIndex(r: mutable, fld: integer, val: reference, sort: fn(reference, reference) -> integer);
+fn OpRemoveIndex(r: mutable, fld: integer, match: fn(reference) -> integer);
+fn OpGetIndex(r: reference, fld: integer, match: fn(reference) -> integer) -> reference;
+fn OpGetMutIndex(r: mutable, fld: integer, match: fn(reference) -> integer) -> mutable;
 
-pub type radix;
-fn OpLengthRadix(r: radix) -> integer;
-#rust "@r.len()"
-pub fn len(both: radix) -> integer { OpLengthRadix(both) }
+type radix;
 
-fn OpClearRadix(r: radix);
-#rust "@r.clear()"
-pub fn clear(self: radix) { OpClearRadix(self) }
-fn OpFormatRadix(v1: text, val: radix, width: integer);
+fn OpLengthRadix(r: reference, fld: integer) -> integer;
+fn OpClearRadix(r: mutable, fld: integer);
+fn OpAppendRadix(r: mutable, fld: integer, val: reference, bit: fn(reference, integer) -> boolean);
+fn OpRemoveRadix(r: mutable, fld: integer, val: reference, bit: fn(reference, integer) -> boolean);
+fn OpGetRadix(r: reference, fld: integer, key: fn(integer) -> boolean) -> reference;
+fn OpGetMutRadix(r: mutable, fld: integer, key: fn(integer) -> boolean) -> mutable;
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
 fn OpNeBool(v1: boolean, v2: boolean) -> boolean;

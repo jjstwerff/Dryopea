@@ -15,10 +15,11 @@ use crate::lexer::{Lexer, Position};
 use crate::types::Types;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
-use std::io::Write;
+use std::io::{Result, Write};
 
 /// A value that can be assigned to attributes on a definition of instance
 #[derive(Debug, PartialEq, Clone)]
+#[allow(dead_code)]
 pub enum Value {
     Null,
     Int(i32),
@@ -26,7 +27,7 @@ pub enum Value {
     /// The position is in bytes relative the the allocation start. Updated on insert/remove of vector elements.
     Reference(u16, u32, u32),
     /// Reference stored in the related stack store.
-    Mutable(u32, u32),
+    Mutable(u16, u32),
     /// A range
     Range(Box<Value>, Box<Value>),
     Float(f64),
@@ -36,12 +37,18 @@ pub enum Value {
     Text(String),
     /// Call an outside routine with values.
     Call(u32, Vec<Value>),
+    /// Call a closure function that allows access to the original stack
+    CCall(Box<Value>, Vec<Value>),
     /// Block with number of variables and steps.
     Block(Vec<Value>),
     /// Read variable or parameter from stack (nr relative to current function start).
     Var(u32),
     /// Set a variable with an expressions
     Set(u32, Box<Value>),
+    /// Read a variable from the closure stack instead of the current function
+    CVar(u32),
+    /// Set a closure variable outside the current function
+    CSet(u32, Box<Value>),
     /// Set a new variable with an expressions
     Let(u32, Box<Value>),
     /// Return from a routine with optionally a Value
@@ -54,9 +61,12 @@ pub enum Value {
     If(Box<Value>, Box<Value>, Box<Value>),
     /// Loop through the block till Break is encountered
     Loop(Vec<Value>),
+    /// Closure function value with a def-nr and
+    Closure(u32, u32),
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[allow(dead_code)]
 pub enum Type {
     /// The type of this parse result is unknown, but linked to a given definition unless 0.
     Unknown(u32),
@@ -101,6 +111,8 @@ pub enum Type {
     Radix(u32, Vec<u16>),
     /// An hash table towards other records. The third is the hash function.
     Hash(u32, Vec<u16>),
+    /// A function reference allowing for closures. Argument types and result.
+    Function(Vec<Type>, Box<Type>),
 }
 
 impl Type {
@@ -149,6 +161,7 @@ impl Debug for Attribute {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+#[allow(dead_code)]
 pub enum DefType {
     // Not yet known, must be filled in after the first parse pass.
     Unknown,
@@ -227,7 +240,7 @@ pub fn text(s: &str) -> Value {
 }
 
 impl Debug for Definition {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Definition")
             .field("name", &self.name)
             .field("type", &self.def_type)
@@ -243,6 +256,7 @@ impl Default for Data {
     }
 }
 
+#[allow(dead_code)]
 impl Data {
     pub fn new() -> Data {
         Data {
@@ -693,7 +707,7 @@ impl Data {
         }
     }
 
-    pub fn output_program(&self, dir: &str) -> std::io::Result<()> {
+    pub fn output_program(&self, dir: &str) -> Result<()> {
         let program = "code/".to_string() + dir;
         let source = "code/".to_string() + dir + "/src";
         std::fs::create_dir_all(&source)?;
@@ -721,39 +735,39 @@ use external::*;
             .as_bytes(),
         )?;
         for d in 0..self.definitions() {
-            self.output_def(w, d);
+            self.output_def(w, d)?;
         }
         Ok(())
     }
 
-    pub fn output_def(&self, w: &mut dyn std::io::Write, dnr: u32) {
+    pub fn output_def(&self, w: &mut dyn Write, dnr: u32) -> Result<()> {
         let def = self.def(dnr);
         if def.position.file == "default/01_code.gcp"
             && def.name.starts_with("Op")
             && def.code == Value::Null
         {
-            return;
+            return Ok(());
         }
         if def.def_type == DefType::Function {
-            write!(w, "fn {}(", def.name).unwrap();
+            write!(w, "fn {}(", def.name)?;
             for (anr, a) in def.attributes.iter().enumerate() {
-                write!(w, "var_{}: {}, ", anr, self.rust_type(&a.typedef)).unwrap()
+                write!(w, "var_{}: {}, ", anr, self.rust_type(&a.typedef))?
             }
-            write!(w, ") ").unwrap();
+            write!(w, ") ")?;
             if def.returned != Type::Void {
-                write!(w, "-> {} ", self.rust_type(&def.returned)).unwrap()
+                write!(w, "-> {} ", self.rust_type(&def.returned))?
             }
             if def.code == Value::Null {
-                write!(w, " {{}}").unwrap();
+                write!(w, " {{}}")?;
             } else {
-                self.output_code(w, &def.code, 0);
+                self.output_code(w, &def.code, 0)?;
             }
-            write!(w, "\n\n").unwrap();
+            write!(w, "\n\n")?;
         } else if def.def_type == DefType::Struct {
-            writeln!(w, "{{").unwrap();
-            writeln!(w, "  let d = Definition::new(\"{}\");", def.name).unwrap();
+            writeln!(w, "{{")?;
+            writeln!(w, "  let d = Definition::new(\"{}\");", def.name)?;
             if def.parent != u32::MAX {
-                writeln!(w, "  d.parent.push({});", self.def(def.parent).name).unwrap();
+                writeln!(w, "  d.parent.push({});", self.def(def.parent).name)?;
             }
             if !def.attributes.is_empty() {
                 for (e, a) in def.attributes.iter().enumerate() {
@@ -764,153 +778,169 @@ use external::*;
                         self.show_type(&a.typedef),
                         if a.mutable { " mutable" } else { "" },
                         if a.primary { " primary" } else { "" },
-                    )
-                    .unwrap();
+                    )?;
                     if a.value != Value::Null {
-                        write!(w, " = ").unwrap();
-                        self.output_code(w, &a.value, 2);
+                        write!(w, " = ")?;
+                        self.output_code(w, &a.value, 2)?;
                     }
-                    writeln!(w, ");").unwrap();
+                    writeln!(w, ");")?;
 
                     if a.position != u32::MAX {
-                        writeln!(w, "  d.attributes[{}].position = {};", e, a.position).unwrap();
+                        writeln!(w, "  d.attributes[{}].position = {};", e, a.position)?;
                     }
                 }
             }
             if !def.returned.is_unknown() {
-                writeln!(w, "  d.returned = Type::{};", self.show_type(&def.returned)).unwrap();
+                writeln!(w, "  d.returned = Type::{};", self.show_type(&def.returned))?;
             }
-            writeln!(w, "  d.size = {};", def.size).unwrap();
+            writeln!(w, "  d.size = {};", def.size)?;
             if def.code != Value::Null {
-                write!(w, "  d.code = ").unwrap();
-                self.output_code(w, &def.code, 2);
-                writeln!(w, ";").unwrap();
+                write!(w, "  d.code = ")?;
+                self.output_code(w, &def.code, 2)?;
+                writeln!(w, ";")?;
             }
-            writeln!(w, "}}").unwrap();
+            writeln!(w, "}}")?;
         }
+        Ok(())
     }
 
-    pub fn output_code(&self, w: &mut dyn std::io::Write, code: &Value, indent: u32) {
+    pub fn output_code(&self, w: &mut dyn Write, code: &Value, indent: u32) -> Result<()> {
         match code {
             Value::Text(txt) => {
-                write!(w, "\"{}\".to_string()", txt).unwrap();
+                write!(w, "\"{}\".to_string()", txt)?;
             }
             Value::Long(v) => {
-                write!(w, "{}_i64", v).unwrap();
+                write!(w, "{}_i64", v)?;
             }
             Value::Int(v) => {
-                write!(w, "{}_i32", v).unwrap();
+                write!(w, "{}_i32", v)?;
             }
             Value::Float(v) => {
-                write!(w, "{}_f64", v).unwrap();
+                write!(w, "{}_f64", v)?;
             }
             Value::Single(v) => {
-                write!(w, "{}_f32", v).unwrap();
+                write!(w, "{}_f32", v)?;
             }
-            Value::Reference(_, rec, pos) => {
-                write!(w, "{}.{}", rec, pos).unwrap();
+            Value::Reference(db, rec, pos) => {
+                write!(w, "{db}[{rec}].{pos}")?;
+            }
+            Value::Mutable(db, r) => {
+                write!(w, "{db}#{r}")?;
             }
             Value::Block(vals) => {
-                writeln!(w, "{{").unwrap();
+                writeln!(w, "{{")?;
                 for (vnr, v) in vals.iter().enumerate() {
                     for _i in 0..=indent {
-                        write!(w, "  ").unwrap();
+                        write!(w, "  ")?;
                     }
-                    self.output_code(w, v, indent + 1);
+                    self.output_code(w, v, indent + 1)?;
                     if vnr < vals.len() - 1 {
-                        writeln!(w, ";").unwrap();
+                        writeln!(w, ";")?;
                     } else {
-                        writeln!(w).unwrap();
+                        writeln!(w)?;
                     }
                 }
                 for _i in 0..indent {
-                    write!(w, "  ").unwrap();
+                    write!(w, "  ")?;
                 }
-                write!(w, "}}").unwrap()
+                write!(w, "}}")?
             }
             Value::Loop(vals) => {
-                writeln!(w, "loop {{").unwrap();
+                writeln!(w, "loop {{")?;
                 for v in vals {
                     for _i in 0..=indent {
-                        write!(w, "  ").unwrap();
+                        write!(w, "  ")?;
                     }
-                    self.output_code(w, v, indent + 1);
-                    writeln!(w, ";").unwrap();
+                    self.output_code(w, v, indent + 1)?;
+                    writeln!(w, ";")?;
                 }
                 for _i in 0..indent {
-                    write!(w, "  ").unwrap();
+                    write!(w, "  ")?;
                 }
-                write!(w, "}}").unwrap();
+                write!(w, "}}")?;
             }
             Value::Set(var, to) => {
-                write!(w, "var_{} = ", var).unwrap();
-                self.output_code(w, to, indent);
+                write!(w, "var_{} = ", var)?;
+                self.output_code(w, to, indent)?;
             }
             Value::Let(var, to) => {
-                write!(w, "let var_{} = ", var).unwrap();
-                self.output_code(w, to, indent);
+                write!(w, "let var_{} = ", var)?;
+                self.output_code(w, to, indent)?;
             }
             Value::Var(v) => {
-                write!(w, "var_{}", v).unwrap();
+                write!(w, "var_{}", v)?;
             }
             Value::If(test, true_v, false_v) => {
-                write!(w, "if ").unwrap();
-                let b_true = matches!(**true_v, Value::Block(_));
-                let b_false = matches!(**false_v, Value::Block(_));
-                self.output_code(w, test, indent);
-                if b_true {
-                    write!(w, " ").unwrap();
-                } else {
-                    write!(w, " {{").unwrap();
-                };
-                self.output_code(w, true_v, indent + if b_true { 0 } else { 1 });
-                if let Value::Block(_) = **true_v {
-                    write!(w, " else ").unwrap();
-                } else {
-                    write!(w, "}} else ").unwrap();
-                }
-                if !b_false {
-                    write!(w, "{{").unwrap();
-                }
-                self.output_code(w, false_v, indent + if b_false { 0 } else { 1 });
-                if !b_false {
-                    write!(w, "}}").unwrap();
-                }
+                self.output_if(w, test, true_v, false_v, indent)?;
             }
             Value::Call(d_nr, vals) => {
                 let def_fn = self.def(*d_nr);
                 if def_fn.rust.is_empty() {
-                    write!(w, "{}(", self.def(*d_nr).name).unwrap();
+                    write!(w, "{}(", self.def(*d_nr).name)?;
                     let mut first = true;
                     for v in vals {
                         if first {
                             first = false;
                         } else {
-                            write!(w, ", ").unwrap();
+                            write!(w, ", ")?;
                         }
-                        self.output_code(w, v, indent);
+                        self.output_code(w, v, indent)?;
                     }
-                    write!(w, ")").unwrap();
+                    write!(w, ")")?;
                 } else {
                     let mut res = def_fn.rust.clone();
                     for (a_nr, a) in def_fn.attributes.iter().enumerate() {
                         let name = "@".to_string() + &a.name;
                         let mut val_code = std::io::BufWriter::new(Vec::new());
-                        self.output_code(&mut val_code, &vals[a_nr], indent);
+                        self.output_code(&mut val_code, &vals[a_nr], indent)?;
                         res = res.replace(
                             &name,
                             &String::from_utf8(val_code.into_inner().unwrap()).unwrap(),
                         );
                     }
-                    write!(w, "{}", res).unwrap();
+                    write!(w, "{}", res)?;
                 }
             }
             Value::Return(val) => {
-                write!(w, "return ").unwrap();
-                self.output_code(w, val, indent);
+                write!(w, "return ")?;
+                self.output_code(w, val, indent)?;
             }
-            _ => write!(w, "{:?}", code).unwrap(),
+            _ => write!(w, "{:?}", code)?,
         }
+        Ok(())
+    }
+
+    fn output_if(
+        &self,
+        w: &mut dyn Write,
+        test: &Value,
+        true_v: &Value,
+        false_v: &Value,
+        indent: u32,
+    ) -> Result<()> {
+        write!(w, "if ")?;
+        let b_true = matches!(*true_v, Value::Block(_));
+        let b_false = matches!(*false_v, Value::Block(_));
+        self.output_code(w, test, indent)?;
+        if b_true {
+            write!(w, " ")?;
+        } else {
+            write!(w, " {{")?;
+        };
+        self.output_code(w, true_v, indent + if b_true { 0 } else { 1 })?;
+        if let Value::Block(_) = *true_v {
+            write!(w, " else ")?;
+        } else {
+            write!(w, "}} else ")?;
+        }
+        if !b_false {
+            write!(w, "{{")?;
+        }
+        self.output_code(w, false_v, indent + if b_false { 0 } else { 1 })?;
+        if !b_false {
+            write!(w, "}}")?;
+        }
+        Ok(())
     }
 
     pub fn find_unused(&self, diagnostics: &mut Diagnostics) {

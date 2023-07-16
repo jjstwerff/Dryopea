@@ -116,7 +116,7 @@ impl Drop for Test {
         }
         let w = &mut std::fs::File::create("tests/generated/default.rs").unwrap();
         for d in 0..start {
-            p.data.output_def(w, d);
+            p.data.output_def(w, d).unwrap();
         }
         // Write code output when the result is tested, not only for errors or warnings.
         if self.result != Value::Null || !self.tp.is_unknown() {
@@ -126,7 +126,7 @@ impl Drop for Test {
             ))
             .unwrap();
             for d in start..p.data.definitions() {
-                p.data.output_def(w, d);
+                p.data.output_def(w, d).unwrap();
             }
         }
         // Validate that we found the correct warnings and errors. Halt when differences are found.

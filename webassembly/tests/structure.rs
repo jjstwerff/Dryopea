@@ -84,7 +84,7 @@ fn object() {
     person(&mut st, "Eric", 32, Sex::Male);
     person(&mut st, "Liz", 30, Sex::Female);
     person(&mut st, "Debra", 8, Sex::Female);
-    place(&mut st, "Elmshill", (100.0, 100.0));
+    place(&mut st, "Elmsvill", (100.0, 100.0));
     // write out structure as json
     // fill structure with some json
     // read json again in a different structure
