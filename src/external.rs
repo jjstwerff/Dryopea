@@ -137,12 +137,6 @@ pub fn op_clear_vector(store: &mut Store, rec: u32) {
     if rec == 0 {
         return;
     }
-    for (r, pos) in &mut store.references {
-        if *r == rec {
-            *r = 0;
-            *pos = 0;
-        }
-    }
     store.set_int(rec, 4, 0);
 }
 
@@ -181,7 +175,7 @@ pub fn op_append_vector(store: &mut Store, rec: u32, pos: isize, size: u32) -> (
 }
 
 pub fn op_remove_vector(store: &mut Store, rec: u32, pos: isize, size: u32, index: i32) {
-    let len = op_length_vector(store, rec);
+    let len = op_length_vector(store, rec, pos);
     let real = if index < 0 { index + len } else { index } as isize;
     let s = size as isize;
     if real > 0 && real < len as isize {
@@ -197,7 +191,7 @@ pub fn op_insert_vector(
     size: u32,
     index: i32,
 ) -> (u32, u32) {
-    let len = op_length_vector(store, rec);
+    let len = op_length_vector(store, rec, pos);
     let real = if index < 0 { index + len } else { index } as isize;
     let s = size as isize;
     if real > 0 && real < len as isize {
@@ -208,11 +202,12 @@ pub fn op_insert_vector(
     (rec, size * real as u32)
 }
 
-pub fn op_length_vector(store: &Store, rec: u32) -> i32 {
-    if rec == 0 {
+pub fn op_length_vector(store: &Store, rec: u32, pos: isize) -> i32 {
+    let v_rec = store.get_int(rec, pos);
+    if v_rec == 0 {
         i32::MIN
     } else {
-        store.get_int(rec, 4)
+        store.get_int(v_rec as u32, 4)
     }
 }
 
@@ -223,14 +218,14 @@ pub fn format_float(val: f64, width: i32, precision: i32) -> String {
     if precision != 0 {
         write!(
             s,
-            "{val:width$.pre$}",
-            width = width as usize,
-            pre = precision as usize,
-            val = val
+            "{v:w$.p$}",
+            w = width as usize,
+            p = precision as usize,
+            v = val
         )
         .unwrap();
     } else {
-        write!(s, "{val:width$}", width = width as usize, val = val).unwrap();
+        write!(s, "{v:w$}", w = width as usize, v = val).unwrap();
     };
     s
 }
@@ -240,14 +235,14 @@ pub fn format_single(val: f32, width: i32, precision: i32) -> String {
     if precision != 0 {
         write!(
             s,
-            "{val:width$.pre$}",
-            width = width as usize,
-            pre = precision as usize,
-            val = val
+            "{v:w$.p$}",
+            w = width as usize,
+            p = precision as usize,
+            v = val
         )
         .unwrap();
     } else {
-        write!(s, "{val:width$}", width = width as usize, val = val).unwrap();
+        write!(s, "{v:w$}", w = width as usize, v = val).unwrap();
     };
     s
 }
@@ -260,5 +255,47 @@ mod test {
         assert_eq!("_aa__", format_text("aa", 5, 0, '_' as i32));
         assert_eq!("__aa__", format_text("aa", 6, 0, '_' as i32));
         assert_eq!("0x1234", format_int(0x1234, 16, 0, ' ' as i32, false, true));
+        assert_eq!(
+            "0x1234567",
+            format_long(0x1234567, 16, 0, ' ' as i32, false, true)
+        );
+        // validate long, float and single
+    }
+
+    #[test]
+    fn test_vectors() {
+        // new vector A
+        let mut db_a = Store::new(8);
+        let v_a = 1;
+        // write elements [1,2,3]
+        let (vr_a, vp_a) = op_append_vector(&mut db_a, v_a, 4, 4);
+        db_a.set_int(vr_a, vp_a as isize, 1);
+        let (vr_a, vp_a) = op_append_vector(&mut db_a, v_a, 4, 4);
+        db_a.set_int(vr_a, vp_a as isize, 2);
+        let (vr_a, vp_a) = op_append_vector(&mut db_a, v_a, 4, 4);
+        db_a.set_int(vr_a, vp_a as isize, 3);
+        assert_eq!(3, op_length_vector(&db_a, v_a, 4));
+        // append element 4
+        let (vr_a, vp_a) = op_append_vector(&mut db_a, v_a, 4, 4);
+        db_a.set_int(vr_a, vp_a as isize, 4);
+        assert_eq!(4, op_length_vector(&db_a, v_a, 4));
+        // new vector B
+        let db_b = Store::new(8);
+        let v_b = 1;
+        // append elements
+        // append vectors B to A
+        // loop vector A
+        // remove an element from A
+        // clear vector A
+        // append vector B to A
+    }
+
+    #[test]
+    fn test_sorted_vector() {
+        // new vector
+        // add elements
+        // append vector
+        // search element on key
+        // remove elements
     }
 }

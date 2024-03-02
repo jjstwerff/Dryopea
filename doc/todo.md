@@ -1,8 +1,24 @@
 TODO:
-- List test
-- Remove stored mutable references when out of scope (explicit code)
-- Differentiate stored references to elements versus records?
+- Direct tests on all external functions
+- Fix array tests
 - Test with closures sorting a list, short notation for this specific closure (only how to get the order fields)
+- Generators from for loops that yield values
+  - crate yield_iter or next_gen
+  - https://lang-team.rust-lang.org/design_notes/general_coroutines.html
+- Generators that can remove records/values from arrays
+- Complex iterators
+  - next, remove, yield, continue, break
+  - for now forbid complex loops that alter a structure
+- Validate multiple database code
+  - disallow references in fields to other databases
+- In language tokenizer
+- In language parser
+- In language data gatherer
+  - for loops with yield
+  - use of class fields
+  - use of parameters
+  - mutations to databases
+  - alterations to arrays with life references
 - Json output of records
 - Json parsing of records
 - Constant elements in a list with implicit object names

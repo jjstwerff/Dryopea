@@ -18,7 +18,7 @@ macro_rules! code {
 }
 
 /// Directly evaluate a given expression.
-/// This is short hand for a test routine returning this expression.
+/// This is shorthand for a test routine returning this expression.
 #[macro_export]
 macro_rules! expr {
     ($code:expr) => {
@@ -65,7 +65,7 @@ impl Test {
         self
     }
 
-    /// Short hand expressions for a test routine that returns a result.
+    /// Shorthand expressions for a test routine that returns a result.
     pub fn expr(&mut self, value: &str) -> &mut Test {
         self.expr = value.to_string();
         self
@@ -80,7 +80,7 @@ impl Test {
         self
     }
 
-    /// In some cases the result type will different from it's internal type.
+    /// In some cases the result type will different from its internal type.
     /// This is the case for Type::Boolean or Type::Enum types that return Value::Int(_) values.
     /// Also Value::None results can happen in combination with most other types.
     pub fn tp(&mut self, tp: Type) -> &mut Test {
@@ -102,7 +102,7 @@ impl Drop for Test {
     // So there is no need for an 'activate' method call.
     fn drop(&mut self) {
         let mut p = Parser::new();
-        p.parse_dir("default", true);
+        p.parse_dir("default", true).unwrap();
         let start = p.data.definitions();
         if !self.code.is_empty() {
             p.parse_str(&self.code, &self.name);
@@ -258,19 +258,25 @@ pub fn testing_expr(expr: &str, test: &str) -> Test {
 
 #[test]
 fn dir() -> std::io::Result<()> {
-    for f in std::fs::read_dir("tests/suite")? {
+    let dir = "tests/suite";
+    for f in std::fs::read_dir(dir)? {
         let filename = f.unwrap().file_name().to_string_lossy().to_string();
         if !filename.ends_with(".gcp") {
             continue;
         }
         let mut p = Parser::new();
-        p.parse_dir("default", true);
-        p.parse(&format!("tests/suite/{filename}"), false);
+        p.parse_dir("default", true)?;
+        p.parse(&format!("{dir}/{filename}"), false);
         for l in p.diagnostics.lines() {
-            panic!("{l}");
+            println!("{l}")
         }
-        let file = &filename[..filename.len() - 4];
-        p.data.output_program(file)?;
+        if !p.diagnostics.is_empty() {
+            return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
+        }
+        //let file = &filename[..filename.len() - 4];
+        //p.data.output_webassembly(&file)?;
+        //TODO validate via parser
+        //TODO write a lot more tests via this path, probably rewrite all current tests
         //let i = Inter::new(&p.data); i.calculate("main", None).unwrap();
     }
     Ok(())
