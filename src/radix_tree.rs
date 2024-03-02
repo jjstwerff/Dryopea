@@ -27,13 +27,13 @@ pub struct RadixIter {
 
 impl RadixIter {
     pub fn next(&mut self, _store: &Store, _tree: u32) -> Option<u32> {
-        // in node: walk FALSE, walk TRUE .. when encountered ref => up again in positions
+        // in node: walk FALSE, walk TRUE; when encountered ref => up again in positions
         None
     }
 
     pub fn remove() {
         // collapse current node
-        // move last node here.. find that record & move last found pos
+        // move last node here; find that record & move last found pos
     }
 
     fn node(&self) -> i32 {
@@ -188,7 +188,7 @@ pub fn rtree_insert(
     let it = rtree_find(store, tree, |bit| key(store, rec, bit).unwrap_or(false));
     let cur = it.rec;
     let bits = store.get_int(tree, RAD_BITS) as u32;
-    // assume the new key is higher so we place equal keys in order of entering
+    // assume the new key is higher, so we place equal keys in order of entering
     let mut higher = true;
     let diff_bit = compare_bits(store, rec, cur, &mut higher, key);
     // Top node

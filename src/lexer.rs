@@ -18,7 +18,7 @@ use std::vec::IntoIter;
 pub enum Mode {
     /// Expect code with spaces, line ends and remarks removed.
     Code,
-    /// Expect formatting expressions, when encountering a '}' continue with a string.
+    /// Expect formatting expressions, when encountering a closing bracket continue with a string.
     Formatting,
 }
 
@@ -33,9 +33,9 @@ pub enum LexItem {
     Single(f32),
     /// Can be both a keyword and a one or two position token.
     Token(String),
-    /// An for now unknown identifier.
+    /// A still unknown identifier.
     Identifier(String),
-    /// A constant string.. was presented as "content" with possibly escaped tokens inside.
+    /// A constant string: was presented as "content" with possibly escaped tokens inside.
     CString(String),
     /// The end of the content is reached.
     None,
@@ -51,15 +51,21 @@ pub struct Position {
     pub pos: u32,
 }
 
+impl Position {
+    fn format(&self, fmt: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        fmt.write_str(&format!("{} line {}:{}", self.file, self.line, self.pos))
+    }
+}
+
 impl Debug for Position {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        fmt.write_str(&format!("{} line {}:{}", self.file, self.line, self.pos))
+        self.format(fmt)
     }
 }
 
 impl Display for Position {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        fmt.write_str(&format!("{} line {}:{}", self.file, self.line, self.pos))
+        self.format(fmt)
     }
 }
 
@@ -616,9 +622,9 @@ impl Lexer {
                 self.iter.next();
             }
             let Some(n) = self.next() else {
-                    self.end();
-                    return;
-                };
+                self.end();
+                return;
+            };
             res = n;
         }
         if self.link == self.memory.len() {

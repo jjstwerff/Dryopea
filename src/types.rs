@@ -24,7 +24,7 @@ pub struct Types<'a> {
     var_nrs: HashMap<u32, Variable>,
     /// Local variable positions in the current routine
     variables: Vec<HashMap<String, u32>>,
-    /// Possible routines per operator, filled during parsing of '01_code.md'
+    /// Possible routines per operator, filled during parsing of 01_code.md
     possible: HashMap<&'a str, Vec<u32>>,
 }
 
@@ -91,7 +91,7 @@ impl<'a> Types<'a> {
         self.variables.pop();
     }
 
-    /// Search a variable, return it's position and type.
+    /// Search a variable, return its position and type.
     /// Increase the uses of it with one.
     pub fn var_name(&mut self, name: &str) -> Option<(u32, Type)> {
         for vars in self.variables.iter().rev() {
@@ -104,7 +104,7 @@ impl<'a> Types<'a> {
     }
 
     /// Decrease the uses of a variable on a stack position.
-    /// This was already increased by the var_name call before but it was not actually used.
+    /// This was already increased by the var_name call before, but it was not actually used.
     pub fn assign(&mut self, nr: u32) {
         self.var_nrs.get_mut(&nr).unwrap().uses -= 1;
     }
@@ -194,10 +194,7 @@ impl<'a> Types<'a> {
         if start.is_empty() || !OP_NAMES.contains_key(start) {
             return false;
         }
-        self.possible
-            .entry(OP_NAMES[start])
-            .or_insert_with(Vec::new)
-            .push(d_nr);
+        self.possible.entry(OP_NAMES[start]).or_default().push(d_nr);
         true
     }
 

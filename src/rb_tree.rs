@@ -310,7 +310,7 @@ impl<'a> RbTree<'a> {
             }
             return l as u32;
         }
-        // both left and right as not empty.. remove previous element in tree
+        // both left and right as not empty: remove previous element in tree
         // (=max(l)) and then make that the replacement
         let pos = self.rb_max(l as u32);
         let mut new_left = self.rb_remove_iter(pos, depth + 1, l as u32, black) as i32;

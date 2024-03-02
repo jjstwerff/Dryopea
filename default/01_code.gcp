@@ -250,7 +250,7 @@ fn OpGtFloat(v1: float, v2: float) -> boolean;
 fn OpGeFloat(v1: float, v2: float) -> boolean;
 #rust "(@v1 >= @v2)"
 
-fn OpFormatFloat(v1: text, val: float, width: integer, precision: integer);
+fn OpFormatFloat(val: float, width: integer, precision: integer) -> text;
 #rust "format_float(@val, @width, @precision)"
 
 fn OpConvTextFromNull() -> text;
@@ -293,15 +293,16 @@ fn OpGtEnum(v1: enumerate, v2: enumerate) -> boolean;
 fn OpGeEnum(v1: enumerate, v2: enumerate) -> boolean;
 fn OpFormatEnum(v1: text, val: enumerate, width: integer);
 
+// A reference to a record, this can 'live' inside an array
+// Might this be a reference to a record field? As It might be a reference to a single value inside an array.
+// This allows a vector to be a reference to a field.
 type reference;
-type mutable;
 
-fn OpDatabase(size: integer) -> mutable;
-fn OpAppend(db: mutable, size: integer) -> mutable;
-pub fn remove(self: mutable);
+fn OpDatabase(size: integer) -> reference;
+fn OpAppend(db: reference, size: integer) -> reference;
+pub fn remove(self: reference);
 
 fn OpConvRefFromNull() -> reference;
-fn OpConvRefFromMut(v1: mutable) -> reference;
 fn OpConvBoolFromRef(v1: reference) -> boolean;
 fn OpEqRef(v1: reference, v2: reference) -> boolean;
 fn OpNeRef(v1: reference, v2: reference) -> boolean;
@@ -309,11 +310,19 @@ fn OpLtRef(v1: reference, v2: reference) -> boolean;
 fn OpLeRef(v1: reference, v2: reference) -> boolean;
 fn OpGtRef(v1: reference, v2: reference) -> boolean;
 fn OpGeRef(v1: reference, v2: reference) -> boolean;
-fn OpGetRef(v1: reference, fld: integer) -> reference;
-fn OpGetMut(v1: mutable, fld: integer) -> mutable;
-fn OpSetRef(v1: mutable, fld: integer, val: reference);
 
 fn OpFormatRef(v1: text, val: reference, width: integer);
+
+// Can be used to get another record within the same database
+fn OpGetRef(v1: reference, fld: integer) -> reference;
+fn OpSetRef(v1: reference, fld: integer, val: reference);
+
+// Get a direct field reference for a structure: vector, index, hash or radix
+// These always point to a field what value can change depending on the content.
+fn OpGetField(v1: reference, fld: integer) -> reference;
+
+// Simple type value write and read, vector elements always have fld=0.
+// All these types are passed by value instead of by reference.
 fn OpGetInt(v1: reference, fld: integer) -> integer;
 fn OpGetLong(v1: reference, fld: integer) -> long;
 fn OpGetSingle(v1: reference, fld: integer) -> single;
@@ -321,54 +330,73 @@ fn OpGetFloat(v1: reference, fld: integer) -> float;
 fn OpGetByte(v1: reference, fld: integer, min: integer) -> integer;
 fn OpGetShort(v1: reference, fld: integer, min: integer) -> integer;
 fn OpGetText(v1: reference, fld: integer) -> text;
-fn OpSetInt(v1: mutable, fld: integer, val: integer);
-fn OpSetLong(v1: mutable, fld: integer, val: long);
-fn OpSetSingle(v1: mutable, fld: integer, val: single);
-fn OpSetFloat(v1: mutable, fld: integer, val: float);
-fn OpSetByte(v1: mutable, fld: integer, min: integer, val: integer);
-fn OpSetShort(v1: mutable, fld: integer, min: integer, val: integer);
-fn OpSetText(v1: mutable, fld: integer, val: text);
+fn OpSetInt(v1: reference, fld: integer, val: integer);
+fn OpSetLong(v1: reference, fld: integer, val: long);
+fn OpSetSingle(v1: reference, fld: integer, val: single);
+fn OpSetFloat(v1: reference, fld: integer, val: float);
+fn OpSetByte(v1: reference, fld: integer, min: integer, val: integer);
+fn OpSetShort(v1: reference, fld: integer, min: integer, val: integer);
+fn OpSetText(v1: reference, fld: integer, val: text);
 
+// All structures are passed by reference instead of by value
 type vector;
 type sorted;
 
-fn OpLengthVector(r: reference, fld: integer) -> integer;
-fn OpClearVector(r: mutable, fld: integer);
-fn OpFinishSorted(r: mutable, fld: integer);
-fn OpGetVector(r: reference, fld: integer, index: integer) -> reference;
-fn OpGetMutVector(r: mutable, fld: integer, index: integer) -> mutable;
-fn OpGetSorted(r: reference, fld: integer, match: fn(reference) -> integer) -> reference;
-fn OpGetMutSorted(r: mutable, fld: integer, match: fn(reference) -> integer) -> mutable;
-fn OpRemoveVector(r: mutable, fld: integer, index: integer) -> boolean;
-fn OpInsertVector(r: mutable, fld: integer, index: integer) -> mutable;
-fn OpAppendVector(r: mutable, fld: integer) -> mutable;
+// All vectors are referenced by the field that points towards them.
+// The length of vectors is written at the start of their allocation.
+fn OpLengthVector(r: vector) -> integer;
+pub fn len(both: vector) -> integer { OpLengthVector(both) }
+
+fn OpClearVector(r: vector);
+pub fn clear(self: vector) { OpClearVector(self) }
+
+// This actually sorts the last appended value to their correct position
+fn OpFinishSorted(r: vector, match: fn(reference, reference) -> integer);
+// This returns the position inside the vector of a record or a value, get the actual value with fld=0
+fn OpGetVector(r: vector, size: integer, index: integer) -> reference;
+fn OpGetSorted(r: vector, size: integer, match: fn(reference) -> integer) -> reference;
+fn OpRemoveVector(r: vector, size: integer, index: integer) -> boolean;
+
+// Insert space into a vector, no data written
+fn OpInsertVector(r: vector, index: integer) -> reference;
+
+// Add space at the end of a vector, no data written
+fn OpAppendVector(r: vector, size: integer) -> reference;
+// Add all elements of another vector with the same type
+fn OpAddVector(r: vector, size: integer, other: vector);
 
 type hash;
 
-fn OpLengthHash(r: reference, fld: integer) -> integer;
-fn OpClearHash(r: mutable, fld: integer);
-fn OpAppendHash(r: mutable, fld: integer, val: reference, code: fn(reference) -> integer);
-fn OpRemoveHash(r: mutable, fld: integer, code: integer, match: fn(reference) -> boolean);
-fn OpGetHash(r: reference, fld: integer, code: integer, match: fn(reference) -> boolean) -> reference;
-fn OpGetMutHash(r: mutable, fld: integer, code: integer, match: fn(reference) -> boolean) -> mutable;
+fn OpLengthHash(r: hash) -> integer;
+pub fn len(both: hash) -> integer { OpLengthHash(both) }
+
+fn OpClearHash(r: hash);
+pub fn clear(self: hash) -> integer { OpClearHash(self) }
+fn OpAppendHash(r: hash, val: reference, code: integer);
+fn OpRemoveHash(r: hash, code: integer, match: fn(reference) -> boolean);
+fn OpGetHash(r: hash, code: integer, match: fn(reference) -> boolean) -> reference;
 
 type index;
 
-fn OpLengthIndex(r: reference, fld: integer) -> integer;
-fn OpClearIndex(r: mutable, fld: integer);
-fn OpAppendIndex(r: mutable, fld: integer, val: reference, sort: fn(reference, reference) -> integer);
-fn OpRemoveIndex(r: mutable, fld: integer, match: fn(reference) -> integer);
-fn OpGetIndex(r: reference, fld: integer, match: fn(reference) -> integer) -> reference;
-fn OpGetMutIndex(r: mutable, fld: integer, match: fn(reference) -> integer) -> mutable;
+// The length function is not efficient as is loops through all elements
+fn OpLengthIndex(r: index) -> integer;
+pub fn len(both: index) -> integer { OpLengthHash(both) }
+
+// The clear function is not efficient
+fn OpClearIndex(r: index);
+pub fn clear(self: index) -> integer { OpClearIndex(self) }
+
+fn OpAppendIndex(r: index, val: reference, sort: fn(reference, reference) -> integer);
+fn OpRemoveIndex(r: index, match: fn(reference) -> integer);
+fn OpGetIndex(r: index, match: fn(reference) -> integer) -> reference;
 
 type radix;
 
-fn OpLengthRadix(r: reference, fld: integer) -> integer;
-fn OpClearRadix(r: mutable, fld: integer);
-fn OpAppendRadix(r: mutable, fld: integer, val: reference, bit: fn(reference, integer) -> boolean);
-fn OpRemoveRadix(r: mutable, fld: integer, val: reference, bit: fn(reference, integer) -> boolean);
-fn OpGetRadix(r: reference, fld: integer, key: fn(integer) -> boolean) -> reference;
-fn OpGetMutRadix(r: mutable, fld: integer, key: fn(integer) -> boolean) -> mutable;
+fn OpLengthRadix(r: radix) -> integer;
+fn OpClearRadix(r: radix);
+fn OpAppendRadix(r: radix, val: reference, bit: fn(reference, integer) -> boolean);
+fn OpRemoveRadix(r: radix, val: reference, bit: fn(reference, integer) -> boolean);
+fn OpGetRadix(r: radix, key: fn(integer) -> boolean) -> reference;
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
 fn OpNeBool(v1: boolean, v2: boolean) -> boolean;

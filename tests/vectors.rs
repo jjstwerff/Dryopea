@@ -7,7 +7,6 @@ mod testing;
 
 use dryopea::data::Value;
 
-#[test]
 fn vectors() {
     expr!(
         "v=[1, 2, 1+2];

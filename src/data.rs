@@ -7,7 +7,7 @@
 //! has parameters that behave very similar to fields.
 
 // These structures are rather inefficient right now, but they are be the basis
-// for a far more efficient database later.
+// for a far more efficient database design later.
 
 extern crate strum_macros;
 use crate::diagnostics::*;
@@ -23,11 +23,9 @@ use std::io::{Result, Write};
 pub enum Value {
     Null,
     Int(i32),
-    /// An record or field with 1:database, 2:allocation, 3:field_position.
-    /// The position is in bytes relative the the allocation start. Updated on insert/remove of vector elements.
+    /// A record or field with 1:database, 2:allocation, 3:field_position.
+    /// The position is in bytes relative to the allocation start. Updated on insert/remove of vector elements.
     Reference(u16, u32, u32),
-    /// Reference stored in the related stack store.
-    Mutable(u16, u32),
     /// A range
     Range(Box<Value>, Box<Value>),
     Float(f64),
@@ -97,7 +95,7 @@ pub enum Type {
     /// A dynamic routine, from a routine definition without code.
     /// The actual code is a routine with this routine as a parent or just a Block for a lambda function.
     Routine(u32),
-    /// Linked to the n-th sub-type on the first defined parameter
+    /// Linked to the n-th subtype on the first defined parameter
     Subtype(u32),
     /// Iterator with a certain result
     Iterator(Box<Type>),
@@ -109,7 +107,7 @@ pub enum Type {
     Link,
     /// An index towards other records. The third is the LT function.
     Radix(u32, Vec<u16>),
-    /// An hash table towards other records. The third is the hash function.
+    /// A hash table towards other records. The third is the hash function.
     Hash(u32, Vec<u16>),
     /// A function reference allowing for closures. Argument types and result.
     Function(Vec<Type>, Box<Type>),
@@ -142,7 +140,7 @@ struct Attribute {
     mutable: bool,
     /// Is this attribute allowed to be null in the sub-structure.
     nullable: bool,
-    /// Is this attribute holding the primary reference of it's records.
+    /// Is this attribute holding the primary reference of its records.
     primary: bool,
     /// The initial value of this attribute if it is not given.
     value: Value,
@@ -153,10 +151,14 @@ struct Attribute {
 
 impl Debug for Attribute {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!(
-            "{}:{}[{}]",
-            self.name, &self.typedef, self.position
-        ))
+        if self.position == u32::MAX {
+            f.write_str(&format!("{}:{}", self.name, &self.typedef))
+        } else {
+            f.write_str(&format!(
+                "{}:{}[{}]",
+                self.name, &self.typedef, self.position
+            ))
+        }
     }
 }
 
@@ -182,6 +184,12 @@ pub enum DefType {
     Type,
 }
 
+impl Display for DefType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{:?}", self))
+    }
+}
+
 /// Game definition, the data cannot be changed, there can be instances with differences
 #[derive(Clone)]
 struct Definition {
@@ -203,7 +211,7 @@ struct Definition {
     alignment: u8,
     /// The total size needed for this definition in 8 byte words
     size: u32,
-    /// Related type for in fields, and return type of a function
+    /// Related type for fields, and the return type for functions
     returned: Type,
     /// Rust code
     rust: String,
@@ -250,6 +258,12 @@ impl Debug for Definition {
     }
 }
 
+impl Display for Definition {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", &self.name, &self.def_type)
+    }
+}
+
 impl Default for Data {
     fn default() -> Self {
         Self::new()
@@ -277,7 +291,7 @@ impl Data {
         name: &str,
         typedef: Type,
     ) -> u16 {
-        if self.def(on_def).attr_names.get(name).is_some() {
+        if self.def(on_def).attr_names.contains_key(name) {
             let orig_attr = self.def(on_def).attr_names[name];
             let attr = &self.def(on_def).attributes[orig_attr as usize];
             if attr.typedef.is_unknown() {
@@ -567,7 +581,7 @@ impl Data {
     /// Get the corresponding number of a definition on name.
     pub fn def_nr(&self, name: &str) -> u32 {
         let Some(nr) = self.def_names.get(name) else {
-            return u32::MAX
+            return u32::MAX;
         };
         *nr
     }
@@ -707,7 +721,7 @@ impl Data {
         }
     }
 
-    pub fn output_program(&self, dir: &str) -> Result<()> {
+    pub fn output_webassembly(&self, dir: &str) -> Result<()> {
         let program = "code/".to_string() + dir;
         let source = "code/".to_string() + dir + "/src";
         std::fs::create_dir_all(&source)?;
@@ -824,9 +838,6 @@ use external::*;
             Value::Reference(db, rec, pos) => {
                 write!(w, "{db}[{rec}].{pos}")?;
             }
-            Value::Mutable(db, r) => {
-                write!(w, "{db}#{r}")?;
-            }
             Value::Block(vals) => {
                 writeln!(w, "{{")?;
                 for (vnr, v) in vals.iter().enumerate() {
@@ -892,11 +903,19 @@ use external::*;
                     for (a_nr, a) in def_fn.attributes.iter().enumerate() {
                         let name = "@".to_string() + &a.name;
                         let mut val_code = std::io::BufWriter::new(Vec::new());
-                        self.output_code(&mut val_code, &vals[a_nr], indent)?;
-                        res = res.replace(
-                            &name,
-                            &String::from_utf8(val_code.into_inner().unwrap()).unwrap(),
-                        );
+                        if a_nr < vals.len() {
+                            self.output_code(&mut val_code, &vals[a_nr], indent)?;
+                            res = res.replace(
+                                &name,
+                                &String::from_utf8(val_code.into_inner().unwrap()).unwrap(),
+                            )
+                        } else {
+                            println!(
+                                "Problem def_fn {def_fn} attributes {:?} vals {:?}",
+                                def_fn.attributes, vals
+                            );
+                            break;
+                        }
                     }
                     write!(w, "{}", res)?;
                 }

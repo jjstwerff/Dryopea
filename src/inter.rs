@@ -61,7 +61,6 @@ pub struct Inter<'a> {
 
 const EXTERN: &[(&str, Extern)] = &[
     ("OpDatabase", int_db_new),
-    ("OpConvRefFromMut", int_db_ro),
     ("OpNot", int_not),
     ("OpAppend", int_append),
     ("OpCastSingleFromFloat", int_cast_single_from_float),
@@ -182,25 +181,20 @@ const EXTERN: &[(&str, Extern)] = &[
     ("OpSetShort", int_set_short),
     ("OpSetInt", int_set_int),
     ("OpGetRef", int_get_ref),
-    ("OpGetMut", int_mut_ref),
     ("OpSetRef", int_set_ref),
     ("OpSetText", int_set_text),
     ("OpSetSingle", int_set_single),
     ("OpSetFloat", int_set_float),
     ("OpSetLong", int_set_long),
     ("OpAppendVector", int_append_vector),
+    ("OpAddVector", int_add_vector),
     ("OpRemoveVector", int_remove_vector),
     ("OpInsertVector", int_insert_vector),
     ("OpGetVector", int_get_vector),
-    ("OpGetMutVector", int_mut_vector),
     ("OpGetSorted", int_get_sorted),
-    ("OpGetMutSorted", int_mut_sorted),
     ("OpGetHash", int_get_hash),
-    ("OpGetMutHash", int_mut_hash),
     ("OpGetIndex", int_get_index),
-    ("OpGetMutIndex", int_mut_index),
     ("OpGetRadix", int_get_radix),
-    ("OpGetMutRadix", int_mut_radix),
     ("OpAssert", int_assert),
     ("OpPrint", int_print),
 ];
@@ -383,28 +377,18 @@ fn int_db_new(_i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Int(size) = &code[0] {
         let mut store = Store::new(50);
         let rec = store.claim(*size as u32);
-        store.references.push((rec, 0));
         let db = state.database.len() as u16;
-        return Value::Mutable(db, 0);
-    }
-    Value::Null
-}
-
-fn int_db_ro(_i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let Value::Mutable(db, r) = &code[0] {
-        let (rec, fld) = state.database[*db as usize].references[*r as usize];
-        return Value::Reference(*db, rec, fld);
+        state.database.push(store);
+        return Value::Reference(db, rec, 0);
     }
     Value::Null
 }
 
 fn int_append(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Mutable(db, _), Value::Int(size)) = (i.calc(&code[0], state), &code[1]) {
+    if let (Value::Reference(db, _, _), Value::Int(size)) = (i.calc(&code[0], state), &code[1]) {
         let store = &mut state.database[db as usize];
-        let r = store.references.len();
         let rec = store.claim(*size as u32);
-        store.references.push((rec, 0));
-        return Value::Mutable(db, r as u32);
+        return Value::Reference(db, rec, 0);
     }
     Value::Null
 }
@@ -1133,26 +1117,20 @@ fn int_clear_text(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
 }
 
 fn int_clear_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let Value::Mutable(db, ref_nr) = i.calc(&code[0], state) {
+    if let Value::Reference(db, ref_nr, pos) = i.calc(&code[0], state) {
         let store = &mut state.database[db as usize];
-        let (v_nr, _) = store.references[ref_nr as usize];
-        external::op_clear_vector(store, v_nr);
+        let rec = store.get_int(ref_nr, pos as isize) as u32;
+        external::op_clear_vector(store, rec);
     }
     Value::Null
 }
 
 fn int_length_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    match i.calc(&code[0], state) {
-        Value::Reference(db, rec, _) => {
-            let store = &state.database[db as usize];
-            Value::Int(external::op_length_vector(store, rec))
-        }
-        Value::Mutable(db, ref_nr) => {
-            let store = &state.database[db as usize];
-            let (v_nr, _) = store.references[ref_nr as usize];
-            Value::Int(external::op_length_vector(store, v_nr))
-        }
-        _ => Value::Null,
+    if let Value::Reference(db, v_nr, fld) = i.calc(&code[0], state) {
+        let store = &state.database[db as usize];
+        Value::Int(external::op_length_vector(store, v_nr, fld as isize) as i32)
+    } else {
+        Value::Null
     }
 }
 
@@ -1405,19 +1383,6 @@ fn int_get_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
     Value::Null
 }
 
-fn int_mut_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db, rec, pos), Value::Int(fld)) =
-        (i.calc(&code[0], state), i.calc(&code[1], state))
-    {
-        let store = &mut state.database[db as usize];
-        let r = store.references.len() as u32;
-        let p = store.get_int(rec, pos as isize + fld as isize) as u32;
-        store.references.push((p, 0));
-        return Value::Mutable(db, r);
-    }
-    Value::Null
-}
-
 fn int_set_ref(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, rec, pos), Value::Int(fld), Value::Reference(_, val, _)) = (
         i.calc(&code[0], state),
@@ -1479,11 +1444,31 @@ fn int_append_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size)) = (i.calc(&code[0], state), &code[1])
     {
         let store = &mut state.database[db as usize];
-        let (r, p) = external::op_append_vector(store, v_nr, pos as isize, *size as u32);
-        Value::Reference(db, r, p)
+        let (vec, pos) = external::op_append_vector(store, v_nr, pos as isize, *size as u32);
+        Value::Reference(db, vec, pos)
     } else {
         Value::Null
     }
+}
+
+fn int_add_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Reference(odb, o_nr, opos), Value::Int(size)) =
+        (i.calc(&code[0], state), i.calc(&code[1], state), &code[2])
+    {
+        assert_eq!(db, odb);
+        // TODO for now only inside the same database
+        let s = *size as isize;
+        let store = &mut state.database[db as usize];
+        let (r, p) = external::op_append_vector(store, v_nr, pos as isize, s as u32);
+        store.copy_block(
+            o_nr,
+            opos as isize * s,
+            r,
+            p as isize * s,
+            external::op_length_vector(store, o_nr, opos as isize) as isize * s,
+        );
+    }
+    Value::Null
 }
 
 fn int_remove_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
@@ -1522,22 +1507,6 @@ fn int_get_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     }
 }
 
-fn int_mut_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
-        i.calc(&code[0], state),
-        i.calc(&code[1], state),
-        i.calc(&code[2], state),
-    ) {
-        let store = &mut state.database[db as usize];
-        let rnr = store.references.len() as u32;
-        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
-        store.references.push((r, p));
-        Value::Mutable(db, rnr)
-    } else {
-        Value::Null
-    }
-}
-
 fn int_get_sorted(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
         i.calc(&code[0], state),
@@ -1552,21 +1521,6 @@ fn int_get_sorted(i: &Inter, code: &[Value], state: &mut State) -> Value {
     }
 }
 
-fn int_mut_sorted(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
-        i.calc(&code[0], state),
-        i.calc(&code[1], state),
-        i.calc(&code[2], state),
-    ) {
-        let store = &mut state.database[db as usize];
-        let rnr = store.references.len() as u32;
-        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
-        store.references.push((r, p));
-        Value::Mutable(db, rnr)
-    } else {
-        Value::Null
-    }
-}
 fn int_get_hash(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
         i.calc(&code[0], state),
@@ -1581,21 +1535,6 @@ fn int_get_hash(i: &Inter, code: &[Value], state: &mut State) -> Value {
     }
 }
 
-fn int_mut_hash(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
-        i.calc(&code[0], state),
-        i.calc(&code[1], state),
-        i.calc(&code[2], state),
-    ) {
-        let store = &mut state.database[db as usize];
-        let rnr = store.references.len() as u32;
-        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
-        store.references.push((r, p));
-        Value::Mutable(db, rnr)
-    } else {
-        Value::Null
-    }
-}
 fn int_get_index(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
         i.calc(&code[0], state),
@@ -1610,21 +1549,6 @@ fn int_get_index(i: &Inter, code: &[Value], state: &mut State) -> Value {
     }
 }
 
-fn int_mut_index(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
-        i.calc(&code[0], state),
-        i.calc(&code[1], state),
-        i.calc(&code[2], state),
-    ) {
-        let store = &mut state.database[db as usize];
-        let rnr = store.references.len() as u32;
-        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
-        store.references.push((r, p));
-        Value::Mutable(db, rnr)
-    } else {
-        Value::Null
-    }
-}
 fn int_get_radix(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
         i.calc(&code[0], state),
@@ -1634,22 +1558,6 @@ fn int_get_radix(i: &Inter, code: &[Value], state: &mut State) -> Value {
         let store = &mut state.database[db as usize];
         let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
         Value::Reference(db, r, p)
-    } else {
-        Value::Null
-    }
-}
-
-fn int_mut_radix(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db, v_nr, pos), Value::Int(size), Value::Int(index)) = (
-        i.calc(&code[0], state),
-        i.calc(&code[1], state),
-        i.calc(&code[2], state),
-    ) {
-        let store = &mut state.database[db as usize];
-        let rnr = store.references.len() as u32;
-        let (r, p) = external::op_get_vector(store, v_nr, pos as isize, size as u32, index);
-        store.references.push((r, p));
-        Value::Mutable(db, rnr)
     } else {
         Value::Null
     }

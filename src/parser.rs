@@ -28,7 +28,7 @@ pub struct Parser<'a> {
     in_loop: bool,
     /// The current file number that is being parsed
     file: u32,
-    /// Sub type names in the current function definition
+    /// Subtype names in the current function definition
     sub_names: HashMap<String, u32>,
     pub diagnostics: Diagnostics,
     default: bool,
@@ -166,55 +166,29 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse all .gcp files found in a directory tree in alphabetical ordering.
-    pub fn parse_dir(&mut self, dir: &str, default: bool) -> bool {
-        let paths = match read_dir(dir) {
-            Ok(p) => p,
-            Err(_e) => {
-                self.diagnostics
-                    .add(Level::Fatal, &format!("Could not read directory:{dir}"));
-                return false;
-            }
-        };
+    pub fn parse_dir(&mut self, dir: &str, default: bool) -> std::io::Result<()> {
+        let paths = read_dir(dir)?;
         let mut files: BTreeSet<String> = BTreeSet::new();
         for path in paths {
-            let file_name = match path {
-                Ok(f) => f.path().to_string_lossy().to_string(),
-                Err(e) => {
-                    self.diagnostics
-                        .add(Level::Fatal, &format!("File error:{e:?}"));
-                    return false;
-                }
-            };
-            let data = match metadata(&file_name) {
-                Ok(d) => d,
-                Err(e) => {
-                    self.diagnostics
-                        .add(Level::Fatal, &format!("File error:{e:?}"));
-                    return false;
-                }
-            };
+            let file_name = path?.path().to_string_lossy().to_string();
+            let data = metadata(&file_name)?;
             if file_name.ends_with(".gcp") || data.is_dir() {
                 files.insert(file_name);
             }
         }
         for f in files {
-            let data = match metadata(&f) {
-                Ok(d) => d,
-                Err(e) => {
-                    self.diagnostics
-                        .add(Level::Fatal, &format!("File error:{e:?}"));
-                    return false;
-                }
-            };
+            let data = metadata(&f)?;
             if data.is_dir() {
-                if !self.parse_dir(&f, default) {
-                    return false;
-                }
+                self.parse_dir(&f, default)?
             } else if !self.parse(&f, default) {
-                return false;
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("{}", self.diagnostics),
+                ));
             }
         }
-        self.types.validate(&mut self.lexer)
+        self.types.validate(&mut self.lexer);
+        Ok(())
     }
 
     /// Only parse a specific string, only useful for parser tests.
@@ -240,7 +214,7 @@ impl<'a> Parser<'a> {
 
     /// Get an iterator.
     /// The iterable expression is in *code.
-    /// Creating the iterator will be in *code afterwards.
+    /// Creating the iterator will be in *code afterward.
     /// Return the next expression; with Value::None the iterator creations was impossible.
     fn iterator(&mut self, code: &mut Value, is_type: &Type, should: &Type) -> Value {
         if is_type == should {
@@ -502,7 +476,11 @@ impl<'a> Parser<'a> {
             Type::Float => self.cl("OpSetFloat", &[ref_code, Value::Int(pos), val_code]),
             Type::Single => self.cl("OpSetSingle", &[ref_code, Value::Int(pos), val_code]),
             Type::Text => self.cl("OpSetText", &[ref_code, Value::Int(pos), val_code]),
-            _ => panic!("Set not implemented on {}", self.data.attr_type(d_nr, f_nr)),
+            _ => panic!(
+                "Set not implemented on {}/{}",
+                self.data.attr_name(d_nr, f_nr),
+                self.data.attr_type(d_nr, f_nr)
+            ),
         }
     }
 
@@ -526,7 +504,7 @@ impl<'a> Parser<'a> {
             let tp = self.call_nr(code, pos, &list, &types, false);
             if tp != Type::Null {
                 // We cannot compare two different types of enums, both will be integers in the same range
-                if let (Some(Type::Enum(f)), Some(Type::Enum(s))) = (types.get(0), types.get(1)) {
+                if let (Some(Type::Enum(f)), Some(Type::Enum(s))) = (types.first(), types.get(1)) {
                     if f != s {
                         break;
                     }
@@ -628,9 +606,11 @@ impl<'a> Parser<'a> {
                     if let Type::Subtype(snr) = test_type {
                         let Some(tp) = sub_types.get(snr as usize) else {
                             diagnostic!(
-                        self.lexer,
-                        Level::Error,
-                        "Unknown subtype {snr} on {}", self.data.def_name(d_nr));
+                                self.lexer,
+                                Level::Error,
+                                "Unknown subtype {snr} on {}",
+                                self.data.def_name(d_nr)
+                            );
                             return Type::Null;
                         };
                         test_type = tp.clone();
@@ -791,7 +771,11 @@ impl<'a> Parser<'a> {
             return false;
         }
         let Some(fn_name) = self.lexer.has_identifier() else {
-            diagnostic!(self.lexer, Level::Error, "Expect name in function definition");
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "Expect name in function definition"
+            );
             return false;
         };
         if !self.default && !is_lower(&fn_name) {
@@ -851,7 +835,6 @@ impl<'a> Parser<'a> {
             }
             attributes = self.data.attributes(self.current_fn);
         }
-        // Do only allowed header only functions inside the default header file.
         if !self.default || !self.lexer.has_token(";") {
             self.parse_code();
         }
@@ -1203,11 +1186,6 @@ impl<'a> Parser<'a> {
             if self.lexer.has_token(op) {
                 let s_type = self.parse_operators(code, 0);
                 let new = self.types.change_var_type(&mut self.lexer, &to, &s_type);
-                /*
-                println!(
-                    "op {op} s_type {s_type} code {code:?} to {to:?} at {}",
-                    self.lexer.pos()
-                );*/
                 *code = self.towards_set(to, code, &f_type, &op[0..1], new);
                 return Type::Void;
             }
@@ -1217,16 +1195,36 @@ impl<'a> Parser<'a> {
     }
 
     fn towards_set(&mut self, to: Value, val: &Value, f_type: &Type, op: &str, new: bool) -> Value {
-        if let Type::Vector(_) = f_type {
-            if let Value::Call(_, args) = &to {
-                let app = self.cl("OpAppendVector", args);
-                return if op == "=" {
-                    Value::Block(vec![self.cl("OpClearVector", &[to.clone()]), app])
-                } else {
-                    app
-                };
+        if let Type::Vector(elm_tp) = f_type {
+            let mut blk = Vec::new();
+            if op == "=" {
+                blk.push(self.cl("OpClearVector", &[to.clone()]));
+            } else if op != "+=" {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Unsupported operator '{}' on a structure",
+                    op
+                );
+                return Value::Null;
             }
-            panic!("Vector assign {:?} at {:?}", to, self.lexer.pos());
+            let elm_td = self.data.type_elm(elm_tp);
+            let elm_size = self.data.def_size(elm_td) as i32;
+            if let Value::Block(vec) = val {
+                for v in vec {
+                    let app = self.cl("OpAppendVector", &[to.clone(), Value::Int(elm_size)]);
+                    blk.push(self.op(op, app, v.clone(), *elm_tp.clone()));
+                }
+            } else if let Value::Var(nr) = val {
+                let len = self.cl("OpLengthVector", &[Value::Var(*nr)]);
+                blk.push(self.cl("OpAppendVector", &[to.clone(), len]));
+                // TODO actually write the data
+                // Loop through all elements
+            } else {
+                // TODO Test with an array typed variable
+                panic!("Unknown type on Vector {:?}", val);
+            }
+            return Value::Block(blk);
         }
         let code = if op != "=" {
             self.op(op, to.clone(), val.clone(), f_type.clone())
@@ -1459,7 +1457,7 @@ impl<'a> Parser<'a> {
                     size = s;
                 }
             } else {
-                // double conversion check.. can t become in_t or vice versa
+                // double conversion check: can t become in_t or vice versa
                 if !self.convert(&mut p, &t, &in_t) {
                     if self.convert(&mut p, &in_t, &t) {
                         in_t = t;
@@ -1501,25 +1499,13 @@ impl<'a> Parser<'a> {
                 ls.push(self.set_field(vec_tp, u16::MAX, Value::Var(elm), p.clone()));
             } else if inline {
                 ls.push(v_set(elm, app_v));
-                if let Value::Block(bl) = p {
-                    for e in bl {
-                        ls.push(e.clone());
-                    }
-                } else {
-                    ls.push(p.clone());
-                }
+                Self::push(&mut ls, &p);
             } else {
                 ls.push(v_set(
                     elm,
                     self.cl("OpAppend", &[Value::Var(vec), Value::Int(vec_size)]),
                 ));
-                if let Value::Block(bl) = p {
-                    for e in bl {
-                        ls.push(e.clone());
-                    }
-                } else {
-                    ls.push(p.clone());
-                }
+                Self::push(&mut ls, &p);
                 ls.push(self.cl("OpSetReference", &[app_v, Value::Int(0), Value::Var(elm)]));
             }
         }
@@ -1548,6 +1534,16 @@ impl<'a> Parser<'a> {
         self.lexer.token("]");
         *val = Value::Block(ls);
         Type::Vector(Box::new(in_t))
+    }
+
+    fn push(ls: &mut Vec<Value>, p: &Value) {
+        if let Value::Block(bl) = p {
+            for e in bl {
+                ls.push(e.clone());
+            }
+        } else {
+            ls.push(p.clone());
+        }
     }
 
     // <children> ::=
@@ -1793,7 +1789,11 @@ impl<'a> Parser<'a> {
                 self.expression(&mut format)
             };
             if tp.is_unknown() {
-                diagnostic!(self.lexer, Level::Error, "Incorrect expression in string");
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Incorrect expression in string was {tp:?}"
+                );
                 return;
             }
             self.lexer.set_mode(Mode::Formatting);

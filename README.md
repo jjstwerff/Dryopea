@@ -28,3 +28,15 @@ It is possible that a feature gets postponed or even dropped when deemed problem
 
 When deemed necessary, parts of features will be split to new documents. So it is not a problem to have a more full
 design in a feature.
+
+# Initial command-line prompt
+export PS1="\[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$"
+
+# Git branch on command line
+git_branch() {
+  git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+}
+
+export PS1="\w\a\[\033[00;32m\]\$(git_branch)\[\033[00m\]\$ "
+
+/usr/lib/git-core/git-sh-prompt

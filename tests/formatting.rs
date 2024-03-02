@@ -42,8 +42,8 @@ fn format_float() {
 
 #[test]
 fn format_long() {
-    expr!("\"a{1l+1:+4}b{12l as integer}c{2l * (4l % 6l) >= 8}d\"")
-        .result(Value::Text(format!("a{:+4}b12ctrued", 2)));
+    expr!("\"a{1l+1:+4}b{12l as integer}c {2l * (4l % 6l) >= 8} d\"")
+        .result(Value::Text(format!("a{:+4}b12c true d", 2)));
 }
 
 #[test]

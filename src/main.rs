@@ -20,9 +20,9 @@ struct Cli {
     dir: std::path::PathBuf,
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let cli: Cli = Cli::parse();
     let mut p = parser::Parser::new();
-    p.parse_dir("default", true);
-    p.parse_dir(cli.dir.to_str().unwrap(), false);
+    p.parse_dir("default", true)?;
+    p.parse_dir(cli.dir.to_str().unwrap(), false)
 }

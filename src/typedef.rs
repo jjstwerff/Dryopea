@@ -108,7 +108,7 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
     let mut gaps = HashMap::new();
     // Keep space for the claimed record size and start on the first 8 byte alignment position after that
     let mut pos = 8;
-    // Check if we have an "reference" field on position 4 already, otherwise register a gap.
+    // Check if we have a "reference" field on position 4 already, otherwise register a gap.
     if data.attr(d_nr, "reference") == u16::MAX {
         gaps.insert(4, 4);
     }
