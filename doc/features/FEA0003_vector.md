@@ -42,6 +42,10 @@ import json
 
 mutable
 
+test that iterators still point to the correct position after a remove.
+for now disallow multiple iterators on the same vector when an inner iterator removes a record
+    we can detect this at runtime, but want to detect this too as compile time
+
 Comments
 --------
 

@@ -7,6 +7,7 @@ mod testing;
 
 use dryopea::data::Value;
 
+#[test]
 fn vectors() {
     expr!(
         "v=[1, 2, 1+2];
@@ -18,7 +19,7 @@ t + v[0] + v[-1] + v.len()"
     )
     .result(Value::Int(20));
 }
-/*
+
 #[test]
 fn format_vector() {
     expr!(
@@ -27,13 +28,12 @@ fn format_vector() {
 v += [16];
 \"{v} {v.len()} {v[2]} {for x in v if x >= 4 {x/2}}\""
     )
-    .result(Value::Text("[1, 2, 4, 8, 16] 5 4 [2, 4, 8]".to_string()));
+    .result(Value::str("[1,2,4,8,16] 5 4 [2, 4, 8]"));
 }
-
+/*
 #[test]
 fn map_vector() {
-    expr!("v=..10; w=[for x in v if x < 4 {x * 3}]; \"{w}\"")
-        .result(Value::Text("[0, 3, 6, 9]".to_string()));
+    expr!("v=..10; w=[for x in v if x < 4 {x * 3}]; \"{w}\"").result(Value::str("[0, 3, 6, 9]"));
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn store_iterator() {
     expr!("v=[1, 2, 3]; v += v[1..2]; v += [for x in v {x*2}]; \"{v}\"")
         .result(Value::Text("[1, 2, 3, 2, 3, 2, 4, 6, 4, 6]".to_string()));
 }
-
+*/
 #[test]
 fn format_object() {
     code!("struct Elm {a:integer, b:integer}")
@@ -60,11 +60,9 @@ fn format_object() {
     Elm{a:4, b:5}
 ];
 v[2].b=6;
-\" {v} \"",
+\"{v} sizeof {sizeof(Elm)}\"",
         )
-        .result(Value::Text(
-            " [Elm {a:1, b:2}, Elm {a:12, b:13}, Elm {a:4, b:6}] ".to_string(),
-        ));
+        .result(Value::str("[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"));
 }
 
 #[test]
@@ -79,10 +77,10 @@ fn object_vectors() {
 #[test]
 fn sum_vector() {
     code!("fn sum(v: vector<integer>) -> integer { t = 0; for i in v { t += i }; t}")
-        .expr("Sum([1, 2, 3, 4, 5])")
+        .expr("sum([1, 2, 3, 4, 5])")
         .result(Value::Int(15));
 }
-
+/*
 #[test]
 fn ordered_vector() {
     code!("struct Elm {key: text, value: integer}

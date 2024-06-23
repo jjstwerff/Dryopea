@@ -12,7 +12,7 @@ We strive for easy to write code that looks and feels a lot like rust. So it is 
 State
 -----
 - **Complete** Yes
-- **Implementation** Full
+- **Implementation** Partial
 - **Tested** Reasonable
 - **Compatible** Yes
 - **Documentation** Some
@@ -25,9 +25,9 @@ Use-cases
 Design
 ------
 We omit explicit references with & from the language, objects will always be passed by reference to methods.
-Mutability is checked by the compiler, it doesn't have to be given by the programmer.
+Mutability is checked by the compiler, it doesn't have to be explicitly given by the programmer.
 There is no 'let' keyword, variables can be defined without it.
-A set of methods like len, abs, sin, cos may be used as a function too without explicitly declaring its type.
+A set of methods like len, abs, sin, cos may be used as a function too without explicitly declaring their type.
 
 Out-of-scope
 ------------
@@ -44,11 +44,12 @@ Consistency
 
 Development
 -----------
+Errors on variable scopes. Those who are used inside a for loop should not be present outside that loop anymore.
 
-We need to still clearly document the changes versus normal rust code.
+We need to clearly document the changes versus normal rust code.
 - Possible types
 - No references
-- No lifetimes
+- No explicit lifetimes
 - Where do we pass by reference
 - Mutability
 - Variable declarations

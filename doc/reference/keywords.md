@@ -9,3 +9,5 @@
 ## Keyword pub
 
 ## Operators .. & ..=
+
+## Keyword as

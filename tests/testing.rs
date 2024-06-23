@@ -104,20 +104,22 @@ impl Drop for Test {
         let mut p = Parser::new();
         p.parse_dir("default", true).unwrap();
         let start = p.data.definitions();
-        if !self.code.is_empty() {
-            p.parse_str(&self.code, &self.name);
-        }
+        let mut code = self.code.clone();
         if !self.expr.is_empty() {
-            p.parse_str(&self.test(), &self.name);
+            if !code.is_empty() {
+                code += "\n";
+            }
+            code += &self.test();
+        }
+        p.parse_str(&code, &self.name);
+        if !self.expr.is_empty() {
             p.data.def_used(p.data.def_nr("test"));
         }
         for (d, s) in &self.sizes {
             assert_eq!(p.data.def_size(p.data.def_nr(d)), *s, "Size of {}", *d);
         }
         let w = &mut std::fs::File::create("tests/generated/default.rs").unwrap();
-        for d in 0..start {
-            p.data.output_def(w, d).unwrap();
-        }
+        p.data.output(w, 0, start).unwrap();
         // Write code output when the result is tested, not only for errors or warnings.
         if self.result != Value::Null || !self.tp.is_unknown() {
             let w = &mut std::fs::File::create(format!(
@@ -125,9 +127,7 @@ impl Drop for Test {
                 self.file, self.name
             ))
             .unwrap();
-            for d in start..p.data.definitions() {
-                p.data.output_def(w, d).unwrap();
-            }
+            p.data.output(w, start, p.data.definitions()).unwrap();
         }
         // Validate that we found the correct warnings and errors. Halt when differences are found.
         self.assert_diagnostics(&p);
@@ -138,7 +138,7 @@ impl Drop for Test {
         if !self.tp.is_unknown() {
             assert_eq!(p.data.returned(p.data.def_nr("test")), self.tp);
         }
-        let i = Inter::new(&p.data);
+        let i = Inter::new(&p.data, p.database);
         let res = i.calculate("test", None).unwrap();
         // Only write the interpreter log when a different result is found.
         if res != self.result {

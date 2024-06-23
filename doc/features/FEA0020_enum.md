@@ -12,7 +12,7 @@ Also, we do not yet introduce name spacing for enum values.
 State
 -----
 - **Complete** Yes
-- **Implementation** Full
+- **Implementation** Partial
 - **Tested** Reasonable
 - **Compatible** Yes
 - **Documentation** Some
@@ -28,6 +28,11 @@ game projects. Those commonly have a licence that prohibits easy extraction of t
 Design
 ------
 Simple enum definitions without internal fields.
+
+Allow more enum values than 255 inside the database: switch to u16 instead of u8 internally.
+Allow conversion from and to text from enum.
+Allow conversion from and to integer from enum.
+Possibly randomization of the enum values inside the binary database.
 
 Examples
 --------

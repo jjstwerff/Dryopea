@@ -1,3 +1,7 @@
+use database::KnownTypes;
+fn init(mut db: KnownTypes) {
+}
+
 fn _tp_integer_abs(var_0: i32, ) -> i32 {
   op_abs_int(var_0)
 }

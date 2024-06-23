@@ -46,7 +46,7 @@ struct Main { s:hash<S>[b] }"
         "m = Main {};
 sizeof(S) + 100 * sizeof(Main) + 1000 * alignment(S)",
     )
-    .result(Value::Int(4804));
+    .result(Value::Int(8820));
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn index_member() {
 struct Main { s: index<S>[a, c desc] };"
     )
     .expr("m = Main {}; sizeof(S) + 100 * sizeof(Main) + 1000 * alignment(S)")
-    .result(Value::Int(4804));
+    .result(Value::Int(8829));
 }
 
 #[test]
@@ -73,7 +73,7 @@ struct Main { s: vector<S>, biggest: reference<S> };"
         "m = Main{};
 sizeof(S) + 100 * sizeof(Main) + 10000 * alignment(S) + 100000 * sizeof(vector<S>)",
     )
-    .result(Value::Int(1642404));
+    .result(Value::Int(1642416));
 }
 
 #[test]
@@ -88,5 +88,20 @@ struct Main { s: vector<S>, biggest: S };"
         "m = Main{};
 sizeof(S) + 100 * sizeof(Main) + 10000 * alignment(S) + 100000 * sizeof(vector<S>)",
     )
-    .result(Value::Int(1642404));
+    .result(Value::Int(1242012));
+}
+
+#[test]
+fn vector_size() {
+    // S is now an Inner object that is the exact size of its fields.
+    // biggest is a inner object that increases the size of Main.
+    code!(
+        "struct S {a: integer, b: integer, c:integer};
+struct Main { s: vector<S> };"
+    )
+    .expr(
+        "m = Main{};
+sizeof(S) + 100 * sizeof(Main) + 10000 * alignment(S) + 100000 * sizeof(vector<S>)",
+    )
+    .result(Value::Int(1240812));
 }

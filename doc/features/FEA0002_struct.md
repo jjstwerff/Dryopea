@@ -16,14 +16,10 @@ State
 
 Use-cases
 ---------
-Depend on FEA0027_testing with actual rust code generation
-
 Create list of tests:
 - Class with setting & getting fields of different types
     Introduce separate store variables (and parameters) with references linking towards it
     Keep writable references inside the store
-- Test multiple references
-- Output to json-like format
 - Import from json-like format
 - Creation of linked records (export / import)
 - Removal of linked record & keep references correct & null reference to removed record
@@ -114,11 +110,7 @@ Consistency
 
 Development
 -----------
-Construct objects on a struct type.
-
-Output to own language notation
-
-Duplicate field names
+Error: Duplicate field names
 
 Allow restrictions on integer limits, not null
 

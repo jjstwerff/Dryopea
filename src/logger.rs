@@ -16,7 +16,7 @@ type Limit = RefCell<HashMap<(&'static str, u32), (u32, i64)>>;
 
 thread_local! {
     static RATE_LIMIT: Limit = RefCell::new(HashMap::new());
-    static LOGGER: RefCell<Option<LoggerHandle>> = RefCell::new(None);
+    static LOGGER: RefCell<Option<LoggerHandle>> = const {RefCell::new(None)};
 }
 
 /// per 10 minutes after the first encountered message we allow a specific message 5 times

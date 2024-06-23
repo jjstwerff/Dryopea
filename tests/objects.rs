@@ -26,6 +26,23 @@ fn print_object() {
         "struct Object{a: integer, bb: text, ccc: boolean}
 fn obj() -> Object { Object {a: 12, bb: \"hi\", ccc: false} }"
     )
-    .expr("o = obj(); f=o.a; \"{f}\"")
-    .result(Value::Text("{a: 12, bb: \"hi\", ccc: false}".to_string()));
+    .expr("o = obj(); \"{o} pretty {o:#}\"")
+    .result(Value::str(
+        "{a:12,bb:\"hi\",ccc:false} pretty { a: 12,\n  bb: \"hi\",\n  ccc: false\n}",
+    ));
+}
+
+#[test]
+fn special_fields() {
+    code!(
+        "enum Gender { Male, Female, Fluid }
+struct Object{a: vector<integer>, b: Gender}
+fn sum(o: Object) -> integer {
+  r = 0;
+  for v in o.a { r += v; };
+  r
+}"
+    )
+    .expr("  o = Object {a: [1,4,3], b: Fluid};\n  o.a += [sum(o)];\n  \"{o}\"")
+    .result(Value::str("{a:[1,4,3,8],b:Fluid}"));
 }

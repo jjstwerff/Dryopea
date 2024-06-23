@@ -284,6 +284,7 @@ fn OpFormatText(val: text, width: integer, dir: integer, token: integer) -> text
 
 type enumerate;
 fn OpConvBoolFromEnum(v1: enumerate) -> boolean;
+fn OpConvTextFromEnum(v1: enumerate, enum_tp: integer) -> text;
 fn OpConvEnumFromNull() -> enumerate;
 fn OpEqEnum(v1: enumerate, v2: enumerate) -> boolean;
 fn OpNeEnum(v1: enumerate, v2: enumerate) -> boolean;
@@ -291,7 +292,6 @@ fn OpLtEnum(v1: enumerate, v2: enumerate) -> boolean;
 fn OpLeEnum(v1: enumerate, v2: enumerate) -> boolean;
 fn OpGtEnum(v1: enumerate, v2: enumerate) -> boolean;
 fn OpGeEnum(v1: enumerate, v2: enumerate) -> boolean;
-fn OpFormatEnum(v1: text, val: enumerate, width: integer);
 
 // A reference to a record, this can 'live' inside an array
 // Might this be a reference to a record field? As It might be a reference to a single value inside an array.
@@ -299,6 +299,8 @@ fn OpFormatEnum(v1: text, val: enumerate, width: integer);
 type reference;
 
 fn OpDatabase(size: integer) -> reference;
+fn OpFormatDatabase(val: reference, db_tp: integer, vector: boolean, pretty: boolean) -> text;
+// Claim a new object inside a current database
 fn OpAppend(db: reference, size: integer) -> reference;
 pub fn remove(self: reference);
 

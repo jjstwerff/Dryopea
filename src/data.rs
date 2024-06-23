@@ -63,6 +63,13 @@ pub enum Value {
     Closure(u32, u32),
 }
 
+impl Value {
+    #[allow(dead_code)]
+    pub fn str(s: &str) -> Value {
+        Value::Text(s.to_string())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 #[allow(dead_code)]
 pub enum Type {
@@ -215,6 +222,8 @@ struct Definition {
     returned: Type,
     /// Rust code
     rust: String,
+    /// Entry in the known types for the database
+    known_type: u16,
 }
 
 #[allow(dead_code)]
@@ -346,6 +355,7 @@ impl Data {
             size: 0,
             returned: Type::Unknown(rec),
             rust: "".to_string(),
+            known_type: u16::MAX,
         });
         rec
     }
@@ -368,6 +378,11 @@ impl Data {
 
     pub fn set_referenced(&mut self, d_nr: u32, t_nr: u32, change: Value) {
         self.referenced.insert(d_nr, (t_nr, change));
+    }
+
+    // Is this object an inner type
+    pub fn def_inner(&self, d_nr: u32) -> bool {
+        matches!(self.def(d_nr).returned, Type::Inner(_))
     }
 
     pub fn def_type(&self, d_nr: u32) -> DefType {
@@ -397,12 +412,21 @@ impl Data {
         self.definitions[d_nr as usize].alignment = align;
     }
 
+    /// Size of this definition in 8 byte words
     pub fn def_size(&self, d_nr: u32) -> u32 {
         self.def(d_nr).size
     }
 
     pub fn def_align(&self, d_nr: u32) -> u8 {
         self.def(d_nr).alignment
+    }
+
+    pub fn set_known_type(&mut self, d_nr: u32, known_type: u16) {
+        self.definitions[d_nr as usize].known_type = known_type;
+    }
+
+    pub fn def_known_type(&self, d_nr: u32) -> u16 {
+        self.def(d_nr).known_type
     }
 
     pub fn rust(&mut self, d_nr: u32) -> String {
@@ -416,9 +440,10 @@ impl Data {
     pub fn set_returned(&mut self, d_nr: u32, tp: Type) {
         if !self.def(d_nr).returned.is_unknown() {
             panic!(
-                "Cannot change returned type on {} to {tp} twice was {}",
+                "Cannot change returned type on [{d_nr}]{} to {tp} twice was {} at {:?}",
                 self.def(d_nr).name,
-                self.def(d_nr).returned
+                self.def(d_nr).returned,
+                self.def_pos(d_nr)
             );
         }
         self.definitions[d_nr as usize].returned = tp;
@@ -562,7 +587,7 @@ impl Data {
 
     /// Get a vector definition. This is a record with a single field pointing towards this vector.
     /// We need this definition as the primary record of a database holding a vector and its child records/vectors.
-    pub fn vector_def(&mut self, lexer: &mut Lexer, dnr: u32, tp: &Type) -> u32 {
+    pub fn vector_def(&mut self, lexer: &mut Lexer, tp: &Type) -> u32 {
         let name = format!("{tp:?}");
         let d_nr = self.def_nr(&name);
         if d_nr != u32::MAX {
@@ -570,10 +595,6 @@ impl Data {
         } else {
             let vd = self.add_def(name, lexer.pos(), DefType::Struct);
             self.add_attribute(lexer, vd, "vector", Type::Vector(Box::new(tp.clone())));
-            let vector = &mut self.definitions[vd as usize];
-            vector.attributes[0].position = 4;
-            vector.size = 1;
-            vector.returned = Type::Reference(dnr);
             vd
         }
     }
@@ -656,6 +677,7 @@ impl Data {
         }
     }
 
+    /// Get the definition number for the given type.
     pub fn type_elm(&self, tp: &Type) -> u32 {
         match tp {
             Type::Integer => self.def_nr("integer"),
@@ -748,74 +770,88 @@ use external::*;
 "
             .as_bytes(),
         )?;
-        for d in 0..self.definitions() {
-            self.output_def(w, d)?;
+        self.output(w, 0, self.definitions())
+    }
+
+    pub fn output(&self, w: &mut dyn Write, from: u32, till: u32) -> Result<()> {
+        writeln!(w, "use database::KnownTypes;")?;
+        writeln!(w, "fn init(mut db: KnownTypes) {{")?;
+        for dnr in from..till {
+            let def = self.def(dnr);
+            if def.def_type == DefType::Struct {
+                self.output_struct(w, def)?;
+            } else if def.def_type == DefType::Enum {
+                self.output_enum(w, def)?;
+            }
+        }
+        writeln!(w, "}}\n")?;
+        for dnr in from..till {
+            let def = self.def(dnr);
+            if def.def_type == DefType::Function {
+                self.output_function(w, def)?;
+            }
         }
         Ok(())
     }
 
-    pub fn output_def(&self, w: &mut dyn Write, dnr: u32) -> Result<()> {
-        let def = self.def(dnr);
+    fn output_struct(&self, w: &mut dyn Write, def: &Definition) -> Result<()> {
+        let p = if def.parent == u32::MAX {
+            u16::MAX
+        } else {
+            def.parent as u16
+        };
+        writeln!(
+            w,
+            "  let s = db.structure(\"{}\", {}, {p});",
+            def.name, def.size
+        )?;
+        for a in &def.attributes {
+            let pos = if a.position == u32::MAX {
+                u16::MAX
+            } else {
+                a.position as u16
+            };
+            let nm = a.name.clone();
+            if let Type::Vector(c) = &a.typedef {
+                let tp = self.def_known_type(self.type_def_nr(c));
+                writeln!(w, "  db.vector(s, db.field(s, \"{nm}\", {tp}, {pos}));",)?;
+            } else {
+                let tp = self.def_known_type(self.type_def_nr(&a.typedef));
+                writeln!(w, "  db.field(s, \"{nm}\", {tp}, {pos});")?;
+            }
+        }
+        Ok(())
+    }
+
+    fn output_enum(&self, w: &mut dyn Write, def: &Definition) -> Result<()> {
+        writeln!(w, "  let e = db.enumerate(s, \"{}\");", def.name)?;
+        for a in &def.attributes {
+            writeln!(w, "  db.value(s, \"{}\");", a.name)?;
+        }
+        Ok(())
+    }
+
+    fn output_function(&self, w: &mut dyn Write, def: &Definition) -> Result<()> {
         if def.position.file == "default/01_code.gcp"
             && def.name.starts_with("Op")
             && def.code == Value::Null
         {
             return Ok(());
         }
-        if def.def_type == DefType::Function {
-            write!(w, "fn {}(", def.name)?;
-            for (anr, a) in def.attributes.iter().enumerate() {
-                write!(w, "var_{}: {}, ", anr, self.rust_type(&a.typedef))?
-            }
-            write!(w, ") ")?;
-            if def.returned != Type::Void {
-                write!(w, "-> {} ", self.rust_type(&def.returned))?
-            }
-            if def.code == Value::Null {
-                write!(w, " {{}}")?;
-            } else {
-                self.output_code(w, &def.code, 0)?;
-            }
-            write!(w, "\n\n")?;
-        } else if def.def_type == DefType::Struct {
-            writeln!(w, "{{")?;
-            writeln!(w, "  let d = Definition::new(\"{}\");", def.name)?;
-            if def.parent != u32::MAX {
-                writeln!(w, "  d.parent.push({});", self.def(def.parent).name)?;
-            }
-            if !def.attributes.is_empty() {
-                for (e, a) in def.attributes.iter().enumerate() {
-                    write!(
-                        w,
-                        "  d.add_attribute(\"{}\", Type::{}{}{}",
-                        a.name,
-                        self.show_type(&a.typedef),
-                        if a.mutable { " mutable" } else { "" },
-                        if a.primary { " primary" } else { "" },
-                    )?;
-                    if a.value != Value::Null {
-                        write!(w, " = ")?;
-                        self.output_code(w, &a.value, 2)?;
-                    }
-                    writeln!(w, ");")?;
-
-                    if a.position != u32::MAX {
-                        writeln!(w, "  d.attributes[{}].position = {};", e, a.position)?;
-                    }
-                }
-            }
-            if !def.returned.is_unknown() {
-                writeln!(w, "  d.returned = Type::{};", self.show_type(&def.returned))?;
-            }
-            writeln!(w, "  d.size = {};", def.size)?;
-            if def.code != Value::Null {
-                write!(w, "  d.code = ")?;
-                self.output_code(w, &def.code, 2)?;
-                writeln!(w, ";")?;
-            }
-            writeln!(w, "}}")?;
+        write!(w, "fn {}(", def.name)?;
+        for (anr, a) in def.attributes.iter().enumerate() {
+            write!(w, "var_{}: {}, ", anr, self.rust_type(&a.typedef))?
         }
-        Ok(())
+        write!(w, ") ")?;
+        if def.returned != Type::Void {
+            write!(w, "-> {} ", self.rust_type(&def.returned))?
+        }
+        if def.code == Value::Null {
+            write!(w, " {{}}")?;
+        } else {
+            self.output_code(w, &def.code, 0)?;
+        }
+        writeln!(w, "\n")
     }
 
     pub fn output_code(&self, w: &mut dyn Write, code: &Value, indent: u32) -> Result<()> {

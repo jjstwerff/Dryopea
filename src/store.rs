@@ -293,7 +293,10 @@ impl Store {
             if fld != 0 {
                 let size: i32 = *self.addr(rec, 0);
                 // The first 4 positions are reserved for the record size
-                if size < 1 || rec + size as u32 > self.size || fld < 4 {
+                if rec + size as u32 > self.size {
+                    panic!("Inconsistent record {} size {} > {}", rec, size, self.size);
+                }
+                if size < 1 || fld < 4 || fld > size as isize * 8 {
                     panic!("Reading fields outside record ({}.{}) > {}", rec, fld, size);
                 }
             }
