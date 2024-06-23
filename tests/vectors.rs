@@ -7,6 +7,7 @@ mod testing;
 
 use dryopea::data::Value;
 
+#[test]
 fn vectors() {
     expr!(
         "v=[1, 2, 1+2];
@@ -18,7 +19,7 @@ t + v[0] + v[-1] + v.len()"
     )
     .result(Value::Int(20));
 }
-/*
+
 #[test]
 fn format_vector() {
     expr!(
@@ -27,15 +28,14 @@ fn format_vector() {
 v += [16];
 \"{v} {v.len()} {v[2]} {for x in v if x >= 4 {x/2}}\""
     )
-    .result(Value::Text("[1, 2, 4, 8, 16] 5 4 [2, 4, 8]".to_string()));
+    .result(Value::str("[1, 2, 4, 8, 16] 5 4 [2, 4, 8]"));
 }
 
 #[test]
 fn map_vector() {
-    expr!("v=..10; w=[for x in v if x < 4 {x * 3}]; \"{w}\"")
-        .result(Value::Text("[0, 3, 6, 9]".to_string()));
+    expr!("v=..10; w=[for x in v if x < 4 {x * 3}]; \"{w}\"").result(Value::str("[0, 3, 6, 9]"));
 }
-
+/*
 #[test]
 fn loop_variables() {
     expr!(

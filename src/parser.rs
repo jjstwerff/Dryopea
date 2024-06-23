@@ -5,6 +5,7 @@
 //! Including type checking.
 
 use crate::data::*;
+use crate::database::KnownTypes;
 use crate::diagnostics::*;
 use crate::lexer::{LexItem, LexResult, Lexer, Mode};
 use crate::typedef;
@@ -19,6 +20,8 @@ use typedef::complete_definition;
 pub struct Parser<'a> {
     /// All definitions
     pub data: Data,
+    /// Add database types
+    pub database: KnownTypes,
     /// The lexer on the current text file
     pub lexer: Lexer,
     types: Types<'a>,
@@ -34,6 +37,8 @@ pub struct Parser<'a> {
     default: bool,
     /// The function that is currently parsed
     current_fn: u32,
+    /// Is this the first pass on parsing:
+    /// - do not assume that all struct / enum types are parsed
     first_pass: bool,
 }
 
@@ -122,6 +127,7 @@ impl<'a> Parser<'a> {
         Parser {
             data: Data::new(),
             lexer: Lexer::default(),
+            database: KnownTypes::new(),
             types: Types::new(),
             var_nr: 1,
             in_loop: false,
@@ -392,6 +398,11 @@ impl<'a> Parser<'a> {
                 }
             }
             if let Type::Reference(r) = should {
+                if *r == self.data.def_nr("reference") {
+                    if let Type::Reference(_) = test_type {
+                        return true;
+                    }
+                }
                 if matches!(test_type, Type::Inner(i) if i==r) {
                     return true;
                 }
@@ -420,12 +431,11 @@ impl<'a> Parser<'a> {
     fn call(&mut self, code: &mut Value, name: &str, list: &[Value], types: &[Type]) -> Type {
         // Create a new list of parameters based on the current ones
         // We still need to know the types though.
-        if self.first_pass && !self.default {
-            return Type::Unknown(0);
-        }
         let d_nr = self.data.def_nr(name);
         if d_nr != u32::MAX {
             self.call_nr(code, d_nr, list, types, true)
+        } else if self.first_pass && !self.default {
+            return Type::Unknown(0);
         } else {
             diagnostic!(self.lexer, Level::Error, "Unknown function {name}");
             Type::Unknown(0)
@@ -451,8 +461,8 @@ impl<'a> Parser<'a> {
             Type::Float => self.cl("OpGetFloat", &[code, Value::Int(pos)]),
             Type::Single => self.cl("OpGetSingle", &[code, Value::Int(pos)]),
             Type::Text => self.cl("OpGetText", &[code, Value::Int(pos)]),
-            Type::Vector(_) => self.cl("OpGet", &[code, Value::Int(pos)]),
-            Type::Reference(_) => self.cl("OpGet", &[code, Value::Int(pos)]),
+            Type::Vector(_) => self.cl("OpGetField", &[code, Value::Int(pos)]),
+            Type::Reference(_) => self.cl("OpGetRef", &[code, Value::Int(pos)]),
             _ => panic!("Get not implemented on {}", tp),
         }
     }
@@ -655,7 +665,12 @@ impl<'a> Parser<'a> {
             diagnostic!(self.lexer, Level::Fatal, "Syntax error")
         };
         if self.first_pass {
-            typedef::actual_types(&mut self.data, &mut self.lexer, start_def);
+            typedef::actual_types(
+                &mut self.data,
+                &mut self.database,
+                &mut self.lexer,
+                start_def,
+            );
         }
         self.first_pass = false;
     }
@@ -1184,6 +1199,9 @@ impl<'a> Parser<'a> {
         let to = code.clone();
         for op in ["=", "+=", "-=", "*=", "%=", "/="] {
             if self.lexer.has_token(op) {
+                if op == "=" {
+                    *code = Value::Null; // do not bleed the original value
+                }
                 let s_type = self.parse_operators(code, 0);
                 let new = self.types.change_var_type(&mut self.lexer, &to, &s_type);
                 *code = self.towards_set(to, code, &f_type, &op[0..1], new);
@@ -1195,36 +1213,8 @@ impl<'a> Parser<'a> {
     }
 
     fn towards_set(&mut self, to: Value, val: &Value, f_type: &Type, op: &str, new: bool) -> Value {
-        if let Type::Vector(elm_tp) = f_type {
-            let mut blk = Vec::new();
-            if op == "=" {
-                blk.push(self.cl("OpClearVector", &[to.clone()]));
-            } else if op != "+=" {
-                diagnostic!(
-                    self.lexer,
-                    Level::Error,
-                    "Unsupported operator '{}' on a structure",
-                    op
-                );
-                return Value::Null;
-            }
-            let elm_td = self.data.type_elm(elm_tp);
-            let elm_size = self.data.def_size(elm_td) as i32;
-            if let Value::Block(vec) = val {
-                for v in vec {
-                    let app = self.cl("OpAppendVector", &[to.clone(), Value::Int(elm_size)]);
-                    blk.push(self.op(op, app, v.clone(), *elm_tp.clone()));
-                }
-            } else if let Value::Var(nr) = val {
-                let len = self.cl("OpLengthVector", &[Value::Var(*nr)]);
-                blk.push(self.cl("OpAppendVector", &[to.clone(), len]));
-                // TODO actually write the data
-                // Loop through all elements
-            } else {
-                // TODO Test with an array typed variable
-                panic!("Unknown type on Vector {:?}", val);
-            }
-            return Value::Block(blk);
+        if let Type::Vector(_) = f_type {
+            return val.clone();
         }
         let code = if op != "=" {
             self.op(op, to.clone(), val.clone(), f_type.clone())
@@ -1547,8 +1537,12 @@ impl<'a> Parser<'a> {
     }
 
     // <children> ::=
-    fn field(&mut self, code: &mut Value, t: Type) -> Type {
-        let mut t = t;
+    fn field(&mut self, code: &mut Value, tp: Type) -> Type {
+        if let Type::Unknown(_) = tp {
+            diagnostic!(self.lexer, Level::Error, "Field of unknown type");
+            return tp;
+        }
+        let mut t = tp;
         if let Some(field) = self.lexer.has_identifier() {
             let enr = self.data.type_elm(&t);
             let e_size = self.data.def_size(enr) as i32;
@@ -2104,73 +2098,18 @@ impl<'a> Parser<'a> {
                 self.append_iter(list, var, vtp.as_ref(), format.clone());
             }
             Type::Reference(d_nr) => {
-                list.push(v_set(
-                    var,
-                    self.cl(
-                        "OpAddText",
-                        &[
-                            Value::Var(var),
-                            Value::Text(self.data.def_name(d_nr) + " {"),
-                        ],
-                    ),
-                ));
-                let attrs = self.data.attributes(d_nr);
-                // let first = true
-                let first_var = self.types.create_var(
-                    format!("iter_{}", self.var_nr),
-                    Type::Boolean,
-                    self.lexer.pos(),
+                let fmt = format.clone();
+                let db_tp = self.data.def_known_type(d_nr);
+                self.call(
+                    format,
+                    "OpFormatDatabase",
+                    &[
+                        fmt,
+                        Value::Int(db_tp as i32),
+                        Value::Int(if state.note { 1 } else { 0 }),
+                    ],
+                    &[Type::Reference(d_nr), Type::Integer, Type::Boolean],
                 );
-                self.var_nr += 1;
-                list.push(v_set(first_var, Value::Int(1)));
-                for a in 0..attrs {
-                    let tp = self.data.attr_type(d_nr, a);
-                    let a_name = self.data.attr_name(d_nr, a);
-                    if let Type::Routine(_) = tp {
-                        continue;
-                    }
-                    // let val = rec.attribute()
-                    let val_var = self.types.create_var(
-                        format!("iter_{}", self.var_nr),
-                        Type::Boolean,
-                        self.lexer.pos(),
-                    );
-                    self.var_nr += 1;
-                    list.push(v_set(
-                        val_var,
-                        Value::Null, //TODO Field(Box::new(format.clone()), a as u16)),
-                    ));
-                    // if val != none {
-                    //   if first { first = false } else { Append(", ") }
-                    //   Append(name + ": ")
-                    let mut write = vec![
-                        v_if(
-                            Value::Var(first_var),
-                            v_set(first_var, Value::Int(0)),
-                            v_set(var, self.cl("OpAddText", &[Value::Var(var), text(", ")])),
-                        ),
-                        v_set(
-                            var,
-                            self.cl(
-                                "OpAddText",
-                                &[Value::Var(var), Value::Text(a_name.clone() + ":")],
-                            ),
-                        ),
-                    ];
-                    //   Append(val)
-                    let mut val = Value::Var(val_var);
-                    self.append_data(tp.clone(), &mut write, var, &mut val, OUTPUT_DEFAULT);
-                    // }
-                    list.push(v_if(
-                        self.op("!=", Value::Var(val_var), Value::Null, tp.clone()),
-                        Value::Block(write),
-                        Value::Null,
-                    ));
-                }
-                list.push(v_set(
-                    var,
-                    self.cl("OpAddText", &[Value::Var(var), text("}")]),
-                ));
             }
             _ => {
                 diagnostic!(self.lexer, Level::Error, "Cannot format type {tp}");

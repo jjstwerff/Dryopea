@@ -63,6 +63,13 @@ pub enum Value {
     Closure(u32, u32),
 }
 
+impl Value {
+    #[allow(dead_code)]
+    pub fn str(s: &str) -> Value {
+        Value::Text(s.to_string())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 #[allow(dead_code)]
 pub enum Type {
@@ -215,6 +222,8 @@ struct Definition {
     returned: Type,
     /// Rust code
     rust: String,
+    /// Entry in the known types for the database
+    known_type: u16,
 }
 
 #[allow(dead_code)]
@@ -346,6 +355,7 @@ impl Data {
             size: 0,
             returned: Type::Unknown(rec),
             rust: "".to_string(),
+            known_type: u16::MAX,
         });
         rec
     }
@@ -397,12 +407,21 @@ impl Data {
         self.definitions[d_nr as usize].alignment = align;
     }
 
+    /// Size of this definition in 8 byte words
     pub fn def_size(&self, d_nr: u32) -> u32 {
         self.def(d_nr).size
     }
 
     pub fn def_align(&self, d_nr: u32) -> u8 {
         self.def(d_nr).alignment
+    }
+
+    pub fn set_known_type(&mut self, d_nr: u32, known_type: u16) {
+        self.definitions[d_nr as usize].known_type = known_type;
+    }
+
+    pub fn def_known_type(&self, d_nr: u32) -> u16 {
+        self.def(d_nr).known_type
     }
 
     pub fn rust(&mut self, d_nr: u32) -> String {
@@ -416,9 +435,10 @@ impl Data {
     pub fn set_returned(&mut self, d_nr: u32, tp: Type) {
         if !self.def(d_nr).returned.is_unknown() {
             panic!(
-                "Cannot change returned type on {} to {tp} twice was {}",
+                "Cannot change returned type on [{d_nr}]{} to {tp} twice was {} at {:?}",
                 self.def(d_nr).name,
-                self.def(d_nr).returned
+                self.def(d_nr).returned,
+                self.def_pos(d_nr)
             );
         }
         self.definitions[d_nr as usize].returned = tp;
@@ -568,7 +588,7 @@ impl Data {
         if d_nr != u32::MAX {
             d_nr
         } else {
-            let vd = self.add_def(name, lexer.pos(), DefType::Struct);
+            let vd = self.add_def(name, lexer.pos(), DefType::Type);
             self.add_attribute(lexer, vd, "vector", Type::Vector(Box::new(tp.clone())));
             let vector = &mut self.definitions[vd as usize];
             vector.attributes[0].position = 4;
@@ -656,6 +676,7 @@ impl Data {
         }
     }
 
+    /// Get the definition number for the given type.
     pub fn type_elm(&self, tp: &Type) -> u32 {
         match tp {
             Type::Integer => self.def_nr("integer"),

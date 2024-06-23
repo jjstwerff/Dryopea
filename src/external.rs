@@ -182,6 +182,7 @@ fn op_append(store: &mut Store, rec: u32, pos: isize, add: u32, size: u32) -> (u
 // This adds an array from one store to another.
 // Child records should be copied separately.
 // Relations to other records in the original store cannot be correctly copied and should be 0.
+#[allow(dead_code)]
 pub fn op_add_vector(
     store: &mut Store,
     rec: u32,
@@ -206,6 +207,7 @@ pub fn op_add_vector(
 
 // This adds an array inside the same store.
 // Child records should be copied separately.
+#[allow(dead_code)]
 pub fn op_add_vector_same(store: &mut Store, rec: u32, pos: isize, size: u32, o: u32, opos: isize) {
     let len = op_length_vector(store, o, opos);
     let (vec_rec, new_pos) = op_append(store, rec, pos, len, size);

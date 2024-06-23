@@ -9,6 +9,7 @@ extern crate strum;
 extern crate strum_macros;
 
 use crate::data::{Data, Value};
+use crate::database::KnownTypes;
 use crate::external;
 use crate::store::Store;
 use std::collections::HashMap;
@@ -56,11 +57,13 @@ type Extern = fn(&Inter, &[Value], &mut State) -> Value;
 
 pub struct Inter<'a> {
     pub data: &'a Data,
+    types: KnownTypes,
     external: HashMap<u32, Extern>,
 }
 
 const EXTERN: &[(&str, Extern)] = &[
     ("OpDatabase", int_db_new),
+    ("OpFormatDatabase", int_text_from_db),
     ("OpNot", int_not),
     ("OpAppend", int_append),
     ("OpCastSingleFromFloat", int_cast_single_from_float),
@@ -191,6 +194,7 @@ const EXTERN: &[(&str, Extern)] = &[
     ("OpRemoveVector", int_remove_vector),
     ("OpInsertVector", int_insert_vector),
     ("OpGetVector", int_get_vector),
+    ("OpGetField", int_get_field),
     ("OpGetSorted", int_get_sorted),
     ("OpGetHash", int_get_hash),
     ("OpGetIndex", int_get_index),
@@ -200,7 +204,7 @@ const EXTERN: &[(&str, Extern)] = &[
 ];
 
 impl<'d> Inter<'d> {
-    pub fn new(data: &'d Data) -> Inter<'d> {
+    pub fn new(data: &'d Data, types: KnownTypes) -> Inter<'d> {
         let mut external = HashMap::new();
         for (name, ext) in EXTERN {
             let nr = data.def_nr(name);
@@ -210,7 +214,11 @@ impl<'d> Inter<'d> {
                 panic!("Could not find definition @{name}");
             }
         }
-        Inter { data, external }
+        Inter {
+            data,
+            types,
+            external,
+        }
     }
 
     /// Start the interpreter on a specific piece of code
@@ -382,6 +390,19 @@ fn int_db_new(_i: &Inter, code: &[Value], state: &mut State) -> Value {
         return Value::Reference(db, rec, 0);
     }
     Value::Null
+}
+
+fn int_text_from_db(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, rec, pos), Value::Int(db_tp), Value::Int(pretty)) =
+        (i.calc(&code[0], state), &code[1], &code[2])
+    {
+        let store = &state.database[db as usize];
+        let sub =
+            crate::database::DataBase::new(&i.types, store, rec, pos, *db_tp as u16, *pretty > 0);
+        Value::Text(format!("{}", sub))
+    } else {
+        Value::Null
+    }
 }
 
 fn int_append(i: &Inter, code: &[Value], state: &mut State) -> Value {
@@ -595,9 +616,14 @@ fn int_conv_enum_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> V
 
 fn int_add_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Int(x), Value::Int(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
-        return Value::Int(x + y);
+        if let Some(r) = x.checked_add(y) {
+            Value::Int(r)
+        } else {
+            Value::Null
+        }
+    } else {
+        Value::Null
     }
-    Value::Null
 }
 
 fn int_min_single_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
@@ -1488,6 +1514,15 @@ fn int_insert_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
         let store = &mut state.database[db as usize];
         let (r, p) = external::op_insert_vector(store, v_nr, pos as isize, *size as u32, index);
         Value::Reference(db, r, p)
+    } else {
+        Value::Null
+    }
+}
+
+fn int_get_field(i: &Inter, code: &[Value], state: &mut State) -> Value {
+    if let (Value::Reference(db, v_nr, pos), Value::Int(fld)) = (i.calc(&code[0], state), &code[1])
+    {
+        Value::Reference(db, v_nr, pos + *fld as u32)
     } else {
         Value::Null
     }

@@ -59,7 +59,7 @@ fn expr_prio_lt() {
 
 #[test]
 fn expr_inline_if() {
-    expr!("if 2 + 2 > 3 {\"A\"} else {\"B\"}").result(Value::Text("A".to_string()));
+    expr!("if 2 + 2 > 3 {\"A\"} else {\"B\"}").result(Value::str("A"));
 }
 
 #[test]

@@ -138,7 +138,7 @@ impl Drop for Test {
         if !self.tp.is_unknown() {
             assert_eq!(p.data.returned(p.data.def_nr("test")), self.tp);
         }
-        let i = Inter::new(&p.data);
+        let i = Inter::new(&p.data, p.database);
         let res = i.calculate("test", None).unwrap();
         // Only write the interpreter log when a different result is found.
         if res != self.result {

@@ -6,6 +6,7 @@
 extern crate strum;
 
 use crate::data::{Data, DefType, Type};
+use crate::database::KnownTypes;
 use crate::diagnostics::Level;
 use crate::lexer::Lexer;
 use std::cmp::Ordering;
@@ -19,30 +20,37 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
         "vector" => {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Vector(Box::new(Type::Unknown(0))));
+            data.set_known_type(d_nr, 6);
         }
         "long" => {
             data.def_set_size(d_nr, 8, 8);
             data.set_returned(d_nr, Type::Long);
+            data.set_known_type(d_nr, 1);
         }
         "integer" => {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Integer);
+            data.set_known_type(d_nr, 0);
         }
         "float" => {
             data.def_set_size(d_nr, 8, 8);
             data.set_returned(d_nr, Type::Float);
+            data.set_known_type(d_nr, 3);
         }
         "single" => {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Single);
+            data.set_known_type(d_nr, 2);
         }
         "text" => {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Text);
+            data.set_known_type(d_nr, 5);
         }
         "boolean" => {
             data.def_set_size(d_nr, 1, 1);
             data.set_returned(d_nr, Type::Boolean);
+            data.set_known_type(d_nr, 4);
         }
         "enumerate" => {
             data.def_set_size(d_nr, 1, 1);
@@ -60,7 +68,12 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
     }
 }
 
-pub fn actual_types(data: &mut Data, lexer: &mut Lexer, start_def: u32) {
+pub fn actual_types(
+    data: &mut Data,
+    known_types: &mut KnownTypes,
+    lexer: &mut Lexer,
+    start_def: u32,
+) {
     // Determine the actual type of structs regarding their use
     for d in start_def..data.definitions() {
         if data.def_type(d) == DefType::Struct {
@@ -96,14 +109,14 @@ pub fn actual_types(data: &mut Data, lexer: &mut Lexer, start_def: u32) {
                         data.set_attr_type(d, nr, data.returned(was));
                     }
                 }
-                calculate_positions(data, d);
+                calculate_positions(data, known_types, d);
             }
             _ => {}
         }
     }
 }
 
-fn calculate_positions(data: &mut Data, d_nr: u32) {
+fn calculate_positions(data: &mut Data, known_types: &mut KnownTypes, d_nr: u32) {
     // A gap on position. The only gaps allowed are due to their alignments
     let mut gaps = HashMap::new();
     // Keep space for the claimed record size and start on the first 8 byte alignment position after that
@@ -196,4 +209,28 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
         data.set_attr_pos(d_nr, n, pos);
     }
     data.def_set_size(d_nr, pos, struct_align);
+    let s_type = known_types.structure(
+        data.def_name(d_nr),
+        data.def_size(d_nr) as u16 * 8,
+        u16::MAX,
+    );
+    data.set_known_type(d_nr, s_type);
+    for a_nr in 0..data.attributes(d_nr) {
+        let a_type = data.attr_type(d_nr, a_nr);
+        let t_nr = data.type_elm(&a_type);
+        if t_nr < u32::MAX {
+            let tp = data.def_known_type(t_nr);
+            //let cont = if let Type::Vector(vtp) = a_type {
+            //    data.def_known_type(data.type_elm(&*vtp))
+            //} else {
+            //    u16::MAX
+            //};
+            known_types.field(
+                s_type,
+                data.attr_name(d_nr, a_nr),
+                tp,
+                data.attr_pos(d_nr, a_nr) as u16,
+            );
+        }
+    }
 }

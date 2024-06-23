@@ -6,6 +6,7 @@ pub mod diagnostics;
 pub mod data;
 mod lexer;
 
+mod database;
 mod external;
 mod hash;
 pub mod inter;

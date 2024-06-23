@@ -26,6 +26,8 @@ fn print_object() {
         "struct Object{a: integer, bb: text, ccc: boolean}
 fn obj() -> Object { Object {a: 12, bb: \"hi\", ccc: false} }"
     )
-    .expr("o = obj(); f=o.a; \"{f}\"")
-    .result(Value::Text("{a: 12, bb: \"hi\", ccc: false}".to_string()));
+    .expr("o = obj(); \"{o} pretty {o:#}\"")
+    .result(Value::str(
+        "{a:12,bb:\"hi\",ccc:false} pretty {a: 12, bb: \"hi\", ccc: false}",
+    ));
 }

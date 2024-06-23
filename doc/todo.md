@@ -1,7 +1,54 @@
 TODO:
+- Output of vector via the database.rs routine
+- Validate vector of objects output
+- Validate object with vector field as output
+- Integrate with code to fill the database structure:
+    OpFormatDatabase(ref, db_nr, pretty)
+        object: complex -> field with object / array / text
+        array: complex -> complex object member
+        simple: no space after { or before } no newlines
+        complex: no newline after { when top level, extra indent after {, newline after each field, lower indent after }
+        complex array: newline after [, extra indent and newline after each , and before ] lower indent
+     enum output -> database definition
+     vector field output -> database definition with container
+     stand-alone vector output -> separate text method to call
+     multi-layout record output
+- Save the low level database definition as json.
+- Stand-alone tool to show the database content as json. Only a part of it via json path. Validating the structure & analyzing the empty space.
+- Same tool can read the database content as json, possibly ignoring the differences.
+  - Optimization of the binary data.
+    Routine parser into the database:
+          db = Object.parse(str)  or  db = Object(str)   or  db=Object(file)
+          Where do the errors go?
+          db is null      "{db:?}" might show errors
+    https://github.com/serde-rs/json?tab=readme-ov-file
+    read definition from json & dump to json
+    the pre-defined types are a fixed mapping, the rest is derived from the data structure
+    start with simple errors on base types
+    move correct positions of fields to the database module
+    unknown and missing fields
+    default values on fields (simple typed for now, in the future with script integration)
+    linking keys towards other records (even to those that currently do not exist)
+    allow ignoring unknown fields
+- Output of the database
+    tests for the different types
+        record
+        base types: integer, long, single, float, boolean, text
+        vector
+        multiple typed structures
+        output keys of records
+    define record links
+        routine to find path to record: can be both directly or a search
+        into a list of fields -> record link is always an object with possibly sub objects
+        routine for get a record from a record link object = step through the structure
+            can we do that with the current database structure definition?
+- Integrate database with inter = add type structure to struct Inter
+    Fill database structure during parsing
+    Link to structure in parser types
+    Output routine with structure information, optional to always preset 'type' fields, optional quoted fields
+    Input routine with structure information, allow optional 'type' fields even when not needed, optional quoted fields
 - Simple Array test: create & read
 - Simple Object test: create & read
-- String of Object
 - String of Array
 - Mutate Object
 - Mutate Array
@@ -51,6 +98,8 @@ TODO:
 - Test index
 - Test radix
 - Test hash
+- Allow externally defined databases with slightly different internal structures to be used by a script
+- Import of json with conversion routines on fields & records
 - Json parsing of linked records
 - Test deleted linked records (only with record types that need it)
 - Test rebuilding store to remove deleted records

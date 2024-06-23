@@ -8,7 +8,7 @@ use dryopea::data::Value;
 
 #[test]
 fn format_escaping() {
-    expr!("\"ab{{cd}}e\"").result(Value::Text("ab{cd}e".to_string()));
+    expr!("\"ab{{cd}}e\"").result(Value::str("ab{cd}e"));
 }
 
 #[test]

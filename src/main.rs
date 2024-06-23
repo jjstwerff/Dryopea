@@ -3,8 +3,10 @@
 #[macro_use]
 pub mod diagnostics;
 mod data;
+mod database;
 mod lexer;
 mod parser;
+mod store;
 mod typedef;
 mod types;
 use clap::Parser;
