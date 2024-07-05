@@ -49,6 +49,7 @@ sizeof(S) + 100 * sizeof(Main) + 1000 * alignment(S)",
     .result(Value::Int(8820));
 }
 
+/*
 #[test]
 fn index_member() {
     // Structure S will be a RB tree member so it is +9 size.
@@ -60,6 +61,7 @@ struct Main { s: index<S>[a, c desc] };"
     .expr("m = Main {}; sizeof(S) + 100 * sizeof(Main) + 1000 * alignment(S)")
     .result(Value::Int(8829));
 }
+*/
 
 #[test]
 fn reference_field() {

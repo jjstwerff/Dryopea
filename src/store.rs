@@ -281,6 +281,14 @@ impl Store {
         }
     }
 
+    pub fn buffer(&mut self, rec: u32) -> &mut [u8] {
+        let size = *self.addr::<u32>(rec, 0) as usize * 8;
+        unsafe {
+            let p = self.ptr.offset(rec as isize * 8 + 8);
+            std::slice::from_raw_parts_mut(p, size)
+        }
+    }
+
     /// Try to validate a record reference as much as possible.
     /// Complete validations are only done in 'test' mode.
     pub fn valid(&self, rec: u32, fld: isize) -> bool {
@@ -426,11 +434,7 @@ impl Store {
     pub fn get_byte(&self, rec: u32, fld: isize, min: i32) -> i32 {
         if self.valid(rec, fld) {
             let read: u8 = *self.addr(rec, fld);
-            if read != 0 {
-                read as i32 + min - 1
-            } else {
-                i32::MIN
-            }
+            read as i32 + min
         } else {
             i32::MIN
         }
@@ -440,10 +444,10 @@ impl Store {
     pub fn set_byte(&mut self, rec: u32, fld: isize, min: i32, val: i32) -> bool {
         if self.valid(rec, fld) {
             if val == i32::MIN {
-                *self.addr_mut(rec, fld) = 0;
+                *self.addr_mut(rec, fld) = 255;
                 true
             } else if val >= min || val <= min + 256 {
-                *self.addr_mut(rec, fld) = (val - min + 1) as u8;
+                *self.addr_mut(rec, fld) = (val - min) as u8;
                 true
             } else {
                 false

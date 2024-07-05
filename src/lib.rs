@@ -6,12 +6,13 @@ pub mod diagnostics;
 pub mod data;
 mod lexer;
 
-mod database;
-mod external;
+pub mod database;
+pub mod external;
 mod hash;
 pub mod inter;
 mod logger;
 pub mod parser;
+mod png_store;
 mod radix_tree;
 mod rb_tree;
 mod store;

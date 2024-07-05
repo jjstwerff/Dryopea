@@ -71,9 +71,6 @@ Dynamic actions:
 
 Design
 ------
-Fix first list functions:
-- correct code generations
-
 Default values on structure fields:
 - Validate that defaults are actually written
 
@@ -110,17 +107,35 @@ Consistency
 
 Development
 -----------
-Error: Duplicate field names
+Perform checks on fields:
+- turn this into a validation function per attribute
+- return boolean in set function when something went wrong (on null record or on field outside current type)
+- when set or when the default is set.
+- also check if outside 'min'/'max' for both "integer" and "text"
+- also check nullable
+- when incorrect do not set or remove the created object directly
 
-Allow restrictions on integer limits, not null
+Perform all field operations in original defined order during Object creation:
+- setting default values before setting the next field
 
-struct Data {
-    val: integer limit 1..=100,
-    byte: integer limit 0..256,
-    signed: integer limit -127..128
-}
+Fill an object in the order of their definition instead of the given fields:
+- remember values on parsing
+- directly write default values when not given.
 
-logging of write failures, script hook to know about these failures
+Do not allow limit/virtual/not/check/default as type names
+
+Implement inner-records correct:
+- validate if a struct is only used as inner record to get the more efficient layout
+- error when an inner or vector record is created as a stand-alone record
+     or detect that this is the case in first pass and create longer records again (warning in code)
+- warning in code when structs are used in different contexts (main record versus inner/vector)
+- create correct code for writing fields & output to json
+
+Implement variant structs
+
+Logging of import failures, with import of single fields
+
+Remove array field allocation on object remove
 
 compare between equal and unequal types
 
@@ -132,33 +147,27 @@ tests
 - store
 - mmap
 
-json
-
-size
-
-alignment
-
-constant
+json import
+- different types of import errors on validation.
+- allow to define check functions on database.rs (including enum nullability)
 
 subtype
 - validate subtype conversions
 - validate subtype methods
 
-null
+correctly reading and writing null values
+- especially needed for byte/short & enum values
+- only when nullable
 
 min/max text
+- validation that texts are within the defined boundaries.
 
-min/max number
+setters:
+- allow to define a setter on the field definition: both on mutable and immutable fields
+- these can write to both the field itself or to fields that are defined earlier in the same record
 
-import json
-
-mutable
-
-getters
-
-setters
-
-randomness
+randomness:
+- ordering of fields can be random
 
 Comments
 --------

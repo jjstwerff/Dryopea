@@ -46,3 +46,42 @@ fn sum(o: Object) -> integer {
     .expr("  o = Object {a: [1,4,3], b: Fluid};\n  o.a += [sum(o)];\n  \"{o}\"")
     .result(Value::str("{a:[1,4,3,8],b:Fluid}"));
 }
+
+#[test]
+fn duplicate() {
+    code!(
+        "struct Point {
+   r: integer,
+   g: integer,
+   r: integer
+}"
+    )
+    .error("Error: field `r` is already declared at duplicate:4:6");
+}
+
+#[test]
+fn colours() {
+    code!("struct Point {
+  r: integer limit(0, 255) not null,
+  g: integer limit(0, 255) not null,
+  b: limit(0, 255) not null,
+  value: virtual(r * 0x10000 + g * 0x100 + b)
+}"
+    )
+    .expr("  points = [ Point { r:128, b:128 }, Point { b:255 } ];\n  \"size:{sizeof(Point)} purple:{points[0]} value:{points[0].value:x} blue:{points[1]}\"")
+    .result(Value::str("size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"));
+}
+
+#[test]
+fn restrictions() {
+    code!(
+        "struct Data {
+  byte: integer limit(0, 255) not null,
+  val: limit(1, 256) check(val > byte),
+  signed: limit(-127, 127) default(1),
+  calc: integer virtual(val * 65536 + byte * 256 + signed)
+}"
+    )
+    .expr("1")
+    .result(Value::Int(1));
+}

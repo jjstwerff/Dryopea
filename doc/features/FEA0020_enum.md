@@ -29,6 +29,8 @@ Design
 ------
 Simple enum definitions without internal fields.
 
+The null value of an enum is 255 or 65535.
+
 Allow more enum values than 255 inside the database: switch to u16 instead of u8 internally.
 Allow conversion from and to text from enum.
 Allow conversion from and to integer from enum.
@@ -42,6 +44,11 @@ Consistency
 
 Development
 -----------
+Allow to randomize enumerate values:
+- keep this transformation stored in the database.rs structure for enumerates
+- only when explicitly requested as this has a slight performance impact
+- keep the original defined ordering around (for conversions to and from numbers)
+- internally write different values to and from the database: conversion on writing/reading
 
 Comments
 --------

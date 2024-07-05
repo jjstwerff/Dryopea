@@ -6,7 +6,6 @@
 extern crate strum;
 
 use crate::data::{Data, DefType, Type};
-use crate::database::KnownTypes;
 use crate::diagnostics::Level;
 use crate::lexer::Lexer;
 use std::cmp::Ordering;
@@ -68,12 +67,7 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
     }
 }
 
-pub fn actual_types(
-    data: &mut Data,
-    known_types: &mut KnownTypes,
-    lexer: &mut Lexer,
-    start_def: u32,
-) {
+pub fn actual_types(data: &mut Data, lexer: &mut Lexer, start_def: u32) {
     // Determine the actual type of structs regarding their use
     for d in start_def..data.definitions() {
         if data.def_type(d) == DefType::Struct {
@@ -127,12 +121,12 @@ pub fn actual_types(
                         data.set_attr_type(d, nr, data.returned(was));
                     }
                 }
-                calculate_positions(data, known_types, d);
+                calculate_positions(data, d);
             }
             DefType::Enum => {
-                let e_nr = known_types.enumerate(data.def_name(d));
+                let e_nr = data.known_types.enumerate(data.def_name(d));
                 for a in 0..data.attributes(d) {
-                    known_types.value(e_nr, data.attr_name(d, a));
+                    data.known_types.value(e_nr, data.attr_name(d, a));
                 }
                 data.set_known_type(d, e_nr);
             }
@@ -141,7 +135,7 @@ pub fn actual_types(
     }
 }
 
-fn calculate_positions(data: &mut Data, known_types: &mut KnownTypes, d_nr: u32) {
+fn calculate_positions(data: &mut Data, d_nr: u32) {
     // A gap on position. The only gaps allowed are due to their alignments
     let mut gaps = HashMap::new();
     // Keep space for the claimed record size and start on the first 8 byte alignment position after that
@@ -158,17 +152,7 @@ fn calculate_positions(data: &mut Data, known_types: &mut KnownTypes, d_nr: u32)
             if a_pos != u32::MAX {
                 continue;
             }
-            let tp = data.attr_type(d_nr, nr);
-            let size;
-            let align;
-            if tp == Type::Link {
-                size = 9;
-                align = 4;
-            } else {
-                let sub = data.type_def_nr(&tp);
-                size = data.def_size(sub);
-                align = data.def_align(sub);
-            }
+            let (size, align) = get_size(data, d_nr, nr);
             let sub_size = if let Type::Inner(_) = data.attr_type(d_nr, nr) {
                 if data.attr(d_nr, "reference") == u16::MAX {
                     // this for example a parent
@@ -218,24 +202,81 @@ fn calculate_positions(data: &mut Data, known_types: &mut KnownTypes, d_nr: u32)
         data.set_attr_pos(d_nr, n, pos);
     }
     data.def_set_size(d_nr, pos, struct_align);
-    let s_type = known_types.structure(data.def_name(d_nr), data.def_size(d_nr) as u16, u16::MAX);
+    fill_database(data, d_nr);
+}
+
+fn fill_database(data: &mut Data, d_nr: u32) {
+    let s_type =
+        data.known_types
+            .structure(data.def_name(d_nr), data.def_size(d_nr) as u16, u16::MAX);
     data.set_known_type(d_nr, s_type);
     for a_nr in 0..data.attributes(d_nr) {
+        if !data.attr_mutable(d_nr, a_nr) {
+            continue;
+        }
         let a_type = data.attr_type(d_nr, a_nr);
+        let min = data.attr_min(d_nr, a_nr);
+        let max = data.attr_max(d_nr, a_nr);
         let t_nr = data.type_elm(&a_type);
-        if t_nr < u32::MAX {
-            let tp = data.def_known_type(t_nr);
-            let f_nr = known_types.field(
+        let nullable = data.attr_nullable(d_nr, a_nr);
+        if t_nr < u32::MAX && data.attr_mutable(d_nr, a_nr) {
+            let mut tp = data.def_known_type(t_nr);
+            if let Type::Vector(c_type) = a_type {
+                let c_nr = data.type_elm(&c_type);
+                let c_tp = data.def_known_type(c_nr);
+                tp = data.known_types.vector(c_tp);
+            } else if a_type == Type::Integer && min != i32::MIN && max != i32::MAX {
+                if max - min < 256 || (!nullable && max - min == 256) {
+                    tp = data.known_types.byte(min, nullable);
+                } else if max - min < 65536 || (!nullable && max - min == 65536) {
+                    tp = data.known_types.short(min, nullable);
+                }
+            }
+            data.known_types.field(
                 s_type,
                 data.attr_name(d_nr, a_nr),
                 tp,
                 data.attr_pos(d_nr, a_nr) as u16,
             );
-            if let Type::Vector(_) = a_type {
-                known_types.vector(s_type, f_nr);
-            }
         }
     }
+}
+
+fn get_size(data: &mut Data, d_nr: u32, nr: u16) -> (u32, u8) {
+    let tp = data.attr_type(d_nr, nr);
+    let size;
+    let align;
+    if !data.attr_mutable(d_nr, nr) {
+        size = 0;
+        align = 0;
+    } else if tp == Type::Link {
+        size = 9;
+        align = 4;
+    } else if tp == Type::Integer {
+        let nullable = data.attr_nullable(d_nr, nr);
+        let min = data.attr_min(d_nr, nr);
+        let max = data.attr_max(d_nr, nr);
+        if min > i32::MIN && max < i32::MAX {
+            if max - min < 256 || (nullable && max - min == 256) {
+                size = 1;
+                align = 1;
+            } else if max - min < 65536 || (nullable && max - min == 65536) {
+                size = 2;
+                align = 2;
+            } else {
+                size = 4;
+                align = 4;
+            }
+        } else {
+            size = 4;
+            align = 4;
+        }
+    } else {
+        let sub = data.type_def_nr(&tp);
+        size = data.def_size(sub);
+        align = data.def_align(sub);
+    }
+    (size, align)
 }
 
 fn initial_pos(data: &mut Data, d_nr: u32, positions: &mut HashMap<u16, u32>) -> u32 {

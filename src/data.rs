@@ -10,6 +10,7 @@
 // for a far more efficient database design later.
 
 extern crate strum_macros;
+use crate::database::{DbRef, KnownTypes};
 use crate::diagnostics::*;
 use crate::lexer::{Lexer, Position};
 use crate::types::Types;
@@ -23,9 +24,10 @@ use std::io::{Result, Write};
 pub enum Value {
     Null,
     Int(i32),
+    Boolean(bool),
     /// A record or field with 1:database, 2:allocation, 3:field_position.
     /// The position is in bytes relative to the allocation start. Updated on insert/remove of vector elements.
-    Reference(u16, u32, u32),
+    Reference(DbRef),
     /// A range
     Range(Box<Value>, Box<Value>),
     Float(f64),
@@ -36,17 +38,17 @@ pub enum Value {
     /// Call an outside routine with values.
     Call(u32, Vec<Value>),
     /// Call a closure function that allows access to the original stack
-    CCall(Box<Value>, Vec<Value>),
+    // CCall(Box<Value>, Vec<Value>),
     /// Block with number of variables and steps.
     Block(Vec<Value>),
     /// Read variable or parameter from stack (nr relative to current function start).
     Var(u32),
     /// Set a variable with an expressions
     Set(u32, Box<Value>),
-    /// Read a variable from the closure stack instead of the current function
-    CVar(u32),
-    /// Set a closure variable outside the current function
-    CSet(u32, Box<Value>),
+    // / Read a variable from the closure stack instead of the current function
+    // CVar(u32),
+    // / Set a closure variable outside the current function
+    // CSet(u32, Box<Value>),
     /// Set a new variable with an expressions
     Let(u32, Box<Value>),
     /// Return from a routine with optionally a Value
@@ -59,14 +61,31 @@ pub enum Value {
     If(Box<Value>, Box<Value>, Box<Value>),
     /// Loop through the block till Break is encountered
     Loop(Vec<Value>),
-    /// Closure function value with a def-nr and
-    Closure(u32, u32),
+    // / Closure function value with a def-nr and
+    // Closure(u32, u32),
 }
 
+#[allow(dead_code)]
 impl Value {
-    #[allow(dead_code)]
     pub fn str(s: &str) -> Value {
         Value::Text(s.to_string())
+    }
+}
+
+pub fn to_default(tp: &Type) -> Value {
+    match tp {
+        Type::Integer
+        | Type::Boolean
+        | Type::Enum(_)
+        | Type::Vector(_)
+        | Type::Sorted(_, _)
+        | Type::Index(_, _)
+        | Type::Hash(_, _)
+        | Type::Radix(_, _) => Value::Int(0),
+        Type::Long => Value::Long(0),
+        Type::Single => Value::Single(0.0),
+        Type::Float => Value::Float(0.0),
+        _ => Value::Null,
     }
 }
 
@@ -151,9 +170,11 @@ struct Attribute {
     primary: bool,
     /// The initial value of this attribute if it is not given.
     value: Value,
-    /// Restrictions: Value::Null is nothing, on text it is the saved size as Value::Integer
-    min: Value,
-    max: Value,
+    /// A test on the validity of this attribute.
+    check: Value,
+    /// Restrictions: Value::Null is nothing, on text it is the allowed size as Value::Integer
+    min: i32,
+    max: i32,
 }
 
 impl Debug for Attribute {
@@ -238,6 +259,7 @@ pub struct Data {
     referenced: HashMap<u32, (u32, Value)>,
     /// Static data
     data: Vec<u8>,
+    pub known_types: KnownTypes,
 }
 
 pub fn v_if(test: Value, t: Value, f: Value) -> Value {
@@ -289,6 +311,7 @@ impl Data {
             used_attributes: HashSet::new(),
             referenced: HashMap::new(),
             data: Vec::new(),
+            known_types: KnownTypes::new(),
         }
     }
 
@@ -330,8 +353,9 @@ impl Data {
             nullable: true,
             primary: false,
             value: Value::Null,
-            min: Value::Null,
-            max: Value::Null,
+            check: Value::Null,
+            min: i32::MIN,
+            max: i32::MAX,
         };
         let next_attr = self.def(on_def).attributes.len() as u16;
         let def = &mut self.definitions[on_def as usize];
@@ -509,6 +533,58 @@ impl Data {
             panic!("Cannot set attribute value twice");
         }
         self.definitions[d_nr as usize].attributes[a_nr as usize].value = val;
+    }
+
+    pub fn attr_check(&self, d_nr: u32, a_nr: u16) -> Value {
+        self.def(d_nr).attributes[a_nr as usize].check.clone()
+    }
+
+    pub fn set_attr_check(&mut self, d_nr: u32, a_nr: u16, check: Value) {
+        if self.def(d_nr).attributes[a_nr as usize].value != Value::Null {
+            panic!("Cannot set attribute value twice");
+        }
+        self.definitions[d_nr as usize].attributes[a_nr as usize].check = check;
+    }
+
+    pub fn attr_min(&mut self, d_nr: u32, a_nr: u16) -> i32 {
+        if a_nr == u16::MAX {
+            return i32::MIN;
+        }
+        self.definitions[d_nr as usize].attributes[a_nr as usize].min
+    }
+
+    pub fn set_attr_min(&mut self, d_nr: u32, a_nr: u16, min: i32) {
+        self.definitions[d_nr as usize].attributes[a_nr as usize].min = min;
+    }
+
+    pub fn attr_max(&mut self, d_nr: u32, a_nr: u16) -> i32 {
+        if a_nr == u16::MAX {
+            return i32::MAX;
+        }
+        self.definitions[d_nr as usize].attributes[a_nr as usize].max
+    }
+
+    pub fn set_attr_max(&mut self, d_nr: u32, a_nr: u16, max: i32) {
+        self.definitions[d_nr as usize].attributes[a_nr as usize].max = max;
+    }
+
+    pub fn attr_nullable(&mut self, d_nr: u32, a_nr: u16) -> bool {
+        if a_nr == u16::MAX {
+            return false;
+        }
+        self.definitions[d_nr as usize].attributes[a_nr as usize].nullable
+    }
+
+    pub fn set_attr_nullable(&mut self, d_nr: u32, a_nr: u16, nullable: bool) {
+        self.definitions[d_nr as usize].attributes[a_nr as usize].nullable = nullable;
+    }
+
+    pub fn attr_mutable(&mut self, d_nr: u32, a_nr: u16) -> bool {
+        self.definitions[d_nr as usize].attributes[a_nr as usize].mutable
+    }
+
+    pub fn set_attr_mutable(&mut self, d_nr: u32, a_nr: u16, mutable: bool) {
+        self.definitions[d_nr as usize].attributes[a_nr as usize].mutable = mutable;
     }
 
     pub fn add_fn(&mut self, lexer: &mut Lexer, fn_name: String, arguments: Arguments) -> u32 {
@@ -723,19 +799,18 @@ impl Data {
 
     pub fn rust_type(&self, tp: &Type) -> &str {
         match tp {
-            Type::Integer => "i32",
+            Type::Integer | Type::Enum(_) => "i32",
             Type::Text => "String",
             Type::Long => "i64",
-            Type::Enum(_) => "u8",
-            Type::Reference(_) => "(u32, u32)",
-            Type::Inner(_) => "(u32, u32)",
-            Type::Vector(_) => "(u32, u32)",
             Type::Boolean => "bool",
             Type::Float => "f64",
             Type::Single => "f32",
-            Type::Hash(_, _) => "(u32, u32)",
-            Type::Sorted(_, _) => "(u32, u32)",
-            Type::Index(_, _) => "(u32, u32)",
+            Type::Reference(_)
+            | Type::Inner(_)
+            | Type::Vector(_)
+            | Type::Hash(_, _)
+            | Type::Sorted(_, _)
+            | Type::Index(_, _) => "DbRef",
             Type::Routine(_) => "u32",
             Type::Subtype(_) => "T",
             Type::Unknown(_) => "??",
@@ -774,8 +849,22 @@ use external::*;
     }
 
     pub fn output(&self, w: &mut dyn Write, from: u32, till: u32) -> Result<()> {
-        writeln!(w, "use database::KnownTypes;")?;
-        writeln!(w, "fn init(mut db: KnownTypes) {{")?;
+        writeln!(
+            w,
+            "\
+#![allow(unused_imports)]
+#![allow(unused_parens)]
+#![allow(unused_variables)]
+#![allow(unreachable_code)]
+#![allow(unused_mut)]
+#![allow(clippy::unnecessary_to_owned)]
+#![allow(clippy::double_parens)]
+
+extern crate dryopea;"
+        )?;
+        writeln!(w, "use dryopea::database::{{Stores, KnownTypes, DbRef}};")?;
+        writeln!(w, "use dryopea::external::*;\n")?;
+        writeln!(w, "fn init(db: &mut KnownTypes) {{")?;
         for dnr in from..till {
             let def = self.def(dnr);
             if def.def_type == DefType::Struct {
@@ -802,31 +891,60 @@ use external::*;
         };
         writeln!(
             w,
-            "  let s = db.structure(\"{}\", {}, {p});",
+            "    let s = db.structure(\"{}\".to_string(), {}, {p});",
             def.name, def.size
         )?;
         for a in &def.attributes {
+            if !a.mutable {
+                continue;
+            }
             let pos = if a.position == u32::MAX {
                 u16::MAX
             } else {
                 a.position as u16
             };
             let nm = a.name.clone();
+            let d_nr = self.type_def_nr(&a.typedef);
+            if d_nr == u32::MAX {
+                panic!("Unknown def_nr for {:?}", a.typedef);
+            }
+            let tp = self.def_known_type(d_nr);
+            let mut done = false;
             if let Type::Vector(c) = &a.typedef {
-                let tp = self.def_known_type(self.type_def_nr(c));
-                writeln!(w, "  db.vector(s, db.field(s, \"{nm}\", {tp}, {pos}));",)?;
-            } else {
-                let tp = self.def_known_type(self.type_def_nr(&a.typedef));
-                writeln!(w, "  db.field(s, \"{nm}\", {tp}, {pos});")?;
+                let content = self.def_known_type(self.type_def_nr(c));
+                writeln!(
+                    w,
+                    "    db.field(s, \"{nm}\".to_string(), db.vector({content}), {pos});",
+                )?;
+                done = true;
+            } else if a.typedef == Type::Integer && a.min != i32::MIN && a.max != i32::MAX {
+                if a.max - a.min < 256 || (!a.nullable && a.max - a.min == 256) {
+                    writeln!(
+                        w,
+                        "    db.field(s, \"{nm}\".to_string(), db.byte({}, {}), {pos});",
+                        a.min, a.nullable
+                    )?;
+                    done = true;
+                } else if a.max - a.min < 65536 || (!a.nullable && a.max - a.min == 65536) {
+                    writeln!(
+                        w,
+                        "    db.field(s, \"{nm}\".to_string(), db.short({}, {}), {pos});",
+                        a.min, a.nullable
+                    )?;
+                    done = true;
+                }
+            }
+            if !done {
+                writeln!(w, "    db.field(s, \"{nm}\".to_string(), {tp}, {pos});")?;
             }
         }
         Ok(())
     }
 
     fn output_enum(&self, w: &mut dyn Write, def: &Definition) -> Result<()> {
-        writeln!(w, "  let e = db.enumerate(s, \"{}\");", def.name)?;
+        writeln!(w, "    let e = db.enumerate(\"{}\".to_string());", def.name)?;
         for a in &def.attributes {
-            writeln!(w, "  db.value(s, \"{}\");", a.name)?;
+            writeln!(w, "    db.value(e, \"{}\".to_string());", a.name)?;
         }
         Ok(())
     }
@@ -838,18 +956,22 @@ use external::*;
         {
             return Ok(());
         }
-        write!(w, "fn {}(", def.name)?;
+        write!(w, "fn {}(stores: &mut Stores", def.name)?;
         for (anr, a) in def.attributes.iter().enumerate() {
-            write!(w, "var_{}: {}, ", anr, self.rust_type(&a.typedef))?
+            write!(w, ", var_{}: {}", anr, self.rust_type(&a.typedef))?
         }
         write!(w, ") ")?;
         if def.returned != Type::Void {
             write!(w, "-> {} ", self.rust_type(&def.returned))?
         }
-        if def.code == Value::Null {
-            write!(w, " {{}}")?;
+        if let Value::Block(_) = def.code {
+            self.output_code(w, &def.code, 0)?
         } else {
-            self.output_code(w, &def.code, 0)?;
+            writeln!(w, "{{")?;
+            if def.code != Value::Null {
+                self.output_code(w, &def.code, 0)?;
+            }
+            writeln!(w, "\n}}")?
         }
         writeln!(w, "\n")
     }
@@ -865,14 +987,18 @@ use external::*;
             Value::Int(v) => {
                 write!(w, "{}_i32", v)?;
             }
+            Value::Boolean(v) => {
+                write!(w, "{}", v)?;
+            }
             Value::Float(v) => {
                 write!(w, "{}_f64", v)?;
             }
             Value::Single(v) => {
                 write!(w, "{}_f32", v)?;
             }
-            Value::Reference(db, rec, pos) => {
-                write!(w, "{db}[{rec}].{pos}")?;
+            Value::Reference(_) => {
+                // This cannot be a constant in the language
+                write!(w, "DbRef")?;
             }
             Value::Block(vals) => {
                 writeln!(w, "{{")?;
@@ -911,7 +1037,7 @@ use external::*;
                 self.output_code(w, to, indent)?;
             }
             Value::Let(var, to) => {
-                write!(w, "let var_{} = ", var)?;
+                write!(w, "let mut var_{} = ", var)?;
                 self.output_code(w, to, indent)?;
             }
             Value::Var(v) => {
@@ -923,14 +1049,9 @@ use external::*;
             Value::Call(d_nr, vals) => {
                 let def_fn = self.def(*d_nr);
                 if def_fn.rust.is_empty() {
-                    write!(w, "{}(", self.def(*d_nr).name)?;
-                    let mut first = true;
+                    write!(w, "{}(stores", self.def(*d_nr).name)?;
                     for v in vals {
-                        if first {
-                            first = false;
-                        } else {
-                            write!(w, ", ")?;
-                        }
+                        write!(w, ", ")?;
                         self.output_code(w, v, indent)?;
                     }
                     write!(w, ")")?;
@@ -941,10 +1062,11 @@ use external::*;
                         let mut val_code = std::io::BufWriter::new(Vec::new());
                         if a_nr < vals.len() {
                             self.output_code(&mut val_code, &vals[a_nr], indent)?;
-                            res = res.replace(
-                                &name,
-                                &String::from_utf8(val_code.into_inner().unwrap()).unwrap(),
-                            )
+                            let with = String::from_utf8(val_code.into_inner().unwrap()).unwrap();
+                            if with == "Null" {
+                                println!("Here! {} {code:?}", self.def_name(*d_nr));
+                            }
+                            res = res.replace(&name, &format!("({with})"));
                         } else {
                             println!(
                                 "Problem def_fn {def_fn} attributes {:?} vals {:?}",

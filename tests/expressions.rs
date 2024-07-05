@@ -49,12 +49,12 @@ fn expr_str() {
 
 #[test]
 fn expr_lower() {
-    expr!("2 * 2 < 3").result(Value::Int(0)).tp(Type::Boolean);
+    expr!("2 * 2 < 3").result(Value::Boolean(false));
 }
 
 #[test]
 fn expr_prio_lt() {
-    expr!("2 + 1 <= 3").result(Value::Int(1)).tp(Type::Boolean);
+    expr!("2 + 1 <= 3").result(Value::Boolean(true));
 }
 
 #[test]
@@ -79,9 +79,7 @@ fn expr_zero_divide() {
 
 #[test]
 fn expr_long() {
-    expr!("a = -2l; 3l != abs(a)")
-        .result(Value::Int(1))
-        .tp(Type::Boolean);
+    expr!("a = -2l; 3l != abs(a)").result(Value::Boolean(true));
 }
 
 #[test]

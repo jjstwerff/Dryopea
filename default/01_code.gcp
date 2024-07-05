@@ -13,13 +13,13 @@ fn OpNot(v1: boolean) -> boolean;
 #rust "!@v1"
 
 fn OpAnd(v1: boolean, v2: boolean) -> boolean;
-#rust "(@v1 $$ @v2)"
+#rust "(@v1 && @v2)"
 
 fn OpOr(v1: boolean, v2: boolean) -> boolean;
 #rust "(@v1 || @v2)"
 
-fn OpFormatBool(res: text, val: boolean, radix: integer, width: integer, dir: integer, token: integer);
-#rust "format_text(&mut @res, if @val {{\"true\"}} else {{\"false\"}}, @width, @dir, @token)"
+fn OpFormatBool(val: boolean, width: integer, dir: integer, token: integer) -> text;
+#rust "format_text(if @val {{\"true\"}} else {{\"false\"}}, @width, @dir, @token)"
 
 // Integer operations
 fn OpConvIntFromNull() -> integer;
@@ -33,7 +33,7 @@ fn OpMinSingleInt(v1: integer) -> integer;
 #rust "op_min_single_int(@v1)"
 
 fn OpConvLongFromInt(v1: integer) -> long;
-#rust "op_conv_long_from_int(@v1)"
+#rust "op_conv_long_from_int@v1"
 
 fn OpConvFloatFromInt(v1: integer) -> float;
 #rust "op_conv_float_from_int(@v1)"
@@ -78,7 +78,7 @@ fn OpGeInt(v1: integer, v2: integer) -> boolean;
 #rust "op_le_int(@v2, @v1)"
 
 fn OpFormatInt(val: integer, radix: integer, width: integer, token: integer, plus: boolean, note: boolean) -> text;
-#rust "format_int(@val, @width, @token, @plus, @note)"
+#rust "format_int(@val, @radix, @width, @token, @plus, @note)"
 
 // Long operations
 fn OpConvLongFromNull() -> long;
@@ -134,7 +134,7 @@ fn OpGeLong(v1: long, v2: long) -> boolean;
 #rust "op_le_long(@v2, @v1)"
 
 fn OpFormatLong(val: long, radix: integer, width: integer, token: integer, plus: boolean, note: boolean) -> text;
-#rust "format_long(&mut @res, @val, @width, @token, @plus, @note)"
+#rust "format_long(@val, @radix, @width, @token, @plus, @note)"
 
 // Single operations
 fn OpConvSingleFromNull() -> single;
@@ -145,7 +145,7 @@ fn OpAbsSingle(v1: single) -> single;
 pub fn abs(both: single) -> single { OpAbsSingle(both) }
 
 fn OpMinSingleSingle(v1: single) -> single;
-#rust "(-@v1)"
+#rust "-@v1"
 
 fn OpCastIntFromSingle(v1: single) -> integer;
 #rust "op_cast_int_from_single(@v1)"
@@ -154,43 +154,43 @@ fn OpCastLongFromSingle(v1: single) -> long;
 #rust "op_cast_long_from_single(@v1)"
 
 fn OpConvFloatFromSingle(v1: single) -> float;
-#rust "(@v1 as f64)"
+#rust "@v1 as f64"
 
 fn OpConvBoolFromSingle(v1: single) -> boolean;
-#rust "(!@v1.is_nan())"
+#rust "!@v1.is_nan()"
 
 fn OpAddSingle(v1: single, v2: single) -> single;
-#rust "(@v1 + @v2)"
+#rust "@v1 + @v2"
 
 fn OpMinSingle(v1: single, v2: single) -> single;
-#rust "(@v1 - @v2)"
+#rust "@v1 - @v2"
 
 fn OpMulSingle(v1: single, v2: single) -> single;
-#rust "(@v1 * @v2)"
+#rust "@v1 * @v2"
 
 fn OpDivSingle(v1: single, v2: single) -> single;
-#rust "(@v1 / @v2)"
+#rust "@v1 / @v2"
 
 fn OpRemSingle(v1: single, v2: single) -> single;
-#rust "(@v1 % @v2)"
+#rust "@v1 % @v2"
 
 fn OpEqSingle(v1: single, v2: single) -> boolean;
-#rust "(@v1 == @v2)"
+#rust "@v1 == @v2"
 
 fn OpNeSingle(v1: single, v2: single) -> boolean;
-#rust "(@v1 != @v2)"
+#rust "@v1 != @v2"
 
 fn OpLtSingle(v1: single, v2: single) -> boolean;
-#rust "(@v1 < @v2)"
+#rust "@v1 < @v2"
 
 fn OpLeSingle(v1: single, v2: single) -> boolean;
-#rust "(@v1 <= @v2)"
+#rust "@v1 <= @v2"
 
 fn OpGtSingle(v1: single, v2: single) -> boolean;
-#rust "(@v1 > @v2)"
+#rust "@v1 > @v2"
 
 fn OpGeSingle(v1: single, v2: single) -> boolean;
-#rust "(@v1 >= @v2)"
+#rust "@v1 >= @v2"
 
 fn OpFormatSingle(val: single, width: integer, precision: integer) -> text;
 #rust "format_single(@val, @width, @precision)"
@@ -203,10 +203,10 @@ fn OpAbsFloat(v1: float) -> float;
 pub fn abs(both: float) -> float { OpAbsFloat(both) }
 
 fn OpMinSingleFloat(v1: float) -> float;
-#rust "(-@v1)"
+#rust "-@v1"
 
 fn OpCastSingleFromFloat(v1: float) -> single;
-#rust "(@v1 as f32)"
+#rust "@v1 as f32"
 
 fn OpCastIntFromFloat(v1: float) -> integer;
 #rust "op_cast_int_from_float(@v1)"
@@ -215,40 +215,40 @@ fn OpCastLongFromFloat(v1: float) -> long;
 #rust "op_cast_long_from_float(@v1)"
 
 fn OpConvBoolFromFloat(v1: float) -> boolean;
-#rust "(!@v1.is_nan())"
+#rust "!@v1.is_nan()"
 
 fn OpAddFloat(v1: float, v2: float) -> float;
-#rust "(@v1 + @v2)"
+#rust "@v1 + @v2"
 
 fn OpMinFloat(v1: float, v2: float) -> float;
-#rust "(@v1 - @v2)"
+#rust "@v1 - @v2"
 
 fn OpMulFloat(v1: float, v2: float) -> float;
-#rust "(@v1 * @v2)"
+#rust "@v1 * @v2"
 
 fn OpDivFloat(v1: float, v2: float) -> float;
-#rust "(@v1 / @v2)"
+#rust "@v1 / @v2"
 
 fn OpRemFloat(v1: float, v2: float) -> float;
-#rust "(@v1 % @v2)"
+#rust "@v1 % @v2"
 
 fn OpEqFloat(v1: float, v2: float) -> boolean;
-#rust "(@v1 == @v2)"
+#rust "@v1 == @v2"
 
 fn OpNeFloat(v1: float, v2: float) -> boolean;
-#rust "(@v1 != @v2)"
+#rust "@v1 != @v2"
 
 fn OpLtFloat(v1: float, v2: float) -> boolean;
-#rust "(@v1 < @v2)"
+#rust "@v1 < @v2"
 
 fn OpLeFloat(v1: float, v2: float) -> boolean;
-#rust "(@v1 <= @v2)"
+#rust "@v1 <= @v2"
 
 fn OpGtFloat(v1: float, v2: float) -> boolean;
-#rust "(@v1 > @v2)"
+#rust "@v1 > @v2"
 
 fn OpGeFloat(v1: float, v2: float) -> boolean;
-#rust "(@v1 >= @v2)"
+#rust "@v1 >= @v2"
 
 fn OpFormatFloat(val: float, width: integer, precision: integer) -> text;
 #rust "format_float(@val, @width, @precision)"
@@ -257,7 +257,7 @@ fn OpConvTextFromNull() -> text;
 #rust "\"\""
 
 fn OpLengthText(v1: text) -> integer;
-#rust "(@v1.len() as i32)"
+#rust "@v1.len() as i32"
 
 pub fn len(both: text) -> integer { OpLengthText(both) }
 fn OpConvBoolFromText(v1: text) -> boolean;
@@ -266,32 +266,38 @@ fn OpAddText(v1: text, v2: text) -> text;
 #rust "(@v1 + &@v2)"
 fn OpClearText(v1: text);
 #rust "@v1.clear()"
-pub fn clear(self: text) { OpClearText(self) }
+// pub fn clear(self: text) { OpClearText(self) }
 fn OpEqText(v1: text, v2: text) -> boolean;
-#rust "(@v1 == @v2)"
+#rust "@v1 == @v2"
 fn OpNeText(v1: text, v2: text) -> boolean;
-#rust "(@v1 != @v2)"
+#rust "@v1 != @v2"
 fn OpLtText(v1: text, v2: text) -> boolean;
-#rust "(@v1 < @v2)"
+#rust "@v1 < @v2"
 fn OpLeText(v1: text, v2: text) -> boolean;
-#rust "(@v1 <= @v2)"
+#rust "@v1 <= @v2"
 fn OpGtText(v1: text, v2: text) -> boolean;
-#rust "(@v1 > @v2)"
+#rust "@v1 > @v2"
 fn OpGeText(v1: text, v2: text) -> boolean;
-#rust "(@v1 >= @v2)"
+#rust "@v1 >= @v2"
 fn OpFormatText(val: text, width: integer, dir: integer, token: integer) -> text;
-#rust "format_text(@val, @width, @dir, @token)"
+#rust "format_text(&@val, @width, @dir, @token)"
 
 type enumerate;
 fn OpConvBoolFromEnum(v1: enumerate) -> boolean;
 fn OpConvTextFromEnum(v1: enumerate, enum_tp: integer) -> text;
 fn OpConvEnumFromNull() -> enumerate;
 fn OpEqEnum(v1: enumerate, v2: enumerate) -> boolean;
+#rust "@v1 == @v2"
 fn OpNeEnum(v1: enumerate, v2: enumerate) -> boolean;
+#rust "@v1 != @v2"
 fn OpLtEnum(v1: enumerate, v2: enumerate) -> boolean;
+#rust "@v1 < @v2"
 fn OpLeEnum(v1: enumerate, v2: enumerate) -> boolean;
+#rust "@v1 <= @v2"
 fn OpGtEnum(v1: enumerate, v2: enumerate) -> boolean;
+#rust "@v1 > @v2"
 fn OpGeEnum(v1: enumerate, v2: enumerate) -> boolean;
+#rust "@v1 >= @v2"
 
 // A reference to a record, this can 'live' inside an array
 // Might this be a reference to a record field? As It might be a reference to a single value inside an array.
@@ -299,25 +305,26 @@ fn OpGeEnum(v1: enumerate, v2: enumerate) -> boolean;
 type reference;
 
 fn OpDatabase(size: integer) -> reference;
-fn OpFormatDatabase(val: reference, db_tp: integer, vector: boolean, pretty: boolean) -> text;
+#rust "stores.database(@size as u32)"
+fn OpFormatDatabase(val: reference, db_tp: integer, pretty: boolean) -> text;
+#rust "stores.show(@val, @db_tp, @pretty)"
+fn OpConvBoolFromRef(val: reference) -> boolean;
+#rust "@val.rec != 0"
+
 // Claim a new object inside a current database
 fn OpAppend(db: reference, size: integer) -> reference;
-pub fn remove(self: reference);
+#rust "stores.claim(@db, @size)"
 
-fn OpConvRefFromNull() -> reference;
-fn OpConvBoolFromRef(v1: reference) -> boolean;
 fn OpEqRef(v1: reference, v2: reference) -> boolean;
+#rust "@v1 == @v2"
 fn OpNeRef(v1: reference, v2: reference) -> boolean;
-fn OpLtRef(v1: reference, v2: reference) -> boolean;
-fn OpLeRef(v1: reference, v2: reference) -> boolean;
-fn OpGtRef(v1: reference, v2: reference) -> boolean;
-fn OpGeRef(v1: reference, v2: reference) -> boolean;
-
-fn OpFormatRef(v1: text, val: reference, width: integer);
+#rust "@v1 != @v2"
 
 // Can be used to get another record within the same database
 fn OpGetRef(v1: reference, fld: integer) -> reference;
+#rust "stores.get_ref(@v1, @fld as u32, 0)"
 fn OpSetRef(v1: reference, fld: integer, val: reference);
+#rust "{{let db=@v1; stores.mut_store(&db).set_int(db.rec, db.pos as isize + @fld as isize, @val.rec as i32);}}"
 
 // Get a direct field reference for a structure: vector, index, hash or radix
 // These always point to a field what value can change depending on the content.
@@ -326,19 +333,46 @@ fn OpGetField(v1: reference, fld: integer) -> reference;
 // Simple type value write and read, vector elements always have fld=0.
 // All these types are passed by value instead of by reference.
 fn OpGetInt(v1: reference, fld: integer) -> integer;
+#rust "{{let db=@v1; stores.store(&db).get_int(db.rec, db.pos as isize + @fld as isize)}}"
+
 fn OpGetLong(v1: reference, fld: integer) -> long;
+#rust "{{let db=@v1; stores.store(&db).get_long(db.rec, db.pos as isize + @fld as isize)}}"
+
 fn OpGetSingle(v1: reference, fld: integer) -> single;
+#rust "{{let db=@v1; stores.store(&db).get_single(db.rec, db.pos as isize + @fld as isize)}}"
+
 fn OpGetFloat(v1: reference, fld: integer) -> float;
+#rust "{{let db=@v1; stores.store(&db).get_float(db.rec, db.pos as isize + @fld as isize)}}"
+
 fn OpGetByte(v1: reference, fld: integer, min: integer) -> integer;
+#rust "{{let db=@v1; stores.store(&db).get_byte(db.rec, db.pos as isize + @fld as isize, @min)}}"
+
 fn OpGetShort(v1: reference, fld: integer, min: integer) -> integer;
+#rust "{{let db=@v1; stores.store(&db).get_short(db.rec, db.pos as isize + @fld as isize, @min)}}"
+
 fn OpGetText(v1: reference, fld: integer) -> text;
+#rust "{{let db=@v1; let store=stores.store(&db); String::from(store.get_str(store.get_int(db.rec, db.pos as isize + @fld as isize) as u32))}}"
+
 fn OpSetInt(v1: reference, fld: integer, val: integer);
+#rust "{{let db=@v1; stores.mut_store(&db).set_int(db.rec, db.pos as isize + @fld as isize, @val)}}"
+
 fn OpSetLong(v1: reference, fld: integer, val: long);
+#rust "{{let db=@v1; stores.mut_store(&db).set_long(db.rec, db.pos as isize + @fld as isize, @val)}}"
+
 fn OpSetSingle(v1: reference, fld: integer, val: single);
+#rust "{{let db=@v1; stores.mut_store(&db).set_single(db.rec, db.pos as isize + @fld as isize, @val)}}"
+
 fn OpSetFloat(v1: reference, fld: integer, val: float);
+#rust "{{let db=@v1; stores.mut_store(&db).set_float(db.rec, db.pos as isize + @fld as isize, @val)}}"
+
 fn OpSetByte(v1: reference, fld: integer, min: integer, val: integer);
+#rust "{{let db=@v1; stores.mut_store(&db).set_byte(db.rec, db.pos as isize + @fld as isize, @min, @val)}}"
+
 fn OpSetShort(v1: reference, fld: integer, min: integer, val: integer);
+#rust "{{let db=@v1; stores.mut_store(&db).set_short(db.rec, db.pos as isize + @fld as isize, @min, @val)}}"
+
 fn OpSetText(v1: reference, fld: integer, val: text);
+#rust "{{let db=@v1; let store=stores.mut_store(&db); store.set_int(db.rec, db.pos as isize + @fld as isize, store.set_str(&@val) as i32)}}"
 
 // All structures are passed by reference instead of by value
 type vector;
@@ -347,33 +381,43 @@ type sorted;
 // All vectors are referenced by the field that points towards them.
 // The length of vectors is written at the start of their allocation.
 fn OpLengthVector(r: vector) -> integer;
+#rust "stores.length_vector(&@r) as i32"
 pub fn len(both: vector) -> integer { OpLengthVector(both) }
 
 fn OpClearVector(r: vector);
+#rust "stores.clear_vector(&@r)"
 pub fn clear(self: vector) { OpClearVector(self) }
 
 // This actually sorts the last appended value to their correct position
 fn OpFinishSorted(r: vector, match: fn(reference, reference) -> integer);
 // This returns the position inside the vector of a record or a value, get the actual value with fld=0
 fn OpGetVector(r: vector, size: integer, index: integer) -> reference;
+#rust "stores.get_vector(&@r, @size as u32, @index)"
+
 fn OpGetSorted(r: vector, size: integer, match: fn(reference) -> integer) -> reference;
+
 fn OpRemoveVector(r: vector, size: integer, index: integer) -> boolean;
+#rust "stores.remove_vector(&@r, @size as u32, @index)"
 
 // Insert space into a vector, no data written
-fn OpInsertVector(r: vector, index: integer) -> reference;
+fn OpInsertVector(r: vector, size: integer, index: integer) -> reference;
+#rust "stores.insert_vector(&@r, @size as u32, @index)"
 
 // Add space at the end of a vector, no data written
 fn OpAppendVector(r: vector, size: integer) -> reference;
+#rust "stores.vector_append(&r, 1, size as u32)"
+
 // Add all elements of another vector with the same type
-fn OpAddVector(r: vector, size: integer, other: vector);
+fn OpAddVector(r: vector, other: reference, size: integer);
+#rust "stores.vector_add(r, other, size as u32)"
 
 type hash;
 
 fn OpLengthHash(r: hash) -> integer;
-pub fn len(both: hash) -> integer { OpLengthHash(both) }
+// pub fn len(both: hash) -> integer { OpLengthHash(both) }
 
 fn OpClearHash(r: hash);
-pub fn clear(self: hash) -> integer { OpClearHash(self) }
+// pub fn clear(self: hash) -> integer { OpClearHash(self) }
 fn OpAppendHash(r: hash, val: reference, code: integer);
 fn OpRemoveHash(r: hash, code: integer, match: fn(reference) -> boolean);
 fn OpGetHash(r: hash, code: integer, match: fn(reference) -> boolean) -> reference;
@@ -382,11 +426,11 @@ type index;
 
 // The length function is not efficient as is loops through all elements
 fn OpLengthIndex(r: index) -> integer;
-pub fn len(both: index) -> integer { OpLengthHash(both) }
+// pub fn len(both: index) -> integer { OpLengthHash(both) }
 
 // The clear function is not efficient
 fn OpClearIndex(r: index);
-pub fn clear(self: index) -> integer { OpClearIndex(self) }
+// pub fn clear(self: index) -> integer { OpClearIndex(self) }
 
 fn OpAppendIndex(r: index, val: reference, sort: fn(reference, reference) -> integer);
 fn OpRemoveIndex(r: index, match: fn(reference) -> integer);
@@ -401,7 +445,9 @@ fn OpRemoveRadix(r: radix, val: reference, bit: fn(reference, integer) -> boolea
 fn OpGetRadix(r: radix, key: fn(integer) -> boolean) -> reference;
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
+#rust "@v1 == @v2"
 fn OpNeBool(v1: boolean, v2: boolean) -> boolean;
+#rust "@v1 != @v2"
 
 fn OpAssert(v1: boolean, v2: text);
 #rust "if !@v1 {{ panic!(\"{{}}\", @v2); }};"

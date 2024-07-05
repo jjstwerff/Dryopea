@@ -4,6 +4,7 @@
 
 //! Testing framework
 extern crate dryopea;
+use std::io::Write;
 
 /// Evaluate the given code.
 /// When a result is given there should be a @test routine returning this result.
@@ -76,6 +77,9 @@ impl Test {
         if !self.errors.is_empty() {
             panic!("Cannot combine result with errors");
         }
+        if matches!(value, Value::Boolean(_)) {
+            self.tp = Type::Boolean;
+        }
         self.result = value;
         self
     }
@@ -118,17 +122,7 @@ impl Drop for Test {
         for (d, s) in &self.sizes {
             assert_eq!(p.data.def_size(p.data.def_nr(d)), *s, "Size of {}", *d);
         }
-        let w = &mut std::fs::File::create("tests/generated/default.rs").unwrap();
-        p.data.output(w, 0, start).unwrap();
-        // Write code output when the result is tested, not only for errors or warnings.
-        if self.result != Value::Null || !self.tp.is_unknown() {
-            let w = &mut std::fs::File::create(format!(
-                "tests/generated/{}_{}.rs",
-                self.file, self.name
-            ))
-            .unwrap();
-            p.data.output(w, start, p.data.definitions()).unwrap();
-        }
+        self.generate_code(&p, start).unwrap();
         // Validate that we found the correct warnings and errors. Halt when differences are found.
         self.assert_diagnostics(&p);
         // Do not interpret anything when parsing did not succeed.
@@ -138,7 +132,7 @@ impl Drop for Test {
         if !self.tp.is_unknown() {
             assert_eq!(p.data.returned(p.data.def_nr("test")), self.tp);
         }
-        let i = Inter::new(&p.data, p.database);
+        let i = Inter::new(&p.data);
         let res = i.calculate("test", None).unwrap();
         // Only write the interpreter log when a different result is found.
         if res != self.result {
@@ -152,6 +146,26 @@ impl Drop for Test {
 }
 
 impl Test {
+    fn generate_code(&self, p: &Parser, start: u32) -> std::io::Result<()> {
+        let w = &mut std::fs::File::create("tests/generated/default.rs")?;
+        p.data.output(w, 0, start)?;
+        // Write code output when the result is tested, not only for errors or warnings.
+        if self.result != Value::Null || !self.tp.is_unknown() {
+            let w = &mut std::fs::File::create(format!(
+                "tests/generated/{}_{}.rs",
+                self.file, self.name
+            ))?;
+            p.data.output(w, start, p.data.definitions())?;
+            writeln!(w, "#[test]\nfn code_{}() {{", self.name)?;
+            writeln!(w, "    let mut types = KnownTypes::new();")?;
+            writeln!(w, "    init(&mut types);")?;
+            writeln!(w, "    let mut stores = Stores::new(&types);")?;
+            write!(w, "    assert_eq!(")?;
+            p.data.output_code(w, &self.result, 0)?;
+            writeln!(w, ", test(&mut stores));\n}}")?;
+        }
+        Ok(())
+    }
     fn assert_diagnostics(&self, p: &Parser) {
         let mut expected = BTreeSet::new();
         for w in &self.warnings {
