@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2024 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 pub type boolean;
@@ -25,6 +25,18 @@ fn OpFormatBool(val: boolean, width: integer, dir: integer, token: integer) -> t
 fn OpConvIntFromNull() -> integer;
 #rust "i32::MIN"
 
+fn OpCastIntFromText(v1: text) -> integer;
+#rust "if let Ok(i) = @v1.parse() {{ i }} else {{ i32::MIN }}"
+
+fn OpCastLongFromText(v1: text) -> long;
+#rust "if let Ok(i) = @v1.parse() {{ i }} else {{ i64::MIN }}"
+
+fn OpCastSingleFromText(v1: text) -> single;
+#rust "if let Ok(i) = @v1.parse() {{ i }} else {{ f32::NAN }}"
+
+fn OpCastFloatFromText(v1: text) -> float;
+#rust "if let Ok(i) = @v1.parse() {{ i }} else {{ f64::NAN }}"
+
 fn OpAbsInt(v1: integer) -> integer;
 #rust "op_abs_int(@v1)"
 pub fn abs(both: integer) -> integer { OpAbsInt(both) }
@@ -33,7 +45,7 @@ fn OpMinSingleInt(v1: integer) -> integer;
 #rust "op_min_single_int(@v1)"
 
 fn OpConvLongFromInt(v1: integer) -> long;
-#rust "op_conv_long_from_int@v1"
+#rust "op_conv_long_from_int(@v1)"
 
 fn OpConvFloatFromInt(v1: integer) -> float;
 #rust "op_conv_float_from_int(@v1)"
@@ -58,6 +70,21 @@ fn OpDivInt(v1: integer, v2: integer) -> integer;
 
 fn OpRemInt(v1: integer, v2: integer) -> integer;
 #rust "op_rem_int(@v1, @v2)"
+
+fn OpLandInt(v1: integer, v2: integer) -> integer;
+#rust "op_logical_and_int(@v1, @v2)"
+
+fn OpLorInt(v1: integer, v2: integer) -> integer;
+#rust "op_logical_or_int(@v1, @v2)"
+
+fn OpEorInt(v1: integer, v2: integer) -> integer;
+#rust "op_exclusive_or_int(@v1, @v2)"
+
+fn OpLeftInt(v1: integer, v2: integer) -> integer;
+#rust "op_shift_left_int(@v1, @v2)"
+
+fn OpRightInt(v1: integer, v2: integer) -> integer;
+#rust "op_shift_right_int(@v1, @v2)"
 
 fn OpEqInt(v1: integer, v2: integer) -> boolean;
 #rust "op_eq_int(@v1, @v2)"
@@ -114,6 +141,21 @@ fn OpDivLong(v1: long, v2: long) -> long;
 
 fn OpRemLong(v1: long, v2: long) -> long;
 #rust "op_rem_long(@v1, @v2)"
+
+fn OpLandLong(v1: long, v2: long) -> long;
+#rust "op_logical_and_long(@v1, @v2)"
+
+fn OpLorLong(v1: long, v2: long) -> long;
+#rust "op_logical_or_long(@v1, @v2)"
+
+fn OpEorLong(v1: long, v2: long) -> long;
+#rust "op_exclusive_or_long(@v1, @v2)"
+
+fn OpLeftLong(v1: long, v2: long) -> long;
+#rust "op_shift_left_long(@v1, @v2)"
+
+fn OpRightLong(v1: long, v2: long) -> long;
+#rust "op_shift_right_long(@v1, @v2)"
 
 fn OpEqLong(v1: long, v2: long) -> boolean;
 #rust "op_eq_long(@v1, @v2)"
@@ -174,6 +216,60 @@ fn OpDivSingle(v1: single, v2: single) -> single;
 fn OpRemSingle(v1: single, v2: single) -> single;
 #rust "@v1 % @v2"
 
+fn OpMathCosSingle(v1: single) -> single;
+#rust "@v1.cos()"
+pub fn cos(both: single) -> single { OpMathCosSingle(both) }
+
+fn OpMathSinSingle(v1: single) -> single;
+#rust "@v1.sin()"
+pub fn sin(both: single) -> single { OpMathSinSingle(both) }
+
+fn OpMathTanSingle(v1: single) -> single;
+#rust "@v1.tan()"
+pub fn tan(both: single) -> single { OpMathTanSingle(both) }
+
+fn OpMathAcosSingle(v1: single) -> single;
+#rust "@v1.acos()"
+pub fn acos(both: single) -> single { OpMathAcosSingle(both) }
+
+fn OpMathAsinSingle(v1: single) -> single;
+#rust "@v1.asin()"
+pub fn asin(both: single) -> single { OpMathAsinSingle(both) }
+
+fn OpMathAtanSingle(v1: single) -> single;
+#rust "@v1.atan()"
+pub fn atan(both: single) -> single { OpMathAtanSingle(both) }
+
+fn OpMathAtan2Single(v1: single, v2: single) -> single;
+#rust "@v1.atan2(@v2)"
+pub fn atan2(both: single, v2: single) -> single { OpMathAtan2Single(both, v2) }
+
+fn OpMathCeilSingle(v1: single) -> single;
+#rust "@v1.ceil(@v2)"
+pub fn ceil(both: single) -> single { OpMathCeilSingle(both) }
+
+fn OpMathFloorSingle(v1: single) -> single;
+#rust "@v1.floor(@v2)"
+pub fn floor(both: single) -> single { OpMathFloorSingle(both) }
+
+fn OpMathRoundSingle(v1: single) -> single;
+#rust "@v1.round(@v2)"
+pub fn round(both: single) -> single { OpMathRoundSingle(both) }
+
+fn OpMathSqrtSingle(v1: single) -> single;
+#rust "@v1.sqrt(@v2)"
+pub fn sqrt(both: single) -> single { OpMathSqrtSingle(both) }
+
+fn OpMathLogSingle(v1: single, v2: single) -> single;
+#rust "@v1.log(@v2)"
+pub fn log(both: single, v2: single) -> single { OpMathLogSingle(both, v2) }
+
+fn OpEorSingle(v1: single, v2: single) -> single;
+#rust "@v1.pow(@v2)"
+fn OpMathPowSingle(v1: single, v2: single) -> single;
+#rust "@v1.pow(@v2)"
+pub fn pow(both: single, v2: single) -> single { OpMathPowSingle(both, v2) }
+
 fn OpEqSingle(v1: single, v2: single) -> boolean;
 #rust "@v1 == @v2"
 
@@ -201,6 +297,68 @@ fn OpConvFloatFromNull() -> float;
 fn OpAbsFloat(v1: float) -> float;
 #rust "@v1.abs()"
 pub fn abs(both: float) -> float { OpAbsFloat(both) }
+
+fn OpMathPiFloat() -> float;
+#rust "std::f64::consts::PI"
+pub PI = OpMathPiFloat();
+
+fn OpMathEFloat() -> float;
+#rust "std::f64::consts::E"
+pub E = OpMathEFloat();
+
+fn OpMathCosFloat(v1: float) -> float;
+#rust "@v1.cos()"
+pub fn cos(both: float) -> float { OpMathCosFloat(both) }
+
+fn OpMathSinFloat(v1: float) -> float;
+#rust "@v1.sin()"
+pub fn sin(both: float) -> float { OpMathSinFloat(both) }
+
+fn OpMathTanFloat(v1: float) -> float;
+#rust "@v1.tan()"
+pub fn tan(both: float) -> float { OpMathTanFloat(both) }
+
+fn OpMathAcosFloat(v1: float) -> float;
+#rust "@v1.acos()"
+pub fn acos(both: float) -> float { OpMathAcosFloat(both) }
+
+fn OpMathAsinFloat(v1: float) -> float;
+#rust "@v1.asin()"
+pub fn asin(both: float) -> float { OpMathAsinFloat(both) }
+
+fn OpMathAtanFloat(v1: float) -> float;
+#rust "@v1.atan()"
+pub fn atan(both: float) -> float { OpMathAtanFloat(both) }
+
+fn OpMathAtan2Float(v1: float, v2: float) -> float;
+#rust "@v1.atan2(@v2)"
+pub fn atan2(both: float, v2: float) -> float { OpMathAtan2Float(both, v2) }
+
+fn OpMathCeilFloat(v1: float) -> float;
+#rust "@v1.ceil(@v2)"
+pub fn ceil(both: float) -> float { OpMathCeilFloat(both) }
+
+fn OpMathFloorFloat(v1: float) -> float;
+#rust "@v1.floor(@v2)"
+pub fn floor(both: float) -> float { OpMathFloorFloat(both) }
+
+fn OpMathRoundFloat(v1: float) -> float;
+#rust "@v1.round(@v2)"
+pub fn round(both: float) -> float { OpMathRoundFloat(both) }
+
+fn OpMathSqrtFloat(v1: float) -> float;
+#rust "@v1.sqrt(@v2)"
+pub fn sqrt(both: float) -> float { OpMathSqrtFloat(both) }
+
+fn OpMathLogFloat(v1: float, v2: float) -> float;
+#rust "@v1.log(@v2)"
+pub fn log(both: float, v2: float) -> float { OpMathLogFloat(both, v2) }
+
+fn OpEorFloat(v1: float, v2: float) -> float;
+#rust "@v1.pow(@v2)"
+fn OpMathPowFloat(v1: float, v2: float) -> float;
+#rust "@v1.pow(@v2)"
+pub fn pow(both: float, v2: float) -> float { OpMathPowFloat(both, v2) }
 
 fn OpMinSingleFloat(v1: float) -> float;
 #rust "-@v1"
@@ -264,6 +422,8 @@ fn OpConvBoolFromText(v1: text) -> boolean;
 #rust "!@v1.is_empty()"
 fn OpAddText(v1: text, v2: text) -> text;
 #rust "(@v1 + &@v2)"
+fn OpGetTextSub(v1: text, from: integer, till: integer) -> text;
+#rust "sub_text(@v1, @from, @till)"
 fn OpClearText(v1: text);
 #rust "@v1.clear()"
 // pub fn clear(self: text) { OpClearText(self) }
@@ -284,7 +444,10 @@ fn OpFormatText(val: text, width: integer, dir: integer, token: integer) -> text
 
 type enumerate;
 fn OpConvBoolFromEnum(v1: enumerate) -> boolean;
-fn OpConvTextFromEnum(v1: enumerate, enum_tp: integer) -> text;
+fn OpCastTextFromEnum(v1: enumerate, enum_tp: integer) -> text;
+fn OpCastEnumFromText(v1: text, enum_tp: integer) -> enumerate;
+fn OpCastIntFromEnum(v1: enumerate, enum_tp: integer) -> integer;
+fn OpCastEnumFromInt(v1: integer, enum_tp: integer) -> enumerate;
 fn OpConvEnumFromNull() -> enumerate;
 fn OpEqEnum(v1: enumerate, v2: enumerate) -> boolean;
 #rust "@v1 == @v2"
@@ -310,6 +473,9 @@ fn OpFormatDatabase(val: reference, db_tp: integer, pretty: boolean) -> text;
 #rust "stores.show(@val, @db_tp, @pretty)"
 fn OpConvBoolFromRef(val: reference) -> boolean;
 #rust "@val.rec != 0"
+fn OpConvRefFromNull() -> reference;
+#rust "stores.null()"
+fn OpCastRefFromText(val: text, db_tp: integer) -> reference;
 
 // Claim a new object inside a current database
 fn OpAppend(db: reference, size: integer) -> reference;
@@ -393,6 +559,7 @@ fn OpFinishSorted(r: vector, match: fn(reference, reference) -> integer);
 // This returns the position inside the vector of a record or a value, get the actual value with fld=0
 fn OpGetVector(r: vector, size: integer, index: integer) -> reference;
 #rust "stores.get_vector(&@r, @size as u32, @index)"
+fn OpCastVectorFromText(val: text, db_tp: integer) -> vector;
 
 fn OpGetSorted(r: vector, size: integer, match: fn(reference) -> integer) -> reference;
 
@@ -405,11 +572,11 @@ fn OpInsertVector(r: vector, size: integer, index: integer) -> reference;
 
 // Add space at the end of a vector, no data written
 fn OpAppendVector(r: vector, size: integer) -> reference;
-#rust "stores.vector_append(&r, 1, size as u32)"
+#rust "stores.vector_append(&@r, 1, @size as u32)"
 
 // Add all elements of another vector with the same type
 fn OpAddVector(r: vector, other: reference, size: integer);
-#rust "stores.vector_add(r, other, size as u32)"
+#rust "stores.vector_add(r, other, @size as u32)"
 
 type hash;
 

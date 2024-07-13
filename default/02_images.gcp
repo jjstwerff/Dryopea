@@ -1,0 +1,68 @@
+// Copyright (c) 2024 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+// Data per pixel of the png graph
+pub struct Pixel {
+    r: integer limit(0, 255) not null,
+    g: integer limit(0, 255) not null,
+    b: integer limit(0, 255) not null,
+    value: virtual(r * 0x10000 + g * 0x100 + b)
+}
+
+// Database structure with image data
+// The actual data is in height rows of width length.
+pub struct Image {
+    name: text,
+    width: integer,
+    height: integer,
+    data: vector<Pixel>
+}
+
+pub struct File {
+    path: text,
+    size: long,
+    dir: boolean
+}
+
+fn OpGetFile(file: File) -> boolean;
+#rust "stores.read_file(@file)"
+
+fn OpGetDir(path: text, result: vector<File>) -> boolean;
+#rust "stores.get_dir(@path, @result)"
+
+fn OpGetPngImage(path: text, image: Image) -> boolean;
+#rust "stores.get_png(@image)"
+
+fn OpGetFileText(file: File) -> text;
+#rust "stores.get_file_text(@file)"
+
+pub fn text(self: File) -> text {
+    OpGetFileText(self)
+}
+
+pub fn file(path: text) -> File {
+    result = File { path: path };
+    if OpGetFile(result) {
+        result
+    } else {
+        null
+    }
+}
+
+pub fn files(self: File) -> vector<File> {
+    result = [];
+    if self.dir {
+        OpGetDir(self.path, result);
+    }
+    result
+}
+
+pub fn png(self: File) -> Image {
+    if !self.dir {
+        result = Image { };
+        OpGetPngImage(self.path, result);
+        result
+    } else {
+        null
+    }
+}

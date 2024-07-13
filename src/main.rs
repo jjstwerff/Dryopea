@@ -6,6 +6,7 @@ mod data;
 mod database;
 mod lexer;
 mod parser;
+mod png_store;
 mod store;
 mod typedef;
 mod types;

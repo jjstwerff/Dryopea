@@ -204,6 +204,8 @@ impl Test {
         let tp = if self.tp.is_unknown() {
             if let Value::Int(_) = self.result {
                 Type::Integer
+            } else if let Value::Long(_) = self.result {
+                Type::Long
             } else if let Value::Text(_) = self.result {
                 Type::Text
             } else if let Value::Float(_) = self.result {

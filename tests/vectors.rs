@@ -30,6 +30,13 @@ v += [16];
     )
     .result(Value::str("[1,2,4,8,16] 5 4 [2, 4, 8]"));
 }
+
+#[test]
+fn parse_vector() {
+    expr!("a = \"[ 1.2, -10.3, 1.812e4, 1.001e-8 ]\" as vector<float>; a[2] + a[3]")
+        .result(Value::Float(1.812e4 + 1.001e-8));
+}
+
 /*
 #[test]
 fn map_vector() {
@@ -75,10 +82,39 @@ fn object_vectors() {
 }
 
 #[test]
+fn parse_objects() {
+    code!("struct Elm {n:text, c:integer}")
+        .expr("v = \"[ {{n:'hi', c:10 }}, {{n:'world', c:2 }} ]\" as vector<Elm>; \"{v}\"")
+        .result(Value::str("[{n:\"hi\",c:10},{n:\"world\",c:2}]"));
+}
+
+#[test]
 fn sum_vector() {
     code!("fn sum(v: vector<integer>) -> integer { t = 0; for i in v { t += i }; t}")
         .expr("sum([1, 2, 3, 4, 5])")
         .result(Value::Int(15));
+}
+
+#[test]
+fn empty_vector() {
+    expr!(
+        "a = [];
+for v in 1..4 { a += [ v * 10 ] };
+\"{a}\""
+    )
+    .result(Value::str("[10,20,30]"));
+}
+
+#[test]
+fn growing_vector() {
+    expr!(
+        "a = [];
+for v in 1..400 { a += [ v * 10 ] };
+sum = 0;
+for elm in a { sum += elm }
+\"{sum}\""
+    )
+    .result(Value::str("798000"));
 }
 /*
 #[test]

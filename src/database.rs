@@ -3,7 +3,7 @@
 //! Database operations on stores
 use crate::store::Store;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter, Result};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -211,6 +211,18 @@ impl KnownTypes {
         "null".to_string()
     }
 
+    #[allow(dead_code)]
+    pub fn to_enum(&self, known_type: u16, value: &str) -> u16 {
+        if let Parts::Enum(values) = &self.types[known_type as usize].parts {
+            for (idx, val) in values.iter().enumerate() {
+                if val == value {
+                    return idx as u16;
+                }
+            }
+        }
+        u16::MAX
+    }
+
     pub fn is_null(&self, store: &Store, rec: u32, pos: u32, known_type: u16) -> bool {
         if known_type == 0 {
             store.get_int(rec, pos as isize) == i32::MIN
@@ -279,12 +291,24 @@ impl<'a> Stores<'a> {
         }
     }
 
+    pub fn type_claim(&self, tp: u16) -> u32 {
+        (self.types.types[tp as usize].size as u32 + 7) / 8
+    }
+
     pub fn claim(&mut self, db: &DbRef, size: u32) -> DbRef {
         let store = &mut self.stores[db.store_nr as usize];
         let rec = store.claim(size);
         DbRef {
             store_nr: db.store_nr,
             rec,
+            pos: 0,
+        }
+    }
+
+    pub fn null() -> DbRef {
+        DbRef {
+            store_nr: u16::MAX,
+            rec: 0,
             pos: 0,
         }
     }
@@ -312,24 +336,320 @@ impl<'a> Stores<'a> {
         )
     }
 
-    pub fn length_vector(&self, db: &DbRef) -> u32 {
-        let store = self.store(db);
-        let v_rec = store.get_int(db.rec, db.pos as isize) as u32;
-        if v_rec == 0 {
-            0
-        } else {
-            store.get_int(v_rec, 4) as u32
+    pub fn parse(&mut self, text: &str, tp: u16, result: DbRef) -> bool {
+        let mut pos = 0;
+        self.parsing(text, &mut pos, tp, result)
+    }
+
+    fn parsing(&mut self, text: &str, pos: &mut usize, tp: u16, result: DbRef) -> bool {
+        if match_null(text, pos) {
+            self.set_default_value(tp, result);
+        }
+        match &self.types.types[tp as usize].parts {
+            Parts::Base => {
+                if !self.parse_simple(text, pos, tp, result) {
+                    return false;
+                }
+            }
+            Parts::Vector(content) => {
+                match_empty(text, pos);
+                if match_token(text, pos, b'[') {
+                    match_empty(text, pos);
+                    if match_token(text, pos, b']') {
+                        return true;
+                    }
+                    loop {
+                        let res = self.vector_append(
+                            &Vect::DbRef(result),
+                            1,
+                            self.types.types[*content as usize].size as u32,
+                        );
+                        if !self.parsing(text, pos, *content, res) {
+                            return false;
+                        }
+                        match_empty(text, pos);
+                        if !match_token(text, pos, b',') {
+                            break;
+                        }
+                        match_empty(text, pos);
+                    }
+                    match_empty(text, pos);
+                    if !match_token(text, pos, b']') {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            Parts::Struct(object) => {
+                if match_token(text, pos, b'{') {
+                    match_empty(text, pos);
+                    if match_token(text, pos, b'}') {
+                        return true;
+                    }
+                    let fld = if result.rec == 0 { 0 } else { result.pos };
+                    let rec = if result.rec == 0 {
+                        let size = self.types.types[tp as usize].size;
+                        self.mut_store(&result).claim((size as u32 + 7) / 8)
+                    } else {
+                        result.rec
+                    };
+                    let mut found_fields = HashSet::new();
+                    loop {
+                        let mut field_name = "".to_string();
+                        if !match_identifier(text, pos, &mut field_name) {
+                            return false;
+                        }
+                        match_empty(text, pos);
+                        if !match_token(text, pos, b':') {
+                            return false;
+                        }
+                        match_empty(text, pos);
+                        for f in &object.fields {
+                            if f.name == field_name {
+                                let field = DbRef {
+                                    store_nr: result.store_nr,
+                                    rec,
+                                    pos: fld + f.position as u32,
+                                };
+                                if !self.parsing(text, pos, f.content, field) {
+                                    return false;
+                                }
+                            }
+                        }
+                        found_fields.insert(field_name);
+                        match_empty(text, pos);
+                        if !match_token(text, pos, b',') {
+                            break;
+                        }
+                        match_empty(text, pos);
+                    }
+                    match_empty(text, pos);
+                    if !match_token(text, pos, b'}') {
+                        return false;
+                    }
+                    for f in &object.fields {
+                        if !found_fields.contains(&f.name) {
+                            let field = DbRef {
+                                store_nr: result.store_nr,
+                                rec,
+                                pos: result.pos + f.position as u32,
+                            };
+                            self.set_default_value(f.content, field);
+                        }
+                    }
+                } else {
+                    return false;
+                }
+            }
+            Parts::Enum(fields) => {
+                let mut value = "".to_string();
+                if !match_text(text, pos, &mut value) {
+                    return false;
+                }
+                let mut val = 0;
+                for f in fields {
+                    if *f == value {
+                        break;
+                    }
+                    val += 1;
+                }
+                self.mut_store(&result)
+                    .set_int(result.rec, result.pos as isize, val);
+            }
+            Parts::Byte(from, _null) => {
+                let mut value = 0;
+                if !match_integer(text, pos, &mut value) {
+                    return false;
+                }
+                self.mut_store(&result)
+                    .set_byte(result.rec, result.pos as isize, *from, value);
+            }
+            Parts::Short(from, _null) => {
+                let mut value = 0;
+                if !match_integer(text, pos, &mut value) {
+                    return false;
+                }
+                self.mut_store(&result)
+                    .set_short(result.rec, result.pos as isize, *from, value);
+            }
+        }
+        true
+    }
+
+    fn parse_simple(&mut self, text: &str, pos: &mut usize, tp: u16, result: DbRef) -> bool {
+        match tp {
+            0 => {
+                let mut value = 0;
+                if !match_integer(text, pos, &mut value) {
+                    return false;
+                }
+                self.mut_store(&result)
+                    .set_int(result.rec, result.pos as isize, value);
+            }
+            1 => {
+                let mut value = 0;
+                if !match_long(text, pos, &mut value) {
+                    return false;
+                }
+                self.mut_store(&result)
+                    .set_long(result.rec, result.pos as isize, value);
+            }
+            2 => {
+                let mut value = 0.0;
+                if !match_single(text, pos, &mut value) {
+                    return false;
+                }
+                self.mut_store(&result)
+                    .set_single(result.rec, result.pos as isize, value);
+            }
+            3 => {
+                let mut value = 0.0;
+                if !match_float(text, pos, &mut value) {
+                    return false;
+                }
+                self.mut_store(&result)
+                    .set_float(result.rec, result.pos as isize, value);
+            }
+            4 => {
+                let mut value = false;
+                if !match_boolean(text, pos, &mut value) {
+                    return false;
+                }
+                self.mut_store(&result).set_byte(
+                    result.rec,
+                    result.pos as isize,
+                    0,
+                    if value { 1 } else { 0 },
+                );
+            }
+            5 => {
+                let mut value = "".to_string();
+                if !match_text(text, pos, &mut value) {
+                    return false;
+                }
+                let text_pos = self.mut_store(&result).set_str(&value);
+                self.mut_store(&result)
+                    .set_int(result.rec, result.pos as isize, text_pos as i32);
+            }
+            _ => {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn set_default_value(&mut self, tp: u16, rec: DbRef) {
+        if tp < 6 {
+            match tp {
+                0 => {
+                    self.mut_store(&rec)
+                        .set_int(rec.rec, rec.pos as isize, i32::MIN);
+                }
+                1 => {
+                    self.mut_store(&rec)
+                        .set_long(rec.rec, rec.pos as isize, i64::MIN);
+                }
+                2 => {
+                    self.mut_store(&rec)
+                        .set_single(rec.rec, rec.pos as isize, f32::NAN);
+                }
+                3 => {
+                    self.mut_store(&rec)
+                        .set_float(rec.rec, rec.pos as isize, f64::NAN);
+                }
+                4 => {
+                    self.mut_store(&rec)
+                        .set_byte(rec.rec, rec.pos as isize, 0, 0);
+                }
+                5 => {
+                    self.mut_store(&rec).set_int(rec.rec, rec.pos as isize, 0);
+                }
+                _ => {}
+            }
+            return;
+        }
+        let known_type = &self.types.types[tp as usize];
+        match &known_type.parts {
+            Parts::Enum(_) => {
+                self.mut_store(&rec)
+                    .set_byte(rec.rec, rec.pos as isize, 0, 255);
+            }
+            Parts::Byte(_, null) => {
+                self.mut_store(&rec).set_byte(
+                    rec.rec,
+                    rec.pos as isize,
+                    0,
+                    if *null { 255 } else { 0 },
+                );
+            }
+            Parts::Short(_, null) => {
+                self.mut_store(&rec).set_short(
+                    rec.rec,
+                    rec.pos as isize,
+                    0,
+                    if *null { 65535 } else { 0 },
+                );
+            }
+            _ => {
+                panic!("not implemented yet!")
+            }
         }
     }
 
-    pub fn clear_vector(&mut self, db: &DbRef) {
-        let store = self.mut_store(db);
-        let v_rec = store.get_int(db.rec, db.pos as isize) as u32;
-        if v_rec != 0 {
-            // Only set size of the vector to 0
-            // TODO when the main path to a separate allocated objects: remove these
-            store.set_int(v_rec, 4, 0);
+    pub fn length_vector(&self, v: &Vect) -> u32 {
+        if let Vect::DbRef(db) = v {
+            let store = self.store(&db);
+            let v_rec = store.get_int(db.rec, db.pos as isize) as u32;
+            if v_rec == 0 {
+                0
+            } else {
+                store.get_int(v_rec, 4) as u32
+            }
+        } else if let Vect::DbSlice(_, l) = v {
+            *l
+        } else {
+            0
         }
+    }
+
+    pub fn clear_vector(&mut self, v: &Vect) {
+        if let Vect::DbRef(db) = v {
+            let store = self.mut_store(&db);
+            let v_rec = store.get_int(db.rec, db.pos as isize) as u32;
+            if v_rec != 0 {
+                // Only set size of the vector to 0
+                // TODO when the main path to a separate allocated objects: remove these
+                // TODO lower string reference counts where needed
+                store.set_int(v_rec, 4, 0);
+            }
+        }
+    }
+
+    pub fn slice_vector(&self, v: &Vect, size: u32, from: i32, till: i32) -> Vect {
+        let l = self.length_vector(v);
+        let f = if from < 0 {
+            from + l as i32
+        } else {
+            from
+        };
+        let t = if till == i32::MIN {
+            from + 1
+        } else if till < from {
+            from
+        } else {
+            till
+        };
+        match v {
+            Vect::DbRef(db) => {
+                Vect::DbSlice(DbRef { store_nr: db.store_nr, rec: db.rec, pos: db.pos + size * f as u32
+            },
+            (t-f) as u32)
+        },
+            Vect::DbSlice(db, _) => {
+            Vect::DbSlice(DbRef { store_nr: db.store_nr, rec: db.rec, pos: db.pos + size * f as u32 }, (t - f) as u32)
+        }
+    }
     }
 
     pub fn get_ref(&self, db: &DbRef, fld: u32) -> DbRef {
@@ -350,34 +670,16 @@ impl<'a> Stores<'a> {
         }
     }
 
-    pub fn clear_text(&mut self, db: &DbRef) {
-        let store = self.mut_store(db);
-        let text_rec = store.get_int(db.rec, db.pos as isize) as u32;
-        self.mut_store(db).set_int(db.rec, db.pos as isize, 0);
-        self.mut_store(db).delete(text_rec);
-    }
-
-    pub fn get_vector(&self, db: &DbRef, size: u32, index: i32) -> DbRef {
-        let len = self.length_vector(db) as i32;
-        let store = self.store(db);
-        let mut vec_rec = store.get_int(db.rec, db.pos as isize) as u32;
-        let mut pos = 0;
-        if vec_rec != 0 {
-            let real = if index < 0 { index + len } else { index };
-            if real >= 0 && real < len {
-                pos = 8 + real as u32 * size
-            } else {
-                vec_rec = 0
-            }
-        }
-        DbRef {
-            store_nr: db.store_nr,
-            rec: vec_rec,
-            pos,
+    pub fn get_vector(&self, v: &Vect, size: u32, index: i32) -> DbRef {
+        match self.slice_vector(v, size, index, index + 1) {
+            Vect::DbSlice(db, _) => db,
+            Vect::DbRef(db) => db
         }
     }
 
-    pub fn vector_append(&mut self, db: &DbRef, add: u32, size: u32) -> DbRef {
+    pub fn vector_append(&mut self, v: &Vect, add: u32, size: u32) -> DbRef {
+        match v {
+            Vect::DbRef(db) =>  {
         let store = self.mut_store(db);
         let mut vec_rec = store.get_int(db.rec, db.pos as isize) as u32;
         let new_length;
@@ -400,20 +702,42 @@ impl<'a> Stores<'a> {
             rec: vec_rec,
             pos: 8 + (new_length - add) * size,
         }
-    }
+    }, Vect::DbSlice(db, _) => {
+            let store = self.mut_store(db);
+            let r = store.claim(1);
+            store.set_int(r, 4, 0);
+            let res = Vect::DbRef(DbRef{store_nr:db.store_nr, rec: r, pos: 0});
+            self.vector_add(&res, v, size);
+            self.vector_append(&res, add, size)
+            }
+    }}
 
-    pub fn vector_add(&mut self, db: &DbRef, other: &DbRef, size: u32) {
+    // TODO copy child records & strings during copy (string reference counting on same)
+    pub fn vector_add(&mut self, v: &Vect, other: &Vect, size: u32) {
+        match v {
+            Vect::DbRef(db) =>  {
         let o_length = self.length_vector(other);
         if o_length == 0 {
             // Other vector has no data
             return;
         }
-        let o_rec = self.store(other).get_int(other.rec, other.pos as isize) as u32;
-        let new_db = self.vector_append(db, o_length, size);
-        if db.store_nr == other.store_nr {
+        let o_db = match other {
+            Vect::DbRef(db) => db,
+            Vect::DbSlice(db, _) => db
+        };
+        let o_rec = match other {
+            Vect::DbRef(db) => self.store(db).get_int(db.rec, db.pos as isize) as u32,
+            Vect::DbSlice(db, _) => db.rec
+        };
+                let o_pos = match other {
+                    Vect::DbRef(_) => 0,
+                    Vect::DbSlice(db, _) => db.pos
+                };
+        let new_db = self.vector_append(v, o_length, size);
+        if db.store_nr == o_db.store_nr {
             self.mut_store(db).copy_block(
                 o_rec,
-                0,
+                o_pos as isize,
                 new_db.rec,
                 new_db.pos as isize,
                 o_length as isize * size as isize,
@@ -422,23 +746,30 @@ impl<'a> Stores<'a> {
             let o_store: &Store;
             let db_store: &mut Store;
             unsafe {
-                o_store = (*(self as *const Stores)).store(other);
+                o_store = (*(self as *const Stores)).store(o_db);
                 db_store = (*(self as *mut Stores)).mut_store(db);
             }
             o_store.copy_block_between(
                 o_rec,
-                0,
+                o_pos as isize,
                 db_store,
                 new_db.rec,
                 new_db.pos as isize,
                 o_length as isize * size as isize,
             )
         }
-    }
+    }, Vect::DbSlice(db, _) => { let store = self.mut_store(db);
+                let r = store.claim(1);
+                store.set_int(r, 4, 0);
+                let res = Vect::DbRef(DbRef{store_nr:db.store_nr, rec: r, pos: 0});
+                self.vector_add(&res, v, size);
+                self.vector_add(&res, other, size) }}}
 
-    pub fn insert_vector(&mut self, db: &DbRef, size: u32, index: i32) -> DbRef {
-        let len = self.length_vector(db);
+    // TODO change slice to its own vector on updating it
+    pub fn insert_vector(&mut self, v: &Vect, size: u32, index: i32) -> DbRef {
+        let len = self.length_vector(v);
         let real = if index < 0 { index + len as i32 } else { index };
+        let db = match v {  Vect::DbRef(db) => db, Vect::DbSlice(db, _) => db };
         if real < 0 || real > len as i32 {
             return DbRef {
                 store_nr: db.store_nr,
@@ -477,8 +808,11 @@ impl<'a> Stores<'a> {
         }
     }
 
-    pub fn remove_vector(&mut self, db: &DbRef, size: u32, index: i32) -> bool {
-        let len = self.length_vector(db);
+    // TODO update slice to full vector on updating it
+    // TODO child records of removed records, lower string reference counts
+    pub fn remove_vector(&mut self, v: &Vect, size: u32, index: i32) -> bool {
+        let db = match v {  Vect::DbRef(db) => db, Vect::DbSlice(db, _) => db };
+        let len = self.length_vector(v);
         let real = if index < 0 { index + len as i32 } else { index };
         let store = self.mut_store(db);
         let vec_rec = store.get_int(db.rec, db.pos as isize) as u32;
@@ -494,6 +828,386 @@ impl<'a> Stores<'a> {
         );
         store.set_int(vec_rec, 4, len as i32 - 1);
         true
+    }
+
+    pub fn get_file(&mut self, file: DbRef) -> bool {
+        if file.rec == 0 {
+            return false;
+        }
+        let store = self.mut_store(&file);
+        let filename = store.get_str(store.get_int(file.rec, file.pos as isize + 4) as u32);
+        let path = std::path::Path::new(filename);
+        fill_file(path, store, file)
+    }
+
+    pub fn get_dir(&mut self, file_path: String, result: DbRef) -> bool {
+        let path = std::path::Path::new(&file_path);
+        if let Ok(iter) = std::fs::read_dir(path) {
+            let vector = DbRef {
+                store_nr: result.store_nr,
+                rec: result.rec,
+                pos: result.pos + 16,
+            };
+            for entry in iter.flatten() {
+                let v = Vect::DbRef(vector);
+                let elm = self.vector_append(&v, 1, 17);
+                let path = entry.path();
+                if let Some(name) = path.to_str() {
+                    let store = self.mut_store(&result);
+                    let name_pos = store.set_str(name) as i32;
+                    store.set_int(elm.rec, elm.pos as isize + 4, name_pos);
+                    if !fill_file(&path, store, elm) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    pub fn get_png(&mut self, file_path: String, result: DbRef) -> bool {
+        let store = self.mut_store(&result);
+        if let Ok((img, width, height)) = crate::png_store::read(&file_path, store) {
+            if let Some(name) = std::path::Path::new(&file_path).file_name() {
+                let name_pos = store.set_str(name.to_str().unwrap());
+                store.set_int(result.rec, result.pos as isize + 4, name_pos as i32);
+                store.set_int(result.rec, result.pos as isize + 8, width as i32);
+                store.set_int(result.rec, result.pos as isize + 12, height as i32);
+                store.set_int(result.rec, result.pos as isize + 16, img as i32);
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    // Produces a rust slice with the string data from a text definition
+    pub fn str<'sl>(&self, val: &'sl Str<'sl>) -> &'sl str {
+        if let Str::Slice(s) = val {
+            s
+        } else if let Str::Str(s) = val {
+            s
+        } else if let Str::DbRef(dbr) = val {
+            let st = self.store(dbr);
+            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+            st.get_str(s_rec as u32)
+        } else if let Str::DbSlice(dbr, len) = val {
+            let st = self.store(dbr);
+            let f = dbr.pos as usize;
+            let t = f + *len as usize;
+            &st.get_str(dbr.rec)[f..t]
+        } else {
+            ""
+        }
+    }
+
+    // Produces a non copy slice from a text definition, not on a mutating variable/field
+    pub fn slice<'sl>(&self, val: &'sl Str<'sl>, from: i32, till: i32) -> Str<'sl> {
+        if let Str::Slice(s) = val {
+            let f = fix_from(from, s);
+            let t = fix_till(till, f, s);
+            Str::Slice(&s[f..t])
+        } else if let Str::Str(s) = val {
+            let f = fix_from(from, s);
+            let t = fix_till(till, f, s);
+            Str::Slice(&s[f..t])
+        } else if let Str::DbRef(dbr) = val {
+            let st = self.store(dbr);
+            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+            let s = st.get_str(s_rec as u32);
+            let f = fix_from(from, s);
+            let t = fix_till(till, f, s);
+            Str::DbSlice(*dbr, (t - f) as u32)
+        } else if let Str::DbSlice(dbr, len) = val {
+            let st = self.store(dbr);
+            let f = dbr.pos as usize;
+            let t = f + *len as usize;
+            let s = &st.get_str(dbr.rec)[f..t];
+            let f = fix_from(from, s);
+            let t = fix_till(till, f, s);
+            Str::DbSlice(*dbr, (t - f) as u32)
+        } else {
+            Str::Null
+        }
+    }
+
+    pub fn len(&self, val: &Str) -> i32 {
+        if let Str::Slice(s) = val {
+            s.len() as i32
+        } else if let Str::Str(s) = val {
+            s.len() as i32
+        } else if let Str::DbRef(dbr) = val {
+            let st = self.store(dbr);
+            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+            st.get_int(s_rec as u32, 4)
+        } else if let Str::DbSlice(_, len) = val {
+            *len as i32
+        } else {
+            i32::MIN
+        }
+    }
+
+    pub fn is_null(&self, val: &Str) -> bool {
+        matches!(val, Str::Null)
+    }
+
+    pub fn append(&mut self, val: &mut Str, add: &str) -> bool {
+        if let Str::Str(s) = val {
+            *s += add;
+            true
+        } else if let Str::DbRef(dbr) = val {
+            let st = self.mut_store(dbr);
+            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+            st.append_str(s_rec as u32, add);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn clear(&mut self, val: &mut Str) -> bool {
+        if let Str::Str(s) = val {
+            s.clear();
+            false
+        } else if let Str::DbRef(dbr) = val {
+            let st = self.mut_store(dbr);
+            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+            st.set_int(s_rec as u32, 4, 0);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn char(&self, val: &mut Str) -> i32 {
+        let s = self.str(val);
+        if let Some(ch) = s.chars().next() {
+            ch as i32
+        } else {
+            i32::MIN
+        }
+    }
+
+    // TODO this can be more efficient, without a temporary string allocation
+    pub fn append_char(&mut self, val: &mut Str, add: i32) -> bool {
+        if let Some(ch) = char::from_u32(add as u32) {
+            self.append(val, &ch.to_string())
+        } else {
+            false
+        }
+    }
+}
+
+fn match_token(text: &str, pos: &mut usize, token: u8) -> bool {
+    if *pos < text.len() && text.as_bytes()[*pos] == token {
+        *pos += 1;
+        true
+    } else {
+        false
+    }
+}
+
+fn match_empty(text: &str, pos: &mut usize) {
+    let mut c = *pos;
+    let bytes = text.as_bytes();
+    while c < bytes.len() && (bytes[c] == b' ' || bytes[c] == b'\t' || bytes[c] == b'\n') {
+        c += 1;
+        *pos = c;
+    }
+}
+
+fn match_null(text: &str, pos: &mut usize) -> bool {
+    if text.len() >= *pos + 4 && &text[*pos..*pos + 4] == "null" {
+        *pos += 4;
+        true
+    } else {
+        false
+    }
+}
+
+fn match_boolean(text: &str, pos: &mut usize, value: &mut bool) -> bool {
+    if text.len() >= *pos + 4 && &text[*pos..*pos + 4] == "true" {
+        *pos += 4;
+        *value = true;
+        true
+    } else if text.len() >= *pos + 5 && &text[*pos..*pos + 5] == "false" {
+        *pos += 4;
+        *value = false;
+        true
+    } else {
+        false
+    }
+}
+
+fn match_integer(text: &str, pos: &mut usize, value: &mut i32) -> bool {
+    let mut c = *pos;
+    let bytes = text.as_bytes();
+    if c < bytes.len() && bytes[c] == b'-' {
+        c += 1;
+    }
+    while c < bytes.len() && bytes[c] >= b'0' && bytes[c] <= b'9' {
+        c += 1;
+    }
+    if c == *pos {
+        false
+    } else {
+        *value = text[*pos..c].parse().unwrap();
+        *pos = c;
+        true
+    }
+}
+
+fn match_long(text: &str, pos: &mut usize, value: &mut i64) -> bool {
+    let mut c = *pos;
+    let bytes = text.as_bytes();
+    if c < bytes.len() && bytes[c] == b'-' {
+        c += 1;
+    }
+    while c < bytes.len() && bytes[c] >= b'0' && bytes[c] <= b'9' {
+        c += 1;
+    }
+    if c == *pos {
+        false
+    } else {
+        *value = text[*pos..c].parse().unwrap();
+        *pos = c;
+        true
+    }
+}
+
+fn match_single(text: &str, pos: &mut usize, value: &mut f32) -> bool {
+    let mut c = *pos;
+    let bytes = text.as_bytes();
+    if c < bytes.len() && bytes[c] == b'-' {
+        c += 1;
+    }
+    while c < bytes.len()
+        && ((bytes[c] >= b'0' && bytes[c] <= b'9') || bytes[c] == b'e' || bytes[c] == b'.')
+    {
+        c += 1;
+        if c < bytes.len() && bytes[c - 1] == b'e' && bytes[c] == b'-' {
+            c += 1;
+        }
+    }
+    if c == *pos {
+        false
+    } else {
+        *value = text[*pos..c].parse().unwrap();
+        *pos = c;
+        true
+    }
+}
+
+fn match_float(text: &str, pos: &mut usize, value: &mut f64) -> bool {
+    let mut c = *pos;
+    let bytes = text.as_bytes();
+    if c < bytes.len() && bytes[c] == b'-' {
+        c += 1;
+    }
+    while c < bytes.len()
+        && ((bytes[c] >= b'0' && bytes[c] <= b'9') || bytes[c] == b'e' || bytes[c] == b'.')
+    {
+        c += 1;
+        if c < bytes.len() && bytes[c - 1] == b'e' && bytes[c] == b'-' {
+            c += 1;
+        }
+    }
+    if c == *pos {
+        false
+    } else {
+        *value = text[*pos..c].parse().unwrap();
+        *pos = c;
+        true
+    }
+}
+
+fn match_identifier(text: &str, pos: &mut usize, value: &mut String) -> bool {
+    let mut c = *pos;
+    let bytes = text.as_bytes();
+    if c < bytes.len()
+        && ((bytes[c] >= b'a' && bytes[c] <= b'z')
+            || bytes[c] >= b'A' && bytes[c] <= b'Z'
+            || bytes[c] == b'_')
+    {
+        c += 1;
+        while c < bytes.len()
+            && ((bytes[c] >= b'0' && bytes[c] <= b'9')
+                || (bytes[c] >= b'a' && bytes[c] <= b'z')
+                || bytes[c] >= b'A' && bytes[c] <= b'Z'
+                || bytes[c] == b'_')
+        {
+            c += 1;
+        }
+        *value = text[*pos..c].parse().unwrap();
+        *pos = c;
+        true
+    } else {
+        false
+    }
+}
+
+fn match_text(text: &str, pos: &mut usize, value: &mut String) -> bool {
+    let mut c = *pos;
+    let bytes = text.as_bytes();
+    value.clear();
+    if c < bytes.len() && (bytes[c] == b'"' || bytes[c] == b'\'') {
+        let close = bytes[c];
+        c += 1;
+        while c < bytes.len() && bytes[c] != close {
+            if bytes[c] == b'\\' {
+                c += 1;
+                if c == bytes.len() {
+                    return false;
+                }
+                if bytes[c] == b'n' {
+                    *value += "\n";
+                } else if bytes[c] == b't' {
+                    *value += "\t";
+                } else if bytes[c] == b'\\' {
+                    *value += "\\";
+                } else if bytes[c] == b'"' {
+                    *value += "\"";
+                } else if bytes[c] == b'\'' {
+                    *value += "\'";
+                } else {
+                    return false;
+                }
+            } else {
+                let s = c;
+                while c < bytes.len() && bytes[c] > 127 {
+                    c += 1;
+                }
+                if c == bytes.len() || bytes[c] == close {
+                    return false;
+                }
+                c += 1;
+                *value += &text[s..c];
+            }
+        }
+        if bytes[c] != close {
+            return false;
+        }
+        *pos = c + 1;
+    }
+    true
+}
+
+fn fill_file(path: &std::path::Path, store: &mut Store, file: DbRef) -> bool {
+    if let Ok(data) = path.metadata() {
+        store.set_long(file.rec, file.pos as isize + 8, data.len() as i64);
+        store.set_byte(
+            file.rec,
+            file.pos as isize + 16,
+            0,
+            if data.is_dir() { 1 } else { 0 },
+        );
+        true
+    } else {
+        false
     }
 }
 
@@ -721,4 +1435,71 @@ impl<'a> core::fmt::Display for ShowDb<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.write(f, 0)
     }
+}
+
+pub enum Str<'a> {
+    Null,
+    /// A static string or a part of another String that should be immutable
+    Slice(&'a str),
+    /// A mutable string, only in the sense of adding to it
+    Str(String),
+    /// A part of a database string, directly pointing to the immutable character data
+    DbSlice(DbRef, u32),
+    /// A mutable database string, pointing to the field holding the actual position
+    DbRef(DbRef),
+}
+
+pub enum Vect {
+    /// A part of a database vector, can only point to an immutable vector
+    DbSlice(DbRef, u32),
+    /// A mutable database vector, pointing to the field holding the actual position
+    DbRef(DbRef),
+}
+
+fn fix_from(from: i32, s: &str) -> usize {
+    let size = s.len() as i32;
+    let mut f = if from < 0 { from + size } else { from };
+    if f < 0 {
+        return 0;
+    }
+    let b = s.as_bytes();
+    // when from is inside a UTF-8 token: decrease it
+    while f > 0 && b[f as usize] >= 128 && b[f as usize] < 192 {
+        f -= 1;
+    }
+    f as usize
+}
+
+fn fix_till(till: i32, from: usize, s: &str) -> usize {
+    let size = s.len() as i32;
+    let mut t = if till == i32::MIN {
+        from as i32 + 1
+    } else if till < 0 {
+        till + size
+    } else if till > size {
+        size
+    } else {
+        till
+    };
+    if t < from as i32 || t > size {
+        return from;
+    }
+    let b = s.as_bytes();
+    // when till is inside a UTF-8 token: increase it
+    while t < size && b[t as usize] >= 128 && b[t as usize] < 192 {
+        t += 1;
+    }
+    t as usize
+}
+
+#[test]
+pub fn strings() {
+    let types = KnownTypes::new();
+    let db = Stores::new(&types);
+    let a = Str::Slice("hi!");
+    let b = Str::Str(db.str(&a).to_string() + db.str(&a) + db.str(&a));
+    assert_eq!("hi!hi!hi!", db.str(&b));
+    let s = db.slice(&b, 3, 6);
+    let c = db.str(&s);
+    assert_eq!("hi!", c);
 }

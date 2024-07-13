@@ -1,0 +1,43 @@
+class Tile {
+    water: integer limit(0, 63) not null,
+    dir: integer limit(0, 11) not null,
+    // direction with the even numbers the direct neighbours and uneven the next on points
+    height: integer limit(-10000, 55535) not null,
+    // negative height is below sea level, in 10cm increments
+    terrain: integer limit(0, 254)
+}
+
+class Map {
+    x: integer, // in roughly kilometer tiles
+    y: integer, // in roughly kilometer tiles
+    data: vector<Tile> // area of maximal 32x32
+}
+
+enum TerrainType {
+    water, // lakes, not directly connected to the sea
+    sea, // oceans, the height here is about the sea bottom, water connected to the side of the map
+    land, // normal land
+    glacial // normal land above a certain height level (normally 30000, might differ due to world placement)
+}
+
+class Terrain {
+    name: text,
+    color: integer, // the closest matching color will determine the terrain
+    type: TerrainType, // what is the general type of this terrain
+    slope: integer limit(0, 255) not null, // the slope of this terrain towards the lowest neighbour
+    break: integer limit(0, 255) not null, // when will the general slope break into lower slopes and a rock face
+    rain: integer limit(0, 255) not null // how much water does this terrain contribute
+    shown: integer, // the general color to display this terrain with
+}
+// TODO allow for textures
+// TODO plant growth
+
+class World {
+    name: text,
+    maps: vector<Map>,
+    x_from: integer,
+    x_till: integer,
+    y_from: integer,
+    y_till: integer,
+    terrain: vector<Terrain>
+}

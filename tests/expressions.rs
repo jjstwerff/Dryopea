@@ -95,6 +95,11 @@ fn for_loop() {
 }
 
 #[test]
+fn extended_for() {
+    expr!("b = 0; for a in 0..=5 { b+=a }; b").result(Value::Int(15));
+}
+
+#[test]
 fn continue_loop() {
     expr!("b = 0; for a in 0..10 { if a == 2 {continue} if a > 5 {return b} b += a }; b")
         .result(Value::Int(13));
@@ -129,6 +134,32 @@ fn compare() {
     code!("enum T{A, C, B}\nfn count(v: T) -> integer { if v > C { 2 } else { 1 } }")
         .expr("count(A) + count(B) + count(B)")
         .result(Value::Int(5));
+}
+
+#[test]
+fn convert() {
+    expr!("123 as long + 2").result(Value::Long(125));
+    expr!("\"123\" as long + 2").result(Value::Long(125));
+    expr!("123 as integer + 2").result(Value::Int(125));
+    expr!("\"123\" as integer + 2").result(Value::Int(125));
+}
+
+#[test]
+fn boolean() {
+    expr!("123 and (12 or false)").result(Value::Boolean(true));
+    expr!("123 || (12 && false)").result(Value::Boolean(true));
+}
+
+#[test]
+fn logical() {
+    expr!("(1 << 8) - 3 & 127").result(Value::Int(125));
+}
+
+#[test]
+fn to_enum() {
+    code!("enum Number { One, Two, Three, Four }")
+        .expr("\"Two\" as Number < \"Four\" as Number")
+        .result(Value::Boolean(true));
 }
 
 #[test]

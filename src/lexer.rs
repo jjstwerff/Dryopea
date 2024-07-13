@@ -115,12 +115,12 @@ static LINE: String = String::new();
 static TOKENS: &[&str] = &[
     ":", "::", ".", "..", ",", "{", "}", "(", ")", "[", "]", ";", "!", "!=", "+", "+=", "-", "-=",
     "*", "*=", "/", "/=", "%", "%=", "=", "==", "<", "<=", ">", ">=", "&", "&&", "|", "||", "->",
-    "=>", "^", "$", "//", "#",
+    "=>", "^", "<<", ">>", "$", "//", "#",
 ];
 
 static KEYWORDS: &[&str] = &[
     "as", "if", "in", "else", "for", "continue", "break", "return", "true", "false", "null",
-    "struct", "fn", "type", "enum", "pub",
+    "struct", "fn", "type", "enum", "pub", "and", "or", "use",
 ];
 
 #[derive(Debug)]
@@ -478,7 +478,6 @@ impl Lexer {
         let mut val = self.get_number();
         let mut f = false;
         if let Some('.') = self.iter.peek() {
-            f = true;
             self.next_char();
             if let Some('.') = self.iter.peek() {
                 self.next_char();
@@ -487,15 +486,15 @@ impl Lexer {
                     LexItem::Token("..".to_string()),
                     pos.clone(),
                 ));
-                let res = if let Ok(r) = val.parse::<u64>() {
-                    r
+                return if let Ok(r) = val.parse::<u32>() {
+                    LexResult::new(LexItem::Integer(r, val.starts_with('0')), pos)
                 } else {
-                    self.err(Level::Error, "Problem parsing long");
-                    0
+                    self.err(Level::Error, "Problem parsing float");
+                    self.none()
                 };
-                return self.ret_number(res, pos, false);
             }
             val.push('.');
+            f = true;
             let part = self.get_number();
             if part.is_empty() {
                 self.err(Level::Error, "Problem parsing float");

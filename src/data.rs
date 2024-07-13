@@ -112,8 +112,6 @@ pub enum Type {
     Enum(u32),
     /// A readonly reference to a record instance in a store.
     Reference(u32),
-    /// A mutable reference to a record instance in a store.
-    Mutable(u32),
     /// A record that is placed inside another object. Like compact vectors or parent objects.
     Inner(u32),
     /// A dynamic vector of a specific type
@@ -142,6 +140,13 @@ pub enum Type {
 impl Type {
     pub fn is_unknown(&self) -> bool {
         matches!(self, Type::Unknown(_))
+    }
+
+    pub fn is_same(&self, other: &Type) -> bool {
+        self == other
+            || (matches!(self, Type::Enum(_)) && matches!(other, Type::Enum(_)))
+            || (matches!(self, Type::Reference(_)) && matches!(other, Type::Reference(_)))
+            || (matches!(self, Type::Vector(_)) && matches!(other, Type::Vector(_)))
     }
 }
 
@@ -191,7 +196,6 @@ impl Debug for Attribute {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-#[allow(dead_code)]
 pub enum DefType {
     // Not yet known, must be filled in after the first parse pass.
     Unknown,
@@ -206,10 +210,12 @@ pub enum DefType {
     EnumValue,
     // A structure, with possibly conditional fields in the childs.
     Struct,
-    // A set of fields on the parent struct.
-    StructPart,
+    // A vector with a unique content (can be a base Type, Struct, Enum or Vector)
+    Vector,
     // A type definition, for now only the base types.
     Type,
+    // A static constant.
+    Constant,
 }
 
 impl Display for DefType {
@@ -366,6 +372,9 @@ impl Data {
 
     pub fn add_def(&mut self, name: String, position: Position, def_type: DefType) -> u32 {
         let rec = self.definitions.len() as u32;
+        if self.def_names.contains_key(&name) {
+            panic!("Dual definition of {name}");
+        }
         self.def_names.insert(name.clone(), rec);
         self.definitions.push(Definition {
             name,
@@ -396,12 +405,18 @@ impl Data {
         self.def(d_nr).parent
     }
 
+    pub fn set_parent(&mut self, d_nr: u32, p_nr: u32) {
+        self.definitions[d_nr as usize].parent = p_nr;
+    }
+
     pub fn def_referenced(&self, d_nr: u32) -> bool {
         self.referenced.contains_key(&d_nr)
     }
 
     pub fn set_referenced(&mut self, d_nr: u32, t_nr: u32, change: Value) {
-        self.referenced.insert(d_nr, (t_nr, change));
+        if d_nr != u32::MAX {
+            self.referenced.insert(d_nr, (t_nr, change));
+        }
     }
 
     // Is this object an inner type
@@ -410,7 +425,11 @@ impl Data {
     }
 
     pub fn def_type(&self, d_nr: u32) -> DefType {
-        self.def(d_nr).def_type.clone()
+        if d_nr == u32::MAX {
+            DefType::Unknown
+        } else {
+            self.def(d_nr).def_type.clone()
+        }
     }
 
     pub fn set_def_type(&mut self, d_nr: u32, val: DefType) {
@@ -518,7 +537,12 @@ impl Data {
 
     pub fn set_attr_type(&mut self, d_nr: u32, a_nr: u16, tp: Type) {
         if a_nr == u16::MAX || !self.attr_type(d_nr, a_nr).is_unknown() {
-            panic!("Cannot set attribute type twice");
+            panic!(
+                "Cannot set attribute type {}.{} twice was {} to {tp}",
+                self.def_name(d_nr),
+                self.attr_name(d_nr, a_nr),
+                self.attr_type(d_nr, a_nr)
+            );
         } else {
             self.definitions[d_nr as usize].attributes[a_nr as usize].typedef = tp;
         }
@@ -618,11 +642,13 @@ impl Data {
             for (a_name, a_type, a_value) in &arguments {
                 let a_nr = self.add_attribute(lexer, d_nr, a_name, a_type.clone());
                 self.set_attr_value(d_nr, a_nr, a_value.clone());
+                self.set_attr_mutable(d_nr, a_nr, false);
             }
         }
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].1);
-            self.add_attribute(lexer, type_nr, &fn_name, Type::Routine(d_nr));
+            let a_nr = self.add_attribute(lexer, type_nr, &fn_name, Type::Routine(d_nr));
+            self.set_attr_mutable(type_nr, a_nr, false);
         }
         if is_both {
             let mut main = self.def_nr(&fn_name);
@@ -633,9 +659,24 @@ impl Data {
             if type_nr == u32::MAX {
                 panic!("Unknown type {:?} at {}", arguments[0].1, lexer.pos());
             }
-            self.add_attribute(lexer, main, &self.def_name(type_nr), Type::Routine(d_nr));
+            let a_nr =
+                self.add_attribute(lexer, main, &self.def_name(type_nr), Type::Routine(d_nr));
+            self.set_attr_mutable(main, a_nr, false);
         }
         d_nr
+    }
+
+    pub fn get_fn(&self, fn_name: &str, arguments: &Arguments) -> u32 {
+        let d_nr = self.def_nr(fn_name);
+        let is_self = !arguments.is_empty() && arguments[0].0 == "self";
+        let is_both = !arguments.is_empty() && arguments[0].0 == "both";
+        if is_self || is_both {
+            let type_nr = self.type_def_nr(&arguments[0].1);
+            let name = format!("_tp_{}_{fn_name}", self.def_name(type_nr));
+            self.def_nr(&name)
+        } else {
+            d_nr
+        }
     }
 
     pub fn add_op(
@@ -673,6 +714,17 @@ impl Data {
             self.add_attribute(lexer, vd, "vector", Type::Vector(Box::new(tp.clone())));
             vd
         }
+    }
+
+    pub fn check_vector(&mut self, d_nr: u32, vec_tp: u16, pos: Position) -> u32 {
+        let vec_name = format!("vector<{}>", self.def_name(d_nr));
+        let mut v_nr = self.def_nr(&vec_name);
+        if v_nr == u32::MAX {
+            v_nr = self.add_def(vec_name, pos, DefType::Vector);
+            self.set_parent(v_nr, d_nr);
+            self.set_known_type(v_nr, vec_tp);
+        };
+        v_nr
     }
 
     /// Get the corresponding number of a definition on name.
@@ -871,6 +923,8 @@ extern crate dryopea;"
                 self.output_struct(w, def)?;
             } else if def.def_type == DefType::Enum {
                 self.output_enum(w, def)?;
+            } else if def.def_type == DefType::Vector {
+                writeln!(w, "    db.vector({});", self.def_known_type(def.parent))?;
             }
         }
         writeln!(w, "}}\n")?;
@@ -891,8 +945,8 @@ extern crate dryopea;"
         };
         writeln!(
             w,
-            "    let s = db.structure(\"{}\".to_string(), {}, {p});",
-            def.name, def.size
+            "    let s = db.structure(\"{}\".to_string(), {}, {p}); // {}",
+            def.name, def.size, def.known_type
         )?;
         for a in &def.attributes {
             if !a.mutable {
@@ -934,7 +988,7 @@ extern crate dryopea;"
                     done = true;
                 }
             }
-            if !done {
+            if !done && tp != u16::MAX {
                 writeln!(w, "    db.field(s, \"{nm}\".to_string(), {tp}, {pos});")?;
             }
         }
@@ -1063,9 +1117,7 @@ extern crate dryopea;"
                         if a_nr < vals.len() {
                             self.output_code(&mut val_code, &vals[a_nr], indent)?;
                             let with = String::from_utf8(val_code.into_inner().unwrap()).unwrap();
-                            if with == "Null" {
-                                println!("Here! {} {code:?}", self.def_name(*d_nr));
-                            }
+                            // TODO if with == "Null" { println!("Here! {} {code:?}", self.def_name(*d_nr));}
                             res = res.replace(&name, &format!("({with})"));
                         } else {
                             println!(

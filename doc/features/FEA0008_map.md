@@ -19,19 +19,7 @@ Use-cases
 
 Design
 ------
-struct Point {
-    r: integer limit(0, 255) not null,
-    g: integer limit(0, 255) not null,
-    b: integer limit(0, 255) not null,
-    value: virtual(r * 0x10000 + g * 0x100 + b)
-}
 
-struct Image {
-    name: text,
-    width: integer,
-    height: integer,
-    data: vector<Point>
-}
 
 Examples
 --------
@@ -41,12 +29,16 @@ Consistency
 
 Development
 -----------
+
 Overland map generation:
-- integrate png in language:
-    image: name, width, height, data
-    language as part of the library
-- type of land (rough features from png?)
-    mapping to a hex grid without distortion (scale)
+- simple case that reads the first terrain data
+- subproject with multiple source files
+    parameters of the main function to indicate the initial png file
+- allow to read terrain data json file (assume correct format for now)
+- test the projects (compilation & running internally defined tests)
+- type of land
+    mapping to a hex grid (correct x & y scale)
+- math and random functions
 - randomized water flow direction
 - amount of water
 - detailed height map, amount of sub-scaling of the original hexes
@@ -56,6 +48,9 @@ Overland map generation:
 - roads (signposts)
 - in game editor of original mass & heights?
 - fly over & walk around mode
+- version for the web that reads the png function with a URL
+- a version that lets you upload your own png as a start
+- download the result as a 3d world definition
 
 Useful as stand-alone tool/project.
 

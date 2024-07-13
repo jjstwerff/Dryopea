@@ -42,6 +42,8 @@ Design
   fld as [type] to get to the data or null if no obvious conversion is possible
   fld.set(val) -> list of errors
 - More clean database generated code without: {let db=$v1; ...}
+- text only presents a slice from a store, then all functions should work on that with limited allocations
+  performance tests against String/str implementation of rust, via generated code
 
 - Record links
   routine to find path to record: can be both directly or a search

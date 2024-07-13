@@ -3,6 +3,33 @@
 //! The standard operations for GameEngine
 use std::cmp::Ordering;
 
+pub fn sub_text(val: String, from: i32, till: i32) -> String {
+    let size = val.len() as i32;
+    let mut f = if from < 0 { from + size } else { from };
+    let mut t = if till == i32::MIN {
+        f + 1
+    } else if till < 0 {
+        till + size
+    } else if till > size {
+        size
+    } else {
+        till
+    };
+    if f < 0 || f > size || t < f || t > size {
+        return "".to_string();
+    }
+    let b = val.as_bytes();
+    // when till is inside a UTF-8 token: increase it
+    while t < size && b[t as usize] >= 128 && b[t as usize] < 192 {
+        t += 1;
+    }
+    // when from is inside a UTF-8 token: decrease it
+    while f > 0 && b[f as usize] >= 128 && b[f as usize] < 192 {
+        f -= 1;
+    }
+    val[f as usize..t as usize].to_string()
+}
+
 #[inline]
 pub fn format_text(val: &str, width: i32, dir: i32, token: i32) -> String {
     let mut tokens = width as usize;

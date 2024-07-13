@@ -21,16 +21,16 @@ fn expr_float() {
 
 #[test]
 fn expr_enum() {
-    code!("enum E {V1, V2, V3}")
-        .expr("sizeof(E) + 10 * sizeof(V1) + 100 * alignment(E)")
+    code!("enum En {V1, V2, V3}")
+        .expr("sizeof(En) + 10 * sizeof(V1) + 100 * alignment(En)")
         .result(Value::Int(111));
 }
 
 #[test]
 fn expr_struct() {
     code!(
-        "struct S {a: integer, b: long, c: E}
-enum E {V1, V2}"
+        "struct S {a: integer, b: long, c: En}
+enum En {V1, V2}"
     )
     .expr("sizeof(S) + 100 * alignment(S)")
     .result(Value::Int(817));

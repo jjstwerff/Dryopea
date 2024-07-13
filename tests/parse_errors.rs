@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2024 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 extern crate dryopea;
@@ -105,8 +105,8 @@ fn mixed_enums() {
 
 #[test]
 fn wrong_cast() {
-    code!("enum E1 { V1 }\nfn test() { V1 as integer }")
-        .error("Error: Unknown cast from E1 to integer at wrong_cast:2:28");
+    code!("enum E1 { V1 }\nfn test() { V1 as float }")
+        .error("Error: Unknown cast from E1 to float at wrong_cast:2:26");
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn undefined_return() {
 #[test]
 fn undefined_as() {
     code!("fn test(v: integer) -> long { v as V }")
-        .error("Error: Unknown cast from integer to V at undefined_as:1:39");
+        .error("Error: Undefined type V at undefined_as:1:39");
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn undefined_enum() {
 
 #[test]
 fn unknown_sizeof() {
-    code!("fn test() { sizeof(E); }")
+    code!("fn test() { sizeof(C); }")
         .error("Error: Expect a variable or type after sizeof at unknown_sizeof:1:22")
-        .error("Error: Unknown variable E at unknown_sizeof:1:22");
+        .error("Error: Unknown variable C at unknown_sizeof:1:22");
 }

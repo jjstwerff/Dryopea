@@ -32,9 +32,10 @@ static EMPTY: [u32; 0] = [];
 
 lazy_static::lazy_static! {
     static ref OP_NAMES: HashMap<&'static str, &'static str> = [
-        ("OpAbs", "Abs"), ("OpDatabase", "Database"),
+        ("OpAbs", "Abs"), ("OpMath", "Math"), ("OpDatabase", "Database"),
         ("OpRange", ".."), ("OpOr", "||"), ("OpAnd", "&&"),
         ("OpEq", "=="), ("OpNe", "!="), ("OpLt", "<"), ("OpLe", "<="), ("OpGt", ">"), ("OpGe", ">="),
+        ("OpLand", "&"), ("OpLor", "|"), ("OpEor", "^"), ("OpLeft", "<<"), ("OpRight", ">>"),
         ("OpMin", "-"), ("OpAdd", "+"), ("OpMul", "*"), ("OpDiv", "/"), ("OpRem", "%"), ("OpNot", "!"), ("OpAppend", "+="),
         ("OpConv", "Conv"), ("OpCast", "Cast"),
         ("OpGet", "Get"), ("OpSet", "Set"), ("OpInsert", "Insert"), ("OpRemove", "Remove"), ("OpClear", "Clear"),
@@ -128,13 +129,27 @@ impl<'a> Types<'a> {
     }
 
     /// A new local variable gets its type via assignment instead of explicit.
-    pub fn change_var_type(&mut self, lexer: &mut Lexer, val: &Value, tp: &Type) -> bool {
+    pub fn change_var_type(
+        &mut self,
+        lexer: &mut Lexer,
+        data: &mut Data,
+        val: &Value,
+        tp: &Type,
+    ) -> bool {
         // do not expect a field because that should already be a correct value
         if tp.is_unknown() {
             return false;
         }
         if let Value::Var(vnr) = val {
-            if self.var_nrs.get_mut(vnr).unwrap().var_type.is_unknown() {
+            if let Type::Vector(inner) = &self.var_nrs.get_mut(vnr).unwrap().var_type {
+                if let Type::Unknown(_) = **inner {
+                    self.var_nrs.get_mut(vnr).unwrap().var_type = tp.clone();
+                    data.vector_def(lexer, tp);
+                    true
+                } else {
+                    false
+                }
+            } else if self.var_nrs.get_mut(vnr).unwrap().var_type.is_unknown() {
                 self.var_nrs.get_mut(vnr).unwrap().var_type = tp.clone();
                 true
             } else if &self.var_nrs.get_mut(vnr).unwrap().var_type != tp {

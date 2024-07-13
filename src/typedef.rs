@@ -206,6 +206,9 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
 }
 
 fn fill_database(data: &mut Data, d_nr: u32) {
+    if data.def_name(d_nr) == "Unknown(0)" {
+        return;
+    }
     let s_type =
         data.known_types
             .structure(data.def_name(d_nr), data.def_size(d_nr) as u16, u16::MAX);
@@ -223,8 +226,16 @@ fn fill_database(data: &mut Data, d_nr: u32) {
             let mut tp = data.def_known_type(t_nr);
             if let Type::Vector(c_type) = a_type {
                 let c_nr = data.type_elm(&c_type);
+                if c_nr == u32::MAX {
+                    panic!(
+                        "Unknown vector content type on [{d_nr}]{}.{}",
+                        data.def_name(d_nr),
+                        data.attr_name(d_nr, a_nr)
+                    );
+                }
                 let c_tp = data.def_known_type(c_nr);
                 tp = data.known_types.vector(c_tp);
+                data.check_vector(c_nr, tp, data.def_pos(d_nr));
             } else if a_type == Type::Integer && min != i32::MIN && max != i32::MAX {
                 if max - min < 256 || (!nullable && max - min == 256) {
                     tp = data.known_types.byte(min, nullable);

@@ -21,7 +21,6 @@ pub struct Store {
     // format 0 = SIGNATURE, 4 = free_space_index, 8 = record_size, 12 = content
     ptr: *mut u8,
     size: u32,
-    #[cfg(not(no_mmap))]
     file: Option<mmap_storage::file::Storage>,
 }
 
@@ -60,14 +59,12 @@ impl Store {
         let mut store = Store {
             ptr,
             size,
-            #[cfg(not(no_mmap))]
             file: None,
         };
         store.init();
         store
     }
 
-    #[cfg(not(no_mmap))]
     pub fn open(path: &str) -> Store {
         let mut file = mmap_storage::file::Storage::open(path).expect("Opening file");
         let size = (file.capacity() / 8) as u32;
@@ -182,12 +179,14 @@ impl Store {
         if next < self.size {
             let next_size = self.get_int(next, 0);
             if next_size < 0 && claim - next_size > req_size {
-                if claim - next_size > req_size * 4 / 3 {
-                    let next = claim as u32 + size;
-                    self.set_int(rec, 0, req_size);
-                    self.set_int(next, 0, next_size - claim - req_size);
+                let act = req_size * 4 / 3;
+                if claim - next_size > act {
+                    let new_next = rec + act as u32;
+                    let new_size = (-next_size) as u32 + next - new_next;
+                    self.set_int(rec, 0, act);
+                    self.set_int(new_next, 0, -(new_size as i32));
                 } else {
-                    self.set_int(rec, 0, claim + next_size);
+                    self.set_int(rec, 0, claim - next_size);
                 }
                 return rec;
             }
@@ -252,7 +251,6 @@ impl Store {
         }
         let inc = self.size * 3 / 2;
         let size = if to_size > inc { to_size } else { inc };
-        #[cfg(not(no_mmap))]
         if let Some(f) = &mut self.file {
             f.resize(size as usize * 8).expect("Resize");
             self.ptr = std::ptr::addr_of!(f.as_slice()[0]) as *mut u8;
