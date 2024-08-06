@@ -10,13 +10,29 @@
 // for a far more efficient database design later.
 
 extern crate strum_macros;
-use crate::database::{DbRef, KnownTypes};
+use crate::database::{DbRef, KnownTypes, Vector};
 use crate::diagnostics::*;
 use crate::lexer::{Lexer, Position};
 use crate::types::Types;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Result, Write};
+
+#[derive(Debug, PartialEq, Clone)]
+#[allow(dead_code)]
+pub enum Text {
+    Null,
+    /// A static string for generated code instead of the interpreter
+    Constant(&'static str),
+    /// A string for the interpreter
+    String(String),
+    /// A slice string of a specific stack position
+    Slice(u32, u32, u32),
+    /// A part of a database string, directly pointing to the immutable character data
+    DbSlice(DbRef, u32),
+    /// A mutable database string, pointing to the field holding the actual position
+    DbRef(DbRef),
+}
 
 /// A value that can be assigned to attributes on a definition of instance
 #[derive(Debug, PartialEq, Clone)]
@@ -28,13 +44,14 @@ pub enum Value {
     /// A record or field with 1:database, 2:allocation, 3:field_position.
     /// The position is in bytes relative to the allocation start. Updated on insert/remove of vector elements.
     Reference(DbRef),
+    /// A vector reference, possibly an immutable slice from another vector
+    Vector(Vector),
     /// A range
     Range(Box<Value>, Box<Value>),
     Float(f64),
     Long(i64),
     Single(f32),
-    /// Dynamic text with an efficient appender.
-    Text(String),
+    Text(Text),
     /// Call an outside routine with values.
     Call(u32, Vec<Value>),
     /// Call a closure function that allows access to the original stack
@@ -68,7 +85,7 @@ pub enum Value {
 #[allow(dead_code)]
 impl Value {
     pub fn str(s: &str) -> Value {
-        Value::Text(s.to_string())
+        Value::Text(Text::String(s.to_string()))
     }
 }
 
@@ -278,10 +295,6 @@ pub fn v_set(var: u32, val: Value) -> Value {
 
 pub fn v_let(var: u32, val: Value) -> Value {
     Value::Let(var, Box::new(val))
-}
-
-pub fn text(s: &str) -> Value {
-    Value::Text(s.to_string())
 }
 
 impl Debug for Definition {
@@ -1032,7 +1045,7 @@ extern crate dryopea;"
 
     pub fn output_code(&self, w: &mut dyn Write, code: &Value, indent: u32) -> Result<()> {
         match code {
-            Value::Text(txt) => {
+            Value::Text(Text::String(txt)) => {
                 write!(w, "\"{}\".to_string()", txt)?;
             }
             Value::Long(v) => {

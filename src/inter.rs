@@ -8,8 +8,8 @@
 extern crate strum;
 extern crate strum_macros;
 
-use crate::data::{Data, Value};
-use crate::database::Stores;
+use crate::data::{Data, Text, Value};
+use crate::database::{DbRef, Stores, Vector};
 use crate::external;
 use std::collections::HashMap;
 use std::fs::File;
@@ -34,6 +34,123 @@ impl<'a> State<'a> {
             database: Stores::new(types),
             logging: None,
             indent: 0,
+        }
+    }
+
+    // Produces a rust slice with the string data from a text definition
+    pub fn str<'s>(&'s self, val: &'s Text) -> &'s str {
+        if let Text::Slice(s_pos, s_f, len) = val {
+            let pos = (self.c_function + s_pos) as usize;
+            let val = &self.stack[pos];
+            if let Value::Text(Text::String(s)) = val {
+                &s[*s_f as usize..*s_f as usize + *len as usize]
+            } else {
+                ""
+            }
+        } else if let Text::String(s) = val {
+            s as &str
+        } else if let Text::Constant(s) = val {
+            s
+        } else if let Text::DbRef(dbr) = val {
+            let st = self.database.store(dbr);
+            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+            st.get_str(s_rec as u32)
+        } else if let Text::DbSlice(dbr, len) = val {
+            let st = self.database.store(dbr);
+            let f = dbr.pos as usize;
+            let t = f + *len as usize;
+            &st.get_str(dbr.rec)[f..t]
+        } else {
+            ""
+        }
+    }
+
+    // Produces a non copy slice from a text definition, not on a mutating variable/field
+    pub fn slice(&self, val: Text, from: i32, till: i32) -> Text {
+        if let Text::Slice(s_pos, s_f, len) = val {
+            let s = &self.str(&val)[s_f as usize..s_f as usize + len as usize];
+            let f = external::fix_from(from, s);
+            let t = external::fix_till(till, f, s) as u32;
+            Text::Slice(s_pos, f as u32, t)
+        } else if let Text::String(s) = val {
+            let f = external::fix_from(from, &s);
+            let t = external::fix_till(till, f, &s);
+            // TODO this should become a slice linking to the stack
+            Text::String(s[f..t].to_string())
+        } else if let Text::DbRef(dbr) = val {
+            let s = self.str(&val);
+            let f = external::fix_from(from, s);
+            let t = external::fix_till(till, f, s) as u32;
+            Text::DbSlice(
+                DbRef {
+                    store_nr: dbr.store_nr,
+                    rec: dbr.rec,
+                    pos: dbr.pos + f as u32,
+                },
+                t - f as u32,
+            )
+        } else if let Text::DbSlice(dbr, len) = val {
+            let st = self.database.store(&dbr);
+            let f = dbr.pos as usize;
+            let t = f + len as usize;
+            let s = &st.get_str(dbr.rec)[f..t];
+            let f = external::fix_from(from, s);
+            let t = external::fix_till(till, f, s);
+            Text::DbSlice(dbr, (t - f) as u32)
+        } else {
+            Text::Null
+        }
+    }
+
+    pub fn len(&self, val: Text) -> i32 {
+        if let Text::Slice(_, _, len) = val {
+            len as i32
+        } else if let Text::String(s) = val {
+            s.len() as i32
+        } else if let Text::DbRef(dbr) = val {
+            let st = self.database.store(&dbr);
+            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+            st.get_int(s_rec as u32, 4)
+        } else if let Text::DbSlice(_, len) = val {
+            len as i32
+        } else {
+            i32::MIN
+        }
+    }
+
+    pub fn is_null(&self, val: Text) -> bool {
+        matches!(val, Text::Null)
+    }
+
+    pub fn append(&mut self, val: &mut Text, add: &str) -> bool {
+        if let Text::String(s) = val {
+            *s += add;
+            true
+        } else if let Text::DbRef(dbr) = val {
+            let st = self.database.mut_store(dbr);
+            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+            st.append_str(s_rec as u32, add);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn char(&self, val: &mut Text) -> i32 {
+        let s = self.str(val);
+        if let Some(ch) = s.chars().next() {
+            ch as i32
+        } else {
+            i32::MIN
+        }
+    }
+
+    // TODO this can be more efficient, without a temporary string allocation
+    pub fn append_char(&mut self, val: &mut Text, add: i32) -> bool {
+        if let Some(ch) = char::from_u32(add as u32) {
+            self.append(val, &ch.to_string())
+        } else {
+            false
         }
     }
 }
@@ -247,7 +364,8 @@ impl<'d> Inter<'d> {
         for (name, ext) in EXTERN {
             let nr = data.def_nr(name);
             if nr != u32::MAX {
-                external.insert(nr, *ext);
+                let e = *ext;
+                external.insert(nr, e);
             } else {
                 panic!("Could not find definition @{name}");
             }
@@ -434,7 +552,11 @@ fn int_format_db(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db), Value::Int(db_tp), Value::Boolean(pretty)) =
         (i.calc(&code[0], state), &code[1], &code[2])
     {
-        Value::Text(state.database.show(&db, *db_tp as u16, *pretty))
+        Value::Text(Text::String(state.database.show(
+            &db,
+            *db_tp as u16,
+            *pretty,
+        )))
     } else {
         Value::Null
     }
@@ -500,28 +622,44 @@ fn int_cast_int_from_float(i: &Inter, code: &[Value], state: &mut State) -> Valu
 
 fn int_cast_int_from_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Text(x) = i.calc(&code[0], state) {
-        return Value::Int(if let Ok(i) = x.parse() { i } else { i32::MIN });
+        return Value::Int(if let Ok(i) = state.str(&x).parse() {
+            i
+        } else {
+            i32::MIN
+        });
     }
     Value::Null
 }
 
 fn int_cast_long_from_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Text(x) = i.calc(&code[0], state) {
-        return Value::Long(if let Ok(i) = x.parse() { i } else { i64::MIN });
+        return Value::Long(if let Ok(i) = state.str(&x).parse() {
+            i
+        } else {
+            i64::MIN
+        });
     }
     Value::Null
 }
 
 fn int_cast_single_from_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Text(x) = i.calc(&code[0], state) {
-        return Value::Single(if let Ok(i) = x.parse() { i } else { f32::NAN });
+        return Value::Single(if let Ok(i) = state.str(&x).parse() {
+            i
+        } else {
+            f32::NAN
+        });
     }
     Value::Null
 }
 
 fn int_cast_float_from_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Text(x) = i.calc(&code[0], state) {
-        return Value::Float(if let Ok(i) = x.parse() { i } else { f64::NAN });
+        return Value::Float(if let Ok(i) = state.str(&x).parse() {
+            i
+        } else {
+            f64::NAN
+        });
     }
     Value::Null
 }
@@ -655,12 +793,12 @@ fn int_conv_enum_from_null(_i: &Inter, _code: &[Value], _state: &mut State) -> V
 
 fn int_cast_text_from_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Int(enum_value), Value::Int(db_tp)) = (i.calc(&code[0], state), &code[1]) {
-        Value::Text(
+        Value::Text(Text::String(
             state
                 .database
                 .types
                 .enum_val(*db_tp as u16, enum_value as u16),
-        )
+        ))
     } else {
         Value::Null
     }
@@ -668,7 +806,10 @@ fn int_cast_text_from_enum(i: &Inter, code: &[Value], state: &mut State) -> Valu
 
 fn int_cast_enum_from_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Text(enum_value), Value::Int(db_tp)) = (i.calc(&code[0], state), &code[1]) {
-        let val = state.database.types.to_enum(*db_tp as u16, &enum_value);
+        let val = state
+            .database
+            .types
+            .to_enum(*db_tp as u16, state.str(&enum_value));
         if val == u16::MAX {
             Value::Null
         } else {
@@ -683,7 +824,8 @@ fn int_cast_ref_from_text(i: &Inter, code: &[Value], state: &mut State) -> Value
     if let (Value::Text(value), Value::Int(db_tp)) = (i.calc(&code[0], state), &code[1]) {
         let size = state.database.type_claim(*db_tp as u16);
         let res = state.database.database(size);
-        let val = state.database.parse(&value, *db_tp as u16, res);
+        let s = state.str(&value).to_string();
+        let val = state.database.parse(&s, *db_tp as u16, res);
         if val {
             return Value::Reference(res);
         }
@@ -696,7 +838,8 @@ fn int_cast_vector_from_text(i: &Inter, code: &[Value], state: &mut State) -> Va
         let res = state.database.database(1);
         state.database.mut_store(&res).set_int(res.rec, 4, 0);
         let vec = state.database.get_field(&res, 4);
-        let val = state.database.parse(&value, *db_tp as u16, vec);
+        let s = state.str(&value).to_string();
+        let val = state.database.parse(&s, *db_tp as u16, vec);
         if val {
             return Value::Reference(vec);
         }
@@ -943,7 +1086,8 @@ fn int_add_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
 
 fn int_add_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
-        return Value::Text(x + &y);
+        let s = "".to_string() + state.str(&x) + state.str(&y);
+        return Value::Text(Text::String(s));
     }
     Value::Null
 }
@@ -954,7 +1098,7 @@ fn int_get_text_sub(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        return Value::Text(external::sub_text(x, from, till));
+        return Value::Text(state.slice(x, from, till));
     }
     Value::Null
 }
@@ -1417,76 +1561,86 @@ fn int_le_enum(i: &Inter, code: &[Value], state: &mut State) -> Value {
 }
 
 fn int_eq_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    Value::Boolean(i.calc(&code[0], state) == i.calc(&code[1], state))
+    if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Boolean(state.str(&x) == state.str(&y));
+    }
+    Value::Null
 }
 
 fn int_ne_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    Value::Boolean(i.calc(&code[0], state) != i.calc(&code[1], state))
+    if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
+        return Value::Boolean(state.str(&x) != state.str(&y));
+    }
+    Value::Null
 }
 
 fn int_lt_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
-        return Value::Boolean(x < y);
+        return Value::Boolean(state.str(&x) < state.str(&y));
     }
     Value::Null
 }
 
 fn int_le_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
-        return Value::Boolean(x <= y);
+        return Value::Boolean(state.str(&x) <= state.str(&y));
     }
     Value::Null
 }
 
 fn int_gt_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
-        return Value::Int(if x > y { 1 } else { 0 });
+        return Value::Boolean(state.str(&x) > state.str(&y));
     }
     Value::Null
 }
 
 fn int_ge_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Text(x), Value::Text(y)) = (i.calc(&code[0], state), i.calc(&code[1], state)) {
-        return Value::Int(if x >= y { 1 } else { 0 });
+        return Value::Boolean(state.str(&x) >= state.str(&y));
     }
     Value::Null
 }
 
-fn int_clear_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
+fn int_clear_text(_: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Var(var_nr) = &code[0] {
         let pos = (state.c_function + var_nr) as usize;
-        if let Value::Text(t) = &mut state.stack[pos] {
-            t.clear();
+        if let Value::Text(val) = &mut state.stack[pos] {
+            if let Text::String(s) = val {
+                s.clear();
+            } else if let Text::DbRef(dbr) = val {
+                let st = state.database.mut_store(dbr);
+                let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
+                st.set_int(s_rec as u32, 4, 0);
+            }
         }
-    } else if let Value::Reference(db) = i.calc(&code[0], state) {
-        state.database.clear(&db);
     }
     Value::Null
 }
 
 fn int_clear_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let Value::Reference(db) = i.calc(&code[0], state) {
-        state.database.clear_vector(&db);
+    if let Value::Vector(v) = i.calc(&code[0], state) {
+        state.database.clear_vector(&v);
     }
     Value::Null
 }
 
 fn int_length_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let Value::Reference(db) = i.calc(&code[0], state) {
-        Value::Int(state.database.length_vector(&db) as i32)
+    if let Value::Vector(v) = i.calc(&code[0], state) {
+        Value::Int(state.database.length_vector(&v) as i32)
     } else {
         Value::Null
     }
 }
 
-fn int_finish_sorted(_i: &Inter, _code: &[Value], _state: &mut State) -> Value {
+fn int_finish_sorted(_: &Inter, _: &[Value], _: &mut State) -> Value {
     // TODO implement me, move last element to the correct spot
     Value::Null
 }
 
 fn int_length_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Text(x) = i.calc(&code[0], state) {
-        return Value::Int(x.len() as i32);
+        return Value::Int(state.len(x));
     }
     Value::Null
 }
@@ -1498,12 +1652,12 @@ fn int_format_bool(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[2], state),
         i.calc(&code[3], state),
     ) {
-        return Value::Text(external::format_text(
+        return Value::Text(Text::String(external::format_text(
             if val { "true" } else { "false" },
             width,
             dir,
             token,
-        ));
+        )));
     }
     Value::Null
 }
@@ -1515,7 +1669,12 @@ fn int_format_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[2], state),
         i.calc(&code[3], state),
     ) {
-        return Value::Text(external::format_text(&val, width, dir, token));
+        return Value::Text(Text::String(external::format_text(
+            state.str(&val),
+            width,
+            dir,
+            token,
+        )));
     }
     Value::Null
 }
@@ -1536,7 +1695,9 @@ fn int_format_int(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[4], state),
         i.calc(&code[5], state),
     ) {
-        return Value::Text(external::format_int(val, radix, width, token, plus, note));
+        return Value::Text(Text::String(external::format_int(
+            val, radix, width, token, plus, note,
+        )));
     }
     Value::Null
 }
@@ -1557,7 +1718,9 @@ fn int_format_long(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[4], state),
         i.calc(&code[5], state),
     ) {
-        return Value::Text(external::format_long(val, radix, width, token, plus, note));
+        return Value::Text(Text::String(external::format_long(
+            val, radix, width, token, plus, note,
+        )));
     }
     Value::Null
 }
@@ -1568,7 +1731,7 @@ fn int_format_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        return Value::Text(external::format_float(val, width, precision));
+        return Value::Text(Text::String(external::format_float(val, width, precision)));
     }
     Value::Null
 }
@@ -1579,7 +1742,7 @@ fn int_format_single(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
-        return Value::Text(external::format_single(val, width, precision));
+        return Value::Text(Text::String(external::format_single(val, width, precision)));
     }
     Value::Null
 }
@@ -1625,9 +1788,9 @@ fn int_get_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
         (i.calc(&code[0], state), i.calc(&code[1], state))
     {
         let store = state.database.store(&db);
-        return Value::Text(String::from(
+        return Value::Text(Text::String(String::from(
             store.get_str(store.get_int(db.rec, db.pos as isize + fld as isize) as u32),
-        ));
+        )));
     }
     Value::Null
 }
@@ -1727,8 +1890,9 @@ fn int_set_text(i: &Inter, code: &[Value], state: &mut State) -> Value {
         i.calc(&code[1], state),
         i.calc(&code[2], state),
     ) {
+        let s = state.str(&val).to_string();
         let store = state.database.mut_store(&db);
-        let txt = store.set_str(&val);
+        let txt = store.set_str(&s);
         store.set_int(db.rec, db.pos as isize + fld as isize, txt as i32);
     }
     Value::Null
@@ -1772,26 +1936,30 @@ fn int_set_float(i: &Inter, code: &[Value], state: &mut State) -> Value {
 
 fn int_append_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let (Value::Reference(db), Value::Int(size)) = (i.calc(&code[0], state), &code[1]) {
-        Value::Reference(state.database.vector_append(&db, 1, *size as u32))
+        Value::Reference(
+            state
+                .database
+                .vector_append(&Vector::DbRef(db), 1, *size as u32),
+        )
     } else {
         Value::Null
     }
 }
 
 fn int_add_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db), Value::Reference(other), Value::Int(size)) =
+    if let (Value::Vector(v), Value::Vector(other), Value::Int(size)) =
         (i.calc(&code[0], state), i.calc(&code[1], state), &code[2])
     {
-        state.database.vector_add(&db, &other, *size as u32);
+        state.database.vector_add(&v, &other, *size as u32);
     }
     Value::Null
 }
 
 fn int_remove_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db), Value::Int(size), Value::Int(index)) =
+    if let (Value::Vector(v), Value::Int(size), Value::Int(index)) =
         (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
     {
-        let res = state.database.remove_vector(&db, *size as u32, index);
+        let res = state.database.remove_vector(&v, *size as u32, index);
         Value::Int(if res { 1 } else { 0 })
     } else {
         Value::Null
@@ -1799,20 +1967,20 @@ fn int_remove_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
 }
 
 fn int_insert_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db), Value::Int(size), Value::Int(index)) =
+    if let (Value::Vector(v), Value::Int(size), Value::Int(index)) =
         (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
     {
-        Value::Reference(state.database.insert_vector(&db, *size as u32, index))
+        Value::Reference(state.database.insert_vector(&v, *size as u32, index))
     } else {
         Value::Null
     }
 }
 
 fn int_get_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
-    if let (Value::Reference(db), Value::Int(size), Value::Int(index)) =
+    if let (Value::Vector(v), Value::Int(size), Value::Int(index)) =
         (i.calc(&code[0], state), &code[1], i.calc(&code[2], state))
     {
-        Value::Reference(state.database.get_vector(&db, *size as u32, index))
+        Value::Reference(state.database.get_vector(&v, *size as u32, index))
     } else {
         Value::Null
     }
@@ -1820,8 +1988,8 @@ fn int_get_vector(i: &Inter, code: &[Value], state: &mut State) -> Value {
 
 fn int_assert(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Int(0) = i.calc(&code[0], state) {
-        if let Value::Text(t) = i.calc(&code[1], state) {
-            panic!("{}", t)
+        if let Value::Text(v) = i.calc(&code[1], state) {
+            panic!("{}", state.str(&v))
         }
     }
     Value::Null
@@ -1829,7 +1997,7 @@ fn int_assert(i: &Inter, code: &[Value], state: &mut State) -> Value {
 
 fn int_print(i: &Inter, code: &[Value], state: &mut State) -> Value {
     if let Value::Text(v) = i.calc(&code[0], state) {
-        print!("{}", v);
+        print!("{}", state.str(&v));
     }
     Value::Null
 }

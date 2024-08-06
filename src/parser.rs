@@ -1994,29 +1994,11 @@ impl<'a> Parser<'a> {
         elm_type
     }
 
-    // <var> ::= <object> | [ '(' <call> | <var> | <enum> ] <children> { '.' <field> | '[' <index> ']' }
+    // <var> ::= <object> | [ <call> | <var> | <enum> ] <children> { '.' <field> | '[' <index> ']' }
     fn parse_var(&mut self, code: &mut Value, name: String) -> Type {
-        let mut t;
-        let d_nr = self.data.def_nr(&name);
-        if d_nr != u32::MAX {
-            self.data.def_used(d_nr);
-            t = self.data.returned(d_nr);
-            if self.data.def_type(d_nr) == DefType::Function {
-                t = Type::Routine(d_nr)
-            } else if self.data.def_type(d_nr) == DefType::Struct {
-                return self.parse_object(d_nr, code);
-            } else if self.data.def_type(d_nr) == DefType::Constant {
-                *code = self.data.code(d_nr).clone();
-                return self.data.returned(d_nr);
-            }
-            if let Type::Enum(en) = t {
-                for a_nr in 0..self.data.attributes(en) {
-                    if self.data.attr_name(en, a_nr) == name {
-                        *code = self.data.attr_value(en, a_nr);
-                        return self.data.attr_type(en, a_nr);
-                    }
-                }
-            }
+        let mut t = self.parse_constant_value(code, &name);
+        if t != Type::Null {
+            return t;
         }
         if self.lexer.has_token("(") {
             if name == "sizeof" || name == "alignment" {
@@ -2085,6 +2067,32 @@ impl<'a> Parser<'a> {
         t
     }
 
+    fn parse_constant_value(&mut self, code: &mut Value, name: &str) -> Type {
+        let mut t;
+        let d_nr = self.data.def_nr(name);
+        if d_nr != u32::MAX {
+            self.data.def_used(d_nr);
+            t = self.data.returned(d_nr);
+            if self.data.def_type(d_nr) == DefType::Function {
+                t = Type::Routine(d_nr)
+            } else if self.data.def_type(d_nr) == DefType::Struct {
+                return self.parse_object(d_nr, code);
+            } else if self.data.def_type(d_nr) == DefType::Constant {
+                *code = self.data.code(d_nr).clone();
+                return self.data.returned(d_nr);
+            }
+            if let Type::Enum(en) = t {
+                for a_nr in 0..self.data.attributes(en) {
+                    if self.data.attr_name(en, a_nr) == name {
+                        *code = self.data.attr_value(en, a_nr);
+                        return self.data.attr_type(en, a_nr);
+                    }
+                }
+            }
+        }
+        Type::Null
+    }
+
     fn known_var_or_type(&mut self, tp: &Type, code: &Value) {
         if !self.first_pass && tp.is_unknown() {
             if let Value::Var(nr) = code {
@@ -2148,7 +2156,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_string(&mut self, code: &mut Value, string: String) {
-        *code = Value::Text(string);
+        *code = Value::str(&string);
         let mut var = u32::MAX;
         let mut list = vec![];
         if self.lexer.mode() == Mode::Formatting {
@@ -2251,7 +2259,7 @@ impl<'a> Parser<'a> {
                 if !text.is_empty() {
                     list.push(v_set(
                         var,
-                        self.cl("OpAddText", &[Value::Var(var), Value::Text(text)]),
+                        self.cl("OpAddText", &[Value::Var(var), Value::str(&text)]),
                     ))
                 }
             } else {
@@ -2535,7 +2543,7 @@ impl<'a> Parser<'a> {
     fn append_iter(&mut self, list: &mut Vec<Value>, var: u32, var_type: &Type, next: Value) {
         list.push(v_set(
             var,
-            self.cl("OpAddText", &[Value::Var(var), text("[")]),
+            self.cl("OpAddText", &[Value::Var(var), Value::str("[")]),
         ));
         let peek_var = self.types.create_var(
             format!("iter_{}", self.var_nr),
@@ -2568,12 +2576,15 @@ impl<'a> Parser<'a> {
         steps.push(v_if(
             self.op("==", Value::Var(peek_var), Value::Null, var_type.clone()),
             Value::Null,
-            v_set(var, self.cl("OpAddText", &[Value::Var(var), text(", ")])),
+            v_set(
+                var,
+                self.cl("OpAddText", &[Value::Var(var), Value::str(", ")]),
+            ),
         ));
         list.push(Value::Loop(steps));
         list.push(v_set(
             var,
-            self.cl("OpAddText", &[Value::Var(var), text("]")]),
+            self.cl("OpAddText", &[Value::Var(var), Value::str("]")]),
         ));
     }
 
