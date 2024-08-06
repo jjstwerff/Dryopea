@@ -176,10 +176,10 @@ impl KnownTypes {
         }
     }
 
-    pub fn enumerate(&mut self, name: String) -> u16 {
+    pub fn enumerate(&mut self, name: &str) -> u16 {
         let num = self.types.len() as u16;
         self.types.push(Type {
-            name,
+            name: name.to_string(),
             size: 1,
             parts: Parts::Enum(Vec::new()),
             complex: false,
@@ -256,13 +256,13 @@ impl std::fmt::Display for KnownTypes {
 #[allow(dead_code)]
 pub struct Stores<'a> {
     pub types: &'a KnownTypes,
-    stores: Vec<Store>,
+    pub stores: Vec<Store>,
     max: u16,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct DbRef {
-    store_nr: u16,
+    pub store_nr: u16,
     pub rec: u32,
     pub pos: u32,
 }
@@ -360,7 +360,7 @@ impl<'a> Stores<'a> {
                     }
                     loop {
                         let res = self.vector_append(
-                            &Vect::DbRef(result),
+                            &Vector::DbRef(result),
                             1,
                             self.types.types[*content as usize].size as u32,
                         );
@@ -597,25 +597,25 @@ impl<'a> Stores<'a> {
         }
     }
 
-    pub fn length_vector(&self, v: &Vect) -> u32 {
-        if let Vect::DbRef(db) = v {
-            let store = self.store(&db);
+    pub fn length_vector(&self, v: &Vector) -> u32 {
+        if let Vector::DbRef(db) = v {
+            let store = self.store(db);
             let v_rec = store.get_int(db.rec, db.pos as isize) as u32;
             if v_rec == 0 {
                 0
             } else {
                 store.get_int(v_rec, 4) as u32
             }
-        } else if let Vect::DbSlice(_, l) = v {
+        } else if let Vector::DbSlice(_, l) = v {
             *l
         } else {
             0
         }
     }
 
-    pub fn clear_vector(&mut self, v: &Vect) {
-        if let Vect::DbRef(db) = v {
-            let store = self.mut_store(&db);
+    pub fn clear_vector(&mut self, v: &Vector) {
+        if let Vector::DbRef(db) = v {
+            let store = self.mut_store(db);
             let v_rec = store.get_int(db.rec, db.pos as isize) as u32;
             if v_rec != 0 {
                 // Only set size of the vector to 0
@@ -626,13 +626,9 @@ impl<'a> Stores<'a> {
         }
     }
 
-    pub fn slice_vector(&self, v: &Vect, size: u32, from: i32, till: i32) -> Vect {
+    pub fn slice_vector(&self, v: &Vector, size: u32, from: i32, till: i32) -> Vector {
         let l = self.length_vector(v);
-        let f = if from < 0 {
-            from + l as i32
-        } else {
-            from
-        };
+        let f = if from < 0 { from + l as i32 } else { from };
         let t = if till == i32::MIN {
             from + 1
         } else if till < from {
@@ -641,15 +637,23 @@ impl<'a> Stores<'a> {
             till
         };
         match v {
-            Vect::DbRef(db) => {
-                Vect::DbSlice(DbRef { store_nr: db.store_nr, rec: db.rec, pos: db.pos + size * f as u32
-            },
-            (t-f) as u32)
-        },
-            Vect::DbSlice(db, _) => {
-            Vect::DbSlice(DbRef { store_nr: db.store_nr, rec: db.rec, pos: db.pos + size * f as u32 }, (t - f) as u32)
+            Vector::DbRef(db) => Vector::DbSlice(
+                DbRef {
+                    store_nr: db.store_nr,
+                    rec: db.rec,
+                    pos: db.pos + size * f as u32,
+                },
+                (t - f) as u32,
+            ),
+            Vector::DbSlice(db, _) => Vector::DbSlice(
+                DbRef {
+                    store_nr: db.store_nr,
+                    rec: db.rec,
+                    pos: db.pos + size * f as u32,
+                },
+                (t - f) as u32,
+            ),
         }
-    }
     }
 
     pub fn get_ref(&self, db: &DbRef, fld: u32) -> DbRef {
@@ -670,106 +674,124 @@ impl<'a> Stores<'a> {
         }
     }
 
-    pub fn get_vector(&self, v: &Vect, size: u32, index: i32) -> DbRef {
+    pub fn get_vector(&self, v: &Vector, size: u32, index: i32) -> DbRef {
         match self.slice_vector(v, size, index, index + 1) {
-            Vect::DbSlice(db, _) => db,
-            Vect::DbRef(db) => db
+            Vector::DbSlice(db, _) => db,
+            Vector::DbRef(db) => db,
         }
     }
 
-    pub fn vector_append(&mut self, v: &Vect, add: u32, size: u32) -> DbRef {
+    pub fn vector_append(&mut self, v: &Vector, add: u32, size: u32) -> DbRef {
         match v {
-            Vect::DbRef(db) =>  {
-        let store = self.mut_store(db);
-        let mut vec_rec = store.get_int(db.rec, db.pos as isize) as u32;
-        let new_length;
-        if vec_rec == 0 {
-            // claim a new array with minimal 11 elements
-            vec_rec = store.claim(((add + 10) * size + 15) / 8);
-            store.set_int(db.rec, db.pos as isize, vec_rec as i32);
-            new_length = add;
-        } else {
-            new_length = add + store.get_int(vec_rec, 4) as u32;
-            let new_vec = store.resize(vec_rec, (new_length * size + 15) / 8);
-            if new_vec != vec_rec {
-                store.set_int(db.rec, db.pos as isize, new_vec as i32);
-                vec_rec = new_vec;
-            }
-        };
-        store.set_int(vec_rec, 4, new_length as i32);
-        DbRef {
-            store_nr: db.store_nr,
-            rec: vec_rec,
-            pos: 8 + (new_length - add) * size,
-        }
-    }, Vect::DbSlice(db, _) => {
-            let store = self.mut_store(db);
-            let r = store.claim(1);
-            store.set_int(r, 4, 0);
-            let res = Vect::DbRef(DbRef{store_nr:db.store_nr, rec: r, pos: 0});
-            self.vector_add(&res, v, size);
-            self.vector_append(&res, add, size)
-            }
-    }}
-
-    // TODO copy child records & strings during copy (string reference counting on same)
-    pub fn vector_add(&mut self, v: &Vect, other: &Vect, size: u32) {
-        match v {
-            Vect::DbRef(db) =>  {
-        let o_length = self.length_vector(other);
-        if o_length == 0 {
-            // Other vector has no data
-            return;
-        }
-        let o_db = match other {
-            Vect::DbRef(db) => db,
-            Vect::DbSlice(db, _) => db
-        };
-        let o_rec = match other {
-            Vect::DbRef(db) => self.store(db).get_int(db.rec, db.pos as isize) as u32,
-            Vect::DbSlice(db, _) => db.rec
-        };
-                let o_pos = match other {
-                    Vect::DbRef(_) => 0,
-                    Vect::DbSlice(db, _) => db.pos
+            Vector::DbRef(db) => {
+                let store = self.mut_store(db);
+                let mut vec_rec = store.get_int(db.rec, db.pos as isize) as u32;
+                let new_length;
+                if vec_rec == 0 {
+                    // claim a new array with minimal 11 elements
+                    vec_rec = store.claim(((add + 10) * size + 15) / 8);
+                    store.set_int(db.rec, db.pos as isize, vec_rec as i32);
+                    new_length = add;
+                } else {
+                    new_length = add + store.get_int(vec_rec, 4) as u32;
+                    let new_vec = store.resize(vec_rec, (new_length * size + 15) / 8);
+                    if new_vec != vec_rec {
+                        store.set_int(db.rec, db.pos as isize, new_vec as i32);
+                        vec_rec = new_vec;
+                    }
                 };
-        let new_db = self.vector_append(v, o_length, size);
-        if db.store_nr == o_db.store_nr {
-            self.mut_store(db).copy_block(
-                o_rec,
-                o_pos as isize,
-                new_db.rec,
-                new_db.pos as isize,
-                o_length as isize * size as isize,
-            )
-        } else {
-            let o_store: &Store;
-            let db_store: &mut Store;
-            unsafe {
-                o_store = (*(self as *const Stores)).store(o_db);
-                db_store = (*(self as *mut Stores)).mut_store(db);
+                store.set_int(vec_rec, 4, new_length as i32);
+                DbRef {
+                    store_nr: db.store_nr,
+                    rec: vec_rec,
+                    pos: 8 + (new_length - add) * size,
+                }
             }
-            o_store.copy_block_between(
-                o_rec,
-                o_pos as isize,
-                db_store,
-                new_db.rec,
-                new_db.pos as isize,
-                o_length as isize * size as isize,
-            )
-        }
-    }, Vect::DbSlice(db, _) => { let store = self.mut_store(db);
+            Vector::DbSlice(db, _) => {
+                let store = self.mut_store(db);
                 let r = store.claim(1);
                 store.set_int(r, 4, 0);
-                let res = Vect::DbRef(DbRef{store_nr:db.store_nr, rec: r, pos: 0});
+                let res = Vector::DbRef(DbRef {
+                    store_nr: db.store_nr,
+                    rec: r,
+                    pos: 0,
+                });
                 self.vector_add(&res, v, size);
-                self.vector_add(&res, other, size) }}}
+                self.vector_append(&res, add, size)
+            }
+        }
+    }
+
+    // TODO copy child records & strings during copy (string reference counting on same)
+    pub fn vector_add(&mut self, v: &Vector, other: &Vector, size: u32) {
+        match v {
+            Vector::DbRef(db) => {
+                let o_length = self.length_vector(other);
+                if o_length == 0 {
+                    // Other vector has no data
+                    return;
+                }
+                let o_db = match other {
+                    Vector::DbRef(db) => db,
+                    Vector::DbSlice(db, _) => db,
+                };
+                let o_rec = match other {
+                    Vector::DbRef(db) => self.store(db).get_int(db.rec, db.pos as isize) as u32,
+                    Vector::DbSlice(db, _) => db.rec,
+                };
+                let o_pos = match other {
+                    Vector::DbRef(_) => 0,
+                    Vector::DbSlice(db, _) => db.pos,
+                };
+                let new_db = self.vector_append(v, o_length, size);
+                if db.store_nr == o_db.store_nr {
+                    self.mut_store(db).copy_block(
+                        o_rec,
+                        o_pos as isize,
+                        new_db.rec,
+                        new_db.pos as isize,
+                        o_length as isize * size as isize,
+                    )
+                } else {
+                    let o_store: &Store;
+                    let db_store: &mut Store;
+                    unsafe {
+                        o_store = (*(self as *const Stores)).store(o_db);
+                        db_store = (*(self as *mut Stores)).mut_store(db);
+                    }
+                    o_store.copy_block_between(
+                        o_rec,
+                        o_pos as isize,
+                        db_store,
+                        new_db.rec,
+                        new_db.pos as isize,
+                        o_length as isize * size as isize,
+                    )
+                }
+            }
+            Vector::DbSlice(db, _) => {
+                let store = self.mut_store(db);
+                let r = store.claim(1);
+                store.set_int(r, 4, 0);
+                let res = Vector::DbRef(DbRef {
+                    store_nr: db.store_nr,
+                    rec: r,
+                    pos: 0,
+                });
+                self.vector_add(&res, v, size);
+                self.vector_add(&res, other, size)
+            }
+        }
+    }
 
     // TODO change slice to its own vector on updating it
-    pub fn insert_vector(&mut self, v: &Vect, size: u32, index: i32) -> DbRef {
+    pub fn insert_vector(&mut self, v: &Vector, size: u32, index: i32) -> DbRef {
         let len = self.length_vector(v);
         let real = if index < 0 { index + len as i32 } else { index };
-        let db = match v {  Vect::DbRef(db) => db, Vect::DbSlice(db, _) => db };
+        let db = match v {
+            Vector::DbRef(db) => db,
+            Vector::DbSlice(db, _) => db,
+        };
         if real < 0 || real > len as i32 {
             return DbRef {
                 store_nr: db.store_nr,
@@ -810,8 +832,11 @@ impl<'a> Stores<'a> {
 
     // TODO update slice to full vector on updating it
     // TODO child records of removed records, lower string reference counts
-    pub fn remove_vector(&mut self, v: &Vect, size: u32, index: i32) -> bool {
-        let db = match v {  Vect::DbRef(db) => db, Vect::DbSlice(db, _) => db };
+    pub fn remove_vector(&mut self, v: &Vector, size: u32, index: i32) -> bool {
+        let db = match v {
+            Vector::DbRef(db) => db,
+            Vector::DbSlice(db, _) => db,
+        };
         let len = self.length_vector(v);
         let real = if index < 0 { index + len as i32 } else { index };
         let store = self.mut_store(db);
@@ -849,7 +874,7 @@ impl<'a> Stores<'a> {
                 pos: result.pos + 16,
             };
             for entry in iter.flatten() {
-                let v = Vect::DbRef(vector);
+                let v = Vector::DbRef(vector);
                 let elm = self.vector_append(&v, 1, 17);
                 let path = entry.path();
                 if let Some(name) = path.to_str() {
@@ -880,122 +905,6 @@ impl<'a> Stores<'a> {
             } else {
                 false
             }
-        } else {
-            false
-        }
-    }
-
-    // Produces a rust slice with the string data from a text definition
-    pub fn str<'sl>(&self, val: &'sl Str<'sl>) -> &'sl str {
-        if let Str::Slice(s) = val {
-            s
-        } else if let Str::Str(s) = val {
-            s
-        } else if let Str::DbRef(dbr) = val {
-            let st = self.store(dbr);
-            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
-            st.get_str(s_rec as u32)
-        } else if let Str::DbSlice(dbr, len) = val {
-            let st = self.store(dbr);
-            let f = dbr.pos as usize;
-            let t = f + *len as usize;
-            &st.get_str(dbr.rec)[f..t]
-        } else {
-            ""
-        }
-    }
-
-    // Produces a non copy slice from a text definition, not on a mutating variable/field
-    pub fn slice<'sl>(&self, val: &'sl Str<'sl>, from: i32, till: i32) -> Str<'sl> {
-        if let Str::Slice(s) = val {
-            let f = fix_from(from, s);
-            let t = fix_till(till, f, s);
-            Str::Slice(&s[f..t])
-        } else if let Str::Str(s) = val {
-            let f = fix_from(from, s);
-            let t = fix_till(till, f, s);
-            Str::Slice(&s[f..t])
-        } else if let Str::DbRef(dbr) = val {
-            let st = self.store(dbr);
-            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
-            let s = st.get_str(s_rec as u32);
-            let f = fix_from(from, s);
-            let t = fix_till(till, f, s);
-            Str::DbSlice(*dbr, (t - f) as u32)
-        } else if let Str::DbSlice(dbr, len) = val {
-            let st = self.store(dbr);
-            let f = dbr.pos as usize;
-            let t = f + *len as usize;
-            let s = &st.get_str(dbr.rec)[f..t];
-            let f = fix_from(from, s);
-            let t = fix_till(till, f, s);
-            Str::DbSlice(*dbr, (t - f) as u32)
-        } else {
-            Str::Null
-        }
-    }
-
-    pub fn len(&self, val: &Str) -> i32 {
-        if let Str::Slice(s) = val {
-            s.len() as i32
-        } else if let Str::Str(s) = val {
-            s.len() as i32
-        } else if let Str::DbRef(dbr) = val {
-            let st = self.store(dbr);
-            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
-            st.get_int(s_rec as u32, 4)
-        } else if let Str::DbSlice(_, len) = val {
-            *len as i32
-        } else {
-            i32::MIN
-        }
-    }
-
-    pub fn is_null(&self, val: &Str) -> bool {
-        matches!(val, Str::Null)
-    }
-
-    pub fn append(&mut self, val: &mut Str, add: &str) -> bool {
-        if let Str::Str(s) = val {
-            *s += add;
-            true
-        } else if let Str::DbRef(dbr) = val {
-            let st = self.mut_store(dbr);
-            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
-            st.append_str(s_rec as u32, add);
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn clear(&mut self, val: &mut Str) -> bool {
-        if let Str::Str(s) = val {
-            s.clear();
-            false
-        } else if let Str::DbRef(dbr) = val {
-            let st = self.mut_store(dbr);
-            let s_rec = st.get_int(dbr.rec, dbr.pos as isize);
-            st.set_int(s_rec as u32, 4, 0);
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn char(&self, val: &mut Str) -> i32 {
-        let s = self.str(val);
-        if let Some(ch) = s.chars().next() {
-            ch as i32
-        } else {
-            i32::MIN
-        }
-    }
-
-    // TODO this can be more efficient, without a temporary string allocation
-    pub fn append_char(&mut self, val: &mut Str, add: i32) -> bool {
-        if let Some(ch) = char::from_u32(add as u32) {
-            self.append(val, &ch.to_string())
         } else {
             false
         }
@@ -1437,69 +1346,10 @@ impl<'a> core::fmt::Display for ShowDb<'a> {
     }
 }
 
-pub enum Str<'a> {
-    Null,
-    /// A static string or a part of another String that should be immutable
-    Slice(&'a str),
-    /// A mutable string, only in the sense of adding to it
-    Str(String),
-    /// A part of a database string, directly pointing to the immutable character data
-    DbSlice(DbRef, u32),
-    /// A mutable database string, pointing to the field holding the actual position
-    DbRef(DbRef),
-}
-
-pub enum Vect {
+#[derive(Debug, PartialEq, Clone)]
+pub enum Vector {
     /// A part of a database vector, can only point to an immutable vector
     DbSlice(DbRef, u32),
     /// A mutable database vector, pointing to the field holding the actual position
     DbRef(DbRef),
-}
-
-fn fix_from(from: i32, s: &str) -> usize {
-    let size = s.len() as i32;
-    let mut f = if from < 0 { from + size } else { from };
-    if f < 0 {
-        return 0;
-    }
-    let b = s.as_bytes();
-    // when from is inside a UTF-8 token: decrease it
-    while f > 0 && b[f as usize] >= 128 && b[f as usize] < 192 {
-        f -= 1;
-    }
-    f as usize
-}
-
-fn fix_till(till: i32, from: usize, s: &str) -> usize {
-    let size = s.len() as i32;
-    let mut t = if till == i32::MIN {
-        from as i32 + 1
-    } else if till < 0 {
-        till + size
-    } else if till > size {
-        size
-    } else {
-        till
-    };
-    if t < from as i32 || t > size {
-        return from;
-    }
-    let b = s.as_bytes();
-    // when till is inside a UTF-8 token: increase it
-    while t < size && b[t as usize] >= 128 && b[t as usize] < 192 {
-        t += 1;
-    }
-    t as usize
-}
-
-#[test]
-pub fn strings() {
-    let types = KnownTypes::new();
-    let db = Stores::new(&types);
-    let a = Str::Slice("hi!");
-    let b = Str::Str(db.str(&a).to_string() + db.str(&a) + db.str(&a));
-    assert_eq!("hi!hi!hi!", db.str(&b));
-    let s = db.slice(&b, 3, 6);
-    let c = db.str(&s);
-    assert_eq!("hi!", c);
 }

@@ -8,9 +8,10 @@
 
 // These structures are rather inefficient right now, but they are be the basis
 // for a far more efficient database design later.
+#![allow(dead_code)]
 
 extern crate strum_macros;
-use crate::database::{DbRef, KnownTypes};
+use crate::database::{DbRef, KnownTypes, Vector};
 use crate::diagnostics::*;
 use crate::lexer::{Lexer, Position};
 use crate::types::Types;
@@ -18,9 +19,23 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Result, Write};
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum Text {
+    Null,
+    /// A static string for generated code instead of the interpreter
+    Constant(&'static str),
+    /// A string for the interpreter
+    String(String),
+    /// A slice string of a specific stack position
+    Slice(u32, u32, u32),
+    /// A part of a database string, directly pointing to the immutable character data
+    DbSlice(DbRef, u32),
+    /// A mutable database string, pointing to the field holding the actual position
+    DbRef(DbRef),
+}
+
 /// A value that can be assigned to attributes on a definition of instance
 #[derive(Debug, PartialEq, Clone)]
-#[allow(dead_code)]
 pub enum Value {
     Null,
     Int(i32),
@@ -28,13 +43,14 @@ pub enum Value {
     /// A record or field with 1:database, 2:allocation, 3:field_position.
     /// The position is in bytes relative to the allocation start. Updated on insert/remove of vector elements.
     Reference(DbRef),
+    /// A vector reference, possibly an immutable slice from another vector
+    Vector(Vector),
     /// A range
     Range(Box<Value>, Box<Value>),
     Float(f64),
     Long(i64),
     Single(f32),
-    /// Dynamic text with an efficient appender.
-    Text(String),
+    Text(Text),
     /// Call an outside routine with values.
     Call(u32, Vec<Value>),
     /// Call a closure function that allows access to the original stack
@@ -68,7 +84,7 @@ pub enum Value {
 #[allow(dead_code)]
 impl Value {
     pub fn str(s: &str) -> Value {
-        Value::Text(s.to_string())
+        Value::Text(Text::String(s.to_string()))
     }
 }
 
@@ -160,7 +176,7 @@ pub type Arguments = Vec<(String, Type, Value)>;
 
 #[derive(Clone)]
 #[allow(dead_code)]
-struct Attribute {
+pub struct Attribute {
     /// Name of the attribute for this definition
     name: String,
     typedef: Type,
@@ -196,12 +212,49 @@ impl Debug for Attribute {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub struct Variable {
+    pub name: String,
+    pub var_type: Type,
+    pub scope: u32,
+    /// Only useful on the deprecated Iter implementation.
+    pub stack_nr: u32,
+    pub stack_pos: u32,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Scope {
+    pub parent: u32,
+    pub depth: u32,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Function {
+    pub variables: Vec<Variable>,
+    pub scope: Vec<Scope>,
+}
+
+impl Default for Function {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Function {
+    pub fn new() -> Function {
+        Function {
+            variables: Vec::new(),
+            scope: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub enum DefType {
     // Not yet known, must be filled in after the first parse pass.
     Unknown,
     // A normal function, cannot be defined twice.
     // With parent>0 this is a member implementation with name <struct>::<method> and the first argument is the struct.
-    Function,
+    Function(Box<Function>),
     // Dynamic function, where all arguments hold references to multiple implementations we can choose
     Dynamic,
     // The possible values are EnumValue definitions in the childs.
@@ -226,39 +279,45 @@ impl Display for DefType {
 
 /// Game definition, the data cannot be changed, there can be instances with differences
 #[derive(Clone)]
-struct Definition {
-    name: String,
+pub struct Definition {
+    pub name: String,
     /// Type of definition.
-    def_type: DefType,
+    pub def_type: DefType,
     /// Parent definition for EnumValue or StructPart. Initial u32::MAX.
-    parent: u32,
+    pub parent: u32,
     /// The source file position where this is defined, only allow redefinitions within the same file.
     /// This might eventually also limit access to protected internals.
-    position: Position,
+    pub position: Position,
     /// Allowed attributes
-    attributes: Vec<Attribute>,
+    pub attributes: Vec<Attribute>,
     /// Allowed attributes on name
-    attr_names: HashMap<String, u16>,
+    pub attr_names: HashMap<String, u16>,
     /// Possible code associated with this definition. The attributes are parameters.
-    code: Value,
+    pub code: Value,
     /// The needed alignment of the fields of this definition in bytes
-    alignment: u8,
+    pub alignment: u8,
     /// The total size needed for this definition in 8 byte words
-    size: u32,
+    pub size: u32,
     /// Related type for fields, and the return type for functions
-    returned: Type,
+    pub returned: Type,
     /// Rust code
-    rust: String,
+    pub rust: String,
+    /// Interpreter operator name
+    pub op: String,
+    /// Position inside the generated code
+    pub code_position: u32,
+    /// Code length for this function
+    pub code_length: u32,
     /// Entry in the known types for the database
-    known_type: u16,
+    pub known_type: u16,
 }
 
 #[allow(dead_code)]
 /// The immutable data of a game
 pub struct Data {
-    definitions: Vec<Definition>,
+    pub definitions: Vec<Definition>,
     /// Index on definitions on name
-    def_names: HashMap<String, u32>,
+    pub def_names: HashMap<String, u32>,
     used_definitions: HashSet<u32>,
     used_attributes: HashSet<(u32, u16)>,
     /// This definition is referenced by a specific definition, the code is used to update this
@@ -278,10 +337,6 @@ pub fn v_set(var: u32, val: Value) -> Value {
 
 pub fn v_let(var: u32, val: Value) -> Value {
     Value::Let(var, Box::new(val))
-}
-
-pub fn text(s: &str) -> Value {
-    Value::Text(s.to_string())
 }
 
 impl Debug for Definition {
@@ -326,11 +381,11 @@ impl Data {
         &mut self,
         lexer: &mut Lexer,
         on_def: u32,
-        name: &str,
+        name: String,
         typedef: Type,
     ) -> u16 {
-        if self.def(on_def).attr_names.contains_key(name) {
-            let orig_attr = self.def(on_def).attr_names[name];
+        if self.def(on_def).attr_names.contains_key(&name) {
+            let orig_attr = self.def(on_def).attr_names[&name];
             let attr = &self.def(on_def).attributes[orig_attr as usize];
             if attr.typedef.is_unknown() {
                 if attr.typedef != typedef {
@@ -370,7 +425,7 @@ impl Data {
         next_attr
     }
 
-    pub fn add_def(&mut self, name: String, position: Position, def_type: DefType) -> u32 {
+    pub fn add_def(&mut self, name: String, position: &Position, def_type: DefType) -> u32 {
         let rec = self.definitions.len() as u32;
         if self.def_names.contains_key(&name) {
             panic!("Dual definition of {name}");
@@ -378,7 +433,7 @@ impl Data {
         self.def_names.insert(name.clone(), rec);
         self.definitions.push(Definition {
             name,
-            position,
+            position: position.clone(),
             def_type,
             parent: u32::MAX,
             attributes: Default::default(),
@@ -388,25 +443,16 @@ impl Data {
             size: 0,
             returned: Type::Unknown(rec),
             rust: "".to_string(),
+            op: "".to_string(),
             known_type: u16::MAX,
+            code_position: 0,
+            code_length: 0,
         });
         rec
     }
 
     pub fn definitions(&self) -> u32 {
         self.definitions.len() as u32
-    }
-
-    pub fn def_name(&self, d_nr: u32) -> String {
-        self.def(d_nr).name.clone()
-    }
-
-    pub fn def_parent(&self, d_nr: u32) -> u32 {
-        self.def(d_nr).parent
-    }
-
-    pub fn set_parent(&mut self, d_nr: u32, p_nr: u32) {
-        self.definitions[d_nr as usize].parent = p_nr;
     }
 
     pub fn def_referenced(&self, d_nr: u32) -> bool {
@@ -432,21 +478,6 @@ impl Data {
         }
     }
 
-    pub fn set_def_type(&mut self, d_nr: u32, val: DefType) {
-        if self.def_type(d_nr) != DefType::Unknown {
-            panic!("Cannot change def_type");
-        }
-        self.definitions[d_nr as usize].def_type = val;
-    }
-
-    pub fn def_pos(&self, d_nr: u32) -> Position {
-        self.def(d_nr).position.clone()
-    }
-
-    pub fn set_def_pos(&mut self, d_nr: u32, pos: Position) {
-        self.definitions[d_nr as usize].position = pos;
-    }
-
     pub fn def_set_size(&mut self, d_nr: u32, size: u32, align: u8) {
         if self.def(d_nr).size != 0 {
             panic!("Cannot change definition size twice");
@@ -455,45 +486,16 @@ impl Data {
         self.definitions[d_nr as usize].alignment = align;
     }
 
-    /// Size of this definition in 8 byte words
-    pub fn def_size(&self, d_nr: u32) -> u32 {
-        self.def(d_nr).size
-    }
-
-    pub fn def_align(&self, d_nr: u32) -> u8 {
-        self.def(d_nr).alignment
-    }
-
-    pub fn set_known_type(&mut self, d_nr: u32, known_type: u16) {
-        self.definitions[d_nr as usize].known_type = known_type;
-    }
-
-    pub fn def_known_type(&self, d_nr: u32) -> u16 {
-        self.def(d_nr).known_type
-    }
-
-    pub fn rust(&mut self, d_nr: u32) -> String {
-        self.def(d_nr).rust.clone()
-    }
-
-    pub fn set_rust(&mut self, d_nr: u32, rust: String) {
-        self.definitions[d_nr as usize].rust = rust;
-    }
-
     pub fn set_returned(&mut self, d_nr: u32, tp: Type) {
         if !self.def(d_nr).returned.is_unknown() {
             panic!(
                 "Cannot change returned type on [{d_nr}]{} to {tp} twice was {} at {:?}",
                 self.def(d_nr).name,
                 self.def(d_nr).returned,
-                self.def_pos(d_nr)
+                self.def(d_nr).position
             );
         }
         self.definitions[d_nr as usize].returned = tp;
-    }
-
-    pub fn returned(&self, d_nr: u32) -> Type {
-        self.def(d_nr).returned.clone()
     }
 
     pub fn attributes(&self, d_nr: u32) -> u16 {
@@ -539,7 +541,7 @@ impl Data {
         if a_nr == u16::MAX || !self.attr_type(d_nr, a_nr).is_unknown() {
             panic!(
                 "Cannot set attribute type {}.{} twice was {} to {tp}",
-                self.def_name(d_nr),
+                self.def(d_nr).name,
                 self.attr_name(d_nr, a_nr),
                 self.attr_type(d_nr, a_nr)
             );
@@ -618,7 +620,7 @@ impl Data {
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].1);
             if type_nr != u32::MAX {
-                name = format!("_tp_{}_{fn_name}", self.def_name(type_nr));
+                name = format!("_tp_{}_{fn_name}", self.def(type_nr).name);
             } else {
                 diagnostic!(
                     lexer,
@@ -638,16 +640,20 @@ impl Data {
             );
             return u32::MAX;
         } else {
-            d_nr = self.add_def(name, lexer.pos(), DefType::Function);
+            d_nr = self.add_def(
+                name,
+                lexer.pos(),
+                DefType::Function(Box::new(Function::new())),
+            );
             for (a_name, a_type, a_value) in &arguments {
-                let a_nr = self.add_attribute(lexer, d_nr, a_name, a_type.clone());
+                let a_nr = self.add_attribute(lexer, d_nr, a_name.clone(), a_type.clone());
                 self.set_attr_value(d_nr, a_nr, a_value.clone());
                 self.set_attr_mutable(d_nr, a_nr, false);
             }
         }
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].1);
-            let a_nr = self.add_attribute(lexer, type_nr, &fn_name, Type::Routine(d_nr));
+            let a_nr = self.add_attribute(lexer, type_nr, fn_name.clone(), Type::Routine(d_nr));
             self.set_attr_mutable(type_nr, a_nr, false);
         }
         if is_both {
@@ -659,8 +665,12 @@ impl Data {
             if type_nr == u32::MAX {
                 panic!("Unknown type {:?} at {}", arguments[0].1, lexer.pos());
             }
-            let a_nr =
-                self.add_attribute(lexer, main, &self.def_name(type_nr), Type::Routine(d_nr));
+            let a_nr = self.add_attribute(
+                lexer,
+                main,
+                self.def(type_nr).name.clone(),
+                Type::Routine(d_nr),
+            );
             self.set_attr_mutable(main, a_nr, false);
         }
         d_nr
@@ -672,7 +682,7 @@ impl Data {
         let is_both = !arguments.is_empty() && arguments[0].0 == "both";
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].1);
-            let name = format!("_tp_{}_{fn_name}", self.def_name(type_nr));
+            let name = format!("_tp_{}_{fn_name}", self.def(type_nr).name);
             self.def_nr(&name)
         } else {
             d_nr
@@ -686,9 +696,13 @@ impl Data {
         fn_name: String,
         arguments: Arguments,
     ) -> u32 {
-        let d_nr = self.add_def(fn_name.clone(), lexer.pos(), DefType::Function);
+        let d_nr = self.add_def(
+            fn_name.clone(),
+            lexer.pos(),
+            DefType::Function(Box::new(Function::new())),
+        );
         for (a_name, a_type, a_value) in arguments {
-            let a_nr = self.add_attribute(lexer, d_nr, &a_name, a_type);
+            let a_nr = self.add_attribute(lexer, d_nr, a_name.clone(), a_type);
             self.set_attr_value(d_nr, a_nr, a_value);
         }
         if !types.add_possible(self, fn_name.clone()) {
@@ -711,18 +725,23 @@ impl Data {
             d_nr
         } else {
             let vd = self.add_def(name, lexer.pos(), DefType::Struct);
-            self.add_attribute(lexer, vd, "vector", Type::Vector(Box::new(tp.clone())));
+            self.add_attribute(
+                lexer,
+                vd,
+                "vector".to_string(),
+                Type::Vector(Box::new(tp.clone())),
+            );
             vd
         }
     }
 
-    pub fn check_vector(&mut self, d_nr: u32, vec_tp: u16, pos: Position) -> u32 {
-        let vec_name = format!("vector<{}>", self.def_name(d_nr));
+    pub fn check_vector(&mut self, d_nr: u32, vec_tp: u16, pos: &Position) -> u32 {
+        let vec_name = format!("vector<{}>", self.def(d_nr).name);
         let mut v_nr = self.def_nr(&vec_name);
         if v_nr == u32::MAX {
             v_nr = self.add_def(vec_name, pos, DefType::Vector);
-            self.set_parent(v_nr, d_nr);
-            self.set_known_type(v_nr, vec_tp);
+            self.definitions[v_nr as usize].parent = d_nr;
+            self.definitions[v_nr as usize].known_type = vec_tp;
         };
         v_nr
     }
@@ -735,19 +754,8 @@ impl Data {
         *nr
     }
 
-    fn def(&self, dnr: u32) -> &Definition {
+    pub fn def(&self, dnr: u32) -> &Definition {
         &self.definitions[dnr as usize]
-    }
-
-    pub fn code(&self, d_nr: u32) -> &Value {
-        &self.def(d_nr).code
-    }
-
-    pub fn set_code(&mut self, d_nr: u32, v: Value) {
-        if self.def(d_nr).code != Value::Null {
-            panic!("Cannot set code on '{}' twice", self.def(d_nr).name);
-        }
-        self.definitions[d_nr as usize].code = v;
     }
 
     pub fn attr_used(&mut self, d_nr: u32, a_nr: u16) {
@@ -760,11 +768,11 @@ impl Data {
 
     pub fn show_type(&self, show: &Type) -> String {
         match show {
-            Type::Reference(dnr) => self.def_name(*dnr),
-            Type::Inner(dnr) => self.def_name(*dnr),
-            Type::Enum(dnr) => self.def_name(*dnr),
+            Type::Reference(dnr) => self.def(*dnr).name.clone(),
+            Type::Inner(dnr) => self.def(*dnr).name.clone(),
+            Type::Enum(dnr) => self.def(*dnr).name.clone(),
             Type::Vector(sub) => format!("vector<{}>", self.show_type(sub)),
-            Type::Routine(sub) => format!("fn {}", self.def_name(*sub)),
+            Type::Routine(sub) => format!("fn {}", self.def(*sub).name),
             _ => format!("{}", show),
         }
     }
@@ -772,11 +780,11 @@ impl Data {
     #[allow(dead_code)]
     /// Use to get the size on an array element. Possibly also store in Definition?
     pub fn align(self, data: &Data, d_nr: u32) -> u32 {
-        let mut anr = data.def_align(d_nr) as u32;
+        let mut anr = data.def(d_nr).alignment as u32;
         if anr == 0 {
             anr = 1;
         }
-        let size = data.def_size(d_nr);
+        let size = data.def(d_nr).size;
         if size % anr > 0 {
             size + anr - size % anr
         } else {
@@ -924,13 +932,13 @@ extern crate dryopea;"
             } else if def.def_type == DefType::Enum {
                 self.output_enum(w, def)?;
             } else if def.def_type == DefType::Vector {
-                writeln!(w, "    db.vector({});", self.def_known_type(def.parent))?;
+                writeln!(w, "    db.vector({});", self.def(def.parent).known_type)?;
             }
         }
         writeln!(w, "}}\n")?;
         for dnr in from..till {
             let def = self.def(dnr);
-            if def.def_type == DefType::Function {
+            if matches!(def.def_type, DefType::Function(_)) {
                 self.output_function(w, def)?;
             }
         }
@@ -962,10 +970,10 @@ extern crate dryopea;"
             if d_nr == u32::MAX {
                 panic!("Unknown def_nr for {:?}", a.typedef);
             }
-            let tp = self.def_known_type(d_nr);
+            let tp = self.def(d_nr).known_type;
             let mut done = false;
             if let Type::Vector(c) = &a.typedef {
-                let content = self.def_known_type(self.type_def_nr(c));
+                let content = self.def(self.type_def_nr(c)).known_type;
                 writeln!(
                     w,
                     "    db.field(s, \"{nm}\".to_string(), db.vector({content}), {pos});",
@@ -1032,7 +1040,7 @@ extern crate dryopea;"
 
     pub fn output_code(&self, w: &mut dyn Write, code: &Value, indent: u32) -> Result<()> {
         match code {
-            Value::Text(txt) => {
+            Value::Text(Text::String(txt)) => {
                 write!(w, "\"{}\".to_string()", txt)?;
             }
             Value::Long(v) => {
@@ -1087,15 +1095,15 @@ extern crate dryopea;"
                 write!(w, "}}")?;
             }
             Value::Set(var, to) => {
-                write!(w, "var_{} = ", var)?;
+                write!(w, "var_{var} = ")?;
                 self.output_code(w, to, indent)?;
             }
             Value::Let(var, to) => {
-                write!(w, "let mut var_{} = ", var)?;
+                write!(w, "let mut var_{var} = ")?;
                 self.output_code(w, to, indent)?;
             }
-            Value::Var(v) => {
-                write!(w, "var_{}", v)?;
+            Value::Var(var) => {
+                write!(w, "var_{var}")?;
             }
             Value::If(test, true_v, false_v) => {
                 self.output_if(w, test, true_v, false_v, indent)?;

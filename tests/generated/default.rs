@@ -26,7 +26,7 @@ fn init(db: &mut KnownTypes) {
     db.field(s, "dir".to_string(), 4, 16);
     let s = db.structure("Unknown(0)".to_string(), 8, 65535); // 65535
     db.field(s, "vector".to_string(), db.vector(4), 4);
-    let s = db.structure("Vector(Reference(270))".to_string(), 8, 65535); // 13
+    let s = db.structure("Vector(Reference(269))".to_string(), 8, 65535); // 13
     db.field(s, "vector".to_string(), db.vector(6), 4);
     db.vector(6);
     db.vector(12);
@@ -166,10 +166,6 @@ fn _tp_vector_clear(stores: &mut Stores, var_0: DbRef) {
 
 fn assert(stores: &mut Stores, var_0: bool, var_1: String) {
   if !(var_0) { panic!("{}", (var_1)); };
-}
-
-fn print(stores: &mut Stores, var_0: String) {
-  print!("{}", (var_0))
 }
 
 fn _virtual_attr_pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 {

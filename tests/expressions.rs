@@ -44,7 +44,7 @@ fn expr_float() {
 
 #[test]
 fn expr_str() {
-    expr!("\"1.1\"").result(Value::Text("1.1".to_string()));
+    expr!("\"1.1\"").result(Value::str("1.1"));
 }
 
 #[test]

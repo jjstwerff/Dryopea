@@ -8,8 +8,28 @@ pub type single;
 pub type float;
 pub type text;
 
+// General operations
+fn OpGenGoto(const_step: integer limit(-128, 127) not null);
+#rust "s.code_pos = (s.code_pos as i32 + @const_step as i32) as u32; return;"
+
+fn OpGenGotoWord(const_step: integer limit(-32768, +32767) not null);
+#rust "s.code_pos = (s.code_pos as i32 + @const_step as i32) as u32; return;"
+
+fn OpGenGotoFalse(const_step: integer limit(-128, 127) not null, if_false: boolean);
+#rust "if !@if_false { s.code_pos = (s.code_pos as i32 + const_step as i32) as u32; return; }"
+
+fn OpGenGotoFalseWord(const_step: integer limit(-32768, +32767) not null, if_false: boolean);
+#rust "if !@if_false { s.code_pos = (s.code_pos as i32 + const_step as i32) as u32; return; }"
+
 // Boolean operations
+fn OpConstTrue() -> boolean;
+#rust "true"
+
+fn OpConstFalse() -> boolean;
+#rust "false"
+
 fn OpNot(v1: boolean) -> boolean;
+#op "not"
 #rust "!@v1"
 
 fn OpAnd(v1: boolean, v2: boolean) -> boolean;
@@ -19,29 +39,41 @@ fn OpOr(v1: boolean, v2: boolean) -> boolean;
 #rust "(@v1 || @v2)"
 
 fn OpFormatBool(val: boolean, width: integer, dir: integer, token: integer) -> text;
+#op "format_bool"
 #rust "format_text(if @val {{\"true\"}} else {{\"false\"}}, @width, @dir, @token)"
 
 // Integer operations
+fn OpConstInt(const_val: integer) -> integer;
+#rust "@const_val"
+
+fo OpConstShort(const_val: integer<
+
 fn OpConvIntFromNull() -> integer;
 #rust "i32::MIN"
 
 fn OpCastIntFromText(v1: text) -> integer;
+#op "parse_int"
 #rust "if let Ok(i) = @v1.parse() {{ i }} else {{ i32::MIN }}"
 
 fn OpCastLongFromText(v1: text) -> long;
+#op "parse_long"
 #rust "if let Ok(i) = @v1.parse() {{ i }} else {{ i64::MIN }}"
 
 fn OpCastSingleFromText(v1: text) -> single;
+#op "parse_single"
 #rust "if let Ok(i) = @v1.parse() {{ i }} else {{ f32::NAN }}"
 
 fn OpCastFloatFromText(v1: text) -> float;
+#op "parse_float"
 #rust "if let Ok(i) = @v1.parse() {{ i }} else {{ f64::NAN }}"
 
 fn OpAbsInt(v1: integer) -> integer;
+#op "abs_int"
 #rust "op_abs_int(@v1)"
 pub fn abs(both: integer) -> integer { OpAbsInt(both) }
 
 fn OpMinSingleInt(v1: integer) -> integer;
+#op "neg_int"
 #rust "op_min_single_int(@v1)"
 
 fn OpConvLongFromInt(v1: integer) -> long;
@@ -112,6 +144,7 @@ fn OpConvLongFromNull() -> long;
 #rust "i64::MIN"
 
 fn OpAbsLong(v1: long) -> long;
+#op "abs_long"
 #rust "op_abs_long(@v1)"
 pub fn abs(both: long) -> long { OpAbsLong(both) }
 
@@ -184,6 +217,7 @@ fn OpConvSingleFromNull() -> single;
 
 fn OpAbsSingle(v1: single) -> single;
 #rust "@v1.abs()"
+#op "abs_single"
 pub fn abs(both: single) -> single { OpAbsSingle(both) }
 
 fn OpMinSingleSingle(v1: single) -> single;
@@ -296,6 +330,7 @@ fn OpConvFloatFromNull() -> float;
 
 fn OpAbsFloat(v1: float) -> float;
 #rust "@v1.abs()"
+#op "abs_float"
 pub fn abs(both: float) -> float { OpAbsFloat(both) }
 
 fn OpMathPiFloat() -> float;
@@ -612,14 +647,17 @@ fn OpRemoveRadix(r: radix, val: reference, bit: fn(reference, integer) -> boolea
 fn OpGetRadix(r: radix, key: fn(integer) -> boolean) -> reference;
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
+#op "eq_bool"
 #rust "@v1 == @v2"
 fn OpNeBool(v1: boolean, v2: boolean) -> boolean;
+#op "ne_bool"
 #rust "@v1 != @v2"
 
-fn OpAssert(v1: boolean, v2: text);
-#rust "if !@v1 {{ panic!(\"{{}}\", @v2); }};"
+fn OpAssert(v1: boolean, const_text: text);
+#rust "if !@v1 {{ panic!(\"{{}}\", @const_text); }};"
 fn assert(v1: boolean, v2: text) { OpAssert(v1, v2); }
 
 fn OpPrint(v1: text);
+#op "print"
 #rust "print!(\"{{}}\", @v1)"
-fn print(v1: text) { OpPrint(v1); }
+// fn print(v1: text) { OpPrint(v1); }

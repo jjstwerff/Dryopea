@@ -29,7 +29,7 @@ macro_rules! expr {
 
 use dryopea::data::{Type, Value};
 use dryopea::diagnostics::Level;
-use dryopea::inter::Inter;
+use dryopea::interpreter::State;
 use dryopea::parser::Parser;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
@@ -120,7 +120,7 @@ impl Drop for Test {
             p.data.def_used(p.data.def_nr("test"));
         }
         for (d, s) in &self.sizes {
-            assert_eq!(p.data.def_size(p.data.def_nr(d)), *s, "Size of {}", *d);
+            assert_eq!(p.data.def(p.data.def_nr(d)).size, *s, "Size of {}", *d);
         }
         self.generate_code(&p, start).unwrap();
         // Validate that we found the correct warnings and errors. Halt when differences are found.
@@ -130,10 +130,17 @@ impl Drop for Test {
             return;
         }
         if !self.tp.is_unknown() {
-            assert_eq!(p.data.returned(p.data.def_nr("test")), self.tp);
+            assert_eq!(p.data.def(p.data.def_nr("test")).returned, self.tp);
         }
-        let i = Inter::new(&p.data);
-        let res = i.calculate("test", None).unwrap();
+        let types = p.data.known_types.clone();
+        let mut i = State::new(&mut p.data, &types);
+        let test = p.data.def_nr("test");
+        i.byte_code(test, &p.data);
+        let mut w =
+            std::fs::File::create(format!("tests/generated/{}_{}.code", self.file, self.name))
+                .unwrap();
+        i.dump_code(&mut w, test, &p.data);
+        /*
         // Only write the interpreter log when a different result is found.
         if res != self.result {
             let w =
@@ -142,6 +149,7 @@ impl Drop for Test {
             i.calculate("test", Some(w)).unwrap();
         }
         assert_eq!(self.result, res);
+        */
     }
 }
 

@@ -446,6 +446,42 @@ pub fn format_single(val: f32, width: i32, precision: i32) -> String {
     s
 }
 
+pub fn fix_from(from: i32, s: &str) -> usize {
+    let size = s.len() as i32;
+    let mut f = if from < 0 { from + size } else { from };
+    if f < 0 {
+        return 0;
+    }
+    let b = s.as_bytes();
+    // when from is inside a UTF-8 token: decrease it
+    while f > 0 && b[f as usize] >= 128 && b[f as usize] < 192 {
+        f -= 1;
+    }
+    f as usize
+}
+
+pub fn fix_till(till: i32, from: usize, s: &str) -> usize {
+    let size = s.len() as i32;
+    let mut t = if till == i32::MIN {
+        from as i32 + 1
+    } else if till < 0 {
+        till + size
+    } else if till > size {
+        size
+    } else {
+        till
+    };
+    if t < from as i32 || t > size {
+        return from;
+    }
+    let b = s.as_bytes();
+    // when till is inside a UTF-8 token: increase it
+    while t < size && b[t as usize] >= 128 && b[t as usize] < 192 {
+        t += 1;
+    }
+    t as usize
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -308,8 +308,8 @@ impl Lexer {
         }
     }
 
-    pub fn pos(&self) -> Position {
-        self.position.clone()
+    pub fn pos(&self) -> &Position {
+        &self.position
     }
 
     pub fn diagnostic(&mut self, level: Level, message: &str) {
@@ -332,7 +332,7 @@ impl Lexer {
         );
     }
 
-    pub fn pos_diagnostic(&mut self, level: Level, pos: Position, message: &str) {
+    pub fn pos_diagnostic(&mut self, level: Level, pos: &Position, message: &str) {
         self.diagnostics.add(
             level,
             &format!("{} at {}:{}:{}", message, pos.file, pos.line, pos.pos),

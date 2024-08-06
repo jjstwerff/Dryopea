@@ -15,41 +15,41 @@ use std::collections::HashMap;
 /// This will not factor in the space for attributes for records
 /// as we still need to analyze the actual use of records.
 pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
-    match data.def_name(d_nr).as_str() {
+    match data.def(d_nr).name.as_str() {
         "vector" => {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Vector(Box::new(Type::Unknown(0))));
-            data.set_known_type(d_nr, 6);
+            data.definitions[d_nr as usize].known_type = 6;
         }
         "long" => {
             data.def_set_size(d_nr, 8, 8);
             data.set_returned(d_nr, Type::Long);
-            data.set_known_type(d_nr, 1);
+            data.definitions[d_nr as usize].known_type = 1;
         }
         "integer" => {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Integer);
-            data.set_known_type(d_nr, 0);
+            data.definitions[d_nr as usize].known_type = 0;
         }
         "float" => {
             data.def_set_size(d_nr, 8, 8);
             data.set_returned(d_nr, Type::Float);
-            data.set_known_type(d_nr, 3);
+            data.definitions[d_nr as usize].known_type = 3;
         }
         "single" => {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Single);
-            data.set_known_type(d_nr, 2);
+            data.definitions[d_nr as usize].known_type = 2;
         }
         "text" => {
             data.def_set_size(d_nr, 4, 4);
             data.set_returned(d_nr, Type::Text);
-            data.set_known_type(d_nr, 5);
+            data.definitions[d_nr as usize].known_type = 5;
         }
         "boolean" => {
             data.def_set_size(d_nr, 1, 1);
             data.set_returned(d_nr, Type::Boolean);
-            data.set_known_type(d_nr, 4);
+            data.definitions[d_nr as usize].known_type = 4;
         }
         "enumerate" => {
             data.def_set_size(d_nr, 1, 1);
@@ -101,34 +101,34 @@ pub fn actual_types(data: &mut Data, lexer: &mut Lexer, start_def: u32) {
             DefType::Unknown => {
                 lexer.pos_diagnostic(
                     Level::Error,
-                    data.def_pos(d),
-                    &format!("Error: Undefined type {}", data.def_name(d)),
+                    &data.def(d).position,
+                    &format!("Error: Undefined type {}", data.def(d).name),
                 );
             }
-            DefType::Function => {
+            DefType::Function(_) => {
                 for a in 0..data.attributes(d) {
                     if let Type::Unknown(was) = data.attr_type(d, a) {
-                        data.set_attr_type(d, a, data.returned(was))
+                        data.set_attr_type(d, a, data.def(was).returned.clone())
                     }
                 }
-                if let Type::Unknown(was) = data.returned(d) {
-                    data.set_returned(d, data.returned(was))
+                if let Type::Unknown(was) = data.def(d).returned {
+                    data.set_returned(d, data.def(was).returned.clone())
                 }
             }
             DefType::Struct => {
                 for nr in 0..data.attributes(d) {
                     if let Type::Unknown(was) = data.attr_type(d, nr) {
-                        data.set_attr_type(d, nr, data.returned(was));
+                        data.set_attr_type(d, nr, data.def(was).returned.clone());
                     }
                 }
                 calculate_positions(data, d);
             }
             DefType::Enum => {
-                let e_nr = data.known_types.enumerate(data.def_name(d));
+                let e_nr = data.known_types.enumerate(&data.def(d).name.clone());
                 for a in 0..data.attributes(d) {
                     data.known_types.value(e_nr, data.attr_name(d, a));
                 }
-                data.set_known_type(d, e_nr);
+                data.definitions[d as usize].known_type = e_nr;
             }
             _ => {}
         }
@@ -206,13 +206,15 @@ fn calculate_positions(data: &mut Data, d_nr: u32) {
 }
 
 fn fill_database(data: &mut Data, d_nr: u32) {
-    if data.def_name(d_nr) == "Unknown(0)" {
+    if data.def(d_nr).name == "Unknown(0)" {
         return;
     }
-    let s_type =
-        data.known_types
-            .structure(data.def_name(d_nr), data.def_size(d_nr) as u16, u16::MAX);
-    data.set_known_type(d_nr, s_type);
+    let s_type = data.known_types.structure(
+        data.def(d_nr).name.clone(),
+        data.def(d_nr).size as u16,
+        u16::MAX,
+    );
+    data.definitions[d_nr as usize].known_type = s_type;
     for a_nr in 0..data.attributes(d_nr) {
         if !data.attr_mutable(d_nr, a_nr) {
             continue;
@@ -223,19 +225,19 @@ fn fill_database(data: &mut Data, d_nr: u32) {
         let t_nr = data.type_elm(&a_type);
         let nullable = data.attr_nullable(d_nr, a_nr);
         if t_nr < u32::MAX && data.attr_mutable(d_nr, a_nr) {
-            let mut tp = data.def_known_type(t_nr);
+            let mut tp = data.def(t_nr).known_type;
             if let Type::Vector(c_type) = a_type {
                 let c_nr = data.type_elm(&c_type);
                 if c_nr == u32::MAX {
                     panic!(
                         "Unknown vector content type on [{d_nr}]{}.{}",
-                        data.def_name(d_nr),
+                        data.def(d_nr).name,
                         data.attr_name(d_nr, a_nr)
                     );
                 }
-                let c_tp = data.def_known_type(c_nr);
+                let c_tp = data.def(c_nr).known_type;
                 tp = data.known_types.vector(c_tp);
-                data.check_vector(c_nr, tp, data.def_pos(d_nr));
+                data.check_vector(c_nr, tp, &data.def(d_nr).position.clone());
             } else if a_type == Type::Integer && min != i32::MIN && max != i32::MAX {
                 if max - min < 256 || (!nullable && max - min == 256) {
                     tp = data.known_types.byte(min, nullable);
@@ -284,8 +286,8 @@ fn get_size(data: &mut Data, d_nr: u32, nr: u16) -> (u32, u8) {
         }
     } else {
         let sub = data.type_def_nr(&tp);
-        size = data.def_size(sub);
-        align = data.def_align(sub);
+        size = data.def(sub).size;
+        align = data.def(sub).alignment;
     }
     (size, align)
 }
@@ -299,7 +301,7 @@ fn initial_pos(data: &mut Data, d_nr: u32, positions: &mut HashMap<u16, u32>) ->
             // when there is a position of an immutable field keep this space free
             positions.insert(nr, a_pos);
             let sub = data.type_def_nr(&data.attr_type(d_nr, nr));
-            let size = data.def_size(sub)
+            let size = data.def(sub).size
                 - if let Type::Inner(_) | Type::Reference(_) = data.attr_type(d_nr, nr) {
                     8
                 } else {

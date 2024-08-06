@@ -7,7 +7,7 @@ use dryopea::database::{KnownTypes, Stores};
 use dryopea::external::*;
 
 fn init(db: &mut KnownTypes) {
-    let e = db.enumerate("T".to_string());
+    let e = db.enumerate("T");
     db.value(e, "A".to_string());
     db.value(e, "C".to_string());
     db.value(e, "B".to_string());

@@ -7,13 +7,20 @@ Eventually features need to be "done" however that is never a short term goal.
 
 Priorities:
 - completeness:
-  . strings: link to new implementation
+  . strings: link to new implementation & test this, test slices, iterate slices
+      for now just concentrate on the interpreter version
   . vectors: fix implementation, introduce slices
   . iterators: full features for the interpreter (#last #break #continue #first #index #count)
+        a general iterator with code to implement 'next' (for hash/index/radix/list structures)
   . ordered
+        store the code to compare between two elements
   . hash
+        store the code to get the hash value of an element, equals on record position
   . index
+        store the code for compare elements & compare with a given key
   . radix
+        code to get nth-bit for each record
+  . list (other way to present object references)
   . yield (add to data structure / file / iterator)
   . polymorphes records
 - correctness:

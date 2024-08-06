@@ -169,7 +169,7 @@ impl<'a> Types<'a> {
     }
 
     /// Create a local variable in the current scope
-    pub fn create_var(&mut self, name: String, var_type: Type, position: Position) -> u32 {
+    pub fn create_var(&mut self, name: String, var_type: Type, position: &Position) -> u32 {
         let vnr = self.variable_number();
         let len = self.variables.len();
         let last = if len > 0 { len - 1 } else { 0 };
@@ -178,7 +178,7 @@ impl<'a> Types<'a> {
                 vnr,
                 Variable {
                     var_type,
-                    position,
+                    position: position.clone(),
                     uses: 1,
                 },
             );
@@ -227,14 +227,14 @@ impl<'a> Types<'a> {
         for a_nr in 0..data.attributes(d_nr) {
             let var = Variable {
                 var_type: data.attr_type(d_nr, a_nr),
-                position: data.def_pos(d_nr),
+                position: data.def(d_nr).position.clone(),
                 uses: 0,
             };
             self.var_nrs.insert(a_nr as u32, var.clone());
             vars.insert(data.attr_name(d_nr, a_nr), a_nr as u32);
         }
         self.variables.push(vars);
-        data.returned(d_nr)
+        data.def(d_nr).returned.clone()
     }
 
     /// At the end of routine code, clear the currently known variables.
