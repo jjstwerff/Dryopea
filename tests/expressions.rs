@@ -7,9 +7,16 @@ mod testing;
 
 use dryopea::data::{Type, Value};
 
+const INTEGER: Type = Type::Integer(i32::MIN + 1, i32::MAX as u32);
+
+#[test]
+fn aa_print() {
+    code!("fn test() { OpPrint(\"hi!\"); }");
+}
+
 #[test]
 fn expr_integer() {
-    expr!("1").result(Value::Int(1)).tp(Type::Integer);
+    expr!("1").result(Value::Int(1)).tp(INTEGER);
 }
 
 #[test]
@@ -34,7 +41,7 @@ fn expr_multi_brackets() {
 
 #[test]
 fn expr_add_null() {
-    expr!("1 + null").tp(Type::Integer);
+    expr!("1 + null").tp(INTEGER);
 }
 
 #[test]
@@ -74,7 +81,7 @@ fn expr_variables() {
 
 #[test]
 fn expr_zero_divide() {
-    expr!("2 / (3 - 2 - 1)").tp(Type::Integer);
+    expr!("2 / (3 - 2 - 1)").tp(INTEGER);
 }
 
 #[test]
@@ -86,12 +93,27 @@ fn expr_long() {
 fn mutating_operators() {
     expr!("a = 12; a -= 6; a *= 3; a /= 2; a += 1; a")
         .result(Value::Int(10))
-        .tp(Type::Integer);
+        .tp(INTEGER);
 }
 
 #[test]
 fn for_loop() {
     expr!("b = 0; for a in 0..5 { b+=a }; b").result(Value::Int(10));
+}
+
+#[test]
+fn for_long() {
+    expr!("b = 0l; for a in 10l..=20l { b+=a }; b").result(Value::Long(165));
+}
+
+#[test]
+fn reverse_loop() {
+    expr!("b = 0; for a in rev(1..=6) { b=b*10+a }; b").result(Value::Int(654321));
+}
+
+#[test]
+fn reverse() {
+    expr!("b = 0; for a in rev(0..6) { b=b*10+a }; b").result(Value::Int(543210));
 }
 
 #[test]
@@ -101,8 +123,8 @@ fn extended_for() {
 
 #[test]
 fn continue_loop() {
-    expr!("b = 0; for a in 0..10 { if a == 2 {continue} if a > 5 {return b} b += a }; b")
-        .result(Value::Int(13));
+    code!("fn routine() -> integer {b = 0; for a in 0..10 { if a == 2 {continue} if a > 5 {return b} b += a }; b}")
+    .expr("routine()").result(Value::Int(13));
 }
 
 #[test]
@@ -137,16 +159,32 @@ fn compare() {
 }
 
 #[test]
-fn convert() {
+fn convert_to_long() {
     expr!("123 as long + 2").result(Value::Long(125));
+}
+
+#[test]
+fn convert_text() {
     expr!("\"123\" as long + 2").result(Value::Long(125));
+}
+
+#[test]
+fn convert_to_int() {
     expr!("123 as integer + 2").result(Value::Int(125));
+}
+
+#[test]
+fn convert_text_to_int() {
     expr!("\"123\" as integer + 2").result(Value::Int(125));
 }
 
 #[test]
-fn boolean() {
+fn boolean_named() {
     expr!("123 and (12 or false)").result(Value::Boolean(true));
+}
+
+#[test]
+fn boolean_symbols() {
     expr!("123 || (12 && false)").result(Value::Boolean(true));
 }
 
@@ -160,6 +198,21 @@ fn to_enum() {
     code!("enum Number { One, Two, Three, Four }")
         .expr("\"Two\" as Number < \"Four\" as Number")
         .result(Value::Boolean(true));
+}
+
+#[test]
+fn int_to_enum() {
+    code!("enum Number { One, Two, Three, Four }")
+        .expr("1 as Number < 3 as Number")
+        .result(Value::Boolean(true));
+}
+
+#[test]
+fn null_enum() {
+    // TODO this is the current situation, and not what we eventually want.
+    code!("enum Number { One, Two, Three, Four }")
+        .expr("null < 3 as Number")
+        .result(Value::Boolean(false));
 }
 
 #[test]

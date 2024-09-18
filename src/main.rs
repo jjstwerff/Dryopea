@@ -1,10 +1,16 @@
 // Copyright (c) 2022 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
+#![warn(clippy::pedantic)]
+
 #[macro_use]
 pub mod diagnostics;
+mod calc;
 mod data;
 mod database;
+mod hash;
+mod keys;
 mod lexer;
+mod logger;
 mod parser;
 mod png_store;
 mod store;

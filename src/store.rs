@@ -6,9 +6,12 @@
 //! There can be a mapped file behind each storage instead of only memory.
 //!
 //! There is always a specific record as the main record of a store describing vectors and indexes with sub-records.
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_sign_loss)]
 
 extern crate mmap_storage;
-use log::*;
+use log::info;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::fmt::{Debug, Formatter};
 
@@ -19,7 +22,7 @@ pub const PRIMARY: u32 = 1;
 
 pub struct Store {
     // format 0 = SIGNATURE, 4 = free_space_index, 8 = record_size, 12 = content
-    ptr: *mut u8,
+    pub ptr: *mut u8,
     size: u32,
     file: Option<mmap_storage::file::Storage>,
 }
@@ -74,7 +77,7 @@ impl Store {
         } else {
             false
         };
-        let ptr = std::ptr::addr_of!(file.as_slice()[0]) as *mut u8;
+        let ptr = std::ptr::addr_of!(file.as_slice()[0]).cast_mut();
         let mut store = Store {
             file: Some(file),
             ptr,
@@ -83,9 +86,11 @@ impl Store {
         if init {
             store.init();
         } else {
-            if unsafe { (store.ptr as *const u32).read() } != SIGNATURE {
-                panic!("Unknown file format");
-            }
+            assert_eq!(
+                unsafe { store.ptr.cast::<u32>().read_unaligned() },
+                SIGNATURE,
+                "Unknown file format"
+            );
             #[cfg(debug_assertions)]
             store.validate(0);
         };
@@ -95,20 +100,22 @@ impl Store {
     fn init(&mut self) {
         // The normal routines will not write to rec=0, so we write a signature: StoreV01
         unsafe {
-            (self.ptr as *mut u32).write(SIGNATURE);
+            self.ptr.cast::<u32>().write_unaligned(SIGNATURE);
             // The first empty space
-            (self.ptr.offset(4) as *mut u32).write(1);
+            self.ptr.offset(4).cast::<u32>().write_unaligned(1);
         }
         // Indicate the complete store as empty
-        if !self.set_int(1, 0, -(self.size as i32) + 1) {
-            panic!("Could not init");
-        }
+        assert!(
+            self.set_int(1, 0, -(self.size as i32) + 1),
+            "Could not init"
+        );
     }
 
     /// Claim the space of a record
     /// # Arguments
     /// * `size` - The requested record size in 8 byte words
     pub fn claim(&mut self, size: u32) -> u32 {
+        assert!(size > 0, "Incomplete record");
         let req_size = size as i32;
         // search big enough open space: currently very inefficient
         let mut pos = PRIMARY; // primary record location
@@ -121,9 +128,7 @@ impl Store {
                 claim = 0;
                 break;
             }
-            if pos == last {
-                panic!("Inconsistent database zero sized block {}", pos)
-            }
+            assert_ne!(pos, last, "Inconsistent database zero sized block {pos}");
             claim = self.get_int(pos, 0);
         }
         if pos + size > self.size {
@@ -150,9 +155,7 @@ impl Store {
         }
         // when too big we split the open space
         let claim = -self.get_int(pos, 0);
-        if claim < 0 {
-            panic!("Claimed space twice {}", pos);
-        }
+        assert!(claim >= 0, "Claimed space twice {pos}");
         if claim > size as i32 * 4 / 3 {
             self.set_int(pos, 0, req_size);
             let new_free = pos + size;
@@ -216,9 +219,11 @@ impl Store {
         let mut alloc = 0;
         while pos < self.size {
             let claim = self.get_int(pos, 0);
-            if pos + i32::abs(claim) as u32 > self.size {
-                panic!("Incorrect record {} size {}", pos, i32::abs(claim));
-            }
+            assert!(
+                pos + i32::abs(claim) as u32 <= self.size,
+                "Incorrect record {pos} size {}",
+                i32::abs(claim)
+            );
             if claim < 0 {
                 // ignore the open spaces for now, later we want to check if they are part of the open tree.
                 pos += (-claim) as u32;
@@ -228,15 +233,11 @@ impl Store {
                 pos += claim as u32;
             }
         }
-        if pos != self.size {
-            panic!("Incorrect {} size {}", pos, self.size);
-        }
-        if recs != 0 && alloc != recs as usize {
-            panic!(
-                "Inconsistent number of records: claimed {} walk {}",
-                alloc, recs
-            );
-        }
+        assert_eq!(pos, self.size, "Incorrect {pos} size {}", self.size);
+        assert!(
+            recs == 0 || alloc == recs as usize,
+            "Inconsistent number of records: claimed {alloc} walk {recs}"
+        );
     }
 
     pub fn len(&self) -> u32 {
@@ -253,7 +254,7 @@ impl Store {
         let size = if to_size > inc { to_size } else { inc };
         if let Some(f) = &mut self.file {
             f.resize(size as usize * 8).expect("Resize");
-            self.ptr = std::ptr::addr_of!(f.as_slice()[0]) as *mut u8;
+            self.ptr = std::ptr::addr_of!(f.as_slice()[0]).cast_mut();
             self.size = size;
             return;
         }
@@ -264,17 +265,17 @@ impl Store {
     }
 
     #[inline]
-    fn addr<T>(&self, rec: u32, fld: isize) -> &T {
+    pub fn addr<T>(&self, rec: u32, fld: u32) -> &T {
         unsafe {
-            let off = self.ptr.offset(rec as isize * 8 + fld) as *mut T;
+            let off = self.ptr.offset(rec as isize * 8 + fld as isize).cast::<T>();
             off.as_mut().expect("Reference")
         }
     }
 
     #[inline]
-    fn addr_mut<T>(&mut self, rec: u32, fld: isize) -> &mut T {
+    pub fn addr_mut<T>(&mut self, rec: u32, fld: u32) -> &mut T {
         unsafe {
-            let off = self.ptr.offset(rec as isize * 8 + fld) as *mut T;
+            let off = self.ptr.offset(rec as isize * 8 + fld as isize).cast::<T>();
             off.as_mut().expect("Reference")
         }
     }
@@ -287,26 +288,39 @@ impl Store {
         }
     }
 
+    #[cfg(debug_assertions)]
     /// Try to validate a record reference as much as possible.
     /// Complete validations are only done in 'test' mode.
-    pub fn valid(&self, rec: u32, fld: isize) -> bool {
-        #[cfg(debug_assertions)]
-        if rec == 0 || rec as u64 * 8 + fld as u64 > self.size as u64 * 8 {
-            panic!("Reading outside store ({}.{}) > {}", rec, fld, self.size);
-        }
-        #[cfg(debug_assertions)]
+    pub fn valid(&self, rec: u32, fld: u32) -> bool {
+        assert!(
+            rec != 0 && u64::from(rec) * 8 + u64::from(fld) <= u64::from(self.size) * 8,
+            "Reading outside store ({rec}.{fld}) > {}",
+            self.size
+        );
         {
             if fld != 0 {
                 let size: i32 = *self.addr(rec, 0);
                 // The first 4 positions are reserved for the record size
-                if rec + size as u32 > self.size {
-                    panic!("Inconsistent record {} size {} > {}", rec, size, self.size);
-                }
-                if size < 1 || fld < 4 || fld > size as isize * 8 {
-                    panic!("Reading fields outside record ({}.{}) > {}", rec, fld, size);
-                }
+                assert!(
+                    rec + size as u32 <= self.size,
+                    "Inconsistent record {rec} size {size} > {}",
+                    self.size
+                );
+                assert!(
+                    fld >= 4,
+                    "Field {fld} too low, overlapping with size on ({rec}.{fld})"
+                );
+                assert!(
+                    size >= 1 && fld <= size as u32 * 8,
+                    "Reading fields outside record ({rec}.{fld}) > {size}"
+                );
             }
         }
+        true
+    }
+
+    #[cfg(not(debug_assertions))]
+    pub fn valid(&self, _: u32, _: isize) -> bool {
         true
     }
 
@@ -317,6 +331,17 @@ impl Store {
             std::ptr::copy_nonoverlapping(
                 self.ptr.offset(rec as isize * 8 + 4),
                 self.ptr.offset(into as isize * 8 + 4),
+                self.get_int(rec, 0) as usize * 8 - 4,
+            );
+        }
+    }
+
+    #[inline]
+    pub fn zero_fill(&self, rec: u32) {
+        unsafe {
+            std::ptr::write_bytes(
+                self.ptr.offset(rec as isize * 8 + 4),
+                0,
                 self.get_int(rec, 0) as usize * 8 - 4,
             );
         }
@@ -355,12 +380,12 @@ impl Store {
                 self.ptr.offset(from_rec as isize * 8 + from_pos),
                 to_store.ptr.offset(to_rec as isize * 8 + to_pos),
                 len as usize,
-            )
+            );
         }
     }
 
     #[inline]
-    pub fn get_int(&self, rec: u32, fld: isize) -> i32 {
+    pub fn get_int(&self, rec: u32, fld: u32) -> i32 {
         if self.valid(rec, fld) {
             *self.addr(rec, fld)
         } else {
@@ -369,7 +394,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn set_int(&mut self, rec: u32, fld: isize, val: i32) -> bool {
+    pub fn set_int(&mut self, rec: u32, fld: u32, val: i32) -> bool {
         if self.valid(rec, fld) {
             *self.addr_mut(rec, fld) = val;
             true
@@ -379,7 +404,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn get_long(&self, rec: u32, fld: isize) -> i64 {
+    pub fn get_long(&self, rec: u32, fld: u32) -> i64 {
         if self.valid(rec, fld) {
             *self.addr(rec, fld)
         } else {
@@ -388,7 +413,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn set_long(&mut self, rec: u32, fld: isize, val: i64) -> bool {
+    pub fn set_long(&mut self, rec: u32, fld: u32, val: i64) -> bool {
         if self.valid(rec, fld) {
             *self.addr_mut(rec, fld) = val;
             true
@@ -398,11 +423,11 @@ impl Store {
     }
 
     #[inline]
-    pub fn get_short(&self, rec: u32, fld: isize, min: i32) -> i32 {
+    pub fn get_short(&self, rec: u32, fld: u32, min: i32) -> i32 {
         if self.valid(rec, fld) {
             let read: u16 = *self.addr(rec, fld);
             if read != 0 {
-                read as i32 + min - 1
+                i32::from(read) + min - 1
             } else {
                 i32::MIN
             }
@@ -412,7 +437,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn set_short(&mut self, rec: u32, fld: isize, min: i32, val: i32) -> bool {
+    pub fn set_short(&mut self, rec: u32, fld: u32, min: i32, val: i32) -> bool {
         if self.valid(rec, fld) {
             if val == i32::MIN {
                 *self.addr_mut(rec, fld) = 0;
@@ -429,17 +454,17 @@ impl Store {
     }
 
     #[inline]
-    pub fn get_byte(&self, rec: u32, fld: isize, min: i32) -> i32 {
+    pub fn get_byte(&self, rec: u32, fld: u32, min: i32) -> i32 {
         if self.valid(rec, fld) {
             let read: u8 = *self.addr(rec, fld);
-            read as i32 + min
+            i32::from(read) + min
         } else {
             i32::MIN
         }
     }
 
     #[inline]
-    pub fn set_byte(&mut self, rec: u32, fld: isize, min: i32, val: i32) -> bool {
+    pub fn set_byte(&mut self, rec: u32, fld: u32, min: i32, val: i32) -> bool {
         if self.valid(rec, fld) {
             if val == i32::MIN {
                 *self.addr_mut(rec, fld) = 255;
@@ -457,14 +482,19 @@ impl Store {
 
     #[inline]
     pub fn get_str<'a>(&self, rec: u32) -> &'a str {
+        if rec == 0 {
+            return "";
+        }
         let len = self.get_int(rec, 4);
         #[cfg(debug_assertions)]
-        if len < 0 || len > self.get_int(rec, 0) * 8 {
-            panic!("Inconsistent text store")
-        }
-        if (len / 8) as u32 + rec > self.size {
-            panic!("Inconsistent text store")
-        }
+        assert!(
+            len >= 0 && len <= self.get_int(rec, 0) * 8,
+            "Inconsistent text store"
+        );
+        assert!(
+            (len / 8) as u32 + rec <= self.size,
+            "Inconsistent text store"
+        );
         unsafe {
             std::str::from_utf8_unchecked(std::slice::from_raw_parts(
                 self.ptr.offset(rec as isize * 8 + 8),
@@ -488,21 +518,31 @@ impl Store {
     }
 
     #[inline]
-    pub fn append_str(&mut self, rec: u32, val: &str) -> u32 {
-        let prev = self.get_int(rec, 4);
-        let res = self.resize(rec, ((prev as usize + val.len() + 7) / 8) as u32);
+    pub fn set_str_ptr(&mut self, ptr: *const u8, len: usize) -> u32 {
+        let res = self.claim(((len + 15) / 8) as u32);
+        self.set_int(res, 4, len as i32);
         unsafe {
-            std::ptr::copy_nonoverlapping(
-                val.as_ptr(),
-                self.ptr.offset(res as isize * 8 + 8 + prev as isize),
-                val.len(),
-            );
+            std::ptr::copy_nonoverlapping(ptr, self.ptr.offset(res as isize * 8 + 8), len);
         }
         res
     }
 
     #[inline]
-    pub fn get_boolean(&self, rec: u32, fld: isize, mask: u8) -> bool {
+    pub fn append_str(&mut self, record: u32, val: &str) -> u32 {
+        let prev = self.get_int(record, 4);
+        let result = self.resize(record, ((prev as usize + val.len() + 7) / 8) as u32);
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                val.as_ptr(),
+                self.ptr.offset(result as isize * 8 + 8 + prev as isize),
+                val.len(),
+            );
+        }
+        result
+    }
+
+    #[inline]
+    pub fn get_boolean(&self, rec: u32, fld: u32, mask: u8) -> bool {
         if self.valid(rec, fld) {
             let read: u8 = *self.addr(rec, fld);
             (read & mask) > 0
@@ -512,7 +552,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn set_boolean(&mut self, rec: u32, fld: isize, mask: u8, val: bool) -> bool {
+    pub fn set_boolean(&mut self, rec: u32, fld: u32, mask: u8, val: bool) -> bool {
         if self.valid(rec, fld) {
             let current: u8 = *self.addr(rec, fld);
             let mut write = current & !mask;
@@ -527,7 +567,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn get_float(&self, rec: u32, fld: isize) -> f64 {
+    pub fn get_float(&self, rec: u32, fld: u32) -> f64 {
         if self.valid(rec, fld) {
             *self.addr(rec, fld)
         } else {
@@ -536,7 +576,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn set_float(&mut self, rec: u32, fld: isize, val: f64) -> bool {
+    pub fn set_float(&mut self, rec: u32, fld: u32, val: f64) -> bool {
         if self.valid(rec, fld) {
             *self.addr_mut(rec, fld) = val;
             true
@@ -546,7 +586,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn get_single(&self, rec: u32, fld: isize) -> f32 {
+    pub fn get_single(&self, rec: u32, fld: u32) -> f32 {
         if self.valid(rec, fld) {
             *self.addr(rec, fld)
         } else {
@@ -555,7 +595,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn set_single(&mut self, rec: u32, fld: isize, val: f32) -> bool {
+    pub fn set_single(&mut self, rec: u32, fld: u32, val: f32) -> bool {
         if self.valid(rec, fld) {
             *self.addr_mut(rec, fld) = val;
             true

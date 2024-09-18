@@ -1,22 +1,24 @@
 // Copyright (c) 2023 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #![allow(dead_code)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
 
 use crate::logger::log::error;
 use crate::store::Store;
 use std::cmp::Ordering;
 
-static RB_LEFT: isize = 0;
-static RB_RIGHT: isize = 4;
-static RB_FLAG: isize = 8;
+static RB_LEFT: u32 = 0;
+static RB_RIGHT: u32 = 4;
+static RB_FLAG: u32 = 8;
 static RB_MAX_DEPTH: u32 = 100;
 
 /// Get the lowest record with test(rec)
 pub fn rb_search(
     store: &mut Store,
     top: u32,
-    fld: isize,
-    rec_pos: isize,
+    fld: u32,
+    rec_pos: u32,
     test: fn(u32) -> bool,
 ) -> u32 {
     let mut e = store.get_int(top, fld);
@@ -30,18 +32,18 @@ pub fn rb_search(
 
 struct RbTree<'a> {
     store: &'a mut Store,
-    rec_pos: isize,
+    rec_pos: u32,
     lower: fn(u32, u32) -> bool,
 }
 
 /// Insert a new element
-/// Always the same: store, rec_pos, top_pos, lower
+/// Always the same: `store`, `rec_pos`, `top_pos`, `lower`
 pub fn rb_insert(
     store: &mut Store,
     top: u32,
-    top_pos: isize,
+    top_pos: u32,
     rec: u32,
-    rec_pos: isize,
+    rec_pos: u32,
     lower: fn(u32, u32) -> bool,
 ) {
     store.set_byte(rec, rec_pos + RB_FLAG, 0, 0);
@@ -66,7 +68,7 @@ pub fn rb_insert(
 }
 
 /// Return the first element in the tree
-pub fn rb_first(store: &mut Store, top: u32, top_pos: isize, pos: isize) -> u32 {
+pub fn rb_first(store: &mut Store, top: u32, top_pos: u32, pos: u32) -> u32 {
     let mut i = store.get_int(top, top_pos);
     while i > 0 && store.get_int(i as u32, pos + RB_LEFT) > 0 {
         i = store.get_int(i as u32, pos + RB_LEFT);
@@ -75,15 +77,15 @@ pub fn rb_first(store: &mut Store, top: u32, top_pos: isize, pos: isize) -> u32 
 }
 
 /// Return the last element in the tree
-pub fn rb_last(store: &mut Store, top: u32, top_pos: isize, pos: isize) -> u32 {
+pub fn rb_last(store: &mut Store, top: u32, top_pos: u32, pos: u32) -> u32 {
     let mut i = store.get_int(top, top_pos);
     while i > 0 && store.get_int(i as u32, pos + RB_RIGHT) > 0 {
-        i = store.get_int(i as u32, pos + RB_RIGHT)
+        i = store.get_int(i as u32, pos + RB_RIGHT);
     }
     i as u32
 }
 
-impl<'a> RbTree<'a> {
+impl RbTree<'_> {
     fn left(&self, rec: u32) -> i32 {
         self.store.get_int(rec, self.rec_pos + RB_LEFT)
     }
@@ -106,7 +108,7 @@ impl<'a> RbTree<'a> {
 
     fn set_flag(&mut self, rec: u32, to: bool) {
         self.store
-            .set_byte(rec, self.rec_pos + RB_FLAG, 0, if to { 1 } else { 0 });
+            .set_byte(rec, self.rec_pos + RB_FLAG, 0, i32::from(to));
     }
 
     /// Find the correct position to insert the element
@@ -341,7 +343,7 @@ impl<'a> RbTree<'a> {
                     // Expecting a normal node
                     return 0;
                 }
-                self.rb_child_to_red(r as u32, &mut repair1, &mut repair2)
+                self.rb_child_to_red(r as u32, &mut repair1, &mut repair2);
             }
             Ordering::Greater => {
                 let l = self.left(rec);
@@ -349,7 +351,7 @@ impl<'a> RbTree<'a> {
                     // Expecting a normal node
                     return 0;
                 }
-                self.rb_child_to_red(l as u32, &mut repair1, &mut repair2)
+                self.rb_child_to_red(l as u32, &mut repair1, &mut repair2);
             }
             Ordering::Equal => {}
         }
@@ -432,7 +434,7 @@ impl<'a> RbTree<'a> {
         result
     }
 
-    /// Safe validation version of rb_first
+    /// Safe validation version of `rb_first`
     fn rb_min(&self, rec: u32) -> u32 {
         let mut depth = 0;
         if rec == 0 {
@@ -449,7 +451,7 @@ impl<'a> RbTree<'a> {
         }
     }
 
-    /// Safe validation version of rb_last
+    /// Safe validation version of `rb_last`
     fn rb_max(&self, pos: u32) -> u32 {
         let mut depth = 0;
         if pos == 0 {
@@ -513,7 +515,7 @@ impl<'a> RbTree<'a> {
 
     /// Move from the first to the last element and back checking ordering.
     /// Same fields as insert/remove
-    fn rb_verify_list(&self, top: u32, top_pos: isize, size: u32) {
+    fn rb_verify_list(&self, top: u32, top_pos: u32, size: u32) {
         let rec = self.store.get_int(top, top_pos) as u32;
         let min = self.rb_min(rec);
         let max = self.rb_max(rec);
@@ -554,15 +556,14 @@ impl<'a> RbTree<'a> {
     }
 }
 
-/// Step to the next element in the tree
-pub fn rb_next(store: &Store, rec: u32, rec_pos: isize) -> u32 {
+fn rb(store: &Store, rec: u32, rec_pos: u32, first: u32, second: u32) -> u32 {
     if rec == 0 {
         return 0;
     }
-    let mut r = store.get_int(rec, rec_pos + RB_RIGHT);
+    let mut r = store.get_int(rec, rec_pos + first);
     let mut depth = 0;
-    while r > 0 && store.get_int(r as u32, rec_pos + RB_LEFT) > 0 {
-        r = store.get_int(r as u32, rec_pos + RB_LEFT);
+    while r > 0 && store.get_int(r as u32, rec_pos + second) > 0 {
+        r = store.get_int(r as u32, rec_pos + second);
         if depth > RB_MAX_DEPTH {
             return 0;
         }
@@ -571,29 +572,22 @@ pub fn rb_next(store: &Store, rec: u32, rec_pos: isize) -> u32 {
     r.unsigned_abs()
 }
 
+/// Step to the next element in the tree
+pub fn rb_next(store: &Store, rec: u32, rec_pos: u32) -> u32 {
+    rb(store, rec, rec_pos, RB_RIGHT, RB_LEFT)
+}
+
 /// Step to the previous element in the tree
-pub fn rb_previous(store: &Store, rec: u32, rec_pos: isize) -> u32 {
-    if rec == 0 {
-        return 0;
-    }
-    let mut r = store.get_int(rec, rec_pos + RB_LEFT);
-    let mut depth = 0;
-    while r > 0 && store.get_int(r as u32, rec_pos + RB_RIGHT) > 0 {
-        r = store.get_int(r as u32, rec_pos + RB_RIGHT);
-        if depth > RB_MAX_DEPTH {
-            return 0;
-        }
-        depth += 1;
-    }
-    r.unsigned_abs()
+pub fn rb_previous(store: &Store, rec: u32, rec_pos: u32) -> u32 {
+    rb(store, rec, rec_pos, RB_LEFT, RB_RIGHT)
 }
 
 /// Validate the tree
 pub fn rb_validate(
     store: &mut Store,
     top: u32,
-    top_pos: isize,
-    rec_pos: isize,
+    top_pos: u32,
+    rec_pos: u32,
     lower: fn(u32, u32) -> bool,
 ) {
     let pos = store.get_int(top, top_pos);
@@ -617,9 +611,9 @@ pub fn rb_validate(
 pub fn rb_remove(
     store: &mut Store,
     rec: u32,
-    rec_pos: isize,
+    rec_pos: u32,
     top: u32,
-    top_pos: isize,
+    top_pos: u32,
     lower: fn(u32, u32) -> bool,
 ) {
     let mut black = false;

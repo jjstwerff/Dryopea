@@ -1,0 +1,24 @@
+Test code:
+pub fn test() {
+    1 + null;
+}
+
+fn test {
+  drop OpAddInt(1i32, OpConvIntFromNull());
+}
+
+byte-code for expr_add_null:test()
+ 664[0]: return-address
+ 664[4]: ConstInt(val=1) -> integer
+ 669[8]: ConvIntFromNull() -> integer
+ 670[12]: AddInt(v1: integer, v2: integer) -> integer
+ 671[8]: GenFreeStack(value=0, discard=4)
+ 675[4]: GenReturn(ret=0, value=0, discard=4)
+
+Execute test:
+  664:[4] ConstInt(val=1) -> 1[4]
+  669:[8] ConvIntFromNull() -> -2147483648[8]
+  670:[12] AddInt(v1=1[4], v2=-2147483648[8]) -> -2147483648[4]
+  671:[8] GenFreeStack(value=0, discard=4)
+  675:[4] GenReturn(ret=4294967295[0], value=0, discard=4)
+Finished

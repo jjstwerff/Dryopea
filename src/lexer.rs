@@ -5,7 +5,7 @@
 //! It is possible to link to the current position in the lexer (link) and return to it (revert)
 //! when the parser has to try a certain path and might dismiss this later.
 
-use crate::diagnostics::*;
+use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
@@ -180,13 +180,13 @@ impl Default for Lexer {
             peek: LexResult {
                 has: LexItem::None,
                 position: Position {
-                    file: "".to_string(),
+                    file: String::new(),
                     line: 0,
                     pos: 0,
                 },
             },
             position: Position {
-                file: "".to_string(),
+                file: String::new(),
                 line: 0,
                 pos: 0,
             },
@@ -276,7 +276,7 @@ impl Lexer {
                     if self.tokens.contains(&single) {
                         self.next_char();
                         if let Some(&d) = self.iter.peek() {
-                            let double = format!("{}{}", c, d);
+                            let double = format!("{c}{d}");
                             if self.tokens.contains(&double) {
                                 self.next_char();
                                 LexResult::new(LexItem::Token(double), pos)
@@ -316,18 +316,18 @@ impl Lexer {
         self.diagnostics.add(
             level,
             &format!(
-                "{} at {}:{}:{}",
-                message, self.position.file, self.position.line, self.position.pos
+                "{message} at {}:{}:{}",
+                self.position.file, self.position.line, self.position.pos
             ),
         );
     }
 
-    pub fn specific(&mut self, result: LexResult, level: Level, message: &str) {
+    pub fn specific(&mut self, result: &LexResult, level: Level, message: &str) {
         self.diagnostics.add(
             level,
             &format!(
-                "{} at {}:{}:{}",
-                message, self.position.file, result.position.line, result.position.pos
+                "{message} at {}:{}:{}",
+                self.position.file, result.position.line, result.position.pos
             ),
         );
     }
@@ -335,7 +335,7 @@ impl Lexer {
     pub fn pos_diagnostic(&mut self, level: Level, pos: &Position, message: &str) {
         self.diagnostics.add(
             level,
-            &format!("{} at {}:{}:{}", message, pos.file, pos.line, pos.pos),
+            &format!("{message} at {}:{}:{}", pos.file, pos.line, pos.pos),
         );
     }
 
@@ -363,11 +363,11 @@ impl Lexer {
         }
     }
 
-    fn none(&self) -> LexResult {
+    fn none() -> LexResult {
         LexResult {
             has: LexItem::None,
             position: Position {
-                file: "".to_string(),
+                file: String::new(),
                 line: 0,
                 pos: 0,
             },
@@ -425,7 +425,7 @@ impl Lexer {
             self.next_char();
         }
         self.err(Level::Fatal, "String not correctly terminated");
-        self.none()
+        Lexer::none()
     }
 
     fn next_char(&mut self) {
@@ -490,7 +490,7 @@ impl Lexer {
                     LexResult::new(LexItem::Integer(r, val.starts_with('0')), pos)
                 } else {
                     self.err(Level::Error, "Problem parsing float");
-                    self.none()
+                    Lexer::none()
                 };
             }
             val.push('.');
@@ -498,7 +498,7 @@ impl Lexer {
             let part = self.get_number();
             if part.is_empty() {
                 self.err(Level::Error, "Problem parsing float");
-                return self.none();
+                return Lexer::none();
             }
             val += &part;
         }
@@ -513,7 +513,7 @@ impl Lexer {
             let exp = self.get_number();
             if exp.is_empty() {
                 self.err(Level::Error, "Problem parsing float");
-                return self.none();
+                return Lexer::none();
             }
             val += &exp;
         }
@@ -564,6 +564,7 @@ impl Lexer {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn ret_number(&mut self, r: u64, p: Position, start_zero: bool) -> LexResult {
         let max = i32::max as usize;
         if let Some('l') = self.iter.peek() {
@@ -590,7 +591,7 @@ impl Lexer {
 
     /// debug feature to check the amount of currently in use links
     pub fn count_links(&self) -> u32 {
-        return *self.links.borrow();
+        *self.links.borrow()
     }
 
     /// Return the currently found lexer element.
@@ -661,11 +662,11 @@ impl Lexer {
     }
 
     pub fn token(&mut self, token: &'static str) -> bool {
-        if !self.has_token(token) {
-            diagnostic!(self, Level::Error, "Expect token {}", token);
-            false
-        } else {
+        if self.has_token(token) {
             true
+        } else {
+            diagnostic!(self, Level::Error, "Expect token {token}");
+            false
         }
     }
 
@@ -706,7 +707,7 @@ impl Lexer {
             Some(n)
         } else if let LexItem::Integer(n, _zero) = self.peek().has {
             self.cont();
-            Some(n as u64)
+            Some(u64::from(n))
         } else {
             None
         }
@@ -756,7 +757,7 @@ impl Lexer {
     pub fn from_str(s: &str, filename: &str) -> Lexer {
         let mut v = Vec::new();
         for l in s.split('\n') {
-            v.push(Ok(String::from(l)))
+            v.push(Ok(String::from(l)));
         }
         let mut res = Lexer::new(v.into_iter(), filename);
         res.cont();
@@ -790,14 +791,14 @@ mod test {
     use super::*;
     fn validate(s: &'static str, data: &[LexItem]) {
         let res = array(&mut Lexer::from_str(s, "validate"));
-        assert_eq!(res, data)
+        assert_eq!(res, data);
     }
 
     #[cfg(test)]
     fn error(s: &'static str, err: &'static str) {
         let mut l = Lexer::from_str(s, "error");
         l.cont();
-        assert_eq!(format!("{:?}", l.diagnostics), err.to_string())
+        assert_eq!(format!("{:?}", l.diagnostics), err.to_string());
     }
 
     #[cfg(test)]
@@ -806,17 +807,17 @@ mod test {
         for s in t {
             if s.chars().next().unwrap().is_ascii_digit() {
                 if let Ok(res) = s.parse::<u32>() {
-                    data.push(LexItem::Integer(res, false))
+                    data.push(LexItem::Integer(res, false));
                 } else {
-                    panic!("Cannot parse {}", s)
+                    panic!("Cannot parse {s}");
                 }
             } else if KEYWORDS.contains(s) || TOKENS.contains(s) {
-                data.push(LexItem::Token(s.to_string()))
+                data.push(LexItem::Token((*s).to_string()));
             } else {
-                data.push(LexItem::Identifier(s.to_string()))
+                data.push(LexItem::Identifier((*s).to_string()));
             }
         }
-        assert_eq!(array(&mut Lexer::from_str(s, "tokens")), data)
+        assert_eq!(array(&mut Lexer::from_str(s, "tokens")), data);
     }
 
     #[test]
@@ -907,7 +908,7 @@ mod test {
             ..
         } = lex.peek()
         {
-            assert_eq!(f, 200.0);
+            assert!(f64::abs(f - 200.0) < 0.00001);
         } else {
             panic!("Expected a float")
         };

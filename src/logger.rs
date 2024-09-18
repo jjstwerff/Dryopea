@@ -8,7 +8,10 @@ extern crate flexi_logger;
 pub extern crate log;
 
 use self::flexi_logger::filter::{LogLineFilter, LogLineWriter};
-use self::flexi_logger::*;
+use self::flexi_logger::{
+    Age, Cleanup, Criterion, DeferredNow, FileSpec, Logger, LoggerHandle, Naming, Record,
+    WriteMode, with_thread,
+};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -76,6 +79,6 @@ pub fn init_logging() {
         .filter(Box::new(RateLimiter::new()))
         .start()
     {
-        LOGGER.with(|logger| *logger.borrow_mut() = Some(log))
+        LOGGER.with(|logger| *logger.borrow_mut() = Some(log));
     }
 }

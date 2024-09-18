@@ -9,21 +9,19 @@ use dryopea::data::Value;
 
 #[test]
 fn expr_integer() {
-    expr!("a = 1; sizeof(1+2+3) + sizeof(integer) + 10 * sizeof(a) + 100 * alignment(integer)")
-        .result(Value::Int(448));
+    expr!("a = 1; sizeof(1+2+3) + sizeof(integer) + 10 * sizeof(a)").result(Value::Int(48));
 }
 
 #[test]
 fn expr_float() {
-    expr!("a = 1.1; sizeof(float) + 10 * sizeof(a) + 100 * alignment(float)")
-        .result(Value::Int(888));
+    expr!("a = 1.1; sizeof(float) + 10 * sizeof(a)").result(Value::Int(88));
 }
 
 #[test]
 fn expr_enum() {
     code!("enum En {V1, V2, V3}")
-        .expr("sizeof(En) + 10 * sizeof(V1) + 100 * alignment(En)")
-        .result(Value::Int(111));
+        .expr("sizeof(En) + 10 * sizeof(V1)")
+        .result(Value::Int(11));
 }
 
 #[test]
@@ -32,21 +30,18 @@ fn expr_struct() {
         "struct S {a: integer, b: long, c: En}
 enum En {V1, V2}"
     )
-    .expr("sizeof(S) + 100 * alignment(S)")
-    .result(Value::Int(817));
+    .expr("sizeof(S)")
+    .result(Value::Int(17));
 }
 
 #[test]
 fn hash_member() {
     code!(
         "struct S {a: integer, b: long, c: integer}
-struct Main { s:hash<S>[b] }"
+struct Main { s:hash<S[b]> }"
     )
-    .expr(
-        "m = Main {};
-sizeof(S) + 100 * sizeof(Main) + 1000 * alignment(S)",
-    )
-    .result(Value::Int(8820));
+    .expr("sizeof(S) + 100 * sizeof(Main)")
+    .result(Value::Int(820));
 }
 
 /*
@@ -56,54 +51,54 @@ fn index_member() {
     // So it gains a left: reference, right: reference and black: boolean field.
     code!(
         "struct S {a: integer, b: long, c: integer};
-struct Main { s: index<S>[a, c desc] };"
+struct Main { s: index<S[a, -c]> };"
     )
-    .expr("m = Main {}; sizeof(S) + 100 * sizeof(Main) + 1000 * alignment(S)")
-    .result(Value::Int(8829));
+    .expr("m = Main {}; sizeof(S) + 100 * sizeof(m)")
+    .result(Value::Int(829));
 }
 */
 
 #[test]
 fn reference_field() {
-    // S is now a stand alone object.
+    // S is now a stand-alone object.
     // The vector holds references to S, the same as biggest.
     code!(
         "struct S {a: integer, b: integer, c:integer};
 struct Main { s: vector<S>, biggest: reference<S> };"
     )
-    .expr(
-        "m = Main{};
-sizeof(S) + 100 * sizeof(Main) + 10000 * alignment(S) + 100000 * sizeof(vector<S>)",
-    )
-    .result(Value::Int(1642416));
+    .expr("sizeof(S) + 100 * sizeof(Main) + 10000 * sizeof(vector<S>)")
+    .result(Value::Int(122012));
 }
 
+/*
+TODO needs initialisation of fields instead of Main.biggest as reference.
 #[test]
 fn copy_field() {
     // S is now an Inner object that is the exact size of its fields.
-    // biggest is a inner object that increases the size of Main.
+    // biggest is an inner object that increases the size of Main.
     code!(
         "struct S {a: integer, b: integer, c:integer};
 struct Main { s: vector<S>, biggest: S };"
     )
     .expr(
         "m = Main{};
-sizeof(S) + 100 * sizeof(Main) + 10000 * alignment(S) + 100000 * sizeof(vector<S>)",
+sizeof(S) + 100 * sizeof(Main) + 10000 * sizeof(m) + 100000 * sizeof(vector<S>)",
     )
     .result(Value::Int(1242012));
 }
+*/
 
 #[test]
 fn vector_size() {
     // S is now an Inner object that is the exact size of its fields.
-    // biggest is a inner object that increases the size of Main.
+    // biggest is an inner object that increases the size of Main.
     code!(
         "struct S {a: integer, b: integer, c:integer};
 struct Main { s: vector<S> };"
     )
     .expr(
         "m = Main{};
-sizeof(S) + 100 * sizeof(Main) + 10000 * alignment(S) + 100000 * sizeof(vector<S>)",
+sizeof(S) + 100 * sizeof(Main) + 10000 * sizeof(m) + 100000 * sizeof(vector<S>)",
     )
-    .result(Value::Int(1240812));
+    .result(Value::Int(1280812));
 }

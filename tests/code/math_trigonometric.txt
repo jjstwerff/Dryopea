@@ -1,0 +1,81 @@
+Test code:
+pub fn test() {
+    test_value = {ceil(sin(PI) + cos(PI) * 1000)};
+    assert(
+        test_value == -1000,
+        "Test failed {test_value} != -1000"
+    );
+}
+
+fn test {
+  let test_value = {
+    _tp_float_ceil(OpAddFloat(_tp_float_sin(OpMathPiFloat()), OpMulFloat(_tp_float_cos(OpMathPiFloat()), OpConvFloatFromInt(1000i32))));
+  };
+  if OpEqFloat(test_value, OpConvFloatFromInt(OpMinSingleInt(1000i32))) {null} else {OpGenPanic({
+    let append_7 = "Test failed ";
+    OpFormatFloat(append_7, test_value, 0i32, 0i32);
+    OpAppendText(append_7, " != -1000");
+    append_7;
+  })};
+}
+
+byte-code for trigonometric:test()
+ 664[0]: return-address
+ 664[4]: MathPiFloat() -> float
+ 665[12]: GenCall(size=0, to=189)
+ 672[12]: MathPiFloat() -> float
+ 673[20]: GenCall(size=0, to=179)
+ 680[20]: ConstInt(val=1000) -> integer
+ 685[24]: ConvFloatFromInt(v1: integer) -> float
+ 686[28]: MulFloat(v1: float, v2: float) -> float
+ 687[20]: AddFloat(v1: float, v2: float) -> float
+ 688[12]: GenCall(size=0, to=252)
+ 695[12]: VarFloat(var[4]) -> float
+ 698[20]: ConstInt(val=1000) -> integer
+ 703[24]: MinSingleInt(v1: integer) -> integer
+ 704[24]: ConvFloatFromInt(v1: integer) -> float
+ 705[28]: EqFloat(v1: float, v2: float) -> boolean
+ 706[13]: GenGotoFalseWord(jump=712, if_false: boolean)
+ 709[12]: GenGotoWord(jump=768)
+ 712[12]: Text()
+ 713[36]: ConstText(_value="Test failed ") -> text
+ 727[52]: AppendText(var[12], v1: text)
+ 730[36]: VarFloat(var[4]) -> float
+ 733[44]: ConstInt(val=0) -> integer
+ 738[48]: ConstInt(val=0) -> integer
+ 743[52]: FormatFloat(var[12], val: float, width: integer, precision: integer)
+ 746[36]: ConstText(_value=" != -1000") -> text
+ 757[52]: AppendText(var[12], v1: text)
+ 760[36]: VarText(var[12]) -> text
+ 763[52]: GenFreeStack(value=16, discard=24)
+ 767[28]: GenPanic(message: text)
+ 768[12]: GenReturn(ret=0, value=0, discard=12)
+
+Execute test:
+  664:[4] MathPiFloat() -> 3.141592653589793[4]
+  665:[12] GenCall(size=0, to=189)
+  189:[16] VarFloat(var[4]) -> 3.141592653589793[16]
+  192:[24] MathSinFloat(v1=3.141592653589793[16]) -> 0.00000000000000012246467991473532[16]
+  193:[24] GenReturn(ret=672[12], value=8, discard=20)
+  672:[12] MathPiFloat() -> 3.141592653589793[12]
+  673:[20] GenCall(size=0, to=179)
+  179:[24] VarFloat(var[12]) -> 3.141592653589793[24]
+  182:[32] MathCosFloat(v1=3.141592653589793[24]) -> -1[24]
+  183:[32] GenReturn(ret=680[20], value=8, discard=20)
+  680:[20] ConstInt(val=1000) -> 1000[20]
+  685:[24] ConvFloatFromInt(v1=1000[20]) -> 1000[20]
+  686:[28] MulFloat(v1=-1[12], v2=1000[20]) -> -1000[12]
+  687:[20] AddFloat(v1=0.00000000000000012246467991473532[4], v2=-1000[12]) -> -1000[4]
+  688:[12] GenCall(size=0, to=252)
+  252:[16] VarFloat(var[4]) -> -1000[16]
+  255:[24] MathCeilFloat(v1=-1000[16]) -> -1000[16]
+  256:[24] GenReturn(ret=695[12], value=8, discard=20)
+  695:[12] VarFloat(var[4]) -> -1000[12]
+  698:[20] ConstInt(val=1000) -> 1000[20]
+  703:[24] MinSingleInt(v1=1000[20]) -> -1000[20]
+  704:[24] ConvFloatFromInt(v1=-1000[20]) -> -1000[20]
+  705:[28] EqFloat(v1=-1000[12], v2=-1000[20]) -> true[12]
+  706:[13] GenGotoFalseWord(jump=712, if_false=true[12])
+  709:[12] GenGotoWord(jump=768)
+  768:[12] GenReturn(ret=4294967295[0], value=0, discard=12)
+Finished

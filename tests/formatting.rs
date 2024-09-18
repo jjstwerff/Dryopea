@@ -50,3 +50,18 @@ fn format_long() {
 fn format_single() {
     expr!("\"a{0.1f + 2 * 1.0f}b\"").result(Value::str(&format!("a{}b", 2.1f32)));
 }
+
+#[test]
+fn format_range() {
+    expr!("\"a{for x in 1..7 {x*2}:02}b\"").result(Value::str("a[02,04,06,08,10,12]b"));
+}
+
+#[test]
+fn format_chars() {
+    expr!("txt=\"12😊🙃45\"; \"a{for c in txt[2..-1] {c}}b\"").result(Value::str("a[😊,🙃,4]b"));
+}
+
+#[test]
+fn format_sub() {
+    expr!("txt=\"12😊🙃45\"; \"a{txt[2..-1]}b\"").result(Value::str("a😊🙃4b"));
+}

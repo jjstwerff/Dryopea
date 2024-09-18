@@ -28,7 +28,7 @@ fn wrong_boolean() {
 
 #[test]
 fn unknown_var() {
-    code!("fn test() { a == 1 }").error("Error: Unknown variable a at unknown_var:1:19");
+    code!("fn test() { a == 1 }").error("Error: Unknown variable 'a' at unknown_var:1:19");
 }
 
 #[test]
@@ -69,20 +69,20 @@ fn double_field_name() {
 #[test]
 fn incorrect_name() {
     code!("type something;\nfn something(a: integer) {}")
-        .error("Error: Cannot redefine Type something at incorrect_name:2:27")
+        .error("Fatal: Cannot redefine Type something at incorrect_name:2:14")
         .warning("Error: Expect type definitions to be in camel case style at incorrect_name:1:16");
 }
 
 #[test]
 fn wrong_compare() {
     code!("enum EType{ V1 }\nenum Next{ V2 }\nfn test() { V1 == V2; }")
-        .error("Error: No matching operator == on EType and Next at wrong_compare:3:21");
+        .error("Error: No matching operator '==' on 'EType' and 'Next' at wrong_compare:3:21");
 }
 
 #[test]
 fn wrong_plus() {
     code!("fn test() {(1 + \"a\")}")
-        .error("Error: No matching operator + on integer and text at wrong_plus:1:20");
+        .error("Error: No matching operator '+' on 'integer' and 'text' at wrong_plus:1:20");
 }
 
 #[test]
@@ -93,8 +93,9 @@ fn wrong_if() {
 
 #[test]
 fn wrong_assign() {
-    code!("enum EType { V1 }\nfn test() {a = 1; a = V1 }")
-        .error("Error: Cannot change type of variable a at wrong_assign:2:27");
+    code!("enum EType { V1 }\nfn test() {a = 1; a = V1 }").error(
+        "Error: Cannot change type of variable 'a' from 'integer' to 'EType' at wrong_assign:2:27",
+    );
 }
 
 #[test]
@@ -129,12 +130,12 @@ fn undefined_as() {
 #[test]
 fn undefined_enum() {
     code!("enum E1 { V1 }\nfn test(v: E1) -> boolean { v > V2 }")
-        .error("Error: Unknown variable V2 at undefined_enum:2:37");
+        .error("Error: Unknown variable 'V2' at undefined_enum:2:37");
 }
 
 #[test]
 fn unknown_sizeof() {
     code!("fn test() { sizeof(C); }")
         .error("Error: Expect a variable or type after sizeof at unknown_sizeof:1:22")
-        .error("Error: Unknown variable C at unknown_sizeof:1:22");
+        .error("Error: Unknown variable 'C' at unknown_sizeof:1:22");
 }

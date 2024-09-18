@@ -8,8 +8,13 @@ mod testing;
 use dryopea::data::Value;
 
 #[test]
+fn append() {
+    expr!("a=\"♥😃\" + \"1\" + \"2\"; a").result(Value::str("♥😃12"));
+}
+
+#[test]
 fn str_index() {
-    expr!("a=\"12345\";a[2]").result(Value::str("3"));
+    expr!("a=\"12345\"; a[2]").result(Value::str("3"));
 }
 #[test]
 fn utf8_index() {
@@ -39,10 +44,16 @@ fn sub_utf8() {
 
 #[test]
 fn iter() {
-    // TODO the current indexes are 'behind' the current character, not in front of it!
-    // TODO generate when needed the code that remembers the value 'before' the current element.
-    expr!("a=[]; b=[]; for c in \"123😊🙃😋8\" { a += [c]; b += [c#index] }; \"{a} indexes:{b}\"")
-        .result(Value::str(
-            "[\"1\",\"2\",\"3\",\"😊\",\"🙃\",\"😋\",\"8\"] indexes:[1,2,3,7,11,15,16]",
-        ));
+    expr!(
+        "a=[];
+b=[];
+for c in \"123😊🙃😋8\" {
+    a += [c];
+    b += [c#index]
+};
+\"{a} indexes:{b}\""
+    )
+    .result(Value::str(
+        "[\"1\",\"2\",\"3\",\"😊\",\"🙃\",\"😋\",\"8\"] indexes:[1,2,3,7,11,15,16]",
+    ));
 }

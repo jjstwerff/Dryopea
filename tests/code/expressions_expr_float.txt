@@ -1,0 +1,52 @@
+Test code:
+pub fn test() {
+    test_value = {1.1};
+    assert(
+        test_value == 1.1,
+        "Test failed {test_value} != 1.1"
+    );
+}
+
+fn test {
+  let test_value = {
+    1.1f64;
+  };
+  if OpEqFloat(test_value, 1.1f64) {null} else {OpGenPanic({
+    let append_7 = "Test failed ";
+    OpFormatFloat(append_7, test_value, 0i32, 0i32);
+    OpAppendText(append_7, " != 1.1");
+    append_7;
+  })};
+}
+
+byte-code for expr_float:test()
+ 664[0]: return-address
+ 664[4]: ConstFloat(val=1.1) -> float
+ 673[12]: VarFloat(var[4]) -> float
+ 676[20]: ConstFloat(val=1.1) -> float
+ 685[28]: EqFloat(v1: float, v2: float) -> boolean
+ 686[13]: GenGotoFalseWord(jump=692, if_false: boolean)
+ 689[12]: GenGotoWord(jump=746)
+ 692[12]: Text()
+ 693[36]: ConstText(_value="Test failed ") -> text
+ 707[52]: AppendText(var[12], v1: text)
+ 710[36]: VarFloat(var[4]) -> float
+ 713[44]: ConstInt(val=0) -> integer
+ 718[48]: ConstInt(val=0) -> integer
+ 723[52]: FormatFloat(var[12], val: float, width: integer, precision: integer)
+ 726[36]: ConstText(_value=" != 1.1") -> text
+ 735[52]: AppendText(var[12], v1: text)
+ 738[36]: VarText(var[12]) -> text
+ 741[52]: GenFreeStack(value=16, discard=24)
+ 745[28]: GenPanic(message: text)
+ 746[12]: GenReturn(ret=0, value=0, discard=12)
+
+Execute test:
+  664:[4] ConstFloat(val=1.1) -> 1.1[4]
+  673:[12] VarFloat(var[4]) -> 1.1[12]
+  676:[20] ConstFloat(val=1.1) -> 1.1[20]
+  685:[28] EqFloat(v1=1.1[12], v2=1.1[20]) -> true[12]
+  686:[13] GenGotoFalseWord(jump=692, if_false=true[12])
+  689:[12] GenGotoWord(jump=746)
+  746:[12] GenReturn(ret=4294967295[0], value=0, discard=12)
+Finished

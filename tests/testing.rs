@@ -3,7 +3,10 @@
 #![allow(dead_code)]
 
 //! Testing framework
+use dryopea::create::generate_code;
 extern crate dryopea;
+use dryopea::generation::Output;
+use dryopea::interpreter::byte_code;
 use std::io::Write;
 
 /// Evaluate the given code.
@@ -29,8 +32,8 @@ macro_rules! expr {
 
 use dryopea::data::{Type, Value};
 use dryopea::diagnostics::Level;
-use dryopea::interpreter::State;
 use dryopea::parser::Parser;
+use dryopea::state::State;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -93,12 +96,35 @@ impl Test {
     }
 
     fn test(&self) -> String {
-        if self.return_type() == "" {
-            format!("fn test() {{\n{}\n}}", self.expr)
-        } else {
-            format!("fn test() -> {} {{\n{}\n}}", self.return_type(), self.expr)
+        let mut res = match &self.result {
+            Value::Long(v) => v.to_string() + "l",
+            Value::Int(v) => v.to_string(),
+            Value::Enum(v, _) => v.to_string(),
+            Value::Boolean(v) if *v => "true".to_string(),
+            Value::Boolean(_) => "false".to_string(),
+            Value::Text(v) => replace_tokens(v),
+            Value::Float(v) => v.to_string(),
+            Value::Single(v) => v.to_string(),
+            Value::Null => return format!("pub fn test() {{\n    {};\n}}", self.expr),
+            _ => panic!("test {:?}", self.result),
+        };
+        let mut message = res.clone();
+        if matches!(self.result, Value::Text(_)) {
+            message = "\\\"".to_string() + &res + "\\\"";
+            res = "\"".to_string() + &res + "\"";
         }
+        format!(
+            "pub fn test() {{\n    test_value = {{{}}};\n    assert(\n        test_value == {},\n        \"Test failed {{test_value}} != {}\"\n    );\n}}",
+            self.expr, res, message
+        )
     }
+}
+
+fn replace_tokens(res: &str) -> String {
+    res.replace("{", "{{")
+        .replace("}", "}}")
+        .replace("\n", "\\n")
+        .replace("\"", "\\\"")
 }
 
 impl Drop for Test {
@@ -107,20 +133,26 @@ impl Drop for Test {
     fn drop(&mut self) {
         let mut p = Parser::new();
         p.parse_dir("default", true).unwrap();
+        let types = p.database.types.len();
         let start = p.data.definitions();
         let mut code = self.code.clone();
         if !self.expr.is_empty() {
             if !code.is_empty() {
-                code += "\n";
+                code += "\n\n";
             }
             code += &self.test();
         }
+        let mut w =
+            std::fs::File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
+        writeln!(w, "Test code:\n{}\n", code).unwrap();
         p.parse_str(&code, &self.name);
-        if !self.expr.is_empty() {
-            p.data.def_used(p.data.def_nr("test"));
+        let to = p.database.types.len();
+        for tp in types..to {
+            writeln!(w, "Type {tp}:{}", p.database.show_type(tp as u16, true)).unwrap();
         }
         for (d, s) in &self.sizes {
-            assert_eq!(p.data.def(p.data.def_nr(d)).size, *s, "Size of {}", *d);
+            let size = p.database.size(p.data.def(p.data.def_nr(d)).known_type);
+            assert_eq!(u32::from(size), *s, "Size of {}", *d);
         }
         self.generate_code(&p, start).unwrap();
         // Validate that we found the correct warnings and errors. Halt when differences are found.
@@ -129,47 +161,35 @@ impl Drop for Test {
         if p.diagnostics.level() >= Level::Error {
             return;
         }
-        if !self.tp.is_unknown() {
-            assert_eq!(p.data.def(p.data.def_nr("test")).returned, self.tp);
-        }
-        let types = p.data.known_types.clone();
-        let mut i = State::new(&mut p.data, &types);
-        let test = p.data.def_nr("test");
-        i.byte_code(test, &p.data);
-        let mut w =
-            std::fs::File::create(format!("tests/generated/{}_{}.code", self.file, self.name))
-                .unwrap();
-        i.dump_code(&mut w, test, &p.data);
-        /*
-        // Only write the interpreter log when a different result is found.
-        if res != self.result {
-            let w =
-                std::fs::File::create(format!("tests/generated/{}_{}.log", self.file, self.name))
-                    .unwrap();
-            i.calculate("test", Some(w)).unwrap();
-        }
-        assert_eq!(self.result, res);
-        */
+        generate_code(&p.data).unwrap();
+        let mut state = State::new(p.database);
+        byte_code(&mut p.data, &mut w, &mut state).unwrap();
+        state.execute_log(&mut w, "test", &p.data).unwrap();
     }
 }
 
 impl Test {
     fn generate_code(&self, p: &Parser, start: u32) -> std::io::Result<()> {
         let w = &mut std::fs::File::create("tests/generated/default.rs")?;
-        p.data.output(w, 0, start)?;
+        let o = Output {
+            data: &p.data,
+            stores: &p.database,
+        };
+        o.output(w, 0, start)?;
         // Write code output when the result is tested, not only for errors or warnings.
         if self.result != Value::Null || !self.tp.is_unknown() {
             let w = &mut std::fs::File::create(format!(
                 "tests/generated/{}_{}.rs",
                 self.file, self.name
             ))?;
-            p.data.output(w, start, p.data.definitions())?;
+            let def_nr = p.data.definitions();
+            o.output(w, start, def_nr)?;
             writeln!(w, "#[test]\nfn code_{}() {{", self.name)?;
             writeln!(w, "    let mut types = KnownTypes::new();")?;
             writeln!(w, "    init(&mut types);")?;
             writeln!(w, "    let mut stores = Stores::new(&types);")?;
             write!(w, "    assert_eq!(")?;
-            p.data.output_code(w, &self.result, 0)?;
+            o.output_code(w, &self.result, def_nr, 0)?;
             writeln!(w, ", test(&mut stores));\n}}")?;
         }
         Ok(())
@@ -187,14 +207,18 @@ impl Test {
             if expected.contains(l) {
                 expected.remove(l);
             } else {
+                if !found.is_empty() {
+                    found += "|";
+                }
                 found += l;
-                found += "\n";
             }
         }
         let mut was = "".to_string();
         for e in expected {
+            if !was.is_empty() {
+                was += "|";
+            }
             was += &e;
-            was += "\n";
         }
         if !found.is_empty() || !was.is_empty() {
             if !self.code.is_empty() {
@@ -203,7 +227,7 @@ impl Test {
             if !self.expr.is_empty() {
                 println!("{}", self.test());
             }
-            panic!("Found {found} Expected {was}");
+            panic!("Found '{found}' Expected '{was}'");
         }
     }
 
@@ -211,7 +235,7 @@ impl Test {
     fn return_type(&self) -> &str {
         let tp = if self.tp.is_unknown() {
             if let Value::Int(_) = self.result {
-                Type::Integer
+                Type::Integer(i32::MIN, i32::MAX as u32)
             } else if let Value::Long(_) = self.result {
                 Type::Long
             } else if let Value::Text(_) = self.result {
@@ -226,7 +250,7 @@ impl Test {
         } else {
             self.tp.clone()
         };
-        if let Type::Integer = tp {
+        if let Type::Integer(_, _) = tp {
             "integer"
         } else if let Type::Text = tp {
             "text"
@@ -278,30 +302,4 @@ pub fn testing_expr(expr: &str, test: &str) -> Test {
         tp: Type::Unknown(0),
         sizes: HashMap::new(),
     }
-}
-
-#[test]
-fn dir() -> std::io::Result<()> {
-    let dir = "tests/suite";
-    for f in std::fs::read_dir(dir)? {
-        let filename = f.unwrap().file_name().to_string_lossy().to_string();
-        if !filename.ends_with(".gcp") {
-            continue;
-        }
-        let mut p = Parser::new();
-        p.parse_dir("default", true)?;
-        p.parse(&format!("{dir}/{filename}"), false);
-        for l in p.diagnostics.lines() {
-            println!("{l}")
-        }
-        if !p.diagnostics.is_empty() {
-            return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
-        }
-        //let file = &filename[..filename.len() - 4];
-        //p.data.output_webassembly(&file)?;
-        //TODO validate via parser
-        //TODO write a lot more tests via this path, probably rewrite all current tests
-        //let i = Inter::new(&p.data); i.calculate("main", None).unwrap();
-    }
-    Ok(())
 }

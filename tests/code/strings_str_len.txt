@@ -1,0 +1,91 @@
+Test code:
+pub fn test() {
+    test_value = {a="12345";a.len() * 100 + len("😃") * 10 + len("♥")};
+    assert(
+        test_value == 543,
+        "Test failed {test_value} != 543"
+    );
+}
+
+fn test {
+  let test_value = {
+    let a = "12345";
+    OpAddInt(OpAddInt(OpMulInt(_tp_text_len(a), 100i32), OpMulInt(_tp_text_len("😃"), 10i32)), _tp_text_len("♥"));
+  };
+  if OpEqInt(test_value, 543i32) {null} else {OpGenPanic({
+    let append_8 = "Test failed ";
+    OpFormatInt(append_8, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(append_8, " != 543");
+    append_8;
+  })};
+}
+
+byte-code for str_len:test()
+ 664[0]: return-address
+ 664[4]: Text()
+ 665[28]: ConstText(_value="12345") -> text
+ 672[44]: AppendText(var[4], v1: text)
+ 675[28]: VarText(var[4]) -> text
+ 678[44]: GenCall(size=0, to=318)
+ 685[32]: ConstInt(val=100) -> integer
+ 690[36]: MulInt(v1: integer, v2: integer) -> integer
+ 691[32]: ConstText(_value="😃") -> text
+ 697[48]: GenCall(size=0, to=318)
+ 704[36]: ConstInt(val=10) -> integer
+ 709[40]: MulInt(v1: integer, v2: integer) -> integer
+ 710[36]: AddInt(v1: integer, v2: integer) -> integer
+ 711[32]: ConstText(_value="♥") -> text
+ 716[48]: GenCall(size=0, to=318)
+ 723[36]: AddInt(v1: integer, v2: integer) -> integer
+ 724[32]: GenFreeStack(value=4, discard=24)
+ 728[8]: VarInt(var[4]) -> integer
+ 731[12]: ConstInt(val=543) -> integer
+ 736[16]: EqInt(v1: integer, v2: integer) -> boolean
+ 737[9]: GenGotoFalseWord(jump=743, if_false: boolean)
+ 740[8]: GenGotoWord(jump=796)
+ 743[8]: Text()
+ 744[32]: ConstText(_value="Test failed ") -> text
+ 758[48]: AppendText(var[8], v1: text)
+ 761[32]: VarInt(var[4]) -> integer
+ 764[36]: ConstInt(val=0) -> integer
+ 769[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 776[32]: ConstText(_value=" != 543") -> text
+ 785[48]: AppendText(var[8], v1: text)
+ 788[32]: VarText(var[8]) -> text
+ 791[48]: GenFreeStack(value=16, discard=24)
+ 795[24]: GenPanic(message: text)
+ 796[8]: GenReturn(ret=0, value=0, discard=8)
+
+Execute test:
+  664:[4] Text()
+  665:[28] ConstText(_value="12345") -> "12345"[28]
+  672:[44] AppendText(var[4], v1="12345"[28])
+  675:[28] VarText(var[4]) -> "12345"[28]
+  678:[44] GenCall(size=0, to=318)
+  318:[48] ArgText(var[28]) -> "12345"[48]
+  321:[64] LengthText(v1="12345"[48]) -> 5[48]
+  322:[52] GenReturn(ret=685[44], value=4, discard=24)
+  685:[32] ConstInt(val=100) -> 100[32]
+  690:[36] MulInt(v1=5[28], v2=100[32]) -> 500[28]
+  691:[32] ConstText(_value="😃") -> "😃"[32]
+  697:[48] GenCall(size=0, to=318)
+  318:[52] ArgText(var[32]) -> "😃"[52]
+  321:[68] LengthText(v1="😃"[52]) -> 4[52]
+  322:[56] GenReturn(ret=704[48], value=4, discard=24)
+  704:[36] ConstInt(val=10) -> 10[36]
+  709:[40] MulInt(v1=4[32], v2=10[36]) -> 40[32]
+  710:[36] AddInt(v1=500[28], v2=40[32]) -> 540[28]
+  711:[32] ConstText(_value="♥") -> "♥"[32]
+  716:[48] GenCall(size=0, to=318)
+  318:[52] ArgText(var[32]) -> "♥"[52]
+  321:[68] LengthText(v1="♥"[52]) -> 3[52]
+  322:[56] GenReturn(ret=723[48], value=4, discard=24)
+  723:[36] AddInt(v1=540[28], v2=3[32]) -> 543[28]
+  724:[32] GenFreeStack(value=4, discard=24)
+  728:[8] VarInt(var[4]) -> 543[8]
+  731:[12] ConstInt(val=543) -> 543[12]
+  736:[16] EqInt(v1=543[8], v2=543[12]) -> true[8]
+  737:[9] GenGotoFalseWord(jump=743, if_false=true[8])
+  740:[8] GenGotoWord(jump=796)
+  796:[8] GenReturn(ret=4294967295[0], value=0, discard=8)
+Finished

@@ -8,6 +8,11 @@ mod testing;
 use dryopea::data::Value;
 
 #[test]
+fn access() {
+    expr!("v=[1, 10, 100]; v[1]").result(Value::Int(10));
+}
+
+#[test]
 fn vectors() {
     expr!(
         "v=[1, 2, 1+2];
@@ -21,14 +26,43 @@ t + v[0] + v[-1] + v.len()"
 }
 
 #[test]
+fn iter_vector() {
+    expr!(
+        "v=[1, 2, 4, 8];
+c = 0;
+for e in v[1..3] {
+  c = c * 10 + e;
+}
+for e in v[2..] {
+  c = c * 10 + e;
+}
+c"
+    )
+    .result(Value::Int(2448));
+}
+
+#[test]
+fn iter_rev_vector() {
+    expr!(
+        "v=[1, 2, 4, 8];
+c = 0;
+for e in v[rev(0..=3)] {
+  c = c * 10 + e;
+}
+c"
+    )
+    .result(Value::Int(8421));
+}
+
+#[test]
 fn format_vector() {
     expr!(
-        // indirect iterators:  {v[1..3]} {v[$ < 3]} =>  [2, 3] [1, 2]
+        // filtered iterators:  {v[$ < 3]}
         "v=[1, 2, 4, 8];
 v += [16];
-\"{v} {v.len()} {v[2]} {for x in v if x >= 4 {x/2}}\""
+\"{v} {v.len()} {v[2]} {v[1..3]} {v[rev(1..=3)]} {for x in v if x >= 4 {x/2}}\""
     )
-    .result(Value::str("[1,2,4,8,16] 5 4 [2, 4, 8]"));
+    .result(Value::str("[1,2,4,8,16] 5 4 [2,4] [8,4,2] [2,4,8]"));
 }
 
 #[test]
@@ -40,7 +74,9 @@ fn parse_vector() {
 /*
 #[test]
 fn map_vector() {
-    expr!("v=..10; w=[for x in v if x < 4 {x * 3}]; \"{w}\"").result(Value::str("[0, 3, 6, 9]"));
+    expr!("v=[0,1,2,3,4,5,6,7,8,9];
+w=[for x in v if x < 4 {x * 3}];
+\"{w}\"").result(Value::str("[0, 3, 6, 9]"));
 }
 
 #[test]
@@ -116,21 +152,97 @@ for elm in a { sum += elm }
     )
     .result(Value::str("798000"));
 }
-/*
+
 #[test]
-fn ordered_vector() {
-    code!("struct Elm {key: text, value: integer}
-struct Db {map: vector<Elm[key desc]>}")
-        .expr(
-            "db=Db {map: [Elm {key: \"One\", value: 1}, Elm {key: \"Two\", value: 2}]};
+fn sorted_vector() {
+    code!(
+        "struct Elm {key: text, value: integer}
+struct Db {map: sorted<Elm[-key]>}"
+    )
+    .expr(
+        "db=Db {map: [Elm {key: \"One\", value: 1}, Elm {key: \"Two\", value: 2}]};
 db.map += [Elm {key: \"Three\", value: 3}, Elm {key: \"Four\", value: 4}];
 sum = 0;
 for v in db.map {
   sum = sum * 10 + v.value;
 };
-sum = sum * 10 + db.map[$.key == \"Three\"].value;
+sum = sum * 10 + db.map[\"Three\"].value;
 sum",
-        )
-        .result(Value::Int(41323));
+    )
+    .result(Value::Int(23143));
+}
+
+/*
+#[test]
+fn sorted_iterator() {
+    code!(
+        "struct Elm {nr: integer, key: text, value: integer}
+struct Db {map: sorted<Elm[-nr,key]>}"
+    )
+    .expr(
+        "db=Db {map: [
+  Elm {nr: 101, key: \"One\", value: 1},
+  Elm {nr: 92, key: \"Two\", value: 2},
+  Elm {nr: 83, key: \"Three\", value: 3},
+  Elm {nr: 83, key: \"Four\", value: 4},
+  Elm {nr: 83, key: \"Five\", value: 5},
+  Elm {nr: 63, key: \"Six\", value: 6},
+]};
+sum = 0;
+for v in db.map[91..=63,Six] {
+  sum = sum * 10 + v.value;
+};
+sum",
+    )
+    .result(Value::Int(25436));
 }
 */
+
+#[test]
+fn hash() {
+    code!(
+        "struct Count { t: text, v: integer};
+struct Counting { v: vector<Count>, h: hash<Count[t]> };
+fn fill(c: Counting) {
+  c.v = [
+    {t:\"One\", v:1},
+    {t:\"Two\", v:2},
+  ];
+  c.v += [
+    {t:\"Three\", v:3},
+    {t:\"Four\", v:4},
+    {t:\"Five\", v:5},
+    {t:\"Six\", v:6},
+    {t:\"Seven\", v:7},
+    {t:\"Eight\", v:8},
+    {t:\"Nine\", v:9},
+    {t:\"Ten\", v:10},
+    {t:\"Eleven\", v:11},
+    {t:\"Twelve\", v:12},
+    {t:\"Thirteen\", v:13}
+  ];
+}"
+    )
+    .expr("c = Counting {}; fill(c); c.h[\"Five\"].v + c.h[\"Seven\"].v")
+    .result(Value::Int(12));
+}
+
+#[test]
+fn multi_hash() {
+    code!(
+        "enum Cat { A, B, C };
+struct Count { c: Cat, t: text, v: integer};
+struct Counting { v: sorted<Count[t,v]>, h: hash<Count[c,t]> };
+fn fill(c: Counting) {
+  c.v = [
+    {c:A, t:\"One\", v:1},
+    {c:B, t:\"Two\", v:2},
+    {c:C, t:\"Two\", v:20},
+    {c:A, t:\"Three\", v:3},
+    {c:C, t:\"Four\", v:4}
+  ]
+}"
+    )
+    .expr("c = Counting {}; fill(c); c.h[A,\"Three\"].v + c.h[C,\"Two\"].v + c.v[\"Four\",4].v")
+    .result(Value::Int(27));
+}

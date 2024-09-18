@@ -5,8 +5,7 @@
 pub struct Pixel {
     r: integer limit(0, 255) not null,
     g: integer limit(0, 255) not null,
-    b: integer limit(0, 255) not null,
-    value: virtual(r * 0x10000 + g * 0x100 + b)
+    b: integer limit(0, 255) not null
 }
 
 // Database structure with image data
@@ -25,18 +24,22 @@ pub struct File {
 }
 
 fn OpGetFile(file: File) -> boolean;
-#rust "stores.read_file(@file)"
+#rust "stores.get_file(&@file)"
 
 fn OpGetDir(path: text, result: vector<File>) -> boolean;
-#rust "stores.get_dir(@path, @result)"
+#rust "stores.get_dir(@path, &@result)"
 
 fn OpGetPngImage(path: text, image: Image) -> boolean;
-#rust "stores.get_png(@image)"
+#rust "stores.get_png(@path, &@image)"
 
 fn OpGetFileText(file: File) -> text;
-#rust "stores.get_file_text(@file)"
+#rust "Str::new(&stores.get_file_text(&@file))"
 
-pub fn text(self: File) -> text {
+pub fn value(self: Pixel) -> integer {
+    self.r * 0x10000 + self.g * 0x100 + self.b
+}
+
+pub fn content(self: File) -> text {
     OpGetFileText(self)
 }
 

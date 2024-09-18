@@ -1,10 +1,192 @@
+class Mission {
+    name: text,
+    description: text,
+    prerequisite: vec<Item>,
+    specials: vec<Item>
+}
+
+enum StatType {
+    skill, statistic, unit, weapon, state
+}
+
+enum Statistic {
+    // skills:
+    boost, build, combat, drive, hack, mine, operate, repair, scout, scrounge, social, stealth,
+    // statistics:
+    agility, charisma, observe, plan, stamina, tinker,
+    // unit:
+    armor, assembly, bulk, efficiency, flammable, handling, hits, isolation, max_speed, resilience, storage, value,
+    weight,
+    // weapon:
+    acid, bludgeon, cold, cutting, emp, falloff, flaming, flash, lightning, piercing, poison, range,
+    // state:
+    damage, direction, primed, speed, wear
+}
+
+class StatInfo {
+    statistic: Statistic,
+    type: StatType,
+    description: text,
+}
+
+enum Faction {
+    spacers, economy, natives, shaman, robots, world, oceanic, ancient, aliens
+}
+
+class FactionInfo {
+    faction: Faction,
+    description: text,
+    knowledge: vec<Item>,
+}
+
+class Gameplay {
+    statistics: vec<StatInfo>,
+    factions: vec<FactionInfo>,
+    missions: vec<Mission>,
+}
+
+class Stat {
+    statistic: Statistic,
+    value: i8,
+}
+
+enum ItemType {
+    knowledge, background, class, drug, upgrade,
+    tower, vehicle, building, machine, human, robot, animal, weapon, ammo, material, good, fluid,
+}
+
+class Item {
+    name: text,
+    type: ItemType,
+    description: text,
+    statistics: vec<Stat>,
+}
+
+class Cost {
+    item: Item,
+    amount: u8,
+}
+
+class Produce {
+    item: Item,
+    speed: u8,
+    cost: vec<Cost>,
+}
+
+class Construct: Item {
+    production: vec<Produce>,
+}
+
+class Machine: Construct {
+    fuel: vec<Cost>,
+}
+
+class Building: Construct {
+    production: vec<Produce>,
+}
+
+class BuildQueue {
+    item: Item,
+    priority: u8,
+    towards: Actual,
+}
+
+enum LinkType {
+    pipe, pipes, electric, laser, attached, road, path, air, transport
+}
+
+class Link {
+    to: Actual,
+    type: LinkType,
+    length: integer,
+}
+
+class Position {
+    x: integer, // in roughly meters
+    y: integer,
+    z: integer,
+}
+
+enum GoalType {
+    go, destroy, create, defend, repair, salvage, mine,
+}
+
+class Goal {
+    type: GoalType,
+    subject: Actual,
+}
+
+class Actual {
+    position: Position,
+    type: Construct,
+    links: vec<Link>,
+    installed: vec<Actual>,
+    content: vec<Actual>,
+    stats: vec<Stat>,
+    goals: vec<Goal>,
+}
+
+class Group {
+    name: text,
+    faction: Faction,
+    knowledge: vec<Actual>,
+}
+
+class Game {
+    groups: vec<Group>,
+}
+
+class Interact {
+    company: Company,
+    hostility: u8,
+    cooperation: u8,
+}
+
+class History {
+    position: Position,
+    success: u8, // 1 - disaster, 10 - major success
+    cost: [Content],
+    recovered: [Content],
+    interactions: [Interact],
+    revenue: i16,
+}
+
+class Company {
+    name: text,
+    description: text,
+    value: u16,
+    history: [History],
+}
+
+enum AirState {
+    clear, smoke, fog, darkness
+}
+
+enum GroundState {
+    normal, wet, water, sand, rubble, ice, snow, sea, ocean, mud, path, road, bridge,
+    tree, shrubberies, vegetables, grass
+}
+
+class Detail {
+    height: u16,
+    ground: GroundState,
+    air: AirState,
+    aggro: u8, // 4 bits ground, 4 bits climb
+}
+
+class Plane {
+    position: Position,
+    data: vector<Detail> // area of maximal 32x32
+    items: vector<Actual> // items
+}
+
 class Tile {
     water: integer limit(0, 63) not null,
     dir: integer limit(0, 11) not null,
     // direction with the even numbers the direct neighbours and uneven the next on points
     height: integer limit(-10000, 55535) not null,
     // negative height is below sea level, in 10cm increments
-    terrain: integer limit(0, 254)
+    terrain: integer limit(0, 254),
 }
 
 class Map {
@@ -29,9 +211,8 @@ class Terrain {
     rain: integer limit(0, 255) not null // how much water does this terrain contribute
     shown: integer, // the general color to display this terrain with
 }
-// TODO allow for textures
-// TODO plant growth
 
+// TODO allow for textures
 class World {
     name: text,
     maps: vector<Map>,

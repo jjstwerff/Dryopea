@@ -1,0 +1,167 @@
+Test code:
+pub fn test() {
+    test_value = {a="♥😃"; a[0] + a[1] + a[2] + a[3] + a[4] + a[5] + a[6] + "." + a[7]};
+    assert(
+        test_value == "♥♥♥😃😃😃😃.",
+        "Test failed {test_value} != \"♥♥♥😃😃😃😃.\""
+    );
+}
+
+fn test {
+  let __work_4 = "";
+  let test_value = {
+    let a = "♥😃";
+    OpClearText(__work_4);
+    OpAppendText(__work_4, OpGetTextSub(a, 0i32, -2147483648i32));
+    OpAppendText(__work_4, OpGetTextSub(a, 1i32, -2147483648i32));
+    OpAppendText(__work_4, OpGetTextSub(a, 2i32, -2147483648i32));
+    OpAppendText(__work_4, OpGetTextSub(a, 3i32, -2147483648i32));
+    OpAppendText(__work_4, OpGetTextSub(a, 4i32, -2147483648i32));
+    OpAppendText(__work_4, OpGetTextSub(a, 5i32, -2147483648i32));
+    OpAppendText(__work_4, OpGetTextSub(a, 6i32, -2147483648i32));
+    OpAppendText(__work_4, ".");
+    OpAppendText(__work_4, OpGetTextSub(a, 7i32, -2147483648i32));
+    __work_4;
+  };
+  if OpEqText(test_value, "♥♥♥😃😃😃😃.") {null} else {OpGenPanic({
+    let append_9 = "Test failed ";
+    OpFormatText(append_9, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(append_9, " != "♥♥♥😃😃😃😃."");
+    append_9;
+  })};
+}
+
+byte-code for utf8_index:test()
+ 664[0]: return-address
+ 664[4]: Text()
+ 665[28]: ConstText(_value="") -> text
+ 667[44]: AppendText(var[4], v1: text)
+ 670[28]: Text()
+ 671[52]: Text()
+ 672[76]: ConstText(_value="♥😃") -> text
+ 681[92]: AppendText(var[52], v1: text)
+ 684[76]: ClearText(var[4])
+ 687[76]: VarText(var[52]) -> text
+ 690[92]: ConstInt(val=0) -> integer
+ 695[96]: ConstInt(val=-2147483648) -> integer
+ 700[100]: GetTextSub(v1: text, from: integer, till: integer) -> text
+ 701[92]: AppendText(var[4], v1: text)
+ 704[76]: VarText(var[52]) -> text
+ 707[92]: ConstInt(val=1) -> integer
+ 712[96]: ConstInt(val=-2147483648) -> integer
+ 717[100]: GetTextSub(v1: text, from: integer, till: integer) -> text
+ 718[92]: AppendText(var[4], v1: text)
+ 721[76]: VarText(var[52]) -> text
+ 724[92]: ConstInt(val=2) -> integer
+ 729[96]: ConstInt(val=-2147483648) -> integer
+ 734[100]: GetTextSub(v1: text, from: integer, till: integer) -> text
+ 735[92]: AppendText(var[4], v1: text)
+ 738[76]: VarText(var[52]) -> text
+ 741[92]: ConstInt(val=3) -> integer
+ 746[96]: ConstInt(val=-2147483648) -> integer
+ 751[100]: GetTextSub(v1: text, from: integer, till: integer) -> text
+ 752[92]: AppendText(var[4], v1: text)
+ 755[76]: VarText(var[52]) -> text
+ 758[92]: ConstInt(val=4) -> integer
+ 763[96]: ConstInt(val=-2147483648) -> integer
+ 768[100]: GetTextSub(v1: text, from: integer, till: integer) -> text
+ 769[92]: AppendText(var[4], v1: text)
+ 772[76]: VarText(var[52]) -> text
+ 775[92]: ConstInt(val=5) -> integer
+ 780[96]: ConstInt(val=-2147483648) -> integer
+ 785[100]: GetTextSub(v1: text, from: integer, till: integer) -> text
+ 786[92]: AppendText(var[4], v1: text)
+ 789[76]: VarText(var[52]) -> text
+ 792[92]: ConstInt(val=6) -> integer
+ 797[96]: ConstInt(val=-2147483648) -> integer
+ 802[100]: GetTextSub(v1: text, from: integer, till: integer) -> text
+ 803[92]: AppendText(var[4], v1: text)
+ 806[76]: ConstText(_value=".") -> text
+ 809[92]: AppendText(var[4], v1: text)
+ 812[76]: VarText(var[52]) -> text
+ 815[92]: ConstInt(val=7) -> integer
+ 820[96]: ConstInt(val=-2147483648) -> integer
+ 825[100]: GetTextSub(v1: text, from: integer, till: integer) -> text
+ 826[92]: AppendText(var[4], v1: text)
+ 829[76]: VarText(var[4]) -> text
+ 832[92]: GenFreeStack(value=16, discard=24)
+ 836[68]: AppendText(var[28], v1: text)
+ 839[52]: VarText(var[28]) -> text
+ 842[68]: ConstText(_value="♥♥♥😃😃😃😃.") -> text
+ 870[84]: EqText(v1: text, v2: text) -> boolean
+ 871[53]: GenGotoFalseWord(jump=877, if_false: boolean)
+ 874[52]: GenGotoWord(jump=953)
+ 877[52]: Text()
+ 878[76]: ConstText(_value="Test failed ") -> text
+ 892[92]: AppendText(var[52], v1: text)
+ 895[76]: VarText(var[28]) -> text
+ 898[92]: ConstInt(val=0) -> integer
+ 903[96]: FormatText(var[52], val: text, width: integer, dir=-1, token=32)
+ 908[76]: ConstText(_value=" != "♥♥♥😃😃😃😃."") -> text
+ 942[92]: AppendText(var[52], v1: text)
+ 945[76]: VarText(var[52]) -> text
+ 948[92]: GenFreeStack(value=16, discard=24)
+ 952[68]: GenPanic(message: text)
+ 953[52]: GenReturn(ret=0, value=0, discard=52)
+
+Execute test:
+  664:[4] Text()
+  665:[28] ConstText(_value="") -> ""[28]
+  667:[44] AppendText(var[4], v1=""[28])
+  670:[28] Text()
+  671:[52] Text()
+  672:[76] ConstText(_value="♥😃") -> "♥😃"[76]
+  681:[92] AppendText(var[52], v1="♥😃"[76])
+  684:[76] ClearText(var[4])
+  687:[76] VarText(var[52]) -> "♥😃"[76]
+  690:[92] ConstInt(val=0) -> 0[92]
+  695:[96] ConstInt(val=-2147483648) -> -2147483648[96]
+  700:[100] GetTextSub(v1="♥😃"[76], from=0[92], till=-2147483648[96]) -> "♥"[76]
+  701:[92] AppendText(var[4], v1="♥"[76])
+  704:[76] VarText(var[52]) -> "♥😃"[76]
+  707:[92] ConstInt(val=1) -> 1[92]
+  712:[96] ConstInt(val=-2147483648) -> -2147483648[96]
+  717:[100] GetTextSub(v1="♥😃"[76], from=1[92], till=-2147483648[96]) -> "♥"[76]
+  718:[92] AppendText(var[4], v1="♥"[76])
+  721:[76] VarText(var[52]) -> "♥😃"[76]
+  724:[92] ConstInt(val=2) -> 2[92]
+  729:[96] ConstInt(val=-2147483648) -> -2147483648[96]
+  734:[100] GetTextSub(v1="♥😃"[76], from=2[92], till=-2147483648[96]) -> "♥"[76]
+  735:[92] AppendText(var[4], v1="♥"[76])
+  738:[76] VarText(var[52]) -> "♥😃"[76]
+  741:[92] ConstInt(val=3) -> 3[92]
+  746:[96] ConstInt(val=-2147483648) -> -2147483648[96]
+  751:[100] GetTextSub(v1="♥😃"[76], from=3[92], till=-2147483648[96]) -> "😃"[76]
+  752:[92] AppendText(var[4], v1="😃"[76])
+  755:[76] VarText(var[52]) -> "♥😃"[76]
+  758:[92] ConstInt(val=4) -> 4[92]
+  763:[96] ConstInt(val=-2147483648) -> -2147483648[96]
+  768:[100] GetTextSub(v1="♥😃"[76], from=4[92], till=-2147483648[96]) -> "😃"[76]
+  769:[92] AppendText(var[4], v1="😃"[76])
+  772:[76] VarText(var[52]) -> "♥😃"[76]
+  775:[92] ConstInt(val=5) -> 5[92]
+  780:[96] ConstInt(val=-2147483648) -> -2147483648[96]
+  785:[100] GetTextSub(v1="♥😃"[76], from=5[92], till=-2147483648[96]) -> "😃"[76]
+  786:[92] AppendText(var[4], v1="😃"[76])
+  789:[76] VarText(var[52]) -> "♥😃"[76]
+  792:[92] ConstInt(val=6) -> 6[92]
+  797:[96] ConstInt(val=-2147483648) -> -2147483648[96]
+  802:[100] GetTextSub(v1="♥😃"[76], from=6[92], till=-2147483648[96]) -> "😃"[76]
+  803:[92] AppendText(var[4], v1="😃"[76])
+  806:[76] ConstText(_value=".") -> "."[76]
+  809:[92] AppendText(var[4], v1="."[76])
+  812:[76] VarText(var[52]) -> "♥😃"[76]
+  815:[92] ConstInt(val=7) -> 7[92]
+  820:[96] ConstInt(val=-2147483648) -> -2147483648[96]
+  825:[100] GetTextSub(v1="♥😃"[76], from=7[92], till=-2147483648[96]) -> ""[76]
+  826:[92] AppendText(var[4], v1=""[76])
+  829:[76] VarText(var[4]) -> "♥♥♥😃😃😃😃."[76]
+  832:[92] GenFreeStack(value=16, discard=24)
+  836:[68] AppendText(var[28], v1="♥♥♥😃😃😃😃."[52])
+  839:[52] VarText(var[28]) -> "♥♥♥😃😃😃😃."[52]
+  842:[68] ConstText(_value="♥♥♥😃😃😃😃.") -> "♥♥♥😃😃😃😃."[68]
+  870:[84] EqText(v1="♥♥♥😃😃😃😃."[52], v2="♥♥♥😃😃😃😃."[68]) -> true[52]
+  871:[53] GenGotoFalseWord(jump=877, if_false=true[52])
+  874:[52] GenGotoWord(jump=953)
+  953:[52] GenReturn(ret=4294967295[0], value=0, discard=52)
+Finished

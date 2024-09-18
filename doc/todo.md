@@ -1,7 +1,3 @@
-The short term, high priority list.
-The highest priority item is normally repairing the currently defined tests.
-Secondary is always the warning free generation of code in clippy.
-
 Link to feature documents when possible. It is allowed to indicate that only a part of the feature is high priority.
 Eventually features need to be "done" however that is never a short term goal.
 

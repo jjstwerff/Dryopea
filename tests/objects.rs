@@ -24,11 +24,11 @@ fn obj() -> boolean {
 fn print_object() {
     code!(
         "struct Object{a: integer, bb: text, ccc: boolean}
-fn obj() -> Object { Object {a: 12, bb: \"hi\", ccc: false} }"
+fn obj() -> Object { Object {a: 12, bb: \"hi\", ccc: false } }"
     )
     .expr("o = obj(); \"{o} pretty {o:#}\"")
     .result(Value::str(
-        "{a:12,bb:\"hi\",ccc:false} pretty { a: 12,\n  bb: \"hi\",\n  ccc: false\n}",
+        "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }",
     ));
 }
 
@@ -47,6 +47,9 @@ fn sum(o: Object) -> integer {
     .result(Value::str("{a:[1,4,3,8],b:Fluid}"));
 }
 
+// TODO A vector with only enum value
+// TODO Vector with record including an enum
+
 #[test]
 fn duplicate() {
     code!(
@@ -64,11 +67,14 @@ fn colours() {
     code!("struct Point {
   r: integer limit(0, 255) not null,
   g: integer limit(0, 255) not null,
-  b: limit(0, 255) not null,
-  value: virtual(r * 0x10000 + g * 0x100 + b)
+  b: integer limit(0, 255) not null
+}
+
+fn value(self: Point) -> integer {
+  self.r * 0x10000 + self.g * 0x100 + self.b
 }"
     )
-    .expr("  points = [ Point { r:128, b:128 }, Point { b:255 } ];\n  \"size:{sizeof(Point)} purple:{points[0]} value:{points[0].value:x} blue:{points[1]}\"")
+    .expr("  points = [ Point { r:128, b:128 }, Point { b:255 } ];\n  \"size:{sizeof(Point)} purple:{points[0]} value:{points[0].value():x} blue:{points[1]}\"")
     .result(Value::str("size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"));
 }
 
@@ -77,10 +83,14 @@ fn restrictions() {
     code!(
         "struct Data {
   byte: integer limit(0, 255) not null,
-  val: limit(1, 256) check(val > byte),
-  signed: limit(-127, 127) default(1),
-  calc: integer virtual(val * 65536 + byte * 256 + signed)
-}"
+  val: integer limit(1, 256) check(val > byte),
+  signed: integer limit(-127, 127) default(1)
+}
+
+fn calc(self: Data) -> integer {
+  self.val * 65536 + self.byte * 256 + self.signed
+}
+"
     )
     .expr("1")
     .result(Value::Int(1));

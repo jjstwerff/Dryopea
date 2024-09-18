@@ -1,0 +1,59 @@
+Test code:
+pub fn test() {
+    test_value = {2 * 2 < 3};
+    assert(
+        test_value == false,
+        "Test failed {test_value} != false"
+    );
+}
+
+fn test {
+  let test_value = {
+    OpLtInt(OpMulInt(2i32, 2i32), 3i32);
+  };
+  if OpEqBool(test_value, false) {null} else {OpGenPanic({
+    let append_7 = "Test failed ";
+    OpFormatBool(append_7, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(append_7, " != false");
+    append_7;
+  })};
+}
+
+byte-code for expr_lower:test()
+ 664[0]: return-address
+ 664[4]: ConstInt(val=2) -> integer
+ 669[8]: ConstInt(val=2) -> integer
+ 674[12]: MulInt(v1: integer, v2: integer) -> integer
+ 675[8]: ConstInt(val=3) -> integer
+ 680[12]: LtInt(v1: integer, v2: integer) -> boolean
+ 681[5]: VarBool(var[4]) -> boolean
+ 684[6]: ConstFalse() -> boolean
+ 685[7]: EqBool(v1: boolean, v2: boolean) -> boolean
+ 686[6]: GenGotoFalseWord(jump=692, if_false: boolean)
+ 689[5]: GenGotoWord(jump=745)
+ 692[5]: Text()
+ 693[29]: ConstText(_value="Test failed ") -> text
+ 707[45]: AppendText(var[5], v1: text)
+ 710[29]: VarBool(var[4]) -> boolean
+ 713[30]: ConstInt(val=0) -> integer
+ 718[34]: FormatBool(var[5], val: boolean, width: integer, dir=-1, token=32)
+ 723[29]: ConstText(_value=" != false") -> text
+ 734[45]: AppendText(var[5], v1: text)
+ 737[29]: VarText(var[5]) -> text
+ 740[45]: GenFreeStack(value=16, discard=24)
+ 744[21]: GenPanic(message: text)
+ 745[5]: GenReturn(ret=0, value=0, discard=5)
+
+Execute test:
+  664:[4] ConstInt(val=2) -> 2[4]
+  669:[8] ConstInt(val=2) -> 2[8]
+  674:[12] MulInt(v1=2[4], v2=2[8]) -> 4[4]
+  675:[8] ConstInt(val=3) -> 3[8]
+  680:[12] LtInt(v1=4[4], v2=3[8]) -> false[4]
+  681:[5] VarBool(var[4]) -> false[5]
+  684:[6] ConstFalse() -> false[6]
+  685:[7] EqBool(v1=false[5], v2=false[6]) -> true[5]
+  686:[6] GenGotoFalseWord(jump=692, if_false=true[5])
+  689:[5] GenGotoWord(jump=745)
+  745:[5] GenReturn(ret=4294967295[0], value=0, discard=5)
+Finished

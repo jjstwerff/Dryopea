@@ -1,0 +1,63 @@
+Test code:
+enum Number { One, Two, Three, Four }
+
+pub fn test() {
+    test_value = {1 as Number < 3 as Number};
+    assert(
+        test_value == true,
+        "Test failed {test_value} != true"
+    );
+}
+
+Type 13:Number[1]:Enum(["One", "Two", "Three", "Four"])
+
+fn test {
+  let test_value = {
+    OpLtEnum(OpCastEnumFromInt(1i32, 13i32), OpCastEnumFromInt(3i32, 13i32));
+  };
+  if OpEqBool(test_value, true) {null} else {OpGenPanic({
+    let append_7 = "Test failed ";
+    OpFormatBool(append_7, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(append_7, " != true");
+    append_7;
+  })};
+}
+
+byte-code for int_to_enum:test()
+ 664[0]: return-address
+ 664[4]: ConstInt(val=1) -> integer
+ 669[8]: CastEnumFromInt(v1: integer) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[13]
+ 670[5]: ConstInt(val=3) -> integer
+ 675[9]: CastEnumFromInt(v1: integer) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[13]
+ 676[6]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
+ 677[5]: VarBool(var[4]) -> boolean
+ 680[6]: ConstTrue() -> boolean
+ 681[7]: EqBool(v1: boolean, v2: boolean) -> boolean
+ 682[6]: GenGotoFalseWord(jump=688, if_false: boolean)
+ 685[5]: GenGotoWord(jump=740)
+ 688[5]: Text()
+ 689[29]: ConstText(_value="Test failed ") -> text
+ 703[45]: AppendText(var[5], v1: text)
+ 706[29]: VarBool(var[4]) -> boolean
+ 709[30]: ConstInt(val=0) -> integer
+ 714[34]: FormatBool(var[5], val: boolean, width: integer, dir=-1, token=32)
+ 719[29]: ConstText(_value=" != true") -> text
+ 729[45]: AppendText(var[5], v1: text)
+ 732[29]: VarText(var[5]) -> text
+ 735[45]: GenFreeStack(value=16, discard=24)
+ 739[21]: GenPanic(message: text)
+ 740[5]: GenReturn(ret=0, value=0, discard=5)
+
+Execute test:
+  664:[4] ConstInt(val=1) -> 1[4]
+  669:[8] CastEnumFromInt(v1=1[4]) -> One(1)[4]
+  670:[5] ConstInt(val=3) -> 3[5]
+  675:[9] CastEnumFromInt(v1=3[5]) -> Three(3)[5]
+  676:[6] LtEnum(v1=1[4], v2=3[5]) -> true[4]
+  677:[5] VarBool(var[4]) -> true[5]
+  680:[6] ConstTrue() -> true[6]
+  681:[7] EqBool(v1=true[5], v2=true[6]) -> true[5]
+  682:[6] GenGotoFalseWord(jump=688, if_false=true[5])
+  685:[5] GenGotoWord(jump=740)
+  740:[5] GenReturn(ret=4294967295[0], value=0, discard=5)
+Finished

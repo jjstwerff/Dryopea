@@ -4,16 +4,18 @@
 //! A radix tree implementation.
 //! This is especially useful for spacial indexes.
 #![allow(dead_code)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_sign_loss)]
 
 use crate::store::Store;
 
-static RAD_TOP: isize = 4;
-static RAD_SIZE: isize = 8;
-static RAD_BITS: isize = 12;
+static RAD_TOP: u32 = 4;
+static RAD_SIZE: u32 = 8;
+static RAD_BITS: u32 = 12;
 // position of the bits vector
-static RAD_FALSE: isize = 12;
+static RAD_FALSE: u32 = 12;
 // first node = 1
-static RAD_TRUE: isize = 16; // first node = 1
+static RAD_TRUE: u32 = 16; // first node = 1
 
 const MAX_DEPTH: usize = 64;
 
@@ -26,6 +28,7 @@ pub struct RadixIter {
 }
 
 impl RadixIter {
+    #[allow(clippy::unused_self)]
     pub fn next(&mut self, _store: &Store, _tree: u32) -> Option<u32> {
         // in node: walk FALSE, walk TRUE; when encountered ref => up again in positions
         None
@@ -56,32 +59,25 @@ pub fn rtree_init(store: &mut Store, initial: u32) -> u32 {
     tree
 }
 
-fn get_node(store: &Store, tree: u32, node: i32, bit: bool) -> i32 {
-    store.get_int(
-        tree,
-        if bit { RAD_TRUE } else { RAD_FALSE } + node as isize * 8,
-    )
+fn get_node(store: &Store, tree: u32, node: u32, bit: bool) -> i32 {
+    store.get_int(tree, if bit { RAD_TRUE } else { RAD_FALSE } + node * 8)
 }
 
-fn set_node(store: &mut Store, tree: u32, node: i32, bit: bool, val: i32) {
-    store.set_int(
-        tree,
-        if bit { RAD_TRUE } else { RAD_FALSE } + node as isize * 8,
-        val,
-    );
+fn set_node(store: &mut Store, tree: u32, node: u32, bit: bool, val: i32) {
+    store.set_int(tree, if bit { RAD_TRUE } else { RAD_FALSE } + node * 8, val);
 }
 
-fn get_bits(store: &Store, bits: u32, node: i32) -> u32 {
+fn get_bits(store: &Store, bits: u32, node: u32) -> u32 {
     if node > 0 {
-        store.get_byte(bits, 3 + node as isize, 0) as u32
+        store.get_byte(bits, 3 + node, 0) as u32
     } else {
         0
     }
 }
 
-fn set_bits(store: &mut Store, bits: u32, node: i32, nr: u32) {
+fn set_bits(store: &mut Store, bits: u32, node: u32, nr: u32) {
     if node > 0 {
-        store.set_byte(bits, 3 + node as isize, nr as i32, 0);
+        store.set_byte(bits, 3 + node, nr as i32, 0);
     }
 }
 
@@ -105,7 +101,7 @@ fn straight(store: &Store, tree: u32, dir: bool) -> RadixIter {
     let mut node = store.get_int(tree, RAD_TOP);
     while node < 0 {
         res.add(node, dir);
-        node = get_node(store, tree, node, dir);
+        node = get_node(store, tree, node as u32, dir);
     }
     res.rec = node as u32;
     res
@@ -127,12 +123,12 @@ where
         return res;
     }
     let mut node = store.get_int(tree, RAD_TOP);
-    let mut bit = get_bits(store, bits, -node);
+    let mut bit = get_bits(store, bits, (-node) as u32);
     while node < 0 {
         let check = key(bit);
         res.add(node, check);
-        node = get_node(store, tree, -node, check);
-        bit += get_bits(store, bits, -node);
+        node = get_node(store, tree, (-node) as u32, check);
+        bit += get_bits(store, bits, (-node) as u32);
     }
     res.rec = node as u32;
     res
@@ -160,7 +156,7 @@ fn compare_bits(
             (Some(b), Some(c)) => {
                 if b != c {
                     if c {
-                        *higher = false
+                        *higher = false;
                     };
                     break;
                 }
@@ -194,9 +190,9 @@ pub fn rtree_insert(
     // Top node
     if size == 1 {
         store.set_int(tree, RAD_TOP, -size);
-        set_node(store, tree, size, higher, rec as i32);
-        set_node(store, tree, size, !higher, cur as i32);
-        set_bits(store, bits, size, 0);
+        set_node(store, tree, size as u32, higher, rec as i32);
+        set_node(store, tree, size as u32, !higher, cur as i32);
+        set_bits(store, bits, size as u32, 0);
         return;
     }
     // Find node to split, this is not necessarily the last
@@ -204,7 +200,7 @@ pub fn rtree_insert(
     let mut node = 0;
     for depth in 0..it.depth {
         node = it.positions[depth as usize];
-        let skip = get_bits(store, bits, -node);
+        let skip = get_bits(store, bits, (-node) as u32);
         if diff_bit < bit + skip {
             // we found the node to split
             break;
@@ -212,7 +208,7 @@ pub fn rtree_insert(
         bit += skip;
     }
     // Split the node
-    set_bits(store, bits, -node, diff_bit - bit);
+    set_bits(store, bits, (-node) as u32, diff_bit - bit);
 }
 
 #[cfg(test)]
@@ -233,7 +229,7 @@ pub fn rtree_validate(
     while let Some(_v) = it.next(store, tree) {
         let _node = it.node();
         let cur = it.rec;
-        let _skip = get_bits(store, bits, i32::abs(it.node()));
+        let _skip = get_bits(store, bits, i32::abs(it.node()) as u32);
         // validate 0 on rec's
         // get the key bits of rec and cur
         // validate the ordering

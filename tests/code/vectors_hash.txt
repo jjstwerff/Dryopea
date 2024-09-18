@@ -1,0 +1,512 @@
+Test code:
+struct Count { t: text, v: integer};
+struct Counting { v: vector<Count>, h: hash<Count[t]> };
+fn fill(c: Counting) {
+  c.v = [
+    {t:"One", v:1},
+    {t:"Two", v:2},
+  ];
+  c.v += [
+    {t:"Three", v:3},
+    {t:"Four", v:4},
+    {t:"Five", v:5},
+    {t:"Six", v:6},
+    {t:"Seven", v:7},
+    {t:"Eight", v:8},
+    {t:"Nine", v:9},
+    {t:"Ten", v:10},
+    {t:"Eleven", v:11},
+    {t:"Twelve", v:12},
+    {t:"Thirteen", v:13}
+  ];
+}
+
+pub fn test() {
+    test_value = {c = Counting {}; fill(c); c.h["Five"].v + c.h["Seven"].v};
+    assert(
+        test_value == 12,
+        "Test failed {test_value} != 12"
+    );
+}
+
+Type 13:Count[12]:
+    t:text[4]
+    v:integer[8]
+
+Type 14:Counting[12]:
+    v:array<Count>[4] other [1]
+    h:hash<Count[t]>[8] other [65535]
+
+Type 15:array<Count>[4]:Array(13)
+
+Type 16:hash<Count[t]>[4]:Hash(13, [0])
+
+fn fill {
+  {
+    let elm_10 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_10, 4i32, "One");
+    OpSetInt(elm_10, 8i32, 1i32);
+    OpFinishRecord(c, elm_10, 14i32, 0i32);
+    elm_10 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_10, 4i32, "Two");
+    OpSetInt(elm_10, 8i32, 2i32);
+    OpFinishRecord(c, elm_10, 14i32, 0i32);
+  };
+  {
+    let elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Three");
+    OpSetInt(elm_11, 8i32, 3i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Four");
+    OpSetInt(elm_11, 8i32, 4i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Five");
+    OpSetInt(elm_11, 8i32, 5i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Six");
+    OpSetInt(elm_11, 8i32, 6i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Seven");
+    OpSetInt(elm_11, 8i32, 7i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Eight");
+    OpSetInt(elm_11, 8i32, 8i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Nine");
+    OpSetInt(elm_11, 8i32, 9i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Ten");
+    OpSetInt(elm_11, 8i32, 10i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Eleven");
+    OpSetInt(elm_11, 8i32, 11i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Twelve");
+    OpSetInt(elm_11, 8i32, 12i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+    elm_11 = OpNewRecord(c, 14i32, 0i32);
+    OpSetText(elm_11, 4i32, "Thirteen");
+    OpSetInt(elm_11, 8i32, 13i32);
+    OpFinishRecord(c, elm_11, 14i32, 0i32);
+  };
+}
+
+byte-code for hash:fill(c: Counting[0])
+ 664[12]: return-address
+ 664[16]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 667[28]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 672[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 675[40]: ConstText(_value="One") -> text
+ 680[56]: SetText(v1: reference, fld=4, val: text)
+ 683[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 686[40]: ConstInt(val=1) -> integer
+ 691[44]: SetInt(v1: reference, fld=8, val: integer)
+ 694[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 697[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 700[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 705[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 708[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 713[40]: PutRef(var[16], value: reference)
+ 716[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 719[40]: ConstText(_value="Two") -> text
+ 724[56]: SetText(v1: reference, fld=4, val: text)
+ 727[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 730[40]: ConstInt(val=2) -> integer
+ 735[44]: SetInt(v1: reference, fld=8, val: integer)
+ 738[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 741[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 744[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 749[28]: GenFreeStack(value=0, discard=12)
+ 753[16]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 756[28]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 761[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 764[40]: ConstText(_value="Three") -> text
+ 771[56]: SetText(v1: reference, fld=4, val: text)
+ 774[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 777[40]: ConstInt(val=3) -> integer
+ 782[44]: SetInt(v1: reference, fld=8, val: integer)
+ 785[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 788[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 791[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 796[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 799[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 804[40]: PutRef(var[16], value: reference)
+ 807[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 810[40]: ConstText(_value="Four") -> text
+ 816[56]: SetText(v1: reference, fld=4, val: text)
+ 819[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 822[40]: ConstInt(val=4) -> integer
+ 827[44]: SetInt(v1: reference, fld=8, val: integer)
+ 830[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 833[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 836[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 841[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 844[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 849[40]: PutRef(var[16], value: reference)
+ 852[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 855[40]: ConstText(_value="Five") -> text
+ 861[56]: SetText(v1: reference, fld=4, val: text)
+ 864[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 867[40]: ConstInt(val=5) -> integer
+ 872[44]: SetInt(v1: reference, fld=8, val: integer)
+ 875[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 878[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 881[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 886[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 889[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 894[40]: PutRef(var[16], value: reference)
+ 897[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 900[40]: ConstText(_value="Six") -> text
+ 905[56]: SetText(v1: reference, fld=4, val: text)
+ 908[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 911[40]: ConstInt(val=6) -> integer
+ 916[44]: SetInt(v1: reference, fld=8, val: integer)
+ 919[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 922[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 925[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 930[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 933[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 938[40]: PutRef(var[16], value: reference)
+ 941[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 944[40]: ConstText(_value="Seven") -> text
+ 951[56]: SetText(v1: reference, fld=4, val: text)
+ 954[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 957[40]: ConstInt(val=7) -> integer
+ 962[44]: SetInt(v1: reference, fld=8, val: integer)
+ 965[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 968[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 971[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 976[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+ 979[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 984[40]: PutRef(var[16], value: reference)
+ 987[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+ 990[40]: ConstText(_value="Eight") -> text
+ 997[56]: SetText(v1: reference, fld=4, val: text)
+1000[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1003[40]: ConstInt(val=8) -> integer
+1008[44]: SetInt(v1: reference, fld=8, val: integer)
+1011[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1014[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1017[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+1022[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1025[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+1030[40]: PutRef(var[16], value: reference)
+1033[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1036[40]: ConstText(_value="Nine") -> text
+1042[56]: SetText(v1: reference, fld=4, val: text)
+1045[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1048[40]: ConstInt(val=9) -> integer
+1053[44]: SetInt(v1: reference, fld=8, val: integer)
+1056[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1059[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1062[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+1067[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1070[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+1075[40]: PutRef(var[16], value: reference)
+1078[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1081[40]: ConstText(_value="Ten") -> text
+1086[56]: SetText(v1: reference, fld=4, val: text)
+1089[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1092[40]: ConstInt(val=10) -> integer
+1097[44]: SetInt(v1: reference, fld=8, val: integer)
+1100[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1103[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1106[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+1111[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1114[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+1119[40]: PutRef(var[16], value: reference)
+1122[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1125[40]: ConstText(_value="Eleven") -> text
+1133[56]: SetText(v1: reference, fld=4, val: text)
+1136[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1139[40]: ConstInt(val=11) -> integer
+1144[44]: SetInt(v1: reference, fld=8, val: integer)
+1147[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1150[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1153[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+1158[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1161[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+1166[40]: PutRef(var[16], value: reference)
+1169[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1172[40]: ConstText(_value="Twelve") -> text
+1180[56]: SetText(v1: reference, fld=4, val: text)
+1183[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1186[40]: ConstInt(val=12) -> integer
+1191[44]: SetInt(v1: reference, fld=8, val: integer)
+1194[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1197[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1200[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+1205[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1208[40]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+1213[40]: PutRef(var[16], value: reference)
+1216[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1219[40]: ConstText(_value="Thirteen") -> text
+1229[56]: SetText(v1: reference, fld=4, val: text)
+1232[28]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1235[40]: ConstInt(val=13) -> integer
+1240[44]: SetInt(v1: reference, fld=8, val: integer)
+1243[28]: VarRef(var[0]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1246[40]: VarRef(var[16]) -> reference type=Count[12]:{t:text[4], v:integer[8]}[13]
+1249[52]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+1254[28]: GenFreeStack(value=0, discard=12)
+1258[16]: GenReturn(ret=12, value=0, discard=16)
+
+fn test {
+  let test_value = {
+    let c = {
+      let val = OpDatabase(12i32, 14i32);
+      OpSetInt(val, 4i32, 0i32);
+      OpSetInt(val, 8i32, 0i32);
+      val;
+    };
+    fill(c);
+    OpAddInt(OpGetInt(OpGetRecord(OpGetField(c, 8i32, 16i32), 16i32, 1i32, "Five"), 8i32), OpGetInt(OpGetRecord(OpGetField(c, 8i32, 16i32), 16i32, 1i32, "Seven"), 8i32));
+  };
+  if OpEqInt(test_value, 12i32) {null} else {OpGenPanic({
+    let append_10 = "Test failed ";
+    OpFormatInt(append_10, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(append_10, " != 12");
+    append_10;
+  })};
+}
+
+byte-code for hash:test()
+1264[0]: return-address
+1264[4]: Database(size=12, db_tp=14) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1269[16]: VarRef(var[4]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1272[28]: ConstInt(val=0) -> integer
+1277[32]: SetInt(v1: reference, fld=4, val: integer)
+1280[16]: VarRef(var[4]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1283[28]: ConstInt(val=0) -> integer
+1288[32]: SetInt(v1: reference, fld=8, val: integer)
+1291[16]: VarRef(var[4]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1294[28]: GenFreeStack(value=12, discard=12)
+1298[16]: VarRef(var[4]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1301[28]: GenCall(size=0, to=664)
+1308[16]: VarRef(var[4]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1311[28]: GetField(v1: reference, fld=8) -> reference type=hash<Count[t]>[4]:Hash(13, [0])[16]
+1314[28]: ConstText(_value="Five") -> text
+1320[44]: GetRecord(data: reference, db_tp=16, no_keys=1) -> reference
+1324[28]: GetInt(v1: reference, fld=8) -> integer
+1327[20]: VarRef(var[4]) -> reference type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[14]
+1330[32]: GetField(v1: reference, fld=8) -> reference type=hash<Count[t]>[4]:Hash(13, [0])[16]
+1333[32]: ConstText(_value="Seven") -> text
+1340[48]: GetRecord(data: reference, db_tp=16, no_keys=1) -> reference
+1344[32]: GetInt(v1: reference, fld=8) -> integer
+1347[24]: AddInt(v1: integer, v2: integer) -> integer
+1348[20]: GenFreeStack(value=4, discard=12)
+1352[8]: VarInt(var[4]) -> integer
+1355[12]: ConstInt(val=12) -> integer
+1360[16]: EqInt(v1: integer, v2: integer) -> boolean
+1361[9]: GenGotoFalseWord(jump=1367, if_false: boolean)
+1364[8]: GenGotoWord(jump=1419)
+1367[8]: Text()
+1368[32]: ConstText(_value="Test failed ") -> text
+1382[48]: AppendText(var[8], v1: text)
+1385[32]: VarInt(var[4]) -> integer
+1388[36]: ConstInt(val=0) -> integer
+1393[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+1400[32]: ConstText(_value=" != 12") -> text
+1408[48]: AppendText(var[8], v1: text)
+1411[32]: VarText(var[8]) -> text
+1414[48]: GenFreeStack(value=16, discard=24)
+1418[24]: GenPanic(message: text)
+1419[8]: GenReturn(ret=0, value=0, discard=8)
+
+Execute test:
+ 1264:[4] Database(size=12, db_tp=14) -> ref(1,1,0)={v:[]}[4]
+ 1269:[16] VarRef(var[4]) -> ref(1,1,0)={v:[]}[16]
+ 1272:[28] ConstInt(val=0) -> 0[28]
+ 1277:[32] SetInt(v1=ref(1,1,0)[16], fld=4, val=0[28])
+ 1280:[16] VarRef(var[4]) -> ref(1,1,0)={v:[]}[16]
+ 1283:[28] ConstInt(val=0) -> 0[28]
+ 1288:[32] SetInt(v1=ref(1,1,0)[16], fld=8, val=0[28])
+ 1291:[16] VarRef(var[4]) -> ref(1,1,0)={v:[]}[16]
+ 1294:[28] GenFreeStack(value=12, discard=12)
+ 1298:[16] VarRef(var[4]) -> ref(1,1,0)={v:[]}[16]
+ 1301:[28] GenCall(size=0, to=664)
+  664:[32] VarRef(var[16]) -> ref(1,1,0)={v:[]}[32]
+  667:[44] NewRecord(data=ref(1,1,0)[32], parent_tp=14, fld=0) -> ref(1,13,0)[32]
+  672:[44] VarRef(var[32]) -> ref(1,13,0)={}[44]
+  675:[56] ConstText(_value="One") -> "One"[56]
+  680:[72] SetText(v1=ref(1,13,0)[44], fld=4, val="One"[56])
+  683:[44] VarRef(var[32]) -> ref(1,13,0)={t:"One"}[44]
+  686:[56] ConstInt(val=1) -> 1[56]
+  691:[60] SetInt(v1=ref(1,13,0)[44], fld=8, val=1[56])
+  694:[44] VarRef(var[16]) -> ref(1,1,0)={v:[]}[44]
+  697:[56] VarRef(var[32]) -> ref(1,13,0)={t:"One",v:1}[56]
+  700:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,13,0)[56], parent_tp=14, fld=0)
+  705:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1}]}[44]
+  708:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,33,0)[44]
+  713:[56] PutRef(var[32], value=ref(1,33,0)[44])
+  716:[44] VarRef(var[32]) -> ref(1,33,0)={}[44]
+  719:[56] ConstText(_value="Two") -> "Two"[56]
+  724:[72] SetText(v1=ref(1,33,0)[44], fld=4, val="Two"[56])
+  727:[44] VarRef(var[32]) -> ref(1,33,0)={t:"Two"}[44]
+  730:[56] ConstInt(val=2) -> 2[56]
+  735:[60] SetInt(v1=ref(1,33,0)[44], fld=8, val=2[56])
+  738:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1}]}[44]
+  741:[56] VarRef(var[32]) -> ref(1,33,0)={t:"Two",v:2}[56]
+  744:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,33,0)[56], parent_tp=14, fld=0)
+  749:[44] GenFreeStack(value=0, discard=12)
+  753:[32] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2}]}[32]
+  756:[44] NewRecord(data=ref(1,1,0)[32], parent_tp=14, fld=0) -> ref(1,37,0)[32]
+  761:[44] VarRef(var[32]) -> ref(1,37,0)={}[44]
+  764:[56] ConstText(_value="Three") -> "Three"[56]
+  771:[72] SetText(v1=ref(1,37,0)[44], fld=4, val="Three"[56])
+  774:[44] VarRef(var[32]) -> ref(1,37,0)={t:"Three"}[44]
+  777:[56] ConstInt(val=3) -> 3[56]
+  782:[60] SetInt(v1=ref(1,37,0)[44], fld=8, val=3[56])
+  785:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2}]}[44]
+  788:[56] VarRef(var[32]) -> ref(1,37,0)={t:"Three",v:3}[56]
+  791:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,37,0)[56], parent_tp=14, fld=0)
+  796:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3}]}[44]
+  799:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,41,0)[44]
+  804:[56] PutRef(var[32], value=ref(1,41,0)[44])
+  807:[44] VarRef(var[32]) -> ref(1,41,0)={}[44]
+  810:[56] ConstText(_value="Four") -> "Four"[56]
+  816:[72] SetText(v1=ref(1,41,0)[44], fld=4, val="Four"[56])
+  819:[44] VarRef(var[32]) -> ref(1,41,0)={t:"Four"}[44]
+  822:[56] ConstInt(val=4) -> 4[56]
+  827:[60] SetInt(v1=ref(1,41,0)[44], fld=8, val=4[56])
+  830:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3}]}[44]
+  833:[56] VarRef(var[32]) -> ref(1,41,0)={t:"Four",v:4}[56]
+  836:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,41,0)[56], parent_tp=14, fld=0)
+  841:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4}]}[44]
+  844:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,45,0)[44]
+  849:[56] PutRef(var[32], value=ref(1,45,0)[44])
+  852:[44] VarRef(var[32]) -> ref(1,45,0)={}[44]
+  855:[56] ConstText(_value="Five") -> "Five"[56]
+  861:[72] SetText(v1=ref(1,45,0)[44], fld=4, val="Five"[56])
+  864:[44] VarRef(var[32]) -> ref(1,45,0)={t:"Five"}[44]
+  867:[56] ConstInt(val=5) -> 5[56]
+  872:[60] SetInt(v1=ref(1,45,0)[44], fld=8, val=5[56])
+  875:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4}]}[44]
+  878:[56] VarRef(var[32]) -> ref(1,45,0)={t:"Five",v:5}[56]
+  881:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,45,0)[56], parent_tp=14, fld=0)
+  886:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5}]}[44]
+  889:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,49,0)[44]
+  894:[56] PutRef(var[32], value=ref(1,49,0)[44])
+  897:[44] VarRef(var[32]) -> ref(1,49,0)={}[44]
+  900:[56] ConstText(_value="Six") -> "Six"[56]
+  905:[72] SetText(v1=ref(1,49,0)[44], fld=4, val="Six"[56])
+  908:[44] VarRef(var[32]) -> ref(1,49,0)={t:"Six"}[44]
+  911:[56] ConstInt(val=6) -> 6[56]
+  916:[60] SetInt(v1=ref(1,49,0)[44], fld=8, val=6[56])
+  919:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5}]}[44]
+  922:[56] VarRef(var[32]) -> ref(1,49,0)={t:"Six",v:6}[56]
+  925:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,49,0)[56], parent_tp=14, fld=0)
+  930:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6}]}[44]
+  933:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,53,0)[44]
+  938:[56] PutRef(var[32], value=ref(1,53,0)[44])
+  941:[44] VarRef(var[32]) -> ref(1,53,0)={}[44]
+  944:[56] ConstText(_value="Seven") -> "Seven"[56]
+  951:[72] SetText(v1=ref(1,53,0)[44], fld=4, val="Seven"[56])
+  954:[44] VarRef(var[32]) -> ref(1,53,0)={t:"Seven"}[44]
+  957:[56] ConstInt(val=7) -> 7[56]
+  962:[60] SetInt(v1=ref(1,53,0)[44], fld=8, val=7[56])
+  965:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6}]}[44]
+  968:[56] VarRef(var[32]) -> ref(1,53,0)={t:"Seven",v:7}[56]
+  971:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,53,0)[56], parent_tp=14, fld=0)
+  976:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7}]}[44]
+  979:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,57,0)[44]
+  984:[56] PutRef(var[32], value=ref(1,57,0)[44])
+  987:[44] VarRef(var[32]) -> ref(1,57,0)={}[44]
+  990:[56] ConstText(_value="Eight") -> "Eight"[56]
+  997:[72] SetText(v1=ref(1,57,0)[44], fld=4, val="Eight"[56])
+ 1000:[44] VarRef(var[32]) -> ref(1,57,0)={t:"Eight"}[44]
+ 1003:[56] ConstInt(val=8) -> 8[56]
+ 1008:[60] SetInt(v1=ref(1,57,0)[44], fld=8, val=8[56])
+ 1011:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7}]}[44]
+ 1014:[56] VarRef(var[32]) -> ref(1,57,0)={t:"Eight",v:8}[56]
+ 1017:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,57,0)[56], parent_tp=14, fld=0)
+ 1022:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8}]}[44]
+ 1025:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,61,0)[44]
+ 1030:[56] PutRef(var[32], value=ref(1,61,0)[44])
+ 1033:[44] VarRef(var[32]) -> ref(1,61,0)={}[44]
+ 1036:[56] ConstText(_value="Nine") -> "Nine"[56]
+ 1042:[72] SetText(v1=ref(1,61,0)[44], fld=4, val="Nine"[56])
+ 1045:[44] VarRef(var[32]) -> ref(1,61,0)={t:"Nine"}[44]
+ 1048:[56] ConstInt(val=9) -> 9[56]
+ 1053:[60] SetInt(v1=ref(1,61,0)[44], fld=8, val=9[56])
+ 1056:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8}]}[44]
+ 1059:[56] VarRef(var[32]) -> ref(1,61,0)={t:"Nine",v:9}[56]
+ 1062:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,61,0)[56], parent_tp=14, fld=0)
+ 1067:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9}]}[44]
+ 1070:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,65,0)[44]
+ 1075:[56] PutRef(var[32], value=ref(1,65,0)[44])
+ 1078:[44] VarRef(var[32]) -> ref(1,65,0)={}[44]
+ 1081:[56] ConstText(_value="Ten") -> "Ten"[56]
+ 1086:[72] SetText(v1=ref(1,65,0)[44], fld=4, val="Ten"[56])
+ 1089:[44] VarRef(var[32]) -> ref(1,65,0)={t:"Ten"}[44]
+ 1092:[56] ConstInt(val=10) -> 10[56]
+ 1097:[60] SetInt(v1=ref(1,65,0)[44], fld=8, val=10[56])
+ 1100:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9}]}[44]
+ 1103:[56] VarRef(var[32]) -> ref(1,65,0)={t:"Ten",v:10}[56]
+ 1106:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,65,0)[56], parent_tp=14, fld=0)
+ 1111:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10}]}[44]
+ 1114:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,69,0)[44]
+ 1119:[56] PutRef(var[32], value=ref(1,69,0)[44])
+ 1122:[44] VarRef(var[32]) -> ref(1,69,0)={}[44]
+ 1125:[56] ConstText(_value="Eleven") -> "Eleven"[56]
+ 1133:[72] SetText(v1=ref(1,69,0)[44], fld=4, val="Eleven"[56])
+ 1136:[44] VarRef(var[32]) -> ref(1,69,0)={t:"Eleven"}[44]
+ 1139:[56] ConstInt(val=11) -> 11[56]
+ 1144:[60] SetInt(v1=ref(1,69,0)[44], fld=8, val=11[56])
+ 1147:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10}]}[44]
+ 1150:[56] VarRef(var[32]) -> ref(1,69,0)={t:"Eleven",v:11}[56]
+ 1153:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,69,0)[56], parent_tp=14, fld=0)
+ 1158:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11}]}[44]
+ 1161:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,90,0)[44]
+ 1166:[56] PutRef(var[32], value=ref(1,90,0)[44])
+ 1169:[44] VarRef(var[32]) -> ref(1,90,0)={}[44]
+ 1172:[56] ConstText(_value="Twelve") -> "Twelve"[56]
+ 1180:[72] SetText(v1=ref(1,90,0)[44], fld=4, val="Twelve"[56])
+ 1183:[44] VarRef(var[32]) -> ref(1,90,0)={t:"Twelve"}[44]
+ 1186:[56] ConstInt(val=12) -> 12[56]
+ 1191:[60] SetInt(v1=ref(1,90,0)[44], fld=8, val=12[56])
+ 1194:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11}]}[44]
+ 1197:[56] VarRef(var[32]) -> ref(1,90,0)={t:"Twelve",v:12}[56]
+ 1200:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,90,0)[56], parent_tp=14, fld=0)
+ 1205:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12}]}[44]
+ 1208:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=14, fld=0) -> ref(1,94,0)[44]
+ 1213:[56] PutRef(var[32], value=ref(1,94,0)[44])
+ 1216:[44] VarRef(var[32]) -> ref(1,94,0)={}[44]
+ 1219:[56] ConstText(_value="Thirteen") -> "Thirteen"[56]
+ 1229:[72] SetText(v1=ref(1,94,0)[44], fld=4, val="Thirteen"[56])
+ 1232:[44] VarRef(var[32]) -> ref(1,94,0)={t:"Thirteen"}[44]
+ 1235:[56] ConstInt(val=13) -> 13[56]
+ 1240:[60] SetInt(v1=ref(1,94,0)[44], fld=8, val=13[56])
+ 1243:[44] VarRef(var[16]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12}]}[44]
+ 1246:[56] VarRef(var[32]) -> ref(1,94,0)={t:"Thirteen",v:13}[56]
+ 1249:[68] FinishRecord(data=ref(1,1,0)[44], rec=ref(1,94,0)[56], parent_tp=14, fld=0)
+ 1254:[44] GenFreeStack(value=0, discard=12)
+ 1258:[32] GenReturn(ret=1308[28], value=0, discard=16)
+ 1308:[16] VarRef(var[4]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[16]
+ 1311:[28] GetField(v1=ref(1,1,0)[16], fld=8) -> ref(1,1,8)=[{t:"Three",v:3},{t:"Thirteen",v:13},{t:"Six",v:6},{t:"Eight",v:8},{t:"Four",v:4},{t:"Five",v:5},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"One",v:1},{t:"Twelve",v:12},{t:"Nine",v:9},{t:"Two",v:2},{t:"Seven",v:7}][16]
+ 1314:[28] ConstText(_value="Five") -> "Five"[28]
+ 1320:[44] GetRecord(data=ref(1,1,8)[16], db_tp=16, no_keys=1, key1="Five"[28]) -> ref(1,45,0)[16]
+ 1324:[28] GetInt(v1=ref(1,45,0)[16], fld=8) -> 5[16]
+ 1327:[20] VarRef(var[4]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[20]
+ 1330:[32] GetField(v1=ref(1,1,0)[20], fld=8) -> ref(1,1,8)=[{t:"Three",v:3},{t:"Thirteen",v:13},{t:"Six",v:6},{t:"Eight",v:8},{t:"Four",v:4},{t:"Five",v:5},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"One",v:1},{t:"Twelve",v:12},{t:"Nine",v:9},{t:"Two",v:2},{t:"Seven",v:7}][20]
+ 1333:[32] ConstText(_value="Seven") -> "Seven"[32]
+ 1340:[48] GetRecord(data=ref(1,1,8)[20], db_tp=16, no_keys=1, key1="Seven"[32]) -> ref(1,53,0)[20]
+ 1344:[32] GetInt(v1=ref(1,53,0)[20], fld=8) -> 7[20]
+ 1347:[24] AddInt(v1=5[16], v2=7[20]) -> 12[16]
+ 1348:[20] GenFreeStack(value=4, discard=12)
+ 1352:[8] VarInt(var[4]) -> 12[8]
+ 1355:[12] ConstInt(val=12) -> 12[12]
+ 1360:[16] EqInt(v1=12[8], v2=12[12]) -> true[8]
+ 1361:[9] GenGotoFalseWord(jump=1367, if_false=true[8])
+ 1364:[8] GenGotoWord(jump=1419)
+ 1419:[8] GenReturn(ret=4294967295[0], value=0, discard=8)
+Finished

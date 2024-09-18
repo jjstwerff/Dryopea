@@ -1,0 +1,79 @@
+Test code:
+pub fn test() {
+    test_value = {t = "some"; t+="thing"; t.len() + len(t)};
+    assert(
+        test_value == 18,
+        "Test failed {test_value} != 18"
+    );
+}
+
+fn test {
+  let test_value = {
+    let t = "some";
+    OpAppendText(t, "thing");
+    OpAddInt(_tp_text_len(t), _tp_text_len(t));
+  };
+  if OpEqInt(test_value, 18i32) {null} else {OpGenPanic({
+    let append_8 = "Test failed ";
+    OpFormatInt(append_8, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(append_8, " != 18");
+    append_8;
+  })};
+}
+
+byte-code for text_length:test()
+ 664[0]: return-address
+ 664[4]: Text()
+ 665[28]: ConstText(_value="some") -> text
+ 671[44]: AppendText(var[4], v1: text)
+ 674[28]: ConstText(_value="thing") -> text
+ 681[44]: AppendText(var[4], v1: text)
+ 684[28]: VarText(var[4]) -> text
+ 687[44]: GenCall(size=0, to=318)
+ 694[32]: VarText(var[4]) -> text
+ 697[48]: GenCall(size=0, to=318)
+ 704[36]: AddInt(v1: integer, v2: integer) -> integer
+ 705[32]: GenFreeStack(value=4, discard=24)
+ 709[8]: VarInt(var[4]) -> integer
+ 712[12]: ConstInt(val=18) -> integer
+ 717[16]: EqInt(v1: integer, v2: integer) -> boolean
+ 718[9]: GenGotoFalseWord(jump=724, if_false: boolean)
+ 721[8]: GenGotoWord(jump=776)
+ 724[8]: Text()
+ 725[32]: ConstText(_value="Test failed ") -> text
+ 739[48]: AppendText(var[8], v1: text)
+ 742[32]: VarInt(var[4]) -> integer
+ 745[36]: ConstInt(val=0) -> integer
+ 750[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 757[32]: ConstText(_value=" != 18") -> text
+ 765[48]: AppendText(var[8], v1: text)
+ 768[32]: VarText(var[8]) -> text
+ 771[48]: GenFreeStack(value=16, discard=24)
+ 775[24]: GenPanic(message: text)
+ 776[8]: GenReturn(ret=0, value=0, discard=8)
+
+Execute test:
+  664:[4] Text()
+  665:[28] ConstText(_value="some") -> "some"[28]
+  671:[44] AppendText(var[4], v1="some"[28])
+  674:[28] ConstText(_value="thing") -> "thing"[28]
+  681:[44] AppendText(var[4], v1="thing"[28])
+  684:[28] VarText(var[4]) -> "something"[28]
+  687:[44] GenCall(size=0, to=318)
+  318:[48] ArgText(var[28]) -> "something"[48]
+  321:[64] LengthText(v1="something"[48]) -> 9[48]
+  322:[52] GenReturn(ret=694[44], value=4, discard=24)
+  694:[32] VarText(var[4]) -> "something"[32]
+  697:[48] GenCall(size=0, to=318)
+  318:[52] ArgText(var[32]) -> "something"[52]
+  321:[68] LengthText(v1="something"[52]) -> 9[52]
+  322:[56] GenReturn(ret=704[48], value=4, discard=24)
+  704:[36] AddInt(v1=9[28], v2=9[32]) -> 18[28]
+  705:[32] GenFreeStack(value=4, discard=24)
+  709:[8] VarInt(var[4]) -> 18[8]
+  712:[12] ConstInt(val=18) -> 18[12]
+  717:[16] EqInt(v1=18[8], v2=18[12]) -> true[8]
+  718:[9] GenGotoFalseWord(jump=724, if_false=true[8])
+  721:[8] GenGotoWord(jump=776)
+  776:[8] GenReturn(ret=4294967295[0], value=0, discard=8)
+Finished
