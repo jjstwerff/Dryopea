@@ -3,8 +3,9 @@
 
 extern crate dryopea;
 
-use dryopea::database::{Content, Stores, Str};
-use dryopea::keys::DbRef;
+use dryopea::database::{Stores, Str};
+use dryopea::hash;
+use dryopea::keys::{Content, DbRef};
 
 #[test]
 pub fn record() {
@@ -162,7 +163,12 @@ pub fn hash() {
     stores.parse(data, v, &into);
     let key = [Content::Str(Str::new("second")), Content::Long(2)];
     let mut check = String::new();
-    stores.show(&mut check, &stores.find(&into, v, &key), s, false);
+    stores.show(
+        &mut check,
+        &hash::find(&into, &stores.allocations, stores.keys(v), &key),
+        s,
+        false,
+    );
     assert_eq!(check, "{name:\"second\",cat:2,value:1.67}");
 }
 
@@ -191,9 +197,12 @@ pub fn array_record() {
     stores.show(&mut check, &into, m, false);
     assert_eq!(test_string, check);
     let mut check = String::new();
-    let key = [Content::Str(Str::new("hello"))];
     into.pos = 8;
-    stores.show(&mut check, &stores.find(&into, h, &key), s, false);
+    let keys = stores.keys(h).to_vec();
+    hash::validate(&into, &stores.allocations, &keys);
+    let key = [Content::Str(Str::new("hello"))];
+    let rec = hash::find(&into, &stores.allocations, &keys, &key);
+    stores.show(&mut check, &rec, s, false);
     assert_eq!(check, "{n:\"hello\",c:10}");
 }
 
@@ -229,6 +238,11 @@ pub fn ordered_record() {
     let mut check = String::new();
     let key = [Content::Str(Str::new("world"))];
     into.pos = 8;
-    stores.show(&mut check, &stores.find(&into, h, &key), s, false);
+    stores.show(
+        &mut check,
+        &hash::find(&into, &stores.allocations, stores.keys(h), &key),
+        s,
+        false,
+    );
     assert_eq!(check, "{n:\"world\",c:2}");
 }

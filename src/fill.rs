@@ -229,6 +229,10 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     get_record,
     start,
     next,
+    validate,
+    hash_add,
+    hash_find,
+    hash_remove,
     eq_bool,
     ne_bool,
     gen_panic,
@@ -1716,6 +1720,22 @@ fn start(s: &mut State) {
 
 fn next(s: &mut State) {
     s.next();
+}
+
+fn validate(s: &mut State) {
+    s.validate();
+}
+
+fn hash_add(s: &mut State) {
+    s.hash_add();
+}
+
+fn hash_find(s: &mut State) {
+    s.hash_find();
+}
+
+fn hash_remove(s: &mut State) {
+    s.hash_remove();
 }
 
 fn eq_bool(s: &mut State) {

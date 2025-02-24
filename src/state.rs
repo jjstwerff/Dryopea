@@ -3,11 +3,11 @@
 #![allow(clippy::cast_sign_loss)]
 
 use crate::data::{Attribute, Context, Data, I32, Type, Value};
-use crate::database::{Content, ShowDb, Stores, Str};
-use crate::external;
+use crate::database::{ShowDb, Stores, Str};
 use crate::fill::OPERATORS;
-use crate::keys::DbRef;
+use crate::keys::{Content, DbRef};
 use crate::stack::{Stack, size};
+use crate::{external, hash};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{Error, Write};
 use std::str::FromStr;
@@ -426,14 +426,14 @@ impl State {
     }
 
     pub fn get_record(&mut self) {
-        let (db_tp, key) = self.read_key();
+        let (db_tp, key) = self.read_key(false);
         let data = *self.get_stack::<DbRef>();
         let res = self.database.find(&data, db_tp, &key);
         self.put_stack(res);
     }
 
     pub fn start(&mut self) {
-        let (db_tp, key) = self.read_key();
+        let (db_tp, key) = self.read_key(false);
         let data = *self.get_stack::<DbRef>();
         let res = self.database.start(&data, db_tp, &key);
         self.put_stack(res);
@@ -443,7 +443,7 @@ impl State {
         let var_pos = *self.code::<u16>();
         let stack = self.stack_pos;
         let mut pos = *self.get_var::<i32>(var_pos);
-        let (db_tp, key) = self.read_key();
+        let (db_tp, key) = self.read_key(false);
         let data = *self.get_stack::<DbRef>();
         let res = self.database.next(&data, &mut pos, db_tp, &key);
         self.put_stack(res);
@@ -451,11 +451,57 @@ impl State {
         self.put_var(var_pos + 4 - dif as u16, pos);
     }
 
-    fn read_key(&mut self) -> (u16, Vec<Content>) {
+    pub fn hash_add(&mut self) {
+        let tp = *self.code::<u16>();
+        let rec = *self.get_stack::<DbRef>();
+        let data = *self.get_stack::<DbRef>();
+        hash::add(
+            &data,
+            &rec,
+            &mut self.database.allocations,
+            &self.database.types[tp as usize].keys,
+        );
+    }
+
+    pub fn validate(&mut self) {
+        let tp = *self.code::<u16>();
+        let data = *self.get_stack::<DbRef>();
+        self.database.validate(&data, tp);
+    }
+
+    pub fn hash_find(&mut self) {
+        let data = *self.get_stack::<DbRef>();
+        let (db_tp, key) = self.read_key(true);
+        let res = hash::find(
+            &data,
+            &self.database.allocations,
+            &self.database.types[db_tp as usize].keys,
+            &key,
+        );
+        self.put_stack(res);
+    }
+
+    pub fn hash_remove(&mut self) {
+        let tp = *self.code::<u16>();
+        let rec = *self.get_stack::<DbRef>();
+        let data = *self.get_stack::<DbRef>();
+        hash::remove(
+            &data,
+            &rec,
+            &mut self.database.allocations,
+            &self.database.types[tp as usize].keys,
+        );
+    }
+
+    fn read_key(&mut self, full: bool) -> (u16, Vec<Content>) {
         let db_tp = *self.code::<u16>();
-        let no_keys = *self.code::<u8>();
-        let mut key = Vec::new();
         let keys = self.database.get_keys(db_tp);
+        let no_keys = if full {
+            keys.len() as u8
+        } else {
+            *self.code::<u8>()
+        };
+        let mut key = Vec::new();
         for (k_nr, k) in keys.iter().enumerate() {
             if k_nr >= no_keys as usize {
                 break;

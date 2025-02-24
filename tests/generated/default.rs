@@ -221,14 +221,14 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
     {let db = (var_db_11); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
     var_vec_10
   };
-  if ({let db = (var_self); if db.rec == 0 { i32::MIN } else { stores.store(&db).get_int(db.rec, db.pos + u32::from((12_i32)))} }) == (1_i32) {
-    Drop(Call(299, [Call(261, [Var(0), Int(8)]), Var(1)]))
+  if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((12_i32)), i32::from((0_i32)))}) == (1_i32) {
+    Drop(Call(303, [Call(261, [Var(0), Int(8)]), Var(1)]))
   } else {Null};
   var_result
 }
 
 fn _tp_File_png(stores: &mut Stores, var_0: DbRef) -> DbRef {
-  if !(({let db = (var_self); if db.rec == 0 { i32::MIN } else { stores.store(&db).get_int(db.rec, db.pos + u32::from((12_i32)))} }) == (1_i32)) {
+  if !(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((12_i32)), i32::from((0_i32)))}) == (1_i32)) {
     let mut var_1 = {
       let mut var_2 = OpDatabase(stores, 20_i32, 8_i32);
       {let db = (var_val); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
@@ -237,7 +237,7 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef) -> DbRef {
       {let db = (var_val); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
       var_val
     };
-    Drop(Call(300, [Call(261, [Var(0), Int(8)]), Var(1)]));
+    Drop(Call(304, [Call(261, [Var(0), Int(8)]), Var(1)]));
     var_result
   } else {
     Stores::null()

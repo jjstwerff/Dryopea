@@ -31,8 +31,9 @@ pub fn generate_code(data: &Data) -> std::io::Result<()> {
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::too_many_lines)]
-use crate::database::{{DbRef, Stores, Str}};
+use crate::database::{{Stores, Str}};
 use crate::external;
+use crate::keys::DbRef;
 use crate::state::State;\n
 pub const OPERATORS: &[fn(&mut State)] = &["
     )?;

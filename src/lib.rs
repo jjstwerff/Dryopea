@@ -13,7 +13,7 @@ pub mod database;
 
 pub mod external;
 pub mod generation;
-mod hash;
+pub mod hash;
 pub mod keys;
 mod logger;
 pub mod parser;

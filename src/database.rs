@@ -4,15 +4,14 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_sign_loss)]
-#![allow(dead_code)]
 
 use crate::calc;
-use crate::keys::DbRef;
+use crate::hash;
+use crate::keys::{Content, DbRef, Key};
 use crate::store::Store;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter, Write};
-use std::hash::{DefaultHasher, Hash, Hasher};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Str {
@@ -37,6 +36,7 @@ impl Str {
     }
 }
 
+/*
 #[derive(Debug, Clone, PartialEq)]
 pub enum Relation {
     Main(u16, u16),       // this index is this field of the given record, may not exist
@@ -44,15 +44,7 @@ pub enum Relation {
     Referenced(u16, u16), // this field references a record, and this field holds the index
     None,                 // no primary reference found yet or only part of Vectors/Others
 }
-
-#[derive(Clone)]
-pub enum Content {
-    Long(i64),
-    Float(f64),
-    Single(f32),
-    Text(String),
-    Str(Str),
-}
+*/
 
 #[derive(Debug, Clone, PartialEq)]
 struct Field {
@@ -67,6 +59,7 @@ struct Field {
 pub struct Type {
     name: String,
     parts: Parts,
+    pub keys: Vec<Key>,
     complex: bool,
     linked: bool,
     size: u16,
@@ -78,6 +71,7 @@ impl Type {
         Type {
             name: name.to_string(),
             parts,
+            keys: Vec::new(),
             complex: false,
             linked: false,
             size,
@@ -89,6 +83,7 @@ impl Type {
         Type {
             name: name.to_string(),
             parts,
+            keys: Vec::new(),
             complex: true,
             linked: false,
             size: 4,
@@ -103,17 +98,16 @@ enum Parts {
     Struct(Vec<Field>), // The fields and the primary parent of this record (the first).
     Sub(Vec<u16>),      // Polymorphic structure with different subtypes
     Enum(Vec<String>),
-    Byte(i32, bool),                // start number and nullable flag
-    Short(i32, bool),               // start number and nullable flag
-    Vector(u16),                    // The records are part of the vector
-    Array(u16),                     // The array holds references for each record
-    Sorted(u16, Vec<(u16, bool)>),  // Sorted vector on fields with ascending flag
-    Ordered(u16, Vec<(u16, bool)>), // Sorted array on fields with ascending flag
-    Reference(u16, Relation), // reference and how to get there from here (Primary not allowed)
-    Hash(u16, Vec<u16>),      // A hash table, listing the field numbers that define its key
-    // An index to a table, listing the key fields and the left field (with +1 right and +2 color)
-    Index(u16, Vec<(u16, bool)>, u16),
-    Spacial(u16, Vec<u16>), // A spacial index with the listed coordinate fields as key
+    Byte(i32, bool),                   // start number and nullable flag
+    Short(i32, bool),                  // start number and nullable flag
+    Vector(u16),                       // The records are part of the vector
+    Array(u16),                        // The array holds references for each record
+    Sorted(u16, Vec<(u16, bool)>),     // Sorted vector on fields with ascending flag
+    Ordered(u16, Vec<(u16, bool)>),    // Sorted array on fields with ascending flag
+    Hash(u16, Vec<u16>), // A hash table, listing the field numbers that define its key
+    Index(u16, Vec<(u16, bool)>, u16), // An index to a table, listing the key fields and the left field (with +1 right and +2 color)
+    Spacial(u16, Vec<u16>),            // A spacial index with the listed coordinate fields as key
+                                       // Reference(u16, Relation), // reference and how to get there from here (Primary not allowed)
 }
 
 impl PartialEq for Content {
@@ -122,7 +116,6 @@ impl PartialEq for Content {
             (Content::Long(l), Content::Long(r)) => l == r,
             (Content::Float(l), Content::Float(r)) => l == r,
             (Content::Single(l), Content::Single(r)) => l == r,
-            (Content::Text(l), Content::Text(r)) => l == r,
             (Content::Str(s), Content::Str(o)) => s.str() == o.str(),
             _ => false,
         }
@@ -135,11 +128,6 @@ impl Debug for Content {
             Content::Long(l) => f.write_fmt(format_args!("Long({l})"))?,
             Content::Float(v) => f.write_fmt(format_args!("Float({v})"))?,
             Content::Single(s) => f.write_fmt(format_args!("Single({s})"))?,
-            Content::Text(t) => {
-                f.write_char('"')?;
-                f.write_str(t)?;
-                f.write_char('"')?;
-            }
             Content::Str(t) => {
                 f.write_char('"')?;
                 f.write_str(t.str())?;
@@ -150,20 +138,10 @@ impl Debug for Content {
     }
 }
 
-impl Content {
-    fn hash(&self, hasher: &mut DefaultHasher) {
-        match self {
-            Content::Long(l) => l.hash(hasher),
-            Content::Text(t) => t.hash(hasher),
-            Content::Str(s) => s.str().hash(hasher),
-            _ => panic!("Incorrect hash key field"),
-        }
-    }
-}
-
 // This is just a subset of all combining characters, but it is those for most generally used
 // languages. Source https://ftp.unicode.org/Public/16.0.0/ucd/extracted/DerivedJoiningType.txt
 // Sorry for the many languages omitted from this specific list.
+/*
 fn is_combining(ch: u32) -> bool {
     if let 0xAD | 0x300..=0x36F // Latin
         | 0x483..=0x487 | 0x488..=0x489 // Cyrillic
@@ -176,6 +154,7 @@ fn is_combining(ch: u32) -> bool {
         false
     }
 }
+*/
 
 fn compare(a: &Content, b: &Content) -> Ordering {
     match (a, b) {
@@ -213,7 +192,7 @@ impl Default for Stores {
     }
 }
 
-struct Key {
+struct ParseKey {
     // The current line on the source data. Only relevant if that has a pretty print format.
     line: u32,
     // The position on the current line in utf-8 characters. We count zero width characters.
@@ -224,7 +203,7 @@ struct Key {
     step: u32,
 }
 
-fn parse_key(text: &str, pos: &mut usize, result: usize, key: &mut Key) {
+fn parse_key(text: &str, pos: &mut usize, result: usize, key: &mut ParseKey) {
     if *pos >= result {
         return;
     }
@@ -311,7 +290,7 @@ fn parse_key(text: &str, pos: &mut usize, result: usize, key: &mut Key) {
     }
 }
 
-fn skip_empty(text: &str, pos: &mut usize, key: &mut Key) {
+fn skip_empty(text: &str, pos: &mut usize, key: &mut ParseKey) {
     let mut c = *pos;
     let bytes = text.as_bytes();
     while c < bytes.len() && (bytes[c] == b' ' || bytes[c] == b'\t' || bytes[c] == b'\n') {
@@ -326,7 +305,7 @@ fn skip_empty(text: &str, pos: &mut usize, key: &mut Key) {
     }
 }
 
-fn show_key(text: &str, key: &Key) -> String {
+fn show_key(text: &str, key: &ParseKey) -> String {
     let mut result = format!("line {}:{} path:", key.line, key.line_pos);
     for k in 0..key.step {
         let p = key.current[k as usize];
@@ -397,6 +376,16 @@ impl Stores {
             }
         } else {
             res += &format!("{:?}", &typedef.parts);
+            if !typedef.keys.is_empty() {
+                res += " keys [";
+                for k in &typedef.keys {
+                    res += &format!(
+                        "tp:{} desc:{} field:{}, ",
+                        k.type_nr, k.descending, k.field_pos
+                    );
+                }
+                res += "]";
+            }
             if pretty {
                 res += "\n";
             }
@@ -573,9 +562,7 @@ impl Stores {
                     if let Parts::Vector(v) = self.types[f.content as usize].parts {
                         vectors.insert(v);
                     }
-                    if let Parts::Reference(r, _) | Parts::Hash(r, _) =
-                        self.types[f.content as usize].parts
-                    {
+                    if let Parts::Hash(r, _) = self.types[f.content as usize].parts {
                         linked.insert(r);
                     }
                 }
@@ -628,12 +615,30 @@ impl Stores {
                 self.types[t_nr].align = alignment;
             }
         }
+        self.determine_keys();
         // self.dump_types();
+    }
+
+    fn determine_keys(&mut self) {
+        for t_nr in 0..self.types.len() {
+            if let Parts::Hash(c, key_fields) = self.types[t_nr].parts.clone() {
+                if let Parts::Struct(fields) = &self.types[c as usize].parts.clone() {
+                    for key_field in key_fields {
+                        let fld = &fields[key_field as usize];
+                        self.types[t_nr].keys.push(Key {
+                            type_nr: fld.content,
+                            descending: false,
+                            field_pos: fld.position,
+                        });
+                    }
+                }
+            }
+        }
     }
 
     pub fn dump_types(&self) {
         for t_nr in 0..self.types.len() {
-            print!("{}", self.show_type(t_nr as u16, true));
+            print!("{t_nr}:{}", self.show_type(t_nr as u16, true));
         }
     }
 
@@ -659,28 +664,41 @@ impl Stores {
         }
     }
 
+    /*
     pub fn reference(&mut self, content: u16, relation: Relation) -> u16 {
         let name = "reference<".to_string() + &self.types[content as usize].name + ">";
         if let Some(nr) = self.names.get(&name) {
             *nr
         } else {
             let num = self.types.len() as u16;
-            self.types
-                .push(Type::data(&name, Parts::Reference(content, relation)));
+            self.types.push(Type::data(
+                &name,
+                Parts::Reference(content, relation),
+                Vec::new(),
+            ));
             self.names.insert(name, num);
             num
         }
-    }
+    }*/
 
     pub fn hash(&mut self, content: u16, key: &[u16]) -> u16 {
         let mut name = "hash<".to_string() + &self.types[content as usize].name + "[";
-        self.field_name(content, key, &mut name);
+        if let Parts::Struct(fields) = &self.types[content as usize].parts {
+            for (k_nr, k) in key.iter().enumerate() {
+                if k_nr > 0 {
+                    name += ",";
+                }
+                let fld = &fields[*k as usize];
+                name += &fld.name;
+            }
+        }
+        name += "]>";
         if let Some(nr) = self.names.get(&name) {
             *nr
         } else {
             let num = self.types.len() as u16;
             self.types
-                .push(Type::data(&name, Parts::Hash(content, Vec::from(key))));
+                .push(Type::data(&name, Parts::Hash(content, key.into())));
             self.names.insert(name, num);
             num
         }
@@ -1002,6 +1020,12 @@ impl Stores {
         &self.allocations[nr as usize]
     }
 
+    pub fn show_rec(&self, db: &DbRef, tp: u16) {
+        let mut res = String::new();
+        self.show(&mut res, db, tp, true);
+        println!("{res}");
+    }
+
     pub fn show(&self, s: &mut String, db: &DbRef, tp: u16, pretty: bool) {
         ShowDb {
             stores: self,
@@ -1023,7 +1047,7 @@ impl Stores {
         let mut pos = 0;
         let result = self.parsing(text, &mut pos, tp, tp, u16::MAX, result);
         pos = 0;
-        let mut key = Key {
+        let mut key = ParseKey {
             line: 1,
             line_pos: 0,
             current: Vec::new(),
@@ -1043,7 +1067,7 @@ impl Stores {
         let mut pos = 0;
         let result = self.parsing(text, &mut pos, tp, tp, u16::MAX, &db);
         pos = 0;
-        let mut key = Key {
+        let mut key = ParseKey {
             line: 1,
             line_pos: 0,
             current: Vec::new(),
@@ -1132,7 +1156,12 @@ impl Stores {
                 self.store_mut(data)
                     .set_int(reference.rec, reference.pos, rec.rec as i32);
             }
-            Parts::Hash(c, keys) => self.hash_add(data, rec, c, &keys),
+            Parts::Hash(_, _) => hash::add(
+                data,
+                rec,
+                &mut self.allocations,
+                &self.types[tp as usize].keys,
+            ),
             Parts::Ordered(c, keys) => {
                 self.ordered_finish(data, rec, c, &keys);
             }
@@ -1194,9 +1223,7 @@ impl Stores {
                     return *pos;
                 }
             }
-            Parts::Reference(_other, _) => {
-                // parse it
-            }
+            // Parts::Reference(_other, _) => {}
             Parts::Sub(_) => {}
             Parts::Struct(object) => {
                 let result = self.parse_struct(text, pos, tp, to, &object);
@@ -1441,7 +1468,7 @@ impl Stores {
                 }
             }
             Parts::Sub(_)
-            | Parts::Reference(_, _)
+            //| Parts::Reference(_, _)
             | Parts::Sorted(_, _)
             | Parts::Ordered(_, _)
             | Parts::Spacial(_, _)
@@ -1806,12 +1833,17 @@ impl Stores {
         store.set_int(sorted_rec, 4, (length + 1) as i32);
     }
 
-    fn get_key(&mut self, fld: &DbRef, db: u16, keys: &[(u16, bool)]) -> Vec<Content> {
+    fn get_key(&self, fld: &DbRef, db: u16, keys: &[(u16, bool)]) -> Vec<Content> {
         let mut key = Vec::new();
         for (k, _) in keys {
             key.push(self.field_content(fld, db, *k));
         }
         key
+    }
+
+    #[must_use]
+    pub fn keys(&self, tp: u16) -> &[Key] {
+        &self.types[tp as usize].keys
     }
 
     fn ordered_finish(&mut self, sorted: &DbRef, rec: &DbRef, db: u16, keys: &[(u16, bool)]) {
@@ -1955,9 +1987,7 @@ impl Stores {
                 let mut pos = 0;
                 self.ordered_find(data, length, *c, &mut pos, keys, key)
             }
-            Parts::Hash(rec, keys) => self.hash_find(data, *rec, keys, key),
-            Parts::Index(_, _, _) => self.index_find(data, db, key),
-            Parts::Spacial(_, _) => self.spacial_find(data, db, key),
+            Parts::Hash(_, _) => hash::find(data, &self.allocations, self.keys(db), key),
             _ => panic!("Incorrect search"),
         }
     }
@@ -1975,10 +2005,10 @@ impl Stores {
                 }
                 res
             }
-            Parts::Spacial(c, keys) | Parts::Hash(c, keys) => {
+            Parts::Hash(c, key) => {
                 let mut res = Vec::new();
                 if let Parts::Struct(fields) = &self.types[*c as usize].parts {
-                    for k in keys {
+                    for k in key {
                         res.push(fields[*k as usize].content);
                     }
                 }
@@ -2025,6 +2055,40 @@ impl Stores {
             _ => i32::MAX,
         }
     }
+
+    /**
+    Validate the structure in any way possible.
+    What is still open to validate:
+    - individual allocations inside store size
+    - length of vector/sorted/array/ordered stays within allocation
+    - when called fully (but allow for single vector):
+        . allocations linked together correctly (linked from previous and to next)
+        . open space validation
+        . references of array/ordered/separate to correct allocations
+    # Panics
+    When the structure is not correct
+    */
+    pub fn validate(&mut self, data: &DbRef, db: u16) {
+        match &self.types[db as usize].parts.clone() {
+            Parts::Hash(_, _) => {
+                hash::validate(data, &self.allocations, &self.types[db as usize].keys);
+            }
+            Parts::Struct(fields) => {
+                for f in fields {
+                    self.validate(
+                        &DbRef {
+                            store_nr: data.store_nr,
+                            rec: data.rec,
+                            pos: data.pos + u32::from(f.position),
+                        },
+                        f.content,
+                    );
+                }
+            }
+            _ => (),
+        }
+    }
+
     /**
     Get the next record given a specific point in a structure.
     # Panics
@@ -2136,7 +2200,10 @@ impl Stores {
                 let size = u32::from(self.types[c as usize].size);
                 self.remove_vector(data, size, (rec.pos - 8) / size);
             }
-            Parts::Hash(c, keys) => self.hash_remove(data, rec, c, &keys),
+            Parts::Hash(_, _) => {
+                let keys = self.keys(db).to_vec();
+                hash::remove(data, rec, &mut self.allocations, &keys);
+            }
             _ => panic!("Incorrect search"),
         }
     }
@@ -2155,16 +2222,6 @@ impl Stores {
         } else {
             *pos = i32::MAX;
         }
-    }
-
-    #[allow(clippy::unused_self)]
-    fn index_find(&self, data: &DbRef, _db: u16, _key: &[Content]) -> DbRef {
-        *data
-    }
-
-    #[allow(clippy::unused_self)]
-    fn spacial_find(&self, data: &DbRef, _db: u16, _key: &[Content]) -> DbRef {
-        *data
     }
 
     fn sorted_find(
@@ -2275,172 +2332,9 @@ impl Stores {
                 for f in keys {
                     k.push(self.field_content(&record, db, *f));
                 }
-                assert_eq!(
-                    self.hash_find(hash_ref, db, keys, &k).rec,
-                    rec,
-                    "Incorrect entry {k:?}"
-                );
             }
         }
         assert_eq!(length, l, "Incorrect hash length");
-    }
-
-    fn hash_add(&mut self, hash_ref: &DbRef, rec: &DbRef, db: u16, keys: &[u16]) {
-        let mut claim = self.store(hash_ref).get_int(hash_ref.rec, hash_ref.pos) as u32;
-        let length = if claim == 0 {
-            claim = self.store_mut(hash_ref).claim(9);
-            self.store_mut(hash_ref).zero_fill(claim);
-            self.store_mut(hash_ref)
-                .set_int(hash_ref.rec, hash_ref.pos, claim as i32);
-            0
-        } else {
-            self.store(hash_ref).get_int(claim, 4) as u32
-        };
-        let room = self.store(hash_ref).get_int(claim, 0) as u32;
-        let elms = (room - 1) * 2;
-        if (length * 14 / 16) + 1 >= room {
-            // rehash
-            let mut move_rec = DbRef {
-                store_nr: hash_ref.store_nr,
-                rec: 0,
-                pos: 0,
-            };
-            let new_claim = self.store_mut(hash_ref).claim(room * 2 - 1);
-            self.store_mut(hash_ref).zero_fill(new_claim);
-            for i in 0..elms {
-                let v = self.store(hash_ref).get_int(claim, 8 + 4 * i) as u32;
-                if v == 0 {
-                    continue;
-                }
-                move_rec.rec = v;
-                self.hash_set(new_claim, &move_rec, db, keys);
-            }
-            claim = new_claim;
-            self.store_mut(hash_ref)
-                .set_int(hash_ref.rec, hash_ref.pos, claim as i32);
-        }
-        self.hash_set(claim, rec, db, keys);
-        self.store_mut(rec).set_int(claim, 4, length as i32 + 1);
-        // self.hash_dump(hash_ref, db, keys);
-    }
-
-    fn hash_remove(&mut self, hash_ref: &DbRef, rec: &DbRef, db: u16, keys: &[u16]) {
-        let claim = self.store(hash_ref).get_int(hash_ref.rec, hash_ref.pos) as u32;
-        let length = self.store(hash_ref).get_int(claim, 4);
-        if length == 0 {
-            return;
-        }
-        let room = self.store(hash_ref).get_int(claim, 0) as u32;
-        let elms = (room - 1) * 2;
-        // get the index of the element, and set it to 0
-        let mut index = self.hash_free_pos(claim, rec, db, keys);
-        self.store_mut(hash_ref).set_int(rec.rec, index, 0);
-        let mut index_val = 0;
-        let mut current = 0;
-        // move from there and determine if the next elements could get to a better position
-        for _ in 0..elms {
-            if index_val == 0 {
-                break;
-            }
-            let next = DbRef {
-                store_nr: rec.store_nr,
-                rec: index_val,
-                pos: 0,
-            };
-            let to = (8 + (self.rec_hash(&next, db, keys) % u64::from(elms)) * 4) as u32;
-            let right = if index < to {
-                current < index && index <= to
-            } else {
-                current < index || index <= to
-            };
-            if !right {
-                let val = self.store(hash_ref).get_int(claim, index);
-                self.store_mut(hash_ref).set_int(claim, current, val);
-                current = index;
-                self.store_mut(hash_ref).set_int(claim, index, 0);
-            }
-            if index + 4 >= elms {
-                index = 8;
-            } else {
-                index += 4;
-            }
-            index_val = self.store(hash_ref).get_int(claim, index) as u32;
-        }
-        self.store_mut(hash_ref).set_int(claim, 4, length - 1);
-    }
-
-    fn rec_hash(&self, record: &DbRef, db: u16, keys: &[u16]) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        for f in keys {
-            self.field_content(record, db, *f).hash(&mut hasher);
-        }
-        hasher.finish()
-    }
-
-    fn hash_free_pos(&self, claim: u32, rec: &DbRef, db: u16, keys: &[u16]) -> u32 {
-        let room = self.store(rec).get_int(claim, 0) as u32;
-        let elms = (room - 1) * 2;
-        let hash_val = self.rec_hash(rec, db, keys);
-        let mut index = (hash_val % u64::from(elms)) as u32;
-        for _ in 0..elms {
-            if self.store(rec).get_int(claim, 8 + index * 4) == 0 {
-                break;
-            }
-            index += 1;
-            if index >= elms {
-                index = 0;
-            }
-        }
-        8 + index * 4
-    }
-
-    fn hash_set(&mut self, claim: u32, rec: &DbRef, db: u16, keys: &[u16]) {
-        let index = self.hash_free_pos(claim, rec, db, keys);
-        self.store_mut(rec).set_int(claim, index, rec.rec as i32);
-    }
-
-    fn hash_find(&self, hash_ref: &DbRef, db: u16, keys: &[u16], key: &[Content]) -> DbRef {
-        let store = self.store(hash_ref);
-        let claim = store.get_int(hash_ref.rec, hash_ref.pos) as u32;
-        let mut hasher = DefaultHasher::new();
-        for k in key {
-            k.hash(&mut hasher);
-        }
-        let hash_val = hasher.finish();
-        let mut record = DbRef {
-            store_nr: hash_ref.store_nr,
-            rec: 0,
-            pos: 0,
-        };
-        let room = store.get_int(claim, 0) as u32;
-        if room == 0 {
-            return record;
-        }
-        let elms = (room - 1) * 2;
-        let mut index = (hash_val % u64::from(elms)) as u32;
-        let mut rec_pos = store.get_int(claim, 8 + index * 4) as u32;
-        'Record: for _ in 0..elms {
-            if rec_pos == 0 {
-                break;
-            }
-            record.rec = rec_pos;
-            for (f_nr, f) in keys.iter().enumerate() {
-                if self.field_content(&record, db, *f) != key[f_nr] {
-                    index += 1;
-                    if index >= elms {
-                        index = 0;
-                    }
-                    rec_pos = store.get_int(claim, 8 + index * 4) as u32;
-                    continue 'Record;
-                }
-            }
-            break;
-        }
-        DbRef {
-            store_nr: hash_ref.store_nr,
-            rec: rec_pos,
-            pos: 0,
-        }
     }
 
     fn compare_key(&self, rec: &DbRef, db: u16, keys: &[(u16, bool)], key: &[Content]) -> Ordering {

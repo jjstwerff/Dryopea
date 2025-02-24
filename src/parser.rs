@@ -545,7 +545,7 @@ impl Parser {
             }
             Type::Enum(_) => self.cl("OpGetEnum", &[code, p]),
             Type::Boolean => {
-                let val = self.cl("OpGetInt", &[code, p, Value::Int(0)]);
+                let val = self.cl("OpGetByte", &[code, p, Value::Int(0)]);
                 self.cl("OpEqInt", &[val, Value::Int(1)])
             }
             Type::Long => self.cl("OpGetLong", &[code, p]),
