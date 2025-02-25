@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 //! Testing framework
-use dryopea::create::generate_code;
+use dryopea::create;
 extern crate dryopea;
 use dryopea::generation::Output;
 use dryopea::interpreter::byte_code;
@@ -161,7 +161,8 @@ impl Drop for Test {
         if p.diagnostics.level() >= Level::Error {
             return;
         }
-        generate_code(&p.data).unwrap();
+        create::generate_code(&p.data).unwrap();
+        create::generate_lib(&p.data).unwrap();
         let mut state = State::new(p.database);
         byte_code(&mut p.data, &mut w, &mut state).unwrap();
         state.execute_log(&mut w, "test", &p.data).unwrap();
@@ -239,7 +240,7 @@ impl Test {
             } else if let Value::Long(_) = self.result {
                 Type::Long
             } else if let Value::Text(_) = self.result {
-                Type::Text
+                Type::Text(false)
             } else if let Value::Float(_) = self.result {
                 Type::Float
             } else if let Value::Null = self.result {
@@ -252,7 +253,7 @@ impl Test {
         };
         if let Type::Integer(_, _) = tp {
             "integer"
-        } else if let Type::Text = tp {
+        } else if let Type::Text(_) = tp {
             "text"
         } else if let Type::Long = tp {
             "long"

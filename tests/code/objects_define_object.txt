@@ -36,8 +36,8 @@ byte-code for define_object:obj() -> boolean
  676[28]: ConstInt(val=1234) -> integer
  681[32]: SetInt(v1: reference, fld=4, val: integer)
  684[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[13]
- 687[28]: ConstText(_value="data") -> text
- 693[44]: SetText(v1: reference, fld=8, val: text)
+ 687[28]: ConstText(_value="data") -> text(false)
+ 693[44]: SetText(v1: reference, fld=8, val: text(false))
  696[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[13]
  699[28]: ConstTrue() -> boolean
  700[29]: GenGotoFalseWord(jump=711, if_false: boolean)
@@ -55,7 +55,7 @@ byte-code for define_object:obj() -> boolean
  745[24]: EqInt(v1: integer, v2: integer) -> boolean
  746[17]: GenGotoFalseWord(jump=771, if_false: boolean)
  749[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[13]
- 752[28]: GetText(v1: reference, fld=8) -> text
+ 752[28]: GetText(v1: reference, fld=8) -> text(false)
  755[32]: GenCall(size=0, to=318)
  762[20]: ConstInt(val=4) -> integer
  767[24]: EqInt(v1: integer, v2: integer) -> boolean
@@ -99,16 +99,16 @@ byte-code for define_object:test()
  831[9]: GenGotoFalseWord(jump=837, if_false: boolean)
  834[8]: GenGotoWord(jump=888)
  837[8]: Text()
- 838[32]: ConstText(_value="Test failed ") -> text
- 852[48]: AppendText(var[8], v1: text)
+ 838[32]: ConstText(_value="Test failed ") -> text(false)
+ 852[48]: AppendText(var[8], v1: text(false))
  855[32]: VarInt(var[4]) -> integer
  858[36]: ConstInt(val=0) -> integer
  863[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 870[32]: ConstText(_value=" != 1") -> text
- 877[48]: AppendText(var[8], v1: text)
- 880[32]: VarText(var[8]) -> text
+ 870[32]: ConstText(_value=" != 1") -> text(false)
+ 877[48]: AppendText(var[8], v1: text(false))
+ 880[32]: VarText(var[8]) -> text(false)
  883[48]: GenFreeStack(value=16, discard=24)
- 887[24]: GenPanic(message: text)
+ 887[24]: GenPanic(message: text(false))
  888[8]: GenReturn(ret=0, value=0, discard=8)
 
 Execute test:

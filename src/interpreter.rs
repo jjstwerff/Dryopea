@@ -7,6 +7,7 @@
 //! Fast interpreter for binary code, including library and coroutines support.
 use crate::data::{Data, DefType};
 use crate::state::State;
+use crate::text;
 use std::io::{Error, Write};
 // Bytecode generation
 
@@ -14,6 +15,7 @@ use std::io::{Error, Write};
 /// # Errors
 /// When the writer didn't accept the data.
 pub fn byte_code(data: &mut Data, writer: &mut dyn Write, state: &mut State) -> Result<(), Error> {
+    text::init(state);
     for d_nr in 0..data.definitions() {
         let d = data.def(d_nr);
         if !matches!(d.def_type, DefType::Function) || d.is_operator() {

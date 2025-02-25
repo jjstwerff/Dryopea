@@ -1,0 +1,89 @@
+Test code:
+pub fn test() {
+    test_value = {t = "longer"; v = "a longer text"; v.contains("a {t}")};
+    assert(
+        test_value == true,
+        "Test failed {test_value} != true"
+    );
+}
+
+fn test {
+  let test_value = {
+    let t = "longer";
+    let v = "a longer text";
+    _tp_text_contains(v, {
+      let append_10 = "a ";
+      OpFormatText(append_10, t, 0i32, -1i32, 32i32);
+      append_10;
+    });
+  };
+  if OpEqBool(test_value, true) {null} else {OpGenPanic({
+    let append_11 = "Test failed ";
+    OpFormatBool(append_11, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(append_11, " != true");
+    append_11;
+  })};
+}
+
+byte-code for contains:test()
+ 668[0]: return-address
+ 668[4]: Text()
+ 669[28]: ConstText(_value="longer") -> text(false)
+ 677[44]: AppendText(var[4], v1: text(false))
+ 680[28]: Text()
+ 681[52]: ConstText(_value="a longer text") -> text(false)
+ 696[68]: AppendText(var[28], v1: text(false))
+ 699[52]: VarText(var[28]) -> text(false)
+ 702[68]: Text()
+ 703[92]: ConstText(_value="a ") -> text(false)
+ 707[108]: AppendText(var[68], v1: text(false))
+ 710[92]: VarText(var[4]) -> text(false)
+ 713[108]: ConstInt(val=0) -> integer
+ 718[112]: FormatText(var[68], val: text(false), width: integer, dir=-1, token=32)
+ 723[92]: VarText(var[68]) -> text(false)
+ 726[108]: GenFreeStack(value=16, discard=24)
+ 730[84]: StaticCall(_tp_text_contains)
+ 733[53]: GenFreeStack(value=1, discard=48)
+ 737[5]: VarBool(var[4]) -> boolean
+ 740[6]: ConstTrue() -> boolean
+ 741[7]: EqBool(v1: boolean, v2: boolean) -> boolean
+ 742[6]: GenGotoFalseWord(jump=748, if_false: boolean)
+ 745[5]: GenGotoWord(jump=800)
+ 748[5]: Text()
+ 749[29]: ConstText(_value="Test failed ") -> text(false)
+ 763[45]: AppendText(var[5], v1: text(false))
+ 766[29]: VarBool(var[4]) -> boolean
+ 769[30]: ConstInt(val=0) -> integer
+ 774[34]: FormatBool(var[5], val: boolean, width: integer, dir=-1, token=32)
+ 779[29]: ConstText(_value=" != true") -> text(false)
+ 789[45]: AppendText(var[5], v1: text(false))
+ 792[29]: VarText(var[5]) -> text(false)
+ 795[45]: GenFreeStack(value=16, discard=24)
+ 799[21]: GenPanic(message: text(false))
+ 800[5]: GenReturn(ret=0, value=0, discard=5)
+
+Execute test:
+  668:[4] Text()
+  669:[28] ConstText(_value="longer") -> "longer"[28]
+  677:[44] AppendText(var[4], v1="longer"[28])
+  680:[28] Text()
+  681:[52] ConstText(_value="a longer text") -> "a longer text"[52]
+  696:[68] AppendText(var[28], v1="a longer text"[52])
+  699:[52] VarText(var[28]) -> "a longer text"[52]
+  702:[68] Text()
+  703:[92] ConstText(_value="a ") -> "a "[92]
+  707:[108] AppendText(var[68], v1="a "[92])
+  710:[92] VarText(var[4]) -> "longer"[92]
+  713:[108] ConstInt(val=0) -> 0[108]
+  718:[112] FormatText(var[68], val="longer"[92], width=0[108], dir=-1, token=32)
+  723:[92] VarText(var[68]) -> "a longer"[92]
+  726:[108] GenFreeStack(value=16, discard=24)
+  730:[84] StaticCall(call=8)
+  733:[53] GenFreeStack(value=1, discard=48)
+  737:[5] VarBool(var[4]) -> true[5]
+  740:[6] ConstTrue() -> true[6]
+  741:[7] EqBool(v1=true[5], v2=true[6]) -> true[5]
+  742:[6] GenGotoFalseWord(jump=748, if_false=true[5])
+  745:[5] GenGotoWord(jump=800)
+  800:[5] GenReturn(ret=4294967295[0], value=0, discard=5)
+Finished

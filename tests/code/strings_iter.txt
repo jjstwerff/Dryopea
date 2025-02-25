@@ -13,7 +13,7 @@ for c in "123😊🙃😋8" {
     );
 }
 
-Type 13:main_vector<text>[8]:
+Type 13:main_vector<text(false)>[8]:
     vector:vector<text>[4]
 
 Type 14:vector<text>[4]:Vector(5)
@@ -81,13 +81,13 @@ fn test {
 byte-code for iter:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: Database(size=1, db_tp=13) -> reference type=main_vector<text>[8]:{vector:vector<text>[4]}[13]
- 674[40]: VarRef(var[28]) -> reference type=main_vector<text>[8]:{vector:vector<text>[4]}[13]
+ 669[28]: Database(size=1, db_tp=13) -> reference type=main_vector<text(false)>[8]:{vector:vector<text>[4]}[13]
+ 674[40]: VarRef(var[28]) -> reference type=main_vector<text(false)>[8]:{vector:vector<text>[4]}[13]
  677[52]: GetField(v1: reference, fld=4) -> reference type=vector<text>[4]:Vector(5)[14]
- 680[52]: VarRef(var[28]) -> reference type=main_vector<text>[8]:{vector:vector<text>[4]}[13]
+ 680[52]: VarRef(var[28]) -> reference type=main_vector<text(false)>[8]:{vector:vector<text>[4]}[13]
  683[64]: ConstInt(val=0) -> integer
  688[68]: SetInt(v1: reference, fld=4, val: integer)
- 691[52]: VarVector(var[40]) -> vector type=vector<text>[4]:Vector(5)[14]
+ 691[52]: VarVector(var[40]) -> vector type=text[4]:Base[5]
  694[64]: GenFreeStack(value=12, discard=24)
  698[40]: Database(size=1, db_tp=15) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15]
  703[52]: VarRef(var[40]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15]
@@ -100,32 +100,32 @@ byte-code for iter:test()
  727[52]: ConstInt(val=0) -> integer
  732[56]: Text()
  733[80]: Text()
- 734[104]: ConstText(_value="123😊🙃😋8") -> text
+ 734[104]: ConstText(_value="123😊🙃😋8") -> text(false)
  752[120]: VarInt(var[52]) -> integer
  755[124]: ConstInt(val=-2147483648) -> integer
- 760[128]: GetTextSub(v1: text, from: integer, till: integer) -> text
- 761[120]: AppendText(var[80], v1: text)
+ 760[128]: GetTextSub(v1: text(false), from: integer, till: integer) -> text(false)
+ 761[120]: AppendText(var[80], v1: text(false))
  764[104]: VarInt(var[52]) -> integer
- 767[108]: VarText(var[80]) -> text
- 770[124]: LengthText(v1: text) -> integer
+ 767[108]: VarText(var[80]) -> text(false)
+ 770[124]: LengthText(v1: text(false)) -> integer
  771[112]: AddInt(v1: integer, v2: integer) -> integer
  772[108]: PutInt(var[52], value: integer)
- 775[104]: VarText(var[80]) -> text
+ 775[104]: VarText(var[80]) -> text(false)
  778[120]: GenFreeStack(value=16, discard=24)
- 782[96]: AppendText(var[56], v1: text)
- 785[80]: VarText(var[56]) -> text
- 788[96]: ConvBoolFromText(v1: text) -> boolean
+ 782[96]: AppendText(var[56], v1: text(false))
+ 785[80]: VarText(var[56]) -> text(false)
+ 788[96]: ConvBoolFromText(v1: text(false)) -> boolean
  789[81]: Not(v1: boolean) -> boolean
  790[81]: GenGotoFalseWord(jump=800, if_false: boolean)
  793[80]: GenFreeStack(value=0, discard=24)
  797[56]: GenGotoWord(jump=877)
- 800[80]: VarVector(var[28]) -> vector type=vector<text>[4]:Vector(5)[14]
- 803[92]: VarVector(var[80]) -> vector type=vector<text>[4]:Vector(5)[14]
+ 800[80]: VarVector(var[28]) -> vector type=text[4]:Base[5]
+ 803[92]: VarVector(var[80]) -> vector type=text[4]:Base[5]
  806[104]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  811[104]: VarRef(var[92]) -> reference type=boolean[1]:Base[4]
- 814[116]: VarText(var[56]) -> text
- 817[132]: SetText(v1: reference, fld=0, val: text)
- 820[104]: VarVector(var[80]) -> vector type=vector<text>[4]:Vector(5)[14]
+ 814[116]: VarText(var[56]) -> text(false)
+ 817[132]: SetText(v1: reference, fld=0, val: text(false))
+ 820[104]: VarVector(var[80]) -> vector type=text[4]:Base[5]
  823[116]: VarRef(var[92]) -> reference type=boolean[1]:Base[4]
  826[128]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
  831[104]: GenFreeStack(value=0, discard=24)
@@ -143,34 +143,34 @@ byte-code for iter:test()
  874[56]: GenGotoWord(jump=732)
  877[56]: GenFreeStack(value=0, discard=4)
  881[52]: Text()
- 882[76]: ConstText(_value="") -> text
- 884[92]: AppendText(var[52], v1: text)
- 887[76]: VarVector(var[28]) -> vector type=vector<text>[4]:Vector(5)[14]
+ 882[76]: ConstText(_value="") -> text(false)
+ 884[92]: AppendText(var[52], v1: text(false))
+ 887[76]: VarVector(var[28]) -> vector type=text[4]:Base[5]
  890[88]: FormatDatabase(var[52], val: reference, db_tp=14, pretty=false)
- 896[76]: ConstText(_value=" indexes:") -> text
- 907[92]: AppendText(var[52], v1: text)
+ 896[76]: ConstText(_value=" indexes:") -> text(false)
+ 907[92]: AppendText(var[52], v1: text(false))
  910[76]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[16]
  913[88]: FormatDatabase(var[52], val: reference, db_tp=16, pretty=false)
- 919[76]: VarText(var[52]) -> text
+ 919[76]: VarText(var[52]) -> text(false)
  922[92]: GenFreeStack(value=16, discard=24)
  926[68]: GenFreeStack(value=16, discard=24)
- 930[44]: AppendText(var[4], v1: text)
- 933[28]: VarText(var[4]) -> text
- 936[44]: ConstText(_value="["1","2","3","😊","🙃","😋","8"] indexes:[1,2,3,7,11,15,16]") -> text
-1003[60]: EqText(v1: text, v2: text) -> boolean
+ 930[44]: AppendText(var[4], v1: text(false))
+ 933[28]: VarText(var[4]) -> text(false)
+ 936[44]: ConstText(_value="["1","2","3","😊","🙃","😋","8"] indexes:[1,2,3,7,11,15,16]") -> text(false)
+1003[60]: EqText(v1: text(false), v2: text(false)) -> boolean
 1004[29]: GenGotoFalseWord(jump=1010, if_false: boolean)
 1007[28]: GenGotoWord(jump=1125)
 1010[28]: Text()
-1011[52]: ConstText(_value="Test failed ") -> text
-1025[68]: AppendText(var[28], v1: text)
-1028[52]: VarText(var[4]) -> text
+1011[52]: ConstText(_value="Test failed ") -> text(false)
+1025[68]: AppendText(var[28], v1: text(false))
+1028[52]: VarText(var[4]) -> text(false)
 1031[68]: ConstInt(val=0) -> integer
-1036[72]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
-1041[52]: ConstText(_value=" != "["1","2","3","😊","🙃","😋","8"] indexes:[1,2,3,7,11,15,16]"") -> text
-1114[68]: AppendText(var[28], v1: text)
-1117[52]: VarText(var[28]) -> text
+1036[72]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
+1041[52]: ConstText(_value=" != "["1","2","3","😊","🙃","😋","8"] indexes:[1,2,3,7,11,15,16]"") -> text(false)
+1114[68]: AppendText(var[28], v1: text(false))
+1117[52]: VarText(var[28]) -> text(false)
 1120[68]: GenFreeStack(value=16, discard=24)
-1124[44]: GenPanic(message: text)
+1124[44]: GenPanic(message: text(false))
 1125[28]: GenReturn(ret=0, value=0, discard=28)
 
 Execute test:
@@ -181,7 +181,7 @@ Execute test:
   680:[52] VarRef(var[28]) -> ref(1,1,0)={}[52]
   683:[64] ConstInt(val=0) -> 0[64]
   688:[68] SetInt(v1=ref(1,1,0)[52], fld=4, val=0[64])
-  691:[52] VarVector(var[40]) -> ref(1,1,4)=[][52]
+  691:[52] VarVector(var[40]) -> ref(1,1,4)=""[52]
   694:[64] GenFreeStack(value=12, discard=24)
   698:[40] Database(size=1, db_tp=15) -> ref(2,1,0)={}[40]
   703:[52] VarRef(var[40]) -> ref(2,1,0)={}[52]
@@ -211,13 +211,13 @@ Execute test:
   788:[96] ConvBoolFromText(v1="1"[80]) -> true[80]
   789:[81] Not(v1=true[80]) -> false[80]
   790:[81] GenGotoFalseWord(jump=800, if_false=false[80])
-  800:[80] VarVector(var[28]) -> ref(1,1,4)=[][80]
-  803:[92] VarVector(var[80]) -> ref(1,1,4)=[][92]
+  800:[80] VarVector(var[28]) -> ref(1,1,4)=""[80]
+  803:[92] VarVector(var[80]) -> ref(1,1,4)=""[92]
   806:[104] NewRecord(data=ref(1,1,4)[92], parent_tp=14, fld=65535) -> ref(1,2,8)[92]
   811:[104] VarRef(var[92]) -> ref(1,2,8)=false[104]
   814:[116] VarText(var[56]) -> "1"[116]
   817:[132] SetText(v1=ref(1,2,8)[104], fld=0, val="1"[116])
-  820:[104] VarVector(var[80]) -> ref(1,1,4)=["1"][104]
+  820:[104] VarVector(var[80]) -> ref(1,1,4)="	"[104]
   823:[116] VarRef(var[92]) -> ref(1,2,8)=true[116]
   826:[128] FinishRecord(data=ref(1,1,4)[104], rec=ref(1,2,8)[116], parent_tp=14, fld=65535)
   831:[104] GenFreeStack(value=0, discard=24)
@@ -252,13 +252,13 @@ Execute test:
   788:[96] ConvBoolFromText(v1="2"[80]) -> true[80]
   789:[81] Not(v1=true[80]) -> false[80]
   790:[81] GenGotoFalseWord(jump=800, if_false=false[80])
-  800:[80] VarVector(var[28]) -> ref(1,1,4)=["1"][80]
-  803:[92] VarVector(var[80]) -> ref(1,1,4)=["1"][92]
+  800:[80] VarVector(var[28]) -> ref(1,1,4)="	"[80]
+  803:[92] VarVector(var[80]) -> ref(1,1,4)="	"[92]
   806:[104] NewRecord(data=ref(1,1,4)[92], parent_tp=14, fld=65535) -> ref(1,2,12)[92]
   811:[104] VarRef(var[92]) -> ref(1,2,12)=false[104]
   814:[116] VarText(var[56]) -> "2"[116]
   817:[132] SetText(v1=ref(1,2,12)[104], fld=0, val="2"[116])
-  820:[104] VarVector(var[80]) -> ref(1,1,4)=["1","2"][104]
+  820:[104] VarVector(var[80]) -> ref(1,1,4)="	 "[104]
   823:[116] VarRef(var[92]) -> ref(1,2,12)=true[116]
   826:[128] FinishRecord(data=ref(1,1,4)[104], rec=ref(1,2,12)[116], parent_tp=14, fld=65535)
   831:[104] GenFreeStack(value=0, discard=24)
@@ -293,13 +293,13 @@ Execute test:
   788:[96] ConvBoolFromText(v1="3"[80]) -> true[80]
   789:[81] Not(v1=true[80]) -> false[80]
   790:[81] GenGotoFalseWord(jump=800, if_false=false[80])
-  800:[80] VarVector(var[28]) -> ref(1,1,4)=["1","2"][80]
-  803:[92] VarVector(var[80]) -> ref(1,1,4)=["1","2"][92]
+  800:[80] VarVector(var[28]) -> ref(1,1,4)="	 "[80]
+  803:[92] VarVector(var[80]) -> ref(1,1,4)="	 "[92]
   806:[104] NewRecord(data=ref(1,1,4)[92], parent_tp=14, fld=65535) -> ref(1,2,16)[92]
   811:[104] VarRef(var[92]) -> ref(1,2,16)=false[104]
   814:[116] VarText(var[56]) -> "3"[116]
   817:[132] SetText(v1=ref(1,2,16)[104], fld=0, val="3"[116])
-  820:[104] VarVector(var[80]) -> ref(1,1,4)=["1","2","3"][104]
+  820:[104] VarVector(var[80]) -> ref(1,1,4)="	  "[104]
   823:[116] VarRef(var[92]) -> ref(1,2,16)=true[116]
   826:[128] FinishRecord(data=ref(1,1,4)[104], rec=ref(1,2,16)[116], parent_tp=14, fld=65535)
   831:[104] GenFreeStack(value=0, discard=24)
@@ -334,13 +334,13 @@ Execute test:
   788:[96] ConvBoolFromText(v1="😊"[80]) -> true[80]
   789:[81] Not(v1=true[80]) -> false[80]
   790:[81] GenGotoFalseWord(jump=800, if_false=false[80])
-  800:[80] VarVector(var[28]) -> ref(1,1,4)=["1","2","3"][80]
-  803:[92] VarVector(var[80]) -> ref(1,1,4)=["1","2","3"][92]
+  800:[80] VarVector(var[28]) -> ref(1,1,4)="	  "[80]
+  803:[92] VarVector(var[80]) -> ref(1,1,4)="	  "[92]
   806:[104] NewRecord(data=ref(1,1,4)[92], parent_tp=14, fld=65535) -> ref(1,2,20)[92]
   811:[104] VarRef(var[92]) -> ref(1,2,20)=false[104]
   814:[116] VarText(var[56]) -> "😊"[116]
   817:[132] SetText(v1=ref(1,2,20)[104], fld=0, val="😊"[116])
-  820:[104] VarVector(var[80]) -> ref(1,1,4)=["1","2","3","😊"][104]
+  820:[104] VarVector(var[80]) -> ref(1,1,4)="	   "[104]
   823:[116] VarRef(var[92]) -> ref(1,2,20)=true[116]
   826:[128] FinishRecord(data=ref(1,1,4)[104], rec=ref(1,2,20)[116], parent_tp=14, fld=65535)
   831:[104] GenFreeStack(value=0, discard=24)
@@ -375,13 +375,13 @@ Execute test:
   788:[96] ConvBoolFromText(v1="🙃"[80]) -> true[80]
   789:[81] Not(v1=true[80]) -> false[80]
   790:[81] GenGotoFalseWord(jump=800, if_false=false[80])
-  800:[80] VarVector(var[28]) -> ref(1,1,4)=["1","2","3","😊"][80]
-  803:[92] VarVector(var[80]) -> ref(1,1,4)=["1","2","3","😊"][92]
+  800:[80] VarVector(var[28]) -> ref(1,1,4)="	   "[80]
+  803:[92] VarVector(var[80]) -> ref(1,1,4)="	   "[92]
   806:[104] NewRecord(data=ref(1,1,4)[92], parent_tp=14, fld=65535) -> ref(1,2,24)[92]
   811:[104] VarRef(var[92]) -> ref(1,2,24)=false[104]
   814:[116] VarText(var[56]) -> "🙃"[116]
   817:[132] SetText(v1=ref(1,2,24)[104], fld=0, val="🙃"[116])
-  820:[104] VarVector(var[80]) -> ref(1,1,4)=["1","2","3","😊","🙃"][104]
+  820:[104] VarVector(var[80]) -> ref(1,1,4)="	   "[104]
   823:[116] VarRef(var[92]) -> ref(1,2,24)=true[116]
   826:[128] FinishRecord(data=ref(1,1,4)[104], rec=ref(1,2,24)[116], parent_tp=14, fld=65535)
   831:[104] GenFreeStack(value=0, discard=24)
@@ -416,13 +416,13 @@ Execute test:
   788:[96] ConvBoolFromText(v1="😋"[80]) -> true[80]
   789:[81] Not(v1=true[80]) -> false[80]
   790:[81] GenGotoFalseWord(jump=800, if_false=false[80])
-  800:[80] VarVector(var[28]) -> ref(1,1,4)=["1","2","3","😊","🙃"][80]
-  803:[92] VarVector(var[80]) -> ref(1,1,4)=["1","2","3","😊","🙃"][92]
+  800:[80] VarVector(var[28]) -> ref(1,1,4)="	   "[80]
+  803:[92] VarVector(var[80]) -> ref(1,1,4)="	   "[92]
   806:[104] NewRecord(data=ref(1,1,4)[92], parent_tp=14, fld=65535) -> ref(1,2,28)[92]
   811:[104] VarRef(var[92]) -> ref(1,2,28)=false[104]
   814:[116] VarText(var[56]) -> "😋"[116]
   817:[132] SetText(v1=ref(1,2,28)[104], fld=0, val="😋"[116])
-  820:[104] VarVector(var[80]) -> ref(1,1,4)=["1","2","3","😊","🙃","😋"][104]
+  820:[104] VarVector(var[80]) -> ref(1,1,4)="	    "[104]
   823:[116] VarRef(var[92]) -> ref(1,2,28)=true[116]
   826:[128] FinishRecord(data=ref(1,1,4)[104], rec=ref(1,2,28)[116], parent_tp=14, fld=65535)
   831:[104] GenFreeStack(value=0, discard=24)
@@ -457,13 +457,13 @@ Execute test:
   788:[96] ConvBoolFromText(v1="8"[80]) -> true[80]
   789:[81] Not(v1=true[80]) -> false[80]
   790:[81] GenGotoFalseWord(jump=800, if_false=false[80])
-  800:[80] VarVector(var[28]) -> ref(1,1,4)=["1","2","3","😊","🙃","😋"][80]
-  803:[92] VarVector(var[80]) -> ref(1,1,4)=["1","2","3","😊","🙃","😋"][92]
+  800:[80] VarVector(var[28]) -> ref(1,1,4)="	    "[80]
+  803:[92] VarVector(var[80]) -> ref(1,1,4)="	    "[92]
   806:[104] NewRecord(data=ref(1,1,4)[92], parent_tp=14, fld=65535) -> ref(1,2,32)[92]
   811:[104] VarRef(var[92]) -> ref(1,2,32)=false[104]
   814:[116] VarText(var[56]) -> "8"[116]
   817:[132] SetText(v1=ref(1,2,32)[104], fld=0, val="8"[116])
-  820:[104] VarVector(var[80]) -> ref(1,1,4)=["1","2","3","😊","🙃","😋","8"][104]
+  820:[104] VarVector(var[80]) -> ref(1,1,4)="	     "[104]
   823:[116] VarRef(var[92]) -> ref(1,2,32)=true[116]
   826:[128] FinishRecord(data=ref(1,1,4)[104], rec=ref(1,2,32)[116], parent_tp=14, fld=65535)
   831:[104] GenFreeStack(value=0, discard=24)
@@ -504,7 +504,7 @@ Execute test:
   881:[52] Text()
   882:[76] ConstText(_value="") -> ""[76]
   884:[92] AppendText(var[52], v1=""[76])
-  887:[76] VarVector(var[28]) -> ref(1,1,4)=["1","2","3","😊","🙃","😋","8"][76]
+  887:[76] VarVector(var[28]) -> ref(1,1,4)="	     "[76]
   890:[88] FormatDatabase(var[52], val=ref(1,1,4)[76], db_tp=14, pretty=false)
   896:[76] ConstText(_value=" indexes:") -> " indexes:"[76]
   907:[92] AppendText(var[52], v1=" indexes:"[76])

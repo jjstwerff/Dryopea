@@ -1,0 +1,209 @@
+Test code:
+
+fn to_text() -> text {
+    res = "aa ";
+    for i in 0..2 {
+        res += "b";
+    }
+    res + " cc"
+}
+    
+
+pub fn test() {
+    test_value = {"1{to_text()}2"};
+    assert(
+        test_value == "1aa bb cc2",
+        "Test failed {test_value} != \"1aa bb cc2\""
+    );
+}
+
+fn to_text {
+  let __work_3 = "";
+  let res = "aa ";
+  {
+    let i#index = OpConvIntFromNull();
+    loop {
+      let i = {
+        i#index = if OpNot(OpConvBoolFromInt(i#index)) {0i32} else {OpAddInt(i#index, 1i32)};
+        if OpGeInt(i#index, 2i32) {break(0)} else {null};
+        i#index;
+      };
+      {
+        OpAppendText(res, "b");
+      };
+    };
+  };
+  OpClearText(__work_3);
+  OpAppendText(__work_3, res);
+  OpAppendText(__work_3, " cc");
+  __work_3;
+}
+
+byte-code for string_fn:to_text() -> text(false)
+ 668[0]: return-address
+ 668[4]: Text()
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: Text()
+ 675[52]: ConstText(_value="aa ") -> text(false)
+ 680[68]: AppendText(var[28], v1: text(false))
+ 683[52]: ConvIntFromNull() -> integer
+ 684[56]: VarInt(var[52]) -> integer
+ 687[60]: ConvBoolFromInt(v1: integer) -> boolean
+ 688[57]: Not(v1: boolean) -> boolean
+ 689[57]: GenGotoFalseWord(jump=700, if_false: boolean)
+ 692[56]: ConstInt(val=0) -> integer
+ 697[60]: GenGotoWord(jump=709)
+ 700[56]: VarInt(var[52]) -> integer
+ 703[60]: ConstInt(val=1) -> integer
+ 708[64]: AddInt(v1: integer, v2: integer) -> integer
+ 709[60]: PutInt(var[52], value: integer)
+ 712[56]: VarInt(var[52]) -> integer
+ 715[60]: ConstInt(val=2) -> integer
+ 720[64]: GeInt(v1: integer, v2: integer) -> boolean
+ 721[57]: GenGotoFalseWord(jump=727, if_false: boolean)
+ 724[56]: GenGotoWord(jump=743)
+ 727[56]: VarInt(var[52]) -> integer
+ 730[60]: ConstText(_value="b") -> text(false)
+ 733[76]: AppendText(var[28], v1: text(false))
+ 736[60]: GenFreeStack(value=0, discard=4)
+ 740[56]: GenGotoWord(jump=684)
+ 743[56]: GenFreeStack(value=0, discard=4)
+ 747[52]: ClearText(var[4])
+ 750[52]: VarText(var[28]) -> text(false)
+ 753[68]: AppendText(var[4], v1: text(false))
+ 756[52]: ConstText(_value=" cc") -> text(false)
+ 761[68]: AppendText(var[4], v1: text(false))
+ 764[52]: VarText(var[4]) -> text(false)
+ 767[68]: GenReturn(ret=0, value=16, discard=68)
+
+fn test {
+  let test_value = {
+    {
+      let append_8 = "1";
+      OpFormatText(append_8, to_text(), 0i32, -1i32, 32i32);
+      OpAppendText(append_8, "2");
+      append_8;
+    };
+  };
+  if OpEqText(test_value, "1aa bb cc2") {null} else {OpGenPanic({
+    let append_9 = "Test failed ";
+    OpFormatText(append_9, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(append_9, " != "1aa bb cc2"");
+    append_9;
+  })};
+}
+
+byte-code for string_fn:test()
+ 773[0]: return-address
+ 773[4]: Text()
+ 774[28]: Text()
+ 775[52]: ConstText(_value="1") -> text(false)
+ 778[68]: AppendText(var[28], v1: text(false))
+ 781[52]: GenCall(size=0, to=668)
+ 788[68]: ConstInt(val=0) -> integer
+ 793[72]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
+ 798[52]: ConstText(_value="2") -> text(false)
+ 801[68]: AppendText(var[28], v1: text(false))
+ 804[52]: VarText(var[28]) -> text(false)
+ 807[68]: GenFreeStack(value=16, discard=24)
+ 811[44]: AppendText(var[4], v1: text(false))
+ 814[28]: VarText(var[4]) -> text(false)
+ 817[44]: ConstText(_value="1aa bb cc2") -> text(false)
+ 829[60]: EqText(v1: text(false), v2: text(false)) -> boolean
+ 830[29]: GenGotoFalseWord(jump=836, if_false: boolean)
+ 833[28]: GenGotoWord(jump=896)
+ 836[28]: Text()
+ 837[52]: ConstText(_value="Test failed ") -> text(false)
+ 851[68]: AppendText(var[28], v1: text(false))
+ 854[52]: VarText(var[4]) -> text(false)
+ 857[68]: ConstInt(val=0) -> integer
+ 862[72]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
+ 867[52]: ConstText(_value=" != "1aa bb cc2"") -> text(false)
+ 885[68]: AppendText(var[28], v1: text(false))
+ 888[52]: VarText(var[28]) -> text(false)
+ 891[68]: GenFreeStack(value=16, discard=24)
+ 895[44]: GenPanic(message: text(false))
+ 896[28]: GenReturn(ret=0, value=0, discard=28)
+
+Execute test:
+  773:[4] Text()
+  774:[28] Text()
+  775:[52] ConstText(_value="1") -> "1"[52]
+  778:[68] AppendText(var[28], v1="1"[52])
+  781:[52] GenCall(size=0, to=668)
+  668:[56] Text()
+  669:[80] ConstText(_value="") -> ""[80]
+  671:[96] AppendText(var[56], v1=""[80])
+  674:[80] Text()
+  675:[104] ConstText(_value="aa ") -> "aa "[104]
+  680:[120] AppendText(var[80], v1="aa "[104])
+  683:[104] ConvIntFromNull() -> -2147483648[104]
+  684:[108] VarInt(var[104]) -> -2147483648[108]
+  687:[112] ConvBoolFromInt(v1=-2147483648[108]) -> false[108]
+  688:[109] Not(v1=false[108]) -> true[108]
+  689:[109] GenGotoFalseWord(jump=700, if_false=true[108])
+  692:[108] ConstInt(val=0) -> 0[108]
+  697:[112] GenGotoWord(jump=709)
+  709:[112] PutInt(var[104], value=0[108])
+  712:[108] VarInt(var[104]) -> 0[108]
+  715:[112] ConstInt(val=2) -> 2[112]
+  720:[116] GeInt(v1=0[108], v2=2[112]) -> false[108]
+  721:[109] GenGotoFalseWord(jump=727, if_false=false[108])
+  727:[108] VarInt(var[104]) -> 0[108]
+  730:[112] ConstText(_value="b") -> "b"[112]
+  733:[128] AppendText(var[80], v1="b"[112])
+  736:[112] GenFreeStack(value=0, discard=4)
+  740:[108] GenGotoWord(jump=684)
+  684:[108] VarInt(var[104]) -> 0[108]
+  687:[112] ConvBoolFromInt(v1=0[108]) -> true[108]
+  688:[109] Not(v1=true[108]) -> false[108]
+  689:[109] GenGotoFalseWord(jump=700, if_false=false[108])
+  700:[108] VarInt(var[104]) -> 0[108]
+  703:[112] ConstInt(val=1) -> 1[112]
+  708:[116] AddInt(v1=0[108], v2=1[112]) -> 1[108]
+  709:[112] PutInt(var[104], value=1[108])
+  712:[108] VarInt(var[104]) -> 1[108]
+  715:[112] ConstInt(val=2) -> 2[112]
+  720:[116] GeInt(v1=1[108], v2=2[112]) -> false[108]
+  721:[109] GenGotoFalseWord(jump=727, if_false=false[108])
+  727:[108] VarInt(var[104]) -> 1[108]
+  730:[112] ConstText(_value="b") -> "b"[112]
+  733:[128] AppendText(var[80], v1="b"[112])
+  736:[112] GenFreeStack(value=0, discard=4)
+  740:[108] GenGotoWord(jump=684)
+  684:[108] VarInt(var[104]) -> 1[108]
+  687:[112] ConvBoolFromInt(v1=1[108]) -> true[108]
+  688:[109] Not(v1=true[108]) -> false[108]
+  689:[109] GenGotoFalseWord(jump=700, if_false=false[108])
+  700:[108] VarInt(var[104]) -> 1[108]
+  703:[112] ConstInt(val=1) -> 1[112]
+  708:[116] AddInt(v1=1[108], v2=1[112]) -> 2[108]
+  709:[112] PutInt(var[104], value=2[108])
+  712:[108] VarInt(var[104]) -> 2[108]
+  715:[112] ConstInt(val=2) -> 2[112]
+  720:[116] GeInt(v1=2[108], v2=2[112]) -> true[108]
+  721:[109] GenGotoFalseWord(jump=727, if_false=true[108])
+  724:[108] GenGotoWord(jump=743)
+  743:[108] GenFreeStack(value=0, discard=4)
+  747:[104] ClearText(var[56])
+  750:[104] VarText(var[80]) -> "aa bb"[104]
+  753:[120] AppendText(var[56], v1="aa bb"[104])
+  756:[104] ConstText(_value=" cc") -> " cc"[104]
+  761:[120] AppendText(var[56], v1=" cc"[104])
+  764:[104] VarText(var[56]) -> "aa bb cc"[104]
+  767:[120] GenReturn(ret=788[52], value=16, discard=68)
+  788:[68] ConstInt(val=0) -> 0[68]
+  793:[72] FormatText(var[28], val="aa bb cc"[52], width=0[68], dir=-1, token=32)
+  798:[52] ConstText(_value="2") -> "2"[52]
+  801:[68] AppendText(var[28], v1="2"[52])
+  804:[52] VarText(var[28]) -> "1aa bb cc2"[52]
+  807:[68] GenFreeStack(value=16, discard=24)
+  811:[44] AppendText(var[4], v1="1aa bb cc2"[28])
+  814:[28] VarText(var[4]) -> "1aa bb cc2"[28]
+  817:[44] ConstText(_value="1aa bb cc2") -> "1aa bb cc2"[44]
+  829:[60] EqText(v1="1aa bb cc2"[28], v2="1aa bb cc2"[44]) -> true[28]
+  830:[29] GenGotoFalseWord(jump=836, if_false=true[28])
+  833:[28] GenGotoWord(jump=896)
+  896:[28] GenReturn(ret=4294967295[0], value=0, discard=28)
+Finished

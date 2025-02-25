@@ -1,0 +1,74 @@
+Test code:
+pub fn test() {
+    test_value = {v = "someth" + "ing"; v.ends_with("thing")};
+    assert(
+        test_value == true,
+        "Test failed {test_value} != true"
+    );
+}
+
+fn test {
+  let test_value = {
+    let v = "";
+    OpAppendText(v, "someth");
+    OpAppendText(v, "ing");
+    _tp_text_ends_with(v, "thing");
+  };
+  if OpEqBool(test_value, true) {null} else {OpGenPanic({
+    let append_8 = "Test failed ";
+    OpFormatBool(append_8, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(append_8, " != true");
+    append_8;
+  })};
+}
+
+byte-code for ends:test()
+ 668[0]: return-address
+ 668[4]: Text()
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: ConstText(_value="someth") -> text(false)
+ 682[44]: AppendText(var[4], v1: text(false))
+ 685[28]: ConstText(_value="ing") -> text(false)
+ 690[44]: AppendText(var[4], v1: text(false))
+ 693[28]: VarText(var[4]) -> text(false)
+ 696[44]: ConstText(_value="thing") -> text(false)
+ 703[60]: StaticCall(_tp_text_ends_with)
+ 706[29]: GenFreeStack(value=1, discard=24)
+ 710[5]: VarBool(var[4]) -> boolean
+ 713[6]: ConstTrue() -> boolean
+ 714[7]: EqBool(v1: boolean, v2: boolean) -> boolean
+ 715[6]: GenGotoFalseWord(jump=721, if_false: boolean)
+ 718[5]: GenGotoWord(jump=773)
+ 721[5]: Text()
+ 722[29]: ConstText(_value="Test failed ") -> text(false)
+ 736[45]: AppendText(var[5], v1: text(false))
+ 739[29]: VarBool(var[4]) -> boolean
+ 742[30]: ConstInt(val=0) -> integer
+ 747[34]: FormatBool(var[5], val: boolean, width: integer, dir=-1, token=32)
+ 752[29]: ConstText(_value=" != true") -> text(false)
+ 762[45]: AppendText(var[5], v1: text(false))
+ 765[29]: VarText(var[5]) -> text(false)
+ 768[45]: GenFreeStack(value=16, discard=24)
+ 772[21]: GenPanic(message: text(false))
+ 773[5]: GenReturn(ret=0, value=0, discard=5)
+
+Execute test:
+  668:[4] Text()
+  669:[28] ConstText(_value="") -> ""[28]
+  671:[44] AppendText(var[4], v1=""[28])
+  674:[28] ConstText(_value="someth") -> "someth"[28]
+  682:[44] AppendText(var[4], v1="someth"[28])
+  685:[28] ConstText(_value="ing") -> "ing"[28]
+  690:[44] AppendText(var[4], v1="ing"[28])
+  693:[28] VarText(var[4]) -> "something"[28]
+  696:[44] ConstText(_value="thing") -> "thing"[44]
+  703:[60] StaticCall(call=3)
+  706:[29] GenFreeStack(value=1, discard=24)
+  710:[5] VarBool(var[4]) -> true[5]
+  713:[6] ConstTrue() -> true[6]
+  714:[7] EqBool(v1=true[5], v2=true[6]) -> true[5]
+  715:[6] GenGotoFalseWord(jump=721, if_false=true[5])
+  718:[5] GenGotoWord(jump=773)
+  773:[5] GenReturn(ret=4294967295[0], value=0, discard=5)
+Finished

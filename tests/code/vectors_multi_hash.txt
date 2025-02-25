@@ -31,9 +31,9 @@ Type 15:Counting[12]:
     v:ordered<Count[t,v]>[4] other [1]
     h:hash<Count[c,t]>[8] other [65535]
 
-Type 16:ordered<Count[t,v]>[4]:Ordered(14, [(1, true), (2, true)])
+Type 16:ordered<Count[t,v]>[4]:Ordered(14, [(1, true), (2, true)]) keys [tp:6 desc:false field:4, tp:1 desc:false field:8, ]
 
-Type 17:hash<Count[c,t]>[4]:Hash(14, [0, 1]) keys [tp:13 desc:false field:12, tp:5 desc:false field:4, ]
+Type 17:hash<Count[c,t]>[4]:Hash(14, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ]
 
 Type 18:vector<Count>[4]:Vector(14)
 
@@ -75,8 +75,8 @@ byte-code for multi_hash:fill(c: Counting[0])
  679[40]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[13]
  681[41]: SetEnum(v1: reference, fld=12, val: enumerate)
  684[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
- 687[40]: ConstText(_value="One") -> text
- 692[56]: SetText(v1: reference, fld=4, val: text)
+ 687[40]: ConstText(_value="One") -> text(false)
+ 692[56]: SetText(v1: reference, fld=4, val: text(false))
  695[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
  698[40]: ConstInt(val=1) -> integer
  703[44]: SetInt(v1: reference, fld=8, val: integer)
@@ -90,8 +90,8 @@ byte-code for multi_hash:fill(c: Counting[0])
  731[40]: ConstEnum(val=2) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[13]
  733[41]: SetEnum(v1: reference, fld=12, val: enumerate)
  736[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
- 739[40]: ConstText(_value="Two") -> text
- 744[56]: SetText(v1: reference, fld=4, val: text)
+ 739[40]: ConstText(_value="Two") -> text(false)
+ 744[56]: SetText(v1: reference, fld=4, val: text(false))
  747[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
  750[40]: ConstInt(val=2) -> integer
  755[44]: SetInt(v1: reference, fld=8, val: integer)
@@ -105,8 +105,8 @@ byte-code for multi_hash:fill(c: Counting[0])
  783[40]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[13]
  785[41]: SetEnum(v1: reference, fld=12, val: enumerate)
  788[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
- 791[40]: ConstText(_value="Two") -> text
- 796[56]: SetText(v1: reference, fld=4, val: text)
+ 791[40]: ConstText(_value="Two") -> text(false)
+ 796[56]: SetText(v1: reference, fld=4, val: text(false))
  799[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
  802[40]: ConstInt(val=20) -> integer
  807[44]: SetInt(v1: reference, fld=8, val: integer)
@@ -120,8 +120,8 @@ byte-code for multi_hash:fill(c: Counting[0])
  835[40]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[13]
  837[41]: SetEnum(v1: reference, fld=12, val: enumerate)
  840[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
- 843[40]: ConstText(_value="Three") -> text
- 850[56]: SetText(v1: reference, fld=4, val: text)
+ 843[40]: ConstText(_value="Three") -> text(false)
+ 850[56]: SetText(v1: reference, fld=4, val: text(false))
  853[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
  856[40]: ConstInt(val=3) -> integer
  861[44]: SetInt(v1: reference, fld=8, val: integer)
@@ -135,8 +135,8 @@ byte-code for multi_hash:fill(c: Counting[0])
  889[40]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[13]
  891[41]: SetEnum(v1: reference, fld=12, val: enumerate)
  894[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
- 897[40]: ConstText(_value="Four") -> text
- 903[56]: SetText(v1: reference, fld=4, val: text)
+ 897[40]: ConstText(_value="Four") -> text(false)
+ 903[56]: SetText(v1: reference, fld=4, val: text(false))
  906[28]: VarRef(var[16]) -> reference type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[14]
  909[40]: ConstInt(val=4) -> integer
  914[44]: SetInt(v1: reference, fld=8, val: integer)
@@ -179,22 +179,22 @@ byte-code for multi_hash:test()
  972[16]: VarRef(var[4]) -> reference type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[15]
  975[28]: GenCall(size=0, to=668)
  982[16]: VarRef(var[4]) -> reference type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[15]
- 985[28]: GetField(v1: reference, fld=8) -> reference type=hash<Count[c,t]>[4]:Hash(14, [0, 1]) keys [tp:13 desc:false field:12, tp:5 desc:false field:4, ][17]
- 988[28]: ConstText(_value="Three") -> text
+ 985[28]: GetField(v1: reference, fld=8) -> reference type=hash<Count[c,t]>[4]:Hash(14, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ][17]
+ 988[28]: ConstText(_value="Three") -> text(false)
  995[44]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[13]
  997[45]: GetRecord(data: reference, db_tp=17, no_keys=2) -> reference
 1001[28]: GetInt(v1: reference, fld=8) -> integer
 1004[20]: VarRef(var[4]) -> reference type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[15]
-1007[32]: GetField(v1: reference, fld=8) -> reference type=hash<Count[c,t]>[4]:Hash(14, [0, 1]) keys [tp:13 desc:false field:12, tp:5 desc:false field:4, ][17]
-1010[32]: ConstText(_value="Two") -> text
+1007[32]: GetField(v1: reference, fld=8) -> reference type=hash<Count[c,t]>[4]:Hash(14, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ][17]
+1010[32]: ConstText(_value="Two") -> text(false)
 1015[48]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[13]
 1017[49]: GetRecord(data: reference, db_tp=17, no_keys=2) -> reference
 1021[32]: GetInt(v1: reference, fld=8) -> integer
 1024[24]: AddInt(v1: integer, v2: integer) -> integer
 1025[20]: VarRef(var[4]) -> reference type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[15]
-1028[32]: GetField(v1: reference, fld=4) -> reference type=ordered<Count[t,v]>[4]:Ordered(14, [(1, true), (2, true)])[16]
+1028[32]: GetField(v1: reference, fld=4) -> reference type=ordered<Count[t,v]>[4]:Ordered(14, [(1, true), (2, true)]) keys [tp:6 desc:false field:4, tp:1 desc:false field:8, ][16]
 1031[32]: ConstInt(val=4) -> integer
-1036[36]: ConstText(_value="Four") -> text
+1036[36]: ConstText(_value="Four") -> text(false)
 1042[52]: GetRecord(data: reference, db_tp=16, no_keys=2) -> reference
 1046[32]: GetInt(v1: reference, fld=8) -> integer
 1049[24]: AddInt(v1: integer, v2: integer) -> integer
@@ -205,16 +205,16 @@ byte-code for multi_hash:test()
 1063[9]: GenGotoFalseWord(jump=1069, if_false: boolean)
 1066[8]: GenGotoWord(jump=1121)
 1069[8]: Text()
-1070[32]: ConstText(_value="Test failed ") -> text
-1084[48]: AppendText(var[8], v1: text)
+1070[32]: ConstText(_value="Test failed ") -> text(false)
+1084[48]: AppendText(var[8], v1: text(false))
 1087[32]: VarInt(var[4]) -> integer
 1090[36]: ConstInt(val=0) -> integer
 1095[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-1102[32]: ConstText(_value=" != 27") -> text
-1110[48]: AppendText(var[8], v1: text)
-1113[32]: VarText(var[8]) -> text
+1102[32]: ConstText(_value=" != 27") -> text(false)
+1110[48]: AppendText(var[8], v1: text(false))
+1113[32]: VarText(var[8]) -> text(false)
 1116[48]: GenFreeStack(value=16, discard=24)
-1120[24]: GenPanic(message: text)
+1120[24]: GenPanic(message: text(false))
 1121[8]: GenReturn(ret=0, value=0, discard=8)
 
 Execute test:

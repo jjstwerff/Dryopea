@@ -24,8 +24,8 @@ fn test {
 
 byte-code for parse_vector:test()
  668[0]: return-address
- 668[4]: ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text
- 703[20]: CastVectorFromText(val: text, db_tp=13) -> vector
+ 668[4]: ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text(false)
+ 703[20]: CastVectorFromText(val: text(false), db_tp=13) -> vector
  706[16]: VarVector(var[4]) -> vector type=vector<float>[4]:Vector(3)[13]
  709[28]: ConstInt(val=2) -> integer
  714[32]: GetVector(r: vector, size=8, index: integer) -> reference type=float[8]:Base[3]
@@ -42,17 +42,17 @@ byte-code for parse_vector:test()
  752[13]: GenGotoFalseWord(jump=758, if_false: boolean)
  755[12]: GenGotoWord(jump=826)
  758[12]: Text()
- 759[36]: ConstText(_value="Test failed ") -> text
- 773[52]: AppendText(var[12], v1: text)
+ 759[36]: ConstText(_value="Test failed ") -> text(false)
+ 773[52]: AppendText(var[12], v1: text(false))
  776[36]: VarFloat(var[4]) -> float
  779[44]: ConstInt(val=0) -> integer
  784[48]: ConstInt(val=0) -> integer
  789[52]: FormatFloat(var[12], val: float, width: integer, precision: integer)
- 792[36]: ConstText(_value=" != 18120.00000001001") -> text
- 815[52]: AppendText(var[12], v1: text)
- 818[36]: VarText(var[12]) -> text
+ 792[36]: ConstText(_value=" != 18120.00000001001") -> text(false)
+ 815[52]: AppendText(var[12], v1: text(false))
+ 818[36]: VarText(var[12]) -> text(false)
  821[52]: GenFreeStack(value=16, discard=24)
- 825[28]: GenPanic(message: text)
+ 825[28]: GenPanic(message: text(false))
  826[12]: GenReturn(ret=0, value=0, discard=12)
 
 Execute test:

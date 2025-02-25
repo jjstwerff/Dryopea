@@ -1,0 +1,59 @@
+// Copyright (c) 2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+pub fn starts_with(self: text, value: text) -> boolean;
+#rust "@self.starts_with(@value)"
+
+pub fn ends_with(self: text, value: text) -> boolean;
+#rust "@self.ends_with(@value)"
+
+pub fn trim(self: text) -> text;
+#rust "@self.trim()"
+
+pub fn trim_start(self: text) -> text;
+#rust "@self.trim_start()"
+
+pub fn trim_end(self: text) -> text;
+#rust "@self.trim_end()"
+
+pub fn find(self: text, value: text) -> integer;
+#rust "if let Some(v) = @self.find(@value) {{ v as i32 }} else {{ i32::MIN }}"
+
+pub fn contains(self: text, value: text) -> boolean;
+#rust "@self.contains(@value)"
+
+pub fn replace(self: text, value: text, with: text) -> text;
+#rust "@self.replace(@value, @with)"
+
+pub fn to_lowercase(self: text) -> text;
+#rust "@self.to_lowercase()"
+
+pub fn to_uppercase(self: text) -> text;
+#rust "@self.to_uppercase()"
+
+pub fn is_lowercase(self: text) -> boolean;
+#rust "let mut res = true; for c in @self.chars() {{ if !c.is_lowercase() {{ res = false; }} }}; res"
+
+pub fn is_uppercase(self: text) -> boolean;
+#rust "let mut res = true; for c in @self.chars() {{ if !c.is_uppercase() {{ res = false; }} }}; res"
+
+pub fn is_numeric(self: text) -> boolean;
+#rust "let mut res = true; for c in @self.chars() {{ if !c.is_numeric() {{ res = false; }} }}; res"
+
+pub fn is_alphanumeric(self: text) -> boolean;
+#rust "let mut res = true; for c in @self.chars() {{ if !c.is_alphanumeric() {{ res = false; }} }}; res"
+
+pub fn is_alphabetic(self: text) -> boolean;
+#rust "let mut res = true; for c in @self.chars() {{ if !c.is_alphabetic() {{ res = false; }} }}; res"
+
+pub fn is_whitespace(self: text) -> boolean;
+#rust "let mut res = true; for c in @self.chars() {{ if !c.is_whitespace() {{ res = false; }} }}; res"
+
+pub fn is_control(self: text) -> boolean;
+#rust "let mut res = true; for c in @self.chars() {{ if !c.is_control() {{ res = false; }} }}; res"
+
+// pub fn lines(self: text) -> iterator<text,integer>;
+// #iterator "0" "lines_text(@self, &mut @iter)"
+
+// pub fn split(self: text, on: text) -> iterator<text,integer>;
+// #iterator "0" "split_text(@self, &mut @iter)"

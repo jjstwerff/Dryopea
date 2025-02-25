@@ -47,9 +47,6 @@ fn sum(o: Object) -> integer {
     .result(Value::str("{a:[1,4,3,8],b:Fluid}"));
 }
 
-// TODO A vector with only enum value
-// TODO Vector with record including an enum
-
 #[test]
 fn duplicate() {
     code!(
@@ -95,3 +92,19 @@ fn calc(self: Data) -> integer {
     .expr("1")
     .result(Value::Int(1));
 }
+
+#[test]
+fn reference() {
+    code!(
+        "fn add(self: &integer, a: integer) {
+    self += a;
+}"
+    )
+    .expr("v = 1; v.add(2); v.add(4); v")
+    .result(Value::Int(7));
+}
+
+// TODO free structures
+// TODO function that returns a structure
+// TODO limited show structure for debugging
+// TODO writing to non-primary structure should be an error

@@ -29,5 +29,7 @@ clippy:
 	rustfmt tests/*.rs --edition 2024
 
 meld:
+	rustfmt tests/generated/text.rs --edition 2024
+	meld tests/generated/text.rs src/text.rs
 	rustfmt tests/generated/fill.rs --edition 2024
 	meld tests/generated/fill.rs src/fill.rs
