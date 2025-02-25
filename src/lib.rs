@@ -10,17 +10,18 @@ mod types;
 
 mod calc;
 pub mod database;
+pub mod hash;
+pub mod keys;
+pub mod vector;
 
 pub mod external;
 pub mod generation;
-pub mod hash;
-pub mod keys;
 mod logger;
 pub mod parser;
 mod png_store;
 mod radix_tree;
-mod rb_tree;
 mod store;
+pub mod tree;
 mod typedef;
 
 pub mod create;

@@ -1,12 +1,14 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
+#![allow(dead_code)]
 
 use crate::data::{Attribute, Context, Data, I32, Type, Value};
-use crate::database::{ShowDb, Stores, Str};
+use crate::database::{ShowDb, Stores};
 use crate::fill::OPERATORS;
-use crate::keys::{Content, DbRef};
+use crate::keys::{Content, DbRef, Str};
 use crate::stack::{Stack, size};
+use crate::vector;
 use crate::{external, hash};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{Error, Write};
@@ -99,6 +101,7 @@ impl State {
     # Panics
     When a situation a missed that should have been rewritten.
     */
+    #[allow(clippy::unused_self)]
     pub fn add_text(&mut self) {
         panic!("Should not be called directly");
     }
@@ -547,7 +550,8 @@ impl State {
         let db_tp = *self.code::<u16>();
         let index = *self.get_stack::<i32>();
         let r = *self.get_stack::<DbRef>();
-        let new_value = self.database.insert_vector(&r, u32::from(size), index);
+        let new_value =
+            vector::insert_vector(&r, u32::from(size), index, &mut self.database.allocations);
         self.database.set_default_value(db_tp, &new_value);
         self.put_stack(new_value);
     }

@@ -172,7 +172,7 @@ impl RbTree<'_> {
             }
             let rr = self.right(r as u32);
             if rr > 0 && self.flag(rr as u32) {
-                return self.fix_rl(rec, r, rr);
+                return self.fix_rr(rec, r, rr);
             }
         }
         rec as i32

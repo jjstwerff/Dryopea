@@ -6,10 +6,32 @@
 #![allow(clippy::float_cmp)]
 #![allow(dead_code)]
 
-use crate::database::Str;
 use crate::store::Store;
 use std::cmp::Ordering;
 use std::hash::{DefaultHasher, Hash, Hasher};
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Str {
+    pub ptr: *const u8,
+    pub len: u32,
+}
+
+impl Str {
+    #[must_use]
+    pub fn new(v: &str) -> Str {
+        Str {
+            ptr: v.as_ptr(),
+            len: v.len() as u32,
+        }
+    }
+
+    #[must_use]
+    pub fn str<'a>(&self) -> &'a str {
+        unsafe {
+            std::str::from_utf8_unchecked(std::slice::from_raw_parts(self.ptr, self.len as usize))
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Key {
@@ -104,17 +126,11 @@ pub fn compare(rec1: &DbRef, rec2: &DbRef, stores: &[Store], keys: &[Key]) -> Or
 }
 
 #[must_use]
-pub fn key_compare(
-    key: &[Content],
-    k_len: u8,
-    rec: &DbRef,
-    stores: &[Store],
-    keys: &[Key],
-) -> Ordering {
-    for k_nr in 0..k_len {
-        let k = &keys[k_nr as usize];
+pub fn key_compare(key: &[Content], rec: &DbRef, stores: &[Store], keys: &[Key]) -> Ordering {
+    for (k_nr, val) in key.iter().enumerate() {
+        let k = &keys[k_nr];
         let pos_r = rec.pos + u32::from(k.field_pos);
-        let c = compare_key(&key[k_nr as usize], rec, stores, k, pos_r);
+        let c = compare_key(val, rec, stores, k, pos_r);
         if c != Ordering::Equal {
             return c;
         }
