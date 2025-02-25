@@ -1,16 +1,22 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
+#![allow(dead_code)]
 
 use crate::data::{Attribute, Context, Data, I32, Type, Value};
-use crate::database::{ShowDb, Stores, Str};
+use crate::database::{ShowDb, Stores};
 use crate::fill::OPERATORS;
-use crate::keys::{Content, DbRef};
+use crate::keys;
+use crate::keys::{Content, DbRef, Key, Str};
 use crate::stack::{Stack, size};
+use crate::tree;
+use crate::vector;
 use crate::{external, hash};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{Error, Write};
 use std::str::FromStr;
+
+pub type Call = fn(&mut Stores, &mut DbRef);
 
 /// Internal State of the interpreter to run bytecode.
 pub struct State {
@@ -27,6 +33,21 @@ pub struct State {
     pub calls: HashMap<u32, Vec<u32>>,
     // Type information for enumerate and database (record, vectors and fields) types.
     pub types: HashMap<u32, u16>,
+    pub library: Vec<Call>,
+    pub library_names: HashMap<String, u16>,
+}
+
+fn new_ref(data: &DbRef, pos: u32, arg: u16) -> DbRef {
+    DbRef {
+        store_nr: data.store_nr,
+        rec: pos,
+        pos: u32::from(arg),
+    }
+}
+
+#[must_use]
+pub fn get_character(val: &str) -> i32 {
+    val.chars().next().unwrap_or('\0') as i32
 }
 
 impl State {
@@ -41,14 +62,22 @@ impl State {
             bytecode: Vec::new(),
             text_code: Vec::new(),
             stack_cur: db.database(1000),
-            stack_pos: 0,
+            stack_pos: 4,
             code_pos: 0,
             database: db,
             arguments: 0,
             stack: HashMap::new(),
             calls: HashMap::new(),
             types: HashMap::new(),
+            library: Vec::new(),
+            library_names: HashMap::new(),
         }
+    }
+
+    pub fn static_fn(&mut self, name: &str, call: Call) {
+        let nr = self.library.len() as u16;
+        self.library_names.insert(name.to_string(), nr);
+        self.library.push(call);
     }
 
     pub fn conv_text_from_null(&mut self) {
@@ -94,11 +123,77 @@ impl State {
         *v1 += text.str();
     }
 
+    #[inline]
+    pub fn create_ref(&mut self) {
+        let pos = *self.code::<u16>();
+        self.put_stack(DbRef {
+            store_nr: self.stack_cur.store_nr,
+            rec: self.stack_cur.rec,
+            pos: self.stack_cur.pos + self.stack_pos - u32::from(pos),
+        });
+    }
+
+    #[inline]
+    pub fn get_ref_text(&mut self) {
+        let r = *self.get_stack::<DbRef>();
+        let t: &str = self.database.store(&r).addr::<String>(r.rec, r.pos);
+        self.put_stack(Str::new(t));
+    }
+
+    pub fn append_ref_text(&mut self) {
+        let text = self.string();
+        let r = *self.get_stack::<DbRef>();
+        let v1 = self.database.store_mut(&r).addr_mut::<String>(r.rec, r.pos);
+        *v1 += text.str();
+    }
+
+    pub fn clear_ref_text(&mut self) {
+        let r = *self.get_stack::<DbRef>();
+        let v1 = self.database.store_mut(&r).addr_mut::<String>(r.rec, r.pos);
+        v1.clear();
+    }
+
+    #[inline]
+    pub fn append_character(&mut self) {
+        let pos = *self.code::<u16>();
+        let c = char::from_u32(*self.get_stack::<i32>() as u32).unwrap_or('\u{20}');
+        self.string_mut(pos - size_ptr() as u16).push(c);
+    }
+
+    #[must_use]
+    pub fn lines_text<'a>(val: &'a str, at: &mut i32) -> &'a str {
+        if let Some(to) = val[*at as usize..].find('\n') {
+            let r = &val[*at as usize..to];
+            *at = to as i32 + 1;
+            r
+        } else {
+            *at = i32::MIN;
+            ""
+        }
+    }
+
+    #[must_use]
+    pub fn split_text<'a>(val: &'a str, on: &str, at: &mut i32) -> &'a str {
+        if on.is_empty() {
+            *at = i32::MIN;
+            return "";
+        }
+        if let Some(to) = val[*at as usize..].find(on) {
+            let r = &val[*at as usize..to];
+            *at = (to + on.len()) as i32;
+            r
+        } else {
+            *at = i32::MIN;
+            ""
+        }
+    }
+
     /**
     This is a placeholder function that should be rewritten into two `append_text` calls.
     # Panics
     When a situation a missed that should have been rewritten.
     */
+    #[allow(clippy::unused_self)]
     pub fn add_text(&mut self) {
         panic!("Should not be called directly");
     }
@@ -299,6 +394,14 @@ impl State {
         self.code_pos = to as u32;
     }
 
+    pub fn static_call(&mut self) {
+        let call = *self.code::<u16>();
+        let mut stack = self.stack_cur;
+        stack.pos = self.stack_pos;
+        self.library[call as usize](&mut self.database, &mut stack);
+        self.stack_pos = stack.pos;
+    }
+
     pub fn var_text(&mut self) {
         let pos = *self.code::<u16>();
         let new_value = Str::new(self.get_var::<String>(pos));
@@ -451,6 +554,166 @@ impl State {
         self.put_var(var_pos + 4 - dif as u16, pos);
     }
 
+    /**
+    Iterate through a data structure from a given key to a given end-key.
+    # Panics
+    When called on a not implemented data-structure
+    */
+    pub fn iterate(&mut self) {
+        let on = *self.code::<u8>();
+        let arg = *self.code::<u16>();
+        let keys_size = *self.code::<u8>();
+        let mut keys = Vec::new();
+        for _ in 0..keys_size {
+            keys.push(Key {
+                type_nr: *self.code::<i8>(),
+                position: *self.code::<u16>(),
+            });
+        }
+        let from_key = *self.code::<u8>();
+        let till_key = *self.code::<u8>();
+        let till = self.stack_key(till_key, &keys);
+        let from = self.stack_key(from_key, &keys);
+        let data = *self.get_stack::<DbRef>();
+        // start the loop at the 'till' key and walk to the 'from' key
+        let reverse = on & 64 != 0;
+        // till key is exclusive the found key
+        let ex = on & 128 == 0;
+        let start;
+        let finish;
+        let all = &self.database.allocations;
+        match on & 63 {
+            1 => {
+                // index points to the record position inside the store
+                if reverse {
+                    let t = tree::find(&data, ex, arg, all, &keys, &till);
+                    start = if ex {
+                        t
+                    } else {
+                        tree::next(keys::store(&data, all), &new_ref(&data, t, arg))
+                    };
+                    let f = tree::find(&data, ex, arg, all, &keys, &from);
+                    finish = tree::next(keys::store(&data, all), &new_ref(&data, f, arg));
+                } else {
+                    start = tree::find(&data, true, arg, all, &keys, &from);
+                    let t = tree::find(&data, ex, arg, all, &keys, &till);
+                    finish = if ex {
+                        t
+                    } else {
+                        tree::previous(keys::store(&data, all), &new_ref(&data, t, arg))
+                    };
+                }
+            }
+            2 => {
+                // sorted points to the position of the record inside the vector
+                if reverse {
+                    start = vector::sorted_find(&data, true, arg, all, &keys, &from);
+                    finish = vector::sorted_find(&data, ex, arg, all, &keys, &till)
+                        - if ex { 0 } else { u32::from(arg) };
+                } else {
+                    start = vector::sorted_find(&data, ex, arg, all, &keys, &till)
+                        + if ex { 0 } else { u32::from(arg) };
+                    finish =
+                        vector::sorted_find(&data, ex, arg, all, &keys, &from) + u32::from(arg);
+                }
+            }
+            3 => {
+                // ordered points to the position inside the vector of references
+                if reverse {
+                    start = vector::ordered_find(&data, true, all, &keys, &from);
+                    finish = vector::ordered_find(&data, ex, all, &keys, &till)
+                        - if ex { 0 } else { u32::from(arg) };
+                } else {
+                    start = vector::ordered_find(&data, ex, all, &keys, &till)
+                        + if ex { 0 } else { u32::from(arg) };
+                    finish = vector::ordered_find(&data, ex, all, &keys, &from) + u32::from(arg);
+                }
+            }
+            _ => panic!("Not implemented"),
+        }
+        self.put_stack(start);
+        self.put_stack(finish);
+    }
+
+    fn stack_key(&mut self, size: u8, keys: &[Key]) -> Vec<Content> {
+        let mut key = Vec::new();
+        for (k_nr, k) in keys.iter().enumerate() {
+            if k_nr >= size as usize {
+                break;
+            }
+            match k.type_nr.abs() {
+                1 => key.push(Content::Long(i64::from(*self.get_stack::<i32>()))),
+                2 => key.push(Content::Long(*self.get_stack::<i64>())),
+                3 => key.push(Content::Single(*self.get_stack::<f32>())),
+                4 => key.push(Content::Float(*self.get_stack::<f64>())),
+                5 => key.push(Content::Long(i64::from(*self.get_stack::<bool>()))),
+                6 => key.push(Content::Str(self.string())),
+                7 => key.push(Content::Long(i64::from(*self.get_stack::<u8>()))),
+                _ => panic!("Unknown key type"),
+            }
+        }
+        key
+    }
+
+    /**
+    Step to the next value for the iterator.
+    # Panics
+    When requesting on a not-implemented iterator.
+    */
+    pub fn step(&mut self) {
+        let state_var = *self.code::<u16>();
+        let on = *self.code::<u8>();
+        let arg = *self.code::<u16>();
+        let cur = *self.get_var::<u32>(state_var);
+        let finish = *self.get_var::<u32>(state_var - 4);
+        let reverse = on & 64 != 0;
+        let data = *self.get_stack::<DbRef>();
+        let store = keys::store(&data, &self.database.allocations);
+        let cur = match on & 63 {
+            1 => {
+                if finish == u32::MAX {
+                    new_ref(&data, 0, 0)
+                } else {
+                    let rec = new_ref(&data, cur, arg);
+                    let n = if reverse {
+                        tree::previous(store, &rec)
+                    } else {
+                        tree::next(store, &rec)
+                    };
+                    self.put_var(state_var - 8, n);
+                    if n == finish {
+                        self.put_var(state_var - 12, u32::MAX);
+                    }
+                    new_ref(&data, n, 0)
+                }
+            }
+            2 => {
+                let mut pos = cur as i32;
+                vector::vector_next(&data, &mut pos, arg, &self.database.allocations);
+                self.put_var(state_var - 8, pos as u32);
+                self.database.element_reference(&data, &mut pos)
+            }
+            3 => {
+                let mut pos = cur as i32;
+                vector::vector_next(&data, &mut pos, 4, &self.database.allocations);
+                let vector = store.get_int(data.rec, data.pos) as u32;
+                let rec = if pos == i32::MAX {
+                    0
+                } else {
+                    store.get_int(vector, pos as u32) as u32
+                };
+                self.put_var(state_var - 8, pos as u32);
+                DbRef {
+                    store_nr: data.store_nr,
+                    rec,
+                    pos: 0,
+                }
+            }
+            _ => panic!("Not implemented"),
+        };
+        self.put_stack(cur);
+    }
+
     pub fn hash_add(&mut self) {
         let tp = *self.code::<u16>();
         let rec = *self.get_stack::<DbRef>();
@@ -547,7 +810,8 @@ impl State {
         let db_tp = *self.code::<u16>();
         let index = *self.get_stack::<i32>();
         let r = *self.get_stack::<DbRef>();
-        let new_value = self.database.insert_vector(&r, u32::from(size), index);
+        let new_value =
+            vector::insert_vector(&r, u32::from(size), index, &mut self.database.allocations);
         self.database.set_default_value(db_tp, &new_value);
         self.put_stack(new_value);
     }
@@ -688,6 +952,10 @@ impl State {
                 self.code_add(*value);
                 Type::Float
             }
+            Value::Keys(_) => {
+                // Should be already part of the search request
+                Type::Null
+            }
             Value::Boolean(value) => {
                 stack.add_op(
                     if *value {
@@ -702,12 +970,12 @@ impl State {
             Value::Text(value) => {
                 stack.add_op("OpConstText", self);
                 self.code_add_str(value);
-                Type::Text
+                Type::Text(false)
             }
             Value::Var(variable) => self.generate_var(stack, variable),
             Value::Let(variable, value) => {
                 stack.start(*variable);
-                if *stack.var_type(*variable) == Type::Text {
+                if matches!(*stack.var_type(*variable), Type::Text(_)) {
                     stack.add_op("OpText", self);
                     stack.position += size_str() as u16;
                     self.set_var(stack, *variable, value);
@@ -849,6 +1117,13 @@ impl State {
                 was_stack = stack.position;
                 self.gather_key(stack, &parameters, 3, &mut tps);
             }
+            "OpIterate" => {
+                was_stack = stack.position + 8 - size_ref() as u16;
+                if let Value::Int(parameter_length) = parameters[4] {
+                    self.gather_key(stack, &parameters, 4, &mut tps);
+                    self.gather_key(stack, &parameters, 5 + parameter_length, &mut tps);
+                }
+            }
             _ => (),
         }
         if !parameters.is_empty() {
@@ -856,6 +1131,7 @@ impl State {
                 last = n as u16;
             }
         }
+        let name = stack.data.def(*op).name.clone();
         if stack.data.def(*op).is_operator() {
             let before_stack = stack.position;
             self.remember_stack(stack.position);
@@ -872,6 +1148,16 @@ impl State {
                 self.add_const(&a.typedef, &parameters[a_nr], stack, before_stack);
             }
             self.op_type(*op, &tps, last, code, stack)
+        } else if self.library_names.contains_key(&name) {
+            stack.add_op("OpStaticCall", self);
+            self.code_add(self.library_names[&name]);
+            self.gather_key(stack, &parameters, 1, &mut tps);
+            for a in &stack.data.def(*op).attributes {
+                stack.position -= size(&a.typedef, Context::Argument);
+            }
+            // add the result to the stack
+            stack.position += size(&stack.data.def(*op).returned, Context::Argument);
+            stack.data.def(*op).returned.clone()
         } else {
             if !self.calls.contains_key(op) {
                 self.calls.insert(*op, vec![]);
@@ -970,19 +1256,21 @@ impl State {
         let var_pos = stack.position - stack.position(*variable);
         let argument = *variable < stack.def().attributes.len() as u32;
         let code = self.code_pos;
-        // TODO add database references and possibly text slices
         match stack.var_type(*variable) {
             Type::Integer(_, _) => stack.add_op("OpVarInt", self),
+            Type::RefVar(_) => stack.add_op("OpVarRef", self),
             Type::Enum(_) => stack.add_op("OpVarEnum", self),
             Type::Boolean => stack.add_op("OpVarBool", self),
             Type::Long => stack.add_op("OpVarLong", self),
             Type::Single => stack.add_op("OpVarSingle", self),
             Type::Float => stack.add_op("OpVarFloat", self),
-            Type::Text => stack.add_op(if argument { "OpArgText" } else { "OpVarText" }, self),
+            Type::Text(_) => stack.add_op(if argument { "OpArgText" } else { "OpVarText" }, self),
             Type::Vector(tp) => {
                 let typedef: &Type = tp;
                 let name = if matches!(typedef, Type::Unknown(_)) {
                     "vector".to_string()
+                } else if matches!(typedef, Type::Text(_)) {
+                    "text".to_string()
                 } else if let Type::Reference(nr) = typedef {
                     format!("vector<{}>", stack.data.def(*nr).name)
                 } else {
@@ -1005,6 +1293,18 @@ impl State {
             ),
         }
         self.code_add(var_pos);
+        if let Type::RefVar(tp) = stack.var_type(*variable) {
+            match &**tp {
+                Type::Integer(_, _) => stack.add_op("OpGetInt", self),
+                Type::Long => stack.add_op("OpGetLong", self),
+                Type::Single => stack.add_op("OpGetSingle", self),
+                Type::Float => stack.add_op("OpGetFloat", self),
+                Type::Enum(_) => stack.add_op("OpGetByte", self),
+                Type::Text(_) => stack.add_op("OpGetRefText", self),
+                _ => panic!("Unknown referenced variable type"),
+            }
+            self.code_add(0u16);
+        }
         self.insert_types(stack.var_type(*variable).clone(), code, stack)
     }
 
@@ -1081,7 +1381,7 @@ impl State {
                     self.code_add(u8::from(*v));
                 }
             }
-            Type::Text => {
+            Type::Text(_) => {
                 if let Value::Text(s) = p {
                     self.code_add_str(s);
                 }
@@ -1101,11 +1401,37 @@ impl State {
                     self.code_add(*val);
                 }
             }
+            Type::Keys => {
+                if let Value::Keys(keys) = p {
+                    self.code_add(keys.len() as u8);
+                    for k in keys {
+                        self.code_add(k.type_nr);
+                        self.code_add(k.position);
+                    }
+                }
+            }
             _ => {}
         }
     }
 
     fn set_var(&mut self, stack: &mut Stack, var: u32, value: &Value) {
+        if let Type::RefVar(tp) = stack.var_type(var).clone() {
+            let var_pos = stack.position - stack.position(var);
+            stack.add_op("OpVarRef", self);
+            self.code_add(var_pos);
+            self.generate(value, stack);
+            match *tp {
+                Type::Integer(_, _) => stack.add_op("OpSetInt", self),
+                Type::Long => stack.add_op("OpSetLong", self),
+                Type::Single => stack.add_op("OpSetSingle", self),
+                Type::Float => stack.add_op("OpSetFloat", self),
+                Type::Text(_) => stack.add_op("OpAppendRefText", self),
+                Type::Enum(_) => stack.add_op("OpSetByte", self),
+                _ => panic!("Unknown reference variable type"),
+            }
+            self.code_add(0u16);
+            return;
+        }
         self.generate(value, stack);
         let var_pos = stack.position - stack.position(var);
         match stack.var_type(var) {
@@ -1115,7 +1441,7 @@ impl State {
             Type::Long => stack.add_op("OpPutLong", self),
             Type::Single => stack.add_op("OpPutSingle", self),
             Type::Float => stack.add_op("OpPutFloat", self),
-            Type::Text => stack.add_op("OpAppendText", self),
+            Type::Text(_) => stack.add_op("OpAppendText", self),
             Type::Vector(_) | Type::Reference(_) => stack.add_op("OpPutRef", self),
             _ => panic!(
                 "Unknown var {} type {} at {}",
@@ -1178,17 +1504,21 @@ impl State {
                 if (def.name == "OpGenGotoFalseWord" || def.name == "OpGenGotoWord") && a_nr == 0 {
                     let to = i64::from(p) + 3 + i64::from(*self.code::<i16>());
                     write!(f, "jump={to}")?;
+                } else if def.name == "OpStaticCall" {
+                    let v = *self.code::<u16>();
+                    for (n, val) in &self.library_names {
+                        if *val == v {
+                            write!(f, "{n}")?;
+                        }
+                    }
                 } else if a_nr == 0
                     && !a.mutable
                     && a.name == "pos"
                     && a.typedef == Type::Integer(0, 65535)
                     && self.stack.contains_key(&p)
                 {
-                    write!(
-                        f,
-                        "var[{}]",
-                        i32::from(self.stack[&p]) - i32::from(*self.code::<u16>())
-                    )?;
+                    let pos = i32::from(*self.code::<u16>());
+                    write!(f, "var[{}]", i32::from(self.stack[&p]) - pos,)?;
                 } else if a.mutable {
                     write!(f, "{}: {}", a.name, a.typedef.show(data))?;
                 } else {
@@ -1233,7 +1563,18 @@ impl State {
             Type::Long => format!("{}", *self.code::<i64>()),
             Type::Single => format!("{}", *self.code::<f32>()),
             Type::Float => format!("{}", *self.code::<f64>()),
-            Type::Text => format!("\"{}\"", self.code_str()),
+            Type::Text(_) => format!("\"{}\"", self.code_str()),
+            Type::Keys => {
+                let len = *self.code::<u8>();
+                let mut keys = Vec::new();
+                for _ in 0..len {
+                    keys.push(Key {
+                        type_nr: *self.code::<i8>(),
+                        position: *self.code::<u16>(),
+                    });
+                }
+                format!("{keys:?}")
+            }
             _ => "unknown".to_string(),
         }
     }
@@ -1269,7 +1610,7 @@ impl State {
             assert!(step < 100_000, "Too many operations");
             if self.code_pos == u32::MAX {
                 // TODO Validate that all databases & String values are also cleared.
-                assert_eq!(self.stack_pos, 0, "Stack not correctly cleared");
+                assert_eq!(self.stack_pos, 4, "Stack not correctly cleared");
                 writeln!(log, "Finished")?;
                 return Ok(());
             }
@@ -1344,7 +1685,7 @@ impl State {
                     2 => self.dump_stack(&Type::Single, u32::MAX, data),
                     3 => self.dump_stack(&Type::Float, u32::MAX, data),
                     4 => self.dump_stack(&Type::Boolean, u32::MAX, data),
-                    5 => self.dump_stack(&Type::Text, u32::MAX, data),
+                    5 => self.dump_stack(&Type::Text(false), u32::MAX, data),
                     _ => self.dump_stack(&Type::Enum(u32::MAX), u32::from(*key), data),
                 };
                 attr.insert(idx + 3, format!("key{}={v}[{}]", idx + 1, self.stack_pos));
@@ -1426,7 +1767,7 @@ impl State {
             Type::Long => format!("{}", *self.get_stack::<i64>()),
             Type::Single => format!("{}", *self.get_stack::<f32>()),
             Type::Float => format!("{}", *self.get_stack::<f64>()),
-            Type::Text => format!("\"{}\"", self.string().str().replace('"', "\\\"")),
+            Type::Text(_) => format!("\"{}\"", self.string().str().replace('"', "\\\"")),
             Type::Boolean => format!("{}", *self.get_stack::<u8>() == 1),
             Type::Reference(tp) => {
                 let known = if self.types.contains_key(&code) {

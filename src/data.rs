@@ -12,6 +12,7 @@
 
 extern crate strum_macros;
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
+use crate::keys::Key;
 use crate::lexer::{Lexer, Position};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
@@ -73,6 +74,8 @@ pub enum Value {
     Drop(Box<Value>),
     /// The creation of the iterator and the next expression. Not able to revert.
     Iter(Box<Value>, Box<Value>),
+    /// Key structure
+    Keys(Vec<Key>),
 }
 
 #[allow(dead_code)]
@@ -105,7 +108,7 @@ pub fn to_default(tp: &Type) -> Value {
         Type::Long => Value::Long(0),
         Type::Single => Value::Single(0.0),
         Type::Float => Value::Float(0.0),
-        Type::Text => Value::Text(String::new()),
+        Type::Text(_) => Value::Text(String::new()),
         _ => Value::Null,
     }
 }
@@ -127,25 +130,29 @@ pub enum Type {
     Long,
     Float,
     Single,
-    Text,
+    /// A text with true when it is inside a database versus a String on stack.
+    Text(bool),
+    /// Description of the possible keys on a structure (hash, index, spacial, sorted)
+    Keys,
     /// An enum value. There is always a single parent definition with enum type itself.
     Enum(u32),
     /// A readonly reference to a record instance in a store.
     Reference(u32),
+    /// A reference to a variable on stack.
+    RefVar(Box<Type>),
     /// A dynamic vector of a specific type
     Vector(Box<Type>),
     /// A dynamic routine, from a routine definition without code.
     /// The actual code is a routine with this routine as a parent or just a Block for a lambda function.
     Routine(u32),
-    /// Linked to the n-th subtype on the first defined parameter
-    Subtype(u32),
-    /// Iterator with a certain result
-    Iterator(Box<Type>),
-    /// An ordered vector on a record, the second structure is the (attribute number, descending), third LT function.
+    /// Iterator with a certain result, the first type is the result per step
+    /// The second is the internal iterator value or `Type::Null` for structure iterator: `(i32,i32)`
+    Iterator(Box<Type>, Box<Type>),
+    /// An ordered vector on a record, second is the key [field number, ascending]
     Sorted(u32, Vec<(u16, bool)>),
-    /// An index towards other records. The third is the LT function.
+    /// An index towards other records. The key is [field number, ascending]
     Index(u32, Vec<(u16, bool)>),
-    /// An index towards other records. The third is the LT function.
+    /// An index towards other records. The second is [field number]
     Spacial(u32, Vec<u16>),
     /// A hash table towards other records. The third is the hash function.
     Hash(u32, Vec<u16>),
@@ -219,7 +226,6 @@ pub struct Argument {
     pub typedef: Type,
     pub default: Value,
     pub constant: bool,
-    pub reference: bool,
 }
 
 #[derive(Clone)]
@@ -230,14 +236,12 @@ pub struct Attribute {
     pub typedef: Type,
     /// Is this attribute mutable.
     pub mutable: bool,
-    /// Is this a reference to a variable instead of a value
-    pub reference: bool,
     /// Is this attribute allowed to be null in the sub-structure.
     pub nullable: bool,
     /// Is this attribute holding the primary reference of its records.
     primary: bool,
     /// The initial value of this attribute if it is not given.
-    value: Value,
+    pub value: Value,
     /// A test on the validity of this attribute.
     check: Value,
 }
@@ -392,9 +396,15 @@ impl Data {
             if tp.is_unknown() {
                 return new;
             }
-            if let Type::Vector(inner) =
-                &self.definitions[def_nr as usize].variables[*vnr as usize].var_type
-            {
+            let var_tp = self.definitions[def_nr as usize].variables[*vnr as usize]
+                .var_type
+                .clone();
+            if let Type::RefVar(in_tp) = &var_tp {
+                if &(**in_tp) == tp {
+                    return false;
+                }
+            }
+            if let Type::Vector(inner) = &var_tp {
                 if let Type::Unknown(_) = **inner {
                     self.definitions[def_nr as usize].variables[*vnr as usize].var_type =
                         tp.clone();
@@ -402,23 +412,15 @@ impl Data {
                         self.vector_def(lexer, inner);
                     }
                 }
-            } else if self.definitions[def_nr as usize].variables[*vnr as usize]
-                .var_type
-                .is_unknown()
-            {
+            } else if var_tp.is_unknown() {
                 self.definitions[def_nr as usize].variables[*vnr as usize].var_type = tp.clone();
-            } else if !self.definitions[def_nr as usize].variables[*vnr as usize]
-                .var_type
-                .is_same(tp)
-            {
+            } else if !var_tp.is_same(tp) {
                 diagnostic!(
                     lexer,
                     Level::Error,
                     "Cannot change type of variable '{}' from '{}' to '{}'",
                     self.definitions[def_nr as usize].variables[*vnr as usize].name,
-                    self.definitions[def_nr as usize].variables[*vnr as usize]
-                        .var_type
-                        .show(self),
+                    var_tp.show(self),
                     tp.show(self)
                 );
             }
@@ -522,7 +524,6 @@ impl Data {
         on_def: u32,
         name: &str,
         typedef: Type,
-        reference: bool,
     ) -> usize {
         if self.def(on_def).attr_names.contains_key(name) {
             let orig_attr = self.def(on_def).attr_names[name];
@@ -552,7 +553,6 @@ impl Data {
             mutable: true,
             nullable: true,
             primary: false,
-            reference,
             value: Value::Null,
             check: Value::Null,
         };
@@ -788,13 +788,13 @@ impl Data {
         }
         d_nr = self.add_def(&name, lexer.pos(), DefType::Function);
         for a in arguments {
-            let a_nr = self.add_attribute(lexer, d_nr, &a.name, a.typedef.clone(), a.reference);
+            let a_nr = self.add_attribute(lexer, d_nr, &a.name, a.typedef.clone());
             self.set_attr_value(d_nr, a_nr, a.default.clone());
             self.set_attr_mutable(d_nr, a_nr, !a.constant);
         }
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].typedef);
-            let a_nr = self.add_attribute(lexer, type_nr, fn_name, Type::Routine(d_nr), false);
+            let a_nr = self.add_attribute(lexer, type_nr, fn_name, Type::Routine(d_nr));
             self.set_attr_mutable(type_nr, a_nr, false);
         }
         if is_both {
@@ -812,7 +812,7 @@ impl Data {
                 lexer.pos()
             );
             let name = &self.def(type_nr).name.clone();
-            let a_nr = self.add_attribute(lexer, main, name, Type::Routine(d_nr), false);
+            let a_nr = self.add_attribute(lexer, main, name, Type::Routine(d_nr));
             self.set_attr_mutable(main, a_nr, false);
         }
         d_nr
@@ -839,7 +839,7 @@ impl Data {
     pub fn add_op(&mut self, lexer: &mut Lexer, fn_name: &str, arguments: &[Argument]) -> u32 {
         let d_nr = self.add_def(fn_name, lexer.pos(), DefType::Function);
         for a in arguments {
-            let a_nr = self.add_attribute(lexer, d_nr, &a.name, a.typedef.clone(), a.reference);
+            let a_nr = self.add_attribute(lexer, d_nr, &a.name, a.typedef.clone());
             self.set_attr_mutable(d_nr, a_nr, !a.constant);
             self.set_attr_value(d_nr, a_nr, a.default.clone());
         }
@@ -866,13 +866,7 @@ impl Data {
         let d_nr = self.def_nr(&name);
         if d_nr == u32::MAX {
             let vd = self.add_def(&name, lexer.pos(), DefType::Struct);
-            self.add_attribute(
-                lexer,
-                vd,
-                "vector",
-                Type::Vector(Box::new(tp.clone())),
-                false,
-            );
+            self.add_attribute(lexer, vd, "vector", Type::Vector(Box::new(tp.clone())));
             vd
         } else {
             d_nr
@@ -940,6 +934,7 @@ impl Data {
             Type::Reference(dnr) | Type::Enum(dnr) => self.def(*dnr).name.clone(),
             Type::Vector(sub) => format!("vector<{}>", self.show_type(sub)),
             Type::Routine(sub) => format!("fn {}", self.def(*sub).name),
+            Type::Text(_) => "text".to_string(),
             _ => format!("{show}"),
         }
     }
@@ -951,14 +946,14 @@ impl Data {
             Type::Long => self.def_nr("long"),
             Type::Boolean => self.def_nr("boolean"),
             Type::Float => self.def_nr("float"),
-            Type::Text => self.def_nr("text"),
+            Type::Text(_) => self.def_nr("text"),
             Type::Single => self.def_nr("single"),
             Type::Routine(d_nr)
             | Type::Enum(d_nr)
             | Type::Reference(d_nr)
             | Type::Unknown(d_nr) => *d_nr,
             Type::Vector(_) => self.def_nr("vector"),
-            Type::Sorted(_, _) => self.def_nr("reference"),
+            Type::RefVar(_) | Type::Sorted(_, _) => self.def_nr("reference"),
             Type::Index(_, _) => self.def_nr("index"),
             Type::Hash(_, _) => self.def_nr("hash"),
             _ => u32::MAX,
@@ -967,13 +962,15 @@ impl Data {
 
     #[must_use]
     /// Get the definition number for the given type.
+    /// # Panics
+    /// When no element of a type exists
     pub fn type_elm(&self, tp: &Type) -> u32 {
         match tp {
             Type::Integer(_, _) => self.def_nr("integer"),
             Type::Long => self.def_nr("long"),
             Type::Boolean => self.def_nr("boolean"),
             Type::Float => self.def_nr("float"),
-            Type::Text => self.def_nr("text"),
+            Type::Text(_) => self.def_nr("text"),
             Type::Routine(d_nr) | Type::Enum(d_nr) | Type::Reference(d_nr) => *d_nr,
             Type::Vector(tp) => {
                 if let Type::Reference(td) = **tp {
@@ -1016,8 +1013,8 @@ impl Data {
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 65536 => "i16",
             Type::Integer(_, _) => "i32",
             Type::Enum(_) => "u8",
-            Type::Text if context == Context::Variable => "String",
-            Type::Text => "Str",
+            Type::Text(_) if context == Context::Variable => "String",
+            Type::Text(_) => "Str",
             Type::Long => "i64",
             Type::Boolean => "bool",
             Type::Float => "f64",
@@ -1026,10 +1023,11 @@ impl Data {
             | Type::Vector(_)
             | Type::Hash(_, _)
             | Type::Sorted(_, _)
+            | Type::RefVar(_)
             | Type::Index(_, _) => "DbRef",
             Type::Routine(_) => "u32",
-            Type::Subtype(_) => "T",
             Type::Unknown(_) => "??",
+            Type::Iterator(_, _) => "Iterator",
             _ => panic!("Incorrect type {tp}"),
         }
         .to_string()
@@ -1164,6 +1162,9 @@ impl Data {
             Value::Drop(v) => {
                 write!(write, "drop ")?;
                 self.show_code(write, d_nr, v, indent, false)
+            }
+            Value::Keys(keys) => {
+                write!(write, "&{keys:?}")
             }
         }
     }

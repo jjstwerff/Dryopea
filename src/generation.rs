@@ -163,14 +163,7 @@ extern crate dryopea;"
             write!(
                 w,
                 ", var_{anr}: {}",
-                Data::rust_type(
-                    &a.typedef,
-                    if a.reference {
-                        Context::Reference
-                    } else {
-                        Context::Argument
-                    }
-                )
+                Data::rust_type(&a.typedef, Context::Argument)
             )?;
         }
         write!(w, ") ")?;

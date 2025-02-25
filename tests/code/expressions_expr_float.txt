@@ -8,45 +8,52 @@ pub fn test() {
 }
 
 fn test {
+  let __work_1 = "";
   let test_value = {
     1.1f64;
   };
   if OpEqFloat(test_value, 1.1f64) {null} else {OpGenPanic({
-    let append_7 = "Test failed ";
-    OpFormatFloat(append_7, test_value, 0i32, 0i32);
-    OpAppendText(append_7, " != 1.1");
-    append_7;
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatFloat(__work_1, test_value, 0i32, 0i32);
+    OpAppendText(__work_1, " != 1.1");
+    __work_1;
   })};
 }
 
 byte-code for expr_float:test()
  668[0]: return-address
- 668[4]: ConstFloat(val=1.1) -> float
- 677[12]: VarFloat(var[4]) -> float
- 680[20]: ConstFloat(val=1.1) -> float
- 689[28]: EqFloat(v1: float, v2: float) -> boolean
- 690[13]: GenGotoFalseWord(jump=696, if_false: boolean)
- 693[12]: GenGotoWord(jump=750)
- 696[12]: Text()
- 697[36]: ConstText(_value="Test failed ") -> text
- 711[52]: AppendText(var[12], v1: text)
- 714[36]: VarFloat(var[4]) -> float
- 717[44]: ConstInt(val=0) -> integer
- 722[48]: ConstInt(val=0) -> integer
- 727[52]: FormatFloat(var[12], val: float, width: integer, precision: integer)
- 730[36]: ConstText(_value=" != 1.1") -> text
- 739[52]: AppendText(var[12], v1: text)
- 742[36]: VarText(var[12]) -> text
- 745[52]: GenFreeStack(value=16, discard=24)
- 749[28]: GenPanic(message: text)
- 750[12]: GenReturn(ret=0, value=0, discard=12)
+ 668[4]: Text()
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: ConstFloat(val=1.1) -> float
+ 683[36]: VarFloat(var[28]) -> float
+ 686[44]: ConstFloat(val=1.1) -> float
+ 695[52]: EqFloat(v1: float, v2: float) -> boolean
+ 696[37]: GenGotoFalseWord(jump=702, if_false: boolean)
+ 699[36]: GenGotoWord(jump=754)
+ 702[36]: ClearText(var[4])
+ 705[36]: ConstText(_value="Test failed ") -> text(false)
+ 719[52]: AppendText(var[4], v1: text(false))
+ 722[36]: VarFloat(var[28]) -> float
+ 725[44]: ConstInt(val=0) -> integer
+ 730[48]: ConstInt(val=0) -> integer
+ 735[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
+ 738[36]: ConstText(_value=" != 1.1") -> text(false)
+ 747[52]: AppendText(var[4], v1: text(false))
+ 750[36]: VarText(var[4]) -> text(false)
+ 753[52]: GenPanic(message: text(false))
+ 754[36]: GenReturn(ret=0, value=0, discard=36)
 
 Execute test:
-  668:[4] ConstFloat(val=1.1) -> 1.1[4]
-  677:[12] VarFloat(var[4]) -> 1.1[12]
-  680:[20] ConstFloat(val=1.1) -> 1.1[20]
-  689:[28] EqFloat(v1=1.1[12], v2=1.1[20]) -> true[12]
-  690:[13] GenGotoFalseWord(jump=696, if_false=true[12])
-  693:[12] GenGotoWord(jump=750)
-  750:[12] GenReturn(ret=4294967295[0], value=0, discard=12)
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] ConstFloat(val=1.1) -> 1.1[32]
+  683:[40] VarFloat(var[32]) -> 1.1[40]
+  686:[48] ConstFloat(val=1.1) -> 1.1[48]
+  695:[56] EqFloat(v1=1.1[40], v2=1.1[48]) -> true[40]
+  696:[41] GenGotoFalseWord(jump=702, if_false=true[40])
+  699:[40] GenGotoWord(jump=754)
+  754:[40] GenReturn(ret=4294967295[4], value=0, discard=36)
 Finished

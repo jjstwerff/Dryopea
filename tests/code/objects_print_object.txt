@@ -32,8 +32,8 @@ byte-code for print_object:obj() -> Object
  676[28]: ConstInt(val=12) -> integer
  681[32]: SetInt(v1: reference, fld=4, val: integer)
  684[16]: VarRef(var[4]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[13]
- 687[28]: ConstText(_value="hi") -> text
- 691[44]: SetText(v1: reference, fld=8, val: text)
+ 687[28]: ConstText(_value="hi") -> text(false)
+ 691[44]: SetText(v1: reference, fld=8, val: text(false))
  694[16]: VarRef(var[4]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[13]
  697[28]: ConstFalse() -> boolean
  698[29]: GenGotoFalseWord(jump=709, if_false: boolean)
@@ -46,94 +46,107 @@ byte-code for print_object:obj() -> Object
  726[16]: GenReturn(ret=0, value=12, discard=16)
 
 fn test {
+  let __work_2 = "";
+  let __work_3 = "";
   let test_value = {
     let o = obj();
     {
-      let append_9 = "";
-      OpFormatDatabase(append_9, o, 13i32, false);
-      OpAppendText(append_9, " pretty ");
-      OpFormatDatabase(append_9, o, 13i32, true);
-      append_9;
+      OpClearText(__work_2);
+      OpAppendText(__work_2, "");
+      OpFormatDatabase(__work_2, o, 13i32, false);
+      OpAppendText(__work_2, " pretty ");
+      OpFormatDatabase(__work_2, o, 13i32, true);
+      __work_2;
     };
   };
   if OpEqText(test_value, "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") {null} else {OpGenPanic({
-    let append_10 = "Test failed ";
-    OpFormatText(append_10, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(append_10, " != "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }"");
-    append_10;
+    OpClearText(__work_3);
+    OpAppendText(__work_3, "Test failed ");
+    OpFormatText(__work_3, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_3, " != "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }"");
+    __work_3;
   })};
 }
 
 byte-code for print_object:test()
  732[0]: return-address
  732[4]: Text()
- 733[28]: GenCall(size=0, to=668)
- 740[40]: Text()
- 741[64]: ConstText(_value="") -> text
- 743[80]: AppendText(var[40], v1: text)
- 746[64]: VarRef(var[28]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[13]
- 749[76]: FormatDatabase(var[40], val: reference, db_tp=13, pretty=false)
- 755[64]: ConstText(_value=" pretty ") -> text
- 765[80]: AppendText(var[40], v1: text)
- 768[64]: VarRef(var[28]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[13]
- 771[76]: FormatDatabase(var[40], val: reference, db_tp=13, pretty=true)
- 777[64]: VarText(var[40]) -> text
- 780[80]: GenFreeStack(value=16, discard=24)
- 784[56]: GenFreeStack(value=16, discard=12)
- 788[44]: AppendText(var[4], v1: text)
- 791[28]: VarText(var[4]) -> text
- 794[44]: ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> text
- 859[60]: EqText(v1: text, v2: text) -> boolean
- 860[29]: GenGotoFalseWord(jump=866, if_false: boolean)
- 863[28]: GenGotoWord(jump=979)
- 866[28]: Text()
- 867[52]: ConstText(_value="Test failed ") -> text
- 881[68]: AppendText(var[28], v1: text)
- 884[52]: VarText(var[4]) -> text
- 887[68]: ConstInt(val=0) -> integer
- 892[72]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
- 897[52]: ConstText(_value=" != "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }"") -> text
- 968[68]: AppendText(var[28], v1: text)
- 971[52]: VarText(var[28]) -> text
- 974[68]: GenFreeStack(value=16, discard=24)
- 978[44]: GenPanic(message: text)
- 979[28]: GenReturn(ret=0, value=0, discard=28)
+ 733[28]: ConstText(_value="") -> text(false)
+ 735[44]: AppendText(var[4], v1: text(false))
+ 738[28]: Text()
+ 739[52]: ConstText(_value="") -> text(false)
+ 741[68]: AppendText(var[28], v1: text(false))
+ 744[52]: Text()
+ 745[76]: GenCall(size=0, to=668)
+ 752[88]: ClearText(var[4])
+ 755[88]: ConstText(_value="") -> text(false)
+ 757[104]: AppendText(var[4], v1: text(false))
+ 760[88]: VarRef(var[76]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[13]
+ 763[100]: FormatDatabase(var[4], val: reference, db_tp=13, pretty=false)
+ 769[88]: ConstText(_value=" pretty ") -> text(false)
+ 779[104]: AppendText(var[4], v1: text(false))
+ 782[88]: VarRef(var[76]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[13]
+ 785[100]: FormatDatabase(var[4], val: reference, db_tp=13, pretty=true)
+ 791[88]: VarText(var[4]) -> text(false)
+ 794[104]: GenFreeStack(value=16, discard=12)
+ 798[92]: AppendText(var[52], v1: text(false))
+ 801[76]: VarText(var[52]) -> text(false)
+ 804[92]: ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> text(false)
+ 869[108]: EqText(v1: text(false), v2: text(false)) -> boolean
+ 870[77]: GenGotoFalseWord(jump=876, if_false: boolean)
+ 873[76]: GenGotoWord(jump=987)
+ 876[76]: ClearText(var[28])
+ 879[76]: ConstText(_value="Test failed ") -> text(false)
+ 893[92]: AppendText(var[28], v1: text(false))
+ 896[76]: VarText(var[52]) -> text(false)
+ 899[92]: ConstInt(val=0) -> integer
+ 904[96]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
+ 909[76]: ConstText(_value=" != "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }"") -> text(false)
+ 980[92]: AppendText(var[28], v1: text(false))
+ 983[76]: VarText(var[28]) -> text(false)
+ 986[92]: GenPanic(message: text(false))
+ 987[76]: GenReturn(ret=0, value=0, discard=76)
 
 Execute test:
-  732:[4] Text()
-  733:[28] GenCall(size=0, to=668)
-  668:[32] Database(size=13, db_tp=13) -> ref(1,1,0)={ccc:false}[32]
-  673:[44] VarRef(var[32]) -> ref(1,1,0)={ccc:false}[44]
-  676:[56] ConstInt(val=12) -> 12[56]
-  681:[60] SetInt(v1=ref(1,1,0)[44], fld=4, val=12[56])
-  684:[44] VarRef(var[32]) -> ref(1,1,0)={a:12,ccc:false}[44]
-  687:[56] ConstText(_value="hi") -> "hi"[56]
-  691:[72] SetText(v1=ref(1,1,0)[44], fld=8, val="hi"[56])
-  694:[44] VarRef(var[32]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[44]
-  697:[56] ConstFalse() -> false[56]
-  698:[57] GenGotoFalseWord(jump=709, if_false=false[56])
-  709:[56] ConstInt(val=0) -> 0[56]
-  714:[60] SetByte(v1=ref(1,1,0)[44], fld=12, min=0, val=0[56])
-  719:[44] VarRef(var[32]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[44]
-  722:[56] GenFreeStack(value=12, discard=12)
-  726:[44] GenReturn(ret=740[28], value=12, discard=16)
-  740:[40] Text()
-  741:[64] ConstText(_value="") -> ""[64]
-  743:[80] AppendText(var[40], v1=""[64])
-  746:[64] VarRef(var[28]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[64]
-  749:[76] FormatDatabase(var[40], val=ref(1,1,0)[64], db_tp=13, pretty=false)
-  755:[64] ConstText(_value=" pretty ") -> " pretty "[64]
-  765:[80] AppendText(var[40], v1=" pretty "[64])
-  768:[64] VarRef(var[28]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[64]
-  771:[76] FormatDatabase(var[40], val=ref(1,1,0)[64], db_tp=13, pretty=true)
-  777:[64] VarText(var[40]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[64]
-  780:[80] GenFreeStack(value=16, discard=24)
-  784:[56] GenFreeStack(value=16, discard=12)
-  788:[44] AppendText(var[4], v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[28])
-  791:[28] VarText(var[4]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[28]
-  794:[44] ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[44]
-  859:[60] EqText(v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[28], v2="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[44]) -> true[28]
-  860:[29] GenGotoFalseWord(jump=866, if_false=true[28])
-  863:[28] GenGotoWord(jump=979)
-  979:[28] GenReturn(ret=4294967295[0], value=0, discard=28)
+  732:[8] Text()
+  733:[32] ConstText(_value="") -> ""[32]
+  735:[48] AppendText(var[8], v1=""[32])
+  738:[32] Text()
+  739:[56] ConstText(_value="") -> ""[56]
+  741:[72] AppendText(var[32], v1=""[56])
+  744:[56] Text()
+  745:[80] GenCall(size=0, to=668)
+  668:[84] Database(size=13, db_tp=13) -> ref(1,1,0)={ccc:false}[84]
+  673:[96] VarRef(var[84]) -> ref(1,1,0)={ccc:false}[96]
+  676:[108] ConstInt(val=12) -> 12[108]
+  681:[112] SetInt(v1=ref(1,1,0)[96], fld=4, val=12[108])
+  684:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,ccc:false}[96]
+  687:[108] ConstText(_value="hi") -> "hi"[108]
+  691:[124] SetText(v1=ref(1,1,0)[96], fld=8, val="hi"[108])
+  694:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
+  697:[108] ConstFalse() -> false[108]
+  698:[109] GenGotoFalseWord(jump=709, if_false=false[108])
+  709:[108] ConstInt(val=0) -> 0[108]
+  714:[112] SetByte(v1=ref(1,1,0)[96], fld=12, min=0, val=0[108])
+  719:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
+  722:[108] GenFreeStack(value=12, discard=12)
+  726:[96] GenReturn(ret=752[80], value=12, discard=16)
+  752:[92] ClearText(var[8])
+  755:[92] ConstText(_value="") -> ""[92]
+  757:[108] AppendText(var[8], v1=""[92])
+  760:[92] VarRef(var[80]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[92]
+  763:[104] FormatDatabase(var[8], val=ref(1,1,0)[92], db_tp=13, pretty=false)
+  769:[92] ConstText(_value=" pretty ") -> " pretty "[92]
+  779:[108] AppendText(var[8], v1=" pretty "[92])
+  782:[92] VarRef(var[80]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[92]
+  785:[104] FormatDatabase(var[8], val=ref(1,1,0)[92], db_tp=13, pretty=true)
+  791:[92] VarText(var[8]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[92]
+  794:[108] GenFreeStack(value=16, discard=12)
+  798:[96] AppendText(var[56], v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[80])
+  801:[80] VarText(var[56]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[80]
+  804:[96] ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[96]
+  869:[112] EqText(v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[80], v2="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[96]) -> true[80]
+  870:[81] GenGotoFalseWord(jump=876, if_false=true[80])
+  873:[80] GenGotoWord(jump=987)
+  987:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
 Finished

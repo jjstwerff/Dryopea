@@ -1,0 +1,118 @@
+Test code:
+fn add(a: text, b: &text="var") -> text {
+    b += "_" + a;
+    b
+}
+
+pub fn test() {
+    test_value = {add("1234")};
+    assert(
+        test_value == "var_1234",
+        "Test failed {test_value} != \"var_1234\""
+    );
+}
+
+fn add {
+  OpAppendRefText(OpVarRef(b), 0i32, "_");
+  OpAppendRefText(OpVarRef(b), 0i32, a);
+  b;
+}
+
+byte-code for default_ref:add(a: text(false)[0], b: refvar(text(false))[16]) -> text(false)
+ 668[28]: return-address
+ 668[32]: VarRef(var[16]) -> reference
+ 671[44]: ConstText(_value="_") -> text(false)
+ 674[60]: AppendRefText(r: reference, fld=0, v1: text(false))
+ 677[32]: VarRef(var[16]) -> reference
+ 680[44]: ArgText(var[0]) -> text(false)
+ 683[60]: AppendRefText(r: reference, fld=0, v1: text(false))
+ 686[32]: VarRef(var[16]) -> reference
+ 689[44]: GetRefText(r: reference, fld=0) -> text(false)
+ 692[48]: GenReturn(ret=28, value=16, discard=48)
+
+fn test {
+  let __work_1 = "";
+  let __work_2 = "";
+  let test_value = {
+    add("1234", {
+      OpClearText(__work_1);
+      OpAppendText(__work_1, "var");
+      OpCreateRef(__work_1);
+    });
+  };
+  if OpEqText(test_value, "var_1234") {null} else {OpGenPanic({
+    OpClearText(__work_2);
+    OpAppendText(__work_2, "Test failed ");
+    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_2, " != "var_1234"");
+    __work_2;
+  })};
+}
+
+byte-code for default_ref:test()
+ 698[0]: return-address
+ 698[4]: Text()
+ 699[28]: ConstText(_value="") -> text(false)
+ 701[44]: AppendText(var[4], v1: text(false))
+ 704[28]: Text()
+ 705[52]: ConstText(_value="") -> text(false)
+ 707[68]: AppendText(var[28], v1: text(false))
+ 710[52]: Text()
+ 711[76]: ConstText(_value="1234") -> text(false)
+ 717[92]: ClearText(var[4])
+ 720[92]: ConstText(_value="var") -> text(false)
+ 725[108]: AppendText(var[4], v1: text(false))
+ 728[92]: CreateRef(var[4]) -> reference
+ 731[104]: GenCall(size=0, to=668)
+ 738[92]: AppendText(var[52], v1: text(false))
+ 741[76]: VarText(var[52]) -> text(false)
+ 744[92]: ConstText(_value="var_1234") -> text(false)
+ 754[108]: EqText(v1: text(false), v2: text(false)) -> boolean
+ 755[77]: GenGotoFalseWord(jump=761, if_false: boolean)
+ 758[76]: GenGotoWord(jump=817)
+ 761[76]: ClearText(var[28])
+ 764[76]: ConstText(_value="Test failed ") -> text(false)
+ 778[92]: AppendText(var[28], v1: text(false))
+ 781[76]: VarText(var[52]) -> text(false)
+ 784[92]: ConstInt(val=0) -> integer
+ 789[96]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
+ 794[76]: ConstText(_value=" != "var_1234"") -> text(false)
+ 810[92]: AppendText(var[28], v1: text(false))
+ 813[76]: VarText(var[28]) -> text(false)
+ 816[92]: GenPanic(message: text(false))
+ 817[76]: GenReturn(ret=0, value=0, discard=76)
+
+Execute test:
+  698:[8] Text()
+  699:[32] ConstText(_value="") -> ""[32]
+  701:[48] AppendText(var[8], v1=""[32])
+  704:[32] Text()
+  705:[56] ConstText(_value="") -> ""[56]
+  707:[72] AppendText(var[32], v1=""[56])
+  710:[56] Text()
+  711:[80] ConstText(_value="1234") -> "1234"[80]
+  717:[96] ClearText(var[8])
+  720:[96] ConstText(_value="var") -> "var"[96]
+  725:[112] AppendText(var[8], v1="var"[96])
+  728:[96] CreateRef(var[8]) -> ref(0,1,8)[96]
+  731:[108] GenCall(size=0, to=668)
+  668:[112] VarRef(var[96]) -> ref(0,1,8)[112]
+  671:[124] ConstText(_value="_") -> "_"[124]
+  674:[140] AppendRefText(r=ref(0,1,8)[112], fld=0, v1="_"[124])
+  675:[112] GenGoto(jump=-17242)
+  677:[112] VarRef(var[96]) -> ref(0,1,8)[112]
+  680:[124] ArgText(var[80]) -> "1234"[124]
+  683:[140] AppendRefText(r=ref(0,1,8)[112], fld=0, v1="1234"[124])
+  684:[112] GenGoto(jump=-17233)
+  686:[112] VarRef(var[96]) -> ref(0,1,8)[112]
+  689:[124] GetRefText(r=ref(0,1,8)[112], fld=0) -> "var_1234"[112]
+  690:[128] GenGoto(jump=2229)
+  692:[128] GenReturn(ret=738[108], value=16, discard=48)
+  738:[96] AppendText(var[56], v1="var_1234"[80])
+  741:[80] VarText(var[56]) -> "var_1234"[80]
+  744:[96] ConstText(_value="var_1234") -> "var_1234"[96]
+  754:[112] EqText(v1="var_1234"[80], v2="var_1234"[96]) -> true[80]
+  755:[81] GenGotoFalseWord(jump=761, if_false=true[80])
+  758:[80] GenGotoWord(jump=817)
+  817:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
+Finished

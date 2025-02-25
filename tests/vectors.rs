@@ -26,6 +26,13 @@ t + v[0] + v[-1] + v.len()"
 }
 
 #[test]
+fn enum_vector() {
+    code!("enum Val {A, B, C}")
+        .expr("v=[A,A,B,B]; v[2] as integer")
+        .result(Value::Int(2));
+}
+
+#[test]
 fn iter_vector() {
     expr!(
         "v=[1, 2, 4, 8];
@@ -245,4 +252,28 @@ fn fill(c: Counting) {
     )
     .expr("c = Counting {}; fill(c); c.h[A,\"Three\"].v + c.h[C,\"Two\"].v + c.v[\"Four\",4].v")
     .result(Value::Int(27));
+}
+
+#[test]
+fn index_iterator() {
+    code!(
+        "struct Elm {nr: integer, key: text, value: integer}
+struct Db {map: index<Elm[nr,-key]>}"
+    )
+    .expr(
+        "db=Db {map: [
+  Elm {nr: 101, key: \"One\", value: 1},
+  Elm {nr: 92, key: \"Two\", value: 2},
+  Elm {nr: 83, key: \"Three\", value: 3},
+  Elm {nr: 83, key: \"Four\", value: 4},
+  Elm {nr: 83, key: \"Five\", value: 5},
+  Elm {nr: 63, key: \"Six\", value: 6},
+]};
+sum = 0;
+for v in db.map[83..92,\"Two\"] {
+  sum = sum * 10 + v.value;
+};
+sum",
+    )
+    .result(Value::Int(345));
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_wrap)]
@@ -19,7 +19,7 @@ pub fn add(hash: &DbRef, rec: &DbRef, stores: &mut [Store], keys: &[Key]) {
     } else {
         keys::store(hash, stores).get_int(claim, 4) as u32
     };
-    let room = keys::store(hash, stores).get_int(claim, 0) as u32;
+    let room = *keys::store(hash, stores).addr::<i32>(claim, 0) as u32;
     let elms = (room - 1) * 2;
     if (length * 14 / 16) + 1 >= room {
         // rehash
@@ -52,7 +52,7 @@ fn hash_set(claim: u32, rec: &DbRef, stores: &mut [Store], keys: &[Key]) {
 }
 
 fn hash_free_pos(claim: u32, rec: &DbRef, stores: &[Store], keys: &[Key]) -> u32 {
-    let room = keys::store(rec, stores).get_int(claim, 0) as u32;
+    let room = *keys::store(rec, stores).addr::<i32>(claim, 0) as u32;
     let elms = (room - 1) * 2;
     let hash_val = keys::hash(rec, stores, keys);
     let mut index = (hash_val % u64::from(elms)) as u32;
@@ -78,20 +78,19 @@ pub fn find(hash_ref: &DbRef, stores: &[Store], keys: &[Key], key: &[Content]) -
         rec: 0,
         pos: 0,
     };
-    let room = store.get_int(claim, 0) as u32;
+    let room = *store.addr::<i32>(claim, 0) as u32;
     if room == 0 {
         return record;
     }
     let elms = (room - 1) * 2;
     let mut index = (hash_val % u64::from(elms)) as u32;
-    let k_len = keys.len() as u8;
     let mut rec_pos = store.get_int(claim, 8 + index * 4) as u32;
     'Record: for _ in 0..elms {
         if rec_pos == 0 {
             break;
         }
         record.rec = rec_pos;
-        if keys::key_compare(key, k_len, &record, stores, keys) != Ordering::Equal {
+        if keys::key_compare(key, &record, stores, keys) != Ordering::Equal {
             index += 1;
             if index >= elms {
                 index = 0;
@@ -157,7 +156,7 @@ When the structure is not correctly filled
 pub fn validate(hash_ref: &DbRef, stores: &[Store], keys: &[Key]) {
     let claim = keys::store(hash_ref, stores).get_int(hash_ref.rec, hash_ref.pos) as u32;
     let length = keys::store(hash_ref, stores).get_int(claim, 4) as u32;
-    let room = keys::store(hash_ref, stores).get_int(claim, 0) as u32;
+    let room = *keys::store(hash_ref, stores).addr::<i32>(claim, 0) as u32;
     let elms = (room - 1) * 2;
     let mut record = DbRef {
         store_nr: hash_ref.store_nr,

@@ -20,6 +20,78 @@ fn operator_name(operator: &str) -> String {
     result
 }
 
+/**
+    Write a library file with the known library functions.
+    # Errors
+    When the file cannot be written correctly.
+*/
+pub fn generate_lib(data: &Data) -> std::io::Result<()> {
+    let mut into = File::create("tests/generated/text.rs")?;
+    writeln!(
+        into,
+        "#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_truncation)]
+use crate::database::Stores;
+use crate::keys::{{DbRef, Str}};
+use crate::state;
+use crate::state::{{Call, State}};
+
+pub const FUNCTIONS: &[(&str, Call)] = &["
+    )?;
+    for d_nr in 0..data.definitions() {
+        let d = data.def(d_nr);
+        let n = &d.name;
+        if !d.is_operator() && !d.rust.is_empty() {
+            writeln!(into, "    (\"{n}\", {n}),")?;
+        }
+    }
+    writeln!(
+        into,
+        "];
+
+pub fn init(state: &mut State) {{
+    for (name, implement) in FUNCTIONS {{
+        state.static_fn(name, *implement);
+    }}
+}}"
+    )?;
+    for d_nr in 0..data.definitions() {
+        let d = data.def(d_nr);
+        let n = &d.name;
+        if d.is_operator() || d.rust.is_empty() {
+            continue;
+        }
+        writeln!(into, "\nfn {n}(stores: &mut Stores, stack: &mut DbRef) {{")?;
+        for a in data.def(d_nr).attributes.iter().rev() {
+            let tp = Data::rust_type(&a.typedef, Context::Argument);
+            writeln!(into, "    let v_{} = *stores.get::<{tp}>(stack);", a.name)?;
+        }
+        let mut res = data.def(d_nr).rust.clone();
+        replace_attributes(data, d_nr, &mut res);
+        if d.returned == Type::Void {
+            writeln!(into, "    {res}")?;
+        } else {
+            writeln!(into, "    let new_value = {{ {res} }};")?;
+            writeln!(into, "    stores.put(stack, new_value);")?;
+        }
+        writeln!(into, "}}")?;
+    }
+    Ok(())
+}
+
+fn replace_attributes(data: &Data, d_nr: u32, res: &mut String) {
+    for a_nr in 0..data.attributes(d_nr) {
+        let name = "@".to_string() + &data.attr_name(d_nr, a_nr);
+        let mut repl = "v_".to_string();
+        repl += &data.attr_name(d_nr, a_nr);
+        if matches!(data.attr_type(d_nr, a_nr), Type::Text(_)) {
+            repl += ".str()";
+        }
+        *res = res.replace(&name, &repl);
+    }
+}
+
 /// Create the content of the fill.rs file from the default library definitions.
 /// # Errors
 /// When the resulting file cannot be correctly written.
@@ -30,11 +102,12 @@ pub fn generate_code(data: &Data) -> std::io::Result<()> {
         "#![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::too_many_lines)]
-use crate::database::{{Stores, Str}};
+use crate::database::Stores;
 use crate::external;
-use crate::keys::DbRef;
-use crate::state::State;\n
+use crate::keys::{{DbRef, Str}};
+use crate::state::State;
+use crate::vector;
+
 pub const OPERATORS: &[fn(&mut State)] = &["
     )?;
     for d_nr in 0..data.definitions() {
@@ -58,7 +131,7 @@ pub const OPERATORS: &[fn(&mut State)] = &["
             }
             let tp = Data::rust_type(&a.typedef, Context::Argument);
             if !a.mutable {
-                writeln!(into, "    let {} = *s.code::<{tp}>();", a.name)?;
+                writeln!(into, "    let v_{} = *s.code::<{tp}>();", a.name)?;
             }
         }
         for a in data.def(d_nr).attributes.iter().rev() {
@@ -66,30 +139,21 @@ pub const OPERATORS: &[fn(&mut State)] = &["
                 continue;
             }
             let tp = Data::rust_type(&a.typedef, Context::Argument);
-            if a.reference {
-                writeln!(into, "    let {} = *s.get_stack::<u32>();", a.name)?;
-            } else if a.mutable {
-                if a.typedef == Type::Text {
-                    writeln!(into, "    let {} = s.string();", a.name)?;
+            if a.mutable {
+                if matches!(a.typedef, Type::Text(_)) {
+                    writeln!(into, "    let v_{} = s.string();", a.name)?;
                 } else {
-                    writeln!(into, "    let {} = *s.get_stack::<{tp}>();", a.name)?;
+                    writeln!(into, "    let v_{} = *s.get_stack::<{tp}>();", a.name)?;
                 }
             }
         }
-        for a_nr in 0..data.attributes(d_nr) {
-            let name = "@".to_string() + &data.attr_name(d_nr, a_nr);
-            let mut repl = data.attr_name(d_nr, a_nr);
-            if data.attr_type(d_nr, a_nr) == Type::Text {
-                repl += ".str()";
-            }
-            res = res.replace(&name, &repl);
-        }
+        replace_attributes(data, d_nr, &mut res);
         res = res.replace("stores.", "s.database.");
         let returned = &data.def(d_nr).returned;
         if res.is_empty() {
             writeln!(into, "    s.{name}();")?;
         } else if *returned == Type::Void
-            || (*returned == Type::Text && data.def(d_nr).name.starts_with("OpConst"))
+            || (matches!(*returned, Type::Text(_)) && data.def(d_nr).name.starts_with("OpConst"))
         {
             writeln!(into, "    {res}")?;
         } else {

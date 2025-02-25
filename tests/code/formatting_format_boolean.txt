@@ -8,71 +8,84 @@ pub fn test() {
 }
 
 fn test {
+  let __work_1 = "";
+  let __work_2 = "";
   let test_value = {
     {
-      let append_8 = "1";
-      OpFormatBool(append_8, true, 7i32, 0i32, 32i32);
-      OpAppendText(append_8, "2");
-      append_8;
+      OpClearText(__work_1);
+      OpAppendText(__work_1, "1");
+      OpFormatBool(__work_1, true, 7i32, 0i32, 32i32);
+      OpAppendText(__work_1, "2");
+      __work_1;
     };
   };
   if OpEqText(test_value, "1 true  2") {null} else {OpGenPanic({
-    let append_9 = "Test failed ";
-    OpFormatText(append_9, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(append_9, " != "1 true  2"");
-    append_9;
+    OpClearText(__work_2);
+    OpAppendText(__work_2, "Test failed ");
+    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_2, " != "1 true  2"");
+    __work_2;
   })};
 }
 
 byte-code for format_boolean:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: Text()
- 670[52]: ConstText(_value="1") -> text
- 673[68]: AppendText(var[28], v1: text)
- 676[52]: ConstTrue() -> boolean
- 677[53]: ConstInt(val=7) -> integer
- 682[57]: FormatBool(var[28], val: boolean, width: integer, dir=0, token=32)
- 687[52]: ConstText(_value="2") -> text
- 690[68]: AppendText(var[28], v1: text)
- 693[52]: VarText(var[28]) -> text
- 696[68]: GenFreeStack(value=16, discard=24)
- 700[44]: AppendText(var[4], v1: text)
- 703[28]: VarText(var[4]) -> text
- 706[44]: ConstText(_value="1 true  2") -> text
- 717[60]: EqText(v1: text, v2: text) -> boolean
- 718[29]: GenGotoFalseWord(jump=724, if_false: boolean)
- 721[28]: GenGotoWord(jump=783)
- 724[28]: Text()
- 725[52]: ConstText(_value="Test failed ") -> text
- 739[68]: AppendText(var[28], v1: text)
- 742[52]: VarText(var[4]) -> text
- 745[68]: ConstInt(val=0) -> integer
- 750[72]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
- 755[52]: ConstText(_value=" != "1 true  2"") -> text
- 772[68]: AppendText(var[28], v1: text)
- 775[52]: VarText(var[28]) -> text
- 778[68]: GenFreeStack(value=16, discard=24)
- 782[44]: GenPanic(message: text)
- 783[28]: GenReturn(ret=0, value=0, discard=28)
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: Text()
+ 675[52]: ConstText(_value="") -> text(false)
+ 677[68]: AppendText(var[28], v1: text(false))
+ 680[52]: Text()
+ 681[76]: ClearText(var[4])
+ 684[76]: ConstText(_value="1") -> text(false)
+ 687[92]: AppendText(var[4], v1: text(false))
+ 690[76]: ConstTrue() -> boolean
+ 691[77]: ConstInt(val=7) -> integer
+ 696[81]: FormatBool(var[4], val: boolean, width: integer, dir=0, token=32)
+ 701[76]: ConstText(_value="2") -> text(false)
+ 704[92]: AppendText(var[4], v1: text(false))
+ 707[76]: VarText(var[4]) -> text(false)
+ 710[92]: AppendText(var[52], v1: text(false))
+ 713[76]: VarText(var[52]) -> text(false)
+ 716[92]: ConstText(_value="1 true  2") -> text(false)
+ 727[108]: EqText(v1: text(false), v2: text(false)) -> boolean
+ 728[77]: GenGotoFalseWord(jump=734, if_false: boolean)
+ 731[76]: GenGotoWord(jump=791)
+ 734[76]: ClearText(var[28])
+ 737[76]: ConstText(_value="Test failed ") -> text(false)
+ 751[92]: AppendText(var[28], v1: text(false))
+ 754[76]: VarText(var[52]) -> text(false)
+ 757[92]: ConstInt(val=0) -> integer
+ 762[96]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
+ 767[76]: ConstText(_value=" != "1 true  2"") -> text(false)
+ 784[92]: AppendText(var[28], v1: text(false))
+ 787[76]: VarText(var[28]) -> text(false)
+ 790[92]: GenPanic(message: text(false))
+ 791[76]: GenReturn(ret=0, value=0, discard=76)
 
 Execute test:
-  668:[4] Text()
-  669:[28] Text()
-  670:[52] ConstText(_value="1") -> "1"[52]
-  673:[68] AppendText(var[28], v1="1"[52])
-  676:[52] ConstTrue() -> true[52]
-  677:[53] ConstInt(val=7) -> 7[53]
-  682:[57] FormatBool(var[28], val=true[52], width=7[53], dir=0, token=32)
-  687:[52] ConstText(_value="2") -> "2"[52]
-  690:[68] AppendText(var[28], v1="2"[52])
-  693:[52] VarText(var[28]) -> "1 true  2"[52]
-  696:[68] GenFreeStack(value=16, discard=24)
-  700:[44] AppendText(var[4], v1="1 true  2"[28])
-  703:[28] VarText(var[4]) -> "1 true  2"[28]
-  706:[44] ConstText(_value="1 true  2") -> "1 true  2"[44]
-  717:[60] EqText(v1="1 true  2"[28], v2="1 true  2"[44]) -> true[28]
-  718:[29] GenGotoFalseWord(jump=724, if_false=true[28])
-  721:[28] GenGotoWord(jump=783)
-  783:[28] GenReturn(ret=4294967295[0], value=0, discard=28)
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] Text()
+  675:[56] ConstText(_value="") -> ""[56]
+  677:[72] AppendText(var[32], v1=""[56])
+  680:[56] Text()
+  681:[80] ClearText(var[8])
+  684:[80] ConstText(_value="1") -> "1"[80]
+  687:[96] AppendText(var[8], v1="1"[80])
+  690:[80] ConstTrue() -> true[80]
+  691:[81] ConstInt(val=7) -> 7[81]
+  696:[85] FormatBool(var[8], val=true[80], width=7[81], dir=0, token=32)
+  701:[80] ConstText(_value="2") -> "2"[80]
+  704:[96] AppendText(var[8], v1="2"[80])
+  707:[80] VarText(var[8]) -> "1 true  2"[80]
+  710:[96] AppendText(var[56], v1="1 true  2"[80])
+  713:[80] VarText(var[56]) -> "1 true  2"[80]
+  716:[96] ConstText(_value="1 true  2") -> "1 true  2"[96]
+  727:[112] EqText(v1="1 true  2"[80], v2="1 true  2"[96]) -> true[80]
+  728:[81] GenGotoFalseWord(jump=734, if_false=true[80])
+  731:[80] GenGotoWord(jump=791)
+  791:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
 Finished

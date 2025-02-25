@@ -8,115 +8,128 @@ pub fn test() {
 }
 
 fn test {
+  let __work_1 = "";
+  let __work_2 = "";
   let test_value = {
     {
-      let append_8 = "a";
-      OpFormatFloat(append_8, 1.2f64, 4i32, 2i32);
-      OpAppendText(append_8, "b");
-      OpFormatFloat(append_8, 1.34f64, 0i32, 0i32);
-      OpAppendText(append_8, "c");
-      OpFormatFloat(append_8, 1.4f64, 5i32, 0i32);
-      OpAppendText(append_8, "d");
-      OpFormatFloat(append_8, 334.1f64, 0i32, 2i32);
-      OpAppendText(append_8, "e");
-      append_8;
+      OpClearText(__work_1);
+      OpAppendText(__work_1, "a");
+      OpFormatFloat(__work_1, 1.2f64, 4i32, 2i32);
+      OpAppendText(__work_1, "b");
+      OpFormatFloat(__work_1, 1.34f64, 0i32, 0i32);
+      OpAppendText(__work_1, "c");
+      OpFormatFloat(__work_1, 1.4f64, 5i32, 0i32);
+      OpAppendText(__work_1, "d");
+      OpFormatFloat(__work_1, 334.1f64, 0i32, 2i32);
+      OpAppendText(__work_1, "e");
+      __work_1;
     };
   };
   if OpEqText(test_value, "a1.20b1.34c  1.4d334.10e") {null} else {OpGenPanic({
-    let append_9 = "Test failed ";
-    OpFormatText(append_9, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(append_9, " != "a1.20b1.34c  1.4d334.10e"");
-    append_9;
+    OpClearText(__work_2);
+    OpAppendText(__work_2, "Test failed ");
+    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_2, " != "a1.20b1.34c  1.4d334.10e"");
+    __work_2;
   })};
 }
 
 byte-code for format_float:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: Text()
- 670[52]: ConstText(_value="a") -> text
- 673[68]: AppendText(var[28], v1: text)
- 676[52]: ConstFloat(val=1.2) -> float
- 685[60]: ConstInt(val=4) -> integer
- 690[64]: ConstInt(val=2) -> integer
- 695[68]: FormatFloat(var[28], val: float, width: integer, precision: integer)
- 698[52]: ConstText(_value="b") -> text
- 701[68]: AppendText(var[28], v1: text)
- 704[52]: ConstFloat(val=1.34) -> float
- 713[60]: ConstInt(val=0) -> integer
- 718[64]: ConstInt(val=0) -> integer
- 723[68]: FormatFloat(var[28], val: float, width: integer, precision: integer)
- 726[52]: ConstText(_value="c") -> text
- 729[68]: AppendText(var[28], v1: text)
- 732[52]: ConstFloat(val=1.4) -> float
- 741[60]: ConstInt(val=5) -> integer
- 746[64]: ConstInt(val=0) -> integer
- 751[68]: FormatFloat(var[28], val: float, width: integer, precision: integer)
- 754[52]: ConstText(_value="d") -> text
- 757[68]: AppendText(var[28], v1: text)
- 760[52]: ConstFloat(val=334.1) -> float
- 769[60]: ConstInt(val=0) -> integer
- 774[64]: ConstInt(val=2) -> integer
- 779[68]: FormatFloat(var[28], val: float, width: integer, precision: integer)
- 782[52]: ConstText(_value="e") -> text
- 785[68]: AppendText(var[28], v1: text)
- 788[52]: VarText(var[28]) -> text
- 791[68]: GenFreeStack(value=16, discard=24)
- 795[44]: AppendText(var[4], v1: text)
- 798[28]: VarText(var[4]) -> text
- 801[44]: ConstText(_value="a1.20b1.34c  1.4d334.10e") -> text
- 827[60]: EqText(v1: text, v2: text) -> boolean
- 828[29]: GenGotoFalseWord(jump=834, if_false: boolean)
- 831[28]: GenGotoWord(jump=908)
- 834[28]: Text()
- 835[52]: ConstText(_value="Test failed ") -> text
- 849[68]: AppendText(var[28], v1: text)
- 852[52]: VarText(var[4]) -> text
- 855[68]: ConstInt(val=0) -> integer
- 860[72]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
- 865[52]: ConstText(_value=" != "a1.20b1.34c  1.4d334.10e"") -> text
- 897[68]: AppendText(var[28], v1: text)
- 900[52]: VarText(var[28]) -> text
- 903[68]: GenFreeStack(value=16, discard=24)
- 907[44]: GenPanic(message: text)
- 908[28]: GenReturn(ret=0, value=0, discard=28)
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: Text()
+ 675[52]: ConstText(_value="") -> text(false)
+ 677[68]: AppendText(var[28], v1: text(false))
+ 680[52]: Text()
+ 681[76]: ClearText(var[4])
+ 684[76]: ConstText(_value="a") -> text(false)
+ 687[92]: AppendText(var[4], v1: text(false))
+ 690[76]: ConstFloat(val=1.2) -> float
+ 699[84]: ConstInt(val=4) -> integer
+ 704[88]: ConstInt(val=2) -> integer
+ 709[92]: FormatFloat(var[4], val: float, width: integer, precision: integer)
+ 712[76]: ConstText(_value="b") -> text(false)
+ 715[92]: AppendText(var[4], v1: text(false))
+ 718[76]: ConstFloat(val=1.34) -> float
+ 727[84]: ConstInt(val=0) -> integer
+ 732[88]: ConstInt(val=0) -> integer
+ 737[92]: FormatFloat(var[4], val: float, width: integer, precision: integer)
+ 740[76]: ConstText(_value="c") -> text(false)
+ 743[92]: AppendText(var[4], v1: text(false))
+ 746[76]: ConstFloat(val=1.4) -> float
+ 755[84]: ConstInt(val=5) -> integer
+ 760[88]: ConstInt(val=0) -> integer
+ 765[92]: FormatFloat(var[4], val: float, width: integer, precision: integer)
+ 768[76]: ConstText(_value="d") -> text(false)
+ 771[92]: AppendText(var[4], v1: text(false))
+ 774[76]: ConstFloat(val=334.1) -> float
+ 783[84]: ConstInt(val=0) -> integer
+ 788[88]: ConstInt(val=2) -> integer
+ 793[92]: FormatFloat(var[4], val: float, width: integer, precision: integer)
+ 796[76]: ConstText(_value="e") -> text(false)
+ 799[92]: AppendText(var[4], v1: text(false))
+ 802[76]: VarText(var[4]) -> text(false)
+ 805[92]: AppendText(var[52], v1: text(false))
+ 808[76]: VarText(var[52]) -> text(false)
+ 811[92]: ConstText(_value="a1.20b1.34c  1.4d334.10e") -> text(false)
+ 837[108]: EqText(v1: text(false), v2: text(false)) -> boolean
+ 838[77]: GenGotoFalseWord(jump=844, if_false: boolean)
+ 841[76]: GenGotoWord(jump=916)
+ 844[76]: ClearText(var[28])
+ 847[76]: ConstText(_value="Test failed ") -> text(false)
+ 861[92]: AppendText(var[28], v1: text(false))
+ 864[76]: VarText(var[52]) -> text(false)
+ 867[92]: ConstInt(val=0) -> integer
+ 872[96]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
+ 877[76]: ConstText(_value=" != "a1.20b1.34c  1.4d334.10e"") -> text(false)
+ 909[92]: AppendText(var[28], v1: text(false))
+ 912[76]: VarText(var[28]) -> text(false)
+ 915[92]: GenPanic(message: text(false))
+ 916[76]: GenReturn(ret=0, value=0, discard=76)
 
 Execute test:
-  668:[4] Text()
-  669:[28] Text()
-  670:[52] ConstText(_value="a") -> "a"[52]
-  673:[68] AppendText(var[28], v1="a"[52])
-  676:[52] ConstFloat(val=1.2) -> 1.2[52]
-  685:[60] ConstInt(val=4) -> 4[60]
-  690:[64] ConstInt(val=2) -> 2[64]
-  695:[68] FormatFloat(var[28], val=1.2[52], width=4[60], precision=2[64])
-  698:[52] ConstText(_value="b") -> "b"[52]
-  701:[68] AppendText(var[28], v1="b"[52])
-  704:[52] ConstFloat(val=1.34) -> 1.34[52]
-  713:[60] ConstInt(val=0) -> 0[60]
-  718:[64] ConstInt(val=0) -> 0[64]
-  723:[68] FormatFloat(var[28], val=1.34[52], width=0[60], precision=0[64])
-  726:[52] ConstText(_value="c") -> "c"[52]
-  729:[68] AppendText(var[28], v1="c"[52])
-  732:[52] ConstFloat(val=1.4) -> 1.4[52]
-  741:[60] ConstInt(val=5) -> 5[60]
-  746:[64] ConstInt(val=0) -> 0[64]
-  751:[68] FormatFloat(var[28], val=1.4[52], width=5[60], precision=0[64])
-  754:[52] ConstText(_value="d") -> "d"[52]
-  757:[68] AppendText(var[28], v1="d"[52])
-  760:[52] ConstFloat(val=334.1) -> 334.1[52]
-  769:[60] ConstInt(val=0) -> 0[60]
-  774:[64] ConstInt(val=2) -> 2[64]
-  779:[68] FormatFloat(var[28], val=334.1[52], width=0[60], precision=2[64])
-  782:[52] ConstText(_value="e") -> "e"[52]
-  785:[68] AppendText(var[28], v1="e"[52])
-  788:[52] VarText(var[28]) -> "a1.20b1.34c  1.4d334.10e"[52]
-  791:[68] GenFreeStack(value=16, discard=24)
-  795:[44] AppendText(var[4], v1="a1.20b1.34c  1.4d334.10e"[28])
-  798:[28] VarText(var[4]) -> "a1.20b1.34c  1.4d334.10e"[28]
-  801:[44] ConstText(_value="a1.20b1.34c  1.4d334.10e") -> "a1.20b1.34c  1.4d334.10e"[44]
-  827:[60] EqText(v1="a1.20b1.34c  1.4d334.10e"[28], v2="a1.20b1.34c  1.4d334.10e"[44]) -> true[28]
-  828:[29] GenGotoFalseWord(jump=834, if_false=true[28])
-  831:[28] GenGotoWord(jump=908)
-  908:[28] GenReturn(ret=4294967295[0], value=0, discard=28)
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] Text()
+  675:[56] ConstText(_value="") -> ""[56]
+  677:[72] AppendText(var[32], v1=""[56])
+  680:[56] Text()
+  681:[80] ClearText(var[8])
+  684:[80] ConstText(_value="a") -> "a"[80]
+  687:[96] AppendText(var[8], v1="a"[80])
+  690:[80] ConstFloat(val=1.2) -> 1.2[80]
+  699:[88] ConstInt(val=4) -> 4[88]
+  704:[92] ConstInt(val=2) -> 2[92]
+  709:[96] FormatFloat(var[8], val=1.2[80], width=4[88], precision=2[92])
+  712:[80] ConstText(_value="b") -> "b"[80]
+  715:[96] AppendText(var[8], v1="b"[80])
+  718:[80] ConstFloat(val=1.34) -> 1.34[80]
+  727:[88] ConstInt(val=0) -> 0[88]
+  732:[92] ConstInt(val=0) -> 0[92]
+  737:[96] FormatFloat(var[8], val=1.34[80], width=0[88], precision=0[92])
+  740:[80] ConstText(_value="c") -> "c"[80]
+  743:[96] AppendText(var[8], v1="c"[80])
+  746:[80] ConstFloat(val=1.4) -> 1.4[80]
+  755:[88] ConstInt(val=5) -> 5[88]
+  760:[92] ConstInt(val=0) -> 0[92]
+  765:[96] FormatFloat(var[8], val=1.4[80], width=5[88], precision=0[92])
+  768:[80] ConstText(_value="d") -> "d"[80]
+  771:[96] AppendText(var[8], v1="d"[80])
+  774:[80] ConstFloat(val=334.1) -> 334.1[80]
+  783:[88] ConstInt(val=0) -> 0[88]
+  788:[92] ConstInt(val=2) -> 2[92]
+  793:[96] FormatFloat(var[8], val=334.1[80], width=0[88], precision=2[92])
+  796:[80] ConstText(_value="e") -> "e"[80]
+  799:[96] AppendText(var[8], v1="e"[80])
+  802:[80] VarText(var[8]) -> "a1.20b1.34c  1.4d334.10e"[80]
+  805:[96] AppendText(var[56], v1="a1.20b1.34c  1.4d334.10e"[80])
+  808:[80] VarText(var[56]) -> "a1.20b1.34c  1.4d334.10e"[80]
+  811:[96] ConstText(_value="a1.20b1.34c  1.4d334.10e") -> "a1.20b1.34c  1.4d334.10e"[96]
+  837:[112] EqText(v1="a1.20b1.34c  1.4d334.10e"[80], v2="a1.20b1.34c  1.4d334.10e"[96]) -> true[80]
+  838:[81] GenGotoFalseWord(jump=844, if_false=true[80])
+  841:[80] GenGotoWord(jump=916)
+  916:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
 Finished

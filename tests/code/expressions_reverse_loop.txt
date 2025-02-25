@@ -8,6 +8,7 @@ pub fn test() {
 }
 
 fn test {
+  let __work_4 = "";
   let test_value = {
     let b = 0i32;
     {
@@ -26,210 +27,216 @@ fn test {
     b;
   };
   if OpEqInt(test_value, 654321i32) {null} else {OpGenPanic({
-    let append_10 = "Test failed ";
-    OpFormatInt(append_10, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(append_10, " != 654321");
-    append_10;
+    OpClearText(__work_4);
+    OpAppendText(__work_4, "Test failed ");
+    OpFormatInt(__work_4, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_4, " != 654321");
+    __work_4;
   })};
 }
 
 byte-code for reverse_loop:test()
  668[0]: return-address
- 668[4]: ConstInt(val=0) -> integer
- 673[8]: ConvIntFromNull() -> integer
- 674[12]: VarInt(var[8]) -> integer
- 677[16]: ConvBoolFromInt(v1: integer) -> boolean
- 678[13]: Not(v1: boolean) -> boolean
- 679[13]: GenGotoFalseWord(jump=690, if_false: boolean)
- 682[12]: ConstInt(val=6) -> integer
- 687[16]: GenGotoWord(jump=699)
- 690[12]: VarInt(var[8]) -> integer
- 693[16]: ConstInt(val=1) -> integer
- 698[20]: MinInt(v1: integer, v2: integer) -> integer
- 699[16]: PutInt(var[8], value: integer)
- 702[12]: VarInt(var[8]) -> integer
- 705[16]: ConstInt(val=1) -> integer
- 710[20]: LtInt(v1: integer, v2: integer) -> boolean
- 711[13]: GenGotoFalseWord(jump=717, if_false: boolean)
- 714[12]: GenGotoWord(jump=743)
- 717[12]: VarInt(var[8]) -> integer
- 720[16]: VarInt(var[4]) -> integer
- 723[20]: ConstInt(val=10) -> integer
- 728[24]: MulInt(v1: integer, v2: integer) -> integer
- 729[20]: VarInt(var[12]) -> integer
- 732[24]: AddInt(v1: integer, v2: integer) -> integer
- 733[20]: PutInt(var[4], value: integer)
- 736[16]: GenFreeStack(value=0, discard=4)
- 740[12]: GenGotoWord(jump=674)
- 743[12]: GenFreeStack(value=0, discard=4)
- 747[8]: VarInt(var[4]) -> integer
- 750[12]: GenFreeStack(value=4, discard=4)
- 754[8]: VarInt(var[4]) -> integer
- 757[12]: ConstInt(val=654321) -> integer
- 762[16]: EqInt(v1: integer, v2: integer) -> boolean
- 763[9]: GenGotoFalseWord(jump=769, if_false: boolean)
- 766[8]: GenGotoWord(jump=825)
- 769[8]: Text()
- 770[32]: ConstText(_value="Test failed ") -> text
- 784[48]: AppendText(var[8], v1: text)
- 787[32]: VarInt(var[4]) -> integer
- 790[36]: ConstInt(val=0) -> integer
- 795[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 802[32]: ConstText(_value=" != 654321") -> text
- 814[48]: AppendText(var[8], v1: text)
- 817[32]: VarText(var[8]) -> text
- 820[48]: GenFreeStack(value=16, discard=24)
- 824[24]: GenPanic(message: text)
- 825[8]: GenReturn(ret=0, value=0, discard=8)
+ 668[4]: Text()
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: ConstInt(val=0) -> integer
+ 679[32]: ConvIntFromNull() -> integer
+ 680[36]: VarInt(var[32]) -> integer
+ 683[40]: ConvBoolFromInt(v1: integer) -> boolean
+ 684[37]: Not(v1: boolean) -> boolean
+ 685[37]: GenGotoFalseWord(jump=696, if_false: boolean)
+ 688[36]: ConstInt(val=6) -> integer
+ 693[40]: GenGotoWord(jump=705)
+ 696[36]: VarInt(var[32]) -> integer
+ 699[40]: ConstInt(val=1) -> integer
+ 704[44]: MinInt(v1: integer, v2: integer) -> integer
+ 705[40]: PutInt(var[32], value: integer)
+ 708[36]: VarInt(var[32]) -> integer
+ 711[40]: ConstInt(val=1) -> integer
+ 716[44]: LtInt(v1: integer, v2: integer) -> boolean
+ 717[37]: GenGotoFalseWord(jump=723, if_false: boolean)
+ 720[36]: GenGotoWord(jump=749)
+ 723[36]: VarInt(var[32]) -> integer
+ 726[40]: VarInt(var[28]) -> integer
+ 729[44]: ConstInt(val=10) -> integer
+ 734[48]: MulInt(v1: integer, v2: integer) -> integer
+ 735[44]: VarInt(var[36]) -> integer
+ 738[48]: AddInt(v1: integer, v2: integer) -> integer
+ 739[44]: PutInt(var[28], value: integer)
+ 742[40]: GenFreeStack(value=0, discard=4)
+ 746[36]: GenGotoWord(jump=680)
+ 749[36]: GenFreeStack(value=0, discard=4)
+ 753[32]: VarInt(var[28]) -> integer
+ 756[36]: GenFreeStack(value=4, discard=4)
+ 760[32]: VarInt(var[28]) -> integer
+ 763[36]: ConstInt(val=654321) -> integer
+ 768[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 769[33]: GenGotoFalseWord(jump=775, if_false: boolean)
+ 772[32]: GenGotoWord(jump=829)
+ 775[32]: ClearText(var[4])
+ 778[32]: ConstText(_value="Test failed ") -> text(false)
+ 792[48]: AppendText(var[4], v1: text(false))
+ 795[32]: VarInt(var[28]) -> integer
+ 798[36]: ConstInt(val=0) -> integer
+ 803[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 810[32]: ConstText(_value=" != 654321") -> text(false)
+ 822[48]: AppendText(var[4], v1: text(false))
+ 825[32]: VarText(var[4]) -> text(false)
+ 828[48]: GenPanic(message: text(false))
+ 829[32]: GenReturn(ret=0, value=0, discard=32)
 
 Execute test:
-  668:[4] ConstInt(val=0) -> 0[4]
-  673:[8] ConvIntFromNull() -> -2147483648[8]
-  674:[12] VarInt(var[8]) -> -2147483648[12]
-  677:[16] ConvBoolFromInt(v1=-2147483648[12]) -> false[12]
-  678:[13] Not(v1=false[12]) -> true[12]
-  679:[13] GenGotoFalseWord(jump=690, if_false=true[12])
-  682:[12] ConstInt(val=6) -> 6[12]
-  687:[16] GenGotoWord(jump=699)
-  699:[16] PutInt(var[8], value=6[12])
-  702:[12] VarInt(var[8]) -> 6[12]
-  705:[16] ConstInt(val=1) -> 1[16]
-  710:[20] LtInt(v1=6[12], v2=1[16]) -> false[12]
-  711:[13] GenGotoFalseWord(jump=717, if_false=false[12])
-  717:[12] VarInt(var[8]) -> 6[12]
-  720:[16] VarInt(var[4]) -> 0[16]
-  723:[20] ConstInt(val=10) -> 10[20]
-  728:[24] MulInt(v1=0[16], v2=10[20]) -> 0[16]
-  729:[20] VarInt(var[12]) -> 6[20]
-  732:[24] AddInt(v1=0[16], v2=6[20]) -> 6[16]
-  733:[20] PutInt(var[4], value=6[16])
-  736:[16] GenFreeStack(value=0, discard=4)
-  740:[12] GenGotoWord(jump=674)
-  674:[12] VarInt(var[8]) -> 6[12]
-  677:[16] ConvBoolFromInt(v1=6[12]) -> true[12]
-  678:[13] Not(v1=true[12]) -> false[12]
-  679:[13] GenGotoFalseWord(jump=690, if_false=false[12])
-  690:[12] VarInt(var[8]) -> 6[12]
-  693:[16] ConstInt(val=1) -> 1[16]
-  698:[20] MinInt(v1=6[12], v2=1[16]) -> 5[12]
-  699:[16] PutInt(var[8], value=5[12])
-  702:[12] VarInt(var[8]) -> 5[12]
-  705:[16] ConstInt(val=1) -> 1[16]
-  710:[20] LtInt(v1=5[12], v2=1[16]) -> false[12]
-  711:[13] GenGotoFalseWord(jump=717, if_false=false[12])
-  717:[12] VarInt(var[8]) -> 5[12]
-  720:[16] VarInt(var[4]) -> 6[16]
-  723:[20] ConstInt(val=10) -> 10[20]
-  728:[24] MulInt(v1=6[16], v2=10[20]) -> 60[16]
-  729:[20] VarInt(var[12]) -> 5[20]
-  732:[24] AddInt(v1=60[16], v2=5[20]) -> 65[16]
-  733:[20] PutInt(var[4], value=65[16])
-  736:[16] GenFreeStack(value=0, discard=4)
-  740:[12] GenGotoWord(jump=674)
-  674:[12] VarInt(var[8]) -> 5[12]
-  677:[16] ConvBoolFromInt(v1=5[12]) -> true[12]
-  678:[13] Not(v1=true[12]) -> false[12]
-  679:[13] GenGotoFalseWord(jump=690, if_false=false[12])
-  690:[12] VarInt(var[8]) -> 5[12]
-  693:[16] ConstInt(val=1) -> 1[16]
-  698:[20] MinInt(v1=5[12], v2=1[16]) -> 4[12]
-  699:[16] PutInt(var[8], value=4[12])
-  702:[12] VarInt(var[8]) -> 4[12]
-  705:[16] ConstInt(val=1) -> 1[16]
-  710:[20] LtInt(v1=4[12], v2=1[16]) -> false[12]
-  711:[13] GenGotoFalseWord(jump=717, if_false=false[12])
-  717:[12] VarInt(var[8]) -> 4[12]
-  720:[16] VarInt(var[4]) -> 65[16]
-  723:[20] ConstInt(val=10) -> 10[20]
-  728:[24] MulInt(v1=65[16], v2=10[20]) -> 650[16]
-  729:[20] VarInt(var[12]) -> 4[20]
-  732:[24] AddInt(v1=650[16], v2=4[20]) -> 654[16]
-  733:[20] PutInt(var[4], value=654[16])
-  736:[16] GenFreeStack(value=0, discard=4)
-  740:[12] GenGotoWord(jump=674)
-  674:[12] VarInt(var[8]) -> 4[12]
-  677:[16] ConvBoolFromInt(v1=4[12]) -> true[12]
-  678:[13] Not(v1=true[12]) -> false[12]
-  679:[13] GenGotoFalseWord(jump=690, if_false=false[12])
-  690:[12] VarInt(var[8]) -> 4[12]
-  693:[16] ConstInt(val=1) -> 1[16]
-  698:[20] MinInt(v1=4[12], v2=1[16]) -> 3[12]
-  699:[16] PutInt(var[8], value=3[12])
-  702:[12] VarInt(var[8]) -> 3[12]
-  705:[16] ConstInt(val=1) -> 1[16]
-  710:[20] LtInt(v1=3[12], v2=1[16]) -> false[12]
-  711:[13] GenGotoFalseWord(jump=717, if_false=false[12])
-  717:[12] VarInt(var[8]) -> 3[12]
-  720:[16] VarInt(var[4]) -> 654[16]
-  723:[20] ConstInt(val=10) -> 10[20]
-  728:[24] MulInt(v1=654[16], v2=10[20]) -> 6540[16]
-  729:[20] VarInt(var[12]) -> 3[20]
-  732:[24] AddInt(v1=6540[16], v2=3[20]) -> 6543[16]
-  733:[20] PutInt(var[4], value=6543[16])
-  736:[16] GenFreeStack(value=0, discard=4)
-  740:[12] GenGotoWord(jump=674)
-  674:[12] VarInt(var[8]) -> 3[12]
-  677:[16] ConvBoolFromInt(v1=3[12]) -> true[12]
-  678:[13] Not(v1=true[12]) -> false[12]
-  679:[13] GenGotoFalseWord(jump=690, if_false=false[12])
-  690:[12] VarInt(var[8]) -> 3[12]
-  693:[16] ConstInt(val=1) -> 1[16]
-  698:[20] MinInt(v1=3[12], v2=1[16]) -> 2[12]
-  699:[16] PutInt(var[8], value=2[12])
-  702:[12] VarInt(var[8]) -> 2[12]
-  705:[16] ConstInt(val=1) -> 1[16]
-  710:[20] LtInt(v1=2[12], v2=1[16]) -> false[12]
-  711:[13] GenGotoFalseWord(jump=717, if_false=false[12])
-  717:[12] VarInt(var[8]) -> 2[12]
-  720:[16] VarInt(var[4]) -> 6543[16]
-  723:[20] ConstInt(val=10) -> 10[20]
-  728:[24] MulInt(v1=6543[16], v2=10[20]) -> 65430[16]
-  729:[20] VarInt(var[12]) -> 2[20]
-  732:[24] AddInt(v1=65430[16], v2=2[20]) -> 65432[16]
-  733:[20] PutInt(var[4], value=65432[16])
-  736:[16] GenFreeStack(value=0, discard=4)
-  740:[12] GenGotoWord(jump=674)
-  674:[12] VarInt(var[8]) -> 2[12]
-  677:[16] ConvBoolFromInt(v1=2[12]) -> true[12]
-  678:[13] Not(v1=true[12]) -> false[12]
-  679:[13] GenGotoFalseWord(jump=690, if_false=false[12])
-  690:[12] VarInt(var[8]) -> 2[12]
-  693:[16] ConstInt(val=1) -> 1[16]
-  698:[20] MinInt(v1=2[12], v2=1[16]) -> 1[12]
-  699:[16] PutInt(var[8], value=1[12])
-  702:[12] VarInt(var[8]) -> 1[12]
-  705:[16] ConstInt(val=1) -> 1[16]
-  710:[20] LtInt(v1=1[12], v2=1[16]) -> false[12]
-  711:[13] GenGotoFalseWord(jump=717, if_false=false[12])
-  717:[12] VarInt(var[8]) -> 1[12]
-  720:[16] VarInt(var[4]) -> 65432[16]
-  723:[20] ConstInt(val=10) -> 10[20]
-  728:[24] MulInt(v1=65432[16], v2=10[20]) -> 654320[16]
-  729:[20] VarInt(var[12]) -> 1[20]
-  732:[24] AddInt(v1=654320[16], v2=1[20]) -> 654321[16]
-  733:[20] PutInt(var[4], value=654321[16])
-  736:[16] GenFreeStack(value=0, discard=4)
-  740:[12] GenGotoWord(jump=674)
-  674:[12] VarInt(var[8]) -> 1[12]
-  677:[16] ConvBoolFromInt(v1=1[12]) -> true[12]
-  678:[13] Not(v1=true[12]) -> false[12]
-  679:[13] GenGotoFalseWord(jump=690, if_false=false[12])
-  690:[12] VarInt(var[8]) -> 1[12]
-  693:[16] ConstInt(val=1) -> 1[16]
-  698:[20] MinInt(v1=1[12], v2=1[16]) -> 0[12]
-  699:[16] PutInt(var[8], value=0[12])
-  702:[12] VarInt(var[8]) -> 0[12]
-  705:[16] ConstInt(val=1) -> 1[16]
-  710:[20] LtInt(v1=0[12], v2=1[16]) -> true[12]
-  711:[13] GenGotoFalseWord(jump=717, if_false=true[12])
-  714:[12] GenGotoWord(jump=743)
-  743:[12] GenFreeStack(value=0, discard=4)
-  747:[8] VarInt(var[4]) -> 654321[8]
-  750:[12] GenFreeStack(value=4, discard=4)
-  754:[8] VarInt(var[4]) -> 654321[8]
-  757:[12] ConstInt(val=654321) -> 654321[12]
-  762:[16] EqInt(v1=654321[8], v2=654321[12]) -> true[8]
-  763:[9] GenGotoFalseWord(jump=769, if_false=true[8])
-  766:[8] GenGotoWord(jump=825)
-  825:[8] GenReturn(ret=4294967295[0], value=0, discard=8)
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] ConstInt(val=0) -> 0[32]
+  679:[36] ConvIntFromNull() -> -2147483648[36]
+  680:[40] VarInt(var[36]) -> -2147483648[40]
+  683:[44] ConvBoolFromInt(v1=-2147483648[40]) -> false[40]
+  684:[41] Not(v1=false[40]) -> true[40]
+  685:[41] GenGotoFalseWord(jump=696, if_false=true[40])
+  688:[40] ConstInt(val=6) -> 6[40]
+  693:[44] GenGotoWord(jump=705)
+  705:[44] PutInt(var[36], value=6[40])
+  708:[40] VarInt(var[36]) -> 6[40]
+  711:[44] ConstInt(val=1) -> 1[44]
+  716:[48] LtInt(v1=6[40], v2=1[44]) -> false[40]
+  717:[41] GenGotoFalseWord(jump=723, if_false=false[40])
+  723:[40] VarInt(var[36]) -> 6[40]
+  726:[44] VarInt(var[32]) -> 0[44]
+  729:[48] ConstInt(val=10) -> 10[48]
+  734:[52] MulInt(v1=0[44], v2=10[48]) -> 0[44]
+  735:[48] VarInt(var[40]) -> 6[48]
+  738:[52] AddInt(v1=0[44], v2=6[48]) -> 6[44]
+  739:[48] PutInt(var[32], value=6[44])
+  742:[44] GenFreeStack(value=0, discard=4)
+  746:[40] GenGotoWord(jump=680)
+  680:[40] VarInt(var[36]) -> 6[40]
+  683:[44] ConvBoolFromInt(v1=6[40]) -> true[40]
+  684:[41] Not(v1=true[40]) -> false[40]
+  685:[41] GenGotoFalseWord(jump=696, if_false=false[40])
+  696:[40] VarInt(var[36]) -> 6[40]
+  699:[44] ConstInt(val=1) -> 1[44]
+  704:[48] MinInt(v1=6[40], v2=1[44]) -> 5[40]
+  705:[44] PutInt(var[36], value=5[40])
+  708:[40] VarInt(var[36]) -> 5[40]
+  711:[44] ConstInt(val=1) -> 1[44]
+  716:[48] LtInt(v1=5[40], v2=1[44]) -> false[40]
+  717:[41] GenGotoFalseWord(jump=723, if_false=false[40])
+  723:[40] VarInt(var[36]) -> 5[40]
+  726:[44] VarInt(var[32]) -> 6[44]
+  729:[48] ConstInt(val=10) -> 10[48]
+  734:[52] MulInt(v1=6[44], v2=10[48]) -> 60[44]
+  735:[48] VarInt(var[40]) -> 5[48]
+  738:[52] AddInt(v1=60[44], v2=5[48]) -> 65[44]
+  739:[48] PutInt(var[32], value=65[44])
+  742:[44] GenFreeStack(value=0, discard=4)
+  746:[40] GenGotoWord(jump=680)
+  680:[40] VarInt(var[36]) -> 5[40]
+  683:[44] ConvBoolFromInt(v1=5[40]) -> true[40]
+  684:[41] Not(v1=true[40]) -> false[40]
+  685:[41] GenGotoFalseWord(jump=696, if_false=false[40])
+  696:[40] VarInt(var[36]) -> 5[40]
+  699:[44] ConstInt(val=1) -> 1[44]
+  704:[48] MinInt(v1=5[40], v2=1[44]) -> 4[40]
+  705:[44] PutInt(var[36], value=4[40])
+  708:[40] VarInt(var[36]) -> 4[40]
+  711:[44] ConstInt(val=1) -> 1[44]
+  716:[48] LtInt(v1=4[40], v2=1[44]) -> false[40]
+  717:[41] GenGotoFalseWord(jump=723, if_false=false[40])
+  723:[40] VarInt(var[36]) -> 4[40]
+  726:[44] VarInt(var[32]) -> 65[44]
+  729:[48] ConstInt(val=10) -> 10[48]
+  734:[52] MulInt(v1=65[44], v2=10[48]) -> 650[44]
+  735:[48] VarInt(var[40]) -> 4[48]
+  738:[52] AddInt(v1=650[44], v2=4[48]) -> 654[44]
+  739:[48] PutInt(var[32], value=654[44])
+  742:[44] GenFreeStack(value=0, discard=4)
+  746:[40] GenGotoWord(jump=680)
+  680:[40] VarInt(var[36]) -> 4[40]
+  683:[44] ConvBoolFromInt(v1=4[40]) -> true[40]
+  684:[41] Not(v1=true[40]) -> false[40]
+  685:[41] GenGotoFalseWord(jump=696, if_false=false[40])
+  696:[40] VarInt(var[36]) -> 4[40]
+  699:[44] ConstInt(val=1) -> 1[44]
+  704:[48] MinInt(v1=4[40], v2=1[44]) -> 3[40]
+  705:[44] PutInt(var[36], value=3[40])
+  708:[40] VarInt(var[36]) -> 3[40]
+  711:[44] ConstInt(val=1) -> 1[44]
+  716:[48] LtInt(v1=3[40], v2=1[44]) -> false[40]
+  717:[41] GenGotoFalseWord(jump=723, if_false=false[40])
+  723:[40] VarInt(var[36]) -> 3[40]
+  726:[44] VarInt(var[32]) -> 654[44]
+  729:[48] ConstInt(val=10) -> 10[48]
+  734:[52] MulInt(v1=654[44], v2=10[48]) -> 6540[44]
+  735:[48] VarInt(var[40]) -> 3[48]
+  738:[52] AddInt(v1=6540[44], v2=3[48]) -> 6543[44]
+  739:[48] PutInt(var[32], value=6543[44])
+  742:[44] GenFreeStack(value=0, discard=4)
+  746:[40] GenGotoWord(jump=680)
+  680:[40] VarInt(var[36]) -> 3[40]
+  683:[44] ConvBoolFromInt(v1=3[40]) -> true[40]
+  684:[41] Not(v1=true[40]) -> false[40]
+  685:[41] GenGotoFalseWord(jump=696, if_false=false[40])
+  696:[40] VarInt(var[36]) -> 3[40]
+  699:[44] ConstInt(val=1) -> 1[44]
+  704:[48] MinInt(v1=3[40], v2=1[44]) -> 2[40]
+  705:[44] PutInt(var[36], value=2[40])
+  708:[40] VarInt(var[36]) -> 2[40]
+  711:[44] ConstInt(val=1) -> 1[44]
+  716:[48] LtInt(v1=2[40], v2=1[44]) -> false[40]
+  717:[41] GenGotoFalseWord(jump=723, if_false=false[40])
+  723:[40] VarInt(var[36]) -> 2[40]
+  726:[44] VarInt(var[32]) -> 6543[44]
+  729:[48] ConstInt(val=10) -> 10[48]
+  734:[52] MulInt(v1=6543[44], v2=10[48]) -> 65430[44]
+  735:[48] VarInt(var[40]) -> 2[48]
+  738:[52] AddInt(v1=65430[44], v2=2[48]) -> 65432[44]
+  739:[48] PutInt(var[32], value=65432[44])
+  742:[44] GenFreeStack(value=0, discard=4)
+  746:[40] GenGotoWord(jump=680)
+  680:[40] VarInt(var[36]) -> 2[40]
+  683:[44] ConvBoolFromInt(v1=2[40]) -> true[40]
+  684:[41] Not(v1=true[40]) -> false[40]
+  685:[41] GenGotoFalseWord(jump=696, if_false=false[40])
+  696:[40] VarInt(var[36]) -> 2[40]
+  699:[44] ConstInt(val=1) -> 1[44]
+  704:[48] MinInt(v1=2[40], v2=1[44]) -> 1[40]
+  705:[44] PutInt(var[36], value=1[40])
+  708:[40] VarInt(var[36]) -> 1[40]
+  711:[44] ConstInt(val=1) -> 1[44]
+  716:[48] LtInt(v1=1[40], v2=1[44]) -> false[40]
+  717:[41] GenGotoFalseWord(jump=723, if_false=false[40])
+  723:[40] VarInt(var[36]) -> 1[40]
+  726:[44] VarInt(var[32]) -> 65432[44]
+  729:[48] ConstInt(val=10) -> 10[48]
+  734:[52] MulInt(v1=65432[44], v2=10[48]) -> 654320[44]
+  735:[48] VarInt(var[40]) -> 1[48]
+  738:[52] AddInt(v1=654320[44], v2=1[48]) -> 654321[44]
+  739:[48] PutInt(var[32], value=654321[44])
+  742:[44] GenFreeStack(value=0, discard=4)
+  746:[40] GenGotoWord(jump=680)
+  680:[40] VarInt(var[36]) -> 1[40]
+  683:[44] ConvBoolFromInt(v1=1[40]) -> true[40]
+  684:[41] Not(v1=true[40]) -> false[40]
+  685:[41] GenGotoFalseWord(jump=696, if_false=false[40])
+  696:[40] VarInt(var[36]) -> 1[40]
+  699:[44] ConstInt(val=1) -> 1[44]
+  704:[48] MinInt(v1=1[40], v2=1[44]) -> 0[40]
+  705:[44] PutInt(var[36], value=0[40])
+  708:[40] VarInt(var[36]) -> 0[40]
+  711:[44] ConstInt(val=1) -> 1[44]
+  716:[48] LtInt(v1=0[40], v2=1[44]) -> true[40]
+  717:[41] GenGotoFalseWord(jump=723, if_false=true[40])
+  720:[40] GenGotoWord(jump=749)
+  749:[40] GenFreeStack(value=0, discard=4)
+  753:[36] VarInt(var[32]) -> 654321[36]
+  756:[40] GenFreeStack(value=4, discard=4)
+  760:[36] VarInt(var[32]) -> 654321[36]
+  763:[40] ConstInt(val=654321) -> 654321[40]
+  768:[44] EqInt(v1=654321[36], v2=654321[40]) -> true[36]
+  769:[37] GenGotoFalseWord(jump=775, if_false=true[36])
+  772:[36] GenGotoWord(jump=829)
+  829:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
 Finished

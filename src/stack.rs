@@ -25,9 +25,9 @@ pub fn size(tp: &Type, context: Context) -> u16 {
         Type::Boolean | Type::Enum(_) => 1,
         Type::Integer(_, _) | Type::Single | Type::Function(_, _) => 4,
         Type::Long | Type::Float => 8,
-        Type::Text if context == Context::Variable => size_of::<String>() as u16,
-        Type::Text => size_of::<&str>() as u16,
-        Type::Reference(_) | Type::Vector(_) => size_of::<DbRef>() as u16,
+        Type::Text(_) if context == Context::Variable => size_of::<String>() as u16,
+        Type::Text(_) => size_of::<&str>() as u16,
+        Type::RefVar(_) | Type::Reference(_) | Type::Vector(_) => size_of::<DbRef>() as u16,
         _ => 0,
     }
 }
@@ -40,7 +40,7 @@ pub struct Stack<'a> {
     /// Current stack position related to the current variables & expression.
     pub position: u16,
     pub data: &'a Data,
-    def_nr: u32,
+    pub def_nr: u32,
     pub scope: u8,
     pub logging: bool,
     /// Current loops (start-position, stack-position, break-positions)

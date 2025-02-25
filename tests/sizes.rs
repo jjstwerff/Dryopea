@@ -44,7 +44,6 @@ struct Main { s:hash<S[b]> }"
     .result(Value::Int(820));
 }
 
-/*
 #[test]
 fn index_member() {
     // Structure S will be a RB tree member so it is +9 size.
@@ -56,7 +55,6 @@ struct Main { s: index<S[a, -c]> };"
     .expr("m = Main {}; sizeof(S) + 100 * sizeof(m)")
     .result(Value::Int(829));
 }
-*/
 
 #[test]
 fn reference_field() {

@@ -8,56 +8,63 @@ pub fn test() {
 }
 
 fn test {
+  let __work_1 = "";
   let test_value = {
     OpLandInt(OpMinInt(OpSLeftInt(1i32, 8i32), 3i32), 127i32);
   };
   if OpEqInt(test_value, 125i32) {null} else {OpGenPanic({
-    let append_7 = "Test failed ";
-    OpFormatInt(append_7, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(append_7, " != 125");
-    append_7;
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1, " != 125");
+    __work_1;
   })};
 }
 
 byte-code for logical:test()
  668[0]: return-address
- 668[4]: ConstInt(val=1) -> integer
- 673[8]: ConstInt(val=8) -> integer
- 678[12]: SLeftInt(v1: integer, v2: integer) -> integer
- 679[8]: ConstInt(val=3) -> integer
- 684[12]: MinInt(v1: integer, v2: integer) -> integer
- 685[8]: ConstInt(val=127) -> integer
- 690[12]: LandInt(v1: integer, v2: integer) -> integer
- 691[8]: VarInt(var[4]) -> integer
- 694[12]: ConstInt(val=125) -> integer
- 699[16]: EqInt(v1: integer, v2: integer) -> boolean
- 700[9]: GenGotoFalseWord(jump=706, if_false: boolean)
- 703[8]: GenGotoWord(jump=759)
- 706[8]: Text()
- 707[32]: ConstText(_value="Test failed ") -> text
- 721[48]: AppendText(var[8], v1: text)
- 724[32]: VarInt(var[4]) -> integer
- 727[36]: ConstInt(val=0) -> integer
- 732[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 739[32]: ConstText(_value=" != 125") -> text
- 748[48]: AppendText(var[8], v1: text)
- 751[32]: VarText(var[8]) -> text
- 754[48]: GenFreeStack(value=16, discard=24)
- 758[24]: GenPanic(message: text)
- 759[8]: GenReturn(ret=0, value=0, discard=8)
+ 668[4]: Text()
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: ConstInt(val=1) -> integer
+ 679[32]: ConstInt(val=8) -> integer
+ 684[36]: SLeftInt(v1: integer, v2: integer) -> integer
+ 685[32]: ConstInt(val=3) -> integer
+ 690[36]: MinInt(v1: integer, v2: integer) -> integer
+ 691[32]: ConstInt(val=127) -> integer
+ 696[36]: LandInt(v1: integer, v2: integer) -> integer
+ 697[32]: VarInt(var[28]) -> integer
+ 700[36]: ConstInt(val=125) -> integer
+ 705[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 706[33]: GenGotoFalseWord(jump=712, if_false: boolean)
+ 709[32]: GenGotoWord(jump=763)
+ 712[32]: ClearText(var[4])
+ 715[32]: ConstText(_value="Test failed ") -> text(false)
+ 729[48]: AppendText(var[4], v1: text(false))
+ 732[32]: VarInt(var[28]) -> integer
+ 735[36]: ConstInt(val=0) -> integer
+ 740[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 747[32]: ConstText(_value=" != 125") -> text(false)
+ 756[48]: AppendText(var[4], v1: text(false))
+ 759[32]: VarText(var[4]) -> text(false)
+ 762[48]: GenPanic(message: text(false))
+ 763[32]: GenReturn(ret=0, value=0, discard=32)
 
 Execute test:
-  668:[4] ConstInt(val=1) -> 1[4]
-  673:[8] ConstInt(val=8) -> 8[8]
-  678:[12] SLeftInt(v1=1[4], v2=8[8]) -> 256[4]
-  679:[8] ConstInt(val=3) -> 3[8]
-  684:[12] MinInt(v1=256[4], v2=3[8]) -> 253[4]
-  685:[8] ConstInt(val=127) -> 127[8]
-  690:[12] LandInt(v1=253[4], v2=127[8]) -> 125[4]
-  691:[8] VarInt(var[4]) -> 125[8]
-  694:[12] ConstInt(val=125) -> 125[12]
-  699:[16] EqInt(v1=125[8], v2=125[12]) -> true[8]
-  700:[9] GenGotoFalseWord(jump=706, if_false=true[8])
-  703:[8] GenGotoWord(jump=759)
-  759:[8] GenReturn(ret=4294967295[0], value=0, discard=8)
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] ConstInt(val=1) -> 1[32]
+  679:[36] ConstInt(val=8) -> 8[36]
+  684:[40] SLeftInt(v1=1[32], v2=8[36]) -> 256[32]
+  685:[36] ConstInt(val=3) -> 3[36]
+  690:[40] MinInt(v1=256[32], v2=3[36]) -> 253[32]
+  691:[36] ConstInt(val=127) -> 127[36]
+  696:[40] LandInt(v1=253[32], v2=127[36]) -> 125[32]
+  697:[36] VarInt(var[32]) -> 125[36]
+  700:[40] ConstInt(val=125) -> 125[40]
+  705:[44] EqInt(v1=125[36], v2=125[40]) -> true[36]
+  706:[37] GenGotoFalseWord(jump=712, if_false=true[36])
+  709:[36] GenGotoWord(jump=763)
+  763:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
 Finished

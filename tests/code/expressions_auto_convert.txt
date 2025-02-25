@@ -8,50 +8,57 @@ pub fn test() {
 }
 
 fn test {
+  let __work_1 = "";
   let test_value = {
     OpMulLong(10i64, OpConvLongFromInt(2i32));
   };
   if OpEqLong(test_value, 20i64) {null} else {OpGenPanic({
-    let append_7 = "Test failed ";
-    OpFormatLong(append_7, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(append_7, " != 20l");
-    append_7;
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatLong(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1, " != 20l");
+    __work_1;
   })};
 }
 
 byte-code for auto_convert:test()
  668[0]: return-address
- 668[4]: ConstLong(val=10) -> long
- 677[12]: ConstInt(val=2) -> integer
- 682[16]: ConvLongFromInt(v1: integer) -> long
- 683[20]: MulLong(v1: long, v2: long) -> long
- 684[12]: VarLong(var[4]) -> long
- 687[20]: ConstLong(val=20) -> long
- 696[28]: EqLong(v1: long, v2: long) -> boolean
- 697[13]: GenGotoFalseWord(jump=703, if_false: boolean)
- 700[12]: GenGotoWord(jump=756)
- 703[12]: Text()
- 704[36]: ConstText(_value="Test failed ") -> text
- 718[52]: AppendText(var[12], v1: text)
- 721[36]: VarLong(var[4]) -> long
- 724[44]: ConstInt(val=0) -> integer
- 729[48]: FormatLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
- 736[36]: ConstText(_value=" != 20l") -> text
- 745[52]: AppendText(var[12], v1: text)
- 748[36]: VarText(var[12]) -> text
- 751[52]: GenFreeStack(value=16, discard=24)
- 755[28]: GenPanic(message: text)
- 756[12]: GenReturn(ret=0, value=0, discard=12)
+ 668[4]: Text()
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: ConstLong(val=10) -> long
+ 683[36]: ConstInt(val=2) -> integer
+ 688[40]: ConvLongFromInt(v1: integer) -> long
+ 689[44]: MulLong(v1: long, v2: long) -> long
+ 690[36]: VarLong(var[28]) -> long
+ 693[44]: ConstLong(val=20) -> long
+ 702[52]: EqLong(v1: long, v2: long) -> boolean
+ 703[37]: GenGotoFalseWord(jump=709, if_false: boolean)
+ 706[36]: GenGotoWord(jump=760)
+ 709[36]: ClearText(var[4])
+ 712[36]: ConstText(_value="Test failed ") -> text(false)
+ 726[52]: AppendText(var[4], v1: text(false))
+ 729[36]: VarLong(var[28]) -> long
+ 732[44]: ConstInt(val=0) -> integer
+ 737[48]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 744[36]: ConstText(_value=" != 20l") -> text(false)
+ 753[52]: AppendText(var[4], v1: text(false))
+ 756[36]: VarText(var[4]) -> text(false)
+ 759[52]: GenPanic(message: text(false))
+ 760[36]: GenReturn(ret=0, value=0, discard=36)
 
 Execute test:
-  668:[4] ConstLong(val=10) -> 10[4]
-  677:[12] ConstInt(val=2) -> 2[12]
-  682:[16] ConvLongFromInt(v1=2[12]) -> 2[12]
-  683:[20] MulLong(v1=10[4], v2=2[12]) -> 20[4]
-  684:[12] VarLong(var[4]) -> 20[12]
-  687:[20] ConstLong(val=20) -> 20[20]
-  696:[28] EqLong(v1=20[12], v2=20[20]) -> true[12]
-  697:[13] GenGotoFalseWord(jump=703, if_false=true[12])
-  700:[12] GenGotoWord(jump=756)
-  756:[12] GenReturn(ret=4294967295[0], value=0, discard=12)
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] ConstLong(val=10) -> 10[32]
+  683:[40] ConstInt(val=2) -> 2[40]
+  688:[44] ConvLongFromInt(v1=2[40]) -> 2[40]
+  689:[48] MulLong(v1=10[32], v2=2[40]) -> 20[32]
+  690:[40] VarLong(var[32]) -> 20[40]
+  693:[48] ConstLong(val=20) -> 20[48]
+  702:[56] EqLong(v1=20[40], v2=20[48]) -> true[40]
+  703:[41] GenGotoFalseWord(jump=709, if_false=true[40])
+  706:[40] GenGotoWord(jump=760)
+  760:[40] GenReturn(ret=4294967295[4], value=0, discard=36)
 Finished

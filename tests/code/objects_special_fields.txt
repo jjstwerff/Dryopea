@@ -86,285 +86,298 @@ byte-code for special_fields:sum(o: Object[0]) -> integer
  769[24]: GenReturn(ret=12, value=4, discard=24)
 
 fn test {
+  let __work_6 = "";
+  let __work_7 = "";
   let test_value = {
     let o = {
       let val = OpDatabase(9i32, 14i32);
       OpSetInt(val, 4i32, 0i32);
-      let elm_13 = OpNewRecord(val, 14i32, 0i32);
-      OpSetInt(elm_13, 0i32, 1i32);
-      OpFinishRecord(val, elm_13, 14i32, 0i32);
-      elm_13 = OpNewRecord(val, 14i32, 0i32);
-      OpSetInt(elm_13, 0i32, 4i32);
-      OpFinishRecord(val, elm_13, 14i32, 0i32);
-      elm_13 = OpNewRecord(val, 14i32, 0i32);
-      OpSetInt(elm_13, 0i32, 3i32);
-      OpFinishRecord(val, elm_13, 14i32, 0i32);
+      let elm_11 = OpNewRecord(val, 14i32, 0i32);
+      OpSetInt(elm_11, 0i32, 1i32);
+      OpFinishRecord(val, elm_11, 14i32, 0i32);
+      elm_11 = OpNewRecord(val, 14i32, 0i32);
+      OpSetInt(elm_11, 0i32, 4i32);
+      OpFinishRecord(val, elm_11, 14i32, 0i32);
+      elm_11 = OpNewRecord(val, 14i32, 0i32);
+      OpSetInt(elm_11, 0i32, 3i32);
+      OpFinishRecord(val, elm_11, 14i32, 0i32);
       OpSetEnum(val, 8i32, 3u8(13));
       val;
     };
     {
-      let elm_14 = OpNewRecord(o, 14i32, 0i32);
-      OpSetInt(elm_14, 0i32, sum(o));
-      OpFinishRecord(o, elm_14, 14i32, 0i32);
+      let elm_12 = OpNewRecord(o, 14i32, 0i32);
+      OpSetInt(elm_12, 0i32, sum(o));
+      OpFinishRecord(o, elm_12, 14i32, 0i32);
     };
     {
-      let append_15 = "";
-      OpFormatDatabase(append_15, o, 14i32, false);
-      append_15;
+      OpClearText(__work_6);
+      OpAppendText(__work_6, "");
+      OpFormatDatabase(__work_6, o, 14i32, false);
+      __work_6;
     };
   };
   if OpEqText(test_value, "{a:[1,4,3,8],b:Fluid}") {null} else {OpGenPanic({
-    let append_16 = "Test failed ";
-    OpFormatText(append_16, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(append_16, " != "{a:[1,4,3,8],b:Fluid}"");
-    append_16;
+    OpClearText(__work_7);
+    OpAppendText(__work_7, "Test failed ");
+    OpFormatText(__work_7, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_7, " != "{a:[1,4,3,8],b:Fluid}"");
+    __work_7;
   })};
 }
 
 byte-code for special_fields:test()
  775[0]: return-address
  775[4]: Text()
- 776[28]: Database(size=9, db_tp=14) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 781[40]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 784[52]: ConstInt(val=0) -> integer
- 789[56]: SetInt(v1: reference, fld=4, val: integer)
- 792[40]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 795[52]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
- 800[52]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
- 803[64]: ConstInt(val=1) -> integer
- 808[68]: SetInt(v1: reference, fld=0, val: integer)
- 811[52]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 814[64]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
- 817[76]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
- 822[52]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 825[64]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
- 830[64]: PutRef(var[40], value: reference)
- 833[52]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
- 836[64]: ConstInt(val=4) -> integer
- 841[68]: SetInt(v1: reference, fld=0, val: integer)
- 844[52]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 847[64]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
- 850[76]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
- 855[52]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 858[64]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
- 863[64]: PutRef(var[40], value: reference)
- 866[52]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
- 869[64]: ConstInt(val=3) -> integer
- 874[68]: SetInt(v1: reference, fld=0, val: integer)
- 877[52]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 880[64]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
- 883[76]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
- 888[52]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 891[64]: ConstEnum(val=3) -> enumerate type=Gender[1]:Enum(["Male", "Female", "Fluid"])[13]
- 893[65]: SetEnum(v1: reference, fld=8, val: enumerate)
- 896[52]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 899[64]: GenFreeStack(value=12, discard=24)
- 903[40]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 906[52]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
- 911[52]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
- 914[64]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 917[76]: GenCall(size=0, to=668)
- 924[68]: SetInt(v1: reference, fld=0, val: integer)
- 927[52]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 930[64]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
- 933[76]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
- 938[52]: GenFreeStack(value=0, discard=12)
- 942[40]: Text()
- 943[64]: ConstText(_value="") -> text
- 945[80]: AppendText(var[40], v1: text)
- 948[64]: VarRef(var[28]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
- 951[76]: FormatDatabase(var[40], val: reference, db_tp=14, pretty=false)
- 957[64]: VarText(var[40]) -> text
- 960[80]: GenFreeStack(value=16, discard=24)
- 964[56]: GenFreeStack(value=16, discard=12)
- 968[44]: AppendText(var[4], v1: text)
- 971[28]: VarText(var[4]) -> text
- 974[44]: ConstText(_value="{a:[1,4,3,8],b:Fluid}") -> text
- 997[60]: EqText(v1: text, v2: text) -> boolean
- 998[29]: GenGotoFalseWord(jump=1004, if_false: boolean)
-1001[28]: GenGotoWord(jump=1075)
-1004[28]: Text()
-1005[52]: ConstText(_value="Test failed ") -> text
-1019[68]: AppendText(var[28], v1: text)
-1022[52]: VarText(var[4]) -> text
-1025[68]: ConstInt(val=0) -> integer
-1030[72]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
-1035[52]: ConstText(_value=" != "{a:[1,4,3,8],b:Fluid}"") -> text
-1064[68]: AppendText(var[28], v1: text)
-1067[52]: VarText(var[28]) -> text
-1070[68]: GenFreeStack(value=16, discard=24)
-1074[44]: GenPanic(message: text)
-1075[28]: GenReturn(ret=0, value=0, discard=28)
+ 776[28]: ConstText(_value="") -> text(false)
+ 778[44]: AppendText(var[4], v1: text(false))
+ 781[28]: Text()
+ 782[52]: ConstText(_value="") -> text(false)
+ 784[68]: AppendText(var[28], v1: text(false))
+ 787[52]: Text()
+ 788[76]: Database(size=9, db_tp=14) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 793[88]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 796[100]: ConstInt(val=0) -> integer
+ 801[104]: SetInt(v1: reference, fld=4, val: integer)
+ 804[88]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 807[100]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 812[100]: VarRef(var[88]) -> reference type=boolean[1]:Base[4]
+ 815[112]: ConstInt(val=1) -> integer
+ 820[116]: SetInt(v1: reference, fld=0, val: integer)
+ 823[100]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 826[112]: VarRef(var[88]) -> reference type=boolean[1]:Base[4]
+ 829[124]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 834[100]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 837[112]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 842[112]: PutRef(var[88], value: reference)
+ 845[100]: VarRef(var[88]) -> reference type=boolean[1]:Base[4]
+ 848[112]: ConstInt(val=4) -> integer
+ 853[116]: SetInt(v1: reference, fld=0, val: integer)
+ 856[100]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 859[112]: VarRef(var[88]) -> reference type=boolean[1]:Base[4]
+ 862[124]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 867[100]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 870[112]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 875[112]: PutRef(var[88], value: reference)
+ 878[100]: VarRef(var[88]) -> reference type=boolean[1]:Base[4]
+ 881[112]: ConstInt(val=3) -> integer
+ 886[116]: SetInt(v1: reference, fld=0, val: integer)
+ 889[100]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 892[112]: VarRef(var[88]) -> reference type=boolean[1]:Base[4]
+ 895[124]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 900[100]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 903[112]: ConstEnum(val=3) -> enumerate type=Gender[1]:Enum(["Male", "Female", "Fluid"])[13]
+ 905[113]: SetEnum(v1: reference, fld=8, val: enumerate)
+ 908[100]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 911[112]: GenFreeStack(value=12, discard=24)
+ 915[88]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 918[100]: NewRecord(data: reference, parent_tp=14, fld=0) -> reference
+ 923[100]: VarRef(var[88]) -> reference type=boolean[1]:Base[4]
+ 926[112]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 929[124]: GenCall(size=0, to=668)
+ 936[116]: SetInt(v1: reference, fld=0, val: integer)
+ 939[100]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 942[112]: VarRef(var[88]) -> reference type=boolean[1]:Base[4]
+ 945[124]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=0)
+ 950[100]: GenFreeStack(value=0, discard=12)
+ 954[88]: ClearText(var[4])
+ 957[88]: ConstText(_value="") -> text(false)
+ 959[104]: AppendText(var[4], v1: text(false))
+ 962[88]: VarRef(var[76]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
+ 965[100]: FormatDatabase(var[4], val: reference, db_tp=14, pretty=false)
+ 971[88]: VarText(var[4]) -> text(false)
+ 974[104]: GenFreeStack(value=16, discard=12)
+ 978[92]: AppendText(var[52], v1: text(false))
+ 981[76]: VarText(var[52]) -> text(false)
+ 984[92]: ConstText(_value="{a:[1,4,3,8],b:Fluid}") -> text(false)
+1007[108]: EqText(v1: text(false), v2: text(false)) -> boolean
+1008[77]: GenGotoFalseWord(jump=1014, if_false: boolean)
+1011[76]: GenGotoWord(jump=1083)
+1014[76]: ClearText(var[28])
+1017[76]: ConstText(_value="Test failed ") -> text(false)
+1031[92]: AppendText(var[28], v1: text(false))
+1034[76]: VarText(var[52]) -> text(false)
+1037[92]: ConstInt(val=0) -> integer
+1042[96]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
+1047[76]: ConstText(_value=" != "{a:[1,4,3,8],b:Fluid}"") -> text(false)
+1076[92]: AppendText(var[28], v1: text(false))
+1079[76]: VarText(var[28]) -> text(false)
+1082[92]: GenPanic(message: text(false))
+1083[76]: GenReturn(ret=0, value=0, discard=76)
 
 Execute test:
-  775:[4] Text()
-  776:[28] Database(size=9, db_tp=14) -> ref(1,1,0)={}[28]
-  781:[40] VarRef(var[28]) -> ref(1,1,0)={}[40]
-  784:[52] ConstInt(val=0) -> 0[52]
-  789:[56] SetInt(v1=ref(1,1,0)[40], fld=4, val=0[52])
-  792:[40] VarRef(var[28]) -> ref(1,1,0)={}[40]
-  795:[52] NewRecord(data=ref(1,1,0)[40], parent_tp=14, fld=0) -> ref(1,10,8)[40]
-  800:[52] VarRef(var[40]) -> ref(1,10,8)=false[52]
-  803:[64] ConstInt(val=1) -> 1[64]
-  808:[68] SetInt(v1=ref(1,10,8)[52], fld=0, val=1[64])
-  811:[52] VarRef(var[28]) -> ref(1,1,0)={a:[1]}[52]
-  814:[64] VarRef(var[40]) -> ref(1,10,8)=true[64]
-  817:[76] FinishRecord(data=ref(1,1,0)[52], rec=ref(1,10,8)[64], parent_tp=14, fld=0)
-  822:[52] VarRef(var[28]) -> ref(1,1,0)={a:[1]}[52]
-  825:[64] NewRecord(data=ref(1,1,0)[52], parent_tp=14, fld=0) -> ref(1,10,12)[52]
-  830:[64] PutRef(var[40], value=ref(1,10,12)[52])
-  833:[52] VarRef(var[40]) -> ref(1,10,12)=false[52]
-  836:[64] ConstInt(val=4) -> 4[64]
-  841:[68] SetInt(v1=ref(1,10,12)[52], fld=0, val=4[64])
-  844:[52] VarRef(var[28]) -> ref(1,1,0)={a:[1,4]}[52]
-  847:[64] VarRef(var[40]) -> ref(1,10,12)=true[64]
-  850:[76] FinishRecord(data=ref(1,1,0)[52], rec=ref(1,10,12)[64], parent_tp=14, fld=0)
-  855:[52] VarRef(var[28]) -> ref(1,1,0)={a:[1,4]}[52]
-  858:[64] NewRecord(data=ref(1,1,0)[52], parent_tp=14, fld=0) -> ref(1,10,16)[52]
-  863:[64] PutRef(var[40], value=ref(1,10,16)[52])
-  866:[52] VarRef(var[40]) -> ref(1,10,16)=false[52]
-  869:[64] ConstInt(val=3) -> 3[64]
-  874:[68] SetInt(v1=ref(1,10,16)[52], fld=0, val=3[64])
-  877:[52] VarRef(var[28]) -> ref(1,1,0)={a:[1,4,3]}[52]
-  880:[64] VarRef(var[40]) -> ref(1,10,16)=true[64]
-  883:[76] FinishRecord(data=ref(1,1,0)[52], rec=ref(1,10,16)[64], parent_tp=14, fld=0)
-  888:[52] VarRef(var[28]) -> ref(1,1,0)={a:[1,4,3]}[52]
-  891:[64] ConstEnum(val=3) -> Fluid(3)[64]
-  893:[65] SetEnum(v1=ref(1,1,0)[52], fld=8, val=3[64])
-  896:[52] VarRef(var[28]) -> ref(1,1,0)={a:[1,4,3],b:Fluid}[52]
-  899:[64] GenFreeStack(value=12, discard=24)
-  903:[40] VarRef(var[28]) -> ref(1,1,0)={a:[1,4,3],b:Fluid}[40]
-  906:[52] NewRecord(data=ref(1,1,0)[40], parent_tp=14, fld=0) -> ref(1,10,20)[40]
-  911:[52] VarRef(var[40]) -> ref(1,10,20)=false[52]
-  914:[64] VarRef(var[28]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[64]
-  917:[76] GenCall(size=0, to=668)
-  668:[80] ConstInt(val=0) -> 0[80]
-  673:[84] ConstInt(val=0) -> 0[84]
-  678:[88] VarInt(var[84]) -> 0[88]
-  681:[92] VarRef(var[64]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[92]
-  684:[104] GetField(v1=ref(1,1,0)[92], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][92]
-  687:[104] LengthVector(r=ref(1,1,4)=true[92]) -> 4[92]
-  688:[96] GeInt(v1=0[88], v2=4[92]) -> false[88]
-  689:[89] GenGotoFalseWord(jump=696, if_false=false[88])
-  696:[88] VarRef(var[64]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[88]
-  699:[100] GetField(v1=ref(1,1,0)[88], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][88]
-  702:[100] VarInt(var[84]) -> 0[100]
-  705:[104] GetVector(r=ref(1,1,4)=true[88], size=4, index=0[100]) -> ref(1,10,8)[88]
-  708:[100] GetInt(v1=ref(1,10,8)[88], fld=0) -> 1[88]
-  711:[92] VarInt(var[84]) -> 0[92]
-  714:[96] ConstInt(val=1) -> 1[96]
-  719:[100] AddInt(v1=0[92], v2=1[96]) -> 1[92]
-  720:[96] PutInt(var[84], value=1[92])
-  723:[92] VarInt(var[88]) -> 1[92]
-  726:[96] GenFreeStack(value=4, discard=4)
-  730:[92] VarInt(var[88]) -> 1[92]
-  733:[96] ConvBoolFromInt(v1=1[92]) -> true[92]
-  734:[93] Not(v1=true[92]) -> false[92]
-  735:[93] GenGotoFalseWord(jump=745, if_false=false[92])
-  745:[92] VarInt(var[80]) -> 0[92]
-  748:[96] VarInt(var[88]) -> 1[96]
-  751:[100] AddInt(v1=0[92], v2=1[96]) -> 1[92]
-  752:[96] PutInt(var[80], value=1[92])
-  755:[92] GenFreeStack(value=0, discard=4)
-  759:[88] GenGotoWord(jump=678)
-  678:[88] VarInt(var[84]) -> 1[88]
-  681:[92] VarRef(var[64]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[92]
-  684:[104] GetField(v1=ref(1,1,0)[92], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][92]
-  687:[104] LengthVector(r=ref(1,1,4)=true[92]) -> 4[92]
-  688:[96] GeInt(v1=1[88], v2=4[92]) -> false[88]
-  689:[89] GenGotoFalseWord(jump=696, if_false=false[88])
-  696:[88] VarRef(var[64]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[88]
-  699:[100] GetField(v1=ref(1,1,0)[88], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][88]
-  702:[100] VarInt(var[84]) -> 1[100]
-  705:[104] GetVector(r=ref(1,1,4)=true[88], size=4, index=1[100]) -> ref(1,10,12)[88]
-  708:[100] GetInt(v1=ref(1,10,12)[88], fld=0) -> 4[88]
-  711:[92] VarInt(var[84]) -> 1[92]
-  714:[96] ConstInt(val=1) -> 1[96]
-  719:[100] AddInt(v1=1[92], v2=1[96]) -> 2[92]
-  720:[96] PutInt(var[84], value=2[92])
-  723:[92] VarInt(var[88]) -> 4[92]
-  726:[96] GenFreeStack(value=4, discard=4)
-  730:[92] VarInt(var[88]) -> 4[92]
-  733:[96] ConvBoolFromInt(v1=4[92]) -> true[92]
-  734:[93] Not(v1=true[92]) -> false[92]
-  735:[93] GenGotoFalseWord(jump=745, if_false=false[92])
-  745:[92] VarInt(var[80]) -> 1[92]
-  748:[96] VarInt(var[88]) -> 4[96]
-  751:[100] AddInt(v1=1[92], v2=4[96]) -> 5[92]
-  752:[96] PutInt(var[80], value=5[92])
-  755:[92] GenFreeStack(value=0, discard=4)
-  759:[88] GenGotoWord(jump=678)
-  678:[88] VarInt(var[84]) -> 2[88]
-  681:[92] VarRef(var[64]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[92]
-  684:[104] GetField(v1=ref(1,1,0)[92], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][92]
-  687:[104] LengthVector(r=ref(1,1,4)=true[92]) -> 4[92]
-  688:[96] GeInt(v1=2[88], v2=4[92]) -> false[88]
-  689:[89] GenGotoFalseWord(jump=696, if_false=false[88])
-  696:[88] VarRef(var[64]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[88]
-  699:[100] GetField(v1=ref(1,1,0)[88], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][88]
-  702:[100] VarInt(var[84]) -> 2[100]
-  705:[104] GetVector(r=ref(1,1,4)=true[88], size=4, index=2[100]) -> ref(1,10,16)[88]
-  708:[100] GetInt(v1=ref(1,10,16)[88], fld=0) -> 3[88]
-  711:[92] VarInt(var[84]) -> 2[92]
-  714:[96] ConstInt(val=1) -> 1[96]
-  719:[100] AddInt(v1=2[92], v2=1[96]) -> 3[92]
-  720:[96] PutInt(var[84], value=3[92])
-  723:[92] VarInt(var[88]) -> 3[92]
-  726:[96] GenFreeStack(value=4, discard=4)
-  730:[92] VarInt(var[88]) -> 3[92]
-  733:[96] ConvBoolFromInt(v1=3[92]) -> true[92]
-  734:[93] Not(v1=true[92]) -> false[92]
-  735:[93] GenGotoFalseWord(jump=745, if_false=false[92])
-  745:[92] VarInt(var[80]) -> 5[92]
-  748:[96] VarInt(var[88]) -> 3[96]
-  751:[100] AddInt(v1=5[92], v2=3[96]) -> 8[92]
-  752:[96] PutInt(var[80], value=8[92])
-  755:[92] GenFreeStack(value=0, discard=4)
-  759:[88] GenGotoWord(jump=678)
-  678:[88] VarInt(var[84]) -> 3[88]
-  681:[92] VarRef(var[64]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[92]
-  684:[104] GetField(v1=ref(1,1,0)[92], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][92]
-  687:[104] LengthVector(r=ref(1,1,4)=true[92]) -> 4[92]
-  688:[96] GeInt(v1=3[88], v2=4[92]) -> false[88]
-  689:[89] GenGotoFalseWord(jump=696, if_false=false[88])
-  696:[88] VarRef(var[64]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[88]
-  699:[100] GetField(v1=ref(1,1,0)[88], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][88]
-  702:[100] VarInt(var[84]) -> 3[100]
-  705:[104] GetVector(r=ref(1,1,4)=true[88], size=4, index=3[100]) -> ref(1,10,20)[88]
-  708:[100] GetInt(v1=ref(1,10,20)[88], fld=0) -> -2147483648[88]
-  711:[92] VarInt(var[84]) -> 3[92]
-  714:[96] ConstInt(val=1) -> 1[96]
-  719:[100] AddInt(v1=3[92], v2=1[96]) -> 4[92]
-  720:[96] PutInt(var[84], value=4[92])
-  723:[92] VarInt(var[88]) -> -2147483648[92]
-  726:[96] GenFreeStack(value=4, discard=4)
-  730:[92] VarInt(var[88]) -> -2147483648[92]
-  733:[96] ConvBoolFromInt(v1=-2147483648[92]) -> false[92]
-  734:[93] Not(v1=false[92]) -> true[92]
-  735:[93] GenGotoFalseWord(jump=745, if_false=true[92])
-  738:[92] GenFreeStack(value=0, discard=4)
-  742:[88] GenGotoWord(jump=762)
-  762:[88] GenFreeStack(value=0, discard=4)
-  766:[84] VarInt(var[80]) -> 8[84]
-  769:[88] GenReturn(ret=924[76], value=4, discard=24)
-  924:[68] SetInt(v1=ref(1,10,20)[52], fld=0, val=8[64])
-  927:[52] VarRef(var[28]) -> ref(1,1,0)={a:[1,4,3,8],b:Fluid}[52]
-  930:[64] VarRef(var[40]) -> ref(1,10,20)=true[64]
-  933:[76] FinishRecord(data=ref(1,1,0)[52], rec=ref(1,10,20)[64], parent_tp=14, fld=0)
-  938:[52] GenFreeStack(value=0, discard=12)
-  942:[40] Text()
-  943:[64] ConstText(_value="") -> ""[64]
-  945:[80] AppendText(var[40], v1=""[64])
-  948:[64] VarRef(var[28]) -> ref(1,1,0)={a:[1,4,3,8],b:Fluid}[64]
-  951:[76] FormatDatabase(var[40], val=ref(1,1,0)[64], db_tp=14, pretty=false)
-  957:[64] VarText(var[40]) -> "{a:[1,4,3,8],b:Fluid}"[64]
-  960:[80] GenFreeStack(value=16, discard=24)
-  964:[56] GenFreeStack(value=16, discard=12)
-  968:[44] AppendText(var[4], v1="{a:[1,4,3,8],b:Fluid}"[28])
-  971:[28] VarText(var[4]) -> "{a:[1,4,3,8],b:Fluid}"[28]
-  974:[44] ConstText(_value="{a:[1,4,3,8],b:Fluid}") -> "{a:[1,4,3,8],b:Fluid}"[44]
-  997:[60] EqText(v1="{a:[1,4,3,8],b:Fluid}"[28], v2="{a:[1,4,3,8],b:Fluid}"[44]) -> true[28]
-  998:[29] GenGotoFalseWord(jump=1004, if_false=true[28])
- 1001:[28] GenGotoWord(jump=1075)
- 1075:[28] GenReturn(ret=4294967295[0], value=0, discard=28)
+  775:[8] Text()
+  776:[32] ConstText(_value="") -> ""[32]
+  778:[48] AppendText(var[8], v1=""[32])
+  781:[32] Text()
+  782:[56] ConstText(_value="") -> ""[56]
+  784:[72] AppendText(var[32], v1=""[56])
+  787:[56] Text()
+  788:[80] Database(size=9, db_tp=14) -> ref(1,1,0)={}[80]
+  793:[92] VarRef(var[80]) -> ref(1,1,0)={}[92]
+  796:[104] ConstInt(val=0) -> 0[104]
+  801:[108] SetInt(v1=ref(1,1,0)[92], fld=4, val=0[104])
+  804:[92] VarRef(var[80]) -> ref(1,1,0)={}[92]
+  807:[104] NewRecord(data=ref(1,1,0)[92], parent_tp=14, fld=0) -> ref(1,10,8)[92]
+  812:[104] VarRef(var[92]) -> ref(1,10,8)=false[104]
+  815:[116] ConstInt(val=1) -> 1[116]
+  820:[120] SetInt(v1=ref(1,10,8)[104], fld=0, val=1[116])
+  823:[104] VarRef(var[80]) -> ref(1,1,0)={a:[1]}[104]
+  826:[116] VarRef(var[92]) -> ref(1,10,8)=true[116]
+  829:[128] FinishRecord(data=ref(1,1,0)[104], rec=ref(1,10,8)[116], parent_tp=14, fld=0)
+  834:[104] VarRef(var[80]) -> ref(1,1,0)={a:[1]}[104]
+  837:[116] NewRecord(data=ref(1,1,0)[104], parent_tp=14, fld=0) -> ref(1,10,12)[104]
+  842:[116] PutRef(var[92], value=ref(1,10,12)[104])
+  845:[104] VarRef(var[92]) -> ref(1,10,12)=false[104]
+  848:[116] ConstInt(val=4) -> 4[116]
+  853:[120] SetInt(v1=ref(1,10,12)[104], fld=0, val=4[116])
+  856:[104] VarRef(var[80]) -> ref(1,1,0)={a:[1,4]}[104]
+  859:[116] VarRef(var[92]) -> ref(1,10,12)=true[116]
+  862:[128] FinishRecord(data=ref(1,1,0)[104], rec=ref(1,10,12)[116], parent_tp=14, fld=0)
+  867:[104] VarRef(var[80]) -> ref(1,1,0)={a:[1,4]}[104]
+  870:[116] NewRecord(data=ref(1,1,0)[104], parent_tp=14, fld=0) -> ref(1,10,16)[104]
+  875:[116] PutRef(var[92], value=ref(1,10,16)[104])
+  878:[104] VarRef(var[92]) -> ref(1,10,16)=false[104]
+  881:[116] ConstInt(val=3) -> 3[116]
+  886:[120] SetInt(v1=ref(1,10,16)[104], fld=0, val=3[116])
+  889:[104] VarRef(var[80]) -> ref(1,1,0)={a:[1,4,3]}[104]
+  892:[116] VarRef(var[92]) -> ref(1,10,16)=true[116]
+  895:[128] FinishRecord(data=ref(1,1,0)[104], rec=ref(1,10,16)[116], parent_tp=14, fld=0)
+  900:[104] VarRef(var[80]) -> ref(1,1,0)={a:[1,4,3]}[104]
+  903:[116] ConstEnum(val=3) -> Fluid(3)[116]
+  905:[117] SetEnum(v1=ref(1,1,0)[104], fld=8, val=3[116])
+  908:[104] VarRef(var[80]) -> ref(1,1,0)={a:[1,4,3],b:Fluid}[104]
+  911:[116] GenFreeStack(value=12, discard=24)
+  915:[92] VarRef(var[80]) -> ref(1,1,0)={a:[1,4,3],b:Fluid}[92]
+  918:[104] NewRecord(data=ref(1,1,0)[92], parent_tp=14, fld=0) -> ref(1,10,20)[92]
+  923:[104] VarRef(var[92]) -> ref(1,10,20)=false[104]
+  926:[116] VarRef(var[80]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[116]
+  929:[128] GenCall(size=0, to=668)
+  668:[132] ConstInt(val=0) -> 0[132]
+  673:[136] ConstInt(val=0) -> 0[136]
+  678:[140] VarInt(var[136]) -> 0[140]
+  681:[144] VarRef(var[116]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[144]
+  684:[156] GetField(v1=ref(1,1,0)[144], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][144]
+  687:[156] LengthVector(r=ref(1,1,4)=true[144]) -> 4[144]
+  688:[148] GeInt(v1=0[140], v2=4[144]) -> false[140]
+  689:[141] GenGotoFalseWord(jump=696, if_false=false[140])
+  696:[140] VarRef(var[116]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[140]
+  699:[152] GetField(v1=ref(1,1,0)[140], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][140]
+  702:[152] VarInt(var[136]) -> 0[152]
+  705:[156] GetVector(r=ref(1,1,4)=true[140], size=4, index=0[152]) -> ref(1,10,8)[140]
+  708:[152] GetInt(v1=ref(1,10,8)[140], fld=0) -> 1[140]
+  711:[144] VarInt(var[136]) -> 0[144]
+  714:[148] ConstInt(val=1) -> 1[148]
+  719:[152] AddInt(v1=0[144], v2=1[148]) -> 1[144]
+  720:[148] PutInt(var[136], value=1[144])
+  723:[144] VarInt(var[140]) -> 1[144]
+  726:[148] GenFreeStack(value=4, discard=4)
+  730:[144] VarInt(var[140]) -> 1[144]
+  733:[148] ConvBoolFromInt(v1=1[144]) -> true[144]
+  734:[145] Not(v1=true[144]) -> false[144]
+  735:[145] GenGotoFalseWord(jump=745, if_false=false[144])
+  745:[144] VarInt(var[132]) -> 0[144]
+  748:[148] VarInt(var[140]) -> 1[148]
+  751:[152] AddInt(v1=0[144], v2=1[148]) -> 1[144]
+  752:[148] PutInt(var[132], value=1[144])
+  755:[144] GenFreeStack(value=0, discard=4)
+  759:[140] GenGotoWord(jump=678)
+  678:[140] VarInt(var[136]) -> 1[140]
+  681:[144] VarRef(var[116]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[144]
+  684:[156] GetField(v1=ref(1,1,0)[144], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][144]
+  687:[156] LengthVector(r=ref(1,1,4)=true[144]) -> 4[144]
+  688:[148] GeInt(v1=1[140], v2=4[144]) -> false[140]
+  689:[141] GenGotoFalseWord(jump=696, if_false=false[140])
+  696:[140] VarRef(var[116]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[140]
+  699:[152] GetField(v1=ref(1,1,0)[140], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][140]
+  702:[152] VarInt(var[136]) -> 1[152]
+  705:[156] GetVector(r=ref(1,1,4)=true[140], size=4, index=1[152]) -> ref(1,10,12)[140]
+  708:[152] GetInt(v1=ref(1,10,12)[140], fld=0) -> 4[140]
+  711:[144] VarInt(var[136]) -> 1[144]
+  714:[148] ConstInt(val=1) -> 1[148]
+  719:[152] AddInt(v1=1[144], v2=1[148]) -> 2[144]
+  720:[148] PutInt(var[136], value=2[144])
+  723:[144] VarInt(var[140]) -> 4[144]
+  726:[148] GenFreeStack(value=4, discard=4)
+  730:[144] VarInt(var[140]) -> 4[144]
+  733:[148] ConvBoolFromInt(v1=4[144]) -> true[144]
+  734:[145] Not(v1=true[144]) -> false[144]
+  735:[145] GenGotoFalseWord(jump=745, if_false=false[144])
+  745:[144] VarInt(var[132]) -> 1[144]
+  748:[148] VarInt(var[140]) -> 4[148]
+  751:[152] AddInt(v1=1[144], v2=4[148]) -> 5[144]
+  752:[148] PutInt(var[132], value=5[144])
+  755:[144] GenFreeStack(value=0, discard=4)
+  759:[140] GenGotoWord(jump=678)
+  678:[140] VarInt(var[136]) -> 2[140]
+  681:[144] VarRef(var[116]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[144]
+  684:[156] GetField(v1=ref(1,1,0)[144], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][144]
+  687:[156] LengthVector(r=ref(1,1,4)=true[144]) -> 4[144]
+  688:[148] GeInt(v1=2[140], v2=4[144]) -> false[140]
+  689:[141] GenGotoFalseWord(jump=696, if_false=false[140])
+  696:[140] VarRef(var[116]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[140]
+  699:[152] GetField(v1=ref(1,1,0)[140], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][140]
+  702:[152] VarInt(var[136]) -> 2[152]
+  705:[156] GetVector(r=ref(1,1,4)=true[140], size=4, index=2[152]) -> ref(1,10,16)[140]
+  708:[152] GetInt(v1=ref(1,10,16)[140], fld=0) -> 3[140]
+  711:[144] VarInt(var[136]) -> 2[144]
+  714:[148] ConstInt(val=1) -> 1[148]
+  719:[152] AddInt(v1=2[144], v2=1[148]) -> 3[144]
+  720:[148] PutInt(var[136], value=3[144])
+  723:[144] VarInt(var[140]) -> 3[144]
+  726:[148] GenFreeStack(value=4, discard=4)
+  730:[144] VarInt(var[140]) -> 3[144]
+  733:[148] ConvBoolFromInt(v1=3[144]) -> true[144]
+  734:[145] Not(v1=true[144]) -> false[144]
+  735:[145] GenGotoFalseWord(jump=745, if_false=false[144])
+  745:[144] VarInt(var[132]) -> 5[144]
+  748:[148] VarInt(var[140]) -> 3[148]
+  751:[152] AddInt(v1=5[144], v2=3[148]) -> 8[144]
+  752:[148] PutInt(var[132], value=8[144])
+  755:[144] GenFreeStack(value=0, discard=4)
+  759:[140] GenGotoWord(jump=678)
+  678:[140] VarInt(var[136]) -> 3[140]
+  681:[144] VarRef(var[116]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[144]
+  684:[156] GetField(v1=ref(1,1,0)[144], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][144]
+  687:[156] LengthVector(r=ref(1,1,4)=true[144]) -> 4[144]
+  688:[148] GeInt(v1=3[140], v2=4[144]) -> false[140]
+  689:[141] GenGotoFalseWord(jump=696, if_false=false[140])
+  696:[140] VarRef(var[116]) -> ref(1,1,0)={a:[1,4,3,-2147483648],b:Fluid}[140]
+  699:[152] GetField(v1=ref(1,1,0)[140], fld=4) -> ref(1,1,4)=[1,4,3,-2147483648][140]
+  702:[152] VarInt(var[136]) -> 3[152]
+  705:[156] GetVector(r=ref(1,1,4)=true[140], size=4, index=3[152]) -> ref(1,10,20)[140]
+  708:[152] GetInt(v1=ref(1,10,20)[140], fld=0) -> -2147483648[140]
+  711:[144] VarInt(var[136]) -> 3[144]
+  714:[148] ConstInt(val=1) -> 1[148]
+  719:[152] AddInt(v1=3[144], v2=1[148]) -> 4[144]
+  720:[148] PutInt(var[136], value=4[144])
+  723:[144] VarInt(var[140]) -> -2147483648[144]
+  726:[148] GenFreeStack(value=4, discard=4)
+  730:[144] VarInt(var[140]) -> -2147483648[144]
+  733:[148] ConvBoolFromInt(v1=-2147483648[144]) -> false[144]
+  734:[145] Not(v1=false[144]) -> true[144]
+  735:[145] GenGotoFalseWord(jump=745, if_false=true[144])
+  738:[144] GenFreeStack(value=0, discard=4)
+  742:[140] GenGotoWord(jump=762)
+  762:[140] GenFreeStack(value=0, discard=4)
+  766:[136] VarInt(var[132]) -> 8[136]
+  769:[140] GenReturn(ret=936[128], value=4, discard=24)
+  936:[120] SetInt(v1=ref(1,10,20)[104], fld=0, val=8[116])
+  939:[104] VarRef(var[80]) -> ref(1,1,0)={a:[1,4,3,8],b:Fluid}[104]
+  942:[116] VarRef(var[92]) -> ref(1,10,20)=true[116]
+  945:[128] FinishRecord(data=ref(1,1,0)[104], rec=ref(1,10,20)[116], parent_tp=14, fld=0)
+  950:[104] GenFreeStack(value=0, discard=12)
+  954:[92] ClearText(var[8])
+  957:[92] ConstText(_value="") -> ""[92]
+  959:[108] AppendText(var[8], v1=""[92])
+  962:[92] VarRef(var[80]) -> ref(1,1,0)={a:[1,4,3,8],b:Fluid}[92]
+  965:[104] FormatDatabase(var[8], val=ref(1,1,0)[92], db_tp=14, pretty=false)
+  971:[92] VarText(var[8]) -> "{a:[1,4,3,8],b:Fluid}"[92]
+  974:[108] GenFreeStack(value=16, discard=12)
+  978:[96] AppendText(var[56], v1="{a:[1,4,3,8],b:Fluid}"[80])
+  981:[80] VarText(var[56]) -> "{a:[1,4,3,8],b:Fluid}"[80]
+  984:[96] ConstText(_value="{a:[1,4,3,8],b:Fluid}") -> "{a:[1,4,3,8],b:Fluid}"[96]
+ 1007:[112] EqText(v1="{a:[1,4,3,8],b:Fluid}"[80], v2="{a:[1,4,3,8],b:Fluid}"[96]) -> true[80]
+ 1008:[81] GenGotoFalseWord(jump=1014, if_false=true[80])
+ 1011:[80] GenGotoWord(jump=1083)
+ 1083:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
 Finished

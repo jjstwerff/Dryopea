@@ -8,44 +8,51 @@ pub fn test() {
 }
 
 fn test {
+  let __work_1 = "";
   let test_value = {
     1i32;
   };
   if OpEqInt(test_value, 1i32) {null} else {OpGenPanic({
-    let append_7 = "Test failed ";
-    OpFormatInt(append_7, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(append_7, " != 1");
-    append_7;
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1, " != 1");
+    __work_1;
   })};
 }
 
 byte-code for expr_integer:test()
  668[0]: return-address
- 668[4]: ConstInt(val=1) -> integer
- 673[8]: VarInt(var[4]) -> integer
- 676[12]: ConstInt(val=1) -> integer
- 681[16]: EqInt(v1: integer, v2: integer) -> boolean
- 682[9]: GenGotoFalseWord(jump=688, if_false: boolean)
- 685[8]: GenGotoWord(jump=739)
- 688[8]: Text()
- 689[32]: ConstText(_value="Test failed ") -> text
- 703[48]: AppendText(var[8], v1: text)
- 706[32]: VarInt(var[4]) -> integer
- 709[36]: ConstInt(val=0) -> integer
- 714[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 721[32]: ConstText(_value=" != 1") -> text
- 728[48]: AppendText(var[8], v1: text)
- 731[32]: VarText(var[8]) -> text
- 734[48]: GenFreeStack(value=16, discard=24)
- 738[24]: GenPanic(message: text)
- 739[8]: GenReturn(ret=0, value=0, discard=8)
+ 668[4]: Text()
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: ConstInt(val=1) -> integer
+ 679[32]: VarInt(var[28]) -> integer
+ 682[36]: ConstInt(val=1) -> integer
+ 687[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 688[33]: GenGotoFalseWord(jump=694, if_false: boolean)
+ 691[32]: GenGotoWord(jump=743)
+ 694[32]: ClearText(var[4])
+ 697[32]: ConstText(_value="Test failed ") -> text(false)
+ 711[48]: AppendText(var[4], v1: text(false))
+ 714[32]: VarInt(var[28]) -> integer
+ 717[36]: ConstInt(val=0) -> integer
+ 722[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 729[32]: ConstText(_value=" != 1") -> text(false)
+ 736[48]: AppendText(var[4], v1: text(false))
+ 739[32]: VarText(var[4]) -> text(false)
+ 742[48]: GenPanic(message: text(false))
+ 743[32]: GenReturn(ret=0, value=0, discard=32)
 
 Execute test:
-  668:[4] ConstInt(val=1) -> 1[4]
-  673:[8] VarInt(var[4]) -> 1[8]
-  676:[12] ConstInt(val=1) -> 1[12]
-  681:[16] EqInt(v1=1[8], v2=1[12]) -> true[8]
-  682:[9] GenGotoFalseWord(jump=688, if_false=true[8])
-  685:[8] GenGotoWord(jump=739)
-  739:[8] GenReturn(ret=4294967295[0], value=0, discard=8)
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] ConstInt(val=1) -> 1[32]
+  679:[36] VarInt(var[32]) -> 1[36]
+  682:[40] ConstInt(val=1) -> 1[40]
+  687:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
+  688:[37] GenGotoFalseWord(jump=694, if_false=true[36])
+  691:[36] GenGotoWord(jump=743)
+  743:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
 Finished

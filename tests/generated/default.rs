@@ -154,12 +154,17 @@ fn _tp_text_len(stores: &mut Stores, var_0: Str) -> i32 {
   (var_both).len() as i32
 }
 
+fn character(stores: &mut Stores, var_0: Str) -> i32 {
+
+}
+
+
 fn _tp_vector_len(stores: &mut Stores, var_0: DbRef) -> i32 {
-  stores.length_vector(&(var_both)) as i32
+  vector::length_vector(&(var_both), &s.database.allocations) as i32
 }
 
 fn _tp_vector_clear(stores: &mut Stores, var_0: DbRef) {
-  stores.clear_vector(&(var_self));
+  vector::clear_vector(&(var_self), &mut s.database.allocations);
 }
 
 fn assert(stores: &mut Stores, var_0: bool, var_1: Str) {
@@ -222,7 +227,7 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
     var_vec_10
   };
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((12_i32)), i32::from((0_i32)))}) == (1_i32) {
-    Drop(Call(303, [Call(261, [Var(0), Int(8)]), Var(1)]))
+    Drop(Call(313, [Call(263, [Var(0), Int(8)]), Var(1)]))
   } else {Null};
   var_result
 }
@@ -237,10 +242,95 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef) -> DbRef {
       {let db = (var_val); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
       var_val
     };
-    Drop(Call(304, [Call(261, [Var(0), Int(8)]), Var(1)]));
+    Drop(Call(314, [Call(263, [Var(0), Int(8)]), Var(1)]));
     var_result
   } else {
     Stores::null()
   }
 }
+
+fn _tp_text_starts_with(stores: &mut Stores, var_0: Str, var_1: Str) -> bool {
+
+}
+
+
+fn _tp_text_ends_with(stores: &mut Stores, var_0: Str, var_1: Str) -> bool {
+
+}
+
+
+fn _tp_text_trim(stores: &mut Stores, var_0: Str) -> Str {
+
+}
+
+
+fn _tp_text_trim_start(stores: &mut Stores, var_0: Str) -> Str {
+
+}
+
+
+fn _tp_text_trim_end(stores: &mut Stores, var_0: Str) -> Str {
+
+}
+
+
+fn _tp_text_find(stores: &mut Stores, var_0: Str, var_1: Str) -> i32 {
+
+}
+
+
+fn _tp_text_contains(stores: &mut Stores, var_0: Str, var_1: Str) -> bool {
+
+}
+
+
+fn _tp_text_replace(stores: &mut Stores, var_0: Str, var_1: Str, var_2: Str) -> Str {
+
+}
+
+
+fn _tp_text_to_lowercase(stores: &mut Stores, var_0: Str) -> Str {
+
+}
+
+
+fn _tp_text_to_uppercase(stores: &mut Stores, var_0: Str) -> Str {
+
+}
+
+
+fn _tp_text_is_lowercase(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn _tp_text_is_uppercase(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn _tp_text_is_numeric(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn _tp_text_is_alphanumeric(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn _tp_text_is_alphabetic(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn _tp_text_is_whitespace(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn _tp_text_is_control(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
 

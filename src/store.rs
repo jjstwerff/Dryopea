@@ -13,6 +13,7 @@
 extern crate mmap_storage;
 use log::info;
 use std::alloc::{GlobalAlloc, Layout, System};
+use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 
 #[allow(dead_code)]
@@ -23,6 +24,7 @@ pub const PRIMARY: u32 = 1;
 pub struct Store {
     // format 0 = SIGNATURE, 4 = free_space_index, 8 = record_size, 12 = content
     pub ptr: *mut u8,
+    claims: HashSet<u32>,
     size: u32,
     file: Option<mmap_storage::file::Storage>,
 }
@@ -62,8 +64,10 @@ impl Store {
         let mut store = Store {
             ptr,
             size,
+            claims: HashSet::new(),
             file: None,
         };
+        store.claims.insert(1);
         store.init();
         store
     }
@@ -81,6 +85,7 @@ impl Store {
         let mut store = Store {
             file: Some(file),
             ptr,
+            claims: HashSet::new(),
             size,
         };
         if init {
@@ -105,10 +110,7 @@ impl Store {
             self.ptr.offset(4).cast::<u32>().write_unaligned(1);
         }
         // Indicate the complete store as empty
-        assert!(
-            self.set_int(1, 0, -(self.size as i32) + 1),
-            "Could not init"
-        );
+        *self.addr_mut(1, 0) = -(self.size as i32) + 1;
     }
 
     /// Claim the space of a record
@@ -120,18 +122,17 @@ impl Store {
         // search big enough open space: currently very inefficient
         let mut pos = PRIMARY; // primary record location
         let mut last = pos;
-        let mut claim = self.get_int(pos, 0);
+        let mut claim = *self.addr::<i32>(pos, 0);
         while pos < self.size && (claim >= 0 || -claim < req_size) {
             last = pos;
             pos += i32::abs(claim) as u32;
             if pos >= self.size {
-                claim = 0;
                 break;
             }
             assert_ne!(pos, last, "Inconsistent database zero sized block {pos}");
-            claim = self.get_int(pos, 0);
+            claim = *self.addr::<i32>(pos, 0);
         }
-        if pos + size > self.size {
+        if pos >= self.size {
             let cur = self.size;
             self.resize_store(if claim < 0 {
                 (self.size as i32 + size as i32 + claim) as u32
@@ -140,31 +141,29 @@ impl Store {
             });
             let increase = (self.size - cur) as i32;
             if claim < 0 {
-                self.set_int(last, 0, claim - increase);
+                *self.addr_mut(last, 0) = claim - increase;
                 pos = last;
             } else {
-                self.set_int(cur, 0, increase);
+                *self.addr_mut(cur, 0) = -increase;
                 pos = cur;
             }
             // TODO REL_0017 register new free space
             #[cfg(debug_assertions)]
             self.validate(0);
-            if claim <= 0 {
-                return pos;
-            }
         }
         // when too big we split the open space
-        let claim = -self.get_int(pos, 0);
+        let claim = -self.addr::<i32>(pos, 0);
         assert!(claim >= 0, "Claimed space twice {pos}");
         if claim > size as i32 * 4 / 3 {
-            self.set_int(pos, 0, req_size);
+            *self.addr_mut(pos, 0) = req_size;
             let new_free = pos + size;
-            self.set_int(new_free, 0, req_size - claim);
+            *self.addr_mut(new_free, 0) = req_size - claim;
             // TODO REL_0016 register new free block
         } else {
-            self.set_int(pos, 0, claim);
+            *self.addr_mut(pos, 0) = claim;
             // TODO REL_0016 de-register free block
         }
+        self.claims.insert(pos);
         pos
     }
 
@@ -172,7 +171,7 @@ impl Store {
     pub fn resize(&mut self, rec: u32, size: u32) -> u32 {
         let req_size = size as i32;
         // validate if there is enough space for this size of data
-        let claim = self.get_int(rec, 0);
+        let claim = *self.addr::<i32>(rec, 0);
         if claim >= req_size {
             return rec;
         }
@@ -180,16 +179,16 @@ impl Store {
         let next = rec + claim as u32;
         // TODO REL_0016 introduce special situation where rec was the last allocation in the store
         if next < self.size {
-            let next_size = self.get_int(next, 0);
+            let next_size = *self.addr::<i32>(next, 0);
             if next_size < 0 && claim - next_size > req_size {
-                let act = req_size * 4 / 3;
+                let act = req_size * 7 / 4;
                 if claim - next_size > act {
                     let new_next = rec + act as u32;
                     let new_size = (-next_size) as u32 + next - new_next;
-                    self.set_int(rec, 0, act);
-                    self.set_int(new_next, 0, -(new_size as i32));
+                    *self.addr_mut(rec, 0) = act;
+                    *self.addr_mut(new_next, 0) = -(new_size as i32);
                 } else {
-                    self.set_int(rec, 0, claim - next_size);
+                    *self.addr_mut(rec, 0) = claim - next_size;
                 }
                 return rec;
             }
@@ -203,22 +202,24 @@ impl Store {
 
     /// Delete a record, this assumes that all links towards this record are already removed
     pub fn delete(&mut self, rec: u32) {
-        let mut claim = self.get_int(rec, 0);
+        self.valid(rec, 4);
+        let mut claim = *self.addr::<i32>(rec, 0);
         // Try to combine with possibly free spaces after it
-        let mut next = self.get_int(rec + claim as u32, 0);
+        let mut next = *self.addr::<i32>(rec + claim as u32, 0);
         while next < 0 {
             claim -= next;
-            next = self.get_int(rec + claim as u32, 0);
+            next = *self.addr::<i32>(rec + claim as u32, 0);
         }
-        self.set_int(rec, 0, -claim);
+        *self.addr_mut(rec, 0) = -claim;
+        self.claims.remove(&rec);
     }
 
-    /// Validate the store, the all errors are panics for now.
+    /// Validate the store
     pub fn validate(&self, recs: u32) {
         let mut pos = PRIMARY;
         let mut alloc = 0;
         while pos < self.size {
-            let claim = self.get_int(pos, 0);
+            let claim = *self.addr::<i32>(pos, 0);
             assert!(
                 pos + i32::abs(claim) as u32 <= self.size,
                 "Incorrect record {pos} size {}",
@@ -250,7 +251,7 @@ impl Store {
         if to_size < self.size {
             return;
         }
-        let inc = self.size * 3 / 2;
+        let inc = self.size * 7 / 3;
         let size = if to_size > inc { to_size } else { inc };
         if let Some(f) = &mut self.file {
             f.resize(size as usize * 8).expect("Resize");
@@ -292,6 +293,12 @@ impl Store {
     /// Try to validate a record reference as much as possible.
     /// Complete validations are only done in 'test' mode.
     pub fn valid(&self, rec: u32, fld: u32) -> bool {
+        assert!(self.claims.contains(&rec), "Unknown record {rec}");
+        assert!(
+            fld >= 4 && fld < 8 * *self.addr::<i32>(rec, 0) as u32,
+            "Fld {fld} is outside of record {rec} size {}",
+            8 * *self.addr::<i32>(rec, 0) as u32
+        );
         assert!(
             rec != 0 && u64::from(rec) * 8 + u64::from(fld) <= u64::from(self.size) * 8,
             "Reading outside store ({rec}.{fld}) > {}",
@@ -331,7 +338,7 @@ impl Store {
             std::ptr::copy_nonoverlapping(
                 self.ptr.offset(rec as isize * 8 + 4),
                 self.ptr.offset(into as isize * 8 + 4),
-                self.get_int(rec, 0) as usize * 8 - 4,
+                *self.addr::<i32>(rec, 0) as usize * 8 - 4,
             );
         }
     }
@@ -342,7 +349,7 @@ impl Store {
             std::ptr::write_bytes(
                 self.ptr.offset(rec as isize * 8 + 4),
                 0,
-                self.get_int(rec, 0) as usize * 8 - 4,
+                *self.addr::<i32>(rec, 0) as usize * 8 - 4,
             );
         }
     }
@@ -488,7 +495,7 @@ impl Store {
         let len = self.get_int(rec, 4);
         #[cfg(debug_assertions)]
         assert!(
-            len >= 0 && len <= self.get_int(rec, 0) * 8,
+            len >= 0 && len <= self.addr::<i32>(rec, 0) * 8,
             "Inconsistent text store"
         );
         assert!(

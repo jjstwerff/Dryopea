@@ -8,72 +8,79 @@ pub fn test() {
 }
 
 fn test {
+  let __work_3 = "";
   let test_value = {
     let a = "12345";
     OpGetTextSub(a, 1i32, OpMinInt(_tp_text_len(a), 1i32));
   };
   if OpEqText(test_value, "234") {null} else {OpGenPanic({
-    let append_9 = "Test failed ";
-    OpFormatText(append_9, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(append_9, " != "234"");
-    append_9;
+    OpClearText(__work_3);
+    OpAppendText(__work_3, "Test failed ");
+    OpFormatText(__work_3, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_3, " != "234"");
+    __work_3;
   })};
 }
 
 byte-code for sub_str:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: Text()
- 670[52]: ConstText(_value="12345") -> text
- 677[68]: AppendText(var[28], v1: text)
- 680[52]: VarText(var[28]) -> text
- 683[68]: ConstInt(val=1) -> integer
- 688[72]: VarText(var[28]) -> text
- 691[88]: GenCall(size=0, to=318)
- 698[76]: ConstInt(val=1) -> integer
- 703[80]: MinInt(v1: integer, v2: integer) -> integer
- 704[76]: GetTextSub(v1: text, from: integer, till: integer) -> text
- 705[68]: GenFreeStack(value=16, discard=24)
- 709[44]: AppendText(var[4], v1: text)
- 712[28]: VarText(var[4]) -> text
- 715[44]: ConstText(_value="234") -> text
- 720[60]: EqText(v1: text, v2: text) -> boolean
- 721[29]: GenGotoFalseWord(jump=727, if_false: boolean)
- 724[28]: GenGotoWord(jump=780)
- 727[28]: Text()
- 728[52]: ConstText(_value="Test failed ") -> text
- 742[68]: AppendText(var[28], v1: text)
- 745[52]: VarText(var[4]) -> text
- 748[68]: ConstInt(val=0) -> integer
- 753[72]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
- 758[52]: ConstText(_value=" != "234"") -> text
- 769[68]: AppendText(var[28], v1: text)
- 772[52]: VarText(var[28]) -> text
- 775[68]: GenFreeStack(value=16, discard=24)
- 779[44]: GenPanic(message: text)
- 780[28]: GenReturn(ret=0, value=0, discard=28)
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: Text()
+ 675[52]: Text()
+ 676[76]: ConstText(_value="12345") -> text(false)
+ 683[92]: AppendText(var[52], v1: text(false))
+ 686[76]: VarText(var[52]) -> text(false)
+ 689[92]: ConstInt(val=1) -> integer
+ 694[96]: VarText(var[52]) -> text(false)
+ 697[112]: GenCall(size=0, to=318)
+ 704[100]: ConstInt(val=1) -> integer
+ 709[104]: MinInt(v1: integer, v2: integer) -> integer
+ 710[100]: GetTextSub(v1: text(false), from: integer, till: integer) -> text(false)
+ 711[92]: GenFreeStack(value=16, discard=24)
+ 715[68]: AppendText(var[28], v1: text(false))
+ 718[52]: VarText(var[28]) -> text(false)
+ 721[68]: ConstText(_value="234") -> text(false)
+ 726[84]: EqText(v1: text(false), v2: text(false)) -> boolean
+ 727[53]: GenGotoFalseWord(jump=733, if_false: boolean)
+ 730[52]: GenGotoWord(jump=784)
+ 733[52]: ClearText(var[4])
+ 736[52]: ConstText(_value="Test failed ") -> text(false)
+ 750[68]: AppendText(var[4], v1: text(false))
+ 753[52]: VarText(var[28]) -> text(false)
+ 756[68]: ConstInt(val=0) -> integer
+ 761[72]: FormatText(var[4], val: text(false), width: integer, dir=-1, token=32)
+ 766[52]: ConstText(_value=" != "234"") -> text(false)
+ 777[68]: AppendText(var[4], v1: text(false))
+ 780[52]: VarText(var[4]) -> text(false)
+ 783[68]: GenPanic(message: text(false))
+ 784[52]: GenReturn(ret=0, value=0, discard=52)
 
 Execute test:
-  668:[4] Text()
-  669:[28] Text()
-  670:[52] ConstText(_value="12345") -> "12345"[52]
-  677:[68] AppendText(var[28], v1="12345"[52])
-  680:[52] VarText(var[28]) -> "12345"[52]
-  683:[68] ConstInt(val=1) -> 1[68]
-  688:[72] VarText(var[28]) -> "12345"[72]
-  691:[88] GenCall(size=0, to=318)
-  318:[92] ArgText(var[72]) -> "12345"[92]
-  321:[108] LengthText(v1="12345"[92]) -> 5[92]
-  322:[96] GenReturn(ret=698[88], value=4, discard=24)
-  698:[76] ConstInt(val=1) -> 1[76]
-  703:[80] MinInt(v1=5[72], v2=1[76]) -> 4[72]
-  704:[76] GetTextSub(v1="12345"[52], from=1[68], till=4[72]) -> "234"[52]
-  705:[68] GenFreeStack(value=16, discard=24)
-  709:[44] AppendText(var[4], v1="234"[28])
-  712:[28] VarText(var[4]) -> "234"[28]
-  715:[44] ConstText(_value="234") -> "234"[44]
-  720:[60] EqText(v1="234"[28], v2="234"[44]) -> true[28]
-  721:[29] GenGotoFalseWord(jump=727, if_false=true[28])
-  724:[28] GenGotoWord(jump=780)
-  780:[28] GenReturn(ret=4294967295[0], value=0, discard=28)
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] Text()
+  675:[56] Text()
+  676:[80] ConstText(_value="12345") -> "12345"[80]
+  683:[96] AppendText(var[56], v1="12345"[80])
+  686:[80] VarText(var[56]) -> "12345"[80]
+  689:[96] ConstInt(val=1) -> 1[96]
+  694:[100] VarText(var[56]) -> "12345"[100]
+  697:[116] GenCall(size=0, to=318)
+  318:[120] ArgText(var[100]) -> "12345"[120]
+  321:[136] LengthText(v1="12345"[120]) -> 5[120]
+  322:[124] GenReturn(ret=704[116], value=4, discard=24)
+  704:[104] ConstInt(val=1) -> 1[104]
+  709:[108] MinInt(v1=5[100], v2=1[104]) -> 4[100]
+  710:[104] GetTextSub(v1="12345"[80], from=1[96], till=4[100]) -> "234"[80]
+  711:[96] GenFreeStack(value=16, discard=24)
+  715:[72] AppendText(var[32], v1="234"[56])
+  718:[56] VarText(var[32]) -> "234"[56]
+  721:[72] ConstText(_value="234") -> "234"[72]
+  726:[88] EqText(v1="234"[56], v2="234"[72]) -> true[56]
+  727:[57] GenGotoFalseWord(jump=733, if_false=true[56])
+  730:[56] GenGotoWord(jump=784)
+  784:[56] GenReturn(ret=4294967295[4], value=0, discard=52)
 Finished

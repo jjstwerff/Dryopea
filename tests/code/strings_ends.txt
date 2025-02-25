@@ -1,0 +1,81 @@
+Test code:
+pub fn test() {
+    test_value = {v = "someth" + "ing"; v.ends_with("thing")};
+    assert(
+        test_value == true,
+        "Test failed {test_value} != true"
+    );
+}
+
+fn test {
+  let __work_2 = "";
+  let test_value = {
+    let v = "";
+    OpAppendText(v, "someth");
+    OpAppendText(v, "ing");
+    _tp_text_ends_with(v, "thing");
+  };
+  if OpEqBool(test_value, true) {null} else {OpGenPanic({
+    OpClearText(__work_2);
+    OpAppendText(__work_2, "Test failed ");
+    OpFormatBool(__work_2, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_2, " != true");
+    __work_2;
+  })};
+}
+
+byte-code for ends:test()
+ 668[0]: return-address
+ 668[4]: Text()
+ 669[28]: ConstText(_value="") -> text(false)
+ 671[44]: AppendText(var[4], v1: text(false))
+ 674[28]: Text()
+ 675[52]: ConstText(_value="") -> text(false)
+ 677[68]: AppendText(var[28], v1: text(false))
+ 680[52]: ConstText(_value="someth") -> text(false)
+ 688[68]: AppendText(var[28], v1: text(false))
+ 691[52]: ConstText(_value="ing") -> text(false)
+ 696[68]: AppendText(var[28], v1: text(false))
+ 699[52]: VarText(var[28]) -> text(false)
+ 702[68]: ConstText(_value="thing") -> text(false)
+ 709[84]: StaticCall(_tp_text_ends_with)
+ 712[53]: GenFreeStack(value=1, discard=24)
+ 716[29]: VarBool(var[28]) -> boolean
+ 719[30]: ConstTrue() -> boolean
+ 720[31]: EqBool(v1: boolean, v2: boolean) -> boolean
+ 721[30]: GenGotoFalseWord(jump=727, if_false: boolean)
+ 724[29]: GenGotoWord(jump=777)
+ 727[29]: ClearText(var[4])
+ 730[29]: ConstText(_value="Test failed ") -> text(false)
+ 744[45]: AppendText(var[4], v1: text(false))
+ 747[29]: VarBool(var[28]) -> boolean
+ 750[30]: ConstInt(val=0) -> integer
+ 755[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
+ 760[29]: ConstText(_value=" != true") -> text(false)
+ 770[45]: AppendText(var[4], v1: text(false))
+ 773[29]: VarText(var[4]) -> text(false)
+ 776[45]: GenPanic(message: text(false))
+ 777[29]: GenReturn(ret=0, value=0, discard=29)
+
+Execute test:
+  668:[8] Text()
+  669:[32] ConstText(_value="") -> ""[32]
+  671:[48] AppendText(var[8], v1=""[32])
+  674:[32] Text()
+  675:[56] ConstText(_value="") -> ""[56]
+  677:[72] AppendText(var[32], v1=""[56])
+  680:[56] ConstText(_value="someth") -> "someth"[56]
+  688:[72] AppendText(var[32], v1="someth"[56])
+  691:[56] ConstText(_value="ing") -> "ing"[56]
+  696:[72] AppendText(var[32], v1="ing"[56])
+  699:[56] VarText(var[32]) -> "something"[56]
+  702:[72] ConstText(_value="thing") -> "thing"[72]
+  709:[88] StaticCall(call=3)
+  712:[57] GenFreeStack(value=1, discard=24)
+  716:[33] VarBool(var[32]) -> true[33]
+  719:[34] ConstTrue() -> true[34]
+  720:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+  721:[34] GenGotoFalseWord(jump=727, if_false=true[33])
+  724:[33] GenGotoWord(jump=777)
+  777:[33] GenReturn(ret=4294967295[4], value=0, discard=29)
+Finished

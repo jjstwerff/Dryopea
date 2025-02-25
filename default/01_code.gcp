@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2024 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 pub type boolean;
@@ -339,10 +339,10 @@ fn OpPowSingle(v1: single, v2: single) -> single;
 pub fn pow(both: single, v2: single) -> single { OpPowSingle(both, v2) }
 
 fn OpEqSingle(v1: single, v2: single) -> boolean;
-#rust "(v1 - v2).abs() < 0.000_001f32"
+#rust "(@v1 - @v2).abs() < 0.000_001f32"
 
 fn OpNeSingle(v1: single, v2: single) -> boolean;
-#rust "(v1 - v2).abs() > 0.000_001f32"
+#rust "(@v1 - @v2).abs() > 0.000_001f32"
 
 fn OpLtSingle(v1: single, v2: single) -> boolean;
 #rust "@v1 < @v2"
@@ -466,10 +466,10 @@ fn OpRemFloat(v1: float, v2: float) -> float;
 #rust "@v1 % @v2"
 
 fn OpEqFloat(v1: float, v2: float) -> boolean;
-#rust "(v1 - v2).abs() < 0.000_000_001f64"
+#rust "(@v1 - @v2).abs() < 0.000_000_001f64"
 
 fn OpNeFloat(v1: float, v2: float) -> boolean;
-#rust "(v1 - v2).abs() > 0.000_000_001f64"
+#rust "(@v1 - @v2).abs() > 0.000_000_001f64"
 
 fn OpLtFloat(v1: float, v2: float) -> boolean;
 #rust "@v1 < @v2"
@@ -517,6 +517,10 @@ fn OpGtText(v1: text, v2: text) -> boolean;
 fn OpGeText(v1: text, v2: text) -> boolean;
 #rust "@v1 >= @v2"
 fn OpFormatText(pos: const u16, val: text, width: integer, dir: const i8, token: const u8);
+
+fn character(val: text) -> integer;
+#rust "state::get_character(@val)"
+fn OpAppendCharacter(pos: const u16, character: integer);
 
 type enumerate;
 fn OpVarEnum(pos: const u16) -> enumerate;
@@ -646,21 +650,21 @@ fn OpVarVector(pos: const u16) -> vector;
 
 // The length of vectors is written at the start of their allocation.
 fn OpLengthVector(r: vector) -> integer;
-#rust "stores.length_vector(&@r) as i32"
+#rust "vector::length_vector(&@r, &s.database.allocations) as i32"
 pub fn len(both: vector) -> integer { OpLengthVector(both) }
 
 fn OpClearVector(r: vector);
-#rust "stores.clear_vector(&@r);"
+#rust "vector::clear_vector(&@r, &mut s.database.allocations);"
 pub fn clear(self: vector) { OpClearVector(self); }
 
 // This returns the position inside the vector of a record or a value, get the actual value with fld=0
 fn OpGetVector(r: vector, size: const u16, index: integer) -> reference;
-#rust "stores.slice_vector(&@r, u32::from(@size), @index, i32::MIN)"
+#rust "vector::get_vector(&@r, u32::from(@size), @index, &s.database.allocations)"
 
 fn OpCastVectorFromText(val: text, db_tp: const u16) -> vector;
 
 fn OpRemoveVector(r: vector, size: const u16, index: integer) -> boolean;
-#rust "stores.remove_vector(&@r, u32::from(@size), @index as u32)"
+#rust "vector::remove_vector(&@r, u32::from(@size), @index as u32, &mut s.database.allocations)"
 
 // Insert space into a vector, no data written
 fn OpInsertVector(r: vector, size: const u16, index: integer, db_tp: const u16) -> reference;
@@ -673,7 +677,7 @@ fn OpFinishRecord(data: reference, rec: reference, parent_tp: const u16, fld: co
 
 // Add all elements of another vector with the same type
 fn OpAddVector(r: vector, other: reference, size: const u16);
-#rust "stores.vector_add(&r, &other, u32::from(@size));"
+#rust "vector::vector_add(&@r, &@other, u32::from(@size), &mut s.database.allocations);"
 
 // Get a record from a structure. This operator also reads a dynamic key from stack (not shown here)
 fn OpGetRecord(data: reference, db_tp: const u16, no_keys: const u8) -> reference;
@@ -688,7 +692,7 @@ fn OpHashAdd(data: reference, rec: reference, tp: const u16);
 fn OpHashFind(data: reference, tp: const u16) -> reference;
 fn OpHashRemove(data: reference, rec: reference, tp: const u16);
 type index;
-type spacial;
+// type spacial;
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
 #rust "@v1 == @v2"
@@ -699,8 +703,21 @@ fn OpGenPanic(message: text);
 #rust "panic!(\"{{}}\", @message);"
 
 fn assert(test: boolean, message: text);
-#rust "if bool {{ gen_panic(text); }}"
+#rust "assert!(@test, \"{{}}\", @message);"
 
 fn OpPrint(v1: text);
 #rust "print!(\"{{}}\", @v1);"
 fn print(v1: text) { OpPrint(v1); }
+
+type keys_definition;
+
+fn OpIterate(data: reference, on: const u8, arg: const u16, keys: const keys_definition, from_key: const u8, till_key: const u8) -> long;
+fn OpStep(state_var: const u16, data: reference, on: const u8, arg: const u16) -> reference;
+
+type iterator;
+
+fn OpStaticCall(call: const u16);
+fn OpCreateRef(pos: const u16) -> reference;
+fn OpGetRefText(r: reference, fld: const u16) -> text;
+fn OpAppendRefText(r: reference, fld: const u16, v1: text);
+fn OpClearRefText(pos: const u16);
