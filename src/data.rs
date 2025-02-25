@@ -12,6 +12,7 @@
 
 extern crate strum_macros;
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
+use crate::keys::Key;
 use crate::lexer::{Lexer, Position};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
@@ -73,6 +74,8 @@ pub enum Value {
     Drop(Box<Value>),
     /// The creation of the iterator and the next expression. Not able to revert.
     Iter(Box<Value>, Box<Value>),
+    /// Key structure
+    Keys(Vec<Key>),
 }
 
 #[allow(dead_code)]
@@ -128,6 +131,8 @@ pub enum Type {
     Float,
     Single,
     Text,
+    /// Description of the possible keys on a structure (hash, index, spacial, sorted)
+    Keys,
     /// An enum value. There is always a single parent definition with enum type itself.
     Enum(u32),
     /// A readonly reference to a record instance in a store.
@@ -141,11 +146,11 @@ pub enum Type {
     Subtype(u32),
     /// Iterator with a certain result
     Iterator(Box<Type>),
-    /// An ordered vector on a record, the second structure is the (attribute number, descending), third LT function.
+    /// An ordered vector on a record, second is the key [field number, ascending]
     Sorted(u32, Vec<(u16, bool)>),
-    /// An index towards other records. The third is the LT function.
+    /// An index towards other records. The key is [field number, ascending]
     Index(u32, Vec<(u16, bool)>),
-    /// An index towards other records. The third is the LT function.
+    /// An index towards other records. The second is [field number]
     Spacial(u32, Vec<u16>),
     /// A hash table towards other records. The third is the hash function.
     Hash(u32, Vec<u16>),
@@ -967,6 +972,8 @@ impl Data {
 
     #[must_use]
     /// Get the definition number for the given type.
+    /// # Panics
+    /// When no element of a type exists
     pub fn type_elm(&self, tp: &Type) -> u32 {
         match tp {
             Type::Integer(_, _) => self.def_nr("integer"),
@@ -1164,6 +1171,9 @@ impl Data {
             Value::Drop(v) => {
                 write!(write, "drop ")?;
                 self.show_code(write, d_nr, v, indent, false)
+            }
+            Value::Keys(keys) => {
+                write!(write, "&{keys:?}")
             }
         }
     }
