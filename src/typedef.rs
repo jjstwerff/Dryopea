@@ -53,6 +53,10 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
         "radix" | "hash" | "reference" | "index" => {
             data.set_returned(d_nr, Type::Reference(d_nr));
         }
+        "keys_definition" => {
+            data.set_returned(d_nr, Type::Keys);
+            data.definitions[d_nr as usize].known_type = 7;
+        }
         _ => {}
     }
 }

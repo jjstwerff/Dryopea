@@ -2,10 +2,11 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::too_many_lines)]
-use crate::database::{Stores, Str};
+use crate::database::Stores;
 use crate::external;
-use crate::keys::DbRef;
+use crate::keys::{DbRef, Str};
 use crate::state::State;
+use crate::vector;
 
 pub const OPERATORS: &[fn(&mut State)] = &[
     gen_goto,
@@ -237,6 +238,8 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     ne_bool,
     gen_panic,
     print,
+    iterate,
+    step,
     get_file,
     get_dir,
     get_png_image,
@@ -1660,22 +1663,20 @@ fn var_vector(s: &mut State) {
 
 fn length_vector(s: &mut State) {
     let r = *s.get_stack::<DbRef>();
-    let new_value = s.database.length_vector(&r) as i32;
+    let new_value = vector::length_vector(&r, &s.database.allocations) as i32;
     s.put_stack(new_value);
 }
 
 fn clear_vector(s: &mut State) {
     let r = *s.get_stack::<DbRef>();
-    s.database.clear_vector(&r);
+    vector::clear_vector(&r, &mut s.database.allocations);
 }
 
 fn get_vector(s: &mut State) {
     let size = *s.code::<u16>();
     let index = *s.get_stack::<i32>();
     let r = *s.get_stack::<DbRef>();
-    let new_value = s
-        .database
-        .slice_vector(&r, u32::from(size), index, i32::MIN);
+    let new_value = vector::get_vector(&r, u32::from(size), index, &s.database.allocations);
     s.put_stack(new_value);
 }
 
@@ -1687,7 +1688,12 @@ fn remove_vector(s: &mut State) {
     let size = *s.code::<u16>();
     let index = *s.get_stack::<i32>();
     let r = *s.get_stack::<DbRef>();
-    let new_value = s.database.remove_vector(&r, u32::from(size), index as u32);
+    let new_value = vector::remove_vector(
+        &r,
+        u32::from(size),
+        index as u32,
+        &mut s.database.allocations,
+    );
     s.put_stack(new_value);
 }
 
@@ -1707,7 +1713,7 @@ fn add_vector(s: &mut State) {
     let size = *s.code::<u16>();
     let other = *s.get_stack::<DbRef>();
     let r = *s.get_stack::<DbRef>();
-    s.database.vector_add(&r, &other, u32::from(size));
+    vector::vector_add(&r, &other, u32::from(size), &mut s.database.allocations);
 }
 
 fn get_record(s: &mut State) {
@@ -1760,6 +1766,14 @@ fn gen_panic(s: &mut State) {
 fn print(s: &mut State) {
     let v1 = s.string();
     print!("{}", v1.str());
+}
+
+fn iterate(s: &mut State) {
+    s.iterate();
+}
+
+fn step(s: &mut State) {
+    s.step();
 }
 
 fn get_file(s: &mut State) {

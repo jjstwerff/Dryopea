@@ -246,3 +246,27 @@ fn fill(c: Counting) {
     .expr("c = Counting {}; fill(c); c.h[A,\"Three\"].v + c.h[C,\"Two\"].v + c.v[\"Four\",4].v")
     .result(Value::Int(27));
 }
+
+#[test]
+fn index_iterator() {
+    code!(
+        "struct Elm {nr: integer, key: text, value: integer}
+struct Db {map: index<Elm[nr,-key]>}"
+    )
+    .expr(
+        "db=Db {map: [
+  Elm {nr: 101, key: \"One\", value: 1},
+  Elm {nr: 92, key: \"Two\", value: 2},
+  Elm {nr: 83, key: \"Three\", value: 3},
+  Elm {nr: 83, key: \"Four\", value: 4},
+  Elm {nr: 83, key: \"Five\", value: 5},
+  Elm {nr: 63, key: \"Six\", value: 6},
+]};
+sum = 0;
+for v in db.map[83..92,\"Two\"] {
+  sum = sum * 10 + v.value;
+};
+sum",
+    )
+    .result(Value::Int(345));
+}

@@ -1,12 +1,14 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
+#![allow(dead_code)]
 
 use crate::data::{Attribute, Context, Data, I32, Type, Value};
-use crate::database::{ShowDb, Stores, Str};
+use crate::database::{ShowDb, Stores};
 use crate::fill::OPERATORS;
-use crate::keys::{Content, DbRef};
+use crate::keys::{Content, DbRef, Key, Str};
 use crate::stack::{Stack, size};
+use crate::vector;
 use crate::{external, hash};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{Error, Write};
@@ -99,6 +101,7 @@ impl State {
     # Panics
     When a situation a missed that should have been rewritten.
     */
+    #[allow(clippy::unused_self)]
     pub fn add_text(&mut self) {
         panic!("Should not be called directly");
     }
@@ -451,6 +454,53 @@ impl State {
         self.put_var(var_pos + 4 - dif as u16, pos);
     }
 
+    pub fn iterate(&mut self) {
+        let _on = *self.code::<u8>();
+        let _arg = *self.code::<u16>();
+        let keys_size = *self.code::<u8>();
+        let mut keys = Vec::new();
+        for _ in 0..keys_size {
+            keys.push(Key {
+                type_nr: *self.code::<i8>(),
+                position: *self.code::<u16>(),
+            });
+        }
+        let from_key = *self.code::<u8>();
+        let till_key = *self.code::<u8>();
+        let _till = self.stack_key(till_key, &keys);
+        let _from = self.stack_key(from_key, &keys);
+        let _data = *self.get_stack::<DbRef>();
+        // TODO do something meaningful here
+        self.put_stack(0i64);
+    }
+
+    fn stack_key(&mut self, size: u8, keys: &[Key]) -> Vec<Content> {
+        let mut key = Vec::new();
+        for (k_nr, k) in keys.iter().enumerate() {
+            if k_nr >= size as usize {
+                break;
+            }
+            match k.type_nr.abs() {
+                1 => key.push(Content::Long(i64::from(*self.get_stack::<i32>()))),
+                2 => key.push(Content::Long(*self.get_stack::<i64>())),
+                3 => key.push(Content::Single(*self.get_stack::<f32>())),
+                4 => key.push(Content::Float(*self.get_stack::<f64>())),
+                5 => key.push(Content::Long(i64::from(*self.get_stack::<bool>()))),
+                6 => key.push(Content::Str(self.string())),
+                7 => key.push(Content::Long(i64::from(*self.get_stack::<u8>()))),
+                _ => panic!("Unknown key type"),
+            }
+        }
+        key
+    }
+
+    pub fn step(&mut self) {
+        let _state_var = *self.code::<u16>();
+        let _on = *self.code::<u8>();
+        let _data = *self.get_stack::<DbRef>();
+        // TODO Do something meaningful
+    }
+
     pub fn hash_add(&mut self) {
         let tp = *self.code::<u16>();
         let rec = *self.get_stack::<DbRef>();
@@ -547,7 +597,8 @@ impl State {
         let db_tp = *self.code::<u16>();
         let index = *self.get_stack::<i32>();
         let r = *self.get_stack::<DbRef>();
-        let new_value = self.database.insert_vector(&r, u32::from(size), index);
+        let new_value =
+            vector::insert_vector(&r, u32::from(size), index, &mut self.database.allocations);
         self.database.set_default_value(db_tp, &new_value);
         self.put_stack(new_value);
     }
@@ -687,6 +738,10 @@ impl State {
                 stack.add_op("OpConstFloat", self);
                 self.code_add(*value);
                 Type::Float
+            }
+            Value::Keys(_) => {
+                // Should be already part of the search request
+                Type::Null
             }
             Value::Boolean(value) => {
                 stack.add_op(

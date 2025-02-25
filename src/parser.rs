@@ -10,7 +10,7 @@
 use crate::data::{
     Argument, Data, DefType, I32, Type, Value, Variable, to_default, v_if, v_let, v_set,
 };
-use crate::database::Stores;
+use crate::database::{Parts, Stores};
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use crate::lexer::{LexItem, LexResult, Lexer, Mode};
 use crate::typedef;
@@ -2345,6 +2345,18 @@ impl Parser {
                 }
                 self.database.name(&name)
             }
+            Type::Index(tp, key) => {
+                let mut name = "index<".to_string() + &self.data.def(*tp).name + "[";
+                self.database
+                    .field_id(self.data.def(*tp).known_type, key, &mut name);
+                let r = self.database.name(&name);
+                if r == u16::MAX {
+                    name = "index<".to_string() + &self.data.def(*tp).name + "[";
+                    self.database
+                        .field_id(self.data.def(*tp).known_type, key, &mut name);
+                }
+                self.database.name(&name)
+            }
             Type::Vector(tp) => {
                 let vec_name = format!("vector<{}>", self.data.show_type(tp));
                 let typedef: &Type = if self.data.def_names.contains_key(&vec_name) {
@@ -2511,13 +2523,13 @@ impl Parser {
             for k in keys {
                 key_types.push(self.data.def(*el).attributes[*k as usize].typedef.clone());
             }
-            self.parse_key(code, t, &key_types, true);
+            self.parse_key(code, t, &key_types);
         } else if let Type::Sorted(el, keys) | Type::Index(el, keys) = &t {
             let mut key_types = Vec::new();
             for (k, _) in keys {
                 key_types.push(self.data.def(*el).attributes[*k as usize].typedef.clone());
             }
-            self.parse_key(code, t, &key_types, false);
+            self.parse_key(code, t, &key_types);
         } else {
             panic!("Unknown type to index");
         }
@@ -2555,7 +2567,7 @@ impl Parser {
         }
     }
 
-    fn parse_key(&mut self, code: &mut Value, typedef: &Type, key_types: &[Type], hash: bool) {
+    fn parse_key(&mut self, code: &mut Value, typedef: &Type, key_types: &[Type]) {
         let mut p = Value::Null;
         let index_t = self.expression(&mut p);
         if !self.convert(&mut p, &index_t, &key_types[0]) {
@@ -2566,8 +2578,9 @@ impl Parser {
         } else {
             self.type_info(typedef)
         };
-        let mut ls = vec![code.clone(), known.clone(), p];
         let mut nr = 1;
+        let mut key = Vec::new();
+        key.push(p);
         if key_types.len() > 1 {
             while self.lexer.has_token(",") {
                 if nr >= key_types.len() {
@@ -2579,24 +2592,52 @@ impl Parser {
                 if !self.convert(&mut ex, &ex_t, &key_types[nr]) {
                     diagnostic!(self.lexer, Level::Error, "Invalid index key");
                 }
-                ls.push(ex);
+                key.push(ex);
                 nr += 1;
             }
         }
-        if self.lexer.has_token("..") && !hash {
+        if self.lexer.has_token("..") {
+            let mut on = 0;
+            let arg;
             let _inclusive = self.lexer.has_token("=");
-            let iter = self.create_unique("iter", typedef.clone());
-            let start = v_set(iter, self.cl("OpStart", &ls));
-            ls.clear();
+            let iter = self.create_unique("iter", Type::Long);
+            let mut ls = Vec::new();
+            if !self.first_pass {
+                let known = self.get_type(typedef);
+                match self.database.types[known as usize].parts {
+                    Parts::Index(_, _, fields) => {
+                        on = 1;
+                        arg = fields;
+                    }
+                    Parts::Sorted(tp, _) => {
+                        on = 2;
+                        arg = self.database.size(tp);
+                    }
+                    Parts::Ordered(_, _) => {
+                        on = 3;
+                        arg = 4;
+                    }
+                    _ => {
+                        diagnostic!(self.lexer, Level::Error, "Cannot iterate");
+                        return;
+                    }
+                }
+                ls.push(code.clone());
+                ls.push(Value::Int(on));
+                ls.push(Value::Int(i32::from(arg)));
+                ls.push(Value::Keys(
+                    self.database.types[known as usize].keys.clone(),
+                ));
+                ls.push(Value::Int(nr as i32));
+                ls.append(&mut key);
+            }
             let mut n = Value::Null;
             self.expression(&mut n);
             if !self.convert(&mut n, &index_t, &key_types[0]) {
                 diagnostic!(self.lexer, Level::Error, "Invalid index key");
             }
-            ls.push(code.clone());
-            ls.push(Value::Var(iter));
-            ls.push(known);
-            ls.push(n);
+            key.push(n);
+            let mut nr = 1;
             if key_types.len() > 1 {
                 while self.lexer.has_token(",") {
                     if nr >= key_types.len() {
@@ -2608,16 +2649,22 @@ impl Parser {
                     if !self.convert(&mut ex, &ex_t, &key_types[nr]) {
                         diagnostic!(self.lexer, Level::Error, "Invalid index key");
                     }
-                    ls.push(ex);
+                    key.push(ex);
                     nr += 1;
                 }
             }
-            ls.insert(3, Value::Int(nr as i32));
-            *code = Value::Iter(Box::new(start), Box::new(self.cl("OpNext", &ls)));
+            ls.push(Value::Int(nr as i32));
+            ls.append(&mut key);
+            let start = v_let(iter, self.cl("OpIterate", &ls));
+            *code = Value::Iter(
+                Box::new(start),
+                Box::new(self.cl("OpStep", &[Value::Var(iter), code.clone(), Value::Int(on)])),
+            );
         } else {
-            ls.insert(2, Value::Int(nr as i32));
+            let mut ls = vec![code.clone(), known.clone(), Value::Int(nr as i32)];
+            ls.append(&mut key);
             *code = self.cl("OpGetRecord", &ls);
-            if hash && nr < key_types.len() {
+            if matches!(typedef, Type::Hash(_, _)) && nr < key_types.len() {
                 diagnostic!(self.lexer, Level::Error, "Too few key fields");
             }
         }
@@ -2923,7 +2970,7 @@ impl Parser {
             let mut create_iter = expr;
             let it = Type::Iterator(Box::new(var_type.clone()));
             let iter_next = self.iterator(&id, &mut create_iter, &in_type, &it);
-            if iter_next == Value::Null {
+            if iter_next == Value::Null && !self.first_pass {
                 diagnostic!(
                     self.lexer,
                     Level::Error,
@@ -3402,7 +3449,7 @@ impl Parser {
                 } else {
                     *i_tp.clone()
                 }
-            } else if let Type::Text | Type::Integer(_, _) | Type::Long = in_type {
+            } else if let Type::Reference(_) | Type::Text | Type::Integer(_, _) | Type::Long = in_type {
                 in_type.clone()
             } else {
                 if !self.first_pass {
