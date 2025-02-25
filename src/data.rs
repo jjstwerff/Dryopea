@@ -12,6 +12,7 @@
 
 extern crate strum_macros;
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
+use crate::keys::Key;
 use crate::lexer::{Lexer, Position};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
@@ -73,6 +74,8 @@ pub enum Value {
     Drop(Box<Value>),
     /// The creation of the iterator and the next expression. Not able to revert.
     Iter(Box<Value>, Box<Value>),
+    /// Key structure
+    Keys(Vec<Key>),
 }
 
 #[allow(dead_code)]
@@ -128,6 +131,8 @@ pub enum Type {
     Float,
     Single,
     Text,
+    /// Description of the possible keys on a structure (hash, index, spacial, sorted)
+    Keys,
     /// An enum value. There is always a single parent definition with enum type itself.
     Enum(u32),
     /// A readonly reference to a record instance in a store.
@@ -967,6 +972,8 @@ impl Data {
 
     #[must_use]
     /// Get the definition number for the given type.
+    /// # Panics
+    /// When no element of a type exists
     pub fn type_elm(&self, tp: &Type) -> u32 {
         match tp {
             Type::Integer(_, _) => self.def_nr("integer"),
@@ -1164,6 +1171,9 @@ impl Data {
             Value::Drop(v) => {
                 write!(write, "drop ")?;
                 self.show_code(write, d_nr, v, indent, false)
+            }
+            Value::Keys(keys) => {
+                write!(write, "&{keys:?}")
             }
         }
     }

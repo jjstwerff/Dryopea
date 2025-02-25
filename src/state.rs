@@ -1,12 +1,16 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
+#![allow(dead_code)]
 
 use crate::data::{Attribute, Context, Data, I32, Type, Value};
-use crate::database::{ShowDb, Stores, Str};
+use crate::database::{ShowDb, Stores};
 use crate::fill::OPERATORS;
-use crate::keys::{Content, DbRef};
+use crate::keys;
+use crate::keys::{Content, DbRef, Key, Str};
 use crate::stack::{Stack, size};
+use crate::tree;
+use crate::vector;
 use crate::{external, hash};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{Error, Write};
@@ -27,6 +31,14 @@ pub struct State {
     pub calls: HashMap<u32, Vec<u32>>,
     // Type information for enumerate and database (record, vectors and fields) types.
     pub types: HashMap<u32, u16>,
+}
+
+fn new_ref(data: &DbRef, pos: u32, arg: u16) -> DbRef {
+    DbRef {
+        store_nr: data.store_nr,
+        rec: pos,
+        pos: u32::from(arg),
+    }
 }
 
 impl State {
@@ -99,6 +111,7 @@ impl State {
     # Panics
     When a situation a missed that should have been rewritten.
     */
+    #[allow(clippy::unused_self)]
     pub fn add_text(&mut self) {
         panic!("Should not be called directly");
     }
@@ -451,6 +464,114 @@ impl State {
         self.put_var(var_pos + 4 - dif as u16, pos);
     }
 
+    /**
+    Iterate through a data structure from a given key to a given end-key.
+    # Panics
+    When called on a not implemented data-structure
+    */
+    pub fn iterate(&mut self) {
+        let on = *self.code::<u8>();
+        let arg = *self.code::<u16>();
+        let keys_size = *self.code::<u8>();
+        let mut keys = Vec::new();
+        for _ in 0..keys_size {
+            keys.push(Key {
+                type_nr: *self.code::<i8>(),
+                position: *self.code::<u16>(),
+            });
+        }
+        let from_key = *self.code::<u8>();
+        let till_key = *self.code::<u8>();
+        let till = self.stack_key(till_key, &keys);
+        let from = self.stack_key(from_key, &keys);
+        let data = *self.get_stack::<DbRef>();
+        // start the loop at the 'till' key and walk to the 'from' key
+        let reverse = on & 64 != 0;
+        // till key is exclusive the found key
+        let ex = on & 128 == 0;
+        let start;
+        let finish;
+        let all = &self.database.allocations;
+        match on & 63 {
+            1 => {
+                // index points to the record position inside the store
+                if reverse {
+                    start = tree::find(&data, true, arg, all, &keys, &from);
+                    let t = tree::find(&data, ex, arg, all, &keys, &till);
+                    finish = if ex {
+                        t
+                    } else {
+                        tree::previous(keys::store(&data, all), &new_ref(&data, t, arg)).rec
+                    };
+                } else {
+                    let t = tree::find(&data, ex, arg, all, &keys, &till);
+                    start = if ex {
+                        t
+                    } else {
+                        tree::next(keys::store(&data, all), &new_ref(&data, t, arg)).rec
+                    };
+                    let f = tree::find(&data, ex, arg, all, &keys, &from);
+                    finish = tree::next(keys::store(&data, all), &new_ref(&data, f, arg)).rec;
+                }
+            }
+            2 => {
+                // sorted points to the position of the record inside the vector
+                if reverse {
+                    start = vector::sorted_find(&data, true, arg, all, &keys, &from);
+                    finish = vector::sorted_find(&data, ex, arg, all, &keys, &till)
+                        - if ex { 0 } else { u32::from(arg) };
+                } else {
+                    start = vector::sorted_find(&data, ex, arg, all, &keys, &till)
+                        + if ex { 0 } else { u32::from(arg) };
+                    finish =
+                        vector::sorted_find(&data, ex, arg, all, &keys, &from) + u32::from(arg);
+                }
+            }
+            3 => {
+                // ordered points to the position inside the vector of references
+                if reverse {
+                    start = vector::ordered_find(&data, true, all, &keys, &from);
+                    finish = vector::ordered_find(&data, ex, all, &keys, &till)
+                        - if ex { 0 } else { u32::from(arg) };
+                } else {
+                    start = vector::ordered_find(&data, ex, all, &keys, &till)
+                        + if ex { 0 } else { u32::from(arg) };
+                    finish = vector::ordered_find(&data, ex, all, &keys, &from) + u32::from(arg);
+                }
+            }
+            _ => panic!("Not implemented"),
+        }
+        self.put_stack(start);
+        self.put_stack(finish);
+    }
+
+    fn stack_key(&mut self, size: u8, keys: &[Key]) -> Vec<Content> {
+        let mut key = Vec::new();
+        for (k_nr, k) in keys.iter().enumerate() {
+            if k_nr >= size as usize {
+                break;
+            }
+            match k.type_nr.abs() {
+                1 => key.push(Content::Long(i64::from(*self.get_stack::<i32>()))),
+                2 => key.push(Content::Long(*self.get_stack::<i64>())),
+                3 => key.push(Content::Single(*self.get_stack::<f32>())),
+                4 => key.push(Content::Float(*self.get_stack::<f64>())),
+                5 => key.push(Content::Long(i64::from(*self.get_stack::<bool>()))),
+                6 => key.push(Content::Str(self.string())),
+                7 => key.push(Content::Long(i64::from(*self.get_stack::<u8>()))),
+                _ => panic!("Unknown key type"),
+            }
+        }
+        key
+    }
+
+    pub fn step(&mut self) {
+        let _state_var = *self.code::<u16>();
+        let _on = *self.code::<u8>();
+        let _data = *self.get_stack::<DbRef>();
+        // TODO Do something meaningful
+    }
+
     pub fn hash_add(&mut self) {
         let tp = *self.code::<u16>();
         let rec = *self.get_stack::<DbRef>();
@@ -547,7 +668,8 @@ impl State {
         let db_tp = *self.code::<u16>();
         let index = *self.get_stack::<i32>();
         let r = *self.get_stack::<DbRef>();
-        let new_value = self.database.insert_vector(&r, u32::from(size), index);
+        let new_value =
+            vector::insert_vector(&r, u32::from(size), index, &mut self.database.allocations);
         self.database.set_default_value(db_tp, &new_value);
         self.put_stack(new_value);
     }
@@ -687,6 +809,10 @@ impl State {
                 stack.add_op("OpConstFloat", self);
                 self.code_add(*value);
                 Type::Float
+            }
+            Value::Keys(_) => {
+                // Should be already part of the search request
+                Type::Null
             }
             Value::Boolean(value) => {
                 stack.add_op(
@@ -848,6 +974,13 @@ impl State {
             "OpNext" => {
                 was_stack = stack.position;
                 self.gather_key(stack, &parameters, 3, &mut tps);
+            }
+            "OpIterate" => {
+                was_stack = stack.position + 8 - size_ref() as u16;
+                if let Value::Int(parameter_length) = parameters[4] {
+                    self.gather_key(stack, &parameters, 4, &mut tps);
+                    self.gather_key(stack, &parameters, 5 + parameter_length, &mut tps);
+                }
             }
             _ => (),
         }
@@ -1101,6 +1234,15 @@ impl State {
                     self.code_add(*val);
                 }
             }
+            Type::Keys => {
+                if let Value::Keys(keys) = p {
+                    self.code_add(keys.len() as u8);
+                    for k in keys {
+                        self.code_add(k.type_nr);
+                        self.code_add(k.position);
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -1234,6 +1376,17 @@ impl State {
             Type::Single => format!("{}", *self.code::<f32>()),
             Type::Float => format!("{}", *self.code::<f64>()),
             Type::Text => format!("\"{}\"", self.code_str()),
+            Type::Keys => {
+                let len = *self.code::<u8>();
+                let mut keys = Vec::new();
+                for _ in 0..len {
+                    keys.push(Key {
+                        type_nr: *self.code::<i8>(),
+                        position: *self.code::<u16>(),
+                    });
+                }
+                format!("{keys:?}")
+            }
             _ => "unknown".to_string(),
         }
     }

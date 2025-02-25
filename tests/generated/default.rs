@@ -155,11 +155,11 @@ fn _tp_text_len(stores: &mut Stores, var_0: Str) -> i32 {
 }
 
 fn _tp_vector_len(stores: &mut Stores, var_0: DbRef) -> i32 {
-  stores.length_vector(&(var_both)) as i32
+  vector::length_vector(&(var_both), &s.database.allocations) as i32
 }
 
 fn _tp_vector_clear(stores: &mut Stores, var_0: DbRef) {
-  stores.clear_vector(&(var_self));
+  vector::clear_vector(&(var_self), &mut s.database.allocations);
 }
 
 fn assert(stores: &mut Stores, var_0: bool, var_1: Str) {
@@ -222,7 +222,7 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
     var_vec_10
   };
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((12_i32)), i32::from((0_i32)))}) == (1_i32) {
-    Drop(Call(303, [Call(261, [Var(0), Int(8)]), Var(1)]))
+    Drop(Call(306, [Call(261, [Var(0), Int(8)]), Var(1)]))
   } else {Null};
   var_result
 }
@@ -237,7 +237,7 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef) -> DbRef {
       {let db = (var_val); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
       var_val
     };
-    Drop(Call(304, [Call(261, [Var(0), Int(8)]), Var(1)]));
+    Drop(Call(307, [Call(261, [Var(0), Int(8)]), Var(1)]));
     var_result
   } else {
     Stores::null()

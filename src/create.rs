@@ -31,10 +31,12 @@ pub fn generate_code(data: &Data) -> std::io::Result<()> {
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::too_many_lines)]
-use crate::database::{{Stores, Str}};
+use crate::database::Stores;
 use crate::external;
-use crate::keys::DbRef;
-use crate::state::State;\n
+use crate::keys::{{DbRef, Str}};
+use crate::state::State;
+use crate::vector;
+
 pub const OPERATORS: &[fn(&mut State)] = &["
     )?;
     for d_nr in 0..data.definitions() {
