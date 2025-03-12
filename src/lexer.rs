@@ -53,7 +53,7 @@ pub struct Position {
 
 impl Position {
     fn format(&self, fmt: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        fmt.write_str(&format!("{} line {}:{}", self.file, self.line, self.pos))
+        fmt.write_str(&format!("{}:{}:{}", self.file, self.line, self.pos))
     }
 }
 
@@ -237,6 +237,11 @@ impl Lexer {
         result
     }
 
+    pub fn to(&mut self, scope: &(u32, u32)) {
+        self.position.line = scope.0;
+        self.position.pos = scope.1;
+    }
+
     fn next(&mut self) -> Option<LexResult> {
         if self.link < self.memory.len() {
             let n = self.memory[self.link].clone();
@@ -310,6 +315,10 @@ impl Lexer {
 
     pub fn pos(&self) -> &Position {
         &self.position
+    }
+
+    pub fn at(&self) -> (u32, u32) {
+        (self.position.line, self.position.pos)
     }
 
     pub fn diagnostic(&mut self, level: Level, message: &str) {

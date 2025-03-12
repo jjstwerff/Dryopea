@@ -1,4 +1,3 @@
-Test code:
 struct S {a: integer, b: long, c: En}
 enum En {V1, V2}
 
@@ -9,60 +8,55 @@ pub fn test() {
         "Test failed {test_value} != 17"
     );
 }
+Type 11:En[1]:Enum(["V1", "V2"])
 
-Type 13:En[1]:Enum(["V1", "V2"])
-
-Type 14:S[17]:
+Type 12:S[17]:
     a:integer[4]
     b:long[8]
     c:En[16]
 
-fn test {
+fn test {#1 block
   let __work_1 = "";
-  let test_value = {
+  let test_value = {#2 block
     17i32;
-  };
-  if OpEqInt(test_value, 17i32) {null} else {OpGenPanic({
+  }#2;
+  if OpEqInt(test_value, 17i32) null else OpGenPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 17");
     __work_1;
-  })};
-}
+  }#3);
+}#1
 
 byte-code for expr_struct:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: ConstText(_value="") -> text(false)
- 671[44]: AppendText(var[4], v1: text(false))
- 674[28]: ConstInt(val=17) -> integer
- 679[32]: VarInt(var[28]) -> integer
- 682[36]: ConstInt(val=17) -> integer
- 687[40]: EqInt(v1: integer, v2: integer) -> boolean
- 688[33]: GenGotoFalseWord(jump=694, if_false: boolean)
- 691[32]: GenGotoWord(jump=744)
- 694[32]: ClearText(var[4])
- 697[32]: ConstText(_value="Test failed ") -> text(false)
- 711[48]: AppendText(var[4], v1: text(false))
- 714[32]: VarInt(var[28]) -> integer
- 717[36]: ConstInt(val=0) -> integer
- 722[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 729[32]: ConstText(_value=" != 17") -> text(false)
- 737[48]: AppendText(var[4], v1: text(false))
- 740[32]: VarText(var[4]) -> text(false)
- 743[48]: GenPanic(message: text(false))
- 744[32]: GenReturn(ret=0, value=0, discard=32)
+ 669[28]: ConstInt(val=17) -> integer
+ 674[32]: VarInt(var[28]) -> integer
+ 677[36]: ConstInt(val=17) -> integer
+ 682[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 683[33]: GenGotoFalseWord(jump=689, if_false: boolean)
+ 686[32]: GenGotoWord(jump=739)
+ 689[32]: ClearText(var[4])
+ 692[32]: ConstText(_value="Test failed ") -> text(false, [])
+ 706[48]: AppendText(var[4], v1: text(false, []))
+ 709[32]: VarInt(var[28]) -> integer
+ 712[36]: ConstInt(val=0) -> integer
+ 717[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 724[32]: ConstText(_value=" != 17") -> text(false, [])
+ 732[48]: AppendText(var[4], v1: text(false, []))
+ 735[32]: VarText(var[4]) -> text(false, [])
+ 738[48]: GenPanic(message: text(false, []))
+ 739[32]: GenReturn(ret=0, value=0, discard=32)
 
 Execute test:
   668:[8] Text()
-  669:[32] ConstText(_value="") -> ""[32]
-  671:[48] AppendText(var[8], v1=""[32])
-  674:[32] ConstInt(val=17) -> 17[32]
-  679:[36] VarInt(var[32]) -> 17[36]
-  682:[40] ConstInt(val=17) -> 17[40]
-  687:[44] EqInt(v1=17[36], v2=17[40]) -> true[36]
-  688:[37] GenGotoFalseWord(jump=694, if_false=true[36])
-  691:[36] GenGotoWord(jump=744)
-  744:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
+  669:[32] ConstInt(val=17) -> 17[32]
+  674:[36] VarInt(var[32]) -> 17[36]
+  677:[40] ConstInt(val=17) -> 17[40]
+  682:[44] EqInt(v1=17[36], v2=17[40]) -> true[36]
+  683:[37] GenGotoFalseWord(jump=689, if_false=true[36])
+  686:[36] GenGotoWord(jump=739)
+  739:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
 Finished

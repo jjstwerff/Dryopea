@@ -148,7 +148,7 @@ fn call_routine() {
 fn call_void() {
     code!("fn routine(a: integer) {return;}")
         .expr("routine(5)")
-        .warning("Parameter a is never read in call_void line 1:25");
+        .warning("Parameter a is never read at call_void:1:25");
 }
 
 #[test]

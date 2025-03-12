@@ -1,4 +1,3 @@
-Test code:
 struct S {a: integer, b: integer, c:integer};
 struct Main { s: vector<S>, biggest: reference<S> };
 
@@ -9,80 +8,75 @@ pub fn test() {
         "Test failed {test_value} != 122012"
     );
 }
-
-Type 13:S[12]:
+Type 11:S[12]:
     a:integer[0]
     b:integer[4]
     c:integer[8]
 
-Type 14:Main[20]:
+Type 12:Main[20]:
     s:vector<S>[4]
     biggest:S[8]
 
-Type 15:vector<S>[4]:Vector(13)
+Type 13:vector<S>[4]:Vector(11)
 
-fn test {
+fn test {#1 block
   let __work_1 = "";
-  let test_value = {
+  let test_value = {#2 block
     OpAddInt(OpAddInt(12i32, OpMulInt(100i32, 20i32)), OpMulInt(10000i32, 12i32));
-  };
-  if OpEqInt(test_value, 122012i32) {null} else {OpGenPanic({
+  }#2;
+  if OpEqInt(test_value, 122012i32) null else OpGenPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 122012");
     __work_1;
-  })};
-}
+  }#3);
+}#1
 
 byte-code for reference_field:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: ConstText(_value="") -> text(false)
- 671[44]: AppendText(var[4], v1: text(false))
- 674[28]: ConstInt(val=12) -> integer
- 679[32]: ConstInt(val=100) -> integer
- 684[36]: ConstInt(val=20) -> integer
- 689[40]: MulInt(v1: integer, v2: integer) -> integer
- 690[36]: AddInt(v1: integer, v2: integer) -> integer
- 691[32]: ConstInt(val=10000) -> integer
- 696[36]: ConstInt(val=12) -> integer
- 701[40]: MulInt(v1: integer, v2: integer) -> integer
- 702[36]: AddInt(v1: integer, v2: integer) -> integer
- 703[32]: VarInt(var[28]) -> integer
- 706[36]: ConstInt(val=122012) -> integer
- 711[40]: EqInt(v1: integer, v2: integer) -> boolean
- 712[33]: GenGotoFalseWord(jump=718, if_false: boolean)
- 715[32]: GenGotoWord(jump=772)
- 718[32]: ClearText(var[4])
- 721[32]: ConstText(_value="Test failed ") -> text(false)
- 735[48]: AppendText(var[4], v1: text(false))
- 738[32]: VarInt(var[28]) -> integer
- 741[36]: ConstInt(val=0) -> integer
- 746[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 753[32]: ConstText(_value=" != 122012") -> text(false)
- 765[48]: AppendText(var[4], v1: text(false))
- 768[32]: VarText(var[4]) -> text(false)
- 771[48]: GenPanic(message: text(false))
- 772[32]: GenReturn(ret=0, value=0, discard=32)
+ 669[28]: ConstInt(val=12) -> integer
+ 674[32]: ConstInt(val=100) -> integer
+ 679[36]: ConstInt(val=20) -> integer
+ 684[40]: MulInt(v1: integer, v2: integer) -> integer
+ 685[36]: AddInt(v1: integer, v2: integer) -> integer
+ 686[32]: ConstInt(val=10000) -> integer
+ 691[36]: ConstInt(val=12) -> integer
+ 696[40]: MulInt(v1: integer, v2: integer) -> integer
+ 697[36]: AddInt(v1: integer, v2: integer) -> integer
+ 698[32]: VarInt(var[28]) -> integer
+ 701[36]: ConstInt(val=122012) -> integer
+ 706[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 707[33]: GenGotoFalseWord(jump=713, if_false: boolean)
+ 710[32]: GenGotoWord(jump=767)
+ 713[32]: ClearText(var[4])
+ 716[32]: ConstText(_value="Test failed ") -> text(false, [])
+ 730[48]: AppendText(var[4], v1: text(false, []))
+ 733[32]: VarInt(var[28]) -> integer
+ 736[36]: ConstInt(val=0) -> integer
+ 741[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 748[32]: ConstText(_value=" != 122012") -> text(false, [])
+ 760[48]: AppendText(var[4], v1: text(false, []))
+ 763[32]: VarText(var[4]) -> text(false, [])
+ 766[48]: GenPanic(message: text(false, []))
+ 767[32]: GenReturn(ret=0, value=0, discard=32)
 
 Execute test:
   668:[8] Text()
-  669:[32] ConstText(_value="") -> ""[32]
-  671:[48] AppendText(var[8], v1=""[32])
-  674:[32] ConstInt(val=12) -> 12[32]
-  679:[36] ConstInt(val=100) -> 100[36]
-  684:[40] ConstInt(val=20) -> 20[40]
-  689:[44] MulInt(v1=100[36], v2=20[40]) -> 2000[36]
-  690:[40] AddInt(v1=12[32], v2=2000[36]) -> 2012[32]
-  691:[36] ConstInt(val=10000) -> 10000[36]
-  696:[40] ConstInt(val=12) -> 12[40]
-  701:[44] MulInt(v1=10000[36], v2=12[40]) -> 120000[36]
-  702:[40] AddInt(v1=2012[32], v2=120000[36]) -> 122012[32]
-  703:[36] VarInt(var[32]) -> 122012[36]
-  706:[40] ConstInt(val=122012) -> 122012[40]
-  711:[44] EqInt(v1=122012[36], v2=122012[40]) -> true[36]
-  712:[37] GenGotoFalseWord(jump=718, if_false=true[36])
-  715:[36] GenGotoWord(jump=772)
-  772:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
+  669:[32] ConstInt(val=12) -> 12[32]
+  674:[36] ConstInt(val=100) -> 100[36]
+  679:[40] ConstInt(val=20) -> 20[40]
+  684:[44] MulInt(v1=100[36], v2=20[40]) -> 2000[36]
+  685:[40] AddInt(v1=12[32], v2=2000[36]) -> 2012[32]
+  686:[36] ConstInt(val=10000) -> 10000[36]
+  691:[40] ConstInt(val=12) -> 12[40]
+  696:[44] MulInt(v1=10000[36], v2=12[40]) -> 120000[36]
+  697:[40] AddInt(v1=2012[32], v2=120000[36]) -> 122012[32]
+  698:[36] VarInt(var[32]) -> 122012[36]
+  701:[40] ConstInt(val=122012) -> 122012[40]
+  706:[44] EqInt(v1=122012[36], v2=122012[40]) -> true[36]
+  707:[37] GenGotoFalseWord(jump=713, if_false=true[36])
+  710:[36] GenGotoWord(jump=767)
+  767:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
 Finished

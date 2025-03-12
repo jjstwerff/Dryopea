@@ -112,7 +112,7 @@ extern crate dryopea;"
             let pos = self.stores.position(def.known_type, f_nr as u16);
             assert_ne!(d_nr, u32::MAX, "Unknown def_nr for {:?}", a.typedef);
             let mut done = false;
-            if let Type::Vector(c) = &a.typedef {
+            if let Type::Vector(c, _) = &a.typedef {
                 let c_def = self.data.type_def_nr(c);
                 if c_def != u32::MAX {
                     let content = self.data.def(c_def).known_type;
@@ -163,12 +163,16 @@ extern crate dryopea;"
             write!(
                 w,
                 ", var_{anr}: {}",
-                Data::rust_type(&a.typedef, Context::Argument)
+                self.data.rust_type(&a.typedef, &Context::Argument)
             )?;
         }
         write!(w, ") ")?;
         if def.returned != Type::Void {
-            write!(w, "-> {} ", Data::rust_type(&def.returned, Context::Result))?;
+            write!(
+                w,
+                "-> {} ",
+                self.data.rust_type(&def.returned, &Context::Result)
+            )?;
         }
         if let Value::Block(_) = def.code {
             self.output_code(w, &def.code, def_nr, 0)?;
@@ -251,11 +255,7 @@ extern crate dryopea;"
                 write!(w, "}}")?;
             }
             Value::Set(var, to) => {
-                write!(
-                    w,
-                    "var_{} = ",
-                    self.data.def(def_nr).variables[*var as usize].name
-                )?;
+                write!(w, "var_{} = ", self.data.def(def_nr).variables.name(*var))?;
                 self.output_code(w, to, def_nr, indent)?;
             }
             Value::Let(var, to) => {
@@ -263,11 +263,7 @@ extern crate dryopea;"
                 self.output_code(w, to, def_nr, indent)?;
             }
             Value::Var(var) => {
-                write!(
-                    w,
-                    "var_{}",
-                    self.data.def(def_nr).variables[*var as usize].name
-                )?;
+                write!(w, "var_{}", self.data.def(def_nr).variables.name(*var))?;
             }
             Value::If(test, true_v, false_v) => {
                 self.output_if(w, def_nr, test, true_v, false_v, indent)?;

@@ -46,6 +46,7 @@ pub struct Test {
     code: String,
     warnings: Vec<String>,
     errors: Vec<String>,
+    fatal: Vec<String>,
     sizes: HashMap<String, u32>,
     result: Value,
     tp: Type,
@@ -59,6 +60,14 @@ impl Test {
             panic!("Cannot combine result with errors");
         }
         self.errors.push(text.to_string());
+        self
+    }
+
+    pub fn fatal(&mut self, text: &str) -> &mut Test {
+        if self.result != Value::Null {
+            panic!("Cannot combine result with fatal");
+        }
+        self.fatal.push(text.to_string());
         self
     }
 
@@ -144,8 +153,8 @@ impl Drop for Test {
         }
         let mut w =
             std::fs::File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
-        writeln!(w, "Test code:\n{}\n", code).unwrap();
-        p.parse_str(&code, &self.name);
+        writeln!(w, "{}", code).unwrap();
+        p.parse_str(&code, &self.name, false);
         let to = p.database.types.len();
         for tp in types..to {
             writeln!(w, "Type {tp}:{}", p.database.show_type(tp as u16, true)).unwrap();
@@ -164,7 +173,7 @@ impl Drop for Test {
         create::generate_code(&p.data).unwrap();
         create::generate_lib(&p.data).unwrap();
         let mut state = State::new(p.database);
-        byte_code(&mut p.data, &mut w, &mut state).unwrap();
+        byte_code(&mut w, &mut state, &mut p.data).unwrap();
         state.execute_log(&mut w, "test", &p.data).unwrap();
     }
 }
@@ -198,10 +207,13 @@ impl Test {
     fn assert_diagnostics(&self, p: &Parser) {
         let mut expected = BTreeSet::new();
         for w in &self.warnings {
-            expected.insert(w.clone());
+            expected.insert(format!("Warning: {w}"));
         }
         for w in &self.errors {
-            expected.insert(w.clone());
+            expected.insert(format!("Error: {w}"));
+        }
+        for w in &self.fatal {
+            expected.insert(format!("Fatal: {w}"));
         }
         let mut found = "".to_string();
         for l in p.diagnostics.lines() {
@@ -240,7 +252,7 @@ impl Test {
             } else if let Value::Long(_) = self.result {
                 Type::Long
             } else if let Value::Text(_) = self.result {
-                Type::Text(false)
+                Type::Text(false, Vec::new())
             } else if let Value::Float(_) = self.result {
                 Type::Float
             } else if let Value::Null = self.result {
@@ -253,7 +265,7 @@ impl Test {
         };
         if let Type::Integer(_, _) = tp {
             "integer"
-        } else if let Type::Text(_) = tp {
+        } else if let Type::Text(_, _) = tp {
             "text"
         } else if let Type::Long = tp {
             "long"
@@ -285,6 +297,7 @@ pub fn testing_code(code: &str, test: &str) -> Test {
         code: code.to_string(),
         warnings: vec![],
         errors: vec![],
+        fatal: vec![],
         result: Value::Null,
         tp: Type::Unknown(0),
         sizes: HashMap::new(),
@@ -299,6 +312,7 @@ pub fn testing_expr(expr: &str, test: &str) -> Test {
         code: "".to_string(),
         warnings: vec![],
         errors: vec![],
+        fatal: vec![],
         result: Value::Null,
         tp: Type::Unknown(0),
         sizes: HashMap::new(),

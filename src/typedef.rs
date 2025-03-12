@@ -17,7 +17,7 @@ use crate::lexer::Lexer;
 pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
     match data.def(d_nr).name.as_str() {
         "vector" => {
-            data.set_returned(d_nr, Type::Vector(Box::new(Type::Unknown(0))));
+            data.set_returned(d_nr, Type::Vector(Box::new(Type::Unknown(0)), Vec::new()));
             data.definitions[d_nr as usize].known_type = 6;
         }
         "long" => {
@@ -37,7 +37,7 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
             data.definitions[d_nr as usize].known_type = 2;
         }
         "text" => {
-            data.set_returned(d_nr, Type::Text(false));
+            data.set_returned(d_nr, Type::Text(false, Vec::new()));
             data.definitions[d_nr as usize].known_type = 5;
         }
         "boolean" => {
@@ -51,7 +51,7 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
             data.set_returned(d_nr, Type::Routine(d_nr));
         }
         "radix" | "hash" | "reference" | "index" => {
-            data.set_returned(d_nr, Type::Reference(d_nr));
+            data.set_returned(d_nr, Type::Reference(d_nr, Vec::new()));
         }
         "keys_definition" => {
             data.set_returned(d_nr, Type::Keys);
@@ -73,7 +73,7 @@ pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, s
     // Determine the actual type of structs regarding their use
     for d in start_def..data.definitions() {
         if data.def_type(d) == DefType::Struct {
-            data.definitions[d as usize].returned = Type::Reference(d);
+            data.definitions[d as usize].returned = Type::Reference(d, Vec::new());
         }
     }
     for d in start_def..data.definitions() {
@@ -130,12 +130,13 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
         let nullable = data.attr_nullable(d_nr, a_nr);
         if t_nr < u32::MAX {
             let tp = match a_type {
-                Type::Vector(c_type) => {
+                Type::Vector(c_type, _) => {
                     let c_nr = data.type_elm(&c_type);
                     assert_ne!(
                         c_nr,
                         u32::MAX,
-                        "Unknown vector {c_type} content type on [{d_nr}]{}.{}",
+                        "Unknown vector {} content type on [{d_nr}]{}.{}",
+                        c_type.name(data),
                         data.def(d_nr).name,
                         data.attr_name(d_nr, a_nr)
                     );
@@ -154,16 +155,16 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
                         database.name("integer")
                     }
                 }
-                Type::Hash(content, key_fields) => {
+                Type::Hash(content, key_fields, _) => {
                     database.hash(data.def(content).known_type, &key_fields)
                 }
-                Type::Index(content, key_fields) => {
+                Type::Index(content, key_fields, _) => {
                     database.index(data.def(content).known_type, &key_fields)
                 }
-                Type::Sorted(content, key_fields) => {
+                Type::Sorted(content, key_fields, _) => {
                     database.sorted(data.def(content).known_type, &key_fields)
                 }
-                Type::Spacial(content, key_fields) => {
+                Type::Spacial(content, key_fields, _) => {
                     database.spacial(data.def(content).known_type, &key_fields)
                 }
                 _ => data.def(t_nr).known_type,

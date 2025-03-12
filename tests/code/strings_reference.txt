@@ -1,4 +1,3 @@
-Test code:
 fn add(a: &text, b: text=" world!") {
     a += b;
 }
@@ -10,89 +9,84 @@ pub fn test() {
         "Test failed {test_value} != \"Hello world!\""
     );
 }
-
-fn add {
+fn add {#1 block
   OpAppendRefText(OpVarRef(a), 0i32, b);
-}
+}#1
 
-byte-code for reference:add(a: refvar(text(false))[0], b: text(false)[12])
+byte-code for reference:add(a: refvar(text(false, []))[0], b: text(false, [])[12])
  668[28]: return-address
- 668[32]: VarRef(var[0]) -> reference
- 671[44]: ArgText(var[12]) -> text(false)
- 674[60]: AppendRefText(r: reference, fld=0, v1: text(false))
+ 668[32]: VarRef(var[0]) -> reference#[]
+ 671[44]: ArgText(var[12]) -> text(false, [])
+ 674[60]: AppendRefText(r: reference#[], fld=0, v1: text(false, []))
  677[32]: GenReturn(ret=28, value=0, discard=32)
 
-fn test {
-  let __work_2 = "";
-  let test_value = {
+fn test {#1 block
+  let __work_1 = "";
+  let test_value = {#2 block
     let v = "Hello";
     add(OpCreateRef(v), " world!");
     v;
-  };
-  if OpEqText(test_value, "Hello world!") {null} else {OpGenPanic({
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
-    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_2, " != "Hello world!"");
-    __work_2;
-  })};
-}
+  }#2;
+  if OpEqText(test_value, "Hello world!") null else OpGenPanic({#3 formatting string
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_1, " != "Hello world!"");
+    __work_1;
+  }#3);
+}#1
 
 byte-code for reference:test()
  683[0]: return-address
  683[4]: Text()
- 684[28]: ConstText(_value="") -> text(false)
- 686[44]: AppendText(var[4], v1: text(false))
- 689[28]: Text()
- 690[52]: Text()
- 691[76]: ConstText(_value="Hello") -> text(false)
- 698[92]: AppendText(var[52], v1: text(false))
- 701[76]: CreateRef(var[52]) -> reference
- 704[88]: ConstText(_value=" world!") -> text(false)
- 713[104]: GenCall(size=0, to=668)
- 720[76]: VarText(var[52]) -> text(false)
- 723[92]: GenFreeStack(value=16, discard=24)
- 727[68]: AppendText(var[28], v1: text(false))
- 730[52]: VarText(var[28]) -> text(false)
- 733[68]: ConstText(_value="Hello world!") -> text(false)
- 747[84]: EqText(v1: text(false), v2: text(false)) -> boolean
- 748[53]: GenGotoFalseWord(jump=754, if_false: boolean)
- 751[52]: GenGotoWord(jump=814)
- 754[52]: ClearText(var[4])
- 757[52]: ConstText(_value="Test failed ") -> text(false)
- 771[68]: AppendText(var[4], v1: text(false))
- 774[52]: VarText(var[28]) -> text(false)
- 777[68]: ConstInt(val=0) -> integer
- 782[72]: FormatText(var[4], val: text(false), width: integer, dir=-1, token=32)
- 787[52]: ConstText(_value=" != "Hello world!"") -> text(false)
- 807[68]: AppendText(var[4], v1: text(false))
- 810[52]: VarText(var[4]) -> text(false)
- 813[68]: GenPanic(message: text(false))
- 814[52]: GenReturn(ret=0, value=0, discard=52)
+ 684[28]: Text()
+ 685[52]: Text()
+ 686[76]: ConstText(_value="Hello") -> text(false, [])
+ 693[92]: AppendText(var[52], v1: text(false, []))
+ 696[76]: CreateRef(var[52]) -> reference#[]
+ 699[88]: ConstText(_value=" world!") -> text(false, [])
+ 708[104]: GenCall(size=0, to=668)
+ 715[76]: VarText(var[52]) -> text(false, [])
+ 718[92]: GenFreeStack(value=16, discard=24)
+ 722[68]: AppendText(var[28], v1: text(false, []))
+ 725[52]: VarText(var[28]) -> text(false, [])
+ 728[68]: ConstText(_value="Hello world!") -> text(false, [])
+ 742[84]: EqText(v1: text(false, []), v2: text(false, [])) -> boolean
+ 743[53]: GenGotoFalseWord(jump=749, if_false: boolean)
+ 746[52]: GenGotoWord(jump=809)
+ 749[52]: ClearText(var[4])
+ 752[52]: ConstText(_value="Test failed ") -> text(false, [])
+ 766[68]: AppendText(var[4], v1: text(false, []))
+ 769[52]: VarText(var[28]) -> text(false, [])
+ 772[68]: ConstInt(val=0) -> integer
+ 777[72]: FormatText(var[4], val: text(false, []), width: integer, dir=-1, token=32)
+ 782[52]: ConstText(_value=" != "Hello world!"") -> text(false, [])
+ 802[68]: AppendText(var[4], v1: text(false, []))
+ 805[52]: VarText(var[4]) -> text(false, [])
+ 808[68]: GenPanic(message: text(false, []))
+ 809[52]: GenReturn(ret=0, value=0, discard=52)
 
 Execute test:
   683:[8] Text()
-  684:[32] ConstText(_value="") -> ""[32]
-  686:[48] AppendText(var[8], v1=""[32])
-  689:[32] Text()
-  690:[56] Text()
-  691:[80] ConstText(_value="Hello") -> "Hello"[80]
-  698:[96] AppendText(var[56], v1="Hello"[80])
-  701:[80] CreateRef(var[56]) -> ref(0,1,56)[80]
-  704:[92] ConstText(_value=" world!") -> " world!"[92]
-  713:[108] GenCall(size=0, to=668)
+  684:[32] Text()
+  685:[56] Text()
+  686:[80] ConstText(_value="Hello") -> "Hello"[80]
+  693:[96] AppendText(var[56], v1="Hello"[80])
+  696:[80] CreateRef(var[56]) -> ref(0,1,56)[80]
+  699:[92] ConstText(_value=" world!") -> " world!"[92]
+  708:[108] GenCall(size=0, to=668)
   668:[112] VarRef(var[80]) -> ref(0,1,56)[112]
   671:[124] ArgText(var[92]) -> " world!"[124]
   674:[140] AppendRefText(r=ref(0,1,56)[112], fld=0, v1=" world!"[124])
   675:[112] GenGoto(jump=2214)
-  677:[112] GenReturn(ret=720[108], value=0, discard=32)
-  720:[80] VarText(var[56]) -> "Hello world!"[80]
-  723:[96] GenFreeStack(value=16, discard=24)
-  727:[72] AppendText(var[32], v1="Hello world!"[56])
-  730:[56] VarText(var[32]) -> "Hello world!"[56]
-  733:[72] ConstText(_value="Hello world!") -> "Hello world!"[72]
-  747:[88] EqText(v1="Hello world!"[56], v2="Hello world!"[72]) -> true[56]
-  748:[57] GenGotoFalseWord(jump=754, if_false=true[56])
-  751:[56] GenGotoWord(jump=814)
-  814:[56] GenReturn(ret=4294967295[4], value=0, discard=52)
+  677:[112] GenReturn(ret=715[108], value=0, discard=32)
+  715:[80] VarText(var[56]) -> "Hello world!"[80]
+  718:[96] GenFreeStack(value=16, discard=24)
+  722:[72] AppendText(var[32], v1="Hello world!"[56])
+  725:[56] VarText(var[32]) -> "Hello world!"[56]
+  728:[72] ConstText(_value="Hello world!") -> "Hello world!"[72]
+  742:[88] EqText(v1="Hello world!"[56], v2="Hello world!"[72]) -> true[56]
+  743:[57] GenGotoFalseWord(jump=749, if_false=true[56])
+  746:[56] GenGotoWord(jump=809)
+  809:[56] GenReturn(ret=4294967295[4], value=0, discard=52)
 Finished

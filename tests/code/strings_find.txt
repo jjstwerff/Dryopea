@@ -1,4 +1,3 @@
-Test code:
 pub fn test() {
     test_value = {v = "something"; v.find("t" + "h")};
     assert(
@@ -6,88 +5,79 @@ pub fn test() {
         "Test failed {test_value} != 4"
     );
 }
-
-fn test {
+fn test {#1 block
   let __work_2 = "";
-  let __work_3 = "";
-  let test_value = {
+  let __work_1 = "";
+  let test_value = {#2 block
     let v = "something";
-    _tp_text_find(v, {
-      OpClearText(__work_2);
-      OpAppendText(__work_2, "t");
-      OpAppendText(__work_2, "h");
-      __work_2;
-    });
-  };
-  if OpEqInt(test_value, 4i32) {null} else {OpGenPanic({
-    OpClearText(__work_3);
-    OpAppendText(__work_3, "Test failed ");
-    OpFormatInt(__work_3, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_3, " != 4");
-    __work_3;
-  })};
-}
+    _tp_text_find(v, {#3 text argument
+      OpClearText(__work_1);
+      OpAppendText(__work_1, "t");
+      OpAppendText(__work_1, "h");
+      __work_1;
+    }#3);
+  }#2;
+  if OpEqInt(test_value, 4i32) null else OpGenPanic({#4 formatting string
+    OpClearText(__work_2);
+    OpAppendText(__work_2, "Test failed ");
+    OpFormatInt(__work_2, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_2, " != 4");
+    __work_2;
+  }#4);
+}#1
 
 byte-code for find:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: ConstText(_value="") -> text(false)
- 671[44]: AppendText(var[4], v1: text(false))
- 674[28]: Text()
- 675[52]: ConstText(_value="") -> text(false)
- 677[68]: AppendText(var[28], v1: text(false))
- 680[52]: Text()
- 681[76]: ConstText(_value="something") -> text(false)
- 692[92]: AppendText(var[52], v1: text(false))
- 695[76]: VarText(var[52]) -> text(false)
- 698[92]: ClearText(var[4])
- 701[92]: ConstText(_value="t") -> text(false)
- 704[108]: AppendText(var[4], v1: text(false))
- 707[92]: ConstText(_value="h") -> text(false)
- 710[108]: AppendText(var[4], v1: text(false))
- 713[92]: VarText(var[4]) -> text(false)
- 716[108]: StaticCall(_tp_text_find)
- 719[80]: GenFreeStack(value=4, discard=24)
- 723[56]: VarInt(var[52]) -> integer
- 726[60]: ConstInt(val=4) -> integer
- 731[64]: EqInt(v1: integer, v2: integer) -> boolean
- 732[57]: GenGotoFalseWord(jump=738, if_false: boolean)
- 735[56]: GenGotoWord(jump=787)
- 738[56]: ClearText(var[28])
- 741[56]: ConstText(_value="Test failed ") -> text(false)
- 755[72]: AppendText(var[28], v1: text(false))
- 758[56]: VarInt(var[52]) -> integer
- 761[60]: ConstInt(val=0) -> integer
- 766[64]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 773[56]: ConstText(_value=" != 4") -> text(false)
- 780[72]: AppendText(var[28], v1: text(false))
- 783[56]: VarText(var[28]) -> text(false)
- 786[72]: GenPanic(message: text(false))
- 787[56]: GenReturn(ret=0, value=0, discard=56)
+ 669[28]: Text()
+ 670[52]: Text()
+ 671[76]: ConstText(_value="something") -> text(false, [])
+ 682[92]: AppendText(var[52], v1: text(false, []))
+ 685[76]: VarText(var[52]) -> text(false, [])
+ 688[92]: ClearText(var[28])
+ 691[92]: ConstText(_value="t") -> text(false, [])
+ 694[108]: AppendText(var[28], v1: text(false, []))
+ 697[92]: ConstText(_value="h") -> text(false, [])
+ 700[108]: AppendText(var[28], v1: text(false, []))
+ 703[92]: VarText(var[28]) -> text(false, [])
+ 706[108]: StaticCall(_tp_text_find)
+ 709[80]: GenFreeStack(value=4, discard=24)
+ 713[56]: VarInt(var[52]) -> integer
+ 716[60]: ConstInt(val=4) -> integer
+ 721[64]: EqInt(v1: integer, v2: integer) -> boolean
+ 722[57]: GenGotoFalseWord(jump=728, if_false: boolean)
+ 725[56]: GenGotoWord(jump=777)
+ 728[56]: ClearText(var[4])
+ 731[56]: ConstText(_value="Test failed ") -> text(false, [])
+ 745[72]: AppendText(var[4], v1: text(false, []))
+ 748[56]: VarInt(var[52]) -> integer
+ 751[60]: ConstInt(val=0) -> integer
+ 756[64]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 763[56]: ConstText(_value=" != 4") -> text(false, [])
+ 770[72]: AppendText(var[4], v1: text(false, []))
+ 773[56]: VarText(var[4]) -> text(false, [])
+ 776[72]: GenPanic(message: text(false, []))
+ 777[56]: GenReturn(ret=0, value=0, discard=56)
 
 Execute test:
   668:[8] Text()
-  669:[32] ConstText(_value="") -> ""[32]
-  671:[48] AppendText(var[8], v1=""[32])
-  674:[32] Text()
-  675:[56] ConstText(_value="") -> ""[56]
-  677:[72] AppendText(var[32], v1=""[56])
-  680:[56] Text()
-  681:[80] ConstText(_value="something") -> "something"[80]
-  692:[96] AppendText(var[56], v1="something"[80])
-  695:[80] VarText(var[56]) -> "something"[80]
-  698:[96] ClearText(var[8])
-  701:[96] ConstText(_value="t") -> "t"[96]
-  704:[112] AppendText(var[8], v1="t"[96])
-  707:[96] ConstText(_value="h") -> "h"[96]
-  710:[112] AppendText(var[8], v1="h"[96])
-  713:[96] VarText(var[8]) -> "th"[96]
-  716:[112] StaticCall(call=7)
-  719:[84] GenFreeStack(value=4, discard=24)
-  723:[60] VarInt(var[56]) -> 4[60]
-  726:[64] ConstInt(val=4) -> 4[64]
-  731:[68] EqInt(v1=4[60], v2=4[64]) -> true[60]
-  732:[61] GenGotoFalseWord(jump=738, if_false=true[60])
-  735:[60] GenGotoWord(jump=787)
-  787:[60] GenReturn(ret=4294967295[4], value=0, discard=56)
+  669:[32] Text()
+  670:[56] Text()
+  671:[80] ConstText(_value="something") -> "something"[80]
+  682:[96] AppendText(var[56], v1="something"[80])
+  685:[80] VarText(var[56]) -> "something"[80]
+  688:[96] ClearText(var[32])
+  691:[96] ConstText(_value="t") -> "t"[96]
+  694:[112] AppendText(var[32], v1="t"[96])
+  697:[96] ConstText(_value="h") -> "h"[96]
+  700:[112] AppendText(var[32], v1="h"[96])
+  703:[96] VarText(var[32]) -> "th"[96]
+  706:[112] StaticCall(call=7)
+  709:[84] GenFreeStack(value=4, discard=24)
+  713:[60] VarInt(var[56]) -> 4[60]
+  716:[64] ConstInt(val=4) -> 4[64]
+  721:[68] EqInt(v1=4[60], v2=4[64]) -> true[60]
+  722:[61] GenGotoFalseWord(jump=728, if_false=true[60])
+  725:[60] GenGotoWord(jump=777)
+  777:[60] GenReturn(ret=4294967295[4], value=0, discard=56)
 Finished

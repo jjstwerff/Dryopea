@@ -1,62 +1,37 @@
 // Copyright (c) 2024 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #![allow(clippy::cast_possible_truncation)]
-use crate::data::{Context, Data, Definition, Type, Value};
-use crate::keys::DbRef;
-use crate::state::State;
 
-/**
-    Calculate the space needed for data.
-    This can depend on the context (on stack for an Argument or in code for a Constant)
-*/
-#[allow(clippy::needless_pass_by_value)]
-pub fn size(tp: &Type, context: Context) -> u16 {
-    match tp {
-        Type::Integer(min, max)
-            if context == Context::Constant && i64::from(*max) - i64::from(*min) <= 256 =>
-        {
-            1
-        }
-        Type::Integer(min, max)
-            if context == Context::Constant && i64::from(*max) - i64::from(*min) <= 65536 =>
-        {
-            2
-        }
-        Type::Boolean | Type::Enum(_) => 1,
-        Type::Integer(_, _) | Type::Single | Type::Function(_, _) => 4,
-        Type::Long | Type::Float => 8,
-        Type::Text(_) if context == Context::Variable => size_of::<String>() as u16,
-        Type::Text(_) => size_of::<&str>() as u16,
-        Type::RefVar(_) | Type::Reference(_) | Type::Vector(_) => size_of::<DbRef>() as u16,
-        _ => 0,
-    }
-}
+use crate::data::{Context, Data, Value};
+use crate::state::State;
+use crate::variables;
+use crate::variables::Function;
+use std::collections::BTreeMap;
 
 /// Stack information on variable positions and scopes to generate byte-code.
 #[allow(dead_code)]
 pub struct Stack<'a> {
-    /// Stack position of the various used variables and parameters.
-    variables: Vec<u16>,
-    /// Current stack position related to the current variables & expression.
     pub position: u16,
     pub data: &'a Data,
+    pub function: Function,
     pub def_nr: u32,
-    pub scope: u8,
     pub logging: bool,
     /// Current loops (start-position, stack-position, break-positions)
     loops: Vec<(u32, u16, Vec<u32>)>,
+    /// All variables in their parent scope
+    scopes: BTreeMap<u16, Vec<u16>>,
 }
 
 impl<'a> Stack<'a> {
-    pub fn new(data: &'a Data, def_nr: u32, logging: bool) -> Stack<'a> {
+    pub fn new(function: Function, data: &'a mut Data, def_nr: u32, logging: bool) -> Stack<'a> {
         Stack {
-            variables: Vec::new(),
             position: 0,
             data,
             def_nr,
-            scope: 0,
             logging,
             loops: Vec::new(),
+            scopes: function.gather_scopes(),
+            function,
         }
     }
 
@@ -73,38 +48,14 @@ impl<'a> Stack<'a> {
                     self.size_code(lp.last().unwrap())
                 }
             }
-            Value::Call(d_nr, _) => size(&self.data.def(*d_nr).returned, Context::Argument),
+            Value::Call(d_nr, _) => {
+                variables::size(&self.data.def(*d_nr).returned, &Context::Argument)
+            }
             Value::If(_, true_val, _) => self.size_code(true_val),
             Value::Text(_) => size_of::<&str>() as u16,
-            Value::Var(v) => size(
-                &self.data.def(self.def_nr).variables[*v as usize].var_type,
-                Context::Argument,
-            ),
+            Value::Var(v) => variables::size(self.function.tp(*v), &Context::Argument),
             _ => 0,
         }
-    }
-
-    pub fn start(&mut self, var: u32) {
-        assert!(
-            var < self.data.def(self.def_nr).variables.len() as u32,
-            "Variable {var} doesn't exist in {}",
-            self.data.def(self.def_nr).name
-        );
-        while self.variables.len() <= var as usize {
-            self.variables.push(0);
-        }
-        assert_eq!(
-            self.variables[var as usize],
-            0,
-            "Variable {} was not freed properly in {}",
-            self.data.def(self.def_nr).variables[var as usize].name,
-            self.data.def(self.def_nr).name
-        );
-        self.variables[var as usize] = self.position;
-    }
-
-    pub fn claim(&mut self, tp: &Type, context: Context) {
-        self.position += size(tp, context);
     }
 
     pub fn operator(&mut self, d_nr: u32) {
@@ -112,10 +63,10 @@ impl<'a> Stack<'a> {
         let mut parameters = 0;
         for p in &d.attributes {
             if p.mutable {
-                parameters += size(&p.typedef, Context::Argument);
+                parameters += variables::size(&p.typedef, &Context::Argument);
             }
         }
-        let ret = size(&d.returned, Context::Argument);
+        let ret = variables::size(&d.returned, &Context::Argument);
         assert!(
             self.position >= parameters,
             "Incorrect stack {} versus {parameters} in {} operator {d_nr}:{}",
@@ -127,43 +78,12 @@ impl<'a> Stack<'a> {
         self.position += ret;
     }
 
-    pub fn var_type(&self, var_nr: u32) -> &Type {
-        assert!(
-            var_nr < self.data.def(self.def_nr).variables.len() as u32,
-            "Variable {var_nr} doesn't exist in {}",
-            self.data.def(self.def_nr).name
-        );
-        &self.data.def(self.def_nr).variables[var_nr as usize].var_type
-    }
-
-    pub fn free(&mut self, to: u32) {
-        for p in 0..self.variables.len() {
-            if u32::from(self.variables[p]) >= to {
-                self.variables[p] = 0;
-            }
-        }
-    }
-
-    pub fn position(&self, var: u32) -> u16 {
-        assert!(
-            var < self.variables.len() as u32,
-            "Variable {} doesn't exist in {}",
-            self.data.def(self.def_nr).variables[var as usize].name,
-            self.data.def(self.def_nr).name
-        );
-        self.variables[var as usize]
-    }
-
     pub fn add_op(&mut self, name: &str, state: &mut State) {
         let op_nr = self.data.def_nr(name);
         assert_ne!(op_nr, u32::MAX, "Unknown operator {name}");
         state.remember_stack(self.position);
         state.code_add(self.data.def(op_nr).op_code);
         self.operator(op_nr);
-    }
-
-    pub fn def(&self) -> &Definition {
-        self.data.def(self.def_nr)
     }
 
     pub fn add_loop(&mut self, code_pos: u32) {
