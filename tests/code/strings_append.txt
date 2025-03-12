@@ -1,4 +1,3 @@
-Test code:
 pub fn test() {
     test_value = {a="♥😃" + "1" + "2"; a};
     assert(
@@ -6,81 +5,72 @@ pub fn test() {
         "Test failed {test_value} != \"♥😃12\""
     );
 }
-
-fn test {
-  let __work_2 = "";
-  let test_value = {
+fn test {#1 block
+  let __work_1 = "";
+  let test_value = {#2 block
     let a = "";
     OpAppendText(a, "♥😃");
     OpAppendText(a, "1");
     OpAppendText(a, "2");
     a;
-  };
-  if OpEqText(test_value, "♥😃12") {null} else {OpGenPanic({
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
-    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_2, " != "♥😃12"");
-    __work_2;
-  })};
-}
+  }#2;
+  if OpEqText(test_value, "♥😃12") null else OpGenPanic({#3 formatting string
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_1, " != "♥😃12"");
+    __work_1;
+  }#3);
+}#1
 
 byte-code for append:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: ConstText(_value="") -> text(false)
- 671[44]: AppendText(var[4], v1: text(false))
- 674[28]: Text()
- 675[52]: Text()
- 676[76]: ConstText(_value="") -> text(false)
- 678[92]: AppendText(var[52], v1: text(false))
- 681[76]: ConstText(_value="♥😃") -> text(false)
- 690[92]: AppendText(var[52], v1: text(false))
- 693[76]: ConstText(_value="1") -> text(false)
- 696[92]: AppendText(var[52], v1: text(false))
- 699[76]: ConstText(_value="2") -> text(false)
- 702[92]: AppendText(var[52], v1: text(false))
- 705[76]: VarText(var[52]) -> text(false)
- 708[92]: GenFreeStack(value=16, discard=24)
- 712[68]: AppendText(var[28], v1: text(false))
- 715[52]: VarText(var[28]) -> text(false)
- 718[68]: ConstText(_value="♥😃12") -> text(false)
- 729[84]: EqText(v1: text(false), v2: text(false)) -> boolean
- 730[53]: GenGotoFalseWord(jump=736, if_false: boolean)
- 733[52]: GenGotoWord(jump=793)
- 736[52]: ClearText(var[4])
- 739[52]: ConstText(_value="Test failed ") -> text(false)
- 753[68]: AppendText(var[4], v1: text(false))
- 756[52]: VarText(var[28]) -> text(false)
- 759[68]: ConstInt(val=0) -> integer
- 764[72]: FormatText(var[4], val: text(false), width: integer, dir=-1, token=32)
- 769[52]: ConstText(_value=" != "♥😃12"") -> text(false)
- 786[68]: AppendText(var[4], v1: text(false))
- 789[52]: VarText(var[4]) -> text(false)
- 792[68]: GenPanic(message: text(false))
- 793[52]: GenReturn(ret=0, value=0, discard=52)
+ 669[28]: Text()
+ 670[52]: Text()
+ 671[76]: ConstText(_value="♥😃") -> text(false, [])
+ 680[92]: AppendText(var[52], v1: text(false, []))
+ 683[76]: ConstText(_value="1") -> text(false, [])
+ 686[92]: AppendText(var[52], v1: text(false, []))
+ 689[76]: ConstText(_value="2") -> text(false, [])
+ 692[92]: AppendText(var[52], v1: text(false, []))
+ 695[76]: VarText(var[52]) -> text(false, [])
+ 698[92]: GenFreeStack(value=16, discard=24)
+ 702[68]: AppendText(var[28], v1: text(false, []))
+ 705[52]: VarText(var[28]) -> text(false, [])
+ 708[68]: ConstText(_value="♥😃12") -> text(false, [])
+ 719[84]: EqText(v1: text(false, []), v2: text(false, [])) -> boolean
+ 720[53]: GenGotoFalseWord(jump=726, if_false: boolean)
+ 723[52]: GenGotoWord(jump=783)
+ 726[52]: ClearText(var[4])
+ 729[52]: ConstText(_value="Test failed ") -> text(false, [])
+ 743[68]: AppendText(var[4], v1: text(false, []))
+ 746[52]: VarText(var[28]) -> text(false, [])
+ 749[68]: ConstInt(val=0) -> integer
+ 754[72]: FormatText(var[4], val: text(false, []), width: integer, dir=-1, token=32)
+ 759[52]: ConstText(_value=" != "♥😃12"") -> text(false, [])
+ 776[68]: AppendText(var[4], v1: text(false, []))
+ 779[52]: VarText(var[4]) -> text(false, [])
+ 782[68]: GenPanic(message: text(false, []))
+ 783[52]: GenReturn(ret=0, value=0, discard=52)
 
 Execute test:
   668:[8] Text()
-  669:[32] ConstText(_value="") -> ""[32]
-  671:[48] AppendText(var[8], v1=""[32])
-  674:[32] Text()
-  675:[56] Text()
-  676:[80] ConstText(_value="") -> ""[80]
-  678:[96] AppendText(var[56], v1=""[80])
-  681:[80] ConstText(_value="♥😃") -> "♥😃"[80]
-  690:[96] AppendText(var[56], v1="♥😃"[80])
-  693:[80] ConstText(_value="1") -> "1"[80]
-  696:[96] AppendText(var[56], v1="1"[80])
-  699:[80] ConstText(_value="2") -> "2"[80]
-  702:[96] AppendText(var[56], v1="2"[80])
-  705:[80] VarText(var[56]) -> "♥😃12"[80]
-  708:[96] GenFreeStack(value=16, discard=24)
-  712:[72] AppendText(var[32], v1="♥😃12"[56])
-  715:[56] VarText(var[32]) -> "♥😃12"[56]
-  718:[72] ConstText(_value="♥😃12") -> "♥😃12"[72]
-  729:[88] EqText(v1="♥😃12"[56], v2="♥😃12"[72]) -> true[56]
-  730:[57] GenGotoFalseWord(jump=736, if_false=true[56])
-  733:[56] GenGotoWord(jump=793)
-  793:[56] GenReturn(ret=4294967295[4], value=0, discard=52)
+  669:[32] Text()
+  670:[56] Text()
+  671:[80] ConstText(_value="♥😃") -> "♥😃"[80]
+  680:[96] AppendText(var[56], v1="♥😃"[80])
+  683:[80] ConstText(_value="1") -> "1"[80]
+  686:[96] AppendText(var[56], v1="1"[80])
+  689:[80] ConstText(_value="2") -> "2"[80]
+  692:[96] AppendText(var[56], v1="2"[80])
+  695:[80] VarText(var[56]) -> "♥😃12"[80]
+  698:[96] GenFreeStack(value=16, discard=24)
+  702:[72] AppendText(var[32], v1="♥😃12"[56])
+  705:[56] VarText(var[32]) -> "♥😃12"[56]
+  708:[72] ConstText(_value="♥😃12") -> "♥😃12"[72]
+  719:[88] EqText(v1="♥😃12"[56], v2="♥😃12"[72]) -> true[56]
+  720:[57] GenGotoFalseWord(jump=726, if_false=true[56])
+  723:[56] GenGotoWord(jump=783)
+  783:[56] GenReturn(ret=4294967295[4], value=0, discard=52)
 Finished

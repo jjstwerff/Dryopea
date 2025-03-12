@@ -1,4 +1,3 @@
-Test code:
 pub fn test() {
     test_value = {"a{1l+1:+4}b{12l as integer}c {2l * (4l % 6l) >= 8} d"};
     assert(
@@ -6,12 +5,11 @@ pub fn test() {
         "Test failed {test_value} != \"a  +2b12c true d\""
     );
 }
-
-fn test {
-  let __work_1 = "";
+fn test {#1 block
   let __work_2 = "";
-  let test_value = {
-    {
+  let __work_1 = "";
+  let test_value = {#2 block
+    {#3 formatting string
       OpClearText(__work_1);
       OpAppendText(__work_1, "a");
       OpFormatLong(__work_1, OpAddLong(1i64, OpConvLongFromInt(1i32)), 10i32, 4i32, 32i32, true, false);
@@ -21,117 +19,109 @@ fn test {
       OpFormatBool(__work_1, OpGeLong(OpMulLong(2i64, OpRemLong(4i64, 6i64)), OpConvLongFromInt(8i32)), 0i32, -1i32, 32i32);
       OpAppendText(__work_1, " d");
       __work_1;
-    };
-  };
-  if OpEqText(test_value, "a  +2b12c true d") {null} else {OpGenPanic({
+    }#3;
+  }#2;
+  if OpEqText(test_value, "a  +2b12c true d") null else OpGenPanic({#4 formatting string
     OpClearText(__work_2);
     OpAppendText(__work_2, "Test failed ");
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "a  +2b12c true d"");
     __work_2;
-  })};
-}
+  }#4);
+}#1
 
 byte-code for format_long:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: ConstText(_value="") -> text(false)
- 671[44]: AppendText(var[4], v1: text(false))
- 674[28]: Text()
- 675[52]: ConstText(_value="") -> text(false)
- 677[68]: AppendText(var[28], v1: text(false))
- 680[52]: Text()
- 681[76]: ClearText(var[4])
- 684[76]: ConstText(_value="a") -> text(false)
- 687[92]: AppendText(var[4], v1: text(false))
- 690[76]: ConstLong(val=1) -> long
- 699[84]: ConstInt(val=1) -> integer
- 704[88]: ConvLongFromInt(v1: integer) -> long
- 705[92]: AddLong(v1: long, v2: long) -> long
- 706[84]: ConstInt(val=4) -> integer
- 711[88]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=true, note=false)
- 718[76]: ConstText(_value="b") -> text(false)
- 721[92]: AppendText(var[4], v1: text(false))
- 724[76]: ConstLong(val=12) -> long
- 733[84]: CastIntFromLong(v1: long) -> integer
- 734[80]: ConstInt(val=0) -> integer
- 739[84]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 746[76]: ConstText(_value="c ") -> text(false)
- 750[92]: AppendText(var[4], v1: text(false))
- 753[76]: ConstLong(val=2) -> long
- 762[84]: ConstLong(val=4) -> long
- 771[92]: ConstLong(val=6) -> long
- 780[100]: RemLong(v1: long, v2: long) -> long
- 781[92]: MulLong(v1: long, v2: long) -> long
- 782[84]: ConstInt(val=8) -> integer
- 787[88]: ConvLongFromInt(v1: integer) -> long
- 788[92]: GeLong(v1: long, v2: long) -> boolean
- 789[77]: ConstInt(val=0) -> integer
- 794[81]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
- 799[76]: ConstText(_value=" d") -> text(false)
- 803[92]: AppendText(var[4], v1: text(false))
- 806[76]: VarText(var[4]) -> text(false)
- 809[92]: AppendText(var[52], v1: text(false))
- 812[76]: VarText(var[52]) -> text(false)
- 815[92]: ConstText(_value="a  +2b12c true d") -> text(false)
- 833[108]: EqText(v1: text(false), v2: text(false)) -> boolean
- 834[77]: GenGotoFalseWord(jump=840, if_false: boolean)
- 837[76]: GenGotoWord(jump=904)
- 840[76]: ClearText(var[28])
- 843[76]: ConstText(_value="Test failed ") -> text(false)
- 857[92]: AppendText(var[28], v1: text(false))
- 860[76]: VarText(var[52]) -> text(false)
- 863[92]: ConstInt(val=0) -> integer
- 868[96]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
- 873[76]: ConstText(_value=" != "a  +2b12c true d"") -> text(false)
- 897[92]: AppendText(var[28], v1: text(false))
- 900[76]: VarText(var[28]) -> text(false)
- 903[92]: GenPanic(message: text(false))
- 904[76]: GenReturn(ret=0, value=0, discard=76)
+ 669[28]: Text()
+ 670[52]: Text()
+ 671[76]: ClearText(var[28])
+ 674[76]: ConstText(_value="a") -> text(false, [])
+ 677[92]: AppendText(var[28], v1: text(false, []))
+ 680[76]: ConstLong(val=1) -> long
+ 689[84]: ConstInt(val=1) -> integer
+ 694[88]: ConvLongFromInt(v1: integer) -> long
+ 695[92]: AddLong(v1: long, v2: long) -> long
+ 696[84]: ConstInt(val=4) -> integer
+ 701[88]: FormatLong(var[28], val: long, radix=10, width: integer, token=32, plus=true, note=false)
+ 708[76]: ConstText(_value="b") -> text(false, [])
+ 711[92]: AppendText(var[28], v1: text(false, []))
+ 714[76]: ConstLong(val=12) -> long
+ 723[84]: CastIntFromLong(v1: long) -> integer
+ 724[80]: ConstInt(val=0) -> integer
+ 729[84]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 736[76]: ConstText(_value="c ") -> text(false, [])
+ 740[92]: AppendText(var[28], v1: text(false, []))
+ 743[76]: ConstLong(val=2) -> long
+ 752[84]: ConstLong(val=4) -> long
+ 761[92]: ConstLong(val=6) -> long
+ 770[100]: RemLong(v1: long, v2: long) -> long
+ 771[92]: MulLong(v1: long, v2: long) -> long
+ 772[84]: ConstInt(val=8) -> integer
+ 777[88]: ConvLongFromInt(v1: integer) -> long
+ 778[92]: GeLong(v1: long, v2: long) -> boolean
+ 779[77]: ConstInt(val=0) -> integer
+ 784[81]: FormatBool(var[28], val: boolean, width: integer, dir=-1, token=32)
+ 789[76]: ConstText(_value=" d") -> text(false, [])
+ 793[92]: AppendText(var[28], v1: text(false, []))
+ 796[76]: VarText(var[28]) -> text(false, [])
+ 799[92]: AppendText(var[52], v1: text(false, []))
+ 802[76]: VarText(var[52]) -> text(false, [])
+ 805[92]: ConstText(_value="a  +2b12c true d") -> text(false, [])
+ 823[108]: EqText(v1: text(false, []), v2: text(false, [])) -> boolean
+ 824[77]: GenGotoFalseWord(jump=830, if_false: boolean)
+ 827[76]: GenGotoWord(jump=894)
+ 830[76]: ClearText(var[4])
+ 833[76]: ConstText(_value="Test failed ") -> text(false, [])
+ 847[92]: AppendText(var[4], v1: text(false, []))
+ 850[76]: VarText(var[52]) -> text(false, [])
+ 853[92]: ConstInt(val=0) -> integer
+ 858[96]: FormatText(var[4], val: text(false, []), width: integer, dir=-1, token=32)
+ 863[76]: ConstText(_value=" != "a  +2b12c true d"") -> text(false, [])
+ 887[92]: AppendText(var[4], v1: text(false, []))
+ 890[76]: VarText(var[4]) -> text(false, [])
+ 893[92]: GenPanic(message: text(false, []))
+ 894[76]: GenReturn(ret=0, value=0, discard=76)
 
 Execute test:
   668:[8] Text()
-  669:[32] ConstText(_value="") -> ""[32]
-  671:[48] AppendText(var[8], v1=""[32])
-  674:[32] Text()
-  675:[56] ConstText(_value="") -> ""[56]
-  677:[72] AppendText(var[32], v1=""[56])
-  680:[56] Text()
-  681:[80] ClearText(var[8])
-  684:[80] ConstText(_value="a") -> "a"[80]
-  687:[96] AppendText(var[8], v1="a"[80])
-  690:[80] ConstLong(val=1) -> 1[80]
-  699:[88] ConstInt(val=1) -> 1[88]
-  704:[92] ConvLongFromInt(v1=1[88]) -> 1[88]
-  705:[96] AddLong(v1=1[80], v2=1[88]) -> 2[80]
-  706:[88] ConstInt(val=4) -> 4[88]
-  711:[92] FormatLong(var[8], val=2[80], radix=10, width=4[88], token=32, plus=true, note=false)
-  718:[80] ConstText(_value="b") -> "b"[80]
-  721:[96] AppendText(var[8], v1="b"[80])
-  724:[80] ConstLong(val=12) -> 12[80]
-  733:[88] CastIntFromLong(v1=12[80]) -> 12[80]
-  734:[84] ConstInt(val=0) -> 0[84]
-  739:[88] FormatInt(var[8], val=12[80], radix=10, width=0[84], token=32, plus=false, note=false)
-  746:[80] ConstText(_value="c ") -> "c "[80]
-  750:[96] AppendText(var[8], v1="c "[80])
-  753:[80] ConstLong(val=2) -> 2[80]
-  762:[88] ConstLong(val=4) -> 4[88]
-  771:[96] ConstLong(val=6) -> 6[96]
-  780:[104] RemLong(v1=4[88], v2=6[96]) -> 4[88]
-  781:[96] MulLong(v1=2[80], v2=4[88]) -> 8[80]
-  782:[88] ConstInt(val=8) -> 8[88]
-  787:[92] ConvLongFromInt(v1=8[88]) -> 8[88]
-  788:[96] GeLong(v1=8[80], v2=8[88]) -> true[80]
-  789:[81] ConstInt(val=0) -> 0[81]
-  794:[85] FormatBool(var[8], val=true[80], width=0[81], dir=-1, token=32)
-  799:[80] ConstText(_value=" d") -> " d"[80]
-  803:[96] AppendText(var[8], v1=" d"[80])
-  806:[80] VarText(var[8]) -> "a  +2b12c true d"[80]
-  809:[96] AppendText(var[56], v1="a  +2b12c true d"[80])
-  812:[80] VarText(var[56]) -> "a  +2b12c true d"[80]
-  815:[96] ConstText(_value="a  +2b12c true d") -> "a  +2b12c true d"[96]
-  833:[112] EqText(v1="a  +2b12c true d"[80], v2="a  +2b12c true d"[96]) -> true[80]
-  834:[81] GenGotoFalseWord(jump=840, if_false=true[80])
-  837:[80] GenGotoWord(jump=904)
-  904:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
+  669:[32] Text()
+  670:[56] Text()
+  671:[80] ClearText(var[32])
+  674:[80] ConstText(_value="a") -> "a"[80]
+  677:[96] AppendText(var[32], v1="a"[80])
+  680:[80] ConstLong(val=1) -> 1[80]
+  689:[88] ConstInt(val=1) -> 1[88]
+  694:[92] ConvLongFromInt(v1=1[88]) -> 1[88]
+  695:[96] AddLong(v1=1[80], v2=1[88]) -> 2[80]
+  696:[88] ConstInt(val=4) -> 4[88]
+  701:[92] FormatLong(var[32], val=2[80], radix=10, width=4[88], token=32, plus=true, note=false)
+  708:[80] ConstText(_value="b") -> "b"[80]
+  711:[96] AppendText(var[32], v1="b"[80])
+  714:[80] ConstLong(val=12) -> 12[80]
+  723:[88] CastIntFromLong(v1=12[80]) -> 12[80]
+  724:[84] ConstInt(val=0) -> 0[84]
+  729:[88] FormatInt(var[32], val=12[80], radix=10, width=0[84], token=32, plus=false, note=false)
+  736:[80] ConstText(_value="c ") -> "c "[80]
+  740:[96] AppendText(var[32], v1="c "[80])
+  743:[80] ConstLong(val=2) -> 2[80]
+  752:[88] ConstLong(val=4) -> 4[88]
+  761:[96] ConstLong(val=6) -> 6[96]
+  770:[104] RemLong(v1=4[88], v2=6[96]) -> 4[88]
+  771:[96] MulLong(v1=2[80], v2=4[88]) -> 8[80]
+  772:[88] ConstInt(val=8) -> 8[88]
+  777:[92] ConvLongFromInt(v1=8[88]) -> 8[88]
+  778:[96] GeLong(v1=8[80], v2=8[88]) -> true[80]
+  779:[81] ConstInt(val=0) -> 0[81]
+  784:[85] FormatBool(var[32], val=true[80], width=0[81], dir=-1, token=32)
+  789:[80] ConstText(_value=" d") -> " d"[80]
+  793:[96] AppendText(var[32], v1=" d"[80])
+  796:[80] VarText(var[32]) -> "a  +2b12c true d"[80]
+  799:[96] AppendText(var[56], v1="a  +2b12c true d"[80])
+  802:[80] VarText(var[56]) -> "a  +2b12c true d"[80]
+  805:[96] ConstText(_value="a  +2b12c true d") -> "a  +2b12c true d"[96]
+  823:[112] EqText(v1="a  +2b12c true d"[80], v2="a  +2b12c true d"[96]) -> true[80]
+  824:[81] GenGotoFalseWord(jump=830, if_false=true[80])
+  827:[80] GenGotoWord(jump=894)
+  894:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
 Finished

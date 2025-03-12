@@ -64,7 +64,7 @@ pub fn init(state: &mut State) {{
         }
         writeln!(into, "\nfn {n}(stores: &mut Stores, stack: &mut DbRef) {{")?;
         for a in data.def(d_nr).attributes.iter().rev() {
-            let tp = Data::rust_type(&a.typedef, Context::Argument);
+            let tp = data.rust_type(&a.typedef, &Context::Argument);
             writeln!(into, "    let v_{} = *stores.get::<{tp}>(stack);", a.name)?;
         }
         let mut res = data.def(d_nr).rust.clone();
@@ -85,7 +85,7 @@ fn replace_attributes(data: &Data, d_nr: u32, res: &mut String) {
         let name = "@".to_string() + &data.attr_name(d_nr, a_nr);
         let mut repl = "v_".to_string();
         repl += &data.attr_name(d_nr, a_nr);
-        if matches!(data.attr_type(d_nr, a_nr), Type::Text(_)) {
+        if matches!(data.attr_type(d_nr, a_nr), Type::Text(_, _)) {
             repl += ".str()";
         }
         *res = res.replace(&name, &repl);
@@ -129,7 +129,7 @@ pub const OPERATORS: &[fn(&mut State)] = &["
             if a.name.starts_with('_') || res.is_empty() {
                 continue;
             }
-            let tp = Data::rust_type(&a.typedef, Context::Argument);
+            let tp = data.rust_type(&a.typedef, &Context::Argument);
             if !a.mutable {
                 writeln!(into, "    let v_{} = *s.code::<{tp}>();", a.name)?;
             }
@@ -138,9 +138,9 @@ pub const OPERATORS: &[fn(&mut State)] = &["
             if a.name.starts_with('_') || res.is_empty() {
                 continue;
             }
-            let tp = Data::rust_type(&a.typedef, Context::Argument);
+            let tp = data.rust_type(&a.typedef, &Context::Argument);
             if a.mutable {
-                if matches!(a.typedef, Type::Text(_)) {
+                if matches!(a.typedef, Type::Text(_, _)) {
                     writeln!(into, "    let v_{} = s.string();", a.name)?;
                 } else {
                     writeln!(into, "    let v_{} = *s.get_stack::<{tp}>();", a.name)?;
@@ -153,7 +153,7 @@ pub const OPERATORS: &[fn(&mut State)] = &["
         if res.is_empty() {
             writeln!(into, "    s.{name}();")?;
         } else if *returned == Type::Void
-            || (matches!(*returned, Type::Text(_)) && data.def(d_nr).name.starts_with("OpConst"))
+            || (matches!(*returned, Type::Text(_, _)) && data.def(d_nr).name.starts_with("OpConst"))
         {
             writeln!(into, "    {res}")?;
         } else {

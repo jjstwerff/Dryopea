@@ -13,6 +13,8 @@ mod hash;
 mod interpreter;
 mod keys;
 mod lexer;
+mod variables;
+
 mod logger;
 mod parser;
 mod png_store;
@@ -22,7 +24,6 @@ mod store;
 mod text;
 mod tree;
 mod typedef;
-mod types;
 mod vector;
 use crate::state::State;
 use clap::Parser;
@@ -45,6 +46,6 @@ fn main() -> std::io::Result<()> {
     p.parse_dir("default", true)?;
     p.parse_dir(cli.dir.to_str().unwrap(), false)?;
     let mut state = State::new(p.database);
-    interpreter::byte_code(&mut p.data, &mut w, &mut state)?;
+    interpreter::byte_code(&mut w, &mut state, &mut p.data)?;
     state.execute_log(&mut w, "test", &p.data)
 }

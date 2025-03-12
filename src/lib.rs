@@ -7,7 +7,7 @@ pub mod diagnostics;
 pub mod data;
 mod lexer;
 pub mod text;
-mod types;
+mod variables;
 
 mod calc;
 pub mod database;

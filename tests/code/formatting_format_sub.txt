@@ -1,4 +1,3 @@
-Test code:
 pub fn test() {
     test_value = {txt="12😊🙃45"; "a{txt[2..-1]}b"};
     assert(
@@ -6,103 +5,94 @@ pub fn test() {
         "Test failed {test_value} != \"a😊🙃4b\""
     );
 }
-
-fn test {
-  let __work_3 = "";
-  let __work_4 = "";
-  let test_value = {
+fn test {#1 block
+  let __work_2 = "";
+  let __work_1 = "";
+  let test_value = {#2 block
     let txt = "12😊🙃45";
-    {
-      OpClearText(__work_3);
-      OpAppendText(__work_3, "a");
-      OpFormatText(__work_3, OpGetTextSub(txt, 2i32, OpMinSingleInt(1i32)), 0i32, -1i32, 32i32);
-      OpAppendText(__work_3, "b");
-      __work_3;
-    };
-  };
-  if OpEqText(test_value, "a😊🙃4b") {null} else {OpGenPanic({
-    OpClearText(__work_4);
-    OpAppendText(__work_4, "Test failed ");
-    OpFormatText(__work_4, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_4, " != "a😊🙃4b"");
-    __work_4;
-  })};
-}
+    {#3 formatting string
+      OpClearText(__work_1);
+      OpAppendText(__work_1, "a");
+      OpFormatText(__work_1, OpGetTextSub(txt, 2i32, OpMinSingleInt(1i32)), 0i32, -1i32, 32i32);
+      OpAppendText(__work_1, "b");
+      __work_1;
+    }#3;
+  }#2;
+  if OpEqText(test_value, "a😊🙃4b") null else OpGenPanic({#4 formatting string
+    OpClearText(__work_2);
+    OpAppendText(__work_2, "Test failed ");
+    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_2, " != "a😊🙃4b"");
+    __work_2;
+  }#4);
+}#1
 
 byte-code for format_sub:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: ConstText(_value="") -> text(false)
- 671[44]: AppendText(var[4], v1: text(false))
- 674[28]: Text()
- 675[52]: ConstText(_value="") -> text(false)
- 677[68]: AppendText(var[28], v1: text(false))
- 680[52]: Text()
- 681[76]: Text()
- 682[100]: ConstText(_value="12😊🙃45") -> text(false)
- 696[116]: AppendText(var[76], v1: text(false))
- 699[100]: ClearText(var[4])
- 702[100]: ConstText(_value="a") -> text(false)
- 705[116]: AppendText(var[4], v1: text(false))
- 708[100]: VarText(var[76]) -> text(false)
- 711[116]: ConstInt(val=2) -> integer
- 716[120]: ConstInt(val=1) -> integer
- 721[124]: MinSingleInt(v1: integer) -> integer
- 722[124]: GetTextSub(v1: text(false), from: integer, till: integer) -> text(false)
- 723[116]: ConstInt(val=0) -> integer
- 728[120]: FormatText(var[4], val: text(false), width: integer, dir=-1, token=32)
- 733[100]: ConstText(_value="b") -> text(false)
- 736[116]: AppendText(var[4], v1: text(false))
- 739[100]: VarText(var[4]) -> text(false)
- 742[116]: GenFreeStack(value=16, discard=24)
- 746[92]: AppendText(var[52], v1: text(false))
- 749[76]: VarText(var[52]) -> text(false)
- 752[92]: ConstText(_value="a😊🙃4b") -> text(false)
- 765[108]: EqText(v1: text(false), v2: text(false)) -> boolean
- 766[77]: GenGotoFalseWord(jump=772, if_false: boolean)
- 769[76]: GenGotoWord(jump=831)
- 772[76]: ClearText(var[28])
- 775[76]: ConstText(_value="Test failed ") -> text(false)
- 789[92]: AppendText(var[28], v1: text(false))
- 792[76]: VarText(var[52]) -> text(false)
- 795[92]: ConstInt(val=0) -> integer
- 800[96]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
- 805[76]: ConstText(_value=" != "a😊🙃4b"") -> text(false)
- 824[92]: AppendText(var[28], v1: text(false))
- 827[76]: VarText(var[28]) -> text(false)
- 830[92]: GenPanic(message: text(false))
- 831[76]: GenReturn(ret=0, value=0, discard=76)
+ 669[28]: Text()
+ 670[52]: Text()
+ 671[76]: Text()
+ 672[100]: ConstText(_value="12😊🙃45") -> text(false, [])
+ 686[116]: AppendText(var[76], v1: text(false, []))
+ 689[100]: ClearText(var[28])
+ 692[100]: ConstText(_value="a") -> text(false, [])
+ 695[116]: AppendText(var[28], v1: text(false, []))
+ 698[100]: VarText(var[76]) -> text(false, [])
+ 701[116]: ConstInt(val=2) -> integer
+ 706[120]: ConstInt(val=1) -> integer
+ 711[124]: MinSingleInt(v1: integer) -> integer
+ 712[124]: GetTextSub(v1: text(false, []), from: integer, till: integer) -> text(false, [])
+ 713[116]: ConstInt(val=0) -> integer
+ 718[120]: FormatText(var[28], val: text(false, []), width: integer, dir=-1, token=32)
+ 723[100]: ConstText(_value="b") -> text(false, [])
+ 726[116]: AppendText(var[28], v1: text(false, []))
+ 729[100]: VarText(var[28]) -> text(false, [])
+ 732[116]: GenFreeStack(value=16, discard=24)
+ 736[92]: AppendText(var[52], v1: text(false, []))
+ 739[76]: VarText(var[52]) -> text(false, [])
+ 742[92]: ConstText(_value="a😊🙃4b") -> text(false, [])
+ 755[108]: EqText(v1: text(false, []), v2: text(false, [])) -> boolean
+ 756[77]: GenGotoFalseWord(jump=762, if_false: boolean)
+ 759[76]: GenGotoWord(jump=821)
+ 762[76]: ClearText(var[4])
+ 765[76]: ConstText(_value="Test failed ") -> text(false, [])
+ 779[92]: AppendText(var[4], v1: text(false, []))
+ 782[76]: VarText(var[52]) -> text(false, [])
+ 785[92]: ConstInt(val=0) -> integer
+ 790[96]: FormatText(var[4], val: text(false, []), width: integer, dir=-1, token=32)
+ 795[76]: ConstText(_value=" != "a😊🙃4b"") -> text(false, [])
+ 814[92]: AppendText(var[4], v1: text(false, []))
+ 817[76]: VarText(var[4]) -> text(false, [])
+ 820[92]: GenPanic(message: text(false, []))
+ 821[76]: GenReturn(ret=0, value=0, discard=76)
 
 Execute test:
   668:[8] Text()
-  669:[32] ConstText(_value="") -> ""[32]
-  671:[48] AppendText(var[8], v1=""[32])
-  674:[32] Text()
-  675:[56] ConstText(_value="") -> ""[56]
-  677:[72] AppendText(var[32], v1=""[56])
-  680:[56] Text()
-  681:[80] Text()
-  682:[104] ConstText(_value="12😊🙃45") -> "12😊🙃45"[104]
-  696:[120] AppendText(var[80], v1="12😊🙃45"[104])
-  699:[104] ClearText(var[8])
-  702:[104] ConstText(_value="a") -> "a"[104]
-  705:[120] AppendText(var[8], v1="a"[104])
-  708:[104] VarText(var[80]) -> "12😊🙃45"[104]
-  711:[120] ConstInt(val=2) -> 2[120]
-  716:[124] ConstInt(val=1) -> 1[124]
-  721:[128] MinSingleInt(v1=1[124]) -> -1[124]
-  722:[128] GetTextSub(v1="12😊🙃45"[104], from=2[120], till=-1[124]) -> "😊🙃4"[104]
-  723:[120] ConstInt(val=0) -> 0[120]
-  728:[124] FormatText(var[8], val="😊🙃4"[104], width=0[120], dir=-1, token=32)
-  733:[104] ConstText(_value="b") -> "b"[104]
-  736:[120] AppendText(var[8], v1="b"[104])
-  739:[104] VarText(var[8]) -> "a😊🙃4b"[104]
-  742:[120] GenFreeStack(value=16, discard=24)
-  746:[96] AppendText(var[56], v1="a😊🙃4b"[80])
-  749:[80] VarText(var[56]) -> "a😊🙃4b"[80]
-  752:[96] ConstText(_value="a😊🙃4b") -> "a😊🙃4b"[96]
-  765:[112] EqText(v1="a😊🙃4b"[80], v2="a😊🙃4b"[96]) -> true[80]
-  766:[81] GenGotoFalseWord(jump=772, if_false=true[80])
-  769:[80] GenGotoWord(jump=831)
-  831:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
+  669:[32] Text()
+  670:[56] Text()
+  671:[80] Text()
+  672:[104] ConstText(_value="12😊🙃45") -> "12😊🙃45"[104]
+  686:[120] AppendText(var[80], v1="12😊🙃45"[104])
+  689:[104] ClearText(var[32])
+  692:[104] ConstText(_value="a") -> "a"[104]
+  695:[120] AppendText(var[32], v1="a"[104])
+  698:[104] VarText(var[80]) -> "12😊🙃45"[104]
+  701:[120] ConstInt(val=2) -> 2[120]
+  706:[124] ConstInt(val=1) -> 1[124]
+  711:[128] MinSingleInt(v1=1[124]) -> -1[124]
+  712:[128] GetTextSub(v1="12😊🙃45"[104], from=2[120], till=-1[124]) -> "😊🙃4"[104]
+  713:[120] ConstInt(val=0) -> 0[120]
+  718:[124] FormatText(var[32], val="😊🙃4"[104], width=0[120], dir=-1, token=32)
+  723:[104] ConstText(_value="b") -> "b"[104]
+  726:[120] AppendText(var[32], v1="b"[104])
+  729:[104] VarText(var[32]) -> "a😊🙃4b"[104]
+  732:[120] GenFreeStack(value=16, discard=24)
+  736:[96] AppendText(var[56], v1="a😊🙃4b"[80])
+  739:[80] VarText(var[56]) -> "a😊🙃4b"[80]
+  742:[96] ConstText(_value="a😊🙃4b") -> "a😊🙃4b"[96]
+  755:[112] EqText(v1="a😊🙃4b"[80], v2="a😊🙃4b"[96]) -> true[80]
+  756:[81] GenGotoFalseWord(jump=762, if_false=true[80])
+  759:[80] GenGotoWord(jump=821)
+  821:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
 Finished

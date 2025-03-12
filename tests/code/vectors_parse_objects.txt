@@ -1,4 +1,3 @@
-Test code:
 struct Elm {n:text, c:integer}
 
 pub fn test() {
@@ -8,92 +7,83 @@ pub fn test() {
         "Test failed {test_value} != \"[{{n:\"hi\",c:10}},{{n:\"world\",c:2}}]\""
     );
 }
-
-Type 13:Elm[12]:
+Type 11:Elm[12]:
     n:text[4]
     c:integer[8]
 
-Type 14:vector<Elm>[4]:Vector(13)
+Type 12:vector<Elm>[4]:Vector(11)
 
-fn test {
+fn test {#1 block
   let __work_2 = "";
-  let __work_3 = "";
-  let test_value = {
-    let v = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 14i32);
-    {
-      OpClearText(__work_2);
-      OpAppendText(__work_2, "");
-      OpFormatDatabase(__work_2, v, 14i32, false);
-      __work_2;
-    };
-  };
-  if OpEqText(test_value, "[{n:"hi",c:10},{n:"world",c:2}]") {null} else {OpGenPanic({
-    OpClearText(__work_3);
-    OpAppendText(__work_3, "Test failed ");
-    OpFormatText(__work_3, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_3, " != "[{n:"hi",c:10},{n:"world",c:2}]"");
-    __work_3;
-  })};
-}
+  let __work_1 = "";
+  let test_value = {#2 block
+    let v = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 12i32);
+    {#3 formatting string
+      OpClearText(__work_1);
+      OpAppendText(__work_1, "");
+      OpFormatDatabase(__work_1, v, 12i32, false);
+      __work_1;
+    }#3;
+  }#2;
+  if OpEqText(test_value, "[{n:"hi",c:10},{n:"world",c:2}]") null else OpGenPanic({#4 formatting string
+    OpClearText(__work_2);
+    OpAppendText(__work_2, "Test failed ");
+    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_2, " != "[{n:"hi",c:10},{n:"world",c:2}]"");
+    __work_2;
+  }#4);
+}#1
 
 byte-code for parse_objects:test()
  668[0]: return-address
  668[4]: Text()
- 669[28]: ConstText(_value="") -> text(false)
- 671[44]: AppendText(var[4], v1: text(false))
- 674[28]: Text()
- 675[52]: ConstText(_value="") -> text(false)
- 677[68]: AppendText(var[28], v1: text(false))
- 680[52]: Text()
- 681[76]: ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> text(false)
- 721[92]: CastVectorFromText(val: text(false), db_tp=14) -> vector
- 724[88]: ClearText(var[4])
- 727[88]: ConstText(_value="") -> text(false)
- 729[104]: AppendText(var[4], v1: text(false))
- 732[88]: VarVector(var[76]) -> vector type=vector<Elm>[4]:Vector(13)[14]
- 735[100]: FormatDatabase(var[4], val: reference, db_tp=14, pretty=false)
- 741[88]: VarText(var[4]) -> text(false)
- 744[104]: GenFreeStack(value=16, discard=12)
- 748[92]: AppendText(var[52], v1: text(false))
- 751[76]: VarText(var[52]) -> text(false)
- 754[92]: ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> text(false)
- 787[108]: EqText(v1: text(false), v2: text(false)) -> boolean
- 788[77]: GenGotoFalseWord(jump=794, if_false: boolean)
- 791[76]: GenGotoWord(jump=873)
- 794[76]: ClearText(var[28])
- 797[76]: ConstText(_value="Test failed ") -> text(false)
- 811[92]: AppendText(var[28], v1: text(false))
- 814[76]: VarText(var[52]) -> text(false)
- 817[92]: ConstInt(val=0) -> integer
- 822[96]: FormatText(var[28], val: text(false), width: integer, dir=-1, token=32)
- 827[76]: ConstText(_value=" != "[{n:"hi",c:10},{n:"world",c:2}]"") -> text(false)
- 866[92]: AppendText(var[28], v1: text(false))
- 869[76]: VarText(var[28]) -> text(false)
- 872[92]: GenPanic(message: text(false))
- 873[76]: GenReturn(ret=0, value=0, discard=76)
+ 669[28]: Text()
+ 670[52]: Text()
+ 671[76]: ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> text(false, [])
+ 711[92]: CastVectorFromText(val: text(false, []), db_tp=12) -> vector#[]
+ 714[88]: ClearText(var[28])
+ 717[88]: ConstText(_value="") -> text(false, [])
+ 719[104]: AppendText(var[28], v1: text(false, []))
+ 722[88]: VarVector(var[76]) -> vector#[] type=vector<Elm>[4]:Vector(11)[12]
+ 725[100]: FormatDatabase(var[28], val: reference#[], db_tp=12, pretty=false)
+ 731[88]: VarText(var[28]) -> text(false, [])
+ 734[104]: GenFreeStack(value=16, discard=12)
+ 738[92]: AppendText(var[52], v1: text(false, []))
+ 741[76]: VarText(var[52]) -> text(false, [])
+ 744[92]: ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> text(false, [])
+ 777[108]: EqText(v1: text(false, []), v2: text(false, [])) -> boolean
+ 778[77]: GenGotoFalseWord(jump=784, if_false: boolean)
+ 781[76]: GenGotoWord(jump=863)
+ 784[76]: ClearText(var[4])
+ 787[76]: ConstText(_value="Test failed ") -> text(false, [])
+ 801[92]: AppendText(var[4], v1: text(false, []))
+ 804[76]: VarText(var[52]) -> text(false, [])
+ 807[92]: ConstInt(val=0) -> integer
+ 812[96]: FormatText(var[4], val: text(false, []), width: integer, dir=-1, token=32)
+ 817[76]: ConstText(_value=" != "[{n:"hi",c:10},{n:"world",c:2}]"") -> text(false, [])
+ 856[92]: AppendText(var[4], v1: text(false, []))
+ 859[76]: VarText(var[4]) -> text(false, [])
+ 862[92]: GenPanic(message: text(false, []))
+ 863[76]: GenReturn(ret=0, value=0, discard=76)
 
 Execute test:
   668:[8] Text()
-  669:[32] ConstText(_value="") -> ""[32]
-  671:[48] AppendText(var[8], v1=""[32])
-  674:[32] Text()
-  675:[56] ConstText(_value="") -> ""[56]
-  677:[72] AppendText(var[32], v1=""[56])
-  680:[56] Text()
-  681:[80] ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> "[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80]
-  721:[96] CastVectorFromText(val="[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80], db_tp=14) -> ref(1,1,4)=true[80]
-  724:[92] ClearText(var[8])
-  727:[92] ConstText(_value="") -> ""[92]
-  729:[108] AppendText(var[8], v1=""[92])
-  732:[92] VarVector(var[80]) -> ref(1,1,4)=[{n:"hi",c:10},{n:"world",c:2}][92]
-  735:[104] FormatDatabase(var[8], val=ref(1,1,4)[92], db_tp=14, pretty=false)
-  741:[92] VarText(var[8]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[92]
-  744:[108] GenFreeStack(value=16, discard=12)
-  748:[96] AppendText(var[56], v1="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80])
-  751:[80] VarText(var[56]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80]
-  754:[96] ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[96]
-  787:[112] EqText(v1="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80], v2="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[96]) -> true[80]
-  788:[81] GenGotoFalseWord(jump=794, if_false=true[80])
-  791:[80] GenGotoWord(jump=873)
-  873:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
+  669:[32] Text()
+  670:[56] Text()
+  671:[80] ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> "[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80]
+  711:[96] CastVectorFromText(val="[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80], db_tp=12) -> ref(1,1,4)=true[80]
+  714:[92] ClearText(var[32])
+  717:[92] ConstText(_value="") -> ""[92]
+  719:[108] AppendText(var[32], v1=""[92])
+  722:[92] VarVector(var[80]) -> ref(1,1,4)=[{n:"hi",c:10},{n:"world",c:2}][92]
+  725:[104] FormatDatabase(var[32], val=ref(1,1,4)[92], db_tp=12, pretty=false)
+  731:[92] VarText(var[32]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[92]
+  734:[108] GenFreeStack(value=16, discard=12)
+  738:[96] AppendText(var[56], v1="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80])
+  741:[80] VarText(var[56]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80]
+  744:[96] ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[96]
+  777:[112] EqText(v1="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80], v2="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[96]) -> true[80]
+  778:[81] GenGotoFalseWord(jump=784, if_false=true[80])
+  781:[80] GenGotoWord(jump=863)
+  863:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
 Finished

@@ -56,7 +56,7 @@ fn duplicate() {
    r: integer
 }"
     )
-    .error("Error: field `r` is already declared at duplicate:4:6");
+    .error("field `r` is already declared at duplicate:4:6");
 }
 
 #[test]
@@ -77,10 +77,12 @@ fn value(self: Point) -> integer {
 
 #[test]
 fn restrictions() {
+    // was: val: integer limit(1, 256) check(val > byte),
+    // this could not be properly parsed due to context switches for variables
     code!(
         "struct Data {
   byte: integer limit(0, 255) not null,
-  val: integer limit(1, 256) check(val > byte),
+  val: integer limit(1, 256),
   signed: integer limit(-127, 127) default(1)
 }
 

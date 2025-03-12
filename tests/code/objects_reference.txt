@@ -1,4 +1,3 @@
-Test code:
 fn add(a: &integer, b: integer, c: integer=0) {
     a += b + c;
 }
@@ -10,82 +9,77 @@ pub fn test() {
         "Test failed {test_value} != 8"
     );
 }
-
-fn add {
+fn add {#1 block
   a = OpAddInt(a, OpAddInt(b, c));
-}
+}#1
 
 byte-code for reference:add(a: refvar(integer(-2147483647, 2147483647))[0], b: integer[12], c: integer[16])
  668[20]: return-address
- 668[24]: VarRef(var[0]) -> reference
- 671[36]: VarRef(var[0]) -> reference
- 674[48]: GetInt(v1: reference, fld=0) -> integer
+ 668[24]: VarRef(var[0]) -> reference#[]
+ 671[36]: VarRef(var[0]) -> reference#[]
+ 674[48]: GetInt(v1: reference#[], fld=0) -> integer
  677[40]: VarInt(var[12]) -> integer
  680[44]: VarInt(var[16]) -> integer
  683[48]: AddInt(v1: integer, v2: integer) -> integer
  684[44]: AddInt(v1: integer, v2: integer) -> integer
- 685[40]: SetInt(v1: reference, fld=0, val: integer)
+ 685[40]: SetInt(v1: reference#[], fld=0, val: integer)
  688[24]: GenReturn(ret=20, value=0, discard=24)
 
-fn test {
-  let __work_2 = "";
-  let test_value = {
+fn test {#1 block
+  let __work_1 = "";
+  let test_value = {#2 block
     let v = 1i32;
     add(OpCreateRef(v), 2i32, 0i32);
     add(OpCreateRef(v), 4i32, 1i32);
     v;
-  };
-  if OpEqInt(test_value, 8i32) {null} else {OpGenPanic({
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
-    OpFormatInt(__work_2, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_2, " != 8");
-    __work_2;
-  })};
-}
+  }#2;
+  if OpEqInt(test_value, 8i32) null else OpGenPanic({#3 formatting string
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1, " != 8");
+    __work_1;
+  }#3);
+}#1
 
 byte-code for reference:test()
  694[0]: return-address
  694[4]: Text()
- 695[28]: ConstText(_value="") -> text(false)
- 697[44]: AppendText(var[4], v1: text(false))
- 700[28]: ConstInt(val=1) -> integer
- 705[32]: CreateRef(var[28]) -> reference
- 708[44]: ConstInt(val=2) -> integer
- 713[48]: ConstInt(val=0) -> integer
- 718[52]: GenCall(size=0, to=668)
- 725[32]: CreateRef(var[28]) -> reference
- 728[44]: ConstInt(val=4) -> integer
- 733[48]: ConstInt(val=1) -> integer
- 738[52]: GenCall(size=0, to=668)
- 745[32]: VarInt(var[28]) -> integer
- 748[36]: GenFreeStack(value=4, discard=4)
- 752[32]: VarInt(var[28]) -> integer
- 755[36]: ConstInt(val=8) -> integer
- 760[40]: EqInt(v1: integer, v2: integer) -> boolean
- 761[33]: GenGotoFalseWord(jump=767, if_false: boolean)
- 764[32]: GenGotoWord(jump=816)
- 767[32]: ClearText(var[4])
- 770[32]: ConstText(_value="Test failed ") -> text(false)
- 784[48]: AppendText(var[4], v1: text(false))
- 787[32]: VarInt(var[28]) -> integer
- 790[36]: ConstInt(val=0) -> integer
- 795[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 802[32]: ConstText(_value=" != 8") -> text(false)
- 809[48]: AppendText(var[4], v1: text(false))
- 812[32]: VarText(var[4]) -> text(false)
- 815[48]: GenPanic(message: text(false))
- 816[32]: GenReturn(ret=0, value=0, discard=32)
+ 695[28]: ConstInt(val=1) -> integer
+ 700[32]: CreateRef(var[28]) -> reference#[]
+ 703[44]: ConstInt(val=2) -> integer
+ 708[48]: ConstInt(val=0) -> integer
+ 713[52]: GenCall(size=0, to=668)
+ 720[32]: CreateRef(var[28]) -> reference#[]
+ 723[44]: ConstInt(val=4) -> integer
+ 728[48]: ConstInt(val=1) -> integer
+ 733[52]: GenCall(size=0, to=668)
+ 740[32]: VarInt(var[28]) -> integer
+ 743[36]: GenFreeStack(value=4, discard=4)
+ 747[32]: VarInt(var[28]) -> integer
+ 750[36]: ConstInt(val=8) -> integer
+ 755[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 756[33]: GenGotoFalseWord(jump=762, if_false: boolean)
+ 759[32]: GenGotoWord(jump=811)
+ 762[32]: ClearText(var[4])
+ 765[32]: ConstText(_value="Test failed ") -> text(false, [])
+ 779[48]: AppendText(var[4], v1: text(false, []))
+ 782[32]: VarInt(var[28]) -> integer
+ 785[36]: ConstInt(val=0) -> integer
+ 790[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 797[32]: ConstText(_value=" != 8") -> text(false, [])
+ 804[48]: AppendText(var[4], v1: text(false, []))
+ 807[32]: VarText(var[4]) -> text(false, [])
+ 810[48]: GenPanic(message: text(false, []))
+ 811[32]: GenReturn(ret=0, value=0, discard=32)
 
 Execute test:
   694:[8] Text()
-  695:[32] ConstText(_value="") -> ""[32]
-  697:[48] AppendText(var[8], v1=""[32])
-  700:[32] ConstInt(val=1) -> 1[32]
-  705:[36] CreateRef(var[32]) -> ref(0,1,32)[36]
-  708:[48] ConstInt(val=2) -> 2[48]
-  713:[52] ConstInt(val=0) -> 0[52]
-  718:[56] GenCall(size=0, to=668)
+  695:[32] ConstInt(val=1) -> 1[32]
+  700:[36] CreateRef(var[32]) -> ref(0,1,32)[36]
+  703:[48] ConstInt(val=2) -> 2[48]
+  708:[52] ConstInt(val=0) -> 0[52]
+  713:[56] GenCall(size=0, to=668)
   668:[60] VarRef(var[36]) -> ref(0,1,32)[60]
   671:[72] VarRef(var[36]) -> ref(0,1,32)[72]
   674:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 1[72]
@@ -94,11 +88,11 @@ Execute test:
   683:[84] AddInt(v1=2[76], v2=0[80]) -> 2[76]
   684:[80] AddInt(v1=1[72], v2=2[76]) -> 3[72]
   685:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=3[72])
-  688:[60] GenReturn(ret=725[56], value=0, discard=24)
-  725:[36] CreateRef(var[32]) -> ref(0,1,32)[36]
-  728:[48] ConstInt(val=4) -> 4[48]
-  733:[52] ConstInt(val=1) -> 1[52]
-  738:[56] GenCall(size=0, to=668)
+  688:[60] GenReturn(ret=720[56], value=0, discard=24)
+  720:[36] CreateRef(var[32]) -> ref(0,1,32)[36]
+  723:[48] ConstInt(val=4) -> 4[48]
+  728:[52] ConstInt(val=1) -> 1[52]
+  733:[56] GenCall(size=0, to=668)
   668:[60] VarRef(var[36]) -> ref(0,1,32)[60]
   671:[72] VarRef(var[36]) -> ref(0,1,32)[72]
   674:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 3[72]
@@ -107,13 +101,13 @@ Execute test:
   683:[84] AddInt(v1=4[76], v2=1[80]) -> 5[76]
   684:[80] AddInt(v1=3[72], v2=5[76]) -> 8[72]
   685:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=8[72])
-  688:[60] GenReturn(ret=745[56], value=0, discard=24)
-  745:[36] VarInt(var[32]) -> 8[36]
-  748:[40] GenFreeStack(value=4, discard=4)
-  752:[36] VarInt(var[32]) -> 8[36]
-  755:[40] ConstInt(val=8) -> 8[40]
-  760:[44] EqInt(v1=8[36], v2=8[40]) -> true[36]
-  761:[37] GenGotoFalseWord(jump=767, if_false=true[36])
-  764:[36] GenGotoWord(jump=816)
-  816:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
+  688:[60] GenReturn(ret=740[56], value=0, discard=24)
+  740:[36] VarInt(var[32]) -> 8[36]
+  743:[40] GenFreeStack(value=4, discard=4)
+  747:[36] VarInt(var[32]) -> 8[36]
+  750:[40] ConstInt(val=8) -> 8[40]
+  755:[44] EqInt(v1=8[36], v2=8[40]) -> true[36]
+  756:[37] GenGotoFalseWord(jump=762, if_false=true[36])
+  759:[36] GenGotoWord(jump=811)
+  811:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
 Finished

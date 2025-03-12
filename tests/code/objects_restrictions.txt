@@ -1,7 +1,6 @@
-Test code:
 struct Data {
   byte: integer limit(0, 255) not null,
-  val: integer limit(1, 256) check(val > byte),
+  val: integer limit(1, 256),
   signed: integer limit(-127, 127) default(1)
 }
 
@@ -17,82 +16,77 @@ pub fn test() {
         "Test failed {test_value} != 1"
     );
 }
-
-Type 13:Data[8]:
+Type 11:Data[8]:
     byte:byte[7]
     val:byte<1,true>[6]
     signed:byte<-127,true>[5]
 
-Type 14:byte<1,true>[1]:Byte(1, true)
+Type 12:byte<1,true>[1]:Byte(1, true)
 
-Type 15:byte<-127,true>[1]:Byte(-127, true)
+Type 13:byte<-127,true>[1]:Byte(-127, true)
 
-fn _tp_Data_calc {
+fn _tp_Data_calc {#1 block
   OpAddInt(OpAddInt(OpMulInt(OpGetByte(self, 6i32, 1i32), 65536i32), OpMulInt(OpGetByte(self, 7i32, 0i32), 256i32)), OpGetByte(self, 5i32, -127i32));
-}
+}#1
 
-byte-code for restrictions:_tp_Data_calc(self: Data[0]) -> integer
+byte-code for restrictions:_tp_Data_calc(self: Data#[][0]) -> integer
  668[12]: return-address
- 668[16]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[13]
- 671[28]: GetByte(v1: reference, fld=6, min=1) -> integer
+ 668[16]: VarRef(var[0]) -> reference#[] type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[11]
+ 671[28]: GetByte(v1: reference#[], fld=6, min=1) -> integer
  676[20]: ConstInt(val=65536) -> integer
  681[24]: MulInt(v1: integer, v2: integer) -> integer
- 682[20]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[13]
- 685[32]: GetByte(v1: reference, fld=7, min=0) -> integer
+ 682[20]: VarRef(var[0]) -> reference#[] type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[11]
+ 685[32]: GetByte(v1: reference#[], fld=7, min=0) -> integer
  690[24]: ConstInt(val=256) -> integer
  695[28]: MulInt(v1: integer, v2: integer) -> integer
  696[24]: AddInt(v1: integer, v2: integer) -> integer
- 697[20]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[13]
- 700[32]: GetByte(v1: reference, fld=5, min=-127) -> integer
+ 697[20]: VarRef(var[0]) -> reference#[] type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[11]
+ 700[32]: GetByte(v1: reference#[], fld=5, min=-127) -> integer
  705[24]: AddInt(v1: integer, v2: integer) -> integer
  706[20]: GenReturn(ret=12, value=4, discard=20)
 
-fn test {
+fn test {#1 block
   let __work_1 = "";
-  let test_value = {
+  let test_value = {#2 block
     1i32;
-  };
-  if OpEqInt(test_value, 1i32) {null} else {OpGenPanic({
+  }#2;
+  if OpEqInt(test_value, 1i32) null else OpGenPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 1");
     __work_1;
-  })};
-}
+  }#3);
+}#1
 
 byte-code for restrictions:test()
  712[0]: return-address
  712[4]: Text()
- 713[28]: ConstText(_value="") -> text(false)
- 715[44]: AppendText(var[4], v1: text(false))
- 718[28]: ConstInt(val=1) -> integer
- 723[32]: VarInt(var[28]) -> integer
- 726[36]: ConstInt(val=1) -> integer
- 731[40]: EqInt(v1: integer, v2: integer) -> boolean
- 732[33]: GenGotoFalseWord(jump=738, if_false: boolean)
- 735[32]: GenGotoWord(jump=787)
- 738[32]: ClearText(var[4])
- 741[32]: ConstText(_value="Test failed ") -> text(false)
- 755[48]: AppendText(var[4], v1: text(false))
- 758[32]: VarInt(var[28]) -> integer
- 761[36]: ConstInt(val=0) -> integer
- 766[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 773[32]: ConstText(_value=" != 1") -> text(false)
- 780[48]: AppendText(var[4], v1: text(false))
- 783[32]: VarText(var[4]) -> text(false)
- 786[48]: GenPanic(message: text(false))
- 787[32]: GenReturn(ret=0, value=0, discard=32)
+ 713[28]: ConstInt(val=1) -> integer
+ 718[32]: VarInt(var[28]) -> integer
+ 721[36]: ConstInt(val=1) -> integer
+ 726[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 727[33]: GenGotoFalseWord(jump=733, if_false: boolean)
+ 730[32]: GenGotoWord(jump=782)
+ 733[32]: ClearText(var[4])
+ 736[32]: ConstText(_value="Test failed ") -> text(false, [])
+ 750[48]: AppendText(var[4], v1: text(false, []))
+ 753[32]: VarInt(var[28]) -> integer
+ 756[36]: ConstInt(val=0) -> integer
+ 761[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 768[32]: ConstText(_value=" != 1") -> text(false, [])
+ 775[48]: AppendText(var[4], v1: text(false, []))
+ 778[32]: VarText(var[4]) -> text(false, [])
+ 781[48]: GenPanic(message: text(false, []))
+ 782[32]: GenReturn(ret=0, value=0, discard=32)
 
 Execute test:
   712:[8] Text()
-  713:[32] ConstText(_value="") -> ""[32]
-  715:[48] AppendText(var[8], v1=""[32])
-  718:[32] ConstInt(val=1) -> 1[32]
-  723:[36] VarInt(var[32]) -> 1[36]
-  726:[40] ConstInt(val=1) -> 1[40]
-  731:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
-  732:[37] GenGotoFalseWord(jump=738, if_false=true[36])
-  735:[36] GenGotoWord(jump=787)
-  787:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
+  713:[32] ConstInt(val=1) -> 1[32]
+  718:[36] VarInt(var[32]) -> 1[36]
+  721:[40] ConstInt(val=1) -> 1[40]
+  726:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
+  727:[37] GenGotoFalseWord(jump=733, if_false=true[36])
+  730:[36] GenGotoWord(jump=782)
+  782:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
 Finished

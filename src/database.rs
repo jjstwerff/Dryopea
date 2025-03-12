@@ -675,7 +675,11 @@ impl Stores {
     }
 
     pub fn vector(&mut self, content: u16) -> u16 {
-        let name = "vector<".to_string() + &self.types[content as usize].name + ">";
+        let name = if content == u16::MAX {
+            "vector".to_string()
+        } else {
+            format!("vector<{}>", &self.types[content as usize].name)
+        };
         if let Some(nr) = self.names.get(&name) {
             *nr
         } else {
@@ -769,6 +773,10 @@ impl Stores {
 
     #[must_use]
     pub fn field_nr(&self, record: u16, position: i32) -> u16 {
+        if record == u16::MAX {
+            // Should normally only occur in first_phase
+            return 0;
+        }
         if let Parts::Struct(fields) = &self.types[record as usize].parts {
             for (f_nr, f) in fields.iter().enumerate() {
                 if f.position == position as u16 {

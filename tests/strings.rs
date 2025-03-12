@@ -64,7 +64,7 @@ fn string_fn() {
         "
 fn to_text() -> text {
     res = \"aa \";
-    for i in 0..2 {
+    for _i in 0..2 {
         res += \"b\";
     }
     res + \" cc\"
@@ -84,7 +84,7 @@ fn string_scope() {
   for n in 1..4 {
     t=\"1\";
     b+=\"n\" + \":{n}\" + \"=\";
-    for m in 1..n {
+    for _m in 1..n {
       t+=\"2\";
     };
     b += t+\" \";

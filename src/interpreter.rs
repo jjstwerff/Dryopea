@@ -8,13 +8,14 @@
 use crate::data::{Data, DefType};
 use crate::state::State;
 use crate::text;
+use crate::variables::Function;
 use std::io::{Error, Write};
 // Bytecode generation
 
 /// Create byte code and dump the result to the given writer.
 /// # Errors
 /// When the writer didn't accept the data.
-pub fn byte_code(data: &mut Data, writer: &mut dyn Write, state: &mut State) -> Result<(), Error> {
+pub fn byte_code(writer: &mut dyn Write, state: &mut State, data: &mut Data) -> Result<(), Error> {
     text::init(state);
     for d_nr in 0..data.definitions() {
         let d = data.def(d_nr);
@@ -24,7 +25,8 @@ pub fn byte_code(data: &mut Data, writer: &mut dyn Write, state: &mut State) -> 
         let show = !data.def(d_nr).position.file.starts_with("default/");
         if show {
             write!(writer, "fn {} ", data.def(d_nr).name)?;
-            data.show_code(writer, d_nr, &data.def(d_nr).code, 0, false)?;
+            let mut vars = Function::copy(&data.def(d_nr).variables);
+            data.show_code(writer, &mut vars, &data.def(d_nr).code, 0, false)?;
             writeln!(writer, "\n")?;
             write!(writer, "byte-code for {}:", data.def(d_nr).position.file)?;
         }
