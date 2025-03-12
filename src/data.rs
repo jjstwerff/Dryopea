@@ -14,6 +14,7 @@ extern crate strum_macros;
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use crate::keys::Key;
 use crate::lexer::{Lexer, Position};
+use crate::variables::Function;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Result, Write};
@@ -49,15 +50,15 @@ pub enum Value {
     /// Block with steps and last variable claimed before it.
     Block(Vec<Value>),
     /// Read variable or parameter from stack (nr relative to current function start).
-    Var(u32),
+    Var(u16),
     /// Set a variable with an expressions
-    Set(u32, Box<Value>),
+    Set(u16, Box<Value>),
     // / Read a variable from the closure stack instead of the current function
     // CVar(u32),
     // / Set a closure variable outside the current function
     // CSet(u32, Box<Value>),
     /// Set a new variable with an expressions
-    Let(u32, Box<Value>),
+    Let(u16, Box<Value>),
     /// Return from a routine with optionally a Value
     Return(Box<Value>),
     /// Break out of the n-th loop
@@ -252,18 +253,6 @@ impl Debug for Attribute {
     }
 }
 
-/// Per defined variable
-#[derive(Debug, Clone)]
-pub struct Variable {
-    pub name: String,
-    pub var_type: Type,
-    /// Definition position of this variable
-    pub position: Position,
-    /// Is the content of this variable read?
-    pub uses: u32,
-    pub is_new: bool,
-}
-
 #[derive(Clone, PartialEq, Debug)]
 pub enum DefType {
     // Not yet known, must be filled in after the first parse pass.
@@ -330,7 +319,7 @@ pub struct Definition {
     /// Entry in the known types for the database
     pub known_type: u16,
     /// Known variables inside this definition
-    pub variables: Vec<Variable>,
+    pub variables: Function,
 }
 
 impl Definition {
@@ -374,97 +363,18 @@ pub struct Data {
     operators: HashMap<u8, u32>,
 }
 
-impl Data {
-    /// A new local variable gets its type via assignment instead of explicit.
-    pub fn change_var_type(
-        &mut self,
-        lexer: &mut Lexer,
-        def_nr: u32,
-        val: &Value,
-        tp: &Type,
-    ) -> bool {
-        if def_nr == u32::MAX {
-            return false;
-        }
-        // do not expect a field because that should already be a correct value
-        let mut new = false;
-        if let Value::Var(vnr) = val {
-            if self.definitions[def_nr as usize].variables[*vnr as usize].is_new {
-                new = true;
-                self.definitions[def_nr as usize].variables[*vnr as usize].is_new = false;
-            }
-            if tp.is_unknown() {
-                return new;
-            }
-            let var_tp = self.definitions[def_nr as usize].variables[*vnr as usize]
-                .var_type
-                .clone();
-            if let Type::RefVar(in_tp) = &var_tp {
-                if &(**in_tp) == tp {
-                    return false;
-                }
-            }
-            if let Type::Vector(inner) = &var_tp {
-                if let Type::Unknown(_) = **inner {
-                    self.definitions[def_nr as usize].variables[*vnr as usize].var_type =
-                        tp.clone();
-                    if let Type::Vector(inner) = tp {
-                        self.vector_def(lexer, inner);
-                    }
-                }
-            } else if var_tp.is_unknown() {
-                self.definitions[def_nr as usize].variables[*vnr as usize].var_type = tp.clone();
-            } else if !var_tp.is_same(tp) {
-                diagnostic!(
-                    lexer,
-                    Level::Error,
-                    "Cannot change type of variable '{}' from '{}' to '{}'",
-                    self.definitions[def_nr as usize].variables[*vnr as usize].name,
-                    var_tp.show(self),
-                    tp.show(self)
-                );
-            }
-        }
-        new
-    }
-
-    pub fn test_used(&self, def_nr: u32, diagnostics: &mut Diagnostics) {
-        let parameters = self.def(def_nr).attributes.len();
-        for (nr, var) in self.def(def_nr).variables.iter().enumerate() {
-            if var.uses == 0 && !var.name.starts_with('_') {
-                // TODO: add the location of the definition of this variable.
-                diagnostics.add(
-                    Level::Warning,
-                    &format!(
-                        "{} {} is never read in {} line {}:{}",
-                        if nr < parameters {
-                            "Parameter"
-                        } else {
-                            "Variable"
-                        },
-                        var.name,
-                        var.position.file,
-                        var.position.line,
-                        var.position.pos
-                    ),
-                );
-            }
-        }
-    }
-}
-
 #[must_use]
 pub fn v_if(test: Value, t: Value, f: Value) -> Value {
     Value::If(Box::new(test), Box::new(t), Box::new(f))
 }
 
 #[must_use]
-pub fn v_set(var: u32, value: Value) -> Value {
+pub fn v_set(var: u16, value: Value) -> Value {
     Value::Set(var, Box::new(value))
 }
 
 #[must_use]
-pub fn v_let(var: u32, value: Value) -> Value {
+pub fn v_let(var: u16, value: Value) -> Value {
     Value::Let(var, Box::new(value))
 }
 
@@ -589,7 +499,7 @@ impl Data {
             known_type: u16::MAX,
             code_position: 0,
             code_length: 0,
-            variables: Vec::new(),
+            variables: Function::new(),
         };
         if new_def.is_operator() {
             new_def.op_code = self.op_codes;
@@ -1120,17 +1030,13 @@ impl Data {
                 }
                 write!(write, "}}")
             }
-            Value::Var(v) => write!(write, "{}", self.def(d_nr).variables[*v as usize].name),
+            Value::Var(v) => write!(write, "{}", self.def(d_nr).variables.name(*v)),
             Value::Set(v, to) => {
-                write!(write, "{} = ", self.def(d_nr).variables[*v as usize].name)?;
+                write!(write, "{} = ", self.def(d_nr).variables.name(*v))?;
                 self.show_code(write, d_nr, to, indent, false)
             }
             Value::Let(v, to) => {
-                write!(
-                    write,
-                    "let {} = ",
-                    self.def(d_nr).variables[*v as usize].name
-                )?;
+                write!(write, "let {} = ", self.def(d_nr).variables.name(*v))?;
                 self.show_code(write, d_nr, to, indent, false)
             }
             Value::Return(ex) => {

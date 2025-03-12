@@ -14,7 +14,7 @@ use std::io::{Error, Write};
 /// Create byte code and dump the result to the given writer.
 /// # Errors
 /// When the writer didn't accept the data.
-pub fn byte_code(data: &mut Data, writer: &mut dyn Write, state: &mut State) -> Result<(), Error> {
+pub fn byte_code(writer: &mut dyn Write, state: &mut State, data: &mut Data) -> Result<(), Error> {
     text::init(state);
     for d_nr in 0..data.definitions() {
         let d = data.def(d_nr);

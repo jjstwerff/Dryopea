@@ -251,11 +251,7 @@ extern crate dryopea;"
                 write!(w, "}}")?;
             }
             Value::Set(var, to) => {
-                write!(
-                    w,
-                    "var_{} = ",
-                    self.data.def(def_nr).variables[*var as usize].name
-                )?;
+                write!(w, "var_{} = ", self.data.def(def_nr).variables.name(*var))?;
                 self.output_code(w, to, def_nr, indent)?;
             }
             Value::Let(var, to) => {
@@ -263,11 +259,7 @@ extern crate dryopea;"
                 self.output_code(w, to, def_nr, indent)?;
             }
             Value::Var(var) => {
-                write!(
-                    w,
-                    "var_{}",
-                    self.data.def(def_nr).variables[*var as usize].name
-                )?;
+                write!(w, "var_{}", self.data.def(def_nr).variables.name(*var))?;
             }
             Value::If(test, true_v, false_v) => {
                 self.output_if(w, def_nr, test, true_v, false_v, indent)?;

@@ -8,8 +8,9 @@ use crate::database::{ShowDb, Stores};
 use crate::fill::OPERATORS;
 use crate::keys;
 use crate::keys::{Content, DbRef, Key, Str};
-use crate::stack::{Stack, size};
+use crate::stack::Stack;
 use crate::tree;
+use crate::variables::size;
 use crate::vector;
 use crate::{external, hash};
 use std::collections::{BTreeMap, HashMap};
@@ -161,7 +162,7 @@ impl State {
     }
 
     #[must_use]
-    pub fn lines_text<'a>(val: &'a str, at: &mut i32) -> &'a str {
+    pub fn lines_text<'b>(val: &'b str, at: &mut i32) -> &'b str {
         if let Some(to) = val[*at as usize..].find('\n') {
             let r = &val[*at as usize..to];
             *at = to as i32 + 1;
@@ -173,7 +174,7 @@ impl State {
     }
 
     #[must_use]
-    pub fn split_text<'a>(val: &'a str, on: &str, at: &mut i32) -> &'a str {
+    pub fn split_text<'b>(val: &'b str, on: &str, at: &mut i32) -> &'b str {
         if on.is_empty() {
             *at = i32::MIN;
             return "";
@@ -898,15 +899,13 @@ impl State {
             data.definitions[def_nr as usize].code_length = 0;
             return;
         }
-        let mut stack = Stack::new(data, def_nr, logging);
+        let mut stack = Stack::new(data.def(def_nr).variables.clone(), data, def_nr, logging);
+        stack.function.validate(&stack.data.def(def_nr).code, 0);
+        stack.function.positions();
         let start = self.code_pos;
-        for a_nr in 0..data.attributes(def_nr) {
-            stack.start(a_nr as u32);
-            stack.claim(&data.attr_type(def_nr, a_nr), Context::Argument);
-        }
         self.arguments = stack.position;
         stack.position += 4; // keep space for the code return address
-        self.generate(&data.def(def_nr).code, &mut stack);
+        self.generate(&stack.data.def(def_nr).code, &mut stack);
         data.definitions[def_nr as usize].code_position = start;
         data.definitions[def_nr as usize].code_length = self.code_pos - start;
         if let Some(v) = self.calls.get(&def_nr) {
@@ -972,10 +971,9 @@ impl State {
                 self.code_add_str(value);
                 Type::Text(false)
             }
-            Value::Var(variable) => self.generate_var(stack, variable),
+            Value::Var(variable) => self.generate_var(stack, *variable),
             Value::Let(variable, value) => {
-                stack.start(*variable);
-                if matches!(*stack.var_type(*variable), Type::Text(_)) {
+                if matches!(*stack.function.tp(*variable), Type::Text(_)) {
                     stack.add_op("OpText", self);
                     stack.position += size_str() as u16;
                     self.set_var(stack, *variable, value);
@@ -1063,7 +1061,9 @@ impl State {
                 self.generate(v, stack);
                 stack.add_op("OpGenReturn", self);
                 self.code_add(self.arguments);
-                self.code_add(size(&stack.def().returned, Context::Argument) as u8);
+                self.code_add(
+                    size(&stack.data.def(stack.def_nr).returned, &Context::Argument) as u8,
+                );
                 self.code_add(stack.position);
                 Type::Void
             }
@@ -1075,6 +1075,8 @@ impl State {
             }
             Value::Drop(val) => {
                 self.generate(val, stack);
+                // get all variables of the current scope.
+                /*
                 let size = stack.size_code(val);
                 if size > 0 {
                     stack.add_op("OpGenFreeStack", self);
@@ -1082,6 +1084,7 @@ impl State {
                     self.code_add(size);
                 }
                 stack.position -= size;
+                 */
                 Type::Void
             }
             Value::Iter(_, _) => {
@@ -1153,10 +1156,10 @@ impl State {
             self.code_add(self.library_names[&name]);
             self.gather_key(stack, &parameters, 1, &mut tps);
             for a in &stack.data.def(*op).attributes {
-                stack.position -= size(&a.typedef, Context::Argument);
+                stack.position -= size(&a.typedef, &Context::Argument);
             }
             // add the result to the stack
-            stack.position += size(&stack.data.def(*op).returned, Context::Argument);
+            stack.position += size(&stack.data.def(*op).returned, &Context::Argument);
             stack.data.def(*op).returned.clone()
         } else {
             if !self.calls.contains_key(op) {
@@ -1168,10 +1171,10 @@ impl State {
             self.code_add(stack.data.def(*op).code_position as i32);
             // remove the arguments that are already on the stack
             for a in &stack.data.def(*op).attributes {
-                stack.position -= size(&a.typedef, Context::Argument);
+                stack.position -= size(&a.typedef, &Context::Argument);
             }
             // add the result to the stack
-            stack.position += size(&stack.data.def(*op).returned, Context::Argument);
+            stack.position += size(&stack.data.def(*op).returned, &Context::Argument);
             stack.data.def(*op).returned.clone()
         }
     }
@@ -1244,19 +1247,19 @@ impl State {
         tp
     }
 
-    fn generate_var(&mut self, stack: &mut Stack, variable: &u32) -> Type {
+    fn generate_var(&mut self, stack: &mut Stack, variable: u16) -> Type {
         assert!(
-            stack.position(*variable) <= stack.position,
+            stack.function.stack(variable) <= stack.position,
             "Incorrect var {}[{}] versus {} on {}",
-            stack.def().variables[*variable as usize].name,
-            stack.position(*variable),
+            stack.function.name(variable),
+            stack.function.stack(variable),
             stack.position,
-            stack.def().name
+            stack.data.def(stack.def_nr).name
         );
-        let var_pos = stack.position - stack.position(*variable);
-        let argument = *variable < stack.def().attributes.len() as u32;
+        let var_pos = stack.position - stack.function.stack(variable);
+        let argument = stack.function.is_argument(variable);
         let code = self.code_pos;
-        match stack.var_type(*variable) {
+        match stack.function.tp(variable) {
             Type::Integer(_, _) => stack.add_op("OpVarInt", self),
             Type::RefVar(_) => stack.add_op("OpVarRef", self),
             Type::Enum(_) => stack.add_op("OpVarEnum", self),
@@ -1287,13 +1290,13 @@ impl State {
             }
             _ => panic!(
                 "Unknown var '{}' type {} at {}",
-                stack.def().variables[*variable as usize].name,
-                stack.var_type(*variable),
-                stack.def().position
+                stack.function.name(variable),
+                stack.function.tp(variable),
+                stack.data.def(stack.def_nr).position
             ),
         }
         self.code_add(var_pos);
-        if let Type::RefVar(tp) = stack.var_type(*variable) {
+        if let Type::RefVar(tp) = stack.function.tp(variable) {
             match &**tp {
                 Type::Integer(_, _) => stack.add_op("OpGetInt", self),
                 Type::Long => stack.add_op("OpGetLong", self),
@@ -1305,12 +1308,11 @@ impl State {
             }
             self.code_add(0u16);
         }
-        self.insert_types(stack.var_type(*variable).clone(), code, stack)
+        self.insert_types(stack.function.tp(variable).clone(), code, stack)
     }
 
     fn generate_block(&mut self, stack: &mut Stack, values: &[Value]) -> Type {
         let to = stack.position;
-        stack.scope += 1;
         let last = values.len() - 1;
         let mut tp = Type::Void;
         for (elm, v) in values.iter().enumerate() {
@@ -1319,13 +1321,16 @@ impl State {
                 continue;
             }
             // Check if we need a return statement here
-            if stack.scope == 1 && !matches!(v, Value::Return(_)) {
+            if stack.function.current_scope == 1 && !matches!(v, Value::Return(_)) {
                 stack.add_op("OpGenReturn", self);
                 self.code_add(self.arguments);
-                self.code_add(size(&stack.def().returned, Context::Argument) as u8);
+                self.code_add(
+                    size(&stack.data.def(stack.def_nr).returned, &Context::Argument) as u8,
+                );
                 self.code_add(stack.position);
                 tp = Type::Void;
-            } else if stack.scope > 1 {
+            } else if stack.function.current_scope > 1 {
+                /*
                 let size = stack.size_code(v);
                 let after = to + size;
                 if stack.position > to + size {
@@ -1333,11 +1338,10 @@ impl State {
                     self.code_add(size as u8);
                     self.code_add(stack.position - to - size);
                 }
-                stack.free(u32::from(after));
-                stack.position = after;
+                */
+                stack.position = to;
             }
         }
-        stack.scope -= 1;
         tp
     }
 
@@ -1357,7 +1361,7 @@ impl State {
                 if let Value::Int(nr) = p {
                     self.code_add(*nr as u16);
                 } else if let Value::Var(v) = p {
-                    let r = stack.position(*v);
+                    let r = stack.function.stack(*v);
                     self.code_add(before_stack - r);
                 }
             }
@@ -1414,9 +1418,9 @@ impl State {
         }
     }
 
-    fn set_var(&mut self, stack: &mut Stack, var: u32, value: &Value) {
-        if let Type::RefVar(tp) = stack.var_type(var).clone() {
-            let var_pos = stack.position - stack.position(var);
+    fn set_var(&mut self, stack: &mut Stack, var: u16, value: &Value) {
+        if let Type::RefVar(tp) = stack.function.tp(var).clone() {
+            let var_pos = stack.position - stack.function.stack(var);
             stack.add_op("OpVarRef", self);
             self.code_add(var_pos);
             self.generate(value, stack);
@@ -1433,8 +1437,8 @@ impl State {
             return;
         }
         self.generate(value, stack);
-        let var_pos = stack.position - stack.position(var);
-        match stack.var_type(var) {
+        let var_pos = stack.position - stack.function.stack(var);
+        match stack.function.tp(var) {
             Type::Integer(_, _) => stack.add_op("OpPutInt", self),
             Type::Enum(_) => stack.add_op("OpPutEnum", self),
             Type::Boolean => stack.add_op("OpPutBool", self),
@@ -1445,9 +1449,9 @@ impl State {
             Type::Vector(_) | Type::Reference(_) => stack.add_op("OpPutRef", self),
             _ => panic!(
                 "Unknown var {} type {} at {}",
-                stack.def().variables[var as usize].name,
-                stack.var_type(var),
-                stack.def().position
+                stack.function.name(var),
+                stack.function.tp(var),
+                stack.data.def(stack.def_nr).position
             ),
         }
         self.code_add(var_pos);
@@ -1473,7 +1477,7 @@ impl State {
                 data.attr_name(d_nr, a_nr),
                 data.attr_type(d_nr, a_nr).show(data)
             )?;
-            stack_pos += size(&data.attr_type(d_nr, a_nr), Context::Argument);
+            stack_pos += size(&data.attr_type(d_nr, a_nr), &Context::Argument);
         }
         write!(f, ")")?;
         if data.def(d_nr).returned != Type::Void {

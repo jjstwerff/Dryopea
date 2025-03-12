@@ -31,9 +31,9 @@ fn dir() -> std::io::Result<()> {
         let filename = entry.file_name().unwrap_or_default().to_string_lossy();
         let mut state = State::new(p.database);
         byte_code(
-            &mut p.data,
             &mut std::fs::File::create(format!("tests/generated/{filename}.dump"))?,
             &mut state,
+            &mut p.data,
         )?;
     }
     Ok(())
