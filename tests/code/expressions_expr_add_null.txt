@@ -1,22 +1,22 @@
 pub fn test() {
     1 + null;
 }
-fn test {#1 block
+fn test() {#1 block
   drop OpAddInt(1i32, OpConvIntFromNull());
 }#1
 
 byte-code for expr_add_null:test()
- 668[0]: return-address
- 668[4]: ConstInt(val=1) -> integer
- 673[8]: ConvIntFromNull() -> integer
- 674[12]: AddInt(v1: integer, v2: integer) -> integer
- 675[8]: GenFreeStack(value=0, discard=4)
- 679[4]: GenReturn(ret=0, value=0, discard=4)
+ 675[0]: return-address
+ 675[4]: ConstInt(val=1) -> integer
+ 680[8]: ConvIntFromNull() -> integer
+ 681[12]: AddInt(v1: integer, v2: integer) -> integer
+ 682[8]: FreeStack(value=0, discard=4)
+ 686[4]: Return(ret=0, value=0, discard=4)
 
 Execute test:
-  668:[8] ConstInt(val=1) -> 1[8]
-  673:[12] ConvIntFromNull() -> -2147483648[12]
-  674:[16] AddInt(v1=1[8], v2=-2147483648[12]) -> -2147483648[8]
-  675:[12] GenFreeStack(value=0, discard=4)
-  679:[8] GenReturn(ret=4294967295[4], value=0, discard=4)
+  675:[8] ConstInt(val=1) -> 1[8]
+  680:[12] ConvIntFromNull() -> -2147483648[12]
+  681:[16] AddInt(v1=1[8], v2=-2147483648[12]) -> -2147483648[8]
+  682:[12] FreeStack(value=0, discard=4)
+  686:[8] Return(ret=4294967295[4], value=0, discard=4)
 Finished

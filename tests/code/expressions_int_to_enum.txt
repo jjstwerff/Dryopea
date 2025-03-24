@@ -9,56 +9,56 @@ pub fn test() {
 }
 Type 11:Number[1]:Enum(["One", "Two", "Three", "Four"])
 
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:boolean = {#2 block
     OpLtEnum(OpCastEnumFromInt(1i32, 11i32), OpCastEnumFromInt(3i32, 11i32));
-  }#2;
-  if OpEqBool(test_value, true) null else OpGenPanic({#3 formatting string
+  }#2:boolean;
+  if OpEqBool(test_value, true) null else OpPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != true");
     __work_1;
-  }#3);
+  }#3:text);
 }#1
 
 byte-code for int_to_enum:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: ConstInt(val=1) -> integer
- 674[32]: CastEnumFromInt(v1: integer) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[11]
- 675[29]: ConstInt(val=3) -> integer
- 680[33]: CastEnumFromInt(v1: integer) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[11]
- 681[30]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
- 682[29]: VarBool(var[28]) -> boolean
- 685[30]: ConstTrue() -> boolean
- 686[31]: EqBool(v1: boolean, v2: boolean) -> boolean
- 687[30]: GenGotoFalseWord(jump=693, if_false: boolean)
- 690[29]: GenGotoWord(jump=743)
- 693[29]: ClearText(var[4])
- 696[29]: ConstText(_value="Test failed ") -> text(false, [])
- 710[45]: AppendText(var[4], v1: text(false, []))
- 713[29]: VarBool(var[28]) -> boolean
- 716[30]: ConstInt(val=0) -> integer
- 721[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
- 726[29]: ConstText(_value=" != true") -> text(false, [])
- 736[45]: AppendText(var[4], v1: text(false, []))
- 739[29]: VarText(var[4]) -> text(false, [])
- 742[45]: GenPanic(message: text(false, []))
- 743[29]: GenReturn(ret=0, value=0, discard=29)
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: ConstInt(val=1) -> integer
+ 681[32]: CastEnumFromInt(v1: integer) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[11]
+ 682[29]: ConstInt(val=3) -> integer
+ 687[33]: CastEnumFromInt(v1: integer) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[11]
+ 688[30]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
+ 689[29]: VarBool(var[28]) -> boolean
+ 692[30]: ConstTrue() -> boolean
+ 693[31]: EqBool(v1: boolean, v2: boolean) -> boolean
+ 694[30]: GotoFalseWord(jump=700, if_false: boolean)
+ 697[29]: GotoWord(jump=750)
+ 700[29]: ClearText(var[4])
+ 703[29]: ConstText(_value="Test failed ") -> text
+ 717[45]: AppendText(var[4], v1: text)
+ 720[29]: VarBool(var[28]) -> boolean
+ 723[30]: ConstInt(val=0) -> integer
+ 728[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
+ 733[29]: ConstText(_value=" != true") -> text
+ 743[45]: AppendText(var[4], v1: text)
+ 746[29]: VarText(var[4]) -> text
+ 749[45]: Panic(message: text)
+ 750[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
-  668:[8] Text()
-  669:[32] ConstInt(val=1) -> 1[32]
-  674:[36] CastEnumFromInt(v1=1[32]) -> One(1)[32]
-  675:[33] ConstInt(val=3) -> 3[33]
-  680:[37] CastEnumFromInt(v1=3[33]) -> Three(3)[33]
-  681:[34] LtEnum(v1=1[32], v2=3[33]) -> true[32]
-  682:[33] VarBool(var[32]) -> true[33]
-  685:[34] ConstTrue() -> true[34]
-  686:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
-  687:[34] GenGotoFalseWord(jump=693, if_false=true[33])
-  690:[33] GenGotoWord(jump=743)
-  743:[33] GenReturn(ret=4294967295[4], value=0, discard=29)
+  675:[8] Text()
+  676:[32] ConstInt(val=1) -> 1[32]
+  681:[36] CastEnumFromInt(v1=1[32]) -> One(1)[32]
+  682:[33] ConstInt(val=3) -> 3[33]
+  687:[37] CastEnumFromInt(v1=3[33]) -> Three(3)[33]
+  688:[34] LtEnum(v1=1[32], v2=3[33]) -> true[32]
+  689:[33] VarBool(var[32]) -> true[33]
+  692:[34] ConstTrue() -> true[34]
+  693:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+  694:[34] GotoFalseWord(jump=700, if_false=true[33])
+  697:[33] GotoWord(jump=750)
+  750:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

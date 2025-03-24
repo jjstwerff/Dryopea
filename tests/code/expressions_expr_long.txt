@@ -5,64 +5,64 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
-    let a = OpMinSingleLong(2i64);
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:boolean = {#2 block
+    let a:long = OpMinSingleLong(2i64);
     OpNeLong(3i64, _tp_long_abs(a));
-  }#2;
-  if OpEqBool(test_value, true) null else OpGenPanic({#3 formatting string
+  }#2:boolean;
+  if OpEqBool(test_value, true) null else OpPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != true");
     __work_1;
-  }#3);
+  }#3:text);
 }#1
 
 byte-code for expr_long:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: ConstLong(val=2) -> long
- 678[36]: MinSingleLong(v1: long) -> long
- 679[36]: ConstLong(val=3) -> long
- 688[44]: VarLong(var[28]) -> long
- 691[52]: GenCall(size=0, to=10)
- 698[52]: NeLong(v1: long, v2: long) -> boolean
- 699[37]: GenFreeStack(value=1, discard=8)
- 703[29]: VarBool(var[28]) -> boolean
- 706[30]: ConstTrue() -> boolean
- 707[31]: EqBool(v1: boolean, v2: boolean) -> boolean
- 708[30]: GenGotoFalseWord(jump=714, if_false: boolean)
- 711[29]: GenGotoWord(jump=764)
- 714[29]: ClearText(var[4])
- 717[29]: ConstText(_value="Test failed ") -> text(false, [])
- 731[45]: AppendText(var[4], v1: text(false, []))
- 734[29]: VarBool(var[28]) -> boolean
- 737[30]: ConstInt(val=0) -> integer
- 742[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
- 747[29]: ConstText(_value=" != true") -> text(false, [])
- 757[45]: AppendText(var[4], v1: text(false, []))
- 760[29]: VarText(var[4]) -> text(false, [])
- 763[45]: GenPanic(message: text(false, []))
- 764[29]: GenReturn(ret=0, value=0, discard=29)
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: ConstLong(val=2) -> long
+ 685[36]: MinSingleLong(v1: long) -> long
+ 686[36]: ConstLong(val=3) -> long
+ 695[44]: VarLong(var[28]) -> long
+ 698[52]: Call(size=0, to=10)
+ 705[52]: NeLong(v1: long, v2: long) -> boolean
+ 706[37]: FreeStack(value=1, discard=8) type=boolean[1]:Base[4]
+ 710[29]: VarBool(var[28]) -> boolean
+ 713[30]: ConstTrue() -> boolean
+ 714[31]: EqBool(v1: boolean, v2: boolean) -> boolean
+ 715[30]: GotoFalseWord(jump=721, if_false: boolean)
+ 718[29]: GotoWord(jump=771)
+ 721[29]: ClearText(var[4])
+ 724[29]: ConstText(_value="Test failed ") -> text
+ 738[45]: AppendText(var[4], v1: text)
+ 741[29]: VarBool(var[28]) -> boolean
+ 744[30]: ConstInt(val=0) -> integer
+ 749[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
+ 754[29]: ConstText(_value=" != true") -> text
+ 764[45]: AppendText(var[4], v1: text)
+ 767[29]: VarText(var[4]) -> text
+ 770[45]: Panic(message: text)
+ 771[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
-  668:[8] Text()
-  669:[32] ConstLong(val=2) -> 2[32]
-  678:[40] MinSingleLong(v1=2[32]) -> -2[32]
-  679:[40] ConstLong(val=3) -> 3[40]
-  688:[48] VarLong(var[32]) -> -2[48]
-  691:[56] GenCall(size=0, to=10)
+  675:[8] Text()
+  676:[32] ConstLong(val=2) -> 2[32]
+  685:[40] MinSingleLong(v1=2[32]) -> -2[32]
+  686:[40] ConstLong(val=3) -> 3[40]
+  695:[48] VarLong(var[32]) -> -2[48]
+  698:[56] Call(size=0, to=10)
    10:[60] VarLong(var[48]) -> -2[60]
    13:[68] AbsLong(v1=-2[60]) -> 2[60]
-   14:[68] GenReturn(ret=698[56], value=8, discard=20)
-  698:[56] NeLong(v1=3[40], v2=2[48]) -> true[40]
-  699:[41] GenFreeStack(value=1, discard=8)
-  703:[33] VarBool(var[32]) -> true[33]
-  706:[34] ConstTrue() -> true[34]
-  707:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
-  708:[34] GenGotoFalseWord(jump=714, if_false=true[33])
-  711:[33] GenGotoWord(jump=764)
-  764:[33] GenReturn(ret=4294967295[4], value=0, discard=29)
+   14:[68] Return(ret=705[56], value=8, discard=20) -> 2[48]
+  705:[56] NeLong(v1=3[40], v2=2[48]) -> true[40]
+  706:[41] FreeStack(value=1, discard=8)
+  710:[33] VarBool(var[32]) -> true[33]
+  713:[34] ConstTrue() -> true[34]
+  714:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+  715:[34] GotoFalseWord(jump=721, if_false=true[33])
+  718:[33] GotoWord(jump=771)
+  771:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

@@ -191,7 +191,7 @@ fn OpGetPngImage(stores: &mut Stores, var_0: Str, var_1: DbRef) -> bool {
 }
 
 
-fn OpGetFileText(stores: &mut Stores, var_0: DbRef) -> Str {
+fn OpGetFileText(stores: &mut Stores, var_0: DbRef, var_1: DbRef) {
 
 }
 
@@ -201,7 +201,9 @@ fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 {
 }
 
 fn _tp_File_content(stores: &mut Stores, var_0: DbRef) -> Str {
-  Str::new(&stores.get_file_text(&(var_self)))
+  let mut var_1 = "".to_string();
+  OpGetFileText(stores, var_self, OpCreateRef(stores, var_result));
+  var_result
 }
 
 fn file(stores: &mut Stores, var_0: Str) -> DbRef {

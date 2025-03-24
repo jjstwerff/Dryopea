@@ -37,7 +37,7 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
             data.definitions[d_nr as usize].known_type = 2;
         }
         "text" => {
-            data.set_returned(d_nr, Type::Text(false, Vec::new()));
+            data.set_returned(d_nr, Type::Text(Vec::new()));
             data.definitions[d_nr as usize].known_type = 5;
         }
         "boolean" => {

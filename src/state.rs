@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 
 use crate::data::{Attribute, Context, Data, I32, Type, Value};
-use crate::database::{ShowDb, Stores};
+use crate::database::{Parts, ShowDb, Stores};
 use crate::fill::OPERATORS;
 use crate::keys;
 use crate::keys::{Content, DbRef, Key, Str};
@@ -14,7 +14,8 @@ use crate::variables::size;
 use crate::vector;
 use crate::{external, hash};
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::io::{Error, Write};
+use std::fs::File;
+use std::io::{Error, Read, Write};
 use std::str::FromStr;
 
 pub type Call = fn(&mut Stores, &mut DbRef);
@@ -132,6 +133,25 @@ impl State {
             rec: self.stack_cur.rec,
             pos: self.stack_cur.pos + self.stack_pos - u32::from(pos),
         });
+    }
+
+    /**
+    Read data from a file
+    # Panics
+    When the reading was incorrect.
+    */
+    pub fn get_file_text(&mut self) {
+        let r = *self.get_stack::<DbRef>();
+        let file = *self.get_stack::<DbRef>();
+        if file.rec == 0 {
+            return;
+        }
+        let store = self.database.store(&file);
+        let file_path = store.get_str(store.get_int(file.rec, file.pos + 4) as u32);
+        let buf = self.database.store_mut(&r).addr_mut::<String>(r.rec, r.pos);
+        if let Ok(mut f) = File::open(file_path) {
+            f.read_to_string(buf).unwrap();
+        }
     }
 
     #[inline]
@@ -265,7 +285,7 @@ impl State {
         self.string_mut(pos).clear();
     }
 
-    pub fn gen_free_text(&mut self) {
+    pub fn free_text(&mut self) {
         let pos = *self.code::<u16>();
         self.string_mut(pos).shrink_to(0);
     }
@@ -913,7 +933,13 @@ impl State {
         self.arguments = stack.position;
         stack.position += 4; // keep space for the code return address
         if console {
-            println!("fn {}", stack.data.def(def_nr).name);
+            println!(
+                "{} ",
+                stack
+                    .data
+                    .def(def_nr)
+                    .header(stack.data, &stack.data.def(def_nr).variables)
+            );
             stack.data.dump(&stack.data.def(def_nr).code, def_nr);
         }
         let val = stack
@@ -923,15 +949,18 @@ impl State {
             &stack.data.def(def_nr).code,
             &stack.data.def(def_nr).name,
             &stack.data.def(def_nr).position.file,
+            stack.data,
             &mut HashSet::new(),
         );
-        stack.function.finish_scope(val, (0, 0));
+        stack.function.finish_scope(val, &Type::Unknown(0), (0, 0));
         stack.function.reset();
         let gen_scope = stack
             .function
             .start_scope((0, 0), &format!("generate {}", stack.data.def(def_nr).name));
         self.generate(&stack.data.def(def_nr).code, &mut stack);
-        stack.function.finish_scope(gen_scope, (0, 0));
+        stack
+            .function
+            .finish_scope(gen_scope, &Type::Unknown(0), (0, 0));
         data.definitions[def_nr as usize].code_position = start;
         data.definitions[def_nr as usize].code_length = self.code_pos - start;
         if let Some(v) = self.calls.get(&def_nr) {
@@ -995,14 +1024,14 @@ impl State {
             Value::Text(value) => {
                 stack.add_op("OpConstText", self);
                 self.code_add_str(value);
-                Type::Text(false, Vec::new())
+                Type::Text(Vec::new())
             }
             Value::Var(variable) => self.generate_var(stack, *variable),
             Value::Let(variable, value) => {
                 stack
                     .function
                     .claim(*variable, stack.position, &Context::Variable);
-                if matches!(*stack.function.tp(*variable), Type::Text(_, _)) {
+                if matches!(*stack.function.tp(*variable), Type::Text(_)) {
                     stack.add_op("OpText", self);
                     stack.position += size_str() as u16;
                     if let Value::Text(s) = &**value {
@@ -1030,27 +1059,27 @@ impl State {
                 }
                 let loop_pos = stack.loop_position(0);
                 if stack.position > loop_pos {
-                    stack.add_op("OpGenFreeStack", self);
+                    stack.add_op("OpFreeStack", self);
                     self.code_add(0u8);
                     self.code_add(stack.position - loop_pos);
                     stack.position = loop_pos;
                 }
-                stack.add_op("OpGenGotoWord", self);
+                stack.add_op("OpGotoWord", self);
                 self.code_add((i64::from(pos) - i64::from(self.code_pos) - 2) as i16);
                 stack.end_loop(self);
-                stack.function.finish_scope(lp, (0, 0));
+                stack.function.finish_scope(lp, &Type::Unknown(0), (0, 0));
                 Type::Void
             }
             Value::Break(loop_nr) => {
                 let loop_pos = stack.loop_position(*loop_nr);
                 let old_pos = stack.position;
                 if stack.position > loop_pos {
-                    stack.add_op("OpGenFreeStack", self);
+                    stack.add_op("OpFreeStack", self);
                     self.code_add(0u8);
                     self.code_add(stack.position - loop_pos);
                     stack.position = loop_pos;
                 }
-                stack.add_op("OpGenGotoWord", self);
+                stack.add_op("OpGotoWord", self);
                 stack.add_break(self.code_pos, *loop_nr);
                 self.code_add(0i16); // temporary value to the end of the loop
                 stack.position = old_pos;
@@ -1060,12 +1089,12 @@ impl State {
                 let loop_pos = stack.loop_position(*loop_nr);
                 let old_pos = stack.position;
                 if stack.position > loop_pos {
-                    stack.add_op("OpGenFreeStack", self);
+                    stack.add_op("OpFreeStack", self);
                     self.code_add(0u8);
                     self.code_add(stack.position - loop_pos);
                     stack.position = loop_pos;
                 }
-                stack.add_op("OpGenGotoWord", self);
+                stack.add_op("OpGotoWord", self);
                 self.code_add(
                     (i64::from(stack.get_loop(*loop_nr)) - i64::from(self.code_pos) - 2) as i16,
                 );
@@ -1074,7 +1103,7 @@ impl State {
             }
             Value::If(test, t_val, f_val) => {
                 self.generate(test, stack);
-                stack.add_op("OpGenGotoFalseWord", self);
+                stack.add_op("OpGotoFalseWord", self);
                 let step = self.code_pos;
                 self.code_add(0i16); // temp step
                 let true_pos = self.code_pos;
@@ -1083,7 +1112,7 @@ impl State {
                 if **f_val == Value::Null {
                     self.code_put(step, (self.code_pos - true_pos) as i16); // actual step
                 } else {
-                    stack.add_op("OpGenGotoWord", self);
+                    stack.add_op("OpGotoWord", self);
                     let end = self.code_pos;
                     self.code_add(0i16); // temp end
                     let false_pos = self.code_pos;
@@ -1096,11 +1125,15 @@ impl State {
             }
             Value::Return(v) => {
                 self.generate(v, stack);
-                stack.add_op("OpGenReturn", self);
+                let return_type = &stack.data.def(stack.def_nr).returned;
+                if return_type != &Type::Void {
+                    let ret_nr = stack.data.type_def_nr(return_type);
+                    let known = stack.data.def(ret_nr).known_type;
+                    self.types.insert(self.code_pos, known);
+                }
+                stack.add_op("OpReturn", self);
                 self.code_add(self.arguments);
-                self.code_add(
-                    size(&stack.data.def(stack.def_nr).returned, &Context::Argument) as u8,
-                );
+                self.code_add(size(return_type, &Context::Argument) as u8);
                 self.code_add(stack.position);
                 Type::Void
             }
@@ -1115,7 +1148,7 @@ impl State {
                 // get all variables of the current scope.
                 let size = stack.size_code(val);
                 if size > 0 {
-                    stack.add_op("OpGenFreeStack", self);
+                    stack.add_op("OpFreeStack", self);
                     self.code_add(0u8);
                     self.code_add(size);
                 }
@@ -1189,7 +1222,7 @@ impl State {
         } else if self.library_names.contains_key(&name) {
             stack.add_op("OpStaticCall", self);
             self.code_add(self.library_names[&name]);
-            self.gather_key(stack, &parameters, 1, &mut tps);
+            self.gather_key(stack, &parameters, 0, &mut tps);
             for a in &stack.data.def(*op).attributes {
                 stack.position -= size(&a.typedef, &Context::Argument);
             }
@@ -1201,7 +1234,7 @@ impl State {
                 self.calls.insert(*op, vec![]);
             }
             self.calls.get_mut(op).unwrap().push(self.code_pos);
-            stack.add_op("OpGenCall", self);
+            stack.add_op("OpCall", self);
             self.code_add(0u16);
             self.code_add(stack.data.def(*op).code_position as i32);
             // remove the arguments that are already on the stack
@@ -1302,14 +1335,14 @@ impl State {
             Type::Long => stack.add_op("OpVarLong", self),
             Type::Single => stack.add_op("OpVarSingle", self),
             Type::Float => stack.add_op("OpVarFloat", self),
-            Type::Text(_, _) => {
+            Type::Text(_) => {
                 stack.add_op(if argument { "OpArgText" } else { "OpVarText" }, self);
             }
             Type::Vector(tp, _) => {
                 let typedef: &Type = tp;
                 let name = if matches!(typedef, Type::Unknown(_)) {
                     "vector".to_string()
-                } else if matches!(typedef, Type::Text(_, _)) {
+                } else if matches!(typedef, Type::Text(_)) {
                     "text".to_string()
                 } else {
                     format!("vector<{}>", tp.name(stack.data))
@@ -1338,7 +1371,7 @@ impl State {
                 Type::Single => stack.add_op("OpGetSingle", self),
                 Type::Float => stack.add_op("OpGetFloat", self),
                 Type::Enum(_) => stack.add_op("OpGetByte", self),
-                Type::Text(_, _) => stack.add_op("OpGetRefText", self),
+                Type::Text(_) => stack.add_op("OpGetRefText", self),
                 _ => panic!("Unknown referenced variable type"),
             }
             self.code_add(0u16);
@@ -1356,28 +1389,37 @@ impl State {
             if elm != last {
                 continue;
             }
+            let code = self.code_pos;
             // Check if we need a return statement here
             if stack.function.scope() == 1 && !matches!(v, Value::Return(_)) {
-                stack.add_op("OpGenReturn", self);
+                stack.add_op("OpReturn", self);
                 self.code_add(self.arguments);
-                self.code_add(
-                    size(&stack.data.def(stack.def_nr).returned, &Context::Argument) as u8,
-                );
+                let return_type = &stack.data.def(stack.def_nr).returned;
+                self.code_add(size(return_type, &Context::Argument) as u8);
                 self.code_add(stack.position);
+                if return_type != &Type::Void {
+                    let ret_nr = stack.data.type_def_nr(return_type);
+                    let known = stack.data.def(ret_nr).known_type;
+                    self.types.insert(code, known);
+                }
                 tp = Type::Void;
             } else if stack.function.scope() > 1 {
                 let size = stack.size_code(v);
                 let after = to + size;
                 if stack.position > to + size {
-                    stack.add_op("OpGenFreeStack", self);
+                    stack.add_op("OpFreeStack", self);
                     self.code_add(size as u8);
                     self.code_add(stack.position - to - size);
+                    let known = stack.type_code(v, &self.database);
+                    if known != u16::MAX {
+                        self.types.insert(code, known);
+                    }
                 }
                 stack.function.free(after);
                 stack.position = after;
             }
         }
-        stack.function.finish_scope(bl, (0, 0));
+        stack.function.finish_scope(bl, &Type::Unknown(0), (0, 0));
         tp
     }
 
@@ -1421,7 +1463,7 @@ impl State {
                     self.code_add(u8::from(*v));
                 }
             }
-            Type::Text(_, _) => {
+            Type::Text(_) => {
                 if let Value::Text(s) = p {
                     self.code_add_str(s);
                 }
@@ -1465,7 +1507,7 @@ impl State {
                 Type::Long => stack.add_op("OpSetLong", self),
                 Type::Single => stack.add_op("OpSetSingle", self),
                 Type::Float => stack.add_op("OpSetFloat", self),
-                Type::Text(_, _) => stack.add_op("OpAppendRefText", self),
+                Type::Text(_) => stack.add_op("OpAppendRefText", self),
                 Type::Enum(_) => stack.add_op("OpSetByte", self),
                 _ => panic!("Unknown reference variable type"),
             }
@@ -1481,7 +1523,7 @@ impl State {
             Type::Long => stack.add_op("OpPutLong", self),
             Type::Single => stack.add_op("OpPutSingle", self),
             Type::Float => stack.add_op("OpPutFloat", self),
-            Type::Text(_, _) => stack.add_op("OpAppendText", self),
+            Type::Text(_) => stack.add_op("OpAppendText", self),
             Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpPutRef", self),
             _ => panic!(
                 "Unknown var {} type {} at {}",
@@ -1522,13 +1564,20 @@ impl State {
                 f,
                 "{}: {}[{stack_pos}]",
                 data.attr_name(d_nr, a_nr),
-                data.attr_type(d_nr, a_nr).show(data)
+                data.attr_type(d_nr, a_nr)
+                    .show(data, &data.def(d_nr).variables)
             )?;
             stack_pos += size(&data.attr_type(d_nr, a_nr), &Context::Argument);
         }
         write!(f, ")")?;
         if data.def(d_nr).returned != Type::Void {
-            write!(f, " -> {}", data.def(d_nr).returned.show(data))?;
+            write!(
+                f,
+                " -> {}",
+                data.def(d_nr)
+                    .returned
+                    .show(data, &data.def(d_nr).variables)
+            )?;
         }
         writeln!(f)?;
         let pos = data.def(d_nr).code_position;
@@ -1552,7 +1601,7 @@ impl State {
                 if a_nr > 0 {
                     write!(f, ", ")?;
                 }
-                if (def.name == "OpGenGotoFalseWord" || def.name == "OpGenGotoWord") && a_nr == 0 {
+                if (def.name == "OpGotoFalseWord" || def.name == "OpGotoWord") && a_nr == 0 {
                     let to = i64::from(p) + 3 + i64::from(*self.code::<i16>());
                     write!(f, "jump={to}")?;
                 } else if def.name == "OpStaticCall" {
@@ -1571,14 +1620,23 @@ impl State {
                     let pos = i32::from(*self.code::<u16>());
                     write!(f, "var[{}]", i32::from(self.stack[&p]) - pos,)?;
                 } else if a.mutable {
-                    write!(f, "{}: {}", a.name, a.typedef.show(data))?;
+                    write!(
+                        f,
+                        "{}: {}",
+                        a.name,
+                        a.typedef.show(data, &data.def(d_nr).variables)
+                    )?;
                 } else {
                     write!(f, "{}={}", a.name, self.dump_attribute(a))?;
                 }
             }
             write!(f, ")")?;
             if def.returned != Type::Void {
-                write!(f, " -> {}", def.returned.show(data))?;
+                write!(
+                    f,
+                    " -> {}",
+                    def.returned.show(data, &data.def(d_nr).variables)
+                )?;
             }
             if let Some(t) = self.types.get(&p) {
                 write!(f, " type={}[{t:}]", self.database.show_type(*t, false))?;
@@ -1614,7 +1672,7 @@ impl State {
             Type::Long => format!("{}", *self.code::<i64>()),
             Type::Single => format!("{}", *self.code::<f32>()),
             Type::Float => format!("{}", *self.code::<f64>()),
-            Type::Text(_, _) => format!("\"{}\"", self.code_str()),
+            Type::Text(_) => format!("\"{}\"", self.code_str()),
             Type::Keys => {
                 let len = *self.code::<u8>();
                 let mut keys = Vec::new();
@@ -1708,9 +1766,9 @@ impl State {
         let mut attr = BTreeMap::new();
         for (a_nr, a) in def.attributes.iter().enumerate() {
             if !a.mutable {
-                if def.name == "OpGenReturn" && a_nr == 0 {
+                if def.name == "OpReturn" && a_nr == 0 {
                     self.return_attr(&mut attr, a_nr);
-                } else if def.name.starts_with("OpGenGoto") && a_nr == 0 {
+                } else if def.name.starts_with("OpGoto") && a_nr == 0 {
                     let to = i64::from(cur) + 2 + i64::from(*self.code::<i16>());
                     attr.insert(a_nr, format!("jump={to}"));
                 } else if a_nr == 0 && a.name == "pos" && a.typedef == Type::Integer(0, 65535) {
@@ -1737,7 +1795,7 @@ impl State {
                     2 => self.dump_stack(&Type::Single, u32::MAX, data),
                     3 => self.dump_stack(&Type::Float, u32::MAX, data),
                     4 => self.dump_stack(&Type::Boolean, u32::MAX, data),
-                    5 => self.dump_stack(&Type::Text(false, Vec::new()), u32::MAX, data),
+                    5 => self.dump_stack(&Type::Text(Vec::new()), u32::MAX, data),
                     _ => self.dump_stack(&Type::Enum(u32::MAX), u32::from(*key), data),
                 };
                 attr.insert(idx + 3, format!("key{}={v}[{}]", idx + 1, self.stack_pos));
@@ -1787,6 +1845,10 @@ impl State {
     ) -> Result<(), Error> {
         let stack = self.stack_pos;
         let def = data.operator(op);
+        if def.name == "OpReturn" {
+            writeln!(log, "{}", self.dump_result(code))?;
+            return Ok(());
+        }
         if def.returned == Type::Void {
             writeln!(log)?;
             return Ok(());
@@ -1795,6 +1857,39 @@ impl State {
         writeln!(log, " -> {v}[{}]", self.stack_pos)?;
         self.stack_pos = stack;
         Ok(())
+    }
+
+    fn dump_result(&mut self, code: u32) -> String {
+        if let Some(k) = self.types.get(&code) {
+            let stack = self.stack_pos;
+            let known = *k;
+            let res = match known {
+                0 => format!("{}", *self.get_stack::<i32>()), // integer
+                1 => format!("{}", *self.get_stack::<i64>()), // long
+                2 => format!("{}", *self.get_stack::<f32>()), // single
+                3 => format!("{}", *self.get_stack::<f64>()), // float
+                4 => format!("{}", *self.get_stack::<u8>() == 1), // boolean
+                5 => format!("\"{}\"", self.string().str().replace('"', "\\\"")), // text
+                _ => match &self.database.types[known as usize].parts {
+                    Parts::Enum(_) => {
+                        let val = *self.get_stack::<u8>();
+                        format!("{}({val})", self.database.enum_val(known, val))
+                    }
+                    Parts::Struct(_) | Parts::Vector(_) => {
+                        let val = *self.get_stack::<DbRef>();
+                        let mut res = format!("ref({},{},{})=", val.store_nr, val.rec, val.pos);
+                        self.database.show(&mut res, &val, known, false);
+                        res
+                    }
+                    _ => String::new(),
+                },
+            };
+            let after = self.stack_pos;
+            self.stack_pos = stack;
+            format!(" -> {res}[{after}]")
+        } else {
+            String::new()
+        }
     }
 
     // TODO dump of data structures with only the top level records, limited array sizes
@@ -1819,7 +1914,7 @@ impl State {
             Type::Long => format!("{}", *self.get_stack::<i64>()),
             Type::Single => format!("{}", *self.get_stack::<f32>()),
             Type::Float => format!("{}", *self.get_stack::<f64>()),
-            Type::Text(_, _) => format!("\"{}\"", self.string().str().replace('"', "\\\"")),
+            Type::Text(_) => format!("\"{}\"", self.string().str().replace('"', "\\\"")),
             Type::Boolean => format!("{}", *self.get_stack::<u8>() == 1),
             Type::Reference(tp, _) => {
                 let known = if self.types.contains_key(&code) {

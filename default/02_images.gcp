@@ -32,15 +32,16 @@ fn OpGetDir(path: text, result: vector<File>) -> boolean;
 fn OpGetPngImage(path: text, image: Image) -> boolean;
 #rust "stores.get_png(@path, &@image)"
 
-fn OpGetFileText(file: File) -> text;
-#rust "Str::new(&stores.get_file_text(&@file))"
+fn OpGetFileText(file: File, content: &text);
 
 pub fn value(self: Pixel) -> integer {
     self.r * 0x10000 + self.g * 0x100 + self.b
 }
 
 pub fn content(self: File) -> text {
-    OpGetFileText(self)
+    result = "";
+    OpGetFileText(self, result);
+    result
 }
 
 pub fn file(path: text) -> File {

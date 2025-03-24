@@ -15,7 +15,6 @@ use crate::vector;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter, Write};
-
 /*
 #[derive(Debug, Clone, PartialEq)]
 pub enum Relation {
@@ -1581,15 +1580,6 @@ impl Stores {
         let filename = store.get_str(store.get_int(file.rec, file.pos + 4) as u32);
         let path = std::path::Path::new(filename);
         fill_file(path, store, file)
-    }
-
-    pub fn get_file_text(&mut self, file: &DbRef) -> String {
-        if file.rec == 0 {
-            return String::new();
-        }
-        let store = self.store(file);
-        let file_path = store.get_str(store.get_int(file.rec, file.pos + 4) as u32);
-        std::fs::read_to_string(file_path).unwrap_or_default()
     }
 
     pub fn get_dir(&mut self, file_path: &str, result: &DbRef) -> bool {

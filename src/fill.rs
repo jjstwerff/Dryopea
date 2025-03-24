@@ -8,14 +8,14 @@ use crate::state::State;
 use crate::vector;
 
 pub const OPERATORS: &[fn(&mut State)] = &[
-    gen_goto,
-    gen_goto_word,
-    gen_goto_false,
-    gen_goto_false_word,
-    gen_stack_pos,
-    gen_call,
-    gen_return,
-    gen_free_stack,
+    goto,
+    goto_word,
+    goto_false,
+    goto_false_word,
+    stack_pos,
+    call,
+    op_return,
+    free_stack,
     const_true,
     const_false,
     var_bool,
@@ -165,7 +165,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     append_text,
     get_text_sub,
     clear_text,
-    gen_free_text,
+    free_text,
     eq_text,
     ne_text,
     lt_text,
@@ -236,7 +236,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     hash_remove,
     eq_bool,
     ne_bool,
-    gen_panic,
+    panic,
     print,
     iterate,
     step,
@@ -251,17 +251,17 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     get_file_text,
 ];
 
-fn gen_goto(s: &mut State) {
+fn goto(s: &mut State) {
     let v_step = *s.code::<i8>();
     s.code_pos = (s.code_pos as i32 + i32::from(v_step)) as u32;
 }
 
-fn gen_goto_word(s: &mut State) {
+fn goto_word(s: &mut State) {
     let v_step = *s.code::<i16>();
     s.code_pos = (s.code_pos as i32 + i32::from(v_step)) as u32;
 }
 
-fn gen_goto_false(s: &mut State) {
+fn goto_false(s: &mut State) {
     let v_step = *s.code::<i8>();
     let v_if_false = *s.get_stack::<bool>();
     if !v_if_false {
@@ -269,7 +269,7 @@ fn gen_goto_false(s: &mut State) {
     }
 }
 
-fn gen_goto_false_word(s: &mut State) {
+fn goto_false_word(s: &mut State) {
     let v_step = *s.code::<i16>();
     let v_if_false = *s.get_stack::<bool>();
     if !v_if_false {
@@ -277,24 +277,24 @@ fn gen_goto_false_word(s: &mut State) {
     }
 }
 
-fn gen_stack_pos(s: &mut State) {
+fn stack_pos(s: &mut State) {
     s.stack_pos();
 }
 
-fn gen_call(s: &mut State) {
+fn call(s: &mut State) {
     let v_size = *s.code::<u16>();
     let v_to = *s.code::<i32>();
     s.fn_call(v_size, v_to);
 }
 
-fn gen_return(s: &mut State) {
+fn op_return(s: &mut State) {
     let v_ret = *s.code::<u16>();
     let v_value = *s.code::<u8>();
     let v_discard = *s.code::<u16>();
     s.fn_return(v_ret, v_value, v_discard);
 }
 
-fn gen_free_stack(s: &mut State) {
+fn free_stack(s: &mut State) {
     let v_value = *s.code::<u8>();
     let v_discard = *s.code::<u16>();
     s.free_stack(v_value, v_discard);
@@ -1234,8 +1234,8 @@ fn clear_text(s: &mut State) {
     s.clear_text();
 }
 
-fn gen_free_text(s: &mut State) {
-    s.gen_free_text();
+fn free_text(s: &mut State) {
+    s.free_text();
 }
 
 fn eq_text(s: &mut State) {
@@ -1782,7 +1782,7 @@ fn ne_bool(s: &mut State) {
     s.put_stack(new_value);
 }
 
-fn gen_panic(s: &mut State) {
+fn panic(s: &mut State) {
     let v_message = s.string();
     panic!("{}", v_message.str());
 }
@@ -1841,7 +1841,5 @@ fn get_png_image(s: &mut State) {
 }
 
 fn get_file_text(s: &mut State) {
-    let v_file = *s.get_stack::<DbRef>();
-    let new_value = Str::new(&s.database.get_file_text(&v_file));
-    s.put_stack(new_value);
+    s.get_file_text();
 }

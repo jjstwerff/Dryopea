@@ -3,6 +3,7 @@
 
 #![allow(clippy::cast_possible_truncation)]
 #![allow(dead_code)]
+use crate::data;
 use crate::data::{Context, Data, Type, Value};
 use crate::diagnostics::{Level, diagnostic_format};
 use crate::keys::DbRef;
@@ -22,6 +23,7 @@ use std::fmt::{Display, Formatter};
 struct Scope {
     parent: u16,
     context: String,
+    result: Type,
     from: (u32, u32),
     till: (u32, u32),
 }
@@ -122,6 +124,10 @@ impl Function {
         self.current_scope
     }
 
+    pub fn result(&self) -> &Type {
+        &self.scopes[self.current_scope as usize].result
+    }
+
     pub fn context(&self) -> &str {
         &self.scopes[self.current_scope as usize].context
     }
@@ -158,6 +164,7 @@ impl Function {
             self.scopes.push(Scope {
                 parent,
                 from: at,
+                result: Type::Void,
                 till: (u32::MAX, u32::MAX),
                 context: context.to_string(),
             });
@@ -172,7 +179,7 @@ impl Function {
     }
 
     #[allow(clippy::large_types_passed_by_value)]
-    pub fn finish_scope(&mut self, scope: u16, at: (u32, u32)) {
+    pub fn finish_scope(&mut self, scope: u16, result: &Type, at: (u32, u32)) {
         assert_eq!(
             self.current_scope, scope,
             "Incorrect scope finish {:?} vs {:?}",
@@ -192,6 +199,9 @@ impl Function {
             at.1
         );
         self.scopes[self.current_scope as usize].till = at;
+        if !matches!(result, Type::Unknown(_)) {
+            self.scopes[self.current_scope as usize].result = result.clone();
+        }
         if self.current_scope > self.last_scope {
             self.last_scope = self.current_scope;
         }
@@ -330,7 +340,7 @@ impl Function {
         lexer: &mut Lexer,
     ) -> bool {
         let var_tp = &self.variables[var_nr as usize].type_def;
-        if type_def.is_unknown() || var_tp == type_def {
+        if type_def.is_unknown() || var_tp.is_equal(type_def) {
             return self.is_new(var_nr);
         }
         if let (Type::Vector(tp, _), Type::Vector(to, _)) = (var_tp, type_def) {
@@ -349,7 +359,7 @@ impl Function {
             }
         } else if !var_tp.is_unknown() {
             if let Type::RefVar(in_tp) = var_tp {
-                if &**in_tp == type_def {
+                if in_tp.is_equal(type_def) {
                     return self.is_new(var_nr);
                 }
             }
@@ -411,7 +421,7 @@ impl Function {
         if self.current_work >= self.work.len() as u16 {
             let v = self.add_variable(
                 &format!("__work_{}", self.current_work + 1),
-                &Type::Text(false, Vec::new()),
+                &Type::Text(Vec::new()),
                 lexer,
             );
             // work variables always live in the main scope.
@@ -427,7 +437,14 @@ impl Function {
         &self.work
     }
 
-    pub fn validate(&mut self, code: &Value, name: &str, file: &str, started: &mut HashSet<u16>) {
+    pub fn validate(
+        &mut self,
+        code: &Value,
+        name: &str,
+        file: &str,
+        data: &Data,
+        started: &mut HashSet<u16>,
+    ) -> Type {
         match code {
             Value::Block(ls) | Value::Loop(ls) => {
                 assert!(
@@ -435,30 +452,54 @@ impl Function {
                     "Ran out of scopes fn {name} at {file}"
                 );
                 let bl = self.start_scope((0, 0), "validate block");
+                let mut tp = Type::Void;
                 for l in ls {
-                    self.validate(l, name, file, started);
+                    tp = self.validate(l, name, file, data, started);
                 }
-                self.finish_scope(bl, (0, 0));
+                let mut result = self.result();
+                if let (Type::Reference(tp_elm, _), Type::Reference(_, _)) = (&tp, result) {
+                    if *tp_elm == data.def_nr("reference") {
+                        result = &Type::Null;
+                    }
+                }
+                if result != &Type::Null {
+                    // specifically ignore else if block
+                    assert!(
+                        result.is_equal(&tp),
+                        "Different types on block {} vs {} scope '{}' at {file}:{}:{}",
+                        tp.show(data, self),
+                        result.show(data, self),
+                        self.scopes[self.current_scope as usize].context,
+                        self.scopes[self.current_scope as usize].till.0,
+                        self.scopes[self.current_scope as usize].till.1,
+                    );
+                }
+                self.finish_scope(bl, &Type::Unknown(0), (0, 0));
+                tp
             }
             Value::Drop(cd) | Value::Return(cd) => {
-                self.validate(cd, name, file, started);
+                self.validate(cd, name, file, data, started);
+                Type::Void
             }
             Value::Iter(_, _) => {
                 panic!("Should have been rewritten at {file}");
             }
-            Value::Call(_, vl) => {
+            Value::Call(nr, vl) => {
                 for v in vl {
-                    self.validate(v, name, file, started);
+                    self.validate(v, name, file, data, started);
                 }
+                data.def(*nr).returned.clone()
             }
             Value::If(cd, tcd, fcd) => {
-                self.validate(cd, name, file, started);
+                self.validate(cd, name, file, data, started);
+                let mut res = Type::Void;
                 if **tcd != Value::Null {
-                    self.validate(tcd, name, file, started);
+                    res = self.validate(tcd, name, file, data, started);
                 }
                 if **fcd != Value::Null {
-                    self.validate(fcd, name, file, started);
+                    self.validate(fcd, name, file, data, started);
                 }
+                res
             }
             Value::Let(v, cd) => {
                 assert!(
@@ -477,49 +518,72 @@ impl Function {
                     self.variables[*v as usize].source.0,
                     self.variables[*v as usize].source.1
                 );
-                self.validate(cd, name, file, started);
+                self.validate(cd, name, file, data, started);
+                Type::Void
             }
             Value::Var(v) | Value::Set(v, _) => {
-                assert!(
-                    started.contains(v) || self.variables[*v as usize].scope == 0,
-                    "Variable {} not yet started at {name} scope {} at {file}:{}:{}",
-                    self.variables[*v as usize].name,
-                    self.variables[*v as usize].scope,
-                    self.variables[*v as usize].source.0,
-                    self.variables[*v as usize].source.1
-                );
-                let var_scope = self.variables[*v as usize].scope;
-                let mut s = self.current_scope;
-                while s != u16::MAX {
-                    if var_scope == s {
-                        break;
-                    }
-                    s = self.scopes[s as usize].parent;
-                }
-                if s == u16::MAX {
-                    println!("variables:{self}");
-                    println!("code:{code:?}");
-                }
-                assert_ne!(
-                    s,
-                    u16::MAX,
-                    "Variable {}[{}] {} out of scope {} at {file}:{}:{}",
-                    self.variables[*v as usize].name,
-                    self.variables[*v as usize].scope,
-                    if matches!(code, Value::Var(_)) {
-                        "used"
-                    } else {
-                        "set"
-                    },
-                    self.current_scope,
-                    self.variables[*v as usize].source.0,
-                    self.variables[*v as usize].source.1
-                );
-                if let Value::Set(_, cd) = code {
-                    self.validate(cd, name, file, started);
-                }
+                self.validate_var(code, name, file, data, started, *v)
             }
-            _ => {}
+            Value::Int(_) => data::I32.clone(),
+            Value::Long(_) => Type::Long,
+            Value::Text(_) => Type::Text(Vec::new()),
+            Value::Boolean(_) => Type::Boolean,
+            Value::Float(_) => Type::Float,
+            Value::Single(_) => Type::Single,
+            Value::Enum(_, _) => Type::Enum(0), // TODO find way to determine the definition
+            _ => Type::Void,                    // break, continue, null
+        }
+    }
+
+    fn validate_var(
+        &mut self,
+        code: &Value,
+        name: &str,
+        file: &str,
+        data: &Data,
+        started: &mut HashSet<u16>,
+        v: u16,
+    ) -> Type {
+        assert!(
+            started.contains(&v) || self.variables[v as usize].scope == 0,
+            "Variable {} not yet started at {name} scope {} at {file}:{}:{}",
+            self.variables[v as usize].name,
+            self.variables[v as usize].scope,
+            self.variables[v as usize].source.0,
+            self.variables[v as usize].source.1
+        );
+        let var_scope = self.variables[v as usize].scope;
+        let mut s = self.current_scope;
+        while s != u16::MAX {
+            if var_scope == s {
+                break;
+            }
+            s = self.scopes[s as usize].parent;
+        }
+        if s == u16::MAX {
+            println!("variables:{self}");
+            println!("code:{code:?}");
+        }
+        assert_ne!(
+            s,
+            u16::MAX,
+            "Variable {}[{}] {} out of scope {} at {file}:{}:{}",
+            self.variables[v as usize].name,
+            self.variables[v as usize].scope,
+            if matches!(code, Value::Var(_)) {
+                "used"
+            } else {
+                "set"
+            },
+            self.current_scope,
+            self.variables[v as usize].source.0,
+            self.variables[v as usize].source.1
+        );
+        if let Value::Set(_, cd) = code {
+            self.validate(cd, name, file, data, started);
+            Type::Void
+        } else {
+            self.variables[v as usize].type_def.clone()
         }
     }
 
@@ -584,8 +648,8 @@ pub fn size(tp: &Type, context: &Context) -> u16 {
         Type::Boolean | Type::Enum(_) => 1,
         Type::Integer(_, _) | Type::Single | Type::Function(_, _) => 4,
         Type::Long | Type::Float => 8,
-        Type::Text(_, _) if context == &Context::Variable => size_of::<String>() as u16,
-        Type::Text(_, _) => size_of::<&str>() as u16,
+        Type::Text(_) if context == &Context::Variable => size_of::<String>() as u16,
+        Type::Text(_) => size_of::<&str>() as u16,
         Type::RefVar(_)
         | Type::Reference(_, _)
         | Type::Vector(_, _)

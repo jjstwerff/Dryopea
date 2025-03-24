@@ -15,28 +15,28 @@ pub type i16=integer limit(-32768, 32767);
 pub type i32=integer;
 
 // General operations
-fn OpGenGoto(step: const i8);
+fn OpGoto(step: const i8);
 #rust "s.code_pos = (s.code_pos as i32 + i32::from(@step)) as u32;"
 
-fn OpGenGotoWord(step: const i16);
+fn OpGotoWord(step: const i16);
 #rust "s.code_pos = (s.code_pos as i32 + i32::from(@step)) as u32;"
 
-fn OpGenGotoFalse(step: const i8, if_false: boolean);
+fn OpGotoFalse(step: const i8, if_false: boolean);
 #rust "if !@if_false {{s.code_pos = (s.code_pos as i32 + i32::from(@step)) as u32;}}"
 
-fn OpGenGotoFalseWord(step: const i16, if_false: boolean);
+fn OpGotoFalseWord(step: const i16, if_false: boolean);
 #rust "if !@if_false {{s.code_pos = (s.code_pos as i32 + i32::from(@step)) as u32;}}"
 
-fn OpGenStackPos();
+fn OpStackPos();
 #rust "s.stack_pos();"
 
-fn OpGenCall(size: const u16, to: const i32);
+fn OpCall(size: const u16, to: const i32);
 #rust "s.fn_call(@size, @to);"
 
-fn OpGenReturn(ret: const u16, value: const u8, discard: const u16);
+fn OpReturn(ret: const u16, value: const u8, discard: const u16);
 #rust "s.fn_return(@ret, @value, @discard);"
 
-fn OpGenFreeStack(value: const u8, discard: const u16);
+fn OpFreeStack(value: const u8, discard: const u16);
 #rust "s.free_stack(@value, @discard);"
 
 // Boolean operations
@@ -500,9 +500,9 @@ fn OpConvBoolFromText(v1: text) -> boolean;
 fn OpAddText(v1: text, v2: text) -> text;
 fn OpText();
 fn OpAppendText(pos: const u16, v1: text);
-fn OpGetTextSub(v1: text, from: integer, till: integer) -> text;
+fn OpGetTextSub(v1: text, from: integer, till: integer) -> text[v1];
 fn OpClearText(pos: const u16);
-fn OpGenFreeText(pos: const u16);
+fn OpFreeText(pos: const u16);
 // pub fn clear(self: text) { OpClearText(self) }
 fn OpEqText(v1: text, v2: text) -> boolean;
 #rust "@v1 == @v2"
@@ -568,7 +568,7 @@ fn OpConvRefFromNull() -> reference;
 //fn OpCastRefFromText(val: text, db_tp: const u16) -> reference;
 
 // Claim a new object inside a current database
-fn OpAppend(db: reference, size: const u16, db_tp: const u16) -> reference;
+fn OpAppend(db: reference, size: const u16, db_tp: const u16) -> reference[db];
 
 fn OpVarRef(pos: const u16) -> reference;
 #rust "*s.get_var::<DbRef>(@pos);"
@@ -580,7 +580,7 @@ fn OpNeRef(v1: reference, v2: reference) -> boolean;
 #rust "@v1 != @v2"
 
 // Can be used to get another record within the same database
-fn OpGetRef(v1: reference, fld: const u16) -> reference;
+fn OpGetRef(v1: reference, fld: const u16) -> reference[v1];
 #rust "stores.get_ref(&@v1, u32::from(@fld))"
 
 fn OpSetRef(v1: reference, fld: const u16, val: reference);
@@ -588,7 +588,7 @@ fn OpSetRef(v1: reference, fld: const u16, val: reference);
 
 // Get a direct field reference for a structure: vector, index, hash or spacial
 // These always point to a field what value can change depending on the content.
-fn OpGetField(v1: reference, fld: const u16) -> reference;
+fn OpGetField(v1: reference, fld: const u16) -> reference[v1];
 #rust "DbRef {{store_nr: @v1.store_nr, rec: @v1.rec, pos: @v1.pos + u32::from(@fld)}}"
 
 // Simple type value write and read, vector elements always have fld=0.
@@ -616,7 +616,7 @@ fn OpSetEnum(v1: reference, fld: const u16, val: enumerate);
 fn OpGetShort(v1: reference, fld: const u16, min: const i16) -> integer;
 #rust "{{let db = @v1; stores.store(&db).get_short(db.rec, db.pos + u32::from(@fld), i32::from(@min))}}"
 
-fn OpGetText(v1: reference, fld: const u16) -> text;
+fn OpGetText(v1: reference, fld: const u16) -> text[v1];
 #rust "{{let db = @v1; let store = stores.store(&db); Str::new(store.get_str(store.get_int(db.rec, db.pos + u32::from(@fld)) as u32))}}"
 
 fn OpSetInt(v1: reference, fld: const u16, val: integer);
@@ -658,7 +658,7 @@ fn OpClearVector(r: vector);
 pub fn clear(self: vector) { OpClearVector(self); }
 
 // This returns the position inside the vector of a record or a value, get the actual value with fld=0
-fn OpGetVector(r: vector, size: const u16, index: integer) -> reference;
+fn OpGetVector(r: vector, size: const u16, index: integer) -> reference[r];
 #rust "vector::get_vector(&@r, u32::from(@size), @index, &s.database.allocations)"
 
 fn OpCastVectorFromText(val: text, db_tp: const u16) -> vector;
@@ -667,10 +667,10 @@ fn OpRemoveVector(r: vector, size: const u16, index: integer) -> boolean;
 #rust "vector::remove_vector(&@r, u32::from(@size), @index as u32, &mut s.database.allocations)"
 
 // Insert space into a vector, no data written
-fn OpInsertVector(r: vector, size: const u16, index: integer, db_tp: const u16) -> reference;
+fn OpInsertVector(r: vector, size: const u16, index: integer, db_tp: const u16) -> reference[r];
 
 // Claim space for a new record for the given structure
-fn OpNewRecord(data: reference, parent_tp: const u16, fld: const u16) -> reference;
+fn OpNewRecord(data: reference, parent_tp: const u16, fld: const u16) -> reference[data];
 
 // Write the new record into the given structure (when not already done)
 fn OpFinishRecord(data: reference, rec: reference, parent_tp: const u16, fld: const u16);
@@ -680,16 +680,16 @@ fn OpAddVector(r: vector, other: vector, size: const u16);
 #rust "vector::vector_add(&@r, &@other, u32::from(@size), &mut s.database.allocations);"
 
 // Get a record from a structure. This operator also reads a dynamic key from stack (not shown here)
-fn OpGetRecord(data: reference, db_tp: const u16, no_keys: const u8) -> reference;
+fn OpGetRecord(data: reference, db_tp: const u16, no_keys: const u8) -> reference[data];
 fn OpStart(data: reference, db_tp: const u16, no_keys: const u8) -> integer;
-fn OpNext(data: reference, pos: const u16, db_tp: const u16, no_keys: const u8) -> reference;
+fn OpNext(data: reference, pos: const u16, db_tp: const u16, no_keys: const u8) -> reference[data];
 fn OpValidate(data: reference, db_tp: const u16);
 
 // These types should eventually become unnecessary because of the unified internal database API
 type hash;
 
 fn OpHashAdd(data: reference, rec: reference, tp: const u16);
-fn OpHashFind(data: reference, tp: const u16) -> reference;
+fn OpHashFind(data: reference, tp: const u16) -> reference[data];
 fn OpHashRemove(data: reference, rec: reference, tp: const u16);
 type index;
 // type spacial;
@@ -699,7 +699,7 @@ fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
 fn OpNeBool(v1: boolean, v2: boolean) -> boolean;
 #rust "@v1 != @v2"
 
-fn OpGenPanic(message: text);
+fn OpPanic(message: text);
 #rust "panic!(\"{{}}\", @message);"
 
 fn assert(test: boolean, message: text);
@@ -712,12 +712,12 @@ fn print(v1: text) { OpPrint(v1); }
 type keys_definition;
 
 fn OpIterate(data: reference, on: const u8, arg: const u16, keys: const keys_definition, from_key: const u8, till_key: const u8) -> long;
-fn OpStep(state_var: const u16, data: reference, on: const u8, arg: const u16) -> reference;
+fn OpStep(state_var: const u16, data: reference, on: const u8, arg: const u16) -> reference[data];
 
 type iterator;
 
 fn OpStaticCall(call: const u16);
 fn OpCreateRef(pos: const u16) -> reference;
-fn OpGetRefText(r: reference, fld: const u16) -> text;
+fn OpGetRefText(r: reference, fld: const u16) -> text[r];
 fn OpAppendRefText(r: reference, fld: const u16, v1: text);
 fn OpClearRefText(pos: const u16);

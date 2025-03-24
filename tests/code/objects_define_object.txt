@@ -16,149 +16,149 @@ Type 11:Object[13]:
     second:text[8]
     third:boolean[12]
 
-fn obj {#1 block
-  let o = {#2 object
-    let _val_1 = OpDatabase(13i32, 11i32);
+fn obj() -> boolean {#1 block
+  let o:Object = {#2 object
+    let _val_1:Object = OpDatabase(13i32, 11i32);
     OpSetInt(_val_1, 4i32, 1234i32);
     OpSetText(_val_1, 8i32, "data");
     OpSetByte(_val_1, 12i32, 0i32, if true 1i32 else 0i32);
     _val_1;
-  }#2;
+  }#2:Object;
   if if OpEqInt(OpMinInt(OpGetInt(o, 4i32), 12i32), 1222i32) OpEqInt(_tp_text_len(OpGetText(o, 8i32)), 4i32) else false OpEqInt(OpGetByte(o, 12i32, 0i32), 1i32) else false;
-}#1
+}#1:boolean
 
 byte-code for define_object:obj() -> boolean
- 668[0]: return-address
- 668[4]: Database(size=13, db_tp=11) -> reference#[] type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
- 673[16]: VarRef(var[4]) -> reference#[] type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
- 676[28]: ConstInt(val=1234) -> integer
- 681[32]: SetInt(v1: reference#[], fld=4, val: integer)
- 684[16]: VarRef(var[4]) -> reference#[] type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
- 687[28]: ConstText(_value="data") -> text(false, [])
- 693[44]: SetText(v1: reference#[], fld=8, val: text(false, []))
- 696[16]: VarRef(var[4]) -> reference#[] type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
- 699[28]: ConstTrue() -> boolean
- 700[29]: GenGotoFalseWord(jump=711, if_false: boolean)
- 703[28]: ConstInt(val=1) -> integer
- 708[32]: GenGotoWord(jump=716)
- 711[28]: ConstInt(val=0) -> integer
- 716[32]: SetByte(v1: reference#[], fld=12, min=0, val: integer)
- 721[16]: VarRef(var[4]) -> reference#[] type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
- 724[28]: GenFreeStack(value=12, discard=12)
- 728[16]: VarRef(var[4]) -> reference#[] type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
- 731[28]: GetInt(v1: reference#[], fld=4) -> integer
- 734[20]: ConstInt(val=12) -> integer
- 739[24]: MinInt(v1: integer, v2: integer) -> integer
- 740[20]: ConstInt(val=1222) -> integer
- 745[24]: EqInt(v1: integer, v2: integer) -> boolean
- 746[17]: GenGotoFalseWord(jump=771, if_false: boolean)
- 749[16]: VarRef(var[4]) -> reference#[] type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
- 752[28]: GetText(v1: reference#[], fld=8) -> text(false, [])
- 755[32]: GenCall(size=0, to=318)
- 762[20]: ConstInt(val=4) -> integer
- 767[24]: EqInt(v1: integer, v2: integer) -> boolean
- 768[17]: GenGotoWord(jump=772)
- 771[16]: ConstFalse() -> boolean
- 772[17]: GenGotoFalseWord(jump=792, if_false: boolean)
- 775[16]: VarRef(var[4]) -> reference#[] type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
- 778[28]: GetByte(v1: reference#[], fld=12, min=0) -> integer
- 783[20]: ConstInt(val=1) -> integer
- 788[24]: EqInt(v1: integer, v2: integer) -> boolean
- 789[17]: GenGotoWord(jump=793)
- 792[16]: ConstFalse() -> boolean
- 793[17]: GenReturn(ret=0, value=1, discard=17)
+ 675[0]: return-address
+ 675[4]: Database(size=13, db_tp=11) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 680[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 683[28]: ConstInt(val=1234) -> integer
+ 688[32]: SetInt(v1: reference, fld=4, val: integer)
+ 691[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 694[28]: ConstText(_value="data") -> text
+ 700[44]: SetText(v1: reference, fld=8, val: text)
+ 703[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 706[28]: ConstTrue() -> boolean
+ 707[29]: GotoFalseWord(jump=718, if_false: boolean)
+ 710[28]: ConstInt(val=1) -> integer
+ 715[32]: GotoWord(jump=723)
+ 718[28]: ConstInt(val=0) -> integer
+ 723[32]: SetByte(v1: reference, fld=12, min=0, val: integer)
+ 728[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 731[28]: FreeStack(value=12, discard=12) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 735[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 738[28]: GetInt(v1: reference, fld=4) -> integer
+ 741[20]: ConstInt(val=12) -> integer
+ 746[24]: MinInt(v1: integer, v2: integer) -> integer
+ 747[20]: ConstInt(val=1222) -> integer
+ 752[24]: EqInt(v1: integer, v2: integer) -> boolean
+ 753[17]: GotoFalseWord(jump=778, if_false: boolean)
+ 756[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 759[28]: GetText(v1: reference, fld=8) -> text["o"]
+ 762[32]: Call(size=0, to=318)
+ 769[20]: ConstInt(val=4) -> integer
+ 774[24]: EqInt(v1: integer, v2: integer) -> boolean
+ 775[17]: GotoWord(jump=779)
+ 778[16]: ConstFalse() -> boolean
+ 779[17]: GotoFalseWord(jump=799, if_false: boolean)
+ 782[16]: VarRef(var[4]) -> reference type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[11]
+ 785[28]: GetByte(v1: reference, fld=12, min=0) -> integer
+ 790[20]: ConstInt(val=1) -> integer
+ 795[24]: EqInt(v1: integer, v2: integer) -> boolean
+ 796[17]: GotoWord(jump=800)
+ 799[16]: ConstFalse() -> boolean
+ 800[17]: Return(ret=0, value=1, discard=17) type=boolean[1]:Base[4]
 
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:integer = {#2 block
     if obj() {#3 block
       1i32;
-    }#3 else {#4 block
+    }#3:integer else {#4 block
       0i32;
-    }#4;
-  }#2;
-  if OpEqInt(test_value, 1i32) null else OpGenPanic({#5 formatting string
+    }#4:integer;
+  }#2:integer;
+  if OpEqInt(test_value, 1i32) null else OpPanic({#5 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 1");
     __work_1;
-  }#5);
+  }#5:text);
 }#1
 
 byte-code for define_object:test()
- 799[0]: return-address
- 799[4]: Text()
- 800[28]: GenCall(size=0, to=668)
- 807[29]: GenGotoFalseWord(jump=818, if_false: boolean)
- 810[28]: ConstInt(val=1) -> integer
- 815[32]: GenGotoWord(jump=823)
- 818[28]: ConstInt(val=0) -> integer
- 823[32]: VarInt(var[28]) -> integer
- 826[36]: ConstInt(val=1) -> integer
- 831[40]: EqInt(v1: integer, v2: integer) -> boolean
- 832[33]: GenGotoFalseWord(jump=838, if_false: boolean)
- 835[32]: GenGotoWord(jump=887)
- 838[32]: ClearText(var[4])
- 841[32]: ConstText(_value="Test failed ") -> text(false, [])
- 855[48]: AppendText(var[4], v1: text(false, []))
- 858[32]: VarInt(var[28]) -> integer
- 861[36]: ConstInt(val=0) -> integer
- 866[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 873[32]: ConstText(_value=" != 1") -> text(false, [])
- 880[48]: AppendText(var[4], v1: text(false, []))
- 883[32]: VarText(var[4]) -> text(false, [])
- 886[48]: GenPanic(message: text(false, []))
- 887[32]: GenReturn(ret=0, value=0, discard=32)
+ 806[0]: return-address
+ 806[4]: Text()
+ 807[28]: Call(size=0, to=675)
+ 814[29]: GotoFalseWord(jump=825, if_false: boolean)
+ 817[28]: ConstInt(val=1) -> integer
+ 822[32]: GotoWord(jump=830)
+ 825[28]: ConstInt(val=0) -> integer
+ 830[32]: VarInt(var[28]) -> integer
+ 833[36]: ConstInt(val=1) -> integer
+ 838[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 839[33]: GotoFalseWord(jump=845, if_false: boolean)
+ 842[32]: GotoWord(jump=894)
+ 845[32]: ClearText(var[4])
+ 848[32]: ConstText(_value="Test failed ") -> text
+ 862[48]: AppendText(var[4], v1: text)
+ 865[32]: VarInt(var[28]) -> integer
+ 868[36]: ConstInt(val=0) -> integer
+ 873[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 880[32]: ConstText(_value=" != 1") -> text
+ 887[48]: AppendText(var[4], v1: text)
+ 890[32]: VarText(var[4]) -> text
+ 893[48]: Panic(message: text)
+ 894[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-  799:[8] Text()
-  800:[32] GenCall(size=0, to=668)
-  668:[36] Database(size=13, db_tp=11) -> ref(1,1,0)={third:false}[36]
-  673:[48] VarRef(var[36]) -> ref(1,1,0)={third:false}[48]
-  676:[60] ConstInt(val=1234) -> 1234[60]
-  681:[64] SetInt(v1=ref(1,1,0)[48], fld=4, val=1234[60])
-  684:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,third:false}[48]
-  687:[60] ConstText(_value="data") -> "data"[60]
-  693:[76] SetText(v1=ref(1,1,0)[48], fld=8, val="data"[60])
-  696:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:false}[48]
-  699:[60] ConstTrue() -> true[60]
-  700:[61] GenGotoFalseWord(jump=711, if_false=true[60])
-  703:[60] ConstInt(val=1) -> 1[60]
-  708:[64] GenGotoWord(jump=716)
-  716:[64] SetByte(v1=ref(1,1,0)[48], fld=12, min=0, val=1[60])
-  721:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:true}[48]
-  724:[60] GenFreeStack(value=12, discard=12)
+  806:[8] Text()
+  807:[32] Call(size=0, to=675)
+  675:[36] Database(size=13, db_tp=11) -> ref(1,1,0)={third:false}[36]
+  680:[48] VarRef(var[36]) -> ref(1,1,0)={third:false}[48]
+  683:[60] ConstInt(val=1234) -> 1234[60]
+  688:[64] SetInt(v1=ref(1,1,0)[48], fld=4, val=1234[60])
+  691:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,third:false}[48]
+  694:[60] ConstText(_value="data") -> "data"[60]
+  700:[76] SetText(v1=ref(1,1,0)[48], fld=8, val="data"[60])
+  703:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:false}[48]
+  706:[60] ConstTrue() -> true[60]
+  707:[61] GotoFalseWord(jump=718, if_false=true[60])
+  710:[60] ConstInt(val=1) -> 1[60]
+  715:[64] GotoWord(jump=723)
+  723:[64] SetByte(v1=ref(1,1,0)[48], fld=12, min=0, val=1[60])
   728:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:true}[48]
-  731:[60] GetInt(v1=ref(1,1,0)[48], fld=4) -> 1234[48]
-  734:[52] ConstInt(val=12) -> 12[52]
-  739:[56] MinInt(v1=1234[48], v2=12[52]) -> 1222[48]
-  740:[52] ConstInt(val=1222) -> 1222[52]
-  745:[56] EqInt(v1=1222[48], v2=1222[52]) -> true[48]
-  746:[49] GenGotoFalseWord(jump=771, if_false=true[48])
-  749:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:true}[48]
-  752:[60] GetText(v1=ref(1,1,0)[48], fld=8) -> "data"[48]
-  755:[64] GenCall(size=0, to=318)
+  731:[60] FreeStack(value=12, discard=12)
+  735:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:true}[48]
+  738:[60] GetInt(v1=ref(1,1,0)[48], fld=4) -> 1234[48]
+  741:[52] ConstInt(val=12) -> 12[52]
+  746:[56] MinInt(v1=1234[48], v2=12[52]) -> 1222[48]
+  747:[52] ConstInt(val=1222) -> 1222[52]
+  752:[56] EqInt(v1=1222[48], v2=1222[52]) -> true[48]
+  753:[49] GotoFalseWord(jump=778, if_false=true[48])
+  756:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:true}[48]
+  759:[60] GetText(v1=ref(1,1,0)[48], fld=8) -> "data"[48]
+  762:[64] Call(size=0, to=318)
   318:[68] ArgText(var[48]) -> "data"[68]
   321:[84] LengthText(v1="data"[68]) -> 4[68]
-  322:[72] GenReturn(ret=762[64], value=4, discard=24)
-  762:[52] ConstInt(val=4) -> 4[52]
-  767:[56] EqInt(v1=4[48], v2=4[52]) -> true[48]
-  768:[49] GenGotoWord(jump=772)
-  772:[49] GenGotoFalseWord(jump=792, if_false=true[48])
-  775:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:true}[48]
-  778:[60] GetByte(v1=ref(1,1,0)[48], fld=12, min=0) -> 1[48]
-  783:[52] ConstInt(val=1) -> 1[52]
-  788:[56] EqInt(v1=1[48], v2=1[52]) -> true[48]
-  789:[49] GenGotoWord(jump=793)
-  793:[49] GenReturn(ret=807[32], value=1, discard=17)
-  807:[33] GenGotoFalseWord(jump=818, if_false=true[32])
-  810:[32] ConstInt(val=1) -> 1[32]
-  815:[36] GenGotoWord(jump=823)
-  823:[36] VarInt(var[32]) -> 1[36]
-  826:[40] ConstInt(val=1) -> 1[40]
-  831:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
-  832:[37] GenGotoFalseWord(jump=838, if_false=true[36])
-  835:[36] GenGotoWord(jump=887)
-  887:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
+  322:[72] Return(ret=769[64], value=4, discard=24) -> 4[48]
+  769:[52] ConstInt(val=4) -> 4[52]
+  774:[56] EqInt(v1=4[48], v2=4[52]) -> true[48]
+  775:[49] GotoWord(jump=779)
+  779:[49] GotoFalseWord(jump=799, if_false=true[48])
+  782:[48] VarRef(var[36]) -> ref(1,1,0)={first:1234,second:"data",third:true}[48]
+  785:[60] GetByte(v1=ref(1,1,0)[48], fld=12, min=0) -> 1[48]
+  790:[52] ConstInt(val=1) -> 1[52]
+  795:[56] EqInt(v1=1[48], v2=1[52]) -> true[48]
+  796:[49] GotoWord(jump=800)
+  800:[49] Return(ret=814[32], value=1, discard=17) -> true[32]
+  814:[33] GotoFalseWord(jump=825, if_false=true[32])
+  817:[32] ConstInt(val=1) -> 1[32]
+  822:[36] GotoWord(jump=830)
+  830:[36] VarInt(var[32]) -> 1[36]
+  833:[40] ConstInt(val=1) -> 1[40]
+  838:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
+  839:[37] GotoFalseWord(jump=845, if_false=true[36])
+  842:[36] GotoWord(jump=894)
+  894:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

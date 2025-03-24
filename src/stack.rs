@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #![allow(clippy::cast_possible_truncation)]
 
-use crate::data::{Context, Data, Value};
+use crate::data::{Context, Data, Type, Value};
+use crate::database::Stores;
 use crate::state::State;
 use crate::variables;
 use crate::variables::Function;
@@ -55,6 +56,41 @@ impl<'a> Stack<'a> {
             Value::Text(_) => size_of::<&str>() as u16,
             Value::Var(v) => variables::size(self.function.tp(*v), &Context::Argument),
             _ => 0,
+        }
+    }
+
+    pub fn type_code(&self, val: &Value, stores: &Stores) -> u16 {
+        match val {
+            Value::Int(_) => stores.name("integer"),
+            Value::Long(_) => stores.name("long"),
+            Value::Single(_) => stores.name("single"),
+            Value::Float(_) => stores.name("float"),
+            Value::Boolean(_) => stores.name("boolean"),
+            Value::Text(_) => stores.name("text"),
+            Value::Enum(_, tp) => *tp,
+            Value::Block(lp) => {
+                if lp.is_empty() {
+                    u16::MAX
+                } else {
+                    self.type_code(lp.last().unwrap(), stores)
+                }
+            }
+            Value::Call(d_nr, _) => {
+                let return_type = &self.data.def(*d_nr).returned;
+                if return_type == &Type::Void {
+                    u16::MAX
+                } else {
+                    let ret_nr = self.data.type_def_nr(return_type);
+                    self.data.def(ret_nr).known_type
+                }
+            }
+            Value::If(_, true_val, _) => self.type_code(true_val, stores),
+            Value::Var(v) => {
+                self.data
+                    .def(self.data.type_def_nr(self.function.tp(*v)))
+                    .known_type
+            }
+            _ => u16::MAX,
         }
     }
 

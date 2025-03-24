@@ -5,71 +5,71 @@ pub fn test() {
         "Test failed {test_value} != \"A\""
     );
 }
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:text = {#2 block
     if OpGtInt(OpAddInt(2i32, 2i32), 3i32) {#3 block
       "A";
-    }#3 else {#4 block
+    }#3:text else {#4 block
       "B";
-    }#4;
-  }#2;
-  if OpEqText(test_value, "A") null else OpGenPanic({#5 formatting string
+    }#4:text;
+  }#2:text;
+  if OpEqText(test_value, "A") null else OpPanic({#5 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != "A"");
     __work_1;
-  }#5);
+  }#5:text);
 }#1
 
 byte-code for expr_inline_if:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: Text()
- 670[52]: ConstInt(val=2) -> integer
- 675[56]: ConstInt(val=2) -> integer
- 680[60]: AddInt(v1: integer, v2: integer) -> integer
- 681[56]: ConstInt(val=3) -> integer
- 686[60]: GtInt(v1: integer, v2: integer) -> boolean
- 687[53]: GenGotoFalseWord(jump=696, if_false: boolean)
- 690[52]: ConstText(_value="A") -> text(false, [])
- 693[68]: GenGotoWord(jump=699)
- 696[52]: ConstText(_value="B") -> text(false, [])
- 699[68]: AppendText(var[28], v1: text(false, []))
- 702[52]: VarText(var[28]) -> text(false, [])
- 705[68]: ConstText(_value="A") -> text(false, [])
- 708[84]: EqText(v1: text(false, []), v2: text(false, [])) -> boolean
- 709[53]: GenGotoFalseWord(jump=715, if_false: boolean)
- 712[52]: GenGotoWord(jump=764)
- 715[52]: ClearText(var[4])
- 718[52]: ConstText(_value="Test failed ") -> text(false, [])
- 732[68]: AppendText(var[4], v1: text(false, []))
- 735[52]: VarText(var[28]) -> text(false, [])
- 738[68]: ConstInt(val=0) -> integer
- 743[72]: FormatText(var[4], val: text(false, []), width: integer, dir=-1, token=32)
- 748[52]: ConstText(_value=" != "A"") -> text(false, [])
- 757[68]: AppendText(var[4], v1: text(false, []))
- 760[52]: VarText(var[4]) -> text(false, [])
- 763[68]: GenPanic(message: text(false, []))
- 764[52]: GenReturn(ret=0, value=0, discard=52)
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: Text()
+ 677[52]: ConstInt(val=2) -> integer
+ 682[56]: ConstInt(val=2) -> integer
+ 687[60]: AddInt(v1: integer, v2: integer) -> integer
+ 688[56]: ConstInt(val=3) -> integer
+ 693[60]: GtInt(v1: integer, v2: integer) -> boolean
+ 694[53]: GotoFalseWord(jump=703, if_false: boolean)
+ 697[52]: ConstText(_value="A") -> text
+ 700[68]: GotoWord(jump=706)
+ 703[52]: ConstText(_value="B") -> text
+ 706[68]: AppendText(var[28], v1: text)
+ 709[52]: VarText(var[28]) -> text
+ 712[68]: ConstText(_value="A") -> text
+ 715[84]: EqText(v1: text, v2: text) -> boolean
+ 716[53]: GotoFalseWord(jump=722, if_false: boolean)
+ 719[52]: GotoWord(jump=771)
+ 722[52]: ClearText(var[4])
+ 725[52]: ConstText(_value="Test failed ") -> text
+ 739[68]: AppendText(var[4], v1: text)
+ 742[52]: VarText(var[28]) -> text
+ 745[68]: ConstInt(val=0) -> integer
+ 750[72]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 755[52]: ConstText(_value=" != "A"") -> text
+ 764[68]: AppendText(var[4], v1: text)
+ 767[52]: VarText(var[4]) -> text
+ 770[68]: Panic(message: text)
+ 771[52]: Return(ret=0, value=0, discard=52)
 
 Execute test:
-  668:[8] Text()
-  669:[32] Text()
-  670:[56] ConstInt(val=2) -> 2[56]
-  675:[60] ConstInt(val=2) -> 2[60]
-  680:[64] AddInt(v1=2[56], v2=2[60]) -> 4[56]
-  681:[60] ConstInt(val=3) -> 3[60]
-  686:[64] GtInt(v1=4[56], v2=3[60]) -> true[56]
-  687:[57] GenGotoFalseWord(jump=696, if_false=true[56])
-  690:[56] ConstText(_value="A") -> "A"[56]
-  693:[72] GenGotoWord(jump=699)
-  699:[72] AppendText(var[32], v1="A"[56])
-  702:[56] VarText(var[32]) -> "A"[56]
-  705:[72] ConstText(_value="A") -> "A"[72]
-  708:[88] EqText(v1="A"[56], v2="A"[72]) -> true[56]
-  709:[57] GenGotoFalseWord(jump=715, if_false=true[56])
-  712:[56] GenGotoWord(jump=764)
-  764:[56] GenReturn(ret=4294967295[4], value=0, discard=52)
+  675:[8] Text()
+  676:[32] Text()
+  677:[56] ConstInt(val=2) -> 2[56]
+  682:[60] ConstInt(val=2) -> 2[60]
+  687:[64] AddInt(v1=2[56], v2=2[60]) -> 4[56]
+  688:[60] ConstInt(val=3) -> 3[60]
+  693:[64] GtInt(v1=4[56], v2=3[60]) -> true[56]
+  694:[57] GotoFalseWord(jump=703, if_false=true[56])
+  697:[56] ConstText(_value="A") -> "A"[56]
+  700:[72] GotoWord(jump=706)
+  706:[72] AppendText(var[32], v1="A"[56])
+  709:[56] VarText(var[32]) -> "A"[56]
+  712:[72] ConstText(_value="A") -> "A"[72]
+  715:[88] EqText(v1="A"[56], v2="A"[72]) -> true[56]
+  716:[57] GotoFalseWord(jump=722, if_false=true[56])
+  719:[56] GotoWord(jump=771)
+  771:[56] Return(ret=4294967295[4], value=0, discard=52)
 Finished

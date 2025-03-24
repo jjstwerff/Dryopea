@@ -16,6 +16,7 @@ fn append() {
 fn str_index() {
     expr!("a=\"12345\"; a[2]").result(Value::str("3"));
 }
+
 #[test]
 fn utf8_index() {
     expr!("a=\"♥😃\"; a[0] + a[1] + a[2] + a[3] + a[4] + a[5] + a[6] + \".\" + a[7]")
@@ -138,6 +139,33 @@ fn default_ref() {
     )
     .expr("add(\"1234\")")
     .result(Value::str("var_1234"));
+}
+
+#[test]
+fn block() {
+    expr!("s = \"1\"; s += \"2\"; s").result(Value::str("12"));
+}
+
+#[test]
+fn index_block() {
+    expr!("s = \"1😊2\"; s[1]").result(Value::str("😊"));
+}
+
+#[test]
+fn trim_block() {
+    expr!("s = \" 12   \"; trim(s)").result(Value::str("12"));
+}
+
+#[test]
+fn pass_block() {
+    expr!("s = \"12 \"; d = s; trim(d)").result(Value::str("12"));
+}
+
+#[test]
+fn call() {
+    code!("fn choice(a: text, b: text) -> text { if len(a) > len(b) { a } else { b } }")
+        .expr("choice(\"{1:03}\", \"{2}1\") + choice(\"2\", \"\")")
+        .result(Value::str("0012"));
 }
 
 // TODO command line arguments  env::args_os() -> Args iterator     (for now Args vector)

@@ -5,56 +5,56 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:boolean = {#2 block
     OpLeInt(OpAddInt(2i32, 1i32), 3i32);
-  }#2;
-  if OpEqBool(test_value, true) null else OpGenPanic({#3 formatting string
+  }#2:boolean;
+  if OpEqBool(test_value, true) null else OpPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != true");
     __work_1;
-  }#3);
+  }#3:text);
 }#1
 
 byte-code for expr_prio_lt:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: ConstInt(val=2) -> integer
- 674[32]: ConstInt(val=1) -> integer
- 679[36]: AddInt(v1: integer, v2: integer) -> integer
- 680[32]: ConstInt(val=3) -> integer
- 685[36]: LeInt(v1: integer, v2: integer) -> boolean
- 686[29]: VarBool(var[28]) -> boolean
- 689[30]: ConstTrue() -> boolean
- 690[31]: EqBool(v1: boolean, v2: boolean) -> boolean
- 691[30]: GenGotoFalseWord(jump=697, if_false: boolean)
- 694[29]: GenGotoWord(jump=747)
- 697[29]: ClearText(var[4])
- 700[29]: ConstText(_value="Test failed ") -> text(false, [])
- 714[45]: AppendText(var[4], v1: text(false, []))
- 717[29]: VarBool(var[28]) -> boolean
- 720[30]: ConstInt(val=0) -> integer
- 725[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
- 730[29]: ConstText(_value=" != true") -> text(false, [])
- 740[45]: AppendText(var[4], v1: text(false, []))
- 743[29]: VarText(var[4]) -> text(false, [])
- 746[45]: GenPanic(message: text(false, []))
- 747[29]: GenReturn(ret=0, value=0, discard=29)
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: ConstInt(val=2) -> integer
+ 681[32]: ConstInt(val=1) -> integer
+ 686[36]: AddInt(v1: integer, v2: integer) -> integer
+ 687[32]: ConstInt(val=3) -> integer
+ 692[36]: LeInt(v1: integer, v2: integer) -> boolean
+ 693[29]: VarBool(var[28]) -> boolean
+ 696[30]: ConstTrue() -> boolean
+ 697[31]: EqBool(v1: boolean, v2: boolean) -> boolean
+ 698[30]: GotoFalseWord(jump=704, if_false: boolean)
+ 701[29]: GotoWord(jump=754)
+ 704[29]: ClearText(var[4])
+ 707[29]: ConstText(_value="Test failed ") -> text
+ 721[45]: AppendText(var[4], v1: text)
+ 724[29]: VarBool(var[28]) -> boolean
+ 727[30]: ConstInt(val=0) -> integer
+ 732[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
+ 737[29]: ConstText(_value=" != true") -> text
+ 747[45]: AppendText(var[4], v1: text)
+ 750[29]: VarText(var[4]) -> text
+ 753[45]: Panic(message: text)
+ 754[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
-  668:[8] Text()
-  669:[32] ConstInt(val=2) -> 2[32]
-  674:[36] ConstInt(val=1) -> 1[36]
-  679:[40] AddInt(v1=2[32], v2=1[36]) -> 3[32]
-  680:[36] ConstInt(val=3) -> 3[36]
-  685:[40] LeInt(v1=3[32], v2=3[36]) -> true[32]
-  686:[33] VarBool(var[32]) -> true[33]
-  689:[34] ConstTrue() -> true[34]
-  690:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
-  691:[34] GenGotoFalseWord(jump=697, if_false=true[33])
-  694:[33] GenGotoWord(jump=747)
-  747:[33] GenReturn(ret=4294967295[4], value=0, discard=29)
+  675:[8] Text()
+  676:[32] ConstInt(val=2) -> 2[32]
+  681:[36] ConstInt(val=1) -> 1[36]
+  686:[40] AddInt(v1=2[32], v2=1[36]) -> 3[32]
+  687:[36] ConstInt(val=3) -> 3[36]
+  692:[40] LeInt(v1=3[32], v2=3[36]) -> true[32]
+  693:[33] VarBool(var[32]) -> true[33]
+  696:[34] ConstTrue() -> true[34]
+  697:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+  698:[34] GotoFalseWord(jump=704, if_false=true[33])
+  701:[33] GotoWord(jump=754)
+  754:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

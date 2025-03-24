@@ -5,67 +5,67 @@ pub fn test() {
         "Test failed {test_value} != 10"
     );
 }
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:float = {#2 block
     _tp_float_log(OpPowFloat(4f64, OpConvFloatFromInt(5i32)), OpConvFloatFromInt(2i32));
-  }#2;
-  if OpEqFloat(test_value, OpConvFloatFromInt(10i32)) null else OpGenPanic({#3 formatting string
+  }#2:float;
+  if OpEqFloat(test_value, OpConvFloatFromInt(10i32)) null else OpPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatFloat(__work_1, test_value, 0i32, 0i32);
     OpAppendText(__work_1, " != 10");
     __work_1;
-  }#3);
+  }#3:text);
 }#1
 
 byte-code for exponents:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: ConstFloat(val=4) -> float
- 678[36]: ConstInt(val=5) -> integer
- 683[40]: ConvFloatFromInt(v1: integer) -> float
- 684[44]: PowFloat(v1: float, v2: float) -> float
- 685[36]: ConstInt(val=2) -> integer
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: ConstFloat(val=4) -> float
+ 685[36]: ConstInt(val=5) -> integer
  690[40]: ConvFloatFromInt(v1: integer) -> float
- 691[44]: GenCall(size=0, to=292)
- 698[36]: VarFloat(var[28]) -> float
- 701[44]: ConstInt(val=10) -> integer
- 706[48]: ConvFloatFromInt(v1: integer) -> float
- 707[52]: EqFloat(v1: float, v2: float) -> boolean
- 708[37]: GenGotoFalseWord(jump=714, if_false: boolean)
- 711[36]: GenGotoWord(jump=765)
- 714[36]: ClearText(var[4])
- 717[36]: ConstText(_value="Test failed ") -> text(false, [])
- 731[52]: AppendText(var[4], v1: text(false, []))
- 734[36]: VarFloat(var[28]) -> float
- 737[44]: ConstInt(val=0) -> integer
- 742[48]: ConstInt(val=0) -> integer
- 747[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
- 750[36]: ConstText(_value=" != 10") -> text(false, [])
- 758[52]: AppendText(var[4], v1: text(false, []))
- 761[36]: VarText(var[4]) -> text(false, [])
- 764[52]: GenPanic(message: text(false, []))
- 765[36]: GenReturn(ret=0, value=0, discard=36)
+ 691[44]: PowFloat(v1: float, v2: float) -> float
+ 692[36]: ConstInt(val=2) -> integer
+ 697[40]: ConvFloatFromInt(v1: integer) -> float
+ 698[44]: Call(size=0, to=292)
+ 705[36]: VarFloat(var[28]) -> float
+ 708[44]: ConstInt(val=10) -> integer
+ 713[48]: ConvFloatFromInt(v1: integer) -> float
+ 714[52]: EqFloat(v1: float, v2: float) -> boolean
+ 715[37]: GotoFalseWord(jump=721, if_false: boolean)
+ 718[36]: GotoWord(jump=772)
+ 721[36]: ClearText(var[4])
+ 724[36]: ConstText(_value="Test failed ") -> text
+ 738[52]: AppendText(var[4], v1: text)
+ 741[36]: VarFloat(var[28]) -> float
+ 744[44]: ConstInt(val=0) -> integer
+ 749[48]: ConstInt(val=0) -> integer
+ 754[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
+ 757[36]: ConstText(_value=" != 10") -> text
+ 765[52]: AppendText(var[4], v1: text)
+ 768[36]: VarText(var[4]) -> text
+ 771[52]: Panic(message: text)
+ 772[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:
-  668:[8] Text()
-  669:[32] ConstFloat(val=4) -> 4[32]
-  678:[40] ConstInt(val=5) -> 5[40]
-  683:[44] ConvFloatFromInt(v1=5[40]) -> 5[40]
-  684:[48] PowFloat(v1=4[32], v2=5[40]) -> 1024[32]
-  685:[40] ConstInt(val=2) -> 2[40]
-  690:[44] ConvFloatFromInt(v1=2[40]) -> 2[40]
-  691:[48] GenCall(size=0, to=292)
+  675:[8] Text()
+  676:[32] ConstFloat(val=4) -> 4[32]
+  685:[40] ConstInt(val=5) -> 5[40]
+  690:[44] ConvFloatFromInt(v1=5[40]) -> 5[40]
+  691:[48] PowFloat(v1=4[32], v2=5[40]) -> 1024[32]
+  692:[40] ConstInt(val=2) -> 2[40]
+  697:[44] ConvFloatFromInt(v1=2[40]) -> 2[40]
+  698:[48] Call(size=0, to=292)
   292:[52] VarFloat(var[32]) -> 1024[52]
   295:[60] VarFloat(var[40]) -> 2[60]
   298:[68] MathLogFloat(v1=1024[52], v2=2[60]) -> 10[52]
-  299:[60] GenReturn(ret=698[48], value=8, discard=28)
-  698:[40] VarFloat(var[32]) -> 10[40]
-  701:[48] ConstInt(val=10) -> 10[48]
-  706:[52] ConvFloatFromInt(v1=10[48]) -> 10[48]
-  707:[56] EqFloat(v1=10[40], v2=10[48]) -> true[40]
-  708:[41] GenGotoFalseWord(jump=714, if_false=true[40])
-  711:[40] GenGotoWord(jump=765)
-  765:[40] GenReturn(ret=4294967295[4], value=0, discard=36)
+  299:[60] Return(ret=705[48], value=8, discard=28) -> 10[32]
+  705:[40] VarFloat(var[32]) -> 10[40]
+  708:[48] ConstInt(val=10) -> 10[48]
+  713:[52] ConvFloatFromInt(v1=10[48]) -> 10[48]
+  714:[56] EqFloat(v1=10[40], v2=10[48]) -> true[40]
+  715:[41] GotoFalseWord(jump=721, if_false=true[40])
+  718:[40] GotoWord(jump=772)
+  772:[40] Return(ret=4294967295[4], value=0, discard=36)
 Finished

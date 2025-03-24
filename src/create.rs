@@ -17,7 +17,11 @@ fn operator_name(operator: &str) -> String {
             result.push(c);
         };
     }
-    result
+    if result == "return" {
+        "op_return".to_string()
+    } else {
+        result
+    }
 }
 
 /**
@@ -85,7 +89,7 @@ fn replace_attributes(data: &Data, d_nr: u32, res: &mut String) {
         let name = "@".to_string() + &data.attr_name(d_nr, a_nr);
         let mut repl = "v_".to_string();
         repl += &data.attr_name(d_nr, a_nr);
-        if matches!(data.attr_type(d_nr, a_nr), Type::Text(_, _)) {
+        if matches!(data.attr_type(d_nr, a_nr), Type::Text(_)) {
             repl += ".str()";
         }
         *res = res.replace(&name, &repl);
@@ -140,7 +144,7 @@ pub const OPERATORS: &[fn(&mut State)] = &["
             }
             let tp = data.rust_type(&a.typedef, &Context::Argument);
             if a.mutable {
-                if matches!(a.typedef, Type::Text(_, _)) {
+                if matches!(a.typedef, Type::Text(_)) {
                     writeln!(into, "    let v_{} = s.string();", a.name)?;
                 } else {
                     writeln!(into, "    let v_{} = *s.get_stack::<{tp}>();", a.name)?;
@@ -153,7 +157,7 @@ pub const OPERATORS: &[fn(&mut State)] = &["
         if res.is_empty() {
             writeln!(into, "    s.{name}();")?;
         } else if *returned == Type::Void
-            || (matches!(*returned, Type::Text(_, _)) && data.def(d_nr).name.starts_with("OpConst"))
+            || (matches!(*returned, Type::Text(_)) && data.def(d_nr).name.starts_with("OpConst"))
         {
             writeln!(into, "    {res}")?;
         } else {

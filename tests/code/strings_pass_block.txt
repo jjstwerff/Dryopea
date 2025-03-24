@@ -1,0 +1,74 @@
+pub fn test() {
+    test_value = {s = "12 "; d = s; trim(d)};
+    assert(
+        test_value == "12",
+        "Test failed {test_value} != \"12\""
+    );
+}
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:text["d"] = {#2 block
+    let s:text = "12 ";
+    let d:text["s"] = s;
+    _tp_text_trim(d);
+  }#2:text["d"];
+  if OpEqText(test_value, "12") null else OpPanic({#3 formatting string
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_1, " != "12"");
+    __work_1;
+  }#3:text);
+}#1
+
+byte-code for pass_block:test()
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: Text()
+ 677[52]: Text()
+ 678[76]: ConstText(_value="12 ") -> text
+ 683[92]: AppendText(var[52], v1: text)
+ 686[76]: Text()
+ 687[100]: VarText(var[52]) -> text
+ 690[116]: AppendText(var[76], v1: text)
+ 693[100]: VarText(var[76]) -> text
+ 696[116]: StaticCall(_tp_text_trim)
+ 699[116]: FreeStack(value=16, discard=48) type=text[4]:Base[5]
+ 703[68]: AppendText(var[28], v1: text)
+ 706[52]: VarText(var[28]) -> text
+ 709[68]: ConstText(_value="12") -> text
+ 713[84]: EqText(v1: text, v2: text) -> boolean
+ 714[53]: GotoFalseWord(jump=720, if_false: boolean)
+ 717[52]: GotoWord(jump=770)
+ 720[52]: ClearText(var[4])
+ 723[52]: ConstText(_value="Test failed ") -> text
+ 737[68]: AppendText(var[4], v1: text)
+ 740[52]: VarText(var[28]) -> text
+ 743[68]: ConstInt(val=0) -> integer
+ 748[72]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 753[52]: ConstText(_value=" != "12"") -> text
+ 763[68]: AppendText(var[4], v1: text)
+ 766[52]: VarText(var[4]) -> text
+ 769[68]: Panic(message: text)
+ 770[52]: Return(ret=0, value=0, discard=52)
+
+Execute test:
+  675:[8] Text()
+  676:[32] Text()
+  677:[56] Text()
+  678:[80] ConstText(_value="12 ") -> "12 "[80]
+  683:[96] AppendText(var[56], v1="12 "[80])
+  686:[80] Text()
+  687:[104] VarText(var[56]) -> "12 "[104]
+  690:[120] AppendText(var[80], v1="12 "[104])
+  693:[104] VarText(var[80]) -> "12 "[104]
+  696:[120] StaticCall(call=4)
+  699:[120] FreeStack(value=16, discard=48)
+  703:[72] AppendText(var[32], v1="12"[56])
+  706:[56] VarText(var[32]) -> "12"[56]
+  709:[72] ConstText(_value="12") -> "12"[72]
+  713:[88] EqText(v1="12"[56], v2="12"[72]) -> true[56]
+  714:[57] GotoFalseWord(jump=720, if_false=true[56])
+  717:[56] GotoWord(jump=770)
+  770:[56] Return(ret=4294967295[4], value=0, discard=52)
+Finished

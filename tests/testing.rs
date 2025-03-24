@@ -252,7 +252,7 @@ impl Test {
             } else if let Value::Long(_) = self.result {
                 Type::Long
             } else if let Value::Text(_) = self.result {
-                Type::Text(false, Vec::new())
+                Type::Text(Vec::new())
             } else if let Value::Float(_) = self.result {
                 Type::Float
             } else if let Value::Null = self.result {
@@ -265,7 +265,7 @@ impl Test {
         };
         if let Type::Integer(_, _) = tp {
             "integer"
-        } else if let Type::Text(_, _) = tp {
+        } else if let Type::Text(_) = tp {
             "text"
         } else if let Type::Long = tp {
             "long"

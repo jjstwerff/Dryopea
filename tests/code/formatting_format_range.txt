@@ -5,303 +5,303 @@ pub fn test() {
         "Test failed {test_value} != \"a[02,04,06,08,10,12]b\""
     );
 }
-fn test {#1 block
-  let __work_2 = "";
-  let __work_1 = "";
-  let test_value = {#2 block
+fn test() {#1 block
+  let __work_2:text = "";
+  let __work_1:text = "";
+  let test_value:text = {#2 block
     {#3 formatting string
       OpClearText(__work_1);
       OpAppendText(__work_1, "a");
       OpAppendText(__work_1, "[");
-      let x#index = OpConvIntFromNull();
-      let _first_2 = true;
+      let x#index:integer = OpConvIntFromNull();
+      let _first_2:boolean = true;
       loop {#4 iter for loop
-        let _val_1 = {#5 iter for fill
-          let x = {#6 for next
+        let _val_1:integer = {#5 iter for fill
+          let x:integer = {#6 for next
             x#index = if OpNot(OpConvBoolFromInt(x#index)) 1i32 else OpAddInt(x#index, 1i32);
             if OpGeInt(x#index, 7i32) break(0) else null;
             x#index;
-          }#6;
+          }#6:integer;
           {#7 block
             OpMulInt(x, 2i32);
-          }#7;
-        }#5;
+          }#7:integer;
+        }#5:integer;
         if _first_2 _first_2 = false else OpAppendText(__work_1, ",");
         OpFormatInt(__work_1, _val_1, 10i32, 2i32, 48i32, false, false);
       }#4;
       OpAppendText(__work_1, "]");
       OpAppendText(__work_1, "b");
       __work_1;
-    }#3;
-  }#2;
-  if OpEqText(test_value, "a[02,04,06,08,10,12]b") null else OpGenPanic({#8 formatting string
+    }#3:text;
+  }#2:text;
+  if OpEqText(test_value, "a[02,04,06,08,10,12]b") null else OpPanic({#8 formatting string
     OpClearText(__work_2);
     OpAppendText(__work_2, "Test failed ");
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "a[02,04,06,08,10,12]b"");
     __work_2;
-  }#8);
+  }#8:text);
 }#1
 
 byte-code for format_range:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: Text()
- 670[52]: Text()
- 671[76]: ClearText(var[28])
- 674[76]: ConstText(_value="a") -> text(false, [])
- 677[92]: AppendText(var[28], v1: text(false, []))
- 680[76]: ConstText(_value="[") -> text(false, [])
- 683[92]: AppendText(var[28], v1: text(false, []))
- 686[76]: ConvIntFromNull() -> integer
- 687[80]: ConstTrue() -> boolean
- 688[81]: VarInt(var[76]) -> integer
- 691[85]: ConvBoolFromInt(v1: integer) -> boolean
- 692[82]: Not(v1: boolean) -> boolean
- 693[82]: GenGotoFalseWord(jump=704, if_false: boolean)
- 696[81]: ConstInt(val=1) -> integer
- 701[85]: GenGotoWord(jump=713)
- 704[81]: VarInt(var[76]) -> integer
- 707[85]: ConstInt(val=1) -> integer
- 712[89]: AddInt(v1: integer, v2: integer) -> integer
- 713[85]: PutInt(var[76], value: integer)
- 716[81]: VarInt(var[76]) -> integer
- 719[85]: ConstInt(val=7) -> integer
- 724[89]: GeInt(v1: integer, v2: integer) -> boolean
- 725[82]: GenGotoFalseWord(jump=731, if_false: boolean)
- 728[81]: GenGotoWord(jump=788)
- 731[81]: VarInt(var[76]) -> integer
- 734[85]: VarInt(var[81]) -> integer
- 737[89]: ConstInt(val=2) -> integer
- 742[93]: MulInt(v1: integer, v2: integer) -> integer
- 743[89]: GenFreeStack(value=4, discard=4)
- 747[85]: VarBool(var[80]) -> boolean
- 750[86]: GenGotoFalseWord(jump=760, if_false: boolean)
- 753[85]: ConstFalse() -> boolean
- 754[86]: PutBool(var=6, value: boolean)
- 757[85]: GenGotoWord(jump=766)
- 760[85]: ConstText(_value=",") -> text(false, [])
- 763[101]: AppendText(var[28], v1: text(false, []))
- 766[85]: VarInt(var[81]) -> integer
- 769[89]: ConstInt(val=2) -> integer
- 774[93]: FormatInt(var[28], val: integer, radix=10, width: integer, token=48, plus=false, note=false)
- 781[85]: GenFreeStack(value=0, discard=4)
- 785[81]: GenGotoWord(jump=688)
- 788[81]: ConstText(_value="]") -> text(false, [])
- 791[97]: AppendText(var[28], v1: text(false, []))
- 794[81]: ConstText(_value="b") -> text(false, [])
- 797[97]: AppendText(var[28], v1: text(false, []))
- 800[81]: VarText(var[28]) -> text(false, [])
- 803[97]: GenFreeStack(value=16, discard=5)
- 807[92]: AppendText(var[52], v1: text(false, []))
- 810[76]: VarText(var[52]) -> text(false, [])
- 813[92]: ConstText(_value="a[02,04,06,08,10,12]b") -> text(false, [])
- 836[108]: EqText(v1: text(false, []), v2: text(false, [])) -> boolean
- 837[77]: GenGotoFalseWord(jump=843, if_false: boolean)
- 840[76]: GenGotoWord(jump=912)
- 843[76]: ClearText(var[4])
- 846[76]: ConstText(_value="Test failed ") -> text(false, [])
- 860[92]: AppendText(var[4], v1: text(false, []))
- 863[76]: VarText(var[52]) -> text(false, [])
- 866[92]: ConstInt(val=0) -> integer
- 871[96]: FormatText(var[4], val: text(false, []), width: integer, dir=-1, token=32)
- 876[76]: ConstText(_value=" != "a[02,04,06,08,10,12]b"") -> text(false, [])
- 905[92]: AppendText(var[4], v1: text(false, []))
- 908[76]: VarText(var[4]) -> text(false, [])
- 911[92]: GenPanic(message: text(false, []))
- 912[76]: GenReturn(ret=0, value=0, discard=76)
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: Text()
+ 677[52]: Text()
+ 678[76]: ClearText(var[28])
+ 681[76]: ConstText(_value="a") -> text
+ 684[92]: AppendText(var[28], v1: text)
+ 687[76]: ConstText(_value="[") -> text
+ 690[92]: AppendText(var[28], v1: text)
+ 693[76]: ConvIntFromNull() -> integer
+ 694[80]: ConstTrue() -> boolean
+ 695[81]: VarInt(var[76]) -> integer
+ 698[85]: ConvBoolFromInt(v1: integer) -> boolean
+ 699[82]: Not(v1: boolean) -> boolean
+ 700[82]: GotoFalseWord(jump=711, if_false: boolean)
+ 703[81]: ConstInt(val=1) -> integer
+ 708[85]: GotoWord(jump=720)
+ 711[81]: VarInt(var[76]) -> integer
+ 714[85]: ConstInt(val=1) -> integer
+ 719[89]: AddInt(v1: integer, v2: integer) -> integer
+ 720[85]: PutInt(var[76], value: integer)
+ 723[81]: VarInt(var[76]) -> integer
+ 726[85]: ConstInt(val=7) -> integer
+ 731[89]: GeInt(v1: integer, v2: integer) -> boolean
+ 732[82]: GotoFalseWord(jump=738, if_false: boolean)
+ 735[81]: GotoWord(jump=795)
+ 738[81]: VarInt(var[76]) -> integer
+ 741[85]: VarInt(var[81]) -> integer
+ 744[89]: ConstInt(val=2) -> integer
+ 749[93]: MulInt(v1: integer, v2: integer) -> integer
+ 750[89]: FreeStack(value=4, discard=4) type=integer[4]:Base[0]
+ 754[85]: VarBool(var[80]) -> boolean
+ 757[86]: GotoFalseWord(jump=767, if_false: boolean)
+ 760[85]: ConstFalse() -> boolean
+ 761[86]: PutBool(var=6, value: boolean)
+ 764[85]: GotoWord(jump=773)
+ 767[85]: ConstText(_value=",") -> text
+ 770[101]: AppendText(var[28], v1: text)
+ 773[85]: VarInt(var[81]) -> integer
+ 776[89]: ConstInt(val=2) -> integer
+ 781[93]: FormatInt(var[28], val: integer, radix=10, width: integer, token=48, plus=false, note=false)
+ 788[85]: FreeStack(value=0, discard=4)
+ 792[81]: GotoWord(jump=695)
+ 795[81]: ConstText(_value="]") -> text
+ 798[97]: AppendText(var[28], v1: text)
+ 801[81]: ConstText(_value="b") -> text
+ 804[97]: AppendText(var[28], v1: text)
+ 807[81]: VarText(var[28]) -> text
+ 810[97]: FreeStack(value=16, discard=5) type=text[4]:Base[5]
+ 814[92]: AppendText(var[52], v1: text)
+ 817[76]: VarText(var[52]) -> text
+ 820[92]: ConstText(_value="a[02,04,06,08,10,12]b") -> text
+ 843[108]: EqText(v1: text, v2: text) -> boolean
+ 844[77]: GotoFalseWord(jump=850, if_false: boolean)
+ 847[76]: GotoWord(jump=919)
+ 850[76]: ClearText(var[4])
+ 853[76]: ConstText(_value="Test failed ") -> text
+ 867[92]: AppendText(var[4], v1: text)
+ 870[76]: VarText(var[52]) -> text
+ 873[92]: ConstInt(val=0) -> integer
+ 878[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 883[76]: ConstText(_value=" != "a[02,04,06,08,10,12]b"") -> text
+ 912[92]: AppendText(var[4], v1: text)
+ 915[76]: VarText(var[4]) -> text
+ 918[92]: Panic(message: text)
+ 919[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-  668:[8] Text()
-  669:[32] Text()
-  670:[56] Text()
-  671:[80] ClearText(var[32])
-  674:[80] ConstText(_value="a") -> "a"[80]
-  677:[96] AppendText(var[32], v1="a"[80])
-  680:[80] ConstText(_value="[") -> "["[80]
-  683:[96] AppendText(var[32], v1="["[80])
-  686:[80] ConvIntFromNull() -> -2147483648[80]
-  687:[84] ConstTrue() -> true[84]
-  688:[85] VarInt(var[80]) -> -2147483648[85]
-  691:[89] ConvBoolFromInt(v1=-2147483648[85]) -> false[85]
-  692:[86] Not(v1=false[85]) -> true[85]
-  693:[86] GenGotoFalseWord(jump=704, if_false=true[85])
-  696:[85] ConstInt(val=1) -> 1[85]
-  701:[89] GenGotoWord(jump=713)
-  713:[89] PutInt(var[80], value=1[85])
-  716:[85] VarInt(var[80]) -> 1[85]
-  719:[89] ConstInt(val=7) -> 7[89]
-  724:[93] GeInt(v1=1[85], v2=7[89]) -> false[85]
-  725:[86] GenGotoFalseWord(jump=731, if_false=false[85])
-  731:[85] VarInt(var[80]) -> 1[85]
-  734:[89] VarInt(var[85]) -> 1[89]
-  737:[93] ConstInt(val=2) -> 2[93]
-  742:[97] MulInt(v1=1[89], v2=2[93]) -> 2[89]
-  743:[93] GenFreeStack(value=4, discard=4)
-  747:[89] VarBool(var[84]) -> true[89]
-  750:[90] GenGotoFalseWord(jump=760, if_false=true[89])
-  753:[89] ConstFalse() -> false[89]
-  754:[90] PutBool(var=6, value=false[89])
-  757:[89] GenGotoWord(jump=766)
-  766:[89] VarInt(var[85]) -> 2[89]
-  769:[93] ConstInt(val=2) -> 2[93]
-  774:[97] FormatInt(var[32], val=2[89], radix=10, width=2[93], token=48, plus=false, note=false)
-  781:[89] GenFreeStack(value=0, discard=4)
-  785:[85] GenGotoWord(jump=688)
-  688:[85] VarInt(var[80]) -> 1[85]
-  691:[89] ConvBoolFromInt(v1=1[85]) -> true[85]
-  692:[86] Not(v1=true[85]) -> false[85]
-  693:[86] GenGotoFalseWord(jump=704, if_false=false[85])
-  704:[85] VarInt(var[80]) -> 1[85]
-  707:[89] ConstInt(val=1) -> 1[89]
-  712:[93] AddInt(v1=1[85], v2=1[89]) -> 2[85]
-  713:[89] PutInt(var[80], value=2[85])
-  716:[85] VarInt(var[80]) -> 2[85]
-  719:[89] ConstInt(val=7) -> 7[89]
-  724:[93] GeInt(v1=2[85], v2=7[89]) -> false[85]
-  725:[86] GenGotoFalseWord(jump=731, if_false=false[85])
-  731:[85] VarInt(var[80]) -> 2[85]
-  734:[89] VarInt(var[85]) -> 2[89]
-  737:[93] ConstInt(val=2) -> 2[93]
-  742:[97] MulInt(v1=2[89], v2=2[93]) -> 4[89]
-  743:[93] GenFreeStack(value=4, discard=4)
-  747:[89] VarBool(var[84]) -> false[89]
-  750:[90] GenGotoFalseWord(jump=760, if_false=false[89])
-  760:[89] ConstText(_value=",") -> ","[89]
-  763:[105] AppendText(var[32], v1=","[89])
-  766:[89] VarInt(var[85]) -> 4[89]
-  769:[93] ConstInt(val=2) -> 2[93]
-  774:[97] FormatInt(var[32], val=4[89], radix=10, width=2[93], token=48, plus=false, note=false)
-  781:[89] GenFreeStack(value=0, discard=4)
-  785:[85] GenGotoWord(jump=688)
-  688:[85] VarInt(var[80]) -> 2[85]
-  691:[89] ConvBoolFromInt(v1=2[85]) -> true[85]
-  692:[86] Not(v1=true[85]) -> false[85]
-  693:[86] GenGotoFalseWord(jump=704, if_false=false[85])
-  704:[85] VarInt(var[80]) -> 2[85]
-  707:[89] ConstInt(val=1) -> 1[89]
-  712:[93] AddInt(v1=2[85], v2=1[89]) -> 3[85]
-  713:[89] PutInt(var[80], value=3[85])
-  716:[85] VarInt(var[80]) -> 3[85]
-  719:[89] ConstInt(val=7) -> 7[89]
-  724:[93] GeInt(v1=3[85], v2=7[89]) -> false[85]
-  725:[86] GenGotoFalseWord(jump=731, if_false=false[85])
-  731:[85] VarInt(var[80]) -> 3[85]
-  734:[89] VarInt(var[85]) -> 3[89]
-  737:[93] ConstInt(val=2) -> 2[93]
-  742:[97] MulInt(v1=3[89], v2=2[93]) -> 6[89]
-  743:[93] GenFreeStack(value=4, discard=4)
-  747:[89] VarBool(var[84]) -> false[89]
-  750:[90] GenGotoFalseWord(jump=760, if_false=false[89])
-  760:[89] ConstText(_value=",") -> ","[89]
-  763:[105] AppendText(var[32], v1=","[89])
-  766:[89] VarInt(var[85]) -> 6[89]
-  769:[93] ConstInt(val=2) -> 2[93]
-  774:[97] FormatInt(var[32], val=6[89], radix=10, width=2[93], token=48, plus=false, note=false)
-  781:[89] GenFreeStack(value=0, discard=4)
-  785:[85] GenGotoWord(jump=688)
-  688:[85] VarInt(var[80]) -> 3[85]
-  691:[89] ConvBoolFromInt(v1=3[85]) -> true[85]
-  692:[86] Not(v1=true[85]) -> false[85]
-  693:[86] GenGotoFalseWord(jump=704, if_false=false[85])
-  704:[85] VarInt(var[80]) -> 3[85]
-  707:[89] ConstInt(val=1) -> 1[89]
-  712:[93] AddInt(v1=3[85], v2=1[89]) -> 4[85]
-  713:[89] PutInt(var[80], value=4[85])
-  716:[85] VarInt(var[80]) -> 4[85]
-  719:[89] ConstInt(val=7) -> 7[89]
-  724:[93] GeInt(v1=4[85], v2=7[89]) -> false[85]
-  725:[86] GenGotoFalseWord(jump=731, if_false=false[85])
-  731:[85] VarInt(var[80]) -> 4[85]
-  734:[89] VarInt(var[85]) -> 4[89]
-  737:[93] ConstInt(val=2) -> 2[93]
-  742:[97] MulInt(v1=4[89], v2=2[93]) -> 8[89]
-  743:[93] GenFreeStack(value=4, discard=4)
-  747:[89] VarBool(var[84]) -> false[89]
-  750:[90] GenGotoFalseWord(jump=760, if_false=false[89])
-  760:[89] ConstText(_value=",") -> ","[89]
-  763:[105] AppendText(var[32], v1=","[89])
-  766:[89] VarInt(var[85]) -> 8[89]
-  769:[93] ConstInt(val=2) -> 2[93]
-  774:[97] FormatInt(var[32], val=8[89], radix=10, width=2[93], token=48, plus=false, note=false)
-  781:[89] GenFreeStack(value=0, discard=4)
-  785:[85] GenGotoWord(jump=688)
-  688:[85] VarInt(var[80]) -> 4[85]
-  691:[89] ConvBoolFromInt(v1=4[85]) -> true[85]
-  692:[86] Not(v1=true[85]) -> false[85]
-  693:[86] GenGotoFalseWord(jump=704, if_false=false[85])
-  704:[85] VarInt(var[80]) -> 4[85]
-  707:[89] ConstInt(val=1) -> 1[89]
-  712:[93] AddInt(v1=4[85], v2=1[89]) -> 5[85]
-  713:[89] PutInt(var[80], value=5[85])
-  716:[85] VarInt(var[80]) -> 5[85]
-  719:[89] ConstInt(val=7) -> 7[89]
-  724:[93] GeInt(v1=5[85], v2=7[89]) -> false[85]
-  725:[86] GenGotoFalseWord(jump=731, if_false=false[85])
-  731:[85] VarInt(var[80]) -> 5[85]
-  734:[89] VarInt(var[85]) -> 5[89]
-  737:[93] ConstInt(val=2) -> 2[93]
-  742:[97] MulInt(v1=5[89], v2=2[93]) -> 10[89]
-  743:[93] GenFreeStack(value=4, discard=4)
-  747:[89] VarBool(var[84]) -> false[89]
-  750:[90] GenGotoFalseWord(jump=760, if_false=false[89])
-  760:[89] ConstText(_value=",") -> ","[89]
-  763:[105] AppendText(var[32], v1=","[89])
-  766:[89] VarInt(var[85]) -> 10[89]
-  769:[93] ConstInt(val=2) -> 2[93]
-  774:[97] FormatInt(var[32], val=10[89], radix=10, width=2[93], token=48, plus=false, note=false)
-  781:[89] GenFreeStack(value=0, discard=4)
-  785:[85] GenGotoWord(jump=688)
-  688:[85] VarInt(var[80]) -> 5[85]
-  691:[89] ConvBoolFromInt(v1=5[85]) -> true[85]
-  692:[86] Not(v1=true[85]) -> false[85]
-  693:[86] GenGotoFalseWord(jump=704, if_false=false[85])
-  704:[85] VarInt(var[80]) -> 5[85]
-  707:[89] ConstInt(val=1) -> 1[89]
-  712:[93] AddInt(v1=5[85], v2=1[89]) -> 6[85]
-  713:[89] PutInt(var[80], value=6[85])
-  716:[85] VarInt(var[80]) -> 6[85]
-  719:[89] ConstInt(val=7) -> 7[89]
-  724:[93] GeInt(v1=6[85], v2=7[89]) -> false[85]
-  725:[86] GenGotoFalseWord(jump=731, if_false=false[85])
-  731:[85] VarInt(var[80]) -> 6[85]
-  734:[89] VarInt(var[85]) -> 6[89]
-  737:[93] ConstInt(val=2) -> 2[93]
-  742:[97] MulInt(v1=6[89], v2=2[93]) -> 12[89]
-  743:[93] GenFreeStack(value=4, discard=4)
-  747:[89] VarBool(var[84]) -> false[89]
-  750:[90] GenGotoFalseWord(jump=760, if_false=false[89])
-  760:[89] ConstText(_value=",") -> ","[89]
-  763:[105] AppendText(var[32], v1=","[89])
-  766:[89] VarInt(var[85]) -> 12[89]
-  769:[93] ConstInt(val=2) -> 2[93]
-  774:[97] FormatInt(var[32], val=12[89], radix=10, width=2[93], token=48, plus=false, note=false)
-  781:[89] GenFreeStack(value=0, discard=4)
-  785:[85] GenGotoWord(jump=688)
-  688:[85] VarInt(var[80]) -> 6[85]
-  691:[89] ConvBoolFromInt(v1=6[85]) -> true[85]
-  692:[86] Not(v1=true[85]) -> false[85]
-  693:[86] GenGotoFalseWord(jump=704, if_false=false[85])
-  704:[85] VarInt(var[80]) -> 6[85]
-  707:[89] ConstInt(val=1) -> 1[89]
-  712:[93] AddInt(v1=6[85], v2=1[89]) -> 7[85]
-  713:[89] PutInt(var[80], value=7[85])
-  716:[85] VarInt(var[80]) -> 7[85]
-  719:[89] ConstInt(val=7) -> 7[89]
-  724:[93] GeInt(v1=7[85], v2=7[89]) -> true[85]
-  725:[86] GenGotoFalseWord(jump=731, if_false=true[85])
-  728:[85] GenGotoWord(jump=788)
-  788:[85] ConstText(_value="]") -> "]"[85]
-  791:[101] AppendText(var[32], v1="]"[85])
-  794:[85] ConstText(_value="b") -> "b"[85]
-  797:[101] AppendText(var[32], v1="b"[85])
-  800:[85] VarText(var[32]) -> "a[02,04,06,08,10,12]b"[85]
-  803:[101] GenFreeStack(value=16, discard=5)
-  807:[96] AppendText(var[56], v1="a[02,04,06,08,10,12]b"[80])
-  810:[80] VarText(var[56]) -> "a[02,04,06,08,10,12]b"[80]
-  813:[96] ConstText(_value="a[02,04,06,08,10,12]b") -> "a[02,04,06,08,10,12]b"[96]
-  836:[112] EqText(v1="a[02,04,06,08,10,12]b"[80], v2="a[02,04,06,08,10,12]b"[96]) -> true[80]
-  837:[81] GenGotoFalseWord(jump=843, if_false=true[80])
-  840:[80] GenGotoWord(jump=912)
-  912:[80] GenReturn(ret=4294967295[4], value=0, discard=76)
+  675:[8] Text()
+  676:[32] Text()
+  677:[56] Text()
+  678:[80] ClearText(var[32])
+  681:[80] ConstText(_value="a") -> "a"[80]
+  684:[96] AppendText(var[32], v1="a"[80])
+  687:[80] ConstText(_value="[") -> "["[80]
+  690:[96] AppendText(var[32], v1="["[80])
+  693:[80] ConvIntFromNull() -> -2147483648[80]
+  694:[84] ConstTrue() -> true[84]
+  695:[85] VarInt(var[80]) -> -2147483648[85]
+  698:[89] ConvBoolFromInt(v1=-2147483648[85]) -> false[85]
+  699:[86] Not(v1=false[85]) -> true[85]
+  700:[86] GotoFalseWord(jump=711, if_false=true[85])
+  703:[85] ConstInt(val=1) -> 1[85]
+  708:[89] GotoWord(jump=720)
+  720:[89] PutInt(var[80], value=1[85])
+  723:[85] VarInt(var[80]) -> 1[85]
+  726:[89] ConstInt(val=7) -> 7[89]
+  731:[93] GeInt(v1=1[85], v2=7[89]) -> false[85]
+  732:[86] GotoFalseWord(jump=738, if_false=false[85])
+  738:[85] VarInt(var[80]) -> 1[85]
+  741:[89] VarInt(var[85]) -> 1[89]
+  744:[93] ConstInt(val=2) -> 2[93]
+  749:[97] MulInt(v1=1[89], v2=2[93]) -> 2[89]
+  750:[93] FreeStack(value=4, discard=4)
+  754:[89] VarBool(var[84]) -> true[89]
+  757:[90] GotoFalseWord(jump=767, if_false=true[89])
+  760:[89] ConstFalse() -> false[89]
+  761:[90] PutBool(var=6, value=false[89])
+  764:[89] GotoWord(jump=773)
+  773:[89] VarInt(var[85]) -> 2[89]
+  776:[93] ConstInt(val=2) -> 2[93]
+  781:[97] FormatInt(var[32], val=2[89], radix=10, width=2[93], token=48, plus=false, note=false)
+  788:[89] FreeStack(value=0, discard=4)
+  792:[85] GotoWord(jump=695)
+  695:[85] VarInt(var[80]) -> 1[85]
+  698:[89] ConvBoolFromInt(v1=1[85]) -> true[85]
+  699:[86] Not(v1=true[85]) -> false[85]
+  700:[86] GotoFalseWord(jump=711, if_false=false[85])
+  711:[85] VarInt(var[80]) -> 1[85]
+  714:[89] ConstInt(val=1) -> 1[89]
+  719:[93] AddInt(v1=1[85], v2=1[89]) -> 2[85]
+  720:[89] PutInt(var[80], value=2[85])
+  723:[85] VarInt(var[80]) -> 2[85]
+  726:[89] ConstInt(val=7) -> 7[89]
+  731:[93] GeInt(v1=2[85], v2=7[89]) -> false[85]
+  732:[86] GotoFalseWord(jump=738, if_false=false[85])
+  738:[85] VarInt(var[80]) -> 2[85]
+  741:[89] VarInt(var[85]) -> 2[89]
+  744:[93] ConstInt(val=2) -> 2[93]
+  749:[97] MulInt(v1=2[89], v2=2[93]) -> 4[89]
+  750:[93] FreeStack(value=4, discard=4)
+  754:[89] VarBool(var[84]) -> false[89]
+  757:[90] GotoFalseWord(jump=767, if_false=false[89])
+  767:[89] ConstText(_value=",") -> ","[89]
+  770:[105] AppendText(var[32], v1=","[89])
+  773:[89] VarInt(var[85]) -> 4[89]
+  776:[93] ConstInt(val=2) -> 2[93]
+  781:[97] FormatInt(var[32], val=4[89], radix=10, width=2[93], token=48, plus=false, note=false)
+  788:[89] FreeStack(value=0, discard=4)
+  792:[85] GotoWord(jump=695)
+  695:[85] VarInt(var[80]) -> 2[85]
+  698:[89] ConvBoolFromInt(v1=2[85]) -> true[85]
+  699:[86] Not(v1=true[85]) -> false[85]
+  700:[86] GotoFalseWord(jump=711, if_false=false[85])
+  711:[85] VarInt(var[80]) -> 2[85]
+  714:[89] ConstInt(val=1) -> 1[89]
+  719:[93] AddInt(v1=2[85], v2=1[89]) -> 3[85]
+  720:[89] PutInt(var[80], value=3[85])
+  723:[85] VarInt(var[80]) -> 3[85]
+  726:[89] ConstInt(val=7) -> 7[89]
+  731:[93] GeInt(v1=3[85], v2=7[89]) -> false[85]
+  732:[86] GotoFalseWord(jump=738, if_false=false[85])
+  738:[85] VarInt(var[80]) -> 3[85]
+  741:[89] VarInt(var[85]) -> 3[89]
+  744:[93] ConstInt(val=2) -> 2[93]
+  749:[97] MulInt(v1=3[89], v2=2[93]) -> 6[89]
+  750:[93] FreeStack(value=4, discard=4)
+  754:[89] VarBool(var[84]) -> false[89]
+  757:[90] GotoFalseWord(jump=767, if_false=false[89])
+  767:[89] ConstText(_value=",") -> ","[89]
+  770:[105] AppendText(var[32], v1=","[89])
+  773:[89] VarInt(var[85]) -> 6[89]
+  776:[93] ConstInt(val=2) -> 2[93]
+  781:[97] FormatInt(var[32], val=6[89], radix=10, width=2[93], token=48, plus=false, note=false)
+  788:[89] FreeStack(value=0, discard=4)
+  792:[85] GotoWord(jump=695)
+  695:[85] VarInt(var[80]) -> 3[85]
+  698:[89] ConvBoolFromInt(v1=3[85]) -> true[85]
+  699:[86] Not(v1=true[85]) -> false[85]
+  700:[86] GotoFalseWord(jump=711, if_false=false[85])
+  711:[85] VarInt(var[80]) -> 3[85]
+  714:[89] ConstInt(val=1) -> 1[89]
+  719:[93] AddInt(v1=3[85], v2=1[89]) -> 4[85]
+  720:[89] PutInt(var[80], value=4[85])
+  723:[85] VarInt(var[80]) -> 4[85]
+  726:[89] ConstInt(val=7) -> 7[89]
+  731:[93] GeInt(v1=4[85], v2=7[89]) -> false[85]
+  732:[86] GotoFalseWord(jump=738, if_false=false[85])
+  738:[85] VarInt(var[80]) -> 4[85]
+  741:[89] VarInt(var[85]) -> 4[89]
+  744:[93] ConstInt(val=2) -> 2[93]
+  749:[97] MulInt(v1=4[89], v2=2[93]) -> 8[89]
+  750:[93] FreeStack(value=4, discard=4)
+  754:[89] VarBool(var[84]) -> false[89]
+  757:[90] GotoFalseWord(jump=767, if_false=false[89])
+  767:[89] ConstText(_value=",") -> ","[89]
+  770:[105] AppendText(var[32], v1=","[89])
+  773:[89] VarInt(var[85]) -> 8[89]
+  776:[93] ConstInt(val=2) -> 2[93]
+  781:[97] FormatInt(var[32], val=8[89], radix=10, width=2[93], token=48, plus=false, note=false)
+  788:[89] FreeStack(value=0, discard=4)
+  792:[85] GotoWord(jump=695)
+  695:[85] VarInt(var[80]) -> 4[85]
+  698:[89] ConvBoolFromInt(v1=4[85]) -> true[85]
+  699:[86] Not(v1=true[85]) -> false[85]
+  700:[86] GotoFalseWord(jump=711, if_false=false[85])
+  711:[85] VarInt(var[80]) -> 4[85]
+  714:[89] ConstInt(val=1) -> 1[89]
+  719:[93] AddInt(v1=4[85], v2=1[89]) -> 5[85]
+  720:[89] PutInt(var[80], value=5[85])
+  723:[85] VarInt(var[80]) -> 5[85]
+  726:[89] ConstInt(val=7) -> 7[89]
+  731:[93] GeInt(v1=5[85], v2=7[89]) -> false[85]
+  732:[86] GotoFalseWord(jump=738, if_false=false[85])
+  738:[85] VarInt(var[80]) -> 5[85]
+  741:[89] VarInt(var[85]) -> 5[89]
+  744:[93] ConstInt(val=2) -> 2[93]
+  749:[97] MulInt(v1=5[89], v2=2[93]) -> 10[89]
+  750:[93] FreeStack(value=4, discard=4)
+  754:[89] VarBool(var[84]) -> false[89]
+  757:[90] GotoFalseWord(jump=767, if_false=false[89])
+  767:[89] ConstText(_value=",") -> ","[89]
+  770:[105] AppendText(var[32], v1=","[89])
+  773:[89] VarInt(var[85]) -> 10[89]
+  776:[93] ConstInt(val=2) -> 2[93]
+  781:[97] FormatInt(var[32], val=10[89], radix=10, width=2[93], token=48, plus=false, note=false)
+  788:[89] FreeStack(value=0, discard=4)
+  792:[85] GotoWord(jump=695)
+  695:[85] VarInt(var[80]) -> 5[85]
+  698:[89] ConvBoolFromInt(v1=5[85]) -> true[85]
+  699:[86] Not(v1=true[85]) -> false[85]
+  700:[86] GotoFalseWord(jump=711, if_false=false[85])
+  711:[85] VarInt(var[80]) -> 5[85]
+  714:[89] ConstInt(val=1) -> 1[89]
+  719:[93] AddInt(v1=5[85], v2=1[89]) -> 6[85]
+  720:[89] PutInt(var[80], value=6[85])
+  723:[85] VarInt(var[80]) -> 6[85]
+  726:[89] ConstInt(val=7) -> 7[89]
+  731:[93] GeInt(v1=6[85], v2=7[89]) -> false[85]
+  732:[86] GotoFalseWord(jump=738, if_false=false[85])
+  738:[85] VarInt(var[80]) -> 6[85]
+  741:[89] VarInt(var[85]) -> 6[89]
+  744:[93] ConstInt(val=2) -> 2[93]
+  749:[97] MulInt(v1=6[89], v2=2[93]) -> 12[89]
+  750:[93] FreeStack(value=4, discard=4)
+  754:[89] VarBool(var[84]) -> false[89]
+  757:[90] GotoFalseWord(jump=767, if_false=false[89])
+  767:[89] ConstText(_value=",") -> ","[89]
+  770:[105] AppendText(var[32], v1=","[89])
+  773:[89] VarInt(var[85]) -> 12[89]
+  776:[93] ConstInt(val=2) -> 2[93]
+  781:[97] FormatInt(var[32], val=12[89], radix=10, width=2[93], token=48, plus=false, note=false)
+  788:[89] FreeStack(value=0, discard=4)
+  792:[85] GotoWord(jump=695)
+  695:[85] VarInt(var[80]) -> 6[85]
+  698:[89] ConvBoolFromInt(v1=6[85]) -> true[85]
+  699:[86] Not(v1=true[85]) -> false[85]
+  700:[86] GotoFalseWord(jump=711, if_false=false[85])
+  711:[85] VarInt(var[80]) -> 6[85]
+  714:[89] ConstInt(val=1) -> 1[89]
+  719:[93] AddInt(v1=6[85], v2=1[89]) -> 7[85]
+  720:[89] PutInt(var[80], value=7[85])
+  723:[85] VarInt(var[80]) -> 7[85]
+  726:[89] ConstInt(val=7) -> 7[89]
+  731:[93] GeInt(v1=7[85], v2=7[89]) -> true[85]
+  732:[86] GotoFalseWord(jump=738, if_false=true[85])
+  735:[85] GotoWord(jump=795)
+  795:[85] ConstText(_value="]") -> "]"[85]
+  798:[101] AppendText(var[32], v1="]"[85])
+  801:[85] ConstText(_value="b") -> "b"[85]
+  804:[101] AppendText(var[32], v1="b"[85])
+  807:[85] VarText(var[32]) -> "a[02,04,06,08,10,12]b"[85]
+  810:[101] FreeStack(value=16, discard=5)
+  814:[96] AppendText(var[56], v1="a[02,04,06,08,10,12]b"[80])
+  817:[80] VarText(var[56]) -> "a[02,04,06,08,10,12]b"[80]
+  820:[96] ConstText(_value="a[02,04,06,08,10,12]b") -> "a[02,04,06,08,10,12]b"[96]
+  843:[112] EqText(v1="a[02,04,06,08,10,12]b"[80], v2="a[02,04,06,08,10,12]b"[96]) -> true[80]
+  844:[81] GotoFalseWord(jump=850, if_false=true[80])
+  847:[80] GotoWord(jump=919)
+  919:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

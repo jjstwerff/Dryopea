@@ -26,14 +26,14 @@ Type 13:sorted<Elm[-key]>[4]:Sorted(11, [(0, false)]) keys [tp:6 desc:true field
 
 Type 14:vector<Elm>[4]:Vector(11)
 
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
-    let db = {#3 object
-      let _val_1 = OpDatabase(8i32, 12i32);
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:integer = {#2 block
+    let db:Db = {#3 object
+      let _val_1:Db = OpDatabase(8i32, 12i32);
       OpSetInt(_val_1, 4i32, 0i32);
       {#4 vector
-        let _elm_2 = OpNewRecord(_val_1, 12i32, 0i32);
+        let _elm_2:Elm = OpNewRecord(_val_1, 12i32, 0i32);
         {#5 object
           OpSetText(_elm_2, 4i32, "One");
           OpSetInt(_elm_2, 8i32, 1i32);
@@ -47,9 +47,9 @@ fn test {#1 block
         OpFinishRecord(_val_1, _elm_2, 12i32, 0i32);
       }#4;
       _val_1;
-    }#3;
+    }#3:Db;
     {#7 vector
-      let _elm_3 = OpNewRecord(db, 12i32, 0i32);
+      let _elm_3:Elm = OpNewRecord(db, 12i32, 0i32);
       {#8 object
         OpSetText(_elm_3, 4i32, "Three");
         OpSetInt(_elm_3, 8i32, 3i32);
@@ -62,11 +62,11 @@ fn test {#1 block
       }#9;
       OpFinishRecord(db, _elm_3, 12i32, 0i32);
     }#7;
-    let sum = 0i32;
+    let sum:integer = 0i32;
     {#10 for
-      let v#index = OpStart(OpGetField(db, 4i32, 13i32), 13i32, 0i32);
+      let v#index:integer = OpStart(OpGetField(db, 4i32, 13i32), 13i32, 0i32);
       loop {#11 for loop
-        let v = OpNext(OpGetField(db, 4i32, 13i32), v#index, 13i32, 0i32);
+        let v:Elm = OpNext(OpGetField(db, 4i32, 13i32), v#index, 13i32, 0i32);
         if OpNot(OpConvBoolFromRef(v)) break(0) else null;
         {#12 block
           sum = OpAddInt(OpMulInt(sum, 10i32), OpGetInt(v, 8i32));
@@ -75,275 +75,275 @@ fn test {#1 block
     }#10;
     sum = OpAddInt(OpMulInt(sum, 10i32), OpGetInt(OpGetRecord(OpGetField(db, 4i32, 13i32), 13i32, 1i32, "Three"), 8i32));
     sum;
-  }#2;
-  if OpEqInt(test_value, 23143i32) null else OpGenPanic({#13 formatting string
+  }#2:integer;
+  if OpEqInt(test_value, 23143i32) null else OpPanic({#13 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 23143");
     __work_1;
-  }#13);
+  }#13:text);
 }#1
 
 byte-code for sorted_vector:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: Database(size=8, db_tp=12) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 674[40]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 677[52]: ConstInt(val=0) -> integer
- 682[56]: SetInt(v1: reference#[], fld=4, val: integer)
- 685[40]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 688[52]: NewRecord(data: reference#[], parent_tp=12, fld=0) -> reference#[]
- 693[52]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 696[64]: ConstText(_value="One") -> text(false, [])
- 701[80]: SetText(v1: reference#[], fld=4, val: text(false, []))
- 704[52]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 707[64]: ConstInt(val=1) -> integer
- 712[68]: SetInt(v1: reference#[], fld=8, val: integer)
- 715[52]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 718[64]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 721[76]: FinishRecord(data: reference#[], rec: reference#[], parent_tp=12, fld=0)
- 726[52]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 729[64]: NewRecord(data: reference#[], parent_tp=12, fld=0) -> reference#[]
- 734[64]: PutRef(var[40], value: reference#[])
- 737[52]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 740[64]: ConstText(_value="Two") -> text(false, [])
- 745[80]: SetText(v1: reference#[], fld=4, val: text(false, []))
- 748[52]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 751[64]: ConstInt(val=2) -> integer
- 756[68]: SetInt(v1: reference#[], fld=8, val: integer)
- 759[52]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 762[64]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 765[76]: FinishRecord(data: reference#[], rec: reference#[], parent_tp=12, fld=0)
- 770[52]: GenFreeStack(value=0, discard=12)
- 774[40]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 777[52]: GenFreeStack(value=12, discard=12)
- 781[40]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 784[52]: NewRecord(data: reference#[], parent_tp=12, fld=0) -> reference#[]
- 789[52]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 792[64]: ConstText(_value="Three") -> text(false, [])
- 799[80]: SetText(v1: reference#[], fld=4, val: text(false, []))
- 802[52]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 805[64]: ConstInt(val=3) -> integer
- 810[68]: SetInt(v1: reference#[], fld=8, val: integer)
- 813[52]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 816[64]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 819[76]: FinishRecord(data: reference#[], rec: reference#[], parent_tp=12, fld=0)
- 824[52]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 827[64]: NewRecord(data: reference#[], parent_tp=12, fld=0) -> reference#[]
- 832[64]: PutRef(var[40], value: reference#[])
- 835[52]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 838[64]: ConstText(_value="Four") -> text(false, [])
- 844[80]: SetText(v1: reference#[], fld=4, val: text(false, []))
- 847[52]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 850[64]: ConstInt(val=4) -> integer
- 855[68]: SetInt(v1: reference#[], fld=8, val: integer)
- 858[52]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 861[64]: VarRef(var[40]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 864[76]: FinishRecord(data: reference#[], rec: reference#[], parent_tp=12, fld=0)
- 869[52]: GenFreeStack(value=0, discard=12)
- 873[40]: ConstInt(val=0) -> integer
- 878[44]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 881[56]: GetField(v1: reference#[], fld=4) -> reference#[] type=sorted<Elm[-key]>[4]:Sorted(11, [(0, false)]) keys [tp:6 desc:true field:4, ][13]
- 884[56]: Start(data: reference#[], db_tp=13, no_keys=0) -> integer
- 888[48]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 891[60]: GetField(v1: reference#[], fld=4) -> reference#[] type=sorted<Elm[-key]>[4]:Sorted(11, [(0, false)]) keys [tp:6 desc:true field:4, ][13]
- 894[60]: Next(data: reference#[], pos=16, db_tp=13, no_keys=0) -> reference#[]
- 900[60]: VarRef(var[48]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 903[72]: ConvBoolFromRef(val: reference#[]) -> boolean
- 904[61]: Not(v1: boolean) -> boolean
- 905[61]: GenGotoFalseWord(jump=915, if_false: boolean)
- 908[60]: GenFreeStack(value=0, discard=12)
- 912[48]: GenGotoWord(jump=941)
- 915[60]: VarInt(var[40]) -> integer
- 918[64]: ConstInt(val=10) -> integer
- 923[68]: MulInt(v1: integer, v2: integer) -> integer
- 924[64]: VarRef(var[48]) -> reference#[] type=Elm[12]:{key:text[4], value:integer[8]}[11]
- 927[76]: GetInt(v1: reference#[], fld=8) -> integer
- 930[68]: AddInt(v1: integer, v2: integer) -> integer
- 931[64]: PutInt(var[40], value: integer)
- 934[60]: GenFreeStack(value=0, discard=12)
- 938[48]: GenGotoWord(jump=888)
- 941[48]: GenFreeStack(value=0, discard=4)
- 945[44]: VarInt(var[40]) -> integer
- 948[48]: ConstInt(val=10) -> integer
- 953[52]: MulInt(v1: integer, v2: integer) -> integer
- 954[48]: VarRef(var[28]) -> reference#[] type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
- 957[60]: GetField(v1: reference#[], fld=4) -> reference#[] type=sorted<Elm[-key]>[4]:Sorted(11, [(0, false)]) keys [tp:6 desc:true field:4, ][13]
- 960[60]: ConstText(_value="Three") -> text(false, [])
- 967[76]: GetRecord(data: reference#[], db_tp=13, no_keys=1) -> reference#[]
- 971[60]: GetInt(v1: reference#[], fld=8) -> integer
- 974[52]: AddInt(v1: integer, v2: integer) -> integer
- 975[48]: PutInt(var[40], value: integer)
- 978[44]: VarInt(var[40]) -> integer
- 981[48]: GenFreeStack(value=4, discard=16)
- 985[32]: VarInt(var[28]) -> integer
- 988[36]: ConstInt(val=23143) -> integer
- 993[40]: EqInt(v1: integer, v2: integer) -> boolean
- 994[33]: GenGotoFalseWord(jump=1000, if_false: boolean)
- 997[32]: GenGotoWord(jump=1053)
-1000[32]: ClearText(var[4])
-1003[32]: ConstText(_value="Test failed ") -> text(false, [])
-1017[48]: AppendText(var[4], v1: text(false, []))
-1020[32]: VarInt(var[28]) -> integer
-1023[36]: ConstInt(val=0) -> integer
-1028[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-1035[32]: ConstText(_value=" != 23143") -> text(false, [])
-1046[48]: AppendText(var[4], v1: text(false, []))
-1049[32]: VarText(var[4]) -> text(false, [])
-1052[48]: GenPanic(message: text(false, []))
-1053[32]: GenReturn(ret=0, value=0, discard=32)
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: Database(size=8, db_tp=12) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 681[40]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 684[52]: ConstInt(val=0) -> integer
+ 689[56]: SetInt(v1: reference, fld=4, val: integer)
+ 692[40]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 695[52]: NewRecord(data: reference, parent_tp=12, fld=0) -> reference
+ 700[52]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 703[64]: ConstText(_value="One") -> text
+ 708[80]: SetText(v1: reference, fld=4, val: text)
+ 711[52]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 714[64]: ConstInt(val=1) -> integer
+ 719[68]: SetInt(v1: reference, fld=8, val: integer)
+ 722[52]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 725[64]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 728[76]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=0)
+ 733[52]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 736[64]: NewRecord(data: reference, parent_tp=12, fld=0) -> reference
+ 741[64]: PutRef(var[40], value: reference)
+ 744[52]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 747[64]: ConstText(_value="Two") -> text
+ 752[80]: SetText(v1: reference, fld=4, val: text)
+ 755[52]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 758[64]: ConstInt(val=2) -> integer
+ 763[68]: SetInt(v1: reference, fld=8, val: integer)
+ 766[52]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 769[64]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 772[76]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=0)
+ 777[52]: FreeStack(value=0, discard=12)
+ 781[40]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 784[52]: FreeStack(value=12, discard=12) type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 788[40]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 791[52]: NewRecord(data: reference, parent_tp=12, fld=0) -> reference
+ 796[52]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 799[64]: ConstText(_value="Three") -> text
+ 806[80]: SetText(v1: reference, fld=4, val: text)
+ 809[52]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 812[64]: ConstInt(val=3) -> integer
+ 817[68]: SetInt(v1: reference, fld=8, val: integer)
+ 820[52]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 823[64]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 826[76]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=0)
+ 831[52]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 834[64]: NewRecord(data: reference, parent_tp=12, fld=0) -> reference
+ 839[64]: PutRef(var[40], value: reference)
+ 842[52]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 845[64]: ConstText(_value="Four") -> text
+ 851[80]: SetText(v1: reference, fld=4, val: text)
+ 854[52]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 857[64]: ConstInt(val=4) -> integer
+ 862[68]: SetInt(v1: reference, fld=8, val: integer)
+ 865[52]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 868[64]: VarRef(var[40]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 871[76]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=0)
+ 876[52]: FreeStack(value=0, discard=12)
+ 880[40]: ConstInt(val=0) -> integer
+ 885[44]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 888[56]: GetField(v1: reference, fld=4) -> reference type=sorted<Elm[-key]>[4]:Sorted(11, [(0, false)]) keys [tp:6 desc:true field:4, ][13]
+ 891[56]: Start(data: reference, db_tp=13, no_keys=0) -> integer
+ 895[48]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 898[60]: GetField(v1: reference, fld=4) -> reference type=sorted<Elm[-key]>[4]:Sorted(11, [(0, false)]) keys [tp:6 desc:true field:4, ][13]
+ 901[60]: Next(data: reference, pos=16, db_tp=13, no_keys=0) -> reference
+ 907[60]: VarRef(var[48]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 910[72]: ConvBoolFromRef(val: reference) -> boolean
+ 911[61]: Not(v1: boolean) -> boolean
+ 912[61]: GotoFalseWord(jump=922, if_false: boolean)
+ 915[60]: FreeStack(value=0, discard=12)
+ 919[48]: GotoWord(jump=948)
+ 922[60]: VarInt(var[40]) -> integer
+ 925[64]: ConstInt(val=10) -> integer
+ 930[68]: MulInt(v1: integer, v2: integer) -> integer
+ 931[64]: VarRef(var[48]) -> reference type=Elm[12]:{key:text[4], value:integer[8]}[11]
+ 934[76]: GetInt(v1: reference, fld=8) -> integer
+ 937[68]: AddInt(v1: integer, v2: integer) -> integer
+ 938[64]: PutInt(var[40], value: integer)
+ 941[60]: FreeStack(value=0, discard=12)
+ 945[48]: GotoWord(jump=895)
+ 948[48]: FreeStack(value=0, discard=4)
+ 952[44]: VarInt(var[40]) -> integer
+ 955[48]: ConstInt(val=10) -> integer
+ 960[52]: MulInt(v1: integer, v2: integer) -> integer
+ 961[48]: VarRef(var[28]) -> reference type=Db[8]:{map:sorted<Elm[-key]>[4]}[12]
+ 964[60]: GetField(v1: reference, fld=4) -> reference type=sorted<Elm[-key]>[4]:Sorted(11, [(0, false)]) keys [tp:6 desc:true field:4, ][13]
+ 967[60]: ConstText(_value="Three") -> text
+ 974[76]: GetRecord(data: reference, db_tp=13, no_keys=1) -> reference
+ 978[60]: GetInt(v1: reference, fld=8) -> integer
+ 981[52]: AddInt(v1: integer, v2: integer) -> integer
+ 982[48]: PutInt(var[40], value: integer)
+ 985[44]: VarInt(var[40]) -> integer
+ 988[48]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
+ 992[32]: VarInt(var[28]) -> integer
+ 995[36]: ConstInt(val=23143) -> integer
+1000[40]: EqInt(v1: integer, v2: integer) -> boolean
+1001[33]: GotoFalseWord(jump=1007, if_false: boolean)
+1004[32]: GotoWord(jump=1060)
+1007[32]: ClearText(var[4])
+1010[32]: ConstText(_value="Test failed ") -> text
+1024[48]: AppendText(var[4], v1: text)
+1027[32]: VarInt(var[28]) -> integer
+1030[36]: ConstInt(val=0) -> integer
+1035[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+1042[32]: ConstText(_value=" != 23143") -> text
+1053[48]: AppendText(var[4], v1: text)
+1056[32]: VarText(var[4]) -> text
+1059[48]: Panic(message: text)
+1060[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-  668:[8] Text()
-  669:[32] Database(size=8, db_tp=12) -> ref(1,1,0)={map:[]}[32]
-  674:[44] VarRef(var[32]) -> ref(1,1,0)={map:[]}[44]
-  677:[56] ConstInt(val=0) -> 0[56]
-  682:[60] SetInt(v1=ref(1,1,0)[44], fld=4, val=0[56])
-  685:[44] VarRef(var[32]) -> ref(1,1,0)={map:[]}[44]
-  688:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=12, fld=0) -> ref(1,9,8)[44]
-  693:[56] VarRef(var[44]) -> ref(1,9,8)={}[56]
-  696:[68] ConstText(_value="One") -> "One"[68]
-  701:[84] SetText(v1=ref(1,9,8)[56], fld=4, val="One"[68])
-  704:[56] VarRef(var[44]) -> ref(1,9,8)={key:"One"}[56]
-  707:[68] ConstInt(val=1) -> 1[68]
-  712:[72] SetInt(v1=ref(1,9,8)[56], fld=8, val=1[68])
-  715:[56] VarRef(var[32]) -> ref(1,1,0)={map:[]}[56]
-  718:[68] VarRef(var[44]) -> ref(1,9,8)={key:"One",value:1}[68]
-  721:[80] FinishRecord(data=ref(1,1,0)[56], rec=ref(1,9,8)[68], parent_tp=12, fld=0)
-  726:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"One",value:1}]}[56]
-  729:[68] NewRecord(data=ref(1,1,0)[56], parent_tp=12, fld=0) -> ref(1,9,32)[56]
-  734:[68] PutRef(var[44], value=ref(1,9,32)[56])
-  737:[56] VarRef(var[44]) -> ref(1,9,32)={}[56]
-  740:[68] ConstText(_value="Two") -> "Two"[68]
-  745:[84] SetText(v1=ref(1,9,32)[56], fld=4, val="Two"[68])
-  748:[56] VarRef(var[44]) -> ref(1,9,32)={key:"Two"}[56]
-  751:[68] ConstInt(val=2) -> 2[68]
-  756:[72] SetInt(v1=ref(1,9,32)[56], fld=8, val=2[68])
-  759:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"One",value:1}]}[56]
-  762:[68] VarRef(var[44]) -> ref(1,9,32)={key:"Two",value:2}[68]
-  765:[80] FinishRecord(data=ref(1,1,0)[56], rec=ref(1,9,32)[68], parent_tp=12, fld=0)
-  770:[56] GenFreeStack(value=0, discard=12)
-  774:[44] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"One",value:1}]}[44]
-  777:[56] GenFreeStack(value=12, discard=12)
+  675:[8] Text()
+  676:[32] Database(size=8, db_tp=12) -> ref(1,1,0)={map:[]}[32]
+  681:[44] VarRef(var[32]) -> ref(1,1,0)={map:[]}[44]
+  684:[56] ConstInt(val=0) -> 0[56]
+  689:[60] SetInt(v1=ref(1,1,0)[44], fld=4, val=0[56])
+  692:[44] VarRef(var[32]) -> ref(1,1,0)={map:[]}[44]
+  695:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=12, fld=0) -> ref(1,9,8)[44]
+  700:[56] VarRef(var[44]) -> ref(1,9,8)={}[56]
+  703:[68] ConstText(_value="One") -> "One"[68]
+  708:[84] SetText(v1=ref(1,9,8)[56], fld=4, val="One"[68])
+  711:[56] VarRef(var[44]) -> ref(1,9,8)={key:"One"}[56]
+  714:[68] ConstInt(val=1) -> 1[68]
+  719:[72] SetInt(v1=ref(1,9,8)[56], fld=8, val=1[68])
+  722:[56] VarRef(var[32]) -> ref(1,1,0)={map:[]}[56]
+  725:[68] VarRef(var[44]) -> ref(1,9,8)={key:"One",value:1}[68]
+  728:[80] FinishRecord(data=ref(1,1,0)[56], rec=ref(1,9,8)[68], parent_tp=12, fld=0)
+  733:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"One",value:1}]}[56]
+  736:[68] NewRecord(data=ref(1,1,0)[56], parent_tp=12, fld=0) -> ref(1,9,32)[56]
+  741:[68] PutRef(var[44], value=ref(1,9,32)[56])
+  744:[56] VarRef(var[44]) -> ref(1,9,32)={}[56]
+  747:[68] ConstText(_value="Two") -> "Two"[68]
+  752:[84] SetText(v1=ref(1,9,32)[56], fld=4, val="Two"[68])
+  755:[56] VarRef(var[44]) -> ref(1,9,32)={key:"Two"}[56]
+  758:[68] ConstInt(val=2) -> 2[68]
+  763:[72] SetInt(v1=ref(1,9,32)[56], fld=8, val=2[68])
+  766:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"One",value:1}]}[56]
+  769:[68] VarRef(var[44]) -> ref(1,9,32)={key:"Two",value:2}[68]
+  772:[80] FinishRecord(data=ref(1,1,0)[56], rec=ref(1,9,32)[68], parent_tp=12, fld=0)
+  777:[56] FreeStack(value=0, discard=12)
   781:[44] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"One",value:1}]}[44]
-  784:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=12, fld=0) -> ref(1,9,44)[44]
-  789:[56] VarRef(var[44]) -> ref(1,9,44)={}[56]
-  792:[68] ConstText(_value="Three") -> "Three"[68]
-  799:[84] SetText(v1=ref(1,9,44)[56], fld=4, val="Three"[68])
-  802:[56] VarRef(var[44]) -> ref(1,9,44)={key:"Three"}[56]
-  805:[68] ConstInt(val=3) -> 3[68]
-  810:[72] SetInt(v1=ref(1,9,44)[56], fld=8, val=3[68])
-  813:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"One",value:1}]}[56]
-  816:[68] VarRef(var[44]) -> ref(1,9,44)={key:"Three",value:3}[68]
-  819:[80] FinishRecord(data=ref(1,1,0)[56], rec=ref(1,9,44)[68], parent_tp=12, fld=0)
-  824:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1}]}[56]
-  827:[68] NewRecord(data=ref(1,1,0)[56], parent_tp=12, fld=0) -> ref(1,9,56)[56]
-  832:[68] PutRef(var[44], value=ref(1,9,56)[56])
-  835:[56] VarRef(var[44]) -> ref(1,9,56)={}[56]
-  838:[68] ConstText(_value="Four") -> "Four"[68]
-  844:[84] SetText(v1=ref(1,9,56)[56], fld=4, val="Four"[68])
-  847:[56] VarRef(var[44]) -> ref(1,9,56)={key:"Four"}[56]
-  850:[68] ConstInt(val=4) -> 4[68]
-  855:[72] SetInt(v1=ref(1,9,56)[56], fld=8, val=4[68])
-  858:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1}]}[56]
-  861:[68] VarRef(var[44]) -> ref(1,9,56)={key:"Four",value:4}[68]
-  864:[80] FinishRecord(data=ref(1,1,0)[56], rec=ref(1,9,56)[68], parent_tp=12, fld=0)
-  869:[56] GenFreeStack(value=0, discard=12)
-  873:[44] ConstInt(val=0) -> 0[44]
-  878:[48] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[48]
-  881:[60] GetField(v1=ref(1,1,0)[48], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][48]
-  884:[60] Start(data=ref(1,1,4)[48], db_tp=13, no_keys=0) -> 2147483647[48]
-  888:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
-  891:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
-  894:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,9,8)[52]
-  900:[64] VarRef(var[52]) -> ref(1,9,8)={key:"Two",value:2}[64]
-  903:[76] ConvBoolFromRef(val=ref(1,9,8)[64]) -> true[64]
-  904:[65] Not(v1=true[64]) -> false[64]
-  905:[65] GenGotoFalseWord(jump=915, if_false=false[64])
-  915:[64] VarInt(var[44]) -> 0[64]
-  918:[68] ConstInt(val=10) -> 10[68]
-  923:[72] MulInt(v1=0[64], v2=10[68]) -> 0[64]
-  924:[68] VarRef(var[52]) -> ref(1,9,8)={key:"Two",value:2}[68]
-  927:[80] GetInt(v1=ref(1,9,8)[68], fld=8) -> 2[68]
-  930:[72] AddInt(v1=0[64], v2=2[68]) -> 2[64]
-  931:[68] PutInt(var[44], value=2[64])
-  934:[64] GenFreeStack(value=0, discard=12)
-  938:[52] GenGotoWord(jump=888)
-  888:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
-  891:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
-  894:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,9,20)[52]
-  900:[64] VarRef(var[52]) -> ref(1,9,20)={key:"Three",value:3}[64]
-  903:[76] ConvBoolFromRef(val=ref(1,9,20)[64]) -> true[64]
-  904:[65] Not(v1=true[64]) -> false[64]
-  905:[65] GenGotoFalseWord(jump=915, if_false=false[64])
-  915:[64] VarInt(var[44]) -> 2[64]
-  918:[68] ConstInt(val=10) -> 10[68]
-  923:[72] MulInt(v1=2[64], v2=10[68]) -> 20[64]
-  924:[68] VarRef(var[52]) -> ref(1,9,20)={key:"Three",value:3}[68]
-  927:[80] GetInt(v1=ref(1,9,20)[68], fld=8) -> 3[68]
-  930:[72] AddInt(v1=20[64], v2=3[68]) -> 23[64]
-  931:[68] PutInt(var[44], value=23[64])
-  934:[64] GenFreeStack(value=0, discard=12)
-  938:[52] GenGotoWord(jump=888)
-  888:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
-  891:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
-  894:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,9,32)[52]
-  900:[64] VarRef(var[52]) -> ref(1,9,32)={key:"One",value:1}[64]
-  903:[76] ConvBoolFromRef(val=ref(1,9,32)[64]) -> true[64]
-  904:[65] Not(v1=true[64]) -> false[64]
-  905:[65] GenGotoFalseWord(jump=915, if_false=false[64])
-  915:[64] VarInt(var[44]) -> 23[64]
-  918:[68] ConstInt(val=10) -> 10[68]
-  923:[72] MulInt(v1=23[64], v2=10[68]) -> 230[64]
-  924:[68] VarRef(var[52]) -> ref(1,9,32)={key:"One",value:1}[68]
-  927:[80] GetInt(v1=ref(1,9,32)[68], fld=8) -> 1[68]
-  930:[72] AddInt(v1=230[64], v2=1[68]) -> 231[64]
-  931:[68] PutInt(var[44], value=231[64])
-  934:[64] GenFreeStack(value=0, discard=12)
-  938:[52] GenGotoWord(jump=888)
-  888:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
-  891:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
-  894:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,9,44)[52]
-  900:[64] VarRef(var[52]) -> ref(1,9,44)={key:"Four",value:4}[64]
-  903:[76] ConvBoolFromRef(val=ref(1,9,44)[64]) -> true[64]
-  904:[65] Not(v1=true[64]) -> false[64]
-  905:[65] GenGotoFalseWord(jump=915, if_false=false[64])
-  915:[64] VarInt(var[44]) -> 231[64]
-  918:[68] ConstInt(val=10) -> 10[68]
-  923:[72] MulInt(v1=231[64], v2=10[68]) -> 2310[64]
-  924:[68] VarRef(var[52]) -> ref(1,9,44)={key:"Four",value:4}[68]
-  927:[80] GetInt(v1=ref(1,9,44)[68], fld=8) -> 4[68]
-  930:[72] AddInt(v1=2310[64], v2=4[68]) -> 2314[64]
-  931:[68] PutInt(var[44], value=2314[64])
-  934:[64] GenFreeStack(value=0, discard=12)
-  938:[52] GenGotoWord(jump=888)
-  888:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
-  891:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
-  894:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,0,2147483647)[52]
-  900:[64] VarRef(var[52]) -> ref(1,0,2147483647)={}[64]
-  903:[76] ConvBoolFromRef(val=ref(1,0,2147483647)[64]) -> false[64]
-  904:[65] Not(v1=false[64]) -> true[64]
-  905:[65] GenGotoFalseWord(jump=915, if_false=true[64])
-  908:[64] GenFreeStack(value=0, discard=12)
-  912:[52] GenGotoWord(jump=941)
-  941:[52] GenFreeStack(value=0, discard=4)
-  945:[48] VarInt(var[44]) -> 2314[48]
-  948:[52] ConstInt(val=10) -> 10[52]
-  953:[56] MulInt(v1=2314[48], v2=10[52]) -> 23140[48]
-  954:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
-  957:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
-  960:[64] ConstText(_value="Three") -> "Three"[64]
-  967:[80] GetRecord(data=ref(1,1,4)[52], db_tp=13, no_keys=1, key1="Three"[64]) -> ref(1,9,20)[52]
-  971:[64] GetInt(v1=ref(1,9,20)[52], fld=8) -> 3[52]
-  974:[56] AddInt(v1=23140[48], v2=3[52]) -> 23143[48]
-  975:[52] PutInt(var[44], value=23143[48])
-  978:[48] VarInt(var[44]) -> 23143[48]
-  981:[52] GenFreeStack(value=4, discard=16)
-  985:[36] VarInt(var[32]) -> 23143[36]
-  988:[40] ConstInt(val=23143) -> 23143[40]
-  993:[44] EqInt(v1=23143[36], v2=23143[40]) -> true[36]
-  994:[37] GenGotoFalseWord(jump=1000, if_false=true[36])
-  997:[36] GenGotoWord(jump=1053)
- 1053:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
+  784:[56] FreeStack(value=12, discard=12)
+  788:[44] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"One",value:1}]}[44]
+  791:[56] NewRecord(data=ref(1,1,0)[44], parent_tp=12, fld=0) -> ref(1,9,44)[44]
+  796:[56] VarRef(var[44]) -> ref(1,9,44)={}[56]
+  799:[68] ConstText(_value="Three") -> "Three"[68]
+  806:[84] SetText(v1=ref(1,9,44)[56], fld=4, val="Three"[68])
+  809:[56] VarRef(var[44]) -> ref(1,9,44)={key:"Three"}[56]
+  812:[68] ConstInt(val=3) -> 3[68]
+  817:[72] SetInt(v1=ref(1,9,44)[56], fld=8, val=3[68])
+  820:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"One",value:1}]}[56]
+  823:[68] VarRef(var[44]) -> ref(1,9,44)={key:"Three",value:3}[68]
+  826:[80] FinishRecord(data=ref(1,1,0)[56], rec=ref(1,9,44)[68], parent_tp=12, fld=0)
+  831:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1}]}[56]
+  834:[68] NewRecord(data=ref(1,1,0)[56], parent_tp=12, fld=0) -> ref(1,9,56)[56]
+  839:[68] PutRef(var[44], value=ref(1,9,56)[56])
+  842:[56] VarRef(var[44]) -> ref(1,9,56)={}[56]
+  845:[68] ConstText(_value="Four") -> "Four"[68]
+  851:[84] SetText(v1=ref(1,9,56)[56], fld=4, val="Four"[68])
+  854:[56] VarRef(var[44]) -> ref(1,9,56)={key:"Four"}[56]
+  857:[68] ConstInt(val=4) -> 4[68]
+  862:[72] SetInt(v1=ref(1,9,56)[56], fld=8, val=4[68])
+  865:[56] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1}]}[56]
+  868:[68] VarRef(var[44]) -> ref(1,9,56)={key:"Four",value:4}[68]
+  871:[80] FinishRecord(data=ref(1,1,0)[56], rec=ref(1,9,56)[68], parent_tp=12, fld=0)
+  876:[56] FreeStack(value=0, discard=12)
+  880:[44] ConstInt(val=0) -> 0[44]
+  885:[48] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[48]
+  888:[60] GetField(v1=ref(1,1,0)[48], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][48]
+  891:[60] Start(data=ref(1,1,4)[48], db_tp=13, no_keys=0) -> 2147483647[48]
+  895:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
+  898:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
+  901:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,9,8)[52]
+  907:[64] VarRef(var[52]) -> ref(1,9,8)={key:"Two",value:2}[64]
+  910:[76] ConvBoolFromRef(val=ref(1,9,8)[64]) -> true[64]
+  911:[65] Not(v1=true[64]) -> false[64]
+  912:[65] GotoFalseWord(jump=922, if_false=false[64])
+  922:[64] VarInt(var[44]) -> 0[64]
+  925:[68] ConstInt(val=10) -> 10[68]
+  930:[72] MulInt(v1=0[64], v2=10[68]) -> 0[64]
+  931:[68] VarRef(var[52]) -> ref(1,9,8)={key:"Two",value:2}[68]
+  934:[80] GetInt(v1=ref(1,9,8)[68], fld=8) -> 2[68]
+  937:[72] AddInt(v1=0[64], v2=2[68]) -> 2[64]
+  938:[68] PutInt(var[44], value=2[64])
+  941:[64] FreeStack(value=0, discard=12)
+  945:[52] GotoWord(jump=895)
+  895:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
+  898:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
+  901:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,9,20)[52]
+  907:[64] VarRef(var[52]) -> ref(1,9,20)={key:"Three",value:3}[64]
+  910:[76] ConvBoolFromRef(val=ref(1,9,20)[64]) -> true[64]
+  911:[65] Not(v1=true[64]) -> false[64]
+  912:[65] GotoFalseWord(jump=922, if_false=false[64])
+  922:[64] VarInt(var[44]) -> 2[64]
+  925:[68] ConstInt(val=10) -> 10[68]
+  930:[72] MulInt(v1=2[64], v2=10[68]) -> 20[64]
+  931:[68] VarRef(var[52]) -> ref(1,9,20)={key:"Three",value:3}[68]
+  934:[80] GetInt(v1=ref(1,9,20)[68], fld=8) -> 3[68]
+  937:[72] AddInt(v1=20[64], v2=3[68]) -> 23[64]
+  938:[68] PutInt(var[44], value=23[64])
+  941:[64] FreeStack(value=0, discard=12)
+  945:[52] GotoWord(jump=895)
+  895:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
+  898:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
+  901:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,9,32)[52]
+  907:[64] VarRef(var[52]) -> ref(1,9,32)={key:"One",value:1}[64]
+  910:[76] ConvBoolFromRef(val=ref(1,9,32)[64]) -> true[64]
+  911:[65] Not(v1=true[64]) -> false[64]
+  912:[65] GotoFalseWord(jump=922, if_false=false[64])
+  922:[64] VarInt(var[44]) -> 23[64]
+  925:[68] ConstInt(val=10) -> 10[68]
+  930:[72] MulInt(v1=23[64], v2=10[68]) -> 230[64]
+  931:[68] VarRef(var[52]) -> ref(1,9,32)={key:"One",value:1}[68]
+  934:[80] GetInt(v1=ref(1,9,32)[68], fld=8) -> 1[68]
+  937:[72] AddInt(v1=230[64], v2=1[68]) -> 231[64]
+  938:[68] PutInt(var[44], value=231[64])
+  941:[64] FreeStack(value=0, discard=12)
+  945:[52] GotoWord(jump=895)
+  895:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
+  898:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
+  901:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,9,44)[52]
+  907:[64] VarRef(var[52]) -> ref(1,9,44)={key:"Four",value:4}[64]
+  910:[76] ConvBoolFromRef(val=ref(1,9,44)[64]) -> true[64]
+  911:[65] Not(v1=true[64]) -> false[64]
+  912:[65] GotoFalseWord(jump=922, if_false=false[64])
+  922:[64] VarInt(var[44]) -> 231[64]
+  925:[68] ConstInt(val=10) -> 10[68]
+  930:[72] MulInt(v1=231[64], v2=10[68]) -> 2310[64]
+  931:[68] VarRef(var[52]) -> ref(1,9,44)={key:"Four",value:4}[68]
+  934:[80] GetInt(v1=ref(1,9,44)[68], fld=8) -> 4[68]
+  937:[72] AddInt(v1=2310[64], v2=4[68]) -> 2314[64]
+  938:[68] PutInt(var[44], value=2314[64])
+  941:[64] FreeStack(value=0, discard=12)
+  945:[52] GotoWord(jump=895)
+  895:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
+  898:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
+  901:[64] Next(data=ref(1,1,4)[52], pos=16, db_tp=13, no_keys=0) -> ref(1,0,2147483647)[52]
+  907:[64] VarRef(var[52]) -> ref(1,0,2147483647)={}[64]
+  910:[76] ConvBoolFromRef(val=ref(1,0,2147483647)[64]) -> false[64]
+  911:[65] Not(v1=false[64]) -> true[64]
+  912:[65] GotoFalseWord(jump=922, if_false=true[64])
+  915:[64] FreeStack(value=0, discard=12)
+  919:[52] GotoWord(jump=948)
+  948:[52] FreeStack(value=0, discard=4)
+  952:[48] VarInt(var[44]) -> 2314[48]
+  955:[52] ConstInt(val=10) -> 10[52]
+  960:[56] MulInt(v1=2314[48], v2=10[52]) -> 23140[48]
+  961:[52] VarRef(var[32]) -> ref(1,1,0)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[52]
+  964:[64] GetField(v1=ref(1,1,0)[52], fld=4) -> ref(1,1,4)=[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}][52]
+  967:[64] ConstText(_value="Three") -> "Three"[64]
+  974:[80] GetRecord(data=ref(1,1,4)[52], db_tp=13, no_keys=1, key1="Three"[64]) -> ref(1,9,20)[52]
+  978:[64] GetInt(v1=ref(1,9,20)[52], fld=8) -> 3[52]
+  981:[56] AddInt(v1=23140[48], v2=3[52]) -> 23143[48]
+  982:[52] PutInt(var[44], value=23143[48])
+  985:[48] VarInt(var[44]) -> 23143[48]
+  988:[52] FreeStack(value=4, discard=16)
+  992:[36] VarInt(var[32]) -> 23143[36]
+  995:[40] ConstInt(val=23143) -> 23143[40]
+ 1000:[44] EqInt(v1=23143[36], v2=23143[40]) -> true[36]
+ 1001:[37] GotoFalseWord(jump=1007, if_false=true[36])
+ 1004:[36] GotoWord(jump=1060)
+ 1060:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

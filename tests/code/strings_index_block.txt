@@ -1,0 +1,71 @@
+pub fn test() {
+    test_value = {s = "1😊2"; s[1]};
+    assert(
+        test_value == "😊",
+        "Test failed {test_value} != \"😊\""
+    );
+}
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:text["s"] = {#2 block
+    let s:text = "1😊2";
+    OpGetTextSub(s, 1i32, -2147483648i32);
+  }#2:text["s"];
+  if OpEqText(test_value, "😊") null else OpPanic({#3 formatting string
+    OpClearText(__work_1);
+    OpAppendText(__work_1, "Test failed ");
+    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_1, " != "😊"");
+    __work_1;
+  }#3:text);
+}#1
+
+byte-code for index_block:test()
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: Text()
+ 677[52]: Text()
+ 678[76]: ConstText(_value="1😊2") -> text
+ 686[92]: AppendText(var[52], v1: text)
+ 689[76]: VarText(var[52]) -> text
+ 692[92]: ConstInt(val=1) -> integer
+ 697[96]: ConstInt(val=-2147483648) -> integer
+ 702[100]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
+ 703[92]: FreeStack(value=16, discard=24) type=text[4]:Base[5]
+ 707[68]: AppendText(var[28], v1: text)
+ 710[52]: VarText(var[28]) -> text
+ 713[68]: ConstText(_value="😊") -> text
+ 719[84]: EqText(v1: text, v2: text) -> boolean
+ 720[53]: GotoFalseWord(jump=726, if_false: boolean)
+ 723[52]: GotoWord(jump=778)
+ 726[52]: ClearText(var[4])
+ 729[52]: ConstText(_value="Test failed ") -> text
+ 743[68]: AppendText(var[4], v1: text)
+ 746[52]: VarText(var[28]) -> text
+ 749[68]: ConstInt(val=0) -> integer
+ 754[72]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 759[52]: ConstText(_value=" != "😊"") -> text
+ 771[68]: AppendText(var[4], v1: text)
+ 774[52]: VarText(var[4]) -> text
+ 777[68]: Panic(message: text)
+ 778[52]: Return(ret=0, value=0, discard=52)
+
+Execute test:
+  675:[8] Text()
+  676:[32] Text()
+  677:[56] Text()
+  678:[80] ConstText(_value="1😊2") -> "1😊2"[80]
+  686:[96] AppendText(var[56], v1="1😊2"[80])
+  689:[80] VarText(var[56]) -> "1😊2"[80]
+  692:[96] ConstInt(val=1) -> 1[96]
+  697:[100] ConstInt(val=-2147483648) -> -2147483648[100]
+  702:[104] GetTextSub(v1="1😊2"[80], from=1[96], till=-2147483648[100]) -> "😊"[80]
+  703:[96] FreeStack(value=16, discard=24)
+  707:[72] AppendText(var[32], v1="😊"[56])
+  710:[56] VarText(var[32]) -> "😊"[56]
+  713:[72] ConstText(_value="😊") -> "😊"[72]
+  719:[88] EqText(v1="😊"[56], v2="😊"[72]) -> true[56]
+  720:[57] GotoFalseWord(jump=726, if_false=true[56])
+  723:[56] GotoWord(jump=778)
+  778:[56] Return(ret=4294967295[4], value=0, discard=52)
+Finished

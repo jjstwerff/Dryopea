@@ -5,89 +5,89 @@ pub fn test() {
         "Test failed {test_value} != 10"
     );
 }
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
-    let a = 12i32;
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:integer = {#2 block
+    let a:integer = 12i32;
     a = OpMinInt(a, 6i32);
     a = OpMulInt(a, 3i32);
     a = OpDivInt(a, 2i32);
     a = OpAddInt(a, 1i32);
     a;
-  }#2;
-  if OpEqInt(test_value, 10i32) null else OpGenPanic({#3 formatting string
+  }#2:integer;
+  if OpEqInt(test_value, 10i32) null else OpPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 10");
     __work_1;
-  }#3);
+  }#3:text);
 }#1
 
 byte-code for mutating_operators:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: ConstInt(val=12) -> integer
- 674[32]: VarInt(var[28]) -> integer
- 677[36]: ConstInt(val=6) -> integer
- 682[40]: MinInt(v1: integer, v2: integer) -> integer
- 683[36]: PutInt(var[28], value: integer)
- 686[32]: VarInt(var[28]) -> integer
- 689[36]: ConstInt(val=3) -> integer
- 694[40]: MulInt(v1: integer, v2: integer) -> integer
- 695[36]: PutInt(var[28], value: integer)
- 698[32]: VarInt(var[28]) -> integer
- 701[36]: ConstInt(val=2) -> integer
- 706[40]: DivInt(v1: integer, v2: integer) -> integer
- 707[36]: PutInt(var[28], value: integer)
- 710[32]: VarInt(var[28]) -> integer
- 713[36]: ConstInt(val=1) -> integer
- 718[40]: AddInt(v1: integer, v2: integer) -> integer
- 719[36]: PutInt(var[28], value: integer)
- 722[32]: VarInt(var[28]) -> integer
- 725[36]: GenFreeStack(value=4, discard=4)
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: ConstInt(val=12) -> integer
+ 681[32]: VarInt(var[28]) -> integer
+ 684[36]: ConstInt(val=6) -> integer
+ 689[40]: MinInt(v1: integer, v2: integer) -> integer
+ 690[36]: PutInt(var[28], value: integer)
+ 693[32]: VarInt(var[28]) -> integer
+ 696[36]: ConstInt(val=3) -> integer
+ 701[40]: MulInt(v1: integer, v2: integer) -> integer
+ 702[36]: PutInt(var[28], value: integer)
+ 705[32]: VarInt(var[28]) -> integer
+ 708[36]: ConstInt(val=2) -> integer
+ 713[40]: DivInt(v1: integer, v2: integer) -> integer
+ 714[36]: PutInt(var[28], value: integer)
+ 717[32]: VarInt(var[28]) -> integer
+ 720[36]: ConstInt(val=1) -> integer
+ 725[40]: AddInt(v1: integer, v2: integer) -> integer
+ 726[36]: PutInt(var[28], value: integer)
  729[32]: VarInt(var[28]) -> integer
- 732[36]: ConstInt(val=10) -> integer
- 737[40]: EqInt(v1: integer, v2: integer) -> boolean
- 738[33]: GenGotoFalseWord(jump=744, if_false: boolean)
- 741[32]: GenGotoWord(jump=794)
- 744[32]: ClearText(var[4])
- 747[32]: ConstText(_value="Test failed ") -> text(false, [])
- 761[48]: AppendText(var[4], v1: text(false, []))
- 764[32]: VarInt(var[28]) -> integer
- 767[36]: ConstInt(val=0) -> integer
- 772[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 779[32]: ConstText(_value=" != 10") -> text(false, [])
- 787[48]: AppendText(var[4], v1: text(false, []))
- 790[32]: VarText(var[4]) -> text(false, [])
- 793[48]: GenPanic(message: text(false, []))
- 794[32]: GenReturn(ret=0, value=0, discard=32)
+ 732[36]: FreeStack(value=4, discard=4) type=integer[4]:Base[0]
+ 736[32]: VarInt(var[28]) -> integer
+ 739[36]: ConstInt(val=10) -> integer
+ 744[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 745[33]: GotoFalseWord(jump=751, if_false: boolean)
+ 748[32]: GotoWord(jump=801)
+ 751[32]: ClearText(var[4])
+ 754[32]: ConstText(_value="Test failed ") -> text
+ 768[48]: AppendText(var[4], v1: text)
+ 771[32]: VarInt(var[28]) -> integer
+ 774[36]: ConstInt(val=0) -> integer
+ 779[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 786[32]: ConstText(_value=" != 10") -> text
+ 794[48]: AppendText(var[4], v1: text)
+ 797[32]: VarText(var[4]) -> text
+ 800[48]: Panic(message: text)
+ 801[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-  668:[8] Text()
-  669:[32] ConstInt(val=12) -> 12[32]
-  674:[36] VarInt(var[32]) -> 12[36]
-  677:[40] ConstInt(val=6) -> 6[40]
-  682:[44] MinInt(v1=12[36], v2=6[40]) -> 6[36]
-  683:[40] PutInt(var[32], value=6[36])
-  686:[36] VarInt(var[32]) -> 6[36]
-  689:[40] ConstInt(val=3) -> 3[40]
-  694:[44] MulInt(v1=6[36], v2=3[40]) -> 18[36]
-  695:[40] PutInt(var[32], value=18[36])
-  698:[36] VarInt(var[32]) -> 18[36]
-  701:[40] ConstInt(val=2) -> 2[40]
-  706:[44] DivInt(v1=18[36], v2=2[40]) -> 9[36]
-  707:[40] PutInt(var[32], value=9[36])
-  710:[36] VarInt(var[32]) -> 9[36]
-  713:[40] ConstInt(val=1) -> 1[40]
-  718:[44] AddInt(v1=9[36], v2=1[40]) -> 10[36]
-  719:[40] PutInt(var[32], value=10[36])
-  722:[36] VarInt(var[32]) -> 10[36]
-  725:[40] GenFreeStack(value=4, discard=4)
+  675:[8] Text()
+  676:[32] ConstInt(val=12) -> 12[32]
+  681:[36] VarInt(var[32]) -> 12[36]
+  684:[40] ConstInt(val=6) -> 6[40]
+  689:[44] MinInt(v1=12[36], v2=6[40]) -> 6[36]
+  690:[40] PutInt(var[32], value=6[36])
+  693:[36] VarInt(var[32]) -> 6[36]
+  696:[40] ConstInt(val=3) -> 3[40]
+  701:[44] MulInt(v1=6[36], v2=3[40]) -> 18[36]
+  702:[40] PutInt(var[32], value=18[36])
+  705:[36] VarInt(var[32]) -> 18[36]
+  708:[40] ConstInt(val=2) -> 2[40]
+  713:[44] DivInt(v1=18[36], v2=2[40]) -> 9[36]
+  714:[40] PutInt(var[32], value=9[36])
+  717:[36] VarInt(var[32]) -> 9[36]
+  720:[40] ConstInt(val=1) -> 1[40]
+  725:[44] AddInt(v1=9[36], v2=1[40]) -> 10[36]
+  726:[40] PutInt(var[32], value=10[36])
   729:[36] VarInt(var[32]) -> 10[36]
-  732:[40] ConstInt(val=10) -> 10[40]
-  737:[44] EqInt(v1=10[36], v2=10[40]) -> true[36]
-  738:[37] GenGotoFalseWord(jump=744, if_false=true[36])
-  741:[36] GenGotoWord(jump=794)
-  794:[36] GenReturn(ret=4294967295[4], value=0, discard=32)
+  732:[40] FreeStack(value=4, discard=4)
+  736:[36] VarInt(var[32]) -> 10[36]
+  739:[40] ConstInt(val=10) -> 10[40]
+  744:[44] EqInt(v1=10[36], v2=10[40]) -> true[36]
+  745:[37] GotoFalseWord(jump=751, if_false=true[36])
+  748:[36] GotoWord(jump=801)
+  801:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

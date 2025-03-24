@@ -7,72 +7,72 @@ pub fn test() {
 }
 Type 11:vector<float>[4]:Vector(3)
 
-fn test {#1 block
-  let __work_1 = "";
-  let test_value = {#2 block
-    let a = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 11i32);
+fn test() {#1 block
+  let __work_1:text = "";
+  let test_value:float = {#2 block
+    let a:vector<float>#[] = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 11i32);
     OpAddFloat(OpGetFloat(OpGetVector(a, 8i32, 2i32), 0i32), OpGetFloat(OpGetVector(a, 8i32, 3i32), 0i32));
-  }#2;
-  if OpEqFloat(test_value, 18120.00000001001f64) null else OpGenPanic({#3 formatting string
+  }#2:float;
+  if OpEqFloat(test_value, 18120.00000001001f64) null else OpPanic({#3 formatting string
     OpClearText(__work_1);
     OpAppendText(__work_1, "Test failed ");
     OpFormatFloat(__work_1, test_value, 0i32, 0i32);
     OpAppendText(__work_1, " != 18120.00000001001");
     __work_1;
-  }#3);
+  }#3:text);
 }#1
 
 byte-code for parse_vector:test()
- 668[0]: return-address
- 668[4]: Text()
- 669[28]: ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text(false, [])
- 704[44]: CastVectorFromText(val: text(false, []), db_tp=11) -> vector#[]
- 707[40]: VarVector(var[28]) -> vector#[] type=vector<float>[4]:Vector(3)[11]
- 710[52]: ConstInt(val=2) -> integer
- 715[56]: GetVector(r: vector#[], size=8, index: integer) -> reference#[] type=float[8]:Base[3]
- 718[52]: GetFloat(v1: reference#[], fld=0) -> float
- 721[48]: VarVector(var[28]) -> vector#[] type=vector<float>[4]:Vector(3)[11]
- 724[60]: ConstInt(val=3) -> integer
- 729[64]: GetVector(r: vector#[], size=8, index: integer) -> reference#[] type=float[8]:Base[3]
- 732[60]: GetFloat(v1: reference#[], fld=0) -> float
- 735[56]: AddFloat(v1: float, v2: float) -> float
- 736[48]: GenFreeStack(value=8, discard=12)
- 740[36]: VarFloat(var[28]) -> float
- 743[44]: ConstFloat(val=18120.00000001001) -> float
- 752[52]: EqFloat(v1: float, v2: float) -> boolean
- 753[37]: GenGotoFalseWord(jump=759, if_false: boolean)
- 756[36]: GenGotoWord(jump=825)
- 759[36]: ClearText(var[4])
- 762[36]: ConstText(_value="Test failed ") -> text(false, [])
- 776[52]: AppendText(var[4], v1: text(false, []))
- 779[36]: VarFloat(var[28]) -> float
- 782[44]: ConstInt(val=0) -> integer
- 787[48]: ConstInt(val=0) -> integer
- 792[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
- 795[36]: ConstText(_value=" != 18120.00000001001") -> text(false, [])
- 818[52]: AppendText(var[4], v1: text(false, []))
- 821[36]: VarText(var[4]) -> text(false, [])
- 824[52]: GenPanic(message: text(false, []))
- 825[36]: GenReturn(ret=0, value=0, discard=36)
+ 675[0]: return-address
+ 675[4]: Text()
+ 676[28]: ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text
+ 711[44]: CastVectorFromText(val: text, db_tp=11) -> vector#[]
+ 714[40]: VarVector(var[28]) -> vector#[] type=vector<float>[4]:Vector(3)[11]
+ 717[52]: ConstInt(val=2) -> integer
+ 722[56]: GetVector(r: vector#[], size=8, index: integer) -> reference type=float[8]:Base[3]
+ 725[52]: GetFloat(v1: reference, fld=0) -> float
+ 728[48]: VarVector(var[28]) -> vector#[] type=vector<float>[4]:Vector(3)[11]
+ 731[60]: ConstInt(val=3) -> integer
+ 736[64]: GetVector(r: vector#[], size=8, index: integer) -> reference type=float[8]:Base[3]
+ 739[60]: GetFloat(v1: reference, fld=0) -> float
+ 742[56]: AddFloat(v1: float, v2: float) -> float
+ 743[48]: FreeStack(value=8, discard=12) type=float[8]:Base[3]
+ 747[36]: VarFloat(var[28]) -> float
+ 750[44]: ConstFloat(val=18120.00000001001) -> float
+ 759[52]: EqFloat(v1: float, v2: float) -> boolean
+ 760[37]: GotoFalseWord(jump=766, if_false: boolean)
+ 763[36]: GotoWord(jump=832)
+ 766[36]: ClearText(var[4])
+ 769[36]: ConstText(_value="Test failed ") -> text
+ 783[52]: AppendText(var[4], v1: text)
+ 786[36]: VarFloat(var[28]) -> float
+ 789[44]: ConstInt(val=0) -> integer
+ 794[48]: ConstInt(val=0) -> integer
+ 799[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
+ 802[36]: ConstText(_value=" != 18120.00000001001") -> text
+ 825[52]: AppendText(var[4], v1: text)
+ 828[36]: VarText(var[4]) -> text
+ 831[52]: Panic(message: text)
+ 832[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:
-  668:[8] Text()
-  669:[32] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> "[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32]
-  704:[48] CastVectorFromText(val="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32], db_tp=11) -> ref(1,1,4)=true[32]
-  707:[44] VarVector(var[32]) -> ref(1,1,4)=[1.2,-10.3,18120,0.00000001001][44]
-  710:[56] ConstInt(val=2) -> 2[56]
-  715:[60] GetVector(r=ref(1,1,4)=true[44], size=8, index=2[56]) -> ref(1,9,24)=18120[44]
-  718:[56] GetFloat(v1=ref(1,9,24)[44], fld=0) -> 18120[44]
-  721:[52] VarVector(var[32]) -> ref(1,1,4)=[1.2,-10.3,18120,0.00000001001][52]
-  724:[64] ConstInt(val=3) -> 3[64]
-  729:[68] GetVector(r=ref(1,1,4)=true[52], size=8, index=3[64]) -> ref(1,9,32)=0.00000001001[52]
-  732:[64] GetFloat(v1=ref(1,9,32)[52], fld=0) -> 0.00000001001[52]
-  735:[60] AddFloat(v1=18120[44], v2=0.00000001001[52]) -> 18120.00000001001[44]
-  736:[52] GenFreeStack(value=8, discard=12)
-  740:[40] VarFloat(var[32]) -> 18120.00000001001[40]
-  743:[48] ConstFloat(val=18120.00000001001) -> 18120.00000001001[48]
-  752:[56] EqFloat(v1=18120.00000001001[40], v2=18120.00000001001[48]) -> true[40]
-  753:[41] GenGotoFalseWord(jump=759, if_false=true[40])
-  756:[40] GenGotoWord(jump=825)
-  825:[40] GenReturn(ret=4294967295[4], value=0, discard=36)
+  675:[8] Text()
+  676:[32] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> "[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32]
+  711:[48] CastVectorFromText(val="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32], db_tp=11) -> ref(1,1,4)=true[32]
+  714:[44] VarVector(var[32]) -> ref(1,1,4)=[1.2,-10.3,18120,0.00000001001][44]
+  717:[56] ConstInt(val=2) -> 2[56]
+  722:[60] GetVector(r=ref(1,1,4)=true[44], size=8, index=2[56]) -> ref(1,9,24)=18120[44]
+  725:[56] GetFloat(v1=ref(1,9,24)[44], fld=0) -> 18120[44]
+  728:[52] VarVector(var[32]) -> ref(1,1,4)=[1.2,-10.3,18120,0.00000001001][52]
+  731:[64] ConstInt(val=3) -> 3[64]
+  736:[68] GetVector(r=ref(1,1,4)=true[52], size=8, index=3[64]) -> ref(1,9,32)=0.00000001001[52]
+  739:[64] GetFloat(v1=ref(1,9,32)[52], fld=0) -> 0.00000001001[52]
+  742:[60] AddFloat(v1=18120[44], v2=0.00000001001[52]) -> 18120.00000001001[44]
+  743:[52] FreeStack(value=8, discard=12)
+  747:[40] VarFloat(var[32]) -> 18120.00000001001[40]
+  750:[48] ConstFloat(val=18120.00000001001) -> 18120.00000001001[48]
+  759:[56] EqFloat(v1=18120.00000001001[40], v2=18120.00000001001[48]) -> true[40]
+  760:[41] GotoFalseWord(jump=766, if_false=true[40])
+  763:[40] GotoWord(jump=832)
+  832:[40] Return(ret=4294967295[4], value=0, discard=36)
 Finished

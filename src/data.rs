@@ -74,7 +74,7 @@ pub enum Value {
     /// Drop the returned value of a call
     Drop(Box<Value>),
     /// The creation of the iterator and the next expression. Not able to revert.
-    Iter(Box<Value>, Vec<Value>),
+    Iter(Box<Value>, Box<Value>),
     /// Key structure
     Keys(Vec<Key>),
 }
@@ -109,7 +109,7 @@ pub fn to_default(tp: &Type) -> Value {
         Type::Long => Value::Long(0),
         Type::Single => Value::Single(0.0),
         Type::Float => Value::Float(0.0),
-        Type::Text(_, _) => Value::Text(String::new()),
+        Type::Text(_) => Value::Text(String::new()),
         _ => Value::Null,
     }
 }
@@ -117,7 +117,7 @@ pub fn to_default(tp: &Type) -> Value {
 #[derive(Clone, Debug, PartialEq)]
 #[allow(dead_code)]
 pub enum Type {
-    /// The type of this parse result is unknown, but linked to a given definition unless 0.
+    /// The type of this parse result is unknown, possibly linked to a yet unknown type (if != 0).
     Unknown(u32),
     /// The type of this result is specifically undefined.
     Null,
@@ -131,8 +131,8 @@ pub enum Type {
     Long,
     Float,
     Single,
-    /// A text with true when it is inside a database versus a String on stack.
-    Text(bool, Vec<u16>),
+    /// A text with the linked variables.
+    Text(Vec<u16>),
     /// Description of the possible keys on a structure (hash, index, spacial, sorted)
     Keys,
     /// An enum value. There is always a single parent definition with enum type itself.
@@ -177,6 +177,23 @@ impl Type {
             || (matches!(self, Type::Reference(_, _)) && matches!(other, Type::Reference(_, _)))
             || (matches!(self, Type::Vector(_, _)) && matches!(other, Type::Vector(_, _)))
             || (matches!(self, Type::Integer(_, _)) && matches!(other, Type::Integer(_, _)))
+            || (matches!(self, Type::Text(_)) && matches!(other, Type::Text(_)))
+    }
+
+    #[must_use]
+    pub fn is_equal(&self, other: &Type) -> bool {
+        match (self, other) {
+            (Type::Reference(r, _), Type::Reference(o, _)) => return r == o,
+            (Type::Vector(r, _), Type::Vector(o, _)) => return r.is_equal(o),
+            (Type::Hash(r, rf, _), Type::Hash(o, of, _))
+            | (Type::Spacial(r, rf, _), Type::Spacial(o, of, _)) => return r == o && rf == of,
+            (Type::Sorted(r, rf, _), Type::Sorted(o, of, _))
+            | (Type::Index(r, rf, _), Type::Index(o, of, _)) => return r == o && rf == of,
+            _ => {}
+        };
+        self == other
+            || (matches!(self, Type::Integer(_, _)) && matches!(other, Type::Integer(_, _)))
+            || (matches!(self, Type::Text(_)) && matches!(other, Type::Text(_)))
     }
 
     #[must_use]
@@ -200,7 +217,7 @@ impl Type {
     pub fn name(&self, data: &Data) -> String {
         match self {
             Type::Enum(t) | Type::Reference(t, _) => data.def(*t).name.clone(),
-            Type::Text(_, _) => "text".to_string(),
+            Type::Text(_) => "text".to_string(),
             Type::Vector(tp, _) if matches!(tp as &Type, Type::Unknown(_)) => "vector".to_string(),
             Type::Vector(tp, _) => format!("vector<{}>", tp.name(data)),
             Type::Sorted(tp, key, _) => {
@@ -217,14 +234,21 @@ impl Type {
     }
 
     #[must_use]
-    pub fn show(&self, data: &Data) -> String {
+    pub fn show(&self, data: &Data, vars: &Function) -> String {
         match self {
             Type::Enum(t) => data.def(*t).name.clone(),
-            Type::Reference(t, link) => format!("{}#{link:?}", data.def(*t).name),
+            Type::Reference(t, link) if link.is_empty() => data.def(*t).name.clone(),
+            Type::Reference(t, link) => {
+                let mut ls = Vec::new();
+                for d in link {
+                    ls.push(vars.name(*d));
+                }
+                format!("{}{ls:?}", data.def(*t).name)
+            }
             Type::Vector(tp, link) if matches!(tp as &Type, Type::Unknown(_)) => {
                 format!("vector#{link:?}")
             }
-            Type::Vector(tp, link) => format!("vector<{}>#{link:?}", tp.show(data)),
+            Type::Vector(tp, link) => format!("vector<{}>#{link:?}", tp.show(data, vars)),
             Type::Sorted(tp, key, link) => {
                 format!("sorted<{},{key:?}>#{link:?}", data.def(*tp).name)
             }
@@ -234,6 +258,14 @@ impl Type {
                 format!("spacial<{},{key:?}>#{link:?}", data.def(*tp).name)
             }
             Type::Routine(tp) => format!("fn {}[{tp}]", data.def(*tp).name),
+            Type::Text(dep) if dep.is_empty() => "text".to_string(),
+            Type::Text(dep) => {
+                let mut ls = Vec::new();
+                for d in dep {
+                    ls.push(vars.name(*d));
+                }
+                format!("text{ls:?}")
+            }
             _ => self.to_string(),
         }
     }
@@ -365,6 +397,27 @@ impl Definition {
                 .next()
                 .unwrap_or_default()
                 .is_uppercase()
+    }
+
+    #[must_use]
+    pub fn header(&self, data: &Data, vars: &Function) -> String {
+        let mut res = "fn ".to_string();
+        res += &self.name;
+        res += "(";
+        for (a_nr, a) in self.attributes.iter().enumerate() {
+            if a_nr > 0 {
+                res += ", ";
+            }
+            res += &a.name;
+            res += ":";
+            res += &a.typedef.show(data, vars);
+        }
+        res += ")";
+        if self.returned != Type::Void {
+            res += " -> ";
+            res += &self.returned.show(data, vars);
+        };
+        res
     }
 }
 
@@ -789,9 +842,6 @@ impl Data {
         }
         if self.def(d_nr).is_operator() {
             for op in OPERATORS.iter() {
-                if self.def(d_nr).name.starts_with("OpGen") {
-                    continue;
-                }
                 if self.def(d_nr).name.starts_with(op) {
                     if !self.possible.contains_key(*op) {
                         self.possible.insert((*op).to_string(), Vec::new());
@@ -891,7 +941,7 @@ impl Data {
             Type::Long => self.def_nr("long"),
             Type::Boolean => self.def_nr("boolean"),
             Type::Float => self.def_nr("float"),
-            Type::Text(_, _) => self.def_nr("text"),
+            Type::Text(_) => self.def_nr("text"),
             Type::Single => self.def_nr("single"),
             Type::Routine(d_nr)
             | Type::Enum(d_nr)
@@ -915,7 +965,7 @@ impl Data {
             Type::Long => self.def_nr("long"),
             Type::Boolean => self.def_nr("boolean"),
             Type::Float => self.def_nr("float"),
-            Type::Text(_, _) => self.def_nr("text"),
+            Type::Text(_) => self.def_nr("text"),
             Type::Routine(d_nr) | Type::Enum(d_nr) | Type::Reference(d_nr, _) => *d_nr,
             Type::Vector(tp, _) => {
                 if let Type::Reference(td, _) = **tp {
@@ -959,8 +1009,8 @@ impl Data {
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 65536 => "i16",
             Type::Integer(_, _) => "i32",
             Type::Enum(_) => "u8",
-            Type::Text(_, _) if context == &Context::Variable => "String",
-            Type::Text(_, _) => "Str",
+            Type::Text(_) if context == &Context::Variable => "String",
+            Type::Text(_) => "Str",
             Type::Long => "i64",
             Type::Boolean => "bool",
             Type::Float => "f64",
@@ -1075,8 +1125,17 @@ impl Data {
                 for _i in 0..indent {
                     write!(write, "  ")?;
                 }
-                write!(write, "}}#{}", vars.scope())?;
-                vars.finish_scope(bl, (0, 0));
+                if vars.result() == &Type::Void {
+                    write!(write, "}}#{}", vars.scope())?;
+                } else {
+                    write!(
+                        write,
+                        "}}#{}:{}",
+                        vars.scope(),
+                        vars.result().show(self, vars)
+                    )?;
+                }
+                vars.finish_scope(bl, &Type::Unknown(0), (0, 0));
                 Ok(())
             }
             Value::Var(v) => write!(write, "{}", vars.name(*v)),
@@ -1085,7 +1144,12 @@ impl Data {
                 self.show_code(write, vars, to, indent, false)
             }
             Value::Let(v, to) => {
-                write!(write, "let {} = ", vars.name(*v))?;
+                write!(
+                    write,
+                    "let {}:{} = ",
+                    vars.name(*v),
+                    vars.tp(*v).show(self, vars)
+                )?;
                 self.show_code(write, vars, to, indent, false)
             }
             Value::Return(ex) => {
@@ -1113,7 +1177,7 @@ impl Data {
                     write!(write, "  ")?;
                 }
                 write!(write, "}}#{}", vars.scope())?;
-                vars.finish_scope(lp, (0, 0));
+                vars.finish_scope(lp, &Type::Unknown(0), (0, 0));
                 Ok(())
             }
             Value::Drop(v) => {
@@ -1125,4 +1189,21 @@ impl Data {
             }
         }
     }
+}
+
+#[test]
+fn value_sizes() {
+    // Debugging function to validate the sizes of the variants for the Value enum.
+    assert_eq!(size_of::<Value>(), 32);
+    assert_eq!(size_of::<Vec<Value>>(), 24);
+    assert_eq!(size_of::<Box<Value>>(), 8);
+    assert_eq!(size_of::<(u8, u32)>(), 8); // Int
+    assert_eq!(size_of::<(u8, u8, u16)>(), 4); // Enum
+    assert_eq!(size_of::<(u8, f64)>(), 16); // Float
+    assert_eq!(size_of::<(u8, String)>(), 32); // Text
+    assert_eq!(size_of::<(u8, u32, Vec<Value>)>(), 32); // Call
+    assert_eq!(size_of::<(u8, Vec<Value>)>(), 32); // Block
+    assert_eq!(size_of::<(u8, u16, Box<Value>)>(), 16); // Set
+    assert_eq!(size_of::<(u8, Box<Value>, Box<Value>, Box<Value>)>(), 32); // If
+    assert_eq!(size_of::<(u8, Box<Value>, Box<Value>)>(), 24); // Iter
 }
