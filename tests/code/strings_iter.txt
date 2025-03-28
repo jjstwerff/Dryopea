@@ -22,38 +22,38 @@ Type 14:main_vector<integer>[8]:
     vector:vector<integer>[4]
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let a:vector<text["c"]>#[] = {#3 vector
-      let _db_3:main_vector<text> = OpDatabase(1i32, 13i32);
-      let _vec_2:vector<text["c"]>#[] = OpGetField(_db_3, 4i32, 65535i32);
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    a:vector<text["c"]>#[] = {#3 vector
+      _db_3:main_vector<text> = OpDatabase(1i32, 13i32);
+      _vec_2:vector<text["c"]>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
       _vec_2;
     }#3:vector<text["c"]>#[];
-    let b:vector<integer>#[] = {#4 vector
-      let _db_6:main_vector<integer> = OpDatabase(1i32, 14i32);
-      let _vec_5:vector<integer>#[] = OpGetField(_db_6, 4i32, 65535i32);
+    b:vector<integer>#[] = {#4 vector
+      _db_6:main_vector<integer> = OpDatabase(1i32, 14i32);
+      _vec_5:vector<integer>#[] = OpGetField(_db_6, 4i32, 65535i32);
       OpSetInt(_db_6, 4i32, 0i32);
       _vec_5;
     }#4:vector<integer>#[];
     {#5 for
-      let c#index:integer = 0i32;
+      c#index:integer = 0i32;
       loop {#6 for loop
-        let c:text = {#7 for text next
-          let _tres_7:text = OpGetTextSub("123😊🙃😋8", c#index, -2147483648i32);
-          c#index = OpAddInt(c#index, OpLengthText(_tres_7));
+        c:text = {#7 for text next
+          _tres_7:text = OpGetTextSub("123😊🙃😋8", c#index, -2147483648i32);
+          c#index:integer = OpAddInt(c#index, OpLengthText(_tres_7));
           _tres_7;
         }#7:text;
         if OpNot(OpConvBoolFromText(c)) break(0) else null;
         {#8 block
           {#9 vector
-            let _elm_8:boolean = OpNewRecord(a, 11i32, 65535i32);
+            _elm_8:boolean = OpNewRecord(a, 11i32, 65535i32);
             OpSetText(_elm_8, 0i32, c);
             OpFinishRecord(a, _elm_8, 11i32, 65535i32);
           }#9;
           {#10 vector
-            let _elm_9:boolean = OpNewRecord(b, 12i32, 65535i32);
+            _elm_9:boolean = OpNewRecord(b, 12i32, 65535i32);
             OpSetInt(_elm_9, 0i32, c#index);
             OpFinishRecord(b, _elm_9, 12i32, 65535i32);
           }#10;
@@ -61,8 +61,7 @@ fn test() {#1 block
       }#6;
     }#5;
     {#11 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "");
+      __work_1:text = "";
       OpFormatDatabase(__work_1, a, 11i32, false);
       OpAppendText(__work_1, " indexes:");
       OpFormatDatabase(__work_1, b, 12i32, false);
@@ -70,8 +69,7 @@ fn test() {#1 block
     }#11:text;
   }#2:text;
   if OpEqText(test_value, "["1","2","3","😊","🙃","😋","8"] indexes:[1,2,3,7,11,15,16]") null else OpPanic({#12 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "["1","2","3","😊","🙃","😋","8"] indexes:[1,2,3,7,11,15,16]"");
     __work_2;

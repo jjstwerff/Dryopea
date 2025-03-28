@@ -258,10 +258,6 @@ extern crate dryopea;"
                 write!(w, "var_{} = ", self.data.def(def_nr).variables.name(*var))?;
                 self.output_code(w, to, def_nr, indent)?;
             }
-            Value::Let(var, to) => {
-                write!(w, "let mut var_{var} = ")?;
-                self.output_code(w, to, def_nr, indent)?;
-            }
             Value::Var(var) => {
                 write!(w, "var_{}", self.data.def(def_nr).variables.name(*var))?;
             }

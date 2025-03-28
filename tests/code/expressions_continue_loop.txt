@@ -8,12 +8,12 @@ pub fn test() {
     );
 }
 fn routine() -> integer {#1 block
-  let b:integer = 0i32;
+  b:integer = 0i32;
   {#2 for
-    let a#index:integer = OpConvIntFromNull();
+    a#index:integer = OpConvIntFromNull();
     loop {#3 for loop
-      let a:integer = {#4 for next
-        a#index = if OpNot(OpConvBoolFromInt(a#index)) 0i32 else OpAddInt(a#index, 1i32);
+      a:integer = {#4 for next
+        a#index:integer = if OpNot(OpConvBoolFromInt(a#index)) 0i32 else OpAddInt(a#index, 1i32);
         if OpGeInt(a#index, 10i32) break(0) else null;
         a#index;
       }#4:integer;
@@ -24,7 +24,7 @@ fn routine() -> integer {#1 block
         if OpGtInt(a, 5i32) {#7 block
           return b;
         }#7 else null;
-        b = OpAddInt(b, a);
+        b:integer = OpAddInt(b, a);
       }#5;
     }#3;
   }#2;
@@ -75,13 +75,12 @@ byte-code for continue_loop:routine() -> integer
  795[12]: Return(ret=0, value=4, discard=12) type=integer[4]:Base[0]
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
+  __work_1:text = "";
+  test_value:integer = {#2 block
     routine();
   }#2:integer;
   if OpEqInt(test_value, 13i32) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 13");
     __work_1;

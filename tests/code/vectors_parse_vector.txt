@@ -8,14 +8,13 @@ pub fn test() {
 Type 11:vector<float>[4]:Vector(3)
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:float = {#2 block
-    let a:vector<float>#[] = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 11i32);
+  __work_1:text = "";
+  test_value:float = {#2 block
+    a:vector<float>#[] = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 11i32);
     OpAddFloat(OpGetFloat(OpGetVector(a, 8i32, 2i32), 0i32), OpGetFloat(OpGetVector(a, 8i32, 3i32), 0i32));
   }#2:float;
   if OpEqFloat(test_value, 18120.00000001001f64) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatFloat(__work_1, test_value, 0i32, 0i32);
     OpAppendText(__work_1, " != 18120.00000001001");
     __work_1;

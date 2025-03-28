@@ -6,15 +6,14 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let t:text = "some";
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    t:text = "some";
     OpAppendText(t, "thing");
     OpAddInt(_tp_text_len(t), _tp_text_len(t));
   }#2:integer;
   if OpEqInt(test_value, 18i32) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 18");
     __work_1;

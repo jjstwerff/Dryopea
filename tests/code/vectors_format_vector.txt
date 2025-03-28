@@ -13,35 +13,34 @@ Type 12:main_vector<integer>[8]:
     vector:vector<integer>[4]
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let v:vector<integer>#[] = {#3 vector
-      let _db_3:main_vector<integer> = OpDatabase(4i32, 12i32);
-      let _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    v:vector<integer>#[] = {#3 vector
+      _db_3:main_vector<integer> = OpDatabase(4i32, 12i32);
+      _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      let _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 1i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 2i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 4i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 8i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
       _vec_2;
     }#3:vector<integer>#[];
     {#4 vector
-      let _elm_4:boolean = OpNewRecord(v, 11i32, 65535i32);
+      _elm_4:boolean = OpNewRecord(v, 11i32, 65535i32);
       OpSetInt(_elm_4, 0i32, 16i32);
       OpFinishRecord(v, _elm_4, 11i32, 65535i32);
     }#4;
     {#5 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "");
+      __work_1:text = "";
       OpFormatDatabase(__work_1, v, 11i32, false);
       OpAppendText(__work_1, " ");
       OpFormatInt(__work_1, _tp_vector_len(v), 10i32, 0i32, 32i32, false, false);
@@ -49,45 +48,45 @@ fn test() {#1 block
       OpFormatInt(__work_1, OpGetInt(OpGetVector(v, 4i32, 2i32), 0i32), 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_1, " ");
       OpAppendText(__work_1, "[");
-      let _index_5:integer = OpConvIntFromNull();
-      let _first_6:boolean = true;
+      _index_5:integer = OpConvIntFromNull();
+      _first_6:boolean = true;
       loop {#6 append iter loop
-        let _val_7:integer = {#7 append iter next
+        _val_7:integer = {#7 append iter next
           OpGetInt(OpGetVector(v, 4i32, {#8 next block
-            _index_5 = if OpNot(OpConvBoolFromInt(_index_5)) 1i32 else OpAddInt(_index_5, 1i32);
+            _index_5:integer = if OpNot(OpConvBoolFromInt(_index_5)) 1i32 else OpAddInt(_index_5, 1i32);
             if OpGeInt(_index_5, 3i32) break(0) else null;
             _index_5;
           }#8:integer), 0i32);
         }#7:integer;
-        if _first_6 _first_6 = false else OpAppendText(__work_1, ",");
+        if _first_6 _first_6:boolean = false else OpAppendText(__work_1, ",");
         OpFormatInt(__work_1, _val_7, 10i32, 0i32, 32i32, false, false);
       }#6;
       OpAppendText(__work_1, "]");
       OpAppendText(__work_1, " ");
       OpAppendText(__work_1, "[");
-      let _index_8:integer = OpConvIntFromNull();
-      let _first_9:boolean = true;
+      _index_8:integer = OpConvIntFromNull();
+      _first_9:boolean = true;
       loop {#9 append iter loop
-        let _val_10:integer = {#10 append iter next
+        _val_10:integer = {#10 append iter next
           OpGetInt(OpGetVector(v, 4i32, {#11 next block
-            _index_8 = if OpNot(OpConvBoolFromInt(_index_8)) 3i32 else OpMinInt(_index_8, 1i32);
+            _index_8:integer = if OpNot(OpConvBoolFromInt(_index_8)) 3i32 else OpMinInt(_index_8, 1i32);
             if OpLtInt(_index_8, 1i32) break(0) else null;
             _index_8;
           }#11:integer), 0i32);
         }#10:integer;
-        if _first_9 _first_9 = false else OpAppendText(__work_1, ",");
+        if _first_9 _first_9:boolean = false else OpAppendText(__work_1, ",");
         OpFormatInt(__work_1, _val_10, 10i32, 0i32, 32i32, false, false);
       }#9;
       OpAppendText(__work_1, "]");
       OpAppendText(__work_1, " ");
       OpAppendText(__work_1, "[");
-      let x#index:integer = 0i32;
-      let _first_13:boolean = true;
+      x#index:integer = 0i32;
+      _first_13:boolean = true;
       loop {#12 iter for loop
-        let _val_11:integer = {#13 iter for fill
-          let x:integer = if OpGeInt(x#index, OpLengthVector(v)) OpConvIntFromNull() else {#14 iter next
-            let _res_12:integer = OpGetInt(OpGetVector(v, 4i32, x#index), 0i32);
-            x#index = OpAddInt(x#index, 1i32);
+        _val_11:integer = {#13 iter for fill
+          x:integer = if OpGeInt(x#index, OpLengthVector(v)) OpConvIntFromNull() else {#14 iter next
+            _res_12:integer = OpGetInt(OpGetVector(v, 4i32, x#index), 0i32);
+            x#index:integer = OpAddInt(x#index, 1i32);
             _res_12;
           }#14:integer;
           if OpNot(OpConvBoolFromInt(x)) break(0) else null;
@@ -96,7 +95,7 @@ fn test() {#1 block
             OpDivInt(x, 2i32);
           }#15:integer;
         }#13:integer;
-        if _first_13 _first_13 = false else OpAppendText(__work_1, ",");
+        if _first_13 _first_13:boolean = false else OpAppendText(__work_1, ",");
         OpFormatInt(__work_1, _val_11, 10i32, 0i32, 32i32, false, false);
       }#12;
       OpAppendText(__work_1, "]");
@@ -104,8 +103,7 @@ fn test() {#1 block
     }#5:text;
   }#2:text;
   if OpEqText(test_value, "[1,2,4,8,16] 5 4 [2,4] [8,4,2] [2,4,8]") null else OpPanic({#16 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "[1,2,4,8,16] 5 4 [2,4] [8,4,2] [2,4,8]"");
     __work_2;

@@ -17,8 +17,8 @@ Type 11:Object[13]:
     third:boolean[12]
 
 fn obj() -> boolean {#1 block
-  let o:Object = {#2 object
-    let _val_1:Object = OpDatabase(13i32, 11i32);
+  o:Object = {#2 object
+    _val_1:Object = OpDatabase(13i32, 11i32);
     OpSetInt(_val_1, 4i32, 1234i32);
     OpSetText(_val_1, 8i32, "data");
     OpSetByte(_val_1, 12i32, 0i32, if true 1i32 else 0i32);
@@ -69,8 +69,8 @@ byte-code for define_object:obj() -> boolean
  800[17]: Return(ret=0, value=1, discard=17) type=boolean[1]:Base[4]
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
+  __work_1:text = "";
+  test_value:integer = {#2 block
     if obj() {#3 block
       1i32;
     }#3:integer else {#4 block
@@ -78,8 +78,7 @@ fn test() {#1 block
     }#4:integer;
   }#2:integer;
   if OpEqInt(test_value, 1i32) null else OpPanic({#5 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 1");
     __work_1;

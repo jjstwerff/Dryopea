@@ -35,13 +35,12 @@ byte-code for call_routine:routine(a: integer[0]) -> integer
  729[12]: Return(ret=4, value=4, discard=12) type=integer[4]:Base[0]
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
+  __work_1:text = "";
+  test_value:integer = {#2 block
     OpAddInt(routine(5i32), routine(2i32));
   }#2:integer;
   if OpEqInt(test_value, 7i32) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 7");
     __work_1;

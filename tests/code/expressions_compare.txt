@@ -30,13 +30,12 @@ byte-code for compare:count(v: T[0]) -> integer
  697[9]: Return(ret=1, value=4, discard=9) type=integer[4]:Base[0]
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
+  __work_1:text = "";
+  test_value:integer = {#2 block
     OpAddInt(OpAddInt(count(1u8(11)), count(3u8(11))), count(3u8(11)));
   }#2:integer;
   if OpEqInt(test_value, 5i32) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 5");
     __work_1;

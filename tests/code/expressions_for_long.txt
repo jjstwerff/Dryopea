@@ -6,27 +6,26 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:long = {#2 block
-    let b:long = 0i64;
+  __work_1:text = "";
+  test_value:long = {#2 block
+    b:long = 0i64;
     {#3 for
-      let a#index:long = OpConvLongFromNull();
+      a#index:long = OpConvLongFromNull();
       loop {#4 for loop
-        let a:long = {#5 for next
-          a#index = if OpNot(OpConvBoolFromLong(a#index)) 10i64 else OpAddLong(a#index, OpConvLongFromInt(1i32));
+        a:long = {#5 for next
+          a#index:long = if OpNot(OpConvBoolFromLong(a#index)) 10i64 else OpAddLong(a#index, OpConvLongFromInt(1i32));
           if OpGtLong(a#index, 20i64) break(0) else null;
           a#index;
         }#5:long;
         {#6 block
-          b = OpAddLong(b, a);
+          b:long = OpAddLong(b, a);
         }#6;
       }#4;
     }#3;
     b;
   }#2:long;
   if OpEqLong(test_value, 165i64) null else OpPanic({#7 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatLong(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 165l");
     __work_1;

@@ -19,35 +19,34 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_3:text = "";
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let a:long = 1i64;
-    let b:text = "";
+  __work_3:text = "";
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    a:long = 1i64;
+    b:text = "";
     {#3 for
-      let n#index:integer = OpConvIntFromNull();
+      n#index:integer = OpConvIntFromNull();
       loop {#4 for loop
-        let n:integer = {#5 for next
-          n#index = if OpNot(OpConvBoolFromInt(n#index)) 1i32 else OpAddInt(n#index, 1i32);
+        n:integer = {#5 for next
+          n#index:integer = if OpNot(OpConvBoolFromInt(n#index)) 1i32 else OpAddInt(n#index, 1i32);
           if OpGeInt(n#index, 4i32) break(0) else null;
           n#index;
         }#5:integer;
         {#6 block
-          let t:text = "1";
+          t:text = "1";
           OpAppendText(b, "n");
           OpAppendText(b, {#7 formatting string
-            OpClearText(__work_1);
-            OpAppendText(__work_1, ":");
+            __work_1:text = ":";
             OpFormatInt(__work_1, n, 10i32, 0i32, 32i32, false, false);
             __work_1;
           }#7:text);
           OpAppendText(b, "=");
           {#8 for
-            let _m#index:integer = OpConvIntFromNull();
+            _m#index:integer = OpConvIntFromNull();
             loop {#9 for loop
-              let _m:integer = {#10 for next
-                _m#index = if OpNot(OpConvBoolFromInt(_m#index)) 1i32 else OpAddInt(_m#index, 1i32);
+              _m:integer = {#10 for next
+                _m#index:integer = if OpNot(OpConvBoolFromInt(_m#index)) 1i32 else OpAddInt(_m#index, 1i32);
                 if OpGeInt(_m#index, n) break(0) else null;
                 _m#index;
               }#10:integer;
@@ -58,13 +57,12 @@ fn test() {#1 block
           }#8;
           OpAppendText(b, t);
           OpAppendText(b, " ");
-          a = OpAddLong(a, OpCastLongFromText(t));
+          a:long = OpAddLong(a, OpCastLongFromText(t));
         }#6;
       }#4;
     }#3;
     {#12 formatting string
-      OpClearText(__work_2);
-      OpAppendText(__work_2, "");
+      __work_2:text = "";
       OpFormatLong(__work_2, a, 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_2, " via ");
       OpFormatText(__work_2, b, 0i32, -1i32, 32i32);
@@ -72,8 +70,7 @@ fn test() {#1 block
     }#12:text;
   }#2:text;
   if OpEqText(test_value, "136 via n:1=1 n:2=12 n:3=122 ") null else OpPanic({#13 formatting string
-    OpClearText(__work_3);
-    OpAppendText(__work_3, "Test failed ");
+    __work_3:text = "Test failed ";
     OpFormatText(__work_3, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_3, " != "136 via n:1=1 n:2=12 n:3=122 "");
     __work_3;

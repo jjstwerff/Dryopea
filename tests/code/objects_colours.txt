@@ -47,21 +47,21 @@ byte-code for colours:_tp_Point_value(self: Point[0]) -> integer
  713[20]: Return(ret=12, value=4, discard=20) type=integer[4]:Base[0]
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let points:vector<Point>#[] = {#3 vector
-      let _db_3:main_vector<Point> = OpDatabase(3i32, 12i32);
-      let _vec_2:vector<Point>#[] = OpGetField(_db_3, 4i32, 65535i32);
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    points:vector<Point>#[] = {#3 vector
+      _db_3:main_vector<Point> = OpDatabase(3i32, 12i32);
+      _vec_2:vector<Point>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      let _elm_1:Point = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Point = OpNewRecord(_vec_2, 13i32, 65535i32);
       {#4 object
         OpSetByte(_elm_1, 0i32, 0i32, 128i32);
         OpSetByte(_elm_1, 2i32, 0i32, 128i32);
         OpSetByte(_elm_1, 1i32, 0i32, 0i32);
       }#4;
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Point = OpNewRecord(_vec_2, 13i32, 65535i32);
       {#5 object
         OpSetByte(_elm_1, 2i32, 0i32, 255i32);
         OpSetByte(_elm_1, 0i32, 0i32, 0i32);
@@ -71,8 +71,7 @@ fn test() {#1 block
       _vec_2;
     }#3:vector<Point>#[];
     {#6 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "size:");
+      __work_1:text = "size:";
       OpFormatInt(__work_1, 3i32, 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_1, " purple:");
       OpFormatDatabase(__work_1, OpGetVector(points, 3i32, 0i32), 11i32, false);
@@ -84,8 +83,7 @@ fn test() {#1 block
     }#6:text;
   }#2:text;
   if OpEqText(test_value, "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}") null else OpPanic({#7 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"");
     __work_2;

@@ -14,20 +14,18 @@ Type 11:Elm[12]:
 Type 12:vector<Elm>[4]:Vector(11)
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let v:vector<Elm>#[] = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 12i32);
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    v:vector<Elm>#[] = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 12i32);
     {#3 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "");
+      __work_1:text = "";
       OpFormatDatabase(__work_1, v, 12i32, false);
       __work_1;
     }#3:text;
   }#2:text;
   if OpEqText(test_value, "[{n:"hi",c:10},{n:"world",c:2}]") null else OpPanic({#4 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "[{n:"hi",c:10},{n:"world",c:2}]"");
     __work_2;

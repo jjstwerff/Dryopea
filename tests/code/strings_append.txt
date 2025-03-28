@@ -6,17 +6,15 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:text["a"] = {#2 block
-    let a:text = "";
-    OpAppendText(a, "♥😃");
+  __work_1:text = "";
+  test_value:text["a"] = {#2 block
+    a:text = "♥😃";
     OpAppendText(a, "1");
     OpAppendText(a, "2");
     a;
   }#2:text["a"];
   if OpEqText(test_value, "♥😃12") null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != "♥😃12"");
     __work_1;

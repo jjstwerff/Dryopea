@@ -29,17 +29,16 @@ byte-code for default_ref:add(a: text[0], b: refvar(text([]))[16]) -> text
  699[48]: Return(ret=28, value=16, discard=48) type=text[4]:Base[5]
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
     add("1234", {#3 default ref
       OpAppendText(__work_1, "var");
       OpCreateRef(__work_1);
     }#3:reference["__work_1"]);
   }#2:text;
   if OpEqText(test_value, "var_1234") null else OpPanic({#4 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "var_1234"");
     __work_2;

@@ -21,15 +21,14 @@ byte-code for reference:add(a: refvar(text([]))[0], b: text[12])
  684[32]: Return(ret=28, value=0, discard=32)
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:text["v"] = {#2 block
-    let v:text = "Hello";
+  __work_1:text = "";
+  test_value:text["v"] = {#2 block
+    v:text = "Hello";
     add(OpCreateRef(v), " world!");
     v;
   }#2:text["v"];
   if OpEqText(test_value, "Hello world!") null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != "Hello world!"");
     __work_1;

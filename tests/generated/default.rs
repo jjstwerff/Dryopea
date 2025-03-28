@@ -201,14 +201,14 @@ fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 {
 }
 
 fn _tp_File_content(stores: &mut Stores, var_0: DbRef) -> Str {
-  let mut var_1 = "".to_string();
+  var_result = "".to_string();
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_result));
   var_result
 }
 
 fn file(stores: &mut Stores, var_0: Str) -> DbRef {
-  let mut var_1 = {
-    let mut var_2 = OpDatabase(stores, 17_i32, 10_i32);
+  var_result = {
+    var__val_1 = OpDatabase(stores, 17_i32, 10_i32);
     {let db = (var__val_1); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
     {let db = (var__val_1); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
     {let db = (var__val_1); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if 0_i32 {1_i32} else {0_i32}));};
@@ -222,9 +222,9 @@ fn file(stores: &mut Stores, var_0: Str) -> DbRef {
 }
 
 fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
-  let mut var_1 = {
-    let mut var_4 = OpDatabase(stores, 1_i32, 65535_i32);
-    let mut var_3 = DbRef {store_nr: (var__db_3).store_nr, rec: (var__db_3).rec, pos: (var__db_3).pos + u32::from((65535_i32))};
+  var_result = {
+    var__db_3 = OpDatabase(stores, 1_i32, 65535_i32);
+    var__vec_2 = DbRef {store_nr: (var__db_3).store_nr, rec: (var__db_3).rec, pos: (var__db_3).pos + u32::from((65535_i32))};
     {let db = (var__db_3); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((65535_i32)), (0_i32));};
     var__vec_2
   };
@@ -236,8 +236,8 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
 
 fn _tp_File_png(stores: &mut Stores, var_0: DbRef) -> DbRef {
   if !(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32)) {
-    let mut var_1 = {
-      let mut var_2 = OpDatabase(stores, 20_i32, 8_i32);
+    var_result = {
+      var__val_1 = OpDatabase(stores, 20_i32, 8_i32);
       {let db = (var__val_1); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
       {let db = (var__val_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
       {let db = (var__val_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};

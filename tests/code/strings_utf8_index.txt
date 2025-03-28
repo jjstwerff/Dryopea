@@ -6,12 +6,11 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let a:text = "♥😃";
-    OpClearText(__work_1);
-    OpAppendText(__work_1, OpGetTextSub(a, 0i32, -2147483648i32));
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    a:text = "♥😃";
+    __work_1:text = OpGetTextSub(a, 0i32, -2147483648i32);
     OpAppendText(__work_1, OpGetTextSub(a, 1i32, -2147483648i32));
     OpAppendText(__work_1, OpGetTextSub(a, 2i32, -2147483648i32));
     OpAppendText(__work_1, OpGetTextSub(a, 3i32, -2147483648i32));
@@ -23,8 +22,7 @@ fn test() {#1 block
     __work_1;
   }#2:text["__work_1"];
   if OpEqText(test_value, "♥♥♥😃😃😃😃.") null else OpPanic({#3 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "♥♥♥😃😃😃😃."");
     __work_2;

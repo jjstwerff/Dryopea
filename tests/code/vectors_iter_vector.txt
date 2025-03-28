@@ -19,62 +19,61 @@ Type 12:main_vector<integer>[8]:
     vector:vector<integer>[4]
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let v:vector<integer>#[] = {#3 vector
-      let _db_3:main_vector<integer> = OpDatabase(4i32, 12i32);
-      let _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    v:vector<integer>#[] = {#3 vector
+      _db_3:main_vector<integer> = OpDatabase(4i32, 12i32);
+      _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      let _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 1i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 2i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 4i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 8i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
       _vec_2;
     }#3:vector<integer>#[];
-    let c:integer = 0i32;
+    c:integer = 0i32;
     {#4 for
-      let _index_4:integer = OpConvIntFromNull();
+      _index_4:integer = OpConvIntFromNull();
       loop {#5 for loop
-        let e:integer = {#6 for next
+        e:integer = {#6 for next
           OpGetInt(OpGetVector(v, 4i32, {#7 for next block
-            _index_4 = if OpNot(OpConvBoolFromInt(_index_4)) 1i32 else OpAddInt(_index_4, 1i32);
+            _index_4:integer = if OpNot(OpConvBoolFromInt(_index_4)) 1i32 else OpAddInt(_index_4, 1i32);
             if OpGeInt(_index_4, 3i32) break(0) else null;
             _index_4;
           }#7:integer), 0i32);
         }#6:integer;
         {#8 block
-          c = OpAddInt(OpMulInt(c, 10i32), e);
+          c:integer = OpAddInt(OpMulInt(c, 10i32), e);
         }#8;
       }#5;
     }#4;
     {#9 for
-      let _index_5:integer = OpConvIntFromNull();
+      _index_5:integer = OpConvIntFromNull();
       loop {#10 for loop
-        let e:integer = {#11 for next
+        e:integer = {#11 for next
           OpGetInt(OpGetVector(v, 4i32, {#12 for next block
-            _index_5 = if OpNot(OpConvBoolFromInt(_index_5)) 2i32 else OpAddInt(_index_5, 1i32);
+            _index_5:integer = if OpNot(OpConvBoolFromInt(_index_5)) 2i32 else OpAddInt(_index_5, 1i32);
             if OpGeInt(_index_5, OpLengthVector(v)) break(0) else null;
             _index_5;
           }#12:integer), 0i32);
         }#11:integer;
         {#13 block
-          c = OpAddInt(OpMulInt(c, 10i32), e);
+          c:integer = OpAddInt(OpMulInt(c, 10i32), e);
         }#13;
       }#10;
     }#9;
     c;
   }#2:integer;
   if OpEqInt(test_value, 2448i32) null else OpPanic({#14 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 2448");
     __work_1;

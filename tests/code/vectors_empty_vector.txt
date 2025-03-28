@@ -13,26 +13,26 @@ Type 12:main_vector<integer>[8]:
     vector:vector<integer>[4]
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let a:vector<integer>#[] = {#3 vector
-      let _db_3:main_vector<integer> = OpDatabase(1i32, 12i32);
-      let _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    a:vector<integer>#[] = {#3 vector
+      _db_3:main_vector<integer> = OpDatabase(1i32, 12i32);
+      _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
       _vec_2;
     }#3:vector<integer>#[];
     {#4 for
-      let v#index:integer = OpConvIntFromNull();
+      v#index:integer = OpConvIntFromNull();
       loop {#5 for loop
-        let v:integer = {#6 for next
-          v#index = if OpNot(OpConvBoolFromInt(v#index)) 1i32 else OpAddInt(v#index, 1i32);
+        v:integer = {#6 for next
+          v#index:integer = if OpNot(OpConvBoolFromInt(v#index)) 1i32 else OpAddInt(v#index, 1i32);
           if OpGeInt(v#index, 4i32) break(0) else null;
           v#index;
         }#6:integer;
         {#7 block
           {#8 vector
-            let _elm_4:boolean = OpNewRecord(a, 11i32, 65535i32);
+            _elm_4:boolean = OpNewRecord(a, 11i32, 65535i32);
             OpSetInt(_elm_4, 0i32, OpMulInt(v, 10i32));
             OpFinishRecord(a, _elm_4, 11i32, 65535i32);
           }#8;
@@ -40,15 +40,13 @@ fn test() {#1 block
       }#5;
     }#4;
     {#9 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "");
+      __work_1:text = "";
       OpFormatDatabase(__work_1, a, 11i32, false);
       __work_1;
     }#9:text;
   }#2:text;
   if OpEqText(test_value, "[10,20,30]") null else OpPanic({#10 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "[10,20,30]"");
     __work_2;

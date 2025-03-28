@@ -19,13 +19,12 @@ Type 12:Main[8]:
 Type 13:hash<S[b]>[4]:Hash(11, [1]) keys [tp:2 desc:false field:8, ]
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
+  __work_1:text = "";
+  test_value:integer = {#2 block
     OpAddInt(20i32, OpMulInt(100i32, 8i32));
   }#2:integer;
   if OpEqInt(test_value, 820i32) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 820");
     __work_1;

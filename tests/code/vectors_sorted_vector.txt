@@ -27,19 +27,19 @@ Type 13:sorted<Elm[-key]>[4]:Sorted(11, [(0, false)]) keys [tp:6 desc:true field
 Type 14:vector<Elm>[4]:Vector(11)
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let db:Db = {#3 object
-      let _val_1:Db = OpDatabase(8i32, 12i32);
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    db:Db = {#3 object
+      _val_1:Db = OpDatabase(8i32, 12i32);
       OpSetInt(_val_1, 4i32, 0i32);
       {#4 vector
-        let _elm_2:Elm = OpNewRecord(_val_1, 12i32, 0i32);
+        _elm_2:Elm = OpNewRecord(_val_1, 12i32, 0i32);
         {#5 object
           OpSetText(_elm_2, 4i32, "One");
           OpSetInt(_elm_2, 8i32, 1i32);
         }#5;
         OpFinishRecord(_val_1, _elm_2, 12i32, 0i32);
-        _elm_2 = OpNewRecord(_val_1, 12i32, 0i32);
+        _elm_2:Elm = OpNewRecord(_val_1, 12i32, 0i32);
         {#6 object
           OpSetText(_elm_2, 4i32, "Two");
           OpSetInt(_elm_2, 8i32, 2i32);
@@ -49,36 +49,35 @@ fn test() {#1 block
       _val_1;
     }#3:Db;
     {#7 vector
-      let _elm_3:Elm = OpNewRecord(db, 12i32, 0i32);
+      _elm_3:Elm = OpNewRecord(db, 12i32, 0i32);
       {#8 object
         OpSetText(_elm_3, 4i32, "Three");
         OpSetInt(_elm_3, 8i32, 3i32);
       }#8;
       OpFinishRecord(db, _elm_3, 12i32, 0i32);
-      _elm_3 = OpNewRecord(db, 12i32, 0i32);
+      _elm_3:Elm = OpNewRecord(db, 12i32, 0i32);
       {#9 object
         OpSetText(_elm_3, 4i32, "Four");
         OpSetInt(_elm_3, 8i32, 4i32);
       }#9;
       OpFinishRecord(db, _elm_3, 12i32, 0i32);
     }#7;
-    let sum:integer = 0i32;
+    sum:integer = 0i32;
     {#10 for
-      let v#index:integer = OpStart(OpGetField(db, 4i32, 13i32), 13i32, 0i32);
+      v#index:integer = OpStart(OpGetField(db, 4i32, 13i32), 13i32, 0i32);
       loop {#11 for loop
-        let v:Elm = OpNext(OpGetField(db, 4i32, 13i32), v#index, 13i32, 0i32);
+        v:Elm = OpNext(OpGetField(db, 4i32, 13i32), v#index, 13i32, 0i32);
         if OpNot(OpConvBoolFromRef(v)) break(0) else null;
         {#12 block
-          sum = OpAddInt(OpMulInt(sum, 10i32), OpGetInt(v, 8i32));
+          sum:integer = OpAddInt(OpMulInt(sum, 10i32), OpGetInt(v, 8i32));
         }#12;
       }#11;
     }#10;
-    sum = OpAddInt(OpMulInt(sum, 10i32), OpGetInt(OpGetRecord(OpGetField(db, 4i32, 13i32), 13i32, 1i32, "Three"), 8i32));
+    sum:integer = OpAddInt(OpMulInt(sum, 10i32), OpGetInt(OpGetRecord(OpGetField(db, 4i32, 13i32), 13i32, 1i32, "Three"), 8i32));
     sum;
   }#2:integer;
   if OpEqInt(test_value, 23143i32) null else OpPanic({#13 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 23143");
     __work_1;

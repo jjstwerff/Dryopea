@@ -10,7 +10,7 @@ pub fn test() {
     );
 }
 fn add(a:refvar(integer(-2147483647, 2147483647)), b:integer, c:integer) {#1 block
-  a = OpAddInt(a, OpAddInt(b, c));
+  a:refvar(integer(-2147483647, 2147483647)) = OpAddInt(a, OpAddInt(b, c));
 }#1
 
 byte-code for reference:add(a: refvar(integer(-2147483647, 2147483647))[0], b: integer[12], c: integer[16])
@@ -26,16 +26,15 @@ byte-code for reference:add(a: refvar(integer(-2147483647, 2147483647))[0], b: i
  695[24]: Return(ret=20, value=0, discard=24)
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let v:integer = 1i32;
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    v:integer = 1i32;
     add(OpCreateRef(v), 2i32, 0i32);
     add(OpCreateRef(v), 4i32, 1i32);
     v;
   }#2:integer;
   if OpEqInt(test_value, 8i32) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 8");
     __work_1;

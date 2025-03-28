@@ -270,6 +270,16 @@ impl Function {
         None
     }
 
+    pub fn arguments(&self) -> Vec<u16> {
+        let mut arg = Vec::new();
+        for (v_nr, v) in self.variables.iter().enumerate() {
+            if v.scope == 0 {
+                arg.push(v_nr as u16);
+            }
+        }
+        arg
+    }
+
     pub fn var(&self, name: &str) -> u16 {
         if let Some(nr) = self.names.get(name) {
             for n in nr {
@@ -501,29 +511,33 @@ impl Function {
                 }
                 res
             }
-            Value::Let(v, cd) => {
-                assert!(
-                    !started.contains(v),
-                    "Double let for {} on {name} at {file}:{}:{}",
-                    self.variables[*v as usize].name,
-                    self.variables[*v as usize].source.0,
-                    self.variables[*v as usize].source.1
-                );
-                started.insert(*v);
-                assert_eq!(
-                    self.variables[*v as usize].scope,
-                    self.current_scope,
-                    "Incorrect scope of {} on {name} at {file}:{}:{}",
-                    self.variables[*v as usize].name,
-                    self.variables[*v as usize].source.0,
-                    self.variables[*v as usize].source.1
-                );
+            Value::Set(v, cd) => {
+                if started.contains(v) {
+                    assert_ne!(
+                        self.current_scope,
+                        u16::MAX,
+                        "Variable {}[{}] used out of scope {} at {file}:{}:{}",
+                        self.variables[*v as usize].name,
+                        self.variables[*v as usize].scope,
+                        self.current_scope,
+                        self.variables[*v as usize].source.0,
+                        self.variables[*v as usize].source.1
+                    );
+                } else {
+                    started.insert(*v);
+                    assert_eq!(
+                        self.variables[*v as usize].scope,
+                        self.current_scope,
+                        "Incorrect scope of {} on {name} at {file}:{}:{}",
+                        self.variables[*v as usize].name,
+                        self.variables[*v as usize].source.0,
+                        self.variables[*v as usize].source.1
+                    );
+                }
                 self.validate(cd, name, file, data, started);
                 Type::Void
             }
-            Value::Var(v) | Value::Set(v, _) => {
-                self.validate_var(code, name, file, data, started, *v)
-            }
+            Value::Var(v) => self.validate_var(name, file, started, *v),
             Value::Int(_) => data::I32.clone(),
             Value::Long(_) => Type::Long,
             Value::Text(_) => Type::Text(Vec::new()),
@@ -535,15 +549,7 @@ impl Function {
         }
     }
 
-    fn validate_var(
-        &mut self,
-        code: &Value,
-        name: &str,
-        file: &str,
-        data: &Data,
-        started: &mut HashSet<u16>,
-        v: u16,
-    ) -> Type {
+    fn validate_var(&mut self, name: &str, file: &str, started: &mut HashSet<u16>, v: u16) -> Type {
         assert!(
             started.contains(&v) || self.variables[v as usize].scope == 0,
             "Variable {} not yet started at {name} scope {} at {file}:{}:{}",
@@ -562,32 +568,27 @@ impl Function {
         }
         if s == u16::MAX {
             println!("variables:{self}");
-            println!("code:{code:?}");
         }
         assert_ne!(
             s,
             u16::MAX,
-            "Variable {}[{}] {} out of scope {} at {file}:{}:{}",
+            "Variable {}[{}] used out of scope {} at {file}:{}:{}",
             self.variables[v as usize].name,
             self.variables[v as usize].scope,
-            if matches!(code, Value::Var(_)) {
-                "used"
-            } else {
-                "set"
-            },
             self.current_scope,
             self.variables[v as usize].source.0,
             self.variables[v as usize].source.1
         );
-        if let Value::Set(_, cd) = code {
-            self.validate(cd, name, file, data, started);
-            Type::Void
-        } else {
-            self.variables[v as usize].type_def.clone()
-        }
+        self.variables[v as usize].type_def.clone()
     }
 
     pub fn claim(&mut self, var: u16, pos: u16, context: &Context) -> u16 {
+        assert_eq!(
+            self.variables[var as usize].stack,
+            u16::MAX,
+            "Claiming a claimed variable {}",
+            self.name(var)
+        );
         let size = size(&self.variables[var as usize].type_def, context);
         self.variables[var as usize].stack = pos;
         pos + size

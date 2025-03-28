@@ -6,19 +6,18 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
     {#3 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "a");
+      __work_1:text = "a";
       OpAppendText(__work_1, "[");
-      let x#index:integer = OpConvIntFromNull();
-      let _first_2:boolean = true;
+      x#index:integer = OpConvIntFromNull();
+      _first_2:boolean = true;
       loop {#4 iter for loop
-        let _val_1:integer = {#5 iter for fill
-          let x:integer = {#6 for next
-            x#index = if OpNot(OpConvBoolFromInt(x#index)) 1i32 else OpAddInt(x#index, 1i32);
+        _val_1:integer = {#5 iter for fill
+          x:integer = {#6 for next
+            x#index:integer = if OpNot(OpConvBoolFromInt(x#index)) 1i32 else OpAddInt(x#index, 1i32);
             if OpGeInt(x#index, 7i32) break(0) else null;
             x#index;
           }#6:integer;
@@ -26,7 +25,7 @@ fn test() {#1 block
             OpMulInt(x, 2i32);
           }#7:integer;
         }#5:integer;
-        if _first_2 _first_2 = false else OpAppendText(__work_1, ",");
+        if _first_2 _first_2:boolean = false else OpAppendText(__work_1, ",");
         OpFormatInt(__work_1, _val_1, 10i32, 2i32, 48i32, false, false);
       }#4;
       OpAppendText(__work_1, "]");
@@ -35,8 +34,7 @@ fn test() {#1 block
     }#3:text;
   }#2:text;
   if OpEqText(test_value, "a[02,04,06,08,10,12]b") null else OpPanic({#8 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "a[02,04,06,08,10,12]b"");
     __work_2;

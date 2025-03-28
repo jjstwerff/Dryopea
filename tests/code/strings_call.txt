@@ -7,15 +7,15 @@ pub fn test() {
         "Test failed {test_value} != \"0012\""
     );
 }
-fn choice(a:text, b:text) -> text["b", "a"] {#1 block
+fn choice(a:text, b:text) -> text["a", "b"] {#1 block
   if OpGtInt(_tp_text_len(a), _tp_text_len(b)) {#2 block
     a;
   }#2:text["a"] else {#3 block
     b;
   }#3:text["b"];
-}#1:text["b", "a"]
+}#1:text["a", "b"]
 
-byte-code for call:choice(a: text[0], b: text[16]) -> text["b", "a"]
+byte-code for call:choice(a: text[0], b: text[16]) -> text["a", "b"]
  675[32]: return-address
  675[36]: ArgText(var[0]) -> text
  678[52]: Call(size=0, to=318)
@@ -29,30 +29,26 @@ byte-code for call:choice(a: text[0], b: text[16]) -> text["b", "a"]
  708[52]: Return(ret=32, value=16, discard=52) type=text[4]:Base[5]
 
 fn test() {#1 block
-  let __work_4:text = "";
-  let __work_3:text = "";
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    OpClearText(__work_3);
-    OpAppendText(__work_3, choice({#3 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "");
+  __work_4:text = "";
+  __work_3:text = "";
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    __work_3:text = choice({#3 formatting string
+      __work_1:text = "";
       OpFormatInt(__work_1, 1i32, 10i32, 3i32, 48i32, false, false);
       __work_1;
     }#3:text, {#4 formatting string
-      OpClearText(__work_2);
-      OpAppendText(__work_2, "");
+      __work_2:text = "";
       OpFormatInt(__work_2, 2i32, 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_2, "1");
       __work_2;
-    }#4:text));
+    }#4:text);
     OpAppendText(__work_3, choice("2", ""));
     __work_3;
   }#2:text["__work_3"];
   if OpEqText(test_value, "0012") null else OpPanic({#5 formatting string
-    OpClearText(__work_4);
-    OpAppendText(__work_4, "Test failed ");
+    __work_4:text = "Test failed ";
     OpFormatText(__work_4, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_4, " != "0012"");
     __work_4;

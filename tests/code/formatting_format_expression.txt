@@ -6,12 +6,11 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
     {#3 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "ab");
+      __work_1:text = "ab";
       OpFormatInt(__work_1, OpAddInt(OpAddInt(1i32, 2i32), 32i32), 16i32, 0i32, 32i32, false, true);
       OpAppendText(__work_1, "c");
       OpFormatInt(__work_1, 12i32, 8i32, 0i32, 32i32, false, false);
@@ -28,8 +27,7 @@ fn test() {#1 block
     }#3:text;
   }#2:text;
   if OpEqText(test_value, "ab0x23c14d391e +12f001g101010h") null else OpPanic({#4 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "ab0x23c14d391e +12f001g101010h"");
     __work_2;

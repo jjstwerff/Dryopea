@@ -6,27 +6,26 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let b:integer = 0i32;
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    b:integer = 0i32;
     {#3 for
-      let a#index:integer = OpConvIntFromNull();
+      a#index:integer = OpConvIntFromNull();
       loop {#4 for loop
-        let a:integer = {#5 for next
-          a#index = if OpNot(OpConvBoolFromInt(a#index)) 0i32 else OpAddInt(a#index, 1i32);
+        a:integer = {#5 for next
+          a#index:integer = if OpNot(OpConvBoolFromInt(a#index)) 0i32 else OpAddInt(a#index, 1i32);
           if OpGtInt(a#index, 5i32) break(0) else null;
           a#index;
         }#5:integer;
         {#6 block
-          b = OpAddInt(b, a);
+          b:integer = OpAddInt(b, a);
         }#6;
       }#4;
     }#3;
     b;
   }#2:integer;
   if OpEqInt(test_value, 15i32) null else OpPanic({#7 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 15");
     __work_1;

@@ -6,18 +6,17 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let a:integer = 12i32;
-    a = OpMinInt(a, 6i32);
-    a = OpMulInt(a, 3i32);
-    a = OpDivInt(a, 2i32);
-    a = OpAddInt(a, 1i32);
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    a:integer = 12i32;
+    a:integer = OpMinInt(a, 6i32);
+    a:integer = OpMulInt(a, 3i32);
+    a:integer = OpDivInt(a, 2i32);
+    a:integer = OpAddInt(a, 1i32);
     a;
   }#2:integer;
   if OpEqInt(test_value, 10i32) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 10");
     __work_1;

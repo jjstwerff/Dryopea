@@ -13,18 +13,18 @@ Type 12:main_vector<integer>[8]:
     vector:vector<integer>[4]
 
 fn sum(v:vector<integer>#[]) -> integer {#1 block
-  let t:integer = 0i32;
+  t:integer = 0i32;
   {#2 for
-    let i#index:integer = 0i32;
+    i#index:integer = 0i32;
     loop {#3 for loop
-      let i:integer = if OpGeInt(i#index, OpLengthVector(v)) OpConvIntFromNull() else {#4 iter next
-        let _res_1:integer = OpGetInt(OpGetVector(v, 4i32, i#index), 0i32);
-        i#index = OpAddInt(i#index, 1i32);
+      i:integer = if OpGeInt(i#index, OpLengthVector(v)) OpConvIntFromNull() else {#4 iter next
+        _res_1:integer = OpGetInt(OpGetVector(v, 4i32, i#index), 0i32);
+        i#index:integer = OpAddInt(i#index, 1i32);
         _res_1;
       }#4:integer;
       if OpNot(OpConvBoolFromInt(i)) break(0) else null;
       {#5 block
-        t = OpAddInt(t, i);
+        t:integer = OpAddInt(t, i);
       }#5;
     }#3;
   }#2;
@@ -69,33 +69,32 @@ byte-code for sum_vector:sum(v: vector<integer>#[][0]) -> integer
  770[24]: Return(ret=12, value=4, discard=24) type=integer[4]:Base[0]
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
+  __work_1:text = "";
+  test_value:integer = {#2 block
     sum({#3 vector
-      let _db_3:main_vector<integer> = OpDatabase(4i32, 12i32);
-      let _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
+      _db_3:main_vector<integer> = OpDatabase(4i32, 12i32);
+      _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      let _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 1i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 2i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 3i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 4i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 11i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 11i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 5i32);
       OpFinishRecord(_vec_2, _elm_1, 11i32, 65535i32);
       _vec_2;
     }#3:vector<integer>#[]);
   }#2:integer;
   if OpEqInt(test_value, 15i32) null else OpPanic({#4 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 15");
     __work_1;

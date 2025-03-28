@@ -15,22 +15,22 @@ Type 12:main_vector<Val>[8]:
 Type 13:vector<Val>[4]:Vector(11)
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let v:vector<Val>#[] = {#3 vector
-      let _db_3:main_vector<Val> = OpDatabase(1i32, 12i32);
-      let _vec_2:vector<Val>#[] = OpGetField(_db_3, 4i32, 65535i32);
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    v:vector<Val>#[] = {#3 vector
+      _db_3:main_vector<Val> = OpDatabase(1i32, 12i32);
+      _vec_2:vector<Val>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      let _elm_1:boolean = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 13i32, 65535i32);
       OpSetEnum(_elm_1, 0i32, 1u8(11));
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 13i32, 65535i32);
       OpSetEnum(_elm_1, 0i32, 1u8(11));
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 13i32, 65535i32);
       OpSetEnum(_elm_1, 0i32, 2u8(11));
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 13i32, 65535i32);
       OpSetEnum(_elm_1, 0i32, 2u8(11));
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
       _vec_2;
@@ -38,8 +38,7 @@ fn test() {#1 block
     OpCastIntFromEnum(OpGetEnum(OpGetVector(v, 1i32, 2i32), 0i32));
   }#2:integer;
   if OpEqInt(test_value, 2i32) null else OpPanic({#4 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 2");
     __work_1;

@@ -17,25 +17,25 @@ Type 12:main_vector<Elm>[8]:
 Type 13:vector<Elm>[4]:Vector(11)
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let v:vector<Elm>#[] = {#3 vector
-      let _db_3:main_vector<Elm> = OpDatabase(8i32, 12i32);
-      let _vec_2:vector<Elm>#[] = OpGetField(_db_3, 4i32, 65535i32);
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    v:vector<Elm>#[] = {#3 vector
+      _db_3:main_vector<Elm> = OpDatabase(8i32, 12i32);
+      _vec_2:vector<Elm>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      let _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
       {#4 object
         OpSetInt(_elm_1, 0i32, 1i32);
         OpSetInt(_elm_1, 4i32, 2i32);
       }#4;
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
       {#5 object
         OpSetInt(_elm_1, 0i32, 12i32);
         OpSetInt(_elm_1, 4i32, 13i32);
       }#5;
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
       {#6 object
         OpSetInt(_elm_1, 0i32, 4i32);
         OpSetInt(_elm_1, 4i32, 5i32);
@@ -44,12 +44,11 @@ fn test() {#1 block
       _vec_2;
     }#3:vector<Elm>#[];
     OpSetInt(OpGetVector(v, 8i32, 2i32), 4i32, 6i32);
-    let e:Elm = OpGetVector(v, 8i32, 0i32);
+    e:Elm = OpGetVector(v, 8i32, 0i32);
     OpAddInt(OpAddInt(OpGetInt(e, 4i32), OpGetInt(OpGetVector(v, 8i32, 1i32), 0i32)), OpGetInt(OpGetVector(v, 8i32, 2i32), 4i32));
   }#2:integer;
   if OpEqInt(test_value, 20i32) null else OpPanic({#7 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 20");
     __work_1;

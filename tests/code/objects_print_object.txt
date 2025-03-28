@@ -15,7 +15,7 @@ Type 11:Object[13]:
 
 fn obj() -> Object {#1 block
   {#2 object
-    let _val_1:Object = OpDatabase(13i32, 11i32);
+    _val_1:Object = OpDatabase(13i32, 11i32);
     OpSetInt(_val_1, 4i32, 12i32);
     OpSetText(_val_1, 8i32, "hi");
     OpSetByte(_val_1, 12i32, 0i32, if false 1i32 else 0i32);
@@ -44,13 +44,12 @@ byte-code for print_object:obj() -> Object
  733[16]: Return(ret=0, value=12, discard=16) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[11]
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let o:Object = obj();
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    o:Object = obj();
     {#3 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "");
+      __work_1:text = "";
       OpFormatDatabase(__work_1, o, 11i32, false);
       OpAppendText(__work_1, " pretty ");
       OpFormatDatabase(__work_1, o, 11i32, true);
@@ -58,8 +57,7 @@ fn test() {#1 block
     }#3:text;
   }#2:text;
   if OpEqText(test_value, "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") null else OpPanic({#4 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }"");
     __work_2;

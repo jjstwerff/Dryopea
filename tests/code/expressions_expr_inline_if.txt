@@ -6,8 +6,8 @@ pub fn test() {
     );
 }
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:text = {#2 block
+  __work_1:text = "";
+  test_value:text = {#2 block
     if OpGtInt(OpAddInt(2i32, 2i32), 3i32) {#3 block
       "A";
     }#3:text else {#4 block
@@ -15,8 +15,7 @@ fn test() {#1 block
     }#4:text;
   }#2:text;
   if OpEqText(test_value, "A") null else OpPanic({#5 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != "A"");
     __work_1;

@@ -24,18 +24,18 @@ Type 13:Object[9]:
     b:Gender[8]
 
 fn sum(o:Object) -> integer {#1 block
-  let r:integer = 0i32;
+  r:integer = 0i32;
   {#2 for
-    let v#index:integer = 0i32;
+    v#index:integer = 0i32;
     loop {#3 for loop
-      let v:integer = if OpGeInt(v#index, OpLengthVector(OpGetField(o, 4i32, 11i32))) OpConvIntFromNull() else {#4 iter next
-        let _res_1:integer = OpGetInt(OpGetVector(OpGetField(o, 4i32, 11i32), 4i32, v#index), 0i32);
-        v#index = OpAddInt(v#index, 1i32);
+      v:integer = if OpGeInt(v#index, OpLengthVector(OpGetField(o, 4i32, 11i32))) OpConvIntFromNull() else {#4 iter next
+        _res_1:integer = OpGetInt(OpGetVector(OpGetField(o, 4i32, 11i32), 4i32, v#index), 0i32);
+        v#index:integer = OpAddInt(v#index, 1i32);
         _res_1;
       }#4:integer;
       if OpNot(OpConvBoolFromInt(v)) break(0) else null;
       {#5 block
-        r = OpAddInt(r, v);
+        r:integer = OpAddInt(r, v);
       }#5;
     }#3;
   }#2;
@@ -82,20 +82,20 @@ byte-code for special_fields:sum(o: Object[0]) -> integer
  776[24]: Return(ret=12, value=4, discard=24) type=integer[4]:Base[0]
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let o:Object = {#3 object
-      let _val_1:Object = OpDatabase(9i32, 13i32);
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    o:Object = {#3 object
+      _val_1:Object = OpDatabase(9i32, 13i32);
       OpSetInt(_val_1, 4i32, 0i32);
       {#4 vector
-        let _elm_2:boolean = OpNewRecord(_val_1, 13i32, 0i32);
+        _elm_2:boolean = OpNewRecord(_val_1, 13i32, 0i32);
         OpSetInt(_elm_2, 0i32, 1i32);
         OpFinishRecord(_val_1, _elm_2, 13i32, 0i32);
-        _elm_2 = OpNewRecord(_val_1, 13i32, 0i32);
+        _elm_2:boolean = OpNewRecord(_val_1, 13i32, 0i32);
         OpSetInt(_elm_2, 0i32, 4i32);
         OpFinishRecord(_val_1, _elm_2, 13i32, 0i32);
-        _elm_2 = OpNewRecord(_val_1, 13i32, 0i32);
+        _elm_2:boolean = OpNewRecord(_val_1, 13i32, 0i32);
         OpSetInt(_elm_2, 0i32, 3i32);
         OpFinishRecord(_val_1, _elm_2, 13i32, 0i32);
       }#4;
@@ -103,20 +103,18 @@ fn test() {#1 block
       _val_1;
     }#3:Object;
     {#5 vector
-      let _elm_3:boolean = OpNewRecord(o, 13i32, 0i32);
+      _elm_3:boolean = OpNewRecord(o, 13i32, 0i32);
       OpSetInt(_elm_3, 0i32, sum(o));
       OpFinishRecord(o, _elm_3, 13i32, 0i32);
     }#5;
     {#6 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "");
+      __work_1:text = "";
       OpFormatDatabase(__work_1, o, 13i32, false);
       __work_1;
     }#6:text;
   }#2:text;
   if OpEqText(test_value, "{a:[1,4,3,8],b:Fluid}") null else OpPanic({#7 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "{a:[1,4,3,8],b:Fluid}"");
     __work_2;

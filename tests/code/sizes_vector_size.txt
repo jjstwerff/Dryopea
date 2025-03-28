@@ -20,18 +20,17 @@ Type 12:Main[8]:
 Type 13:vector<S>[4]:Vector(11)
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:integer = {#2 block
-    let m:Main = {#3 object
-      let _val_1:Main = OpDatabase(8i32, 12i32);
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    m:Main = {#3 object
+      _val_1:Main = OpDatabase(8i32, 12i32);
       OpSetInt(_val_1, 4i32, 0i32);
       _val_1;
     }#3:Main;
     OpAddInt(OpAddInt(OpAddInt(12i32, OpMulInt(100i32, 8i32)), OpMulInt(10000i32, 8i32)), OpMulInt(100000i32, 12i32));
   }#2:integer;
   if OpEqInt(test_value, 1280812i32) null else OpPanic({#4 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 1280812");
     __work_1;

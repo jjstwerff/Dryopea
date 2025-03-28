@@ -10,13 +10,12 @@ pub fn test() {
 Type 11:Number[1]:Enum(["One", "Two", "Three", "Four"])
 
 fn test() {#1 block
-  let __work_1:text = "";
-  let test_value:boolean = {#2 block
+  __work_1:text = "";
+  test_value:boolean = {#2 block
     OpLtEnum(OpCastEnumFromText("Two", 11i32), OpCastEnumFromText("Four", 11i32));
   }#2:boolean;
   if OpEqBool(test_value, true) null else OpPanic({#3 formatting string
-    OpClearText(__work_1);
-    OpAppendText(__work_1, "Test failed ");
+    __work_1:text = "Test failed ";
     OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != true");
     __work_1;

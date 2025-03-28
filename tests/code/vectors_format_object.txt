@@ -23,26 +23,26 @@ Type 12:main_vector<Elm>[8]:
 Type 13:vector<Elm>[4]:Vector(11)
 
 fn test() {#1 block
-  let __work_2:text = "";
-  let __work_1:text = "";
-  let test_value:text = {#2 block
-    let v:vector<Elm>#[] = {#3 vector
-      let _db_3:main_vector<Elm> = OpDatabase(8i32, 12i32);
-      let _vec_2:vector<Elm>#[] = OpGetField(_db_3, 4i32, 65535i32);
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    v:vector<Elm>#[] = {#3 vector
+      _db_3:main_vector<Elm> = OpDatabase(8i32, 12i32);
+      _vec_2:vector<Elm>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      let _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
       {#4 object
         OpSetInt(_elm_1, 0i32, 1i32);
         OpSetInt(_elm_1, 4i32, 2i32);
       }#4;
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
       {#5 object
         OpSetInt(_elm_1, 0i32, 12i32);
         OpSetInt(_elm_1, 4i32, 13i32);
       }#5;
       OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1 = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
       {#6 object
         OpSetInt(_elm_1, 0i32, 4i32);
         OpSetInt(_elm_1, 4i32, 5i32);
@@ -52,8 +52,7 @@ fn test() {#1 block
     }#3:vector<Elm>#[];
     OpSetInt(OpGetVector(v, 8i32, 2i32), 4i32, 6i32);
     {#7 formatting string
-      OpClearText(__work_1);
-      OpAppendText(__work_1, "");
+      __work_1:text = "";
       OpFormatDatabase(__work_1, v, 13i32, false);
       OpAppendText(__work_1, " sizeof ");
       OpFormatInt(__work_1, 8i32, 10i32, 0i32, 32i32, false, false);
@@ -61,8 +60,7 @@ fn test() {#1 block
     }#7:text;
   }#2:text;
   if OpEqText(test_value, "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") null else OpPanic({#8 formatting string
-    OpClearText(__work_2);
-    OpAppendText(__work_2, "Test failed ");
+    __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"");
     __work_2;

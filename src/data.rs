@@ -57,8 +57,6 @@ pub enum Value {
     // CVar(u32),
     // / Set a closure variable outside the current function
     // CSet(u32, Box<Value>),
-    /// Set a new variable with an expressions
-    Let(u16, Box<Value>),
     /// Return from a routine with optionally a Value
     Return(Box<Value>),
     /// Break out of the n-th loop
@@ -456,11 +454,6 @@ pub fn v_if(test: Value, t: Value, f: Value) -> Value {
 #[must_use]
 pub fn v_set(var: u16, value: Value) -> Value {
     Value::Set(var, Box::new(value))
-}
-
-#[must_use]
-pub fn v_let(var: u16, value: Value) -> Value {
-    Value::Let(var, Box::new(value))
 }
 
 impl Display for Definition {
@@ -1140,13 +1133,9 @@ impl Data {
             }
             Value::Var(v) => write!(write, "{}", vars.name(*v)),
             Value::Set(v, to) => {
-                write!(write, "{} = ", vars.name(*v))?;
-                self.show_code(write, vars, to, indent, false)
-            }
-            Value::Let(v, to) => {
                 write!(
                     write,
-                    "let {}:{} = ",
+                    "{}:{} = ",
                     vars.name(*v),
                     vars.tp(*v).show(self, vars)
                 )?;
