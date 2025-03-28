@@ -37,6 +37,7 @@ pub struct State {
     pub types: HashMap<u32, u16>,
     pub library: Vec<Call>,
     pub library_names: HashMap<String, u16>,
+    initialized: HashSet<u16>,
 }
 
 fn new_ref(data: &DbRef, pos: u32, arg: u16) -> DbRef {
@@ -73,6 +74,7 @@ impl State {
             types: HashMap::new(),
             library: Vec::new(),
             library_names: HashMap::new(),
+            initialized: HashSet::new(),
         }
     }
 
@@ -945,18 +947,26 @@ impl State {
         let val = stack
             .function
             .start_scope((0, 0), &format!("validate {}", stack.data.def(def_nr).name));
+        let mut started = HashSet::new();
+        for a in stack.data.def(def_nr).variables.arguments() {
+            started.insert(a);
+        }
         stack.function.validate(
             &stack.data.def(def_nr).code,
             &stack.data.def(def_nr).name,
             &stack.data.def(def_nr).position.file,
             stack.data,
-            &mut HashSet::new(),
+            &mut started,
         );
         stack.function.finish_scope(val, &Type::Unknown(0), (0, 0));
         stack.function.reset();
         let gen_scope = stack
             .function
             .start_scope((0, 0), &format!("generate {}", stack.data.def(def_nr).name));
+        self.initialized.clear();
+        for a in stack.data.def(def_nr).variables.arguments() {
+            self.initialized.insert(a);
+        }
         self.generate(&stack.data.def(def_nr).code, &mut stack);
         stack
             .function
@@ -1027,27 +1037,28 @@ impl State {
                 Type::Text(Vec::new())
             }
             Value::Var(variable) => self.generate_var(stack, *variable),
-            Value::Let(variable, value) => {
-                stack
-                    .function
-                    .claim(*variable, stack.position, &Context::Variable);
-                if matches!(*stack.function.tp(*variable), Type::Text(_)) {
-                    stack.add_op("OpText", self);
-                    stack.position += size_str() as u16;
-                    if let Value::Text(s) = &**value {
-                        if !s.is_empty() {
+            Value::Set(variable, value) => {
+                if self.initialized.contains(variable) {
+                    self.set_var(stack, *variable, value);
+                } else {
+                    self.initialized.insert(*variable);
+                    stack
+                        .function
+                        .claim(*variable, stack.position, &Context::Variable);
+                    if matches!(*stack.function.tp(*variable), Type::Text(_)) {
+                        stack.add_op("OpText", self);
+                        stack.position += size_str() as u16;
+                        if let Value::Text(s) = &**value {
+                            if !s.is_empty() {
+                                self.set_var(stack, *variable, value);
+                            }
+                        } else {
                             self.set_var(stack, *variable, value);
                         }
                     } else {
-                        self.set_var(stack, *variable, value);
+                        self.generate(value, stack);
                     }
-                } else {
-                    self.generate(value, stack);
                 }
-                Type::Void
-            }
-            Value::Set(variable, value) => {
-                self.set_var(stack, *variable, value);
                 Type::Void
             }
             Value::Loop(values) => {

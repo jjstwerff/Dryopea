@@ -7,7 +7,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 
-use crate::data::{Argument, Data, DefType, I32, Type, Value, to_default, v_if, v_let, v_set};
+use crate::data::{Argument, Data, DefType, I32, Type, Value, to_default, v_if, v_set};
 use crate::database::{Parts, Stores};
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use crate::lexer::{LexItem, LexResult, Lexer, Mode};
@@ -284,11 +284,11 @@ impl Parser {
             );
             let res_len = self.cl("OpLengthText", &[Value::Var(res_var)]);
             let next = vec![
-                v_let(res_var, ref_expr),
+                v_set(res_var, ref_expr),
                 v_set(iter_var, self.op("Add", i.clone(), res_len, I32.clone())),
                 Value::Var(res_var),
             ];
-            *code = v_let(iter_var, Value::Int(0));
+            *code = v_set(iter_var, Value::Int(0));
             self.vars.finish_scope(nx, is_type, self.lexer.at());
             return Value::Block(next);
         }
@@ -315,7 +315,7 @@ impl Parser {
                     let nx = self.vars.start_scope(self.lexer.at(), "iter next");
                     let res_var = self.create_unique("res", tp);
                     let next = vec![
-                        v_let(res_var, ref_expr),
+                        v_set(res_var, ref_expr),
                         v_set(
                             iter_var,
                             self.op("Add", i.clone(), Value::Int(1), I32.clone()),
@@ -324,7 +324,7 @@ impl Parser {
                     ];
                     self.vars.finish_scope(nx, tp, self.lexer.at());
                     let len = self.cl("OpLengthVector", &[code.clone()]);
-                    *code = v_let(iter_var, Value::Int(0));
+                    *code = v_set(iter_var, Value::Int(0));
                     return v_if(
                         self.op("Ge", i, len, I32.clone()),
                         self.null(&I32),
@@ -346,7 +346,7 @@ impl Parser {
                         "OpNext",
                         &[code.clone(), Value::Var(iter_var), known, Value::Int(0)],
                     );
-                    *code = v_let(iter_var, iter_expr);
+                    *code = v_set(iter_var, iter_expr);
                     return next_expr;
                 }
                 _ => {
@@ -1677,7 +1677,7 @@ impl Parser {
         self.parse_block("return from block", &mut v, &result);
         if let Value::Block(ls) = &mut v {
             for v in self.vars.work_vars() {
-                ls.insert(0, v_let(*v, Value::Text(String::new())));
+                ls.insert(0, v_set(*v, Value::Text(String::new())));
             }
         }
         if self.context != u32::MAX && !self.first_pass {
@@ -1777,13 +1777,13 @@ impl Parser {
                 if (op == "=" || op == "+=") && matches!(s_type, Type::Text(_)) && code.is_op(add) {
                     let mut ls = Vec::new();
                     if new && op == "=" {
-                        ls.push(v_let(vr, Value::Text(String::new())));
+                        ls.push(v_set(vr, Value::Text(String::new())));
                     }
                     self.replace_add_text(&mut ls, add, code, vr);
                     *code = Value::Block(ls);
                     return Type::Unknown(u32::MAX);
                 }
-                *code = self.towards_set(&to, code, &f_type, &op[0..1], new);
+                *code = self.towards_set(&to, code, &f_type, &op[0..1]);
                 return Type::Void;
             }
         }
@@ -1826,14 +1826,7 @@ impl Parser {
 
     /** Mutate current code when it reads a value into writing it. This is needed for assignments.
      */
-    fn towards_set(
-        &mut self,
-        to: &Value,
-        val: &Value,
-        f_type: &Type,
-        op: &str,
-        new: bool,
-    ) -> Value {
+    fn towards_set(&mut self, to: &Value, val: &Value, f_type: &Type, op: &str) -> Value {
         if matches!(*f_type, Type::Text(_)) {
             return self.text_change(op, to, val.clone());
         }
@@ -1873,11 +1866,7 @@ impl Parser {
         } else if let Value::Var(nr) = to {
             // This variable was created here and thus not yet used.
             self.var_usages(*nr, false);
-            if op == "=" && new {
-                v_let(*nr, code)
-            } else {
-                v_set(*nr, code)
-            }
+            v_set(*nr, code)
         } else {
             Value::Null
         }
@@ -1894,8 +1883,6 @@ impl Parser {
         } else if let Value::Var(nr) = to {
             if matches!(self.vars.tp(*nr), Type::Text(_)) && op == "+" {
                 self.cl("OpAppendText", &[to.clone(), val])
-            } else if self.vars.uses(*nr) == 0 {
-                v_let(*nr, val)
             } else {
                 v_set(*nr, val)
             }
@@ -2248,7 +2235,7 @@ impl Parser {
         if new_store && !is_var && in_t != Type::Void {
             self.insert_new(vec, &in_t, &mut ls);
         } else if !is_field && !is_var {
-            ls.insert(0, v_let(vec, val.clone()));
+            ls.insert(0, v_set(vec, val.clone()));
         }
         if new_store {
             ls.push(Value::Var(vec));
@@ -2329,7 +2316,7 @@ impl Parser {
             in_t.name(&self.data),
             self.lexer.pos()
         );
-        for (idx, p) in res.iter().enumerate() {
+        for p in res {
             let known = Value::Int(i32::from(
                 if ed_nr == u32::from(u16::MAX) || self.data.def(ed_nr).known_type == u16::MAX {
                     0
@@ -2363,11 +2350,7 @@ impl Parser {
                     &[Value::Var(vec), known.clone(), fld.clone()],
                 )
             };
-            ls.push(if idx == 0 {
-                v_let(elm, app_v)
-            } else {
-                v_set(elm, app_v)
-            });
+            ls.push(v_set(elm, app_v));
             if let Type::Reference(_, _) = in_t {
                 ls.push(p.clone());
             } else {
@@ -2408,7 +2391,7 @@ impl Parser {
             let mut ls = Vec::new();
             let vec_def = self.data.vector_def(&mut self.lexer, assign_tp);
             let db = self.create_unique("db", &Type::Reference(vec_def, Vec::new()));
-            ls.push(v_let(
+            ls.push(v_set(
                 db,
                 self.cl(
                     "OpDatabase",
@@ -2419,7 +2402,7 @@ impl Parser {
                 ),
             ));
             // Reference to vector field.
-            ls.push(v_let(vec, self.get_field(vec_def, 0, Value::Var(db))));
+            ls.push(v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
             // Write 0 into this reference.
             ls.push(self.set_field(vec_def, 0, Value::Var(db), Value::Int(0)));
             ls.push(Value::Var(vec));
@@ -2436,9 +2419,9 @@ impl Parser {
         let db = self.create_unique("db", &Type::Reference(vec_def, Vec::new()));
         let known = Value::Int(i32::from(self.data.def(vec_def).known_type));
         let op_db = self.cl("OpDatabase", &[Value::Int(i32::from(rec_size)), known]);
-        ls.insert(0, v_let(db, op_db));
+        ls.insert(0, v_set(db, op_db));
         // Reference to vector field.
-        ls.insert(1, v_let(vec, self.get_field(vec_def, 0, Value::Var(db))));
+        ls.insert(1, v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
         // Write 0 into this reference.
         ls.insert(2, self.set_field(vec_def, 0, Value::Var(db), Value::Int(0)));
     }
@@ -2791,7 +2774,7 @@ impl Parser {
             }
             ls.push(Value::Int(nr as i32));
             ls.append(&mut key);
-            let start = v_let(iter, self.cl("OpIterate", &ls));
+            let start = v_set(iter, self.cl("OpIterate", &ls));
             *code = Value::Iter(
                 Box::new(start),
                 Box::new(Value::Block(vec![self.cl(
@@ -3135,7 +3118,7 @@ impl Parser {
             self.vars
                 .change_var_type(*append_value, &format_type, &self.data, &mut self.lexer);
             self.in_loop = in_loop;
-            let for_next = v_let(for_var, iter_next);
+            let for_next = v_set(for_var, iter_next);
             let mut lp = vec![for_next];
             if !matches!(in_type, Type::Iterator(_, _)) {
                 lp.push(v_if(
@@ -3258,7 +3241,7 @@ impl Parser {
         ls.push(v_if(test, Value::Break(0), Value::Null));
         ls.push(Value::Var(ivar));
         *expr = Value::Iter(
-            Box::new(v_let(ivar, self.null(&in_type))),
+            Box::new(v_set(ivar, self.null(&in_type))),
             Box::new(Value::Block(ls)),
         );
         if reverse {
@@ -3443,7 +3426,7 @@ impl Parser {
                 let first = self.create_unique("first", &Type::Boolean);
                 list.push(self.cl("OpAppendText", &[Value::Var(append), Value::str("[")]));
                 list.push(*init.clone());
-                list.push(v_let(first, Value::Boolean(true)));
+                list.push(v_set(first, Value::Boolean(true)));
                 let lp = if append_value == u16::MAX {
                     self.vars.start_scope(self.lexer.at(), "append iter loop")
                 } else {
@@ -3464,7 +3447,7 @@ impl Parser {
                 } else {
                     u16::MAX
                 };
-                steps.push(v_let(append_var, Value::Block(next_ls.clone())));
+                steps.push(v_set(append_var, Value::Block(next_ls.clone())));
                 if bl != u16::MAX {
                     self.vars.finish_scope(bl, var_type, self.lexer.at());
                 }
@@ -3509,7 +3492,7 @@ impl Parser {
         };
         if !matches!(code, Value::Var(_)) {
             self.data.set_referenced(td_nr, self.context, Value::Null);
-            list.push(v_let(
+            list.push(v_set(
                 v,
                 self.cl(
                     "OpDatabase",
@@ -3692,7 +3675,7 @@ impl Parser {
                 );
                 return;
             }
-            let for_next = v_let(for_var, iter_next);
+            let for_next = v_set(for_var, iter_next);
             self.in_loop = true;
             self.parse_block("for", &mut block, &Type::Void);
             self.in_loop = in_loop;
