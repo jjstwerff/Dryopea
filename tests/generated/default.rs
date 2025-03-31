@@ -200,7 +200,7 @@ fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 {
   external::op_add_int((external::op_add_int((external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((0_i32)), i32::from((0_i32)))}), (65536_i32))), (external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((1_i32)), i32::from((0_i32)))}), (256_i32))))), ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((2_i32)), i32::from((0_i32)))}))
 }
 
-fn _tp_File_content(stores: &mut Stores, var_0: DbRef) -> Str {
+fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str {
   var_result = "".to_string();
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_result));
   var_result

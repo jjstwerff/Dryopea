@@ -1963,11 +1963,12 @@ impl Parser {
                 self.validate_convert(context, &t, result);
             }
         }
-        if matches!(t, Type::Text(_)) && self.vars.scope() == 1 {
-            // validate that we do not depend on internal variables (or work variables)
-            // update the returned types with the known dependencies
-            self.data.definitions[self.context as usize].returned = t.clone();
-            //self.text_return(&l[last]);
+        if let Type::Text(ls) = &t {
+            if self.vars.scope() == 1 && self.first_pass {
+                // validate that we do not depend on internal variables (or work variables)
+                // update the returned types with the known dependencies
+                self.text_return(&ls);
+            }
         }
         self.vars.finish_scope(bl, &t, self.lexer.at());
         *val = Value::Block(l);
@@ -3724,30 +3725,30 @@ impl Parser {
     }
 
     // For now, assume that returned texts are always related to internal variables
-    #[allow(clippy::unused_self)]
-    fn text_return(&mut self, _code: &Value) {
-        //if !self.first_pass {
-        // Assume that the first pass already added the needed attributes
-        //}
-        /*
-        let mut ls = HashSet::new();
-        self.gather_text_vars(&mut ls, code);
-        println!("vars {ls:?}");
-        for v in ls {
-            let var_name = self.vars.name(v);
-            println!("var {var_name}");
-            self.data.add_attribute(
-                &mut self.lexer,
-                self.context,
-                var_name,
-                Type::RefVar(Box::new(Type::Text(false, Vec::new()))),
-            );
-            // move variable to that type
-            // - position of variable will move towards the attributes position
-            // - positions of earlier variables will need to move to make room
-            // - treat this as an argument versus a variable for byte code types?
-            //    *variable < stack.def().attributes.len() as u32;
-        }*/
+    fn text_return(&mut self, ls: &[u16]) {
+        if let Type::Text(cur) = &self.data.definitions[self.context as usize].returned {
+            let mut dep = cur.clone();
+            for v in ls {
+                let n = self.vars.name(*v);
+                // skip related variables that are already attributes
+                if let Some(a) = self.data.def(self.context).attr_names.get(n) {
+                    if !dep.contains(&(*a as u16)) {
+                        dep.push(*a as u16);
+                    }
+                    continue;
+                }
+                // create a new attribute with this name
+                let a = self.data.add_attribute(
+                    &mut self.lexer,
+                    self.context,
+                    n,
+                    Type::RefVar(Box::new(Type::Text(Vec::new()))),
+                );
+                dep.push(a as u16);
+                self.vars.move_scope(*v, 0);
+            }
+            self.data.definitions[self.context as usize].returned = Type::Text(dep);
+        }
     }
 
     // <return> ::= [ <expression> ]
@@ -3769,8 +3770,8 @@ impl Parser {
             if !self.convert(&mut v, &t, &r_type) {
                 self.validate_convert("return", &t, &r_type);
             }
-            if matches!(r_type, Type::Text(_)) {
-                self.text_return(&v);
+            if let Type::Text(ls) = r_type {
+                self.text_return(&ls);
             }
         } else if !self.first_pass && r_type != Type::Void {
             diagnostic!(self.lexer, Level::Error, "Expect expression after return");

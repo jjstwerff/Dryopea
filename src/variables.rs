@@ -603,23 +603,13 @@ impl Function {
     }
 
     /// Move the scope of a given variable to the given scope.
-    pub fn move_scope(&self, var_nr: u16, to_scope: u16, _code: &mut Value, _name: &str) {
+    pub fn move_scope(&mut self, var_nr: u16, to_scope: u16) {
         // Problem when this is not a parent scope.
-        let mut s = self.variables[var_nr as usize].scope;
-        let mut found = false;
-        while s != u16::MAX {
-            if s == to_scope {
-                found = true;
-            }
-            s = self.scopes[s as usize].parent;
+        assert!(to_scope == 0 || to_scope == 1, "Incorrect scope");
+        self.variables[var_nr as usize].scope = to_scope;
+        if to_scope == 1 {
+            self.work.push(var_nr);
         }
-        assert!(
-            found,
-            "move_scope is not to a parent of the current variable scope"
-        );
-        // Merge when this variable is also defined in a child of this scope.
-        panic!("Not implemented yet!");
-        // self.validate(code, 0);
     }
 
     /// Return the variables that directly reside inside known scopes
