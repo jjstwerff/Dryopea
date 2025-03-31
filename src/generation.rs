@@ -320,7 +320,7 @@ extern crate dryopea;"
             write!(w, " ")?;
         } else {
             write!(w, " {{")?;
-        };
+        }
         self.output_code(w, true_v, def_nr, indent + u32::from(!b_true))?;
         if let Value::Block(_) = *true_v {
             write!(w, " else ")?;

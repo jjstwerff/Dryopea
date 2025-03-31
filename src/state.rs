@@ -28,6 +28,7 @@ pub struct State {
     pub stack_pos: u32,
     pub code_pos: u32,
     pub database: Stores,
+    // Stack size of the arguments
     pub arguments: u16,
     // Local function stack positions of individual byte-code statements.
     pub stack: HashMap<u32, u16>,
@@ -297,17 +298,6 @@ impl State {
             }
         }
         self.string_mut(pos).shrink_to(0);
-    }
-
-    pub fn free_stack(&mut self, value: u8, discard: u16) {
-        let pos = self.stack_pos;
-        self.stack_pos -= u32::from(discard);
-        if value > 0 {
-            let size = u32::from(value);
-            let from_pos = self.stack_cur.plus(pos).min(size);
-            let to_pos = self.stack_cur.plus(self.stack_pos).min(size);
-            self.database.copy_block(&from_pos, &to_pos, size);
-        }
     }
 
     /** Get a string reference from a variety of internal string formats.
@@ -852,8 +842,6 @@ impl State {
     * `ret`     - Size of the parameters to get the return address after it.
     * `value`   - Size of the return value.
     * `discard` - The amount of space claimed on the stack at this point.
-    # Panics
-    When the return address on stack is not correct
     */
     pub fn fn_return(&mut self, ret: u16, value: u8, discard: u16) {
         let pos = self.stack_pos;
@@ -861,6 +849,21 @@ impl State {
         let fn_stack = self.stack_pos;
         self.stack_pos += u32::from(ret);
         self.code_pos = *self.get_var::<u32>(0);
+        self.copy_result(value, pos, fn_stack);
+    }
+
+    /**
+    Clear the stack of local variables, possibly return a value.
+    * `value`   - Size of the return value.
+    * `discard` - The amount of space claimed on the stack at this point.
+    */
+    pub fn free_stack(&mut self, value: u8, discard: u16) {
+        let pos = self.stack_pos;
+        self.stack_pos -= u32::from(discard);
+        self.copy_result(value, pos, self.stack_pos);
+    }
+
+    fn copy_result(&mut self, value: u8, pos: u32, fn_stack: u32) {
         let size = u32::from(value);
         if value > 0 {
             let from_pos = self.stack_cur.plus(pos).min(size);
@@ -936,19 +939,15 @@ impl State {
         }
         let mut stack = Stack::new(data.def(def_nr).variables.clone(), data, def_nr, logging);
         for a in 0..stack.data.def(def_nr).attributes.len() as u16 {
-            stack.position = stack.function.claim(a, stack.position, &Context::Argument);
+            let n = &stack.data.def(def_nr).attributes[a as usize].name;
+            let v = stack.function.var(n);
+            stack.position = stack.function.claim(v, stack.position, &Context::Argument);
         }
         let start = self.code_pos;
         self.arguments = stack.position;
         stack.position += 4; // keep space for the code return address
         if console {
-            println!(
-                "{} ",
-                stack
-                    .data
-                    .def(def_nr)
-                    .header(stack.data, &stack.data.def(def_nr).variables)
-            );
+            println!("{} ", stack.data.def(def_nr).header(stack.data, def_nr));
             stack.data.dump(&stack.data.def(def_nr).code, def_nr);
         }
         let val = stack
@@ -1243,7 +1242,9 @@ impl State {
         } else if self.library_names.contains_key(&name) {
             stack.add_op("OpStaticCall", self);
             self.code_add(self.library_names[&name]);
-            self.gather_key(stack, &parameters, 0, &mut tps);
+            if !parameters.is_empty() {
+                self.gather_key(stack, &parameters, 0, &mut tps);
+            }
             for a in &stack.data.def(*op).attributes {
                 stack.position -= size(&a.typedef, &Context::Argument);
             }
@@ -1368,8 +1369,10 @@ impl State {
                 } else {
                     format!("vector<{}>", tp.name(stack.data))
                 };
-                let known = stack.data.def_name(&name).known_type;
-                self.types.insert(self.code_pos, known);
+                let known = self.database.name(&name);
+                if known != u16::MAX && name != "vector" {
+                    self.types.insert(self.code_pos, known);
+                }
                 stack.add_op("OpVarVector", self);
             }
             Type::Reference(c, _) => {
@@ -1427,10 +1430,10 @@ impl State {
             } else if stack.function.scope() > 1 {
                 let size = stack.size_code(v);
                 let after = to + size;
-                if stack.position > to + size {
+                if stack.position > after {
                     stack.add_op("OpFreeStack", self);
                     self.code_add(size as u8);
-                    self.code_add(stack.position - to - size);
+                    self.code_add(stack.position - to);
                     let known = stack.type_code(v, &self.database);
                     if known != u16::MAX {
                         self.types.insert(code, known);

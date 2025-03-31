@@ -13,47 +13,47 @@ v[2].b=6;
         "Test failed {test_value} != \"[{{a:1,b:2}},{{a:12,b:13}},{{a:4,b:6}}] sizeof 8\""
     );
 }
-Type 11:Elm[8]:
+Type 12:Elm[8]:
     a:integer[0]
     b:integer[4]
 
-Type 12:main_vector<Elm>[8]:
+Type 13:main_vector<Elm>[8]:
     vector:vector<Elm>[4]
 
-Type 13:vector<Elm>[4]:Vector(11)
+Type 14:vector<Elm>[4]:Vector(12)
 
 fn test() {#1 block
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
     v:vector<Elm>#[] = {#3 vector
-      _db_3:main_vector<Elm> = OpDatabase(8i32, 12i32);
+      _db_3:main_vector<Elm> = OpDatabase(8i32, 13i32);
       _vec_2:vector<Elm>#[] = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#4 object
         OpSetInt(_elm_1, 0i32, 1i32);
         OpSetInt(_elm_1, 4i32, 2i32);
       }#4;
-      OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
+      OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#5 object
         OpSetInt(_elm_1, 0i32, 12i32);
         OpSetInt(_elm_1, 4i32, 13i32);
       }#5;
-      OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
-      _elm_1:Elm = OpNewRecord(_vec_2, 13i32, 65535i32);
+      OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
+      _elm_1:Elm = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#6 object
         OpSetInt(_elm_1, 0i32, 4i32);
         OpSetInt(_elm_1, 4i32, 5i32);
       }#6;
-      OpFinishRecord(_vec_2, _elm_1, 13i32, 65535i32);
+      OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
       _vec_2;
     }#3:vector<Elm>#[];
     OpSetInt(OpGetVector(v, 8i32, 2i32), 4i32, 6i32);
     {#7 formatting string
       __work_1:text = "";
-      OpFormatDatabase(__work_1, v, 13i32, false);
+      OpFormatDatabase(__work_1, v, 14i32, false);
       OpAppendText(__work_1, " sizeof ");
       OpFormatInt(__work_1, 8i32, 10i32, 0i32, 32i32, false, false);
       __work_1;
@@ -68,157 +68,157 @@ fn test() {#1 block
 }#1
 
 byte-code for format_object:test()
- 682[0]: return-address
- 682[4]: Text()
- 683[28]: Text()
- 684[52]: Text()
- 685[76]: Database(size=8, db_tp=12) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[12]
- 690[88]: VarRef(var[76]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[12]
- 693[100]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
- 696[100]: VarRef(var[76]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[12]
- 699[112]: ConstInt(val=0) -> integer
- 704[116]: SetInt(v1: reference, fld=4, val: integer)
- 707[100]: VarVector(var[88]) -> vector#[] type=Unknown type(65535)[65535]
- 710[112]: NewRecord(data: reference, parent_tp=13, fld=65535) -> reference
- 715[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 718[124]: ConstInt(val=1) -> integer
- 723[128]: SetInt(v1: reference, fld=0, val: integer)
- 726[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 729[124]: ConstInt(val=2) -> integer
- 734[128]: SetInt(v1: reference, fld=4, val: integer)
- 737[112]: VarVector(var[88]) -> vector#[] type=Unknown type(65535)[65535]
- 740[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 743[136]: FinishRecord(data: reference, rec: reference, parent_tp=13, fld=65535)
- 748[112]: VarVector(var[88]) -> vector#[] type=Unknown type(65535)[65535]
- 751[124]: NewRecord(data: reference, parent_tp=13, fld=65535) -> reference
- 756[124]: PutRef(var[100], value: reference)
- 759[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 762[124]: ConstInt(val=12) -> integer
- 767[128]: SetInt(v1: reference, fld=0, val: integer)
- 770[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 773[124]: ConstInt(val=13) -> integer
- 778[128]: SetInt(v1: reference, fld=4, val: integer)
- 781[112]: VarVector(var[88]) -> vector#[] type=Unknown type(65535)[65535]
- 784[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 787[136]: FinishRecord(data: reference, rec: reference, parent_tp=13, fld=65535)
- 792[112]: VarVector(var[88]) -> vector#[] type=Unknown type(65535)[65535]
- 795[124]: NewRecord(data: reference, parent_tp=13, fld=65535) -> reference
- 800[124]: PutRef(var[100], value: reference)
- 803[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 806[124]: ConstInt(val=4) -> integer
- 811[128]: SetInt(v1: reference, fld=0, val: integer)
- 814[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 817[124]: ConstInt(val=5) -> integer
- 822[128]: SetInt(v1: reference, fld=4, val: integer)
- 825[112]: VarVector(var[88]) -> vector#[] type=Unknown type(65535)[65535]
- 828[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 831[136]: FinishRecord(data: reference, rec: reference, parent_tp=13, fld=65535)
- 836[112]: VarVector(var[88]) -> vector#[] type=Unknown type(65535)[65535]
- 839[124]: FreeStack(value=12, discard=36) type=Pixel[3]:{r:byte[0], g:byte[1], b:byte[2]}[6]
- 843[88]: VarVector(var[76]) -> vector#[] type=Unknown type(65535)[65535]
- 846[100]: ConstInt(val=2) -> integer
- 851[104]: GetVector(r: vector#[], size=8, index: integer) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[11]
- 854[100]: ConstInt(val=6) -> integer
- 859[104]: SetInt(v1: reference, fld=4, val: integer)
- 862[88]: ClearText(var[28])
- 865[88]: ConstText(_value="") -> text
- 867[104]: AppendText(var[28], v1: text)
- 870[88]: VarVector(var[76]) -> vector#[] type=Unknown type(65535)[65535]
- 873[100]: FormatDatabase(var[28], val: reference, db_tp=13, pretty=false)
- 879[88]: ConstText(_value=" sizeof ") -> text
- 889[104]: AppendText(var[28], v1: text)
- 892[88]: ConstInt(val=8) -> integer
- 897[92]: ConstInt(val=0) -> integer
- 902[96]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 909[88]: VarText(var[28]) -> text
- 912[104]: FreeStack(value=16, discard=12) type=text[4]:Base[5]
- 916[92]: AppendText(var[52], v1: text)
- 919[76]: VarText(var[52]) -> text
- 922[92]: ConstText(_value="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") -> text
- 966[108]: EqText(v1: text, v2: text) -> boolean
- 967[77]: GotoFalseWord(jump=973, if_false: boolean)
- 970[76]: GotoWord(jump=1063)
- 973[76]: ClearText(var[4])
- 976[76]: ConstText(_value="Test failed ") -> text
- 990[92]: AppendText(var[4], v1: text)
- 993[76]: VarText(var[52]) -> text
- 996[92]: ConstInt(val=0) -> integer
-1001[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-1006[76]: ConstText(_value=" != "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"") -> text
-1056[92]: AppendText(var[4], v1: text)
-1059[76]: VarText(var[4]) -> text
-1062[92]: Panic(message: text)
-1063[76]: Return(ret=0, value=0, discard=76)
+ 692[0]: return-address
+ 692[4]: Text()
+ 693[28]: Text()
+ 694[52]: Text()
+ 695[76]: Database(size=8, db_tp=13) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
+ 700[88]: VarRef(var[76]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
+ 703[100]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
+ 706[100]: VarRef(var[76]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
+ 709[112]: ConstInt(val=0) -> integer
+ 714[116]: SetInt(v1: reference, fld=4, val: integer)
+ 717[100]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 720[112]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
+ 725[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 728[124]: ConstInt(val=1) -> integer
+ 733[128]: SetInt(v1: reference, fld=0, val: integer)
+ 736[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 739[124]: ConstInt(val=2) -> integer
+ 744[128]: SetInt(v1: reference, fld=4, val: integer)
+ 747[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 750[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 753[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
+ 758[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 761[124]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
+ 766[124]: PutRef(var[100], value: reference)
+ 769[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 772[124]: ConstInt(val=12) -> integer
+ 777[128]: SetInt(v1: reference, fld=0, val: integer)
+ 780[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 783[124]: ConstInt(val=13) -> integer
+ 788[128]: SetInt(v1: reference, fld=4, val: integer)
+ 791[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 794[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 797[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
+ 802[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 805[124]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
+ 810[124]: PutRef(var[100], value: reference)
+ 813[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 816[124]: ConstInt(val=4) -> integer
+ 821[128]: SetInt(v1: reference, fld=0, val: integer)
+ 824[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 827[124]: ConstInt(val=5) -> integer
+ 832[128]: SetInt(v1: reference, fld=4, val: integer)
+ 835[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 838[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 841[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
+ 846[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 849[124]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
+ 853[88]: VarVector(var[76]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 856[100]: ConstInt(val=2) -> integer
+ 861[104]: GetVector(r: vector[], size=8, index: integer) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 864[100]: ConstInt(val=6) -> integer
+ 869[104]: SetInt(v1: reference, fld=4, val: integer)
+ 872[88]: ClearText(var[28])
+ 875[88]: ConstText(_value="") -> text
+ 877[104]: AppendText(var[28], v1: text)
+ 880[88]: VarVector(var[76]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 883[100]: FormatDatabase(var[28], val: reference, db_tp=14, pretty=false)
+ 889[88]: ConstText(_value=" sizeof ") -> text
+ 899[104]: AppendText(var[28], v1: text)
+ 902[88]: ConstInt(val=8) -> integer
+ 907[92]: ConstInt(val=0) -> integer
+ 912[96]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 919[88]: VarText(var[28]) -> text
+ 922[104]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
+ 926[92]: AppendText(var[52], v1: text)
+ 929[76]: VarText(var[52]) -> text
+ 932[92]: ConstText(_value="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") -> text
+ 976[108]: EqText(v1: text, v2: text) -> boolean
+ 977[77]: GotoFalseWord(jump=983, if_false: boolean)
+ 980[76]: GotoWord(jump=1073)
+ 983[76]: ClearText(var[4])
+ 986[76]: ConstText(_value="Test failed ") -> text
+1000[92]: AppendText(var[4], v1: text)
+1003[76]: VarText(var[52]) -> text
+1006[92]: ConstInt(val=0) -> integer
+1011[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+1016[76]: ConstText(_value=" != "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"") -> text
+1066[92]: AppendText(var[4], v1: text)
+1069[76]: VarText(var[4]) -> text
+1072[92]: Panic(message: text)
+1073[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-  682:[8] Text()
-  683:[32] Text()
-  684:[56] Text()
-  685:[80] Database(size=8, db_tp=12) -> ref(1,1,0)={}[80]
-  690:[92] VarRef(var[80]) -> ref(1,1,0)={}[92]
-  693:[104] GetField(v1=ref(1,1,0)[92], fld=4) -> ref(1,1,4)[92]
-  696:[104] VarRef(var[80]) -> ref(1,1,0)={}[104]
-  699:[116] ConstInt(val=0) -> 0[116]
-  704:[120] SetInt(v1=ref(1,1,0)[104], fld=4, val=0[116])
-  707:[104] VarVector(var[92]) -> ref(1,1,4)[104]
-  710:[116] NewRecord(data=ref(1,1,4)[104], parent_tp=13, fld=65535) -> ref(1,9,8)[104]
-  715:[116] VarRef(var[104]) -> ref(1,9,8)={}[116]
-  718:[128] ConstInt(val=1) -> 1[128]
-  723:[132] SetInt(v1=ref(1,9,8)[116], fld=0, val=1[128])
-  726:[116] VarRef(var[104]) -> ref(1,9,8)={a:1}[116]
-  729:[128] ConstInt(val=2) -> 2[128]
-  734:[132] SetInt(v1=ref(1,9,8)[116], fld=4, val=2[128])
-  737:[116] VarVector(var[92]) -> ref(1,1,4)[116]
-  740:[128] VarRef(var[104]) -> ref(1,9,8)={a:1,b:2}[128]
-  743:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,8)[128], parent_tp=13, fld=65535)
-  748:[116] VarVector(var[92]) -> ref(1,1,4)[116]
-  751:[128] NewRecord(data=ref(1,1,4)[116], parent_tp=13, fld=65535) -> ref(1,9,16)[116]
-  756:[128] PutRef(var[104], value=ref(1,9,16)[116])
-  759:[116] VarRef(var[104]) -> ref(1,9,16)={}[116]
-  762:[128] ConstInt(val=12) -> 12[128]
-  767:[132] SetInt(v1=ref(1,9,16)[116], fld=0, val=12[128])
-  770:[116] VarRef(var[104]) -> ref(1,9,16)={a:12}[116]
-  773:[128] ConstInt(val=13) -> 13[128]
-  778:[132] SetInt(v1=ref(1,9,16)[116], fld=4, val=13[128])
-  781:[116] VarVector(var[92]) -> ref(1,1,4)[116]
-  784:[128] VarRef(var[104]) -> ref(1,9,16)={a:12,b:13}[128]
-  787:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,16)[128], parent_tp=13, fld=65535)
-  792:[116] VarVector(var[92]) -> ref(1,1,4)[116]
-  795:[128] NewRecord(data=ref(1,1,4)[116], parent_tp=13, fld=65535) -> ref(1,9,24)[116]
-  800:[128] PutRef(var[104], value=ref(1,9,24)[116])
-  803:[116] VarRef(var[104]) -> ref(1,9,24)={}[116]
-  806:[128] ConstInt(val=4) -> 4[128]
-  811:[132] SetInt(v1=ref(1,9,24)[116], fld=0, val=4[128])
-  814:[116] VarRef(var[104]) -> ref(1,9,24)={a:4}[116]
-  817:[128] ConstInt(val=5) -> 5[128]
-  822:[132] SetInt(v1=ref(1,9,24)[116], fld=4, val=5[128])
-  825:[116] VarVector(var[92]) -> ref(1,1,4)[116]
-  828:[128] VarRef(var[104]) -> ref(1,9,24)={a:4,b:5}[128]
-  831:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,24)[128], parent_tp=13, fld=65535)
-  836:[116] VarVector(var[92]) -> ref(1,1,4)[116]
-  839:[128] FreeStack(value=12, discard=36)
-  843:[92] VarVector(var[80]) -> ref(1,1,4)[92]
-  846:[104] ConstInt(val=2) -> 2[104]
-  851:[108] GetVector(r=ref(1,1,4)=true[92], size=8, index=2[104]) -> ref(1,9,24)={a:4,b:5}[92]
-  854:[104] ConstInt(val=6) -> 6[104]
-  859:[108] SetInt(v1=ref(1,9,24)[92], fld=4, val=6[104])
-  862:[92] ClearText(var[32])
-  865:[92] ConstText(_value="") -> ""[92]
-  867:[108] AppendText(var[32], v1=""[92])
-  870:[92] VarVector(var[80]) -> ref(1,1,4)[92]
-  873:[104] FormatDatabase(var[32], val=ref(1,1,4)[92], db_tp=13, pretty=false)
-  879:[92] ConstText(_value=" sizeof ") -> " sizeof "[92]
-  889:[108] AppendText(var[32], v1=" sizeof "[92])
-  892:[92] ConstInt(val=8) -> 8[92]
-  897:[96] ConstInt(val=0) -> 0[96]
-  902:[100] FormatInt(var[32], val=8[92], radix=10, width=0[96], token=32, plus=false, note=false)
-  909:[92] VarText(var[32]) -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[92]
-  912:[108] FreeStack(value=16, discard=12)
-  916:[96] AppendText(var[56], v1="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80])
-  919:[80] VarText(var[56]) -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80]
-  922:[96] ConstText(_value="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[96]
-  966:[112] EqText(v1="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80], v2="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[96]) -> true[80]
-  967:[81] GotoFalseWord(jump=973, if_false=true[80])
-  970:[80] GotoWord(jump=1063)
- 1063:[80] Return(ret=4294967295[4], value=0, discard=76)
+  692:[8] Text()
+  693:[32] Text()
+  694:[56] Text()
+  695:[80] Database(size=8, db_tp=13) -> ref(1,1,0)={}[80]
+  700:[92] VarRef(var[80]) -> ref(1,1,0)={}[92]
+  703:[104] GetField(v1=ref(1,1,0)[92], fld=4) -> ref(1,1,4)[92]
+  706:[104] VarRef(var[80]) -> ref(1,1,0)={}[104]
+  709:[116] ConstInt(val=0) -> 0[116]
+  714:[120] SetInt(v1=ref(1,1,0)[104], fld=4, val=0[116])
+  717:[104] VarVector(var[92]) -> ref(1,1,4)=[][104]
+  720:[116] NewRecord(data=ref(1,1,4)[104], parent_tp=14, fld=65535) -> ref(1,9,8)[104]
+  725:[116] VarRef(var[104]) -> ref(1,9,8)={}[116]
+  728:[128] ConstInt(val=1) -> 1[128]
+  733:[132] SetInt(v1=ref(1,9,8)[116], fld=0, val=1[128])
+  736:[116] VarRef(var[104]) -> ref(1,9,8)={a:1}[116]
+  739:[128] ConstInt(val=2) -> 2[128]
+  744:[132] SetInt(v1=ref(1,9,8)[116], fld=4, val=2[128])
+  747:[116] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2}][116]
+  750:[128] VarRef(var[104]) -> ref(1,9,8)={a:1,b:2}[128]
+  753:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,8)[128], parent_tp=14, fld=65535)
+  758:[116] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2}][116]
+  761:[128] NewRecord(data=ref(1,1,4)[116], parent_tp=14, fld=65535) -> ref(1,9,16)[116]
+  766:[128] PutRef(var[104], value=ref(1,9,16)[116])
+  769:[116] VarRef(var[104]) -> ref(1,9,16)={}[116]
+  772:[128] ConstInt(val=12) -> 12[128]
+  777:[132] SetInt(v1=ref(1,9,16)[116], fld=0, val=12[128])
+  780:[116] VarRef(var[104]) -> ref(1,9,16)={a:12}[116]
+  783:[128] ConstInt(val=13) -> 13[128]
+  788:[132] SetInt(v1=ref(1,9,16)[116], fld=4, val=13[128])
+  791:[116] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13}][116]
+  794:[128] VarRef(var[104]) -> ref(1,9,16)={a:12,b:13}[128]
+  797:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,16)[128], parent_tp=14, fld=65535)
+  802:[116] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13}][116]
+  805:[128] NewRecord(data=ref(1,1,4)[116], parent_tp=14, fld=65535) -> ref(1,9,24)[116]
+  810:[128] PutRef(var[104], value=ref(1,9,24)[116])
+  813:[116] VarRef(var[104]) -> ref(1,9,24)={}[116]
+  816:[128] ConstInt(val=4) -> 4[128]
+  821:[132] SetInt(v1=ref(1,9,24)[116], fld=0, val=4[128])
+  824:[116] VarRef(var[104]) -> ref(1,9,24)={a:4}[116]
+  827:[128] ConstInt(val=5) -> 5[128]
+  832:[132] SetInt(v1=ref(1,9,24)[116], fld=4, val=5[128])
+  835:[116] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:5}][116]
+  838:[128] VarRef(var[104]) -> ref(1,9,24)={a:4,b:5}[128]
+  841:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,24)[128], parent_tp=14, fld=65535)
+  846:[116] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:5}][116]
+  849:[128] FreeStack(value=12, discard=48)
+  853:[92] VarVector(var[80]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:5}][92]
+  856:[104] ConstInt(val=2) -> 2[104]
+  861:[108] GetVector(r=ref(1,1,4)=true[92], size=8, index=2[104]) -> ref(1,9,24)={a:4,b:5}[92]
+  864:[104] ConstInt(val=6) -> 6[104]
+  869:[108] SetInt(v1=ref(1,9,24)[92], fld=4, val=6[104])
+  872:[92] ClearText(var[32])
+  875:[92] ConstText(_value="") -> ""[92]
+  877:[108] AppendText(var[32], v1=""[92])
+  880:[92] VarVector(var[80]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:6}][92]
+  883:[104] FormatDatabase(var[32], val=ref(1,1,4)[92], db_tp=14, pretty=false)
+  889:[92] ConstText(_value=" sizeof ") -> " sizeof "[92]
+  899:[108] AppendText(var[32], v1=" sizeof "[92])
+  902:[92] ConstInt(val=8) -> 8[92]
+  907:[96] ConstInt(val=0) -> 0[96]
+  912:[100] FormatInt(var[32], val=8[92], radix=10, width=0[96], token=32, plus=false, note=false)
+  919:[92] VarText(var[32]) -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[92]
+  922:[108] FreeStack(value=16, discard=28)
+  926:[96] AppendText(var[56], v1="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80])
+  929:[80] VarText(var[56]) -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80]
+  932:[96] ConstText(_value="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[96]
+  976:[112] EqText(v1="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80], v2="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[96]) -> true[80]
+  977:[81] GotoFalseWord(jump=983, if_false=true[80])
+  980:[80] GotoWord(jump=1073)
+ 1073:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

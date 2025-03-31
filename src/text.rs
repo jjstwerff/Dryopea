@@ -9,6 +9,8 @@ use crate::state::{Call, State};
 pub const FUNCTIONS: &[(&str, Call)] = &[
     ("character", character),
     ("assert", assert),
+    ("env_variables", env_variables),
+    ("env_variable", env_variable),
     ("_tp_text_starts_with", _tp_text_starts_with),
     ("_tp_text_ends_with", _tp_text_ends_with),
     ("_tp_text_trim", _tp_text_trim),
@@ -26,6 +28,10 @@ pub const FUNCTIONS: &[(&str, Call)] = &[
     ("_tp_text_is_alphabetic", _tp_text_is_alphabetic),
     ("_tp_text_is_whitespace", _tp_text_is_whitespace),
     ("_tp_text_is_control", _tp_text_is_control),
+    ("arguments", arguments),
+    ("directory", directory),
+    ("user_directory", user_directory),
+    ("program_directory", program_directory),
 ];
 
 pub fn init(state: &mut State) {
@@ -46,6 +52,17 @@ fn assert(stores: &mut Stores, stack: &mut DbRef) {
     assert!(v_test, "{}", v_message.str());
 }
 
+fn env_variables(stores: &mut Stores, stack: &mut DbRef) {
+    let new_value = { stores.os_variables() };
+    stores.put(stack, new_value);
+}
+
+fn env_variable(stores: &mut Stores, stack: &mut DbRef) {
+    let v_name = *stores.get::<Str>(stack);
+    let new_value = { Stores::os_variable(v_name.str()) };
+    stores.put(stack, new_value);
+}
+
 fn _tp_text_starts_with(stores: &mut Stores, stack: &mut DbRef) {
     let v_value = *stores.get::<Str>(stack);
     let v_self = *stores.get::<Str>(stack);
@@ -61,8 +78,8 @@ fn _tp_text_ends_with(stores: &mut Stores, stack: &mut DbRef) {
 }
 
 fn _tp_text_trim(stores: &mut Stores, stack: &mut DbRef) {
-    let v_self = *stores.get::<Str>(stack);
-    let new_value = { v_self.str().trim() };
+    let v_both = *stores.get::<Str>(stack);
+    let new_value = { v_both.str().trim() };
     stores.put(stack, new_value);
 }
 
@@ -213,5 +230,31 @@ fn _tp_text_is_control(stores: &mut Stores, stack: &mut DbRef) {
         }
         res
     };
+    stores.put(stack, new_value);
+}
+
+fn arguments(stores: &mut Stores, stack: &mut DbRef) {
+    let new_value = { stores.os_arguments() };
+    stores.put(stack, new_value);
+}
+
+fn directory(stores: &mut Stores, stack: &mut DbRef) {
+    let v_v = *stores.get::<DbRef>(stack);
+    let v_v = stores.store_mut(&v_v).addr_mut::<String>(v_v.rec, v_v.pos);
+    let new_value = { Stores::os_directory(v_v) };
+    stores.put(stack, new_value);
+}
+
+fn user_directory(stores: &mut Stores, stack: &mut DbRef) {
+    let v_v = *stores.get::<DbRef>(stack);
+    let v_v = stores.store_mut(&v_v).addr_mut::<String>(v_v.rec, v_v.pos);
+    let new_value = { Stores::os_home(v_v) };
+    stores.put(stack, new_value);
+}
+
+fn program_directory(stores: &mut Stores, stack: &mut DbRef) {
+    let v_v = *stores.get::<DbRef>(stack);
+    let v_v = stores.store_mut(&v_v).addr_mut::<String>(v_v.rec, v_v.pos);
+    let new_value = { Stores::os_executable(v_v) };
     stores.put(stack, new_value);
 }

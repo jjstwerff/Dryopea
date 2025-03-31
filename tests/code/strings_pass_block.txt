@@ -7,6 +7,7 @@ pub fn test() {
 }
 fn test() {#1 block
   __work_1:text = "";
+  d:text["s"] = "";
   test_value:text["d"] = {#2 block
     s:text = "12 ";
     d:text["s"] = s;
@@ -21,53 +22,55 @@ fn test() {#1 block
 }#1
 
 byte-code for pass_block:test()
- 682[0]: return-address
- 682[4]: Text()
- 683[28]: Text()
- 684[52]: Text()
- 685[76]: ConstText(_value="12 ") -> text
- 690[92]: AppendText(var[52], v1: text)
- 693[76]: Text()
- 694[100]: VarText(var[52]) -> text
- 697[116]: AppendText(var[76], v1: text)
- 700[100]: VarText(var[76]) -> text
- 703[116]: StaticCall(_tp_text_trim)
- 706[116]: FreeStack(value=16, discard=48) type=text[4]:Base[5]
- 710[68]: AppendText(var[28], v1: text)
- 713[52]: VarText(var[28]) -> text
- 716[68]: ConstText(_value="12") -> text
- 720[84]: EqText(v1: text, v2: text) -> boolean
- 721[53]: GotoFalseWord(jump=727, if_false: boolean)
- 724[52]: GotoWord(jump=777)
- 727[52]: ClearText(var[4])
- 730[52]: ConstText(_value="Test failed ") -> text
- 744[68]: AppendText(var[4], v1: text)
- 747[52]: VarText(var[28]) -> text
- 750[68]: ConstInt(val=0) -> integer
- 755[72]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 760[52]: ConstText(_value=" != "12"") -> text
- 770[68]: AppendText(var[4], v1: text)
- 773[52]: VarText(var[4]) -> text
- 776[68]: Panic(message: text)
- 777[52]: Return(ret=0, value=0, discard=52)
+ 692[0]: return-address
+ 692[4]: Text()
+ 693[28]: Text()
+ 694[52]: Text()
+ 695[76]: Text()
+ 696[100]: ConstText(_value="12 ") -> text
+ 701[116]: AppendText(var[76], v1: text)
+ 704[100]: ClearText(var[28])
+ 707[100]: VarText(var[76]) -> text
+ 710[116]: AppendText(var[28], v1: text)
+ 713[100]: VarText(var[28]) -> text
+ 716[116]: StaticCall(_tp_text_trim)
+ 719[116]: FreeStack(value=16, discard=40) type=text[4]:Base[5]
+ 723[92]: AppendText(var[52], v1: text)
+ 726[76]: VarText(var[52]) -> text
+ 729[92]: ConstText(_value="12") -> text
+ 733[108]: EqText(v1: text, v2: text) -> boolean
+ 734[77]: GotoFalseWord(jump=740, if_false: boolean)
+ 737[76]: GotoWord(jump=790)
+ 740[76]: ClearText(var[4])
+ 743[76]: ConstText(_value="Test failed ") -> text
+ 757[92]: AppendText(var[4], v1: text)
+ 760[76]: VarText(var[52]) -> text
+ 763[92]: ConstInt(val=0) -> integer
+ 768[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 773[76]: ConstText(_value=" != "12"") -> text
+ 783[92]: AppendText(var[4], v1: text)
+ 786[76]: VarText(var[4]) -> text
+ 789[92]: Panic(message: text)
+ 790[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-  682:[8] Text()
-  683:[32] Text()
-  684:[56] Text()
-  685:[80] ConstText(_value="12 ") -> "12 "[80]
-  690:[96] AppendText(var[56], v1="12 "[80])
-  693:[80] Text()
-  694:[104] VarText(var[56]) -> "12 "[104]
-  697:[120] AppendText(var[80], v1="12 "[104])
-  700:[104] VarText(var[80]) -> "12 "[104]
-  703:[120] StaticCall(call=4)
-  706:[120] FreeStack(value=16, discard=48)
-  710:[72] AppendText(var[32], v1="12"[56])
-  713:[56] VarText(var[32]) -> "12"[56]
-  716:[72] ConstText(_value="12") -> "12"[72]
-  720:[88] EqText(v1="12"[56], v2="12"[72]) -> true[56]
-  721:[57] GotoFalseWord(jump=727, if_false=true[56])
-  724:[56] GotoWord(jump=777)
-  777:[56] Return(ret=4294967295[4], value=0, discard=52)
+  692:[8] Text()
+  693:[32] Text()
+  694:[56] Text()
+  695:[80] Text()
+  696:[104] ConstText(_value="12 ") -> "12 "[104]
+  701:[120] AppendText(var[80], v1="12 "[104])
+  704:[104] ClearText(var[32])
+  707:[104] VarText(var[80]) -> "12 "[104]
+  710:[120] AppendText(var[32], v1="12 "[104])
+  713:[104] VarText(var[32]) -> "12 "[104]
+  716:[120] StaticCall(call=6)
+  719:[120] FreeStack(value=16, discard=40)
+  723:[96] AppendText(var[56], v1="12"[80])
+  726:[80] VarText(var[56]) -> "12"[80]
+  729:[96] ConstText(_value="12") -> "12"[96]
+  733:[112] EqText(v1="12"[80], v2="12"[96]) -> true[80]
+  734:[81] GotoFalseWord(jump=740, if_false=true[80])
+  737:[80] GotoWord(jump=790)
+  790:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

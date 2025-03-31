@@ -28,39 +28,39 @@ pub fn test() {
         "Test failed {test_value} != 12"
     );
 }
-Type 11:State[1]:Enum(["Start", "Ongoing", "Halt"])
+Type 12:State[1]:Enum(["Start", "Ongoing", "Halt"])
 
 fn first(s:State, c:integer) -> integer {#1 block
-  if OpEqEnum(s, 1u8(11)) {#2 block
-    s:State = 2u8(11);
+  if OpEqEnum(s, 1u8(12)) {#2 block
+    s:State = 2u8(12);
   }#2 else if OpGtInt(c, 10i32) {#3 block
-    s:State = 3u8(11);
+    s:State = 3u8(12);
   }#3 else null;
   second(s, c);
 }#1:integer
 
 byte-code for recursion:first(s: State[0], c: integer[1]) -> integer
- 682[5]: return-address
- 682[9]: VarEnum(var[0]) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 685[10]: ConstEnum(val=1) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 687[11]: EqEnum(v1: enumerate, v2: enumerate) -> boolean
- 688[10]: GotoFalseWord(jump=699, if_false: boolean)
- 691[9]: ConstEnum(val=2) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 693[10]: PutEnum(var[0], value: enumerate)
- 696[9]: GotoWord(jump=716)
- 699[9]: VarInt(var[1]) -> integer
- 702[13]: ConstInt(val=10) -> integer
- 707[17]: GtInt(v1: integer, v2: integer) -> boolean
- 708[10]: GotoFalseWord(jump=716, if_false: boolean)
- 711[9]: ConstEnum(val=3) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 713[10]: PutEnum(var[0], value: enumerate)
- 716[9]: VarEnum(var[0]) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 719[10]: VarInt(var[1]) -> integer
- 722[14]: Call(size=0, to=0)
- 729[13]: Return(ret=5, value=4, discard=13) type=integer[4]:Base[0]
+ 692[5]: return-address
+ 692[9]: VarEnum(var[0]) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 695[10]: ConstEnum(val=1) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 697[11]: EqEnum(v1: enumerate, v2: enumerate) -> boolean
+ 698[10]: GotoFalseWord(jump=709, if_false: boolean)
+ 701[9]: ConstEnum(val=2) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 703[10]: PutEnum(var[0], value: enumerate)
+ 706[9]: GotoWord(jump=726)
+ 709[9]: VarInt(var[1]) -> integer
+ 712[13]: ConstInt(val=10) -> integer
+ 717[17]: GtInt(v1: integer, v2: integer) -> boolean
+ 718[10]: GotoFalseWord(jump=726, if_false: boolean)
+ 721[9]: ConstEnum(val=3) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 723[10]: PutEnum(var[0], value: enumerate)
+ 726[9]: VarEnum(var[0]) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 729[10]: VarInt(var[1]) -> integer
+ 732[14]: Call(size=0, to=0)
+ 739[13]: Return(ret=5, value=4, discard=13) type=integer[4]:Base[0]
 
 fn second(s:State, c:integer) -> integer {#1 block
-  if OpNeEnum(s, 3u8(11)) {#2 block
+  if OpNeEnum(s, 3u8(12)) {#2 block
     first(s, OpAddInt(c, 1i32));
   }#2:integer else {#3 block
     OpAddInt(1i32, c);
@@ -68,26 +68,26 @@ fn second(s:State, c:integer) -> integer {#1 block
 }#1:integer
 
 byte-code for recursion:second(s: State[0], c: integer[1]) -> integer
- 735[5]: return-address
- 735[9]: VarEnum(var[0]) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 738[10]: ConstEnum(val=3) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 740[11]: NeEnum(v1: enumerate, v2: enumerate) -> boolean
- 741[10]: GotoFalseWord(jump=766, if_false: boolean)
- 744[9]: VarEnum(var[0]) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 747[10]: VarInt(var[1]) -> integer
- 750[14]: ConstInt(val=1) -> integer
- 755[18]: AddInt(v1: integer, v2: integer) -> integer
- 756[14]: Call(size=0, to=682)
- 763[13]: GotoWord(jump=775)
- 766[9]: ConstInt(val=1) -> integer
- 771[13]: VarInt(var[1]) -> integer
- 774[17]: AddInt(v1: integer, v2: integer) -> integer
- 775[13]: Return(ret=5, value=4, discard=13) type=integer[4]:Base[0]
+ 745[5]: return-address
+ 745[9]: VarEnum(var[0]) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 748[10]: ConstEnum(val=3) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 750[11]: NeEnum(v1: enumerate, v2: enumerate) -> boolean
+ 751[10]: GotoFalseWord(jump=776, if_false: boolean)
+ 754[9]: VarEnum(var[0]) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 757[10]: VarInt(var[1]) -> integer
+ 760[14]: ConstInt(val=1) -> integer
+ 765[18]: AddInt(v1: integer, v2: integer) -> integer
+ 766[14]: Call(size=0, to=692)
+ 773[13]: GotoWord(jump=785)
+ 776[9]: ConstInt(val=1) -> integer
+ 781[13]: VarInt(var[1]) -> integer
+ 784[17]: AddInt(v1: integer, v2: integer) -> integer
+ 785[13]: Return(ret=5, value=4, discard=13) type=integer[4]:Base[0]
 
 fn test() {#1 block
   __work_1:text = "";
   test_value:integer = {#2 block
-    first(1u8(11), 0i32);
+    first(1u8(12), 0i32);
   }#2:integer;
   if OpEqInt(test_value, 12i32) null else OpPanic({#3 formatting string
     __work_1:text = "Test failed ";
@@ -98,311 +98,311 @@ fn test() {#1 block
 }#1
 
 byte-code for recursion:test()
- 781[0]: return-address
- 781[4]: Text()
- 782[28]: ConstEnum(val=1) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[11]
- 784[29]: ConstInt(val=0) -> integer
- 789[33]: Call(size=0, to=682)
- 796[32]: VarInt(var[28]) -> integer
- 799[36]: ConstInt(val=12) -> integer
- 804[40]: EqInt(v1: integer, v2: integer) -> boolean
- 805[33]: GotoFalseWord(jump=811, if_false: boolean)
- 808[32]: GotoWord(jump=861)
- 811[32]: ClearText(var[4])
- 814[32]: ConstText(_value="Test failed ") -> text
- 828[48]: AppendText(var[4], v1: text)
- 831[32]: VarInt(var[28]) -> integer
- 834[36]: ConstInt(val=0) -> integer
- 839[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 846[32]: ConstText(_value=" != 12") -> text
- 854[48]: AppendText(var[4], v1: text)
- 857[32]: VarText(var[4]) -> text
- 860[48]: Panic(message: text)
- 861[32]: Return(ret=0, value=0, discard=32)
+ 791[0]: return-address
+ 791[4]: Text()
+ 792[28]: ConstEnum(val=1) -> enumerate type=State[1]:Enum(["Start", "Ongoing", "Halt"])[12]
+ 794[29]: ConstInt(val=0) -> integer
+ 799[33]: Call(size=0, to=692)
+ 806[32]: VarInt(var[28]) -> integer
+ 809[36]: ConstInt(val=12) -> integer
+ 814[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 815[33]: GotoFalseWord(jump=821, if_false: boolean)
+ 818[32]: GotoWord(jump=871)
+ 821[32]: ClearText(var[4])
+ 824[32]: ConstText(_value="Test failed ") -> text
+ 838[48]: AppendText(var[4], v1: text)
+ 841[32]: VarInt(var[28]) -> integer
+ 844[36]: ConstInt(val=0) -> integer
+ 849[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 856[32]: ConstText(_value=" != 12") -> text
+ 864[48]: AppendText(var[4], v1: text)
+ 867[32]: VarText(var[4]) -> text
+ 870[48]: Panic(message: text)
+ 871[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-  781:[8] Text()
-  782:[32] ConstEnum(val=1) -> Start(1)[32]
-  784:[33] ConstInt(val=0) -> 0[33]
-  789:[37] Call(size=0, to=682)
-  682:[41] VarEnum(var[32]) -> Start(1)[41]
-  685:[42] ConstEnum(val=1) -> Start(1)[42]
-  687:[43] EqEnum(v1=1[41], v2=1[42]) -> true[41]
-  688:[42] GotoFalseWord(jump=699, if_false=true[41])
-  691:[41] ConstEnum(val=2) -> Ongoing(2)[41]
-  693:[42] PutEnum(var[32], value=2[41])
-  696:[41] GotoWord(jump=716)
-  716:[41] VarEnum(var[32]) -> Ongoing(2)[41]
-  719:[42] VarInt(var[33]) -> 0[42]
-  722:[46] Call(size=0, to=735)
-  735:[50] VarEnum(var[41]) -> Ongoing(2)[50]
-  738:[51] ConstEnum(val=3) -> Halt(3)[51]
-  740:[52] NeEnum(v1=2[50], v2=3[51]) -> true[50]
-  741:[51] GotoFalseWord(jump=766, if_false=true[50])
-  744:[50] VarEnum(var[41]) -> Ongoing(2)[50]
-  747:[51] VarInt(var[42]) -> 0[51]
-  750:[55] ConstInt(val=1) -> 1[55]
-  755:[59] AddInt(v1=0[51], v2=1[55]) -> 1[51]
-  756:[55] Call(size=0, to=682)
-  682:[59] VarEnum(var[50]) -> Ongoing(2)[59]
-  685:[60] ConstEnum(val=1) -> Start(1)[60]
-  687:[61] EqEnum(v1=2[59], v2=1[60]) -> false[59]
-  688:[60] GotoFalseWord(jump=699, if_false=false[59])
-  699:[59] VarInt(var[51]) -> 1[59]
-  702:[63] ConstInt(val=10) -> 10[63]
-  707:[67] GtInt(v1=1[59], v2=10[63]) -> false[59]
-  708:[60] GotoFalseWord(jump=716, if_false=false[59])
-  716:[59] VarEnum(var[50]) -> Ongoing(2)[59]
-  719:[60] VarInt(var[51]) -> 1[60]
-  722:[64] Call(size=0, to=735)
-  735:[68] VarEnum(var[59]) -> Ongoing(2)[68]
-  738:[69] ConstEnum(val=3) -> Halt(3)[69]
-  740:[70] NeEnum(v1=2[68], v2=3[69]) -> true[68]
-  741:[69] GotoFalseWord(jump=766, if_false=true[68])
-  744:[68] VarEnum(var[59]) -> Ongoing(2)[68]
-  747:[69] VarInt(var[60]) -> 1[69]
-  750:[73] ConstInt(val=1) -> 1[73]
-  755:[77] AddInt(v1=1[69], v2=1[73]) -> 2[69]
-  756:[73] Call(size=0, to=682)
-  682:[77] VarEnum(var[68]) -> Ongoing(2)[77]
-  685:[78] ConstEnum(val=1) -> Start(1)[78]
-  687:[79] EqEnum(v1=2[77], v2=1[78]) -> false[77]
-  688:[78] GotoFalseWord(jump=699, if_false=false[77])
-  699:[77] VarInt(var[69]) -> 2[77]
-  702:[81] ConstInt(val=10) -> 10[81]
-  707:[85] GtInt(v1=2[77], v2=10[81]) -> false[77]
-  708:[78] GotoFalseWord(jump=716, if_false=false[77])
-  716:[77] VarEnum(var[68]) -> Ongoing(2)[77]
-  719:[78] VarInt(var[69]) -> 2[78]
-  722:[82] Call(size=0, to=735)
-  735:[86] VarEnum(var[77]) -> Ongoing(2)[86]
-  738:[87] ConstEnum(val=3) -> Halt(3)[87]
-  740:[88] NeEnum(v1=2[86], v2=3[87]) -> true[86]
-  741:[87] GotoFalseWord(jump=766, if_false=true[86])
-  744:[86] VarEnum(var[77]) -> Ongoing(2)[86]
-  747:[87] VarInt(var[78]) -> 2[87]
-  750:[91] ConstInt(val=1) -> 1[91]
-  755:[95] AddInt(v1=2[87], v2=1[91]) -> 3[87]
-  756:[91] Call(size=0, to=682)
-  682:[95] VarEnum(var[86]) -> Ongoing(2)[95]
-  685:[96] ConstEnum(val=1) -> Start(1)[96]
-  687:[97] EqEnum(v1=2[95], v2=1[96]) -> false[95]
-  688:[96] GotoFalseWord(jump=699, if_false=false[95])
-  699:[95] VarInt(var[87]) -> 3[95]
-  702:[99] ConstInt(val=10) -> 10[99]
-  707:[103] GtInt(v1=3[95], v2=10[99]) -> false[95]
-  708:[96] GotoFalseWord(jump=716, if_false=false[95])
-  716:[95] VarEnum(var[86]) -> Ongoing(2)[95]
-  719:[96] VarInt(var[87]) -> 3[96]
-  722:[100] Call(size=0, to=735)
-  735:[104] VarEnum(var[95]) -> Ongoing(2)[104]
-  738:[105] ConstEnum(val=3) -> Halt(3)[105]
-  740:[106] NeEnum(v1=2[104], v2=3[105]) -> true[104]
-  741:[105] GotoFalseWord(jump=766, if_false=true[104])
-  744:[104] VarEnum(var[95]) -> Ongoing(2)[104]
-  747:[105] VarInt(var[96]) -> 3[105]
-  750:[109] ConstInt(val=1) -> 1[109]
-  755:[113] AddInt(v1=3[105], v2=1[109]) -> 4[105]
-  756:[109] Call(size=0, to=682)
-  682:[113] VarEnum(var[104]) -> Ongoing(2)[113]
-  685:[114] ConstEnum(val=1) -> Start(1)[114]
-  687:[115] EqEnum(v1=2[113], v2=1[114]) -> false[113]
-  688:[114] GotoFalseWord(jump=699, if_false=false[113])
-  699:[113] VarInt(var[105]) -> 4[113]
-  702:[117] ConstInt(val=10) -> 10[117]
-  707:[121] GtInt(v1=4[113], v2=10[117]) -> false[113]
-  708:[114] GotoFalseWord(jump=716, if_false=false[113])
-  716:[113] VarEnum(var[104]) -> Ongoing(2)[113]
-  719:[114] VarInt(var[105]) -> 4[114]
-  722:[118] Call(size=0, to=735)
-  735:[122] VarEnum(var[113]) -> Ongoing(2)[122]
-  738:[123] ConstEnum(val=3) -> Halt(3)[123]
-  740:[124] NeEnum(v1=2[122], v2=3[123]) -> true[122]
-  741:[123] GotoFalseWord(jump=766, if_false=true[122])
-  744:[122] VarEnum(var[113]) -> Ongoing(2)[122]
-  747:[123] VarInt(var[114]) -> 4[123]
-  750:[127] ConstInt(val=1) -> 1[127]
-  755:[131] AddInt(v1=4[123], v2=1[127]) -> 5[123]
-  756:[127] Call(size=0, to=682)
-  682:[131] VarEnum(var[122]) -> Ongoing(2)[131]
-  685:[132] ConstEnum(val=1) -> Start(1)[132]
-  687:[133] EqEnum(v1=2[131], v2=1[132]) -> false[131]
-  688:[132] GotoFalseWord(jump=699, if_false=false[131])
-  699:[131] VarInt(var[123]) -> 5[131]
-  702:[135] ConstInt(val=10) -> 10[135]
-  707:[139] GtInt(v1=5[131], v2=10[135]) -> false[131]
-  708:[132] GotoFalseWord(jump=716, if_false=false[131])
-  716:[131] VarEnum(var[122]) -> Ongoing(2)[131]
-  719:[132] VarInt(var[123]) -> 5[132]
-  722:[136] Call(size=0, to=735)
-  735:[140] VarEnum(var[131]) -> Ongoing(2)[140]
-  738:[141] ConstEnum(val=3) -> Halt(3)[141]
-  740:[142] NeEnum(v1=2[140], v2=3[141]) -> true[140]
-  741:[141] GotoFalseWord(jump=766, if_false=true[140])
-  744:[140] VarEnum(var[131]) -> Ongoing(2)[140]
-  747:[141] VarInt(var[132]) -> 5[141]
-  750:[145] ConstInt(val=1) -> 1[145]
-  755:[149] AddInt(v1=5[141], v2=1[145]) -> 6[141]
-  756:[145] Call(size=0, to=682)
-  682:[149] VarEnum(var[140]) -> Ongoing(2)[149]
-  685:[150] ConstEnum(val=1) -> Start(1)[150]
-  687:[151] EqEnum(v1=2[149], v2=1[150]) -> false[149]
-  688:[150] GotoFalseWord(jump=699, if_false=false[149])
-  699:[149] VarInt(var[141]) -> 6[149]
-  702:[153] ConstInt(val=10) -> 10[153]
-  707:[157] GtInt(v1=6[149], v2=10[153]) -> false[149]
-  708:[150] GotoFalseWord(jump=716, if_false=false[149])
-  716:[149] VarEnum(var[140]) -> Ongoing(2)[149]
-  719:[150] VarInt(var[141]) -> 6[150]
-  722:[154] Call(size=0, to=735)
-  735:[158] VarEnum(var[149]) -> Ongoing(2)[158]
-  738:[159] ConstEnum(val=3) -> Halt(3)[159]
-  740:[160] NeEnum(v1=2[158], v2=3[159]) -> true[158]
-  741:[159] GotoFalseWord(jump=766, if_false=true[158])
-  744:[158] VarEnum(var[149]) -> Ongoing(2)[158]
-  747:[159] VarInt(var[150]) -> 6[159]
-  750:[163] ConstInt(val=1) -> 1[163]
-  755:[167] AddInt(v1=6[159], v2=1[163]) -> 7[159]
-  756:[163] Call(size=0, to=682)
-  682:[167] VarEnum(var[158]) -> Ongoing(2)[167]
-  685:[168] ConstEnum(val=1) -> Start(1)[168]
-  687:[169] EqEnum(v1=2[167], v2=1[168]) -> false[167]
-  688:[168] GotoFalseWord(jump=699, if_false=false[167])
-  699:[167] VarInt(var[159]) -> 7[167]
-  702:[171] ConstInt(val=10) -> 10[171]
-  707:[175] GtInt(v1=7[167], v2=10[171]) -> false[167]
-  708:[168] GotoFalseWord(jump=716, if_false=false[167])
-  716:[167] VarEnum(var[158]) -> Ongoing(2)[167]
-  719:[168] VarInt(var[159]) -> 7[168]
-  722:[172] Call(size=0, to=735)
-  735:[176] VarEnum(var[167]) -> Ongoing(2)[176]
-  738:[177] ConstEnum(val=3) -> Halt(3)[177]
-  740:[178] NeEnum(v1=2[176], v2=3[177]) -> true[176]
-  741:[177] GotoFalseWord(jump=766, if_false=true[176])
-  744:[176] VarEnum(var[167]) -> Ongoing(2)[176]
-  747:[177] VarInt(var[168]) -> 7[177]
-  750:[181] ConstInt(val=1) -> 1[181]
-  755:[185] AddInt(v1=7[177], v2=1[181]) -> 8[177]
-  756:[181] Call(size=0, to=682)
-  682:[185] VarEnum(var[176]) -> Ongoing(2)[185]
-  685:[186] ConstEnum(val=1) -> Start(1)[186]
-  687:[187] EqEnum(v1=2[185], v2=1[186]) -> false[185]
-  688:[186] GotoFalseWord(jump=699, if_false=false[185])
-  699:[185] VarInt(var[177]) -> 8[185]
-  702:[189] ConstInt(val=10) -> 10[189]
-  707:[193] GtInt(v1=8[185], v2=10[189]) -> false[185]
-  708:[186] GotoFalseWord(jump=716, if_false=false[185])
-  716:[185] VarEnum(var[176]) -> Ongoing(2)[185]
-  719:[186] VarInt(var[177]) -> 8[186]
-  722:[190] Call(size=0, to=735)
-  735:[194] VarEnum(var[185]) -> Ongoing(2)[194]
-  738:[195] ConstEnum(val=3) -> Halt(3)[195]
-  740:[196] NeEnum(v1=2[194], v2=3[195]) -> true[194]
-  741:[195] GotoFalseWord(jump=766, if_false=true[194])
-  744:[194] VarEnum(var[185]) -> Ongoing(2)[194]
-  747:[195] VarInt(var[186]) -> 8[195]
-  750:[199] ConstInt(val=1) -> 1[199]
-  755:[203] AddInt(v1=8[195], v2=1[199]) -> 9[195]
-  756:[199] Call(size=0, to=682)
-  682:[203] VarEnum(var[194]) -> Ongoing(2)[203]
-  685:[204] ConstEnum(val=1) -> Start(1)[204]
-  687:[205] EqEnum(v1=2[203], v2=1[204]) -> false[203]
-  688:[204] GotoFalseWord(jump=699, if_false=false[203])
-  699:[203] VarInt(var[195]) -> 9[203]
-  702:[207] ConstInt(val=10) -> 10[207]
-  707:[211] GtInt(v1=9[203], v2=10[207]) -> false[203]
-  708:[204] GotoFalseWord(jump=716, if_false=false[203])
-  716:[203] VarEnum(var[194]) -> Ongoing(2)[203]
-  719:[204] VarInt(var[195]) -> 9[204]
-  722:[208] Call(size=0, to=735)
-  735:[212] VarEnum(var[203]) -> Ongoing(2)[212]
-  738:[213] ConstEnum(val=3) -> Halt(3)[213]
-  740:[214] NeEnum(v1=2[212], v2=3[213]) -> true[212]
-  741:[213] GotoFalseWord(jump=766, if_false=true[212])
-  744:[212] VarEnum(var[203]) -> Ongoing(2)[212]
-  747:[213] VarInt(var[204]) -> 9[213]
-  750:[217] ConstInt(val=1) -> 1[217]
-  755:[221] AddInt(v1=9[213], v2=1[217]) -> 10[213]
-  756:[217] Call(size=0, to=682)
-  682:[221] VarEnum(var[212]) -> Ongoing(2)[221]
-  685:[222] ConstEnum(val=1) -> Start(1)[222]
-  687:[223] EqEnum(v1=2[221], v2=1[222]) -> false[221]
-  688:[222] GotoFalseWord(jump=699, if_false=false[221])
-  699:[221] VarInt(var[213]) -> 10[221]
-  702:[225] ConstInt(val=10) -> 10[225]
-  707:[229] GtInt(v1=10[221], v2=10[225]) -> false[221]
-  708:[222] GotoFalseWord(jump=716, if_false=false[221])
-  716:[221] VarEnum(var[212]) -> Ongoing(2)[221]
-  719:[222] VarInt(var[213]) -> 10[222]
-  722:[226] Call(size=0, to=735)
-  735:[230] VarEnum(var[221]) -> Ongoing(2)[230]
-  738:[231] ConstEnum(val=3) -> Halt(3)[231]
-  740:[232] NeEnum(v1=2[230], v2=3[231]) -> true[230]
-  741:[231] GotoFalseWord(jump=766, if_false=true[230])
-  744:[230] VarEnum(var[221]) -> Ongoing(2)[230]
-  747:[231] VarInt(var[222]) -> 10[231]
-  750:[235] ConstInt(val=1) -> 1[235]
-  755:[239] AddInt(v1=10[231], v2=1[235]) -> 11[231]
-  756:[235] Call(size=0, to=682)
-  682:[239] VarEnum(var[230]) -> Ongoing(2)[239]
-  685:[240] ConstEnum(val=1) -> Start(1)[240]
-  687:[241] EqEnum(v1=2[239], v2=1[240]) -> false[239]
-  688:[240] GotoFalseWord(jump=699, if_false=false[239])
-  699:[239] VarInt(var[231]) -> 11[239]
-  702:[243] ConstInt(val=10) -> 10[243]
-  707:[247] GtInt(v1=11[239], v2=10[243]) -> true[239]
-  708:[240] GotoFalseWord(jump=716, if_false=true[239])
-  711:[239] ConstEnum(val=3) -> Halt(3)[239]
-  713:[240] PutEnum(var[230], value=3[239])
-  716:[239] VarEnum(var[230]) -> Halt(3)[239]
-  719:[240] VarInt(var[231]) -> 11[240]
-  722:[244] Call(size=0, to=735)
-  735:[248] VarEnum(var[239]) -> Halt(3)[248]
-  738:[249] ConstEnum(val=3) -> Halt(3)[249]
-  740:[250] NeEnum(v1=3[248], v2=3[249]) -> false[248]
-  741:[249] GotoFalseWord(jump=766, if_false=false[248])
-  766:[248] ConstInt(val=1) -> 1[248]
-  771:[252] VarInt(var[240]) -> 11[252]
-  774:[256] AddInt(v1=1[248], v2=11[252]) -> 12[248]
-  775:[252] Return(ret=729[244], value=4, discard=13) -> 12[239]
-  729:[243] Return(ret=763[235], value=4, discard=13) -> 12[230]
-  763:[234] GotoWord(jump=775)
-  775:[234] Return(ret=729[226], value=4, discard=13) -> 12[221]
-  729:[225] Return(ret=763[217], value=4, discard=13) -> 12[212]
-  763:[216] GotoWord(jump=775)
-  775:[216] Return(ret=729[208], value=4, discard=13) -> 12[203]
-  729:[207] Return(ret=763[199], value=4, discard=13) -> 12[194]
-  763:[198] GotoWord(jump=775)
-  775:[198] Return(ret=729[190], value=4, discard=13) -> 12[185]
-  729:[189] Return(ret=763[181], value=4, discard=13) -> 12[176]
-  763:[180] GotoWord(jump=775)
-  775:[180] Return(ret=729[172], value=4, discard=13) -> 12[167]
-  729:[171] Return(ret=763[163], value=4, discard=13) -> 12[158]
-  763:[162] GotoWord(jump=775)
-  775:[162] Return(ret=729[154], value=4, discard=13) -> 12[149]
-  729:[153] Return(ret=763[145], value=4, discard=13) -> 12[140]
-  763:[144] GotoWord(jump=775)
-  775:[144] Return(ret=729[136], value=4, discard=13) -> 12[131]
-  729:[135] Return(ret=763[127], value=4, discard=13) -> 12[122]
-  763:[126] GotoWord(jump=775)
-  775:[126] Return(ret=729[118], value=4, discard=13) -> 12[113]
-  729:[117] Return(ret=763[109], value=4, discard=13) -> 12[104]
-  763:[108] GotoWord(jump=775)
-  775:[108] Return(ret=729[100], value=4, discard=13) -> 12[95]
-  729:[99] Return(ret=763[91], value=4, discard=13) -> 12[86]
-  763:[90] GotoWord(jump=775)
-  775:[90] Return(ret=729[82], value=4, discard=13) -> 12[77]
-  729:[81] Return(ret=763[73], value=4, discard=13) -> 12[68]
-  763:[72] GotoWord(jump=775)
-  775:[72] Return(ret=729[64], value=4, discard=13) -> 12[59]
-  729:[63] Return(ret=763[55], value=4, discard=13) -> 12[50]
-  763:[54] GotoWord(jump=775)
-  775:[54] Return(ret=729[46], value=4, discard=13) -> 12[41]
-  729:[45] Return(ret=796[37], value=4, discard=13) -> 12[32]
-  796:[36] VarInt(var[32]) -> 12[36]
-  799:[40] ConstInt(val=12) -> 12[40]
-  804:[44] EqInt(v1=12[36], v2=12[40]) -> true[36]
-  805:[37] GotoFalseWord(jump=811, if_false=true[36])
-  808:[36] GotoWord(jump=861)
-  861:[36] Return(ret=4294967295[4], value=0, discard=32)
+  791:[8] Text()
+  792:[32] ConstEnum(val=1) -> Start(1)[32]
+  794:[33] ConstInt(val=0) -> 0[33]
+  799:[37] Call(size=0, to=692)
+  692:[41] VarEnum(var[32]) -> Start(1)[41]
+  695:[42] ConstEnum(val=1) -> Start(1)[42]
+  697:[43] EqEnum(v1=1[41], v2=1[42]) -> true[41]
+  698:[42] GotoFalseWord(jump=709, if_false=true[41])
+  701:[41] ConstEnum(val=2) -> Ongoing(2)[41]
+  703:[42] PutEnum(var[32], value=2[41])
+  706:[41] GotoWord(jump=726)
+  726:[41] VarEnum(var[32]) -> Ongoing(2)[41]
+  729:[42] VarInt(var[33]) -> 0[42]
+  732:[46] Call(size=0, to=745)
+  745:[50] VarEnum(var[41]) -> Ongoing(2)[50]
+  748:[51] ConstEnum(val=3) -> Halt(3)[51]
+  750:[52] NeEnum(v1=2[50], v2=3[51]) -> true[50]
+  751:[51] GotoFalseWord(jump=776, if_false=true[50])
+  754:[50] VarEnum(var[41]) -> Ongoing(2)[50]
+  757:[51] VarInt(var[42]) -> 0[51]
+  760:[55] ConstInt(val=1) -> 1[55]
+  765:[59] AddInt(v1=0[51], v2=1[55]) -> 1[51]
+  766:[55] Call(size=0, to=692)
+  692:[59] VarEnum(var[50]) -> Ongoing(2)[59]
+  695:[60] ConstEnum(val=1) -> Start(1)[60]
+  697:[61] EqEnum(v1=2[59], v2=1[60]) -> false[59]
+  698:[60] GotoFalseWord(jump=709, if_false=false[59])
+  709:[59] VarInt(var[51]) -> 1[59]
+  712:[63] ConstInt(val=10) -> 10[63]
+  717:[67] GtInt(v1=1[59], v2=10[63]) -> false[59]
+  718:[60] GotoFalseWord(jump=726, if_false=false[59])
+  726:[59] VarEnum(var[50]) -> Ongoing(2)[59]
+  729:[60] VarInt(var[51]) -> 1[60]
+  732:[64] Call(size=0, to=745)
+  745:[68] VarEnum(var[59]) -> Ongoing(2)[68]
+  748:[69] ConstEnum(val=3) -> Halt(3)[69]
+  750:[70] NeEnum(v1=2[68], v2=3[69]) -> true[68]
+  751:[69] GotoFalseWord(jump=776, if_false=true[68])
+  754:[68] VarEnum(var[59]) -> Ongoing(2)[68]
+  757:[69] VarInt(var[60]) -> 1[69]
+  760:[73] ConstInt(val=1) -> 1[73]
+  765:[77] AddInt(v1=1[69], v2=1[73]) -> 2[69]
+  766:[73] Call(size=0, to=692)
+  692:[77] VarEnum(var[68]) -> Ongoing(2)[77]
+  695:[78] ConstEnum(val=1) -> Start(1)[78]
+  697:[79] EqEnum(v1=2[77], v2=1[78]) -> false[77]
+  698:[78] GotoFalseWord(jump=709, if_false=false[77])
+  709:[77] VarInt(var[69]) -> 2[77]
+  712:[81] ConstInt(val=10) -> 10[81]
+  717:[85] GtInt(v1=2[77], v2=10[81]) -> false[77]
+  718:[78] GotoFalseWord(jump=726, if_false=false[77])
+  726:[77] VarEnum(var[68]) -> Ongoing(2)[77]
+  729:[78] VarInt(var[69]) -> 2[78]
+  732:[82] Call(size=0, to=745)
+  745:[86] VarEnum(var[77]) -> Ongoing(2)[86]
+  748:[87] ConstEnum(val=3) -> Halt(3)[87]
+  750:[88] NeEnum(v1=2[86], v2=3[87]) -> true[86]
+  751:[87] GotoFalseWord(jump=776, if_false=true[86])
+  754:[86] VarEnum(var[77]) -> Ongoing(2)[86]
+  757:[87] VarInt(var[78]) -> 2[87]
+  760:[91] ConstInt(val=1) -> 1[91]
+  765:[95] AddInt(v1=2[87], v2=1[91]) -> 3[87]
+  766:[91] Call(size=0, to=692)
+  692:[95] VarEnum(var[86]) -> Ongoing(2)[95]
+  695:[96] ConstEnum(val=1) -> Start(1)[96]
+  697:[97] EqEnum(v1=2[95], v2=1[96]) -> false[95]
+  698:[96] GotoFalseWord(jump=709, if_false=false[95])
+  709:[95] VarInt(var[87]) -> 3[95]
+  712:[99] ConstInt(val=10) -> 10[99]
+  717:[103] GtInt(v1=3[95], v2=10[99]) -> false[95]
+  718:[96] GotoFalseWord(jump=726, if_false=false[95])
+  726:[95] VarEnum(var[86]) -> Ongoing(2)[95]
+  729:[96] VarInt(var[87]) -> 3[96]
+  732:[100] Call(size=0, to=745)
+  745:[104] VarEnum(var[95]) -> Ongoing(2)[104]
+  748:[105] ConstEnum(val=3) -> Halt(3)[105]
+  750:[106] NeEnum(v1=2[104], v2=3[105]) -> true[104]
+  751:[105] GotoFalseWord(jump=776, if_false=true[104])
+  754:[104] VarEnum(var[95]) -> Ongoing(2)[104]
+  757:[105] VarInt(var[96]) -> 3[105]
+  760:[109] ConstInt(val=1) -> 1[109]
+  765:[113] AddInt(v1=3[105], v2=1[109]) -> 4[105]
+  766:[109] Call(size=0, to=692)
+  692:[113] VarEnum(var[104]) -> Ongoing(2)[113]
+  695:[114] ConstEnum(val=1) -> Start(1)[114]
+  697:[115] EqEnum(v1=2[113], v2=1[114]) -> false[113]
+  698:[114] GotoFalseWord(jump=709, if_false=false[113])
+  709:[113] VarInt(var[105]) -> 4[113]
+  712:[117] ConstInt(val=10) -> 10[117]
+  717:[121] GtInt(v1=4[113], v2=10[117]) -> false[113]
+  718:[114] GotoFalseWord(jump=726, if_false=false[113])
+  726:[113] VarEnum(var[104]) -> Ongoing(2)[113]
+  729:[114] VarInt(var[105]) -> 4[114]
+  732:[118] Call(size=0, to=745)
+  745:[122] VarEnum(var[113]) -> Ongoing(2)[122]
+  748:[123] ConstEnum(val=3) -> Halt(3)[123]
+  750:[124] NeEnum(v1=2[122], v2=3[123]) -> true[122]
+  751:[123] GotoFalseWord(jump=776, if_false=true[122])
+  754:[122] VarEnum(var[113]) -> Ongoing(2)[122]
+  757:[123] VarInt(var[114]) -> 4[123]
+  760:[127] ConstInt(val=1) -> 1[127]
+  765:[131] AddInt(v1=4[123], v2=1[127]) -> 5[123]
+  766:[127] Call(size=0, to=692)
+  692:[131] VarEnum(var[122]) -> Ongoing(2)[131]
+  695:[132] ConstEnum(val=1) -> Start(1)[132]
+  697:[133] EqEnum(v1=2[131], v2=1[132]) -> false[131]
+  698:[132] GotoFalseWord(jump=709, if_false=false[131])
+  709:[131] VarInt(var[123]) -> 5[131]
+  712:[135] ConstInt(val=10) -> 10[135]
+  717:[139] GtInt(v1=5[131], v2=10[135]) -> false[131]
+  718:[132] GotoFalseWord(jump=726, if_false=false[131])
+  726:[131] VarEnum(var[122]) -> Ongoing(2)[131]
+  729:[132] VarInt(var[123]) -> 5[132]
+  732:[136] Call(size=0, to=745)
+  745:[140] VarEnum(var[131]) -> Ongoing(2)[140]
+  748:[141] ConstEnum(val=3) -> Halt(3)[141]
+  750:[142] NeEnum(v1=2[140], v2=3[141]) -> true[140]
+  751:[141] GotoFalseWord(jump=776, if_false=true[140])
+  754:[140] VarEnum(var[131]) -> Ongoing(2)[140]
+  757:[141] VarInt(var[132]) -> 5[141]
+  760:[145] ConstInt(val=1) -> 1[145]
+  765:[149] AddInt(v1=5[141], v2=1[145]) -> 6[141]
+  766:[145] Call(size=0, to=692)
+  692:[149] VarEnum(var[140]) -> Ongoing(2)[149]
+  695:[150] ConstEnum(val=1) -> Start(1)[150]
+  697:[151] EqEnum(v1=2[149], v2=1[150]) -> false[149]
+  698:[150] GotoFalseWord(jump=709, if_false=false[149])
+  709:[149] VarInt(var[141]) -> 6[149]
+  712:[153] ConstInt(val=10) -> 10[153]
+  717:[157] GtInt(v1=6[149], v2=10[153]) -> false[149]
+  718:[150] GotoFalseWord(jump=726, if_false=false[149])
+  726:[149] VarEnum(var[140]) -> Ongoing(2)[149]
+  729:[150] VarInt(var[141]) -> 6[150]
+  732:[154] Call(size=0, to=745)
+  745:[158] VarEnum(var[149]) -> Ongoing(2)[158]
+  748:[159] ConstEnum(val=3) -> Halt(3)[159]
+  750:[160] NeEnum(v1=2[158], v2=3[159]) -> true[158]
+  751:[159] GotoFalseWord(jump=776, if_false=true[158])
+  754:[158] VarEnum(var[149]) -> Ongoing(2)[158]
+  757:[159] VarInt(var[150]) -> 6[159]
+  760:[163] ConstInt(val=1) -> 1[163]
+  765:[167] AddInt(v1=6[159], v2=1[163]) -> 7[159]
+  766:[163] Call(size=0, to=692)
+  692:[167] VarEnum(var[158]) -> Ongoing(2)[167]
+  695:[168] ConstEnum(val=1) -> Start(1)[168]
+  697:[169] EqEnum(v1=2[167], v2=1[168]) -> false[167]
+  698:[168] GotoFalseWord(jump=709, if_false=false[167])
+  709:[167] VarInt(var[159]) -> 7[167]
+  712:[171] ConstInt(val=10) -> 10[171]
+  717:[175] GtInt(v1=7[167], v2=10[171]) -> false[167]
+  718:[168] GotoFalseWord(jump=726, if_false=false[167])
+  726:[167] VarEnum(var[158]) -> Ongoing(2)[167]
+  729:[168] VarInt(var[159]) -> 7[168]
+  732:[172] Call(size=0, to=745)
+  745:[176] VarEnum(var[167]) -> Ongoing(2)[176]
+  748:[177] ConstEnum(val=3) -> Halt(3)[177]
+  750:[178] NeEnum(v1=2[176], v2=3[177]) -> true[176]
+  751:[177] GotoFalseWord(jump=776, if_false=true[176])
+  754:[176] VarEnum(var[167]) -> Ongoing(2)[176]
+  757:[177] VarInt(var[168]) -> 7[177]
+  760:[181] ConstInt(val=1) -> 1[181]
+  765:[185] AddInt(v1=7[177], v2=1[181]) -> 8[177]
+  766:[181] Call(size=0, to=692)
+  692:[185] VarEnum(var[176]) -> Ongoing(2)[185]
+  695:[186] ConstEnum(val=1) -> Start(1)[186]
+  697:[187] EqEnum(v1=2[185], v2=1[186]) -> false[185]
+  698:[186] GotoFalseWord(jump=709, if_false=false[185])
+  709:[185] VarInt(var[177]) -> 8[185]
+  712:[189] ConstInt(val=10) -> 10[189]
+  717:[193] GtInt(v1=8[185], v2=10[189]) -> false[185]
+  718:[186] GotoFalseWord(jump=726, if_false=false[185])
+  726:[185] VarEnum(var[176]) -> Ongoing(2)[185]
+  729:[186] VarInt(var[177]) -> 8[186]
+  732:[190] Call(size=0, to=745)
+  745:[194] VarEnum(var[185]) -> Ongoing(2)[194]
+  748:[195] ConstEnum(val=3) -> Halt(3)[195]
+  750:[196] NeEnum(v1=2[194], v2=3[195]) -> true[194]
+  751:[195] GotoFalseWord(jump=776, if_false=true[194])
+  754:[194] VarEnum(var[185]) -> Ongoing(2)[194]
+  757:[195] VarInt(var[186]) -> 8[195]
+  760:[199] ConstInt(val=1) -> 1[199]
+  765:[203] AddInt(v1=8[195], v2=1[199]) -> 9[195]
+  766:[199] Call(size=0, to=692)
+  692:[203] VarEnum(var[194]) -> Ongoing(2)[203]
+  695:[204] ConstEnum(val=1) -> Start(1)[204]
+  697:[205] EqEnum(v1=2[203], v2=1[204]) -> false[203]
+  698:[204] GotoFalseWord(jump=709, if_false=false[203])
+  709:[203] VarInt(var[195]) -> 9[203]
+  712:[207] ConstInt(val=10) -> 10[207]
+  717:[211] GtInt(v1=9[203], v2=10[207]) -> false[203]
+  718:[204] GotoFalseWord(jump=726, if_false=false[203])
+  726:[203] VarEnum(var[194]) -> Ongoing(2)[203]
+  729:[204] VarInt(var[195]) -> 9[204]
+  732:[208] Call(size=0, to=745)
+  745:[212] VarEnum(var[203]) -> Ongoing(2)[212]
+  748:[213] ConstEnum(val=3) -> Halt(3)[213]
+  750:[214] NeEnum(v1=2[212], v2=3[213]) -> true[212]
+  751:[213] GotoFalseWord(jump=776, if_false=true[212])
+  754:[212] VarEnum(var[203]) -> Ongoing(2)[212]
+  757:[213] VarInt(var[204]) -> 9[213]
+  760:[217] ConstInt(val=1) -> 1[217]
+  765:[221] AddInt(v1=9[213], v2=1[217]) -> 10[213]
+  766:[217] Call(size=0, to=692)
+  692:[221] VarEnum(var[212]) -> Ongoing(2)[221]
+  695:[222] ConstEnum(val=1) -> Start(1)[222]
+  697:[223] EqEnum(v1=2[221], v2=1[222]) -> false[221]
+  698:[222] GotoFalseWord(jump=709, if_false=false[221])
+  709:[221] VarInt(var[213]) -> 10[221]
+  712:[225] ConstInt(val=10) -> 10[225]
+  717:[229] GtInt(v1=10[221], v2=10[225]) -> false[221]
+  718:[222] GotoFalseWord(jump=726, if_false=false[221])
+  726:[221] VarEnum(var[212]) -> Ongoing(2)[221]
+  729:[222] VarInt(var[213]) -> 10[222]
+  732:[226] Call(size=0, to=745)
+  745:[230] VarEnum(var[221]) -> Ongoing(2)[230]
+  748:[231] ConstEnum(val=3) -> Halt(3)[231]
+  750:[232] NeEnum(v1=2[230], v2=3[231]) -> true[230]
+  751:[231] GotoFalseWord(jump=776, if_false=true[230])
+  754:[230] VarEnum(var[221]) -> Ongoing(2)[230]
+  757:[231] VarInt(var[222]) -> 10[231]
+  760:[235] ConstInt(val=1) -> 1[235]
+  765:[239] AddInt(v1=10[231], v2=1[235]) -> 11[231]
+  766:[235] Call(size=0, to=692)
+  692:[239] VarEnum(var[230]) -> Ongoing(2)[239]
+  695:[240] ConstEnum(val=1) -> Start(1)[240]
+  697:[241] EqEnum(v1=2[239], v2=1[240]) -> false[239]
+  698:[240] GotoFalseWord(jump=709, if_false=false[239])
+  709:[239] VarInt(var[231]) -> 11[239]
+  712:[243] ConstInt(val=10) -> 10[243]
+  717:[247] GtInt(v1=11[239], v2=10[243]) -> true[239]
+  718:[240] GotoFalseWord(jump=726, if_false=true[239])
+  721:[239] ConstEnum(val=3) -> Halt(3)[239]
+  723:[240] PutEnum(var[230], value=3[239])
+  726:[239] VarEnum(var[230]) -> Halt(3)[239]
+  729:[240] VarInt(var[231]) -> 11[240]
+  732:[244] Call(size=0, to=745)
+  745:[248] VarEnum(var[239]) -> Halt(3)[248]
+  748:[249] ConstEnum(val=3) -> Halt(3)[249]
+  750:[250] NeEnum(v1=3[248], v2=3[249]) -> false[248]
+  751:[249] GotoFalseWord(jump=776, if_false=false[248])
+  776:[248] ConstInt(val=1) -> 1[248]
+  781:[252] VarInt(var[240]) -> 11[252]
+  784:[256] AddInt(v1=1[248], v2=11[252]) -> 12[248]
+  785:[252] Return(ret=739[244], value=4, discard=13) -> 12[239]
+  739:[243] Return(ret=773[235], value=4, discard=13) -> 12[230]
+  773:[234] GotoWord(jump=785)
+  785:[234] Return(ret=739[226], value=4, discard=13) -> 12[221]
+  739:[225] Return(ret=773[217], value=4, discard=13) -> 12[212]
+  773:[216] GotoWord(jump=785)
+  785:[216] Return(ret=739[208], value=4, discard=13) -> 12[203]
+  739:[207] Return(ret=773[199], value=4, discard=13) -> 12[194]
+  773:[198] GotoWord(jump=785)
+  785:[198] Return(ret=739[190], value=4, discard=13) -> 12[185]
+  739:[189] Return(ret=773[181], value=4, discard=13) -> 12[176]
+  773:[180] GotoWord(jump=785)
+  785:[180] Return(ret=739[172], value=4, discard=13) -> 12[167]
+  739:[171] Return(ret=773[163], value=4, discard=13) -> 12[158]
+  773:[162] GotoWord(jump=785)
+  785:[162] Return(ret=739[154], value=4, discard=13) -> 12[149]
+  739:[153] Return(ret=773[145], value=4, discard=13) -> 12[140]
+  773:[144] GotoWord(jump=785)
+  785:[144] Return(ret=739[136], value=4, discard=13) -> 12[131]
+  739:[135] Return(ret=773[127], value=4, discard=13) -> 12[122]
+  773:[126] GotoWord(jump=785)
+  785:[126] Return(ret=739[118], value=4, discard=13) -> 12[113]
+  739:[117] Return(ret=773[109], value=4, discard=13) -> 12[104]
+  773:[108] GotoWord(jump=785)
+  785:[108] Return(ret=739[100], value=4, discard=13) -> 12[95]
+  739:[99] Return(ret=773[91], value=4, discard=13) -> 12[86]
+  773:[90] GotoWord(jump=785)
+  785:[90] Return(ret=739[82], value=4, discard=13) -> 12[77]
+  739:[81] Return(ret=773[73], value=4, discard=13) -> 12[68]
+  773:[72] GotoWord(jump=785)
+  785:[72] Return(ret=739[64], value=4, discard=13) -> 12[59]
+  739:[63] Return(ret=773[55], value=4, discard=13) -> 12[50]
+  773:[54] GotoWord(jump=785)
+  785:[54] Return(ret=739[46], value=4, discard=13) -> 12[41]
+  739:[45] Return(ret=806[37], value=4, discard=13) -> 12[32]
+  806:[36] VarInt(var[32]) -> 12[36]
+  809:[40] ConstInt(val=12) -> 12[40]
+  814:[44] EqInt(v1=12[36], v2=12[40]) -> true[36]
+  815:[37] GotoFalseWord(jump=821, if_false=true[36])
+  818:[36] GotoWord(jump=871)
+  871:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

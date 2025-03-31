@@ -15,18 +15,15 @@ use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use crate::keys::Key;
 use crate::lexer::{Lexer, Position};
 use crate::variables::Function;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Result, Write};
 
-lazy_static::lazy_static! {
-    static ref OPERATORS: Vec<&'static str> = vec!(
-        "OpAdd", "OpMin", "OpMul", "OpDiv", "OpRem", "OpPow",
-        "OpNot", "OpLand", "OpLor", "OpEor", "OpSLeft", "OpSRight",
-        "OpEq", "OpNe", "OpLt", "OpLe", "OpGt", "OpGe",
-        "OpAppend", "OpConv", "OpCast",
-    );
-}
+static OPERATORS: &[&str] = &[
+    "OpAdd", "OpMin", "OpMul", "OpDiv", "OpRem", "OpPow", "OpNot", "OpLand", "OpLor", "OpEor",
+    "OpSLeft", "OpSRight", "OpEq", "OpNe", "OpLt", "OpLe", "OpGt", "OpGe", "OpAppend", "OpConv",
+    "OpCast",
+];
 
 pub static I32: Type = Type::Integer(i32::MIN + 1, i32::MAX as u32);
 
@@ -188,7 +185,7 @@ impl Type {
             (Type::Sorted(r, rf, _), Type::Sorted(o, of, _))
             | (Type::Index(r, rf, _), Type::Index(o, of, _)) => return r == o && rf == of,
             _ => {}
-        };
+        }
         self == other
             || (matches!(self, Type::Integer(_, _)) && matches!(other, Type::Integer(_, _)))
             || (matches!(self, Type::Text(_)) && matches!(other, Type::Text(_)))
@@ -235,16 +232,12 @@ impl Type {
     pub fn show(&self, data: &Data, vars: &Function) -> String {
         match self {
             Type::Enum(t) => data.def(*t).name.clone(),
-            Type::Reference(t, link) if link.is_empty() => data.def(*t).name.clone(),
-            Type::Reference(t, link) => {
-                let mut ls = Vec::new();
-                for d in link {
-                    ls.push(vars.name(*d));
-                }
-                format!("{}{ls:?}", data.def(*t).name)
+            Type::Reference(t, dep) if dep.is_empty() => data.def(*t).name.clone(),
+            Type::Reference(t, dep) => {
+                format!("{}{:?}", data.def(*t).name, Self::dep_var(dep, vars))
             }
-            Type::Vector(tp, link) if matches!(tp as &Type, Type::Unknown(_)) => {
-                format!("vector#{link:?}")
+            Type::Vector(tp, dep) if matches!(tp as &Type, Type::Unknown(_)) => {
+                format!("vector{:?}", Self::dep_var(dep, vars))
             }
             Type::Vector(tp, link) => format!("vector<{}>#{link:?}", tp.show(data, vars)),
             Type::Sorted(tp, key, link) => {
@@ -257,15 +250,46 @@ impl Type {
             }
             Type::Routine(tp) => format!("fn {}[{tp}]", data.def(*tp).name),
             Type::Text(dep) if dep.is_empty() => "text".to_string(),
-            Type::Text(dep) => {
-                let mut ls = Vec::new();
-                for d in dep {
-                    ls.push(vars.name(*d));
-                }
-                format!("text{ls:?}")
-            }
+            Type::Text(dep) => format!("text{:?}", Self::dep_var(dep, vars)),
             _ => self.to_string(),
         }
+    }
+
+    fn dep_var(dep: &Vec<u16>, vars: &Function) -> Vec<String> {
+        let mut ls = BTreeSet::new();
+        for d in dep {
+            ls.insert(vars.name(*d).to_string());
+        }
+        let mut res = Vec::new();
+        for v in ls {
+            res.push(v);
+        }
+        res
+    }
+
+    #[must_use]
+    pub fn argument(&self, data: &Data, d_nr: u32) -> String {
+        match self {
+            Type::Reference(t, link) if link.is_empty() => data.def(*t).name.clone(),
+            Type::Reference(t, link) => {
+                format!("{}{:?}", data.def(*t).name, Self::dep_att(data, d_nr, link))
+            }
+            Type::Text(dep) if dep.is_empty() => "text".to_string(),
+            Type::Text(dep) => format!("text{:?}", Self::dep_att(data, d_nr, dep)),
+            _ => self.show(data, &Function::new()),
+        }
+    }
+
+    fn dep_att(data: &Data, d_nr: u32, dep: &Vec<u16>) -> Vec<String> {
+        let mut ls = BTreeSet::new();
+        for d in dep {
+            ls.insert(data.def(d_nr).attributes[*d as usize].name.clone());
+        }
+        let mut res = Vec::new();
+        for v in ls {
+            res.push(v);
+        }
+        res
     }
 }
 
@@ -398,7 +422,7 @@ impl Definition {
     }
 
     #[must_use]
-    pub fn header(&self, data: &Data, vars: &Function) -> String {
+    pub fn header(&self, data: &Data, d_nr: u32) -> String {
         let mut res = "fn ".to_string();
         res += &self.name;
         res += "(";
@@ -408,13 +432,13 @@ impl Definition {
             }
             res += &a.name;
             res += ":";
-            res += &a.typedef.show(data, vars);
+            res += &a.typedef.argument(data, d_nr);
         }
         res += ")";
         if self.returned != Type::Void {
             res += " -> ";
-            res += &self.returned.show(data, vars);
-        };
+            res += &self.returned.argument(data, d_nr);
+        }
         res
     }
 }
@@ -834,7 +858,7 @@ impl Data {
             self.set_attr_value(d_nr, a_nr, a.default.clone());
         }
         if self.def(d_nr).is_operator() {
-            for op in OPERATORS.iter() {
+            for op in OPERATORS {
                 if self.def(d_nr).name.starts_with(op) {
                     if !self.possible.contains_key(*op) {
                         self.possible.insert((*op).to_string(), Vec::new());
@@ -879,7 +903,7 @@ impl Data {
             v_nr = self.add_def(&vec_name, pos, DefType::Vector);
             self.definitions[v_nr as usize].parent = d_nr;
             self.definitions[v_nr as usize].known_type = vec_tp;
-        };
+        }
         v_nr
     }
 

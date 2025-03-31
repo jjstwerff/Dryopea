@@ -1,0 +1,173 @@
+fn res() -> integer { a = 0; for _t in 1..5 { b = "123"; a += b as integer; if a > 200 { return a; }}; 0}
+
+pub fn test() {
+    test_value = {res()};
+    assert(
+        test_value == 246,
+        "Test failed {test_value} != 246"
+    );
+}
+fn res() -> integer {#1 block
+  a:integer = 0i32;
+  {#2 for
+    _t#index:integer = OpConvIntFromNull();
+    loop {#3 for loop
+      _t:integer = {#4 for next
+        _t#index:integer = if OpNot(OpConvBoolFromInt(_t#index)) 1i32 else OpAddInt(_t#index, 1i32);
+        if OpGeInt(_t#index, 5i32) break(0) else null;
+        _t#index;
+      }#4:integer;
+      {#5 block
+        b:text = "123";
+        a:integer = OpAddInt(a, OpCastIntFromText(b));
+        if OpGtInt(a, 200i32) {#6 block
+          return a;
+        }#6 else null;
+      }#5;
+    }#3;
+  }#2;
+  0i32;
+}#1:integer
+
+byte-code for return_clear:res() -> integer
+ 692[0]: return-address
+ 692[4]: ConstInt(val=0) -> integer
+ 697[8]: ConvIntFromNull() -> integer
+ 698[12]: VarInt(var[8]) -> integer
+ 701[16]: ConvBoolFromInt(v1: integer) -> boolean
+ 702[13]: Not(v1: boolean) -> boolean
+ 703[13]: GotoFalseWord(jump=714, if_false: boolean)
+ 706[12]: ConstInt(val=1) -> integer
+ 711[16]: GotoWord(jump=723)
+ 714[12]: VarInt(var[8]) -> integer
+ 717[16]: ConstInt(val=1) -> integer
+ 722[20]: AddInt(v1: integer, v2: integer) -> integer
+ 723[16]: PutInt(var[8], value: integer)
+ 726[12]: VarInt(var[8]) -> integer
+ 729[16]: ConstInt(val=5) -> integer
+ 734[20]: GeInt(v1: integer, v2: integer) -> boolean
+ 735[13]: GotoFalseWord(jump=741, if_false: boolean)
+ 738[12]: GotoWord(jump=800)
+ 741[12]: VarInt(var[8]) -> integer
+ 744[16]: Text()
+ 745[40]: ConstText(_value="123") -> text
+ 750[56]: AppendText(var[16], v1: text)
+ 753[40]: VarInt(var[4]) -> integer
+ 756[44]: VarText(var[16]) -> text
+ 759[60]: CastIntFromText(v1: text) -> integer
+ 760[48]: AddInt(v1: integer, v2: integer) -> integer
+ 761[44]: PutInt(var[4], value: integer)
+ 764[40]: VarInt(var[4]) -> integer
+ 767[44]: ConstInt(val=200) -> integer
+ 772[48]: GtInt(v1: integer, v2: integer) -> boolean
+ 773[41]: GotoFalseWord(jump=789, if_false: boolean)
+ 776[40]: VarInt(var[4]) -> integer
+ 779[44]: Return(ret=0, value=4, discard=44) type=integer[4]:Base[0]
+ 785[44]: FreeStack(value=0, discard=4)
+ 789[40]: FreeStack(value=0, discard=24)
+ 793[16]: FreeStack(value=0, discard=4)
+ 797[12]: GotoWord(jump=698)
+ 800[12]: FreeStack(value=0, discard=4)
+ 804[8]: ConstInt(val=0) -> integer
+ 809[12]: Return(ret=0, value=4, discard=12) type=integer[4]:Base[0]
+
+fn test() {#1 block
+  __work_1:text = "";
+  test_value:integer = {#2 block
+    res();
+  }#2:integer;
+  if OpEqInt(test_value, 246i32) null else OpPanic({#3 formatting string
+    __work_1:text = "Test failed ";
+    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1, " != 246");
+    __work_1;
+  }#3:text);
+}#1
+
+byte-code for return_clear:test()
+ 815[0]: return-address
+ 815[4]: Text()
+ 816[28]: Call(size=0, to=692)
+ 823[32]: VarInt(var[28]) -> integer
+ 826[36]: ConstInt(val=246) -> integer
+ 831[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 832[33]: GotoFalseWord(jump=838, if_false: boolean)
+ 835[32]: GotoWord(jump=889)
+ 838[32]: ClearText(var[4])
+ 841[32]: ConstText(_value="Test failed ") -> text
+ 855[48]: AppendText(var[4], v1: text)
+ 858[32]: VarInt(var[28]) -> integer
+ 861[36]: ConstInt(val=0) -> integer
+ 866[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 873[32]: ConstText(_value=" != 246") -> text
+ 882[48]: AppendText(var[4], v1: text)
+ 885[32]: VarText(var[4]) -> text
+ 888[48]: Panic(message: text)
+ 889[32]: Return(ret=0, value=0, discard=32)
+
+Execute test:
+  815:[8] Text()
+  816:[32] Call(size=0, to=692)
+  692:[36] ConstInt(val=0) -> 0[36]
+  697:[40] ConvIntFromNull() -> -2147483648[40]
+  698:[44] VarInt(var[40]) -> -2147483648[44]
+  701:[48] ConvBoolFromInt(v1=-2147483648[44]) -> false[44]
+  702:[45] Not(v1=false[44]) -> true[44]
+  703:[45] GotoFalseWord(jump=714, if_false=true[44])
+  706:[44] ConstInt(val=1) -> 1[44]
+  711:[48] GotoWord(jump=723)
+  723:[48] PutInt(var[40], value=1[44])
+  726:[44] VarInt(var[40]) -> 1[44]
+  729:[48] ConstInt(val=5) -> 5[48]
+  734:[52] GeInt(v1=1[44], v2=5[48]) -> false[44]
+  735:[45] GotoFalseWord(jump=741, if_false=false[44])
+  741:[44] VarInt(var[40]) -> 1[44]
+  744:[48] Text()
+  745:[72] ConstText(_value="123") -> "123"[72]
+  750:[88] AppendText(var[48], v1="123"[72])
+  753:[72] VarInt(var[36]) -> 0[72]
+  756:[76] VarText(var[48]) -> "123"[76]
+  759:[92] CastIntFromText(v1="123"[76]) -> 123[76]
+  760:[80] AddInt(v1=0[72], v2=123[76]) -> 123[72]
+  761:[76] PutInt(var[36], value=123[72])
+  764:[72] VarInt(var[36]) -> 123[72]
+  767:[76] ConstInt(val=200) -> 200[76]
+  772:[80] GtInt(v1=123[72], v2=200[76]) -> false[72]
+  773:[73] GotoFalseWord(jump=789, if_false=false[72])
+  789:[72] FreeStack(value=0, discard=24)
+  793:[48] FreeStack(value=0, discard=4)
+  797:[44] GotoWord(jump=698)
+  698:[44] VarInt(var[40]) -> 1[44]
+  701:[48] ConvBoolFromInt(v1=1[44]) -> true[44]
+  702:[45] Not(v1=true[44]) -> false[44]
+  703:[45] GotoFalseWord(jump=714, if_false=false[44])
+  714:[44] VarInt(var[40]) -> 1[44]
+  717:[48] ConstInt(val=1) -> 1[48]
+  722:[52] AddInt(v1=1[44], v2=1[48]) -> 2[44]
+  723:[48] PutInt(var[40], value=2[44])
+  726:[44] VarInt(var[40]) -> 2[44]
+  729:[48] ConstInt(val=5) -> 5[48]
+  734:[52] GeInt(v1=2[44], v2=5[48]) -> false[44]
+  735:[45] GotoFalseWord(jump=741, if_false=false[44])
+  741:[44] VarInt(var[40]) -> 2[44]
+  744:[48] Text()
+  745:[72] ConstText(_value="123") -> "123"[72]
+  750:[88] AppendText(var[48], v1="123"[72])
+  753:[72] VarInt(var[36]) -> 123[72]
+  756:[76] VarText(var[48]) -> "123"[76]
+  759:[92] CastIntFromText(v1="123"[76]) -> 123[76]
+  760:[80] AddInt(v1=123[72], v2=123[76]) -> 246[72]
+  761:[76] PutInt(var[36], value=246[72])
+  764:[72] VarInt(var[36]) -> 246[72]
+  767:[76] ConstInt(val=200) -> 200[76]
+  772:[80] GtInt(v1=246[72], v2=200[76]) -> true[72]
+  773:[73] GotoFalseWord(jump=789, if_false=true[72])
+  776:[72] VarInt(var[36]) -> 246[72]
+  779:[76] Return(ret=823[32], value=4, discard=44) -> 246[32]
+  823:[36] VarInt(var[32]) -> 246[36]
+  826:[40] ConstInt(val=246) -> 246[40]
+  831:[44] EqInt(v1=246[36], v2=246[40]) -> true[36]
+  832:[37] GotoFalseWord(jump=838, if_false=true[36])
+  835:[36] GotoWord(jump=889)
+  889:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished

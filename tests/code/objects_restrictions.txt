@@ -16,34 +16,34 @@ pub fn test() {
         "Test failed {test_value} != 1"
     );
 }
-Type 11:Data[8]:
+Type 12:Data[8]:
     byte:byte[7]
     val:byte<1,true>[6]
     signed:byte<-127,true>[5]
 
-Type 12:byte<1,true>[1]:Byte(1, true)
+Type 13:byte<1,true>[1]:Byte(1, true)
 
-Type 13:byte<-127,true>[1]:Byte(-127, true)
+Type 14:byte<-127,true>[1]:Byte(-127, true)
 
 fn _tp_Data_calc(self:Data) -> integer {#1 block
   OpAddInt(OpAddInt(OpMulInt(OpGetByte(self, 6i32, 1i32), 65536i32), OpMulInt(OpGetByte(self, 7i32, 0i32), 256i32)), OpGetByte(self, 5i32, -127i32));
 }#1:integer
 
 byte-code for restrictions:_tp_Data_calc(self: Data[0]) -> integer
- 682[12]: return-address
- 682[16]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[11]
- 685[28]: GetByte(v1: reference, fld=6, min=1) -> integer
- 690[20]: ConstInt(val=65536) -> integer
- 695[24]: MulInt(v1: integer, v2: integer) -> integer
- 696[20]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[11]
- 699[32]: GetByte(v1: reference, fld=7, min=0) -> integer
- 704[24]: ConstInt(val=256) -> integer
- 709[28]: MulInt(v1: integer, v2: integer) -> integer
- 710[24]: AddInt(v1: integer, v2: integer) -> integer
- 711[20]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[11]
- 714[32]: GetByte(v1: reference, fld=5, min=-127) -> integer
- 719[24]: AddInt(v1: integer, v2: integer) -> integer
- 720[20]: Return(ret=12, value=4, discard=20) type=integer[4]:Base[0]
+ 692[12]: return-address
+ 692[16]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[12]
+ 695[28]: GetByte(v1: reference, fld=6, min=1) -> integer
+ 700[20]: ConstInt(val=65536) -> integer
+ 705[24]: MulInt(v1: integer, v2: integer) -> integer
+ 706[20]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[12]
+ 709[32]: GetByte(v1: reference, fld=7, min=0) -> integer
+ 714[24]: ConstInt(val=256) -> integer
+ 719[28]: MulInt(v1: integer, v2: integer) -> integer
+ 720[24]: AddInt(v1: integer, v2: integer) -> integer
+ 721[20]: VarRef(var[0]) -> reference type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[12]
+ 724[32]: GetByte(v1: reference, fld=5, min=-127) -> integer
+ 729[24]: AddInt(v1: integer, v2: integer) -> integer
+ 730[20]: Return(ret=12, value=4, discard=20) type=integer[4]:Base[0]
 
 fn test() {#1 block
   __work_1:text = "";
@@ -59,33 +59,33 @@ fn test() {#1 block
 }#1
 
 byte-code for restrictions:test()
- 726[0]: return-address
- 726[4]: Text()
- 727[28]: ConstInt(val=1) -> integer
- 732[32]: VarInt(var[28]) -> integer
- 735[36]: ConstInt(val=1) -> integer
- 740[40]: EqInt(v1: integer, v2: integer) -> boolean
- 741[33]: GotoFalseWord(jump=747, if_false: boolean)
- 744[32]: GotoWord(jump=796)
- 747[32]: ClearText(var[4])
- 750[32]: ConstText(_value="Test failed ") -> text
- 764[48]: AppendText(var[4], v1: text)
- 767[32]: VarInt(var[28]) -> integer
- 770[36]: ConstInt(val=0) -> integer
- 775[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 782[32]: ConstText(_value=" != 1") -> text
- 789[48]: AppendText(var[4], v1: text)
- 792[32]: VarText(var[4]) -> text
- 795[48]: Panic(message: text)
- 796[32]: Return(ret=0, value=0, discard=32)
+ 736[0]: return-address
+ 736[4]: Text()
+ 737[28]: ConstInt(val=1) -> integer
+ 742[32]: VarInt(var[28]) -> integer
+ 745[36]: ConstInt(val=1) -> integer
+ 750[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 751[33]: GotoFalseWord(jump=757, if_false: boolean)
+ 754[32]: GotoWord(jump=806)
+ 757[32]: ClearText(var[4])
+ 760[32]: ConstText(_value="Test failed ") -> text
+ 774[48]: AppendText(var[4], v1: text)
+ 777[32]: VarInt(var[28]) -> integer
+ 780[36]: ConstInt(val=0) -> integer
+ 785[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 792[32]: ConstText(_value=" != 1") -> text
+ 799[48]: AppendText(var[4], v1: text)
+ 802[32]: VarText(var[4]) -> text
+ 805[48]: Panic(message: text)
+ 806[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-  726:[8] Text()
-  727:[32] ConstInt(val=1) -> 1[32]
-  732:[36] VarInt(var[32]) -> 1[36]
-  735:[40] ConstInt(val=1) -> 1[40]
-  740:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
-  741:[37] GotoFalseWord(jump=747, if_false=true[36])
-  744:[36] GotoWord(jump=796)
-  796:[36] Return(ret=4294967295[4], value=0, discard=32)
+  736:[8] Text()
+  737:[32] ConstInt(val=1) -> 1[32]
+  742:[36] VarInt(var[32]) -> 1[36]
+  745:[40] ConstInt(val=1) -> 1[40]
+  750:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
+  751:[37] GotoFalseWord(jump=757, if_false=true[36])
+  754:[36] GotoWord(jump=806)
+  806:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

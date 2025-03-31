@@ -14,7 +14,7 @@ This administrates variables and scopes for a specific function.
 - Variables might exist in multiple scopes but not with different types.
 - We allow for variables to move to a higher scope.
 */
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
 // Scope 0 is the function with all variables are function arguments.
@@ -47,7 +47,7 @@ pub struct Function {
     scopes: Vec<Scope>,
     variables: Vec<Variable>,
     current_work: u16,
-    work: Vec<u16>,
+    work: BTreeSet<u16>,
     // Only the last known instance of this variable in the function, so for instances
     // we need to remember the variable number within the variables vector.
     names: HashMap<String, Vec<u16>>,
@@ -78,7 +78,7 @@ impl Function {
             scopes: Vec::new(),
             current_work: 0,
             variables: Vec::new(),
-            work: Vec::new(),
+            work: BTreeSet::new(),
             names: HashMap::new(),
             logging: false,
         }
@@ -112,7 +112,7 @@ impl Function {
             scopes: other.scopes.clone(),
             variables: other.variables.clone(),
             current_work: 0,
-            work: Vec::new(),
+            work: BTreeSet::new(),
             names: other.names.clone(),
             logging: other.logging,
         };
@@ -171,8 +171,8 @@ impl Function {
         } else if at != (0, 0) {
             assert_eq!(
                 self.scopes[self.current_scope as usize].context, context,
-                "Different contexts on scope {}",
-                self.current_scope
+                "Different contexts on scope {} at {}:{}",
+                self.current_scope, at.0, at.1
             );
         }
         self.current_scope
@@ -283,7 +283,9 @@ impl Function {
     pub fn var(&self, name: &str) -> u16 {
         if let Some(nr) = self.names.get(name) {
             for n in nr {
-                if self.is_active(self.variables[*n as usize].scope) {
+                if self.variables[*n as usize].scope < 2
+                    || self.is_active(self.variables[*n as usize].scope)
+                {
                     return *n;
                 }
             }
@@ -428,23 +430,28 @@ impl Function {
     }
 
     pub fn work(&mut self, lexer: &mut Lexer) -> u16 {
-        if self.current_work >= self.work.len() as u16 {
-            let v = self.add_variable(
-                &format!("__work_{}", self.current_work + 1),
-                &Type::Text(Vec::new()),
-                lexer,
-            );
-            // work variables always live in the main scope.
-            self.variables[v as usize].scope = 1;
-            self.work.push(v);
-        }
-        let w = self.current_work;
+        let n = format!("__work_{}", self.current_work + 1);
         self.current_work += 1;
-        self.work[w as usize]
+        let v = if let Some(nr) = self.names.get(&n) {
+            *nr.first().unwrap()
+        } else {
+            let v = self.add_variable(&n, &Type::Text(Vec::new()), lexer);
+            // work variables always live in the main scope.
+            if self.variables[v as usize].scope > 1 {
+                self.variables[v as usize].scope = 1;
+            }
+            v
+        };
+        self.work.insert(v);
+        v
     }
 
-    pub fn work_vars(&self) -> &[u16] {
-        &self.work
+    pub fn work_vars(&self) -> Vec<u16> {
+        let mut res = Vec::new();
+        for v in &self.work {
+            res.push(*v);
+        }
+        res
     }
 
     pub fn validate(
@@ -604,12 +611,21 @@ impl Function {
 
     /// Move the scope of a given variable to the given scope.
     pub fn move_scope(&mut self, var_nr: u16, to_scope: u16) {
+        if self.variables[var_nr as usize].scope < to_scope {
+            return;
+        }
         // Problem when this is not a parent scope.
         assert!(to_scope == 0 || to_scope == 1, "Incorrect scope");
         self.variables[var_nr as usize].scope = to_scope;
         if to_scope == 1 {
-            self.work.push(var_nr);
+            self.work.insert(var_nr);
+        } else {
+            self.work.remove(&var_nr);
         }
+    }
+
+    pub fn set_type(&mut self, var_nr: u16, tp: Type) {
+        self.variables[var_nr as usize].type_def = tp;
     }
 
     /// Return the variables that directly reside inside known scopes

@@ -920,7 +920,7 @@ mod test {
             assert!(f64::abs(f - 200.0) < 0.00001);
         } else {
             panic!("Expected a float")
-        };
+        }
         lex.cont();
         assert!(lex.has_token("+="));
     }
