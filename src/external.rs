@@ -408,11 +408,11 @@ pub fn format_int(
             match radix {
                 2 => {
                     res += if note { "0b" } else { "" };
-                    res += &format!("{val:b}");
+                    write!(res, "{val:b}").unwrap();
                 }
                 8 => {
                     res += if note { "0o" } else { "" };
-                    res += &format!("{val:o}");
+                    write!(res, "{val:o}").unwrap();
                 }
                 10 => {
                     res += if val > 0 {
@@ -420,11 +420,11 @@ pub fn format_int(
                     } else {
                         "-"
                     };
-                    res += &format!("{:}", val.abs());
+                    write!(res, "{:}", val.abs()).unwrap();
                 }
                 16 => {
                     res += if note { "0x" } else { "" };
-                    res += &format!("{val:x}");
+                    write!(res, "{val:x}").unwrap();
                 }
                 _ => panic!("Unknown radix"),
             }
@@ -461,14 +461,14 @@ pub fn format_long(
                 2 => {
                     if note {
                         res += "0b";
-                    };
-                    res += &format!("{val:b}");
+                    }
+                    write!(res, "{val:b}").unwrap();
                 }
                 8 => {
                     if note {
                         res += "0o";
-                    };
-                    res += &format!("{val:o}");
+                    }
+                    write!(res, "{val:o}").unwrap();
                 }
                 10 => {
                     res += if val > 0 {
@@ -476,14 +476,14 @@ pub fn format_long(
                     } else {
                         "-"
                     };
-                    res += &format!("{:}", val.abs());
+                    write!(res, "{:}", val.abs()).unwrap();
                 }
                 16 => {
                     res += if note { "0x" } else { "" };
-                    res += &format!("{val:x}");
+                    write!(res, "{val:x}").unwrap();
                 }
                 _ => panic!("Unknown radix"),
-            };
+            }
             &res
         },
         width,
@@ -499,7 +499,7 @@ pub fn format_float(s: &mut String, val: f64, width: i32, precision: i32) {
         write!(s, "{val:w$.p$}", w = width as usize, p = precision as usize,).unwrap();
     } else {
         write!(s, "{val:w$}", w = width as usize).unwrap();
-    };
+    }
 }
 
 pub fn format_single(s: &mut String, val: f32, width: i32, precision: i32) {
@@ -507,7 +507,7 @@ pub fn format_single(s: &mut String, val: f32, width: i32, precision: i32) {
         write!(s, "{val:w$.p$}", w = width as usize, p = precision as usize,).unwrap();
     } else {
         write!(s, "{val:w$}", w = width as usize).unwrap();
-    };
+    }
 }
 
 #[must_use]

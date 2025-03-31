@@ -81,7 +81,7 @@ pub fn insert_vector(db: &DbRef, size: u32, index: i32, stores: &mut [Store]) ->
             8 + size as isize * (real as isize + 1),
             (len as isize - real as isize) * size as isize,
         );
-    };
+    }
     store.set_int(vec_rec, 4, new_length as i32);
     DbRef {
         store_nr: db.store_nr,
@@ -106,7 +106,7 @@ pub fn vector_append(db: &DbRef, add: u32, size: u32, stores: &mut [Store]) -> D
             store.set_int(db.rec, db.pos, new_vec as i32);
             vec_rec = new_vec;
         }
-    };
+    }
     store.set_int(vec_rec, 4, new_length as i32);
     DbRef {
         store_nr: db.store_nr,
@@ -244,7 +244,7 @@ pub fn get_vector(db: &DbRef, size: u32, from: i32, stores: &[Store]) -> DbRef {
     let store = keys::store(db, stores);
     if from == i32::MIN {
         return Stores::null();
-    };
+    }
     let v_rec = store.get_int(db.rec, db.pos) as u32;
     let l = length_vector(db, stores);
     let f = if from < 0 { from + l as i32 } else { from };

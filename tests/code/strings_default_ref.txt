@@ -17,16 +17,16 @@ fn add(a:text, b:refvar(text([]))) -> text {#1 block
 }#1:refvar(text([]))
 
 byte-code for default_ref:add(a: text[0], b: refvar(text([]))[16]) -> text
- 682[28]: return-address
- 682[32]: VarRef(var[16]) -> reference
- 685[44]: ConstText(_value="_") -> text
- 688[60]: AppendRefText(r: reference, fld=0, v1: text)
- 691[32]: VarRef(var[16]) -> reference
- 694[44]: ArgText(var[0]) -> text
- 697[60]: AppendRefText(r: reference, fld=0, v1: text)
- 700[32]: VarRef(var[16]) -> reference
- 703[44]: GetRefText(r: reference, fld=0) -> text["a"]
- 706[48]: Return(ret=28, value=16, discard=48) type=text[4]:Base[5]
+ 689[28]: return-address
+ 689[32]: VarRef(var[16]) -> reference
+ 692[44]: ConstText(_value="_") -> text
+ 695[60]: AppendRefText(r: reference, fld=0, v1: text)
+ 698[32]: VarRef(var[16]) -> reference
+ 701[44]: ArgText(var[0]) -> text
+ 704[60]: AppendRefText(r: reference, fld=0, v1: text)
+ 707[32]: VarRef(var[16]) -> reference
+ 710[44]: GetRefText(r: reference, fld=0) -> text["a"]
+ 713[48]: Return(ret=28, value=16, discard=48) type=text[4]:Base[5]
 
 fn test() {#1 block
   __work_2:text = "";
@@ -46,59 +46,59 @@ fn test() {#1 block
 }#1
 
 byte-code for default_ref:test()
- 712[0]: return-address
- 712[4]: Text()
- 713[28]: Text()
- 714[52]: Text()
- 715[76]: ConstText(_value="1234") -> text
- 721[92]: ConstText(_value="var") -> text
- 726[108]: AppendText(var[28], v1: text)
- 729[92]: CreateRef(var[28]) -> reference
- 732[104]: Call(size=0, to=682)
- 739[92]: AppendText(var[52], v1: text)
- 742[76]: VarText(var[52]) -> text
- 745[92]: ConstText(_value="var_1234") -> text
- 755[108]: EqText(v1: text, v2: text) -> boolean
- 756[77]: GotoFalseWord(jump=762, if_false: boolean)
- 759[76]: GotoWord(jump=818)
- 762[76]: ClearText(var[4])
- 765[76]: ConstText(_value="Test failed ") -> text
- 779[92]: AppendText(var[4], v1: text)
- 782[76]: VarText(var[52]) -> text
- 785[92]: ConstInt(val=0) -> integer
- 790[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 795[76]: ConstText(_value=" != "var_1234"") -> text
- 811[92]: AppendText(var[4], v1: text)
- 814[76]: VarText(var[4]) -> text
- 817[92]: Panic(message: text)
- 818[76]: Return(ret=0, value=0, discard=76)
+ 719[0]: return-address
+ 719[4]: Text()
+ 720[28]: Text()
+ 721[52]: Text()
+ 722[76]: ConstText(_value="1234") -> text
+ 728[92]: ConstText(_value="var") -> text
+ 733[108]: AppendText(var[28], v1: text)
+ 736[92]: CreateRef(var[28]) -> reference
+ 739[104]: Call(size=0, to=689)
+ 746[92]: AppendText(var[52], v1: text)
+ 749[76]: VarText(var[52]) -> text
+ 752[92]: ConstText(_value="var_1234") -> text
+ 762[108]: EqText(v1: text, v2: text) -> boolean
+ 763[77]: GotoFalseWord(jump=769, if_false: boolean)
+ 766[76]: GotoWord(jump=825)
+ 769[76]: ClearText(var[4])
+ 772[76]: ConstText(_value="Test failed ") -> text
+ 786[92]: AppendText(var[4], v1: text)
+ 789[76]: VarText(var[52]) -> text
+ 792[92]: ConstInt(val=0) -> integer
+ 797[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 802[76]: ConstText(_value=" != "var_1234"") -> text
+ 818[92]: AppendText(var[4], v1: text)
+ 821[76]: VarText(var[4]) -> text
+ 824[92]: Panic(message: text)
+ 825[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-  712:[8] Text()
-  713:[32] Text()
-  714:[56] Text()
-  715:[80] ConstText(_value="1234") -> "1234"[80]
-  721:[96] ConstText(_value="var") -> "var"[96]
-  726:[112] AppendText(var[32], v1="var"[96])
-  729:[96] CreateRef(var[32]) -> ref(0,1,32)[96]
-  732:[108] Call(size=0, to=682)
-  682:[112] VarRef(var[96]) -> ref(0,1,32)[112]
-  685:[124] ConstText(_value="_") -> "_"[124]
-  688:[140] AppendRefText(r=ref(0,1,32)[112], fld=0, v1="_"[124])
-  689:[112] Goto(jump=-17228)
-  691:[112] VarRef(var[96]) -> ref(0,1,32)[112]
-  694:[124] ArgText(var[80]) -> "1234"[124]
-  697:[140] AppendRefText(r=ref(0,1,32)[112], fld=0, v1="1234"[124])
-  698:[112] Goto(jump=-17219)
-  700:[112] VarRef(var[96]) -> ref(0,1,32)[112]
-  703:[124] GetRefText(r=ref(0,1,32)[112], fld=0) -> "var_1234"[112]
-  704:[128] Goto(jump=2243)
-  706:[128] Return(ret=739[108], value=16, discard=48) -> "var_1234"[80]
-  739:[96] AppendText(var[56], v1="var_1234"[80])
-  742:[80] VarText(var[56]) -> "var_1234"[80]
-  745:[96] ConstText(_value="var_1234") -> "var_1234"[96]
-  755:[112] EqText(v1="var_1234"[80], v2="var_1234"[96]) -> true[80]
-  756:[81] GotoFalseWord(jump=762, if_false=true[80])
-  759:[80] GotoWord(jump=818)
-  818:[80] Return(ret=4294967295[4], value=0, discard=76)
+  719:[8] Text()
+  720:[32] Text()
+  721:[56] Text()
+  722:[80] ConstText(_value="1234") -> "1234"[80]
+  728:[96] ConstText(_value="var") -> "var"[96]
+  733:[112] AppendText(var[32], v1="var"[96])
+  736:[96] CreateRef(var[32]) -> ref(0,1,32)[96]
+  739:[108] Call(size=0, to=689)
+  689:[112] VarRef(var[96]) -> ref(0,1,32)[112]
+  692:[124] ConstText(_value="_") -> "_"[124]
+  695:[140] AppendRefText(r=ref(0,1,32)[112], fld=0, v1="_"[124])
+  696:[112] Goto(jump=-17221)
+  698:[112] VarRef(var[96]) -> ref(0,1,32)[112]
+  701:[124] ArgText(var[80]) -> "1234"[124]
+  704:[140] AppendRefText(r=ref(0,1,32)[112], fld=0, v1="1234"[124])
+  705:[112] Goto(jump=-17212)
+  707:[112] VarRef(var[96]) -> ref(0,1,32)[112]
+  710:[124] GetRefText(r=ref(0,1,32)[112], fld=0) -> "var_1234"[112]
+  711:[128] Goto(jump=2250)
+  713:[128] Return(ret=746[108], value=16, discard=48) -> "var_1234"[80]
+  746:[96] AppendText(var[56], v1="var_1234"[80])
+  749:[80] VarText(var[56]) -> "var_1234"[80]
+  752:[96] ConstText(_value="var_1234") -> "var_1234"[96]
+  762:[112] EqText(v1="var_1234"[80], v2="var_1234"[96]) -> true[80]
+  763:[81] GotoFalseWord(jump=769, if_false=true[80])
+  766:[80] GotoWord(jump=825)
+  825:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

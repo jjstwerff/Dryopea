@@ -11,23 +11,26 @@ use dryopea::database::{Stores, KnownTypes, DbRef};
 use dryopea::external::*;
 
 fn init(db: &mut KnownTypes) {
-    let s = db.structure("Pixel".to_string(), 3, 4294967295); // 6
+    let s = db.structure("Variable".to_string(), 12, 4294967295); // 6
+    db.field(s, "name".to_string(), 5, 4);
+    db.field(s, "value".to_string(), 5, 8);
+    let s = db.structure("Pixel".to_string(), 3, 4294967295); // 7
     db.field(s, "r".to_string(), db.byte(0, false), 0);
     db.field(s, "g".to_string(), db.byte(0, false), 1);
     db.field(s, "b".to_string(), db.byte(0, false), 2);
-    let s = db.structure("Image".to_string(), 20, 4294967295); // 8
+    let s = db.structure("Image".to_string(), 20, 4294967295); // 9
     db.field(s, "name".to_string(), 5, 4);
     db.field(s, "width".to_string(), db.int(), 8);
     db.field(s, "height".to_string(), db.int(), 12);
-    db.field(s, "data".to_string(), db.vector(6), 16);
-    let s = db.structure("File".to_string(), 17, 4294967295); // 10
+    db.field(s, "data".to_string(), db.vector(7), 16);
+    let s = db.structure("File".to_string(), 17, 4294967295); // 11
     db.field(s, "path".to_string(), 5, 4);
     db.field(s, "size".to_string(), 1, 8);
     db.field(s, "dir".to_string(), 4, 16);
-    db.vector(6);
-    db.vector(10);
+    db.vector(7);
+    db.vector(11);
     let s = db.structure("main_vector<File>".to_string(), 0, 4294967295); // 65535
-    db.field(s, "vector".to_string(), db.vector(10), 65535);
+    db.field(s, "vector".to_string(), db.vector(11), 65535);
 }
 
 fn _tp_integer_abs(stores: &mut Stores, var_0: i32) -> i32 {
@@ -201,14 +204,15 @@ fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 {
 }
 
 fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str {
-  var_result = "".to_string();
-  OpGetFileText(stores, var_self, OpCreateRef(stores, var_result));
+  OpClearRefText(stores, *s.get_var::<DbRef>((var_result)););
+  OpAppendRefText(stores, *s.get_var::<DbRef>((var_result));, 0_i32, "".to_string());
+  OpGetFileText(stores, var_self, var_result);
   var_result
 }
 
 fn file(stores: &mut Stores, var_0: Str) -> DbRef {
   var_result = {
-    var__val_1 = OpDatabase(stores, 17_i32, 10_i32);
+    var__val_1 = OpDatabase(stores, 17_i32, 11_i32);
     {let db = (var__val_1); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
     {let db = (var__val_1); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
     {let db = (var__val_1); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if 0_i32 {1_i32} else {0_i32}));};
@@ -229,7 +233,7 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
     var__vec_2
   };
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) {
-    Drop(Call(313, [Call(263, [Var(0), Int(4)]), Var(1)]))
+    Drop(Call(314, [Call(263, [Var(0), Int(4)]), Var(1)]))
   } else {Null};
   var_result
 }
@@ -237,19 +241,29 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
 fn _tp_File_png(stores: &mut Stores, var_0: DbRef) -> DbRef {
   if !(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32)) {
     var_result = {
-      var__val_1 = OpDatabase(stores, 20_i32, 8_i32);
+      var__val_1 = OpDatabase(stores, 20_i32, 9_i32);
       {let db = (var__val_1); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
       {let db = (var__val_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
       {let db = (var__val_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
       {let db = (var__val_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
       var__val_1
     };
-    Drop(Call(314, [Call(263, [Var(0), Int(4)]), Var(1)]));
+    Drop(Call(315, [Call(263, [Var(0), Int(4)]), Var(1)]));
     var_result
   } else {
     Stores::null()
   }
 }
+
+fn env_variables(stores: &mut Stores) -> DbRef {
+
+}
+
+
+fn env_variable(stores: &mut Stores, var_0: Str) -> Str {
+
+}
+
 
 fn _tp_text_starts_with(stores: &mut Stores, var_0: Str, var_1: Str) -> bool {
 
@@ -332,6 +346,26 @@ fn _tp_text_is_whitespace(stores: &mut Stores, var_0: Str) -> bool {
 
 
 fn _tp_text_is_control(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn arguments(stores: &mut Stores) -> DbRef {
+
+}
+
+
+fn directory(stores: &mut Stores, var_0: DbRef) -> Str {
+
+}
+
+
+fn user_directory(stores: &mut Stores, var_0: DbRef) -> Str {
+
+}
+
+
+fn program_directory(stores: &mut Stores, var_0: DbRef) -> Str {
 
 }
 

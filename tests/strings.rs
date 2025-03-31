@@ -62,18 +62,28 @@ for c in \"123😊🙃😋8\" {
 #[test]
 fn string_fn() {
     code!(
-        "
-fn to_text() -> text {
+        "fn to_text() -> text {
     res = \"aa \";
     for _i in 0..2 {
         res += \"b\";
     }
     res + \" cc\"
-}
-    "
+}"
     )
     .expr("\"1{to_text()}2\"")
     .result(Value::str("1aa bb cc2"));
+}
+
+#[test]
+fn var_ref() {
+    code!(
+        "fn text_ref() -> text {
+    a = \"12345\";
+    a[0..3]
+}"
+    )
+    .expr("text_ref()")
+    .result(Value::str("1234"));
 }
 
 #[test]
@@ -168,6 +178,21 @@ fn call() {
         .result(Value::str("0012"));
 }
 
-// TODO command line arguments  env::args_os() -> Args iterator     (for now Args vector)
-// TODO environment variables  evn::var_os(name)  set_var  vars_os() -> iterator (Vars vector)
-// TODO current dir / current exe / home_dir
+/*
+// Only run this test locally, do not make it part of the release at it will log all kinds of
+// data that is not for public consumption.
+#[test]
+fn dirs() {
+    code!(
+        "fn test() {
+  print(\"program {program_directory()}\\n\");
+  print(\"user {user_directory()}\\n\");
+  print(\"current {directory()}\\n\");
+  e = env_variables();
+  for v in e { print(\"{v}\\n\"); }
+  c = arguments();
+  for a in c { print(\"{a}\\n\"); }
+}"
+    );
+}
+*/

@@ -1,0 +1,79 @@
+fn text_ref() -> text {
+    a = "12345";
+    a[0..3]
+}
+
+pub fn test() {
+    test_value = {text_ref()};
+    assert(
+        test_value == "1234",
+        "Test failed {test_value} != \"1234\""
+    );
+}
+fn text_ref(a:refvar(text([]))) -> text["a"] {#1 block
+  OpClearRefText(OpVarRef(a));
+  OpAppendRefText(OpVarRef(a), 0i32, "12345");
+  OpGetTextSub(OpGetRefText(OpVarRef(a), 0i32), 0i32, 3i32);
+}#1:text
+
+byte-code for var_ref:text_ref(a: refvar(text([]))[0]) -> text["a"]
+ 689[12]: return-address
+ 689[16]: ClearRefText(var[-4266])
+ 692: Goto(step=-108)
+ 694: Call(size=12849, to=-348834765)
+ 701: Goto(step=0)
+ 703[16]: VarRef(var[0]) -> reference
+ 706[28]: GetRefText(r: reference, fld=0) -> text["a"]
+ 709[32]: ConstInt(val=0) -> integer
+ 714[36]: ConstInt(val=3) -> integer
+ 719[40]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
+ 720[32]: Return(ret=12, value=16, discard=32) type=text[4]:Base[5]
+
+fn test() {#1 block
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text["test_value"] = {#2 block
+    text_ref({#3 default ref
+      OpCreateRef(__work_1);
+    }#3:reference["__work_1"]);
+  }#2:text["test_value"];
+  if OpEqText(test_value, "1234") null else OpPanic({#4 formatting string
+    __work_2:text = "Test failed ";
+    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_2, " != "1234"");
+    __work_2;
+  }#4:text);
+}#1
+
+byte-code for var_ref:test()
+ 726[0]: return-address
+ 726[4]: Text()
+ 727[28]: Text()
+ 728[52]: Text()
+ 729[76]: CreateRef(var[28]) -> reference
+ 732[88]: Call(size=0, to=689)
+ 739[92]: AppendText(var[52], v1: text)
+ 742[76]: VarText(var[52]) -> text
+ 745[92]: ConstText(_value="1234") -> text
+ 751[108]: EqText(v1: text, v2: text) -> boolean
+ 752[77]: GotoFalseWord(jump=758, if_false: boolean)
+ 755[76]: GotoWord(jump=810)
+ 758[76]: ClearText(var[4])
+ 761[76]: ConstText(_value="Test failed ") -> text
+ 775[92]: AppendText(var[4], v1: text)
+ 778[76]: VarText(var[52]) -> text
+ 781[92]: ConstInt(val=0) -> integer
+ 786[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 791[76]: ConstText(_value=" != "1234"") -> text
+ 803[92]: AppendText(var[4], v1: text)
+ 806[76]: VarText(var[4]) -> text
+ 809[92]: Panic(message: text)
+ 810[76]: Return(ret=0, value=0, discard=76)
+
+Execute test:
+  726:[8] Text()
+  727:[32] Text()
+  728:[56] Text()
+  729:[80] CreateRef(var[32]) -> ref(0,1,32)[80]
+  732:[92] Call(size=0, to=689)
+  689:[96] ClearRefText(

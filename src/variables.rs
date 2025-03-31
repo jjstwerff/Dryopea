@@ -171,8 +171,8 @@ impl Function {
         } else if at != (0, 0) {
             assert_eq!(
                 self.scopes[self.current_scope as usize].context, context,
-                "Different contexts on scope {}",
-                self.current_scope
+                "Different contexts on scope {} at {}:{}",
+                self.current_scope, at.0, at.1
             );
         }
         self.current_scope
@@ -283,7 +283,9 @@ impl Function {
     pub fn var(&self, name: &str) -> u16 {
         if let Some(nr) = self.names.get(name) {
             for n in nr {
-                if self.is_active(self.variables[*n as usize].scope) {
+                if self.variables[*n as usize].scope < 2
+                    || self.is_active(self.variables[*n as usize].scope)
+                {
                     return *n;
                 }
             }
@@ -435,7 +437,9 @@ impl Function {
                 lexer,
             );
             // work variables always live in the main scope.
-            self.variables[v as usize].scope = 1;
+            if self.variables[v as usize].scope > 1 {
+                self.variables[v as usize].scope = 1;
+            }
             self.work.push(v);
         }
         let w = self.current_work;
@@ -609,7 +613,13 @@ impl Function {
         self.variables[var_nr as usize].scope = to_scope;
         if to_scope == 1 {
             self.work.push(var_nr);
+        } else if let Ok(v) = self.work.binary_search(&var_nr) {
+            self.work.remove(v);
         }
+    }
+
+    pub fn set_type(&mut self, var_nr: u16, tp: Type) {
+        self.variables[var_nr as usize].type_def = tp;
     }
 
     /// Return the variables that directly reside inside known scopes

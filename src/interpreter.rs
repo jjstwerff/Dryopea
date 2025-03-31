@@ -24,7 +24,7 @@ pub fn byte_code(writer: &mut dyn Write, state: &mut State, data: &mut Data) -> 
         }
         let show = !data.def(d_nr).position.file.starts_with("default/");
         if show {
-            write!(writer, "{} ", data.def(d_nr).header(data, &d.variables))?;
+            write!(writer, "{} ", data.def(d_nr).header(data, d_nr))?;
             let mut vars = Function::copy(&data.def(d_nr).variables);
             data.show_code(writer, &mut vars, &data.def(d_nr).code, 0, false)?;
             writeln!(writer, "\n")?;

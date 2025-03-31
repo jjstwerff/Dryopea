@@ -936,19 +936,15 @@ impl State {
         }
         let mut stack = Stack::new(data.def(def_nr).variables.clone(), data, def_nr, logging);
         for a in 0..stack.data.def(def_nr).attributes.len() as u16 {
-            stack.position = stack.function.claim(a, stack.position, &Context::Argument);
+            let n = &stack.data.def(def_nr).attributes[a as usize].name;
+            let v = stack.function.var(n);
+            stack.position = stack.function.claim(v, stack.position, &Context::Argument);
         }
         let start = self.code_pos;
         self.arguments = stack.position;
         stack.position += 4; // keep space for the code return address
         if console {
-            println!(
-                "{} ",
-                stack
-                    .data
-                    .def(def_nr)
-                    .header(stack.data, &stack.data.def(def_nr).variables)
-            );
+            println!("{} ", stack.data.def(def_nr).header(stack.data, def_nr));
             stack.data.dump(&stack.data.def(def_nr).code, def_nr);
         }
         let val = stack
@@ -1243,7 +1239,9 @@ impl State {
         } else if self.library_names.contains_key(&name) {
             stack.add_op("OpStaticCall", self);
             self.code_add(self.library_names[&name]);
-            self.gather_key(stack, &parameters, 0, &mut tps);
+            if !parameters.is_empty() {
+                self.gather_key(stack, &parameters, 0, &mut tps);
+            }
             for a in &stack.data.def(*op).attributes {
                 stack.position -= size(&a.typedef, &Context::Argument);
             }
@@ -1368,8 +1366,10 @@ impl State {
                 } else {
                     format!("vector<{}>", tp.name(stack.data))
                 };
-                let known = stack.data.def_name(&name).known_type;
-                self.types.insert(self.code_pos, known);
+                let known = self.database.name(&name);
+                if known != u16::MAX && name != "vector" {
+                    self.types.insert(self.code_pos, known);
+                }
                 stack.add_op("OpVarVector", self);
             }
             Type::Reference(c, _) => {

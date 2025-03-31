@@ -157,7 +157,7 @@ fn compare_bits(
                 if b != c {
                     if c {
                         *higher = false;
-                    };
+                    }
                     break;
                 }
             }

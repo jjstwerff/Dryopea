@@ -7,20 +7,20 @@ pub fn test() {
         "Test failed {test_value} != \"[{{n:\"hi\",c:10}},{{n:\"world\",c:2}}]\""
     );
 }
-Type 11:Elm[12]:
+Type 12:Elm[12]:
     n:text[4]
     c:integer[8]
 
-Type 12:vector<Elm>[4]:Vector(11)
+Type 13:vector<Elm>[4]:Vector(12)
 
 fn test() {#1 block
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
-    v:vector<Elm>#[] = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 12i32);
+    v:vector<Elm>#[] = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 13i32);
     {#3 formatting string
       __work_1:text = "";
-      OpFormatDatabase(__work_1, v, 12i32, false);
+      OpFormatDatabase(__work_1, v, 13i32, false);
       __work_1;
     }#3:text;
   }#2:text;
@@ -33,55 +33,55 @@ fn test() {#1 block
 }#1
 
 byte-code for parse_objects:test()
- 682[0]: return-address
- 682[4]: Text()
- 683[28]: Text()
- 684[52]: Text()
- 685[76]: ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> text
- 725[92]: CastVectorFromText(val: text, db_tp=12) -> vector#[]
- 728[88]: ClearText(var[28])
- 731[88]: ConstText(_value="") -> text
- 733[104]: AppendText(var[28], v1: text)
- 736[88]: VarVector(var[76]) -> vector#[] type=vector<Elm>[4]:Vector(11)[12]
- 739[100]: FormatDatabase(var[28], val: reference, db_tp=12, pretty=false)
- 745[88]: VarText(var[28]) -> text
- 748[104]: FreeStack(value=16, discard=12) type=text[4]:Base[5]
- 752[92]: AppendText(var[52], v1: text)
- 755[76]: VarText(var[52]) -> text
- 758[92]: ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> text
- 791[108]: EqText(v1: text, v2: text) -> boolean
- 792[77]: GotoFalseWord(jump=798, if_false: boolean)
- 795[76]: GotoWord(jump=877)
- 798[76]: ClearText(var[4])
- 801[76]: ConstText(_value="Test failed ") -> text
- 815[92]: AppendText(var[4], v1: text)
- 818[76]: VarText(var[52]) -> text
- 821[92]: ConstInt(val=0) -> integer
- 826[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 831[76]: ConstText(_value=" != "[{n:"hi",c:10},{n:"world",c:2}]"") -> text
- 870[92]: AppendText(var[4], v1: text)
- 873[76]: VarText(var[4]) -> text
- 876[92]: Panic(message: text)
- 877[76]: Return(ret=0, value=0, discard=76)
+ 689[0]: return-address
+ 689[4]: Text()
+ 690[28]: Text()
+ 691[52]: Text()
+ 692[76]: ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> text
+ 732[92]: CastVectorFromText(val: text, db_tp=13) -> vector[]
+ 735[88]: ClearText(var[28])
+ 738[88]: ConstText(_value="") -> text
+ 740[104]: AppendText(var[28], v1: text)
+ 743[88]: VarVector(var[76]) -> vector[] type=vector<Elm>[4]:Vector(12)[13]
+ 746[100]: FormatDatabase(var[28], val: reference, db_tp=13, pretty=false)
+ 752[88]: VarText(var[28]) -> text
+ 755[104]: FreeStack(value=16, discard=12) type=text[4]:Base[5]
+ 759[92]: AppendText(var[52], v1: text)
+ 762[76]: VarText(var[52]) -> text
+ 765[92]: ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> text
+ 798[108]: EqText(v1: text, v2: text) -> boolean
+ 799[77]: GotoFalseWord(jump=805, if_false: boolean)
+ 802[76]: GotoWord(jump=884)
+ 805[76]: ClearText(var[4])
+ 808[76]: ConstText(_value="Test failed ") -> text
+ 822[92]: AppendText(var[4], v1: text)
+ 825[76]: VarText(var[52]) -> text
+ 828[92]: ConstInt(val=0) -> integer
+ 833[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 838[76]: ConstText(_value=" != "[{n:"hi",c:10},{n:"world",c:2}]"") -> text
+ 877[92]: AppendText(var[4], v1: text)
+ 880[76]: VarText(var[4]) -> text
+ 883[92]: Panic(message: text)
+ 884[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-  682:[8] Text()
-  683:[32] Text()
-  684:[56] Text()
-  685:[80] ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> "[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80]
-  725:[96] CastVectorFromText(val="[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80], db_tp=12) -> ref(1,1,4)=true[80]
-  728:[92] ClearText(var[32])
-  731:[92] ConstText(_value="") -> ""[92]
-  733:[108] AppendText(var[32], v1=""[92])
-  736:[92] VarVector(var[80]) -> ref(1,1,4)=[{n:"hi",c:10},{n:"world",c:2}][92]
-  739:[104] FormatDatabase(var[32], val=ref(1,1,4)[92], db_tp=12, pretty=false)
-  745:[92] VarText(var[32]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[92]
-  748:[108] FreeStack(value=16, discard=12)
-  752:[96] AppendText(var[56], v1="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80])
-  755:[80] VarText(var[56]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80]
-  758:[96] ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[96]
-  791:[112] EqText(v1="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80], v2="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[96]) -> true[80]
-  792:[81] GotoFalseWord(jump=798, if_false=true[80])
-  795:[80] GotoWord(jump=877)
-  877:[80] Return(ret=4294967295[4], value=0, discard=76)
+  689:[8] Text()
+  690:[32] Text()
+  691:[56] Text()
+  692:[80] ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> "[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80]
+  732:[96] CastVectorFromText(val="[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80], db_tp=13) -> ref(1,1,4)=true[80]
+  735:[92] ClearText(var[32])
+  738:[92] ConstText(_value="") -> ""[92]
+  740:[108] AppendText(var[32], v1=""[92])
+  743:[92] VarVector(var[80]) -> ref(1,1,4)=[{n:"hi",c:10},{n:"world",c:2}][92]
+  746:[104] FormatDatabase(var[32], val=ref(1,1,4)[92], db_tp=13, pretty=false)
+  752:[92] VarText(var[32]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[92]
+  755:[108] FreeStack(value=16, discard=12)
+  759:[96] AppendText(var[56], v1="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80])
+  762:[80] VarText(var[56]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80]
+  765:[96] ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[96]
+  798:[112] EqText(v1="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[80], v2="[{n:\"hi\",c:10},{n:\"world\",c:2}]"[96]) -> true[80]
+  799:[81] GotoFalseWord(jump=805, if_false=true[80])
+  802:[80] GotoWord(jump=884)
+  884:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

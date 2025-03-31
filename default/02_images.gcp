@@ -1,6 +1,11 @@
 // Copyright (c) 2024 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+pub struct Variable {
+    name: text,
+    value: text
+}
+
 // Data per pixel of the png graph
 pub struct Pixel {
     r: integer limit(0, 255) not null,
@@ -70,3 +75,9 @@ pub fn png(self: File) -> Image {
         null
     }
 }
+
+pub fn env_variables() -> vector<Variable>;
+#rust "stores.os_variables()"
+
+pub fn env_variable(name: text) -> text;
+#rust "Stores::os_variable(@name)"

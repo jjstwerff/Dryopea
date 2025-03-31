@@ -14,6 +14,7 @@ use crate::tree;
 use crate::vector;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fmt::{Debug, Formatter, Write};
 /*
 #[derive(Debug, Clone, PartialEq)]
@@ -289,7 +290,7 @@ fn show_key(text: &str, key: &ParseKey) -> String {
     for k in 0..key.step {
         let p = key.current[k as usize];
         if p < 0 {
-            result += &format!("[{}]", 1 - p);
+            write!(result, "[{}]", 1 - p).unwrap();
         } else {
             let mut pos = key.current[k as usize] as usize;
             let mut val = String::new();
@@ -354,9 +355,9 @@ impl Stores {
                 } else if f_nr > 0 {
                     res += ", ";
                 }
-                res += &format!("{}:{name}[{}]", p.name, p.position);
+                write!(res, "{}:{name}[{}]", p.name, p.position).unwrap();
                 if !p.other_indexes.is_empty() {
-                    res += &format!(" other {:?}", p.other_indexes);
+                    write!(res, " other {:?}", p.other_indexes).unwrap();
                 }
                 if pretty {
                     res += "\n";
@@ -366,16 +367,18 @@ impl Stores {
                 res += "}";
             }
         } else {
-            res += &format!("{:?}", &typedef.parts);
+            write!(res, "{:?}", &typedef.parts).unwrap();
             if !typedef.keys.is_empty() {
                 res += " keys [";
                 for k in &typedef.keys {
-                    res += &format!(
+                    write!(
+                        res,
                         "tp:{} desc:{} field:{}, ",
                         k.type_nr.abs(),
                         k.type_nr < 0,
                         k.position
-                    );
+                    )
+                    .unwrap();
                 }
                 res += "]";
             }
@@ -477,7 +480,7 @@ impl Stores {
                     linked.insert(f_nr as u16, fld.len() as u16);
                 }
             }
-        };
+        }
         if let Parts::Struct(s) = &mut self.types[structure as usize].parts {
             for (f_nr, f) in s.iter_mut().enumerate() {
                 if let Some(add) = linked.get(&(f_nr as u16)) {
@@ -644,7 +647,7 @@ impl Stores {
                             };
                             if !asc {
                                 tp = -tp;
-                            };
+                            }
                             self.types[t_nr].keys.push(Key {
                                 type_nr: tp,
                                 position: fld.position,
@@ -782,7 +785,7 @@ impl Stores {
                     return f_nr as u16;
                 }
             }
-        };
+        }
         0
     }
 
@@ -977,7 +980,10 @@ impl Stores {
                 2 => store.get_single(rec, pos).is_nan(),
                 3 => store.get_float(rec, pos).is_nan(),
                 4 => store.get_byte(rec, pos, 0) > 1,
-                5 => store.get_str(store.get_int(rec, pos) as u32).is_empty(),
+                5 => {
+                    store.get_int(rec, pos) == 0
+                        || store.get_str(store.get_int(rec, pos) as u32).is_empty()
+                }
                 _ => false,
             }
         } else if let Parts::Enum(_) = &self.types[known_type as usize].parts {
@@ -1013,7 +1019,7 @@ impl Stores {
 
     #[must_use]
     pub fn type_claim(&self, tp: u16) -> u32 {
-        (u32::from(self.types[tp as usize].size) + 7) / 8
+        u32::from(self.types[tp as usize].size).div_ceil(8)
     }
 
     pub fn claim(&mut self, db: &DbRef, size: u32) -> DbRef {
@@ -1341,7 +1347,7 @@ impl Stores {
             let fld = if to.rec == 0 { 0 } else { to.pos };
             let rec = if to.rec == 0 {
                 let size = self.types[tp as usize].size;
-                self.store_mut(to).claim((u32::from(size) + 7) / 8)
+                self.store_mut(to).claim(u32::from(size).div_ceil(8))
             } else {
                 to.rec
             };
@@ -1868,9 +1874,9 @@ impl Stores {
     - individual allocations inside store size
     - length of vector/sorted/array/ordered stays within allocation
     - when called fully (but allow for single vector):
-        . allocations linked together correctly (linked from previous and to next)
-        . open space validation
-        . references of array/ordered/separate to correct allocations
+      . allocations linked together correctly (linked from previous and to next)
+      . open space validation
+      . references of array/ordered/separate to correct allocations
     # Panics
     When the structure is not correct
     */
@@ -1949,7 +1955,7 @@ impl Stores {
                     && self.compare_key(&rec, db, keys, key) != Ordering::Equal
                 {
                     rec.rec = 0;
-                };
+                }
                 rec
             }
             Parts::Ordered(_, keys) => {
@@ -1972,7 +1978,7 @@ impl Stores {
                     && self.compare_key(&rec, db, keys, key) != Ordering::Equal
                 {
                     rec.rec = 0;
-                };
+                }
                 rec
             }
             Parts::Index(_, _, _) => {
@@ -2099,6 +2105,114 @@ impl Stores {
             }
         }
         Ordering::Equal
+    }
+
+    /**
+    Get the command line arguments into a vector
+    # Panics
+    When the OS provided incorrect arguments (non utf8 tokens inside of it)
+    */
+    #[must_use]
+    pub fn os_arguments(&mut self) -> DbRef {
+        let size = 4;
+        let new_value = self.database(size);
+        self.store_mut(&new_value).set_int(new_value.rec, 4, 0);
+        let vec = DbRef {
+            store_nr: new_value.store_nr,
+            rec: new_value.rec,
+            pos: 4,
+        };
+        for t in env::args_os() {
+            let v = t.to_str().unwrap();
+            let elm = vector::vector_append(&vec, 1, size, &mut self.allocations);
+            let s = self.store_mut(&vec).set_str(v);
+            self.store_mut(&vec).set_int(elm.rec, elm.pos, s as i32);
+        }
+        vec
+    }
+
+    /**
+    Get all environment variables into a vector
+    # Panics
+    When the OS provided incorrect variable names (non utf8 tokens inside of it)
+    */
+    #[must_use]
+    pub fn os_variables(&mut self) -> DbRef {
+        let elm = self.name("Variable");
+        let size = u32::from(self.size(elm));
+        let new_value = self.database(size);
+        self.store_mut(&new_value).set_int(new_value.rec, 4, 0);
+        let vec = DbRef {
+            store_nr: new_value.store_nr,
+            rec: new_value.rec,
+            pos: 4,
+        };
+        for t in env::vars_os() {
+            let name = t.0.to_str().unwrap();
+            let value = t.1.to_str().unwrap();
+            let elm = vector::vector_append(&vec, 1, size, &mut self.allocations);
+            let n = self.store_mut(&vec).set_str(name);
+            let v = self.store_mut(&vec).set_str(value);
+            self.store_mut(&vec).set_int(elm.rec, elm.pos + 4, n as i32);
+            self.store_mut(&vec).set_int(elm.rec, elm.pos + 8, v as i32);
+        }
+        vec
+    }
+
+    /**
+    Get the value of an environment variable
+    # Panics
+    When the OS provided incorrect variable values (non utf8 tokens inside of it)
+    */
+    #[must_use]
+    pub fn os_variable(name: &str) -> Str {
+        if let Some(v) = env::var_os(name) {
+            Str::new(v.to_str().unwrap())
+        } else {
+            Str::new("")
+        }
+    }
+
+    /**
+    Get the current directory
+    # Panics
+    When the OS provided incorrect variable values (non utf8 tokens inside of it)
+    */
+    #[must_use]
+    pub fn os_directory(s: &mut String) -> Str {
+        s.clear();
+        if let Ok(v) = env::current_dir() {
+            *s += v.to_str().unwrap();
+        }
+        Str::new(s)
+    }
+
+    /**
+    Get home directory
+    # Panics
+    When the OS provided incorrect variable values (non utf8 tokens inside of it)
+    */
+    #[must_use]
+    pub fn os_home(s: &mut String) -> Str {
+        s.clear();
+        if let Some(v) = dirs::home_dir() {
+            *s += v.to_str().unwrap();
+        }
+        Str::new(s)
+    }
+
+    /**
+    Get the executable directory
+    # Panics
+    When the OS provided incorrect variable values (non utf8 tokens inside of it)
+    */
+    #[must_use]
+    pub fn os_executable(s: &mut String) -> Str {
+        s.clear();
+        if let Ok(v) = env::current_exe() {
+            *s += v.to_str().unwrap();
+        }
+        Str::new(s)
     }
 }
 
@@ -2326,13 +2440,13 @@ impl ShowDb<'_> {
     */
     pub fn write(&self, s: &mut String, indent: u16) {
         if self.known_type == 0 {
-            s.push_str(&format!("{}", self.store().get_int(self.rec, self.pos)));
+            write!(s, "{}", self.store().get_int(self.rec, self.pos)).unwrap();
         } else if self.known_type == 1 {
-            s.push_str(&format!("{}", self.store().get_long(self.rec, self.pos)));
+            write!(s, "{}", self.store().get_long(self.rec, self.pos)).unwrap();
         } else if self.known_type == 2 {
-            s.push_str(&format!("{}", self.store().get_single(self.rec, self.pos)));
+            write!(s, "{}", self.store().get_single(self.rec, self.pos)).unwrap();
         } else if self.known_type == 3 {
-            s.push_str(&format!("{}", self.store().get_float(self.rec, self.pos)));
+            write!(s, "{}", self.store().get_float(self.rec, self.pos)).unwrap();
         } else if self.known_type == 4 {
             s.push_str(if self.store().get_byte(self.rec, self.pos, 0) == 0 {
                 "false"
@@ -2373,7 +2487,7 @@ impl ShowDb<'_> {
                     if *nullable && v == 255 {
                         s.push_str("null");
                     } else {
-                        s.push_str(&format!("{v}"));
+                        write!(s, "{v}").unwrap();
                     }
                 }
                 Parts::Short(from, nullable) => {
@@ -2381,7 +2495,7 @@ impl ShowDb<'_> {
                     if *nullable && v == 65535 {
                         s.push_str("null");
                     } else {
-                        s.push_str(&format!("{v}"));
+                        write!(s, "{v}").unwrap();
                     }
                 }
                 _ => {

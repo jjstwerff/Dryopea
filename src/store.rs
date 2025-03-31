@@ -98,7 +98,7 @@ impl Store {
             );
             #[cfg(debug_assertions)]
             store.validate(0);
-        };
+        }
         store
     }
 
@@ -537,7 +537,7 @@ impl Store {
     #[inline]
     pub fn append_str(&mut self, record: u32, val: &str) -> u32 {
         let prev = self.get_int(record, 4);
-        let result = self.resize(record, ((prev as usize + val.len() + 7) / 8) as u32);
+        let result = self.resize(record, (prev as usize + val.len()).div_ceil(8) as u32);
         unsafe {
             std::ptr::copy_nonoverlapping(
                 val.as_ptr(),

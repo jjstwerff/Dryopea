@@ -7,7 +7,7 @@ pub fn test() {
         "Test failed {test_value} != \"0012\""
     );
 }
-fn choice(a:text, b:text) -> text["b", "a"] {#1 block
+fn choice(a:text, b:text) -> text["a", "b"] {#1 block
   if OpGtInt(_tp_text_len(a), _tp_text_len(b)) {#2 block
     a;
   }#2:text["a"] else {#3 block
@@ -15,25 +15,25 @@ fn choice(a:text, b:text) -> text["b", "a"] {#1 block
   }#3:text["b"];
 }#1:text["a", "b"]
 
-byte-code for call:choice(a: text[0], b: text[16]) -> text["b", "a"]
- 682[32]: return-address
- 682[36]: ArgText(var[0]) -> text
- 685[52]: Call(size=0, to=318)
- 692[40]: ArgText(var[16]) -> text
- 695[56]: Call(size=0, to=318)
- 702[44]: GtInt(v1: integer, v2: integer) -> boolean
- 703[37]: GotoFalseWord(jump=712, if_false: boolean)
- 706[36]: ArgText(var[0]) -> text
- 709[52]: GotoWord(jump=715)
- 712[36]: ArgText(var[16]) -> text
- 715[52]: Return(ret=32, value=16, discard=52) type=text[4]:Base[5]
+byte-code for call:choice(a: text[0], b: text[16]) -> text["a", "b"]
+ 689[32]: return-address
+ 689[36]: ArgText(var[0]) -> text
+ 692[52]: Call(size=0, to=318)
+ 699[40]: ArgText(var[16]) -> text
+ 702[56]: Call(size=0, to=318)
+ 709[44]: GtInt(v1: integer, v2: integer) -> boolean
+ 710[37]: GotoFalseWord(jump=719, if_false: boolean)
+ 713[36]: ArgText(var[0]) -> text
+ 716[52]: GotoWord(jump=722)
+ 719[36]: ArgText(var[16]) -> text
+ 722[52]: Return(ret=32, value=16, discard=52) type=text[4]:Base[5]
 
 fn test() {#1 block
   __work_4:text = "";
   __work_3:text = "";
   __work_2:text = "";
   __work_1:text = "";
-  test_value:text = {#2 block
+  test_value:text["__work_3"] = {#2 block
     __work_3:text = choice({#3 formatting string
       __work_1:text = "";
       OpFormatInt(__work_1, 1i32, 10i32, 3i32, 48i32, false, false);
@@ -56,119 +56,119 @@ fn test() {#1 block
 }#1
 
 byte-code for call:test()
- 721[0]: return-address
- 721[4]: Text()
- 722[28]: Text()
- 723[52]: Text()
- 724[76]: Text()
- 725[100]: Text()
- 726[124]: ClearText(var[28])
- 729[124]: ClearText(var[76])
- 732[124]: ConstText(_value="") -> text
- 734[140]: AppendText(var[76], v1: text)
- 737[124]: ConstInt(val=1) -> integer
- 742[128]: ConstInt(val=3) -> integer
- 747[132]: FormatInt(var[76], val: integer, radix=10, width: integer, token=48, plus=false, note=false)
- 754[124]: VarText(var[76]) -> text
- 757[140]: ClearText(var[52])
- 760[140]: ConstText(_value="") -> text
- 762[156]: AppendText(var[52], v1: text)
- 765[140]: ConstInt(val=2) -> integer
- 770[144]: ConstInt(val=0) -> integer
- 775[148]: FormatInt(var[52], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 782[140]: ConstText(_value="1") -> text
- 785[156]: AppendText(var[52], v1: text)
- 788[140]: VarText(var[52]) -> text
- 791[156]: Call(size=0, to=682)
- 798[140]: AppendText(var[28], v1: text)
- 801[124]: ConstText(_value="2") -> text
- 804[140]: ConstText(_value="") -> text
- 806[156]: Call(size=0, to=682)
- 813[140]: AppendText(var[28], v1: text)
- 816[124]: VarText(var[28]) -> text
- 819[140]: AppendText(var[100], v1: text)
- 822[124]: VarText(var[100]) -> text
- 825[140]: ConstText(_value="0012") -> text
- 831[156]: EqText(v1: text, v2: text) -> boolean
- 832[125]: GotoFalseWord(jump=838, if_false: boolean)
- 835[124]: GotoWord(jump=890)
- 838[124]: ClearText(var[4])
- 841[124]: ConstText(_value="Test failed ") -> text
- 855[140]: AppendText(var[4], v1: text)
- 858[124]: VarText(var[100]) -> text
- 861[140]: ConstInt(val=0) -> integer
- 866[144]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 871[124]: ConstText(_value=" != "0012"") -> text
- 883[140]: AppendText(var[4], v1: text)
- 886[124]: VarText(var[4]) -> text
- 889[140]: Panic(message: text)
- 890[124]: Return(ret=0, value=0, discard=124)
+ 728[0]: return-address
+ 728[4]: Text()
+ 729[28]: Text()
+ 730[52]: Text()
+ 731[76]: Text()
+ 732[100]: Text()
+ 733[124]: ClearText(var[28])
+ 736[124]: ClearText(var[76])
+ 739[124]: ConstText(_value="") -> text
+ 741[140]: AppendText(var[76], v1: text)
+ 744[124]: ConstInt(val=1) -> integer
+ 749[128]: ConstInt(val=3) -> integer
+ 754[132]: FormatInt(var[76], val: integer, radix=10, width: integer, token=48, plus=false, note=false)
+ 761[124]: VarText(var[76]) -> text
+ 764[140]: ClearText(var[52])
+ 767[140]: ConstText(_value="") -> text
+ 769[156]: AppendText(var[52], v1: text)
+ 772[140]: ConstInt(val=2) -> integer
+ 777[144]: ConstInt(val=0) -> integer
+ 782[148]: FormatInt(var[52], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 789[140]: ConstText(_value="1") -> text
+ 792[156]: AppendText(var[52], v1: text)
+ 795[140]: VarText(var[52]) -> text
+ 798[156]: Call(size=0, to=689)
+ 805[140]: AppendText(var[28], v1: text)
+ 808[124]: ConstText(_value="2") -> text
+ 811[140]: ConstText(_value="") -> text
+ 813[156]: Call(size=0, to=689)
+ 820[140]: AppendText(var[28], v1: text)
+ 823[124]: VarText(var[28]) -> text
+ 826[140]: AppendText(var[100], v1: text)
+ 829[124]: VarText(var[100]) -> text
+ 832[140]: ConstText(_value="0012") -> text
+ 838[156]: EqText(v1: text, v2: text) -> boolean
+ 839[125]: GotoFalseWord(jump=845, if_false: boolean)
+ 842[124]: GotoWord(jump=897)
+ 845[124]: ClearText(var[4])
+ 848[124]: ConstText(_value="Test failed ") -> text
+ 862[140]: AppendText(var[4], v1: text)
+ 865[124]: VarText(var[100]) -> text
+ 868[140]: ConstInt(val=0) -> integer
+ 873[144]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 878[124]: ConstText(_value=" != "0012"") -> text
+ 890[140]: AppendText(var[4], v1: text)
+ 893[124]: VarText(var[4]) -> text
+ 896[140]: Panic(message: text)
+ 897[124]: Return(ret=0, value=0, discard=124)
 
 Execute test:
-  721:[8] Text()
-  722:[32] Text()
-  723:[56] Text()
-  724:[80] Text()
-  725:[104] Text()
-  726:[128] ClearText(var[32])
-  729:[128] ClearText(var[80])
-  732:[128] ConstText(_value="") -> ""[128]
-  734:[144] AppendText(var[80], v1=""[128])
-  737:[128] ConstInt(val=1) -> 1[128]
-  742:[132] ConstInt(val=3) -> 3[132]
-  747:[136] FormatInt(var[80], val=1[128], radix=10, width=3[132], token=48, plus=false, note=false)
-  754:[128] VarText(var[80]) -> "001"[128]
-  757:[144] ClearText(var[56])
-  760:[144] ConstText(_value="") -> ""[144]
-  762:[160] AppendText(var[56], v1=""[144])
-  765:[144] ConstInt(val=2) -> 2[144]
-  770:[148] ConstInt(val=0) -> 0[148]
-  775:[152] FormatInt(var[56], val=2[144], radix=10, width=0[148], token=32, plus=false, note=false)
-  782:[144] ConstText(_value="1") -> "1"[144]
-  785:[160] AppendText(var[56], v1="1"[144])
-  788:[144] VarText(var[56]) -> "21"[144]
-  791:[160] Call(size=0, to=682)
-  682:[164] ArgText(var[128]) -> "001"[164]
-  685:[180] Call(size=0, to=318)
+  728:[8] Text()
+  729:[32] Text()
+  730:[56] Text()
+  731:[80] Text()
+  732:[104] Text()
+  733:[128] ClearText(var[32])
+  736:[128] ClearText(var[80])
+  739:[128] ConstText(_value="") -> ""[128]
+  741:[144] AppendText(var[80], v1=""[128])
+  744:[128] ConstInt(val=1) -> 1[128]
+  749:[132] ConstInt(val=3) -> 3[132]
+  754:[136] FormatInt(var[80], val=1[128], radix=10, width=3[132], token=48, plus=false, note=false)
+  761:[128] VarText(var[80]) -> "001"[128]
+  764:[144] ClearText(var[56])
+  767:[144] ConstText(_value="") -> ""[144]
+  769:[160] AppendText(var[56], v1=""[144])
+  772:[144] ConstInt(val=2) -> 2[144]
+  777:[148] ConstInt(val=0) -> 0[148]
+  782:[152] FormatInt(var[56], val=2[144], radix=10, width=0[148], token=32, plus=false, note=false)
+  789:[144] ConstText(_value="1") -> "1"[144]
+  792:[160] AppendText(var[56], v1="1"[144])
+  795:[144] VarText(var[56]) -> "21"[144]
+  798:[160] Call(size=0, to=689)
+  689:[164] ArgText(var[128]) -> "001"[164]
+  692:[180] Call(size=0, to=318)
   318:[184] ArgText(var[164]) -> "001"[184]
   321:[200] LengthText(v1="001"[184]) -> 3[184]
-  322:[188] Return(ret=692[180], value=4, discard=24) -> 3[164]
-  692:[168] ArgText(var[144]) -> "21"[168]
-  695:[184] Call(size=0, to=318)
+  322:[188] Return(ret=699[180], value=4, discard=24) -> 3[164]
+  699:[168] ArgText(var[144]) -> "21"[168]
+  702:[184] Call(size=0, to=318)
   318:[188] ArgText(var[168]) -> "21"[188]
   321:[204] LengthText(v1="21"[188]) -> 2[188]
-  322:[192] Return(ret=702[184], value=4, discard=24) -> 2[168]
-  702:[172] GtInt(v1=3[164], v2=2[168]) -> true[164]
-  703:[165] GotoFalseWord(jump=712, if_false=true[164])
-  706:[164] ArgText(var[128]) -> "001"[164]
-  709:[180] GotoWord(jump=715)
-  715:[180] Return(ret=798[160], value=16, discard=52) -> "001"[128]
-  798:[144] AppendText(var[32], v1="001"[128])
-  801:[128] ConstText(_value="2") -> "2"[128]
-  804:[144] ConstText(_value="") -> ""[144]
-  806:[160] Call(size=0, to=682)
-  682:[164] ArgText(var[128]) -> "2"[164]
-  685:[180] Call(size=0, to=318)
+  322:[192] Return(ret=709[184], value=4, discard=24) -> 2[168]
+  709:[172] GtInt(v1=3[164], v2=2[168]) -> true[164]
+  710:[165] GotoFalseWord(jump=719, if_false=true[164])
+  713:[164] ArgText(var[128]) -> "001"[164]
+  716:[180] GotoWord(jump=722)
+  722:[180] Return(ret=805[160], value=16, discard=52) -> "001"[128]
+  805:[144] AppendText(var[32], v1="001"[128])
+  808:[128] ConstText(_value="2") -> "2"[128]
+  811:[144] ConstText(_value="") -> ""[144]
+  813:[160] Call(size=0, to=689)
+  689:[164] ArgText(var[128]) -> "2"[164]
+  692:[180] Call(size=0, to=318)
   318:[184] ArgText(var[164]) -> "2"[184]
   321:[200] LengthText(v1="2"[184]) -> 1[184]
-  322:[188] Return(ret=692[180], value=4, discard=24) -> 1[164]
-  692:[168] ArgText(var[144]) -> ""[168]
-  695:[184] Call(size=0, to=318)
+  322:[188] Return(ret=699[180], value=4, discard=24) -> 1[164]
+  699:[168] ArgText(var[144]) -> ""[168]
+  702:[184] Call(size=0, to=318)
   318:[188] ArgText(var[168]) -> ""[188]
   321:[204] LengthText(v1=""[188]) -> 0[188]
-  322:[192] Return(ret=702[184], value=4, discard=24) -> 0[168]
-  702:[172] GtInt(v1=1[164], v2=0[168]) -> true[164]
-  703:[165] GotoFalseWord(jump=712, if_false=true[164])
-  706:[164] ArgText(var[128]) -> "2"[164]
-  709:[180] GotoWord(jump=715)
-  715:[180] Return(ret=813[160], value=16, discard=52) -> "2"[128]
-  813:[144] AppendText(var[32], v1="2"[128])
-  816:[128] VarText(var[32]) -> "0012"[128]
-  819:[144] AppendText(var[104], v1="0012"[128])
-  822:[128] VarText(var[104]) -> "0012"[128]
-  825:[144] ConstText(_value="0012") -> "0012"[144]
-  831:[160] EqText(v1="0012"[128], v2="0012"[144]) -> true[128]
-  832:[129] GotoFalseWord(jump=838, if_false=true[128])
-  835:[128] GotoWord(jump=890)
-  890:[128] Return(ret=4294967295[4], value=0, discard=124)
+  322:[192] Return(ret=709[184], value=4, discard=24) -> 0[168]
+  709:[172] GtInt(v1=1[164], v2=0[168]) -> true[164]
+  710:[165] GotoFalseWord(jump=719, if_false=true[164])
+  713:[164] ArgText(var[128]) -> "2"[164]
+  716:[180] GotoWord(jump=722)
+  722:[180] Return(ret=820[160], value=16, discard=52) -> "2"[128]
+  820:[144] AppendText(var[32], v1="2"[128])
+  823:[128] VarText(var[32]) -> "0012"[128]
+  826:[144] AppendText(var[104], v1="0012"[128])
+  829:[128] VarText(var[104]) -> "0012"[128]
+  832:[144] ConstText(_value="0012") -> "0012"[144]
+  838:[160] EqText(v1="0012"[128], v2="0012"[144]) -> true[128]
+  839:[129] GotoFalseWord(jump=845, if_false=true[128])
+  842:[128] GotoWord(jump=897)
+  897:[128] Return(ret=4294967295[4], value=0, discard=124)
 Finished
