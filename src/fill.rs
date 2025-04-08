@@ -243,6 +243,8 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     static_call,
     create_ref,
     get_ref_text,
+    get_db_ref,
+    set_db_ref,
     append_ref_text,
     clear_ref_text,
     get_file,
@@ -1729,15 +1731,10 @@ fn finish_record(s: &mut State) {
 }
 
 fn add_vector(s: &mut State) {
-    let v_size = *s.code::<u16>();
+    let v_tp = *s.code::<u16>();
     let v_other = *s.get_stack::<DbRef>();
     let v_r = *s.get_stack::<DbRef>();
-    vector::vector_add(
-        &v_r,
-        &v_other,
-        u32::from(v_size),
-        &mut s.database.allocations,
-    );
+    s.database.vector_add(&v_r, &v_other, v_tp);
 }
 
 fn get_record(s: &mut State) {
@@ -1810,6 +1807,14 @@ fn create_ref(s: &mut State) {
 
 fn get_ref_text(s: &mut State) {
     s.get_ref_text();
+}
+
+fn get_db_ref(s: &mut State) {
+    s.get_db_ref();
+}
+
+fn set_db_ref(s: &mut State) {
+    s.set_db_ref();
 }
 
 fn append_ref_text(s: &mut State) {

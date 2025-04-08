@@ -10,13 +10,13 @@ pub fn test() {
         "Test failed {test_value} != \"1234\""
     );
 }
-fn text_ref(a:refvar(text([]))) -> text["a"] {#1 block
+fn text_ref(a:&text) -> text["a"] {#1 block
   OpClearRefText(OpVarRef(a));
   OpAppendRefText(OpVarRef(a), 0i32, "12345");
   OpGetTextSub(OpGetRefText(OpVarRef(a), 0i32), 0i32, 4i32);
 }#1:text
 
-byte-code for var_ref:text_ref(a: refvar(text([]))[0]) -> text["a"]
+byte-code for var_ref:text_ref(a: &text[0]) -> text["a"]
  692[12]: return-address
  692[16]: VarRef(var[0]) -> reference
  695[28]: ClearRefText(r: reference)

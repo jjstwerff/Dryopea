@@ -21,11 +21,11 @@ use std::string::ToString;
 use typedef::complete_definition;
 
 /**
-The amount of defined reserved text worker variables. A worker variable is needed when
-two texts are added or a formatting text is used and the result is used as a parameter to a call.
-These are reused when possible, however when in calculating a text value a new text expression
+The number of defined reserved text worker variables. A worker variable is needed when
+two texts are added or a formatting text is used, and the result is used as a parameter to a call.
+These are reused when possible. However, when calculating a text, a new text expression
 is used a next worker variable is needed.
-This number indicated the depth of these expressions not the amount of these expressions in a
+This number indicated the depth of these expressions, not the number of these expressions in a
 function.
 */
 pub struct Parser {
@@ -34,7 +34,7 @@ pub struct Parser {
     pub database: Stores,
     /// The lexer on the current text file
     pub lexer: Lexer,
-    /// Are we currently allowing break/continue statements
+    /// Are we currently allowing break/continue statements?
     in_loop: bool,
     /// The current file number that is being parsed
     file: u32,
@@ -115,7 +115,7 @@ fn is_lower(name: &str) -> bool {
 }
 
 #[allow(dead_code)]
-/// Used to validate constants names
+/// Used to validate constant names
 fn is_upper(name: &str) -> bool {
     for c in name.chars() {
         if c.is_lowercase() {
@@ -157,7 +157,8 @@ impl Parser {
     }
 
     /// Parse the content of a given file.
-    /// default: parsing system definitions
+    /// - filename: the file to parse
+    /// - default: parsing system definitions
     /// # Panics
     /// With filesystem problems.
     pub fn parse(&mut self, filename: &str, default: bool) -> bool {
@@ -236,6 +237,7 @@ impl Parser {
             self.diagnostics.fill(self.lexer.diagnostics());
             return;
         }
+        self.vars.reset();
         self.lexer = Lexer::from_str(text, filename);
         self.parse_file();
         self.diagnostics.fill(self.lexer.diagnostics());
@@ -248,7 +250,7 @@ impl Parser {
     /// Get an iterator.
     /// The iterable expression is in *code.
     /// Creating the iterator will be in *code afterward.
-    /// Return the next expression; with `Value::None` the iterator creations was impossible.
+    /// Return the next expression; with `Value::None` the iterator creation was impossible.
     fn iterator(
         &mut self,
         code: &mut Value,
@@ -276,7 +278,7 @@ impl Parser {
         }
         if matches!(*is_type, Type::Text(_)) {
             let nx = self.vars.start_scope(self.lexer.at(), "for text next");
-            let res_var = self.vars.work(&mut self.lexer);
+            let res_var = self.vars.work_text(&mut self.lexer);
             let i = Value::Var(iter_var);
             let ref_expr = self.cl(
                 "OpGetTextSub",
@@ -364,7 +366,7 @@ impl Parser {
             return true;
         }
         if let Type::RefVar(ref_tp) = is_type {
-            if ref_tp.is_equal(should) {
+            if self.convert(code, ref_tp, should) {
                 return true;
             }
         }
@@ -519,7 +521,7 @@ impl Parser {
     /// Search for definitions with the given name and call that with the given parameters.
     fn call(&mut self, code: &mut Value, name: &str, list: &[Value], types: &[Type]) -> Type {
         // Create a new list of parameters based on the current ones
-        // We still need to know the types though.
+        // We still need to know the types.
         let d_nr = self.data.def_nr(name);
         if d_nr != u32::MAX {
             self.call_nr(code, d_nr, list, types, true)
@@ -820,7 +822,7 @@ impl Parser {
                     if matches!(*tp, Type::Text(_)) {
                         let ref_scope = self.vars.start_scope(self.lexer.at(), "default ref");
                         let mut ls = Vec::new();
-                        let vr = self.vars.work(&mut self.lexer);
+                        let vr = self.vars.work_text(&mut self.lexer);
                         if default != Value::Null
                             && if let Value::Text(t) = &default {
                                 !t.is_empty()
@@ -1683,8 +1685,11 @@ impl Parser {
         };
         self.parse_block("return from block", &mut v, &result);
         if let Value::Block(ls) = &mut v {
-            for v in self.vars.work_vars() {
+            for v in self.vars.work_texts() {
                 ls.insert(0, v_set(v, Value::Text(String::new())));
+            }
+            for v in self.vars.work_references() {
+                ls.insert(0, v_set(v, Value::Null));
             }
         }
         if self.context != u32::MAX && !self.first_pass {
@@ -1758,6 +1763,11 @@ impl Parser {
                 }
                 match &f_type {
                     Type::Vector(inner, _) => assign_tp = (**inner).clone(),
+                    Type::RefVar(tp) => {
+                        if let Type::Vector(inner, _) = &**tp {
+                            assign_tp = (**inner).clone();
+                        }
+                    }
                     Type::Hash(in_def, _, _)
                     | Type::Sorted(in_def, _, _)
                     | Type::Index(in_def, _, _)
@@ -1863,6 +1873,17 @@ impl Parser {
                 }
             } else {
                 return val.clone();
+            }
+        }
+        if let Type::RefVar(tp) = f_type {
+            if matches!(**tp, Type::Vector(_, _) | Type::Sorted(_, _, _)) {
+                if let Value::Var(nr) = to {
+                    if self.vars.uses(*nr) > 0 {
+                        return val.clone();
+                    }
+                } else {
+                    return val.clone();
+                }
             }
         }
         let code = if op == "=" {
@@ -1995,14 +2016,14 @@ impl Parser {
                 self.text_return(ls);
             } else {
                 for l in ls {
-                    self.vars.move_scope(*l, 1);
+                    self.vars.move_text_scope(*l, 1);
                 }
             }
         }
     }
 
     fn return_text(&mut self, l: &mut Vec<Value>, add: u32, n: &mut Value) -> Type {
-        let work = self.vars.work(&mut self.lexer);
+        let work = self.vars.work_text(&mut self.lexer);
         self.replace_add_text(l, add, n, work, true);
         if !self.lexer.peek_token(";") {
             l.push(Value::Var(work));
@@ -2086,6 +2107,50 @@ impl Parser {
             } else if operator == "and" || operator == "&&" {
                 self.boolean_operator(code, &current_type, precedence, false);
                 current_type = Type::Boolean;
+            } else if operator == "+" && matches!(current_type, Type::Vector(_, _)) {
+                // TODO more efficient path when the first vector can be changed
+                let cur = self.vars.last_scope();
+                let sc = self.vars.start_scope(self.lexer.at(), "AddVector");
+                if self.first_pass {
+                    self.vars.move_scope(cur, sc);
+                }
+                let vec_def = self
+                    .data
+                    .def_nr(&format!("main_{}", &current_type.name(&self.data)));
+                let db_var = self.create_unique("db", &self.data.def(vec_def).returned.clone());
+                let vec_var = self.vars.work_refs(&current_type, &mut self.lexer);
+                let mut second_code = Value::Null;
+                self.parse_operators(assign_tp, &mut second_code, parent_tp, precedence + 1);
+                let main_tp = i32::from(self.data.def(vec_def).known_type);
+                let rec_tp = if let Type::Vector(cont, _) = &current_type {
+                    i32::from(self.data.def(self.data.type_def_nr(cont)).known_type)
+                } else {
+                    i32::MAX
+                };
+                *code = Value::Block(vec![
+                    v_set(
+                        db_var,
+                        self.cl("OpDatabase", &[Value::Int(1), Value::Int(main_tp)]),
+                    ),
+                    self.cl(
+                        "OpSetInt",
+                        &[Value::Var(db_var), Value::Int(4), Value::Int(0)],
+                    ),
+                    v_set(vec_var, self.get_field(vec_def, 0, Value::Var(db_var))),
+                    self.cl(
+                        "OpAppendVector",
+                        &[Value::Var(vec_var), code.clone(), Value::Int(rec_tp)],
+                    ),
+                    self.cl(
+                        "OpAppendVector",
+                        &[Value::Var(vec_var), second_code.clone(), Value::Int(rec_tp)],
+                    ),
+                    Value::Var(vec_var),
+                ]);
+                if let Type::Vector(cont, _) = &current_type {
+                    current_type = Type::Vector(cont.clone(), vec![db_var]);
+                }
+                self.vars.finish_scope(sc, &current_type, self.lexer.at());
             } else {
                 let mut second_code = Value::Null;
                 let second_type =
@@ -2101,8 +2166,8 @@ impl Parser {
         }
     }
 
-    /// Rewrite boolean operators into an `IF` statements to prevent the calculation of the second
-    /// expression when it is not needed.
+    /// Rewrite boolean operators into an `IF` statement to prevent the calculation of the second
+    /// expression when it is unneeded.
     fn boolean_operator(&mut self, code: &mut Value, tp: &Type, precedence: usize, is_or: bool) {
         if !self.convert(code, tp, &Type::Boolean) && !self.first_pass {
             self.can_convert(tp, &Type::Boolean);
@@ -2229,10 +2294,11 @@ impl Parser {
             )
         };
         if self.lexer.has_token("]") {
-            if new_store {
-                self.vector_db(assign_tp, val, vec);
-            }
-            let tp = Type::Vector(Box::new(assign_tp.clone()), Vec::new());
+            let tp = if new_store {
+                self.vector_db(assign_tp, val, vec)
+            } else {
+                Type::Vector(Box::new(assign_tp.clone()), vec![vec])
+            };
             self.vars.finish_scope(vc, &tp, self.lexer.at());
             return tp;
         }
@@ -2249,7 +2315,7 @@ impl Parser {
                 break;
             }
         }
-        // convert parts to common type
+        // convert parts to the common type
         if in_t == Type::Null {
             return in_t;
         }
@@ -2414,8 +2480,10 @@ impl Parser {
         ls
     }
 
-    fn vector_db(&mut self, assign_tp: &Type, val: &mut Value, vec: u16) {
-        if !self.first_pass {
+    fn vector_db(&mut self, assign_tp: &Type, val: &mut Value, vec: u16) -> Type {
+        if self.first_pass {
+            Type::Vector(Box::new(assign_tp.clone()), Vec::new())
+        } else {
             let mut ls = Vec::new();
             let vec_def = self.data.vector_def(&mut self.lexer, assign_tp);
             let db = self.create_unique("db", &Type::Reference(vec_def, Vec::new()));
@@ -2429,12 +2497,13 @@ impl Parser {
                     ],
                 ),
             ));
-            // Reference to vector field.
+            // Reference to the vector field.
             ls.push(v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
             // Write 0 into this reference.
             ls.push(self.set_field(vec_def, 0, Value::Var(db), Value::Int(0)));
             ls.push(Value::Var(vec));
             *val = Value::Block(ls);
+            Type::Vector(Box::new(assign_tp.clone()), vec![db])
         }
     }
 
@@ -2448,7 +2517,7 @@ impl Parser {
         let known = Value::Int(i32::from(self.data.def(vec_def).known_type));
         let op_db = self.cl("OpDatabase", &[Value::Int(i32::from(rec_size)), known]);
         ls.insert(0, v_set(db, op_db));
-        // Reference to vector field.
+        // Reference to the vector field.
         ls.insert(1, v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
         // Write 0 into this reference.
         ls.insert(2, self.set_field(vec_def, 0, Value::Var(db), Value::Int(0)));
@@ -2535,7 +2604,16 @@ impl Parser {
         let mut t = tp;
         if let Some(field) = self.lexer.has_identifier() {
             let enr = self.data.type_elm(&t);
+            assert_ne!(
+                enr,
+                u32::MAX,
+                "Unknown type {}",
+                t.show(&self.data, &self.vars)
+            );
             let e_size = i32::from(self.database.size(self.data.def(enr).known_type));
+            if let Type::RefVar(tp) = t {
+                t = *tp;
+            }
             let dnr = self.data.type_def_nr(&t);
             if let Type::Vector(et, _) = t.clone() {
                 if field == "remove" {
@@ -3010,7 +3088,7 @@ impl Parser {
         let mut list = vec![];
         let scope = if self.lexer.mode() == Mode::Formatting {
             // Define a new variable to append to
-            var = self.vars.work(&mut self.lexer);
+            var = self.vars.work_text(&mut self.lexer);
             list.push(v_set(var, code.clone()));
             self.vars.start_scope(self.lexer.at(), "formatting string")
         } else {
@@ -3643,7 +3721,7 @@ impl Parser {
             list.push(Value::Var(v));
         }
         *code = Value::Block(list);
-        let tp = Type::Reference(td_nr, Vec::new());
+        let tp = Type::Reference(td_nr, vec![v]);
         self.vars.finish_scope(
             ob,
             if new_object { &tp } else { &Type::Void },
@@ -3794,7 +3872,7 @@ impl Parser {
                     Type::RefVar(Box::new(Type::Text(Vec::new()))),
                 );
                 dep.push(a as u16);
-                self.vars.move_scope(*v, 0);
+                self.vars.move_text_scope(*v, 0);
                 self.vars
                     .set_type(*v, Type::RefVar(Box::new(Type::Text(Vec::new()))));
             }
@@ -3844,7 +3922,7 @@ impl Parser {
             if let Value::Call(c, _) = p {
                 if matches!(t, Type::Text(_)) && c == add {
                     let mut l = Vec::new();
-                    let work = self.vars.work(&mut self.lexer);
+                    let work = self.vars.work_text(&mut self.lexer);
                     self.replace_add_text(&mut l, add, &p, work, true);
                     l.push(Value::Var(work));
                     p = Value::Block(l);
@@ -3930,7 +4008,7 @@ impl Parser {
                 if matches!(t, Type::Text(_)) && c == add {
                     let arg_scope = self.vars.start_scope(self.lexer.at(), "text argument");
                     let mut l = Vec::new();
-                    let work = self.vars.work(&mut self.lexer);
+                    let work = self.vars.work_text(&mut self.lexer);
                     self.replace_add_text(&mut l, add, &p, work, true);
                     l.push(Value::Var(work));
                     self.vars.finish_scope(arg_scope, &t, self.lexer.at());

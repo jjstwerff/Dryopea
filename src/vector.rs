@@ -10,44 +10,6 @@ use crate::keys::{Content, DbRef, Key};
 use crate::store::Store;
 use std::cmp::Ordering;
 
-// TODO copy child records & strings during copy (string reference counting on same)
-pub fn vector_add(db: &DbRef, o_db: &DbRef, size: u32, stores: &mut [Store]) {
-    let o_length = length_vector(o_db, stores);
-    if o_length == 0 {
-        // Other vector has no data
-        return;
-    }
-    let o_rec = keys::store(o_db, stores).get_int(o_db.rec, o_db.pos) as u32;
-    let o_pos = 0;
-    let new_db = vector_append(db, o_length, size, stores);
-    if db.store_nr == o_db.store_nr {
-        keys::mut_store(db, stores).copy_block(
-            o_rec,
-            o_pos as isize,
-            new_db.rec,
-            new_db.pos as isize,
-            o_length as isize * size as isize,
-        );
-    } else {
-        let o_store: &Store;
-        let db_store: &mut Store;
-        // These stores are actually two different data structures, however there is no easier
-        // way to tell the rust type system this.
-        unsafe {
-            o_store = keys::store(o_db, &*std::ptr::from_ref::<[Store]>(stores));
-            db_store = keys::mut_store(db, &mut *std::ptr::from_mut::<[Store]>(stores));
-        }
-        o_store.copy_block_between(
-            o_rec,
-            o_pos as isize,
-            db_store,
-            new_db.rec,
-            new_db.pos as isize,
-            o_length as isize * size as isize,
-        );
-    }
-}
-
 // TODO change slice to its own vector on updating it
 pub fn insert_vector(db: &DbRef, size: u32, index: i32, stores: &mut [Store]) -> DbRef {
     let len = length_vector(db, stores);

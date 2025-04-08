@@ -233,7 +233,7 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
     var__vec_2
   };
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) {
-    Drop(Call(314, [Call(263, [Var(0), Int(4)]), Var(1)]))
+    Drop(Call(316, [Call(263, [Var(0), Int(4)]), Var(1)]))
   } else {Null};
   var_result
 }
@@ -248,7 +248,7 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef) -> DbRef {
       {let db = (var__val_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
       var__val_1
     };
-    Drop(Call(315, [Call(263, [Var(0), Int(4)]), Var(1)]));
+    Drop(Call(317, [Call(263, [Var(0), Int(4)]), Var(1)]));
     var_result
   } else {
     Stores::null()

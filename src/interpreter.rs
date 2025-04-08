@@ -26,7 +26,7 @@ pub fn byte_code(writer: &mut dyn Write, state: &mut State, data: &mut Data) -> 
         if show {
             write!(writer, "{} ", data.def(d_nr).header(data, d_nr))?;
             let mut vars = Function::copy(&data.def(d_nr).variables);
-            data.show_code(writer, &mut vars, &data.def(d_nr).code, 0, false)?;
+            data.show_code(writer, &mut vars, &data.def(d_nr).code, 0, false, d_nr)?;
             writeln!(writer, "\n")?;
             write!(writer, "byte-code for {}:", data.def(d_nr).position.file)?;
         }

@@ -211,6 +211,7 @@ impl Type {
     #[must_use]
     pub fn name(&self, data: &Data) -> String {
         match self {
+            Type::RefVar(tp) => format!("&{}", tp.name(data)),
             Type::Enum(t) | Type::Reference(t, _) => data.def(*t).name.clone(),
             Type::Text(_) => "text".to_string(),
             Type::Vector(tp, _) if matches!(tp as &Type, Type::Unknown(_)) => "vector".to_string(),
@@ -231,31 +232,51 @@ impl Type {
     #[must_use]
     pub fn show(&self, data: &Data, vars: &Function) -> String {
         match self {
+            Type::RefVar(tp) => format!("&{}", tp.show(data, vars)),
             Type::Enum(t) => data.def(*t).name.clone(),
-            Type::Reference(t, dep) if dep.is_empty() => data.def(*t).name.clone(),
             Type::Reference(t, dep) => {
-                format!("{}{:?}", data.def(*t).name, Self::dep_var(dep, vars))
+                format!("{}{}", data.def(*t).name, Self::dep_var(dep, vars))
             }
             Type::Vector(tp, dep) if matches!(tp as &Type, Type::Unknown(_)) => {
-                format!("vector{:?}", Self::dep_var(dep, vars))
+                format!("vector{}", Self::dep_var(dep, vars))
             }
-            Type::Vector(tp, link) => format!("vector<{}>#{link:?}", tp.show(data, vars)),
-            Type::Sorted(tp, key, link) => {
-                format!("sorted<{},{key:?}>#{link:?}", data.def(*tp).name)
+            Type::Vector(tp, dep) => format!(
+                "vector<{}>{}",
+                tp.show(data, vars),
+                Self::dep_var(dep, vars)
+            ),
+            Type::Sorted(tp, key, dep) => {
+                format!(
+                    "sorted<{},{key:?}>{}",
+                    data.def(*tp).name,
+                    Self::dep_var(dep, vars)
+                )
             }
-            Type::Hash(tp, key, link) => format!("hash<{},{key:?}>#{link:?}", data.def(*tp).name),
-            Type::Index(tp, key, link) => format!("index<{},{key:?}>#{link:?}", data.def(*tp).name),
-            Type::Spacial(tp, key, link) => {
-                format!("spacial<{},{key:?}>#{link:?}", data.def(*tp).name)
+            Type::Hash(tp, key, dep) => format!(
+                "hash<{},{key:?}>{}",
+                data.def(*tp).name,
+                Self::dep_var(dep, vars)
+            ),
+            Type::Index(tp, key, dep) => format!(
+                "index<{},{key:?}>{}",
+                data.def(*tp).name,
+                Self::dep_var(dep, vars)
+            ),
+            Type::Spacial(tp, key, dep) => {
+                format!(
+                    "spacial<{},{key:?}>{}",
+                    data.def(*tp).name,
+                    Self::dep_var(dep, vars)
+                )
             }
             Type::Routine(tp) => format!("fn {}[{tp}]", data.def(*tp).name),
             Type::Text(dep) if dep.is_empty() => "text".to_string(),
-            Type::Text(dep) => format!("text{:?}", Self::dep_var(dep, vars)),
+            Type::Text(dep) => format!("text{}", Self::dep_var(dep, vars)),
             _ => self.to_string(),
         }
     }
 
-    fn dep_var(dep: &Vec<u16>, vars: &Function) -> Vec<String> {
+    fn dep_var(dep: &Vec<u16>, vars: &Function) -> String {
         let mut ls = BTreeSet::new();
         for d in dep {
             ls.insert(vars.name(*d).to_string());
@@ -264,7 +285,11 @@ impl Type {
         for v in ls {
             res.push(v);
         }
-        res
+        if res.is_empty() {
+            String::new()
+        } else {
+            format!("{res:?}")
+        }
     }
 
     #[must_use]
@@ -928,8 +953,13 @@ impl Data {
         &self.definitions[*nr as usize]
     }
 
+    /** Get a definition.
+    # Panics
+    When no definition on that number is found
+    */
     #[must_use]
     pub fn def(&self, dnr: u32) -> &Definition {
+        assert_ne!(dnr, u32::MAX, "Unknown definition");
         &self.definitions[dnr as usize]
     }
 
@@ -965,6 +995,7 @@ impl Data {
             | Type::Reference(d_nr, _)
             | Type::Unknown(d_nr) => *d_nr,
             Type::Vector(_, _) => self.def_nr("vector"),
+            Type::RefVar(tp) if matches!(**tp, Type::Reference(_, _)) => self.type_def_nr(tp),
             Type::RefVar(_) | Type::Sorted(_, _, _) => self.def_nr("reference"),
             Type::Index(_, _, _) => self.def_nr("index"),
             Type::Hash(_, _, _) => self.def_nr("hash"),
@@ -984,7 +1015,7 @@ impl Data {
             Type::Float => self.def_nr("float"),
             Type::Text(_) => self.def_nr("text"),
             Type::Routine(d_nr) | Type::Enum(d_nr) | Type::Reference(d_nr, _) => *d_nr,
-            Type::Vector(tp, _) => {
+            Type::Vector(tp, _) | Type::RefVar(tp) => {
                 if let Type::Reference(td, _) = **tp {
                     td
                 } else {
@@ -1075,7 +1106,8 @@ impl Data {
     pub fn dump(&self, value: &Value, d_nr: u32) {
         let mut vars = Function::copy(&self.def(d_nr).variables);
         let mut s = Into { str: String::new() };
-        self.show_code(&mut s, &mut vars, value, 0, true).unwrap();
+        self.show_code(&mut s, &mut vars, value, 0, true, d_nr)
+            .unwrap();
         println!("dump {}", s.str);
     }
 
@@ -1087,7 +1119,8 @@ impl Data {
     pub fn dump_fn(&self, value: &Value, vars: &Function) {
         let mut vars = Function::copy(vars);
         let mut s = Into { str: String::new() };
-        self.show_code(&mut s, &mut vars, value, 0, true).unwrap();
+        self.show_code(&mut s, &mut vars, value, 0, true, 0)
+            .unwrap();
         println!("dump_fn {}", s.str);
     }
 
@@ -1105,6 +1138,7 @@ impl Data {
         value: &Value,
         indent: u32,
         start: bool,
+        d_nr: u32,
     ) -> Result<()> {
         if start {
             for _i in 0..indent {
@@ -1128,15 +1162,15 @@ impl Data {
                     if v_nr > 0 {
                         write!(write, ", ")?;
                     }
-                    self.show_code(write, vars, v, indent, false)?;
+                    self.show_code(write, vars, v, indent, false, d_nr)?;
                 }
                 write!(write, ")")
             }
             Value::Block(v) => {
-                let bl = vars.start_scope((0, 0), "show block");
+                let bl = vars.start_next();
                 writeln!(write, "{{#{} {}", vars.scope(), vars.context())?;
                 for val in v {
-                    self.show_code(write, vars, val, indent + 1, true)?;
+                    self.show_code(write, vars, val, indent + 1, true, d_nr)?;
                     writeln!(write, ";")?;
                 }
                 for _i in 0..indent {
@@ -1152,7 +1186,7 @@ impl Data {
                         vars.result().show(self, vars)
                     )?;
                 }
-                vars.finish_scope(bl, &Type::Unknown(0), (0, 0));
+                vars.finish_next(bl, &self.def(d_nr).name);
                 Ok(())
             }
             Value::Var(v) => write!(write, "{}", vars.name(*v)),
@@ -1163,39 +1197,39 @@ impl Data {
                     vars.name(*v),
                     vars.tp(*v).show(self, vars)
                 )?;
-                self.show_code(write, vars, to, indent, false)
+                self.show_code(write, vars, to, indent, false, d_nr)
             }
             Value::Return(ex) => {
                 write!(write, "return ")?;
-                self.show_code(write, vars, ex, indent, false)
+                self.show_code(write, vars, ex, indent, false, d_nr)
             }
             Value::Break(v) => write!(write, "break({v})"),
             Value::Continue(v) => write!(write, "continue({v})"),
             Value::If(test, t, f) => {
                 write!(write, "if ")?;
-                self.show_code(write, vars, test, indent, false)?;
+                self.show_code(write, vars, test, indent, false, d_nr)?;
                 write!(write, " ")?;
-                self.show_code(write, vars, t, indent, false)?;
+                self.show_code(write, vars, t, indent, false, d_nr)?;
                 write!(write, " else ")?;
-                self.show_code(write, vars, f, indent, false)
+                self.show_code(write, vars, f, indent, false, d_nr)
             }
             Value::Loop(v) => {
-                let lp = vars.start_scope((0, 0), "show loop");
+                let lp = vars.start_next();
                 writeln!(write, "loop {{#{} {}", vars.scope(), vars.context())?;
                 for val in v {
-                    self.show_code(write, vars, val, indent + 1, true)?;
+                    self.show_code(write, vars, val, indent + 1, true, d_nr)?;
                     writeln!(write, ";")?;
                 }
                 for _i in 0..indent {
                     write!(write, "  ")?;
                 }
                 write!(write, "}}#{}", vars.scope())?;
-                vars.finish_scope(lp, &Type::Unknown(0), (0, 0));
+                vars.finish_next(lp, &self.def(d_nr).name);
                 Ok(())
             }
             Value::Drop(v) => {
                 write!(write, "drop ")?;
-                self.show_code(write, vars, v, indent, false)
+                self.show_code(write, vars, v, indent, false, d_nr)
             }
             Value::Keys(keys) => {
                 write!(write, "&{keys:?}")

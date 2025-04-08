@@ -49,7 +49,7 @@ byte-code for special_fields:sum(o: Object[0]) -> integer
  702[24]: VarInt(var[20]) -> integer
  705[28]: VarRef(var[0]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
  708[40]: GetField(v1: reference, fld=4) -> reference type=vector<integer>[4]:Vector(0)[12]
- 711[40]: LengthVector(r: vector[]) -> integer
+ 711[40]: LengthVector(r: vector) -> integer
  712[32]: GeInt(v1: integer, v2: integer) -> boolean
  713[25]: GotoFalseWord(jump=720, if_false: boolean)
  716[24]: ConvIntFromNull() -> integer
@@ -57,7 +57,7 @@ byte-code for special_fields:sum(o: Object[0]) -> integer
  720[24]: VarRef(var[0]) -> reference type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[14]
  723[36]: GetField(v1: reference, fld=4) -> reference type=vector<integer>[4]:Vector(0)[12]
  726[36]: VarInt(var[20]) -> integer
- 729[40]: GetVector(r: vector[], size=4, index: integer) -> reference
+ 729[40]: GetVector(r: vector, size=4, index: integer) -> reference
  732[36]: GetInt(v1: reference, fld=0) -> integer
  735[28]: VarInt(var[20]) -> integer
  738[32]: ConstInt(val=1) -> integer
@@ -85,7 +85,7 @@ fn test() {#1 block
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
-    o:Object = {#3 object
+    o:Object["_val_1"] = {#3 object
       _val_1:Object = OpDatabase(9i32, 14i32);
       OpSetInt(_val_1, 4i32, 0i32);
       {#4 vector
@@ -101,7 +101,7 @@ fn test() {#1 block
       }#4;
       OpSetEnum(_val_1, 8i32, 3u8(13));
       _val_1;
-    }#3:Object;
+    }#3:Object["_val_1"];
     {#5 vector
       _elm_3:boolean = OpNewRecord(o, 14i32, 0i32);
       OpSetInt(_elm_3, 0i32, sum(o));

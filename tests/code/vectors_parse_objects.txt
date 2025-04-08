@@ -17,7 +17,7 @@ fn test() {#1 block
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
-    v:vector<Elm>#[] = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 13i32);
+    v:vector<Elm> = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 13i32);
     {#3 formatting string
       __work_1:text = "";
       OpFormatDatabase(__work_1, v, 13i32, false);
@@ -38,11 +38,11 @@ byte-code for parse_objects:test()
  693[28]: Text()
  694[52]: Text()
  695[76]: ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> text
- 735[92]: CastVectorFromText(val: text, db_tp=13) -> vector[]
+ 735[92]: CastVectorFromText(val: text, db_tp=13) -> vector
  738[88]: ClearText(var[28])
  741[88]: ConstText(_value="") -> text
  743[104]: AppendText(var[28], v1: text)
- 746[88]: VarVector(var[76]) -> vector[] type=vector<Elm>[4]:Vector(12)[13]
+ 746[88]: VarVector(var[76]) -> vector type=vector<Elm>[4]:Vector(12)[13]
  749[100]: FormatDatabase(var[28], val: reference, db_tp=13, pretty=false)
  755[88]: VarText(var[28]) -> text
  758[104]: FreeStack(value=16, discard=28) type=text[4]:Base[5]

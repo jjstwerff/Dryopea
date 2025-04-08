@@ -17,9 +17,9 @@ Type 14:vector<Val>[4]:Vector(12)
 fn test() {#1 block
   __work_1:text = "";
   test_value:integer = {#2 block
-    v:vector<Val>#[] = {#3 vector
+    v:vector<Val> = {#3 vector
       _db_3:main_vector<Val> = OpDatabase(1i32, 13i32);
-      _vec_2:vector<Val>#[] = OpGetField(_db_3, 4i32, 65535i32);
+      _vec_2:vector<Val> = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
       _elm_1:boolean = OpNewRecord(_vec_2, 14i32, 65535i32);
       OpSetEnum(_elm_1, 0i32, 1u8(12));
@@ -34,7 +34,7 @@ fn test() {#1 block
       OpSetEnum(_elm_1, 0i32, 2u8(12));
       OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
       _vec_2;
-    }#3:vector<Val>#[];
+    }#3:vector<Val>;
     OpCastIntFromEnum(OpGetEnum(OpGetVector(v, 1i32, 2i32), 0i32));
   }#2:integer;
   if OpEqInt(test_value, 2i32) null else OpPanic({#4 formatting string
@@ -54,46 +54,46 @@ byte-code for enum_vector:test()
  704[52]: VarRef(var[28]) -> reference type=main_vector<Val>[8]:{vector:vector<Val>[4]}[13]
  707[64]: ConstInt(val=0) -> integer
  712[68]: SetInt(v1: reference, fld=4, val: integer)
- 715[52]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 715[52]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  718[64]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  723[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  726[76]: ConstEnum(val=1) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
  728[77]: SetEnum(v1: reference, fld=0, val: enumerate)
- 731[64]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 731[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  734[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  737[88]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 742[64]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 742[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  745[76]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  750[76]: PutRef(var[52], value: reference)
  753[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  756[76]: ConstEnum(val=1) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
  758[77]: SetEnum(v1: reference, fld=0, val: enumerate)
- 761[64]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 761[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  764[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  767[88]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 772[64]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 772[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  775[76]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  780[76]: PutRef(var[52], value: reference)
  783[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  786[76]: ConstEnum(val=2) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
  788[77]: SetEnum(v1: reference, fld=0, val: enumerate)
- 791[64]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 791[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  794[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  797[88]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 802[64]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 802[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  805[76]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  810[76]: PutRef(var[52], value: reference)
  813[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  816[76]: ConstEnum(val=2) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
  818[77]: SetEnum(v1: reference, fld=0, val: enumerate)
- 821[64]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 821[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  824[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  827[88]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 832[64]: VarVector(var[40]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 832[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
  835[76]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
- 839[40]: VarVector(var[28]) -> vector[] type=vector<Val>[4]:Vector(12)[14]
+ 839[40]: VarVector(var[28]) -> vector type=vector<Val>[4]:Vector(12)[14]
  842[52]: ConstInt(val=2) -> integer
- 847[56]: GetVector(r: vector[], size=1, index: integer) -> reference type=Val[1]:Enum(["A", "B", "C"])[12]
+ 847[56]: GetVector(r: vector, size=1, index: integer) -> reference type=Val[1]:Enum(["A", "B", "C"])[12]
  850[52]: GetEnum(v1: reference, fld=0) -> enumerate
  853[41]: CastIntFromEnum(v1: enumerate) -> integer
  854[44]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]

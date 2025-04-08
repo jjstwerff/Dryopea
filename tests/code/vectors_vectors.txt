@@ -18,9 +18,9 @@ Type 13:main_vector<integer>[8]:
 fn test() {#1 block
   __work_1:text = "";
   test_value:integer = {#2 block
-    v:vector<integer>#[] = {#3 vector
+    v:vector<integer> = {#3 vector
       _db_3:main_vector<integer> = OpDatabase(4i32, 13i32);
-      _vec_2:vector<integer>#[] = OpGetField(_db_3, 4i32, 65535i32);
+      _vec_2:vector<integer> = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
       _elm_1:boolean = OpNewRecord(_vec_2, 12i32, 65535i32);
       OpSetInt(_elm_1, 0i32, 1i32);
@@ -32,7 +32,7 @@ fn test() {#1 block
       OpSetInt(_elm_1, 0i32, OpAddInt(1i32, 2i32));
       OpFinishRecord(_vec_2, _elm_1, 12i32, 65535i32);
       _vec_2;
-    }#3:vector<integer>#[];
+    }#3:vector<integer>;
     {#4 vector
       _elm_4:boolean = OpNewRecord(v, 12i32, 65535i32);
       OpSetInt(_elm_4, 0i32, 4i32);
@@ -73,24 +73,24 @@ byte-code for vectors:test()
  704[52]: VarRef(var[28]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
  707[64]: ConstInt(val=0) -> integer
  712[68]: SetInt(v1: reference, fld=4, val: integer)
- 715[52]: VarVector(var[40]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 715[52]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[12]
  718[64]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
  723[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  726[76]: ConstInt(val=1) -> integer
  731[80]: SetInt(v1: reference, fld=0, val: integer)
- 734[64]: VarVector(var[40]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 734[64]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[12]
  737[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  740[88]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
- 745[64]: VarVector(var[40]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 745[64]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[12]
  748[76]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
  753[76]: PutRef(var[52], value: reference)
  756[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  759[76]: ConstInt(val=2) -> integer
  764[80]: SetInt(v1: reference, fld=0, val: integer)
- 767[64]: VarVector(var[40]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 767[64]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[12]
  770[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  773[88]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
- 778[64]: VarVector(var[40]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 778[64]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[12]
  781[76]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
  786[76]: PutRef(var[52], value: reference)
  789[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
@@ -98,32 +98,32 @@ byte-code for vectors:test()
  797[80]: ConstInt(val=2) -> integer
  802[84]: AddInt(v1: integer, v2: integer) -> integer
  803[80]: SetInt(v1: reference, fld=0, val: integer)
- 806[64]: VarVector(var[40]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 806[64]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[12]
  809[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
  812[88]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
- 817[64]: VarVector(var[40]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 817[64]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[12]
  820[76]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
- 824[40]: VarVector(var[28]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 824[40]: VarVector(var[28]) -> vector type=vector<integer>[4]:Vector(0)[12]
  827[52]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
  832[52]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
  835[64]: ConstInt(val=4) -> integer
  840[68]: SetInt(v1: reference, fld=0, val: integer)
- 843[52]: VarVector(var[28]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 843[52]: VarVector(var[28]) -> vector type=vector<integer>[4]:Vector(0)[12]
  846[64]: VarRef(var[40]) -> reference type=boolean[1]:Base[4]
  849[76]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
  854[52]: FreeStack(value=0, discard=12)
  858[40]: ConstInt(val=0) -> integer
  863[44]: ConstInt(val=0) -> integer
  868[48]: VarInt(var[44]) -> integer
- 871[52]: VarVector(var[28]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
- 874[64]: LengthVector(r: vector[]) -> integer
+ 871[52]: VarVector(var[28]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 874[64]: LengthVector(r: vector) -> integer
  875[56]: GeInt(v1: integer, v2: integer) -> boolean
  876[49]: GotoFalseWord(jump=883, if_false: boolean)
  879[48]: ConvIntFromNull() -> integer
  880[52]: GotoWord(jump=914)
- 883[48]: VarVector(var[28]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 883[48]: VarVector(var[28]) -> vector type=vector<integer>[4]:Vector(0)[12]
  886[60]: VarInt(var[44]) -> integer
- 889[64]: GetVector(r: vector[], size=4, index: integer) -> reference type=integer[4]:Base[0]
+ 889[64]: GetVector(r: vector, size=4, index: integer) -> reference type=integer[4]:Base[0]
  892[60]: GetInt(v1: reference, fld=0) -> integer
  895[52]: VarInt(var[44]) -> integer
  898[56]: ConstInt(val=1) -> integer
@@ -144,26 +144,26 @@ byte-code for vectors:test()
  939[52]: FreeStack(value=0, discard=4)
  943[48]: GotoWord(jump=868)
  946[48]: FreeStack(value=0, discard=4)
- 950[44]: VarVector(var[28]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 950[44]: VarVector(var[28]) -> vector type=vector<integer>[4]:Vector(0)[12]
  953[56]: ConstInt(val=1) -> integer
  958[60]: ConstInt(val=2) -> integer
  963[64]: AddInt(v1: integer, v2: integer) -> integer
- 964[60]: GetVector(r: vector[], size=4, index: integer) -> reference type=integer[4]:Base[0]
+ 964[60]: GetVector(r: vector, size=4, index: integer) -> reference type=integer[4]:Base[0]
  967[56]: ConstInt(val=5) -> integer
  972[60]: SetInt(v1: reference, fld=0, val: integer)
  975[44]: VarInt(var[40]) -> integer
- 978[48]: VarVector(var[28]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 978[48]: VarVector(var[28]) -> vector type=vector<integer>[4]:Vector(0)[12]
  981[60]: ConstInt(val=0) -> integer
- 986[64]: GetVector(r: vector[], size=4, index: integer) -> reference type=integer[4]:Base[0]
+ 986[64]: GetVector(r: vector, size=4, index: integer) -> reference type=integer[4]:Base[0]
  989[60]: GetInt(v1: reference, fld=0) -> integer
  992[52]: AddInt(v1: integer, v2: integer) -> integer
- 993[48]: VarVector(var[28]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+ 993[48]: VarVector(var[28]) -> vector type=vector<integer>[4]:Vector(0)[12]
  996[60]: ConstInt(val=1) -> integer
 1001[64]: MinSingleInt(v1: integer) -> integer
-1002[64]: GetVector(r: vector[], size=4, index: integer) -> reference type=integer[4]:Base[0]
+1002[64]: GetVector(r: vector, size=4, index: integer) -> reference type=integer[4]:Base[0]
 1005[60]: GetInt(v1: reference, fld=0) -> integer
 1008[52]: AddInt(v1: integer, v2: integer) -> integer
-1009[48]: VarVector(var[28]) -> vector[] type=vector<integer>[4]:Vector(0)[12]
+1009[48]: VarVector(var[28]) -> vector type=vector<integer>[4]:Vector(0)[12]
 1012[60]: Call(size=0, to=328)
 1019[52]: AddInt(v1: integer, v2: integer) -> integer
 1020[48]: FreeStack(value=4, discard=20) type=integer[4]:Base[0]

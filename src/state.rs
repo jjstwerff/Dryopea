@@ -32,9 +32,9 @@ pub struct State {
     pub arguments: u16,
     // Local function stack positions of individual byte-code statements.
     pub stack: HashMap<u32, u16>,
-    // Calls to function definitions from byte code.
+    // Calls of function definitions from byte code.
     pub calls: HashMap<u32, Vec<u32>>,
-    // Type information for enumerate and database (record, vectors and fields) types.
+    // Information for enumerate types and database (record, vectors and fields) types.
     pub types: HashMap<u32, u16>,
     pub library: Vec<Call>,
     pub library_names: HashMap<String, u16>,
@@ -59,7 +59,7 @@ impl State {
     /**
     Create a new interpreter state
     # Panics
-    When the statically define alignment in not correct.
+    When the statically defined alignment is not correct.
     */
     #[must_use]
     pub fn new(mut db: Stores) -> State {
@@ -128,7 +128,7 @@ impl State {
         let pos = *self.code::<u16>();
         if cfg!(debug_assertions) {
             self.text_positions
-                .insert(self.stack_cur.pos + self.stack_pos - u32::from(pos) + size_ptr());
+                .insert(self.stack_cur.pos + self.stack_pos + size_ptr() - u32::from(pos));
         }
         let v1 = self.string_mut(pos - size_ptr() as u16);
         *v1 += text.str();
@@ -168,6 +168,21 @@ impl State {
         let r = *self.get_stack::<DbRef>();
         let t: &str = self.database.store(&r).addr::<String>(r.rec, r.pos);
         self.put_stack(Str::new(t));
+    }
+
+    #[inline]
+    pub fn get_db_ref(&mut self) {
+        let r = *self.get_stack::<DbRef>();
+        let t = self.database.store(&r).addr::<DbRef>(r.rec, r.pos);
+        self.put_stack(*t);
+    }
+
+    #[inline]
+    pub fn set_db_ref(&mut self) {
+        let v1 = *self.get_stack::<DbRef>();
+        let r = *self.get_stack::<DbRef>();
+        let t = self.database.store_mut(&r).addr_mut::<DbRef>(r.rec, r.pos);
+        *t = v1;
     }
 
     pub fn append_ref_text(&mut self) {
@@ -224,7 +239,7 @@ impl State {
     /**
     This is a placeholder function that should be rewritten into two `append_text` calls.
     # Panics
-    When a situation a missed that should have been rewritten.
+    When it is not rewritten into appending calls.
     */
     #[allow(clippy::unused_self)]
     pub fn add_text(&mut self) {
@@ -430,7 +445,7 @@ impl State {
     /// Call a function, remember the current code position on the stack.
     ///
     /// * `size` - the amount of stack space maximally needed for the new function.
-    /// * `to`   - the code position where the called function resides.
+    /// * `to` - the code position where the called function resides.
     pub fn fn_call(&mut self, _size: u16, to: i32) {
         self.put_stack(self.code_pos);
         // TODO allow to switch stacks
@@ -618,9 +633,9 @@ impl State {
         let till = self.stack_key(till_key, &keys);
         let from = self.stack_key(from_key, &keys);
         let data = *self.get_stack::<DbRef>();
-        // start the loop at the 'till' key and walk to the 'from' key
+        // Start the loop at the 'till' key and walk to the 'from' key
         let reverse = on & 64 != 0;
-        // till key is exclusive the found key
+        // The 'till' key is exclusive the found key
         let ex = on & 128 == 0;
         let start;
         let finish;
@@ -821,7 +836,7 @@ impl State {
                 5 => key.push(Content::Str(self.string())),
                 _ => key.push(Content::Long(i64::from(*self.get_stack::<u8>()))),
             }
-            // We assume that all none-base types are enumerates.
+            // We assume that all none-base types are enumerate types.
         }
         (db_tp, key)
     }
@@ -893,7 +908,7 @@ impl State {
     * `value`   - Size of the return value.
     * `discard` - The amount of space claimed on the stack at this point.
     # Panics
-    When texts are not freed from stack beforehand.
+    When texts are not freed from the stack beforehand.
     */
     pub fn free_stack(&mut self, value: u8, discard: u16) {
         let pos = self.stack_pos;
@@ -995,9 +1010,7 @@ impl State {
             println!("{} ", stack.data.def(def_nr).header(stack.data, def_nr));
             stack.data.dump(&stack.data.def(def_nr).code, def_nr);
         }
-        let val = stack
-            .function
-            .start_scope((0, 0), &format!("validate {}", stack.data.def(def_nr).name));
+        let top = stack.function.start_next();
         let mut started = HashSet::new();
         for a in stack.data.def(def_nr).variables.arguments() {
             started.insert(a);
@@ -1009,19 +1022,17 @@ impl State {
             stack.data,
             &mut started,
         );
-        stack.function.finish_scope(val, &Type::Unknown(0), (0, 0));
-        stack.function.reset();
-        let gen_scope = stack
+        stack
             .function
-            .start_scope((0, 0), &format!("generate {}", stack.data.def(def_nr).name));
+            .finish_next(top, &stack.data.def(def_nr).name);
+        stack.function.reset();
+        let top = stack.function.start_next();
         self.initialized.clear();
         for a in stack.data.def(def_nr).variables.arguments() {
             self.initialized.insert(a);
         }
         self.generate(&stack.data.def(def_nr).code, &mut stack);
-        stack
-            .function
-            .finish_scope(gen_scope, &Type::Unknown(0), (0, 0));
+        stack.function.finish_next(top, &data.def(def_nr).name);
         data.definitions[def_nr as usize].code_position = start;
         data.definitions[def_nr as usize].code_length = self.code_pos - start;
         if let Some(v) = self.calls.get(&def_nr) {
@@ -1109,6 +1120,10 @@ impl State {
                         } else {
                             self.set_var(stack, *v, value);
                         }
+                    } else if matches!(*stack.function.tp(*v), Type::Vector(_, _))
+                        && **value == Value::Null
+                    {
+                        stack.add_op("OpConvRefFromNull", self);
                     } else {
                         self.generate(value, stack);
                     }
@@ -1116,7 +1131,7 @@ impl State {
                 Type::Void
             }
             Value::Loop(values) => {
-                let lp = stack.function.start_scope((0, 0), "generate loop");
+                let lp = stack.function.start_next();
                 stack.add_loop(stack.function.scope(), self.code_pos);
                 let pos = self.code_pos;
                 for v in values {
@@ -1126,7 +1141,9 @@ impl State {
                 stack.add_op("OpGotoWord", self);
                 self.code_add((i64::from(pos) - i64::from(self.code_pos) - 2) as i16);
                 stack.end_loop(self);
-                stack.function.finish_scope(lp, &Type::Unknown(0), (0, 0));
+                stack
+                    .function
+                    .finish_next(lp, &stack.data.def(stack.def_nr).name);
                 Type::Void
             }
             Value::Break(loop_nr) => {
@@ -1151,19 +1168,19 @@ impl State {
             Value::If(test, t_val, f_val) => {
                 self.generate(test, stack);
                 stack.add_op("OpGotoFalseWord", self);
-                let step = self.code_pos;
+                let code_step = self.code_pos;
                 self.code_add(0i16); // temp step
                 let true_pos = self.code_pos;
                 let stack_pos = stack.position;
                 let tp = self.generate(t_val, stack);
                 if **f_val == Value::Null {
-                    self.code_put(step, (self.code_pos - true_pos) as i16); // actual step
+                    self.code_put(code_step, (self.code_pos - true_pos) as i16); // actual step
                 } else {
                     stack.add_op("OpGotoWord", self);
                     let end = self.code_pos;
                     self.code_add(0i16); // temp end
                     let false_pos = self.code_pos;
-                    self.code_put(step, (self.code_pos - true_pos) as i16); // actual step
+                    self.code_put(code_step, (self.code_pos - true_pos) as i16); // actual step
                     stack.position = stack_pos;
                     self.generate(f_val, stack);
                     self.code_put(end, (self.code_pos - false_pos) as i16); // actual end
@@ -1444,7 +1461,8 @@ impl State {
                 Type::Float => stack.add_op("OpGetFloat", self),
                 Type::Enum(_) => stack.add_op("OpGetByte", self),
                 Type::Text(_) => stack.add_op("OpGetRefText", self),
-                _ => panic!("Unknown referenced variable type"),
+                Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpGetDbRef", self),
+                _ => panic!("Unknown referenced variable type: {tp}"),
             }
             self.code_add(0u16);
         }
@@ -1452,7 +1470,7 @@ impl State {
     }
 
     fn generate_block(&mut self, stack: &mut Stack, values: &[Value]) -> Type {
-        let bl = stack.function.start_scope((0, 0), "generate block");
+        let bl = stack.function.start_next();
         let to = stack.position;
         let last = values.len() - 1;
         let mut tp = Type::Void;
@@ -1492,7 +1510,9 @@ impl State {
                 stack.position = after;
             }
         }
-        stack.function.finish_scope(bl, &Type::Unknown(0), (0, 0));
+        stack
+            .function
+            .finish_next(bl, &stack.data.def(stack.def_nr).name);
         tp
     }
 
@@ -1582,6 +1602,7 @@ impl State {
                 Type::Float => stack.add_op("OpSetFloat", self),
                 Type::Text(_) => stack.add_op("OpAppendRefText", self),
                 Type::Enum(_) => stack.add_op("OpSetByte", self),
+                Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpSetDbRef", self),
                 _ => panic!("Unknown reference variable type"),
             }
             self.code_add(0u16);
@@ -1778,7 +1799,7 @@ impl State {
         let d_nr = data.def_nr(name);
         let pos = data.def(d_nr).code_position;
         self.code_pos = pos;
-        // Write return address of the main function but do not override the record size.
+        // Write the return address of the main function but do not override the record size.
         self.stack_pos = 4;
         self.put_stack(u32::MAX);
         // TODO Allow command line parameters on main functions
@@ -1808,7 +1829,7 @@ impl State {
     pub fn execute(&mut self, d_nr: u32, data: &Data) {
         let pos = data.def(d_nr).code_position;
         self.code_pos = pos;
-        // Write return address of the main function.
+        // Write the return address of the main function.
         self.put_stack(u32::MAX);
         let mut step = 0;
         // TODO Allow command line parameters on main functions
@@ -1835,7 +1856,7 @@ impl State {
             self.stack_pos,
             &def.name[2..]
         )?;
-        // Inverse the order of reading the attributes correctly from stack.
+        // Inverse the order of reading the attributes correctly from the stack.
         let mut attr = BTreeMap::new();
         for (a_nr, a) in def.attributes.iter().enumerate() {
             if !a.mutable {
@@ -1881,7 +1902,7 @@ impl State {
                 attr.insert(a_nr, format!("{}={v}[{}]", a.name, self.stack_pos));
             }
         }
-        // Inverse the arguments order again for output.
+        // Reverse the argument order again for output.
         for (nr, (_, s)) in attr.iter().enumerate() {
             if nr > 0 {
                 write!(log, ", ")?;

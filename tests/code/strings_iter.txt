@@ -26,18 +26,18 @@ fn test() {#1 block
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
-    a:vector<text["c"]>#[] = {#3 vector
+    a:vector<text["c"]> = {#3 vector
       _db_3:main_vector<text> = OpDatabase(1i32, 14i32);
-      _vec_2:vector<text["c"]>#[] = OpGetField(_db_3, 4i32, 65535i32);
+      _vec_2:vector<text["c"]> = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
       _vec_2;
-    }#3:vector<text["c"]>#[];
-    b:vector<integer>#[] = {#4 vector
+    }#3:vector<text["c"]>["_db_3"];
+    b:vector<integer> = {#4 vector
       _db_6:main_vector<integer> = OpDatabase(1i32, 15i32);
-      _vec_5:vector<integer>#[] = OpGetField(_db_6, 4i32, 65535i32);
+      _vec_5:vector<integer> = OpGetField(_db_6, 4i32, 65535i32);
       OpSetInt(_db_6, 4i32, 0i32);
       _vec_5;
-    }#4:vector<integer>#[];
+    }#4:vector<integer>["_db_6"];
     {#5 for
       c#index:integer = 0i32;
       loop {#6 for loop
@@ -89,7 +89,7 @@ byte-code for iter:test()
  707[124]: VarRef(var[100]) -> reference type=main_vector<text>[8]:{vector:vector<text>[4]}[14]
  710[136]: ConstInt(val=0) -> integer
  715[140]: SetInt(v1: reference, fld=4, val: integer)
- 718[124]: VarVector(var[112]) -> vector[] type=text[4]:Base[5]
+ 718[124]: VarVector(var[112]) -> vector type=text[4]:Base[5]
  721[136]: FreeStack(value=12, discard=36) type=Variable[12]:{name:text[4], value:text[8]}[6]
  725[112]: Database(size=1, db_tp=15) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15]
  730[124]: VarRef(var[112]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15]
@@ -97,7 +97,7 @@ byte-code for iter:test()
  736[136]: VarRef(var[112]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15]
  739[148]: ConstInt(val=0) -> integer
  744[152]: SetInt(v1: reference, fld=4, val: integer)
- 747[136]: VarVector(var[124]) -> vector[] type=vector<integer>[4]:Vector(0)[13]
+ 747[136]: VarVector(var[124]) -> vector type=vector<integer>[4]:Vector(0)[13]
  750[148]: FreeStack(value=12, discard=36) type=Variable[12]:{name:text[4], value:text[8]}[6]
  754[124]: ConstInt(val=0) -> integer
  759[128]: Text()
@@ -121,21 +121,21 @@ byte-code for iter:test()
  818[152]: FreeText(var[128])
  821[152]: FreeStack(value=0, discard=24)
  825[128]: GotoWord(jump=902)
- 828[152]: VarVector(var[100]) -> vector[] type=text[4]:Base[5]
+ 828[152]: VarVector(var[100]) -> vector type=text[4]:Base[5]
  831[164]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
  836[164]: VarRef(var[152]) -> reference type=boolean[1]:Base[4]
  839[176]: VarText(var[128]) -> text
  842[192]: SetText(v1: reference, fld=0, val: text)
- 845[164]: VarVector(var[100]) -> vector[] type=text[4]:Base[5]
+ 845[164]: VarVector(var[100]) -> vector type=text[4]:Base[5]
  848[176]: VarRef(var[152]) -> reference type=boolean[1]:Base[4]
  851[188]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
  856[164]: FreeStack(value=0, discard=12)
- 860[152]: VarVector(var[112]) -> vector[] type=vector<integer>[4]:Vector(0)[13]
+ 860[152]: VarVector(var[112]) -> vector type=vector<integer>[4]:Vector(0)[13]
  863[164]: NewRecord(data: reference, parent_tp=13, fld=65535) -> reference
  868[164]: VarRef(var[152]) -> reference type=boolean[1]:Base[4]
  871[176]: VarInt(var[124]) -> integer
  874[180]: SetInt(v1: reference, fld=0, val: integer)
- 877[164]: VarVector(var[112]) -> vector[] type=vector<integer>[4]:Vector(0)[13]
+ 877[164]: VarVector(var[112]) -> vector type=vector<integer>[4]:Vector(0)[13]
  880[176]: VarRef(var[152]) -> reference type=boolean[1]:Base[4]
  883[188]: FinishRecord(data: reference, rec: reference, parent_tp=13, fld=65535)
  888[164]: FreeStack(value=0, discard=12)
@@ -146,11 +146,11 @@ byte-code for iter:test()
  906[124]: ClearText(var[28])
  909[124]: ConstText(_value="") -> text
  911[140]: AppendText(var[28], v1: text)
- 914[124]: VarVector(var[100]) -> vector[] type=text[4]:Base[5]
+ 914[124]: VarVector(var[100]) -> vector type=text[4]:Base[5]
  917[136]: FormatDatabase(var[28], val: reference, db_tp=12, pretty=false)
  923[124]: ConstText(_value=" indexes:") -> text
  934[140]: AppendText(var[28], v1: text)
- 937[124]: VarVector(var[112]) -> vector[] type=vector<integer>[4]:Vector(0)[13]
+ 937[124]: VarVector(var[112]) -> vector type=vector<integer>[4]:Vector(0)[13]
  940[136]: FormatDatabase(var[28], val: reference, db_tp=13, pretty=false)
  946[124]: VarText(var[28]) -> text
  949[140]: FreeStack(value=16, discard=40) type=text[4]:Base[5]

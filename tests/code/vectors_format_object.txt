@@ -26,30 +26,30 @@ fn test() {#1 block
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
-    v:vector<Elm>#[] = {#3 vector
+    v:vector<Elm["_elm_1"]> = {#3 vector
       _db_3:main_vector<Elm> = OpDatabase(8i32, 13i32);
-      _vec_2:vector<Elm>#[] = OpGetField(_db_3, 4i32, 65535i32);
+      _vec_2:vector<Elm["_elm_1"]> = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      _elm_1:Elm = OpNewRecord(_vec_2, 14i32, 65535i32);
+      _elm_1:Elm["_elm_1"] = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#4 object
         OpSetInt(_elm_1, 0i32, 1i32);
         OpSetInt(_elm_1, 4i32, 2i32);
       }#4;
       OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
-      _elm_1:Elm = OpNewRecord(_vec_2, 14i32, 65535i32);
+      _elm_1:Elm["_elm_1"] = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#5 object
         OpSetInt(_elm_1, 0i32, 12i32);
         OpSetInt(_elm_1, 4i32, 13i32);
       }#5;
       OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
-      _elm_1:Elm = OpNewRecord(_vec_2, 14i32, 65535i32);
+      _elm_1:Elm["_elm_1"] = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#6 object
         OpSetInt(_elm_1, 0i32, 4i32);
         OpSetInt(_elm_1, 4i32, 5i32);
       }#6;
       OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
       _vec_2;
-    }#3:vector<Elm>#[];
+    }#3:vector<Elm["_elm_1"]>;
     OpSetInt(OpGetVector(v, 8i32, 2i32), 4i32, 6i32);
     {#7 formatting string
       __work_1:text = "";
@@ -78,7 +78,7 @@ byte-code for format_object:test()
  706[100]: VarRef(var[76]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
  709[112]: ConstInt(val=0) -> integer
  714[116]: SetInt(v1: reference, fld=4, val: integer)
- 717[100]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 717[100]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  720[112]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  725[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  728[124]: ConstInt(val=1) -> integer
@@ -86,10 +86,10 @@ byte-code for format_object:test()
  736[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  739[124]: ConstInt(val=2) -> integer
  744[128]: SetInt(v1: reference, fld=4, val: integer)
- 747[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 747[112]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  750[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  753[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 758[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 758[112]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  761[124]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  766[124]: PutRef(var[100], value: reference)
  769[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
@@ -98,10 +98,10 @@ byte-code for format_object:test()
  780[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  783[124]: ConstInt(val=13) -> integer
  788[128]: SetInt(v1: reference, fld=4, val: integer)
- 791[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 791[112]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  794[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  797[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 802[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 802[112]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  805[124]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  810[124]: PutRef(var[100], value: reference)
  813[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
@@ -110,20 +110,20 @@ byte-code for format_object:test()
  824[112]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  827[124]: ConstInt(val=5) -> integer
  832[128]: SetInt(v1: reference, fld=4, val: integer)
- 835[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 835[112]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  838[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  841[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 846[112]: VarVector(var[88]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 846[112]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  849[124]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
- 853[88]: VarVector(var[76]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 853[88]: VarVector(var[76]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  856[100]: ConstInt(val=2) -> integer
- 861[104]: GetVector(r: vector[], size=8, index: integer) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 861[104]: GetVector(r: vector, size=8, index: integer) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  864[100]: ConstInt(val=6) -> integer
  869[104]: SetInt(v1: reference, fld=4, val: integer)
  872[88]: ClearText(var[28])
  875[88]: ConstText(_value="") -> text
  877[104]: AppendText(var[28], v1: text)
- 880[88]: VarVector(var[76]) -> vector[] type=vector<Elm>[4]:Vector(12)[14]
+ 880[88]: VarVector(var[76]) -> vector type=vector<Elm>[4]:Vector(12)[14]
  883[100]: FormatDatabase(var[28], val: reference, db_tp=14, pretty=false)
  889[88]: ConstText(_value=" sizeof ") -> text
  899[104]: AppendText(var[28], v1: text)

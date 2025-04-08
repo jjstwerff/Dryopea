@@ -22,7 +22,7 @@ pub enum Relation {
     Main(u16, u16),       // this index is this field of the given record, may not exist
     Current(u16),         // referenced directly from the current record
     Referenced(u16, u16), // this field references a record, and this field holds the index
-    None,                 // no primary reference found yet or only part of Vectors/Others
+    None, // no primary reference found yet or only part of Vectors/Others
 }
 */
 
@@ -82,8 +82,8 @@ pub enum Parts {
     Short(i32, bool),                  // start number and nullable flag
     Vector(u16),                       // The records are part of the vector
     Array(u16),                        // The array holds references for each record
-    Sorted(u16, Vec<(u16, bool)>),     // Sorted vector on fields with ascending flag
-    Ordered(u16, Vec<(u16, bool)>),    // Sorted array on fields with ascending flag
+    Sorted(u16, Vec<(u16, bool)>),     // Sorted vector on fields with an ascending flag
+    Ordered(u16, Vec<(u16, bool)>),    // Sorted array on fields with an ascending flag
     Hash(u16, Vec<u16>), // A hash table, listing the field numbers that define its key
     Index(u16, Vec<(u16, bool)>, u16), // An index to a table, listing the key fields and the left field (with +1 right and +2 color)
     Spacial(u16, Vec<u16>),            // A spacial index with the listed coordinate fields as key
@@ -179,7 +179,7 @@ struct ParseKey {
     line_pos: u32,
     // The current key: holds positions of key identifiers or vector steps when negative.
     current: Vec<i64>,
-    // The current step on the key, can decrease due to finished structures.
+    // The current step on the key can decrease due to finished structures.
     step: u32,
 }
 
@@ -261,7 +261,7 @@ fn parse_key(text: &str, pos: &mut usize, result: usize, key: &mut ParseKey) {
             return;
         }
         p = match_identifier(text, pos, &mut val);
-        // allow for 'true', 'false', 'null' etc
+        // allow for 'true', 'false', 'null', etc.
         if p > *pos {
             *pos = p;
             return;
@@ -430,7 +430,7 @@ impl Stores {
     }
 
     /**
-        Make a class an alternative of a Sub.
+        Make a class an alternative to a Sub.
         # Panics
         When the given type is not a Sub.
     */
@@ -448,7 +448,7 @@ impl Stores {
     /**
     Define a new database structure (record).
     # Panics
-    When childs are added to a type that is not a structure.
+    When children are added to a type that is not a structure.
     */
     pub fn structure(&mut self, name: &str) -> u16 {
         let num = self.types.len() as u16;
@@ -1224,6 +1224,48 @@ impl Stores {
             }
             Parts::Spacial(_, _) => panic!("Not implemented"),
             _ => (),
+        }
+    }
+
+    // TODO copy child records & strings during copy (string reference counting on same)
+    pub fn vector_add(&mut self, db: &DbRef, o_db: &DbRef, known: u16) {
+        let o_length = vector::length_vector(o_db, &self.allocations);
+        if o_length == 0 {
+            // The other vector has no data
+            return;
+        }
+        let o_rec = keys::store(o_db, &self.allocations).get_int(o_db.rec, o_db.pos) as u32;
+        let o_pos = 8;
+        let size = u32::from(self.size(known));
+        let new_db = vector::vector_append(db, o_length, size, &mut self.allocations);
+        if db.store_nr == o_db.store_nr {
+            keys::mut_store(db, &mut self.allocations).copy_block(
+                o_rec,
+                o_pos as isize,
+                new_db.rec,
+                new_db.pos as isize,
+                o_length as isize * size as isize,
+            );
+        } else {
+            let o_store: &Store;
+            let db_store: &mut Store;
+            // These stores are actually two different data structures. However, there is no easier
+            // way to tell the rust type system this.
+            unsafe {
+                o_store = keys::store(o_db, &*std::ptr::from_ref::<[Store]>(&self.allocations));
+                db_store = keys::mut_store(
+                    db,
+                    &mut *std::ptr::from_mut::<[Store]>(&mut self.allocations),
+                );
+            }
+            o_store.copy_block_between(
+                o_rec,
+                o_pos as isize,
+                db_store,
+                new_db.rec,
+                new_db.pos as isize,
+                o_length as isize * size as isize,
+            );
         }
     }
 

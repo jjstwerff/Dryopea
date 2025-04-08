@@ -10,7 +10,7 @@ Type 12:vector<float>[4]:Vector(3)
 fn test() {#1 block
   __work_1:text = "";
   test_value:float = {#2 block
-    a:vector<float>#[] = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 12i32);
+    a:vector<float> = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 12i32);
     OpAddFloat(OpGetFloat(OpGetVector(a, 8i32, 2i32), 0i32), OpGetFloat(OpGetVector(a, 8i32, 3i32), 0i32));
   }#2:float;
   if OpEqFloat(test_value, 18120.00000001001f64) null else OpPanic({#3 formatting string
@@ -25,14 +25,14 @@ byte-code for parse_vector:test()
  692[0]: return-address
  692[4]: Text()
  693[28]: ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text
- 728[44]: CastVectorFromText(val: text, db_tp=12) -> vector[]
- 731[40]: VarVector(var[28]) -> vector[] type=vector<float>[4]:Vector(3)[12]
+ 728[44]: CastVectorFromText(val: text, db_tp=12) -> vector
+ 731[40]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[12]
  734[52]: ConstInt(val=2) -> integer
- 739[56]: GetVector(r: vector[], size=8, index: integer) -> reference type=float[8]:Base[3]
+ 739[56]: GetVector(r: vector, size=8, index: integer) -> reference type=float[8]:Base[3]
  742[52]: GetFloat(v1: reference, fld=0) -> float
- 745[48]: VarVector(var[28]) -> vector[] type=vector<float>[4]:Vector(3)[12]
+ 745[48]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[12]
  748[60]: ConstInt(val=3) -> integer
- 753[64]: GetVector(r: vector[], size=8, index: integer) -> reference type=float[8]:Base[3]
+ 753[64]: GetVector(r: vector, size=8, index: integer) -> reference type=float[8]:Base[3]
  756[60]: GetFloat(v1: reference, fld=0) -> float
  759[56]: AddFloat(v1: float, v2: float) -> float
  760[48]: FreeStack(value=8, discard=20) type=float[8]:Base[3]

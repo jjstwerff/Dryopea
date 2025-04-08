@@ -13,8 +13,8 @@ pub fn test() {
         "Test failed {test_value} != \"1aa bb cc2\""
     );
 }
-fn to_text(__work_1:refvar(text([]))) -> text["__work_1"] {#1 block
-  __work_1:refvar(text([])) = "";
+fn to_text(__work_1:&text) -> text["__work_1"] {#1 block
+  __work_1:&text = "";
   res:text = "aa ";
   {#2 for
     _i#index:integer = OpConvIntFromNull();
@@ -29,12 +29,12 @@ fn to_text(__work_1:refvar(text([]))) -> text["__work_1"] {#1 block
       }#5;
     }#3;
   }#2;
-  __work_1:refvar(text([])) = res;
+  __work_1:&text = res;
   OpAppendRefText(OpVarRef(__work_1), 0i32, " cc");
   __work_1;
-}#1:refvar(text([]))
+}#1:&text
 
-byte-code for string_fn:to_text(__work_1: refvar(text([]))[0]) -> text["res"]
+byte-code for string_fn:to_text(__work_1: &text[0]) -> text["res"]
  692[12]: return-address
  692[16]: VarRef(var[0]) -> reference
  695[28]: ConstText(_value="") -> text

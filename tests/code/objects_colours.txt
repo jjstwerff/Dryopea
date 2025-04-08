@@ -50,18 +50,18 @@ fn test() {#1 block
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
-    points:vector<Point>#[] = {#3 vector
+    points:vector<Point["_elm_1"]> = {#3 vector
       _db_3:main_vector<Point> = OpDatabase(3i32, 13i32);
-      _vec_2:vector<Point>#[] = OpGetField(_db_3, 4i32, 65535i32);
+      _vec_2:vector<Point["_elm_1"]> = OpGetField(_db_3, 4i32, 65535i32);
       OpSetInt(_db_3, 4i32, 0i32);
-      _elm_1:Point = OpNewRecord(_vec_2, 14i32, 65535i32);
+      _elm_1:Point["_elm_1"] = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#4 object
         OpSetByte(_elm_1, 0i32, 0i32, 128i32);
         OpSetByte(_elm_1, 2i32, 0i32, 128i32);
         OpSetByte(_elm_1, 1i32, 0i32, 0i32);
       }#4;
       OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
-      _elm_1:Point = OpNewRecord(_vec_2, 14i32, 65535i32);
+      _elm_1:Point["_elm_1"] = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#5 object
         OpSetByte(_elm_1, 2i32, 0i32, 255i32);
         OpSetByte(_elm_1, 0i32, 0i32, 0i32);
@@ -69,7 +69,7 @@ fn test() {#1 block
       }#5;
       OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
       _vec_2;
-    }#3:vector<Point>#[];
+    }#3:vector<Point["_elm_1"]>;
     {#6 formatting string
       __work_1:text = "size:";
       OpFormatInt(__work_1, 3i32, 10i32, 0i32, 32i32, false, false);
@@ -101,7 +101,7 @@ byte-code for colours:test()
  750[100]: VarRef(var[76]) -> reference type=main_vector<Point>[8]:{vector:vector<Point>[4]}[13]
  753[112]: ConstInt(val=0) -> integer
  758[116]: SetInt(v1: reference, fld=4, val: integer)
- 761[100]: VarVector(var[88]) -> vector[] type=vector<Point>[4]:Vector(12)[14]
+ 761[100]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
  764[112]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  769[112]: VarRef(var[100]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
  772[124]: ConstInt(val=128) -> integer
@@ -112,10 +112,10 @@ byte-code for colours:test()
  795[112]: VarRef(var[100]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
  798[124]: ConstInt(val=0) -> integer
  803[128]: SetByte(v1: reference, fld=1, min=0, val: integer)
- 808[112]: VarVector(var[88]) -> vector[] type=vector<Point>[4]:Vector(12)[14]
+ 808[112]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
  811[124]: VarRef(var[100]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
  814[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 819[112]: VarVector(var[88]) -> vector[] type=vector<Point>[4]:Vector(12)[14]
+ 819[112]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
  822[124]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
  827[124]: PutRef(var[100], value: reference)
  830[112]: VarRef(var[100]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
@@ -127,10 +127,10 @@ byte-code for colours:test()
  856[112]: VarRef(var[100]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
  859[124]: ConstInt(val=0) -> integer
  864[128]: SetByte(v1: reference, fld=1, min=0, val: integer)
- 869[112]: VarVector(var[88]) -> vector[] type=vector<Point>[4]:Vector(12)[14]
+ 869[112]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
  872[124]: VarRef(var[100]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
  875[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 880[112]: VarVector(var[88]) -> vector[] type=vector<Point>[4]:Vector(12)[14]
+ 880[112]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
  883[124]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
  887[88]: ClearText(var[28])
  890[88]: ConstText(_value="size:") -> text
@@ -140,23 +140,23 @@ byte-code for colours:test()
  910[96]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
  917[88]: ConstText(_value=" purple:") -> text
  927[104]: AppendText(var[28], v1: text)
- 930[88]: VarVector(var[76]) -> vector[] type=vector<Point>[4]:Vector(12)[14]
+ 930[88]: VarVector(var[76]) -> vector type=vector<Point>[4]:Vector(12)[14]
  933[100]: ConstInt(val=0) -> integer
- 938[104]: GetVector(r: vector[], size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+ 938[104]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
  941[100]: FormatDatabase(var[28], val: reference, db_tp=12, pretty=false)
  947[88]: ConstText(_value=" value:") -> text
  956[104]: AppendText(var[28], v1: text)
- 959[88]: VarVector(var[76]) -> vector[] type=vector<Point>[4]:Vector(12)[14]
+ 959[88]: VarVector(var[76]) -> vector type=vector<Point>[4]:Vector(12)[14]
  962[100]: ConstInt(val=0) -> integer
- 967[104]: GetVector(r: vector[], size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+ 967[104]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
  970[100]: Call(size=0, to=692)
  977[92]: ConstInt(val=0) -> integer
  982[96]: FormatInt(var[28], val: integer, radix=16, width: integer, token=32, plus=false, note=false)
  989[88]: ConstText(_value=" blue:") -> text
  997[104]: AppendText(var[28], v1: text)
-1000[88]: VarVector(var[76]) -> vector[] type=vector<Point>[4]:Vector(12)[14]
+1000[88]: VarVector(var[76]) -> vector type=vector<Point>[4]:Vector(12)[14]
 1003[100]: ConstInt(val=1) -> integer
-1008[104]: GetVector(r: vector[], size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+1008[104]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
 1011[100]: FormatDatabase(var[28], val: reference, db_tp=12, pretty=false)
 1017[88]: VarText(var[28]) -> text
 1020[104]: FreeStack(value=16, discard=28) type=text[4]:Base[5]

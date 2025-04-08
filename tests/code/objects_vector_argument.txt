@@ -1,0 +1,720 @@
+fn sum(r: vector<integer>) -> integer {
+  res = 0;
+  for v in r {
+    res += v;
+  }
+  res
+}
+    
+
+pub fn test() {
+    test_value = {sum([1,2,3,4,5]) + 100 * sum([1,2,3] + [4,5])};
+    assert(
+        test_value == 1515,
+        "Test failed {test_value} != 1515"
+    );
+}
+Type 12:vector<integer>[4]:Vector(0)
+
+Type 13:main_vector<integer>[8]:
+    vector:vector<integer>[4]
+
+fn sum(r:vector<integer>) -> integer {#1 block
+  res:integer = 0i32;
+  {#2 for
+    v#index:integer = 0i32;
+    loop {#3 for loop
+      v:integer = if OpGeInt(v#index, OpLengthVector(r)) OpConvIntFromNull() else {#4 iter next
+        _res_1:integer = OpGetInt(OpGetVector(r, 4i32, v#index), 0i32);
+        v#index:integer = OpAddInt(v#index, 1i32);
+        _res_1;
+      }#4:integer;
+      if OpNot(OpConvBoolFromInt(v)) break(0) else null;
+      {#5 block
+        res:integer = OpAddInt(res, v);
+      }#5;
+    }#3;
+  }#2;
+  res;
+}#1:integer
+
+byte-code for vector_argument:sum(r: vector<integer>[0]) -> integer
+ 692[12]: return-address
+ 692[16]: ConstInt(val=0) -> integer
+ 697[20]: ConstInt(val=0) -> integer
+ 702[24]: VarInt(var[20]) -> integer
+ 705[28]: VarVector(var[0]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 708[40]: LengthVector(r: vector) -> integer
+ 709[32]: GeInt(v1: integer, v2: integer) -> boolean
+ 710[25]: GotoFalseWord(jump=717, if_false: boolean)
+ 713[24]: ConvIntFromNull() -> integer
+ 714[28]: GotoWord(jump=748)
+ 717[24]: VarVector(var[0]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 720[36]: VarInt(var[20]) -> integer
+ 723[40]: GetVector(r: vector, size=4, index: integer) -> reference type=integer[4]:Base[0]
+ 726[36]: GetInt(v1: reference, fld=0) -> integer
+ 729[28]: VarInt(var[20]) -> integer
+ 732[32]: ConstInt(val=1) -> integer
+ 737[36]: AddInt(v1: integer, v2: integer) -> integer
+ 738[32]: PutInt(var[20], value: integer)
+ 741[28]: VarInt(var[24]) -> integer
+ 744[32]: FreeStack(value=4, discard=8) type=integer[4]:Base[0]
+ 748[28]: VarInt(var[24]) -> integer
+ 751[32]: ConvBoolFromInt(v1: integer) -> boolean
+ 752[29]: Not(v1: boolean) -> boolean
+ 753[29]: GotoFalseWord(jump=763, if_false: boolean)
+ 756[28]: FreeStack(value=0, discard=4)
+ 760[24]: GotoWord(jump=780)
+ 763[28]: VarInt(var[16]) -> integer
+ 766[32]: VarInt(var[24]) -> integer
+ 769[36]: AddInt(v1: integer, v2: integer) -> integer
+ 770[32]: PutInt(var[16], value: integer)
+ 773[28]: FreeStack(value=0, discard=4)
+ 777[24]: GotoWord(jump=702)
+ 780[24]: FreeStack(value=0, discard=4)
+ 784[20]: VarInt(var[16]) -> integer
+ 787[24]: Return(ret=12, value=4, discard=24) type=integer[4]:Base[0]
+
+fn test() {#1 block
+  __ref_1:vector<integer> = null;
+  __work_2:text = "";
+  test_value:integer = {#2 block
+    OpAddInt(sum({#3 vector
+      _db_3:main_vector<integer> = OpDatabase(4i32, 13i32);
+      _vec_2:vector<integer> = OpGetField(_db_3, 4i32, 65535i32);
+      OpSetInt(_db_3, 4i32, 0i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 12i32, 65535i32);
+      OpSetInt(_elm_1, 0i32, 1i32);
+      OpFinishRecord(_vec_2, _elm_1, 12i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 12i32, 65535i32);
+      OpSetInt(_elm_1, 0i32, 2i32);
+      OpFinishRecord(_vec_2, _elm_1, 12i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 12i32, 65535i32);
+      OpSetInt(_elm_1, 0i32, 3i32);
+      OpFinishRecord(_vec_2, _elm_1, 12i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 12i32, 65535i32);
+      OpSetInt(_elm_1, 0i32, 4i32);
+      OpFinishRecord(_vec_2, _elm_1, 12i32, 65535i32);
+      _elm_1:boolean = OpNewRecord(_vec_2, 12i32, 65535i32);
+      OpSetInt(_elm_1, 0i32, 5i32);
+      OpFinishRecord(_vec_2, _elm_1, 12i32, 65535i32);
+      _vec_2;
+    }#3:vector<integer>), OpMulInt(100i32, sum({#5 AddVector
+      _db_7:main_vector<integer> = OpDatabase(1i32, 13i32);
+      OpSetInt(_db_7, 4i32, 0i32);
+      __ref_1:vector<integer> = OpGetField(_db_7, 4i32, 65535i32);
+      OpAppendVector(__ref_1, {#4 vector
+        _db_6:main_vector<integer> = OpDatabase(4i32, 13i32);
+        _vec_5:vector<integer> = OpGetField(_db_6, 4i32, 65535i32);
+        OpSetInt(_db_6, 4i32, 0i32);
+        _elm_4:boolean = OpNewRecord(_vec_5, 12i32, 65535i32);
+        OpSetInt(_elm_4, 0i32, 1i32);
+        OpFinishRecord(_vec_5, _elm_4, 12i32, 65535i32);
+        _elm_4:boolean = OpNewRecord(_vec_5, 12i32, 65535i32);
+        OpSetInt(_elm_4, 0i32, 2i32);
+        OpFinishRecord(_vec_5, _elm_4, 12i32, 65535i32);
+        _elm_4:boolean = OpNewRecord(_vec_5, 12i32, 65535i32);
+        OpSetInt(_elm_4, 0i32, 3i32);
+        OpFinishRecord(_vec_5, _elm_4, 12i32, 65535i32);
+        _vec_5;
+      }#4:vector<integer>, 0i32);
+      OpAppendVector(__ref_1, {#6 vector
+        _db_10:main_vector<integer> = OpDatabase(4i32, 13i32);
+        _vec_9:vector<integer> = OpGetField(_db_10, 4i32, 65535i32);
+        OpSetInt(_db_10, 4i32, 0i32);
+        _elm_8:boolean = OpNewRecord(_vec_9, 12i32, 65535i32);
+        OpSetInt(_elm_8, 0i32, 4i32);
+        OpFinishRecord(_vec_9, _elm_8, 12i32, 65535i32);
+        _elm_8:boolean = OpNewRecord(_vec_9, 12i32, 65535i32);
+        OpSetInt(_elm_8, 0i32, 5i32);
+        OpFinishRecord(_vec_9, _elm_8, 12i32, 65535i32);
+        _vec_9;
+      }#6:vector<integer>, 0i32);
+      __ref_1;
+    }#5:vector<integer>["_db_7"])));
+  }#2:integer;
+  if OpEqInt(test_value, 1515i32) null else OpPanic({#7 formatting string
+    __work_2:text = "Test failed ";
+    OpFormatInt(__work_2, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_2, " != 1515");
+    __work_2;
+  }#7:text);
+}#1
+
+byte-code for vector_argument:test()
+ 793[0]: return-address
+ 793[4]: ConvRefFromNull() -> reference
+ 794[16]: Text()
+ 795[40]: Database(size=4, db_tp=13) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+ 800[52]: VarRef(var[40]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+ 803[64]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
+ 806[64]: VarRef(var[40]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+ 809[76]: ConstInt(val=0) -> integer
+ 814[80]: SetInt(v1: reference, fld=4, val: integer)
+ 817[64]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 820[76]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+ 825[76]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 828[88]: ConstInt(val=1) -> integer
+ 833[92]: SetInt(v1: reference, fld=0, val: integer)
+ 836[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 839[88]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 842[100]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+ 847[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 850[88]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+ 855[88]: PutRef(var[64], value: reference)
+ 858[76]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 861[88]: ConstInt(val=2) -> integer
+ 866[92]: SetInt(v1: reference, fld=0, val: integer)
+ 869[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 872[88]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 875[100]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+ 880[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 883[88]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+ 888[88]: PutRef(var[64], value: reference)
+ 891[76]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 894[88]: ConstInt(val=3) -> integer
+ 899[92]: SetInt(v1: reference, fld=0, val: integer)
+ 902[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 905[88]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 908[100]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+ 913[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 916[88]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+ 921[88]: PutRef(var[64], value: reference)
+ 924[76]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 927[88]: ConstInt(val=4) -> integer
+ 932[92]: SetInt(v1: reference, fld=0, val: integer)
+ 935[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 938[88]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 941[100]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+ 946[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 949[88]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+ 954[88]: PutRef(var[64], value: reference)
+ 957[76]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 960[88]: ConstInt(val=5) -> integer
+ 965[92]: SetInt(v1: reference, fld=0, val: integer)
+ 968[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 971[88]: VarRef(var[64]) -> reference type=boolean[1]:Base[4]
+ 974[100]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+ 979[76]: VarVector(var[52]) -> vector type=vector<integer>[4]:Vector(0)[12]
+ 982[88]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
+ 986[52]: Call(size=0, to=692)
+ 993[44]: ConstInt(val=100) -> integer
+ 998[48]: Database(size=1, db_tp=13) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1003[60]: VarRef(var[48]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1006[72]: ConstInt(val=0) -> integer
+1011[76]: SetInt(v1: reference, fld=4, val: integer)
+1014[60]: VarRef(var[48]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1017[72]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
+1020[72]: PutRef(var[4], value: reference)
+1023[60]: VarVector(var[4]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1026[72]: Database(size=4, db_tp=13) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1031[84]: VarRef(var[72]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1034[96]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
+1037[96]: VarRef(var[72]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1040[108]: ConstInt(val=0) -> integer
+1045[112]: SetInt(v1: reference, fld=4, val: integer)
+1048[96]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1051[108]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+1056[108]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1059[120]: ConstInt(val=1) -> integer
+1064[124]: SetInt(v1: reference, fld=0, val: integer)
+1067[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1070[120]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1073[132]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+1078[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1081[120]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+1086[120]: PutRef(var[96], value: reference)
+1089[108]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1092[120]: ConstInt(val=2) -> integer
+1097[124]: SetInt(v1: reference, fld=0, val: integer)
+1100[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1103[120]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1106[132]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+1111[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1114[120]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+1119[120]: PutRef(var[96], value: reference)
+1122[108]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1125[120]: ConstInt(val=3) -> integer
+1130[124]: SetInt(v1: reference, fld=0, val: integer)
+1133[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1136[120]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1139[132]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+1144[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1147[120]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
+1151[84]: AppendVector(r: vector, other: vector, tp=0) type=integer[4]:Base[0]
+1154[60]: VarVector(var[4]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1157[72]: Database(size=4, db_tp=13) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1162[84]: VarRef(var[72]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1165[96]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
+1168[96]: VarRef(var[72]) -> reference type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13]
+1171[108]: ConstInt(val=0) -> integer
+1176[112]: SetInt(v1: reference, fld=4, val: integer)
+1179[96]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1182[108]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+1187[108]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1190[120]: ConstInt(val=4) -> integer
+1195[124]: SetInt(v1: reference, fld=0, val: integer)
+1198[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1201[120]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1204[132]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+1209[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1212[120]: NewRecord(data: reference, parent_tp=12, fld=65535) -> reference
+1217[120]: PutRef(var[96], value: reference)
+1220[108]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1223[120]: ConstInt(val=5) -> integer
+1228[124]: SetInt(v1: reference, fld=0, val: integer)
+1231[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1234[120]: VarRef(var[96]) -> reference type=boolean[1]:Base[4]
+1237[132]: FinishRecord(data: reference, rec: reference, parent_tp=12, fld=65535)
+1242[108]: VarVector(var[84]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1245[120]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
+1249[84]: AppendVector(r: vector, other: vector, tp=0) type=integer[4]:Base[0]
+1252[60]: VarVector(var[4]) -> vector type=vector<integer>[4]:Vector(0)[12]
+1255[72]: FreeStack(value=12, discard=24) type=Variable[12]:{name:text[4], value:text[8]}[6]
+1259[60]: Call(size=0, to=692)
+1266[52]: MulInt(v1: integer, v2: integer) -> integer
+1267[48]: AddInt(v1: integer, v2: integer) -> integer
+1268[44]: VarInt(var[40]) -> integer
+1271[48]: ConstInt(val=1515) -> integer
+1276[52]: EqInt(v1: integer, v2: integer) -> boolean
+1277[45]: GotoFalseWord(jump=1283, if_false: boolean)
+1280[44]: GotoWord(jump=1335)
+1283[44]: ClearText(var[16])
+1286[44]: ConstText(_value="Test failed ") -> text
+1300[60]: AppendText(var[16], v1: text)
+1303[44]: VarInt(var[40]) -> integer
+1306[48]: ConstInt(val=0) -> integer
+1311[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+1318[44]: ConstText(_value=" != 1515") -> text
+1328[60]: AppendText(var[16], v1: text)
+1331[44]: VarText(var[16]) -> text
+1334[60]: Panic(message: text)
+1335[44]: FreeText(var[16])
+1338[44]: Return(ret=0, value=0, discard=44)
+
+Execute test:
+  793:[8] ConvRefFromNull() -> ref(65535,0,0)[8]
+  794:[20] Text()
+  795:[44] Database(size=4, db_tp=13) -> ref(1,1,0)={}[44]
+  800:[56] VarRef(var[44]) -> ref(1,1,0)={}[56]
+  803:[68] GetField(v1=ref(1,1,0)[56], fld=4) -> ref(1,1,4)[56]
+  806:[68] VarRef(var[44]) -> ref(1,1,0)={}[68]
+  809:[80] ConstInt(val=0) -> 0[80]
+  814:[84] SetInt(v1=ref(1,1,0)[68], fld=4, val=0[80])
+  817:[68] VarVector(var[56]) -> ref(1,1,4)=[][68]
+  820:[80] NewRecord(data=ref(1,1,4)[68], parent_tp=12, fld=65535) -> ref(1,5,8)[68]
+  825:[80] VarRef(var[68]) -> ref(1,5,8)=false[80]
+  828:[92] ConstInt(val=1) -> 1[92]
+  833:[96] SetInt(v1=ref(1,5,8)[80], fld=0, val=1[92])
+  836:[80] VarVector(var[56]) -> ref(1,1,4)=[1][80]
+  839:[92] VarRef(var[68]) -> ref(1,5,8)=true[92]
+  842:[104] FinishRecord(data=ref(1,1,4)[80], rec=ref(1,5,8)[92], parent_tp=12, fld=65535)
+  847:[80] VarVector(var[56]) -> ref(1,1,4)=[1][80]
+  850:[92] NewRecord(data=ref(1,1,4)[80], parent_tp=12, fld=65535) -> ref(1,5,12)[80]
+  855:[92] PutRef(var[68], value=ref(1,5,12)[80])
+  858:[80] VarRef(var[68]) -> ref(1,5,12)=false[80]
+  861:[92] ConstInt(val=2) -> 2[92]
+  866:[96] SetInt(v1=ref(1,5,12)[80], fld=0, val=2[92])
+  869:[80] VarVector(var[56]) -> ref(1,1,4)=[1,2][80]
+  872:[92] VarRef(var[68]) -> ref(1,5,12)=true[92]
+  875:[104] FinishRecord(data=ref(1,1,4)[80], rec=ref(1,5,12)[92], parent_tp=12, fld=65535)
+  880:[80] VarVector(var[56]) -> ref(1,1,4)=[1,2][80]
+  883:[92] NewRecord(data=ref(1,1,4)[80], parent_tp=12, fld=65535) -> ref(1,5,16)[80]
+  888:[92] PutRef(var[68], value=ref(1,5,16)[80])
+  891:[80] VarRef(var[68]) -> ref(1,5,16)=false[80]
+  894:[92] ConstInt(val=3) -> 3[92]
+  899:[96] SetInt(v1=ref(1,5,16)[80], fld=0, val=3[92])
+  902:[80] VarVector(var[56]) -> ref(1,1,4)=[1,2,3][80]
+  905:[92] VarRef(var[68]) -> ref(1,5,16)=true[92]
+  908:[104] FinishRecord(data=ref(1,1,4)[80], rec=ref(1,5,16)[92], parent_tp=12, fld=65535)
+  913:[80] VarVector(var[56]) -> ref(1,1,4)=[1,2,3][80]
+  916:[92] NewRecord(data=ref(1,1,4)[80], parent_tp=12, fld=65535) -> ref(1,5,20)[80]
+  921:[92] PutRef(var[68], value=ref(1,5,20)[80])
+  924:[80] VarRef(var[68]) -> ref(1,5,20)=false[80]
+  927:[92] ConstInt(val=4) -> 4[92]
+  932:[96] SetInt(v1=ref(1,5,20)[80], fld=0, val=4[92])
+  935:[80] VarVector(var[56]) -> ref(1,1,4)=[1,2,3,4][80]
+  938:[92] VarRef(var[68]) -> ref(1,5,20)=true[92]
+  941:[104] FinishRecord(data=ref(1,1,4)[80], rec=ref(1,5,20)[92], parent_tp=12, fld=65535)
+  946:[80] VarVector(var[56]) -> ref(1,1,4)=[1,2,3,4][80]
+  949:[92] NewRecord(data=ref(1,1,4)[80], parent_tp=12, fld=65535) -> ref(1,5,24)[80]
+  954:[92] PutRef(var[68], value=ref(1,5,24)[80])
+  957:[80] VarRef(var[68]) -> ref(1,5,24)=false[80]
+  960:[92] ConstInt(val=5) -> 5[92]
+  965:[96] SetInt(v1=ref(1,5,24)[80], fld=0, val=5[92])
+  968:[80] VarVector(var[56]) -> ref(1,1,4)=[1,2,3,4,5][80]
+  971:[92] VarRef(var[68]) -> ref(1,5,24)=true[92]
+  974:[104] FinishRecord(data=ref(1,1,4)[80], rec=ref(1,5,24)[92], parent_tp=12, fld=65535)
+  979:[80] VarVector(var[56]) -> ref(1,1,4)=[1,2,3,4,5][80]
+  982:[92] FreeStack(value=12, discard=48)
+  986:[56] Call(size=0, to=692)
+  692:[60] ConstInt(val=0) -> 0[60]
+  697:[64] ConstInt(val=0) -> 0[64]
+  702:[68] VarInt(var[64]) -> 0[68]
+  705:[72] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][72]
+  708:[84] LengthVector(r=ref(1,1,4)=true[72]) -> 5[72]
+  709:[76] GeInt(v1=0[68], v2=5[72]) -> false[68]
+  710:[69] GotoFalseWord(jump=717, if_false=false[68])
+  717:[68] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][68]
+  720:[80] VarInt(var[64]) -> 0[80]
+  723:[84] GetVector(r=ref(1,1,4)=true[68], size=4, index=0[80]) -> ref(1,5,8)=1[68]
+  726:[80] GetInt(v1=ref(1,5,8)[68], fld=0) -> 1[68]
+  729:[72] VarInt(var[64]) -> 0[72]
+  732:[76] ConstInt(val=1) -> 1[76]
+  737:[80] AddInt(v1=0[72], v2=1[76]) -> 1[72]
+  738:[76] PutInt(var[64], value=1[72])
+  741:[72] VarInt(var[68]) -> 1[72]
+  744:[76] FreeStack(value=4, discard=8)
+  748:[72] VarInt(var[68]) -> 1[72]
+  751:[76] ConvBoolFromInt(v1=1[72]) -> true[72]
+  752:[73] Not(v1=true[72]) -> false[72]
+  753:[73] GotoFalseWord(jump=763, if_false=false[72])
+  763:[72] VarInt(var[60]) -> 0[72]
+  766:[76] VarInt(var[68]) -> 1[76]
+  769:[80] AddInt(v1=0[72], v2=1[76]) -> 1[72]
+  770:[76] PutInt(var[60], value=1[72])
+  773:[72] FreeStack(value=0, discard=4)
+  777:[68] GotoWord(jump=702)
+  702:[68] VarInt(var[64]) -> 1[68]
+  705:[72] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][72]
+  708:[84] LengthVector(r=ref(1,1,4)=true[72]) -> 5[72]
+  709:[76] GeInt(v1=1[68], v2=5[72]) -> false[68]
+  710:[69] GotoFalseWord(jump=717, if_false=false[68])
+  717:[68] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][68]
+  720:[80] VarInt(var[64]) -> 1[80]
+  723:[84] GetVector(r=ref(1,1,4)=true[68], size=4, index=1[80]) -> ref(1,5,12)=2[68]
+  726:[80] GetInt(v1=ref(1,5,12)[68], fld=0) -> 2[68]
+  729:[72] VarInt(var[64]) -> 1[72]
+  732:[76] ConstInt(val=1) -> 1[76]
+  737:[80] AddInt(v1=1[72], v2=1[76]) -> 2[72]
+  738:[76] PutInt(var[64], value=2[72])
+  741:[72] VarInt(var[68]) -> 2[72]
+  744:[76] FreeStack(value=4, discard=8)
+  748:[72] VarInt(var[68]) -> 2[72]
+  751:[76] ConvBoolFromInt(v1=2[72]) -> true[72]
+  752:[73] Not(v1=true[72]) -> false[72]
+  753:[73] GotoFalseWord(jump=763, if_false=false[72])
+  763:[72] VarInt(var[60]) -> 1[72]
+  766:[76] VarInt(var[68]) -> 2[76]
+  769:[80] AddInt(v1=1[72], v2=2[76]) -> 3[72]
+  770:[76] PutInt(var[60], value=3[72])
+  773:[72] FreeStack(value=0, discard=4)
+  777:[68] GotoWord(jump=702)
+  702:[68] VarInt(var[64]) -> 2[68]
+  705:[72] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][72]
+  708:[84] LengthVector(r=ref(1,1,4)=true[72]) -> 5[72]
+  709:[76] GeInt(v1=2[68], v2=5[72]) -> false[68]
+  710:[69] GotoFalseWord(jump=717, if_false=false[68])
+  717:[68] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][68]
+  720:[80] VarInt(var[64]) -> 2[80]
+  723:[84] GetVector(r=ref(1,1,4)=true[68], size=4, index=2[80]) -> ref(1,5,16)=3[68]
+  726:[80] GetInt(v1=ref(1,5,16)[68], fld=0) -> 3[68]
+  729:[72] VarInt(var[64]) -> 2[72]
+  732:[76] ConstInt(val=1) -> 1[76]
+  737:[80] AddInt(v1=2[72], v2=1[76]) -> 3[72]
+  738:[76] PutInt(var[64], value=3[72])
+  741:[72] VarInt(var[68]) -> 3[72]
+  744:[76] FreeStack(value=4, discard=8)
+  748:[72] VarInt(var[68]) -> 3[72]
+  751:[76] ConvBoolFromInt(v1=3[72]) -> true[72]
+  752:[73] Not(v1=true[72]) -> false[72]
+  753:[73] GotoFalseWord(jump=763, if_false=false[72])
+  763:[72] VarInt(var[60]) -> 3[72]
+  766:[76] VarInt(var[68]) -> 3[76]
+  769:[80] AddInt(v1=3[72], v2=3[76]) -> 6[72]
+  770:[76] PutInt(var[60], value=6[72])
+  773:[72] FreeStack(value=0, discard=4)
+  777:[68] GotoWord(jump=702)
+  702:[68] VarInt(var[64]) -> 3[68]
+  705:[72] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][72]
+  708:[84] LengthVector(r=ref(1,1,4)=true[72]) -> 5[72]
+  709:[76] GeInt(v1=3[68], v2=5[72]) -> false[68]
+  710:[69] GotoFalseWord(jump=717, if_false=false[68])
+  717:[68] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][68]
+  720:[80] VarInt(var[64]) -> 3[80]
+  723:[84] GetVector(r=ref(1,1,4)=true[68], size=4, index=3[80]) -> ref(1,5,20)=4[68]
+  726:[80] GetInt(v1=ref(1,5,20)[68], fld=0) -> 4[68]
+  729:[72] VarInt(var[64]) -> 3[72]
+  732:[76] ConstInt(val=1) -> 1[76]
+  737:[80] AddInt(v1=3[72], v2=1[76]) -> 4[72]
+  738:[76] PutInt(var[64], value=4[72])
+  741:[72] VarInt(var[68]) -> 4[72]
+  744:[76] FreeStack(value=4, discard=8)
+  748:[72] VarInt(var[68]) -> 4[72]
+  751:[76] ConvBoolFromInt(v1=4[72]) -> true[72]
+  752:[73] Not(v1=true[72]) -> false[72]
+  753:[73] GotoFalseWord(jump=763, if_false=false[72])
+  763:[72] VarInt(var[60]) -> 6[72]
+  766:[76] VarInt(var[68]) -> 4[76]
+  769:[80] AddInt(v1=6[72], v2=4[76]) -> 10[72]
+  770:[76] PutInt(var[60], value=10[72])
+  773:[72] FreeStack(value=0, discard=4)
+  777:[68] GotoWord(jump=702)
+  702:[68] VarInt(var[64]) -> 4[68]
+  705:[72] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][72]
+  708:[84] LengthVector(r=ref(1,1,4)=true[72]) -> 5[72]
+  709:[76] GeInt(v1=4[68], v2=5[72]) -> false[68]
+  710:[69] GotoFalseWord(jump=717, if_false=false[68])
+  717:[68] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][68]
+  720:[80] VarInt(var[64]) -> 4[80]
+  723:[84] GetVector(r=ref(1,1,4)=true[68], size=4, index=4[80]) -> ref(1,5,24)=5[68]
+  726:[80] GetInt(v1=ref(1,5,24)[68], fld=0) -> 5[68]
+  729:[72] VarInt(var[64]) -> 4[72]
+  732:[76] ConstInt(val=1) -> 1[76]
+  737:[80] AddInt(v1=4[72], v2=1[76]) -> 5[72]
+  738:[76] PutInt(var[64], value=5[72])
+  741:[72] VarInt(var[68]) -> 5[72]
+  744:[76] FreeStack(value=4, discard=8)
+  748:[72] VarInt(var[68]) -> 5[72]
+  751:[76] ConvBoolFromInt(v1=5[72]) -> true[72]
+  752:[73] Not(v1=true[72]) -> false[72]
+  753:[73] GotoFalseWord(jump=763, if_false=false[72])
+  763:[72] VarInt(var[60]) -> 10[72]
+  766:[76] VarInt(var[68]) -> 5[76]
+  769:[80] AddInt(v1=10[72], v2=5[76]) -> 15[72]
+  770:[76] PutInt(var[60], value=15[72])
+  773:[72] FreeStack(value=0, discard=4)
+  777:[68] GotoWord(jump=702)
+  702:[68] VarInt(var[64]) -> 5[68]
+  705:[72] VarVector(var[44]) -> ref(1,1,4)=[1,2,3,4,5][72]
+  708:[84] LengthVector(r=ref(1,1,4)=true[72]) -> 5[72]
+  709:[76] GeInt(v1=5[68], v2=5[72]) -> true[68]
+  710:[69] GotoFalseWord(jump=717, if_false=true[68])
+  713:[68] ConvIntFromNull() -> -2147483648[68]
+  714:[72] GotoWord(jump=748)
+  748:[72] VarInt(var[68]) -> -2147483648[72]
+  751:[76] ConvBoolFromInt(v1=-2147483648[72]) -> false[72]
+  752:[73] Not(v1=false[72]) -> true[72]
+  753:[73] GotoFalseWord(jump=763, if_false=true[72])
+  756:[72] FreeStack(value=0, discard=4)
+  760:[68] GotoWord(jump=780)
+  780:[68] FreeStack(value=0, discard=4)
+  784:[64] VarInt(var[60]) -> 15[64]
+  787:[68] Return(ret=993[56], value=4, discard=24) -> 15[44]
+  993:[48] ConstInt(val=100) -> 100[48]
+  998:[52] Database(size=1, db_tp=13) -> ref(2,1,0)={}[52]
+ 1003:[64] VarRef(var[52]) -> ref(2,1,0)={}[64]
+ 1006:[76] ConstInt(val=0) -> 0[76]
+ 1011:[80] SetInt(v1=ref(2,1,0)[64], fld=4, val=0[76])
+ 1014:[64] VarRef(var[52]) -> ref(2,1,0)={}[64]
+ 1017:[76] GetField(v1=ref(2,1,0)[64], fld=4) -> ref(2,1,4)[64]
+ 1020:[76] PutRef(var[8], value=ref(2,1,4)[64])
+ 1023:[64] VarVector(var[8]) -> ref(2,1,4)=[][64]
+ 1026:[76] Database(size=4, db_tp=13) -> ref(3,1,0)={}[76]
+ 1031:[88] VarRef(var[76]) -> ref(3,1,0)={}[88]
+ 1034:[100] GetField(v1=ref(3,1,0)[88], fld=4) -> ref(3,1,4)[88]
+ 1037:[100] VarRef(var[76]) -> ref(3,1,0)={}[100]
+ 1040:[112] ConstInt(val=0) -> 0[112]
+ 1045:[116] SetInt(v1=ref(3,1,0)[100], fld=4, val=0[112])
+ 1048:[100] VarVector(var[88]) -> ref(3,1,4)=[][100]
+ 1051:[112] NewRecord(data=ref(3,1,4)[100], parent_tp=12, fld=65535) -> ref(3,5,8)[100]
+ 1056:[112] VarRef(var[100]) -> ref(3,5,8)=false[112]
+ 1059:[124] ConstInt(val=1) -> 1[124]
+ 1064:[128] SetInt(v1=ref(3,5,8)[112], fld=0, val=1[124])
+ 1067:[112] VarVector(var[88]) -> ref(3,1,4)=[1][112]
+ 1070:[124] VarRef(var[100]) -> ref(3,5,8)=true[124]
+ 1073:[136] FinishRecord(data=ref(3,1,4)[112], rec=ref(3,5,8)[124], parent_tp=12, fld=65535)
+ 1078:[112] VarVector(var[88]) -> ref(3,1,4)=[1][112]
+ 1081:[124] NewRecord(data=ref(3,1,4)[112], parent_tp=12, fld=65535) -> ref(3,5,12)[112]
+ 1086:[124] PutRef(var[100], value=ref(3,5,12)[112])
+ 1089:[112] VarRef(var[100]) -> ref(3,5,12)=false[112]
+ 1092:[124] ConstInt(val=2) -> 2[124]
+ 1097:[128] SetInt(v1=ref(3,5,12)[112], fld=0, val=2[124])
+ 1100:[112] VarVector(var[88]) -> ref(3,1,4)=[1,2][112]
+ 1103:[124] VarRef(var[100]) -> ref(3,5,12)=true[124]
+ 1106:[136] FinishRecord(data=ref(3,1,4)[112], rec=ref(3,5,12)[124], parent_tp=12, fld=65535)
+ 1111:[112] VarVector(var[88]) -> ref(3,1,4)=[1,2][112]
+ 1114:[124] NewRecord(data=ref(3,1,4)[112], parent_tp=12, fld=65535) -> ref(3,5,16)[112]
+ 1119:[124] PutRef(var[100], value=ref(3,5,16)[112])
+ 1122:[112] VarRef(var[100]) -> ref(3,5,16)=false[112]
+ 1125:[124] ConstInt(val=3) -> 3[124]
+ 1130:[128] SetInt(v1=ref(3,5,16)[112], fld=0, val=3[124])
+ 1133:[112] VarVector(var[88]) -> ref(3,1,4)=[1,2,3][112]
+ 1136:[124] VarRef(var[100]) -> ref(3,5,16)=true[124]
+ 1139:[136] FinishRecord(data=ref(3,1,4)[112], rec=ref(3,5,16)[124], parent_tp=12, fld=65535)
+ 1144:[112] VarVector(var[88]) -> ref(3,1,4)=[1,2,3][112]
+ 1147:[124] FreeStack(value=12, discard=48)
+ 1151:[88] AppendVector(r=ref(2,1,4)=false[64], other=ref(3,1,4)=true[76], tp=0)
+ 1154:[64] VarVector(var[8]) -> ref(2,1,4)=[1,2,3][64]
+ 1157:[76] Database(size=4, db_tp=13) -> ref(4,1,0)={}[76]
+ 1162:[88] VarRef(var[76]) -> ref(4,1,0)={}[88]
+ 1165:[100] GetField(v1=ref(4,1,0)[88], fld=4) -> ref(4,1,4)[88]
+ 1168:[100] VarRef(var[76]) -> ref(4,1,0)={}[100]
+ 1171:[112] ConstInt(val=0) -> 0[112]
+ 1176:[116] SetInt(v1=ref(4,1,0)[100], fld=4, val=0[112])
+ 1179:[100] VarVector(var[88]) -> ref(4,1,4)=[][100]
+ 1182:[112] NewRecord(data=ref(4,1,4)[100], parent_tp=12, fld=65535) -> ref(4,5,8)[100]
+ 1187:[112] VarRef(var[100]) -> ref(4,5,8)=false[112]
+ 1190:[124] ConstInt(val=4) -> 4[124]
+ 1195:[128] SetInt(v1=ref(4,5,8)[112], fld=0, val=4[124])
+ 1198:[112] VarVector(var[88]) -> ref(4,1,4)=[4][112]
+ 1201:[124] VarRef(var[100]) -> ref(4,5,8)=true[124]
+ 1204:[136] FinishRecord(data=ref(4,1,4)[112], rec=ref(4,5,8)[124], parent_tp=12, fld=65535)
+ 1209:[112] VarVector(var[88]) -> ref(4,1,4)=[4][112]
+ 1212:[124] NewRecord(data=ref(4,1,4)[112], parent_tp=12, fld=65535) -> ref(4,5,12)[112]
+ 1217:[124] PutRef(var[100], value=ref(4,5,12)[112])
+ 1220:[112] VarRef(var[100]) -> ref(4,5,12)=false[112]
+ 1223:[124] ConstInt(val=5) -> 5[124]
+ 1228:[128] SetInt(v1=ref(4,5,12)[112], fld=0, val=5[124])
+ 1231:[112] VarVector(var[88]) -> ref(4,1,4)=[4,5][112]
+ 1234:[124] VarRef(var[100]) -> ref(4,5,12)=true[124]
+ 1237:[136] FinishRecord(data=ref(4,1,4)[112], rec=ref(4,5,12)[124], parent_tp=12, fld=65535)
+ 1242:[112] VarVector(var[88]) -> ref(4,1,4)=[4,5][112]
+ 1245:[124] FreeStack(value=12, discard=48)
+ 1249:[88] AppendVector(r=ref(2,1,4)=true[64], other=ref(4,1,4)=true[76], tp=0)
+ 1252:[64] VarVector(var[8]) -> ref(2,1,4)=[1,2,3,4,5][64]
+ 1255:[76] FreeStack(value=12, discard=24)
+ 1259:[64] Call(size=0, to=692)
+  692:[68] ConstInt(val=0) -> 0[68]
+  697:[72] ConstInt(val=0) -> 0[72]
+  702:[76] VarInt(var[72]) -> 0[76]
+  705:[80] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][80]
+  708:[92] LengthVector(r=ref(2,1,4)=true[80]) -> 5[80]
+  709:[84] GeInt(v1=0[76], v2=5[80]) -> false[76]
+  710:[77] GotoFalseWord(jump=717, if_false=false[76])
+  717:[76] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][76]
+  720:[88] VarInt(var[72]) -> 0[88]
+  723:[92] GetVector(r=ref(2,1,4)=true[76], size=4, index=0[88]) -> ref(2,2,8)=1[76]
+  726:[88] GetInt(v1=ref(2,2,8)[76], fld=0) -> 1[76]
+  729:[80] VarInt(var[72]) -> 0[80]
+  732:[84] ConstInt(val=1) -> 1[84]
+  737:[88] AddInt(v1=0[80], v2=1[84]) -> 1[80]
+  738:[84] PutInt(var[72], value=1[80])
+  741:[80] VarInt(var[76]) -> 1[80]
+  744:[84] FreeStack(value=4, discard=8)
+  748:[80] VarInt(var[76]) -> 1[80]
+  751:[84] ConvBoolFromInt(v1=1[80]) -> true[80]
+  752:[81] Not(v1=true[80]) -> false[80]
+  753:[81] GotoFalseWord(jump=763, if_false=false[80])
+  763:[80] VarInt(var[68]) -> 0[80]
+  766:[84] VarInt(var[76]) -> 1[84]
+  769:[88] AddInt(v1=0[80], v2=1[84]) -> 1[80]
+  770:[84] PutInt(var[68], value=1[80])
+  773:[80] FreeStack(value=0, discard=4)
+  777:[76] GotoWord(jump=702)
+  702:[76] VarInt(var[72]) -> 1[76]
+  705:[80] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][80]
+  708:[92] LengthVector(r=ref(2,1,4)=true[80]) -> 5[80]
+  709:[84] GeInt(v1=1[76], v2=5[80]) -> false[76]
+  710:[77] GotoFalseWord(jump=717, if_false=false[76])
+  717:[76] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][76]
+  720:[88] VarInt(var[72]) -> 1[88]
+  723:[92] GetVector(r=ref(2,1,4)=true[76], size=4, index=1[88]) -> ref(2,2,12)=2[76]
+  726:[88] GetInt(v1=ref(2,2,12)[76], fld=0) -> 2[76]
+  729:[80] VarInt(var[72]) -> 1[80]
+  732:[84] ConstInt(val=1) -> 1[84]
+  737:[88] AddInt(v1=1[80], v2=1[84]) -> 2[80]
+  738:[84] PutInt(var[72], value=2[80])
+  741:[80] VarInt(var[76]) -> 2[80]
+  744:[84] FreeStack(value=4, discard=8)
+  748:[80] VarInt(var[76]) -> 2[80]
+  751:[84] ConvBoolFromInt(v1=2[80]) -> true[80]
+  752:[81] Not(v1=true[80]) -> false[80]
+  753:[81] GotoFalseWord(jump=763, if_false=false[80])
+  763:[80] VarInt(var[68]) -> 1[80]
+  766:[84] VarInt(var[76]) -> 2[84]
+  769:[88] AddInt(v1=1[80], v2=2[84]) -> 3[80]
+  770:[84] PutInt(var[68], value=3[80])
+  773:[80] FreeStack(value=0, discard=4)
+  777:[76] GotoWord(jump=702)
+  702:[76] VarInt(var[72]) -> 2[76]
+  705:[80] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][80]
+  708:[92] LengthVector(r=ref(2,1,4)=true[80]) -> 5[80]
+  709:[84] GeInt(v1=2[76], v2=5[80]) -> false[76]
+  710:[77] GotoFalseWord(jump=717, if_false=false[76])
+  717:[76] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][76]
+  720:[88] VarInt(var[72]) -> 2[88]
+  723:[92] GetVector(r=ref(2,1,4)=true[76], size=4, index=2[88]) -> ref(2,2,16)=3[76]
+  726:[88] GetInt(v1=ref(2,2,16)[76], fld=0) -> 3[76]
+  729:[80] VarInt(var[72]) -> 2[80]
+  732:[84] ConstInt(val=1) -> 1[84]
+  737:[88] AddInt(v1=2[80], v2=1[84]) -> 3[80]
+  738:[84] PutInt(var[72], value=3[80])
+  741:[80] VarInt(var[76]) -> 3[80]
+  744:[84] FreeStack(value=4, discard=8)
+  748:[80] VarInt(var[76]) -> 3[80]
+  751:[84] ConvBoolFromInt(v1=3[80]) -> true[80]
+  752:[81] Not(v1=true[80]) -> false[80]
+  753:[81] GotoFalseWord(jump=763, if_false=false[80])
+  763:[80] VarInt(var[68]) -> 3[80]
+  766:[84] VarInt(var[76]) -> 3[84]
+  769:[88] AddInt(v1=3[80], v2=3[84]) -> 6[80]
+  770:[84] PutInt(var[68], value=6[80])
+  773:[80] FreeStack(value=0, discard=4)
+  777:[76] GotoWord(jump=702)
+  702:[76] VarInt(var[72]) -> 3[76]
+  705:[80] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][80]
+  708:[92] LengthVector(r=ref(2,1,4)=true[80]) -> 5[80]
+  709:[84] GeInt(v1=3[76], v2=5[80]) -> false[76]
+  710:[77] GotoFalseWord(jump=717, if_false=false[76])
+  717:[76] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][76]
+  720:[88] VarInt(var[72]) -> 3[88]
+  723:[92] GetVector(r=ref(2,1,4)=true[76], size=4, index=3[88]) -> ref(2,2,20)=4[76]
+  726:[88] GetInt(v1=ref(2,2,20)[76], fld=0) -> 4[76]
+  729:[80] VarInt(var[72]) -> 3[80]
+  732:[84] ConstInt(val=1) -> 1[84]
+  737:[88] AddInt(v1=3[80], v2=1[84]) -> 4[80]
+  738:[84] PutInt(var[72], value=4[80])
+  741:[80] VarInt(var[76]) -> 4[80]
+  744:[84] FreeStack(value=4, discard=8)
+  748:[80] VarInt(var[76]) -> 4[80]
+  751:[84] ConvBoolFromInt(v1=4[80]) -> true[80]
+  752:[81] Not(v1=true[80]) -> false[80]
+  753:[81] GotoFalseWord(jump=763, if_false=false[80])
+  763:[80] VarInt(var[68]) -> 6[80]
+  766:[84] VarInt(var[76]) -> 4[84]
+  769:[88] AddInt(v1=6[80], v2=4[84]) -> 10[80]
+  770:[84] PutInt(var[68], value=10[80])
+  773:[80] FreeStack(value=0, discard=4)
+  777:[76] GotoWord(jump=702)
+  702:[76] VarInt(var[72]) -> 4[76]
+  705:[80] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][80]
+  708:[92] LengthVector(r=ref(2,1,4)=true[80]) -> 5[80]
+  709:[84] GeInt(v1=4[76], v2=5[80]) -> false[76]
+  710:[77] GotoFalseWord(jump=717, if_false=false[76])
+  717:[76] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][76]
+  720:[88] VarInt(var[72]) -> 4[88]
+  723:[92] GetVector(r=ref(2,1,4)=true[76], size=4, index=4[88]) -> ref(2,2,24)=5[76]
+  726:[88] GetInt(v1=ref(2,2,24)[76], fld=0) -> 5[76]
+  729:[80] VarInt(var[72]) -> 4[80]
+  732:[84] ConstInt(val=1) -> 1[84]
+  737:[88] AddInt(v1=4[80], v2=1[84]) -> 5[80]
+  738:[84] PutInt(var[72], value=5[80])
+  741:[80] VarInt(var[76]) -> 5[80]
+  744:[84] FreeStack(value=4, discard=8)
+  748:[80] VarInt(var[76]) -> 5[80]
+  751:[84] ConvBoolFromInt(v1=5[80]) -> true[80]
+  752:[81] Not(v1=true[80]) -> false[80]
+  753:[81] GotoFalseWord(jump=763, if_false=false[80])
+  763:[80] VarInt(var[68]) -> 10[80]
+  766:[84] VarInt(var[76]) -> 5[84]
+  769:[88] AddInt(v1=10[80], v2=5[84]) -> 15[80]
+  770:[84] PutInt(var[68], value=15[80])
+  773:[80] FreeStack(value=0, discard=4)
+  777:[76] GotoWord(jump=702)
+  702:[76] VarInt(var[72]) -> 5[76]
+  705:[80] VarVector(var[52]) -> ref(2,1,4)=[1,2,3,4,5][80]
+  708:[92] LengthVector(r=ref(2,1,4)=true[80]) -> 5[80]
+  709:[84] GeInt(v1=5[76], v2=5[80]) -> true[76]
+  710:[77] GotoFalseWord(jump=717, if_false=true[76])
+  713:[76] ConvIntFromNull() -> -2147483648[76]
+  714:[80] GotoWord(jump=748)
+  748:[80] VarInt(var[76]) -> -2147483648[80]
+  751:[84] ConvBoolFromInt(v1=-2147483648[80]) -> false[80]
+  752:[81] Not(v1=false[80]) -> true[80]
+  753:[81] GotoFalseWord(jump=763, if_false=true[80])
+  756:[80] FreeStack(value=0, discard=4)
+  760:[76] GotoWord(jump=780)
+  780:[76] FreeStack(value=0, discard=4)
+  784:[72] VarInt(var[68]) -> 15[72]
+  787:[76] Return(ret=1266[64], value=4, discard=24) -> 15[52]
+ 1266:[56] MulInt(v1=100[48], v2=15[52]) -> 1500[48]
+ 1267:[52] AddInt(v1=15[44], v2=1500[48]) -> 1515[44]
+ 1268:[48] VarInt(var[44]) -> 1515[48]
+ 1271:[52] ConstInt(val=1515) -> 1515[52]
+ 1276:[56] EqInt(v1=1515[48], v2=1515[52]) -> true[48]
+ 1277:[49] GotoFalseWord(jump=1283, if_false=true[48])
+ 1280:[48] GotoWord(jump=1335)
+ 1335:[48] FreeText(var[20])
+ 1338:[48] Return(ret=4294967295[4], value=0, discard=44)
+Finished

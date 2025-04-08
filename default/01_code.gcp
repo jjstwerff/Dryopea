@@ -678,8 +678,8 @@ fn OpNewRecord(data: reference, parent_tp: const u16, fld: const u16) -> referen
 fn OpFinishRecord(data: reference, rec: reference, parent_tp: const u16, fld: const u16);
 
 // Add all elements of another vector with the same type
-fn OpAddVector(r: vector, other: vector, size: const u16);
-#rust "vector::vector_add(&@r, &@other, u32::from(@size), &mut s.database.allocations);"
+fn OpAppendVector(r: vector, other: vector, tp: const u16);
+#rust "s.database.vector_add(&@r, &@other, @tp);"
 
 // Get a record from a structure. This operator also reads a dynamic key from stack (not shown here)
 fn OpGetRecord(data: reference, db_tp: const u16, no_keys: const u8) -> reference[data];
@@ -721,5 +721,7 @@ type iterator;
 fn OpStaticCall(call: const u16);
 fn OpCreateRef(pos: const u16) -> reference;
 fn OpGetRefText(r: reference, fld: const u16) -> text[r];
+fn OpGetDbRef(r: reference, fld: const u16) -> reference;
+fn OpSetDbRef(r: reference, fld: const u16, v1: reference);
 fn OpAppendRefText(r: reference, fld: const u16, v1: text);
 fn OpClearRefText(r: reference);
