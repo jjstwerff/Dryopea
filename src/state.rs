@@ -1077,13 +1077,7 @@ impl State {
                 for v in values {
                     self.generate(v, stack);
                 }
-                let loop_pos = stack.loop_position(0);
-                if stack.position > loop_pos {
-                    stack.add_op("OpFreeStack", self);
-                    self.code_add(0u8);
-                    self.code_add(stack.position - loop_pos);
-                    stack.position = loop_pos;
-                }
+                self.clear_stack(stack, 0);
                 stack.add_op("OpGotoWord", self);
                 self.code_add((i64::from(pos) - i64::from(self.code_pos) - 2) as i16);
                 stack.end_loop(self);
@@ -1091,14 +1085,8 @@ impl State {
                 Type::Void
             }
             Value::Break(loop_nr) => {
-                let loop_pos = stack.loop_position(*loop_nr);
                 let old_pos = stack.position;
-                if stack.position > loop_pos {
-                    stack.add_op("OpFreeStack", self);
-                    self.code_add(0u8);
-                    self.code_add(stack.position - loop_pos);
-                    stack.position = loop_pos;
-                }
+                self.clear_stack(stack, *loop_nr);
                 stack.add_op("OpGotoWord", self);
                 stack.add_break(self.code_pos, *loop_nr);
                 self.code_add(0i16); // temporary value to the end of the loop
@@ -1106,14 +1094,8 @@ impl State {
                 Type::Void
             }
             Value::Continue(loop_nr) => {
-                let loop_pos = stack.loop_position(*loop_nr);
                 let old_pos = stack.position;
-                if stack.position > loop_pos {
-                    stack.add_op("OpFreeStack", self);
-                    self.code_add(0u8);
-                    self.code_add(stack.position - loop_pos);
-                    stack.position = loop_pos;
-                }
+                self.clear_stack(stack, *loop_nr);
                 stack.add_op("OpGotoWord", self);
                 self.code_add(
                     (i64::from(stack.get_loop(*loop_nr)) - i64::from(self.code_pos) - 2) as i16,
@@ -1151,6 +1133,7 @@ impl State {
                     let known = stack.data.def(ret_nr).known_type;
                     self.types.insert(self.code_pos, known);
                 }
+                self.free_vars(stack, stack.function.scope() - 1);
                 stack.add_op("OpReturn", self);
                 self.code_add(self.arguments);
                 self.code_add(size(return_type, &Context::Argument) as u8);
@@ -1177,6 +1160,26 @@ impl State {
             }
             Value::Iter(_, _) => {
                 panic!("Should have rewritten {val:?}");
+            }
+        }
+    }
+
+    fn clear_stack(&mut self, stack: &mut Stack, loop_nr: u16) {
+        self.free_vars(stack, loop_nr);
+        let loop_pos = stack.loop_position(loop_nr);
+        if stack.position > loop_pos {
+            stack.add_op("OpFreeStack", self);
+            self.code_add(0u8);
+            self.code_add(stack.position - loop_pos);
+            stack.position = loop_pos;
+        }
+    }
+
+    fn free_vars(&mut self, stack: &mut Stack, scopes: u16) {
+        for v in stack.function.variables(scopes) {
+            if matches!(stack.function.tp(v), Type::Text(_)) {
+                stack.add_op("OpFreeText", self);
+                self.code_add(stack.position - stack.function.stack(v));
             }
         }
     }
@@ -1413,6 +1416,7 @@ impl State {
             if elm != last {
                 continue;
             }
+            self.free_vars(stack, 0);
             let code = self.code_pos;
             // Check if we need a return statement here
             if stack.function.scope() == 1 && !matches!(v, Value::Return(_)) {

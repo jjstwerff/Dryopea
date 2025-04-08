@@ -33,23 +33,25 @@ byte-code for text_length:test()
  723[56]: VarText(var[28]) -> text
  726[72]: Call(size=0, to=318)
  733[60]: AddInt(v1: integer, v2: integer) -> integer
- 734[56]: FreeStack(value=4, discard=28) type=integer[4]:Base[0]
- 738[32]: VarInt(var[28]) -> integer
- 741[36]: ConstInt(val=18) -> integer
- 746[40]: EqInt(v1: integer, v2: integer) -> boolean
- 747[33]: GotoFalseWord(jump=753, if_false: boolean)
- 750[32]: GotoWord(jump=803)
- 753[32]: ClearText(var[4])
- 756[32]: ConstText(_value="Test failed ") -> text
- 770[48]: AppendText(var[4], v1: text)
- 773[32]: VarInt(var[28]) -> integer
- 776[36]: ConstInt(val=0) -> integer
- 781[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 788[32]: ConstText(_value=" != 18") -> text
- 796[48]: AppendText(var[4], v1: text)
- 799[32]: VarText(var[4]) -> text
- 802[48]: Panic(message: text)
- 803[32]: Return(ret=0, value=0, discard=32)
+ 734[56]: FreeText(var[28])
+ 737[56]: FreeStack(value=4, discard=28) type=integer[4]:Base[0]
+ 741[32]: VarInt(var[28]) -> integer
+ 744[36]: ConstInt(val=18) -> integer
+ 749[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 750[33]: GotoFalseWord(jump=756, if_false: boolean)
+ 753[32]: GotoWord(jump=806)
+ 756[32]: ClearText(var[4])
+ 759[32]: ConstText(_value="Test failed ") -> text
+ 773[48]: AppendText(var[4], v1: text)
+ 776[32]: VarInt(var[28]) -> integer
+ 779[36]: ConstInt(val=0) -> integer
+ 784[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 791[32]: ConstText(_value=" != 18") -> text
+ 799[48]: AppendText(var[4], v1: text)
+ 802[32]: VarText(var[4]) -> text
+ 805[48]: Panic(message: text)
+ 806[32]: FreeText(var[4])
+ 809[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
   692:[8] Text()
@@ -69,11 +71,13 @@ Execute test:
   321:[96] LengthText(v1="something"[80]) -> 9[80]
   322:[84] Return(ret=733[76], value=4, discard=24) -> 9[60]
   733:[64] AddInt(v1=9[56], v2=9[60]) -> 18[56]
-  734:[60] FreeStack(value=4, discard=28)
-  738:[36] VarInt(var[32]) -> 18[36]
-  741:[40] ConstInt(val=18) -> 18[40]
-  746:[44] EqInt(v1=18[36], v2=18[40]) -> true[36]
-  747:[37] GotoFalseWord(jump=753, if_false=true[36])
-  750:[36] GotoWord(jump=803)
-  803:[36] Return(ret=4294967295[4], value=0, discard=32)
+  734:[60] FreeText(var[32])
+  737:[60] FreeStack(value=4, discard=28)
+  741:[36] VarInt(var[32]) -> 18[36]
+  744:[40] ConstInt(val=18) -> 18[40]
+  749:[44] EqInt(v1=18[36], v2=18[40]) -> true[36]
+  750:[37] GotoFalseWord(jump=756, if_false=true[36])
+  753:[36] GotoWord(jump=806)
+  806:[36] FreeText(var[8])
+  809:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

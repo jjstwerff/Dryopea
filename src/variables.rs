@@ -124,6 +124,25 @@ impl Function {
         self.current_scope
     }
 
+    pub fn variables(&self, from_scopes: u16) -> Vec<u16> {
+        let mut res = Vec::new();
+        let mut scopes = HashSet::new();
+        let mut sc = self.current_scope;
+        for _ in 0..=from_scopes {
+            scopes.insert(sc);
+            sc = self.scopes[sc as usize].parent;
+            if sc == u16::MAX {
+                break;
+            }
+        }
+        for (v_nr, v) in self.variables.iter().enumerate() {
+            if scopes.contains(&v.scope) {
+                res.push(v_nr as u16);
+            }
+        }
+        res
+    }
+
     pub fn result(&self) -> &Type {
         &self.scopes[self.current_scope as usize].result
     }

@@ -62,24 +62,28 @@ byte-code for format_text:test()
  779[116]: ConstInt(val=7) -> integer
  784[120]: FormatText(var[28], val: text, width: integer, dir=1, token=32)
  789[100]: VarText(var[28]) -> text
- 792[116]: FreeStack(value=16, discard=40) type=text[4]:Base[5]
- 796[92]: AppendText(var[52], v1: text)
- 799[76]: VarText(var[52]) -> text
- 802[92]: ConstText(_value="1abc  2abc3abc   4    abc") -> text
- 829[108]: EqText(v1: text, v2: text) -> boolean
- 830[77]: GotoFalseWord(jump=836, if_false: boolean)
- 833[76]: GotoWord(jump=909)
- 836[76]: ClearText(var[4])
- 839[76]: ConstText(_value="Test failed ") -> text
- 853[92]: AppendText(var[4], v1: text)
- 856[76]: VarText(var[52]) -> text
- 859[92]: ConstInt(val=0) -> integer
- 864[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 869[76]: ConstText(_value=" != "1abc  2abc3abc   4    abc"") -> text
- 902[92]: AppendText(var[4], v1: text)
- 905[76]: VarText(var[4]) -> text
- 908[92]: Panic(message: text)
- 909[76]: Return(ret=0, value=0, discard=76)
+ 792[116]: FreeText(var[76])
+ 795[116]: FreeStack(value=16, discard=40) type=text[4]:Base[5]
+ 799[92]: AppendText(var[52], v1: text)
+ 802[76]: VarText(var[52]) -> text
+ 805[92]: ConstText(_value="1abc  2abc3abc   4    abc") -> text
+ 832[108]: EqText(v1: text, v2: text) -> boolean
+ 833[77]: GotoFalseWord(jump=839, if_false: boolean)
+ 836[76]: GotoWord(jump=912)
+ 839[76]: ClearText(var[4])
+ 842[76]: ConstText(_value="Test failed ") -> text
+ 856[92]: AppendText(var[4], v1: text)
+ 859[76]: VarText(var[52]) -> text
+ 862[92]: ConstInt(val=0) -> integer
+ 867[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 872[76]: ConstText(_value=" != "1abc  2abc3abc   4    abc"") -> text
+ 905[92]: AppendText(var[4], v1: text)
+ 908[76]: VarText(var[4]) -> text
+ 911[92]: Panic(message: text)
+ 912[76]: FreeText(var[52])
+ 915[76]: FreeText(var[28])
+ 918[76]: FreeText(var[4])
+ 921[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
   692:[8] Text()
@@ -112,12 +116,16 @@ Execute test:
   779:[120] ConstInt(val=7) -> 7[120]
   784:[124] FormatText(var[32], val="abc"[104], width=7[120], dir=1, token=32)
   789:[104] VarText(var[32]) -> "1abc  2abc3abc   4    abc"[104]
-  792:[120] FreeStack(value=16, discard=40)
-  796:[96] AppendText(var[56], v1="1abc  2abc3abc   4    abc"[80])
-  799:[80] VarText(var[56]) -> "1abc  2abc3abc   4    abc"[80]
-  802:[96] ConstText(_value="1abc  2abc3abc   4    abc") -> "1abc  2abc3abc   4    abc"[96]
-  829:[112] EqText(v1="1abc  2abc3abc   4    abc"[80], v2="1abc  2abc3abc   4    abc"[96]) -> true[80]
-  830:[81] GotoFalseWord(jump=836, if_false=true[80])
-  833:[80] GotoWord(jump=909)
-  909:[80] Return(ret=4294967295[4], value=0, discard=76)
+  792:[120] FreeText(var[80])
+  795:[120] FreeStack(value=16, discard=40)
+  799:[96] AppendText(var[56], v1="1abc  2abc3abc   4    abc"[80])
+  802:[80] VarText(var[56]) -> "1abc  2abc3abc   4    abc"[80]
+  805:[96] ConstText(_value="1abc  2abc3abc   4    abc") -> "1abc  2abc3abc   4    abc"[96]
+  832:[112] EqText(v1="1abc  2abc3abc   4    abc"[80], v2="1abc  2abc3abc   4    abc"[96]) -> true[80]
+  833:[81] GotoFalseWord(jump=839, if_false=true[80])
+  836:[80] GotoWord(jump=912)
+  912:[80] FreeText(var[56])
+  915:[80] FreeText(var[32])
+  918:[80] FreeText(var[8])
+  921:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

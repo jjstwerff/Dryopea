@@ -276,7 +276,7 @@ impl Parser {
         }
         if matches!(*is_type, Type::Text(_)) {
             let nx = self.vars.start_scope(self.lexer.at(), "for text next");
-            let res_var = self.create_unique("tres", is_type);
+            let res_var = self.vars.work(&mut self.lexer);
             let i = Value::Var(iter_var);
             let ref_expr = self.cl(
                 "OpGetTextSub",
