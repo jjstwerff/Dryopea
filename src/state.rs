@@ -128,7 +128,7 @@ impl State {
         let pos = *self.code::<u16>();
         if cfg!(debug_assertions) {
             self.text_positions
-                .insert(self.stack_cur.pos + self.stack_pos - u32::from(pos) + size_ptr());
+                .insert(self.stack_cur.pos + self.stack_pos + size_ptr() - u32::from(pos));
         }
         let v1 = self.string_mut(pos - size_ptr() as u16);
         *v1 += text.str();
@@ -168,6 +168,21 @@ impl State {
         let r = *self.get_stack::<DbRef>();
         let t: &str = self.database.store(&r).addr::<String>(r.rec, r.pos);
         self.put_stack(Str::new(t));
+    }
+
+    #[inline]
+    pub fn get_db_ref(&mut self) {
+        let r = *self.get_stack::<DbRef>();
+        let t = self.database.store(&r).addr::<DbRef>(r.rec, r.pos);
+        self.put_stack(*t);
+    }
+
+    #[inline]
+    pub fn set_db_ref(&mut self) {
+        let v1 = *self.get_stack::<DbRef>();
+        let r = *self.get_stack::<DbRef>();
+        let t = self.database.store_mut(&r).addr_mut::<DbRef>(r.rec, r.pos);
+        *t = v1;
     }
 
     pub fn append_ref_text(&mut self) {
@@ -1444,7 +1459,8 @@ impl State {
                 Type::Float => stack.add_op("OpGetFloat", self),
                 Type::Enum(_) => stack.add_op("OpGetByte", self),
                 Type::Text(_) => stack.add_op("OpGetRefText", self),
-                _ => panic!("Unknown referenced variable type"),
+                Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpGetDbRef", self),
+                _ => panic!("Unknown referenced variable type: {tp}"),
             }
             self.code_add(0u16);
         }
@@ -1582,6 +1598,7 @@ impl State {
                 Type::Float => stack.add_op("OpSetFloat", self),
                 Type::Text(_) => stack.add_op("OpAppendRefText", self),
                 Type::Enum(_) => stack.add_op("OpSetByte", self),
+                Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpSetDbRef", self),
                 _ => panic!("Unknown reference variable type"),
             }
             self.code_add(0u16);

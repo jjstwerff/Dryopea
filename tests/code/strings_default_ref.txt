@@ -10,13 +10,13 @@ pub fn test() {
         "Test failed {test_value} != \"var_1234\""
     );
 }
-fn add(a:text, b:refvar(text([]))) -> text {#1 block
+fn add(a:text, b:&text) -> text {#1 block
   OpAppendRefText(OpVarRef(b), 0i32, "_");
   OpAppendRefText(OpVarRef(b), 0i32, a);
   b;
-}#1:refvar(text([]))
+}#1:&text
 
-byte-code for default_ref:add(a: text[0], b: refvar(text([]))[16]) -> text
+byte-code for default_ref:add(a: text[0], b: &text[16]) -> text
  692[28]: return-address
  692[32]: VarRef(var[16]) -> reference
  695[44]: ConstText(_value="_") -> text

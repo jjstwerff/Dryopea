@@ -47,7 +47,10 @@ pub struct Function {
     scopes: Vec<Scope>,
     variables: Vec<Variable>,
     current_work: u16,
-    work: BTreeSet<u16>,
+    // Work variables for texts
+    work_texts: BTreeSet<u16>,
+    // Work variables for stores
+    work_refs: BTreeSet<u16>,
     // Only the last known instance of this variable in the function, so for instances
     // we need to remember the variable number within the variables vector.
     names: HashMap<String, Vec<u16>>,
@@ -78,7 +81,8 @@ impl Function {
             scopes: Vec::new(),
             current_work: 0,
             variables: Vec::new(),
-            work: BTreeSet::new(),
+            work_texts: BTreeSet::new(),
+            work_refs: BTreeSet::new(),
             names: HashMap::new(),
             logging: false,
         }
@@ -98,7 +102,8 @@ impl Function {
             v.uses = 0;
         }
         self.current_work = 0;
-        self.work.clear();
+        self.work_texts.clear();
+        self.work_refs.clear();
         self.names.clear();
         self.names.clone_from(&other.names);
         other.names.clear();
@@ -112,7 +117,8 @@ impl Function {
             scopes: other.scopes.clone(),
             variables: other.variables.clone(),
             current_work: 0,
-            work: BTreeSet::new(),
+            work_texts: BTreeSet::new(),
+            work_refs: BTreeSet::new(),
             names: other.names.clone(),
             logging: other.logging,
         };
@@ -171,7 +177,10 @@ impl Function {
             self.current_scope = self.last_scope + 1;
         }
         if self.logging {
-            println!("start scope {} context {context}", self.current_scope);
+            println!(
+                "start scope {} context {context} at {}:{}",
+                self.current_scope, at.0, at.1
+            );
         }
         assert!(
             self.current_scope as usize <= self.scopes.len(),
@@ -213,8 +222,8 @@ impl Function {
         );
         if self.logging {
             println!(
-                "finish {} context {}",
-                self.current_scope, self.scopes[self.current_scope as usize].context
+                "finish {} context {} at {}:{}",
+                self.current_scope, self.scopes[self.current_scope as usize].context, at.0, at.1
             );
         }
         assert_ne!(
@@ -455,7 +464,7 @@ impl Function {
         }
     }
 
-    pub fn work(&mut self, lexer: &mut Lexer) -> u16 {
+    pub fn work_text(&mut self, lexer: &mut Lexer) -> u16 {
         let n = format!("__work_{}", self.current_work + 1);
         self.current_work += 1;
         let v = if let Some(nr) = self.names.get(&n) {
@@ -468,13 +477,38 @@ impl Function {
             }
             v
         };
-        self.work.insert(v);
+        self.work_texts.insert(v);
         v
     }
 
-    pub fn work_vars(&self) -> Vec<u16> {
+    pub fn work_refs(&mut self, db: u32, lexer: &mut Lexer) -> u16 {
+        let n = format!("__ref_{}", self.current_work + 1);
+        self.current_work += 1;
+        let v = if let Some(nr) = self.names.get(&n) {
+            *nr.first().unwrap()
+        } else {
+            let v = self.add_variable(&n, &Type::Reference(db, Vec::new()), lexer);
+            // work variables always live in the main scope.
+            if self.variables[v as usize].scope > 1 {
+                self.variables[v as usize].scope = 1;
+            }
+            v
+        };
+        self.work_refs.insert(v);
+        v
+    }
+
+    pub fn work_texts(&self) -> Vec<u16> {
         let mut res = Vec::new();
-        for v in &self.work {
+        for v in &self.work_texts {
+            res.push(*v);
+        }
+        res
+    }
+
+    pub fn work_references(&self) -> Vec<u16> {
+        let mut res = Vec::new();
+        for v in &self.work_refs {
             res.push(*v);
         }
         res
@@ -636,7 +670,7 @@ impl Function {
     }
 
     /// Move the scope of a given variable to the given scope.
-    pub fn move_scope(&mut self, var_nr: u16, to_scope: u16) {
+    pub fn move_text_scope(&mut self, var_nr: u16, to_scope: u16) {
         if self.variables[var_nr as usize].scope < to_scope {
             return;
         }
@@ -644,9 +678,23 @@ impl Function {
         assert!(to_scope == 0 || to_scope == 1, "Incorrect scope");
         self.variables[var_nr as usize].scope = to_scope;
         if to_scope == 1 {
-            self.work.insert(var_nr);
+            self.work_texts.insert(var_nr);
         } else {
-            self.work.remove(&var_nr);
+            self.work_texts.remove(&var_nr);
+        }
+    }
+
+    pub fn move_ref_scope(&mut self, var_nr: u16, to_scope: u16) {
+        if self.variables[var_nr as usize].scope < to_scope {
+            return;
+        }
+        // Problem when this is not a parent scope.
+        assert!(to_scope == 0 || to_scope == 1, "Incorrect scope");
+        self.variables[var_nr as usize].scope = to_scope;
+        if to_scope == 1 {
+            self.work_refs.insert(var_nr);
+        } else {
+            self.work_refs.remove(&var_nr);
         }
     }
 
