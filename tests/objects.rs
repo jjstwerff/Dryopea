@@ -106,7 +106,49 @@ fn reference() {
     .result(Value::Int(8));
 }
 
-// TODO free structures
-// TODO function that returns a structure
-// TODO limited show structure for debugging
-// TODO writing to non-primary structure should be an error
+#[test]
+fn mutable_reference() {
+    code!(
+        "struct Data {
+  num: integer,
+  values: vector<integer>
+}
+
+fn add(r: &Data = null, val: integer) {
+    if !r {
+       r = Data { num: 0 };
+    }
+    r.num += val;
+    r.values += [val];
+}"
+    )
+    .expr("v = Data { num: 1 }; add(v, 2); add(v, 3); \"{v}\"")
+    .result(Value::str("{num:6,values:[2,3]}"));
+}
+
+#[test]
+fn mutable_vector() {
+    code!(
+        "fn add(r: &vector<integer> = [], val: integer) {
+    r += [val];
+}"
+    )
+    .expr("v = [1]; add(v, 2); add(v, 3); \"{v}\"")
+    .result(Value::str("[1,2,3]"));
+}
+
+#[test]
+fn vector_argument() {
+    code!(
+        "fn sum(r: vector<integer>) -> integer {
+  res = 0;
+  for v in r {
+    res += v;
+  }
+  res
+}
+    "
+    )
+    .expr("sum([1,2,3,4,5]) + 100 * sum([1,2,3] + [4,5])")
+    .result(Value::Int(1515));
+}

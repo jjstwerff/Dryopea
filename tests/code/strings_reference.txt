@@ -9,11 +9,11 @@ pub fn test() {
         "Test failed {test_value} != \"Hello world!\""
     );
 }
-fn add(a:refvar(text([])), b:text) {#1 block
+fn add(a:&text, b:text) {#1 block
   OpAppendRefText(OpVarRef(a), 0i32, b);
 }#1
 
-byte-code for reference:add(a: refvar(text([]))[0], b: text[12])
+byte-code for reference:add(a: &text[0], b: text[12])
  692[28]: return-address
  692[32]: VarRef(var[0]) -> reference
  695[44]: ArgText(var[12]) -> text

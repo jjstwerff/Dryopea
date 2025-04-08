@@ -9,11 +9,11 @@ pub fn test() {
         "Test failed {test_value} != 8"
     );
 }
-fn add(a:refvar(integer(-2147483647, 2147483647)), b:integer, c:integer) {#1 block
-  a:refvar(integer(-2147483647, 2147483647)) = OpAddInt(a, OpAddInt(b, c));
+fn add(a:&integer, b:integer, c:integer) {#1 block
+  a:&integer = OpAddInt(a, OpAddInt(b, c));
 }#1
 
-byte-code for reference:add(a: refvar(integer(-2147483647, 2147483647))[0], b: integer[12], c: integer[16])
+byte-code for reference:add(a: &integer[0], b: integer[12], c: integer[16])
  692[20]: return-address
  692[24]: VarRef(var[0]) -> reference
  695[36]: VarRef(var[0]) -> reference

@@ -243,6 +243,8 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     static_call,
     create_ref,
     get_ref_text,
+    get_db_ref,
+    set_db_ref,
     append_ref_text,
     clear_ref_text,
     get_file,
@@ -1810,6 +1812,14 @@ fn create_ref(s: &mut State) {
 
 fn get_ref_text(s: &mut State) {
     s.get_ref_text();
+}
+
+fn get_db_ref(s: &mut State) {
+    s.get_db_ref();
+}
+
+fn set_db_ref(s: &mut State) {
+    s.set_db_ref();
 }
 
 fn append_ref_text(s: &mut State) {
