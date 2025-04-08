@@ -124,12 +124,19 @@ impl Function {
         self.current_scope
     }
 
-    pub fn variables(&self, from_scopes: u16) -> Vec<u16> {
+    pub fn variables(&self, to_scope: u16) -> Vec<u16> {
         let mut res = Vec::new();
         let mut scopes = HashSet::new();
         let mut sc = self.current_scope;
-        for _ in 0..=from_scopes {
+        loop {
+            if sc == 0 {
+                // never return function arguments
+                break;
+            }
             scopes.insert(sc);
+            if sc == to_scope {
+                break;
+            }
             sc = self.scopes[sc as usize].parent;
             if sc == u16::MAX {
                 break;

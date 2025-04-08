@@ -9,6 +9,13 @@ use crate::variables;
 use crate::variables::Function;
 use std::collections::BTreeMap;
 
+pub struct Loop {
+    scope: u16,
+    start_pos: u32,
+    stack_pos: u16,
+    break_pos: Vec<u32>,
+}
+
 /// Stack information on variable positions and scopes to generate byte-code.
 #[allow(dead_code)]
 pub struct Stack<'a> {
@@ -17,8 +24,7 @@ pub struct Stack<'a> {
     pub function: Function,
     pub def_nr: u32,
     pub logging: bool,
-    /// Current loops (start-position, stack-position, break-positions)
-    loops: Vec<(u32, u16, Vec<u32>)>,
+    loops: Vec<Loop>,
     /// All variables in their parent scope
     scopes: BTreeMap<u16, Vec<u16>>,
 }
@@ -122,12 +128,17 @@ impl<'a> Stack<'a> {
         self.operator(op_nr);
     }
 
-    pub fn add_loop(&mut self, code_pos: u32) {
-        self.loops.push((code_pos, self.position, Vec::new()));
+    pub fn add_loop(&mut self, scope: u16, code_pos: u32) {
+        self.loops.push(Loop {
+            scope,
+            start_pos: code_pos,
+            stack_pos: self.position,
+            break_pos: Vec::new(),
+        });
     }
 
     pub fn end_loop(&mut self, state: &mut State) {
-        let breaks = &self.loops.pop().unwrap().2;
+        let breaks = &self.loops.pop().unwrap().break_pos;
         for b in breaks {
             state.code_put(*b, (i64::from(state.code_pos) - i64::from(*b) - 2) as i16);
         }
@@ -135,16 +146,21 @@ impl<'a> Stack<'a> {
 
     pub fn add_break(&mut self, code_pos: u32, loop_nr: u16) {
         let l = self.loops.len() - 1;
-        self.loops[l - loop_nr as usize].2.push(code_pos);
+        self.loops[l - loop_nr as usize].break_pos.push(code_pos);
     }
 
     pub fn get_loop(&self, loop_nr: u16) -> u32 {
         let l = self.loops.len() - 1;
-        self.loops[l - loop_nr as usize].0
+        self.loops[l - loop_nr as usize].start_pos
     }
 
     pub fn loop_position(&self, loop_nr: u16) -> u16 {
         let l = self.loops.len() - 1;
-        self.loops[l - loop_nr as usize].1
+        self.loops[l - loop_nr as usize].stack_pos
+    }
+
+    pub fn loop_scope(&self, loop_nr: u16) -> u16 {
+        let l = self.loops.len() - 1;
+        self.loops[l - loop_nr as usize].scope
     }
 }

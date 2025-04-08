@@ -13,7 +13,7 @@ use crate::tree;
 use crate::variables::size;
 use crate::vector;
 use crate::{external, hash};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::{Error, Read, Write};
 use std::str::FromStr;
@@ -39,6 +39,7 @@ pub struct State {
     pub library: Vec<Call>,
     pub library_names: HashMap<String, u16>,
     initialized: HashSet<u16>,
+    text_positions: BTreeSet<u32>,
 }
 
 fn new_ref(data: &DbRef, pos: u32, arg: u16) -> DbRef {
@@ -76,6 +77,7 @@ impl State {
             library: Vec::new(),
             library_names: HashMap::new(),
             initialized: HashSet::new(),
+            text_positions: BTreeSet::new(),
         }
     }
 
@@ -124,6 +126,10 @@ impl State {
     pub fn append_text(&mut self) {
         let text = self.string();
         let pos = *self.code::<u16>();
+        if cfg!(debug_assertions) {
+            self.text_positions
+                .insert(self.stack_cur.pos + self.stack_pos - u32::from(pos) + size_ptr());
+        }
         let v1 = self.string_mut(pos - size_ptr() as u16);
         *v1 += text.str();
     }
@@ -167,6 +173,9 @@ impl State {
     pub fn append_ref_text(&mut self) {
         let text = self.string();
         let r = *self.get_stack::<DbRef>();
+        if cfg!(debug_assertions) {
+            self.text_positions.insert(r.pos);
+        }
         let v1 = self.database.store_mut(&r).addr_mut::<String>(r.rec, r.pos);
         *v1 += text.str();
     }
@@ -288,6 +297,11 @@ impl State {
         self.string_mut(pos).clear();
     }
 
+    /**
+    Free the content of a text variable.
+    # Panics
+    When the same variable is freed twice.
+    */
     pub fn free_text(&mut self) {
         let pos = *self.code::<u16>();
         if cfg!(debug_assertions) {
@@ -298,6 +312,11 @@ impl State {
             }
         }
         self.string_mut(pos).shrink_to(0);
+        if cfg!(debug_assertions) {
+            let var_pos = self.stack_cur.pos + self.stack_pos - u32::from(pos);
+            let remove = self.text_positions.remove(&var_pos);
+            assert!(remove, "double free");
+        }
     }
 
     /** Get a string reference from a variety of internal string formats.
@@ -383,6 +402,10 @@ impl State {
     }
 
     pub fn text(&mut self) {
+        if cfg!(debug_assertions) {
+            self.text_positions
+                .insert(self.stack_cur.pos + self.stack_pos);
+        }
         let v = self.string_mut(0);
         let s = String::new();
         unsafe {
@@ -842,10 +865,23 @@ impl State {
     * `ret`     - Size of the parameters to get the return address after it.
     * `value`   - Size of the return value.
     * `discard` - The amount of space claimed on the stack at this point.
+    # Panics
+    When there are claimed texts that are not freed yet.
     */
     pub fn fn_return(&mut self, ret: u16, value: u8, discard: u16) {
         let pos = self.stack_pos;
         self.stack_pos -= u32::from(discard);
+        debug_assert!(
+            self.text_positions
+                .range(self.stack_pos..=pos)
+                .next()
+                .is_none(),
+            "Not freed texts on return: {}",
+            self.text_positions
+                .range(self.stack_pos..=pos)
+                .next()
+                .unwrap()
+        );
         let fn_stack = self.stack_pos;
         self.stack_pos += u32::from(ret);
         self.code_pos = *self.get_var::<u32>(0);
@@ -856,10 +892,19 @@ impl State {
     Clear the stack of local variables, possibly return a value.
     * `value`   - Size of the return value.
     * `discard` - The amount of space claimed on the stack at this point.
+    # Panics
+    When texts are not freed from stack beforehand.
     */
     pub fn free_stack(&mut self, value: u8, discard: u16) {
         let pos = self.stack_pos;
         self.stack_pos -= u32::from(discard);
+        debug_assert!(
+            self.text_positions
+                .range(self.stack_pos..=pos)
+                .next()
+                .is_none(),
+            "Not freed texts"
+        );
         self.copy_result(value, pos, self.stack_pos);
     }
 
@@ -1072,7 +1117,7 @@ impl State {
             }
             Value::Loop(values) => {
                 let lp = stack.function.start_scope((0, 0), "generate loop");
-                stack.add_loop(self.code_pos);
+                stack.add_loop(stack.function.scope(), self.code_pos);
                 let pos = self.code_pos;
                 for v in values {
                     self.generate(v, stack);
@@ -1165,7 +1210,7 @@ impl State {
     }
 
     fn clear_stack(&mut self, stack: &mut Stack, loop_nr: u16) {
-        self.free_vars(stack, loop_nr);
+        self.free_vars(stack, stack.loop_scope(loop_nr));
         let loop_pos = stack.loop_position(loop_nr);
         if stack.position > loop_pos {
             stack.add_op("OpFreeStack", self);
@@ -1175,8 +1220,8 @@ impl State {
         }
     }
 
-    fn free_vars(&mut self, stack: &mut Stack, scopes: u16) {
-        for v in stack.function.variables(scopes) {
+    fn free_vars(&mut self, stack: &mut Stack, to_scope: u16) {
+        for v in stack.function.variables(to_scope) {
             if matches!(stack.function.tp(v), Type::Text(_)) {
                 stack.add_op("OpFreeText", self);
                 self.code_add(stack.position - stack.function.stack(v));
@@ -1416,7 +1461,7 @@ impl State {
             if elm != last {
                 continue;
             }
-            self.free_vars(stack, 0);
+            self.free_vars(stack, bl);
             let code = self.code_pos;
             // Check if we need a return statement here
             if stack.function.scope() == 1 && !matches!(v, Value::Return(_)) {
