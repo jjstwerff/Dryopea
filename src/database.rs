@@ -1006,6 +1006,8 @@ impl Stores {
     pub fn database(&mut self, size: u32) -> DbRef {
         if self.max >= self.allocations.len() as u16 {
             self.allocations.push(Store::new(100));
+        } else {
+            self.allocations[self.max as usize].init();
         }
         let store = &mut self.allocations[self.max as usize];
         let rec = store.claim(size);
@@ -1015,6 +1017,11 @@ impl Stores {
             rec,
             pos: 0,
         }
+    }
+
+    pub fn clear(&mut self, db: &DbRef) {
+        let store = &mut self.allocations[db.store_nr as usize];
+        store.init();
     }
 
     #[must_use]

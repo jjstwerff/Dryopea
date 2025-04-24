@@ -23,13 +23,14 @@ Type 13:main_vector<Elm>[8]:
 Type 14:vector<Elm>[4]:Vector(12)
 
 fn test() {#1 block
+  __ref_1:main_vector<Elm> = null;
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
     v:vector<Elm["_elm_1"]> = {#3 vector
-      _db_3:main_vector<Elm> = OpDatabase(8i32, 13i32);
-      _vec_2:vector<Elm["_elm_1"]> = OpGetField(_db_3, 4i32, 65535i32);
-      OpSetInt(_db_3, 4i32, 0i32);
+      OpDatabase(__ref_1, 13i32);
+      _vec_2:vector<Elm["_elm_1"]> = OpGetField(__ref_1, 4i32, 65535i32);
+      OpSetInt(__ref_1, 4i32, 0i32);
       _elm_1:Elm["_elm_1"] = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#4 object
         OpSetInt(_elm_1, 0i32, 1i32);
@@ -68,14 +69,15 @@ fn test() {#1 block
 }#1
 
 byte-code for format_object:test()
- 692[0]: return-address
- 692[4]: Text()
- 693[28]: Text()
- 694[52]: Text()
- 695[76]: Database(size=8, db_tp=13) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
- 700[88]: VarRef(var[76]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
+ 691[0]: return-address
+ 691[4]: ConvRefFromNull() -> reference
+ 692[16]: Text()
+ 693[40]: Text()
+ 694[64]: Text()
+ 695[88]: Database(var[4], db_tp=13) type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
+ 700[88]: VarRef(var[4]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
  703[100]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
- 706[100]: VarRef(var[76]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
+ 706[100]: VarRef(var[4]) -> reference type=main_vector<Elm>[8]:{vector:vector<Elm>[4]}[13]
  709[112]: ConstInt(val=0) -> integer
  714[116]: SetInt(v1: reference, fld=4, val: integer)
  717[100]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
@@ -114,53 +116,54 @@ byte-code for format_object:test()
  838[124]: VarRef(var[100]) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
  841[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
  846[112]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
- 849[124]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
- 853[88]: VarVector(var[76]) -> vector type=vector<Elm>[4]:Vector(12)[14]
- 856[100]: ConstInt(val=2) -> integer
- 861[104]: GetVector(r: vector, size=8, index: integer) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
- 864[100]: ConstInt(val=6) -> integer
- 869[104]: SetInt(v1: reference, fld=4, val: integer)
- 872[88]: ClearText(var[28])
- 875[88]: ConstText(_value="") -> text
- 877[104]: AppendText(var[28], v1: text)
- 880[88]: VarVector(var[76]) -> vector type=vector<Elm>[4]:Vector(12)[14]
- 883[100]: FormatDatabase(var[28], val: reference, db_tp=14, pretty=false)
- 889[88]: ConstText(_value=" sizeof ") -> text
- 899[104]: AppendText(var[28], v1: text)
- 902[88]: ConstInt(val=8) -> integer
- 907[92]: ConstInt(val=0) -> integer
- 912[96]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 919[88]: VarText(var[28]) -> text
- 922[104]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
- 926[92]: AppendText(var[52], v1: text)
- 929[76]: VarText(var[52]) -> text
- 932[92]: ConstText(_value="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") -> text
- 976[108]: EqText(v1: text, v2: text) -> boolean
- 977[77]: GotoFalseWord(jump=983, if_false: boolean)
- 980[76]: GotoWord(jump=1073)
- 983[76]: ClearText(var[4])
- 986[76]: ConstText(_value="Test failed ") -> text
-1000[92]: AppendText(var[4], v1: text)
-1003[76]: VarText(var[52]) -> text
-1006[92]: ConstInt(val=0) -> integer
-1011[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-1016[76]: ConstText(_value=" != "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"") -> text
-1066[92]: AppendText(var[4], v1: text)
-1069[76]: VarText(var[4]) -> text
-1072[92]: Panic(message: text)
-1073[76]: FreeText(var[52])
-1076[76]: FreeText(var[28])
-1079[76]: FreeText(var[4])
-1082[76]: Return(ret=0, value=0, discard=76)
+ 849[124]: FreeStack(value=12, discard=36) type=Variable[12]:{name:text[4], value:text[8]}[6]
+ 853[100]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
+ 856[112]: ConstInt(val=2) -> integer
+ 861[116]: GetVector(r: vector, size=8, index: integer) -> reference type=Elm[8]:{a:integer[0], b:integer[4]}[12]
+ 864[112]: ConstInt(val=6) -> integer
+ 869[116]: SetInt(v1: reference, fld=4, val: integer)
+ 872[100]: ClearText(var[40])
+ 875[100]: ConstText(_value="") -> text
+ 877[116]: AppendText(var[40], v1: text)
+ 880[100]: VarVector(var[88]) -> vector type=vector<Elm>[4]:Vector(12)[14]
+ 883[112]: FormatDatabase(var[40], val: reference, db_tp=14, pretty=false)
+ 889[100]: ConstText(_value=" sizeof ") -> text
+ 899[116]: AppendText(var[40], v1: text)
+ 902[100]: ConstInt(val=8) -> integer
+ 907[104]: ConstInt(val=0) -> integer
+ 912[108]: FormatInt(var[40], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 919[100]: VarText(var[40]) -> text
+ 922[116]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
+ 926[104]: AppendText(var[64], v1: text)
+ 929[88]: VarText(var[64]) -> text
+ 932[104]: ConstText(_value="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") -> text
+ 976[120]: EqText(v1: text, v2: text) -> boolean
+ 977[89]: GotoFalseWord(jump=983, if_false: boolean)
+ 980[88]: GotoWord(jump=1073)
+ 983[88]: ClearText(var[16])
+ 986[88]: ConstText(_value="Test failed ") -> text
+1000[104]: AppendText(var[16], v1: text)
+1003[88]: VarText(var[64]) -> text
+1006[104]: ConstInt(val=0) -> integer
+1011[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
+1016[88]: ConstText(_value=" != "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"") -> text
+1066[104]: AppendText(var[16], v1: text)
+1069[88]: VarText(var[16]) -> text
+1072[104]: Panic(message: text)
+1073[88]: FreeText(var[64])
+1076[88]: FreeText(var[40])
+1079[88]: FreeText(var[16])
+1082[88]: Return(ret=0, value=0, discard=88)
 
 Execute test:
-  692:[8] Text()
-  693:[32] Text()
-  694:[56] Text()
-  695:[80] Database(size=8, db_tp=13) -> ref(1,1,0)={}[80]
-  700:[92] VarRef(var[80]) -> ref(1,1,0)={}[92]
+  691:[8] ConvRefFromNull() -> ref(65535,0,0)[8]
+  692:[20] Text()
+  693:[44] Text()
+  694:[68] Text()
+  695:[92] Database(var[8], db_tp=13)
+  700:[92] VarRef(var[8]) -> ref(1,1,0)={}[92]
   703:[104] GetField(v1=ref(1,1,0)[92], fld=4) -> ref(1,1,4)[92]
-  706:[104] VarRef(var[80]) -> ref(1,1,0)={}[104]
+  706:[104] VarRef(var[8]) -> ref(1,1,0)={}[104]
   709:[116] ConstInt(val=0) -> 0[116]
   714:[120] SetInt(v1=ref(1,1,0)[104], fld=4, val=0[116])
   717:[104] VarVector(var[92]) -> ref(1,1,4)=[][104]
@@ -199,32 +202,32 @@ Execute test:
   838:[128] VarRef(var[104]) -> ref(1,9,24)={a:4,b:5}[128]
   841:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,24)[128], parent_tp=14, fld=65535)
   846:[116] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:5}][116]
-  849:[128] FreeStack(value=12, discard=48)
-  853:[92] VarVector(var[80]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:5}][92]
-  856:[104] ConstInt(val=2) -> 2[104]
-  861:[108] GetVector(r=ref(1,1,4)=true[92], size=8, index=2[104]) -> ref(1,9,24)={a:4,b:5}[92]
-  864:[104] ConstInt(val=6) -> 6[104]
-  869:[108] SetInt(v1=ref(1,9,24)[92], fld=4, val=6[104])
-  872:[92] ClearText(var[32])
-  875:[92] ConstText(_value="") -> ""[92]
-  877:[108] AppendText(var[32], v1=""[92])
-  880:[92] VarVector(var[80]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:6}][92]
-  883:[104] FormatDatabase(var[32], val=ref(1,1,4)[92], db_tp=14, pretty=false)
-  889:[92] ConstText(_value=" sizeof ") -> " sizeof "[92]
-  899:[108] AppendText(var[32], v1=" sizeof "[92])
-  902:[92] ConstInt(val=8) -> 8[92]
-  907:[96] ConstInt(val=0) -> 0[96]
-  912:[100] FormatInt(var[32], val=8[92], radix=10, width=0[96], token=32, plus=false, note=false)
-  919:[92] VarText(var[32]) -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[92]
-  922:[108] FreeStack(value=16, discard=28)
-  926:[96] AppendText(var[56], v1="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80])
-  929:[80] VarText(var[56]) -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80]
-  932:[96] ConstText(_value="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[96]
-  976:[112] EqText(v1="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[80], v2="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[96]) -> true[80]
-  977:[81] GotoFalseWord(jump=983, if_false=true[80])
-  980:[80] GotoWord(jump=1073)
- 1073:[80] FreeText(var[56])
- 1076:[80] FreeText(var[32])
- 1079:[80] FreeText(var[8])
- 1082:[80] Return(ret=4294967295[4], value=0, discard=76)
+  849:[128] FreeStack(value=12, discard=36)
+  853:[104] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:5}][104]
+  856:[116] ConstInt(val=2) -> 2[116]
+  861:[120] GetVector(r=ref(1,1,4)=true[104], size=8, index=2[116]) -> ref(1,9,24)={a:4,b:5}[104]
+  864:[116] ConstInt(val=6) -> 6[116]
+  869:[120] SetInt(v1=ref(1,9,24)[104], fld=4, val=6[116])
+  872:[104] ClearText(var[44])
+  875:[104] ConstText(_value="") -> ""[104]
+  877:[120] AppendText(var[44], v1=""[104])
+  880:[104] VarVector(var[92]) -> ref(1,1,4)=[{a:1,b:2},{a:12,b:13},{a:4,b:6}][104]
+  883:[116] FormatDatabase(var[44], val=ref(1,1,4)[104], db_tp=14, pretty=false)
+  889:[104] ConstText(_value=" sizeof ") -> " sizeof "[104]
+  899:[120] AppendText(var[44], v1=" sizeof "[104])
+  902:[104] ConstInt(val=8) -> 8[104]
+  907:[108] ConstInt(val=0) -> 0[108]
+  912:[112] FormatInt(var[44], val=8[104], radix=10, width=0[108], token=32, plus=false, note=false)
+  919:[104] VarText(var[44]) -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[104]
+  922:[120] FreeStack(value=16, discard=28)
+  926:[108] AppendText(var[68], v1="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[92])
+  929:[92] VarText(var[68]) -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[92]
+  932:[108] ConstText(_value="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8") -> "[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[108]
+  976:[124] EqText(v1="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[92], v2="[{a:1,b:2},{a:12,b:13},{a:4,b:6}] sizeof 8"[108]) -> true[92]
+  977:[93] GotoFalseWord(jump=983, if_false=true[92])
+  980:[92] GotoWord(jump=1073)
+ 1073:[92] FreeText(var[68])
+ 1076:[92] FreeText(var[44])
+ 1079:[92] FreeText(var[20])
+ 1082:[92] Return(ret=4294967295[4], value=0, discard=88)
 Finished

@@ -31,29 +31,30 @@ fn _tp_Point_value(self:Point) -> integer {#1 block
 }#1:integer
 
 byte-code for colours:_tp_Point_value(self: Point[0]) -> integer
- 692[12]: return-address
- 692[16]: VarRef(var[0]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
- 695[28]: GetByte(v1: reference, fld=0, min=0) -> integer
- 700[20]: ConstInt(val=65536) -> integer
- 705[24]: MulInt(v1: integer, v2: integer) -> integer
- 706[20]: VarRef(var[0]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
- 709[32]: GetByte(v1: reference, fld=1, min=0) -> integer
- 714[24]: ConstInt(val=256) -> integer
- 719[28]: MulInt(v1: integer, v2: integer) -> integer
- 720[24]: AddInt(v1: integer, v2: integer) -> integer
- 721[20]: VarRef(var[0]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
- 724[32]: GetByte(v1: reference, fld=2, min=0) -> integer
- 729[24]: AddInt(v1: integer, v2: integer) -> integer
- 730[20]: Return(ret=12, value=4, discard=20) type=integer[4]:Base[0]
+ 691[12]: return-address
+ 691[16]: VarRef(var[0]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+ 694[28]: GetByte(v1: reference, fld=0, min=0) -> integer
+ 699[20]: ConstInt(val=65536) -> integer
+ 704[24]: MulInt(v1: integer, v2: integer) -> integer
+ 705[20]: VarRef(var[0]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+ 708[32]: GetByte(v1: reference, fld=1, min=0) -> integer
+ 713[24]: ConstInt(val=256) -> integer
+ 718[28]: MulInt(v1: integer, v2: integer) -> integer
+ 719[24]: AddInt(v1: integer, v2: integer) -> integer
+ 720[20]: VarRef(var[0]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+ 723[32]: GetByte(v1: reference, fld=2, min=0) -> integer
+ 728[24]: AddInt(v1: integer, v2: integer) -> integer
+ 729[20]: Return(ret=12, value=4, discard=20) type=integer[4]:Base[0]
 
 fn test() {#1 block
+  __ref_1:main_vector<Point> = null;
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
     points:vector<Point["_elm_1"]> = {#3 vector
-      _db_3:main_vector<Point> = OpDatabase(3i32, 13i32);
-      _vec_2:vector<Point["_elm_1"]> = OpGetField(_db_3, 4i32, 65535i32);
-      OpSetInt(_db_3, 4i32, 0i32);
+      OpDatabase(__ref_1, 13i32);
+      _vec_2:vector<Point["_elm_1"]> = OpGetField(__ref_1, 4i32, 65535i32);
+      OpSetInt(__ref_1, 4i32, 0i32);
       _elm_1:Point["_elm_1"] = OpNewRecord(_vec_2, 14i32, 65535i32);
       {#4 object
         OpSetByte(_elm_1, 0i32, 0i32, 128i32);
@@ -91,14 +92,15 @@ fn test() {#1 block
 }#1
 
 byte-code for colours:test()
- 736[0]: return-address
- 736[4]: Text()
- 737[28]: Text()
- 738[52]: Text()
- 739[76]: Database(size=3, db_tp=13) -> reference type=main_vector<Point>[8]:{vector:vector<Point>[4]}[13]
- 744[88]: VarRef(var[76]) -> reference type=main_vector<Point>[8]:{vector:vector<Point>[4]}[13]
+ 735[0]: return-address
+ 735[4]: ConvRefFromNull() -> reference
+ 736[16]: Text()
+ 737[40]: Text()
+ 738[64]: Text()
+ 739[88]: Database(var[4], db_tp=13) type=main_vector<Point>[8]:{vector:vector<Point>[4]}[13]
+ 744[88]: VarRef(var[4]) -> reference type=main_vector<Point>[8]:{vector:vector<Point>[4]}[13]
  747[100]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
- 750[100]: VarRef(var[76]) -> reference type=main_vector<Point>[8]:{vector:vector<Point>[4]}[13]
+ 750[100]: VarRef(var[4]) -> reference type=main_vector<Point>[8]:{vector:vector<Point>[4]}[13]
  753[112]: ConstInt(val=0) -> integer
  758[116]: SetInt(v1: reference, fld=4, val: integer)
  761[100]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
@@ -131,146 +133,147 @@ byte-code for colours:test()
  872[124]: VarRef(var[100]) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
  875[136]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
  880[112]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
- 883[124]: FreeStack(value=12, discard=48) type=Variable[12]:{name:text[4], value:text[8]}[6]
- 887[88]: ClearText(var[28])
- 890[88]: ConstText(_value="size:") -> text
- 897[104]: AppendText(var[28], v1: text)
- 900[88]: ConstInt(val=3) -> integer
- 905[92]: ConstInt(val=0) -> integer
- 910[96]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 917[88]: ConstText(_value=" purple:") -> text
- 927[104]: AppendText(var[28], v1: text)
- 930[88]: VarVector(var[76]) -> vector type=vector<Point>[4]:Vector(12)[14]
- 933[100]: ConstInt(val=0) -> integer
- 938[104]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
- 941[100]: FormatDatabase(var[28], val: reference, db_tp=12, pretty=false)
- 947[88]: ConstText(_value=" value:") -> text
- 956[104]: AppendText(var[28], v1: text)
- 959[88]: VarVector(var[76]) -> vector type=vector<Point>[4]:Vector(12)[14]
- 962[100]: ConstInt(val=0) -> integer
- 967[104]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
- 970[100]: Call(size=0, to=692)
- 977[92]: ConstInt(val=0) -> integer
- 982[96]: FormatInt(var[28], val: integer, radix=16, width: integer, token=32, plus=false, note=false)
- 989[88]: ConstText(_value=" blue:") -> text
- 997[104]: AppendText(var[28], v1: text)
-1000[88]: VarVector(var[76]) -> vector type=vector<Point>[4]:Vector(12)[14]
-1003[100]: ConstInt(val=1) -> integer
-1008[104]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
-1011[100]: FormatDatabase(var[28], val: reference, db_tp=12, pretty=false)
-1017[88]: VarText(var[28]) -> text
-1020[104]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
-1024[92]: AppendText(var[52], v1: text)
-1027[76]: VarText(var[52]) -> text
-1030[92]: ConstText(_value="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}") -> text
-1097[108]: EqText(v1: text, v2: text) -> boolean
-1098[77]: GotoFalseWord(jump=1104, if_false: boolean)
-1101[76]: GotoWord(jump=1217)
-1104[76]: ClearText(var[4])
-1107[76]: ConstText(_value="Test failed ") -> text
-1121[92]: AppendText(var[4], v1: text)
-1124[76]: VarText(var[52]) -> text
-1127[92]: ConstInt(val=0) -> integer
-1132[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-1137[76]: ConstText(_value=" != "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"") -> text
-1210[92]: AppendText(var[4], v1: text)
-1213[76]: VarText(var[4]) -> text
-1216[92]: Panic(message: text)
-1217[76]: FreeText(var[52])
-1220[76]: FreeText(var[28])
-1223[76]: FreeText(var[4])
-1226[76]: Return(ret=0, value=0, discard=76)
+ 883[124]: FreeStack(value=12, discard=36) type=Variable[12]:{name:text[4], value:text[8]}[6]
+ 887[100]: ClearText(var[40])
+ 890[100]: ConstText(_value="size:") -> text
+ 897[116]: AppendText(var[40], v1: text)
+ 900[100]: ConstInt(val=3) -> integer
+ 905[104]: ConstInt(val=0) -> integer
+ 910[108]: FormatInt(var[40], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 917[100]: ConstText(_value=" purple:") -> text
+ 927[116]: AppendText(var[40], v1: text)
+ 930[100]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
+ 933[112]: ConstInt(val=0) -> integer
+ 938[116]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+ 941[112]: FormatDatabase(var[40], val: reference, db_tp=12, pretty=false)
+ 947[100]: ConstText(_value=" value:") -> text
+ 956[116]: AppendText(var[40], v1: text)
+ 959[100]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
+ 962[112]: ConstInt(val=0) -> integer
+ 967[116]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+ 970[112]: Call(size=0, to=691)
+ 977[104]: ConstInt(val=0) -> integer
+ 982[108]: FormatInt(var[40], val: integer, radix=16, width: integer, token=32, plus=false, note=false)
+ 989[100]: ConstText(_value=" blue:") -> text
+ 997[116]: AppendText(var[40], v1: text)
+1000[100]: VarVector(var[88]) -> vector type=vector<Point>[4]:Vector(12)[14]
+1003[112]: ConstInt(val=1) -> integer
+1008[116]: GetVector(r: vector, size=3, index: integer) -> reference type=Point[3]:{r:byte[0], g:byte[1], b:byte[2]}[12]
+1011[112]: FormatDatabase(var[40], val: reference, db_tp=12, pretty=false)
+1017[100]: VarText(var[40]) -> text
+1020[116]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
+1024[104]: AppendText(var[64], v1: text)
+1027[88]: VarText(var[64]) -> text
+1030[104]: ConstText(_value="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}") -> text
+1097[120]: EqText(v1: text, v2: text) -> boolean
+1098[89]: GotoFalseWord(jump=1104, if_false: boolean)
+1101[88]: GotoWord(jump=1217)
+1104[88]: ClearText(var[16])
+1107[88]: ConstText(_value="Test failed ") -> text
+1121[104]: AppendText(var[16], v1: text)
+1124[88]: VarText(var[64]) -> text
+1127[104]: ConstInt(val=0) -> integer
+1132[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
+1137[88]: ConstText(_value=" != "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"") -> text
+1210[104]: AppendText(var[16], v1: text)
+1213[88]: VarText(var[16]) -> text
+1216[104]: Panic(message: text)
+1217[88]: FreeText(var[64])
+1220[88]: FreeText(var[40])
+1223[88]: FreeText(var[16])
+1226[88]: Return(ret=0, value=0, discard=88)
 
 Execute test:
-  736:[8] Text()
-  737:[32] Text()
-  738:[56] Text()
-  739:[80] Database(size=3, db_tp=13) -> ref(1,1,0)={}[80]
-  744:[92] VarRef(var[80]) -> ref(1,1,0)={}[92]
+  735:[8] ConvRefFromNull() -> ref(65535,0,0)[8]
+  736:[20] Text()
+  737:[44] Text()
+  738:[68] Text()
+  739:[92] Database(var[8], db_tp=13)
+  744:[92] VarRef(var[8]) -> ref(1,1,0)={}[92]
   747:[104] GetField(v1=ref(1,1,0)[92], fld=4) -> ref(1,1,4)[92]
-  750:[104] VarRef(var[80]) -> ref(1,1,0)={}[104]
+  750:[104] VarRef(var[8]) -> ref(1,1,0)={}[104]
   753:[116] ConstInt(val=0) -> 0[116]
   758:[120] SetInt(v1=ref(1,1,0)[104], fld=4, val=0[116])
   761:[104] VarVector(var[92]) -> ref(1,1,4)=[][104]
-  764:[116] NewRecord(data=ref(1,1,4)[104], parent_tp=14, fld=65535) -> ref(1,4,8)[104]
-  769:[116] VarRef(var[104]) -> ref(1,4,8)={r:0,g:0,b:0}[116]
+  764:[116] NewRecord(data=ref(1,1,4)[104], parent_tp=14, fld=65535) -> ref(1,9,8)[104]
+  769:[116] VarRef(var[104]) -> ref(1,9,8)={r:0,g:0,b:0}[116]
   772:[128] ConstInt(val=128) -> 128[128]
-  777:[132] SetByte(v1=ref(1,4,8)[116], fld=0, min=0, val=128[128])
-  782:[116] VarRef(var[104]) -> ref(1,4,8)={r:128,g:0,b:0}[116]
+  777:[132] SetByte(v1=ref(1,9,8)[116], fld=0, min=0, val=128[128])
+  782:[116] VarRef(var[104]) -> ref(1,9,8)={r:128,g:0,b:0}[116]
   785:[128] ConstInt(val=128) -> 128[128]
-  790:[132] SetByte(v1=ref(1,4,8)[116], fld=2, min=0, val=128[128])
-  795:[116] VarRef(var[104]) -> ref(1,4,8)={r:128,g:0,b:128}[116]
+  790:[132] SetByte(v1=ref(1,9,8)[116], fld=2, min=0, val=128[128])
+  795:[116] VarRef(var[104]) -> ref(1,9,8)={r:128,g:0,b:128}[116]
   798:[128] ConstInt(val=0) -> 0[128]
-  803:[132] SetByte(v1=ref(1,4,8)[116], fld=1, min=0, val=0[128])
+  803:[132] SetByte(v1=ref(1,9,8)[116], fld=1, min=0, val=0[128])
   808:[116] VarVector(var[92]) -> ref(1,1,4)=[{r:128,g:0,b:128}][116]
-  811:[128] VarRef(var[104]) -> ref(1,4,8)={r:128,g:0,b:128}[128]
-  814:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,4,8)[128], parent_tp=14, fld=65535)
+  811:[128] VarRef(var[104]) -> ref(1,9,8)={r:128,g:0,b:128}[128]
+  814:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,8)[128], parent_tp=14, fld=65535)
   819:[116] VarVector(var[92]) -> ref(1,1,4)=[{r:128,g:0,b:128}][116]
-  822:[128] NewRecord(data=ref(1,1,4)[116], parent_tp=14, fld=65535) -> ref(1,4,11)[116]
-  827:[128] PutRef(var[104], value=ref(1,4,11)[116])
-  830:[116] VarRef(var[104]) -> ref(1,4,11)={r:0,g:0,b:0}[116]
+  822:[128] NewRecord(data=ref(1,1,4)[116], parent_tp=14, fld=65535) -> ref(1,9,11)[116]
+  827:[128] PutRef(var[104], value=ref(1,9,11)[116])
+  830:[116] VarRef(var[104]) -> ref(1,9,11)={r:0,g:0,b:0}[116]
   833:[128] ConstInt(val=255) -> 255[128]
-  838:[132] SetByte(v1=ref(1,4,11)[116], fld=2, min=0, val=255[128])
-  843:[116] VarRef(var[104]) -> ref(1,4,11)={r:0,g:0,b:255}[116]
+  838:[132] SetByte(v1=ref(1,9,11)[116], fld=2, min=0, val=255[128])
+  843:[116] VarRef(var[104]) -> ref(1,9,11)={r:0,g:0,b:255}[116]
   846:[128] ConstInt(val=0) -> 0[128]
-  851:[132] SetByte(v1=ref(1,4,11)[116], fld=0, min=0, val=0[128])
-  856:[116] VarRef(var[104]) -> ref(1,4,11)={r:0,g:0,b:255}[116]
+  851:[132] SetByte(v1=ref(1,9,11)[116], fld=0, min=0, val=0[128])
+  856:[116] VarRef(var[104]) -> ref(1,9,11)={r:0,g:0,b:255}[116]
   859:[128] ConstInt(val=0) -> 0[128]
-  864:[132] SetByte(v1=ref(1,4,11)[116], fld=1, min=0, val=0[128])
+  864:[132] SetByte(v1=ref(1,9,11)[116], fld=1, min=0, val=0[128])
   869:[116] VarVector(var[92]) -> ref(1,1,4)=[{r:128,g:0,b:128},{r:0,g:0,b:255}][116]
-  872:[128] VarRef(var[104]) -> ref(1,4,11)={r:0,g:0,b:255}[128]
-  875:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,4,11)[128], parent_tp=14, fld=65535)
+  872:[128] VarRef(var[104]) -> ref(1,9,11)={r:0,g:0,b:255}[128]
+  875:[140] FinishRecord(data=ref(1,1,4)[116], rec=ref(1,9,11)[128], parent_tp=14, fld=65535)
   880:[116] VarVector(var[92]) -> ref(1,1,4)=[{r:128,g:0,b:128},{r:0,g:0,b:255}][116]
-  883:[128] FreeStack(value=12, discard=48)
-  887:[92] ClearText(var[32])
-  890:[92] ConstText(_value="size:") -> "size:"[92]
-  897:[108] AppendText(var[32], v1="size:"[92])
-  900:[92] ConstInt(val=3) -> 3[92]
-  905:[96] ConstInt(val=0) -> 0[96]
-  910:[100] FormatInt(var[32], val=3[92], radix=10, width=0[96], token=32, plus=false, note=false)
-  917:[92] ConstText(_value=" purple:") -> " purple:"[92]
-  927:[108] AppendText(var[32], v1=" purple:"[92])
-  930:[92] VarVector(var[80]) -> ref(1,1,4)=[{r:128,g:0,b:128},{r:0,g:0,b:255}][92]
-  933:[104] ConstInt(val=0) -> 0[104]
-  938:[108] GetVector(r=ref(1,1,4)=true[92], size=3, index=0[104]) -> ref(1,4,8)={r:128,g:0,b:128}[92]
-  941:[104] FormatDatabase(var[32], val=ref(1,4,8)[92], db_tp=12, pretty=false)
-  947:[92] ConstText(_value=" value:") -> " value:"[92]
-  956:[108] AppendText(var[32], v1=" value:"[92])
-  959:[92] VarVector(var[80]) -> ref(1,1,4)=[{r:128,g:0,b:128},{r:0,g:0,b:255}][92]
-  962:[104] ConstInt(val=0) -> 0[104]
-  967:[108] GetVector(r=ref(1,1,4)=true[92], size=3, index=0[104]) -> ref(1,4,8)={r:128,g:0,b:128}[92]
-  970:[104] Call(size=0, to=692)
-  692:[108] VarRef(var[92]) -> ref(1,4,8)={r:128,g:0,b:128}[108]
-  695:[120] GetByte(v1=ref(1,4,8)[108], fld=0, min=0) -> 128[108]
-  700:[112] ConstInt(val=65536) -> 65536[112]
-  705:[116] MulInt(v1=128[108], v2=65536[112]) -> 8388608[108]
-  706:[112] VarRef(var[92]) -> ref(1,4,8)={r:128,g:0,b:128}[112]
-  709:[124] GetByte(v1=ref(1,4,8)[112], fld=1, min=0) -> 0[112]
-  714:[116] ConstInt(val=256) -> 256[116]
-  719:[120] MulInt(v1=0[112], v2=256[116]) -> 0[112]
-  720:[116] AddInt(v1=8388608[108], v2=0[112]) -> 8388608[108]
-  721:[112] VarRef(var[92]) -> ref(1,4,8)={r:128,g:0,b:128}[112]
-  724:[124] GetByte(v1=ref(1,4,8)[112], fld=2, min=0) -> 128[112]
-  729:[116] AddInt(v1=8388608[108], v2=128[112]) -> 8388736[108]
-  730:[112] Return(ret=977[104], value=4, discard=20) -> 8388736[92]
-  977:[96] ConstInt(val=0) -> 0[96]
-  982:[100] FormatInt(var[32], val=8388736[92], radix=16, width=0[96], token=32, plus=false, note=false)
-  989:[92] ConstText(_value=" blue:") -> " blue:"[92]
-  997:[108] AppendText(var[32], v1=" blue:"[92])
- 1000:[92] VarVector(var[80]) -> ref(1,1,4)=[{r:128,g:0,b:128},{r:0,g:0,b:255}][92]
- 1003:[104] ConstInt(val=1) -> 1[104]
- 1008:[108] GetVector(r=ref(1,1,4)=true[92], size=3, index=1[104]) -> ref(1,4,11)={r:0,g:0,b:255}[92]
- 1011:[104] FormatDatabase(var[32], val=ref(1,4,11)[92], db_tp=12, pretty=false)
- 1017:[92] VarText(var[32]) -> "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[92]
- 1020:[108] FreeStack(value=16, discard=28)
- 1024:[96] AppendText(var[56], v1="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[80])
- 1027:[80] VarText(var[56]) -> "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[80]
- 1030:[96] ConstText(_value="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}") -> "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[96]
- 1097:[112] EqText(v1="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[80], v2="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[96]) -> true[80]
- 1098:[81] GotoFalseWord(jump=1104, if_false=true[80])
- 1101:[80] GotoWord(jump=1217)
- 1217:[80] FreeText(var[56])
- 1220:[80] FreeText(var[32])
- 1223:[80] FreeText(var[8])
- 1226:[80] Return(ret=4294967295[4], value=0, discard=76)
+  883:[128] FreeStack(value=12, discard=36)
+  887:[104] ClearText(var[44])
+  890:[104] ConstText(_value="size:") -> "size:"[104]
+  897:[120] AppendText(var[44], v1="size:"[104])
+  900:[104] ConstInt(val=3) -> 3[104]
+  905:[108] ConstInt(val=0) -> 0[108]
+  910:[112] FormatInt(var[44], val=3[104], radix=10, width=0[108], token=32, plus=false, note=false)
+  917:[104] ConstText(_value=" purple:") -> " purple:"[104]
+  927:[120] AppendText(var[44], v1=" purple:"[104])
+  930:[104] VarVector(var[92]) -> ref(1,1,4)=[{r:128,g:0,b:128},{r:0,g:0,b:255}][104]
+  933:[116] ConstInt(val=0) -> 0[116]
+  938:[120] GetVector(r=ref(1,1,4)=true[104], size=3, index=0[116]) -> ref(1,9,8)={r:128,g:0,b:128}[104]
+  941:[116] FormatDatabase(var[44], val=ref(1,9,8)[104], db_tp=12, pretty=false)
+  947:[104] ConstText(_value=" value:") -> " value:"[104]
+  956:[120] AppendText(var[44], v1=" value:"[104])
+  959:[104] VarVector(var[92]) -> ref(1,1,4)=[{r:128,g:0,b:128},{r:0,g:0,b:255}][104]
+  962:[116] ConstInt(val=0) -> 0[116]
+  967:[120] GetVector(r=ref(1,1,4)=true[104], size=3, index=0[116]) -> ref(1,9,8)={r:128,g:0,b:128}[104]
+  970:[116] Call(size=0, to=691)
+  691:[120] VarRef(var[104]) -> ref(1,9,8)={r:128,g:0,b:128}[120]
+  694:[132] GetByte(v1=ref(1,9,8)[120], fld=0, min=0) -> 128[120]
+  699:[124] ConstInt(val=65536) -> 65536[124]
+  704:[128] MulInt(v1=128[120], v2=65536[124]) -> 8388608[120]
+  705:[124] VarRef(var[104]) -> ref(1,9,8)={r:128,g:0,b:128}[124]
+  708:[136] GetByte(v1=ref(1,9,8)[124], fld=1, min=0) -> 0[124]
+  713:[128] ConstInt(val=256) -> 256[128]
+  718:[132] MulInt(v1=0[124], v2=256[128]) -> 0[124]
+  719:[128] AddInt(v1=8388608[120], v2=0[124]) -> 8388608[120]
+  720:[124] VarRef(var[104]) -> ref(1,9,8)={r:128,g:0,b:128}[124]
+  723:[136] GetByte(v1=ref(1,9,8)[124], fld=2, min=0) -> 128[124]
+  728:[128] AddInt(v1=8388608[120], v2=128[124]) -> 8388736[120]
+  729:[124] Return(ret=977[116], value=4, discard=20) -> 8388736[104]
+  977:[108] ConstInt(val=0) -> 0[108]
+  982:[112] FormatInt(var[44], val=8388736[104], radix=16, width=0[108], token=32, plus=false, note=false)
+  989:[104] ConstText(_value=" blue:") -> " blue:"[104]
+  997:[120] AppendText(var[44], v1=" blue:"[104])
+ 1000:[104] VarVector(var[92]) -> ref(1,1,4)=[{r:128,g:0,b:128},{r:0,g:0,b:255}][104]
+ 1003:[116] ConstInt(val=1) -> 1[116]
+ 1008:[120] GetVector(r=ref(1,1,4)=true[104], size=3, index=1[116]) -> ref(1,9,11)={r:0,g:0,b:255}[104]
+ 1011:[116] FormatDatabase(var[44], val=ref(1,9,11)[104], db_tp=12, pretty=false)
+ 1017:[104] VarText(var[44]) -> "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[104]
+ 1020:[120] FreeStack(value=16, discard=28)
+ 1024:[108] AppendText(var[68], v1="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[92])
+ 1027:[92] VarText(var[68]) -> "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[92]
+ 1030:[108] ConstText(_value="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}") -> "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[108]
+ 1097:[124] EqText(v1="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[92], v2="size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"[108]) -> true[92]
+ 1098:[93] GotoFalseWord(jump=1104, if_false=true[92])
+ 1101:[92] GotoWord(jump=1217)
+ 1217:[92] FreeText(var[68])
+ 1220:[92] FreeText(var[44])
+ 1223:[92] FreeText(var[20])
+ 1226:[92] Return(ret=4294967295[4], value=0, discard=88)
 Finished

@@ -22,13 +22,14 @@ Type 13:Main[8]:
 Type 14:index<S[a,-c]>[4]:Index(12, [(0, true), (2, false)], 3) keys [tp:1 desc:false field:4, tp:1 desc:true field:16, ]
 
 fn test() {#1 block
+  __ref_1:Main = null;
   __work_1:text = "";
   test_value:integer = {#2 block
-    m:Main["_val_1"] = {#3 object
-      _val_1:Main = OpDatabase(8i32, 13i32);
-      OpSetInt(_val_1, 4i32, 0i32);
-      _val_1;
-    }#3:Main["_val_1"];
+    m:Main["__ref_1"] = {#3 object
+      OpDatabase(__ref_1, 13i32);
+      OpSetInt(__ref_1, 4i32, 0i32);
+      __ref_1;
+    }#3:Main["__ref_1"];
     OpAddInt(29i32, OpMulInt(100i32, 8i32));
   }#2:integer;
   if OpEqInt(test_value, 829i32) null else OpPanic({#4 formatting string
@@ -40,57 +41,57 @@ fn test() {#1 block
 }#1
 
 byte-code for index_member:test()
- 692[0]: return-address
- 692[4]: Text()
- 693[28]: Database(size=8, db_tp=13) -> reference type=Main[8]:{s:index<S[a,-c]>[4]}[13]
- 698[40]: VarRef(var[28]) -> reference type=Main[8]:{s:index<S[a,-c]>[4]}[13]
+ 691[0]: return-address
+ 691[4]: ConvRefFromNull() -> reference
+ 692[16]: Text()
+ 693[40]: Database(var[4], db_tp=13) type=Main[8]:{s:index<S[a,-c]>[4]}[13]
+ 698[40]: VarRef(var[4]) -> reference type=Main[8]:{s:index<S[a,-c]>[4]}[13]
  701[52]: ConstInt(val=0) -> integer
  706[56]: SetInt(v1: reference, fld=4, val: integer)
- 709[40]: VarRef(var[28]) -> reference type=Main[8]:{s:index<S[a,-c]>[4]}[13]
- 712[52]: FreeStack(value=12, discard=24) type=Main[8]:{s:index<S[a,-c]>[4]}[13]
- 716[40]: ConstInt(val=29) -> integer
- 721[44]: ConstInt(val=100) -> integer
- 726[48]: ConstInt(val=8) -> integer
- 731[52]: MulInt(v1: integer, v2: integer) -> integer
- 732[48]: AddInt(v1: integer, v2: integer) -> integer
- 733[44]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
- 737[32]: VarInt(var[28]) -> integer
- 740[36]: ConstInt(val=829) -> integer
- 745[40]: EqInt(v1: integer, v2: integer) -> boolean
- 746[33]: GotoFalseWord(jump=752, if_false: boolean)
- 749[32]: GotoWord(jump=803)
- 752[32]: ClearText(var[4])
- 755[32]: ConstText(_value="Test failed ") -> text
- 769[48]: AppendText(var[4], v1: text)
- 772[32]: VarInt(var[28]) -> integer
- 775[36]: ConstInt(val=0) -> integer
- 780[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 787[32]: ConstText(_value=" != 829") -> text
- 796[48]: AppendText(var[4], v1: text)
- 799[32]: VarText(var[4]) -> text
- 802[48]: Panic(message: text)
- 803[32]: FreeText(var[4])
- 806[32]: Return(ret=0, value=0, discard=32)
+ 709[40]: VarRef(var[4]) -> reference type=Main[8]:{s:index<S[a,-c]>[4]}[13]
+ 712[52]: ConstInt(val=29) -> integer
+ 717[56]: ConstInt(val=100) -> integer
+ 722[60]: ConstInt(val=8) -> integer
+ 727[64]: MulInt(v1: integer, v2: integer) -> integer
+ 728[60]: AddInt(v1: integer, v2: integer) -> integer
+ 729[56]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
+ 733[44]: VarInt(var[40]) -> integer
+ 736[48]: ConstInt(val=829) -> integer
+ 741[52]: EqInt(v1: integer, v2: integer) -> boolean
+ 742[45]: GotoFalseWord(jump=748, if_false: boolean)
+ 745[44]: GotoWord(jump=799)
+ 748[44]: ClearText(var[16])
+ 751[44]: ConstText(_value="Test failed ") -> text
+ 765[60]: AppendText(var[16], v1: text)
+ 768[44]: VarInt(var[40]) -> integer
+ 771[48]: ConstInt(val=0) -> integer
+ 776[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 783[44]: ConstText(_value=" != 829") -> text
+ 792[60]: AppendText(var[16], v1: text)
+ 795[44]: VarText(var[16]) -> text
+ 798[60]: Panic(message: text)
+ 799[44]: FreeText(var[16])
+ 802[44]: Return(ret=0, value=0, discard=44)
 
 Execute test:
-  692:[8] Text()
-  693:[32] Database(size=8, db_tp=13) -> ref(1,1,0)={s:[]}[32]
-  698:[44] VarRef(var[32]) -> ref(1,1,0)={s:[]}[44]
+  691:[8] ConvRefFromNull() -> ref(65535,0,0)[8]
+  692:[20] Text()
+  693:[44] Database(var[8], db_tp=13)
+  698:[44] VarRef(var[8]) -> ref(1,1,0)={s:[]}[44]
   701:[56] ConstInt(val=0) -> 0[56]
   706:[60] SetInt(v1=ref(1,1,0)[44], fld=4, val=0[56])
-  709:[44] VarRef(var[32]) -> ref(1,1,0)={s:[]}[44]
-  712:[56] FreeStack(value=12, discard=24)
-  716:[44] ConstInt(val=29) -> 29[44]
-  721:[48] ConstInt(val=100) -> 100[48]
-  726:[52] ConstInt(val=8) -> 8[52]
-  731:[56] MulInt(v1=100[48], v2=8[52]) -> 800[48]
-  732:[52] AddInt(v1=29[44], v2=800[48]) -> 829[44]
-  733:[48] FreeStack(value=4, discard=16)
-  737:[36] VarInt(var[32]) -> 829[36]
-  740:[40] ConstInt(val=829) -> 829[40]
-  745:[44] EqInt(v1=829[36], v2=829[40]) -> true[36]
-  746:[37] GotoFalseWord(jump=752, if_false=true[36])
-  749:[36] GotoWord(jump=803)
-  803:[36] FreeText(var[8])
-  806:[36] Return(ret=4294967295[4], value=0, discard=32)
+  709:[44] VarRef(var[8]) -> ref(1,1,0)={s:[]}[44]
+  712:[56] ConstInt(val=29) -> 29[56]
+  717:[60] ConstInt(val=100) -> 100[60]
+  722:[64] ConstInt(val=8) -> 8[64]
+  727:[68] MulInt(v1=100[60], v2=8[64]) -> 800[60]
+  728:[64] AddInt(v1=29[56], v2=800[60]) -> 829[56]
+  729:[60] FreeStack(value=4, discard=16)
+  733:[48] VarInt(var[44]) -> 829[48]
+  736:[52] ConstInt(val=829) -> 829[52]
+  741:[56] EqInt(v1=829[48], v2=829[52]) -> true[48]
+  742:[49] GotoFalseWord(jump=748, if_false=true[48])
+  745:[48] GotoWord(jump=799)
+  799:[48] FreeText(var[20])
+  802:[48] Return(ret=4294967295[4], value=0, discard=44)
 Finished

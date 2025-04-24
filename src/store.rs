@@ -102,7 +102,7 @@ impl Store {
         store
     }
 
-    fn init(&mut self) {
+    pub fn init(&mut self) {
         // The normal routines will not write to rec=0, so we write a signature: StoreV01
         unsafe {
             self.ptr.cast::<u32>().write_unaligned(SIGNATURE);

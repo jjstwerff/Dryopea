@@ -50,7 +50,8 @@ pub struct Function {
     scopes: Vec<Scope>,
     stack: Vec<u16>,
     variables: Vec<Variable>,
-    current_work: u16,
+    work_text: u16,
+    work_ref: u16,
     // Work variables for texts
     work_texts: BTreeSet<u16>,
     // Work variables for stores
@@ -85,7 +86,8 @@ impl Function {
             steps: Vec::new(),
             unique: 0,
             scopes: Vec::new(),
-            current_work: 0,
+            work_text: 0,
+            work_ref: 0,
             variables: Vec::new(),
             work_texts: BTreeSet::new(),
             work_refs: BTreeSet::new(),
@@ -113,7 +115,8 @@ impl Function {
         for v in &mut self.variables {
             v.uses = 0;
         }
-        self.current_work = 0;
+        self.work_text = 0;
+        self.work_ref = 0;
         self.work_texts.clear();
         self.work_refs.clear();
         self.names.clear();
@@ -130,7 +133,8 @@ impl Function {
             unique: 0,
             scopes: other.scopes.clone(),
             variables: other.variables.clone(),
-            current_work: 0,
+            work_text: 0,
+            work_ref: 0,
             work_texts: BTreeSet::new(),
             work_refs: BTreeSet::new(),
             names: other.names.clone(),
@@ -589,8 +593,8 @@ impl Function {
     }
 
     pub fn work_text(&mut self, lexer: &mut Lexer) -> u16 {
-        let n = format!("__work_{}", self.current_work + 1);
-        self.current_work += 1;
+        let n = format!("__work_{}", self.work_text + 1);
+        self.work_text += 1;
         let v = if let Some(nr) = self.names.get(&n) {
             *nr.first().unwrap()
         } else {
@@ -606,10 +610,12 @@ impl Function {
     }
 
     pub fn work_refs(&mut self, tp: &Type, lexer: &mut Lexer) -> u16 {
-        let n = format!("__ref_{}", self.current_work + 1);
-        self.current_work += 1;
+        let n = format!("__ref_{}", self.work_ref + 1);
+        self.work_ref += 1;
         let v = if let Some(nr) = self.names.get(&n) {
-            *nr.first().unwrap()
+            let vr = *nr.first().unwrap();
+            self.variables[vr as usize].type_def = tp.clone();
+            vr
         } else {
             let v = self.add_variable(&n, tp, lexer);
             // work variables always live in the main scope.
@@ -781,11 +787,20 @@ impl Function {
         pos + size
     }
 
-    pub fn free(&mut self, pos: u16) {
+    pub fn free(&mut self) {
+        let mut intern = HashSet::new();
+        self.intern(&mut intern, self.current_scope);
         for v in &mut self.variables {
-            if v.stack != u16::MAX && v.stack >= pos {
+            if intern.contains(&v.scope) {
                 v.stack = u16::MAX;
             }
+        }
+    }
+
+    fn intern(&self, result: &mut HashSet<u16>, scope: u16) {
+        result.insert(scope);
+        for s in self.scopes[scope as usize].parts.clone() {
+            self.intern(result, s);
         }
     }
 

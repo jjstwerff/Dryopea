@@ -2117,7 +2117,9 @@ impl Parser {
                 let vec_def = self
                     .data
                     .def_nr(&format!("main_{}", &current_type.name(&self.data)));
-                let db_var = self.create_unique("db", &self.data.def(vec_def).returned.clone());
+                let db_var = self
+                    .vars
+                    .work_refs(&self.data.def(vec_def).returned.clone(), &mut self.lexer);
                 let vec_var = self.vars.work_refs(&current_type, &mut self.lexer);
                 let mut second_code = Value::Null;
                 self.parse_operators(assign_tp, &mut second_code, parent_tp, precedence + 1);
@@ -2128,10 +2130,7 @@ impl Parser {
                     i32::MAX
                 };
                 *code = Value::Block(vec![
-                    v_set(
-                        db_var,
-                        self.cl("OpDatabase", &[Value::Int(1), Value::Int(main_tp)]),
-                    ),
+                    self.cl("OpDatabase", &[Value::Var(db_var), Value::Int(main_tp)]),
                     self.cl(
                         "OpSetInt",
                         &[Value::Var(db_var), Value::Int(4), Value::Int(0)],
@@ -2486,17 +2485,11 @@ impl Parser {
         } else {
             let mut ls = Vec::new();
             let vec_def = self.data.vector_def(&mut self.lexer, assign_tp);
-            let db = self.create_unique("db", &Type::Reference(vec_def, Vec::new()));
-            ls.push(v_set(
-                db,
-                self.cl(
-                    "OpDatabase",
-                    &[
-                        Value::Int(1),
-                        Value::Int(i32::from(self.data.def(vec_def).known_type)),
-                    ],
-                ),
-            ));
+            let db = self
+                .vars
+                .work_refs(&Type::Reference(vec_def, Vec::new()), &mut self.lexer);
+            let tp = i32::from(self.data.def(vec_def).known_type);
+            ls.push(self.cl("OpDatabase", &[Value::Var(db), Value::Int(tp)]));
             // Reference to the vector field.
             ls.push(v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
             // Write 0 into this reference.
@@ -2509,14 +2502,12 @@ impl Parser {
 
     fn insert_new(&mut self, vec: u16, in_t: &Type, ls: &mut Vec<Value>) {
         // determine the element size by the resulting type
-        let rec_size = self
-            .database
-            .size(self.data.def(self.data.type_def_nr(in_t)).known_type);
         let vec_def = self.data.vector_def(&mut self.lexer, in_t);
-        let db = self.create_unique("db", &Type::Reference(vec_def, Vec::new()));
+        let db = self
+            .vars
+            .work_refs(&Type::Reference(vec_def, Vec::new()), &mut self.lexer);
         let known = Value::Int(i32::from(self.data.def(vec_def).known_type));
-        let op_db = self.cl("OpDatabase", &[Value::Int(i32::from(rec_size)), known]);
-        ls.insert(0, v_set(db, op_db));
+        ls.insert(0, self.cl("OpDatabase", &[Value::Var(db), known]));
         // Reference to the vector field.
         ls.insert(1, v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
         // Write 0 into this reference.
@@ -3611,29 +3602,18 @@ impl Parser {
     // <object> ::= [ <identifier> ':' <expression> { ',' <identifier> ':' <expression> } ] '}'
     fn parse_object(&mut self, td_nr: u32, code: &mut Value) -> Type {
         let link = self.lexer.link();
-        let mut list = vec![];
-        let rec_size = Value::Int(i32::from(
-            self.database.size(self.data.def(td_nr).known_type),
-        ));
+        let mut list = Vec::new();
         let ob = self.vars.start_scope(self.lexer.at(), "object");
         let v = if let Value::Var(v_nr) = code {
             *v_nr
         } else {
-            let val_type = self.data.def(td_nr).returned.clone();
-            self.create_unique("val", &val_type)
+            self.vars
+                .work_refs(&self.data.def(td_nr).returned, &mut self.lexer)
         };
+        let tp = i32::from(self.data.def(td_nr).known_type);
         if !matches!(code, Value::Var(_)) {
             self.data.set_referenced(td_nr, self.context, Value::Null);
-            list.push(v_set(
-                v,
-                self.cl(
-                    "OpDatabase",
-                    &[
-                        rec_size,
-                        Value::Int(i32::from(self.data.def(td_nr).known_type)),
-                    ],
-                ),
-            ));
+            list.push(self.cl("OpDatabase", &[Value::Var(v), Value::Int(tp)]));
         }
         let mut found_fields = HashSet::new();
         loop {

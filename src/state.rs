@@ -409,6 +409,13 @@ impl State {
         )
     }
 
+    pub fn mut_var<T>(&mut self, pos: u16) -> &mut T {
+        self.database.store_mut(&self.stack_cur).addr_mut::<T>(
+            self.stack_cur.rec,
+            self.stack_cur.pos + self.stack_pos - u32::from(pos),
+        )
+    }
+
     pub fn put_var<T>(&mut self, pos: u16, value: T) {
         *self.database.store_mut(&self.stack_cur).addr_mut::<T>(
             self.stack_cur.rec,
@@ -562,11 +569,21 @@ impl State {
     }
 
     pub fn database(&mut self) {
-        let size = *self.code::<u16>();
+        let var = *self.code::<u16>();
         let db_tp = *self.code::<u16>();
-        let new_value = self.database.database(u32::from(size));
-        self.database.set_default_value(db_tp, &new_value);
-        self.put_stack(new_value);
+        let size = self.database.size(db_tp);
+        let db = *self.get_var::<DbRef>(var);
+        let r = if db.store_nr == u16::MAX {
+            self.database.database(u32::from(size))
+        } else {
+            self.database.clear(&db);
+            self.database.claim(&db, u32::from(size))
+        };
+        self.database.set_default_value(db_tp, &r);
+        let db = self.mut_var::<DbRef>(var);
+        db.store_nr = r.store_nr;
+        db.rec = 1;
+        db.pos = 0;
     }
 
     pub fn new_record(&mut self) {
@@ -1120,8 +1137,10 @@ impl State {
                         } else {
                             self.set_var(stack, *v, value);
                         }
-                    } else if matches!(*stack.function.tp(*v), Type::Vector(_, _))
-                        && **value == Value::Null
+                    } else if matches!(
+                        *stack.function.tp(*v),
+                        Type::Vector(_, _) | Type::Reference(_, _)
+                    ) && **value == Value::Null
                     {
                         stack.add_op("OpConvRefFromNull", self);
                     } else {
@@ -1240,6 +1259,14 @@ impl State {
     fn free_vars(&mut self, stack: &mut Stack, to_scope: u16) {
         for v in stack.function.variables(to_scope) {
             if matches!(stack.function.tp(v), Type::Text(_)) {
+                if stack.function.stack(v) >= stack.position {
+                    println!(
+                        "skip free text {} pos {}",
+                        stack.function.name(v),
+                        stack.function.stack(v)
+                    );
+                    continue;
+                }
                 stack.add_op("OpFreeText", self);
                 self.code_add(stack.position - stack.function.stack(v));
             }
@@ -1506,7 +1533,7 @@ impl State {
                         self.types.insert(code, known);
                     }
                 }
-                stack.function.free(after);
+                stack.function.free();
                 stack.position = after;
             }
         }
@@ -1866,10 +1893,13 @@ impl State {
                     let to = i64::from(cur) + 2 + i64::from(*self.code::<i16>());
                     attr.insert(a_nr, format!("jump={to}"));
                 } else if a_nr == 0 && a.name == "pos" && a.typedef == Type::Integer(0, 65535) {
-                    attr.insert(
-                        a_nr,
-                        format!("var[{}]", self.stack_pos - u32::from(*self.code::<u16>())),
+                    let pos = *self.code::<u16>();
+                    assert!(
+                        u32::from(pos) <= self.stack_pos,
+                        "Variable {pos} outside stack {}",
+                        self.stack_pos
                     );
+                    attr.insert(a_nr, format!("var[{}]", self.stack_pos - u32::from(pos)));
                 } else {
                     attr.insert(a_nr, format!("{}={}", a.name, self.dump_attribute(a)));
                 }
