@@ -1,7 +1,6 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
-use crate::database::Stores;
 use crate::external;
 use crate::keys::{DbRef, Str};
 use crate::state::State;
@@ -193,6 +192,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     format_database,
     conv_bool_from_ref,
     conv_ref_from_null,
+    free_ref,
     append,
     var_ref,
     put_ref,
@@ -226,7 +226,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     insert_vector,
     new_record,
     finish_record,
-    add_vector,
+    append_vector,
     get_record,
     start,
     next,
@@ -1406,8 +1406,12 @@ fn conv_bool_from_ref(s: &mut State) {
 }
 
 fn conv_ref_from_null(s: &mut State) {
-    let new_value = Stores::null();
+    let new_value = s.database.null();
     s.put_stack(new_value);
+}
+
+fn free_ref(s: &mut State) {
+    s.free_ref();
 }
 
 fn append(s: &mut State) {
@@ -1730,7 +1734,7 @@ fn finish_record(s: &mut State) {
     s.finish_record();
 }
 
-fn add_vector(s: &mut State) {
+fn append_vector(s: &mut State) {
     let v_tp = *s.code::<u16>();
     let v_other = *s.get_stack::<DbRef>();
     let v_r = *s.get_stack::<DbRef>();

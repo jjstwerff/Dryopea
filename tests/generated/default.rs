@@ -28,9 +28,6 @@ fn init(db: &mut KnownTypes) {
     db.field(s, "size".to_string(), 1, 8);
     db.field(s, "dir".to_string(), 4, 16);
     db.vector(7);
-    db.vector(11);
-    let s = db.structure("main_vector<File>".to_string(), 0, 4294967295); // 65535
-    db.field(s, "vector".to_string(), db.vector(11), 65535);
 }
 
 fn _tp_integer_abs(stores: &mut Stores, var_0: i32) -> i32 {
@@ -210,51 +207,43 @@ fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str {
   var_result
 }
 
-fn file(stores: &mut Stores, var_0: Str) -> DbRef {
-  var___ref_1 = Null;
-  var_result = {
-    OpDatabase(stores, var___ref_1, 11_i32);
-    {let db = (var___ref_1); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
-    {let db = (var___ref_1); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
-    {let db = (var___ref_1); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if 0_i32 {1_i32} else {0_i32}));};
-    var___ref_1
+fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef {
+  {
+    OpDatabase(stores, var_result, 11_i32);
+    {let db = (var_result); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
+    {let db = (var_result); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
+    {let db = (var_result); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if 0_i32 {1_i32} else {0_i32}));}
   };
   if stores.get_file(&(var_result)) {
     var_result
   } else {
-    Stores::null()
+    stores.null()
   }
 }
 
-fn _tp_File_files(stores: &mut Stores, var_0: DbRef) -> DbRef {
-  var___ref_1 = Null;
+fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
   var_result = {
-    OpDatabase(stores, var___ref_1, 65535_i32);
-    var__vec_2 = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((65535_i32))};
-    {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((65535_i32)), (0_i32));};
-    var__vec_2
+    var_result
   };
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) {
-    Drop(Call(316, [Call(263, [Var(0), Int(4)]), Var(1)]))
+    Drop(Call(317, [Call(264, [Var(0), Int(4)]), Var(1)]))
   } else {Null};
   var_result
 }
 
-fn _tp_File_png(stores: &mut Stores, var_0: DbRef) -> DbRef {
-  var___ref_1 = Null;
+fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
   if !(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32)) {
-    var_result = {
-      OpDatabase(stores, var___ref_1, 9_i32);
-      {let db = (var___ref_1); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
-      {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
-      {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
-      {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
-      var___ref_1
+    {
+      OpDatabase(stores, var_result, 9_i32);
+      {let db = (var_result); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
+      {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
+      {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
+      {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));}
     };
-    Drop(Call(317, [Call(263, [Var(0), Int(4)]), Var(1)]));
+    Drop(Call(318, [Call(264, [Var(0), Int(4)]), Var(1)]));
     var_result
   } else {
-    Stores::null()
+    stores.null()
   }
 }
 

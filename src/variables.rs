@@ -34,10 +34,10 @@ struct Scope {
 #[derive(Debug, Clone)]
 pub struct Variable {
     name: String,
-    pub type_def: Type,
+    type_def: Type,
     scope: u16,
     source: (u32, u32),
-    stack: u16,
+    stack_pos: u16,
     uses: u16,
 }
 
@@ -377,7 +377,7 @@ impl Function {
     }
 
     pub fn name(&self, var_nr: u16) -> &str {
-        if var_nr == u16::MAX {
+        if var_nr as usize >= self.variables.len() {
             return "??";
         }
         &self.variables[var_nr as usize].name
@@ -391,12 +391,29 @@ impl Function {
         &self.variables[var_nr as usize].type_def
     }
 
+    pub fn is_independent(&self, var_nr: u16) -> bool {
+        self.variables[var_nr as usize].type_def.depend().is_empty()
+    }
+
+    pub fn depend(&mut self, var_nr: u16, on: u16) {
+        self.variables[var_nr as usize].type_def =
+            self.variables[var_nr as usize].type_def.depending(on);
+    }
+
     pub fn uses(&self, var_nr: u16) -> u16 {
         self.variables[var_nr as usize].uses
     }
 
+    pub fn var_scope(&self, var_nr: u16) -> u16 {
+        self.variables[var_nr as usize].scope
+    }
+
     pub fn stack(&self, var_nr: u16) -> u16 {
-        self.variables[var_nr as usize].stack
+        self.variables[var_nr as usize].stack_pos
+    }
+
+    pub fn set_stack(&mut self, var_nr: u16, pos: u16) {
+        self.variables[var_nr as usize].stack_pos = pos;
     }
 
     pub fn in_use(&mut self, var_nr: u16, plus: bool) {
@@ -501,7 +518,7 @@ impl Function {
             type_def: type_def.clone(),
             scope: self.current_scope,
             source: lexer.at(),
-            stack: u16::MAX,
+            stack_pos: u16::MAX,
             uses: 1,
         });
         v
@@ -516,6 +533,9 @@ impl Function {
     ) -> bool {
         let var_tp = &self.variables[var_nr as usize].type_def;
         if type_def.is_unknown() || var_tp.is_equal(type_def) {
+            for on in type_def.depend() {
+                self.depend(var_nr, on);
+            }
             return self.is_new(var_nr);
         }
         if let (Type::Vector(tp, _), Type::Vector(to, _)) = (var_tp, type_def) {
@@ -759,9 +779,6 @@ impl Function {
             }
             s = self.scopes[s as usize].parent;
         }
-        if s == u16::MAX {
-            println!("variables:{self}");
-        }
         assert_ne!(
             s,
             u16::MAX,
@@ -777,24 +794,14 @@ impl Function {
 
     pub fn claim(&mut self, var: u16, pos: u16, context: &Context) -> u16 {
         assert_eq!(
-            self.variables[var as usize].stack,
+            self.variables[var as usize].stack_pos,
             u16::MAX,
             "Claiming a claimed variable {}",
             self.name(var)
         );
         let size = size(&self.variables[var as usize].type_def, context);
-        self.variables[var as usize].stack = pos;
+        self.variables[var as usize].stack_pos = pos;
         pos + size
-    }
-
-    pub fn free(&mut self) {
-        let mut intern = HashSet::new();
-        self.intern(&mut intern, self.current_scope);
-        for v in &mut self.variables {
-            if intern.contains(&v.scope) {
-                v.stack = u16::MAX;
-            }
-        }
     }
 
     fn intern(&self, result: &mut HashSet<u16>, scope: u16) {

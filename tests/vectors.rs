@@ -277,3 +277,27 @@ sum",
     )
     .result(Value::Int(345));
 }
+
+#[test]
+fn fill_fn() {
+    code!(
+        "pub struct Data {
+    name: text,
+    number: integer
+}
+
+fn data(n: text) -> vector<Data> {
+    res = [];
+    nr = 0;
+    for ch in n {
+        res += [Data {name: ch, number: nr}];
+        nr += 1;
+    }
+    res
+}"
+    )
+    .expr("d = data(\"test\"); \"{d}\"")
+    .result(Value::str(
+        "[{name:\"t\",number:0},{name:\"e\",number:1},{name:\"s\",number:2},{name:\"t\",number:3}]",
+    ));
+}

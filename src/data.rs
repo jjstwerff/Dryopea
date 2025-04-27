@@ -165,6 +165,80 @@ impl Type {
         matches!(self, Type::Unknown(_)) || matches!(self, Type::Reference(0, _))
     }
 
+    /**
+    Return the same type but with an additional variable in the dependency list.
+    # Panics
+    When this extra variable doesn't exist.
+    */
+    #[must_use]
+    pub fn depending(&self, on: u16) -> Type {
+        assert_ne!(on, u16::MAX, "Unknown depending variable");
+        let mut v = vec![on];
+        match self {
+            Type::Text(dep) => {
+                if !v.contains(&on) {
+                    v.append(&mut dep.clone());
+                }
+                Type::Text(v)
+            }
+            Type::Reference(t, dep) => {
+                if !v.contains(&on) {
+                    v.append(&mut dep.clone());
+                }
+                Type::Reference(*t, v)
+            }
+            Type::Index(t, keys, dep) => {
+                if !v.contains(&on) {
+                    v.append(&mut dep.clone());
+                }
+                Type::Index(*t, keys.clone(), v)
+            }
+            Type::Spacial(t, keys, dep) => {
+                if !v.contains(&on) {
+                    v.append(&mut dep.clone());
+                }
+                Type::Spacial(*t, keys.clone(), v)
+            }
+            Type::Hash(t, keys, dep) => {
+                if !v.contains(&on) {
+                    v.append(&mut dep.clone());
+                }
+                Type::Hash(*t, keys.clone(), v)
+            }
+            Type::Sorted(t, keys, dep) => {
+                if !v.contains(&on) {
+                    v.append(&mut dep.clone());
+                }
+                Type::Sorted(*t, keys.clone(), v)
+            }
+            Type::Vector(t, dep) => {
+                if !v.contains(&on) {
+                    v.append(&mut dep.clone());
+                }
+                Type::Vector(Box::new(*t.clone()), v)
+            }
+            Type::RefVar(tp) => Type::RefVar(Box::new(tp.depending(on))),
+            _ => self.clone(),
+        }
+    }
+
+    #[must_use]
+    pub fn depend(&self) -> Vec<u16> {
+        let mut v = Vec::new();
+        match self {
+            Type::Text(dep)
+            | Type::Reference(_, dep)
+            | Type::Index(_, _, dep)
+            | Type::Spacial(_, _, dep)
+            | Type::Hash(_, _, dep)
+            | Type::Sorted(_, _, dep)
+            | Type::Vector(_, dep) => v.append(&mut dep.clone()),
+            Type::RefVar(tp) => return tp.depend(),
+            _ => {}
+        }
+        v
+    }
+
     #[must_use]
     pub fn is_same(&self, other: &Type) -> bool {
         self == other
@@ -178,6 +252,7 @@ impl Type {
     #[must_use]
     pub fn is_equal(&self, other: &Type) -> bool {
         match (self, other) {
+            (Type::RefVar(s), Type::RefVar(o)) => return s.is_equal(o),
             (Type::Reference(r, _), Type::Reference(o, _)) => return r == o,
             (Type::Vector(r, _), Type::Vector(o, _)) => return r.is_equal(o),
             (Type::Hash(r, rf, _), Type::Hash(o, of, _))
@@ -235,7 +310,7 @@ impl Type {
             Type::RefVar(tp) => format!("&{}", tp.show(data, vars)),
             Type::Enum(t) => data.def(*t).name.clone(),
             Type::Reference(t, dep) => {
-                format!("{}{}", data.def(*t).name, Self::dep_var(dep, vars))
+                format!("ref({}){}", data.def(*t).name, Self::dep_var(dep, vars))
             }
             Type::Vector(tp, dep) if matches!(tp as &Type, Type::Unknown(_)) => {
                 format!("vector{}", Self::dep_var(dep, vars))

@@ -15,27 +15,27 @@ Type 13:main_vector<Val>[8]:
 Type 14:vector<Val>[4]:Vector(12)
 
 fn test() {#1 block
-  __ref_1:main_vector<Val> = null;
+  __ref_1:ref(main_vector<Val>) = null;
   __work_1:text = "";
   test_value:integer = {#2 block
-    v:vector<Val> = {#3 vector
+    v:vector<Val>["__ref_1"] = {#3 vector
       OpDatabase(__ref_1, 13i32);
-      _vec_2:vector<Val> = OpGetField(__ref_1, 4i32, 65535i32);
+      _vec_1:vector<Val>["__ref_1"] = OpGetField(__ref_1, 4i32, 65535i32);
       OpSetInt(__ref_1, 4i32, 0i32);
-      _elm_1:boolean = OpNewRecord(_vec_2, 14i32, 65535i32);
-      OpSetEnum(_elm_1, 0i32, 1u8(12));
-      OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
-      _elm_1:boolean = OpNewRecord(_vec_2, 14i32, 65535i32);
-      OpSetEnum(_elm_1, 0i32, 1u8(12));
-      OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
-      _elm_1:boolean = OpNewRecord(_vec_2, 14i32, 65535i32);
-      OpSetEnum(_elm_1, 0i32, 2u8(12));
-      OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
-      _elm_1:boolean = OpNewRecord(_vec_2, 14i32, 65535i32);
-      OpSetEnum(_elm_1, 0i32, 2u8(12));
-      OpFinishRecord(_vec_2, _elm_1, 14i32, 65535i32);
-      _vec_2;
-    }#3:vector<Val>;
+      _elm_2:ref(boolean)["__ref_1"] = OpNewRecord(_vec_1, 14i32, 65535i32);
+      OpSetEnum(_elm_2, 0i32, 1u8(12));
+      OpFinishRecord(_vec_1, _elm_2, 14i32, 65535i32);
+      _elm_2:ref(boolean)["__ref_1"] = OpNewRecord(_vec_1, 14i32, 65535i32);
+      OpSetEnum(_elm_2, 0i32, 1u8(12));
+      OpFinishRecord(_vec_1, _elm_2, 14i32, 65535i32);
+      _elm_2:ref(boolean)["__ref_1"] = OpNewRecord(_vec_1, 14i32, 65535i32);
+      OpSetEnum(_elm_2, 0i32, 2u8(12));
+      OpFinishRecord(_vec_1, _elm_2, 14i32, 65535i32);
+      _elm_2:ref(boolean)["__ref_1"] = OpNewRecord(_vec_1, 14i32, 65535i32);
+      OpSetEnum(_elm_2, 0i32, 2u8(12));
+      OpFinishRecord(_vec_1, _elm_2, 14i32, 65535i32);
+      _vec_1;
+    }#3:vector<Val>["__ref_1"];
     OpCastIntFromEnum(OpGetEnum(OpGetVector(v, 1i32, 2i32), 0i32));
   }#2:integer;
   if OpEqInt(test_value, 2i32) null else OpPanic({#4 formatting string
@@ -47,133 +47,137 @@ fn test() {#1 block
 }#1
 
 byte-code for enum_vector:test()
- 691[0]: return-address
- 691[4]: ConvRefFromNull() -> reference
- 692[16]: Text()
- 693[40]: Database(var[4], db_tp=13) type=main_vector<Val>[8]:{vector:vector<Val>[4]}[13]
- 698[40]: VarRef(var[4]) -> reference type=main_vector<Val>[8]:{vector:vector<Val>[4]}[13]
- 701[52]: GetField(v1: reference, fld=4) -> reference type=Unknown type(65535)[65535]
- 704[52]: VarRef(var[4]) -> reference type=main_vector<Val>[8]:{vector:vector<Val>[4]}[13]
- 707[64]: ConstInt(val=0) -> integer
- 712[68]: SetInt(v1: reference, fld=4, val: integer)
- 715[52]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 718[64]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
- 723[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
- 726[76]: ConstEnum(val=1) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
- 728[77]: SetEnum(v1: reference, fld=0, val: enumerate)
- 731[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 734[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
- 737[88]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 742[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 745[76]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
- 750[76]: PutRef(var[52], value: reference)
- 753[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
- 756[76]: ConstEnum(val=1) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
- 758[77]: SetEnum(v1: reference, fld=0, val: enumerate)
- 761[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 764[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
- 767[88]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 772[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 775[76]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
- 780[76]: PutRef(var[52], value: reference)
- 783[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
- 786[76]: ConstEnum(val=2) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
- 788[77]: SetEnum(v1: reference, fld=0, val: enumerate)
- 791[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 794[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
- 797[88]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 802[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 805[76]: NewRecord(data: reference, parent_tp=14, fld=65535) -> reference
- 810[76]: PutRef(var[52], value: reference)
- 813[64]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
- 816[76]: ConstEnum(val=2) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
- 818[77]: SetEnum(v1: reference, fld=0, val: enumerate)
- 821[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 824[76]: VarRef(var[52]) -> reference type=boolean[1]:Base[4]
- 827[88]: FinishRecord(data: reference, rec: reference, parent_tp=14, fld=65535)
- 832[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 835[76]: FreeStack(value=12, discard=36) type=Variable[12]:{name:text[4], value:text[8]}[6]
- 839[52]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14]
- 842[64]: ConstInt(val=2) -> integer
- 847[68]: GetVector(r: vector, size=1, index: integer) -> reference type=Val[1]:Enum(["A", "B", "C"])[12]
- 850[64]: GetEnum(v1: reference, fld=0) -> enumerate
- 853[53]: CastIntFromEnum(v1: enumerate) -> integer
- 854[56]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
- 858[44]: VarInt(var[40]) -> integer
- 861[48]: ConstInt(val=2) -> integer
- 866[52]: EqInt(v1: integer, v2: integer) -> boolean
- 867[45]: GotoFalseWord(jump=873, if_false: boolean)
- 870[44]: GotoWord(jump=922)
- 873[44]: ClearText(var[16])
- 876[44]: ConstText(_value="Test failed ") -> text
- 890[60]: AppendText(var[16], v1: text)
- 893[44]: VarInt(var[40]) -> integer
- 896[48]: ConstInt(val=0) -> integer
- 901[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 908[44]: ConstText(_value=" != 2") -> text
- 915[60]: AppendText(var[16], v1: text)
- 918[44]: VarText(var[16]) -> text
- 921[60]: Panic(message: text)
- 922[44]: FreeText(var[16])
- 925[44]: Return(ret=0, value=0, discard=44)
+ 655[0]: return-address
+ 655[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Val>) in 1
+ 656[16]: Text() var=__work_1[16]:text in 1
+ 657[40]: Database(var[4], db_tp=13) type=main_vector<Val>[8]:{vector:vector<Val>[4]}[13] var=v[40]:vector<Val>["__ref_1"] in 2
+ 662[40]: VarRef(var[4]) -> ref(reference) type=main_vector<Val>[8]:{vector:vector<Val>[4]}[13] var=__ref_1[4]:ref(main_vector<Val>) in 1
+ 665[52]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=Unknown type(65535)[65535]
+ 668[52]: VarRef(var[4]) -> ref(reference) type=main_vector<Val>[8]:{vector:vector<Val>[4]}[13] var=__ref_1[4]:ref(main_vector<Val>) in 1
+ 671[64]: ConstInt(val=0) -> integer
+ 676[68]: SetInt(v1: ref(reference), fld=4, val: integer)
+ 679[52]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 682[64]: NewRecord(data: ref(reference), parent_tp=14, fld=65535) -> ref(reference)
+ 687[64]: VarRef(var[52]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[52]:ref(boolean)["__ref_1"] in 3
+ 690[76]: ConstEnum(val=1) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
+ 692[77]: SetEnum(v1: ref(reference), fld=0, val: enumerate)
+ 695[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 698[76]: VarRef(var[52]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[52]:ref(boolean)["__ref_1"] in 3
+ 701[88]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=14, fld=65535)
+ 706[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 709[76]: NewRecord(data: ref(reference), parent_tp=14, fld=65535) -> ref(reference)
+ 714[76]: PutRef(var[52], value: ref(reference))
+ 717[64]: VarRef(var[52]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[52]:ref(boolean)["__ref_1"] in 3
+ 720[76]: ConstEnum(val=1) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
+ 722[77]: SetEnum(v1: ref(reference), fld=0, val: enumerate)
+ 725[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 728[76]: VarRef(var[52]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[52]:ref(boolean)["__ref_1"] in 3
+ 731[88]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=14, fld=65535)
+ 736[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 739[76]: NewRecord(data: ref(reference), parent_tp=14, fld=65535) -> ref(reference)
+ 744[76]: PutRef(var[52], value: ref(reference))
+ 747[64]: VarRef(var[52]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[52]:ref(boolean)["__ref_1"] in 3
+ 750[76]: ConstEnum(val=2) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
+ 752[77]: SetEnum(v1: ref(reference), fld=0, val: enumerate)
+ 755[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 758[76]: VarRef(var[52]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[52]:ref(boolean)["__ref_1"] in 3
+ 761[88]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=14, fld=65535)
+ 766[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 769[76]: NewRecord(data: ref(reference), parent_tp=14, fld=65535) -> ref(reference)
+ 774[76]: PutRef(var[52], value: ref(reference))
+ 777[64]: VarRef(var[52]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[52]:ref(boolean)["__ref_1"] in 3
+ 780[76]: ConstEnum(val=2) -> enumerate type=Val[1]:Enum(["A", "B", "C"])[12]
+ 782[77]: SetEnum(v1: ref(reference), fld=0, val: enumerate)
+ 785[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 788[76]: VarRef(var[52]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[52]:ref(boolean)["__ref_1"] in 3
+ 791[88]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=14, fld=65535)
+ 796[64]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=_vec_1[40]:vector<Val>["__ref_1"] in 3
+ 799[76]: FreeStack(value=12, discard=36) type=Variable[12]:{name:text[4], value:text[8]}[6]
+ 803[52]: VarVector(var[40]) -> vector type=vector<Val>[4]:Vector(12)[14] var=v[40]:vector<Val>["__ref_1"] in 2
+ 806[64]: ConstInt(val=2) -> integer
+ 811[68]: GetVector(r: vector, size=1, index: integer) -> ref(reference) type=Val[1]:Enum(["A", "B", "C"])[12]
+ 814[64]: GetEnum(v1: ref(reference), fld=0) -> enumerate
+ 817[53]: CastIntFromEnum(v1: enumerate) -> integer
+ 818[56]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
+ 822[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
+ 825[48]: ConstInt(val=2) -> integer
+ 830[52]: EqInt(v1: integer, v2: integer) -> boolean
+ 831[45]: GotoFalseWord(jump=837, if_false: boolean)
+ 834[44]: GotoWord(jump=886)
+ 837[44]: ClearText(var[16]) var=__work_1[16]:text in 1
+ 840[44]: ConstText(_value="Test failed ") -> text
+ 854[60]: AppendText(var[16], v1: text)
+ 857[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
+ 860[48]: ConstInt(val=0) -> integer
+ 865[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 872[44]: ConstText(_value=" != 2") -> text
+ 879[60]: AppendText(var[16], v1: text)
+ 882[44]: VarText(var[16]) -> text var=__work_1[16]:text in 1
+ 885[60]: Panic(message: text)
+ 886[44]: VarRef(var[4]) -> ref(reference) type=main_vector<Val>[8]:{vector:vector<Val>[4]}[13] var=__ref_1[4]:ref(main_vector<Val>) in 1
+ 889[56]: FreeRef(v1: ref(reference))
+ 890[44]: FreeText(var[16])
+ 893[44]: Return(ret=0, value=0, discard=44)
 
 Execute test:
-  691:[8] ConvRefFromNull() -> ref(65535,0,0)[8]
-  692:[20] Text()
-  693:[44] Database(var[8], db_tp=13)
-  698:[44] VarRef(var[8]) -> ref(1,1,0)={}[44]
-  701:[56] GetField(v1=ref(1,1,0)[44], fld=4) -> ref(1,1,4)[44]
-  704:[56] VarRef(var[8]) -> ref(1,1,0)={}[56]
-  707:[68] ConstInt(val=0) -> 0[68]
-  712:[72] SetInt(v1=ref(1,1,0)[56], fld=4, val=0[68])
-  715:[56] VarVector(var[44]) -> ref(1,1,4)=[][56]
-  718:[68] NewRecord(data=ref(1,1,4)[56], parent_tp=14, fld=65535) -> ref(1,9,8)[56]
-  723:[68] VarRef(var[56]) -> ref(1,9,8)=false[68]
-  726:[80] ConstEnum(val=1) -> A(1)[80]
-  728:[81] SetEnum(v1=ref(1,9,8)[68], fld=0, val=1[80])
-  731:[68] VarVector(var[44]) -> ref(1,1,4)=[A][68]
-  734:[80] VarRef(var[56]) -> ref(1,9,8)=true[80]
-  737:[92] FinishRecord(data=ref(1,1,4)[68], rec=ref(1,9,8)[80], parent_tp=14, fld=65535)
-  742:[68] VarVector(var[44]) -> ref(1,1,4)=[A][68]
-  745:[80] NewRecord(data=ref(1,1,4)[68], parent_tp=14, fld=65535) -> ref(1,9,9)[68]
-  750:[80] PutRef(var[56], value=ref(1,9,9)[68])
-  753:[68] VarRef(var[56]) -> ref(1,9,9)=false[68]
-  756:[80] ConstEnum(val=1) -> A(1)[80]
-  758:[81] SetEnum(v1=ref(1,9,9)[68], fld=0, val=1[80])
-  761:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A][68]
-  764:[80] VarRef(var[56]) -> ref(1,9,9)=true[80]
-  767:[92] FinishRecord(data=ref(1,1,4)[68], rec=ref(1,9,9)[80], parent_tp=14, fld=65535)
-  772:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A][68]
-  775:[80] NewRecord(data=ref(1,1,4)[68], parent_tp=14, fld=65535) -> ref(1,9,10)[68]
-  780:[80] PutRef(var[56], value=ref(1,9,10)[68])
-  783:[68] VarRef(var[56]) -> ref(1,9,10)=false[68]
-  786:[80] ConstEnum(val=2) -> B(2)[80]
-  788:[81] SetEnum(v1=ref(1,9,10)[68], fld=0, val=2[80])
-  791:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A,B][68]
-  794:[80] VarRef(var[56]) -> ref(1,9,10)=true[80]
-  797:[92] FinishRecord(data=ref(1,1,4)[68], rec=ref(1,9,10)[80], parent_tp=14, fld=65535)
-  802:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A,B][68]
-  805:[80] NewRecord(data=ref(1,1,4)[68], parent_tp=14, fld=65535) -> ref(1,9,11)[68]
-  810:[80] PutRef(var[56], value=ref(1,9,11)[68])
-  813:[68] VarRef(var[56]) -> ref(1,9,11)=false[68]
-  816:[80] ConstEnum(val=2) -> B(2)[80]
-  818:[81] SetEnum(v1=ref(1,9,11)[68], fld=0, val=2[80])
-  821:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A,B,B][68]
-  824:[80] VarRef(var[56]) -> ref(1,9,11)=true[80]
-  827:[92] FinishRecord(data=ref(1,1,4)[68], rec=ref(1,9,11)[80], parent_tp=14, fld=65535)
-  832:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A,B,B][68]
-  835:[80] FreeStack(value=12, discard=36)
-  839:[56] VarVector(var[44]) -> ref(1,1,4)=[A,A,B,B][56]
-  842:[68] ConstInt(val=2) -> 2[68]
-  847:[72] GetVector(r=ref(1,1,4)=true[56], size=1, index=2[68]) -> ref(1,9,10)=B[56]
-  850:[68] GetEnum(v1=ref(1,9,10)[56], fld=0) -> unknown(2)(2)[56]
-  853:[57] CastIntFromEnum(v1=2[56]) -> 2[56]
-  854:[60] FreeStack(value=4, discard=16)
-  858:[48] VarInt(var[44]) -> 2[48]
-  861:[52] ConstInt(val=2) -> 2[52]
-  866:[56] EqInt(v1=2[48], v2=2[52]) -> true[48]
-  867:[49] GotoFalseWord(jump=873, if_false=true[48])
-  870:[48] GotoWord(jump=922)
-  922:[48] FreeText(var[20])
-  925:[48] Return(ret=4294967295[4], value=0, discard=44)
+  655:[8] ConvRefFromNull() -> ref(1,0,0)[8]
+  656:[20] Text()
+  657:[44] Database(var[8], db_tp=13)
+  662:[44] VarRef(var[8]) -> ref(1,1,0)={}[44]
+  665:[56] GetField(v1=ref(1,1,0)[44], fld=4) -> ref(1,1,4)[44]
+  668:[56] VarRef(var[8]) -> ref(1,1,0)={}[56]
+  671:[68] ConstInt(val=0) -> 0[68]
+  676:[72] SetInt(v1=ref(1,1,0)[56], fld=4, val=0[68])
+  679:[56] VarVector(var[44]) -> ref(1,1,4)=[][56]
+  682:[68] NewRecord(data=ref(1,1,4)[56], parent_tp=14, fld=65535) -> ref(1,9,8)[56]
+  687:[68] VarRef(var[56]) -> ref(1,9,8)=false[68]
+  690:[80] ConstEnum(val=1) -> A(1)[80]
+  692:[81] SetEnum(v1=ref(1,9,8)[68], fld=0, val=1[80])
+  695:[68] VarVector(var[44]) -> ref(1,1,4)=[A][68]
+  698:[80] VarRef(var[56]) -> ref(1,9,8)=true[80]
+  701:[92] FinishRecord(data=ref(1,1,4)[68], rec=ref(1,9,8)[80], parent_tp=14, fld=65535)
+  706:[68] VarVector(var[44]) -> ref(1,1,4)=[A][68]
+  709:[80] NewRecord(data=ref(1,1,4)[68], parent_tp=14, fld=65535) -> ref(1,9,9)[68]
+  714:[80] PutRef(var[56], value=ref(1,9,9)[68])
+  717:[68] VarRef(var[56]) -> ref(1,9,9)=false[68]
+  720:[80] ConstEnum(val=1) -> A(1)[80]
+  722:[81] SetEnum(v1=ref(1,9,9)[68], fld=0, val=1[80])
+  725:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A][68]
+  728:[80] VarRef(var[56]) -> ref(1,9,9)=true[80]
+  731:[92] FinishRecord(data=ref(1,1,4)[68], rec=ref(1,9,9)[80], parent_tp=14, fld=65535)
+  736:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A][68]
+  739:[80] NewRecord(data=ref(1,1,4)[68], parent_tp=14, fld=65535) -> ref(1,9,10)[68]
+  744:[80] PutRef(var[56], value=ref(1,9,10)[68])
+  747:[68] VarRef(var[56]) -> ref(1,9,10)=false[68]
+  750:[80] ConstEnum(val=2) -> B(2)[80]
+  752:[81] SetEnum(v1=ref(1,9,10)[68], fld=0, val=2[80])
+  755:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A,B][68]
+  758:[80] VarRef(var[56]) -> ref(1,9,10)=true[80]
+  761:[92] FinishRecord(data=ref(1,1,4)[68], rec=ref(1,9,10)[80], parent_tp=14, fld=65535)
+  766:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A,B][68]
+  769:[80] NewRecord(data=ref(1,1,4)[68], parent_tp=14, fld=65535) -> ref(1,9,11)[68]
+  774:[80] PutRef(var[56], value=ref(1,9,11)[68])
+  777:[68] VarRef(var[56]) -> ref(1,9,11)=false[68]
+  780:[80] ConstEnum(val=2) -> B(2)[80]
+  782:[81] SetEnum(v1=ref(1,9,11)[68], fld=0, val=2[80])
+  785:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A,B,B][68]
+  788:[80] VarRef(var[56]) -> ref(1,9,11)=true[80]
+  791:[92] FinishRecord(data=ref(1,1,4)[68], rec=ref(1,9,11)[80], parent_tp=14, fld=65535)
+  796:[68] VarVector(var[44]) -> ref(1,1,4)=[A,A,B,B][68]
+  799:[80] FreeStack(value=12, discard=36)
+  803:[56] VarVector(var[44]) -> ref(1,1,4)=[A,A,B,B][56]
+  806:[68] ConstInt(val=2) -> 2[68]
+  811:[72] GetVector(r=ref(1,1,4)=true[56], size=1, index=2[68]) -> ref(1,9,10)=B[56]
+  814:[68] GetEnum(v1=ref(1,9,10)[56], fld=0) -> unknown(2)(2)[56]
+  817:[57] CastIntFromEnum(v1=2[56]) -> 2[56]
+  818:[60] FreeStack(value=4, discard=16)
+  822:[48] VarInt(var[44]) -> 2[48]
+  825:[52] ConstInt(val=2) -> 2[52]
+  830:[56] EqInt(v1=2[48], v2=2[52]) -> true[48]
+  831:[49] GotoFalseWord(jump=837, if_false=true[48])
+  834:[48] GotoWord(jump=886)
+  886:[48] VarRef(var[8]) -> ref(1,1,0)={vector:[A,A,B,B]}[48]
+  889:[60] FreeRef(v1=ref(1,1,0)[48])
+  890:[48] FreeText(var[20])
+  893:[48] Return(ret=4294967295[4], value=0, discard=44)
 Finished

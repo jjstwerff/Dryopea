@@ -32,6 +32,8 @@ pub struct State {
     pub arguments: u16,
     // Local function stack positions of individual byte-code statements.
     pub stack: HashMap<u32, u16>,
+    // Variables from byte code, used to also gain stack position
+    pub vars: HashMap<u32, u16>,
     // Calls of function definitions from byte code.
     pub calls: HashMap<u32, Vec<u32>>,
     // Information for enumerate types and database (record, vectors and fields) types.
@@ -72,6 +74,7 @@ impl State {
             database: db,
             arguments: 0,
             stack: HashMap::new(),
+            vars: HashMap::new(),
             calls: HashMap::new(),
             types: HashMap::new(),
             library: Vec::new(),
@@ -541,6 +544,11 @@ impl State {
         external::format_text(s, val.str(), width, dir, token);
     }
 
+    pub fn free_ref(&mut self) {
+        let db = *self.get_stack::<DbRef>();
+        self.database.free(&db);
+    }
+
     pub fn format_database(&mut self) {
         let pos = *self.code::<u16>();
         let db_tp = *self.code::<u16>();
@@ -573,12 +581,8 @@ impl State {
         let db_tp = *self.code::<u16>();
         let size = self.database.size(db_tp);
         let db = *self.get_var::<DbRef>(var);
-        let r = if db.store_nr == u16::MAX {
-            self.database.database(u32::from(size))
-        } else {
-            self.database.clear(&db);
-            self.database.claim(&db, u32::from(size))
-        };
+        self.database.clear(&db);
+        let r = self.database.claim(&db, u32::from(size));
         self.database.set_default_value(db_tp, &r);
         let db = self.mut_var::<DbRef>(var);
         db.store_nr = r.store_nr;
@@ -1006,7 +1010,7 @@ impl State {
     # Panics
     when code cannot be output.
     */
-    pub fn def_code(&mut self, def_nr: u32, data: &mut Data) {
+    pub fn def_code(&mut self, def_nr: u32, data: &mut Data, show: bool, writer: &mut dyn Write) {
         let logging = !data.def(def_nr).position.file.starts_with("default/");
         let console = false; //logging;
         if data.def(def_nr).code == Value::Null {
@@ -1049,6 +1053,10 @@ impl State {
             self.initialized.insert(a);
         }
         self.generate(&stack.data.def(def_nr).code, &mut stack);
+        let mut stack_pos = Vec::new();
+        for v_nr in 0..stack.function.next_var() {
+            stack_pos.push(stack.function.stack(v_nr));
+        }
         stack.function.finish_next(top, &data.def(def_nr).name);
         data.definitions[def_nr as usize].code_position = start;
         data.definitions[def_nr as usize].code_length = self.code_pos - start;
@@ -1059,6 +1067,14 @@ impl State {
                 self.code_add(start as i32);
             }
             self.code_pos = old;
+        }
+        for (v_nr, pos) in stack_pos.into_iter().enumerate() {
+            data.definitions[def_nr as usize]
+                .variables
+                .set_stack(v_nr as u16, pos);
+        }
+        if show {
+            self.dump_code(writer, def_nr, data).unwrap();
         }
     }
 
@@ -1117,6 +1133,7 @@ impl State {
             }
             Value::Var(v) => self.generate_var(stack, *v),
             Value::Set(v, value) => {
+                self.vars.insert(self.code_pos, *v);
                 if self.initialized.contains(v) {
                     if matches!(stack.function.tp(*v), Type::Text(_)) {
                         let var_pos = stack.position - stack.function.stack(*v);
@@ -1137,12 +1154,38 @@ impl State {
                         } else {
                             self.set_var(stack, *v, value);
                         }
-                    } else if matches!(
-                        *stack.function.tp(*v),
-                        Type::Vector(_, _) | Type::Reference(_, _)
-                    ) && **value == Value::Null
+                    } else if matches!(stack.function.tp(*v), Type::Reference(_, _))
+                        && **value == Value::Null
                     {
                         stack.add_op("OpConvRefFromNull", self);
+                    } else if matches!(stack.function.tp(*v), Type::Vector(_, _))
+                        && **value == Value::Null
+                    {
+                        if let Type::Vector(elm_tp, dep) = stack.function.tp(*v).clone() {
+                            if dep.is_empty() {
+                                stack.add_op("OpConvRefFromNull", self);
+                                stack.add_op("OpDatabase", self);
+                                self.code_add(size_of::<DbRef>() as u16);
+                                let name = format!("main_vector<{}>", elm_tp.name(stack.data));
+                                self.code_add(stack.data.def_name(&name).known_type);
+                                stack.add_op("OpVarRef", self);
+                                self.code_add(size_of::<DbRef>() as u16);
+                                stack.add_op("OpConstInt", self);
+                                self.code_add(0);
+                                stack.add_op("OpSetInt", self);
+                                self.code_add(4u16);
+                                stack.add_op("OpCreateRef", self);
+                                self.code_add(size_of::<DbRef>() as u16);
+                                stack.add_op("OpConstInt", self);
+                                self.code_add(4);
+                                stack.add_op("OpSetByte", self);
+                                self.code_add(4u16);
+                                self.code_add(0u16);
+                            } else {
+                                stack.add_op("OpCreateRef", self);
+                                self.code_add(dep[0]);
+                            }
+                        }
                     } else {
                         self.generate(value, stack);
                     }
@@ -1269,6 +1312,24 @@ impl State {
                 }
                 stack.add_op("OpFreeText", self);
                 self.code_add(stack.position - stack.function.stack(v));
+            }
+            if let Type::Reference(_, dep) | Type::Vector(_, dep) = stack.function.tp(v) {
+                if dep.is_empty() {
+                    if stack.function.stack(v) >= stack.position {
+                        /*
+                        The first pass on code can sometimes be different then the second,
+                        created variables in this pass could not exist in the second one.
+                        println!(
+                            "skip free reference {} stack {} on {}",
+                            stack.function.name(v),
+                            stack.function.stack(v),
+                            stack.data.def(stack.def_nr).name
+                        );*/
+                        continue;
+                    }
+                    self.generate_var(stack, v);
+                    stack.add_op("OpFreeRef", self);
+                }
             }
         }
     }
@@ -1441,6 +1502,7 @@ impl State {
         let var_pos = stack.position - stack.function.stack(variable);
         let argument = stack.function.is_argument(variable);
         let code = self.code_pos;
+        self.vars.insert(code, variable);
         match stack.function.tp(variable) {
             Type::Integer(_, _) => stack.add_op("OpVarInt", self),
             Type::RefVar(_) => stack.add_op("OpVarRef", self),
@@ -1516,9 +1578,7 @@ impl State {
                 self.code_add(size(return_type, &Context::Argument) as u8);
                 self.code_add(stack.position);
                 if return_type != &Type::Void {
-                    let ret_nr = stack.data.type_def_nr(return_type);
-                    let known = stack.data.def(ret_nr).known_type;
-                    self.types.insert(code, known);
+                    self.types.insert(code, self.known_type(return_type, stack));
                 }
                 tp = Type::Void;
             } else if stack.function.scope() > 1 {
@@ -1533,7 +1593,6 @@ impl State {
                         self.types.insert(code, known);
                     }
                 }
-                stack.function.free();
                 stack.position = after;
             }
         }
@@ -1541,6 +1600,14 @@ impl State {
             .function
             .finish_next(bl, &stack.data.def(stack.def_nr).name);
         tp
+    }
+
+    fn known_type(&self, tp: &Type, stack: &Stack) -> u16 {
+        if let Type::Reference(c, _) = tp {
+            stack.data.def(*c).known_type
+        } else {
+            self.database.name(&tp.name(stack.data))
+        }
     }
 
     fn add_const(&mut self, tp: &Type, p: &Value, stack: &Stack, before_stack: u16) {
@@ -1762,6 +1829,17 @@ impl State {
             if let Some(t) = self.types.get(&p) {
                 write!(f, " type={}[{t:}]", self.database.show_type(*t, false))?;
             }
+            if let Some(v) = self.vars.get(&p) {
+                let vars = &data.def(d_nr).variables;
+                write!(
+                    f,
+                    " var={}[{}]:{} in {}",
+                    vars.name(*v),
+                    vars.stack(*v),
+                    vars.tp(*v).show(data, vars),
+                    vars.var_scope(*v)
+                )?;
+            }
             writeln!(f)?;
         }
         writeln!(f)?;
@@ -1842,6 +1920,11 @@ impl State {
             if self.code_pos == u32::MAX {
                 // TODO Validate that all databases & String values are also cleared.
                 assert_eq!(self.stack_pos, 4, "Stack not correctly cleared");
+                // Free the stack
+                self.database.allocations[0].free = true;
+                for (s_nr, s) in self.database.allocations.iter().enumerate() {
+                    assert!(s.free, "Database {s_nr} not correctly freed");
+                }
                 writeln!(log, "Finished")?;
                 return Ok(());
             }

@@ -152,3 +152,21 @@ fn vector_argument() {
     .expr("sum([1,2,3,4,5]) + 100 * sum([1,2,3] + [4,5])")
     .result(Value::Int(1515));
 }
+
+#[test]
+fn object_fn() {
+    code!(
+        "pub struct Data {
+    name: text,
+    number: integer
+}
+
+fn data(n: text) -> Data {
+    res = Data { name: n };
+    res
+}
+    "
+    )
+    .expr("d = data(\"test\"); \"{d.name}:{d.number}\"")
+    .result(Value::str("test:-0"));
+}

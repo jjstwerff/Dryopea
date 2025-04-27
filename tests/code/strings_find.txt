@@ -25,63 +25,63 @@ fn test() {#1 block
 }#1
 
 byte-code for find:test()
- 691[0]: return-address
- 691[4]: Text()
- 692[28]: Text()
- 693[52]: Text()
- 694[76]: ConstText(_value="something") -> text
- 705[92]: AppendText(var[52], v1: text)
- 708[76]: VarText(var[52]) -> text
- 711[92]: ClearText(var[28])
- 714[92]: ConstText(_value="t") -> text
- 717[108]: AppendText(var[28], v1: text)
- 720[92]: ConstText(_value="h") -> text
- 723[108]: AppendText(var[28], v1: text)
- 726[92]: VarText(var[28]) -> text
- 729[108]: StaticCall(_tp_text_find)
- 732[80]: FreeText(var[52])
- 735[80]: FreeStack(value=4, discard=28) type=integer[4]:Base[0]
- 739[56]: VarInt(var[52]) -> integer
- 742[60]: ConstInt(val=4) -> integer
- 747[64]: EqInt(v1: integer, v2: integer) -> boolean
- 748[57]: GotoFalseWord(jump=754, if_false: boolean)
- 751[56]: GotoWord(jump=803)
- 754[56]: ClearText(var[4])
- 757[56]: ConstText(_value="Test failed ") -> text
- 771[72]: AppendText(var[4], v1: text)
- 774[56]: VarInt(var[52]) -> integer
- 777[60]: ConstInt(val=0) -> integer
- 782[64]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 789[56]: ConstText(_value=" != 4") -> text
- 796[72]: AppendText(var[4], v1: text)
- 799[56]: VarText(var[4]) -> text
- 802[72]: Panic(message: text)
- 803[56]: FreeText(var[28])
- 806[56]: FreeText(var[4])
- 809[56]: Return(ret=0, value=0, discard=56)
+ 655[0]: return-address
+ 655[4]: Text() var=__work_2[4]:text in 1
+ 656[28]: Text() var=__work_1[28]:text in 1
+ 657[52]: Text() var=v[52]:text in 2
+ 658[76]: ConstText(_value="something") -> text
+ 669[92]: AppendText(var[52], v1: text)
+ 672[76]: VarText(var[52]) -> text var=v[52]:text in 2
+ 675[92]: ClearText(var[28]) var=__work_1[28]:text in 1
+ 678[92]: ConstText(_value="t") -> text
+ 681[108]: AppendText(var[28], v1: text)
+ 684[92]: ConstText(_value="h") -> text
+ 687[108]: AppendText(var[28], v1: text)
+ 690[92]: VarText(var[28]) -> text var=__work_1[28]:text in 1
+ 693[108]: StaticCall(_tp_text_find)
+ 696[80]: FreeText(var[52])
+ 699[80]: FreeStack(value=4, discard=28) type=integer[4]:Base[0]
+ 703[56]: VarInt(var[52]) -> integer var=test_value[52]:integer in 1
+ 706[60]: ConstInt(val=4) -> integer
+ 711[64]: EqInt(v1: integer, v2: integer) -> boolean
+ 712[57]: GotoFalseWord(jump=718, if_false: boolean)
+ 715[56]: GotoWord(jump=767)
+ 718[56]: ClearText(var[4]) var=__work_2[4]:text in 1
+ 721[56]: ConstText(_value="Test failed ") -> text
+ 735[72]: AppendText(var[4], v1: text)
+ 738[56]: VarInt(var[52]) -> integer var=test_value[52]:integer in 1
+ 741[60]: ConstInt(val=0) -> integer
+ 746[64]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 753[56]: ConstText(_value=" != 4") -> text
+ 760[72]: AppendText(var[4], v1: text)
+ 763[56]: VarText(var[4]) -> text var=__work_2[4]:text in 1
+ 766[72]: Panic(message: text)
+ 767[56]: FreeText(var[28])
+ 770[56]: FreeText(var[4])
+ 773[56]: Return(ret=0, value=0, discard=56)
 
 Execute test:
-  691:[8] Text()
-  692:[32] Text()
-  693:[56] Text()
-  694:[80] ConstText(_value="something") -> "something"[80]
-  705:[96] AppendText(var[56], v1="something"[80])
-  708:[80] VarText(var[56]) -> "something"[80]
-  711:[96] ClearText(var[32])
-  714:[96] ConstText(_value="t") -> "t"[96]
-  717:[112] AppendText(var[32], v1="t"[96])
-  720:[96] ConstText(_value="h") -> "h"[96]
-  723:[112] AppendText(var[32], v1="h"[96])
-  726:[96] VarText(var[32]) -> "th"[96]
-  729:[112] StaticCall(call=9)
-  732:[84] FreeText(var[56])
-  735:[84] FreeStack(value=4, discard=28)
-  739:[60] VarInt(var[56]) -> 4[60]
-  742:[64] ConstInt(val=4) -> 4[64]
-  747:[68] EqInt(v1=4[60], v2=4[64]) -> true[60]
-  748:[61] GotoFalseWord(jump=754, if_false=true[60])
-  751:[60] GotoWord(jump=803)
-  803:[60] FreeText(var[32])
-  806:[60] FreeText(var[8])
-  809:[60] Return(ret=4294967295[4], value=0, discard=56)
+  655:[8] Text()
+  656:[32] Text()
+  657:[56] Text()
+  658:[80] ConstText(_value="something") -> "something"[80]
+  669:[96] AppendText(var[56], v1="something"[80])
+  672:[80] VarText(var[56]) -> "something"[80]
+  675:[96] ClearText(var[32])
+  678:[96] ConstText(_value="t") -> "t"[96]
+  681:[112] AppendText(var[32], v1="t"[96])
+  684:[96] ConstText(_value="h") -> "h"[96]
+  687:[112] AppendText(var[32], v1="h"[96])
+  690:[96] VarText(var[32]) -> "th"[96]
+  693:[112] StaticCall(call=9)
+  696:[84] FreeText(var[56])
+  699:[84] FreeStack(value=4, discard=28)
+  703:[60] VarInt(var[56]) -> 4[60]
+  706:[64] ConstInt(val=4) -> 4[64]
+  711:[68] EqInt(v1=4[60], v2=4[64]) -> true[60]
+  712:[61] GotoFalseWord(jump=718, if_false=true[60])
+  715:[60] GotoWord(jump=767)
+  767:[60] FreeText(var[32])
+  770:[60] FreeText(var[8])
+  773:[60] Return(ret=4294967295[4], value=0, discard=56)
 Finished

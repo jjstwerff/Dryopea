@@ -27,6 +27,7 @@ pub struct Store {
     claims: HashSet<u32>,
     size: u32,
     file: Option<mmap_storage::file::Storage>,
+    pub(crate) free: bool,
 }
 
 impl Debug for Store {
@@ -66,6 +67,7 @@ impl Store {
             size,
             claims: HashSet::new(),
             file: None,
+            free: true,
         };
         store.claims.insert(1);
         store.init();
@@ -87,6 +89,7 @@ impl Store {
             ptr,
             claims: HashSet::new(),
             size,
+            free: true,
         };
         if init {
             store.init();
@@ -216,6 +219,10 @@ impl Store {
 
     /// Validate the store
     pub fn validate(&self, recs: u32) {
+        if !cfg!(debug_assertions) {
+            return;
+        }
+        assert!(!self.free, "Using a freed store");
         let mut pos = PRIMARY;
         let mut alloc = 0;
         while pos < self.size {

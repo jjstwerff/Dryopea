@@ -24,71 +24,71 @@ fn test() {#1 block
 }#1
 
 byte-code for mutating_operators:test()
- 691[0]: return-address
- 691[4]: Text()
- 692[28]: ConstInt(val=12) -> integer
- 697[32]: VarInt(var[28]) -> integer
- 700[36]: ConstInt(val=6) -> integer
- 705[40]: MinInt(v1: integer, v2: integer) -> integer
+ 655[0]: return-address
+ 655[4]: Text() var=__work_1[4]:text in 1
+ 656[28]: ConstInt(val=12) -> integer var=a[28]:integer in 2
+ 661[32]: VarInt(var[28]) -> integer var=a[28]:integer in 2
+ 664[36]: ConstInt(val=6) -> integer
+ 669[40]: MinInt(v1: integer, v2: integer) -> integer
+ 670[36]: PutInt(var[28], value: integer)
+ 673[32]: VarInt(var[28]) -> integer var=a[28]:integer in 2
+ 676[36]: ConstInt(val=3) -> integer
+ 681[40]: MulInt(v1: integer, v2: integer) -> integer
+ 682[36]: PutInt(var[28], value: integer)
+ 685[32]: VarInt(var[28]) -> integer var=a[28]:integer in 2
+ 688[36]: ConstInt(val=2) -> integer
+ 693[40]: DivInt(v1: integer, v2: integer) -> integer
+ 694[36]: PutInt(var[28], value: integer)
+ 697[32]: VarInt(var[28]) -> integer var=a[28]:integer in 2
+ 700[36]: ConstInt(val=1) -> integer
+ 705[40]: AddInt(v1: integer, v2: integer) -> integer
  706[36]: PutInt(var[28], value: integer)
- 709[32]: VarInt(var[28]) -> integer
- 712[36]: ConstInt(val=3) -> integer
- 717[40]: MulInt(v1: integer, v2: integer) -> integer
- 718[36]: PutInt(var[28], value: integer)
- 721[32]: VarInt(var[28]) -> integer
- 724[36]: ConstInt(val=2) -> integer
- 729[40]: DivInt(v1: integer, v2: integer) -> integer
- 730[36]: PutInt(var[28], value: integer)
- 733[32]: VarInt(var[28]) -> integer
- 736[36]: ConstInt(val=1) -> integer
- 741[40]: AddInt(v1: integer, v2: integer) -> integer
- 742[36]: PutInt(var[28], value: integer)
- 745[32]: VarInt(var[28]) -> integer
- 748[36]: FreeStack(value=4, discard=8) type=integer[4]:Base[0]
- 752[32]: VarInt(var[28]) -> integer
- 755[36]: ConstInt(val=10) -> integer
- 760[40]: EqInt(v1: integer, v2: integer) -> boolean
- 761[33]: GotoFalseWord(jump=767, if_false: boolean)
- 764[32]: GotoWord(jump=817)
- 767[32]: ClearText(var[4])
- 770[32]: ConstText(_value="Test failed ") -> text
- 784[48]: AppendText(var[4], v1: text)
- 787[32]: VarInt(var[28]) -> integer
- 790[36]: ConstInt(val=0) -> integer
- 795[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 802[32]: ConstText(_value=" != 10") -> text
- 810[48]: AppendText(var[4], v1: text)
- 813[32]: VarText(var[4]) -> text
- 816[48]: Panic(message: text)
- 817[32]: FreeText(var[4])
- 820[32]: Return(ret=0, value=0, discard=32)
+ 709[32]: VarInt(var[28]) -> integer var=a[28]:integer in 2
+ 712[36]: FreeStack(value=4, discard=8) type=integer[4]:Base[0]
+ 716[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
+ 719[36]: ConstInt(val=10) -> integer
+ 724[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 725[33]: GotoFalseWord(jump=731, if_false: boolean)
+ 728[32]: GotoWord(jump=781)
+ 731[32]: ClearText(var[4]) var=__work_1[4]:text in 1
+ 734[32]: ConstText(_value="Test failed ") -> text
+ 748[48]: AppendText(var[4], v1: text)
+ 751[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
+ 754[36]: ConstInt(val=0) -> integer
+ 759[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 766[32]: ConstText(_value=" != 10") -> text
+ 774[48]: AppendText(var[4], v1: text)
+ 777[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+ 780[48]: Panic(message: text)
+ 781[32]: FreeText(var[4])
+ 784[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-  691:[8] Text()
-  692:[32] ConstInt(val=12) -> 12[32]
-  697:[36] VarInt(var[32]) -> 12[36]
-  700:[40] ConstInt(val=6) -> 6[40]
-  705:[44] MinInt(v1=12[36], v2=6[40]) -> 6[36]
-  706:[40] PutInt(var[32], value=6[36])
-  709:[36] VarInt(var[32]) -> 6[36]
-  712:[40] ConstInt(val=3) -> 3[40]
-  717:[44] MulInt(v1=6[36], v2=3[40]) -> 18[36]
-  718:[40] PutInt(var[32], value=18[36])
-  721:[36] VarInt(var[32]) -> 18[36]
-  724:[40] ConstInt(val=2) -> 2[40]
-  729:[44] DivInt(v1=18[36], v2=2[40]) -> 9[36]
-  730:[40] PutInt(var[32], value=9[36])
-  733:[36] VarInt(var[32]) -> 9[36]
-  736:[40] ConstInt(val=1) -> 1[40]
-  741:[44] AddInt(v1=9[36], v2=1[40]) -> 10[36]
-  742:[40] PutInt(var[32], value=10[36])
-  745:[36] VarInt(var[32]) -> 10[36]
-  748:[40] FreeStack(value=4, discard=8)
-  752:[36] VarInt(var[32]) -> 10[36]
-  755:[40] ConstInt(val=10) -> 10[40]
-  760:[44] EqInt(v1=10[36], v2=10[40]) -> true[36]
-  761:[37] GotoFalseWord(jump=767, if_false=true[36])
-  764:[36] GotoWord(jump=817)
-  817:[36] FreeText(var[8])
-  820:[36] Return(ret=4294967295[4], value=0, discard=32)
+  655:[8] Text()
+  656:[32] ConstInt(val=12) -> 12[32]
+  661:[36] VarInt(var[32]) -> 12[36]
+  664:[40] ConstInt(val=6) -> 6[40]
+  669:[44] MinInt(v1=12[36], v2=6[40]) -> 6[36]
+  670:[40] PutInt(var[32], value=6[36])
+  673:[36] VarInt(var[32]) -> 6[36]
+  676:[40] ConstInt(val=3) -> 3[40]
+  681:[44] MulInt(v1=6[36], v2=3[40]) -> 18[36]
+  682:[40] PutInt(var[32], value=18[36])
+  685:[36] VarInt(var[32]) -> 18[36]
+  688:[40] ConstInt(val=2) -> 2[40]
+  693:[44] DivInt(v1=18[36], v2=2[40]) -> 9[36]
+  694:[40] PutInt(var[32], value=9[36])
+  697:[36] VarInt(var[32]) -> 9[36]
+  700:[40] ConstInt(val=1) -> 1[40]
+  705:[44] AddInt(v1=9[36], v2=1[40]) -> 10[36]
+  706:[40] PutInt(var[32], value=10[36])
+  709:[36] VarInt(var[32]) -> 10[36]
+  712:[40] FreeStack(value=4, discard=8)
+  716:[36] VarInt(var[32]) -> 10[36]
+  719:[40] ConstInt(val=10) -> 10[40]
+  724:[44] EqInt(v1=10[36], v2=10[40]) -> true[36]
+  725:[37] GotoFalseWord(jump=731, if_false=true[36])
+  728:[36] GotoWord(jump=781)
+  781:[36] FreeText(var[8])
+  784:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

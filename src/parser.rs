@@ -818,11 +818,22 @@ impl Parser {
             // Insert the default values for not given attributes
             for a_nr in actual.len()..self.data.attributes(d_nr) {
                 let default = self.data.def(d_nr).attributes[a_nr].value.clone();
-                if let Type::RefVar(tp) = self.data.attr_type(d_nr, a_nr) {
-                    if matches!(*tp, Type::Text(_)) {
-                        let ref_scope = self.vars.start_scope(self.lexer.at(), "default ref");
-                        let mut ls = Vec::new();
-                        let vr = self.vars.work_text(&mut self.lexer);
+                if let Type::Reference(_, _) | Type::Vector(_, _) = self.data.attr_type(d_nr, a_nr)
+                {
+                    assert_eq!(
+                        default,
+                        Value::Null,
+                        "Expect a null default on database references"
+                    );
+                    let vr = self
+                        .vars
+                        .work_refs(&self.data.attr_type(d_nr, a_nr), &mut self.lexer);
+                    actual.push(Value::Var(vr));
+                } else if let Type::RefVar(tp) = self.data.attr_type(d_nr, a_nr) {
+                    let ref_scope = self.vars.start_scope(self.lexer.at(), "default ref");
+                    let mut ls = Vec::new();
+                    let vr = if matches!(*tp, Type::Text(_)) {
+                        let wv = self.vars.work_text(&mut self.lexer);
                         if default != Value::Null
                             && if let Value::Text(t) = &default {
                                 !t.is_empty()
@@ -830,18 +841,19 @@ impl Parser {
                                 true
                             }
                         {
-                            ls.push(self.cl("OpAppendText", &[Value::Var(vr), default]));
+                            ls.push(self.cl("OpAppendText", &[Value::Var(wv), default]));
                         }
-                        ls.push(self.cl("OpCreateRef", &[Value::Var(vr)]));
-                        actual.push(Value::Block(ls));
-                        self.vars.finish_scope(
-                            ref_scope,
-                            &Type::Reference(self.data.def_nr("reference"), vec![vr]),
-                            self.lexer.at(),
-                        );
+                        wv
                     } else {
-                        panic!("No defaults for references allowed");
-                    }
+                        panic!("Unexpected reference type {}", tp.name(&self.data));
+                    };
+                    ls.push(self.cl("OpCreateRef", &[Value::Var(vr)]));
+                    actual.push(Value::Block(ls));
+                    self.vars.finish_scope(
+                        ref_scope,
+                        &Type::Reference(self.data.def_nr("reference"), vec![vr]),
+                        self.lexer.at(),
+                    );
                 } else {
                     actual.push(default);
                 }
@@ -1689,7 +1701,9 @@ impl Parser {
                 ls.insert(0, v_set(v, Value::Text(String::new())));
             }
             for v in self.vars.work_references() {
-                ls.insert(0, v_set(v, Value::Null));
+                if !self.vars.is_argument(v) {
+                    ls.insert(0, v_set(v, Value::Null));
+                }
             }
         }
         if self.context != u32::MAX && !self.first_pass {
@@ -1758,9 +1772,14 @@ impl Parser {
                 } else {
                     0
                 };
-                if op == "=" && matches!(code, Value::Var(_)) {
-                    *code = Value::Null; // do not bleed the original value
-                }
+                let var_nr = if let Value::Var(v_nr) = *code {
+                    if op == "=" && !self.vars.is_argument(v_nr) {
+                        *code = Value::Null; // do not bleed the original value
+                    }
+                    v_nr
+                } else {
+                    u16::MAX
+                };
                 match &f_type {
                     Type::Vector(inner, _) => assign_tp = (**inner).clone(),
                     Type::RefVar(tp) => {
@@ -1797,7 +1816,12 @@ impl Parser {
                     *code = Value::Block(ls);
                     return Type::Unknown(u32::MAX);
                 }
-                *code = self.towards_set(&to, code, &f_type, &op[0..1]);
+                if var_nr == u16::MAX
+                    || !self.vars.is_argument(var_nr)
+                    || !matches!(s_type, Type::Reference(_, _))
+                {
+                    *code = self.towards_set(&to, code, &f_type, &op[0..1]);
+                }
                 return Type::Void;
             }
         }
@@ -2019,6 +2043,14 @@ impl Parser {
                     self.vars.move_text_scope(*l, 1);
                 }
             }
+        } else if let Type::Reference(_, ls) | Type::Vector(_, ls) = t {
+            if self.vars.scope() == 1 {
+                self.ref_return(ls);
+            } else {
+                for l in ls {
+                    self.vars.move_ref_scope(*l, 1);
+                }
+            }
         }
     }
 
@@ -2121,6 +2153,7 @@ impl Parser {
                     .vars
                     .work_refs(&self.data.def(vec_def).returned.clone(), &mut self.lexer);
                 let vec_var = self.vars.work_refs(&current_type, &mut self.lexer);
+                self.vars.depend(vec_var, db_var);
                 let mut second_code = Value::Null;
                 self.parse_operators(assign_tp, &mut second_code, parent_tp, precedence + 1);
                 let main_tp = i32::from(self.data.def(vec_def).known_type);
@@ -2271,9 +2304,31 @@ impl Parser {
             } else {
                 self.data.type_def_nr(&tp)
             },
-            Vec::new(),
+            parent_tp.depend(),
         );
         let vc = self.vars.start_scope(self.lexer.at(), "vector");
+        let vec = if is_field {
+            u16::MAX
+        } else if let Value::Var(nr) = val {
+            *nr
+        } else {
+            self.create_unique(
+                "vec",
+                &Type::Vector(Box::new(assign_tp.clone()), parent_tp.depend()),
+            )
+        };
+        if self.lexer.has_token("]") {
+            let tp = if new_store {
+                self.vector_db(assign_tp, val, vec)
+            } else {
+                *val = Value::Block(vec![Value::Var(vec)]);
+                Type::Vector(Box::new(assign_tp.clone()), parent_tp.depend())
+            };
+            self.vars.finish_scope(vc, &tp, self.lexer.at());
+            return tp;
+        }
+        let mut in_t = assign_tp.clone();
+        let mut res = Vec::new();
         let elm = self.create_unique(
             "elm",
             if let Type::Reference(_, _) = assign_tp {
@@ -2282,27 +2337,12 @@ impl Parser {
                 &was
             },
         );
-        let vec = if is_field {
-            u16::MAX
-        } else if let Value::Var(nr) = val {
-            *nr
-        } else {
-            self.create_unique(
-                "vec",
-                &Type::Vector(Box::new(assign_tp.clone()), Vec::new()),
-            )
-        };
-        if self.lexer.has_token("]") {
-            let tp = if new_store {
-                self.vector_db(assign_tp, val, vec)
-            } else {
-                Type::Vector(Box::new(assign_tp.clone()), vec![vec])
-            };
-            self.vars.finish_scope(vc, &tp, self.lexer.at());
-            return tp;
+        if vec != u16::MAX {
+            self.vars.depend(elm, vec);
         }
-        let mut in_t = assign_tp.clone();
-        let mut res = Vec::new();
+        for on in parent_tp.depend() {
+            self.vars.depend(elm, on);
+        }
         loop {
             if let Some(value) = self.parse_item(elm, &mut in_t, &mut res) {
                 return value;
@@ -2318,15 +2358,18 @@ impl Parser {
         if in_t == Type::Null {
             return in_t;
         }
-        let struct_tp = Type::Vector(Box::new(in_t.clone()), Vec::new());
+        let struct_tp = Type::Vector(Box::new(in_t.clone()), parent_tp.depend());
         if !is_field {
             self.vars
                 .change_var_type(vec, &struct_tp, &self.data, &mut self.lexer);
             self.data.vector_def(&mut self.lexer, &in_t);
         }
+        let mut tp = Type::Vector(Box::new(in_t.clone()), parent_tp.depend());
         let mut ls = self.new_record(val, parent_tp, elm, vec, &res, &in_t);
         if new_store && !is_var && in_t != Type::Void {
-            self.insert_new(vec, &in_t, &mut ls);
+            let db = self.insert_new(vec, elm, &in_t, &mut ls);
+            self.vars.depend(vec, db);
+            tp = tp.depending(db);
         } else if !is_field && !is_var {
             ls.insert(0, v_set(vec, val.clone()));
         }
@@ -2334,7 +2377,6 @@ impl Parser {
             ls.push(Value::Var(vec));
         }
         self.lexer.token("]");
-        let tp = Type::Vector(Box::new(in_t), Vec::new());
         self.vars.finish_scope(
             vc,
             if new_store { &tp } else { &Type::Void },
@@ -2344,6 +2386,7 @@ impl Parser {
         tp
     }
 
+    // <item> ::== ['for' | <expr> ]
     fn parse_item(&mut self, elm: u16, in_t: &mut Type, res: &mut Vec<Value>) -> Option<Type> {
         let mut p = Value::Var(elm);
         let mut t = if self.lexer.has_token("for") {
@@ -2488,6 +2531,7 @@ impl Parser {
             let db = self
                 .vars
                 .work_refs(&Type::Reference(vec_def, Vec::new()), &mut self.lexer);
+            self.vars.depend(vec, db);
             let tp = i32::from(self.data.def(vec_def).known_type);
             ls.push(self.cl("OpDatabase", &[Value::Var(db), Value::Int(tp)]));
             // Reference to the vector field.
@@ -2500,18 +2544,21 @@ impl Parser {
         }
     }
 
-    fn insert_new(&mut self, vec: u16, in_t: &Type, ls: &mut Vec<Value>) {
+    fn insert_new(&mut self, vec: u16, elm: u16, in_t: &Type, ls: &mut Vec<Value>) -> u16 {
         // determine the element size by the resulting type
         let vec_def = self.data.vector_def(&mut self.lexer, in_t);
         let db = self
             .vars
             .work_refs(&Type::Reference(vec_def, Vec::new()), &mut self.lexer);
+        self.vars.depend(elm, db);
+        self.vars.depend(vec, db);
         let known = Value::Int(i32::from(self.data.def(vec_def).known_type));
         ls.insert(0, self.cl("OpDatabase", &[Value::Var(db), known]));
         // Reference to the vector field.
         ls.insert(1, v_set(vec, self.get_field(vec_def, 0, Value::Var(db))));
         // Write 0 into this reference.
         ls.insert(2, self.set_field(vec_def, 0, Value::Var(db), Value::Int(0)));
+        db
     }
 
     fn type_info(&self, in_t: &Type) -> Value {
@@ -2659,10 +2706,18 @@ impl Parser {
                     args[0] = code.clone();
                 }
                 *code = new;
+                let dep = t.depend();
                 t = self.data.attr_type(dnr, fnr);
+                for on in dep {
+                    t = t.depending(on);
+                }
             } else {
+                let dep = t.depend();
                 let last_t = t.clone();
                 t = self.data.attr_type(dnr, fnr);
+                for on in dep {
+                    t = t.depending(on);
+                }
                 if let Type::Enum(_) = last_t.clone() {
                     // do something with enum fields
                 } else {
@@ -2677,7 +2732,7 @@ impl Parser {
     }
 
     fn parse_index(&mut self, code: &mut Value, t: &Type) -> Type {
-        let elm_type = if let Type::Vector(v_t, _) = t {
+        let mut elm_type = if let Type::Vector(v_t, _) = t {
             *v_t.clone()
         } else if let Type::Sorted(d_nr, _, _)
         | Type::Hash(d_nr, _, _)
@@ -2693,6 +2748,9 @@ impl Parser {
             diagnostic!(self.lexer, Level::Error, "Indexing a non vector");
             Type::Unknown(0)
         };
+        for on in t.depend() {
+            elm_type = elm_type.depending(on);
+        }
         /*let nr = if self.types.exists("$") {
             self.types.var_nr("$")
         } else {
@@ -2955,11 +3013,8 @@ impl Parser {
                 }
             } else {
                 let v_nr = self.vars.var(name);
-                t = self.vars.tp(v_nr).clone();
+                t = self.vars.tp(v_nr).depending(v_nr);
                 self.var_usages(v_nr, true);
-                if matches!(t, Type::Text(_)) {
-                    t = Type::Text(vec![v_nr]);
-                }
                 *code = Value::Var(v_nr);
             }
         } else if self.data.def_nr(name) != u32::MAX {
@@ -3606,12 +3661,14 @@ impl Parser {
         let ob = self.vars.start_scope(self.lexer.at(), "object");
         let v = if let Value::Var(v_nr) = code {
             *v_nr
+        } else if self.first_pass {
+            u16::MAX
         } else {
             self.vars
                 .work_refs(&self.data.def(td_nr).returned, &mut self.lexer)
         };
         let tp = i32::from(self.data.def(td_nr).known_type);
-        if !matches!(code, Value::Var(_)) {
+        if v == u16::MAX || self.vars.is_independent(v) {
             self.data.set_referenced(td_nr, self.context, Value::Null);
             list.push(self.cl("OpDatabase", &[Value::Var(v), Value::Int(tp)]));
         }
@@ -3661,6 +3718,9 @@ impl Parser {
                         Value::Null
                     };
                     let mut parent_tp = Type::Reference(td_nr, Vec::new());
+                    if v != u16::MAX {
+                        parent_tp = parent_tp.depending(v);
+                    }
                     self.parse_operators(&self.content(&td), &mut value, &mut parent_tp, 0);
                     if let Type::Vector(_, _)
                     | Type::Sorted(_, _, _)
@@ -3701,7 +3761,10 @@ impl Parser {
             list.push(Value::Var(v));
         }
         *code = Value::Block(list);
-        let tp = Type::Reference(td_nr, vec![v]);
+        let mut tp = Type::Reference(td_nr, Vec::new());
+        if v != u16::MAX {
+            tp = tp.depending(v);
+        }
         self.vars.finish_scope(
             ob,
             if new_object { &tp } else { &Type::Void },
@@ -3740,8 +3803,8 @@ impl Parser {
             let in_type = self.parse_in_range(&mut expr, &Value::Null, &id);
             let var_tp = if let Type::Vector(t_nr, _) = &in_type {
                 *t_nr.clone()
-            } else if let Type::Sorted(dnr, _, _) = in_type {
-                Type::Reference(dnr, Vec::new())
+            } else if let Type::Sorted(dnr, _, dep) = &in_type {
+                Type::Reference(*dnr, dep.clone())
             } else if let Type::Iterator(i_tp, _) = &in_type {
                 if **i_tp == Type::Null {
                     I32.clone()
@@ -3857,6 +3920,39 @@ impl Parser {
                     .set_type(*v, Type::RefVar(Box::new(Type::Text(Vec::new()))));
             }
             self.data.definitions[self.context as usize].returned = Type::Text(dep);
+        }
+    }
+
+    fn ref_return(&mut self, ls: &[u16]) {
+        let ret = self.data.definitions[self.context as usize]
+            .returned
+            .clone();
+        if let Type::Vector(_, cur) | Type::Reference(_, cur) = &ret {
+            let mut dep = cur.clone();
+            for v in ls {
+                let n = self.vars.name(*v);
+                // skip related variables that are already attributes
+                if let Some(a) = self.data.def(self.context).attr_names.get(n) {
+                    if !dep.contains(&(*a as u16)) {
+                        dep.push(*a as u16);
+                    }
+                    continue;
+                }
+                // create a new attribute with this name
+                let a = self
+                    .data
+                    .add_attribute(&mut self.lexer, self.context, n, ret.clone());
+                dep.push(a as u16);
+                self.vars.move_ref_scope(*v, 0);
+            }
+            self.data.definitions[self.context as usize].returned = if let Type::Vector(it, _) = ret
+            {
+                Type::Vector(it, dep)
+            } else if let Type::Reference(td, _) = ret {
+                Type::Reference(td, dep)
+            } else {
+                panic!("Unknown return type");
+            };
         }
     }
 

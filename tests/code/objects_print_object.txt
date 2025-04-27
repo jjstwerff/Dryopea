@@ -13,42 +13,41 @@ Type 12:Object[13]:
     bb:text[8]
     ccc:boolean[12]
 
-fn obj() -> Object {#1 block
-  __ref_1:Object = null;
+fn obj(__ref_1:Object) -> Object["__ref_1"] {#1 block
   {#2 object
     OpDatabase(__ref_1, 12i32);
     OpSetInt(__ref_1, 4i32, 12i32);
     OpSetText(__ref_1, 8i32, "hi");
     OpSetByte(__ref_1, 12i32, 0i32, if false 1i32 else 0i32);
     __ref_1;
-  }#2:Object["__ref_1"];
-}#1:Object["__ref_1"]
+  }#2:ref(Object)["__ref_1"];
+}#1:ref(Object)["__ref_1"]
 
-byte-code for print_object:obj() -> Object
- 691[0]: return-address
- 691[4]: ConvRefFromNull() -> reference
- 692[16]: Database(var[4], db_tp=12) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
- 697[16]: VarRef(var[4]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
- 700[28]: ConstInt(val=12) -> integer
- 705[32]: SetInt(v1: reference, fld=4, val: integer)
- 708[16]: VarRef(var[4]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
- 711[28]: ConstText(_value="hi") -> text
- 715[44]: SetText(v1: reference, fld=8, val: text)
- 718[16]: VarRef(var[4]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
- 721[28]: ConstFalse() -> boolean
- 722[29]: GotoFalseWord(jump=733, if_false: boolean)
- 725[28]: ConstInt(val=1) -> integer
- 730[32]: GotoWord(jump=738)
- 733[28]: ConstInt(val=0) -> integer
- 738[32]: SetByte(v1: reference, fld=12, min=0, val: integer)
- 743[16]: VarRef(var[4]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
- 746[28]: Return(ret=0, value=12, discard=28) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
+byte-code for print_object:obj(__ref_1: ref(Object)[0]) -> ref(Object)["__ref_1"]
+ 655[12]: return-address
+ 655[16]: Database(var[0], db_tp=12) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
+ 660[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12] var=__ref_1[0]:ref(Object) in 0
+ 663[28]: ConstInt(val=12) -> integer
+ 668[32]: SetInt(v1: ref(reference), fld=4, val: integer)
+ 671[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12] var=__ref_1[0]:ref(Object) in 0
+ 674[28]: ConstText(_value="hi") -> text
+ 678[44]: SetText(v1: ref(reference), fld=8, val: text)
+ 681[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12] var=__ref_1[0]:ref(Object) in 0
+ 684[28]: ConstFalse() -> boolean
+ 685[29]: GotoFalseWord(jump=696, if_false: boolean)
+ 688[28]: ConstInt(val=1) -> integer
+ 693[32]: GotoWord(jump=701)
+ 696[28]: ConstInt(val=0) -> integer
+ 701[32]: SetByte(v1: ref(reference), fld=12, min=0, val: integer)
+ 706[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12] var=__ref_1[0]:ref(Object) in 0
+ 709[28]: Return(ret=12, value=12, discard=28) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
 
 fn test() {#1 block
+  __ref_1:ref(Object) = null;
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
-    o:Object = obj();
+    o:ref(Object)["test_value"] = obj(__ref_1);
     {#3 formatting string
       __work_1:text = "";
       OpFormatDatabase(__work_1, o, 12i32, false);
@@ -66,82 +65,89 @@ fn test() {#1 block
 }#1
 
 byte-code for print_object:test()
- 752[0]: return-address
- 752[4]: Text()
- 753[28]: Text()
- 754[52]: Text()
- 755[76]: Call(size=0, to=691)
- 762[88]: ClearText(var[28])
- 765[88]: ConstText(_value="") -> text
- 767[104]: AppendText(var[28], v1: text)
- 770[88]: VarRef(var[76]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
- 773[100]: FormatDatabase(var[28], val: reference, db_tp=12, pretty=false)
- 779[88]: ConstText(_value=" pretty ") -> text
- 789[104]: AppendText(var[28], v1: text)
- 792[88]: VarRef(var[76]) -> reference type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12]
- 795[100]: FormatDatabase(var[28], val: reference, db_tp=12, pretty=true)
- 801[88]: VarText(var[28]) -> text
- 804[104]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
- 808[92]: AppendText(var[52], v1: text)
- 811[76]: VarText(var[52]) -> text
- 814[92]: ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> text
- 879[108]: EqText(v1: text, v2: text) -> boolean
- 880[77]: GotoFalseWord(jump=886, if_false: boolean)
- 883[76]: GotoWord(jump=997)
- 886[76]: ClearText(var[4])
- 889[76]: ConstText(_value="Test failed ") -> text
- 903[92]: AppendText(var[4], v1: text)
- 906[76]: VarText(var[52]) -> text
- 909[92]: ConstInt(val=0) -> integer
- 914[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 919[76]: ConstText(_value=" != "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }"") -> text
- 990[92]: AppendText(var[4], v1: text)
- 993[76]: VarText(var[4]) -> text
- 996[92]: Panic(message: text)
- 997[76]: FreeText(var[52])
-1000[76]: FreeText(var[28])
-1003[76]: FreeText(var[4])
-1006[76]: Return(ret=0, value=0, discard=76)
+ 715[0]: return-address
+ 715[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Object) in 1
+ 716[16]: Text() var=__work_2[16]:text in 1
+ 717[40]: Text() var=__work_1[40]:text in 1
+ 718[64]: Text() var=test_value[64]:text in 1
+ 719[88]: VarRef(var[4]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12] var=__ref_1[4]:ref(Object) in 1
+ 722[100]: Call(size=0, to=655)
+ 729[100]: ClearText(var[40]) var=__work_1[40]:text in 1
+ 732[100]: ConstText(_value="") -> text
+ 734[116]: AppendText(var[40], v1: text)
+ 737[100]: VarRef(var[88]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12] var=o[88]:ref(Object)["test_value"] in 2
+ 740[112]: FormatDatabase(var[40], val: ref(reference), db_tp=12, pretty=false)
+ 746[100]: ConstText(_value=" pretty ") -> text
+ 756[116]: AppendText(var[40], v1: text)
+ 759[100]: VarRef(var[88]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12] var=o[88]:ref(Object)["test_value"] in 2
+ 762[112]: FormatDatabase(var[40], val: ref(reference), db_tp=12, pretty=true)
+ 768[100]: VarText(var[40]) -> text var=__work_1[40]:text in 1
+ 771[116]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
+ 775[104]: AppendText(var[64], v1: text)
+ 778[88]: VarText(var[64]) -> text var=test_value[64]:text in 1
+ 781[104]: ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> text
+ 846[120]: EqText(v1: text, v2: text) -> boolean
+ 847[89]: GotoFalseWord(jump=853, if_false: boolean)
+ 850[88]: GotoWord(jump=964)
+ 853[88]: ClearText(var[16]) var=__work_2[16]:text in 1
+ 856[88]: ConstText(_value="Test failed ") -> text
+ 870[104]: AppendText(var[16], v1: text)
+ 873[88]: VarText(var[64]) -> text var=test_value[64]:text in 1
+ 876[104]: ConstInt(val=0) -> integer
+ 881[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
+ 886[88]: ConstText(_value=" != "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }"") -> text
+ 957[104]: AppendText(var[16], v1: text)
+ 960[88]: VarText(var[16]) -> text var=__work_2[16]:text in 1
+ 963[104]: Panic(message: text)
+ 964[88]: FreeText(var[64])
+ 967[88]: FreeText(var[40])
+ 970[88]: FreeText(var[16])
+ 973[88]: VarRef(var[4]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[12] var=__ref_1[4]:ref(Object) in 1
+ 976[100]: FreeRef(v1: ref(reference))
+ 977[88]: Return(ret=0, value=0, discard=88)
 
 Execute test:
-  752:[8] Text()
-  753:[32] Text()
-  754:[56] Text()
-  755:[80] Call(size=0, to=691)
-  691:[84] ConvRefFromNull() -> ref(65535,0,0)[84]
-  692:[96] Database(var[84], db_tp=12)
-  697:[96] VarRef(var[84]) -> ref(1,1,0)={ccc:false}[96]
-  700:[108] ConstInt(val=12) -> 12[108]
-  705:[112] SetInt(v1=ref(1,1,0)[96], fld=4, val=12[108])
-  708:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,ccc:false}[96]
-  711:[108] ConstText(_value="hi") -> "hi"[108]
-  715:[124] SetText(v1=ref(1,1,0)[96], fld=8, val="hi"[108])
-  718:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
-  721:[108] ConstFalse() -> false[108]
-  722:[109] GotoFalseWord(jump=733, if_false=false[108])
-  733:[108] ConstInt(val=0) -> 0[108]
-  738:[112] SetByte(v1=ref(1,1,0)[96], fld=12, min=0, val=0[108])
-  743:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
-  746:[108] Return(ret=762[80], value=12, discard=28) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[80]
-  762:[92] ClearText(var[32])
-  765:[92] ConstText(_value="") -> ""[92]
-  767:[108] AppendText(var[32], v1=""[92])
-  770:[92] VarRef(var[80]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[92]
-  773:[104] FormatDatabase(var[32], val=ref(1,1,0)[92], db_tp=12, pretty=false)
-  779:[92] ConstText(_value=" pretty ") -> " pretty "[92]
-  789:[108] AppendText(var[32], v1=" pretty "[92])
-  792:[92] VarRef(var[80]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[92]
-  795:[104] FormatDatabase(var[32], val=ref(1,1,0)[92], db_tp=12, pretty=true)
-  801:[92] VarText(var[32]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[92]
-  804:[108] FreeStack(value=16, discard=28)
-  808:[96] AppendText(var[56], v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[80])
-  811:[80] VarText(var[56]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[80]
-  814:[96] ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[96]
-  879:[112] EqText(v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[80], v2="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[96]) -> true[80]
-  880:[81] GotoFalseWord(jump=886, if_false=true[80])
-  883:[80] GotoWord(jump=997)
-  997:[80] FreeText(var[56])
- 1000:[80] FreeText(var[32])
- 1003:[80] FreeText(var[8])
- 1006:[80] Return(ret=4294967295[4], value=0, discard=76)
+  715:[8] ConvRefFromNull() -> ref(1,0,0)[8]
+  716:[20] Text()
+  717:[44] Text()
+  718:[68] Text()
+  719:[92] VarRef(var[8]) -> ref(1,0,0)={}[92]
+  722:[104] Call(size=0, to=655)
+  655:[108] Database(var[92], db_tp=12)
+  660:[108] VarRef(var[92]) -> ref(1,1,0)={ccc:false}[108]
+  663:[120] ConstInt(val=12) -> 12[120]
+  668:[124] SetInt(v1=ref(1,1,0)[108], fld=4, val=12[120])
+  671:[108] VarRef(var[92]) -> ref(1,1,0)={a:12,ccc:false}[108]
+  674:[120] ConstText(_value="hi") -> "hi"[120]
+  678:[136] SetText(v1=ref(1,1,0)[108], fld=8, val="hi"[120])
+  681:[108] VarRef(var[92]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[108]
+  684:[120] ConstFalse() -> false[120]
+  685:[121] GotoFalseWord(jump=696, if_false=false[120])
+  696:[120] ConstInt(val=0) -> 0[120]
+  701:[124] SetByte(v1=ref(1,1,0)[108], fld=12, min=0, val=0[120])
+  706:[108] VarRef(var[92]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[108]
+  709:[120] Return(ret=729[104], value=12, discard=28) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[92]
+  729:[104] ClearText(var[44])
+  732:[104] ConstText(_value="") -> ""[104]
+  734:[120] AppendText(var[44], v1=""[104])
+  737:[104] VarRef(var[92]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[104]
+  740:[116] FormatDatabase(var[44], val=ref(1,1,0)[104], db_tp=12, pretty=false)
+  746:[104] ConstText(_value=" pretty ") -> " pretty "[104]
+  756:[120] AppendText(var[44], v1=" pretty "[104])
+  759:[104] VarRef(var[92]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[104]
+  762:[116] FormatDatabase(var[44], val=ref(1,1,0)[104], db_tp=12, pretty=true)
+  768:[104] VarText(var[44]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[104]
+  771:[120] FreeStack(value=16, discard=28)
+  775:[108] AppendText(var[68], v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[92])
+  778:[92] VarText(var[68]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[92]
+  781:[108] ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[108]
+  846:[124] EqText(v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[92], v2="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[108]) -> true[92]
+  847:[93] GotoFalseWord(jump=853, if_false=true[92])
+  850:[92] GotoWord(jump=964)
+  964:[92] FreeText(var[68])
+  967:[92] FreeText(var[44])
+  970:[92] FreeText(var[20])
+  973:[92] VarRef(var[8]) -> ref(1,0,0)={}[92]
+  976:[104] FreeRef(v1=ref(1,0,0)[92])
+  977:[92] Return(ret=4294967295[4], value=0, discard=88)
 Finished

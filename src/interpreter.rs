@@ -30,10 +30,7 @@ pub fn byte_code(writer: &mut dyn Write, state: &mut State, data: &mut Data) -> 
             writeln!(writer, "\n")?;
             write!(writer, "byte-code for {}:", data.def(d_nr).position.file)?;
         }
-        state.def_code(d_nr, data);
-        if show {
-            state.dump_code(writer, d_nr, data)?;
-        }
+        state.def_code(d_nr, data, show, writer);
     }
     Ok(())
 }

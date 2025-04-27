@@ -4,7 +4,6 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
 
-use crate::database::Stores;
 use crate::keys;
 use crate::keys::{Content, DbRef, Key};
 use crate::store::Store;
@@ -205,7 +204,11 @@ pub fn clear_vector(db: &DbRef, stores: &mut [Store]) {
 pub fn get_vector(db: &DbRef, size: u32, from: i32, stores: &[Store]) -> DbRef {
     let store = keys::store(db, stores);
     if from == i32::MIN {
-        return Stores::null();
+        return DbRef {
+            store_nr: db.store_nr,
+            rec: 0,
+            pos: 0,
+        };
     }
     let v_rec = store.get_int(db.rec, db.pos) as u32;
     let l = length_vector(db, stores);

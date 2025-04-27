@@ -1003,6 +1003,11 @@ impl Stores {
         }
     }
 
+    /**
+    Try to allocate a new store.
+    # Panics
+    When the next assumed free store is not free
+    */
     pub fn database(&mut self, size: u32) -> DbRef {
         if self.max >= self.allocations.len() as u16 {
             self.allocations.push(Store::new(100));
@@ -1010,13 +1015,32 @@ impl Stores {
             self.allocations[self.max as usize].init();
         }
         let store = &mut self.allocations[self.max as usize];
-        let rec = store.claim(size);
+        assert!(store.free, "Allocating a used store");
+        store.free = false;
+        let rec = if size == u32::MAX {
+            0
+        } else {
+            store.claim(size)
+        };
         self.max += 1;
         DbRef {
             store_nr: self.max - 1,
             rec,
             pos: 0,
         }
+    }
+
+    /**
+    Free a reference to a store. Make it available again for later code.
+    # Panics
+    When the code doesn't free the last claimed store first.
+    */
+    pub fn free(&mut self, db: &DbRef) {
+        let al = db.store_nr;
+        assert!(al < self.allocations.len() as u16, "Incorrect store");
+        assert!(!self.allocations[al as usize].free, "Double free store");
+        self.allocations[al as usize].free = true;
+        self.max -= 1;
     }
 
     pub fn clear(&mut self, db: &DbRef) {
@@ -1040,12 +1064,8 @@ impl Stores {
     }
 
     #[must_use]
-    pub fn null() -> DbRef {
-        DbRef {
-            store_nr: u16::MAX,
-            rec: 0,
-            pos: 0,
-        }
+    pub fn null(&mut self) -> DbRef {
+        self.database(u32::MAX)
     }
 
     #[must_use]
@@ -2641,6 +2661,9 @@ impl ShowDb<'_> {
         s.push('[');
         let mut first_elm = true;
         loop {
+            if data.rec == 0 {
+                break;
+            }
             let rec = self.stores.next(&data, &mut pos, self.known_type, &[]);
             if rec.rec == 0 {
                 break;
