@@ -20,8 +20,8 @@ static RB_MAX_DEPTH: u32 = 30;
 // Normally rec holds the position towards the LEFT, RiGHT, FLAG fields.
 // However, the compare functions assume pos = 0 for records outside a vector.
 /**
-Get the lowest matching record
-The fields parameter points to the position of the fields
+Get the lowest matching record, with `before` return the record before the lowest.
+The `fields` parameter points to the position inside the record of the fields.
 */
 #[must_use]
 pub fn find(

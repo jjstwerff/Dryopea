@@ -213,10 +213,18 @@ pub fn get_vector(db: &DbRef, size: u32, from: i32, stores: &[Store]) -> DbRef {
     let v_rec = store.get_int(db.rec, db.pos) as u32;
     let l = length_vector(db, stores);
     let f = if from < 0 { from + l as i32 } else { from };
-    DbRef {
-        store_nr: db.store_nr,
-        rec: v_rec,
-        pos: 8 + size * f as u32,
+    if f < 0 || f >= l as i32 {
+        DbRef {
+            store_nr: db.store_nr,
+            rec: 0,
+            pos: 0,
+        }
+    } else {
+        DbRef {
+            store_nr: db.store_nr,
+            rec: v_rec,
+            pos: 8 + size * f as u32,
+        }
     }
 }
 

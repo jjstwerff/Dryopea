@@ -43,6 +43,7 @@ for e in v[1..3] {
 for e in v[2..] {
   c = c * 10 + e;
 }
+assert(!v[4], \"Incorrect reading outside vector bounds\");
 c"
     )
     .result(Value::Int(2448));
@@ -169,6 +170,9 @@ struct Db {map: sorted<Elm[-key]>}"
     .expr(
         "db=Db {map: [Elm {key: \"One\", value: 1}, Elm {key: \"Two\", value: 2}]};
 db.map += [Elm {key: \"Three\", value: 3}, Elm {key: \"Four\", value: 4}];
+assert(db.map[\"Two\"].value == 2, \"Two element\");
+assert(db.map[\"Four\"], \"Four element\");
+assert(!db.map[\"Five\"], \"No element\");
 sum = 0;
 for v in db.map {
   sum = sum * 10 + v.value;
@@ -230,7 +234,12 @@ fn fill(c: Counting) {
   ];
 }"
     )
-    .expr("c = Counting {}; fill(c); c.h[\"Five\"].v + c.h[\"Seven\"].v")
+    .expr(
+        "c = Counting {};
+  fill(c);
+  assert(!c.h[\"None\"], \"No element\");
+  c.h[\"Five\"].v + c.h[\"Seven\"].v",
+    )
     .result(Value::Int(12));
 }
 
@@ -269,10 +278,13 @@ struct Db {map: index<Elm[nr,-key]>}"
   Elm {nr: 83, key: \"Five\", value: 5},
   Elm {nr: 63, key: \"Six\", value: 6},
 ]};
+assert(db.map[101,\"One\"].value == 1 , \"Missing element\");
 sum = 0;
 for v in db.map[83..92,\"Two\"] {
   sum = sum * 10 + v.value;
 };
+assert(!db.map[12,\"\"], \"No element\");
+assert(!db.map[83,\"One\"], \"No element\");
 sum",
     )
     .result(Value::Int(345));

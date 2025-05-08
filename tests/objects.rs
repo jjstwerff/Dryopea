@@ -170,3 +170,33 @@ fn data(n: text) -> Data {
     .expr("d = data(\"test\"); \"{d.name}:{d.number}\"")
     .result(Value::str("test:-0"));
 }
+
+#[test]
+fn return_text() {
+    code!(
+        "pub struct Data {
+    name: text,
+    number: integer
+}
+
+fn data(n: text) -> text {
+    res = Data { name: n };
+    res.name
+}"
+    )
+    .expr("data(\"test\")")
+    .result(Value::str("test"));
+}
+
+#[test]
+fn scope_text() {
+    code!(
+        "pub struct Data {
+    name: text,
+    number: integer
+}
+"
+    )
+    .expr("d = Data { name: \"testing\" }; d.name")
+    .result(Value::str("testing"));
+}
