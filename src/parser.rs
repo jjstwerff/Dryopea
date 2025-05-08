@@ -2040,7 +2040,7 @@ impl Parser {
                 self.text_return(ls);
             } else {
                 for l in ls {
-                    self.vars.move_text_scope(*l, 1);
+                    self.vars.move_var_scope(*l, 1);
                 }
             }
         } else if let Type::Reference(_, ls) | Type::Vector(_, ls) = t {
@@ -2048,7 +2048,7 @@ impl Parser {
                 self.ref_return(ls);
             } else {
                 for l in ls {
-                    self.vars.move_ref_scope(*l, 1);
+                    self.vars.move_var_scope(*l, 1);
                 }
             }
         }
@@ -3900,6 +3900,7 @@ impl Parser {
             let mut dep = cur.clone();
             for v in ls {
                 let n = self.vars.name(*v);
+                let tp = self.vars.tp(*v);
                 // skip related variables that are already attributes
                 if let Some(a) = self.data.def(self.context).attr_names.get(n) {
                     if !dep.contains(&(*a as u16)) {
@@ -3907,17 +3908,24 @@ impl Parser {
                     }
                     continue;
                 }
-                // create a new attribute with this name
-                let a = self.data.add_attribute(
-                    &mut self.lexer,
-                    self.context,
-                    n,
-                    Type::RefVar(Box::new(Type::Text(Vec::new()))),
-                );
-                dep.push(a as u16);
-                self.vars.move_text_scope(*v, 0);
-                self.vars
-                    .set_type(*v, Type::RefVar(Box::new(Type::Text(Vec::new()))));
+                if matches!(tp, Type::Text(_)) {
+                    // create a new attribute with this name
+                    let a = self.data.add_attribute(
+                        &mut self.lexer,
+                        self.context,
+                        n,
+                        Type::RefVar(Box::new(Type::Text(Vec::new()))),
+                    );
+                    dep.push(a as u16);
+                    self.vars
+                        .set_type(*v, Type::RefVar(Box::new(Type::Text(Vec::new()))));
+                } else {
+                    let a = self
+                        .data
+                        .add_attribute(&mut self.lexer, self.context, n, tp.clone());
+                    dep.push(a as u16);
+                }
+                self.vars.move_var_scope(*v, 0);
             }
             self.data.definitions[self.context as usize].returned = Type::Text(dep);
         }
@@ -3943,7 +3951,7 @@ impl Parser {
                     .data
                     .add_attribute(&mut self.lexer, self.context, n, ret.clone());
                 dep.push(a as u16);
-                self.vars.move_ref_scope(*v, 0);
+                self.vars.move_var_scope(*v, 0);
             }
             self.data.definitions[self.context as usize].returned = if let Type::Vector(it, _) = ret
             {

@@ -686,14 +686,14 @@ impl State {
             2 => {
                 // sorted points to the position of the record inside the vector
                 if reverse {
-                    start = vector::sorted_find(&data, true, arg, all, &keys, &from);
-                    finish = vector::sorted_find(&data, ex, arg, all, &keys, &till)
-                        - if ex { 0 } else { u32::from(arg) };
-                } else {
                     start = vector::sorted_find(&data, ex, arg, all, &keys, &till)
                         + if ex { 0 } else { u32::from(arg) };
                     finish =
                         vector::sorted_find(&data, ex, arg, all, &keys, &from) + u32::from(arg);
+                } else {
+                    start = vector::sorted_find(&data, true, arg, all, &keys, &from);
+                    finish = vector::sorted_find(&data, ex, arg, all, &keys, &till)
+                        - if ex { 0 } else { u32::from(arg) };
                 }
             }
             3 => {
@@ -1133,63 +1133,7 @@ impl State {
             }
             Value::Var(v) => self.generate_var(stack, *v),
             Value::Set(v, value) => {
-                self.vars.insert(self.code_pos, *v);
-                if self.initialized.contains(v) {
-                    if matches!(stack.function.tp(*v), Type::Text(_)) {
-                        let var_pos = stack.position - stack.function.stack(*v);
-                        stack.add_op("OpClearText", self);
-                        self.code_add(var_pos);
-                    }
-                    self.set_var(stack, *v, value);
-                } else {
-                    self.initialized.insert(*v);
-                    stack.function.claim(*v, stack.position, &Context::Variable);
-                    if matches!(*stack.function.tp(*v), Type::Text(_)) {
-                        stack.add_op("OpText", self);
-                        stack.position += size_str() as u16;
-                        if let Value::Text(s) = &**value {
-                            if !s.is_empty() {
-                                self.set_var(stack, *v, value);
-                            }
-                        } else {
-                            self.set_var(stack, *v, value);
-                        }
-                    } else if matches!(stack.function.tp(*v), Type::Reference(_, _))
-                        && **value == Value::Null
-                    {
-                        stack.add_op("OpConvRefFromNull", self);
-                    } else if matches!(stack.function.tp(*v), Type::Vector(_, _))
-                        && **value == Value::Null
-                    {
-                        if let Type::Vector(elm_tp, dep) = stack.function.tp(*v).clone() {
-                            if dep.is_empty() {
-                                stack.add_op("OpConvRefFromNull", self);
-                                stack.add_op("OpDatabase", self);
-                                self.code_add(size_of::<DbRef>() as u16);
-                                let name = format!("main_vector<{}>", elm_tp.name(stack.data));
-                                self.code_add(stack.data.def_name(&name).known_type);
-                                stack.add_op("OpVarRef", self);
-                                self.code_add(size_of::<DbRef>() as u16);
-                                stack.add_op("OpConstInt", self);
-                                self.code_add(0);
-                                stack.add_op("OpSetInt", self);
-                                self.code_add(4u16);
-                                stack.add_op("OpCreateRef", self);
-                                self.code_add(size_of::<DbRef>() as u16);
-                                stack.add_op("OpConstInt", self);
-                                self.code_add(4);
-                                stack.add_op("OpSetByte", self);
-                                self.code_add(4u16);
-                                self.code_add(0u16);
-                            } else {
-                                stack.add_op("OpCreateRef", self);
-                                self.code_add(dep[0]);
-                            }
-                        }
-                    } else {
-                        self.generate(value, stack);
-                    }
-                }
+                self.generate_set(stack, v, value);
                 Type::Void
             }
             Value::Loop(values) => {
@@ -1284,6 +1228,72 @@ impl State {
             }
             Value::Iter(_, _) => {
                 panic!("Should have rewritten {val:?}");
+            }
+        }
+    }
+
+    fn generate_set(&mut self, stack: &mut Stack, v: &u16, value: &Value) {
+        self.vars.insert(self.code_pos, *v);
+        if self.initialized.contains(v) {
+            if matches!(stack.function.tp(*v), Type::Text(_)) {
+                let var_pos = stack.position - stack.function.stack(*v);
+                stack.add_op("OpClearText", self);
+                self.code_add(var_pos);
+            }
+            self.set_var(stack, *v, value);
+        } else {
+            self.initialized.insert(*v);
+            stack.function.claim(*v, stack.position, &Context::Variable);
+            if matches!(*stack.function.tp(*v), Type::Text(_)) {
+                stack.add_op("OpText", self);
+                stack.position += size_str() as u16;
+                if let Value::Text(s) = value {
+                    if !s.is_empty() {
+                        self.set_var(stack, *v, value);
+                    }
+                } else {
+                    self.set_var(stack, *v, value);
+                }
+            } else if matches!(stack.function.tp(*v), Type::Reference(_, _))
+                && *value == Value::Null
+            {
+                if let Type::Reference(_, dep) = stack.function.tp(*v).clone() {
+                    if dep.is_empty() {
+                        stack.add_op("OpConvRefFromNull", self);
+                    } else {
+                        stack.add_op("OpCreateRef", self);
+                        self.code_add(dep[0]);
+                    }
+                }
+            } else if matches!(stack.function.tp(*v), Type::Vector(_, _)) && *value == Value::Null {
+                if let Type::Vector(elm_tp, dep) = stack.function.tp(*v).clone() {
+                    if dep.is_empty() {
+                        // TODO move this convoluted implementation to a new operator.
+                        stack.add_op("OpConvRefFromNull", self);
+                        stack.add_op("OpDatabase", self);
+                        self.code_add(size_of::<DbRef>() as u16);
+                        let name = format!("main_vector<{}>", elm_tp.name(stack.data));
+                        self.code_add(stack.data.def_name(&name).known_type);
+                        stack.add_op("OpVarRef", self);
+                        self.code_add(size_of::<DbRef>() as u16);
+                        stack.add_op("OpConstInt", self);
+                        self.code_add(0);
+                        stack.add_op("OpSetInt", self);
+                        self.code_add(4u16);
+                        stack.add_op("OpCreateRef", self);
+                        self.code_add(size_of::<DbRef>() as u16);
+                        stack.add_op("OpConstInt", self);
+                        self.code_add(4);
+                        stack.add_op("OpSetByte", self);
+                        self.code_add(4u16);
+                        self.code_add(0u16);
+                    } else {
+                        stack.add_op("OpCreateRef", self);
+                        self.code_add(dep[0]);
+                    }
+                }
+            } else {
+                self.generate(value, stack);
             }
         }
     }

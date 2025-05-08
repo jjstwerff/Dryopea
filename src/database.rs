@@ -85,7 +85,7 @@ pub enum Parts {
     Sorted(u16, Vec<(u16, bool)>),     // Sorted vector on fields with an ascending flag
     Ordered(u16, Vec<(u16, bool)>),    // Sorted array on fields with an ascending flag
     Hash(u16, Vec<u16>), // A hash table, listing the field numbers that define its key
-    Index(u16, Vec<(u16, bool)>, u16), // An index to a table, listing the key fields and the left field (with +1 right and +2 color)
+    Index(u16, Vec<(u16, bool)>, u16), // An index to a table, listing the key fields and the left field-nr
     Spacial(u16, Vec<u16>),            // A spacial index with the listed coordinate fields as key
                                        // Reference(u16, Relation), // reference and how to get there from here (Primary not allowed)
 }
@@ -1865,11 +1865,30 @@ impl Stores {
                 }
             }
             Parts::Hash(_, _) => hash::find(data, &self.allocations, self.keys(db), key),
-            Parts::Index(_, _, fields) => DbRef {
-                store_nr: data.store_nr,
-                rec: tree::find(data, true, *fields, &self.allocations, self.keys(db), key),
-                pos: 0,
-            },
+            Parts::Index(rec_nr, _, left_field) => {
+                let left = if let Parts::Struct(fields) = &self.types[*rec_nr as usize].parts {
+                    fields[*left_field as usize].position
+                } else {
+                    u16::MAX
+                };
+                let rec = tree::find(data, true, left, &self.allocations, self.keys(db), key);
+                let result = DbRef {
+                    store_nr: data.store_nr,
+                    rec,
+                    pos: 0,
+                };
+                if keys::key_compare(key, &result, &self.allocations, self.keys(db))
+                    == Ordering::Equal
+                {
+                    result
+                } else {
+                    DbRef {
+                        store_nr: data.store_nr,
+                        rec: 0,
+                        pos: 0,
+                    }
+                }
+            }
             _ => panic!("Incorrect search"),
         }
     }
@@ -2508,6 +2527,10 @@ impl ShowDb<'_> {
     When the database is not correct.
     */
     pub fn write(&self, s: &mut String, indent: u16) {
+        if self.rec == 0 {
+            write!(s, "null").unwrap();
+            return;
+        }
         if self.known_type == 0 {
             write!(s, "{}", self.store().get_int(self.rec, self.pos)).unwrap();
         } else if self.known_type == 1 {

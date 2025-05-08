@@ -812,7 +812,7 @@ impl Function {
     }
 
     /// Move the scope of a given variable to the given scope.
-    pub fn move_text_scope(&mut self, var_nr: u16, to_scope: u16) {
+    pub fn move_var_scope(&mut self, var_nr: u16, to_scope: u16) {
         if self.variables[var_nr as usize].scope < to_scope {
             return;
         }
@@ -820,21 +820,13 @@ impl Function {
         assert!(to_scope == 0 || to_scope == 1, "Incorrect scope");
         self.variables[var_nr as usize].scope = to_scope;
         if to_scope == 1 {
-            self.work_texts.insert(var_nr);
-        } else {
+            if matches!(self.tp(var_nr), Type::Text(_)) {
+                self.work_texts.insert(var_nr);
+            } else {
+                self.work_refs.insert(var_nr);
+            }
+        } else if matches!(self.tp(var_nr), Type::Text(_)) {
             self.work_texts.remove(&var_nr);
-        }
-    }
-
-    pub fn move_ref_scope(&mut self, var_nr: u16, to_scope: u16) {
-        if self.variables[var_nr as usize].scope < to_scope {
-            return;
-        }
-        // Problem when this is not a parent scope.
-        assert!(to_scope == 0 || to_scope == 1, "Incorrect scope");
-        self.variables[var_nr as usize].scope = to_scope;
-        if to_scope == 1 {
-            self.work_refs.insert(var_nr);
         } else {
             self.work_refs.remove(&var_nr);
         }

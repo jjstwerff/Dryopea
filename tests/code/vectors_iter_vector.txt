@@ -7,6 +7,7 @@ for e in v[1..3] {
 for e in v[2..] {
   c = c * 10 + e;
 }
+assert(!v[4], "Incorrect reading outside vector bounds");
 c};
     assert(
         test_value == 2448,
@@ -71,6 +72,7 @@ fn test() {#1 block
         }#13;
       }#10;
     }#9;
+    if OpNot(OpConvBoolFromInt(OpGetInt(OpGetVector(v, 4i32, 4i32), 0i32))) null else OpPanic("Incorrect reading outside vector bounds");
     c;
   }#2:integer;
   if OpEqInt(test_value, 2448i32) null else OpPanic({#14 formatting string
@@ -190,27 +192,37 @@ byte-code for iter_vector:test()
  982[64]: FreeStack(value=0, discard=4)
  986[60]: GotoWord(jump=908)
  989[60]: FreeStack(value=0, discard=4)
- 993[56]: VarInt(var[52]) -> integer var=c[52]:integer in 2
- 996[60]: FreeStack(value=4, discard=20) type=integer[4]:Base[0]
-1000[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
-1003[48]: ConstInt(val=2448) -> integer
-1008[52]: EqInt(v1: integer, v2: integer) -> boolean
-1009[45]: GotoFalseWord(jump=1015, if_false: boolean)
-1012[44]: GotoWord(jump=1067)
-1015[44]: ClearText(var[16]) var=__work_1[16]:text in 1
-1018[44]: ConstText(_value="Test failed ") -> text
-1032[60]: AppendText(var[16], v1: text)
-1035[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
-1038[48]: ConstInt(val=0) -> integer
-1043[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-1050[44]: ConstText(_value=" != 2448") -> text
-1060[60]: AppendText(var[16], v1: text)
-1063[44]: VarText(var[16]) -> text var=__work_1[16]:text in 1
-1066[60]: Panic(message: text)
-1067[44]: VarRef(var[4]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13] var=__ref_1[4]:ref(main_vector<integer>) in 1
-1070[56]: FreeRef(v1: ref(reference))
-1071[44]: FreeText(var[16])
-1074[44]: Return(ret=0, value=0, discard=44)
+ 993[56]: VarVector(var[40]) -> vector type=vector<integer>[4]:Vector(0)[12] var=v[40]:vector<integer>["__ref_1"] in 2
+ 996[68]: ConstInt(val=4) -> integer
+1001[72]: GetVector(r: vector, size=4, index: integer) -> ref(reference) type=integer[4]:Base[0]
+1004[68]: GetInt(v1: ref(reference), fld=0) -> integer
+1007[60]: ConvBoolFromInt(v1: integer) -> boolean
+1008[57]: Not(v1: boolean) -> boolean
+1009[57]: GotoFalseWord(jump=1015, if_false: boolean)
+1012[56]: GotoWord(jump=1057)
+1015[56]: ConstText(_value="Incorrect reading outside vector bounds") -> text
+1056[72]: Panic(message: text)
+1057[56]: VarInt(var[52]) -> integer var=c[52]:integer in 2
+1060[60]: FreeStack(value=4, discard=20) type=integer[4]:Base[0]
+1064[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
+1067[48]: ConstInt(val=2448) -> integer
+1072[52]: EqInt(v1: integer, v2: integer) -> boolean
+1073[45]: GotoFalseWord(jump=1079, if_false: boolean)
+1076[44]: GotoWord(jump=1131)
+1079[44]: ClearText(var[16]) var=__work_1[16]:text in 1
+1082[44]: ConstText(_value="Test failed ") -> text
+1096[60]: AppendText(var[16], v1: text)
+1099[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
+1102[48]: ConstInt(val=0) -> integer
+1107[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+1114[44]: ConstText(_value=" != 2448") -> text
+1124[60]: AppendText(var[16], v1: text)
+1127[44]: VarText(var[16]) -> text var=__work_1[16]:text in 1
+1130[60]: Panic(message: text)
+1131[44]: VarRef(var[4]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[13] var=__ref_1[4]:ref(main_vector<integer>) in 1
+1134[56]: FreeRef(v1: ref(reference))
+1135[44]: FreeText(var[16])
+1138[44]: Return(ret=0, value=0, discard=44)
 
 Execute test:
   655:[8] ConvRefFromNull() -> ref(1,0,0)[8]
@@ -390,15 +402,23 @@ Execute test:
   950:[76] FreeStack(value=0, discard=12)
   954:[64] GotoWord(jump=989)
   989:[64] FreeStack(value=0, discard=4)
-  993:[60] VarInt(var[56]) -> 2448[60]
-  996:[64] FreeStack(value=4, discard=20)
- 1000:[48] VarInt(var[44]) -> 2448[48]
- 1003:[52] ConstInt(val=2448) -> 2448[52]
- 1008:[56] EqInt(v1=2448[48], v2=2448[52]) -> true[48]
- 1009:[49] GotoFalseWord(jump=1015, if_false=true[48])
- 1012:[48] GotoWord(jump=1067)
- 1067:[48] VarRef(var[8]) -> ref(1,1,0)={vector:[1,2,4,8]}[48]
- 1070:[60] FreeRef(v1=ref(1,1,0)[48])
- 1071:[48] FreeText(var[20])
- 1074:[48] Return(ret=4294967295[4], value=0, discard=44)
+  993:[60] VarVector(var[44]) -> ref(1,1,4)=[1,2,4,8][60]
+  996:[72] ConstInt(val=4) -> 4[72]
+ 1001:[76] GetVector(r=ref(1,1,4)=true[60], size=4, index=4[72]) -> ref(1,0,0)=null[60]
+ 1004:[72] GetInt(v1=ref(1,0,0)[60], fld=0) -> -2147483648[60]
+ 1007:[64] ConvBoolFromInt(v1=-2147483648[60]) -> false[60]
+ 1008:[61] Not(v1=false[60]) -> true[60]
+ 1009:[61] GotoFalseWord(jump=1015, if_false=true[60])
+ 1012:[60] GotoWord(jump=1057)
+ 1057:[60] VarInt(var[56]) -> 2448[60]
+ 1060:[64] FreeStack(value=4, discard=20)
+ 1064:[48] VarInt(var[44]) -> 2448[48]
+ 1067:[52] ConstInt(val=2448) -> 2448[52]
+ 1072:[56] EqInt(v1=2448[48], v2=2448[52]) -> true[48]
+ 1073:[49] GotoFalseWord(jump=1079, if_false=true[48])
+ 1076:[48] GotoWord(jump=1131)
+ 1131:[48] VarRef(var[8]) -> ref(1,1,0)={vector:[1,2,4,8]}[48]
+ 1134:[60] FreeRef(v1=ref(1,1,0)[48])
+ 1135:[48] FreeText(var[20])
+ 1138:[48] Return(ret=4294967295[4], value=0, discard=44)
 Finished

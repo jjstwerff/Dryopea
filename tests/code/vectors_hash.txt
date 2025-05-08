@@ -21,7 +21,10 @@ fn fill(c: Counting) {
 }
 
 pub fn test() {
-    test_value = {c = Counting {}; fill(c); c.h["Five"].v + c.h["Seven"].v};
+    test_value = {c = Counting {};
+  fill(c);
+  assert(!c.h["None"], "No element");
+  c.h["Five"].v + c.h["Seven"].v};
     assert(
         test_value == 12,
         "Test failed {test_value} != 12"
@@ -295,6 +298,7 @@ fn test() {#1 block
       __ref_1;
     }#3:ref(Counting)["__ref_1"];
     fill(c);
+    if OpNot(OpConvBoolFromRef(OpGetRecord(OpGetField(c, 8i32, 15i32), 15i32, 1i32, "None"))) null else OpPanic("No element");
     OpAddInt(OpGetInt(OpGetRecord(OpGetField(c, 8i32, 15i32), 15i32, 1i32, "Five"), 8i32), OpGetInt(OpGetRecord(OpGetField(c, 8i32, 15i32), 15i32, 1i32, "Seven"), 8i32));
   }#2:integer;
   if OpEqInt(test_value, 12i32) null else OpPanic({#4 formatting string
@@ -321,35 +325,45 @@ byte-code for hash:test()
 1290[64]: Call(size=0, to=655)
 1297[52]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[13] var=c[40]:ref(Counting)["__ref_1"] in 2
 1300[64]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[t]>[4]:Hash(12, [0]) keys [tp:6 desc:false field:4, ][15]
-1303[64]: ConstText(_value="Five") -> text
+1303[64]: ConstText(_value="None") -> text
 1309[80]: GetRecord(data: ref(reference), db_tp=15, no_keys=1) -> ref(reference)
-1313[64]: GetInt(v1: ref(reference), fld=8) -> integer
-1316[56]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[13] var=c[40]:ref(Counting)["__ref_1"] in 2
-1319[68]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[t]>[4]:Hash(12, [0]) keys [tp:6 desc:false field:4, ][15]
-1322[68]: ConstText(_value="Seven") -> text
-1329[84]: GetRecord(data: ref(reference), db_tp=15, no_keys=1) -> ref(reference)
-1333[68]: GetInt(v1: ref(reference), fld=8) -> integer
-1336[60]: AddInt(v1: integer, v2: integer) -> integer
-1337[56]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
-1341[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
-1344[48]: ConstInt(val=12) -> integer
-1349[52]: EqInt(v1: integer, v2: integer) -> boolean
-1350[45]: GotoFalseWord(jump=1356, if_false: boolean)
-1353[44]: GotoWord(jump=1406)
-1356[44]: ClearText(var[16]) var=__work_1[16]:text in 1
-1359[44]: ConstText(_value="Test failed ") -> text
-1373[60]: AppendText(var[16], v1: text)
-1376[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
-1379[48]: ConstInt(val=0) -> integer
-1384[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-1391[44]: ConstText(_value=" != 12") -> text
-1399[60]: AppendText(var[16], v1: text)
-1402[44]: VarText(var[16]) -> text var=__work_1[16]:text in 1
-1405[60]: Panic(message: text)
-1406[44]: FreeText(var[16])
-1409[44]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[13] var=__ref_1[4]:ref(Counting) in 1
-1412[56]: FreeRef(v1: ref(reference))
-1413[44]: Return(ret=0, value=0, discard=44)
+1313[64]: ConvBoolFromRef(val: ref(reference)) -> boolean
+1314[53]: Not(v1: boolean) -> boolean
+1315[53]: GotoFalseWord(jump=1321, if_false: boolean)
+1318[52]: GotoWord(jump=1334)
+1321[52]: ConstText(_value="No element") -> text
+1333[68]: Panic(message: text)
+1334[52]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[13] var=c[40]:ref(Counting)["__ref_1"] in 2
+1337[64]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[t]>[4]:Hash(12, [0]) keys [tp:6 desc:false field:4, ][15]
+1340[64]: ConstText(_value="Five") -> text
+1346[80]: GetRecord(data: ref(reference), db_tp=15, no_keys=1) -> ref(reference)
+1350[64]: GetInt(v1: ref(reference), fld=8) -> integer
+1353[56]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[13] var=c[40]:ref(Counting)["__ref_1"] in 2
+1356[68]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[t]>[4]:Hash(12, [0]) keys [tp:6 desc:false field:4, ][15]
+1359[68]: ConstText(_value="Seven") -> text
+1366[84]: GetRecord(data: ref(reference), db_tp=15, no_keys=1) -> ref(reference)
+1370[68]: GetInt(v1: ref(reference), fld=8) -> integer
+1373[60]: AddInt(v1: integer, v2: integer) -> integer
+1374[56]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
+1378[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
+1381[48]: ConstInt(val=12) -> integer
+1386[52]: EqInt(v1: integer, v2: integer) -> boolean
+1387[45]: GotoFalseWord(jump=1393, if_false: boolean)
+1390[44]: GotoWord(jump=1443)
+1393[44]: ClearText(var[16]) var=__work_1[16]:text in 1
+1396[44]: ConstText(_value="Test failed ") -> text
+1410[60]: AppendText(var[16], v1: text)
+1413[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
+1416[48]: ConstInt(val=0) -> integer
+1421[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+1428[44]: ConstText(_value=" != 12") -> text
+1436[60]: AppendText(var[16], v1: text)
+1439[44]: VarText(var[16]) -> text var=__work_1[16]:text in 1
+1442[60]: Panic(message: text)
+1443[44]: FreeText(var[16])
+1446[44]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[13] var=__ref_1[4]:ref(Counting) in 1
+1449[56]: FreeRef(v1: ref(reference))
+1450[44]: Return(ret=0, value=0, discard=44)
 
 Execute test:
  1255:[8] ConvRefFromNull() -> ref(1,0,0)[8]
@@ -523,23 +537,31 @@ Execute test:
  1249:[72] Return(ret=1297[68], value=0, discard=16)
  1297:[56] VarRef(var[44]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[56]
  1300:[68] GetField(v1=ref(1,1,0)[56], fld=8) -> ref(1,1,8)=[{t:"Three",v:3},{t:"Thirteen",v:13},{t:"Six",v:6},{t:"Eight",v:8},{t:"Four",v:4},{t:"Five",v:5},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"One",v:1},{t:"Twelve",v:12},{t:"Nine",v:9},{t:"Two",v:2},{t:"Seven",v:7}][56]
- 1303:[68] ConstText(_value="Five") -> "Five"[68]
- 1309:[84] GetRecord(data=ref(1,1,8)[56], db_tp=15, no_keys=1, key1="Five"[68]) -> ref(1,45,0)[56]
- 1313:[68] GetInt(v1=ref(1,45,0)[56], fld=8) -> 5[56]
- 1316:[60] VarRef(var[44]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[60]
- 1319:[72] GetField(v1=ref(1,1,0)[60], fld=8) -> ref(1,1,8)=[{t:"Three",v:3},{t:"Thirteen",v:13},{t:"Six",v:6},{t:"Eight",v:8},{t:"Four",v:4},{t:"Five",v:5},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"One",v:1},{t:"Twelve",v:12},{t:"Nine",v:9},{t:"Two",v:2},{t:"Seven",v:7}][60]
- 1322:[72] ConstText(_value="Seven") -> "Seven"[72]
- 1329:[88] GetRecord(data=ref(1,1,8)[60], db_tp=15, no_keys=1, key1="Seven"[72]) -> ref(1,53,0)[60]
- 1333:[72] GetInt(v1=ref(1,53,0)[60], fld=8) -> 7[60]
- 1336:[64] AddInt(v1=5[56], v2=7[60]) -> 12[56]
- 1337:[60] FreeStack(value=4, discard=16)
- 1341:[48] VarInt(var[44]) -> 12[48]
- 1344:[52] ConstInt(val=12) -> 12[52]
- 1349:[56] EqInt(v1=12[48], v2=12[52]) -> true[48]
- 1350:[49] GotoFalseWord(jump=1356, if_false=true[48])
- 1353:[48] GotoWord(jump=1406)
- 1406:[48] FreeText(var[20])
- 1409:[48] VarRef(var[8]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[48]
- 1412:[60] FreeRef(v1=ref(1,1,0)[48])
- 1413:[48] Return(ret=4294967295[4], value=0, discard=44)
+ 1303:[68] ConstText(_value="None") -> "None"[68]
+ 1309:[84] GetRecord(data=ref(1,1,8)[56], db_tp=15, no_keys=1, key1="None"[68]) -> ref(1,0,0)[56]
+ 1313:[68] ConvBoolFromRef(val=ref(1,0,0)[56]) -> false[56]
+ 1314:[57] Not(v1=false[56]) -> true[56]
+ 1315:[57] GotoFalseWord(jump=1321, if_false=true[56])
+ 1318:[56] GotoWord(jump=1334)
+ 1334:[56] VarRef(var[44]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[56]
+ 1337:[68] GetField(v1=ref(1,1,0)[56], fld=8) -> ref(1,1,8)=[{t:"Three",v:3},{t:"Thirteen",v:13},{t:"Six",v:6},{t:"Eight",v:8},{t:"Four",v:4},{t:"Five",v:5},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"One",v:1},{t:"Twelve",v:12},{t:"Nine",v:9},{t:"Two",v:2},{t:"Seven",v:7}][56]
+ 1340:[68] ConstText(_value="Five") -> "Five"[68]
+ 1346:[84] GetRecord(data=ref(1,1,8)[56], db_tp=15, no_keys=1, key1="Five"[68]) -> ref(1,45,0)[56]
+ 1350:[68] GetInt(v1=ref(1,45,0)[56], fld=8) -> 5[56]
+ 1353:[60] VarRef(var[44]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[60]
+ 1356:[72] GetField(v1=ref(1,1,0)[60], fld=8) -> ref(1,1,8)=[{t:"Three",v:3},{t:"Thirteen",v:13},{t:"Six",v:6},{t:"Eight",v:8},{t:"Four",v:4},{t:"Five",v:5},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"One",v:1},{t:"Twelve",v:12},{t:"Nine",v:9},{t:"Two",v:2},{t:"Seven",v:7}][60]
+ 1359:[72] ConstText(_value="Seven") -> "Seven"[72]
+ 1366:[88] GetRecord(data=ref(1,1,8)[60], db_tp=15, no_keys=1, key1="Seven"[72]) -> ref(1,53,0)[60]
+ 1370:[72] GetInt(v1=ref(1,53,0)[60], fld=8) -> 7[60]
+ 1373:[64] AddInt(v1=5[56], v2=7[60]) -> 12[56]
+ 1374:[60] FreeStack(value=4, discard=16)
+ 1378:[48] VarInt(var[44]) -> 12[48]
+ 1381:[52] ConstInt(val=12) -> 12[52]
+ 1386:[56] EqInt(v1=12[48], v2=12[52]) -> true[48]
+ 1387:[49] GotoFalseWord(jump=1393, if_false=true[48])
+ 1390:[48] GotoWord(jump=1443)
+ 1443:[48] FreeText(var[20])
+ 1446:[48] VarRef(var[8]) -> ref(1,1,0)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[48]
+ 1449:[60] FreeRef(v1=ref(1,1,0)[48])
+ 1450:[48] Return(ret=4294967295[4], value=0, discard=44)
 Finished
