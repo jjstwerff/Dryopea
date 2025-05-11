@@ -168,7 +168,7 @@ fn data(n: text) -> Data {
     "
     )
     .expr("d = data(\"test\"); \"{d.name}:{d.number}\"")
-    .result(Value::str("test:-0"));
+    .result(Value::str("test:0"));
 }
 
 #[test]

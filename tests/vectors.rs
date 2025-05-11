@@ -199,13 +199,13 @@ struct Db {map: sorted<Elm[-nr,key]>}"
   Elm {nr: 63, key: \"Six\", value: 6},
 ]};
 sum = 0;
-sum += db.map[83,\"Five\"].value;
+assert(db.map[83,\"Five\"].value == 5, \"Incorrect element {db.map[83,\"Five\"].value}\");
 for v in db.map[84..=63,\"Six\"] {
   sum = sum * 10 + v.value;
 };
 sum",
     )
-    .result(Value::Int(53456));
+    .result(Value::Int(5436));
 }
 
 #[test]

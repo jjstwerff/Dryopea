@@ -686,26 +686,25 @@ impl State {
             2 => {
                 // sorted points to the position of the record inside the vector
                 if reverse {
-                    start = vector::sorted_find(&data, ex, arg, all, &keys, &till)
-                        + if ex { 0 } else { u32::from(arg) };
-                    finish =
-                        vector::sorted_find(&data, ex, arg, all, &keys, &from) + u32::from(arg);
+                    start =
+                        vector::sorted_find(&data, ex, arg, all, &keys, &till).0 + u32::from(!ex);
+                    finish = vector::sorted_find(&data, ex, arg, all, &keys, &from).0 + 1;
                 } else {
-                    start = vector::sorted_find(&data, true, arg, all, &keys, &from);
-                    finish = vector::sorted_find(&data, ex, arg, all, &keys, &till)
-                        - if ex { 0 } else { u32::from(arg) };
+                    let (s, cmp) = vector::sorted_find(&data, true, arg, all, &keys, &from);
+                    start = if cmp || s == 0 { s } else { s - 1 };
+                    finish =
+                        vector::sorted_find(&data, ex, arg, all, &keys, &till).0 - u32::from(!ex);
                 }
             }
             3 => {
                 // ordered points to the position inside the vector of references
                 if reverse {
-                    start = vector::ordered_find(&data, true, all, &keys, &from);
-                    finish = vector::ordered_find(&data, ex, all, &keys, &till)
-                        - if ex { 0 } else { u32::from(arg) };
+                    start = vector::ordered_find(&data, true, all, &keys, &from).0 + u32::from(!ex);
+                    finish = vector::ordered_find(&data, ex, all, &keys, &till).0 + 1;
                 } else {
-                    start = vector::ordered_find(&data, ex, all, &keys, &till)
-                        + if ex { 0 } else { u32::from(arg) };
-                    finish = vector::ordered_find(&data, ex, all, &keys, &from) + u32::from(arg);
+                    let (s, cmp) = vector::ordered_find(&data, ex, all, &keys, &till);
+                    start = if cmp || s == 0 { s } else { s - 1 };
+                    finish = vector::ordered_find(&data, ex, all, &keys, &from).0 - u32::from(!ex);
                 }
             }
             _ => panic!("Not implemented"),
@@ -768,9 +767,16 @@ impl State {
             }
             2 => {
                 let mut pos = cur as i32;
-                vector::vector_next(&data, &mut pos, arg, &self.database.allocations);
+                vector::vector_step(&data, &mut pos, &self.database.allocations);
                 self.put_var(state_var - 8, pos as u32);
-                self.database.element_reference(&data, &mut pos)
+                self.database.element_reference(
+                    &data,
+                    if pos == i32::MAX {
+                        i32::MAX
+                    } else {
+                        8 + pos * i32::from(arg)
+                    },
+                )
             }
             3 => {
                 let mut pos = cur as i32;
@@ -1133,7 +1139,7 @@ impl State {
             }
             Value::Var(v) => self.generate_var(stack, *v),
             Value::Set(v, value) => {
-                self.generate_set(stack, v, value);
+                self.generate_set(stack, *v, value);
                 Type::Void
             }
             Value::Loop(values) => {
@@ -1232,32 +1238,31 @@ impl State {
         }
     }
 
-    fn generate_set(&mut self, stack: &mut Stack, v: &u16, value: &Value) {
-        self.vars.insert(self.code_pos, *v);
-        if self.initialized.contains(v) {
-            if matches!(stack.function.tp(*v), Type::Text(_)) {
-                let var_pos = stack.position - stack.function.stack(*v);
+    fn generate_set(&mut self, stack: &mut Stack, v: u16, value: &Value) {
+        self.vars.insert(self.code_pos, v);
+        if self.initialized.contains(&v) {
+            if matches!(stack.function.tp(v), Type::Text(_)) {
+                let var_pos = stack.position - stack.function.stack(v);
                 stack.add_op("OpClearText", self);
                 self.code_add(var_pos);
             }
-            self.set_var(stack, *v, value);
+            self.set_var(stack, v, value);
         } else {
-            self.initialized.insert(*v);
-            stack.function.claim(*v, stack.position, &Context::Variable);
-            if matches!(*stack.function.tp(*v), Type::Text(_)) {
+            self.initialized.insert(v);
+            stack.function.claim(v, stack.position, &Context::Variable);
+            if matches!(*stack.function.tp(v), Type::Text(_)) {
                 stack.add_op("OpText", self);
                 stack.position += size_str() as u16;
                 if let Value::Text(s) = value {
                     if !s.is_empty() {
-                        self.set_var(stack, *v, value);
+                        self.set_var(stack, v, value);
                     }
                 } else {
-                    self.set_var(stack, *v, value);
+                    self.set_var(stack, v, value);
                 }
-            } else if matches!(stack.function.tp(*v), Type::Reference(_, _))
-                && *value == Value::Null
+            } else if matches!(stack.function.tp(v), Type::Reference(_, _)) && *value == Value::Null
             {
-                if let Type::Reference(_, dep) = stack.function.tp(*v).clone() {
+                if let Type::Reference(_, dep) = stack.function.tp(v).clone() {
                     if dep.is_empty() {
                         stack.add_op("OpConvRefFromNull", self);
                     } else {
@@ -1265,8 +1270,8 @@ impl State {
                         self.code_add(dep[0]);
                     }
                 }
-            } else if matches!(stack.function.tp(*v), Type::Vector(_, _)) && *value == Value::Null {
-                if let Type::Vector(elm_tp, dep) = stack.function.tp(*v).clone() {
+            } else if matches!(stack.function.tp(v), Type::Vector(_, _)) && *value == Value::Null {
+                if let Type::Vector(elm_tp, dep) = stack.function.tp(v).clone() {
                     if dep.is_empty() {
                         // TODO move this convoluted implementation to a new operator.
                         stack.add_op("OpConvRefFromNull", self);
@@ -1327,7 +1332,7 @@ impl State {
                 if dep.is_empty() {
                     if stack.function.stack(v) >= stack.position {
                         /*
-                        The first pass on code can sometimes be different then the second,
+                        The first pass on code can sometimes be different from the second,
                         created variables in this pass could not exist in the second one.
                         println!(
                             "skip free reference {} stack {} on {}",
