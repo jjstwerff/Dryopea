@@ -124,17 +124,17 @@ pub fn sorted_finish(sorted: &DbRef, size: u32, keys: &[Key], stores: &mut [Stor
         pos: latest_pos,
     };
     let key = keys::get_key(&rec, stores, keys);
-    let pos = sorted_find(sorted, true, size as u16, stores, keys, &key);
+    let (pos, _) = sorted_find(sorted, true, size as u16, stores, keys, &key);
     let store = keys::mut_store(sorted, stores);
-    let end_pos = 8 + length * size;
+    let end_pos = length;
     if pos < end_pos {
         // create space to write the new record to
         store.copy_block(
             sorted_rec,
-            pos as isize,
+            (8 + pos * size) as isize,
             sorted_rec,
-            (pos + size) as isize,
-            (end_pos - pos) as isize,
+            (8 + (pos + 1) * size) as isize,
+            ((end_pos - pos) * size) as isize,
         );
     }
     // move last record to the found correct position
@@ -142,7 +142,7 @@ pub fn sorted_finish(sorted: &DbRef, size: u32, keys: &[Key], stores: &mut [Stor
         sorted_rec,
         latest_pos as isize,
         sorted_rec,
-        pos as isize,
+        (8 + pos * size) as isize,
         size as isize,
     );
     store.set_int(sorted_rec, 4, (length + 1) as i32);
@@ -159,18 +159,18 @@ pub fn ordered_finish(sorted: &DbRef, rec: &DbRef, keys: &[Key], stores: &mut [S
         return;
     }
     let key = keys::get_key(rec, stores, keys);
-    let p = ordered_find(sorted, true, stores, keys, &key);
+    let pos = ordered_find(sorted, true, stores, keys, &key).0;
     let latest_pos = 8 + length * 4;
-    if latest_pos > p {
+    if latest_pos > pos {
         keys::mut_store(sorted, stores).copy_block(
             sorted_rec,
-            p as isize,
+            8 + pos as isize * 4,
             sorted_rec,
-            p as isize + 4,
-            (latest_pos - p) as isize,
+            12 + pos as isize * 4,
+            (latest_pos - pos * 4) as isize,
         );
     }
-    keys::mut_store(&rec_ref, stores).set_int(sorted_rec, p, rec.rec as i32);
+    keys::mut_store(&rec_ref, stores).set_int(sorted_rec, 8 + pos * 4, rec.rec as i32);
     keys::mut_store(sorted, stores).set_int(sorted_rec, 4, 1 + length as i32);
 }
 
@@ -254,37 +254,48 @@ pub fn sorted_find(
     stores: &[Store],
     keys: &[Key],
     key: &[Content],
-) -> u32 {
+) -> (u32, bool) {
     let store = keys::store(sorted, stores);
     let sorted_rec = store.get_int(sorted.rec, sorted.pos) as u32;
     let length = store.get_int(sorted_rec, 4) as u32;
-    let mut found = 0;
     let mut result = DbRef {
         store_nr: sorted.store_nr,
         rec: sorted_rec,
-        pos: 8 + found * u32::from(size),
+        pos: 0,
     };
     let mut left = 0;
     let mut right = length - 1;
-    while left != right {
-        found = (left + right + 1) >> 1;
-        result.pos = 8 + found * u32::from(size);
-        let cmd = keys::key_compare(key, &result, stores, keys);
-        if (cmd == Ordering::Less && before) || (cmd != Ordering::Greater && !before) {
-            right = found - 1;
+    let mut found = false;
+    loop {
+        let mut mid = left + (right - left) / 2;
+        result.pos = 8 + mid * u32::from(size);
+        let cmp = keys::key_compare(key, &result, stores, keys);
+        let action = if cmp == Ordering::Equal {
+            found = true;
+            if before {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            }
         } else {
-            left = found;
+            cmp
+        };
+        if action == Ordering::Less {
+            right = mid;
+            if mid > 0 {
+                right -= 1;
+            } else {
+                left += 1;
+            }
+        } else {
+            left = mid + 1;
         }
-    }
-    result.pos = 8 + left * u32::from(size);
-    let cmp = keys::key_compare(key, &result, stores, keys);
-    if cmp == Ordering::Greater {
-        8 + (left + 1) * u32::from(size)
-    } else if cmp == Ordering::Equal && before {
-        // TODO this can potentially be below 0 on the returned first record with size > 8
-        8 + left * u32::from(size) - u32::from(size)
-    } else {
-        result.pos
+        if left > right {
+            if cmp == Ordering::Greater {
+                mid += 1;
+            }
+            return (mid, found);
+        }
     }
 }
 
@@ -295,41 +306,52 @@ pub fn ordered_find(
     stores: &[Store],
     keys: &[Key],
     key: &[Content],
-) -> u32 {
+) -> (u32, bool) {
     let store = keys::store(sorted, stores);
     let sorted_rec = store.get_int(sorted.rec, sorted.pos) as u32;
     let length = store.get_int(sorted_rec, 4) as u32;
-    let mut found;
     let mut result = DbRef {
         store_nr: sorted.store_nr,
         rec: 0,
         pos: 0,
     };
     if sorted_rec == 0 {
-        return 0;
+        return (0, false);
     }
+    let mut found = false;
     let mut left = 0;
     let mut right = length - 1;
-    while left != right {
-        found = (left + right + 1) >> 1;
-        result.rec = store.get_int(sorted_rec, 8 + found * 4) as u32;
+    loop {
+        let mut mid = (left + right + 1) >> 1;
+        result.rec = store.get_int(sorted_rec, 8 + mid * 4) as u32;
         let cmp = keys::key_compare(key, &result, stores, keys);
-        if (cmp == Ordering::Less && before) || (cmp != Ordering::Greater && !before) {
-            right = found - 1;
+        let action = if cmp == Ordering::Equal {
+            found = true;
+            if before {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            }
         } else {
-            left = found;
+            cmp
+        };
+        if action == Ordering::Less {
+            right = mid;
+            if mid > 0 {
+                right -= 1;
+            } else {
+                left += 1;
+            }
+        } else {
+            left = mid + 1;
+        }
+        if left > right {
+            if cmp == Ordering::Greater {
+                mid += 1;
+            }
+            return (mid, found);
         }
     }
-    result.rec = store.get_int(sorted_rec, 8 + left * 4) as u32;
-    let cmp = keys::key_compare(key, &result, stores, keys);
-    left * 4
-        + if before && cmp == Ordering::Equal {
-            4
-        } else if cmp == Ordering::Greater {
-            12
-        } else {
-            8
-        }
 }
 
 pub fn vector_next(data: &DbRef, pos: &mut i32, size: u16, stores: &[Store]) {
@@ -343,6 +365,22 @@ pub fn vector_next(data: &DbRef, pos: &mut i32, size: u16, stores: &[Store]) {
         *pos = 8;
     } else if length != 0 && *pos < 8 + (length - 1) * i32::from(size) {
         *pos += i32::from(size);
+    } else {
+        *pos = i32::MAX;
+    }
+}
+
+pub fn vector_step(data: &DbRef, pos: &mut i32, stores: &[Store]) {
+    let rec = keys::store(data, stores).get_int(data.rec, data.pos) as u32;
+    if rec == 0 {
+        *pos = i32::MAX;
+        return;
+    }
+    let length = keys::store(data, stores).get_int(rec, 4);
+    if *pos == i32::MAX && length != 0 {
+        *pos = 0;
+    } else if length != 0 && *pos < length - 1 {
+        *pos += 1;
     } else {
         *pos = i32::MAX;
     }

@@ -555,13 +555,18 @@ impl Stores {
             }
             if let Parts::Struct(fields) = &self.types[t_nr].parts {
                 for f in fields {
-                    if let Parts::Vector(v) = self.types[f.content as usize].parts {
+                    if let Parts::Vector(v) | Parts::Sorted(v, _) =
+                        self.types[f.content as usize].parts
+                    {
                         vectors.insert(v);
                     }
                     if let Parts::Hash(r, _) = self.types[f.content as usize].parts {
                         linked.insert(r);
                     }
                 }
+            }
+            if let Parts::Sorted(v, _) = &self.types[t_nr].parts {
+                vectors.insert(*v);
             }
         }
         let mut sizes = Vec::new();
@@ -1087,6 +1092,12 @@ impl Stores {
         let mut res = String::new();
         self.show(&mut res, db, tp, false);
         res
+    }
+
+    pub fn dump(&self, db: &DbRef, tp: u16) {
+        let mut check = String::new();
+        self.show(&mut check, db, tp, true);
+        println!("data: {check}");
     }
 
     pub fn show(&self, s: &mut String, db: &DbRef, tp: u16, pretty: bool) {
@@ -1831,37 +1842,49 @@ impl Stores {
                 }
             }
             Parts::Sorted(c, _) => {
-                // TODO verify the given key on the resulting record
-                DbRef {
-                    store_nr: data.store_nr,
-                    rec: self.store(data).get_int(data.rec, data.pos) as u32,
-                    pos: vector::sorted_find(
-                        data,
-                        true,
-                        self.types[*c as usize].size,
-                        &self.allocations,
-                        &self.types[db as usize].keys,
-                        key,
-                    ) + u32::from(self.types[*c as usize].size),
+                let (pos, found) = vector::sorted_find(
+                    data,
+                    true,
+                    self.types[*c as usize].size,
+                    &self.allocations,
+                    &self.types[db as usize].keys,
+                    key,
+                );
+                if found {
+                    DbRef {
+                        store_nr: data.store_nr,
+                        rec: self.store(data).get_int(data.rec, data.pos) as u32,
+                        pos: 8 + pos * u32::from(self.types[*c as usize].size),
+                    }
+                } else {
+                    DbRef {
+                        store_nr: data.store_nr,
+                        rec: 0,
+                        pos: 0,
+                    }
                 }
             }
             Parts::Ordered(_, _) => {
-                // TODO verify the given key on the resulting record
-                let vector = self.store(data).get_int(data.rec, data.pos) as u32;
-                let rec = self.store(data).get_int(
-                    vector,
-                    vector::ordered_find(
-                        data,
-                        true,
-                        &self.allocations,
-                        &self.types[db as usize].keys,
-                        key,
-                    ) + 4,
-                ) as u32;
-                DbRef {
-                    store_nr: data.store_nr,
-                    rec,
-                    pos: 0,
+                let sorted_rec = self.store(data).get_int(data.rec, data.pos) as u32;
+                let (pos, found) = vector::ordered_find(
+                    data,
+                    true,
+                    &self.allocations,
+                    &self.types[db as usize].keys,
+                    key,
+                );
+                if found {
+                    DbRef {
+                        store_nr: data.store_nr,
+                        rec: self.store(data).get_int(sorted_rec, 8 + pos * 4) as u32,
+                        pos: 0,
+                    }
+                } else {
+                    DbRef {
+                        store_nr: data.store_nr,
+                        rec: 0,
+                        pos: 0,
+                    }
                 }
             }
             Parts::Hash(_, _) => hash::find(data, &self.allocations, self.keys(db), key),
@@ -1929,27 +1952,31 @@ impl Stores {
                 if key.is_empty() {
                     i32::MAX
                 } else {
-                    vector::sorted_find(
+                    8 + vector::sorted_find(
                         data,
                         true,
                         self.types[*c as usize].size,
                         &self.allocations,
                         &self.types[db as usize].keys,
                         key,
-                    ) as i32
+                    )
+                    .0 as i32
+                        * i32::from(self.types[*c as usize].size)
                 }
             }
             Parts::Ordered(_, _) => {
                 if key.is_empty() {
                     i32::MAX
                 } else {
-                    vector::ordered_find(
+                    8 + vector::ordered_find(
                         data,
                         true,
                         &self.allocations,
                         &self.types[db as usize].keys,
                         key,
-                    ) as i32
+                    )
+                    .0 as i32
+                        * 4
                 }
             }
             _ => i32::MAX,
@@ -2006,7 +2033,7 @@ impl Stores {
         match &self.types[db as usize].parts {
             Parts::Vector(c) => {
                 vector::vector_next(data, pos, self.types[*c as usize].size, &self.allocations);
-                self.element_reference(data, pos)
+                self.element_reference(data, *pos)
             }
             Parts::Hash(_, _) => {
                 let rec = self.store(data).get_int(data.rec, data.pos) as u32;
@@ -2037,7 +2064,7 @@ impl Stores {
             }
             Parts::Sorted(c, keys) => {
                 vector::vector_next(data, pos, self.types[*c as usize].size, &self.allocations);
-                let mut rec = self.element_reference(data, pos);
+                let mut rec = self.element_reference(data, *pos);
                 if !key.is_empty()
                     && *pos != 0
                     && self.compare_key(&rec, db, keys, key) != Ordering::Equal
@@ -2110,15 +2137,16 @@ impl Stores {
         }
     }
 
-    pub fn element_reference(&self, data: &DbRef, pos: &mut i32) -> DbRef {
+    #[must_use]
+    pub fn element_reference(&self, data: &DbRef, pos: i32) -> DbRef {
         DbRef {
             store_nr: data.store_nr,
-            rec: if *pos == i32::MAX {
+            rec: if pos == i32::MAX {
                 0
             } else {
                 self.store(data).get_int(data.rec, data.pos) as u32
             },
-            pos: *pos as u32,
+            pos: pos as u32,
         }
     }
 
