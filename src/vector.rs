@@ -267,7 +267,7 @@ pub fn sorted_find(
     let mut right = length - 1;
     let mut found = false;
     loop {
-        let mut mid = left + (right - left) / 2;
+        let mid = left + (right - left) / 2;
         result.pos = 8 + mid * u32::from(size);
         let cmp = keys::key_compare(key, &result, stores, keys);
         let action = if cmp == Ordering::Equal {
@@ -281,20 +281,24 @@ pub fn sorted_find(
             cmp
         };
         if action == Ordering::Less {
-            right = mid;
             if mid > 0 {
-                right -= 1;
+                right = mid - 1;
             } else {
+                right = 0;
                 left += 1;
             }
         } else {
             left = mid + 1;
         }
         if left > right {
-            if cmp == Ordering::Greater {
-                mid += 1;
-            }
-            return (mid, found);
+            return (
+                if action == Ordering::Greater {
+                    mid + 1
+                } else {
+                    mid
+                },
+                found,
+            );
         }
     }
 }
@@ -336,20 +340,24 @@ pub fn ordered_find(
             cmp
         };
         if action == Ordering::Less {
-            right = mid;
             if mid > 0 {
-                right -= 1;
+                right = mid - 1;
             } else {
+                right = 0;
                 left += 1;
             }
         } else {
             left = mid + 1;
         }
         if left > right {
-            if cmp == Ordering::Greater {
-                mid += 1;
-            }
-            return (mid, found);
+            return (
+                if action == Ordering::Greater {
+                    mid + 1
+                } else {
+                    mid
+                },
+                found,
+            );
         }
     }
 }

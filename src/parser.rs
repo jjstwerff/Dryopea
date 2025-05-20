@@ -337,17 +337,14 @@ impl Parser {
                 | Type::Hash(_, _, _)
                 | Type::Index(_, _, _)
                 | Type::Spacial(_, _, _) => {
-                    let known = if self.first_pass {
-                        Value::Null
-                    } else {
-                        self.type_info(is_type)
-                    };
-                    let iter_expr =
-                        self.cl("OpStart", &[code.clone(), known.clone(), Value::Int(0)]);
-                    let next_expr = self.cl(
-                        "OpNext",
-                        &[code.clone(), Value::Var(iter_var), known, Value::Int(0)],
-                    );
+                    let mut ls = Vec::new();
+                    self.fill_iter(&mut ls, code, is_type, true, true);
+                    ls.push(Value::Int(0));
+                    ls.push(Value::Int(0));
+                    let iter_expr = self.cl("OpIterate", &ls);
+                    let mut ls = vec![Value::Var(iter_var)];
+                    self.fill_iter(&mut ls, code, is_type, false, true);
+                    let next_expr = self.cl("OpStep", &ls);
                     *code = v_set(iter_var, iter_expr);
                     return next_expr;
                 }
@@ -2897,37 +2894,11 @@ impl Parser {
             }
         }
         if self.lexer.has_token("..") {
-            let mut on = 0;
-            let mut arg = 0;
-            let _inclusive = self.lexer.has_token("=");
+            let inclusive = self.lexer.has_token("=");
             let iter = self.create_unique("iter", &Type::Long);
             let mut ls = Vec::new();
             if !self.first_pass {
-                let known = self.get_type(typedef);
-                match self.database.types[known as usize].parts {
-                    Parts::Index(_, _, _) => {
-                        on = 1;
-                        arg = self.database.fields(known);
-                    }
-                    Parts::Sorted(tp, _) => {
-                        on = 2;
-                        arg = self.database.size(tp);
-                    }
-                    Parts::Ordered(_, _) => {
-                        on = 3;
-                        arg = 4;
-                    }
-                    _ => {
-                        diagnostic!(self.lexer, Level::Error, "Cannot iterate");
-                        return;
-                    }
-                }
-                ls.push(code.clone());
-                ls.push(Value::Int(on));
-                ls.push(Value::Int(i32::from(arg)));
-                ls.push(Value::Keys(
-                    self.database.types[known as usize].keys.clone(),
-                ));
+                self.fill_iter(&mut ls, code, typedef, true, inclusive);
                 ls.push(Value::Int(nr as i32));
                 ls.append(&mut key);
             }
@@ -2956,17 +2927,11 @@ impl Parser {
             ls.push(Value::Int(nr as i32));
             ls.append(&mut key);
             let start = v_set(iter, self.cl("OpIterate", &ls));
+            let mut ls = vec![Value::Var(iter)];
+            self.fill_iter(&mut ls, code, typedef, false, inclusive);
             *code = Value::Iter(
                 Box::new(start),
-                Box::new(Value::Block(vec![self.cl(
-                    "OpStep",
-                    &[
-                        Value::Var(iter),
-                        code.clone(),
-                        Value::Int(on),
-                        Value::Int(i32::from(arg)),
-                    ],
-                )])),
+                Box::new(Value::Block(vec![self.cl("OpStep", &ls)])),
             );
         } else {
             let mut ls = vec![code.clone(), known.clone(), Value::Int(nr as i32)];
@@ -2975,6 +2940,52 @@ impl Parser {
             if matches!(typedef, Type::Hash(_, _, _)) && nr < key_types.len() {
                 diagnostic!(self.lexer, Level::Error, "Too few key fields");
             }
+        }
+    }
+
+    fn fill_iter(
+        &mut self,
+        ls: &mut Vec<Value>,
+        code: &mut Value,
+        typedef: &Type,
+        add_keys: bool,
+        inclusive: bool,
+    ) {
+        let known = self.get_type(typedef);
+        if known == u16::MAX {
+            return;
+        }
+        let mut on;
+        let arg;
+        match self.database.types[known as usize].parts {
+            Parts::Index(_, _, _) => {
+                on = 1;
+                arg = self.database.fields(known);
+            }
+            Parts::Sorted(tp, _) => {
+                on = 2;
+                arg = self.database.size(tp);
+            }
+            Parts::Ordered(_, _) => {
+                on = 3;
+                arg = 4;
+            }
+            _ => {
+                diagnostic!(self.lexer, Level::Error, "Cannot iterate");
+                return;
+            }
+        }
+        if inclusive {
+            on += 128;
+        }
+        ls.push(code.clone());
+        ls.push(Value::Int(i32::from(on)));
+        ls.push(Value::Int(i32::from(arg)));
+        self.vars.set_loop(on, arg, code);
+        if add_keys {
+            ls.push(Value::Keys(
+                self.database.types[known as usize].keys.clone(),
+            ));
         }
     }
 
@@ -3007,6 +3018,18 @@ impl Parser {
                         );
                         t = Type::Unknown(0);
                     }
+                } else if self.lexer.has_token("break") {
+                    if !self.in_loop {
+                        diagnostic!(self.lexer, Level::Error, "Cannot continue outside a loop");
+                    }
+                    *code = Value::Break(self.vars.loop_nr(name));
+                    t = Type::Void;
+                } else if self.lexer.has_token("continue") {
+                    if !self.in_loop {
+                        diagnostic!(self.lexer, Level::Error, "Cannot continue outside a loop");
+                    }
+                    *code = Value::Continue(self.vars.loop_nr(name));
+                    t = Type::Void;
                 } else {
                     diagnostic!(self.lexer, Level::Error, "Incorrect # variable on {}", name);
                     t = Type::Unknown(0);
@@ -3259,6 +3282,7 @@ impl Parser {
     fn iter_for(&mut self, val: &mut Value, append_value: &mut u16) -> Type {
         if let Some(id) = self.lexer.has_identifier() {
             self.lexer.token("in");
+            let loop_nr = self.vars.start_loop();
             let mut expr = Value::Null;
             let iter_var = self.create_var(&format!("{id}#index"), &I32);
             let lp_scope = self.vars.start_scope(self.lexer.at(), "iter for loop");
@@ -3270,6 +3294,7 @@ impl Parser {
                 var_type = *t_nr.clone();
             }
             let for_var = self.vars.add_variable(&id, &var_type, &mut self.lexer);
+            self.vars.loop_var(for_var);
             let if_step = if self.lexer.has_token("if") {
                 let mut if_expr = Value::Null;
                 self.expression(&mut if_expr);
@@ -3313,6 +3338,7 @@ impl Parser {
                 .finish_scope(it_scope, &format_type, self.lexer.at());
             let tp = Type::Iterator(Box::new(format_type), Box::new(Type::Null));
             *val = Value::Iter(Box::new(create_iter), Box::new(Value::Block(lp)));
+            self.vars.finish_loop(loop_nr);
             self.vars
                 .finish_scope(lp_scope, &Type::Void, self.lexer.at());
             return tp;
@@ -3799,6 +3825,7 @@ impl Parser {
         if let Some(id) = self.lexer.has_identifier() {
             let for_scope = self.vars.start_scope(self.lexer.at(), "for");
             self.lexer.token("in");
+            let loop_nr = self.vars.start_loop();
             let mut expr = Value::Null;
             let in_type = self.parse_in_range(&mut expr, &Value::Null, &id);
             let var_tp = if let Type::Vector(t_nr, _) = &in_type {
@@ -3851,9 +3878,11 @@ impl Parser {
                 return;
             }
             let for_next = v_set(for_var, iter_next);
+            self.vars.loop_var(for_var);
             self.in_loop = true;
             self.parse_block("for", &mut block, &Type::Void);
             self.in_loop = in_loop;
+            self.vars.finish_loop(loop_nr);
             let mut for_steps = vec![create_iter];
             let mut lp = vec![for_next];
             if !matches!(in_type, Type::Iterator(_, _)) {

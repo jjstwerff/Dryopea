@@ -228,8 +228,6 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     finish_record,
     append_vector,
     get_record,
-    start,
-    next,
     validate,
     hash_add,
     hash_find,
@@ -1743,14 +1741,6 @@ fn append_vector(s: &mut State) {
 
 fn get_record(s: &mut State) {
     s.get_record();
-}
-
-fn start(s: &mut State) {
-    s.start();
-}
-
-fn next(s: &mut State) {
-    s.next();
 }
 
 fn validate(s: &mut State) {

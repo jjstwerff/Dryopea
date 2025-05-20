@@ -216,6 +216,28 @@ fn null_enum() {
 }
 
 #[test]
+fn inner_loop() {
+    expr!(
+        "
+s = \"\";
+for i in 0..10 {
+    for j in 0..10 {
+        if j > i {
+            i#continue
+        }
+        s += \"{i}{j},\";
+        if len(s) > 100 {
+            i#break
+        }
+    }
+}
+s
+"
+    )
+    .result(Value::str("00,10,11,20,21,22,30,31,32,33,40,41,42,43,44,50,51,52,53,54,55,60,61,62,63,64,65,66,70,71,72,73,74,75,"));
+}
+
+#[test]
 fn recursion() {
     code!(
         "fn first(s: State, c: integer) -> integer {

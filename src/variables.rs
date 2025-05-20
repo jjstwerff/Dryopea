@@ -30,6 +30,17 @@ struct Scope {
     till: (u32, u32),
 }
 
+// Iterator details on each for loop inside the current function
+#[derive(Debug, Clone)]
+struct Iterator {
+    inside: u16,       // iterator number or MAX when top level loop
+    variable: u16,     // variable number
+    on: u8,            // structure type and direction
+    arg: u16,          // argument to structure (often size)
+    value: Box<Value>, // code to gain the structure or Value::Null for a range
+    counter: u16,      // variable number or MAX when it is not used
+}
+
 // This is created for every variable instance, even if those are of the same name.
 #[derive(Debug, Clone)]
 pub struct Variable {
@@ -48,6 +59,8 @@ pub struct Function {
     steps: Vec<u8>,
     unique: u16,
     scopes: Vec<Scope>,
+    current_loop: u16,
+    loops: Vec<Iterator>,
     stack: Vec<u16>,
     variables: Vec<Variable>,
     work_text: u16,
@@ -86,6 +99,8 @@ impl Function {
             steps: Vec::new(),
             unique: 0,
             scopes: Vec::new(),
+            current_loop: u16::MAX,
+            loops: Vec::new(),
             work_text: 0,
             work_ref: 0,
             variables: Vec::new(),
@@ -104,12 +119,15 @@ impl Function {
 
     pub fn append(&mut self, other: &mut Function) {
         self.current_scope = u16::MAX;
+        self.current_loop = u16::MAX;
         self.last_scope = u16::MAX;
         self.logging = other.logging;
         self.unique = 0;
         other.unique = 0;
         self.scopes.clear();
         self.scopes.append(&mut other.scopes);
+        self.loops.clear();
+        self.loops.append(&mut other.loops);
         self.variables.clear();
         self.variables.append(&mut other.variables);
         for v in &mut self.variables {
@@ -127,11 +145,13 @@ impl Function {
     pub fn copy(other: &Function) -> Self {
         let mut r = Function {
             current_scope: u16::MAX,
+            current_loop: u16::MAX,
             last_scope: u16::MAX,
             steps: Vec::new(),
             stack: Vec::new(),
             unique: 0,
             scopes: other.scopes.clone(),
+            loops: other.loops.clone(),
             variables: other.variables.clone(),
             work_text: 0,
             work_ref: 0,
@@ -348,6 +368,60 @@ impl Function {
         self.current_scope = self.scopes[self.current_scope as usize].parent;
     }
 
+    pub fn start_loop(&mut self) -> u16 {
+        self.loops.push(Iterator {
+            inside: self.current_loop,
+            variable: u16::MAX,
+            on: 0,
+            arg: 0,
+            value: Box::new(Value::Null),
+            counter: u16::MAX,
+        });
+        self.current_loop = self.loops.len() as u16 - 1;
+        self.current_loop
+    }
+
+    pub fn loop_var(&mut self, variable: u16) {
+        self.loops[self.current_loop as usize].variable = variable;
+    }
+
+    pub fn set_loop(&mut self, on: u8, arg: u16, value: &Value) {
+        let l = &mut self.loops[self.current_loop as usize];
+        l.on = on;
+        l.arg = arg;
+        l.value = Box::new(value.clone());
+    }
+
+    /**
+    Stop the current loop.
+    # Panics
+    When this loop is not started.
+    */
+    pub fn finish_loop(&mut self, loop_nr: u16) {
+        assert_eq!(self.current_loop, loop_nr, "Incorrect loop finish");
+        self.current_loop = self.loops[self.current_loop as usize].inside;
+    }
+
+    pub fn loop_nr(&self, variable: &str) -> u16 {
+        let mut c = self.current_loop;
+        let mut nr = 0;
+        while c != u16::MAX
+            && self.variables[self.loops[c as usize].variable as usize].name != variable
+        {
+            c = self.loops[c as usize].inside;
+            nr += 1;
+        }
+        nr
+    }
+
+    pub fn counter(&mut self) -> u16 {
+        self.loops[self.current_loop as usize].counter
+    }
+
+    pub fn needs_counter(&mut self, counter: u16) {
+        self.loops[self.current_loop as usize].counter = counter;
+    }
+
     pub fn cur(&self) -> String {
         format!(
             "Scope {}:{:?}",
@@ -374,6 +448,7 @@ impl Function {
         self.current_scope = u16::MAX;
         self.last_scope = u16::MAX;
         self.stack.clear();
+        self.loops.clear();
     }
 
     pub fn name(&self, var_nr: u16) -> &str {

@@ -614,25 +614,6 @@ impl State {
         self.put_stack(res);
     }
 
-    pub fn start(&mut self) {
-        let (db_tp, key) = self.read_key(false);
-        let data = *self.get_stack::<DbRef>();
-        let res = self.database.start(&data, db_tp, &key);
-        self.put_stack(res);
-    }
-
-    pub fn next(&mut self) {
-        let var_pos = *self.code::<u16>();
-        let stack = self.stack_pos;
-        let mut pos = *self.get_var::<i32>(var_pos);
-        let (db_tp, key) = self.read_key(false);
-        let data = *self.get_stack::<DbRef>();
-        let res = self.database.next(&data, &mut pos, db_tp, &key);
-        self.put_stack(res);
-        let dif = stack - self.stack_pos;
-        self.put_var(var_pos + 4 - dif as u16, pos);
-    }
-
     /**
     Iterate through a data structure from a given key to a given end-key.
     # Panics
@@ -690,10 +671,10 @@ impl State {
                         vector::sorted_find(&data, ex, arg, all, &keys, &till).0 + u32::from(!ex);
                     finish = vector::sorted_find(&data, ex, arg, all, &keys, &from).0 + 1;
                 } else {
-                    let (s, cmp) = vector::sorted_find(&data, true, arg, all, &keys, &from);
-                    start = if cmp || s == 0 { s } else { s - 1 };
-                    finish =
-                        vector::sorted_find(&data, ex, arg, all, &keys, &till).0 - u32::from(!ex);
+                    let s = vector::sorted_find(&data, true, arg, all, &keys, &from).0;
+                    start = if s == 0 { u32::MAX } else { s - 1 };
+                    let (t, cmp) = vector::sorted_find(&data, ex, arg, all, &keys, &till);
+                    finish = if ex || cmp { t } else { t + 1 };
                 }
             }
             3 => {
@@ -747,11 +728,11 @@ impl State {
         let reverse = on & 64 != 0;
         let data = *self.get_stack::<DbRef>();
         let store = keys::store(&data, &self.database.allocations);
-        let cur = match on & 63 {
-            1 => {
-                if finish == u32::MAX {
-                    new_ref(&data, 0, 0)
-                } else {
+        let cur = if finish == u32::MAX {
+            new_ref(&data, 0, 0)
+        } else {
+            match on & 63 {
+                1 => {
                     let rec = new_ref(&data, cur, arg);
                     let n = if reverse {
                         tree::previous(store, &rec)
@@ -764,37 +745,46 @@ impl State {
                     }
                     new_ref(&data, n, 0)
                 }
-            }
-            2 => {
-                let mut pos = cur as i32;
-                vector::vector_step(&data, &mut pos, &self.database.allocations);
-                self.put_var(state_var - 8, pos as u32);
-                self.database.element_reference(
-                    &data,
-                    if pos == i32::MAX {
+                2 => {
+                    let mut pos = if cur == u32::MAX {
                         i32::MAX
                     } else {
-                        8 + pos * i32::from(arg)
-                    },
-                )
-            }
-            3 => {
-                let mut pos = cur as i32;
-                vector::vector_next(&data, &mut pos, 4, &self.database.allocations);
-                let vector = store.get_int(data.rec, data.pos) as u32;
-                let rec = if pos == i32::MAX {
-                    0
-                } else {
-                    store.get_int(vector, pos as u32) as u32
-                };
-                self.put_var(state_var - 8, pos as u32);
-                DbRef {
-                    store_nr: data.store_nr,
-                    rec,
-                    pos: 0,
+                        cur as i32
+                    };
+                    // TODO Implement reverse too
+                    vector::vector_step(&data, &mut pos, &self.database.allocations);
+                    self.put_var(state_var - 8, pos as u32);
+                    if pos as u32 >= finish {
+                        pos = i32::MAX;
+                        self.put_var(state_var - 12, u32::MAX);
+                    }
+                    self.database.element_reference(
+                        &data,
+                        if pos == i32::MAX {
+                            i32::MAX
+                        } else {
+                            8 + pos * i32::from(arg)
+                        },
+                    )
                 }
+                3 => {
+                    let mut pos = cur as i32;
+                    vector::vector_next(&data, &mut pos, 4, &self.database.allocations);
+                    let vector = store.get_int(data.rec, data.pos) as u32;
+                    let rec = if pos == i32::MAX {
+                        0
+                    } else {
+                        store.get_int(vector, pos as u32) as u32
+                    };
+                    self.put_var(state_var - 8, pos as u32);
+                    DbRef {
+                        store_nr: data.store_nr,
+                        rec,
+                        pos: 0,
+                    }
+                }
+                _ => panic!("Not implemented"),
             }
-            _ => panic!("Not implemented"),
         };
         self.put_stack(cur);
     }

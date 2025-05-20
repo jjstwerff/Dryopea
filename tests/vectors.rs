@@ -197,6 +197,7 @@ struct Db {map: sorted<Elm[-nr,key]>}"
   Elm {nr: 83, key: \"Four\", value: 4},
   Elm {nr: 83, key: \"Five\", value: 5},
   Elm {nr: 63, key: \"Six\", value: 6},
+  Elm {nr: 61, key: \"Seven\", value: 7},
 ]};
 sum = 0;
 assert(db.map[83,\"Five\"].value == 5, \"Incorrect element {db.map[83,\"Five\"].value}\");
