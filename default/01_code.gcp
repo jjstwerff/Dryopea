@@ -505,7 +505,6 @@ fn OpAppendText(pos: const u16, v1: text);
 fn OpGetTextSub(v1: text, from: integer, till: integer) -> text[v1];
 fn OpClearText(pos: const u16);
 fn OpFreeText(pos: const u16);
-// pub fn clear(self: text) { OpClearText(self) }
 fn OpEqText(v1: text, v2: text) -> boolean;
 #rust "@v1 == @v2"
 fn OpNeText(v1: text, v2: text) -> boolean;
@@ -657,7 +656,6 @@ pub fn len(both: vector) -> integer { OpLengthVector(both) }
 
 fn OpClearVector(r: vector);
 #rust "vector::clear_vector(&@r, &mut s.database.allocations);"
-pub fn clear(self: vector) { OpClearVector(self); }
 
 // This returns the position inside the vector of a record or a value, get the actual value with fld=0
 fn OpGetVector(r: vector, size: const u16, index: integer) -> reference[r];
@@ -683,8 +681,6 @@ fn OpAppendVector(r: vector, other: vector, tp: const u16);
 
 // Get a record from a structure. This operator also reads a dynamic key from stack (not shown here)
 fn OpGetRecord(data: reference, db_tp: const u16, no_keys: const u8) -> reference[data];
-fn OpStart(data: reference, db_tp: const u16, no_keys: const u8) -> integer;
-fn OpNext(data: reference, pos: const u16, db_tp: const u16, no_keys: const u8) -> reference[data];
 fn OpValidate(data: reference, db_tp: const u16);
 
 // These types should eventually become unnecessary because of the unified internal database API
@@ -707,6 +703,9 @@ fn OpPanic(message: text);
 fn assert(test: boolean, message: text);
 #rust "assert!(@test, \"{{}}\", @message);"
 
+fn panic(message: text);
+#rust "panic!(\"{{}}\", @message);"
+
 fn OpPrint(v1: text);
 #rust "print!(\"{{}}\", @v1);"
 fn print(v1: text) { OpPrint(v1); }
@@ -715,6 +714,7 @@ type keys_definition;
 
 fn OpIterate(data: reference, on: const u8, arg: const u16, keys: const keys_definition, from_key: const u8, till_key: const u8) -> long;
 fn OpStep(state_var: const u16, data: reference, on: const u8, arg: const u16) -> reference[data];
+fn OpRemove(state_var: const u16, data: reference, on: const u8, tp: const u16);
 
 type iterator;
 

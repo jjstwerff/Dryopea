@@ -30,6 +30,6 @@ clippy:
 
 meld:
 	rustfmt tests/generated/text.rs --edition 2024
-	meld tests/generated/text.rs src/text.rs
+	cmp -s tests/generated/text.rs src/text.rs; if [ $$? -eq 1 ]; then meld tests/generated/text.rs src/text.rs; fi
 	rustfmt tests/generated/fill.rs --edition 2024
-	meld tests/generated/fill.rs src/fill.rs
+	cmp -s tests/generated/fill.rs src/fill.rs; if [ $$? -eq 1 ]; then meld tests/generated/fill.rs src/fill.rs; fi

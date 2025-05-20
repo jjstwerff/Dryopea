@@ -86,15 +86,13 @@ fn map_vector() {
 w=[for x in v if x < 4 {x * 3}];
 \"{w}\"").result(Value::str("[0, 3, 6, 9]"));
 }
-
+*/
 #[test]
 fn loop_variables() {
-    expr!(
-        "\"{for x in ..10 if !x#first && x#index % 3 == 0 || x#last {if x < 10 { x#continue }; x * 2}}\"").result(
-        Value::Text("[6, 12, 18, 20]".to_string())
-    );
+    expr!("\"{for x in 0..10 if x != 0 && x % 3 == 0 {if x#first { x } else {x * 2}}}\"")
+        .result(Value::str("[3,12,18]"));
 }
-
+/*
 #[test]
 fn store_iterator() {
     expr!("v=[1, 2, 3]; v += v[1..2]; v += [for x in v {x*2}]; \"{v}\"")
@@ -197,6 +195,7 @@ struct Db {map: sorted<Elm[-nr,key]>}"
   Elm {nr: 83, key: \"Four\", value: 4},
   Elm {nr: 83, key: \"Five\", value: 5},
   Elm {nr: 63, key: \"Six\", value: 6},
+  Elm {nr: 61, key: \"Seven\", value: 7},
 ]};
 sum = 0;
 assert(db.map[83,\"Five\"].value == 5, \"Incorrect element {db.map[83,\"Five\"].value}\");

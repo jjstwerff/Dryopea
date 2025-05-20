@@ -68,8 +68,8 @@ pub enum Value {
     // Closure(u32, u32),
     /// Drop the returned value of a call
     Drop(Box<Value>),
-    /// The creation of the iterator and the next expression. Not able to revert.
-    Iter(Box<Value>, Box<Value>),
+    /// An iterator (name, create, next)
+    Iter(u16, Box<Value>, Box<Value>),
     /// Key structure
     Keys(Vec<Key>),
 }
@@ -1230,7 +1230,7 @@ impl Data {
             Value::Long(l) => write!(write, "{l}i64"),
             Value::Single(f) => write!(write, "{f}f32"),
             Value::Text(t) => write!(write, "\"{t}\""),
-            Value::Iter(_, _) => panic!("Rewrite!"),
+            Value::Iter(_, _, _) => panic!("Rewrite!"),
             Value::Call(t, ex) => {
                 write!(write, "{}(", self.def(*t).name)?;
                 for (v_nr, v) in ex.iter().enumerate() {
@@ -1242,26 +1242,28 @@ impl Data {
                 write!(write, ")")
             }
             Value::Block(v) => {
-                let bl = vars.start_next();
-                writeln!(write, "{{#{} {}", vars.scope(), vars.context())?;
-                for val in v {
-                    self.show_code(write, vars, val, indent + 1, true, d_nr)?;
-                    writeln!(write, ";")?;
+                if !v.is_empty() {
+                    let bl = vars.start_next();
+                    writeln!(write, "{{#{} {}", vars.scope(), vars.context())?;
+                    for val in v {
+                        self.show_code(write, vars, val, indent + 1, true, d_nr)?;
+                        writeln!(write, ";")?;
+                    }
+                    for _i in 0..indent {
+                        write!(write, "  ")?;
+                    }
+                    if vars.result() == &Type::Void {
+                        write!(write, "}}#{}", vars.scope())?;
+                    } else {
+                        write!(
+                            write,
+                            "}}#{}:{}",
+                            vars.scope(),
+                            vars.result().show(self, vars)
+                        )?;
+                    }
+                    vars.finish_next(bl, &self.def(d_nr).name);
                 }
-                for _i in 0..indent {
-                    write!(write, "  ")?;
-                }
-                if vars.result() == &Type::Void {
-                    write!(write, "}}#{}", vars.scope())?;
-                } else {
-                    write!(
-                        write,
-                        "}}#{}:{}",
-                        vars.scope(),
-                        vars.result().show(self, vars)
-                    )?;
-                }
-                vars.finish_next(bl, &self.def(d_nr).name);
                 Ok(())
             }
             Value::Var(v) => write!(write, "{}", vars.name(*v)),

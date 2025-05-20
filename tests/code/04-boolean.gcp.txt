@@ -1,0 +1,29 @@
+fn main() {#1 block
+  if OpNot(OpGtInt(3i32, OpAddInt(2i32, 4i32))) null else OpPanic("Boolean test");
+}#1
+
+byte-code for tests/suite/04-boolean.gcp:main()
+ 645[0]: return-address
+ 645[4]: ConstInt(val=3) -> integer
+ 650[8]: ConstInt(val=2) -> integer
+ 655[12]: ConstInt(val=4) -> integer
+ 660[16]: AddInt(v1: integer, v2: integer) -> integer
+ 661[12]: GtInt(v1: integer, v2: integer) -> boolean
+ 662[5]: Not(v1: boolean) -> boolean
+ 663[5]: GotoFalseWord(jump=669, if_false: boolean)
+ 666[4]: GotoWord(jump=684)
+ 669[4]: ConstText(_value="Boolean test") -> text
+ 683[20]: Panic(message: text)
+ 684[4]: Return(ret=0, value=0, discard=4)
+
+Execute main:
+  645:[8] ConstInt(val=3) -> 3[8]
+  650:[12] ConstInt(val=2) -> 2[12]
+  655:[16] ConstInt(val=4) -> 4[16]
+  660:[20] AddInt(v1=2[12], v2=4[16]) -> 6[12]
+  661:[16] GtInt(v1=3[8], v2=6[12]) -> false[8]
+  662:[9] Not(v1=false[8]) -> true[8]
+  663:[9] GotoFalseWord(jump=669, if_false=true[8])
+  666:[8] GotoWord(jump=684)
+  684:[8] Return(ret=4294967295[4], value=0, discard=4)
+Finished

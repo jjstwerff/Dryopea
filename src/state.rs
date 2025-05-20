@@ -36,7 +36,7 @@ pub struct State {
     pub vars: HashMap<u32, u16>,
     // Calls of function definitions from byte code.
     pub calls: HashMap<u32, Vec<u32>>,
-    // Information for enumerate types and database (record, vectors and fields) types.
+    // Information for enumerate-types and database (record, vectors and fields) types.
     pub types: HashMap<u32, u16>,
     pub library: Vec<Call>,
     pub library_names: HashMap<String, u16>,
@@ -614,25 +614,6 @@ impl State {
         self.put_stack(res);
     }
 
-    pub fn start(&mut self) {
-        let (db_tp, key) = self.read_key(false);
-        let data = *self.get_stack::<DbRef>();
-        let res = self.database.start(&data, db_tp, &key);
-        self.put_stack(res);
-    }
-
-    pub fn next(&mut self) {
-        let var_pos = *self.code::<u16>();
-        let stack = self.stack_pos;
-        let mut pos = *self.get_var::<i32>(var_pos);
-        let (db_tp, key) = self.read_key(false);
-        let data = *self.get_stack::<DbRef>();
-        let res = self.database.next(&data, &mut pos, db_tp, &key);
-        self.put_stack(res);
-        let dif = stack - self.stack_pos;
-        self.put_var(var_pos + 4 - dif as u16, pos);
-    }
-
     /**
     Iterate through a data structure from a given key to a given end-key.
     # Panics
@@ -690,10 +671,10 @@ impl State {
                         vector::sorted_find(&data, ex, arg, all, &keys, &till).0 + u32::from(!ex);
                     finish = vector::sorted_find(&data, ex, arg, all, &keys, &from).0 + 1;
                 } else {
-                    let (s, cmp) = vector::sorted_find(&data, true, arg, all, &keys, &from);
-                    start = if cmp || s == 0 { s } else { s - 1 };
-                    finish =
-                        vector::sorted_find(&data, ex, arg, all, &keys, &till).0 - u32::from(!ex);
+                    let s = vector::sorted_find(&data, true, arg, all, &keys, &from).0;
+                    start = if s == 0 { u32::MAX } else { s - 1 };
+                    let (t, cmp) = vector::sorted_find(&data, ex, arg, all, &keys, &till);
+                    finish = if ex || cmp { t } else { t + 1 };
                 }
             }
             3 => {
@@ -736,7 +717,7 @@ impl State {
     /**
     Step to the next value for the iterator.
     # Panics
-    When requesting on a not-implemented iterator.
+    When requested on a not-implemented iterator.
     */
     pub fn step(&mut self) {
         let state_var = *self.code::<u16>();
@@ -747,11 +728,11 @@ impl State {
         let reverse = on & 64 != 0;
         let data = *self.get_stack::<DbRef>();
         let store = keys::store(&data, &self.database.allocations);
-        let cur = match on & 63 {
-            1 => {
-                if finish == u32::MAX {
-                    new_ref(&data, 0, 0)
-                } else {
+        let cur = if finish == u32::MAX {
+            new_ref(&data, 0, 0)
+        } else {
+            match on & 63 {
+                1 => {
                     let rec = new_ref(&data, cur, arg);
                     let n = if reverse {
                         tree::previous(store, &rec)
@@ -764,39 +745,90 @@ impl State {
                     }
                     new_ref(&data, n, 0)
                 }
-            }
-            2 => {
-                let mut pos = cur as i32;
-                vector::vector_step(&data, &mut pos, &self.database.allocations);
-                self.put_var(state_var - 8, pos as u32);
-                self.database.element_reference(
-                    &data,
-                    if pos == i32::MAX {
+                2 => {
+                    let mut pos = if cur == u32::MAX {
                         i32::MAX
                     } else {
-                        8 + pos * i32::from(arg)
-                    },
-                )
-            }
-            3 => {
-                let mut pos = cur as i32;
-                vector::vector_next(&data, &mut pos, 4, &self.database.allocations);
-                let vector = store.get_int(data.rec, data.pos) as u32;
-                let rec = if pos == i32::MAX {
-                    0
-                } else {
-                    store.get_int(vector, pos as u32) as u32
-                };
-                self.put_var(state_var - 8, pos as u32);
-                DbRef {
-                    store_nr: data.store_nr,
-                    rec,
-                    pos: 0,
+                        cur as i32
+                    };
+                    // TODO Implement reverse too
+                    vector::vector_step(&data, &mut pos, &self.database.allocations);
+                    self.put_var(state_var - 8, pos as u32);
+                    if pos as u32 >= finish {
+                        pos = i32::MAX;
+                        self.put_var(state_var - 12, u32::MAX);
+                    }
+                    self.database.element_reference(
+                        &data,
+                        if pos == i32::MAX {
+                            i32::MAX
+                        } else {
+                            8 + pos * i32::from(arg)
+                        },
+                    )
                 }
+                3 => {
+                    let mut pos = cur as i32;
+                    vector::vector_next(&data, &mut pos, 4, &self.database.allocations);
+                    let vector = store.get_int(data.rec, data.pos) as u32;
+                    let rec = if pos == i32::MAX {
+                        0
+                    } else {
+                        store.get_int(vector, pos as u32) as u32
+                    };
+                    self.put_var(state_var - 8, pos as u32);
+                    DbRef {
+                        store_nr: data.store_nr,
+                        rec,
+                        pos: 0,
+                    }
+                }
+                _ => panic!("Not implemented"),
             }
-            _ => panic!("Not implemented"),
         };
         self.put_stack(cur);
+    }
+
+    /**
+    Remove the current value from the iterator. Move the iterator to the previous value.
+    # Panics
+    When requested on a not-implemented iterator.
+    */
+    pub fn remove(&mut self) {
+        let state_var = *self.code::<u16>();
+        let on = *self.code::<u8>();
+        let tp = *self.code::<u16>();
+        let reverse = on & 64 != 0;
+        let cur = *self.get_var::<i32>(state_var);
+        let data = *self.get_stack::<DbRef>();
+        match on & 63 {
+            0 => { // vector
+                let n = if reverse {
+                    cur + 1
+                } else {
+                    cur - 1
+                };
+                vector::remove_vector(&data, u32::from(self.database.size(tp)), cur as u32, &mut self.database.allocations);
+                self.put_var(state_var - 8, n);
+            }
+            1 => {
+                let cur = *self.get_var::<u32>(state_var);
+                if cur == u32::MAX {
+                    return;
+                }
+                let elm = new_ref(&data, cur, self.database.size(tp));
+                let rec = new_ref(&data, cur, self.database.size(tp));
+                let store = keys::store(&data, &self.database.allocations);
+                let n = if reverse {
+                    tree::previous(store, &rec)
+                } else {
+                    tree::next(store, &rec)
+                };
+                self.database.remove(&data, &elm, tp);
+                self.put_var(state_var - 8, n);
+            }
+            _ => panic!("Not implemented on {on}"),
+        }
     }
 
     pub fn hash_add(&mut self) {
@@ -1232,7 +1264,7 @@ impl State {
                 stack.position -= size;
                 Type::Void
             }
-            Value::Iter(_, _) => {
+            Value::Iter(_, _, _) => {
                 panic!("Should have rewritten {val:?}");
             }
         }
@@ -1334,12 +1366,7 @@ impl State {
                         /*
                         The first pass on code can sometimes be different from the second,
                         created variables in this pass could not exist in the second one.
-                        println!(
-                            "skip free reference {} stack {} on {}",
-                            stack.function.name(v),
-                            stack.function.stack(v),
-                            stack.data.def(stack.def_nr).name
-                        );*/
+                        */
                         continue;
                     }
                     self.generate_var(stack, v);
@@ -1574,6 +1601,9 @@ impl State {
     }
 
     fn generate_block(&mut self, stack: &mut Stack, values: &[Value]) -> Type {
+        if values.is_empty() {
+            return Type::Void;
+        }
         let bl = stack.function.start_next();
         let to = stack.position;
         let last = values.len() - 1;
@@ -1924,7 +1954,7 @@ impl State {
         self.put_stack(u32::MAX);
         // TODO Allow command line parameters on main functions
         let mut step = 0;
-        loop {
+        while self.code_pos < self.bytecode.len() as u32 {
             let code = self.code_pos;
             let op = *self.code::<u8>();
             self.log_step(log, op, data)?;
@@ -1944,6 +1974,7 @@ impl State {
                 return Ok(());
             }
         }
+        Ok(())
     }
 
     /**
