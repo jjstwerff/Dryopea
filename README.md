@@ -40,3 +40,16 @@ git_branch() {
 export PS1="\w\a\[\033[00;32m\]\$(git_branch)\[\033[00m\]\$ "
 
 /usr/lib/git-core/git-sh-prompt
+
+# Roadmap
+At the start of each month, there will be a release of the language.
+Eventually, when more stable, this will be lowered to a release at the start of each quarter.
+
+The aim is to get a full-featured language:
+- Fully implemented iterators over currently defined structures.
+- Create integration tests that also function as technical language documentation.
+- Polymorphism in data structures.
+- Safe threading support
+- Fix the more glaring performance issues.
+- Library support.
+- Data structure migrations

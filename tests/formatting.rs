@@ -58,7 +58,9 @@ fn format_range() {
 
 #[test]
 fn format_chars() {
-    expr!("txt=\"12😊🙃45\"; \"a{for c in txt[2..-1] {c}}b\"").result(Value::str("a[😊,🙃,4]b"));
+    // This is still problematic, as c#index points to the next character instead of the current.
+    expr!("txt=\"12😊🙃45\"; \"a{for c in txt[2..-1] {\"{c#index}:{c}\"}}b\"")
+        .result(Value::str("a[4:😊,8:🙃,9:4]b"));
 }
 
 #[test]

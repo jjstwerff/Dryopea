@@ -5,8 +5,8 @@ extern crate dryopea;
 
 use dryopea::database::Stores;
 use dryopea::keys::{Content, DbRef, Str};
-use dryopea::tree;
 use dryopea::{hash, keys};
+use dryopea::{tree, vector};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
@@ -105,6 +105,7 @@ pub fn sorted_vector() {
     stores.field(s, "value", stores.name("float"));
     let v = stores.sorted(s, &[(c, false), (n, true)]);
     stores.finish();
+    let size = stores.size(s);
     //stores.dump_types();
     let db = stores.database(8);
     let into = DbRef {
@@ -134,6 +135,37 @@ pub fn sorted_vector() {
   { cat: 1, name: \"second\", value: 1.34 },
   { cat: 1, name: \"third\", value: 1.45 } ]",
         check
+    );
+    let a = &stores.allocations;
+    assert_eq!(
+        vector::sorted_find(&into, true, size, a, stores.keys(v), &[]),
+        (0, true),
+        "First element"
+    );
+    assert_eq!(
+        vector::sorted_find(&into, false, size, a, stores.keys(v), &[]),
+        (7, true),
+        "Last element"
+    );
+    assert_eq!(
+        vector::sorted_find(&into, false, size, a, stores.keys(v), &[Content::Long(2)]),
+        (4, true),
+        "Last 2"
+    );
+    assert_eq!(
+        vector::sorted_find(&into, true, size, a, stores.keys(v), &[Content::Long(2)]),
+        (1, true),
+        "First 2"
+    );
+    assert_eq!(
+        vector::sorted_find(&into, false, size, a, stores.keys(v), &[Content::Long(4)]),
+        (0, false),
+        "Last 4"
+    );
+    assert_eq!(
+        vector::sorted_find(&into, true, size, a, stores.keys(v), &[Content::Long(0)]),
+        (7, false),
+        "First 0"
     );
 }
 

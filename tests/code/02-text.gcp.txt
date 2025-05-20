@@ -1,0 +1,95 @@
+fn main() {#1 block
+  __work_2:text = "";
+  __work_1:text = "";
+  a:text = "12";
+  if OpEqText({#2 formatting string
+    __work_1:text = "'";
+    OpFormatText(__work_1, a, 4i32, -1i32, 32i32);
+    OpAppendText(__work_1, "'");
+    __work_1;
+  }#2:text, "'12  '") null else OpPanic("Formatting text");
+  if OpEqInt(_tp_text_len({#2 formatting string
+    __work_2:text = a;
+    OpAppendText(__work_2, "123");
+    __work_2;
+  }#2:text), 5i32) null else OpPanic("Text length");
+}#1
+
+byte-code for tests/suite/02-text.gcp:main()
+ 645[0]: return-address
+ 645[4]: Text() var=__work_2[4]:text in 1
+ 646[28]: Text() var=__work_1[28]:text in 1
+ 647[52]: Text() var=a[52]:text in 1
+ 648[76]: ConstText(_value="12") -> text
+ 652[92]: AppendText(var[52], v1: text)
+ 655[76]: ClearText(var[28]) var=__work_1[28]:text in 1
+ 658[76]: ConstText(_value="'") -> text
+ 661[92]: AppendText(var[28], v1: text)
+ 664[76]: VarText(var[52]) -> text var=a[52]:text in 1
+ 667[92]: ConstInt(val=4) -> integer
+ 672[96]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
+ 677[76]: ConstText(_value="'") -> text
+ 680[92]: AppendText(var[28], v1: text)
+ 683[76]: VarText(var[28]) -> text var=__work_1[28]:text in 1
+ 686[92]: ConstText(_value="'12  '") -> text
+ 694[108]: EqText(v1: text, v2: text) -> boolean
+ 695[77]: GotoFalseWord(jump=701, if_false: boolean)
+ 698[76]: GotoWord(jump=719)
+ 701[76]: ConstText(_value="Formatting text") -> text
+ 718[92]: Panic(message: text)
+ 719[76]: ClearText(var[4]) var=__work_2[4]:text in 1
+ 722[76]: VarText(var[52]) -> text var=a[52]:text in 1
+ 725[92]: AppendText(var[4], v1: text)
+ 728[76]: ConstText(_value="123") -> text
+ 733[92]: AppendText(var[4], v1: text)
+ 736[76]: VarText(var[4]) -> text var=__work_2[4]:text in 1
+ 739[92]: Call(size=0, to=318)
+ 746[80]: ConstInt(val=5) -> integer
+ 751[84]: EqInt(v1: integer, v2: integer) -> boolean
+ 752[77]: GotoFalseWord(jump=758, if_false: boolean)
+ 755[76]: GotoWord(jump=772)
+ 758[76]: ConstText(_value="Text length") -> text
+ 771[92]: Panic(message: text)
+ 772[76]: FreeText(var[52])
+ 775[76]: FreeText(var[28])
+ 778[76]: FreeText(var[4])
+ 781[76]: Return(ret=0, value=0, discard=76)
+
+Execute main:
+  645:[8] Text()
+  646:[32] Text()
+  647:[56] Text()
+  648:[80] ConstText(_value="12") -> "12"[80]
+  652:[96] AppendText(var[56], v1="12"[80])
+  655:[80] ClearText(var[32])
+  658:[80] ConstText(_value="'") -> "'"[80]
+  661:[96] AppendText(var[32], v1="'"[80])
+  664:[80] VarText(var[56]) -> "12"[80]
+  667:[96] ConstInt(val=4) -> 4[96]
+  672:[100] FormatText(var[32], val="12"[80], width=4[96], dir=-1, token=32)
+  677:[80] ConstText(_value="'") -> "'"[80]
+  680:[96] AppendText(var[32], v1="'"[80])
+  683:[80] VarText(var[32]) -> "'12  '"[80]
+  686:[96] ConstText(_value="'12  '") -> "'12  '"[96]
+  694:[112] EqText(v1="'12  '"[80], v2="'12  '"[96]) -> true[80]
+  695:[81] GotoFalseWord(jump=701, if_false=true[80])
+  698:[80] GotoWord(jump=719)
+  719:[80] ClearText(var[8])
+  722:[80] VarText(var[56]) -> "12"[80]
+  725:[96] AppendText(var[8], v1="12"[80])
+  728:[80] ConstText(_value="123") -> "123"[80]
+  733:[96] AppendText(var[8], v1="123"[80])
+  736:[80] VarText(var[8]) -> "12123"[80]
+  739:[96] Call(size=0, to=318)
+  318:[100] ArgText(var[80]) -> "12123"[100]
+  321:[116] LengthText(v1="12123"[100]) -> 5[100]
+  322:[104] Return(ret=746[96], value=4, discard=24) -> 5[80]
+  746:[84] ConstInt(val=5) -> 5[84]
+  751:[88] EqInt(v1=5[80], v2=5[84]) -> true[80]
+  752:[81] GotoFalseWord(jump=758, if_false=true[80])
+  755:[80] GotoWord(jump=772)
+  772:[80] FreeText(var[56])
+  775:[80] FreeText(var[32])
+  778:[80] FreeText(var[8])
+  781:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

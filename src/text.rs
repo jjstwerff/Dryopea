@@ -9,6 +9,7 @@ use crate::state::{Call, State};
 pub const FUNCTIONS: &[(&str, Call)] = &[
     ("character", character),
     ("assert", assert),
+    ("panic", panic),
     ("env_variables", env_variables),
     ("env_variable", env_variable),
     ("_tp_text_starts_with", _tp_text_starts_with),
@@ -50,6 +51,11 @@ fn assert(stores: &mut Stores, stack: &mut DbRef) {
     let v_message = *stores.get::<Str>(stack);
     let v_test = *stores.get::<bool>(stack);
     assert!(v_test, "{}", v_message.str());
+}
+
+fn panic(stores: &mut Stores, stack: &mut DbRef) {
+    let v_message = *stores.get::<Str>(stack);
+    panic!("{}", v_message.str());
 }
 
 fn env_variables(stores: &mut Stores, stack: &mut DbRef) {

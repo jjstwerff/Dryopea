@@ -30,11 +30,9 @@ fn dir() -> std::io::Result<()> {
         }
         let filename = entry.file_name().unwrap_or_default().to_string_lossy();
         let mut state = State::new(p.database);
-        byte_code(
-            &mut std::fs::File::create(format!("tests/generated/{filename}.dump"))?,
-            &mut state,
-            &mut p.data,
-        )?;
+        let mut w = std::fs::File::create(format!("tests/code/{filename}.txt"))?;
+        byte_code(&mut w, &mut state, &mut p.data)?;
+        state.execute_log(&mut w, "main", &p.data)?;
     }
     Ok(())
 }

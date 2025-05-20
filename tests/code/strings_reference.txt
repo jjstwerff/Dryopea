@@ -14,11 +14,11 @@ fn add(a:&text, b:text) {#1 block
 }#1
 
 byte-code for reference:add(a: &text[0], b: text[12])
- 655[28]: return-address
- 655[32]: VarRef(var[0]) -> ref(reference)
- 658[44]: ArgText(var[12]) -> text var=b[12]:text in 0
- 661[60]: AppendRefText(r: ref(reference), fld=0, v1: text)
- 664[32]: Return(ret=28, value=0, discard=32)
+ 645[28]: return-address
+ 645[32]: VarRef(var[0]) -> ref(reference)
+ 648[44]: ArgText(var[12]) -> text var=b[12]:text in 0
+ 651[60]: AppendRefText(r: ref(reference), fld=0, v1: text)
+ 654[32]: Return(ret=28, value=0, discard=32)
 
 fn test() {#1 block
   __work_1:text = "";
@@ -37,62 +37,62 @@ fn test() {#1 block
 }#1
 
 byte-code for reference:test()
- 670[0]: return-address
- 670[4]: Text() var=__work_1[4]:text in 1
- 671[28]: Text() var=v[28]:text in 1
- 672[52]: Text() var=test_value[52]:text["v"] in 1
- 673[76]: ClearText(var[28]) var=v[28]:text in 1
- 676[76]: ConstText(_value="Hello") -> text
- 683[92]: AppendText(var[28], v1: text)
- 686[76]: CreateRef(var[28]) -> ref(reference)
- 689[88]: ConstText(_value=" world!") -> text
- 698[104]: Call(size=0, to=655)
- 705[76]: VarText(var[28]) -> text var=v[28]:text in 1
- 708[92]: AppendText(var[52], v1: text)
- 711[76]: VarText(var[52]) -> text var=test_value[52]:text["v"] in 1
- 714[92]: ConstText(_value="Hello world!") -> text
- 728[108]: EqText(v1: text, v2: text) -> boolean
- 729[77]: GotoFalseWord(jump=735, if_false: boolean)
- 732[76]: GotoWord(jump=795)
- 735[76]: ClearText(var[4]) var=__work_1[4]:text in 1
- 738[76]: ConstText(_value="Test failed ") -> text
- 752[92]: AppendText(var[4], v1: text)
- 755[76]: VarText(var[52]) -> text var=test_value[52]:text["v"] in 1
- 758[92]: ConstInt(val=0) -> integer
- 763[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 768[76]: ConstText(_value=" != "Hello world!"") -> text
- 788[92]: AppendText(var[4], v1: text)
- 791[76]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 794[92]: Panic(message: text)
- 795[76]: FreeText(var[52])
- 798[76]: FreeText(var[28])
- 801[76]: FreeText(var[4])
- 804[76]: Return(ret=0, value=0, discard=76)
+ 660[0]: return-address
+ 660[4]: Text() var=__work_1[4]:text in 1
+ 661[28]: Text() var=v[28]:text in 1
+ 662[52]: Text() var=test_value[52]:text["v"] in 1
+ 663[76]: ClearText(var[28]) var=v[28]:text in 1
+ 666[76]: ConstText(_value="Hello") -> text
+ 673[92]: AppendText(var[28], v1: text)
+ 676[76]: CreateRef(var[28]) -> ref(reference)
+ 679[88]: ConstText(_value=" world!") -> text
+ 688[104]: Call(size=0, to=645)
+ 695[76]: VarText(var[28]) -> text var=v[28]:text in 1
+ 698[92]: AppendText(var[52], v1: text)
+ 701[76]: VarText(var[52]) -> text var=test_value[52]:text["v"] in 1
+ 704[92]: ConstText(_value="Hello world!") -> text
+ 718[108]: EqText(v1: text, v2: text) -> boolean
+ 719[77]: GotoFalseWord(jump=725, if_false: boolean)
+ 722[76]: GotoWord(jump=785)
+ 725[76]: ClearText(var[4]) var=__work_1[4]:text in 1
+ 728[76]: ConstText(_value="Test failed ") -> text
+ 742[92]: AppendText(var[4], v1: text)
+ 745[76]: VarText(var[52]) -> text var=test_value[52]:text["v"] in 1
+ 748[92]: ConstInt(val=0) -> integer
+ 753[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 758[76]: ConstText(_value=" != "Hello world!"") -> text
+ 778[92]: AppendText(var[4], v1: text)
+ 781[76]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+ 784[92]: Panic(message: text)
+ 785[76]: FreeText(var[52])
+ 788[76]: FreeText(var[28])
+ 791[76]: FreeText(var[4])
+ 794[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-  670:[8] Text()
-  671:[32] Text()
-  672:[56] Text()
-  673:[80] ClearText(var[32])
-  676:[80] ConstText(_value="Hello") -> "Hello"[80]
-  683:[96] AppendText(var[32], v1="Hello"[80])
-  686:[80] CreateRef(var[32]) -> ref(0,1,32)[80]
-  689:[92] ConstText(_value=" world!") -> " world!"[92]
-  698:[108] Call(size=0, to=655)
-  655:[112] VarRef(var[80]) -> ref(0,1,32)[112]
-  658:[124] ArgText(var[92]) -> " world!"[124]
-  661:[140] AppendRefText(r=ref(0,1,32)[112], fld=0, v1=" world!"[124])
-  662:[112] Goto(jump=2201)
-  664:[112] Return(ret=705[108], value=0, discard=32)
-  705:[80] VarText(var[32]) -> "Hello world!"[80]
-  708:[96] AppendText(var[56], v1="Hello world!"[80])
-  711:[80] VarText(var[56]) -> "Hello world!"[80]
-  714:[96] ConstText(_value="Hello world!") -> "Hello world!"[96]
-  728:[112] EqText(v1="Hello world!"[80], v2="Hello world!"[96]) -> true[80]
-  729:[81] GotoFalseWord(jump=735, if_false=true[80])
-  732:[80] GotoWord(jump=795)
-  795:[80] FreeText(var[56])
-  798:[80] FreeText(var[32])
-  801:[80] FreeText(var[8])
-  804:[80] Return(ret=4294967295[4], value=0, discard=76)
+  660:[8] Text()
+  661:[32] Text()
+  662:[56] Text()
+  663:[80] ClearText(var[32])
+  666:[80] ConstText(_value="Hello") -> "Hello"[80]
+  673:[96] AppendText(var[32], v1="Hello"[80])
+  676:[80] CreateRef(var[32]) -> ref(0,1,32)[80]
+  679:[92] ConstText(_value=" world!") -> " world!"[92]
+  688:[108] Call(size=0, to=645)
+  645:[112] VarRef(var[80]) -> ref(0,1,32)[112]
+  648:[124] ArgText(var[92]) -> " world!"[124]
+  651:[140] AppendRefText(r=ref(0,1,32)[112], fld=0, v1=" world!"[124])
+  652:[112] Goto(jump=2191)
+  654:[112] Return(ret=695[108], value=0, discard=32)
+  695:[80] VarText(var[32]) -> "Hello world!"[80]
+  698:[96] AppendText(var[56], v1="Hello world!"[80])
+  701:[80] VarText(var[56]) -> "Hello world!"[80]
+  704:[96] ConstText(_value="Hello world!") -> "Hello world!"[96]
+  718:[112] EqText(v1="Hello world!"[80], v2="Hello world!"[96]) -> true[80]
+  719:[81] GotoFalseWord(jump=725, if_false=true[80])
+  722:[80] GotoWord(jump=785)
+  785:[80] FreeText(var[56])
+  788:[80] FreeText(var[32])
+  791:[80] FreeText(var[8])
+  794:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished
