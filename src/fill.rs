@@ -239,6 +239,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     iterate,
     step,
     remove,
+    append_copy,
     static_call,
     create_ref,
     get_ref_text,
@@ -1794,6 +1795,10 @@ fn step(s: &mut State) {
 
 fn remove(s: &mut State) {
     s.remove();
+}
+
+fn append_copy(s: &mut State) {
+    s.append_copy();
 }
 
 fn static_call(s: &mut State) {

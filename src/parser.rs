@@ -326,7 +326,8 @@ impl Parser {
                         Value::Var(res_var),
                     ];
                     self.vars.finish_scope(nx, tp, self.lexer.at());
-                    self.vars.set_loop(0, self.data.def(vec_tp).known_type, code);
+                    self.vars
+                        .set_loop(0, self.data.def(vec_tp).known_type, code);
                     let len = self.cl("OpLengthVector", &[code.clone()]);
                     *code = v_set(iter_var, Value::Int(-1));
                     return v_if(
@@ -2287,7 +2288,7 @@ impl Parser {
         }
     }
 
-    // <vector> ::= '[' <expr> { ',' <expr> } ']'
+    // <vector> ::= '[' <expr> [ ';' <size-expr>]{ ',' <expr> [ ';' <size-expr> } ']'
     fn parse_vector(&mut self, assign_tp: &Type, val: &mut Value, parent_tp: &Type) -> Type {
         let new_store = if let Value::Var(nr) = *val {
             self.vars.uses(nr) == 0 && !self.vars.is_argument(nr)
@@ -2346,6 +2347,11 @@ impl Parser {
             if let Some(value) = self.parse_item(elm, &mut in_t, &mut res) {
                 return value;
             }
+            if self.lexer.has_token(";") {
+                if let Some(value) = self.parse_multiply(&mut res) {
+                    return value;
+                }
+            }
             if !self.lexer.has_token(",") {
                 break;
             }
@@ -2383,6 +2389,21 @@ impl Parser {
         );
         *val = Value::Block(ls);
         tp
+    }
+
+    fn parse_multiply(&mut self, res: &mut Vec<Value>) -> Option<Type> {
+        let mut code = Value::Null;
+        let tp = self.parse_operators(&Type::Unknown(0), &mut code, &mut Type::Null, 0);
+        if !matches!(tp, Type::Integer(_, _)) {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "Expect a number as the object multiplier"
+            );
+            return Some(Type::Unknown(0));
+        }
+        res.push(Value::Return(Box::new(code)));
+        None
     }
 
     // <item> ::== ['for' | <expr> ]
@@ -2459,6 +2480,15 @@ impl Parser {
                     self.database.vector(self.data.def(ed_nr).known_type)
                 },
             ));
+            if let Value::Return(multiply) = p {
+                let to = if let Value::Call(_, ps) = val {
+                    ps[0].clone()
+                } else {
+                    Value::Var(vec)
+                };
+                ls.push(self.cl("OpAppendCopy", &[to, *multiply.clone(), known]));
+                continue;
+            }
             let fld = Value::Int(i32::from(u16::MAX));
             let app_v = if is_field {
                 if let Value::Call(_, ps) = val {

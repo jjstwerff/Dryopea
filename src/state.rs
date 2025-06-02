@@ -802,13 +802,15 @@ impl State {
         let cur = *self.get_var::<i32>(state_var);
         let data = *self.get_stack::<DbRef>();
         match on & 63 {
-            0 => { // vector
-                let n = if reverse {
-                    cur + 1
-                } else {
-                    cur - 1
-                };
-                vector::remove_vector(&data, u32::from(self.database.size(tp)), cur as u32, &mut self.database.allocations);
+            0 => {
+                // vector
+                let n = if reverse { cur + 1 } else { cur - 1 };
+                vector::remove_vector(
+                    &data,
+                    u32::from(self.database.size(tp)),
+                    cur as u32,
+                    &mut self.database.allocations,
+                );
                 self.put_var(state_var - 8, n);
             }
             1 => {
@@ -829,6 +831,31 @@ impl State {
             }
             _ => panic!("Not implemented on {on}"),
         }
+    }
+
+    pub fn append_copy(&mut self) {
+        let tp = *self.code::<u16>();
+        let multiply = *self.get_stack::<i32>() as u32;
+        let data = *self.get_stack::<DbRef>();
+        let size = u32::from(self.database.size(self.database.content(tp)));
+        let length = vector::length_vector(&data, &self.database.allocations);
+        let v_rec =
+            keys::store(&data, &self.database.allocations).get_int(data.rec, data.pos) as u32;
+        let from = DbRef {
+            store_nr: data.store_nr,
+            rec: v_rec,
+            pos: 8 + (length * size - size),
+        };
+        vector::vector_append(&data, multiply - 1, size, &mut self.database.allocations);
+        for i in 0..(multiply - 1) {
+            let to = DbRef {
+                store_nr: data.store_nr,
+                rec: v_rec,
+                pos: 8 + (length + i) * size,
+            };
+            self.database.copy_block(&from, &to, size);
+        }
+        // TODO copy content fields (string / sub-records)
     }
 
     pub fn hash_add(&mut self) {
