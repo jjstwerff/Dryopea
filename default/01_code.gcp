@@ -572,7 +572,7 @@ fn OpFreeRef(v1: reference);
 fn OpAppend(db: reference, size: const u16, db_tp: const u16) -> reference[db];
 
 fn OpVarRef(pos: const u16) -> reference;
-#rust "*s.get_var::<DbRef>(@pos);"
+#rust "{{let r = *s.get_var::<DbRef>(@pos); stores.valid(&r); r}}"
 fn OpPutRef(pos: const u16, value: reference);
 #rust "s.put_var(@pos, @value);"
 fn OpEqRef(v1: reference, v2: reference) -> boolean;

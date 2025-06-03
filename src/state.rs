@@ -2210,16 +2210,13 @@ impl State {
                 self.database.show(&mut res, &val, known, false);
                 res
             }
-            Type::Vector(tp, _) => {
+            Type::Vector(_, _) => {
+                let val = *self.get_stack::<DbRef>();
                 let known = if self.types.contains_key(&code) {
                     self.types[&code]
                 } else {
-                    data.def(data.type_def_nr(tp as &Type)).known_type
-                };
-                let val = *self.get_stack::<DbRef>();
-                if known == u16::MAX {
                     return format!("ref({},{},{})", val.store_nr, val.rec, val.pos);
-                }
+                };
                 let mut res = format!("ref({},{},{})=", val.store_nr, val.rec, val.pos);
                 self.database.show(&mut res, &val, known, false);
                 res

@@ -1,6 +1,440 @@
-fn main() 
+fn texts(dir:File, l:vector<ref(File)>) {#1 block
+  __ref_1:vector<ref(File)> = null;
+  {#2 for
+    _vector_1:vector<ref(File)>["__ref_1"] = _tp_File_files(dir, __ref_1);
+    f#index:integer = -1i32;
+    loop {#3 for loop
+      f:ref(File)["__ref_1"] = if OpGeInt(f#index, OpLengthVector(_vector_1)) OpConvRefFromNull() else {#4 iter next
+        f#index:integer = OpAddInt(f#index, 1i32);
+        _res_2:ref(File)["__ref_1"] = OpGetVector(_vector_1, 17i32, f#index);
+        _res_2;
+      }#4:ref(File)["__ref_1"];
+      if OpNot(OpConvBoolFromRef(f)) break(0) else null;
+      {#5 block
+        if if OpEqInt(OpGetByte(f, 16i32, 0i32), 1i32) OpNot(_tp_text_starts_with(OpGetText(f, 4i32), ".")) else false {#6 block
+          texts(f, l);
+        }#6 else if _tp_text_ends_with(OpGetText(f, 4i32), ".txt") {#7 block
+          {#8 vector
+            _elm_3:ref(File)["l"] = OpNewRecord(l, 12i32, 65535i32);
+            f;
+            OpFinishRecord(l, _elm_3, 12i32, 65535i32);
+          }#8;
+        }#7 else null;
+      }#5;
+    }#3;
+  }#2;
+}#1
+
+byte-code for tests/suite/13-file.gcp:texts(dir: ref(File)[0], l: vector<ref(File)>[12])
+ 637[24]: return-address
+ 637[28]: ConvRefFromNull() -> ref(reference) var=__ref_1[28]:vector<ref(File)> in 1
+ 638[40]: Database(var[28], db_tp=13)
+ 643[40]: VarRef(var[28]) -> ref(reference)
+ 646[52]: ConstInt(val=0) -> integer
+ 651[56]: SetInt(v1: ref(reference), fld=4, val: integer)
+ 654[40]: CreateRef(var[28]) -> ref(reference)
+ 657[52]: ConstInt(val=4) -> integer
+ 662[56]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
+ 667[40]: VarRef(var[0]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=dir[0]:ref(File) in 0
+ 670[52]: VarVector(var[28]) -> vector type=vector<File>[4]:Vector(11)[12] var=__ref_1[28]:vector<ref(File)> in 1
+ 673[64]: Call(size=0, to=500)
+ 680[52]: ConstInt(val=-1) -> integer var=f#index[52]:integer in 2
+ 685[56]: VarInt(var[52]) -> integer var=f#index[52]:integer in 2
+ 688[60]: VarVector(var[40]) -> vector type=vector<File>[4]:Vector(11)[12] var=_vector_1[40]:vector<ref(File)>["__ref_1"] in 2
+ 691[72]: LengthVector(r: vector) -> integer
+ 692[64]: GeInt(v1: integer, v2: integer) -> boolean
+ 693[57]: GotoFalseWord(jump=700, if_false: boolean)
+ 696[56]: ConvRefFromNull() -> ref(reference)
+ 697[68]: GotoWord(jump=728)
+ 700[56]: VarInt(var[52]) -> integer var=f#index[52]:integer in 2
+ 703[60]: ConstInt(val=1) -> integer
+ 708[64]: AddInt(v1: integer, v2: integer) -> integer
+ 709[60]: PutInt(var[52], value: integer)
+ 712[56]: VarVector(var[40]) -> vector type=vector<File>[4]:Vector(11)[12] var=_vector_1[40]:vector<ref(File)>["__ref_1"] in 2
+ 715[68]: VarInt(var[52]) -> integer var=f#index[52]:integer in 2
+ 718[72]: GetVector(r: vector, size=17, index: integer) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11]
+ 721[68]: VarRef(var[56]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=_res_2[56]:ref(File)["__ref_1"] in 4
+ 724[80]: FreeStack(value=12, discard=24) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11]
+ 728[68]: VarRef(var[56]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=f[56]:ref(File)["__ref_1"] in 3
+ 731[80]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 732[69]: Not(v1: boolean) -> boolean
+ 733[69]: GotoFalseWord(jump=743, if_false: boolean)
+ 736[68]: FreeStack(value=0, discard=12)
+ 740[56]: GotoWord(jump=847)
+ 743[68]: VarRef(var[56]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=f[56]:ref(File)["__ref_1"] in 3
+ 746[80]: GetByte(v1: ref(reference), fld=16, min=0) -> integer
+ 751[72]: ConstInt(val=1) -> integer
+ 756[76]: EqInt(v1: integer, v2: integer) -> boolean
+ 757[69]: GotoFalseWord(jump=776, if_false: boolean)
+ 760[68]: VarRef(var[56]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=f[56]:ref(File)["__ref_1"] in 3
+ 763[80]: GetText(v1: ref(reference), fld=4) -> text["dir"]
+ 766[84]: ConstText(_value=".") -> text
+ 769[100]: StaticCall(_tp_text_starts_with)
+ 772[69]: Not(v1: boolean) -> boolean
+ 773[69]: GotoWord(jump=777)
+ 776[68]: ConstFalse() -> boolean
+ 777[69]: GotoFalseWord(jump=796, if_false: boolean)
+ 780[68]: VarRef(var[56]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=f[56]:ref(File)["__ref_1"] in 3
+ 783[80]: VarVector(var[12]) -> vector type=vector<File>[4]:Vector(11)[12] var=l[12]:vector<ref(File)> in 0
+ 786[92]: Call(size=0, to=637)
+ 793[68]: GotoWord(jump=840)
+ 796[68]: VarRef(var[56]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=f[56]:ref(File)["__ref_1"] in 3
+ 799[80]: GetText(v1: ref(reference), fld=4) -> text["dir"]
+ 802[84]: ConstText(_value=".txt") -> text
+ 808[100]: StaticCall(_tp_text_ends_with)
+ 811[69]: GotoFalseWord(jump=840, if_false: boolean)
+ 814[68]: VarVector(var[12]) -> vector type=vector<File>[4]:Vector(11)[12] var=l[12]:vector<ref(File)> in 0
+ 817[80]: NewRecord(data: ref(reference), parent_tp=12, fld=65535) -> ref(reference)
+ 822[80]: VarRef(var[56]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=f[56]:ref(File)["__ref_1"] in 3
+ 825[92]: VarVector(var[12]) -> vector type=vector<File>[4]:Vector(11)[12] var=l[12]:vector<ref(File)> in 0
+ 828[104]: VarRef(var[68]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=_elm_3[68]:ref(File)["l"] in 8
+ 831[116]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=12, fld=65535)
+ 836[92]: FreeStack(value=0, discard=24)
+ 840[68]: FreeStack(value=0, discard=12)
+ 844[56]: GotoWord(jump=685)
+ 847[56]: FreeStack(value=0, discard=16)
+ 851[40]: VarVector(var[28]) -> vector type=vector<File>[4]:Vector(11)[12] var=__ref_1[28]:vector<ref(File)> in 1
+ 854[52]: FreeRef(v1: ref(reference))
+ 855[40]: Return(ret=24, value=0, discard=40)
+
+fn main() {#1 block
+  __ref_2:ref(File) = null;
+  __ref_1:ref(main_vector<File>) = null;
+  __work_1:text = "";
+  l:vector<ref(File)>["__ref_1"] = {#2 vector
+    OpDatabase(__ref_1, 13i32);
+    _vec_1:vector<ref(File)>["__ref_1"] = OpGetField(__ref_1, 4i32, 65535i32);
+    OpSetInt(__ref_1, 4i32, 0i32);
+    _vec_1;
+  }#2:vector<ref(File)>["__ref_1"];
+  texts(file("example", __ref_2), l);
+  print({#3 formatting string
+    __work_1:text = "";
+    OpFormatDatabase(__work_1, l, 12i32, false);
+    __work_1;
+  }#3:text);
+}#1
 
 byte-code for tests/suite/13-file.gcp:main()
- 645[0]: return-address
+ 861[0]: return-address
+ 861[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:ref(File) in 1
+ 862[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(main_vector<File>) in 1
+ 863[28]: Text() var=__work_1[28]:text in 1
+ 864[52]: Database(var[16], db_tp=13) type=main_vector<File>[8]:{vector:vector<File>[4]}[13] var=l[52]:vector<ref(File)>["__ref_1"] in 1
+ 869[52]: VarRef(var[16]) -> ref(reference) type=main_vector<File>[8]:{vector:vector<File>[4]}[13] var=__ref_1[16]:ref(main_vector<File>) in 1
+ 872[64]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=Unknown type(65535)[65535]
+ 875[64]: VarRef(var[16]) -> ref(reference) type=main_vector<File>[8]:{vector:vector<File>[4]}[13] var=__ref_1[16]:ref(main_vector<File>) in 1
+ 878[76]: ConstInt(val=0) -> integer
+ 883[80]: SetInt(v1: ref(reference), fld=4, val: integer)
+ 886[64]: VarVector(var[52]) -> vector type=vector<File>[4]:Vector(11)[12] var=_vec_1[52]:vector<ref(File)>["__ref_1"] in 2
+ 889[76]: FreeStack(value=12, discard=24) type=Variable[12]:{name:text[4], value:text[8]}[6]
+ 893[64]: ConstText(_value="example") -> text
+ 902[80]: VarRef(var[4]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=__ref_2[4]:ref(File) in 1
+ 905[92]: Call(size=0, to=426)
+ 912[76]: VarVector(var[52]) -> vector type=vector<File>[4]:Vector(11)[12] var=l[52]:vector<ref(File)>["__ref_1"] in 1
+ 915[88]: Call(size=0, to=637)
+ 922[64]: ClearText(var[28]) var=__work_1[28]:text in 1
+ 925[64]: ConstText(_value="") -> text
+ 927[80]: AppendText(var[28], v1: text)
+ 930[64]: VarVector(var[52]) -> vector type=vector<File>[4]:Vector(11)[12] var=l[52]:vector<ref(File)>["__ref_1"] in 1
+ 933[76]: FormatDatabase(var[28], val: ref(reference), db_tp=12, pretty=false)
+ 939[64]: VarText(var[28]) -> text var=__work_1[28]:text in 1
+ 942[80]: Call(size=0, to=338)
+ 949[64]: VarRef(var[16]) -> ref(reference) type=main_vector<File>[8]:{vector:vector<File>[4]}[13] var=__ref_1[16]:ref(main_vector<File>) in 1
+ 952[76]: FreeRef(v1: ref(reference))
+ 953[64]: FreeText(var[28])
+ 956[64]: VarRef(var[4]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[11] var=__ref_2[4]:ref(File) in 1
+ 959[76]: FreeRef(v1: ref(reference))
+ 960[64]: Return(ret=0, value=0, discard=64)
 
 Execute main:
+  861:[8] ConvRefFromNull() -> ref(1,0,0)[8]
+  862:[20] ConvRefFromNull() -> ref(2,0,0)[20]
+  863:[32] Text()
+  864:[56] Database(var[20], db_tp=13)
+  869:[56] VarRef(var[20]) -> ref(2,1,0)={}[56]
+  872:[68] GetField(v1=ref(2,1,0)[56], fld=4) -> ref(2,1,4)[56]
+  875:[68] VarRef(var[20]) -> ref(2,1,0)={}[68]
+  878:[80] ConstInt(val=0) -> 0[80]
+  883:[84] SetInt(v1=ref(2,1,0)[68], fld=4, val=0[80])
+  886:[68] VarVector(var[56]) -> ref(2,1,4)=[][68]
+  889:[80] FreeStack(value=12, discard=24)
+  893:[68] ConstText(_value="example") -> "example"[68]
+  902:[84] VarRef(var[8]) -> ref(1,0,0)=null[84]
+  905:[96] Call(size=0, to=426)
+  426:[100] Database(var[84], db_tp=11)
+  431:[100] VarRef(var[84]) -> ref(1,1,0)={dir:false}[100]
+  434:[112] ArgText(var[68]) -> "example"[112]
+  437:[128] SetText(v1=ref(1,1,0)[100], fld=4, val="example"[112])
+  440:[100] VarRef(var[84]) -> ref(1,1,0)={path:"example",dir:false}[100]
+  443:[112] ConstLong(val=0) -> 0[112]
+  452:[120] SetLong(v1=ref(1,1,0)[100], fld=8, val=0[112])
+  455:[100] VarRef(var[84]) -> ref(1,1,0)={path:"example",size:0,dir:false}[100]
+  458:[112] ConstFalse() -> false[112]
+  459:[113] GotoFalseWord(jump=470, if_false=false[112])
+  470:[112] ConstInt(val=0) -> 0[112]
+  475:[116] SetByte(v1=ref(1,1,0)[100], fld=16, min=0, val=0[112])
+  480:[100] VarRef(var[84]) -> ref(1,1,0)={path:"example",size:0,dir:false}[100]
+  483:[112] GetFile(file=ref(1,1,0)={path:"example",size:0,dir:false}[100]) -> true[100]
+  484:[101] GotoFalseWord(jump=493, if_false=true[100])
+  487:[100] VarRef(var[84]) -> ref(1,1,0)={path:"example",size:4096,dir:true}[100]
+  490:[112] GotoWord(jump=494)
+  494:[112] Return(ret=912[96], value=12, discard=44) -> ref(1,1,0)={path:"example",size:4096,dir:true}[68]
+  912:[80] VarVector(var[56]) -> ref(2,1,4)=[][80]
+  915:[92] Call(size=0, to=637)
+  637:[96] ConvRefFromNull() -> ref(3,0,0)[96]
+  638:[108] Database(var[96], db_tp=13)
+  643:[108] VarRef(var[96]) -> ref(3,1,0)[108]
+  646:[120] ConstInt(val=0) -> 0[120]
+  651:[124] SetInt(v1=ref(3,1,0)[108], fld=4, val=0[120])
+  654:[108] CreateRef(var[96]) -> ref(0,1,96)[108]
+  657:[120] ConstInt(val=4) -> 4[120]
+  662:[124] SetByte(v1=ref(0,1,96)[108], fld=4, min=0, val=4[120])
+  667:[108] VarRef(var[68]) -> ref(1,1,0)={path:"example",size:4096,dir:true}[108]
+  670:[120] VarVector(var[96]) -> ref(3,1,4)=[][120]
+  673:[132] Call(size=0, to=500)
+  500:[136] VarVector(var[120]) -> ref(3,1,4)=[][136]
+  503:[148] PutRef(var[120], value=ref(3,1,4)[136])
+  506:[136] VarRef(var[108]) -> ref(1,1,0)={path:"example",size:4096,dir:true}[136]
+  509:[148] GetByte(v1=ref(1,1,0)[136], fld=16, min=0) -> 1[136]
+  514:[140] ConstInt(val=1) -> 1[140]
+  519:[144] EqInt(v1=1[136], v2=1[140]) -> true[136]
+  520:[137] GotoFalseWord(jump=537, if_false=true[136])
+  523:[136] VarRef(var[108]) -> ref(1,1,0)={path:"example",size:4096,dir:true}[136]
+  526:[148] GetText(v1=ref(1,1,0)[136], fld=4) -> "example"[136]
+  529:[152] VarVector(var[120]) -> ref(3,1,4)=[][152]
+  532:[164] GetDir(path="example"[136], result=ref(3,1,4)[152]) -> true[136]
+  533:[137] FreeStack(value=0, discard=1)
+  537:[136] VarVector(var[120]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][136]
+  540:[148] Return(ret=680[132], value=12, discard=40) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][108]
+  680:[120] ConstInt(val=-1) -> -1[120]
+  685:[124] VarInt(var[120]) -> -1[124]
+  688:[128] VarVector(var[108]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][128]
+  691:[140] LengthVector(r=ref(3,1,4)[128]) -> 3[128]
+  692:[132] GeInt(v1=-1[124], v2=3[128]) -> false[124]
+  693:[125] GotoFalseWord(jump=700, if_false=false[124])
+  700:[124] VarInt(var[120]) -> -1[124]
+  703:[128] ConstInt(val=1) -> 1[128]
+  708:[132] AddInt(v1=-1[124], v2=1[128]) -> 0[124]
+  709:[128] PutInt(var[120], value=0[124])
+  712:[124] VarVector(var[108]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][124]
+  715:[136] VarInt(var[120]) -> 0[136]
+  718:[140] GetVector(r=ref(3,1,4)[124], size=17, index=0[136]) -> ref(3,9,8)={path:"example/map.xcf",size:7817,dir:false}[124]
+  721:[136] VarRef(var[124]) -> ref(3,9,8)={path:"example/map.xcf",size:7817,dir:false}[136]
+  724:[148] FreeStack(value=12, discard=24)
+  728:[136] VarRef(var[124]) -> ref(3,9,8)={path:"example/map.xcf",size:7817,dir:false}[136]
+  731:[148] ConvBoolFromRef(val=ref(3,9,8)[136]) -> true[136]
+  732:[137] Not(v1=true[136]) -> false[136]
+  733:[137] GotoFalseWord(jump=743, if_false=false[136])
+  743:[136] VarRef(var[124]) -> ref(3,9,8)={path:"example/map.xcf",size:7817,dir:false}[136]
+  746:[148] GetByte(v1=ref(3,9,8)[136], fld=16, min=0) -> 0[136]
+  751:[140] ConstInt(val=1) -> 1[140]
+  756:[144] EqInt(v1=0[136], v2=1[140]) -> false[136]
+  757:[137] GotoFalseWord(jump=776, if_false=false[136])
+  776:[136] ConstFalse() -> false[136]
+  777:[137] GotoFalseWord(jump=796, if_false=false[136])
+  796:[136] VarRef(var[124]) -> ref(3,9,8)={path:"example/map.xcf",size:7817,dir:false}[136]
+  799:[148] GetText(v1=ref(3,9,8)[136], fld=4) -> "example/map.xcf"[136]
+  802:[152] ConstText(_value=".txt") -> ".txt"[152]
+  808:[168] StaticCall(call=6)
+  811:[137] GotoFalseWord(jump=840, if_false=false[136])
+  840:[136] FreeStack(value=0, discard=12)
+  844:[124] GotoWord(jump=685)
+  685:[124] VarInt(var[120]) -> 0[124]
+  688:[128] VarVector(var[108]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][128]
+  691:[140] LengthVector(r=ref(3,1,4)[128]) -> 3[128]
+  692:[132] GeInt(v1=0[124], v2=3[128]) -> false[124]
+  693:[125] GotoFalseWord(jump=700, if_false=false[124])
+  700:[124] VarInt(var[120]) -> 0[124]
+  703:[128] ConstInt(val=1) -> 1[128]
+  708:[132] AddInt(v1=0[124], v2=1[128]) -> 1[124]
+  709:[128] PutInt(var[120], value=1[124])
+  712:[124] VarVector(var[108]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][124]
+  715:[136] VarInt(var[120]) -> 1[136]
+  718:[140] GetVector(r=ref(3,1,4)[124], size=17, index=1[136]) -> ref(3,9,25)={path:"example/map.png",size:3406,dir:false}[124]
+  721:[136] VarRef(var[124]) -> ref(3,9,25)={path:"example/map.png",size:3406,dir:false}[136]
+  724:[148] FreeStack(value=12, discard=24)
+  728:[136] VarRef(var[124]) -> ref(3,9,25)={path:"example/map.png",size:3406,dir:false}[136]
+  731:[148] ConvBoolFromRef(val=ref(3,9,25)[136]) -> true[136]
+  732:[137] Not(v1=true[136]) -> false[136]
+  733:[137] GotoFalseWord(jump=743, if_false=false[136])
+  743:[136] VarRef(var[124]) -> ref(3,9,25)={path:"example/map.png",size:3406,dir:false}[136]
+  746:[148] GetByte(v1=ref(3,9,25)[136], fld=16, min=0) -> 0[136]
+  751:[140] ConstInt(val=1) -> 1[140]
+  756:[144] EqInt(v1=0[136], v2=1[140]) -> false[136]
+  757:[137] GotoFalseWord(jump=776, if_false=false[136])
+  776:[136] ConstFalse() -> false[136]
+  777:[137] GotoFalseWord(jump=796, if_false=false[136])
+  796:[136] VarRef(var[124]) -> ref(3,9,25)={path:"example/map.png",size:3406,dir:false}[136]
+  799:[148] GetText(v1=ref(3,9,25)[136], fld=4) -> "example/map.png"[136]
+  802:[152] ConstText(_value=".txt") -> ".txt"[152]
+  808:[168] StaticCall(call=6)
+  811:[137] GotoFalseWord(jump=840, if_false=false[136])
+  840:[136] FreeStack(value=0, discard=12)
+  844:[124] GotoWord(jump=685)
+  685:[124] VarInt(var[120]) -> 1[124]
+  688:[128] VarVector(var[108]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][128]
+  691:[140] LengthVector(r=ref(3,1,4)[128]) -> 3[128]
+  692:[132] GeInt(v1=1[124], v2=3[128]) -> false[124]
+  693:[125] GotoFalseWord(jump=700, if_false=false[124])
+  700:[124] VarInt(var[120]) -> 1[124]
+  703:[128] ConstInt(val=1) -> 1[128]
+  708:[132] AddInt(v1=1[124], v2=1[128]) -> 2[124]
+  709:[128] PutInt(var[120], value=2[124])
+  712:[124] VarVector(var[108]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][124]
+  715:[136] VarInt(var[120]) -> 2[136]
+  718:[140] GetVector(r=ref(3,1,4)[124], size=17, index=2[136]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[124]
+  721:[136] VarRef(var[124]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[136]
+  724:[148] FreeStack(value=12, discard=24)
+  728:[136] VarRef(var[124]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[136]
+  731:[148] ConvBoolFromRef(val=ref(3,9,42)[136]) -> true[136]
+  732:[137] Not(v1=true[136]) -> false[136]
+  733:[137] GotoFalseWord(jump=743, if_false=false[136])
+  743:[136] VarRef(var[124]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[136]
+  746:[148] GetByte(v1=ref(3,9,42)[136], fld=16, min=0) -> 1[136]
+  751:[140] ConstInt(val=1) -> 1[140]
+  756:[144] EqInt(v1=1[136], v2=1[140]) -> true[136]
+  757:[137] GotoFalseWord(jump=776, if_false=true[136])
+  760:[136] VarRef(var[124]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[136]
+  763:[148] GetText(v1=ref(3,9,42)[136], fld=4) -> "example/config"[136]
+  766:[152] ConstText(_value=".") -> "."[152]
+  769:[168] StaticCall(call=5)
+  772:[137] Not(v1=false[136]) -> true[136]
+  773:[137] GotoWord(jump=777)
+  777:[137] GotoFalseWord(jump=796, if_false=true[136])
+  780:[136] VarRef(var[124]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[136]
+  783:[148] VarVector(var[80]) -> ref(2,1,4)=[][148]
+  786:[160] Call(size=0, to=637)
+  637:[164] ConvRefFromNull() -> ref(4,0,0)[164]
+  638:[176] Database(var[164], db_tp=13)
+  643:[176] VarRef(var[164]) -> ref(4,1,0)[176]
+  646:[188] ConstInt(val=0) -> 0[188]
+  651:[192] SetInt(v1=ref(4,1,0)[176], fld=4, val=0[188])
+  654:[176] CreateRef(var[164]) -> ref(0,1,164)[176]
+  657:[188] ConstInt(val=4) -> 4[188]
+  662:[192] SetByte(v1=ref(0,1,164)[176], fld=4, min=0, val=4[188])
+  667:[176] VarRef(var[136]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[176]
+  670:[188] VarVector(var[164]) -> ref(4,1,4)=[][188]
+  673:[200] Call(size=0, to=500)
+  500:[204] VarVector(var[188]) -> ref(4,1,4)=[][204]
+  503:[216] PutRef(var[188], value=ref(4,1,4)[204])
+  506:[204] VarRef(var[176]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[204]
+  509:[216] GetByte(v1=ref(3,9,42)[204], fld=16, min=0) -> 1[204]
+  514:[208] ConstInt(val=1) -> 1[208]
+  519:[212] EqInt(v1=1[204], v2=1[208]) -> true[204]
+  520:[205] GotoFalseWord(jump=537, if_false=true[204])
+  523:[204] VarRef(var[176]) -> ref(3,9,42)={path:"example/config",size:4096,dir:true}[204]
+  526:[216] GetText(v1=ref(3,9,42)[204], fld=4) -> "example/config"[204]
+  529:[220] VarVector(var[188]) -> ref(4,1,4)=[][220]
+  532:[232] GetDir(path="example/config"[204], result=ref(4,1,4)[220]) -> true[204]
+  533:[205] FreeStack(value=0, discard=1)
+  537:[204] VarVector(var[188]) -> ref(4,1,4)=[{path:"example/config/terrain.txt",size:372,dir:false}][204]
+  540:[216] Return(ret=680[200], value=12, discard=40) -> ref(4,1,4)=[{path:"example/config/terrain.txt",size:372,dir:false}][176]
+  680:[188] ConstInt(val=-1) -> -1[188]
+  685:[192] VarInt(var[188]) -> -1[192]
+  688:[196] VarVector(var[176]) -> ref(4,1,4)=[{path:"example/config/terrain.txt",size:372,dir:false}][196]
+  691:[208] LengthVector(r=ref(4,1,4)[196]) -> 1[196]
+  692:[200] GeInt(v1=-1[192], v2=1[196]) -> false[192]
+  693:[193] GotoFalseWord(jump=700, if_false=false[192])
+  700:[192] VarInt(var[188]) -> -1[192]
+  703:[196] ConstInt(val=1) -> 1[196]
+  708:[200] AddInt(v1=-1[192], v2=1[196]) -> 0[192]
+  709:[196] PutInt(var[188], value=0[192])
+  712:[192] VarVector(var[176]) -> ref(4,1,4)=[{path:"example/config/terrain.txt",size:372,dir:false}][192]
+  715:[204] VarInt(var[188]) -> 0[204]
+  718:[208] GetVector(r=ref(4,1,4)[192], size=17, index=0[204]) -> ref(4,9,8)={path:"example/config/terrain.txt",size:372,dir:false}[192]
+  721:[204] VarRef(var[192]) -> ref(4,9,8)={path:"example/config/terrain.txt",size:372,dir:false}[204]
+  724:[216] FreeStack(value=12, discard=24)
+  728:[204] VarRef(var[192]) -> ref(4,9,8)={path:"example/config/terrain.txt",size:372,dir:false}[204]
+  731:[216] ConvBoolFromRef(val=ref(4,9,8)[204]) -> true[204]
+  732:[205] Not(v1=true[204]) -> false[204]
+  733:[205] GotoFalseWord(jump=743, if_false=false[204])
+  743:[204] VarRef(var[192]) -> ref(4,9,8)={path:"example/config/terrain.txt",size:372,dir:false}[204]
+  746:[216] GetByte(v1=ref(4,9,8)[204], fld=16, min=0) -> 0[204]
+  751:[208] ConstInt(val=1) -> 1[208]
+  756:[212] EqInt(v1=0[204], v2=1[208]) -> false[204]
+  757:[205] GotoFalseWord(jump=776, if_false=false[204])
+  776:[204] ConstFalse() -> false[204]
+  777:[205] GotoFalseWord(jump=796, if_false=false[204])
+  796:[204] VarRef(var[192]) -> ref(4,9,8)={path:"example/config/terrain.txt",size:372,dir:false}[204]
+  799:[216] GetText(v1=ref(4,9,8)[204], fld=4) -> "example/config/terrain.txt"[204]
+  802:[220] ConstText(_value=".txt") -> ".txt"[220]
+  808:[236] StaticCall(call=6)
+  811:[205] GotoFalseWord(jump=840, if_false=true[204])
+  814:[204] VarVector(var[148]) -> ref(2,1,4)=[][204]
+  817:[216] NewRecord(data=ref(2,1,4)[204], parent_tp=12, fld=65535) -> ref(2,9,8)[204]
+  822:[216] VarRef(var[192]) -> ref(4,9,8)={path:"example/config/terrain.txt",size:372,dir:false}[216]
+  825:[228] VarVector(var[148]) -> ref(2,1,4)=[{dir:false}][228]
+  828:[240] VarRef(var[204]) -> ref(2,9,8)={dir:false}[240]
+  831:[252] FinishRecord(data=ref(2,1,4)[228], rec=ref(2,9,8)[240], parent_tp=12, fld=65535)
+  836:[228] FreeStack(value=0, discard=24)
+  840:[204] FreeStack(value=0, discard=12)
+  844:[192] GotoWord(jump=685)
+  685:[192] VarInt(var[188]) -> 0[192]
+  688:[196] VarVector(var[176]) -> ref(4,1,4)=[{path:"example/config/terrain.txt",size:372,dir:false}][196]
+  691:[208] LengthVector(r=ref(4,1,4)[196]) -> 1[196]
+  692:[200] GeInt(v1=0[192], v2=1[196]) -> false[192]
+  693:[193] GotoFalseWord(jump=700, if_false=false[192])
+  700:[192] VarInt(var[188]) -> 0[192]
+  703:[196] ConstInt(val=1) -> 1[196]
+  708:[200] AddInt(v1=0[192], v2=1[196]) -> 1[192]
+  709:[196] PutInt(var[188], value=1[192])
+  712:[192] VarVector(var[176]) -> ref(4,1,4)=[{path:"example/config/terrain.txt",size:372,dir:false}][192]
+  715:[204] VarInt(var[188]) -> 1[204]
+  718:[208] GetVector(r=ref(4,1,4)[192], size=17, index=1[204]) -> ref(4,0,0)=null[192]
+  721:[204] VarRef(var[192]) -> ref(4,0,0)=null[204]
+  724:[216] FreeStack(value=12, discard=24)
+  728:[204] VarRef(var[192]) -> ref(4,0,0)=null[204]
+  731:[216] ConvBoolFromRef(val=ref(4,0,0)[204]) -> false[204]
+  732:[205] Not(v1=false[204]) -> true[204]
+  733:[205] GotoFalseWord(jump=743, if_false=true[204])
+  736:[204] FreeStack(value=0, discard=12)
+  740:[192] GotoWord(jump=847)
+  847:[192] FreeStack(value=0, discard=16)
+  851:[176] VarVector(var[164]) -> ref(4,1,4)=[{path:"example/config/terrain.txt",size:372,dir:false}][176]
+  854:[188] FreeRef(v1=ref(4,1,4)[176])
+  855:[176] Return(ret=793[160], value=0, discard=40)
+  793:[136] GotoWord(jump=840)
+  840:[136] FreeStack(value=0, discard=12)
+  844:[124] GotoWord(jump=685)
+  685:[124] VarInt(var[120]) -> 2[124]
+  688:[128] VarVector(var[108]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][128]
+  691:[140] LengthVector(r=ref(3,1,4)[128]) -> 3[128]
+  692:[132] GeInt(v1=2[124], v2=3[128]) -> false[124]
+  693:[125] GotoFalseWord(jump=700, if_false=false[124])
+  700:[124] VarInt(var[120]) -> 2[124]
+  703:[128] ConstInt(val=1) -> 1[128]
+  708:[132] AddInt(v1=2[124], v2=1[128]) -> 3[124]
+  709:[128] PutInt(var[120], value=3[124])
+  712:[124] VarVector(var[108]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][124]
+  715:[136] VarInt(var[120]) -> 3[136]
+  718:[140] GetVector(r=ref(3,1,4)[124], size=17, index=3[136]) -> ref(3,0,0)=null[124]
+  721:[136] VarRef(var[124]) -> ref(3,0,0)=null[136]
+  724:[148] FreeStack(value=12, discard=24)
+  728:[136] VarRef(var[124]) -> ref(3,0,0)=null[136]
+  731:[148] ConvBoolFromRef(val=ref(3,0,0)[136]) -> false[136]
+  732:[137] Not(v1=false[136]) -> true[136]
+  733:[137] GotoFalseWord(jump=743, if_false=true[136])
+  736:[136] FreeStack(value=0, discard=12)
+  740:[124] GotoWord(jump=847)
+  847:[124] FreeStack(value=0, discard=16)
+  851:[108] VarVector(var[96]) -> ref(3,1,4)=[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true}][108]
+  854:[120] FreeRef(v1=ref(3,1,4)[108])
+  855:[108] Return(ret=922[92], value=0, discard=40)
+  922:[68] ClearText(var[32])
+  925:[68] ConstText(_value="") -> ""[68]
+  927:[84] AppendText(var[32], v1=""[68])
+  930:[68] VarVector(var[56]) -> ref(2,1,4)=[{dir:false}][68]
+  933:[80] FormatDatabase(var[32], val=ref(2,1,4)[68], db_tp=12, pretty=false)
+  939:[68] VarText(var[32]) -> "[{dir:false}]"[68]
+  942:[84] Call(size=0, to=338)
+  338:[88] ArgText(var[68]) -> "[{dir:false}]"[88]
+  341:[104] Print(v1="[{dir:false}]"[88])
+  342:[88] Return(ret=949[84], value=0, discard=20)
+  949:[68] VarRef(var[20]) -> ref(2,1,0)={vector:[{dir:false}]}[68]
+  952:[80] FreeRef(v1=ref(2,1,0)[68])
+  953:[68] FreeText(var[32])
+  956:[68] VarRef(var[8]) -> ref(1,0,0)=null[68]
+  959:[80] FreeRef(v1=ref(1,0,0)[68])
+  960:[68] Return(ret=4294967295[4], value=0, discard=64)
+Finished

@@ -1420,7 +1420,11 @@ fn append(s: &mut State) {
 
 fn var_ref(s: &mut State) {
     let v_pos = *s.code::<u16>();
-    let new_value = *s.get_var::<DbRef>(v_pos);
+    let new_value = {
+        let r = *s.get_var::<DbRef>(v_pos);
+        s.database.valid(&r);
+        r
+    };
     s.put_stack(new_value);
 }
 

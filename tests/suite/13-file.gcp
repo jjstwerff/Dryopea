@@ -1,2 +1,15 @@
+fn texts(dir: File, l: vector<File>) {
+    for f in dir.files() {
+        if f.dir && !f.path.starts_with(".") {
+            texts(f, l);
+        } else if f.path.ends_with(".txt") {
+            l += [f];
+        }
+    }
+}
+
 fn main() {
+    l = [];
+    texts(file("example"), l);
+    print("{l}");
 }

@@ -200,3 +200,13 @@ fn scope_text() {
     .expr("d = Data { name: \"testing\" }; d.name")
     .result(Value::str("testing"));
 }
+
+#[test]
+fn files() {
+    expr!("fs = file(\"example\").files(); \"{fs}\"").result(Value::str(
+        "[\
+{path:\"example/map.xcf\",size:7817,dir:false},\
+{path:\"example/map.png\",size:3406,dir:false},\
+{path:\"example/config\",size:4096,dir:true}]",
+    ));
+}

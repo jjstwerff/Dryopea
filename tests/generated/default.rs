@@ -202,8 +202,8 @@ fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 {
 }
 
 fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str {
-  OpClearRefText(stores, *s.get_var::<DbRef>((var_result)););
-  OpAppendRefText(stores, *s.get_var::<DbRef>((var_result));, 0_i32, "".to_string());
+  OpClearRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r});
+  OpAppendRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r}, 0_i32, "".to_string());
   OpGetFileText(stores, var_self, var_result);
   var_result
 }
@@ -213,7 +213,7 @@ fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef {
     OpDatabase(stores, var_result, 11_i32);
     {let db = (var_result); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
     {let db = (var_result); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
-    {let db = (var_result); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if 0_i32 {1_i32} else {0_i32}));}
+    {let db = (var_result); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if false {1_i32} else {0_i32}));}
   };
   if stores.get_file(&(var_result)) {
     var_result
