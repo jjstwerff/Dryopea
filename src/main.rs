@@ -15,7 +15,6 @@ mod keys;
 mod lexer;
 mod variables;
 
-mod logger;
 mod parser;
 mod png_store;
 mod stack;
@@ -25,27 +24,46 @@ mod text;
 mod tree;
 mod typedef;
 mod vector;
-use crate::state::State;
-use clap::Parser;
 
-#[derive(Parser)]
-#[command(author = "Jurjen Stellingwerff <j.stellingwerff@gmail.com>",
-    version = "0.1.0",
-    about = "Parse gcp files",
-    long_about = None)]
-struct Cli {
-    /// Directory to be parsed
-    #[arg(value_name = "DIR", required = false, default_value = ".")]
-    dir: std::path::PathBuf,
-}
+use crate::state::State;
+use std::env;
 
 fn main() -> std::io::Result<()> {
-    let mut w = std::fs::File::create("log.txt")?;
-    let cli: Cli = Cli::parse();
+    let mut args = env::args_os();
+    args.next();
     let mut p = parser::Parser::new();
-    p.parse_dir("default", true)?;
-    p.parse_dir(cli.dir.to_str().unwrap(), false)?;
+    let dir = project_dir();
+    p.parse_dir(&(dir + "default"), true)?;
+    if let Some(file_name) = args.next() {
+        p.parse(file_name.to_str().unwrap(), false);
+    }
+    for l in p.diagnostics.lines() {
+        println!("{l}");
+    }
+    if !p.diagnostics.is_empty() {
+        return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
+    }
     let mut state = State::new(p.database);
+    let mut w = Vec::new();
     interpreter::byte_code(&mut w, &mut state, &mut p.data)?;
-    state.execute_log(&mut w, "test", &p.data)
+    state.execute(p.data.def_nr("main"), &p.data);
+    Ok(())
+    //state.execute_log(&mut w, "main", &p.data)
+}
+
+fn project_dir() -> String {
+    let direct = if let Ok(prog) = env::current_exe() {
+        prog.to_str().unwrap().to_string()
+    } else {
+        String::new()
+    };
+    let mut dir = if direct.ends_with("lavition") {
+        &direct[0..direct.len() - 8]
+    } else {
+        &direct
+    };
+    if dir.ends_with("target/release/") {
+        dir = &dir[..dir.len() - 15];
+    }
+    dir.to_string()
 }

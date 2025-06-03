@@ -174,7 +174,8 @@ impl Drop for Test {
         create::generate_lib(&p.data).unwrap();
         let mut state = State::new(p.database);
         byte_code(&mut w, &mut state, &mut p.data).unwrap();
-        state.execute_log(&mut w, "test", &p.data).unwrap();
+        //state.execute_log(&mut w, "test", &p.data).unwrap();
+        state.execute(p.data.def_nr("test"), &p.data);
     }
 }
 

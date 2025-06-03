@@ -1,0 +1,38 @@
+struct Keyword {
+    name: text
+}
+
+struct Token {
+    start: u8, // the first character each token for example '<' or '.'
+    possible: vector<text> // the possible full tokens, may be longer than 2. Empty means only a single version exists.
+}
+
+struct Lexer {
+    file: text, // we can switch files
+    data: text,
+    index: integer,
+    line: integer,
+    pos: integer,
+    string: boolean, // we are parsing a string content that contains expressions
+    keywords: hash<Keyword[name]>,
+    tokens: hash<Token[start]>,
+    behind: boolean, // was the last comment behind code
+    comment: text // the last encountered comment, dismissed when new code is parsed
+}
+
+// Only within a single file can we remember anchor points and return to them later.
+struct Anchor {
+    index: integer,
+    line: integer,
+    pos: integer
+}
+
+// TODO: all including tests
+// - fill keywords and tokens.
+// - read a file
+// - parse tokens, identifiers and keywords
+// - dismiss white space (tab, newline, space)
+// - remember but skip comments, possible multiple lines
+// - parse numbers
+// - parse strings
+// - implement anchors
