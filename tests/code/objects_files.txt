@@ -1,0 +1,84 @@
+pub fn test() {
+    test_value = {fs = file("example").files(); "{fs}"};
+    assert(
+        test_value == "[{{path:\"example/map.xcf\",size:7817,dir:false}},{{path:\"example/map.png\",size:3406,dir:false}},{{path:\"example/config\",size:4096,dir:true}},{{path:\"example/show.gcp\",size:360,dir:false}}]",
+        "Test failed {test_value} != \"[{{path:\"example/map.xcf\",size:7817,dir:false}},{{path:\"example/map.png\",size:3406,dir:false}},{{path:\"example/config\",size:4096,dir:true}},{{path:\"example/show.gcp\",size:360,dir:false}}]\""
+    );
+}
+Type 14:vector<File>[4]:Vector(12)
+
+Type 15:main_vector<File>[8]:
+    vector:vector<File>[4]
+
+fn test() {#1 block
+  __ref_2:vector<ref(File)> = null;
+  __ref_1:ref(File) = null;
+  __work_2:text = "";
+  __work_1:text = "";
+  test_value:text = {#2 block
+    fs:vector<ref(File)>["__ref_2"] = _tp_File_files(file("example", __ref_1), __ref_2);
+    {#3 formatting string
+      __work_1:text = "";
+      OpFormatDatabase(__work_1, fs, 14i32, false);
+      __work_1;
+    }#3:text;
+  }#2:text;
+  if OpEqText(test_value, "[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true},{path:"example/show.gcp",size:360,dir:false}]") null else OpPanic({#4 formatting string
+    __work_2:text = "Test failed ";
+    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
+    OpAppendText(__work_2, " != "[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true},{path:"example/show.gcp",size:360,dir:false}]"");
+    __work_2;
+  }#4:text);
+}#1
+
+byte-code for files:test()
+   0[0]: return-address
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:vector<ref(File)> in 1
+   1[16]: Database(var[4], db_tp=15)
+   6[16]: VarRef(var[4]) -> ref(reference)
+   9[28]: ConstInt(val=0) -> integer
+  14[32]: SetInt(v1: ref(reference), fld=4, val: integer)
+  17[16]: CreateRef(var[4]) -> ref(reference)
+  20[28]: ConstInt(val=4) -> integer
+  25[32]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
+  30[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(File) in 1
+  31[28]: Text() var=__work_2[28]:text in 1
+  32[52]: Text() var=__work_1[52]:text in 1
+  33[76]: Text() var=test_value[76]:text in 1
+  34[100]: ConstText(_value="example") -> text var=fs[100]:vector<ref(File)>["__ref_2"] in 2
+  43[116]: VarRef(var[16]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[12] var=__ref_1[16]:ref(File) in 1
+  46[128]: Call(size=0, to=700)
+  53[112]: VarVector(var[4]) -> vector type=vector<File>[4]:Vector(12)[14] var=__ref_2[4]:vector<ref(File)> in 1
+  56[124]: Call(size=0, to=774)
+  63[112]: ClearText(var[52]) var=__work_1[52]:text in 1
+  66[112]: ConstText(_value="") -> text
+  68[128]: AppendText(var[52], v1: text)
+  71[112]: VarVector(var[100]) -> vector type=vector<File>[4]:Vector(12)[14] var=fs[100]:vector<ref(File)>["__ref_2"] in 2
+  74[124]: FormatDatabase(var[52], val: ref(reference), db_tp=14, pretty=false)
+  80[112]: VarText(var[52]) -> text var=__work_1[52]:text in 1
+  83[128]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
+  87[116]: AppendText(var[76], v1: text)
+  90[100]: VarText(var[76]) -> text var=test_value[76]:text in 1
+  93[116]: ConstText(_value="[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true},{path:"example/show.gcp",size:360,dir:false}]") -> text
+ 274[132]: EqText(v1: text, v2: text) -> boolean
+ 275[101]: GotoFalseWord(jump=281, if_false: boolean)
+ 278[100]: GotoWord(jump=508)
+ 281[100]: ClearText(var[28]) var=__work_2[28]:text in 1
+ 284[100]: ConstText(_value="Test failed ") -> text
+ 298[116]: AppendText(var[28], v1: text)
+ 301[100]: VarText(var[76]) -> text var=test_value[76]:text in 1
+ 304[116]: ConstInt(val=0) -> integer
+ 309[120]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
+ 314[100]: ConstText(_value=" != "[{path:"example/map.xcf",size:7817,dir:false},{path:"example/map.png",size:3406,dir:false},{path:"example/config",size:4096,dir:true},{path:"example/show.gcp",size:360,dir:false}]"") -> text
+ 501[116]: AppendText(var[28], v1: text)
+ 504[100]: VarText(var[28]) -> text var=__work_2[28]:text in 1
+ 507[116]: Panic(message: text)
+ 508[100]: FreeText(var[76])
+ 511[100]: VarRef(var[16]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[12] var=__ref_1[16]:ref(File) in 1
+ 514[112]: FreeRef(v1: ref(reference))
+ 515[100]: VarVector(var[4]) -> vector type=vector<File>[4]:Vector(12)[14] var=__ref_2[4]:vector<ref(File)> in 1
+ 518[112]: FreeRef(v1: ref(reference))
+ 519[100]: FreeText(var[52])
+ 522[100]: FreeText(var[28])
+ 525[100]: Return(ret=0, value=0, discard=100)
+

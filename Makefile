@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 all:
 	rustfmt src/*.rs --edition 2024
-	RUSTFLAGS=-g cargo build --release >result.txt 2>&1 ; sed -i 's/; finished in [0-9]\+.[0-9]\+s//g' result.txt  ; sed -i 's/ in [0-9]\+.[0-9]\+s//g' result.txt
-	RUST_BACKTRACE=1 time -v ./target/release/main webassembly/tests/ > auto.txt 2>&1
+	RUSTFLAGS=-g cargo build --release
+
+install: all
+	sudo ln -f -s ${PWD}/target/release/lavition /usr/local/bin/lavition
 
 test: clippy
 	rm tests/generated/* -f

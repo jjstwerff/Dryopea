@@ -17,7 +17,6 @@ pub mod vector;
 
 pub mod external;
 pub mod generation;
-mod logger;
 pub mod parser;
 mod png_store;
 mod radix_tree;

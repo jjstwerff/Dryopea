@@ -240,6 +240,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     step,
     remove,
     append_copy,
+    copy_record,
     static_call,
     create_ref,
     get_ref_text,
@@ -1420,7 +1421,11 @@ fn append(s: &mut State) {
 
 fn var_ref(s: &mut State) {
     let v_pos = *s.code::<u16>();
-    let new_value = *s.get_var::<DbRef>(v_pos);
+    let new_value = {
+        let r = *s.get_var::<DbRef>(v_pos);
+        s.database.valid(&r);
+        r
+    };
     s.put_stack(new_value);
 }
 
@@ -1799,6 +1804,10 @@ fn remove(s: &mut State) {
 
 fn append_copy(s: &mut State) {
     s.append_copy();
+}
+
+fn copy_record(s: &mut State) {
+    s.copy_record();
 }
 
 fn static_call(s: &mut State) {

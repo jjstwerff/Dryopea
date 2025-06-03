@@ -1042,10 +1042,26 @@ impl Stores {
     */
     pub fn free(&mut self, db: &DbRef) {
         let al = db.store_nr;
-        assert!(al < self.allocations.len() as u16, "Incorrect store");
-        assert!(!self.allocations[al as usize].free, "Double free store");
+        debug_assert!(al < self.allocations.len() as u16, "Incorrect store");
+        debug_assert!(!self.allocations[al as usize].free, "Double free store");
         self.allocations[al as usize].free = true;
         self.max -= 1;
+    }
+
+    /**
+    Validate if a reference is already freed before.
+    # Panics
+    When the store was already freed before.
+    */
+    pub fn valid(&mut self, db: &DbRef) {
+        debug_assert!(
+            db.store_nr < self.allocations.len() as u16,
+            "Incorrect store"
+        );
+        debug_assert!(
+            !self.allocations[db.store_nr as usize].free,
+            "Use after free"
+        );
     }
 
     pub fn clear(&mut self, db: &DbRef) {
@@ -1658,6 +1674,288 @@ impl Stores {
         }
     }
 
+    /**
+    Remove claimed data for a record. Both strings and substructures are freed.
+    It will not free the record itself because that might be a part of a vector.
+    # Panics
+    When a field points to an index or spacial structure.
+    */
+    pub fn remove_claims(&mut self, rec: &DbRef, tp: u16) {
+        // TODO prevent removing records twice via secondary structures
+        match &self.types[tp as usize].parts {
+            Parts::Base if tp == 5 => {
+                // text
+                let store = self.store_mut(rec);
+                let cur = store.get_int(rec.rec, rec.pos);
+                if cur == 0 {
+                    return;
+                }
+                store.delete(cur as u32);
+                store.set_int(rec.rec, rec.pos, 0);
+            }
+            Parts::Struct(fields) => {
+                for f in fields.clone() {
+                    self.remove_claims(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: rec.rec,
+                            pos: rec.pos + u32::from(f.position),
+                        },
+                        f.content,
+                    );
+                }
+            }
+            Parts::Vector(v) | Parts::Sorted(v, _) => {
+                let tp = *v;
+                let length = vector::length_vector(rec, &self.allocations);
+                let size = u32::from(self.size(tp));
+                let cur = self.store(rec).get_int(rec.rec, rec.pos);
+                if cur == 0 {
+                    // Do nothing if the structure was empty
+                    return;
+                }
+                for i in 0..length {
+                    self.remove_claims(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: cur as u32,
+                            pos: 8 + size * i,
+                        },
+                        tp,
+                    );
+                }
+                let store = self.store_mut(rec);
+                store.delete(cur as u32);
+                store.set_int(rec.rec, rec.pos, 0);
+            }
+            Parts::Array(v) | Parts::Ordered(v, _) => {
+                let tp = *v;
+                let length = vector::length_vector(rec, &self.allocations);
+                let cur = self.store(rec).get_int(rec.rec, rec.pos) as u32;
+                if cur == 0 {
+                    // Do nothing if the structure was empty
+                    return;
+                }
+                for i in 0..length {
+                    let elm = self.store(rec).get_int(cur, 8 + i * 4) as u32;
+                    self.remove_claims(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: elm,
+                            pos: 0,
+                        },
+                        tp,
+                    );
+                    self.store_mut(rec).delete(elm);
+                }
+                let store = self.store_mut(rec);
+                store.delete(cur);
+                store.set_int(rec.rec, rec.pos, 0);
+            }
+            Parts::Hash(v, _) => {
+                let tp = *v;
+                let cur = self.store(rec).get_int(rec.rec, rec.pos) as u32;
+                let length = self.store(rec).get_int(cur, 0) as u32 * 2;
+                if cur == 0 {
+                    // Do nothing if the structure was empty
+                    return;
+                }
+                for i in 0..length {
+                    let elm = self.store(rec).get_int(cur, 8 + i * 4) as u32;
+                    if elm == 0 {
+                        continue;
+                    }
+                    self.remove_claims(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: elm,
+                            pos: 0,
+                        },
+                        tp,
+                    );
+                    self.store_mut(rec).delete(elm);
+                }
+                let store = self.store_mut(rec);
+                store.delete(cur);
+                store.set_int(rec.rec, rec.pos, 0);
+            }
+            Parts::Spacial(_, _) | Parts::Index(_, _, _) => panic!("Not implemented"),
+            _ => {}
+        }
+    }
+
+    /**
+    Copy string fields and substructures for a record.
+    # Panics
+    When a field points to an index or spacial structure.
+    */
+    pub fn copy_claims(&mut self, rec: &DbRef, to: &DbRef, tp: u16) {
+        // TODO prevent copying secondary structures
+        match &self.types[tp as usize].parts {
+            Parts::Base if tp == 5 => {
+                // text
+                let store = self.store(rec);
+                let s = store.get_str(store.get_int(rec.rec, rec.pos) as u32);
+                if s.is_empty() {
+                    self.store_mut(to).set_int(to.rec, to.pos, 0);
+                } else {
+                    let into = self.store_mut(to);
+                    let s_pos = into.set_str(s) as i32;
+                    into.set_int(to.rec, to.pos, s_pos);
+                }
+            }
+            Parts::Struct(fields) => {
+                for f in fields.clone() {
+                    self.copy_claims(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: rec.rec,
+                            pos: rec.pos + u32::from(f.position),
+                        },
+                        &DbRef {
+                            store_nr: to.store_nr,
+                            rec: to.rec,
+                            pos: to.pos + u32::from(f.position),
+                        },
+                        f.content,
+                    );
+                }
+            }
+            Parts::Vector(v) | Parts::Sorted(v, _) => {
+                let tp = *v;
+                let length = vector::length_vector(rec, &self.allocations);
+                let size = u32::from(self.size(tp));
+                let cur = self.store(rec).get_int(rec.rec, rec.pos) as u32;
+                if cur == 0 {
+                    self.store_mut(to).set_int(to.rec, to.pos, 0);
+                    return;
+                }
+                let into = self.store_mut(to).claim(1 + (size * cur).div_ceil(8));
+                self.store_mut(to).set_int(to.rec, to.pos, into as i32);
+                self.copy_block(
+                    &DbRef {
+                        store_nr: rec.store_nr,
+                        rec: cur,
+                        pos: 4,
+                    },
+                    &DbRef {
+                        store_nr: to.store_nr,
+                        rec: into,
+                        pos: 4,
+                    },
+                    length * size + 4,
+                );
+                for i in 0..length {
+                    self.copy_claims(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: cur,
+                            pos: 8 + size * i,
+                        },
+                        &DbRef {
+                            store_nr: to.store_nr,
+                            rec: into,
+                            pos: 8 + size * i,
+                        },
+                        tp,
+                    );
+                }
+            }
+            Parts::Array(v) | Parts::Ordered(v, _) => {
+                let tp = *v;
+                let length = vector::length_vector(rec, &self.allocations);
+                let size = u32::from(self.size(tp));
+                let cur = self.store(rec).get_int(rec.rec, rec.pos) as u32;
+                if cur == 0 {
+                    self.store_mut(to).set_int(to.rec, to.pos, 0);
+                    return;
+                }
+                let into = self.store_mut(to).claim(1 + cur.div_ceil(2));
+                self.store_mut(to).set_int(to.rec, to.pos, into as i32);
+                for i in 0..length {
+                    let elm = self.store(rec).get_int(cur, 8 + 4 * i) as u32;
+                    let new = self.store_mut(to).claim(size.div_ceil(8));
+                    self.copy_block(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: elm,
+                            pos: 4,
+                        },
+                        &DbRef {
+                            store_nr: to.store_nr,
+                            rec: new,
+                            pos: 4,
+                        },
+                        size - 4,
+                    );
+                    self.store_mut(to).set_int(into, 8 + 4 * i, new as i32);
+                    self.copy_claims(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: elm,
+                            pos: 0,
+                        },
+                        &DbRef {
+                            store_nr: to.store_nr,
+                            rec: new,
+                            pos: 0,
+                        },
+                        tp,
+                    );
+                }
+            }
+            Parts::Hash(v, _) => {
+                let tp = *v;
+                let size = u32::from(self.size(tp));
+                let cur = self.store(rec).get_int(rec.rec, rec.pos) as u32;
+                if cur == 0 {
+                    self.store_mut(to).set_int(to.rec, to.pos, 0);
+                    return;
+                }
+                let length = self.store(rec).get_int(cur, 0) as u32;
+                let into = self.store_mut(to).claim(length);
+                self.store_mut(to).set_int(to.rec, to.pos, into as i32);
+                for i in 1..length * 2 {
+                    let elm = self.store(rec).get_int(cur, 8 + 4 * i) as u32;
+                    if elm == 0 {
+                        self.store_mut(to).set_int(into, 8 + 4 * i, 0);
+                        continue;
+                    }
+                    let new = self.store_mut(to).claim(size.div_ceil(8));
+                    self.copy_block(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: elm,
+                            pos: 4,
+                        },
+                        &DbRef {
+                            store_nr: to.store_nr,
+                            rec: new,
+                            pos: 4,
+                        },
+                        size - 4,
+                    );
+                    self.store_mut(to).set_int(into, 8 + 4 * i, new as i32);
+                    self.copy_claims(
+                        &DbRef {
+                            store_nr: rec.store_nr,
+                            rec: elm,
+                            pos: 0,
+                        },
+                        &DbRef {
+                            store_nr: to.store_nr,
+                            rec: new,
+                            pos: 0,
+                        },
+                        tp,
+                    );
+                }
+            }
+            Parts::Spacial(_, _) | Parts::Index(_, _, _) => panic!("Not implemented"),
+            _ => {}
+        }
+    }
+
     pub fn get_file(&mut self, file: &DbRef) -> bool {
         if file.rec == 0 {
             return false;
@@ -1674,16 +1972,15 @@ impl Stores {
             let vector = DbRef {
                 store_nr: result.store_nr,
                 rec: result.rec,
-                pos: result.pos + 16,
+                pos: result.pos,
             };
             for entry in iter.flatten() {
-                let elm = vector::vector_append(&vector, 1, 17, &mut self.allocations);
-                let path = entry.path();
-                if let Some(name) = path.to_str() {
+                if let Some(name) = entry.path().to_str() {
+                    let elm = vector::vector_append(&vector, 1, 17, &mut self.allocations);
                     let store = self.store_mut(result);
                     let name_pos = store.set_str(name) as i32;
                     store.set_int(elm.rec, elm.pos + 4, name_pos);
-                    if !fill_file(&path, store, &elm) {
+                    if !fill_file(&entry.path(), store, &elm) {
                         return false;
                     }
                 } else {

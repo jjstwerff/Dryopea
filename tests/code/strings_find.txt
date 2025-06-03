@@ -25,63 +25,38 @@ fn test() {#1 block
 }#1
 
 byte-code for find:test()
- 645[0]: return-address
- 645[4]: Text() var=__work_2[4]:text in 1
- 646[28]: Text() var=__work_1[28]:text in 1
- 647[52]: Text() var=v[52]:text in 2
- 648[76]: ConstText(_value="something") -> text
- 659[92]: AppendText(var[52], v1: text)
- 662[76]: VarText(var[52]) -> text var=v[52]:text in 2
- 665[92]: ClearText(var[28]) var=__work_1[28]:text in 1
- 668[92]: ConstText(_value="t") -> text
- 671[108]: AppendText(var[28], v1: text)
- 674[92]: ConstText(_value="h") -> text
- 677[108]: AppendText(var[28], v1: text)
- 680[92]: VarText(var[28]) -> text var=__work_1[28]:text in 1
- 683[108]: StaticCall(_tp_text_find)
- 686[80]: FreeText(var[52])
- 689[80]: FreeStack(value=4, discard=28) type=integer[4]:Base[0]
- 693[56]: VarInt(var[52]) -> integer var=test_value[52]:integer in 1
- 696[60]: ConstInt(val=4) -> integer
- 701[64]: EqInt(v1: integer, v2: integer) -> boolean
- 702[57]: GotoFalseWord(jump=708, if_false: boolean)
- 705[56]: GotoWord(jump=757)
- 708[56]: ClearText(var[4]) var=__work_2[4]:text in 1
- 711[56]: ConstText(_value="Test failed ") -> text
- 725[72]: AppendText(var[4], v1: text)
- 728[56]: VarInt(var[52]) -> integer var=test_value[52]:integer in 1
- 731[60]: ConstInt(val=0) -> integer
- 736[64]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 743[56]: ConstText(_value=" != 4") -> text
- 750[72]: AppendText(var[4], v1: text)
- 753[56]: VarText(var[4]) -> text var=__work_2[4]:text in 1
- 756[72]: Panic(message: text)
- 757[56]: FreeText(var[28])
- 760[56]: FreeText(var[4])
- 763[56]: Return(ret=0, value=0, discard=56)
+   0[0]: return-address
+   0[4]: Text() var=__work_2[4]:text in 1
+   1[28]: Text() var=__work_1[28]:text in 1
+   2[52]: Text() var=v[52]:text in 2
+   3[76]: ConstText(_value="something") -> text
+  14[92]: AppendText(var[52], v1: text)
+  17[76]: VarText(var[52]) -> text var=v[52]:text in 2
+  20[92]: ClearText(var[28]) var=__work_1[28]:text in 1
+  23[92]: ConstText(_value="t") -> text
+  26[108]: AppendText(var[28], v1: text)
+  29[92]: ConstText(_value="h") -> text
+  32[108]: AppendText(var[28], v1: text)
+  35[92]: VarText(var[28]) -> text var=__work_1[28]:text in 1
+  38[108]: StaticCall(_tp_text_find)
+  41[80]: FreeText(var[52])
+  44[80]: FreeStack(value=4, discard=28) type=integer[4]:Base[0]
+  48[56]: VarInt(var[52]) -> integer var=test_value[52]:integer in 1
+  51[60]: ConstInt(val=4) -> integer
+  56[64]: EqInt(v1: integer, v2: integer) -> boolean
+  57[57]: GotoFalseWord(jump=63, if_false: boolean)
+  60[56]: GotoWord(jump=112)
+  63[56]: ClearText(var[4]) var=__work_2[4]:text in 1
+  66[56]: ConstText(_value="Test failed ") -> text
+  80[72]: AppendText(var[4], v1: text)
+  83[56]: VarInt(var[52]) -> integer var=test_value[52]:integer in 1
+  86[60]: ConstInt(val=0) -> integer
+  91[64]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  98[56]: ConstText(_value=" != 4") -> text
+ 105[72]: AppendText(var[4], v1: text)
+ 108[56]: VarText(var[4]) -> text var=__work_2[4]:text in 1
+ 111[72]: Panic(message: text)
+ 112[56]: FreeText(var[28])
+ 115[56]: FreeText(var[4])
+ 118[56]: Return(ret=0, value=0, discard=56)
 
-Execute test:
-  645:[8] Text()
-  646:[32] Text()
-  647:[56] Text()
-  648:[80] ConstText(_value="something") -> "something"[80]
-  659:[96] AppendText(var[56], v1="something"[80])
-  662:[80] VarText(var[56]) -> "something"[80]
-  665:[96] ClearText(var[32])
-  668:[96] ConstText(_value="t") -> "t"[96]
-  671:[112] AppendText(var[32], v1="t"[96])
-  674:[96] ConstText(_value="h") -> "h"[96]
-  677:[112] AppendText(var[32], v1="h"[96])
-  680:[96] VarText(var[32]) -> "th"[96]
-  683:[112] StaticCall(call=10)
-  686:[84] FreeText(var[56])
-  689:[84] FreeStack(value=4, discard=28)
-  693:[60] VarInt(var[56]) -> 4[60]
-  696:[64] ConstInt(val=4) -> 4[64]
-  701:[68] EqInt(v1=4[60], v2=4[64]) -> true[60]
-  702:[61] GotoFalseWord(jump=708, if_false=true[60])
-  705:[60] GotoWord(jump=757)
-  757:[60] FreeText(var[32])
-  760:[60] FreeText(var[8])
-  763:[60] Return(ret=4294967295[4], value=0, discard=56)
-Finished

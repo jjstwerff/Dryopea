@@ -7,7 +7,7 @@ use crate::state;
 use crate::state::{Call, State};
 
 pub const FUNCTIONS: &[(&str, Call)] = &[
-    ("character", character),
+    ("_tp_text_character", _tp_text_character),
     ("assert", assert),
     ("panic", panic),
     ("env_variables", env_variables),
@@ -18,6 +18,7 @@ pub const FUNCTIONS: &[(&str, Call)] = &[
     ("_tp_text_trim_start", _tp_text_trim_start),
     ("_tp_text_trim_end", _tp_text_trim_end),
     ("_tp_text_find", _tp_text_find),
+    ("_tp_text_rfind", _tp_text_rfind),
     ("_tp_text_contains", _tp_text_contains),
     ("_tp_text_replace", _tp_text_replace),
     ("_tp_text_to_lowercase", _tp_text_to_lowercase),
@@ -41,9 +42,9 @@ pub fn init(state: &mut State) {
     }
 }
 
-fn character(stores: &mut Stores, stack: &mut DbRef) {
-    let v_val = *stores.get::<Str>(stack);
-    let new_value = { state::get_character(v_val.str()) };
+fn _tp_text_character(stores: &mut Stores, stack: &mut DbRef) {
+    let v_both = *stores.get::<Str>(stack);
+    let new_value = { state::get_character(v_both.str()) };
     stores.put(stack, new_value);
 }
 
@@ -106,6 +107,19 @@ fn _tp_text_find(stores: &mut Stores, stack: &mut DbRef) {
     let v_self = *stores.get::<Str>(stack);
     let new_value = {
         if let Some(v) = v_self.str().find(v_value.str()) {
+            v as i32
+        } else {
+            i32::MIN
+        }
+    };
+    stores.put(stack, new_value);
+}
+
+fn _tp_text_rfind(stores: &mut Stores, stack: &mut DbRef) {
+    let v_value = *stores.get::<Str>(stack);
+    let v_self = *stores.get::<Str>(stack);
+    let new_value = {
+        if let Some(v) = v_self.str().rfind(v_value.str()) {
             v as i32
         } else {
             i32::MIN

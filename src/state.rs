@@ -9,6 +9,7 @@ use crate::fill::OPERATORS;
 use crate::keys;
 use crate::keys::{Content, DbRef, Key, Str};
 use crate::stack::Stack;
+use crate::text::FUNCTIONS;
 use crate::tree;
 use crate::variables::size;
 use crate::vector;
@@ -837,7 +838,8 @@ impl State {
         let tp = *self.code::<u16>();
         let multiply = *self.get_stack::<i32>() as u32;
         let data = *self.get_stack::<DbRef>();
-        let size = u32::from(self.database.size(self.database.content(tp)));
+        let ctp = self.database.content(tp);
+        let size = u32::from(self.database.size(ctp));
         let length = vector::length_vector(&data, &self.database.allocations);
         let v_rec =
             keys::store(&data, &self.database.allocations).get_int(data.rec, data.pos) as u32;
@@ -854,8 +856,17 @@ impl State {
                 pos: 8 + (length + i) * size,
             };
             self.database.copy_block(&from, &to, size);
+            self.database.copy_claims(&data, &to, ctp);
         }
-        // TODO copy content fields (string / sub-records)
+    }
+
+    pub fn copy_record(&mut self) {
+        let tp = *self.code::<u16>();
+        let to = *self.get_stack::<DbRef>();
+        let data = *self.get_stack::<DbRef>();
+        let size = u32::from(self.database.size(tp));
+        self.database.copy_block(&data, &to, size);
+        self.database.copy_claims(&data, &to, tp);
     }
 
     pub fn hash_add(&mut self) {
@@ -1585,15 +1596,15 @@ impl State {
             }
             Type::Vector(tp, _) => {
                 let typedef: &Type = tp;
-                let name = if matches!(typedef, Type::Unknown(_)) {
-                    "vector".to_string()
+                let known = if matches!(typedef, Type::Unknown(_)) {
+                    u16::MAX
                 } else if matches!(typedef, Type::Text(_)) {
-                    "text".to_string()
+                    self.database.vector(5)
                 } else {
-                    format!("vector<{}>", tp.name(stack.data))
+                    let name = tp.name(stack.data);
+                    self.database.vector(self.database.name(&name))
                 };
-                let known = self.database.name(&name);
-                if known != u16::MAX && name != "vector" {
+                if known != u16::MAX {
                     self.types.insert(self.code_pos, known);
                 }
                 stack.add_op("OpVarVector", self);
@@ -1840,10 +1851,14 @@ impl State {
             )?;
         }
         writeln!(f)?;
-        let pos = data.def(d_nr).code_position;
-        self.code_pos = pos;
-        writeln!(f, "{:4}[{stack_pos}]: return-address", self.code_pos)?;
-        while self.code_pos < pos + data.def(d_nr).code_length {
+        let start_pos = data.def(d_nr).code_position;
+        self.code_pos = start_pos;
+        writeln!(
+            f,
+            "{:4}[{stack_pos}]: return-address",
+            self.code_pos - start_pos
+        )?;
+        while self.code_pos < start_pos + data.def(d_nr).code_length {
             let p = self.code_pos;
             let op = *self.code::<u8>();
             assert!(
@@ -1852,7 +1867,7 @@ impl State {
                 data.def(d_nr).name
             );
             let def = data.operator(op);
-            write!(f, "{p:4}")?;
+            write!(f, "{:4}", p - start_pos)?;
             if self.stack.contains_key(&p) {
                 write!(f, "[{}]", self.stack[&p])?;
             }
@@ -1862,7 +1877,8 @@ impl State {
                     write!(f, ", ")?;
                 }
                 if (def.name == "OpGotoFalseWord" || def.name == "OpGotoWord") && a_nr == 0 {
-                    let to = i64::from(p) + 3 + i64::from(*self.code::<i16>());
+                    let to =
+                        i64::from(p) + 3 + i64::from(*self.code::<i16>()) - i64::from(start_pos);
                     write!(f, "jump={to}")?;
                 } else if def.name == "OpStaticCall" {
                     let v = *self.code::<u16>();
@@ -1974,6 +1990,7 @@ impl State {
     ) -> Result<(), Error> {
         writeln!(log, "Execute {name}:")?;
         let d_nr = data.def_nr(name);
+        assert_ne!(d_nr, u32::MAX, "Unknown routine {name}");
         let pos = data.def(d_nr).code_position;
         self.code_pos = pos;
         // Write the return address of the main function but do not override the record size.
@@ -2012,15 +2029,16 @@ impl State {
     pub fn execute(&mut self, d_nr: u32, data: &Data) {
         let pos = data.def(d_nr).code_position;
         self.code_pos = pos;
+        self.stack_pos = 4;
         // Write the return address of the main function.
         self.put_stack(u32::MAX);
         let mut step = 0;
         // TODO Allow command line parameters on main functions
-        loop {
+        while self.code_pos < self.bytecode.len() as u32 {
             let op = *self.code::<u8>();
             OPERATORS[op as usize](self);
             step += 1;
-            assert!(step < 1_000_000, "Too many operations");
+            assert!(step < 10_000_000, "Too many operations");
             if self.code_pos == u32::MAX {
                 return;
             }
@@ -2043,7 +2061,13 @@ impl State {
         let mut attr = BTreeMap::new();
         for (a_nr, a) in def.attributes.iter().enumerate() {
             if !a.mutable {
-                if def.name == "OpReturn" && a_nr == 0 {
+                if def.name == "OpStaticCall" {
+                    let nr = *self.code::<i16>();
+                    write!(log, "{})", FUNCTIONS[nr as usize].0)?;
+                    self.code_pos = cur;
+                    self.stack_pos = stack;
+                    return Ok(op);
+                } else if def.name == "OpReturn" && a_nr == 0 {
                     self.return_attr(&mut attr, a_nr);
                 } else if def.name.starts_with("OpGoto") && a_nr == 0 {
                     let to = i64::from(cur) + 2 + i64::from(*self.code::<i16>());
@@ -2210,16 +2234,13 @@ impl State {
                 self.database.show(&mut res, &val, known, false);
                 res
             }
-            Type::Vector(tp, _) => {
+            Type::Vector(_, _) => {
+                let val = *self.get_stack::<DbRef>();
                 let known = if self.types.contains_key(&code) {
                     self.types[&code]
                 } else {
-                    data.def(data.type_def_nr(tp as &Type)).known_type
-                };
-                let val = *self.get_stack::<DbRef>();
-                if known == u16::MAX {
                     return format!("ref({},{},{})", val.store_nr, val.rec, val.pos);
-                }
+                };
                 let mut res = format!("ref({},{},{})=", val.store_nr, val.rec, val.pos);
                 self.database.show(&mut res, &val, known, false);
                 res

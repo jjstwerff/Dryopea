@@ -10,7 +10,6 @@
 // for a far more efficient database design later.
 #![allow(dead_code)]
 
-extern crate strum_macros;
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use crate::keys::Key;
 use crate::lexer::{Lexer, Position};
@@ -93,8 +92,8 @@ impl Value {
 #[must_use]
 pub fn to_default(tp: &Type) -> Value {
     match tp {
+        Type::Boolean => Value::Boolean(false),
         Type::Integer(_, _)
-        | Type::Boolean
         | Type::Enum(_)
         | Type::Vector(_, _)
         | Type::Sorted(_, _, _)
@@ -150,7 +149,7 @@ pub enum Type {
     Index(u32, Vec<(u16, bool)>, Vec<u16>),
     /// An index towards other records. The second is [field number]
     Spacial(u32, Vec<u16>, Vec<u16>),
-    /// A hash table towards other records. The third is the hash function.
+    /// A hash table towards other records. The second is the hash function.
     Hash(u32, Vec<u16>, Vec<u16>),
     /// A function reference allowing for closures. Argument types and result.
     Function(Vec<Type>, Box<Type>),

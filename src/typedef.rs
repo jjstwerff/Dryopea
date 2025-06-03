@@ -4,8 +4,6 @@
 //! Calculate the positions of fields inside a record
 #![allow(clippy::cast_possible_truncation)]
 
-extern crate strum;
-
 use crate::data::{Data, DefType, I32, Type, Value};
 use crate::database::Stores;
 use crate::diagnostics::Level;

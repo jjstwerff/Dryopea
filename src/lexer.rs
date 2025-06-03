@@ -256,6 +256,9 @@ impl Lexer {
                     }
                     self.next_char();
                 } else if let Some(Ok(ln)) = self.lines.next() {
+                    if self.position.line == 0 && ln.starts_with("#!/") {
+                        continue;
+                    }
                     self.iter = ln.chars().collect::<Vec<_>>().into_iter().peekable();
                     self.position.line += 1;
                     self.position.pos = 1;
@@ -322,6 +325,13 @@ impl Lexer {
     }
 
     pub fn diagnostic(&mut self, level: Level, message: &str) {
+        println!(
+            "{}",
+            &format!(
+                "{message} at {}:{}:{}",
+                self.position.file, self.position.line, self.position.pos
+            )
+        );
         self.diagnostics.add(
             level,
             &format!(

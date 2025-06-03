@@ -8,10 +8,10 @@ pub fn test() {
         "Test failed {test_value} != 5"
     );
 }
-Type 12:T[1]:Enum(["A", "C", "B"])
+Type 14:T[1]:Enum(["A", "C", "B"])
 
 fn count(v:T) -> integer {#1 block
-  if OpGtEnum(v, 2u8(12)) {#2 block
+  if OpGtEnum(v, 2u8(14)) {#2 block
     2i32;
   }#2:integer else {#3 block
     1i32;
@@ -19,20 +19,20 @@ fn count(v:T) -> integer {#1 block
 }#1:integer
 
 byte-code for compare:count(v: T[0]) -> integer
- 645[1]: return-address
- 645[5]: VarEnum(var[0]) -> enumerate type=T[1]:Enum(["A", "C", "B"])[12] var=v[0]:T in 0
- 648[6]: ConstEnum(val=2) -> enumerate type=T[1]:Enum(["A", "C", "B"])[12]
- 650[7]: GtEnum(v1: enumerate, v2: enumerate) -> boolean
- 651[6]: GotoFalseWord(jump=662, if_false: boolean)
- 654[5]: ConstInt(val=2) -> integer
- 659[9]: GotoWord(jump=667)
- 662[5]: ConstInt(val=1) -> integer
- 667[9]: Return(ret=1, value=4, discard=9) type=integer[4]:Base[0]
+   0[1]: return-address
+   0[5]: VarEnum(var[0]) -> enumerate type=T[1]:Enum(["A", "C", "B"])[14] var=v[0]:T in 0
+   3[6]: ConstEnum(val=2) -> enumerate type=T[1]:Enum(["A", "C", "B"])[14]
+   5[7]: GtEnum(v1: enumerate, v2: enumerate) -> boolean
+   6[6]: GotoFalseWord(jump=17, if_false: boolean)
+   9[5]: ConstInt(val=2) -> integer
+  14[9]: GotoWord(jump=22)
+  17[5]: ConstInt(val=1) -> integer
+  22[9]: Return(ret=1, value=4, discard=9) type=integer[4]:Base[0]
 
 fn test() {#1 block
   __work_1:text = "";
   test_value:integer = {#2 block
-    OpAddInt(OpAddInt(count(1u8(12)), count(3u8(12))), count(3u8(12)));
+    OpAddInt(OpAddInt(count(1u8(14)), count(3u8(14))), count(3u8(14)));
   }#2:integer;
   if OpEqInt(test_value, 5i32) null else OpPanic({#3 formatting string
     __work_1:text = "Test failed ";
@@ -43,69 +43,31 @@ fn test() {#1 block
 }#1
 
 byte-code for compare:test()
- 673[0]: return-address
- 673[4]: Text() var=__work_1[4]:text in 1
- 674[28]: ConstEnum(val=1) -> enumerate type=T[1]:Enum(["A", "C", "B"])[12] var=test_value[28]:integer in 1
- 676[29]: Call(size=0, to=645)
- 683[32]: ConstEnum(val=3) -> enumerate type=T[1]:Enum(["A", "C", "B"])[12]
- 685[33]: Call(size=0, to=645)
- 692[36]: AddInt(v1: integer, v2: integer) -> integer
- 693[32]: ConstEnum(val=3) -> enumerate type=T[1]:Enum(["A", "C", "B"])[12]
- 695[33]: Call(size=0, to=645)
- 702[36]: AddInt(v1: integer, v2: integer) -> integer
- 703[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
- 706[36]: ConstInt(val=5) -> integer
- 711[40]: EqInt(v1: integer, v2: integer) -> boolean
- 712[33]: GotoFalseWord(jump=718, if_false: boolean)
- 715[32]: GotoWord(jump=767)
- 718[32]: ClearText(var[4]) var=__work_1[4]:text in 1
- 721[32]: ConstText(_value="Test failed ") -> text
- 735[48]: AppendText(var[4], v1: text)
- 738[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
- 741[36]: ConstInt(val=0) -> integer
- 746[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 753[32]: ConstText(_value=" != 5") -> text
- 760[48]: AppendText(var[4], v1: text)
- 763[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 766[48]: Panic(message: text)
- 767[32]: FreeText(var[4])
- 770[32]: Return(ret=0, value=0, discard=32)
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text in 1
+   1[28]: ConstEnum(val=1) -> enumerate type=T[1]:Enum(["A", "C", "B"])[14] var=test_value[28]:integer in 1
+   3[29]: Call(size=0, to=911)
+  10[32]: ConstEnum(val=3) -> enumerate type=T[1]:Enum(["A", "C", "B"])[14]
+  12[33]: Call(size=0, to=911)
+  19[36]: AddInt(v1: integer, v2: integer) -> integer
+  20[32]: ConstEnum(val=3) -> enumerate type=T[1]:Enum(["A", "C", "B"])[14]
+  22[33]: Call(size=0, to=911)
+  29[36]: AddInt(v1: integer, v2: integer) -> integer
+  30[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
+  33[36]: ConstInt(val=5) -> integer
+  38[40]: EqInt(v1: integer, v2: integer) -> boolean
+  39[33]: GotoFalseWord(jump=45, if_false: boolean)
+  42[32]: GotoWord(jump=94)
+  45[32]: ClearText(var[4]) var=__work_1[4]:text in 1
+  48[32]: ConstText(_value="Test failed ") -> text
+  62[48]: AppendText(var[4], v1: text)
+  65[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
+  68[36]: ConstInt(val=0) -> integer
+  73[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  80[32]: ConstText(_value=" != 5") -> text
+  87[48]: AppendText(var[4], v1: text)
+  90[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+  93[48]: Panic(message: text)
+  94[32]: FreeText(var[4])
+  97[32]: Return(ret=0, value=0, discard=32)
 
-Execute test:
-  673:[8] Text()
-  674:[32] ConstEnum(val=1) -> A(1)[32]
-  676:[33] Call(size=0, to=645)
-  645:[37] VarEnum(var[32]) -> A(1)[37]
-  648:[38] ConstEnum(val=2) -> C(2)[38]
-  650:[39] GtEnum(v1=1[37], v2=2[38]) -> false[37]
-  651:[38] GotoFalseWord(jump=662, if_false=false[37])
-  662:[37] ConstInt(val=1) -> 1[37]
-  667:[41] Return(ret=683[33], value=4, discard=9) -> 1[32]
-  683:[36] ConstEnum(val=3) -> B(3)[36]
-  685:[37] Call(size=0, to=645)
-  645:[41] VarEnum(var[36]) -> B(3)[41]
-  648:[42] ConstEnum(val=2) -> C(2)[42]
-  650:[43] GtEnum(v1=3[41], v2=2[42]) -> true[41]
-  651:[42] GotoFalseWord(jump=662, if_false=true[41])
-  654:[41] ConstInt(val=2) -> 2[41]
-  659:[45] GotoWord(jump=667)
-  667:[45] Return(ret=692[37], value=4, discard=9) -> 2[36]
-  692:[40] AddInt(v1=1[32], v2=2[36]) -> 3[32]
-  693:[36] ConstEnum(val=3) -> B(3)[36]
-  695:[37] Call(size=0, to=645)
-  645:[41] VarEnum(var[36]) -> B(3)[41]
-  648:[42] ConstEnum(val=2) -> C(2)[42]
-  650:[43] GtEnum(v1=3[41], v2=2[42]) -> true[41]
-  651:[42] GotoFalseWord(jump=662, if_false=true[41])
-  654:[41] ConstInt(val=2) -> 2[41]
-  659:[45] GotoWord(jump=667)
-  667:[45] Return(ret=702[37], value=4, discard=9) -> 2[36]
-  702:[40] AddInt(v1=3[32], v2=2[36]) -> 5[32]
-  703:[36] VarInt(var[32]) -> 5[36]
-  706:[40] ConstInt(val=5) -> 5[40]
-  711:[44] EqInt(v1=5[36], v2=5[40]) -> true[36]
-  712:[37] GotoFalseWord(jump=718, if_false=true[36])
-  715:[36] GotoWord(jump=767)
-  767:[36] FreeText(var[8])
-  770:[36] Return(ret=4294967295[4], value=0, discard=32)
-Finished

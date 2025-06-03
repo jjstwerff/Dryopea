@@ -7,12 +7,12 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-Type 12:Number[1]:Enum(["One", "Two", "Three", "Four"])
+Type 14:Number[1]:Enum(["One", "Two", "Three", "Four"])
 
 fn test() {#1 block
   __work_1:text = "";
   test_value:boolean = {#2 block
-    OpLtEnum(OpCastEnumFromText("Two", 12i32), OpCastEnumFromText("Four", 12i32));
+    OpLtEnum(OpCastEnumFromText("Two", 14i32), OpCastEnumFromText("Four", 14i32));
   }#2:boolean;
   if OpEqBool(test_value, true) null else OpPanic({#3 formatting string
     __work_1:text = "Test failed ";
@@ -23,43 +23,28 @@ fn test() {#1 block
 }#1
 
 byte-code for to_enum:test()
- 645[0]: return-address
- 645[4]: Text() var=__work_1[4]:text in 1
- 646[28]: ConstText(_value="Two") -> text var=test_value[28]:boolean in 1
- 651[44]: CastEnumFromText(v1: text, enum_tp=12) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[12]
- 654[29]: ConstText(_value="Four") -> text
- 660[45]: CastEnumFromText(v1: text, enum_tp=12) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[12]
- 663[30]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
- 664[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
- 667[30]: ConstTrue() -> boolean
- 668[31]: EqBool(v1: boolean, v2: boolean) -> boolean
- 669[30]: GotoFalseWord(jump=675, if_false: boolean)
- 672[29]: GotoWord(jump=725)
- 675[29]: ClearText(var[4]) var=__work_1[4]:text in 1
- 678[29]: ConstText(_value="Test failed ") -> text
- 692[45]: AppendText(var[4], v1: text)
- 695[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
- 698[30]: ConstInt(val=0) -> integer
- 703[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
- 708[29]: ConstText(_value=" != true") -> text
- 718[45]: AppendText(var[4], v1: text)
- 721[29]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 724[45]: Panic(message: text)
- 725[29]: FreeText(var[4])
- 728[29]: Return(ret=0, value=0, discard=29)
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text in 1
+   1[28]: ConstText(_value="Two") -> text var=test_value[28]:boolean in 1
+   6[44]: CastEnumFromText(v1: text, enum_tp=14) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[14]
+   9[29]: ConstText(_value="Four") -> text
+  15[45]: CastEnumFromText(v1: text, enum_tp=14) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[14]
+  18[30]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
+  19[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
+  22[30]: ConstTrue() -> boolean
+  23[31]: EqBool(v1: boolean, v2: boolean) -> boolean
+  24[30]: GotoFalseWord(jump=30, if_false: boolean)
+  27[29]: GotoWord(jump=80)
+  30[29]: ClearText(var[4]) var=__work_1[4]:text in 1
+  33[29]: ConstText(_value="Test failed ") -> text
+  47[45]: AppendText(var[4], v1: text)
+  50[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
+  53[30]: ConstInt(val=0) -> integer
+  58[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
+  63[29]: ConstText(_value=" != true") -> text
+  73[45]: AppendText(var[4], v1: text)
+  76[29]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+  79[45]: Panic(message: text)
+  80[29]: FreeText(var[4])
+  83[29]: Return(ret=0, value=0, discard=29)
 
-Execute test:
-  645:[8] Text()
-  646:[32] ConstText(_value="Two") -> "Two"[32]
-  651:[48] CastEnumFromText(v1="Two"[32], enum_tp=12) -> Two(2)[32]
-  654:[33] ConstText(_value="Four") -> "Four"[33]
-  660:[49] CastEnumFromText(v1="Four"[33], enum_tp=12) -> Four(4)[33]
-  663:[34] LtEnum(v1=2[32], v2=4[33]) -> true[32]
-  664:[33] VarBool(var[32]) -> true[33]
-  667:[34] ConstTrue() -> true[34]
-  668:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
-  669:[34] GotoFalseWord(jump=675, if_false=true[33])
-  672:[33] GotoWord(jump=725)
-  725:[33] FreeText(var[8])
-  728:[33] Return(ret=4294967295[4], value=0, discard=29)
-Finished

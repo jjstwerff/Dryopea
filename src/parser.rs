@@ -13,7 +13,8 @@ use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use crate::lexer::{LexItem, LexResult, Lexer, Mode};
 use crate::typedef;
 use crate::variables::Function;
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::env;
 use std::fs::{File, metadata, read_dir};
 use std::io::BufReader;
 use std::io::prelude::BufRead;
@@ -34,6 +35,10 @@ pub struct Parser {
     pub database: Stores,
     /// The lexer on the current text file
     pub lexer: Lexer,
+    /// The files that need to be parsed. Clear this structure for the second pass.
+    files: Vec<String>,
+    file_names: HashMap<String, u16>,
+    current_file: u16,
     /// Are we currently allowing break/continue statements?
     in_loop: bool,
     /// The current file number that is being parsed
@@ -144,6 +149,9 @@ impl Parser {
     pub fn new() -> Self {
         Parser {
             data: Data::new(),
+            files: Vec::new(),
+            file_names: HashMap::new(),
+            current_file: 0,
             database: Stores::new(),
             lexer: Lexer::default(),
             in_loop: false,
@@ -176,7 +184,7 @@ impl Parser {
         };
         self.lexer = Lexer::lines(BufReader::new(fp).lines(), filename);
         self.first_pass = true;
-        self.parse_file();
+        self.parse_all();
         let lvl = self.lexer.diagnostics().level();
         if lvl != Level::Error && lvl != Level::Fatal {
             self.first_pass = false;
@@ -184,7 +192,7 @@ impl Parser {
                 BufReader::new(File::open(filename).unwrap()).lines(),
                 filename,
             );
-            self.parse_file();
+            self.parse_all();
         }
         self.diagnostics.fill(self.lexer.diagnostics());
         self.diagnostics.is_empty()
@@ -232,7 +240,7 @@ impl Parser {
         self.default = false;
         self.vars.logging = logging;
         self.lexer = Lexer::from_str(text, filename);
-        self.parse_file();
+        self.parse_all();
         let lvl = self.lexer.diagnostics().level();
         if lvl == Level::Error || lvl == Level::Fatal {
             self.diagnostics.fill(self.lexer.diagnostics());
@@ -240,7 +248,7 @@ impl Parser {
         }
         self.vars.reset();
         self.lexer = Lexer::from_str(text, filename);
-        self.parse_file();
+        self.parse_all();
         self.diagnostics.fill(self.lexer.diagnostics());
     }
 
@@ -303,38 +311,35 @@ impl Parser {
         }
         if let Type::Iterator(_, _) = should {
             match is_type {
-                Type::Vector(tp, _) => {
+                Type::Vector(vtp, dep) => {
                     let i = Value::Var(iter_var);
-                    let vec_tp = self.data.type_def_nr(tp);
+                    let vec_tp = self.data.type_def_nr(vtp);
                     let size = self.database.size(self.data.def(vec_tp).known_type);
                     let mut ref_expr = self.cl(
                         "OpGetVector",
                         &[code.clone(), Value::Int(i32::from(size)), i.clone()],
                     );
-                    if let Type::Reference(_, _) = *tp.clone() {
+                    if let Type::Reference(_, _) = *vtp.clone() {
                     } else {
                         ref_expr = self.get_field(vec_tp, usize::MAX, ref_expr);
                     }
+                    let mut tp = *vtp.clone();
+                    for d in dep {
+                        tp = tp.depending(*d);
+                    }
                     let nx = self.vars.start_scope(self.lexer.at(), "iter next");
-                    let res_var = self.create_unique("res", tp);
-                    let next = vec![
+                    let next = Value::Block(vec![
                         v_set(
                             iter_var,
                             self.op("Add", i.clone(), Value::Int(1), I32.clone()),
                         ),
-                        v_set(res_var, ref_expr),
-                        Value::Var(res_var),
-                    ];
-                    self.vars.finish_scope(nx, tp, self.lexer.at());
+                        ref_expr,
+                    ]);
+                    self.vars.finish_scope(nx, &tp, self.lexer.at());
                     self.vars
                         .set_loop(0, self.data.def(vec_tp).known_type, code);
-                    let len = self.cl("OpLengthVector", &[code.clone()]);
                     *code = v_set(iter_var, Value::Int(-1));
-                    return v_if(
-                        self.op("Ge", i, len, I32.clone()),
-                        self.null(tp),
-                        Value::Block(next),
-                    );
+                    return next;
                 }
                 Type::Sorted(_, _, _)
                 | Type::Hash(_, _, _)
@@ -715,6 +720,7 @@ impl Parser {
         types: &[Type],
         report: bool,
     ) -> Type {
+        let mut all_types = Vec::from(types);
         if self.data.def_type(d_nr) == DefType::Dynamic {
             for a_nr in 0..self.data.attributes(d_nr) {
                 let Type::Routine(r_nr) = self.data.attr_type(d_nr, a_nr) else {
@@ -785,54 +791,85 @@ impl Parser {
                 }
             }
         }
-        self.add_defaults(d_nr, &mut actual);
-        let tp = self.call_dependencies(d_nr, types);
+        self.add_defaults(d_nr, &mut actual, &mut all_types);
+        let tp = self.call_dependencies(d_nr, &all_types);
         *code = Value::Call(d_nr, actual);
         tp
     }
 
     // Gather depended on variables from arguments of the given called routine.
     fn call_dependencies(&mut self, d_nr: u32, types: &[Type]) -> Type {
-        let mut tp = self.data.def(d_nr).returned.clone();
-        if let Type::Text(d) = &tp {
-            let mut dp = HashSet::new();
-            for ar in d {
-                if *ar as usize >= types.len() {
-                    continue;
-                }
-                if let Type::Text(ad) = &types[*ar as usize] {
-                    for a in ad {
-                        dp.insert(*a);
-                    }
-                }
-            }
-            if !dp.is_empty() {
-                tp = Type::Text(Vec::from_iter(dp));
-            }
+        let tp = self.data.def(d_nr).returned.clone();
+        if let Type::Text(d) = tp {
+            Type::Text(Self::resolve_deps(types, &d))
+        } else if let Type::Vector(to, d) = tp {
+            Type::Vector(to, Self::resolve_deps(types, &d))
+        } else if let Type::Sorted(to, key, d) = tp {
+            Type::Sorted(to, key, Self::resolve_deps(types, &d))
+        } else if let Type::Hash(to, key, d) = tp {
+            Type::Hash(to, key, Self::resolve_deps(types, &d))
+        } else if let Type::Index(to, key, d) = tp {
+            Type::Index(to, key, Self::resolve_deps(types, &d))
+        } else if let Type::Spacial(to, key, d) = tp {
+            Type::Spacial(to, key, Self::resolve_deps(types, &d))
+        } else if let Type::Reference(to, d) = tp {
+            Type::Reference(to, Self::resolve_deps(types, &d))
+        } else {
+            tp
         }
-        tp
     }
 
-    fn add_defaults(&mut self, d_nr: u32, actual: &mut Vec<Value>) {
+    fn resolve_deps(types: &[Type], d: &[u16]) -> Vec<u16> {
+        let mut dp = HashSet::new();
+        for ar in d {
+            if *ar as usize >= types.len() {
+                continue;
+            }
+            if let Type::Text(ad)
+            | Type::Vector(_, ad)
+            | Type::Sorted(_, _, ad)
+            | Type::Hash(_, _, ad)
+            | Type::Index(_, _, ad)
+            | Type::Spacial(_, _, ad)
+            | Type::Reference(_, ad) = &types[*ar as usize]
+            {
+                for a in ad {
+                    dp.insert(*a);
+                }
+            }
+        }
+        Vec::from_iter(dp)
+    }
+
+    fn add_defaults(&mut self, d_nr: u32, actual: &mut Vec<Value>, all_types: &mut Vec<Type>) {
         if actual.len() < self.data.attributes(d_nr) {
             // Insert the default values for not given attributes
             for a_nr in actual.len()..self.data.attributes(d_nr) {
                 let default = self.data.def(d_nr).attributes[a_nr].value.clone();
-                if let Type::Reference(_, _) | Type::Vector(_, _) = self.data.attr_type(d_nr, a_nr)
-                {
+                let tp = self.data.attr_type(d_nr, a_nr);
+                if let Type::Vector(content, _) = &tp {
                     assert_eq!(
                         default,
                         Value::Null,
                         "Expect a null default on database references"
                     );
-                    let vr = self
-                        .vars
-                        .work_refs(&self.data.attr_type(d_nr, a_nr), &mut self.lexer);
+                    let vr = self.vars.work_refs(&tp, &mut self.lexer);
+                    self.data.vector_def(&mut self.lexer, content);
+                    all_types.push(Type::Vector(content.clone(), vec![vr]));
                     actual.push(Value::Var(vr));
-                } else if let Type::RefVar(tp) = self.data.attr_type(d_nr, a_nr) {
+                } else if let Type::Reference(content, _) = tp {
+                    assert_eq!(
+                        default,
+                        Value::Null,
+                        "Expect a null default on database references"
+                    );
+                    let vr = self.vars.work_refs(&tp, &mut self.lexer);
+                    all_types.push(Type::Reference(content, vec![vr]));
+                    actual.push(Value::Var(vr));
+                } else if let Type::RefVar(vtp) = &tp {
                     let ref_scope = self.vars.start_scope(self.lexer.at(), "default ref");
                     let mut ls = Vec::new();
-                    let vr = if matches!(*tp, Type::Text(_)) {
+                    let vr = if matches!(**vtp, Type::Text(_)) {
                         let wv = self.vars.work_text(&mut self.lexer);
                         if default != Value::Null
                             && if let Value::Text(t) = &default {
@@ -845,10 +882,11 @@ impl Parser {
                         }
                         wv
                     } else {
-                        panic!("Unexpected reference type {}", tp.name(&self.data));
+                        panic!("Unexpected reference type {}", vtp.name(&self.data));
                     };
                     ls.push(self.cl("OpCreateRef", &[Value::Var(vr)]));
                     actual.push(Value::Block(ls));
+                    all_types.push(tp.clone());
                     self.vars.finish_scope(
                         ref_scope,
                         &Type::Reference(self.data.def_nr("reference"), vec![vr]),
@@ -856,6 +894,7 @@ impl Parser {
                     );
                 } else {
                     actual.push(default);
+                    all_types.push(tp.clone());
                 }
             }
         }
@@ -864,11 +903,95 @@ impl Parser {
     // * Parser functions *
     // ********************
 
+    /// Parse the file from the current lexer but also the files that are indicated from it.
+    fn parse_all(&mut self) {
+        self.files.clear();
+        self.file_names.clear();
+        let file = &self.lexer.pos().file;
+        self.file_names.insert(file.clone(), 0);
+        self.files.push(file.clone());
+        self.current_file = 0;
+        loop {
+            if self.current_file >= self.files.len() as u16 {
+                return;
+            }
+            let filename = &self.files[self.current_file as usize];
+            self.lexer = Lexer::lines(
+                BufReader::new(File::open(filename).unwrap()).lines(),
+                filename,
+            );
+            self.parse_file();
+            self.current_file += 1;
+        }
+    }
+
     /// Parse data from the current lexer.
     fn parse_file(&mut self) {
         let start_def = self.data.definitions();
         self.file += 1;
         loop {
+            if self.lexer.has_token("use") {
+                if let Some(id) = self.lexer.has_identifier() {
+                    if !self.file_names.contains_key(&id) {
+                        // - a source file the lib directory in the project (project-supplied)
+                        let mut f = format!("lib/{id}.lav");
+                        if !std::path::Path::new(&f).exists() {
+                            f = format!("{id}.lav");
+                        }
+                        let cur_script = &self.lexer.pos().file;
+                        let cur_dir = if let Some(p) = cur_script.rfind('/') {
+                            &cur_script[0..p]
+                        } else {
+                            ""
+                        };
+                        let base_dir = if cur_dir.contains("/tests/") {
+                            &cur_dir[..cur_dir.find("/tests/").unwrap()]
+                        } else {
+                            ""
+                        };
+                        // - a lib directory relative to the current directory
+                        if !cur_dir.is_empty() && !std::path::Path::new(&f).exists() {
+                            f = format!("{cur_dir}/lib/{id}.lav");
+                        }
+                        // - a lib directory relative to the base directory when inside /tests/
+                        if !base_dir.is_empty() && !std::path::Path::new(&f).exists() {
+                            f = format!("{base_dir}/lib/{id}.lav");
+                        }
+                        // - a directory with the same name of the current script
+                        if !std::path::Path::new(&f).exists() {
+                            f = format!("{}/{id}.lav", &cur_script[0..cur_script.len() - 4]);
+                        }
+                        // - a user defined lib directory (externally downloaded)
+                        if !std::path::Path::new(&f).exists() {
+                            if let Some(v) = env::var_os("LAVITION_LIB") {
+                                let libs = v.to_str().unwrap();
+                                for l in libs.split(':') {
+                                    f = format!("{l}/{id}.lav");
+                                    if std::path::Path::new(&f).exists() {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        // - the current directory (beside the parsed file)
+                        if !cur_dir.is_empty() && !std::path::Path::new(&f).exists() {
+                            f = format!("{cur_dir}/{id}.lav");
+                        }
+                        // - the base directory when inside /tests/
+                        if !base_dir.is_empty() && !std::path::Path::new(&f).exists() {
+                            f = format!("{base_dir}/{id}.lav");
+                        }
+                        if std::path::Path::new(&f).exists() {
+                            self.file_names.insert(f.clone(), self.files.len() as u16);
+                            self.files.push(f);
+                        } else {
+                            diagnostic!(self.lexer, Level::Error, "Included file {id} not found");
+                        }
+                    }
+                }
+                self.lexer.token(";");
+                continue;
+            }
             self.lexer.has_token("pub");
             if self.lexer.diagnostics().level() == Level::Fatal
                 || (!self.parse_enum()
@@ -1123,8 +1246,10 @@ impl Parser {
         } else {
             Type::Void
         };
-        self.vars
-            .append(&mut self.data.definitions[self.context as usize].variables);
+        if self.context != u32::MAX {
+            self.vars
+                .append(&mut self.data.definitions[self.context as usize].variables);
+        }
         /*
         if !self.default {
             self.vars.logging = true;
@@ -3038,6 +3163,27 @@ impl Parser {
             let index_var = self.vars.var(name);
             if self.lexer.has_token("#") {
                 self.iter_op(code, name, &mut t, index_var);
+            } else if let Value::Var(into) = code {
+                let v_nr = self.vars.var(name);
+                t = self.vars.tp(v_nr).depending(v_nr);
+                self.var_usages(v_nr, true);
+                if let Type::Reference(d_nr, _) = self.vars.tp(*into) {
+                    if let Type::Reference(vd_nr, _) = self.vars.tp(v_nr) {
+                        if d_nr == vd_nr {
+                            let tp = self.data.def(*d_nr).known_type;
+                            *code = self.cl(
+                                "OpCopyRecord",
+                                &[
+                                    Value::Var(v_nr),
+                                    Value::Var(*into),
+                                    Value::Int(i32::from(tp)),
+                                ],
+                            );
+                            return t;
+                        }
+                    }
+                }
+                *code = Value::Var(v_nr);
             } else {
                 let v_nr = self.vars.var(name);
                 t = self.vars.tp(v_nr).depending(v_nr);
@@ -3829,7 +3975,8 @@ impl Parser {
                     if v != u16::MAX {
                         parent_tp = parent_tp.depending(v);
                     }
-                    self.parse_operators(&self.content(&td), &mut value, &mut parent_tp, 0);
+                    let exp_tp =
+                        self.parse_operators(&self.content(&td), &mut value, &mut parent_tp, 0);
                     if let Type::Vector(_, _)
                     | Type::Sorted(_, _, _)
                     | Type::Hash(_, _, _)
@@ -3838,6 +3985,7 @@ impl Parser {
                     {
                         list.push(value);
                     } else {
+                        self.convert(&mut value, &exp_tp, &td);
                         list.push(self.set_field(td_nr, nr, Value::Var(v), value));
                     }
                 }
@@ -3909,7 +4057,14 @@ impl Parser {
             self.lexer.token("in");
             let loop_nr = self.vars.start_loop();
             let mut expr = Value::Null;
-            let in_type = self.parse_in_range(&mut expr, &Value::Null, &id);
+            let mut in_type = self.parse_in_range(&mut expr, &Value::Null, &id);
+            let mut fill = Value::Null;
+            if matches!(in_type, Type::Vector(_, _)) {
+                let vec_var = self.create_unique("vector", &in_type);
+                in_type = in_type.depending(vec_var);
+                fill = v_set(vec_var, expr);
+                expr = Value::Var(vec_var);
+            }
             let var_tp = self.for_type(&in_type);
             let iter_var = self.create_var(&format!("{id}#index"), &I32);
             let loop_scope = self.vars.start_scope(self.lexer.at(), "for loop");
@@ -3942,7 +4097,11 @@ impl Parser {
             let count = self.vars.loop_counter();
             self.in_loop = in_loop;
             self.vars.finish_loop(loop_nr);
-            let mut for_steps = vec![create_iter];
+            let mut for_steps = Vec::new();
+            if fill != Value::Null {
+                for_steps.push(fill);
+            }
+            for_steps.push(create_iter);
             let mut lp = vec![for_next];
             if !matches!(in_type, Type::Iterator(_, _)) {
                 let mut test_for = Value::Var(for_var);
@@ -3974,8 +4133,12 @@ impl Parser {
     }
 
     fn for_type(&mut self, in_type: &Type) -> Type {
-        if let Type::Vector(t_nr, _) = &in_type {
-            *t_nr.clone()
+        if let Type::Vector(t_nr, dep) = &in_type {
+            let mut t = *t_nr.clone();
+            for d in dep {
+                t = t.depending(*d);
+            }
+            t
         } else if let Type::Sorted(dnr, _, dep) = &in_type {
             Type::Reference(*dnr, dep.clone())
         } else if let Type::Iterator(i_tp, _) = &in_type {

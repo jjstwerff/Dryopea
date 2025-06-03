@@ -19,6 +19,9 @@ pub fn trim_end(self: text) -> text[self];
 pub fn find(self: text, value: text) -> integer;
 #rust "if let Some(v) = @self.find(@value) {{ v as i32 }} else {{ i32::MIN }}"
 
+pub fn rfind(self: text, value: text) -> integer;
+#rust "if let Some(v) = @self.rfind(@value) {{ v as i32 }} else {{ i32::MIN }}"
+
 pub fn contains(self: text, value: text) -> boolean;
 #rust "@self.contains(@value)"
 
@@ -63,9 +66,3 @@ pub fn user_directory(v: &text = "") -> text;
 
 pub fn program_directory(v: &text = "") -> text;
 #rust "Stores::os_executable(@v)"
-
-// pub fn lines(self: text) -> iterator<text,integer>;
-// #iterator "0" "lines_text(@self, &mut @iter)"
-
-// pub fn split(self: text, on: text) -> iterator<text,integer>;
-// #iterator "0" "split_text(@self, &mut @iter)"

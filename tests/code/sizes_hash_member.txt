@@ -8,15 +8,15 @@ pub fn test() {
         "Test failed {test_value} != 820"
     );
 }
-Type 12:S[20]:
+Type 14:S[20]:
     a:integer[4]
     b:long[8]
     c:integer[16]
 
-Type 13:Main[8]:
+Type 15:Main[8]:
     s:hash<S[b]>[4]
 
-Type 14:hash<S[b]>[4]:Hash(12, [1]) keys [tp:2 desc:false field:8, ]
+Type 16:hash<S[b]>[4]:Hash(14, [1]) keys [tp:2 desc:false field:8, ]
 
 fn test() {#1 block
   __work_1:text = "";
@@ -32,43 +32,28 @@ fn test() {#1 block
 }#1
 
 byte-code for hash_member:test()
- 645[0]: return-address
- 645[4]: Text() var=__work_1[4]:text in 1
- 646[28]: ConstInt(val=20) -> integer var=test_value[28]:integer in 1
- 651[32]: ConstInt(val=100) -> integer
- 656[36]: ConstInt(val=8) -> integer
- 661[40]: MulInt(v1: integer, v2: integer) -> integer
- 662[36]: AddInt(v1: integer, v2: integer) -> integer
- 663[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
- 666[36]: ConstInt(val=820) -> integer
- 671[40]: EqInt(v1: integer, v2: integer) -> boolean
- 672[33]: GotoFalseWord(jump=678, if_false: boolean)
- 675[32]: GotoWord(jump=729)
- 678[32]: ClearText(var[4]) var=__work_1[4]:text in 1
- 681[32]: ConstText(_value="Test failed ") -> text
- 695[48]: AppendText(var[4], v1: text)
- 698[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
- 701[36]: ConstInt(val=0) -> integer
- 706[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 713[32]: ConstText(_value=" != 820") -> text
- 722[48]: AppendText(var[4], v1: text)
- 725[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 728[48]: Panic(message: text)
- 729[32]: FreeText(var[4])
- 732[32]: Return(ret=0, value=0, discard=32)
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text in 1
+   1[28]: ConstInt(val=20) -> integer var=test_value[28]:integer in 1
+   6[32]: ConstInt(val=100) -> integer
+  11[36]: ConstInt(val=8) -> integer
+  16[40]: MulInt(v1: integer, v2: integer) -> integer
+  17[36]: AddInt(v1: integer, v2: integer) -> integer
+  18[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
+  21[36]: ConstInt(val=820) -> integer
+  26[40]: EqInt(v1: integer, v2: integer) -> boolean
+  27[33]: GotoFalseWord(jump=33, if_false: boolean)
+  30[32]: GotoWord(jump=84)
+  33[32]: ClearText(var[4]) var=__work_1[4]:text in 1
+  36[32]: ConstText(_value="Test failed ") -> text
+  50[48]: AppendText(var[4], v1: text)
+  53[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
+  56[36]: ConstInt(val=0) -> integer
+  61[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  68[32]: ConstText(_value=" != 820") -> text
+  77[48]: AppendText(var[4], v1: text)
+  80[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+  83[48]: Panic(message: text)
+  84[32]: FreeText(var[4])
+  87[32]: Return(ret=0, value=0, discard=32)
 
-Execute test:
-  645:[8] Text()
-  646:[32] ConstInt(val=20) -> 20[32]
-  651:[36] ConstInt(val=100) -> 100[36]
-  656:[40] ConstInt(val=8) -> 8[40]
-  661:[44] MulInt(v1=100[36], v2=8[40]) -> 800[36]
-  662:[40] AddInt(v1=20[32], v2=800[36]) -> 820[32]
-  663:[36] VarInt(var[32]) -> 820[36]
-  666:[40] ConstInt(val=820) -> 820[40]
-  671:[44] EqInt(v1=820[36], v2=820[40]) -> true[36]
-  672:[37] GotoFalseWord(jump=678, if_false=true[36])
-  675:[36] GotoWord(jump=729)
-  729:[36] FreeText(var[8])
-  732:[36] Return(ret=4294967295[4], value=0, discard=32)
-Finished

@@ -211,9 +211,6 @@ pub fn rtree_insert(
     set_bits(store, bits, (-node) as u32, diff_bit - bit);
 }
 
-#[cfg(test)]
-use crate::logger::log::error;
-
 /// Validate the consistency of the tree
 #[cfg(test)]
 pub fn rtree_validate(
@@ -237,9 +234,7 @@ pub fn rtree_validate(
         _rec = cur;
         count += 1;
     }
-    if count != size {
-        error!("Incorrect number of elements");
-    }
+    assert_eq!(count, size, "Incorrect number of elements");
 }
 
 /// Fully optimize = start a new vector
