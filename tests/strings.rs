@@ -216,10 +216,8 @@ fn dirs() {
   print(\"program {program_directory()}\\n\");
   print(\"user {user_directory()}\\n\");
   print(\"current {directory()}\\n\");
-  e = env_variables();
-  for v in e { print(\"{v}\\n\"); }
-  c = arguments();
-  for a in c { print(\"{a}\\n\"); }
+  for v in env_variables() { print(\"{v}\\n\"); }
+  for a in arguments() { print(\"{a}\\n\"); }
 }"
     );
 }

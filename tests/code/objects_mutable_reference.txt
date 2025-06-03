@@ -18,64 +18,64 @@ pub fn test() {
         "Test failed {test_value} != \"{{num:6,values:[2,3]}}\""
     );
 }
-Type 12:vector<integer>[4]:Vector(0)
+Type 14:vector<integer>[4]:Vector(0)
 
-Type 13:Data[12]:
+Type 15:Data[12]:
     num:integer[4]
     values:vector<integer>[8]
 
 fn add(r:&ref(Data), val:integer) {#1 block
   if OpNot(OpConvBoolFromRef(r)) {#2 block
     {#3 object
-      OpDatabase(r, 13i32);
+      OpDatabase(r, 15i32);
       OpSetInt(r, 4i32, 0i32);
       OpSetInt(r, 8i32, 0i32);
     }#3;
   }#2 else null;
   OpSetInt(r, 4i32, OpAddInt(OpGetInt(r, 4i32), val));
   {#4 vector
-    _elm_1:ref(boolean)["r"] = OpNewRecord(r, 13i32, 1i32);
+    _elm_1:ref(boolean)["r"] = OpNewRecord(r, 15i32, 1i32);
     OpSetInt(_elm_1, 0i32, val);
-    OpFinishRecord(r, _elm_1, 13i32, 1i32);
+    OpFinishRecord(r, _elm_1, 15i32, 1i32);
   }#4;
 }#1
 
 byte-code for mutable_reference:add(r: &ref(Data)[0], val: integer[12])
- 645[16]: return-address
- 645[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
- 648[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
- 651[32]: ConvBoolFromRef(val: ref(reference)) -> boolean
- 652[21]: Not(v1: boolean) -> boolean
- 653[21]: GotoFalseWord(jump=689, if_false: boolean)
- 656[20]: Database(var[0], db_tp=13) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[13]
- 661[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
- 664[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
- 667[32]: ConstInt(val=0) -> integer
- 672[36]: SetInt(v1: ref(reference), fld=4, val: integer)
- 675[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
- 678[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
- 681[32]: ConstInt(val=0) -> integer
- 686[36]: SetInt(v1: ref(reference), fld=8, val: integer)
- 689[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
- 692[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
- 695[32]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
- 698[44]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
- 701[44]: GetInt(v1: ref(reference), fld=4) -> integer
- 704[36]: VarInt(var[12]) -> integer var=val[12]:integer in 0
- 707[40]: AddInt(v1: integer, v2: integer) -> integer
- 708[36]: SetInt(v1: ref(reference), fld=4, val: integer)
- 711[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
- 714[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
- 717[32]: NewRecord(data: ref(reference), parent_tp=13, fld=1) -> ref(reference)
- 722[32]: VarRef(var[20]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[20]:ref(boolean)["r"] in 4
- 725[44]: VarInt(var[12]) -> integer var=val[12]:integer in 0
- 728[48]: SetInt(v1: ref(reference), fld=0, val: integer)
- 731[32]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
- 734[44]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
- 737[44]: VarRef(var[20]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[20]:ref(boolean)["r"] in 4
- 740[56]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=13, fld=1)
- 745[32]: FreeStack(value=0, discard=12)
- 749[20]: Return(ret=16, value=0, discard=20)
+   0[16]: return-address
+   0[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
+   3[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
+   6[32]: ConvBoolFromRef(val: ref(reference)) -> boolean
+   7[21]: Not(v1: boolean) -> boolean
+   8[21]: GotoFalseWord(jump=44, if_false: boolean)
+  11[20]: Database(var[0], db_tp=15) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[15]
+  16[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
+  19[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
+  22[32]: ConstInt(val=0) -> integer
+  27[36]: SetInt(v1: ref(reference), fld=4, val: integer)
+  30[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
+  33[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
+  36[32]: ConstInt(val=0) -> integer
+  41[36]: SetInt(v1: ref(reference), fld=8, val: integer)
+  44[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
+  47[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
+  50[32]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
+  53[44]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
+  56[44]: GetInt(v1: ref(reference), fld=4) -> integer
+  59[36]: VarInt(var[12]) -> integer var=val[12]:integer in 0
+  62[40]: AddInt(v1: integer, v2: integer) -> integer
+  63[36]: SetInt(v1: ref(reference), fld=4, val: integer)
+  66[20]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
+  69[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
+  72[32]: NewRecord(data: ref(reference), parent_tp=15, fld=1) -> ref(reference)
+  77[32]: VarRef(var[20]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[20]:ref(boolean)["r"] in 4
+  80[44]: VarInt(var[12]) -> integer var=val[12]:integer in 0
+  83[48]: SetInt(v1: ref(reference), fld=0, val: integer)
+  86[32]: VarRef(var[0]) -> ref(reference) var=r[0]:&ref(Data) in 0
+  89[44]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
+  92[44]: VarRef(var[20]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[20]:ref(boolean)["r"] in 4
+  95[56]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=1)
+ 100[32]: FreeStack(value=0, discard=12)
+ 104[20]: Return(ret=16, value=0, discard=20)
 
 fn test() {#1 block
   __ref_1:ref(Data) = null;
@@ -83,7 +83,7 @@ fn test() {#1 block
   __work_1:text = "";
   test_value:text = {#2 block
     v:ref(Data)["__ref_1"] = {#3 object
-      OpDatabase(__ref_1, 13i32);
+      OpDatabase(__ref_1, 15i32);
       OpSetInt(__ref_1, 4i32, 1i32);
       OpSetInt(__ref_1, 8i32, 0i32);
       __ref_1;
@@ -92,7 +92,7 @@ fn test() {#1 block
     add(OpCreateRef(v), 3i32);
     {#4 formatting string
       __work_1:text = "";
-      OpFormatDatabase(__work_1, v, 13i32, false);
+      OpFormatDatabase(__work_1, v, 15i32, false);
       __work_1;
     }#4:text;
   }#2:text;
@@ -105,151 +105,52 @@ fn test() {#1 block
 }#1
 
 byte-code for mutable_reference:test()
- 755[0]: return-address
- 755[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data) in 1
- 756[16]: Text() var=__work_2[16]:text in 1
- 757[40]: Text() var=__work_1[40]:text in 1
- 758[64]: Text() var=test_value[64]:text in 1
- 759[88]: Database(var[4], db_tp=13) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[13] var=v[88]:ref(Data)["__ref_1"] in 2
- 764[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[13] var=__ref_1[4]:ref(Data) in 1
- 767[100]: ConstInt(val=1) -> integer
- 772[104]: SetInt(v1: ref(reference), fld=4, val: integer)
- 775[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[13] var=__ref_1[4]:ref(Data) in 1
- 778[100]: ConstInt(val=0) -> integer
- 783[104]: SetInt(v1: ref(reference), fld=8, val: integer)
- 786[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[13] var=__ref_1[4]:ref(Data) in 1
- 789[100]: CreateRef(var[88]) -> ref(reference)
- 792[112]: ConstInt(val=2) -> integer
- 797[116]: Call(size=0, to=645)
- 804[100]: CreateRef(var[88]) -> ref(reference)
- 807[112]: ConstInt(val=3) -> integer
- 812[116]: Call(size=0, to=645)
- 819[100]: ClearText(var[40]) var=__work_1[40]:text in 1
- 822[100]: ConstText(_value="") -> text
- 824[116]: AppendText(var[40], v1: text)
- 827[100]: VarRef(var[88]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[13] var=v[88]:ref(Data)["__ref_1"] in 2
- 830[112]: FormatDatabase(var[40], val: ref(reference), db_tp=13, pretty=false)
- 836[100]: VarText(var[40]) -> text var=__work_1[40]:text in 1
- 839[116]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
- 843[104]: AppendText(var[64], v1: text)
- 846[88]: VarText(var[64]) -> text var=test_value[64]:text in 1
- 849[104]: ConstText(_value="{num:6,values:[2,3]}") -> text
- 871[120]: EqText(v1: text, v2: text) -> boolean
- 872[89]: GotoFalseWord(jump=878, if_false: boolean)
- 875[88]: GotoWord(jump=946)
- 878[88]: ClearText(var[16]) var=__work_2[16]:text in 1
- 881[88]: ConstText(_value="Test failed ") -> text
- 895[104]: AppendText(var[16], v1: text)
- 898[88]: VarText(var[64]) -> text var=test_value[64]:text in 1
- 901[104]: ConstInt(val=0) -> integer
- 906[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
- 911[88]: ConstText(_value=" != "{num:6,values:[2,3]}"") -> text
- 939[104]: AppendText(var[16], v1: text)
- 942[88]: VarText(var[16]) -> text var=__work_2[16]:text in 1
- 945[104]: Panic(message: text)
- 946[88]: FreeText(var[64])
- 949[88]: FreeText(var[40])
- 952[88]: FreeText(var[16])
- 955[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[13] var=__ref_1[4]:ref(Data) in 1
- 958[100]: FreeRef(v1: ref(reference))
- 959[88]: Return(ret=0, value=0, discard=88)
+   0[0]: return-address
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data) in 1
+   1[16]: Text() var=__work_2[16]:text in 1
+   2[40]: Text() var=__work_1[40]:text in 1
+   3[64]: Text() var=test_value[64]:text in 1
+   4[88]: Database(var[4], db_tp=15) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[15] var=v[88]:ref(Data)["__ref_1"] in 2
+   9[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[15] var=__ref_1[4]:ref(Data) in 1
+  12[100]: ConstInt(val=1) -> integer
+  17[104]: SetInt(v1: ref(reference), fld=4, val: integer)
+  20[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[15] var=__ref_1[4]:ref(Data) in 1
+  23[100]: ConstInt(val=0) -> integer
+  28[104]: SetInt(v1: ref(reference), fld=8, val: integer)
+  31[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[15] var=__ref_1[4]:ref(Data) in 1
+  34[100]: CreateRef(var[88]) -> ref(reference)
+  37[112]: ConstInt(val=2) -> integer
+  42[116]: Call(size=0, to=911)
+  49[100]: CreateRef(var[88]) -> ref(reference)
+  52[112]: ConstInt(val=3) -> integer
+  57[116]: Call(size=0, to=911)
+  64[100]: ClearText(var[40]) var=__work_1[40]:text in 1
+  67[100]: ConstText(_value="") -> text
+  69[116]: AppendText(var[40], v1: text)
+  72[100]: VarRef(var[88]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[15] var=v[88]:ref(Data)["__ref_1"] in 2
+  75[112]: FormatDatabase(var[40], val: ref(reference), db_tp=15, pretty=false)
+  81[100]: VarText(var[40]) -> text var=__work_1[40]:text in 1
+  84[116]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
+  88[104]: AppendText(var[64], v1: text)
+  91[88]: VarText(var[64]) -> text var=test_value[64]:text in 1
+  94[104]: ConstText(_value="{num:6,values:[2,3]}") -> text
+ 116[120]: EqText(v1: text, v2: text) -> boolean
+ 117[89]: GotoFalseWord(jump=123, if_false: boolean)
+ 120[88]: GotoWord(jump=191)
+ 123[88]: ClearText(var[16]) var=__work_2[16]:text in 1
+ 126[88]: ConstText(_value="Test failed ") -> text
+ 140[104]: AppendText(var[16], v1: text)
+ 143[88]: VarText(var[64]) -> text var=test_value[64]:text in 1
+ 146[104]: ConstInt(val=0) -> integer
+ 151[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
+ 156[88]: ConstText(_value=" != "{num:6,values:[2,3]}"") -> text
+ 184[104]: AppendText(var[16], v1: text)
+ 187[88]: VarText(var[16]) -> text var=__work_2[16]:text in 1
+ 190[104]: Panic(message: text)
+ 191[88]: FreeText(var[64])
+ 194[88]: FreeText(var[40])
+ 197[88]: FreeText(var[16])
+ 200[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{num:integer[4], values:vector<integer>[8]}[15] var=__ref_1[4]:ref(Data) in 1
+ 203[100]: FreeRef(v1: ref(reference))
+ 204[88]: Return(ret=0, value=0, discard=88)
 
-Execute test:
-  755:[8] ConvRefFromNull() -> ref(1,0,0)[8]
-  756:[20] Text()
-  757:[44] Text()
-  758:[68] Text()
-  759:[92] Database(var[8], db_tp=13)
-  764:[92] VarRef(var[8]) -> ref(1,1,0)={}[92]
-  767:[104] ConstInt(val=1) -> 1[104]
-  772:[108] SetInt(v1=ref(1,1,0)[92], fld=4, val=1[104])
-  775:[92] VarRef(var[8]) -> ref(1,1,0)={num:1}[92]
-  778:[104] ConstInt(val=0) -> 0[104]
-  783:[108] SetInt(v1=ref(1,1,0)[92], fld=8, val=0[104])
-  786:[92] VarRef(var[8]) -> ref(1,1,0)={num:1}[92]
-  789:[104] CreateRef(var[92]) -> ref(0,1,92)[104]
-  792:[116] ConstInt(val=2) -> 2[116]
-  797:[120] Call(size=0, to=645)
-  645:[124] VarRef(var[104]) -> ref(0,1,92)[124]
-  648:[136] GetDbRef(r=ref(0,1,92)[124], fld=0) -> ref(1,1,0)[124]
-  649:[136] Goto(jump=-18036)
-  651:[136] ConvBoolFromRef(val=ref(1,1,0)[124]) -> true[124]
-  652:[125] Not(v1=true[124]) -> false[124]
-  653:[125] GotoFalseWord(jump=689, if_false=false[124])
-  689:[124] VarRef(var[104]) -> ref(0,1,92)[124]
-  692:[136] GetDbRef(r=ref(0,1,92)[124], fld=0) -> ref(1,1,0)[124]
-  693:[136] Goto(jump=-16968)
-  695:[136] VarRef(var[104]) -> ref(0,1,92)[136]
-  698:[148] GetDbRef(r=ref(0,1,92)[136], fld=0) -> ref(1,1,0)[136]
-  699:[148] Goto(jump=-15170)
-  701:[148] GetInt(v1=ref(1,1,0)[136], fld=4) -> 1[136]
-  704:[140] VarInt(var[116]) -> 2[140]
-  707:[144] AddInt(v1=1[136], v2=2[140]) -> 3[136]
-  708:[140] SetInt(v1=ref(1,1,0)[124], fld=4, val=3[136])
-  711:[124] VarRef(var[104]) -> ref(0,1,92)[124]
-  714:[136] GetDbRef(r=ref(0,1,92)[124], fld=0) -> ref(1,1,0)[124]
-  715:[136] Goto(jump=-9266)
-  717:[136] NewRecord(data=ref(1,1,0)[124], parent_tp=13, fld=1) -> ref(1,13,8)[124]
-  722:[136] VarRef(var[124]) -> ref(1,13,8)=false[136]
-  725:[148] VarInt(var[116]) -> 2[148]
-  728:[152] SetInt(v1=ref(1,13,8)[136], fld=0, val=2[148])
-  731:[136] VarRef(var[104]) -> ref(0,1,92)[136]
-  734:[148] GetDbRef(r=ref(0,1,92)[136], fld=0) -> ref(1,1,0)[136]
-  735:[148] Goto(jump=-16926)
-  737:[148] VarRef(var[124]) -> ref(1,13,8)=true[148]
-  740:[160] FinishRecord(data=ref(1,1,0)[136], rec=ref(1,13,8)[148], parent_tp=13, fld=1)
-  745:[136] FreeStack(value=0, discard=12)
-  749:[124] Return(ret=804[120], value=0, discard=20)
-  804:[104] CreateRef(var[92]) -> ref(0,1,92)[104]
-  807:[116] ConstInt(val=3) -> 3[116]
-  812:[120] Call(size=0, to=645)
-  645:[124] VarRef(var[104]) -> ref(0,1,92)[124]
-  648:[136] GetDbRef(r=ref(0,1,92)[124], fld=0) -> ref(1,1,0)[124]
-  649:[136] Goto(jump=-18036)
-  651:[136] ConvBoolFromRef(val=ref(1,1,0)[124]) -> true[124]
-  652:[125] Not(v1=true[124]) -> false[124]
-  653:[125] GotoFalseWord(jump=689, if_false=false[124])
-  689:[124] VarRef(var[104]) -> ref(0,1,92)[124]
-  692:[136] GetDbRef(r=ref(0,1,92)[124], fld=0) -> ref(1,1,0)[124]
-  693:[136] Goto(jump=-16968)
-  695:[136] VarRef(var[104]) -> ref(0,1,92)[136]
-  698:[148] GetDbRef(r=ref(0,1,92)[136], fld=0) -> ref(1,1,0)[136]
-  699:[148] Goto(jump=-15170)
-  701:[148] GetInt(v1=ref(1,1,0)[136], fld=4) -> 3[136]
-  704:[140] VarInt(var[116]) -> 3[140]
-  707:[144] AddInt(v1=3[136], v2=3[140]) -> 6[136]
-  708:[140] SetInt(v1=ref(1,1,0)[124], fld=4, val=6[136])
-  711:[124] VarRef(var[104]) -> ref(0,1,92)[124]
-  714:[136] GetDbRef(r=ref(0,1,92)[124], fld=0) -> ref(1,1,0)[124]
-  715:[136] Goto(jump=-9266)
-  717:[136] NewRecord(data=ref(1,1,0)[124], parent_tp=13, fld=1) -> ref(1,13,12)[124]
-  722:[136] VarRef(var[124]) -> ref(1,13,12)=false[136]
-  725:[148] VarInt(var[116]) -> 3[148]
-  728:[152] SetInt(v1=ref(1,13,12)[136], fld=0, val=3[148])
-  731:[136] VarRef(var[104]) -> ref(0,1,92)[136]
-  734:[148] GetDbRef(r=ref(0,1,92)[136], fld=0) -> ref(1,1,0)[136]
-  735:[148] Goto(jump=-16926)
-  737:[148] VarRef(var[124]) -> ref(1,13,12)=true[148]
-  740:[160] FinishRecord(data=ref(1,1,0)[136], rec=ref(1,13,12)[148], parent_tp=13, fld=1)
-  745:[136] FreeStack(value=0, discard=12)
-  749:[124] Return(ret=819[120], value=0, discard=20)
-  819:[104] ClearText(var[44])
-  822:[104] ConstText(_value="") -> ""[104]
-  824:[120] AppendText(var[44], v1=""[104])
-  827:[104] VarRef(var[92]) -> ref(1,1,0)={num:6,values:[2,3]}[104]
-  830:[116] FormatDatabase(var[44], val=ref(1,1,0)[104], db_tp=13, pretty=false)
-  836:[104] VarText(var[44]) -> "{num:6,values:[2,3]}"[104]
-  839:[120] FreeStack(value=16, discard=28)
-  843:[108] AppendText(var[68], v1="{num:6,values:[2,3]}"[92])
-  846:[92] VarText(var[68]) -> "{num:6,values:[2,3]}"[92]
-  849:[108] ConstText(_value="{num:6,values:[2,3]}") -> "{num:6,values:[2,3]}"[108]
-  871:[124] EqText(v1="{num:6,values:[2,3]}"[92], v2="{num:6,values:[2,3]}"[108]) -> true[92]
-  872:[93] GotoFalseWord(jump=878, if_false=true[92])
-  875:[92] GotoWord(jump=946)
-  946:[92] FreeText(var[68])
-  949:[92] FreeText(var[44])
-  952:[92] FreeText(var[20])
-  955:[92] VarRef(var[8]) -> ref(1,1,0)={num:6,values:[2,3]}[92]
-  958:[104] FreeRef(v1=ref(1,1,0)[92])
-  959:[92] Return(ret=4294967295[4], value=0, discard=88)
-Finished

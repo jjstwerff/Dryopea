@@ -19,47 +19,30 @@ fn test() {#1 block
 }#1
 
 byte-code for logical:test()
- 645[0]: return-address
- 645[4]: Text() var=__work_1[4]:text in 1
- 646[28]: ConstInt(val=1) -> integer var=test_value[28]:integer in 1
- 651[32]: ConstInt(val=8) -> integer
- 656[36]: SLeftInt(v1: integer, v2: integer) -> integer
- 657[32]: ConstInt(val=3) -> integer
- 662[36]: MinInt(v1: integer, v2: integer) -> integer
- 663[32]: ConstInt(val=127) -> integer
- 668[36]: LandInt(v1: integer, v2: integer) -> integer
- 669[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
- 672[36]: ConstInt(val=125) -> integer
- 677[40]: EqInt(v1: integer, v2: integer) -> boolean
- 678[33]: GotoFalseWord(jump=684, if_false: boolean)
- 681[32]: GotoWord(jump=735)
- 684[32]: ClearText(var[4]) var=__work_1[4]:text in 1
- 687[32]: ConstText(_value="Test failed ") -> text
- 701[48]: AppendText(var[4], v1: text)
- 704[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
- 707[36]: ConstInt(val=0) -> integer
- 712[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 719[32]: ConstText(_value=" != 125") -> text
- 728[48]: AppendText(var[4], v1: text)
- 731[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 734[48]: Panic(message: text)
- 735[32]: FreeText(var[4])
- 738[32]: Return(ret=0, value=0, discard=32)
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text in 1
+   1[28]: ConstInt(val=1) -> integer var=test_value[28]:integer in 1
+   6[32]: ConstInt(val=8) -> integer
+  11[36]: SLeftInt(v1: integer, v2: integer) -> integer
+  12[32]: ConstInt(val=3) -> integer
+  17[36]: MinInt(v1: integer, v2: integer) -> integer
+  18[32]: ConstInt(val=127) -> integer
+  23[36]: LandInt(v1: integer, v2: integer) -> integer
+  24[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
+  27[36]: ConstInt(val=125) -> integer
+  32[40]: EqInt(v1: integer, v2: integer) -> boolean
+  33[33]: GotoFalseWord(jump=39, if_false: boolean)
+  36[32]: GotoWord(jump=90)
+  39[32]: ClearText(var[4]) var=__work_1[4]:text in 1
+  42[32]: ConstText(_value="Test failed ") -> text
+  56[48]: AppendText(var[4], v1: text)
+  59[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
+  62[36]: ConstInt(val=0) -> integer
+  67[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  74[32]: ConstText(_value=" != 125") -> text
+  83[48]: AppendText(var[4], v1: text)
+  86[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+  89[48]: Panic(message: text)
+  90[32]: FreeText(var[4])
+  93[32]: Return(ret=0, value=0, discard=32)
 
-Execute test:
-  645:[8] Text()
-  646:[32] ConstInt(val=1) -> 1[32]
-  651:[36] ConstInt(val=8) -> 8[36]
-  656:[40] SLeftInt(v1=1[32], v2=8[36]) -> 256[32]
-  657:[36] ConstInt(val=3) -> 3[36]
-  662:[40] MinInt(v1=256[32], v2=3[36]) -> 253[32]
-  663:[36] ConstInt(val=127) -> 127[36]
-  668:[40] LandInt(v1=253[32], v2=127[36]) -> 125[32]
-  669:[36] VarInt(var[32]) -> 125[36]
-  672:[40] ConstInt(val=125) -> 125[40]
-  677:[44] EqInt(v1=125[36], v2=125[40]) -> true[36]
-  678:[37] GotoFalseWord(jump=684, if_false=true[36])
-  681:[36] GotoWord(jump=735)
-  735:[36] FreeText(var[8])
-  738:[36] Return(ret=4294967295[4], value=0, discard=32)
-Finished

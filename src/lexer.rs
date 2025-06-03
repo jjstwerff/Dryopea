@@ -256,6 +256,9 @@ impl Lexer {
                     }
                     self.next_char();
                 } else if let Some(Ok(ln)) = self.lines.next() {
+                    if self.position.line == 0 && ln.starts_with("#!/") {
+                        continue;
+                    }
                     self.iter = ln.chars().collect::<Vec<_>>().into_iter().peekable();
                     self.position.line += 1;
                     self.position.pos = 1;

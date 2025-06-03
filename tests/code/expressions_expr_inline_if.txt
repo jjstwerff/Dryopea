@@ -23,56 +23,35 @@ fn test() {#1 block
 }#1
 
 byte-code for expr_inline_if:test()
- 645[0]: return-address
- 645[4]: Text() var=__work_1[4]:text in 1
- 646[28]: Text() var=test_value[28]:text in 1
- 647[52]: ConstInt(val=2) -> integer
- 652[56]: ConstInt(val=2) -> integer
- 657[60]: AddInt(v1: integer, v2: integer) -> integer
- 658[56]: ConstInt(val=3) -> integer
- 663[60]: GtInt(v1: integer, v2: integer) -> boolean
- 664[53]: GotoFalseWord(jump=673, if_false: boolean)
- 667[52]: ConstText(_value="A") -> text
- 670[68]: GotoWord(jump=676)
- 673[52]: ConstText(_value="B") -> text
- 676[68]: AppendText(var[28], v1: text)
- 679[52]: VarText(var[28]) -> text var=test_value[28]:text in 1
- 682[68]: ConstText(_value="A") -> text
- 685[84]: EqText(v1: text, v2: text) -> boolean
- 686[53]: GotoFalseWord(jump=692, if_false: boolean)
- 689[52]: GotoWord(jump=741)
- 692[52]: ClearText(var[4]) var=__work_1[4]:text in 1
- 695[52]: ConstText(_value="Test failed ") -> text
- 709[68]: AppendText(var[4], v1: text)
- 712[52]: VarText(var[28]) -> text var=test_value[28]:text in 1
- 715[68]: ConstInt(val=0) -> integer
- 720[72]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 725[52]: ConstText(_value=" != "A"") -> text
- 734[68]: AppendText(var[4], v1: text)
- 737[52]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 740[68]: Panic(message: text)
- 741[52]: FreeText(var[28])
- 744[52]: FreeText(var[4])
- 747[52]: Return(ret=0, value=0, discard=52)
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text in 1
+   1[28]: Text() var=test_value[28]:text in 1
+   2[52]: ConstInt(val=2) -> integer
+   7[56]: ConstInt(val=2) -> integer
+  12[60]: AddInt(v1: integer, v2: integer) -> integer
+  13[56]: ConstInt(val=3) -> integer
+  18[60]: GtInt(v1: integer, v2: integer) -> boolean
+  19[53]: GotoFalseWord(jump=28, if_false: boolean)
+  22[52]: ConstText(_value="A") -> text
+  25[68]: GotoWord(jump=31)
+  28[52]: ConstText(_value="B") -> text
+  31[68]: AppendText(var[28], v1: text)
+  34[52]: VarText(var[28]) -> text var=test_value[28]:text in 1
+  37[68]: ConstText(_value="A") -> text
+  40[84]: EqText(v1: text, v2: text) -> boolean
+  41[53]: GotoFalseWord(jump=47, if_false: boolean)
+  44[52]: GotoWord(jump=96)
+  47[52]: ClearText(var[4]) var=__work_1[4]:text in 1
+  50[52]: ConstText(_value="Test failed ") -> text
+  64[68]: AppendText(var[4], v1: text)
+  67[52]: VarText(var[28]) -> text var=test_value[28]:text in 1
+  70[68]: ConstInt(val=0) -> integer
+  75[72]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  80[52]: ConstText(_value=" != "A"") -> text
+  89[68]: AppendText(var[4], v1: text)
+  92[52]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+  95[68]: Panic(message: text)
+  96[52]: FreeText(var[28])
+  99[52]: FreeText(var[4])
+ 102[52]: Return(ret=0, value=0, discard=52)
 
-Execute test:
-  645:[8] Text()
-  646:[32] Text()
-  647:[56] ConstInt(val=2) -> 2[56]
-  652:[60] ConstInt(val=2) -> 2[60]
-  657:[64] AddInt(v1=2[56], v2=2[60]) -> 4[56]
-  658:[60] ConstInt(val=3) -> 3[60]
-  663:[64] GtInt(v1=4[56], v2=3[60]) -> true[56]
-  664:[57] GotoFalseWord(jump=673, if_false=true[56])
-  667:[56] ConstText(_value="A") -> "A"[56]
-  670:[72] GotoWord(jump=676)
-  676:[72] AppendText(var[32], v1="A"[56])
-  679:[56] VarText(var[32]) -> "A"[56]
-  682:[72] ConstText(_value="A") -> "A"[72]
-  685:[88] EqText(v1="A"[56], v2="A"[72]) -> true[56]
-  686:[57] GotoFalseWord(jump=692, if_false=true[56])
-  689:[56] GotoWord(jump=741)
-  741:[56] FreeText(var[32])
-  744:[56] FreeText(var[8])
-  747:[56] Return(ret=4294967295[4], value=0, discard=52)
-Finished

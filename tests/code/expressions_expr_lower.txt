@@ -19,43 +19,28 @@ fn test() {#1 block
 }#1
 
 byte-code for expr_lower:test()
- 645[0]: return-address
- 645[4]: Text() var=__work_1[4]:text in 1
- 646[28]: ConstInt(val=2) -> integer var=test_value[28]:boolean in 1
- 651[32]: ConstInt(val=2) -> integer
- 656[36]: MulInt(v1: integer, v2: integer) -> integer
- 657[32]: ConstInt(val=3) -> integer
- 662[36]: LtInt(v1: integer, v2: integer) -> boolean
- 663[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
- 666[30]: ConstFalse() -> boolean
- 667[31]: EqBool(v1: boolean, v2: boolean) -> boolean
- 668[30]: GotoFalseWord(jump=674, if_false: boolean)
- 671[29]: GotoWord(jump=725)
- 674[29]: ClearText(var[4]) var=__work_1[4]:text in 1
- 677[29]: ConstText(_value="Test failed ") -> text
- 691[45]: AppendText(var[4], v1: text)
- 694[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
- 697[30]: ConstInt(val=0) -> integer
- 702[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
- 707[29]: ConstText(_value=" != false") -> text
- 718[45]: AppendText(var[4], v1: text)
- 721[29]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 724[45]: Panic(message: text)
- 725[29]: FreeText(var[4])
- 728[29]: Return(ret=0, value=0, discard=29)
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text in 1
+   1[28]: ConstInt(val=2) -> integer var=test_value[28]:boolean in 1
+   6[32]: ConstInt(val=2) -> integer
+  11[36]: MulInt(v1: integer, v2: integer) -> integer
+  12[32]: ConstInt(val=3) -> integer
+  17[36]: LtInt(v1: integer, v2: integer) -> boolean
+  18[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
+  21[30]: ConstFalse() -> boolean
+  22[31]: EqBool(v1: boolean, v2: boolean) -> boolean
+  23[30]: GotoFalseWord(jump=29, if_false: boolean)
+  26[29]: GotoWord(jump=80)
+  29[29]: ClearText(var[4]) var=__work_1[4]:text in 1
+  32[29]: ConstText(_value="Test failed ") -> text
+  46[45]: AppendText(var[4], v1: text)
+  49[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
+  52[30]: ConstInt(val=0) -> integer
+  57[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
+  62[29]: ConstText(_value=" != false") -> text
+  73[45]: AppendText(var[4], v1: text)
+  76[29]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+  79[45]: Panic(message: text)
+  80[29]: FreeText(var[4])
+  83[29]: Return(ret=0, value=0, discard=29)
 
-Execute test:
-  645:[8] Text()
-  646:[32] ConstInt(val=2) -> 2[32]
-  651:[36] ConstInt(val=2) -> 2[36]
-  656:[40] MulInt(v1=2[32], v2=2[36]) -> 4[32]
-  657:[36] ConstInt(val=3) -> 3[36]
-  662:[40] LtInt(v1=4[32], v2=3[36]) -> false[32]
-  663:[33] VarBool(var[32]) -> false[33]
-  666:[34] ConstFalse() -> false[34]
-  667:[35] EqBool(v1=false[33], v2=false[34]) -> true[33]
-  668:[34] GotoFalseWord(jump=674, if_false=true[33])
-  671:[33] GotoWord(jump=725)
-  725:[33] FreeText(var[8])
-  728:[33] Return(ret=4294967295[4], value=0, discard=29)
-Finished

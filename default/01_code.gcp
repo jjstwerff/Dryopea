@@ -519,8 +519,8 @@ fn OpGeText(v1: text, v2: text) -> boolean;
 #rust "@v1 >= @v2"
 fn OpFormatText(pos: const u16, val: text, width: integer, dir: const i8, token: const u8);
 
-fn character(val: text) -> integer;
-#rust "state::get_character(@val)"
+fn character(both: text) -> integer;
+#rust "state::get_character(@both)"
 fn OpAppendCharacter(pos: const u16, character: integer);
 
 type enumerate;
@@ -572,7 +572,7 @@ fn OpFreeRef(v1: reference);
 fn OpAppend(db: reference, size: const u16, db_tp: const u16) -> reference[db];
 
 fn OpVarRef(pos: const u16) -> reference;
-#rust "*s.get_var::<DbRef>(@pos);"
+#rust "{{let r = *s.get_var::<DbRef>(@pos); stores.valid(&r); r}}"
 fn OpPutRef(pos: const u16, value: reference);
 #rust "s.put_var(@pos, @value);"
 fn OpEqRef(v1: reference, v2: reference) -> boolean;
@@ -716,6 +716,7 @@ fn OpIterate(data: reference, on: const u8, arg: const u16, keys: const keys_def
 fn OpStep(state_var: const u16, data: reference, on: const u8, arg: const u16) -> reference[data];
 fn OpRemove(state_var: const u16, data: reference, on: const u8, tp: const u16);
 fn OpAppendCopy(data: reference, count: integer, tp: const u16);
+fn OpCopyRecord(data: reference, to: reference, tp: const u16);
 
 type iterator;
 

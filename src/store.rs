@@ -11,7 +11,6 @@
 #![allow(clippy::cast_sign_loss)]
 
 extern crate mmap_storage;
-use log::info;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
@@ -254,7 +253,6 @@ impl Store {
 
     /// Change the store size, do not mutate content
     fn resize_store(&mut self, to_size: u32) {
-        info!("Store {} resize to {}", self.size, to_size);
         if to_size < self.size {
             return;
         }
@@ -296,17 +294,16 @@ impl Store {
         }
     }
 
-    #[cfg(debug_assertions)]
     /// Try to validate a record reference as much as possible.
     /// Complete validations are only done in 'test' mode.
     pub fn valid(&self, rec: u32, fld: u32) -> bool {
-        assert!(self.claims.contains(&rec), "Unknown record {rec}");
-        assert!(
+        debug_assert!(self.claims.contains(&rec), "Unknown record {rec}");
+        debug_assert!(
             fld >= 4 && fld < 8 * *self.addr::<i32>(rec, 0) as u32,
             "Fld {fld} is outside of record {rec} size {}",
             8 * *self.addr::<i32>(rec, 0) as u32
         );
-        assert!(
+        debug_assert!(
             rec != 0 && u64::from(rec) * 8 + u64::from(fld) <= u64::from(self.size) * 8,
             "Reading outside store ({rec}.{fld}) > {}",
             self.size
@@ -315,26 +312,21 @@ impl Store {
             if fld != 0 {
                 let size: i32 = *self.addr(rec, 0);
                 // The first 4 positions are reserved for the record size
-                assert!(
+                debug_assert!(
                     rec + size as u32 <= self.size,
                     "Inconsistent record {rec} size {size} > {}",
                     self.size
                 );
-                assert!(
+                debug_assert!(
                     fld >= 4,
                     "Field {fld} too low, overlapping with size on ({rec}.{fld})"
                 );
-                assert!(
+                debug_assert!(
                     size >= 1 && fld <= size as u32 * 8,
                     "Reading fields outside record ({rec}.{fld}) > {size}"
                 );
             }
         }
-        true
-    }
-
-    #[cfg(not(debug_assertions))]
-    pub fn valid(&self, _: u32, _: isize) -> bool {
         true
     }
 
@@ -400,7 +392,7 @@ impl Store {
 
     #[inline]
     pub fn get_int(&self, rec: u32, fld: u32) -> i32 {
-        if self.valid(rec, fld) {
+        if rec != 0 && self.valid(rec, fld) {
             *self.addr(rec, fld)
         } else {
             i32::MIN
@@ -496,7 +488,7 @@ impl Store {
 
     #[inline]
     pub fn get_str<'a>(&self, rec: u32) -> &'a str {
-        if rec == 0 {
+        if rec == 0 || rec > i32::MAX as u32 {
             return "";
         }
         let len = self.get_int(rec, 4);

@@ -637,9 +637,7 @@ pub fn validate(data: &DbRef, fields: u16, stores: &[Store], keys: &[Key]) {
     if rec.rec == 0 {
         return;
     }
-    if rec.rec == 0 || flag(store, &rec) {
-        log::error!("Root is not black");
-    }
+    assert!(rec.rec != 0 && !flag(store, &rec), "Root is not black");
     let mut max_blacks = 0;
     let v = verify(&rec, 0, &mut max_blacks, stores, keys);
     let min = min(store, &rec);

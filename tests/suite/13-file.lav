@@ -1,0 +1,18 @@
+fn texts(dir: File, l: vector<File>) {
+    for f in dir.files() {
+        if f.dir {
+            texts(f, l);
+        } else if f.path.ends_with(".txt") {
+            l += [f];
+        }
+    }
+}
+
+fn main() {
+    l = [];
+    texts(file("example"), l);
+    assert(l[0].path == "example/config/terrain.txt", "Found file '{l[0].path}'");
+    f = l[0];
+    c = f.lines();
+    assert(c[1] == "   terrain = [", "Line was '{c[1]}'");
+}
