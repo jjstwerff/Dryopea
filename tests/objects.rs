@@ -12,7 +12,8 @@ fn define_object() {
     code!(
         "struct Object{first: integer, second: text, third: boolean}
 fn obj() -> boolean {
-  o = Object {first: 1234, second: \"data\", third: true};
+  o = Object {first: 1234, second: \"data\", third: false};
+  o.third = true;
   o.first-12 == 1222 && len(o.second) == 4 && o.third
 }"
     )
@@ -208,6 +209,6 @@ fn files() {
 {path:\"example/map.xcf\",size:7817,dir:false},\
 {path:\"example/map.png\",size:3406,dir:false},\
 {path:\"example/config\",size:4096,dir:true},\
-{path:\"example/show.gcp\",size:360,dir:false}]",
+{path:\"example/show.lav\",size:371,dir:false}]",
     ));
 }

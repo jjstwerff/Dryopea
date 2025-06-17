@@ -890,6 +890,7 @@ impl Function {
     }
 
     fn validate_var(&mut self, name: &str, file: &str, started: &mut HashSet<u16>, v: u16) -> Type {
+        assert_ne!(v, u16::MAX, "Incorrect variable at {name} in {file}");
         assert!(
             started.contains(&v) || self.variables[v as usize].scope == 0,
             "Variable {} not yet started at {name} scope {} at {file}:{}:{}",

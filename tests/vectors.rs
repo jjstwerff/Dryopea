@@ -208,7 +208,7 @@ sum",
 }
 
 #[test]
-fn hash() {
+fn combination_hash() {
     code!(
         "struct Count { t: text, v: integer};
 struct Counting { v: vector<Count>, h: hash<Count[t]> };
@@ -239,6 +239,25 @@ fn fill(c: Counting) {
   c.h[\"Five\"].v + c.h[\"Seven\"].v",
     )
     .result(Value::Int(12));
+}
+
+#[test]
+fn hash() {
+    code!(
+        "struct Keyword {
+    name: text
+}
+struct Data { h: hash<Keyword[name]> }"
+    )
+        .expr(
+            "c = Data {};
+  c.h = [ { name: \"one\" }, { name: \"two\" } ];
+  c.h += [ { name: \"three\" }, { name: \"four\" } ];
+  assert(!c.h[\"None\"], \"No element\");
+  assert(\"{c}\" == \"{{h:[{{name:\\\"four\\\"}},{{name:\\\"one\\\"}},{{name:\\\"three\\\"}},{{name:\\\"two\\\"}}]}}\", \"Output hash was {c}\");
+  if c.h[\"three\"] { 12 } else { 0 }",
+        )
+        .result(Value::Int(12));
 }
 
 #[test]

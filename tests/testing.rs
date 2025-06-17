@@ -123,8 +123,8 @@ impl Test {
             res = "\"".to_string() + &res + "\"";
         }
         format!(
-            "pub fn test() {{\n    test_value = {{{}}};\n    assert(\n        test_value == {},\n        \"Test failed {{test_value}} != {}\"\n    );\n}}",
-            self.expr, res, message
+            "pub fn test() {{\n    test_value = {{{}}};\n    assert(\n        test_value == {res},\n        \"Test failed {{test_value}} != {message}\"\n    );\n}}",
+            self.expr
         )
     }
 }
@@ -153,7 +153,7 @@ impl Drop for Test {
         }
         let mut w =
             std::fs::File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
-        writeln!(w, "{}", code).unwrap();
+        writeln!(w, "{code}").unwrap();
         p.parse_str(&code, &self.name, false);
         let to = p.database.types.len();
         for tp in types..to {

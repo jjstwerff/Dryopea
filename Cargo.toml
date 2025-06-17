@@ -1,11 +1,21 @@
 [package]
 name = "dryopea"
-edition = "2021"
+edition = "2024"
 version = "0.1.0"
 description = "Dryopea rogue AI, tower defence game"
 license = "LGPL-3.0-or-later"
 repository = "https://github.com/jjstwerff/Dryopea"
 readme = "README.md"
+
+[profile.release]
+lto = "fat"
+opt-level = "z"
+panic = "abort"
+strip = "debuginfo"
+
+[profile.dev]
+lto = "fat"
+opt-level = 0
 
 [lib]
 name = "dryopea"
@@ -13,8 +23,9 @@ name = "dryopea"
 [dependencies]
 mmap-storage = "0.10.0"
 stdext = "0.3.3"
-png = "0.17.13"
-rand = "0.9.1"
+png = "0.17.16"
+rand_core = "0.9.3"
+rand_pcg = "0.9.0"
 dirs = "6.0.0"
 
 [[bin]]

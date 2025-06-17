@@ -1089,12 +1089,21 @@ impl State {
     pub fn def_code(&mut self, def_nr: u32, data: &mut Data, show: bool, writer: &mut dyn Write) {
         let logging = !data.def(def_nr).position.file.starts_with("default/");
         let console = false; //logging;
-        if data.def(def_nr).code == Value::Null {
-            data.definitions[def_nr as usize].code_position = self.code_pos;
-            data.definitions[def_nr as usize].code_length = 0;
+        let mut stack = Stack::new(data.def(def_nr).variables.clone(), data, def_nr, logging);
+        if stack.data.def(def_nr).code == Value::Null {
+            let start = self.code_pos;
+            let return_type = &stack.data.def(stack.def_nr).returned;
+            stack.add_op("OpReturn", self);
+            self.code_add(self.arguments);
+            self.code_add(size(return_type, &Context::Argument) as u8);
+            self.code_add(stack.position);
+            data.definitions[def_nr as usize].code_position = start;
+            data.definitions[def_nr as usize].code_length = self.code_pos - start;
+            if show {
+                self.dump_code(writer, def_nr, data).unwrap();
+            }
             return;
         }
-        let mut stack = Stack::new(data.def(def_nr).variables.clone(), data, def_nr, logging);
         for a in 0..stack.data.def(def_nr).attributes.len() as u16 {
             let n = &stack.data.def(def_nr).attributes[a as usize].name;
             let v = stack.function.var(n);
@@ -1841,6 +1850,7 @@ impl State {
             stack_pos += size(&data.attr_type(d_nr, a_nr), &Context::Argument);
         }
         write!(f, ")")?;
+        write!(f, " [{}]", data.def(d_nr).code_position)?;
         if data.def(d_nr).returned != Type::Void {
             write!(
                 f,

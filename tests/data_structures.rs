@@ -7,8 +7,8 @@ use dryopea::database::Stores;
 use dryopea::keys::{Content, DbRef, Str};
 use dryopea::{hash, keys};
 use dryopea::{tree, vector};
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand_core::{RngCore, SeedableRng};
+use rand_pcg::Pcg64Mcg;
 
 #[test]
 pub fn record() {
@@ -356,28 +356,28 @@ pub fn index_deletions() {
     stores.set_default_value(m, &into);
     into.pos = 4;
     let mut recs = vec![];
-    let mut rng = SmallRng::seed_from_u64(42);
+    let mut rng = Pcg64Mcg::seed_from_u64(42);
     let keys = stores.keys(v).to_vec();
     let elms = 100;
     for i in 0..elms {
         let rec = stores.claim(&db, 3);
         assert!(rec.rec < i * 4 + 8, "Claimed record {} too high", rec.rec);
         let s = keys::mut_store(&rec, &mut stores.allocations);
-        let key = rng.random_range(0..i32::MAX);
-        s.set_int(rec.rec, 4, key);
+        let key = rng.next_u32();
+        s.set_int(rec.rec, 4, key as i32);
         s.set_int(rec.rec, 8, i as i32);
         tree::add(&into, &rec, 12, &mut stores.allocations, &keys);
         tree::validate(&into, 12, &stores.allocations, &keys);
         recs.push(rec);
     }
     for d in 0..500 {
-        let i = rng.random_range(0..elms);
+        let i = rng.next_u64() % recs.len() as u64;
         let rec = recs[i as usize];
         tree::remove(&into, &rec, 12, &mut stores.allocations, &keys);
         tree::validate(&into, 12, &stores.allocations, &keys);
         let s = keys::mut_store(&rec, &mut stores.allocations);
-        let key = rng.random_range(0..i32::MAX);
-        s.set_int(rec.rec, 4, key);
+        let key = rng.next_u32();
+        s.set_int(rec.rec, 4, key as i32);
         s.set_int(rec.rec, 8, 100 + d);
         tree::add(&into, &rec, 12, &mut stores.allocations, &keys);
         tree::validate(&into, 12, &stores.allocations, &keys);

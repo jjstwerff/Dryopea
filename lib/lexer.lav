@@ -34,16 +34,16 @@ pub struct Anchor {
 }
 
 // Apply keywords, there will not be identifiers.
-pub fn keywords(self: Lexer, keywords: vector<text>) {
-    self.keywords.clear();
+pub fn set_keywords(self: Lexer, keywords: vector<text>) {
+    self.keywords = [];
     for k in keywords {
         self.keywords += [ {name:k} ];
     }
 }
 
 // Set tokens, this allows for correct multi-character token parsing.
-pub fn tokens(self: Lexer, tokens: vector<text>) {
-    self.tokens.clear();
+pub fn set_tokens(self: Lexer, tokens: vector<text>) {
+    self.tokens = [];
     for t in tokens {
         f = t.character();
         if !f {
@@ -52,14 +52,14 @@ pub fn tokens(self: Lexer, tokens: vector<text>) {
         if self.tokens[f] {
             self.tokens[f].possible += [ { length: t.len(), token: t } ];
         } else {
-            self.tokens += [ { Token { start: f, possible: [ { length: t.len(), token: t } ] } ];
+            self.tokens += [ { start: f, possible: [ { length: t.len(), token: t } ] } ];
         }
     }
 }
 
 // Open a file for parsing.
-pub fn file(self: Lexer, filename: text) {
-    v = filename.rfind("/);
+pub fn parse(self: Lexer, filename: text) {
+    v = filename.rfind("/");
     self.file = if v {
         filename[v + 1..]
     } else {
@@ -72,12 +72,22 @@ pub fn file(self: Lexer, filename: text) {
 }
 
 // Use a text for parsing.
-pub fn text(self: Lexer, name: text, content: text) {
+pub fn parse_string(self: Lexer, name: text, content: text) {
     self.file = name;
     self.data = content;
     self.index = -1;
     self.line = -1;
     self.pos = -1;
+}
+
+// Skip possible white-space, comments or newlines in the file.
+fn skip_whitespace(self: Lexer) {
+}
+
+// Test if there is a specific token, do not skip it.
+pub fn test(self: Lexer, with: text) -> boolean {
+    self.skip_whitespace();
+    false
 }
 
 // Test if there is a specific token or keyword in the file, skip this if it matches.
@@ -92,24 +102,14 @@ pub fn match(self: Lexer, with: text) -> boolean {
     }
 }
 
-// Test if there is a specific token, do not skip it.
-pub fn test(self: Lexer, with: text) -> boolean {
-    self.skip_whitespace();
-    false
-}
-
 // Peek towards the next token, this will skip whitespace
 pub fn peek(self: Lexer) -> text {
     ""
 }
 
-// Skip possible white-space, comments or newlines in the file.
-fn skip_whitespace(self: Lexer) {
-}
-
 // Gather information about the current lexer position
 pub fn position(self: Lexer) -> text {
-    "{self.filename}:{self.line}:{self.pos}"
+    "{self.file}:{self.line}:{self.pos}"
 }
 
 // Get an identifier and skip it.
@@ -117,42 +117,42 @@ pub fn identifier(self: Lexer) -> text {
 }
 
 // Get an integer and skip it.
-pub fn integer(self: Lexer) -> integer {
+pub fn int(self: Lexer) -> integer {
     0
 }
 
 // Get a long and skip it.
-pub fn long(self: Lexer) -> long {
+pub fn long_int(self: Lexer) -> long {
 }
 
 // Get a float
-pub fn float(self: Lexer) -> float {
+pub fn long_float(self: Lexer) -> float {
 }
 
 // Get a single length float
-pub fn single(self: Lexer) -> single {
+pub fn single_float(self: Lexer) -> single {
 }
 
-pub fn string(self: Lexer) -> text {
+pub fn constant_string(self: Lexer) -> text {
 }
 
 // Is the last parsed constant string finished or is it on another formatting expression.
-pub fn finished(self: Lexer) -> boolean {
+pub fn string_finished(self: Lexer) -> boolean {
     self.finished
 }
 
 // Get the last parsed comment, can contain multiple lines.
-pub fn comment(self: Lexer) -> text {
+pub fn last_comment(self: Lexer) -> text {
     self.comment
 }
 
 // Was the last found comment started on the same line as code.
-pub fn behind(self: Lexer) -> boolean {
+pub fn comment_behind(self: Lexer) -> boolean {
     self.behind
 }
 
 pub fn anchor(self: Lexer) -> Anchor {
-    { index: self.index, line: self.line, pos: self.pos }
+    Anchor { index: self.index, line: self.line, pos: self.pos }
 }
 
 pub fn revert(self: Lexer, to: Anchor) {

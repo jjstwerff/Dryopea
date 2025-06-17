@@ -1,0 +1,27 @@
+fn _tp_Lexer_set_keywords(self:Lexer, keywords:vector<text>) {#1 block
+  {#2 vector
+    ??;
+  }#2:vector<ref(Keyword)["self"]>["self"];
+  {#3 for
+    _vector_1:vector<text>["keywords"] = keywords;
+    k#index:integer = -1i32;
+    loop {#4 for loop
+      k:text["_vector_1"] = {#5 iter next
+        k#index:integer = OpAddInt(k#index, 1i32);
+        OpGetText(OpGetVector(_vector_1, 4i32, k#index), 0i32);
+      }#5:text["_vector_1"];
+      if OpNot(OpConvBoolFromText(k)) break(0) else null;
+      {#6 block
+        {#7 vector
+          _elm_2:ref(Keyword)["self"] = OpNewRecord(self, 18i32, 7i32);
+          {#8 object
+            OpSetText(_elm_2, 4i32, k);
+          }#8;
+          OpFinishRecord(self, _elm_2, 18i32, 7i32);
+        }#7;
+      }#6;
+    }#4;
+  }#3;
+}#1
+
+byte-code for lib/lexer.lav:
