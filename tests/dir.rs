@@ -11,8 +11,12 @@ use dryopea::state::State;
 fn dir() -> std::io::Result<()> {
     let debug = false;
     let dir = "tests/suite";
+    let mut files = Vec::new();
     for f in std::fs::read_dir(dir)? {
-        let entry = f?.path();
+        files.push(f?.path());
+    }
+    files.sort();
+    for entry in files {
         println!("run {:?}", entry);
         let own_file = entry
             .extension()

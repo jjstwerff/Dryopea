@@ -30,15 +30,12 @@ This number indicated the depth of these expressions, not the number of these ex
 function.
 */
 pub struct Parser {
+    pub todo_files: HashMap<String, u16>,
     /// All definitions
     pub data: Data,
     pub database: Stores,
     /// The lexer on the current text file
     pub lexer: Lexer,
-    /// The files that need to be parsed. Clear this structure for the second pass.
-    files: Vec<String>,
-    file_names: HashMap<String, u16>,
-    current_file: u16,
     /// Are we currently allowing break/continue statements?
     in_loop: bool,
     /// The current file number that is being parsed
@@ -148,10 +145,8 @@ impl Parser {
     #[must_use]
     pub fn new() -> Self {
         Parser {
+            todo_files: HashMap::new(),
             data: Data::new(),
-            files: Vec::new(),
-            file_names: HashMap::new(),
-            current_file: 0,
             database: Stores::new(),
             lexer: Lexer::default(),
             in_loop: false,
@@ -184,21 +179,22 @@ impl Parser {
         };
         self.lexer = Lexer::lines(BufReader::new(fp).lines(), filename);
         self.first_pass = true;
-        self.parse_all();
+        self.parse_file();
         let lvl = self.lexer.diagnostics().level();
         if lvl != Level::Error && lvl != Level::Fatal {
             self.first_pass = false;
+            self.vars.reset();
             self.lexer = Lexer::lines(
                 BufReader::new(File::open(filename).unwrap()).lines(),
                 filename,
             );
-            self.parse_all();
+            self.parse_file();
         }
         self.diagnostics.fill(self.lexer.diagnostics());
         self.diagnostics.is_empty()
     }
 
-    /// Parse all .gcp files found in a directory tree in alphabetical ordering.
+    /// Parse all .lav files found in a directory tree in alphabetical ordering.
     /// # Errors
     /// With filesystem problems.
     pub fn parse_dir(&mut self, dir: &str, default: bool) -> std::io::Result<()> {
@@ -209,7 +205,7 @@ impl Parser {
             let own_file = p
                 .path()
                 .extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case("gcp"));
+                .is_some_and(|e| e.eq_ignore_ascii_case("lav"));
             let file_name = p.path().to_string_lossy().to_string();
             let data = metadata(&file_name)?;
             if own_file || data.is_dir() {
@@ -240,7 +236,7 @@ impl Parser {
         self.default = false;
         self.vars.logging = logging;
         self.lexer = Lexer::from_str(text, filename);
-        self.parse_all();
+        self.parse_file();
         let lvl = self.lexer.diagnostics().level();
         if lvl == Level::Error || lvl == Level::Fatal {
             self.diagnostics.fill(self.lexer.diagnostics());
@@ -248,7 +244,8 @@ impl Parser {
         }
         self.vars.reset();
         self.lexer = Lexer::from_str(text, filename);
-        self.parse_all();
+        self.first_pass = false;
+        self.parse_file();
         self.diagnostics.fill(self.lexer.diagnostics());
     }
 
@@ -357,7 +354,15 @@ impl Parser {
                     return next_expr;
                 }
                 _ => {
-                    panic!("Unknown iterator type {}", is_type.name(&self.data));
+                    if self.first_pass {
+                        return Value::Null;
+                    }
+                    diagnostic!(
+                        self.lexer,
+                        Level::Error,
+                        "Unknown iterator type {}",
+                        is_type.name(&self.data)
+                    );
                 }
             }
         }
@@ -903,95 +908,29 @@ impl Parser {
     // * Parser functions *
     // ********************
 
-    /// Parse the file from the current lexer but also the files that are indicated from it.
-    fn parse_all(&mut self) {
-        self.files.clear();
-        self.file_names.clear();
-        let file = &self.lexer.pos().file;
-        self.file_names.insert(file.clone(), 0);
-        self.files.push(file.clone());
-        self.current_file = 0;
-        loop {
-            if self.current_file >= self.files.len() as u16 {
-                return;
-            }
-            let filename = &self.files[self.current_file as usize];
-            self.lexer = Lexer::lines(
-                BufReader::new(File::open(filename).unwrap()).lines(),
-                filename,
-            );
-            self.parse_file();
-            self.current_file += 1;
-        }
-    }
-
     /// Parse data from the current lexer.
     fn parse_file(&mut self) {
         let start_def = self.data.definitions();
+        while self.lexer.has_token("use") {
+            if let Some(id) = self.lexer.has_identifier() {
+                if self.data.use_exists(&id) {
+                    self.lexer.token(";");
+                    continue;
+                }
+                let f = self.lib_path(&id);
+                if std::path::Path::new(&f).exists() {
+                    self.data.use_add(&id);
+                    self.todo_files
+                        .insert(self.lexer.pos().file.clone(), self.data.source);
+                    self.data.source = self.data.next_use();
+                    self.lexer = Lexer::lines(BufReader::new(File::open(&f).unwrap()).lines(), &f);
+                } else {
+                    diagnostic!(self.lexer, Level::Error, "Included file {id} not found");
+                }
+            }
+        }
         self.file += 1;
         loop {
-            if self.lexer.has_token("use") {
-                if let Some(id) = self.lexer.has_identifier() {
-                    if !self.file_names.contains_key(&id) {
-                        // - a source file the lib directory in the project (project-supplied)
-                        let mut f = format!("lib/{id}.lav");
-                        if !std::path::Path::new(&f).exists() {
-                            f = format!("{id}.lav");
-                        }
-                        let cur_script = &self.lexer.pos().file;
-                        let cur_dir = if let Some(p) = cur_script.rfind('/') {
-                            &cur_script[0..p]
-                        } else {
-                            ""
-                        };
-                        let base_dir = if cur_dir.contains("/tests/") {
-                            &cur_dir[..cur_dir.find("/tests/").unwrap()]
-                        } else {
-                            ""
-                        };
-                        // - a lib directory relative to the current directory
-                        if !cur_dir.is_empty() && !std::path::Path::new(&f).exists() {
-                            f = format!("{cur_dir}/lib/{id}.lav");
-                        }
-                        // - a lib directory relative to the base directory when inside /tests/
-                        if !base_dir.is_empty() && !std::path::Path::new(&f).exists() {
-                            f = format!("{base_dir}/lib/{id}.lav");
-                        }
-                        // - a directory with the same name of the current script
-                        if !std::path::Path::new(&f).exists() {
-                            f = format!("{}/{id}.lav", &cur_script[0..cur_script.len() - 4]);
-                        }
-                        // - a user defined lib directory (externally downloaded)
-                        if !std::path::Path::new(&f).exists() {
-                            if let Some(v) = env::var_os("LAVITION_LIB") {
-                                let libs = v.to_str().unwrap();
-                                for l in libs.split(':') {
-                                    f = format!("{l}/{id}.lav");
-                                    if std::path::Path::new(&f).exists() {
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        // - the current directory (beside the parsed file)
-                        if !cur_dir.is_empty() && !std::path::Path::new(&f).exists() {
-                            f = format!("{cur_dir}/{id}.lav");
-                        }
-                        // - the base directory when inside /tests/
-                        if !base_dir.is_empty() && !std::path::Path::new(&f).exists() {
-                            f = format!("{base_dir}/{id}.lav");
-                        }
-                        if std::path::Path::new(&f).exists() {
-                            self.file_names.insert(f.clone(), self.files.len() as u16);
-                            self.files.push(f);
-                        } else {
-                            diagnostic!(self.lexer, Level::Error, "Included file {id} not found");
-                        }
-                    }
-                }
-                self.lexer.token(";");
-                continue;
-            }
             self.lexer.has_token("pub");
             if self.lexer.diagnostics().level() == Level::Fatal
                 || (!self.parse_enum()
@@ -1017,7 +956,69 @@ impl Parser {
             typedef::fill_all(&mut self.data, &mut self.database, start_def);
             self.database.finish();
         }
-        self.first_pass = false;
+        let lvl = self.lexer.diagnostics().level();
+        if lvl == Level::Error || lvl == Level::Fatal {
+            return;
+        }
+        // Parse all files left in the todo_files list, as they are halted to parse a use file.
+        for (t, s) in self.todo_files.clone() {
+            self.todo_files.remove(&t);
+            self.lexer = Lexer::lines(BufReader::new(File::open(&t).unwrap()).lines(), &t);
+            self.data.source = s;
+            self.parse_file();
+        }
+    }
+
+    fn lib_path(&mut self, id: &String) -> String {
+        // - a source file the lib directory in the project (project-supplied)
+        let mut f = format!("lib/{id}.lav");
+        if !std::path::Path::new(&f).exists() {
+            f = format!("{id}.lav");
+        }
+        let cur_script = &self.lexer.pos().file;
+        let cur_dir = if let Some(p) = cur_script.rfind('/') {
+            &cur_script[0..p]
+        } else {
+            ""
+        };
+        let base_dir = if cur_dir.contains("/tests/") {
+            &cur_dir[..cur_dir.find("/tests/").unwrap()]
+        } else {
+            ""
+        };
+        // - a lib directory relative to the current directory
+        if !cur_dir.is_empty() && !std::path::Path::new(&f).exists() {
+            f = format!("{cur_dir}/lib/{id}.lav");
+        }
+        // - a lib directory relative to the base directory when inside /tests/
+        if !base_dir.is_empty() && !std::path::Path::new(&f).exists() {
+            f = format!("{base_dir}/lib/{id}.lav");
+        }
+        // - a directory with the same name of the current script
+        if !std::path::Path::new(&f).exists() {
+            f = format!("{}/{id}.lav", &cur_script[0..cur_script.len() - 4]);
+        }
+        // - a user defined lib directory (externally downloaded)
+        if !std::path::Path::new(&f).exists() {
+            if let Some(v) = env::var_os("LAVITION_LIB") {
+                let libs = v.to_str().unwrap();
+                for l in libs.split(':') {
+                    f = format!("{l}/{id}.lav");
+                    if std::path::Path::new(&f).exists() {
+                        break;
+                    }
+                }
+            }
+        }
+        // - the current directory (beside the parsed file)
+        if !cur_dir.is_empty() && !std::path::Path::new(&f).exists() {
+            f = format!("{cur_dir}/{id}.lav");
+        }
+        // - the base directory when inside /tests/
+        if !base_dir.is_empty() && !std::path::Path::new(&f).exists() {
+            f = format!("{base_dir}/{id}.lav");
+        }
+        f
     }
 
     // <typedef> ::= 'enum' <identifier> '{' <value> {, <value>} '}' [';']
@@ -1198,7 +1199,7 @@ impl Parser {
             );
             return false;
         };
-        if self.data.def_names.contains_key(&fn_name)
+        if self.data.def_nr(&fn_name) != u32::MAX
             && self.first_pass
             && self.data.def_name(&fn_name).def_type != DefType::Dynamic
         {
@@ -2720,9 +2721,6 @@ impl Parser {
     }
 
     fn content(&self, in_t: &Type) -> Type {
-        if self.first_pass {
-            return Type::Null;
-        }
         match in_t {
             Type::Index(r, _, _) | Type::Sorted(r, _, _) | Type::Hash(r, _, _) | Type::Enum(r) => {
                 self.data.def(*r).returned.clone()
@@ -2770,10 +2768,10 @@ impl Parser {
             }
             Type::Vector(tp, _) => {
                 let vec_name = format!("vector<{}>", tp.name(&self.data));
-                let typedef: &Type = if self.data.def_names.contains_key(&vec_name) {
-                    tp
-                } else {
+                let typedef: &Type = if self.data.def_nr(&vec_name) == u32::MAX {
                     &Type::Unknown(0)
+                } else {
+                    tp
                 };
                 self.data
                     .def_name(if matches!(typedef, Type::Unknown(_)) {
@@ -3149,7 +3147,19 @@ impl Parser {
 
     // <var> ::= <object> | [ <call> | <var> | <enum> ] <children> }
     fn parse_var(&mut self, code: &mut Value, name: &str) -> Type {
-        let mut t = self.parse_constant_value(code, name);
+        let mut source = u16::MAX;
+        let nm = if self.lexer.has_token("::") {
+            source = self.data.get_source(name);
+            if let Some(id) = self.lexer.has_identifier() {
+                id
+            } else {
+                diagnostic!(self.lexer, Level::Error, "Expecting identifier after ::");
+                name.to_string()
+            }
+        } else {
+            name.to_string()
+        };
+        let mut t = self.parse_constant_value(code, source, &nm);
         if t != Type::Null {
             return t;
         }
@@ -3277,9 +3287,13 @@ impl Parser {
         }
     }
 
-    fn parse_constant_value(&mut self, code: &mut Value, name: &str) -> Type {
+    fn parse_constant_value(&mut self, code: &mut Value, source: u16, name: &str) -> Type {
         let mut t;
-        let d_nr = self.data.def_nr(name);
+        let d_nr = if source == u16::MAX {
+            self.data.def_nr(name)
+        } else {
+            self.data.source_nr(source, name)
+        };
         if d_nr != u32::MAX {
             self.data.def_used(d_nr);
             t = self.data.def(d_nr).returned.clone();
@@ -3321,49 +3335,6 @@ impl Parser {
             }
         }
     }
-
-    /*
-    fn first_match(&mut self, val: &mut Value, if_expr: Value, in_type: &Type) {
-        let var_type;
-        if let Type::Vector(t_nr) = &in_type {
-            var_type = *t_nr.clone();
-        } else if let Type::Sorted(td, _keys) = &in_type {
-            var_type = self.data.def(*td).returned.clone();
-        } else {
-            panic!("Unknown type {}", self.data.show_type(in_type))
-        }
-        let mut create_iter = val.clone();
-        let it = Type::Iterator(Box::new(var_type.clone()), Box::new(Type::Null));
-        let iter_next = self.iterator("", &mut create_iter, in_type, &it);
-        if iter_next == Value::Null {
-            diagnostic!(
-                self.lexer,
-                Level::Error,
-                "Need an iterable in a match expression"
-            );
-            return;
-        }
-        let for_var = self.types.var_nr("$");
-        // loop {
-        //     for_var = Next(iter_var);
-        //     if !for_var {break}
-        //     if if_expr(for_var) {break}
-        // }
-        // for_var
-        *val = Value::Block(vec![
-            create_iter,
-            Value::Loop(vec![
-                v_set(for_var, iter_next),
-                v_if(
-                    self.single_op("!", Value::Var(for_var), var_type),
-                    Value::Break(0),
-                    Value::Null,
-                ),
-                v_if(if_expr, Value::Break(0), Value::Null),
-            ]),
-            Value::Var(for_var),
-        ]);
-    }*/
 
     fn parse_string(&mut self, code: &mut Value, string: &str) {
         let mut append_value = u16::MAX;
@@ -3517,7 +3488,7 @@ impl Parser {
             let mut create_iter = expr;
             let it = Type::Iterator(Box::new(var_tp.clone()), Box::new(Type::Null));
             let iter_next = self.iterator(&mut create_iter, &in_type, &it, iter_var);
-            if iter_next == Value::Null {
+            if !self.first_pass && iter_next == Value::Null {
                 diagnostic!(
                     self.lexer,
                     Level::Error,
@@ -3921,10 +3892,12 @@ impl Parser {
             self.vars
                 .work_refs(&self.data.def(td_nr).returned, &mut self.lexer)
         };
-        let tp = i32::from(self.data.def(td_nr).known_type);
-        if v == u16::MAX || self.vars.is_independent(v) {
-            self.data.set_referenced(td_nr, self.context, Value::Null);
-            list.push(self.cl("OpDatabase", &[Value::Var(v), Value::Int(tp)]));
+        if !self.first_pass {
+            let tp = i32::from(self.data.def(td_nr).known_type);
+            if v == u16::MAX || self.vars.is_independent(v) {
+                self.data.set_referenced(td_nr, self.context, Value::Null);
+                list.push(self.cl("OpDatabase", &[Value::Var(v), Value::Int(tp)]));
+            }
         }
         let mut found_fields = HashSet::new();
         loop {
@@ -4080,7 +4053,7 @@ impl Parser {
             let mut create_iter = expr;
             let it = Type::Iterator(Box::new(var_tp.clone()), Box::new(Type::Null));
             let iter_next = self.iterator(&mut create_iter, &in_type, &it, iter_var);
-            if iter_next == Value::Null {
+            if !self.first_pass && iter_next == Value::Null {
                 diagnostic!(
                     self.lexer,
                     Level::Error,
