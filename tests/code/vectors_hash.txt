@@ -1,367 +1,196 @@
-struct Count { t: text, v: integer};
-struct Counting { v: vector<Count>, h: hash<Count[t]> };
-fn fill(c: Counting) {
-  c.v = [
-    {t:"One", v:1},
-    {t:"Two", v:2},
-  ];
-  c.v += [
-    {t:"Three", v:3},
-    {t:"Four", v:4},
-    {t:"Five", v:5},
-    {t:"Six", v:6},
-    {t:"Seven", v:7},
-    {t:"Eight", v:8},
-    {t:"Nine", v:9},
-    {t:"Ten", v:10},
-    {t:"Eleven", v:11},
-    {t:"Twelve", v:12},
-    {t:"Thirteen", v:13}
-  ];
+struct Keyword {
+    name: text
 }
+struct Data { h: hash<Keyword[name]> }
 
 pub fn test() {
-    test_value = {c = Counting {};
-  fill(c);
+    test_value = {c = Data {};
+  c.h = [ { name: "one" }, { name: "two" } ];
+  c.h += [ { name: "three" }, { name: "four" } ];
   assert(!c.h["None"], "No element");
-  c.h["Five"].v + c.h["Seven"].v};
+  assert("{c}" == "{{h:[{{name:\"four\"}},{{name:\"one\"}},{{name:\"three\"}},{{name:\"two\"}}]}}", "Output hash was {c}");
+  if c.h["three"] { 12 } else { 0 }};
     assert(
         test_value == 12,
         "Test failed {test_value} != 12"
     );
 }
-Type 14:Count[12]:
-    t:text[4]
-    v:integer[8]
+Type 14:Keyword[8]:
+    name:text[4]
 
-Type 15:Counting[12]:
-    v:array<Count>[4] other [1]
-    h:hash<Count[t]>[8] other [65535]
+Type 15:Data[8]:
+    h:hash<Keyword[name]>[4]
 
-Type 16:array<Count>[4]:Array(14)
+Type 16:hash<Keyword[name]>[4]:Hash(14, [0]) keys [tp:6 desc:false field:4, ]
 
-Type 17:hash<Count[t]>[4]:Hash(14, [0]) keys [tp:6 desc:false field:4, ]
-
-fn fill(c:Counting) {#1 block
-  {#2 vector
-    _elm_1:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#3 object
-      OpSetText(_elm_1, 4i32, "One");
-      OpSetInt(_elm_1, 8i32, 1i32);
-    }#3;
-    OpFinishRecord(c, _elm_1, 15i32, 0i32);
-    _elm_1:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#4 object
-      OpSetText(_elm_1, 4i32, "Two");
-      OpSetInt(_elm_1, 8i32, 2i32);
-    }#4;
-    OpFinishRecord(c, _elm_1, 15i32, 0i32);
-  }#2;
-  {#5 vector
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#6 object
-      OpSetText(_elm_2, 4i32, "Three");
-      OpSetInt(_elm_2, 8i32, 3i32);
-    }#6;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#7 object
-      OpSetText(_elm_2, 4i32, "Four");
-      OpSetInt(_elm_2, 8i32, 4i32);
-    }#7;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#8 object
-      OpSetText(_elm_2, 4i32, "Five");
-      OpSetInt(_elm_2, 8i32, 5i32);
-    }#8;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#9 object
-      OpSetText(_elm_2, 4i32, "Six");
-      OpSetInt(_elm_2, 8i32, 6i32);
-    }#9;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#10 object
-      OpSetText(_elm_2, 4i32, "Seven");
-      OpSetInt(_elm_2, 8i32, 7i32);
-    }#10;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#11 object
-      OpSetText(_elm_2, 4i32, "Eight");
-      OpSetInt(_elm_2, 8i32, 8i32);
-    }#11;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#12 object
-      OpSetText(_elm_2, 4i32, "Nine");
-      OpSetInt(_elm_2, 8i32, 9i32);
-    }#12;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#13 object
-      OpSetText(_elm_2, 4i32, "Ten");
-      OpSetInt(_elm_2, 8i32, 10i32);
-    }#13;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#14 object
-      OpSetText(_elm_2, 4i32, "Eleven");
-      OpSetInt(_elm_2, 8i32, 11i32);
-    }#14;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#15 object
-      OpSetText(_elm_2, 4i32, "Twelve");
-      OpSetInt(_elm_2, 8i32, 12i32);
-    }#15;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-    _elm_2:ref(Count)["c"] = OpNewRecord(c, 15i32, 0i32);
-    {#16 object
-      OpSetText(_elm_2, 4i32, "Thirteen");
-      OpSetInt(_elm_2, 8i32, 13i32);
-    }#16;
-    OpFinishRecord(c, _elm_2, 15i32, 0i32);
-  }#5;
-}#1
-
-byte-code for hash:fill(c: ref(Counting)[0])
-   0[12]: return-address
-   0[16]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
-   3[28]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
-   8[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_1[16]:ref(Count)["c"] in 2
-  11[40]: ConstText(_value="One") -> text
-  16[56]: SetText(v1: ref(reference), fld=4, val: text)
-  19[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_1[16]:ref(Count)["c"] in 2
-  22[40]: ConstInt(val=1) -> integer
-  27[44]: SetInt(v1: ref(reference), fld=8, val: integer)
-  30[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
-  33[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_1[16]:ref(Count)["c"] in 2
-  36[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
-  41[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
-  44[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
-  49[40]: PutRef(var[16], value: ref(reference))
-  52[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_1[16]:ref(Count)["c"] in 2
-  55[40]: ConstText(_value="Two") -> text
-  60[56]: SetText(v1: ref(reference), fld=4, val: text)
-  63[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_1[16]:ref(Count)["c"] in 2
-  66[40]: ConstInt(val=2) -> integer
-  71[44]: SetInt(v1: ref(reference), fld=8, val: integer)
-  74[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
-  77[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_1[16]:ref(Count)["c"] in 2
-  80[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
-  85[28]: FreeStack(value=0, discard=12)
-  89[16]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
-  92[28]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
-  97[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 100[40]: ConstText(_value="Three") -> text
- 107[56]: SetText(v1: ref(reference), fld=4, val: text)
- 110[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 113[40]: ConstInt(val=3) -> integer
- 118[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 121[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 124[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 127[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 132[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 135[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 140[40]: PutRef(var[16], value: ref(reference))
- 143[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 146[40]: ConstText(_value="Four") -> text
- 152[56]: SetText(v1: ref(reference), fld=4, val: text)
- 155[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 158[40]: ConstInt(val=4) -> integer
- 163[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 166[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 169[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 172[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 177[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 180[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 185[40]: PutRef(var[16], value: ref(reference))
- 188[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 191[40]: ConstText(_value="Five") -> text
- 197[56]: SetText(v1: ref(reference), fld=4, val: text)
- 200[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 203[40]: ConstInt(val=5) -> integer
- 208[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 211[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 214[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 217[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 222[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 225[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 230[40]: PutRef(var[16], value: ref(reference))
- 233[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 236[40]: ConstText(_value="Six") -> text
- 241[56]: SetText(v1: ref(reference), fld=4, val: text)
- 244[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 247[40]: ConstInt(val=6) -> integer
- 252[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 255[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 258[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 261[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 266[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 269[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 274[40]: PutRef(var[16], value: ref(reference))
- 277[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 280[40]: ConstText(_value="Seven") -> text
- 287[56]: SetText(v1: ref(reference), fld=4, val: text)
- 290[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 293[40]: ConstInt(val=7) -> integer
- 298[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 301[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 304[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 307[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 312[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 315[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 320[40]: PutRef(var[16], value: ref(reference))
- 323[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 326[40]: ConstText(_value="Eight") -> text
- 333[56]: SetText(v1: ref(reference), fld=4, val: text)
- 336[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 339[40]: ConstInt(val=8) -> integer
- 344[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 347[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 350[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 353[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 358[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 361[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 366[40]: PutRef(var[16], value: ref(reference))
- 369[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 372[40]: ConstText(_value="Nine") -> text
- 378[56]: SetText(v1: ref(reference), fld=4, val: text)
- 381[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 384[40]: ConstInt(val=9) -> integer
- 389[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 392[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 395[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 398[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 403[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 406[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 411[40]: PutRef(var[16], value: ref(reference))
- 414[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 417[40]: ConstText(_value="Ten") -> text
- 422[56]: SetText(v1: ref(reference), fld=4, val: text)
- 425[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 428[40]: ConstInt(val=10) -> integer
- 433[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 436[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 439[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 442[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 447[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 450[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 455[40]: PutRef(var[16], value: ref(reference))
- 458[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 461[40]: ConstText(_value="Eleven") -> text
- 469[56]: SetText(v1: ref(reference), fld=4, val: text)
- 472[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 475[40]: ConstInt(val=11) -> integer
- 480[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 483[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 486[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 489[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 494[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 497[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 502[40]: PutRef(var[16], value: ref(reference))
- 505[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 508[40]: ConstText(_value="Twelve") -> text
- 516[56]: SetText(v1: ref(reference), fld=4, val: text)
- 519[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 522[40]: ConstInt(val=12) -> integer
- 527[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 530[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 533[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 536[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 541[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 544[40]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
- 549[40]: PutRef(var[16], value: ref(reference))
- 552[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 555[40]: ConstText(_value="Thirteen") -> text
- 565[56]: SetText(v1: ref(reference), fld=4, val: text)
- 568[28]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 571[40]: ConstInt(val=13) -> integer
- 576[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 579[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[0]:ref(Counting) in 0
- 582[40]: VarRef(var[16]) -> ref(reference) type=Count[12]:{t:text[4], v:integer[8]}[14] var=_elm_2[16]:ref(Count)["c"] in 5
- 585[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
- 590[28]: FreeStack(value=0, discard=12)
- 594[16]: Return(ret=12, value=0, discard=16)
+Type 17:vector<Keyword>[4]:Vector(14)
 
 fn test() {#1 block
-  __ref_1:ref(Counting) = null;
+  __ref_1:ref(Data) = null;
+  __work_3:text = "";
+  __work_2:text = "";
   __work_1:text = "";
   test_value:integer = {#2 block
-    c:ref(Counting)["__ref_1"] = {#3 object
+    c:ref(Data)["__ref_1"] = {#3 object
       OpDatabase(__ref_1, 15i32);
       OpSetInt(__ref_1, 4i32, 0i32);
-      OpSetInt(__ref_1, 8i32, 0i32);
       __ref_1;
-    }#3:ref(Counting)["__ref_1"];
-    fill(c);
-    if OpNot(OpConvBoolFromRef(OpGetRecord(OpGetField(c, 8i32, 17i32), 17i32, 1i32, "None"))) null else OpPanic("No element");
-    OpAddInt(OpGetInt(OpGetRecord(OpGetField(c, 8i32, 17i32), 17i32, 1i32, "Five"), 8i32), OpGetInt(OpGetRecord(OpGetField(c, 8i32, 17i32), 17i32, 1i32, "Seven"), 8i32));
+    }#3:ref(Data)["__ref_1"];
+    {#4 vector
+      OpClear(OpGetField(c, 4i32, 16i32), 16i32);
+      _elm_1:ref(Keyword)["c"] = OpNewRecord(c, 15i32, 0i32);
+      {#5 object
+        OpSetText(_elm_1, 4i32, "one");
+      }#5;
+      OpFinishRecord(c, _elm_1, 15i32, 0i32);
+      _elm_1:ref(Keyword)["c"] = OpNewRecord(c, 15i32, 0i32);
+      {#6 object
+        OpSetText(_elm_1, 4i32, "two");
+      }#6;
+      OpFinishRecord(c, _elm_1, 15i32, 0i32);
+    }#4;
+    {#7 vector
+      _elm_2:ref(Keyword)["c"] = OpNewRecord(c, 15i32, 0i32);
+      {#8 object
+        OpSetText(_elm_2, 4i32, "three");
+      }#8;
+      OpFinishRecord(c, _elm_2, 15i32, 0i32);
+      _elm_2:ref(Keyword)["c"] = OpNewRecord(c, 15i32, 0i32);
+      {#9 object
+        OpSetText(_elm_2, 4i32, "four");
+      }#9;
+      OpFinishRecord(c, _elm_2, 15i32, 0i32);
+    }#7;
+    if OpNot(OpConvBoolFromRef(OpGetRecord(OpGetField(c, 4i32, 16i32), 16i32, 1i32, "None"))) null else OpPanic("No element");
+    if OpEqText({#10 formatting string
+      __work_1:text = "";
+      OpFormatDatabase(__work_1, c, 15i32, false);
+      __work_1;
+    }#10:text, "{h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}") null else OpPanic({#11 formatting string
+      __work_2:text = "Output hash was ";
+      OpFormatDatabase(__work_2, c, 15i32, false);
+      __work_2;
+    }#11:text);
+    if OpConvBoolFromRef(OpGetRecord(OpGetField(c, 4i32, 16i32), 16i32, 1i32, "three")) {#12 block
+      12i32;
+    }#12:integer else {#13 block
+      0i32;
+    }#13:integer;
   }#2:integer;
-  if OpEqInt(test_value, 12i32) null else OpPanic({#4 formatting string
-    __work_1:text = "Test failed ";
-    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1, " != 12");
-    __work_1;
-  }#4:text);
+  if OpEqInt(test_value, 12i32) null else OpPanic({#14 formatting string
+    __work_3:text = "Test failed ";
+    OpFormatInt(__work_3, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_3, " != 12");
+    __work_3;
+  }#14:text);
 }#1
 
-byte-code for hash:test()
+byte-code for hash:test() [1073]
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Counting) in 1
-   1[16]: Text() var=__work_1[16]:text in 1
-   2[40]: Database(var[4], db_tp=15) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[40]:ref(Counting)["__ref_1"] in 2
-   7[40]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=__ref_1[4]:ref(Counting) in 1
-  10[52]: ConstInt(val=0) -> integer
-  15[56]: SetInt(v1: ref(reference), fld=4, val: integer)
-  18[40]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=__ref_1[4]:ref(Counting) in 1
-  21[52]: ConstInt(val=0) -> integer
-  26[56]: SetInt(v1: ref(reference), fld=8, val: integer)
-  29[40]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=__ref_1[4]:ref(Counting) in 1
-  32[52]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[40]:ref(Counting)["__ref_1"] in 2
-  35[64]: Call(size=0, to=911)
-  42[52]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[40]:ref(Counting)["__ref_1"] in 2
-  45[64]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[t]>[4]:Hash(14, [0]) keys [tp:6 desc:false field:4, ][17]
-  48[64]: ConstText(_value="None") -> text
-  54[80]: GetRecord(data: ref(reference), db_tp=17, no_keys=1) -> ref(reference)
-  58[64]: ConvBoolFromRef(val: ref(reference)) -> boolean
-  59[53]: Not(v1: boolean) -> boolean
-  60[53]: GotoFalseWord(jump=66, if_false: boolean)
-  63[52]: GotoWord(jump=79)
-  66[52]: ConstText(_value="No element") -> text
-  78[68]: Panic(message: text)
-  79[52]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[40]:ref(Counting)["__ref_1"] in 2
-  82[64]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[t]>[4]:Hash(14, [0]) keys [tp:6 desc:false field:4, ][17]
-  85[64]: ConstText(_value="Five") -> text
-  91[80]: GetRecord(data: ref(reference), db_tp=17, no_keys=1) -> ref(reference)
-  95[64]: GetInt(v1: ref(reference), fld=8) -> integer
-  98[56]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=c[40]:ref(Counting)["__ref_1"] in 2
- 101[68]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[t]>[4]:Hash(14, [0]) keys [tp:6 desc:false field:4, ][17]
- 104[68]: ConstText(_value="Seven") -> text
- 111[84]: GetRecord(data: ref(reference), db_tp=17, no_keys=1) -> ref(reference)
- 115[68]: GetInt(v1: ref(reference), fld=8) -> integer
- 118[60]: AddInt(v1: integer, v2: integer) -> integer
- 119[56]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
- 123[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
- 126[48]: ConstInt(val=12) -> integer
- 131[52]: EqInt(v1: integer, v2: integer) -> boolean
- 132[45]: GotoFalseWord(jump=138, if_false: boolean)
- 135[44]: GotoWord(jump=188)
- 138[44]: ClearText(var[16]) var=__work_1[16]:text in 1
- 141[44]: ConstText(_value="Test failed ") -> text
- 155[60]: AppendText(var[16], v1: text)
- 158[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
- 161[48]: ConstInt(val=0) -> integer
- 166[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 173[44]: ConstText(_value=" != 12") -> text
- 181[60]: AppendText(var[16], v1: text)
- 184[44]: VarText(var[16]) -> text var=__work_1[16]:text in 1
- 187[60]: Panic(message: text)
- 188[44]: FreeText(var[16])
- 191[44]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:array<Count>[4] other [1], h:hash<Count[t]>[8] other [65535]}[15] var=__ref_1[4]:ref(Counting) in 1
- 194[56]: FreeRef(v1: ref(reference))
- 195[44]: Return(ret=0, value=0, discard=44)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data) in 1
+   1[16]: Text() var=__work_3[16]:text in 1
+   2[40]: Text() var=__work_2[40]:text in 1
+   3[64]: Text() var=__work_1[64]:text in 1
+   4[88]: Database(var[4], db_tp=15) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+   9[88]: VarRef(var[4]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=__ref_1[4]:ref(Data) in 1
+  12[100]: ConstInt(val=0) -> integer
+  17[104]: SetInt(v1: ref(reference), fld=4, val: integer)
+  20[88]: VarRef(var[4]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=__ref_1[4]:ref(Data) in 1
+  23[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+  26[112]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=hash<Keyword[name]>[4]:Hash(14, [0]) keys [tp:6 desc:false field:4, ][16]
+  29[112]: Clear(data: ref(reference), tp=16)
+  32[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+  35[112]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
+  40[112]: VarRef(var[100]) -> ref(reference) type=Keyword[8]:{name:text[4]}[14] var=_elm_1[100]:ref(Keyword)["c"] in 4
+  43[124]: ConstText(_value="one") -> text
+  48[140]: SetText(v1: ref(reference), fld=4, val: text)
+  51[112]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+  54[124]: VarRef(var[100]) -> ref(reference) type=Keyword[8]:{name:text[4]}[14] var=_elm_1[100]:ref(Keyword)["c"] in 4
+  57[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
+  62[112]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+  65[124]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
+  70[124]: PutRef(var[100], value: ref(reference))
+  73[112]: VarRef(var[100]) -> ref(reference) type=Keyword[8]:{name:text[4]}[14] var=_elm_1[100]:ref(Keyword)["c"] in 4
+  76[124]: ConstText(_value="two") -> text
+  81[140]: SetText(v1: ref(reference), fld=4, val: text)
+  84[112]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+  87[124]: VarRef(var[100]) -> ref(reference) type=Keyword[8]:{name:text[4]}[14] var=_elm_1[100]:ref(Keyword)["c"] in 4
+  90[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
+  95[112]: FreeStack(value=0, discard=12)
+  99[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+ 102[112]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
+ 107[112]: VarRef(var[100]) -> ref(reference) type=Keyword[8]:{name:text[4]}[14] var=_elm_2[100]:ref(Keyword)["c"] in 7
+ 110[124]: ConstText(_value="three") -> text
+ 117[140]: SetText(v1: ref(reference), fld=4, val: text)
+ 120[112]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+ 123[124]: VarRef(var[100]) -> ref(reference) type=Keyword[8]:{name:text[4]}[14] var=_elm_2[100]:ref(Keyword)["c"] in 7
+ 126[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
+ 131[112]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+ 134[124]: NewRecord(data: ref(reference), parent_tp=15, fld=0) -> ref(reference)
+ 139[124]: PutRef(var[100], value: ref(reference))
+ 142[112]: VarRef(var[100]) -> ref(reference) type=Keyword[8]:{name:text[4]}[14] var=_elm_2[100]:ref(Keyword)["c"] in 7
+ 145[124]: ConstText(_value="four") -> text
+ 151[140]: SetText(v1: ref(reference), fld=4, val: text)
+ 154[112]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+ 157[124]: VarRef(var[100]) -> ref(reference) type=Keyword[8]:{name:text[4]}[14] var=_elm_2[100]:ref(Keyword)["c"] in 7
+ 160[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=0)
+ 165[112]: FreeStack(value=0, discard=12)
+ 169[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+ 172[112]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=hash<Keyword[name]>[4]:Hash(14, [0]) keys [tp:6 desc:false field:4, ][16]
+ 175[112]: ConstText(_value="None") -> text
+ 181[128]: GetRecord(data: ref(reference), db_tp=16, no_keys=1) -> ref(reference)
+ 185[112]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 186[101]: Not(v1: boolean) -> boolean
+ 187[101]: GotoFalseWord(jump=193, if_false: boolean)
+ 190[100]: GotoWord(jump=206)
+ 193[100]: ConstText(_value="No element") -> text
+ 205[116]: Panic(message: text)
+ 206[100]: ClearText(var[64]) var=__work_1[64]:text in 1
+ 209[100]: ConstText(_value="") -> text
+ 211[116]: AppendText(var[64], v1: text)
+ 214[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+ 217[112]: FormatDatabase(var[64], val: ref(reference), db_tp=15, pretty=false)
+ 223[100]: VarText(var[64]) -> text var=__work_1[64]:text in 1
+ 226[116]: ConstText(_value="{h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}") -> text
+ 288[132]: EqText(v1: text, v2: text) -> boolean
+ 289[101]: GotoFalseWord(jump=295, if_false: boolean)
+ 292[100]: GotoWord(jump=332)
+ 295[100]: ClearText(var[40]) var=__work_2[40]:text in 1
+ 298[100]: ConstText(_value="Output hash was ") -> text
+ 316[116]: AppendText(var[40], v1: text)
+ 319[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+ 322[112]: FormatDatabase(var[40], val: ref(reference), db_tp=15, pretty=false)
+ 328[100]: VarText(var[40]) -> text var=__work_2[40]:text in 1
+ 331[116]: Panic(message: text)
+ 332[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=c[88]:ref(Data)["__ref_1"] in 2
+ 335[112]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=hash<Keyword[name]>[4]:Hash(14, [0]) keys [tp:6 desc:false field:4, ][16]
+ 338[112]: ConstText(_value="three") -> text
+ 345[128]: GetRecord(data: ref(reference), db_tp=16, no_keys=1) -> ref(reference)
+ 349[112]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 350[101]: GotoFalseWord(jump=361, if_false: boolean)
+ 353[100]: ConstInt(val=12) -> integer
+ 358[104]: GotoWord(jump=366)
+ 361[100]: ConstInt(val=0) -> integer
+ 366[104]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
+ 370[92]: VarInt(var[88]) -> integer var=test_value[88]:integer in 1
+ 373[96]: ConstInt(val=12) -> integer
+ 378[100]: EqInt(v1: integer, v2: integer) -> boolean
+ 379[93]: GotoFalseWord(jump=385, if_false: boolean)
+ 382[92]: GotoWord(jump=435)
+ 385[92]: ClearText(var[16]) var=__work_3[16]:text in 1
+ 388[92]: ConstText(_value="Test failed ") -> text
+ 402[108]: AppendText(var[16], v1: text)
+ 405[92]: VarInt(var[88]) -> integer var=test_value[88]:integer in 1
+ 408[96]: ConstInt(val=0) -> integer
+ 413[100]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 420[92]: ConstText(_value=" != 12") -> text
+ 428[108]: AppendText(var[16], v1: text)
+ 431[92]: VarText(var[16]) -> text var=__work_3[16]:text in 1
+ 434[108]: Panic(message: text)
+ 435[92]: FreeText(var[64])
+ 438[92]: FreeText(var[40])
+ 441[92]: FreeText(var[16])
+ 444[92]: VarRef(var[4]) -> ref(reference) type=Data[8]:{h:hash<Keyword[name]>[4]}[15] var=__ref_1[4]:ref(Data) in 1
+ 447[104]: FreeRef(v1: ref(reference))
+ 448[92]: Return(ret=0, value=0, discard=92)
 

@@ -13,7 +13,7 @@ use crate::store::Store;
 use crate::tree;
 use crate::vector;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 use std::fmt::{Debug, Formatter, Write};
 /*
@@ -74,16 +74,16 @@ impl Type {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Parts {
-    Base,
+    Base,                              // One of the simple base types or text.
     Struct(Vec<Field>), // The fields and the primary parent of this record (the first).
-    Sub(Vec<u16>),      // Polymorphic structure with different subtypes
-    Enum(Vec<String>),
-    Byte(i32, bool),                   // start number and nullable flag
-    Short(i32, bool),                  // start number and nullable flag
-    Vector(u16),                       // The records are part of the vector
-    Array(u16),                        // The array holds references for each record
-    Sorted(u16, Vec<(u16, bool)>),     // Sorted vector on fields with an ascending flag
-    Ordered(u16, Vec<(u16, bool)>),    // Sorted array on fields with an ascending flag
+    Sub(Vec<u16>),      // Polymorphic structure with different subtypes.
+    Enum(Vec<String>),  // Enumerate type with possible values.
+    Byte(i32, bool),    // start number and nullable flag
+    Short(i32, bool),   // start number and nullable flag
+    Vector(u16),        // The records are part of the vector
+    Array(u16),         // The array holds references for each record
+    Sorted(u16, Vec<(u16, bool)>), // Sorted vector on fields with an ascending flag
+    Ordered(u16, Vec<(u16, bool)>), // Sorted array on fields with an ascending flag
     Hash(u16, Vec<u16>), // A hash table, listing the field numbers that define its key
     Index(u16, Vec<(u16, bool)>, u16), // An index to a table, listing the key fields and the left field-nr
     Spacial(u16, Vec<u16>),            // A spacial index with the listed coordinate fields as key
@@ -462,7 +462,7 @@ impl Stores {
     /**
     Add a new field to a structure
     # Panics
-    When the field has a position outside the structure size or on a non structure type.
+    When the field has a position outside the structure size or on a non-structure type.
     */
     pub fn field(&mut self, structure: u16, name: &str, content: u16) -> u16 {
         if content == u16::MAX {
@@ -928,7 +928,7 @@ impl Stores {
     }
 
     /**
-    Add a value to an enumerate type.
+    Add a value to an enumerated type.
     # Panics
     When adding a value to a non-enumerate.
     */
@@ -947,7 +947,6 @@ impl Stores {
 
     #[allow(dead_code)]
     #[must_use]
-    // We do not compile inter/external in main as that would result in a slew of dead_code warnings
     pub fn enum_val(&self, known_type: u16, value: u8) -> String {
         if known_type == u16::MAX {
             return format!("unknown({value})");
@@ -1131,7 +1130,7 @@ impl Stores {
     /**
     Parse the content of a string into a new database.
     # Panics
-    When this string in incorrectly parsed.
+    When this string is incorrectly parsed.
     */
     pub fn parse(&mut self, text: &str, tp: u16, result: &DbRef) {
         let mut pos = 0;
@@ -1567,7 +1566,7 @@ impl Stores {
 
     /**
         Write default values on fields. This should normally only be done while debugging
-        as all fields should be set anyway under correct code generation.
+        as all fields should be set anyway under correctly generated code.
         # Panics
         On inconsistent database definitions.
     */
@@ -1755,11 +1754,11 @@ impl Stores {
             Parts::Hash(v, _) => {
                 let tp = *v;
                 let cur = self.store(rec).get_int(rec.rec, rec.pos) as u32;
-                let length = self.store(rec).get_int(cur, 0) as u32 * 2;
                 if cur == 0 {
                     // Do nothing if the structure was empty
                     return;
                 }
+                let length = self.store(rec).get_int(cur, 0) as u32 * 2;
                 for i in 0..length {
                     let elm = self.store(rec).get_int(cur, 8 + i * 4) as u32;
                     if elm == 0 {
@@ -2239,56 +2238,15 @@ impl Stores {
         }
     }
 
-    #[must_use]
-    pub fn start(&self, data: &DbRef, db: u16, key: &[Content]) -> i32 {
-        if data.rec == 0 {
-            return i32::MAX;
-        }
-        match &self.types[db as usize].parts {
-            Parts::Sorted(c, _) => {
-                if key.is_empty() {
-                    i32::MAX
-                } else {
-                    8 + vector::sorted_find(
-                        data,
-                        true,
-                        self.types[*c as usize].size,
-                        &self.allocations,
-                        &self.types[db as usize].keys,
-                        key,
-                    )
-                    .0 as i32
-                        * i32::from(self.types[*c as usize].size)
-                }
-            }
-            Parts::Ordered(_, _) => {
-                if key.is_empty() {
-                    i32::MAX
-                } else {
-                    8 + vector::ordered_find(
-                        data,
-                        true,
-                        &self.allocations,
-                        &self.types[db as usize].keys,
-                        key,
-                    )
-                    .0 as i32
-                        * 4
-                }
-            }
-            _ => i32::MAX,
-        }
-    }
-
     /**
     Validate the structure in any way possible.
     What is still open to validate:
     - individual allocations inside store size
     - length of vector/sorted/array/ordered stays within allocation
-    - when called fully (but allow for single vector):
-      . allocations linked together correctly (linked from previous and to next)
-      . open space validation
-      . references of array/ordered/separate to correct allocations
+    - when called fully; but allow for single vector:
+      - allocations linked together correctly (linked from previous and to next)
+      - open space validation
+      - references of array/ordered/separate to correct allocations
     # Panics
     When the structure is not correct
     */
@@ -2326,51 +2284,18 @@ impl Stores {
     # Panics
     When not in a valid structure
     */
-    pub fn next(&self, data: &DbRef, pos: &mut i32, db: u16, key: &[Content]) -> DbRef {
+    fn next(&self, data: &DbRef, pos: &mut i32, db: u16) -> DbRef {
         match &self.types[db as usize].parts {
-            Parts::Vector(c) => {
+            Parts::Vector(c) | Parts::Sorted(c, _) => {
                 vector::vector_next(data, pos, self.types[*c as usize].size, &self.allocations);
                 self.element_reference(data, *pos)
-            }
-            Parts::Hash(_, _) => {
-                let rec = self.store(data).get_int(data.rec, data.pos) as u32;
-                let max = *self.store(data).addr::<i32>(rec, 0) * 8;
-                if *pos == i32::MAX {
-                    *pos = 8;
-                } else if *pos < max - 4 {
-                    *pos += 4;
-                } else {
-                    *pos = i32::MAX;
-                }
-                while *pos != i32::MAX {
-                    if self.store(data).get_int(rec, *pos as u32) as u32 != 0 {
-                        break;
-                    }
-                    if *pos < max - 4 {
-                        *pos += 4;
-                    } else {
-                        *pos = i32::MAX;
-                    }
-                }
-                self.db_ref(data, pos, rec)
             }
             Parts::Array(_) => {
                 vector::vector_next(data, pos, 4, &self.allocations);
                 let r = self.store(data).get_int(data.rec, data.pos) as u32;
-                self.db_ref(data, pos, r)
+                self.db_ref(data, *pos, r)
             }
-            Parts::Sorted(c, keys) => {
-                vector::vector_next(data, pos, self.types[*c as usize].size, &self.allocations);
-                let mut rec = self.element_reference(data, *pos);
-                if !key.is_empty()
-                    && *pos != 0
-                    && self.compare_key(&rec, db, keys, key) != Ordering::Equal
-                {
-                    rec.rec = 0;
-                }
-                rec
-            }
-            Parts::Ordered(_, keys) => {
+            Parts::Ordered(_, _) => {
                 vector::vector_next(data, pos, 4, &self.allocations);
                 if *pos == i32::MAX {
                     return DbRef {
@@ -2380,18 +2305,11 @@ impl Stores {
                     };
                 }
                 let r = self.store(data).get_int(data.rec, data.pos) as u32;
-                let mut rec = DbRef {
+                DbRef {
                     store_nr: data.store_nr,
                     rec: self.store(data).get_int(r, *pos as u32) as u32,
                     pos: 0,
-                };
-                if !key.is_empty()
-                    && *pos != 0
-                    && self.compare_key(&rec, db, keys, key) != Ordering::Equal
-                {
-                    rec.rec = 0;
                 }
-                rec
             }
             Parts::Index(_, _, _) => {
                 if *pos == i32::MAX {
@@ -2422,13 +2340,13 @@ impl Stores {
         }
     }
 
-    fn db_ref(&self, data: &DbRef, pos: &mut i32, r: u32) -> DbRef {
+    fn db_ref(&self, data: &DbRef, pos: i32, r: u32) -> DbRef {
         DbRef {
             store_nr: data.store_nr,
-            rec: if *pos == i32::MAX {
+            rec: if pos == i32::MAX {
                 0
             } else {
-                self.store(data).get_int(r, *pos as u32) as u32
+                self.store(data).get_int(r, pos as u32) as u32
             },
             pos: 0,
         }
@@ -2523,7 +2441,7 @@ impl Stores {
     /**
     Get the command line arguments into a vector
     # Panics
-    When the OS provided incorrect arguments (non utf8 tokens inside of it)
+    When the OS provided incorrect arguments (non utf8 tokens inside it)
     */
     #[must_use]
     pub fn os_arguments(&mut self) -> DbRef {
@@ -2547,7 +2465,7 @@ impl Stores {
     /**
     Get all environment variables into a vector
     # Panics
-    When the OS provided incorrect variable names (non utf8 tokens inside of it)
+    When the OS provided incorrect variable names (non utf8 tokens inside it)
     */
     #[must_use]
     pub fn os_variables(&mut self) -> DbRef {
@@ -2575,7 +2493,7 @@ impl Stores {
     /**
     Get the value of an environment variable
     # Panics
-    When the OS provided incorrect variable values (non utf8 tokens inside of it)
+    When the OS provided incorrect variable values (non utf8 tokens inside it)
     */
     #[must_use]
     pub fn os_variable(name: &str) -> Str {
@@ -2589,7 +2507,7 @@ impl Stores {
     /**
     Get the current directory
     # Panics
-    When the OS provided incorrect variable values (non utf8 tokens inside of it)
+    When the OS provided incorrect variable values (non utf8 tokens inside it)
     */
     #[must_use]
     pub fn os_directory(s: &mut String) -> Str {
@@ -2603,7 +2521,7 @@ impl Stores {
     /**
     Get home directory
     # Panics
-    When the OS provided incorrect variable values (non utf8 tokens inside of it)
+    When the OS provided incorrect variable values (non utf8 tokens inside it)
     */
     #[must_use]
     pub fn os_home(s: &mut String) -> Str {
@@ -2617,7 +2535,7 @@ impl Stores {
     /**
     Get the executable directory
     # Panics
-    When the OS provided incorrect variable values (non utf8 tokens inside of it)
+    When the OS provided incorrect variable values (non utf8 tokens inside it)
     */
     #[must_use]
     pub fn os_executable(s: &mut String) -> Str {
@@ -3004,15 +2922,22 @@ impl ShowDb<'_> {
             rec: self.rec,
             pos: self.pos,
         };
-        let mut pos = self.stores.start(&data, self.known_type, &[]);
         let complex = self.pretty && self.stores.types[content as usize].complex;
         s.push('[');
+        if matches!(
+            self.stores.types[self.known_type as usize].parts,
+            Parts::Hash(_, _)
+        ) {
+            self.write_hash(s, content, indent, &data, complex);
+            return;
+        }
+        let mut pos = i32::MAX;
         let mut first_elm = true;
         loop {
             if data.rec == 0 {
                 break;
             }
-            let rec = self.stores.next(&data, &mut pos, self.known_type, &[]);
+            let rec = self.stores.next(&data, &mut pos, self.known_type);
             if rec.rec == 0 {
                 break;
             }
@@ -3036,6 +2961,71 @@ impl ShowDb<'_> {
                 store: self.store,
                 rec: rec.rec,
                 pos: rec.pos,
+                known_type: content,
+                pretty: self.pretty,
+            };
+            sub.write(s, indent + 1);
+        }
+        if self.pretty {
+            s.push(' ');
+        }
+        s.push(']');
+    }
+
+    fn write_hash(&self, s: &mut String, content: u16, indent: u16, data: &DbRef, complex: bool) {
+        let mut map = BTreeMap::new();
+        let mut pos = i32::MAX;
+        let rec = self.stores.store_nr(self.store).get_int(data.rec, data.pos) as u32;
+        if rec == 0 {
+            s.push(']');
+            return;
+        }
+        let max_pos = *self.stores.store_nr(self.store).addr::<i32>(rec, 0) * 8;
+        loop {
+            if pos == i32::MAX {
+                pos = 8;
+            } else if pos < max_pos - 4 {
+                pos += 4;
+            } else {
+                break;
+            }
+            let rec = self.stores.store_nr(self.store).get_int(rec, pos as u32);
+            if rec != 0 {
+                let r = DbRef {
+                    store_nr: data.store_nr,
+                    rec: rec as u32,
+                    pos: 0,
+                };
+                let key = keys::get_simple(
+                    &r,
+                    &self.stores.allocations,
+                    self.stores.keys(self.known_type),
+                );
+                map.insert(key, rec);
+            }
+        }
+        let mut first_elm = true;
+        for (_, p) in map {
+            if first_elm {
+                if self.pretty {
+                    self.write_indent(complex, s, indent, true);
+                }
+                first_elm = false;
+            } else {
+                s.push(',');
+                if self.pretty {
+                    if matches!(self.stores.types[content as usize].parts, Parts::Struct(_)) {
+                        self.write_indent(true, s, indent, true);
+                    } else {
+                        self.write_indent(complex, s, indent, false);
+                    }
+                }
+            }
+            let sub = ShowDb {
+                stores: self.stores,
+                store: self.store,
+                rec: p as u32,
+                pos: 0,
                 known_type: content,
                 pretty: self.pretty,
             };

@@ -152,7 +152,7 @@ extern crate dryopea;"
 
     fn output_function(&self, w: &mut dyn Write, def_nr: u32) -> std::io::Result<()> {
         let def = self.data.def(def_nr);
-        if def.position.file == "default/01_code.gcp"
+        if def.position.file == "default/01_code.lav"
             && def.name.starts_with("Op")
             && def.code == Value::Null
         {

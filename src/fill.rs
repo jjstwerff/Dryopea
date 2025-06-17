@@ -6,6 +6,7 @@ use crate::keys::{DbRef, Str};
 use crate::state::State;
 use crate::vector;
 
+// Current number of operators: 246 we cannot exceed 256 when the byte-code will break.
 pub const OPERATORS: &[fn(&mut State)] = &[
     goto,
     goto_word,
@@ -239,6 +240,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     iterate,
     step,
     remove,
+    clear,
     append_copy,
     copy_record,
     static_call,
@@ -1800,6 +1802,10 @@ fn step(s: &mut State) {
 
 fn remove(s: &mut State) {
     s.remove();
+}
+
+fn clear(s: &mut State) {
+    s.clear();
 }
 
 fn append_copy(s: &mut State) {

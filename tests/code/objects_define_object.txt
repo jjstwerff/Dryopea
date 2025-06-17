@@ -1,6 +1,7 @@
 struct Object{first: integer, second: text, third: boolean}
 fn obj() -> boolean {
-  o = Object {first: 1234, second: "data", third: true};
+  o = Object {first: 1234, second: "data", third: false};
+  o.third = true;
   o.first-12 == 1222 && len(o.second) == 4 && o.third
 }
 
@@ -22,13 +23,14 @@ fn obj() -> boolean {#1 block
     OpDatabase(__ref_1, 14i32);
     OpSetInt(__ref_1, 4i32, 1234i32);
     OpSetText(__ref_1, 8i32, "data");
-    OpSetByte(__ref_1, 12i32, 0i32, if true 1i32 else 0i32);
+    OpSetByte(__ref_1, 12i32, 0i32, if false 1i32 else 0i32);
     __ref_1;
   }#2:ref(Object)["__ref_1"];
+  OpSetByte(o, 12i32, 0i32, if true 1i32 else 0i32);
   if if OpEqInt(OpMinInt(OpGetInt(o, 4i32), 12i32), 1222i32) OpEqInt(_tp_text_len(OpGetText(o, 8i32)), 4i32) else false OpEqInt(OpGetByte(o, 12i32, 0i32), 1i32) else false;
 }#1:boolean
 
-byte-code for define_object:obj() -> boolean
+byte-code for define_object:obj() [1073] -> boolean
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Object) in 1
    1[16]: Database(var[4], db_tp=14) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=o[16]:ref(Object)["__ref_1"] in 1
@@ -39,7 +41,7 @@ byte-code for define_object:obj() -> boolean
   20[28]: ConstText(_value="data") -> text
   26[44]: SetText(v1: ref(reference), fld=8, val: text)
   29[16]: VarRef(var[4]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=__ref_1[4]:ref(Object) in 1
-  32[28]: ConstTrue() -> boolean
+  32[28]: ConstFalse() -> boolean
   33[29]: GotoFalseWord(jump=44, if_false: boolean)
   36[28]: ConstInt(val=1) -> integer
   41[32]: GotoWord(jump=49)
@@ -47,29 +49,36 @@ byte-code for define_object:obj() -> boolean
   49[32]: SetByte(v1: ref(reference), fld=12, min=0, val: integer)
   54[16]: VarRef(var[4]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=__ref_1[4]:ref(Object) in 1
   57[28]: VarRef(var[16]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=o[16]:ref(Object)["__ref_1"] in 1
-  60[40]: GetInt(v1: ref(reference), fld=4) -> integer
-  63[32]: ConstInt(val=12) -> integer
-  68[36]: MinInt(v1: integer, v2: integer) -> integer
-  69[32]: ConstInt(val=1222) -> integer
-  74[36]: EqInt(v1: integer, v2: integer) -> boolean
-  75[29]: GotoFalseWord(jump=100, if_false: boolean)
-  78[28]: VarRef(var[16]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=o[16]:ref(Object)["__ref_1"] in 1
-  81[40]: GetText(v1: ref(reference), fld=8) -> text["o"]
-  84[44]: Call(size=0, to=318)
-  91[32]: ConstInt(val=4) -> integer
-  96[36]: EqInt(v1: integer, v2: integer) -> boolean
-  97[29]: GotoWord(jump=101)
- 100[28]: ConstFalse() -> boolean
- 101[29]: GotoFalseWord(jump=121, if_false: boolean)
- 104[28]: VarRef(var[16]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=o[16]:ref(Object)["__ref_1"] in 1
- 107[40]: GetByte(v1: ref(reference), fld=12, min=0) -> integer
- 112[32]: ConstInt(val=1) -> integer
- 117[36]: EqInt(v1: integer, v2: integer) -> boolean
- 118[29]: GotoWord(jump=122)
- 121[28]: ConstFalse() -> boolean
- 122[29]: VarRef(var[4]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=__ref_1[4]:ref(Object) in 1
- 125[41]: FreeRef(v1: ref(reference))
- 126[29]: Return(ret=0, value=1, discard=29) type=boolean[1]:Base[4]
+  60[40]: ConstTrue() -> boolean
+  61[41]: GotoFalseWord(jump=72, if_false: boolean)
+  64[40]: ConstInt(val=1) -> integer
+  69[44]: GotoWord(jump=77)
+  72[40]: ConstInt(val=0) -> integer
+  77[44]: SetByte(v1: ref(reference), fld=12, min=0, val: integer)
+  82[28]: VarRef(var[16]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=o[16]:ref(Object)["__ref_1"] in 1
+  85[40]: GetInt(v1: ref(reference), fld=4) -> integer
+  88[32]: ConstInt(val=12) -> integer
+  93[36]: MinInt(v1: integer, v2: integer) -> integer
+  94[32]: ConstInt(val=1222) -> integer
+  99[36]: EqInt(v1: integer, v2: integer) -> boolean
+ 100[29]: GotoFalseWord(jump=125, if_false: boolean)
+ 103[28]: VarRef(var[16]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=o[16]:ref(Object)["__ref_1"] in 1
+ 106[40]: GetText(v1: ref(reference), fld=8) -> text["o"]
+ 109[44]: Call(size=0, to=318)
+ 116[32]: ConstInt(val=4) -> integer
+ 121[36]: EqInt(v1: integer, v2: integer) -> boolean
+ 122[29]: GotoWord(jump=126)
+ 125[28]: ConstFalse() -> boolean
+ 126[29]: GotoFalseWord(jump=146, if_false: boolean)
+ 129[28]: VarRef(var[16]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=o[16]:ref(Object)["__ref_1"] in 1
+ 132[40]: GetByte(v1: ref(reference), fld=12, min=0) -> integer
+ 137[32]: ConstInt(val=1) -> integer
+ 142[36]: EqInt(v1: integer, v2: integer) -> boolean
+ 143[29]: GotoWord(jump=147)
+ 146[28]: ConstFalse() -> boolean
+ 147[29]: VarRef(var[4]) -> ref(reference) type=Object[13]:{first:integer[4], second:text[8], third:boolean[12]}[14] var=__ref_1[4]:ref(Object) in 1
+ 150[41]: FreeRef(v1: ref(reference))
+ 151[29]: Return(ret=0, value=1, discard=29) type=boolean[1]:Base[4]
 
 fn test() {#1 block
   __work_1:text = "";
@@ -88,10 +97,10 @@ fn test() {#1 block
   }#5:text);
 }#1
 
-byte-code for define_object:test()
+byte-code for define_object:test() [1230]
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: Call(size=0, to=911) var=test_value[28]:integer in 1
+   1[28]: Call(size=0, to=1073) var=test_value[28]:integer in 1
    8[29]: GotoFalseWord(jump=19, if_false: boolean)
   11[28]: ConstInt(val=1) -> integer
   16[32]: GotoWord(jump=24)

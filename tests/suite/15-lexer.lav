@@ -1,19 +1,22 @@
 use lexer;
 
-fn main() {
-    l = lexer::Lexer {};
-    l.tokens(["+=", "*=", "-=", ">>", "<<"]);
-    l.text("Tokens", "12 += -2 * 3l >> 4");
-    assert(l.integer() == 12, "Integer");
+fn testing(l: lexer::Lexer) {
+    assert(l.int() == 12, "Integer");
     assert(!l.match("+"), "Incorrect plus");
-    assert(!l.peek("+"), "Incorrect plus");
+    assert(l.peek() != "+", "Incorrect plus");
     assert(l.match("+="), "Incorrect plus_is");
-    assert(l.integer() == -2, "Integer");
+    assert(l.int() == -2, "Integer");
     assert(l.match("*"), "Incorrect multi");
-    assert(l.integer() != 3, "Incorrect integer");
-    assert(l.long() == 3, "Incorrect long");
+    assert(l.int() != 3, "Incorrect integer");
+    assert(l.long_int() == 3, "Incorrect long");
     assert(l.position() == "Tokens:1:14", "Incorrect position {l.position()}");
     assert(!l.match(">"), "Incorrect higher");
     assert(l.position() == "Tokens:1:15", "Incorrect position {l.position()}");
     assert(l.match(">>"), "Incorrect logical shift");
+}
+
+fn main() {
+    l = lexer::Lexer {};
+    l.set_tokens(["+=", "*=", "-=", ">>", "<<"]);
+    l.parse_string("Tokens", "12 += -2 * 3l >> 4");
 }

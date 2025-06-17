@@ -72,17 +72,20 @@ fn hash_free_pos(claim: u32, rec: &DbRef, stores: &[Store], keys: &[Key]) -> u32
 pub fn find(hash_ref: &DbRef, stores: &[Store], keys: &[Key], key: &[Content]) -> DbRef {
     let store = &stores[hash_ref.store_nr as usize];
     let claim = store.get_int(hash_ref.rec, hash_ref.pos) as u32;
-    let hash_val = keys::key_hash(key);
     let mut record = DbRef {
         store_nr: hash_ref.store_nr,
         rec: 0,
         pos: 0,
     };
+    if claim == 0 {
+        return record;
+    }
     let room = *store.addr::<i32>(claim, 0) as u32;
     if room == 0 {
         return record;
     }
     let elms = (room - 1) * 2;
+    let hash_val = keys::key_hash(key);
     let mut index = (hash_val % u64::from(elms)) as u32;
     let mut rec_pos = store.get_int(claim, 8 + index * 4) as u32;
     'Record: for _ in 0..elms {

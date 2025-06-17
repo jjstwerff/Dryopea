@@ -28,7 +28,7 @@ fn data(n:text, res:Data) -> text["res"] {#1 block
   OpGetText(res, 4i32);
 }#1:text["res"]
 
-byte-code for return_text:data(n: text[0], res: ref(Data)[16]) -> text["res"]
+byte-code for return_text:data(n: text[0], res: ref(Data)[16]) [1073] -> text["res"]
    0[28]: return-address
    0[32]: Database(var[16], db_tp=14) type=Data[12]:{name:text[4], number:integer[8]}[14]
    5[32]: VarRef(var[16]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[14] var=res[16]:ref(Data)["res"] in 0
@@ -55,14 +55,14 @@ fn test() {#1 block
   }#3:text);
 }#1
 
-byte-code for return_text:test()
+byte-code for return_text:test() [1110]
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data) in 1
    1[16]: Text() var=__work_1[16]:text in 1
    2[40]: Text() var=test_value[40]:text["__ref_1"] in 1
    3[64]: ConstText(_value="test") -> text
    9[80]: VarRef(var[4]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[14] var=__ref_1[4]:ref(Data) in 1
-  12[92]: Call(size=0, to=911)
+  12[92]: Call(size=0, to=1073)
   19[80]: AppendText(var[40], v1: text)
   22[64]: VarText(var[40]) -> text var=test_value[40]:text["__ref_1"] in 1
   25[80]: ConstText(_value="test") -> text

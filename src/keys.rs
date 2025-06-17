@@ -47,6 +47,12 @@ pub enum Content {
     Str(Str),
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub enum Simple {
+    Number(i64),
+    Text(String),
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct DbRef {
     pub store_nr: u16,
@@ -189,6 +195,20 @@ pub fn get_key(record: &DbRef, stores: &[Store], keys: &[Key]) -> Vec<Content> {
                 let v = store(record, stores).get_byte(record.rec, p, 0);
                 result.push(Content::Long(i64::from(v)));
             }
+        }
+    }
+    result
+}
+
+#[must_use]
+pub fn get_simple(record: &DbRef, stores: &[Store], keys: &[Key]) -> Vec<Simple> {
+    let mut result = Vec::new();
+    let k = get_key(record, stores, keys);
+    for f in k {
+        match f {
+            Content::Long(l) => result.push(Simple::Number(l)),
+            Content::Str(s) => result.push(Simple::Text(s.str().to_string())),
+            _ => {}
         }
     }
     result

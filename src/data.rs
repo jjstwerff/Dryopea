@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! Hold all definitions
-//! Those are the combinations of types, records and routines.
+//! Those are the combinations of types, records, and routines.
 //! Many definitions can hold fields of their own, a routine
-//! has parameters that behave very similar to fields.
+//! has parameters that behave very similarly to fields.
 
-// These structures are rather inefficient right now, but they are be the basis
+// These structures are rather inefficient right now, but they are the basis
 // for a far more efficient database design later.
 #![allow(dead_code)]
+#![allow(clippy::cast_possible_truncation)]
 
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use crate::keys::Key;
@@ -140,7 +141,7 @@ pub enum Type {
     /// A dynamic routine, from a routine definition without code.
     /// The actual code is a routine with this routine as a parent or just a Block for a lambda function.
     Routine(u32),
-    /// Iterator with a certain result, the first type is the result per step
+    /// Iterator with a certain result, the first type is the result per step.
     /// The second is the internal iterator value or `Type::Null` for structure iterator: `(i32,i32)`
     Iterator(Box<Type>, Box<Type>),
     /// An ordered vector on a record, second is the key [field number, ascending]
@@ -151,7 +152,7 @@ pub enum Type {
     Spacial(u32, Vec<u16>, Vec<u16>),
     /// A hash table towards other records. The second is the hash function.
     Hash(u32, Vec<u16>, Vec<u16>),
-    /// A function reference allowing for closures. Argument types and result.
+    /// A function reference allowing for closures. Argument types and results.
     Function(Vec<Type>, Box<Type>),
 }
 
@@ -188,6 +189,7 @@ impl Type {
             }
             Type::Index(t, keys, dep) => {
                 if !v.contains(&on) {
+                    v.append(&mut dep.clone());
                     v.append(&mut dep.clone());
                 }
                 Type::Index(*t, keys.clone(), v)
@@ -236,6 +238,19 @@ impl Type {
             _ => {}
         }
         v
+    }
+
+    #[must_use]
+    pub fn content(&self) -> Type {
+        match self {
+            Type::Index(tp, _, dep)
+            | Type::Spacial(tp, _, dep)
+            | Type::Hash(tp, _, dep)
+            | Type::Sorted(tp, _, dep) => Type::Reference(*tp, dep.clone()),
+            Type::Vector(tp, _) => *tp.clone(),
+            Type::RefVar(tp) => tp.content(),
+            _ => Type::Unknown(0),
+        }
     }
 
     #[must_use]
@@ -420,11 +435,11 @@ pub struct Attribute {
     /// Name of the attribute for this definition
     pub name: String,
     pub typedef: Type,
-    /// Is this attribute mutable.
+    /// This attribute is mutable.
     pub mutable: bool,
-    /// Is this attribute allowed to be null in the sub-structure.
+    /// This attribute is allowed to be null in the substructure.
     pub nullable: bool,
-    /// Is this attribute holding the primary reference of its records.
+    /// This attribute is holding the primary reference of its records.
     primary: bool,
     /// The initial value of this attribute if it is not given.
     pub value: Value,
@@ -442,7 +457,7 @@ impl Debug for Attribute {
 pub enum DefType {
     // Not yet known, must be filled in after the first parse pass.
     Unknown,
-    // A normal function, cannot be defined twice.
+    // A normal function cannot be defined twice.
     Function,
     // Dynamic function, where all arguments hold references to multiple implementations we can choose
     Dynamic,
@@ -478,6 +493,7 @@ impl Display for DefType {
 #[derive(Clone)]
 pub struct Definition {
     pub name: String,
+    pub source: u16,
     /// Type of definition.
     pub def_type: DefType,
     /// Parent definition for `EnumValue` or `StructPart`. Initial `u32::MAX`.
@@ -557,7 +573,10 @@ pub enum Context {
 pub struct Data {
     pub definitions: Vec<Definition>,
     /// Index on definitions on name
-    pub def_names: HashMap<String, u32>,
+    def_names: HashMap<(String, u16), u32>,
+    use_names: HashMap<String, u16>,
+    /// Current source file
+    pub source: u16,
     used_definitions: HashSet<u32>,
     used_attributes: HashSet<(u32, usize)>,
     /// This definition is referenced by a specific definition, the code is used to update this
@@ -618,6 +637,8 @@ impl Data {
         Data {
             definitions: Vec::new(),
             def_names: HashMap::new(),
+            use_names: HashMap::new(),
+            source: 0,
             used_definitions: HashSet::new(),
             used_attributes: HashSet::new(),
             referenced: HashMap::new(),
@@ -626,6 +647,32 @@ impl Data {
             possible: HashMap::new(),
             operators: HashMap::new(),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.use_names.clear();
+        self.source = 0;
+        self.use_names.insert("std".to_string(), 0);
+    }
+
+    #[must_use]
+    pub fn get_source(&self, name: &str) -> u16 {
+        if let Some(nr) = self.use_names.get(name) {
+            *nr
+        } else {
+            u16::MAX
+        }
+    }
+
+    #[must_use]
+    pub fn use_exists(&self, file: &str) -> bool {
+        self.use_names.contains_key(file)
+    }
+
+    pub fn use_add(&mut self, short: &str) {
+        let n = self.use_names.len() as u16;
+        self.use_names.insert(short.to_string(), n);
+        self.source = n;
     }
 
     /// Allow a new attribute on a definition with a specified type.
@@ -682,12 +729,15 @@ impl Data {
     pub fn add_def(&mut self, name: &str, position: &Position, def_type: DefType) -> u32 {
         let rec = self.definitions();
         assert!(
-            !self.def_names.contains_key(name),
+            !self
+                .def_names
+                .contains_key(&(name.to_string(), self.source)),
             "Dual definition of {name} at {position}"
         );
-        self.def_names.insert(name.to_string(), rec);
+        self.def_names.insert((name.to_string(), self.source), rec);
         let mut new_def = Definition {
             name: name.to_string(),
+            source: self.source,
             position: position.clone(),
             def_type,
             parent: u32::MAX,
@@ -819,7 +869,7 @@ impl Data {
     }
 
     /**
-    Write the default value of an attribute of a definition.
+    Write the default value of an attribute in a definition.
     # Panics
     When the value was already set before.
     */
@@ -833,7 +883,7 @@ impl Data {
     }
 
     /**
-    Write the check value of an attribute of a definition.
+    Write the check value of an attribute in a definition.
     # Panics
     When the value was already set before.
     */
@@ -882,7 +932,7 @@ impl Data {
                 diagnostic!(
                     lexer,
                     Level::Error,
-                    "Unknown type {:?} on {fn_name}",
+                    "Unknown type on fn '{fn_name}' argument '{}'",
                     arguments[0].name
                 );
             } else {
@@ -907,6 +957,10 @@ impl Data {
         }
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].typedef);
+            if self.attr(type_nr, fn_name) != usize::MAX {
+                diagnostic!(lexer, Level::Error, "Cannot redefine field {fn_name}",);
+                return u32::MAX;
+            }
             let a_nr = self.add_attribute(lexer, type_nr, fn_name, Type::Routine(d_nr));
             self.set_attr_mutable(type_nr, a_nr, false);
         }
@@ -938,7 +992,7 @@ impl Data {
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].typedef);
             let name = format!("_tp_{}_{fn_name}", self.def(type_nr).name);
-            self.def_nr(&name)
+            self.source_nr(self.definitions[type_nr as usize].source, &name)
         } else {
             self.def_nr(fn_name)
         }
@@ -1006,10 +1060,22 @@ impl Data {
         v_nr
     }
 
-    /// Get the corresponding number of a definition on name.
+    /// Get the corresponding number from a definition on name.
+    /// This will test both the own source file or the standard library data.
     #[must_use]
     pub fn def_nr(&self, name: &str) -> u32 {
-        let Some(nr) = self.def_names.get(name) else {
+        if let Some(nr) = self.def_names.get(&(name.to_string(), self.source)) {
+            *nr
+        } else if let Some(nr) = self.def_names.get(&(name.to_string(), 0)) {
+            *nr
+        } else {
+            u32::MAX
+        }
+    }
+
+    #[must_use]
+    pub fn source_nr(&self, source: u16, name: &str) -> u32 {
+        let Some(nr) = self.def_names.get(&(name.to_string(), source)) else {
             return u32::MAX;
         };
         *nr
@@ -1021,7 +1087,23 @@ impl Data {
     */
     #[must_use]
     pub fn def_name(&self, name: &str) -> &Definition {
-        let Some(nr) = self.def_names.get(name) else {
+        let nr = if let Some(nr) = self.def_names.get(&(name.to_string(), self.source)) {
+            *nr
+        } else if let Some(nr) = self.def_names.get(&(name.to_string(), 0)) {
+            *nr
+        } else {
+            panic!("Unknown definition {name}");
+        };
+        &self.definitions[nr as usize]
+    }
+
+    /** Get the definition by name from a given source file
+    # Panics
+    When an unknown definition is requested
+    */
+    #[must_use]
+    pub fn source_name(&self, source: u16, name: &str) -> &Definition {
+        let Some(nr) = self.def_names.get(&(name.to_string(), source)) else {
             panic!("Unknown definition {name}");
         };
         &self.definitions[*nr as usize]
@@ -1058,21 +1140,21 @@ impl Data {
     #[must_use]
     pub fn type_def_nr(&self, tp: &Type) -> u32 {
         match tp {
-            Type::Integer(_, _) => self.def_nr("integer"),
-            Type::Long => self.def_nr("long"),
-            Type::Boolean => self.def_nr("boolean"),
-            Type::Float => self.def_nr("float"),
-            Type::Text(_) => self.def_nr("text"),
-            Type::Single => self.def_nr("single"),
+            Type::Integer(_, _) => self.source_nr(0, "integer"),
+            Type::Long => self.source_nr(0, "long"),
+            Type::Boolean => self.source_nr(0, "boolean"),
+            Type::Float => self.source_nr(0, "float"),
+            Type::Text(_) => self.source_nr(0, "text"),
+            Type::Single => self.source_nr(0, "single"),
             Type::Routine(d_nr)
             | Type::Enum(d_nr)
             | Type::Reference(d_nr, _)
             | Type::Unknown(d_nr) => *d_nr,
-            Type::Vector(_, _) => self.def_nr("vector"),
+            Type::Vector(_, _) => self.source_nr(0, "vector"),
             Type::RefVar(tp) if matches!(**tp, Type::Reference(_, _)) => self.type_def_nr(tp),
-            Type::RefVar(_) | Type::Sorted(_, _, _) => self.def_nr("reference"),
-            Type::Index(_, _, _) => self.def_nr("index"),
-            Type::Hash(_, _, _) => self.def_nr("hash"),
+            Type::RefVar(_) | Type::Sorted(_, _, _) => self.source_nr(0, "reference"),
+            Type::Index(_, _, _) => self.source_nr(0, "index"),
+            Type::Hash(_, _, _) => self.source_nr(0, "hash"),
             _ => u32::MAX,
         }
     }
@@ -1083,11 +1165,11 @@ impl Data {
     /// When no element of a type exists
     pub fn type_elm(&self, tp: &Type) -> u32 {
         match tp {
-            Type::Integer(_, _) => self.def_nr("integer"),
-            Type::Long => self.def_nr("long"),
-            Type::Boolean => self.def_nr("boolean"),
-            Type::Float => self.def_nr("float"),
-            Type::Text(_) => self.def_nr("text"),
+            Type::Integer(_, _) => self.source_nr(0, "integer"),
+            Type::Long => self.source_nr(0, "long"),
+            Type::Boolean => self.source_nr(0, "boolean"),
+            Type::Float => self.source_nr(0, "float"),
+            Type::Text(_) => self.source_nr(0, "text"),
             Type::Routine(d_nr) | Type::Enum(d_nr) | Type::Reference(d_nr, _) => *d_nr,
             Type::Vector(tp, _) | Type::RefVar(tp) => {
                 if let Type::Reference(td, _) = **tp {
@@ -1097,7 +1179,7 @@ impl Data {
                 }
             }
             Type::Sorted(_, _, _) | Type::Index(_, _, _) | Type::Hash(_, _, _) => {
-                self.def_nr("reference")
+                self.source_nr(0, "reference")
             }
             _ => u32::MAX,
         }
