@@ -38,7 +38,6 @@ pub fn generate_lib(data: &Data) -> std::io::Result<()> {
 #![allow(clippy::cast_possible_truncation)]
 use crate::database::Stores;
 use crate::keys::{{DbRef, Str}};
-use crate::state;
 use crate::state::{{Call, State}};
 
 pub const FUNCTIONS: &[(&str, Call)] = &["

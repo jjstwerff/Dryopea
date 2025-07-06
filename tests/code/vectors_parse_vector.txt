@@ -5,12 +5,12 @@ pub fn test() {
         "Test failed {test_value} != 18120.00000001001"
     );
 }
-Type 14:vector<float>[4]:Vector(3)
+Type 15:vector<float>[4]:Vector(3)
 
 fn test() {#1 block
   __work_1:text = "";
   test_value:float = {#2 block
-    a:vector<float> = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 14i32);
+    a:vector<float> = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 15i32);
     OpAddFloat(OpGetFloat(OpGetVector(a, 8i32, 2i32), 0i32), OpGetFloat(OpGetVector(a, 8i32, 3i32), 0i32));
   }#2:float;
   if OpEqFloat(test_value, 18120.00000001001f64) null else OpPanic({#3 formatting string
@@ -25,17 +25,17 @@ byte-code for parse_vector:test() [1073]
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text in 1
    1[28]: ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text var=a[28]:vector<float> in 2
-  36[44]: CastVectorFromText(val: text, db_tp=14) -> vector
-  39[40]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[14] var=a[28]:vector<float> in 2
+  36[44]: CastVectorFromText(val: text, db_tp=15) -> vector
+  39[40]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[15] var=a[28]:vector<float> in 2
   42[52]: ConstInt(val=2) -> integer
   47[56]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float[8]:Base[3]
   50[52]: GetFloat(v1: ref(reference), fld=0) -> float
-  53[48]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[14] var=a[28]:vector<float> in 2
+  53[48]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[15] var=a[28]:vector<float> in 2
   56[60]: ConstInt(val=3) -> integer
   61[64]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float[8]:Base[3]
   64[60]: GetFloat(v1: ref(reference), fld=0) -> float
   67[56]: AddFloat(v1: float, v2: float) -> float
-  68[48]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[14] var=a[28]:vector<float> in 2
+  68[48]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[15] var=a[28]:vector<float> in 2
   71[60]: FreeRef(v1: ref(reference))
   72[48]: FreeStack(value=8, discard=20) type=float[8]:Base[3]
   76[36]: VarFloat(var[28]) -> float var=test_value[28]:float in 1

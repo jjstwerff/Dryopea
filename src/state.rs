@@ -14,6 +14,7 @@ use crate::tree;
 use crate::variables::size;
 use crate::vector;
 use crate::{external, hash};
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::{Error, Read, Write};
@@ -51,11 +52,6 @@ fn new_ref(data: &DbRef, pos: u32, arg: u16) -> DbRef {
         rec: pos,
         pos: u32::from(arg),
     }
-}
-
-#[must_use]
-pub fn get_character(val: &str) -> i32 {
-    val.chars().next().unwrap_or('\0') as i32
 }
 
 impl State {
@@ -212,6 +208,25 @@ impl State {
         self.string_mut(pos - size_ptr() as u16).push(c);
     }
 
+    #[inline]
+    pub fn text_compare(&mut self) {
+        let v2 = char::from_u32(*self.get_stack::<i32>() as u32).unwrap_or('\u{20}');
+        let v1 = *self.get_stack::<Str>();
+        let mut ch = v1.str().chars();
+        self.put_stack(if let Some(f_ch) = ch.next() {
+            let res = f_ch.cmp(&v2);
+            if res == Ordering::Less {
+                -1
+            } else {
+                i32::from(
+                    res == Ordering::Greater || (res == Ordering::Equal && ch.next().is_some()),
+                )
+            }
+        } else {
+            -1
+        });
+    }
+
     #[must_use]
     pub fn lines_text<'b>(val: &'b str, at: &mut i32) -> &'b str {
         if let Some(to) = val[*at as usize..].find('\n') {
@@ -248,6 +263,32 @@ impl State {
     #[allow(clippy::unused_self)]
     pub fn add_text(&mut self) {
         panic!("Should not be called directly");
+    }
+
+    #[inline]
+    pub fn get_character(&mut self) {
+        let mut from = *self.get_stack::<i32>();
+        let v1 = self.string();
+        if from < 0 {
+            from += v1.len as i32;
+        }
+        if from < 0 || from >= v1.len as i32 {
+            self.put_stack(Str {
+                ptr: v1.ptr,
+                len: 0,
+            });
+            return;
+        }
+        let mut b = v1.str().as_bytes()[from as usize];
+        while b & 0xC0 == 0x80 && from > 0 {
+            from -= 1;
+            b = v1.str().as_bytes()[from as usize];
+        }
+        self.put_stack(if let Some(ch) = v1.str()[from as usize..].chars().next() {
+            ch as i32
+        } else {
+            0
+        });
     }
 
     #[inline]
@@ -697,7 +738,7 @@ impl State {
                     finish = vector::ordered_find(&data, ex, all, &keys, &from).0 - u32::from(!ex);
                 }
             }
-            _ => panic!("Not implemented"),
+            _ => panic!("Not implemented on {on}"),
         }
         self.put_stack(start);
         self.put_stack(finish);
@@ -1617,7 +1658,7 @@ impl State {
         let code = self.code_pos;
         self.vars.insert(code, variable);
         match stack.function.tp(variable) {
-            Type::Integer(_, _) => stack.add_op("OpVarInt", self),
+            Type::Integer(_, _) | Type::Character => stack.add_op("OpVarInt", self),
             Type::RefVar(_) => stack.add_op("OpVarRef", self),
             Type::Enum(_) => stack.add_op("OpVarEnum", self),
             Type::Boolean => stack.add_op("OpVarBool", self),
@@ -1657,7 +1698,7 @@ impl State {
         self.code_add(var_pos);
         if let Type::RefVar(tp) = stack.function.tp(variable) {
             match &**tp {
-                Type::Integer(_, _) => stack.add_op("OpGetInt", self),
+                Type::Integer(_, _) | Type::Character => stack.add_op("OpGetInt", self),
                 Type::Long => stack.add_op("OpGetLong", self),
                 Type::Single => stack.add_op("OpGetSingle", self),
                 Type::Float => stack.add_op("OpGetFloat", self),
@@ -1806,7 +1847,7 @@ impl State {
             self.code_add(var_pos);
             self.generate(value, stack);
             match *tp {
-                Type::Integer(_, _) => stack.add_op("OpSetInt", self),
+                Type::Integer(_, _) | Type::Character => stack.add_op("OpSetInt", self),
                 Type::Long => stack.add_op("OpSetLong", self),
                 Type::Single => stack.add_op("OpSetSingle", self),
                 Type::Float => stack.add_op("OpSetFloat", self),
@@ -1821,7 +1862,7 @@ impl State {
         self.generate(value, stack);
         let var_pos = stack.position - stack.function.stack(var);
         match stack.function.tp(var) {
-            Type::Integer(_, _) => stack.add_op("OpPutInt", self),
+            Type::Integer(_, _) | Type::Character => stack.add_op("OpPutInt", self),
             Type::Enum(_) => stack.add_op("OpPutEnum", self),
             Type::Boolean => stack.add_op("OpPutBool", self),
             Type::Long => stack.add_op("OpPutLong", self),
@@ -2134,6 +2175,7 @@ impl State {
                     3 => self.dump_stack(&Type::Float, u32::MAX, data),
                     4 => self.dump_stack(&Type::Boolean, u32::MAX, data),
                     5 => self.dump_stack(&Type::Text(Vec::new()), u32::MAX, data),
+                    6 => self.dump_stack(&Type::Character, u32::MAX, data),
                     _ => self.dump_stack(&Type::Enum(u32::MAX), u32::from(*key), data),
                 };
                 attr.insert(idx + 3, format!("key{}={v}[{}]", idx + 1, self.stack_pos));
@@ -2208,6 +2250,7 @@ impl State {
                 3 => format!("{}", *self.get_stack::<f64>()), // float
                 4 => format!("{}", *self.get_stack::<u8>() == 1), // boolean
                 5 => format!("\"{}\"", self.string().str().replace('"', "\\\"")), // text
+                6 => format!("{}", *self.get_stack::<char>()), // character
                 _ => match &self.database.types[known as usize].parts {
                     Parts::Enum(_) => {
                         let val = *self.get_stack::<u8>();

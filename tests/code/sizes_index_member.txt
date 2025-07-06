@@ -8,7 +8,7 @@ pub fn test() {
         "Test failed {test_value} != 829"
     );
 }
-Type 14:S[29]:
+Type 15:S[29]:
     a:integer[4]
     b:long[8]
     c:integer[16]
@@ -16,17 +16,17 @@ Type 14:S[29]:
     #right_1:integer[24]
     #color_1:boolean[28]
 
-Type 15:Main[8]:
+Type 16:Main[8]:
     s:index<S[a,-c]>[4]
 
-Type 16:index<S[a,-c]>[4]:Index(14, [(0, true), (2, false)], 3) keys [tp:1 desc:false field:4, tp:1 desc:true field:16, ]
+Type 17:index<S[a,-c]>[4]:Index(15, [(0, true), (2, false)], 3) keys [tp:1 desc:false field:4, tp:1 desc:true field:16, ]
 
 fn test() {#1 block
   __ref_1:ref(Main) = null;
   __work_1:text = "";
   test_value:integer = {#2 block
     m:ref(Main)["__ref_1"] = {#3 object
-      OpDatabase(__ref_1, 15i32);
+      OpDatabase(__ref_1, 16i32);
       OpSetInt(__ref_1, 4i32, 0i32);
       __ref_1;
     }#3:ref(Main)["__ref_1"];
@@ -40,15 +40,15 @@ fn test() {#1 block
   }#4:text);
 }#1
 
-byte-code for index_member:test() [1073]
+byte-code for index_member:test() [1082]
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Main) in 1
    1[16]: Text() var=__work_1[16]:text in 1
-   2[40]: Database(var[4], db_tp=15) type=Main[8]:{s:index<S[a,-c]>[4]}[15] var=m[40]:ref(Main)["__ref_1"] in 2
-   7[40]: VarRef(var[4]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[15] var=__ref_1[4]:ref(Main) in 1
+   2[40]: Database(var[4], db_tp=16) type=Main[8]:{s:index<S[a,-c]>[4]}[16] var=m[40]:ref(Main)["__ref_1"] in 2
+   7[40]: VarRef(var[4]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[16] var=__ref_1[4]:ref(Main) in 1
   10[52]: ConstInt(val=0) -> integer
   15[56]: SetInt(v1: ref(reference), fld=4, val: integer)
-  18[40]: VarRef(var[4]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[15] var=__ref_1[4]:ref(Main) in 1
+  18[40]: VarRef(var[4]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[16] var=__ref_1[4]:ref(Main) in 1
   21[52]: ConstInt(val=29) -> integer
   26[56]: ConstInt(val=100) -> integer
   31[60]: ConstInt(val=8) -> integer
@@ -71,7 +71,7 @@ byte-code for index_member:test() [1073]
  104[44]: VarText(var[16]) -> text var=__work_1[16]:text in 1
  107[60]: Panic(message: text)
  108[44]: FreeText(var[16])
- 111[44]: VarRef(var[4]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[15] var=__ref_1[4]:ref(Main) in 1
+ 111[44]: VarRef(var[4]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[16] var=__ref_1[4]:ref(Main) in 1
  114[56]: FreeRef(v1: ref(reference))
  115[44]: Return(ret=0, value=0, discard=44)
 

@@ -1,55 +1,50 @@
 pub fn test() {
     test_value = {a="12345"; a[2]};
     assert(
-        test_value == "3",
-        "Test failed {test_value} != \"3\""
+        test_value == 51,
+        "Test failed {test_value} != 51"
     );
 }
 fn test() {#1 block
   __work_1:text = "";
-  a:text = "";
-  test_value:text["a"] = {#2 block
+  test_value:character = {#2 block
     a:text = "12345";
-    OpGetTextSub(a, 2i32, -2147483648i32);
-  }#2:text["a"];
-  if OpEqText(test_value, "3") null else OpPanic({#3 formatting string
+    OpGetCharacter(a, 2i32);
+  }#2:character;
+  if OpEqInt(OpConvIntFromCharacter(test_value), 51i32) null else OpPanic({#3 formatting string
     __work_1:text = "Test failed ";
-    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != "3"");
+    OpAppendCharacter(__work_1, test_value);
+    OpAppendText(__work_1, " != 51");
     __work_1;
   }#3:text);
 }#1
 
-byte-code for str_index:test() [1073]
+byte-code for str_index:test() [1082]
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: Text() var=a[28]:text in 1
-   2[52]: Text() var=test_value[52]:text["a"] in 1
-   3[76]: ClearText(var[28]) var=a[28]:text in 1
-   6[76]: ConstText(_value="12345") -> text
-  13[92]: AppendText(var[28], v1: text)
-  16[76]: VarText(var[28]) -> text var=a[28]:text in 1
-  19[92]: ConstInt(val=2) -> integer
-  24[96]: ConstInt(val=-2147483648) -> integer
-  29[100]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
-  30[92]: AppendText(var[52], v1: text)
-  33[76]: VarText(var[52]) -> text var=test_value[52]:text["a"] in 1
-  36[92]: ConstText(_value="3") -> text
-  39[108]: EqText(v1: text, v2: text) -> boolean
-  40[77]: GotoFalseWord(jump=46, if_false: boolean)
-  43[76]: GotoWord(jump=95)
-  46[76]: ClearText(var[4]) var=__work_1[4]:text in 1
-  49[76]: ConstText(_value="Test failed ") -> text
-  63[92]: AppendText(var[4], v1: text)
-  66[76]: VarText(var[52]) -> text var=test_value[52]:text["a"] in 1
-  69[92]: ConstInt(val=0) -> integer
-  74[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-  79[76]: ConstText(_value=" != "3"") -> text
-  88[92]: AppendText(var[4], v1: text)
-  91[76]: VarText(var[4]) -> text var=__work_1[4]:text in 1
-  94[92]: Panic(message: text)
-  95[76]: FreeText(var[52])
-  98[76]: FreeText(var[28])
- 101[76]: FreeText(var[4])
- 104[76]: Return(ret=0, value=0, discard=76)
+   1[28]: Text() var=a[28]:text in 2
+   2[52]: ConstText(_value="12345") -> text
+   9[68]: AppendText(var[28], v1: text)
+  12[52]: VarText(var[28]) -> text var=a[28]:text in 2
+  15[68]: ConstInt(val=2) -> integer
+  20[72]: GetCharacter(v1: text, v2: integer) -> character
+  21[56]: FreeText(var[28])
+  24[56]: FreeStack(value=4, discard=28) type=character[4]:Base[6]
+  28[32]: VarInt(var[28]) -> integer var=test_value[28]:character in 1
+  31[36]: ConvIntFromCharacter(v1: character) -> integer
+  32[36]: ConstInt(val=51) -> integer
+  37[40]: EqInt(v1: integer, v2: integer) -> boolean
+  38[33]: GotoFalseWord(jump=44, if_false: boolean)
+  41[32]: GotoWord(jump=85)
+  44[32]: ClearText(var[4]) var=__work_1[4]:text in 1
+  47[32]: ConstText(_value="Test failed ") -> text
+  61[48]: AppendText(var[4], v1: text)
+  64[32]: VarInt(var[28]) -> integer var=test_value[28]:character in 1
+  67[36]: AppendCharacter(var[4], v1: character)
+  70[32]: ConstText(_value=" != 51") -> text
+  78[48]: AppendText(var[4], v1: text)
+  81[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
+  84[48]: Panic(message: text)
+  85[32]: FreeText(var[4])
+  88[32]: Return(ret=0, value=0, discard=32)
 

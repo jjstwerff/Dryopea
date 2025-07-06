@@ -3,11 +3,9 @@
 #![allow(clippy::cast_possible_truncation)]
 use crate::database::Stores;
 use crate::keys::{DbRef, Str};
-use crate::state;
 use crate::state::{Call, State};
 
 pub const FUNCTIONS: &[(&str, Call)] = &[
-    ("_tp_text_character", _tp_text_character),
     ("assert", assert),
     ("panic", panic),
     ("env_variables", env_variables),
@@ -40,12 +38,6 @@ pub fn init(state: &mut State) {
     for (name, implement) in FUNCTIONS {
         state.static_fn(name, *implement);
     }
-}
-
-fn _tp_text_character(stores: &mut Stores, stack: &mut DbRef) {
-    let v_both = *stores.get::<Str>(stack);
-    let new_value = { state::get_character(v_both.str()) };
-    stores.put(stack, new_value);
 }
 
 fn assert(stores: &mut Stores, stack: &mut DbRef) {

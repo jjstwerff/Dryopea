@@ -126,6 +126,7 @@ pub enum Type {
     Long,
     Float,
     Single,
+    Character,
     /// A text with the linked variables.
     Text(Vec<u16>),
     /// Description of the possible keys on a structure (hash, index, spacial, sorted)
@@ -1146,6 +1147,7 @@ impl Data {
             Type::Float => self.source_nr(0, "float"),
             Type::Text(_) => self.source_nr(0, "text"),
             Type::Single => self.source_nr(0, "single"),
+            Type::Character => self.source_nr(0, "character"),
             Type::Routine(d_nr)
             | Type::Enum(d_nr)
             | Type::Reference(d_nr, _)
@@ -1211,7 +1213,7 @@ impl Data {
             }
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 255 => "i8",
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 65536 => "i16",
-            Type::Integer(_, _) => "i32",
+            Type::Integer(_, _) | Type::Character => "i32",
             Type::Enum(_) => "u8",
             Type::Text(_) if context == &Context::Variable => "String",
             Type::Text(_) => "Str",

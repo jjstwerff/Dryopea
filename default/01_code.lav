@@ -7,6 +7,7 @@ pub type long;
 pub type single;
 pub type float;
 pub type text;
+pub type character;
 
 pub type u8=integer limit(0, 255);
 pub type i8=integer limit(-128, 127);
@@ -503,6 +504,9 @@ fn OpAddText(v1: text, v2: text) -> text;
 fn OpText();
 fn OpAppendText(pos: const u16, v1: text);
 fn OpGetTextSub(v1: text, from: integer, till: integer) -> text[v1];
+fn OpGetCharacter(v1: text, v2: integer) -> character;
+fn OpConvBoolFromCharacter(v1: character) -> boolean;
+#rust "external::op_conv_bool_from_int(@v1)"
 fn OpClearText(pos: const u16);
 fn OpFreeText(pos: const u16);
 fn OpEqText(v1: text, v2: text) -> boolean;
@@ -519,9 +523,12 @@ fn OpGeText(v1: text, v2: text) -> boolean;
 #rust "@v1 >= @v2"
 fn OpFormatText(pos: const u16, val: text, width: integer, dir: const i8, token: const u8);
 
-fn character(both: text) -> integer;
-#rust "state::get_character(@both)"
-fn OpAppendCharacter(pos: const u16, character: integer);
+fn OpAppendCharacter(pos: const u16, v1: character);
+fn OpTextCompare(v1: text, v2: character) -> i32;
+fn OpCastCharacterFromInt(v1: i32) -> character;
+#rust "@v1"
+fn OpConvIntFromCharacter(v1: character) -> i32;
+#rust "@v1"
 
 type enumerate;
 fn OpVarEnum(pos: const u16) -> enumerate;

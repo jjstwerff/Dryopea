@@ -6,7 +6,6 @@ use crate::keys::{DbRef, Str};
 use crate::state::State;
 use crate::vector;
 
-// Current number of operators: 246 we cannot exceed 256 when the byte-code will break.
 pub const OPERATORS: &[fn(&mut State)] = &[
     goto,
     goto_word,
@@ -164,6 +163,8 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     text,
     append_text,
     get_text_sub,
+    get_character,
+    conv_bool_from_character,
     clear_text,
     free_text,
     eq_text,
@@ -174,6 +175,9 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     ge_text,
     format_text,
     append_character,
+    text_compare,
+    cast_character_from_int,
+    conv_int_from_character,
     var_enum,
     const_enum,
     put_enum,
@@ -1235,6 +1239,16 @@ fn get_text_sub(s: &mut State) {
     s.get_text_sub();
 }
 
+fn get_character(s: &mut State) {
+    s.get_character();
+}
+
+fn conv_bool_from_character(s: &mut State) {
+    let v_v1 = *s.get_stack::<i32>();
+    let new_value = external::op_conv_bool_from_int(v_v1);
+    s.put_stack(new_value);
+}
+
 fn clear_text(s: &mut State) {
     s.clear_text();
 }
@@ -1291,6 +1305,22 @@ fn format_text(s: &mut State) {
 
 fn append_character(s: &mut State) {
     s.append_character();
+}
+
+fn text_compare(s: &mut State) {
+    s.text_compare();
+}
+
+fn cast_character_from_int(s: &mut State) {
+    let v_v1 = *s.get_stack::<i32>();
+    let new_value = v_v1;
+    s.put_stack(new_value);
+}
+
+fn conv_int_from_character(s: &mut State) {
+    let v_v1 = *s.get_stack::<i32>();
+    let new_value = v_v1;
+    s.put_stack(new_value);
 }
 
 fn var_enum(s: &mut State) {

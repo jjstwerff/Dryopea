@@ -11,9 +11,9 @@ for c in "123😊🙃😋8" {
         "Test failed {test_value} != \"[\"1\",\"2\",\"3\",\"😊\",\"🙃\",\"😋\",\"8\"] indexes:[1,2,3,7,11,15,16]\""
     );
 }
-Type 14:vector<integer>[4]:Vector(0)
+Type 15:vector<integer>[4]:Vector(0)
 
-Type 15:main_vector<integer>[8]:
+Type 16:main_vector<integer>[8]:
     vector:vector<integer>[4]
 
 fn test() {#1 block
@@ -24,13 +24,13 @@ fn test() {#1 block
   __work_1:text = "";
   test_value:text = {#2 block
     a:vector<text["c"]>["__ref_1"] = {#3 vector
-      OpDatabase(__ref_1, 13i32);
+      OpDatabase(__ref_1, 14i32);
       _vec_1:vector<text["c"]>["__ref_1"] = OpGetField(__ref_1, 4i32, 65535i32);
       OpSetInt(__ref_1, 4i32, 0i32);
       _vec_1;
     }#3:vector<text["c"]>["__ref_1"];
     b:vector<integer>["__ref_2"] = {#4 vector
-      OpDatabase(__ref_2, 15i32);
+      OpDatabase(__ref_2, 16i32);
       _vec_2:vector<integer>["__ref_2"] = OpGetField(__ref_2, 4i32, 65535i32);
       OpSetInt(__ref_2, 4i32, 0i32);
       _vec_2;
@@ -46,23 +46,23 @@ fn test() {#1 block
         if OpNot(OpConvBoolFromText(c)) break(0) else null;
         {#8 block
           {#9 vector
-            _elm_3:ref(boolean)["a"] = OpNewRecord(a, 6i32, 65535i32);
+            _elm_3:ref(boolean)["a"] = OpNewRecord(a, 7i32, 65535i32);
             OpSetText(_elm_3, 0i32, c);
-            OpFinishRecord(a, _elm_3, 6i32, 65535i32);
+            OpFinishRecord(a, _elm_3, 7i32, 65535i32);
           }#9;
           {#10 vector
-            _elm_4:ref(boolean)["b"] = OpNewRecord(b, 14i32, 65535i32);
+            _elm_4:ref(boolean)["b"] = OpNewRecord(b, 15i32, 65535i32);
             OpSetInt(_elm_4, 0i32, c#index);
-            OpFinishRecord(b, _elm_4, 14i32, 65535i32);
+            OpFinishRecord(b, _elm_4, 15i32, 65535i32);
           }#10;
         }#8;
       }#6;
     }#5;
     {#11 formatting string
       __work_2:text = "";
-      OpFormatDatabase(__work_2, a, 6i32, false);
+      OpFormatDatabase(__work_2, a, 7i32, false);
       OpAppendText(__work_2, " indexes:");
-      OpFormatDatabase(__work_2, b, 14i32, false);
+      OpFormatDatabase(__work_2, b, 15i32, false);
       __work_2;
     }#11:text;
   }#2:text;
@@ -74,7 +74,7 @@ fn test() {#1 block
   }#12:text);
 }#1
 
-byte-code for iter:test() [1073]
+byte-code for iter:test() [1082]
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:ref(main_vector<integer>) in 1
    1[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(main_vector<text>) in 1
@@ -82,22 +82,22 @@ byte-code for iter:test() [1073]
    3[52]: Text() var=__work_2[52]:text in 1
    4[76]: Text() var=__work_1[76]:text in 1
    5[100]: Text() var=test_value[100]:text in 1
-   6[124]: Database(var[16], db_tp=13) type=main_vector<text>[8]:{vector:vector<text>[4]}[13] var=a[124]:vector<text["c"]>["__ref_1"] in 2
-  11[124]: VarRef(var[16]) -> ref(reference) type=main_vector<text>[8]:{vector:vector<text>[4]}[13] var=__ref_1[16]:ref(main_vector<text>) in 1
+   6[124]: Database(var[16], db_tp=14) type=main_vector<text>[8]:{vector:vector<text>[4]}[14] var=a[124]:vector<text["c"]>["__ref_1"] in 2
+  11[124]: VarRef(var[16]) -> ref(reference) type=main_vector<text>[8]:{vector:vector<text>[4]}[14] var=__ref_1[16]:ref(main_vector<text>) in 1
   14[136]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=Unknown type(65535)[65535]
-  17[136]: VarRef(var[16]) -> ref(reference) type=main_vector<text>[8]:{vector:vector<text>[4]}[13] var=__ref_1[16]:ref(main_vector<text>) in 1
+  17[136]: VarRef(var[16]) -> ref(reference) type=main_vector<text>[8]:{vector:vector<text>[4]}[14] var=__ref_1[16]:ref(main_vector<text>) in 1
   20[148]: ConstInt(val=0) -> integer
   25[152]: SetInt(v1: ref(reference), fld=4, val: integer)
-  28[136]: VarVector(var[124]) -> vector type=vector<text>[4]:Vector(5)[6] var=_vec_1[124]:vector<text["c"]>["__ref_1"] in 3
-  31[148]: FreeStack(value=12, discard=24) type=vector<text>[4]:Vector(5)[6]
-  35[136]: Database(var[4], db_tp=15) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15] var=b[136]:vector<integer>["__ref_2"] in 2
-  40[136]: VarRef(var[4]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15] var=__ref_2[4]:ref(main_vector<integer>) in 1
+  28[136]: VarVector(var[124]) -> vector type=vector<text>[4]:Vector(5)[7] var=_vec_1[124]:vector<text["c"]>["__ref_1"] in 3
+  31[148]: FreeStack(value=12, discard=24) type=vector<text>[4]:Vector(5)[7]
+  35[136]: Database(var[4], db_tp=16) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[16] var=b[136]:vector<integer>["__ref_2"] in 2
+  40[136]: VarRef(var[4]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[16] var=__ref_2[4]:ref(main_vector<integer>) in 1
   43[148]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=Unknown type(65535)[65535]
-  46[148]: VarRef(var[4]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15] var=__ref_2[4]:ref(main_vector<integer>) in 1
+  46[148]: VarRef(var[4]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[16] var=__ref_2[4]:ref(main_vector<integer>) in 1
   49[160]: ConstInt(val=0) -> integer
   54[164]: SetInt(v1: ref(reference), fld=4, val: integer)
-  57[148]: VarVector(var[136]) -> vector type=vector<integer>[4]:Vector(0)[14] var=_vec_2[136]:vector<integer>["__ref_2"] in 4
-  60[160]: FreeStack(value=12, discard=24) type=vector<text>[4]:Vector(5)[6]
+  57[148]: VarVector(var[136]) -> vector type=vector<integer>[4]:Vector(0)[15] var=_vec_2[136]:vector<integer>["__ref_2"] in 4
+  60[160]: FreeStack(value=12, discard=24) type=vector<text>[4]:Vector(5)[7]
   64[148]: ConstInt(val=0) -> integer var=c#index[148]:integer in 5
   69[152]: Text() var=c[152]:text in 6
   70[176]: ClearText(var[76]) var=__work_1[76]:text in 1
@@ -120,23 +120,23 @@ byte-code for iter:test() [1073]
  128[176]: FreeText(var[152])
  131[176]: FreeStack(value=0, discard=24)
  135[152]: GotoWord(jump=212)
- 138[176]: VarVector(var[124]) -> vector type=vector<text>[4]:Vector(5)[6] var=a[124]:vector<text["c"]>["__ref_1"] in 2
- 141[188]: NewRecord(data: ref(reference), parent_tp=6, fld=65535) -> ref(reference)
+ 138[176]: VarVector(var[124]) -> vector type=vector<text>[4]:Vector(5)[7] var=a[124]:vector<text["c"]>["__ref_1"] in 2
+ 141[188]: NewRecord(data: ref(reference), parent_tp=7, fld=65535) -> ref(reference)
  146[188]: VarRef(var[176]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_3[176]:ref(boolean)["a"] in 9
  149[200]: VarText(var[152]) -> text var=c[152]:text in 6
  152[216]: SetText(v1: ref(reference), fld=0, val: text)
- 155[188]: VarVector(var[124]) -> vector type=vector<text>[4]:Vector(5)[6] var=a[124]:vector<text["c"]>["__ref_1"] in 2
+ 155[188]: VarVector(var[124]) -> vector type=vector<text>[4]:Vector(5)[7] var=a[124]:vector<text["c"]>["__ref_1"] in 2
  158[200]: VarRef(var[176]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_3[176]:ref(boolean)["a"] in 9
- 161[212]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=6, fld=65535)
+ 161[212]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=7, fld=65535)
  166[188]: FreeStack(value=0, discard=12)
- 170[176]: VarVector(var[136]) -> vector type=vector<integer>[4]:Vector(0)[14] var=b[136]:vector<integer>["__ref_2"] in 2
- 173[188]: NewRecord(data: ref(reference), parent_tp=14, fld=65535) -> ref(reference)
+ 170[176]: VarVector(var[136]) -> vector type=vector<integer>[4]:Vector(0)[15] var=b[136]:vector<integer>["__ref_2"] in 2
+ 173[188]: NewRecord(data: ref(reference), parent_tp=15, fld=65535) -> ref(reference)
  178[188]: VarRef(var[176]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_4[176]:ref(boolean)["b"] in 10
  181[200]: VarInt(var[148]) -> integer var=c#index[148]:integer in 5
  184[204]: SetInt(v1: ref(reference), fld=0, val: integer)
- 187[188]: VarVector(var[136]) -> vector type=vector<integer>[4]:Vector(0)[14] var=b[136]:vector<integer>["__ref_2"] in 2
+ 187[188]: VarVector(var[136]) -> vector type=vector<integer>[4]:Vector(0)[15] var=b[136]:vector<integer>["__ref_2"] in 2
  190[200]: VarRef(var[176]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_4[176]:ref(boolean)["b"] in 10
- 193[212]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=14, fld=65535)
+ 193[212]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=15, fld=65535)
  198[188]: FreeStack(value=0, discard=12)
  202[176]: FreeText(var[152])
  205[176]: FreeStack(value=0, discard=24)
@@ -145,12 +145,12 @@ byte-code for iter:test() [1073]
  216[148]: ClearText(var[52]) var=__work_2[52]:text in 1
  219[148]: ConstText(_value="") -> text
  221[164]: AppendText(var[52], v1: text)
- 224[148]: VarVector(var[124]) -> vector type=vector<text>[4]:Vector(5)[6] var=a[124]:vector<text["c"]>["__ref_1"] in 2
- 227[160]: FormatDatabase(var[52], val: ref(reference), db_tp=6, pretty=false)
+ 224[148]: VarVector(var[124]) -> vector type=vector<text>[4]:Vector(5)[7] var=a[124]:vector<text["c"]>["__ref_1"] in 2
+ 227[160]: FormatDatabase(var[52], val: ref(reference), db_tp=7, pretty=false)
  233[148]: ConstText(_value=" indexes:") -> text
  244[164]: AppendText(var[52], v1: text)
- 247[148]: VarVector(var[136]) -> vector type=vector<integer>[4]:Vector(0)[14] var=b[136]:vector<integer>["__ref_2"] in 2
- 250[160]: FormatDatabase(var[52], val: ref(reference), db_tp=14, pretty=false)
+ 247[148]: VarVector(var[136]) -> vector type=vector<integer>[4]:Vector(0)[15] var=b[136]:vector<integer>["__ref_2"] in 2
+ 250[160]: FormatDatabase(var[52], val: ref(reference), db_tp=15, pretty=false)
  256[148]: VarText(var[52]) -> text var=__work_2[52]:text in 1
  259[164]: FreeStack(value=16, discard=40) type=text[4]:Base[5]
  263[140]: AppendText(var[100], v1: text)
@@ -173,9 +173,9 @@ byte-code for iter:test() [1073]
  459[124]: FreeText(var[76])
  462[124]: FreeText(var[52])
  465[124]: FreeText(var[28])
- 468[124]: VarRef(var[16]) -> ref(reference) type=main_vector<text>[8]:{vector:vector<text>[4]}[13] var=__ref_1[16]:ref(main_vector<text>) in 1
+ 468[124]: VarRef(var[16]) -> ref(reference) type=main_vector<text>[8]:{vector:vector<text>[4]}[14] var=__ref_1[16]:ref(main_vector<text>) in 1
  471[136]: FreeRef(v1: ref(reference))
- 472[124]: VarRef(var[4]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[15] var=__ref_2[4]:ref(main_vector<integer>) in 1
+ 472[124]: VarRef(var[4]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[16] var=__ref_2[4]:ref(main_vector<integer>) in 1
  475[136]: FreeRef(v1: ref(reference))
  476[124]: Return(ret=0, value=0, discard=124)
 

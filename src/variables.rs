@@ -1001,7 +1001,7 @@ pub fn size(tp: &Type, context: &Context) -> u16 {
             2
         }
         Type::Boolean | Type::Enum(_) => 1,
-        Type::Integer(_, _) | Type::Single | Type::Function(_, _) => 4,
+        Type::Integer(_, _) | Type::Single | Type::Function(_, _) | Type::Character => 4,
         Type::Long | Type::Float => 8,
         Type::Text(_) if context == &Context::Variable => size_of::<String>() as u16,
         Type::Text(_) => size_of::<&str>() as u16,

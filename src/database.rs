@@ -320,6 +320,7 @@ impl Stores {
         result.base_type("float", 8); // 3
         result.base_type("boolean", 1); // 4
         result.base_type("text", 4); // 5
+        result.base_type("character", 4); // 6
         result
     }
 
@@ -1571,9 +1572,9 @@ impl Stores {
         On inconsistent database definitions.
     */
     pub fn set_default_value(&mut self, tp: u16, rec: &DbRef) {
-        if tp < 6 {
+        if tp <= 6 {
             match tp {
-                0 => {
+                0 | 6 => {
                     self.store_mut(rec).set_int(rec.rec, rec.pos, i32::MIN);
                 }
                 1 => {

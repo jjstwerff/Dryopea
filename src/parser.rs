@@ -10,7 +10,7 @@
 use crate::data::{Argument, Data, DefType, I32, Type, Value, to_default, v_if, v_set};
 use crate::database::{Parts, Stores};
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
-use crate::lexer::{LexItem, LexResult, Lexer, Mode};
+use crate::lexer::{LexItem, LexResult, Lexer, Link, Mode};
 use crate::typedef;
 use crate::variables::Function;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -643,7 +643,8 @@ impl Parser {
             | Type::Index(_, _, _)
             | Type::Spacial(_, _, _)
             | Type::Reference(_, _)
-            | Type::Sorted(_, _, _) => self.cl("OpSetInt", &[ref_code, pos_val, val_code]),
+            | Type::Sorted(_, _, _)
+            | Type::Character => self.cl("OpSetInt", &[ref_code, pos_val, val_code]),
             Type::Enum(_) => self.cl("OpSetEnum", &[ref_code, pos_val, val_code]),
             Type::Boolean => {
                 let v = v_if(val_code, Value::Int(1), Value::Int(0));
@@ -1456,102 +1457,10 @@ impl Parser {
             return Some(Type::Unknown(tp_nr));
         }
         let link = self.lexer.link();
-        if self.lexer.has_token("<") {
-            if let Some(sub_name) = self.lexer.has_identifier() {
-                if let Some(tp) = self.parse_type(on_d, &sub_name, false) {
-                    let sub_nr = if let Type::Unknown(d) = tp {
-                        d
-                    } else {
-                        self.data.type_def_nr(&tp)
-                    };
-                    let mut fields = Vec::new();
-                    return Some(match type_name {
-                        "index" => {
-                            self.parse_fields(true, sub_nr, &mut fields);
-                            let mut f = Vec::new();
-                            for fld in fields {
-                                if fld < 0 {
-                                    f.push(((-1 - fld) as u16, false));
-                                } else {
-                                    f.push((fld as u16, true));
-                                }
-                            }
-                            Type::Index(self.data.type_def_nr(&tp), f, Vec::new())
-                        }
-                        "hash" => {
-                            self.parse_fields(false, sub_nr, &mut fields);
-                            self.data.set_referenced(sub_nr, on_d, Value::Null);
-                            let mut f = Vec::new();
-                            for fld in fields {
-                                f.push(fld as u16);
-                            }
-                            Type::Hash(sub_nr, f, Vec::new())
-                        }
-                        "vector" => {
-                            self.lexer.token(">");
-                            Type::Vector(Box::new(tp), Vec::new())
-                        }
-                        "sorted" => {
-                            self.parse_fields(true, sub_nr, &mut fields);
-                            let mut f = Vec::new();
-                            for fld in fields {
-                                if fld < 0 {
-                                    f.push(((-1 - fld) as u16, false));
-                                } else {
-                                    f.push((fld as u16, true));
-                                }
-                            }
-                            Type::Sorted(sub_nr, f, Vec::new())
-                        }
-                        /*
-                        "spacial" => {
-                            self.parse_fields(false, sub_nr, &mut fields);
-                            self.data.set_referenced(sub_nr, on_d, Value::Null);
-                            let mut f = Vec::new();
-                            for fld in fields {
-                                f.push(fld as u16);
-                            }
-                            Type::Spacial(sub_nr, f)
-                        }*/
-                        "reference" => {
-                            self.lexer.token(">");
-                            self.data.set_referenced(sub_nr, on_d, Value::Null);
-                            Type::Reference(sub_nr, Vec::new())
-                        }
-                        "iterator" => {
-                            self.lexer.token(",");
-                            let mut it_tp = Type::Null;
-                            if let Some(iter) = self.lexer.has_identifier() {
-                                if let Some(it) = self.parse_type(on_d, &iter, false) {
-                                    self.data.set_referenced(sub_nr, on_d, Value::Null);
-                                    it_tp = it;
-                                } else {
-                                    diagnostic!(
-                                        self.lexer,
-                                        Level::Error,
-                                        "Expect an iterator type"
-                                    );
-                                }
-                            } else {
-                                diagnostic!(self.lexer, Level::Error, "Expect an iterator type");
-                            }
-                            self.lexer.token(">");
-                            Type::Iterator(Box::new(tp), Box::new(it_tp))
-                        }
-                        _ => {
-                            diagnostic!(
-                                self.lexer,
-                                Level::Error,
-                                "Sub-type only allowed on structures"
-                            );
-                            Type::Unknown(0)
-                        }
-                    });
-                }
-                assert!(self.first_pass, "Incorrect handling of unknown types");
-            } else {
-                self.lexer.revert(link);
-            }
+        if self.lexer.has_token("<")
+            && let Some(value) = self.sub_type(on_d, type_name, link)
+        {
+            return Some(value);
         }
         let mut dep = Vec::new();
         self.parse_depended(returned, &mut dep);
@@ -1574,6 +1483,101 @@ impl Parser {
         } else {
             None
         }
+    }
+
+    fn sub_type(&mut self, on_d: u32, type_name: &str, link: Link) -> Option<Type> {
+        if let Some(sub_name) = self.lexer.has_identifier() {
+            if let Some(tp) = self.parse_type(on_d, &sub_name, false) {
+                let sub_nr = if let Type::Unknown(d) = tp {
+                    d
+                } else {
+                    self.data.type_def_nr(&tp)
+                };
+                let mut fields = Vec::new();
+                return Some(match type_name {
+                    "index" => {
+                        self.parse_fields(true, sub_nr, &mut fields);
+                        let mut f = Vec::new();
+                        for fld in fields {
+                            if fld < 0 {
+                                f.push(((-1 - fld) as u16, false));
+                            } else {
+                                f.push((fld as u16, true));
+                            }
+                        }
+                        Type::Index(self.data.type_def_nr(&tp), f, Vec::new())
+                    }
+                    "hash" => {
+                        self.parse_fields(false, sub_nr, &mut fields);
+                        self.data.set_referenced(sub_nr, on_d, Value::Null);
+                        let mut f = Vec::new();
+                        for fld in fields {
+                            f.push(fld as u16);
+                        }
+                        Type::Hash(sub_nr, f, Vec::new())
+                    }
+                    "vector" => {
+                        self.lexer.token(">");
+                        Type::Vector(Box::new(tp), Vec::new())
+                    }
+                    "sorted" => {
+                        self.parse_fields(true, sub_nr, &mut fields);
+                        let mut f = Vec::new();
+                        for fld in fields {
+                            if fld < 0 {
+                                f.push(((-1 - fld) as u16, false));
+                            } else {
+                                f.push((fld as u16, true));
+                            }
+                        }
+                        Type::Sorted(sub_nr, f, Vec::new())
+                    }
+                    /*
+                    "spacial" => {
+                        self.parse_fields(false, sub_nr, &mut fields);
+                        self.data.set_referenced(sub_nr, on_d, Value::Null);
+                        let mut f = Vec::new();
+                        for fld in fields {
+                            f.push(fld as u16);
+                        }
+                        Type::Spacial(sub_nr, f)
+                    }*/
+                    "reference" => {
+                        self.lexer.token(">");
+                        self.data.set_referenced(sub_nr, on_d, Value::Null);
+                        Type::Reference(sub_nr, Vec::new())
+                    }
+                    "iterator" => {
+                        self.lexer.token(",");
+                        let mut it_tp = Type::Null;
+                        if let Some(iter) = self.lexer.has_identifier() {
+                            if let Some(it) = self.parse_type(on_d, &iter, false) {
+                                self.data.set_referenced(sub_nr, on_d, Value::Null);
+                                it_tp = it;
+                            } else {
+                                diagnostic!(self.lexer, Level::Error, "Expect an iterator type");
+                            }
+                        } else {
+                            diagnostic!(self.lexer, Level::Error, "Expect an iterator type");
+                        }
+                        self.lexer.token(">");
+                        Type::Iterator(Box::new(tp), Box::new(it_tp))
+                    }
+                    _ => {
+                        diagnostic!(
+                            self.lexer,
+                            Level::Error,
+                            "Sub-type only allowed on structures"
+                        );
+                        Type::Unknown(0)
+                    }
+                });
+            }
+            assert!(self.first_pass, "Incorrect handling of unknown types");
+        } else {
+            self.lexer.revert(link);
+        }
+        None
     }
 
     fn parse_depended(&mut self, returned: bool, dep: &mut Vec<u16>) {
@@ -2430,6 +2434,9 @@ impl Parser {
         } else if let Some(s) = self.lexer.has_cstring() {
             self.parse_string(val, &s);
             Type::Text(Vec::new())
+        } else if let Some(nr) = self.lexer.has_char() {
+            *val = Value::Int(nr as i32);
+            Type::Character
         } else if self.lexer.has_token("true") {
             *val = Value::Boolean(true);
             Type::Boolean
@@ -2966,13 +2973,17 @@ impl Parser {
             }
         } else if matches!(*t, Type::Text(_)) {
             let index_t = self.expression(&mut p);
-            self.parse_text_index(code, &mut p, &index_t);
+            if self.parse_text_index(code, &mut p, &index_t) == Type::Character {
+                elm_type = Type::Character;
+            }
         } else if let Type::RefVar(tp) = &t {
             if matches!(**tp, Type::Text(_)) {
                 let index_t = self.expression(&mut p);
                 *code = self.cl("OpVarRef", &[code.clone()]);
                 *code = self.cl("OpGetRefText", &[code.clone(), Value::Int(0)]);
-                self.parse_text_index(code, &mut p, &index_t);
+                if self.parse_text_index(code, &mut p, &index_t) == Type::Character {
+                    elm_type = Type::Character;
+                }
             } else {
                 panic!("Unknown type to index");
             }
@@ -3038,7 +3049,7 @@ impl Parser {
         None
     }
 
-    fn parse_text_index(&mut self, code: &mut Value, p: &mut Value, index_t: &Type) {
+    fn parse_text_index(&mut self, code: &mut Value, p: &mut Value, index_t: &Type) -> Type {
         if !self.convert(p, index_t, &I32) {
             diagnostic!(self.lexer, Level::Error, "Invalid index on string");
         }
@@ -3060,11 +3071,10 @@ impl Parser {
                 }
                 *code = self.cl("OpGetTextSub", &[code.clone(), p.clone(), other]);
             }
+            Type::Text(Vec::new())
         } else {
-            *code = self.cl(
-                "OpGetTextSub",
-                &[code.clone(), p.clone(), Value::Int(i32::MIN)],
-            );
+            *code = self.cl("OpGetCharacter", &[code.clone(), p.clone()]);
+            Type::Character
         }
     }
 
@@ -3753,6 +3763,9 @@ impl Parser {
                     ],
                 ));
             }
+            Type::Character => {
+                list.push(self.cl("OpAppendCharacter", &[var, format.clone()]));
+            }
             Type::Float => {
                 let fmt = format.clone();
                 let mut a_width = state.width;
@@ -4187,7 +4200,7 @@ impl Parser {
 
     pub fn null(&mut self, tp: &Type) -> Value {
         match tp {
-            Type::Integer(_, _) => self.cl("OpConvIntFromNull", &[]),
+            Type::Integer(_, _) | Type::Character => self.cl("OpConvIntFromNull", &[]),
             Type::Boolean => self.cl("OpConvBoolFromNull", &[]),
             Type::Enum(tp) => self.cl(
                 "OpConvEnumFromNull",

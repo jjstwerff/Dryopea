@@ -20,14 +20,14 @@ pub fn test() {
         "Test failed {test_value} != \"[{{name:\"t\",number:0}},{{name:\"e\",number:1}},{{name:\"s\",number:2}},{{name:\"t\",number:3}}]\""
     );
 }
-Type 14:Data[8]:
+Type 15:Data[8]:
     name:text[0]
     number:integer[4]
 
-Type 15:main_vector<Data>[8]:
+Type 16:main_vector<Data>[8]:
     vector:vector<Data>[4]
 
-Type 16:vector<Data>[4]:Vector(14)
+Type 17:vector<Data>[4]:Vector(15)
 
 fn data(n:text, res:vector<ref(Data)>) -> vector<ref(Data)>["??"] {#1 block
   __work_1:text = "";
@@ -46,12 +46,12 @@ fn data(n:text, res:vector<ref(Data)>) -> vector<ref(Data)>["??"] {#1 block
       if OpNot(OpConvBoolFromText(ch)) break(0) else null;
       {#6 block
         {#7 vector
-          _elm_1:ref(Data)["res"] = OpNewRecord(res, 16i32, 65535i32);
+          _elm_1:ref(Data)["res"] = OpNewRecord(res, 17i32, 65535i32);
           {#8 object
             OpSetText(_elm_1, 0i32, ch);
             OpSetInt(_elm_1, 4i32, nr);
           }#8;
-          OpFinishRecord(res, _elm_1, 16i32, 65535i32);
+          OpFinishRecord(res, _elm_1, 17i32, 65535i32);
         }#7;
         nr:integer = OpAddInt(nr, 1i32);
       }#6;
@@ -63,7 +63,7 @@ fn data(n:text, res:vector<ref(Data)>) -> vector<ref(Data)>["??"] {#1 block
 byte-code for fill_fn:data(n: text[0], res: vector<ref(Data)>[16]) [1073] -> vector<ref(Data)>["res"]
    0[28]: return-address
    0[32]: Text() var=__work_1[32]:text in 1
-   1[56]: VarVector(var[16]) -> vector type=vector<Data>[4]:Vector(14)[16] var=res[16]:vector<ref(Data)["_elm_2"]> in 0
+   1[56]: VarVector(var[16]) -> vector type=vector<Data>[4]:Vector(15)[17] var=res[16]:vector<ref(Data)["_elm_2"]> in 0
    4[68]: PutRef(var[16], value: ref(reference))
    7[56]: ConstInt(val=0) -> integer var=nr[56]:integer in 1
   12[60]: ConstInt(val=0) -> integer var=ch#index[60]:integer in 3
@@ -88,17 +88,17 @@ byte-code for fill_fn:data(n: text[0], res: vector<ref(Data)>[16]) [1073] -> vec
   61[88]: FreeText(var[64])
   64[88]: FreeStack(value=0, discard=24)
   68[64]: GotoWord(jump=134)
-  71[88]: VarVector(var[16]) -> vector type=vector<Data>[4]:Vector(14)[16] var=res[16]:vector<ref(Data)["_elm_2"]> in 0
-  74[100]: NewRecord(data: ref(reference), parent_tp=16, fld=65535) -> ref(reference)
-  79[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{name:text[0], number:integer[4]}[14] var=_elm_1[88]:ref(Data)["res"] in 7
+  71[88]: VarVector(var[16]) -> vector type=vector<Data>[4]:Vector(15)[17] var=res[16]:vector<ref(Data)["_elm_2"]> in 0
+  74[100]: NewRecord(data: ref(reference), parent_tp=17, fld=65535) -> ref(reference)
+  79[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{name:text[0], number:integer[4]}[15] var=_elm_1[88]:ref(Data)["res"] in 7
   82[112]: VarText(var[64]) -> text var=ch[64]:text["n"] in 4
   85[128]: SetText(v1: ref(reference), fld=0, val: text)
-  88[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{name:text[0], number:integer[4]}[14] var=_elm_1[88]:ref(Data)["res"] in 7
+  88[100]: VarRef(var[88]) -> ref(reference) type=Data[8]:{name:text[0], number:integer[4]}[15] var=_elm_1[88]:ref(Data)["res"] in 7
   91[112]: VarInt(var[56]) -> integer var=nr[56]:integer in 1
   94[116]: SetInt(v1: ref(reference), fld=4, val: integer)
-  97[100]: VarVector(var[16]) -> vector type=vector<Data>[4]:Vector(14)[16] var=res[16]:vector<ref(Data)["_elm_2"]> in 0
- 100[112]: VarRef(var[88]) -> ref(reference) type=Data[8]:{name:text[0], number:integer[4]}[14] var=_elm_1[88]:ref(Data)["res"] in 7
- 103[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=16, fld=65535)
+  97[100]: VarVector(var[16]) -> vector type=vector<Data>[4]:Vector(15)[17] var=res[16]:vector<ref(Data)["_elm_2"]> in 0
+ 100[112]: VarRef(var[88]) -> ref(reference) type=Data[8]:{name:text[0], number:integer[4]}[15] var=_elm_1[88]:ref(Data)["res"] in 7
+ 103[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=65535)
  108[100]: FreeStack(value=0, discard=12)
  112[88]: VarInt(var[56]) -> integer var=nr[56]:integer in 1
  115[92]: ConstInt(val=1) -> integer
@@ -108,9 +108,9 @@ byte-code for fill_fn:data(n: text[0], res: vector<ref(Data)>[16]) [1073] -> vec
  127[88]: FreeStack(value=0, discard=24)
  131[64]: GotoWord(jump=17)
  134[64]: FreeStack(value=0, discard=4)
- 138[60]: VarVector(var[16]) -> vector type=vector<Data>[4]:Vector(14)[16] var=res[16]:vector<ref(Data)["_elm_2"]> in 0
+ 138[60]: VarVector(var[16]) -> vector type=vector<Data>[4]:Vector(15)[17] var=res[16]:vector<ref(Data)["_elm_2"]> in 0
  141[72]: FreeText(var[32])
- 144[72]: Return(ret=28, value=12, discard=72) type=vector<Data>[4]:Vector(14)[16]
+ 144[72]: Return(ret=28, value=12, discard=72) type=vector<Data>[4]:Vector(15)[17]
 
 fn test() {#1 block
   __ref_1:vector<ref(Data)> = null;
@@ -120,7 +120,7 @@ fn test() {#1 block
     d:vector<ref(Data)>["__ref_1"] = data("test", __ref_1);
     {#3 formatting string
       __work_1:text = "";
-      OpFormatDatabase(__work_1, d, 16i32, false);
+      OpFormatDatabase(__work_1, d, 17i32, false);
       __work_1;
     }#3:text;
   }#2:text;
@@ -135,7 +135,7 @@ fn test() {#1 block
 byte-code for fill_fn:test() [1223]
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:vector<ref(Data)> in 1
-   1[16]: Database(var[4], db_tp=15)
+   1[16]: Database(var[4], db_tp=16)
    6[16]: VarRef(var[4]) -> ref(reference)
    9[28]: ConstInt(val=0) -> integer
   14[32]: SetInt(v1: ref(reference), fld=4, val: integer)
@@ -146,13 +146,13 @@ byte-code for fill_fn:test() [1223]
   31[40]: Text() var=__work_1[40]:text in 1
   32[64]: Text() var=test_value[64]:text in 1
   33[88]: ConstText(_value="test") -> text var=d[88]:vector<ref(Data)>["__ref_1"] in 2
-  39[104]: VarVector(var[4]) -> vector type=vector<Data>[4]:Vector(14)[16] var=__ref_1[4]:vector<ref(Data)> in 1
+  39[104]: VarVector(var[4]) -> vector type=vector<Data>[4]:Vector(15)[17] var=__ref_1[4]:vector<ref(Data)> in 1
   42[116]: Call(size=0, to=1073)
   49[100]: ClearText(var[40]) var=__work_1[40]:text in 1
   52[100]: ConstText(_value="") -> text
   54[116]: AppendText(var[40], v1: text)
-  57[100]: VarVector(var[88]) -> vector type=vector<Data>[4]:Vector(14)[16] var=d[88]:vector<ref(Data)>["__ref_1"] in 2
-  60[112]: FormatDatabase(var[40], val: ref(reference), db_tp=16, pretty=false)
+  57[100]: VarVector(var[88]) -> vector type=vector<Data>[4]:Vector(15)[17] var=d[88]:vector<ref(Data)>["__ref_1"] in 2
+  60[112]: FormatDatabase(var[40], val: ref(reference), db_tp=17, pretty=false)
   66[100]: VarText(var[40]) -> text var=__work_1[40]:text in 1
   69[116]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
   73[104]: AppendText(var[64], v1: text)
@@ -172,7 +172,7 @@ byte-code for fill_fn:test() [1223]
  294[88]: VarText(var[16]) -> text var=__work_2[16]:text in 1
  297[104]: Panic(message: text)
  298[88]: FreeText(var[64])
- 301[88]: VarVector(var[4]) -> vector type=vector<Data>[4]:Vector(14)[16] var=__ref_1[4]:vector<ref(Data)> in 1
+ 301[88]: VarVector(var[4]) -> vector type=vector<Data>[4]:Vector(15)[17] var=__ref_1[4]:vector<ref(Data)> in 1
  304[100]: FreeRef(v1: ref(reference))
  305[88]: FreeText(var[40])
  308[88]: FreeText(var[16])

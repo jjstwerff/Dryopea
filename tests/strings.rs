@@ -5,7 +5,7 @@ extern crate dryopea;
 
 mod testing;
 
-use dryopea::data::Value;
+use dryopea::data::{Type, Value};
 
 #[test]
 fn append() {
@@ -14,7 +14,9 @@ fn append() {
 
 #[test]
 fn str_index() {
-    expr!("a=\"12345\"; a[2]").result(Value::str("3"));
+    expr!("a=\"12345\"; a[2]")
+        .tp(Type::Character)
+        .result(Value::Int(51));
 }
 
 #[test]
@@ -170,7 +172,7 @@ fn block() {
 
 #[test]
 fn index_block() {
-    expr!("s = \"1😊2\"; s[1]").result(Value::str("😊"));
+    expr!("s = \"1😊2\"; s[1]").result(Value::Int('😊' as i32));
 }
 
 #[test]

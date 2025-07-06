@@ -37,6 +37,7 @@ pub enum LexItem {
     Identifier(String),
     /// A constant string: was presented as "content" with possibly escaped tokens inside.
     CString(String),
+    Character(u32),
     /// The end of the content is reached.
     None,
 }
@@ -275,6 +276,10 @@ impl Lexer {
                     self.next_char();
                     self.string()
                 }
+                '\'' => {
+                    self.next_char();
+                    self.char()
+                }
                 ' ' | '\t' => {
                     self.next_char();
                     LexResult::new(LexItem::Token(" ".to_string()), pos)
@@ -393,6 +398,64 @@ impl Lexer {
         }
     }
 
+    /// parse a character constant for the lexer.
+    fn char(&mut self) -> LexResult {
+        let pos = self.position.clone();
+        let mut res = String::new();
+        while let Some(&c) = self.iter.peek() {
+            if c == '\'' {
+                self.next_char();
+                let mut chars = res.chars();
+                return LexResult::new(
+                    LexItem::Character(if let Some(ch) = chars.next() {
+                        if chars.next().is_some() {
+                            self.err(Level::Error, "Expected only one character in constant");
+                        }
+                        ch as u32
+                    } else {
+                        self.err(Level::Error, "Expected a character in constant");
+                        0
+                    }),
+                    pos,
+                );
+            }
+            if c == '\\' {
+                self.next_char();
+                if !self.escape_seq(&mut res) {
+                    break;
+                }
+            } else if c == '\n' {
+                break;
+            } else {
+                res.push(c);
+            }
+            self.next_char();
+        }
+        self.err(Level::Fatal, "Character not correctly terminated");
+        Lexer::none()
+    }
+
+    fn escape_seq(&mut self, res: &mut String) -> bool {
+        // TODO allow numeric characters
+        if let Some(&c) = self.iter.peek() {
+            match c {
+                '"' => res.push(c),
+                't' => res.push('\t'),
+                'r' => res.push('\r'),
+                'n' => res.push('\n'),
+                '\\' => res.push('\\'),
+                '\n' => return false,
+                _ => {
+                    self.err(Level::Error, "Unknown escape sequence");
+                    res.push('?');
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+
     /// parse a string for the lexer.
     fn string(&mut self) -> LexResult {
         let pos = self.position.clone();
@@ -405,20 +468,7 @@ impl Lexer {
             }
             if c == '\\' {
                 self.next_char();
-                if let Some(&c) = self.iter.peek() {
-                    match c {
-                        '"' => res.push(c),
-                        't' => res.push('\t'),
-                        'r' => res.push('\r'),
-                        'n' => res.push('\n'),
-                        '\\' => res.push('\\'),
-                        '\n' => break,
-                        _ => {
-                            self.err(Level::Error, "Unknown escape sequence");
-                            res.push('?');
-                        }
-                    }
-                } else {
+                if !self.escape_seq(&mut res) {
                     break;
                 }
             } else if c == '\n' {
@@ -727,6 +777,15 @@ impl Lexer {
         } else if let LexItem::Integer(n, _zero) = self.peek().has {
             self.cont();
             Some(u64::from(n))
+        } else {
+            None
+        }
+    }
+
+    pub fn has_char(&mut self) -> Option<u32> {
+        if let LexItem::Character(c) = self.peek().has {
+            self.cont();
+            Some(c)
         } else {
             None
         }
