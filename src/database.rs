@@ -1974,16 +1974,20 @@ impl Stores {
                 rec: result.rec,
                 pos: result.pos,
             };
+            let mut res = BTreeMap::new();
             for entry in iter.flatten() {
                 if let Some(name) = entry.path().to_str() {
-                    let elm = vector::vector_append(&vector, 1, 17, &mut self.allocations);
-                    let store = self.store_mut(result);
-                    let name_pos = store.set_str(name) as i32;
-                    store.set_int(elm.rec, elm.pos + 4, name_pos);
-                    if !fill_file(&entry.path(), store, &elm) {
-                        return false;
-                    }
+                    res.insert(name.to_string(), entry);
                 } else {
+                    return false;
+                }
+            }
+            for (name, entry) in res {
+                let elm = vector::vector_append(&vector, 1, 17, &mut self.allocations);
+                let store = self.store_mut(result);
+                let name_pos = store.set_str(&name) as i32;
+                store.set_int(elm.rec, elm.pos + 4, name_pos);
+                if !fill_file(&entry.path(), store, &elm) {
                     return false;
                 }
             }
