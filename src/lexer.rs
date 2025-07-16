@@ -635,7 +635,7 @@ impl Lexer {
 
     #[allow(clippy::cast_possible_truncation)]
     fn ret_number(&mut self, r: u64, p: Position, start_zero: bool) -> LexResult {
-        let max = i32::max as usize;
+        let max = i32::MAX as usize;
         if let Some('l') = self.iter.peek() {
             self.next_char();
             LexResult::new(LexItem::Long(r), p)

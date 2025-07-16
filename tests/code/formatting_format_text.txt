@@ -5,12 +5,12 @@ pub fn test() {
         "Test failed {test_value} != \"1abc  2abc3abc   4    abc\""
     );
 }
-fn test() {#1 block
+fn test() {
   __work_2:text = "";
   __work_1:text = "";
-  test_value:text = {#2 block
+  test_value:text = {
     vr:text = "abc";
-    {#3 formatting string
+    {
       __work_1:text = "1";
       OpFormatText(__work_1, vr, OpAddInt(2i32, 3i32), -1i32, 32i32);
       OpAppendText(__work_1, "2");
@@ -20,17 +20,17 @@ fn test() {#1 block
       OpAppendText(__work_1, "4");
       OpFormatText(__work_1, vr, 7i32, 1i32, 32i32);
       __work_1;
-    }#3:text;
-  }#2:text;
-  if OpEqText(test_value, "1abc  2abc3abc   4    abc") null else OpPanic({#4 formatting string
+    };
+  };
+  if OpEqText(test_value, "1abc  2abc3abc   4    abc") null else OpPanic({
     __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "1abc  2abc3abc   4    abc"");
     __work_2;
-  }#4:text);
-}#1
+  });
+}
 
-byte-code for format_text:test() [1067]
+byte-code for format_text:test() [1176]
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text in 1
    1[28]: Text() var=__work_1[28]:text in 1

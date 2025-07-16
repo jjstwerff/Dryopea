@@ -151,14 +151,7 @@ impl Drop for Test {
             }
             code += &self.test();
         }
-        let mut w =
-            std::fs::File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
-        writeln!(w, "{code}").unwrap();
         p.parse_str(&code, &self.name, false);
-        let to = p.database.types.len();
-        for tp in types..to {
-            writeln!(w, "Type {tp}:{}", p.database.show_type(tp as u16, true)).unwrap();
-        }
         for (d, s) in &self.sizes {
             let size = p.database.size(p.data.def(p.data.def_nr(d)).known_type);
             assert_eq!(u32::from(size), *s, "Size of {}", *d);
@@ -173,6 +166,13 @@ impl Drop for Test {
         create::generate_code(&p.data).unwrap();
         create::generate_lib(&p.data).unwrap();
         let mut state = State::new(p.database);
+        let mut w =
+            std::fs::File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
+        writeln!(w, "{code}").unwrap();
+        let to = state.database.types.len();
+        for tp in types..to {
+            writeln!(w, "Type {tp}:{}", state.database.show_type(tp as u16, true)).unwrap();
+        }
         byte_code(&mut w, &mut state, &mut p.data).unwrap();
         //state.execute_log(&mut w, "test", &p.data).unwrap();
         state.execute(p.data.def_nr("test"), &p.data);

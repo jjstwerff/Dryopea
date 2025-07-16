@@ -5,34 +5,34 @@ pub fn test() {
         "Test failed {test_value} != 15"
     );
 }
-fn test() {#1 block
+fn test() {
   __work_1:text = "";
-  test_value:integer = {#2 block
+  test_value:integer = {
     b:integer = 0i32;
-    {#3 for
+    {
       a#index:integer = OpConvIntFromNull();
-      loop {#4 for loop
-        a:integer = {#5 for next
+      loop {
+        a:integer = {
           a#index:integer = if OpNot(OpConvBoolFromInt(a#index)) 0i32 else OpAddInt(a#index, 1i32);
           if OpGtInt(a#index, 5i32) break(0) else null;
           a#index;
-        }#5:integer;
-        {#6 block
+        };
+        {
           b:integer = OpAddInt(b, a);
-        }#6;
-      }#4;
-    }#3;
+        };
+      };
+    };
     b;
-  }#2:integer;
-  if OpEqInt(test_value, 15i32) null else OpPanic({#7 formatting string
+  };
+  if OpEqInt(test_value, 15i32) null else OpPanic({
     __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 15");
     __work_1;
-  }#7:text);
-}#1
+  });
+}
 
-byte-code for extended_for:test() [1067]
+byte-code for extended_for:test() [1176]
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text in 1
    1[28]: ConstInt(val=0) -> integer var=b[28]:integer in 2

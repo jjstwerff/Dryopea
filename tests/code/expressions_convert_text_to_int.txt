@@ -5,20 +5,20 @@ pub fn test() {
         "Test failed {test_value} != 125"
     );
 }
-fn test() {#1 block
+fn test() {
   __work_1:text = "";
-  test_value:integer = {#2 block
+  test_value:integer = {
     OpAddInt(OpCastIntFromText("123"), 2i32);
-  }#2:integer;
-  if OpEqInt(test_value, 125i32) null else OpPanic({#3 formatting string
+  };
+  if OpEqInt(test_value, 125i32) null else OpPanic({
     __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 125");
     __work_1;
-  }#3:text);
-}#1
+  });
+}
 
-byte-code for convert_text_to_int:test() [1067]
+byte-code for convert_text_to_int:test() [1176]
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text in 1
    1[28]: ConstText(_value="123") -> text var=test_value[28]:integer in 1

@@ -5,24 +5,24 @@ pub fn test() {
         "Test failed {test_value} != \"A\""
     );
 }
-fn test() {#1 block
+fn test() {
   __work_1:text = "";
-  test_value:text = {#2 block
-    if OpGtInt(OpAddInt(2i32, 2i32), 3i32) {#3 block
+  test_value:text = {
+    if OpGtInt(OpAddInt(2i32, 2i32), 3i32) {
       "A";
-    }#3:text else {#4 block
+    } else {
       "B";
-    }#4:text;
-  }#2:text;
-  if OpEqText(test_value, "A") null else OpPanic({#5 formatting string
+    };
+  };
+  if OpEqText(test_value, "A") null else OpPanic({
     __work_1:text = "Test failed ";
     OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != "A"");
     __work_1;
-  }#5:text);
-}#1
+  });
+}
 
-byte-code for expr_inline_if:test() [1067]
+byte-code for expr_inline_if:test() [1176]
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text in 1
    1[28]: Text() var=test_value[28]:text in 1

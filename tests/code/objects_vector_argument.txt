@@ -14,40 +14,40 @@ pub fn test() {
         "Test failed {test_value} != 1515"
     );
 }
-Type 15:vector<integer>[4]:Vector(0)
+Type 17:vector<integer>[4]:Vector(0)
 
-Type 16:main_vector<integer>[8]:
+Type 18:main_vector<integer>[8]:
     vector:vector<integer>[4]
 
-fn sum(r:vector<integer>) -> integer {#1 block
+fn sum(r:vector<integer>) -> integer {
   res:integer = 0i32;
-  {#2 for
+  {
     _vector_1:vector<integer>["r"] = r;
     v#index:integer = -1i32;
-    loop {#3 for loop
-      v:integer = {#4 iter next
+    loop {
+      v:integer = {
         v#index:integer = OpAddInt(v#index, 1i32);
         OpGetInt(OpGetVector(_vector_1, 4i32, v#index), 0i32);
-      }#4:integer;
+      }#integer;
       if OpNot(OpConvBoolFromInt(v)) break(0) else null;
-      {#5 block
+      {
         res:integer = OpAddInt(res, v);
-      }#5;
-    }#3;
-  }#2;
+      }#integer;
+    };
+  }#integer;
   res;
-}#1:integer
+}#integer
 
-byte-code for vector_argument:sum(r: vector<integer>[0]) [1067] -> integer
+byte-code for vector_argument:sum(r: vector<integer>[0]) [1176] -> integer
    0[12]: return-address
    0[16]: ConstInt(val=0) -> integer var=res[16]:integer in 1
-   5[20]: VarVector(var[0]) -> vector type=vector<integer>[4]:Vector(0)[15] var=r[0]:vector<integer> in 0
+   5[20]: VarVector(var[0]) -> vector type=vector<integer>[4]:Vector(0)[17] var=r[0]:vector<integer> in 0
    8[32]: ConstInt(val=-1) -> integer var=v#index[32]:integer in 2
   13[36]: VarInt(var[32]) -> integer var=v#index[32]:integer in 2
   16[40]: ConstInt(val=1) -> integer
   21[44]: AddInt(v1: integer, v2: integer) -> integer
   22[40]: PutInt(var[32], value: integer)
-  25[36]: VarVector(var[20]) -> vector type=vector<integer>[4]:Vector(0)[15] var=_vector_1[20]:vector<integer>["r"] in 2
+  25[36]: VarVector(var[20]) -> vector type=vector<integer>[4]:Vector(0)[17] var=_vector_1[20]:vector<integer>["r"] in 2
   28[48]: VarInt(var[32]) -> integer var=v#index[32]:integer in 2
   31[52]: GetVector(r: vector, size=4, index: integer) -> ref(reference) type=integer[4]:Base[0]
   34[48]: GetInt(v1: ref(reference), fld=0) -> integer

@@ -67,7 +67,7 @@ extern crate dryopea;"
         writeln!(w, "fn init(db: &mut KnownTypes) {{")?;
         for dnr in from..till {
             let def = self.data.def(dnr);
-            if def.def_type == DefType::Struct {
+            if matches!(def.def_type, DefType::Struct | DefType::Main) {
                 self.output_struct(w, dnr)?;
             } else if def.def_type == DefType::Enum {
                 output_enum(w, def)?;

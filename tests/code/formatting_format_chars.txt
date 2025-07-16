@@ -5,54 +5,54 @@ pub fn test() {
         "Test failed {test_value} != \"a[4:😊,8:🙃,9:4]b\""
     );
 }
-fn test() {#1 block
+fn test() {
   __work_4:text = "";
   __work_3:text = "";
   __work_2:text = "";
   __work_1:text = "";
-  test_value:text = {#2 block
+  test_value:text = {
     txt:text = "12😊🙃45";
-    {#3 formatting string
+    {
       __work_1:text = "a";
       OpAppendText(__work_1, "[");
       c#index:integer = 0i32;
       c#count:integer = 0i32;
-      loop {#4 iter for
-        _val_1:text = {#5 iter for loop
-          c:text["txt"] = {#6 for text next
+      loop {
+        _val_1:text = {
+          c:text["txt"] = {
             __work_2:text = OpGetTextSub(OpGetTextSub(txt, 2i32, OpMinSingleInt(1i32)), c#index, -2147483648i32);
             c#index:integer = OpAddInt(c#index, OpLengthText(__work_2));
             __work_2;
-          }#6:text["txt"];
+          };
           if OpNot(OpConvBoolFromText(c)) break(0) else null;
-          {#7 block
-            {#8 formatting string
+          {
+            {
               __work_3:text = "";
               OpFormatInt(__work_3, c#index, 10i32, 0i32, 32i32, false, false);
               OpAppendText(__work_3, ":");
               OpFormatText(__work_3, c, 0i32, -1i32, 32i32);
               __work_3;
-            }#8:text;
-          }#7:text;
-        }#5:text;
+            };
+          };
+        };
         if OpGtInt(c#count, 0i32) OpAppendText(__work_1, ",") else null;
         c#count:integer = OpAddInt(c#count, 1i32);
         OpFormatText(__work_1, _val_1, 0i32, -1i32, 32i32);
-      }#4;
+      };
       OpAppendText(__work_1, "]");
       OpAppendText(__work_1, "b");
       __work_1;
-    }#3:text;
-  }#2:text;
-  if OpEqText(test_value, "a[4:😊,8:🙃,9:4]b") null else OpPanic({#9 formatting string
+    };
+  };
+  if OpEqText(test_value, "a[4:😊,8:🙃,9:4]b") null else OpPanic({
     __work_4:text = "Test failed ";
     OpFormatText(__work_4, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_4, " != "a[4:😊,8:🙃,9:4]b"");
     __work_4;
-  }#9:text);
-}#1
+  });
+}
 
-byte-code for format_chars:test() [1067]
+byte-code for format_chars:test() [1176]
    0[0]: return-address
    0[4]: Text() var=__work_4[4]:text in 1
    1[28]: Text() var=__work_3[28]:text in 1

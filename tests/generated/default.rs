@@ -30,6 +30,9 @@ fn init(db: &mut KnownTypes) {
     db.vector(5);
     let s = db.structure("main_vector<text>".to_string(), 8, 4294967295); // 14
     db.field(s, "vector".to_string(), db.vector(5), 4);
+    db.vector(13);
+    let s = db.structure("main_vector<File>".to_string(), 8, 4294967295); // 15
+    db.field(s, "vector".to_string(), db.vector(13), 4);
     db.vector(9);
 }
 
@@ -200,20 +203,22 @@ fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 {
 }
 
 fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str {
-  OpClearRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r});
-  OpAppendRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r}, 0_i32, "".to_string());
+  var_result = "".to_string();
   var_txt = "".to_string();
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_txt));
-  OpAppendRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r}, 0_i32, var_txt);
+  OpAppendText(stores, var_result, var_txt);
   var_result
 }
 
 fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
+  var___ref_3 = Null;
+  var___ref_2 = Null;
+  var___ref_1 = Null;
   var___work_2 = "".to_string();
   var___work_1 = "".to_string();
-  var_l = {
-    var_l
-  };
+  OpDatabase(stores, var___ref_1, 14_i32);
+  var_l = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((4_i32))};
+  {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
   var_c = _tp_File_content(stores, var_self, {
     OpCreateRef(stores, var___work_1)
   });
@@ -230,11 +235,12 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
       {
         if (var_ch) == ("
 ".to_string()) {
-          {
-            var__elm_1 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
-            {let db = (var__elm_1); let s_val = (OpGetTextSub(stores, var_c, var_p, external::op_min_int((var_ch#index), (1_i32)))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
-            OpFinishRecord(stores, var_l, var__elm_1, 7_i32, 65535_i32)
-          };
+          OpDatabase(stores, var___ref_2, 14_i32);
+          var_l = DbRef {store_nr: (var___ref_2).store_nr, rec: (var___ref_2).rec, pos: (var___ref_2).pos + u32::from((4_i32))};
+          {let db = (var___ref_2); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
+          var__elm_1 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
+          {let db = (var__elm_1); let s_val = (OpGetTextSub(stores, var_c, var_p, external::op_min_int((var_ch#index), (1_i32)))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
+          OpFinishRecord(stores, var_l, var__elm_1, 7_i32, 65535_i32);
           var_p = external::op_min_single_int((1_i32))
         } else {if (var_p) < (0_i32) {
             var_p = var_ch#index
@@ -243,22 +249,22 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
     }
   };
   if (var_p) > (0_i32) {
-    {
-      var__elm_2 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
-      {let db = (var__elm_2); let s_val = (OpGetTextSub(stores, var_c, var_p, _tp_text_len(stores, var_c))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
-      OpFinishRecord(stores, var_l, var__elm_2, 7_i32, 65535_i32)
-    }
+    OpDatabase(stores, var___ref_3, 14_i32);
+    var_l = DbRef {store_nr: (var___ref_3).store_nr, rec: (var___ref_3).rec, pos: (var___ref_3).pos + u32::from((4_i32))};
+    {let db = (var___ref_3); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
+    var__elm_2 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
+    {let db = (var__elm_2); let s_val = (OpGetTextSub(stores, var_c, var_p, _tp_text_len(stores, var_c))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
+    OpFinishRecord(stores, var_l, var__elm_2, 7_i32, 65535_i32)
   } else {Null};
   var_l
 }
 
 fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef {
-  {
-    OpDatabase(stores, var_result, 13_i32);
-    {let db = (var_result); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
-    {let db = (var_result); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
-    {let db = (var_result); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if false {1_i32} else {0_i32}));}
-  };
+  var_result = stores.null();
+  OpDatabase(stores, var_result, 13_i32);
+  {let db = (var_result); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
+  {let db = (var_result); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
+  {let db = (var_result); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if false {1_i32} else {0_i32}));};
   if stores.get_file(&(var_result)) {
     var_result
   } else {
@@ -267,25 +273,25 @@ fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef {
 }
 
 fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
-  var_result = {
-    var_result
-  };
+  var___ref_1 = Null;
+  OpDatabase(stores, var___ref_1, 15_i32);
+  var_result = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((4_i32))};
+  {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) {
-    Drop(Call(324, [Call(269, [Var(0), Int(4)]), Var(1)]))
+    Drop(Call(323, [Call(268, [Var(0), Int(4)]), Var(1)]))
   } else {Null};
   var_result
 }
 
 fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
   if !(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32)) {
-    {
-      OpDatabase(stores, var_result, 11_i32);
-      {let db = (var_result); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
-      {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
-      {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
-      {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));}
-    };
-    Drop(Call(325, [Call(269, [Var(0), Int(4)]), Var(1)]));
+    var_result = stores.null();
+    OpDatabase(stores, var_result, 11_i32);
+    {let db = (var_result); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
+    {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
+    {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
+    {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
+    Drop(Call(324, [Call(268, [Var(0), Int(4)]), Var(1)]));
     var_result
   } else {
     stores.null()

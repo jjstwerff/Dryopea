@@ -508,7 +508,8 @@ impl Function {
     }
 
     pub fn is_independent(&self, var_nr: u16) -> bool {
-        self.variables[var_nr as usize].type_def.depend().is_empty()
+        let d = self.variables[var_nr as usize].type_def.depend();
+        d.is_empty() || (d.len() == 1 && d[0] == var_nr)
     }
 
     pub fn depend(&mut self, var_nr: u16, on: u16) {
@@ -590,10 +591,10 @@ impl Function {
     }
 
     pub fn find_var(&self, name: &str) -> u16 {
-        if let Some(nr) = self.names.get(name) {
-            if let Some(n) = nr.first() {
-                return *n;
-            }
+        if let Some(nr) = self.names.get(name)
+            && let Some(n) = nr.first()
+        {
+            return *n;
         }
         u16::MAX
     }
@@ -678,10 +679,10 @@ impl Function {
                 );
             }
         } else if !var_tp.is_unknown() {
-            if let Type::RefVar(in_tp) = var_tp {
-                if in_tp.is_equal(type_def) {
-                    return self.is_new(var_nr);
-                }
+            if let Type::RefVar(in_tp) = var_tp
+                && in_tp.is_equal(type_def)
+            {
+                return self.is_new(var_nr);
             }
             diagnostic!(
                 lexer,
@@ -693,7 +694,7 @@ impl Function {
             );
         }
         self.variables[var_nr as usize].type_def = type_def.clone();
-        self.is_new(var_nr)
+        true
     }
 
     fn is_new(&self, var_nr: u16) -> bool {
@@ -806,10 +807,10 @@ impl Function {
                         tp = self.validate(l, name, file, data, started)?;
                     }
                     let mut result = self.result();
-                    if let (Type::Reference(tp_elm, _), Type::Reference(_, _)) = (&tp, result) {
-                        if *tp_elm == data.def_nr("reference") {
-                            result = &Type::Null;
-                        }
+                    if let (Type::Reference(tp_elm, _), Type::Reference(_, _)) = (&tp, result)
+                        && *tp_elm == data.def_nr("reference")
+                    {
+                        result = &Type::Null;
                     }
                     if result != &Type::Null {
                         // ignore else if block
