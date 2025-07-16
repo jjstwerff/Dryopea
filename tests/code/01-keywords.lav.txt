@@ -1,4 +1,4 @@
-fn main() {#1 block
+fn main() {
   __work_7:text = "";
   __work_6:text = "";
   __work_5:text = "";
@@ -6,149 +6,149 @@ fn main() {#1 block
   __work_3:text = "";
   __work_2:text = "";
   __work_1:text = "";
-  if OpGtInt(2i32, 5i32) {#2 block
+  if OpGtInt(2i32, 5i32) {
     panic("Incorrect test");
-  }#2 else null;
+  } else null;
   a:integer = 12i32;
-  if if OpGtInt(a, 10i32) OpEqInt(OpLandInt(a, 7i32), 4i32) else false {#3 block
+  if if OpGtInt(a, 10i32) OpEqInt(OpLandInt(a, 7i32), 4i32) else false {
     a:integer = OpAddInt(a, 1i32);
-  }#3 else {#4 block
+  } else {
     a:integer = OpMinInt(a, 1i32);
-  }#4;
-  if OpEqInt(a, 13i32) null else OpPanic({#5 formatting string
+  };
+  if OpEqInt(a, 13i32) null else OpPanic({
     __work_1:text = "Incorrect value ";
     OpFormatInt(__work_1, a, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 13");
     __work_1;
-  }#5:text);
-  b:text = if OpEqInt(a, 13i32) {#6 block
+  });
+  b:text = if OpEqInt(a, 13i32) {
     "Correct";
-  }#6:text else {#7 block
+  } else {
     "Wrong";
-  }#7:text;
+  };
   if OpEqText(b, "Correct") null else OpPanic("Logic expression");
   t:integer = 0i32;
-  {#8 for
+  {
     a#index:integer = OpConvIntFromNull();
-    loop {#9 for loop
-      a:integer = {#10 for next
+    loop {
+      a:integer = {
         a#index:integer = if OpNot(OpConvBoolFromInt(a#index)) 1i32 else OpAddInt(a#index, 1i32);
         if OpGeInt(a#index, 6i32) break(0) else null;
         a#index;
-      }#10:integer;
-      {#11 block
+      };
+      {
         t:integer = OpAddInt(t, a);
-      }#11;
-    }#9;
-  }#8;
-  if OpEqInt(t, 15i32) null else OpPanic({#12 formatting string
+      };
+    };
+  };
+  if OpEqInt(t, 15i32) null else OpPanic({
     __work_2:text = "Total was ";
     OpFormatInt(__work_2, t, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_2, " instead of 15");
     __work_2;
-  }#12:text);
+  });
   t:integer = 0i32;
-  {#13 for
+  {
     a#index:integer = OpConvIntFromNull();
-    loop {#14 for loop
-      a:integer = {#15 for next
+    loop {
+      a:integer = {
         a#index:integer = if OpNot(OpConvBoolFromInt(a#index)) 5i32 else OpMinInt(a#index, 1i32);
         if OpLtInt(a#index, 1i32) break(0) else null;
         a#index;
-      }#15:integer;
-      {#16 block
+      };
+      {
         t:integer = OpAddInt(OpMulInt(t, 10i32), a);
-      }#16;
-    }#14;
-  }#13;
-  if OpEqInt(t, 54321i32) null else OpPanic({#17 formatting string
+      };
+    };
+  };
+  if OpEqInt(t, 54321i32) null else OpPanic({
     __work_3:text = "Result was ";
     OpFormatInt(__work_3, t, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_3, " instead of 54321");
     __work_3;
-  }#17:text);
+  });
   b:text = "";
-  {#18 for
+  {
     x#index:integer = OpConvIntFromNull();
-    loop {#19 for loop
-      x:integer = {#20 for next
+    loop {
+      x:integer = {
         x#index:integer = if OpNot(OpConvBoolFromInt(x#index)) 1i32 else OpAddInt(x#index, 1i32);
         if OpGeInt(x#index, 5i32) break(0) else null;
         x#index;
-      }#20:integer;
-      {#21 block
-        {#22 for
+      };
+      {
+        {
           y#index:integer = OpConvIntFromNull();
-          loop {#23 for loop
-            y:integer = {#24 for next
+          loop {
+            y:integer = {
               y#index:integer = if OpNot(OpConvBoolFromInt(y#index)) 1i32 else OpAddInt(y#index, 1i32);
               if OpGeInt(y#index, 5i32) break(0) else null;
               y#index;
-            }#24:integer;
-            {#25 block
-              if OpGtInt(y, x) {#26 block
+            };
+            {
+              if OpGtInt(y, x) {
                 break(0);
-              }#26 else null;
-              if OpGeInt(OpMulInt(x, y), 16i32) {#27 block
+              } else null;
+              if OpGeInt(OpMulInt(x, y), 16i32) {
                 break(1);
-              }#27 else null;
-              if OpGtInt(_tp_text_len(b), 0i32) {#28 block
+              } else null;
+              if OpGtInt(_tp_text_len(b), 0i32) {
                 OpAppendText(b, "; ");
-              }#28 else null;
-              OpAppendText(b, {#29 formatting string
+              } else null;
+              OpAppendText(b, {
                 __work_4:text = "";
                 OpFormatInt(__work_4, x, 10i32, 0i32, 32i32, false, false);
                 OpAppendText(__work_4, ":");
                 OpFormatInt(__work_4, y, 10i32, 0i32, 32i32, false, false);
                 __work_4;
-              }#29:text);
-            }#25;
-          }#23;
-        }#22;
-      }#21;
-    }#19;
-  }#18;
-  if OpEqText(b, "1:1; 2:1; 2:2; 3:1; 3:2; 3:3; 4:1; 4:2; 4:3") null else OpPanic({#30 formatting string
+              });
+            };
+          };
+        };
+      };
+    };
+  };
+  if OpEqText(b, "1:1; 2:1; 2:2; 3:1; 3:2; 3:3; 4:1; 4:2; 4:3") null else OpPanic({
     __work_5:text = "Incorrect sequence '";
     OpFormatText(__work_5, b, 0i32, -1i32, 32i32);
     OpAppendText(__work_5, "'");
     __work_5;
-  }#30:text);
+  });
   b:text = "";
-  {#31 for
+  {
     x#count:integer = 0i32;
     x#index:integer = OpConvIntFromNull();
-    loop {#32 for loop
-      x:integer = {#33 for next
+    loop {
+      x:integer = {
         x#index:integer = if OpNot(OpConvBoolFromInt(x#index)) 1i32 else OpAddInt(x#index, 1i32);
         if OpGtInt(x#index, 9i32) break(0) else null;
         x#index;
-      }#33:integer;
+      };
       if OpNeInt(OpRemInt(x, 3i32), 1i32) null else continue(0);
-      {#34 block
-        if OpNot(OpEqInt(x#count, 0i32)) {#35 block
+      {
+        if OpNot(OpEqInt(x#count, 0i32)) {
           OpAppendText(b, ", ");
-        }#35 else null;
-        OpAppendText(b, {#36 formatting string
+        } else null;
+        OpAppendText(b, {
           __work_6:text = "";
           OpFormatInt(__work_6, x#count, 10i32, 0i32, 32i32, false, false);
           OpAppendText(__work_6, ":");
           OpFormatInt(__work_6, x, 10i32, 0i32, 32i32, false, false);
           __work_6;
-        }#36:text);
-      }#34;
+        });
+      };
       x#count:integer = OpAddInt(x#count, 1i32);
-    }#32;
-  }#31;
-  if OpEqText(b, "0:2, 1:3, 2:5, 3:6, 4:8, 5:9") null else OpPanic({#37 formatting string
+    };
+  };
+  if OpEqText(b, "0:2, 1:3, 2:5, 3:6, 4:8, 5:9") null else OpPanic({
     __work_7:text = "Sequence '";
     OpFormatText(__work_7, b, 0i32, -1i32, 32i32);
     OpAppendText(__work_7, "'");
     __work_7;
-  }#37:text);
-}#1
+  });
+}
 
-byte-code for tests/suite/01-keywords.lav:main() [1067]
+byte-code for tests/suite/01-keywords.lav:main() [1050]
    0[0]: return-address
    0[4]: Text() var=__work_7[4]:text in 1
    1[28]: Text() var=__work_6[28]:text in 1

@@ -74,7 +74,7 @@ fn copy_unknown_fields(data: &mut Data, d: u32) {
 pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, start_def: u32) {
     // Determine the actual type of structs regarding their use
     for d in start_def..data.definitions() {
-        if data.def_type(d) == DefType::Struct {
+        if matches!(data.def_type(d), DefType::Struct | DefType::Main) {
             data.definitions[d as usize].returned = Type::Reference(d, Vec::new());
         }
     }
@@ -93,7 +93,7 @@ pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, s
                     data.set_returned(d, data.def(was).returned.clone());
                 }
             }
-            DefType::Struct => {
+            DefType::Struct | DefType::Main => {
                 copy_unknown_fields(data, d);
             }
             DefType::Enum => {
@@ -111,7 +111,7 @@ pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, s
 
 pub fn fill_all(data: &mut Data, database: &mut Stores, start_def: u32) {
     for d_nr in start_def..data.definitions() {
-        if data.def_type(d_nr) == DefType::Struct {
+        if matches!(data.def_type(d_nr), DefType::Struct | DefType::Main) {
             fill_database(data, database, d_nr);
         }
     }
@@ -122,6 +122,9 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
         return;
     }
     let s_type = database.structure(&data.def(d_nr).name);
+    if data.def_type(d_nr) == DefType::Main {
+        database.main(s_type);
+    }
     data.definitions[d_nr as usize].known_type = s_type;
     for a_nr in 0..data.attributes(d_nr) {
         if !data.attr_mutable(d_nr, a_nr) {
@@ -147,12 +150,12 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
                     data.check_vector(c_nr, tp, &data.def(d_nr).position.clone());
                     tp
                 }
-                Type::Integer(min, _) => {
+                Type::Integer(minimum, _) => {
                     let s = a_type.size(nullable);
                     if s == 1 {
-                        database.byte(min, nullable)
+                        database.byte(minimum, nullable)
                     } else if s == 2 {
-                        database.short(min, nullable)
+                        database.short(minimum, nullable)
                     } else {
                         database.name("integer")
                     }

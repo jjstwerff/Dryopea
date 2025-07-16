@@ -4,7 +4,7 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(dead_code)]
-//! Fast interpreter for binary code, including library and coroutines support.
+//! Fast interpreter for binary code.
 use crate::data::{Data, DefType};
 use crate::state::State;
 use crate::text;

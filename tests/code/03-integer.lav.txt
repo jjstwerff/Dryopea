@@ -1,13 +1,13 @@
-fn main() {#1 block
+fn main() {
   __work_3:text = "";
   __work_2:text = "";
   __work_1:text = "";
   v:integer = 4i32;
-  if OpEqText({#2 formatting string
+  if OpEqText({
     __work_1:text = "";
     OpFormatInt(__work_1, v, 10i32, 0i32, 32i32, false, false);
     __work_1;
-  }#2:text, "4") null else OpPanic("Convert numbers to text");
+  }, "4") null else OpPanic("Convert numbers to text");
   if OpEqInt(OpCastIntFromText("123"), 123i32) null else OpPanic("Convert text to number");
   if OpEqInt(OpAddInt(1i32, OpMulInt(2i32, 4i32)), 9i32) null else OpPanic("Integer calculus");
   if OpEqInt(OpSLeftInt(OpAddInt(1i32, 2i32), 2i32), 12i32) null else OpPanic("Binary shift");
@@ -17,21 +17,21 @@ fn main() {#1 block
   a:integer = OpMulInt(2i32, 2i32);
   a:integer = OpMinInt(a, 4i32);
   if OpNot(OpConvBoolFromInt(OpDivInt(12i32, a))) null else OpPanic("Null on division by zero");
-  if OpEqText({#3 formatting string
+  if OpEqText({
     __work_2:text = "a";
     OpFormatInt(__work_2, 12i32, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_2, "b");
     __work_2;
-  }#3:text, "a12b") null else OpPanic("Formatting problem");
-  if OpEqText({#4 formatting string
+  }, "a12b") null else OpPanic("Formatting problem");
+  if OpEqText({
     __work_3:text = "a";
     OpFormatInt(__work_3, OpAddInt(1i32, OpMulInt(2i32, 3i32)), 16i32, 0i32, 32i32, false, true);
     OpAppendText(__work_3, "b");
     __work_3;
-  }#4:text, "a0x7b") null else OpPanic("Hex formatting");
-}#1
+  }, "a0x7b") null else OpPanic("Hex formatting");
+}
 
-byte-code for tests/suite/03-integer.lav:main() [1067]
+byte-code for tests/suite/03-integer.lav:main() [1050]
    0[0]: return-address
    0[4]: Text() var=__work_3[4]:text in 1
    1[28]: Text() var=__work_2[28]:text in 1

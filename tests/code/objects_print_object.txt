@@ -8,14 +8,15 @@ pub fn test() {
         "Test failed {test_value} != \"{{a:12,bb:\"hi\",ccc:false}} pretty {{ a: 12, bb: \"hi\", ccc: false }}\""
     );
 }
-Type 15:Object[13]:
+Type 17:Object[13]:
     a:integer[4]
     bb:text[8]
     ccc:boolean[12]
 
 fn obj(__ref_1:Object) -> Object["__ref_1"] {#1 block
   {#2 object
-    OpDatabase(__ref_1, 15i32);
+    __ref_1:ref(Object) = OpConvRefFromNull();
+    OpDatabase(__ref_1, 17i32);
     OpSetInt(__ref_1, 4i32, 12i32);
     OpSetText(__ref_1, 8i32, "hi");
     OpSetByte(__ref_1, 12i32, 0i32, if false 1i32 else 0i32);
@@ -23,24 +24,26 @@ fn obj(__ref_1:Object) -> Object["__ref_1"] {#1 block
   }#2:ref(Object)["__ref_1"];
 }#1:ref(Object)["__ref_1"]
 
-byte-code for print_object:obj(__ref_1: ref(Object)[0]) [1067] -> ref(Object)["__ref_1"]
+byte-code for print_object:obj(__ref_1: ref(Object)[0]) [1176] -> ref(Object)["__ref_1"]
    0[12]: return-address
-   0[16]: Database(var[0], db_tp=15) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15]
-   5[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15] var=__ref_1[0]:ref(Object) in 0
-   8[28]: ConstInt(val=12) -> integer
-  13[32]: SetInt(v1: ref(reference), fld=4, val: integer)
-  16[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15] var=__ref_1[0]:ref(Object) in 0
-  19[28]: ConstText(_value="hi") -> text
-  23[44]: SetText(v1: ref(reference), fld=8, val: text)
-  26[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15] var=__ref_1[0]:ref(Object) in 0
-  29[28]: ConstFalse() -> boolean
-  30[29]: GotoFalseWord(jump=41, if_false: boolean)
-  33[28]: ConstInt(val=1) -> integer
-  38[32]: GotoWord(jump=46)
-  41[28]: ConstInt(val=0) -> integer
-  46[32]: SetByte(v1: ref(reference), fld=12, min=0, val: integer)
-  51[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15] var=__ref_1[0]:ref(Object) in 0
-  54[28]: Return(ret=12, value=12, discard=28) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15]
+   0[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[0]:ref(Object) in 0
+   1[28]: PutRef(var[0], value: ref(reference))
+   4[16]: Database(var[0], db_tp=17) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17]
+   9[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=__ref_1[0]:ref(Object) in 0
+  12[28]: ConstInt(val=12) -> integer
+  17[32]: SetInt(v1: ref(reference), fld=4, val: integer)
+  20[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=__ref_1[0]:ref(Object) in 0
+  23[28]: ConstText(_value="hi") -> text
+  27[44]: SetText(v1: ref(reference), fld=8, val: text)
+  30[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=__ref_1[0]:ref(Object) in 0
+  33[28]: ConstFalse() -> boolean
+  34[29]: GotoFalseWord(jump=45, if_false: boolean)
+  37[28]: ConstInt(val=1) -> integer
+  42[32]: GotoWord(jump=50)
+  45[28]: ConstInt(val=0) -> integer
+  50[32]: SetByte(v1: ref(reference), fld=12, min=0, val: integer)
+  55[16]: VarRef(var[0]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=__ref_1[0]:ref(Object) in 0
+  58[28]: Return(ret=12, value=12, discard=28) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17]
 
 fn test() {#1 block
   __ref_1:ref(Object) = null;
@@ -50,9 +53,9 @@ fn test() {#1 block
     o:ref(Object)["__ref_1"] = obj(__ref_1);
     {#3 formatting string
       __work_1:text = "";
-      OpFormatDatabase(__work_1, o, 15i32, false);
+      OpFormatDatabase(__work_1, o, 17i32, false);
       OpAppendText(__work_1, " pretty ");
-      OpFormatDatabase(__work_1, o, 15i32, true);
+      OpFormatDatabase(__work_1, o, 17i32, true);
       __work_1;
     }#3:text;
   }#2:text;
@@ -64,23 +67,23 @@ fn test() {#1 block
   }#4:text);
 }#1
 
-byte-code for print_object:test() [1127]
+byte-code for print_object:test() [1240]
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Object) in 1
    1[16]: Text() var=__work_2[16]:text in 1
    2[40]: Text() var=__work_1[40]:text in 1
    3[64]: Text() var=test_value[64]:text in 1
-   4[88]: VarRef(var[4]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15] var=__ref_1[4]:ref(Object) in 1
-   7[100]: Call(size=0, to=1067)
+   4[88]: VarRef(var[4]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=__ref_1[4]:ref(Object) in 1
+   7[100]: Call(size=0, to=1176)
   14[100]: ClearText(var[40]) var=__work_1[40]:text in 1
   17[100]: ConstText(_value="") -> text
   19[116]: AppendText(var[40], v1: text)
-  22[100]: VarRef(var[88]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15] var=o[88]:ref(Object)["__ref_1"] in 2
-  25[112]: FormatDatabase(var[40], val: ref(reference), db_tp=15, pretty=false)
+  22[100]: VarRef(var[88]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=o[88]:ref(Object)["__ref_1"] in 2
+  25[112]: FormatDatabase(var[40], val: ref(reference), db_tp=17, pretty=false)
   31[100]: ConstText(_value=" pretty ") -> text
   41[116]: AppendText(var[40], v1: text)
-  44[100]: VarRef(var[88]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15] var=o[88]:ref(Object)["__ref_1"] in 2
-  47[112]: FormatDatabase(var[40], val: ref(reference), db_tp=15, pretty=true)
+  44[100]: VarRef(var[88]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=o[88]:ref(Object)["__ref_1"] in 2
+  47[112]: FormatDatabase(var[40], val: ref(reference), db_tp=17, pretty=true)
   53[100]: VarText(var[40]) -> text var=__work_1[40]:text in 1
   56[116]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
   60[104]: AppendText(var[64], v1: text)
@@ -102,7 +105,7 @@ byte-code for print_object:test() [1127]
  249[88]: FreeText(var[64])
  252[88]: FreeText(var[40])
  255[88]: FreeText(var[16])
- 258[88]: VarRef(var[4]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[15] var=__ref_1[4]:ref(Object) in 1
+ 258[88]: VarRef(var[4]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=__ref_1[4]:ref(Object) in 1
  261[100]: FreeRef(v1: ref(reference))
  262[88]: Return(ret=0, value=0, discard=88)
 

@@ -10,11 +10,12 @@ fn test() {#1 block
   __work_1:text = "";
   test_value:integer = {#2 block
     v:text = "something";
-    _tp_text_find(v, {#3 text argument
-      __work_1:text = "t";
+    _tp_text_find(v, {#3 AddText
+      OpClearText(__work_1);
+      OpAppendText(__work_1, "t");
       OpAppendText(__work_1, "h");
       __work_1;
-    }#3:text);
+    }#3:text["__work_1"]);
   }#2:integer;
   if OpEqInt(test_value, 4i32) null else OpPanic({#4 formatting string
     __work_2:text = "Test failed ";
@@ -24,7 +25,7 @@ fn test() {#1 block
   }#4:text);
 }#1
 
-byte-code for find:test() [1067]
+byte-code for find:test() [1176]
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text in 1
    1[28]: Text() var=__work_1[28]:text in 1
@@ -32,7 +33,7 @@ byte-code for find:test() [1067]
    3[76]: ConstText(_value="something") -> text
   14[92]: AppendText(var[52], v1: text)
   17[76]: VarText(var[52]) -> text var=v[52]:text in 2
-  20[92]: ClearText(var[28]) var=__work_1[28]:text in 1
+  20[92]: ClearText(var[28])
   23[92]: ConstText(_value="t") -> text
   26[108]: AppendText(var[28], v1: text)
   29[92]: ConstText(_value="h") -> text

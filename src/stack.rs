@@ -30,7 +30,7 @@ pub struct Stack<'a> {
 }
 
 impl<'a> Stack<'a> {
-    pub fn new(function: Function, data: &'a mut Data, def_nr: u32, logging: bool) -> Stack<'a> {
+    pub fn new(function: Function, data: &'a Data, def_nr: u32, logging: bool) -> Stack<'a> {
         Stack {
             position: 0,
             data,
@@ -124,7 +124,7 @@ impl<'a> Stack<'a> {
         let op_nr = self.data.def_nr(name);
         assert_ne!(op_nr, u32::MAX, "Unknown operator {name}");
         state.remember_stack(self.position);
-        state.code_add(self.data.def(op_nr).op_code);
+        state.code_add(self.data.def(op_nr).op_code as u8);
         self.operator(op_nr);
     }
 

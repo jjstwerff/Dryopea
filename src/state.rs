@@ -255,16 +255,6 @@ impl State {
         }
     }
 
-    /**
-    This is a placeholder function that should be rewritten into two `append_text` calls.
-    # Panics
-    When it is not rewritten into appending calls.
-    */
-    #[allow(clippy::unused_self)]
-    pub fn add_text(&mut self) {
-        panic!("Should not be called directly");
-    }
-
     #[inline]
     pub fn get_character(&mut self) {
         let mut from = *self.get_stack::<i32>();
@@ -1186,7 +1176,6 @@ impl State {
             stack.data,
             &mut started,
         ) {
-            println!("{txt} from {:#?}", stack.data.def(def_nr).code);
             panic!(
                 "{txt} in {} at {}",
                 stack.data.def(def_nr).name,
@@ -1302,6 +1291,7 @@ impl State {
                     .finish_next(lp, &stack.data.def(stack.def_nr).name);
                 Type::Void
             }
+            Value::Insert(_) => panic!("Incorrectly code Insert not rewritten"),
             Value::Break(loop_nr) => {
                 let old_pos = stack.position;
                 self.clear_stack(stack, *loop_nr);
@@ -1422,7 +1412,9 @@ impl State {
                         stack.add_op("OpDatabase", self);
                         self.code_add(size_of::<DbRef>() as u16);
                         let name = format!("main_vector<{}>", elm_tp.name(stack.data));
-                        self.code_add(stack.data.def_name(&name).known_type);
+                        let known = stack.data.def_name(&name).known_type;
+                        debug_assert_ne!(known, u16::MAX, "Incomplete type {name}");
+                        self.code_add(known);
                         stack.add_op("OpVarRef", self);
                         self.code_add(size_of::<DbRef>() as u16);
                         stack.add_op("OpConstInt", self);
@@ -1472,18 +1464,18 @@ impl State {
                 stack.add_op("OpFreeText", self);
                 self.code_add(stack.position - stack.function.stack(v));
             }
-            if let Type::Reference(_, dep) | Type::Vector(_, dep) = stack.function.tp(v) {
-                if dep.is_empty() {
-                    if stack.function.stack(v) >= stack.position {
-                        /*
-                        The first pass on code can sometimes be different from the second,
-                        created variables in this pass could not exist in the second one.
-                        */
-                        continue;
-                    }
-                    self.generate_var(stack, v);
-                    stack.add_op("OpFreeRef", self);
+            if let Type::Reference(_, dep) | Type::Vector(_, dep) = stack.function.tp(v)
+                && dep.is_empty()
+            {
+                if stack.function.stack(v) >= stack.position {
+                    /*
+                    The first pass on code can sometimes be different from the second,
+                    created variables in this pass could not exist in the second one.
+                    */
+                    continue;
                 }
+                self.generate_var(stack, v);
+                stack.add_op("OpFreeRef", self);
             }
         }
     }
@@ -1524,17 +1516,17 @@ impl State {
             }
             _ => (),
         }
-        if !parameters.is_empty() {
-            if let Value::Int(n) = parameters[parameters.len() - 1] {
-                last = n as u16;
-            }
+        if !parameters.is_empty()
+            && let Value::Int(n) = parameters[parameters.len() - 1]
+        {
+            last = n as u16;
         }
         let name = stack.data.def(*op).name.clone();
         if stack.data.def(*op).is_operator() {
             let before_stack = stack.position;
             self.remember_stack(stack.position);
             let code = self.code_pos;
-            self.code_add(stack.data.def(*op).op_code);
+            self.code_add(stack.data.def(*op).op_code as u8);
             stack.operator(*op);
             if was_stack != u16::MAX {
                 stack.position = was_stack;

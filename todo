@@ -1,0 +1,67 @@
+c_fn("1" + "2" + "3" + "4");
+    w_1 = "";
+    c_fn({w_1.clear(); w_1+="1"; w_1+="2"; w_1+="3"; w_1+="4"; w_1});
+
+a += "1" + "2" + "3";
+    a=+"1"; a+="2"; a+="3";
+
+a = "1" + "2" + "3";
+    a.clear(); a+="1"; a+="2"; a+="3";
+
+a += 'a' + 'b' + "c";
+    a+='a'; a+='b'; a+="c";
+
+{ "a" + 'c' }
+    w_1 = ""; { w_1.clear(); w_1+="a"; w_1+="c"; w_1 }
+
+{ return 'a' + 'c'; "" + ' '; 12; "123" }
+    w_1 = "";
+    w_2 = "";
+    { w_1.clear(); w_1+='a'; w_1+='c'; return w_1; w_2.clear; w_2+=' '; w_2; 12; "123" }
+
+{ a="12345"; a[0] + a[1] + a[2] + " " + a[3] + " " + a[4]}
+    w_1 = "";
+    { a="12345"; w_1.clear(); w_1+=a[0]; w_1+=a[1]; w_1+=a[2]; w_1+=" "; w_1+=a[3]; w_1+=" "; w_1+=a[4]; w_1}
+
+Left type Text or Character:
+    No work variable:
+        pick one
+        start a block (with current list)
+        clear work
+        end it after all parsing
+    Otherwise replace with append (text, character and other types?).
+        append to text
+
+Same handling for vectors with multiple additions.
+
+click on hex grid: assume vertical view
+    x,y to correct hex position & relative position on the hex
+    dragging for multiple hexes selection & rotate the camera
+sampling png onto hex grid: specific point & 4 pixels around it
+    hex center into exact position on the png-grid
+    starting with rectangle that approximates the hex
+    get the pixels with their share of the tile (potentially more than 4)
+draw coast lines:
+    walls at 15 degrees based on rough shape of hexes (step = 60, 2 steps = 30)
+    start with middles of sides towards the sea
+    path: (x,y) dir & steps (turn left/right)
+    match longest pattern first (sets: round30, round15, circles3, circles6, flats30, flats15)
+    points (x,y,z) triangles materials
+general slopes (flats, gradual, hills, mountain)
+water flow, amount of water
+    random direction per tile
+    breaking cicles from the coast with flipping
+tree/plant growth
+steep sides into rock faces
+lakes as non-connected seas
+roofs / walls / roads / rails (flatten)
+editing height and open terrain
+    show pre-build items & place them with position and rotation
+    clicking including height and multiple layers
+shortest path
+    on single layer
+    connections between layers
+    width of room versus vehicle
+    maximum slope (different materials)
+    maximum water depth to pass (wading, amimals, vehicle)
+    following water for boats (ocean, sea, river, lake)

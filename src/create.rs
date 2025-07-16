@@ -69,14 +69,14 @@ pub fn init(state: &mut State) {{
         for a in data.def(d_nr).attributes.iter().rev() {
             let tp = data.rust_type(&a.typedef, &Context::Argument);
             writeln!(into, "    let v_{} = *stores.get::<{tp}>(stack);", a.name)?;
-            if let Type::RefVar(var) = &a.typedef {
-                if let Type::Text(_) = **var {
-                    writeln!(
-                        into,
-                        "    let v_{} = stores.store_mut(&v_{}).addr_mut::<String>(v_{}.rec, v_{}.pos);",
-                        a.name, a.name, a.name, a.name
-                    )?;
-                }
+            if let Type::RefVar(var) = &a.typedef
+                && let Type::Text(_) = **var
+            {
+                writeln!(
+                    into,
+                    "    let v_{} = stores.store_mut(&v_{}).addr_mut::<String>(v_{}.rec, v_{}.pos);",
+                    a.name, a.name, a.name, a.name
+                )?;
             }
         }
         let mut res = data.def(d_nr).rust.clone();

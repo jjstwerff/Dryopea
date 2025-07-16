@@ -15,18 +15,18 @@ pub fn test() {
         "Test failed {test_value} != \"{{a:[1,4,3,8],b:Fluid}}\""
     );
 }
-Type 15:vector<integer>[4]:Vector(0)
+Type 17:vector<integer>[4]:Vector(0)
 
-Type 16:Gender[1]:Enum(["Male", "Female", "Fluid"])
+Type 18:Gender[1]:Enum(["Male", "Female", "Fluid"])
 
-Type 17:Object[9]:
+Type 19:Object[9]:
     a:vector<integer>[4]
     b:Gender[8]
 
 fn sum(o:Object) -> integer {#1 block
   r:integer = 0i32;
   {#2 for
-    _vector_1:vector<integer>["o"] = OpGetField(o, 4i32, 15i32);
+    _vector_1:vector<integer>["o"] = OpGetField(o, 4i32, 17i32);
     v#index:integer = -1i32;
     loop {#3 for loop
       v:integer = {#4 iter next
@@ -42,17 +42,17 @@ fn sum(o:Object) -> integer {#1 block
   r;
 }#1:integer
 
-byte-code for special_fields:sum(o: ref(Object)[0]) [1067] -> integer
+byte-code for special_fields:sum(o: ref(Object)[0]) [1176] -> integer
    0[12]: return-address
    0[16]: ConstInt(val=0) -> integer var=r[16]:integer in 1
-   5[20]: VarRef(var[0]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=o[0]:ref(Object) in 0
-   8[32]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=vector<integer>[4]:Vector(0)[15]
+   5[20]: VarRef(var[0]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[0]:ref(Object) in 0
+   8[32]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=vector<integer>[4]:Vector(0)[17]
   11[32]: ConstInt(val=-1) -> integer var=v#index[32]:integer in 2
   16[36]: VarInt(var[32]) -> integer var=v#index[32]:integer in 2
   19[40]: ConstInt(val=1) -> integer
   24[44]: AddInt(v1: integer, v2: integer) -> integer
   25[40]: PutInt(var[32], value: integer)
-  28[36]: VarVector(var[20]) -> vector type=vector<integer>[4]:Vector(0)[15] var=_vector_1[20]:vector<integer>["o"] in 2
+  28[36]: VarVector(var[20]) -> vector type=vector<integer>[4]:Vector(0)[17] var=_vector_1[20]:vector<integer>["o"] in 2
   31[48]: VarInt(var[32]) -> integer var=v#index[32]:integer in 2
   34[52]: GetVector(r: vector, size=4, index: integer) -> ref(reference) type=integer[4]:Base[0]
   37[48]: GetInt(v1: ref(reference), fld=0) -> integer
@@ -73,124 +73,112 @@ byte-code for special_fields:sum(o: ref(Object)[0]) [1067] -> integer
   79[24]: Return(ret=12, value=4, discard=24) type=integer[4]:Base[0]
 
 fn test() {#1 block
-  __ref_1:ref(Object) = null;
   __work_2:text = "";
   __work_1:text = "";
   test_value:text = {#2 block
-    o:ref(Object)["__ref_1"] = {#3 object
-      OpDatabase(__ref_1, 17i32);
-      OpSetInt(__ref_1, 4i32, 0i32);
-      {#4 vector
-        _elm_1:ref(boolean)["__ref_1"] = OpNewRecord(__ref_1, 17i32, 0i32);
-        OpSetInt(_elm_1, 0i32, 1i32);
-        OpFinishRecord(__ref_1, _elm_1, 17i32, 0i32);
-        _elm_1:ref(boolean)["__ref_1"] = OpNewRecord(__ref_1, 17i32, 0i32);
-        OpSetInt(_elm_1, 0i32, 4i32);
-        OpFinishRecord(__ref_1, _elm_1, 17i32, 0i32);
-        _elm_1:ref(boolean)["__ref_1"] = OpNewRecord(__ref_1, 17i32, 0i32);
-        OpSetInt(_elm_1, 0i32, 3i32);
-        OpFinishRecord(__ref_1, _elm_1, 17i32, 0i32);
-      }#4;
-      OpSetEnum(__ref_1, 8i32, 3u8(16));
-      __ref_1;
-    }#3:ref(Object)["__ref_1"];
-    {#5 vector
-      _elm_2:ref(boolean)["o"] = OpNewRecord(o, 17i32, 0i32);
-      OpSetInt(_elm_2, 0i32, sum(o));
-      OpFinishRecord(o, _elm_2, 17i32, 0i32);
-    }#5;
-    {#6 formatting string
+    o:ref(Object)["o"] = OpConvRefFromNull();
+    OpDatabase(o, 19i32);
+    OpSetInt(o, 4i32, 0i32);
+    _elm_1:ref(boolean)["o"] = OpNewRecord(o, 19i32, 0i32);
+    OpSetInt(_elm_1, 0i32, 1i32);
+    OpFinishRecord(o, _elm_1, 19i32, 0i32);
+    _elm_1:ref(boolean)["o"] = OpNewRecord(o, 19i32, 0i32);
+    OpSetInt(_elm_1, 0i32, 4i32);
+    OpFinishRecord(o, _elm_1, 19i32, 0i32);
+    _elm_1:ref(boolean)["o"] = OpNewRecord(o, 19i32, 0i32);
+    OpSetInt(_elm_1, 0i32, 3i32);
+    OpFinishRecord(o, _elm_1, 19i32, 0i32);
+    OpSetEnum(o, 8i32, 3u8(18));
+    _elm_2:ref(boolean)["o"] = OpNewRecord(o, 19i32, 0i32);
+    OpSetInt(_elm_2, 0i32, sum(o));
+    OpFinishRecord(o, _elm_2, 19i32, 0i32);
+    {#3 formatting string
       __work_1:text = "";
-      OpFormatDatabase(__work_1, o, 17i32, false);
+      OpFormatDatabase(__work_1, o, 19i32, false);
       __work_1;
-    }#6:text;
+    }#3:text;
   }#2:text;
-  if OpEqText(test_value, "{a:[1,4,3,8],b:Fluid}") null else OpPanic({#7 formatting string
+  if OpEqText(test_value, "{a:[1,4,3,8],b:Fluid}") null else OpPanic({#4 formatting string
     __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "{a:[1,4,3,8],b:Fluid}"");
     __work_2;
-  }#7:text);
+  }#4:text);
 }#1
 
-byte-code for special_fields:test() [1152]
+byte-code for special_fields:test() [1261]
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Object) in 1
-   1[16]: Text() var=__work_2[16]:text in 1
-   2[40]: Text() var=__work_1[40]:text in 1
-   3[64]: Text() var=test_value[64]:text in 1
-   4[88]: Database(var[4], db_tp=17) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=o[88]:ref(Object)["__ref_1"] in 2
-   9[88]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
+   0[4]: Text() var=__work_2[4]:text in 1
+   1[28]: Text() var=__work_1[28]:text in 1
+   2[52]: Text() var=test_value[52]:text in 1
+   3[76]: ConvRefFromNull() -> ref(reference) var=o[76]:ref(Object)["o"] in 2
+   4[88]: Database(var[76], db_tp=19) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19]
+   9[88]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
   12[100]: ConstInt(val=0) -> integer
   17[104]: SetInt(v1: ref(reference), fld=4, val: integer)
-  20[88]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
-  23[100]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
-  28[100]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["__ref_1"] in 4
+  20[88]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+  23[100]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+  28[100]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["o"] in 2
   31[112]: ConstInt(val=1) -> integer
   36[116]: SetInt(v1: ref(reference), fld=0, val: integer)
-  39[100]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
-  42[112]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["__ref_1"] in 4
-  45[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
-  50[100]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
-  53[112]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
+  39[100]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+  42[112]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["o"] in 2
+  45[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+  50[100]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+  53[112]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
   58[112]: PutRef(var[88], value: ref(reference))
-  61[100]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["__ref_1"] in 4
+  61[100]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["o"] in 2
   64[112]: ConstInt(val=4) -> integer
   69[116]: SetInt(v1: ref(reference), fld=0, val: integer)
-  72[100]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
-  75[112]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["__ref_1"] in 4
-  78[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
-  83[100]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
-  86[112]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
+  72[100]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+  75[112]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["o"] in 2
+  78[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+  83[100]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+  86[112]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
   91[112]: PutRef(var[88], value: ref(reference))
-  94[100]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["__ref_1"] in 4
+  94[100]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["o"] in 2
   97[112]: ConstInt(val=3) -> integer
  102[116]: SetInt(v1: ref(reference), fld=0, val: integer)
- 105[100]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
- 108[112]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["__ref_1"] in 4
- 111[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
- 116[100]: FreeStack(value=0, discard=12)
- 120[88]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
- 123[100]: ConstEnum(val=3) -> enumerate type=Gender[1]:Enum(["Male", "Female", "Fluid"])[16]
- 125[101]: SetEnum(v1: ref(reference), fld=8, val: enumerate)
- 128[88]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
- 131[100]: VarRef(var[88]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=o[88]:ref(Object)["__ref_1"] in 2
- 134[112]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
- 139[112]: VarRef(var[100]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[100]:ref(boolean)["o"] in 5
- 142[124]: VarRef(var[88]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=o[88]:ref(Object)["__ref_1"] in 2
- 145[136]: Call(size=0, to=1067)
- 152[128]: SetInt(v1: ref(reference), fld=0, val: integer)
- 155[112]: VarRef(var[88]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=o[88]:ref(Object)["__ref_1"] in 2
- 158[124]: VarRef(var[100]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[100]:ref(boolean)["o"] in 5
- 161[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
- 166[112]: FreeStack(value=0, discard=12)
- 170[100]: ClearText(var[40]) var=__work_1[40]:text in 1
- 173[100]: ConstText(_value="") -> text
- 175[116]: AppendText(var[40], v1: text)
- 178[100]: VarRef(var[88]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=o[88]:ref(Object)["__ref_1"] in 2
- 181[112]: FormatDatabase(var[40], val: ref(reference), db_tp=17, pretty=false)
- 187[100]: VarText(var[40]) -> text var=__work_1[40]:text in 1
- 190[116]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
- 194[104]: AppendText(var[64], v1: text)
- 197[88]: VarText(var[64]) -> text var=test_value[64]:text in 1
- 200[104]: ConstText(_value="{a:[1,4,3,8],b:Fluid}") -> text
- 223[120]: EqText(v1: text, v2: text) -> boolean
- 224[89]: GotoFalseWord(jump=230, if_false: boolean)
- 227[88]: GotoWord(jump=299)
- 230[88]: ClearText(var[16]) var=__work_2[16]:text in 1
- 233[88]: ConstText(_value="Test failed ") -> text
- 247[104]: AppendText(var[16], v1: text)
- 250[88]: VarText(var[64]) -> text var=test_value[64]:text in 1
- 253[104]: ConstInt(val=0) -> integer
- 258[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
- 263[88]: ConstText(_value=" != "{a:[1,4,3,8],b:Fluid}"") -> text
- 292[104]: AppendText(var[16], v1: text)
- 295[88]: VarText(var[16]) -> text var=__work_2[16]:text in 1
- 298[104]: Panic(message: text)
- 299[88]: FreeText(var[64])
- 302[88]: FreeText(var[40])
- 305[88]: FreeText(var[16])
- 308[88]: VarRef(var[4]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[17] var=__ref_1[4]:ref(Object) in 1
- 311[100]: FreeRef(v1: ref(reference))
- 312[88]: Return(ret=0, value=0, discard=88)
+ 105[100]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+ 108[112]: VarRef(var[88]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[88]:ref(boolean)["o"] in 2
+ 111[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 116[100]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+ 119[112]: ConstEnum(val=3) -> enumerate type=Gender[1]:Enum(["Male", "Female", "Fluid"])[18]
+ 121[113]: SetEnum(v1: ref(reference), fld=8, val: enumerate)
+ 124[100]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+ 127[112]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+ 132[112]: VarRef(var[100]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[100]:ref(boolean)["o"] in 2
+ 135[124]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+ 138[136]: Call(size=0, to=1176)
+ 145[128]: SetInt(v1: ref(reference), fld=0, val: integer)
+ 148[112]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+ 151[124]: VarRef(var[100]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[100]:ref(boolean)["o"] in 2
+ 154[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 159[112]: ClearText(var[28]) var=__work_1[28]:text in 1
+ 162[112]: ConstText(_value="") -> text
+ 164[128]: AppendText(var[28], v1: text)
+ 167[112]: VarRef(var[76]) -> ref(reference) type=Object[9]:{a:vector<integer>[4], b:Gender[8]}[19] var=o[76]:ref(Object)["o"] in 2
+ 170[124]: FormatDatabase(var[28], val: ref(reference), db_tp=19, pretty=false)
+ 176[112]: VarText(var[28]) -> text var=__work_1[28]:text in 1
+ 179[128]: FreeStack(value=16, discard=52) type=text[4]:Base[5]
+ 183[92]: AppendText(var[52], v1: text)
+ 186[76]: VarText(var[52]) -> text var=test_value[52]:text in 1
+ 189[92]: ConstText(_value="{a:[1,4,3,8],b:Fluid}") -> text
+ 212[108]: EqText(v1: text, v2: text) -> boolean
+ 213[77]: GotoFalseWord(jump=219, if_false: boolean)
+ 216[76]: GotoWord(jump=288)
+ 219[76]: ClearText(var[4]) var=__work_2[4]:text in 1
+ 222[76]: ConstText(_value="Test failed ") -> text
+ 236[92]: AppendText(var[4], v1: text)
+ 239[76]: VarText(var[52]) -> text var=test_value[52]:text in 1
+ 242[92]: ConstInt(val=0) -> integer
+ 247[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 252[76]: ConstText(_value=" != "{a:[1,4,3,8],b:Fluid}"") -> text
+ 281[92]: AppendText(var[4], v1: text)
+ 284[76]: VarText(var[4]) -> text var=__work_2[4]:text in 1
+ 287[92]: Panic(message: text)
+ 288[76]: FreeText(var[52])
+ 291[76]: FreeText(var[28])
+ 294[76]: FreeText(var[4])
+ 297[76]: Return(ret=0, value=0, discard=76)
 

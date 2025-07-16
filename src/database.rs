@@ -40,8 +40,9 @@ pub struct Type {
     pub name: String,
     pub parts: Parts,
     pub keys: Vec<Key>,
-    complex: bool,
-    linked: bool,
+    complex: bool, // Is this type normally written to multiple lines.
+    linked: bool,  // Is this type linked to in a structure (not a direct part of it)
+    main: bool,    // This is a main structure type
     size: u16,
     align: u8,
 }
@@ -56,6 +57,7 @@ impl Type {
             linked: false,
             size,
             align: size as u8,
+            main: false,
         }
     }
 
@@ -68,6 +70,7 @@ impl Type {
             linked: false,
             size: 4,
             align: 4,
+            main: false,
         }
     }
 }
@@ -158,7 +161,7 @@ fn compare(a: &Content, b: &Content) -> Ordering {
     }
 }
 
-#[allow(dead_code)]
+#[derive(Clone)]
 pub struct Stores {
     pub types: Vec<Type>,
     pub names: HashMap<String, u16>,
@@ -395,6 +398,11 @@ impl Stores {
         if tp == u16::MAX {
             0
         } else {
+            debug_assert!(
+                self.types[tp as usize].size > 0,
+                "Incomplete record {}",
+                self.types[tp as usize].name
+            );
             self.types[tp as usize].size
         }
     }
@@ -414,6 +422,9 @@ impl Stores {
         }
     }
 
+    /**
+    To define the 7 base types of the language.
+    */
     fn base_type(&mut self, name: &str, size: u8) {
         self.names.insert(name.to_string(), self.types.len() as u16);
         self.types
@@ -448,8 +459,6 @@ impl Stores {
 
     /**
     Define a new database structure (record).
-    # Panics
-    When children are added to a type that is not a structure.
     */
     pub fn structure(&mut self, name: &str) -> u16 {
         let num = self.types.len() as u16;
@@ -458,6 +467,10 @@ impl Stores {
         tp.align = u8::MAX;
         self.types.push(tp);
         num
+    }
+
+    pub fn main(&mut self, tp: u16) {
+        self.types[tp as usize].main = true;
     }
 
     /**
@@ -544,6 +557,9 @@ impl Stores {
         }
     }
 
+    /**
+    Determine how structures are actually used.
+    */
     pub fn finish(&mut self) {
         let mut vectors = HashSet::new();
         let mut linked = HashSet::new();
@@ -556,14 +572,13 @@ impl Stores {
             }
             if let Parts::Struct(fields) = &self.types[t_nr].parts {
                 for f in fields {
-                    if let Parts::Vector(v) | Parts::Sorted(v, _) =
-                        self.types[f.content as usize].parts
-                    {
-                        vectors.insert(v);
-                    }
-                    if let Parts::Hash(r, _) = self.types[f.content as usize].parts {
-                        linked.insert(r);
-                    }
+                    match self.types[f.content as usize].parts {
+                        Parts::Vector(v) | Parts::Sorted(v, _) => vectors.insert(v),
+                        Parts::Hash(r, _) | Parts::Spacial(r, _) | Parts::Index(r, _, _) => {
+                            linked.insert(r)
+                        }
+                        _ => false,
+                    };
                 }
             }
             if let Parts::Sorted(v, _) = &self.types[t_nr].parts {
@@ -584,30 +599,32 @@ impl Stores {
                         self.types[f.content as usize].size,
                         self.types[f.content as usize].align,
                     ));
-                    if let Parts::Vector(c) = self.types[f.content as usize].parts {
-                        if linked.contains(&c) {
-                            self.types[c as usize].linked = true;
-                            self.types[fields[field_nr].content as usize].parts = Parts::Array(c);
-                            self.types[fields[field_nr].content as usize].name =
-                                format!("array<{}>", self.types[c as usize].name);
-                        }
+                    if let Parts::Vector(c) = self.types[f.content as usize].parts
+                        && linked.contains(&c)
+                    {
+                        self.types[c as usize].linked = true;
+                        self.types[fields[field_nr].content as usize].parts = Parts::Array(c);
+                        self.types[fields[field_nr].content as usize].name =
+                            format!("array<{}>", self.types[c as usize].name);
                     }
-                    if let Parts::Sorted(c, key) = self.types[f.content as usize].parts.clone() {
-                        if linked.contains(&c) {
-                            let mut name = format!("ordered<{}[", self.types[c as usize].name);
-                            self.key_name(c, &key, &mut name);
-                            self.types[fields[field_nr].content as usize].parts =
-                                Parts::Ordered(c, key.clone());
-                            self.types[fields[field_nr].content as usize].name = name;
-                        }
+                    if let Parts::Sorted(c, key) = self.types[f.content as usize].parts.clone()
+                        && linked.contains(&c)
+                    {
+                        let mut name = format!("ordered<{}[", self.types[c as usize].name);
+                        self.key_name(c, &key, &mut name);
+                        self.types[c as usize].linked = true;
+                        self.types[fields[field_nr].content as usize].parts =
+                            Parts::Ordered(c, key.clone());
+                        self.types[fields[field_nr].content as usize].name = name;
                     }
                 }
             }
+            let main = self.types[t_nr].main;
             if let Parts::Struct(fields) = &mut self.types[t_nr].parts {
                 let mut size = 0;
                 let mut alignment = 0;
                 let t = t_nr as u16;
-                let vector = vectors.contains(&t) && !linked.contains(&t);
+                let vector = vectors.contains(&t) && !linked.contains(&t) && !main;
                 let sub = parts.contains(&t);
                 let pos = calc::calculate_positions(&sizes, vector, sub, &mut size, &mut alignment);
                 for (field_nr, pos) in pos.iter().enumerate() {
@@ -952,11 +969,13 @@ impl Stores {
         if known_type == u16::MAX {
             return format!("unknown({value})");
         }
-        if let Parts::Enum(values) = &self.types[known_type as usize].parts {
-            if value > 0 && (value as usize) <= values.len() {
-                return values[value as usize - 1].clone();
-            }
+        if let Parts::Enum(values) = &self.types[known_type as usize].parts
+            && value > 0
+            && (value as usize) <= values.len()
+        {
+            return values[value as usize - 1].clone();
         }
+
         "null".to_string()
     }
 
@@ -1211,15 +1230,15 @@ impl Stores {
         };
         let d = self.field_ref(data, parent_tp, field);
         self.insert_record(&d, rec, tp);
-        if field != u16::MAX {
-            if let Parts::Struct(fields) = self.types[parent_tp as usize].parts.clone() {
-                let f = &fields[field as usize];
-                let o = &f.other_indexes;
-                if !o.is_empty() && o[0] != u16::MAX {
-                    for fld_nr in o {
-                        let o = self.field_ref(data, parent_tp, *fld_nr);
-                        self.insert_record(&o, rec, fields[*fld_nr as usize].content);
-                    }
+        if field != u16::MAX
+            && let Parts::Struct(fields) = self.types[parent_tp as usize].parts.clone()
+        {
+            let f = &fields[field as usize];
+            let o = &f.other_indexes;
+            if !o.is_empty() && o[0] != u16::MAX {
+                for fld_nr in o {
+                    let o = self.field_ref(data, parent_tp, *fld_nr);
+                    self.insert_record(&o, rec, fields[*fld_nr as usize].content);
                 }
             }
         }

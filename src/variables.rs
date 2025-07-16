@@ -211,39 +211,49 @@ impl Function {
             if self.logging {
                 println!("start_next stack:{:?}", self.stack);
             }
-            self.current_scope
-        } else {
-            let parent = *self.stack.last().unwrap();
-            let mut last = u16::MAX;
-            for s in &self.scopes[parent as usize].parts {
-                if last == self.last_scope {
-                    self.last_scope = self.current_scope;
-                    self.current_scope = *s;
-                    self.stack.push(*s);
-                    if self.logging {
-                        println!(
-                            "start_next parent:{parent} s:{s} stack:{:?} parts:{:?}",
-                            self.stack, self.scopes[parent as usize].parts
-                        );
-                    }
-                    return *s;
-                }
-                last = *s;
-            }
-            if let Some(first) = self.scopes[parent as usize].parts.first() {
+            return 0;
+        }
+        let parent = *self.stack.last().unwrap();
+        let mut last = u16::MAX;
+        for s in &self.scopes[parent as usize].parts {
+            if last == self.last_scope {
                 self.last_scope = self.current_scope;
-                self.current_scope = *first;
-                self.stack.push(*first);
+                debug_assert_eq!(
+                    self.scopes[*s as usize].parent, self.current_scope,
+                    "Incorrect parent"
+                );
+                self.current_scope = *s;
+                self.stack.push(*s);
                 if self.logging {
                     println!(
-                        "start_next parent:{parent} current:{first} stack:{:?} parts:{:?}",
+                        "start_next parent:{parent} current:{s} stack:{:?} parts:{:?}",
                         self.stack, self.scopes[parent as usize].parts
                     );
                 }
-                *first
-            } else {
-                panic!("Iterating empty scope {parent}");
+                return *s;
             }
+            last = *s;
+        }
+        if let Some(first) = self.scopes[parent as usize].parts.first() {
+            self.last_scope = self.current_scope;
+            debug_assert_eq!(
+                self.scopes[*first as usize].parent, self.current_scope,
+                "Incorrect parent"
+            );
+            self.current_scope = *first;
+            self.stack.push(*first);
+            if self.logging {
+                println!(
+                    "start_next parent:{parent} current:{first} stack:{:?} parts:{:?}",
+                    self.stack, self.scopes[parent as usize].parts
+                );
+            }
+            *first
+        } else {
+            panic!(
+                "Iterating empty scope {parent}:{}",
+                self.scopes[parent as usize].context
+            );
         }
     }
 
@@ -474,7 +484,21 @@ impl Function {
         self.last_scope
     }
 
+    pub fn last(&self) -> u16 {
+        if let Some(nr) = self.scopes[self.current_scope as usize].parts.last()
+            && *nr <= self.last_scope
+        {
+            *nr
+        } else {
+            u16::MAX
+        }
+    }
+
     pub fn move_scope(&mut self, scope: u16, into: u16) {
+        if scope == u16::MAX {
+            return;
+        }
+        assert_ne!(scope, into, "Cannot move into itself");
         assert!(
             scope < self.scopes.len() as u16,
             "Scope {scope} out of range"
@@ -483,6 +507,11 @@ impl Function {
         let parent = self.scopes[scope as usize].parent;
         self.scopes[parent as usize].parts.retain(|s| *s != scope);
         self.scopes[into as usize].parts.push(scope);
+        assert_ne!(
+            self.scopes[into as usize].parent, scope,
+            "Cannot move parent"
+        );
+        self.scopes[scope as usize].parent = into;
     }
 
     pub fn reset(&mut self) {
@@ -508,12 +537,15 @@ impl Function {
     }
 
     pub fn is_independent(&self, var_nr: u16) -> bool {
-        self.variables[var_nr as usize].type_def.depend().is_empty()
+        let d = self.variables[var_nr as usize].type_def.depend();
+        d.is_empty() || (d.len() == 1 && d[0] == var_nr)
     }
 
     pub fn depend(&mut self, var_nr: u16, on: u16) {
-        self.variables[var_nr as usize].type_def =
-            self.variables[var_nr as usize].type_def.depending(on);
+        if on != u16::MAX {
+            self.variables[var_nr as usize].type_def =
+                self.variables[var_nr as usize].type_def.depending(on);
+        }
     }
 
     pub fn uses(&self, var_nr: u16) -> u16 {
@@ -590,10 +622,10 @@ impl Function {
     }
 
     pub fn find_var(&self, name: &str) -> u16 {
-        if let Some(nr) = self.names.get(name) {
-            if let Some(n) = nr.first() {
-                return *n;
-            }
+        if let Some(nr) = self.names.get(name)
+            && let Some(n) = nr.first()
+        {
+            return *n;
         }
         u16::MAX
     }
@@ -678,10 +710,10 @@ impl Function {
                 );
             }
         } else if !var_tp.is_unknown() {
-            if let Type::RefVar(in_tp) = var_tp {
-                if in_tp.is_equal(type_def) {
-                    return self.is_new(var_nr);
-                }
+            if let Type::RefVar(in_tp) = var_tp
+                && in_tp.is_equal(type_def)
+            {
+                return self.is_new(var_nr);
             }
             diagnostic!(
                 lexer,
@@ -693,7 +725,7 @@ impl Function {
             );
         }
         self.variables[var_nr as usize].type_def = type_def.clone();
-        self.is_new(var_nr)
+        true
     }
 
     fn is_new(&self, var_nr: u16) -> bool {
@@ -806,10 +838,10 @@ impl Function {
                         tp = self.validate(l, name, file, data, started)?;
                     }
                     let mut result = self.result();
-                    if let (Type::Reference(tp_elm, _), Type::Reference(_, _)) = (&tp, result) {
-                        if *tp_elm == data.def_nr("reference") {
-                            result = &Type::Null;
-                        }
+                    if let (Type::Reference(tp_elm, _), Type::Reference(_, _)) = (&tp, result)
+                        && *tp_elm == data.def_nr("reference")
+                    {
+                        result = &Type::Null;
                     }
                     if result != &Type::Null {
                         // ignore else if block

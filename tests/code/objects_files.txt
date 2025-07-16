@@ -5,11 +5,6 @@ pub fn test() {
         "Test failed {test_value} != \"[{{path:\"example/config\",size:4096,dir:true}},{{path:\"example/map.png\",size:3406,dir:false}},{{path:\"example/map.xcf\",size:7817,dir:false}},{{path:\"example/show.lav\",size:371,dir:false}}]\""
     );
 }
-Type 15:vector<File>[4]:Vector(13)
-
-Type 16:main_vector<File>[8]:
-    vector:vector<File>[4]
-
 fn test() {#1 block
   __ref_2:vector<ref(File)> = null;
   __ref_1:ref(File) = null;
@@ -19,7 +14,7 @@ fn test() {#1 block
     fs:vector<ref(File)>["__ref_2"] = _tp_File_files(file("example", __ref_1), __ref_2);
     {#3 formatting string
       __work_1:text = "";
-      OpFormatDatabase(__work_1, fs, 15i32, false);
+      OpFormatDatabase(__work_1, fs, 16i32, false);
       __work_1;
     }#3:text;
   }#2:text;
@@ -31,10 +26,10 @@ fn test() {#1 block
   }#4:text);
 }#1
 
-byte-code for files:test() [1067]
+byte-code for files:test() [1176]
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:vector<ref(File)> in 1
-   1[16]: Database(var[4], db_tp=16)
+   1[16]: Database(var[4], db_tp=15)
    6[16]: VarRef(var[4]) -> ref(reference)
    9[28]: ConstInt(val=0) -> integer
   14[32]: SetInt(v1: ref(reference), fld=4, val: integer)
@@ -47,14 +42,14 @@ byte-code for files:test() [1067]
   33[76]: Text() var=test_value[76]:text in 1
   34[100]: ConstText(_value="example") -> text var=fs[100]:vector<ref(File)>["__ref_2"] in 2
   43[116]: VarRef(var[16]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=__ref_1[16]:ref(File) in 1
-  46[128]: Call(size=0, to=712)
-  53[112]: VarVector(var[4]) -> vector type=vector<File>[4]:Vector(13)[15] var=__ref_2[4]:vector<ref(File)> in 1
-  56[124]: Call(size=0, to=786)
+  46[128]: Call(size=0, to=789)
+  53[112]: VarVector(var[4]) -> vector type=vector<File>[4]:Vector(13)[16] var=__ref_2[4]:vector<ref(File)> in 1
+  56[124]: Call(size=0, to=867)
   63[112]: ClearText(var[52]) var=__work_1[52]:text in 1
   66[112]: ConstText(_value="") -> text
   68[128]: AppendText(var[52], v1: text)
-  71[112]: VarVector(var[100]) -> vector type=vector<File>[4]:Vector(13)[15] var=fs[100]:vector<ref(File)>["__ref_2"] in 2
-  74[124]: FormatDatabase(var[52], val: ref(reference), db_tp=15, pretty=false)
+  71[112]: VarVector(var[100]) -> vector type=vector<File>[4]:Vector(13)[16] var=fs[100]:vector<ref(File)>["__ref_2"] in 2
+  74[124]: FormatDatabase(var[52], val: ref(reference), db_tp=16, pretty=false)
   80[112]: VarText(var[52]) -> text var=__work_1[52]:text in 1
   83[128]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
   87[116]: AppendText(var[76], v1: text)
@@ -76,7 +71,7 @@ byte-code for files:test() [1067]
  508[100]: FreeText(var[76])
  511[100]: VarRef(var[16]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=__ref_1[16]:ref(File) in 1
  514[112]: FreeRef(v1: ref(reference))
- 515[100]: VarVector(var[4]) -> vector type=vector<File>[4]:Vector(13)[15] var=__ref_2[4]:vector<ref(File)> in 1
+ 515[100]: VarVector(var[4]) -> vector type=vector<File>[4]:Vector(13)[16] var=__ref_2[4]:vector<ref(File)> in 1
  518[112]: FreeRef(v1: ref(reference))
  519[100]: FreeText(var[52])
  522[100]: FreeText(var[28])
