@@ -7,16 +7,16 @@ pub fn test() {
         "Test failed {test_value} != 7"
     );
 }
-fn routine(a:integer) -> integer {#1 block
-  if OpGtInt(a, 4i32) {#2 block
+fn routine(a:integer) -> integer {
+  if OpGtInt(a, 4i32) {
     return OpAddInt(a, 1i32);
-  }#2 else {#3 block
+  }#integer else {
     return 1i32;
-  }#3;
+  }#integer;
   2i32;
-}#1:integer
+}#integer
 
-byte-code for call_routine:routine(a: integer[0]) [1067] -> integer
+byte-code for call_routine:routine(a: integer[0]) [1176] -> integer
    0[4]: return-address
    0[8]: VarInt(var[0]) -> integer var=a[0]:integer in 0
    3[12]: ConstInt(val=4) -> integer
@@ -34,26 +34,26 @@ byte-code for call_routine:routine(a: integer[0]) [1067] -> integer
   49[8]: ConstInt(val=2) -> integer
   54[12]: Return(ret=4, value=4, discard=12) type=integer[4]:Base[0]
 
-fn test() {#1 block
+fn test() {
   __work_1:text = "";
-  test_value:integer = {#2 block
+  test_value:integer = {
     OpAddInt(routine(5i32), routine(2i32));
-  }#2:integer;
-  if OpEqInt(test_value, 7i32) null else OpPanic({#3 formatting string
+  };
+  if OpEqInt(test_value, 7i32) null else OpPanic({
     __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 7");
     __work_1;
-  }#3:text);
-}#1
+  });
+}
 
-byte-code for call_routine:test() [1127]
+byte-code for call_routine:test() [1236]
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text in 1
    1[28]: ConstInt(val=5) -> integer var=test_value[28]:integer in 1
-   6[32]: Call(size=0, to=1067)
+   6[32]: Call(size=0, to=1176)
   13[32]: ConstInt(val=2) -> integer
-  18[36]: Call(size=0, to=1067)
+  18[36]: Call(size=0, to=1176)
   25[36]: AddInt(v1: integer, v2: integer) -> integer
   26[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
   29[36]: ConstInt(val=7) -> integer

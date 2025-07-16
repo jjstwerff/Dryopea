@@ -5,11 +5,11 @@ pub fn test() {
         "Test failed {test_value} != \"a  +2b12c true d\""
     );
 }
-fn test() {#1 block
+fn test() {
   __work_2:text = "";
   __work_1:text = "";
-  test_value:text = {#2 block
-    {#3 formatting string
+  test_value:text = {
+    {
       __work_1:text = "a";
       OpFormatLong(__work_1, OpAddLong(1i64, OpConvLongFromInt(1i32)), 10i32, 4i32, 32i32, true, false);
       OpAppendText(__work_1, "b");
@@ -18,17 +18,17 @@ fn test() {#1 block
       OpFormatBool(__work_1, OpGeLong(OpMulLong(2i64, OpRemLong(4i64, 6i64)), OpConvLongFromInt(8i32)), 0i32, -1i32, 32i32);
       OpAppendText(__work_1, " d");
       __work_1;
-    }#3:text;
-  }#2:text;
-  if OpEqText(test_value, "a  +2b12c true d") null else OpPanic({#4 formatting string
+    };
+  };
+  if OpEqText(test_value, "a  +2b12c true d") null else OpPanic({
     __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "a  +2b12c true d"");
     __work_2;
-  }#4:text);
-}#1
+  });
+}
 
-byte-code for format_long:test() [1067]
+byte-code for format_long:test() [1176]
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text in 1
    1[28]: Text() var=__work_1[28]:text in 1

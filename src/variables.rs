@@ -508,7 +508,8 @@ impl Function {
     }
 
     pub fn is_independent(&self, var_nr: u16) -> bool {
-        self.variables[var_nr as usize].type_def.depend().is_empty()
+        let d = self.variables[var_nr as usize].type_def.depend();
+        d.is_empty() || (d.len() == 1 && d[0] == var_nr)
     }
 
     pub fn depend(&mut self, var_nr: u16, on: u16) {

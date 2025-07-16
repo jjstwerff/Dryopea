@@ -10,15 +10,15 @@ pub fn test() {
 }
 Type 15:T[1]:Enum(["A", "C", "B"])
 
-fn count(v:T) -> integer {#1 block
-  if OpGtEnum(v, 2u8(15)) {#2 block
+fn count(v:T) -> integer {
+  if OpGtEnum(v, 2u8(15)) {
     2i32;
-  }#2:integer else {#3 block
+  }#integer else {
     1i32;
-  }#3:integer;
-}#1:integer
+  }#integer;
+}#integer
 
-byte-code for compare:count(v: T[0]) [1067] -> integer
+byte-code for compare:count(v: T[0]) [1176] -> integer
    0[1]: return-address
    0[5]: VarEnum(var[0]) -> enumerate type=T[1]:Enum(["A", "C", "B"])[15] var=v[0]:T in 0
    3[6]: ConstEnum(val=2) -> enumerate type=T[1]:Enum(["A", "C", "B"])[15]
@@ -29,29 +29,29 @@ byte-code for compare:count(v: T[0]) [1067] -> integer
   17[5]: ConstInt(val=1) -> integer
   22[9]: Return(ret=1, value=4, discard=9) type=integer[4]:Base[0]
 
-fn test() {#1 block
+fn test() {
   __work_1:text = "";
-  test_value:integer = {#2 block
+  test_value:integer = {
     OpAddInt(OpAddInt(count(1u8(15)), count(3u8(15))), count(3u8(15)));
-  }#2:integer;
-  if OpEqInt(test_value, 5i32) null else OpPanic({#3 formatting string
+  };
+  if OpEqInt(test_value, 5i32) null else OpPanic({
     __work_1:text = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 5");
     __work_1;
-  }#3:text);
-}#1
+  });
+}
 
-byte-code for compare:test() [1095]
+byte-code for compare:test() [1204]
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text in 1
    1[28]: ConstEnum(val=1) -> enumerate type=T[1]:Enum(["A", "C", "B"])[15] var=test_value[28]:integer in 1
-   3[29]: Call(size=0, to=1067)
+   3[29]: Call(size=0, to=1176)
   10[32]: ConstEnum(val=3) -> enumerate type=T[1]:Enum(["A", "C", "B"])[15]
-  12[33]: Call(size=0, to=1067)
+  12[33]: Call(size=0, to=1176)
   19[36]: AddInt(v1: integer, v2: integer) -> integer
   20[32]: ConstEnum(val=3) -> enumerate type=T[1]:Enum(["A", "C", "B"])[15]
-  22[33]: Call(size=0, to=1067)
+  22[33]: Call(size=0, to=1176)
   29[36]: AddInt(v1: integer, v2: integer) -> integer
   30[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
   33[36]: ConstInt(val=5) -> integer

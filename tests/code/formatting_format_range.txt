@@ -5,44 +5,44 @@ pub fn test() {
         "Test failed {test_value} != \"a[02,04,06,08,10,12]b\""
     );
 }
-fn test() {#1 block
+fn test() {
   __work_2:text = "";
   __work_1:text = "";
-  test_value:text = {#2 block
-    {#3 formatting string
+  test_value:text = {
+    {
       __work_1:text = "a";
       OpAppendText(__work_1, "[");
       x#index:integer = OpConvIntFromNull();
       x#count:integer = 0i32;
-      loop {#4 iter for
-        _val_1:integer = {#5 iter for loop
-          x:integer = {#6 for next
+      loop {
+        _val_1:integer = {
+          x:integer = {
             x#index:integer = if OpNot(OpConvBoolFromInt(x#index)) 1i32 else OpAddInt(x#index, 1i32);
             if OpGeInt(x#index, 7i32) break(0) else null;
             x#index;
-          }#6:integer;
-          {#7 block
+          };
+          {
             OpMulInt(x, 2i32);
-          }#7:integer;
-        }#5:integer;
+          };
+        };
         if OpGtInt(x#count, 0i32) OpAppendText(__work_1, ",") else null;
         x#count:integer = OpAddInt(x#count, 1i32);
         OpFormatInt(__work_1, _val_1, 10i32, 2i32, 48i32, false, false);
-      }#4;
+      };
       OpAppendText(__work_1, "]");
       OpAppendText(__work_1, "b");
       __work_1;
-    }#3:text;
-  }#2:text;
-  if OpEqText(test_value, "a[02,04,06,08,10,12]b") null else OpPanic({#8 formatting string
+    };
+  };
+  if OpEqText(test_value, "a[02,04,06,08,10,12]b") null else OpPanic({
     __work_2:text = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "a[02,04,06,08,10,12]b"");
     __work_2;
-  }#8:text);
-}#1
+  });
+}
 
-byte-code for format_range:test() [1067]
+byte-code for format_range:test() [1176]
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text in 1
    1[28]: Text() var=__work_1[28]:text in 1
