@@ -255,16 +255,6 @@ impl State {
         }
     }
 
-    /**
-    This is a placeholder function that should be rewritten into two `append_text` calls.
-    # Panics
-    When it is not rewritten into appending calls.
-    */
-    #[allow(clippy::unused_self)]
-    pub fn add_text(&mut self) {
-        panic!("Should not be called directly");
-    }
-
     #[inline]
     pub fn get_character(&mut self) {
         let mut from = *self.get_stack::<i32>();
@@ -1534,7 +1524,7 @@ impl State {
             let before_stack = stack.position;
             self.remember_stack(stack.position);
             let code = self.code_pos;
-            self.code_add(stack.data.def(*op).op_code);
+            self.code_add(stack.data.def(*op).op_code as u8);
             stack.operator(*op);
             if was_stack != u16::MAX {
                 stack.position = was_stack;

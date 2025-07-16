@@ -1283,6 +1283,7 @@ impl Parser {
         }
         self.lexer.has_token(";");
         self.parse_rust();
+        self.data.op_code(self.context);
         self.data.definitions[self.context as usize]
             .variables
             .append(&mut self.vars);
@@ -1923,6 +1924,7 @@ impl Parser {
                 let s_type = self.parse_operators(&f_type, code, &mut parent_tp, 0);
                 self.change_var_type(&to, &s_type);
                 let add = self.data.def_nr("OpAddText");
+                let add_char = self.data.def_nr("OpAddTextChar");
                 if let Type::RefVar(tp) = &f_type {
                     if (op == "=" || op == "+=") && matches!(**tp, Type::Text(_)) {
                         let mut ls = Vec::new();
@@ -1937,7 +1939,22 @@ impl Parser {
                 }
                 if (op == "=" || op == "+=") && matches!(s_type, Type::Text(_)) && code.is_op(add) {
                     let mut ls = Vec::new();
-                    self.replace_add_text(&mut ls, add, code, vr, op == "=");
+                    self.replace_add_text(&mut ls, add, code, vr, op == "=", "OpAppendText");
+                    *code = Value::Block(ls);
+                    return Type::Unknown(u32::MAX);
+                } else if (op == "=" || op == "+=")
+                    && s_type == Type::Character
+                    && code.is_op(add_char)
+                {
+                    let mut ls = Vec::new();
+                    self.replace_add_text(
+                        &mut ls,
+                        add_char,
+                        code,
+                        vr,
+                        op == "=",
+                        "OpAppendCharacter",
+                    );
                     *code = Value::Block(ls);
                     return Type::Unknown(u32::MAX);
                 }
@@ -1996,20 +2013,21 @@ impl Parser {
         code: &Value,
         vr: u16,
         first: bool,
+        with: &'static str,
     ) {
         if let (Value::Call(_, ps), Type::Text(_)) = (code, self.vars.tp(vr)) {
             if ps[0].is_op(add) {
-                self.replace_add_text(ls, add, &ps[0], vr, first);
+                self.replace_add_text(ls, add, &ps[0], vr, first, with);
             } else if first {
                 ls.push(v_set(vr, ps[0].clone()));
             } else {
-                ls.push(self.cl("OpAppendText", &[Value::Var(vr), ps[0].clone()]));
+                ls.push(self.cl(with, &[Value::Var(vr), ps[0].clone()]));
             }
-            ls.push(self.cl("OpAppendText", &[Value::Var(vr), ps[1].clone()]));
+            ls.push(self.cl(with, &[Value::Var(vr), ps[1].clone()]));
         } else if let Value::Call(_, ps) = code {
             let var = self.cl("OpVarRef", &[Value::Var(vr)]);
             if ps[0].is_op(add) {
-                self.replace_add_text(ls, add, &ps[0], vr, first);
+                self.replace_add_text(ls, add, &ps[0], vr, first, with);
             } else if first {
                 ls.push(v_set(vr, ps[0].clone()));
             } else {
@@ -2141,6 +2159,7 @@ impl Parser {
         let bl = self.vars.start_scope(self.lexer.at(), "block");
         let mut l = Vec::new();
         let add = self.data.def_nr("OpAddText");
+        let add_char = self.data.def_nr("OpAddTextChar");
         loop {
             if self.lexer.has_token(";") {
                 continue;
@@ -2158,7 +2177,9 @@ impl Parser {
                 }
                 t = Type::Void;
             } else if n.is_op(add) {
-                t = self.return_text(&mut l, add, &mut n);
+                t = self.return_text(&mut l, add, &mut n, "OpAppendText");
+            } else if n.is_op(add_char) {
+                t = self.return_text(&mut l, add_char, &mut n, "OpAppendCharacter");
             } else if t != Type::Void && (self.lexer.peek_token(";") || *result == Type::Void) {
                 l.push(Value::Drop(Box::new(n)));
             } else {
@@ -2214,9 +2235,15 @@ impl Parser {
         }
     }
 
-    fn return_text(&mut self, l: &mut Vec<Value>, add: u32, n: &mut Value) -> Type {
+    fn return_text(
+        &mut self,
+        l: &mut Vec<Value>,
+        add: u32,
+        n: &mut Value,
+        with: &'static str,
+    ) -> Type {
         let work = self.vars.work_text(&mut self.lexer);
-        self.replace_add_text(l, add, n, work, true);
+        self.replace_add_text(l, add, n, work, true, with);
         if !self.lexer.peek_token(";") {
             l.push(Value::Var(work));
         }
@@ -4324,11 +4351,19 @@ impl Parser {
             let mut p = Value::Null;
             let mut t = self.expression(&mut p);
             let add = self.data.def_nr("OpAddText");
+            let add_char = self.data.def_nr("OpAddTextChar");
             if let Value::Call(c, _) = p {
                 if matches!(t, Type::Text(_)) && c == add {
                     let mut l = Vec::new();
                     let work = self.vars.work_text(&mut self.lexer);
-                    self.replace_add_text(&mut l, add, &p, work, true);
+                    self.replace_add_text(&mut l, add, &p, work, true, "OpAppendText");
+                    l.push(Value::Var(work));
+                    p = Value::Block(l);
+                    t = Type::Text(vec![work]);
+                } else if t == Type::Character && c == add_char {
+                    let mut l = Vec::new();
+                    let work = self.vars.work_text(&mut self.lexer);
+                    self.replace_add_text(&mut l, add_char, &p, work, true, "OpAppendCharacter");
                     l.push(Value::Var(work));
                     p = Value::Block(l);
                     t = Type::Text(vec![work]);
@@ -4412,12 +4447,21 @@ impl Parser {
             let mut p = Value::Null;
             let t = self.expression(&mut p);
             let add = self.data.def_nr("OpAddText");
+            let add_char = self.data.def_nr("OpAddTextChar");
             if let Value::Call(c, _) = p {
                 if matches!(t, Type::Text(_)) && c == add {
                     let arg_scope = self.vars.start_scope(self.lexer.at(), "text argument");
                     let mut l = Vec::new();
                     let work = self.vars.work_text(&mut self.lexer);
-                    self.replace_add_text(&mut l, add, &p, work, true);
+                    self.replace_add_text(&mut l, add, &p, work, true, "OpAppendText");
+                    l.push(Value::Var(work));
+                    self.vars.finish_scope(arg_scope, &t, self.lexer.at());
+                    p = Value::Block(l);
+                } else if t == Type::Character && c == add_char {
+                    let arg_scope = self.vars.start_scope(self.lexer.at(), "text argument");
+                    let mut l = Vec::new();
+                    let work = self.vars.work_text(&mut self.lexer);
+                    self.replace_add_text(&mut l, add_char, &p, work, true, "OpAppendCharacter");
                     l.push(Value::Var(work));
                     self.vars.finish_scope(arg_scope, &t, self.lexer.at());
                     p = Value::Block(l);
