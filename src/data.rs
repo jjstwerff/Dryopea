@@ -46,6 +46,8 @@ pub enum Value {
     // CCall(Box<Value>, Vec<Value>),
     /// Block with steps and last variable claimed before it.
     Block(Vec<Value>),
+    /// A block that will be inserted in the outer block and thus not form its own scope.
+    Insert(Vec<Value>),
     /// Read variable or parameter from stack (nr relative to current function start).
     Var(u16),
     /// Set a variable with an expressions
@@ -155,6 +157,8 @@ pub enum Type {
     Hash(u32, Vec<u16>, Vec<u16>),
     /// A function reference allowing for closures. Argument types and results.
     Function(Vec<Type>, Box<Type>),
+    /// A rewritten type into append statements (mostly Text or structures)
+    Rewritten(Box<Type>),
 }
 
 impl Type {
@@ -513,7 +517,7 @@ pub struct Definition {
     /// Rust code
     pub rust: String,
     /// Interpreter operator code
-    pub op_code: u8,
+    pub op_code: u16,
     /// Position inside the generated code
     pub code_position: u32,
     /// Code length for this function
@@ -584,7 +588,7 @@ pub struct Data {
     referenced: HashMap<u32, (u32, Value)>,
     /// Static data
     statics: Vec<u8>,
-    op_codes: u8,
+    op_codes: u16,
     possible: HashMap<String, Vec<u32>>,
     operators: HashMap<u8, u32>,
 }
@@ -736,7 +740,7 @@ impl Data {
             "Dual definition of {name} at {position}"
         );
         self.def_names.insert((name.to_string(), self.source), rec);
-        let mut new_def = Definition {
+        let new_def = Definition {
             name: name.to_string(),
             source: self.source,
             position: position.clone(),
@@ -747,19 +751,29 @@ impl Data {
             code: Value::Null,
             returned: Type::Unknown(rec),
             rust: String::new(),
-            op_code: 255,
+            op_code: u16::MAX,
             known_type: u16::MAX,
             code_position: 0,
             code_length: 0,
             variables: Function::new(),
         };
-        if new_def.is_operator() {
-            new_def.op_code = self.op_codes;
-            self.op_codes += 1;
-            self.operators.insert(new_def.op_code, rec);
-        }
         self.definitions.push(new_def);
         rec
+    }
+
+    /**
+       Write the `op_code` on operators.
+       # Panics
+       When too many `op_codes` are written. The byte code can only handle values <256.
+    */
+    pub fn op_code(&mut self, def_nr: u32) {
+        if !self.def(def_nr).is_operator() || self.def(def_nr).op_code != u16::MAX {
+            return;
+        }
+        assert!(self.op_codes < 256, "Too many defined operators");
+        self.definitions[def_nr as usize].op_code = self.op_codes;
+        self.operators.insert(self.op_codes as u8, def_nr);
+        self.op_codes += 1;
     }
 
     #[must_use]
@@ -1264,8 +1278,7 @@ impl Data {
     pub fn dump(&self, value: &Value, d_nr: u32) {
         let mut vars = Function::copy(&self.def(d_nr).variables);
         let mut s = Into { str: String::new() };
-        self.show_code(&mut s, &mut vars, value, 0, true, d_nr)
-            .unwrap();
+        self.show_code(&mut s, &mut vars, value, 0, true).unwrap();
         println!("dump {}", s.str);
     }
 
@@ -1277,8 +1290,7 @@ impl Data {
     pub fn dump_fn(&self, value: &Value, vars: &Function) {
         let mut vars = Function::copy(vars);
         let mut s = Into { str: String::new() };
-        self.show_code(&mut s, &mut vars, value, 0, true, 0)
-            .unwrap();
+        self.show_code(&mut s, &mut vars, value, 0, true).unwrap();
         println!("dump_fn {}", s.str);
     }
 
@@ -1296,7 +1308,6 @@ impl Data {
         value: &Value,
         indent: u32,
         start: bool,
-        d_nr: u32,
     ) -> Result<()> {
         if start {
             for _i in 0..indent {
@@ -1320,32 +1331,25 @@ impl Data {
                     if v_nr > 0 {
                         write!(write, ", ")?;
                     }
-                    self.show_code(write, vars, v, indent, false, d_nr)?;
+                    self.show_code(write, vars, v, indent, false)?;
                 }
                 write!(write, ")")
             }
             Value::Block(v) => {
                 if !v.is_empty() {
-                    let bl = vars.start_next();
-                    writeln!(write, "{{#{} {}", vars.scope(), vars.context())?;
+                    writeln!(write, "{{")?;
                     for val in v {
-                        self.show_code(write, vars, val, indent + 1, true, d_nr)?;
+                        self.show_code(write, vars, val, indent + 1, true)?;
                         writeln!(write, ";")?;
                     }
                     for _i in 0..indent {
                         write!(write, "  ")?;
                     }
                     if vars.result() == &Type::Void {
-                        write!(write, "}}#{}", vars.scope())?;
+                        write!(write, "}}")?;
                     } else {
-                        write!(
-                            write,
-                            "}}#{}:{}",
-                            vars.scope(),
-                            vars.result().show(self, vars)
-                        )?;
+                        write!(write, "}}#{}", vars.result().show(self, vars))?;
                     }
-                    vars.finish_next(bl, &self.def(d_nr).name);
                 }
                 Ok(())
             }
@@ -1357,39 +1361,38 @@ impl Data {
                     vars.name(*v),
                     vars.tp(*v).show(self, vars)
                 )?;
-                self.show_code(write, vars, to, indent, false, d_nr)
+                self.show_code(write, vars, to, indent, false)
             }
             Value::Return(ex) => {
                 write!(write, "return ")?;
-                self.show_code(write, vars, ex, indent, false, d_nr)
+                self.show_code(write, vars, ex, indent, false)
             }
+            Value::Insert(_) => panic!("Incorrectly rewritten Insert code"),
             Value::Break(v) => write!(write, "break({v})"),
             Value::Continue(v) => write!(write, "continue({v})"),
             Value::If(test, t, f) => {
                 write!(write, "if ")?;
-                self.show_code(write, vars, test, indent, false, d_nr)?;
+                self.show_code(write, vars, test, indent, false)?;
                 write!(write, " ")?;
-                self.show_code(write, vars, t, indent, false, d_nr)?;
+                self.show_code(write, vars, t, indent, false)?;
                 write!(write, " else ")?;
-                self.show_code(write, vars, f, indent, false, d_nr)
+                self.show_code(write, vars, f, indent, false)
             }
             Value::Loop(v) => {
-                let lp = vars.start_next();
-                writeln!(write, "loop {{#{} {}", vars.scope(), vars.context())?;
+                writeln!(write, "loop {{")?;
                 for val in v {
-                    self.show_code(write, vars, val, indent + 1, true, d_nr)?;
+                    self.show_code(write, vars, val, indent + 1, true)?;
                     writeln!(write, ";")?;
                 }
                 for _i in 0..indent {
                     write!(write, "  ")?;
                 }
-                write!(write, "}}#{}", vars.scope())?;
-                vars.finish_next(lp, &self.def(d_nr).name);
+                write!(write, "}}")?;
                 Ok(())
             }
             Value::Drop(v) => {
                 write!(write, "drop ")?;
-                self.show_code(write, vars, v, indent, false, d_nr)
+                self.show_code(write, vars, v, indent, false)
             }
             Value::Keys(keys) => {
                 write!(write, "&{keys:?}")
