@@ -5,43 +5,62 @@ pub fn test() {
         "Test failed {test_value} != 3142"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:float = {#2 block
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:float(1) = {#block_2:float
     _tp_float_round(OpMulFloat(OpMathPiFloat(), 1000f64));
-  }#2:float;
-  if OpEqFloat(test_value, OpConvFloatFromInt(3142i32)) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+  }#block_2:float;
+  if OpEqFloat(test_value, OpConvFloatFromInt(3142i32)) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatFloat(__work_1, test_value, 0i32, 0i32);
     OpAppendText(__work_1, " != 3142");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for constants:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: MathPiFloat() -> float var=test_value[28]:float in 1
-   2[36]: ConstFloat(val=1000) -> float
-  11[44]: MulFloat(v1: float, v2: float) -> float
-  12[36]: Call(size=0, to=272)
-  19[36]: VarFloat(var[28]) -> float var=test_value[28]:float in 1
-  22[44]: ConstInt(val=3142) -> integer
-  27[48]: ConvFloatFromInt(v1: integer) -> float
-  28[52]: EqFloat(v1: float, v2: float) -> boolean
-  29[37]: GotoFalseWord(jump=35, if_false: boolean)
-  32[36]: GotoWord(jump=88)
-  35[36]: ClearText(var[4]) var=__work_1[4]:text in 1
-  38[36]: ConstText(_value="Test failed ") -> text
-  52[52]: AppendText(var[4], v1: text)
-  55[36]: VarFloat(var[28]) -> float var=test_value[28]:float in 1
-  58[44]: ConstInt(val=0) -> integer
-  63[48]: ConstInt(val=0) -> integer
-  68[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
-  71[36]: ConstText(_value=" != 3142") -> text
-  81[52]: AppendText(var[4], v1: text)
-  84[36]: VarText(var[4]) -> text var=__work_1[4]:text in 1
-  87[52]: Panic(message: text)
-  88[36]: FreeText(var[4])
-  91[36]: Return(ret=0, value=0, discard=36)
+byte-code for constants:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: MathPiFloat() -> float var=test_value[32]:float
+   2[40]: ConstFloat(val=1000) -> float
+  11[48]: MulFloat(v1: float, v2: float) -> float
+  12[40]: Call(size=0, to=272)
+  19[40]: VarFloat(var[32]) -> float var=test_value[32]:float
+  22[48]: ConstInt(val=3142) -> integer
+  27[52]: ConvFloatFromInt(v1: integer) -> float
+  28[56]: EqFloat(v1: float, v2: float) -> boolean
+  29[41]: GotoFalseWord(jump=35, if_false: boolean)
+  32[40]: GotoWord(jump=88)
+  35[40]: ClearText(var[8]) var=__work_1[8]:text
+  38[40]: ConstText(_value="Test failed ") -> text
+  52[56]: AppendText(var[8], v1: text)
+  55[40]: VarFloat(var[32]) -> float var=test_value[32]:float
+  58[48]: ConstInt(val=0) -> integer
+  63[52]: ConstInt(val=0) -> integer
+  68[56]: FormatFloat(var[8], val: float, width: integer, precision: integer)
+  71[40]: ConstText(_value=" != 3142") -> text
+  81[56]: AppendText(var[8], v1: text)
+  84[40]: VarText(var[8]) -> text var=__work_1[8]:text
+  87[56]: Panic(message: text)
+  88[40]: FreeText(var[8])
+  91[40]: Return(ret=0, value=0, discard=36)
 
+Execute test:
+    0:[8] Text()
+    1:[32] MathPiFloat() -> 3.141592653589793[32]
+    2:[40] ConstFloat(val=1000) -> 1000[40]
+   11:[48] MulFloat(v1=3.141592653589793[32], v2=1000[40]) -> 3141.592653589793[32]
+   12:[40] Call(size=0, to=272)
+  272:[44] VarFloat(var[32]) -> 3141.592653589793[44]
+  275:[52] MathRoundFloat(v1=3141.592653589793[44]) -> 3142[44]
+  276:[52] Return(ret=1187[40], value=8, discard=20) -> 3142[32]
+   19:[40] VarFloat(var[32]) -> 3142[40]
+   22:[48] ConstInt(val=3142) -> 3142[48]
+   27:[52] ConvFloatFromInt(v1=3142[48]) -> 3142[48]
+   28:[56] EqFloat(v1=3142[40], v2=3142[48]) -> true[40]
+   29:[41] GotoFalseWord(jump=1203, if_false=true[40])
+   32:[40] GotoWord(jump=1256)
+   88:[40] FreeText(var[8])
+   91:[40] Return(ret=4294967295[4], value=0, discard=36)
+Finished

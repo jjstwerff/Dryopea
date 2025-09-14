@@ -9,42 +9,58 @@ pub fn test() {
 }
 Type 17:Number[1]:Enum(["One", "Two", "Three", "Four"])
 
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:boolean = {#2 block
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:boolean(1) = {#block_2:boolean
     OpLtEnum(OpCastEnumFromText("Two", 17i32), OpCastEnumFromText("Four", 17i32));
-  }#2:boolean;
-  if OpEqBool(test_value, true) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+  }#block_2:boolean;
+  if OpEqBool(test_value, true) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != true");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for to_enum:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: ConstText(_value="Two") -> text var=test_value[28]:boolean in 1
-   6[44]: CastEnumFromText(v1: text, enum_tp=17) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
-   9[29]: ConstText(_value="Four") -> text
-  15[45]: CastEnumFromText(v1: text, enum_tp=17) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
-  18[30]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
-  19[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
-  22[30]: ConstTrue() -> boolean
-  23[31]: EqBool(v1: boolean, v2: boolean) -> boolean
-  24[30]: GotoFalseWord(jump=30, if_false: boolean)
-  27[29]: GotoWord(jump=80)
-  30[29]: ClearText(var[4]) var=__work_1[4]:text in 1
-  33[29]: ConstText(_value="Test failed ") -> text
-  47[45]: AppendText(var[4], v1: text)
-  50[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
-  53[30]: ConstInt(val=0) -> integer
-  58[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
-  63[29]: ConstText(_value=" != true") -> text
-  73[45]: AppendText(var[4], v1: text)
-  76[29]: VarText(var[4]) -> text var=__work_1[4]:text in 1
-  79[45]: Panic(message: text)
-  80[29]: FreeText(var[4])
-  83[29]: Return(ret=0, value=0, discard=29)
+byte-code for to_enum:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConstText(_value="Two") -> text var=test_value[32]:boolean
+   6[48]: CastEnumFromText(v1: text, enum_tp=17) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
+   9[33]: ConstText(_value="Four") -> text
+  15[49]: CastEnumFromText(v1: text, enum_tp=17) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
+  18[34]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
+  19[33]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  22[34]: ConstTrue() -> boolean
+  23[35]: EqBool(v1: boolean, v2: boolean) -> boolean
+  24[34]: GotoFalseWord(jump=30, if_false: boolean)
+  27[33]: GotoWord(jump=80)
+  30[33]: ClearText(var[8]) var=__work_1[8]:text
+  33[33]: ConstText(_value="Test failed ") -> text
+  47[49]: AppendText(var[8], v1: text)
+  50[33]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  53[34]: ConstInt(val=0) -> integer
+  58[38]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
+  63[33]: ConstText(_value=" != true") -> text
+  73[49]: AppendText(var[8], v1: text)
+  76[33]: VarText(var[8]) -> text var=__work_1[8]:text
+  79[49]: Panic(message: text)
+  80[33]: FreeText(var[8])
+  83[33]: Return(ret=0, value=0, discard=29)
 
+Execute test:
+    0:[8] Text()
+    1:[32] ConstText(_value="Two") -> "Two"[32]
+    6:[48] CastEnumFromText(v1="Two"[32], enum_tp=17) -> Two(2)[32]
+    9:[33] ConstText(_value="Four") -> "Four"[33]
+   15:[49] CastEnumFromText(v1="Four"[33], enum_tp=17) -> Four(4)[33]
+   18:[34] LtEnum(v1=2[32], v2=4[33]) -> true[32]
+   19:[33] VarBool(var[32]) -> true[33]
+   22:[34] ConstTrue() -> true[34]
+   23:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+   24:[34] GotoFalseWord(jump=1198, if_false=true[33])
+   27:[33] GotoWord(jump=1248)
+   80:[33] FreeText(var[8])
+   83:[33] Return(ret=4294967295[4], value=0, discard=29)
+Finished

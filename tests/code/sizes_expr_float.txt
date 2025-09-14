@@ -5,45 +5,63 @@ pub fn test() {
         "Test failed {test_value} != 88"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:integer = {#2 block
-    a:float = 1.1f64;
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:integer(1) = {#block_2:integer
+    a:float(2) = 1.1f64;
     OpAddInt(8i32, OpMulInt(10i32, 8i32));
-  }#2:integer;
-  if OpEqInt(test_value, 88i32) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+  }#block_2:integer;
+  if OpEqInt(test_value, 88i32) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 88");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for expr_float:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: ConstFloat(val=1.1) -> float var=a[28]:float in 2
-  10[36]: ConstInt(val=8) -> integer
-  15[40]: ConstInt(val=10) -> integer
-  20[44]: ConstInt(val=8) -> integer
-  25[48]: MulInt(v1: integer, v2: integer) -> integer
-  26[44]: AddInt(v1: integer, v2: integer) -> integer
-  27[40]: FreeStack(value=4, discard=12) type=integer[4]:Base[0]
-  31[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
-  34[36]: ConstInt(val=88) -> integer
-  39[40]: EqInt(v1: integer, v2: integer) -> boolean
-  40[33]: GotoFalseWord(jump=46, if_false: boolean)
-  43[32]: GotoWord(jump=96)
-  46[32]: ClearText(var[4]) var=__work_1[4]:text in 1
-  49[32]: ConstText(_value="Test failed ") -> text
-  63[48]: AppendText(var[4], v1: text)
-  66[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
-  69[36]: ConstInt(val=0) -> integer
-  74[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  81[32]: ConstText(_value=" != 88") -> text
-  89[48]: AppendText(var[4], v1: text)
-  92[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
-  95[48]: Panic(message: text)
-  96[32]: FreeText(var[4])
-  99[32]: Return(ret=0, value=0, discard=32)
+byte-code for expr_float:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConstFloat(val=1.1) -> float var=a[32]:float
+  10[40]: ConstInt(val=8) -> integer
+  15[44]: ConstInt(val=10) -> integer
+  20[48]: ConstInt(val=8) -> integer
+  25[52]: MulInt(v1: integer, v2: integer) -> integer
+  26[48]: AddInt(v1: integer, v2: integer) -> integer
+  27[44]: FreeStack(value=4, discard=12) type=integer[4]:Base[0]
+  31[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  34[40]: ConstInt(val=88) -> integer
+  39[44]: EqInt(v1: integer, v2: integer) -> boolean
+  40[37]: GotoFalseWord(jump=46, if_false: boolean)
+  43[36]: GotoWord(jump=96)
+  46[36]: ClearText(var[8]) var=__work_1[8]:text
+  49[36]: ConstText(_value="Test failed ") -> text
+  63[52]: AppendText(var[8], v1: text)
+  66[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  69[40]: ConstInt(val=0) -> integer
+  74[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  81[36]: ConstText(_value=" != 88") -> text
+  89[52]: AppendText(var[8], v1: text)
+  92[36]: VarText(var[8]) -> text var=__work_1[8]:text
+  95[52]: Panic(message: text)
+  96[36]: FreeText(var[8])
+  99[36]: Return(ret=0, value=0, discard=32)
 
+Execute test:
+    0:[8] Text()
+    1:[32] ConstFloat(val=1.1) -> 1.1[32]
+   10:[40] ConstInt(val=8) -> 8[40]
+   15:[44] ConstInt(val=10) -> 10[44]
+   20:[48] ConstInt(val=8) -> 8[48]
+   25:[52] MulInt(v1=10[44], v2=8[48]) -> 80[44]
+   26:[48] AddInt(v1=8[40], v2=80[44]) -> 88[40]
+   27:[44] FreeStack(value=4, discard=12)
+   31:[36] VarInt(var[32]) -> 88[36]
+   34:[40] ConstInt(val=88) -> 88[40]
+   39:[44] EqInt(v1=88[36], v2=88[40]) -> true[36]
+   40:[37] GotoFalseWord(jump=1214, if_false=true[36])
+   43:[36] GotoWord(jump=1264)
+   96:[36] FreeText(var[8])
+   99:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished

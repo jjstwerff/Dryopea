@@ -1,10 +1,9 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #![allow(clippy::cast_possible_truncation)]
 #![allow(dead_code)]
 #![allow(clippy::large_types_passed_by_value)]
-use crate::data;
 use crate::data::{Context, Data, Type, Value};
 use crate::diagnostics::{Level, diagnostic_format};
 use crate::keys::DbRef;
@@ -15,20 +14,8 @@ This administrates variables and scopes for a specific function.
 - Variables might exist in multiple scopes but not with different types.
 - We allow for variables to move to a higher scope.
 */
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-
-// Scope 0 is the function with all variables are function arguments.
-// Scope 1 is the main scope of this function with variables.
-#[derive(Debug, Clone)]
-struct Scope {
-    parent: u16,
-    context: String,
-    result: Type,
-    parts: Vec<u16>,
-    from: (u32, u32),
-    till: (u32, u32),
-}
 
 // Iterator details on each for loop inside the current function
 #[derive(Debug, Clone)]
@@ -46,22 +33,21 @@ struct Iterator {
 pub struct Variable {
     name: String,
     type_def: Type,
-    scope: u16,
     source: (u32, u32),
+    scope: u16,
     stack_pos: u16,
     uses: u16,
 }
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    current_scope: u16,
-    last_scope: u16,
+    pub name: String,
+    file: String,
     steps: Vec<u8>,
     unique: u16,
-    scopes: Vec<Scope>,
     current_loop: u16,
     loops: Vec<Iterator>,
-    stack: Vec<u16>,
+    arguments: u16,
     variables: Vec<Variable>,
     work_text: u16,
     work_ref: u16,
@@ -70,15 +56,9 @@ pub struct Function {
     // Work variables for stores
     work_refs: BTreeSet<u16>,
     // The names store only the last known instance of this variable in the function.
-    // For accurate data, we need to remember the variable number instead.
-    names: HashMap<String, Vec<u16>>,
+    names: HashMap<String, u16>,
+    pub done: bool,
     pub logging: bool,
-}
-
-impl Default for Function {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Display for Function {
@@ -91,16 +71,15 @@ impl Display for Function {
 }
 
 impl Function {
-    pub fn new() -> Self {
+    pub fn new(name: &str, file: &str) -> Self {
         Function {
-            current_scope: u16::MAX,
-            last_scope: u16::MAX,
-            stack: Vec::new(),
+            name: name.to_string(),
+            file: file.to_string(),
             steps: Vec::new(),
             unique: 0,
-            scopes: Vec::new(),
             current_loop: u16::MAX,
             loops: Vec::new(),
+            arguments: 0,
             work_text: 0,
             work_ref: 0,
             variables: Vec::new(),
@@ -108,24 +87,18 @@ impl Function {
             work_refs: BTreeSet::new(),
             names: HashMap::new(),
             logging: false,
-        }
-    }
-
-    pub fn dump(&self) {
-        for (s_nr, s) in self.scopes.iter().enumerate() {
-            println!("{s_nr}:{s:?}");
+            done: false,
         }
     }
 
     pub fn append(&mut self, other: &mut Function) {
-        self.current_scope = u16::MAX;
         self.current_loop = u16::MAX;
-        self.last_scope = u16::MAX;
         self.logging = other.logging;
+        if self.arguments < other.arguments {
+            self.arguments = other.arguments;
+        }
         self.unique = 0;
         other.unique = 0;
-        self.scopes.clear();
-        self.scopes.append(&mut other.scopes);
         self.loops.clear();
         self.loops.append(&mut other.loops);
         self.variables.clear();
@@ -143,14 +116,13 @@ impl Function {
     }
 
     pub fn copy(other: &Function) -> Self {
-        let mut r = Function {
-            current_scope: u16::MAX,
+        Function {
+            name: other.name.clone(),
+            file: other.file.clone(),
             current_loop: u16::MAX,
-            last_scope: u16::MAX,
             steps: Vec::new(),
-            stack: Vec::new(),
             unique: 0,
-            scopes: other.scopes.clone(),
+            arguments: other.arguments,
             loops: other.loops.clone(),
             variables: other.variables.clone(),
             work_text: 0,
@@ -159,223 +131,8 @@ impl Function {
             work_refs: BTreeSet::new(),
             names: other.names.clone(),
             logging: other.logging,
-        };
-        r.start_next();
-        r
-    }
-
-    pub fn scope(&self) -> u16 {
-        self.current_scope
-    }
-
-    pub fn variables(&self, to_scope: u16) -> Vec<u16> {
-        let mut res = Vec::new();
-        let mut scopes = HashSet::new();
-        let mut sc = self.current_scope;
-        loop {
-            if sc == 0 {
-                // never return function arguments
-                break;
-            }
-            scopes.insert(sc);
-            if sc == to_scope {
-                break;
-            }
-            sc = self.scopes[sc as usize].parent;
-            if sc == u16::MAX {
-                break;
-            }
+            done: other.done,
         }
-        for (v_nr, v) in self.variables.iter().enumerate() {
-            if scopes.contains(&v.scope) {
-                res.push(v_nr as u16);
-            }
-        }
-        res
-    }
-
-    pub fn result(&self) -> &Type {
-        &self.scopes[self.current_scope as usize].result
-    }
-
-    pub fn context(&self) -> &str {
-        &self.scopes[self.current_scope as usize].context
-    }
-
-    // last_scope is the current scope we iterate (as parent)
-    pub fn start_next(&mut self) -> u16 {
-        if self.stack.is_empty() {
-            self.current_scope = 0;
-            self.last_scope = 0;
-            self.stack.push(self.current_scope);
-            if self.logging {
-                println!("start_next stack:{:?}", self.stack);
-            }
-            return 0;
-        }
-        let parent = *self.stack.last().unwrap();
-        let mut last = u16::MAX;
-        for s in &self.scopes[parent as usize].parts {
-            if last == self.last_scope {
-                self.last_scope = self.current_scope;
-                debug_assert_eq!(
-                    self.scopes[*s as usize].parent, self.current_scope,
-                    "Incorrect parent"
-                );
-                self.current_scope = *s;
-                self.stack.push(*s);
-                if self.logging {
-                    println!(
-                        "start_next parent:{parent} current:{s} stack:{:?} parts:{:?}",
-                        self.stack, self.scopes[parent as usize].parts
-                    );
-                }
-                return *s;
-            }
-            last = *s;
-        }
-        if let Some(first) = self.scopes[parent as usize].parts.first() {
-            self.last_scope = self.current_scope;
-            debug_assert_eq!(
-                self.scopes[*first as usize].parent, self.current_scope,
-                "Incorrect parent"
-            );
-            self.current_scope = *first;
-            self.stack.push(*first);
-            if self.logging {
-                println!(
-                    "start_next parent:{parent} current:{first} stack:{:?} parts:{:?}",
-                    self.stack, self.scopes[parent as usize].parts
-                );
-            }
-            *first
-        } else {
-            panic!(
-                "Iterating empty scope {parent}:{}",
-                self.scopes[parent as usize].context
-            );
-        }
-    }
-
-    pub fn finish_next(&mut self, from: u16, function: &str) {
-        if self.logging {
-            println!(
-                "finish_next from:{from} current:{} stack:{:?}",
-                self.current_scope, self.stack
-            );
-        }
-        assert_eq!(from, self.current_scope, "Problem of scopes in {function}");
-        assert_eq!(
-            from,
-            self.stack.pop().unwrap(),
-            "Problem of scopes in {function}"
-        );
-        if !self.scopes[self.current_scope as usize].parts.is_empty() {
-            assert_eq!(
-                self.last_scope,
-                *self.scopes[self.current_scope as usize]
-                    .parts
-                    .last()
-                    .unwrap(),
-                "Finishing non empty scope in {function}"
-            );
-        }
-        if let Some(parent) = self.stack.last() {
-            if let Some(last) = self.scopes[*parent as usize].parts.last() {
-                if *last == from {
-                    self.last_scope = self.current_scope;
-                    self.current_scope = *parent;
-                } else {
-                    self.last_scope = self.current_scope;
-                    self.current_scope = self.scopes[self.current_scope as usize].parent;
-                }
-            } else {
-                self.last_scope = self.current_scope;
-                self.current_scope = self.scopes[self.current_scope as usize].parent;
-            }
-        }
-    }
-
-    /** We have to allow for multiple passes through the scopes.
-    # Panics
-    When the later pass through the code creates a new scope.
-     */
-    pub fn start_scope(&mut self, at: (u32, u32), context: &str) -> u16 {
-        let parent = self.current_scope;
-        if self.last_scope == u16::MAX {
-            self.current_scope = 0;
-        } else {
-            self.current_scope = self.last_scope + 1;
-        }
-        if self.logging {
-            println!(
-                "start scope {} context {context} at {}:{}",
-                self.current_scope, at.0, at.1
-            );
-        }
-        assert!(
-            self.current_scope as usize <= self.scopes.len(),
-            "Broken scope {}",
-            self.current_scope
-        );
-        self.last_scope = self.current_scope;
-        if self.current_scope as usize == self.scopes.len() {
-            assert_ne!(
-                at,
-                (0, 0),
-                "Cannot find scope {} >= {}",
-                self.current_scope,
-                self.scopes.len()
-            );
-            self.scopes.push(Scope {
-                parent,
-                from: at,
-                result: Type::Void,
-                till: (u32::MAX, u32::MAX),
-                context: context.to_string(),
-                parts: Vec::new(),
-            });
-            assert_ne!(parent, self.current_scope, "Incorrect scopes");
-            if parent != u16::MAX {
-                self.scopes[parent as usize].parts.push(self.current_scope);
-            }
-        } else if at != (0, 0) {
-            assert_eq!(
-                self.scopes[self.current_scope as usize].context, context,
-                "Different contexts on scope {} at {}:{}",
-                self.current_scope, at.0, at.1
-            );
-        }
-        self.current_scope
-    }
-
-    pub fn finish_scope(&mut self, scope: u16, result: &Type, at: (u32, u32)) {
-        assert_eq!(
-            self.current_scope, scope,
-            "Incorrect scope finish {:?} vs {:?}",
-            self.scopes[self.current_scope as usize], self.scopes[scope as usize]
-        );
-        if self.logging {
-            println!(
-                "finish {} context {} at {}:{}",
-                self.current_scope, self.scopes[self.current_scope as usize].context, at.0, at.1
-            );
-        }
-        assert_ne!(
-            self.current_scope,
-            u16::MAX,
-            "No active scope at {}:{}",
-            at.0,
-            at.1
-        );
-        self.scopes[self.current_scope as usize].till = at;
-        if !matches!(result, Type::Unknown(_)) {
-            self.scopes[self.current_scope as usize].result = result.clone();
-        }
-        if self.current_scope > self.last_scope {
-            self.last_scope = self.current_scope;
-        }
-        self.current_scope = self.scopes[self.current_scope as usize].parent;
     }
 
     pub fn start_loop(&mut self) -> u16 {
@@ -473,59 +230,39 @@ impl Function {
         self.loops[self.current_loop as usize].counter = counter;
     }
 
-    pub fn cur(&self) -> String {
-        format!(
-            "Scope {}:{:?}",
-            self.current_scope, self.scopes[self.current_scope as usize]
-        )
-    }
-
-    pub fn last_scope(&self) -> u16 {
-        self.last_scope
-    }
-
-    pub fn last(&self) -> u16 {
-        if let Some(nr) = self.scopes[self.current_scope as usize].parts.last()
-            && *nr <= self.last_scope
-        {
-            *nr
-        } else {
-            u16::MAX
-        }
-    }
-
-    pub fn move_scope(&mut self, scope: u16, into: u16) {
-        if scope == u16::MAX {
-            return;
-        }
-        assert_ne!(scope, into, "Cannot move into itself");
-        assert!(
-            scope < self.scopes.len() as u16,
-            "Scope {scope} out of range"
-        );
-        assert!(into < self.scopes.len() as u16, "Scope {into} out of range");
-        let parent = self.scopes[scope as usize].parent;
-        self.scopes[parent as usize].parts.retain(|s| *s != scope);
-        self.scopes[into as usize].parts.push(scope);
-        assert_ne!(
-            self.scopes[into as usize].parent, scope,
-            "Cannot move parent"
-        );
-        self.scopes[scope as usize].parent = into;
-    }
-
-    pub fn reset(&mut self) {
-        self.current_scope = u16::MAX;
-        self.last_scope = u16::MAX;
-        self.stack.clear();
-        self.loops.clear();
-    }
-
     pub fn name(&self, var_nr: u16) -> &str {
         if var_nr as usize >= self.variables.len() {
             return "??";
         }
         &self.variables[var_nr as usize].name
+    }
+
+    pub fn set_scope(&mut self, var_nr: u16, scope: u16) {
+        assert!((var_nr as usize) < self.variables.len(), "Unknown variable");
+        assert_eq!(
+            self.variables[var_nr as usize].scope,
+            u16::MAX,
+            "Variable has a scope"
+        );
+        self.variables[var_nr as usize].scope = scope;
+        self.done = true;
+    }
+
+    pub fn scope(&self, var_nr: u16) -> u16 {
+        if var_nr as usize >= self.variables.len() {
+            return u16::MAX;
+        }
+        self.variables[var_nr as usize].scope
+    }
+
+    pub fn on_scope(&self, scopes: &HashSet<u16>) -> Vec<u16> {
+        let mut res = Vec::new();
+        for (v_nr, v) in self.variables.iter().enumerate() {
+            if scopes.contains(&v.scope) {
+                res.push(v_nr as u16);
+            }
+        }
+        res
     }
 
     pub fn size(&self, var_nr: u16, context: &Context) -> u16 {
@@ -552,10 +289,6 @@ impl Function {
         self.variables[var_nr as usize].uses
     }
 
-    pub fn var_scope(&self, var_nr: u16) -> u16 {
-        self.variables[var_nr as usize].scope
-    }
-
     pub fn stack(&self, var_nr: u16) -> u16 {
         self.variables[var_nr as usize].stack_pos
     }
@@ -577,55 +310,30 @@ impl Function {
     }
 
     pub fn name_exists(&self, name: &str) -> bool {
-        if let Some(nr) = self.names.get(name) {
-            for n in nr {
-                if self.is_active(self.variables[*n as usize].scope) {
-                    return true;
-                }
-            }
-        }
-        false
+        self.names.contains_key(name)
     }
 
     pub fn get_variable(&self, name: &str) -> Option<&Variable> {
         if let Some(nr) = self.names.get(name) {
-            for n in nr {
-                if self.is_active(self.variables[*n as usize].scope) {
-                    return Some(&self.variables[*n as usize]);
-                }
-            }
+            return Some(&self.variables[*nr as usize]);
         }
         None
     }
 
     pub fn arguments(&self) -> Vec<u16> {
         let mut arg = Vec::new();
-        for (v_nr, v) in self.variables.iter().enumerate() {
-            if v.scope == 0 {
-                arg.push(v_nr as u16);
+        for v_nr in 0..self.arguments {
+            if v_nr >= self.variables.len() as u16 {
+                break;
             }
+            arg.push(v_nr);
         }
         arg
     }
 
     pub fn var(&self, name: &str) -> u16 {
         if let Some(nr) = self.names.get(name) {
-            for n in nr {
-                if self.variables[*n as usize].scope < 2
-                    || self.is_active(self.variables[*n as usize].scope)
-                {
-                    return *n;
-                }
-            }
-        }
-        u16::MAX
-    }
-
-    pub fn find_var(&self, name: &str) -> u16 {
-        if let Some(nr) = self.names.get(name)
-            && let Some(n) = nr.first()
-        {
-            return *n;
+            return *nr;
         }
         u16::MAX
     }
@@ -642,39 +350,37 @@ impl Function {
     pub fn add_variable(&mut self, name: &str, type_def: &Type, lexer: &mut Lexer) -> u16 {
         // Due to 2 passes through the code, we will add the same variable a second time.
         if let Some(nr) = self.names.get(name) {
-            for n in nr {
-                if self.is_active(self.variables[*n as usize].scope) {
-                    if self.variables[*n as usize].type_def.is_unknown() {
-                        self.variables[*n as usize].type_def = type_def.clone();
-                    }
-                    return *n;
-                }
+            if self.variables[*nr as usize].type_def.is_unknown() {
+                self.variables[*nr as usize].type_def = type_def.clone();
             }
-            return self.new_var(name, type_def, lexer);
+            return *nr;
         }
-        assert_ne!(
-            self.current_scope,
-            u16::MAX,
-            "Start a scope before adding variable '{name}'"
-        );
         self.new_var(name, type_def, lexer)
     }
 
     fn new_var(&mut self, name: &str, type_def: &Type, lexer: &mut Lexer) -> u16 {
-        if self.logging {
-            println!("new_var {name} tp {type_def} scope {}", self.current_scope);
-        }
         let v = self.variables.len() as u16;
-        if self.names.contains_key(name) {
-            self.names.get_mut(name).unwrap().push(v);
-        } else {
-            self.names.insert(name.to_string(), vec![v]);
+        if !self.names.contains_key(name) {
+            self.names.insert(name.to_string(), v);
         }
         self.variables.push(Variable {
             name: name.to_string(),
             type_def: type_def.clone(),
-            scope: self.current_scope,
             source: lexer.at(),
+            scope: u16::MAX,
+            stack_pos: u16::MAX,
+            uses: 1,
+        });
+        v
+    }
+
+    pub fn add_unique(&mut self, prefix: &str, type_def: &Type, scope: u16) -> u16 {
+        let v = self.variables.len() as u16;
+        self.variables.push(Variable {
+            name: format!("_{prefix}_{v}"),
+            type_def: type_def.clone(),
+            source: (0, 0),
+            scope,
             stack_pos: u16::MAX,
             uses: 1,
         });
@@ -729,26 +435,19 @@ impl Function {
     }
 
     fn is_new(&self, var_nr: u16) -> bool {
-        self.variables[var_nr as usize].scope > 0 && self.variables[var_nr as usize].uses == 0
+        self.variables[var_nr as usize].uses == 0
     }
 
-    pub fn is_active(&self, scope: u16) -> bool {
-        let mut s = self.current_scope;
-        while s != u16::MAX {
-            if s == scope {
-                return true;
-            }
-            s = self.scopes[s as usize].parent;
-        }
-        false
+    pub fn set_arguments(&mut self, arguments: u16) {
+        self.arguments = arguments;
     }
 
     pub fn is_argument(&self, var_nr: u16) -> bool {
-        self.variables[var_nr as usize].scope == 0
+        var_nr < self.arguments
     }
 
     pub fn test_used(&self, lexer: &mut Lexer, data: &Data) {
-        for var in &self.variables {
+        for (v_nr, var) in self.variables.iter().enumerate() {
             if var.name.starts_with('_') || var.name.contains('#') {
                 continue;
             }
@@ -758,7 +457,7 @@ impl Function {
                     lexer,
                     Level::Warning,
                     "{} {} is never read",
-                    if var.scope == 0 {
+                    if v_nr < self.arguments as usize {
                         "Parameter"
                     } else {
                         "Variable"
@@ -773,14 +472,9 @@ impl Function {
         let n = format!("__work_{}", self.work_text + 1);
         self.work_text += 1;
         let v = if let Some(nr) = self.names.get(&n) {
-            *nr.first().unwrap()
+            *nr
         } else {
-            let v = self.add_variable(&n, &Type::Text(Vec::new()), lexer);
-            // work variables always live in the main scope.
-            if self.variables[v as usize].scope > 1 {
-                self.variables[v as usize].scope = 1;
-            }
-            v
+            self.add_variable(&n, &Type::Text(Vec::new()), lexer)
         };
         self.work_texts.insert(v);
         v
@@ -790,16 +484,9 @@ impl Function {
         let n = format!("__ref_{}", self.work_ref + 1);
         self.work_ref += 1;
         let v = if let Some(nr) = self.names.get(&n) {
-            let vr = *nr.first().unwrap();
-            self.variables[vr as usize].type_def = tp.clone();
-            vr
+            *nr
         } else {
-            let v = self.add_variable(&n, tp, lexer);
-            // work variables always live in the main scope.
-            if self.variables[v as usize].scope > 1 {
-                self.variables[v as usize].scope = 1;
-            }
-            v
+            self.add_variable(&n, tp, lexer)
         };
         self.work_refs.insert(v);
         v
@@ -821,202 +508,13 @@ impl Function {
         res
     }
 
-    pub fn validate(
-        &mut self,
-        code: &Value,
-        name: &str,
-        file: &str,
-        data: &Data,
-        started: &mut HashSet<u16>,
-    ) -> Result<Type, String> {
-        match code {
-            Value::Block(ls) | Value::Loop(ls) => {
-                let mut tp = Type::Void;
-                if !ls.is_empty() {
-                    let bl = self.start_next();
-                    for l in ls {
-                        tp = self.validate(l, name, file, data, started)?;
-                    }
-                    let mut result = self.result();
-                    if let (Type::Reference(tp_elm, _), Type::Reference(_, _)) = (&tp, result)
-                        && *tp_elm == data.def_nr("reference")
-                    {
-                        result = &Type::Null;
-                    }
-                    if result != &Type::Null {
-                        // ignore else if block
-                        if !result.is_equal(&tp) {
-                            return Err(format!(
-                                "Different types on block {} vs {} scope '{}' at {file}:{}:{}",
-                                tp.show(data, self),
-                                result.show(data, self),
-                                self.scopes[self.current_scope as usize].context,
-                                self.scopes[self.current_scope as usize].till.0,
-                                self.scopes[self.current_scope as usize].till.1,
-                            ));
-                        }
-                    }
-                    self.finish_next(bl, name);
-                }
-                Ok(tp)
-            }
-            Value::Drop(cd) | Value::Return(cd) => {
-                self.validate(cd, name, file, data, started)?;
-                Ok(Type::Void)
-            }
-            Value::Iter(_, _, _) => Err(format!("Should have been rewritten at {file}")),
-            Value::Call(nr, vl) => {
-                for v in vl {
-                    self.validate(v, name, file, data, started)?;
-                }
-                Ok(data.def(*nr).returned.clone())
-            }
-            Value::If(cd, tcd, fcd) => {
-                self.validate(cd, name, file, data, started)?;
-                let mut res = Type::Void;
-                if **tcd != Value::Null {
-                    res = self.validate(tcd, name, file, data, started)?;
-                }
-                if **fcd != Value::Null {
-                    self.validate(fcd, name, file, data, started)?;
-                }
-                Ok(res)
-            }
-            Value::Set(v, cd) => {
-                if started.contains(v) {
-                    if self.current_scope == u16::MAX {
-                        return Err(format!(
-                            "Variable {}[{}] used out of scope {} at {file}:{}:{}",
-                            self.variables[*v as usize].name,
-                            self.variables[*v as usize].scope,
-                            self.current_scope,
-                            self.variables[*v as usize].source.0,
-                            self.variables[*v as usize].source.1
-                        ));
-                    }
-                } else {
-                    started.insert(*v);
-                    if self.variables[*v as usize].scope != self.current_scope {
-                        return Err(format!(
-                            "Incorrect variable scope of {} on {name} at {file}:{}:{}",
-                            self.variables[*v as usize].name,
-                            self.variables[*v as usize].source.0,
-                            self.variables[*v as usize].source.1
-                        ));
-                    }
-                }
-                self.validate(cd, name, file, data, started)?;
-                Ok(Type::Void)
-            }
-            Value::Var(v) => self.validate_var(name, file, started, *v),
-            Value::Int(_) => Ok(data::I32.clone()),
-            Value::Long(_) => Ok(Type::Long),
-            Value::Text(_) => Ok(Type::Text(Vec::new())),
-            Value::Boolean(_) => Ok(Type::Boolean),
-            Value::Float(_) => Ok(Type::Float),
-            Value::Single(_) => Ok(Type::Single),
-            Value::Enum(_, _) => Ok(Type::Enum(0)), // TODO find way to determine the definition
-            _ => Ok(Type::Void),                    // break, continue, null
-        }
-    }
-
-    fn validate_var(
-        &mut self,
-        name: &str,
-        file: &str,
-        started: &mut HashSet<u16>,
-        v: u16,
-    ) -> Result<Type, String> {
-        if v == u16::MAX {
-            return Err(format!("Incorrect variable at {name} in {file}"));
-        }
-        if !started.contains(&v) && self.variables[v as usize].scope != 0 {
-            return Err(format!(
-                "Variable {} not yet started at {name} scope {} at {file}:{}:{}",
-                self.variables[v as usize].name,
-                self.variables[v as usize].scope,
-                self.variables[v as usize].source.0,
-                self.variables[v as usize].source.1
-            ));
-        }
-        let var_scope = self.variables[v as usize].scope;
-        let mut s = self.current_scope;
-        while s != u16::MAX {
-            if var_scope == s {
-                break;
-            }
-            s = self.scopes[s as usize].parent;
-        }
-        if s == u16::MAX {
-            return Err(format!(
-                "Variable {}[{}] used out of scope {} at {file}:{}:{}",
-                self.variables[v as usize].name,
-                self.variables[v as usize].scope,
-                self.current_scope,
-                self.variables[v as usize].source.0,
-                self.variables[v as usize].source.1
-            ));
-        }
-        Ok(self.variables[v as usize].type_def.clone())
-    }
-
     pub fn claim(&mut self, var: u16, pos: u16, context: &Context) -> u16 {
-        assert_eq!(
-            self.variables[var as usize].stack_pos,
-            u16::MAX,
-            "Claiming a claimed variable {}",
-            self.name(var)
-        );
-        let size = size(&self.variables[var as usize].type_def, context);
         self.variables[var as usize].stack_pos = pos;
-        pos + size
-    }
-
-    fn intern(&self, result: &mut HashSet<u16>, scope: u16) {
-        result.insert(scope);
-        for s in self.scopes[scope as usize].parts.clone() {
-            self.intern(result, s);
-        }
-    }
-
-    /// Move the scope of a given variable to the given scope.
-    pub fn move_var_scope(&mut self, var_nr: u16, to_scope: u16) {
-        let to = if to_scope == u16::MAX {
-            self.current_scope
-        } else {
-            to_scope
-        };
-        if self.variables[var_nr as usize].scope < to {
-            return;
-        }
-        // Problem when this is not a parent scope.
-        self.variables[var_nr as usize].scope = to;
-        if to == 1 {
-            if matches!(self.tp(var_nr), Type::Text(_)) {
-                self.work_texts.insert(var_nr);
-            } else {
-                self.work_refs.insert(var_nr);
-            }
-        } else if matches!(self.tp(var_nr), Type::Text(_)) {
-            self.work_texts.remove(&var_nr);
-        } else {
-            self.work_refs.remove(&var_nr);
-        }
+        pos + size(&self.variables[var as usize].type_def, context)
     }
 
     pub fn set_type(&mut self, var_nr: u16, tp: Type) {
         self.variables[var_nr as usize].type_def = tp;
-    }
-
-    /// Return the variables that directly reside inside known scopes
-    pub fn gather_scopes(&self) -> BTreeMap<u16, Vec<u16>> {
-        let mut res = BTreeMap::new();
-        for (v_nr, v) in self.variables.iter().enumerate() {
-            res.entry(v.scope)
-                .or_insert_with(Vec::new)
-                .push(v_nr as u16);
-        }
-        res
     }
 }
 

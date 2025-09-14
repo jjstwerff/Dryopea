@@ -5,12 +5,12 @@ pub fn test() {
         "Test failed {test_value} != \"a1.20b1.34c  1.4d334.10e\""
     );
 }
-fn test() {#1 block
-  __work_2:text = "";
-  __work_1:text = "";
-  test_value:text = {#2 block
-    {#3 formatting string
-      __work_1:text = "a";
+fn test() {#block_1:void
+  __work_2:text(1) = "";
+  __work_1:text(1) = "";
+  test_value:text(1) = {#block_2:text
+    {#Formatted string_3:text
+      __work_1:text(1) = "a";
       OpFormatFloat(__work_1, 1.2f64, 4i32, 2i32);
       OpAppendText(__work_1, "b");
       OpFormatFloat(__work_1, 1.34f64, 0i32, 0i32);
@@ -20,67 +20,113 @@ fn test() {#1 block
       OpFormatFloat(__work_1, 334.1f64, 0i32, 2i32);
       OpAppendText(__work_1, "e");
       __work_1;
-    }#3:text;
-  }#2:text;
-  if OpEqText(test_value, "a1.20b1.34c  1.4d334.10e") null else OpPanic({#4 formatting string
-    __work_2:text = "Test failed ";
+    }#Formatted string_3:text;
+  }#block_2:text;
+  if OpEqText(test_value, "a1.20b1.34c  1.4d334.10e") null else OpPanic({#Formatted string_4:text
+    __work_2:text(1) = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "a1.20b1.34c  1.4d334.10e"");
     __work_2;
-  }#4:text);
-}#1
+  }#Formatted string_4:text);
+  OpFreeText(test_value);
+  OpFreeText(__work_1);
+  OpFreeText(__work_2);
+}#block_1:void
 
-byte-code for format_float:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_2[4]:text in 1
-   1[28]: Text() var=__work_1[28]:text in 1
-   2[52]: Text() var=test_value[52]:text in 1
-   3[76]: ClearText(var[28]) var=__work_1[28]:text in 1
-   6[76]: ConstText(_value="a") -> text
-   9[92]: AppendText(var[28], v1: text)
-  12[76]: ConstFloat(val=1.2) -> float
-  21[84]: ConstInt(val=4) -> integer
-  26[88]: ConstInt(val=2) -> integer
-  31[92]: FormatFloat(var[28], val: float, width: integer, precision: integer)
-  34[76]: ConstText(_value="b") -> text
-  37[92]: AppendText(var[28], v1: text)
-  40[76]: ConstFloat(val=1.34) -> float
-  49[84]: ConstInt(val=0) -> integer
-  54[88]: ConstInt(val=0) -> integer
-  59[92]: FormatFloat(var[28], val: float, width: integer, precision: integer)
-  62[76]: ConstText(_value="c") -> text
-  65[92]: AppendText(var[28], v1: text)
-  68[76]: ConstFloat(val=1.4) -> float
-  77[84]: ConstInt(val=5) -> integer
-  82[88]: ConstInt(val=0) -> integer
-  87[92]: FormatFloat(var[28], val: float, width: integer, precision: integer)
-  90[76]: ConstText(_value="d") -> text
-  93[92]: AppendText(var[28], v1: text)
-  96[76]: ConstFloat(val=334.1) -> float
- 105[84]: ConstInt(val=0) -> integer
- 110[88]: ConstInt(val=2) -> integer
- 115[92]: FormatFloat(var[28], val: float, width: integer, precision: integer)
- 118[76]: ConstText(_value="e") -> text
- 121[92]: AppendText(var[28], v1: text)
- 124[76]: VarText(var[28]) -> text var=__work_1[28]:text in 1
- 127[92]: AppendText(var[52], v1: text)
- 130[76]: VarText(var[52]) -> text var=test_value[52]:text in 1
- 133[92]: ConstText(_value="a1.20b1.34c  1.4d334.10e") -> text
- 159[108]: EqText(v1: text, v2: text) -> boolean
- 160[77]: GotoFalseWord(jump=166, if_false: boolean)
- 163[76]: GotoWord(jump=238)
- 166[76]: ClearText(var[4]) var=__work_2[4]:text in 1
- 169[76]: ConstText(_value="Test failed ") -> text
- 183[92]: AppendText(var[4], v1: text)
- 186[76]: VarText(var[52]) -> text var=test_value[52]:text in 1
- 189[92]: ConstInt(val=0) -> integer
- 194[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 199[76]: ConstText(_value=" != "a1.20b1.34c  1.4d334.10e"") -> text
- 231[92]: AppendText(var[4], v1: text)
- 234[76]: VarText(var[4]) -> text var=__work_2[4]:text in 1
- 237[92]: Panic(message: text)
- 238[76]: FreeText(var[52])
- 241[76]: FreeText(var[28])
- 244[76]: FreeText(var[4])
- 247[76]: Return(ret=0, value=0, discard=76)
+byte-code for format_float:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_2[8]:text
+   1[32]: Text() var=__work_1[32]:text
+   2[56]: Text() var=test_value[56]:text
+   3[80]: ClearText(var[32]) var=__work_1[32]:text
+   6[80]: ConstText(_value="a") -> text
+   9[96]: AppendText(var[32], v1: text)
+  12[80]: ConstFloat(val=1.2) -> float
+  21[88]: ConstInt(val=4) -> integer
+  26[92]: ConstInt(val=2) -> integer
+  31[96]: FormatFloat(var[32], val: float, width: integer, precision: integer)
+  34[80]: ConstText(_value="b") -> text
+  37[96]: AppendText(var[32], v1: text)
+  40[80]: ConstFloat(val=1.34) -> float
+  49[88]: ConstInt(val=0) -> integer
+  54[92]: ConstInt(val=0) -> integer
+  59[96]: FormatFloat(var[32], val: float, width: integer, precision: integer)
+  62[80]: ConstText(_value="c") -> text
+  65[96]: AppendText(var[32], v1: text)
+  68[80]: ConstFloat(val=1.4) -> float
+  77[88]: ConstInt(val=5) -> integer
+  82[92]: ConstInt(val=0) -> integer
+  87[96]: FormatFloat(var[32], val: float, width: integer, precision: integer)
+  90[80]: ConstText(_value="d") -> text
+  93[96]: AppendText(var[32], v1: text)
+  96[80]: ConstFloat(val=334.1) -> float
+ 105[88]: ConstInt(val=0) -> integer
+ 110[92]: ConstInt(val=2) -> integer
+ 115[96]: FormatFloat(var[32], val: float, width: integer, precision: integer)
+ 118[80]: ConstText(_value="e") -> text
+ 121[96]: AppendText(var[32], v1: text)
+ 124[80]: VarText(var[32]) -> text var=__work_1[32]:text
+ 127[96]: AppendText(var[56], v1: text)
+ 130[80]: VarText(var[56]) -> text var=test_value[56]:text
+ 133[96]: ConstText(_value="a1.20b1.34c  1.4d334.10e") -> text
+ 159[112]: EqText(v1: text, v2: text) -> boolean
+ 160[81]: GotoFalseWord(jump=166, if_false: boolean)
+ 163[80]: GotoWord(jump=238)
+ 166[80]: ClearText(var[8]) var=__work_2[8]:text
+ 169[80]: ConstText(_value="Test failed ") -> text
+ 183[96]: AppendText(var[8], v1: text)
+ 186[80]: VarText(var[56]) -> text var=test_value[56]:text
+ 189[96]: ConstInt(val=0) -> integer
+ 194[100]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+ 199[80]: ConstText(_value=" != "a1.20b1.34c  1.4d334.10e"") -> text
+ 231[96]: AppendText(var[8], v1: text)
+ 234[80]: VarText(var[8]) -> text var=__work_2[8]:text
+ 237[96]: Panic(message: text)
+ 238[80]: FreeText(var[56])
+ 241[80]: FreeText(var[32])
+ 244[80]: FreeText(var[8])
+ 247[80]: Return(ret=0, value=0, discard=76)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] ClearText(var[32])
+    6:[80] ConstText(_value="a") -> "a"[80]
+    9:[96] AppendText(var[32], v1="a"[80])
+   12:[80] ConstFloat(val=1.2) -> 1.2[80]
+   21:[88] ConstInt(val=4) -> 4[88]
+   26:[92] ConstInt(val=2) -> 2[92]
+   31:[96] FormatFloat(var[32], val=1.2[80], width=4[88], precision=2[92])
+   34:[80] ConstText(_value="b") -> "b"[80]
+   37:[96] AppendText(var[32], v1="b"[80])
+   40:[80] ConstFloat(val=1.34) -> 1.34[80]
+   49:[88] ConstInt(val=0) -> 0[88]
+   54:[92] ConstInt(val=0) -> 0[92]
+   59:[96] FormatFloat(var[32], val=1.34[80], width=0[88], precision=0[92])
+   62:[80] ConstText(_value="c") -> "c"[80]
+   65:[96] AppendText(var[32], v1="c"[80])
+   68:[80] ConstFloat(val=1.4) -> 1.4[80]
+   77:[88] ConstInt(val=5) -> 5[88]
+   82:[92] ConstInt(val=0) -> 0[92]
+   87:[96] FormatFloat(var[32], val=1.4[80], width=5[88], precision=0[92])
+   90:[80] ConstText(_value="d") -> "d"[80]
+   93:[96] AppendText(var[32], v1="d"[80])
+   96:[80] ConstFloat(val=334.1) -> 334.1[80]
+  105:[88] ConstInt(val=0) -> 0[88]
+  110:[92] ConstInt(val=2) -> 2[92]
+  115:[96] FormatFloat(var[32], val=334.1[80], width=0[88], precision=2[92])
+  118:[80] ConstText(_value="e") -> "e"[80]
+  121:[96] AppendText(var[32], v1="e"[80])
+  124:[80] VarText(var[32]) -> "a1.20b1.34c  1.4d334.10e"[80]
+  127:[96] AppendText(var[56], v1="a1.20b1.34c  1.4d334.10e"[80])
+  130:[80] VarText(var[56]) -> "a1.20b1.34c  1.4d334.10e"[80]
+  133:[96] ConstText(_value="a1.20b1.34c  1.4d334.10e") -> "a1.20b1.34c  1.4d334.10e"[96]
+  159:[112] EqText(v1="a1.20b1.34c  1.4d334.10e"[80], v2="a1.20b1.34c  1.4d334.10e"[96]) -> true[80]
+  160:[81] GotoFalseWord(jump=1334, if_false=true[80])
+  163:[80] GotoWord(jump=1406)
+  238:[80] FreeText(var[56])
+  241:[80] FreeText(var[32])
+  244:[80] FreeText(var[8])
+  247:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

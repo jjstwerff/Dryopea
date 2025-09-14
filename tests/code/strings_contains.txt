@@ -5,64 +5,101 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-fn test() {#1 block
-  __work_2:text = "";
-  __work_1:text = "";
-  test_value:boolean = {#2 block
-    t:text = "longer";
-    v:text = "a longer text";
-    _tp_text_contains(v, {#3 formatting string
-      __work_1:text = "a ";
+fn test() {#block_1:void
+  __work_2:text(1) = "";
+  __work_1:text(1) = "";
+  test_value:boolean(1) = {#block_2:boolean
+    t:text(2) = "longer";
+    v:text(2) = "a longer text";
+    _res_5:boolean(2) = _tp_text_contains(v, {#Formatted string_3:text
+      __work_1:text(1) = "a ";
       OpFormatText(__work_1, t, 0i32, -1i32, 32i32);
       __work_1;
-    }#3:text);
-  }#2:boolean;
-  if OpEqBool(test_value, true) null else OpPanic({#4 formatting string
-    __work_2:text = "Test failed ";
+    }#Formatted string_3:text);
+    OpFreeText(t);
+    OpFreeText(v);
+    _res_5;
+  }#block_2:boolean;
+  if OpEqBool(test_value, true) null else OpPanic({#Formatted string_4:text
+    __work_2:text(1) = "Test failed ";
     OpFormatBool(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != true");
     __work_2;
-  }#4:text);
-}#1
+  }#Formatted string_4:text);
+  OpFreeText(__work_1);
+  OpFreeText(__work_2);
+}#block_1:void
 
-byte-code for contains:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_2[4]:text in 1
-   1[28]: Text() var=__work_1[28]:text in 1
-   2[52]: Text() var=t[52]:text in 2
-   3[76]: ConstText(_value="longer") -> text
-  11[92]: AppendText(var[52], v1: text)
-  14[76]: Text() var=v[76]:text in 2
-  15[100]: ConstText(_value="a longer text") -> text
-  30[116]: AppendText(var[76], v1: text)
-  33[100]: VarText(var[76]) -> text var=v[76]:text in 2
-  36[116]: ClearText(var[28]) var=__work_1[28]:text in 1
-  39[116]: ConstText(_value="a ") -> text
-  43[132]: AppendText(var[28], v1: text)
-  46[116]: VarText(var[52]) -> text var=t[52]:text in 2
-  49[132]: ConstInt(val=0) -> integer
-  54[136]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
-  59[116]: VarText(var[28]) -> text var=__work_1[28]:text in 1
-  62[132]: StaticCall(_tp_text_contains)
-  65[101]: FreeText(var[52])
-  68[101]: FreeText(var[76])
-  71[101]: FreeStack(value=1, discard=49) type=boolean[1]:Base[4]
-  75[53]: VarBool(var[52]) -> boolean var=test_value[52]:boolean in 1
-  78[54]: ConstTrue() -> boolean
-  79[55]: EqBool(v1: boolean, v2: boolean) -> boolean
-  80[54]: GotoFalseWord(jump=86, if_false: boolean)
-  83[53]: GotoWord(jump=136)
-  86[53]: ClearText(var[4]) var=__work_2[4]:text in 1
-  89[53]: ConstText(_value="Test failed ") -> text
- 103[69]: AppendText(var[4], v1: text)
- 106[53]: VarBool(var[52]) -> boolean var=test_value[52]:boolean in 1
- 109[54]: ConstInt(val=0) -> integer
- 114[58]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
- 119[53]: ConstText(_value=" != true") -> text
- 129[69]: AppendText(var[4], v1: text)
- 132[53]: VarText(var[4]) -> text var=__work_2[4]:text in 1
- 135[69]: Panic(message: text)
- 136[53]: FreeText(var[28])
- 139[53]: FreeText(var[4])
- 142[53]: Return(ret=0, value=0, discard=53)
+byte-code for contains:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_2[8]:text
+   1[32]: Text() var=__work_1[32]:text
+   2[56]: Text() var=t[56]:text
+   3[80]: ConstText(_value="longer") -> text
+  11[96]: AppendText(var[56], v1: text)
+  14[80]: Text() var=v[80]:text
+  15[104]: ConstText(_value="a longer text") -> text
+  30[120]: AppendText(var[80], v1: text)
+  33[104]: VarText(var[80]) -> text var=v[80]:text
+  36[120]: ClearText(var[32]) var=__work_1[32]:text
+  39[120]: ConstText(_value="a ") -> text
+  43[136]: AppendText(var[32], v1: text)
+  46[120]: VarText(var[56]) -> text var=t[56]:text
+  49[136]: ConstInt(val=0) -> integer
+  54[140]: FormatText(var[32], val: text, width: integer, dir=-1, token=32)
+  59[120]: VarText(var[32]) -> text var=__work_1[32]:text
+  62[136]: StaticCall(_tp_text_contains)
+  65[105]: FreeText(var[56])
+  68[105]: FreeText(var[80])
+  71[105]: VarBool(var[104]) -> boolean var=_res_5[104]:boolean
+  74[106]: FreeStack(value=1, discard=50) type=boolean[1]:Base[4]
+  78[57]: VarBool(var[56]) -> boolean var=test_value[56]:boolean
+  81[58]: ConstTrue() -> boolean
+  82[59]: EqBool(v1: boolean, v2: boolean) -> boolean
+  83[58]: GotoFalseWord(jump=89, if_false: boolean)
+  86[57]: GotoWord(jump=139)
+  89[57]: ClearText(var[8]) var=__work_2[8]:text
+  92[57]: ConstText(_value="Test failed ") -> text
+ 106[73]: AppendText(var[8], v1: text)
+ 109[57]: VarBool(var[56]) -> boolean var=test_value[56]:boolean
+ 112[58]: ConstInt(val=0) -> integer
+ 117[62]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
+ 122[57]: ConstText(_value=" != true") -> text
+ 132[73]: AppendText(var[8], v1: text)
+ 135[57]: VarText(var[8]) -> text var=__work_2[8]:text
+ 138[73]: Panic(message: text)
+ 139[57]: FreeText(var[32])
+ 142[57]: FreeText(var[8])
+ 145[57]: Return(ret=0, value=0, discard=53)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] ConstText(_value="longer") -> "longer"[80]
+   11:[96] AppendText(var[56], v1="longer"[80])
+   14:[80] Text()
+   15:[104] ConstText(_value="a longer text") -> "a longer text"[104]
+   30:[120] AppendText(var[80], v1="a longer text"[104])
+   33:[104] VarText(var[80]) -> "a longer text"[104]
+   36:[120] ClearText(var[32])
+   39:[120] ConstText(_value="a ") -> "a "[120]
+   43:[136] AppendText(var[32], v1="a "[120])
+   46:[120] VarText(var[56]) -> "longer"[120]
+   49:[136] ConstInt(val=0) -> 0[136]
+   54:[140] FormatText(var[32], val="longer"[120], width=0[136], dir=-1, token=32)
+   59:[120] VarText(var[32]) -> "a longer"[120]
+   62:[136] StaticCall(_tp_text_contains)
+   65:[105] FreeText(var[56])
+   68:[105] FreeText(var[80])
+   71:[105] VarBool(var[104]) -> true[105]
+   74:[106] FreeStack(value=1, discard=50)
+   78:[57] VarBool(var[56]) -> true[57]
+   81:[58] ConstTrue() -> true[58]
+   82:[59] EqBool(v1=true[57], v2=true[58]) -> true[57]
+   83:[58] GotoFalseWord(jump=1257, if_false=true[57])
+   86:[57] GotoWord(jump=1307)
+  139:[57] FreeText(var[32])
+  142:[57] FreeText(var[8])
+  145:[57] Return(ret=4294967295[4], value=0, discard=53)
+Finished

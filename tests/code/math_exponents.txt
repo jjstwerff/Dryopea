@@ -5,46 +5,69 @@ pub fn test() {
         "Test failed {test_value} != 10"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:float = {#2 block
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:float(1) = {#block_2:float
     _tp_float_log(OpPowFloat(4f64, OpConvFloatFromInt(5i32)), OpConvFloatFromInt(2i32));
-  }#2:float;
-  if OpEqFloat(test_value, OpConvFloatFromInt(10i32)) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+  }#block_2:float;
+  if OpEqFloat(test_value, OpConvFloatFromInt(10i32)) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatFloat(__work_1, test_value, 0i32, 0i32);
     OpAppendText(__work_1, " != 10");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for exponents:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: ConstFloat(val=4) -> float var=test_value[28]:float in 1
-  10[36]: ConstInt(val=5) -> integer
-  15[40]: ConvFloatFromInt(v1: integer) -> float
-  16[44]: PowFloat(v1: float, v2: float) -> float
-  17[36]: ConstInt(val=2) -> integer
-  22[40]: ConvFloatFromInt(v1: integer) -> float
-  23[44]: Call(size=0, to=292)
-  30[36]: VarFloat(var[28]) -> float var=test_value[28]:float in 1
-  33[44]: ConstInt(val=10) -> integer
-  38[48]: ConvFloatFromInt(v1: integer) -> float
-  39[52]: EqFloat(v1: float, v2: float) -> boolean
-  40[37]: GotoFalseWord(jump=46, if_false: boolean)
-  43[36]: GotoWord(jump=97)
-  46[36]: ClearText(var[4]) var=__work_1[4]:text in 1
-  49[36]: ConstText(_value="Test failed ") -> text
-  63[52]: AppendText(var[4], v1: text)
-  66[36]: VarFloat(var[28]) -> float var=test_value[28]:float in 1
-  69[44]: ConstInt(val=0) -> integer
-  74[48]: ConstInt(val=0) -> integer
-  79[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
-  82[36]: ConstText(_value=" != 10") -> text
-  90[52]: AppendText(var[4], v1: text)
-  93[36]: VarText(var[4]) -> text var=__work_1[4]:text in 1
-  96[52]: Panic(message: text)
-  97[36]: FreeText(var[4])
- 100[36]: Return(ret=0, value=0, discard=36)
+byte-code for exponents:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConstFloat(val=4) -> float var=test_value[32]:float
+  10[40]: ConstInt(val=5) -> integer
+  15[44]: ConvFloatFromInt(v1: integer) -> float
+  16[48]: PowFloat(v1: float, v2: float) -> float
+  17[40]: ConstInt(val=2) -> integer
+  22[44]: ConvFloatFromInt(v1: integer) -> float
+  23[48]: Call(size=0, to=292)
+  30[40]: VarFloat(var[32]) -> float var=test_value[32]:float
+  33[48]: ConstInt(val=10) -> integer
+  38[52]: ConvFloatFromInt(v1: integer) -> float
+  39[56]: EqFloat(v1: float, v2: float) -> boolean
+  40[41]: GotoFalseWord(jump=46, if_false: boolean)
+  43[40]: GotoWord(jump=97)
+  46[40]: ClearText(var[8]) var=__work_1[8]:text
+  49[40]: ConstText(_value="Test failed ") -> text
+  63[56]: AppendText(var[8], v1: text)
+  66[40]: VarFloat(var[32]) -> float var=test_value[32]:float
+  69[48]: ConstInt(val=0) -> integer
+  74[52]: ConstInt(val=0) -> integer
+  79[56]: FormatFloat(var[8], val: float, width: integer, precision: integer)
+  82[40]: ConstText(_value=" != 10") -> text
+  90[56]: AppendText(var[8], v1: text)
+  93[40]: VarText(var[8]) -> text var=__work_1[8]:text
+  96[56]: Panic(message: text)
+  97[40]: FreeText(var[8])
+ 100[40]: Return(ret=0, value=0, discard=36)
 
+Execute test:
+    0:[8] Text()
+    1:[32] ConstFloat(val=4) -> 4[32]
+   10:[40] ConstInt(val=5) -> 5[40]
+   15:[44] ConvFloatFromInt(v1=5[40]) -> 5[40]
+   16:[48] PowFloat(v1=4[32], v2=5[40]) -> 1024[32]
+   17:[40] ConstInt(val=2) -> 2[40]
+   22:[44] ConvFloatFromInt(v1=2[40]) -> 2[40]
+   23:[48] Call(size=0, to=292)
+  292:[52] VarFloat(var[32]) -> 1024[52]
+  295:[60] VarFloat(var[40]) -> 2[60]
+  298:[68] MathLogFloat(v1=1024[52], v2=2[60]) -> 10[52]
+  299:[60] Return(ret=1198[48], value=8, discard=28) -> 10[32]
+   30:[40] VarFloat(var[32]) -> 10[40]
+   33:[48] ConstInt(val=10) -> 10[48]
+   38:[52] ConvFloatFromInt(v1=10[48]) -> 10[48]
+   39:[56] EqFloat(v1=10[40], v2=10[48]) -> true[40]
+   40:[41] GotoFalseWord(jump=1214, if_false=true[40])
+   43:[40] GotoWord(jump=1265)
+   97:[40] FreeText(var[8])
+  100:[40] Return(ret=4294967295[4], value=0, discard=36)
+Finished

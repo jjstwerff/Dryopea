@@ -15,57 +15,84 @@ Type 17:Data[12]:
     name:text[4]
     number:integer[8]
 
-fn test() {#1 block
-  d:ref(Data)["d"] = null;
-  __work_1:text = "";
-  test_value:text["d"] = {#2 block
-    d:ref(Data)["d"] = OpConvRefFromNull();
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  d:ref(Data)(1) = null;
+  test_value:text["d"](1) = {#block_2:text["d"]
     OpDatabase(d, 17i32);
     OpSetText(d, 4i32, "testing");
     OpSetInt(d, 8i32, 0i32);
     OpGetText(d, 4i32);
-  }#2:text["d"];
-  if OpEqText(test_value, "testing") null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+  }#block_2:text["d"];
+  if OpEqText(test_value, "testing") null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != "testing"");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(test_value);
+  OpFreeRef(d);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for scope_text:test() [1176]
-   0[0]: return-address
-   0[4]: CreateRef(var[3]) -> ref(reference) var=d[4]:ref(Data)["d"] in 1
-   3[16]: Text() var=__work_1[16]:text in 1
-   4[40]: Text() var=test_value[40]:text["d"] in 1
-   5[64]: ConvRefFromNull() -> ref(reference) var=d[4]:ref(Data)["d"] in 1
-   6[76]: PutRef(var[4], value: ref(reference))
-   9[64]: Database(var[4], db_tp=17) type=Data[12]:{name:text[4], number:integer[8]}[17]
-  14[64]: VarRef(var[4]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[4]:ref(Data)["d"] in 1
-  17[76]: ConstText(_value="testing") -> text
-  26[92]: SetText(v1: ref(reference), fld=4, val: text)
-  29[64]: VarRef(var[4]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[4]:ref(Data)["d"] in 1
-  32[76]: ConstInt(val=0) -> integer
-  37[80]: SetInt(v1: ref(reference), fld=8, val: integer)
-  40[64]: VarRef(var[4]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[4]:ref(Data)["d"] in 1
-  43[76]: GetText(v1: ref(reference), fld=4) -> text["test_value"]
-  46[80]: AppendText(var[40], v1: text)
-  49[64]: VarText(var[40]) -> text var=test_value[40]:text["d"] in 1
-  52[80]: ConstText(_value="testing") -> text
-  61[96]: EqText(v1: text, v2: text) -> boolean
-  62[65]: GotoFalseWord(jump=68, if_false: boolean)
-  65[64]: GotoWord(jump=123)
-  68[64]: ClearText(var[16]) var=__work_1[16]:text in 1
-  71[64]: ConstText(_value="Test failed ") -> text
-  85[80]: AppendText(var[16], v1: text)
-  88[64]: VarText(var[40]) -> text var=test_value[40]:text["d"] in 1
-  91[80]: ConstInt(val=0) -> integer
-  96[84]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
- 101[64]: ConstText(_value=" != "testing"") -> text
- 116[80]: AppendText(var[16], v1: text)
- 119[64]: VarText(var[16]) -> text var=__work_1[16]:text in 1
- 122[80]: Panic(message: text)
- 123[64]: FreeText(var[40])
- 126[64]: FreeText(var[16])
- 129[64]: Return(ret=0, value=0, discard=64)
+byte-code for scope_text:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConvRefFromNull() -> ref(reference) var=d[32]:ref(Data)
+   2[44]: Text() var=test_value[44]:text["d"]
+   3[68]: Database(var[32], db_tp=17) type=Data[12]:{name:text[4], number:integer[8]}[17]
+   8[68]: VarRef(var[32]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[32]:ref(Data)
+  11[80]: ConstText(_value="testing") -> text
+  20[96]: SetText(v1: ref(reference), fld=4, val: text)
+  23[68]: VarRef(var[32]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[32]:ref(Data)
+  26[80]: ConstInt(val=0) -> integer
+  31[84]: SetInt(v1: ref(reference), fld=8, val: integer)
+  34[68]: VarRef(var[32]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[32]:ref(Data)
+  37[80]: GetText(v1: ref(reference), fld=4) -> text["test_value"]
+  40[84]: AppendText(var[44], v1: text)
+  43[68]: VarText(var[44]) -> text var=test_value[44]:text["d"]
+  46[84]: ConstText(_value="testing") -> text
+  55[100]: EqText(v1: text, v2: text) -> boolean
+  56[69]: GotoFalseWord(jump=62, if_false: boolean)
+  59[68]: GotoWord(jump=117)
+  62[68]: ClearText(var[8]) var=__work_1[8]:text
+  65[68]: ConstText(_value="Test failed ") -> text
+  79[84]: AppendText(var[8], v1: text)
+  82[68]: VarText(var[44]) -> text var=test_value[44]:text["d"]
+  85[84]: ConstInt(val=0) -> integer
+  90[88]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+  95[68]: ConstText(_value=" != "testing"") -> text
+ 110[84]: AppendText(var[8], v1: text)
+ 113[68]: VarText(var[8]) -> text var=__work_1[8]:text
+ 116[84]: Panic(message: text)
+ 117[68]: FreeText(var[44])
+ 120[68]: VarRef(var[32]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[32]:ref(Data)
+ 123[80]: FreeRef(v1: ref(reference))
+ 124[68]: FreeText(var[8])
+ 127[68]: Return(ret=0, value=0, discard=64)
 
+Execute test:
+    0:[8] Text()
+    1:[32] ConvRefFromNull() -> ref(1,0,0)[32]
+    2:[44] Text()
+    3:[68] Database(var[32], db_tp=17)
+    8:[68] VarRef(var[32]) -> ref(1,1,0)={}[68]
+   11:[80] ConstText(_value="testing") -> "testing"[80]
+   20:[96] SetText(v1=ref(1,1,0)[68], fld=4, val="testing"[80])
+   23:[68] VarRef(var[32]) -> ref(1,1,0)={name:"testing"}[68]
+   26:[80] ConstInt(val=0) -> 0[80]
+   31:[84] SetInt(v1=ref(1,1,0)[68], fld=8, val=0[80])
+   34:[68] VarRef(var[32]) -> ref(1,1,0)={name:"testing",number:0}[68]
+   37:[80] GetText(v1=ref(1,1,0)[68], fld=4) -> "testing"[68]
+   40:[84] AppendText(var[44], v1="testing"[68])
+   43:[68] VarText(var[44]) -> "testing"[68]
+   46:[84] ConstText(_value="testing") -> "testing"[84]
+   55:[100] EqText(v1="testing"[68], v2="testing"[84]) -> true[68]
+   56:[69] GotoFalseWord(jump=1230, if_false=true[68])
+   59:[68] GotoWord(jump=1285)
+  117:[68] FreeText(var[44])
+  120:[68] VarRef(var[32]) -> ref(1,1,0)={name:"testing",number:0}[68]
+  123:[80] FreeRef(v1=ref(1,1,0)[68])
+  124:[68] FreeText(var[8])
+  127:[68] Return(ret=4294967295[4], value=0, discard=64)
+Finished

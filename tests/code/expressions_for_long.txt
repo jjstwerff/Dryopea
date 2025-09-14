@@ -5,79 +5,327 @@ pub fn test() {
         "Test failed {test_value} != 165l"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:long = {#2 block
-    b:long = 0i64;
-    {#3 for
-      a#index:long = OpConvLongFromNull();
-      loop {#4 for loop
-        a:long = {#5 for next
-          a#index:long = if OpNot(OpConvBoolFromLong(a#index)) 10i64 else OpAddLong(a#index, OpConvLongFromInt(1i32));
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:long(1) = {#block_2:long
+    b:long(2) = 0i64;
+    {#For block_3:void
+      a#index:long(3) = OpConvLongFromNull();
+      loop {#For loop_4
+        a:long(4) = {#Iter range_5:long
+          a#index:long(3) = if OpNot(OpConvBoolFromLong(a#index)) 10i64 else OpAddLong(a#index, OpConvLongFromInt(1i32));
           if OpGtLong(a#index, 20i64) break(0) else null;
           a#index;
-        }#5:long;
-        {#6 block
-          b:long = OpAddLong(b, a);
-        }#6;
-      }#4;
-    }#3;
+        }#Iter range_5:long;
+        {#block_6:void
+          b:long(2) = OpAddLong(b, a);
+        }#block_6:void;
+      }#For loop_4;
+    }#For block_3:void;
     b;
-  }#2:long;
-  if OpEqLong(test_value, 165i64) null else OpPanic({#7 formatting string
-    __work_1:text = "Test failed ";
+  }#block_2:long;
+  if OpEqLong(test_value, 165i64) null else OpPanic({#Formatted string_7:text
+    __work_1:text(1) = "Test failed ";
     OpFormatLong(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 165l");
     __work_1;
-  }#7:text);
-}#1
+  }#Formatted string_7:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for for_long:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: ConstLong(val=0) -> long var=b[28]:long in 2
-  10[36]: ConvLongFromNull() -> long var=a#index[36]:long in 3
-  11[44]: VarLong(var[36]) -> long var=a#index[36]:long in 3
-  14[52]: ConvBoolFromLong(v1: long) -> boolean
-  15[45]: Not(v1: boolean) -> boolean
-  16[45]: GotoFalseWord(jump=31, if_false: boolean)
-  19[44]: ConstLong(val=10) -> long
-  28[52]: GotoWord(jump=41)
-  31[44]: VarLong(var[36]) -> long var=a#index[36]:long in 3
-  34[52]: ConstInt(val=1) -> integer
-  39[56]: ConvLongFromInt(v1: integer) -> long
-  40[60]: AddLong(v1: long, v2: long) -> long
-  41[52]: PutLong(var[36], value: long)
-  44[44]: VarLong(var[36]) -> long var=a#index[36]:long in 3
-  47[52]: ConstLong(val=20) -> long
-  56[60]: GtLong(v1: long, v2: long) -> boolean
-  57[45]: GotoFalseWord(jump=63, if_false: boolean)
-  60[44]: GotoWord(jump=83)
-  63[44]: VarLong(var[36]) -> long var=a#index[36]:long in 3
-  66[52]: VarLong(var[28]) -> long var=b[28]:long in 2
-  69[60]: VarLong(var[44]) -> long var=a[44]:long in 4
-  72[68]: AddLong(v1: long, v2: long) -> long
-  73[60]: PutLong(var[28], value: long)
-  76[52]: FreeStack(value=0, discard=8)
-  80[44]: GotoWord(jump=11)
-  83[44]: FreeStack(value=0, discard=8)
-  87[36]: VarLong(var[28]) -> long var=b[28]:long in 2
-  90[44]: FreeStack(value=8, discard=16) type=long[8]:Base[1]
-  94[36]: VarLong(var[28]) -> long var=test_value[28]:long in 1
-  97[44]: ConstLong(val=165) -> long
- 106[52]: EqLong(v1: long, v2: long) -> boolean
- 107[37]: GotoFalseWord(jump=113, if_false: boolean)
- 110[36]: GotoWord(jump=165)
- 113[36]: ClearText(var[4]) var=__work_1[4]:text in 1
- 116[36]: ConstText(_value="Test failed ") -> text
- 130[52]: AppendText(var[4], v1: text)
- 133[36]: VarLong(var[28]) -> long var=test_value[28]:long in 1
- 136[44]: ConstInt(val=0) -> integer
- 141[48]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
- 148[36]: ConstText(_value=" != 165l") -> text
- 158[52]: AppendText(var[4], v1: text)
- 161[36]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 164[52]: Panic(message: text)
- 165[36]: FreeText(var[4])
- 168[36]: Return(ret=0, value=0, discard=36)
+byte-code for for_long:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConstLong(val=0) -> long var=b[32]:long
+  10[40]: ConvLongFromNull() -> long var=a#index[40]:long
+  11[48]: VarLong(var[40]) -> long var=a#index[40]:long
+  14[56]: ConvBoolFromLong(v1: long) -> boolean
+  15[49]: Not(v1: boolean) -> boolean
+  16[49]: GotoFalseWord(jump=31, if_false: boolean)
+  19[48]: ConstLong(val=10) -> long
+  28[56]: GotoWord(jump=41)
+  31[48]: VarLong(var[40]) -> long var=a#index[40]:long
+  34[56]: ConstInt(val=1) -> integer
+  39[60]: ConvLongFromInt(v1: integer) -> long
+  40[64]: AddLong(v1: long, v2: long) -> long
+  41[56]: PutLong(var[40], value: long)
+  44[48]: VarLong(var[40]) -> long var=a#index[40]:long
+  47[56]: ConstLong(val=20) -> long
+  56[64]: GtLong(v1: long, v2: long) -> boolean
+  57[49]: GotoFalseWord(jump=63, if_false: boolean)
+  60[48]: GotoWord(jump=83)
+  63[48]: VarLong(var[40]) -> long var=a#index[40]:long
+  66[56]: VarLong(var[32]) -> long var=b[32]:long
+  69[64]: VarLong(var[48]) -> long var=a[48]:long
+  72[72]: AddLong(v1: long, v2: long) -> long
+  73[64]: PutLong(var[32], value: long)
+  76[56]: FreeStack(value=0, discard=8)
+  80[48]: GotoWord(jump=11)
+  83[48]: FreeStack(value=0, discard=8)
+  87[40]: VarLong(var[32]) -> long var=b[32]:long
+  90[48]: FreeStack(value=8, discard=16) type=long[8]:Base[1]
+  94[40]: VarLong(var[32]) -> long var=test_value[32]:long
+  97[48]: ConstLong(val=165) -> long
+ 106[56]: EqLong(v1: long, v2: long) -> boolean
+ 107[41]: GotoFalseWord(jump=113, if_false: boolean)
+ 110[40]: GotoWord(jump=165)
+ 113[40]: ClearText(var[8]) var=__work_1[8]:text
+ 116[40]: ConstText(_value="Test failed ") -> text
+ 130[56]: AppendText(var[8], v1: text)
+ 133[40]: VarLong(var[32]) -> long var=test_value[32]:long
+ 136[48]: ConstInt(val=0) -> integer
+ 141[52]: FormatLong(var[8], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 148[40]: ConstText(_value=" != 165l") -> text
+ 158[56]: AppendText(var[8], v1: text)
+ 161[40]: VarText(var[8]) -> text var=__work_1[8]:text
+ 164[56]: Panic(message: text)
+ 165[40]: FreeText(var[8])
+ 168[40]: Return(ret=0, value=0, discard=36)
 
+Execute test:
+    0:[8] Text()
+    1:[32] ConstLong(val=0) -> 0[32]
+   10:[40] ConvLongFromNull() -> -9223372036854775808[40]
+   11:[48] VarLong(var[40]) -> -9223372036854775808[48]
+   14:[56] ConvBoolFromLong(v1=-9223372036854775808[48]) -> false[48]
+   15:[49] Not(v1=false[48]) -> true[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=true[48])
+   19:[48] ConstLong(val=10) -> 10[48]
+   28:[56] GotoWord(jump=1209)
+   41:[56] PutLong(var[40], value=10[48])
+   44:[48] VarLong(var[40]) -> 10[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=10[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 10[48]
+   66:[56] VarLong(var[32]) -> 0[56]
+   69:[64] VarLong(var[48]) -> 10[64]
+   72:[72] AddLong(v1=0[56], v2=10[64]) -> 10[56]
+   73:[64] PutLong(var[32], value=10[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 10[48]
+   14:[56] ConvBoolFromLong(v1=10[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 10[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=10[48], v2=1[56]) -> 11[48]
+   41:[56] PutLong(var[40], value=11[48])
+   44:[48] VarLong(var[40]) -> 11[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=11[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 11[48]
+   66:[56] VarLong(var[32]) -> 10[56]
+   69:[64] VarLong(var[48]) -> 11[64]
+   72:[72] AddLong(v1=10[56], v2=11[64]) -> 21[56]
+   73:[64] PutLong(var[32], value=21[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 11[48]
+   14:[56] ConvBoolFromLong(v1=11[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 11[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=11[48], v2=1[56]) -> 12[48]
+   41:[56] PutLong(var[40], value=12[48])
+   44:[48] VarLong(var[40]) -> 12[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=12[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 12[48]
+   66:[56] VarLong(var[32]) -> 21[56]
+   69:[64] VarLong(var[48]) -> 12[64]
+   72:[72] AddLong(v1=21[56], v2=12[64]) -> 33[56]
+   73:[64] PutLong(var[32], value=33[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 12[48]
+   14:[56] ConvBoolFromLong(v1=12[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 12[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=12[48], v2=1[56]) -> 13[48]
+   41:[56] PutLong(var[40], value=13[48])
+   44:[48] VarLong(var[40]) -> 13[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=13[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 13[48]
+   66:[56] VarLong(var[32]) -> 33[56]
+   69:[64] VarLong(var[48]) -> 13[64]
+   72:[72] AddLong(v1=33[56], v2=13[64]) -> 46[56]
+   73:[64] PutLong(var[32], value=46[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 13[48]
+   14:[56] ConvBoolFromLong(v1=13[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 13[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=13[48], v2=1[56]) -> 14[48]
+   41:[56] PutLong(var[40], value=14[48])
+   44:[48] VarLong(var[40]) -> 14[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=14[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 14[48]
+   66:[56] VarLong(var[32]) -> 46[56]
+   69:[64] VarLong(var[48]) -> 14[64]
+   72:[72] AddLong(v1=46[56], v2=14[64]) -> 60[56]
+   73:[64] PutLong(var[32], value=60[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 14[48]
+   14:[56] ConvBoolFromLong(v1=14[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 14[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=14[48], v2=1[56]) -> 15[48]
+   41:[56] PutLong(var[40], value=15[48])
+   44:[48] VarLong(var[40]) -> 15[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=15[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 15[48]
+   66:[56] VarLong(var[32]) -> 60[56]
+   69:[64] VarLong(var[48]) -> 15[64]
+   72:[72] AddLong(v1=60[56], v2=15[64]) -> 75[56]
+   73:[64] PutLong(var[32], value=75[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 15[48]
+   14:[56] ConvBoolFromLong(v1=15[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 15[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=15[48], v2=1[56]) -> 16[48]
+   41:[56] PutLong(var[40], value=16[48])
+   44:[48] VarLong(var[40]) -> 16[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=16[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 16[48]
+   66:[56] VarLong(var[32]) -> 75[56]
+   69:[64] VarLong(var[48]) -> 16[64]
+   72:[72] AddLong(v1=75[56], v2=16[64]) -> 91[56]
+   73:[64] PutLong(var[32], value=91[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 16[48]
+   14:[56] ConvBoolFromLong(v1=16[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 16[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=16[48], v2=1[56]) -> 17[48]
+   41:[56] PutLong(var[40], value=17[48])
+   44:[48] VarLong(var[40]) -> 17[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=17[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 17[48]
+   66:[56] VarLong(var[32]) -> 91[56]
+   69:[64] VarLong(var[48]) -> 17[64]
+   72:[72] AddLong(v1=91[56], v2=17[64]) -> 108[56]
+   73:[64] PutLong(var[32], value=108[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 17[48]
+   14:[56] ConvBoolFromLong(v1=17[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 17[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=17[48], v2=1[56]) -> 18[48]
+   41:[56] PutLong(var[40], value=18[48])
+   44:[48] VarLong(var[40]) -> 18[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=18[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 18[48]
+   66:[56] VarLong(var[32]) -> 108[56]
+   69:[64] VarLong(var[48]) -> 18[64]
+   72:[72] AddLong(v1=108[56], v2=18[64]) -> 126[56]
+   73:[64] PutLong(var[32], value=126[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 18[48]
+   14:[56] ConvBoolFromLong(v1=18[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 18[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=18[48], v2=1[56]) -> 19[48]
+   41:[56] PutLong(var[40], value=19[48])
+   44:[48] VarLong(var[40]) -> 19[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=19[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 19[48]
+   66:[56] VarLong(var[32]) -> 126[56]
+   69:[64] VarLong(var[48]) -> 19[64]
+   72:[72] AddLong(v1=126[56], v2=19[64]) -> 145[56]
+   73:[64] PutLong(var[32], value=145[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 19[48]
+   14:[56] ConvBoolFromLong(v1=19[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 19[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=19[48], v2=1[56]) -> 20[48]
+   41:[56] PutLong(var[40], value=20[48])
+   44:[48] VarLong(var[40]) -> 20[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=20[48], v2=20[56]) -> false[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=false[48])
+   63:[48] VarLong(var[40]) -> 20[48]
+   66:[56] VarLong(var[32]) -> 145[56]
+   69:[64] VarLong(var[48]) -> 20[64]
+   72:[72] AddLong(v1=145[56], v2=20[64]) -> 165[56]
+   73:[64] PutLong(var[32], value=165[56])
+   76:[56] FreeStack(value=0, discard=8)
+   80:[48] GotoWord(jump=1179)
+   11:[48] VarLong(var[40]) -> 20[48]
+   14:[56] ConvBoolFromLong(v1=20[48]) -> true[48]
+   15:[49] Not(v1=true[48]) -> false[48]
+   16:[49] GotoFalseWord(jump=1199, if_false=false[48])
+   31:[48] VarLong(var[40]) -> 20[48]
+   34:[56] ConstInt(val=1) -> 1[56]
+   39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
+   40:[64] AddLong(v1=20[48], v2=1[56]) -> 21[48]
+   41:[56] PutLong(var[40], value=21[48])
+   44:[48] VarLong(var[40]) -> 21[48]
+   47:[56] ConstLong(val=20) -> 20[56]
+   56:[64] GtLong(v1=21[48], v2=20[56]) -> true[48]
+   57:[49] GotoFalseWord(jump=1231, if_false=true[48])
+   60:[48] GotoWord(jump=1251)
+   83:[48] FreeStack(value=0, discard=8)
+   87:[40] VarLong(var[32]) -> 165[40]
+   90:[48] FreeStack(value=8, discard=16)
+   94:[40] VarLong(var[32]) -> 165[40]
+   97:[48] ConstLong(val=165) -> 165[48]
+  106:[56] EqLong(v1=165[40], v2=165[48]) -> true[40]
+  107:[41] GotoFalseWord(jump=1281, if_false=true[40])
+  110:[40] GotoWord(jump=1333)
+  165:[40] FreeText(var[8])
+  168:[40] Return(ret=4294967295[4], value=0, discard=36)
+Finished

@@ -5,12 +5,12 @@ pub fn test() {
         "Test failed {test_value} != \"a  +2b12c true d\""
     );
 }
-fn test() {#1 block
-  __work_2:text = "";
-  __work_1:text = "";
-  test_value:text = {#2 block
-    {#3 formatting string
-      __work_1:text = "a";
+fn test() {#block_1:void
+  __work_2:text(1) = "";
+  __work_1:text(1) = "";
+  test_value:text(1) = {#block_2:text
+    {#Formatted string_3:text
+      __work_1:text(1) = "a";
       OpFormatLong(__work_1, OpAddLong(1i64, OpConvLongFromInt(1i32)), 10i32, 4i32, 32i32, true, false);
       OpAppendText(__work_1, "b");
       OpFormatInt(__work_1, OpCastIntFromLong(12i64), 10i32, 0i32, 32i32, false, false);
@@ -18,69 +18,117 @@ fn test() {#1 block
       OpFormatBool(__work_1, OpGeLong(OpMulLong(2i64, OpRemLong(4i64, 6i64)), OpConvLongFromInt(8i32)), 0i32, -1i32, 32i32);
       OpAppendText(__work_1, " d");
       __work_1;
-    }#3:text;
-  }#2:text;
-  if OpEqText(test_value, "a  +2b12c true d") null else OpPanic({#4 formatting string
-    __work_2:text = "Test failed ";
+    }#Formatted string_3:text;
+  }#block_2:text;
+  if OpEqText(test_value, "a  +2b12c true d") null else OpPanic({#Formatted string_4:text
+    __work_2:text(1) = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "a  +2b12c true d"");
     __work_2;
-  }#4:text);
-}#1
+  }#Formatted string_4:text);
+  OpFreeText(test_value);
+  OpFreeText(__work_1);
+  OpFreeText(__work_2);
+}#block_1:void
 
-byte-code for format_long:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_2[4]:text in 1
-   1[28]: Text() var=__work_1[28]:text in 1
-   2[52]: Text() var=test_value[52]:text in 1
-   3[76]: ClearText(var[28]) var=__work_1[28]:text in 1
-   6[76]: ConstText(_value="a") -> text
-   9[92]: AppendText(var[28], v1: text)
-  12[76]: ConstLong(val=1) -> long
-  21[84]: ConstInt(val=1) -> integer
-  26[88]: ConvLongFromInt(v1: integer) -> long
-  27[92]: AddLong(v1: long, v2: long) -> long
-  28[84]: ConstInt(val=4) -> integer
-  33[88]: FormatLong(var[28], val: long, radix=10, width: integer, token=32, plus=true, note=false)
-  40[76]: ConstText(_value="b") -> text
-  43[92]: AppendText(var[28], v1: text)
-  46[76]: ConstLong(val=12) -> long
-  55[84]: CastIntFromLong(v1: long) -> integer
-  56[80]: ConstInt(val=0) -> integer
-  61[84]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  68[76]: ConstText(_value="c ") -> text
-  72[92]: AppendText(var[28], v1: text)
-  75[76]: ConstLong(val=2) -> long
-  84[84]: ConstLong(val=4) -> long
-  93[92]: ConstLong(val=6) -> long
- 102[100]: RemLong(v1: long, v2: long) -> long
- 103[92]: MulLong(v1: long, v2: long) -> long
- 104[84]: ConstInt(val=8) -> integer
- 109[88]: ConvLongFromInt(v1: integer) -> long
- 110[92]: GeLong(v1: long, v2: long) -> boolean
- 111[77]: ConstInt(val=0) -> integer
- 116[81]: FormatBool(var[28], val: boolean, width: integer, dir=-1, token=32)
- 121[76]: ConstText(_value=" d") -> text
- 125[92]: AppendText(var[28], v1: text)
- 128[76]: VarText(var[28]) -> text var=__work_1[28]:text in 1
- 131[92]: AppendText(var[52], v1: text)
- 134[76]: VarText(var[52]) -> text var=test_value[52]:text in 1
- 137[92]: ConstText(_value="a  +2b12c true d") -> text
- 155[108]: EqText(v1: text, v2: text) -> boolean
- 156[77]: GotoFalseWord(jump=162, if_false: boolean)
- 159[76]: GotoWord(jump=226)
- 162[76]: ClearText(var[4]) var=__work_2[4]:text in 1
- 165[76]: ConstText(_value="Test failed ") -> text
- 179[92]: AppendText(var[4], v1: text)
- 182[76]: VarText(var[52]) -> text var=test_value[52]:text in 1
- 185[92]: ConstInt(val=0) -> integer
- 190[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 195[76]: ConstText(_value=" != "a  +2b12c true d"") -> text
- 219[92]: AppendText(var[4], v1: text)
- 222[76]: VarText(var[4]) -> text var=__work_2[4]:text in 1
- 225[92]: Panic(message: text)
- 226[76]: FreeText(var[52])
- 229[76]: FreeText(var[28])
- 232[76]: FreeText(var[4])
- 235[76]: Return(ret=0, value=0, discard=76)
+byte-code for format_long:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_2[8]:text
+   1[32]: Text() var=__work_1[32]:text
+   2[56]: Text() var=test_value[56]:text
+   3[80]: ClearText(var[32]) var=__work_1[32]:text
+   6[80]: ConstText(_value="a") -> text
+   9[96]: AppendText(var[32], v1: text)
+  12[80]: ConstLong(val=1) -> long
+  21[88]: ConstInt(val=1) -> integer
+  26[92]: ConvLongFromInt(v1: integer) -> long
+  27[96]: AddLong(v1: long, v2: long) -> long
+  28[88]: ConstInt(val=4) -> integer
+  33[92]: FormatLong(var[32], val: long, radix=10, width: integer, token=32, plus=true, note=false)
+  40[80]: ConstText(_value="b") -> text
+  43[96]: AppendText(var[32], v1: text)
+  46[80]: ConstLong(val=12) -> long
+  55[88]: CastIntFromLong(v1: long) -> integer
+  56[84]: ConstInt(val=0) -> integer
+  61[88]: FormatInt(var[32], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  68[80]: ConstText(_value="c ") -> text
+  72[96]: AppendText(var[32], v1: text)
+  75[80]: ConstLong(val=2) -> long
+  84[88]: ConstLong(val=4) -> long
+  93[96]: ConstLong(val=6) -> long
+ 102[104]: RemLong(v1: long, v2: long) -> long
+ 103[96]: MulLong(v1: long, v2: long) -> long
+ 104[88]: ConstInt(val=8) -> integer
+ 109[92]: ConvLongFromInt(v1: integer) -> long
+ 110[96]: GeLong(v1: long, v2: long) -> boolean
+ 111[81]: ConstInt(val=0) -> integer
+ 116[85]: FormatBool(var[32], val: boolean, width: integer, dir=-1, token=32)
+ 121[80]: ConstText(_value=" d") -> text
+ 125[96]: AppendText(var[32], v1: text)
+ 128[80]: VarText(var[32]) -> text var=__work_1[32]:text
+ 131[96]: AppendText(var[56], v1: text)
+ 134[80]: VarText(var[56]) -> text var=test_value[56]:text
+ 137[96]: ConstText(_value="a  +2b12c true d") -> text
+ 155[112]: EqText(v1: text, v2: text) -> boolean
+ 156[81]: GotoFalseWord(jump=162, if_false: boolean)
+ 159[80]: GotoWord(jump=226)
+ 162[80]: ClearText(var[8]) var=__work_2[8]:text
+ 165[80]: ConstText(_value="Test failed ") -> text
+ 179[96]: AppendText(var[8], v1: text)
+ 182[80]: VarText(var[56]) -> text var=test_value[56]:text
+ 185[96]: ConstInt(val=0) -> integer
+ 190[100]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+ 195[80]: ConstText(_value=" != "a  +2b12c true d"") -> text
+ 219[96]: AppendText(var[8], v1: text)
+ 222[80]: VarText(var[8]) -> text var=__work_2[8]:text
+ 225[96]: Panic(message: text)
+ 226[80]: FreeText(var[56])
+ 229[80]: FreeText(var[32])
+ 232[80]: FreeText(var[8])
+ 235[80]: Return(ret=0, value=0, discard=76)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] ClearText(var[32])
+    6:[80] ConstText(_value="a") -> "a"[80]
+    9:[96] AppendText(var[32], v1="a"[80])
+   12:[80] ConstLong(val=1) -> 1[80]
+   21:[88] ConstInt(val=1) -> 1[88]
+   26:[92] ConvLongFromInt(v1=1[88]) -> 1[88]
+   27:[96] AddLong(v1=1[80], v2=1[88]) -> 2[80]
+   28:[88] ConstInt(val=4) -> 4[88]
+   33:[92] FormatLong(var[32], val=2[80], radix=10, width=4[88], token=32, plus=true, note=false)
+   40:[80] ConstText(_value="b") -> "b"[80]
+   43:[96] AppendText(var[32], v1="b"[80])
+   46:[80] ConstLong(val=12) -> 12[80]
+   55:[88] CastIntFromLong(v1=12[80]) -> 12[80]
+   56:[84] ConstInt(val=0) -> 0[84]
+   61:[88] FormatInt(var[32], val=12[80], radix=10, width=0[84], token=32, plus=false, note=false)
+   68:[80] ConstText(_value="c ") -> "c "[80]
+   72:[96] AppendText(var[32], v1="c "[80])
+   75:[80] ConstLong(val=2) -> 2[80]
+   84:[88] ConstLong(val=4) -> 4[88]
+   93:[96] ConstLong(val=6) -> 6[96]
+  102:[104] RemLong(v1=4[88], v2=6[96]) -> 4[88]
+  103:[96] MulLong(v1=2[80], v2=4[88]) -> 8[80]
+  104:[88] ConstInt(val=8) -> 8[88]
+  109:[92] ConvLongFromInt(v1=8[88]) -> 8[88]
+  110:[96] GeLong(v1=8[80], v2=8[88]) -> true[80]
+  111:[81] ConstInt(val=0) -> 0[81]
+  116:[85] FormatBool(var[32], val=true[80], width=0[81], dir=-1, token=32)
+  121:[80] ConstText(_value=" d") -> " d"[80]
+  125:[96] AppendText(var[32], v1=" d"[80])
+  128:[80] VarText(var[32]) -> "a  +2b12c true d"[80]
+  131:[96] AppendText(var[56], v1="a  +2b12c true d"[80])
+  134:[80] VarText(var[56]) -> "a  +2b12c true d"[80]
+  137:[96] ConstText(_value="a  +2b12c true d") -> "a  +2b12c true d"[96]
+  155:[112] EqText(v1="a  +2b12c true d"[80], v2="a  +2b12c true d"[96]) -> true[80]
+  156:[81] GotoFalseWord(jump=1330, if_false=true[80])
+  159:[80] GotoWord(jump=1394)
+  226:[80] FreeText(var[56])
+  229:[80] FreeText(var[32])
+  232:[80] FreeText(var[8])
+  235:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

@@ -222,14 +222,20 @@ extern crate dryopea;"
             Value::Single(v) => {
                 write!(w, "{v}_f32")?;
             }
-            Value::Block(vals) => {
-                writeln!(w, "{{")?;
-                for (vnr, v) in vals.iter().enumerate() {
+            Value::Block(bl) => {
+                writeln!(
+                    w,
+                    "{{ //{}_{}: {}",
+                    bl.name,
+                    bl.scope,
+                    bl.result.show(self.data, &self.data.def(def_nr).variables)
+                )?;
+                for (vnr, v) in bl.operators.iter().enumerate() {
                     for _i in 0..=indent {
                         write!(w, "  ")?;
                     }
                     self.output_code(w, v, def_nr, indent + 1)?;
-                    if vnr < vals.len() - 1 {
+                    if vnr < bl.operators.len() - 1 {
                         writeln!(w, ";")?;
                     } else {
                         writeln!(w)?;
@@ -238,11 +244,17 @@ extern crate dryopea;"
                 for _i in 0..indent {
                     write!(w, "  ")?;
                 }
-                write!(w, "}}")?;
+                write!(
+                    w,
+                    "}} //{}_{}: {}",
+                    bl.name,
+                    bl.scope,
+                    bl.result.show(self.data, &self.data.def(def_nr).variables)
+                )?;
             }
-            Value::Loop(vals) => {
-                writeln!(w, "loop {{")?;
-                for v in vals {
+            Value::Loop(lp) => {
+                writeln!(w, "loop {{ //{}_{}", lp.name, lp.scope)?;
+                for v in &lp.operators {
                     for _i in 0..=indent {
                         write!(w, "  ")?;
                     }
@@ -252,7 +264,7 @@ extern crate dryopea;"
                 for _i in 0..indent {
                     write!(w, "  ")?;
                 }
-                write!(w, "}}")?;
+                write!(w, "}} //{}_{}", lp.name, lp.scope)?;
             }
             Value::Set(var, to) => {
                 write!(w, "var_{} = ", self.data.def(def_nr).variables.name(*var))?;

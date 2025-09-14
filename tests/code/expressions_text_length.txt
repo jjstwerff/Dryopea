@@ -5,51 +5,84 @@ pub fn test() {
         "Test failed {test_value} != 18"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:integer = {#2 block
-    t:text = "some";
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:integer(1) = {#block_2:integer
+    t:text(2) = "some";
     OpAppendText(t, "thing");
-    OpAddInt(_tp_text_len(t), _tp_text_len(t));
-  }#2:integer;
-  if OpEqInt(test_value, 18i32) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+    _res_3:integer(2) = OpAddInt(_tp_text_len(t), _tp_text_len(t));
+    OpFreeText(t);
+    _res_3;
+  }#block_2:integer;
+  if OpEqInt(test_value, 18i32) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1, " != 18");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for text_length:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: Text() var=t[28]:text in 2
-   2[52]: ConstText(_value="some") -> text
-   8[68]: AppendText(var[28], v1: text)
-  11[52]: ConstText(_value="thing") -> text
-  18[68]: AppendText(var[28], v1: text)
-  21[52]: VarText(var[28]) -> text var=t[28]:text in 2
-  24[68]: Call(size=0, to=318)
-  31[56]: VarText(var[28]) -> text var=t[28]:text in 2
-  34[72]: Call(size=0, to=318)
-  41[60]: AddInt(v1: integer, v2: integer) -> integer
-  42[56]: FreeText(var[28])
-  45[56]: FreeStack(value=4, discard=28) type=integer[4]:Base[0]
-  49[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
-  52[36]: ConstInt(val=18) -> integer
-  57[40]: EqInt(v1: integer, v2: integer) -> boolean
-  58[33]: GotoFalseWord(jump=64, if_false: boolean)
-  61[32]: GotoWord(jump=114)
-  64[32]: ClearText(var[4]) var=__work_1[4]:text in 1
-  67[32]: ConstText(_value="Test failed ") -> text
-  81[48]: AppendText(var[4], v1: text)
-  84[32]: VarInt(var[28]) -> integer var=test_value[28]:integer in 1
-  87[36]: ConstInt(val=0) -> integer
-  92[40]: FormatInt(var[4], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  99[32]: ConstText(_value=" != 18") -> text
- 107[48]: AppendText(var[4], v1: text)
- 110[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 113[48]: Panic(message: text)
- 114[32]: FreeText(var[4])
- 117[32]: Return(ret=0, value=0, discard=32)
+byte-code for text_length:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: Text() var=t[32]:text
+   2[56]: ConstText(_value="some") -> text
+   8[72]: AppendText(var[32], v1: text)
+  11[56]: ConstText(_value="thing") -> text
+  18[72]: AppendText(var[32], v1: text)
+  21[56]: VarText(var[32]) -> text var=t[32]:text
+  24[72]: Call(size=0, to=318)
+  31[60]: VarText(var[32]) -> text var=t[32]:text
+  34[76]: Call(size=0, to=318)
+  41[64]: AddInt(v1: integer, v2: integer) -> integer
+  42[60]: FreeText(var[32])
+  45[60]: VarInt(var[56]) -> integer var=_res_3[56]:integer
+  48[64]: FreeStack(value=4, discard=32) type=integer[4]:Base[0]
+  52[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  55[40]: ConstInt(val=18) -> integer
+  60[44]: EqInt(v1: integer, v2: integer) -> boolean
+  61[37]: GotoFalseWord(jump=67, if_false: boolean)
+  64[36]: GotoWord(jump=117)
+  67[36]: ClearText(var[8]) var=__work_1[8]:text
+  70[36]: ConstText(_value="Test failed ") -> text
+  84[52]: AppendText(var[8], v1: text)
+  87[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  90[40]: ConstInt(val=0) -> integer
+  95[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 102[36]: ConstText(_value=" != 18") -> text
+ 110[52]: AppendText(var[8], v1: text)
+ 113[36]: VarText(var[8]) -> text var=__work_1[8]:text
+ 116[52]: Panic(message: text)
+ 117[36]: FreeText(var[8])
+ 120[36]: Return(ret=0, value=0, discard=32)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] ConstText(_value="some") -> "some"[56]
+    8:[72] AppendText(var[32], v1="some"[56])
+   11:[56] ConstText(_value="thing") -> "thing"[56]
+   18:[72] AppendText(var[32], v1="thing"[56])
+   21:[56] VarText(var[32]) -> "something"[56]
+   24:[72] Call(size=0, to=318)
+  318:[76] ArgText(var[56]) -> "something"[76]
+  321:[92] LengthText(v1="something"[76]) -> 9[76]
+  322:[80] Return(ret=1199[72], value=4, discard=24) -> 9[56]
+   31:[60] VarText(var[32]) -> "something"[60]
+   34:[76] Call(size=0, to=318)
+  318:[80] ArgText(var[60]) -> "something"[80]
+  321:[96] LengthText(v1="something"[80]) -> 9[80]
+  322:[84] Return(ret=1209[76], value=4, discard=24) -> 9[60]
+   41:[64] AddInt(v1=9[56], v2=9[60]) -> 18[56]
+   42:[60] FreeText(var[32])
+   45:[60] VarInt(var[56]) -> 18[60]
+   48:[64] FreeStack(value=4, discard=32)
+   52:[36] VarInt(var[32]) -> 18[36]
+   55:[40] ConstInt(val=18) -> 18[40]
+   60:[44] EqInt(v1=18[36], v2=18[40]) -> true[36]
+   61:[37] GotoFalseWord(jump=1235, if_false=true[36])
+   64:[36] GotoWord(jump=1285)
+  117:[36] FreeText(var[8])
+  120:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished

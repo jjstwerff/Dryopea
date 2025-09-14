@@ -29,6 +29,7 @@ pub struct State {
     stack_cur: DbRef,
     pub stack_pos: u32,
     pub code_pos: u32,
+    def_pos: u32,
     pub database: Stores,
     // Stack size of the arguments
     pub arguments: u16,
@@ -42,7 +43,6 @@ pub struct State {
     pub types: HashMap<u32, u16>,
     pub library: Vec<Call>,
     pub library_names: HashMap<String, u16>,
-    initialized: HashSet<u16>,
     text_positions: BTreeSet<u32>,
 }
 
@@ -68,6 +68,7 @@ impl State {
             stack_cur: db.database(1000),
             stack_pos: 4,
             code_pos: 0,
+            def_pos: 0,
             database: db,
             arguments: 0,
             stack: HashMap::new(),
@@ -76,7 +77,6 @@ impl State {
             types: HashMap::new(),
             library: Vec::new(),
             library_names: HashMap::new(),
-            initialized: HashSet::new(),
             text_positions: BTreeSet::new(),
         }
     }
@@ -1164,39 +1164,15 @@ impl State {
             println!("{} ", stack.data.def(def_nr).header(stack.data, def_nr));
             stack.data.dump(&stack.data.def(def_nr).code, def_nr);
         }
-        let top = stack.function.start_next();
         let mut started = HashSet::new();
         for a in stack.data.def(def_nr).variables.arguments() {
             started.insert(a);
         }
-        if let Err(txt) = stack.function.validate(
-            &stack.data.def(def_nr).code,
-            &stack.data.def(def_nr).name,
-            &stack.data.def(def_nr).position.file,
-            stack.data,
-            &mut started,
-        ) {
-            panic!(
-                "{txt} in {} at {}",
-                stack.data.def(def_nr).name,
-                stack.data.def(def_nr).position.file
-            );
-        }
-        stack
-            .function
-            .finish_next(top, &stack.data.def(def_nr).name);
-        stack.function.reset();
-        let top = stack.function.start_next();
-        self.initialized.clear();
-        for a in stack.data.def(def_nr).variables.arguments() {
-            self.initialized.insert(a);
-        }
-        self.generate(&stack.data.def(def_nr).code, &mut stack);
+        self.generate(&stack.data.def(def_nr).code, &mut stack, true);
         let mut stack_pos = Vec::new();
         for v_nr in 0..stack.function.next_var() {
             stack_pos.push(stack.function.stack(v_nr));
         }
-        stack.function.finish_next(top, &data.def(def_nr).name);
         data.definitions[def_nr as usize].code_position = start;
         data.definitions[def_nr as usize].code_length = self.code_pos - start;
         if let Some(v) = self.calls.get(&def_nr) {
@@ -1222,7 +1198,7 @@ impl State {
     # Panics
     On not implemented Value constructions
     */
-    fn generate(&mut self, val: &Value, stack: &mut Stack) -> Type {
+    fn generate(&mut self, val: &Value, stack: &mut Stack, top: bool) -> Type {
         match val {
             Value::Int(value) => {
                 stack.add_op("OpConstInt", self);
@@ -1275,20 +1251,16 @@ impl State {
                 self.generate_set(stack, *v, value);
                 Type::Void
             }
-            Value::Loop(values) => {
-                let lp = stack.function.start_next();
-                stack.add_loop(stack.function.scope(), self.code_pos);
+            Value::Loop(lp) => {
+                stack.add_loop(self.code_pos);
                 let pos = self.code_pos;
-                for v in values {
-                    self.generate(v, stack);
+                for v in &lp.operators {
+                    self.generate(v, stack, false);
                 }
                 self.clear_stack(stack, 0);
                 stack.add_op("OpGotoWord", self);
                 self.code_add((i64::from(pos) - i64::from(self.code_pos) - 2) as i16);
                 stack.end_loop(self);
-                stack
-                    .function
-                    .finish_next(lp, &stack.data.def(stack.def_nr).name);
                 Type::Void
             }
             Value::Insert(_) => panic!("Incorrectly code Insert not rewritten"),
@@ -1312,13 +1284,13 @@ impl State {
                 Type::Void
             }
             Value::If(test, t_val, f_val) => {
-                self.generate(test, stack);
+                self.generate(test, stack, false);
                 stack.add_op("OpGotoFalseWord", self);
                 let code_step = self.code_pos;
                 self.code_add(0i16); // temp step
                 let true_pos = self.code_pos;
                 let stack_pos = stack.position;
-                let tp = self.generate(t_val, stack);
+                let tp = self.generate(t_val, stack, false);
                 if **f_val == Value::Null {
                     self.code_put(code_step, (self.code_pos - true_pos) as i16); // actual step
                 } else {
@@ -1328,34 +1300,33 @@ impl State {
                     let false_pos = self.code_pos;
                     self.code_put(code_step, (self.code_pos - true_pos) as i16); // actual step
                     stack.position = stack_pos;
-                    self.generate(f_val, stack);
+                    self.generate(f_val, stack, false);
                     self.code_put(end, (self.code_pos - false_pos) as i16); // actual end
                 }
                 tp
             }
             Value::Return(v) => {
-                self.generate(v, stack);
+                self.generate(v, stack, false);
                 let return_type = &stack.data.def(stack.def_nr).returned;
                 if return_type != &Type::Void {
                     let ret_nr = stack.data.type_def_nr(return_type);
                     let known = stack.data.def(ret_nr).known_type;
                     self.types.insert(self.code_pos, known);
                 }
-                self.free_vars(stack, stack.function.scope() - 1);
                 stack.add_op("OpReturn", self);
                 self.code_add(self.arguments);
                 self.code_add(size(return_type, &Context::Argument) as u8);
                 self.code_add(stack.position);
                 Type::Void
             }
-            Value::Block(values) => self.generate_block(stack, values),
+            Value::Block(bl) => self.generate_block(stack, &bl.operators, top),
             Value::Call(op, parameters) => self.generate_call(stack, op, parameters),
             Value::Null => {
                 // Ignore, in use as the code on an else clause without code.
                 Type::Void
             }
             Value::Drop(val) => {
-                self.generate(val, stack);
+                self.generate(val, stack, false);
                 // get all variables of the current scope.
                 let size = stack.size_code(val);
                 if size > 0 {
@@ -1374,15 +1345,8 @@ impl State {
 
     fn generate_set(&mut self, stack: &mut Stack, v: u16, value: &Value) {
         self.vars.insert(self.code_pos, v);
-        if self.initialized.contains(&v) {
-            if matches!(stack.function.tp(v), Type::Text(_)) {
-                let var_pos = stack.position - stack.function.stack(v);
-                stack.add_op("OpClearText", self);
-                self.code_add(var_pos);
-            }
-            self.set_var(stack, v, value);
-        } else {
-            self.initialized.insert(v);
+        let pos = stack.function.stack(v);
+        if pos == u16::MAX {
             stack.function.claim(v, stack.position, &Context::Variable);
             if matches!(*stack.function.tp(v), Type::Text(_)) {
                 stack.add_op("OpText", self);
@@ -1434,49 +1398,25 @@ impl State {
                     }
                 }
             } else {
-                self.generate(value, stack);
+                self.generate(value, stack, false);
             }
+        } else {
+            if matches!(stack.function.tp(v), Type::Text(_)) {
+                let var_pos = stack.position - pos;
+                stack.add_op("OpClearText", self);
+                self.code_add(var_pos);
+            }
+            self.set_var(stack, v, value);
         }
     }
 
     fn clear_stack(&mut self, stack: &mut Stack, loop_nr: u16) {
-        self.free_vars(stack, stack.loop_scope(loop_nr));
         let loop_pos = stack.loop_position(loop_nr);
         if stack.position > loop_pos {
             stack.add_op("OpFreeStack", self);
             self.code_add(0u8);
             self.code_add(stack.position - loop_pos);
             stack.position = loop_pos;
-        }
-    }
-
-    fn free_vars(&mut self, stack: &mut Stack, to_scope: u16) {
-        for v in stack.function.variables(to_scope) {
-            if matches!(stack.function.tp(v), Type::Text(_)) {
-                if stack.function.stack(v) >= stack.position {
-                    println!(
-                        "skip free text {} pos {}",
-                        stack.function.name(v),
-                        stack.function.stack(v)
-                    );
-                    continue;
-                }
-                stack.add_op("OpFreeText", self);
-                self.code_add(stack.position - stack.function.stack(v));
-            }
-            if let Type::Reference(_, dep) | Type::Vector(_, dep) = stack.function.tp(v)
-                && dep.is_empty()
-            {
-                if stack.function.stack(v) >= stack.position {
-                    /*
-                    The first pass on code can sometimes be different from the second,
-                    created variables in this pass could not exist in the second one.
-                    */
-                    continue;
-                }
-                self.generate_var(stack, v);
-                stack.add_op("OpFreeRef", self);
-            }
         }
     }
 
@@ -1491,7 +1431,7 @@ impl State {
         );
         for (a_nr, a) in stack.data.def(*op).attributes.iter().enumerate() {
             if a.mutable {
-                tps.push(self.generate(&parameters[a_nr], stack));
+                tps.push(self.generate(&parameters[a_nr], stack, false));
             }
         }
         match &stack.data.def(*op).name as &str {
@@ -1581,7 +1521,7 @@ impl State {
             0
         };
         for k in 0..no_keys {
-            tps.push(self.generate(&parameters[(no_keys + from - k) as usize], stack));
+            tps.push(self.generate(&parameters[(no_keys + from - k) as usize], stack, false));
         }
     }
 
@@ -1657,9 +1597,7 @@ impl State {
             Type::Long => stack.add_op("OpVarLong", self),
             Type::Single => stack.add_op("OpVarSingle", self),
             Type::Float => stack.add_op("OpVarFloat", self),
-            Type::Text(_) => {
-                stack.add_op(if argument { "OpArgText" } else { "OpVarText" }, self);
-            }
+            Type::Text(_) => stack.add_op(if argument { "OpArgText" } else { "OpVarText" }, self),
             Type::Vector(tp, _) => {
                 let typedef: &Type = tp;
                 let known = if matches!(typedef, Type::Unknown(_)) {
@@ -1704,23 +1642,21 @@ impl State {
         self.insert_types(stack.function.tp(variable).clone(), code, stack)
     }
 
-    fn generate_block(&mut self, stack: &mut Stack, values: &[Value]) -> Type {
+    fn generate_block(&mut self, stack: &mut Stack, values: &[Value], top: bool) -> Type {
         if values.is_empty() {
             return Type::Void;
         }
-        let bl = stack.function.start_next();
         let to = stack.position;
         let last = values.len() - 1;
         let mut tp = Type::Void;
         for (elm, v) in values.iter().enumerate() {
-            tp = self.generate(v, stack);
+            tp = self.generate(v, stack, false);
             if elm != last {
                 continue;
             }
-            self.free_vars(stack, bl);
             let code = self.code_pos;
             // Check if we need a return statement here
-            if stack.function.scope() == 1 && !matches!(v, Value::Return(_)) {
+            if top && !matches!(v, Value::Return(_)) {
                 stack.add_op("OpReturn", self);
                 self.code_add(self.arguments);
                 let return_type = &stack.data.def(stack.def_nr).returned;
@@ -1730,7 +1666,7 @@ impl State {
                     self.types.insert(code, self.known_type(return_type, stack));
                 }
                 tp = Type::Void;
-            } else if stack.function.scope() > 1 {
+            } else if !top {
                 let size = stack.size_code(v);
                 let after = to + size;
                 if stack.position > after {
@@ -1745,9 +1681,6 @@ impl State {
                 stack.position = after;
             }
         }
-        stack
-            .function
-            .finish_next(bl, &stack.data.def(stack.def_nr).name);
         tp
     }
 
@@ -1837,7 +1770,7 @@ impl State {
             let var_pos = stack.position - stack.function.stack(var);
             stack.add_op("OpVarRef", self);
             self.code_add(var_pos);
-            self.generate(value, stack);
+            self.generate(value, stack, false);
             match *tp {
                 Type::Integer(_, _) | Type::Character => stack.add_op("OpSetInt", self),
                 Type::Long => stack.add_op("OpSetLong", self),
@@ -1851,7 +1784,7 @@ impl State {
             self.code_add(0u16);
             return;
         }
-        self.generate(value, stack);
+        self.generate(value, stack, false);
         let var_pos = stack.position - stack.function.stack(var);
         match stack.function.tp(var) {
             Type::Integer(_, _) | Type::Character => stack.add_op("OpPutInt", self),
@@ -1892,7 +1825,7 @@ impl State {
     */
     pub fn dump_code(&mut self, f: &mut dyn Write, d_nr: u32, data: &Data) -> Result<(), Error> {
         write!(f, "{}(", data.def(d_nr).name)?;
-        let mut stack_pos = 0;
+        let mut stack_pos = 4;
         for a_nr in 0..data.attributes(d_nr) {
             if a_nr > 0 {
                 write!(f, ", ")?;
@@ -1936,7 +1869,7 @@ impl State {
             let def = data.operator(op);
             write!(f, "{:4}", p - start_pos)?;
             if self.stack.contains_key(&p) {
-                write!(f, "[{}]", self.stack[&p])?;
+                write!(f, "[{}]", self.stack[&p] + 4)?;
             }
             write!(f, ": {}(", &def.name[2..])?;
             for (a_nr, a) in def.attributes.iter().enumerate() {
@@ -1961,7 +1894,7 @@ impl State {
                     && self.stack.contains_key(&p)
                 {
                     let pos = i32::from(*self.code::<u16>());
-                    write!(f, "var[{}]", i32::from(self.stack[&p]) - pos,)?;
+                    write!(f, "var[{}]", i32::from(self.stack[&p]) - pos + 4,)?;
                 } else if a.mutable {
                     write!(
                         f,
@@ -1988,11 +1921,10 @@ impl State {
                 let vars = &data.def(d_nr).variables;
                 write!(
                     f,
-                    " var={}[{}]:{} in {}",
+                    " var={}[{}]:{}",
                     vars.name(*v),
-                    vars.stack(*v),
-                    vars.tp(*v).show(data, vars),
-                    vars.var_scope(*v)
+                    vars.stack(*v) + 4,
+                    vars.tp(*v).show(data, vars)
                 )?;
             }
             writeln!(f)?;
@@ -2058,8 +1990,8 @@ impl State {
         writeln!(log, "Execute {name}:")?;
         let d_nr = data.def_nr(name);
         assert_ne!(d_nr, u32::MAX, "Unknown routine {name}");
-        let pos = data.def(d_nr).code_position;
-        self.code_pos = pos;
+        self.code_pos = data.def(d_nr).code_position;
+        self.def_pos = self.code_pos;
         // Write the return address of the main function but do not override the record size.
         self.stack_pos = 4;
         self.put_stack(u32::MAX);
@@ -2120,7 +2052,11 @@ impl State {
         write!(
             log,
             "{:5}:[{}] {}(",
-            cur - 1,
+            if cur > self.def_pos {
+                cur - self.def_pos
+            } else {
+                cur
+            } - 1,
             self.stack_pos,
             &def.name[2..]
         )?;

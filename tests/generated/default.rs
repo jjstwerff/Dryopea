@@ -36,133 +36,133 @@ fn init(db: &mut KnownTypes) {
     db.vector(9);
 }
 
-fn _tp_integer_abs(stores: &mut Stores, var_0: i32) -> i32 {
+fn _tp_integer_abs(stores: &mut Stores, var_0: i32) -> i32 { //block_1: integer
   external::op_abs_int((var_both))
-}
+} //block_1: integer
 
-fn _tp_long_abs(stores: &mut Stores, var_0: i64) -> i64 {
+fn _tp_long_abs(stores: &mut Stores, var_0: i64) -> i64 { //block_1: long
   external::op_abs_long((var_both))
-}
+} //block_1: long
 
-fn _tp_single_abs(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_abs(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).abs()
-}
+} //block_1: single
 
-fn _tp_single_cos(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_cos(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).cos()
-}
+} //block_1: single
 
-fn _tp_single_sin(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_sin(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).sin()
-}
+} //block_1: single
 
-fn _tp_single_tan(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_tan(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).tan()
-}
+} //block_1: single
 
-fn _tp_single_acos(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_acos(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).acos()
-}
+} //block_1: single
 
-fn _tp_single_asin(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_asin(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).asin()
-}
+} //block_1: single
 
-fn _tp_single_atan(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_atan(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).atan()
-}
+} //block_1: single
 
-fn _tp_single_atan2(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 {
+fn _tp_single_atan2(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 { //block_1: single
   (var_both).atan2((var_v2))
-}
+} //block_1: single
 
-fn _tp_single_ceil(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_ceil(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).ceil()
-}
+} //block_1: single
 
-fn _tp_single_floor(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_floor(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).floor()
-}
+} //block_1: single
 
-fn _tp_single_round(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_round(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).round()
-}
+} //block_1: single
 
-fn _tp_single_sqrt(stores: &mut Stores, var_0: f32) -> f32 {
+fn _tp_single_sqrt(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
   (var_both).sqrt()
-}
+} //block_1: single
 
-fn _tp_single_log(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 {
+fn _tp_single_log(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 { //block_1: single
   (var_both).log((var_v2))
-}
+} //block_1: single
 
-fn _tp_single_pow(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 {
+fn _tp_single_pow(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 { //block_1: single
   (var_both).powf((var_v2))
-}
+} //block_1: single
 
-fn _tp_float_abs(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_abs(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).abs()
-}
+} //block_1: float
 
-fn _tp_float_cos(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_cos(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).cos()
-}
+} //block_1: float
 
-fn _tp_float_sin(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_sin(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).sin()
-}
+} //block_1: float
 
-fn _tp_float_tan(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_tan(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).tan()
-}
+} //block_1: float
 
-fn _tp_float_acos(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_acos(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).acos()
-}
+} //block_1: float
 
-fn _tp_float_asin(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_asin(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).asin()
-}
+} //block_1: float
 
-fn _tp_float_atan(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_atan(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).atan()
-}
+} //block_1: float
 
-fn _tp_float_atan2(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 {
+fn _tp_float_atan2(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
   (var_both).atan2((var_v2))
-}
+} //block_1: float
 
-fn _tp_float_ceil(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_ceil(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).ceil()
-}
+} //block_1: float
 
-fn _tp_float_floor(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_floor(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).floor()
-}
+} //block_1: float
 
-fn _tp_float_round(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_round(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).round()
-}
+} //block_1: float
 
-fn _tp_float_sqrt(stores: &mut Stores, var_0: f64) -> f64 {
+fn _tp_float_sqrt(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
   (var_both).sqrt()
-}
+} //block_1: float
 
-fn _tp_float_log(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 {
+fn _tp_float_log(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
   (var_both).log((var_v2))
-}
+} //block_1: float
 
-fn _tp_float_pow(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 {
+fn _tp_float_pow(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
   (var_both).powf((var_v2))
-}
+} //block_1: float
 
-fn _tp_text_len(stores: &mut Stores, var_0: Str) -> i32 {
+fn _tp_text_len(stores: &mut Stores, var_0: Str) -> i32 { //block_1: integer
   (var_both).len() as i32
-}
+} //block_1: integer
 
-fn _tp_vector_len(stores: &mut Stores, var_0: DbRef) -> i32 {
+fn _tp_vector_len(stores: &mut Stores, var_0: DbRef) -> i32 { //block_1: integer
   vector::length_vector(&(var_both), &s.database.allocations) as i32
-}
+} //block_1: integer
 
 fn assert(stores: &mut Stores, var_0: bool, var_1: Str) {
 
@@ -174,9 +174,9 @@ fn panic(stores: &mut Stores, var_0: Str) {
 }
 
 
-fn print(stores: &mut Stores, var_0: Str) {
+fn print(stores: &mut Stores, var_0: Str) { //block_1: void
   print!("{}", (var_v1));
-}
+} //block_1: void
 
 fn OpGetFile(stores: &mut Stores, var_0: DbRef) -> bool {
 
@@ -198,19 +198,20 @@ fn OpGetFileText(stores: &mut Stores, var_0: DbRef, var_1: DbRef) {
 }
 
 
-fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 {
+fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 { //block_1: integer
   external::op_add_int((external::op_add_int((external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((0_i32)), i32::from((0_i32)))}), (65536_i32))), (external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((1_i32)), i32::from((0_i32)))}), (256_i32))))), ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((2_i32)), i32::from((0_i32)))}))
-}
+} //block_1: integer
 
-fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str {
+fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str { //block_1: &text["result"]
   var_result = "".to_string();
   var_txt = "".to_string();
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_txt));
   OpAppendText(stores, var_result, var_txt);
+  OpFreeText(stores, var_txt);
   var_result
-}
+} //block_1: &text["result"]
 
-fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
+fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<text>["l"]
   var___ref_3 = Null;
   var___ref_2 = Null;
   var___ref_1 = Null;
@@ -219,22 +220,25 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
   OpDatabase(stores, var___ref_1, 14_i32);
   var_l = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((4_i32))};
   {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
-  var_c = _tp_File_content(stores, var_self, {
+  var_c = _tp_File_content(stores, var_self, { //default ref_2: ref(reference)["__work_1"]
     OpCreateRef(stores, var___work_1)
-  });
+  } //default ref_2: ref(reference)["__work_1"]);
   var_p = 0_i32;
-  {
+  { //For block_3: void
     var_ch#index = 0_i32;
-    loop {
-      var_ch = {
+    loop { //For loop_4
+      var_ch = { //for text next_5: text["c"]
         var___work_2 = OpGetTextSub(stores, var_c, var_ch#index, -2147483648_i32);
         var_ch#index = external::op_add_int((var_ch#index), ((var___work_2).len() as i32));
         var___work_2
-      };
-      if !(!(var_ch).is_empty()) {Break(0)} else {Null};
-      {
+      } //for text next_5: text["c"];
+      if !(!(var_ch).is_empty()) { //break_6: void
+        OpFreeText(stores, var_ch);
+        Break(0)
+      } //break_6: void else {Null};
+      { //block_7: void
         if (var_ch) == ("
-".to_string()) {
+".to_string()) { //block_8: void
           OpDatabase(stores, var___ref_2, 14_i32);
           var_l = DbRef {store_nr: (var___ref_2).store_nr, rec: (var___ref_2).rec, pos: (var___ref_2).pos + u32::from((4_i32))};
           {let db = (var___ref_2); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
@@ -242,50 +246,56 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
           {let db = (var__elm_1); let s_val = (OpGetTextSub(stores, var_c, var_p, external::op_min_int((var_ch#index), (1_i32)))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
           OpFinishRecord(stores, var_l, var__elm_1, 7_i32, 65535_i32);
           var_p = external::op_min_single_int((1_i32))
-        } else {if (var_p) < (0_i32) {
+        } //block_8: void else {if (var_p) < (0_i32) { //block_9: void
             var_p = var_ch#index
-          } else {Null}}
-      };
-    }
-  };
-  if (var_p) > (0_i32) {
+          } //block_9: void else {Null}}
+      } //block_7: void;
+      OpFreeText(stores, var_ch);
+    } //For loop_4
+  } //For block_3: void;
+  if (var_p) > (0_i32) { //block_10: void
     OpDatabase(stores, var___ref_3, 14_i32);
     var_l = DbRef {store_nr: (var___ref_3).store_nr, rec: (var___ref_3).rec, pos: (var___ref_3).pos + u32::from((4_i32))};
     {let db = (var___ref_3); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
     var__elm_2 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
     {let db = (var__elm_2); let s_val = (OpGetTextSub(stores, var_c, var_p, _tp_text_len(stores, var_c))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
     OpFinishRecord(stores, var_l, var__elm_2, 7_i32, 65535_i32)
-  } else {Null};
+  } //block_10: void else {Null};
+  OpFreeText(stores, var_c);
+  OpFreeText(stores, var___work_1);
+  OpFreeText(stores, var___work_2);
+  OpFreeRef(stores, var___ref_1);
+  OpFreeRef(stores, var___ref_2);
+  OpFreeRef(stores, var___ref_3);
   var_l
-}
+} //block_1: vector<text>["l"]
 
-fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef {
-  var_result = stores.null();
+fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef { //block_1: ref(File)["result"]
   OpDatabase(stores, var_result, 13_i32);
   {let db = (var_result); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
   {let db = (var_result); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
   {let db = (var_result); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if false {1_i32} else {0_i32}));};
-  if stores.get_file(&(var_result)) {
+  if stores.get_file(&(var_result)) { //block_2: ref(File)["result"]
     var_result
-  } else {
+  } //block_2: ref(File)["result"] else { //block_3: null
     stores.null()
-  }
-}
+  } //block_3: null
+} //block_1: ref(File)["result"]
 
-fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
+fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<ref(File)>["result"]
   var___ref_1 = Null;
   OpDatabase(stores, var___ref_1, 15_i32);
   var_result = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((4_i32))};
   {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
-  if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) {
+  if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) { //block_2: void
     Drop(Call(323, [Call(268, [Var(0), Int(4)]), Var(1)]))
-  } else {Null};
+  } //block_2: void else {Null};
+  OpFreeRef(stores, var___ref_1);
   var_result
-}
+} //block_1: vector<ref(File)>["result"]
 
-fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
-  if !(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32)) {
-    var_result = stores.null();
+fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: ref(Image)["result"]
+  if !(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32)) { //block_2: ref(Image)["result"]
     OpDatabase(stores, var_result, 11_i32);
     {let db = (var_result); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
@@ -293,10 +303,10 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef {
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
     Drop(Call(324, [Call(268, [Var(0), Int(4)]), Var(1)]));
     var_result
-  } else {
+  } //block_2: ref(Image)["result"] else { //block_3: null
     stores.null()
-  }
-}
+  } //block_3: null
+} //block_1: ref(Image)["result"]
 
 fn env_variables(stores: &mut Stores) -> DbRef {
 
