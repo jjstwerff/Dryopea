@@ -1,19 +1,30 @@
 pub fn test() {
     2 / (3 - 2 - 1);
 }
-fn test() {#1 block
+fn test() {#block_1:void
   drop OpDivInt(2i32, OpMinInt(OpMinInt(3i32, 2i32), 1i32));
-}#1
+}#block_1:void
 
-byte-code for expr_zero_divide:test() [1176]
-   0[0]: return-address
-   0[4]: ConstInt(val=2) -> integer
-   5[8]: ConstInt(val=3) -> integer
-  10[12]: ConstInt(val=2) -> integer
-  15[16]: MinInt(v1: integer, v2: integer) -> integer
-  16[12]: ConstInt(val=1) -> integer
-  21[16]: MinInt(v1: integer, v2: integer) -> integer
-  22[12]: DivInt(v1: integer, v2: integer) -> integer
-  23[8]: FreeStack(value=0, discard=4)
-  27[4]: Return(ret=0, value=0, discard=4)
+byte-code for expr_zero_divide:test() [1168]
+   0[4]: return-address
+   0[8]: ConstInt(val=2) -> integer
+   5[12]: ConstInt(val=3) -> integer
+  10[16]: ConstInt(val=2) -> integer
+  15[20]: MinInt(v1: integer, v2: integer) -> integer
+  16[16]: ConstInt(val=1) -> integer
+  21[20]: MinInt(v1: integer, v2: integer) -> integer
+  22[16]: DivInt(v1: integer, v2: integer) -> integer
+  23[12]: FreeStack(value=0, discard=4)
+  27[8]: Return(ret=0, value=0, discard=4)
 
+Execute test:
+    0:[8] ConstInt(val=2) -> 2[8]
+    5:[12] ConstInt(val=3) -> 3[12]
+   10:[16] ConstInt(val=2) -> 2[16]
+   15:[20] MinInt(v1=3[12], v2=2[16]) -> 1[12]
+   16:[16] ConstInt(val=1) -> 1[16]
+   21:[20] MinInt(v1=1[12], v2=1[16]) -> 0[12]
+   22:[16] DivInt(v1=2[8], v2=0[12]) -> -2147483648[8]
+   23:[12] FreeStack(value=0, discard=4)
+   27:[8] Return(ret=4294967295[4], value=0, discard=4)
+Finished

@@ -5,48 +5,68 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:boolean = {#2 block
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:boolean(1) = {#block_2:boolean
     if OpConvBoolFromInt(123i32) if OpConvBoolFromInt(12i32) true else false else false;
-  }#2:boolean;
-  if OpEqBool(test_value, true) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+  }#block_2:boolean;
+  if OpEqBool(test_value, true) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != true");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for boolean_named:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: ConstInt(val=123) -> integer var=test_value[28]:boolean in 1
-   6[32]: ConvBoolFromInt(v1: integer) -> boolean
-   7[29]: GotoFalseWord(jump=27, if_false: boolean)
-  10[28]: ConstInt(val=12) -> integer
-  15[32]: ConvBoolFromInt(v1: integer) -> boolean
-  16[29]: GotoFalseWord(jump=23, if_false: boolean)
-  19[28]: ConstTrue() -> boolean
-  20[29]: GotoWord(jump=24)
-  23[28]: ConstFalse() -> boolean
-  24[29]: GotoWord(jump=28)
-  27[28]: ConstFalse() -> boolean
-  28[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
-  31[30]: ConstTrue() -> boolean
-  32[31]: EqBool(v1: boolean, v2: boolean) -> boolean
-  33[30]: GotoFalseWord(jump=39, if_false: boolean)
-  36[29]: GotoWord(jump=89)
-  39[29]: ClearText(var[4]) var=__work_1[4]:text in 1
-  42[29]: ConstText(_value="Test failed ") -> text
-  56[45]: AppendText(var[4], v1: text)
-  59[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
-  62[30]: ConstInt(val=0) -> integer
-  67[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
-  72[29]: ConstText(_value=" != true") -> text
-  82[45]: AppendText(var[4], v1: text)
-  85[29]: VarText(var[4]) -> text var=__work_1[4]:text in 1
-  88[45]: Panic(message: text)
-  89[29]: FreeText(var[4])
-  92[29]: Return(ret=0, value=0, discard=29)
+byte-code for boolean_named:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConstInt(val=123) -> integer var=test_value[32]:boolean
+   6[36]: ConvBoolFromInt(v1: integer) -> boolean
+   7[33]: GotoFalseWord(jump=27, if_false: boolean)
+  10[32]: ConstInt(val=12) -> integer
+  15[36]: ConvBoolFromInt(v1: integer) -> boolean
+  16[33]: GotoFalseWord(jump=23, if_false: boolean)
+  19[32]: ConstTrue() -> boolean
+  20[33]: GotoWord(jump=24)
+  23[32]: ConstFalse() -> boolean
+  24[33]: GotoWord(jump=28)
+  27[32]: ConstFalse() -> boolean
+  28[33]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  31[34]: ConstTrue() -> boolean
+  32[35]: EqBool(v1: boolean, v2: boolean) -> boolean
+  33[34]: GotoFalseWord(jump=39, if_false: boolean)
+  36[33]: GotoWord(jump=89)
+  39[33]: ClearText(var[8]) var=__work_1[8]:text
+  42[33]: ConstText(_value="Test failed ") -> text
+  56[49]: AppendText(var[8], v1: text)
+  59[33]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  62[34]: ConstInt(val=0) -> integer
+  67[38]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
+  72[33]: ConstText(_value=" != true") -> text
+  82[49]: AppendText(var[8], v1: text)
+  85[33]: VarText(var[8]) -> text var=__work_1[8]:text
+  88[49]: Panic(message: text)
+  89[33]: FreeText(var[8])
+  92[33]: Return(ret=0, value=0, discard=29)
 
+Execute test:
+    0:[8] Text()
+    1:[32] ConstInt(val=123) -> 123[32]
+    6:[36] ConvBoolFromInt(v1=123[32]) -> true[32]
+    7:[33] GotoFalseWord(jump=1195, if_false=true[32])
+   10:[32] ConstInt(val=12) -> 12[32]
+   15:[36] ConvBoolFromInt(v1=12[32]) -> true[32]
+   16:[33] GotoFalseWord(jump=1191, if_false=true[32])
+   19:[32] ConstTrue() -> true[32]
+   20:[33] GotoWord(jump=1192)
+   24:[33] GotoWord(jump=1196)
+   28:[33] VarBool(var[32]) -> true[33]
+   31:[34] ConstTrue() -> true[34]
+   32:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+   33:[34] GotoFalseWord(jump=1207, if_false=true[33])
+   36:[33] GotoWord(jump=1257)
+   89:[33] FreeText(var[8])
+   92:[33] Return(ret=4294967295[4], value=0, discard=29)
+Finished

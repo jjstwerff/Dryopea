@@ -1,0 +1,66 @@
+pub fn test() {
+    test_value = {1 + 2 + 3 + 4};
+    assert(
+        test_value == 10,
+        "Test failed {test_value} != 10"
+    );
+}
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:integer(1) = {#block_2:integer
+    OpAddInt(OpAddInt(OpAddInt(1i32, 2i32), 3i32), 4i32);
+  }#block_2:integer;
+  if OpEqInt(test_value, 10i32) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
+    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1, " != 10");
+    __work_1;
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
+
+byte-code for expr_count:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConstInt(val=1) -> integer var=test_value[32]:integer
+   6[36]: ConstInt(val=2) -> integer
+  11[40]: AddInt(v1: integer, v2: integer) -> integer
+  12[36]: ConstInt(val=3) -> integer
+  17[40]: AddInt(v1: integer, v2: integer) -> integer
+  18[36]: ConstInt(val=4) -> integer
+  23[40]: AddInt(v1: integer, v2: integer) -> integer
+  24[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  27[40]: ConstInt(val=10) -> integer
+  32[44]: EqInt(v1: integer, v2: integer) -> boolean
+  33[37]: GotoFalseWord(jump=39, if_false: boolean)
+  36[36]: GotoWord(jump=89)
+  39[36]: ClearText(var[8]) var=__work_1[8]:text
+  42[36]: ConstText(_value="Test failed ") -> text
+  56[52]: AppendText(var[8], v1: text)
+  59[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  62[40]: ConstInt(val=0) -> integer
+  67[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  74[36]: ConstText(_value=" != 10") -> text
+  82[52]: AppendText(var[8], v1: text)
+  85[36]: VarText(var[8]) -> text var=__work_1[8]:text
+  88[52]: Panic(message: text)
+  89[36]: FreeText(var[8])
+  92[36]: Return(ret=0, value=0, discard=32)
+
+Execute test:
+    0:[8] Text()
+    1:[32] ConstInt(val=1) -> 1[32]
+    6:[36] ConstInt(val=2) -> 2[36]
+   11:[40] AddInt(v1=1[32], v2=2[36]) -> 3[32]
+   12:[36] ConstInt(val=3) -> 3[36]
+   17:[40] AddInt(v1=3[32], v2=3[36]) -> 6[32]
+   18:[36] ConstInt(val=4) -> 4[36]
+   23:[40] AddInt(v1=6[32], v2=4[36]) -> 10[32]
+   24:[36] VarInt(var[32]) -> 10[36]
+   27:[40] ConstInt(val=10) -> 10[40]
+   32:[44] EqInt(v1=10[36], v2=10[40]) -> true[36]
+   33:[37] GotoFalseWord(jump=1207, if_false=true[36])
+   36:[36] GotoWord(jump=1257)
+   89:[36] FreeText(var[8])
+   92:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished

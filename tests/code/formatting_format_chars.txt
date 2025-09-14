@@ -5,156 +5,384 @@ pub fn test() {
         "Test failed {test_value} != \"a[4:😊,8:🙃,9:4]b\""
     );
 }
-fn test() {#1 block
-  __work_4:text = "";
-  __work_3:text = "";
-  __work_2:text = "";
-  __work_1:text = "";
-  test_value:text = {#2 block
-    txt:text = "12😊🙃45";
-    {#3 formatting string
-      __work_1:text = "a";
-      OpAppendText(__work_1, "[");
-      c#index:integer = 0i32;
-      c#count:integer = 0i32;
-      loop {#4 iter for
-        _val_1:text = {#5 iter for loop
-          c:text["txt"] = {#6 for text next
-            __work_2:text = OpGetTextSub(OpGetTextSub(txt, 2i32, OpMinSingleInt(1i32)), c#index, -2147483648i32);
-            c#index:integer = OpAddInt(c#index, OpLengthText(__work_2));
-            __work_2;
-          }#6:text["txt"];
-          if OpNot(OpConvBoolFromText(c)) break(0) else null;
-          {#7 block
-            {#8 formatting string
-              __work_3:text = "";
-              OpFormatInt(__work_3, c#index, 10i32, 0i32, 32i32, false, false);
-              OpAppendText(__work_3, ":");
-              OpFormatText(__work_3, c, 0i32, -1i32, 32i32);
-              __work_3;
-            }#8:text;
-          }#7:text;
-        }#5:text;
-        if OpGtInt(c#count, 0i32) OpAppendText(__work_1, ",") else null;
-        c#count:integer = OpAddInt(c#count, 1i32);
-        OpFormatText(__work_1, _val_1, 0i32, -1i32, 32i32);
-      }#4;
-      OpAppendText(__work_1, "]");
-      OpAppendText(__work_1, "b");
-      __work_1;
-    }#3:text;
-  }#2:text;
-  if OpEqText(test_value, "a[4:😊,8:🙃,9:4]b") null else OpPanic({#9 formatting string
-    __work_4:text = "Test failed ";
+fn test() {#block_1:void
+  __work_4:text(1) = "";
+  __work_3:text(1) = "";
+  __work_2:text(1) = "";
+  __work_1:text(1) = "";
+  test_value:text(1) = {#block_2:text
+    txt:text(2) = "12😊🙃45";
+    __work_1:text(1) = "a";
+    OpAppendText(__work_1, "[");
+    c#index:integer(3) = 0i32;
+    c#count:integer(3) = 0i32;
+    loop {#Append Iter_11
+      _val_1:text(4) = {#Iter For_12:text["txt"]
+        c:text["txt"](5) = {#for text next_13:text["txt"]
+          __work_2:text(1) = OpGetTextSub(OpGetTextSub(txt, 2i32, OpMinSingleInt(1i32)), c#index, -2147483648i32);
+          c#index:integer(3) = OpAddInt(c#index, OpLengthText(__work_2));
+          __work_2;
+        }#for text next_13:text["txt"];
+        if OpNot(OpConvBoolFromText(c)) {#break_14:void
+          OpFreeText(_val_1);
+          OpFreeText(c);
+          break(0);
+        }#break_14:void else null;
+        __work_3:text(1) = "";
+        OpFormatInt(__work_3, c#index, 10i32, 0i32, 32i32, false, false);
+        OpAppendText(__work_3, ":");
+        OpFormatText(__work_3, c, 0i32, -1i32, 32i32);
+        OpFreeText(c);
+        __work_3;
+      }#Iter For_12:text["txt"];
+      if OpGtInt(c#count, 0i32) OpAppendText(__work_1, ",") else null;
+      c#count:integer(3) = OpAddInt(c#count, 1i32);
+      OpFormatText(__work_1, _val_1, 0i32, -1i32, 32i32);
+      OpFreeText(_val_1);
+    }#Append Iter_11;
+    OpAppendText(__work_1, "]");
+    OpAppendText(__work_1, "b");
+    OpFreeText(txt);
+    __work_1;
+  }#block_2:text;
+  if OpEqText(test_value, "a[4:😊,8:🙃,9:4]b") null else OpPanic({#Formatted string_15:text
+    __work_4:text(1) = "Test failed ";
     OpFormatText(__work_4, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_4, " != "a[4:😊,8:🙃,9:4]b"");
     __work_4;
-  }#9:text);
-}#1
+  }#Formatted string_15:text);
+  OpFreeText(test_value);
+  OpFreeText(__work_1);
+  OpFreeText(__work_2);
+  OpFreeText(__work_3);
+  OpFreeText(__work_4);
+}#block_1:void
 
-byte-code for format_chars:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_4[4]:text in 1
-   1[28]: Text() var=__work_3[28]:text in 1
-   2[52]: Text() var=__work_2[52]:text in 1
-   3[76]: Text() var=__work_1[76]:text in 1
-   4[100]: Text() var=test_value[100]:text in 1
-   5[124]: Text() var=txt[124]:text in 2
-   6[148]: ConstText(_value="12😊🙃45") -> text
-  20[164]: AppendText(var[124], v1: text)
-  23[148]: ClearText(var[76]) var=__work_1[76]:text in 1
-  26[148]: ConstText(_value="a") -> text
-  29[164]: AppendText(var[76], v1: text)
-  32[148]: ConstText(_value="[") -> text
-  35[164]: AppendText(var[76], v1: text)
-  38[148]: ConstInt(val=0) -> integer var=c#index[148]:integer in 3
-  43[152]: ConstInt(val=0) -> integer var=c#count[152]:integer in 3
-  48[156]: Text() var=_val_1[156]:text in 4
-  49[180]: Text() var=c[180]:text["txt"] in 5
-  50[204]: ClearText(var[52]) var=__work_2[52]:text in 1
-  53[204]: VarText(var[124]) -> text var=txt[124]:text in 2
-  56[220]: ConstInt(val=2) -> integer
-  61[224]: ConstInt(val=1) -> integer
-  66[228]: MinSingleInt(v1: integer) -> integer
-  67[228]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
-  68[220]: VarInt(var[148]) -> integer var=c#index[148]:integer in 3
-  71[224]: ConstInt(val=-2147483648) -> integer
-  76[228]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
-  77[220]: AppendText(var[52], v1: text)
-  80[204]: VarInt(var[148]) -> integer var=c#index[148]:integer in 3
-  83[208]: VarText(var[52]) -> text var=__work_2[52]:text in 1
-  86[224]: LengthText(v1: text) -> integer
-  87[212]: AddInt(v1: integer, v2: integer) -> integer
-  88[208]: PutInt(var[148], value: integer)
-  91[204]: VarText(var[52]) -> text var=__work_2[52]:text in 1
-  94[220]: AppendText(var[180], v1: text)
-  97[204]: VarText(var[180]) -> text var=c[180]:text["txt"] in 5
- 100[220]: ConvBoolFromText(v1: text) -> boolean
- 101[205]: Not(v1: boolean) -> boolean
- 102[205]: GotoFalseWord(jump=118, if_false: boolean)
- 105[204]: FreeText(var[156])
- 108[204]: FreeText(var[180])
- 111[204]: FreeStack(value=0, discard=48)
- 115[156]: GotoWord(jump=226)
- 118[204]: ClearText(var[28]) var=__work_3[28]:text in 1
- 121[204]: ConstText(_value="") -> text
- 123[220]: AppendText(var[28], v1: text)
- 126[204]: VarInt(var[148]) -> integer var=c#index[148]:integer in 3
- 129[208]: ConstInt(val=0) -> integer
- 134[212]: FormatInt(var[28], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 141[204]: ConstText(_value=":") -> text
- 144[220]: AppendText(var[28], v1: text)
- 147[204]: VarText(var[180]) -> text var=c[180]:text["txt"] in 5
- 150[220]: ConstInt(val=0) -> integer
- 155[224]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
- 160[204]: VarText(var[28]) -> text var=__work_3[28]:text in 1
- 163[220]: FreeText(var[180])
- 166[220]: FreeStack(value=16, discard=40) type=text[4]:Base[5]
- 170[196]: AppendText(var[156], v1: text)
- 173[180]: VarInt(var[152]) -> integer var=c#count[152]:integer in 3
- 176[184]: ConstInt(val=0) -> integer
- 181[188]: GtInt(v1: integer, v2: integer) -> boolean
- 182[181]: GotoFalseWord(jump=191, if_false: boolean)
- 185[180]: ConstText(_value=",") -> text
- 188[196]: AppendText(var[76], v1: text)
- 191[180]: VarInt(var[152]) -> integer var=c#count[152]:integer in 3
- 194[184]: ConstInt(val=1) -> integer
- 199[188]: AddInt(v1: integer, v2: integer) -> integer
- 200[184]: PutInt(var[152], value: integer)
- 203[180]: VarText(var[156]) -> text var=_val_1[156]:text in 4
- 206[196]: ConstInt(val=0) -> integer
- 211[200]: FormatText(var[76], val: text, width: integer, dir=-1, token=32)
- 216[180]: FreeText(var[156])
- 219[180]: FreeStack(value=0, discard=24)
- 223[156]: GotoWord(jump=48)
- 226[156]: ConstText(_value="]") -> text
- 229[172]: AppendText(var[76], v1: text)
- 232[156]: ConstText(_value="b") -> text
- 235[172]: AppendText(var[76], v1: text)
- 238[156]: VarText(var[76]) -> text var=__work_1[76]:text in 1
- 241[172]: FreeStack(value=16, discard=24) type=text[4]:Base[5]
- 245[164]: FreeText(var[124])
- 248[164]: FreeStack(value=16, discard=40) type=text[4]:Base[5]
- 252[140]: AppendText(var[100], v1: text)
- 255[124]: VarText(var[100]) -> text var=test_value[100]:text in 1
- 258[140]: ConstText(_value="a[4:😊,8:🙃,9:4]b") -> text
- 281[156]: EqText(v1: text, v2: text) -> boolean
- 282[125]: GotoFalseWord(jump=288, if_false: boolean)
- 285[124]: GotoWord(jump=357)
- 288[124]: ClearText(var[4]) var=__work_4[4]:text in 1
- 291[124]: ConstText(_value="Test failed ") -> text
- 305[140]: AppendText(var[4], v1: text)
- 308[124]: VarText(var[100]) -> text var=test_value[100]:text in 1
- 311[140]: ConstInt(val=0) -> integer
- 316[144]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 321[124]: ConstText(_value=" != "a[4:😊,8:🙃,9:4]b"") -> text
- 350[140]: AppendText(var[4], v1: text)
- 353[124]: VarText(var[4]) -> text var=__work_4[4]:text in 1
- 356[140]: Panic(message: text)
- 357[124]: FreeText(var[100])
- 360[124]: FreeText(var[76])
- 363[124]: FreeText(var[52])
- 366[124]: FreeText(var[28])
- 369[124]: FreeText(var[4])
- 372[124]: Return(ret=0, value=0, discard=124)
+byte-code for format_chars:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_4[8]:text
+   1[32]: Text() var=__work_3[32]:text
+   2[56]: Text() var=__work_2[56]:text
+   3[80]: Text() var=__work_1[80]:text
+   4[104]: Text() var=test_value[104]:text
+   5[128]: Text() var=txt[128]:text
+   6[152]: ConstText(_value="12😊🙃45") -> text
+  20[168]: AppendText(var[128], v1: text)
+  23[152]: ClearText(var[80]) var=__work_1[80]:text
+  26[152]: ConstText(_value="a") -> text
+  29[168]: AppendText(var[80], v1: text)
+  32[152]: ConstText(_value="[") -> text
+  35[168]: AppendText(var[80], v1: text)
+  38[152]: ConstInt(val=0) -> integer var=c#index[152]:integer
+  43[156]: ConstInt(val=0) -> integer var=c#count[156]:integer
+  48[160]: Text() var=_val_1[160]:text
+  49[184]: Text() var=c[184]:text["txt"]
+  50[208]: ClearText(var[56]) var=__work_2[56]:text
+  53[208]: VarText(var[128]) -> text var=txt[128]:text
+  56[224]: ConstInt(val=2) -> integer
+  61[228]: ConstInt(val=1) -> integer
+  66[232]: MinSingleInt(v1: integer) -> integer
+  67[232]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
+  68[224]: VarInt(var[152]) -> integer var=c#index[152]:integer
+  71[228]: ConstInt(val=-2147483648) -> integer
+  76[232]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
+  77[224]: AppendText(var[56], v1: text)
+  80[208]: VarInt(var[152]) -> integer var=c#index[152]:integer
+  83[212]: VarText(var[56]) -> text var=__work_2[56]:text
+  86[228]: LengthText(v1: text) -> integer
+  87[216]: AddInt(v1: integer, v2: integer) -> integer
+  88[212]: PutInt(var[152], value: integer)
+  91[208]: VarText(var[56]) -> text var=__work_2[56]:text
+  94[224]: AppendText(var[184], v1: text)
+  97[208]: VarText(var[184]) -> text var=c[184]:text["txt"]
+ 100[224]: ConvBoolFromText(v1: text) -> boolean
+ 101[209]: Not(v1: boolean) -> boolean
+ 102[209]: GotoFalseWord(jump=118, if_false: boolean)
+ 105[208]: FreeText(var[160])
+ 108[208]: FreeText(var[184])
+ 111[208]: FreeStack(value=0, discard=48)
+ 115[160]: GotoWord(jump=226)
+ 118[208]: ClearText(var[32]) var=__work_3[32]:text
+ 121[208]: ConstText(_value="") -> text
+ 123[224]: AppendText(var[32], v1: text)
+ 126[208]: VarInt(var[152]) -> integer var=c#index[152]:integer
+ 129[212]: ConstInt(val=0) -> integer
+ 134[216]: FormatInt(var[32], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 141[208]: ConstText(_value=":") -> text
+ 144[224]: AppendText(var[32], v1: text)
+ 147[208]: VarText(var[184]) -> text var=c[184]:text["txt"]
+ 150[224]: ConstInt(val=0) -> integer
+ 155[228]: FormatText(var[32], val: text, width: integer, dir=-1, token=32)
+ 160[208]: FreeText(var[184])
+ 163[208]: VarText(var[32]) -> text var=__work_3[32]:text
+ 166[224]: FreeStack(value=16, discard=40) type=text[4]:Base[5]
+ 170[200]: AppendText(var[160], v1: text)
+ 173[184]: VarInt(var[156]) -> integer var=c#count[156]:integer
+ 176[188]: ConstInt(val=0) -> integer
+ 181[192]: GtInt(v1: integer, v2: integer) -> boolean
+ 182[185]: GotoFalseWord(jump=191, if_false: boolean)
+ 185[184]: ConstText(_value=",") -> text
+ 188[200]: AppendText(var[80], v1: text)
+ 191[184]: VarInt(var[156]) -> integer var=c#count[156]:integer
+ 194[188]: ConstInt(val=1) -> integer
+ 199[192]: AddInt(v1: integer, v2: integer) -> integer
+ 200[188]: PutInt(var[156], value: integer)
+ 203[184]: VarText(var[160]) -> text var=_val_1[160]:text
+ 206[200]: ConstInt(val=0) -> integer
+ 211[204]: FormatText(var[80], val: text, width: integer, dir=-1, token=32)
+ 216[184]: FreeText(var[160])
+ 219[184]: FreeStack(value=0, discard=24)
+ 223[160]: GotoWord(jump=48)
+ 226[160]: ConstText(_value="]") -> text
+ 229[176]: AppendText(var[80], v1: text)
+ 232[160]: ConstText(_value="b") -> text
+ 235[176]: AppendText(var[80], v1: text)
+ 238[160]: FreeText(var[128])
+ 241[160]: VarText(var[80]) -> text var=__work_1[80]:text
+ 244[176]: FreeStack(value=16, discard=48) type=text[4]:Base[5]
+ 248[144]: AppendText(var[104], v1: text)
+ 251[128]: VarText(var[104]) -> text var=test_value[104]:text
+ 254[144]: ConstText(_value="a[4:😊,8:🙃,9:4]b") -> text
+ 277[160]: EqText(v1: text, v2: text) -> boolean
+ 278[129]: GotoFalseWord(jump=284, if_false: boolean)
+ 281[128]: GotoWord(jump=353)
+ 284[128]: ClearText(var[8]) var=__work_4[8]:text
+ 287[128]: ConstText(_value="Test failed ") -> text
+ 301[144]: AppendText(var[8], v1: text)
+ 304[128]: VarText(var[104]) -> text var=test_value[104]:text
+ 307[144]: ConstInt(val=0) -> integer
+ 312[148]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+ 317[128]: ConstText(_value=" != "a[4:😊,8:🙃,9:4]b"") -> text
+ 346[144]: AppendText(var[8], v1: text)
+ 349[128]: VarText(var[8]) -> text var=__work_4[8]:text
+ 352[144]: Panic(message: text)
+ 353[128]: FreeText(var[104])
+ 356[128]: FreeText(var[80])
+ 359[128]: FreeText(var[56])
+ 362[128]: FreeText(var[32])
+ 365[128]: FreeText(var[8])
+ 368[128]: Return(ret=0, value=0, discard=124)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] Text()
+    4:[104] Text()
+    5:[128] Text()
+    6:[152] ConstText(_value="12😊🙃45") -> "12😊🙃45"[152]
+   20:[168] AppendText(var[128], v1="12😊🙃45"[152])
+   23:[152] ClearText(var[80])
+   26:[152] ConstText(_value="a") -> "a"[152]
+   29:[168] AppendText(var[80], v1="a"[152])
+   32:[152] ConstText(_value="[") -> "["[152]
+   35:[168] AppendText(var[80], v1="["[152])
+   38:[152] ConstInt(val=0) -> 0[152]
+   43:[156] ConstInt(val=0) -> 0[156]
+   48:[160] Text()
+   49:[184] Text()
+   50:[208] ClearText(var[56])
+   53:[208] VarText(var[128]) -> "12😊🙃45"[208]
+   56:[224] ConstInt(val=2) -> 2[224]
+   61:[228] ConstInt(val=1) -> 1[228]
+   66:[232] MinSingleInt(v1=1[228]) -> -1[228]
+   67:[232] GetTextSub(v1="12😊🙃45"[208], from=2[224], till=-1[228]) -> "😊🙃4"[208]
+   68:[224] VarInt(var[152]) -> 0[224]
+   71:[228] ConstInt(val=-2147483648) -> -2147483648[228]
+   76:[232] GetTextSub(v1="😊🙃4"[208], from=0[224], till=-2147483648[228]) -> "😊"[208]
+   77:[224] AppendText(var[56], v1="😊"[208])
+   80:[208] VarInt(var[152]) -> 0[208]
+   83:[212] VarText(var[56]) -> "😊"[212]
+   86:[228] LengthText(v1="😊"[212]) -> 4[212]
+   87:[216] AddInt(v1=0[208], v2=4[212]) -> 4[208]
+   88:[212] PutInt(var[152], value=4[208])
+   91:[208] VarText(var[56]) -> "😊"[208]
+   94:[224] AppendText(var[184], v1="😊"[208])
+   97:[208] VarText(var[184]) -> "😊"[208]
+  100:[224] ConvBoolFromText(v1="😊"[208]) -> true[208]
+  101:[209] Not(v1=true[208]) -> false[208]
+  102:[209] GotoFalseWord(jump=1286, if_false=false[208])
+  118:[208] ClearText(var[32])
+  121:[208] ConstText(_value="") -> ""[208]
+  123:[224] AppendText(var[32], v1=""[208])
+  126:[208] VarInt(var[152]) -> 4[208]
+  129:[212] ConstInt(val=0) -> 0[212]
+  134:[216] FormatInt(var[32], val=4[208], radix=10, width=0[212], token=32, plus=false, note=false)
+  141:[208] ConstText(_value=":") -> ":"[208]
+  144:[224] AppendText(var[32], v1=":"[208])
+  147:[208] VarText(var[184]) -> "😊"[208]
+  150:[224] ConstInt(val=0) -> 0[224]
+  155:[228] FormatText(var[32], val="😊"[208], width=0[224], dir=-1, token=32)
+  160:[208] FreeText(var[184])
+  163:[208] VarText(var[32]) -> "4:😊"[208]
+  166:[224] FreeStack(value=16, discard=40)
+  170:[200] AppendText(var[160], v1="4:😊"[184])
+  173:[184] VarInt(var[156]) -> 0[184]
+  176:[188] ConstInt(val=0) -> 0[188]
+  181:[192] GtInt(v1=0[184], v2=0[188]) -> false[184]
+  182:[185] GotoFalseWord(jump=1359, if_false=false[184])
+  191:[184] VarInt(var[156]) -> 0[184]
+  194:[188] ConstInt(val=1) -> 1[188]
+  199:[192] AddInt(v1=0[184], v2=1[188]) -> 1[184]
+  200:[188] PutInt(var[156], value=1[184])
+  203:[184] VarText(var[160]) -> "4:😊"[184]
+  206:[200] ConstInt(val=0) -> 0[200]
+  211:[204] FormatText(var[80], val="4:😊"[184], width=0[200], dir=-1, token=32)
+  216:[184] FreeText(var[160])
+  219:[184] FreeStack(value=0, discard=24)
+  223:[160] GotoWord(jump=1216)
+   48:[160] Text()
+   49:[184] Text()
+   50:[208] ClearText(var[56])
+   53:[208] VarText(var[128]) -> "12😊🙃45"[208]
+   56:[224] ConstInt(val=2) -> 2[224]
+   61:[228] ConstInt(val=1) -> 1[228]
+   66:[232] MinSingleInt(v1=1[228]) -> -1[228]
+   67:[232] GetTextSub(v1="12😊🙃45"[208], from=2[224], till=-1[228]) -> "😊🙃4"[208]
+   68:[224] VarInt(var[152]) -> 4[224]
+   71:[228] ConstInt(val=-2147483648) -> -2147483648[228]
+   76:[232] GetTextSub(v1="😊🙃4"[208], from=4[224], till=-2147483648[228]) -> "🙃"[208]
+   77:[224] AppendText(var[56], v1="🙃"[208])
+   80:[208] VarInt(var[152]) -> 4[208]
+   83:[212] VarText(var[56]) -> "🙃"[212]
+   86:[228] LengthText(v1="🙃"[212]) -> 4[212]
+   87:[216] AddInt(v1=4[208], v2=4[212]) -> 8[208]
+   88:[212] PutInt(var[152], value=8[208])
+   91:[208] VarText(var[56]) -> "🙃"[208]
+   94:[224] AppendText(var[184], v1="🙃"[208])
+   97:[208] VarText(var[184]) -> "🙃"[208]
+  100:[224] ConvBoolFromText(v1="🙃"[208]) -> true[208]
+  101:[209] Not(v1=true[208]) -> false[208]
+  102:[209] GotoFalseWord(jump=1286, if_false=false[208])
+  118:[208] ClearText(var[32])
+  121:[208] ConstText(_value="") -> ""[208]
+  123:[224] AppendText(var[32], v1=""[208])
+  126:[208] VarInt(var[152]) -> 8[208]
+  129:[212] ConstInt(val=0) -> 0[212]
+  134:[216] FormatInt(var[32], val=8[208], radix=10, width=0[212], token=32, plus=false, note=false)
+  141:[208] ConstText(_value=":") -> ":"[208]
+  144:[224] AppendText(var[32], v1=":"[208])
+  147:[208] VarText(var[184]) -> "🙃"[208]
+  150:[224] ConstInt(val=0) -> 0[224]
+  155:[228] FormatText(var[32], val="🙃"[208], width=0[224], dir=-1, token=32)
+  160:[208] FreeText(var[184])
+  163:[208] VarText(var[32]) -> "8:🙃"[208]
+  166:[224] FreeStack(value=16, discard=40)
+  170:[200] AppendText(var[160], v1="8:🙃"[184])
+  173:[184] VarInt(var[156]) -> 1[184]
+  176:[188] ConstInt(val=0) -> 0[188]
+  181:[192] GtInt(v1=1[184], v2=0[188]) -> true[184]
+  182:[185] GotoFalseWord(jump=1359, if_false=true[184])
+  185:[184] ConstText(_value=",") -> ","[184]
+  188:[200] AppendText(var[80], v1=","[184])
+  191:[184] VarInt(var[156]) -> 1[184]
+  194:[188] ConstInt(val=1) -> 1[188]
+  199:[192] AddInt(v1=1[184], v2=1[188]) -> 2[184]
+  200:[188] PutInt(var[156], value=2[184])
+  203:[184] VarText(var[160]) -> "8:🙃"[184]
+  206:[200] ConstInt(val=0) -> 0[200]
+  211:[204] FormatText(var[80], val="8:🙃"[184], width=0[200], dir=-1, token=32)
+  216:[184] FreeText(var[160])
+  219:[184] FreeStack(value=0, discard=24)
+  223:[160] GotoWord(jump=1216)
+   48:[160] Text()
+   49:[184] Text()
+   50:[208] ClearText(var[56])
+   53:[208] VarText(var[128]) -> "12😊🙃45"[208]
+   56:[224] ConstInt(val=2) -> 2[224]
+   61:[228] ConstInt(val=1) -> 1[228]
+   66:[232] MinSingleInt(v1=1[228]) -> -1[228]
+   67:[232] GetTextSub(v1="12😊🙃45"[208], from=2[224], till=-1[228]) -> "😊🙃4"[208]
+   68:[224] VarInt(var[152]) -> 8[224]
+   71:[228] ConstInt(val=-2147483648) -> -2147483648[228]
+   76:[232] GetTextSub(v1="😊🙃4"[208], from=8[224], till=-2147483648[228]) -> "4"[208]
+   77:[224] AppendText(var[56], v1="4"[208])
+   80:[208] VarInt(var[152]) -> 8[208]
+   83:[212] VarText(var[56]) -> "4"[212]
+   86:[228] LengthText(v1="4"[212]) -> 1[212]
+   87:[216] AddInt(v1=8[208], v2=1[212]) -> 9[208]
+   88:[212] PutInt(var[152], value=9[208])
+   91:[208] VarText(var[56]) -> "4"[208]
+   94:[224] AppendText(var[184], v1="4"[208])
+   97:[208] VarText(var[184]) -> "4"[208]
+  100:[224] ConvBoolFromText(v1="4"[208]) -> true[208]
+  101:[209] Not(v1=true[208]) -> false[208]
+  102:[209] GotoFalseWord(jump=1286, if_false=false[208])
+  118:[208] ClearText(var[32])
+  121:[208] ConstText(_value="") -> ""[208]
+  123:[224] AppendText(var[32], v1=""[208])
+  126:[208] VarInt(var[152]) -> 9[208]
+  129:[212] ConstInt(val=0) -> 0[212]
+  134:[216] FormatInt(var[32], val=9[208], radix=10, width=0[212], token=32, plus=false, note=false)
+  141:[208] ConstText(_value=":") -> ":"[208]
+  144:[224] AppendText(var[32], v1=":"[208])
+  147:[208] VarText(var[184]) -> "4"[208]
+  150:[224] ConstInt(val=0) -> 0[224]
+  155:[228] FormatText(var[32], val="4"[208], width=0[224], dir=-1, token=32)
+  160:[208] FreeText(var[184])
+  163:[208] VarText(var[32]) -> "9:4"[208]
+  166:[224] FreeStack(value=16, discard=40)
+  170:[200] AppendText(var[160], v1="9:4"[184])
+  173:[184] VarInt(var[156]) -> 2[184]
+  176:[188] ConstInt(val=0) -> 0[188]
+  181:[192] GtInt(v1=2[184], v2=0[188]) -> true[184]
+  182:[185] GotoFalseWord(jump=1359, if_false=true[184])
+  185:[184] ConstText(_value=",") -> ","[184]
+  188:[200] AppendText(var[80], v1=","[184])
+  191:[184] VarInt(var[156]) -> 2[184]
+  194:[188] ConstInt(val=1) -> 1[188]
+  199:[192] AddInt(v1=2[184], v2=1[188]) -> 3[184]
+  200:[188] PutInt(var[156], value=3[184])
+  203:[184] VarText(var[160]) -> "9:4"[184]
+  206:[200] ConstInt(val=0) -> 0[200]
+  211:[204] FormatText(var[80], val="9:4"[184], width=0[200], dir=-1, token=32)
+  216:[184] FreeText(var[160])
+  219:[184] FreeStack(value=0, discard=24)
+  223:[160] GotoWord(jump=1216)
+   48:[160] Text()
+   49:[184] Text()
+   50:[208] ClearText(var[56])
+   53:[208] VarText(var[128]) -> "12😊🙃45"[208]
+   56:[224] ConstInt(val=2) -> 2[224]
+   61:[228] ConstInt(val=1) -> 1[228]
+   66:[232] MinSingleInt(v1=1[228]) -> -1[228]
+   67:[232] GetTextSub(v1="12😊🙃45"[208], from=2[224], till=-1[228]) -> "😊🙃4"[208]
+   68:[224] VarInt(var[152]) -> 9[224]
+   71:[228] ConstInt(val=-2147483648) -> -2147483648[228]
+   76:[232] GetTextSub(v1="😊🙃4"[208], from=9[224], till=-2147483648[228]) -> ""[208]
+   77:[224] AppendText(var[56], v1=""[208])
+   80:[208] VarInt(var[152]) -> 9[208]
+   83:[212] VarText(var[56]) -> ""[212]
+   86:[228] LengthText(v1=""[212]) -> 0[212]
+   87:[216] AddInt(v1=9[208], v2=0[212]) -> 9[208]
+   88:[212] PutInt(var[152], value=9[208])
+   91:[208] VarText(var[56]) -> ""[208]
+   94:[224] AppendText(var[184], v1=""[208])
+   97:[208] VarText(var[184]) -> ""[208]
+  100:[224] ConvBoolFromText(v1=""[208]) -> false[208]
+  101:[209] Not(v1=false[208]) -> true[208]
+  102:[209] GotoFalseWord(jump=1286, if_false=true[208])
+  105:[208] FreeText(var[160])
+  108:[208] FreeText(var[184])
+  111:[208] FreeStack(value=0, discard=48)
+  115:[160] GotoWord(jump=1394)
+  226:[160] ConstText(_value="]") -> "]"[160]
+  229:[176] AppendText(var[80], v1="]"[160])
+  232:[160] ConstText(_value="b") -> "b"[160]
+  235:[176] AppendText(var[80], v1="b"[160])
+  238:[160] FreeText(var[128])
+  241:[160] VarText(var[80]) -> "a[4:😊,8:🙃,9:4]b"[160]
+  244:[176] FreeStack(value=16, discard=48)
+  248:[144] AppendText(var[104], v1="a[4:😊,8:🙃,9:4]b"[128])
+  251:[128] VarText(var[104]) -> "a[4:😊,8:🙃,9:4]b"[128]
+  254:[144] ConstText(_value="a[4:😊,8:🙃,9:4]b") -> "a[4:😊,8:🙃,9:4]b"[144]
+  277:[160] EqText(v1="a[4:😊,8:🙃,9:4]b"[128], v2="a[4:😊,8:🙃,9:4]b"[144]) -> true[128]
+  278:[129] GotoFalseWord(jump=1452, if_false=true[128])
+  281:[128] GotoWord(jump=1521)
+  353:[128] FreeText(var[104])
+  356:[128] FreeText(var[80])
+  359:[128] FreeText(var[56])
+  362:[128] FreeText(var[32])
+  365:[128] FreeText(var[8])
+  368:[128] Return(ret=4294967295[4], value=0, discard=124)
+Finished

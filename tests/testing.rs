@@ -4,6 +4,7 @@
 
 //! Testing framework
 use dryopea::create;
+use dryopea::scopes;
 extern crate dryopea;
 use dryopea::generation::Output;
 use dryopea::interpreter::byte_code;
@@ -156,6 +157,7 @@ impl Drop for Test {
             let size = p.database.size(p.data.def(p.data.def_nr(d)).known_type);
             assert_eq!(u32::from(size), *s, "Size of {}", *d);
         }
+        scopes::check(&mut p.data);
         self.generate_code(&p, start).unwrap();
         // Validate that we found the correct warnings and errors. Halt when differences are found.
         self.assert_diagnostics(&p);
@@ -174,8 +176,8 @@ impl Drop for Test {
             writeln!(w, "Type {tp}:{}", state.database.show_type(tp as u16, true)).unwrap();
         }
         byte_code(&mut w, &mut state, &mut p.data).unwrap();
-        //state.execute_log(&mut w, "test", &p.data).unwrap();
-        state.execute(p.data.def_nr("test"), &p.data);
+        state.execute_log(&mut w, "test", &p.data).unwrap();
+        //state.execute(p.data.def_nr("test"), &p.data);
     }
 }
 

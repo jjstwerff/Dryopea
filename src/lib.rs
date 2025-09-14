@@ -4,15 +4,15 @@
 
 #[macro_use]
 pub mod diagnostics;
-pub mod data;
-mod lexer;
-pub mod text;
-mod variables;
-
 mod calc;
+pub mod data;
 pub mod database;
 pub mod hash;
 pub mod keys;
+mod lexer;
+pub mod scopes;
+pub mod text;
+mod variables;
 pub mod vector;
 
 pub mod external;

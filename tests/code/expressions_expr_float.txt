@@ -5,39 +5,51 @@ pub fn test() {
         "Test failed {test_value} != 1.1"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:float = {#2 block
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:float(1) = {#block_2:float
     1.1f64;
-  }#2:float;
-  if OpEqFloat(test_value, 1.1f64) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+  }#block_2:float;
+  if OpEqFloat(test_value, 1.1f64) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatFloat(__work_1, test_value, 0i32, 0i32);
     OpAppendText(__work_1, " != 1.1");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for expr_float:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: ConstFloat(val=1.1) -> float var=test_value[28]:float in 1
-  10[36]: VarFloat(var[28]) -> float var=test_value[28]:float in 1
-  13[44]: ConstFloat(val=1.1) -> float
-  22[52]: EqFloat(v1: float, v2: float) -> boolean
-  23[37]: GotoFalseWord(jump=29, if_false: boolean)
-  26[36]: GotoWord(jump=81)
-  29[36]: ClearText(var[4]) var=__work_1[4]:text in 1
-  32[36]: ConstText(_value="Test failed ") -> text
-  46[52]: AppendText(var[4], v1: text)
-  49[36]: VarFloat(var[28]) -> float var=test_value[28]:float in 1
-  52[44]: ConstInt(val=0) -> integer
-  57[48]: ConstInt(val=0) -> integer
-  62[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
-  65[36]: ConstText(_value=" != 1.1") -> text
-  74[52]: AppendText(var[4], v1: text)
-  77[36]: VarText(var[4]) -> text var=__work_1[4]:text in 1
-  80[52]: Panic(message: text)
-  81[36]: FreeText(var[4])
-  84[36]: Return(ret=0, value=0, discard=36)
+byte-code for expr_float:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConstFloat(val=1.1) -> float var=test_value[32]:float
+  10[40]: VarFloat(var[32]) -> float var=test_value[32]:float
+  13[48]: ConstFloat(val=1.1) -> float
+  22[56]: EqFloat(v1: float, v2: float) -> boolean
+  23[41]: GotoFalseWord(jump=29, if_false: boolean)
+  26[40]: GotoWord(jump=81)
+  29[40]: ClearText(var[8]) var=__work_1[8]:text
+  32[40]: ConstText(_value="Test failed ") -> text
+  46[56]: AppendText(var[8], v1: text)
+  49[40]: VarFloat(var[32]) -> float var=test_value[32]:float
+  52[48]: ConstInt(val=0) -> integer
+  57[52]: ConstInt(val=0) -> integer
+  62[56]: FormatFloat(var[8], val: float, width: integer, precision: integer)
+  65[40]: ConstText(_value=" != 1.1") -> text
+  74[56]: AppendText(var[8], v1: text)
+  77[40]: VarText(var[8]) -> text var=__work_1[8]:text
+  80[56]: Panic(message: text)
+  81[40]: FreeText(var[8])
+  84[40]: Return(ret=0, value=0, discard=36)
 
+Execute test:
+    0:[8] Text()
+    1:[32] ConstFloat(val=1.1) -> 1.1[32]
+   10:[40] VarFloat(var[32]) -> 1.1[40]
+   13:[48] ConstFloat(val=1.1) -> 1.1[48]
+   22:[56] EqFloat(v1=1.1[40], v2=1.1[48]) -> true[40]
+   23:[41] GotoFalseWord(jump=1197, if_false=true[40])
+   26:[40] GotoWord(jump=1249)
+   81:[40] FreeText(var[8])
+   84:[40] Return(ret=4294967295[4], value=0, discard=36)
+Finished

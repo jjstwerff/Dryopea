@@ -18,15 +18,14 @@ use std::io::{Error, Write};
 pub fn byte_code(writer: &mut dyn Write, state: &mut State, data: &mut Data) -> Result<(), Error> {
     text::init(state);
     for d_nr in 0..data.definitions() {
-        let d = data.def(d_nr);
-        if !matches!(d.def_type, DefType::Function) || d.is_operator() {
+        if !matches!(data.def(d_nr).def_type, DefType::Function) || data.def(d_nr).is_operator() {
             continue;
         }
         let show = !data.def(d_nr).position.file.starts_with("default/");
         if show {
             write!(writer, "{} ", data.def(d_nr).header(data, d_nr))?;
             let mut vars = Function::copy(&data.def(d_nr).variables);
-            data.show_code(writer, &mut vars, &data.def(d_nr).code, 0, false, d_nr)?;
+            data.show_code(writer, &mut vars, &data.def(d_nr).code, 0, false)?;
             writeln!(writer, "\n")?;
             write!(writer, "byte-code for {}:", data.def(d_nr).position.file)?;
         }

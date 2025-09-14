@@ -25,6 +25,11 @@ fn expr_add() {
 }
 
 #[test]
+fn expr_count() {
+    expr!("1 + 2 + 3 + 4").result(Value::Int(10));
+}
+
+#[test]
 fn expr_multiply() {
     expr!("1 + 2 * 3").result(Value::Int(7));
 }
@@ -102,6 +107,29 @@ fn for_loop() {
 }
 
 #[test]
+fn loop_break() {
+    expr!("t = 1; for a in 0..30 { p = a+1; if a>3 { break } t += p; }; t").result(Value::Int(11));
+}
+
+#[test]
+fn loop_continue() {
+    expr!("t = 1; for a in 0..30 { p = a+1; if a>3 { continue } t += p; }; t")
+        .result(Value::Int(11));
+}
+
+#[test]
+fn for_break() {
+    expr!("t = \"\"; for a in 0..30 { v = \"a \"; if a > 2 { break } t += v; }; t")
+        .result(Value::str("a a a "));
+}
+
+#[test]
+fn for_continue() {
+    expr!("t = \"\"; for a in 0..30 { v = \"a \"; if a > 2 { continue } t += v; }; t")
+        .result(Value::str("a a a "));
+}
+
+#[test]
 fn for_long() {
     expr!("b = 0l; for a in 10l..=20l { b+=a }; b").result(Value::Long(165));
 }
@@ -125,6 +153,11 @@ fn extended_for() {
 fn continue_loop() {
     code!("fn routine() -> integer {b = 0; for a in 0..10 { if a == 2 {continue} if a > 5 {return b} b += a }; b}")
     .expr("routine()").result(Value::Int(13));
+}
+
+#[test]
+fn text_len() {
+    expr!("t = \"some\"; len(t)").result(Value::Int(4));
 }
 
 #[test]
@@ -235,6 +268,11 @@ s
 "
     )
     .result(Value::str("00,10,11,20,21,22,30,31,32,33,40,41,42,43,44,50,51,52,53,54,55,60,61,62,63,64,65,66,70,71,72,73,74,75,"));
+}
+
+#[test]
+fn text_scope() {
+    expr!("v=\"a\"; \"{v}\"").result(Value::str("a"));
 }
 
 #[test]
