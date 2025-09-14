@@ -222,7 +222,8 @@ extern crate dryopea;"
             Value::Single(v) => {
                 write!(w, "{v}_f32")?;
             }
-            Value::Block(vals) => {
+            Value::Block(bl) => {
+                let vals = &*bl.0;
                 writeln!(w, "{{")?;
                 for (vnr, v) in vals.iter().enumerate() {
                     for _i in 0..=indent {
@@ -240,9 +241,9 @@ extern crate dryopea;"
                 }
                 write!(w, "}}")?;
             }
-            Value::Loop(vals) => {
-                writeln!(w, "loop {{")?;
-                for v in vals {
+            Value::Loop(lp) => {
+                writeln!(w, "loop {{#{}", lp.1)?;
+                for v in &lp.0 {
                     for _i in 0..=indent {
                         write!(w, "  ")?;
                     }
@@ -252,7 +253,7 @@ extern crate dryopea;"
                 for _i in 0..indent {
                     write!(w, "  ")?;
                 }
-                write!(w, "}}")?;
+                write!(w, "}}#{}", lp.1)?;
             }
             Value::Set(var, to) => {
                 write!(w, "var_{} = ", self.data.def(def_nr).variables.name(*var))?;

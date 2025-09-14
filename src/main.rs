@@ -14,7 +14,7 @@ mod interpreter;
 mod keys;
 mod lexer;
 mod variables;
-
+mod scopes;
 mod parser;
 mod png_store;
 mod stack;

@@ -8,7 +8,7 @@ pub mod data;
 mod lexer;
 pub mod text;
 mod variables;
-
+mod scopes;
 mod calc;
 pub mod database;
 pub mod hash;
