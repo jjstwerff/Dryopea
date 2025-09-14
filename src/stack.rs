@@ -7,13 +7,11 @@ use crate::database::Stores;
 use crate::state::State;
 use crate::variables;
 use crate::variables::Function;
-use std::collections::BTreeMap;
 
 pub struct Loop {
-    scope: u16,
-    start_pos: u32,
-    stack_pos: u16,
-    break_pos: Vec<u32>,
+    start: u32,
+    stack: u16,
+    breaks: Vec<u32>,
 }
 
 /// Stack information on variable positions and scopes to generate byte-code.
@@ -25,8 +23,6 @@ pub struct Stack<'a> {
     pub def_nr: u32,
     pub logging: bool,
     loops: Vec<Loop>,
-    /// All variables in their parent scope
-    scopes: BTreeMap<u16, Vec<u16>>,
 }
 
 impl<'a> Stack<'a> {
@@ -37,7 +33,6 @@ impl<'a> Stack<'a> {
             def_nr,
             logging,
             loops: Vec::new(),
-            scopes: function.gather_scopes(),
             function,
         }
     }
@@ -48,7 +43,8 @@ impl<'a> Stack<'a> {
             Value::Int(_) | Value::Single(_) => 4,
             Value::Long(_) | Value::Float(_) => 8,
             Value::Boolean(_) | Value::Enum(_, _) => 1,
-            Value::Block(lp) => {
+            Value::Block(bl) => {
+                let lp = &bl.operators;
                 if lp.is_empty() {
                     0
                 } else {
@@ -74,13 +70,7 @@ impl<'a> Stack<'a> {
             Value::Boolean(_) => stores.name("boolean"),
             Value::Text(_) => stores.name("text"),
             Value::Enum(_, tp) => *tp,
-            Value::Block(lp) => {
-                if lp.is_empty() {
-                    u16::MAX
-                } else {
-                    self.type_code(lp.last().unwrap(), stores)
-                }
-            }
+            Value::Block(bl) => self.data.def(self.data.type_def_nr(&bl.result)).known_type,
             Value::Call(d_nr, _) => {
                 let return_type = &self.data.def(*d_nr).returned;
                 if return_type == &Type::Void {
@@ -128,17 +118,16 @@ impl<'a> Stack<'a> {
         self.operator(op_nr);
     }
 
-    pub fn add_loop(&mut self, scope: u16, code_pos: u32) {
+    pub fn add_loop(&mut self, code_pos: u32) {
         self.loops.push(Loop {
-            scope,
-            start_pos: code_pos,
-            stack_pos: self.position,
-            break_pos: Vec::new(),
+            start: code_pos,
+            stack: self.position,
+            breaks: Vec::new(),
         });
     }
 
     pub fn end_loop(&mut self, state: &mut State) {
-        let breaks = &self.loops.pop().unwrap().break_pos;
+        let breaks = &self.loops.pop().unwrap().breaks;
         for b in breaks {
             state.code_put(*b, (i64::from(state.code_pos) - i64::from(*b) - 2) as i16);
         }
@@ -146,21 +135,16 @@ impl<'a> Stack<'a> {
 
     pub fn add_break(&mut self, code_pos: u32, loop_nr: u16) {
         let l = self.loops.len() - 1;
-        self.loops[l - loop_nr as usize].break_pos.push(code_pos);
+        self.loops[l - loop_nr as usize].breaks.push(code_pos);
     }
 
     pub fn get_loop(&self, loop_nr: u16) -> u32 {
         let l = self.loops.len() - 1;
-        self.loops[l - loop_nr as usize].start_pos
+        self.loops[l - loop_nr as usize].start
     }
 
     pub fn loop_position(&self, loop_nr: u16) -> u16 {
         let l = self.loops.len() - 1;
-        self.loops[l - loop_nr as usize].stack_pos
-    }
-
-    pub fn loop_scope(&self, loop_nr: u16) -> u16 {
-        let l = self.loops.len() - 1;
-        self.loops[l - loop_nr as usize].scope
+        self.loops[l - loop_nr as usize].stack
     }
 }

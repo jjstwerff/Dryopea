@@ -128,6 +128,11 @@ fn continue_loop() {
 }
 
 #[test]
+fn text_len() {
+    expr!("t = \"some\"; len(t)").result(Value::Int(4));
+}
+
+#[test]
 fn text_length() {
     expr!("t = \"some\"; t+=\"thing\"; t.len() + len(t)").result(Value::Int(18));
 }

@@ -13,16 +13,16 @@ mod hash;
 mod interpreter;
 mod keys;
 mod lexer;
-mod variables;
-
 mod parser;
 mod png_store;
+mod scopes;
 mod stack;
 mod state;
 mod store;
 mod text;
 mod tree;
 mod typedef;
+mod variables;
 mod vector;
 
 use crate::state::State;
@@ -43,6 +43,7 @@ fn main() -> std::io::Result<()> {
     if !p.diagnostics.is_empty() {
         return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
     }
+    scopes::check(&mut p.data);
     let mut state = State::new(p.database);
     let mut w = Vec::new();
     interpreter::byte_code(&mut w, &mut state, &mut p.data)?;
