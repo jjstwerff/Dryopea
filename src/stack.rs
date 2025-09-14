@@ -48,7 +48,8 @@ impl<'a> Stack<'a> {
             Value::Int(_) | Value::Single(_) => 4,
             Value::Long(_) | Value::Float(_) => 8,
             Value::Boolean(_) | Value::Enum(_, _) => 1,
-            Value::Block(lp) => {
+            Value::Block(bl) => {
+                let lp = &bl.0;
                 if lp.is_empty() {
                     0
                 } else {
@@ -74,13 +75,7 @@ impl<'a> Stack<'a> {
             Value::Boolean(_) => stores.name("boolean"),
             Value::Text(_) => stores.name("text"),
             Value::Enum(_, tp) => *tp,
-            Value::Block(lp) => {
-                if lp.is_empty() {
-                    u16::MAX
-                } else {
-                    self.type_code(lp.last().unwrap(), stores)
-                }
-            }
+            Value::Block(bl) => self.data.def(self.data.type_def_nr(&bl.1)).known_type,
             Value::Call(d_nr, _) => {
                 let return_type = &self.data.def(*d_nr).returned;
                 if return_type == &Type::Void {

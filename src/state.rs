@@ -1169,19 +1169,6 @@ impl State {
         for a in stack.data.def(def_nr).variables.arguments() {
             started.insert(a);
         }
-        if let Err(txt) = stack.function.validate(
-            &stack.data.def(def_nr).code,
-            &stack.data.def(def_nr).name,
-            &stack.data.def(def_nr).position.file,
-            stack.data,
-            &mut started,
-        ) {
-            panic!(
-                "{txt} in {} at {}",
-                stack.data.def(def_nr).name,
-                stack.data.def(def_nr).position.file
-            );
-        }
         stack
             .function
             .finish_next(top, &stack.data.def(def_nr).name);
@@ -1275,11 +1262,11 @@ impl State {
                 self.generate_set(stack, *v, value);
                 Type::Void
             }
-            Value::Loop(values) => {
-                let lp = stack.function.start_next();
+            Value::Loop(lp) => {
+                let scope = stack.function.start_next();
                 stack.add_loop(stack.function.scope(), self.code_pos);
                 let pos = self.code_pos;
-                for v in values {
+                for v in &lp.0 {
                     self.generate(v, stack);
                 }
                 self.clear_stack(stack, 0);
@@ -1288,7 +1275,7 @@ impl State {
                 stack.end_loop(self);
                 stack
                     .function
-                    .finish_next(lp, &stack.data.def(stack.def_nr).name);
+                    .finish_next(scope, &stack.data.def(stack.def_nr).name);
                 Type::Void
             }
             Value::Insert(_) => panic!("Incorrectly code Insert not rewritten"),
@@ -1348,7 +1335,7 @@ impl State {
                 self.code_add(stack.position);
                 Type::Void
             }
-            Value::Block(values) => self.generate_block(stack, values),
+            Value::Block(bl) => self.generate_block(stack, &bl.0),
             Value::Call(op, parameters) => self.generate_call(stack, op, parameters),
             Value::Null => {
                 // Ignore, in use as the code on an else clause without code.

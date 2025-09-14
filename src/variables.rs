@@ -4,7 +4,6 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(dead_code)]
 #![allow(clippy::large_types_passed_by_value)]
-use crate::data;
 use crate::data::{Context, Data, Type, Value};
 use crate::diagnostics::{Level, diagnostic_format};
 use crate::keys::DbRef;
@@ -484,36 +483,6 @@ impl Function {
         self.last_scope
     }
 
-    pub fn last(&self) -> u16 {
-        if let Some(nr) = self.scopes[self.current_scope as usize].parts.last()
-            && *nr <= self.last_scope
-        {
-            *nr
-        } else {
-            u16::MAX
-        }
-    }
-
-    pub fn move_scope(&mut self, scope: u16, into: u16) {
-        if scope == u16::MAX {
-            return;
-        }
-        assert_ne!(scope, into, "Cannot move into itself");
-        assert!(
-            scope < self.scopes.len() as u16,
-            "Scope {scope} out of range"
-        );
-        assert!(into < self.scopes.len() as u16, "Scope {into} out of range");
-        let parent = self.scopes[scope as usize].parent;
-        self.scopes[parent as usize].parts.retain(|s| *s != scope);
-        self.scopes[into as usize].parts.push(scope);
-        assert_ne!(
-            self.scopes[into as usize].parent, scope,
-            "Cannot move parent"
-        );
-        self.scopes[scope as usize].parent = into;
-    }
-
     pub fn reset(&mut self) {
         self.current_scope = u16::MAX;
         self.last_scope = u16::MAX;
@@ -821,145 +790,6 @@ impl Function {
         res
     }
 
-    pub fn validate(
-        &mut self,
-        code: &Value,
-        name: &str,
-        file: &str,
-        data: &Data,
-        started: &mut HashSet<u16>,
-    ) -> Result<Type, String> {
-        match code {
-            Value::Block(ls) | Value::Loop(ls) => {
-                let mut tp = Type::Void;
-                if !ls.is_empty() {
-                    let bl = self.start_next();
-                    for l in ls {
-                        tp = self.validate(l, name, file, data, started)?;
-                    }
-                    let mut result = self.result();
-                    if let (Type::Reference(tp_elm, _), Type::Reference(_, _)) = (&tp, result)
-                        && *tp_elm == data.def_nr("reference")
-                    {
-                        result = &Type::Null;
-                    }
-                    if result != &Type::Null {
-                        // ignore else if block
-                        if !result.is_equal(&tp) {
-                            return Err(format!(
-                                "Different types on block {} vs {} scope '{}' at {file}:{}:{}",
-                                tp.show(data, self),
-                                result.show(data, self),
-                                self.scopes[self.current_scope as usize].context,
-                                self.scopes[self.current_scope as usize].till.0,
-                                self.scopes[self.current_scope as usize].till.1,
-                            ));
-                        }
-                    }
-                    self.finish_next(bl, name);
-                }
-                Ok(tp)
-            }
-            Value::Drop(cd) | Value::Return(cd) => {
-                self.validate(cd, name, file, data, started)?;
-                Ok(Type::Void)
-            }
-            Value::Iter(_, _, _) => Err(format!("Should have been rewritten at {file}")),
-            Value::Call(nr, vl) => {
-                for v in vl {
-                    self.validate(v, name, file, data, started)?;
-                }
-                Ok(data.def(*nr).returned.clone())
-            }
-            Value::If(cd, tcd, fcd) => {
-                self.validate(cd, name, file, data, started)?;
-                let mut res = Type::Void;
-                if **tcd != Value::Null {
-                    res = self.validate(tcd, name, file, data, started)?;
-                }
-                if **fcd != Value::Null {
-                    self.validate(fcd, name, file, data, started)?;
-                }
-                Ok(res)
-            }
-            Value::Set(v, cd) => {
-                if started.contains(v) {
-                    if self.current_scope == u16::MAX {
-                        return Err(format!(
-                            "Variable {}[{}] used out of scope {} at {file}:{}:{}",
-                            self.variables[*v as usize].name,
-                            self.variables[*v as usize].scope,
-                            self.current_scope,
-                            self.variables[*v as usize].source.0,
-                            self.variables[*v as usize].source.1
-                        ));
-                    }
-                } else {
-                    started.insert(*v);
-                    if self.variables[*v as usize].scope != self.current_scope {
-                        return Err(format!(
-                            "Incorrect variable scope of {} on {name} at {file}:{}:{}",
-                            self.variables[*v as usize].name,
-                            self.variables[*v as usize].source.0,
-                            self.variables[*v as usize].source.1
-                        ));
-                    }
-                }
-                self.validate(cd, name, file, data, started)?;
-                Ok(Type::Void)
-            }
-            Value::Var(v) => self.validate_var(name, file, started, *v),
-            Value::Int(_) => Ok(data::I32.clone()),
-            Value::Long(_) => Ok(Type::Long),
-            Value::Text(_) => Ok(Type::Text(Vec::new())),
-            Value::Boolean(_) => Ok(Type::Boolean),
-            Value::Float(_) => Ok(Type::Float),
-            Value::Single(_) => Ok(Type::Single),
-            Value::Enum(_, _) => Ok(Type::Enum(0)), // TODO find way to determine the definition
-            _ => Ok(Type::Void),                    // break, continue, null
-        }
-    }
-
-    fn validate_var(
-        &mut self,
-        name: &str,
-        file: &str,
-        started: &mut HashSet<u16>,
-        v: u16,
-    ) -> Result<Type, String> {
-        if v == u16::MAX {
-            return Err(format!("Incorrect variable at {name} in {file}"));
-        }
-        if !started.contains(&v) && self.variables[v as usize].scope != 0 {
-            return Err(format!(
-                "Variable {} not yet started at {name} scope {} at {file}:{}:{}",
-                self.variables[v as usize].name,
-                self.variables[v as usize].scope,
-                self.variables[v as usize].source.0,
-                self.variables[v as usize].source.1
-            ));
-        }
-        let var_scope = self.variables[v as usize].scope;
-        let mut s = self.current_scope;
-        while s != u16::MAX {
-            if var_scope == s {
-                break;
-            }
-            s = self.scopes[s as usize].parent;
-        }
-        if s == u16::MAX {
-            return Err(format!(
-                "Variable {}[{}] used out of scope {} at {file}:{}:{}",
-                self.variables[v as usize].name,
-                self.variables[v as usize].scope,
-                self.current_scope,
-                self.variables[v as usize].source.0,
-                self.variables[v as usize].source.1
-            ));
-        }
-        Ok(self.variables[v as usize].type_def.clone())
-    }
-
     pub fn claim(&mut self, var: u16, pos: u16, context: &Context) -> u16 {
         assert_eq!(
             self.variables[var as usize].stack_pos,
@@ -976,31 +806,6 @@ impl Function {
         result.insert(scope);
         for s in self.scopes[scope as usize].parts.clone() {
             self.intern(result, s);
-        }
-    }
-
-    /// Move the scope of a given variable to the given scope.
-    pub fn move_var_scope(&mut self, var_nr: u16, to_scope: u16) {
-        let to = if to_scope == u16::MAX {
-            self.current_scope
-        } else {
-            to_scope
-        };
-        if self.variables[var_nr as usize].scope < to {
-            return;
-        }
-        // Problem when this is not a parent scope.
-        self.variables[var_nr as usize].scope = to;
-        if to == 1 {
-            if matches!(self.tp(var_nr), Type::Text(_)) {
-                self.work_texts.insert(var_nr);
-            } else {
-                self.work_refs.insert(var_nr);
-            }
-        } else if matches!(self.tp(var_nr), Type::Text(_)) {
-            self.work_texts.remove(&var_nr);
-        } else {
-            self.work_refs.remove(&var_nr);
         }
     }
 

@@ -45,7 +45,8 @@ pub enum Value {
     /// Call a closure function that allows access to the original stack
     // CCall(Box<Value>, Vec<Value>),
     /// Block with steps and last variable claimed before it.
-    Block(Vec<Value>),
+    Block(Box<(Vec<Value>, Type, &'static str)>),
+    /// A block that will be inserted in the outer block and thus not form its own scope.
     /// A block that will be inserted in the outer block and thus not form its own scope.
     Insert(Vec<Value>),
     /// Read variable or parameter from stack (nr relative to current function start).
@@ -65,7 +66,7 @@ pub enum Value {
     /// Conditional statement
     If(Box<Value>, Box<Value>, Box<Value>),
     /// Loop through the block till Break is encountered
-    Loop(Vec<Value>),
+    Loop(Box<(Vec<Value>, &'static str)>),
     // / Closure function value with a def-nr and
     // Closure(u32, u32),
     /// Drop the returned value of a call
@@ -1275,8 +1276,7 @@ impl Data {
     pub fn dump(&self, value: &Value, d_nr: u32) {
         let mut vars = Function::copy(&self.def(d_nr).variables);
         let mut s = Into { str: String::new() };
-        self.show_code(&mut s, &mut vars, value, 0, true, d_nr)
-            .unwrap();
+        self.show_code(&mut s, &mut vars, value, 0, true).unwrap();
         println!("dump {}", s.str);
     }
 
@@ -1288,8 +1288,7 @@ impl Data {
     pub fn dump_fn(&self, value: &Value, vars: &Function) {
         let mut vars = Function::copy(vars);
         let mut s = Into { str: String::new() };
-        self.show_code(&mut s, &mut vars, value, 0, true, 0)
-            .unwrap();
+        self.show_code(&mut s, &mut vars, value, 0, true).unwrap();
         println!("dump_fn {}", s.str);
     }
 
@@ -1307,7 +1306,6 @@ impl Data {
         value: &Value,
         indent: u32,
         start: bool,
-        d_nr: u32,
     ) -> Result<()> {
         if start {
             for _i in 0..indent {
@@ -1331,36 +1329,22 @@ impl Data {
                     if v_nr > 0 {
                         write!(write, ", ")?;
                     }
-                    self.show_code(write, vars, v, indent, false, d_nr)?;
+                    self.show_code(write, vars, v, indent, false)?;
                 }
                 write!(write, ")")
             }
-            Value::Block(v) => {
+            Value::Block(bl) => {
+                let (v, tp, nm) = &**bl;
                 if !v.is_empty() {
-                    let bl = if d_nr == 0 { 0 } else { vars.start_next() };
-                    writeln!(write, "{{#{} {}", vars.scope(), vars.context())?;
+                    writeln!(write, "{{#{nm}:{tp}")?;
                     for val in v {
-                        self.show_code(write, vars, val, indent + 1, true, d_nr)?;
+                        self.show_code(write, vars, val, indent + 1, true)?;
                         writeln!(write, ";")?;
                     }
                     for _i in 0..indent {
                         write!(write, "  ")?;
                     }
-                    if d_nr == 0 {
-                        write!(write, "}}")?;
-                    } else {
-                        if vars.result() == &Type::Void {
-                            write!(write, "}}#{}", vars.scope())?;
-                        } else {
-                            write!(
-                                write,
-                                "}}#{}:{}",
-                                vars.scope(),
-                                vars.result().show(self, vars)
-                            )?;
-                        }
-                        vars.finish_next(bl, &self.def(d_nr).name);
-                    }
+                    write!(write, "}}#{nm}:{tp}")?;
                 }
                 Ok(())
             }
@@ -1372,16 +1356,16 @@ impl Data {
                     vars.name(*v),
                     vars.tp(*v).show(self, vars)
                 )?;
-                self.show_code(write, vars, to, indent, false, d_nr)
+                self.show_code(write, vars, to, indent, false)
             }
             Value::Return(ex) => {
                 write!(write, "return ")?;
-                self.show_code(write, vars, ex, indent, false, d_nr)
+                self.show_code(write, vars, ex, indent, false)
             }
             Value::Insert(i) => {
                 write!(write, "insert: {{")?;
                 for v in i {
-                    self.show_code(write, vars, v, indent + 1, true, d_nr)?;
+                    self.show_code(write, vars, v, indent + 1, true)?;
                     writeln!(write)?;
                 }
                 for _i in 0..indent {
@@ -1393,37 +1377,27 @@ impl Data {
             Value::Continue(v) => write!(write, "continue({v})"),
             Value::If(test, t, f) => {
                 write!(write, "if ")?;
-                self.show_code(write, vars, test, indent, false, d_nr)?;
+                self.show_code(write, vars, test, indent, false)?;
                 write!(write, " ")?;
-                self.show_code(write, vars, t, indent, false, d_nr)?;
+                self.show_code(write, vars, t, indent, false)?;
                 write!(write, " else ")?;
-                self.show_code(write, vars, f, indent, false, d_nr)
+                self.show_code(write, vars, f, indent, false)
             }
-            Value::Loop(v) => {
-                let lp = if d_nr == 0 { 0 } else { vars.start_next() };
-                if d_nr == 0 {
-                    writeln!(write, "loop {{")?;
-                } else {
-                    writeln!(write, "loop {{#{} {}", vars.scope(), vars.context())?;
-                }
-                for val in v {
-                    self.show_code(write, vars, val, indent + 1, true, d_nr)?;
+            Value::Loop(lp) => {
+                writeln!(write, "loop {{#{}", lp.1)?;
+                for val in &lp.0 {
+                    self.show_code(write, vars, val, indent + 1, true)?;
                     writeln!(write, ";")?;
                 }
                 for _i in 0..indent {
                     write!(write, "  ")?;
                 }
-                if d_nr == 0 {
-                    write!(write, "}}")?;
-                } else {
-                    write!(write, "}}#{}", vars.scope())?;
-                    vars.finish_next(lp, &self.def(d_nr).name);
-                }
+                write!(write, "}}#{}", lp.1)?;
                 Ok(())
             }
             Value::Drop(v) => {
                 write!(write, "drop ")?;
-                self.show_code(write, vars, v, indent, false, d_nr)
+                self.show_code(write, vars, v, indent, false)
             }
             Value::Keys(keys) => {
                 write!(write, "&{keys:?}")
@@ -1443,7 +1417,7 @@ fn value_sizes() {
     assert_eq!(size_of::<(u8, f64)>(), 16); // Float
     assert_eq!(size_of::<(u8, String)>(), 32); // Text
     assert_eq!(size_of::<(u8, u32, Vec<Value>)>(), 32); // Call
-    assert_eq!(size_of::<(u8, Vec<Value>)>(), 32); // Block
+    assert_eq!(size_of::<(u8, Box<(Vec<Value>, Type, &'static str)>)>(), 16); // Block
     assert_eq!(size_of::<(u8, u16, Box<Value>)>(), 16); // Set
     assert_eq!(size_of::<(u8, Box<Value>, Box<Value>, Box<Value>)>(), 32); // If
     assert_eq!(size_of::<(u8, Box<Value>, Box<Value>)>(), 24); // Iter
