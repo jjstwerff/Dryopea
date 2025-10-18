@@ -1939,8 +1939,10 @@ impl Parser {
                 }
                 self.change_var(&to, &s_type);
                 if matches!(f_type, Type::Text(_)) {
-                    if matches!(code, Value::Insert(_)) || matches!(s_type, Type::Rewritten(_)) {
-                        // nothing
+                    if let Value::Insert(ls) = code {
+                        if op == "=" {
+                            ls.insert(0, v_set(var_nr, Value::Text(String::new())));
+                        }
                     } else if op == "=" {
                         *code = v_set(var_nr, code.clone());
                     } else {
@@ -1951,7 +1953,7 @@ impl Parser {
                 if let Type::RefVar(t) = &f_type
                     && matches!(**t, Type::Text(_))
                 {
-                    if matches!(code, Value::Insert(_)) || matches!(s_type, Type::Rewritten(_)) {
+                    if matches!(code, Value::Insert(_)) {
                         // nothing
                     } else if op == "=" {
                         *code = v_set(var_nr, code.clone());
@@ -2155,6 +2157,7 @@ impl Parser {
         parent_tp: &mut Type,
         precedence: usize,
     ) -> Type {
+        let mut ls = Vec::new();
         if precedence >= OPERATORS.len() {
             let mut t = self.parse_single(var_tp, code, parent_tp);
             while self.lexer.peek_token(".") || self.lexer.peek_token("[") {
@@ -2186,6 +2189,9 @@ impl Parser {
                 }
             }
             if operator.is_empty() {
+                if !ls.is_empty() {
+                    return self.parse_append_text(code, &ls, orig_var);
+                }
                 return current_type;
             }
             self.known_var_or_type(code);
@@ -2223,7 +2229,9 @@ impl Parser {
                     orig_var,
                 );
             } else if operator == "+" && matches!(current_type, Type::Text(_) | Type::Character) {
-                return self.parse_append_text(code, parent_tp, precedence, orig_var);
+                let mut second_code = Value::Null;
+                let tp = self.parse_operators(var_tp, &mut second_code, parent_tp, precedence + 1);
+                ls.push((second_code, tp));
             } else {
                 let mut second_code = Value::Null;
                 let second_type =
@@ -2287,8 +2295,7 @@ impl Parser {
     fn parse_append_text(
         &mut self,
         code: &mut Value,
-        parent_tp: &mut Type,
-        precedence: usize,
+        parts: &[(Value, Type)],
         orig_var: u16,
     ) -> Type {
         let mut ls = Vec::new();
@@ -2297,14 +2304,29 @@ impl Parser {
             ls.push(self.cl("OpClearText", &[Value::Var(v)]));
             ls.push(self.cl("OpAppendText", &[Value::Var(v), code.clone()]));
             v
+        } else if matches!(self.vars.tp(orig_var), Type::RefVar(_)) {
+            let var_ref = self.cl("OpVarRef", &[Value::Var(orig_var)]);
+            ls.push(self.cl(
+                "OpAppendRefText",
+                &[var_ref.clone(), Value::Int(0), code.clone()],
+            ));
+            orig_var
         } else {
-            ls.push(v_set(orig_var, code.clone()));
+            ls.push(self.cl("OpAppendText", &[Value::Var(orig_var), code.clone()]));
             orig_var
         };
-        let mut second_code = Value::Var(var_nr);
+        for p in parts {
+            if orig_var != u16::MAX && matches!(self.vars.tp(orig_var), Type::RefVar(_)) {
+                let var_ref = self.cl("OpVarRef", &[Value::Var(orig_var)]);
+                ls.push(self.cl(
+                    "OpAppendRefText",
+                    &[var_ref.clone(), Value::Int(0), p.0.clone()],
+                ));
+            } else {
+                ls.push(self.cl("OpAppendText", &[Value::Var(var_nr), p.0.clone()]));
+            }
+        }
         let tp = Type::Text(vec![var_nr]);
-        self.parse_operators(&tp, &mut second_code, parent_tp, precedence + 1);
-        ls.push(self.cl("OpAppendText", &[Value::Var(var_nr), second_code.clone()]));
         if orig_var == u16::MAX {
             ls.push(Value::Var(var_nr));
             *code = v_block(ls, tp.clone(), "Add text");

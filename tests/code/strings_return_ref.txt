@@ -10,64 +10,95 @@ pub fn test() {
         "Test failed {test_value} != \"1234\""
     );
 }
-fn return_ref(a:&text) -> text["a"] {#1 block
-  a:&text = "12345";
+fn return_ref(a:&text) -> text["a"] {#block_1:void
+  a:&text(0) = "12345";
   return OpGetTextSub(OpGetRefText(OpVarRef(a), 0i32), 0i32, 4i32);
-}#1
+}#block_1:void
 
-byte-code for return_ref:return_ref(a: &text[0]) [1176] -> text["a"]
-   0[12]: return-address
-   0[16]: VarRef(var[0]) -> ref(reference) var=a[0]:&text in 0
-   3[28]: ConstText(_value="12345") -> text
-  10[44]: AppendRefText(r: ref(reference), fld=0, v1: text)
-  13[16]: VarRef(var[0]) -> ref(reference)
-  16[28]: GetRefText(r: ref(reference), fld=0) -> text["a"]
-  19[32]: ConstInt(val=0) -> integer
-  24[36]: ConstInt(val=4) -> integer
-  29[40]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
-  30[32]: Return(ret=12, value=16, discard=32) type=text[4]:Base[5]
+byte-code for return_ref:return_ref(a: &text[4]) [1168] -> text["a"]
+   0[16]: return-address
+   0[20]: VarRef(var[4]) -> ref(reference) var=a[4]:&text
+   3[32]: ConstText(_value="12345") -> text
+  10[48]: AppendRefText(r: ref(reference), fld=0, v1: text)
+  13[20]: VarRef(var[4]) -> ref(reference)
+  16[32]: GetRefText(r: ref(reference), fld=0) -> text["a"]
+  19[36]: ConstInt(val=0) -> integer
+  24[40]: ConstInt(val=4) -> integer
+  29[44]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
+  30[36]: Return(ret=12, value=16, discard=32) type=text[4]:Base[5]
 
-fn test() {#1 block
-  __work_2:text = "";
-  __work_1:text = "";
-  test_value:text = {#2 block
-    return_ref({#3 default ref
+fn test() {#block_1:void
+  __work_2:text(1) = "";
+  __work_1:text(1) = "";
+  test_value:text(1) = {#block_2:text
+    return_ref({#default ref_3:ref(reference)["__work_1"]
       OpCreateRef(__work_1);
-    }#3:ref(reference)["__work_1"]);
-  }#2:text;
-  if OpEqText(test_value, "1234") null else OpPanic({#4 formatting string
-    __work_2:text = "Test failed ";
+    }#default ref_3:ref(reference)["__work_1"]);
+  }#block_2:text;
+  if OpEqText(test_value, "1234") null else OpPanic({#Formatted string_4:text
+    __work_2:text(1) = "Test failed ";
     OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_2, " != "1234"");
     __work_2;
-  }#4:text);
-}#1
+  }#Formatted string_4:text);
+  OpFreeText(test_value);
+  OpFreeText(__work_1);
+  OpFreeText(__work_2);
+}#block_1:void
 
-byte-code for return_ref:test() [1212]
-   0[0]: return-address
-   0[4]: Text() var=__work_2[4]:text in 1
-   1[28]: Text() var=__work_1[28]:text in 1
-   2[52]: Text() var=test_value[52]:text in 1
-   3[76]: CreateRef(var[28]) -> ref(reference)
-   6[88]: Call(size=0, to=1176)
-  13[92]: AppendText(var[52], v1: text)
-  16[76]: VarText(var[52]) -> text var=test_value[52]:text in 1
-  19[92]: ConstText(_value="1234") -> text
-  25[108]: EqText(v1: text, v2: text) -> boolean
-  26[77]: GotoFalseWord(jump=32, if_false: boolean)
-  29[76]: GotoWord(jump=84)
-  32[76]: ClearText(var[4]) var=__work_2[4]:text in 1
-  35[76]: ConstText(_value="Test failed ") -> text
-  49[92]: AppendText(var[4], v1: text)
-  52[76]: VarText(var[52]) -> text var=test_value[52]:text in 1
-  55[92]: ConstInt(val=0) -> integer
-  60[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-  65[76]: ConstText(_value=" != "1234"") -> text
-  77[92]: AppendText(var[4], v1: text)
-  80[76]: VarText(var[4]) -> text var=__work_2[4]:text in 1
-  83[92]: Panic(message: text)
-  84[76]: FreeText(var[52])
-  87[76]: FreeText(var[28])
-  90[76]: FreeText(var[4])
-  93[76]: Return(ret=0, value=0, discard=76)
+byte-code for return_ref:test() [1204]
+   0[4]: return-address
+   0[8]: Text() var=__work_2[8]:text
+   1[32]: Text() var=__work_1[32]:text
+   2[56]: Text() var=test_value[56]:text
+   3[80]: CreateRef(var[32]) -> ref(reference)
+   6[92]: Call(size=0, to=1168)
+  13[96]: AppendText(var[56], v1: text)
+  16[80]: VarText(var[56]) -> text var=test_value[56]:text
+  19[96]: ConstText(_value="1234") -> text
+  25[112]: EqText(v1: text, v2: text) -> boolean
+  26[81]: GotoFalseWord(jump=32, if_false: boolean)
+  29[80]: GotoWord(jump=84)
+  32[80]: ClearText(var[8]) var=__work_2[8]:text
+  35[80]: ConstText(_value="Test failed ") -> text
+  49[96]: AppendText(var[8], v1: text)
+  52[80]: VarText(var[56]) -> text var=test_value[56]:text
+  55[96]: ConstInt(val=0) -> integer
+  60[100]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+  65[80]: ConstText(_value=" != "1234"") -> text
+  77[96]: AppendText(var[8], v1: text)
+  80[80]: VarText(var[8]) -> text var=__work_2[8]:text
+  83[96]: Panic(message: text)
+  84[80]: FreeText(var[56])
+  87[80]: FreeText(var[32])
+  90[80]: FreeText(var[8])
+  93[80]: Return(ret=0, value=0, discard=76)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] CreateRef(var[32]) -> ref(0,1,32)[80]
+    6:[92] Call(size=0, to=1168)
+ 1168:[96] VarRef(var[80]) -> ref(0,1,32)[96]
+ 1171:[108] ConstText(_value="12345") -> "12345"[108]
+ 1178:[124] AppendRefText(r=ref(0,1,32)[96], fld=0, v1="12345"[108])
+ 1179:[96] Goto(jump=-15458)
+ 1181:[96] VarRef(var[80]) -> ref(0,1,32)[96]
+ 1184:[108] GetRefText(r=ref(0,1,32)[96], fld=0) -> "12345"[96]
+ 1185:[112] Goto(jump=4772)
+ 1187:[112] ConstInt(val=0) -> 0[112]
+ 1192:[116] ConstInt(val=4) -> 4[116]
+ 1197:[120] GetTextSub(v1="12345"[96], from=0[112], till=4[116]) -> "1234"[96]
+ 1198:[112] Return(ret=1217[92], value=16, discard=32) -> "1234"[80]
+   13:[96] AppendText(var[56], v1="1234"[80])
+   16:[80] VarText(var[56]) -> "1234"[80]
+   19:[96] ConstText(_value="1234") -> "1234"[96]
+   25:[112] EqText(v1="1234"[80], v2="1234"[96]) -> true[80]
+   26:[81] GotoFalseWord(jump=1236, if_false=true[80])
+   29:[80] GotoWord(jump=1288)
+   84:[80] FreeText(var[56])
+   87:[80] FreeText(var[32])
+   90:[80] FreeText(var[8])
+   93:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

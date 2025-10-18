@@ -5,49 +5,75 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:boolean = {#2 block
-    v:text["v"] = "someth";
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:boolean(1) = {#block_2:boolean
+    v:text["v"](2) = "";
+    OpAppendText(v, "someth");
     OpAppendText(v, "ing");
-    _tp_text_ends_with(v, "thing");
-  }#2:boolean;
-  if OpEqBool(test_value, true) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+    _res_3:boolean(2) = _tp_text_ends_with(v, "thing");
+    OpFreeText(v);
+    _res_3;
+  }#block_2:boolean;
+  if OpEqBool(test_value, true) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
     OpAppendText(__work_1, " != true");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for ends:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: Text() var=v[28]:text["v"] in 2
-   2[52]: ConstText(_value="someth") -> text
-  10[68]: AppendText(var[28], v1: text)
-  13[52]: ConstText(_value="ing") -> text
-  18[68]: AppendText(var[28], v1: text)
-  21[52]: VarText(var[28]) -> text var=v[28]:text["v"] in 2
-  24[68]: ConstText(_value="thing") -> text
-  31[84]: StaticCall(_tp_text_ends_with)
-  34[53]: FreeText(var[28])
-  37[53]: FreeStack(value=1, discard=25) type=boolean[1]:Base[4]
-  41[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
-  44[30]: ConstTrue() -> boolean
-  45[31]: EqBool(v1: boolean, v2: boolean) -> boolean
-  46[30]: GotoFalseWord(jump=52, if_false: boolean)
-  49[29]: GotoWord(jump=102)
-  52[29]: ClearText(var[4]) var=__work_1[4]:text in 1
-  55[29]: ConstText(_value="Test failed ") -> text
-  69[45]: AppendText(var[4], v1: text)
-  72[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean in 1
-  75[30]: ConstInt(val=0) -> integer
-  80[34]: FormatBool(var[4], val: boolean, width: integer, dir=-1, token=32)
-  85[29]: ConstText(_value=" != true") -> text
-  95[45]: AppendText(var[4], v1: text)
-  98[29]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 101[45]: Panic(message: text)
- 102[29]: FreeText(var[4])
- 105[29]: Return(ret=0, value=0, discard=29)
+byte-code for ends:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: Text() var=v[32]:text["v"]
+   2[56]: ConstText(_value="someth") -> text
+  10[72]: AppendText(var[32], v1: text)
+  13[56]: ConstText(_value="ing") -> text
+  18[72]: AppendText(var[32], v1: text)
+  21[56]: VarText(var[32]) -> text var=v[32]:text["v"]
+  24[72]: ConstText(_value="thing") -> text
+  31[88]: StaticCall(_tp_text_ends_with)
+  34[57]: FreeText(var[32])
+  37[57]: VarBool(var[56]) -> boolean var=_res_3[56]:boolean
+  40[58]: FreeStack(value=1, discard=26) type=boolean[1]:Base[4]
+  44[33]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  47[34]: ConstTrue() -> boolean
+  48[35]: EqBool(v1: boolean, v2: boolean) -> boolean
+  49[34]: GotoFalseWord(jump=55, if_false: boolean)
+  52[33]: GotoWord(jump=105)
+  55[33]: ClearText(var[8]) var=__work_1[8]:text
+  58[33]: ConstText(_value="Test failed ") -> text
+  72[49]: AppendText(var[8], v1: text)
+  75[33]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  78[34]: ConstInt(val=0) -> integer
+  83[38]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
+  88[33]: ConstText(_value=" != true") -> text
+  98[49]: AppendText(var[8], v1: text)
+ 101[33]: VarText(var[8]) -> text var=__work_1[8]:text
+ 104[49]: Panic(message: text)
+ 105[33]: FreeText(var[8])
+ 108[33]: Return(ret=0, value=0, discard=29)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] ConstText(_value="someth") -> "someth"[56]
+   10:[72] AppendText(var[32], v1="someth"[56])
+   13:[56] ConstText(_value="ing") -> "ing"[56]
+   18:[72] AppendText(var[32], v1="ing"[56])
+   21:[56] VarText(var[32]) -> "something"[56]
+   24:[72] ConstText(_value="thing") -> "thing"[72]
+   31:[88] StaticCall(_tp_text_ends_with)
+   34:[57] FreeText(var[32])
+   37:[57] VarBool(var[56]) -> true[57]
+   40:[58] FreeStack(value=1, discard=26)
+   44:[33] VarBool(var[32]) -> true[33]
+   47:[34] ConstTrue() -> true[34]
+   48:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+   49:[34] GotoFalseWord(jump=1223, if_false=true[33])
+   52:[33] GotoWord(jump=1273)
+  105:[33] FreeText(var[8])
+  108:[33] Return(ret=4294967295[4], value=0, discard=29)
+Finished

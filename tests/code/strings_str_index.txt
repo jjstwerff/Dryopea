@@ -5,46 +5,70 @@ pub fn test() {
         "Test failed {test_value} != 51"
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:character = {#2 block
-    a:text = "12345";
-    OpGetCharacter(a, 2i32);
-  }#2:character;
-  if OpEqInt(OpConvIntFromCharacter(test_value), 51i32) null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
+fn test() {#block_1:void
+  __work_1:text(1) = "";
+  test_value:character(1) = {#block_2:character
+    a:text(2) = "12345";
+    _res_3:character(2) = OpGetCharacter(a, 2i32);
+    OpFreeText(a);
+    _res_3;
+  }#block_2:character;
+  if OpEqInt(OpConvIntFromCharacter(test_value), 51i32) null else OpPanic({#Formatted string_3:text
+    __work_1:text(1) = "Test failed ";
     OpAppendCharacter(__work_1, test_value);
     OpAppendText(__work_1, " != 51");
     __work_1;
-  }#3:text);
-}#1
+  }#Formatted string_3:text);
+  OpFreeText(__work_1);
+}#block_1:void
 
-byte-code for str_index:test() [1176]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: Text() var=a[28]:text in 2
-   2[52]: ConstText(_value="12345") -> text
-   9[68]: AppendText(var[28], v1: text)
-  12[52]: VarText(var[28]) -> text var=a[28]:text in 2
-  15[68]: ConstInt(val=2) -> integer
-  20[72]: GetCharacter(v1: text, v2: integer) -> character
-  21[56]: FreeText(var[28])
-  24[56]: FreeStack(value=4, discard=28) type=character[4]:Base[6]
-  28[32]: VarInt(var[28]) -> integer var=test_value[28]:character in 1
-  31[36]: ConvIntFromCharacter(v1: character) -> integer
-  32[36]: ConstInt(val=51) -> integer
-  37[40]: EqInt(v1: integer, v2: integer) -> boolean
-  38[33]: GotoFalseWord(jump=44, if_false: boolean)
-  41[32]: GotoWord(jump=85)
-  44[32]: ClearText(var[4]) var=__work_1[4]:text in 1
-  47[32]: ConstText(_value="Test failed ") -> text
-  61[48]: AppendText(var[4], v1: text)
-  64[32]: VarInt(var[28]) -> integer var=test_value[28]:character in 1
-  67[36]: AppendCharacter(var[4], v1: character)
-  70[32]: ConstText(_value=" != 51") -> text
-  78[48]: AppendText(var[4], v1: text)
-  81[32]: VarText(var[4]) -> text var=__work_1[4]:text in 1
-  84[48]: Panic(message: text)
-  85[32]: FreeText(var[4])
-  88[32]: Return(ret=0, value=0, discard=32)
+byte-code for str_index:test() [1168]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: Text() var=a[32]:text
+   2[56]: ConstText(_value="12345") -> text
+   9[72]: AppendText(var[32], v1: text)
+  12[56]: VarText(var[32]) -> text var=a[32]:text
+  15[72]: ConstInt(val=2) -> integer
+  20[76]: GetCharacter(v1: text, v2: integer) -> character
+  21[60]: FreeText(var[32])
+  24[60]: VarInt(var[56]) -> integer var=_res_3[56]:character
+  27[64]: FreeStack(value=4, discard=32) type=character[4]:Base[6]
+  31[36]: VarInt(var[32]) -> integer var=test_value[32]:character
+  34[40]: ConvIntFromCharacter(v1: character) -> integer
+  35[40]: ConstInt(val=51) -> integer
+  40[44]: EqInt(v1: integer, v2: integer) -> boolean
+  41[37]: GotoFalseWord(jump=47, if_false: boolean)
+  44[36]: GotoWord(jump=88)
+  47[36]: ClearText(var[8]) var=__work_1[8]:text
+  50[36]: ConstText(_value="Test failed ") -> text
+  64[52]: AppendText(var[8], v1: text)
+  67[36]: VarInt(var[32]) -> integer var=test_value[32]:character
+  70[40]: AppendCharacter(var[8], v1: character)
+  73[36]: ConstText(_value=" != 51") -> text
+  81[52]: AppendText(var[8], v1: text)
+  84[36]: VarText(var[8]) -> text var=__work_1[8]:text
+  87[52]: Panic(message: text)
+  88[36]: FreeText(var[8])
+  91[36]: Return(ret=0, value=0, discard=32)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] ConstText(_value="12345") -> "12345"[56]
+    9:[72] AppendText(var[32], v1="12345"[56])
+   12:[56] VarText(var[32]) -> "12345"[56]
+   15:[72] ConstInt(val=2) -> 2[72]
+   20:[76] GetCharacter(v1="12345"[56], v2=2[72]) -> unknown[60]
+   21:[60] FreeText(var[32])
+   24:[60] VarInt(var[56]) -> 51[60]
+   27:[64] FreeStack(value=4, discard=32)
+   31:[36] VarInt(var[32]) -> 51[36]
+   34:[40] ConvIntFromCharacter(v1=unknown[40]) -> 51[36]
+   35:[40] ConstInt(val=51) -> 51[40]
+   40:[44] EqInt(v1=51[36], v2=51[40]) -> true[36]
+   41:[37] GotoFalseWord(jump=1215, if_false=true[36])
+   44:[36] GotoWord(jump=1256)
+   88:[36] FreeText(var[8])
+   91:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished
