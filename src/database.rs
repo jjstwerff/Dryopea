@@ -643,6 +643,7 @@ impl Stores {
             match self.types[t_nr].parts.clone() {
                 Parts::Hash(c, key_fields) => {
                     if let Parts::Struct(fields) = &self.types[c as usize].parts.clone() {
+                        self.types[t_nr].keys.clear();
                         for key_field in key_fields {
                             let fld = &fields[key_field as usize];
                             let tp = if fld.content > 5 {
@@ -661,6 +662,7 @@ impl Stores {
                 | Parts::Sorted(c, key_fields)
                 | Parts::Index(c, key_fields, _) => {
                     if let Parts::Struct(fields) = &self.types[c as usize].parts.clone() {
+                        self.types[t_nr].keys.clear();
                         for (key_field, asc) in &key_fields {
                             let fld = &fields[*key_field as usize];
                             let mut tp = if fld.content > 5 {

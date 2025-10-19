@@ -212,3 +212,17 @@ fn files() {
 {path:\"example/show.lav\",size:371,dir:false}]",
     ));
 }
+
+#[test]
+fn assign_text() {
+    code!("struct Object{a: text}")
+        .expr(
+            "o = Object {a: \"a\"};
+        o.a = \"b\";
+        o.a += \"c\";
+        o.a += \"d\" + \"e\";
+        o.a = \"{o.a}f\";
+        \"{o}\"",
+        )
+        .result(Value::str("{a:\"bcdef\"}"));
+}
