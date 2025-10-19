@@ -206,14 +206,12 @@ fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str { //
   var_result = "".to_string();
   var_txt = "".to_string();
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_txt));
-  OpAppendText(stores, var_result, var_txt);
+  OpAppendRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r}, 0_i32, var_txt);
   OpFreeText(stores, var_txt);
   var_result
 } //block_1: &text["result"]
 
 fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<text>["l"]
-  var___ref_3 = Null;
-  var___ref_2 = Null;
   var___ref_1 = Null;
   var___work_2 = "".to_string();
   var___work_1 = "".to_string();
@@ -239,9 +237,6 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
       { //block_7: void
         if (var_ch) == ("
 ".to_string()) { //block_8: void
-          OpDatabase(stores, var___ref_2, 14_i32);
-          var_l = DbRef {store_nr: (var___ref_2).store_nr, rec: (var___ref_2).rec, pos: (var___ref_2).pos + u32::from((4_i32))};
-          {let db = (var___ref_2); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
           var__elm_1 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
           {let db = (var__elm_1); let s_val = (OpGetTextSub(stores, var_c, var_p, external::op_min_int((var_ch#index), (1_i32)))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
           OpFinishRecord(stores, var_l, var__elm_1, 7_i32, 65535_i32);
@@ -254,9 +249,6 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
     } //For loop_4
   } //For block_3: void;
   if (var_p) > (0_i32) { //block_10: void
-    OpDatabase(stores, var___ref_3, 14_i32);
-    var_l = DbRef {store_nr: (var___ref_3).store_nr, rec: (var___ref_3).rec, pos: (var___ref_3).pos + u32::from((4_i32))};
-    {let db = (var___ref_3); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
     var__elm_2 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
     {let db = (var__elm_2); let s_val = (OpGetTextSub(stores, var_c, var_p, _tp_text_len(stores, var_c))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
     OpFinishRecord(stores, var_l, var__elm_2, 7_i32, 65535_i32)
@@ -265,8 +257,6 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
   OpFreeText(stores, var___work_1);
   OpFreeText(stores, var___work_2);
   OpFreeRef(stores, var___ref_1);
-  OpFreeRef(stores, var___ref_2);
-  OpFreeRef(stores, var___ref_3);
   var_l
 } //block_1: vector<text>["l"]
 

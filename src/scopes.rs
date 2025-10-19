@@ -234,12 +234,9 @@ impl Scopes {
                 ls.push(o);
             }
         } else {
-            let v = function.add_unique("res", tp, to_scope);
-            ls.insert(0, v_set(v, expr.clone()));
+            ls.insert(0, expr.clone());
             if is_return {
-                ls.push(Value::Return(Box::new(Value::Var(v))));
-            } else {
-                ls.push(Value::Var(v));
+                ls.push(Value::Return(Box::new(Value::Null)));
             }
         }
         ls

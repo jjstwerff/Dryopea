@@ -15,7 +15,7 @@ fn choice(a:text, b:text) -> text["a", "b"] {#block_1:text["a", "b"]
   }#block_3:text["b"];
 }#block_1:text["a", "b"]
 
-byte-code for call:choice(a: text[4], b: text[20]) [1168] -> text["a", "b"]
+byte-code for call:choice(a: text[4], b: text[20]) [1119] -> text["a", "b"]
    0[36]: return-address
    0[40]: ArgText(var[4]) -> text var=a[4]:text
    3[56]: Call(size=0, to=318)
@@ -63,7 +63,7 @@ fn test() {#block_1:void
   OpFreeText(__work_4);
 }#block_1:void
 
-byte-code for call:test() [1207]
+byte-code for call:test() [1158]
    0[4]: return-address
    0[8]: Text() var=__work_4[8]:text
    1[32]: Text() var=__work_3[32]:text
@@ -87,11 +87,11 @@ byte-code for call:test() [1207]
   61[144]: ConstText(_value="1") -> text
   64[160]: AppendText(var[56], v1: text)
   67[144]: VarText(var[56]) -> text var=__work_2[56]:text
-  70[160]: Call(size=0, to=1168)
+  70[160]: Call(size=0, to=1119)
   77[144]: AppendText(var[32], v1: text)
   80[128]: ConstText(_value="2") -> text
   83[144]: ConstText(_value="") -> text
-  85[160]: Call(size=0, to=1168)
+  85[160]: Call(size=0, to=1119)
   92[144]: AppendText(var[32], v1: text)
   95[128]: VarText(var[32]) -> text var=__work_3[32]:text
   98[144]: AppendText(var[104], v1: text)
@@ -140,49 +140,49 @@ Execute test:
    61:[144] ConstText(_value="1") -> "1"[144]
    64:[160] AppendText(var[56], v1="1"[144])
    67:[144] VarText(var[56]) -> "21"[144]
-   70:[160] Call(size=0, to=1168)
- 1168:[164] ArgText(var[128]) -> "001"[164]
- 1171:[180] Call(size=0, to=318)
+   70:[160] Call(size=0, to=1119)
+ 1119:[164] ArgText(var[128]) -> "001"[164]
+ 1122:[180] Call(size=0, to=318)
   318:[184] ArgText(var[164]) -> "001"[184]
   321:[200] LengthText(v1="001"[184]) -> 3[184]
-  322:[188] Return(ret=1178[180], value=4, discard=24) -> 3[164]
- 1178:[168] ArgText(var[144]) -> "21"[168]
- 1181:[184] Call(size=0, to=318)
+  322:[188] Return(ret=1129[180], value=4, discard=24) -> 3[164]
+ 1129:[168] ArgText(var[144]) -> "21"[168]
+ 1132:[184] Call(size=0, to=318)
   318:[188] ArgText(var[168]) -> "21"[188]
   321:[204] LengthText(v1="21"[188]) -> 2[188]
-  322:[192] Return(ret=1188[184], value=4, discard=24) -> 2[168]
- 1188:[172] GtInt(v1=3[164], v2=2[168]) -> true[164]
- 1189:[165] GotoFalseWord(jump=1198, if_false=true[164])
- 1192:[164] ArgText(var[128]) -> "001"[164]
- 1195:[180] GotoWord(jump=1201)
- 1201:[180] Return(ret=1284[160], value=16, discard=52) -> "001"[128]
+  322:[192] Return(ret=1139[184], value=4, discard=24) -> 2[168]
+ 1139:[172] GtInt(v1=3[164], v2=2[168]) -> true[164]
+ 1140:[165] GotoFalseWord(jump=1149, if_false=true[164])
+ 1143:[164] ArgText(var[128]) -> "001"[164]
+ 1146:[180] GotoWord(jump=1152)
+ 1152:[180] Return(ret=1235[160], value=16, discard=52) -> "001"[128]
    77:[144] AppendText(var[32], v1="001"[128])
    80:[128] ConstText(_value="2") -> "2"[128]
    83:[144] ConstText(_value="") -> ""[144]
-   85:[160] Call(size=0, to=1168)
- 1168:[164] ArgText(var[128]) -> "2"[164]
- 1171:[180] Call(size=0, to=318)
+   85:[160] Call(size=0, to=1119)
+ 1119:[164] ArgText(var[128]) -> "2"[164]
+ 1122:[180] Call(size=0, to=318)
   318:[184] ArgText(var[164]) -> "2"[184]
   321:[200] LengthText(v1="2"[184]) -> 1[184]
-  322:[188] Return(ret=1178[180], value=4, discard=24) -> 1[164]
- 1178:[168] ArgText(var[144]) -> ""[168]
- 1181:[184] Call(size=0, to=318)
+  322:[188] Return(ret=1129[180], value=4, discard=24) -> 1[164]
+ 1129:[168] ArgText(var[144]) -> ""[168]
+ 1132:[184] Call(size=0, to=318)
   318:[188] ArgText(var[168]) -> ""[188]
   321:[204] LengthText(v1=""[188]) -> 0[188]
-  322:[192] Return(ret=1188[184], value=4, discard=24) -> 0[168]
- 1188:[172] GtInt(v1=1[164], v2=0[168]) -> true[164]
- 1189:[165] GotoFalseWord(jump=1198, if_false=true[164])
- 1192:[164] ArgText(var[128]) -> "2"[164]
- 1195:[180] GotoWord(jump=1201)
- 1201:[180] Return(ret=1299[160], value=16, discard=52) -> "2"[128]
+  322:[192] Return(ret=1139[184], value=4, discard=24) -> 0[168]
+ 1139:[172] GtInt(v1=1[164], v2=0[168]) -> true[164]
+ 1140:[165] GotoFalseWord(jump=1149, if_false=true[164])
+ 1143:[164] ArgText(var[128]) -> "2"[164]
+ 1146:[180] GotoWord(jump=1152)
+ 1152:[180] Return(ret=1250[160], value=16, discard=52) -> "2"[128]
    92:[144] AppendText(var[32], v1="2"[128])
    95:[128] VarText(var[32]) -> "0012"[128]
    98:[144] AppendText(var[104], v1="0012"[128])
   101:[128] VarText(var[104]) -> "0012"[128]
   104:[144] ConstText(_value="0012") -> "0012"[144]
   110:[160] EqText(v1="0012"[128], v2="0012"[144]) -> true[128]
-  111:[129] GotoFalseWord(jump=1324, if_false=true[128])
-  114:[128] GotoWord(jump=1376)
+  111:[129] GotoFalseWord(jump=1275, if_false=true[128])
+  114:[128] GotoWord(jump=1327)
   169:[128] FreeText(var[104])
   172:[128] FreeText(var[80])
   175:[128] FreeText(var[56])

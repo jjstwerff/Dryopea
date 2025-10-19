@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #![allow(clippy::cast_possible_truncation)]
 
-use crate::data::{Context, Data, Type, Value};
-use crate::database::Stores;
+use crate::data::{Context, Data, Value};
 use crate::state::State;
 use crate::variables;
 use crate::variables::Function;
@@ -61,6 +60,7 @@ impl<'a> Stack<'a> {
         }
     }
 
+    /*
     pub fn type_code(&self, val: &Value, stores: &Stores) -> u16 {
         match val {
             Value::Int(_) => stores.name("integer"),
@@ -89,6 +89,7 @@ impl<'a> Stack<'a> {
             _ => u16::MAX,
         }
     }
+    */
 
     pub fn operator(&mut self, d_nr: u32) {
         let d = self.data.def(d_nr);

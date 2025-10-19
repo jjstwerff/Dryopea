@@ -22,7 +22,7 @@ fn obj() -> Object {#block_1:ref(Object)
   __ref_1;
 }#block_1:ref(Object)
 
-byte-code for print_object:obj() [1168] -> ref(Object)
+byte-code for print_object:obj() [1119] -> ref(Object)
    0[4]: return-address
    0[8]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:ref(Object)
    1[20]: Database(var[8], db_tp=17) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17]
@@ -65,12 +65,12 @@ fn test() {#block_1:void
   OpFreeText(__work_2);
 }#block_1:void
 
-byte-code for print_object:test() [1229]
+byte-code for print_object:test() [1180]
    0[4]: return-address
    0[8]: Text() var=__work_2[8]:text
    1[32]: Text() var=__work_1[32]:text
    2[56]: Text() var=test_value[56]:text
-   3[80]: Call(size=0, to=1168) var=o[80]:ref(Object)
+   3[80]: Call(size=0, to=1119) var=o[80]:ref(Object)
   10[92]: ClearText(var[32]) var=__work_1[32]:text
   13[92]: ConstText(_value="") -> text
   15[108]: AppendText(var[32], v1: text)
@@ -83,7 +83,7 @@ byte-code for print_object:test() [1229]
   49[92]: VarRef(var[80]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=o[80]:ref(Object)
   52[104]: FreeRef(v1: ref(reference))
   53[92]: VarText(var[32]) -> text var=__work_1[32]:text
-  56[108]: FreeStack(value=16, discard=28) type=text[4]:Base[5]
+  56[108]: FreeStack(value=16, discard=28)
   60[96]: AppendText(var[56], v1: text)
   63[80]: VarText(var[56]) -> text var=test_value[56]:text
   66[96]: ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> text
@@ -109,22 +109,22 @@ Execute test:
     0:[8] Text()
     1:[32] Text()
     2:[56] Text()
-    3:[80] Call(size=0, to=1168)
- 1168:[84] ConvRefFromNull() -> ref(1,0,0)[84]
- 1169:[96] Database(var[84], db_tp=17)
- 1174:[96] VarRef(var[84]) -> ref(1,1,0)={ccc:false}[96]
- 1177:[108] ConstInt(val=12) -> 12[108]
- 1182:[112] SetInt(v1=ref(1,1,0)[96], fld=4, val=12[108])
- 1185:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,ccc:false}[96]
- 1188:[108] ConstText(_value="hi") -> "hi"[108]
- 1192:[124] SetText(v1=ref(1,1,0)[96], fld=8, val="hi"[108])
- 1195:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
- 1198:[108] ConstFalse() -> false[108]
- 1199:[109] GotoFalseWord(jump=1210, if_false=false[108])
- 1210:[108] ConstInt(val=0) -> 0[108]
- 1215:[112] SetByte(v1=ref(1,1,0)[96], fld=12, min=0, val=0[108])
- 1220:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
- 1223:[108] Return(ret=1239[80], value=12, discard=28) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[80]
+    3:[80] Call(size=0, to=1119)
+ 1119:[84] ConvRefFromNull() -> ref(1,0,0)[84]
+ 1120:[96] Database(var[84], db_tp=17)
+ 1125:[96] VarRef(var[84]) -> ref(1,1,0)={ccc:false}[96]
+ 1128:[108] ConstInt(val=12) -> 12[108]
+ 1133:[112] SetInt(v1=ref(1,1,0)[96], fld=4, val=12[108])
+ 1136:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,ccc:false}[96]
+ 1139:[108] ConstText(_value="hi") -> "hi"[108]
+ 1143:[124] SetText(v1=ref(1,1,0)[96], fld=8, val="hi"[108])
+ 1146:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
+ 1149:[108] ConstFalse() -> false[108]
+ 1150:[109] GotoFalseWord(jump=1161, if_false=false[108])
+ 1161:[108] ConstInt(val=0) -> 0[108]
+ 1166:[112] SetByte(v1=ref(1,1,0)[96], fld=12, min=0, val=0[108])
+ 1171:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
+ 1174:[108] Return(ret=1190[80], value=12, discard=28) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[80]
    10:[92] ClearText(var[32])
    13:[92] ConstText(_value="") -> ""[92]
    15:[108] AppendText(var[32], v1=""[92])
@@ -142,8 +142,8 @@ Execute test:
    63:[80] VarText(var[56]) -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[80]
    66:[96] ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> "{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[96]
   131:[112] EqText(v1="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[80], v2="{a:12,bb:\"hi\",ccc:false} pretty { a: 12, bb: \"hi\", ccc: false }"[96]) -> true[80]
-  132:[81] GotoFalseWord(jump=1367, if_false=true[80])
-  135:[80] GotoWord(jump=1478)
+  132:[81] GotoFalseWord(jump=1318, if_false=true[80])
+  135:[80] GotoWord(jump=1429)
   249:[80] FreeText(var[56])
   252:[80] FreeText(var[32])
   255:[80] FreeText(var[8])

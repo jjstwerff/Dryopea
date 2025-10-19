@@ -37,6 +37,7 @@ pub struct Variable {
     scope: u16,
     stack_pos: u16,
     uses: u16,
+    argument: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -47,7 +48,6 @@ pub struct Function {
     unique: u16,
     current_loop: u16,
     loops: Vec<Iterator>,
-    arguments: u16,
     variables: Vec<Variable>,
     work_text: u16,
     work_ref: u16,
@@ -79,7 +79,6 @@ impl Function {
             unique: 0,
             current_loop: u16::MAX,
             loops: Vec::new(),
-            arguments: 0,
             work_text: 0,
             work_ref: 0,
             variables: Vec::new(),
@@ -94,9 +93,6 @@ impl Function {
     pub fn append(&mut self, other: &mut Function) {
         self.current_loop = u16::MAX;
         self.logging = other.logging;
-        if self.arguments < other.arguments {
-            self.arguments = other.arguments;
-        }
         self.unique = 0;
         other.unique = 0;
         self.loops.clear();
@@ -122,7 +118,6 @@ impl Function {
             current_loop: u16::MAX,
             steps: Vec::new(),
             unique: 0,
-            arguments: other.arguments,
             loops: other.loops.clone(),
             variables: other.variables.clone(),
             work_text: 0,
@@ -322,11 +317,10 @@ impl Function {
 
     pub fn arguments(&self) -> Vec<u16> {
         let mut arg = Vec::new();
-        for v_nr in 0..self.arguments {
-            if v_nr >= self.variables.len() as u16 {
-                break;
+        for (v_nr, v) in self.variables.iter().enumerate() {
+            if v.argument {
+                arg.push(v_nr as u16);
             }
-            arg.push(v_nr);
         }
         arg
     }
@@ -370,6 +364,7 @@ impl Function {
             scope: u16::MAX,
             stack_pos: u16::MAX,
             uses: 1,
+            argument: false,
         });
         v
     }
@@ -383,6 +378,7 @@ impl Function {
             scope,
             stack_pos: u16::MAX,
             uses: 1,
+            argument: false,
         });
         v
     }
@@ -438,16 +434,16 @@ impl Function {
         self.variables[var_nr as usize].uses == 0
     }
 
-    pub fn set_arguments(&mut self, arguments: u16) {
-        self.arguments = arguments;
+    pub fn become_argument(&mut self, var_nr: u16) {
+        self.variables[var_nr as usize].argument = true;
     }
 
     pub fn is_argument(&self, var_nr: u16) -> bool {
-        var_nr < self.arguments
+        self.variables[var_nr as usize].argument
     }
 
     pub fn test_used(&self, lexer: &mut Lexer, data: &Data) {
-        for (v_nr, var) in self.variables.iter().enumerate() {
+        for var in &self.variables {
             if var.name.starts_with('_') || var.name.contains('#') {
                 continue;
             }
@@ -457,7 +453,7 @@ impl Function {
                     lexer,
                     Level::Warning,
                     "{} {} is never read",
-                    if v_nr < self.arguments as usize {
+                    if var.argument {
                         "Parameter"
                     } else {
                         "Variable"

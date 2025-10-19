@@ -15,7 +15,7 @@ fn return_ref(a:&text) -> text["a"] {#block_1:void
   return OpGetTextSub(OpGetRefText(OpVarRef(a), 0i32), 0i32, 4i32);
 }#block_1:void
 
-byte-code for return_ref:return_ref(a: &text[4]) [1168] -> text["a"]
+byte-code for return_ref:return_ref(a: &text[4]) [1119] -> text["a"]
    0[16]: return-address
    0[20]: VarRef(var[4]) -> ref(reference) var=a[4]:&text
    3[32]: ConstText(_value="12345") -> text
@@ -25,7 +25,13 @@ byte-code for return_ref:return_ref(a: &text[4]) [1168] -> text["a"]
   19[36]: ConstInt(val=0) -> integer
   24[40]: ConstInt(val=4) -> integer
   29[44]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
-  30[36]: Return(ret=12, value=16, discard=32) type=text[4]:Base[5]
+  30[36]: Return(ret=12, value=16, discard=32)
+  36[36]: VarRef(var[4]) -> ref(reference)
+  39[48]: GetRefText(r: ref(reference), fld=0) -> text["a"]
+  42[52]: ConstInt(val=0) -> integer
+  47[56]: ConstInt(val=4) -> integer
+  52[60]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
+  53[52]: Return(ret=12, value=16, discard=48) type=text[4]:Base[5]
 
 fn test() {#block_1:void
   __work_2:text(1) = "";
@@ -46,13 +52,13 @@ fn test() {#block_1:void
   OpFreeText(__work_2);
 }#block_1:void
 
-byte-code for return_ref:test() [1204]
+byte-code for return_ref:test() [1178]
    0[4]: return-address
    0[8]: Text() var=__work_2[8]:text
    1[32]: Text() var=__work_1[32]:text
    2[56]: Text() var=test_value[56]:text
    3[80]: CreateRef(var[32]) -> ref(reference)
-   6[92]: Call(size=0, to=1168)
+   6[92]: Call(size=0, to=1119)
   13[96]: AppendText(var[56], v1: text)
   16[80]: VarText(var[56]) -> text var=test_value[56]:text
   19[96]: ConstText(_value="1234") -> text
@@ -79,24 +85,24 @@ Execute test:
     1:[32] Text()
     2:[56] Text()
     3:[80] CreateRef(var[32]) -> ref(0,1,32)[80]
-    6:[92] Call(size=0, to=1168)
- 1168:[96] VarRef(var[80]) -> ref(0,1,32)[96]
- 1171:[108] ConstText(_value="12345") -> "12345"[108]
- 1178:[124] AppendRefText(r=ref(0,1,32)[96], fld=0, v1="12345"[108])
- 1179:[96] Goto(jump=-15458)
- 1181:[96] VarRef(var[80]) -> ref(0,1,32)[96]
- 1184:[108] GetRefText(r=ref(0,1,32)[96], fld=0) -> "12345"[96]
- 1185:[112] Goto(jump=4772)
- 1187:[112] ConstInt(val=0) -> 0[112]
- 1192:[116] ConstInt(val=4) -> 4[116]
- 1197:[120] GetTextSub(v1="12345"[96], from=0[112], till=4[116]) -> "1234"[96]
- 1198:[112] Return(ret=1217[92], value=16, discard=32) -> "1234"[80]
+    6:[92] Call(size=0, to=1119)
+ 1119:[96] VarRef(var[80]) -> ref(0,1,32)[96]
+ 1122:[108] ConstText(_value="12345") -> "12345"[108]
+ 1129:[124] AppendRefText(r=ref(0,1,32)[96], fld=0, v1="12345"[108])
+ 1130:[96] Goto(jump=-15507)
+ 1132:[96] VarRef(var[80]) -> ref(0,1,32)[96]
+ 1135:[108] GetRefText(r=ref(0,1,32)[96], fld=0) -> "12345"[96]
+ 1136:[112] Goto(jump=4723)
+ 1138:[112] ConstInt(val=0) -> 0[112]
+ 1143:[116] ConstInt(val=4) -> 4[116]
+ 1148:[120] GetTextSub(v1="12345"[96], from=0[112], till=4[116]) -> "1234"[96]
+ 1149:[112] Return(ret=1191[92], value=16, discard=32)
    13:[96] AppendText(var[56], v1="1234"[80])
    16:[80] VarText(var[56]) -> "1234"[80]
    19:[96] ConstText(_value="1234") -> "1234"[96]
    25:[112] EqText(v1="1234"[80], v2="1234"[96]) -> true[80]
-   26:[81] GotoFalseWord(jump=1236, if_false=true[80])
-   29:[80] GotoWord(jump=1288)
+   26:[81] GotoFalseWord(jump=1210, if_false=true[80])
+   29:[80] GotoWord(jump=1262)
    84:[80] FreeText(var[56])
    87:[80] FreeText(var[32])
    90:[80] FreeText(var[8])

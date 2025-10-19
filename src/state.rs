@@ -3,7 +3,7 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(dead_code)]
 
-use crate::data::{Attribute, Context, Data, I32, Type, Value};
+use crate::data::{Attribute, Block, Context, Data, I32, Type, Value};
 use crate::database::{Parts, ShowDb, Stores};
 use crate::fill::OPERATORS;
 use crate::keys;
@@ -1140,11 +1140,7 @@ impl State {
         let mut stack = Stack::new(data.def(def_nr).variables.clone(), data, def_nr, logging);
         if stack.data.def(def_nr).code == Value::Null {
             let start = self.code_pos;
-            let return_type = &stack.data.def(stack.def_nr).returned;
-            stack.add_op("OpReturn", self);
-            self.code_add(self.arguments);
-            self.code_add(size(return_type, &Context::Argument) as u8);
-            self.code_add(stack.position);
+            self.add_return(&mut stack, start);
             data.definitions[def_nr as usize].code_position = start;
             data.definitions[def_nr as usize].code_length = self.code_pos - start;
             if show {
@@ -1319,7 +1315,7 @@ impl State {
                 self.code_add(stack.position);
                 Type::Void
             }
-            Value::Block(bl) => self.generate_block(stack, &bl.operators, top),
+            Value::Block(bl) => self.generate_block(stack, bl, top),
             Value::Call(op, parameters) => self.generate_call(stack, op, parameters),
             Value::Null => {
                 // Ignore, in use as the code on an else clause without code.
@@ -1642,46 +1638,67 @@ impl State {
         self.insert_types(stack.function.tp(variable).clone(), code, stack)
     }
 
-    fn generate_block(&mut self, stack: &mut Stack, values: &[Value], top: bool) -> Type {
-        if values.is_empty() {
+    fn generate_block(&mut self, stack: &mut Stack, block: &Block, top: bool) -> Type {
+        if block.operators.is_empty() {
             return Type::Void;
         }
         let to = stack.position;
-        let last = values.len() - 1;
         let mut tp = Type::Void;
-        for (elm, v) in values.iter().enumerate() {
-            tp = self.generate(v, stack, false);
-            if elm != last {
-                continue;
+        let mut return_expr = 0;
+        let mut has_return = false;
+        for v in &block.operators {
+            let s_pos = self.stack_pos;
+            if let Value::Return(expr) = v {
+                has_return = true;
+                if return_expr == 0 {
+                    return_expr = s_pos;
+                    self.generate(expr, stack, false);
+                }
+                self.add_return(stack, return_expr);
+            } else {
+                has_return = false;
             }
-            let code = self.code_pos;
-            // Check if we need a return statement here
-            if top && !matches!(v, Value::Return(_)) {
-                stack.add_op("OpReturn", self);
-                self.code_add(self.arguments);
-                let return_type = &stack.data.def(stack.def_nr).returned;
-                self.code_add(size(return_type, &Context::Argument) as u8);
-                self.code_add(stack.position);
-                if return_type != &Type::Void {
-                    self.types.insert(code, self.known_type(return_type, stack));
-                }
-                tp = Type::Void;
-            } else if !top {
-                let size = stack.size_code(v);
-                let after = to + size;
-                if stack.position > after {
-                    stack.add_op("OpFreeStack", self);
-                    self.code_add(size as u8);
-                    self.code_add(stack.position - to);
-                    let known = stack.type_code(v, &self.database);
-                    if known != u16::MAX {
-                        self.types.insert(code, known);
-                    }
-                }
-                stack.position = after;
+            return_expr = 0;
+            tp = self.generate(v, stack, false);
+            if self.stack_pos > s_pos && !matches!(v, Value::Set(_, _)) {
+                // Normal expressions do not claim stack space (because of Value::Drop)
+                // So if there is data left it should be a return expression.
+                return_expr = s_pos;
             }
         }
+        if top {
+            if !has_return {
+                self.add_return(
+                    stack,
+                    if return_expr > 0 {
+                        return_expr
+                    } else {
+                        self.code_pos
+                    },
+                );
+            }
+        } else {
+            let size = size(&block.result, &Context::Argument);
+            let after = to + size;
+            if stack.position > after {
+                stack.add_op("OpFreeStack", self);
+                self.code_add(size as u8);
+                self.code_add(stack.position - to);
+            }
+            stack.position = after;
+        }
         tp
+    }
+
+    fn add_return(&mut self, stack: &mut Stack, code: u32) {
+        let return_type = &stack.data.def(stack.def_nr).returned;
+        stack.add_op("OpReturn", self);
+        self.code_add(self.arguments);
+        self.code_add(size(return_type, &Context::Argument) as u8);
+        self.code_add(stack.position);
+        if return_type != &Type::Void {
+            self.types.insert(code, self.known_type(return_type, stack));
+        }
     }
 
     fn known_type(&self, tp: &Type, stack: &Stack) -> u16 {
