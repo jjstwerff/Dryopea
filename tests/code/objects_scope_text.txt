@@ -15,27 +15,27 @@ Type 17:Data[12]:
     name:text[4]
     number:integer[8]
 
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  d:ref(Data)(1) = null;
-  test_value:text["d"](1) = {#block_2:text["d"]
-    OpDatabase(d, 17i32);
-    OpSetText(d, 4i32, "testing");
-    OpSetInt(d, 8i32, 0i32);
-    OpGetText(d, 4i32);
-  }#block_2:text["d"];
-  if OpEqText(test_value, "testing") null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != "testing"");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(test_value);
-  OpFreeRef(d);
-  OpFreeText(__work_1);
-}#block_1:void
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  d(1):ref(Data) = null;
+  test_value(1):text["d"] = {#block(2):text["d"]
+    OpDatabase(d(1), 17i32);
+    OpSetText(d(1), 4i32, "testing");
+    OpSetInt(d(1), 8i32, 0i32);
+    OpGetText(d(1), 4i32);
+  }#block(2):text["d"];
+  if OpEqText(test_value(1), "testing") null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != "testing"");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(test_value(1));
+  OpFreeRef(d(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for scope_text:test() [1168]
+byte-code for scope_text:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConvRefFromNull() -> ref(reference) var=d[32]:ref(Data)
@@ -88,8 +88,8 @@ Execute test:
    43:[68] VarText(var[44]) -> "testing"[68]
    46:[84] ConstText(_value="testing") -> "testing"[84]
    55:[100] EqText(v1="testing"[68], v2="testing"[84]) -> true[68]
-   56:[69] GotoFalseWord(jump=1230, if_false=true[68])
-   59:[68] GotoWord(jump=1285)
+   56:[69] GotoFalseWord(jump=62, if_false=true[68])
+   59:[68] GotoWord(jump=117)
   117:[68] FreeText(var[44])
   120:[68] VarRef(var[32]) -> ref(1,1,0)={name:"testing",number:0}[68]
   123:[80] FreeRef(v1=ref(1,1,0)[68])

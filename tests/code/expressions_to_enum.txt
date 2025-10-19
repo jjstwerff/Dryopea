@@ -9,21 +9,21 @@ pub fn test() {
 }
 Type 17:Number[1]:Enum(["One", "Two", "Three", "Four"])
 
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:boolean(1) = {#block_2:boolean
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):boolean = {#block(2):boolean
     OpLtEnum(OpCastEnumFromText("Two", 17i32), OpCastEnumFromText("Four", 17i32));
-  }#block_2:boolean;
-  if OpEqBool(test_value, true) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != true");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):boolean;
+  if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatBool(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != true");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for to_enum:test() [1168]
+byte-code for to_enum:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstText(_value="Two") -> text var=test_value[32]:boolean
@@ -59,8 +59,8 @@ Execute test:
    19:[33] VarBool(var[32]) -> true[33]
    22:[34] ConstTrue() -> true[34]
    23:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
-   24:[34] GotoFalseWord(jump=1198, if_false=true[33])
-   27:[33] GotoWord(jump=1248)
+   24:[34] GotoFalseWord(jump=30, if_false=true[33])
+   27:[33] GotoWord(jump=80)
    80:[33] FreeText(var[8])
    83:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

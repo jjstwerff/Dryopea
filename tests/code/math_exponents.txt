@@ -5,21 +5,21 @@ pub fn test() {
         "Test failed {test_value} != 10"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:float(1) = {#block_2:float
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):float = {#block(2):float
     _tp_float_log(OpPowFloat(4f64, OpConvFloatFromInt(5i32)), OpConvFloatFromInt(2i32));
-  }#block_2:float;
-  if OpEqFloat(test_value, OpConvFloatFromInt(10i32)) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatFloat(__work_1, test_value, 0i32, 0i32);
-    OpAppendText(__work_1, " != 10");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):float;
+  if OpEqFloat(test_value(1), OpConvFloatFromInt(10i32)) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
+    OpAppendText(__work_1(1), " != 10");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for exponents:test() [1168]
+byte-code for exponents:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstFloat(val=4) -> float var=test_value[32]:float
@@ -61,13 +61,13 @@ Execute test:
   292:[52] VarFloat(var[32]) -> 1024[52]
   295:[60] VarFloat(var[40]) -> 2[60]
   298:[68] MathLogFloat(v1=1024[52], v2=2[60]) -> 10[52]
-  299:[60] Return(ret=1198[48], value=8, discard=28) -> 10[32]
+  299:[60] Return(ret=1140[48], value=8, discard=28) -> 10[32]
    30:[40] VarFloat(var[32]) -> 10[40]
    33:[48] ConstInt(val=10) -> 10[48]
    38:[52] ConvFloatFromInt(v1=10[48]) -> 10[48]
    39:[56] EqFloat(v1=10[40], v2=10[48]) -> true[40]
-   40:[41] GotoFalseWord(jump=1214, if_false=true[40])
-   43:[40] GotoWord(jump=1265)
+   40:[41] GotoFalseWord(jump=46, if_false=true[40])
+   43:[40] GotoWord(jump=97)
    97:[40] FreeText(var[8])
   100:[40] Return(ret=4294967295[4], value=0, discard=36)
 Finished

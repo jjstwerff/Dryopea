@@ -5,21 +5,21 @@ pub fn test() {
         "Test failed {test_value} != -1000"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:float(1) = {#block_2:float
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):float = {#block(2):float
     _tp_float_ceil(OpAddFloat(_tp_float_sin(OpMathPiFloat()), OpMulFloat(_tp_float_cos(OpMathPiFloat()), OpConvFloatFromInt(1000i32))));
-  }#block_2:float;
-  if OpEqFloat(test_value, OpConvFloatFromInt(OpMinSingleInt(1000i32))) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatFloat(__work_1, test_value, 0i32, 0i32);
-    OpAppendText(__work_1, " != -1000");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):float;
+  if OpEqFloat(test_value(1), OpConvFloatFromInt(OpMinSingleInt(1000i32))) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
+    OpAppendText(__work_1(1), " != -1000");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for trigonometric:test() [1168]
+byte-code for trigonometric:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: MathPiFloat() -> float var=test_value[32]:float
@@ -58,12 +58,12 @@ Execute test:
     2:[40] Call(size=0, to=189)
   189:[44] VarFloat(var[32]) -> 3.141592653589793[44]
   192:[52] MathSinFloat(v1=3.141592653589793[44]) -> 0.00000000000000012246467991473532[44]
-  193:[52] Return(ret=1177[40], value=8, discard=20) -> 0.00000000000000012246467991473532[32]
+  193:[52] Return(ret=1119[40], value=8, discard=20) -> 0.00000000000000012246467991473532[32]
     9:[40] MathPiFloat() -> 3.141592653589793[40]
    10:[48] Call(size=0, to=179)
   179:[52] VarFloat(var[40]) -> 3.141592653589793[52]
   182:[60] MathCosFloat(v1=3.141592653589793[52]) -> -1[52]
-  183:[60] Return(ret=1185[48], value=8, discard=20) -> -1[40]
+  183:[60] Return(ret=1127[48], value=8, discard=20) -> -1[40]
    17:[48] ConstInt(val=1000) -> 1000[48]
    22:[52] ConvFloatFromInt(v1=1000[48]) -> 1000[48]
    23:[56] MulFloat(v1=-1[40], v2=1000[48]) -> -1000[40]
@@ -71,14 +71,14 @@ Execute test:
    25:[40] Call(size=0, to=252)
   252:[44] VarFloat(var[32]) -> -1000[44]
   255:[52] MathCeilFloat(v1=-1000[44]) -> -1000[44]
-  256:[52] Return(ret=1200[40], value=8, discard=20) -> -1000[32]
+  256:[52] Return(ret=1142[40], value=8, discard=20) -> -1000[32]
    32:[40] VarFloat(var[32]) -> -1000[40]
    35:[48] ConstInt(val=1000) -> 1000[48]
    40:[52] MinSingleInt(v1=1000[48]) -> -1000[48]
    41:[52] ConvFloatFromInt(v1=-1000[48]) -> -1000[48]
    42:[56] EqFloat(v1=-1000[40], v2=-1000[48]) -> true[40]
-   43:[41] GotoFalseWord(jump=1217, if_false=true[40])
-   46:[40] GotoWord(jump=1271)
+   43:[41] GotoFalseWord(jump=49, if_false=true[40])
+   46:[40] GotoWord(jump=103)
   103:[40] FreeText(var[8])
   106:[40] Return(ret=4294967295[4], value=0, discard=36)
 Finished

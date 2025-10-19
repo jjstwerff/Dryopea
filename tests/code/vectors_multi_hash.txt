@@ -18,219 +18,318 @@ pub fn test() {
         "Test failed {test_value} != 27"
     );
 }
-Type 15:Cat[1]:Enum(["A", "B", "C"])
+Type 17:Cat[1]:Enum(["A", "B", "C"])
 
-Type 16:Count[13]:
+Type 18:Count[13]:
     c:Cat[12]
     t:text[4]
     v:integer[8]
 
-Type 17:Counting[12]:
+Type 19:Counting[12]:
     v:ordered<Count[t,v]>[4] other [1]
     h:hash<Count[c,t]>[8] other [65535]
 
-Type 18:ordered<Count[t,v]>[4]:Ordered(16, [(1, true), (2, true)]) keys [tp:6 desc:false field:4, tp:1 desc:false field:8, ]
+Type 20:ordered<Count[t,v]>[4]:Ordered(18, [(1, true), (2, true)]) keys [tp:6 desc:false field:4, tp:1 desc:false field:8, ]
 
-Type 19:hash<Count[c,t]>[4]:Hash(16, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ]
+Type 21:hash<Count[c,t]>[4]:Hash(18, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ]
 
-Type 20:vector<Count>[4]:Vector(16)
+Type 22:vector<Count>[4]:Vector(18)
 
-fn fill(c:Counting) {#1 block
-  {#2 vector
-    OpClear(OpGetField(c, 4i32, 18i32), 18i32);
-    _elm_1:ref(Count)["c"] = OpNewRecord(c, 17i32, 0i32);
-    {#3 object
-      OpSetEnum(_elm_1, 12i32, 1u8(15));
-      OpSetText(_elm_1, 4i32, "One");
-      OpSetInt(_elm_1, 8i32, 1i32);
-    }#3;
-    OpFinishRecord(c, _elm_1, 17i32, 0i32);
-    _elm_1:ref(Count)["c"] = OpNewRecord(c, 17i32, 0i32);
-    {#4 object
-      OpSetEnum(_elm_1, 12i32, 2u8(15));
-      OpSetText(_elm_1, 4i32, "Two");
-      OpSetInt(_elm_1, 8i32, 2i32);
-    }#4;
-    OpFinishRecord(c, _elm_1, 17i32, 0i32);
-    _elm_1:ref(Count)["c"] = OpNewRecord(c, 17i32, 0i32);
-    {#5 object
-      OpSetEnum(_elm_1, 12i32, 3u8(15));
-      OpSetText(_elm_1, 4i32, "Two");
-      OpSetInt(_elm_1, 8i32, 20i32);
-    }#5;
-    OpFinishRecord(c, _elm_1, 17i32, 0i32);
-    _elm_1:ref(Count)["c"] = OpNewRecord(c, 17i32, 0i32);
-    {#6 object
-      OpSetEnum(_elm_1, 12i32, 1u8(15));
-      OpSetText(_elm_1, 4i32, "Three");
-      OpSetInt(_elm_1, 8i32, 3i32);
-    }#6;
-    OpFinishRecord(c, _elm_1, 17i32, 0i32);
-    _elm_1:ref(Count)["c"] = OpNewRecord(c, 17i32, 0i32);
-    {#7 object
-      OpSetEnum(_elm_1, 12i32, 3u8(15));
-      OpSetText(_elm_1, 4i32, "Four");
-      OpSetInt(_elm_1, 8i32, 4i32);
-    }#7;
-    OpFinishRecord(c, _elm_1, 17i32, 0i32);
-  }#2;
-}#1
+fn fill(c:Counting) {#block(1):void
+  _elm_1(1):ref(Count)["c"] = OpNewRecord(c(0), 19i32, 0i32);
+  OpSetEnum(_elm_1(1), 12i32, 1u8(17));
+  OpSetText(_elm_1(1), 4i32, "One");
+  OpSetInt(_elm_1(1), 8i32, 1i32);
+  OpFinishRecord(c(0), _elm_1(1), 19i32, 0i32);
+  _elm_1(1):ref(Count)["c"] = OpNewRecord(c(0), 19i32, 0i32);
+  OpSetEnum(_elm_1(1), 12i32, 2u8(17));
+  OpSetText(_elm_1(1), 4i32, "Two");
+  OpSetInt(_elm_1(1), 8i32, 2i32);
+  OpFinishRecord(c(0), _elm_1(1), 19i32, 0i32);
+  _elm_1(1):ref(Count)["c"] = OpNewRecord(c(0), 19i32, 0i32);
+  OpSetEnum(_elm_1(1), 12i32, 3u8(17));
+  OpSetText(_elm_1(1), 4i32, "Two");
+  OpSetInt(_elm_1(1), 8i32, 20i32);
+  OpFinishRecord(c(0), _elm_1(1), 19i32, 0i32);
+  _elm_1(1):ref(Count)["c"] = OpNewRecord(c(0), 19i32, 0i32);
+  OpSetEnum(_elm_1(1), 12i32, 1u8(17));
+  OpSetText(_elm_1(1), 4i32, "Three");
+  OpSetInt(_elm_1(1), 8i32, 3i32);
+  OpFinishRecord(c(0), _elm_1(1), 19i32, 0i32);
+  _elm_1(1):ref(Count)["c"] = OpNewRecord(c(0), 19i32, 0i32);
+  OpSetEnum(_elm_1(1), 12i32, 3u8(17));
+  OpSetText(_elm_1(1), 4i32, "Four");
+  OpSetInt(_elm_1(1), 8i32, 4i32);
+  OpFinishRecord(c(0), _elm_1(1), 19i32, 0i32);
+}#block(1):void
 
-byte-code for multi_hash:fill(c: ref(Counting)[0]) [1073]
-   0[12]: return-address
-   0[16]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
-   3[28]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=ordered<Count[t,v]>[4]:Ordered(16, [(1, true), (2, true)]) keys [tp:6 desc:false field:4, tp:1 desc:false field:8, ][18]
-   6[28]: Clear(data: ref(reference), tp=18)
-   9[16]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
-  12[28]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
-  17[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
-  20[40]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[15]
-  22[41]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
-  25[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
-  28[40]: ConstText(_value="One") -> text
-  33[56]: SetText(v1: ref(reference), fld=4, val: text)
-  36[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
-  39[40]: ConstInt(val=1) -> integer
-  44[44]: SetInt(v1: ref(reference), fld=8, val: integer)
-  47[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
-  50[40]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
-  53[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
-  58[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
-  61[40]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
-  66[40]: PutRef(var[16], value: ref(reference))
-  69[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
-  72[40]: ConstEnum(val=2) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[15]
-  74[41]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
-  77[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
-  80[40]: ConstText(_value="Two") -> text
-  85[56]: SetText(v1: ref(reference), fld=4, val: text)
-  88[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
-  91[40]: ConstInt(val=2) -> integer
-  96[44]: SetInt(v1: ref(reference), fld=8, val: integer)
-  99[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
- 102[40]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 105[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
- 110[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
- 113[40]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
- 118[40]: PutRef(var[16], value: ref(reference))
- 121[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 124[40]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[15]
- 126[41]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
- 129[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 132[40]: ConstText(_value="Two") -> text
- 137[56]: SetText(v1: ref(reference), fld=4, val: text)
- 140[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 143[40]: ConstInt(val=20) -> integer
- 148[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 151[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
- 154[40]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 157[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
- 162[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
- 165[40]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
- 170[40]: PutRef(var[16], value: ref(reference))
- 173[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 176[40]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[15]
- 178[41]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
- 181[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 184[40]: ConstText(_value="Three") -> text
- 191[56]: SetText(v1: ref(reference), fld=4, val: text)
- 194[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 197[40]: ConstInt(val=3) -> integer
- 202[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 205[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
- 208[40]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 211[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
- 216[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
- 219[40]: NewRecord(data: ref(reference), parent_tp=17, fld=0) -> ref(reference)
- 224[40]: PutRef(var[16], value: ref(reference))
- 227[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 230[40]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[15]
- 232[41]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
- 235[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 238[40]: ConstText(_value="Four") -> text
- 244[56]: SetText(v1: ref(reference), fld=4, val: text)
- 247[28]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 250[40]: ConstInt(val=4) -> integer
- 255[44]: SetInt(v1: ref(reference), fld=8, val: integer)
- 258[28]: VarRef(var[0]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[0]:ref(Counting) in 0
- 261[40]: VarRef(var[16]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[16] var=_elm_1[16]:ref(Count)["c"] in 2
- 264[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=0)
- 269[28]: FreeStack(value=0, discard=12)
- 273[16]: Return(ret=12, value=0, discard=16)
+byte-code for multi_hash:fill(c: ref(Counting)[4]) [1110]
+   0[16]: return-address
+   0[20]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+   3[32]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+   8[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+  11[44]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[17]
+  13[45]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
+  16[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+  19[44]: ConstText(_value="One") -> text
+  24[60]: SetText(v1: ref(reference), fld=4, val: text)
+  27[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+  30[44]: ConstInt(val=1) -> integer
+  35[48]: SetInt(v1: ref(reference), fld=8, val: integer)
+  38[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+  41[44]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+  44[56]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+  49[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+  52[44]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+  57[44]: PutRef(var[20], value: ref(reference))
+  60[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+  63[44]: ConstEnum(val=2) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[17]
+  65[45]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
+  68[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+  71[44]: ConstText(_value="Two") -> text
+  76[60]: SetText(v1: ref(reference), fld=4, val: text)
+  79[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+  82[44]: ConstInt(val=2) -> integer
+  87[48]: SetInt(v1: ref(reference), fld=8, val: integer)
+  90[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+  93[44]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+  96[56]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 101[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+ 104[44]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+ 109[44]: PutRef(var[20], value: ref(reference))
+ 112[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 115[44]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[17]
+ 117[45]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
+ 120[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 123[44]: ConstText(_value="Two") -> text
+ 128[60]: SetText(v1: ref(reference), fld=4, val: text)
+ 131[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 134[44]: ConstInt(val=20) -> integer
+ 139[48]: SetInt(v1: ref(reference), fld=8, val: integer)
+ 142[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+ 145[44]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 148[56]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 153[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+ 156[44]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+ 161[44]: PutRef(var[20], value: ref(reference))
+ 164[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 167[44]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[17]
+ 169[45]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
+ 172[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 175[44]: ConstText(_value="Three") -> text
+ 182[60]: SetText(v1: ref(reference), fld=4, val: text)
+ 185[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 188[44]: ConstInt(val=3) -> integer
+ 193[48]: SetInt(v1: ref(reference), fld=8, val: integer)
+ 196[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+ 199[44]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 202[56]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 207[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+ 210[44]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+ 215[44]: PutRef(var[20], value: ref(reference))
+ 218[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 221[44]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[17]
+ 223[45]: SetEnum(v1: ref(reference), fld=12, val: enumerate)
+ 226[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 229[44]: ConstText(_value="Four") -> text
+ 235[60]: SetText(v1: ref(reference), fld=4, val: text)
+ 238[32]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 241[44]: ConstInt(val=4) -> integer
+ 246[48]: SetInt(v1: ref(reference), fld=8, val: integer)
+ 249[32]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[4]:ref(Counting)
+ 252[44]: VarRef(var[20]) -> ref(reference) type=Count[13]:{c:Cat[12], t:text[4], v:integer[8]}[18] var=_elm_1[20]:ref(Count)["c"]
+ 255[56]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 260[32]: Return(ret=12, value=0, discard=28)
 
-fn test() {#1 block
-  __ref_1:ref(Counting) = null;
-  __work_1:text = "";
-  test_value:integer = {#2 block
-    c:ref(Counting)["__ref_1"] = {#3 object
-      OpDatabase(__ref_1, 17i32);
-      OpSetInt(__ref_1, 4i32, 0i32);
-      OpSetInt(__ref_1, 8i32, 0i32);
-      __ref_1;
-    }#3:ref(Counting)["__ref_1"];
-    fill(c);
-    OpAddInt(OpAddInt(OpGetInt(OpGetRecord(OpGetField(c, 8i32, 19i32), 19i32, 2i32, 1u8(15), "Three"), 8i32), OpGetInt(OpGetRecord(OpGetField(c, 8i32, 19i32), 19i32, 2i32, 3u8(15), "Two"), 8i32)), OpGetInt(OpGetRecord(OpGetField(c, 4i32, 18i32), 18i32, 2i32, "Four", 4i32), 8i32));
-  }#2:integer;
-  if OpEqInt(test_value, 27i32) null else OpPanic({#4 formatting string
-    __work_1:text = "Test failed ";
-    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1, " != 27");
-    __work_1;
-  }#4:text);
-}#1
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):integer = {#block(2):integer
+    c(2):ref(Counting) = null;
+    OpDatabase(c(2), 19i32);
+    OpSetInt(c(2), 4i32, 0i32);
+    OpSetInt(c(2), 8i32, 0i32);
+    fill(c(2));
+    OpAddInt(OpAddInt(OpGetInt(OpGetRecord(OpGetField(c(2), 8i32, 21i32), 21i32, 2i32, 1u8(17), "Three"), 8i32), OpGetInt(OpGetRecord(OpGetField(c(2), 8i32, 21i32), 21i32, 2i32, 3u8(17), "Two"), 8i32)), OpGetInt(OpGetRecord(OpGetField(c(2), 4i32, 20i32), 20i32, 2i32, "Four", 4i32), 8i32));
+    OpFreeRef(c(2));
+  }#block(2):integer;
+  if OpEqInt(test_value(1), 27i32) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 27");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for multi_hash:test() [1352]
-   0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Counting) in 1
-   1[16]: Text() var=__work_1[16]:text in 1
-   2[40]: Database(var[4], db_tp=17) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[40]:ref(Counting)["__ref_1"] in 2
-   7[40]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=__ref_1[4]:ref(Counting) in 1
-  10[52]: ConstInt(val=0) -> integer
-  15[56]: SetInt(v1: ref(reference), fld=4, val: integer)
-  18[40]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=__ref_1[4]:ref(Counting) in 1
-  21[52]: ConstInt(val=0) -> integer
-  26[56]: SetInt(v1: ref(reference), fld=8, val: integer)
-  29[40]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=__ref_1[4]:ref(Counting) in 1
-  32[52]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[40]:ref(Counting)["__ref_1"] in 2
-  35[64]: Call(size=0, to=1073)
-  42[52]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[40]:ref(Counting)["__ref_1"] in 2
-  45[64]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[c,t]>[4]:Hash(16, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ][19]
-  48[64]: ConstText(_value="Three") -> text
-  55[80]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[15]
-  57[81]: GetRecord(data: ref(reference), db_tp=19, no_keys=2) -> ref(reference)
-  61[64]: GetInt(v1: ref(reference), fld=8) -> integer
-  64[56]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[40]:ref(Counting)["__ref_1"] in 2
-  67[68]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[c,t]>[4]:Hash(16, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ][19]
-  70[68]: ConstText(_value="Two") -> text
-  75[84]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[15]
-  77[85]: GetRecord(data: ref(reference), db_tp=19, no_keys=2) -> ref(reference)
-  81[68]: GetInt(v1: ref(reference), fld=8) -> integer
-  84[60]: AddInt(v1: integer, v2: integer) -> integer
-  85[56]: VarRef(var[40]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=c[40]:ref(Counting)["__ref_1"] in 2
-  88[68]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=ordered<Count[t,v]>[4]:Ordered(16, [(1, true), (2, true)]) keys [tp:6 desc:false field:4, tp:1 desc:false field:8, ][18]
-  91[68]: ConstInt(val=4) -> integer
-  96[72]: ConstText(_value="Four") -> text
- 102[88]: GetRecord(data: ref(reference), db_tp=18, no_keys=2) -> ref(reference)
- 106[68]: GetInt(v1: ref(reference), fld=8) -> integer
- 109[60]: AddInt(v1: integer, v2: integer) -> integer
- 110[56]: FreeStack(value=4, discard=16) type=integer[4]:Base[0]
- 114[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
- 117[48]: ConstInt(val=27) -> integer
- 122[52]: EqInt(v1: integer, v2: integer) -> boolean
- 123[45]: GotoFalseWord(jump=129, if_false: boolean)
- 126[44]: GotoWord(jump=179)
- 129[44]: ClearText(var[16]) var=__work_1[16]:text in 1
- 132[44]: ConstText(_value="Test failed ") -> text
- 146[60]: AppendText(var[16], v1: text)
- 149[44]: VarInt(var[40]) -> integer var=test_value[40]:integer in 1
- 152[48]: ConstInt(val=0) -> integer
- 157[52]: FormatInt(var[16], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 164[44]: ConstText(_value=" != 27") -> text
- 172[60]: AppendText(var[16], v1: text)
- 175[44]: VarText(var[16]) -> text var=__work_1[16]:text in 1
- 178[60]: Panic(message: text)
- 179[44]: FreeText(var[16])
- 182[44]: VarRef(var[4]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[17] var=__ref_1[4]:ref(Counting) in 1
- 185[56]: FreeRef(v1: ref(reference))
- 186[44]: Return(ret=0, value=0, discard=44)
+byte-code for multi_hash:test() [1376]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: ConvRefFromNull() -> ref(reference) var=c[32]:ref(Counting)
+   2[44]: Database(var[32], db_tp=19) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19]
+   7[44]: VarRef(var[32]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[32]:ref(Counting)
+  10[56]: ConstInt(val=0) -> integer
+  15[60]: SetInt(v1: ref(reference), fld=4, val: integer)
+  18[44]: VarRef(var[32]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[32]:ref(Counting)
+  21[56]: ConstInt(val=0) -> integer
+  26[60]: SetInt(v1: ref(reference), fld=8, val: integer)
+  29[44]: VarRef(var[32]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[32]:ref(Counting)
+  32[56]: Call(size=0, to=1110)
+  39[44]: VarRef(var[32]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[32]:ref(Counting)
+  42[56]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[c,t]>[4]:Hash(18, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ][21]
+  45[56]: ConstText(_value="Three") -> text
+  52[72]: ConstEnum(val=1) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[17]
+  54[73]: GetRecord(data: ref(reference), db_tp=21, no_keys=2) -> ref(reference)
+  58[56]: GetInt(v1: ref(reference), fld=8) -> integer
+  61[48]: VarRef(var[32]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[32]:ref(Counting)
+  64[60]: GetField(v1: ref(reference), fld=8) -> ref(reference) type=hash<Count[c,t]>[4]:Hash(18, [0, 1]) keys [tp:7 desc:false field:12, tp:6 desc:false field:4, ][21]
+  67[60]: ConstText(_value="Two") -> text
+  72[76]: ConstEnum(val=3) -> enumerate type=Cat[1]:Enum(["A", "B", "C"])[17]
+  74[77]: GetRecord(data: ref(reference), db_tp=21, no_keys=2) -> ref(reference)
+  78[60]: GetInt(v1: ref(reference), fld=8) -> integer
+  81[52]: AddInt(v1: integer, v2: integer) -> integer
+  82[48]: VarRef(var[32]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[32]:ref(Counting)
+  85[60]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=ordered<Count[t,v]>[4]:Ordered(18, [(1, true), (2, true)]) keys [tp:6 desc:false field:4, tp:1 desc:false field:8, ][20]
+  88[60]: ConstInt(val=4) -> integer
+  93[64]: ConstText(_value="Four") -> text
+  99[80]: GetRecord(data: ref(reference), db_tp=20, no_keys=2) -> ref(reference)
+ 103[60]: GetInt(v1: ref(reference), fld=8) -> integer
+ 106[52]: AddInt(v1: integer, v2: integer) -> integer
+ 107[48]: VarRef(var[32]) -> ref(reference) type=Counting[12]:{v:ordered<Count[t,v]>[4] other [1], h:hash<Count[c,t]>[8] other [65535]}[19] var=c[32]:ref(Counting)
+ 110[60]: FreeRef(v1: ref(reference))
+ 111[48]: FreeStack(value=4, discard=16)
+ 115[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+ 118[40]: ConstInt(val=27) -> integer
+ 123[44]: EqInt(v1: integer, v2: integer) -> boolean
+ 124[37]: GotoFalseWord(jump=130, if_false: boolean)
+ 127[36]: GotoWord(jump=180)
+ 130[36]: ClearText(var[8]) var=__work_1[8]:text
+ 133[36]: ConstText(_value="Test failed ") -> text
+ 147[52]: AppendText(var[8], v1: text)
+ 150[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+ 153[40]: ConstInt(val=0) -> integer
+ 158[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+ 165[36]: ConstText(_value=" != 27") -> text
+ 173[52]: AppendText(var[8], v1: text)
+ 176[36]: VarText(var[8]) -> text var=__work_1[8]:text
+ 179[52]: Panic(message: text)
+ 180[36]: FreeText(var[8])
+ 183[36]: Return(ret=0, value=0, discard=32)
 
+Execute test:
+    0:[8] Text()
+    1:[32] ConvRefFromNull() -> ref(1,0,0)[32]
+    2:[44] Database(var[32], db_tp=19)
+    7:[44] VarRef(var[32]) -> ref(1,1,0)={v:[]}[44]
+   10:[56] ConstInt(val=0) -> 0[56]
+   15:[60] SetInt(v1=ref(1,1,0)[44], fld=4, val=0[56])
+   18:[44] VarRef(var[32]) -> ref(1,1,0)={v:[]}[44]
+   21:[56] ConstInt(val=0) -> 0[56]
+   26:[60] SetInt(v1=ref(1,1,0)[44], fld=8, val=0[56])
+   29:[44] VarRef(var[32]) -> ref(1,1,0)={v:[]}[44]
+   32:[56] Call(size=0, to=1110)
+ 1110:[60] VarRef(var[44]) -> ref(1,1,0)={v:[]}[60]
+ 1113:[72] NewRecord(data=ref(1,1,0)[60], parent_tp=19, fld=0) -> ref(1,13,0)[60]
+ 1118:[72] VarRef(var[60]) -> ref(1,13,0)={}[72]
+ 1121:[84] ConstEnum(val=1) -> A(1)[84]
+ 1123:[85] SetEnum(v1=ref(1,13,0)[72], fld=12, val=1[84])
+ 1126:[72] VarRef(var[60]) -> ref(1,13,0)={c:A}[72]
+ 1129:[84] ConstText(_value="One") -> "One"[84]
+ 1134:[100] SetText(v1=ref(1,13,0)[72], fld=4, val="One"[84])
+ 1137:[72] VarRef(var[60]) -> ref(1,13,0)={c:A,t:"One"}[72]
+ 1140:[84] ConstInt(val=1) -> 1[84]
+ 1145:[88] SetInt(v1=ref(1,13,0)[72], fld=8, val=1[84])
+ 1148:[72] VarRef(var[44]) -> ref(1,1,0)={v:[]}[72]
+ 1151:[84] VarRef(var[60]) -> ref(1,13,0)={c:A,t:"One",v:1}[84]
+ 1154:[96] FinishRecord(data=ref(1,1,0)[72], rec=ref(1,13,0)[84], parent_tp=19, fld=0)
+ 1159:[72] VarRef(var[44]) -> ref(1,1,0)={v:[{c:A,t:"One",v:1}]}[72]
+ 1162:[84] NewRecord(data=ref(1,1,0)[72], parent_tp=19, fld=0) -> ref(1,33,0)[72]
+ 1167:[84] PutRef(var[60], value=ref(1,33,0)[72])
+ 1170:[72] VarRef(var[60]) -> ref(1,33,0)={}[72]
+ 1173:[84] ConstEnum(val=2) -> B(2)[84]
+ 1175:[85] SetEnum(v1=ref(1,33,0)[72], fld=12, val=2[84])
+ 1178:[72] VarRef(var[60]) -> ref(1,33,0)={c:B}[72]
+ 1181:[84] ConstText(_value="Two") -> "Two"[84]
+ 1186:[100] SetText(v1=ref(1,33,0)[72], fld=4, val="Two"[84])
+ 1189:[72] VarRef(var[60]) -> ref(1,33,0)={c:B,t:"Two"}[72]
+ 1192:[84] ConstInt(val=2) -> 2[84]
+ 1197:[88] SetInt(v1=ref(1,33,0)[72], fld=8, val=2[84])
+ 1200:[72] VarRef(var[44]) -> ref(1,1,0)={v:[{c:A,t:"One",v:1}]}[72]
+ 1203:[84] VarRef(var[60]) -> ref(1,33,0)={c:B,t:"Two",v:2}[84]
+ 1206:[96] FinishRecord(data=ref(1,1,0)[72], rec=ref(1,33,0)[84], parent_tp=19, fld=0)
+ 1211:[72] VarRef(var[44]) -> ref(1,1,0)={v:[{c:A,t:"One",v:1},{c:B,t:"Two",v:2}]}[72]
+ 1214:[84] NewRecord(data=ref(1,1,0)[72], parent_tp=19, fld=0) -> ref(1,37,0)[72]
+ 1219:[84] PutRef(var[60], value=ref(1,37,0)[72])
+ 1222:[72] VarRef(var[60]) -> ref(1,37,0)={}[72]
+ 1225:[84] ConstEnum(val=3) -> C(3)[84]
+ 1227:[85] SetEnum(v1=ref(1,37,0)[72], fld=12, val=3[84])
+ 1230:[72] VarRef(var[60]) -> ref(1,37,0)={c:C}[72]
+ 1233:[84] ConstText(_value="Two") -> "Two"[84]
+ 1238:[100] SetText(v1=ref(1,37,0)[72], fld=4, val="Two"[84])
+ 1241:[72] VarRef(var[60]) -> ref(1,37,0)={c:C,t:"Two"}[72]
+ 1244:[84] ConstInt(val=20) -> 20[84]
+ 1249:[88] SetInt(v1=ref(1,37,0)[72], fld=8, val=20[84])
+ 1252:[72] VarRef(var[44]) -> ref(1,1,0)={v:[{c:A,t:"One",v:1},{c:B,t:"Two",v:2}]}[72]
+ 1255:[84] VarRef(var[60]) -> ref(1,37,0)={c:C,t:"Two",v:20}[84]
+ 1258:[96] FinishRecord(data=ref(1,1,0)[72], rec=ref(1,37,0)[84], parent_tp=19, fld=0)
+ 1263:[72] VarRef(var[44]) -> ref(1,1,0)={v:[{c:A,t:"One",v:1},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[72]
+ 1266:[84] NewRecord(data=ref(1,1,0)[72], parent_tp=19, fld=0) -> ref(1,41,0)[72]
+ 1271:[84] PutRef(var[60], value=ref(1,41,0)[72])
+ 1274:[72] VarRef(var[60]) -> ref(1,41,0)={}[72]
+ 1277:[84] ConstEnum(val=1) -> A(1)[84]
+ 1279:[85] SetEnum(v1=ref(1,41,0)[72], fld=12, val=1[84])
+ 1282:[72] VarRef(var[60]) -> ref(1,41,0)={c:A}[72]
+ 1285:[84] ConstText(_value="Three") -> "Three"[84]
+ 1292:[100] SetText(v1=ref(1,41,0)[72], fld=4, val="Three"[84])
+ 1295:[72] VarRef(var[60]) -> ref(1,41,0)={c:A,t:"Three"}[72]
+ 1298:[84] ConstInt(val=3) -> 3[84]
+ 1303:[88] SetInt(v1=ref(1,41,0)[72], fld=8, val=3[84])
+ 1306:[72] VarRef(var[44]) -> ref(1,1,0)={v:[{c:A,t:"One",v:1},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[72]
+ 1309:[84] VarRef(var[60]) -> ref(1,41,0)={c:A,t:"Three",v:3}[84]
+ 1312:[96] FinishRecord(data=ref(1,1,0)[72], rec=ref(1,41,0)[84], parent_tp=19, fld=0)
+ 1317:[72] VarRef(var[44]) -> ref(1,1,0)={v:[{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[72]
+ 1320:[84] NewRecord(data=ref(1,1,0)[72], parent_tp=19, fld=0) -> ref(1,45,0)[72]
+ 1325:[84] PutRef(var[60], value=ref(1,45,0)[72])
+ 1328:[72] VarRef(var[60]) -> ref(1,45,0)={}[72]
+ 1331:[84] ConstEnum(val=3) -> C(3)[84]
+ 1333:[85] SetEnum(v1=ref(1,45,0)[72], fld=12, val=3[84])
+ 1336:[72] VarRef(var[60]) -> ref(1,45,0)={c:C}[72]
+ 1339:[84] ConstText(_value="Four") -> "Four"[84]
+ 1345:[100] SetText(v1=ref(1,45,0)[72], fld=4, val="Four"[84])
+ 1348:[72] VarRef(var[60]) -> ref(1,45,0)={c:C,t:"Four"}[72]
+ 1351:[84] ConstInt(val=4) -> 4[84]
+ 1356:[88] SetInt(v1=ref(1,45,0)[72], fld=8, val=4[84])
+ 1359:[72] VarRef(var[44]) -> ref(1,1,0)={v:[{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[72]
+ 1362:[84] VarRef(var[60]) -> ref(1,45,0)={c:C,t:"Four",v:4}[84]
+ 1365:[96] FinishRecord(data=ref(1,1,0)[72], rec=ref(1,45,0)[84], parent_tp=19, fld=0)
+ 1370:[72] Return(ret=1415[56], value=0, discard=28)
+   39:[44] VarRef(var[32]) -> ref(1,1,0)={v:[{c:C,t:"Four",v:4},{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[44]
+   42:[56] GetField(v1=ref(1,1,0)[44], fld=8) -> ref(1,1,8)=[{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Four",v:4},{c:C,t:"Two",v:20}][44]
+   45:[56] ConstText(_value="Three") -> "Three"[56]
+   52:[72] ConstEnum(val=1) -> A(1)[72]
+   54:[73] GetRecord(data=ref(1,1,8)[44], db_tp=21, no_keys=2, key1=A(1)[72], key2="Three"[56]) -> ref(1,41,0)[44]
+   58:[56] GetInt(v1=ref(1,41,0)[44], fld=8) -> 3[44]
+   61:[48] VarRef(var[32]) -> ref(1,1,0)={v:[{c:C,t:"Four",v:4},{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[48]
+   64:[60] GetField(v1=ref(1,1,0)[48], fld=8) -> ref(1,1,8)=[{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Four",v:4},{c:C,t:"Two",v:20}][48]
+   67:[60] ConstText(_value="Two") -> "Two"[60]
+   72:[76] ConstEnum(val=3) -> C(3)[76]
+   74:[77] GetRecord(data=ref(1,1,8)[48], db_tp=21, no_keys=2, key1=C(3)[76], key2="Two"[60]) -> ref(1,37,0)[48]
+   78:[60] GetInt(v1=ref(1,37,0)[48], fld=8) -> 20[48]
+   81:[52] AddInt(v1=3[44], v2=20[48]) -> 23[44]
+   82:[48] VarRef(var[32]) -> ref(1,1,0)={v:[{c:C,t:"Four",v:4},{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[48]
+   85:[60] GetField(v1=ref(1,1,0)[48], fld=4) -> ref(1,1,4)=[{c:C,t:"Four",v:4},{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}][48]
+   88:[60] ConstInt(val=4) -> 4[60]
+   93:[64] ConstText(_value="Four") -> "Four"[64]
+   99:[80] GetRecord(data=ref(1,1,4)[48], db_tp=20, no_keys=2, key1="Four"[64], key2=4[60]) -> ref(1,45,0)[48]
+  103:[60] GetInt(v1=ref(1,45,0)[48], fld=8) -> 4[48]
+  106:[52] AddInt(v1=23[44], v2=4[48]) -> 27[44]
+  107:[48] VarRef(var[32]) -> ref(1,1,0)={v:[{c:C,t:"Four",v:4},{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[48]
+  110:[60] FreeRef(v1=ref(1,1,0)[48])
+  111:[48] FreeStack(value=4, discard=16)
+  115:[36] VarInt(var[32]) -> 27[36]
+  118:[40] ConstInt(val=27) -> 27[40]
+  123:[44] EqInt(v1=27[36], v2=27[40]) -> true[36]
+  124:[37] GotoFalseWord(jump=130, if_false=true[36])
+  127:[36] GotoWord(jump=180)
+  180:[36] FreeText(var[8])
+  183:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished

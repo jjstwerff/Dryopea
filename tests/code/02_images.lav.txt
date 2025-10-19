@@ -32,113 +32,99 @@ Type 15:main_vector<File>[8]:
 
 Type 16:vector<File>[4]:Vector(13)
 
-fn _tp_Pixel_value(self:Pixel) -> integer {#block_1:integer
-  OpAddInt(OpAddInt(OpMulInt(OpGetByte(self, 0i32, 0i32), 65536i32), OpMulInt(OpGetByte(self, 1i32, 0i32), 256i32)), OpGetByte(self, 2i32, 0i32));
-}#block_1:integer
+fn _tp_Pixel_value(self:Pixel) -> integer {#block(1):integer
+  OpAddInt(OpAddInt(OpMulInt(OpGetByte(self(0), 0i32, 0i32), 65536i32), OpMulInt(OpGetByte(self(0), 1i32, 0i32), 256i32)), OpGetByte(self(0), 2i32, 0i32));
+}#block(1):integer
 
-fn _tp_File_content(self:File, result:&text) -> text["result"] {#block_1:&text["result"]
-  result:&text(0) = "";
-  txt:text(1) = "";
-  OpGetFileText(self, OpCreateRef(txt));
-  OpAppendText(result, txt);
-  OpFreeText(txt);
-  result;
-}#block_1:&text["result"]
+fn _tp_File_content(self:File, result:&text) -> text["result"] {#block(1):&text["result"]
+  result(0):&text = "";
+  txt(1):text = "";
+  OpGetFileText(self(0), OpCreateRef(txt(1)));
+  OpAppendRefText(OpVarRef(result(0)), 0i32, txt(1));
+  OpFreeText(txt(1));
+  result(0);
+}#block(1):&text["result"]
 
-fn _tp_File_lines(self:File, l:vector<text>) -> vector<text>["??"] {#block_1:vector<text>["l"]
-  __ref_3:ref(main_vector<text>)(1) = null;
-  __ref_2:ref(main_vector<text>)(1) = null;
-  __ref_1:ref(main_vector<text>)(1) = null;
-  __work_2:text(1) = "";
-  __work_1:text(1) = "";
-  OpDatabase(__ref_1, 14i32);
-  l:vector<text>["__ref_3"](0) = OpGetField(__ref_1, 4i32, 65535i32);
-  OpSetInt(__ref_1, 4i32, 0i32);
-  c:text(1) = _tp_File_content(self, {#default ref_2:ref(reference)["__work_1"]
-    OpCreateRef(__work_1);
-  }#default ref_2:ref(reference)["__work_1"]);
-  p:integer(1) = 0i32;
-  {#For block_3:void
-    ch#index:integer(3) = 0i32;
+fn _tp_File_lines(self:File, l:vector<text>) -> vector<text>["??"] {#block(1):vector<text>["l"]
+  __ref_1(1):ref(main_vector<text>) = null;
+  __work_1(1):text = "";
+  OpDatabase(__ref_1(1), 14i32);
+  l(0):vector<text>["__ref_1"] = OpGetField(__ref_1(1), 4i32, 7i32);
+  OpSetInt(__ref_1(1), 4i32, 0i32);
+  c(1):text = _tp_File_content(self(0), {#default ref(2):ref(reference)["__work_1"]
+    OpCreateRef(__work_1(1));
+  }#default ref(2):ref(reference)["__work_1"]);
+  p(1):integer = 0i32;
+  {#For block(3):void
+    ch#index(3):integer = 0i32;
     loop {#For loop_4
-      ch:text["c"](4) = {#for text next_5:text["c"]
-        __work_2:text(1) = OpGetTextSub(c, ch#index, -2147483648i32);
-        ch#index:integer(3) = OpAddInt(ch#index, OpLengthText(__work_2));
-        __work_2;
-      }#for text next_5:text["c"];
-      if OpNot(OpConvBoolFromText(ch)) {#break_6:void
-        OpFreeText(ch);
+      ch(4):character = {#for text next(5):character
+        _for_result_1(5):character = OpGetCharacter(c(1), ch#index(3));
+        ch#index(3):integer = OpAddInt(ch#index(3), OpLengthCharacter(_for_result_1(5)));
+        _for_result_1(5);
+      }#for text next(5):character;
+      if OpNot(OpConvBoolFromCharacter(ch(4))) {#break(6):void
         break(0);
-      }#break_6:void else null;
-      {#block_7:void
-        if OpEqText(ch, "
-") {#block_8:void
-          OpDatabase(__ref_2, 14i32);
-          l:vector<text>["__ref_3"](0) = OpGetField(__ref_2, 4i32, 65535i32);
-          OpSetInt(__ref_2, 4i32, 0i32);
-          _elm_1:ref(boolean)["__ref_2"](8) = OpNewRecord(l, 7i32, 65535i32);
-          OpSetText(_elm_1, 0i32, OpGetTextSub(c, p, OpMinInt(ch#index, 1i32)));
-          OpFinishRecord(l, _elm_1, 7i32, 65535i32);
-          p:integer(1) = OpMinSingleInt(1i32);
-        }#block_8:void else if OpLtInt(p, 0i32) {#block_9:void
-          p:integer(1) = ch#index;
-        }#block_9:void else null;
-      }#block_7:void;
-      OpFreeText(ch);
+      }#break(6):void else null;
+      {#block(7):void
+        if OpEqBool(OpConvBoolFromCharacter(ch(4)), OpConvBoolFromText("
+")) {#block(8):void
+          _elm_2(8):ref(boolean)["l"] = OpNewRecord(l(0), 7i32, 65535i32);
+          OpSetText(_elm_2(8), 0i32, OpGetTextSub(c(1), p(1), OpMinInt(ch#index(3), 1i32)));
+          OpFinishRecord(l(0), _elm_2(8), 7i32, 65535i32);
+          p(1):integer = OpMinSingleInt(1i32);
+        }#block(8):void else if OpLtInt(p(1), 0i32) {#block(9):void
+          p(1):integer = ch#index(3);
+        }#block(9):void else null;
+      }#block(7):void;
     }#For loop_4;
-  }#For block_3:void;
-  if OpGtInt(p, 0i32) {#block_10:void
-    OpDatabase(__ref_3, 14i32);
-    l:vector<text>["__ref_3"](0) = OpGetField(__ref_3, 4i32, 65535i32);
-    OpSetInt(__ref_3, 4i32, 0i32);
-    _elm_2:ref(boolean)["__ref_3"](10) = OpNewRecord(l, 7i32, 65535i32);
-    OpSetText(_elm_2, 0i32, OpGetTextSub(c, p, _tp_text_len(c)));
-    OpFinishRecord(l, _elm_2, 7i32, 65535i32);
-  }#block_10:void else null;
-  OpFreeText(c);
-  OpFreeText(__work_1);
-  OpFreeText(__work_2);
-  OpFreeRef(__ref_1);
-  OpFreeRef(__ref_2);
-  OpFreeRef(__ref_3);
-  l;
-}#block_1:vector<text>["l"]
+  }#For block(3):void;
+  if OpGtInt(p(1), 0i32) {#block(10):void
+    _elm_3(10):ref(boolean)["l"] = OpNewRecord(l(0), 7i32, 65535i32);
+    OpSetText(_elm_3(10), 0i32, OpGetTextSub(c(1), p(1), _tp_text_len(c(1))));
+    OpFinishRecord(l(0), _elm_3(10), 7i32, 65535i32);
+  }#block(10):void else null;
+  OpFreeText(c(1));
+  OpFreeText(__work_1(1));
+  OpFreeRef(__ref_1(1));
+  l(0);
+}#block(1):vector<text>["l"]
 
-fn file(path:text, result:File) -> File["result"] {#block_1:ref(File)["result"]
-  OpDatabase(result, 13i32);
-  OpSetText(result, 4i32, path);
-  OpSetLong(result, 8i32, 0i64);
-  OpSetByte(result, 16i32, 0i32, if false 1i32 else 0i32);
-  if OpGetFile(result) {#block_2:ref(File)["result"]
-    result;
-  }#block_2:ref(File)["result"] else {#block_3:null
+fn file(path:text, result:File) -> File["result"] {#block(1):ref(File)["result"]
+  OpDatabase(result(0), 13i32);
+  OpSetText(result(0), 4i32, path(0));
+  OpSetLong(result(0), 8i32, 0i64);
+  OpSetByte(result(0), 16i32, 0i32, if false 1i32 else 0i32);
+  if OpGetFile(result(0)) {#block(2):ref(File)["result"]
+    result(0);
+  }#block(2):ref(File)["result"] else {#block(3):null
     OpConvRefFromNull();
-  }#block_3:null;
-}#block_1:ref(File)["result"]
+  }#block(3):null;
+}#block(1):ref(File)["result"]
 
-fn _tp_File_files(self:File, result:vector<ref(File)>) -> vector<ref(File)>["??"] {#block_1:vector<ref(File)>["result"]
-  __ref_1:ref(main_vector<File>)(1) = null;
-  OpDatabase(__ref_1, 15i32);
-  result:vector<ref(File)>["__ref_1"](0) = OpGetField(__ref_1, 4i32, 65535i32);
-  OpSetInt(__ref_1, 4i32, 0i32);
-  if OpEqInt(OpGetByte(self, 16i32, 0i32), 1i32) {#block_2:void
-    drop OpGetDir(OpGetText(self, 4i32), result);
-  }#block_2:void else null;
-  OpFreeRef(__ref_1);
-  result;
-}#block_1:vector<ref(File)>["result"]
+fn _tp_File_files(self:File, result:vector<ref(File)>) -> vector<ref(File)>["??"] {#block(1):vector<ref(File)>["result"]
+  __ref_1(1):ref(main_vector<File>) = null;
+  OpDatabase(__ref_1(1), 15i32);
+  result(0):vector<ref(File)>["__ref_1"] = OpGetField(__ref_1(1), 4i32, 16i32);
+  OpSetInt(__ref_1(1), 4i32, 0i32);
+  if OpEqInt(OpGetByte(self(0), 16i32, 0i32), 1i32) {#block(2):void
+    drop OpGetDir(OpGetText(self(0), 4i32), result(0));
+  }#block(2):void else null;
+  OpFreeRef(__ref_1(1));
+  result(0);
+}#block(1):vector<ref(File)>["result"]
 
-fn _tp_File_png(self:File, result:Image) -> Image["result"] {#block_1:ref(Image)["result"]
-  if OpNot(OpEqInt(OpGetByte(self, 16i32, 0i32), 1i32)) {#block_2:ref(Image)["result"]
-    OpDatabase(result, 11i32);
-    OpSetText(result, 4i32, "");
-    OpSetInt(result, 8i32, 0i32);
-    OpSetInt(result, 12i32, 0i32);
-    OpSetInt(result, 16i32, 0i32);
-    drop OpGetPngImage(OpGetText(self, 4i32), result);
-    result;
-  }#block_2:ref(Image)["result"] else {#block_3:null
+fn _tp_File_png(self:File, result:Image) -> Image["result"] {#block(1):ref(Image)["result"]
+  if OpNot(OpEqInt(OpGetByte(self(0), 16i32, 0i32), 1i32)) {#block(2):ref(Image)["result"]
+    OpDatabase(result(0), 11i32);
+    OpSetText(result(0), 4i32, "");
+    OpSetInt(result(0), 8i32, 0i32);
+    OpSetInt(result(0), 12i32, 0i32);
+    OpSetInt(result(0), 16i32, 0i32);
+    drop OpGetPngImage(OpGetText(self(0), 4i32), result(0));
+    result(0);
+  }#block(2):ref(Image)["result"] else {#block(3):null
     OpConvRefFromNull();
-  }#block_3:null;
-}#block_1:ref(Image)["result"]
+  }#block(3):null;
+}#block(1):ref(Image)["result"]
 

@@ -311,7 +311,7 @@ sum",
 fn fill_fn() {
     code!(
         "pub struct Data {
-    name: text,
+    name: character,
     number: integer
 }
 
@@ -327,6 +327,11 @@ fn data(n: text) -> vector<Data> {
     )
     .expr("d = data(\"test\"); \"{d}\"")
     .result(Value::str(
-        "[{name:\"t\",number:0},{name:\"e\",number:1},{name:\"s\",number:2},{name:\"t\",number:3}]",
+        "[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]",
     ));
+}
+
+#[test]
+fn text_vector() {
+    code!("fn test() { op = [\"+=\", \"*=\"]; for o in op { print(o); }; }");
 }

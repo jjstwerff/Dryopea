@@ -5,35 +5,35 @@ pub fn test() {
         "Test failed {test_value} != \"a1.20b1.34c  1.4d334.10e\""
     );
 }
-fn test() {#block_1:void
-  __work_2:text(1) = "";
-  __work_1:text(1) = "";
-  test_value:text(1) = {#block_2:text
-    {#Formatted string_3:text
-      __work_1:text(1) = "a";
-      OpFormatFloat(__work_1, 1.2f64, 4i32, 2i32);
-      OpAppendText(__work_1, "b");
-      OpFormatFloat(__work_1, 1.34f64, 0i32, 0i32);
-      OpAppendText(__work_1, "c");
-      OpFormatFloat(__work_1, 1.4f64, 5i32, 0i32);
-      OpAppendText(__work_1, "d");
-      OpFormatFloat(__work_1, 334.1f64, 0i32, 2i32);
-      OpAppendText(__work_1, "e");
-      __work_1;
-    }#Formatted string_3:text;
-  }#block_2:text;
-  if OpEqText(test_value, "a1.20b1.34c  1.4d334.10e") null else OpPanic({#Formatted string_4:text
-    __work_2:text(1) = "Test failed ";
-    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_2, " != "a1.20b1.34c  1.4d334.10e"");
-    __work_2;
-  }#Formatted string_4:text);
-  OpFreeText(test_value);
-  OpFreeText(__work_1);
-  OpFreeText(__work_2);
-}#block_1:void
+fn test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  test_value(1):text = {#block(2):text
+    {#Formatted string(3):text
+      __work_1(1):text = "a";
+      OpFormatFloat(__work_1(1), 1.2f64, 4i32, 2i32);
+      OpAppendText(__work_1(1), "b");
+      OpFormatFloat(__work_1(1), 1.34f64, 0i32, 0i32);
+      OpAppendText(__work_1(1), "c");
+      OpFormatFloat(__work_1(1), 1.4f64, 5i32, 0i32);
+      OpAppendText(__work_1(1), "d");
+      OpFormatFloat(__work_1(1), 334.1f64, 0i32, 2i32);
+      OpAppendText(__work_1(1), "e");
+      __work_1(1);
+    }#Formatted string(3):text;
+  }#block(2):text;
+  if OpEqText(test_value(1), "a1.20b1.34c  1.4d334.10e") null else OpPanic({#Formatted string(4):text
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "a1.20b1.34c  1.4d334.10e"");
+    __work_2(1);
+  }#Formatted string(4):text);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
 
-byte-code for format_float:test() [1168]
+byte-code for format_float:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_2[8]:text
    1[32]: Text() var=__work_1[32]:text
@@ -123,8 +123,8 @@ Execute test:
   130:[80] VarText(var[56]) -> "a1.20b1.34c  1.4d334.10e"[80]
   133:[96] ConstText(_value="a1.20b1.34c  1.4d334.10e") -> "a1.20b1.34c  1.4d334.10e"[96]
   159:[112] EqText(v1="a1.20b1.34c  1.4d334.10e"[80], v2="a1.20b1.34c  1.4d334.10e"[96]) -> true[80]
-  160:[81] GotoFalseWord(jump=1334, if_false=true[80])
-  163:[80] GotoWord(jump=1406)
+  160:[81] GotoFalseWord(jump=166, if_false=true[80])
+  163:[80] GotoWord(jump=238)
   238:[80] FreeText(var[56])
   241:[80] FreeText(var[32])
   244:[80] FreeText(var[8])

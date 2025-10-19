@@ -160,6 +160,10 @@ fn _tp_text_len(stores: &mut Stores, var_0: Str) -> i32 { //block_1: integer
   (var_both).len() as i32
 } //block_1: integer
 
+fn _tp_character_len(stores: &mut Stores, var_0: i32) -> i32 { //block_1: integer
+  OpLengthCharacter(stores, var_both)
+} //block_1: integer
+
 fn _tp_vector_len(stores: &mut Stores, var_0: DbRef) -> i32 { //block_1: integer
   vector::length_vector(&(var_both), &s.database.allocations) as i32
 } //block_1: integer
@@ -206,16 +210,13 @@ fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str { //
   var_result = "".to_string();
   var_txt = "".to_string();
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_txt));
-  OpAppendText(stores, var_result, var_txt);
+  OpAppendRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r}, 0_i32, var_txt);
   OpFreeText(stores, var_txt);
   var_result
 } //block_1: &text["result"]
 
 fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<text>["l"]
-  var___ref_3 = Null;
-  var___ref_2 = Null;
   var___ref_1 = Null;
-  var___work_2 = "".to_string();
   var___work_1 = "".to_string();
   OpDatabase(stores, var___ref_1, 14_i32);
   var_l = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((4_i32))};
@@ -227,46 +228,35 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
   { //For block_3: void
     var_ch#index = 0_i32;
     loop { //For loop_4
-      var_ch = { //for text next_5: text["c"]
-        var___work_2 = OpGetTextSub(stores, var_c, var_ch#index, -2147483648_i32);
-        var_ch#index = external::op_add_int((var_ch#index), ((var___work_2).len() as i32));
-        var___work_2
-      } //for text next_5: text["c"];
-      if !(!(var_ch).is_empty()) { //break_6: void
-        OpFreeText(stores, var_ch);
+      var_ch = { //for text next_5: character
+        var__for_result_1 = OpGetCharacter(stores, var_c, var_ch#index);
+        var_ch#index = external::op_add_int((var_ch#index), (OpLengthCharacter(stores, var__for_result_1)));
+        var__for_result_1
+      } //for text next_5: character;
+      if !(external::op_conv_bool_from_int((var_ch))) { //break_6: void
         Break(0)
       } //break_6: void else {Null};
       { //block_7: void
-        if (var_ch) == ("
-".to_string()) { //block_8: void
-          OpDatabase(stores, var___ref_2, 14_i32);
-          var_l = DbRef {store_nr: (var___ref_2).store_nr, rec: (var___ref_2).rec, pos: (var___ref_2).pos + u32::from((4_i32))};
-          {let db = (var___ref_2); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
-          var__elm_1 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
-          {let db = (var__elm_1); let s_val = (OpGetTextSub(stores, var_c, var_p, external::op_min_int((var_ch#index), (1_i32)))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
-          OpFinishRecord(stores, var_l, var__elm_1, 7_i32, 65535_i32);
+        if (external::op_conv_bool_from_int((var_ch))) == (!("
+".to_string()).is_empty()) { //block_8: void
+          var__elm_2 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
+          {let db = (var__elm_2); let s_val = (OpGetTextSub(stores, var_c, var_p, external::op_min_int((var_ch#index), (1_i32)))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
+          OpFinishRecord(stores, var_l, var__elm_2, 7_i32, 65535_i32);
           var_p = external::op_min_single_int((1_i32))
         } //block_8: void else {if (var_p) < (0_i32) { //block_9: void
             var_p = var_ch#index
           } //block_9: void else {Null}}
       } //block_7: void;
-      OpFreeText(stores, var_ch);
     } //For loop_4
   } //For block_3: void;
   if (var_p) > (0_i32) { //block_10: void
-    OpDatabase(stores, var___ref_3, 14_i32);
-    var_l = DbRef {store_nr: (var___ref_3).store_nr, rec: (var___ref_3).rec, pos: (var___ref_3).pos + u32::from((4_i32))};
-    {let db = (var___ref_3); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
-    var__elm_2 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
-    {let db = (var__elm_2); let s_val = (OpGetTextSub(stores, var_c, var_p, _tp_text_len(stores, var_c))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
-    OpFinishRecord(stores, var_l, var__elm_2, 7_i32, 65535_i32)
+    var__elm_3 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
+    {let db = (var__elm_3); let s_val = (OpGetTextSub(stores, var_c, var_p, _tp_text_len(stores, var_c))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
+    OpFinishRecord(stores, var_l, var__elm_3, 7_i32, 65535_i32)
   } //block_10: void else {Null};
   OpFreeText(stores, var_c);
   OpFreeText(stores, var___work_1);
-  OpFreeText(stores, var___work_2);
   OpFreeRef(stores, var___ref_1);
-  OpFreeRef(stores, var___ref_2);
-  OpFreeRef(stores, var___ref_3);
   var_l
 } //block_1: vector<text>["l"]
 
@@ -288,7 +278,7 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
   var_result = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((4_i32))};
   {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) { //block_2: void
-    Drop(Call(323, [Call(268, [Var(0), Int(4)]), Var(1)]))
+    Drop(Call(325, [Call(270, [Var(0), Int(4)]), Var(1)]))
   } //block_2: void else {Null};
   OpFreeRef(stores, var___ref_1);
   var_result
@@ -301,7 +291,7 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //bl
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
-    Drop(Call(324, [Call(268, [Var(0), Int(4)]), Var(1)]));
+    Drop(Call(326, [Call(270, [Var(0), Int(4)]), Var(1)]));
     var_result
   } //block_2: ref(Image)["result"] else { //block_3: null
     stores.null()

@@ -5,18 +5,157 @@ pub fn test() {
         "Test failed {test_value} != \"♥♥♥😃😃😃😃.\""
     );
 }
-fn test() {#1 block
-  __work_1:text = "";
-  test_value:text = {#2 block
-    a:text = "♥😃";
-    OpAddTextChar(OpAddText(OpAddTextChar(OpAddTextChar(OpAddTextChar(OpAddTextChar(OpAddTextChar(OpAddCharacter(OpGetCharacter(a, 0i32), OpGetCharacter(a, 1i32)), OpGetCharacter(a, 2i32)), OpGetCharacter(a, 3i32)), OpGetCharacter(a, 4i32)), OpGetCharacter(a, 5i32)), OpGetCharacter(a, 6i32)), "."), OpGetCharacter(a, 7i32));
-  }#2:text;
-  if OpEqText(test_value, "♥♥♥😃😃😃😃.") null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
-    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != "♥♥♥😃😃😃😃."");
-    __work_1;
-  }#3:text);
-}#1
+fn test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
+    a(2):text = "♥😃";
+    {#Add text(3):text["__work_1"]
+      OpClearText(__work_1(1));
+      OpAppendCharacter(__work_1(1), OpGetCharacter(a(2), 0i32));
+      OpAppendCharacter(__work_1(1), OpGetCharacter(a(2), 1i32));
+      OpAppendCharacter(__work_1(1), OpGetCharacter(a(2), 2i32));
+      OpAppendCharacter(__work_1(1), OpGetCharacter(a(2), 3i32));
+      OpAppendCharacter(__work_1(1), OpGetCharacter(a(2), 4i32));
+      OpAppendCharacter(__work_1(1), OpGetCharacter(a(2), 5i32));
+      OpAppendCharacter(__work_1(1), OpGetCharacter(a(2), 6i32));
+      OpAppendText(__work_1(1), ".");
+      OpAppendCharacter(__work_1(1), OpGetCharacter(a(2), 7i32));
+      OpFreeText(a(2));
+      __work_1(1);
+    }#Add text(3):text["__work_1"];
+  }#block(2):text["__work_1"];
+  if OpEqText(test_value(1), "♥♥♥😃😃😃😃.") null else OpPanic({#Formatted string(4):text
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "♥♥♥😃😃😃😃."");
+    __work_2(1);
+  }#Formatted string(4):text);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
 
-byte-code for utf8_index:
+byte-code for utf8_index:test() [1110]
+   0[4]: return-address
+   0[8]: Text() var=__work_2[8]:text
+   1[32]: Text() var=__work_1[32]:text
+   2[56]: Text() var=test_value[56]:text["__work_1"]
+   3[80]: Text() var=a[80]:text
+   4[104]: ConstText(_value="♥😃") -> text
+  13[120]: AppendText(var[80], v1: text)
+  16[104]: ClearText(var[32])
+  19[104]: VarText(var[80]) -> text var=a[80]:text
+  22[120]: ConstInt(val=0) -> integer
+  27[124]: GetCharacter(v1: text, v2: integer) -> character
+  28[108]: AppendCharacter(var[32], v1: character)
+  31[104]: VarText(var[80]) -> text var=a[80]:text
+  34[120]: ConstInt(val=1) -> integer
+  39[124]: GetCharacter(v1: text, v2: integer) -> character
+  40[108]: AppendCharacter(var[32], v1: character)
+  43[104]: VarText(var[80]) -> text var=a[80]:text
+  46[120]: ConstInt(val=2) -> integer
+  51[124]: GetCharacter(v1: text, v2: integer) -> character
+  52[108]: AppendCharacter(var[32], v1: character)
+  55[104]: VarText(var[80]) -> text var=a[80]:text
+  58[120]: ConstInt(val=3) -> integer
+  63[124]: GetCharacter(v1: text, v2: integer) -> character
+  64[108]: AppendCharacter(var[32], v1: character)
+  67[104]: VarText(var[80]) -> text var=a[80]:text
+  70[120]: ConstInt(val=4) -> integer
+  75[124]: GetCharacter(v1: text, v2: integer) -> character
+  76[108]: AppendCharacter(var[32], v1: character)
+  79[104]: VarText(var[80]) -> text var=a[80]:text
+  82[120]: ConstInt(val=5) -> integer
+  87[124]: GetCharacter(v1: text, v2: integer) -> character
+  88[108]: AppendCharacter(var[32], v1: character)
+  91[104]: VarText(var[80]) -> text var=a[80]:text
+  94[120]: ConstInt(val=6) -> integer
+  99[124]: GetCharacter(v1: text, v2: integer) -> character
+ 100[108]: AppendCharacter(var[32], v1: character)
+ 103[104]: ConstText(_value=".") -> text
+ 106[120]: AppendText(var[32], v1: text)
+ 109[104]: VarText(var[80]) -> text var=a[80]:text
+ 112[120]: ConstInt(val=7) -> integer
+ 117[124]: GetCharacter(v1: text, v2: integer) -> character
+ 118[108]: AppendCharacter(var[32], v1: character)
+ 121[104]: FreeText(var[80])
+ 124[104]: VarText(var[32]) -> text var=__work_1[32]:text
+ 127[120]: FreeStack(value=16, discard=40)
+ 131[96]: AppendText(var[56], v1: text)
+ 134[80]: VarText(var[56]) -> text var=test_value[56]:text["__work_1"]
+ 137[96]: ConstText(_value="♥♥♥😃😃😃😃.") -> text
+ 165[112]: EqText(v1: text, v2: text) -> boolean
+ 166[81]: GotoFalseWord(jump=172, if_false: boolean)
+ 169[80]: GotoWord(jump=246)
+ 172[80]: ClearText(var[8]) var=__work_2[8]:text
+ 175[80]: ConstText(_value="Test failed ") -> text
+ 189[96]: AppendText(var[8], v1: text)
+ 192[80]: VarText(var[56]) -> text var=test_value[56]:text["__work_1"]
+ 195[96]: ConstInt(val=0) -> integer
+ 200[100]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+ 205[80]: ConstText(_value=" != "♥♥♥😃😃😃😃."") -> text
+ 239[96]: AppendText(var[8], v1: text)
+ 242[80]: VarText(var[8]) -> text var=__work_2[8]:text
+ 245[96]: Panic(message: text)
+ 246[80]: FreeText(var[56])
+ 249[80]: FreeText(var[32])
+ 252[80]: FreeText(var[8])
+ 255[80]: Return(ret=0, value=0, discard=76)
+
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] Text()
+    4:[104] ConstText(_value="♥😃") -> "♥😃"[104]
+   13:[120] AppendText(var[80], v1="♥😃"[104])
+   16:[104] ClearText(var[32])
+   19:[104] VarText(var[80]) -> "♥😃"[104]
+   22:[120] ConstInt(val=0) -> 0[120]
+   27:[124] GetCharacter(v1="♥😃"[104], v2=0[120]) -> '♥'[104]
+   28:[108] AppendCharacter(var[32], v1='♥'[104])
+   31:[104] VarText(var[80]) -> "♥😃"[104]
+   34:[120] ConstInt(val=1) -> 1[120]
+   39:[124] GetCharacter(v1="♥😃"[104], v2=1[120]) -> '♥'[104]
+   40:[108] AppendCharacter(var[32], v1='♥'[104])
+   43:[104] VarText(var[80]) -> "♥😃"[104]
+   46:[120] ConstInt(val=2) -> 2[120]
+   51:[124] GetCharacter(v1="♥😃"[104], v2=2[120]) -> '♥'[104]
+   52:[108] AppendCharacter(var[32], v1='♥'[104])
+   55:[104] VarText(var[80]) -> "♥😃"[104]
+   58:[120] ConstInt(val=3) -> 3[120]
+   63:[124] GetCharacter(v1="♥😃"[104], v2=3[120]) -> '😃'[104]
+   64:[108] AppendCharacter(var[32], v1='😃'[104])
+   67:[104] VarText(var[80]) -> "♥😃"[104]
+   70:[120] ConstInt(val=4) -> 4[120]
+   75:[124] GetCharacter(v1="♥😃"[104], v2=4[120]) -> '😃'[104]
+   76:[108] AppendCharacter(var[32], v1='😃'[104])
+   79:[104] VarText(var[80]) -> "♥😃"[104]
+   82:[120] ConstInt(val=5) -> 5[120]
+   87:[124] GetCharacter(v1="♥😃"[104], v2=5[120]) -> '😃'[104]
+   88:[108] AppendCharacter(var[32], v1='😃'[104])
+   91:[104] VarText(var[80]) -> "♥😃"[104]
+   94:[120] ConstInt(val=6) -> 6[120]
+   99:[124] GetCharacter(v1="♥😃"[104], v2=6[120]) -> '😃'[104]
+  100:[108] AppendCharacter(var[32], v1='😃'[104])
+  103:[104] ConstText(_value=".") -> "."[104]
+  106:[120] AppendText(var[32], v1="."[104])
+  109:[104] VarText(var[80]) -> "♥😃"[104]
+  112:[120] ConstInt(val=7) -> 7[120]
+  117:[124] GetCharacter(v1="♥😃"[104], v2=7[120]) -> null[104]
+  118:[108] AppendCharacter(var[32], v1=null[104])
+  121:[104] FreeText(var[80])
+  124:[104] VarText(var[32]) -> "♥♥♥😃😃😃😃."[104]
+  127:[120] FreeStack(value=16, discard=40)
+  131:[96] AppendText(var[56], v1="♥♥♥😃😃😃😃."[80])
+  134:[80] VarText(var[56]) -> "♥♥♥😃😃😃😃."[80]
+  137:[96] ConstText(_value="♥♥♥😃😃😃😃.") -> "♥♥♥😃😃😃😃."[96]
+  165:[112] EqText(v1="♥♥♥😃😃😃😃."[80], v2="♥♥♥😃😃😃😃."[96]) -> true[80]
+  166:[81] GotoFalseWord(jump=172, if_false=true[80])
+  169:[80] GotoWord(jump=246)
+  246:[80] FreeText(var[56])
+  249:[80] FreeText(var[32])
+  252:[80] FreeText(var[8])
+  255:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

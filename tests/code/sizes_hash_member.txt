@@ -16,23 +16,23 @@ Type 17:S[20]:
 Type 18:Main[8]:
     s:hash<S[b]>[4]
 
-Type 19:hash<S[b]>[4]:Hash(17, [1]) keys [tp:2 desc:false field:8, tp:2 desc:false field:8, ]
+Type 19:hash<S[b]>[4]:Hash(17, [1]) keys [tp:2 desc:false field:8, ]
 
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:integer(1) = {#block_2:integer
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):integer = {#block(2):integer
     OpAddInt(20i32, OpMulInt(100i32, 8i32));
-  }#block_2:integer;
-  if OpEqInt(test_value, 820i32) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1, " != 820");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):integer;
+  if OpEqInt(test_value(1), 820i32) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 820");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for hash_member:test() [1168]
+byte-code for hash_member:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstInt(val=20) -> integer var=test_value[32]:integer
@@ -68,8 +68,8 @@ Execute test:
    18:[36] VarInt(var[32]) -> 820[36]
    21:[40] ConstInt(val=820) -> 820[40]
    26:[44] EqInt(v1=820[36], v2=820[40]) -> true[36]
-   27:[37] GotoFalseWord(jump=1201, if_false=true[36])
-   30:[36] GotoWord(jump=1252)
+   27:[37] GotoFalseWord(jump=33, if_false=true[36])
+   30:[36] GotoWord(jump=84)
    84:[36] FreeText(var[8])
    87:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

@@ -5,22 +5,22 @@ pub fn test() {
         "Test failed {test_value} != \"1.1\""
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:text(1) = {#block_2:text
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):text = {#block(2):text
     "1.1";
-  }#block_2:text;
-  if OpEqText(test_value, "1.1") null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != "1.1"");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(test_value);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):text;
+  if OpEqText(test_value(1), "1.1") null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != "1.1"");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for expr_str:test() [1168]
+byte-code for expr_str:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: Text() var=test_value[32]:text
@@ -53,8 +53,8 @@ Execute test:
    10:[56] VarText(var[32]) -> "1.1"[56]
    13:[72] ConstText(_value="1.1") -> "1.1"[72]
    18:[88] EqText(v1="1.1"[56], v2="1.1"[72]) -> true[56]
-   19:[57] GotoFalseWord(jump=1193, if_false=true[56])
-   22:[56] GotoWord(jump=1244)
+   19:[57] GotoFalseWord(jump=25, if_false=true[56])
+   22:[56] GotoWord(jump=76)
    76:[56] FreeText(var[32])
    79:[56] FreeText(var[8])
    82:[56] Return(ret=4294967295[4], value=0, discard=52)

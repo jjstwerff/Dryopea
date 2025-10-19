@@ -5,33 +5,33 @@ pub fn test() {
         "Test failed {test_value} != \"a  +2b12c true d\""
     );
 }
-fn test() {#block_1:void
-  __work_2:text(1) = "";
-  __work_1:text(1) = "";
-  test_value:text(1) = {#block_2:text
-    {#Formatted string_3:text
-      __work_1:text(1) = "a";
-      OpFormatLong(__work_1, OpAddLong(1i64, OpConvLongFromInt(1i32)), 10i32, 4i32, 32i32, true, false);
-      OpAppendText(__work_1, "b");
-      OpFormatInt(__work_1, OpCastIntFromLong(12i64), 10i32, 0i32, 32i32, false, false);
-      OpAppendText(__work_1, "c ");
-      OpFormatBool(__work_1, OpGeLong(OpMulLong(2i64, OpRemLong(4i64, 6i64)), OpConvLongFromInt(8i32)), 0i32, -1i32, 32i32);
-      OpAppendText(__work_1, " d");
-      __work_1;
-    }#Formatted string_3:text;
-  }#block_2:text;
-  if OpEqText(test_value, "a  +2b12c true d") null else OpPanic({#Formatted string_4:text
-    __work_2:text(1) = "Test failed ";
-    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_2, " != "a  +2b12c true d"");
-    __work_2;
-  }#Formatted string_4:text);
-  OpFreeText(test_value);
-  OpFreeText(__work_1);
-  OpFreeText(__work_2);
-}#block_1:void
+fn test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  test_value(1):text = {#block(2):text
+    {#Formatted string(3):text
+      __work_1(1):text = "a";
+      OpFormatLong(__work_1(1), OpAddLong(1i64, OpConvLongFromInt(1i32)), 10i32, 4i32, 32i32, true, false);
+      OpAppendText(__work_1(1), "b");
+      OpFormatInt(__work_1(1), OpCastIntFromLong(12i64), 10i32, 0i32, 32i32, false, false);
+      OpAppendText(__work_1(1), "c ");
+      OpFormatBool(__work_1(1), OpGeLong(OpMulLong(2i64, OpRemLong(4i64, 6i64)), OpConvLongFromInt(8i32)), 0i32, -1i32, 32i32);
+      OpAppendText(__work_1(1), " d");
+      __work_1(1);
+    }#Formatted string(3):text;
+  }#block(2):text;
+  if OpEqText(test_value(1), "a  +2b12c true d") null else OpPanic({#Formatted string(4):text
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "a  +2b12c true d"");
+    __work_2(1);
+  }#Formatted string(4):text);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
 
-byte-code for format_long:test() [1168]
+byte-code for format_long:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_2[8]:text
    1[32]: Text() var=__work_1[32]:text
@@ -125,8 +125,8 @@ Execute test:
   134:[80] VarText(var[56]) -> "a  +2b12c true d"[80]
   137:[96] ConstText(_value="a  +2b12c true d") -> "a  +2b12c true d"[96]
   155:[112] EqText(v1="a  +2b12c true d"[80], v2="a  +2b12c true d"[96]) -> true[80]
-  156:[81] GotoFalseWord(jump=1330, if_false=true[80])
-  159:[80] GotoWord(jump=1394)
+  156:[81] GotoFalseWord(jump=162, if_false=true[80])
+  159:[80] GotoWord(jump=226)
   226:[80] FreeText(var[56])
   229:[80] FreeText(var[32])
   232:[80] FreeText(var[8])

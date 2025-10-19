@@ -5,32 +5,31 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-fn test() {#block_1:void
-  __work_2:text(1) = "";
-  __work_1:text(1) = "";
-  test_value:boolean(1) = {#block_2:boolean
-    t:text(2) = "longer";
-    v:text(2) = "a longer text";
-    _res_5:boolean(2) = _tp_text_contains(v, {#Formatted string_3:text
-      __work_1:text(1) = "a ";
-      OpFormatText(__work_1, t, 0i32, -1i32, 32i32);
-      __work_1;
-    }#Formatted string_3:text);
-    OpFreeText(t);
-    OpFreeText(v);
-    _res_5;
-  }#block_2:boolean;
-  if OpEqBool(test_value, true) null else OpPanic({#Formatted string_4:text
-    __work_2:text(1) = "Test failed ";
-    OpFormatBool(__work_2, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_2, " != true");
-    __work_2;
-  }#Formatted string_4:text);
-  OpFreeText(__work_1);
-  OpFreeText(__work_2);
-}#block_1:void
+fn test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  test_value(1):boolean = {#block(2):boolean
+    t(2):text = "longer";
+    v(2):text = "a longer text";
+    _tp_text_contains(v(2), {#Formatted string(3):text
+      __work_1(1):text = "a ";
+      OpFormatText(__work_1(1), t(2), 0i32, -1i32, 32i32);
+      __work_1(1);
+    }#Formatted string(3):text);
+    OpFreeText(t(2));
+    OpFreeText(v(2));
+  }#block(2):boolean;
+  if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(4):text
+    __work_2(1):text = "Test failed ";
+    OpFormatBool(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != true");
+    __work_2(1);
+  }#Formatted string(4):text);
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
 
-byte-code for contains:test() [1168]
+byte-code for contains:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_2[8]:text
    1[32]: Text() var=__work_1[32]:text
@@ -51,26 +50,25 @@ byte-code for contains:test() [1168]
   62[136]: StaticCall(_tp_text_contains)
   65[105]: FreeText(var[56])
   68[105]: FreeText(var[80])
-  71[105]: VarBool(var[104]) -> boolean var=_res_5[104]:boolean
-  74[106]: FreeStack(value=1, discard=50) type=boolean[1]:Base[4]
-  78[57]: VarBool(var[56]) -> boolean var=test_value[56]:boolean
-  81[58]: ConstTrue() -> boolean
-  82[59]: EqBool(v1: boolean, v2: boolean) -> boolean
-  83[58]: GotoFalseWord(jump=89, if_false: boolean)
-  86[57]: GotoWord(jump=139)
-  89[57]: ClearText(var[8]) var=__work_2[8]:text
-  92[57]: ConstText(_value="Test failed ") -> text
- 106[73]: AppendText(var[8], v1: text)
- 109[57]: VarBool(var[56]) -> boolean var=test_value[56]:boolean
- 112[58]: ConstInt(val=0) -> integer
- 117[62]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
- 122[57]: ConstText(_value=" != true") -> text
- 132[73]: AppendText(var[8], v1: text)
- 135[57]: VarText(var[8]) -> text var=__work_2[8]:text
- 138[73]: Panic(message: text)
- 139[57]: FreeText(var[32])
- 142[57]: FreeText(var[8])
- 145[57]: Return(ret=0, value=0, discard=53)
+  71[105]: FreeStack(value=1, discard=49)
+  75[57]: VarBool(var[56]) -> boolean var=test_value[56]:boolean
+  78[58]: ConstTrue() -> boolean
+  79[59]: EqBool(v1: boolean, v2: boolean) -> boolean
+  80[58]: GotoFalseWord(jump=86, if_false: boolean)
+  83[57]: GotoWord(jump=136)
+  86[57]: ClearText(var[8]) var=__work_2[8]:text
+  89[57]: ConstText(_value="Test failed ") -> text
+ 103[73]: AppendText(var[8], v1: text)
+ 106[57]: VarBool(var[56]) -> boolean var=test_value[56]:boolean
+ 109[58]: ConstInt(val=0) -> integer
+ 114[62]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
+ 119[57]: ConstText(_value=" != true") -> text
+ 129[73]: AppendText(var[8], v1: text)
+ 132[57]: VarText(var[8]) -> text var=__work_2[8]:text
+ 135[73]: Panic(message: text)
+ 136[57]: FreeText(var[32])
+ 139[57]: FreeText(var[8])
+ 142[57]: Return(ret=0, value=0, discard=53)
 
 Execute test:
     0:[8] Text()
@@ -92,14 +90,13 @@ Execute test:
    62:[136] StaticCall(_tp_text_contains)
    65:[105] FreeText(var[56])
    68:[105] FreeText(var[80])
-   71:[105] VarBool(var[104]) -> true[105]
-   74:[106] FreeStack(value=1, discard=50)
-   78:[57] VarBool(var[56]) -> true[57]
-   81:[58] ConstTrue() -> true[58]
-   82:[59] EqBool(v1=true[57], v2=true[58]) -> true[57]
-   83:[58] GotoFalseWord(jump=1257, if_false=true[57])
-   86:[57] GotoWord(jump=1307)
-  139:[57] FreeText(var[32])
-  142:[57] FreeText(var[8])
-  145:[57] Return(ret=4294967295[4], value=0, discard=53)
+   71:[105] FreeStack(value=1, discard=49)
+   75:[57] VarBool(var[56]) -> true[57]
+   78:[58] ConstTrue() -> true[58]
+   79:[59] EqBool(v1=true[57], v2=true[58]) -> true[57]
+   80:[58] GotoFalseWord(jump=86, if_false=true[57])
+   83:[57] GotoWord(jump=136)
+  136:[57] FreeText(var[32])
+  139:[57] FreeText(var[8])
+  142:[57] Return(ret=4294967295[4], value=0, discard=53)
 Finished

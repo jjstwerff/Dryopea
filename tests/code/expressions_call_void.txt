@@ -3,27 +3,28 @@ fn routine(a: integer) {return;}
 pub fn test() {
     routine(5);
 }
-fn routine(a:integer) {#block_1:void
+fn routine(a:integer) {#block(1):void
   return null;
-}#block_1:void
+}#block(1):void
 
-byte-code for call_void:routine(a: integer[4]) [1168]
+byte-code for call_void:routine(a: integer[4]) [1110]
    0[8]: return-address
    0[12]: Return(ret=4, value=0, discard=8)
+   6[12]: Return(ret=4, value=0, discard=8)
 
-fn test() {#block_1:void
+fn test() {#block(1):void
   routine(5i32);
-}#block_1:void
+}#block(1):void
 
-byte-code for call_void:test() [1174]
+byte-code for call_void:test() [1122]
    0[4]: return-address
    0[8]: ConstInt(val=5) -> integer
-   5[12]: Call(size=0, to=1168)
+   5[12]: Call(size=0, to=1110)
   12[8]: Return(ret=0, value=0, discard=4)
 
 Execute test:
     0:[8] ConstInt(val=5) -> 5[8]
-    5:[12] Call(size=0, to=1168)
- 1168:[16] Return(ret=1186[12], value=0, discard=8)
+    5:[12] Call(size=0, to=1110)
+ 1110:[16] Return(ret=1134[12], value=0, discard=8)
    12:[8] Return(ret=4294967295[4], value=0, discard=4)
 Finished

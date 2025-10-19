@@ -5,21 +5,21 @@ pub fn test() {
         "Test failed {test_value} != 3142"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:float(1) = {#block_2:float
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):float = {#block(2):float
     _tp_float_round(OpMulFloat(OpMathPiFloat(), 1000f64));
-  }#block_2:float;
-  if OpEqFloat(test_value, OpConvFloatFromInt(3142i32)) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatFloat(__work_1, test_value, 0i32, 0i32);
-    OpAppendText(__work_1, " != 3142");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):float;
+  if OpEqFloat(test_value(1), OpConvFloatFromInt(3142i32)) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
+    OpAppendText(__work_1(1), " != 3142");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for constants:test() [1168]
+byte-code for constants:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: MathPiFloat() -> float var=test_value[32]:float
@@ -54,13 +54,13 @@ Execute test:
    12:[40] Call(size=0, to=272)
   272:[44] VarFloat(var[32]) -> 3141.592653589793[44]
   275:[52] MathRoundFloat(v1=3141.592653589793[44]) -> 3142[44]
-  276:[52] Return(ret=1187[40], value=8, discard=20) -> 3142[32]
+  276:[52] Return(ret=1129[40], value=8, discard=20) -> 3142[32]
    19:[40] VarFloat(var[32]) -> 3142[40]
    22:[48] ConstInt(val=3142) -> 3142[48]
    27:[52] ConvFloatFromInt(v1=3142[48]) -> 3142[48]
    28:[56] EqFloat(v1=3142[40], v2=3142[48]) -> true[40]
-   29:[41] GotoFalseWord(jump=1203, if_false=true[40])
-   32:[40] GotoWord(jump=1256)
+   29:[41] GotoFalseWord(jump=35, if_false=true[40])
+   32:[40] GotoWord(jump=88)
    88:[40] FreeText(var[8])
    91:[40] Return(ret=4294967295[4], value=0, discard=36)
 Finished

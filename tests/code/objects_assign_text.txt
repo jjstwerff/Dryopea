@@ -1,0 +1,207 @@
+struct Object{a: text}
+
+pub fn test() {
+    test_value = {o = Object {a: "a"};
+        o.a = "b";
+        o.a += "c";
+        o.a += "d" + "e";
+        o.a = "{o.a}f";
+        "{o}"};
+    assert(
+        test_value == "{{a:\"bcdef\"}}",
+        "Test failed {test_value} != \"{{a:\"bcdef\"}}\""
+    );
+}
+Type 17:Object[8]:
+    a:text[4]
+
+fn test() {#block(1):void
+  __work_3(1):text = "";
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  test_value(1):text = {#block(2):text
+    o(2):ref(Object) = null;
+    OpDatabase(o(2), 17i32);
+    OpSetText(o(2), 4i32, "a");
+    OpSetText(o(2), 4i32, "b");
+    _field_1(2):text = OpGetText(o(2), 4i32);
+    OpAppendText(_field_1(2), "c");
+    OpSetText(o(2), 4i32, _field_1(2));
+    _field_2(2):text = OpGetText(o(2), 4i32);
+    OpAppendText(_field_2(2), "d");
+    OpAppendText(_field_2(2), "e");
+    OpSetText(o(2), 4i32, _field_2(2));
+    OpSetText(o(2), 4i32, {#Formatted string(3):text
+      __work_1(1):text = "";
+      OpFormatText(__work_1(1), OpGetText(o(2), 4i32), 0i32, -1i32, 32i32);
+      OpAppendText(__work_1(1), "f");
+      __work_1(1);
+    }#Formatted string(3):text);
+    {#Formatted string(4):text
+      __work_2(1):text = "";
+      OpFormatDatabase(__work_2(1), o(2), 17i32, false);
+      OpFreeRef(o(2));
+      OpFreeText(_field_1(2));
+      OpFreeText(_field_2(2));
+      __work_2(1);
+    }#Formatted string(4):text;
+  }#block(2):text;
+  if OpEqText(test_value(1), "{a:"bcdef"}") null else OpPanic({#Formatted string(5):text
+    __work_3(1):text = "Test failed ";
+    OpFormatText(__work_3(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_3(1), " != "{a:"bcdef"}"");
+    __work_3(1);
+  }#Formatted string(5):text);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+  OpFreeText(__work_3(1));
+}#block(1):void
+
+byte-code for assign_text:test() [1110]
+   0[4]: return-address
+   0[8]: Text() var=__work_3[8]:text
+   1[32]: Text() var=__work_2[32]:text
+   2[56]: Text() var=__work_1[56]:text
+   3[80]: Text() var=test_value[80]:text
+   4[104]: ConvRefFromNull() -> ref(reference) var=o[104]:ref(Object)
+   5[116]: Database(var[104], db_tp=17) type=Object[8]:{a:text[4]}[17]
+  10[116]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+  13[128]: ConstText(_value="a") -> text
+  16[144]: SetText(v1: ref(reference), fld=4, val: text)
+  19[116]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+  22[128]: ConstText(_value="b") -> text
+  25[144]: SetText(v1: ref(reference), fld=4, val: text)
+  28[116]: Text() var=_field_1[116]:text
+  29[140]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+  32[152]: GetText(v1: ref(reference), fld=4) -> text["test_value"]
+  35[156]: AppendText(var[116], v1: text)
+  38[140]: ConstText(_value="c") -> text
+  41[156]: AppendText(var[116], v1: text)
+  44[140]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+  47[152]: VarText(var[116]) -> text var=_field_1[116]:text
+  50[168]: SetText(v1: ref(reference), fld=4, val: text)
+  53[140]: Text() var=_field_2[140]:text
+  54[164]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+  57[176]: GetText(v1: ref(reference), fld=4) -> text["test_value"]
+  60[180]: AppendText(var[140], v1: text)
+  63[164]: ConstText(_value="d") -> text
+  66[180]: AppendText(var[140], v1: text)
+  69[164]: ConstText(_value="e") -> text
+  72[180]: AppendText(var[140], v1: text)
+  75[164]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+  78[176]: VarText(var[140]) -> text var=_field_2[140]:text
+  81[192]: SetText(v1: ref(reference), fld=4, val: text)
+  84[164]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+  87[176]: ClearText(var[56]) var=__work_1[56]:text
+  90[176]: ConstText(_value="") -> text
+  92[192]: AppendText(var[56], v1: text)
+  95[176]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+  98[188]: GetText(v1: ref(reference), fld=4) -> text["test_value"]
+ 101[192]: ConstInt(val=0) -> integer
+ 106[196]: FormatText(var[56], val: text, width: integer, dir=-1, token=32)
+ 111[176]: ConstText(_value="f") -> text
+ 114[192]: AppendText(var[56], v1: text)
+ 117[176]: VarText(var[56]) -> text var=__work_1[56]:text
+ 120[192]: SetText(v1: ref(reference), fld=4, val: text)
+ 123[164]: ClearText(var[32]) var=__work_2[32]:text
+ 126[164]: ConstText(_value="") -> text
+ 128[180]: AppendText(var[32], v1: text)
+ 131[164]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+ 134[176]: FormatDatabase(var[32], val: ref(reference), db_tp=17, pretty=false)
+ 140[164]: VarRef(var[104]) -> ref(reference) type=Object[8]:{a:text[4]}[17] var=o[104]:ref(Object)
+ 143[176]: FreeRef(v1: ref(reference))
+ 144[164]: FreeText(var[116])
+ 147[164]: FreeText(var[140])
+ 150[164]: VarText(var[32]) -> text var=__work_2[32]:text
+ 153[180]: FreeStack(value=16, discard=76)
+ 157[120]: AppendText(var[80], v1: text)
+ 160[104]: VarText(var[80]) -> text var=test_value[80]:text
+ 163[120]: ConstText(_value="{a:"bcdef"}") -> text
+ 176[136]: EqText(v1: text, v2: text) -> boolean
+ 177[105]: GotoFalseWord(jump=183, if_false: boolean)
+ 180[104]: GotoWord(jump=242)
+ 183[104]: ClearText(var[8]) var=__work_3[8]:text
+ 186[104]: ConstText(_value="Test failed ") -> text
+ 200[120]: AppendText(var[8], v1: text)
+ 203[104]: VarText(var[80]) -> text var=test_value[80]:text
+ 206[120]: ConstInt(val=0) -> integer
+ 211[124]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+ 216[104]: ConstText(_value=" != "{a:"bcdef"}"") -> text
+ 235[120]: AppendText(var[8], v1: text)
+ 238[104]: VarText(var[8]) -> text var=__work_3[8]:text
+ 241[120]: Panic(message: text)
+ 242[104]: FreeText(var[80])
+ 245[104]: FreeText(var[56])
+ 248[104]: FreeText(var[32])
+ 251[104]: FreeText(var[8])
+ 254[104]: Return(ret=0, value=0, discard=100)
+
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] Text()
+    4:[104] ConvRefFromNull() -> ref(1,0,0)[104]
+    5:[116] Database(var[104], db_tp=17)
+   10:[116] VarRef(var[104]) -> ref(1,1,0)={}[116]
+   13:[128] ConstText(_value="a") -> "a"[128]
+   16:[144] SetText(v1=ref(1,1,0)[116], fld=4, val="a"[128])
+   19:[116] VarRef(var[104]) -> ref(1,1,0)={a:"a"}[116]
+   22:[128] ConstText(_value="b") -> "b"[128]
+   25:[144] SetText(v1=ref(1,1,0)[116], fld=4, val="b"[128])
+   28:[116] Text()
+   29:[140] VarRef(var[104]) -> ref(1,1,0)={a:"b"}[140]
+   32:[152] GetText(v1=ref(1,1,0)[140], fld=4) -> "b"[140]
+   35:[156] AppendText(var[116], v1="b"[140])
+   38:[140] ConstText(_value="c") -> "c"[140]
+   41:[156] AppendText(var[116], v1="c"[140])
+   44:[140] VarRef(var[104]) -> ref(1,1,0)={a:"b"}[140]
+   47:[152] VarText(var[116]) -> "bc"[152]
+   50:[168] SetText(v1=ref(1,1,0)[140], fld=4, val="bc"[152])
+   53:[140] Text()
+   54:[164] VarRef(var[104]) -> ref(1,1,0)={a:"bc"}[164]
+   57:[176] GetText(v1=ref(1,1,0)[164], fld=4) -> "bc"[164]
+   60:[180] AppendText(var[140], v1="bc"[164])
+   63:[164] ConstText(_value="d") -> "d"[164]
+   66:[180] AppendText(var[140], v1="d"[164])
+   69:[164] ConstText(_value="e") -> "e"[164]
+   72:[180] AppendText(var[140], v1="e"[164])
+   75:[164] VarRef(var[104]) -> ref(1,1,0)={a:"bc"}[164]
+   78:[176] VarText(var[140]) -> "bcde"[176]
+   81:[192] SetText(v1=ref(1,1,0)[164], fld=4, val="bcde"[176])
+   84:[164] VarRef(var[104]) -> ref(1,1,0)={a:"bcde"}[164]
+   87:[176] ClearText(var[56])
+   90:[176] ConstText(_value="") -> ""[176]
+   92:[192] AppendText(var[56], v1=""[176])
+   95:[176] VarRef(var[104]) -> ref(1,1,0)={a:"bcde"}[176]
+   98:[188] GetText(v1=ref(1,1,0)[176], fld=4) -> "bcde"[176]
+  101:[192] ConstInt(val=0) -> 0[192]
+  106:[196] FormatText(var[56], val="bcde"[176], width=0[192], dir=-1, token=32)
+  111:[176] ConstText(_value="f") -> "f"[176]
+  114:[192] AppendText(var[56], v1="f"[176])
+  117:[176] VarText(var[56]) -> "bcdef"[176]
+  120:[192] SetText(v1=ref(1,1,0)[164], fld=4, val="bcdef"[176])
+  123:[164] ClearText(var[32])
+  126:[164] ConstText(_value="") -> ""[164]
+  128:[180] AppendText(var[32], v1=""[164])
+  131:[164] VarRef(var[104]) -> ref(1,1,0)={a:"bcdef"}[164]
+  134:[176] FormatDatabase(var[32], val=ref(1,1,0)[164], db_tp=17, pretty=false)
+  140:[164] VarRef(var[104]) -> ref(1,1,0)={a:"bcdef"}[164]
+  143:[176] FreeRef(v1=ref(1,1,0)[164])
+  144:[164] FreeText(var[116])
+  147:[164] FreeText(var[140])
+  150:[164] VarText(var[32]) -> "{a:\"bcdef\"}"[164]
+  153:[180] FreeStack(value=16, discard=76)
+  157:[120] AppendText(var[80], v1="{a:\"bcdef\"}"[104])
+  160:[104] VarText(var[80]) -> "{a:\"bcdef\"}"[104]
+  163:[120] ConstText(_value="{a:"bcdef"}") -> "{a:\"bcdef\"}"[120]
+  176:[136] EqText(v1="{a:\"bcdef\"}"[104], v2="{a:\"bcdef\"}"[120]) -> true[104]
+  177:[105] GotoFalseWord(jump=183, if_false=true[104])
+  180:[104] GotoWord(jump=242)
+  242:[104] FreeText(var[80])
+  245:[104] FreeText(var[56])
+  248:[104] FreeText(var[32])
+  251:[104] FreeText(var[8])
+  254:[104] Return(ret=4294967295[4], value=0, discard=100)
+Finished

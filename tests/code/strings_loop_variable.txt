@@ -5,41 +5,41 @@ pub fn test() {
         "Test failed {test_value} != 246"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:integer(1) = {#block_2:integer
-    a:integer(2) = 0i32;
-    {#For block_3:void
-      _t#index:integer(3) = OpConvIntFromNull();
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):integer = {#block(2):integer
+    a(2):integer = 0i32;
+    {#For block(3):void
+      _t#index(3):integer = OpConvIntFromNull();
       loop {#For loop_4
-        _t:integer(4) = {#Iter range_5:integer
-          _t#index:integer(3) = if OpNot(OpConvBoolFromInt(_t#index)) 1i32 else OpAddInt(_t#index, 1i32);
-          if OpGeInt(_t#index, 5i32) break(0) else null;
-          _t#index;
-        }#Iter range_5:integer;
-        {#block_6:void
-          b:text(6) = "123";
-          a:integer(2) = OpAddInt(a, OpCastIntFromText(b));
-          if OpGtInt(a, 200i32) {#block_7:void
-            OpFreeText(b);
+        _t(4):integer = {#Iter range(5):integer
+          _t#index(3):integer = if OpNot(OpConvBoolFromInt(_t#index(3))) 1i32 else OpAddInt(_t#index(3), 1i32);
+          if OpGeInt(_t#index(3), 5i32) break(0) else null;
+          _t#index(3);
+        }#Iter range(5):integer;
+        {#block(6):void
+          b(6):text = "123";
+          a(2):integer = OpAddInt(a(2), OpCastIntFromText(b(6)));
+          if OpGtInt(a(2), 200i32) {#block(7):void
+            OpFreeText(b(6));
             break(0);
-          }#block_7:void else null;
-          OpFreeText(b);
-        }#block_6:void;
+          }#block(7):void else null;
+          OpFreeText(b(6));
+        }#block(6):void;
       }#For loop_4;
-    }#For block_3:void;
-    a;
-  }#block_2:integer;
-  if OpEqInt(test_value, 246i32) null else OpPanic({#Formatted string_8:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1, " != 246");
-    __work_1;
-  }#Formatted string_8:text);
-  OpFreeText(__work_1);
-}#block_1:void
+    }#For block(3):void;
+    a(2);
+  }#block(2):integer;
+  if OpEqInt(test_value(1), 246i32) null else OpPanic({#Formatted string(8):text
+    __work_1(1):text = "Test failed ";
+    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 246");
+    __work_1(1);
+  }#Formatted string(8):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for loop_variable:test() [1168]
+byte-code for loop_variable:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstInt(val=0) -> integer var=a[32]:integer
@@ -81,7 +81,7 @@ byte-code for loop_variable:test() [1168]
  106[40]: GotoWord(jump=7)
  109[40]: FreeStack(value=0, discard=4)
  113[36]: VarInt(var[32]) -> integer var=a[32]:integer
- 116[40]: FreeStack(value=4, discard=8) type=integer[4]:Base[0]
+ 116[40]: FreeStack(value=4, discard=8)
  120[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
  123[40]: ConstInt(val=246) -> integer
  128[44]: EqInt(v1: integer, v2: integer) -> boolean
@@ -107,14 +107,14 @@ Execute test:
     7:[40] VarInt(var[36]) -> -2147483648[40]
    10:[44] ConvBoolFromInt(v1=-2147483648[40]) -> false[40]
    11:[41] Not(v1=false[40]) -> true[40]
-   12:[41] GotoFalseWord(jump=1191, if_false=true[40])
+   12:[41] GotoFalseWord(jump=23, if_false=true[40])
    15:[40] ConstInt(val=1) -> 1[40]
-   20:[44] GotoWord(jump=1200)
+   20:[44] GotoWord(jump=32)
    32:[44] PutInt(var[36], value=1[40])
    35:[40] VarInt(var[36]) -> 1[40]
    38:[44] ConstInt(val=5) -> 5[44]
    43:[48] GeInt(v1=1[40], v2=5[44]) -> false[40]
-   44:[41] GotoFalseWord(jump=1218, if_false=false[40])
+   44:[41] GotoFalseWord(jump=50, if_false=false[40])
    50:[40] VarInt(var[36]) -> 1[40]
    53:[44] Text()
    54:[68] ConstText(_value="123") -> "123"[68]
@@ -127,15 +127,15 @@ Execute test:
    73:[68] VarInt(var[32]) -> 123[68]
    76:[72] ConstInt(val=200) -> 200[72]
    81:[76] GtInt(v1=123[68], v2=200[72]) -> false[68]
-   82:[69] GotoFalseWord(jump=1263, if_false=false[68])
+   82:[69] GotoFalseWord(jump=95, if_false=false[68])
    95:[68] FreeText(var[44])
    98:[68] FreeStack(value=0, discard=24)
   102:[44] FreeStack(value=0, discard=4)
-  106:[40] GotoWord(jump=1175)
+  106:[40] GotoWord(jump=7)
     7:[40] VarInt(var[36]) -> 1[40]
    10:[44] ConvBoolFromInt(v1=1[40]) -> true[40]
    11:[41] Not(v1=true[40]) -> false[40]
-   12:[41] GotoFalseWord(jump=1191, if_false=false[40])
+   12:[41] GotoFalseWord(jump=23, if_false=false[40])
    23:[40] VarInt(var[36]) -> 1[40]
    26:[44] ConstInt(val=1) -> 1[44]
    31:[48] AddInt(v1=1[40], v2=1[44]) -> 2[40]
@@ -143,7 +143,7 @@ Execute test:
    35:[40] VarInt(var[36]) -> 2[40]
    38:[44] ConstInt(val=5) -> 5[44]
    43:[48] GeInt(v1=2[40], v2=5[44]) -> false[40]
-   44:[41] GotoFalseWord(jump=1218, if_false=false[40])
+   44:[41] GotoFalseWord(jump=50, if_false=false[40])
    50:[40] VarInt(var[36]) -> 2[40]
    53:[44] Text()
    54:[68] ConstText(_value="123") -> "123"[68]
@@ -156,18 +156,18 @@ Execute test:
    73:[68] VarInt(var[32]) -> 246[68]
    76:[72] ConstInt(val=200) -> 200[72]
    81:[76] GtInt(v1=246[68], v2=200[72]) -> true[68]
-   82:[69] GotoFalseWord(jump=1263, if_false=true[68])
+   82:[69] GotoFalseWord(jump=95, if_false=true[68])
    85:[68] FreeText(var[44])
    88:[68] FreeStack(value=0, discard=28)
-   92:[40] GotoWord(jump=1277)
+   92:[40] GotoWord(jump=109)
   109:[40] FreeStack(value=0, discard=4)
   113:[36] VarInt(var[32]) -> 246[36]
   116:[40] FreeStack(value=4, discard=8)
   120:[36] VarInt(var[32]) -> 246[36]
   123:[40] ConstInt(val=246) -> 246[40]
   128:[44] EqInt(v1=246[36], v2=246[40]) -> true[36]
-  129:[37] GotoFalseWord(jump=1303, if_false=true[36])
-  132:[36] GotoWord(jump=1354)
+  129:[37] GotoFalseWord(jump=135, if_false=true[36])
+  132:[36] GotoWord(jump=186)
   186:[36] FreeText(var[8])
   189:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

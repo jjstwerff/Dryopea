@@ -5,22 +5,22 @@ pub fn test() {
         "Test failed {test_value} != 48"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:integer(1) = {#block_2:integer
-    a:integer(2) = 1i32;
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):integer = {#block(2):integer
+    a(2):integer = 1i32;
     OpAddInt(OpAddInt(4i32, 4i32), OpMulInt(10i32, 4i32));
-  }#block_2:integer;
-  if OpEqInt(test_value, 48i32) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1, " != 48");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):integer;
+  if OpEqInt(test_value(1), 48i32) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 48");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for expr_integer:test() [1168]
+byte-code for expr_integer:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstInt(val=1) -> integer var=a[32]:integer
@@ -31,7 +31,7 @@ byte-code for expr_integer:test() [1168]
   22[44]: ConstInt(val=4) -> integer
   27[48]: MulInt(v1: integer, v2: integer) -> integer
   28[44]: AddInt(v1: integer, v2: integer) -> integer
-  29[40]: FreeStack(value=4, discard=8) type=integer[4]:Base[0]
+  29[40]: FreeStack(value=4, discard=8)
   33[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
   36[40]: ConstInt(val=48) -> integer
   41[44]: EqInt(v1: integer, v2: integer) -> boolean
@@ -64,8 +64,8 @@ Execute test:
    33:[36] VarInt(var[32]) -> 48[36]
    36:[40] ConstInt(val=48) -> 48[40]
    41:[44] EqInt(v1=48[36], v2=48[40]) -> true[36]
-   42:[37] GotoFalseWord(jump=1216, if_false=true[36])
-   45:[36] GotoWord(jump=1266)
+   42:[37] GotoFalseWord(jump=48, if_false=true[36])
+   45:[36] GotoWord(jump=98)
    98:[36] FreeText(var[8])
   101:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

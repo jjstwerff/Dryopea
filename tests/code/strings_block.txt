@@ -5,26 +5,26 @@ pub fn test() {
         "Test failed {test_value} != \"12\""
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  s:text(1) = "";
-  test_value:text["s"](1) = {#block_2:text["s"]
-    s:text(1) = "1";
-    OpAppendText(s, "2");
-    s;
-  }#block_2:text["s"];
-  if OpEqText(test_value, "12") null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != "12"");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(test_value);
-  OpFreeText(s);
-  OpFreeText(__work_1);
-}#block_1:void
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  s(1):text = "";
+  test_value(1):text["s"] = {#block(2):text["s"]
+    s(1):text = "1";
+    OpAppendText(s(1), "2");
+    s(1);
+  }#block(2):text["s"];
+  if OpEqText(test_value(1), "12") null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != "12"");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(test_value(1));
+  OpFreeText(s(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for block:test() [1168]
+byte-code for block:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: Text() var=s[32]:text
@@ -70,8 +70,8 @@ Execute test:
    24:[80] VarText(var[56]) -> "12"[80]
    27:[96] ConstText(_value="12") -> "12"[96]
    31:[112] EqText(v1="12"[80], v2="12"[96]) -> true[80]
-   32:[81] GotoFalseWord(jump=1206, if_false=true[80])
-   35:[80] GotoWord(jump=1256)
+   32:[81] GotoFalseWord(jump=38, if_false=true[80])
+   35:[80] GotoWord(jump=88)
    88:[80] FreeText(var[56])
    91:[80] FreeText(var[32])
    94:[80] FreeText(var[8])

@@ -19,21 +19,21 @@ Type 18:Main[20]:
 
 Type 19:vector<S>[4]:Vector(17)
 
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:integer(1) = {#block_2:integer
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):integer = {#block(2):integer
     OpAddInt(OpAddInt(12i32, OpMulInt(100i32, 20i32)), OpMulInt(10000i32, 12i32));
-  }#block_2:integer;
-  if OpEqInt(test_value, 122012i32) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1, " != 122012");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):integer;
+  if OpEqInt(test_value(1), 122012i32) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 122012");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for reference_field:test() [1168]
+byte-code for reference_field:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstInt(val=12) -> integer var=test_value[32]:integer
@@ -77,8 +77,8 @@ Execute test:
    30:[36] VarInt(var[32]) -> 122012[36]
    33:[40] ConstInt(val=122012) -> 122012[40]
    38:[44] EqInt(v1=122012[36], v2=122012[40]) -> true[36]
-   39:[37] GotoFalseWord(jump=1213, if_false=true[36])
-   42:[36] GotoWord(jump=1267)
+   39:[37] GotoFalseWord(jump=45, if_false=true[36])
+   42:[36] GotoWord(jump=99)
    99:[36] FreeText(var[8])
   102:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

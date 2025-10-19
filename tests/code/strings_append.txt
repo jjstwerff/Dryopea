@@ -5,28 +5,28 @@ pub fn test() {
         "Test failed {test_value} != \"♥😃12\""
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  a:text["a"](1) = "";
-  test_value:text["a"](1) = {#block_2:text["a"]
-    a:text["a"](1) = "";
-    OpAppendText(a, "♥😃");
-    OpAppendText(a, "1");
-    OpAppendText(a, "2");
-    a;
-  }#block_2:text["a"];
-  if OpEqText(test_value, "♥😃12") null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != "♥😃12"");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(test_value);
-  OpFreeText(a);
-  OpFreeText(__work_1);
-}#block_1:void
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  a(1):text["a"] = "";
+  test_value(1):text["a"] = {#block(2):text["a"]
+    a(1):text["a"] = "";
+    OpAppendText(a(1), "♥😃");
+    OpAppendText(a(1), "1");
+    OpAppendText(a(1), "2");
+    a(1);
+  }#block(2):text["a"];
+  if OpEqText(test_value(1), "♥😃12") null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != "♥😃12"");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(test_value(1));
+  OpFreeText(a(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for append:test() [1168]
+byte-code for append:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: Text() var=a[32]:text["a"]
@@ -80,8 +80,8 @@ Execute test:
    41:[80] VarText(var[56]) -> "♥😃12"[80]
    44:[96] ConstText(_value="♥😃12") -> "♥😃12"[96]
    55:[112] EqText(v1="♥😃12"[80], v2="♥😃12"[96]) -> true[80]
-   56:[81] GotoFalseWord(jump=1230, if_false=true[80])
-   59:[80] GotoWord(jump=1287)
+   56:[81] GotoFalseWord(jump=62, if_false=true[80])
+   59:[80] GotoWord(jump=119)
   119:[80] FreeText(var[56])
   122:[80] FreeText(var[32])
   125:[80] FreeText(var[8])

@@ -158,6 +158,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     const_text,
     conv_text_from_null,
     length_text,
+    length_character,
     conv_bool_from_text,
     text,
     append_text,
@@ -1214,6 +1215,10 @@ fn length_text(s: &mut State) {
     let v_v1 = s.string();
     let new_value = v_v1.str().len() as i32;
     s.put_stack(new_value);
+}
+
+fn length_character(s: &mut State) {
+    s.length_character();
 }
 
 fn conv_bool_from_text(s: &mut State) {

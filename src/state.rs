@@ -3,7 +3,7 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(dead_code)]
 
-use crate::data::{Attribute, Context, Data, I32, Type, Value};
+use crate::data::{Attribute, Block, Context, Data, I32, Type, Value};
 use crate::database::{Parts, ShowDb, Stores};
 use crate::fill::OPERATORS;
 use crate::keys;
@@ -123,6 +123,17 @@ impl State {
     }
 
     #[inline]
+    pub fn length_character(&mut self) {
+        let v_v1 = *self.get_stack::<i32>();
+        let new_value = if let Some(ch) = char::from_u32(v_v1 as u32) {
+            ch.to_string().len() as i32
+        } else {
+            0
+        };
+        self.put_stack(new_value);
+    }
+
+    #[inline]
     pub fn append_text(&mut self) {
         let text = self.string();
         let pos = *self.code::<u16>();
@@ -204,8 +215,12 @@ impl State {
     #[inline]
     pub fn append_character(&mut self) {
         let pos = *self.code::<u16>();
-        let c = char::from_u32(*self.get_stack::<i32>() as u32).unwrap_or('\u{20}');
-        self.string_mut(pos - size_ptr() as u16).push(c);
+        let c = *self.get_stack::<i32>();
+        if c != i32::MIN
+            && let Some(ch) = char::from_u32(c as u32)
+        {
+            self.string_mut(pos - 4).push(ch);
+        }
     }
 
     #[inline]
@@ -263,10 +278,7 @@ impl State {
             from += v1.len as i32;
         }
         if from < 0 || from >= v1.len as i32 {
-            self.put_stack(Str {
-                ptr: v1.ptr,
-                len: 0,
-            });
+            self.put_stack(i32::MIN);
             return;
         }
         let mut b = v1.str().as_bytes()[from as usize];
@@ -277,7 +289,7 @@ impl State {
         self.put_stack(if let Some(ch) = v1.str()[from as usize..].chars().next() {
             ch as i32
         } else {
-            0
+            i32::MIN
         });
     }
 
@@ -1140,11 +1152,7 @@ impl State {
         let mut stack = Stack::new(data.def(def_nr).variables.clone(), data, def_nr, logging);
         if stack.data.def(def_nr).code == Value::Null {
             let start = self.code_pos;
-            let return_type = &stack.data.def(stack.def_nr).returned;
-            stack.add_op("OpReturn", self);
-            self.code_add(self.arguments);
-            self.code_add(size(return_type, &Context::Argument) as u8);
-            self.code_add(stack.position);
+            self.add_return(&mut stack, start);
             data.definitions[def_nr as usize].code_position = start;
             data.definitions[def_nr as usize].code_length = self.code_pos - start;
             if show {
@@ -1162,7 +1170,7 @@ impl State {
         stack.position += 4; // keep space for the code return address
         if console {
             println!("{} ", stack.data.def(def_nr).header(stack.data, def_nr));
-            stack.data.dump(&stack.data.def(def_nr).code, def_nr);
+            stack.data.dump(def_nr);
         }
         let mut started = HashSet::new();
         for a in stack.data.def(def_nr).variables.arguments() {
@@ -1319,7 +1327,7 @@ impl State {
                 self.code_add(stack.position);
                 Type::Void
             }
-            Value::Block(bl) => self.generate_block(stack, &bl.operators, top),
+            Value::Block(bl) => self.generate_block(stack, bl, top),
             Value::Call(op, parameters) => self.generate_call(stack, op, parameters),
             Value::Null => {
                 // Ignore, in use as the code on an else clause without code.
@@ -1642,46 +1650,67 @@ impl State {
         self.insert_types(stack.function.tp(variable).clone(), code, stack)
     }
 
-    fn generate_block(&mut self, stack: &mut Stack, values: &[Value], top: bool) -> Type {
-        if values.is_empty() {
+    fn generate_block(&mut self, stack: &mut Stack, block: &Block, top: bool) -> Type {
+        if block.operators.is_empty() {
             return Type::Void;
         }
         let to = stack.position;
-        let last = values.len() - 1;
         let mut tp = Type::Void;
-        for (elm, v) in values.iter().enumerate() {
-            tp = self.generate(v, stack, false);
-            if elm != last {
-                continue;
+        let mut return_expr = 0;
+        let mut has_return = false;
+        for v in &block.operators {
+            let s_pos = self.stack_pos;
+            if let Value::Return(expr) = v {
+                has_return = true;
+                if return_expr == 0 {
+                    return_expr = s_pos;
+                    self.generate(expr, stack, false);
+                }
+                self.add_return(stack, return_expr);
+            } else {
+                has_return = false;
             }
-            let code = self.code_pos;
-            // Check if we need a return statement here
-            if top && !matches!(v, Value::Return(_)) {
-                stack.add_op("OpReturn", self);
-                self.code_add(self.arguments);
-                let return_type = &stack.data.def(stack.def_nr).returned;
-                self.code_add(size(return_type, &Context::Argument) as u8);
-                self.code_add(stack.position);
-                if return_type != &Type::Void {
-                    self.types.insert(code, self.known_type(return_type, stack));
-                }
-                tp = Type::Void;
-            } else if !top {
-                let size = stack.size_code(v);
-                let after = to + size;
-                if stack.position > after {
-                    stack.add_op("OpFreeStack", self);
-                    self.code_add(size as u8);
-                    self.code_add(stack.position - to);
-                    let known = stack.type_code(v, &self.database);
-                    if known != u16::MAX {
-                        self.types.insert(code, known);
-                    }
-                }
-                stack.position = after;
+            return_expr = 0;
+            tp = self.generate(v, stack, false);
+            if self.stack_pos > s_pos && !matches!(v, Value::Set(_, _)) {
+                // Normal expressions do not claim stack space (because of Value::Drop)
+                // So if there is data left it should be a return expression.
+                return_expr = s_pos;
             }
         }
+        if top {
+            if !has_return {
+                self.add_return(
+                    stack,
+                    if return_expr > 0 {
+                        return_expr
+                    } else {
+                        self.code_pos
+                    },
+                );
+            }
+        } else {
+            let size = size(&block.result, &Context::Argument);
+            let after = to + size;
+            if stack.position > after {
+                stack.add_op("OpFreeStack", self);
+                self.code_add(size as u8);
+                self.code_add(stack.position - to);
+            }
+            stack.position = after;
+        }
         tp
+    }
+
+    fn add_return(&mut self, stack: &mut Stack, code: u32) {
+        let return_type = &stack.data.def(stack.def_nr).returned;
+        stack.add_op("OpReturn", self);
+        self.code_add(self.arguments);
+        self.code_add(size(return_type, &Context::Argument) as u8);
+        self.code_add(stack.position);
+        if return_type != &Type::Void {
+            self.types.insert(code, self.known_type(return_type, stack));
+        }
     }
 
     fn known_type(&self, tp: &Type, stack: &Stack) -> u16 {
@@ -1959,6 +1988,7 @@ impl State {
             Type::Single => format!("{}", *self.code::<f32>()),
             Type::Float => format!("{}", *self.code::<f64>()),
             Type::Text(_) => format!("\"{}\"", self.code_str()),
+            Type::Character => format!("{}", *self.code::<char>()),
             Type::Keys => {
                 let len = *self.code::<u8>();
                 let mut keys = Vec::new();
@@ -2049,14 +2079,11 @@ impl State {
         let stack = self.stack_pos;
         assert!(data.has_op(op), "Unknown operator {op}");
         let def = data.operator(op);
+        let minus = if cur > self.def_pos { self.def_pos } else { 0 };
         write!(
             log,
             "{:5}:[{}] {}(",
-            if cur > self.def_pos {
-                cur - self.def_pos
-            } else {
-                cur
-            } - 1,
+            cur - minus - 1,
             self.stack_pos,
             &def.name[2..]
         )?;
@@ -2073,7 +2100,7 @@ impl State {
                 } else if def.name == "OpReturn" && a_nr == 0 {
                     self.return_attr(&mut attr, a_nr);
                 } else if def.name.starts_with("OpGoto") && a_nr == 0 {
-                    let to = i64::from(cur) + 2 + i64::from(*self.code::<i16>());
+                    let to = i64::from(cur) + 2 + i64::from(*self.code::<i16>()) - i64::from(minus);
                     attr.insert(a_nr, format!("jump={to}"));
                 } else if a_nr == 0 && a.name == "pos" && a.typedef == Type::Integer(0, 65535) {
                     let pos = *self.code::<u16>();
@@ -2205,6 +2232,14 @@ impl State {
     fn dump_stack(&mut self, typedef: &Type, code: u32, data: &Data) -> String {
         match typedef {
             Type::Integer(_, _) => format!("{}", *self.get_stack::<i32>()),
+            Type::Character => {
+                let c = *self.get_stack::<i32>();
+                if c == i32::MIN {
+                    "null".to_string()
+                } else {
+                    format!("'{}'", char::from_u32(c as u32).unwrap())
+                }
+            }
             Type::Enum(tp) => {
                 if code == u32::MAX {
                     format!("{}", *self.get_stack::<u8>())

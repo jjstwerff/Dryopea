@@ -9,63 +9,93 @@ pub fn test() {
         "Test failed {test_value} != \"Hello world!\""
     );
 }
-fn add(a:&text, b:text) {#1 block
-  OpAppendRefText(OpVarRef(a), 0i32, b);
-}#1
+fn add(a:&text, b:text) {#block(1):void
+  OpAppendRefText(OpVarRef(a(0)), 0i32, b(0));
+}#block(1):void
 
-byte-code for reference:add(a: &text[0], b: text[12]) [1067]
-   0[28]: return-address
-   0[32]: VarRef(var[0]) -> ref(reference)
-   3[44]: ArgText(var[12]) -> text var=b[12]:text in 0
-   6[60]: AppendRefText(r: ref(reference), fld=0, v1: text)
-   9[32]: Return(ret=28, value=0, discard=32)
+byte-code for reference:add(a: &text[4], b: text[16]) [1110]
+   0[32]: return-address
+   0[36]: VarRef(var[4]) -> ref(reference)
+   3[48]: ArgText(var[16]) -> text var=b[16]:text
+   6[64]: AppendRefText(r: ref(reference), fld=0, v1: text)
+   9[36]: Return(ret=28, value=0, discard=32)
 
-fn test() {#1 block
-  __work_1:text = "";
-  v:text = "";
-  test_value:text["v"] = {#2 block
-    v:text = "Hello";
-    add(OpCreateRef(v), " world!");
-    v;
-  }#2:text["v"];
-  if OpEqText(test_value, "Hello world!") null else OpPanic({#3 formatting string
-    __work_1:text = "Test failed ";
-    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != "Hello world!"");
-    __work_1;
-  }#3:text);
-}#1
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  v(1):text = "";
+  test_value(1):text["v"] = {#block(2):text["v"]
+    v(1):text = "Hello";
+    add(OpCreateRef(v(1)), " world!");
+    v(1);
+  }#block(2):text["v"];
+  if OpEqText(test_value(1), "Hello world!") null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != "Hello world!"");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(test_value(1));
+  OpFreeText(v(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for reference:test() [1082]
-   0[0]: return-address
-   0[4]: Text() var=__work_1[4]:text in 1
-   1[28]: Text() var=v[28]:text in 1
-   2[52]: Text() var=test_value[52]:text["v"] in 1
-   3[76]: ClearText(var[28]) var=v[28]:text in 1
-   6[76]: ConstText(_value="Hello") -> text
-  13[92]: AppendText(var[28], v1: text)
-  16[76]: CreateRef(var[28]) -> ref(reference)
-  19[88]: ConstText(_value=" world!") -> text
-  28[104]: Call(size=0, to=1067)
-  35[76]: VarText(var[28]) -> text var=v[28]:text in 1
-  38[92]: AppendText(var[52], v1: text)
-  41[76]: VarText(var[52]) -> text var=test_value[52]:text["v"] in 1
-  44[92]: ConstText(_value="Hello world!") -> text
-  58[108]: EqText(v1: text, v2: text) -> boolean
-  59[77]: GotoFalseWord(jump=65, if_false: boolean)
-  62[76]: GotoWord(jump=125)
-  65[76]: ClearText(var[4]) var=__work_1[4]:text in 1
-  68[76]: ConstText(_value="Test failed ") -> text
-  82[92]: AppendText(var[4], v1: text)
-  85[76]: VarText(var[52]) -> text var=test_value[52]:text["v"] in 1
-  88[92]: ConstInt(val=0) -> integer
-  93[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-  98[76]: ConstText(_value=" != "Hello world!"") -> text
- 118[92]: AppendText(var[4], v1: text)
- 121[76]: VarText(var[4]) -> text var=__work_1[4]:text in 1
- 124[92]: Panic(message: text)
- 125[76]: FreeText(var[52])
- 128[76]: FreeText(var[28])
- 131[76]: FreeText(var[4])
- 134[76]: Return(ret=0, value=0, discard=76)
+byte-code for reference:test() [1125]
+   0[4]: return-address
+   0[8]: Text() var=__work_1[8]:text
+   1[32]: Text() var=v[32]:text
+   2[56]: Text() var=test_value[56]:text["v"]
+   3[80]: ClearText(var[32]) var=v[32]:text
+   6[80]: ConstText(_value="Hello") -> text
+  13[96]: AppendText(var[32], v1: text)
+  16[80]: CreateRef(var[32]) -> ref(reference)
+  19[92]: ConstText(_value=" world!") -> text
+  28[108]: Call(size=0, to=1110)
+  35[80]: VarText(var[32]) -> text var=v[32]:text
+  38[96]: AppendText(var[56], v1: text)
+  41[80]: VarText(var[56]) -> text var=test_value[56]:text["v"]
+  44[96]: ConstText(_value="Hello world!") -> text
+  58[112]: EqText(v1: text, v2: text) -> boolean
+  59[81]: GotoFalseWord(jump=65, if_false: boolean)
+  62[80]: GotoWord(jump=125)
+  65[80]: ClearText(var[8]) var=__work_1[8]:text
+  68[80]: ConstText(_value="Test failed ") -> text
+  82[96]: AppendText(var[8], v1: text)
+  85[80]: VarText(var[56]) -> text var=test_value[56]:text["v"]
+  88[96]: ConstInt(val=0) -> integer
+  93[100]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+  98[80]: ConstText(_value=" != "Hello world!"") -> text
+ 118[96]: AppendText(var[8], v1: text)
+ 121[80]: VarText(var[8]) -> text var=__work_1[8]:text
+ 124[96]: Panic(message: text)
+ 125[80]: FreeText(var[56])
+ 128[80]: FreeText(var[32])
+ 131[80]: FreeText(var[8])
+ 134[80]: Return(ret=0, value=0, discard=76)
 
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] ClearText(var[32])
+    6:[80] ConstText(_value="Hello") -> "Hello"[80]
+   13:[96] AppendText(var[32], v1="Hello"[80])
+   16:[80] CreateRef(var[32]) -> ref(0,1,32)[80]
+   19:[92] ConstText(_value=" world!") -> " world!"[92]
+   28:[108] Call(size=0, to=1110)
+ 1110:[112] VarRef(var[80]) -> ref(0,1,32)[112]
+ 1113:[124] ArgText(var[92]) -> " world!"[124]
+ 1116:[140] AppendRefText(r=ref(0,1,32)[112], fld=0, v1=" world!"[124])
+ 1117:[112] Goto(jump=2656)
+ 1119:[112] Return(ret=1160[108], value=0, discard=32)
+   35:[80] VarText(var[32]) -> "Hello world!"[80]
+   38:[96] AppendText(var[56], v1="Hello world!"[80])
+   41:[80] VarText(var[56]) -> "Hello world!"[80]
+   44:[96] ConstText(_value="Hello world!") -> "Hello world!"[96]
+   58:[112] EqText(v1="Hello world!"[80], v2="Hello world!"[96]) -> true[80]
+   59:[81] GotoFalseWord(jump=65, if_false=true[80])
+   62:[80] GotoWord(jump=125)
+  125:[80] FreeText(var[56])
+  128:[80] FreeText(var[32])
+  131:[80] FreeText(var[8])
+  134:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

@@ -5,21 +5,21 @@ pub fn test() {
         "Test failed {test_value} != 1.1"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:float(1) = {#block_2:float
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):float = {#block(2):float
     1.1f64;
-  }#block_2:float;
-  if OpEqFloat(test_value, 1.1f64) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatFloat(__work_1, test_value, 0i32, 0i32);
-    OpAppendText(__work_1, " != 1.1");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):float;
+  if OpEqFloat(test_value(1), 1.1f64) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
+    OpAppendText(__work_1(1), " != 1.1");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for expr_float:test() [1168]
+byte-code for expr_float:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstFloat(val=1.1) -> float var=test_value[32]:float
@@ -48,8 +48,8 @@ Execute test:
    10:[40] VarFloat(var[32]) -> 1.1[40]
    13:[48] ConstFloat(val=1.1) -> 1.1[48]
    22:[56] EqFloat(v1=1.1[40], v2=1.1[48]) -> true[40]
-   23:[41] GotoFalseWord(jump=1197, if_false=true[40])
-   26:[40] GotoWord(jump=1249)
+   23:[41] GotoFalseWord(jump=29, if_false=true[40])
+   26:[40] GotoWord(jump=81)
    81:[40] FreeText(var[8])
    84:[40] Return(ret=4294967295[4], value=0, discard=36)
 Finished

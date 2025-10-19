@@ -1,16 +1,25 @@
 use crate::data::{Block, Data, DefType, Type, Value, v_set};
 use crate::variables::Function;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 struct Scopes {
+    /// The definition number of the current analyzed function.
     d_nr: u32,
+    /// The next scope number that will be created.
     max_scope: u16,
+    /// The current scope during traversal of the code. 0 is the scope of the function arguments.
     scope: u16,
+    /// The currently open scopes.
     stack: Vec<u16>,
+    /// Per encountered variable the scope where it was created. Later copied into the definition.
     var_scope: BTreeMap<u16, u16>,
+    /// Variables that are redefined after running out-of-scope gets copied with this mapping.
+    var_mapping: HashMap<u16, u16>,
+    /// The scopes of the currently traversed loops.
     loops: Vec<u16>,
 }
 
+/// Perform scope analysis on all currently known function.
 pub fn check(data: &mut Data) {
     for d_nr in 0..data.definitions() {
         if !matches!(data.def(d_nr).def_type, DefType::Function) || data.def(d_nr).variables.done {
@@ -22,6 +31,7 @@ pub fn check(data: &mut Data) {
             scope: 0,
             stack: Vec::new(),
             var_scope: BTreeMap::new(),
+            var_mapping: HashMap::new(),
             loops: vec![],
         };
         let mut function = Function::copy(&data.def(d_nr).variables);
@@ -55,7 +65,23 @@ impl Scopes {
 
     fn scan(&mut self, val: &Value, function: &mut Function, data: &Data) -> Value {
         match val {
-            Value::Set(v, value) => {
+            Value::Var(ov) => Value::Var(*self.var_mapping.get(ov).unwrap_or(ov)),
+            Value::Set(ov, value) => {
+                assert_ne!(
+                    *ov,
+                    u16::MAX,
+                    "Incorrect variable in {} fn {}",
+                    function.file,
+                    function.name
+                );
+                if let Some(s) = self.var_scope.get(ov)
+                    && self.scope != *s
+                    && !self.stack.contains(s)
+                    && !self.var_mapping.contains_key(ov)
+                {
+                    self.var_mapping.insert(*ov, function.copy_variable(*ov));
+                }
+                let v = self.var_mapping.get(ov).unwrap_or(ov);
                 if self.var_scope.contains_key(v) && **value == Value::Null {
                     return Value::Insert(Vec::new());
                 }
@@ -108,8 +134,13 @@ impl Scopes {
                 Box::new(self.scan(f_val, function, data)),
             ),
             Value::Break(lv) => {
-                let to_scope = self.loops[self.loops.len() - *lv as usize - 1];
-                let mut ls = self.get_free_vars(function, data, to_scope, &Type::Void);
+                let mut ls = self.get_free_vars(
+                    function,
+                    data,
+                    self.loops[self.loops.len() - *lv as usize - 1],
+                    &Type::Void,
+                    u16::MAX,
+                );
                 if ls.is_empty() {
                     Value::Break(*lv)
                 } else {
@@ -118,8 +149,13 @@ impl Scopes {
                 }
             }
             Value::Continue(lv) => {
-                let to_scope = self.loops[self.loops.len() - *lv as usize - 1];
-                let mut ls = self.get_free_vars(function, data, to_scope, &Type::Void);
+                let mut ls = self.get_free_vars(
+                    function,
+                    data,
+                    self.loops[self.loops.len() - *lv as usize - 1],
+                    &Type::Void,
+                    u16::MAX,
+                );
                 if ls.is_empty() {
                     Value::Continue(*lv)
                 } else {
@@ -160,6 +196,7 @@ impl Scopes {
         }
     }
 
+    /// Convert the content of loops and blocks
     fn convert(&mut self, bl: &Block, function: &mut Function, data: &Data) -> Vec<Value> {
         let mut ls = Vec::new();
         for v in &bl.operators {
@@ -177,6 +214,9 @@ impl Scopes {
         } else {
             ls.pop().unwrap()
         };
+        for v in self.variables(self.scope) {
+            self.var_mapping.remove(&v);
+        }
         for v in self.free_vars(false, &expr, function, data, &bl.result, self.scope) {
             ls.push(v);
         }
@@ -221,7 +261,8 @@ impl Scopes {
         tp: &Type,
         to_scope: u16,
     ) -> Vec<Value> {
-        let mut ls = self.get_free_vars(function, data, to_scope, tp);
+        let ret_var = returned_var(expr);
+        let mut ls = self.get_free_vars(function, data, to_scope, tp, ret_var);
         if ls.is_empty() || matches!(expr, Value::Null | Value::Var(_)) {
             if is_return {
                 ls.push(Value::Return(Box::new(expr.clone())));
@@ -229,17 +270,11 @@ impl Scopes {
                 ls.push(expr.clone());
             }
         } else if let Value::Block(bl) = expr {
-            ls.clear();
-            for o in self.convert(bl, function, data) {
-                ls.push(o);
-            }
+            return insert_free(bl, &ls, is_return);
         } else {
-            let v = function.add_unique("res", tp, to_scope);
-            ls.insert(0, v_set(v, expr.clone()));
+            ls.insert(0, expr.clone());
             if is_return {
-                ls.push(Value::Return(Box::new(Value::Var(v))));
-            } else {
-                ls.push(Value::Var(v));
+                ls.push(Value::Return(Box::new(Value::Null)));
             }
         }
         ls
@@ -251,9 +286,13 @@ impl Scopes {
         data: &Data,
         to_scope: u16,
         tp: &Type,
+        ret_var: u16,
     ) -> Vec<Value> {
         let mut ls = Vec::new();
         for v in self.variables(to_scope) {
+            if v == ret_var {
+                continue;
+            }
             if matches!(function.tp(v), Type::Text(_)) {
                 ls.push(call("OpFreeText", v, data));
             }
@@ -270,4 +309,53 @@ impl Scopes {
 
 fn call(to: &'static str, v: u16, data: &Data) -> Value {
     Value::Call(data.def_nr(to), vec![Value::Var(v)])
+}
+
+fn insert_free(block: &Block, free: &[Value], is_return: bool) -> Vec<Value> {
+    let mut res = Vec::new();
+    let mut ls = Vec::new();
+    for (o_nr, o) in block.operators.iter().enumerate() {
+        if o_nr + 1 == block.operators.len() {
+            if let Value::Block(bl) = &block.operators[o_nr] {
+                for v in insert_free(bl, free, is_return) {
+                    ls.push(v);
+                }
+            } else if block.result == Type::Void {
+                ls.push(o.clone());
+                ls.push(Value::Return(Box::new(Value::Null)));
+            } else {
+                for v in free {
+                    ls.push(v.clone());
+                }
+                if is_return {
+                    ls.push(Value::Return(Box::new(o.clone())));
+                } else {
+                    ls.push(o.clone());
+                }
+            }
+        } else {
+            ls.push(o.clone());
+        }
+    }
+    res.push(Value::Block(Box::new(Block {
+        name: block.name,
+        operators: ls,
+        result: block.result.clone(),
+        scope: block.scope,
+    })));
+    res
+}
+
+fn returned_var(expr: &Value) -> u16 {
+    match expr {
+        Value::Var(v) => *v,
+        Value::Block(bl) => {
+            let mut v = u16::MAX;
+            for o in &bl.operators {
+                v = returned_var(o);
+            }
+            v
+        }
+        _ => u16::MAX,
+    }
 }

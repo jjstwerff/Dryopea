@@ -5,21 +5,21 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:boolean(1) = {#block_2:boolean
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):boolean = {#block(2):boolean
     OpLeInt(OpAddInt(2i32, 1i32), 3i32);
-  }#block_2:boolean;
-  if OpEqBool(test_value, true) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != true");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):boolean;
+  if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatBool(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != true");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for expr_prio_lt:test() [1168]
+byte-code for expr_prio_lt:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstInt(val=2) -> integer var=test_value[32]:boolean
@@ -55,8 +55,8 @@ Execute test:
    18:[33] VarBool(var[32]) -> true[33]
    21:[34] ConstTrue() -> true[34]
    22:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
-   23:[34] GotoFalseWord(jump=1197, if_false=true[33])
-   26:[33] GotoWord(jump=1247)
+   23:[34] GotoFalseWord(jump=29, if_false=true[33])
+   26:[33] GotoWord(jump=79)
    79:[33] FreeText(var[8])
    82:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

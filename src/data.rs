@@ -1097,8 +1097,8 @@ impl Data {
         if v_nr == u32::MAX {
             v_nr = self.add_def(&vec_name, pos, DefType::Vector);
             self.definitions[v_nr as usize].parent = d_nr;
-            self.definitions[v_nr as usize].known_type = vec_tp;
         }
+        self.definitions[v_nr as usize].known_type = vec_tp;
         v_nr
     }
 
@@ -1215,6 +1215,7 @@ impl Data {
             Type::Boolean => self.source_nr(0, "boolean"),
             Type::Float => self.source_nr(0, "float"),
             Type::Text(_) => self.source_nr(0, "text"),
+            Type::Character => self.source_nr(0, "character"),
             Type::Routine(d_nr) | Type::Enum(d_nr) | Type::Reference(d_nr, _) => *d_nr,
             Type::Vector(tp, _) | Type::RefVar(tp) => {
                 if let Type::Reference(td, _) = **tp {
@@ -1304,10 +1305,11 @@ impl Data {
     # Panics
     Will not, this is to internal data structures instead of a file.
     */
-    pub fn dump(&self, value: &Value, d_nr: u32) {
+    pub fn dump(&self, d_nr: u32) {
         let mut vars = Function::copy(&self.def(d_nr).variables);
         let mut s = Into { str: String::new() };
-        self.show_code(&mut s, &mut vars, value, 0, true).unwrap();
+        self.show_code(&mut s, &mut vars, &self.def(d_nr).code, 0, true)
+            .unwrap();
         println!("dump {}", s.str);
     }
 
@@ -1368,7 +1370,7 @@ impl Data {
                 if !bl.operators.is_empty() {
                     writeln!(
                         write,
-                        "{{#{}_{}:{}",
+                        "{{#{}({}):{}",
                         bl.name,
                         bl.scope,
                         bl.result.show(self, vars)
@@ -1382,7 +1384,7 @@ impl Data {
                     }
                     write!(
                         write,
-                        "}}#{}_{}:{}",
+                        "}}#{}({}):{}",
                         bl.name,
                         bl.scope,
                         bl.result.show(self, vars)
@@ -1390,15 +1392,19 @@ impl Data {
                 }
                 Ok(())
             }
-            Value::Var(v) => write!(write, "{}", vars.name(*v)),
+            Value::Var(v) => write!(write, "{}({})", vars.name(*v), vars.scope(*v)),
             Value::Set(v, to) => {
-                write!(
-                    write,
-                    "{}:{}({}) = ",
-                    vars.name(*v),
-                    vars.tp(*v).show(self, vars),
-                    vars.scope(*v)
-                )?;
+                if *v == u16::MAX {
+                    write!(write, "unknown(??):?? = ",)?;
+                } else {
+                    write!(
+                        write,
+                        "{}({}):{} = ",
+                        vars.name(*v),
+                        vars.scope(*v),
+                        vars.tp(*v).show(self, vars)
+                    )?;
+                }
                 self.show_code(write, vars, to, indent, false)
             }
             Value::Return(ex) => {

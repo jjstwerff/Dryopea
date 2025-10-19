@@ -5,24 +5,23 @@ pub fn test() {
         "Test failed {test_value} != 4"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:integer(1) = {#block_2:integer
-    t:text(2) = "some";
-    _res_3:integer(2) = _tp_text_len(t);
-    OpFreeText(t);
-    _res_3;
-  }#block_2:integer;
-  if OpEqInt(test_value, 4i32) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatInt(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1, " != 4");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):integer = {#block(2):integer
+    t(2):text = "some";
+    _tp_text_len(t(2));
+    OpFreeText(t(2));
+  }#block(2):integer;
+  if OpEqInt(test_value(1), 4i32) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 4");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for text_len:test() [1168]
+byte-code for text_len:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: Text() var=t[32]:text
@@ -31,25 +30,24 @@ byte-code for text_len:test() [1168]
   11[56]: VarText(var[32]) -> text var=t[32]:text
   14[72]: Call(size=0, to=318)
   21[60]: FreeText(var[32])
-  24[60]: VarInt(var[56]) -> integer var=_res_3[56]:integer
-  27[64]: FreeStack(value=4, discard=32) type=integer[4]:Base[0]
-  31[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  34[40]: ConstInt(val=4) -> integer
-  39[44]: EqInt(v1: integer, v2: integer) -> boolean
-  40[37]: GotoFalseWord(jump=46, if_false: boolean)
-  43[36]: GotoWord(jump=95)
-  46[36]: ClearText(var[8]) var=__work_1[8]:text
-  49[36]: ConstText(_value="Test failed ") -> text
-  63[52]: AppendText(var[8], v1: text)
-  66[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  69[40]: ConstInt(val=0) -> integer
-  74[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  81[36]: ConstText(_value=" != 4") -> text
-  88[52]: AppendText(var[8], v1: text)
-  91[36]: VarText(var[8]) -> text var=__work_1[8]:text
-  94[52]: Panic(message: text)
-  95[36]: FreeText(var[8])
-  98[36]: Return(ret=0, value=0, discard=32)
+  24[60]: FreeStack(value=4, discard=28)
+  28[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  31[40]: ConstInt(val=4) -> integer
+  36[44]: EqInt(v1: integer, v2: integer) -> boolean
+  37[37]: GotoFalseWord(jump=43, if_false: boolean)
+  40[36]: GotoWord(jump=92)
+  43[36]: ClearText(var[8]) var=__work_1[8]:text
+  46[36]: ConstText(_value="Test failed ") -> text
+  60[52]: AppendText(var[8], v1: text)
+  63[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  66[40]: ConstInt(val=0) -> integer
+  71[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  78[36]: ConstText(_value=" != 4") -> text
+  85[52]: AppendText(var[8], v1: text)
+  88[36]: VarText(var[8]) -> text var=__work_1[8]:text
+  91[52]: Panic(message: text)
+  92[36]: FreeText(var[8])
+  95[36]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] Text()
@@ -60,15 +58,14 @@ Execute test:
    14:[72] Call(size=0, to=318)
   318:[76] ArgText(var[56]) -> "some"[76]
   321:[92] LengthText(v1="some"[76]) -> 4[76]
-  322:[80] Return(ret=1189[72], value=4, discard=24) -> 4[56]
+  322:[80] Return(ret=1131[72], value=4, discard=24) -> 4[56]
    21:[60] FreeText(var[32])
-   24:[60] VarInt(var[56]) -> 4[60]
-   27:[64] FreeStack(value=4, discard=32)
-   31:[36] VarInt(var[32]) -> 4[36]
-   34:[40] ConstInt(val=4) -> 4[40]
-   39:[44] EqInt(v1=4[36], v2=4[40]) -> true[36]
-   40:[37] GotoFalseWord(jump=1214, if_false=true[36])
-   43:[36] GotoWord(jump=1263)
-   95:[36] FreeText(var[8])
-   98:[36] Return(ret=4294967295[4], value=0, discard=32)
+   24:[60] FreeStack(value=4, discard=28)
+   28:[36] VarInt(var[32]) -> 4[36]
+   31:[40] ConstInt(val=4) -> 4[40]
+   36:[44] EqInt(v1=4[36], v2=4[40]) -> true[36]
+   37:[37] GotoFalseWord(jump=43, if_false=true[36])
+   40:[36] GotoWord(jump=92)
+   92:[36] FreeText(var[8])
+   95:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

@@ -57,7 +57,7 @@ for c in \"123😊🙃😋8\" {
 \"{a} indexes:{b}\""
     )
     .result(Value::str(
-        "[\"1\",\"2\",\"3\",\"😊\",\"🙃\",\"😋\",\"8\"] indexes:[1,2,3,7,11,15,16]",
+        "['1','2','3','😊','🙃','😋','8'] indexes:[1,2,3,7,11,15,16]",
     ));
 }
 
@@ -206,6 +206,22 @@ fn loop_variable() {
 #[test]
 fn return_clear() {
     code!("fn res() -> integer { a = 0; for _t in 1..5 { b = \"123\"; a += b as integer; if a > 200 { return a; }}; 0}").expr("res()").result(Value::Int(246));
+}
+
+#[test]
+fn optional_remove() {
+    code!(
+        "fn last(filename: text) -> text {
+    v = filename.rfind(\"/\");
+    if v {
+        filename[v + 1..]
+    } else {
+        filename
+    }
+}"
+    )
+    .expr("last(\"a/b/c\") + last(\"d\")")
+    .result(Value::str("cd"));
 }
 
 /*

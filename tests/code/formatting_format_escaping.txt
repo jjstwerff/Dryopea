@@ -5,22 +5,22 @@ pub fn test() {
         "Test failed {test_value} != \"ab{{cd}}e\""
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:text(1) = {#block_2:text
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):text = {#block(2):text
     "ab{cd}e";
-  }#block_2:text;
-  if OpEqText(test_value, "ab{cd}e") null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatText(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != "ab{cd}e"");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(test_value);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):text;
+  if OpEqText(test_value(1), "ab{cd}e") null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != "ab{cd}e"");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for format_escaping:test() [1168]
+byte-code for format_escaping:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: Text() var=test_value[32]:text
@@ -53,8 +53,8 @@ Execute test:
    14:[56] VarText(var[32]) -> "ab{cd}e"[56]
    17:[72] ConstText(_value="ab{cd}e") -> "ab{cd}e"[72]
    26:[88] EqText(v1="ab{cd}e"[56], v2="ab{cd}e"[72]) -> true[56]
-   27:[57] GotoFalseWord(jump=1201, if_false=true[56])
-   30:[56] GotoWord(jump=1256)
+   27:[57] GotoFalseWord(jump=33, if_false=true[56])
+   30:[56] GotoWord(jump=88)
    88:[56] FreeText(var[32])
    91:[56] FreeText(var[8])
    94:[56] Return(ret=4294967295[4], value=0, discard=52)

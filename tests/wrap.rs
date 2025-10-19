@@ -5,6 +5,7 @@ extern crate dryopea;
 
 use dryopea::interpreter::byte_code;
 use dryopea::parser::Parser;
+use dryopea::scopes;
 use dryopea::state::State;
 
 #[test]
@@ -34,6 +35,7 @@ fn dir() -> std::io::Result<()> {
         if !p.diagnostics.is_empty() {
             return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
         }
+        scopes::check(&mut p.data);
         let mut state = State::new(p.database);
         let filename = entry.file_name().unwrap_or_default().to_string_lossy();
         let mut w = std::fs::File::create(format!("tests/code/{filename}.txt"))?;

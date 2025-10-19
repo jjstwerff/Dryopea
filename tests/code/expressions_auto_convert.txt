@@ -5,21 +5,21 @@ pub fn test() {
         "Test failed {test_value} != 20l"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:long(1) = {#block_2:long
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):long = {#block(2):long
     OpMulLong(10i64, OpConvLongFromInt(2i32));
-  }#block_2:long;
-  if OpEqLong(test_value, 20i64) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatLong(__work_1, test_value, 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1, " != 20l");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):long;
+  if OpEqLong(test_value(1), 20i64) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatLong(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 20l");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for auto_convert:test() [1168]
+byte-code for auto_convert:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstLong(val=10) -> long var=test_value[32]:long
@@ -53,8 +53,8 @@ Execute test:
    17:[40] VarLong(var[32]) -> 20[40]
    20:[48] ConstLong(val=20) -> 20[48]
    29:[56] EqLong(v1=20[40], v2=20[48]) -> true[40]
-   30:[41] GotoFalseWord(jump=1204, if_false=true[40])
-   33:[40] GotoWord(jump=1255)
+   30:[41] GotoFalseWord(jump=36, if_false=true[40])
+   33:[40] GotoWord(jump=87)
    87:[40] FreeText(var[8])
    90:[40] Return(ret=4294967295[4], value=0, discard=36)
 Finished

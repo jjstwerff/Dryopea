@@ -5,21 +5,21 @@ pub fn test() {
         "Test failed {test_value} != false"
     );
 }
-fn test() {#block_1:void
-  __work_1:text(1) = "";
-  test_value:boolean(1) = {#block_2:boolean
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  test_value(1):boolean = {#block(2):boolean
     _tp_text_starts_with("something", "someone");
-  }#block_2:boolean;
-  if OpEqBool(test_value, false) null else OpPanic({#Formatted string_3:text
-    __work_1:text(1) = "Test failed ";
-    OpFormatBool(__work_1, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_1, " != false");
-    __work_1;
-  }#Formatted string_3:text);
-  OpFreeText(__work_1);
-}#block_1:void
+  }#block(2):boolean;
+  if OpEqBool(test_value(1), false) null else OpPanic({#Formatted string(3):text
+    __work_1(1):text = "Test failed ";
+    OpFormatBool(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != false");
+    __work_1(1);
+  }#Formatted string(3):text);
+  OpFreeText(__work_1(1));
+}#block(1):void
 
-byte-code for starts:test() [1168]
+byte-code for starts:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_1[8]:text
    1[32]: ConstText(_value="something") -> text var=test_value[32]:boolean
@@ -51,8 +51,8 @@ Execute test:
    24:[33] VarBool(var[32]) -> false[33]
    27:[34] ConstFalse() -> false[34]
    28:[35] EqBool(v1=false[33], v2=false[34]) -> true[33]
-   29:[34] GotoFalseWord(jump=1203, if_false=true[33])
-   32:[33] GotoWord(jump=1254)
+   29:[34] GotoFalseWord(jump=35, if_false=true[33])
+   32:[33] GotoWord(jump=86)
    86:[33] FreeText(var[8])
    89:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

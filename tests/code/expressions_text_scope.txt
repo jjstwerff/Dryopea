@@ -5,28 +5,30 @@ pub fn test() {
         "Test failed {test_value} != \"a\""
     );
 }
-fn test() {#block_1:void
-  __work_2:text(1) = "";
-  __work_1:text(1) = "";
-  test_value:text(1) = {#block_2:text
-    v:text(2) = "a";
-    __work_1:text(1) = "";
-    OpFormatText(__work_1, v, 0i32, -1i32, 32i32);
-    OpFreeText(v);
-    __work_1;
-  }#block_2:text;
-  if OpEqText(test_value, "a") null else OpPanic({#Formatted string_4:text
-    __work_2:text(1) = "Test failed ";
-    OpFormatText(__work_2, test_value, 0i32, -1i32, 32i32);
-    OpAppendText(__work_2, " != "a"");
-    __work_2;
-  }#Formatted string_4:text);
-  OpFreeText(test_value);
-  OpFreeText(__work_1);
-  OpFreeText(__work_2);
-}#block_1:void
+fn test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  test_value(1):text = {#block(2):text
+    v(2):text = "a";
+    {#Formatted string(3):text
+      __work_1(1):text = "";
+      OpFormatText(__work_1(1), v(2), 0i32, -1i32, 32i32);
+      OpFreeText(v(2));
+      __work_1(1);
+    }#Formatted string(3):text;
+  }#block(2):text;
+  if OpEqText(test_value(1), "a") null else OpPanic({#Formatted string(4):text
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "a"");
+    __work_2(1);
+  }#Formatted string(4):text);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
 
-byte-code for text_scope:test() [1168]
+byte-code for text_scope:test() [1110]
    0[4]: return-address
    0[8]: Text() var=__work_2[8]:text
    1[32]: Text() var=__work_1[32]:text
@@ -42,7 +44,7 @@ byte-code for text_scope:test() [1168]
   26[124]: FormatText(var[32], val: text, width: integer, dir=-1, token=32)
   31[104]: FreeText(var[80])
   34[104]: VarText(var[32]) -> text var=__work_1[32]:text
-  37[120]: FreeStack(value=16, discard=40) type=text[4]:Base[5]
+  37[120]: FreeStack(value=16, discard=40)
   41[96]: AppendText(var[56], v1: text)
   44[80]: VarText(var[56]) -> text var=test_value[56]:text
   47[96]: ConstText(_value="a") -> text
@@ -84,8 +86,8 @@ Execute test:
    44:[80] VarText(var[56]) -> "a"[80]
    47:[96] ConstText(_value="a") -> "a"[96]
    50:[112] EqText(v1="a"[80], v2="a"[96]) -> true[80]
-   51:[81] GotoFalseWord(jump=1225, if_false=true[80])
-   54:[80] GotoWord(jump=1274)
+   51:[81] GotoFalseWord(jump=57, if_false=true[80])
+   54:[80] GotoWord(jump=106)
   106:[80] FreeText(var[56])
   109:[80] FreeText(var[32])
   112:[80] FreeText(var[8])
