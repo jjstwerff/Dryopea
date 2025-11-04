@@ -23,41 +23,41 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for sub_str:test() [1110]
-   0[4]: return-address
-   0[8]: Text() var=__work_1[8]:text
-   1[32]: Text() var=a[32]:text
-   2[56]: Text() var=test_value[56]:text["a"]
-   3[80]: ClearText(var[32]) var=a[32]:text
-   6[80]: ConstText(_value="12345") -> text
-  13[96]: AppendText(var[32], v1: text)
-  16[80]: VarText(var[32]) -> text var=a[32]:text
-  19[96]: ConstInt(val=1) -> integer
-  24[100]: VarText(var[32]) -> text var=a[32]:text
-  27[116]: Call(size=0, to=318)
-  34[104]: ConstInt(val=1) -> integer
-  39[108]: MinInt(v1: integer, v2: integer) -> integer
-  40[104]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
-  41[96]: AppendText(var[56], v1: text)
-  44[80]: VarText(var[56]) -> text var=test_value[56]:text["a"]
-  47[96]: ConstText(_value="234") -> text
-  52[112]: EqText(v1: text, v2: text) -> boolean
-  53[81]: GotoFalseWord(jump=59, if_false: boolean)
-  56[80]: GotoWord(jump=110)
-  59[80]: ClearText(var[8]) var=__work_1[8]:text
-  62[80]: ConstText(_value="Test failed ") -> text
-  76[96]: AppendText(var[8], v1: text)
-  79[80]: VarText(var[56]) -> text var=test_value[56]:text["a"]
-  82[96]: ConstInt(val=0) -> integer
-  87[100]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
-  92[80]: ConstText(_value=" != "234"") -> text
- 103[96]: AppendText(var[8], v1: text)
- 106[80]: VarText(var[8]) -> text var=__work_1[8]:text
- 109[96]: Panic(message: text)
- 110[80]: FreeText(var[56])
- 113[80]: FreeText(var[32])
- 116[80]: FreeText(var[8])
- 119[80]: Return(ret=0, value=0, discard=76)
+byte-code for sub_str:test() [1074]
+   0[0]: return-address
+   0[4]: Text() var=__work_1[8]:text
+   1[28]: Text() var=a[32]:text
+   2[52]: Text() var=test_value[56]:text["a"]
+   3[76]: ClearText(var[32]) var=a[32]:text
+   6[76]: ConstText(_value="12345") -> text
+  13[92]: AppendText(var[32], v1: text)
+  16[76]: VarText(var[32]) -> text var=a[32]:text
+  19[92]: ConstInt(val=1) -> integer
+  24[96]: VarText(var[32]) -> text var=a[32]:text
+  27[112]: Call(size=0, call=_tp_text_len[318])
+  34[100]: ConstInt(val=1) -> integer
+  39[104]: MinInt(v1: integer, v2: integer) -> integer
+  40[100]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
+  41[92]: AppendText(var[56], v1: text)
+  44[76]: VarText(var[56]) -> text var=test_value[56]:text["a"]
+  47[92]: ConstText(_value="234") -> text
+  52[108]: EqText(v1: text, v2: text) -> boolean
+  53[77]: GotoFalseWord(jump=59, if_false: boolean)
+  56[76]: GotoWord(jump=110)
+  59[76]: ClearText(var[8]) var=__work_1[8]:text
+  62[76]: ConstText(_value="Test failed ") -> text
+  76[92]: AppendText(var[8], v1: text)
+  79[76]: VarText(var[56]) -> text var=test_value[56]:text["a"]
+  82[92]: ConstInt(val=0) -> integer
+  87[96]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+  92[76]: ConstText(_value=" != "234"") -> text
+ 103[92]: AppendText(var[8], v1: text)
+ 106[76]: VarText(var[8]) -> text var=__work_1[8]:text
+ 109[92]: Panic(message: text)
+ 110[76]: FreeText(var[56])
+ 113[76]: FreeText(var[32])
+ 116[76]: FreeText(var[8])
+ 119[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -69,10 +69,10 @@ Execute test:
    16:[80] VarText(var[32]) -> "12345"[80]
    19:[96] ConstInt(val=1) -> 1[96]
    24:[100] VarText(var[32]) -> "12345"[100]
-   27:[116] Call(size=0, to=318)
+   27:[116] Call(size=0, call=_tp_text_len[318])
   318:[120] ArgText(var[100]) -> "12345"[120]
   321:[136] LengthText(v1="12345"[120]) -> 5[120]
-  322:[124] Return(ret=1144[116], value=4, discard=24) -> 5[100]
+  322:[124] Return(ret=1108[116], value=4, discard=24) -> 5[100]
    34:[104] ConstInt(val=1) -> 1[104]
    39:[108] MinInt(v1=5[100], v2=1[104]) -> 4[100]
    40:[104] GetTextSub(v1="12345"[80], from=1[96], till=4[100]) -> "234"[80]

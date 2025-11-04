@@ -222,9 +222,6 @@ impl Parser {
             if data.is_dir() {
                 self.parse_dir(&f, default)?;
             } else if !self.parse(&f, default) {
-                for l in self.diagnostics.lines() {
-                    println!("{l}");
-                }
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
                     format!("{}", self.diagnostics),
@@ -311,7 +308,7 @@ impl Parser {
             let next = vec![
                 v_set(
                     res_var,
-                    self.cl("OpGetCharacter", &[code.clone(), Value::Var(iter_var)]),
+                    self.cl("OpTextCharacter", &[code.clone(), Value::Var(iter_var)]),
                 ),
                 v_set(iter_var, self.cl("OpAddInt", &[Value::Var(iter_var), l])),
                 Value::Var(res_var),
@@ -1857,7 +1854,7 @@ impl Parser {
                 ls.insert(0, v_set(wt, Value::Text(String::new())));
             }
             for r in self.vars.work_references() {
-                if !self.vars.is_argument(r) {
+                if !self.vars.is_argument(r) && self.vars.tp(r).depend().is_empty() {
                     ls.insert(0, v_set(r, Value::Null));
                 }
             }
@@ -2141,7 +2138,7 @@ impl Parser {
             }
         }
         self.lexer.token("}");
-        self.block_result(context, result, &t, &mut l);
+        t = self.block_result(context, result, &t, &mut l);
         *val = v_block(l, t.clone(), "block");
         t
     }
@@ -2156,19 +2153,22 @@ impl Parser {
         }
     }
 
-    fn block_result(&mut self, context: &str, result: &Type, t: &Type, l: &mut [Value]) {
+    fn block_result(&mut self, context: &str, result: &Type, t: &Type, l: &mut [Value]) -> Type {
+        let mut tp = t.clone();
         if *result != Type::Void && !matches!(*result, Type::Unknown(_)) {
             let last = l.len() - 1;
             let ignore = *t == Type::Void && matches!(l[last], Value::Return(_));
             if !self.convert(&mut l[last], t, result) && !ignore {
                 self.validate_convert(context, t, result);
             }
+            tp = result.clone();
         }
         if let Type::Text(ls) = t {
             self.text_return(ls);
         } else if let Type::Reference(_, ls) | Type::Vector(_, ls) = t {
             self.ref_return(ls);
         }
+        tp
     }
 
     // <operator> ::= '..' ['='] |
@@ -2760,7 +2760,7 @@ impl Parser {
     }
 
     fn vector_db(&mut self, assign_tp: &Type, vec: u16) -> Vec<Value> {
-        if self.first_pass {
+        if self.first_pass || self.vars.is_argument(vec) {
             Vec::new()
         } else {
             let mut ls = Vec::new();
@@ -3092,7 +3092,7 @@ impl Parser {
             }
             Type::Text(Vec::new())
         } else {
-            *code = self.cl("OpGetCharacter", &[code.clone(), p.clone()]);
+            *code = self.cl("OpTextCharacter", &[code.clone(), p.clone()]);
             Type::Character
         }
     }

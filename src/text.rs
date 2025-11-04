@@ -22,10 +22,18 @@ pub const FUNCTIONS: &[(&str, Call)] = &[
     ("_tp_text_to_lowercase", _tp_text_to_lowercase),
     ("_tp_text_to_uppercase", _tp_text_to_uppercase),
     ("_tp_text_is_lowercase", _tp_text_is_lowercase),
+    ("_tp_character_is_lowercase", _tp_character_is_lowercase),
     ("_tp_text_is_uppercase", _tp_text_is_uppercase),
+    ("_tp_character_is_uppercase", _tp_character_is_uppercase),
     ("_tp_text_is_numeric", _tp_text_is_numeric),
+    ("_tp_character_is_numeric", _tp_character_is_numeric),
     ("_tp_text_is_alphanumeric", _tp_text_is_alphanumeric),
+    (
+        "_tp_character_is_alphanumeric",
+        _tp_character_is_alphanumeric,
+    ),
     ("_tp_text_is_alphabetic", _tp_text_is_alphabetic),
+    ("_tp_character_is_alphabetic", _tp_character_is_alphabetic),
     ("_tp_text_is_whitespace", _tp_text_is_whitespace),
     ("_tp_text_is_control", _tp_text_is_control),
     ("arguments", arguments),
@@ -161,6 +169,12 @@ fn _tp_text_is_lowercase(stores: &mut Stores, stack: &mut DbRef) {
     stores.put(stack, new_value);
 }
 
+fn _tp_character_is_lowercase(stores: &mut Stores, stack: &mut DbRef) {
+    let v_self = *stores.get::<char>(stack);
+    let new_value = { v_self.is_lowercase() };
+    stores.put(stack, new_value);
+}
+
 fn _tp_text_is_uppercase(stores: &mut Stores, stack: &mut DbRef) {
     let v_self = *stores.get::<Str>(stack);
     let new_value = {
@@ -172,6 +186,12 @@ fn _tp_text_is_uppercase(stores: &mut Stores, stack: &mut DbRef) {
         }
         res
     };
+    stores.put(stack, new_value);
+}
+
+fn _tp_character_is_uppercase(stores: &mut Stores, stack: &mut DbRef) {
+    let v_self = *stores.get::<char>(stack);
+    let new_value = { v_self.is_uppercase() };
     stores.put(stack, new_value);
 }
 
@@ -189,6 +209,12 @@ fn _tp_text_is_numeric(stores: &mut Stores, stack: &mut DbRef) {
     stores.put(stack, new_value);
 }
 
+fn _tp_character_is_numeric(stores: &mut Stores, stack: &mut DbRef) {
+    let v_self = *stores.get::<char>(stack);
+    let new_value = { v_self.is_numeric() };
+    stores.put(stack, new_value);
+}
+
 fn _tp_text_is_alphanumeric(stores: &mut Stores, stack: &mut DbRef) {
     let v_self = *stores.get::<Str>(stack);
     let new_value = {
@@ -203,6 +229,12 @@ fn _tp_text_is_alphanumeric(stores: &mut Stores, stack: &mut DbRef) {
     stores.put(stack, new_value);
 }
 
+fn _tp_character_is_alphanumeric(stores: &mut Stores, stack: &mut DbRef) {
+    let v_self = *stores.get::<char>(stack);
+    let new_value = { v_self.is_alphanumeric() };
+    stores.put(stack, new_value);
+}
+
 fn _tp_text_is_alphabetic(stores: &mut Stores, stack: &mut DbRef) {
     let v_self = *stores.get::<Str>(stack);
     let new_value = {
@@ -214,6 +246,12 @@ fn _tp_text_is_alphabetic(stores: &mut Stores, stack: &mut DbRef) {
         }
         res
     };
+    stores.put(stack, new_value);
+}
+
+fn _tp_character_is_alphabetic(stores: &mut Stores, stack: &mut DbRef) {
+    let v_self = *stores.get::<char>(stack);
+    let new_value = { v_self.is_alphabetic() };
     stores.put(stack, new_value);
 }
 

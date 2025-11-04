@@ -237,12 +237,6 @@ impl Test {
             was += &e;
         }
         if !found.is_empty() || !was.is_empty() {
-            if !self.code.is_empty() {
-                println!("{}", self.code);
-            }
-            if !self.expr.is_empty() {
-                println!("{}", self.test());
-            }
             panic!("Found '{found}' Expected '{was}'");
         }
     }

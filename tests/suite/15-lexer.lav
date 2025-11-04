@@ -1,7 +1,6 @@
 use lexer;
 
 fn testing(l: lexer::Lexer) {
-    assert(l.int() == 12, "Integer");
     assert(!l.match("+"), "Incorrect plus");
     assert(l.peek() != "+", "Incorrect plus");
     assert(l.match("+="), "Incorrect plus_is");
@@ -19,4 +18,6 @@ fn main() {
     l = lexer::Lexer {};
     l.set_tokens(["+=", "*=", "-=", ">>", "<<"]);
     l.parse_string("Tokens", "12 += -2 * 3l >> 4");
+    assert(l.int() == 12, "Integer");
+    assert(!l.match("+"), "Incorrect plus");
 }

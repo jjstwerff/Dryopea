@@ -1074,7 +1074,7 @@ impl Stores {
     # Panics
     When the store was already freed before.
     */
-    pub fn valid(&mut self, db: &DbRef) {
+    pub fn valid(&self, db: &DbRef) {
         debug_assert!(
             db.store_nr < self.allocations.len() as u16,
             "Incorrect store"
@@ -1138,6 +1138,7 @@ impl Stores {
     }
 
     pub fn show(&self, s: &mut String, db: &DbRef, tp: u16, pretty: bool) {
+        self.valid(db);
         ShowDb {
             stores: self,
             store: db.store_nr,

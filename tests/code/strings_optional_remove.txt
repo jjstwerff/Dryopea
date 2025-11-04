@@ -23,23 +23,23 @@ fn last(filename:text) -> text["filename"] {#block(1):text["filename"]
   }#block(3):text["filename"];
 }#block(1):text["filename"]
 
-byte-code for optional_remove:last(filename: text[4]) [1110] -> text["filename"]
-   0[20]: return-address
-   0[24]: ArgText(var[4]) -> text var=filename[4]:text
-   3[40]: ConstText(_value="/") -> text
-   6[56]: StaticCall(_tp_text_rfind)
-   9[28]: VarInt(var[24]) -> integer var=v[24]:integer
-  12[32]: ConvBoolFromInt(v1: integer) -> boolean
-  13[29]: GotoFalseWord(jump=37, if_false: boolean)
-  16[28]: ArgText(var[4]) -> text var=filename[4]:text
-  19[44]: VarInt(var[24]) -> integer var=v[24]:integer
-  22[48]: ConstInt(val=1) -> integer
-  27[52]: AddInt(v1: integer, v2: integer) -> integer
-  28[48]: ConstInt(val=2147483647) -> integer
-  33[52]: GetTextSub(v1: text, from: integer, till: integer) -> text["filename"]
-  34[44]: GotoWord(jump=40)
-  37[28]: ArgText(var[4]) -> text var=filename[4]:text
-  40[44]: Return(ret=16, value=16, discard=40) type=text[4]:Base[5]
+byte-code for optional_remove:last(filename: text[0]) [1074] -> text["filename"]
+   0[16]: return-address
+   0[20]: ArgText(var[4]) -> text var=filename[4]:text
+   3[36]: ConstText(_value="/") -> text
+   6[52]: StaticCall(_tp_text_rfind)
+   9[24]: VarInt(var[24]) -> integer var=v[24]:integer
+  12[28]: ConvBoolFromInt(v1: integer) -> boolean
+  13[25]: GotoFalseWord(jump=37, if_false: boolean)
+  16[24]: ArgText(var[4]) -> text var=filename[4]:text
+  19[40]: VarInt(var[24]) -> integer var=v[24]:integer
+  22[44]: ConstInt(val=1) -> integer
+  27[48]: AddInt(v1: integer, v2: integer) -> integer
+  28[44]: ConstInt(val=2147483647) -> integer
+  33[48]: GetTextSub(v1: text, from: integer, till: integer) -> text["filename"]
+  34[40]: GotoWord(jump=40)
+  37[24]: ArgText(var[4]) -> text var=filename[4]:text
+  40[40]: Return(ret=16, value=16, discard=40) type=text[4]:Base[5]
 
 fn test() {#block(1):void
   __work_2(1):text = "";
@@ -63,39 +63,39 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for optional_remove:test() [1156]
-   0[4]: return-address
-   0[8]: Text() var=__work_2[8]:text
-   1[32]: Text() var=__work_1[32]:text
-   2[56]: Text() var=test_value[56]:text["__work_1"]
-   3[80]: ClearText(var[32])
-   6[80]: ConstText(_value="a/b/c") -> text
-  13[96]: Call(size=0, to=1110)
-  20[96]: AppendText(var[32], v1: text)
-  23[80]: ConstText(_value="d") -> text
-  26[96]: Call(size=0, to=1110)
-  33[96]: AppendText(var[32], v1: text)
-  36[80]: VarText(var[32]) -> text var=__work_1[32]:text
-  39[96]: AppendText(var[56], v1: text)
-  42[80]: VarText(var[56]) -> text var=test_value[56]:text["__work_1"]
-  45[96]: ConstText(_value="cd") -> text
-  49[112]: EqText(v1: text, v2: text) -> boolean
-  50[81]: GotoFalseWord(jump=56, if_false: boolean)
-  53[80]: GotoWord(jump=106)
-  56[80]: ClearText(var[8]) var=__work_2[8]:text
-  59[80]: ConstText(_value="Test failed ") -> text
-  73[96]: AppendText(var[8], v1: text)
-  76[80]: VarText(var[56]) -> text var=test_value[56]:text["__work_1"]
-  79[96]: ConstInt(val=0) -> integer
-  84[100]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
-  89[80]: ConstText(_value=" != "cd"") -> text
-  99[96]: AppendText(var[8], v1: text)
- 102[80]: VarText(var[8]) -> text var=__work_2[8]:text
- 105[96]: Panic(message: text)
- 106[80]: FreeText(var[56])
- 109[80]: FreeText(var[32])
- 112[80]: FreeText(var[8])
- 115[80]: Return(ret=0, value=0, discard=76)
+byte-code for optional_remove:test() [1120]
+   0[0]: return-address
+   0[4]: Text() var=__work_2[8]:text
+   1[28]: Text() var=__work_1[32]:text
+   2[52]: Text() var=test_value[56]:text["__work_1"]
+   3[76]: ClearText(var[32])
+   6[76]: ConstText(_value="a/b/c") -> text
+  13[92]: Call(size=0, call=last[1074])
+  20[92]: AppendText(var[32], v1: text)
+  23[76]: ConstText(_value="d") -> text
+  26[92]: Call(size=0, call=last[1074])
+  33[92]: AppendText(var[32], v1: text)
+  36[76]: VarText(var[32]) -> text var=__work_1[32]:text
+  39[92]: AppendText(var[56], v1: text)
+  42[76]: VarText(var[56]) -> text var=test_value[56]:text["__work_1"]
+  45[92]: ConstText(_value="cd") -> text
+  49[108]: EqText(v1: text, v2: text) -> boolean
+  50[77]: GotoFalseWord(jump=56, if_false: boolean)
+  53[76]: GotoWord(jump=106)
+  56[76]: ClearText(var[8]) var=__work_2[8]:text
+  59[76]: ConstText(_value="Test failed ") -> text
+  73[92]: AppendText(var[8], v1: text)
+  76[76]: VarText(var[56]) -> text var=test_value[56]:text["__work_1"]
+  79[92]: ConstInt(val=0) -> integer
+  84[96]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+  89[76]: ConstText(_value=" != "cd"") -> text
+  99[92]: AppendText(var[8], v1: text)
+ 102[76]: VarText(var[8]) -> text var=__work_2[8]:text
+ 105[92]: Panic(message: text)
+ 106[76]: FreeText(var[56])
+ 109[76]: FreeText(var[32])
+ 112[76]: FreeText(var[8])
+ 115[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -103,32 +103,32 @@ Execute test:
     2:[56] Text()
     3:[80] ClearText(var[32])
     6:[80] ConstText(_value="a/b/c") -> "a/b/c"[80]
-   13:[96] Call(size=0, to=1110)
- 1110:[100] ArgText(var[80]) -> "a/b/c"[100]
- 1113:[116] ConstText(_value="/") -> "/"[116]
- 1116:[132] StaticCall(_tp_text_rfind)
- 1119:[104] VarInt(var[100]) -> 3[104]
- 1122:[108] ConvBoolFromInt(v1=3[104]) -> true[104]
- 1123:[105] GotoFalseWord(jump=1147, if_false=true[104])
- 1126:[104] ArgText(var[80]) -> "a/b/c"[104]
- 1129:[120] VarInt(var[100]) -> 3[120]
- 1132:[124] ConstInt(val=1) -> 1[124]
- 1137:[128] AddInt(v1=3[120], v2=1[124]) -> 4[120]
- 1138:[124] ConstInt(val=2147483647) -> 2147483647[124]
- 1143:[128] GetTextSub(v1="a/b/c"[104], from=4[120], till=2147483647[124]) -> "c"[104]
- 1144:[120] GotoWord(jump=1150)
- 1150:[120] Return(ret=1176[96], value=16, discard=40) -> "c"[80]
+   13:[96] Call(size=0, call=last[1074])
+ 1074:[100] ArgText(var[80]) -> "a/b/c"[100]
+ 1077:[116] ConstText(_value="/") -> "/"[116]
+ 1080:[132] StaticCall(_tp_text_rfind)
+ 1083:[104] VarInt(var[100]) -> 3[104]
+ 1086:[108] ConvBoolFromInt(v1=3[104]) -> true[104]
+ 1087:[105] GotoFalseWord(jump=1111, if_false=true[104])
+ 1090:[104] ArgText(var[80]) -> "a/b/c"[104]
+ 1093:[120] VarInt(var[100]) -> 3[120]
+ 1096:[124] ConstInt(val=1) -> 1[124]
+ 1101:[128] AddInt(v1=3[120], v2=1[124]) -> 4[120]
+ 1102:[124] ConstInt(val=2147483647) -> 2147483647[124]
+ 1107:[128] GetTextSub(v1="a/b/c"[104], from=4[120], till=2147483647[124]) -> "c"[104]
+ 1108:[120] GotoWord(jump=1114)
+ 1114:[120] Return(ret=1140[96], value=16, discard=40) -> "c"[80]
    20:[96] AppendText(var[32], v1="c"[80])
    23:[80] ConstText(_value="d") -> "d"[80]
-   26:[96] Call(size=0, to=1110)
- 1110:[100] ArgText(var[80]) -> "d"[100]
- 1113:[116] ConstText(_value="/") -> "/"[116]
- 1116:[132] StaticCall(_tp_text_rfind)
- 1119:[104] VarInt(var[100]) -> -2147483648[104]
- 1122:[108] ConvBoolFromInt(v1=-2147483648[104]) -> false[104]
- 1123:[105] GotoFalseWord(jump=1147, if_false=false[104])
- 1147:[104] ArgText(var[80]) -> "d"[104]
- 1150:[120] Return(ret=1189[96], value=16, discard=40) -> "d"[80]
+   26:[96] Call(size=0, call=last[1074])
+ 1074:[100] ArgText(var[80]) -> "d"[100]
+ 1077:[116] ConstText(_value="/") -> "/"[116]
+ 1080:[132] StaticCall(_tp_text_rfind)
+ 1083:[104] VarInt(var[100]) -> -2147483648[104]
+ 1086:[108] ConvBoolFromInt(v1=-2147483648[104]) -> false[104]
+ 1087:[105] GotoFalseWord(jump=1111, if_false=false[104])
+ 1111:[104] ArgText(var[80]) -> "d"[104]
+ 1114:[120] Return(ret=1153[96], value=16, discard=40) -> "d"[80]
    33:[96] AppendText(var[32], v1="d"[80])
    36:[80] VarText(var[32]) -> "cd"[80]
    39:[96] AppendText(var[56], v1="cd"[80])

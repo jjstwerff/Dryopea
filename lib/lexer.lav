@@ -66,22 +66,44 @@ pub fn parse(self: Lexer, filename: text) {
         filename
     };
     self.data = file(filename).content();
-    self.index = -1;
-    self.line = -1;
-    self.pos = -1;
+    self.index = 0;
+    self.line = 1;
+    self.pos = 1;
 }
 
 // Use a text for parsing.
 pub fn parse_string(self: Lexer, name: text, content: text) {
     self.file = name;
     self.data = content;
-    self.index = -1;
-    self.line = -1;
-    self.pos = -1;
+    self.index = 0;
+    self.line = 1;
+    self.pos = 1;
 }
 
 // Skip possible white-space, comments or newlines in the file.
 fn skip_whitespace(self: Lexer) {
+    for t in 0..100 {
+        if self.data[self.index] == ' ' or self.data[self.index] == '\t' {
+            self.index += 1;
+            self.pos += 1;
+            if self.data[self.index..self.index+2] == "//" {
+                self.index += 2;
+                self.pos += 1;
+                for c in 0..1000 {
+                    if self.data[self.index] == '\n' {
+                        break;
+                    }
+                    self.index += 1;
+                    self.pos += 1;
+                }
+            }
+            if self.data[self.index] == '\n' {
+                self.index += 1;
+                self.line += 1;
+                self.pos = 1;
+            }
+        }
+    }
 }
 
 // Test if there is a specific token, do not skip it.
@@ -118,7 +140,37 @@ pub fn identifier(self: Lexer) -> text {
 
 // Get an integer and skip it.
 pub fn int(self: Lexer) -> integer {
-    0
+    self.skip_whitespace();
+    negative = false;
+    if self.data[self.index] == '-' {
+        self.index += 1;
+        self.pos += 1;
+        negative = true;
+    }
+    if self.data[self.index] >= '0' and self.data[self.index] <= '9' {
+        result = 0;
+        for t in 0..20 {
+            if self.data[self.index] == '_' {
+                self.index += 1;
+                self.pos += 1;
+            } else if self.data[self.index] >= '0' and self.data[self.index] <= '9' {
+                result = result * 10 + (self.data[self.index] as integer - 48);
+                self.index += 1;
+                self.pos += 1;
+            }
+        }
+        if negative {
+            -result
+        } else {
+            result
+        }
+    } else {
+        if negative {
+            self.index -= 1;
+            self.pos -= 1;
+        }
+        null
+    }
 }
 
 // Get a long and skip it.

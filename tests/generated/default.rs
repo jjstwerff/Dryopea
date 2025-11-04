@@ -160,7 +160,7 @@ fn _tp_text_len(stores: &mut Stores, var_0: Str) -> i32 { //block_1: integer
   (var_both).len() as i32
 } //block_1: integer
 
-fn _tp_character_len(stores: &mut Stores, var_0: i32) -> i32 { //block_1: integer
+fn _tp_character_len(stores: &mut Stores, var_0: char) -> i32 { //block_1: integer
   OpLengthCharacter(stores, var_both)
 } //block_1: integer
 
@@ -206,21 +206,17 @@ fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 { //block_1: intege
   external::op_add_int((external::op_add_int((external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((0_i32)), i32::from((0_i32)))}), (65536_i32))), (external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((1_i32)), i32::from((0_i32)))}), (256_i32))))), ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((2_i32)), i32::from((0_i32)))}))
 } //block_1: integer
 
-fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str { //block_1: &text["result"]
+fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str { //block_1: text["result"]
   var_result = "".to_string();
   var_txt = "".to_string();
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_txt));
   OpAppendRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r}, 0_i32, var_txt);
   OpFreeText(stores, var_txt);
   var_result
-} //block_1: &text["result"]
+} //block_1: text["result"]
 
 fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<text>["l"]
-  var___ref_1 = Null;
   var___work_1 = "".to_string();
-  OpDatabase(stores, var___ref_1, 14_i32);
-  var_l = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((4_i32))};
-  {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
   var_c = _tp_File_content(stores, var_self, { //default ref_2: ref(reference)["__work_1"]
     OpCreateRef(stores, var___work_1)
   } //default ref_2: ref(reference)["__work_1"]);
@@ -229,16 +225,15 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
     var_ch#index = 0_i32;
     loop { //For loop_4
       var_ch = { //for text next_5: character
-        var__for_result_1 = OpGetCharacter(stores, var_c, var_ch#index);
+        var__for_result_1 = OpTextCharacter(stores, var_c, var_ch#index);
         var_ch#index = external::op_add_int((var_ch#index), (OpLengthCharacter(stores, var__for_result_1)));
         var__for_result_1
       } //for text next_5: character;
-      if !(external::op_conv_bool_from_int((var_ch))) { //break_6: void
+      if !(external::op_conv_bool_from_character((var_ch))) { //break_6: void
         Break(0)
       } //break_6: void else {Null};
       { //block_7: void
-        if (external::op_conv_bool_from_int((var_ch))) == (!("
-".to_string()).is_empty()) { //block_8: void
+        if (if (var_ch) == char::from(0) { i32::MIN } else { (var_ch) as i32 }) == (if (10_i32) == char::from(0) { i32::MIN } else { (10_i32) as i32 }) { //block_8: void
           var__elm_2 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
           {let db = (var__elm_2); let s_val = (OpGetTextSub(stores, var_c, var_p, external::op_min_int((var_ch#index), (1_i32)))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
           OpFinishRecord(stores, var_l, var__elm_2, 7_i32, 65535_i32);
@@ -256,7 +251,6 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
   } //block_10: void else {Null};
   OpFreeText(stores, var_c);
   OpFreeText(stores, var___work_1);
-  OpFreeRef(stores, var___ref_1);
   var_l
 } //block_1: vector<text>["l"]
 
@@ -267,20 +261,15 @@ fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef { //block_1: ref
   {let db = (var_result); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if false {1_i32} else {0_i32}));};
   if stores.get_file(&(var_result)) { //block_2: ref(File)["result"]
     var_result
-  } //block_2: ref(File)["result"] else { //block_3: null
+  } //block_2: ref(File)["result"] else { //block_3: ref(File)["result"]
     stores.null()
-  } //block_3: null
+  } //block_3: ref(File)["result"]
 } //block_1: ref(File)["result"]
 
 fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<ref(File)>["result"]
-  var___ref_1 = Null;
-  OpDatabase(stores, var___ref_1, 15_i32);
-  var_result = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + u32::from((4_i32))};
-  {let db = (var___ref_1); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((4_i32)), (0_i32));};
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) { //block_2: void
-    Drop(Call(325, [Call(270, [Var(0), Int(4)]), Var(1)]))
+    Drop(Call(329, [Call(273, [Var(0), Int(4)]), Var(1)]))
   } //block_2: void else {Null};
-  OpFreeRef(stores, var___ref_1);
   var_result
 } //block_1: vector<ref(File)>["result"]
 
@@ -291,11 +280,11 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //bl
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
-    Drop(Call(326, [Call(270, [Var(0), Int(4)]), Var(1)]));
+    Drop(Call(330, [Call(273, [Var(0), Int(4)]), Var(1)]));
     var_result
-  } //block_2: ref(Image)["result"] else { //block_3: null
+  } //block_2: ref(Image)["result"] else { //block_3: ref(Image)["result"]
     stores.null()
-  } //block_3: null
+  } //block_3: ref(Image)["result"]
 } //block_1: ref(Image)["result"]
 
 fn env_variables(stores: &mut Stores) -> DbRef {
@@ -368,7 +357,17 @@ fn _tp_text_is_lowercase(stores: &mut Stores, var_0: Str) -> bool {
 }
 
 
+fn _tp_character_is_lowercase(stores: &mut Stores, var_0: char) -> bool {
+
+}
+
+
 fn _tp_text_is_uppercase(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn _tp_character_is_uppercase(stores: &mut Stores, var_0: char) -> bool {
 
 }
 
@@ -378,12 +377,27 @@ fn _tp_text_is_numeric(stores: &mut Stores, var_0: Str) -> bool {
 }
 
 
+fn _tp_character_is_numeric(stores: &mut Stores, var_0: char) -> bool {
+
+}
+
+
 fn _tp_text_is_alphanumeric(stores: &mut Stores, var_0: Str) -> bool {
 
 }
 
 
+fn _tp_character_is_alphanumeric(stores: &mut Stores, var_0: char) -> bool {
+
+}
+
+
 fn _tp_text_is_alphabetic(stores: &mut Stores, var_0: Str) -> bool {
+
+}
+
+
+fn _tp_character_is_alphabetic(stores: &mut Stores, var_0: char) -> bool {
 
 }
 

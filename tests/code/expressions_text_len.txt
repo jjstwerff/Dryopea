@@ -21,33 +21,33 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for text_len:test() [1110]
-   0[4]: return-address
-   0[8]: Text() var=__work_1[8]:text
-   1[32]: Text() var=t[32]:text
-   2[56]: ConstText(_value="some") -> text
-   8[72]: AppendText(var[32], v1: text)
-  11[56]: VarText(var[32]) -> text var=t[32]:text
-  14[72]: Call(size=0, to=318)
-  21[60]: FreeText(var[32])
-  24[60]: FreeStack(value=4, discard=28)
-  28[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  31[40]: ConstInt(val=4) -> integer
-  36[44]: EqInt(v1: integer, v2: integer) -> boolean
-  37[37]: GotoFalseWord(jump=43, if_false: boolean)
-  40[36]: GotoWord(jump=92)
-  43[36]: ClearText(var[8]) var=__work_1[8]:text
-  46[36]: ConstText(_value="Test failed ") -> text
-  60[52]: AppendText(var[8], v1: text)
-  63[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  66[40]: ConstInt(val=0) -> integer
-  71[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  78[36]: ConstText(_value=" != 4") -> text
-  85[52]: AppendText(var[8], v1: text)
-  88[36]: VarText(var[8]) -> text var=__work_1[8]:text
-  91[52]: Panic(message: text)
-  92[36]: FreeText(var[8])
-  95[36]: Return(ret=0, value=0, discard=32)
+byte-code for text_len:test() [1074]
+   0[0]: return-address
+   0[4]: Text() var=__work_1[8]:text
+   1[28]: Text() var=t[32]:text
+   2[52]: ConstText(_value="some") -> text
+   8[68]: AppendText(var[32], v1: text)
+  11[52]: VarText(var[32]) -> text var=t[32]:text
+  14[68]: Call(size=0, call=_tp_text_len[318])
+  21[56]: FreeText(var[32])
+  24[56]: FreeStack(value=4, discard=28)
+  28[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  31[36]: ConstInt(val=4) -> integer
+  36[40]: EqInt(v1: integer, v2: integer) -> boolean
+  37[33]: GotoFalseWord(jump=43, if_false: boolean)
+  40[32]: GotoWord(jump=92)
+  43[32]: ClearText(var[8]) var=__work_1[8]:text
+  46[32]: ConstText(_value="Test failed ") -> text
+  60[48]: AppendText(var[8], v1: text)
+  63[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  66[36]: ConstInt(val=0) -> integer
+  71[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  78[32]: ConstText(_value=" != 4") -> text
+  85[48]: AppendText(var[8], v1: text)
+  88[32]: VarText(var[8]) -> text var=__work_1[8]:text
+  91[48]: Panic(message: text)
+  92[32]: FreeText(var[8])
+  95[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] Text()
@@ -55,10 +55,10 @@ Execute test:
     2:[56] ConstText(_value="some") -> "some"[56]
     8:[72] AppendText(var[32], v1="some"[56])
    11:[56] VarText(var[32]) -> "some"[56]
-   14:[72] Call(size=0, to=318)
+   14:[72] Call(size=0, call=_tp_text_len[318])
   318:[76] ArgText(var[56]) -> "some"[76]
   321:[92] LengthText(v1="some"[76]) -> 4[76]
-  322:[80] Return(ret=1131[72], value=4, discard=24) -> 4[56]
+  322:[80] Return(ret=1095[72], value=4, discard=24) -> 4[56]
    21:[60] FreeText(var[32])
    24:[60] FreeStack(value=4, discard=28)
    28:[36] VarInt(var[32]) -> 4[36]

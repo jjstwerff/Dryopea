@@ -16,29 +16,29 @@ fn routine(a:integer) -> integer {#block(1):integer
   2i32;
 }#block(1):integer
 
-byte-code for call_routine:routine(a: integer[4]) [1110] -> integer
-   0[8]: return-address
-   0[12]: VarInt(var[4]) -> integer var=a[4]:integer
-   3[16]: ConstInt(val=4) -> integer
-   8[20]: GtInt(v1: integer, v2: integer) -> boolean
-   9[13]: GotoFalseWord(jump=49, if_false: boolean)
-  12[12]: VarInt(var[4]) -> integer var=a[4]:integer
-  15[16]: ConstInt(val=1) -> integer
-  20[20]: AddInt(v1: integer, v2: integer) -> integer
-  21[16]: Return(ret=4, value=4, discard=12)
-  27[16]: VarInt(var[4]) -> integer var=a[4]:integer
-  30[20]: ConstInt(val=1) -> integer
-  35[24]: AddInt(v1: integer, v2: integer) -> integer
-  36[20]: Return(ret=4, value=4, discard=16) type=integer[4]:Base[0]
-  42[20]: FreeStack(value=0, discard=8)
-  46[12]: GotoWord(jump=75)
-  49[12]: ConstInt(val=1) -> integer
-  54[16]: Return(ret=4, value=4, discard=12)
-  60[16]: ConstInt(val=1) -> integer
-  65[20]: Return(ret=4, value=4, discard=16) type=integer[4]:Base[0]
-  71[20]: FreeStack(value=0, discard=8)
-  75[12]: ConstInt(val=2) -> integer
-  80[16]: Return(ret=4, value=4, discard=12) type=integer[4]:Base[0]
+byte-code for call_routine:routine(a: integer[0]) [1074] -> integer
+   0[4]: return-address
+   0[8]: VarInt(var[4]) -> integer var=a[4]:integer
+   3[12]: ConstInt(val=4) -> integer
+   8[16]: GtInt(v1: integer, v2: integer) -> boolean
+   9[9]: GotoFalseWord(jump=49, if_false: boolean)
+  12[8]: VarInt(var[4]) -> integer var=a[4]:integer
+  15[12]: ConstInt(val=1) -> integer
+  20[16]: AddInt(v1: integer, v2: integer) -> integer
+  21[12]: Return(ret=4, value=4, discard=12)
+  27[12]: VarInt(var[4]) -> integer var=a[4]:integer
+  30[16]: ConstInt(val=1) -> integer
+  35[20]: AddInt(v1: integer, v2: integer) -> integer
+  36[16]: Return(ret=4, value=4, discard=16) type=integer[4]:Base[0]
+  42[16]: FreeStack(value=0, discard=8)
+  46[8]: GotoWord(jump=75)
+  49[8]: ConstInt(val=1) -> integer
+  54[12]: Return(ret=4, value=4, discard=12)
+  60[12]: ConstInt(val=1) -> integer
+  65[16]: Return(ret=4, value=4, discard=16) type=integer[4]:Base[0]
+  71[16]: FreeStack(value=0, discard=8)
+  75[8]: ConstInt(val=2) -> integer
+  80[12]: Return(ret=4, value=4, discard=12) type=integer[4]:Base[0]
 
 fn test() {#block(1):void
   __work_1(1):text = "";
@@ -54,52 +54,52 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for call_routine:test() [1196]
-   0[4]: return-address
-   0[8]: Text() var=__work_1[8]:text
-   1[32]: ConstInt(val=5) -> integer var=test_value[32]:integer
-   6[36]: Call(size=0, to=1110)
-  13[36]: ConstInt(val=2) -> integer
-  18[40]: Call(size=0, to=1110)
-  25[40]: AddInt(v1: integer, v2: integer) -> integer
-  26[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  29[40]: ConstInt(val=7) -> integer
-  34[44]: EqInt(v1: integer, v2: integer) -> boolean
-  35[37]: GotoFalseWord(jump=41, if_false: boolean)
-  38[36]: GotoWord(jump=90)
-  41[36]: ClearText(var[8]) var=__work_1[8]:text
-  44[36]: ConstText(_value="Test failed ") -> text
-  58[52]: AppendText(var[8], v1: text)
-  61[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  64[40]: ConstInt(val=0) -> integer
-  69[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  76[36]: ConstText(_value=" != 7") -> text
-  83[52]: AppendText(var[8], v1: text)
-  86[36]: VarText(var[8]) -> text var=__work_1[8]:text
-  89[52]: Panic(message: text)
-  90[36]: FreeText(var[8])
-  93[36]: Return(ret=0, value=0, discard=32)
+byte-code for call_routine:test() [1160]
+   0[0]: return-address
+   0[4]: Text() var=__work_1[8]:text
+   1[28]: ConstInt(val=5) -> integer var=test_value[32]:integer
+   6[32]: Call(size=0, call=routine[1074])
+  13[32]: ConstInt(val=2) -> integer
+  18[36]: Call(size=0, call=routine[1074])
+  25[36]: AddInt(v1: integer, v2: integer) -> integer
+  26[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  29[36]: ConstInt(val=7) -> integer
+  34[40]: EqInt(v1: integer, v2: integer) -> boolean
+  35[33]: GotoFalseWord(jump=41, if_false: boolean)
+  38[32]: GotoWord(jump=90)
+  41[32]: ClearText(var[8]) var=__work_1[8]:text
+  44[32]: ConstText(_value="Test failed ") -> text
+  58[48]: AppendText(var[8], v1: text)
+  61[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  64[36]: ConstInt(val=0) -> integer
+  69[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  76[32]: ConstText(_value=" != 7") -> text
+  83[48]: AppendText(var[8], v1: text)
+  86[32]: VarText(var[8]) -> text var=__work_1[8]:text
+  89[48]: Panic(message: text)
+  90[32]: FreeText(var[8])
+  93[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] Text()
     1:[32] ConstInt(val=5) -> 5[32]
-    6:[36] Call(size=0, to=1110)
- 1110:[40] VarInt(var[32]) -> 5[40]
- 1113:[44] ConstInt(val=4) -> 4[44]
- 1118:[48] GtInt(v1=5[40], v2=4[44]) -> true[40]
- 1119:[41] GotoFalseWord(jump=1159, if_false=true[40])
- 1122:[40] VarInt(var[32]) -> 5[40]
- 1125:[44] ConstInt(val=1) -> 1[44]
- 1130:[48] AddInt(v1=5[40], v2=1[44]) -> 6[40]
- 1131:[44] Return(ret=1209[36], value=4, discard=12)
+    6:[36] Call(size=0, call=routine[1074])
+ 1074:[40] VarInt(var[32]) -> 5[40]
+ 1077:[44] ConstInt(val=4) -> 4[44]
+ 1082:[48] GtInt(v1=5[40], v2=4[44]) -> true[40]
+ 1083:[41] GotoFalseWord(jump=1123, if_false=true[40])
+ 1086:[40] VarInt(var[32]) -> 5[40]
+ 1089:[44] ConstInt(val=1) -> 1[44]
+ 1094:[48] AddInt(v1=5[40], v2=1[44]) -> 6[40]
+ 1095:[44] Return(ret=1173[36], value=4, discard=12)
    13:[36] ConstInt(val=2) -> 2[36]
-   18:[40] Call(size=0, to=1110)
- 1110:[44] VarInt(var[36]) -> 2[44]
- 1113:[48] ConstInt(val=4) -> 4[48]
- 1118:[52] GtInt(v1=2[44], v2=4[48]) -> false[44]
- 1119:[45] GotoFalseWord(jump=1159, if_false=false[44])
- 1159:[44] ConstInt(val=1) -> 1[44]
- 1164:[48] Return(ret=1221[40], value=4, discard=12)
+   18:[40] Call(size=0, call=routine[1074])
+ 1074:[44] VarInt(var[36]) -> 2[44]
+ 1077:[48] ConstInt(val=4) -> 4[48]
+ 1082:[52] GtInt(v1=2[44], v2=4[48]) -> false[44]
+ 1083:[45] GotoFalseWord(jump=1123, if_false=false[44])
+ 1123:[44] ConstInt(val=1) -> 1[44]
+ 1128:[48] Return(ret=1185[40], value=4, discard=12)
    25:[40] AddInt(v1=6[32], v2=1[36]) -> 7[32]
    26:[36] VarInt(var[32]) -> 7[36]
    29:[40] ConstInt(val=7) -> 7[40]

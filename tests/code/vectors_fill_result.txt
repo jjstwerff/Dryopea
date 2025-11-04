@@ -1,0 +1,166 @@
+pub fn fill() -> vector<text> {
+    result = [];
+    result += ["aa"];
+    result += ["bb"];
+    result
+}
+
+pub fn test() {
+    test_value = {t = fill(); "{t}"};
+    assert(
+        test_value == "[\"aa\",\"bb\"]",
+        "Test failed {test_value} != \"[\"aa\",\"bb\"]\""
+    );
+}
+fn fill(result:vector<text>) -> vector<text>["??"] {#block(1):vector<text>["result"]
+  _elm_1(1):ref(boolean)["result"] = OpNewRecord(result(0), 7i32, 65535i32);
+  OpSetText(_elm_1(1), 0i32, "aa");
+  OpFinishRecord(result(0), _elm_1(1), 7i32, 65535i32);
+  _elm_2(1):ref(boolean)["result"] = OpNewRecord(result(0), 7i32, 65535i32);
+  OpSetText(_elm_2(1), 0i32, "bb");
+  OpFinishRecord(result(0), _elm_2(1), 7i32, 65535i32);
+  result(0);
+}#block(1):vector<text>["result"]
+
+byte-code for fill_result:fill(result: vector<text>[0]) [1074] -> vector<text>["result"]
+   0[12]: return-address
+   0[16]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
+   3[28]: NewRecord(data: ref(reference), parent_tp=7, fld=65535) -> ref(reference)
+   8[28]: VarRef(var[20]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[20]:ref(boolean)["result"]
+  11[40]: ConstText(_value="aa") -> text
+  15[56]: SetText(v1: ref(reference), fld=0, val: text)
+  18[28]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
+  21[40]: VarRef(var[20]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[20]:ref(boolean)["result"]
+  24[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=7, fld=65535)
+  29[28]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
+  32[40]: NewRecord(data: ref(reference), parent_tp=7, fld=65535) -> ref(reference)
+  37[40]: VarRef(var[32]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[32]:ref(boolean)["result"]
+  40[52]: ConstText(_value="bb") -> text
+  44[68]: SetText(v1: ref(reference), fld=0, val: text)
+  47[40]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
+  50[52]: VarRef(var[32]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[32]:ref(boolean)["result"]
+  53[64]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=7, fld=65535)
+  58[40]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
+  61[52]: Return(ret=12, value=12, discard=52) type=vector<text>[4]:Vector(5)[7]
+
+fn test() {#block(1):void
+  __ref_1(1):vector<text> = null;
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  test_value(1):text = {#block(2):text
+    t(2):vector<text>["__ref_1"] = fill(__ref_1(1));
+    {#Formatted string(3):text
+      __work_1(1):text = "";
+      OpFormatDatabase(__work_1(1), t(2), 7i32, false);
+      __work_1(1);
+    }#Formatted string(3):text;
+  }#block(2):text;
+  if OpEqText(test_value(1), "["aa","bb"]") null else OpPanic({#Formatted string(4):text
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "["aa","bb"]"");
+    __work_2(1);
+  }#Formatted string(4):text);
+  OpFreeText(test_value(1));
+  OpFreeRef(__ref_1(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
+
+byte-code for fill_result:test() [1141]
+   0[0]: return-address
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:vector<text>
+   1[16]: Database(var[8], db_tp=14)
+   6[16]: VarRef(var[8]) -> ref(reference)
+   9[28]: ConstInt(val=0) -> integer
+  14[32]: SetInt(v1: ref(reference), fld=4, val: integer)
+  17[16]: CreateRef(var[8]) -> ref(reference)
+  20[28]: ConstInt(val=4) -> integer
+  25[32]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
+  30[16]: Text() var=__work_2[20]:text
+  31[40]: Text() var=__work_1[44]:text
+  32[64]: Text() var=test_value[68]:text
+  33[88]: VarVector(var[8]) -> vector type=vector<text>[4]:Vector(5)[7] var=__ref_1[8]:vector<text>
+  36[100]: Call(size=0, call=fill[1074])
+  43[100]: ClearText(var[44]) var=__work_1[44]:text
+  46[100]: ConstText(_value="") -> text
+  48[116]: AppendText(var[44], v1: text)
+  51[100]: VarVector(var[92]) -> vector type=vector<text>[4]:Vector(5)[7] var=t[92]:vector<text>["__ref_1"]
+  54[112]: FormatDatabase(var[44], val: ref(reference), db_tp=7, pretty=false)
+  60[100]: VarText(var[44]) -> text var=__work_1[44]:text
+  63[116]: FreeStack(value=16, discard=28)
+  67[104]: AppendText(var[68], v1: text)
+  70[88]: VarText(var[68]) -> text var=test_value[68]:text
+  73[104]: ConstText(_value="["aa","bb"]") -> text
+  86[120]: EqText(v1: text, v2: text) -> boolean
+  87[89]: GotoFalseWord(jump=93, if_false: boolean)
+  90[88]: GotoWord(jump=152)
+  93[88]: ClearText(var[20]) var=__work_2[20]:text
+  96[88]: ConstText(_value="Test failed ") -> text
+ 110[104]: AppendText(var[20], v1: text)
+ 113[88]: VarText(var[68]) -> text var=test_value[68]:text
+ 116[104]: ConstInt(val=0) -> integer
+ 121[108]: FormatText(var[20], val: text, width: integer, dir=-1, token=32)
+ 126[88]: ConstText(_value=" != "["aa","bb"]"") -> text
+ 145[104]: AppendText(var[20], v1: text)
+ 148[88]: VarText(var[20]) -> text var=__work_2[20]:text
+ 151[104]: Panic(message: text)
+ 152[88]: FreeText(var[68])
+ 155[88]: VarVector(var[8]) -> vector type=vector<text>[4]:Vector(5)[7] var=__ref_1[8]:vector<text>
+ 158[100]: FreeRef(v1: ref(reference))
+ 159[88]: FreeText(var[44])
+ 162[88]: FreeText(var[20])
+ 165[88]: Return(ret=0, value=0, discard=88)
+
+Execute test:
+    0:[8] ConvRefFromNull() -> ref(1,0,0)[8]
+    1:[20] Database(var[8], db_tp=14)
+    6:[20] VarRef(var[8]) -> ref(1,1,0)[20]
+    9:[32] ConstInt(val=0) -> 0[32]
+   14:[36] SetInt(v1=ref(1,1,0)[20], fld=4, val=0[32])
+   17:[20] CreateRef(var[8]) -> ref(0,1,8)[20]
+   20:[32] ConstInt(val=4) -> 4[32]
+   25:[36] SetByte(v1=ref(0,1,8)[20], fld=4, min=0, val=4[32])
+   30:[20] Text()
+   31:[44] Text()
+   32:[68] Text()
+   33:[92] VarVector(var[8]) -> ref(1,1,4)=[][92]
+   36:[104] Call(size=0, call=fill[1074])
+ 1074:[108] VarVector(var[92]) -> ref(1,1,4)=[][108]
+ 1077:[120] NewRecord(data=ref(1,1,4)[108], parent_tp=7, fld=65535) -> ref(1,9,8)[108]
+ 1082:[120] VarRef(var[108]) -> ref(1,9,8)=false[120]
+ 1085:[132] ConstText(_value="aa") -> "aa"[132]
+ 1089:[148] SetText(v1=ref(1,9,8)[120], fld=0, val="aa"[132])
+ 1092:[120] VarVector(var[92]) -> ref(1,1,4)=["aa"][120]
+ 1095:[132] VarRef(var[108]) -> ref(1,9,8)=true[132]
+ 1098:[144] FinishRecord(data=ref(1,1,4)[120], rec=ref(1,9,8)[132], parent_tp=7, fld=65535)
+ 1103:[120] VarVector(var[92]) -> ref(1,1,4)=["aa"][120]
+ 1106:[132] NewRecord(data=ref(1,1,4)[120], parent_tp=7, fld=65535) -> ref(1,9,12)[120]
+ 1111:[132] VarRef(var[120]) -> ref(1,9,12)=false[132]
+ 1114:[144] ConstText(_value="bb") -> "bb"[144]
+ 1118:[160] SetText(v1=ref(1,9,12)[132], fld=0, val="bb"[144])
+ 1121:[132] VarVector(var[92]) -> ref(1,1,4)=["aa","bb"][132]
+ 1124:[144] VarRef(var[120]) -> ref(1,9,12)=true[144]
+ 1127:[156] FinishRecord(data=ref(1,1,4)[132], rec=ref(1,9,12)[144], parent_tp=7, fld=65535)
+ 1132:[132] VarVector(var[92]) -> ref(1,1,4)=["aa","bb"][132]
+ 1135:[144] Return(ret=1184[104], value=12, discard=52) -> ref(1,1,4)=["aa","bb"][92]
+   43:[104] ClearText(var[44])
+   46:[104] ConstText(_value="") -> ""[104]
+   48:[120] AppendText(var[44], v1=""[104])
+   51:[104] VarVector(var[92]) -> ref(1,1,4)=["aa","bb"][104]
+   54:[116] FormatDatabase(var[44], val=ref(1,1,4)[104], db_tp=7, pretty=false)
+   60:[104] VarText(var[44]) -> "[\"aa\",\"bb\"]"[104]
+   63:[120] FreeStack(value=16, discard=28)
+   67:[108] AppendText(var[68], v1="[\"aa\",\"bb\"]"[92])
+   70:[92] VarText(var[68]) -> "[\"aa\",\"bb\"]"[92]
+   73:[108] ConstText(_value="["aa","bb"]") -> "[\"aa\",\"bb\"]"[108]
+   86:[124] EqText(v1="[\"aa\",\"bb\"]"[92], v2="[\"aa\",\"bb\"]"[108]) -> true[92]
+   87:[93] GotoFalseWord(jump=93, if_false=true[92])
+   90:[92] GotoWord(jump=152)
+  152:[92] FreeText(var[68])
+  155:[92] VarVector(var[8]) -> ref(1,1,4)=["aa","bb"][92]
+  158:[104] FreeRef(v1=ref(1,1,4)[92])
+  159:[92] FreeText(var[44])
+  162:[92] FreeText(var[20])
+  165:[92] Return(ret=4294967295[4], value=0, discard=88)
+Finished

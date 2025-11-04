@@ -286,6 +286,12 @@ pub fn op_conv_bool_from_int(v: i32) -> bool {
 
 #[inline]
 #[must_use]
+pub fn op_conv_bool_from_character(v: char) -> bool {
+    v != char::from(0)
+}
+
+#[inline]
+#[must_use]
 pub fn op_add_int(v1: i32, v2: i32) -> i32 {
     if v1 != i32::MIN && v2 != i32::MIN {
         v1 + v2

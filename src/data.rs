@@ -1257,7 +1257,7 @@ impl Data {
             }
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 255 => "i8",
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 65536 => "i16",
-            Type::Integer(_, _) | Type::Character => "i32",
+            Type::Integer(_, _) => "i32",
             Type::Enum(_) => "u8",
             Type::Text(_) if context == &Context::Variable => "String",
             Type::Text(_) => "Str",
@@ -1265,6 +1265,7 @@ impl Data {
             Type::Boolean => "bool",
             Type::Float => "f64",
             Type::Single => "f32",
+            Type::Character => "char",
             Type::Reference(_, _)
             | Type::Vector(_, _)
             | Type::Hash(_, _, _)

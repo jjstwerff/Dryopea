@@ -29,21 +29,21 @@ fn _tp_Data_calc(self:Data) -> integer {#block(1):integer
   OpAddInt(OpAddInt(OpMulInt(OpGetByte(self(0), 6i32, 1i32), 65536i32), OpMulInt(OpGetByte(self(0), 7i32, 0i32), 256i32)), OpGetByte(self(0), 5i32, -127i32));
 }#block(1):integer
 
-byte-code for restrictions:_tp_Data_calc(self: ref(Data)[4]) [1110] -> integer
-   0[16]: return-address
-   0[20]: VarRef(var[4]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[4]:ref(Data)
-   3[32]: GetByte(v1: ref(reference), fld=6, min=1) -> integer
-   8[24]: ConstInt(val=65536) -> integer
-  13[28]: MulInt(v1: integer, v2: integer) -> integer
-  14[24]: VarRef(var[4]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[4]:ref(Data)
-  17[36]: GetByte(v1: ref(reference), fld=7, min=0) -> integer
-  22[28]: ConstInt(val=256) -> integer
-  27[32]: MulInt(v1: integer, v2: integer) -> integer
-  28[28]: AddInt(v1: integer, v2: integer) -> integer
-  29[24]: VarRef(var[4]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[4]:ref(Data)
-  32[36]: GetByte(v1: ref(reference), fld=5, min=-127) -> integer
-  37[28]: AddInt(v1: integer, v2: integer) -> integer
-  38[24]: Return(ret=12, value=4, discard=20) type=integer[4]:Base[0]
+byte-code for restrictions:_tp_Data_calc(self: ref(Data)[0]) [1074] -> integer
+   0[12]: return-address
+   0[16]: VarRef(var[4]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[4]:ref(Data)
+   3[28]: GetByte(v1: ref(reference), fld=6, min=1) -> integer
+   8[20]: ConstInt(val=65536) -> integer
+  13[24]: MulInt(v1: integer, v2: integer) -> integer
+  14[20]: VarRef(var[4]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[4]:ref(Data)
+  17[32]: GetByte(v1: ref(reference), fld=7, min=0) -> integer
+  22[24]: ConstInt(val=256) -> integer
+  27[28]: MulInt(v1: integer, v2: integer) -> integer
+  28[24]: AddInt(v1: integer, v2: integer) -> integer
+  29[20]: VarRef(var[4]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[4]:ref(Data)
+  32[32]: GetByte(v1: ref(reference), fld=5, min=-127) -> integer
+  37[24]: AddInt(v1: integer, v2: integer) -> integer
+  38[20]: Return(ret=12, value=4, discard=20) type=integer[4]:Base[0]
 
 fn test() {#block(1):void
   __work_1(1):text = "";
@@ -59,27 +59,27 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for restrictions:test() [1154]
-   0[4]: return-address
-   0[8]: Text() var=__work_1[8]:text
-   1[32]: ConstInt(val=1) -> integer var=test_value[32]:integer
-   6[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
-   9[40]: ConstInt(val=1) -> integer
-  14[44]: EqInt(v1: integer, v2: integer) -> boolean
-  15[37]: GotoFalseWord(jump=21, if_false: boolean)
-  18[36]: GotoWord(jump=70)
-  21[36]: ClearText(var[8]) var=__work_1[8]:text
-  24[36]: ConstText(_value="Test failed ") -> text
-  38[52]: AppendText(var[8], v1: text)
-  41[36]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  44[40]: ConstInt(val=0) -> integer
-  49[44]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  56[36]: ConstText(_value=" != 1") -> text
-  63[52]: AppendText(var[8], v1: text)
-  66[36]: VarText(var[8]) -> text var=__work_1[8]:text
-  69[52]: Panic(message: text)
-  70[36]: FreeText(var[8])
-  73[36]: Return(ret=0, value=0, discard=32)
+byte-code for restrictions:test() [1118]
+   0[0]: return-address
+   0[4]: Text() var=__work_1[8]:text
+   1[28]: ConstInt(val=1) -> integer var=test_value[32]:integer
+   6[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+   9[36]: ConstInt(val=1) -> integer
+  14[40]: EqInt(v1: integer, v2: integer) -> boolean
+  15[33]: GotoFalseWord(jump=21, if_false: boolean)
+  18[32]: GotoWord(jump=70)
+  21[32]: ClearText(var[8]) var=__work_1[8]:text
+  24[32]: ConstText(_value="Test failed ") -> text
+  38[48]: AppendText(var[8], v1: text)
+  41[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  44[36]: ConstInt(val=0) -> integer
+  49[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
+  56[32]: ConstText(_value=" != 1") -> text
+  63[48]: AppendText(var[8], v1: text)
+  66[32]: VarText(var[8]) -> text var=__work_1[8]:text
+  69[48]: Panic(message: text)
+  70[32]: FreeText(var[8])
+  73[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] Text()

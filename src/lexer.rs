@@ -330,13 +330,6 @@ impl Lexer {
     }
 
     pub fn diagnostic(&mut self, level: Level, message: &str) {
-        println!(
-            "{}",
-            &format!(
-                "{message} at {}:{}:{}",
-                self.position.file, self.position.line, self.position.pos
-            )
-        );
         self.diagnostics.add(
             level,
             &format!(

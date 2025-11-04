@@ -208,6 +208,20 @@ sum",
 }
 
 #[test]
+fn fill_result() {
+    code!(
+        "pub fn fill() -> vector<text> {
+    result = [];
+    result += [\"aa\"];
+    result += [\"bb\"];
+    result
+}"
+    )
+    .expr("t = fill(); \"{t}\"")
+    .result(Value::str("[\"aa\",\"bb\"]"));
+}
+
+#[test]
 fn combination_hash() {
     code!(
         "struct Count { t: text, v: integer};

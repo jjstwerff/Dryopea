@@ -71,7 +71,13 @@ fn OpConstTiny(val: const i8) -> integer;
 fn OpVarInt(pos: const u16) -> integer;
 #rust "*s.get_var::<i32>(@pos)"
 
+fn OpVarCharacter(pos: const u16) -> character;
+#rust "*s.get_var::<char>(@pos)"
+
 fn OpPutInt(pos: const u16, value: integer);
+#rust "s.put_var(@pos, @value);"
+
+fn OpPutCharacter(pos: const u16, value: character);
 #rust "s.put_var(@pos, @value);"
 
 fn OpConvIntFromNull() -> integer;
@@ -505,9 +511,9 @@ fn OpConvBoolFromText(v1: text) -> boolean;
 fn OpText();
 fn OpAppendText(pos: const u16, v1: text);
 fn OpGetTextSub(v1: text, from: integer, till: integer) -> text[v1];
-fn OpGetCharacter(v1: text, v2: integer) -> character;
+fn OpTextCharacter(v1: text, v2: integer) -> character;
 fn OpConvBoolFromCharacter(v1: character) -> boolean;
-#rust "external::op_conv_bool_from_int(@v1)"
+#rust "external::op_conv_bool_from_character(@v1)"
 fn OpClearText(pos: const u16);
 fn OpFreeText(pos: const u16);
 fn OpEqText(v1: text, v2: text) -> boolean;
@@ -527,9 +533,9 @@ fn OpFormatText(pos: const u16, val: text, width: integer, dir: const i8, token:
 fn OpAppendCharacter(pos: const u16, v1: character);
 fn OpTextCompare(v1: text, v2: character) -> i32;
 fn OpCastCharacterFromInt(v1: i32) -> character;
-#rust "@v1"
+#rust "char::from_u32(@v1 as u32).unwrap_or(char::from(0))"
 fn OpConvIntFromCharacter(v1: character) -> i32;
-#rust "@v1"
+#rust "if @v1 == char::from(0) {{ i32::MIN }} else {{ @v1 as i32 }}"
 
 type enumerate;
 fn OpVarEnum(pos: const u16) -> enumerate;
@@ -605,6 +611,9 @@ fn OpGetField(v1: reference, fld: const u16) -> reference[v1];
 fn OpGetInt(v1: reference, fld: const u16) -> integer;
 #rust "{{let db = @v1; if db.rec == 0 {{ i32::MIN }} else {{ stores.store(&db).get_int(db.rec, db.pos + u32::from(@fld))}} }}"
 
+fn OpGetCharacter(v1: reference, fld: const u16) -> character;
+#rust "{{let db = @v1; if db.rec == 0 {{ char::from(0) }} else {{ char::from_u32(stores.store(&db).get_int(db.rec, db.pos + u32::from(@fld)) as u32).unwrap_or(char::from(0)) }} }}"
+
 fn OpGetLong(v1: reference, fld: const u16) -> long;
 #rust "{{let db = @v1; stores.store(&db).get_long(db.rec, db.pos + u32::from(@fld))}}"
 
@@ -630,6 +639,9 @@ fn OpGetText(v1: reference, fld: const u16) -> text[v1];
 
 fn OpSetInt(v1: reference, fld: const u16, val: integer);
 #rust "{{let db = @v1; stores.store_mut(&db).set_int(db.rec, db.pos + u32::from(@fld), @val);}}"
+
+fn OpSetCharacter(v1: reference, fld: const u16, val: character);
+#rust "{{let db = @v1; stores.store_mut(&db).set_int(db.rec, db.pos + u32::from(@fld), @val as i32);}}"
 
 fn OpSetLong(v1: reference, fld: const u16, val: long);
 #rust "{{let db = @v1; stores.store_mut(&db).set_long(db.rec, db.pos + u32::from(@fld), @val);}}"

@@ -124,11 +124,11 @@ impl State {
 
     #[inline]
     pub fn length_character(&mut self) {
-        let v_v1 = *self.get_stack::<i32>();
-        let new_value = if let Some(ch) = char::from_u32(v_v1 as u32) {
-            ch.to_string().len() as i32
-        } else {
+        let v_v1 = *self.get_stack::<char>();
+        let new_value = if v_v1 == char::from(0) {
             0
+        } else {
+            v_v1.to_string().len() as i32
         };
         self.put_stack(new_value);
     }
@@ -215,17 +215,15 @@ impl State {
     #[inline]
     pub fn append_character(&mut self) {
         let pos = *self.code::<u16>();
-        let c = *self.get_stack::<i32>();
-        if c != i32::MIN
-            && let Some(ch) = char::from_u32(c as u32)
-        {
-            self.string_mut(pos - 4).push(ch);
+        let c = *self.get_stack::<char>();
+        if c as u32 != 0 {
+            self.string_mut(pos - 4).push(c);
         }
     }
 
     #[inline]
     pub fn text_compare(&mut self) {
-        let v2 = char::from_u32(*self.get_stack::<i32>() as u32).unwrap_or('\u{20}');
+        let v2 = *self.get_stack::<char>();
         let v1 = *self.get_stack::<Str>();
         let mut ch = v1.str().chars();
         self.put_stack(if let Some(f_ch) = ch.next() {
@@ -271,14 +269,14 @@ impl State {
     }
 
     #[inline]
-    pub fn get_character(&mut self) {
+    pub fn text_character(&mut self) {
         let mut from = *self.get_stack::<i32>();
         let v1 = self.string();
         if from < 0 {
             from += v1.len as i32;
         }
         if from < 0 || from >= v1.len as i32 {
-            self.put_stack(i32::MIN);
+            self.put_stack(char::from(0));
             return;
         }
         let mut b = v1.str().as_bytes()[from as usize];
@@ -287,9 +285,9 @@ impl State {
             b = v1.str().as_bytes()[from as usize];
         }
         self.put_stack(if let Some(ch) = v1.str()[from as usize..].chars().next() {
-            ch as i32
+            ch
         } else {
-            i32::MIN
+            char::from(0)
         });
     }
 
@@ -1598,7 +1596,8 @@ impl State {
         let code = self.code_pos;
         self.vars.insert(code, variable);
         match stack.function.tp(variable) {
-            Type::Integer(_, _) | Type::Character => stack.add_op("OpVarInt", self),
+            Type::Integer(_, _) => stack.add_op("OpVarInt", self),
+            Type::Character => stack.add_op("OpVarCharacter", self),
             Type::RefVar(_) => stack.add_op("OpVarRef", self),
             Type::Enum(_) => stack.add_op("OpVarEnum", self),
             Type::Boolean => stack.add_op("OpVarBool", self),
@@ -1636,7 +1635,8 @@ impl State {
         self.code_add(var_pos);
         if let Type::RefVar(tp) = stack.function.tp(variable) {
             match &**tp {
-                Type::Integer(_, _) | Type::Character => stack.add_op("OpGetInt", self),
+                Type::Integer(_, _) => stack.add_op("OpGetInt", self),
+                Type::Character => stack.add_op("OpGetCharacter", self),
                 Type::Long => stack.add_op("OpGetLong", self),
                 Type::Single => stack.add_op("OpGetSingle", self),
                 Type::Float => stack.add_op("OpGetFloat", self),
@@ -1801,7 +1801,8 @@ impl State {
             self.code_add(var_pos);
             self.generate(value, stack, false);
             match *tp {
-                Type::Integer(_, _) | Type::Character => stack.add_op("OpSetInt", self),
+                Type::Integer(_, _) => stack.add_op("OpSetInt", self),
+                Type::Character => stack.add_op("OpSetCharacter", self),
                 Type::Long => stack.add_op("OpSetLong", self),
                 Type::Single => stack.add_op("OpSetSingle", self),
                 Type::Float => stack.add_op("OpSetFloat", self),
@@ -1816,7 +1817,8 @@ impl State {
         self.generate(value, stack, false);
         let var_pos = stack.position - stack.function.stack(var);
         match stack.function.tp(var) {
-            Type::Integer(_, _) | Type::Character => stack.add_op("OpPutInt", self),
+            Type::Integer(_, _) => stack.add_op("OpPutInt", self),
+            Type::Character => stack.add_op("OpPutCharacter", self),
             Type::Enum(_) => stack.add_op("OpPutEnum", self),
             Type::Boolean => stack.add_op("OpPutBool", self),
             Type::Long => stack.add_op("OpPutLong", self),
@@ -1854,7 +1856,7 @@ impl State {
     */
     pub fn dump_code(&mut self, f: &mut dyn Write, d_nr: u32, data: &Data) -> Result<(), Error> {
         write!(f, "{}(", data.def(d_nr).name)?;
-        let mut stack_pos = 4;
+        let mut stack_pos = 0;
         for a_nr in 0..data.attributes(d_nr) {
             if a_nr > 0 {
                 write!(f, ", ")?;
@@ -1898,7 +1900,7 @@ impl State {
             let def = data.operator(op);
             write!(f, "{:4}", p - start_pos)?;
             if self.stack.contains_key(&p) {
-                write!(f, "[{}]", self.stack[&p] + 4)?;
+                write!(f, "[{}]", self.stack[&p])?;
             }
             write!(f, ": {}(", &def.name[2..])?;
             for (a_nr, a) in def.attributes.iter().enumerate() {
@@ -1909,6 +1911,8 @@ impl State {
                     let to =
                         i64::from(p) + 3 + i64::from(*self.code::<i16>()) - i64::from(start_pos);
                     write!(f, "jump={to}")?;
+                } else if def.name == "OpCall" && a_nr == 1 {
+                    self.fn_name(f, &data)?;
                 } else if def.name == "OpStaticCall" {
                     let v = *self.code::<u16>();
                     for (n, val) in &self.library_names {
@@ -1959,6 +1963,18 @@ impl State {
             writeln!(f)?;
         }
         writeln!(f)?;
+        Ok(())
+    }
+
+    fn fn_name(&mut self, f: &mut dyn Write, data: &&Data) -> Result<(), Error> {
+        let addr = *self.code::<i32>() as u32;
+        let mut name = "Unknown".to_string();
+        for d in &data.definitions {
+            if d.code_position == addr {
+                name.clone_from(&d.name);
+            }
+        }
+        write!(f, "call={name}[{addr}]")?;
         Ok(())
     }
 
@@ -2099,6 +2115,8 @@ impl State {
                     return Ok(op);
                 } else if def.name == "OpReturn" && a_nr == 0 {
                     self.return_attr(&mut attr, a_nr);
+                } else if def.name == "OpCall" && a_nr == 1 {
+                    self.call_name(&mut attr, a_nr, data);
                 } else if def.name.starts_with("OpGoto") && a_nr == 0 {
                     let to = i64::from(cur) + 2 + i64::from(*self.code::<i16>()) - i64::from(minus);
                     attr.insert(a_nr, format!("jump={to}"));
@@ -2171,6 +2189,17 @@ impl State {
         attr.insert(a_nr, format!("ret={addr}[{st}]"));
     }
 
+    fn call_name(&mut self, attr: &mut BTreeMap<usize, String>, a_nr: usize, data: &Data) {
+        let addr = *self.code::<i32>() as u32;
+        let mut name = "Unknown".to_string();
+        for d in &data.definitions {
+            if d.code_position == addr {
+                name.clone_from(&d.name);
+            }
+        }
+        attr.insert(a_nr, format!("call={name}[{addr}]"));
+    }
+
     fn log_result(
         &mut self,
         log: &mut dyn Write,
@@ -2233,11 +2262,11 @@ impl State {
         match typedef {
             Type::Integer(_, _) => format!("{}", *self.get_stack::<i32>()),
             Type::Character => {
-                let c = *self.get_stack::<i32>();
-                if c == i32::MIN {
+                let c = *self.get_stack::<char>();
+                if c == char::from(0) {
                     "null".to_string()
                 } else {
-                    format!("'{}'", char::from_u32(c as u32).unwrap())
+                    format!("'{c}'")
                 }
             }
             Type::Enum(tp) => {
