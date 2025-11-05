@@ -12,6 +12,11 @@ test: clippy
 	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f
 	RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
 
+quick:
+	rm tests/generated/* -f
+	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f
+	RUST_BACKTRACE=1 cargo test --release -- --nocapture --test-threads=1 > result.txt 2>&1
+
 profile:
 	RUSTFLAGS=-g cargo build --release >result.txt 2>&1
 	flamegraph -o profiler.svg -- target/release/dryopea auto
@@ -21,7 +26,7 @@ clean:
 
 clippy:
 	cargo clippy -- -W clippy::all -W clippy::cognitive_complexity > result.txt 2>&1
-	cargo clippy --tests -- -W clippy::all -W clippy::cognitive_complexity >>result.txt 2>&1
+	cargo clippy --tests -- -W clippy::all -W clippy::cognitive_complexity >> result.txt 2>&1
 	rustfmt src/*.rs --edition 2024
 	rustfmt tests/*.rs --edition 2024
 

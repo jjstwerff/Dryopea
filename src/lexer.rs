@@ -432,12 +432,10 @@ impl Lexer {
         // TODO allow numeric characters
         if let Some(&c) = self.iter.peek() {
             match c {
-                '"' => res.push(c),
+                '"' | '\'' | '\\' => res.push(c),
                 't' => res.push('\t'),
                 'r' => res.push('\r'),
-                'n' => res.push('\n'),
-                '\\' => res.push('\\'),
-                '\n' => return false,
+                'n' | '\n' => res.push('\n'),
                 _ => {
                     self.err(Level::Error, "Unknown escape sequence");
                     res.push('?');

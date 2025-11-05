@@ -268,7 +268,7 @@ fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef { //block_1: ref
 
 fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<ref(File)>["result"]
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) { //block_2: void
-    Drop(Call(329, [Call(273, [Var(0), Int(4)]), Var(1)]))
+    Drop(Call(324, [Call(268, [Var(0), Int(4)]), Var(1)]))
   } //block_2: void else {Null};
   var_result
 } //block_1: vector<ref(File)>["result"]
@@ -280,7 +280,7 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //bl
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
-    Drop(Call(330, [Call(273, [Var(0), Int(4)]), Var(1)]));
+    Drop(Call(325, [Call(268, [Var(0), Int(4)]), Var(1)]));
     var_result
   } //block_2: ref(Image)["result"] else { //block_3: ref(Image)["result"]
     stores.null()

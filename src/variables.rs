@@ -494,11 +494,17 @@ impl Function {
     pub fn work_refs(&mut self, tp: &Type, lexer: &mut Lexer) -> u16 {
         let n = format!("__ref_{}", self.work_ref + 1);
         self.work_ref += 1;
-        let v = if let Some(nr) = self.names.get(&n) {
+        let mut v = if let Some(nr) = self.names.get(&n) {
             *nr
         } else {
-            self.add_variable(&n, tp, lexer)
+            u16::MAX
         };
+        if v == u16::MAX {
+            v = self.add_variable(&n, tp, lexer);
+        } else {
+            self.set_type(v, tp.clone());
+            self.variables[v as usize].source = lexer.at();
+        }
         self.work_refs.insert(v);
         v
     }

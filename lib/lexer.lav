@@ -1,4 +1,4 @@
-struct Keyword {
+struct SKeyword {
     name: text
 };
 
@@ -7,10 +7,19 @@ struct Possible {
     token: text
 };
 
-struct Token {
-    start: integer, // the first character of each allowed token for example '<' or '.'
+struct SToken {
+    start: character, // the first character of each allowed token for example '<' or '.'
     possible: sorted<Possible[-length,token]> // full tokens, may be longer than 2
 };
+
+// The last scanned thing
+enum Scanned {
+    Unknown,
+    Integer, Float, Double, Long,
+    Text, Partial, Character,
+    Identifier,
+    Token, Keyword
+}
 
 pub struct Lexer {
     file: text, // we can switch files
@@ -18,10 +27,12 @@ pub struct Lexer {
     index: integer,
     line: integer,
     pos: integer,
+    start: integer, // the start of the last encountered token (till index)
+    scanned: Scanned, // the type of the last scanned thing or token
     string: boolean, // we are parsing a string content that contains expressions
     finished: boolean, // is the last parsed string finished
-    keywords: hash<Keyword[name]>,
-    tokens: hash<Token[start]>,
+    keywords: hash<SKeyword[name]>,
+    tokens: hash<SToken[start]>,
     behind: boolean, // was the last comment behind code
     comment: text // the last encountered comment, dismissed when new code is parsed
 }
@@ -33,7 +44,7 @@ pub struct Anchor {
     pos: integer
 }
 
-// Apply keywords, there will not be identifiers.
+// Set keywords, these will never be identifiers.
 pub fn set_keywords(self: Lexer, keywords: vector<text>) {
     self.keywords = [];
     for k in keywords {
@@ -57,6 +68,117 @@ pub fn set_tokens(self: Lexer, tokens: vector<text>) {
     }
 }
 
+// Skip possible white-space, comments or newlines in the file.
+fn skip_whitespace(self: Lexer) {
+    for t in 0..300 {
+        if self.data[self.index] == ' ' or self.data[self.index] == '\t' {
+            self.index += 1;
+            self.pos += 1;
+        } else if self.data[self.index] == '\n' {
+            self.index += 1;
+            self.line += 1;
+            self.pos = 1;
+        } else if self.data[self.index..self.index+2] == "//" {
+            self.index += 2;
+            self.pos += 1;
+            for c in 0..1000 {
+                if self.data[self.index] == '\n' {
+                    break;
+                }
+                self.index += 1;
+                self.pos += 1;
+            }
+        } else {
+            break;
+        }
+    }
+    self.pos += self.index - self.start;
+    self.start = self.index;
+    self.scanned = Unknown;
+}
+
+// Scan for known tokens in the data.
+// Only increase self.index while keeping self.start at the first position.
+fn scan(self: Lexer) {
+    self.skip_whitespace();
+    negative = false;
+    l = self.data[self.index];
+    if l == '\'' { // Constant character
+        self.index += 1;
+        self.scanned = Character;
+        for t in 0..20 {
+            l = self.data[self.index];
+            if l == '\'' { // The end of the character
+                self.index += 1;
+                return;
+            }
+            if l == '\\' { // Encountered an escape sequence
+                self.index += 1;
+                if self.data[self.index] == '\'' { // Skip escaped token
+                    self.index += 1;
+                }
+            }
+        }
+    } else if l == '"' { // Constant string
+        self.index += 1;
+        self.scanned = Text;
+        for t in 0..60000 {
+            l = self.data[self.index];
+            if l == '"' { // The end of the text
+                self.index += 1;
+                return;
+            }
+            if l == '\\' { // Encountered an escape sequence
+                self.index += 1;
+                n = self.data[self.index];
+                if n == '"' || n == '\n' { // Skip escaped token or newline
+                    self.index += 1;
+                }
+            }
+        }
+    } else if l == '-' { // Negative number
+        self.index += 1;
+        negative = true;
+    }
+    if self.data[self.index] >= '0' and self.data[self.index] <= '9' { // Various numbers
+        self.scanned = Integer;
+        for t in 0..30 {
+            l = self.data[self.index];
+            if l == '.' or l == 'e' or l == '-' {
+                self.scanned = Float;
+            } else if l == 'l' {
+                self.scanned = Long;
+            } else if l == 'x' || l == 'o' || l == 'b' { // allow hex/octal and binary indicators
+            } else if l != '_' and (l < '0' or l > '9') {
+                break;
+            }
+            self.index += 1;
+        }
+    } else if l.is_alphabetic() { // Identifiers or keywords
+        self.scanned = Identifier;
+        for t in 0..300 {
+            l = self.data[self.index];
+            if !l.is_alphanumeric() {
+                break;
+            }
+            self.index += 1;
+        }
+    } else { // Tokens
+        if negative {
+            self.scanned = Token;
+        }
+        self.scanned = Token;
+        for pt in self.tokens[l].possible {
+            tok = pt.token;
+            if self.data[self.index..self.index + tok.len()] == tok {
+                self.index += tok.len();
+                return;
+            }
+        }
+        self.index += 1;
+    }
+}
+
 // Open a file for parsing.
 pub fn parse(self: Lexer, filename: text) {
     v = filename.rfind("/");
@@ -69,6 +191,7 @@ pub fn parse(self: Lexer, filename: text) {
     self.index = 0;
     self.line = 1;
     self.pos = 1;
+    self.scan();
 }
 
 // Use a text for parsing.
@@ -78,44 +201,20 @@ pub fn parse_string(self: Lexer, name: text, content: text) {
     self.index = 0;
     self.line = 1;
     self.pos = 1;
-}
-
-// Skip possible white-space, comments or newlines in the file.
-fn skip_whitespace(self: Lexer) {
-    for t in 0..100 {
-        if self.data[self.index] == ' ' or self.data[self.index] == '\t' {
-            self.index += 1;
-            self.pos += 1;
-            if self.data[self.index..self.index+2] == "//" {
-                self.index += 2;
-                self.pos += 1;
-                for c in 0..1000 {
-                    if self.data[self.index] == '\n' {
-                        break;
-                    }
-                    self.index += 1;
-                    self.pos += 1;
-                }
-            }
-            if self.data[self.index] == '\n' {
-                self.index += 1;
-                self.line += 1;
-                self.pos = 1;
-            }
-        }
-    }
+    self.scan();
 }
 
 // Test if there is a specific token, do not skip it.
 pub fn test(self: Lexer, with: text) -> boolean {
     self.skip_whitespace();
-    false
+    self.data[self.start..self.index] == with
 }
 
 // Test if there is a specific token or keyword in the file, skip this if it matches.
-pub fn match(self: Lexer, with: text) -> boolean {
+pub fn matches(self: Lexer, with: text) -> boolean {
     if self.test(with) {
         self.pos += len(with);
+        self.index += len(with);
         self.behind = false;
         self.comment = "";
         true
@@ -124,9 +223,10 @@ pub fn match(self: Lexer, with: text) -> boolean {
     }
 }
 
-// Peek towards the next token, this will skip whitespace
+// Peek towards the next token, this will skip whitespace.
+// Returns unconverted Strings and Character constants.
 pub fn peek(self: Lexer) -> text {
-    ""
+    self.data[self.start..self.index]
 }
 
 // Gather information about the current lexer position
@@ -136,56 +236,121 @@ pub fn position(self: Lexer) -> text {
 
 // Get an identifier and skip it.
 pub fn identifier(self: Lexer) -> text {
+    result = self.data[self.start..self.index];
+    if self.keywords[result] {
+        null as text
+    } else {
+        self.scan();
+        result
+    }
 }
 
 // Get an integer and skip it.
 pub fn int(self: Lexer) -> integer {
-    self.skip_whitespace();
-    negative = false;
-    if self.data[self.index] == '-' {
-        self.index += 1;
-        self.pos += 1;
-        negative = true;
+    if self.scanned != Integer {
+        return null;
     }
-    if self.data[self.index] >= '0' and self.data[self.index] <= '9' {
-        result = 0;
-        for t in 0..20 {
-            if self.data[self.index] == '_' {
-                self.index += 1;
-                self.pos += 1;
-            } else if self.data[self.index] >= '0' and self.data[self.index] <= '9' {
-                result = result * 10 + (self.data[self.index] as integer - 48);
-                self.index += 1;
-                self.pos += 1;
-            }
-        }
-        if negative {
-            -result
-        } else {
-            result
-        }
+    result = self.data[self.start..self.index] as integer;
+    if result {
+        self.scan();
+        result
     } else {
-        if negative {
-            self.index -= 1;
-            self.pos -= 1;
-        }
         null
     }
 }
 
 // Get a long and skip it.
 pub fn long_int(self: Lexer) -> long {
+    if self.scanned != Long && self.scanned != Integer {
+        return null;
+    }
+    result = self.data[self.start..self.index] as long;
+    if result {
+        self.scan();
+        result
+    } else {
+        null
+    }
 }
 
 // Get a float
 pub fn long_float(self: Lexer) -> float {
+    if self.scanned != Float {
+        return null;
+    }
+    result = self.data[self.start..self.index] as float;
+    if result {
+        self.scan();
+        result
+    } else {
+        null
+    }
 }
 
 // Get a single length float
 pub fn single_float(self: Lexer) -> single {
+    if self.scanned != Float {
+        return null;
+    }
+    result = self.data[self.start..self.index] as single;
+    if result {
+        self.scan();
+        result
+    } else {
+        null
+    }
 }
 
-pub fn constant_string(self: Lexer) -> text {
+fn escaped(self: Lexer, i: integer) -> character {
+    c = self.data[i + 1];
+    if c == '"' or c == '\'' or c == '\\' or c == '\n' or c == '{' or c == '}' {
+        c
+    } else if c == 't' {
+        '\t'
+    } else if c == 'r' {
+        '\r'
+    } else if c == 'n' {
+        '\n'
+    } else if c == 'x' { // ascii token
+        total = "0" + self.data[i + 1..i + 4];
+        nr = total as integer;
+        nr as character
+    } else if c == 'u' { // not implemented yet unicode token
+        0 as character
+    } else { // unknown token
+        0 as character
+    }
+}
+
+// TODO allow for partial matching of a text till the next single { token.
+pub fn constant_text(self: Lexer) -> text {
+    if self.scanned != Text {
+        return null as text;
+    }
+    result = "";
+    for i in self.start+1..self.index-1 {
+        if self.data[i] == '\\' {
+            result += "" + self.escaped(i);
+        } else {
+            result += "" + self.data[i];
+        }
+    }
+    self.scan();
+    result
+}
+
+// TODO validate if more than one character or escape sequence is given
+pub fn constant_character(self: Lexer) -> character {
+    if self.scanned != Character {
+        return 0 as character;
+    }
+    result = if self.data[self.index + 1] == '\\' {
+        self.escaped(self.index + 1)
+    } else {
+        self.data[self.index + 1]
+    };
+    self.scan();
+    result
 }
 
 // Is the last parsed constant string finished or is it on another formatting expression.
@@ -211,4 +376,5 @@ pub fn revert(self: Lexer, to: Anchor) {
     self.index = to.index;
     self.line = to.line;
     self.pos = to.pos;
+    self.scan();
 }

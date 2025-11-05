@@ -29,6 +29,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     put_int,
     put_character,
     conv_int_from_null,
+    conv_character_from_null,
     const_long_text,
     cast_int_from_text,
     cast_long_from_text,
@@ -189,12 +190,6 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     cast_int_from_enum,
     cast_enum_from_int,
     conv_enum_from_null,
-    eq_enum,
-    ne_enum,
-    lt_enum,
-    le_enum,
-    gt_enum,
-    ge_enum,
     database,
     format_database,
     conv_bool_from_ref,
@@ -389,6 +384,11 @@ fn put_character(s: &mut State) {
 
 fn conv_int_from_null(s: &mut State) {
     let new_value = i32::MIN;
+    s.put_stack(new_value);
+}
+
+fn conv_character_from_null(s: &mut State) {
+    let new_value = char::from(0);
     s.put_stack(new_value);
 }
 
@@ -1399,48 +1399,6 @@ fn cast_enum_from_int(s: &mut State) {
 
 fn conv_enum_from_null(s: &mut State) {
     let new_value = 255u8;
-    s.put_stack(new_value);
-}
-
-fn eq_enum(s: &mut State) {
-    let v_v2 = *s.get_stack::<u8>();
-    let v_v1 = *s.get_stack::<u8>();
-    let new_value = v_v1 == v_v2;
-    s.put_stack(new_value);
-}
-
-fn ne_enum(s: &mut State) {
-    let v_v2 = *s.get_stack::<u8>();
-    let v_v1 = *s.get_stack::<u8>();
-    let new_value = v_v1 != v_v2;
-    s.put_stack(new_value);
-}
-
-fn lt_enum(s: &mut State) {
-    let v_v2 = *s.get_stack::<u8>();
-    let v_v1 = *s.get_stack::<u8>();
-    let new_value = v_v1 < v_v2;
-    s.put_stack(new_value);
-}
-
-fn le_enum(s: &mut State) {
-    let v_v2 = *s.get_stack::<u8>();
-    let v_v1 = *s.get_stack::<u8>();
-    let new_value = v_v1 <= v_v2;
-    s.put_stack(new_value);
-}
-
-fn gt_enum(s: &mut State) {
-    let v_v2 = *s.get_stack::<u8>();
-    let v_v1 = *s.get_stack::<u8>();
-    let new_value = v_v1 > v_v2;
-    s.put_stack(new_value);
-}
-
-fn ge_enum(s: &mut State) {
-    let v_v2 = *s.get_stack::<u8>();
-    let v_v1 = *s.get_stack::<u8>();
-    let new_value = v_v1 >= v_v2;
     s.put_stack(new_value);
 }
 

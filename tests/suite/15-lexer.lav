@@ -1,23 +1,24 @@
 use lexer;
 
 fn testing(l: lexer::Lexer) {
-    assert(!l.match("+"), "Incorrect plus");
+    assert(!l.matches("+"), "Incorrect plus");
     assert(l.peek() != "+", "Incorrect plus");
-    assert(l.match("+="), "Incorrect plus_is");
+    assert(l.matches("+="), "Incorrect plus_is");
     assert(l.int() == -2, "Integer");
-    assert(l.match("*"), "Incorrect multi");
+    assert(l.matches("*"), "Incorrect multi");
     assert(l.int() != 3, "Incorrect integer");
     assert(l.long_int() == 3, "Incorrect long");
     assert(l.position() == "Tokens:1:14", "Incorrect position {l.position()}");
-    assert(!l.match(">"), "Incorrect higher");
+    assert(!l.matches(">"), "Incorrect higher");
     assert(l.position() == "Tokens:1:15", "Incorrect position {l.position()}");
-    assert(l.match(">>"), "Incorrect logical shift");
+    assert(l.matches(">>"), "Incorrect logical shift");
 }
 
 fn main() {
     l = lexer::Lexer {};
-    l.set_tokens(["+=", "*=", "-=", ">>", "<<"]);
+    l.set_tokens(["+=", "*=", "-=", "<=", ">=", "!=", "==", ">>", "<<", "->", "=>", ">>>", "..", "..=", "&&", "||"]);
+    l.set_keywords(["for", "in", "if", "else", "fn", "pub", "use", "struct", "enum", "match", "and", "or"]);
     l.parse_string("Tokens", "12 += -2 * 3l >> 4");
     assert(l.int() == 12, "Integer");
-    assert(!l.match("+"), "Incorrect plus");
+    assert(!l.matches("+"), "Incorrect plus");
 }

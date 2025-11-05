@@ -83,6 +83,9 @@ fn OpPutCharacter(pos: const u16, value: character);
 fn OpConvIntFromNull() -> integer;
 #rust "i32::MIN"
 
+fn OpConvCharacterFromNull() -> character;
+#rust "char::from(0)"
+
 fn OpConstLongText(start: const i32, size: const i32) -> text;
 #rust "s.string_from_texts(@start, @size);"
 
@@ -556,18 +559,6 @@ fn OpCastEnumFromInt(v1: integer) -> enumerate;
 #rust "if @v1 == i32::MIN {{ 255 }} else {{ @v1 as u8 }}"
 fn OpConvEnumFromNull() -> enumerate;
 #rust "255u8"
-fn OpEqEnum(v1: enumerate, v2: enumerate) -> boolean;
-#rust "@v1 == @v2"
-fn OpNeEnum(v1: enumerate, v2: enumerate) -> boolean;
-#rust "@v1 != @v2"
-fn OpLtEnum(v1: enumerate, v2: enumerate) -> boolean;
-#rust "@v1 < @v2"
-fn OpLeEnum(v1: enumerate, v2: enumerate) -> boolean;
-#rust "@v1 <= @v2"
-fn OpGtEnum(v1: enumerate, v2: enumerate) -> boolean;
-#rust "@v1 > @v2"
-fn OpGeEnum(v1: enumerate, v2: enumerate) -> boolean;
-#rust "@v1 >= @v2"
 
 // A reference to a record, this can 'live' inside an array
 // Might this be a reference to a record field? As It might be a reference to a single value inside an array.
