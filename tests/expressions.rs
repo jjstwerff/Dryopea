@@ -242,10 +242,9 @@ fn int_to_enum() {
 
 #[test]
 fn null_enum() {
-    // TODO this is the current situation, and not what we eventually want.
     code!("enum Number { One, Two, Three, Four }")
         .expr("null < 3 as Number")
-        .result(Value::Boolean(false));
+        .result(Value::Boolean(true));
 }
 
 #[test]

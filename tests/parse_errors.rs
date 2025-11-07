@@ -13,13 +13,6 @@ fn wrong_parameter() {
 }
 
 #[test]
-fn wrong_int() {
-    code!("fn def(i: integer) {}\nenum EType {Eval}\nfn test() { def(Eval); }")
-        .error("EType should be integer on call to def at wrong_int:2:22")
-        .warning("Parameter i is never read at wrong_int:1:21");
-}
-
-#[test]
 fn wrong_boolean() {
     code!("enum EType{ Val }\nfn def(t: EType) {}\nfn test() { def(true); }")
         .error("boolean should be EType on call to def at wrong_boolean:2:38")

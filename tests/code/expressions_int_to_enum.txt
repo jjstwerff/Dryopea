@@ -12,7 +12,7 @@ Type 17:Number[1]:Enum(["One", "Two", "Three", "Four"])
 fn test() {#block(1):void
   __work_1(1):text = "";
   test_value(1):boolean = {#block(2):boolean
-    OpLtEnum(OpCastEnumFromInt(1i32, 17i32), OpCastEnumFromInt(3i32, 17i32));
+    OpLtInt(OpConvIntFromEnum(OpCastEnumFromInt(1i32, 17i32)), OpConvIntFromEnum(OpCastEnumFromInt(3i32, 17i32)));
   }#block(2):boolean;
   if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
@@ -27,40 +27,44 @@ byte-code for int_to_enum:test() [1074]
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
    1[28]: ConstInt(val=1) -> integer var=test_value[32]:boolean
-   6[32]: CastEnumFromInt(v1: integer) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
-   7[29]: ConstInt(val=3) -> integer
-  12[33]: CastEnumFromInt(v1: integer) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
-  13[30]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
-  14[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
-  17[30]: ConstTrue() -> boolean
-  18[31]: EqBool(v1: boolean, v2: boolean) -> boolean
-  19[30]: GotoFalseWord(jump=25, if_false: boolean)
-  22[29]: GotoWord(jump=75)
-  25[29]: ClearText(var[8]) var=__work_1[8]:text
-  28[29]: ConstText(_value="Test failed ") -> text
-  42[45]: AppendText(var[8], v1: text)
-  45[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
-  48[30]: ConstInt(val=0) -> integer
-  53[34]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
-  58[29]: ConstText(_value=" != true") -> text
-  68[45]: AppendText(var[8], v1: text)
-  71[29]: VarText(var[8]) -> text var=__work_1[8]:text
-  74[45]: Panic(message: text)
-  75[29]: FreeText(var[8])
-  78[29]: Return(ret=0, value=0, discard=29)
+   6[32]: CastEnumFromInt(v1: integer) -> boolean type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
+   7[29]: ConvIntFromEnum(v1: boolean) -> integer
+   8[32]: ConstInt(val=3) -> integer
+  13[36]: CastEnumFromInt(v1: integer) -> boolean type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
+  14[33]: ConvIntFromEnum(v1: boolean) -> integer
+  15[36]: LtInt(v1: integer, v2: integer) -> boolean
+  16[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  19[30]: ConstTrue() -> boolean
+  20[31]: EqBool(v1: boolean, v2: boolean) -> boolean
+  21[30]: GotoFalseWord(jump=27, if_false: boolean)
+  24[29]: GotoWord(jump=77)
+  27[29]: ClearText(var[8]) var=__work_1[8]:text
+  30[29]: ConstText(_value="Test failed ") -> text
+  44[45]: AppendText(var[8], v1: text)
+  47[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  50[30]: ConstInt(val=0) -> integer
+  55[34]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
+  60[29]: ConstText(_value=" != true") -> text
+  70[45]: AppendText(var[8], v1: text)
+  73[29]: VarText(var[8]) -> text var=__work_1[8]:text
+  76[45]: Panic(message: text)
+  77[29]: FreeText(var[8])
+  80[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
     0:[8] Text()
     1:[32] ConstInt(val=1) -> 1[32]
     6:[36] CastEnumFromInt(v1=1[32]) -> One(1)[32]
-    7:[33] ConstInt(val=3) -> 3[33]
-   12:[37] CastEnumFromInt(v1=3[33]) -> Three(3)[33]
-   13:[34] LtEnum(v1=1[32], v2=3[33]) -> true[32]
-   14:[33] VarBool(var[32]) -> true[33]
-   17:[34] ConstTrue() -> true[34]
-   18:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
-   19:[34] GotoFalseWord(jump=25, if_false=true[33])
-   22:[33] GotoWord(jump=75)
-   75:[33] FreeText(var[8])
-   78:[33] Return(ret=4294967295[4], value=0, discard=29)
+    7:[33] ConvIntFromEnum(v1=1[32]) -> 1[32]
+    8:[36] ConstInt(val=3) -> 3[36]
+   13:[40] CastEnumFromInt(v1=3[36]) -> Three(3)[36]
+   14:[37] ConvIntFromEnum(v1=3[36]) -> 3[36]
+   15:[40] LtInt(v1=1[32], v2=3[36]) -> true[32]
+   16:[33] VarBool(var[32]) -> true[33]
+   19:[34] ConstTrue() -> true[34]
+   20:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+   21:[34] GotoFalseWord(jump=27, if_false=true[33])
+   24:[33] GotoWord(jump=77)
+   77:[33] FreeText(var[8])
+   80:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

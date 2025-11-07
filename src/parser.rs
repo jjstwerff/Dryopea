@@ -519,6 +519,9 @@ impl Parser {
             {
                 return true;
             }
+            if let (Type::Enum(_), Type::Integer(_, _)) = (test_type, should) {
+                return true;
+            }
             if let Type::Reference(r, _) = should
                 && *r == self.data.def_nr("reference")
                 && let Type::Reference(_, _) = test_type

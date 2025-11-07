@@ -12,7 +12,7 @@ Type 17:Number[1]:Enum(["One", "Two", "Three", "Four"])
 fn test() {#block(1):void
   __work_1(1):text = "";
   test_value(1):boolean = {#block(2):boolean
-    OpLtEnum(OpCastEnumFromText("Two", 17i32), OpCastEnumFromText("Four", 17i32));
+    OpLtInt(OpConvIntFromEnum(OpCastEnumFromText("Two", 17i32)), OpConvIntFromEnum(OpCastEnumFromText("Four", 17i32)));
   }#block(2):boolean;
   if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
@@ -27,40 +27,44 @@ byte-code for to_enum:test() [1074]
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
    1[28]: ConstText(_value="Two") -> text var=test_value[32]:boolean
-   6[44]: CastEnumFromText(v1: text, enum_tp=17) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
-   9[29]: ConstText(_value="Four") -> text
-  15[45]: CastEnumFromText(v1: text, enum_tp=17) -> enumerate type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
-  18[30]: LtEnum(v1: enumerate, v2: enumerate) -> boolean
-  19[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
-  22[30]: ConstTrue() -> boolean
-  23[31]: EqBool(v1: boolean, v2: boolean) -> boolean
-  24[30]: GotoFalseWord(jump=30, if_false: boolean)
-  27[29]: GotoWord(jump=80)
-  30[29]: ClearText(var[8]) var=__work_1[8]:text
-  33[29]: ConstText(_value="Test failed ") -> text
-  47[45]: AppendText(var[8], v1: text)
-  50[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
-  53[30]: ConstInt(val=0) -> integer
-  58[34]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
-  63[29]: ConstText(_value=" != true") -> text
-  73[45]: AppendText(var[8], v1: text)
-  76[29]: VarText(var[8]) -> text var=__work_1[8]:text
-  79[45]: Panic(message: text)
-  80[29]: FreeText(var[8])
-  83[29]: Return(ret=0, value=0, discard=29)
+   6[44]: CastEnumFromText(v1: text, enum_tp=17) -> boolean type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
+   9[29]: ConvIntFromEnum(v1: boolean) -> integer
+  10[32]: ConstText(_value="Four") -> text
+  16[48]: CastEnumFromText(v1: text, enum_tp=17) -> boolean type=Number[1]:Enum(["One", "Two", "Three", "Four"])[17]
+  19[33]: ConvIntFromEnum(v1: boolean) -> integer
+  20[36]: LtInt(v1: integer, v2: integer) -> boolean
+  21[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  24[30]: ConstTrue() -> boolean
+  25[31]: EqBool(v1: boolean, v2: boolean) -> boolean
+  26[30]: GotoFalseWord(jump=32, if_false: boolean)
+  29[29]: GotoWord(jump=82)
+  32[29]: ClearText(var[8]) var=__work_1[8]:text
+  35[29]: ConstText(_value="Test failed ") -> text
+  49[45]: AppendText(var[8], v1: text)
+  52[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  55[30]: ConstInt(val=0) -> integer
+  60[34]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
+  65[29]: ConstText(_value=" != true") -> text
+  75[45]: AppendText(var[8], v1: text)
+  78[29]: VarText(var[8]) -> text var=__work_1[8]:text
+  81[45]: Panic(message: text)
+  82[29]: FreeText(var[8])
+  85[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
     0:[8] Text()
     1:[32] ConstText(_value="Two") -> "Two"[32]
     6:[48] CastEnumFromText(v1="Two"[32], enum_tp=17) -> Two(2)[32]
-    9:[33] ConstText(_value="Four") -> "Four"[33]
-   15:[49] CastEnumFromText(v1="Four"[33], enum_tp=17) -> Four(4)[33]
-   18:[34] LtEnum(v1=2[32], v2=4[33]) -> true[32]
-   19:[33] VarBool(var[32]) -> true[33]
-   22:[34] ConstTrue() -> true[34]
-   23:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
-   24:[34] GotoFalseWord(jump=30, if_false=true[33])
-   27:[33] GotoWord(jump=80)
-   80:[33] FreeText(var[8])
-   83:[33] Return(ret=4294967295[4], value=0, discard=29)
+    9:[33] ConvIntFromEnum(v1=2[32]) -> 2[32]
+   10:[36] ConstText(_value="Four") -> "Four"[36]
+   16:[52] CastEnumFromText(v1="Four"[36], enum_tp=17) -> Four(4)[36]
+   19:[37] ConvIntFromEnum(v1=4[36]) -> 4[36]
+   20:[40] LtInt(v1=2[32], v2=4[36]) -> true[32]
+   21:[33] VarBool(var[32]) -> true[33]
+   24:[34] ConstTrue() -> true[34]
+   25:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
+   26:[34] GotoFalseWord(jump=32, if_false=true[33])
+   29:[33] GotoWord(jump=82)
+   82:[33] FreeText(var[8])
+   85:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

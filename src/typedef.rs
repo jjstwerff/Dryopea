@@ -43,7 +43,7 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
             data.definitions[d_nr as usize].known_type = 4;
         }
         "enumerate" => {
-            data.set_returned(d_nr, Type::Enum(d_nr));
+            data.set_returned(d_nr, Type::Enum(0));
         }
         "function" => {
             data.set_returned(d_nr, Type::Routine(d_nr));

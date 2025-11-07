@@ -187,7 +187,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     conv_bool_from_enum,
     cast_text_from_enum,
     cast_enum_from_text,
-    cast_int_from_enum,
+    conv_int_from_enum,
     cast_enum_from_int,
     conv_enum_from_null,
     database,
@@ -1381,7 +1381,7 @@ fn cast_enum_from_text(s: &mut State) {
     s.put_stack(new_value);
 }
 
-fn cast_int_from_enum(s: &mut State) {
+fn conv_int_from_enum(s: &mut State) {
     let v_v1 = *s.get_stack::<u8>();
     let new_value = if v_v1 == 255 {
         i32::MIN
