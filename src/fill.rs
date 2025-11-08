@@ -1368,9 +1368,9 @@ fn conv_bool_from_enum(s: &mut State) {
 }
 
 fn cast_text_from_enum(s: &mut State) {
-    let v_enum_tp = *s.get_stack::<u16>();
+    let v_enum_tp = *s.code::<u16>();
     let v_v1 = *s.get_stack::<u8>();
-    let new_value = Str::new(&s.database.enum_val(v_enum_tp, v_v1));
+    let new_value = Str::new(s.database.enum_val(v_enum_tp, v_v1));
     s.put_stack(new_value);
 }
 

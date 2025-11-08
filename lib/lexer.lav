@@ -70,6 +70,7 @@ pub fn set_tokens(self: Lexer, tokens: vector<text>) {
 
 // Skip possible white-space, comments or newlines in the file.
 fn skip_whitespace(self: Lexer) {
+    self.pos += self.index - self.start;
     for t in 0..300 {
         if self.data[self.index] == ' ' or self.data[self.index] == '\t' {
             self.index += 1;
@@ -92,7 +93,6 @@ fn skip_whitespace(self: Lexer) {
             break;
         }
     }
-    self.pos += self.index - self.start;
     self.start = self.index;
     self.scanned = Unknown;
 }
@@ -154,7 +154,11 @@ fn scan(self: Lexer) {
             }
             self.index += 1;
         }
-    } else if l.is_alphabetic() { // Identifiers or keywords
+        return;
+    } else if negative {
+        self.index -= 1;
+    }
+    if l.is_alphabetic() { // Identifiers or keywords
         self.scanned = Identifier;
         for t in 0..300 {
             l = self.data[self.index];
@@ -163,20 +167,18 @@ fn scan(self: Lexer) {
             }
             self.index += 1;
         }
-    } else { // Tokens
-        if negative {
-            self.scanned = Token;
-        }
-        self.scanned = Token;
-        for pt in self.tokens[l].possible {
-            tok = pt.token;
-            if self.data[self.index..self.index + tok.len()] == tok {
-                self.index += tok.len();
-                return;
-            }
-        }
-        self.index += 1;
+        return;
     }
+    // Tokens
+    self.scanned = Token;
+    for pt in self.tokens[l].possible {
+        tok = pt.token;
+        if self.data[self.index..self.index + tok.len()] == tok {
+            self.index += tok.len();
+            return;
+        }
+    }
+    self.index += 1;
 }
 
 // Open a file for parsing.
@@ -206,17 +208,13 @@ pub fn parse_string(self: Lexer, name: text, content: text) {
 
 // Test if there is a specific token, do not skip it.
 pub fn test(self: Lexer, with: text) -> boolean {
-    self.skip_whitespace();
     self.data[self.start..self.index] == with
 }
 
 // Test if there is a specific token or keyword in the file, skip this if it matches.
 pub fn matches(self: Lexer, with: text) -> boolean {
     if self.test(with) {
-        self.pos += len(with);
-        self.index += len(with);
-        self.behind = false;
-        self.comment = "";
+        self.scan();
         true
     } else {
         false
@@ -231,7 +229,8 @@ pub fn peek(self: Lexer) -> text {
 
 // Gather information about the current lexer position
 pub fn position(self: Lexer) -> text {
-    "{self.file}:{self.line}:{self.pos}"
+    a = "{self.file}:{self.line}:{self.pos}";
+    a
 }
 
 // Get an identifier and skip it.
@@ -264,7 +263,11 @@ pub fn long_int(self: Lexer) -> long {
     if self.scanned != Long && self.scanned != Integer {
         return null;
     }
-    result = self.data[self.start..self.index] as long;
+    to = self.index;
+    if self.data[to-1] == 'l' {
+        to -= 1;
+    }
+    result = self.data[self.start..to] as long;
     if result {
         self.scan();
         result

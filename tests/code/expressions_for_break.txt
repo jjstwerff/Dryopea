@@ -7,7 +7,7 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  t(1):text = "";
+  [2] t(1):text = "";
   test_value(1):text["t"] = {#block(2):text["t"]
     t(1):text = "";
     {#For block(3):void
@@ -31,7 +31,7 @@ fn test() {#block(1):void
     }#For block(3):void;
     t(1);
   }#block(2):text["t"];
-  if OpEqText(test_value(1), "a a a ") null else OpPanic({#Formatted string(8):text
+  [3] if OpEqText(test_value(1), "a a a ") null else OpPanic({#Formatted string(8):text
     __work_1(1):text = "Test failed ";
     OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != "a a a "");
@@ -42,10 +42,10 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for for_break:test() [1074]
+byte-code for for_break:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: Text() var=t[32]:text
+   1[28]: [2] Text() var=t[32]:text
    2[52]: Text() var=test_value[56]:text["t"]
    3[76]: ClearText(var[32]) var=t[32]:text
    6[76]: ConstText(_value="") -> text
@@ -86,7 +86,7 @@ byte-code for for_break:test() [1074]
  108[80]: FreeStack(value=0, discard=4)
  112[76]: VarText(var[32]) -> text var=t[32]:text
  115[92]: AppendText(var[56], v1: text)
- 118[76]: VarText(var[56]) -> text var=test_value[56]:text["t"]
+ 118[76]: [3] VarText(var[56]) -> text var=test_value[56]:text["t"]
  121[92]: ConstText(_value="a a a ") -> text
  129[108]: EqText(v1: text, v2: text) -> boolean
  130[77]: GotoFalseWord(jump=136, if_false: boolean)
@@ -107,7 +107,7 @@ byte-code for for_break:test() [1074]
  199[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] Text()
     2:[56] Text()
     3:[80] ClearText(var[32])

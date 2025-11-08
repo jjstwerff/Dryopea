@@ -1,7 +1,7 @@
 fn test() { op = ["+=", "*="]; for o in op { print(o); }; }
 fn test() {#block(1):void
   __ref_1(1):ref(main_vector<text>) = null;
-  OpDatabase(__ref_1(1), 14i32);
+  [1] OpDatabase(__ref_1(1), 14i32);
   op(1):vector<text>["__ref_1"] = OpGetField(__ref_1(1), 4i32, 7i32);
   OpSetInt(__ref_1(1), 4i32, 0i32);
   _elm_1(1):ref(boolean)["op"] = OpNewRecord(op(1), 7i32, 65535i32);
@@ -31,10 +31,10 @@ fn test() {#block(1):void
   OpFreeRef(__ref_1(1));
 }#block(1):void
 
-byte-code for text_vector:test() [1074]
+byte-code for text_vector:test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:ref(main_vector<text>)
-   1[16]: Database(var[8], db_tp=14) type=main_vector<text>[8]:{vector:vector<text>[4]}[14]
+   1[16]: [1] Database(var[8], db_tp=14) type=main_vector<text>[8]:{vector:vector<text>[4]}[14]
    6[16]: VarRef(var[8]) -> ref(reference) type=main_vector<text>[8]:{vector:vector<text>[4]}[14] var=__ref_1[8]:ref(main_vector<text>)
    9[28]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=vector<text>[4]:Vector(5)[7]
   12[28]: VarRef(var[8]) -> ref(reference) type=main_vector<text>[8]:{vector:vector<text>[4]}[14] var=__ref_1[8]:ref(main_vector<text>)
@@ -87,7 +87,7 @@ byte-code for text_vector:test() [1074]
  166[40]: Return(ret=0, value=0, discard=40)
 
 Execute test:
-    0:[8] ConvRefFromNull() -> ref(1,0,0)[8]
+    0:[8] [1] ConvRefFromNull() -> ref(1,0,0)[8]
     1:[20] Database(var[8], db_tp=14)
     6:[20] VarRef(var[8]) -> ref(1,1,0)={}[20]
     9:[32] GetField(v1=ref(1,1,0)[20], fld=4) -> ref(1,1,4)=[][20]
@@ -131,7 +131,7 @@ Execute test:
   141:[100] Call(size=0, call=print[360])
   360:[104] ArgText(var[84]) -> "+="[104]
   363:[120] Print(v1="+="[104])
-  364:[104] Return(ret=1222[100], value=0, discard=20)
+  364:[104] Return(ret=1263[100], value=0, discard=20)
   148:[84] FreeText(var[60])
   151:[84] FreeStack(value=0, discard=24)
   155:[60] GotoWord(jump=92)
@@ -153,7 +153,7 @@ Execute test:
   141:[100] Call(size=0, call=print[360])
   360:[104] ArgText(var[84]) -> "*="[104]
   363:[120] Print(v1="*="[104])
-  364:[104] Return(ret=1222[100], value=0, discard=20)
+  364:[104] Return(ret=1263[100], value=0, discard=20)
   148:[84] FreeText(var[60])
   151:[84] FreeStack(value=0, discard=24)
   155:[60] GotoWord(jump=92)

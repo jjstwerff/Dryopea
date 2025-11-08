@@ -7,10 +7,10 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):long = {#block(2):long
+  [2] test_value(1):long = {#block(2):long
     OpAddLong(OpConvLongFromInt(123i32), OpConvLongFromInt(2i32));
   }#block(2):long;
-  if OpEqLong(test_value(1), 125i64) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqLong(test_value(1), 125i64) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatLong(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 125l");
@@ -19,15 +19,15 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for convert_to_long:test() [1074]
+byte-code for convert_to_long:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstInt(val=123) -> integer var=test_value[32]:long
+   1[28]: [2] ConstInt(val=123) -> integer var=test_value[32]:long
    6[32]: ConvLongFromInt(v1: integer) -> long
    7[36]: ConstInt(val=2) -> integer
   12[40]: ConvLongFromInt(v1: integer) -> long
   13[44]: AddLong(v1: long, v2: long) -> long
-  14[36]: VarLong(var[32]) -> long var=test_value[32]:long
+  14[36]: [3] VarLong(var[32]) -> long var=test_value[32]:long
   17[44]: ConstLong(val=125) -> long
   26[52]: EqLong(v1: long, v2: long) -> boolean
   27[37]: GotoFalseWord(jump=33, if_false: boolean)
@@ -46,12 +46,12 @@ byte-code for convert_to_long:test() [1074]
   88[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] ConstInt(val=123) -> 123[32]
     6:[36] ConvLongFromInt(v1=123[32]) -> 123[32]
     7:[40] ConstInt(val=2) -> 2[40]
    12:[44] ConvLongFromInt(v1=2[40]) -> 2[40]
-   13:[48] AddLong(v1=123[32], v2=2[40]) -> 125[32]
+   13:[48] [3] AddLong(v1=123[32], v2=2[40]) -> 125[32]
    14:[40] VarLong(var[32]) -> 125[40]
    17:[48] ConstLong(val=125) -> 125[48]
    26:[56] EqLong(v1=125[40], v2=125[48]) -> true[40]

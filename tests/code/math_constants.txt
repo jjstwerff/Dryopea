@@ -7,10 +7,10 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):float = {#block(2):float
+  [2] test_value(1):float = {#block(2):float
     _tp_float_round(OpMulFloat(OpMathPiFloat(), 1000f64));
   }#block(2):float;
-  if OpEqFloat(test_value(1), OpConvFloatFromInt(3142i32)) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqFloat(test_value(1), OpConvFloatFromInt(3142i32)) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
     OpAppendText(__work_1(1), " != 3142");
@@ -19,14 +19,14 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for constants:test() [1074]
+byte-code for constants:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: MathPiFloat() -> float var=test_value[32]:float
+   1[28]: [2] MathPiFloat() -> float var=test_value[32]:float
    2[36]: ConstFloat(val=1000) -> float
   11[44]: MulFloat(v1: float, v2: float) -> float
   12[36]: Call(size=0, call=_tp_float_round[272])
-  19[36]: VarFloat(var[32]) -> float var=test_value[32]:float
+  19[36]: [3] VarFloat(var[32]) -> float var=test_value[32]:float
   22[44]: ConstInt(val=3142) -> integer
   27[48]: ConvFloatFromInt(v1: integer) -> float
   28[52]: EqFloat(v1: float, v2: float) -> boolean
@@ -47,14 +47,14 @@ byte-code for constants:test() [1074]
   91[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] MathPiFloat() -> 3.141592653589793[32]
     2:[40] ConstFloat(val=1000) -> 1000[40]
    11:[48] MulFloat(v1=3.141592653589793[32], v2=1000[40]) -> 3141.592653589793[32]
    12:[40] Call(size=0, call=_tp_float_round[272])
   272:[44] VarFloat(var[32]) -> 3141.592653589793[44]
   275:[52] MathRoundFloat(v1=3141.592653589793[44]) -> 3142[44]
-  276:[52] Return(ret=1093[40], value=8, discard=20) -> 3142[32]
+  276:[52] Return(ret=1134[40], value=8, discard=20) -> 3142[32]
    19:[40] VarFloat(var[32]) -> 3142[40]
    22:[48] ConstInt(val=3142) -> 3142[48]
    27:[52] ConvFloatFromInt(v1=3142[48]) -> 3142[48]

@@ -59,6 +59,8 @@ pub struct Parser {
     /// - creates code, assumes that all types are known
     first_pass: bool,
     vars: Function,
+    /// Last seen line inside the source code, an increase inserts it in the internal code.
+    line: u32,
 }
 
 // Operators ordered on their precedence
@@ -158,6 +160,7 @@ impl Parser {
             context: u32::MAX,
             first_pass: true,
             vars: Function::new("", "none"),
+            line: 0,
         }
     }
 
@@ -949,6 +952,7 @@ impl Parser {
             }
         }
         self.file += 1;
+        self.line = 0;
         loop {
             self.lexer.has_token("pub");
             if self.lexer.diagnostics().level() == Level::Fatal
@@ -2111,6 +2115,14 @@ impl Parser {
         let mut t = Type::Void;
         let mut l = Vec::new();
         loop {
+            let line = self.lexer.pos().line;
+            if line > self.line {
+                if matches!(l.last(), Some(Value::Line(_))) {
+                    l.pop();
+                }
+                l.push(Value::Line(line));
+                self.line = line;
+            }
             if self.lexer.has_token(";") {
                 continue;
             }
@@ -2141,6 +2153,9 @@ impl Parser {
             }
         }
         self.lexer.token("}");
+        if matches!(l.last(), Some(Value::Line(_))) {
+            l.pop();
+        }
         t = self.block_result(context, result, &t, &mut l);
         *val = v_block(l, t.clone(), "block");
         t
@@ -4052,7 +4067,7 @@ impl Parser {
             }
             let mut default = self.data.attr_value(td_nr, aid);
             if default == Value::Null {
-                default = to_default(&self.data.attr_type(td_nr, aid));
+                default = to_default(&self.data.attr_type(td_nr, aid), &self.data);
             }
             list.push(self.set_field(td_nr, aid, Value::Var(v), default));
         }

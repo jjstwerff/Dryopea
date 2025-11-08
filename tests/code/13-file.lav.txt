@@ -1,6 +1,6 @@
 fn texts(dir:File, l:vector<ref(File)>) {#block(1):void
   __ref_1(1):vector<ref(File)> = null;
-  {#For block(2):void
+  [2] {#For block(2):void
     _vector_1(2):vector<ref(File)>["__ref_1"] = _tp_File_files(dir(0), __ref_1(1));
     f#index(2):integer = -1i32;
     loop {#For loop_3
@@ -12,10 +12,10 @@ fn texts(dir:File, l:vector<ref(File)>) {#block(1):void
         break(0);
       }#break(5):void else null;
       {#block(6):void
-        if OpEqInt(OpGetByte(f(3), 16i32, 0i32), 1i32) {#block(7):void
-          texts(f(3), l(0));
+        [3] if OpEqInt(OpGetByte(f(3), 16i32, 0i32), 1i32) {#block(7):void
+          [4] texts(f(3), l(0));
         }#block(7):void else if _tp_text_ends_with(OpGetText(f(3), 4i32), ".txt") {#block(8):void
-          _elm_2(8):ref(File)["l"] = OpNewRecord(l(0), 16i32, 65535i32);
+          [6] _elm_2(8):ref(File)["l"] = OpNewRecord(l(0), 16i32, 65535i32);
           OpCopyRecord(f(3), _elm_2(8), 13i32);
           OpFinishRecord(l(0), _elm_2(8), 16i32, 65535i32);
         }#block(8):void else null;
@@ -25,7 +25,7 @@ fn texts(dir:File, l:vector<ref(File)>) {#block(1):void
   OpFreeRef(__ref_1(1));
 }#block(1):void
 
-byte-code for tests/suite/13-file.lav:texts(dir: ref(File)[0], l: vector<ref(File)>[12]) [1074]
+byte-code for tests/suite/13-file.lav:texts(dir: ref(File)[0], l: vector<ref(File)>[12])
    0[24]: return-address
    0[28]: ConvRefFromNull() -> ref(reference) var=__ref_1[32]:vector<ref(File)>
    1[40]: Database(var[32], db_tp=15)
@@ -35,9 +35,9 @@ byte-code for tests/suite/13-file.lav:texts(dir: ref(File)[0], l: vector<ref(Fil
   17[40]: CreateRef(var[32]) -> ref(reference)
   20[52]: ConstInt(val=4) -> integer
   25[56]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
-  30[40]: VarRef(var[4]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=dir[4]:ref(File)
+  30[40]: [2] VarRef(var[4]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=dir[4]:ref(File)
   33[52]: VarVector(var[32]) -> vector type=vector<File>[4]:Vector(13)[16] var=__ref_1[32]:vector<ref(File)>
-  36[64]: Call(size=0, call=_tp_File_files[769])
+  36[64]: Call(size=0, call=_tp_File_files[810])
   43[52]: ConstInt(val=-1) -> integer var=f#index[56]:integer
   48[56]: VarInt(var[56]) -> integer var=f#index[56]:integer
   51[60]: ConstInt(val=1) -> integer
@@ -52,21 +52,21 @@ byte-code for tests/suite/13-file.lav:texts(dir: ref(File)[0], l: vector<ref(Fil
   74[69]: GotoFalseWord(jump=84, if_false: boolean)
   77[68]: FreeStack(value=0, discard=12)
   81[56]: GotoWord(jump=174)
-  84[68]: VarRef(var[60]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=f[60]:ref(File)["_vector_1"]
+  84[68]: [3] VarRef(var[60]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=f[60]:ref(File)["_vector_1"]
   87[80]: GetByte(v1: ref(reference), fld=16, min=0) -> integer
   92[72]: ConstInt(val=1) -> integer
   97[76]: EqInt(v1: integer, v2: integer) -> boolean
   98[69]: GotoFalseWord(jump=117, if_false: boolean)
- 101[68]: VarRef(var[60]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=f[60]:ref(File)["_vector_1"]
+ 101[68]: [4] VarRef(var[60]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=f[60]:ref(File)["_vector_1"]
  104[80]: VarVector(var[16]) -> vector type=vector<File>[4]:Vector(13)[16] var=l[16]:vector<ref(File)>["__ref_2"]
- 107[92]: Call(size=0, call=texts[1074])
+ 107[92]: Call(size=0, call=texts[1115])
  114[68]: GotoWord(jump=167)
  117[68]: VarRef(var[60]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=f[60]:ref(File)["_vector_1"]
  120[80]: GetText(v1: ref(reference), fld=4) -> text["dir"]
  123[84]: ConstText(_value=".txt") -> text
  129[100]: StaticCall(_tp_text_ends_with)
  132[69]: GotoFalseWord(jump=167, if_false: boolean)
- 135[68]: VarVector(var[16]) -> vector type=vector<File>[4]:Vector(13)[16] var=l[16]:vector<ref(File)>["__ref_2"]
+ 135[68]: [6] VarVector(var[16]) -> vector type=vector<File>[4]:Vector(13)[16] var=l[16]:vector<ref(File)>["__ref_2"]
  138[80]: NewRecord(data: ref(reference), parent_tp=16, fld=65535) -> ref(reference)
  143[80]: VarRef(var[60]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=f[60]:ref(File)["_vector_1"]
  146[92]: VarRef(var[72]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=_elm_2[72]:ref(File)["l"]
@@ -88,19 +88,19 @@ fn main() {#block(1):void
   __ref_1(1):ref(main_vector<File>) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
-  OpDatabase(__ref_1(1), 15i32);
+  [12] OpDatabase(__ref_1(1), 15i32);
   l(1):vector<ref(File)>["__ref_1"] = OpGetField(__ref_1(1), 4i32, 16i32);
   OpSetInt(__ref_1(1), 4i32, 0i32);
-  texts(file("example", __ref_2(1)), l(1));
-  if OpEqText(OpGetText(OpGetVector(l(1), 17i32, 0i32), 4i32), "example/config/terrain.txt") null else OpPanic({#Formatted string(2):text
+  [13] texts(file("example", __ref_2(1)), l(1));
+  [14] if OpEqText(OpGetText(OpGetVector(l(1), 17i32, 0i32), 4i32), "example/config/terrain.txt") null else OpPanic({#Formatted string(2):text
     __work_1(1):text = "Found file '";
     OpFormatText(__work_1(1), OpGetText(OpGetVector(l(1), 17i32, 0i32), 4i32), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), "'");
     __work_1(1);
   }#Formatted string(2):text);
-  f(1):ref(File)["l"] = OpGetVector(l(1), 17i32, 0i32);
-  c(1):vector<text>["__ref_3"] = _tp_File_lines(f(1), __ref_3(1));
-  if OpEqText(OpGetText(OpGetVector(c(1), 4i32, 1i32), 0i32), "   terrain = [") null else OpPanic({#Formatted string(3):text
+  [15] f(1):ref(File)["l"] = OpGetVector(l(1), 17i32, 0i32);
+  [16] c(1):vector<text>["__ref_3"] = _tp_File_lines(f(1), __ref_3(1));
+  [17] if OpEqText(OpGetText(OpGetVector(c(1), 4i32, 1i32), 0i32), "   terrain = [") null else OpPanic({#Formatted string(3):text
     __work_2(1):text = "Line was '";
     OpFormatText(__work_2(1), OpGetText(OpGetVector(c(1), 4i32, 1i32), 0i32), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), "'");
@@ -113,7 +113,7 @@ fn main() {#block(1):void
   OpFreeRef(__ref_3(1));
 }#block(1):void
 
-byte-code for tests/suite/13-file.lav:main() [1262]
+byte-code for tests/suite/13-file.lav:main()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_3[8]:vector<text>
    1[16]: Database(var[8], db_tp=14)
@@ -127,18 +127,18 @@ byte-code for tests/suite/13-file.lav:main() [1262]
   31[28]: ConvRefFromNull() -> ref(reference) var=__ref_1[32]:ref(main_vector<File>)
   32[40]: Text() var=__work_2[44]:text
   33[64]: Text() var=__work_1[68]:text
-  34[88]: Database(var[32], db_tp=15) type=main_vector<File>[8]:{vector:vector<File>[4]}[15]
+  34[88]: [12] Database(var[32], db_tp=15) type=main_vector<File>[8]:{vector:vector<File>[4]}[15]
   39[88]: VarRef(var[32]) -> ref(reference) type=main_vector<File>[8]:{vector:vector<File>[4]}[15] var=__ref_1[32]:ref(main_vector<File>)
   42[100]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=vector<File>[4]:Vector(13)[16]
   45[100]: VarRef(var[32]) -> ref(reference) type=main_vector<File>[8]:{vector:vector<File>[4]}[15] var=__ref_1[32]:ref(main_vector<File>)
   48[112]: ConstInt(val=0) -> integer
   53[116]: SetInt(v1: ref(reference), fld=4, val: integer)
-  56[100]: ConstText(_value="example") -> text
+  56[100]: [13] ConstText(_value="example") -> text
   65[116]: VarRef(var[20]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=__ref_2[20]:ref(File)
-  68[128]: Call(size=0, call=file[695])
+  68[128]: Call(size=0, call=file[736])
   75[112]: VarVector(var[92]) -> vector type=vector<File>[4]:Vector(13)[16] var=l[92]:vector<ref(File)>["__ref_1"]
-  78[124]: Call(size=0, call=texts[1074])
-  85[100]: VarVector(var[92]) -> vector type=vector<File>[4]:Vector(13)[16] var=l[92]:vector<ref(File)>["__ref_1"]
+  78[124]: Call(size=0, call=texts[1115])
+  85[100]: [14] VarVector(var[92]) -> vector type=vector<File>[4]:Vector(13)[16] var=l[92]:vector<ref(File)>["__ref_1"]
   88[112]: ConstInt(val=0) -> integer
   93[116]: GetVector(r: vector, size=17, index: integer) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13]
   96[112]: GetText(v1: ref(reference), fld=4) -> text["l"]
@@ -159,13 +159,13 @@ byte-code for tests/suite/13-file.lav:main() [1262]
  181[116]: AppendText(var[68], v1: text)
  184[100]: VarText(var[68]) -> text var=__work_1[68]:text
  187[116]: Panic(message: text)
- 188[100]: VarVector(var[92]) -> vector type=vector<File>[4]:Vector(13)[16] var=l[92]:vector<ref(File)>["__ref_1"]
+ 188[100]: [15] VarVector(var[92]) -> vector type=vector<File>[4]:Vector(13)[16] var=l[92]:vector<ref(File)>["__ref_1"]
  191[112]: ConstInt(val=0) -> integer
  196[116]: GetVector(r: vector, size=17, index: integer) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13]
- 199[112]: VarRef(var[104]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=f[104]:ref(File)["l"]
+ 199[112]: [16] VarRef(var[104]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=f[104]:ref(File)["l"]
  202[124]: VarVector(var[8]) -> vector type=vector<text>[4]:Vector(5)[7] var=__ref_3[8]:vector<text>
- 205[136]: Call(size=0, call=_tp_File_lines[454])
- 212[124]: VarVector(var[116]) -> vector type=vector<text>[4]:Vector(5)[7] var=c[116]:vector<text>["__ref_3"]
+ 205[136]: Call(size=0, call=_tp_File_lines[495])
+ 212[124]: [17] VarVector(var[116]) -> vector type=vector<text>[4]:Vector(5)[7] var=c[116]:vector<text>["__ref_3"]
  215[136]: ConstInt(val=1) -> integer
  220[140]: GetVector(r: vector, size=4, index: integer) -> ref(reference) type=text[4]:Base[5]
  223[136]: GetText(v1: ref(reference), fld=0) -> text["l"]

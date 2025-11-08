@@ -7,12 +7,12 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  a(1):text = "";
+  [2] a(1):text = "";
   test_value(1):text["a"] = {#block(2):text["a"]
     a(1):text = "12345";
     OpGetTextSub(a(1), 2i32, 2147483647i32);
   }#block(2):text["a"];
-  if OpEqText(test_value(1), "345") null else OpPanic({#Formatted string(3):text
+  [3] if OpEqText(test_value(1), "345") null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != "345"");
@@ -23,10 +23,10 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for sub_open:test() [1074]
+byte-code for sub_open:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: Text() var=a[32]:text
+   1[28]: [2] Text() var=a[32]:text
    2[52]: Text() var=test_value[56]:text["a"]
    3[76]: ClearText(var[32]) var=a[32]:text
    6[76]: ConstText(_value="12345") -> text
@@ -36,7 +36,7 @@ byte-code for sub_open:test() [1074]
   24[96]: ConstInt(val=2147483647) -> integer
   29[100]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
   30[92]: AppendText(var[56], v1: text)
-  33[76]: VarText(var[56]) -> text var=test_value[56]:text["a"]
+  33[76]: [3] VarText(var[56]) -> text var=test_value[56]:text["a"]
   36[92]: ConstText(_value="345") -> text
   41[108]: EqText(v1: text, v2: text) -> boolean
   42[77]: GotoFalseWord(jump=48, if_false: boolean)
@@ -57,7 +57,7 @@ byte-code for sub_open:test() [1074]
  108[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] Text()
     2:[56] Text()
     3:[80] ClearText(var[32])

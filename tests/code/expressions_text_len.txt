@@ -7,12 +7,12 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [2] test_value(1):integer = {#block(2):integer
     t(2):text = "some";
     _tp_text_len(t(2));
     OpFreeText(t(2));
   }#block(2):integer;
-  if OpEqInt(test_value(1), 4i32) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqInt(test_value(1), 4i32) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 4");
@@ -21,17 +21,17 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for text_len:test() [1074]
+byte-code for text_len:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: Text() var=t[32]:text
+   1[28]: [2] Text() var=t[32]:text
    2[52]: ConstText(_value="some") -> text
    8[68]: AppendText(var[32], v1: text)
   11[52]: VarText(var[32]) -> text var=t[32]:text
   14[68]: Call(size=0, call=_tp_text_len[318])
   21[56]: FreeText(var[32])
   24[56]: FreeStack(value=4, discard=28)
-  28[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  28[32]: [3] VarInt(var[32]) -> integer var=test_value[32]:integer
   31[36]: ConstInt(val=4) -> integer
   36[40]: EqInt(v1: integer, v2: integer) -> boolean
   37[33]: GotoFalseWord(jump=43, if_false: boolean)
@@ -50,7 +50,7 @@ byte-code for text_len:test() [1074]
   95[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] Text()
     2:[56] ConstText(_value="some") -> "some"[56]
     8:[72] AppendText(var[32], v1="some"[56])
@@ -58,7 +58,7 @@ Execute test:
    14:[72] Call(size=0, call=_tp_text_len[318])
   318:[76] ArgText(var[56]) -> "some"[76]
   321:[92] LengthText(v1="some"[76]) -> 4[76]
-  322:[80] Return(ret=1095[72], value=4, discard=24) -> 4[56]
+  322:[80] Return(ret=1136[72], value=4, discard=24) -> 4[56]
    21:[60] FreeText(var[32])
    24:[60] FreeStack(value=4, discard=28)
    28:[36] VarInt(var[32]) -> 4[36]

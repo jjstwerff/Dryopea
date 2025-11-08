@@ -1,19 +1,5 @@
 use lexer;
 
-fn testing(l: lexer::Lexer) {
-    assert(!l.matches("+"), "Incorrect plus");
-    assert(l.peek() != "+", "Incorrect plus");
-    assert(l.matches("+="), "Incorrect plus_is");
-    assert(l.int() == -2, "Integer");
-    assert(l.matches("*"), "Incorrect multi");
-    assert(l.int() != 3, "Incorrect integer");
-    assert(l.long_int() == 3, "Incorrect long");
-    assert(l.position() == "Tokens:1:14", "Incorrect position {l.position()}");
-    assert(!l.matches(">"), "Incorrect higher");
-    assert(l.position() == "Tokens:1:15", "Incorrect position {l.position()}");
-    assert(l.matches(">>"), "Incorrect logical shift");
-}
-
 fn main() {
     l = lexer::Lexer {};
     l.set_tokens(["+=", "*=", "-=", "<=", ">=", "!=", "==", ">>", "<<", "->", "=>", ">>>", "..", "..=", "&&", "||"]);
@@ -21,4 +7,14 @@ fn main() {
     l.parse_string("Tokens", "12 += -2 * 3l >> 4");
     assert(l.int() == 12, "Integer");
     assert(!l.matches("+"), "Incorrect plus");
+    assert(l.peek() != "+", "Incorrect plus");
+    assert(l.matches("+="), "Incorrect plus_is");
+    assert(l.int() == -2, "Second integer");
+    assert(l.matches("*"), "Incorrect multiply");
+    assert(l.int() != 3, "Third number");
+    assert(l.long_int() == 3, "Incorrect long");
+    assert(l.position() == "Tokens:1:15", "Incorrect position {l.position()}");
+    assert(!l.matches(">"), "Incorrect higher");
+    assert(l.matches(">>"), "Incorrect logical shift");
+    assert(l.position() == "Tokens:1:18", "Incorrect position {l.position()}");
 }

@@ -7,12 +7,12 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  s(1):text = "";
+  [2] s(1):text = "";
   test_value(1):text["s"] = {#block(2):text["s"]
     s(1):text = " 12   ";
     _tp_text_trim(s(1));
   }#block(2):text["s"];
-  if OpEqText(test_value(1), "12") null else OpPanic({#Formatted string(3):text
+  [3] if OpEqText(test_value(1), "12") null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != "12"");
@@ -23,10 +23,10 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for trim_block:test() [1074]
+byte-code for trim_block:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: Text() var=s[32]:text
+   1[28]: [2] Text() var=s[32]:text
    2[52]: Text() var=test_value[56]:text["s"]
    3[76]: ClearText(var[32]) var=s[32]:text
    6[76]: ConstText(_value=" 12   ") -> text
@@ -34,7 +34,7 @@ byte-code for trim_block:test() [1074]
   17[76]: VarText(var[32]) -> text var=s[32]:text
   20[92]: StaticCall(_tp_text_trim)
   23[92]: AppendText(var[56], v1: text)
-  26[76]: VarText(var[56]) -> text var=test_value[56]:text["s"]
+  26[76]: [3] VarText(var[56]) -> text var=test_value[56]:text["s"]
   29[92]: ConstText(_value="12") -> text
   33[108]: EqText(v1: text, v2: text) -> boolean
   34[77]: GotoFalseWord(jump=40, if_false: boolean)
@@ -55,7 +55,7 @@ byte-code for trim_block:test() [1074]
   99[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] Text()
     2:[56] Text()
     3:[80] ClearText(var[32])

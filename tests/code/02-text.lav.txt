@@ -1,16 +1,16 @@
 fn main() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  a(1):text["a"] = "";
+  [2] a(1):text["a"] = "";
   OpAppendText(a(1), "1");
   OpAppendText(a(1), "2");
-  if OpEqText({#Formatted string(2):text
+  [3] if OpEqText({#Formatted string(2):text
     __work_1(1):text = "'";
     OpFormatText(__work_1(1), a(1), 4i32, -1i32, 32i32);
     OpAppendText(__work_1(1), "'");
     __work_1(1);
   }#Formatted string(2):text, "'12  '") null else OpPanic("Formatting text");
-  if OpEqInt(_tp_text_len({#Add text(3):text["__work_2"]
+  [4] if OpEqInt(_tp_text_len({#Add text(3):text["__work_2"]
     OpClearText(__work_2(1));
     OpAppendText(__work_2(1), a(1));
     OpAppendText(__work_2(1), "123");
@@ -21,16 +21,16 @@ fn main() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for tests/suite/02-text.lav:main() [1074]
+byte-code for tests/suite/02-text.lav:main()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: Text() var=a[56]:text["a"]
+   2[52]: [2] Text() var=a[56]:text["a"]
    3[76]: ConstText(_value="1") -> text
    6[92]: AppendText(var[56], v1: text)
    9[76]: ConstText(_value="2") -> text
   12[92]: AppendText(var[56], v1: text)
-  15[76]: ClearText(var[32]) var=__work_1[32]:text
+  15[76]: [3] ClearText(var[32]) var=__work_1[32]:text
   18[76]: ConstText(_value="'") -> text
   21[92]: AppendText(var[32], v1: text)
   24[76]: VarText(var[56]) -> text var=a[56]:text["a"]
@@ -45,7 +45,7 @@ byte-code for tests/suite/02-text.lav:main() [1074]
   58[76]: GotoWord(jump=79)
   61[76]: ConstText(_value="Formatting text") -> text
   78[92]: Panic(message: text)
-  79[76]: ClearText(var[8])
+  79[76]: [4] ClearText(var[8])
   82[76]: VarText(var[56]) -> text var=a[56]:text["a"]
   85[92]: AppendText(var[8], v1: text)
   88[76]: ConstText(_value="123") -> text

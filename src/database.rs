@@ -965,23 +965,20 @@ impl Stores {
         }
     }
 
-    #[allow(dead_code)]
     #[must_use]
-    pub fn enum_val(&self, known_type: u16, value: u8) -> String {
+    pub fn enum_val(&self, known_type: u16, value: u8) -> &str {
         if known_type == u16::MAX {
-            return format!("unknown({value})");
+            return "unknown";
         }
         if let Parts::Enum(values) = &self.types[known_type as usize].parts
             && value > 0
             && (value as usize) <= values.len()
         {
-            return values[value as usize - 1].clone();
+            return &values[value as usize - 1];
         }
-
-        "null".to_string()
+        "null"
     }
 
-    #[allow(dead_code)]
     #[must_use]
     pub fn to_enum(&self, known_type: u16, value: &str) -> u8 {
         if let Parts::Enum(values) = &self.types[known_type as usize].parts {
@@ -1001,7 +998,7 @@ impl Stores {
         }
         if known_type < 6 {
             match known_type {
-                0 => store.get_int(rec, pos) == i32::MIN,
+                0 | 6 => store.get_int(rec, pos) == i32::MIN,
                 1 => store.get_long(rec, pos) == i64::MIN,
                 2 => store.get_single(rec, pos).is_nan(),
                 3 => store.get_float(rec, pos).is_nan(),
@@ -1530,7 +1527,7 @@ impl Stores {
     // Returns 0 on success, or a position inside the original string as failure.
     fn parse_simple(&mut self, text: &str, pos: &mut usize, tp: u16, to: &DbRef) -> usize {
         match tp {
-            0 => {
+            0 | 6 => {
                 let mut value = 0;
                 let result = match_integer(text, pos, &mut value);
                 if result != 0 {
@@ -2071,7 +2068,7 @@ impl Stores {
         if let Parts::Struct(fields) = &self.types[db as usize].parts {
             let f = &fields[key as usize];
             return match f.content {
-                0 => Content::Long(i64::from(
+                0 | 6 => Content::Long(i64::from(
                     store.get_int(rec.rec, rec.pos + u32::from(f.position)),
                 )),
                 1 => Content::Long(store.get_long(rec.rec, rec.pos + u32::from(f.position))),

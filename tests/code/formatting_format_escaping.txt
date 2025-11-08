@@ -7,10 +7,10 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [2] test_value(1):text = {#block(2):text
     "ab{cd}e";
   }#block(2):text;
-  if OpEqText(test_value(1), "ab{cd}e") null else OpPanic({#Formatted string(3):text
+  [3] if OpEqText(test_value(1), "ab{cd}e") null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != "ab{cd}e"");
@@ -20,13 +20,13 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for format_escaping:test() [1074]
+byte-code for format_escaping:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: Text() var=test_value[32]:text
+   1[28]: [2] Text() var=test_value[32]:text
    2[52]: ConstText(_value="ab{cd}e") -> text
   11[68]: AppendText(var[32], v1: text)
-  14[52]: VarText(var[32]) -> text var=test_value[32]:text
+  14[52]: [3] VarText(var[32]) -> text var=test_value[32]:text
   17[68]: ConstText(_value="ab{cd}e") -> text
   26[84]: EqText(v1: text, v2: text) -> boolean
   27[53]: GotoFalseWord(jump=33, if_false: boolean)
@@ -46,7 +46,7 @@ byte-code for format_escaping:test() [1074]
   94[52]: Return(ret=0, value=0, discard=52)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] Text()
     2:[56] ConstText(_value="ab{cd}e") -> "ab{cd}e"[56]
    11:[72] AppendText(var[32], v1="ab{cd}e"[56])

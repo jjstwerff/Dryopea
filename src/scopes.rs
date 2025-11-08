@@ -171,7 +171,7 @@ impl Scopes {
                     function,
                     data,
                     &data.def(self.d_nr).returned,
-                    self.scope - 1,
+                    1,
                 ))
             }
             Value::Block(bl) => {

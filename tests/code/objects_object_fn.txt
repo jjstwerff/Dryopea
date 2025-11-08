@@ -21,29 +21,29 @@ Type 17:Data[12]:
     number:integer[8]
 
 fn data(n:text, res:Data) -> Data["res"] {#block(1):ref(Data)["res"]
-  OpDatabase(res(0), 17i32);
+  [7] OpDatabase(res(0), 17i32);
   OpSetText(res(0), 4i32, n(0));
   OpSetInt(res(0), 8i32, 0i32);
-  res(0);
+  [8] res(0);
 }#block(1):ref(Data)["res"]
 
-byte-code for object_fn:data(n: text[0], res: ref(Data)[16]) [1074] -> ref(Data)["res"]
+byte-code for object_fn:data(n: text[0], res: ref(Data)[16]) -> ref(Data)["res"]
    0[28]: return-address
-   0[32]: Database(var[20], db_tp=17) type=Data[12]:{name:text[4], number:integer[8]}[17]
+   0[32]: [7] Database(var[20], db_tp=17) type=Data[12]:{name:text[4], number:integer[8]}[17]
    5[32]: VarRef(var[20]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[20]:ref(Data)
    8[44]: ArgText(var[4]) -> text var=n[4]:text
   11[60]: SetText(v1: ref(reference), fld=4, val: text)
   14[32]: VarRef(var[20]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[20]:ref(Data)
   17[44]: ConstInt(val=0) -> integer
   22[48]: SetInt(v1: ref(reference), fld=8, val: integer)
-  25[32]: VarRef(var[20]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[20]:ref(Data)
+  25[32]: [8] VarRef(var[20]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[20]:ref(Data)
   28[44]: Return(ret=28, value=12, discard=44) type=Data[12]:{name:text[4], number:integer[8]}[17]
 
 fn test() {#block(1):void
   __ref_1(1):ref(Data) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [13] test_value(1):text = {#block(2):text
     d(2):ref(Data)["__ref_1"] = data("test", __ref_1(1));
     {#Formatted string(3):text
       __work_1(1):text = "";
@@ -53,7 +53,7 @@ fn test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "test:0") null else OpPanic({#Formatted string(4):text
+  [14] if OpEqText(test_value(1), "test:0") null else OpPanic({#Formatted string(4):text
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "test:0"");
@@ -65,15 +65,15 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for object_fn:test() [1108]
+byte-code for object_fn:test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:ref(Data)
    1[16]: Text() var=__work_2[20]:text
    2[40]: Text() var=__work_1[44]:text
-   3[64]: Text() var=test_value[68]:text
+   3[64]: [13] Text() var=test_value[68]:text
    4[88]: ConstText(_value="test") -> text var=d[92]:ref(Data)["__ref_1"]
   10[104]: VarRef(var[8]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=__ref_1[8]:ref(Data)
-  13[116]: Call(size=0, call=data[1074])
+  13[116]: Call(size=0, call=data[1115])
   20[100]: ClearText(var[44]) var=__work_1[44]:text
   23[100]: ConstText(_value="") -> text
   25[116]: AppendText(var[44], v1: text)
@@ -90,7 +90,7 @@ byte-code for object_fn:test() [1108]
   68[100]: VarText(var[44]) -> text var=__work_1[44]:text
   71[116]: FreeStack(value=16, discard=28)
   75[104]: AppendText(var[68], v1: text)
-  78[88]: VarText(var[68]) -> text var=test_value[68]:text
+  78[88]: [14] VarText(var[68]) -> text var=test_value[68]:text
   81[104]: ConstText(_value="test:0") -> text
   89[120]: EqText(v1: text, v2: text) -> boolean
   90[89]: GotoFalseWord(jump=96, if_false: boolean)
@@ -115,20 +115,20 @@ byte-code for object_fn:test() [1108]
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,0)[8]
     1:[20] Text()
-    2:[44] Text()
+    2:[44] [13] Text()
     3:[68] Text()
     4:[92] ConstText(_value="test") -> "test"[92]
    10:[108] VarRef(var[8]) -> ref(1,0,0)=null[108]
-   13:[120] Call(size=0, call=data[1074])
- 1074:[124] Database(var[108], db_tp=17)
- 1079:[124] VarRef(var[108]) -> ref(1,1,0)={}[124]
- 1082:[136] ArgText(var[92]) -> "test"[136]
- 1085:[152] SetText(v1=ref(1,1,0)[124], fld=4, val="test"[136])
- 1088:[124] VarRef(var[108]) -> ref(1,1,0)={name:"test"}[124]
- 1091:[136] ConstInt(val=0) -> 0[136]
- 1096:[140] SetInt(v1=ref(1,1,0)[124], fld=8, val=0[136])
- 1099:[124] VarRef(var[108]) -> ref(1,1,0)={name:"test",number:0}[124]
- 1102:[136] Return(ret=1128[120], value=12, discard=44) -> ref(1,1,0)={name:"test",number:0}[92]
+   13:[120] Call(size=0, call=data[1115])
+ 1115:[124] Database(var[108], db_tp=17)
+ 1120:[124] VarRef(var[108]) -> ref(1,1,0)={}[124]
+ 1123:[136] ArgText(var[92]) -> "test"[136]
+ 1126:[152] SetText(v1=ref(1,1,0)[124], fld=4, val="test"[136])
+ 1129:[124] VarRef(var[108]) -> ref(1,1,0)={name:"test"}[124]
+ 1132:[136] ConstInt(val=0) -> 0[136]
+ 1137:[140] SetInt(v1=ref(1,1,0)[124], fld=8, val=0[136])
+ 1140:[124] VarRef(var[108]) -> ref(1,1,0)={name:"test",number:0}[124]
+ 1143:[136] Return(ret=1169[120], value=12, discard=44) -> ref(1,1,0)={name:"test",number:0}[92]
    20:[104] ClearText(var[44])
    23:[104] ConstText(_value="") -> ""[104]
    25:[120] AppendText(var[44], v1=""[104])

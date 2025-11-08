@@ -8,7 +8,7 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):boolean = {#block(2):boolean
+  [2] test_value(1):boolean = {#block(2):boolean
     t(2):text = "longer";
     v(2):text = "a longer text";
     _tp_text_contains(v(2), {#Formatted string(3):text
@@ -19,7 +19,7 @@ fn test() {#block(1):void
     OpFreeText(t(2));
     OpFreeText(v(2));
   }#block(2):boolean;
-  if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(4):text
+  [3] if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(4):text
     __work_2(1):text = "Test failed ";
     OpFormatBool(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != true");
@@ -29,11 +29,11 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for contains:test() [1074]
+byte-code for contains:test()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: Text() var=t[56]:text
+   2[52]: [2] Text() var=t[56]:text
    3[76]: ConstText(_value="longer") -> text
   11[92]: AppendText(var[56], v1: text)
   14[76]: Text() var=v[80]:text
@@ -51,7 +51,7 @@ byte-code for contains:test() [1074]
   65[101]: FreeText(var[56])
   68[101]: FreeText(var[80])
   71[101]: FreeStack(value=1, discard=49)
-  75[53]: VarBool(var[56]) -> boolean var=test_value[56]:boolean
+  75[53]: [3] VarBool(var[56]) -> boolean var=test_value[56]:boolean
   78[54]: ConstTrue() -> boolean
   79[55]: EqBool(v1: boolean, v2: boolean) -> boolean
   80[54]: GotoFalseWord(jump=86, if_false: boolean)
@@ -72,7 +72,7 @@ byte-code for contains:test() [1074]
 
 Execute test:
     0:[8] Text()
-    1:[32] Text()
+    1:[32] [2] Text()
     2:[56] Text()
     3:[80] ConstText(_value="longer") -> "longer"[80]
    11:[96] AppendText(var[56], v1="longer"[80])

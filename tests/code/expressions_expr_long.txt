@@ -7,11 +7,11 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):boolean = {#block(2):boolean
+  [2] test_value(1):boolean = {#block(2):boolean
     a(2):long = OpMinSingleLong(2i64);
     OpNeLong(3i64, _tp_long_abs(a(2)));
   }#block(2):boolean;
-  if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatBool(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != true");
@@ -20,17 +20,17 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for expr_long:test() [1074]
+byte-code for expr_long:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstLong(val=2) -> long var=a[32]:long
+   1[28]: [2] ConstLong(val=2) -> long var=a[32]:long
   10[36]: MinSingleLong(v1: long) -> long
   11[36]: ConstLong(val=3) -> long
   20[44]: VarLong(var[32]) -> long var=a[32]:long
   23[52]: Call(size=0, call=_tp_long_abs[10])
   30[52]: NeLong(v1: long, v2: long) -> boolean
   31[37]: FreeStack(value=1, discard=9)
-  35[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  35[29]: [3] VarBool(var[32]) -> boolean var=test_value[32]:boolean
   38[30]: ConstTrue() -> boolean
   39[31]: EqBool(v1: boolean, v2: boolean) -> boolean
   40[30]: GotoFalseWord(jump=46, if_false: boolean)
@@ -49,7 +49,7 @@ byte-code for expr_long:test() [1074]
   99[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] ConstLong(val=2) -> 2[32]
    10:[40] MinSingleLong(v1=2[32]) -> -2[32]
    11:[40] ConstLong(val=3) -> 3[40]
@@ -57,7 +57,7 @@ Execute test:
    23:[56] Call(size=0, call=_tp_long_abs[10])
    10:[60] VarLong(var[48]) -> -2[60]
    13:[68] AbsLong(v1=-2[60]) -> 2[60]
-   14:[68] Return(ret=1104[56], value=8, discard=20) -> 2[48]
+   14:[68] Return(ret=1145[56], value=8, discard=20) -> 2[48]
    30:[56] NeLong(v1=3[40], v2=2[48]) -> true[40]
    31:[41] FreeStack(value=1, discard=9)
    35:[33] VarBool(var[32]) -> true[33]

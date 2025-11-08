@@ -18,11 +18,11 @@ fn test() {#block(1):void
   __ref_1(1):ref(main_vector<integer>) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [2] test_value(1):text = {#block(2):text
     OpDatabase(__ref_1(1), 18i32);
     a(2):vector<integer>["__ref_1"] = OpGetField(__ref_1(1), 4i32, 17i32);
     OpSetInt(__ref_1(1), 4i32, 0i32);
-    {#For block(3):void
+    [3] {#For block(3):void
       v#index(3):integer = OpConvIntFromNull();
       loop {#For loop_4
         v(4):integer = {#Iter range(5):integer
@@ -37,8 +37,8 @@ fn test() {#block(1):void
         }#block(6):void;
       }#For loop_4;
     }#For block(3):void;
-    sum(2):integer = 0i32;
-    {#For block(7):void
+    [4] sum(2):integer = 0i32;
+    [5] {#For block(7):void
       _vector_2(7):vector<integer>["a"] = a(2);
       elm#index(7):integer = -1i32;
       loop {#For loop_8
@@ -54,13 +54,13 @@ fn test() {#block(1):void
         }#block(11):void;
       }#For loop_8;
     }#For block(7):void;
-    {#Formatted string(12):text
+    [6] {#Formatted string(12):text
       __work_1(1):text = "";
       OpFormatInt(__work_1(1), sum(2), 10i32, 0i32, 32i32, false, false);
       __work_1(1);
     }#Formatted string(12):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "798000") null else OpPanic({#Formatted string(13):text
+  [7] if OpEqText(test_value(1), "798000") null else OpPanic({#Formatted string(13):text
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "798000"");
@@ -72,19 +72,19 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for growing_vector:test() [1074]
+byte-code for growing_vector:test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:ref(main_vector<integer>)
    1[16]: Text() var=__work_2[20]:text
    2[40]: Text() var=__work_1[44]:text
-   3[64]: Text() var=test_value[68]:text
+   3[64]: [2] Text() var=test_value[68]:text
    4[88]: Database(var[8], db_tp=18) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[18]
    9[88]: VarRef(var[8]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[18] var=__ref_1[8]:ref(main_vector<integer>)
   12[100]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=vector<integer>[4]:Vector(0)[17]
   15[100]: VarRef(var[8]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[18] var=__ref_1[8]:ref(main_vector<integer>)
   18[112]: ConstInt(val=0) -> integer
   23[116]: SetInt(v1: ref(reference), fld=4, val: integer)
-  26[100]: ConvIntFromNull() -> integer var=v#index[104]:integer
+  26[100]: [3] ConvIntFromNull() -> integer var=v#index[104]:integer
   27[104]: VarInt(var[104]) -> integer var=v#index[104]:integer
   30[108]: ConvBoolFromInt(v1: integer) -> boolean
   31[105]: Not(v1: boolean) -> boolean
@@ -115,8 +115,8 @@ byte-code for growing_vector:test() [1074]
  111[108]: FreeStack(value=0, discard=4)
  115[104]: GotoWord(jump=27)
  118[104]: FreeStack(value=0, discard=4)
- 122[100]: ConstInt(val=0) -> integer var=sum[104]:integer
- 127[104]: VarVector(var[92]) -> vector type=vector<integer>[4]:Vector(0)[17] var=a[92]:vector<integer>["__ref_1"]
+ 122[100]: [4] ConstInt(val=0) -> integer var=sum[104]:integer
+ 127[104]: [5] VarVector(var[92]) -> vector type=vector<integer>[4]:Vector(0)[17] var=a[92]:vector<integer>["__ref_1"]
  130[116]: ConstInt(val=-1) -> integer var=elm#index[120]:integer
  135[120]: VarInt(var[120]) -> integer var=elm#index[120]:integer
  138[124]: ConstInt(val=1) -> integer
@@ -139,7 +139,7 @@ byte-code for growing_vector:test() [1074]
  184[124]: FreeStack(value=0, discard=4)
  188[120]: GotoWord(jump=135)
  191[120]: FreeStack(value=0, discard=16)
- 195[104]: ClearText(var[44]) var=__work_1[44]:text
+ 195[104]: [6] ClearText(var[44]) var=__work_1[44]:text
  198[104]: ConstText(_value="") -> text
  200[120]: AppendText(var[44], v1: text)
  203[104]: VarInt(var[104]) -> integer var=sum[104]:integer
@@ -148,7 +148,7 @@ byte-code for growing_vector:test() [1074]
  218[104]: VarText(var[44]) -> text var=__work_1[44]:text
  221[120]: FreeStack(value=16, discard=32)
  225[104]: AppendText(var[68], v1: text)
- 228[88]: VarText(var[68]) -> text var=test_value[68]:text
+ 228[88]: [7] VarText(var[68]) -> text var=test_value[68]:text
  231[104]: ConstText(_value="798000") -> text
  239[120]: EqText(v1: text, v2: text) -> boolean
  240[89]: GotoFalseWord(jump=246, if_false: boolean)
@@ -173,7 +173,7 @@ byte-code for growing_vector:test() [1074]
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,0)[8]
     1:[20] Text()
-    2:[44] Text()
+    2:[44] [2] Text()
     3:[68] Text()
     4:[92] Database(var[8], db_tp=18)
     9:[92] VarRef(var[8]) -> ref(1,1,0)={}[92]

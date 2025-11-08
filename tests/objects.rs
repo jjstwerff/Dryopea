@@ -62,7 +62,8 @@ fn duplicate() {
 
 #[test]
 fn colours() {
-    code!("struct Point {
+    code!(
+        "struct Point {
   r: integer limit(0, 255) not null,
   g: integer limit(0, 255) not null,
   b: integer limit(0, 255) not null
@@ -72,8 +73,13 @@ fn value(self: Point) -> integer {
   self.r * 0x10000 + self.g * 0x100 + self.b
 }"
     )
-    .expr("  points = [ Point { r:128, b:128 }, Point { b:255 } ];\n  \"size:{sizeof(Point)} purple:{points[0]} value:{points[0].value():x} blue:{points[1]}\"")
-    .result(Value::str("size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}"));
+    .expr(
+        "  points = [ Point { r:128, b:128 }, Point { b:255 } ];
+\"size:{sizeof(Point)} purple:{points[0]} value:{points[0].value():x} blue:{points[1]}\"",
+    )
+    .result(Value::str(
+        "size:3 purple:{r:128,g:0,b:128} value:800080 blue:{r:0,g:0,b:255}",
+    ));
 }
 
 #[test]

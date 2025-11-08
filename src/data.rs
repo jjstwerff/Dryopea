@@ -39,8 +39,10 @@ pub struct Block {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Null,
+    /// Line number inside the source file
+    Line(u32),
     Int(i32),
-    // value and database type
+    /// Enum value and database type
     Enum(u8, u16),
     Boolean(bool),
     /// A range
@@ -102,11 +104,11 @@ impl Value {
 }
 
 #[must_use]
-pub fn to_default(tp: &Type) -> Value {
+pub fn to_default(tp: &Type, data: &Data) -> Value {
     match tp {
         Type::Boolean => Value::Boolean(false),
+        Type::Enum(tp) => Value::Enum(0, data.def(*tp).known_type),
         Type::Integer(_, _)
-        | Type::Enum(_)
         | Type::Vector(_, _)
         | Type::Sorted(_, _, _)
         | Type::Index(_, _, _)
@@ -1376,9 +1378,15 @@ impl Data {
                         bl.scope,
                         bl.result.show(self, vars)
                     )?;
+                    let mut starting = true;
                     for val in &bl.operators {
-                        self.show_code(write, vars, val, indent + 1, true)?;
-                        writeln!(write, ";")?;
+                        self.show_code(write, vars, val, indent + 1, starting)?;
+                        starting = if matches!(val, Value::Line(_)) {
+                            false
+                        } else {
+                            writeln!(write, ";")?;
+                            true
+                        }
                     }
                     for _i in 0..indent {
                         write!(write, "  ")?;
@@ -1452,6 +1460,7 @@ impl Data {
             Value::Keys(keys) => {
                 write!(write, "&{keys:?}")
             }
+            Value::Line(line) => write!(write, "[{line}] "),
         }
     }
 }

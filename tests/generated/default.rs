@@ -37,134 +37,167 @@ fn init(db: &mut KnownTypes) {
 }
 
 fn _tp_integer_abs(stores: &mut Stores, var_0: i32) -> i32 { //block_1: integer
+  Line(106);
   external::op_abs_int((var_both))
 } //block_1: integer
 
 fn _tp_long_abs(stores: &mut Stores, var_0: i64) -> i64 { //block_1: long
+  Line(188);
   external::op_abs_long((var_both))
 } //block_1: long
 
 fn _tp_single_abs(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(267);
   (var_both).abs()
 } //block_1: single
 
 fn _tp_single_cos(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(301);
   (var_both).cos()
 } //block_1: single
 
 fn _tp_single_sin(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(305);
   (var_both).sin()
 } //block_1: single
 
 fn _tp_single_tan(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(309);
   (var_both).tan()
 } //block_1: single
 
 fn _tp_single_acos(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(313);
   (var_both).acos()
 } //block_1: single
 
 fn _tp_single_asin(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(317);
   (var_both).asin()
 } //block_1: single
 
 fn _tp_single_atan(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(321);
   (var_both).atan()
 } //block_1: single
 
 fn _tp_single_atan2(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 { //block_1: single
+  Line(325);
   (var_both).atan2((var_v2))
 } //block_1: single
 
 fn _tp_single_ceil(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(329);
   (var_both).ceil()
 } //block_1: single
 
 fn _tp_single_floor(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(333);
   (var_both).floor()
 } //block_1: single
 
 fn _tp_single_round(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(337);
   (var_both).round()
 } //block_1: single
 
 fn _tp_single_sqrt(stores: &mut Stores, var_0: f32) -> f32 { //block_1: single
+  Line(341);
   (var_both).sqrt()
 } //block_1: single
 
 fn _tp_single_log(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 { //block_1: single
+  Line(345);
   (var_both).log((var_v2))
 } //block_1: single
 
 fn _tp_single_pow(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 { //block_1: single
+  Line(349);
   (var_both).powf((var_v2))
 } //block_1: single
 
 fn _tp_float_abs(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(386);
   (var_both).abs()
 } //block_1: float
 
 fn _tp_float_cos(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(398);
   (var_both).cos()
 } //block_1: float
 
 fn _tp_float_sin(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(402);
   (var_both).sin()
 } //block_1: float
 
 fn _tp_float_tan(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(406);
   (var_both).tan()
 } //block_1: float
 
 fn _tp_float_acos(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(410);
   (var_both).acos()
 } //block_1: float
 
 fn _tp_float_asin(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(414);
   (var_both).asin()
 } //block_1: float
 
 fn _tp_float_atan(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(418);
   (var_both).atan()
 } //block_1: float
 
 fn _tp_float_atan2(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
+  Line(422);
   (var_both).atan2((var_v2))
 } //block_1: float
 
 fn _tp_float_ceil(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(426);
   (var_both).ceil()
 } //block_1: float
 
 fn _tp_float_floor(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(430);
   (var_both).floor()
 } //block_1: float
 
 fn _tp_float_round(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(434);
   (var_both).round()
 } //block_1: float
 
 fn _tp_float_sqrt(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
+  Line(438);
   (var_both).sqrt()
 } //block_1: float
 
 fn _tp_float_log(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
+  Line(442);
   (var_both).log((var_v2))
 } //block_1: float
 
 fn _tp_float_pow(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
+  Line(446);
   (var_both).powf((var_v2))
 } //block_1: float
 
 fn _tp_text_len(stores: &mut Stores, var_0: Str) -> i32 { //block_1: integer
+  Line(509);
   (var_both).len() as i32
 } //block_1: integer
 
 fn _tp_character_len(stores: &mut Stores, var_0: char) -> i32 { //block_1: integer
+  Line(511);
   OpLengthCharacter(stores, var_both)
 } //block_1: integer
 
 fn _tp_vector_len(stores: &mut Stores, var_0: DbRef) -> i32 { //block_1: integer
+  Line(666);
   vector::length_vector(&(var_both), &s.database.allocations) as i32
 } //block_1: integer
 
@@ -179,7 +212,21 @@ fn panic(stores: &mut Stores, var_0: Str) {
 
 
 fn print(stores: &mut Stores, var_0: Str) { //block_1: void
+  Line(723);
   print!("{}", (var_v1));
+} //block_1: void
+
+fn println(stores: &mut Stores, var_0: Str) { //block_1: void
+  var___work_1 = "".to_string();
+  Line(726);
+  print!("{}", ({ //Formatted string_2: text
+    var___work_1 = "".to_string();
+    OpFormatText(stores, var___work_1, var_v1, 0_i32, -1_i32, 32_i32);
+    OpAppendText(stores, var___work_1, "
+".to_string());
+    var___work_1
+  } //Formatted string_2: text));;
+  OpFreeText(stores, var___work_1)
 } //block_1: void
 
 fn OpGetFile(stores: &mut Stores, var_0: DbRef) -> bool {
@@ -203,24 +250,33 @@ fn OpGetFileText(stores: &mut Stores, var_0: DbRef, var_1: DbRef) {
 
 
 fn _tp_Pixel_value(stores: &mut Stores, var_0: DbRef) -> i32 { //block_1: integer
+  Line(44);
   external::op_add_int((external::op_add_int((external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((0_i32)), i32::from((0_i32)))}), (65536_i32))), (external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((1_i32)), i32::from((0_i32)))}), (256_i32))))), ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((2_i32)), i32::from((0_i32)))}))
 } //block_1: integer
 
 fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str { //block_1: text["result"]
+  Line(48);
   var_result = "".to_string();
+  Line(49);
   var_txt = "".to_string();
+  Line(50);
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_txt));
+  Line(51);
   OpAppendRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r}, 0_i32, var_txt);
+  Line(52);
   OpFreeText(stores, var_txt);
   var_result
 } //block_1: text["result"]
 
 fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<text>["l"]
   var___work_1 = "".to_string();
+  Line(57);
   var_c = _tp_File_content(stores, var_self, { //default ref_2: ref(reference)["__work_1"]
     OpCreateRef(stores, var___work_1)
   } //default ref_2: ref(reference)["__work_1"]);
+  Line(58);
   var_p = 0_i32;
+  Line(59);
   { //For block_3: void
     var_ch#index = 0_i32;
     loop { //For loop_4
@@ -233,56 +289,75 @@ fn _tp_File_lines(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
         Break(0)
       } //break_6: void else {Null};
       { //block_7: void
+        Line(60);
         if (if (var_ch) == char::from(0) { i32::MIN } else { (var_ch) as i32 }) == (if (10_i32) == char::from(0) { i32::MIN } else { (10_i32) as i32 }) { //block_8: void
+          Line(61);
           var__elm_2 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
           {let db = (var__elm_2); let s_val = (OpGetTextSub(stores, var_c, var_p, external::op_min_int((var_ch#index), (1_i32)))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
           OpFinishRecord(stores, var_l, var__elm_2, 7_i32, 65535_i32);
+          Line(62);
           var_p = external::op_min_single_int((1_i32))
         } //block_8: void else {if (var_p) < (0_i32) { //block_9: void
+            Line(64);
             var_p = var_ch#index
           } //block_9: void else {Null}}
       } //block_7: void;
     } //For loop_4
   } //For block_3: void;
+  Line(67);
   if (var_p) > (0_i32) { //block_10: void
+    Line(68);
     var__elm_3 = OpNewRecord(stores, var_l, 7_i32, 65535_i32);
     {let db = (var__elm_3); let s_val = (OpGetTextSub(stores, var_c, var_p, _tp_text_len(stores, var_c))).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((0_i32)), s_pos as i32);};
     OpFinishRecord(stores, var_l, var__elm_3, 7_i32, 65535_i32)
   } //block_10: void else {Null};
+  Line(70);
   OpFreeText(stores, var_c);
   OpFreeText(stores, var___work_1);
   var_l
 } //block_1: vector<text>["l"]
 
 fn file(stores: &mut Stores, var_0: Str, var_1: DbRef) -> DbRef { //block_1: ref(File)["result"]
+  Line(74);
   OpDatabase(stores, var_result, 13_i32);
   {let db = (var_result); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
   {let db = (var_result); stores.store_mut(&db).set_long(db.rec, db.pos + u32::from((8_i32)), (0_i64));};
   {let db = (var_result); stores.store_mut(&db).set_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)), (if false {1_i32} else {0_i32}));};
+  Line(75);
   if stores.get_file(&(var_result)) { //block_2: ref(File)["result"]
+    Line(76);
     var_result
   } //block_2: ref(File)["result"] else { //block_3: ref(File)["result"]
+    Line(78);
     stores.null()
   } //block_3: ref(File)["result"]
 } //block_1: ref(File)["result"]
 
 fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: vector<ref(File)>["result"]
+  Line(84);
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) { //block_2: void
-    Drop(Call(324, [Call(268, [Var(0), Int(4)]), Var(1)]))
+    Line(85);
+    Drop(Call(325, [Call(268, [Var(0), Int(4)]), Var(1)]))
   } //block_2: void else {Null};
+  Line(87);
   var_result
 } //block_1: vector<ref(File)>["result"]
 
 fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //block_1: ref(Image)["result"]
+  Line(91);
   if !(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32)) { //block_2: ref(Image)["result"]
+    Line(92);
     OpDatabase(stores, var_result, 11_i32);
     {let db = (var_result); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from((4_i32)), s_pos as i32);};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((8_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
-    Drop(Call(325, [Call(268, [Var(0), Int(4)]), Var(1)]));
+    Line(93);
+    Drop(Call(326, [Call(268, [Var(0), Int(4)]), Var(1)]));
+    Line(94);
     var_result
   } //block_2: ref(Image)["result"] else { //block_3: ref(Image)["result"]
+    Line(96);
     stores.null()
   } //block_3: ref(Image)["result"]
 } //block_1: ref(Image)["result"]

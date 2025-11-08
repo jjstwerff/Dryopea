@@ -15,7 +15,7 @@ Type 17:Object[13]:
 
 fn obj() -> Object {#block(1):ref(Object)
   __ref_1(1):ref(Object) = null;
-  {#Object(2):ref(Object)["__ref_1"]
+  [2] {#Object(2):ref(Object)["__ref_1"]
     OpDatabase(__ref_1(1), 17i32);
     OpSetInt(__ref_1(1), 4i32, 12i32);
     OpSetText(__ref_1(1), 8i32, "hi");
@@ -24,10 +24,10 @@ fn obj() -> Object {#block(1):ref(Object)
   }#Object(2):ref(Object)["__ref_1"];
 }#block(1):ref(Object)
 
-byte-code for print_object:obj() [1074] -> ref(Object)
+byte-code for print_object:obj() -> ref(Object)
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:ref(Object)
-   1[16]: Database(var[8], db_tp=17) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17]
+   1[16]: [2] Database(var[8], db_tp=17) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17]
    6[16]: VarRef(var[8]) -> ref(reference) type=Object[13]:{a:integer[4], bb:text[8], ccc:boolean[12]}[17] var=__ref_1[8]:ref(Object)
    9[28]: ConstInt(val=12) -> integer
   14[32]: SetInt(v1: ref(reference), fld=4, val: integer)
@@ -47,7 +47,7 @@ byte-code for print_object:obj() [1074] -> ref(Object)
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [5] test_value(1):text = {#block(2):text
     o(2):ref(Object) = obj();
     {#Formatted string(3):text
       __work_1(1):text = "";
@@ -58,7 +58,7 @@ fn test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") null else OpPanic({#Formatted string(4):text
+  [6] if OpEqText(test_value(1), "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") null else OpPanic({#Formatted string(4):text
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }"");
@@ -69,12 +69,12 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for print_object:test() [1135]
+byte-code for print_object:test()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: Text() var=test_value[56]:text
-   3[76]: Call(size=0, call=obj[1074]) var=o[80]:ref(Object)
+   2[52]: [5] Text() var=test_value[56]:text
+   3[76]: Call(size=0, call=obj[1115]) var=o[80]:ref(Object)
   10[88]: ClearText(var[32]) var=__work_1[32]:text
   13[88]: ConstText(_value="") -> text
   15[104]: AppendText(var[32], v1: text)
@@ -89,7 +89,7 @@ byte-code for print_object:test() [1135]
   53[88]: VarText(var[32]) -> text var=__work_1[32]:text
   56[104]: FreeStack(value=16, discard=28)
   60[92]: AppendText(var[56], v1: text)
-  63[76]: VarText(var[56]) -> text var=test_value[56]:text
+  63[76]: [6] VarText(var[56]) -> text var=test_value[56]:text
   66[92]: ConstText(_value="{a:12,bb:"hi",ccc:false} pretty { a: 12, bb: "hi", ccc: false }") -> text
  131[108]: EqText(v1: text, v2: text) -> boolean
  132[77]: GotoFalseWord(jump=138, if_false: boolean)
@@ -111,24 +111,24 @@ byte-code for print_object:test() [1135]
 
 Execute test:
     0:[8] Text()
-    1:[32] Text()
+    1:[32] [5] Text()
     2:[56] Text()
-    3:[80] Call(size=0, call=obj[1074])
- 1074:[84] ConvRefFromNull() -> ref(1,0,0)[84]
- 1075:[96] Database(var[84], db_tp=17)
- 1080:[96] VarRef(var[84]) -> ref(1,1,0)={ccc:false}[96]
- 1083:[108] ConstInt(val=12) -> 12[108]
- 1088:[112] SetInt(v1=ref(1,1,0)[96], fld=4, val=12[108])
- 1091:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,ccc:false}[96]
- 1094:[108] ConstText(_value="hi") -> "hi"[108]
- 1098:[124] SetText(v1=ref(1,1,0)[96], fld=8, val="hi"[108])
- 1101:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
- 1104:[108] ConstFalse() -> false[108]
- 1105:[109] GotoFalseWord(jump=1116, if_false=false[108])
- 1116:[108] ConstInt(val=0) -> 0[108]
- 1121:[112] SetByte(v1=ref(1,1,0)[96], fld=12, min=0, val=0[108])
- 1126:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
- 1129:[108] Return(ret=1145[80], value=12, discard=28) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[80]
+    3:[80] Call(size=0, call=obj[1115])
+ 1115:[84] [2] ConvRefFromNull() -> ref(1,0,0)[84]
+ 1116:[96] Database(var[84], db_tp=17)
+ 1121:[96] VarRef(var[84]) -> ref(1,1,0)={ccc:false}[96]
+ 1124:[108] ConstInt(val=12) -> 12[108]
+ 1129:[112] SetInt(v1=ref(1,1,0)[96], fld=4, val=12[108])
+ 1132:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,ccc:false}[96]
+ 1135:[108] ConstText(_value="hi") -> "hi"[108]
+ 1139:[124] SetText(v1=ref(1,1,0)[96], fld=8, val="hi"[108])
+ 1142:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
+ 1145:[108] ConstFalse() -> false[108]
+ 1146:[109] GotoFalseWord(jump=1157, if_false=false[108])
+ 1157:[108] ConstInt(val=0) -> 0[108]
+ 1162:[112] SetByte(v1=ref(1,1,0)[96], fld=12, min=0, val=0[108])
+ 1167:[96] VarRef(var[84]) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[96]
+ 1170:[108] Return(ret=1186[80], value=12, discard=28) -> ref(1,1,0)={a:12,bb:"hi",ccc:false}[80]
    10:[92] ClearText(var[32])
    13:[92] ConstText(_value="") -> ""[92]
    15:[108] AppendText(var[32], v1=""[92])

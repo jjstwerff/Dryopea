@@ -19,7 +19,7 @@ Type 19:vector<Elm>[4]:Vector(17)
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [4] test_value(1):text = {#block(2):text
     v(2):vector<ref(Elm)> = OpCastVectorFromText("[ {n:'hi', c:10 }, {n:'world', c:2 } ]", 19i32);
     {#Formatted string(3):text
       __work_1(1):text = "";
@@ -28,7 +28,7 @@ fn test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "[{n:"hi",c:10},{n:"world",c:2}]") null else OpPanic({#Formatted string(4):text
+  [5] if OpEqText(test_value(1), "[{n:"hi",c:10},{n:"world",c:2}]") null else OpPanic({#Formatted string(4):text
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "[{n:"hi",c:10},{n:"world",c:2}]"");
@@ -39,11 +39,11 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for parse_objects:test() [1074]
+byte-code for parse_objects:test()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: Text() var=test_value[56]:text
+   2[52]: [4] Text() var=test_value[56]:text
    3[76]: ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> text var=v[80]:vector<ref(Elm)>
   43[92]: CastVectorFromText(val: text, db_tp=19) -> vector
   46[88]: ClearText(var[32]) var=__work_1[32]:text
@@ -56,7 +56,7 @@ byte-code for parse_objects:test() [1074]
   67[88]: VarText(var[32]) -> text var=__work_1[32]:text
   70[104]: FreeStack(value=16, discard=28)
   74[92]: AppendText(var[56], v1: text)
-  77[76]: VarText(var[56]) -> text var=test_value[56]:text
+  77[76]: [5] VarText(var[56]) -> text var=test_value[56]:text
   80[92]: ConstText(_value="[{n:"hi",c:10},{n:"world",c:2}]") -> text
  113[108]: EqText(v1: text, v2: text) -> boolean
  114[77]: GotoFalseWord(jump=120, if_false: boolean)
@@ -78,7 +78,7 @@ byte-code for parse_objects:test() [1074]
 
 Execute test:
     0:[8] Text()
-    1:[32] Text()
+    1:[32] [4] Text()
     2:[56] Text()
     3:[80] ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> "[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80]
    43:[96] CastVectorFromText(val="[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80], db_tp=19) -> ref(1,1,4)[80]

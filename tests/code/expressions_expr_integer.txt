@@ -7,10 +7,10 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [2] test_value(1):integer = {#block(2):integer
     1i32;
   }#block(2):integer;
-  if OpEqInt(test_value(1), 1i32) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqInt(test_value(1), 1i32) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 1");
@@ -19,11 +19,11 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for expr_integer:test() [1074]
+byte-code for expr_integer:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstInt(val=1) -> integer var=test_value[32]:integer
-   6[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+   1[28]: [2] ConstInt(val=1) -> integer var=test_value[32]:integer
+   6[32]: [3] VarInt(var[32]) -> integer var=test_value[32]:integer
    9[36]: ConstInt(val=1) -> integer
   14[40]: EqInt(v1: integer, v2: integer) -> boolean
   15[33]: GotoFalseWord(jump=21, if_false: boolean)
@@ -42,7 +42,7 @@ byte-code for expr_integer:test() [1074]
   73[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] ConstInt(val=1) -> 1[32]
     6:[36] VarInt(var[32]) -> 1[36]
     9:[40] ConstInt(val=1) -> 1[40]

@@ -8,7 +8,7 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [2] test_value(1):integer = {#block(2):integer
     a(2):integer = 0i32;
     {#For block(3):void
       t#index(3):integer = OpConvIntFromNull();
@@ -30,7 +30,7 @@ fn test() {#block(1):void
     }#For block(3):void;
     a(2);
   }#block(2):integer;
-  if OpEqInt(test_value(1), 60i32) null else OpPanic({#Formatted string(8):text
+  [3] if OpEqInt(test_value(1), 60i32) null else OpPanic({#Formatted string(8):text
     __work_2(1):text = "Test failed ";
     OpFormatInt(__work_2(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_2(1), " != 60");
@@ -40,11 +40,11 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for work_loop:test() [1074]
+byte-code for work_loop:test()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: ConstInt(val=0) -> integer var=a[56]:integer
+   2[52]: [2] ConstInt(val=0) -> integer var=a[56]:integer
    7[56]: ConvIntFromNull() -> integer var=t#index[60]:integer
    8[60]: VarInt(var[60]) -> integer var=t#index[60]:integer
   11[64]: ConvBoolFromInt(v1: integer) -> boolean
@@ -80,7 +80,7 @@ byte-code for work_loop:test() [1074]
  102[60]: FreeStack(value=0, discard=4)
  106[56]: VarInt(var[56]) -> integer var=a[56]:integer
  109[60]: FreeStack(value=4, discard=8)
- 113[56]: VarInt(var[56]) -> integer var=test_value[56]:integer
+ 113[56]: [3] VarInt(var[56]) -> integer var=test_value[56]:integer
  116[60]: ConstInt(val=60) -> integer
  121[64]: EqInt(v1: integer, v2: integer) -> boolean
  122[57]: GotoFalseWord(jump=128, if_false: boolean)
@@ -101,7 +101,7 @@ byte-code for work_loop:test() [1074]
 
 Execute test:
     0:[8] Text()
-    1:[32] Text()
+    1:[32] [2] Text()
     2:[56] ConstInt(val=0) -> 0[56]
     7:[60] ConvIntFromNull() -> -2147483648[60]
     8:[64] VarInt(var[60]) -> -2147483648[64]

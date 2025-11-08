@@ -10,12 +10,12 @@ pub fn test() {
     );
 }
 fn add(a:&integer, b:integer, c:integer) {#block(1):void
-  a(0):&integer = OpAddInt(a(0), OpAddInt(b(0), c(0)));
+  [2] a(0):&integer = OpAddInt(a(0), OpAddInt(b(0), c(0)));
 }#block(1):void
 
-byte-code for reference:add(a: &integer[0], b: integer[12], c: integer[16]) [1074]
+byte-code for reference:add(a: &integer[0], b: integer[12], c: integer[16])
    0[20]: return-address
-   0[24]: VarRef(var[4]) -> ref(reference) var=a[4]:&integer
+   0[24]: [2] VarRef(var[4]) -> ref(reference) var=a[4]:&integer
    3[36]: VarRef(var[4]) -> ref(reference) var=a[4]:&integer
    6[48]: GetInt(v1: ref(reference), fld=0) -> integer
    9[40]: VarInt(var[16]) -> integer var=b[16]:integer
@@ -27,13 +27,13 @@ byte-code for reference:add(a: &integer[0], b: integer[12], c: integer[16]) [107
 
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [6] test_value(1):integer = {#block(2):integer
     v(2):integer = 1i32;
     add(OpCreateRef(v(2)), 2i32, 0i32);
     add(OpCreateRef(v(2)), 4i32, 1i32);
     v(2);
   }#block(2):integer;
-  if OpEqInt(test_value(1), 8i32) null else OpPanic({#Formatted string(3):text
+  [7] if OpEqInt(test_value(1), 8i32) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 8");
@@ -42,21 +42,21 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for reference:test() [1100]
+byte-code for reference:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstInt(val=1) -> integer var=v[32]:integer
+   1[28]: [6] ConstInt(val=1) -> integer var=v[32]:integer
    6[32]: CreateRef(var[32]) -> ref(reference)
    9[44]: ConstInt(val=2) -> integer
   14[48]: ConstInt(val=0) -> integer
-  19[52]: Call(size=0, call=add[1074])
+  19[52]: Call(size=0, call=add[1115])
   26[32]: CreateRef(var[32]) -> ref(reference)
   29[44]: ConstInt(val=4) -> integer
   34[48]: ConstInt(val=1) -> integer
-  39[52]: Call(size=0, call=add[1074])
+  39[52]: Call(size=0, call=add[1115])
   46[32]: VarInt(var[32]) -> integer var=v[32]:integer
   49[36]: FreeStack(value=4, discard=8)
-  53[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  53[32]: [7] VarInt(var[32]) -> integer var=test_value[32]:integer
   56[36]: ConstInt(val=8) -> integer
   61[40]: EqInt(v1: integer, v2: integer) -> boolean
   62[33]: GotoFalseWord(jump=68, if_false: boolean)
@@ -75,34 +75,34 @@ byte-code for reference:test() [1100]
  120[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [6] Text()
     1:[32] ConstInt(val=1) -> 1[32]
     6:[36] CreateRef(var[32]) -> ref(0,1,32)[36]
     9:[48] ConstInt(val=2) -> 2[48]
    14:[52] ConstInt(val=0) -> 0[52]
-   19:[56] Call(size=0, call=add[1074])
- 1074:[60] VarRef(var[36]) -> ref(0,1,32)[60]
- 1077:[72] VarRef(var[36]) -> ref(0,1,32)[72]
- 1080:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 1[72]
- 1083:[76] VarInt(var[48]) -> 2[76]
- 1086:[80] VarInt(var[52]) -> 0[80]
- 1089:[84] AddInt(v1=2[76], v2=0[80]) -> 2[76]
- 1090:[80] AddInt(v1=1[72], v2=2[76]) -> 3[72]
- 1091:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=3[72])
- 1094:[60] Return(ret=1126[56], value=0, discard=24)
+   19:[56] Call(size=0, call=add[1115])
+ 1115:[60] VarRef(var[36]) -> ref(0,1,32)[60]
+ 1118:[72] VarRef(var[36]) -> ref(0,1,32)[72]
+ 1121:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 1[72]
+ 1124:[76] VarInt(var[48]) -> 2[76]
+ 1127:[80] VarInt(var[52]) -> 0[80]
+ 1130:[84] AddInt(v1=2[76], v2=0[80]) -> 2[76]
+ 1131:[80] AddInt(v1=1[72], v2=2[76]) -> 3[72]
+ 1132:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=3[72])
+ 1135:[60] Return(ret=1167[56], value=0, discard=24)
    26:[36] CreateRef(var[32]) -> ref(0,1,32)[36]
    29:[48] ConstInt(val=4) -> 4[48]
    34:[52] ConstInt(val=1) -> 1[52]
-   39:[56] Call(size=0, call=add[1074])
- 1074:[60] VarRef(var[36]) -> ref(0,1,32)[60]
- 1077:[72] VarRef(var[36]) -> ref(0,1,32)[72]
- 1080:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 3[72]
- 1083:[76] VarInt(var[48]) -> 4[76]
- 1086:[80] VarInt(var[52]) -> 1[80]
- 1089:[84] AddInt(v1=4[76], v2=1[80]) -> 5[76]
- 1090:[80] AddInt(v1=3[72], v2=5[76]) -> 8[72]
- 1091:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=8[72])
- 1094:[60] Return(ret=1146[56], value=0, discard=24)
+   39:[56] Call(size=0, call=add[1115])
+ 1115:[60] VarRef(var[36]) -> ref(0,1,32)[60]
+ 1118:[72] VarRef(var[36]) -> ref(0,1,32)[72]
+ 1121:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 3[72]
+ 1124:[76] VarInt(var[48]) -> 4[76]
+ 1127:[80] VarInt(var[52]) -> 1[80]
+ 1130:[84] AddInt(v1=4[76], v2=1[80]) -> 5[76]
+ 1131:[80] AddInt(v1=3[72], v2=5[76]) -> 8[72]
+ 1132:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=8[72])
+ 1135:[60] Return(ret=1187[56], value=0, discard=24)
    46:[36] VarInt(var[32]) -> 8[36]
    49:[40] FreeStack(value=4, discard=8)
    53:[36] VarInt(var[32]) -> 8[36]

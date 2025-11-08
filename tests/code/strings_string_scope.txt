@@ -22,10 +22,10 @@ fn test() {#block(1):void
   __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
-    a(2):long = 1i64;
-    b(2):text["b"] = "";
-    {#For block(3):void
+  [2] test_value(1):text = {#block(2):text
+    [3] a(2):long = 1i64;
+    [4] b(2):text["b"] = "";
+    [5] {#For block(3):void
       n#index(3):integer = OpConvIntFromNull();
       loop {#For loop_4
         n(4):integer = {#Iter range(5):integer
@@ -34,15 +34,15 @@ fn test() {#block(1):void
           n#index(3);
         }#Iter range(5):integer;
         {#block(6):void
-          t(6):text = "1";
-          OpAppendText(b(2), "n");
+          [6] t(6):text = "1";
+          [7] OpAppendText(b(2), "n");
           OpAppendText(b(2), {#Formatted string(7):text
             __work_1(1):text = ":";
             OpFormatInt(__work_1(1), n(4), 10i32, 0i32, 32i32, false, false);
             __work_1(1);
           }#Formatted string(7):text);
           OpAppendText(b(2), "=");
-          {#For block(8):void
+          [8] {#For block(8):void
             _m#index(8):integer = OpConvIntFromNull();
             loop {#For loop_9
               _m(9):integer = {#Iter range(10):integer
@@ -51,18 +51,18 @@ fn test() {#block(1):void
                 _m#index(8);
               }#Iter range(10):integer;
               {#block(11):void
-                OpAppendText(t(6), "2");
+                [9] OpAppendText(t(6), "2");
               }#block(11):void;
             }#For loop_9;
           }#For block(8):void;
-          OpAppendText(b(2), t(6));
+          [11] OpAppendText(b(2), t(6));
           OpAppendText(b(2), " ");
-          a(2):long = OpAddLong(a(2), OpCastLongFromText(t(6)));
+          [12] a(2):long = OpAddLong(a(2), OpCastLongFromText(t(6)));
           OpFreeText(t(6));
         }#block(6):void;
       }#For loop_4;
     }#For block(3):void;
-    {#Formatted string(12):text
+    [14] {#Formatted string(12):text
       __work_2(1):text = "";
       OpFormatLong(__work_2(1), a(2), 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_2(1), " via ");
@@ -71,7 +71,7 @@ fn test() {#block(1):void
       __work_2(1);
     }#Formatted string(12):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "136 via n:1=1 n:2=12 n:3=122 ") null else OpPanic({#Formatted string(13):text
+  [16] if OpEqText(test_value(1), "136 via n:1=1 n:2=12 n:3=122 ") null else OpPanic({#Formatted string(13):text
     __work_3(1):text = "Test failed ";
     OpFormatText(__work_3(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_3(1), " != "136 via n:1=1 n:2=12 n:3=122 "");
@@ -83,15 +83,15 @@ fn test() {#block(1):void
   OpFreeText(__work_3(1));
 }#block(1):void
 
-byte-code for string_scope:test() [1074]
+byte-code for string_scope:test()
    0[0]: return-address
    0[4]: Text() var=__work_3[8]:text
    1[28]: Text() var=__work_2[32]:text
    2[52]: Text() var=__work_1[56]:text
-   3[76]: Text() var=test_value[80]:text
-   4[100]: ConstLong(val=1) -> long var=a[104]:long
-  13[108]: Text() var=b[112]:text["b"]
-  14[132]: ConvIntFromNull() -> integer var=n#index[136]:integer
+   3[76]: [2] Text() var=test_value[80]:text
+   4[100]: [3] ConstLong(val=1) -> long var=a[104]:long
+  13[108]: [4] Text() var=b[112]:text["b"]
+  14[132]: [5] ConvIntFromNull() -> integer var=n#index[136]:integer
   15[136]: VarInt(var[136]) -> integer var=n#index[136]:integer
   18[140]: ConvBoolFromInt(v1: integer) -> boolean
   19[137]: Not(v1: boolean) -> boolean
@@ -108,10 +108,10 @@ byte-code for string_scope:test() [1074]
   52[137]: GotoFalseWord(jump=58, if_false: boolean)
   55[136]: GotoWord(jump=209)
   58[136]: VarInt(var[136]) -> integer var=n#index[136]:integer
-  61[140]: Text() var=t[144]:text
+  61[140]: [6] Text() var=t[144]:text
   62[164]: ConstText(_value="1") -> text
   65[180]: AppendText(var[144], v1: text)
-  68[164]: ConstText(_value="n") -> text
+  68[164]: [7] ConstText(_value="n") -> text
   71[180]: AppendText(var[112], v1: text)
   74[164]: ClearText(var[56]) var=__work_1[56]:text
   77[164]: ConstText(_value=":") -> text
@@ -123,7 +123,7 @@ byte-code for string_scope:test() [1074]
  101[180]: AppendText(var[112], v1: text)
  104[164]: ConstText(_value="=") -> text
  107[180]: AppendText(var[112], v1: text)
- 110[164]: ConvIntFromNull() -> integer var=_m#index[168]:integer
+ 110[164]: [8] ConvIntFromNull() -> integer var=_m#index[168]:integer
  111[168]: VarInt(var[168]) -> integer var=_m#index[168]:integer
  114[172]: ConvBoolFromInt(v1: integer) -> boolean
  115[169]: Not(v1: boolean) -> boolean
@@ -140,16 +140,16 @@ byte-code for string_scope:test() [1074]
  146[169]: GotoFalseWord(jump=152, if_false: boolean)
  149[168]: GotoWord(jump=168)
  152[168]: VarInt(var[168]) -> integer var=_m#index[168]:integer
- 155[172]: ConstText(_value="2") -> text
+ 155[172]: [9] ConstText(_value="2") -> text
  158[188]: AppendText(var[144], v1: text)
  161[172]: FreeStack(value=0, discard=4)
  165[168]: GotoWord(jump=111)
  168[168]: FreeStack(value=0, discard=4)
- 172[164]: VarText(var[144]) -> text var=t[144]:text
+ 172[164]: [11] VarText(var[144]) -> text var=t[144]:text
  175[180]: AppendText(var[112], v1: text)
  178[164]: ConstText(_value=" ") -> text
  181[180]: AppendText(var[112], v1: text)
- 184[164]: VarLong(var[104]) -> long var=a[104]:long
+ 184[164]: [12] VarLong(var[104]) -> long var=a[104]:long
  187[172]: VarText(var[144]) -> text var=t[144]:text
  190[188]: CastLongFromText(v1: text) -> long
  191[180]: AddLong(v1: long, v2: long) -> long
@@ -159,7 +159,7 @@ byte-code for string_scope:test() [1074]
  202[140]: FreeStack(value=0, discard=4)
  206[136]: GotoWord(jump=15)
  209[136]: FreeStack(value=0, discard=4)
- 213[132]: ClearText(var[32]) var=__work_2[32]:text
+ 213[132]: [14] ClearText(var[32]) var=__work_2[32]:text
  216[132]: ConstText(_value="") -> text
  218[148]: AppendText(var[32], v1: text)
  221[132]: VarLong(var[104]) -> long var=a[104]:long
@@ -174,7 +174,7 @@ byte-code for string_scope:test() [1074]
  262[132]: VarText(var[32]) -> text var=__work_2[32]:text
  265[148]: FreeStack(value=16, discard=48)
  269[116]: AppendText(var[80], v1: text)
- 272[100]: VarText(var[80]) -> text var=test_value[80]:text
+ 272[100]: [16] VarText(var[80]) -> text var=test_value[80]:text
  275[116]: ConstText(_value="136 via n:1=1 n:2=12 n:3=122 ") -> text
  306[132]: EqText(v1: text, v2: text) -> boolean
  307[101]: GotoFalseWord(jump=313, if_false: boolean)
@@ -198,10 +198,10 @@ byte-code for string_scope:test() [1074]
 Execute test:
     0:[8] Text()
     1:[32] Text()
-    2:[56] Text()
-    3:[80] Text()
+    2:[56] [2] Text()
+    3:[80] [3] Text()
     4:[104] ConstLong(val=1) -> 1[104]
-   13:[112] Text()
+   13:[112] [5] Text()
    14:[136] ConvIntFromNull() -> -2147483648[136]
    15:[140] VarInt(var[136]) -> -2147483648[140]
    18:[144] ConvBoolFromInt(v1=-2147483648[140]) -> false[140]

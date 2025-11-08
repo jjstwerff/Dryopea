@@ -23,14 +23,14 @@ Type 19:index<S[a,-c]>[4]:Index(17, [(0, true), (2, false)], 3) keys [tp:1 desc:
 
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [5] test_value(1):integer = {#block(2):integer
     m(2):ref(Main) = null;
     OpDatabase(m(2), 18i32);
     OpSetInt(m(2), 4i32, 0i32);
     OpAddInt(29i32, OpMulInt(100i32, 8i32));
     OpFreeRef(m(2));
   }#block(2):integer;
-  if OpEqInt(test_value(1), 829i32) null else OpPanic({#Formatted string(3):text
+  [6] if OpEqInt(test_value(1), 829i32) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 829");
@@ -39,10 +39,10 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for index_member:test() [1074]
+byte-code for index_member:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConvRefFromNull() -> ref(reference) var=m[32]:ref(Main)
+   1[28]: [5] ConvRefFromNull() -> ref(reference) var=m[32]:ref(Main)
    2[40]: Database(var[32], db_tp=18) type=Main[8]:{s:index<S[a,-c]>[4]}[18]
    7[40]: VarRef(var[32]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[18] var=m[32]:ref(Main)
   10[52]: ConstInt(val=0) -> integer
@@ -55,7 +55,7 @@ byte-code for index_member:test() [1074]
   35[44]: VarRef(var[32]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[18] var=m[32]:ref(Main)
   38[56]: FreeRef(v1: ref(reference))
   39[44]: FreeStack(value=4, discard=16)
-  43[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  43[32]: [6] VarInt(var[32]) -> integer var=test_value[32]:integer
   46[36]: ConstInt(val=829) -> integer
   51[40]: EqInt(v1: integer, v2: integer) -> boolean
   52[33]: GotoFalseWord(jump=58, if_false: boolean)
@@ -74,7 +74,7 @@ byte-code for index_member:test() [1074]
  112[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [5] Text()
     1:[32] ConvRefFromNull() -> ref(1,0,0)[32]
     2:[44] Database(var[32], db_tp=18)
     7:[44] VarRef(var[32]) -> ref(1,1,0)={s:[]}[44]

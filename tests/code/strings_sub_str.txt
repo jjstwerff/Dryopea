@@ -7,12 +7,12 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  a(1):text = "";
+  [2] a(1):text = "";
   test_value(1):text["a"] = {#block(2):text["a"]
     a(1):text = "12345";
     OpGetTextSub(a(1), 1i32, OpMinInt(_tp_text_len(a(1)), 1i32));
   }#block(2):text["a"];
-  if OpEqText(test_value(1), "234") null else OpPanic({#Formatted string(3):text
+  [3] if OpEqText(test_value(1), "234") null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != "234"");
@@ -23,10 +23,10 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for sub_str:test() [1074]
+byte-code for sub_str:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: Text() var=a[32]:text
+   1[28]: [2] Text() var=a[32]:text
    2[52]: Text() var=test_value[56]:text["a"]
    3[76]: ClearText(var[32]) var=a[32]:text
    6[76]: ConstText(_value="12345") -> text
@@ -39,7 +39,7 @@ byte-code for sub_str:test() [1074]
   39[104]: MinInt(v1: integer, v2: integer) -> integer
   40[100]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
   41[92]: AppendText(var[56], v1: text)
-  44[76]: VarText(var[56]) -> text var=test_value[56]:text["a"]
+  44[76]: [3] VarText(var[56]) -> text var=test_value[56]:text["a"]
   47[92]: ConstText(_value="234") -> text
   52[108]: EqText(v1: text, v2: text) -> boolean
   53[77]: GotoFalseWord(jump=59, if_false: boolean)
@@ -60,7 +60,7 @@ byte-code for sub_str:test() [1074]
  119[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] Text()
     2:[56] Text()
     3:[80] ClearText(var[32])
@@ -72,7 +72,7 @@ Execute test:
    27:[116] Call(size=0, call=_tp_text_len[318])
   318:[120] ArgText(var[100]) -> "12345"[120]
   321:[136] LengthText(v1="12345"[120]) -> 5[120]
-  322:[124] Return(ret=1108[116], value=4, discard=24) -> 5[100]
+  322:[124] Return(ret=1149[116], value=4, discard=24) -> 5[100]
    34:[104] ConstInt(val=1) -> 1[104]
    39:[108] MinInt(v1=5[100], v2=1[104]) -> 4[100]
    40:[104] GetTextSub(v1="12345"[80], from=1[96], till=4[100]) -> "234"[80]

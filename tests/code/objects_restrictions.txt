@@ -26,12 +26,12 @@ Type 18:byte<1,true>[1]:Byte(1, true)
 Type 19:byte<-127,true>[1]:Byte(-127, true)
 
 fn _tp_Data_calc(self:Data) -> integer {#block(1):integer
-  OpAddInt(OpAddInt(OpMulInt(OpGetByte(self(0), 6i32, 1i32), 65536i32), OpMulInt(OpGetByte(self(0), 7i32, 0i32), 256i32)), OpGetByte(self(0), 5i32, -127i32));
+  [8] OpAddInt(OpAddInt(OpMulInt(OpGetByte(self(0), 6i32, 1i32), 65536i32), OpMulInt(OpGetByte(self(0), 7i32, 0i32), 256i32)), OpGetByte(self(0), 5i32, -127i32));
 }#block(1):integer
 
-byte-code for restrictions:_tp_Data_calc(self: ref(Data)[0]) [1074] -> integer
+byte-code for restrictions:_tp_Data_calc(self: ref(Data)[0]) -> integer
    0[12]: return-address
-   0[16]: VarRef(var[4]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[4]:ref(Data)
+   0[16]: [8] VarRef(var[4]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[4]:ref(Data)
    3[28]: GetByte(v1: ref(reference), fld=6, min=1) -> integer
    8[20]: ConstInt(val=65536) -> integer
   13[24]: MulInt(v1: integer, v2: integer) -> integer
@@ -47,10 +47,10 @@ byte-code for restrictions:_tp_Data_calc(self: ref(Data)[0]) [1074] -> integer
 
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [13] test_value(1):integer = {#block(2):integer
     1i32;
   }#block(2):integer;
-  if OpEqInt(test_value(1), 1i32) null else OpPanic({#Formatted string(3):text
+  [14] if OpEqInt(test_value(1), 1i32) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 1");
@@ -59,11 +59,11 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for restrictions:test() [1118]
+byte-code for restrictions:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstInt(val=1) -> integer var=test_value[32]:integer
-   6[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+   1[28]: [13] ConstInt(val=1) -> integer var=test_value[32]:integer
+   6[32]: [14] VarInt(var[32]) -> integer var=test_value[32]:integer
    9[36]: ConstInt(val=1) -> integer
   14[40]: EqInt(v1: integer, v2: integer) -> boolean
   15[33]: GotoFalseWord(jump=21, if_false: boolean)
@@ -82,7 +82,7 @@ byte-code for restrictions:test() [1118]
   73[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [13] Text()
     1:[32] ConstInt(val=1) -> 1[32]
     6:[36] VarInt(var[32]) -> 1[36]
     9:[40] ConstInt(val=1) -> 1[40]

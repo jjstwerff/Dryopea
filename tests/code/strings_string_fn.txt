@@ -15,8 +15,8 @@ pub fn test() {
 }
 fn to_text(__work_1:&text) -> text["__work_1"] {#block(1):text["res"]
   __work_1(0):&text = "";
-  res(1):text = "aa ";
-  {#For block(2):void
+  [2] res(1):text = "aa ";
+  [3] {#For block(2):void
     _i#index(2):integer = OpConvIntFromNull();
     loop {#For loop_3
       _i(3):integer = {#Iter range(4):integer
@@ -25,11 +25,11 @@ fn to_text(__work_1:&text) -> text["__work_1"] {#block(1):text["res"]
         _i#index(2);
       }#Iter range(4):integer;
       {#block(5):void
-        OpAppendText(res(1), "b");
+        [4] OpAppendText(res(1), "b");
       }#block(5):void;
     }#For loop_3;
   }#For block(2):void;
-  {#Add text(6):text["__work_1"]
+  [6] {#Add text(6):text["__work_1"]
     OpClearRefText(OpVarRef(__work_1(0)));
     OpAppendRefText(OpVarRef(__work_1(0)), 0i32, res(1));
     OpAppendRefText(OpVarRef(__work_1(0)), 0i32, " cc");
@@ -38,15 +38,15 @@ fn to_text(__work_1:&text) -> text["__work_1"] {#block(1):text["res"]
   }#Add text(6):text["__work_1"];
 }#block(1):text["res"]
 
-byte-code for string_fn:to_text(__work_1: &text[0]) [1074] -> text["res"]
+byte-code for string_fn:to_text(__work_1: &text[0]) -> text["res"]
    0[12]: return-address
    0[16]: VarRef(var[4]) -> ref(reference) var=__work_1[4]:&text
    3[28]: ConstText(_value="") -> text
    5[44]: AppendRefText(r: ref(reference), fld=0, v1: text)
-   8[16]: Text() var=res[20]:text
+   8[16]: [2] Text() var=res[20]:text
    9[40]: ConstText(_value="aa ") -> text
   14[56]: AppendText(var[20], v1: text)
-  17[40]: ConvIntFromNull() -> integer var=_i#index[44]:integer
+  17[40]: [3] ConvIntFromNull() -> integer var=_i#index[44]:integer
   18[44]: VarInt(var[44]) -> integer var=_i#index[44]:integer
   21[48]: ConvBoolFromInt(v1: integer) -> boolean
   22[45]: Not(v1: boolean) -> boolean
@@ -63,12 +63,12 @@ byte-code for string_fn:to_text(__work_1: &text[0]) [1074] -> text["res"]
   55[45]: GotoFalseWord(jump=61, if_false: boolean)
   58[44]: GotoWord(jump=77)
   61[44]: VarInt(var[44]) -> integer var=_i#index[44]:integer
-  64[48]: ConstText(_value="b") -> text
+  64[48]: [4] ConstText(_value="b") -> text
   67[64]: AppendText(var[20], v1: text)
   70[48]: FreeStack(value=0, discard=4)
   74[44]: GotoWord(jump=18)
   77[44]: FreeStack(value=0, discard=4)
-  81[40]: VarRef(var[4]) -> ref(reference)
+  81[40]: [6] VarRef(var[4]) -> ref(reference)
   84[52]: ClearRefText(r: ref(reference))
   85[40]: VarRef(var[4]) -> ref(reference)
   88[52]: VarText(var[20]) -> text var=res[20]:text
@@ -85,7 +85,7 @@ fn test() {#block(1):void
   __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [10] test_value(1):text = {#block(2):text
     {#Formatted string(3):text
       __work_1(1):text = "1";
       OpFormatText(__work_1(1), to_text({#default ref(4):ref(reference)["__work_2"]
@@ -95,7 +95,7 @@ fn test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "1aa bb cc2") null else OpPanic({#Formatted string(5):text
+  [11] if OpEqText(test_value(1), "1aa bb cc2") null else OpPanic({#Formatted string(5):text
     __work_3(1):text = "Test failed ";
     OpFormatText(__work_3(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_3(1), " != "1aa bb cc2"");
@@ -107,24 +107,24 @@ fn test() {#block(1):void
   OpFreeText(__work_3(1));
 }#block(1):void
 
-byte-code for string_fn:test() [1194]
+byte-code for string_fn:test()
    0[0]: return-address
    0[4]: Text() var=__work_3[8]:text
    1[28]: Text() var=__work_2[32]:text
    2[52]: Text() var=__work_1[56]:text
-   3[76]: Text() var=test_value[80]:text
+   3[76]: [10] Text() var=test_value[80]:text
    4[100]: ClearText(var[56]) var=__work_1[56]:text
    7[100]: ConstText(_value="1") -> text
   10[116]: AppendText(var[56], v1: text)
   13[100]: CreateRef(var[32]) -> ref(reference)
-  16[112]: Call(size=0, call=to_text[1074])
+  16[112]: Call(size=0, call=to_text[1115])
   23[116]: ConstInt(val=0) -> integer
   28[120]: FormatText(var[56], val: text, width: integer, dir=-1, token=32)
   33[100]: ConstText(_value="2") -> text
   36[116]: AppendText(var[56], v1: text)
   39[100]: VarText(var[56]) -> text var=__work_1[56]:text
   42[116]: AppendText(var[80], v1: text)
-  45[100]: VarText(var[80]) -> text var=test_value[80]:text
+  45[100]: [11] VarText(var[80]) -> text var=test_value[80]:text
   48[116]: ConstText(_value="1aa bb cc2") -> text
   60[132]: EqText(v1: text, v2: text) -> boolean
   61[101]: GotoFalseWord(jump=67, if_false: boolean)
@@ -148,83 +148,83 @@ byte-code for string_fn:test() [1194]
 Execute test:
     0:[8] Text()
     1:[32] Text()
-    2:[56] Text()
+    2:[56] [10] Text()
     3:[80] Text()
     4:[104] ClearText(var[56])
     7:[104] ConstText(_value="1") -> "1"[104]
    10:[120] AppendText(var[56], v1="1"[104])
    13:[104] CreateRef(var[32]) -> ref(0,1,32)[104]
-   16:[116] Call(size=0, call=to_text[1074])
- 1074:[120] VarRef(var[104]) -> ref(0,1,32)[120]
- 1077:[132] ConstText(_value="") -> ""[132]
- 1079:[148] AppendRefText(r=ref(0,1,32)[120], fld=0, v1=""[132])
- 1080:[120] Goto(jump=-24517)
- 1082:[120] Text()
- 1083:[144] ConstText(_value="aa ") -> "aa "[144]
- 1088:[160] AppendText(var[120], v1="aa "[144])
- 1091:[144] ConvIntFromNull() -> -2147483648[144]
- 1092:[148] VarInt(var[144]) -> -2147483648[148]
- 1095:[152] ConvBoolFromInt(v1=-2147483648[148]) -> false[148]
- 1096:[149] Not(v1=false[148]) -> true[148]
- 1097:[149] GotoFalseWord(jump=1108, if_false=true[148])
- 1100:[148] ConstInt(val=0) -> 0[148]
- 1105:[152] GotoWord(jump=1117)
- 1117:[152] PutInt(var[144], value=0[148])
- 1120:[148] VarInt(var[144]) -> 0[148]
- 1123:[152] ConstInt(val=2) -> 2[152]
- 1128:[156] GeInt(v1=0[148], v2=2[152]) -> false[148]
- 1129:[149] GotoFalseWord(jump=1135, if_false=false[148])
- 1135:[148] VarInt(var[144]) -> 0[148]
- 1138:[152] ConstText(_value="b") -> "b"[152]
- 1141:[168] AppendText(var[120], v1="b"[152])
- 1144:[152] FreeStack(value=0, discard=4)
- 1148:[148] GotoWord(jump=1092)
- 1092:[148] VarInt(var[144]) -> 0[148]
- 1095:[152] ConvBoolFromInt(v1=0[148]) -> true[148]
- 1096:[149] Not(v1=true[148]) -> false[148]
- 1097:[149] GotoFalseWord(jump=1108, if_false=false[148])
- 1108:[148] VarInt(var[144]) -> 0[148]
- 1111:[152] ConstInt(val=1) -> 1[152]
- 1116:[156] AddInt(v1=0[148], v2=1[152]) -> 1[148]
- 1117:[152] PutInt(var[144], value=1[148])
- 1120:[148] VarInt(var[144]) -> 1[148]
- 1123:[152] ConstInt(val=2) -> 2[152]
- 1128:[156] GeInt(v1=1[148], v2=2[152]) -> false[148]
- 1129:[149] GotoFalseWord(jump=1135, if_false=false[148])
- 1135:[148] VarInt(var[144]) -> 1[148]
- 1138:[152] ConstText(_value="b") -> "b"[152]
- 1141:[168] AppendText(var[120], v1="b"[152])
- 1144:[152] FreeStack(value=0, discard=4)
- 1148:[148] GotoWord(jump=1092)
- 1092:[148] VarInt(var[144]) -> 1[148]
- 1095:[152] ConvBoolFromInt(v1=1[148]) -> true[148]
- 1096:[149] Not(v1=true[148]) -> false[148]
- 1097:[149] GotoFalseWord(jump=1108, if_false=false[148])
- 1108:[148] VarInt(var[144]) -> 1[148]
- 1111:[152] ConstInt(val=1) -> 1[152]
- 1116:[156] AddInt(v1=1[148], v2=1[152]) -> 2[148]
- 1117:[152] PutInt(var[144], value=2[148])
- 1120:[148] VarInt(var[144]) -> 2[148]
- 1123:[152] ConstInt(val=2) -> 2[152]
- 1128:[156] GeInt(v1=2[148], v2=2[152]) -> true[148]
- 1129:[149] GotoFalseWord(jump=1135, if_false=true[148])
- 1132:[148] GotoWord(jump=1151)
- 1151:[148] FreeStack(value=0, discard=4)
- 1155:[144] VarRef(var[104]) -> ref(0,1,32)[144]
- 1158:[156] ClearRefText(r=ref(0,1,32)[144])
- 1159:[144] VarRef(var[104]) -> ref(0,1,32)[144]
- 1162:[156] VarText(var[120]) -> "aa bb"[156]
- 1165:[172] AppendRefText(r=ref(0,1,32)[144], fld=0, v1="aa bb"[156])
- 1166:[144] Goto(jump=-15983)
- 1168:[144] VarRef(var[104]) -> ref(0,1,32)[144]
- 1171:[156] ConstText(_value=" cc") -> " cc"[156]
- 1176:[172] AppendRefText(r=ref(0,1,32)[144], fld=0, v1=" cc"[156])
- 1177:[144] Goto(jump=-22884)
- 1179:[144] FreeText(var[120])
- 1182:[144] VarRef(var[104]) -> ref(0,1,32)[144]
- 1185:[156] GetRefText(r=ref(0,1,32)[144], fld=0) -> "aa bb cc"[144]
- 1186:[160] Goto(jump=2725)
- 1188:[160] Return(ret=1217[116], value=16, discard=56) -> "aa bb cc"[104]
+   16:[116] Call(size=0, call=to_text[1115])
+ 1115:[120] VarRef(var[104]) -> ref(0,1,32)[120]
+ 1118:[132] ConstText(_value="") -> ""[132]
+ 1120:[148] AppendRefText(r=ref(0,1,32)[120], fld=0, v1=""[132])
+ 1121:[120] Goto(jump=-24476)
+ 1123:[120] Text()
+ 1124:[144] ConstText(_value="aa ") -> "aa "[144]
+ 1129:[160] AppendText(var[120], v1="aa "[144])
+ 1132:[144] ConvIntFromNull() -> -2147483648[144]
+ 1133:[148] VarInt(var[144]) -> -2147483648[148]
+ 1136:[152] ConvBoolFromInt(v1=-2147483648[148]) -> false[148]
+ 1137:[149] Not(v1=false[148]) -> true[148]
+ 1138:[149] GotoFalseWord(jump=1149, if_false=true[148])
+ 1141:[148] ConstInt(val=0) -> 0[148]
+ 1146:[152] GotoWord(jump=1158)
+ 1158:[152] PutInt(var[144], value=0[148])
+ 1161:[148] VarInt(var[144]) -> 0[148]
+ 1164:[152] ConstInt(val=2) -> 2[152]
+ 1169:[156] GeInt(v1=0[148], v2=2[152]) -> false[148]
+ 1170:[149] GotoFalseWord(jump=1176, if_false=false[148])
+ 1176:[148] VarInt(var[144]) -> 0[148]
+ 1179:[152] ConstText(_value="b") -> "b"[152]
+ 1182:[168] AppendText(var[120], v1="b"[152])
+ 1185:[152] FreeStack(value=0, discard=4)
+ 1189:[148] GotoWord(jump=1133)
+ 1133:[148] VarInt(var[144]) -> 0[148]
+ 1136:[152] ConvBoolFromInt(v1=0[148]) -> true[148]
+ 1137:[149] Not(v1=true[148]) -> false[148]
+ 1138:[149] GotoFalseWord(jump=1149, if_false=false[148])
+ 1149:[148] VarInt(var[144]) -> 0[148]
+ 1152:[152] ConstInt(val=1) -> 1[152]
+ 1157:[156] AddInt(v1=0[148], v2=1[152]) -> 1[148]
+ 1158:[152] PutInt(var[144], value=1[148])
+ 1161:[148] VarInt(var[144]) -> 1[148]
+ 1164:[152] ConstInt(val=2) -> 2[152]
+ 1169:[156] GeInt(v1=1[148], v2=2[152]) -> false[148]
+ 1170:[149] GotoFalseWord(jump=1176, if_false=false[148])
+ 1176:[148] VarInt(var[144]) -> 1[148]
+ 1179:[152] ConstText(_value="b") -> "b"[152]
+ 1182:[168] AppendText(var[120], v1="b"[152])
+ 1185:[152] FreeStack(value=0, discard=4)
+ 1189:[148] GotoWord(jump=1133)
+ 1133:[148] VarInt(var[144]) -> 1[148]
+ 1136:[152] ConvBoolFromInt(v1=1[148]) -> true[148]
+ 1137:[149] Not(v1=true[148]) -> false[148]
+ 1138:[149] GotoFalseWord(jump=1149, if_false=false[148])
+ 1149:[148] VarInt(var[144]) -> 1[148]
+ 1152:[152] ConstInt(val=1) -> 1[152]
+ 1157:[156] AddInt(v1=1[148], v2=1[152]) -> 2[148]
+ 1158:[152] PutInt(var[144], value=2[148])
+ 1161:[148] VarInt(var[144]) -> 2[148]
+ 1164:[152] ConstInt(val=2) -> 2[152]
+ 1169:[156] GeInt(v1=2[148], v2=2[152]) -> true[148]
+ 1170:[149] GotoFalseWord(jump=1176, if_false=true[148])
+ 1173:[148] GotoWord(jump=1192)
+ 1192:[148] FreeStack(value=0, discard=4)
+ 1196:[144] VarRef(var[104]) -> ref(0,1,32)[144]
+ 1199:[156] ClearRefText(r=ref(0,1,32)[144])
+ 1200:[144] VarRef(var[104]) -> ref(0,1,32)[144]
+ 1203:[156] VarText(var[120]) -> "aa bb"[156]
+ 1206:[172] AppendRefText(r=ref(0,1,32)[144], fld=0, v1="aa bb"[156])
+ 1207:[144] Goto(jump=-15942)
+ 1209:[144] VarRef(var[104]) -> ref(0,1,32)[144]
+ 1212:[156] ConstText(_value=" cc") -> " cc"[156]
+ 1217:[172] AppendRefText(r=ref(0,1,32)[144], fld=0, v1=" cc"[156])
+ 1218:[144] Goto(jump=-22843)
+ 1220:[144] FreeText(var[120])
+ 1223:[144] VarRef(var[104]) -> ref(0,1,32)[144]
+ 1226:[156] GetRefText(r=ref(0,1,32)[144], fld=0) -> "aa bb cc"[144]
+ 1227:[160] Goto(jump=2766)
+ 1229:[160] Return(ret=1258[116], value=16, discard=56) -> "aa bb cc"[104]
    23:[120] ConstInt(val=0) -> 0[120]
    28:[124] FormatText(var[56], val="aa bb cc"[104], width=0[120], dir=-1, token=32)
    33:[104] ConstText(_value="2") -> "2"[104]

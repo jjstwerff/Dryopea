@@ -8,7 +8,7 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [2] test_value(1):text = {#block(2):text
     {#Formatted string(3):text
       __work_1(1):text = "a";
       OpFormatLong(__work_1(1), OpAddLong(1i64, OpConvLongFromInt(1i32)), 10i32, 4i32, 32i32, true, false);
@@ -20,7 +20,7 @@ fn test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "a  +2b12c true d") null else OpPanic({#Formatted string(4):text
+  [3] if OpEqText(test_value(1), "a  +2b12c true d") null else OpPanic({#Formatted string(4):text
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "a  +2b12c true d"");
@@ -31,11 +31,11 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for format_long:test() [1074]
+byte-code for format_long:test()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: Text() var=test_value[56]:text
+   2[52]: [2] Text() var=test_value[56]:text
    3[76]: ClearText(var[32]) var=__work_1[32]:text
    6[76]: ConstText(_value="a") -> text
    9[92]: AppendText(var[32], v1: text)
@@ -67,7 +67,7 @@ byte-code for format_long:test() [1074]
  125[92]: AppendText(var[32], v1: text)
  128[76]: VarText(var[32]) -> text var=__work_1[32]:text
  131[92]: AppendText(var[56], v1: text)
- 134[76]: VarText(var[56]) -> text var=test_value[56]:text
+ 134[76]: [3] VarText(var[56]) -> text var=test_value[56]:text
  137[92]: ConstText(_value="a  +2b12c true d") -> text
  155[108]: EqText(v1: text, v2: text) -> boolean
  156[77]: GotoFalseWord(jump=162, if_false: boolean)
@@ -89,7 +89,7 @@ byte-code for format_long:test() [1074]
 
 Execute test:
     0:[8] Text()
-    1:[32] Text()
+    1:[32] [2] Text()
     2:[56] Text()
     3:[80] ClearText(var[32])
     6:[80] ConstText(_value="a") -> "a"[80]

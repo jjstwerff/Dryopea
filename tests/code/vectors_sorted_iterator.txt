@@ -37,7 +37,7 @@ Type 20:vector<Elm>[4]:Vector(17)
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [5] test_value(1):integer = {#block(2):integer
     db(2):ref(Db) = null;
     OpDatabase(db(2), 18i32);
     OpSetInt(db(2), 4i32, 0i32);
@@ -76,13 +76,13 @@ fn test() {#block(1):void
     OpSetText(_elm_1(2), 4i32, "Seven");
     OpSetInt(_elm_1(2), 8i32, 7i32);
     OpFinishRecord(db(2), _elm_1(2), 18i32, 0i32);
-    sum(2):integer = 0i32;
-    if OpEqInt(OpGetInt(OpGetRecord(OpGetField(db(2), 4i32, 19i32), 19i32, 2i32, 83i32, "Five"), 8i32), 5i32) null else OpPanic({#Formatted string(3):text
+    [14] sum(2):integer = 0i32;
+    [15] if OpEqInt(OpGetInt(OpGetRecord(OpGetField(db(2), 4i32, 19i32), 19i32, 2i32, 83i32, "Five"), 8i32), 5i32) null else OpPanic({#Formatted string(3):text
       __work_1(1):text = "Incorrect element ";
       OpFormatInt(__work_1(1), OpGetInt(OpGetRecord(OpGetField(db(2), 4i32, 19i32), 19i32, 2i32, 83i32, "Five"), 8i32), 10i32, 0i32, 32i32, false, false);
       __work_1(1);
     }#Formatted string(3):text);
-    {#For block(4):void
+    [16] {#For block(4):void
       _iter_2(4):long = OpIterate(OpGetField(db(2), 4i32, 19i32), 130i32, 12i32, &[Key { type_nr: -1, position: 0 }, Key { type_nr: 6, position: 4 }], 1i32, 84i32, 2i32, 63i32, "Six");
       loop {#For loop_5
         v(5):ref(Elm)["db"] = {#Iterate keys(6):sorted<Elm,[(0, false), (1, true)]>["db"]
@@ -92,14 +92,14 @@ fn test() {#block(1):void
           break(0);
         }#break(7):void else null;
         {#block(8):void
-          sum(2):integer = OpAddInt(OpMulInt(sum(2), 10i32), OpGetInt(v(5), 8i32));
+          [17] sum(2):integer = OpAddInt(OpMulInt(sum(2), 10i32), OpGetInt(v(5), 8i32));
         }#block(8):void;
       }#For loop_5;
     }#For block(4):void;
-    OpFreeRef(db(2));
+    [19] OpFreeRef(db(2));
     sum(2);
   }#block(2):integer;
-  if OpEqInt(test_value(1), 5436i32) null else OpPanic({#Formatted string(9):text
+  [20] if OpEqInt(test_value(1), 5436i32) null else OpPanic({#Formatted string(9):text
     __work_2(1):text = "Test failed ";
     OpFormatInt(__work_2(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_2(1), " != 5436");
@@ -109,11 +109,11 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for sorted_iterator:test() [1074]
+byte-code for sorted_iterator:test()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: ConvRefFromNull() -> ref(reference) var=db[56]:ref(Db)
+   2[52]: [5] ConvRefFromNull() -> ref(reference) var=db[56]:ref(Db)
    3[64]: Database(var[56], db_tp=18) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18]
    8[64]: VarRef(var[56]) -> ref(reference) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18] var=db[56]:ref(Db)
   11[76]: ConstInt(val=0) -> integer
@@ -222,8 +222,8 @@ byte-code for sorted_iterator:test() [1074]
  396[76]: VarRef(var[56]) -> ref(reference) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18] var=db[56]:ref(Db)
  399[88]: VarRef(var[68]) -> ref(reference) type=Elm[12]:{nr:integer[0], key:text[4], value:integer[8]}[17] var=_elm_1[68]:ref(Elm)["db"]
  402[100]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=18, fld=0)
- 407[76]: ConstInt(val=0) -> integer var=sum[80]:integer
- 412[80]: VarRef(var[56]) -> ref(reference) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18] var=db[56]:ref(Db)
+ 407[76]: [14] ConstInt(val=0) -> integer var=sum[80]:integer
+ 412[80]: [15] VarRef(var[56]) -> ref(reference) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18] var=db[56]:ref(Db)
  415[92]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=sorted<Elm[-nr,key]>[4]:Sorted(17, [(0, false), (1, true)]) keys [tp:1 desc:true field:0, tp:6 desc:false field:4, ][19]
  418[92]: ConstText(_value="Five") -> text
  424[108]: ConstInt(val=83) -> integer
@@ -246,7 +246,7 @@ byte-code for sorted_iterator:test() [1074]
  503[88]: FormatInt(var[32], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
  510[80]: VarText(var[32]) -> text var=__work_1[32]:text
  513[96]: Panic(message: text)
- 514[80]: VarRef(var[56]) -> ref(reference) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18] var=db[56]:ref(Db)
+ 514[80]: [16] VarRef(var[56]) -> ref(reference) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18] var=db[56]:ref(Db)
  517[92]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=sorted<Elm[-nr,key]>[4]:Sorted(17, [(0, false), (1, true)]) keys [tp:1 desc:true field:0, tp:6 desc:false field:4, ][19]
  520[92]: ConstInt(val=84) -> integer
  525[96]: ConstText(_value="Six") -> text
@@ -261,7 +261,7 @@ byte-code for sorted_iterator:test() [1074]
  565[101]: GotoFalseWord(jump=575, if_false: boolean)
  568[100]: FreeStack(value=0, discard=12)
  572[88]: GotoWord(jump=601)
- 575[100]: VarInt(var[80]) -> integer var=sum[80]:integer
+ 575[100]: [17] VarInt(var[80]) -> integer var=sum[80]:integer
  578[104]: ConstInt(val=10) -> integer
  583[108]: MulInt(v1: integer, v2: integer) -> integer
  584[104]: VarRef(var[92]) -> ref(reference) type=Elm[12]:{nr:integer[0], key:text[4], value:integer[8]}[17] var=v[92]:ref(Elm)["db"]
@@ -271,11 +271,11 @@ byte-code for sorted_iterator:test() [1074]
  594[100]: FreeStack(value=0, discard=12)
  598[88]: GotoWord(jump=548)
  601[88]: FreeStack(value=0, discard=8)
- 605[80]: VarRef(var[56]) -> ref(reference) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18] var=db[56]:ref(Db)
+ 605[80]: [19] VarRef(var[56]) -> ref(reference) type=Db[8]:{map:sorted<Elm[-nr,key]>[4]}[18] var=db[56]:ref(Db)
  608[92]: FreeRef(v1: ref(reference))
  609[80]: VarInt(var[80]) -> integer var=sum[80]:integer
  612[84]: FreeStack(value=4, discard=32)
- 616[56]: VarInt(var[56]) -> integer var=test_value[56]:integer
+ 616[56]: [20] VarInt(var[56]) -> integer var=test_value[56]:integer
  619[60]: ConstInt(val=5436) -> integer
  624[64]: EqInt(v1: integer, v2: integer) -> boolean
  625[57]: GotoFalseWord(jump=631, if_false: boolean)
@@ -296,7 +296,7 @@ byte-code for sorted_iterator:test() [1074]
 
 Execute test:
     0:[8] Text()
-    1:[32] Text()
+    1:[32] [5] Text()
     2:[56] ConvRefFromNull() -> ref(1,0,0)[56]
     3:[68] Database(var[56], db_tp=18)
     8:[68] VarRef(var[56]) -> ref(1,1,0)={map:[]}[68]

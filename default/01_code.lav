@@ -549,8 +549,8 @@ fn OpPutEnum(pos: const u16, value: enumerate);
 #rust "s.put_var(@pos, @value);"
 fn OpConvBoolFromEnum(v1: enumerate) -> boolean;
 #rust "@v1 != 255"
-fn OpCastTextFromEnum(v1: enumerate, enum_tp: u16) -> text;
-#rust "Str::new(&s.database.enum_val(@enum_tp, @v1))"
+fn OpCastTextFromEnum(v1: enumerate, enum_tp: const u16) -> text;
+#rust "Str::new(s.database.enum_val(@enum_tp, @v1))"
 fn OpCastEnumFromText(v1: text, enum_tp: const u16) -> enumerate;
 #rust "s.database.to_enum(@enum_tp, @v1)"
 fn OpConvIntFromEnum(v1: enumerate) -> integer;
@@ -719,7 +719,12 @@ fn panic(message: text);
 
 fn OpPrint(v1: text);
 #rust "print!(\"{{}}\", @v1);"
-fn print(v1: text) { OpPrint(v1); }
+fn print(v1: text) {
+    OpPrint(v1);
+}
+fn println(v1: text) {
+    OpPrint("{v1}\n");
+}
 
 type keys_definition;
 

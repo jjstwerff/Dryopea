@@ -8,7 +8,7 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [2] test_value(1):text = {#block(2):text
     vr(2):text = "abc";
     {#Formatted string(3):text
       __work_1(1):text = "1";
@@ -23,7 +23,7 @@ fn test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "1abc  2abc3abc   4    abc") null else OpPanic({#Formatted string(4):text
+  [3] if OpEqText(test_value(1), "1abc  2abc3abc   4    abc") null else OpPanic({#Formatted string(4):text
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "1abc  2abc3abc   4    abc"");
@@ -34,11 +34,11 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for format_text:test() [1074]
+byte-code for format_text:test()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: Text() var=test_value[56]:text
+   2[52]: [2] Text() var=test_value[56]:text
    3[76]: Text() var=vr[80]:text
    4[100]: ConstText(_value="abc") -> text
    9[116]: AppendText(var[80], v1: text)
@@ -69,7 +69,7 @@ byte-code for format_text:test() [1074]
  100[100]: VarText(var[32]) -> text var=__work_1[32]:text
  103[116]: FreeStack(value=16, discard=40)
  107[92]: AppendText(var[56], v1: text)
- 110[76]: VarText(var[56]) -> text var=test_value[56]:text
+ 110[76]: [3] VarText(var[56]) -> text var=test_value[56]:text
  113[92]: ConstText(_value="1abc  2abc3abc   4    abc") -> text
  140[108]: EqText(v1: text, v2: text) -> boolean
  141[77]: GotoFalseWord(jump=147, if_false: boolean)
@@ -91,7 +91,7 @@ byte-code for format_text:test() [1074]
 
 Execute test:
     0:[8] Text()
-    1:[32] Text()
+    1:[32] [2] Text()
     2:[56] Text()
     3:[80] Text()
     4:[104] ConstText(_value="abc") -> "abc"[104]

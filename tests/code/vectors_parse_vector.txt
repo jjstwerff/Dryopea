@@ -12,12 +12,12 @@ Type 18:vector<float>[4]:Vector(3)
 
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):float = {#block(2):float
+  [2] test_value(1):float = {#block(2):float
     a(2):vector<float> = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 18i32);
     OpAddFloat(OpGetFloat(OpGetVector(a(2), 8i32, 2i32), 0i32), OpGetFloat(OpGetVector(a(2), 8i32, 3i32), 0i32));
     OpFreeRef(a(2));
   }#block(2):float;
-  if OpEqFloat(test_value(1), 18120.00000001001f64) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqFloat(test_value(1), 18120.00000001001f64) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
     OpAppendText(__work_1(1), " != 18120.00000001001");
@@ -26,10 +26,10 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for parse_vector:test() [1074]
+byte-code for parse_vector:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text var=a[32]:vector<float>
+   1[28]: [2] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text var=a[32]:vector<float>
   36[44]: CastVectorFromText(val: text, db_tp=18) -> vector
   39[40]: VarVector(var[32]) -> vector type=vector<float>[4]:Vector(3)[18] var=a[32]:vector<float>
   42[52]: ConstInt(val=2) -> integer
@@ -43,7 +43,7 @@ byte-code for parse_vector:test() [1074]
   68[48]: VarVector(var[32]) -> vector type=vector<float>[4]:Vector(3)[18] var=a[32]:vector<float>
   71[60]: FreeRef(v1: ref(reference))
   72[48]: FreeStack(value=8, discard=20)
-  76[36]: VarFloat(var[32]) -> float var=test_value[32]:float
+  76[36]: [3] VarFloat(var[32]) -> float var=test_value[32]:float
   79[44]: ConstFloat(val=18120.00000001001) -> float
   88[52]: EqFloat(v1: float, v2: float) -> boolean
   89[37]: GotoFalseWord(jump=95, if_false: boolean)
@@ -63,7 +63,7 @@ byte-code for parse_vector:test() [1074]
  164[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> "[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32]
    36:[48] CastVectorFromText(val="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32], db_tp=18) -> ref(1,1,4)[32]
    39:[44] VarVector(var[32]) -> ref(1,1,4)=[1.2,-10.3,18120,0.00000001001][44]

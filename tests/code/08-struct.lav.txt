@@ -17,7 +17,7 @@ fn main() {#block(1):void
   __ref_1(1):ref(main_vector<Area>) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
-  OpDatabase(__ref_1(1), 20i32);
+  [9] OpDatabase(__ref_1(1), 20i32);
   map(1):vector<ref(Area)>["__ref_1"] = OpGetField(__ref_1(1), 4i32, 21i32);
   OpSetInt(__ref_1(1), 4i32, 0i32);
   _elm_1(1):ref(Area)["map"] = OpNewRecord(map(1), 21i32, 65535i32);
@@ -27,7 +27,7 @@ fn main() {#block(1):void
   OpSetByte(_elm_1(1), 4i32, 0i32, 1i32);
   OpFinishRecord(map(1), _elm_1(1), 21i32, 65535i32);
   OpAppendCopy(map(1), 16i32, 21i32);
-  if OpEqText({#Formatted string(2):text
+  [10] if OpEqText({#Formatted string(2):text
     __work_1(1):text = "";
     OpFormatDatabase(__work_1(1), OpGetVector(map(1), 5i32, 3i32), 17i32, false);
     __work_1(1);
@@ -41,12 +41,12 @@ fn main() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for tests/suite/08-struct.lav:main() [1074]
+byte-code for tests/suite/08-struct.lav:main()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:ref(main_vector<Area>)
    1[16]: Text() var=__work_2[20]:text
    2[40]: Text() var=__work_1[44]:text
-   3[64]: Database(var[8], db_tp=20) type=main_vector<Area>[8]:{vector:vector<Area>[4]}[20]
+   3[64]: [9] Database(var[8], db_tp=20) type=main_vector<Area>[8]:{vector:vector<Area>[4]}[20]
    8[64]: VarRef(var[8]) -> ref(reference) type=main_vector<Area>[8]:{vector:vector<Area>[4]}[20] var=__ref_1[8]:ref(main_vector<Area>)
   11[76]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=vector<Area>[4]:Vector(17)[21]
   14[76]: VarRef(var[8]) -> ref(reference) type=main_vector<Area>[8]:{vector:vector<Area>[4]}[20] var=__ref_1[8]:ref(main_vector<Area>)
@@ -72,7 +72,7 @@ byte-code for tests/suite/08-struct.lav:main() [1074]
   96[88]: VarVector(var[68]) -> vector type=vector<Area>[4]:Vector(17)[21] var=map[68]:vector<ref(Area)>["__ref_1"]
   99[100]: ConstInt(val=16) -> integer
  104[104]: AppendCopy(data: ref(reference), count: integer, tp=21)
- 107[88]: ClearText(var[44]) var=__work_1[44]:text
+ 107[88]: [10] ClearText(var[44]) var=__work_1[44]:text
  110[88]: ConstText(_value="") -> text
  112[104]: AppendText(var[44], v1: text)
  115[88]: VarVector(var[68]) -> vector type=vector<Area>[4]:Vector(17)[21] var=map[68]:vector<ref(Area)>["__ref_1"]

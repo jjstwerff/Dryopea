@@ -7,11 +7,11 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [2] test_value(1):integer = {#block(2):integer
     a(2):float = 1.1f64;
     OpAddInt(8i32, OpMulInt(10i32, 8i32));
   }#block(2):integer;
-  if OpEqInt(test_value(1), 88i32) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqInt(test_value(1), 88i32) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 88");
@@ -20,17 +20,17 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for expr_float:test() [1074]
+byte-code for expr_float:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstFloat(val=1.1) -> float var=a[32]:float
+   1[28]: [2] ConstFloat(val=1.1) -> float var=a[32]:float
   10[36]: ConstInt(val=8) -> integer
   15[40]: ConstInt(val=10) -> integer
   20[44]: ConstInt(val=8) -> integer
   25[48]: MulInt(v1: integer, v2: integer) -> integer
   26[44]: AddInt(v1: integer, v2: integer) -> integer
   27[40]: FreeStack(value=4, discard=12)
-  31[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
+  31[32]: [3] VarInt(var[32]) -> integer var=test_value[32]:integer
   34[36]: ConstInt(val=88) -> integer
   39[40]: EqInt(v1: integer, v2: integer) -> boolean
   40[33]: GotoFalseWord(jump=46, if_false: boolean)
@@ -49,7 +49,7 @@ byte-code for expr_float:test() [1074]
   99[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] ConstFloat(val=1.1) -> 1.1[32]
    10:[40] ConstInt(val=8) -> 8[40]
    15:[44] ConstInt(val=10) -> 10[44]

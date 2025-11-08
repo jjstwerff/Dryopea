@@ -2,28 +2,28 @@ fn main() {#block(1):void
   __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
-  v(1):integer = 4i32;
-  if OpEqText({#Formatted string(2):text
+  [5] v(1):integer = 4i32;
+  [6] if OpEqText({#Formatted string(2):text
     __work_1(1):text = "";
     OpFormatInt(__work_1(1), v(1), 10i32, 0i32, 32i32, false, false);
     __work_1(1);
   }#Formatted string(2):text, "4") null else OpPanic("Convert numbers to text");
-  if OpEqInt(OpCastIntFromText("123"), 123i32) null else OpPanic("Convert text to number");
-  if OpEqInt(OpAddInt(1i32, OpMulInt(2i32, 4i32)), 9i32) null else OpPanic("Integer calculus");
-  if OpEqInt(OpSLeftInt(OpAddInt(1i32, 2i32), 2i32), 12i32) null else OpPanic("Binary shift");
-  if OpEqInt(OpRemInt(105i32, 100i32), 5i32) null else OpPanic("Modulus");
-  if OpEqSingle(OpPowSingle(OpConvSingleFromInt(2i32), OpConvSingleFromInt(3i32)), OpConvSingleFromInt(8i32)) null else OpPanic("Power");
-  if OpEqInt(OpAddInt(1i32, _tp_integer_abs(OpMinSingleInt(2i32))), 3i32) null else OpPanic("Absolute integer");
-  a(1):integer = OpMulInt(2i32, 2i32);
-  a(1):integer = OpMinInt(a(1), 4i32);
-  if OpNot(OpConvBoolFromInt(OpDivInt(12i32, a(1)))) null else OpPanic("Null on division by zero");
-  if OpEqText({#Formatted string(3):text
+  [7] if OpEqInt(OpCastIntFromText("123"), 123i32) null else OpPanic("Convert text to number");
+  [10] if OpEqInt(OpAddInt(1i32, OpMulInt(2i32, 4i32)), 9i32) null else OpPanic("Integer calculus");
+  [11] if OpEqInt(OpSLeftInt(OpAddInt(1i32, 2i32), 2i32), 12i32) null else OpPanic("Binary shift");
+  [12] if OpEqInt(OpRemInt(105i32, 100i32), 5i32) null else OpPanic("Modulus");
+  [13] if OpEqSingle(OpPowSingle(OpConvSingleFromInt(2i32), OpConvSingleFromInt(3i32)), OpConvSingleFromInt(8i32)) null else OpPanic("Power");
+  [16] if OpEqInt(OpAddInt(1i32, _tp_integer_abs(OpMinSingleInt(2i32))), 3i32) null else OpPanic("Absolute integer");
+  [19] a(1):integer = OpMulInt(2i32, 2i32);
+  [20] a(1):integer = OpMinInt(a(1), 4i32);
+  [21] if OpNot(OpConvBoolFromInt(OpDivInt(12i32, a(1)))) null else OpPanic("Null on division by zero");
+  [23] if OpEqText({#Formatted string(3):text
     __work_2(1):text = "a";
     OpFormatInt(__work_2(1), 12i32, 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_2(1), "b");
     __work_2(1);
   }#Formatted string(3):text, "a12b") null else OpPanic("Formatting problem");
-  if OpEqText({#Formatted string(4):text
+  [26] if OpEqText({#Formatted string(4):text
     __work_3(1):text = "a";
     OpFormatInt(__work_3(1), OpAddInt(1i32, OpMulInt(2i32, 3i32)), 16i32, 0i32, 32i32, false, true);
     OpAppendText(__work_3(1), "b");
@@ -34,13 +34,13 @@ fn main() {#block(1):void
   OpFreeText(__work_3(1));
 }#block(1):void
 
-byte-code for tests/suite/03-integer.lav:main() [1074]
+byte-code for tests/suite/03-integer.lav:main()
    0[0]: return-address
    0[4]: Text() var=__work_3[8]:text
    1[28]: Text() var=__work_2[32]:text
    2[52]: Text() var=__work_1[56]:text
-   3[76]: ConstInt(val=4) -> integer var=v[80]:integer
-   8[80]: ClearText(var[56]) var=__work_1[56]:text
+   3[76]: [5] ConstInt(val=4) -> integer var=v[80]:integer
+   8[80]: [6] ClearText(var[56]) var=__work_1[56]:text
   11[80]: ConstText(_value="") -> text
   13[96]: AppendText(var[56], v1: text)
   16[80]: VarInt(var[80]) -> integer var=v[80]:integer
@@ -53,7 +53,7 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
   41[80]: GotoWord(jump=70)
   44[80]: ConstText(_value="Convert numbers to text") -> text
   69[96]: Panic(message: text)
-  70[80]: ConstText(_value="123") -> text
+  70[80]: [7] ConstText(_value="123") -> text
   75[96]: CastIntFromText(v1: text) -> integer
   76[84]: ConstInt(val=123) -> integer
   81[88]: EqInt(v1: integer, v2: integer) -> boolean
@@ -61,7 +61,7 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
   85[80]: GotoWord(jump=113)
   88[80]: ConstText(_value="Convert text to number") -> text
  112[96]: Panic(message: text)
- 113[80]: ConstInt(val=1) -> integer
+ 113[80]: [10] ConstInt(val=1) -> integer
  118[84]: ConstInt(val=2) -> integer
  123[88]: ConstInt(val=4) -> integer
  128[92]: MulInt(v1: integer, v2: integer) -> integer
@@ -72,7 +72,7 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
  139[80]: GotoWord(jump=161)
  142[80]: ConstText(_value="Integer calculus") -> text
  160[96]: Panic(message: text)
- 161[80]: ConstInt(val=1) -> integer
+ 161[80]: [11] ConstInt(val=1) -> integer
  166[84]: ConstInt(val=2) -> integer
  171[88]: AddInt(v1: integer, v2: integer) -> integer
  172[84]: ConstInt(val=2) -> integer
@@ -83,7 +83,7 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
  187[80]: GotoWord(jump=205)
  190[80]: ConstText(_value="Binary shift") -> text
  204[96]: Panic(message: text)
- 205[80]: ConstInt(val=105) -> integer
+ 205[80]: [12] ConstInt(val=105) -> integer
  210[84]: ConstInt(val=100) -> integer
  215[88]: RemInt(v1: integer, v2: integer) -> integer
  216[84]: ConstInt(val=5) -> integer
@@ -92,7 +92,7 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
  225[80]: GotoWord(jump=238)
  228[80]: ConstText(_value="Modulus") -> text
  237[96]: Panic(message: text)
- 238[80]: ConstInt(val=2) -> integer
+ 238[80]: [13] ConstInt(val=2) -> integer
  243[84]: ConvSingleFromInt(v1: integer) -> single
  244[84]: ConstInt(val=3) -> integer
  249[88]: ConvSingleFromInt(v1: integer) -> single
@@ -104,7 +104,7 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
  261[80]: GotoWord(jump=272)
  264[80]: ConstText(_value="Power") -> text
  271[96]: Panic(message: text)
- 272[80]: ConstInt(val=1) -> integer
+ 272[80]: [16] ConstInt(val=1) -> integer
  277[84]: ConstInt(val=2) -> integer
  282[88]: MinSingleInt(v1: integer) -> integer
  283[88]: Call(size=0, call=trim[0])
@@ -115,14 +115,14 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
  300[80]: GotoWord(jump=322)
  303[80]: ConstText(_value="Absolute integer") -> text
  321[96]: Panic(message: text)
- 322[80]: ConstInt(val=2) -> integer var=a[84]:integer
+ 322[80]: [19] ConstInt(val=2) -> integer var=a[84]:integer
  327[84]: ConstInt(val=2) -> integer
  332[88]: MulInt(v1: integer, v2: integer) -> integer
- 333[84]: VarInt(var[84]) -> integer var=a[84]:integer
+ 333[84]: [20] VarInt(var[84]) -> integer var=a[84]:integer
  336[88]: ConstInt(val=4) -> integer
  341[92]: MinInt(v1: integer, v2: integer) -> integer
  342[88]: PutInt(var[84], value: integer)
- 345[84]: ConstInt(val=12) -> integer
+ 345[84]: [21] ConstInt(val=12) -> integer
  350[88]: VarInt(var[84]) -> integer var=a[84]:integer
  353[92]: DivInt(v1: integer, v2: integer) -> integer
  354[88]: ConvBoolFromInt(v1: integer) -> boolean
@@ -131,7 +131,7 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
  359[84]: GotoWord(jump=389)
  362[84]: ConstText(_value="Null on division by zero") -> text
  388[100]: Panic(message: text)
- 389[84]: ClearText(var[32]) var=__work_2[32]:text
+ 389[84]: [23] ClearText(var[32]) var=__work_2[32]:text
  392[84]: ConstText(_value="a") -> text
  395[100]: AppendText(var[32], v1: text)
  398[84]: ConstInt(val=12) -> integer
@@ -146,7 +146,7 @@ byte-code for tests/suite/03-integer.lav:main() [1074]
  434[84]: GotoWord(jump=458)
  437[84]: ConstText(_value="Formatting problem") -> text
  457[100]: Panic(message: text)
- 458[84]: ClearText(var[8]) var=__work_3[8]:text
+ 458[84]: [26] ClearText(var[8]) var=__work_3[8]:text
  461[84]: ConstText(_value="a") -> text
  464[100]: AppendText(var[8], v1: text)
  467[84]: ConstInt(val=1) -> integer

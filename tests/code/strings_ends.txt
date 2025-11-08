@@ -7,14 +7,14 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):boolean = {#block(2):boolean
+  [2] test_value(1):boolean = {#block(2):boolean
     v(2):text["v"] = "";
     OpAppendText(v(2), "someth");
     OpAppendText(v(2), "ing");
     _tp_text_ends_with(v(2), "thing");
     OpFreeText(v(2));
   }#block(2):boolean;
-  if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatBool(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != true");
@@ -23,10 +23,10 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for ends:test() [1074]
+byte-code for ends:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: Text() var=v[32]:text["v"]
+   1[28]: [2] Text() var=v[32]:text["v"]
    2[52]: ConstText(_value="someth") -> text
   10[68]: AppendText(var[32], v1: text)
   13[52]: ConstText(_value="ing") -> text
@@ -36,7 +36,7 @@ byte-code for ends:test() [1074]
   31[84]: StaticCall(_tp_text_ends_with)
   34[53]: FreeText(var[32])
   37[53]: FreeStack(value=1, discard=25)
-  41[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  41[29]: [3] VarBool(var[32]) -> boolean var=test_value[32]:boolean
   44[30]: ConstTrue() -> boolean
   45[31]: EqBool(v1: boolean, v2: boolean) -> boolean
   46[30]: GotoFalseWord(jump=52, if_false: boolean)
@@ -55,7 +55,7 @@ byte-code for ends:test() [1074]
  105[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] Text()
     2:[56] ConstText(_value="someth") -> "someth"[56]
    10:[72] AppendText(var[32], v1="someth"[56])

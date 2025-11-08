@@ -8,7 +8,7 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):integer = {#block(2):integer
+  [2] test_value(1):integer = {#block(2):integer
     v(2):text = "something";
     _tp_text_find(v(2), {#Add text(3):text["__work_1"]
       OpClearText(__work_1(1));
@@ -18,7 +18,7 @@ fn test() {#block(1):void
     }#Add text(3):text["__work_1"]);
     OpFreeText(v(2));
   }#block(2):integer;
-  if OpEqInt(test_value(1), 4i32) null else OpPanic({#Formatted string(4):text
+  [3] if OpEqInt(test_value(1), 4i32) null else OpPanic({#Formatted string(4):text
     __work_2(1):text = "Test failed ";
     OpFormatInt(__work_2(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_2(1), " != 4");
@@ -28,11 +28,11 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for find:test() [1074]
+byte-code for find:test()
    0[0]: return-address
    0[4]: Text() var=__work_2[8]:text
    1[28]: Text() var=__work_1[32]:text
-   2[52]: Text() var=v[56]:text
+   2[52]: [2] Text() var=v[56]:text
    3[76]: ConstText(_value="something") -> text
   14[92]: AppendText(var[56], v1: text)
   17[76]: VarText(var[56]) -> text var=v[56]:text
@@ -45,7 +45,7 @@ byte-code for find:test() [1074]
   38[108]: StaticCall(_tp_text_find)
   41[80]: FreeText(var[56])
   44[80]: FreeStack(value=4, discard=28)
-  48[56]: VarInt(var[56]) -> integer var=test_value[56]:integer
+  48[56]: [3] VarInt(var[56]) -> integer var=test_value[56]:integer
   51[60]: ConstInt(val=4) -> integer
   56[64]: EqInt(v1: integer, v2: integer) -> boolean
   57[57]: GotoFalseWord(jump=63, if_false: boolean)
@@ -66,7 +66,7 @@ byte-code for find:test() [1074]
 
 Execute test:
     0:[8] Text()
-    1:[32] Text()
+    1:[32] [2] Text()
     2:[56] Text()
     3:[80] ConstText(_value="something") -> "something"[80]
    14:[96] AppendText(var[56], v1="something"[80])

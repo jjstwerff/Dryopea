@@ -7,12 +7,12 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):character = {#block(2):character
+  [2] test_value(1):character = {#block(2):character
     s(2):text = "1😊2";
     OpTextCharacter(s(2), 1i32);
     OpFreeText(s(2));
   }#block(2):character;
-  if OpEqInt(OpConvIntFromCharacter(test_value(1)), 128522i32) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqInt(OpConvIntFromCharacter(test_value(1)), 128522i32) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpAppendCharacter(__work_1(1), test_value(1));
     OpAppendText(__work_1(1), " != 128522");
@@ -21,10 +21,10 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for index_block:test() [1074]
+byte-code for index_block:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: Text() var=s[32]:text
+   1[28]: [2] Text() var=s[32]:text
    2[52]: ConstText(_value="1😊2") -> text
   10[68]: AppendText(var[32], v1: text)
   13[52]: VarText(var[32]) -> text var=s[32]:text
@@ -32,7 +32,7 @@ byte-code for index_block:test() [1074]
   21[72]: TextCharacter(v1: text, v2: integer) -> character
   22[56]: FreeText(var[32])
   25[56]: FreeStack(value=4, discard=28)
-  29[32]: VarCharacter(var[32]) -> character var=test_value[32]:character
+  29[32]: [3] VarCharacter(var[32]) -> character var=test_value[32]:character
   32[36]: ConvIntFromCharacter(v1: character) -> integer
   33[36]: ConstInt(val=128522) -> integer
   38[40]: EqInt(v1: integer, v2: integer) -> boolean
@@ -51,7 +51,7 @@ byte-code for index_block:test() [1074]
   93[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] Text()
     2:[56] ConstText(_value="1😊2") -> "1😊2"[56]
    10:[72] AppendText(var[32], v1="1😊2"[56])

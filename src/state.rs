@@ -44,6 +44,7 @@ pub struct State {
     pub library: Vec<Call>,
     pub library_names: HashMap<String, u16>,
     text_positions: BTreeSet<u32>,
+    line_numbers: HashMap<u32, u32>,
 }
 
 fn new_ref(data: &DbRef, pos: u32, arg: u16) -> DbRef {
@@ -78,6 +79,7 @@ impl State {
             library: Vec::new(),
             library_names: HashMap::new(),
             text_positions: BTreeSet::new(),
+            line_numbers: HashMap::new(),
         }
     }
 
@@ -983,7 +985,7 @@ impl State {
                 break;
             }
             match k {
-                0 => key.push(Content::Long(i64::from(*self.get_stack::<i32>()))),
+                0 | 6 => key.push(Content::Long(i64::from(*self.get_stack::<i32>()))),
                 1 => key.push(Content::Long(*self.get_stack::<i64>())),
                 2 => key.push(Content::Single(*self.get_stack::<f32>())),
                 3 => key.push(Content::Float(*self.get_stack::<f64>())),
@@ -1345,6 +1347,10 @@ impl State {
             }
             Value::Iter(_, _, _) => {
                 panic!("Should have rewritten {val:?}");
+            }
+            Value::Line(line) => {
+                self.line_numbers.insert(self.code_pos, *line);
+                Type::Void
             }
         }
     }
@@ -1871,7 +1877,6 @@ impl State {
             stack_pos += size(&data.attr_type(d_nr, a_nr), &Context::Argument);
         }
         write!(f, ")")?;
-        write!(f, " [{}]", data.def(d_nr).code_position)?;
         if data.def(d_nr).returned != Type::Void {
             write!(
                 f,
@@ -1902,7 +1907,12 @@ impl State {
             if self.stack.contains_key(&p) {
                 write!(f, "[{}]", self.stack[&p])?;
             }
-            write!(f, ": {}(", &def.name[2..])?;
+            if let Some(nr) = self.line_numbers.get(&p) {
+                write!(f, ": [{nr}] ")?;
+            } else {
+                write!(f, ": ")?;
+            }
+            write!(f, "{}(", &def.name[2..])?;
             for (a_nr, a) in def.attributes.iter().enumerate() {
                 if a_nr > 0 {
                     write!(f, ", ")?;
@@ -2096,13 +2106,11 @@ impl State {
         assert!(data.has_op(op), "Unknown operator {op}");
         let def = data.operator(op);
         let minus = if cur > self.def_pos { self.def_pos } else { 0 };
-        write!(
-            log,
-            "{:5}:[{}] {}(",
-            cur - minus - 1,
-            self.stack_pos,
-            &def.name[2..]
-        )?;
+        write!(log, "{:5}:[{}]", cur - minus - 1, self.stack_pos,)?;
+        if let Some(line) = self.line_numbers.get(&cur) {
+            write!(log, " [{line}]")?;
+        }
+        write!(log, " {}(", &def.name[2..])?;
         // Inverse the order of reading the attributes correctly from the stack.
         let mut attr = BTreeMap::new();
         for (a_nr, a) in def.attributes.iter().enumerate() {

@@ -7,10 +7,10 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):boolean = {#block(2):boolean
+  [2] test_value(1):boolean = {#block(2):boolean
     OpLeInt(OpAddInt(2i32, 1i32), 3i32);
   }#block(2):boolean;
-  if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatBool(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != true");
@@ -19,15 +19,15 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for expr_prio_lt:test() [1074]
+byte-code for expr_prio_lt:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstInt(val=2) -> integer var=test_value[32]:boolean
+   1[28]: [2] ConstInt(val=2) -> integer var=test_value[32]:boolean
    6[32]: ConstInt(val=1) -> integer
   11[36]: AddInt(v1: integer, v2: integer) -> integer
   12[32]: ConstInt(val=3) -> integer
   17[36]: LeInt(v1: integer, v2: integer) -> boolean
-  18[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  18[29]: [3] VarBool(var[32]) -> boolean var=test_value[32]:boolean
   21[30]: ConstTrue() -> boolean
   22[31]: EqBool(v1: boolean, v2: boolean) -> boolean
   23[30]: GotoFalseWord(jump=29, if_false: boolean)
@@ -46,12 +46,12 @@ byte-code for expr_prio_lt:test() [1074]
   82[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] ConstInt(val=2) -> 2[32]
     6:[36] ConstInt(val=1) -> 1[36]
    11:[40] AddInt(v1=2[32], v2=1[36]) -> 3[32]
    12:[36] ConstInt(val=3) -> 3[36]
-   17:[40] LeInt(v1=3[32], v2=3[36]) -> true[32]
+   17:[40] [3] LeInt(v1=3[32], v2=3[36]) -> true[32]
    18:[33] VarBool(var[32]) -> true[33]
    21:[34] ConstTrue() -> true[34]
    22:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]

@@ -13,18 +13,18 @@ pub fn test() {
     );
 }
 fn fill(result:vector<text>) -> vector<text>["??"] {#block(1):vector<text>["result"]
-  _elm_1(1):ref(boolean)["result"] = OpNewRecord(result(0), 7i32, 65535i32);
+  [3] _elm_1(1):ref(boolean)["result"] = OpNewRecord(result(0), 7i32, 65535i32);
   OpSetText(_elm_1(1), 0i32, "aa");
   OpFinishRecord(result(0), _elm_1(1), 7i32, 65535i32);
-  _elm_2(1):ref(boolean)["result"] = OpNewRecord(result(0), 7i32, 65535i32);
+  [4] _elm_2(1):ref(boolean)["result"] = OpNewRecord(result(0), 7i32, 65535i32);
   OpSetText(_elm_2(1), 0i32, "bb");
   OpFinishRecord(result(0), _elm_2(1), 7i32, 65535i32);
-  result(0);
+  [5] result(0);
 }#block(1):vector<text>["result"]
 
-byte-code for fill_result:fill(result: vector<text>[0]) [1074] -> vector<text>["result"]
+byte-code for fill_result:fill(result: vector<text>[0]) -> vector<text>["result"]
    0[12]: return-address
-   0[16]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
+   0[16]: [3] VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
    3[28]: NewRecord(data: ref(reference), parent_tp=7, fld=65535) -> ref(reference)
    8[28]: VarRef(var[20]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[20]:ref(boolean)["result"]
   11[40]: ConstText(_value="aa") -> text
@@ -32,7 +32,7 @@ byte-code for fill_result:fill(result: vector<text>[0]) [1074] -> vector<text>["
   18[28]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
   21[40]: VarRef(var[20]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_1[20]:ref(boolean)["result"]
   24[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=7, fld=65535)
-  29[28]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
+  29[28]: [4] VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
   32[40]: NewRecord(data: ref(reference), parent_tp=7, fld=65535) -> ref(reference)
   37[40]: VarRef(var[32]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[32]:ref(boolean)["result"]
   40[52]: ConstText(_value="bb") -> text
@@ -40,14 +40,14 @@ byte-code for fill_result:fill(result: vector<text>[0]) [1074] -> vector<text>["
   47[40]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
   50[52]: VarRef(var[32]) -> ref(reference) type=boolean[1]:Base[4] var=_elm_2[32]:ref(boolean)["result"]
   53[64]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=7, fld=65535)
-  58[40]: VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
+  58[40]: [5] VarVector(var[4]) -> vector type=vector<text>[4]:Vector(5)[7] var=result[4]:vector<text>["result"]
   61[52]: Return(ret=12, value=12, discard=52) type=vector<text>[4]:Vector(5)[7]
 
 fn test() {#block(1):void
   __ref_1(1):vector<text> = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [9] test_value(1):text = {#block(2):text
     t(2):vector<text>["__ref_1"] = fill(__ref_1(1));
     {#Formatted string(3):text
       __work_1(1):text = "";
@@ -55,7 +55,7 @@ fn test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "["aa","bb"]") null else OpPanic({#Formatted string(4):text
+  [10] if OpEqText(test_value(1), "["aa","bb"]") null else OpPanic({#Formatted string(4):text
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "["aa","bb"]"");
@@ -67,7 +67,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for fill_result:test() [1141]
+byte-code for fill_result:test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:vector<text>
    1[16]: Database(var[8], db_tp=14)
@@ -79,9 +79,9 @@ byte-code for fill_result:test() [1141]
   25[32]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
   30[16]: Text() var=__work_2[20]:text
   31[40]: Text() var=__work_1[44]:text
-  32[64]: Text() var=test_value[68]:text
+  32[64]: [9] Text() var=test_value[68]:text
   33[88]: VarVector(var[8]) -> vector type=vector<text>[4]:Vector(5)[7] var=__ref_1[8]:vector<text>
-  36[100]: Call(size=0, call=fill[1074])
+  36[100]: Call(size=0, call=fill[1115])
   43[100]: ClearText(var[44]) var=__work_1[44]:text
   46[100]: ConstText(_value="") -> text
   48[116]: AppendText(var[44], v1: text)
@@ -90,7 +90,7 @@ byte-code for fill_result:test() [1141]
   60[100]: VarText(var[44]) -> text var=__work_1[44]:text
   63[116]: FreeStack(value=16, discard=28)
   67[104]: AppendText(var[68], v1: text)
-  70[88]: VarText(var[68]) -> text var=test_value[68]:text
+  70[88]: [10] VarText(var[68]) -> text var=test_value[68]:text
   73[104]: ConstText(_value="["aa","bb"]") -> text
   86[120]: EqText(v1: text, v2: text) -> boolean
   87[89]: GotoFalseWord(jump=93, if_false: boolean)
@@ -122,28 +122,28 @@ Execute test:
    20:[32] ConstInt(val=4) -> 4[32]
    25:[36] SetByte(v1=ref(0,1,8)[20], fld=4, min=0, val=4[32])
    30:[20] Text()
-   31:[44] Text()
+   31:[44] [9] Text()
    32:[68] Text()
    33:[92] VarVector(var[8]) -> ref(1,1,4)=[][92]
-   36:[104] Call(size=0, call=fill[1074])
- 1074:[108] VarVector(var[92]) -> ref(1,1,4)=[][108]
- 1077:[120] NewRecord(data=ref(1,1,4)[108], parent_tp=7, fld=65535) -> ref(1,9,8)[108]
- 1082:[120] VarRef(var[108]) -> ref(1,9,8)=false[120]
- 1085:[132] ConstText(_value="aa") -> "aa"[132]
- 1089:[148] SetText(v1=ref(1,9,8)[120], fld=0, val="aa"[132])
- 1092:[120] VarVector(var[92]) -> ref(1,1,4)=["aa"][120]
- 1095:[132] VarRef(var[108]) -> ref(1,9,8)=true[132]
- 1098:[144] FinishRecord(data=ref(1,1,4)[120], rec=ref(1,9,8)[132], parent_tp=7, fld=65535)
- 1103:[120] VarVector(var[92]) -> ref(1,1,4)=["aa"][120]
- 1106:[132] NewRecord(data=ref(1,1,4)[120], parent_tp=7, fld=65535) -> ref(1,9,12)[120]
- 1111:[132] VarRef(var[120]) -> ref(1,9,12)=false[132]
- 1114:[144] ConstText(_value="bb") -> "bb"[144]
- 1118:[160] SetText(v1=ref(1,9,12)[132], fld=0, val="bb"[144])
- 1121:[132] VarVector(var[92]) -> ref(1,1,4)=["aa","bb"][132]
- 1124:[144] VarRef(var[120]) -> ref(1,9,12)=true[144]
- 1127:[156] FinishRecord(data=ref(1,1,4)[132], rec=ref(1,9,12)[144], parent_tp=7, fld=65535)
- 1132:[132] VarVector(var[92]) -> ref(1,1,4)=["aa","bb"][132]
- 1135:[144] Return(ret=1184[104], value=12, discard=52) -> ref(1,1,4)=["aa","bb"][92]
+   36:[104] Call(size=0, call=fill[1115])
+ 1115:[108] VarVector(var[92]) -> ref(1,1,4)=[][108]
+ 1118:[120] NewRecord(data=ref(1,1,4)[108], parent_tp=7, fld=65535) -> ref(1,9,8)[108]
+ 1123:[120] VarRef(var[108]) -> ref(1,9,8)=false[120]
+ 1126:[132] ConstText(_value="aa") -> "aa"[132]
+ 1130:[148] SetText(v1=ref(1,9,8)[120], fld=0, val="aa"[132])
+ 1133:[120] VarVector(var[92]) -> ref(1,1,4)=["aa"][120]
+ 1136:[132] VarRef(var[108]) -> ref(1,9,8)=true[132]
+ 1139:[144] FinishRecord(data=ref(1,1,4)[120], rec=ref(1,9,8)[132], parent_tp=7, fld=65535)
+ 1144:[120] VarVector(var[92]) -> ref(1,1,4)=["aa"][120]
+ 1147:[132] NewRecord(data=ref(1,1,4)[120], parent_tp=7, fld=65535) -> ref(1,9,12)[120]
+ 1152:[132] VarRef(var[120]) -> ref(1,9,12)=false[132]
+ 1155:[144] ConstText(_value="bb") -> "bb"[144]
+ 1159:[160] SetText(v1=ref(1,9,12)[132], fld=0, val="bb"[144])
+ 1162:[132] VarVector(var[92]) -> ref(1,1,4)=["aa","bb"][132]
+ 1165:[144] VarRef(var[120]) -> ref(1,9,12)=true[144]
+ 1168:[156] FinishRecord(data=ref(1,1,4)[132], rec=ref(1,9,12)[144], parent_tp=7, fld=65535)
+ 1173:[132] VarVector(var[92]) -> ref(1,1,4)=["aa","bb"][132]
+ 1176:[144] Return(ret=1225[104], value=12, discard=52) -> ref(1,1,4)=["aa","bb"][92]
    43:[104] ClearText(var[44])
    46:[104] ConstText(_value="") -> ""[104]
    48:[120] AppendText(var[44], v1=""[104])

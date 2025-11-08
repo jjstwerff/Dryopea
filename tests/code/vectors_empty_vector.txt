@@ -16,11 +16,11 @@ fn test() {#block(1):void
   __ref_1(1):ref(main_vector<integer>) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
-  test_value(1):text = {#block(2):text
+  [2] test_value(1):text = {#block(2):text
     OpDatabase(__ref_1(1), 18i32);
     a(2):vector<integer>["__ref_1"] = OpGetField(__ref_1(1), 4i32, 17i32);
     OpSetInt(__ref_1(1), 4i32, 0i32);
-    {#For block(3):void
+    [3] {#For block(3):void
       v#index(3):integer = OpConvIntFromNull();
       loop {#For loop_4
         v(4):integer = {#Iter range(5):integer
@@ -35,13 +35,13 @@ fn test() {#block(1):void
         }#block(6):void;
       }#For loop_4;
     }#For block(3):void;
-    {#Formatted string(7):text
+    [4] {#Formatted string(7):text
       __work_1(1):text = "";
       OpFormatDatabase(__work_1(1), a(2), 17i32, false);
       __work_1(1);
     }#Formatted string(7):text;
   }#block(2):text;
-  if OpEqText(test_value(1), "[10,20,30]") null else OpPanic({#Formatted string(8):text
+  [5] if OpEqText(test_value(1), "[10,20,30]") null else OpPanic({#Formatted string(8):text
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "[10,20,30]"");
@@ -53,19 +53,19 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for empty_vector:test() [1074]
+byte-code for empty_vector:test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:ref(main_vector<integer>)
    1[16]: Text() var=__work_2[20]:text
    2[40]: Text() var=__work_1[44]:text
-   3[64]: Text() var=test_value[68]:text
+   3[64]: [2] Text() var=test_value[68]:text
    4[88]: Database(var[8], db_tp=18) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[18]
    9[88]: VarRef(var[8]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[18] var=__ref_1[8]:ref(main_vector<integer>)
   12[100]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=vector<integer>[4]:Vector(0)[17]
   15[100]: VarRef(var[8]) -> ref(reference) type=main_vector<integer>[8]:{vector:vector<integer>[4]}[18] var=__ref_1[8]:ref(main_vector<integer>)
   18[112]: ConstInt(val=0) -> integer
   23[116]: SetInt(v1: ref(reference), fld=4, val: integer)
-  26[100]: ConvIntFromNull() -> integer var=v#index[104]:integer
+  26[100]: [3] ConvIntFromNull() -> integer var=v#index[104]:integer
   27[104]: VarInt(var[104]) -> integer var=v#index[104]:integer
   30[108]: ConvBoolFromInt(v1: integer) -> boolean
   31[105]: Not(v1: boolean) -> boolean
@@ -96,7 +96,7 @@ byte-code for empty_vector:test() [1074]
  111[108]: FreeStack(value=0, discard=4)
  115[104]: GotoWord(jump=27)
  118[104]: FreeStack(value=0, discard=4)
- 122[100]: ClearText(var[44]) var=__work_1[44]:text
+ 122[100]: [4] ClearText(var[44]) var=__work_1[44]:text
  125[100]: ConstText(_value="") -> text
  127[116]: AppendText(var[44], v1: text)
  130[100]: VarVector(var[92]) -> vector type=vector<integer>[4]:Vector(0)[17] var=a[92]:vector<integer>["__ref_1"]
@@ -104,7 +104,7 @@ byte-code for empty_vector:test() [1074]
  139[100]: VarText(var[44]) -> text var=__work_1[44]:text
  142[116]: FreeStack(value=16, discard=28)
  146[104]: AppendText(var[68], v1: text)
- 149[88]: VarText(var[68]) -> text var=test_value[68]:text
+ 149[88]: [5] VarText(var[68]) -> text var=test_value[68]:text
  152[104]: ConstText(_value="[10,20,30]") -> text
  164[120]: EqText(v1: text, v2: text) -> boolean
  165[89]: GotoFalseWord(jump=171, if_false: boolean)
@@ -129,7 +129,7 @@ byte-code for empty_vector:test() [1074]
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,0)[8]
     1:[20] Text()
-    2:[44] Text()
+    2:[44] [2] Text()
     3:[68] Text()
     4:[92] Database(var[8], db_tp=18)
     9:[92] VarRef(var[8]) -> ref(1,1,0)={}[92]

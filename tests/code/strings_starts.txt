@@ -7,10 +7,10 @@ pub fn test() {
 }
 fn test() {#block(1):void
   __work_1(1):text = "";
-  test_value(1):boolean = {#block(2):boolean
+  [2] test_value(1):boolean = {#block(2):boolean
     _tp_text_starts_with("something", "someone");
   }#block(2):boolean;
-  if OpEqBool(test_value(1), false) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqBool(test_value(1), false) null else OpPanic({#Formatted string(3):text
     __work_1(1):text = "Test failed ";
     OpFormatBool(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != false");
@@ -19,13 +19,13 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for starts:test() [1074]
+byte-code for starts:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[8]:text
-   1[28]: ConstText(_value="something") -> text var=test_value[32]:boolean
+   1[28]: [2] ConstText(_value="something") -> text var=test_value[32]:boolean
   12[44]: ConstText(_value="someone") -> text
   21[60]: StaticCall(_tp_text_starts_with)
-  24[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  24[29]: [3] VarBool(var[32]) -> boolean var=test_value[32]:boolean
   27[30]: ConstFalse() -> boolean
   28[31]: EqBool(v1: boolean, v2: boolean) -> boolean
   29[30]: GotoFalseWord(jump=35, if_false: boolean)
@@ -44,7 +44,7 @@ byte-code for starts:test() [1074]
   89[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
-    0:[8] Text()
+    0:[8] [2] Text()
     1:[32] ConstText(_value="something") -> "something"[32]
    12:[48] ConstText(_value="someone") -> "someone"[48]
    21:[64] StaticCall(_tp_text_starts_with)
