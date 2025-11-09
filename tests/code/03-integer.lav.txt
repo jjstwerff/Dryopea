@@ -3,32 +3,33 @@ fn main() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [5] v(1):integer = 4i32;
-  [6] if OpEqText({#Formatted string(2):text
+  [6] if OpEqText({#Formatted string(2):text["__work_1"]
     __work_1(1):text = "";
-    OpFormatInt(__work_1(1), v(1), 10i32, 0i32, 32i32, false, false);
+    OpFormatLong(__work_1(1), OpConvLongFromInt(v(1)), 10i32, 0i32, 32i32, false, false);
     __work_1(1);
-  }#Formatted string(2):text, "4") null else OpPanic("Convert numbers to text");
+  }#Formatted string(2):text["__work_1"], "4") null else OpPanic("Convert numbers to text");
   [7] if OpEqInt(OpCastIntFromText("123"), 123i32) null else OpPanic("Convert text to number");
   [10] if OpEqInt(OpAddInt(1i32, OpMulInt(2i32, 4i32)), 9i32) null else OpPanic("Integer calculus");
   [11] if OpEqInt(OpSLeftInt(OpAddInt(1i32, 2i32), 2i32), 12i32) null else OpPanic("Binary shift");
-  [12] if OpEqInt(OpRemInt(105i32, 100i32), 5i32) null else OpPanic("Modulus");
-  [13] if OpEqSingle(OpPowSingle(OpConvSingleFromInt(2i32), OpConvSingleFromInt(3i32)), OpConvSingleFromInt(8i32)) null else OpPanic("Power");
-  [16] if OpEqInt(OpAddInt(1i32, _tp_integer_abs(OpMinSingleInt(2i32))), 3i32) null else OpPanic("Absolute integer");
-  [19] a(1):integer = OpMulInt(2i32, 2i32);
-  [20] a(1):integer = OpMinInt(a(1), 4i32);
-  [21] if OpNot(OpConvBoolFromInt(OpDivInt(12i32, a(1)))) null else OpPanic("Null on division by zero");
-  [23] if OpEqText({#Formatted string(3):text
+  [12] if OpEqInt(OpLandInt(168i32, 15i32), 8i32) null else OpPanic("Binary and");
+  [13] if OpEqInt(OpRemInt(105i32, 100i32), 5i32) null else OpPanic("Modulus");
+  [14] if OpEqSingle(OpPowSingle(OpConvSingleFromInt(2i32), OpConvSingleFromInt(3i32)), OpConvSingleFromInt(8i32)) null else OpPanic("Power");
+  [17] if OpEqInt(OpAddInt(1i32, _tp_integer_abs(OpMinSingleInt(2i32))), 3i32) null else OpPanic("Absolute integer");
+  [20] a(1):integer = OpMulInt(2i32, 2i32);
+  [21] a(1):integer = OpMinInt(a(1), 4i32);
+  [22] if OpNot(OpConvBoolFromInt(OpDivInt(12i32, a(1)))) null else OpPanic("Null on division by zero");
+  [24] if OpEqText({#Formatted string(3):text["__work_2"]
     __work_2(1):text = "a";
-    OpFormatInt(__work_2(1), 12i32, 10i32, 0i32, 32i32, false, false);
+    OpFormatLong(__work_2(1), OpConvLongFromInt(12i32), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_2(1), "b");
     __work_2(1);
-  }#Formatted string(3):text, "a12b") null else OpPanic("Formatting problem");
-  [26] if OpEqText({#Formatted string(4):text
+  }#Formatted string(3):text["__work_2"], "a12b") null else OpPanic("Formatting problem");
+  [27] if OpEqText({#Formatted string(4):text["__work_3"]
     __work_3(1):text = "a";
-    OpFormatInt(__work_3(1), OpAddInt(1i32, OpMulInt(2i32, 3i32)), 16i32, 0i32, 32i32, false, true);
+    OpFormatLong(__work_3(1), OpConvLongFromInt(OpAddInt(1i32, OpMulInt(2i32, 3i32))), 16i32, 0i32, 32i32, false, true);
     OpAppendText(__work_3(1), "b");
     __work_3(1);
-  }#Formatted string(4):text, "a0x7b") null else OpPanic("Hex formatting");
+  }#Formatted string(4):text["__work_3"], "a0x7b") null else OpPanic("Hex formatting");
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
   OpFreeText(__work_3(1));
@@ -36,137 +37,149 @@ fn main() {#block(1):void
 
 byte-code for tests/suite/03-integer.lav:main()
    0[0]: return-address
-   0[4]: Text() var=__work_3[8]:text
-   1[28]: Text() var=__work_2[32]:text
-   2[52]: Text() var=__work_1[56]:text
-   3[76]: [5] ConstInt(val=4) -> integer var=v[80]:integer
-   8[80]: [6] ClearText(var[56]) var=__work_1[56]:text
+   0[4]: Text() var=__work_3[4]:text
+   1[28]: Text() var=__work_2[28]:text
+   2[52]: Text() var=__work_1[52]:text
+   3[76]: [5] ConstInt(val=4) -> integer var=v[76]:integer
+   8[80]: [6] ClearText(var[52]) var=__work_1[52]:text
   11[80]: ConstText(_value="") -> text
-  13[96]: AppendText(var[56], v1: text)
-  16[80]: VarInt(var[80]) -> integer var=v[80]:integer
-  19[84]: ConstInt(val=0) -> integer
-  24[88]: FormatInt(var[56], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  31[80]: VarText(var[56]) -> text var=__work_1[56]:text
-  34[96]: ConstText(_value="4") -> text
-  37[112]: EqText(v1: text, v2: text) -> boolean
-  38[81]: GotoFalseWord(jump=44, if_false: boolean)
-  41[80]: GotoWord(jump=70)
-  44[80]: ConstText(_value="Convert numbers to text") -> text
-  69[96]: Panic(message: text)
-  70[80]: [7] ConstText(_value="123") -> text
-  75[96]: CastIntFromText(v1: text) -> integer
-  76[84]: ConstInt(val=123) -> integer
-  81[88]: EqInt(v1: integer, v2: integer) -> boolean
-  82[81]: GotoFalseWord(jump=88, if_false: boolean)
-  85[80]: GotoWord(jump=113)
-  88[80]: ConstText(_value="Convert text to number") -> text
- 112[96]: Panic(message: text)
- 113[80]: [10] ConstInt(val=1) -> integer
- 118[84]: ConstInt(val=2) -> integer
- 123[88]: ConstInt(val=4) -> integer
- 128[92]: MulInt(v1: integer, v2: integer) -> integer
- 129[88]: AddInt(v1: integer, v2: integer) -> integer
- 130[84]: ConstInt(val=9) -> integer
- 135[88]: EqInt(v1: integer, v2: integer) -> boolean
- 136[81]: GotoFalseWord(jump=142, if_false: boolean)
- 139[80]: GotoWord(jump=161)
- 142[80]: ConstText(_value="Integer calculus") -> text
- 160[96]: Panic(message: text)
- 161[80]: [11] ConstInt(val=1) -> integer
- 166[84]: ConstInt(val=2) -> integer
- 171[88]: AddInt(v1: integer, v2: integer) -> integer
- 172[84]: ConstInt(val=2) -> integer
- 177[88]: SLeftInt(v1: integer, v2: integer) -> integer
- 178[84]: ConstInt(val=12) -> integer
- 183[88]: EqInt(v1: integer, v2: integer) -> boolean
- 184[81]: GotoFalseWord(jump=190, if_false: boolean)
- 187[80]: GotoWord(jump=205)
- 190[80]: ConstText(_value="Binary shift") -> text
- 204[96]: Panic(message: text)
- 205[80]: [12] ConstInt(val=105) -> integer
- 210[84]: ConstInt(val=100) -> integer
- 215[88]: RemInt(v1: integer, v2: integer) -> integer
- 216[84]: ConstInt(val=5) -> integer
- 221[88]: EqInt(v1: integer, v2: integer) -> boolean
- 222[81]: GotoFalseWord(jump=228, if_false: boolean)
- 225[80]: GotoWord(jump=238)
- 228[80]: ConstText(_value="Modulus") -> text
- 237[96]: Panic(message: text)
- 238[80]: [13] ConstInt(val=2) -> integer
- 243[84]: ConvSingleFromInt(v1: integer) -> single
- 244[84]: ConstInt(val=3) -> integer
- 249[88]: ConvSingleFromInt(v1: integer) -> single
- 250[88]: PowSingle(v1: single, v2: single) -> single
- 251[84]: ConstInt(val=8) -> integer
- 256[88]: ConvSingleFromInt(v1: integer) -> single
- 257[88]: EqSingle(v1: single, v2: single) -> boolean
- 258[81]: GotoFalseWord(jump=264, if_false: boolean)
- 261[80]: GotoWord(jump=272)
- 264[80]: ConstText(_value="Power") -> text
- 271[96]: Panic(message: text)
- 272[80]: [16] ConstInt(val=1) -> integer
- 277[84]: ConstInt(val=2) -> integer
- 282[88]: MinSingleInt(v1: integer) -> integer
- 283[88]: Call(size=0, call=trim[0])
- 290[88]: AddInt(v1: integer, v2: integer) -> integer
- 291[84]: ConstInt(val=3) -> integer
- 296[88]: EqInt(v1: integer, v2: integer) -> boolean
- 297[81]: GotoFalseWord(jump=303, if_false: boolean)
- 300[80]: GotoWord(jump=322)
- 303[80]: ConstText(_value="Absolute integer") -> text
- 321[96]: Panic(message: text)
- 322[80]: [19] ConstInt(val=2) -> integer var=a[84]:integer
- 327[84]: ConstInt(val=2) -> integer
- 332[88]: MulInt(v1: integer, v2: integer) -> integer
- 333[84]: [20] VarInt(var[84]) -> integer var=a[84]:integer
- 336[88]: ConstInt(val=4) -> integer
- 341[92]: MinInt(v1: integer, v2: integer) -> integer
- 342[88]: PutInt(var[84], value: integer)
- 345[84]: [21] ConstInt(val=12) -> integer
- 350[88]: VarInt(var[84]) -> integer var=a[84]:integer
- 353[92]: DivInt(v1: integer, v2: integer) -> integer
- 354[88]: ConvBoolFromInt(v1: integer) -> boolean
- 355[85]: Not(v1: boolean) -> boolean
- 356[85]: GotoFalseWord(jump=362, if_false: boolean)
- 359[84]: GotoWord(jump=389)
- 362[84]: ConstText(_value="Null on division by zero") -> text
- 388[100]: Panic(message: text)
- 389[84]: [23] ClearText(var[32]) var=__work_2[32]:text
- 392[84]: ConstText(_value="a") -> text
- 395[100]: AppendText(var[32], v1: text)
- 398[84]: ConstInt(val=12) -> integer
- 403[88]: ConstInt(val=0) -> integer
- 408[92]: FormatInt(var[32], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 415[84]: ConstText(_value="b") -> text
- 418[100]: AppendText(var[32], v1: text)
- 421[84]: VarText(var[32]) -> text var=__work_2[32]:text
- 424[100]: ConstText(_value="a12b") -> text
- 430[116]: EqText(v1: text, v2: text) -> boolean
- 431[85]: GotoFalseWord(jump=437, if_false: boolean)
- 434[84]: GotoWord(jump=458)
- 437[84]: ConstText(_value="Formatting problem") -> text
- 457[100]: Panic(message: text)
- 458[84]: [26] ClearText(var[8]) var=__work_3[8]:text
- 461[84]: ConstText(_value="a") -> text
- 464[100]: AppendText(var[8], v1: text)
- 467[84]: ConstInt(val=1) -> integer
- 472[88]: ConstInt(val=2) -> integer
- 477[92]: ConstInt(val=3) -> integer
- 482[96]: MulInt(v1: integer, v2: integer) -> integer
- 483[92]: AddInt(v1: integer, v2: integer) -> integer
- 484[88]: ConstInt(val=0) -> integer
- 489[92]: FormatInt(var[8], val: integer, radix=16, width: integer, token=32, plus=false, note=true)
- 496[84]: ConstText(_value="b") -> text
- 499[100]: AppendText(var[8], v1: text)
- 502[84]: VarText(var[8]) -> text var=__work_3[8]:text
- 505[100]: ConstText(_value="a0x7b") -> text
- 512[116]: EqText(v1: text, v2: text) -> boolean
- 513[85]: GotoFalseWord(jump=519, if_false: boolean)
- 516[84]: GotoWord(jump=536)
- 519[84]: ConstText(_value="Hex formatting") -> text
- 535[100]: Panic(message: text)
- 536[84]: FreeText(var[56])
- 539[84]: FreeText(var[32])
- 542[84]: FreeText(var[8])
- 545[84]: Return(ret=0, value=0, discard=84)
+  13[96]: VarInt(var[76]) -> integer var=v[76]:integer
+  16[100]: ConvLongFromInt(v1: integer) -> long
+  17[104]: ConstInt(val=0) -> integer
+  22[108]: FormatLong(var[52], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  29[96]: VarText(var[52]) -> text var=__work_1[52]:text
+  32[112]: FreeStack(value=16, discard=32)
+  36[96]: ConstText(_value="4") -> text
+  39[112]: EqText(v1: text, v2: text) -> boolean
+  40[81]: GotoFalseWord(jump=46, if_false: boolean)
+  43[80]: GotoWord(jump=72)
+  46[80]: ConstText(_value="Convert numbers to text") -> text
+  71[96]: Panic(message: text)
+  72[80]: [7] ConstText(_value="123") -> text
+  77[96]: CastIntFromText(v1: text) -> integer
+  78[84]: ConstInt(val=123) -> integer
+  83[88]: EqInt(v1: integer, v2: integer) -> boolean
+  84[81]: GotoFalseWord(jump=90, if_false: boolean)
+  87[80]: GotoWord(jump=115)
+  90[80]: ConstText(_value="Convert text to number") -> text
+ 114[96]: Panic(message: text)
+ 115[80]: [10] ConstInt(val=1) -> integer
+ 120[84]: ConstInt(val=2) -> integer
+ 125[88]: ConstInt(val=4) -> integer
+ 130[92]: MulInt(v1: integer, v2: integer) -> integer
+ 131[88]: AddInt(v1: integer, v2: integer) -> integer
+ 132[84]: ConstInt(val=9) -> integer
+ 137[88]: EqInt(v1: integer, v2: integer) -> boolean
+ 138[81]: GotoFalseWord(jump=144, if_false: boolean)
+ 141[80]: GotoWord(jump=163)
+ 144[80]: ConstText(_value="Integer calculus") -> text
+ 162[96]: Panic(message: text)
+ 163[80]: [11] ConstInt(val=1) -> integer
+ 168[84]: ConstInt(val=2) -> integer
+ 173[88]: AddInt(v1: integer, v2: integer) -> integer
+ 174[84]: ConstInt(val=2) -> integer
+ 179[88]: SLeftInt(v1: integer, v2: integer) -> integer
+ 180[84]: ConstInt(val=12) -> integer
+ 185[88]: EqInt(v1: integer, v2: integer) -> boolean
+ 186[81]: GotoFalseWord(jump=192, if_false: boolean)
+ 189[80]: GotoWord(jump=207)
+ 192[80]: ConstText(_value="Binary shift") -> text
+ 206[96]: Panic(message: text)
+ 207[80]: [12] ConstInt(val=168) -> integer
+ 212[84]: ConstInt(val=15) -> integer
+ 217[88]: LandInt(v1: integer, v2: integer) -> integer
+ 218[84]: ConstInt(val=8) -> integer
+ 223[88]: EqInt(v1: integer, v2: integer) -> boolean
+ 224[81]: GotoFalseWord(jump=230, if_false: boolean)
+ 227[80]: GotoWord(jump=243)
+ 230[80]: ConstText(_value="Binary and") -> text
+ 242[96]: Panic(message: text)
+ 243[80]: [13] ConstInt(val=105) -> integer
+ 248[84]: ConstInt(val=100) -> integer
+ 253[88]: RemInt(v1: integer, v2: integer) -> integer
+ 254[84]: ConstInt(val=5) -> integer
+ 259[88]: EqInt(v1: integer, v2: integer) -> boolean
+ 260[81]: GotoFalseWord(jump=266, if_false: boolean)
+ 263[80]: GotoWord(jump=276)
+ 266[80]: ConstText(_value="Modulus") -> text
+ 275[96]: Panic(message: text)
+ 276[80]: [14] ConstInt(val=2) -> integer
+ 281[84]: ConvSingleFromInt(v1: integer) -> single
+ 282[84]: ConstInt(val=3) -> integer
+ 287[88]: ConvSingleFromInt(v1: integer) -> single
+ 288[88]: PowSingle(v1: single, v2: single) -> single
+ 289[84]: ConstInt(val=8) -> integer
+ 294[88]: ConvSingleFromInt(v1: integer) -> single
+ 295[88]: EqSingle(v1: single, v2: single) -> boolean
+ 296[81]: GotoFalseWord(jump=302, if_false: boolean)
+ 299[80]: GotoWord(jump=310)
+ 302[80]: ConstText(_value="Power") -> text
+ 309[96]: Panic(message: text)
+ 310[80]: [17] ConstInt(val=1) -> integer
+ 315[84]: ConstInt(val=2) -> integer
+ 320[88]: MinSingleInt(v1: integer) -> integer
+ 321[88]: Call(size=0, fn=trim)
+ 328[88]: AddInt(v1: integer, v2: integer) -> integer
+ 329[84]: ConstInt(val=3) -> integer
+ 334[88]: EqInt(v1: integer, v2: integer) -> boolean
+ 335[81]: GotoFalseWord(jump=341, if_false: boolean)
+ 338[80]: GotoWord(jump=360)
+ 341[80]: ConstText(_value="Absolute integer") -> text
+ 359[96]: Panic(message: text)
+ 360[80]: [20] ConstInt(val=2) -> integer var=a[80]:integer
+ 365[84]: ConstInt(val=2) -> integer
+ 370[88]: MulInt(v1: integer, v2: integer) -> integer
+ 371[84]: [21] VarInt(var[80]) -> integer var=a[80]:integer
+ 374[88]: ConstInt(val=4) -> integer
+ 379[92]: MinInt(v1: integer, v2: integer) -> integer
+ 380[88]: PutInt(var[80], value: integer)
+ 383[84]: [22] ConstInt(val=12) -> integer
+ 388[88]: VarInt(var[80]) -> integer var=a[80]:integer
+ 391[92]: DivInt(v1: integer, v2: integer) -> integer
+ 392[88]: ConvBoolFromInt(v1: integer) -> boolean
+ 393[85]: Not(v1: boolean) -> boolean
+ 394[85]: GotoFalseWord(jump=400, if_false: boolean)
+ 397[84]: GotoWord(jump=427)
+ 400[84]: ConstText(_value="Null on division by zero") -> text
+ 426[100]: Panic(message: text)
+ 427[84]: [24] ClearText(var[28]) var=__work_2[28]:text
+ 430[84]: ConstText(_value="a") -> text
+ 433[100]: AppendText(var[28], v1: text)
+ 436[84]: ConstInt(val=12) -> integer
+ 441[88]: ConvLongFromInt(v1: integer) -> long
+ 442[92]: ConstInt(val=0) -> integer
+ 447[96]: FormatLong(var[28], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 454[84]: ConstText(_value="b") -> text
+ 457[100]: AppendText(var[28], v1: text)
+ 460[84]: VarText(var[28]) -> text var=__work_2[28]:text
+ 463[100]: ConstText(_value="a12b") -> text
+ 469[116]: EqText(v1: text, v2: text) -> boolean
+ 470[85]: GotoFalseWord(jump=476, if_false: boolean)
+ 473[84]: GotoWord(jump=497)
+ 476[84]: ConstText(_value="Formatting problem") -> text
+ 496[100]: Panic(message: text)
+ 497[84]: [27] ClearText(var[4]) var=__work_3[4]:text
+ 500[84]: ConstText(_value="a") -> text
+ 503[100]: AppendText(var[4], v1: text)
+ 506[84]: ConstInt(val=1) -> integer
+ 511[88]: ConstInt(val=2) -> integer
+ 516[92]: ConstInt(val=3) -> integer
+ 521[96]: MulInt(v1: integer, v2: integer) -> integer
+ 522[92]: AddInt(v1: integer, v2: integer) -> integer
+ 523[88]: ConvLongFromInt(v1: integer) -> long
+ 524[92]: ConstInt(val=0) -> integer
+ 529[96]: FormatLong(var[4], val: long, radix=16, width: integer, token=32, plus=false, note=true)
+ 536[84]: ConstText(_value="b") -> text
+ 539[100]: AppendText(var[4], v1: text)
+ 542[84]: VarText(var[4]) -> text var=__work_3[4]:text
+ 545[100]: ConstText(_value="a0x7b") -> text
+ 552[116]: EqText(v1: text, v2: text) -> boolean
+ 553[85]: GotoFalseWord(jump=559, if_false: boolean)
+ 556[84]: GotoWord(jump=576)
+ 559[84]: ConstText(_value="Hex formatting") -> text
+ 575[100]: Panic(message: text)
+ 576[84]: FreeText(var[52])
+ 579[84]: FreeText(var[28])
+ 582[84]: FreeText(var[4])
+ 585[84]: Return(ret=0, value=0, discard=84)
 

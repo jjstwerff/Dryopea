@@ -15,11 +15,11 @@ fn add(a:&integer, b:integer, c:integer) {#block(1):void
 
 byte-code for reference:add(a: &integer[0], b: integer[12], c: integer[16])
    0[20]: return-address
-   0[24]: [2] VarRef(var[4]) -> ref(reference) var=a[4]:&integer
-   3[36]: VarRef(var[4]) -> ref(reference) var=a[4]:&integer
+   0[24]: [2] VarRef(var[0]) -> ref(reference) var=a[0]:&integer
+   3[36]: VarRef(var[0]) -> ref(reference) var=a[0]:&integer
    6[48]: GetInt(v1: ref(reference), fld=0) -> integer
-   9[40]: VarInt(var[16]) -> integer var=b[16]:integer
-  12[44]: VarInt(var[20]) -> integer var=c[20]:integer
+   9[40]: VarInt(var[12]) -> integer var=b[12]:integer
+  12[44]: VarInt(var[16]) -> integer var=c[16]:integer
   15[48]: AddInt(v1: integer, v2: integer) -> integer
   16[44]: AddInt(v1: integer, v2: integer) -> integer
   17[40]: SetInt(v1: ref(reference), fld=0, val: integer)
@@ -33,46 +33,47 @@ fn test() {#block(1):void
     add(OpCreateRef(v(2)), 4i32, 1i32);
     v(2);
   }#block(2):integer;
-  [7] if OpEqInt(test_value(1), 8i32) null else OpPanic({#Formatted string(3):text
+  [7] if OpEqInt(test_value(1), 8i32) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
-    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 8");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for reference:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [6] ConstInt(val=1) -> integer var=v[32]:integer
-   6[32]: CreateRef(var[32]) -> ref(reference)
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [6] ConstInt(val=1) -> integer var=v[28]:integer
+   6[32]: CreateRef(var[28]) -> ref(reference)
    9[44]: ConstInt(val=2) -> integer
   14[48]: ConstInt(val=0) -> integer
-  19[52]: Call(size=0, call=add[1115])
-  26[32]: CreateRef(var[32]) -> ref(reference)
+  19[52]: Call(size=0, fn=add)
+  26[32]: CreateRef(var[28]) -> ref(reference)
   29[44]: ConstInt(val=4) -> integer
   34[48]: ConstInt(val=1) -> integer
-  39[52]: Call(size=0, call=add[1115])
-  46[32]: VarInt(var[32]) -> integer var=v[32]:integer
+  39[52]: Call(size=0, fn=add)
+  46[32]: VarInt(var[28]) -> integer var=v[28]:integer
   49[36]: FreeStack(value=4, discard=8)
-  53[32]: [7] VarInt(var[32]) -> integer var=test_value[32]:integer
+  53[32]: [7] VarInt(var[28]) -> integer var=test_value[28]:integer
   56[36]: ConstInt(val=8) -> integer
   61[40]: EqInt(v1: integer, v2: integer) -> boolean
   62[33]: GotoFalseWord(jump=68, if_false: boolean)
-  65[32]: GotoWord(jump=117)
-  68[32]: ClearText(var[8]) var=__work_1[8]:text
+  65[32]: GotoWord(jump=118)
+  68[32]: ClearText(var[4]) var=__work_1[4]:text
   71[32]: ConstText(_value="Test failed ") -> text
-  85[48]: AppendText(var[8], v1: text)
-  88[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  91[36]: ConstInt(val=0) -> integer
-  96[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
- 103[32]: ConstText(_value=" != 8") -> text
- 110[48]: AppendText(var[8], v1: text)
- 113[32]: VarText(var[8]) -> text var=__work_1[8]:text
- 116[48]: Panic(message: text)
- 117[32]: FreeText(var[8])
- 120[32]: Return(ret=0, value=0, discard=32)
+  85[48]: AppendText(var[4], v1: text)
+  88[32]: VarInt(var[28]) -> integer var=test_value[28]:integer
+  91[36]: ConvLongFromInt(v1: integer) -> long
+  92[40]: ConstInt(val=0) -> integer
+  97[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 104[32]: ConstText(_value=" != 8") -> text
+ 111[48]: AppendText(var[4], v1: text)
+ 114[32]: VarText(var[4]) -> text var=__work_1[4]:text
+ 117[48]: Panic(message: text)
+ 118[32]: FreeText(var[4])
+ 121[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] [6] Text()
@@ -80,36 +81,36 @@ Execute test:
     6:[36] CreateRef(var[32]) -> ref(0,1,32)[36]
     9:[48] ConstInt(val=2) -> 2[48]
    14:[52] ConstInt(val=0) -> 0[52]
-   19:[56] Call(size=0, call=add[1115])
- 1115:[60] VarRef(var[36]) -> ref(0,1,32)[60]
- 1118:[72] VarRef(var[36]) -> ref(0,1,32)[72]
- 1121:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 1[72]
- 1124:[76] VarInt(var[48]) -> 2[76]
- 1127:[80] VarInt(var[52]) -> 0[80]
- 1130:[84] AddInt(v1=2[76], v2=0[80]) -> 2[76]
- 1131:[80] AddInt(v1=1[72], v2=2[76]) -> 3[72]
- 1132:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=3[72])
- 1135:[60] Return(ret=1167[56], value=0, discard=24)
+   19:[56] Call(size=0, fn=add)
+ 1103:[60] VarRef(var[36]) -> ref(0,1,32)[60]
+ 1106:[72] VarRef(var[36]) -> ref(0,1,32)[72]
+ 1109:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 1[72]
+ 1112:[76] VarInt(var[48]) -> 2[76]
+ 1115:[80] VarInt(var[52]) -> 0[80]
+ 1118:[84] AddInt(v1=2[76], v2=0[80]) -> 2[76]
+ 1119:[80] AddInt(v1=1[72], v2=2[76]) -> 3[72]
+ 1120:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=3[72])
+ 1123:[60] Return(ret=1155[56], value=0, discard=24)
    26:[36] CreateRef(var[32]) -> ref(0,1,32)[36]
    29:[48] ConstInt(val=4) -> 4[48]
    34:[52] ConstInt(val=1) -> 1[52]
-   39:[56] Call(size=0, call=add[1115])
- 1115:[60] VarRef(var[36]) -> ref(0,1,32)[60]
- 1118:[72] VarRef(var[36]) -> ref(0,1,32)[72]
- 1121:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 3[72]
- 1124:[76] VarInt(var[48]) -> 4[76]
- 1127:[80] VarInt(var[52]) -> 1[80]
- 1130:[84] AddInt(v1=4[76], v2=1[80]) -> 5[76]
- 1131:[80] AddInt(v1=3[72], v2=5[76]) -> 8[72]
- 1132:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=8[72])
- 1135:[60] Return(ret=1187[56], value=0, discard=24)
+   39:[56] Call(size=0, fn=add)
+ 1103:[60] VarRef(var[36]) -> ref(0,1,32)[60]
+ 1106:[72] VarRef(var[36]) -> ref(0,1,32)[72]
+ 1109:[84] GetInt(v1=ref(0,1,32)[72], fld=0) -> 3[72]
+ 1112:[76] VarInt(var[48]) -> 4[76]
+ 1115:[80] VarInt(var[52]) -> 1[80]
+ 1118:[84] AddInt(v1=4[76], v2=1[80]) -> 5[76]
+ 1119:[80] AddInt(v1=3[72], v2=5[76]) -> 8[72]
+ 1120:[76] SetInt(v1=ref(0,1,32)[60], fld=0, val=8[72])
+ 1123:[60] Return(ret=1175[56], value=0, discard=24)
    46:[36] VarInt(var[32]) -> 8[36]
    49:[40] FreeStack(value=4, discard=8)
    53:[36] VarInt(var[32]) -> 8[36]
    56:[40] ConstInt(val=8) -> 8[40]
    61:[44] EqInt(v1=8[36], v2=8[40]) -> true[36]
    62:[37] GotoFalseWord(jump=68, if_false=true[36])
-   65:[36] GotoWord(jump=117)
-  117:[36] FreeText(var[8])
-  120:[36] Return(ret=4294967295[4], value=0, discard=32)
+   65:[36] GotoWord(jump=118)
+  118:[36] FreeText(var[8])
+  121:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

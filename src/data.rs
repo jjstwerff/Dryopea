@@ -1421,7 +1421,7 @@ impl Data {
                 self.show_code(write, vars, ex, indent, false)
             }
             Value::Insert(i) => {
-                write!(write, "insert: {{")?;
+                writeln!(write, "{{ !! INSERT")?;
                 for v in i {
                     self.show_code(write, vars, v, indent + 1, true)?;
                     writeln!(write)?;

@@ -47,6 +47,9 @@ fn OpConstTrue() -> boolean;
 fn OpConstFalse() -> boolean;
 #rust "false"
 
+fn OpCastTextFromBool(v1: boolean) -> text;
+#rust "if @v1 {{\"true\"}} else {{\"false\"}}"
+
 fn OpVarBool(pos: const u16) -> boolean;
 #rust "*s.get_var::<bool>(@pos)"
 
@@ -55,8 +58,6 @@ fn OpPutBool(var: const u16, value: boolean);
 
 fn OpNot(v1: boolean) -> boolean;
 #rust "!@v1"
-
-fn OpFormatBool(pos: const u16, val: boolean, width: integer, dir: const i8, token: const u8);
 
 // Integer operations
 fn OpConstInt(val: const integer) -> integer;
@@ -168,8 +169,6 @@ fn OpGtInt(v1: integer, v2: integer) -> boolean;
 fn OpGeInt(v1: integer, v2: integer) -> boolean;
 #rust "@v1 >= @v2"
 
-fn OpFormatInt(pos: const u16, val: integer, radix: const u8, width: integer, token: const u8, plus: const boolean, note: const boolean);
-
 // Long operations
 fn OpConstLong(val: const long) -> long;
 #rust "@val"
@@ -248,6 +247,7 @@ fn OpGeLong(v1: long, v2: long) -> boolean;
 #rust "@v1 >= @v2"
 
 fn OpFormatLong(pos: const u16, val: long, radix: const u8, width: integer, token: const u8, plus: const boolean, note: const boolean);
+fn OpFormatRefLong(pos: const u16, val: long, radix: const u8, width: integer, token: const u8, plus: const boolean, note: const boolean);
 
 // Single operations
 fn OpConstSingle(val: const single) -> single;
@@ -367,6 +367,7 @@ fn OpGeSingle(v1: single, v2: single) -> boolean;
 #rust "@v1 >= @v2"
 
 fn OpFormatSingle(pos: const u16, val: single, width: integer, precision: integer);
+fn OpFormatRefSingle(pos: const u16, val: single, width: integer, precision: integer);
 
 // float operations
 fn OpConstFloat(val: const float) -> float;
@@ -494,6 +495,7 @@ fn OpGeFloat(v1: float, v2: float) -> boolean;
 #rust "@v1 >= @v2"
 
 fn OpFormatFloat(pos: const u16, val: float, width: integer, precision: integer);
+fn OpFormatRefFloat(pos: const u16, val: float, width: integer, precision: integer);
 
 // Text operations
 
@@ -532,6 +534,7 @@ fn OpGtText(v1: text, v2: text) -> boolean;
 fn OpGeText(v1: text, v2: text) -> boolean;
 #rust "@v1 >= @v2"
 fn OpFormatText(pos: const u16, val: text, width: integer, dir: const i8, token: const u8);
+fn OpFormatRefText(pos: const u16, val: text, width: integer, dir: const i8, token: const u8);
 
 fn OpAppendCharacter(pos: const u16, v1: character);
 fn OpTextCompare(v1: text, v2: character) -> i32;
@@ -567,6 +570,7 @@ type reference;
 
 fn OpDatabase(pos: const u16, db_tp: const u16);
 fn OpFormatDatabase(pos: const u16, val: reference, db_tp: const u16, pretty: const boolean);
+fn OpFormatRefDatabase(pos: const u16, val: reference, db_tp: const u16, pretty: const boolean);
 fn OpConvBoolFromRef(val: reference) -> boolean;
 #rust "@val.rec != 0"
 fn OpConvRefFromNull() -> reference;
@@ -739,8 +743,9 @@ type iterator;
 
 fn OpStaticCall(call: const u16);
 fn OpCreateRef(pos: const u16) -> reference;
-fn OpGetRefText(r: reference, fld: const u16) -> text[r];
-fn OpGetDbRef(r: reference, fld: const u16) -> reference;
-fn OpSetDbRef(r: reference, fld: const u16, v1: reference);
-fn OpAppendRefText(r: reference, fld: const u16, v1: text);
-fn OpClearRefText(r: reference);
+fn OpGetRefText(r: reference) -> text[r];
+fn OpGetDbRef(r: reference) -> reference;
+fn OpSetDbRef(r: reference, xv1: reference);
+fn OpAppendRefText(pos: const u16, v1: text);
+fn OpAppendRefCharacter(pos: const u16, v1: character);
+fn OpClearRefText(pos: const u16);

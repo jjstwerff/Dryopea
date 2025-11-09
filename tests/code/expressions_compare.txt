@@ -20,7 +20,7 @@ fn count(v:T) -> integer {#block(1):integer
 
 byte-code for compare:count(v: T[0]) -> integer
    0[1]: return-address
-   0[5]: [2] VarEnum(var[4]) -> boolean type=T[1]:Enum(["A", "C", "B"])[17] var=v[4]:T
+   0[5]: [2] VarEnum(var[0]) -> boolean type=T[1]:Enum(["A", "C", "B"])[17] var=v[0]:T
    3[6]: ConvIntFromEnum(v1: boolean) -> integer
    4[9]: ConstEnum(val=2) -> boolean type=T[1]:Enum(["A", "C", "B"])[17]
    6[10]: ConvIntFromEnum(v1: boolean) -> integer
@@ -36,85 +36,86 @@ fn test() {#block(1):void
   [5] test_value(1):integer = {#block(2):integer
     OpAddInt(OpAddInt(count(1u8(17)), count(3u8(17))), count(3u8(17)));
   }#block(2):integer;
-  [6] if OpEqInt(test_value(1), 5i32) null else OpPanic({#Formatted string(3):text
+  [6] if OpEqInt(test_value(1), 5i32) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
-    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 5");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for compare:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [5] ConstEnum(val=1) -> boolean type=T[1]:Enum(["A", "C", "B"])[17] var=test_value[32]:integer
-   3[29]: Call(size=0, call=count[1115])
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [5] ConstEnum(val=1) -> boolean type=T[1]:Enum(["A", "C", "B"])[17] var=test_value[28]:integer
+   3[29]: Call(size=0, fn=count)
   10[32]: ConstEnum(val=3) -> boolean type=T[1]:Enum(["A", "C", "B"])[17]
-  12[33]: Call(size=0, call=count[1115])
+  12[33]: Call(size=0, fn=count)
   19[36]: AddInt(v1: integer, v2: integer) -> integer
   20[32]: ConstEnum(val=3) -> boolean type=T[1]:Enum(["A", "C", "B"])[17]
-  22[33]: Call(size=0, call=count[1115])
+  22[33]: Call(size=0, fn=count)
   29[36]: AddInt(v1: integer, v2: integer) -> integer
-  30[32]: [6] VarInt(var[32]) -> integer var=test_value[32]:integer
+  30[32]: [6] VarInt(var[28]) -> integer var=test_value[28]:integer
   33[36]: ConstInt(val=5) -> integer
   38[40]: EqInt(v1: integer, v2: integer) -> boolean
   39[33]: GotoFalseWord(jump=45, if_false: boolean)
-  42[32]: GotoWord(jump=94)
-  45[32]: ClearText(var[8]) var=__work_1[8]:text
+  42[32]: GotoWord(jump=95)
+  45[32]: ClearText(var[4]) var=__work_1[4]:text
   48[32]: ConstText(_value="Test failed ") -> text
-  62[48]: AppendText(var[8], v1: text)
-  65[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  68[36]: ConstInt(val=0) -> integer
-  73[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  80[32]: ConstText(_value=" != 5") -> text
-  87[48]: AppendText(var[8], v1: text)
-  90[32]: VarText(var[8]) -> text var=__work_1[8]:text
-  93[48]: Panic(message: text)
-  94[32]: FreeText(var[8])
-  97[32]: Return(ret=0, value=0, discard=32)
+  62[48]: AppendText(var[4], v1: text)
+  65[32]: VarInt(var[28]) -> integer var=test_value[28]:integer
+  68[36]: ConvLongFromInt(v1: integer) -> long
+  69[40]: ConstInt(val=0) -> integer
+  74[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  81[32]: ConstText(_value=" != 5") -> text
+  88[48]: AppendText(var[4], v1: text)
+  91[32]: VarText(var[4]) -> text var=__work_1[4]:text
+  94[48]: Panic(message: text)
+  95[32]: FreeText(var[4])
+  98[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] [5] Text()
     1:[32] ConstEnum(val=1) -> A(1)[32]
-    3:[33] Call(size=0, call=count[1115])
- 1115:[37] VarEnum(var[32]) -> A(1)[37]
- 1118:[38] ConvIntFromEnum(v1=1[37]) -> 1[37]
- 1119:[41] ConstEnum(val=2) -> C(2)[41]
- 1121:[42] ConvIntFromEnum(v1=2[41]) -> 2[41]
- 1122:[45] GtInt(v1=1[37], v2=2[41]) -> false[37]
- 1123:[38] GotoFalseWord(jump=1134, if_false=false[37])
- 1134:[37] ConstInt(val=1) -> 1[37]
- 1139:[41] Return(ret=1155[33], value=4, discard=9) -> 1[32]
+    3:[33] Call(size=0, fn=count)
+ 1103:[37] VarEnum(var[32]) -> A(1)[37]
+ 1106:[38] ConvIntFromEnum(v1=1[37]) -> 1[37]
+ 1107:[41] ConstEnum(val=2) -> C(2)[41]
+ 1109:[42] ConvIntFromEnum(v1=2[41]) -> 2[41]
+ 1110:[45] GtInt(v1=1[37], v2=2[41]) -> false[37]
+ 1111:[38] GotoFalseWord(jump=1122, if_false=false[37])
+ 1122:[37] ConstInt(val=1) -> 1[37]
+ 1127:[41] Return(ret=1143[33], value=4, discard=9) -> 1[32]
    10:[36] ConstEnum(val=3) -> B(3)[36]
-   12:[37] Call(size=0, call=count[1115])
- 1115:[41] VarEnum(var[36]) -> B(3)[41]
- 1118:[42] ConvIntFromEnum(v1=3[41]) -> 3[41]
- 1119:[45] ConstEnum(val=2) -> C(2)[45]
- 1121:[46] ConvIntFromEnum(v1=2[45]) -> 2[45]
- 1122:[49] GtInt(v1=3[41], v2=2[45]) -> true[41]
- 1123:[42] GotoFalseWord(jump=1134, if_false=true[41])
- 1126:[41] ConstInt(val=2) -> 2[41]
- 1131:[45] GotoWord(jump=1139)
- 1139:[45] Return(ret=1164[37], value=4, discard=9) -> 2[36]
+   12:[37] Call(size=0, fn=count)
+ 1103:[41] VarEnum(var[36]) -> B(3)[41]
+ 1106:[42] ConvIntFromEnum(v1=3[41]) -> 3[41]
+ 1107:[45] ConstEnum(val=2) -> C(2)[45]
+ 1109:[46] ConvIntFromEnum(v1=2[45]) -> 2[45]
+ 1110:[49] GtInt(v1=3[41], v2=2[45]) -> true[41]
+ 1111:[42] GotoFalseWord(jump=1122, if_false=true[41])
+ 1114:[41] ConstInt(val=2) -> 2[41]
+ 1119:[45] GotoWord(jump=1127)
+ 1127:[45] Return(ret=1152[37], value=4, discard=9) -> 2[36]
    19:[40] AddInt(v1=1[32], v2=2[36]) -> 3[32]
    20:[36] ConstEnum(val=3) -> B(3)[36]
-   22:[37] Call(size=0, call=count[1115])
- 1115:[41] VarEnum(var[36]) -> B(3)[41]
- 1118:[42] ConvIntFromEnum(v1=3[41]) -> 3[41]
- 1119:[45] ConstEnum(val=2) -> C(2)[45]
- 1121:[46] ConvIntFromEnum(v1=2[45]) -> 2[45]
- 1122:[49] GtInt(v1=3[41], v2=2[45]) -> true[41]
- 1123:[42] GotoFalseWord(jump=1134, if_false=true[41])
- 1126:[41] ConstInt(val=2) -> 2[41]
- 1131:[45] GotoWord(jump=1139)
- 1139:[45] Return(ret=1174[37], value=4, discard=9) -> 2[36]
+   22:[37] Call(size=0, fn=count)
+ 1103:[41] VarEnum(var[36]) -> B(3)[41]
+ 1106:[42] ConvIntFromEnum(v1=3[41]) -> 3[41]
+ 1107:[45] ConstEnum(val=2) -> C(2)[45]
+ 1109:[46] ConvIntFromEnum(v1=2[45]) -> 2[45]
+ 1110:[49] GtInt(v1=3[41], v2=2[45]) -> true[41]
+ 1111:[42] GotoFalseWord(jump=1122, if_false=true[41])
+ 1114:[41] ConstInt(val=2) -> 2[41]
+ 1119:[45] GotoWord(jump=1127)
+ 1127:[45] Return(ret=1162[37], value=4, discard=9) -> 2[36]
    29:[40] [6] AddInt(v1=3[32], v2=2[36]) -> 5[32]
    30:[36] VarInt(var[32]) -> 5[36]
    33:[40] ConstInt(val=5) -> 5[40]
    38:[44] EqInt(v1=5[36], v2=5[40]) -> true[36]
    39:[37] GotoFalseWord(jump=45, if_false=true[36])
-   42:[36] GotoWord(jump=94)
-   94:[36] FreeText(var[8])
-   97:[36] Return(ret=4294967295[4], value=0, discard=32)
+   42:[36] GotoWord(jump=95)
+   95:[36] FreeText(var[8])
+   98:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

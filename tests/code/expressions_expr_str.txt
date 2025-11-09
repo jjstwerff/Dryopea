@@ -10,39 +10,39 @@ fn test() {#block(1):void
   [2] test_value(1):text = {#block(2):text
     "1.1";
   }#block(2):text;
-  [3] if OpEqText(test_value(1), "1.1") null else OpPanic({#Formatted string(3):text
+  [3] if OpEqText(test_value(1), "1.1") null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != "1.1"");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(test_value(1));
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for expr_str:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] Text() var=test_value[32]:text
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] Text() var=test_value[28]:text
    2[52]: ConstText(_value="1.1") -> text
-   7[68]: AppendText(var[32], v1: text)
-  10[52]: [3] VarText(var[32]) -> text var=test_value[32]:text
+   7[68]: AppendText(var[28], v1: text)
+  10[52]: [3] VarText(var[28]) -> text var=test_value[28]:text
   13[68]: ConstText(_value="1.1") -> text
   18[84]: EqText(v1: text, v2: text) -> boolean
   19[53]: GotoFalseWord(jump=25, if_false: boolean)
   22[52]: GotoWord(jump=76)
-  25[52]: ClearText(var[8]) var=__work_1[8]:text
+  25[52]: ClearText(var[4]) var=__work_1[4]:text
   28[52]: ConstText(_value="Test failed ") -> text
-  42[68]: AppendText(var[8], v1: text)
-  45[52]: VarText(var[32]) -> text var=test_value[32]:text
+  42[68]: AppendText(var[4], v1: text)
+  45[52]: VarText(var[28]) -> text var=test_value[28]:text
   48[68]: ConstInt(val=0) -> integer
-  53[72]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+  53[72]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
   58[52]: ConstText(_value=" != "1.1"") -> text
-  69[68]: AppendText(var[8], v1: text)
-  72[52]: VarText(var[8]) -> text var=__work_1[8]:text
+  69[68]: AppendText(var[4], v1: text)
+  72[52]: VarText(var[4]) -> text var=__work_1[4]:text
   75[68]: Panic(message: text)
-  76[52]: FreeText(var[32])
-  79[52]: FreeText(var[8])
+  76[52]: FreeText(var[28])
+  79[52]: FreeText(var[4])
   82[52]: Return(ret=0, value=0, discard=52)
 
 Execute test:

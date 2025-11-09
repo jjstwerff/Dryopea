@@ -10,43 +10,43 @@ fn test() {#block(1):void
   [2] test_value(1):float = {#block(2):float
     _tp_float_log(OpPowFloat(4f64, OpConvFloatFromInt(5i32)), OpConvFloatFromInt(2i32));
   }#block(2):float;
-  [3] if OpEqFloat(test_value(1), OpConvFloatFromInt(10i32)) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqFloat(test_value(1), OpConvFloatFromInt(10i32)) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
     OpAppendText(__work_1(1), " != 10");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for exponents:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] ConstFloat(val=4) -> float var=test_value[32]:float
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] ConstFloat(val=4) -> float var=test_value[28]:float
   10[36]: ConstInt(val=5) -> integer
   15[40]: ConvFloatFromInt(v1: integer) -> float
   16[44]: PowFloat(v1: float, v2: float) -> float
   17[36]: ConstInt(val=2) -> integer
   22[40]: ConvFloatFromInt(v1: integer) -> float
-  23[44]: Call(size=0, call=_tp_float_log[292])
-  30[36]: [3] VarFloat(var[32]) -> float var=test_value[32]:float
+  23[44]: Call(size=0, fn=_tp_float_log)
+  30[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
   33[44]: ConstInt(val=10) -> integer
   38[48]: ConvFloatFromInt(v1: integer) -> float
   39[52]: EqFloat(v1: float, v2: float) -> boolean
   40[37]: GotoFalseWord(jump=46, if_false: boolean)
   43[36]: GotoWord(jump=97)
-  46[36]: ClearText(var[8]) var=__work_1[8]:text
+  46[36]: ClearText(var[4]) var=__work_1[4]:text
   49[36]: ConstText(_value="Test failed ") -> text
-  63[52]: AppendText(var[8], v1: text)
-  66[36]: VarFloat(var[32]) -> float var=test_value[32]:float
+  63[52]: AppendText(var[4], v1: text)
+  66[36]: VarFloat(var[28]) -> float var=test_value[28]:float
   69[44]: ConstInt(val=0) -> integer
   74[48]: ConstInt(val=0) -> integer
-  79[52]: FormatFloat(var[8], val: float, width: integer, precision: integer)
+  79[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
   82[36]: ConstText(_value=" != 10") -> text
-  90[52]: AppendText(var[8], v1: text)
-  93[36]: VarText(var[8]) -> text var=__work_1[8]:text
+  90[52]: AppendText(var[4], v1: text)
+  93[36]: VarText(var[4]) -> text var=__work_1[4]:text
   96[52]: Panic(message: text)
-  97[36]: FreeText(var[8])
+  97[36]: FreeText(var[4])
  100[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:
@@ -57,11 +57,11 @@ Execute test:
    16:[48] PowFloat(v1=4[32], v2=5[40]) -> 1024[32]
    17:[40] ConstInt(val=2) -> 2[40]
    22:[44] ConvFloatFromInt(v1=2[40]) -> 2[40]
-   23:[48] Call(size=0, call=_tp_float_log[292])
+   23:[48] Call(size=0, fn=_tp_float_log)
   292:[52] VarFloat(var[32]) -> 1024[52]
   295:[60] VarFloat(var[40]) -> 2[60]
   298:[68] MathLogFloat(v1=1024[52], v2=2[60]) -> 10[52]
-  299:[60] Return(ret=1145[48], value=8, discard=28) -> 10[32]
+  299:[60] Return(ret=1133[48], value=8, discard=28) -> 10[32]
    30:[40] VarFloat(var[32]) -> 10[40]
    33:[48] ConstInt(val=10) -> 10[48]
    38:[52] ConvFloatFromInt(v1=10[48]) -> 10[48]

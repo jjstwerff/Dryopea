@@ -13,12 +13,12 @@ fn test() {#block(1):void
     OpAppendText(s(1), "2");
     s(1);
   }#block(2):text["s"];
-  [3] if OpEqText(test_value(1), "12") null else OpPanic({#Formatted string(3):text
+  [3] if OpEqText(test_value(1), "12") null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != "12"");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(test_value(1));
   OpFreeText(s(1));
   OpFreeText(__work_1(1));
@@ -26,34 +26,34 @@ fn test() {#block(1):void
 
 byte-code for block:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] Text() var=s[32]:text
-   2[52]: Text() var=test_value[56]:text["s"]
-   3[76]: ClearText(var[32]) var=s[32]:text
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] Text() var=s[28]:text
+   2[52]: Text() var=test_value[52]:text["s"]
+   3[76]: ClearText(var[28]) var=s[28]:text
    6[76]: ConstText(_value="1") -> text
-   9[92]: AppendText(var[32], v1: text)
+   9[92]: AppendText(var[28], v1: text)
   12[76]: ConstText(_value="2") -> text
-  15[92]: AppendText(var[32], v1: text)
-  18[76]: VarText(var[32]) -> text var=s[32]:text
-  21[92]: AppendText(var[56], v1: text)
-  24[76]: [3] VarText(var[56]) -> text var=test_value[56]:text["s"]
+  15[92]: AppendText(var[28], v1: text)
+  18[76]: VarText(var[28]) -> text var=s[28]:text
+  21[92]: AppendText(var[52], v1: text)
+  24[76]: [3] VarText(var[52]) -> text var=test_value[52]:text["s"]
   27[92]: ConstText(_value="12") -> text
   31[108]: EqText(v1: text, v2: text) -> boolean
   32[77]: GotoFalseWord(jump=38, if_false: boolean)
   35[76]: GotoWord(jump=88)
-  38[76]: ClearText(var[8]) var=__work_1[8]:text
+  38[76]: ClearText(var[4]) var=__work_1[4]:text
   41[76]: ConstText(_value="Test failed ") -> text
-  55[92]: AppendText(var[8], v1: text)
-  58[76]: VarText(var[56]) -> text var=test_value[56]:text["s"]
+  55[92]: AppendText(var[4], v1: text)
+  58[76]: VarText(var[52]) -> text var=test_value[52]:text["s"]
   61[92]: ConstInt(val=0) -> integer
-  66[96]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+  66[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
   71[76]: ConstText(_value=" != "12"") -> text
-  81[92]: AppendText(var[8], v1: text)
-  84[76]: VarText(var[8]) -> text var=__work_1[8]:text
+  81[92]: AppendText(var[4], v1: text)
+  84[76]: VarText(var[4]) -> text var=__work_1[4]:text
   87[92]: Panic(message: text)
-  88[76]: FreeText(var[56])
-  91[76]: FreeText(var[32])
-  94[76]: FreeText(var[8])
+  88[76]: FreeText(var[52])
+  91[76]: FreeText(var[28])
+  94[76]: FreeText(var[4])
   97[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:

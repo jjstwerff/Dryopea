@@ -10,36 +10,36 @@ fn test() {#block(1):void
   [2] test_value(1):float = {#block(2):float
     1.1f64;
   }#block(2):float;
-  [3] if OpEqFloat(test_value(1), 1.1f64) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqFloat(test_value(1), 1.1f64) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
     OpAppendText(__work_1(1), " != 1.1");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for expr_float:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] ConstFloat(val=1.1) -> float var=test_value[32]:float
-  10[36]: [3] VarFloat(var[32]) -> float var=test_value[32]:float
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] ConstFloat(val=1.1) -> float var=test_value[28]:float
+  10[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
   13[44]: ConstFloat(val=1.1) -> float
   22[52]: EqFloat(v1: float, v2: float) -> boolean
   23[37]: GotoFalseWord(jump=29, if_false: boolean)
   26[36]: GotoWord(jump=81)
-  29[36]: ClearText(var[8]) var=__work_1[8]:text
+  29[36]: ClearText(var[4]) var=__work_1[4]:text
   32[36]: ConstText(_value="Test failed ") -> text
-  46[52]: AppendText(var[8], v1: text)
-  49[36]: VarFloat(var[32]) -> float var=test_value[32]:float
+  46[52]: AppendText(var[4], v1: text)
+  49[36]: VarFloat(var[28]) -> float var=test_value[28]:float
   52[44]: ConstInt(val=0) -> integer
   57[48]: ConstInt(val=0) -> integer
-  62[52]: FormatFloat(var[8], val: float, width: integer, precision: integer)
+  62[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
   65[36]: ConstText(_value=" != 1.1") -> text
-  74[52]: AppendText(var[8], v1: text)
-  77[36]: VarText(var[8]) -> text var=__work_1[8]:text
+  74[52]: AppendText(var[4], v1: text)
+  77[36]: VarText(var[4]) -> text var=__work_1[4]:text
   80[52]: Panic(message: text)
-  81[36]: FreeText(var[8])
+  81[36]: FreeText(var[4])
   84[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:

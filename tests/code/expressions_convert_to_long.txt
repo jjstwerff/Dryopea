@@ -10,39 +10,39 @@ fn test() {#block(1):void
   [2] test_value(1):long = {#block(2):long
     OpAddLong(OpConvLongFromInt(123i32), OpConvLongFromInt(2i32));
   }#block(2):long;
-  [3] if OpEqLong(test_value(1), 125i64) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqLong(test_value(1), 125i64) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatLong(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 125l");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for convert_to_long:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] ConstInt(val=123) -> integer var=test_value[32]:long
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] ConstInt(val=123) -> integer var=test_value[28]:long
    6[32]: ConvLongFromInt(v1: integer) -> long
    7[36]: ConstInt(val=2) -> integer
   12[40]: ConvLongFromInt(v1: integer) -> long
   13[44]: AddLong(v1: long, v2: long) -> long
-  14[36]: [3] VarLong(var[32]) -> long var=test_value[32]:long
+  14[36]: [3] VarLong(var[28]) -> long var=test_value[28]:long
   17[44]: ConstLong(val=125) -> long
   26[52]: EqLong(v1: long, v2: long) -> boolean
   27[37]: GotoFalseWord(jump=33, if_false: boolean)
   30[36]: GotoWord(jump=85)
-  33[36]: ClearText(var[8]) var=__work_1[8]:text
+  33[36]: ClearText(var[4]) var=__work_1[4]:text
   36[36]: ConstText(_value="Test failed ") -> text
-  50[52]: AppendText(var[8], v1: text)
-  53[36]: VarLong(var[32]) -> long var=test_value[32]:long
+  50[52]: AppendText(var[4], v1: text)
+  53[36]: VarLong(var[28]) -> long var=test_value[28]:long
   56[44]: ConstInt(val=0) -> integer
-  61[48]: FormatLong(var[8], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  61[48]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
   68[36]: ConstText(_value=" != 125l") -> text
-  78[52]: AppendText(var[8], v1: text)
-  81[36]: VarText(var[8]) -> text var=__work_1[8]:text
+  78[52]: AppendText(var[4], v1: text)
+  81[36]: VarText(var[4]) -> text var=__work_1[4]:text
   84[52]: Panic(message: text)
-  85[36]: FreeText(var[8])
+  85[36]: FreeText(var[4])
   88[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:

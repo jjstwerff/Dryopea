@@ -17,10 +17,10 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     free_stack,
     const_true,
     const_false,
+    cast_text_from_bool,
     var_bool,
     put_bool,
     not,
-    format_bool,
     const_int,
     const_short,
     const_tiny,
@@ -57,7 +57,6 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     le_int,
     gt_int,
     ge_int,
-    format_int,
     const_long,
     var_long,
     put_long,
@@ -84,6 +83,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     gt_long,
     ge_long,
     format_long,
+    format_ref_long,
     const_single,
     var_single,
     put_single,
@@ -119,6 +119,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     gt_single,
     ge_single,
     format_single,
+    format_ref_single,
     const_float,
     var_float,
     put_float,
@@ -156,6 +157,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     gt_float,
     ge_float,
     format_float,
+    format_ref_float,
     var_text,
     arg_text,
     const_text,
@@ -177,6 +179,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     gt_text,
     ge_text,
     format_text,
+    format_ref_text,
     append_character,
     text_compare,
     cast_character_from_int,
@@ -192,6 +195,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     conv_enum_from_null,
     database,
     format_database,
+    format_ref_database,
     conv_bool_from_ref,
     conv_ref_from_null,
     free_ref,
@@ -252,6 +256,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     get_db_ref,
     set_db_ref,
     append_ref_text,
+    append_ref_character,
     clear_ref_text,
     get_file,
     get_dir,
@@ -318,6 +323,12 @@ fn const_false(s: &mut State) {
     s.put_stack(new_value);
 }
 
+fn cast_text_from_bool(s: &mut State) {
+    let v_v1 = *s.get_stack::<bool>();
+    let new_value = if v_v1 { "true" } else { "false" };
+    s.put_stack(new_value);
+}
+
 fn var_bool(s: &mut State) {
     let v_pos = *s.code::<u16>();
     let new_value = *s.get_var::<bool>(v_pos);
@@ -334,10 +345,6 @@ fn not(s: &mut State) {
     let v_v1 = *s.get_stack::<bool>();
     let new_value = !v_v1;
     s.put_stack(new_value);
-}
-
-fn format_bool(s: &mut State) {
-    s.format_bool();
 }
 
 fn const_int(s: &mut State) {
@@ -586,10 +593,6 @@ fn ge_int(s: &mut State) {
     s.put_stack(new_value);
 }
 
-fn format_int(s: &mut State) {
-    s.format_int();
-}
-
 fn const_long(s: &mut State) {
     let v_val = *s.code::<i64>();
     let new_value = v_val;
@@ -757,6 +760,10 @@ fn ge_long(s: &mut State) {
 
 fn format_long(s: &mut State) {
     s.format_long();
+}
+
+fn format_ref_long(s: &mut State) {
+    s.format_ref_long();
 }
 
 fn const_single(s: &mut State) {
@@ -978,6 +985,10 @@ fn ge_single(s: &mut State) {
 
 fn format_single(s: &mut State) {
     s.format_single();
+}
+
+fn format_ref_single(s: &mut State) {
+    s.format_ref_single();
 }
 
 fn const_float(s: &mut State) {
@@ -1211,6 +1222,10 @@ fn format_float(s: &mut State) {
     s.format_float();
 }
 
+fn format_ref_float(s: &mut State) {
+    s.format_ref_float();
+}
+
 fn var_text(s: &mut State) {
     s.var_text();
 }
@@ -1319,6 +1334,10 @@ fn format_text(s: &mut State) {
     s.format_text();
 }
 
+fn format_ref_text(s: &mut State) {
+    s.format_ref_text();
+}
+
 fn append_character(s: &mut State) {
     s.append_character();
 }
@@ -1408,6 +1427,10 @@ fn database(s: &mut State) {
 
 fn format_database(s: &mut State) {
     s.format_database();
+}
+
+fn format_ref_database(s: &mut State) {
+    s.format_ref_database();
 }
 
 fn conv_bool_from_ref(s: &mut State) {
@@ -1879,6 +1902,9 @@ fn append_ref_text(s: &mut State) {
     s.append_ref_text();
 }
 
+fn append_ref_character(s: &mut State) {
+    s.append_ref_character();
+}
 fn clear_ref_text(s: &mut State) {
     s.clear_ref_text();
 }

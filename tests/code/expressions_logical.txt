@@ -10,42 +10,43 @@ fn test() {#block(1):void
   [2] test_value(1):integer = {#block(2):integer
     OpLandInt(OpMinInt(OpSLeftInt(1i32, 8i32), 3i32), 127i32);
   }#block(2):integer;
-  [3] if OpEqInt(test_value(1), 125i32) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqInt(test_value(1), 125i32) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
-    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 125");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for logical:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] ConstInt(val=1) -> integer var=test_value[32]:integer
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] ConstInt(val=1) -> integer var=test_value[28]:integer
    6[32]: ConstInt(val=8) -> integer
   11[36]: SLeftInt(v1: integer, v2: integer) -> integer
   12[32]: ConstInt(val=3) -> integer
   17[36]: MinInt(v1: integer, v2: integer) -> integer
   18[32]: ConstInt(val=127) -> integer
   23[36]: LandInt(v1: integer, v2: integer) -> integer
-  24[32]: [3] VarInt(var[32]) -> integer var=test_value[32]:integer
+  24[32]: [3] VarInt(var[28]) -> integer var=test_value[28]:integer
   27[36]: ConstInt(val=125) -> integer
   32[40]: EqInt(v1: integer, v2: integer) -> boolean
   33[33]: GotoFalseWord(jump=39, if_false: boolean)
-  36[32]: GotoWord(jump=90)
-  39[32]: ClearText(var[8]) var=__work_1[8]:text
+  36[32]: GotoWord(jump=91)
+  39[32]: ClearText(var[4]) var=__work_1[4]:text
   42[32]: ConstText(_value="Test failed ") -> text
-  56[48]: AppendText(var[8], v1: text)
-  59[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  62[36]: ConstInt(val=0) -> integer
-  67[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  74[32]: ConstText(_value=" != 125") -> text
-  83[48]: AppendText(var[8], v1: text)
-  86[32]: VarText(var[8]) -> text var=__work_1[8]:text
-  89[48]: Panic(message: text)
-  90[32]: FreeText(var[8])
-  93[32]: Return(ret=0, value=0, discard=32)
+  56[48]: AppendText(var[4], v1: text)
+  59[32]: VarInt(var[28]) -> integer var=test_value[28]:integer
+  62[36]: ConvLongFromInt(v1: integer) -> long
+  63[40]: ConstInt(val=0) -> integer
+  68[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  75[32]: ConstText(_value=" != 125") -> text
+  84[48]: AppendText(var[4], v1: text)
+  87[32]: VarText(var[4]) -> text var=__work_1[4]:text
+  90[48]: Panic(message: text)
+  91[32]: FreeText(var[4])
+  94[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] [2] Text()
@@ -60,7 +61,7 @@ Execute test:
    27:[40] ConstInt(val=125) -> 125[40]
    32:[44] EqInt(v1=125[36], v2=125[40]) -> true[36]
    33:[37] GotoFalseWord(jump=39, if_false=true[36])
-   36:[36] GotoWord(jump=90)
-   90:[36] FreeText(var[8])
-   93:[36] Return(ret=4294967295[4], value=0, discard=32)
+   36:[36] GotoWord(jump=91)
+   91:[36] FreeText(var[8])
+   94:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

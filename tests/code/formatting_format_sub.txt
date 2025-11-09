@@ -8,22 +8,22 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [2] test_value(1):text = {#block(2):text
+  [2] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
     txt(2):text = "12😊🙃45";
-    {#Formatted string(3):text
+    {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "a";
       OpFormatText(__work_1(1), OpGetTextSub(txt(2), 2i32, OpMinSingleInt(1i32)), 0i32, -1i32, 32i32);
       OpAppendText(__work_1(1), "b");
       OpFreeText(txt(2));
       __work_1(1);
-    }#Formatted string(3):text;
-  }#block(2):text;
-  [3] if OpEqText(test_value(1), "a😊🙃4b") null else OpPanic({#Formatted string(4):text
+    }#Formatted string(3):text["__work_1"];
+  }#block(2):text["__work_1"];
+  [3] if OpEqText(test_value(1), "a😊🙃4b") null else OpPanic({#Formatted string(4):text["__work_2"]
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "a😊🙃4b"");
     __work_2(1);
-  }#Formatted string(4):text);
+  }#Formatted string(4):text["__work_2"]);
   OpFreeText(test_value(1));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
@@ -31,46 +31,46 @@ fn test() {#block(1):void
 
 byte-code for format_sub:test()
    0[0]: return-address
-   0[4]: Text() var=__work_2[8]:text
-   1[28]: Text() var=__work_1[32]:text
-   2[52]: [2] Text() var=test_value[56]:text
-   3[76]: Text() var=txt[80]:text
+   0[4]: Text() var=__work_2[4]:text
+   1[28]: Text() var=__work_1[28]:text
+   2[52]: [2] Text() var=test_value[52]:text["__work_1"]
+   3[76]: Text() var=txt[76]:text
    4[100]: ConstText(_value="12😊🙃45") -> text
-  18[116]: AppendText(var[80], v1: text)
-  21[100]: ClearText(var[32]) var=__work_1[32]:text
+  18[116]: AppendText(var[76], v1: text)
+  21[100]: ClearText(var[28]) var=__work_1[28]:text
   24[100]: ConstText(_value="a") -> text
-  27[116]: AppendText(var[32], v1: text)
-  30[100]: VarText(var[80]) -> text var=txt[80]:text
+  27[116]: AppendText(var[28], v1: text)
+  30[100]: VarText(var[76]) -> text var=txt[76]:text
   33[116]: ConstInt(val=2) -> integer
   38[120]: ConstInt(val=1) -> integer
   43[124]: MinSingleInt(v1: integer) -> integer
   44[124]: GetTextSub(v1: text, from: integer, till: integer) -> text["test_value"]
   45[116]: ConstInt(val=0) -> integer
-  50[120]: FormatText(var[32], val: text, width: integer, dir=-1, token=32)
+  50[120]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
   55[100]: ConstText(_value="b") -> text
-  58[116]: AppendText(var[32], v1: text)
-  61[100]: FreeText(var[80])
-  64[100]: VarText(var[32]) -> text var=__work_1[32]:text
+  58[116]: AppendText(var[28], v1: text)
+  61[100]: FreeText(var[76])
+  64[100]: VarText(var[28]) -> text var=__work_1[28]:text
   67[116]: FreeStack(value=16, discard=40)
-  71[92]: AppendText(var[56], v1: text)
-  74[76]: [3] VarText(var[56]) -> text var=test_value[56]:text
+  71[92]: AppendText(var[52], v1: text)
+  74[76]: [3] VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
   77[92]: ConstText(_value="a😊🙃4b") -> text
   90[108]: EqText(v1: text, v2: text) -> boolean
   91[77]: GotoFalseWord(jump=97, if_false: boolean)
   94[76]: GotoWord(jump=156)
-  97[76]: ClearText(var[8]) var=__work_2[8]:text
+  97[76]: ClearText(var[4]) var=__work_2[4]:text
  100[76]: ConstText(_value="Test failed ") -> text
- 114[92]: AppendText(var[8], v1: text)
- 117[76]: VarText(var[56]) -> text var=test_value[56]:text
+ 114[92]: AppendText(var[4], v1: text)
+ 117[76]: VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
  120[92]: ConstInt(val=0) -> integer
- 125[96]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+ 125[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
  130[76]: ConstText(_value=" != "a😊🙃4b"") -> text
- 149[92]: AppendText(var[8], v1: text)
- 152[76]: VarText(var[8]) -> text var=__work_2[8]:text
+ 149[92]: AppendText(var[4], v1: text)
+ 152[76]: VarText(var[4]) -> text var=__work_2[4]:text
  155[92]: Panic(message: text)
- 156[76]: FreeText(var[56])
- 159[76]: FreeText(var[32])
- 162[76]: FreeText(var[8])
+ 156[76]: FreeText(var[52])
+ 159[76]: FreeText(var[28])
+ 162[76]: FreeText(var[4])
  165[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:

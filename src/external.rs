@@ -477,7 +477,7 @@ pub fn format_long(
                     write!(res, "{val:o}").unwrap();
                 }
                 10 => {
-                    res += if val > 0 {
+                    res += if val >= 0 {
                         if plus { "+" } else { "" }
                     } else {
                         "-"

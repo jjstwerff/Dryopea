@@ -17,49 +17,49 @@ fn test() {#block(1):void
     OpAddFloat(OpGetFloat(OpGetVector(a(2), 8i32, 2i32), 0i32), OpGetFloat(OpGetVector(a(2), 8i32, 3i32), 0i32));
     OpFreeRef(a(2));
   }#block(2):float;
-  [3] if OpEqFloat(test_value(1), 18120.00000001001f64) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqFloat(test_value(1), 18120.00000001001f64) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
     OpAppendText(__work_1(1), " != 18120.00000001001");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for parse_vector:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text var=a[32]:vector<float>
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text var=a[28]:vector<float>
   36[44]: CastVectorFromText(val: text, db_tp=18) -> vector
-  39[40]: VarVector(var[32]) -> vector type=vector<float>[4]:Vector(3)[18] var=a[32]:vector<float>
+  39[40]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[18] var=a[28]:vector<float>
   42[52]: ConstInt(val=2) -> integer
   47[56]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float[8]:Base[3]
   50[52]: GetFloat(v1: ref(reference), fld=0) -> float
-  53[48]: VarVector(var[32]) -> vector type=vector<float>[4]:Vector(3)[18] var=a[32]:vector<float>
+  53[48]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[18] var=a[28]:vector<float>
   56[60]: ConstInt(val=3) -> integer
   61[64]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float[8]:Base[3]
   64[60]: GetFloat(v1: ref(reference), fld=0) -> float
   67[56]: AddFloat(v1: float, v2: float) -> float
-  68[48]: VarVector(var[32]) -> vector type=vector<float>[4]:Vector(3)[18] var=a[32]:vector<float>
+  68[48]: VarVector(var[28]) -> vector type=vector<float>[4]:Vector(3)[18] var=a[28]:vector<float>
   71[60]: FreeRef(v1: ref(reference))
   72[48]: FreeStack(value=8, discard=20)
-  76[36]: [3] VarFloat(var[32]) -> float var=test_value[32]:float
+  76[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
   79[44]: ConstFloat(val=18120.00000001001) -> float
   88[52]: EqFloat(v1: float, v2: float) -> boolean
   89[37]: GotoFalseWord(jump=95, if_false: boolean)
   92[36]: GotoWord(jump=161)
-  95[36]: ClearText(var[8]) var=__work_1[8]:text
+  95[36]: ClearText(var[4]) var=__work_1[4]:text
   98[36]: ConstText(_value="Test failed ") -> text
- 112[52]: AppendText(var[8], v1: text)
- 115[36]: VarFloat(var[32]) -> float var=test_value[32]:float
+ 112[52]: AppendText(var[4], v1: text)
+ 115[36]: VarFloat(var[28]) -> float var=test_value[28]:float
  118[44]: ConstInt(val=0) -> integer
  123[48]: ConstInt(val=0) -> integer
- 128[52]: FormatFloat(var[8], val: float, width: integer, precision: integer)
+ 128[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
  131[36]: ConstText(_value=" != 18120.00000001001") -> text
- 154[52]: AppendText(var[8], v1: text)
- 157[36]: VarText(var[8]) -> text var=__work_1[8]:text
+ 154[52]: AppendText(var[4], v1: text)
+ 157[36]: VarText(var[4]) -> text var=__work_1[4]:text
  160[52]: Panic(message: text)
- 161[36]: FreeText(var[8])
+ 161[36]: FreeText(var[4])
  164[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:

@@ -1,0 +1,110 @@
+fn format(a: integer) -> text { "a{a}b" }
+
+pub fn test() {
+    test_value = {format(123)};
+    assert(
+        test_value == "a123b",
+        "Test failed {test_value} != \"a123b\""
+    );
+}
+fn format(a:integer, __work_1:&text) -> text["__work_1"] {#block(1):text["__work_1"]
+  __work_1(0):&text = "";
+  [1] {#Formatted string(2):text["__work_1"]
+    __work_1(0):&text = "a";
+    OpFormatRefLong(__work_1(0), OpConvLongFromInt(a(0)), 10i32, 0i32, 32i32, false, false);
+    OpAppendRefText(__work_1(0), "b");
+    __work_1(0);
+  }#Formatted string(2):text["__work_1"];
+}#block(1):text["__work_1"]
+
+byte-code for return_formatter:format(a: integer[0], __work_1: &text[4]) -> text["__work_1"]
+   0[16]: return-address
+   0[20]: [1] ConstText(_value="a") -> text var=__work_1[4]:&text
+   3[36]: AppendRefText(var[4], v1: text)
+   6[20]: VarInt(var[0]) -> integer var=a[0]:integer
+   9[24]: ConvLongFromInt(v1: integer) -> long
+  10[28]: ConstInt(val=0) -> integer
+  15[32]: FormatRefLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  22[20]: ConstText(_value="b") -> text
+  25[36]: AppendRefText(var[4], v1: text)
+  28[20]: VarRef(var[4]) -> ref(reference) var=__work_1[4]:&text
+  31[32]: GetRefText(r: ref(reference)) -> text["a"]
+  32[36]: Return(ret=16, value=16, discard=36) type=text[4]:Base[5]
+
+fn test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  [4] test_value(1):text = {#block(2):text
+    format(123i32, {#default ref(3):ref(reference)["__work_1"]
+      OpCreateRef(__work_1(1));
+    }#default ref(3):ref(reference)["__work_1"]);
+  }#block(2):text;
+  [5] if OpEqText(test_value(1), "a123b") null else OpPanic({#Formatted string(4):text["__work_2"]
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "a123b"");
+    __work_2(1);
+  }#Formatted string(4):text["__work_2"]);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
+
+byte-code for return_formatter:test()
+   0[0]: return-address
+   0[4]: Text() var=__work_2[4]:text
+   1[28]: Text() var=__work_1[28]:text
+   2[52]: [4] Text() var=test_value[52]:text
+   3[76]: ConstInt(val=123) -> integer
+   8[80]: CreateRef(var[28]) -> ref(reference)
+  11[92]: Call(size=0, fn=format)
+  18[92]: AppendText(var[52], v1: text)
+  21[76]: [5] VarText(var[52]) -> text var=test_value[52]:text
+  24[92]: ConstText(_value="a123b") -> text
+  31[108]: EqText(v1: text, v2: text) -> boolean
+  32[77]: GotoFalseWord(jump=38, if_false: boolean)
+  35[76]: GotoWord(jump=91)
+  38[76]: ClearText(var[4]) var=__work_2[4]:text
+  41[76]: ConstText(_value="Test failed ") -> text
+  55[92]: AppendText(var[4], v1: text)
+  58[76]: VarText(var[52]) -> text var=test_value[52]:text
+  61[92]: ConstInt(val=0) -> integer
+  66[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  71[76]: ConstText(_value=" != "a123b"") -> text
+  84[92]: AppendText(var[4], v1: text)
+  87[76]: VarText(var[4]) -> text var=__work_2[4]:text
+  90[92]: Panic(message: text)
+  91[76]: FreeText(var[52])
+  94[76]: FreeText(var[28])
+  97[76]: FreeText(var[4])
+ 100[76]: Return(ret=0, value=0, discard=76)
+
+Execute test:
+    0:[8] Text()
+    1:[32] [4] Text()
+    2:[56] Text()
+    3:[80] ConstInt(val=123) -> 123[80]
+    8:[84] CreateRef(var[32]) -> ref(0,1,32)[84]
+   11:[96] Call(size=0, fn=format)
+ 1103:[100] ConstText(_value="a") -> "a"[100]
+ 1106:[116] AppendRefText(var[84], v1="a"[100])
+ 1109:[100] VarInt(var[80]) -> 123[100]
+ 1112:[104] ConvLongFromInt(v1=123[100]) -> 123[100]
+ 1113:[108] ConstInt(val=0) -> 0[108]
+ 1118:[112] FormatRefLong(var[84], val=123[100], radix=10, width=0[108], token=32, plus=false, note=false)
+ 1125:[100] ConstText(_value="b") -> "b"[100]
+ 1128:[116] AppendRefText(var[84], v1="b"[100])
+ 1131:[100] VarRef(var[84]) -> ref(0,1,32)[100]
+ 1134:[112] GetRefText(r=ref(0,1,32)[100]) -> "a123b"[100]
+ 1135:[116] Return(ret=1159[96], value=16, discard=36) -> "a123b"[80]
+   18:[96] AppendText(var[56], v1="a123b"[80])
+   21:[80] VarText(var[56]) -> "a123b"[80]
+   24:[96] ConstText(_value="a123b") -> "a123b"[96]
+   31:[112] EqText(v1="a123b"[80], v2="a123b"[96]) -> true[80]
+   32:[81] GotoFalseWord(jump=38, if_false=true[80])
+   35:[80] GotoWord(jump=91)
+   91:[80] FreeText(var[56])
+   94:[80] FreeText(var[32])
+   97:[80] FreeText(var[8])
+  100:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

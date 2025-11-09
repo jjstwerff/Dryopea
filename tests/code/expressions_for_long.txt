@@ -24,62 +24,62 @@ fn test() {#block(1):void
     }#For block(3):void;
     b(2);
   }#block(2):long;
-  [3] if OpEqLong(test_value(1), 165i64) null else OpPanic({#Formatted string(7):text
+  [3] if OpEqLong(test_value(1), 165i64) null else OpPanic({#Formatted string(7):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatLong(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 165l");
     __work_1(1);
-  }#Formatted string(7):text);
+  }#Formatted string(7):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for for_long:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] ConstLong(val=0) -> long var=b[32]:long
-  10[36]: ConvLongFromNull() -> long var=a#index[40]:long
-  11[44]: VarLong(var[40]) -> long var=a#index[40]:long
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] ConstLong(val=0) -> long var=b[28]:long
+  10[36]: ConvLongFromNull() -> long var=a#index[36]:long
+  11[44]: VarLong(var[36]) -> long var=a#index[36]:long
   14[52]: ConvBoolFromLong(v1: long) -> boolean
   15[45]: Not(v1: boolean) -> boolean
   16[45]: GotoFalseWord(jump=31, if_false: boolean)
   19[44]: ConstLong(val=10) -> long
   28[52]: GotoWord(jump=41)
-  31[44]: VarLong(var[40]) -> long var=a#index[40]:long
+  31[44]: VarLong(var[36]) -> long var=a#index[36]:long
   34[52]: ConstInt(val=1) -> integer
   39[56]: ConvLongFromInt(v1: integer) -> long
   40[60]: AddLong(v1: long, v2: long) -> long
-  41[52]: PutLong(var[40], value: long)
-  44[44]: VarLong(var[40]) -> long var=a#index[40]:long
+  41[52]: PutLong(var[36], value: long)
+  44[44]: VarLong(var[36]) -> long var=a#index[36]:long
   47[52]: ConstLong(val=20) -> long
   56[60]: GtLong(v1: long, v2: long) -> boolean
   57[45]: GotoFalseWord(jump=63, if_false: boolean)
   60[44]: GotoWord(jump=83)
-  63[44]: VarLong(var[40]) -> long var=a#index[40]:long
-  66[52]: VarLong(var[32]) -> long var=b[32]:long
-  69[60]: VarLong(var[48]) -> long var=a[48]:long
+  63[44]: VarLong(var[36]) -> long var=a#index[36]:long
+  66[52]: VarLong(var[28]) -> long var=b[28]:long
+  69[60]: VarLong(var[44]) -> long var=a[44]:long
   72[68]: AddLong(v1: long, v2: long) -> long
-  73[60]: PutLong(var[32], value: long)
+  73[60]: PutLong(var[28], value: long)
   76[52]: FreeStack(value=0, discard=8)
   80[44]: GotoWord(jump=11)
   83[44]: FreeStack(value=0, discard=8)
-  87[36]: VarLong(var[32]) -> long var=b[32]:long
+  87[36]: VarLong(var[28]) -> long var=b[28]:long
   90[44]: FreeStack(value=8, discard=16)
-  94[36]: [3] VarLong(var[32]) -> long var=test_value[32]:long
+  94[36]: [3] VarLong(var[28]) -> long var=test_value[28]:long
   97[44]: ConstLong(val=165) -> long
  106[52]: EqLong(v1: long, v2: long) -> boolean
  107[37]: GotoFalseWord(jump=113, if_false: boolean)
  110[36]: GotoWord(jump=165)
- 113[36]: ClearText(var[8]) var=__work_1[8]:text
+ 113[36]: ClearText(var[4]) var=__work_1[4]:text
  116[36]: ConstText(_value="Test failed ") -> text
- 130[52]: AppendText(var[8], v1: text)
- 133[36]: VarLong(var[32]) -> long var=test_value[32]:long
+ 130[52]: AppendText(var[4], v1: text)
+ 133[36]: VarLong(var[28]) -> long var=test_value[28]:long
  136[44]: ConstInt(val=0) -> integer
- 141[48]: FormatLong(var[8], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 141[48]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
  148[36]: ConstText(_value=" != 165l") -> text
- 158[52]: AppendText(var[8], v1: text)
- 161[36]: VarText(var[8]) -> text var=__work_1[8]:text
+ 158[52]: AppendText(var[4], v1: text)
+ 161[36]: VarText(var[4]) -> text var=__work_1[4]:text
  164[52]: Panic(message: text)
- 165[36]: FreeText(var[8])
+ 165[36]: FreeText(var[4])
  168[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:

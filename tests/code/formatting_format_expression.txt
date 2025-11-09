@@ -8,30 +8,30 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [2] test_value(1):text = {#block(2):text
-    {#Formatted string(3):text
+  [2] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
+    {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "ab";
-      OpFormatInt(__work_1(1), OpAddInt(OpAddInt(1i32, 2i32), 32i32), 16i32, 0i32, 32i32, false, true);
+      OpFormatLong(__work_1(1), OpConvLongFromInt(OpAddInt(OpAddInt(1i32, 2i32), 32i32)), 16i32, 0i32, 32i32, false, true);
       OpAppendText(__work_1(1), "c");
-      OpFormatInt(__work_1(1), 12i32, 8i32, 0i32, 32i32, false, false);
+      OpFormatLong(__work_1(1), OpConvLongFromInt(12i32), 8i32, 0i32, 32i32, false, false);
       OpAppendText(__work_1(1), "d");
-      OpFormatInt(__work_1(1), 391i32, 10i32, 0i32, 32i32, false, false);
+      OpFormatLong(__work_1(1), OpConvLongFromInt(391i32), 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_1(1), "e");
-      OpFormatInt(__work_1(1), 12i32, 10i32, 4i32, 32i32, true, false);
+      OpFormatLong(__work_1(1), OpConvLongFromInt(12i32), 10i32, 4i32, 32i32, true, false);
       OpAppendText(__work_1(1), "f");
-      OpFormatInt(__work_1(1), 1i32, 10i32, 3i32, 48i32, false, false);
+      OpFormatLong(__work_1(1), OpConvLongFromInt(1i32), 10i32, 3i32, 48i32, false, false);
       OpAppendText(__work_1(1), "g");
-      OpFormatInt(__work_1(1), 42i32, 2i32, 0i32, 32i32, false, false);
+      OpFormatLong(__work_1(1), OpConvLongFromInt(42i32), 2i32, 0i32, 32i32, false, false);
       OpAppendText(__work_1(1), "h");
       __work_1(1);
-    }#Formatted string(3):text;
-  }#block(2):text;
-  [3] if OpEqText(test_value(1), "ab0x23c14d391e +12f001g101010h") null else OpPanic({#Formatted string(4):text
+    }#Formatted string(3):text["__work_1"];
+  }#block(2):text["__work_1"];
+  [3] if OpEqText(test_value(1), "ab0x23c14d391e +12f001g101010h") null else OpPanic({#Formatted string(4):text["__work_2"]
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "ab0x23c14d391e +12f001g101010h"");
     __work_2(1);
-  }#Formatted string(4):text);
+  }#Formatted string(4):text["__work_2"]);
   OpFreeText(test_value(1));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
@@ -39,67 +39,73 @@ fn test() {#block(1):void
 
 byte-code for format_expression:test()
    0[0]: return-address
-   0[4]: Text() var=__work_2[8]:text
-   1[28]: Text() var=__work_1[32]:text
-   2[52]: [2] Text() var=test_value[56]:text
-   3[76]: ClearText(var[32]) var=__work_1[32]:text
+   0[4]: Text() var=__work_2[4]:text
+   1[28]: Text() var=__work_1[28]:text
+   2[52]: [2] Text() var=test_value[52]:text["__work_1"]
+   3[76]: ClearText(var[28]) var=__work_1[28]:text
    6[76]: ConstText(_value="ab") -> text
-  10[92]: AppendText(var[32], v1: text)
+  10[92]: AppendText(var[28], v1: text)
   13[76]: ConstInt(val=1) -> integer
   18[80]: ConstInt(val=2) -> integer
   23[84]: AddInt(v1: integer, v2: integer) -> integer
   24[80]: ConstInt(val=32) -> integer
   29[84]: AddInt(v1: integer, v2: integer) -> integer
-  30[80]: ConstInt(val=0) -> integer
-  35[84]: FormatInt(var[32], val: integer, radix=16, width: integer, token=32, plus=false, note=true)
-  42[76]: ConstText(_value="c") -> text
-  45[92]: AppendText(var[32], v1: text)
-  48[76]: ConstInt(val=12) -> integer
-  53[80]: ConstInt(val=0) -> integer
-  58[84]: FormatInt(var[32], val: integer, radix=8, width: integer, token=32, plus=false, note=false)
-  65[76]: ConstText(_value="d") -> text
-  68[92]: AppendText(var[32], v1: text)
-  71[76]: ConstInt(val=391) -> integer
-  76[80]: ConstInt(val=0) -> integer
-  81[84]: FormatInt(var[32], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  88[76]: ConstText(_value="e") -> text
-  91[92]: AppendText(var[32], v1: text)
-  94[76]: ConstInt(val=12) -> integer
-  99[80]: ConstInt(val=4) -> integer
- 104[84]: FormatInt(var[32], val: integer, radix=10, width: integer, token=32, plus=true, note=false)
- 111[76]: ConstText(_value="f") -> text
- 114[92]: AppendText(var[32], v1: text)
- 117[76]: ConstInt(val=1) -> integer
- 122[80]: ConstInt(val=3) -> integer
- 127[84]: FormatInt(var[32], val: integer, radix=10, width: integer, token=48, plus=false, note=false)
- 134[76]: ConstText(_value="g") -> text
- 137[92]: AppendText(var[32], v1: text)
- 140[76]: ConstInt(val=42) -> integer
- 145[80]: ConstInt(val=0) -> integer
- 150[84]: FormatInt(var[32], val: integer, radix=2, width: integer, token=32, plus=false, note=false)
- 157[76]: ConstText(_value="h") -> text
- 160[92]: AppendText(var[32], v1: text)
- 163[76]: VarText(var[32]) -> text var=__work_1[32]:text
- 166[92]: AppendText(var[56], v1: text)
- 169[76]: [3] VarText(var[56]) -> text var=test_value[56]:text
- 172[92]: ConstText(_value="ab0x23c14d391e +12f001g101010h") -> text
- 204[108]: EqText(v1: text, v2: text) -> boolean
- 205[77]: GotoFalseWord(jump=211, if_false: boolean)
- 208[76]: GotoWord(jump=289)
- 211[76]: ClearText(var[8]) var=__work_2[8]:text
- 214[76]: ConstText(_value="Test failed ") -> text
- 228[92]: AppendText(var[8], v1: text)
- 231[76]: VarText(var[56]) -> text var=test_value[56]:text
- 234[92]: ConstInt(val=0) -> integer
- 239[96]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
- 244[76]: ConstText(_value=" != "ab0x23c14d391e +12f001g101010h"") -> text
- 282[92]: AppendText(var[8], v1: text)
- 285[76]: VarText(var[8]) -> text var=__work_2[8]:text
- 288[92]: Panic(message: text)
- 289[76]: FreeText(var[56])
- 292[76]: FreeText(var[32])
- 295[76]: FreeText(var[8])
- 298[76]: Return(ret=0, value=0, discard=76)
+  30[80]: ConvLongFromInt(v1: integer) -> long
+  31[84]: ConstInt(val=0) -> integer
+  36[88]: FormatLong(var[28], val: long, radix=16, width: integer, token=32, plus=false, note=true)
+  43[76]: ConstText(_value="c") -> text
+  46[92]: AppendText(var[28], v1: text)
+  49[76]: ConstInt(val=12) -> integer
+  54[80]: ConvLongFromInt(v1: integer) -> long
+  55[84]: ConstInt(val=0) -> integer
+  60[88]: FormatLong(var[28], val: long, radix=8, width: integer, token=32, plus=false, note=false)
+  67[76]: ConstText(_value="d") -> text
+  70[92]: AppendText(var[28], v1: text)
+  73[76]: ConstInt(val=391) -> integer
+  78[80]: ConvLongFromInt(v1: integer) -> long
+  79[84]: ConstInt(val=0) -> integer
+  84[88]: FormatLong(var[28], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  91[76]: ConstText(_value="e") -> text
+  94[92]: AppendText(var[28], v1: text)
+  97[76]: ConstInt(val=12) -> integer
+ 102[80]: ConvLongFromInt(v1: integer) -> long
+ 103[84]: ConstInt(val=4) -> integer
+ 108[88]: FormatLong(var[28], val: long, radix=10, width: integer, token=32, plus=true, note=false)
+ 115[76]: ConstText(_value="f") -> text
+ 118[92]: AppendText(var[28], v1: text)
+ 121[76]: ConstInt(val=1) -> integer
+ 126[80]: ConvLongFromInt(v1: integer) -> long
+ 127[84]: ConstInt(val=3) -> integer
+ 132[88]: FormatLong(var[28], val: long, radix=10, width: integer, token=48, plus=false, note=false)
+ 139[76]: ConstText(_value="g") -> text
+ 142[92]: AppendText(var[28], v1: text)
+ 145[76]: ConstInt(val=42) -> integer
+ 150[80]: ConvLongFromInt(v1: integer) -> long
+ 151[84]: ConstInt(val=0) -> integer
+ 156[88]: FormatLong(var[28], val: long, radix=2, width: integer, token=32, plus=false, note=false)
+ 163[76]: ConstText(_value="h") -> text
+ 166[92]: AppendText(var[28], v1: text)
+ 169[76]: VarText(var[28]) -> text var=__work_1[28]:text
+ 172[92]: AppendText(var[52], v1: text)
+ 175[76]: [3] VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+ 178[92]: ConstText(_value="ab0x23c14d391e +12f001g101010h") -> text
+ 210[108]: EqText(v1: text, v2: text) -> boolean
+ 211[77]: GotoFalseWord(jump=217, if_false: boolean)
+ 214[76]: GotoWord(jump=295)
+ 217[76]: ClearText(var[4]) var=__work_2[4]:text
+ 220[76]: ConstText(_value="Test failed ") -> text
+ 234[92]: AppendText(var[4], v1: text)
+ 237[76]: VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+ 240[92]: ConstInt(val=0) -> integer
+ 245[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 250[76]: ConstText(_value=" != "ab0x23c14d391e +12f001g101010h"") -> text
+ 288[92]: AppendText(var[4], v1: text)
+ 291[76]: VarText(var[4]) -> text var=__work_2[4]:text
+ 294[92]: Panic(message: text)
+ 295[76]: FreeText(var[52])
+ 298[76]: FreeText(var[28])
+ 301[76]: FreeText(var[4])
+ 304[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -113,44 +119,50 @@ Execute test:
    23:[88] AddInt(v1=1[80], v2=2[84]) -> 3[80]
    24:[84] ConstInt(val=32) -> 32[84]
    29:[88] AddInt(v1=3[80], v2=32[84]) -> 35[80]
-   30:[84] ConstInt(val=0) -> 0[84]
-   35:[88] FormatInt(var[32], val=35[80], radix=16, width=0[84], token=32, plus=false, note=true)
-   42:[80] ConstText(_value="c") -> "c"[80]
-   45:[96] AppendText(var[32], v1="c"[80])
-   48:[80] ConstInt(val=12) -> 12[80]
-   53:[84] ConstInt(val=0) -> 0[84]
-   58:[88] FormatInt(var[32], val=12[80], radix=8, width=0[84], token=32, plus=false, note=false)
-   65:[80] ConstText(_value="d") -> "d"[80]
-   68:[96] AppendText(var[32], v1="d"[80])
-   71:[80] ConstInt(val=391) -> 391[80]
-   76:[84] ConstInt(val=0) -> 0[84]
-   81:[88] FormatInt(var[32], val=391[80], radix=10, width=0[84], token=32, plus=false, note=false)
-   88:[80] ConstText(_value="e") -> "e"[80]
-   91:[96] AppendText(var[32], v1="e"[80])
-   94:[80] ConstInt(val=12) -> 12[80]
-   99:[84] ConstInt(val=4) -> 4[84]
-  104:[88] FormatInt(var[32], val=12[80], radix=10, width=4[84], token=32, plus=true, note=false)
-  111:[80] ConstText(_value="f") -> "f"[80]
-  114:[96] AppendText(var[32], v1="f"[80])
-  117:[80] ConstInt(val=1) -> 1[80]
-  122:[84] ConstInt(val=3) -> 3[84]
-  127:[88] FormatInt(var[32], val=1[80], radix=10, width=3[84], token=48, plus=false, note=false)
-  134:[80] ConstText(_value="g") -> "g"[80]
-  137:[96] AppendText(var[32], v1="g"[80])
-  140:[80] ConstInt(val=42) -> 42[80]
-  145:[84] ConstInt(val=0) -> 0[84]
-  150:[88] FormatInt(var[32], val=42[80], radix=2, width=0[84], token=32, plus=false, note=false)
-  157:[80] ConstText(_value="h") -> "h"[80]
-  160:[96] AppendText(var[32], v1="h"[80])
-  163:[80] VarText(var[32]) -> "ab0x23c14d391e +12f001g101010h"[80]
-  166:[96] AppendText(var[56], v1="ab0x23c14d391e +12f001g101010h"[80])
-  169:[80] VarText(var[56]) -> "ab0x23c14d391e +12f001g101010h"[80]
-  172:[96] ConstText(_value="ab0x23c14d391e +12f001g101010h") -> "ab0x23c14d391e +12f001g101010h"[96]
-  204:[112] EqText(v1="ab0x23c14d391e +12f001g101010h"[80], v2="ab0x23c14d391e +12f001g101010h"[96]) -> true[80]
-  205:[81] GotoFalseWord(jump=211, if_false=true[80])
-  208:[80] GotoWord(jump=289)
-  289:[80] FreeText(var[56])
-  292:[80] FreeText(var[32])
-  295:[80] FreeText(var[8])
-  298:[80] Return(ret=4294967295[4], value=0, discard=76)
+   30:[84] ConvLongFromInt(v1=35[80]) -> 35[80]
+   31:[88] ConstInt(val=0) -> 0[88]
+   36:[92] FormatLong(var[32], val=35[80], radix=16, width=0[88], token=32, plus=false, note=true)
+   43:[80] ConstText(_value="c") -> "c"[80]
+   46:[96] AppendText(var[32], v1="c"[80])
+   49:[80] ConstInt(val=12) -> 12[80]
+   54:[84] ConvLongFromInt(v1=12[80]) -> 12[80]
+   55:[88] ConstInt(val=0) -> 0[88]
+   60:[92] FormatLong(var[32], val=12[80], radix=8, width=0[88], token=32, plus=false, note=false)
+   67:[80] ConstText(_value="d") -> "d"[80]
+   70:[96] AppendText(var[32], v1="d"[80])
+   73:[80] ConstInt(val=391) -> 391[80]
+   78:[84] ConvLongFromInt(v1=391[80]) -> 391[80]
+   79:[88] ConstInt(val=0) -> 0[88]
+   84:[92] FormatLong(var[32], val=391[80], radix=10, width=0[88], token=32, plus=false, note=false)
+   91:[80] ConstText(_value="e") -> "e"[80]
+   94:[96] AppendText(var[32], v1="e"[80])
+   97:[80] ConstInt(val=12) -> 12[80]
+  102:[84] ConvLongFromInt(v1=12[80]) -> 12[80]
+  103:[88] ConstInt(val=4) -> 4[88]
+  108:[92] FormatLong(var[32], val=12[80], radix=10, width=4[88], token=32, plus=true, note=false)
+  115:[80] ConstText(_value="f") -> "f"[80]
+  118:[96] AppendText(var[32], v1="f"[80])
+  121:[80] ConstInt(val=1) -> 1[80]
+  126:[84] ConvLongFromInt(v1=1[80]) -> 1[80]
+  127:[88] ConstInt(val=3) -> 3[88]
+  132:[92] FormatLong(var[32], val=1[80], radix=10, width=3[88], token=48, plus=false, note=false)
+  139:[80] ConstText(_value="g") -> "g"[80]
+  142:[96] AppendText(var[32], v1="g"[80])
+  145:[80] ConstInt(val=42) -> 42[80]
+  150:[84] ConvLongFromInt(v1=42[80]) -> 42[80]
+  151:[88] ConstInt(val=0) -> 0[88]
+  156:[92] FormatLong(var[32], val=42[80], radix=2, width=0[88], token=32, plus=false, note=false)
+  163:[80] ConstText(_value="h") -> "h"[80]
+  166:[96] AppendText(var[32], v1="h"[80])
+  169:[80] VarText(var[32]) -> "ab0x23c14d391e +12f001g101010h"[80]
+  172:[96] AppendText(var[56], v1="ab0x23c14d391e +12f001g101010h"[80])
+  175:[80] VarText(var[56]) -> "ab0x23c14d391e +12f001g101010h"[80]
+  178:[96] ConstText(_value="ab0x23c14d391e +12f001g101010h") -> "ab0x23c14d391e +12f001g101010h"[96]
+  210:[112] EqText(v1="ab0x23c14d391e +12f001g101010h"[80], v2="ab0x23c14d391e +12f001g101010h"[96]) -> true[80]
+  211:[81] GotoFalseWord(jump=217, if_false=true[80])
+  214:[80] GotoWord(jump=295)
+  295:[80] FreeText(var[56])
+  298:[80] FreeText(var[32])
+  301:[80] FreeText(var[8])
+  304:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

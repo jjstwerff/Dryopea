@@ -103,7 +103,26 @@ fn mutating_operators() {
 
 #[test]
 fn for_loop() {
-    expr!("b = 0; for a in 0..5 { b+=a }; b").result(Value::Int(10));
+    expr!("b = 0; for a in 0..5 { b += a }; b").result(Value::Int(10));
+}
+
+#[test]
+fn add_loop() {
+    expr!("b = \"\"; for a in 0..5 { b += '0' }; b").result(Value::str("00000"));
+}
+
+#[test]
+fn append_fn() {
+    code!("fn append(ch: character) -> text { \"abc_de\" + ch }")
+        .expr("append('x')")
+        .result(Value::str("abc_dex"));
+}
+
+#[test]
+fn append_str() {
+    code!("fn append(ch: character) -> text { s=\"abc_de\"; s += ch; s }")
+        .expr("append('x')")
+        .result(Value::str("abc_dex"));
 }
 
 #[test]
@@ -156,6 +175,13 @@ fn continue_loop() {
 }
 
 #[test]
+fn return_formatter() {
+    code!("fn format(a: integer) -> text { \"a{a}b\" }")
+        .expr("format(123)")
+        .result(Value::str("a123b"));
+}
+
+#[test]
 fn text_len() {
     expr!("t = \"some\"; len(t)").result(Value::Int(4));
 }
@@ -185,10 +211,30 @@ fn call_void() {
 }
 
 #[test]
+fn call_text_null() {
+    code!("fn routine(a: integer) -> text { if a > 2 { return null }; \"#{a}#\"}")
+        .expr("routine(5)")
+        .result(Value::str(""));
+}
+
+#[test]
+fn call_int_null() {
+    code!("fn routine(a: integer) -> integer { if a > 2 { return null }; a+1 }")
+        .expr("routine(5)")
+        .result(Value::Null);
+}
+
+#[test]
 fn compare() {
     code!("enum T{A, C, B}\nfn count(v: T) -> integer { if v > C { 2 } else { 1 } }")
         .expr("count(A) + count(B) + count(B)")
         .result(Value::Int(5));
+}
+
+#[test]
+fn if_typing() {
+    expr!("a = \"12\"; if a.len()>2 { null } else { \"error\" }").result(Value::str("error"));
+    expr!("a = \"12\"; if a.len()==2 { null } else { \"error\" }").result(Value::str(""));
 }
 
 #[test]

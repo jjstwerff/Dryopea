@@ -8,8 +8,8 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [2] test_value(1):text = {#block(2):text
-    {#Formatted string(3):text
+  [2] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
+    {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "a";
       OpFormatFloat(__work_1(1), 1.2f64, 4i32, 2i32);
       OpAppendText(__work_1(1), "b");
@@ -20,14 +20,14 @@ fn test() {#block(1):void
       OpFormatFloat(__work_1(1), 334.1f64, 0i32, 2i32);
       OpAppendText(__work_1(1), "e");
       __work_1(1);
-    }#Formatted string(3):text;
-  }#block(2):text;
-  [3] if OpEqText(test_value(1), "a1.20b1.34c  1.4d334.10e") null else OpPanic({#Formatted string(4):text
+    }#Formatted string(3):text["__work_1"];
+  }#block(2):text["__work_1"];
+  [3] if OpEqText(test_value(1), "a1.20b1.34c  1.4d334.10e") null else OpPanic({#Formatted string(4):text["__work_2"]
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "a1.20b1.34c  1.4d334.10e"");
     __work_2(1);
-  }#Formatted string(4):text);
+  }#Formatted string(4):text["__work_2"]);
   OpFreeText(test_value(1));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
@@ -35,56 +35,56 @@ fn test() {#block(1):void
 
 byte-code for format_float:test()
    0[0]: return-address
-   0[4]: Text() var=__work_2[8]:text
-   1[28]: Text() var=__work_1[32]:text
-   2[52]: [2] Text() var=test_value[56]:text
-   3[76]: ClearText(var[32]) var=__work_1[32]:text
+   0[4]: Text() var=__work_2[4]:text
+   1[28]: Text() var=__work_1[28]:text
+   2[52]: [2] Text() var=test_value[52]:text["__work_1"]
+   3[76]: ClearText(var[28]) var=__work_1[28]:text
    6[76]: ConstText(_value="a") -> text
-   9[92]: AppendText(var[32], v1: text)
+   9[92]: AppendText(var[28], v1: text)
   12[76]: ConstFloat(val=1.2) -> float
   21[84]: ConstInt(val=4) -> integer
   26[88]: ConstInt(val=2) -> integer
-  31[92]: FormatFloat(var[32], val: float, width: integer, precision: integer)
+  31[92]: FormatFloat(var[28], val: float, width: integer, precision: integer)
   34[76]: ConstText(_value="b") -> text
-  37[92]: AppendText(var[32], v1: text)
+  37[92]: AppendText(var[28], v1: text)
   40[76]: ConstFloat(val=1.34) -> float
   49[84]: ConstInt(val=0) -> integer
   54[88]: ConstInt(val=0) -> integer
-  59[92]: FormatFloat(var[32], val: float, width: integer, precision: integer)
+  59[92]: FormatFloat(var[28], val: float, width: integer, precision: integer)
   62[76]: ConstText(_value="c") -> text
-  65[92]: AppendText(var[32], v1: text)
+  65[92]: AppendText(var[28], v1: text)
   68[76]: ConstFloat(val=1.4) -> float
   77[84]: ConstInt(val=5) -> integer
   82[88]: ConstInt(val=0) -> integer
-  87[92]: FormatFloat(var[32], val: float, width: integer, precision: integer)
+  87[92]: FormatFloat(var[28], val: float, width: integer, precision: integer)
   90[76]: ConstText(_value="d") -> text
-  93[92]: AppendText(var[32], v1: text)
+  93[92]: AppendText(var[28], v1: text)
   96[76]: ConstFloat(val=334.1) -> float
  105[84]: ConstInt(val=0) -> integer
  110[88]: ConstInt(val=2) -> integer
- 115[92]: FormatFloat(var[32], val: float, width: integer, precision: integer)
+ 115[92]: FormatFloat(var[28], val: float, width: integer, precision: integer)
  118[76]: ConstText(_value="e") -> text
- 121[92]: AppendText(var[32], v1: text)
- 124[76]: VarText(var[32]) -> text var=__work_1[32]:text
- 127[92]: AppendText(var[56], v1: text)
- 130[76]: [3] VarText(var[56]) -> text var=test_value[56]:text
+ 121[92]: AppendText(var[28], v1: text)
+ 124[76]: VarText(var[28]) -> text var=__work_1[28]:text
+ 127[92]: AppendText(var[52], v1: text)
+ 130[76]: [3] VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
  133[92]: ConstText(_value="a1.20b1.34c  1.4d334.10e") -> text
  159[108]: EqText(v1: text, v2: text) -> boolean
  160[77]: GotoFalseWord(jump=166, if_false: boolean)
  163[76]: GotoWord(jump=238)
- 166[76]: ClearText(var[8]) var=__work_2[8]:text
+ 166[76]: ClearText(var[4]) var=__work_2[4]:text
  169[76]: ConstText(_value="Test failed ") -> text
- 183[92]: AppendText(var[8], v1: text)
- 186[76]: VarText(var[56]) -> text var=test_value[56]:text
+ 183[92]: AppendText(var[4], v1: text)
+ 186[76]: VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
  189[92]: ConstInt(val=0) -> integer
- 194[96]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
+ 194[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
  199[76]: ConstText(_value=" != "a1.20b1.34c  1.4d334.10e"") -> text
- 231[92]: AppendText(var[8], v1: text)
- 234[76]: VarText(var[8]) -> text var=__work_2[8]:text
+ 231[92]: AppendText(var[4], v1: text)
+ 234[76]: VarText(var[4]) -> text var=__work_2[4]:text
  237[92]: Panic(message: text)
- 238[76]: FreeText(var[56])
- 241[76]: FreeText(var[32])
- 244[76]: FreeText(var[8])
+ 238[76]: FreeText(var[52])
+ 241[76]: FreeText(var[28])
+ 244[76]: FreeText(var[4])
  247[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:

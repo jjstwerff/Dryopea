@@ -265,7 +265,11 @@ impl Function {
     }
 
     pub fn tp(&self, var_nr: u16) -> &Type {
-        &self.variables[var_nr as usize].type_def
+        if var_nr as usize >= self.variables.len() {
+            &Type::Null
+        } else {
+            &self.variables[var_nr as usize].type_def
+        }
     }
 
     pub fn is_independent(&self, var_nr: u16) -> bool {

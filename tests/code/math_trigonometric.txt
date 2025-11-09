@@ -10,68 +10,68 @@ fn test() {#block(1):void
   [2] test_value(1):float = {#block(2):float
     _tp_float_ceil(OpAddFloat(_tp_float_sin(OpMathPiFloat()), OpMulFloat(_tp_float_cos(OpMathPiFloat()), OpConvFloatFromInt(1000i32))));
   }#block(2):float;
-  [3] if OpEqFloat(test_value(1), OpConvFloatFromInt(OpMinSingleInt(1000i32))) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqFloat(test_value(1), OpConvFloatFromInt(OpMinSingleInt(1000i32))) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatFloat(__work_1(1), test_value(1), 0i32, 0i32);
     OpAppendText(__work_1(1), " != -1000");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for trigonometric:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] MathPiFloat() -> float var=test_value[32]:float
-   2[36]: Call(size=0, call=_tp_float_sin[189])
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] MathPiFloat() -> float var=test_value[28]:float
+   2[36]: Call(size=0, fn=_tp_float_sin)
    9[36]: MathPiFloat() -> float
-  10[44]: Call(size=0, call=_tp_float_cos[179])
+  10[44]: Call(size=0, fn=_tp_float_cos)
   17[44]: ConstInt(val=1000) -> integer
   22[48]: ConvFloatFromInt(v1: integer) -> float
   23[52]: MulFloat(v1: float, v2: float) -> float
   24[44]: AddFloat(v1: float, v2: float) -> float
-  25[36]: Call(size=0, call=_tp_float_ceil[252])
-  32[36]: [3] VarFloat(var[32]) -> float var=test_value[32]:float
+  25[36]: Call(size=0, fn=_tp_float_ceil)
+  32[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
   35[44]: ConstInt(val=1000) -> integer
   40[48]: MinSingleInt(v1: integer) -> integer
   41[48]: ConvFloatFromInt(v1: integer) -> float
   42[52]: EqFloat(v1: float, v2: float) -> boolean
   43[37]: GotoFalseWord(jump=49, if_false: boolean)
   46[36]: GotoWord(jump=103)
-  49[36]: ClearText(var[8]) var=__work_1[8]:text
+  49[36]: ClearText(var[4]) var=__work_1[4]:text
   52[36]: ConstText(_value="Test failed ") -> text
-  66[52]: AppendText(var[8], v1: text)
-  69[36]: VarFloat(var[32]) -> float var=test_value[32]:float
+  66[52]: AppendText(var[4], v1: text)
+  69[36]: VarFloat(var[28]) -> float var=test_value[28]:float
   72[44]: ConstInt(val=0) -> integer
   77[48]: ConstInt(val=0) -> integer
-  82[52]: FormatFloat(var[8], val: float, width: integer, precision: integer)
+  82[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
   85[36]: ConstText(_value=" != -1000") -> text
-  96[52]: AppendText(var[8], v1: text)
-  99[36]: VarText(var[8]) -> text var=__work_1[8]:text
+  96[52]: AppendText(var[4], v1: text)
+  99[36]: VarText(var[4]) -> text var=__work_1[4]:text
  102[52]: Panic(message: text)
- 103[36]: FreeText(var[8])
+ 103[36]: FreeText(var[4])
  106[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:
     0:[8] [2] Text()
     1:[32] MathPiFloat() -> 3.141592653589793[32]
-    2:[40] Call(size=0, call=_tp_float_sin[189])
+    2:[40] Call(size=0, fn=_tp_float_sin)
   189:[44] VarFloat(var[32]) -> 3.141592653589793[44]
   192:[52] MathSinFloat(v1=3.141592653589793[44]) -> 0.00000000000000012246467991473532[44]
-  193:[52] Return(ret=1124[40], value=8, discard=20) -> 0.00000000000000012246467991473532[32]
+  193:[52] Return(ret=1112[40], value=8, discard=20) -> 0.00000000000000012246467991473532[32]
     9:[40] MathPiFloat() -> 3.141592653589793[40]
-   10:[48] Call(size=0, call=_tp_float_cos[179])
+   10:[48] Call(size=0, fn=_tp_float_cos)
   179:[52] VarFloat(var[40]) -> 3.141592653589793[52]
   182:[60] MathCosFloat(v1=3.141592653589793[52]) -> -1[52]
-  183:[60] Return(ret=1132[48], value=8, discard=20) -> -1[40]
+  183:[60] Return(ret=1120[48], value=8, discard=20) -> -1[40]
    17:[48] ConstInt(val=1000) -> 1000[48]
    22:[52] ConvFloatFromInt(v1=1000[48]) -> 1000[48]
    23:[56] MulFloat(v1=-1[40], v2=1000[48]) -> -1000[40]
    24:[48] AddFloat(v1=0.00000000000000012246467991473532[32], v2=-1000[40]) -> -1000[32]
-   25:[40] Call(size=0, call=_tp_float_ceil[252])
+   25:[40] Call(size=0, fn=_tp_float_ceil)
   252:[44] VarFloat(var[32]) -> -1000[44]
   255:[52] MathCeilFloat(v1=-1000[44]) -> -1000[44]
-  256:[52] Return(ret=1147[40], value=8, discard=20) -> -1000[32]
+  256:[52] Return(ret=1135[40], value=8, discard=20) -> -1000[32]
    32:[40] VarFloat(var[32]) -> -1000[40]
    35:[48] ConstInt(val=1000) -> 1000[48]
    40:[52] MinSingleInt(v1=1000[48]) -> -1000[48]

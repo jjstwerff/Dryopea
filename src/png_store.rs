@@ -10,7 +10,7 @@ use std::io::BufReader;
 pub fn read(file_path: &str, store: &mut Store) -> std::io::Result<(u32, u32, u32)> {
     let decoder = Decoder::new(BufReader::new(File::open(file_path)?));
     let mut reader = decoder.read_info()?;
-    let img = store.claim((reader.output_buffer_size() / 8) as u32 + 1);
+    let img = store.claim((reader.output_buffer_size().unwrap_or(0) / 8) as u32 + 1);
     let info = reader.next_frame(store.buffer(img))?;
     Ok((img, info.width, info.height))
 }

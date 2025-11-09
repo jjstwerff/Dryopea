@@ -12,42 +12,42 @@ fn test() {#block(1):void
     OpTextCharacter(a(2), 2i32);
     OpFreeText(a(2));
   }#block(2):character;
-  [3] if OpEqInt(OpConvIntFromCharacter(test_value(1)), 51i32) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqInt(OpConvIntFromCharacter(test_value(1)), 51i32) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpAppendCharacter(__work_1(1), test_value(1));
     OpAppendText(__work_1(1), " != 51");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for str_index:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] Text() var=a[32]:text
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] Text() var=a[28]:text
    2[52]: ConstText(_value="12345") -> text
-   9[68]: AppendText(var[32], v1: text)
-  12[52]: VarText(var[32]) -> text var=a[32]:text
+   9[68]: AppendText(var[28], v1: text)
+  12[52]: VarText(var[28]) -> text var=a[28]:text
   15[68]: ConstInt(val=2) -> integer
   20[72]: TextCharacter(v1: text, v2: integer) -> character
-  21[56]: FreeText(var[32])
+  21[56]: FreeText(var[28])
   24[56]: FreeStack(value=4, discard=28)
-  28[32]: [3] VarCharacter(var[32]) -> character var=test_value[32]:character
+  28[32]: [3] VarCharacter(var[28]) -> character var=test_value[28]:character
   31[36]: ConvIntFromCharacter(v1: character) -> integer
   32[36]: ConstInt(val=51) -> integer
   37[40]: EqInt(v1: integer, v2: integer) -> boolean
   38[33]: GotoFalseWord(jump=44, if_false: boolean)
   41[32]: GotoWord(jump=85)
-  44[32]: ClearText(var[8]) var=__work_1[8]:text
+  44[32]: ClearText(var[4]) var=__work_1[4]:text
   47[32]: ConstText(_value="Test failed ") -> text
-  61[48]: AppendText(var[8], v1: text)
-  64[32]: VarCharacter(var[32]) -> character var=test_value[32]:character
-  67[36]: AppendCharacter(var[8], v1: character)
+  61[48]: AppendText(var[4], v1: text)
+  64[32]: VarCharacter(var[28]) -> character var=test_value[28]:character
+  67[36]: AppendCharacter(var[4], v1: character)
   70[32]: ConstText(_value=" != 51") -> text
-  78[48]: AppendText(var[8], v1: text)
-  81[32]: VarText(var[8]) -> text var=__work_1[8]:text
+  78[48]: AppendText(var[4], v1: text)
+  81[32]: VarText(var[4]) -> text var=__work_1[4]:text
   84[48]: Panic(message: text)
-  85[32]: FreeText(var[8])
+  85[32]: FreeText(var[4])
   88[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:

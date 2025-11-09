@@ -8,20 +8,20 @@ pub fn test() {
 fn test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [2] test_value(1):text = {#block(2):text
-    {#Formatted string(3):text
+  [2] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
+    {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "1";
-      OpFormatBool(__work_1(1), true, 7i32, 0i32, 32i32);
+      OpFormatText(__work_1(1), OpCastTextFromBool(true), 7i32, 0i32, 32i32);
       OpAppendText(__work_1(1), "2");
       __work_1(1);
-    }#Formatted string(3):text;
-  }#block(2):text;
-  [3] if OpEqText(test_value(1), "1 true  2") null else OpPanic({#Formatted string(4):text
+    }#Formatted string(3):text["__work_1"];
+  }#block(2):text["__work_1"];
+  [3] if OpEqText(test_value(1), "1 true  2") null else OpPanic({#Formatted string(4):text["__work_2"]
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), " != "1 true  2"");
     __work_2(1);
-  }#Formatted string(4):text);
+  }#Formatted string(4):text["__work_2"]);
   OpFreeText(test_value(1));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
@@ -29,38 +29,39 @@ fn test() {#block(1):void
 
 byte-code for format_boolean:test()
    0[0]: return-address
-   0[4]: Text() var=__work_2[8]:text
-   1[28]: Text() var=__work_1[32]:text
-   2[52]: [2] Text() var=test_value[56]:text
-   3[76]: ClearText(var[32]) var=__work_1[32]:text
+   0[4]: Text() var=__work_2[4]:text
+   1[28]: Text() var=__work_1[28]:text
+   2[52]: [2] Text() var=test_value[52]:text["__work_1"]
+   3[76]: ClearText(var[28]) var=__work_1[28]:text
    6[76]: ConstText(_value="1") -> text
-   9[92]: AppendText(var[32], v1: text)
+   9[92]: AppendText(var[28], v1: text)
   12[76]: ConstTrue() -> boolean
-  13[77]: ConstInt(val=7) -> integer
-  18[81]: FormatBool(var[32], val: boolean, width: integer, dir=0, token=32)
-  23[76]: ConstText(_value="2") -> text
-  26[92]: AppendText(var[32], v1: text)
-  29[76]: VarText(var[32]) -> text var=__work_1[32]:text
-  32[92]: AppendText(var[56], v1: text)
-  35[76]: [3] VarText(var[56]) -> text var=test_value[56]:text
-  38[92]: ConstText(_value="1 true  2") -> text
-  49[108]: EqText(v1: text, v2: text) -> boolean
-  50[77]: GotoFalseWord(jump=56, if_false: boolean)
-  53[76]: GotoWord(jump=113)
-  56[76]: ClearText(var[8]) var=__work_2[8]:text
-  59[76]: ConstText(_value="Test failed ") -> text
-  73[92]: AppendText(var[8], v1: text)
-  76[76]: VarText(var[56]) -> text var=test_value[56]:text
-  79[92]: ConstInt(val=0) -> integer
-  84[96]: FormatText(var[8], val: text, width: integer, dir=-1, token=32)
-  89[76]: ConstText(_value=" != "1 true  2"") -> text
- 106[92]: AppendText(var[8], v1: text)
- 109[76]: VarText(var[8]) -> text var=__work_2[8]:text
- 112[92]: Panic(message: text)
- 113[76]: FreeText(var[56])
- 116[76]: FreeText(var[32])
- 119[76]: FreeText(var[8])
- 122[76]: Return(ret=0, value=0, discard=76)
+  13[77]: CastTextFromBool(v1: boolean) -> text
+  14[92]: ConstInt(val=7) -> integer
+  19[96]: FormatText(var[28], val: text, width: integer, dir=0, token=32)
+  24[76]: ConstText(_value="2") -> text
+  27[92]: AppendText(var[28], v1: text)
+  30[76]: VarText(var[28]) -> text var=__work_1[28]:text
+  33[92]: AppendText(var[52], v1: text)
+  36[76]: [3] VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+  39[92]: ConstText(_value="1 true  2") -> text
+  50[108]: EqText(v1: text, v2: text) -> boolean
+  51[77]: GotoFalseWord(jump=57, if_false: boolean)
+  54[76]: GotoWord(jump=114)
+  57[76]: ClearText(var[4]) var=__work_2[4]:text
+  60[76]: ConstText(_value="Test failed ") -> text
+  74[92]: AppendText(var[4], v1: text)
+  77[76]: VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+  80[92]: ConstInt(val=0) -> integer
+  85[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  90[76]: ConstText(_value=" != "1 true  2"") -> text
+ 107[92]: AppendText(var[4], v1: text)
+ 110[76]: VarText(var[4]) -> text var=__work_2[4]:text
+ 113[92]: Panic(message: text)
+ 114[76]: FreeText(var[52])
+ 117[76]: FreeText(var[28])
+ 120[76]: FreeText(var[4])
+ 123[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -70,19 +71,20 @@ Execute test:
     6:[80] ConstText(_value="1") -> "1"[80]
     9:[96] AppendText(var[32], v1="1"[80])
    12:[80] ConstTrue() -> true[80]
-   13:[81] ConstInt(val=7) -> 7[81]
-   18:[85] FormatBool(var[32], val=true[80], width=7[81], dir=0, token=32)
-   23:[80] ConstText(_value="2") -> "2"[80]
-   26:[96] AppendText(var[32], v1="2"[80])
-   29:[80] VarText(var[32]) -> "1 true  2"[80]
-   32:[96] AppendText(var[56], v1="1 true  2"[80])
-   35:[80] VarText(var[56]) -> "1 true  2"[80]
-   38:[96] ConstText(_value="1 true  2") -> "1 true  2"[96]
-   49:[112] EqText(v1="1 true  2"[80], v2="1 true  2"[96]) -> true[80]
-   50:[81] GotoFalseWord(jump=56, if_false=true[80])
-   53:[80] GotoWord(jump=113)
-  113:[80] FreeText(var[56])
-  116:[80] FreeText(var[32])
-  119:[80] FreeText(var[8])
-  122:[80] Return(ret=4294967295[4], value=0, discard=76)
+   13:[81] CastTextFromBool(v1=true[80]) -> "true"[80]
+   14:[96] ConstInt(val=7) -> 7[96]
+   19:[100] FormatText(var[32], val="true"[80], width=7[96], dir=0, token=32)
+   24:[80] ConstText(_value="2") -> "2"[80]
+   27:[96] AppendText(var[32], v1="2"[80])
+   30:[80] VarText(var[32]) -> "1 true  2"[80]
+   33:[96] AppendText(var[56], v1="1 true  2"[80])
+   36:[80] VarText(var[56]) -> "1 true  2"[80]
+   39:[96] ConstText(_value="1 true  2") -> "1 true  2"[96]
+   50:[112] EqText(v1="1 true  2"[80], v2="1 true  2"[96]) -> true[80]
+   51:[81] GotoFalseWord(jump=57, if_false=true[80])
+   54:[80] GotoWord(jump=114)
+  114:[80] FreeText(var[56])
+  117:[80] FreeText(var[32])
+  120:[80] FreeText(var[8])
+  123:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

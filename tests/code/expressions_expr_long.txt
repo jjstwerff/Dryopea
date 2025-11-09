@@ -11,42 +11,43 @@ fn test() {#block(1):void
     a(2):long = OpMinSingleLong(2i64);
     OpNeLong(3i64, _tp_long_abs(a(2)));
   }#block(2):boolean;
-  [3] if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text
+  [3] if OpEqBool(test_value(1), true) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
-    OpFormatBool(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpFormatText(__work_1(1), OpCastTextFromBool(test_value(1)), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != true");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for expr_long:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [2] ConstLong(val=2) -> long var=a[32]:long
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] ConstLong(val=2) -> long var=a[28]:long
   10[36]: MinSingleLong(v1: long) -> long
   11[36]: ConstLong(val=3) -> long
-  20[44]: VarLong(var[32]) -> long var=a[32]:long
-  23[52]: Call(size=0, call=_tp_long_abs[10])
+  20[44]: VarLong(var[28]) -> long var=a[28]:long
+  23[52]: Call(size=0, fn=_tp_long_abs)
   30[52]: NeLong(v1: long, v2: long) -> boolean
   31[37]: FreeStack(value=1, discard=9)
-  35[29]: [3] VarBool(var[32]) -> boolean var=test_value[32]:boolean
+  35[29]: [3] VarBool(var[28]) -> boolean var=test_value[28]:boolean
   38[30]: ConstTrue() -> boolean
   39[31]: EqBool(v1: boolean, v2: boolean) -> boolean
   40[30]: GotoFalseWord(jump=46, if_false: boolean)
-  43[29]: GotoWord(jump=96)
-  46[29]: ClearText(var[8]) var=__work_1[8]:text
+  43[29]: GotoWord(jump=97)
+  46[29]: ClearText(var[4]) var=__work_1[4]:text
   49[29]: ConstText(_value="Test failed ") -> text
-  63[45]: AppendText(var[8], v1: text)
-  66[29]: VarBool(var[32]) -> boolean var=test_value[32]:boolean
-  69[30]: ConstInt(val=0) -> integer
-  74[34]: FormatBool(var[8], val: boolean, width: integer, dir=-1, token=32)
-  79[29]: ConstText(_value=" != true") -> text
-  89[45]: AppendText(var[8], v1: text)
-  92[29]: VarText(var[8]) -> text var=__work_1[8]:text
-  95[45]: Panic(message: text)
-  96[29]: FreeText(var[8])
-  99[29]: Return(ret=0, value=0, discard=29)
+  63[45]: AppendText(var[4], v1: text)
+  66[29]: VarBool(var[28]) -> boolean var=test_value[28]:boolean
+  69[30]: CastTextFromBool(v1: boolean) -> text
+  70[45]: ConstInt(val=0) -> integer
+  75[49]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  80[29]: ConstText(_value=" != true") -> text
+  90[45]: AppendText(var[4], v1: text)
+  93[29]: VarText(var[4]) -> text var=__work_1[4]:text
+  96[45]: Panic(message: text)
+  97[29]: FreeText(var[4])
+ 100[29]: Return(ret=0, value=0, discard=29)
 
 Execute test:
     0:[8] [2] Text()
@@ -54,17 +55,17 @@ Execute test:
    10:[40] MinSingleLong(v1=2[32]) -> -2[32]
    11:[40] ConstLong(val=3) -> 3[40]
    20:[48] VarLong(var[32]) -> -2[48]
-   23:[56] Call(size=0, call=_tp_long_abs[10])
+   23:[56] Call(size=0, fn=_tp_long_abs)
    10:[60] VarLong(var[48]) -> -2[60]
    13:[68] AbsLong(v1=-2[60]) -> 2[60]
-   14:[68] Return(ret=1145[56], value=8, discard=20) -> 2[48]
+   14:[68] Return(ret=1133[56], value=8, discard=20) -> 2[48]
    30:[56] NeLong(v1=3[40], v2=2[48]) -> true[40]
    31:[41] FreeStack(value=1, discard=9)
    35:[33] VarBool(var[32]) -> true[33]
    38:[34] ConstTrue() -> true[34]
    39:[35] EqBool(v1=true[33], v2=true[34]) -> true[33]
    40:[34] GotoFalseWord(jump=46, if_false=true[33])
-   43:[33] GotoWord(jump=96)
-   96:[33] FreeText(var[8])
-   99:[33] Return(ret=4294967295[4], value=0, discard=29)
+   43:[33] GotoWord(jump=97)
+   97:[33] FreeText(var[8])
+  100:[33] Return(ret=4294967295[4], value=0, discard=29)
 Finished

@@ -20,36 +20,37 @@ fn test() {#block(1):void
   [5] test_value(1):integer = {#block(2):integer
     17i32;
   }#block(2):integer;
-  [6] if OpEqInt(test_value(1), 17i32) null else OpPanic({#Formatted string(3):text
+  [6] if OpEqInt(test_value(1), 17i32) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
-    OpFormatInt(__work_1(1), test_value(1), 10i32, 0i32, 32i32, false, false);
+    OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 17");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
 }#block(1):void
 
 byte-code for expr_struct:test()
    0[0]: return-address
-   0[4]: Text() var=__work_1[8]:text
-   1[28]: [5] ConstInt(val=17) -> integer var=test_value[32]:integer
-   6[32]: [6] VarInt(var[32]) -> integer var=test_value[32]:integer
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [5] ConstInt(val=17) -> integer var=test_value[28]:integer
+   6[32]: [6] VarInt(var[28]) -> integer var=test_value[28]:integer
    9[36]: ConstInt(val=17) -> integer
   14[40]: EqInt(v1: integer, v2: integer) -> boolean
   15[33]: GotoFalseWord(jump=21, if_false: boolean)
-  18[32]: GotoWord(jump=71)
-  21[32]: ClearText(var[8]) var=__work_1[8]:text
+  18[32]: GotoWord(jump=72)
+  21[32]: ClearText(var[4]) var=__work_1[4]:text
   24[32]: ConstText(_value="Test failed ") -> text
-  38[48]: AppendText(var[8], v1: text)
-  41[32]: VarInt(var[32]) -> integer var=test_value[32]:integer
-  44[36]: ConstInt(val=0) -> integer
-  49[40]: FormatInt(var[8], val: integer, radix=10, width: integer, token=32, plus=false, note=false)
-  56[32]: ConstText(_value=" != 17") -> text
-  64[48]: AppendText(var[8], v1: text)
-  67[32]: VarText(var[8]) -> text var=__work_1[8]:text
-  70[48]: Panic(message: text)
-  71[32]: FreeText(var[8])
-  74[32]: Return(ret=0, value=0, discard=32)
+  38[48]: AppendText(var[4], v1: text)
+  41[32]: VarInt(var[28]) -> integer var=test_value[28]:integer
+  44[36]: ConvLongFromInt(v1: integer) -> long
+  45[40]: ConstInt(val=0) -> integer
+  50[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  57[32]: ConstText(_value=" != 17") -> text
+  65[48]: AppendText(var[4], v1: text)
+  68[32]: VarText(var[4]) -> text var=__work_1[4]:text
+  71[48]: Panic(message: text)
+  72[32]: FreeText(var[4])
+  75[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] [5] Text()
@@ -58,7 +59,7 @@ Execute test:
     9:[40] ConstInt(val=17) -> 17[40]
    14:[44] EqInt(v1=17[36], v2=17[40]) -> true[36]
    15:[37] GotoFalseWord(jump=21, if_false=true[36])
-   18:[36] GotoWord(jump=71)
-   71:[36] FreeText(var[8])
-   74:[36] Return(ret=4294967295[4], value=0, discard=32)
+   18:[36] GotoWord(jump=72)
+   72:[36] FreeText(var[8])
+   75:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

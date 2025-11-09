@@ -1,0 +1,93 @@
+pub fn test() {
+    test_value = {a = "12"; if a.len()==2 { null } else { "error" }};
+    assert(
+        test_value == "",
+        "Test failed {test_value} != \"\""
+    );
+}
+fn test() {#block(1):void
+  __work_1(1):text = "";
+  [2] test_value(1):text = {#block(2):text
+    a(2):text = "12";
+    if OpEqInt(_tp_text_len(a(2)), 2i32) {#if(3):text
+      OpConvTextFromNull();
+    }#if(3):text else {#block(4):text
+      "error";
+    }#block(4):text;
+    OpFreeText(a(2));
+  }#block(2):text;
+  [3] if OpEqText(test_value(1), "") null else OpPanic({#Formatted string(5):text["__work_1"]
+    __work_1(1):text = "Test failed ";
+    OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_1(1), " != """);
+    __work_1(1);
+  }#Formatted string(5):text["__work_1"]);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
+
+byte-code for if_typing:test()
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] Text() var=test_value[28]:text
+   2[52]: Text() var=a[52]:text
+   3[76]: ConstText(_value="12") -> text
+   7[92]: AppendText(var[52], v1: text)
+  10[76]: VarText(var[52]) -> text var=a[52]:text
+  13[92]: Call(size=0, fn=_tp_text_len)
+  20[80]: ConstInt(val=2) -> integer
+  25[84]: EqInt(v1: integer, v2: integer) -> boolean
+  26[77]: GotoFalseWord(jump=33, if_false: boolean)
+  29[76]: ConvTextFromNull() -> text
+  30[92]: GotoWord(jump=40)
+  33[76]: ConstText(_value="error") -> text
+  40[92]: FreeText(var[52])
+  43[92]: FreeStack(value=16, discard=40)
+  47[68]: AppendText(var[28], v1: text)
+  50[52]: [3] VarText(var[28]) -> text var=test_value[28]:text
+  53[68]: ConstText(_value="") -> text
+  55[84]: EqText(v1: text, v2: text) -> boolean
+  56[53]: GotoFalseWord(jump=62, if_false: boolean)
+  59[52]: GotoWord(jump=110)
+  62[52]: ClearText(var[4]) var=__work_1[4]:text
+  65[52]: ConstText(_value="Test failed ") -> text
+  79[68]: AppendText(var[4], v1: text)
+  82[52]: VarText(var[28]) -> text var=test_value[28]:text
+  85[68]: ConstInt(val=0) -> integer
+  90[72]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  95[52]: ConstText(_value=" != """) -> text
+ 103[68]: AppendText(var[4], v1: text)
+ 106[52]: VarText(var[4]) -> text var=__work_1[4]:text
+ 109[68]: Panic(message: text)
+ 110[52]: FreeText(var[28])
+ 113[52]: FreeText(var[4])
+ 116[52]: Return(ret=0, value=0, discard=52)
+
+Execute test:
+    0:[8] [2] Text()
+    1:[32] Text()
+    2:[56] Text()
+    3:[80] ConstText(_value="12") -> "12"[80]
+    7:[96] AppendText(var[56], v1="12"[80])
+   10:[80] VarText(var[56]) -> "12"[80]
+   13:[96] Call(size=0, fn=_tp_text_len)
+  318:[100] ArgText(var[80]) -> "12"[100]
+  321:[116] LengthText(v1="12"[100]) -> 2[100]
+  322:[104] Return(ret=1123[96], value=4, discard=24) -> 2[80]
+   20:[84] ConstInt(val=2) -> 2[84]
+   25:[88] EqInt(v1=2[80], v2=2[84]) -> true[80]
+   26:[81] GotoFalseWord(jump=33, if_false=true[80])
+   29:[80] ConvTextFromNull() -> ""[80]
+   30:[96] GotoWord(jump=40)
+   40:[96] FreeText(var[56])
+   43:[96] FreeStack(value=16, discard=40)
+   47:[72] AppendText(var[32], v1=""[56])
+   50:[56] VarText(var[32]) -> ""[56]
+   53:[72] ConstText(_value="") -> ""[72]
+   55:[88] EqText(v1=""[56], v2=""[72]) -> true[56]
+   56:[57] GotoFalseWord(jump=62, if_false=true[56])
+   59:[56] GotoWord(jump=110)
+  110:[56] FreeText(var[32])
+  113:[56] FreeText(var[8])
+  116:[56] Return(ret=4294967295[4], value=0, discard=52)
+Finished

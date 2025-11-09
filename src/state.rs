@@ -200,17 +200,22 @@ impl State {
 
     pub fn append_ref_text(&mut self) {
         let text = self.string();
-        let r = *self.get_stack::<DbRef>();
-        if cfg!(debug_assertions) {
-            self.text_positions.insert(r.pos);
-        }
-        let v1 = self.database.store_mut(&r).addr_mut::<String>(r.rec, r.pos);
+        let pos = *self.code::<u16>();
+        let v1 = self.string_ref_mut(pos - size_ptr() as u16);
         *v1 += text.str();
     }
 
+    pub fn append_ref_character(&mut self) {
+        let pos = *self.code::<u16>();
+        let c = *self.get_stack::<char>();
+        if c as u32 != 0 {
+            self.string_ref_mut(pos - 4).push(c);
+        }
+    }
+
     pub fn clear_ref_text(&mut self) {
-        let r = *self.get_stack::<DbRef>();
-        let v1 = self.database.store_mut(&r).addr_mut::<String>(r.rec, r.pos);
+        let pos = *self.code::<u16>();
+        let v1 = self.string_ref_mut(pos);
         v1.clear();
     }
 
@@ -392,6 +397,16 @@ impl State {
         )
     }
 
+    fn string_ref_mut(&mut self, pos: u16) -> &mut String {
+        let r = *self.database.store(&self.stack_cur).addr::<DbRef>(
+            self.stack_cur.rec,
+            self.stack_cur.pos + self.stack_pos - u32::from(pos),
+        );
+        self.database
+            .store_mut(&self.stack_cur)
+            .addr_mut::<String>(r.rec, r.pos)
+    }
+
     /** Get a value from the byte-code increasing the position to after this value
     # Panics
     When the position is outside the byte-code
@@ -526,28 +541,6 @@ impl State {
         self.put_stack(new_value);
     }
 
-    pub fn format_bool(&mut self) {
-        let pos = *self.code::<u16>();
-        let dir = *self.code::<i8>();
-        let token = *self.code::<u8>();
-        let width = *self.get_stack::<i32>();
-        let val = *self.get_stack::<bool>();
-        let s = self.string_mut(pos - 5);
-        external::format_text(s, if val { "true" } else { "false" }, width, dir, token);
-    }
-
-    pub fn format_int(&mut self) {
-        let pos = *self.code::<u16>();
-        let radix = *self.code::<u8>();
-        let token = *self.code::<u8>();
-        let plus = *self.code::<bool>();
-        let note = *self.code::<bool>();
-        let width = *self.get_stack::<i32>();
-        let val = *self.get_stack::<i32>();
-        let s = self.string_mut(pos - 8);
-        external::format_int(s, val, radix, width, token, plus, note);
-    }
-
     pub fn format_long(&mut self) {
         let pos = *self.code::<u16>();
         let radix = *self.code::<u8>();
@@ -560,6 +553,18 @@ impl State {
         external::format_long(s, val, radix, width, token, plus, note);
     }
 
+    pub fn format_ref_long(&mut self) {
+        let pos = *self.code::<u16>();
+        let radix = *self.code::<u8>();
+        let token = *self.code::<u8>();
+        let plus = *self.code::<bool>();
+        let note = *self.code::<bool>();
+        let width = *self.get_stack::<i32>();
+        let val = *self.get_stack::<i64>();
+        let s = self.string_ref_mut(pos - 12);
+        external::format_long(s, val, radix, width, token, plus, note);
+    }
+
     pub fn format_float(&mut self) {
         let pos = *self.code::<u16>();
         let precision = *self.get_stack::<i32>();
@@ -569,12 +574,29 @@ impl State {
         external::format_float(s, val, width, precision);
     }
 
+    pub fn format_ref_float(&mut self) {
+        let pos = *self.code::<u16>();
+        let precision = *self.get_stack::<i32>();
+        let width = *self.get_stack::<i32>();
+        let val = *self.get_stack::<f64>();
+        let s = self.string_ref_mut(pos - 12);
+        external::format_float(s, val, width, precision);
+    }
     pub fn format_single(&mut self) {
         let pos = *self.code::<u16>();
         let precision = *self.get_stack::<i32>();
         let width = *self.get_stack::<i32>();
         let val = *self.get_stack::<f32>();
         let s = self.string_mut(pos - 12);
+        external::format_single(s, val, width, precision);
+    }
+
+    pub fn format_ref_single(&mut self) {
+        let pos = *self.code::<u16>();
+        let precision = *self.get_stack::<i32>();
+        let width = *self.get_stack::<i32>();
+        let val = *self.get_stack::<f32>();
+        let s = self.string_ref_mut(pos - 12);
         external::format_single(s, val, width, precision);
     }
 
@@ -585,6 +607,16 @@ impl State {
         let width = *self.get_stack::<i32>();
         let val = self.string();
         let s = self.string_mut(pos - 4 - size_ptr() as u16);
+        external::format_text(s, val.str(), width, dir, token);
+    }
+
+    pub fn format_ref_text(&mut self) {
+        let pos = *self.code::<u16>();
+        let dir = *self.code::<i8>();
+        let token = *self.code::<u8>();
+        let width = *self.get_stack::<i32>();
+        let val = self.string();
+        let s = self.string_ref_mut(pos - 4 - size_ptr() as u16);
         external::format_text(s, val.str(), width, dir, token);
     }
 
@@ -609,6 +641,24 @@ impl State {
         }
         .write(&mut s, 0);
         self.string_mut(pos - size_ref() as u16).push_str(&s);
+    }
+
+    pub fn format_ref_database(&mut self) {
+        let pos = *self.code::<u16>();
+        let db_tp = *self.code::<u16>();
+        let pretty = *self.code::<bool>();
+        let val = *self.get_stack::<DbRef>();
+        let mut s = String::new();
+        ShowDb {
+            stores: &self.database,
+            store: val.store_nr,
+            rec: val.rec,
+            pos: val.pos,
+            known_type: db_tp,
+            pretty,
+        }
+        .write(&mut s, 0);
+        self.string_ref_mut(pos - size_ref() as u16).push_str(&s);
     }
 
     pub fn append(&mut self) {
@@ -1640,6 +1690,7 @@ impl State {
         }
         self.code_add(var_pos);
         if let Type::RefVar(tp) = stack.function.tp(variable) {
+            let txt = matches!(**tp, Type::Text(_));
             match &**tp {
                 Type::Integer(_, _) => stack.add_op("OpGetInt", self),
                 Type::Character => stack.add_op("OpGetCharacter", self),
@@ -1651,7 +1702,9 @@ impl State {
                 Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpGetDbRef", self),
                 _ => panic!("Unknown referenced variable type: {tp}"),
             }
-            self.code_add(0u16);
+            if !txt {
+                self.code_add(0u16);
+            }
         }
         self.insert_types(stack.function.tp(variable).clone(), code, stack)
     }
@@ -1802,6 +1855,16 @@ impl State {
 
     fn set_var(&mut self, stack: &mut Stack, var: u16, value: &Value) {
         if let Type::RefVar(tp) = stack.function.tp(var).clone() {
+            if matches!(*tp, Type::Text(_)) {
+                if value == &Value::Text(String::new()) {
+                    return;
+                }
+                self.generate(value, stack, false);
+                let var_pos = stack.position - stack.function.stack(var);
+                stack.add_op("OpAppendRefText", self);
+                self.code_add(var_pos);
+                return;
+            }
             let var_pos = stack.position - stack.function.stack(var);
             stack.add_op("OpVarRef", self);
             self.code_add(var_pos);
@@ -1812,7 +1875,6 @@ impl State {
                 Type::Long => stack.add_op("OpSetLong", self),
                 Type::Single => stack.add_op("OpSetSingle", self),
                 Type::Float => stack.add_op("OpSetFloat", self),
-                Type::Text(_) => stack.add_op("OpAppendRefText", self),
                 Type::Enum(_) => stack.add_op("OpSetByte", self),
                 Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpSetDbRef", self),
                 _ => panic!("Unknown reference variable type"),
@@ -1830,7 +1892,12 @@ impl State {
             Type::Long => stack.add_op("OpPutLong", self),
             Type::Single => stack.add_op("OpPutSingle", self),
             Type::Float => stack.add_op("OpPutFloat", self),
-            Type::Text(_) => stack.add_op("OpAppendText", self),
+            Type::Text(_) => {
+                if value == &Value::Text(String::new()) {
+                    return;
+                }
+                stack.add_op("OpAppendText", self);
+            }
             Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpPutRef", self),
             _ => panic!(
                 "Unknown var {} type {} at {}",
@@ -1937,7 +2004,7 @@ impl State {
                     && self.stack.contains_key(&p)
                 {
                     let pos = i32::from(*self.code::<u16>());
-                    write!(f, "var[{}]", i32::from(self.stack[&p]) - pos + 4,)?;
+                    write!(f, "var[{}]", i32::from(self.stack[&p]) - pos)?;
                 } else if a.mutable {
                     write!(
                         f,
@@ -1966,7 +2033,7 @@ impl State {
                     f,
                     " var={}[{}]:{}",
                     vars.name(*v),
-                    vars.stack(*v) + 4,
+                    vars.stack(*v),
                     vars.tp(*v).show(data, vars)
                 )?;
             }
@@ -1978,13 +2045,13 @@ impl State {
 
     fn fn_name(&mut self, f: &mut dyn Write, data: &&Data) -> Result<(), Error> {
         let addr = *self.code::<i32>() as u32;
-        let mut name = "Unknown".to_string();
+        let mut name = format!("Unknown[{addr}]");
         for d in &data.definitions {
             if d.code_position == addr {
                 name.clone_from(&d.name);
             }
         }
-        write!(f, "call={name}[{addr}]")?;
+        write!(f, "fn={name}")?;
         Ok(())
     }
 
@@ -2199,13 +2266,13 @@ impl State {
 
     fn call_name(&mut self, attr: &mut BTreeMap<usize, String>, a_nr: usize, data: &Data) {
         let addr = *self.code::<i32>() as u32;
-        let mut name = "Unknown".to_string();
+        let mut name = format!("Unknown[{addr}]");
         for d in &data.definitions {
             if d.code_position == addr {
                 name.clone_from(&d.name);
             }
         }
-        attr.insert(a_nr, format!("call={name}[{addr}]"));
+        attr.insert(a_nr, format!("fn={name}"));
     }
 
     fn log_result(

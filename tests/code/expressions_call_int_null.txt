@@ -1,0 +1,51 @@
+fn routine(a: integer) -> integer { if a > 2 { return null }; a+1 }
+
+pub fn test() {
+    routine(5);
+}
+fn routine(a:integer) -> integer {#block(1):integer
+  [1] if OpGtInt(a(0), 2i32) {#block(2):void
+    return OpConvIntFromNull();
+  }#block(2):void else null;
+  OpAddInt(a(0), 1i32);
+}#block(1):integer
+
+byte-code for call_int_null:routine(a: integer[0]) -> integer
+   0[4]: return-address
+   0[8]: [1] VarInt(var[0]) -> integer var=a[0]:integer
+   3[12]: ConstInt(val=2) -> integer
+   8[16]: GtInt(v1: integer, v2: integer) -> boolean
+   9[9]: GotoFalseWord(jump=30, if_false: boolean)
+  12[8]: ConvIntFromNull() -> integer
+  13[12]: Return(ret=4, value=4, discard=12)
+  19[12]: ConvIntFromNull() -> integer
+  20[16]: Return(ret=4, value=4, discard=16) type=integer[4]:Base[0]
+  26[16]: FreeStack(value=0, discard=8)
+  30[8]: VarInt(var[0]) -> integer var=a[0]:integer
+  33[12]: ConstInt(val=1) -> integer
+  38[16]: AddInt(v1: integer, v2: integer) -> integer
+  39[12]: Return(ret=4, value=4, discard=12) type=integer[4]:Base[0]
+
+fn test() {#block(1):void
+  [4] drop routine(5i32);
+}#block(1):void
+
+byte-code for call_int_null:test()
+   0[0]: return-address
+   0[4]: [4] ConstInt(val=5) -> integer
+   5[8]: Call(size=0, fn=routine)
+  12[8]: FreeStack(value=0, discard=4)
+  16[4]: Return(ret=0, value=0, discard=4)
+
+Execute test:
+    0:[8] ConstInt(val=5) -> 5[8]
+    5:[12] Call(size=0, fn=routine)
+ 1103:[16] VarInt(var[8]) -> 5[16]
+ 1106:[20] ConstInt(val=2) -> 2[20]
+ 1111:[24] GtInt(v1=5[16], v2=2[20]) -> true[16]
+ 1112:[17] GotoFalseWord(jump=1133, if_false=true[16])
+ 1115:[16] ConvIntFromNull() -> -2147483648[16]
+ 1116:[20] Return(ret=1160[12], value=4, discard=12)
+   12:[12] FreeStack(value=0, discard=4)
+   16:[8] Return(ret=4294967295[4], value=0, discard=4)
+Finished

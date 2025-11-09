@@ -28,14 +28,14 @@ fn data(n:text, res:Data) -> text["res"] {#block(1):text["res"]
 
 byte-code for return_text:data(n: text[0], res: ref(Data)[16]) -> text["res"]
    0[28]: return-address
-   0[32]: [7] Database(var[20], db_tp=17) type=Data[12]:{name:text[4], number:integer[8]}[17]
-   5[32]: VarRef(var[20]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[20]:ref(Data)
-   8[44]: ArgText(var[4]) -> text var=n[4]:text
+   0[32]: [7] Database(var[16], db_tp=17) type=Data[12]:{name:text[4], number:integer[8]}[17]
+   5[32]: VarRef(var[16]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[16]:ref(Data)
+   8[44]: ArgText(var[0]) -> text var=n[0]:text
   11[60]: SetText(v1: ref(reference), fld=4, val: text)
-  14[32]: VarRef(var[20]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[20]:ref(Data)
+  14[32]: VarRef(var[16]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[16]:ref(Data)
   17[44]: ConstInt(val=0) -> integer
   22[48]: SetInt(v1: ref(reference), fld=8, val: integer)
-  25[32]: [8] VarRef(var[20]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[20]:ref(Data)
+  25[32]: [8] VarRef(var[16]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[16]:ref(Data)
   28[44]: GetText(v1: ref(reference), fld=4) -> text["n"]
   31[48]: Return(ret=28, value=16, discard=48) type=text[4]:Base[5]
 
@@ -45,12 +45,12 @@ fn test() {#block(1):void
   [12] test_value(1):text["__ref_1"] = {#block(2):text["__ref_1"]
     data("test", __ref_1(1));
   }#block(2):text["__ref_1"];
-  [13] if OpEqText(test_value(1), "test") null else OpPanic({#Formatted string(3):text
+  [13] if OpEqText(test_value(1), "test") null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatText(__work_1(1), test_value(1), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), " != "test"");
     __work_1(1);
-  }#Formatted string(3):text);
+  }#Formatted string(3):text["__work_1"]);
   OpFreeText(test_value(1));
   OpFreeRef(__ref_1(1));
   OpFreeText(__work_1(1));
@@ -58,32 +58,32 @@ fn test() {#block(1):void
 
 byte-code for return_text:test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[8]:ref(Data)
-   1[16]: Text() var=__work_1[20]:text
-   2[40]: [12] Text() var=test_value[44]:text["__ref_1"]
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data)
+   1[16]: Text() var=__work_1[16]:text
+   2[40]: [12] Text() var=test_value[40]:text["__ref_1"]
    3[64]: ConstText(_value="test") -> text
-   9[80]: VarRef(var[8]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=__ref_1[8]:ref(Data)
-  12[92]: Call(size=0, call=data[1115])
-  19[80]: AppendText(var[44], v1: text)
-  22[64]: [13] VarText(var[44]) -> text var=test_value[44]:text["__ref_1"]
+   9[80]: VarRef(var[4]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=__ref_1[4]:ref(Data)
+  12[92]: Call(size=0, fn=data)
+  19[80]: AppendText(var[40], v1: text)
+  22[64]: [13] VarText(var[40]) -> text var=test_value[40]:text["__ref_1"]
   25[80]: ConstText(_value="test") -> text
   31[96]: EqText(v1: text, v2: text) -> boolean
   32[65]: GotoFalseWord(jump=38, if_false: boolean)
   35[64]: GotoWord(jump=90)
-  38[64]: ClearText(var[20]) var=__work_1[20]:text
+  38[64]: ClearText(var[16]) var=__work_1[16]:text
   41[64]: ConstText(_value="Test failed ") -> text
-  55[80]: AppendText(var[20], v1: text)
-  58[64]: VarText(var[44]) -> text var=test_value[44]:text["__ref_1"]
+  55[80]: AppendText(var[16], v1: text)
+  58[64]: VarText(var[40]) -> text var=test_value[40]:text["__ref_1"]
   61[80]: ConstInt(val=0) -> integer
-  66[84]: FormatText(var[20], val: text, width: integer, dir=-1, token=32)
+  66[84]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
   71[64]: ConstText(_value=" != "test"") -> text
-  83[80]: AppendText(var[20], v1: text)
-  86[64]: VarText(var[20]) -> text var=__work_1[20]:text
+  83[80]: AppendText(var[16], v1: text)
+  86[64]: VarText(var[16]) -> text var=__work_1[16]:text
   89[80]: Panic(message: text)
-  90[64]: FreeText(var[44])
-  93[64]: VarRef(var[8]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=__ref_1[8]:ref(Data)
+  90[64]: FreeText(var[40])
+  93[64]: VarRef(var[4]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=__ref_1[4]:ref(Data)
   96[76]: FreeRef(v1: ref(reference))
-  97[64]: FreeText(var[20])
+  97[64]: FreeText(var[16])
  100[64]: Return(ret=0, value=0, discard=64)
 
 Execute test:
@@ -92,17 +92,17 @@ Execute test:
     2:[44] Text()
     3:[68] ConstText(_value="test") -> "test"[68]
     9:[84] VarRef(var[8]) -> ref(1,0,0)=null[84]
-   12:[96] Call(size=0, call=data[1115])
- 1115:[100] Database(var[84], db_tp=17)
- 1120:[100] VarRef(var[84]) -> ref(1,1,0)={}[100]
- 1123:[112] ArgText(var[68]) -> "test"[112]
- 1126:[128] SetText(v1=ref(1,1,0)[100], fld=4, val="test"[112])
- 1129:[100] VarRef(var[84]) -> ref(1,1,0)={name:"test"}[100]
- 1132:[112] ConstInt(val=0) -> 0[112]
- 1137:[116] SetInt(v1=ref(1,1,0)[100], fld=8, val=0[112])
- 1140:[100] VarRef(var[84]) -> ref(1,1,0)={name:"test",number:0}[100]
- 1143:[112] GetText(v1=ref(1,1,0)[100], fld=4) -> "test"[100]
- 1146:[116] Return(ret=1171[96], value=16, discard=48) -> "test"[68]
+   12:[96] Call(size=0, fn=data)
+ 1103:[100] Database(var[84], db_tp=17)
+ 1108:[100] VarRef(var[84]) -> ref(1,1,0)={}[100]
+ 1111:[112] ArgText(var[68]) -> "test"[112]
+ 1114:[128] SetText(v1=ref(1,1,0)[100], fld=4, val="test"[112])
+ 1117:[100] VarRef(var[84]) -> ref(1,1,0)={name:"test"}[100]
+ 1120:[112] ConstInt(val=0) -> 0[112]
+ 1125:[116] SetInt(v1=ref(1,1,0)[100], fld=8, val=0[112])
+ 1128:[100] VarRef(var[84]) -> ref(1,1,0)={name:"test",number:0}[100]
+ 1131:[112] GetText(v1=ref(1,1,0)[100], fld=4) -> "test"[100]
+ 1134:[116] Return(ret=1159[96], value=16, discard=48) -> "test"[68]
    19:[84] AppendText(var[44], v1="test"[68])
    22:[68] VarText(var[44]) -> "test"[68]
    25:[84] ConstText(_value="test") -> "test"[84]

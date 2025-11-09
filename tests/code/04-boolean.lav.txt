@@ -1,5 +1,6 @@
 fn main() {#block(1):void
   [2] if OpNot(OpGtInt(3i32, OpAddInt(2i32, 4i32))) null else OpPanic("Boolean test");
+  [3] if OpEqText(OpCastTextFromBool(true), "true") null else OpPanic("Convert boolean");
 }#block(1):void
 
 byte-code for tests/suite/04-boolean.lav:main()
@@ -14,5 +15,13 @@ byte-code for tests/suite/04-boolean.lav:main()
   21[4]: GotoWord(jump=39)
   24[4]: ConstText(_value="Boolean test") -> text
   38[20]: Panic(message: text)
-  39[4]: Return(ret=0, value=0, discard=4)
+  39[4]: [3] ConstTrue() -> boolean
+  40[5]: CastTextFromBool(v1: boolean) -> text
+  41[20]: ConstText(_value="true") -> text
+  47[36]: EqText(v1: text, v2: text) -> boolean
+  48[5]: GotoFalseWord(jump=54, if_false: boolean)
+  51[4]: GotoWord(jump=72)
+  54[4]: ConstText(_value="Convert boolean") -> text
+  71[20]: Panic(message: text)
+  72[4]: Return(ret=0, value=0, discard=4)
 

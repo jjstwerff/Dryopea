@@ -37,12 +37,12 @@ fn init(db: &mut KnownTypes) {
 }
 
 fn _tp_integer_abs(stores: &mut Stores, var_0: i32) -> i32 { //block_1: integer
-  Line(106);
+  Line(107);
   external::op_abs_int((var_both))
 } //block_1: integer
 
 fn _tp_long_abs(stores: &mut Stores, var_0: i64) -> i64 { //block_1: long
-  Line(188);
+  Line(187);
   external::op_abs_long((var_both))
 } //block_1: long
 
@@ -117,87 +117,87 @@ fn _tp_single_pow(stores: &mut Stores, var_0: f32, var_1: f32) -> f32 { //block_
 } //block_1: single
 
 fn _tp_float_abs(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(386);
+  Line(387);
   (var_both).abs()
 } //block_1: float
 
 fn _tp_float_cos(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(398);
+  Line(399);
   (var_both).cos()
 } //block_1: float
 
 fn _tp_float_sin(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(402);
+  Line(403);
   (var_both).sin()
 } //block_1: float
 
 fn _tp_float_tan(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(406);
+  Line(407);
   (var_both).tan()
 } //block_1: float
 
 fn _tp_float_acos(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(410);
+  Line(411);
   (var_both).acos()
 } //block_1: float
 
 fn _tp_float_asin(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(414);
+  Line(415);
   (var_both).asin()
 } //block_1: float
 
 fn _tp_float_atan(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(418);
+  Line(419);
   (var_both).atan()
 } //block_1: float
 
 fn _tp_float_atan2(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
-  Line(422);
+  Line(423);
   (var_both).atan2((var_v2))
 } //block_1: float
 
 fn _tp_float_ceil(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(426);
+  Line(427);
   (var_both).ceil()
 } //block_1: float
 
 fn _tp_float_floor(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(430);
+  Line(431);
   (var_both).floor()
 } //block_1: float
 
 fn _tp_float_round(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(434);
+  Line(435);
   (var_both).round()
 } //block_1: float
 
 fn _tp_float_sqrt(stores: &mut Stores, var_0: f64) -> f64 { //block_1: float
-  Line(438);
+  Line(439);
   (var_both).sqrt()
 } //block_1: float
 
 fn _tp_float_log(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
-  Line(442);
+  Line(443);
   (var_both).log((var_v2))
 } //block_1: float
 
 fn _tp_float_pow(stores: &mut Stores, var_0: f64, var_1: f64) -> f64 { //block_1: float
-  Line(446);
+  Line(447);
   (var_both).powf((var_v2))
 } //block_1: float
 
 fn _tp_text_len(stores: &mut Stores, var_0: Str) -> i32 { //block_1: integer
-  Line(509);
+  Line(511);
   (var_both).len() as i32
 } //block_1: integer
 
 fn _tp_character_len(stores: &mut Stores, var_0: char) -> i32 { //block_1: integer
-  Line(511);
+  Line(513);
   OpLengthCharacter(stores, var_both)
 } //block_1: integer
 
 fn _tp_vector_len(stores: &mut Stores, var_0: DbRef) -> i32 { //block_1: integer
-  Line(666);
+  Line(670);
   vector::length_vector(&(var_both), &s.database.allocations) as i32
 } //block_1: integer
 
@@ -212,20 +212,20 @@ fn panic(stores: &mut Stores, var_0: Str) {
 
 
 fn print(stores: &mut Stores, var_0: Str) { //block_1: void
-  Line(723);
+  Line(727);
   print!("{}", (var_v1));
 } //block_1: void
 
 fn println(stores: &mut Stores, var_0: Str) { //block_1: void
   var___work_1 = "".to_string();
-  Line(726);
-  print!("{}", ({ //Formatted string_2: text
+  Line(730);
+  print!("{}", ({ //Formatted string_2: text["__work_1"]
     var___work_1 = "".to_string();
     OpFormatText(stores, var___work_1, var_v1, 0_i32, -1_i32, 32_i32);
     OpAppendText(stores, var___work_1, "
 ".to_string());
     var___work_1
-  } //Formatted string_2: text));;
+  } //Formatted string_2: text["__work_1"]));;
   OpFreeText(stores, var___work_1)
 } //block_1: void
 
@@ -262,7 +262,7 @@ fn _tp_File_content(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> Str { //
   Line(50);
   OpGetFileText(stores, var_self, OpCreateRef(stores, var_txt));
   Line(51);
-  OpAppendRefText(stores, {let r = *s.get_var::<DbRef>((var_result)); stores.valid(&r); r}, 0_i32, var_txt);
+  OpAppendRefText(stores, var_result, var_txt);
   Line(52);
   OpFreeText(stores, var_txt);
   var_result
@@ -337,7 +337,7 @@ fn _tp_File_files(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //
   Line(84);
   if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + u32::from((16_i32)), i32::from((0_i32)))}) == (1_i32) { //block_2: void
     Line(85);
-    Drop(Call(325, [Call(268, [Var(0), Int(4)]), Var(1)]))
+    Drop(Call(330, [Call(272, [Var(0), Int(4)]), Var(1)]))
   } //block_2: void else {Null};
   Line(87);
   var_result
@@ -353,7 +353,7 @@ fn _tp_File_png(stores: &mut Stores, var_0: DbRef, var_1: DbRef) -> DbRef { //bl
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((12_i32)), (0_i32));};
     {let db = (var_result); stores.store_mut(&db).set_int(db.rec, db.pos + u32::from((16_i32)), (0_i32));};
     Line(93);
-    Drop(Call(326, [Call(268, [Var(0), Int(4)]), Var(1)]));
+    Drop(Call(331, [Call(272, [Var(0), Int(4)]), Var(1)]));
     Line(94);
     var_result
   } //block_2: ref(Image)["result"] else { //block_3: ref(Image)["result"]

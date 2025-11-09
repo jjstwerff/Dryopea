@@ -33,6 +33,13 @@ fn enum_vector() {
 }
 
 #[test]
+fn append_vector() {
+    code!("enum Val {A, B, C}")
+        .expr("v=[A,A]; v += [B] + [C] + [A]; \"{v}\"")
+        .result(Value::str("[A,A,B,C,A]"));
+}
+
+#[test]
 fn iter_vector() {
     expr!(
         "v=[1, 2, 4, 8];
