@@ -1,0 +1,235 @@
+
+enum Value {
+    Null,
+    Integer { i_value: i32 },
+    Boolean { b_value: boolean },
+    Float { f_value: float },
+    Text { t_value: text },
+    Object { fields: vector<Pair> },
+    Array { content: vector<Value> }
+}
+
+struct Pair {
+    field: u16,
+    value: Value
+}
+
+struct Field {
+    field: u16,
+    name: text
+}
+
+struct Json {
+    key_fields: vector<Field>,
+    key_hash: hash<Field[name]>,
+    data: Value
+}
+
+
+pub fn test() {
+    test_value = {v = "{{ data: Integer {{ i_value: 12 }} }}" as Json;
+    i = v.data;
+    assert(i == Integer, "Compare");
+    w = "Text {{ t_value: \"Something\" }}" as Value;
+    v.data = w;
+    "{v} & {i}"};
+    assert(
+        test_value == "{{key_fields:[],data:Text {{t_value:\"Something\"}}}} & Text {{t_value:\"Something\"}}",
+        "Test failed {test_value} != \"{{key_fields:[],data:Text {{t_value:\"Something\"}}}} & Text {{t_value:\"Something\"}}\""
+    );
+}
+Type 17:Value[16/8]: parents [Pair 23, Array 26, Json 29]
+    Null
+    Integer:18
+    Boolean:19
+    Float:20
+    Text:21
+    Object:22
+    Array:26
+
+Type 18:Integer[8/4]: EnumValue(2)
+    enum:byte[0] default Long(2)
+    i_value:integer[4]
+
+Type 19:Boolean[8/1]: EnumValue(3)
+    enum:byte[0] default Long(3)
+    b_value:boolean[7]
+
+Type 20:Float[16/8]: EnumValue(4)
+    enum:byte[0] default Long(4)
+    f_value:float[8]
+
+Type 21:Text[8/4]: EnumValue(5)
+    enum:byte[0] default Long(5)
+    t_value:text[4]
+
+Type 22:Object[8/4]: EnumValue(6)
+    enum:byte[0] default Long(6)
+    fields:vector<Pair>[4]
+
+Type 23:Pair[18/8]: parents [Object 22]
+    field:short<0,true>[16]
+    value:Value[0]
+
+Type 24:short<0,true>[2/2]:Short(0, true)
+
+Type 25:vector<Pair>[4/4]:Vector(23)
+
+Type 26:Array[8/4]: EnumValue(7)
+    enum:byte[0] default Long(7)
+    content:vector<Value>[4]
+
+Type 27:vector<Value>[4/4]:Vector(17)
+
+Type 28:Field[6/4]: parents [Json 29]
+    field:short<0,true>[4]
+    name:text[0]
+
+Type 29:Json[24/8]:
+    key_fields:array<Field>[16] other [1]
+    key_hash:hash<Field[name]>[20] other [65535]
+    data:Value[0]
+
+Type 30:array<Field>[4/4]:Array(28)
+
+Type 31:hash<Field[name]>[4/4]:Hash(28, [1]) keys [tp:6 desc:false field:0, ]
+
+fn test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  [30] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
+    v(2):ref(Json) = OpCastVectorFromText("{ data: Integer { i_value: 12 } }", 29i32);
+    [31] i(2):ref(Value)["v"] = OpGetField(v(2), 0i32, 17i32);
+    [32] if OpEqInt(OpConvIntFromEnum(OpGetEnum(i(2), 0i32)), OpConvIntFromEnum(2u8(17))) null else OpPanic("Compare");
+    [33] w(2):ref(Value) = OpCastVectorFromText("Text { t_value: "Something" }", 17i32);
+    [34] OpCopyRecord(w(2), OpGetField(v(2), 0i32, 17i32), 17i32);
+    [35] {#Formatted string(3):text["__work_1"]
+      __work_1(1):text = "";
+      OpFormatDatabase(__work_1(1), v(2), 29i32, false);
+      OpAppendText(__work_1(1), " & ");
+      OpFormatDatabase(__work_1(1), i(2), 17i32, false);
+      OpFreeRef(v(2));
+      OpFreeRef(w(2));
+      __work_1(1);
+    }#Formatted string(3):text["__work_1"];
+  }#block(2):text["__work_1"];
+  [36] if OpEqText(test_value(1), "{key_fields:[],data:Text {t_value:"Something"}} & Text {t_value:"Something"}") null else OpPanic({#Formatted string(4):text["__work_2"]
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "{key_fields:[],data:Text {t_value:"Something"}} & Text {t_value:"Something"}"");
+    __work_2(1);
+  }#Formatted string(4):text["__work_2"]);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
+
+byte-code for general_json:test()
+   0[0]: return-address
+   0[4]: Text() var=__work_2[4]:text
+   1[28]: Text() var=__work_1[28]:text
+   2[52]: [30] Text() var=test_value[52]:text["__work_1"]
+   3[76]: ConstText(_value="{ data: Integer { i_value: 12 } }") -> text var=v[76]:ref(Json)
+  38[92]: CastVectorFromText(val: text, db_tp=29) -> vector
+  41[88]: [31] VarRef(var[76]) -> ref(reference) type=Json 29 var=v[76]:ref(Json)
+  44[100]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 17
+  47[100]: [32] VarRef(var[88]) -> ref(reference) type=Value 17 var=i[88]:ref(Value)["v"]
+  50[112]: GetEnum(v1: ref(reference), fld=0) -> boolean
+  53[101]: ConvIntFromEnum(v1: boolean) -> integer
+  54[104]: ConstEnum(val=2) -> boolean type=Value 17
+  56[105]: ConvIntFromEnum(v1: boolean) -> integer
+  57[108]: EqInt(v1: integer, v2: integer) -> boolean
+  58[101]: GotoFalseWord(jump=64, if_false: boolean)
+  61[100]: GotoWord(jump=74)
+  64[100]: ConstText(_value="Compare") -> text
+  73[116]: Panic(message: text)
+  74[100]: [33] ConstText(_value="Text { t_value: "Something" }") -> text var=w[100]:ref(Value)
+ 105[116]: CastVectorFromText(val: text, db_tp=17) -> vector
+ 108[112]: [34] VarRef(var[100]) -> ref(reference) type=Value 17 var=w[100]:ref(Value)
+ 111[124]: VarRef(var[76]) -> ref(reference) type=Json 29 var=v[76]:ref(Json)
+ 114[136]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 17
+ 117[136]: CopyRecord(data: ref(reference), to: ref(reference), tp=17)
+ 120[112]: [35] ClearText(var[28]) var=__work_1[28]:text
+ 123[112]: ConstText(_value="") -> text
+ 125[128]: VarRef(var[76]) -> ref(reference) type=Json 29 var=v[76]:ref(Json)
+ 128[140]: FormatDatabase(var[28], val: ref(reference), db_tp=29, pretty=false)
+ 134[128]: ConstText(_value=" & ") -> text
+ 139[144]: AppendText(var[28], v1: text)
+ 142[128]: VarRef(var[88]) -> ref(reference) type=Value 17 var=i[88]:ref(Value)["v"]
+ 145[140]: FormatDatabase(var[28], val: ref(reference), db_tp=17, pretty=false)
+ 151[128]: VarRef(var[76]) -> ref(reference) type=Json 29 var=v[76]:ref(Json)
+ 154[140]: FreeRef(v1: ref(reference))
+ 155[128]: VarRef(var[100]) -> ref(reference) type=Value 17 var=w[100]:ref(Value)
+ 158[140]: FreeRef(v1: ref(reference))
+ 159[128]: VarText(var[28]) -> text var=__work_1[28]:text
+ 162[144]: FreeStack(value=16, discard=32)
+ 166[128]: FreeStack(value=16, discard=52)
+ 170[92]: AppendText(var[52], v1: text)
+ 173[76]: [36] VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+ 176[92]: ConstText(_value="{key_fields:[],data:Text {t_value:"Something"}} & Text {t_value:"Something"}") -> text
+ 254[108]: EqText(v1: text, v2: text) -> boolean
+ 255[77]: GotoFalseWord(jump=261, if_false: boolean)
+ 258[76]: GotoWord(jump=385)
+ 261[76]: ClearText(var[4]) var=__work_2[4]:text
+ 264[76]: ConstText(_value="Test failed ") -> text
+ 278[92]: AppendText(var[4], v1: text)
+ 281[76]: VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+ 284[92]: ConstInt(val=0) -> integer
+ 289[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 294[76]: ConstText(_value=" != "{key_fields:[],data:Text {t_value:"Something"}} & Text {t_value:"Something"}"") -> text
+ 378[92]: AppendText(var[4], v1: text)
+ 381[76]: VarText(var[4]) -> text var=__work_2[4]:text
+ 384[92]: Panic(message: text)
+ 385[76]: FreeText(var[52])
+ 388[76]: FreeText(var[28])
+ 391[76]: FreeText(var[4])
+ 394[76]: Return(ret=0, value=0, discard=76)
+
+Execute test:
+    0:[8] Text()
+    1:[32] [30] Text()
+    2:[56] Text()
+    3:[80] ConstText(_value="{ data: Integer { i_value: 12 } }") -> "{ data: Integer { i_value: 12 } }"[80]
+   38:[96] CastVectorFromText(val="{ data: Integer { i_value: 12 } }"[80], db_tp=29) -> ref(1,1,8)[80]
+   41:[92] VarRef(var[80]) -> ref(1,1,8)={key_fields:[],data:Integer {i_value:12}}[92]
+   44:[104] GetField(v1=ref(1,1,8)[92], fld=0) -> ref(1,1,8)=Integer {i_value:12}[92]
+   47:[104] VarRef(var[92]) -> ref(1,1,8)=Integer {i_value:12}[104]
+   50:[116] GetEnum(v1=ref(1,1,8)[104], fld=0) -> null(2)[104]
+   53:[105] ConvIntFromEnum(v1=2[104]) -> 2[104]
+   54:[108] ConstEnum(val=2) -> Integer(2)[108]
+   56:[109] ConvIntFromEnum(v1=2[108]) -> 2[108]
+   57:[112] EqInt(v1=2[104], v2=2[108]) -> true[104]
+   58:[105] GotoFalseWord(jump=64, if_false=true[104])
+   61:[104] GotoWord(jump=74)
+   74:[104] ConstText(_value="Text { t_value: "Something" }") -> "Text { t_value: \"Something\" }"[104]
+  105:[120] CastVectorFromText(val="Text { t_value: \"Something\" }"[104], db_tp=17) -> ref(2,1,8)[104]
+  108:[116] VarRef(var[104]) -> ref(2,1,8)=Text {t_value:"Something"}[116]
+  111:[128] VarRef(var[80]) -> ref(1,1,8)={key_fields:[],data:Integer {i_value:12}}[128]
+  114:[140] GetField(v1=ref(1,1,8)[128], fld=0) -> ref(1,1,8)=Integer {i_value:12}[128]
+  117:[140] CopyRecord(data=ref(2,1,8)[116], to=ref(1,1,8)[128], tp=17)
+  120:[116] ClearText(var[32])
+  123:[116] ConstText(_value="") -> ""[116]
+  125:[132] VarRef(var[80]) -> ref(1,1,8)={key_fields:[],data:Text {t_value:"Something"}}[132]
+  128:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=29, pretty=false)
+  134:[132] ConstText(_value=" & ") -> " & "[132]
+  139:[148] AppendText(var[32], v1=" & "[132])
+  142:[132] VarRef(var[92]) -> ref(1,1,8)=Text {t_value:"Something"}[132]
+  145:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=17, pretty=false)
+  151:[132] VarRef(var[80]) -> ref(1,1,8)={key_fields:[],data:Text {t_value:"Something"}}[132]
+  154:[144] FreeRef(v1=ref(1,1,8)[132])
+  155:[132] VarRef(var[104]) -> ref(2,1,8)=Text {t_value:"Something"}[132]
+  158:[144] FreeRef(v1=ref(2,1,8)[132])
+  159:[132] VarText(var[32]) -> "{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[132]
+  162:[148] FreeStack(value=16, discard=32)
+  166:[132] FreeStack(value=16, discard=52)
+  170:[96] AppendText(var[56], v1="{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[80])
+  173:[80] VarText(var[56]) -> "{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[80]
+  176:[96] ConstText(_value="{key_fields:[],data:Text {t_value:"Something"}} & Text {t_value:"Something"}") -> "{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[96]
+  254:[112] EqText(v1="{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[80], v2="{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[96]) -> true[80]
+  255:[81] GotoFalseWord(jump=261, if_false=true[80])
+  258:[80] GotoWord(jump=385)
+  385:[80] FreeText(var[56])
+  388:[80] FreeText(var[32])
+  391:[80] FreeText(var[8])
+  394:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

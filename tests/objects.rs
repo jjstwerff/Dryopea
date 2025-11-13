@@ -215,7 +215,8 @@ fn files() {
 {path:\"example/config\",size:4096,dir:true},\
 {path:\"example/map.png\",size:3406,dir:false},\
 {path:\"example/map.xcf\",size:7817,dir:false},\
-{path:\"example/show.lav\",size:371,dir:false}]",
+{path:\"example/show.lav\",size:371,dir:false},\
+{path:\"example/todo.json\",size:1461,dir:false}]",
     ));
 }
 

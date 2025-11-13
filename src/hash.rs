@@ -1,5 +1,6 @@
 // Copyright (c) 2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
+
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_possible_truncation)]
@@ -36,6 +37,7 @@ pub fn add(hash: &DbRef, rec: &DbRef, stores: &mut [Store], keys: &[Key]) {
                 continue;
             }
             move_rec.rec = v;
+            move_rec.pos = 8;
             hash_set(new_claim, &move_rec, stores, keys);
         }
         claim = new_claim;
@@ -93,6 +95,7 @@ pub fn find(hash_ref: &DbRef, stores: &[Store], keys: &[Key], key: &[Content]) -
             break;
         }
         record.rec = rec_pos;
+        record.pos = 8;
         if keys::key_compare(key, &record, stores, keys) != Ordering::Equal {
             index += 1;
             if index >= elms {
@@ -127,7 +130,7 @@ pub fn remove(hash_ref: &DbRef, rec: &DbRef, stores: &mut [Store], keys: &[Key])
         let next = DbRef {
             store_nr: rec.store_nr,
             rec: index_val,
-            pos: 0,
+            pos: 8,
         };
         let to = (8 + (keys::hash(&next, stores, keys) % u64::from(elms)) * 4) as u32;
         let right = if index < to {
@@ -171,6 +174,7 @@ pub fn validate(hash_ref: &DbRef, stores: &[Store], keys: &[Key]) {
         let rec = keys::store(hash_ref, stores).get_int(claim, 8 + i * 4) as u32;
         if rec != 0 {
             record.rec = rec;
+            record.pos = 8;
             l += 1;
             let key = keys::get_key(&record, stores, keys);
             assert_eq!(

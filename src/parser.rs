@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! Parse scripts and create internal code from it.
@@ -396,6 +396,13 @@ impl Parser {
         if is_type.is_equal(should) {
             return true;
         }
+        if let (Type::Reference(ref_tp, _), Type::Enum(enum_tp, true, _)) = (is_type, should) {
+            for a in &self.data.def(*enum_tp).attributes {
+                if a.name == self.data.def(*ref_tp).name {
+                    return true;
+                }
+            }
+        }
         if let Type::RefVar(ref_tp) = is_type
             && self.convert(code, ref_tp, should)
         {
@@ -409,6 +416,7 @@ impl Parser {
         }
         let mut check_type = is_type;
         let r = Type::Reference(self.data.def_nr("reference"), Vec::new());
+        let e = Type::Enum(0, false, Vec::new());
         if let Type::Vector(_nr, _) = is_type {
             if let Type::Vector(v, _) = should
                 && v.is_unknown()
@@ -420,11 +428,11 @@ impl Parser {
                 return true;
             }
             check_type = &r;
-        } else if let Type::Enum(_) = is_type {
-            if *should == Type::Enum(0) {
+        } else if let Type::Enum(_, false, _) = is_type {
+            if *should == e {
                 return true;
             }
-            check_type = &Type::Enum(0);
+            check_type = &e;
         }
         for &dnr in self.data.get_possible("OpConv", &self.lexer) {
             if self.data.def(dnr).name.ends_with("FromNull") {
@@ -473,12 +481,21 @@ impl Parser {
         } else {
             self.data.def(is_nr).known_type
         };
+        if matches!(is_type, Type::Text(_))
+            && matches!(should, Type::Enum(_, true, _) | Type::Reference(_, _))
+        {
+            *code = self.cl(
+                "OpCastVectorFromText",
+                &[code.clone(), Value::Int(i32::from(should_kt))],
+            );
+            return true;
+        }
         for &dnr in self.data.get_possible("OpCast", &self.lexer) {
             if self.data.attributes(dnr) == 1
                 && self.data.attr_type(dnr, 0).is_same(is_type)
                 && self.data.def(dnr).returned.is_same(should)
             {
-                if let Type::Enum(tp) = should {
+                if let Type::Enum(tp, false, _) = should {
                     *code = Value::Call(
                         dnr,
                         vec![
@@ -517,12 +534,17 @@ impl Parser {
             {
                 return true;
             }
-            if let (Type::Enum(_e), Type::Enum(o)) = (test_type, should)
+            if let (Type::Enum(_e, _, _), Type::Enum(o, _, _)) = (test_type, should)
                 && self.data.def(*o).name == "enumerate"
             {
                 return true;
             }
-            if let (Type::Enum(_), Type::Integer(_, _)) = (test_type, should) {
+            if let (Type::Enum(t, false, _), Type::Enum(s, false, _)) = (test_type, should)
+                && *t == *s
+            {
+                return true;
+            }
+            if let (Type::Enum(_, false, _), Type::Integer(_, _)) = (test_type, should) {
                 return true;
             }
             if let Type::Reference(r, _) = should
@@ -589,8 +611,8 @@ impl Parser {
         let pos = if f_nr == usize::MAX {
             0
         } else {
-            self.database
-                .position(self.data.def(d_nr).known_type, f_nr as u16)
+            let nm = self.data.attr_name(d_nr, f_nr);
+            self.database.position(self.data.def(d_nr).known_type, &nm)
         };
         self.get_val(
             &tp,
@@ -613,7 +635,7 @@ impl Parser {
                     self.cl("OpGetInt", &[code, p])
                 }
             }
-            Type::Enum(_) => self.cl("OpGetEnum", &[code, p]),
+            Type::Enum(_, false, _) => self.cl("OpGetEnum", &[code, p]),
             Type::Boolean => {
                 let val = self.cl("OpGetByte", &[code, p, Value::Int(0)]);
                 self.cl("OpEqInt", &[val, Value::Int(1)])
@@ -626,6 +648,7 @@ impl Parser {
             | Type::Sorted(_, _, _)
             | Type::Spacial(_, _, _)
             | Type::Index(_, _, _)
+            | Type::Enum(_, true, _)
             | Type::Vector(_, _) => self.cl("OpGetField", &[code, p, self.type_info(tp)]),
             _ => panic!(
                 "Get not implemented on '{}' at {}",
@@ -637,9 +660,8 @@ impl Parser {
 
     fn set_field(&mut self, d_nr: u32, f_nr: usize, ref_code: Value, val_code: Value) -> Value {
         let tp = self.data.attr_type(d_nr, f_nr);
-        let pos = self
-            .database
-            .position(self.data.def(d_nr).known_type, f_nr as u16);
+        let nm = self.data.attr_name(d_nr, f_nr);
+        let pos = self.database.position(self.data.def(d_nr).known_type, &nm);
         let pos_val = Value::Int(if f_nr == usize::MAX {
             0
         } else {
@@ -664,7 +686,10 @@ impl Parser {
             | Type::Reference(_, _)
             | Type::Sorted(_, _, _)
             | Type::Character => self.cl("OpSetInt", &[ref_code, pos_val, val_code]),
-            Type::Enum(_) => self.cl("OpSetEnum", &[ref_code, pos_val, val_code]),
+            Type::Enum(_, false, _) => self.cl("OpSetEnum", &[ref_code, pos_val, val_code]),
+            Type::Enum(_, true, _) => {
+                panic!("Still implement copy enum content")
+            }
             Type::Boolean => {
                 let v = v_if(val_code, Value::Int(1), Value::Int(0));
                 self.cl("OpSetByte", &[ref_code, pos_val, Value::Int(0), v])
@@ -711,7 +736,8 @@ impl Parser {
             let tp = self.call_nr(code, pos, list, types, false);
             if tp != Type::Null {
                 // We cannot compare two different types of enums, both will be integers in the same range
-                if let (Some(Type::Enum(f)), Some(Type::Enum(s))) = (types.first(), types.get(1))
+                if let (Some(Type::Enum(f, _, _)), Some(Type::Enum(s, _, _))) =
+                    (types.first(), types.get(1))
                     && f != s
                 {
                     break;
@@ -807,6 +833,17 @@ impl Parser {
                     {
                         self.change_var(&actual_code, &tp);
                         actual.push(actual_code);
+                        continue;
+                    }
+                    if let (Type::Integer(_, _), Type::Enum(_, true, _)) = (&tp, actual_type) {
+                        // An enum with a structure is normally a reference to the data.
+                        // But for compares we can expect be a constant Enum value.
+                        let cd = if matches!(actual_code, Value::Enum(_, _)) {
+                            actual_code
+                        } else {
+                            self.cl("OpGetEnum", &[actual_code, Value::Int(0)])
+                        };
+                        actual.push(self.cl("OpConvIntFromEnum", &[cd]));
                         continue;
                     }
                     if !self.convert(&mut actual_code, actual_type, &tp) {
@@ -1069,7 +1106,8 @@ impl Parser {
             diagnostic!(self.lexer, Level::Error, "Cannot redefine {type_name}");
         }
         if self.first_pass {
-            self.data.set_returned(d_nr, Type::Enum(d_nr));
+            self.data
+                .set_returned(d_nr, Type::Enum(d_nr, false, Vec::new()));
         }
         if !self.lexer.token("{") {
             return false;
@@ -1088,18 +1126,67 @@ impl Parser {
                 );
             }
             let v_nr = if self.first_pass {
-                self.data
-                    .add_def(&value_name, self.lexer.pos(), DefType::EnumValue)
+                let v = self
+                    .data
+                    .add_def(&value_name, self.lexer.pos(), DefType::EnumValue);
+                self.data.definitions[v as usize].parent = d_nr;
+                v
             } else {
                 self.data.def_nr(&value_name)
             };
-            if self.first_pass {
-                self.data.set_returned(v_nr, Type::Enum(d_nr));
+            if self.lexer.has_token("{") {
+                if self.first_pass {
+                    if matches!(self.data.def(d_nr).returned, Type::Enum(_, false, _)) {
+                        self.data.definitions[d_nr as usize].returned =
+                            Type::Enum(d_nr, true, Vec::new());
+                    }
+                    self.data
+                        .set_returned(v_nr, Type::Enum(d_nr, true, Vec::new()));
+                    self.data.add_attribute(
+                        &mut self.lexer,
+                        d_nr,
+                        &value_name,
+                        Type::Enum(d_nr, true, Vec::new()),
+                    );
+                    // Enum values start with 1 as 0 is de null/undefined value.
+                    self.data
+                        .set_attr_value(d_nr, nr as usize, Value::Enum(nr + 1, u16::MAX));
+                }
+                loop {
+                    let Some(a_name) = self.lexer.has_identifier() else {
+                        diagnostic!(self.lexer, Level::Error, "Expect attribute");
+                        return true;
+                    };
+                    if self.first_pass && self.data.attr(v_nr, &a_name) != usize::MAX {
+                        diagnostic!(
+                            self.lexer,
+                            Level::Error,
+                            "field `{}` is already declared",
+                            a_name
+                        );
+                    }
+                    self.lexer.token(":");
+                    self.parse_field(v_nr, &a_name);
+                    if !self.lexer.has_token(",") {
+                        break;
+                    }
+                }
+                self.lexer.token("}");
+            } else if self.first_pass {
                 self.data
-                    .add_attribute(&mut self.lexer, d_nr, &value_name, Type::Enum(d_nr));
+                    .set_returned(v_nr, Type::Enum(d_nr, false, Vec::new()));
+                self.data.add_attribute(
+                    &mut self.lexer,
+                    d_nr,
+                    &value_name,
+                    Type::Enum(d_nr, false, Vec::new()),
+                );
                 // Enum values start with 1 as 0 is de null/undefined value.
                 self.data
                     .set_attr_value(d_nr, nr as usize, Value::Enum(nr + 1, u16::MAX));
+            } else if self.data.def(d_nr).returned != self.data.def(v_nr).returned {
+                self.data.definitions[v_nr as usize].returned =
+                    self.data.def(d_nr).returned.clone();
             }
             if !self.lexer.has_token(",") {
                 break;
@@ -1281,13 +1368,13 @@ impl Parser {
             self.data.set_returned(self.context, result);
         }
         if !self.lexer.has_token(";") {
-            for (v_nr, a) in arguments.iter().enumerate() {
+            for (a_nr, a) in arguments.iter().enumerate() {
                 if self.first_pass {
                     let v_nr = self.create_var(&a.name, &a.typedef);
                     self.vars.become_argument(v_nr);
                     self.var_usages(v_nr, false);
                 } else {
-                    self.change_var_type(v_nr as u16, &a.typedef);
+                    self.change_var_type(a_nr as u16, &a.typedef);
                 }
             }
             self.parse_code();
@@ -1487,10 +1574,16 @@ impl Parser {
         if tp_nr != u32::MAX
             && matches!(
                 dt,
-                DefType::Type | DefType::Enum | DefType::Struct | DefType::Main
+                DefType::Type
+                    | DefType::Enum
+                    | DefType::EnumValue
+                    | DefType::Struct
+                    | DefType::Main
             )
         {
-            if self.first_pass && matches!(dt, DefType::Struct | DefType::Main) {
+            if matches!(dt, DefType::EnumValue)
+                || (self.first_pass && matches!(dt, DefType::Struct | DefType::Main))
+            {
                 Some(Type::Reference(tp_nr, dep))
             } else if matches!(self.data.def(tp_nr).returned, Type::Text(_)) {
                 Some(Type::Text(dep))
@@ -1682,7 +1775,13 @@ impl Parser {
             d_nr = self.data.add_def(&id, self.lexer.pos(), DefType::Struct);
             self.data.definitions[d_nr as usize].returned = Type::Reference(d_nr, Vec::new());
         } else if self.first_pass {
-            diagnostic!(self.lexer, Level::Error, "Redefined struct {}", id);
+            if let Type::Unknown(_) = self.data.definitions[d_nr as usize].returned {
+                self.data.definitions[d_nr as usize].position = self.lexer.pos().clone();
+                self.data.definitions[d_nr as usize].def_type = DefType::Struct;
+                self.data.definitions[d_nr as usize].returned = Type::Reference(d_nr, Vec::new());
+            } else {
+                diagnostic!(self.lexer, Level::Error, "Redefined struct {}", id);
+            }
         }
         let context = self.context;
         self.context = d_nr;
@@ -2038,9 +2137,25 @@ impl Parser {
         }
     }
 
+    fn copy_ref(&mut self, to: &Value, code: &Value, f_type: &Type) -> Value {
+        let d_nr = self.data.type_def_nr(f_type);
+        let tp = self.data.def(d_nr).known_type;
+        // println!("here! f_type:{f_type} pass:{} to:{to:?} at {}", self.first_pass, self.lexer.pos());
+        self.cl(
+            "OpCopyRecord",
+            &[code.clone(), to.clone(), Value::Int(i32::from(tp))],
+        )
+    }
+
     /** Mutate current code when it reads a value into writing it. This is needed for assignments.
      */
     fn towards_set(&mut self, to: &Value, val: &Value, f_type: &Type, op: &str) -> Value {
+        if matches!(f_type, Type::Enum(_, true, _) | Type::Reference(_, _))
+            && op == "="
+            && !matches!(to, Value::Var(_))
+        {
+            return self.copy_ref(to, val, f_type);
+        }
         if matches!(
             *f_type,
             Type::Vector(_, _)
@@ -2108,6 +2223,14 @@ impl Parser {
             self.var_usages(*nr, false);
             v_set(*nr, code)
         } else {
+            if !self.first_pass {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Not implemented operation {op} for type {}",
+                    f_type.show(&self.data, &self.vars)
+                );
+            }
             Value::Null
         }
     }
@@ -2669,7 +2792,7 @@ impl Parser {
         // double conversion check: can t become in_t or vice versa
         if !self.convert(&mut p, &t, in_t) {
             if self.convert(&mut p, in_t, &t) {
-                *in_t = t;
+                *in_t = t.clone();
             } else {
                 diagnostic!(
                     self.lexer,
@@ -2680,7 +2803,16 @@ impl Parser {
                 );
             }
         }
-        res.push(p);
+        if let Type::Enum(td_nr, true, _) = t
+            && let Value::Enum(enum_nr, _) = &p
+            && self.lexer.has_token("{")
+        {
+            let mut ls = Vec::new();
+            self.parse_enum_field(&mut ls, Value::Var(elm), td_nr, 0, *enum_nr);
+            ls.push(p.clone());
+            p = Value::Insert(ls);
+        }
+        res.push(p.clone());
         None
     }
 
@@ -2757,6 +2889,14 @@ impl Parser {
             ls.push(v_set(elm, app_v));
             if let Type::Reference(_, _) = in_t {
                 ls.push(p.clone());
+            } else if let Value::Insert(steps) = p {
+                for (l_nr, l) in steps.iter().enumerate() {
+                    if l_nr + 1 == steps.len() {
+                        ls.push(self.cl("OpSetEnum", &[Value::Var(elm), Value::Int(0), l.clone()]));
+                    } else {
+                        ls.push(l.clone());
+                    }
+                }
             } else {
                 ls.push(self.set_field(ed_nr, usize::MAX, Value::Var(elm), p.clone()));
             }
@@ -2843,7 +2983,7 @@ impl Parser {
             return u16::MAX;
         }
         match in_t {
-            Type::Reference(r, _) | Type::Enum(r) => self.data.def(*r).known_type,
+            Type::Reference(r, _) | Type::Enum(r, _, _) => self.data.def(*r).known_type,
             Type::Hash(tp, key, _) => {
                 let mut name = "hash<".to_string() + &self.data.def(*tp).name + "[";
                 self.database
@@ -2914,31 +3054,22 @@ impl Parser {
             }
             let dnr = self.data.type_def_nr(&t);
             if let Type::Vector(et, _) = t.clone() {
-                if field == "remove" {
-                    let (tps, ls) = self.parse_parameters();
-                    let mut cd = ls[0].clone();
-                    // validate types
-                    if tps.len() != 1 || self.convert(&mut cd, &tps[0], &I32) {
-                        diagnostic!(self.lexer, Level::Error, "Invalid index in remove");
-                    }
-                    *code = self.cl("OpRemoveVector", &[code.clone(), Value::Int(e_size), cd]);
-                } else if field == "insert" {
-                    let (tps, ls) = self.parse_parameters();
-                    let mut cd = ls[0].clone();
-                    // validate types
-                    if tps.len() != 2 || self.convert(&mut cd, &tps[0], &I32) {
-                        diagnostic!(self.lexer, Level::Error, "Invalid index in insert");
-                    }
-                    let mut vl = ls[1].clone();
-                    if !self.convert(&mut vl, &tps[1], &et) {
-                        diagnostic!(self.lexer, Level::Error, "Invalid value in insert");
-                    }
-                    *code = self.cl("OpInsertVector", &[code.clone(), Value::Int(e_size), cd]);
-                    // TODO copy vl into newly created vector element
-                    // Inner should be different from Reference
-                }
+                self.vector_operations(code, &field, e_size, &et);
             }
             let fnr = self.data.attr(dnr, &field);
+            if self.first_pass && fnr == usize::MAX && self.lexer.has_token("(") {
+                loop {
+                    if self.lexer.has_token(")") {
+                        break;
+                    }
+                    let mut p = Value::Null;
+                    self.expression(&mut p);
+                    if !self.lexer.has_token(",") {
+                        break;
+                    }
+                }
+                return Type::Unknown(0);
+            }
             if fnr == usize::MAX {
                 diagnostic!(
                     self.lexer,
@@ -2978,9 +3109,12 @@ impl Parser {
                 for on in dep {
                     t = t.depending(on);
                 }
-                if let Type::Enum(_) = last_t.clone() {
-                    // do something with enum fields
+                if let Type::Enum(_, _, _) = last_t.clone() {
+                    // TODO do something with enum fields
                 } else {
+                    if let Value::Var(nr) = code {
+                        t = t.depending(*nr);
+                    }
                     *code = self.get_field(dnr, fnr, code.clone());
                 }
             }
@@ -2991,23 +3125,34 @@ impl Parser {
         t
     }
 
+    fn vector_operations(&mut self, code: &mut Value, field: &str, e_size: i32, et: &Type) {
+        if field == "remove" {
+            let (tps, ls) = self.parse_parameters();
+            let mut cd = ls[0].clone();
+            // validate types
+            if tps.len() != 1 || self.convert(&mut cd, &tps[0], &I32) {
+                diagnostic!(self.lexer, Level::Error, "Invalid index in remove");
+            }
+            *code = self.cl("OpRemoveVector", &[code.clone(), Value::Int(e_size), cd]);
+        } else if field == "insert" {
+            let (tps, ls) = self.parse_parameters();
+            let mut cd = ls[0].clone();
+            // validate types
+            if tps.len() != 2 || self.convert(&mut cd, &tps[0], &I32) {
+                diagnostic!(self.lexer, Level::Error, "Invalid index in insert");
+            }
+            let mut vl = ls[1].clone();
+            if !self.convert(&mut vl, &tps[1], et) {
+                diagnostic!(self.lexer, Level::Error, "Invalid value in insert");
+            }
+            *code = self.cl("OpInsertVector", &[code.clone(), Value::Int(e_size), cd]);
+            // TODO copy vl into newly created vector element
+            // Inner should be different from Reference
+        }
+    }
+
     fn parse_index(&mut self, code: &mut Value, t: &Type) -> Type {
-        let mut elm_type = if let Type::Vector(v_t, _) = t {
-            *v_t.clone()
-        } else if let Type::Sorted(d_nr, _, _)
-        | Type::Hash(d_nr, _, _)
-        | Type::Index(d_nr, _, _)
-        | Type::Spacial(d_nr, _, _) = t
-        {
-            self.data.def(*d_nr).returned.clone()
-        } else if matches!(t, Type::Text(_)) {
-            t.clone()
-        } else if let Type::RefVar(tp) = t {
-            *tp.clone()
-        } else {
-            diagnostic!(self.lexer, Level::Error, "Indexing a non vector");
-            Type::Unknown(0)
-        };
+        let mut elm_type = self.index_type(t);
         for on in t.depend() {
             elm_type = elm_type.depending(on);
         }
@@ -3051,10 +3196,29 @@ impl Parser {
                 key_types.push(self.data.def(*el).attributes[*k as usize].typedef.clone());
             }
             self.parse_key(code, t, &key_types);
-        } else {
+        } else if !self.first_pass {
             panic!("Unknown type to index");
         }
         elm_type
+    }
+
+    fn index_type(&mut self, t: &Type) -> Type {
+        if let Type::Vector(v_t, _) = t {
+            *v_t.clone()
+        } else if let Type::Sorted(d_nr, _, _)
+        | Type::Hash(d_nr, _, _)
+        | Type::Index(d_nr, _, _)
+        | Type::Spacial(d_nr, _, _) = t
+        {
+            self.data.def(*d_nr).returned.clone()
+        } else if matches!(t, Type::Text(_)) {
+            t.clone()
+        } else if let Type::RefVar(tp) = t {
+            *tp.clone()
+        } else {
+            diagnostic!(self.lexer, Level::Error, "Indexing a non vector");
+            Type::Unknown(0)
+        }
     }
 
     fn parse_vector_index(
@@ -3319,9 +3483,9 @@ impl Parser {
         } else if self.data.def_nr(name) != u32::MAX {
             let dnr = self.data.def_nr(name);
             if self.data.def_type(dnr) == DefType::Enum {
-                t = Type::Enum(dnr);
+                t = self.data.def(dnr).returned.clone();
             } else if self.data.def_type(dnr) == DefType::EnumValue {
-                t = Type::Enum(self.data.def(dnr).parent);
+                t = Type::Enum(self.data.def(dnr).parent, true, Vec::new());
             } else {
                 t = Type::Null;
             }
@@ -3417,16 +3581,16 @@ impl Parser {
             t = self.data.def(d_nr).returned.clone();
             if self.data.def_type(d_nr) == DefType::Function {
                 t = Type::Routine(d_nr);
-            } else if matches!(self.data.def_type(d_nr), DefType::Struct | DefType::Main) {
-                if !self.lexer.token("{") {
-                    return Type::Unknown(0);
-                }
+            } else if matches!(
+                self.data.def_type(d_nr),
+                DefType::Struct | DefType::Main
+            ) && self.lexer.has_token("{") {
                 return self.parse_object(d_nr, code);
             } else if self.data.def_type(d_nr) == DefType::Constant {
                 *code = self.data.def(d_nr).code.clone();
                 return self.data.def(d_nr).returned.clone();
             }
-            if let Type::Enum(en) = t {
+            if let Type::Enum(en, _, _) = t {
                 for a_nr in 0..self.data.attributes(en) {
                     if self.data.attr_name(en, a_nr) == name {
                         *code = self.data.attr_value(en, a_nr);
@@ -3908,20 +4072,32 @@ impl Parser {
                     ],
                 ));
             }
-            Type::Enum(d_nr) => {
+            Type::Enum(d_nr, is_ref, _) => {
                 let fmt = format.clone();
                 let e_tp = self.data.def(d_nr).known_type;
-                let e_val = self.cl("OpCastTextFromEnum", &[fmt, Value::Int(i32::from(e_tp))]);
-                list.push(self.cl(
-                    &(start + "Text"),
-                    &[
-                        var,
-                        e_val,
-                        state.width,
-                        Value::Int(state.dir),
-                        Value::Int(i32::from(state.token.as_bytes()[0])),
-                    ],
-                ));
+                if e_tp == u16::MAX || !is_ref {
+                    let e_val = self.cl("OpCastTextFromEnum", &[fmt, Value::Int(i32::from(e_tp))]);
+                    list.push(self.cl(
+                        &(start + "Text"),
+                        &[
+                            var,
+                            e_val,
+                            state.width,
+                            Value::Int(state.dir),
+                            Value::Int(i32::from(state.token.as_bytes()[0])),
+                        ],
+                    ));
+                } else {
+                    list.push(self.cl(
+                        &(start + "Database"),
+                        &[
+                            var,
+                            fmt,
+                            Value::Int(i32::from(e_tp)),
+                            Value::Boolean(state.note),
+                        ],
+                    ));
+                }
             }
             _ => {
                 diagnostic!(
@@ -3994,7 +4170,9 @@ impl Parser {
         let mut list = Vec::new();
         let mut new_object = false;
         let v = if let Value::Var(v_nr) = code {
-            if self.vars.is_independent(*v_nr) {
+            if self.vars.is_independent(*v_nr)
+                && self.data.definitions[td_nr as usize].def_type != DefType::EnumValue
+            {
                 self.data.definitions[td_nr as usize].def_type = DefType::Main;
                 if !self.vars.is_argument(*v_nr) {
                     list.push(v_set(*v_nr, Value::Null));
@@ -4006,7 +4184,9 @@ impl Parser {
             *v_nr
         } else if self.first_pass {
             new_object = true;
-            self.data.definitions[td_nr as usize].def_type = DefType::Main;
+            if self.data.definitions[td_nr as usize].def_type != DefType::EnumValue {
+                self.data.definitions[td_nr as usize].def_type = DefType::Main;
+            }
             u16::MAX
         } else {
             new_object = true;
@@ -4259,7 +4439,7 @@ impl Parser {
         match tp {
             Type::Integer(_, _) | Type::Character => self.cl("OpConvIntFromNull", &[]),
             Type::Boolean => self.cl("OpConvBoolFromNull", &[]),
-            Type::Enum(tp) => self.cl(
+            Type::Enum(tp, _, _) => self.cl(
                 "OpConvEnumFromNull",
                 &[Value::Int(i32::from(self.data.def(*tp).known_type))],
             ),

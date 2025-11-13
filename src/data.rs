@@ -107,7 +107,7 @@ impl Value {
 pub fn to_default(tp: &Type, data: &Data) -> Value {
     match tp {
         Type::Boolean => Value::Boolean(false),
-        Type::Enum(tp) => Value::Enum(0, data.def(*tp).known_type),
+        Type::Enum(tp, _, _) => Value::Enum(0, data.def(*tp).known_type),
         Type::Integer(_, _)
         | Type::Vector(_, _)
         | Type::Sorted(_, _, _)
@@ -144,8 +144,8 @@ pub enum Type {
     Text(Vec<u16>),
     /// Description of the possible keys on a structure (hash, index, spacial, sorted)
     Keys,
-    /// An enum value. There is always a single parent definition with enum type itself.
-    Enum(u32),
+    /// An enum value. With definition with enum type itself. With value true it is a reference.
+    Enum(u32, bool, Vec<u16>),
     /// A readonly reference to a record instance in a store.
     Reference(u32, Vec<u16>),
     /// A reference to a variable on stack.
@@ -202,6 +202,12 @@ impl Type {
                     v.append(&mut dep.clone());
                 }
                 Type::Reference(*t, v)
+            }
+            Type::Enum(t, is_ref, dep) => {
+                if !v.contains(&on) {
+                    v.append(&mut dep.clone());
+                }
+                Type::Enum(*t, *is_ref, v)
             }
             Type::Index(t, keys, dep) => {
                 if !v.contains(&on) {
@@ -272,7 +278,7 @@ impl Type {
     #[must_use]
     pub fn is_same(&self, other: &Type) -> bool {
         self == other
-            || (matches!(self, Type::Enum(_)) && matches!(other, Type::Enum(_)))
+            || (matches!(self, Type::Enum(_, _, _)) && matches!(other, Type::Enum(_, _, _)))
             || (matches!(self, Type::Reference(_, _)) && matches!(other, Type::Reference(_, _)))
             || (matches!(self, Type::Vector(_, _)) && matches!(other, Type::Vector(_, _)))
             || (matches!(self, Type::Integer(_, _)) && matches!(other, Type::Integer(_, _)))
@@ -318,7 +324,7 @@ impl Type {
         match self {
             Type::Rewritten(tp) => tp.name(data),
             Type::RefVar(tp) => format!("&{}", tp.name(data)),
-            Type::Enum(t) | Type::Reference(t, _) => data.def(*t).name.clone(),
+            Type::Enum(t, _, _) | Type::Reference(t, _) => data.def(*t).name.clone(),
             Type::Text(_) => "text".to_string(),
             Type::Vector(tp, _) if matches!(tp as &Type, Type::Unknown(_)) => "vector".to_string(),
             Type::Vector(tp, _) => format!("vector<{}>", tp.name(data)),
@@ -339,8 +345,8 @@ impl Type {
     pub fn show(&self, data: &Data, vars: &Function) -> String {
         match self {
             Type::RefVar(tp) => format!("&{}", tp.show(data, vars)),
-            Type::Enum(t) => data.def(*t).name.clone(),
-            Type::Reference(t, dep) => {
+            Type::Enum(t, false, _) => data.def(*t).name.clone(),
+            Type::Reference(t, dep) | Type::Enum(t, true, dep) => {
                 format!("ref({}){}", data.def(*t).name, Self::dep_var(dep, vars))
             }
             Type::Vector(tp, dep) if matches!(tp as &Type, Type::Unknown(_)) => {
@@ -442,6 +448,7 @@ impl Display for Type {
     }
 }
 
+#[derive(Debug)]
 pub struct Argument {
     pub name: String,
     pub typedef: Type,
@@ -876,7 +883,11 @@ impl Data {
 
     #[must_use]
     pub fn attr_name(&self, d_nr: u32, a_nr: usize) -> String {
-        self.def(d_nr).attributes[a_nr].name.clone()
+        if a_nr == usize::MAX {
+            "Undefined".to_string()
+        } else {
+            self.def(d_nr).attributes[a_nr].name.clone()
+        }
     }
 
     #[must_use]
@@ -1193,7 +1204,7 @@ impl Data {
             Type::Single => self.source_nr(0, "single"),
             Type::Character => self.source_nr(0, "character"),
             Type::Routine(d_nr)
-            | Type::Enum(d_nr)
+            | Type::Enum(d_nr, _, _)
             | Type::Reference(d_nr, _)
             | Type::Unknown(d_nr) => *d_nr,
             Type::Vector(_, _) => self.source_nr(0, "vector"),
@@ -1217,8 +1228,9 @@ impl Data {
             Type::Boolean => self.source_nr(0, "boolean"),
             Type::Float => self.source_nr(0, "float"),
             Type::Text(_) => self.source_nr(0, "text"),
+            Type::Single => self.source_nr(0, "single"),
             Type::Character => self.source_nr(0, "character"),
-            Type::Routine(d_nr) | Type::Enum(d_nr) | Type::Reference(d_nr, _) => *d_nr,
+            Type::Routine(d_nr) | Type::Enum(d_nr, _, _) | Type::Reference(d_nr, _) => *d_nr,
             Type::Vector(tp, _) | Type::RefVar(tp) => {
                 if let Type::Reference(td, _) = **tp {
                     td
@@ -1260,7 +1272,7 @@ impl Data {
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 255 => "i8",
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 65536 => "i16",
             Type::Integer(_, _) => "i32",
-            Type::Enum(_) => "u8",
+            Type::Enum(_, false, _) => "u8",
             Type::Text(_) if context == &Context::Variable => "String",
             Type::Text(_) => "Str",
             Type::Long => "i64",
@@ -1273,6 +1285,7 @@ impl Data {
             | Type::Hash(_, _, _)
             | Type::Sorted(_, _, _)
             | Type::RefVar(_)
+            | Type::Enum(_, true, _)
             | Type::Index(_, _, _) => "DbRef",
             Type::Routine(_) => "u32",
             Type::Unknown(_) => "??",

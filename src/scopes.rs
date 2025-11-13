@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 use crate::data::{Block, Data, DefType, Type, Value, v_set};
 use crate::variables::Function;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -296,7 +299,8 @@ impl Scopes {
             if matches!(function.tp(v), Type::Text(_)) {
                 ls.push(call("OpFreeText", v, data));
             }
-            if let Type::Reference(_, dep) | Type::Vector(_, dep) = function.tp(v)
+            if let Type::Reference(_, dep) | Type::Vector(_, dep) | Type::Enum(_, true, dep) =
+                function.tp(v)
                 && dep.is_empty()
                 && !tp.depend().contains(&v)
             {

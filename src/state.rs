@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
@@ -95,14 +98,17 @@ impl State {
 
     pub fn string_from_code(&mut self) {
         let size = *self.code::<u8>();
-        let p = self.code_pos as usize;
         unsafe {
+            let off = self.bytecode.as_ptr().offset(self.code_pos as isize);
             let m = self
                 .database
                 .store_mut(&self.stack_cur)
-                .addr_mut::<&str>(self.stack_cur.rec, self.stack_cur.pos + self.stack_pos);
-            *m = std::str::from_utf8_unchecked(&self.bytecode[p..p + size as usize]);
-            self.stack_pos += size_of::<&str>() as u32;
+                .addr_mut::<Str>(self.stack_cur.rec, self.stack_cur.pos + self.stack_pos);
+            *m = Str {
+                ptr: off,
+                len: u32::from(size),
+            };
+            self.stack_pos += size_of::<Str>() as u32;
         }
         self.code_pos += u32::from(size);
     }
@@ -150,11 +156,12 @@ impl State {
     #[inline]
     pub fn create_ref(&mut self) {
         let pos = *self.code::<u16>();
-        self.put_stack(DbRef {
+        let db = DbRef {
             store_nr: self.stack_cur.store_nr,
             rec: self.stack_cur.rec,
             pos: self.stack_cur.pos + self.stack_pos - u32::from(pos),
-        });
+        };
+        self.put_stack(db);
     }
 
     /**
@@ -169,7 +176,7 @@ impl State {
             return;
         }
         let store = self.database.store(&file);
-        let file_path = store.get_str(store.get_int(file.rec, file.pos + 4) as u32);
+        let file_path = store.get_str(store.get_int(file.rec, file.pos + 8) as u32);
         let buf = self.database.store_mut(&r).addr_mut::<String>(r.rec, r.pos);
         if let Ok(mut f) = File::open(file_path) {
             f.read_to_string(buf).unwrap();
@@ -524,9 +531,9 @@ impl State {
     pub fn static_call(&mut self) {
         let call = *self.code::<u16>();
         let mut stack = self.stack_cur;
-        stack.pos = self.stack_pos;
+        stack.pos = 8 + self.stack_pos;
         self.library[call as usize](&mut self.database, &mut stack);
-        self.stack_pos = stack.pos;
+        self.stack_pos = stack.pos - 8;
     }
 
     pub fn var_text(&mut self) {
@@ -661,15 +668,6 @@ impl State {
         self.string_ref_mut(pos - size_ref() as u16).push_str(&s);
     }
 
-    pub fn append(&mut self) {
-        let size = *self.code::<u16>();
-        let db_tp = *self.code::<u16>();
-        let db = *self.get_stack::<DbRef>();
-        let new_value = self.database.claim(&db, u32::from(size));
-        self.database.set_default_value(db_tp, &new_value);
-        self.put_stack(new_value);
-    }
-
     pub fn database(&mut self) {
         let var = *self.code::<u16>();
         let db_tp = *self.code::<u16>();
@@ -677,17 +675,34 @@ impl State {
         let db = *self.get_var::<DbRef>(var);
         self.database.clear(&db);
         let r = self.database.claim(&db, u32::from(size));
+        self.database
+            .store_mut(&r)
+            .set_int(r.rec, 4, i32::from(db_tp));
         self.database.set_default_value(db_tp, &r);
         let db = self.mut_var::<DbRef>(var);
         db.store_nr = r.store_nr;
         db.rec = 1;
-        db.pos = 0;
+        db.pos = 8;
     }
 
     pub fn new_record(&mut self) {
         let parent_tp = *self.code::<u16>();
         let fld = *self.code::<u16>();
-        let data = *self.get_stack::<DbRef>();
+        let mut data = *self.get_stack::<DbRef>();
+        if let Parts::EnumValue(_, fields) = &self.database.types[parent_tp as usize].parts {
+            data.pos += u32::from(fld);
+            let nr = if let Content::Long(l) = fields[0].default {
+                l
+            } else {
+                0
+            };
+            self.database.set_default_value(parent_tp, &data);
+            self.database
+                .store_mut(&data)
+                .set_byte(data.rec, data.pos, 0, nr as i32);
+            self.put_stack(data);
+            return;
+        }
         let new_value = self.database.record_new(&data, parent_tp, fld);
         self.database.set_default_value(
             if fld == u16::MAX {
@@ -845,7 +860,7 @@ impl State {
                     if n == finish {
                         self.put_var(state_var - 12, u32::MAX);
                     }
-                    new_ref(&data, n, 0)
+                    new_ref(&data, n, 8)
                 }
                 2 => {
                     let mut pos = if cur == u32::MAX {
@@ -882,7 +897,7 @@ impl State {
                     DbRef {
                         store_nr: data.store_nr,
                         rec,
-                        pos: 0,
+                        pos: 8,
                     }
                 }
                 _ => panic!("Not implemented"),
@@ -958,7 +973,8 @@ impl State {
             rec: v_rec,
             pos: 8 + (length * size - size),
         };
-        vector::vector_append(&data, multiply - 1, size, &mut self.database.allocations);
+        vector::vector_append(&data, size, &mut self.database.allocations);
+        self.database.vector_set_size(&data, multiply, size);
         for i in 0..(multiply - 1) {
             let to = DbRef {
                 store_nr: data.store_nr,
@@ -1056,18 +1072,28 @@ impl State {
         self.database.record_finish(&data, &record, parent_tp, fld);
     }
 
-    pub fn cast_vector_from_text(&mut self) {
-        let db_tp = *self.code::<u16>();
-        let val = self.string();
+    pub fn db_from_text(&mut self, val: &str, db_tp: u16) -> DbRef {
         let db = self.database.database(8);
         let into = DbRef {
             store_nr: db.store_nr,
             rec: db.rec,
-            pos: 4,
+            pos: 8,
         };
         self.database.set_default_value(db_tp, &into);
-        self.database.parse(val.str(), db_tp, &into);
-        self.put_stack(into);
+        let mut pos = 0;
+        // prevent throwing an error here
+        if self
+            .database
+            .parsing(val, &mut pos, db_tp, db_tp, u16::MAX, &into)
+        {
+            into
+        } else {
+            DbRef {
+                store_nr: db.store_nr,
+                rec: 0,
+                pos: 0,
+            }
+        }
     }
 
     pub fn insert_vector(&mut self) {
@@ -1196,7 +1222,7 @@ impl State {
     # Panics
     when code cannot be output.
     */
-    pub fn def_code(&mut self, def_nr: u32, data: &mut Data, show: bool, writer: &mut dyn Write) {
+    pub fn def_code(&mut self, def_nr: u32, data: &mut Data) {
         let logging = !data.def(def_nr).position.file.starts_with("default/");
         let console = false; //logging;
         let mut stack = Stack::new(data.def(def_nr).variables.clone(), data, def_nr, logging);
@@ -1205,9 +1231,6 @@ impl State {
             self.add_return(&mut stack, start);
             data.definitions[def_nr as usize].code_position = start;
             data.definitions[def_nr as usize].code_length = self.code_pos - start;
-            if show {
-                self.dump_code(writer, def_nr, data).unwrap();
-            }
             return;
         }
         for a in 0..stack.data.def(def_nr).attributes.len() as u16 {
@@ -1246,9 +1269,6 @@ impl State {
                 .variables
                 .set_stack(v_nr as u16, pos);
         }
-        if show {
-            self.dump_code(writer, def_nr, data).unwrap();
-        }
     }
 
     /**
@@ -1267,7 +1287,7 @@ impl State {
                 self.types.insert(self.code_pos, *tp);
                 stack.add_op("OpConstEnum", self);
                 self.code_add(*value);
-                Type::Enum(0)
+                Type::Enum(0, false, Vec::new())
             }
             Value::Long(value) => {
                 stack.add_op("OpConstLong", self);
@@ -1450,7 +1470,7 @@ impl State {
                         stack.add_op("OpCreateRef", self);
                         self.code_add(size_of::<DbRef>() as u16);
                         stack.add_op("OpConstInt", self);
-                        self.code_add(4);
+                        self.code_add(12);
                         stack.add_op("OpSetByte", self);
                         self.code_add(4u16);
                         self.code_add(0u16);
@@ -1625,7 +1645,7 @@ impl State {
 
     fn insert_types(&mut self, tp: Type, code: u32, stack: &Stack) -> Type {
         match tp {
-            Type::Enum(t) => {
+            Type::Enum(t, _, _) => {
                 self.types.insert(code, stack.data.def(t).known_type);
             }
             Type::Reference(t, _) => {
@@ -1655,7 +1675,7 @@ impl State {
             Type::Integer(_, _) => stack.add_op("OpVarInt", self),
             Type::Character => stack.add_op("OpVarCharacter", self),
             Type::RefVar(_) => stack.add_op("OpVarRef", self),
-            Type::Enum(_) => stack.add_op("OpVarEnum", self),
+            Type::Enum(_, false, _) => stack.add_op("OpVarEnum", self),
             Type::Boolean => stack.add_op("OpVarBool", self),
             Type::Long => stack.add_op("OpVarLong", self),
             Type::Single => stack.add_op("OpVarSingle", self),
@@ -1676,7 +1696,7 @@ impl State {
                 }
                 stack.add_op("OpVarVector", self);
             }
-            Type::Reference(c, _) => {
+            Type::Reference(c, _) | Type::Enum(c, true, _) => {
                 self.types
                     .insert(self.code_pos, stack.data.def(*c).known_type);
                 stack.add_op("OpVarRef", self);
@@ -1697,9 +1717,11 @@ impl State {
                 Type::Long => stack.add_op("OpGetLong", self),
                 Type::Single => stack.add_op("OpGetSingle", self),
                 Type::Float => stack.add_op("OpGetFloat", self),
-                Type::Enum(_) => stack.add_op("OpGetByte", self),
+                Type::Enum(_, false, _) => stack.add_op("OpGetByte", self),
                 Type::Text(_) => stack.add_op("OpGetRefText", self),
-                Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpGetDbRef", self),
+                Type::Vector(_, _) | Type::Reference(_, _) | Type::Enum(_, true, _) => {
+                    stack.add_op("OpGetDbRef", self);
+                }
                 _ => panic!("Unknown referenced variable type: {tp}"),
             }
             if !txt {
@@ -1810,7 +1832,7 @@ impl State {
                     self.code_add(*nr);
                 }
             }
-            Type::Enum(_) => {
+            Type::Enum(_, _, _) => {
                 if let Value::Enum(nr, _) = p {
                     self.code_add(*nr);
                 }
@@ -1875,8 +1897,10 @@ impl State {
                 Type::Long => stack.add_op("OpSetLong", self),
                 Type::Single => stack.add_op("OpSetSingle", self),
                 Type::Float => stack.add_op("OpSetFloat", self),
-                Type::Enum(_) => stack.add_op("OpSetByte", self),
-                Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpSetDbRef", self),
+                Type::Enum(_, false, _) => stack.add_op("OpSetByte", self),
+                Type::Vector(_, _) | Type::Reference(_, _) | Type::Enum(_, true, _) => {
+                    stack.add_op("OpSetDbRef", self);
+                }
                 _ => panic!("Unknown reference variable type"),
             }
             self.code_add(0u16);
@@ -1887,7 +1911,7 @@ impl State {
         match stack.function.tp(var) {
             Type::Integer(_, _) => stack.add_op("OpPutInt", self),
             Type::Character => stack.add_op("OpPutCharacter", self),
-            Type::Enum(_) => stack.add_op("OpPutEnum", self),
+            Type::Enum(_, false, _) => stack.add_op("OpPutEnum", self),
             Type::Boolean => stack.add_op("OpPutBool", self),
             Type::Long => stack.add_op("OpPutLong", self),
             Type::Single => stack.add_op("OpPutSingle", self),
@@ -1898,7 +1922,9 @@ impl State {
                 }
                 stack.add_op("OpAppendText", self);
             }
-            Type::Vector(_, _) | Type::Reference(_, _) => stack.add_op("OpPutRef", self),
+            Type::Vector(_, _) | Type::Reference(_, _) | Type::Enum(_, true, _) => {
+                stack.add_op("OpPutRef", self);
+            }
             _ => panic!(
                 "Unknown var {} type {} at {}",
                 stack.function.name(var),
@@ -2025,7 +2051,7 @@ impl State {
                 )?;
             }
             if let Some(t) = self.types.get(&p) {
-                write!(f, " type={}[{t:}]", self.database.show_type(*t, false))?;
+                write!(f, " type={} {t:}", self.database.types[*t as usize].name)?;
             }
             if let Some(v) = self.vars.get(&p) {
                 let vars = &data.def(d_nr).variables;
@@ -2076,7 +2102,7 @@ impl State {
             }
             Type::Integer(_, _) => format!("{}", *self.code::<i32>()),
             Type::Boolean => format!("{}", *self.code::<u8>() == 1),
-            Type::Enum(_) => format!("{}", *self.code::<u8>()),
+            Type::Enum(_, false, _) => format!("{}", *self.code::<u8>()),
             Type::Long => format!("{}", *self.code::<i64>()),
             Type::Single => format!("{}", *self.code::<f32>()),
             Type::Float => format!("{}", *self.code::<f64>()),
@@ -2195,6 +2221,11 @@ impl State {
                 } else if def.name.starts_with("OpGoto") && a_nr == 0 {
                     let to = i64::from(cur) + 2 + i64::from(*self.code::<i16>()) - i64::from(minus);
                     attr.insert(a_nr, format!("jump={to}"));
+                } else if def.name == "OpIterate" {
+                    self.iterate_args(log)?;
+                    self.code_pos = cur;
+                    self.stack_pos = stack;
+                    return Ok(op);
                 } else if a_nr == 0 && a.name == "pos" && a.typedef == Type::Integer(0, 65535) {
                     let pos = *self.code::<u16>();
                     assert!(
@@ -2209,25 +2240,7 @@ impl State {
             }
         }
         if def.name == "OpGetRecord" {
-            let db_tp = u16::from_str(&attr[&1][6..]).unwrap_or(0);
-            let no_keys = u8::from_str(&attr[&2][8..]).unwrap_or(0) as usize;
-            let keys = self.database.get_keys(db_tp);
-            for (idx, key) in keys.iter().enumerate() {
-                if idx >= no_keys {
-                    break;
-                }
-                let v = match key {
-                    0 => self.dump_stack(&I32, u32::MAX, data),
-                    1 => self.dump_stack(&Type::Long, u32::MAX, data),
-                    2 => self.dump_stack(&Type::Single, u32::MAX, data),
-                    3 => self.dump_stack(&Type::Float, u32::MAX, data),
-                    4 => self.dump_stack(&Type::Boolean, u32::MAX, data),
-                    5 => self.dump_stack(&Type::Text(Vec::new()), u32::MAX, data),
-                    6 => self.dump_stack(&Type::Character, u32::MAX, data),
-                    _ => self.dump_stack(&Type::Enum(u32::MAX), u32::from(*key), data),
-                };
-                attr.insert(idx + 3, format!("key{}={v}[{}]", idx + 1, self.stack_pos));
-            }
+            self.get_record_keys(data, &mut attr);
         }
         for a_nr in (0..def.attributes.len()).rev() {
             let a = &def.attributes[a_nr];
@@ -2247,6 +2260,55 @@ impl State {
         self.code_pos = cur;
         self.stack_pos = stack;
         Ok(op)
+    }
+
+    fn get_record_keys(&mut self, data: &Data, attr: &mut BTreeMap<usize, String>) {
+        let db_tp = u16::from_str(&attr[&1][6..]).unwrap_or(0);
+        let no_keys = u8::from_str(&attr[&2][8..]).unwrap_or(0) as usize;
+        let keys = self.database.get_keys(db_tp);
+        for (idx, key) in keys.iter().enumerate() {
+            if idx >= no_keys {
+                break;
+            }
+            let v = match key {
+                0 => self.dump_stack(&I32, u32::MAX, data),
+                1 => self.dump_stack(&Type::Long, u32::MAX, data),
+                2 => self.dump_stack(&Type::Single, u32::MAX, data),
+                3 => self.dump_stack(&Type::Float, u32::MAX, data),
+                4 => self.dump_stack(&Type::Boolean, u32::MAX, data),
+                5 => self.dump_stack(&Type::Text(Vec::new()), u32::MAX, data),
+                6 => self.dump_stack(&Type::Character, u32::MAX, data),
+                _ => self.dump_stack(
+                    &Type::Enum(u32::MAX, false, Vec::new()),
+                    u32::from(*key),
+                    data,
+                ),
+            };
+            attr.insert(idx + 3, format!("key{}={v}[{}]", idx + 1, self.stack_pos));
+        }
+    }
+
+    fn iterate_args(&mut self, log: &mut dyn Write) -> Result<(), Error> {
+        let on = *self.code::<u8>();
+        let arg = *self.code::<u16>();
+        let keys_size = *self.code::<u8>();
+        let mut keys = Vec::new();
+        for _ in 0..keys_size {
+            keys.push(Key {
+                type_nr: *self.code::<i8>(),
+                position: *self.code::<u16>(),
+            });
+        }
+        let from_key = *self.code::<u8>();
+        let till_key = *self.code::<u8>();
+        let till = self.stack_key(till_key, &keys);
+        let from = self.stack_key(from_key, &keys);
+        let data = *self.get_stack::<DbRef>();
+        write!(
+            log,
+            "data=ref({},{},{}), on={on}, arg={arg}, keys={keys:?}, from={from:?}, till={till:?})",
+            data.store_nr, data.rec, data.pos
+        )
     }
 
     fn return_attr(&mut self, attr: &mut BTreeMap<usize, String>, a_nr: usize) {
@@ -2315,7 +2377,7 @@ impl State {
                         let val = *self.get_stack::<u8>();
                         format!("{}({val})", self.database.enum_val(known, val))
                     }
-                    Parts::Struct(_) | Parts::Vector(_) => {
+                    Parts::Struct(_) | Parts::EnumValue(_, _) | Parts::Vector(_) => {
                         let val = *self.get_stack::<DbRef>();
                         let mut res = format!("ref({},{},{})=", val.store_nr, val.rec, val.pos);
                         self.database.show(&mut res, &val, known, false);
@@ -2344,7 +2406,7 @@ impl State {
                     format!("'{c}'")
                 }
             }
-            Type::Enum(tp) => {
+            Type::Enum(tp, false, _) => {
                 if code == u32::MAX {
                     format!("{}", *self.get_stack::<u8>())
                 } else {
@@ -2364,7 +2426,7 @@ impl State {
             Type::Float => format!("{}", *self.get_stack::<f64>()),
             Type::Text(_) => format!("\"{}\"", self.string().str().replace('"', "\\\"")),
             Type::Boolean => format!("{}", *self.get_stack::<u8>() == 1),
-            Type::Reference(tp, _) => {
+            Type::Reference(tp, _) | Type::Enum(tp, true, _) => {
                 let known = if self.types.contains_key(&code) {
                     self.types[&code]
                 } else {

@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2024 Jurjen Stellingwerff
+// Copyright (c) 2021-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 extern crate dryopea;
@@ -224,18 +224,18 @@ fn optional_remove() {
     .result(Value::str("cd"));
 }
 
+// Only run this test locally, do not make it part of the release as it will log all kinds of
+// data that is not for public consumption and not stable through multiple runs.
 /*
-// Only run this test locally, do not make it part of the release at it will log all kinds of
-// data that is not for public consumption.
 #[test]
 fn dirs() {
     code!(
         "fn test() {
-  print(\"program {program_directory()}\\n\");
-  print(\"user {user_directory()}\\n\");
-  print(\"current {directory()}\\n\");
-  for v in env_variables() { print(\"{v}\\n\"); }
-  for a in arguments() { print(\"{a}\\n\"); }
+  println(\"program {program_directory()}\");
+  println(\"user {user_directory()}\");
+  println(\"current {directory()}\");
+  for v in env_variables() { println(\"{v}\"); }
+  for a in arguments() { println(\"{a}\"); }
 }"
     );
 }

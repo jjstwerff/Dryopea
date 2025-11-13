@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 use crate::data::{Context, Data, DefType, Definition, Type, Value};
 use crate::database::Stores;
 use std::io::Write;
@@ -102,14 +105,14 @@ extern crate dryopea;"
             "    let s = db.structure(\"{}\".to_string(), {size}, {p}); // {}",
             def.name, def.known_type
         )?;
-        for (f_nr, a) in def.attributes.iter().enumerate() {
+        for a in &def.attributes {
             if !a.mutable {
                 continue;
             }
             let nm = a.name.clone();
             let td_nr = self.data.type_def_nr(&a.typedef);
             let tp = self.data.def(td_nr).known_type;
-            let pos = self.stores.position(def.known_type, f_nr as u16);
+            let pos = self.stores.position(def.known_type, &a.name);
             assert_ne!(d_nr, u32::MAX, "Unknown def_nr for {:?}", a.typedef);
             let mut done = false;
             if let Type::Vector(c, _) = &a.typedef {

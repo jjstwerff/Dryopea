@@ -7,14 +7,14 @@ pub fn test() {
         "Test failed {test_value} != \"[{{n:\"hi\",c:10}},{{n:\"world\",c:2}}]\""
     );
 }
-Type 17:Elm[8]:
+Type 17:Elm[8/4]: parents [main_vector<Elm> 18]
     n:text[0]
     c:integer[4]
 
-Type 18:main_vector<Elm>[8]:
-    vector:vector<Elm>[4]
+Type 18:main_vector<Elm>[4/4]:
+    vector:vector<Elm>[0]
 
-Type 19:vector<Elm>[4]:Vector(17)
+Type 19:vector<Elm>[4/4]:Vector(17)
 
 fn test() {#block(1):void
   __work_2(1):text = "";
@@ -48,9 +48,9 @@ byte-code for parse_objects:test()
   43[92]: CastVectorFromText(val: text, db_tp=19) -> vector
   46[88]: ClearText(var[28]) var=__work_1[28]:text
   49[88]: ConstText(_value="") -> text
-  51[104]: VarVector(var[76]) -> vector type=vector<Elm>[4]:Vector(17)[19] var=v[76]:vector<ref(Elm)>
+  51[104]: VarVector(var[76]) -> vector type=vector<Elm> 19 var=v[76]:vector<ref(Elm)>
   54[116]: FormatDatabase(var[28], val: ref(reference), db_tp=19, pretty=false)
-  60[104]: VarVector(var[76]) -> vector type=vector<Elm>[4]:Vector(17)[19] var=v[76]:vector<ref(Elm)>
+  60[104]: VarVector(var[76]) -> vector type=vector<Elm> 19 var=v[76]:vector<ref(Elm)>
   63[116]: FreeRef(v1: ref(reference))
   64[104]: VarText(var[28]) -> text var=__work_1[28]:text
   67[120]: FreeStack(value=16, discard=32)
@@ -81,13 +81,13 @@ Execute test:
     1:[32] [4] Text()
     2:[56] Text()
     3:[80] ConstText(_value="[ {n:'hi', c:10 }, {n:'world', c:2 } ]") -> "[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80]
-   43:[96] CastVectorFromText(val="[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80], db_tp=19) -> ref(1,1,4)[80]
+   43:[96] CastVectorFromText(val="[ {n:'hi', c:10 }, {n:'world', c:2 } ]"[80], db_tp=19) -> ref(1,1,8)[80]
    46:[92] ClearText(var[32])
    49:[92] ConstText(_value="") -> ""[92]
-   51:[108] VarVector(var[80]) -> ref(1,1,4)=[{n:"hi",c:10},{n:"world",c:2}][108]
-   54:[120] FormatDatabase(var[32], val=ref(1,1,4)[108], db_tp=19, pretty=false)
-   60:[108] VarVector(var[80]) -> ref(1,1,4)=[{n:"hi",c:10},{n:"world",c:2}][108]
-   63:[120] FreeRef(v1=ref(1,1,4)[108])
+   51:[108] VarVector(var[80]) -> ref(1,1,8)=[{n:"hi",c:10},{n:"world",c:2}][108]
+   54:[120] FormatDatabase(var[32], val=ref(1,1,8)[108], db_tp=19, pretty=false)
+   60:[108] VarVector(var[80]) -> ref(1,1,8)=[{n:"hi",c:10},{n:"world",c:2}][108]
+   63:[120] FreeRef(v1=ref(1,1,8)[108])
    64:[108] VarText(var[32]) -> "[{n:\"hi\",c:10},{n:\"world\",c:2}]"[108]
    67:[124] FreeStack(value=16, discard=32)
    71:[108] FreeStack(value=16, discard=28)

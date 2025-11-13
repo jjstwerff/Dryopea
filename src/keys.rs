@@ -1,5 +1,6 @@
 // Copyright (c) 2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
+
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
@@ -8,6 +9,7 @@
 
 use crate::store::Store;
 use std::cmp::Ordering;
+use std::fmt::Formatter;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -45,6 +47,17 @@ pub enum Content {
     Float(f64),
     Single(f32),
     Str(Str),
+}
+
+impl std::fmt::Display for Content {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Content::Long(l) => write!(f, "{l}"),
+            Content::Float(l) => write!(f, "{l}"),
+            Content::Single(l) => write!(f, "{l}"),
+            Content::Str(l) => write!(f, "{}", l.str()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
@@ -134,7 +147,7 @@ pub fn compare(rec1: &DbRef, rec2: &DbRef, stores: &[Store], keys: &[Key]) -> Or
 pub fn key_compare(key: &[Content], rec: &DbRef, stores: &[Store], keys: &[Key]) -> Ordering {
     for (k_nr, val) in key.iter().enumerate() {
         let k = &keys[k_nr];
-        let pos_r = rec.pos + u32::from(k.position);
+        let pos_r = u32::from(k.position);
         let c = compare_key(val, rec, stores, k, pos_r);
         if c != Ordering::Equal {
             return c;
@@ -146,12 +159,14 @@ pub fn key_compare(key: &[Content], rec: &DbRef, stores: &[Store], keys: &[Key])
 fn compare_key(k: &Content, record: &DbRef, stores: &[Store], key: &Key, pos: u32) -> Ordering {
     let s = store(record, stores);
     let c = match (k, key.type_nr.abs()) {
-        (Content::Long(v), 1) => v.cmp(&(i64::from(s.get_int(record.rec, pos)))),
-        (Content::Long(v), 2) => v.cmp(&s.get_long(record.rec, pos)),
-        (Content::Single(v), 3) => single_cmp(*v, s.get_single(record.rec, pos)),
-        (Content::Float(v), 4) => float_cmp(*v, s.get_float(record.rec, pos)),
-        (Content::Str(v), 6) => v.str().cmp(s.get_str(s.get_int(record.rec, pos) as u32)),
-        (Content::Long(v), _) => v.cmp(&i64::from(s.get_byte(record.rec, pos, 0))),
+        (Content::Long(v), 1) => v.cmp(&(i64::from(s.get_int(record.rec, record.pos + pos)))),
+        (Content::Long(v), 2) => v.cmp(&s.get_long(record.rec, record.pos + pos)),
+        (Content::Single(v), 3) => single_cmp(*v, s.get_single(record.rec, record.pos + pos)),
+        (Content::Float(v), 4) => float_cmp(*v, s.get_float(record.rec, record.pos + pos)),
+        (Content::Str(v), 6) => v
+            .str()
+            .cmp(s.get_str(s.get_int(record.rec, record.pos + pos) as u32)),
+        (Content::Long(v), _) => v.cmp(&i64::from(s.get_byte(record.rec, record.pos + pos, 0))),
         _ => panic!("Undefined compare {k:?} vs {}", key.type_nr),
     };
     if key.type_nr < 0 { c.reverse() } else { c }

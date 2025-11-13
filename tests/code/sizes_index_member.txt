@@ -4,36 +4,36 @@ struct Main { s: index<S[a, -c]> };
 pub fn test() {
     test_value = {m = Main {}; sizeof(S) + 100 * sizeof(m)};
     assert(
-        test_value == 829,
-        "Test failed {test_value} != 829"
+        test_value == 425,
+        "Test failed {test_value} != 425"
     );
 }
-Type 17:S[29]:
-    a:integer[4]
-    b:long[8]
-    c:integer[16]
-    #left_1:integer[20]
-    #right_1:integer[24]
-    #color_1:boolean[28]
+Type 17:S[25/8]: parents [Main 18]
+    a:integer[8]
+    b:long[0]
+    c:integer[12]
+    #left_1:integer[16]
+    #right_1:integer[20]
+    #color_1:boolean[24]
 
-Type 18:Main[8]:
-    s:index<S[a,-c]>[4]
+Type 18:Main[4/4]:
+    s:index<S[a,-c]>[0]
 
-Type 19:index<S[a,-c]>[4]:Index(17, [(0, true), (2, false)], 3) keys [tp:1 desc:false field:4, tp:1 desc:true field:16, ]
+Type 19:index<S[a,-c]>[4/4]:Index(17, [(0, true), (2, false)], 3) keys [tp:1 desc:false field:8, tp:1 desc:true field:12, ]
 
 fn test() {#block(1):void
   __work_1(1):text = "";
   [5] test_value(1):integer = {#block(2):integer
     m(2):ref(Main) = null;
     OpDatabase(m(2), 18i32);
-    OpSetInt(m(2), 4i32, 0i32);
-    OpAddInt(29i32, OpMulInt(100i32, 8i32));
+    OpSetInt(m(2), 0i32, 0i32);
+    OpAddInt(25i32, OpMulInt(100i32, 4i32));
     OpFreeRef(m(2));
   }#block(2):integer;
-  [6] if OpEqInt(test_value(1), 829i32) null else OpPanic({#Formatted string(3):text["__work_1"]
+  [6] if OpEqInt(test_value(1), 425i32) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
-    OpAppendText(__work_1(1), " != 829");
+    OpAppendText(__work_1(1), " != 425");
     __work_1(1);
   }#Formatted string(3):text["__work_1"]);
   OpFreeText(__work_1(1));
@@ -43,20 +43,20 @@ byte-code for index_member:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [5] ConvRefFromNull() -> ref(reference) var=m[28]:ref(Main)
-   2[40]: Database(var[28], db_tp=18) type=Main[8]:{s:index<S[a,-c]>[4]}[18]
-   7[40]: VarRef(var[28]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[18] var=m[28]:ref(Main)
+   2[40]: Database(var[28], db_tp=18) type=Main 18
+   7[40]: VarRef(var[28]) -> ref(reference) type=Main 18 var=m[28]:ref(Main)
   10[52]: ConstInt(val=0) -> integer
-  15[56]: SetInt(v1: ref(reference), fld=4, val: integer)
-  18[40]: ConstInt(val=29) -> integer
+  15[56]: SetInt(v1: ref(reference), fld=0, val: integer)
+  18[40]: ConstInt(val=25) -> integer
   23[44]: ConstInt(val=100) -> integer
-  28[48]: ConstInt(val=8) -> integer
+  28[48]: ConstInt(val=4) -> integer
   33[52]: MulInt(v1: integer, v2: integer) -> integer
   34[48]: AddInt(v1: integer, v2: integer) -> integer
-  35[44]: VarRef(var[28]) -> ref(reference) type=Main[8]:{s:index<S[a,-c]>[4]}[18] var=m[28]:ref(Main)
+  35[44]: VarRef(var[28]) -> ref(reference) type=Main 18 var=m[28]:ref(Main)
   38[56]: FreeRef(v1: ref(reference))
   39[44]: FreeStack(value=4, discard=16)
   43[32]: [6] VarInt(var[28]) -> integer var=test_value[28]:integer
-  46[36]: ConstInt(val=829) -> integer
+  46[36]: ConstInt(val=425) -> integer
   51[40]: EqInt(v1: integer, v2: integer) -> boolean
   52[33]: GotoFalseWord(jump=58, if_false: boolean)
   55[32]: GotoWord(jump=110)
@@ -67,7 +67,7 @@ byte-code for index_member:test()
   81[36]: ConvLongFromInt(v1: integer) -> long
   82[40]: ConstInt(val=0) -> integer
   87[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
-  94[32]: ConstText(_value=" != 829") -> text
+  94[32]: ConstText(_value=" != 425") -> text
  103[48]: AppendText(var[4], v1: text)
  106[32]: VarText(var[4]) -> text var=__work_1[4]:text
  109[48]: Panic(message: text)
@@ -76,22 +76,22 @@ byte-code for index_member:test()
 
 Execute test:
     0:[8] [5] Text()
-    1:[32] ConvRefFromNull() -> ref(1,0,0)[32]
+    1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
     2:[44] Database(var[32], db_tp=18)
-    7:[44] VarRef(var[32]) -> ref(1,1,0)={s:[]}[44]
+    7:[44] VarRef(var[32]) -> ref(1,1,8)={s:[]}[44]
    10:[56] ConstInt(val=0) -> 0[56]
-   15:[60] SetInt(v1=ref(1,1,0)[44], fld=4, val=0[56])
-   18:[44] ConstInt(val=29) -> 29[44]
+   15:[60] SetInt(v1=ref(1,1,8)[44], fld=0, val=0[56])
+   18:[44] ConstInt(val=25) -> 25[44]
    23:[48] ConstInt(val=100) -> 100[48]
-   28:[52] ConstInt(val=8) -> 8[52]
-   33:[56] MulInt(v1=100[48], v2=8[52]) -> 800[48]
-   34:[52] AddInt(v1=29[44], v2=800[48]) -> 829[44]
-   35:[48] VarRef(var[32]) -> ref(1,1,0)={s:[]}[48]
-   38:[60] FreeRef(v1=ref(1,1,0)[48])
+   28:[52] ConstInt(val=4) -> 4[52]
+   33:[56] MulInt(v1=100[48], v2=4[52]) -> 400[48]
+   34:[52] AddInt(v1=25[44], v2=400[48]) -> 425[44]
+   35:[48] VarRef(var[32]) -> ref(1,1,8)={s:[]}[48]
+   38:[60] FreeRef(v1=ref(1,1,8)[48])
    39:[48] FreeStack(value=4, discard=16)
-   43:[36] VarInt(var[32]) -> 829[36]
-   46:[40] ConstInt(val=829) -> 829[40]
-   51:[44] EqInt(v1=829[36], v2=829[40]) -> true[36]
+   43:[36] VarInt(var[32]) -> 425[36]
+   46:[40] ConstInt(val=425) -> 425[40]
+   51:[44] EqInt(v1=425[36], v2=425[40]) -> true[36]
    52:[37] GotoFalseWord(jump=58, if_false=true[36])
    55:[36] GotoWord(jump=110)
   110:[36] FreeText(var[8])
