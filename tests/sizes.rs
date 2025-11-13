@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Jurjen Stellingwerff
+// Copyright (c) 2023-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 extern crate dryopea;
@@ -31,7 +31,7 @@ fn expr_struct() {
 enum En {V1, V2}"
     )
     .expr("sizeof(S)")
-    .result(Value::Int(17));
+    .result(Value::Int(13));
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn hash_member() {
 struct Main { s:hash<S[b]> }"
     )
     .expr("sizeof(S) + 100 * sizeof(Main)")
-    .result(Value::Int(820));
+    .result(Value::Int(416));
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn index_member() {
 struct Main { s: index<S[a, -c]> };"
     )
     .expr("m = Main {}; sizeof(S) + 100 * sizeof(m)")
-    .result(Value::Int(829));
+    .result(Value::Int(425));
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn reference_field() {
 struct Main { s: vector<S>, biggest: reference<S> };"
     )
     .expr("sizeof(S) + 100 * sizeof(Main) + 10000 * sizeof(vector<S>)")
-    .result(Value::Int(122012));
+    .result(Value::Int(121612));
 }
 
 /*
@@ -98,5 +98,5 @@ struct Main { s: vector<S> };"
         "m = Main{};
 sizeof(S) + 100 * sizeof(Main) + 10000 * sizeof(m) + 100000 * sizeof(vector<S>)",
     )
-    .result(Value::Int(1280812));
+    .result(Value::Int(1240412));
 }

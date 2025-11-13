@@ -551,7 +551,7 @@ pub fn size(tp: &Type, context: &Context) -> u16 {
         {
             2
         }
-        Type::Boolean | Type::Enum(_) => 1,
+        Type::Boolean | Type::Enum(_, false, _) => 1,
         Type::Integer(_, _) | Type::Single | Type::Function(_, _) | Type::Character => 4,
         Type::Long | Type::Float => 8,
         Type::Text(_) if context == &Context::Variable => size_of::<String>() as u16,
@@ -562,6 +562,7 @@ pub fn size(tp: &Type, context: &Context) -> u16 {
         | Type::Index(_, _, _)
         | Type::Hash(_, _, _)
         | Type::Sorted(_, _, _)
+        | Type::Enum(_, true, _)
         | Type::Spacial(_, _, _) => size_of::<DbRef>() as u16,
         _ => 0,
     }

@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2023 Jurjen Stellingwerff
+// Copyright (c) 2021-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 extern crate dryopea;

@@ -1,12 +1,14 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! Calculate the positions of fields inside a record
 #![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
 
 use crate::data::{Data, DefType, I32, Type, Value};
 use crate::database::Stores;
 use crate::diagnostics::Level;
+use crate::keys::Content;
 use crate::lexer::Lexer;
 
 /// Set the correct type and initial size in definitions.
@@ -43,7 +45,7 @@ pub fn complete_definition(_lexer: &mut Lexer, data: &mut Data, d_nr: u32) {
             data.definitions[d_nr as usize].known_type = 4;
         }
         "enumerate" => {
-            data.set_returned(d_nr, Type::Enum(0));
+            data.set_returned(d_nr, Type::Enum(0, false, Vec::new()));
         }
         "function" => {
             data.set_returned(d_nr, Type::Routine(d_nr));
@@ -67,6 +69,12 @@ fn copy_unknown_fields(data: &mut Data, d: u32) {
     for nr in 0..data.attributes(d) {
         if let Type::Unknown(was) = data.attr_type(d, nr) {
             data.set_attr_type(d, nr, data.def(was).returned.clone());
+        } else if let Type::Vector(content, dep) = &data.attr_type(d, nr)
+            && let Type::Unknown(was) = **content
+            && was != 0
+        {
+            let c = Box::new(data.def(was).returned.clone());
+            data.set_attr_type(d, nr, Type::Vector(c, dep.clone()));
         }
     }
 }
@@ -99,10 +107,15 @@ pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, s
             DefType::Enum => {
                 let e_nr = database.enumerate(&data.def(d).name.clone());
                 for a in 0..data.attributes(d) {
-                    database.value(e_nr, &data.attr_name(d, a));
+                    database.value(e_nr, &data.attr_name(d, a), u16::MAX);
                     data.set_attr_value(d, a, Value::Enum(a as u8 + 1, e_nr));
                 }
                 data.definitions[d as usize].known_type = e_nr;
+            }
+            DefType::EnumValue => {
+                if data.attributes(d) > 0 {
+                    copy_unknown_fields(data, d);
+                }
             }
             _ => {}
         }
@@ -111,7 +124,10 @@ pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, s
 
 pub fn fill_all(data: &mut Data, database: &mut Stores, start_def: u32) {
     for d_nr in start_def..data.definitions() {
-        if matches!(data.def_type(d_nr), DefType::Struct | DefType::Main) {
+        if ((matches!(data.def_type(d_nr), DefType::EnumValue) && data.attributes(d_nr) > 0)
+            || matches!(data.def_type(d_nr), DefType::Struct | DefType::Main))
+            && !database.has_type(&data.def(d_nr).name)
+        {
             fill_database(data, database, d_nr);
         }
     }
@@ -121,11 +137,32 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
     if data.def(d_nr).name == "Unknown(0)" {
         return;
     }
-    let s_type = database.structure(&data.def(d_nr).name);
+    let mut enum_value = 0;
+    if let Type::Enum(nr, true, _) = data.def(d_nr).returned {
+        for (a_nr, a) in data.def(nr).attributes.iter().enumerate() {
+            if a.name == data.def(d_nr).name {
+                enum_value = a_nr as i32 + 1;
+                break;
+            }
+        }
+    }
+    let s_type = database.structure(&data.def(d_nr).name, enum_value);
     if data.def_type(d_nr) == DefType::Main {
         database.main(s_type);
     }
     data.definitions[d_nr as usize].known_type = s_type;
+    if data.def_type(d_nr) == DefType::EnumValue {
+        let b = database.byte(0, false);
+        let f = database.field(s_type, "enum", b);
+        let e_tp = data.def(d_nr).parent;
+        for (a_nr, a) in data.def(e_tp).attributes.iter().enumerate() {
+            if a.name == data.def(d_nr).name {
+                database.set_default(s_type, f, Content::Long(a_nr as i64 + 1));
+            }
+        }
+        let enum_tp = data.def(e_tp).known_type;
+        database.enum_value(enum_tp, &data.def(d_nr).name, data.def(d_nr).known_type);
+    }
     for a_nr in 0..data.attributes(d_nr) {
         if !data.attr_mutable(d_nr, a_nr) {
             continue;
@@ -145,7 +182,11 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
                         data.def(d_nr).name,
                         data.attr_name(d_nr, a_nr)
                     );
-                    let c_tp = data.def(c_nr).known_type;
+                    let mut c_tp = data.def(c_nr).known_type;
+                    if c_tp == u16::MAX {
+                        fill_database(data, database, c_nr);
+                        c_tp = data.def(c_nr).known_type;
+                    }
                     let tp = database.vector(c_tp);
                     data.check_vector(c_nr, tp, &data.def(d_nr).position.clone());
                     tp

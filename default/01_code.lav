@@ -577,9 +577,6 @@ fn OpConvRefFromNull() -> reference;
 #rust "stores.null()"
 fn OpFreeRef(v1: reference);
 
-// Claim a new object inside a current database
-fn OpAppend(db: reference, size: const u16, db_tp: const u16) -> reference[db];
-
 fn OpVarRef(pos: const u16) -> reference;
 #rust "{{let r = *s.get_var::<DbRef>(@pos); stores.valid(&r); r}}"
 fn OpPutRef(pos: const u16, value: reference);
@@ -677,6 +674,7 @@ fn OpGetVector(r: vector, size: const u16, index: integer) -> reference[r];
 #rust "vector::get_vector(&@r, u32::from(@size), @index, &s.database.allocations)"
 
 fn OpCastVectorFromText(val: text, db_tp: const u16) -> vector;
+#rust "s.db_from_text(@val, @db_tp)"
 
 fn OpRemoveVector(r: vector, size: const u16, index: integer) -> boolean;
 #rust "vector::remove_vector(&@r, u32::from(@size), @index as u32, &mut s.database.allocations)"

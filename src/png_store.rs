@@ -1,5 +1,6 @@
-// Copyright (c) 2024 Jurjen Stellingwerff
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
+
 //! Opening png images inside a store
 #![allow(clippy::cast_possible_truncation)]
 use crate::store::Store;

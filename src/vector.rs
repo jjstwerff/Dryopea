@@ -1,5 +1,6 @@
 // Copyright (c) 2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
+
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
@@ -51,29 +52,41 @@ pub fn insert_vector(db: &DbRef, size: u32, index: i32, stores: &mut [Store]) ->
     }
 }
 
-pub fn vector_append(db: &DbRef, add: u32, size: u32, stores: &mut [Store]) -> DbRef {
+/**
+Claim more space in a vector to allow for new records. Return the next reference after the last
+records though do not increase the length yet as we might want to iterate the vector before the
+actual change.
+*/
+pub fn vector_append(db: &DbRef, size: u32, stores: &mut [Store]) -> DbRef {
     let store = keys::mut_store(db, stores);
     let mut vec_rec = store.get_int(db.rec, db.pos) as u32;
-    let new_length;
-    if vec_rec == 0 {
-        // claim a new array with minimal 11 elements
-        vec_rec = store.claim(((add + 10) * size + 15) / 8);
+    let pos = if vec_rec == 0 {
+        // new array
+        vec_rec = store.claim((11 * size + 15) / 8); // minimal 11 elements
         store.set_int(db.rec, db.pos, vec_rec as i32);
-        new_length = add;
+        store.set_int(vec_rec, 4, 0); // initial length
+        0
     } else {
-        new_length = add + store.get_int(vec_rec, 4) as u32;
-        let new_vec = store.resize(vec_rec, (new_length * size + 15) / 8);
+        let length = store.get_int(vec_rec, 4) as u32;
+        let new_vec = store.resize(vec_rec, ((length + 1) * size + 15) / 8);
         if new_vec != vec_rec {
             store.set_int(db.rec, db.pos, new_vec as i32);
             vec_rec = new_vec;
         }
-    }
-    store.set_int(vec_rec, 4, new_length as i32);
+        length
+    };
     DbRef {
         store_nr: db.store_nr,
         rec: vec_rec,
-        pos: 8 + (new_length - add) * size,
+        pos: 8 + pos * size,
     }
+}
+
+pub fn vector_finish(db: &DbRef, stores: &mut [Store]) {
+    let store = keys::mut_store(db, stores);
+    let vec_rec = store.get_int(db.rec, db.pos) as u32;
+    let length = store.get_int(vec_rec, 4);
+    store.set_int(vec_rec, 4, length + 1);
 }
 
 pub fn sorted_new(db: &DbRef, size: u32, stores: &mut [Store]) -> DbRef {
@@ -332,6 +345,7 @@ pub fn ordered_find(
     loop {
         let mid = (left + right + 1) >> 1;
         result.rec = store.get_int(sorted_rec, 8 + mid * 4) as u32;
+        result.pos = 8;
         let cmp = keys::key_compare(key, &result, stores, keys);
         let action = if cmp == Ordering::Equal {
             found = true;

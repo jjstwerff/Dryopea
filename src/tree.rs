@@ -1,5 +1,6 @@
-// Copyright (c) 2023 Jurjen Stellingwerff
+// Copyright (c) 2023-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
+
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_wrap)]
 // Should be removed when actually in use
@@ -41,6 +42,7 @@ pub fn find(
     };
     while rec > 0 {
         result.rec = rec;
+        result.pos = 8;
         let cmp = keys::key_compare(key, &result, stores, keys);
         let action = if cmp == Ordering::Equal {
             if before {
@@ -109,7 +111,7 @@ fn end(data: &DbRef, fields: u16, stores: &[Store], forward: u32) -> DbRef {
     DbRef {
         store_nr: data.store_nr,
         rec: i as u32,
-        pos: 0,
+        pos: 8,
     }
 }
 
@@ -197,7 +199,7 @@ fn compare(rec: &DbRef) -> DbRef {
     DbRef {
         store_nr: rec.store_nr,
         rec: rec.rec,
-        pos: 0,
+        pos: 8,
     }
 }
 

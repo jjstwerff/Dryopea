@@ -199,7 +199,6 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     conv_bool_from_ref,
     conv_ref_from_null,
     free_ref,
-    append,
     var_ref,
     put_ref,
     eq_ref,
@@ -1448,10 +1447,6 @@ fn free_ref(s: &mut State) {
     s.free_ref();
 }
 
-fn append(s: &mut State) {
-    s.append();
-}
-
 fn var_ref(s: &mut State) {
     let v_pos = *s.code::<u16>();
     let new_value = {
@@ -1775,7 +1770,10 @@ fn get_vector(s: &mut State) {
 }
 
 fn cast_vector_from_text(s: &mut State) {
-    s.cast_vector_from_text();
+    let v_db_tp = *s.code::<u16>();
+    let v_val = s.string();
+    let new_value = s.db_from_text(v_val.str(), v_db_tp);
+    s.put_stack(new_value);
 }
 
 fn remove_vector(s: &mut State) {
