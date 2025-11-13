@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(unused_variables)]

@@ -16,28 +16,28 @@ pub fn test() {
         "Test failed {test_value} != \"test:0\""
     );
 }
-Type 17:Data[12]:
-    name:text[4]
-    number:integer[8]
+Type 17:Data[8/4]:
+    name:text[0]
+    number:integer[4]
 
 fn data(n:text, res:Data) -> Data["res"] {#block(1):ref(Data)["res"]
   [7] OpDatabase(res(0), 17i32);
-  OpSetText(res(0), 4i32, n(0));
-  OpSetInt(res(0), 8i32, 0i32);
+  OpSetText(res(0), 0i32, n(0));
+  OpSetInt(res(0), 4i32, 0i32);
   [8] res(0);
 }#block(1):ref(Data)["res"]
 
 byte-code for object_fn:data(n: text[0], res: ref(Data)[16]) -> ref(Data)["res"]
    0[28]: return-address
-   0[32]: [7] Database(var[16], db_tp=17) type=Data[12]:{name:text[4], number:integer[8]}[17]
-   5[32]: VarRef(var[16]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[16]:ref(Data)
+   0[32]: [7] Database(var[16], db_tp=17) type=Data 17
+   5[32]: VarRef(var[16]) -> ref(reference) type=Data 17 var=res[16]:ref(Data)
    8[44]: ArgText(var[0]) -> text var=n[0]:text
-  11[60]: SetText(v1: ref(reference), fld=4, val: text)
-  14[32]: VarRef(var[16]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[16]:ref(Data)
+  11[60]: SetText(v1: ref(reference), fld=0, val: text)
+  14[32]: VarRef(var[16]) -> ref(reference) type=Data 17 var=res[16]:ref(Data)
   17[44]: ConstInt(val=0) -> integer
-  22[48]: SetInt(v1: ref(reference), fld=8, val: integer)
-  25[32]: [8] VarRef(var[16]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=res[16]:ref(Data)
-  28[44]: Return(ret=28, value=12, discard=44) type=Data[12]:{name:text[4], number:integer[8]}[17]
+  22[48]: SetInt(v1: ref(reference), fld=4, val: integer)
+  25[32]: [8] VarRef(var[16]) -> ref(reference) type=Data 17 var=res[16]:ref(Data)
+  28[44]: Return(ret=28, value=12, discard=44) type=Data 17
 
 fn test() {#block(1):void
   __ref_1(1):ref(Data) = null;
@@ -47,9 +47,9 @@ fn test() {#block(1):void
     d(2):ref(Data)["__ref_1"] = data("test", __ref_1(1));
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
-      OpFormatText(__work_1(1), OpGetText(d(2), 4i32), 0i32, -1i32, 32i32);
+      OpFormatText(__work_1(1), OpGetText(d(2), 0i32), 0i32, -1i32, 32i32);
       OpAppendText(__work_1(1), ":");
-      OpFormatLong(__work_1(1), OpConvLongFromInt(OpGetInt(d(2), 8i32)), 10i32, 0i32, 32i32, false, false);
+      OpFormatLong(__work_1(1), OpConvLongFromInt(OpGetInt(d(2), 4i32)), 10i32, 0i32, 32i32, false, false);
       __work_1(1);
     }#Formatted string(3):text["__work_1"];
   }#block(2):text["__work_1"];
@@ -72,18 +72,18 @@ byte-code for object_fn:test()
    2[40]: Text() var=__work_1[40]:text
    3[64]: [13] Text() var=test_value[64]:text["__work_1"]
    4[88]: ConstText(_value="test") -> text var=d[88]:ref(Data)["__ref_1"]
-  10[104]: VarRef(var[4]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=__ref_1[4]:ref(Data)
+  10[104]: VarRef(var[4]) -> ref(reference) type=Data 17 var=__ref_1[4]:ref(Data)
   13[116]: Call(size=0, fn=data)
   20[100]: ClearText(var[40]) var=__work_1[40]:text
   23[100]: ConstText(_value="") -> text
-  25[116]: VarRef(var[88]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[88]:ref(Data)["__ref_1"]
-  28[128]: GetText(v1: ref(reference), fld=4) -> text["test_value"]
+  25[116]: VarRef(var[88]) -> ref(reference) type=Data 17 var=d[88]:ref(Data)["__ref_1"]
+  28[128]: GetText(v1: ref(reference), fld=0) -> text["test_value"]
   31[132]: ConstInt(val=0) -> integer
   36[136]: FormatText(var[40], val: text, width: integer, dir=-1, token=32)
   41[116]: ConstText(_value=":") -> text
   44[132]: AppendText(var[40], v1: text)
-  47[116]: VarRef(var[88]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=d[88]:ref(Data)["__ref_1"]
-  50[128]: GetInt(v1: ref(reference), fld=8) -> integer
+  47[116]: VarRef(var[88]) -> ref(reference) type=Data 17 var=d[88]:ref(Data)["__ref_1"]
+  50[128]: GetInt(v1: ref(reference), fld=4) -> integer
   53[120]: ConvLongFromInt(v1: integer) -> long
   54[124]: ConstInt(val=0) -> integer
   59[128]: FormatLong(var[40], val: long, radix=10, width: integer, token=32, plus=false, note=false)
@@ -107,39 +107,39 @@ byte-code for object_fn:test()
  148[88]: VarText(var[16]) -> text var=__work_2[16]:text
  151[104]: Panic(message: text)
  152[88]: FreeText(var[64])
- 155[88]: VarRef(var[4]) -> ref(reference) type=Data[12]:{name:text[4], number:integer[8]}[17] var=__ref_1[4]:ref(Data)
+ 155[88]: VarRef(var[4]) -> ref(reference) type=Data 17 var=__ref_1[4]:ref(Data)
  158[100]: FreeRef(v1: ref(reference))
  159[88]: FreeText(var[40])
  162[88]: FreeText(var[16])
  165[88]: Return(ret=0, value=0, discard=88)
 
 Execute test:
-    0:[8] ConvRefFromNull() -> ref(1,0,0)[8]
+    0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
     1:[20] Text()
     2:[44] [13] Text()
     3:[68] Text()
     4:[92] ConstText(_value="test") -> "test"[92]
-   10:[108] VarRef(var[8]) -> ref(1,0,0)=null[108]
+   10:[108] VarRef(var[8]) -> ref(1,0,8)=null[108]
    13:[120] Call(size=0, fn=data)
  1103:[124] Database(var[108], db_tp=17)
- 1108:[124] VarRef(var[108]) -> ref(1,1,0)={}[124]
+ 1108:[124] VarRef(var[108]) -> ref(1,1,8)={}[124]
  1111:[136] ArgText(var[92]) -> "test"[136]
- 1114:[152] SetText(v1=ref(1,1,0)[124], fld=4, val="test"[136])
- 1117:[124] VarRef(var[108]) -> ref(1,1,0)={name:"test"}[124]
+ 1114:[152] SetText(v1=ref(1,1,8)[124], fld=0, val="test"[136])
+ 1117:[124] VarRef(var[108]) -> ref(1,1,8)={name:"test"}[124]
  1120:[136] ConstInt(val=0) -> 0[136]
- 1125:[140] SetInt(v1=ref(1,1,0)[124], fld=8, val=0[136])
- 1128:[124] VarRef(var[108]) -> ref(1,1,0)={name:"test",number:0}[124]
- 1131:[136] Return(ret=1157[120], value=12, discard=44) -> ref(1,1,0)={name:"test",number:0}[92]
+ 1125:[140] SetInt(v1=ref(1,1,8)[124], fld=4, val=0[136])
+ 1128:[124] VarRef(var[108]) -> ref(1,1,8)={name:"test",number:0}[124]
+ 1131:[136] Return(ret=1157[120], value=12, discard=44) -> ref(1,1,8)={name:"test",number:0}[92]
    20:[104] ClearText(var[44])
    23:[104] ConstText(_value="") -> ""[104]
-   25:[120] VarRef(var[92]) -> ref(1,1,0)={name:"test",number:0}[120]
-   28:[132] GetText(v1=ref(1,1,0)[120], fld=4) -> "test"[120]
+   25:[120] VarRef(var[92]) -> ref(1,1,8)={name:"test",number:0}[120]
+   28:[132] GetText(v1=ref(1,1,8)[120], fld=0) -> "test"[120]
    31:[136] ConstInt(val=0) -> 0[136]
    36:[140] FormatText(var[44], val="test"[120], width=0[136], dir=-1, token=32)
    41:[120] ConstText(_value=":") -> ":"[120]
    44:[136] AppendText(var[44], v1=":"[120])
-   47:[120] VarRef(var[92]) -> ref(1,1,0)={name:"test",number:0}[120]
-   50:[132] GetInt(v1=ref(1,1,0)[120], fld=8) -> 0[120]
+   47:[120] VarRef(var[92]) -> ref(1,1,8)={name:"test",number:0}[120]
+   50:[132] GetInt(v1=ref(1,1,8)[120], fld=4) -> 0[120]
    53:[124] ConvLongFromInt(v1=0[120]) -> 0[120]
    54:[128] ConstInt(val=0) -> 0[128]
    59:[132] FormatLong(var[44], val=0[120], radix=10, width=0[128], token=32, plus=false, note=false)
@@ -153,8 +153,8 @@ Execute test:
    92:[93] GotoFalseWord(jump=98, if_false=true[92])
    95:[92] GotoWord(jump=152)
   152:[92] FreeText(var[68])
-  155:[92] VarRef(var[8]) -> ref(1,0,0)=null[92]
-  158:[104] FreeRef(v1=ref(1,0,0)[92])
+  155:[92] VarRef(var[8]) -> ref(1,0,8)=null[92]
+  158:[104] FreeRef(v1=ref(1,0,8)[92])
   159:[92] FreeText(var[44])
   162:[92] FreeText(var[20])
   165:[92] Return(ret=4294967295[4], value=0, discard=88)

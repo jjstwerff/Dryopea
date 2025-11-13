@@ -1,0 +1,185 @@
+enum Code {
+    Null,
+    Line { line: i32 },
+    Integer { i_value: i32 },
+    Enum { e_value: u8, tp: u16 },
+    Boolean { b_value: boolean },
+    Float { f_value: float },
+    Text { t_value: text },
+    Call { function: text, parameters: u8 }, // we use polish notation, values should be done
+    Block { name: text, tp: u16, size: u16 }, // the size indicated the end of the block
+    Loop { name: text, tp: u16, size: u16 },
+    Continue { loops: u8 }, // the loops with 0: current, 1:first parent, etc
+    Break { loops: u8 },
+    Return, // return the given parameter or void
+    Set,
+    Var,
+    If,
+    Drop}
+
+pub fn test() {
+    test_value = {v = "Call {{ function: \"foo\", parameters: 2 }}" as Code; "{v}"};
+    assert(
+        test_value == "Call {{function:\"foo\",parameters:2}}",
+        "Test failed {test_value} != \"Call {{function:\"foo\",parameters:2}}\""
+    );
+}
+Type 17:Code[16/8]:
+    Null
+    Line:18
+    Integer:19
+    Enum:20
+    Boolean:23
+    Float:24
+    Text:25
+    Call:26
+    Block:27
+    Loop:28
+    Continue:29
+    Break:30
+    Return
+    Set
+    Var
+    If
+    Drop
+
+Type 18:Line[8/4]: EnumValue(2)
+    enum:byte[0] default Long(2)
+    line:integer[4]
+
+Type 19:Integer[8/4]: EnumValue(3)
+    enum:byte[0] default Long(3)
+    i_value:integer[4]
+
+Type 20:Enum[8/2]: EnumValue(4)
+    enum:byte[0] default Long(4)
+    e_value:byte<0,true>[5]
+    tp:short<0,true>[6]
+
+Type 21:byte<0,true>[1/1]:Byte(0, true)
+
+Type 22:short<0,true>[2/2]:Short(0, true)
+
+Type 23:Boolean[8/1]: EnumValue(5)
+    enum:byte[0] default Long(5)
+    b_value:boolean[7]
+
+Type 24:Float[16/8]: EnumValue(6)
+    enum:byte[0] default Long(6)
+    f_value:float[8]
+
+Type 25:Text[8/4]: EnumValue(7)
+    enum:byte[0] default Long(7)
+    t_value:text[4]
+
+Type 26:Call[8/4]: EnumValue(8)
+    enum:byte[0] default Long(8)
+    function:text[4]
+    parameters:byte<0,true>[3]
+
+Type 27:Block[10/4]: EnumValue(9)
+    enum:byte[0] default Long(9)
+    name:text[4]
+    tp:short<0,true>[2]
+    size:short<0,true>[8]
+
+Type 28:Loop[10/4]: EnumValue(10)
+    enum:byte[0] default Long(10)
+    name:text[4]
+    tp:short<0,true>[2]
+    size:short<0,true>[8]
+
+Type 29:Continue[8/1]: EnumValue(11)
+    enum:byte[0] default Long(11)
+    loops:byte<0,true>[7]
+
+Type 30:Break[8/1]: EnumValue(12)
+    enum:byte[0] default Long(12)
+    loops:byte<0,true>[7]
+
+fn test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  [21] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
+    v(2):ref(Code) = OpCastVectorFromText("Call { function: "foo", parameters: 2 }", 17i32);
+    {#Formatted string(3):text["__work_1"]
+      __work_1(1):text = "";
+      OpFormatDatabase(__work_1(1), v(2), 17i32, false);
+      OpFreeRef(v(2));
+      __work_1(1);
+    }#Formatted string(3):text["__work_1"];
+  }#block(2):text["__work_1"];
+  [22] if OpEqText(test_value(1), "Call {function:"foo",parameters:2}") null else OpPanic({#Formatted string(4):text["__work_2"]
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "Call {function:"foo",parameters:2}"");
+    __work_2(1);
+  }#Formatted string(4):text["__work_2"]);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
+
+byte-code for define_enum:test()
+   0[0]: return-address
+   0[4]: Text() var=__work_2[4]:text
+   1[28]: Text() var=__work_1[28]:text
+   2[52]: [21] Text() var=test_value[52]:text["__work_1"]
+   3[76]: ConstText(_value="Call { function: "foo", parameters: 2 }") -> text var=v[76]:ref(Code)
+  44[92]: CastVectorFromText(val: text, db_tp=17) -> vector
+  47[88]: ClearText(var[28]) var=__work_1[28]:text
+  50[88]: ConstText(_value="") -> text
+  52[104]: VarRef(var[76]) -> ref(reference) type=Code 17 var=v[76]:ref(Code)
+  55[116]: FormatDatabase(var[28], val: ref(reference), db_tp=17, pretty=false)
+  61[104]: VarRef(var[76]) -> ref(reference) type=Code 17 var=v[76]:ref(Code)
+  64[116]: FreeRef(v1: ref(reference))
+  65[104]: VarText(var[28]) -> text var=__work_1[28]:text
+  68[120]: FreeStack(value=16, discard=32)
+  72[104]: FreeStack(value=16, discard=28)
+  76[92]: AppendText(var[52], v1: text)
+  79[76]: [22] VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+  82[92]: ConstText(_value="Call {function:"foo",parameters:2}") -> text
+ 118[108]: EqText(v1: text, v2: text) -> boolean
+ 119[77]: GotoFalseWord(jump=125, if_false: boolean)
+ 122[76]: GotoWord(jump=207)
+ 125[76]: ClearText(var[4]) var=__work_2[4]:text
+ 128[76]: ConstText(_value="Test failed ") -> text
+ 142[92]: AppendText(var[4], v1: text)
+ 145[76]: VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+ 148[92]: ConstInt(val=0) -> integer
+ 153[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 158[76]: ConstText(_value=" != "Call {function:"foo",parameters:2}"") -> text
+ 200[92]: AppendText(var[4], v1: text)
+ 203[76]: VarText(var[4]) -> text var=__work_2[4]:text
+ 206[92]: Panic(message: text)
+ 207[76]: FreeText(var[52])
+ 210[76]: FreeText(var[28])
+ 213[76]: FreeText(var[4])
+ 216[76]: Return(ret=0, value=0, discard=76)
+
+Execute test:
+    0:[8] Text()
+    1:[32] [21] Text()
+    2:[56] Text()
+    3:[80] ConstText(_value="Call { function: "foo", parameters: 2 }") -> "Call { function: \"foo\", parameters: 2 }"[80]
+   44:[96] CastVectorFromText(val="Call { function: \"foo\", parameters: 2 }"[80], db_tp=17) -> ref(1,1,8)[80]
+   47:[92] ClearText(var[32])
+   50:[92] ConstText(_value="") -> ""[92]
+   52:[108] VarRef(var[80]) -> ref(1,1,8)=Call {function:"foo",parameters:2}[108]
+   55:[120] FormatDatabase(var[32], val=ref(1,1,8)[108], db_tp=17, pretty=false)
+   61:[108] VarRef(var[80]) -> ref(1,1,8)=Call {function:"foo",parameters:2}[108]
+   64:[120] FreeRef(v1=ref(1,1,8)[108])
+   65:[108] VarText(var[32]) -> "Call {function:\"foo\",parameters:2}"[108]
+   68:[124] FreeStack(value=16, discard=32)
+   72:[108] FreeStack(value=16, discard=28)
+   76:[96] AppendText(var[56], v1="Call {function:\"foo\",parameters:2}"[80])
+   79:[80] VarText(var[56]) -> "Call {function:\"foo\",parameters:2}"[80]
+   82:[96] ConstText(_value="Call {function:"foo",parameters:2}") -> "Call {function:\"foo\",parameters:2}"[96]
+  118:[112] EqText(v1="Call {function:\"foo\",parameters:2}"[80], v2="Call {function:\"foo\",parameters:2}"[96]) -> true[80]
+  119:[81] GotoFalseWord(jump=125, if_false=true[80])
+  122:[80] GotoWord(jump=207)
+  207:[80] FreeText(var[56])
+  210:[80] FreeText(var[32])
+  213:[80] FreeText(var[8])
+  216:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

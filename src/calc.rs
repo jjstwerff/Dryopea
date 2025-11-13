@@ -1,3 +1,6 @@
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
@@ -7,7 +10,6 @@ use std::collections::BTreeMap;
 */
 pub fn calculate_positions(
     fields: &[(u16, u8)],
-    vector: bool,
     sub: bool,
     size: &mut u16,
     alignment: &mut u8,
@@ -17,23 +19,18 @@ pub fn calculate_positions(
     // Calculated position for each field on number.
     let mut positions = BTreeMap::new();
     let mut pos = 0;
-    // Keep space for the claimed record size and type.
-    // Start on the first 8 byte alignment position after it for potentially longer fields.
-    if vector {
-        if sub {
-            pos = 8;
-            gaps.insert(1, 7);
-        }
-    } else {
+    // Keep space for the type for an EnumValue.
+    if sub {
+        // Start on the first 8 byte alignment position.
         pos = 8;
-        if sub {
-            gaps.insert(3, 3);
-        } else {
-            gaps.insert(4, 4);
-        }
+        positions.insert(0, 0);
+        gaps.insert(1, 7);
     }
     for al in [8, 4, 2, 1] {
         for (nr, (field_size, align)) in fields.iter().enumerate() {
+            if sub && nr == 0 {
+                continue;
+            }
             if *align == al {
                 if al > *alignment {
                     *alignment = al;

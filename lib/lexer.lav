@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 struct SKeyword {
     name: text
 };
@@ -69,6 +72,33 @@ pub fn set_tokens(self: Lexer, tokens: vector<text>) {
     }
 }
 
+// Open a file for parsing.
+pub fn parse(self: Lexer, filename: text) {
+    v = filename.rfind("/");
+    self.file = if v {
+        filename[v + 1..]
+    } else {
+        filename
+    };
+    self.data = file(filename).content();
+    self.index = 0;
+    self.start = 0;
+    self.line = 1;
+    self.pos = 1;
+    self.scan();
+}
+
+// Use a text for parsing.
+pub fn parse_string(self: Lexer, name: text, content: text) {
+    self.file = name;
+    self.data = content;
+    self.index = 0;
+    self.start = 0;
+    self.line = 1;
+    self.pos = 1;
+    self.scan();
+}
+
 // Skip possible white-space, comments or newlines in the file.
 fn skip_whitespace(self: Lexer) {
     self.pos += self.index - self.start;
@@ -82,9 +112,7 @@ fn skip_whitespace(self: Lexer) {
             self.line += 1;
             self.pos = 1;
             start = true;
-            println("new_line start {start} pos:{self.pos}");
         } else if self.data[self.index..self.index+2] == "//" {
-            println("comment start {start} pos:{self.pos}");
             if !start {
                 self.behind = true;
             }
@@ -203,33 +231,6 @@ fn scan(self: Lexer) {
         }
     }
     self.index += 1;
-}
-
-// Open a file for parsing.
-pub fn parse(self: Lexer, filename: text) {
-    v = filename.rfind("/");
-    self.file = if v {
-        filename[v + 1..]
-    } else {
-        filename
-    };
-    self.data = file(filename).content();
-    self.index = 0;
-    self.start = 0;
-    self.line = 1;
-    self.pos = 1;
-    self.scan();
-}
-
-// Use a text for parsing.
-pub fn parse_string(self: Lexer, name: text, content: text) {
-    self.file = name;
-    self.data = content;
-    self.index = 0;
-    self.start = 0;
-    self.line = 1;
-    self.pos = 1;
-    self.scan();
 }
 
 // Test if there is a specific token, do not skip it.
