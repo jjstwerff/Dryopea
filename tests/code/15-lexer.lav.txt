@@ -236,12 +236,113 @@ byte-code for lib/lexer.lav:_tp_Lexer_set_tokens(self: ref(Lexer)[0], tokens: ve
  276[56]: FreeStack(value=0, discard=16)
  280[40]: Return(ret=24, value=0, discard=40)
 
+fn _tp_Lexer_parse(self:Lexer, filename:text) {#block(1):void
+  __ref_1(1):ref(File) = null;
+  __work_1(1):text = "";
+  [74] v(1):integer = _tp_text_rfind(filename(0), "/");
+  [75] OpSetText(self(0), 4i32, if OpConvBoolFromInt(v(1)) {#block(2):text["filename"]
+    [76] OpGetTextSub(filename(0), OpAddInt(v(1), 1i32), 2147483647i32);
+  }#block(2):text["filename"] else {#block(3):text["filename"]
+    [78] filename(0);
+  }#block(3):text["filename"]);
+  [80] OpSetText(self(0), 8i32, _tp_File_content(file(filename(0), __ref_1(1)), {#default ref(4):ref(reference)["__work_1"]
+    OpCreateRef(__work_1(1));
+  }#default ref(4):ref(reference)["__work_1"]));
+  [81] OpSetInt(self(0), 12i32, 0i32);
+  [82] OpSetInt(self(0), 24i32, 0i32);
+  [83] OpSetInt(self(0), 16i32, 1i32);
+  [84] OpSetInt(self(0), 20i32, 1i32);
+  [85] _tp_Lexer_scan(self(0));
+  OpFreeRef(__ref_1(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
+
+byte-code for lib/lexer.lav:_tp_Lexer_parse(self: ref(Lexer)[0], filename: text[12])
+   0[28]: return-address
+   0[32]: ConvRefFromNull() -> ref(reference) var=__ref_1[32]:ref(File)
+   1[44]: Text() var=__work_1[44]:text
+   2[68]: [74] ArgText(var[12]) -> text var=filename[12]:text
+   5[84]: ConstText(_value="/") -> text
+   8[100]: StaticCall(_tp_text_rfind)
+  11[72]: [75] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  14[84]: VarInt(var[68]) -> integer var=v[68]:integer
+  17[88]: ConvBoolFromInt(v1: integer) -> boolean
+  18[85]: GotoFalseWord(jump=42, if_false: boolean)
+  21[84]: [76] ArgText(var[12]) -> text var=filename[12]:text
+  24[100]: VarInt(var[68]) -> integer var=v[68]:integer
+  27[104]: ConstInt(val=1) -> integer
+  32[108]: AddInt(v1: integer, v2: integer) -> integer
+  33[104]: ConstInt(val=2147483647) -> integer
+  38[108]: GetTextSub(v1: text, from: integer, till: integer) -> text["self"]
+  39[100]: GotoWord(jump=45)
+  42[84]: [78] ArgText(var[12]) -> text var=filename[12]:text
+  45[100]: SetText(v1: ref(reference), fld=4, val: text)
+  48[72]: [80] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  51[84]: ArgText(var[12]) -> text var=filename[12]:text
+  54[100]: VarRef(var[32]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=__ref_1[32]:ref(File)
+  57[112]: Call(size=0, fn=file)
+  64[96]: CreateRef(var[44]) -> ref(reference)
+  67[108]: Call(size=0, fn=_tp_File_content)
+  74[100]: SetText(v1: ref(reference), fld=8, val: text)
+  77[72]: [81] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  80[84]: ConstInt(val=0) -> integer
+  85[88]: SetInt(v1: ref(reference), fld=12, val: integer)
+  88[72]: [82] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  91[84]: ConstInt(val=0) -> integer
+  96[88]: SetInt(v1: ref(reference), fld=24, val: integer)
+  99[72]: [83] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 102[84]: ConstInt(val=1) -> integer
+ 107[88]: SetInt(v1: ref(reference), fld=16, val: integer)
+ 110[72]: [84] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 113[84]: ConstInt(val=1) -> integer
+ 118[88]: SetInt(v1: ref(reference), fld=20, val: integer)
+ 121[72]: [85] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 124[84]: Call(size=0, fn=main)
+ 131[72]: VarRef(var[32]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=__ref_1[32]:ref(File)
+ 134[84]: FreeRef(v1: ref(reference))
+ 135[72]: FreeText(var[44])
+ 138[72]: Return(ret=28, value=0, discard=72)
+
+fn _tp_Lexer_parse_string(self:Lexer, name:text, content:text) {#block(1):void
+  [90] OpSetText(self(0), 4i32, name(0));
+  [91] OpSetText(self(0), 8i32, content(0));
+  [92] OpSetInt(self(0), 12i32, 0i32);
+  [93] OpSetInt(self(0), 24i32, 0i32);
+  [94] OpSetInt(self(0), 16i32, 1i32);
+  [95] OpSetInt(self(0), 20i32, 1i32);
+  [96] _tp_Lexer_scan(self(0));
+}#block(1):void
+
+byte-code for lib/lexer.lav:_tp_Lexer_parse_string(self: ref(Lexer)[0], name: text[12], content: text[28])
+   0[44]: return-address
+   0[48]: [90] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+   3[60]: ArgText(var[12]) -> text var=name[12]:text
+   6[76]: SetText(v1: ref(reference), fld=4, val: text)
+   9[48]: [91] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  12[60]: ArgText(var[28]) -> text var=content[28]:text
+  15[76]: SetText(v1: ref(reference), fld=8, val: text)
+  18[48]: [92] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  21[60]: ConstInt(val=0) -> integer
+  26[64]: SetInt(v1: ref(reference), fld=12, val: integer)
+  29[48]: [93] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  32[60]: ConstInt(val=0) -> integer
+  37[64]: SetInt(v1: ref(reference), fld=24, val: integer)
+  40[48]: [94] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  43[60]: ConstInt(val=1) -> integer
+  48[64]: SetInt(v1: ref(reference), fld=16, val: integer)
+  51[48]: [95] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  54[60]: ConstInt(val=1) -> integer
+  59[64]: SetInt(v1: ref(reference), fld=20, val: integer)
+  62[48]: [96] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  65[60]: Call(size=0, fn=main)
+  72[48]: Return(ret=44, value=0, discard=48)
+
 fn _tp_Lexer_skip_whitespace(self:Lexer) {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [74] OpSetInt(self(0), 20i32, OpAddInt(OpGetInt(self(0), 20i32), OpMinInt(OpGetInt(self(0), 12i32), OpGetInt(self(0), 24i32))));
-  [75] start(1):boolean = OpEqInt(OpGetInt(self(0), 20i32), 1i32);
-  [76] {#For block(2):void
+  [101] OpSetInt(self(0), 20i32, OpAddInt(OpGetInt(self(0), 20i32), OpMinInt(OpGetInt(self(0), 12i32), OpGetInt(self(0), 24i32))));
+  [102] start(1):boolean = OpEqInt(OpGetInt(self(0), 20i32), 1i32);
+  [103] {#For block(2):void
     t#index(2):integer = OpConvIntFromNull();
     loop {#For loop_3
       t(3):integer = {#Iter range(4):integer
@@ -250,15 +351,15 @@ fn _tp_Lexer_skip_whitespace(self:Lexer) {#block(1):void
         t#index(2);
       }#Iter range(4):integer;
       {#block(5):void
-        [77] if if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(32i32)) true else OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(9i32)) {#block(6):void
-          [78] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-          [79] OpSetInt(self(0), 20i32, OpAddInt(OpGetInt(self(0), 20i32), 1i32));
+        [104] if if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(32i32)) true else OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(9i32)) {#block(6):void
+          [105] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+          [106] OpSetInt(self(0), 20i32, OpAddInt(OpGetInt(self(0), 20i32), 1i32));
         }#block(6):void else if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(10i32)) {#block(7):void
-          [81] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-          [82] OpSetInt(self(0), 16i32, OpAddInt(OpGetInt(self(0), 16i32), 1i32));
-          [83] OpSetInt(self(0), 20i32, 1i32);
-          [84] start(1):boolean = true;
-          [85] println({#Formatted string(8):text["__work_1"]
+          [108] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+          [109] OpSetInt(self(0), 16i32, OpAddInt(OpGetInt(self(0), 16i32), 1i32));
+          [110] OpSetInt(self(0), 20i32, 1i32);
+          [111] start(1):boolean = true;
+          [112] println({#Formatted string(8):text["__work_1"]
             __work_1(1):text = "new_line start ";
             OpFormatText(__work_1(1), OpCastTextFromBool(start(1)), 0i32, -1i32, 32i32);
             OpAppendText(__work_1(1), " pos:");
@@ -266,20 +367,20 @@ fn _tp_Lexer_skip_whitespace(self:Lexer) {#block(1):void
             __work_1(1);
           }#Formatted string(8):text["__work_1"]);
         }#block(7):void else if OpEqText(OpGetTextSub(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32), OpAddInt(OpGetInt(self(0), 12i32), 2i32)), "//") {#block(9):void
-          [87] println({#Formatted string(10):text["__work_2"]
+          [114] println({#Formatted string(10):text["__work_2"]
             __work_2(1):text = "comment start ";
             OpFormatText(__work_2(1), OpCastTextFromBool(start(1)), 0i32, -1i32, 32i32);
             OpAppendText(__work_2(1), " pos:");
             OpFormatLong(__work_2(1), OpConvLongFromInt(OpGetInt(self(0), 20i32)), 10i32, 0i32, 32i32, false, false);
             __work_2(1);
           }#Formatted string(10):text["__work_2"]);
-          [88] if OpNot(start(1)) {#block(11):void
-            [89] OpSetByte(self(0), 43i32, 0i32, if true 1i32 else 0i32);
+          [115] if OpNot(start(1)) {#block(11):void
+            [116] OpSetByte(self(0), 43i32, 0i32, if true 1i32 else 0i32);
           }#block(11):void else null;
-          [91] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 2i32));
-          [92] com(9):integer = OpGetInt(self(0), 12i32);
-          [93] OpSetInt(self(0), 20i32, OpAddInt(OpGetInt(self(0), 20i32), 1i32));
-          [94] {#For block(12):void
+          [118] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 2i32));
+          [119] com(9):integer = OpGetInt(self(0), 12i32);
+          [120] OpSetInt(self(0), 20i32, OpAddInt(OpGetInt(self(0), 20i32), 1i32));
+          [121] {#For block(12):void
             c#index(12):integer = OpConvIntFromNull();
             loop {#For loop_13
               c(13):integer = {#Iter range(14):integer
@@ -288,33 +389,33 @@ fn _tp_Lexer_skip_whitespace(self:Lexer) {#block(1):void
                 c#index(12);
               }#Iter range(14):integer;
               {#block(15):void
-                [95] if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(10i32)) {#block(16):void
-                  [96] if OpNeText(OpGetText(self(0), 36i32), "") {#block(17):void
-                    [97] _field_1(17):text = OpGetText(self(0), 36i32);
+                [122] if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(10i32)) {#block(16):void
+                  [123] if OpNeText(OpGetText(self(0), 36i32), "") {#block(17):void
+                    [124] _field_1(17):text = OpGetText(self(0), 36i32);
                     OpAppendCharacter(_field_1(17), 10i32);
                     OpSetText(self(0), 36i32, _field_1(17));
                     OpFreeText(_field_1(17));
                   }#block(17):void else null;
-                  [99] _field_2(16):text = OpGetText(self(0), 36i32);
+                  [126] _field_2(16):text = OpGetText(self(0), 36i32);
                   OpAppendText(_field_2(16), _tp_text_trim_start(OpGetTextSub(OpGetText(self(0), 8i32), com(9), OpGetInt(self(0), 12i32))));
                   OpSetText(self(0), 36i32, _field_2(16));
-                  [100] OpFreeText(_field_2(16));
+                  [127] OpFreeText(_field_2(16));
                   break(0);
                   OpFreeText(_field_2(16));
                 }#block(16):void else null;
-                [102] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-                [103] OpSetInt(self(0), 20i32, OpAddInt(OpGetInt(self(0), 20i32), 1i32));
+                [129] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+                [130] OpSetInt(self(0), 20i32, OpAddInt(OpGetInt(self(0), 20i32), 1i32));
               }#block(15):void;
             }#For loop_13;
           }#For block(12):void;
         }#block(9):void else {#block(18):void
-          [106] break(0);
+          [133] break(0);
         }#block(18):void;
       }#block(5):void;
     }#For loop_3;
   }#For block(2):void;
-  [109] OpSetInt(self(0), 24i32, OpGetInt(self(0), 12i32));
-  [110] OpSetEnum(self(0), 40i32, 1u8(17));
+  [136] OpSetInt(self(0), 24i32, OpGetInt(self(0), 12i32));
+  [137] OpSetEnum(self(0), 40i32, 1u8(17));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
 }#block(1):void
@@ -323,7 +424,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
    0[12]: return-address
    0[16]: Text() var=__work_2[16]:text
    1[40]: Text() var=__work_1[40]:text
-   2[64]: [74] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+   2[64]: [101] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
    5[76]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
    8[88]: GetInt(v1: ref(reference), fld=20) -> integer
   11[80]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
@@ -333,11 +434,11 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
   23[88]: MinInt(v1: integer, v2: integer) -> integer
   24[84]: AddInt(v1: integer, v2: integer) -> integer
   25[80]: SetInt(v1: ref(reference), fld=20, val: integer)
-  28[64]: [75] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  28[64]: [102] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
   31[76]: GetInt(v1: ref(reference), fld=20) -> integer
   34[68]: ConstInt(val=1) -> integer
   39[72]: EqInt(v1: integer, v2: integer) -> boolean
-  40[65]: [76] ConvIntFromNull() -> integer var=t#index[65]:integer
+  40[65]: [103] ConvIntFromNull() -> integer var=t#index[65]:integer
   41[69]: VarInt(var[65]) -> integer var=t#index[65]:integer
   44[73]: ConvBoolFromInt(v1: integer) -> boolean
   45[70]: Not(v1: boolean) -> boolean
@@ -354,7 +455,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
   78[70]: GotoFalseWord(jump=84, if_false: boolean)
   81[69]: GotoWord(jump=757)
   84[69]: VarInt(var[65]) -> integer var=t#index[65]:integer
-  87[73]: [77] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  87[73]: [104] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
   90[85]: GetText(v1: ref(reference), fld=8) -> text["self"]
   93[89]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
   96[101]: GetInt(v1: ref(reference), fld=12) -> integer
@@ -376,13 +477,13 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  134[81]: ConvIntFromCharacter(v1: character) -> integer
  135[81]: EqInt(v1: integer, v2: integer) -> boolean
  136[74]: GotoFalseWord(jump=178, if_false: boolean)
- 139[73]: [78] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 139[73]: [105] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  142[85]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  145[97]: GetInt(v1: ref(reference), fld=12) -> integer
  148[89]: ConstInt(val=1) -> integer
  153[93]: AddInt(v1: integer, v2: integer) -> integer
  154[89]: SetInt(v1: ref(reference), fld=12, val: integer)
- 157[73]: [79] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 157[73]: [106] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  160[85]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  163[97]: GetInt(v1: ref(reference), fld=20) -> integer
  166[89]: ConstInt(val=1) -> integer
@@ -399,24 +500,24 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  197[81]: ConvIntFromCharacter(v1: character) -> integer
  198[81]: EqInt(v1: integer, v2: integer) -> boolean
  199[74]: GotoFalseWord(jump=332, if_false: boolean)
- 202[73]: [81] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 202[73]: [108] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  205[85]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  208[97]: GetInt(v1: ref(reference), fld=12) -> integer
  211[89]: ConstInt(val=1) -> integer
  216[93]: AddInt(v1: integer, v2: integer) -> integer
  217[89]: SetInt(v1: ref(reference), fld=12, val: integer)
- 220[73]: [82] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 220[73]: [109] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  223[85]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  226[97]: GetInt(v1: ref(reference), fld=16) -> integer
  229[89]: ConstInt(val=1) -> integer
  234[93]: AddInt(v1: integer, v2: integer) -> integer
  235[89]: SetInt(v1: ref(reference), fld=16, val: integer)
- 238[73]: [83] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 238[73]: [110] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  241[85]: ConstInt(val=1) -> integer
  246[89]: SetInt(v1: ref(reference), fld=20, val: integer)
- 249[73]: [84] ConstTrue() -> boolean var=start[64]:boolean
+ 249[73]: [111] ConstTrue() -> boolean var=start[64]:boolean
  250[74]: PutBool(var=10, value: boolean)
- 253[73]: [85] ClearText(var[40]) var=__work_1[40]:text
+ 253[73]: [112] ClearText(var[40]) var=__work_1[40]:text
  256[73]: ConstText(_value="new_line start ") -> text
  273[89]: AppendText(var[40], v1: text)
  276[73]: VarBool(var[64]) -> boolean var=start[64]:boolean
@@ -445,7 +546,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  357[89]: ConstText(_value="//") -> text
  361[105]: EqText(v1: text, v2: text) -> boolean
  362[74]: GotoFalseWord(jump=743, if_false: boolean)
- 365[73]: [87] ClearText(var[16]) var=__work_2[16]:text
+ 365[73]: [114] ClearText(var[16]) var=__work_2[16]:text
  368[73]: ConstText(_value="comment start ") -> text
  384[89]: AppendText(var[16], v1: text)
  387[73]: VarBool(var[64]) -> boolean var=start[64]:boolean
@@ -461,31 +562,31 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  423[85]: FormatLong(var[16], val: long, radix=10, width: integer, token=32, plus=false, note=false)
  430[73]: VarText(var[16]) -> text var=__work_2[16]:text
  433[89]: Call(size=0, fn=println)
- 440[73]: [88] VarBool(var[64]) -> boolean var=start[64]:boolean
+ 440[73]: [115] VarBool(var[64]) -> boolean var=start[64]:boolean
  443[74]: Not(v1: boolean) -> boolean
  444[74]: GotoFalseWord(jump=472, if_false: boolean)
- 447[73]: [89] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 447[73]: [116] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  450[85]: ConstTrue() -> boolean
  451[86]: GotoFalseWord(jump=462, if_false: boolean)
  454[85]: ConstInt(val=1) -> integer
  459[89]: GotoWord(jump=467)
  462[85]: ConstInt(val=0) -> integer
  467[89]: SetByte(v1: ref(reference), fld=43, min=0, val: integer)
- 472[73]: [91] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 472[73]: [118] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  475[85]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  478[97]: GetInt(v1: ref(reference), fld=12) -> integer
  481[89]: ConstInt(val=2) -> integer
  486[93]: AddInt(v1: integer, v2: integer) -> integer
  487[89]: SetInt(v1: ref(reference), fld=12, val: integer)
- 490[73]: [92] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 490[73]: [119] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  493[85]: GetInt(v1: ref(reference), fld=12) -> integer
- 496[77]: [93] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 496[77]: [120] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  499[89]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  502[101]: GetInt(v1: ref(reference), fld=20) -> integer
  505[93]: ConstInt(val=1) -> integer
  510[97]: AddInt(v1: integer, v2: integer) -> integer
  511[93]: SetInt(v1: ref(reference), fld=20, val: integer)
- 514[77]: [94] ConvIntFromNull() -> integer var=c#index[77]:integer
+ 514[77]: [121] ConvIntFromNull() -> integer var=c#index[77]:integer
  515[81]: VarInt(var[77]) -> integer var=c#index[77]:integer
  518[85]: ConvBoolFromInt(v1: integer) -> boolean
  519[82]: Not(v1: boolean) -> boolean
@@ -502,7 +603,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  552[82]: GotoFalseWord(jump=558, if_false: boolean)
  555[81]: GotoWord(jump=732)
  558[81]: VarInt(var[77]) -> integer var=c#index[77]:integer
- 561[85]: [95] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 561[85]: [122] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  564[97]: GetText(v1: ref(reference), fld=8) -> text["self"]
  567[101]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  570[113]: GetInt(v1: ref(reference), fld=12) -> integer
@@ -512,12 +613,12 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  580[93]: ConvIntFromCharacter(v1: character) -> integer
  581[93]: EqInt(v1: integer, v2: integer) -> boolean
  582[86]: GotoFalseWord(jump=689, if_false: boolean)
- 585[85]: [96] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 585[85]: [123] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  588[97]: GetText(v1: ref(reference), fld=36) -> text["self"]
  591[101]: ConstText(_value="") -> text
  593[117]: NeText(v1: text, v2: text) -> boolean
  594[86]: GotoFalseWord(jump=631, if_false: boolean)
- 597[85]: [97] Text() var=_field_1[85]:text
+ 597[85]: [124] Text() var=_field_1[85]:text
  598[109]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  601[121]: GetText(v1: ref(reference), fld=36) -> text["self"]
  604[125]: AppendText(var[85], v1: text)
@@ -528,7 +629,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  621[137]: SetText(v1: ref(reference), fld=36, val: text)
  624[109]: FreeText(var[85])
  627[109]: FreeStack(value=0, discard=24)
- 631[85]: [99] Text() var=_field_2[85]:text
+ 631[85]: [126] Text() var=_field_2[85]:text
  632[109]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  635[121]: GetText(v1: ref(reference), fld=36) -> text["self"]
  638[125]: AppendText(var[85], v1: text)
@@ -543,18 +644,18 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  663[109]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  666[121]: VarText(var[85]) -> text var=_field_2[85]:text
  669[137]: SetText(v1: ref(reference), fld=36, val: text)
- 672[109]: [100] FreeText(var[85])
+ 672[109]: [127] FreeText(var[85])
  675[109]: FreeStack(value=0, discard=28)
  679[81]: GotoWord(jump=732)
  682[109]: FreeText(var[85])
  685[109]: FreeStack(value=0, discard=24)
- 689[85]: [102] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 689[85]: [129] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  692[97]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  695[109]: GetInt(v1: ref(reference), fld=12) -> integer
  698[101]: ConstInt(val=1) -> integer
  703[105]: AddInt(v1: integer, v2: integer) -> integer
  704[101]: SetInt(v1: ref(reference), fld=12, val: integer)
- 707[85]: [103] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 707[85]: [130] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  710[97]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  713[109]: GetInt(v1: ref(reference), fld=20) -> integer
  716[101]: ConstInt(val=1) -> integer
@@ -565,16 +666,16 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  732[81]: FreeStack(value=0, discard=4)
  736[77]: FreeStack(value=0, discard=4)
  740[73]: GotoWord(jump=750)
- 743[73]: [106] FreeStack(value=0, discard=4)
+ 743[73]: [133] FreeStack(value=0, discard=4)
  747[69]: GotoWord(jump=757)
  750[73]: FreeStack(value=0, discard=4)
  754[69]: GotoWord(jump=41)
  757[69]: FreeStack(value=0, discard=4)
- 761[65]: [109] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 761[65]: [136] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  764[77]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  767[89]: GetInt(v1: ref(reference), fld=12) -> integer
  770[81]: SetInt(v1: ref(reference), fld=24, val: integer)
- 773[65]: [110] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 773[65]: [137] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  776[77]: ConstEnum(val=1) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
  778[78]: SetEnum(v1: ref(reference), fld=40, val: boolean)
  781[65]: FreeText(var[40])
@@ -582,19 +683,19 @@ byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
  787[65]: Return(ret=12, value=0, discard=65)
 
 fn _tp_Lexer_scan(self:Lexer) {#block(1):void
-  [116] OpSetText(self(0), 36i32, "");
-  [117] OpSetByte(self(0), 43i32, 0i32, if false 1i32 else 0i32);
-  [118] _tp_Lexer_skip_whitespace(self(0));
-  [119] negative(1):boolean = false;
-  [120] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
-  [121] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromNull()) {#block(2):void
-    [122] OpSetEnum(self(0), 40i32, 12u8(17));
-    [123] return null;
+  [143] OpSetText(self(0), 36i32, "");
+  [144] OpSetByte(self(0), 43i32, 0i32, if false 1i32 else 0i32);
+  [145] _tp_Lexer_skip_whitespace(self(0));
+  [146] negative(1):boolean = false;
+  [147] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
+  [148] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromNull()) {#block(2):void
+    [149] OpSetEnum(self(0), 40i32, 12u8(17));
+    [150] return null;
   }#block(2):void else null;
-  [125] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(39i32)) {#block(3):void
-    [126] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-    [127] OpSetEnum(self(0), 40i32, 8u8(17));
-    [128] {#For block(4):void
+  [152] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(39i32)) {#block(3):void
+    [153] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+    [154] OpSetEnum(self(0), 40i32, 8u8(17));
+    [155] {#For block(4):void
       t#index(4):integer = OpConvIntFromNull();
       loop {#For loop_5
         t(5):integer = {#Iter range(6):integer
@@ -603,26 +704,26 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
           t#index(4);
         }#Iter range(6):integer;
         {#block(7):void
-          [129] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
-          [130] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(39i32)) {#block(8):void
-            [131] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-            [132] return null;
+          [156] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
+          [157] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(39i32)) {#block(8):void
+            [158] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+            [159] return null;
           }#block(8):void else null;
-          [134] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(92i32)) {#block(9):void
-            [135] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-            [136] if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(39i32)) {#block(10):void
-              [137] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+          [161] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(92i32)) {#block(9):void
+            [162] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+            [163] if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(39i32)) {#block(10):void
+              [164] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
             }#block(10):void else null;
           }#block(9):void else {#block(11):void
-            [140] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+            [167] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
           }#block(11):void;
         }#block(7):void;
       }#For loop_5;
     }#For block(4):void;
   }#block(3):void else if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(34i32)) {#block(12):void
-    [144] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-    [145] OpSetEnum(self(0), 40i32, 6u8(17));
-    [146] {#For block(13):void
+    [171] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+    [172] OpSetEnum(self(0), 40i32, 6u8(17));
+    [173] {#For block(13):void
       t#index(13):integer = OpConvIntFromNull();
       loop {#For loop_14
         t(14):integer = {#Iter range(15):integer
@@ -631,31 +732,31 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
           t#index(13);
         }#Iter range(15):integer;
         {#block(16):void
-          [147] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
-          [148] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(34i32)) {#block(17):void
-            [149] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-            [150] return null;
+          [174] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
+          [175] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(34i32)) {#block(17):void
+            [176] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+            [177] return null;
           }#block(17):void else null;
-          [152] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(92i32)) {#block(18):void
-            [153] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-            [154] n(18):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
-            [155] if if OpEqInt(OpConvIntFromCharacter(n(18)), OpConvIntFromCharacter(34i32)) true else OpEqInt(OpConvIntFromCharacter(n(18)), OpConvIntFromCharacter(10i32)) {#block(19):void
-              [156] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+          [179] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(92i32)) {#block(18):void
+            [180] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+            [181] n(18):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
+            [182] if if OpEqInt(OpConvIntFromCharacter(n(18)), OpConvIntFromCharacter(34i32)) true else OpEqInt(OpConvIntFromCharacter(n(18)), OpConvIntFromCharacter(10i32)) {#block(19):void
+              [183] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
             }#block(19):void else null;
           }#block(18):void else {#block(20):void
-            [159] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+            [186] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
           }#block(20):void;
         }#block(16):void;
       }#For loop_14;
     }#For block(13):void;
-    [162] return null;
+    [189] return null;
   }#block(12):void else if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(45i32)) {#block(21):void
-    [164] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
-    [165] negative(1):boolean = true;
+    [191] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+    [192] negative(1):boolean = true;
   }#block(21):void else null;
-  [167] if if OpGeInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(48i32)) OpLeInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(57i32)) else false {#block(22):void
-    [168] OpSetEnum(self(0), 40i32, 2u8(17));
-    [169] {#For block(23):void
+  [194] if if OpGeInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(48i32)) OpLeInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32))), OpConvIntFromCharacter(57i32)) else false {#block(22):void
+    [195] OpSetEnum(self(0), 40i32, 2u8(17));
+    [196] {#For block(23):void
       t#index(13):integer = OpConvIntFromNull();
       loop {#For loop_24
         t(14):integer = {#Iter range(25):integer
@@ -664,25 +765,25 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
           t#index(13);
         }#Iter range(25):integer;
         {#block(26):void
-          [170] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
-          [171] if if if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(46i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(101i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(45i32)) {#block(27):void
-            [172] OpSetEnum(self(0), 40i32, 3u8(17));
+          [197] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
+          [198] if if if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(46i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(101i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(45i32)) {#block(27):void
+            [199] OpSetEnum(self(0), 40i32, 3u8(17));
           }#block(27):void else if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(108i32)) {#block(28):void
-            [174] OpSetEnum(self(0), 40i32, 5u8(17));
+            [201] OpSetEnum(self(0), 40i32, 5u8(17));
           }#block(28):void else if if if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(120i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(111i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(98i32))  else if if OpNeInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(95i32)) if OpLtInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(48i32)) true else OpGtInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(57i32)) else false {#block(30):void
-            [177] break(0);
+            [204] break(0);
           }#block(30):void else null;
-          [179] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+          [206] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
         }#block(26):void;
       }#For loop_24;
     }#For block(23):void;
-    [181] return null;
+    [208] return null;
   }#block(22):void else if negative(1) {#block(31):void
-    [183] OpSetInt(self(0), 12i32, OpMinInt(OpGetInt(self(0), 12i32), 1i32));
+    [210] OpSetInt(self(0), 12i32, OpMinInt(OpGetInt(self(0), 12i32), 1i32));
   }#block(31):void else null;
-  [185] if _tp_character_is_alphabetic(l(1)) {#block(32):void
-    [186] OpSetEnum(self(0), 40i32, 9u8(17));
-    [187] {#For block(33):void
+  [212] if _tp_character_is_alphabetic(l(1)) {#block(32):void
+    [213] OpSetEnum(self(0), 40i32, 9u8(17));
+    [214] {#For block(33):void
       t#index(13):integer = OpConvIntFromNull();
       loop {#For loop_34
         t(14):integer = {#Iter range(35):integer
@@ -691,18 +792,18 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
           t#index(13);
         }#Iter range(35):integer;
         {#block(36):void
-          [188] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
-          [189] if OpNot(_tp_character_is_alphanumeric(l(1))) {#block(37):void
-            [190] break(0);
+          [215] l(1):character = OpTextCharacter(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32));
+          [216] if OpNot(_tp_character_is_alphanumeric(l(1))) {#block(37):void
+            [217] break(0);
           }#block(37):void else null;
-          [192] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+          [219] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
         }#block(36):void;
       }#For loop_34;
     }#For block(33):void;
-    [194] return null;
+    [221] return null;
   }#block(32):void else null;
-  [197] OpSetEnum(self(0), 40i32, 10u8(17));
-  [198] {#For block(38):void
+  [224] OpSetEnum(self(0), 40i32, 10u8(17));
+  [225] {#For block(38):void
     pt#index(38):integer = OpIterate(OpGetField(OpGetRecord(OpGetField(self(0), 32i32, 24i32), 24i32, 1i32, l(1)), 8i32, 21i32), 130i32, 8i32, &[Key { type_nr: -1, position: 0 }, Key { type_nr: 6, position: 4 }], 0i32, 0i32);
     loop {#For loop_39
       pt(39):ref(Possible)["self"] = OpStep(pt#index(38), OpGetField(OpGetRecord(OpGetField(self(0), 32i32, 24i32), 24i32, 1i32, l(1)), 8i32, 21i32), 130i32, 8i32);
@@ -710,65 +811,65 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
         break(0);
       }#break(40):void else null;
       {#block(41):void
-        [199] tok(41):text["pt"] = OpGetText(pt(39), 4i32);
-        [200] if OpEqText(OpGetTextSub(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32), OpAddInt(OpGetInt(self(0), 12i32), _tp_text_len(tok(41)))), tok(41)) {#block(42):void
-          [201] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), _tp_text_len(tok(41))));
-          [202] OpFreeText(tok(41));
+        [226] tok(41):text["pt"] = OpGetText(pt(39), 4i32);
+        [227] if OpEqText(OpGetTextSub(OpGetText(self(0), 8i32), OpGetInt(self(0), 12i32), OpAddInt(OpGetInt(self(0), 12i32), _tp_text_len(tok(41)))), tok(41)) {#block(42):void
+          [228] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), _tp_text_len(tok(41))));
+          [229] OpFreeText(tok(41));
           return null;
         }#block(42):void else null;
         OpFreeText(tok(41));
       }#block(41):void;
     }#For loop_39;
   }#For block(38):void;
-  [205] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
+  [232] OpSetInt(self(0), 12i32, OpAddInt(OpGetInt(self(0), 12i32), 1i32));
 }#block(1):void
 
 byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
    0[12]: return-address
-   0[16]: [116] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+   0[16]: [143] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
    3[28]: ConstText(_value="") -> text
    5[44]: SetText(v1: ref(reference), fld=36, val: text)
-   8[16]: [117] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+   8[16]: [144] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
   11[28]: ConstFalse() -> boolean
   12[29]: GotoFalseWord(jump=23, if_false: boolean)
   15[28]: ConstInt(val=1) -> integer
   20[32]: GotoWord(jump=28)
   23[28]: ConstInt(val=0) -> integer
   28[32]: SetByte(v1: ref(reference), fld=43, min=0, val: integer)
-  33[16]: [118] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  33[16]: [145] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
   36[28]: Call(size=0, fn=_tp_Lexer_skip_whitespace)
-  43[16]: [119] ConstFalse() -> boolean var=negative[16]:boolean
-  44[17]: [120] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  43[16]: [146] ConstFalse() -> boolean var=negative[16]:boolean
+  44[17]: [147] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
   47[29]: GetText(v1: ref(reference), fld=8) -> text["self"]
   50[33]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
   53[45]: GetInt(v1: ref(reference), fld=12) -> integer
   56[37]: TextCharacter(v1: text, v2: integer) -> character
-  57[21]: [121] VarCharacter(var[17]) -> character var=l[17]:character
+  57[21]: [148] VarCharacter(var[17]) -> character var=l[17]:character
   60[25]: ConvIntFromCharacter(v1: character) -> integer
   61[25]: ConvIntFromNull() -> integer
   62[29]: EqInt(v1: integer, v2: integer) -> boolean
   63[22]: GotoFalseWord(jump=86, if_false: boolean)
-  66[21]: [122] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+  66[21]: [149] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
   69[33]: ConstEnum(val=12) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
   71[34]: SetEnum(v1: ref(reference), fld=40, val: boolean)
-  74[21]: [123] Return(ret=12, value=0, discard=21)
+  74[21]: [150] Return(ret=12, value=0, discard=21)
   80[21]: Return(ret=12, value=0, discard=21)
-  86[21]: [125] VarCharacter(var[17]) -> character var=l[17]:character
+  86[21]: [152] VarCharacter(var[17]) -> character var=l[17]:character
   89[25]: ConvIntFromCharacter(v1: character) -> integer
   90[25]: ConstInt(val=39) -> integer
   95[29]: ConvIntFromCharacter(v1: character) -> integer
   96[29]: EqInt(v1: integer, v2: integer) -> boolean
   97[22]: GotoFalseWord(jump=342, if_false: boolean)
- 100[21]: [126] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 100[21]: [153] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  103[33]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  106[45]: GetInt(v1: ref(reference), fld=12) -> integer
  109[37]: ConstInt(val=1) -> integer
  114[41]: AddInt(v1: integer, v2: integer) -> integer
  115[37]: SetInt(v1: ref(reference), fld=12, val: integer)
- 118[21]: [127] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 118[21]: [154] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  121[33]: ConstEnum(val=8) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
  123[34]: SetEnum(v1: ref(reference), fld=40, val: boolean)
- 126[21]: [128] ConvIntFromNull() -> integer var=t#index[21]:integer
+ 126[21]: [155] ConvIntFromNull() -> integer var=t#index[21]:integer
  127[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
  130[29]: ConvBoolFromInt(v1: integer) -> boolean
  131[26]: Not(v1: boolean) -> boolean
@@ -785,39 +886,39 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  164[26]: GotoFalseWord(jump=170, if_false: boolean)
  167[25]: GotoWord(jump=335)
  170[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
- 173[29]: [129] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 173[29]: [156] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  176[41]: GetText(v1: ref(reference), fld=8) -> text["self"]
  179[45]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  182[57]: GetInt(v1: ref(reference), fld=12) -> integer
  185[49]: TextCharacter(v1: text, v2: integer) -> character
  186[33]: PutCharacter(var[17], value: character)
- 189[29]: [130] VarCharacter(var[17]) -> character var=l[17]:character
+ 189[29]: [157] VarCharacter(var[17]) -> character var=l[17]:character
  192[33]: ConvIntFromCharacter(v1: character) -> integer
  193[33]: ConstInt(val=39) -> integer
  198[37]: ConvIntFromCharacter(v1: character) -> integer
  199[37]: EqInt(v1: integer, v2: integer) -> boolean
  200[30]: GotoFalseWord(jump=233, if_false: boolean)
- 203[29]: [131] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 203[29]: [158] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  206[41]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  209[53]: GetInt(v1: ref(reference), fld=12) -> integer
  212[45]: ConstInt(val=1) -> integer
  217[49]: AddInt(v1: integer, v2: integer) -> integer
  218[45]: SetInt(v1: ref(reference), fld=12, val: integer)
- 221[29]: [132] Return(ret=12, value=0, discard=29)
+ 221[29]: [159] Return(ret=12, value=0, discard=29)
  227[29]: Return(ret=12, value=0, discard=29)
- 233[29]: [134] VarCharacter(var[17]) -> character var=l[17]:character
+ 233[29]: [161] VarCharacter(var[17]) -> character var=l[17]:character
  236[33]: ConvIntFromCharacter(v1: character) -> integer
  237[33]: ConstInt(val=92) -> integer
  242[37]: ConvIntFromCharacter(v1: character) -> integer
  243[37]: EqInt(v1: integer, v2: integer) -> boolean
  244[30]: GotoFalseWord(jump=310, if_false: boolean)
- 247[29]: [135] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 247[29]: [162] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  250[41]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  253[53]: GetInt(v1: ref(reference), fld=12) -> integer
  256[45]: ConstInt(val=1) -> integer
  261[49]: AddInt(v1: integer, v2: integer) -> integer
  262[45]: SetInt(v1: ref(reference), fld=12, val: integer)
- 265[29]: [136] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 265[29]: [163] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  268[41]: GetText(v1: ref(reference), fld=8) -> text["self"]
  271[45]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  274[57]: GetInt(v1: ref(reference), fld=12) -> integer
@@ -827,14 +928,14 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  284[37]: ConvIntFromCharacter(v1: character) -> integer
  285[37]: EqInt(v1: integer, v2: integer) -> boolean
  286[30]: GotoFalseWord(jump=307, if_false: boolean)
- 289[29]: [137] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 289[29]: [164] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  292[41]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  295[53]: GetInt(v1: ref(reference), fld=12) -> integer
  298[45]: ConstInt(val=1) -> integer
  303[49]: AddInt(v1: integer, v2: integer) -> integer
  304[45]: SetInt(v1: ref(reference), fld=12, val: integer)
  307[29]: GotoWord(jump=328)
- 310[29]: [140] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 310[29]: [167] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  313[41]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  316[53]: GetInt(v1: ref(reference), fld=12) -> integer
  319[45]: ConstInt(val=1) -> integer
@@ -850,16 +951,16 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  351[29]: ConvIntFromCharacter(v1: character) -> integer
  352[29]: EqInt(v1: integer, v2: integer) -> boolean
  353[22]: GotoFalseWord(jump=635, if_false: boolean)
- 356[21]: [144] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 356[21]: [171] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  359[33]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  362[45]: GetInt(v1: ref(reference), fld=12) -> integer
  365[37]: ConstInt(val=1) -> integer
  370[41]: AddInt(v1: integer, v2: integer) -> integer
  371[37]: SetInt(v1: ref(reference), fld=12, val: integer)
- 374[21]: [145] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 374[21]: [172] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  377[33]: ConstEnum(val=6) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
  379[34]: SetEnum(v1: ref(reference), fld=40, val: boolean)
- 382[21]: [146] ConvIntFromNull() -> integer var=t#index[21]:integer
+ 382[21]: [173] ConvIntFromNull() -> integer var=t#index[21]:integer
  383[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
  386[29]: ConvBoolFromInt(v1: integer) -> boolean
  387[26]: Not(v1: boolean) -> boolean
@@ -876,44 +977,44 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  420[26]: GotoFalseWord(jump=426, if_false: boolean)
  423[25]: GotoWord(jump=616)
  426[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
- 429[29]: [147] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 429[29]: [174] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  432[41]: GetText(v1: ref(reference), fld=8) -> text["self"]
  435[45]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  438[57]: GetInt(v1: ref(reference), fld=12) -> integer
  441[49]: TextCharacter(v1: text, v2: integer) -> character
  442[33]: PutCharacter(var[17], value: character)
- 445[29]: [148] VarCharacter(var[17]) -> character var=l[17]:character
+ 445[29]: [175] VarCharacter(var[17]) -> character var=l[17]:character
  448[33]: ConvIntFromCharacter(v1: character) -> integer
  449[33]: ConstInt(val=34) -> integer
  454[37]: ConvIntFromCharacter(v1: character) -> integer
  455[37]: EqInt(v1: integer, v2: integer) -> boolean
  456[30]: GotoFalseWord(jump=489, if_false: boolean)
- 459[29]: [149] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 459[29]: [176] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  462[41]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  465[53]: GetInt(v1: ref(reference), fld=12) -> integer
  468[45]: ConstInt(val=1) -> integer
  473[49]: AddInt(v1: integer, v2: integer) -> integer
  474[45]: SetInt(v1: ref(reference), fld=12, val: integer)
- 477[29]: [150] Return(ret=12, value=0, discard=29)
+ 477[29]: [177] Return(ret=12, value=0, discard=29)
  483[29]: Return(ret=12, value=0, discard=29)
- 489[29]: [152] VarCharacter(var[17]) -> character var=l[17]:character
+ 489[29]: [179] VarCharacter(var[17]) -> character var=l[17]:character
  492[33]: ConvIntFromCharacter(v1: character) -> integer
  493[33]: ConstInt(val=92) -> integer
  498[37]: ConvIntFromCharacter(v1: character) -> integer
  499[37]: EqInt(v1: integer, v2: integer) -> boolean
  500[30]: GotoFalseWord(jump=591, if_false: boolean)
- 503[29]: [153] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 503[29]: [180] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  506[41]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  509[53]: GetInt(v1: ref(reference), fld=12) -> integer
  512[45]: ConstInt(val=1) -> integer
  517[49]: AddInt(v1: integer, v2: integer) -> integer
  518[45]: SetInt(v1: ref(reference), fld=12, val: integer)
- 521[29]: [154] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 521[29]: [181] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  524[41]: GetText(v1: ref(reference), fld=8) -> text["self"]
  527[45]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  530[57]: GetInt(v1: ref(reference), fld=12) -> integer
  533[49]: TextCharacter(v1: text, v2: integer) -> character
- 534[33]: [155] VarCharacter(var[29]) -> character var=n[29]:character
+ 534[33]: [182] VarCharacter(var[29]) -> character var=n[29]:character
  537[37]: ConvIntFromCharacter(v1: character) -> integer
  538[37]: ConstInt(val=34) -> integer
  543[41]: ConvIntFromCharacter(v1: character) -> integer
@@ -927,7 +1028,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  561[41]: ConvIntFromCharacter(v1: character) -> integer
  562[41]: EqInt(v1: integer, v2: integer) -> boolean
  563[34]: GotoFalseWord(jump=584, if_false: boolean)
- 566[33]: [156] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 566[33]: [183] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  569[45]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  572[57]: GetInt(v1: ref(reference), fld=12) -> integer
  575[49]: ConstInt(val=1) -> integer
@@ -935,7 +1036,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  581[49]: SetInt(v1: ref(reference), fld=12, val: integer)
  584[33]: FreeStack(value=0, discard=4)
  588[29]: GotoWord(jump=609)
- 591[29]: [159] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 591[29]: [186] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  594[41]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  597[53]: GetInt(v1: ref(reference), fld=12) -> integer
  600[45]: ConstInt(val=1) -> integer
@@ -944,7 +1045,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  609[29]: FreeStack(value=0, discard=4)
  613[25]: GotoWord(jump=383)
  616[25]: FreeStack(value=0, discard=4)
- 620[21]: [162] Return(ret=12, value=0, discard=21)
+ 620[21]: [189] Return(ret=12, value=0, discard=21)
  626[21]: Return(ret=12, value=0, discard=21)
  632[21]: GotoWord(jump=671)
  635[21]: VarCharacter(var[17]) -> character var=l[17]:character
@@ -953,15 +1054,15 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  644[29]: ConvIntFromCharacter(v1: character) -> integer
  645[29]: EqInt(v1: integer, v2: integer) -> boolean
  646[22]: GotoFalseWord(jump=671, if_false: boolean)
- 649[21]: [164] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 649[21]: [191] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  652[33]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  655[45]: GetInt(v1: ref(reference), fld=12) -> integer
  658[37]: ConstInt(val=1) -> integer
  663[41]: AddInt(v1: integer, v2: integer) -> integer
  664[37]: SetInt(v1: ref(reference), fld=12, val: integer)
- 667[21]: [165] ConstTrue() -> boolean var=negative[16]:boolean
+ 667[21]: [192] ConstTrue() -> boolean var=negative[16]:boolean
  668[22]: PutBool(var=6, value: boolean)
- 671[21]: [167] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 671[21]: [194] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  674[33]: GetText(v1: ref(reference), fld=8) -> text["self"]
  677[37]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  680[49]: GetInt(v1: ref(reference), fld=12) -> integer
@@ -983,10 +1084,10 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  716[22]: GotoWord(jump=720)
  719[21]: ConstFalse() -> boolean
  720[22]: GotoFalseWord(jump=1028, if_false: boolean)
- 723[21]: [168] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 723[21]: [195] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  726[33]: ConstEnum(val=2) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
  728[34]: SetEnum(v1: ref(reference), fld=40, val: boolean)
- 731[21]: [169] ConvIntFromNull() -> integer var=t#index[21]:integer
+ 731[21]: [196] ConvIntFromNull() -> integer var=t#index[21]:integer
  732[25]: PutInt(var[21], value: integer)
  735[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
  738[25]: ConvBoolFromInt(v1: integer) -> boolean
@@ -1005,13 +1106,13 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  775[21]: GotoWord(jump=1013)
  778[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
  781[25]: PutInt(var[25], value: integer)
- 784[21]: [170] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 784[21]: [197] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  787[33]: GetText(v1: ref(reference), fld=8) -> text["self"]
  790[37]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  793[49]: GetInt(v1: ref(reference), fld=12) -> integer
  796[41]: TextCharacter(v1: text, v2: integer) -> character
  797[25]: PutCharacter(var[17], value: character)
- 800[21]: [171] VarCharacter(var[17]) -> character var=l[17]:character
+ 800[21]: [198] VarCharacter(var[17]) -> character var=l[17]:character
  803[25]: ConvIntFromCharacter(v1: character) -> integer
  804[25]: ConstInt(val=46) -> integer
  809[29]: ConvIntFromCharacter(v1: character) -> integer
@@ -1033,7 +1134,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  845[29]: ConvIntFromCharacter(v1: character) -> integer
  846[29]: EqInt(v1: integer, v2: integer) -> boolean
  847[22]: GotoFalseWord(jump=861, if_false: boolean)
- 850[21]: [172] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 850[21]: [199] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  853[33]: ConstEnum(val=3) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
  855[34]: SetEnum(v1: ref(reference), fld=40, val: boolean)
  858[21]: GotoWord(jump=992)
@@ -1043,7 +1144,7 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  870[29]: ConvIntFromCharacter(v1: character) -> integer
  871[29]: EqInt(v1: integer, v2: integer) -> boolean
  872[22]: GotoFalseWord(jump=886, if_false: boolean)
- 875[21]: [174] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 875[21]: [201] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  878[33]: ConstEnum(val=5) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
  880[34]: SetEnum(v1: ref(reference), fld=40, val: boolean)
  883[21]: GotoWord(jump=992)
@@ -1092,32 +1193,32 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
  982[22]: GotoWord(jump=986)
  985[21]: ConstFalse() -> boolean
  986[22]: GotoFalseWord(jump=992, if_false: boolean)
- 989[21]: [177] GotoWord(jump=1013)
- 992[21]: [179] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+ 989[21]: [204] GotoWord(jump=1013)
+ 992[21]: [206] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  995[33]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
  998[45]: GetInt(v1: ref(reference), fld=12) -> integer
 1001[37]: ConstInt(val=1) -> integer
 1006[41]: AddInt(v1: integer, v2: integer) -> integer
 1007[37]: SetInt(v1: ref(reference), fld=12, val: integer)
 1010[21]: GotoWord(jump=735)
-1013[21]: [181] Return(ret=12, value=0, discard=21)
+1013[21]: [208] Return(ret=12, value=0, discard=21)
 1019[21]: Return(ret=12, value=0, discard=21)
 1025[21]: GotoWord(jump=1052)
 1028[21]: VarBool(var[16]) -> boolean var=negative[16]:boolean
 1031[22]: GotoFalseWord(jump=1052, if_false: boolean)
-1034[21]: [183] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1034[21]: [210] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1037[33]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1040[45]: GetInt(v1: ref(reference), fld=12) -> integer
 1043[37]: ConstInt(val=1) -> integer
 1048[41]: MinInt(v1: integer, v2: integer) -> integer
 1049[37]: SetInt(v1: ref(reference), fld=12, val: integer)
-1052[21]: [185] VarCharacter(var[17]) -> character var=l[17]:character
+1052[21]: [212] VarCharacter(var[17]) -> character var=l[17]:character
 1055[25]: StaticCall(_tp_character_is_alphabetic)
 1058[22]: GotoFalseWord(jump=1184, if_false: boolean)
-1061[21]: [186] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1061[21]: [213] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1064[33]: ConstEnum(val=9) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
 1066[34]: SetEnum(v1: ref(reference), fld=40, val: boolean)
-1069[21]: [187] ConvIntFromNull() -> integer var=t#index[21]:integer
+1069[21]: [214] ConvIntFromNull() -> integer var=t#index[21]:integer
 1070[25]: PutInt(var[21], value: integer)
 1073[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
 1076[25]: ConvBoolFromInt(v1: integer) -> boolean
@@ -1136,30 +1237,30 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
 1113[21]: GotoWord(jump=1172)
 1116[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
 1119[25]: PutInt(var[25], value: integer)
-1122[21]: [188] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1122[21]: [215] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1125[33]: GetText(v1: ref(reference), fld=8) -> text["self"]
 1128[37]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1131[49]: GetInt(v1: ref(reference), fld=12) -> integer
 1134[41]: TextCharacter(v1: text, v2: integer) -> character
 1135[25]: PutCharacter(var[17], value: character)
-1138[21]: [189] VarCharacter(var[17]) -> character var=l[17]:character
+1138[21]: [216] VarCharacter(var[17]) -> character var=l[17]:character
 1141[25]: StaticCall(_tp_character_is_alphanumeric)
 1144[22]: Not(v1: boolean) -> boolean
 1145[22]: GotoFalseWord(jump=1151, if_false: boolean)
-1148[21]: [190] GotoWord(jump=1172)
-1151[21]: [192] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1148[21]: [217] GotoWord(jump=1172)
+1151[21]: [219] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1154[33]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1157[45]: GetInt(v1: ref(reference), fld=12) -> integer
 1160[37]: ConstInt(val=1) -> integer
 1165[41]: AddInt(v1: integer, v2: integer) -> integer
 1166[37]: SetInt(v1: ref(reference), fld=12, val: integer)
 1169[21]: GotoWord(jump=1073)
-1172[21]: [194] Return(ret=12, value=0, discard=21)
+1172[21]: [221] Return(ret=12, value=0, discard=21)
 1178[21]: Return(ret=12, value=0, discard=21)
-1184[21]: [197] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1184[21]: [224] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1187[33]: ConstEnum(val=10) -> boolean type=Scanned[1]:Enum(["Unknown", "Integer", "Float", "Double", "Long", "Text", "Partial", "Character", "Identifier", "Token", "Keyword", "Finished"])[17]
 1189[34]: SetEnum(v1: ref(reference), fld=40, val: boolean)
-1192[21]: [198] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1192[21]: [225] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1195[33]: GetField(v1: ref(reference), fld=32) -> ref(reference) type=hash<SToken[start]>[4]:Hash(20, [0]) keys [tp:7 desc:false field:4, ][24]
 1198[33]: VarCharacter(var[17]) -> character var=l[17]:character
 1201[37]: GetRecord(data: ref(reference), db_tp=24, no_keys=1) -> ref(reference)
@@ -1177,11 +1278,11 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
 1248[42]: GotoFalseWord(jump=1258, if_false: boolean)
 1251[41]: FreeStack(value=0, discard=12)
 1255[29]: GotoWord(jump=1357)
-1258[41]: [199] Text() var=tok[41]:text["pt"]
+1258[41]: [226] Text() var=tok[41]:text["pt"]
 1259[65]: VarRef(var[29]) -> ref(reference) type=Possible[8]:{length:integer[0], token:text[4]}[19] var=pt[29]:ref(Possible)["self"]
 1262[77]: GetText(v1: ref(reference), fld=4) -> text["self"]
 1265[81]: AppendText(var[41], v1: text)
-1268[65]: [200] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1268[65]: [227] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1271[77]: GetText(v1: ref(reference), fld=8) -> text["self"]
 1274[81]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1277[93]: GetInt(v1: ref(reference), fld=12) -> integer
@@ -1194,14 +1295,14 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
 1298[81]: VarText(var[41]) -> text var=tok[41]:text["pt"]
 1301[97]: EqText(v1: text, v2: text) -> boolean
 1302[66]: GotoFalseWord(jump=1343, if_false: boolean)
-1305[65]: [201] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1305[65]: [228] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1308[77]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1311[89]: GetInt(v1: ref(reference), fld=12) -> integer
 1314[81]: VarText(var[41]) -> text var=tok[41]:text["pt"]
 1317[97]: Call(size=0, fn=_tp_text_len)
 1324[85]: AddInt(v1: integer, v2: integer) -> integer
 1325[81]: SetInt(v1: ref(reference), fld=12, val: integer)
-1328[65]: [202] FreeText(var[41])
+1328[65]: [229] FreeText(var[41])
 1331[65]: Return(ret=12, value=0, discard=65)
 1337[65]: Return(ret=12, value=0, discard=65)
 1343[65]: FreeText(var[41])
@@ -1209,114 +1310,13 @@ byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
 1350[41]: FreeStack(value=0, discard=12)
 1354[29]: GotoWord(jump=1221)
 1357[29]: FreeStack(value=0, discard=8)
-1361[21]: [205] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
+1361[21]: [232] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1364[33]: VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
 1367[45]: GetInt(v1: ref(reference), fld=12) -> integer
 1370[37]: ConstInt(val=1) -> integer
 1375[41]: AddInt(v1: integer, v2: integer) -> integer
 1376[37]: SetInt(v1: ref(reference), fld=12, val: integer)
 1379[21]: Return(ret=12, value=0, discard=21)
-
-fn _tp_Lexer_parse(self:Lexer, filename:text) {#block(1):void
-  __ref_1(1):ref(File) = null;
-  __work_1(1):text = "";
-  [210] v(1):integer = _tp_text_rfind(filename(0), "/");
-  [211] OpSetText(self(0), 4i32, if OpConvBoolFromInt(v(1)) {#block(2):text["filename"]
-    [212] OpGetTextSub(filename(0), OpAddInt(v(1), 1i32), 2147483647i32);
-  }#block(2):text["filename"] else {#block(3):text["filename"]
-    [214] filename(0);
-  }#block(3):text["filename"]);
-  [216] OpSetText(self(0), 8i32, _tp_File_content(file(filename(0), __ref_1(1)), {#default ref(4):ref(reference)["__work_1"]
-    OpCreateRef(__work_1(1));
-  }#default ref(4):ref(reference)["__work_1"]));
-  [217] OpSetInt(self(0), 12i32, 0i32);
-  [218] OpSetInt(self(0), 24i32, 0i32);
-  [219] OpSetInt(self(0), 16i32, 1i32);
-  [220] OpSetInt(self(0), 20i32, 1i32);
-  [221] _tp_Lexer_scan(self(0));
-  OpFreeRef(__ref_1(1));
-  OpFreeText(__work_1(1));
-}#block(1):void
-
-byte-code for lib/lexer.lav:_tp_Lexer_parse(self: ref(Lexer)[0], filename: text[12])
-   0[28]: return-address
-   0[32]: ConvRefFromNull() -> ref(reference) var=__ref_1[32]:ref(File)
-   1[44]: Text() var=__work_1[44]:text
-   2[68]: [210] ArgText(var[12]) -> text var=filename[12]:text
-   5[84]: ConstText(_value="/") -> text
-   8[100]: StaticCall(_tp_text_rfind)
-  11[72]: [211] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  14[84]: VarInt(var[68]) -> integer var=v[68]:integer
-  17[88]: ConvBoolFromInt(v1: integer) -> boolean
-  18[85]: GotoFalseWord(jump=42, if_false: boolean)
-  21[84]: [212] ArgText(var[12]) -> text var=filename[12]:text
-  24[100]: VarInt(var[68]) -> integer var=v[68]:integer
-  27[104]: ConstInt(val=1) -> integer
-  32[108]: AddInt(v1: integer, v2: integer) -> integer
-  33[104]: ConstInt(val=2147483647) -> integer
-  38[108]: GetTextSub(v1: text, from: integer, till: integer) -> text["self"]
-  39[100]: GotoWord(jump=45)
-  42[84]: [214] ArgText(var[12]) -> text var=filename[12]:text
-  45[100]: SetText(v1: ref(reference), fld=4, val: text)
-  48[72]: [216] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  51[84]: ArgText(var[12]) -> text var=filename[12]:text
-  54[100]: VarRef(var[32]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=__ref_1[32]:ref(File)
-  57[112]: Call(size=0, fn=file)
-  64[96]: CreateRef(var[44]) -> ref(reference)
-  67[108]: Call(size=0, fn=_tp_File_content)
-  74[100]: SetText(v1: ref(reference), fld=8, val: text)
-  77[72]: [217] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  80[84]: ConstInt(val=0) -> integer
-  85[88]: SetInt(v1: ref(reference), fld=12, val: integer)
-  88[72]: [218] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  91[84]: ConstInt(val=0) -> integer
-  96[88]: SetInt(v1: ref(reference), fld=24, val: integer)
-  99[72]: [219] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
- 102[84]: ConstInt(val=1) -> integer
- 107[88]: SetInt(v1: ref(reference), fld=16, val: integer)
- 110[72]: [220] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
- 113[84]: ConstInt(val=1) -> integer
- 118[88]: SetInt(v1: ref(reference), fld=20, val: integer)
- 121[72]: [221] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
- 124[84]: Call(size=0, fn=_tp_Lexer_scan)
- 131[72]: VarRef(var[32]) -> ref(reference) type=File[17]:{path:text[4], size:long[8], dir:boolean[16]}[13] var=__ref_1[32]:ref(File)
- 134[84]: FreeRef(v1: ref(reference))
- 135[72]: FreeText(var[44])
- 138[72]: Return(ret=28, value=0, discard=72)
-
-fn _tp_Lexer_parse_string(self:Lexer, name:text, content:text) {#block(1):void
-  [226] OpSetText(self(0), 4i32, name(0));
-  [227] OpSetText(self(0), 8i32, content(0));
-  [228] OpSetInt(self(0), 12i32, 0i32);
-  [229] OpSetInt(self(0), 24i32, 0i32);
-  [230] OpSetInt(self(0), 16i32, 1i32);
-  [231] OpSetInt(self(0), 20i32, 1i32);
-  [232] _tp_Lexer_scan(self(0));
-}#block(1):void
-
-byte-code for lib/lexer.lav:_tp_Lexer_parse_string(self: ref(Lexer)[0], name: text[12], content: text[28])
-   0[44]: return-address
-   0[48]: [226] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-   3[60]: ArgText(var[12]) -> text var=name[12]:text
-   6[76]: SetText(v1: ref(reference), fld=4, val: text)
-   9[48]: [227] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  12[60]: ArgText(var[28]) -> text var=content[28]:text
-  15[76]: SetText(v1: ref(reference), fld=8, val: text)
-  18[48]: [228] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  21[60]: ConstInt(val=0) -> integer
-  26[64]: SetInt(v1: ref(reference), fld=12, val: integer)
-  29[48]: [229] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  32[60]: ConstInt(val=0) -> integer
-  37[64]: SetInt(v1: ref(reference), fld=24, val: integer)
-  40[48]: [230] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  43[60]: ConstInt(val=1) -> integer
-  48[64]: SetInt(v1: ref(reference), fld=16, val: integer)
-  51[48]: [231] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  54[60]: ConstInt(val=1) -> integer
-  59[64]: SetInt(v1: ref(reference), fld=20, val: integer)
-  62[48]: [232] VarRef(var[0]) -> ref(reference) type=Lexer[44]:{file:text[4], data:text[8], index:integer[12], line:integer[16], pos:integer[20], start:integer[24], scanned:Scanned[40], string:boolean[41], finished:boolean[42], keywords:hash<SKeyword[name]>[28], tokens:hash<SToken[start]>[32], behind:boolean[43], comment:text[36]}[22] var=self[0]:ref(Lexer)
-  65[60]: Call(size=0, fn=_tp_Lexer_scan)
-  72[48]: Return(ret=44, value=0, discard=48)
 
 fn _tp_Lexer_test(self:Lexer, with:text) -> boolean {#block(1):boolean
   [237] OpEqText(OpGetTextSub(OpGetText(self(0), 8i32), OpGetInt(self(0), 24i32), OpGetInt(self(0), 12i32)), with(0));

@@ -1101,6 +1101,28 @@ impl Parser {
                 self.data
                     .set_attr_value(d_nr, nr as usize, Value::Enum(nr + 1, u16::MAX));
             }
+            if self.lexer.has_token("{") {
+                loop {
+                    let Some(a_name) = self.lexer.has_identifier() else {
+                        diagnostic!(self.lexer, Level::Error, "Expect attribute");
+                        return true;
+                    };
+                    if self.first_pass && self.data.attr(v_nr, &a_name) != usize::MAX {
+                        diagnostic!(
+                            self.lexer,
+                            Level::Error,
+                            "field `{}` is already declared",
+                            a_name
+                        );
+                    }
+                    self.lexer.token(":");
+                    self.parse_field(v_nr, &a_name);
+                    if !self.lexer.has_token(",") {
+                        break;
+                    }
+                }
+                self.lexer.token("}");
+            }
             if !self.lexer.has_token(",") {
                 break;
             }
@@ -2914,31 +2936,22 @@ impl Parser {
             }
             let dnr = self.data.type_def_nr(&t);
             if let Type::Vector(et, _) = t.clone() {
-                if field == "remove" {
-                    let (tps, ls) = self.parse_parameters();
-                    let mut cd = ls[0].clone();
-                    // validate types
-                    if tps.len() != 1 || self.convert(&mut cd, &tps[0], &I32) {
-                        diagnostic!(self.lexer, Level::Error, "Invalid index in remove");
-                    }
-                    *code = self.cl("OpRemoveVector", &[code.clone(), Value::Int(e_size), cd]);
-                } else if field == "insert" {
-                    let (tps, ls) = self.parse_parameters();
-                    let mut cd = ls[0].clone();
-                    // validate types
-                    if tps.len() != 2 || self.convert(&mut cd, &tps[0], &I32) {
-                        diagnostic!(self.lexer, Level::Error, "Invalid index in insert");
-                    }
-                    let mut vl = ls[1].clone();
-                    if !self.convert(&mut vl, &tps[1], &et) {
-                        diagnostic!(self.lexer, Level::Error, "Invalid value in insert");
-                    }
-                    *code = self.cl("OpInsertVector", &[code.clone(), Value::Int(e_size), cd]);
-                    // TODO copy vl into newly created vector element
-                    // Inner should be different from Reference
-                }
+                self.vector_operations(code, &field, e_size, &et);
             }
             let fnr = self.data.attr(dnr, &field);
+            if self.first_pass && fnr == usize::MAX && self.lexer.has_token("(") {
+                loop {
+                    if self.lexer.has_token(")") {
+                        break;
+                    }
+                    let mut p = Value::Null;
+                    self.expression(&mut p);
+                    if !self.lexer.has_token(",") {
+                        break;
+                    }
+                }
+                return Type::Unknown(0);
+            }
             if fnr == usize::MAX {
                 diagnostic!(
                     self.lexer,
@@ -2991,23 +3004,34 @@ impl Parser {
         t
     }
 
+    fn vector_operations(&mut self, code: &mut Value, field: &str, e_size: i32, et: &Type) {
+        if field == "remove" {
+            let (tps, ls) = self.parse_parameters();
+            let mut cd = ls[0].clone();
+            // validate types
+            if tps.len() != 1 || self.convert(&mut cd, &tps[0], &I32) {
+                diagnostic!(self.lexer, Level::Error, "Invalid index in remove");
+            }
+            *code = self.cl("OpRemoveVector", &[code.clone(), Value::Int(e_size), cd]);
+        } else if field == "insert" {
+            let (tps, ls) = self.parse_parameters();
+            let mut cd = ls[0].clone();
+            // validate types
+            if tps.len() != 2 || self.convert(&mut cd, &tps[0], &I32) {
+                diagnostic!(self.lexer, Level::Error, "Invalid index in insert");
+            }
+            let mut vl = ls[1].clone();
+            if !self.convert(&mut vl, &tps[1], et) {
+                diagnostic!(self.lexer, Level::Error, "Invalid value in insert");
+            }
+            *code = self.cl("OpInsertVector", &[code.clone(), Value::Int(e_size), cd]);
+            // TODO copy vl into newly created vector element
+            // Inner should be different from Reference
+        }
+    }
+
     fn parse_index(&mut self, code: &mut Value, t: &Type) -> Type {
-        let mut elm_type = if let Type::Vector(v_t, _) = t {
-            *v_t.clone()
-        } else if let Type::Sorted(d_nr, _, _)
-        | Type::Hash(d_nr, _, _)
-        | Type::Index(d_nr, _, _)
-        | Type::Spacial(d_nr, _, _) = t
-        {
-            self.data.def(*d_nr).returned.clone()
-        } else if matches!(t, Type::Text(_)) {
-            t.clone()
-        } else if let Type::RefVar(tp) = t {
-            *tp.clone()
-        } else {
-            diagnostic!(self.lexer, Level::Error, "Indexing a non vector");
-            Type::Unknown(0)
-        };
+        let mut elm_type = self.index_type(t);
         for on in t.depend() {
             elm_type = elm_type.depending(on);
         }
@@ -3051,10 +3075,29 @@ impl Parser {
                 key_types.push(self.data.def(*el).attributes[*k as usize].typedef.clone());
             }
             self.parse_key(code, t, &key_types);
-        } else {
+        } else if !self.first_pass {
             panic!("Unknown type to index");
         }
         elm_type
+    }
+
+    fn index_type(&mut self, t: &Type) -> Type {
+        if let Type::Vector(v_t, _) = t {
+            *v_t.clone()
+        } else if let Type::Sorted(d_nr, _, _)
+        | Type::Hash(d_nr, _, _)
+        | Type::Index(d_nr, _, _)
+        | Type::Spacial(d_nr, _, _) = t
+        {
+            self.data.def(*d_nr).returned.clone()
+        } else if matches!(t, Type::Text(_)) {
+            t.clone()
+        } else if let Type::RefVar(tp) = t {
+            *tp.clone()
+        } else {
+            diagnostic!(self.lexer, Level::Error, "Indexing a non vector");
+            Type::Unknown(0)
+        }
     }
 
     fn parse_vector_index(

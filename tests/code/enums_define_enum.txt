@@ -1,0 +1,35 @@
+enum Code {
+    Null,
+    Line { line: i32 },
+    Integer { i_value: i32 },
+    Enum { e_value: u8, tp: u16 },
+    Boolean { b_value: boolean },
+    Float { f_value: float },
+    Text { t_value: text },
+    Call { function: text, parameters: u8 }, // we use polish notation, values should be done
+    Block { name: text, tp: u16, size: u16 }, // the size indicated the end of the block
+    Loop { name: text, tp: u16, size: u16 },
+    Continue { loops: u8 }, // the loops with 0: current, 1:first parent, etc
+    Break { loops: u8 },
+    Return, // return the given parameter or void
+    Set,
+    Var,
+    If,
+    Drop}
+
+pub fn test() {
+    null;
+}
+Type 17:Code[1]:Enum(["Null", "Line", "Integer", "Enum", "Boolean", "Float", "Text", "Call", "Block", "Loop", "Continue", "Break", "Return", "Set", "Var", "If", "Drop"])
+
+fn test() {#block(1):void
+  [21] drop null;
+}#block(1):void
+
+byte-code for define_enum:test()
+   0[0]: return-address
+   0[4]: [21] Return(ret=0, value=0, discard=4)
+
+Execute test:
+    0:[8] Return(ret=4294967295[4], value=0, discard=4)
+Finished

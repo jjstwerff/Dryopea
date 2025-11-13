@@ -958,7 +958,8 @@ impl State {
             rec: v_rec,
             pos: 8 + (length * size - size),
         };
-        vector::vector_append(&data, multiply - 1, size, &mut self.database.allocations);
+        vector::vector_append(&data, size, &mut self.database.allocations);
+        self.database.vector_set_size(&data, multiply, size);
         for i in 0..(multiply - 1) {
             let to = DbRef {
                 store_nr: data.store_nr,

@@ -1203,7 +1203,7 @@ impl Stores {
                 vector::sorted_new(&d, u32::from(self.size(c)), &mut self.allocations)
             }
             Parts::Vector(c) => {
-                vector::vector_append(&d, 1, u32::from(self.size(c)), &mut self.allocations)
+                vector::vector_append(&d, u32::from(self.size(c)), &mut self.allocations)
             }
             Parts::Array(c)
             | Parts::Ordered(c, _)
@@ -1260,6 +1260,9 @@ impl Stores {
 
     fn insert_record(&mut self, data: &DbRef, rec: &DbRef, tp: u16) {
         match self.types[tp as usize].parts.clone() {
+            Parts::Vector(_) => {
+                vector::vector_finish(data, &mut self.allocations);
+            }
             Parts::Sorted(c, _) => {
                 let size = u32::from(self.size(c));
                 vector::sorted_finish(
@@ -1270,9 +1273,10 @@ impl Stores {
                 );
             }
             Parts::Array(_) => {
-                let reference = vector::vector_append(data, 1, 4, &mut self.allocations);
+                let reference = vector::vector_append(data, 4, &mut self.allocations);
                 self.store_mut(data)
                     .set_int(reference.rec, reference.pos, rec.rec as i32);
+                vector::vector_finish(data, &mut self.allocations);
             }
             Parts::Hash(_, _) => hash::add(
                 data,
@@ -1310,7 +1314,9 @@ impl Stores {
         let o_rec = keys::store(o_db, &self.allocations).get_int(o_db.rec, o_db.pos) as u32;
         let o_pos = 8;
         let size = u32::from(self.size(known));
-        let new_db = vector::vector_append(db, o_length, size, &mut self.allocations);
+        let new_db = vector::vector_append(db, size, &mut self.allocations);
+        // Claim more than 1 record if needed for the actual copy.
+        self.vector_set_size(db, o_length, size);
         if db.store_nr == o_db.store_nr {
             keys::mut_store(db, &mut self.allocations).copy_block(
                 o_rec,
@@ -1340,6 +1346,19 @@ impl Stores {
                 o_length as isize * size as isize,
             );
         }
+    }
+
+    pub fn vector_set_size(&mut self, db: &DbRef, adding: u32, size: u32) {
+        let store = keys::mut_store(db, &mut self.allocations);
+        let vec_rec = store.get_int(db.rec, db.pos) as u32;
+        let length = store.get_int(vec_rec, 4) as u32;
+        if adding > 1 {
+            let new_vec = store.resize(vec_rec, ((length + adding) * size + 15) / 8);
+            if new_vec != vec_rec {
+                store.set_int(db.rec, db.pos, new_vec as i32);
+            }
+        }
+        store.set_int(vec_rec, 4, length as i32 + adding as i32);
     }
 
     fn parsing(
@@ -2002,10 +2021,12 @@ impl Stores {
                 }
             }
             for (name, entry) in res {
-                let elm = vector::vector_append(&vector, 1, 17, &mut self.allocations);
+                let elm = vector::vector_append(&vector, 17, &mut self.allocations);
                 let store = self.store_mut(result);
                 let name_pos = store.set_str(&name) as i32;
                 store.set_int(elm.rec, elm.pos + 4, name_pos);
+                vector::vector_finish(&vector, &mut self.allocations);
+                let store = self.store_mut(result);
                 if !fill_file(&entry.path(), store, &elm) {
                     return false;
                 }
@@ -2479,9 +2500,10 @@ impl Stores {
         };
         for t in env::args_os() {
             let v = t.to_str().unwrap();
-            let elm = vector::vector_append(&vec, 1, size, &mut self.allocations);
+            let elm = vector::vector_append(&vec, size, &mut self.allocations);
             let s = self.store_mut(&vec).set_str(v);
             self.store_mut(&vec).set_int(elm.rec, elm.pos, s as i32);
+            vector::vector_finish(&vec, &mut self.allocations);
         }
         vec
     }
@@ -2505,11 +2527,12 @@ impl Stores {
         for t in env::vars_os() {
             let name = t.0.to_str().unwrap();
             let value = t.1.to_str().unwrap();
-            let elm = vector::vector_append(&vec, 1, size, &mut self.allocations);
+            let elm = vector::vector_append(&vec, size, &mut self.allocations);
             let n = self.store_mut(&vec).set_str(name);
             let v = self.store_mut(&vec).set_str(value);
             self.store_mut(&vec).set_int(elm.rec, elm.pos + 4, n as i32);
             self.store_mut(&vec).set_int(elm.rec, elm.pos + 8, v as i32);
+            vector::vector_finish(&vec, &mut self.allocations);
         }
         vec
     }
