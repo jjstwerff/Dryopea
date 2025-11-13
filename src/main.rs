@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 #![warn(clippy::pedantic)]
 
@@ -45,8 +45,7 @@ fn main() -> std::io::Result<()> {
     }
     scopes::check(&mut p.data);
     let mut state = State::new(p.database);
-    let mut w = Vec::new();
-    interpreter::byte_code(&mut w, &mut state, &mut p.data)?;
+    interpreter::byte_code(&mut state, &mut p.data);
     state.execute(p.data.def_nr("main"), &p.data);
     Ok(())
     //state.execute_log(&mut w, "main", &p.data)

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Jurjen Stellingwerff
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //! Database operations on stores
 #![allow(clippy::cast_possible_truncation)]
@@ -13,18 +13,9 @@ use crate::store::Store;
 use crate::tree;
 use crate::vector;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::env;
 use std::fmt::{Debug, Formatter, Write};
-/*
-#[derive(Debug, Clone, PartialEq)]
-pub enum Relation {
-    Main(u16, u16),       // this index is this field of the given record, may not exist
-    Current(u16),         // referenced directly from the current record
-    Referenced(u16, u16), // this field references a record, and this field holds the index
-    None, // no primary reference found yet or only part of Vectors/Others
-}
-*/
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
@@ -40,9 +31,10 @@ pub struct Type {
     pub name: String,
     pub parts: Parts,
     pub keys: Vec<Key>,
-    complex: bool, // Is this type normally written to multiple lines.
-    linked: bool,  // Is this type linked to in a structure (not a direct part of it)
-    main: bool,    // This is a main structure type
+    parents: BTreeSet<u16>, // the parent record types of Struct, Enum or EnumValue
+    complex: bool,          // Is this type normally written to multiple lines.
+    linked: bool,           // Is this type linked to in a structure (not a direct part of it)
+    main: bool,             // This is a main structure type
     size: u16,
     align: u8,
 }
@@ -53,6 +45,7 @@ impl Type {
             name: name.to_string(),
             parts,
             keys: Vec::new(),
+            parents: BTreeSet::new(),
             complex: false,
             linked: false,
             size,
@@ -66,6 +59,7 @@ impl Type {
             name: name.to_string(),
             parts,
             keys: Vec::new(),
+            parents: BTreeSet::new(),
             complex: true,
             linked: false,
             size: 4,
@@ -73,24 +67,37 @@ impl Type {
             main: false,
         }
     }
+
+    #[must_use]
+    pub fn contains(&self, tp: u16) -> bool {
+        match self.parts {
+            Parts::Vector(c)
+            | Parts::Array(c)
+            | Parts::Sorted(c, _)
+            | Parts::Ordered(c, _)
+            | Parts::Hash(c, _)
+            | Parts::Index(c, _, _)
+            | Parts::Spacial(c, _) => c == tp,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Parts {
     Base,                              // One of the simple base types or text.
-    Struct(Vec<Field>), // The fields and the primary parent of this record (the first).
-    Sub(Vec<u16>),      // Polymorphic structure with different subtypes.
-    Enum(Vec<String>),  // Enumerate type with possible values.
-    Byte(i32, bool),    // start number and nullable flag
-    Short(i32, bool),   // start number and nullable flag
-    Vector(u16),        // The records are part of the vector
-    Array(u16),         // The array holds references for each record
-    Sorted(u16, Vec<(u16, bool)>), // Sorted vector on fields with an ascending flag
-    Ordered(u16, Vec<(u16, bool)>), // Sorted array on fields with an ascending flag
+    Struct(Vec<Field>),                // The fields of this record.
+    Enum(Vec<(u16, String)>),          // Enumerate type with possible values.
+    EnumValue(u8, Vec<Field>),         // Enumerate value with actual value for typed structures.
+    Byte(i32, bool),                   // start number and nullable flag
+    Short(i32, bool),                  // start number and nullable flag
+    Vector(u16),                       // The records are part of the vector
+    Array(u16),                        // The array holds references for each record
+    Sorted(u16, Vec<(u16, bool)>),     // Sorted vector on fields with an ascending flag
+    Ordered(u16, Vec<(u16, bool)>),    // Sorted array on fields with an ascending flag
     Hash(u16, Vec<u16>), // A hash table, listing the field numbers that define its key
     Index(u16, Vec<(u16, bool)>, u16), // An index to a table, listing the key fields and the left field-nr
     Spacial(u16, Vec<u16>),            // A spacial index with the listed coordinate fields as key
-                                       // Reference(u16, Relation), // reference and how to get there from here (Primary not allowed)
 }
 
 impl PartialEq for Content {
@@ -345,30 +352,41 @@ impl Stores {
             return format!("Unknown type({tp})");
         }
         let typedef = &self.types[tp as usize];
-        let mut res = format!("{}[{}]:", typedef.name, typedef.size);
-        if let Parts::Struct(v) = &typedef.parts {
+        let mut res = format!("{}[{}/{}]:", typedef.name, typedef.size, typedef.align);
+        if !typedef.parents.is_empty() {
+            write!(res, " parents [").unwrap();
+            for (n, p) in typedef.parents.iter().enumerate() {
+                if n > 0 {
+                    write!(res, ", ").unwrap();
+                }
+                write!(res, "{} {p}", self.types[*p as usize].name).unwrap();
+            }
+            write!(res, "]").unwrap();
+        }
+        if let Parts::Struct(v) | Parts::EnumValue(_, v) = &typedef.parts {
+            self.show_fields(pretty, typedef, &mut res, v);
+        } else if let Parts::Enum(v) = &typedef.parts {
             if pretty {
                 res += "\n";
             } else {
-                res += "{";
+                res += "[";
             }
-            for (f_nr, p) in v.iter().enumerate() {
-                let name = &self.types[p.content as usize].name;
+            for (e_nr, (nr, e)) in v.iter().enumerate() {
                 if pretty {
                     res += "    ";
-                } else if f_nr > 0 {
+                } else if e_nr > 0 {
                     res += ", ";
                 }
-                write!(res, "{}:{name}[{}]", p.name, p.position).unwrap();
-                if !p.other_indexes.is_empty() {
-                    write!(res, " other {:?}", p.other_indexes).unwrap();
+                write!(res, "{e}").unwrap();
+                if *nr != u16::MAX {
+                    write!(res, ":{nr}").unwrap();
                 }
                 if pretty {
                     res += "\n";
                 }
             }
             if !pretty {
-                res += "}";
+                res += "]";
             }
         } else {
             write!(res, "{:?}", &typedef.parts).unwrap();
@@ -393,6 +411,44 @@ impl Stores {
         res
     }
 
+    fn show_fields(&self, pretty: bool, typedef: &Type, res: &mut String, v: &[Field]) {
+        if pretty {
+            *res += "\n";
+        } else {
+            *res += "{";
+        }
+        for (f_nr, p) in v.iter().enumerate() {
+            let name = &self.types[p.content as usize].name;
+            if pretty {
+                *res += "    ";
+            } else if f_nr > 0 {
+                *res += ", ";
+            }
+            write!(res, "{}:{name}[{}]", p.name, p.position).unwrap();
+            if let Parts::EnumValue(nr, _) = &typedef.parts {
+                write!(res, " enum {nr}").unwrap();
+            }
+            if !p.other_indexes.is_empty() {
+                write!(res, " other {:?}", p.other_indexes).unwrap();
+            }
+            if let Content::Str(val) = p.default
+                && val.len == 0
+            {
+            } else if let Content::Long(v) = p.default
+                && v == 0
+            {
+            } else {
+                write!(res, " default {:?}", p.default).unwrap();
+            }
+            if pretty {
+                *res += "\n";
+            }
+        }
+        if !pretty {
+            *res += "}";
+        }
+    }
+
     #[must_use]
     pub fn size(&self, tp: u16) -> u16 {
         if tp == u16::MAX {
@@ -411,7 +467,7 @@ impl Stores {
     pub fn position(&self, tp: u16, field: u16) -> u16 {
         if tp == u16::MAX {
             u16::MAX
-        } else if let Parts::Struct(f) = &self.types[tp as usize].parts {
+        } else if let Parts::Struct(f) | Parts::EnumValue(_, f) = &self.types[tp as usize].parts {
             if (field as usize) < f.len() {
                 f[field as usize].position
             } else {
@@ -432,38 +488,26 @@ impl Stores {
     }
 
     /**
-    Allow multiple structures for polymorphism.
-    */
-    pub fn sub(&mut self, name: &str) -> u16 {
-        let num = self.types.len() as u16;
-        self.names.insert(name.to_string(), num);
-        self.types.push(Type::new(name, Parts::Sub(Vec::new()), 0));
-        num
-    }
-
-    /**
-        Make a class an alternative to a Sub.
-        # Panics
-        When the given type is not a Sub.
-    */
-    pub fn alternative(&mut self, structure: u16, sub: u16) {
-        if let Parts::Sub(s) = &mut self.types[sub as usize].parts {
-            s.push(structure);
-        } else {
-            panic!(
-                "Adding a child structures to a non structure type {}",
-                self.types[sub as usize].name
-            );
-        }
-    }
-
-    /**
     Define a new database structure (record).
+    # Panics
+    when such a structure already exists.
     */
-    pub fn structure(&mut self, name: &str) -> u16 {
+    pub fn structure(&mut self, name: &str, enum_value: u8) -> u16 {
         let num = self.types.len() as u16;
+        assert!(
+            !self.names.contains_key(name),
+            "Double structure type {name}"
+        );
         self.names.insert(name.to_string(), num);
-        let mut tp = Type::new(name, Parts::Struct(Vec::new()), u16::MAX);
+        let mut tp = Type::new(
+            name,
+            if enum_value == 0 {
+                Parts::Struct(Vec::new())
+            } else {
+                Parts::EnumValue(enum_value, Vec::new())
+            },
+            u16::MAX,
+        );
         tp.align = u8::MAX;
         self.types.push(tp);
         num
@@ -471,6 +515,17 @@ impl Stores {
 
     pub fn main(&mut self, tp: u16) {
         self.types[tp as usize].main = true;
+    }
+
+    #[must_use]
+    pub fn has_type(&self, name: &str) -> bool {
+        self.names.contains_key(name)
+    }
+
+    pub fn set_default(&mut self, tp: u16, f: u16, value: Content) {
+        if let Parts::Struct(fld) | Parts::EnumValue(_, fld) = &mut self.types[tp as usize].parts {
+            fld[f as usize].default = value;
+        }
     }
 
     /**
@@ -484,7 +539,24 @@ impl Stores {
         }
         let mut others = Vec::new();
         let mut linked = HashMap::new();
-        if let Parts::Struct(fld) = &self.types[structure as usize].parts {
+        if matches!(
+            self.types[content as usize].parts,
+            Parts::Struct(_) | Parts::EnumValue(_, _) | Parts::Enum(_)
+        ) {
+            self.types[content as usize].parents.insert(structure);
+        }
+        if let Parts::Array(c)
+        | Parts::Vector(c)
+        | Parts::Sorted(c, _)
+        | Parts::Ordered(c, _)
+        | Parts::Hash(c, _)
+        | Parts::Index(c, _, _)
+        | Parts::Spacial(c, _) = self.types[content as usize].parts
+        {
+            self.types[c as usize].parents.insert(structure);
+        }
+        if let Parts::Struct(fld) | Parts::EnumValue(_, fld) = &self.types[structure as usize].parts
+        {
             for (f_nr, f) in fld.iter().enumerate() {
                 let fld_content = self.content(f.content);
                 if fld_content != u16::MAX && fld_content == self.content(content) {
@@ -495,7 +567,8 @@ impl Stores {
                 }
             }
         }
-        if let Parts::Struct(s) = &mut self.types[structure as usize].parts {
+        if let Parts::Struct(s) | Parts::EnumValue(_, s) = &mut self.types[structure as usize].parts
+        {
             for (f_nr, f) in s.iter_mut().enumerate() {
                 if let Some(add) = linked.get(&(f_nr as u16)) {
                     f.other_indexes.push(*add);
@@ -511,7 +584,10 @@ impl Stores {
             });
             if num > 8
                 || self.types[content as usize].complex
-                || matches!(self.types[content as usize].parts, Parts::Struct(_))
+                || matches!(
+                    self.types[content as usize].parts,
+                    Parts::Struct(_) | Parts::EnumValue(_, _)
+                )
             {
                 self.types[structure as usize].complex = true;
             }
@@ -550,7 +626,8 @@ impl Stores {
 
     #[must_use]
     pub fn field_type(&self, rec: u16, fld: u16) -> u16 {
-        if let Parts::Struct(fields) = &self.types[rec as usize].parts {
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) = &self.types[rec as usize].parts
+        {
             fields[fld as usize].content
         } else {
             u16::MAX
@@ -563,14 +640,8 @@ impl Stores {
     pub fn finish(&mut self) {
         let mut vectors = HashSet::new();
         let mut linked = HashSet::new();
-        let mut parts = HashSet::new();
         for t_nr in 0..self.types.len() {
-            if let Parts::Sub(subs) = &self.types[t_nr].parts {
-                for s in subs {
-                    parts.insert(*s);
-                }
-            }
-            if let Parts::Struct(fields) = &self.types[t_nr].parts {
+            if let Parts::Struct(fields) | Parts::EnumValue(_, fields) = &self.types[t_nr].parts {
                 for f in fields {
                     match self.types[f.content as usize].parts {
                         Parts::Vector(v) | Parts::Sorted(v, _) => vectors.insert(v),
@@ -585,64 +656,89 @@ impl Stores {
                 vectors.insert(*v);
             }
         }
-        let mut sizes = Vec::new();
         for t_nr in 0..self.types.len() {
-            if self.types[t_nr].size != u16::MAX
-                || !matches!(self.types[t_nr].parts, Parts::Struct(_))
-            {
-                continue;
-            }
-            sizes.clear();
-            if let Parts::Struct(fields) = self.types[t_nr].parts.clone() {
-                for (field_nr, f) in fields.iter().enumerate() {
-                    sizes.push((
-                        self.types[f.content as usize].size,
-                        self.types[f.content as usize].align,
-                    ));
-                    if let Parts::Vector(c) = self.types[f.content as usize].parts
-                        && linked.contains(&c)
-                    {
-                        self.types[c as usize].linked = true;
-                        self.types[fields[field_nr].content as usize].parts = Parts::Array(c);
-                        self.types[fields[field_nr].content as usize].name =
-                            format!("array<{}>", self.types[c as usize].name);
-                    }
-                    if let Parts::Sorted(c, key) = self.types[f.content as usize].parts.clone()
-                        && linked.contains(&c)
-                    {
-                        let mut name = format!("ordered<{}[", self.types[c as usize].name);
-                        self.key_name(c, &key, &mut name);
-                        self.types[c as usize].linked = true;
-                        self.types[fields[field_nr].content as usize].parts =
-                            Parts::Ordered(c, key.clone());
-                        self.types[fields[field_nr].content as usize].name = name;
-                    }
-                }
-            }
-            let main = self.types[t_nr].main;
-            if let Parts::Struct(fields) = &mut self.types[t_nr].parts {
-                let mut size = 0;
-                let mut alignment = 0;
-                let t = t_nr as u16;
-                let vector = vectors.contains(&t) && !linked.contains(&t) && !main;
-                let sub = parts.contains(&t);
-                let pos = calc::calculate_positions(&sizes, vector, sub, &mut size, &mut alignment);
-                for (field_nr, pos) in pos.iter().enumerate() {
-                    fields[field_nr].position = *pos;
-                }
-                self.types[t_nr].size = size;
-                self.types[t_nr].align = alignment;
-            }
+            self.finish_type(&linked, t_nr);
         }
         self.determine_keys();
         // self.dump_types();
+    }
+
+    fn finish_type(&mut self, linked: &HashSet<u16>, t_nr: usize) {
+        if !matches!(
+            self.types[t_nr].parts,
+            Parts::Struct(_) | Parts::Enum(_) | Parts::EnumValue(_, _)
+        ) || self.types[t_nr].size != u16::MAX
+        {
+            return;
+        }
+        let mut sizes = Vec::new();
+        if let Parts::Enum(values) = self.types[t_nr].parts.clone() {
+            let mut size = 1;
+            let mut align = 1;
+            for value in values {
+                if value.0 != u16::MAX {
+                    self.finish_type(linked, value.0 as usize);
+                    if size < self.types[value.0 as usize].size {
+                        size = self.types[value.0 as usize].size;
+                    }
+                    if align < self.types[value.0 as usize].align {
+                        align = self.types[value.0 as usize].align;
+                    }
+                }
+            }
+            self.types[t_nr].size = size;
+            self.types[t_nr].align = align;
+        }
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) = self.types[t_nr].parts.clone()
+        {
+            for f in fields {
+                let c_nr = f.content as usize;
+                if self.types[c_nr].size == u16::MAX {
+                    self.finish_type(linked, c_nr);
+                }
+                sizes.push((self.types[c_nr].size, self.types[c_nr].align));
+                if let Parts::Vector(c) = self.types[c_nr].parts
+                    && linked.contains(&c)
+                {
+                    self.types[c as usize].linked = true;
+                    self.types[c_nr].parts = Parts::Array(c);
+                    self.types[c_nr].name = format!("array<{}>", self.types[c as usize].name);
+                }
+                if let Parts::Sorted(c, key) = self.types[c_nr].parts.clone()
+                    && linked.contains(&c)
+                {
+                    let mut name = format!("ordered<{}[", self.types[c as usize].name);
+                    self.key_name(c, &key, &mut name);
+                    self.types[c as usize].linked = true;
+                    self.types[c_nr].parts = Parts::Ordered(c, key.clone());
+                    self.types[c_nr].name = name;
+                }
+            }
+        }
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) = &mut self.types[t_nr].parts {
+            let mut size = 0;
+            let mut alignment = 0;
+            let pos = calc::calculate_positions(
+                &sizes,
+                fields[0].name == "enum",
+                &mut size,
+                &mut alignment,
+            );
+            for (field_nr, pos) in pos.iter().enumerate() {
+                fields[field_nr].position = *pos;
+            }
+            self.types[t_nr].size = size;
+            self.types[t_nr].align = alignment;
+        }
     }
 
     fn determine_keys(&mut self) {
         for t_nr in 0..self.types.len() {
             match self.types[t_nr].parts.clone() {
                 Parts::Hash(c, key_fields) => {
-                    if let Parts::Struct(fields) = &self.types[c as usize].parts.clone() {
+                    if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+                        &self.types[c as usize].parts.clone()
+                    {
                         self.types[t_nr].keys.clear();
                         for key_field in key_fields {
                             let fld = &fields[key_field as usize];
@@ -661,7 +757,9 @@ impl Stores {
                 Parts::Ordered(c, key_fields)
                 | Parts::Sorted(c, key_fields)
                 | Parts::Index(c, key_fields, _) => {
-                    if let Parts::Struct(fields) = &self.types[c as usize].parts.clone() {
+                    if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+                        &self.types[c as usize].parts.clone()
+                    {
                         self.types[t_nr].keys.clear();
                         for (key_field, asc) in &key_fields {
                             let fld = &fields[*key_field as usize];
@@ -717,26 +815,11 @@ impl Stores {
         }
     }
 
-    /*
-    pub fn reference(&mut self, content: u16, relation: Relation) -> u16 {
-        let name = "reference<".to_string() + &self.types[content as usize].name + ">";
-        if let Some(nr) = self.names.get(&name) {
-            *nr
-        } else {
-            let num = self.types.len() as u16;
-            self.types.push(Type::data(
-                &name,
-                Parts::Reference(content, relation),
-                Vec::new(),
-            ));
-            self.names.insert(name, num);
-            num
-        }
-    }*/
-
     pub fn hash(&mut self, content: u16, key: &[u16]) -> u16 {
         let mut name = "hash<".to_string() + &self.types[content as usize].name + "[";
-        if let Parts::Struct(fields) = &self.types[content as usize].parts {
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[content as usize].parts
+        {
             for (k_nr, k) in key.iter().enumerate() {
                 if k_nr > 0 {
                     name += ",";
@@ -772,7 +855,9 @@ impl Stores {
     }
 
     pub fn field_name(&self, content: u16, key: &[u16], name: &mut String) {
-        if let Parts::Struct(fields) = &self.types[content as usize].parts {
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[content as usize].parts
+        {
             for (k_nr, k) in key.iter().enumerate() {
                 if k_nr > 0 {
                     *name += ",";
@@ -784,7 +869,9 @@ impl Stores {
     }
 
     pub fn field_id(&self, content: u16, key: &[(u16, bool)], name: &mut String) {
-        if let Parts::Struct(fields) = &self.types[content as usize].parts {
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[content as usize].parts
+        {
             for (k_nr, (k, asc)) in key.iter().enumerate() {
                 if k_nr > 0 {
                     *name += ",";
@@ -804,7 +891,9 @@ impl Stores {
             // Should normally only occur in first_phase
             return 0;
         }
-        if let Parts::Struct(fields) = &self.types[record as usize].parts {
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[record as usize].parts
+        {
             for (f_nr, f) in fields.iter().enumerate() {
                 if f.position == position as u16 {
                     return f_nr as u16;
@@ -837,14 +926,18 @@ impl Stores {
         let int_c = self.name("integer");
         let bool_c = self.name("boolean");
         let mut nr = 1;
-        if let Parts::Struct(fields) = &self.types[content as usize].parts {
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[content as usize].parts
+        {
             for f in fields {
                 if f.name.starts_with("#left_") {
                     nr += 1;
                 }
             }
         }
-        let left = if let Parts::Struct(fields) = &mut self.types[content as usize].parts {
+        let left = if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &mut self.types[content as usize].parts
+        {
             let left = fields.len();
             fields.push(Field {
                 name: format!("#left_{nr}"),
@@ -886,7 +979,9 @@ impl Stores {
     }
 
     fn key_name(&mut self, content: u16, key: &[(u16, bool)], name: &mut String) {
-        if let Parts::Struct(fields) = &self.types[content as usize].parts {
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[content as usize].parts
+        {
             for (k_nr, (k, asc)) in key.iter().enumerate() {
                 if k_nr > 0 {
                     *name += ",";
@@ -942,9 +1037,20 @@ impl Stores {
 
     pub fn enumerate(&mut self, name: &str) -> u16 {
         let num = self.types.len() as u16;
-        self.types.push(Type::new(name, Parts::Enum(Vec::new()), 1));
+        self.types
+            .push(Type::new(name, Parts::Enum(Vec::new()), u16::MAX));
         self.names.insert(name.to_string(), num);
         num
+    }
+
+    pub fn enum_value(&mut self, enum_tp: u16, value_name: &str, value_tp: u16) {
+        if let Parts::Enum(variants) = &mut self.types[enum_tp as usize].parts {
+            for variant in variants.iter_mut() {
+                if variant.1 == value_name {
+                    variant.0 = value_tp;
+                }
+            }
+        }
     }
 
     /**
@@ -952,10 +1058,10 @@ impl Stores {
     # Panics
     When adding a value to a non-enumerate.
     */
-    pub fn value(&mut self, known_type: u16, name: &str) -> u16 {
+    pub fn value(&mut self, known_type: u16, name: &str, value_type: u16) -> u16 {
         if let Parts::Enum(values) = &mut self.types[known_type as usize].parts {
             let num = values.len() as u16;
-            values.push(name.to_string());
+            values.push((value_type, name.to_string()));
             num
         } else {
             panic!(
@@ -974,7 +1080,7 @@ impl Stores {
             && value > 0
             && (value as usize) <= values.len()
         {
-            return &values[value as usize - 1];
+            return &values[value as usize - 1].1;
         }
         "null"
     }
@@ -983,7 +1089,7 @@ impl Stores {
     pub fn to_enum(&self, known_type: u16, value: &str) -> u8 {
         if let Parts::Enum(values) = &self.types[known_type as usize].parts {
             for (idx, val) in values.iter().enumerate() {
-                if val == value {
+                if val.1 == value {
                     return 1 + idx as u8;
                 }
             }
@@ -1011,7 +1117,9 @@ impl Stores {
             }
         } else if let Parts::Enum(_) = &self.types[known_type as usize].parts {
             store.get_byte(rec, pos, 0) == 0
-        } else if let Parts::Struct(_) = &self.types[known_type as usize].parts {
+        } else if let Parts::Struct(_) | Parts::EnumValue(_, _) =
+            &self.types[known_type as usize].parts
+        {
             rec == 0
         } else if let Parts::Vector(_) = &self.types[known_type as usize].parts {
             store.get_int(rec, pos) == 0
@@ -1049,7 +1157,7 @@ impl Stores {
         DbRef {
             store_nr: self.max - 1,
             rec,
-            pos: 0,
+            pos: 8,
         }
     }
 
@@ -1098,7 +1206,7 @@ impl Stores {
         DbRef {
             store_nr: db.store_nr,
             rec,
-            pos: 0,
+            pos: 8,
         }
     }
 
@@ -1147,6 +1255,75 @@ impl Stores {
         .write(s, 0);
     }
 
+    #[must_use]
+    pub fn path(&self, db: &DbRef, tp: u16) -> String {
+        self.get_path(db, tp)
+    }
+
+    #[must_use]
+    fn get_path(&self, db: &DbRef, tp: u16) -> String {
+        let mut tp_nr = tp;
+        let mut res = if db.rec == 1 {
+            tp_nr = self.store(db).get_int(db.rec, 4) as u16;
+            "/".to_string()
+        } else {
+            let parent = self.store(db).get_int(db.rec, 4);
+            let r = DbRef {
+                store_nr: db.store_nr,
+                rec: parent as u32,
+                pos: 8,
+            };
+            self.get_path(&r, 0)
+        };
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[tp_nr as usize].parts
+        {
+            for f in fields {
+                let f_tp = &self.types[f.content as usize];
+                if f_tp.contains(tp) {
+                    res += "[";
+                    if f_tp.keys.is_empty() {
+                        let data = DbRef {
+                            store_nr: db.store_nr,
+                            rec: db.rec,
+                            pos: 8 + u32::from(f.position),
+                        };
+                        let mut pos = i32::MAX;
+                        let mut count = 0;
+                        loop {
+                            vector::vector_next(&data, &mut pos, f_tp.size, &self.allocations);
+                            if pos == i32::MAX {
+                                res += "?";
+                                break;
+                            }
+                            let rec = self.store(db).get_int(data.rec, data.pos) as u32;
+                            if rec == db.rec {
+                                write!(res, "{count}").unwrap();
+                                break;
+                            }
+                            count += 1;
+                        }
+                    } else {
+                        for (c_nr, c) in keys::get_key(db, &self.allocations, &f_tp.keys)
+                            .iter()
+                            .enumerate()
+                        {
+                            if c_nr > 0 {
+                                res += ",";
+                            }
+                            write!(res, "{c}").unwrap();
+                        }
+                    }
+                    res += "]";
+                }
+                // if f_tp is sub_record / enum: check the child
+                // if f_tp is vector / sorted:  find the child
+                // if f_tp is a structure: find the child
+            }
+        }
+        res
+    }
+
     /**
     Parse the content of a string into a new database.
     # Panics
@@ -1173,6 +1350,7 @@ impl Stores {
 
     pub fn parse_message(&mut self, text: &str, tp: u16) -> String {
         let db = self.database(u32::from(self.types[tp as usize].size));
+        self.store_mut(&db).set_int(db.rec, 4, i32::from(tp));
         let mut pos = 0;
         let result = self.parsing(text, &mut pos, tp, tp, u16::MAX, &db);
         pos = 0;
@@ -1203,13 +1381,17 @@ impl Stores {
                 vector::sorted_new(&d, u32::from(self.size(c)), &mut self.allocations)
             }
             Parts::Vector(c) => {
-                vector::vector_append(&d, 1, u32::from(self.size(c)), &mut self.allocations)
+                vector::vector_append(&d, u32::from(self.size(c)), &mut self.allocations)
             }
             Parts::Array(c)
             | Parts::Ordered(c, _)
             | Parts::Hash(c, _)
             | Parts::Index(c, _, _)
-            | Parts::Spacial(c, _) => self.claim(&d, (u32::from(self.size(c)) + 7) >> 3),
+            | Parts::Spacial(c, _) => {
+                let rec = self.claim(&d, 1 + ((u32::from(self.size(c)) + 7) >> 3));
+                self.store_mut(&rec).set_int(rec.rec, 4, data.rec as i32);
+                rec
+            }
             _ => panic!(
                 "Cannot add to none-structure '{}'",
                 self.types[tp as usize].name
@@ -1231,7 +1413,8 @@ impl Stores {
         let d = self.field_ref(data, parent_tp, field);
         self.insert_record(&d, rec, tp);
         if field != u16::MAX
-            && let Parts::Struct(fields) = self.types[parent_tp as usize].parts.clone()
+            && let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+                self.types[parent_tp as usize].parts.clone()
         {
             let f = &fields[field as usize];
             let o = &f.other_indexes;
@@ -1247,7 +1430,9 @@ impl Stores {
     fn field_ref(&self, data: &DbRef, parent_tp: u16, field: u16) -> DbRef {
         if field == u16::MAX {
             *data
-        } else if let Parts::Struct(fields) = &self.types[parent_tp as usize].parts {
+        } else if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[parent_tp as usize].parts
+        {
             DbRef {
                 store_nr: data.store_nr,
                 rec: data.rec,
@@ -1260,6 +1445,9 @@ impl Stores {
 
     fn insert_record(&mut self, data: &DbRef, rec: &DbRef, tp: u16) {
         match self.types[tp as usize].parts.clone() {
+            Parts::Vector(_) => {
+                vector::vector_finish(data, &mut self.allocations);
+            }
             Parts::Sorted(c, _) => {
                 let size = u32::from(self.size(c));
                 vector::sorted_finish(
@@ -1270,9 +1458,10 @@ impl Stores {
                 );
             }
             Parts::Array(_) => {
-                let reference = vector::vector_append(data, 1, 4, &mut self.allocations);
+                let reference = vector::vector_append(data, 4, &mut self.allocations);
                 self.store_mut(data)
                     .set_int(reference.rec, reference.pos, rec.rec as i32);
+                vector::vector_finish(data, &mut self.allocations);
             }
             Parts::Hash(_, _) => hash::add(
                 data,
@@ -1310,7 +1499,9 @@ impl Stores {
         let o_rec = keys::store(o_db, &self.allocations).get_int(o_db.rec, o_db.pos) as u32;
         let o_pos = 8;
         let size = u32::from(self.size(known));
-        let new_db = vector::vector_append(db, o_length, size, &mut self.allocations);
+        let new_db = vector::vector_append(db, size, &mut self.allocations);
+        // Claim more than 1 record if needed for the actual copy.
+        self.vector_set_size(db, o_length, size);
         if db.store_nr == o_db.store_nr {
             keys::mut_store(db, &mut self.allocations).copy_block(
                 o_rec,
@@ -1340,6 +1531,19 @@ impl Stores {
                 o_length as isize * size as isize,
             );
         }
+    }
+
+    pub fn vector_set_size(&mut self, db: &DbRef, adding: u32, size: u32) {
+        let store = keys::mut_store(db, &mut self.allocations);
+        let vec_rec = store.get_int(db.rec, db.pos) as u32;
+        let length = store.get_int(vec_rec, 4) as u32;
+        if adding > 1 {
+            let new_vec = store.resize(vec_rec, ((length + adding) * size + 15) / 8);
+            if new_vec != vec_rec {
+                store.set_int(db.rec, db.pos, new_vec as i32);
+            }
+        }
+        store.set_int(vec_rec, 4, length as i32 + adding as i32);
     }
 
     fn parsing(
@@ -1395,9 +1599,7 @@ impl Stores {
                     return *pos;
                 }
             }
-            // Parts::Reference(_other, _) => {}
-            Parts::Sub(_) => {}
-            Parts::Struct(object) => {
+            Parts::Struct(object) | Parts::EnumValue(_, object) => {
                 let result = self.parse_struct(text, pos, tp, to, &object);
                 if result != 0 {
                     return result;
@@ -1417,7 +1619,7 @@ impl Stores {
                 } else {
                     let mut v = 1;
                     for (f_nr, f) in fields.iter().enumerate() {
-                        if *f == value {
+                        if f.1 == value {
                             v = f_nr as i32 + 1;
                             break;
                         }
@@ -1627,8 +1829,13 @@ impl Stores {
                 self.store_mut(rec)
                     .set_short(rec.rec, rec.pos, 0, if null { 65535 } else { 0 });
             }
-            Parts::Struct(fields) => {
+            Parts::Struct(fields) | Parts::EnumValue(_, fields) => {
                 for f in &fields {
+                    if f.name == "type" && f.position == 0 {
+                        self.store_mut(rec)
+                            .set_short(rec.rec, rec.pos, 0, i32::from(tp));
+                        continue;
+                    }
                     self.set_default_value(
                         f.content,
                         &DbRef {
@@ -1639,9 +1846,7 @@ impl Stores {
                     );
                 }
             }
-            Parts::Sub(_)
-            //| Parts::Reference(_, _)
-            | Parts::Sorted(_, _)
+            Parts::Sorted(_, _)
             | Parts::Ordered(_, _)
             | Parts::Spacial(_, _)
             | Parts::Hash(_, _)
@@ -1666,7 +1871,7 @@ impl Stores {
         DbRef {
             store_nr: db.store_nr,
             rec: res,
-            pos: 0,
+            pos: 8,
         }
     }
 
@@ -1675,7 +1880,7 @@ impl Stores {
         DbRef {
             store_nr: db.store_nr,
             rec: db.rec,
-            pos: fld,
+            pos: db.pos + fld,
         }
     }
 
@@ -1712,7 +1917,7 @@ impl Stores {
                 store.delete(cur as u32);
                 store.set_int(rec.rec, rec.pos, 0);
             }
-            Parts::Struct(fields) => {
+            Parts::Struct(fields) | Parts::EnumValue(_, fields) => {
                 for f in fields.clone() {
                     self.remove_claims(
                         &DbRef {
@@ -1761,7 +1966,7 @@ impl Stores {
                         &DbRef {
                             store_nr: rec.store_nr,
                             rec: elm,
-                            pos: 0,
+                            pos: 8,
                         },
                         tp,
                     );
@@ -1788,7 +1993,7 @@ impl Stores {
                         &DbRef {
                             store_nr: rec.store_nr,
                             rec: elm,
-                            pos: 0,
+                            pos: 8,
                         },
                         tp,
                     );
@@ -1823,7 +2028,7 @@ impl Stores {
                     into.set_int(to.rec, to.pos, s_pos);
                 }
             }
-            Parts::Struct(fields) => {
+            Parts::Struct(fields) | Parts::EnumValue(_, fields) => {
                 for f in fields.clone() {
                     self.copy_claims(
                         &DbRef {
@@ -1912,12 +2117,12 @@ impl Stores {
                         &DbRef {
                             store_nr: rec.store_nr,
                             rec: elm,
-                            pos: 0,
+                            pos: 8,
                         },
                         &DbRef {
                             store_nr: to.store_nr,
                             rec: new,
-                            pos: 0,
+                            pos: 8,
                         },
                         tp,
                     );
@@ -1959,12 +2164,12 @@ impl Stores {
                         &DbRef {
                             store_nr: rec.store_nr,
                             rec: elm,
-                            pos: 0,
+                            pos: 8,
                         },
                         &DbRef {
                             store_nr: to.store_nr,
                             rec: new,
-                            pos: 0,
+                            pos: 8,
                         },
                         tp,
                     );
@@ -1980,7 +2185,7 @@ impl Stores {
             return false;
         }
         let store = self.store_mut(file);
-        let filename = store.get_str(store.get_int(file.rec, file.pos + 4) as u32);
+        let filename = store.get_str(store.get_int(file.rec, file.pos + 8) as u32);
         let path = std::path::Path::new(filename);
         fill_file(path, store, file)
     }
@@ -2002,10 +2207,12 @@ impl Stores {
                 }
             }
             for (name, entry) in res {
-                let elm = vector::vector_append(&vector, 1, 17, &mut self.allocations);
+                let elm = vector::vector_append(&vector, 13, &mut self.allocations);
                 let store = self.store_mut(result);
                 let name_pos = store.set_str(&name) as i32;
-                store.set_int(elm.rec, elm.pos + 4, name_pos);
+                store.set_int(elm.rec, elm.pos + 8, name_pos);
+                vector::vector_finish(&vector, &mut self.allocations);
+                let store = self.store_mut(result);
                 if !fill_file(&entry.path(), store, &elm) {
                     return false;
                 }
@@ -2048,8 +2255,10 @@ impl Stores {
     #[must_use]
     pub fn fields(&self, tp: u16) -> u16 {
         if let Parts::Index(c, _, f) = self.types[tp as usize].parts {
-            if let Parts::Struct(fields) = &self.types[c as usize].parts {
-                fields[f as usize].position
+            if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+                &self.types[c as usize].parts
+            {
+                8 + fields[f as usize].position
             } else {
                 u16::MAX
             }
@@ -2065,7 +2274,8 @@ impl Stores {
 
     fn field_content(&self, rec: &DbRef, db: u16, key: u16) -> Content {
         let store = self.store(rec);
-        if let Parts::Struct(fields) = &self.types[db as usize].parts {
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) = &self.types[db as usize].parts
+        {
             let f = &fields[key as usize];
             return match f.content {
                 0 | 6 => Content::Long(i64::from(
@@ -2146,7 +2356,7 @@ impl Stores {
                         } else {
                             self.store(&res).get_int(res.rec, res.pos) as u32
                         },
-                        pos: 0,
+                        pos: 8,
                     }
                 } else {
                     DbRef {
@@ -2157,7 +2367,7 @@ impl Stores {
                             let rec = self.store(data).get_int(data.rec, 0) as u32;
                             self.store(data).get_int(rec, 8) as u32
                         },
-                        pos: 0,
+                        pos: 8,
                     }
                 }
             }
@@ -2197,7 +2407,7 @@ impl Stores {
                     DbRef {
                         store_nr: data.store_nr,
                         rec: self.store(data).get_int(sorted_rec, 8 + pos * 4) as u32,
-                        pos: 0,
+                        pos: 8,
                     }
                 } else {
                     DbRef {
@@ -2209,8 +2419,10 @@ impl Stores {
             }
             Parts::Hash(_, _) => hash::find(data, &self.allocations, self.keys(db), key),
             Parts::Index(rec_nr, _, left_field) => {
-                let left = if let Parts::Struct(fields) = &self.types[*rec_nr as usize].parts {
-                    fields[*left_field as usize].position
+                let left = if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+                    &self.types[*rec_nr as usize].parts
+                {
+                    8 + fields[*left_field as usize].position
                 } else {
                     u16::MAX
                 };
@@ -2218,7 +2430,7 @@ impl Stores {
                 let result = DbRef {
                     store_nr: data.store_nr,
                     rec,
-                    pos: 0,
+                    pos: 8,
                 };
                 if keys::key_compare(key, &result, &self.allocations, self.keys(db))
                     == Ordering::Equal
@@ -2242,7 +2454,9 @@ impl Stores {
             Parts::Vector(_) | Parts::Array(_) => vec![0],
             Parts::Sorted(c, key) | Parts::Ordered(c, key) | Parts::Index(c, key, _) => {
                 let mut res = Vec::new();
-                if let Parts::Struct(fields) = &self.types[*c as usize].parts {
+                if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+                    &self.types[*c as usize].parts
+                {
                     for (k, _) in key {
                         res.push(fields[*k as usize].content);
                     }
@@ -2251,7 +2465,9 @@ impl Stores {
             }
             Parts::Hash(c, key) => {
                 let mut res = Vec::new();
-                if let Parts::Struct(fields) = &self.types[*c as usize].parts {
+                if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+                    &self.types[*c as usize].parts
+                {
                     for k in key {
                         res.push(fields[*k as usize].content);
                     }
@@ -2287,7 +2503,7 @@ impl Stores {
                     &self.types[db as usize].keys,
                 );
             }
-            Parts::Struct(fields) => {
+            Parts::Struct(fields) | Parts::EnumValue(_, fields) => {
                 for f in fields {
                     self.validate(
                         &DbRef {
@@ -2332,7 +2548,7 @@ impl Stores {
                 DbRef {
                     store_nr: data.store_nr,
                     rec: self.store(data).get_int(r, *pos as u32) as u32,
-                    pos: 0,
+                    pos: 8,
                 }
             }
             Parts::Index(_, _, _) => {
@@ -2357,7 +2573,7 @@ impl Stores {
                 }
                 *pos = n as i32;
                 rec.rec = n;
-                rec.pos = 0;
+                rec.pos = 8;
                 rec
             }
             _ => panic!("Undefined iterate on '{}'", self.types[db as usize].name),
@@ -2372,7 +2588,7 @@ impl Stores {
             } else {
                 self.store(data).get_int(r, pos as u32) as u32
             },
-            pos: 0,
+            pos: 8,
         }
     }
 
@@ -2469,19 +2685,14 @@ impl Stores {
     */
     #[must_use]
     pub fn os_arguments(&mut self) -> DbRef {
-        let size = 4;
-        let new_value = self.database(size);
-        self.store_mut(&new_value).set_int(new_value.rec, 4, 0);
-        let vec = DbRef {
-            store_nr: new_value.store_nr,
-            rec: new_value.rec,
-            pos: 4,
-        };
+        let vec = self.database(4);
+        self.store_mut(&vec).set_int(vec.rec, vec.pos, 0);
         for t in env::args_os() {
             let v = t.to_str().unwrap();
-            let elm = vector::vector_append(&vec, 1, size, &mut self.allocations);
+            let elm = vector::vector_append(&vec, 4, &mut self.allocations);
             let s = self.store_mut(&vec).set_str(v);
             self.store_mut(&vec).set_int(elm.rec, elm.pos, s as i32);
+            vector::vector_finish(&vec, &mut self.allocations);
         }
         vec
     }
@@ -2495,21 +2706,17 @@ impl Stores {
     pub fn os_variables(&mut self) -> DbRef {
         let elm = self.name("Variable");
         let size = u32::from(self.size(elm));
-        let new_value = self.database(size);
-        self.store_mut(&new_value).set_int(new_value.rec, 4, 0);
-        let vec = DbRef {
-            store_nr: new_value.store_nr,
-            rec: new_value.rec,
-            pos: 4,
-        };
+        let vec = self.database(size);
+        self.store_mut(&vec).set_int(vec.rec, vec.pos, 0);
         for t in env::vars_os() {
             let name = t.0.to_str().unwrap();
             let value = t.1.to_str().unwrap();
-            let elm = vector::vector_append(&vec, 1, size, &mut self.allocations);
+            let elm = vector::vector_append(&vec, size, &mut self.allocations);
             let n = self.store_mut(&vec).set_str(name);
             let v = self.store_mut(&vec).set_str(value);
-            self.store_mut(&vec).set_int(elm.rec, elm.pos + 4, n as i32);
-            self.store_mut(&vec).set_int(elm.rec, elm.pos + 8, v as i32);
+            self.store_mut(&vec).set_int(elm.rec, elm.pos, n as i32);
+            self.store_mut(&vec).set_int(elm.rec, elm.pos + 4, v as i32);
+            vector::vector_finish(&vec, &mut self.allocations);
         }
         vec
     }
@@ -2761,8 +2968,8 @@ fn match_text(text: &str, pos: &mut usize, value: &mut String) -> usize {
 
 fn fill_file(path: &std::path::Path, store: &mut Store, file: &DbRef) -> bool {
     if let Ok(data) = path.metadata() {
-        store.set_long(file.rec, file.pos + 8, data.len() as i64);
-        store.set_byte(file.rec, file.pos + 16, 0, i32::from(data.is_dir()));
+        store.set_long(file.rec, file.pos, data.len() as i64); // write size
+        store.set_byte(file.rec, file.pos + 12, 0, i32::from(data.is_dir()));
         true
     } else {
         false
@@ -2832,11 +3039,11 @@ impl ShowDb<'_> {
                     let enum_val = if v == 0 {
                         "null"
                     } else {
-                        &vals[v as usize - 1]
+                        &vals[v as usize - 1].1
                     };
                     s.push_str(enum_val);
                 }
-                Parts::Struct(st) => {
+                Parts::Struct(st) | Parts::EnumValue(_, st) => {
                     self.write_struct(s, st, indent);
                 }
                 Parts::Vector(tp)
@@ -2864,7 +3071,7 @@ impl ShowDb<'_> {
                         write!(s, "{v}").unwrap();
                     }
                 }
-                _ => {
+                Parts::Base => {
                     panic!(
                         "Not matching parts:{:?} type:{} name:{}",
                         self.stores.types[self.known_type as usize].parts,
@@ -2980,7 +3187,10 @@ impl ShowDb<'_> {
             } else {
                 s.push(',');
                 if self.pretty {
-                    if matches!(self.stores.types[content as usize].parts, Parts::Struct(_)) {
+                    if matches!(
+                        self.stores.types[content as usize].parts,
+                        Parts::Struct(_) | Parts::EnumValue(_, _)
+                    ) {
                         self.write_indent(true, s, indent, true);
                     } else {
                         self.write_indent(complex, s, indent, false);
@@ -3025,7 +3235,7 @@ impl ShowDb<'_> {
                 let r = DbRef {
                     store_nr: data.store_nr,
                     rec: rec as u32,
-                    pos: 0,
+                    pos: 8,
                 };
                 let key = keys::get_simple(
                     &r,
@@ -3056,7 +3266,7 @@ impl ShowDb<'_> {
                 stores: self.stores,
                 store: self.store,
                 rec: p as u32,
-                pos: 0,
+                pos: 8,
                 known_type: content,
                 pretty: self.pretty,
             };

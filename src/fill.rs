@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_truncation)]
@@ -199,7 +202,6 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     conv_bool_from_ref,
     conv_ref_from_null,
     free_ref,
-    append,
     var_ref,
     put_ref,
     eq_ref,
@@ -1446,10 +1448,6 @@ fn conv_ref_from_null(s: &mut State) {
 
 fn free_ref(s: &mut State) {
     s.free_ref();
-}
-
-fn append(s: &mut State) {
-    s.append();
 }
 
 fn var_ref(s: &mut State) {

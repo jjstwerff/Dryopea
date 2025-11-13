@@ -1,0 +1,98 @@
+
+enum Value {
+    Null,
+    Integer { i_value: i32 },
+    Boolean { b_value: boolean },
+    Float { f_value: float },
+    Text { t_value: text },
+    Object { fields: vector<Pair> },
+    Array { content: vector<Value> }
+}
+
+struct Pair {
+    field: u16,
+    value: Value
+}
+
+struct Field {
+    field: u16,
+    name: text
+}
+
+struct Json {
+    key_fields: vector<Field>,
+    key_hash: hash<Field[name]>,
+    data: Value
+}
+
+
+pub fn test() {
+    null;
+}
+Type 17:Value[16/8]: parents [Pair 23, Array 26, Json 29]
+    Null
+    Integer:18
+    Boolean:19
+    Float:20
+    Text:21
+    Object:22
+    Array:26
+
+Type 18:Integer[8/4]:
+    enum:byte[0] default Long(2)
+    i_value:integer[4]
+
+Type 19:Boolean[8/1]:
+    enum:byte[0] default Long(3)
+    b_value:boolean[7]
+
+Type 20:Float[16/8]:
+    enum:byte[0] default Long(4)
+    f_value:float[8]
+
+Type 21:Text[8/4]:
+    enum:byte[0] default Long(5)
+    t_value:text[4]
+
+Type 22:Object[8/4]:
+    enum:byte[0] default Long(6)
+    fields:vector<Pair>[4]
+
+Type 23:Pair[18/8]: parents [Object 22]
+    field:short<0,true>[16]
+    value:Value[0]
+
+Type 24:short<0,true>[2/2]:Short(0, true)
+
+Type 25:vector<Pair>[4/4]:Vector(23)
+
+Type 26:Array[8/4]:
+    enum:byte[0] default Long(7)
+    content:vector<Value>[4]
+
+Type 27:vector<Value>[4/4]:Vector(17)
+
+Type 28:Field[6/4]: parents [Json 29]
+    field:short<0,true>[4]
+    name:text[0]
+
+Type 29:Json[24/8]:
+    key_fields:array<Field>[16] other [1]
+    key_hash:hash<Field[name]>[20] other [65535]
+    data:Value[0]
+
+Type 30:array<Field>[4/4]:Array(28)
+
+Type 31:hash<Field[name]>[4/4]:Hash(28, [1]) keys [tp:6 desc:false field:0, ]
+
+fn test() {#block(1):void
+  [30] drop null;
+}#block(1):void
+
+byte-code for general_json:test()
+   0[0]: return-address
+   0[4]: [30] Return(ret=0, value=0, discard=4)
+
+Execute test:
+    0:[8] Return(ret=4294967295[4], value=0, discard=4)
+Finished

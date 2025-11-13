@@ -16,34 +16,34 @@ pub fn test() {
         "Test failed {test_value} != 1"
     );
 }
-Type 17:Data[8]:
-    byte:byte[7]
-    val:byte<1,true>[6]
-    signed:byte<-127,true>[5]
+Type 17:Data[3/1]:
+    byte:byte[0]
+    val:byte<1,true>[1]
+    signed:byte<-127,true>[2]
 
-Type 18:byte<1,true>[1]:Byte(1, true)
+Type 18:byte<1,true>[1/1]:Byte(1, true)
 
-Type 19:byte<-127,true>[1]:Byte(-127, true)
+Type 19:byte<-127,true>[1/1]:Byte(-127, true)
 
 fn _tp_Data_calc(self:Data) -> integer {#block(1):integer
-  [8] OpAddInt(OpAddInt(OpMulInt(OpGetByte(self(0), 6i32, 1i32), 65536i32), OpMulInt(OpGetByte(self(0), 7i32, 0i32), 256i32)), OpGetByte(self(0), 5i32, -127i32));
+  [8] OpAddInt(OpAddInt(OpMulInt(OpGetByte(self(0), 1i32, 1i32), 65536i32), OpMulInt(OpGetByte(self(0), 0i32, 0i32), 256i32)), OpGetByte(self(0), 2i32, -127i32));
 }#block(1):integer
 
 byte-code for restrictions:_tp_Data_calc(self: ref(Data)[0]) -> integer
    0[12]: return-address
-   0[16]: [8] VarRef(var[0]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[0]:ref(Data)
-   3[28]: GetByte(v1: ref(reference), fld=6, min=1) -> integer
+   0[16]: [8] VarRef(var[0]) -> ref(reference) type=Data 17 var=self[0]:ref(Data)
+   3[28]: GetByte(v1: ref(reference), fld=1, min=1) -> integer
    8[20]: ConstInt(val=65536) -> integer
   13[24]: MulInt(v1: integer, v2: integer) -> integer
-  14[20]: VarRef(var[0]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[0]:ref(Data)
-  17[32]: GetByte(v1: ref(reference), fld=7, min=0) -> integer
+  14[20]: VarRef(var[0]) -> ref(reference) type=Data 17 var=self[0]:ref(Data)
+  17[32]: GetByte(v1: ref(reference), fld=0, min=0) -> integer
   22[24]: ConstInt(val=256) -> integer
   27[28]: MulInt(v1: integer, v2: integer) -> integer
   28[24]: AddInt(v1: integer, v2: integer) -> integer
-  29[20]: VarRef(var[0]) -> ref(reference) type=Data[8]:{byte:byte[7], val:byte<1,true>[6], signed:byte<-127,true>[5]}[17] var=self[0]:ref(Data)
-  32[32]: GetByte(v1: ref(reference), fld=5, min=-127) -> integer
+  29[20]: VarRef(var[0]) -> ref(reference) type=Data 17 var=self[0]:ref(Data)
+  32[32]: GetByte(v1: ref(reference), fld=2, min=-127) -> integer
   37[24]: AddInt(v1: integer, v2: integer) -> integer
-  38[20]: Return(ret=12, value=4, discard=20) type=integer[4]:Base[0]
+  38[20]: Return(ret=12, value=4, discard=20) type=integer 0
 
 fn test() {#block(1):void
   __work_1(1):text = "";

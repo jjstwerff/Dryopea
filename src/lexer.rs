@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2023 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! Change a text into symbols to use in the parser.

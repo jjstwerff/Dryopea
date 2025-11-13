@@ -1,13 +1,20 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 extern crate dryopea;
 
+#[cfg(debug_assertions)]
+use dryopea::data::Data;
 use dryopea::interpreter::byte_code;
+#[cfg(debug_assertions)]
+use dryopea::interpreter::show_code;
 use dryopea::parser::Parser;
 use dryopea::scopes;
 use dryopea::state::State;
-use std::io::Write;
+#[cfg(debug_assertions)]
+use std::fs::File;
+#[cfg(debug_assertions)]
+use std::io::{Error, Write};
 use std::path::PathBuf;
 
 #[test]
@@ -39,6 +46,7 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     println!("run {entry:?}");
     let mut p = Parser::new();
     p.parse_dir("default", true)?;
+    #[cfg(debug_assertions)]
     let types = p.database.types.len();
     let path = entry.to_string_lossy().to_string();
     p.parse(&path, false);
@@ -50,8 +58,29 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     }
     scopes::check(&mut p.data);
     let mut state = State::new(p.database);
+    #[cfg(debug_assertions)]
+    let mut w = dump_results(entry, &mut p.data, types, &mut state)?;
+    byte_code(&mut state, &mut p.data);
+    if debug {
+        #[cfg(debug_assertions)]
+        state.execute_log(&mut w, "main", &p.data)?;
+        #[cfg(not(debug_assertions))]
+        state.execute(p.data.def_nr("main"), &p.data);
+    } else {
+        state.execute(p.data.def_nr("main"), &p.data);
+    }
+    Ok(())
+}
+
+#[cfg(debug_assertions)]
+fn dump_results(
+    entry: PathBuf,
+    data: &mut Data,
+    types: usize,
+    state: &mut State,
+) -> Result<File, Error> {
     let filename = entry.file_name().unwrap_or_default().to_string_lossy();
-    let mut w = std::fs::File::create(format!("tests/code/{filename}.txt"))?;
+    let mut w = File::create(format!("tests/code/{filename}.txt"))?;
     for tp in types..state.database.types.len() {
         writeln!(
             &mut w,
@@ -59,11 +88,6 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
             state.database.show_type(tp as u16, true)
         )?;
     }
-    byte_code(&mut w, &mut state, &mut p.data)?;
-    if debug {
-        state.execute_log(&mut w, "main", &p.data)
-    } else {
-        state.execute(p.data.def_nr("main"), &p.data);
-        Ok(())
-    }
+    show_code(&mut w, state, data)?;
+    Ok(w)
 }

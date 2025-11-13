@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 use crate::data::{Block, Data, DefType, Type, Value, v_set};
 use crate::variables::Function;
 use std::collections::{BTreeMap, HashMap, HashSet};

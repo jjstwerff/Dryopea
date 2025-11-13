@@ -1,5 +1,6 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
+
 //! The standard operations for `GameEngine`
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_possible_wrap)]

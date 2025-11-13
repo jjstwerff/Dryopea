@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 use crate::data::{Context, Data, DefType, Definition, Type, Value};
 use crate::database::Stores;
 use std::io::Write;

@@ -21,7 +21,7 @@ byte-code for append_str:append(ch: character[0], s: &text[4]) -> text["s"]
   14[24]: AppendRefCharacter(var[4], v1: character)
   17[20]: VarRef(var[4]) -> ref(reference) var=s[4]:&text
   20[32]: GetRefText(r: ref(reference)) -> text["ch"]
-  21[36]: Return(ret=16, value=16, discard=36) type=text[4]:Base[5]
+  21[36]: Return(ret=16, value=16, discard=36) type=text 5
 
 fn test() {#block(1):void
   __work_2(1):text = "";
@@ -76,14 +76,14 @@ Execute test:
     1:[32] [4] Text()
     2:[56] Text()
     3:[80] ConstInt(val=120) -> 120[80]
-    8:[84] CreateRef(var[32]) -> ref(0,1,32)[84]
+    8:[84] CreateRef(var[32]) -> ref(0,1,40)[84]
    11:[96] Call(size=0, fn=append)
  1103:[100] ConstText(_value="abc_de") -> "abc_de"[100]
  1111:[116] AppendRefText(var[84], v1="abc_de"[100])
  1114:[100] VarCharacter(var[80]) -> 'x'[100]
  1117:[104] AppendRefCharacter(var[84], v1='x'[100])
- 1120:[100] VarRef(var[84]) -> ref(0,1,32)[100]
- 1123:[112] GetRefText(r=ref(0,1,32)[100]) -> "abc_dex"[100]
+ 1120:[100] VarRef(var[84]) -> ref(0,1,40)[100]
+ 1123:[112] GetRefText(r=ref(0,1,40)[100]) -> "abc_dex"[100]
  1124:[116] Return(ret=1148[96], value=16, discard=36) -> "abc_dex"[80]
    18:[96] AppendText(var[56], v1="abc_dex"[80])
    21:[80] VarText(var[56]) -> "abc_dex"[80]

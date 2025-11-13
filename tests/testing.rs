@@ -1,13 +1,19 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
+
 #![allow(dead_code)]
 
 //! Testing framework
 use dryopea::create;
+#[cfg(debug_assertions)]
+use dryopea::data::Data;
 use dryopea::scopes;
 extern crate dryopea;
 use dryopea::generation::Output;
 use dryopea::interpreter::byte_code;
+#[cfg(debug_assertions)]
+use dryopea::interpreter::show_code;
+use std::fs::File;
 use std::io::Write;
 
 /// Evaluate the given code.
@@ -128,6 +134,24 @@ impl Test {
             self.expr
         )
     }
+
+    #[cfg(debug_assertions)]
+    fn output_code(
+        &mut self,
+        data: &mut Data,
+        types: usize,
+        code: &mut String,
+        state: &mut State,
+    ) -> File {
+        let mut w = File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
+        writeln!(w, "{code}").unwrap();
+        let to = state.database.types.len();
+        for tp in types..to {
+            writeln!(w, "Type {tp}:{}", state.database.show_type(tp as u16, true)).unwrap();
+        }
+        show_code(&mut w, state, data).unwrap();
+        w
+    }
 }
 
 fn replace_tokens(res: &str) -> String {
@@ -140,6 +164,7 @@ fn replace_tokens(res: &str) -> String {
 impl Drop for Test {
     // The actual evaluation of the test happens when the Test object is dropped.
     // So there is no need for an 'activate' method call.
+    #[allow(unused_variables)]
     fn drop(&mut self) {
         let mut p = Parser::new();
         p.parse_dir("default", true).unwrap();
@@ -158,6 +183,7 @@ impl Drop for Test {
             assert_eq!(u32::from(size), *s, "Size of {}", *d);
         }
         scopes::check(&mut p.data);
+        #[cfg(debug_assertions)]
         self.generate_code(&p, start).unwrap();
         // Validate that we found the correct warnings and errors. Halt when differences are found.
         self.assert_diagnostics(&p);
@@ -165,25 +191,23 @@ impl Drop for Test {
         if p.diagnostics.level() >= Level::Error {
             return;
         }
+        #[cfg(debug_assertions)]
         create::generate_code(&p.data).unwrap();
         create::generate_lib(&p.data).unwrap();
         let mut state = State::new(p.database);
-        let mut w =
-            std::fs::File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
-        writeln!(w, "{code}").unwrap();
-        let to = state.database.types.len();
-        for tp in types..to {
-            writeln!(w, "Type {tp}:{}", state.database.show_type(tp as u16, true)).unwrap();
-        }
-        byte_code(&mut w, &mut state, &mut p.data).unwrap();
+        byte_code(&mut state, &mut p.data);
+        #[cfg(debug_assertions)]
+        let mut w = self.output_code(&mut p.data, types, &mut code, &mut state);
+        #[cfg(debug_assertions)]
         state.execute_log(&mut w, "test", &p.data).unwrap();
-        //state.execute(p.data.def_nr("test"), &p.data);
+        #[cfg(not(debug_assertions))]
+        state.execute(p.data.def_nr("test"), &p.data);
     }
 }
 
 impl Test {
     fn generate_code(&self, p: &Parser, start: u32) -> std::io::Result<()> {
-        let w = &mut std::fs::File::create("tests/generated/default.rs")?;
+        let w = &mut File::create("tests/generated/default.rs")?;
         let o = Output {
             data: &p.data,
             stores: &p.database,
@@ -191,10 +215,7 @@ impl Test {
         o.output(w, 0, start)?;
         // Write code output when the result is tested, not only for errors or warnings.
         if self.result != Value::Null || !self.tp.is_unknown() {
-            let w = &mut std::fs::File::create(format!(
-                "tests/generated/{}_{}.rs",
-                self.file, self.name
-            ))?;
+            let w = &mut File::create(format!("tests/generated/{}_{}.rs", self.file, self.name))?;
             let def_nr = p.data.definitions();
             o.output(w, start, def_nr)?;
             writeln!(w, "#[test]\nfn code_{}() {{", self.name)?;
@@ -207,6 +228,7 @@ impl Test {
         }
         Ok(())
     }
+
     fn assert_diagnostics(&self, p: &Parser) {
         let mut expected = BTreeSet::new();
         for w in &self.warnings {

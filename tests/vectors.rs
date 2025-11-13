@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 extern crate dryopea;
@@ -178,6 +178,7 @@ db.map += [Elm {key: \"Three\", value: 3}, Elm {key: \"Four\", value: 4}];
 assert(db.map[\"Two\"].value == 2, \"Two element\");
 assert(db.map[\"Four\"], \"Four element\");
 assert(!db.map[\"Five\"], \"No element\");
+assert(!db.map[null], \"Working?\");
 sum = 0;
 for v in db.map {
   sum = sum * 10 + v.value;

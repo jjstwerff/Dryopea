@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Jurjen Stellingwerff
+// Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! An in memory store that can be allocated in small steps.
@@ -119,7 +119,7 @@ impl Store {
     /// # Arguments
     /// * `size` - The requested record size in 8 byte words
     pub fn claim(&mut self, size: u32) -> u32 {
-        assert!(size > 0, "Incomplete record");
+        assert!(size >= 1, "Incomplete record");
         let req_size = size as i32;
         // search big enough open space: currently very inefficient
         let mut pos = PRIMARY; // primary record location

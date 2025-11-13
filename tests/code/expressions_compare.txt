@@ -8,7 +8,10 @@ pub fn test() {
         "Test failed {test_value} != 5"
     );
 }
-Type 17:T[1]:Enum(["A", "C", "B"])
+Type 17:T[1/1]:
+    A
+    C
+    B
 
 fn count(v:T) -> integer {#block(1):integer
   [2] if OpGtInt(OpConvIntFromEnum(v(0)), OpConvIntFromEnum(2u8(17))) {#block(2):integer
@@ -20,16 +23,16 @@ fn count(v:T) -> integer {#block(1):integer
 
 byte-code for compare:count(v: T[0]) -> integer
    0[1]: return-address
-   0[5]: [2] VarEnum(var[0]) -> boolean type=T[1]:Enum(["A", "C", "B"])[17] var=v[0]:T
+   0[5]: [2] VarEnum(var[0]) -> boolean type=T 17 var=v[0]:T
    3[6]: ConvIntFromEnum(v1: boolean) -> integer
-   4[9]: ConstEnum(val=2) -> boolean type=T[1]:Enum(["A", "C", "B"])[17]
+   4[9]: ConstEnum(val=2) -> boolean type=T 17
    6[10]: ConvIntFromEnum(v1: boolean) -> integer
    7[13]: GtInt(v1: integer, v2: integer) -> boolean
    8[6]: GotoFalseWord(jump=19, if_false: boolean)
   11[5]: ConstInt(val=2) -> integer
   16[9]: GotoWord(jump=24)
   19[5]: ConstInt(val=1) -> integer
-  24[9]: Return(ret=1, value=4, discard=9) type=integer[4]:Base[0]
+  24[9]: Return(ret=1, value=4, discard=9) type=integer 0
 
 fn test() {#block(1):void
   __work_1(1):text = "";
@@ -48,12 +51,12 @@ fn test() {#block(1):void
 byte-code for compare:test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [5] ConstEnum(val=1) -> boolean type=T[1]:Enum(["A", "C", "B"])[17] var=test_value[28]:integer
+   1[28]: [5] ConstEnum(val=1) -> boolean type=T 17 var=test_value[28]:integer
    3[29]: Call(size=0, fn=count)
-  10[32]: ConstEnum(val=3) -> boolean type=T[1]:Enum(["A", "C", "B"])[17]
+  10[32]: ConstEnum(val=3) -> boolean type=T 17
   12[33]: Call(size=0, fn=count)
   19[36]: AddInt(v1: integer, v2: integer) -> integer
-  20[32]: ConstEnum(val=3) -> boolean type=T[1]:Enum(["A", "C", "B"])[17]
+  20[32]: ConstEnum(val=3) -> boolean type=T 17
   22[33]: Call(size=0, fn=count)
   29[36]: AddInt(v1: integer, v2: integer) -> integer
   30[32]: [6] VarInt(var[28]) -> integer var=test_value[28]:integer
