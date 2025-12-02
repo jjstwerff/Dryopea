@@ -688,21 +688,7 @@ impl State {
     pub fn new_record(&mut self) {
         let parent_tp = *self.code::<u16>();
         let fld = *self.code::<u16>();
-        let mut data = *self.get_stack::<DbRef>();
-        if let Parts::EnumValue(_, fields) = &self.database.types[parent_tp as usize].parts {
-            data.pos += u32::from(fld);
-            let nr = if let Content::Long(l) = fields[0].default {
-                l
-            } else {
-                0
-            };
-            self.database.set_default_value(parent_tp, &data);
-            self.database
-                .store_mut(&data)
-                .set_byte(data.rec, data.pos, 0, nr as i32);
-            self.put_stack(data);
-            return;
-        }
+        let data = *self.get_stack::<DbRef>();
         let new_value = self.database.record_new(&data, parent_tp, fld);
         self.database.set_default_value(
             if fld == u16::MAX {
@@ -2050,7 +2036,9 @@ impl State {
                     def.returned.show(data, &data.def(d_nr).variables)
                 )?;
             }
-            if let Some(t) = self.types.get(&p) {
+            if let Some(t) = self.types.get(&p)
+                && *t != u16::MAX
+            {
                 write!(f, " type={} {t:}", self.database.types[*t as usize].name)?;
             }
             if let Some(v) = self.vars.get(&p) {

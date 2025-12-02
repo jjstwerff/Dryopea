@@ -37,19 +37,19 @@ Type 17:Content[16/8]: parents [Container 22]
     Text:21
 
 Type 18:Long[16/8]: EnumValue(1)
-    enum:byte[0] default Long(1)
+    enum:byte[0]
     v:long[8]
 
 Type 19:Float[16/8]: EnumValue(2)
-    enum:byte[0] default Long(2)
+    enum:byte[0]
     v:float[8]
 
 Type 20:Single[8/4]: EnumValue(3)
-    enum:byte[0] default Long(3)
+    enum:byte[0]
     v:single[4]
 
 Type 21:Text[8/4]: EnumValue(4)
-    enum:byte[0] default Long(4)
+    enum:byte[0]
     v:text[4]
 
 Type 22:Container[24/8]:
@@ -64,21 +64,22 @@ fn fill() -> Container {#block(1):ref(Container)
   [15] {#Object(2):ref(Container)["__ref_1"]
     OpDatabase(__ref_1(1), 22i32);
     OpSetText(__ref_1(1), 16i32, "testing");
-    drop OpNewRecord(__ref_1(1), 20i32, 0i32);
-    OpSetSingle(__ref_1(1), 4i32, 1234.56f32);
+    OpSetInt(__ref_1(1), 0i32, 0i32);
+    OpSetSingle(OpGetField(__ref_1(1), 0i32, 17i32), 4i32, 1234.56f32);
+    OpSetEnum(OpGetField(__ref_1(1), 0i32, 17i32), 0i32, 3u8(65535));
     OpSetInt(__ref_1(1), 20i32, 0i32);
-    _elm_2(65535):ref(boolean)["__ref_1"] = OpNewRecord(__ref_1(1), 22i32, 2i32);
-    OpSetLong(_elm_2(65535), 8i32, 9876543210i64);
-    OpSetEnum(_elm_2(65535), 0i32, 1u8(17));
-    OpFinishRecord(__ref_1(1), _elm_2(65535), 22i32, 2i32);
-    _elm_2(65535):ref(boolean)["__ref_1"] = OpNewRecord(__ref_1(1), 22i32, 2i32);
-    OpSetText(_elm_2(65535), 4i32, "An example sentence of text");
-    OpSetEnum(_elm_2(65535), 0i32, 4u8(17));
-    OpFinishRecord(__ref_1(1), _elm_2(65535), 22i32, 2i32);
-    _elm_2(65535):ref(boolean)["__ref_1"] = OpNewRecord(__ref_1(1), 22i32, 2i32);
-    OpSetFloat(_elm_2(65535), 8i32, 3.141592653589793f64);
-    OpSetEnum(_elm_2(65535), 0i32, 2u8(17));
-    OpFinishRecord(__ref_1(1), _elm_2(65535), 22i32, 2i32);
+    _elm_1(65535):ref(boolean)["__ref_1"] = OpNewRecord(__ref_1(1), 22i32, 2i32);
+    OpSetLong(_elm_1(65535), 8i32, 9876543210i64);
+    OpSetEnum(_elm_1(65535), 0i32, 1u8(65535));
+    OpFinishRecord(__ref_1(1), _elm_1(65535), 22i32, 2i32);
+    _elm_1(65535):ref(boolean)["__ref_1"] = OpNewRecord(__ref_1(1), 22i32, 2i32);
+    OpSetText(_elm_1(65535), 4i32, "An example sentence of text");
+    OpSetEnum(_elm_1(65535), 0i32, 4u8(65535));
+    OpFinishRecord(__ref_1(1), _elm_1(65535), 22i32, 2i32);
+    _elm_1(65535):ref(boolean)["__ref_1"] = OpNewRecord(__ref_1(1), 22i32, 2i32);
+    OpSetFloat(_elm_1(65535), 8i32, 3.141592653589793f64);
+    OpSetEnum(_elm_1(65535), 0i32, 2u8(65535));
+    OpFinishRecord(__ref_1(1), _elm_1(65535), 22i32, 2i32);
     __ref_1(1);
   }#Object(2):ref(Container)["__ref_1"];
 }#block(1):ref(Container)
@@ -91,52 +92,57 @@ byte-code for enum_field:fill() -> ref(Container)
    9[28]: ConstText(_value="testing") -> text
   18[44]: SetText(v1: ref(reference), fld=16, val: text)
   21[16]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
-  24[28]: NewRecord(data: ref(reference), parent_tp=20, fld=0) -> ref(reference)
-  29[28]: FreeStack(value=0, discard=12)
-  33[16]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
-  36[28]: ConstSingle(val=1234.56) -> single
-  41[32]: SetSingle(v1: ref(reference), fld=4, val: single)
-  44[16]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
-  47[28]: ConstInt(val=0) -> integer
-  52[32]: SetInt(v1: ref(reference), fld=20, val: integer)
-  55[16]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
-  58[28]: NewRecord(data: ref(reference), parent_tp=22, fld=2) -> ref(reference)
-  63[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
-  66[40]: ConstLong(val=9876543210) -> long
-  75[48]: SetLong(v1: ref(reference), fld=8, val: long)
-  78[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
-  81[40]: ConstEnum(val=1) -> boolean type=Content 17
-  83[41]: SetEnum(v1: ref(reference), fld=0, val: boolean)
-  86[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
-  89[40]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
-  92[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=22, fld=2)
-  97[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
- 100[40]: NewRecord(data: ref(reference), parent_tp=22, fld=2) -> ref(reference)
- 105[40]: PutRef(var[16], value: ref(reference))
- 108[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
- 111[40]: ConstText(_value="An example sentence of text") -> text
- 140[56]: SetText(v1: ref(reference), fld=4, val: text)
- 143[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
- 146[40]: ConstEnum(val=4) -> boolean type=Content 17
- 148[41]: SetEnum(v1: ref(reference), fld=0, val: boolean)
- 151[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
- 154[40]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
- 157[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=22, fld=2)
- 162[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
- 165[40]: NewRecord(data: ref(reference), parent_tp=22, fld=2) -> ref(reference)
- 170[40]: PutRef(var[16], value: ref(reference))
- 173[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
- 176[40]: ConstFloat(val=3.141592653589793) -> float
- 185[48]: SetFloat(v1: ref(reference), fld=8, val: float)
- 188[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
- 191[40]: ConstEnum(val=2) -> boolean type=Content 17
- 193[41]: SetEnum(v1: ref(reference), fld=0, val: boolean)
- 196[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
- 199[40]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_2[16]:ref(boolean)["__ref_1"]
- 202[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=22, fld=2)
- 207[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
- 210[40]: FreeStack(value=12, discard=24)
- 214[28]: Return(ret=0, value=12, discard=28) type=Container 22
+  24[28]: ConstInt(val=0) -> integer
+  29[32]: SetInt(v1: ref(reference), fld=0, val: integer)
+  32[16]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+  35[28]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Content 17
+  38[28]: ConstSingle(val=1234.56) -> single
+  43[32]: SetSingle(v1: ref(reference), fld=4, val: single)
+  46[16]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+  49[28]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Content 17
+  52[28]: ConstEnum(val=3) -> boolean
+  54[29]: SetEnum(v1: ref(reference), fld=0, val: boolean)
+  57[16]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+  60[28]: ConstInt(val=0) -> integer
+  65[32]: SetInt(v1: ref(reference), fld=20, val: integer)
+  68[16]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+  71[28]: NewRecord(data: ref(reference), parent_tp=22, fld=2) -> ref(reference)
+  76[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+  79[40]: ConstLong(val=9876543210) -> long
+  88[48]: SetLong(v1: ref(reference), fld=8, val: long)
+  91[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+  94[40]: ConstEnum(val=1) -> boolean
+  96[41]: SetEnum(v1: ref(reference), fld=0, val: boolean)
+  99[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+ 102[40]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+ 105[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=22, fld=2)
+ 110[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+ 113[40]: NewRecord(data: ref(reference), parent_tp=22, fld=2) -> ref(reference)
+ 118[40]: PutRef(var[16], value: ref(reference))
+ 121[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+ 124[40]: ConstText(_value="An example sentence of text") -> text
+ 153[56]: SetText(v1: ref(reference), fld=4, val: text)
+ 156[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+ 159[40]: ConstEnum(val=4) -> boolean
+ 161[41]: SetEnum(v1: ref(reference), fld=0, val: boolean)
+ 164[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+ 167[40]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+ 170[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=22, fld=2)
+ 175[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+ 178[40]: NewRecord(data: ref(reference), parent_tp=22, fld=2) -> ref(reference)
+ 183[40]: PutRef(var[16], value: ref(reference))
+ 186[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+ 189[40]: ConstFloat(val=3.141592653589793) -> float
+ 198[48]: SetFloat(v1: ref(reference), fld=8, val: float)
+ 201[28]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+ 204[40]: ConstEnum(val=2) -> boolean
+ 206[41]: SetEnum(v1: ref(reference), fld=0, val: boolean)
+ 209[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+ 212[40]: VarRef(var[16]) -> ref(reference) type=boolean 4 var=_elm_1[16]:ref(boolean)["__ref_1"]
+ 215[52]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=22, fld=2)
+ 220[28]: VarRef(var[4]) -> ref(reference) type=Container 22 var=__ref_1[4]:ref(Container)
+ 223[40]: FreeStack(value=12, discard=24)
+ 227[28]: Return(ret=0, value=12, discard=28) type=Container 22
 
 fn test() {#block(1):void
   __work_2(1):text = "";
@@ -220,52 +226,57 @@ Execute test:
  1112:[108] ConstText(_value="testing") -> "testing"[108]
  1121:[124] SetText(v1=ref(1,1,8)[96], fld=16, val="testing"[108])
  1124:[96] VarRef(var[84]) -> ref(1,1,8)={name:"testing"}[96]
- 1127:[108] NewRecord(data=ref(1,1,8)[96], parent_tp=20, fld=0) -> ref(1,1,8)[96]
- 1132:[108] FreeStack(value=0, discard=12)
- 1136:[96] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {}}[96]
- 1139:[108] ConstSingle(val=1234.56) -> 1234.56[108]
- 1144:[112] SetSingle(v1=ref(1,1,8)[96], fld=4, val=1234.56[108])
- 1147:[96] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56}}[96]
- 1150:[108] ConstInt(val=0) -> 0[108]
- 1155:[112] SetInt(v1=ref(1,1,8)[96], fld=20, val=0[108])
- 1158:[96] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56}}[96]
- 1161:[108] NewRecord(data=ref(1,1,8)[96], parent_tp=22, fld=2) -> ref(1,27,8)[96]
- 1166:[108] VarRef(var[96]) -> ref(1,27,8)=false[108]
- 1169:[120] ConstLong(val=9876543210) -> 9876543210[120]
- 1178:[128] SetLong(v1=ref(1,27,8)[108], fld=8, val=9876543210[120])
- 1181:[108] VarRef(var[96]) -> ref(1,27,8)=false[108]
- 1184:[120] ConstEnum(val=1) -> Long(1)[120]
- 1186:[121] SetEnum(v1=ref(1,27,8)[108], fld=0, val=1[120])
- 1189:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[]}[108]
- 1192:[120] VarRef(var[96]) -> ref(1,27,8)=true[120]
- 1195:[132] FinishRecord(data=ref(1,1,8)[108], rec=ref(1,27,8)[120], parent_tp=22, fld=2)
- 1200:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210}]}[108]
- 1203:[120] NewRecord(data=ref(1,1,8)[108], parent_tp=22, fld=2) -> ref(1,27,24)[108]
- 1208:[120] PutRef(var[96], value=ref(1,27,24)[108])
- 1211:[108] VarRef(var[96]) -> ref(1,27,24)=false[108]
- 1214:[120] ConstText(_value="An example sentence of text") -> "An example sentence of text"[120]
- 1243:[136] SetText(v1=ref(1,27,24)[108], fld=4, val="An example sentence of text"[120])
- 1246:[108] VarRef(var[96]) -> ref(1,27,24)=false[108]
- 1249:[120] ConstEnum(val=4) -> Text(4)[120]
- 1251:[121] SetEnum(v1=ref(1,27,24)[108], fld=0, val=4[120])
- 1254:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210}]}[108]
- 1257:[120] VarRef(var[96]) -> ref(1,27,24)=true[120]
- 1260:[132] FinishRecord(data=ref(1,1,8)[108], rec=ref(1,27,24)[120], parent_tp=22, fld=2)
- 1265:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"}]}[108]
- 1268:[120] NewRecord(data=ref(1,1,8)[108], parent_tp=22, fld=2) -> ref(1,27,40)[108]
- 1273:[120] PutRef(var[96], value=ref(1,27,40)[108])
- 1276:[108] VarRef(var[96]) -> ref(1,27,40)=false[108]
- 1279:[120] ConstFloat(val=3.141592653589793) -> 3.141592653589793[120]
- 1288:[128] SetFloat(v1=ref(1,27,40)[108], fld=8, val=3.141592653589793[120])
- 1291:[108] VarRef(var[96]) -> ref(1,27,40)=false[108]
- 1294:[120] ConstEnum(val=2) -> Float(2)[120]
- 1296:[121] SetEnum(v1=ref(1,27,40)[108], fld=0, val=2[120])
- 1299:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"}]}[108]
- 1302:[120] VarRef(var[96]) -> ref(1,27,40)=true[120]
- 1305:[132] FinishRecord(data=ref(1,1,8)[108], rec=ref(1,27,40)[120], parent_tp=22, fld=2)
- 1310:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"},Float {v:3.141592653589793}]}[108]
- 1313:[120] FreeStack(value=12, discard=24)
- 1317:[108] Return(ret=1333[80], value=12, discard=28) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"},Float {v:3.141592653589793}]}[80]
+ 1127:[108] ConstInt(val=0) -> 0[108]
+ 1132:[112] SetInt(v1=ref(1,1,8)[96], fld=0, val=0[108])
+ 1135:[96] VarRef(var[84]) -> ref(1,1,8)={name:"testing"}[96]
+ 1138:[108] GetField(v1=ref(1,1,8)[96], fld=0) -> ref(1,1,8)=null[96]
+ 1141:[108] ConstSingle(val=1234.56) -> 1234.56[108]
+ 1146:[112] SetSingle(v1=ref(1,1,8)[96], fld=4, val=1234.56[108])
+ 1149:[96] VarRef(var[84]) -> ref(1,1,8)={name:"testing"}[96]
+ 1152:[108] GetField(v1=ref(1,1,8)[96], fld=0) -> ref(1,1,8)=null[96]
+ 1155:[108] ConstEnum(val=3) -> unknown(3)[108]
+ 1157:[109] SetEnum(v1=ref(1,1,8)[96], fld=0, val=3[108])
+ 1160:[96] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56}}[96]
+ 1163:[108] ConstInt(val=0) -> 0[108]
+ 1168:[112] SetInt(v1=ref(1,1,8)[96], fld=20, val=0[108])
+ 1171:[96] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56}}[96]
+ 1174:[108] NewRecord(data=ref(1,1,8)[96], parent_tp=22, fld=2) -> ref(1,27,8)[96]
+ 1179:[108] VarRef(var[96]) -> ref(1,27,8)=false[108]
+ 1182:[120] ConstLong(val=9876543210) -> 9876543210[120]
+ 1191:[128] SetLong(v1=ref(1,27,8)[108], fld=8, val=9876543210[120])
+ 1194:[108] VarRef(var[96]) -> ref(1,27,8)=false[108]
+ 1197:[120] ConstEnum(val=1) -> unknown(1)[120]
+ 1199:[121] SetEnum(v1=ref(1,27,8)[108], fld=0, val=1[120])
+ 1202:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[]}[108]
+ 1205:[120] VarRef(var[96]) -> ref(1,27,8)=true[120]
+ 1208:[132] FinishRecord(data=ref(1,1,8)[108], rec=ref(1,27,8)[120], parent_tp=22, fld=2)
+ 1213:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210}]}[108]
+ 1216:[120] NewRecord(data=ref(1,1,8)[108], parent_tp=22, fld=2) -> ref(1,27,24)[108]
+ 1221:[120] PutRef(var[96], value=ref(1,27,24)[108])
+ 1224:[108] VarRef(var[96]) -> ref(1,27,24)=false[108]
+ 1227:[120] ConstText(_value="An example sentence of text") -> "An example sentence of text"[120]
+ 1256:[136] SetText(v1=ref(1,27,24)[108], fld=4, val="An example sentence of text"[120])
+ 1259:[108] VarRef(var[96]) -> ref(1,27,24)=false[108]
+ 1262:[120] ConstEnum(val=4) -> unknown(4)[120]
+ 1264:[121] SetEnum(v1=ref(1,27,24)[108], fld=0, val=4[120])
+ 1267:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210}]}[108]
+ 1270:[120] VarRef(var[96]) -> ref(1,27,24)=true[120]
+ 1273:[132] FinishRecord(data=ref(1,1,8)[108], rec=ref(1,27,24)[120], parent_tp=22, fld=2)
+ 1278:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"}]}[108]
+ 1281:[120] NewRecord(data=ref(1,1,8)[108], parent_tp=22, fld=2) -> ref(1,27,40)[108]
+ 1286:[120] PutRef(var[96], value=ref(1,27,40)[108])
+ 1289:[108] VarRef(var[96]) -> ref(1,27,40)=false[108]
+ 1292:[120] ConstFloat(val=3.141592653589793) -> 3.141592653589793[120]
+ 1301:[128] SetFloat(v1=ref(1,27,40)[108], fld=8, val=3.141592653589793[120])
+ 1304:[108] VarRef(var[96]) -> ref(1,27,40)=false[108]
+ 1307:[120] ConstEnum(val=2) -> unknown(2)[120]
+ 1309:[121] SetEnum(v1=ref(1,27,40)[108], fld=0, val=2[120])
+ 1312:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"}]}[108]
+ 1315:[120] VarRef(var[96]) -> ref(1,27,40)=true[120]
+ 1318:[132] FinishRecord(data=ref(1,1,8)[108], rec=ref(1,27,40)[120], parent_tp=22, fld=2)
+ 1323:[108] VarRef(var[84]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"},Float {v:3.141592653589793}]}[108]
+ 1326:[120] FreeStack(value=12, discard=24)
+ 1330:[108] Return(ret=1346[80], value=12, discard=28) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"},Float {v:3.141592653589793}]}[80]
    10:[92] ClearText(var[32])
    13:[92] ConstText(_value="Container: ") -> "Container: "[92]
    26:[108] AppendText(var[32], v1="Container: "[92])

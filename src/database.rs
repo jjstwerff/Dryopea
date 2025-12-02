@@ -34,7 +34,6 @@ pub struct Type {
     parents: BTreeSet<u16>, // the parent record types of Struct, Enum or EnumValue
     complex: bool,          // Is this type normally written to multiple lines.
     linked: bool,           // Is this type linked to in a structure (not a direct part of it)
-    main: bool,             // This is a main structure type
     size: u16,
     align: u8,
 }
@@ -50,7 +49,6 @@ impl Type {
             linked: false,
             size,
             align: size as u8,
-            main: false,
         }
     }
 
@@ -64,7 +62,6 @@ impl Type {
             linked: false,
             size: 4,
             align: 4,
-            main: false,
         }
     }
 
@@ -504,10 +501,6 @@ impl Stores {
         tp.align = u8::MAX;
         self.types.push(tp);
         num
-    }
-
-    pub fn main(&mut self, tp: u16) {
-        self.types[tp as usize].main = true;
     }
 
     #[must_use]

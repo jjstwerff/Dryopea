@@ -494,8 +494,6 @@ pub enum DefType {
     EnumValue,
     // A structure, with possibly conditional fields in the childs.
     Struct,
-    // A main structure of a store. Can still be used elsewhere too.
-    Main,
     // A vector with a unique content (can be a base Type, Struct, Enum or Vector)
     Vector,
     // A type definition, for now only the base types.
@@ -1091,7 +1089,7 @@ impl Data {
         let name = format!("main_vector<{}>", tp.name(self));
         let d_nr = self.def_nr(&name);
         if d_nr == u32::MAX {
-            let vd = self.add_def(&name, lexer.pos(), DefType::Main);
+            let vd = self.add_def(&name, lexer.pos(), DefType::Struct);
             self.add_attribute(
                 lexer,
                 vd,

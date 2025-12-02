@@ -8,7 +8,6 @@
 use crate::data::{Data, DefType, I32, Type, Value};
 use crate::database::Stores;
 use crate::diagnostics::Level;
-use crate::keys::Content;
 use crate::lexer::Lexer;
 
 /// Set the correct type and initial size in definitions.
@@ -82,7 +81,7 @@ fn copy_unknown_fields(data: &mut Data, d: u32) {
 pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, start_def: u32) {
     // Determine the actual type of structs regarding their use
     for d in start_def..data.definitions() {
-        if matches!(data.def_type(d), DefType::Struct | DefType::Main) {
+        if matches!(data.def_type(d), DefType::Struct) {
             data.definitions[d as usize].returned = Type::Reference(d, Vec::new());
         }
     }
@@ -101,7 +100,7 @@ pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, s
                     data.set_returned(d, data.def(was).returned.clone());
                 }
             }
-            DefType::Struct | DefType::Main => {
+            DefType::Struct => {
                 copy_unknown_fields(data, d);
             }
             DefType::Enum => {
@@ -125,7 +124,7 @@ pub fn actual_types(data: &mut Data, database: &mut Stores, lexer: &mut Lexer, s
 pub fn fill_all(data: &mut Data, database: &mut Stores, start_def: u32) {
     for d_nr in start_def..data.definitions() {
         if ((matches!(data.def_type(d_nr), DefType::EnumValue) && data.attributes(d_nr) > 0)
-            || matches!(data.def_type(d_nr), DefType::Struct | DefType::Main))
+            || matches!(data.def_type(d_nr), DefType::Struct))
             && !database.has_type(&data.def(d_nr).name)
         {
             fill_database(data, database, d_nr);
@@ -147,19 +146,9 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
         }
     }
     let s_type = database.structure(&data.def(d_nr).name, enum_value);
-    if data.def_type(d_nr) == DefType::Main {
-        database.main(s_type);
-    }
     data.definitions[d_nr as usize].known_type = s_type;
     if data.def_type(d_nr) == DefType::EnumValue {
-        let b = database.byte(0, false);
-        let f = database.field(s_type, "enum", b);
         let e_tp = data.def(d_nr).parent;
-        for (a_nr, a) in data.def(e_tp).attributes.iter().enumerate() {
-            if a.name == data.def(d_nr).name {
-                database.set_default(s_type, f, Content::Long(a_nr as i64 + 1));
-            }
-        }
         let enum_tp = data.def(e_tp).known_type;
         database.enum_value(enum_tp, &data.def(d_nr).name, data.def(d_nr).known_type);
     }
@@ -213,6 +202,7 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
                 Type::Spacial(content, key_fields, _) => {
                     database.spacial(data.def(content).known_type, &key_fields)
                 }
+                Type::Enum(t, _, _) if data.def(t).name == "enumerate" => database.name("byte"),
                 _ => data.def(t_nr).known_type,
             };
             database.field(s_type, &data.attr_name(d_nr, a_nr), tp);
