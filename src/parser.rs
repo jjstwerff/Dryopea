@@ -1368,13 +1368,13 @@ impl Parser {
             self.data.set_returned(self.context, result);
         }
         if !self.lexer.has_token(";") {
-            for (v_nr, a) in arguments.iter().enumerate() {
+            for (a_nr, a) in arguments.iter().enumerate() {
                 if self.first_pass {
                     let v_nr = self.create_var(&a.name, &a.typedef);
                     self.vars.become_argument(v_nr);
                     self.var_usages(v_nr, false);
                 } else {
-                    self.change_var_type(v_nr as u16, &a.typedef);
+                    self.change_var_type(a_nr as u16, &a.typedef);
                 }
             }
             self.parse_code();
@@ -3575,10 +3575,10 @@ impl Parser {
             t = self.data.def(d_nr).returned.clone();
             if self.data.def_type(d_nr) == DefType::Function {
                 t = Type::Routine(d_nr);
-            } else if matches!(self.data.def_type(d_nr), DefType::Struct | DefType::Main) {
-                if !self.lexer.token("{") {
-                    return Type::Unknown(0);
-                }
+            } else if matches!(
+                self.data.def_type(d_nr),
+                DefType::Struct | DefType::Main | DefType::EnumValue
+            ) && self.lexer.has_token("{") {
                 return self.parse_object(d_nr, code);
             } else if self.data.def_type(d_nr) == DefType::Constant {
                 *code = self.data.def(d_nr).code.clone();
