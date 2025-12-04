@@ -14,29 +14,27 @@ Type 17:vector<integer>[4/4]:Vector(0)
 Type 18:main_vector<integer>[4/4]:
     vector:vector<integer>[0]
 
-fn add(r:&vector<integer>, val:integer) {#block(1):void
+fn n_add(r:&vector<integer>, val:integer) {#block(1):void
   [2] _elm_1(1):ref(boolean)["r"] = OpNewRecord(r(0), 17i32, 65535i32);
   OpSetInt(_elm_1(1), 0i32, val(0));
   OpFinishRecord(r(0), _elm_1(1), 17i32, 65535i32);
 }#block(1):void
 
-byte-code for mutable_vector:add(r: &vector<integer>[0], val: integer[12])
+byte-code for mutable_vector:n_add(r: &vector<integer>[0], val: integer[12])
    0[16]: return-address
    0[20]: [2] VarRef(var[0]) -> ref(reference) var=r[0]:&vector<integer>
-   3[32]: GetDbRef(r: ref(reference)) -> ref(reference)
-   4: Goto(step=0)
+   3[32]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
    6[32]: NewRecord(data: ref(reference), parent_tp=17, fld=65535) -> ref(reference)
   11[32]: VarRef(var[20]) -> ref(reference) type=boolean 4 var=_elm_1[20]:ref(boolean)["r"]
   14[44]: VarInt(var[12]) -> integer var=val[12]:integer
   17[48]: SetInt(v1: ref(reference), fld=0, val: integer)
   20[32]: VarRef(var[0]) -> ref(reference) var=r[0]:&vector<integer>
-  23[44]: GetDbRef(r: ref(reference)) -> ref(reference)
-  24: Goto(step=0)
+  23[44]: GetDbRef(r: ref(reference), fld=0) -> ref(reference)
   26[44]: VarRef(var[20]) -> ref(reference) type=boolean 4 var=_elm_1[20]:ref(boolean)["r"]
   29[56]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=65535)
   34[32]: Return(ret=16, value=0, discard=32)
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_1(1):ref(main_vector<integer>) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
@@ -47,8 +45,8 @@ fn test() {#block(1):void
     _elm_1(2):ref(boolean)["v"] = OpNewRecord(v(2), 17i32, 65535i32);
     OpSetInt(_elm_1(2), 0i32, 1i32);
     OpFinishRecord(v(2), _elm_1(2), 17i32, 65535i32);
-    add(OpCreateRef(v(2)), 2i32);
-    add(OpCreateRef(v(2)), 3i32);
+    n_add(OpCreateRef(v(2)), 2i32);
+    n_add(OpCreateRef(v(2)), 3i32);
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
       OpFormatDatabase(__work_1(1), v(2), 17i32, false);
@@ -67,7 +65,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for mutable_vector:test()
+byte-code for mutable_vector:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<integer>)
    1[16]: Text() var=__work_2[16]:text
@@ -89,10 +87,10 @@ byte-code for mutable_vector:test()
   51[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=65535)
   56[112]: CreateRef(var[88]) -> ref(reference)
   59[124]: ConstInt(val=2) -> integer
-  64[128]: Call(size=0, fn=add)
+  64[128]: Call(size=0, fn=n_add)
   71[112]: CreateRef(var[88]) -> ref(reference)
   74[124]: ConstInt(val=3) -> integer
-  79[128]: Call(size=0, fn=add)
+  79[128]: Call(size=0, fn=n_add)
   86[112]: ClearText(var[40]) var=__work_1[40]:text
   89[112]: ConstText(_value="") -> text
   91[128]: VarVector(var[88]) -> vector type=vector<integer> 17 var=v[88]:vector<integer>["__ref_1"]
@@ -144,33 +142,29 @@ Execute test:
    51:[140] FinishRecord(data=ref(1,1,8)[116], rec=ref(1,5,8)[128], parent_tp=17, fld=65535)
    56:[116] CreateRef(var[92]) -> ref(0,1,100)[116]
    59:[128] ConstInt(val=2) -> 2[128]
-   64:[132] Call(size=0, fn=add)
+   64:[132] Call(size=0, fn=n_add)
  1103:[136] VarRef(var[116]) -> ref(0,1,100)[136]
- 1106:[148] GetDbRef(r=ref(0,1,100)[136]) -> ref(1,1,8)[136]
- 1107:[148] Goto(jump=-7082)
+ 1106:[148] GetDbRef(r=ref(0,1,100)[136], fld=0) -> ref(1,1,8)[136]
  1109:[148] NewRecord(data=ref(1,1,8)[136], parent_tp=17, fld=65535) -> ref(1,5,12)[136]
  1114:[148] VarRef(var[136]) -> ref(1,5,12)=false[148]
  1117:[160] VarInt(var[128]) -> 2[160]
  1120:[164] SetInt(v1=ref(1,5,12)[148], fld=0, val=2[160])
  1123:[148] VarRef(var[116]) -> ref(0,1,100)[148]
- 1126:[160] GetDbRef(r=ref(0,1,100)[148]) -> ref(1,1,8)[148]
- 1127:[160] Goto(jump=-15254)
+ 1126:[160] GetDbRef(r=ref(0,1,100)[148], fld=0) -> ref(1,1,8)[148]
  1129:[160] VarRef(var[136]) -> ref(1,5,12)=true[160]
  1132:[172] FinishRecord(data=ref(1,1,8)[148], rec=ref(1,5,12)[160], parent_tp=17, fld=65535)
  1137:[148] Return(ret=1214[132], value=0, discard=32)
    71:[116] CreateRef(var[92]) -> ref(0,1,100)[116]
    74:[128] ConstInt(val=3) -> 3[128]
-   79:[132] Call(size=0, fn=add)
+   79:[132] Call(size=0, fn=n_add)
  1103:[136] VarRef(var[116]) -> ref(0,1,100)[136]
- 1106:[148] GetDbRef(r=ref(0,1,100)[136]) -> ref(1,1,8)[136]
- 1107:[148] Goto(jump=-7082)
+ 1106:[148] GetDbRef(r=ref(0,1,100)[136], fld=0) -> ref(1,1,8)[136]
  1109:[148] NewRecord(data=ref(1,1,8)[136], parent_tp=17, fld=65535) -> ref(1,5,16)[136]
  1114:[148] VarRef(var[136]) -> ref(1,5,16)=false[148]
  1117:[160] VarInt(var[128]) -> 3[160]
  1120:[164] SetInt(v1=ref(1,5,16)[148], fld=0, val=3[160])
  1123:[148] VarRef(var[116]) -> ref(0,1,100)[148]
- 1126:[160] GetDbRef(r=ref(0,1,100)[148]) -> ref(1,1,8)[148]
- 1127:[160] Goto(jump=-15254)
+ 1126:[160] GetDbRef(r=ref(0,1,100)[148], fld=0) -> ref(1,1,8)[148]
  1129:[160] VarRef(var[136]) -> ref(1,5,16)=true[160]
  1132:[172] FinishRecord(data=ref(1,1,8)[148], rec=ref(1,5,16)[160], parent_tp=17, fld=65535)
  1137:[148] Return(ret=1229[132], value=0, discard=32)

@@ -12,7 +12,7 @@ pub fn test() {
         "Test failed {test_value} != \"[\"aa\",\"bb\"]\""
     );
 }
-fn fill(result:vector<text>) -> vector<text>["??"] {#block(1):vector<text>["result"]
+fn n_fill(result:vector<text>) -> vector<text>["??"] {#block(1):vector<text>["result"]
   [3] _elm_1(1):ref(boolean)["result"] = OpNewRecord(result(0), 7i32, 65535i32);
   OpSetText(_elm_1(1), 0i32, "aa");
   OpFinishRecord(result(0), _elm_1(1), 7i32, 65535i32);
@@ -22,7 +22,7 @@ fn fill(result:vector<text>) -> vector<text>["??"] {#block(1):vector<text>["resu
   [5] result(0);
 }#block(1):vector<text>["result"]
 
-byte-code for fill_result:fill(result: vector<text>[0]) -> vector<text>["result"]
+byte-code for fill_result:n_fill(result: vector<text>[0]) -> vector<text>["result"]
    0[12]: return-address
    0[16]: [3] VarVector(var[0]) -> vector type=vector<text> 7 var=result[0]:vector<text>["result"]
    3[28]: NewRecord(data: ref(reference), parent_tp=7, fld=65535) -> ref(reference)
@@ -43,12 +43,12 @@ byte-code for fill_result:fill(result: vector<text>[0]) -> vector<text>["result"
   58[40]: [5] VarVector(var[0]) -> vector type=vector<text> 7 var=result[0]:vector<text>["result"]
   61[52]: Return(ret=12, value=12, discard=52) type=vector<text> 7
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_1(1):vector<text> = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
   [9] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
-    t(2):vector<text>["__ref_1"] = fill(__ref_1(1));
+    t(2):vector<text>["__ref_1"] = n_fill(__ref_1(1));
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
       OpFormatDatabase(__work_1(1), t(2), 7i32, false);
@@ -67,7 +67,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for fill_result:test()
+byte-code for fill_result:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:vector<text>
    1[16]: Database(var[4], db_tp=14)
@@ -81,7 +81,7 @@ byte-code for fill_result:test()
   31[40]: Text() var=__work_1[40]:text
   32[64]: [9] Text() var=test_value[64]:text["__work_1"]
   33[88]: VarVector(var[4]) -> vector type=vector<text> 7 var=__ref_1[4]:vector<text>
-  36[100]: Call(size=0, fn=fill)
+  36[100]: Call(size=0, fn=n_fill)
   43[100]: ClearText(var[40]) var=__work_1[40]:text
   46[100]: ConstText(_value="") -> text
   48[116]: VarVector(var[88]) -> vector type=vector<text> 7 var=t[88]:vector<text>["__ref_1"]
@@ -125,7 +125,7 @@ Execute test:
    31:[44] [9] Text()
    32:[68] Text()
    33:[92] VarVector(var[8]) -> ref(1,1,12)=[][92]
-   36:[104] Call(size=0, fn=fill)
+   36:[104] Call(size=0, fn=n_fill)
  1103:[108] VarVector(var[92]) -> ref(1,1,12)=[][108]
  1106:[120] NewRecord(data=ref(1,1,12)[108], parent_tp=7, fld=65535) -> ref(1,5,8)[108]
  1111:[120] VarRef(var[108]) -> ref(1,5,8)=false[120]

@@ -5,11 +5,11 @@ pub fn test() {
         "Test failed {test_value} != \"\""
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [2] test_value(1):text = {#block(2):text
     a(2):text = "12";
-    if OpEqInt(_tp_text_len(a(2)), 2i32) {#if(3):text
+    if OpEqInt(t_4text_len(a(2)), 2i32) {#if(3):text
       OpConvTextFromNull();
     }#if(3):text else {#block(4):text
       "error";
@@ -26,7 +26,7 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for if_typing:test()
+byte-code for if_typing:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] Text() var=test_value[28]:text
@@ -34,7 +34,7 @@ byte-code for if_typing:test()
    3[76]: ConstText(_value="12") -> text
    7[92]: AppendText(var[52], v1: text)
   10[76]: VarText(var[52]) -> text var=a[52]:text
-  13[92]: Call(size=0, fn=_tp_text_len)
+  13[92]: Call(size=0, fn=t_4text_len)
   20[80]: ConstInt(val=2) -> integer
   25[84]: EqInt(v1: integer, v2: integer) -> boolean
   26[77]: GotoFalseWord(jump=33, if_false: boolean)
@@ -70,7 +70,7 @@ Execute test:
     3:[80] ConstText(_value="12") -> "12"[80]
     7:[96] AppendText(var[56], v1="12"[80])
    10:[80] VarText(var[56]) -> "12"[80]
-   13:[96] Call(size=0, fn=_tp_text_len)
+   13:[96] Call(size=0, fn=t_4text_len)
   318:[100] ArgText(var[80]) -> "12"[100]
   321:[116] LengthText(v1="12"[100]) -> 2[100]
   322:[104] Return(ret=1123[96], value=4, discard=24) -> 2[80]

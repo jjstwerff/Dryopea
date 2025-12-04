@@ -357,3 +357,13 @@ fn data(n: text) -> vector<Data> {
 fn text_vector() {
     code!("fn test() { op = [\"+=\", \"*=\"]; for o in op { print(o); }; }");
 }
+
+#[test]
+fn get_object_value() {
+    code!(
+        "struct T { n: text, v: u16 }
+    struct N { d: vector<T>, h: hash<T[n]> }"
+    )
+    .expr("s = N { d:[T {n: \"a\", v:12} ] }; \"{s.d[0]} v={s.d[0].v}\"")
+    .result(Value::str("{n:\"a\",v:12} v=12"));
+}

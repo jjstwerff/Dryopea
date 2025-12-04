@@ -158,14 +158,14 @@ pub enum Type {
     /// Iterator with a certain result, the first type is the result per step.
     /// The second is the internal iterator value or `Type::Null` for structure iterator: `(i32,i32)`
     Iterator(Box<Type>, Box<Type>),
-    /// An ordered vector on a record, second is the key [field number, ascending]
-    Sorted(u32, Vec<(u16, bool)>, Vec<u16>),
-    /// An index towards other records. The key is [field number, ascending]
-    Index(u32, Vec<(u16, bool)>, Vec<u16>),
-    /// An index towards other records. The second is [field number]
-    Spacial(u32, Vec<u16>, Vec<u16>),
-    /// A hash table towards other records. The second is the hash function.
-    Hash(u32, Vec<u16>, Vec<u16>),
+    /// An ordered vector on a record, second is the key [field name, ascending]
+    Sorted(u32, Vec<(String, bool)>, Vec<u16>),
+    /// An index towards other records. The key is [field name, ascending]
+    Index(u32, Vec<(String, bool)>, Vec<u16>),
+    /// An index towards other records. The second is [field name]
+    Spacial(u32, Vec<String>, Vec<u16>),
+    /// A hash table towards other records. The second is the hash function per [field name].
+    Hash(u32, Vec<String>, Vec<u16>),
     /// A function reference allowing for closures. Argument types and results.
     Function(Vec<Type>, Box<Type>),
     /// A rewritten type into append statements (mostly Text or structures)
@@ -289,6 +289,7 @@ impl Type {
     pub fn is_equal(&self, other: &Type) -> bool {
         match (self, other) {
             (Type::RefVar(s), Type::RefVar(o)) => return s.is_equal(o),
+            (Type::Enum(s, s_tp, _), Type::Enum(o, o_tp, _)) => return *s == *o && *s_tp == *o_tp,
             (Type::Reference(r, _), Type::Reference(o, _)) => return r == o,
             (Type::Vector(r, _), Type::Vector(o, _)) => return r.is_equal(o),
             (Type::Hash(r, rf, _), Type::Hash(o, of, _))
@@ -553,6 +554,25 @@ impl Definition {
                 .next()
                 .unwrap_or_default()
                 .is_uppercase()
+    }
+
+    #[must_use]
+    pub fn original_name(&self) -> String {
+        if self.def_type == DefType::Function {
+            if self.name.starts_with("t_") {
+                if let Ok(nr) = self.name[2..4].parse::<u8>() {
+                    self.name[5 + nr as usize..].to_string()
+                } else if let Ok(nr) = self.name[2..3].parse::<u8>() {
+                    self.name[4 + nr as usize..].to_string()
+                } else {
+                    self.name[2..].to_string()
+                }
+            } else {
+                self.name[2..].to_string()
+            }
+        } else {
+            self.name.clone()
+        }
     }
 
     #[must_use]
@@ -963,6 +983,9 @@ impl Data {
 
     #[must_use]
     pub fn attr_mutable(&self, d_nr: u32, a_nr: usize) -> bool {
+        if a_nr == usize::MAX {
+            return false;
+        }
         self.definitions[d_nr as usize].attributes[a_nr].mutable
     }
 
@@ -976,7 +999,7 @@ impl Data {
     When the return type cannot be parsed.
     */
     pub fn add_fn(&mut self, lexer: &mut Lexer, fn_name: &str, arguments: &[Argument]) -> u32 {
-        let mut name = fn_name.to_string();
+        let mut name = String::new();
         let is_self = !arguments.is_empty() && arguments[0].name == "self";
         let is_both = !arguments.is_empty() && arguments[0].name == "both";
         if is_self || is_both {
@@ -989,14 +1012,30 @@ impl Data {
                     arguments[0].name
                 );
             } else {
-                name = format!("_tp_{}_{fn_name}", self.def(type_nr).name);
+                name = format!(
+                    "t_{}{}_{fn_name}",
+                    self.def(type_nr).name.len(),
+                    self.def(type_nr).name
+                );
             }
+        } else {
+            name = format!("n_{fn_name}");
+        }
+        let o_nr = self.def_nr(fn_name);
+        if o_nr != u32::MAX && self.def(o_nr).def_type != DefType::Dynamic {
+            diagnostic!(
+                lexer,
+                Level::Error,
+                "Cannot redefine {:?} {fn_name} from {}",
+                self.def_type(o_nr),
+                self.def(o_nr).position
+            );
         }
         let mut d_nr = self.def_nr(&name);
         if d_nr != u32::MAX {
             diagnostic!(
                 lexer,
-                Level::Error,
+                Level::Fatal,
                 "Cannot redefine {:?} {fn_name}",
                 self.def_type(d_nr)
             );
@@ -1044,10 +1083,33 @@ impl Data {
         let is_both = !arguments.is_empty() && arguments[0].name == "both";
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].typedef);
-            let name = format!("_tp_{}_{fn_name}", self.def(type_nr).name);
+            let name = format!(
+                "t_{}{}_{fn_name}",
+                self.def(type_nr).name.len(),
+                self.def(type_nr).name
+            );
             self.source_nr(self.definitions[type_nr as usize].source, &name)
         } else {
-            self.def_nr(fn_name)
+            self.def_nr(&format!("n_{fn_name}"))
+        }
+    }
+
+    #[must_use]
+    pub fn find_fn(&self, fn_name: &str, tp: &Type) -> u32 {
+        if matches!(tp, Type::Unknown(_)) {
+            return self.def_nr(&format!("n_{fn_name}"));
+        }
+        let type_nr = self.type_def_nr(tp);
+        let name = format!(
+            "t_{}{}_{fn_name}",
+            self.def(type_nr).name.len(),
+            self.def(type_nr).name
+        );
+        let d_nr = self.def_nr(&name);
+        if d_nr == u32::MAX {
+            self.def_nr(&format!("n_{fn_name}"))
+        } else {
+            d_nr
         }
     }
 

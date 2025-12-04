@@ -26,7 +26,7 @@ Type 19:Object[5/4]:
     a:vector<integer>[0]
     b:Gender[4]
 
-fn sum(o:Object) -> integer {#block(1):integer
+fn n_sum(o:Object) -> integer {#block(1):integer
   [4] r(1):integer = 0i32;
   [5] {#For block(2):void
     _vector_1(2):vector<integer>["o"] = OpGetField(o(0), 0i32, 17i32);
@@ -47,7 +47,7 @@ fn sum(o:Object) -> integer {#block(1):integer
   [6] r(1);
 }#block(1):integer
 
-byte-code for special_fields:sum(o: ref(Object)[0]) -> integer
+byte-code for special_fields:n_sum(o: ref(Object)[0]) -> integer
    0[12]: return-address
    0[16]: [4] ConstInt(val=0) -> integer var=r[16]:integer
    5[20]: [5] VarRef(var[0]) -> ref(reference) type=Object 19 var=o[0]:ref(Object)
@@ -77,7 +77,7 @@ byte-code for special_fields:sum(o: ref(Object)[0]) -> integer
   76[20]: [6] VarInt(var[16]) -> integer var=r[16]:integer
   79[24]: Return(ret=12, value=4, discard=24) type=integer 0
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [10] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
@@ -95,7 +95,7 @@ fn test() {#block(1):void
     OpFinishRecord(o(2), _elm_1(2), 19i32, 0i32);
     OpSetEnum(o(2), 4i32, 3u8(18));
     [11] _elm_2(2):ref(boolean)["o"] = OpNewRecord(o(2), 19i32, 0i32);
-    OpSetInt(_elm_2(2), 0i32, sum(o(2)));
+    OpSetInt(_elm_2(2), 0i32, n_sum(o(2)));
     OpFinishRecord(o(2), _elm_2(2), 19i32, 0i32);
     [12] {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
@@ -115,7 +115,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for special_fields:test()
+byte-code for special_fields:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
@@ -158,7 +158,7 @@ byte-code for special_fields:test()
  127[112]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
  132[112]: VarRef(var[100]) -> ref(reference) type=boolean 4 var=_elm_2[100]:ref(boolean)["o"]
  135[124]: VarRef(var[76]) -> ref(reference) type=Object 19 var=o[76]:ref(Object)
- 138[136]: Call(size=0, fn=sum)
+ 138[136]: Call(size=0, fn=n_sum)
  145[128]: SetInt(v1: ref(reference), fld=0, val: integer)
  148[112]: VarRef(var[76]) -> ref(reference) type=Object 19 var=o[76]:ref(Object)
  151[124]: VarRef(var[100]) -> ref(reference) type=boolean 4 var=_elm_2[100]:ref(boolean)["o"]
@@ -235,7 +235,7 @@ Execute test:
   127:[116] NewRecord(data=ref(1,1,8)[104], parent_tp=19, fld=0) -> ref(1,6,20)[104]
   132:[116] VarRef(var[104]) -> ref(1,6,20)=false[116]
   135:[128] VarRef(var[80]) -> ref(1,1,8)={a:[1,4,3],b:Fluid}[128]
-  138:[140] Call(size=0, fn=sum)
+  138:[140] Call(size=0, fn=n_sum)
  1103:[144] ConstInt(val=0) -> 0[144]
  1108:[148] VarRef(var[128]) -> ref(1,1,8)={a:[1,4,3],b:Fluid}[148]
  1111:[160] GetField(v1=ref(1,1,8)[148], fld=0) -> ref(1,1,8)=[1,4,3][148]

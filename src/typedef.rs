@@ -153,9 +153,6 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
         database.enum_value(enum_tp, &data.def(d_nr).name, data.def(d_nr).known_type);
     }
     for a_nr in 0..data.attributes(d_nr) {
-        if !data.attr_mutable(d_nr, a_nr) {
-            continue;
-        }
         let a_type = data.attr_type(d_nr, a_nr);
         let t_nr = data.type_elm(&a_type);
         let nullable = data.attr_nullable(d_nr, a_nr);
@@ -190,22 +187,60 @@ fn fill_database(data: &mut Data, database: &mut Stores, d_nr: u32) {
                         database.name("integer")
                     }
                 }
-                Type::Hash(content, key_fields, _) => {
-                    database.hash(data.def(content).known_type, &key_fields)
+                Type::Hash(c_nr, key_fields, _) => {
+                    let mut c_tp = data.def(c_nr).known_type;
+                    if c_tp == u16::MAX {
+                        fill_database(data, database, c_nr);
+                        c_tp = data.def(c_nr).known_type;
+                    }
+                    set_mutable(data, c_nr, &key_fields);
+                    database.hash(c_tp, &key_fields)
                 }
-                Type::Index(content, key_fields, _) => {
-                    database.index(data.def(content).known_type, &key_fields)
+                Type::Index(c_nr, key_fields, _) => {
+                    let mut c_tp = data.def(c_nr).known_type;
+                    if c_tp == u16::MAX {
+                        fill_database(data, database, c_nr);
+                        c_tp = data.def(c_nr).known_type;
+                    }
+                    set_mutable_(data, c_nr, &key_fields);
+                    database.index(c_tp, &key_fields)
                 }
-                Type::Sorted(content, key_fields, _) => {
-                    database.sorted(data.def(content).known_type, &key_fields)
+                Type::Sorted(c_nr, key_fields, _) => {
+                    let mut c_tp = data.def(c_nr).known_type;
+                    if c_tp == u16::MAX {
+                        fill_database(data, database, c_nr);
+                        c_tp = data.def(c_nr).known_type;
+                    }
+                    set_mutable_(data, c_nr, &key_fields);
+                    database.sorted(c_tp, &key_fields)
                 }
-                Type::Spacial(content, key_fields, _) => {
-                    database.spacial(data.def(content).known_type, &key_fields)
+                Type::Spacial(c_nr, key_fields, _) => {
+                    let mut c_tp = data.def(c_nr).known_type;
+                    if c_tp == u16::MAX {
+                        fill_database(data, database, c_nr);
+                        c_tp = data.def(c_nr).known_type;
+                    }
+                    set_mutable(data, c_nr, &key_fields);
+                    database.spacial(c_tp, &key_fields)
                 }
                 Type::Enum(t, _, _) if data.def(t).name == "enumerate" => database.name("byte"),
                 _ => data.def(t_nr).known_type,
             };
             database.field(s_type, &data.attr_name(d_nr, a_nr), tp);
         }
+    }
+}
+
+fn set_mutable(data: &mut Data, on_d: u32, fields: &[String]) {
+    for f in fields {
+        let a_nr = data.attr(on_d, f);
+        data.definitions[on_d as usize].attributes[a_nr].mutable = false;
+    }
+}
+
+fn set_mutable_(data: &mut Data, on_d: u32, fields: &[(String, bool)]) {
+    for f in fields {
+        let a_nr = data.attr(on_d, &f.0);
+        data.definitions[on_d as usize].attributes[a_nr].mutable = false;
     }
 }

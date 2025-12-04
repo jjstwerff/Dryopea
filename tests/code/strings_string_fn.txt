@@ -13,7 +13,7 @@ pub fn test() {
         "Test failed {test_value} != \"1aa bb cc2\""
     );
 }
-fn to_text(__work_1:&text) -> text["__work_1"] {#block(1):text["res"]
+fn n_to_text(__work_1:&text) -> text["__work_1"] {#block(1):text["res"]
   __work_1(0):&text = "";
   [2] res(1):text = "aa ";
   [3] {#For block(2):void
@@ -38,7 +38,7 @@ fn to_text(__work_1:&text) -> text["__work_1"] {#block(1):text["res"]
   }#Add text(6):text["__work_1"];
 }#block(1):text["res"]
 
-byte-code for string_fn:to_text(__work_1: &text[0]) -> text["res"]
+byte-code for string_fn:n_to_text(__work_1: &text[0]) -> text["res"]
    0[12]: return-address
    0[16]: [2] Text() var=res[16]:text
    1[40]: ConstText(_value="aa ") -> text
@@ -75,14 +75,14 @@ byte-code for string_fn:to_text(__work_1: &text[0]) -> text["res"]
   96[52]: GetRefText(r: ref(reference)) -> text["res"]
   97[56]: Return(ret=12, value=16, discard=56) type=text 5
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
   [10] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "1";
-      OpFormatText(__work_1(1), to_text({#default ref(4):ref(reference)["__work_2"]
+      OpFormatText(__work_1(1), n_to_text({#default ref(4):ref(reference)["__work_2"]
         OpCreateRef(__work_2(1));
       }#default ref(4):ref(reference)["__work_2"]), 0i32, -1i32, 32i32);
       OpAppendText(__work_1(1), "2");
@@ -101,7 +101,7 @@ fn test() {#block(1):void
   OpFreeText(__work_3(1));
 }#block(1):void
 
-byte-code for string_fn:test()
+byte-code for string_fn:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_3[4]:text
    1[28]: Text() var=__work_2[28]:text
@@ -111,7 +111,7 @@ byte-code for string_fn:test()
    7[100]: ConstText(_value="1") -> text
   10[116]: AppendText(var[52], v1: text)
   13[100]: CreateRef(var[28]) -> ref(reference)
-  16[112]: Call(size=0, fn=to_text)
+  16[112]: Call(size=0, fn=n_to_text)
   23[116]: ConstInt(val=0) -> integer
   28[120]: FormatText(var[52], val: text, width: integer, dir=-1, token=32)
   33[100]: ConstText(_value="2") -> text
@@ -148,7 +148,7 @@ Execute test:
     7:[104] ConstText(_value="1") -> "1"[104]
    10:[120] AppendText(var[56], v1="1"[104])
    13:[104] CreateRef(var[32]) -> ref(0,1,40)[104]
-   16:[116] Call(size=0, fn=to_text)
+   16:[116] Call(size=0, fn=n_to_text)
  1103:[120] Text()
  1104:[144] ConstText(_value="aa ") -> "aa "[144]
  1109:[160] AppendText(var[120], v1="aa "[144])

@@ -5,13 +5,13 @@ pub fn test() {
         "Test failed {test_value} != true"
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [2] test_value(1):boolean = {#block(2):boolean
     t(2):text = "longer";
     v(2):text = "a longer text";
-    _tp_text_contains(v(2), {#Formatted string(3):text["__work_1"]
+    t_4text_contains(v(2), {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "a ";
       OpFormatText(__work_1(1), t(2), 0i32, -1i32, 32i32);
       __work_1(1);
@@ -29,7 +29,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for contains:test()
+byte-code for contains:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
@@ -47,7 +47,7 @@ byte-code for contains:test()
   49[132]: ConstInt(val=0) -> integer
   54[136]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
   59[116]: VarText(var[28]) -> text var=__work_1[28]:text
-  62[132]: StaticCall(_tp_text_contains)
+  62[132]: StaticCall(t_4text_contains)
   65[101]: FreeText(var[52])
   68[101]: FreeText(var[76])
   71[101]: FreeStack(value=1, discard=49)
@@ -88,7 +88,7 @@ Execute test:
    49:[136] ConstInt(val=0) -> 0[136]
    54:[140] FormatText(var[32], val="longer"[120], width=0[136], dir=-1, token=32)
    59:[120] VarText(var[32]) -> "a longer"[120]
-   62:[136] StaticCall(_tp_text_contains)
+   62:[136] StaticCall(t_4text_contains)
    65:[105] FreeText(var[56])
    68:[105] FreeText(var[80])
    71:[105] FreeStack(value=1, discard=49)

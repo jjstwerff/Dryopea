@@ -7,20 +7,20 @@ pub fn test() {
         "Test failed {test_value} != \"0012\""
     );
 }
-fn choice(a:text, b:text) -> text["a", "b"] {#block(1):text["a", "b"]
-  [1] if OpGtInt(_tp_text_len(a(0)), _tp_text_len(b(0))) {#block(2):text["a"]
+fn n_choice(a:text, b:text) -> text["a", "b"] {#block(1):text["a", "b"]
+  [1] if OpGtInt(t_4text_len(a(0)), t_4text_len(b(0))) {#block(2):text["a"]
     a(0);
   }#block(2):text["a"] else {#block(3):text["a"]
     b(0);
   }#block(3):text["a"];
 }#block(1):text["a", "b"]
 
-byte-code for call:choice(a: text[0], b: text[16]) -> text["a", "b"]
+byte-code for call:n_choice(a: text[0], b: text[16]) -> text["a", "b"]
    0[32]: return-address
    0[36]: [1] ArgText(var[0]) -> text var=a[0]:text
-   3[52]: Call(size=0, fn=_tp_text_len)
+   3[52]: Call(size=0, fn=t_4text_len)
   10[40]: ArgText(var[16]) -> text var=b[16]:text
-  13[56]: Call(size=0, fn=_tp_text_len)
+  13[56]: Call(size=0, fn=t_4text_len)
   20[44]: GtInt(v1: integer, v2: integer) -> boolean
   21[37]: GotoFalseWord(jump=30, if_false: boolean)
   24[36]: ArgText(var[0]) -> text var=a[0]:text
@@ -28,7 +28,7 @@ byte-code for call:choice(a: text[0], b: text[16]) -> text["a", "b"]
   30[36]: ArgText(var[16]) -> text var=b[16]:text
   33[52]: Return(ret=32, value=16, discard=52) type=text 5
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_4(1):text = "";
   __work_3(1):text = "";
   __work_2(1):text = "";
@@ -36,7 +36,7 @@ fn test() {#block(1):void
   [4] test_value(1):text["__work_3"] = {#block(2):text["__work_3"]
     {#Add text(3):text["__work_3"]
       OpClearText(__work_3(1));
-      OpAppendText(__work_3(1), choice({#Formatted string(4):text["__work_1"]
+      OpAppendText(__work_3(1), n_choice({#Formatted string(4):text["__work_1"]
         __work_1(1):text = "";
         OpFormatLong(__work_1(1), OpConvLongFromInt(1i32), 10i32, 3i32, 48i32, false, false);
         __work_1(1);
@@ -46,7 +46,7 @@ fn test() {#block(1):void
         OpAppendText(__work_2(1), "1");
         __work_2(1);
       }#Formatted string(5):text["__work_2"]));
-      OpAppendText(__work_3(1), choice("2", ""));
+      OpAppendText(__work_3(1), n_choice("2", ""));
       __work_3(1);
     }#Add text(3):text["__work_3"];
   }#block(2):text["__work_3"];
@@ -63,7 +63,7 @@ fn test() {#block(1):void
   OpFreeText(__work_4(1));
 }#block(1):void
 
-byte-code for call:test()
+byte-code for call:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_4[4]:text
    1[28]: Text() var=__work_3[28]:text
@@ -89,11 +89,11 @@ byte-code for call:test()
   64[172]: AppendText(var[52], v1: text)
   67[156]: VarText(var[52]) -> text var=__work_2[52]:text
   70[172]: FreeStack(value=16, discard=32)
-  74[156]: Call(size=0, fn=choice)
+  74[156]: Call(size=0, fn=n_choice)
   81[140]: AppendText(var[28], v1: text)
   84[124]: ConstText(_value="2") -> text
   87[140]: ConstText(_value="") -> text
-  89[156]: Call(size=0, fn=choice)
+  89[156]: Call(size=0, fn=n_choice)
   96[140]: AppendText(var[28], v1: text)
   99[124]: VarText(var[28]) -> text var=__work_3[28]:text
  102[140]: AppendText(var[100], v1: text)
@@ -144,14 +144,14 @@ Execute test:
    64:[176] AppendText(var[56], v1="1"[160])
    67:[160] VarText(var[56]) -> "21"[160]
    70:[176] FreeStack(value=16, discard=32)
-   74:[160] Call(size=0, fn=choice)
+   74:[160] Call(size=0, fn=n_choice)
  1103:[164] ArgText(var[128]) -> "001"[164]
- 1106:[180] Call(size=0, fn=_tp_text_len)
+ 1106:[180] Call(size=0, fn=t_4text_len)
   318:[184] ArgText(var[164]) -> "001"[184]
   321:[200] LengthText(v1="001"[184]) -> 3[184]
   322:[188] Return(ret=1113[180], value=4, discard=24) -> 3[164]
  1113:[168] ArgText(var[144]) -> "21"[168]
- 1116:[184] Call(size=0, fn=_tp_text_len)
+ 1116:[184] Call(size=0, fn=t_4text_len)
   318:[188] ArgText(var[168]) -> "21"[188]
   321:[204] LengthText(v1="21"[188]) -> 2[188]
   322:[192] Return(ret=1123[184], value=4, discard=24) -> 2[168]
@@ -163,14 +163,14 @@ Execute test:
    81:[144] AppendText(var[32], v1="001"[128])
    84:[128] ConstText(_value="2") -> "2"[128]
    87:[144] ConstText(_value="") -> ""[144]
-   89:[160] Call(size=0, fn=choice)
+   89:[160] Call(size=0, fn=n_choice)
  1103:[164] ArgText(var[128]) -> "2"[164]
- 1106:[180] Call(size=0, fn=_tp_text_len)
+ 1106:[180] Call(size=0, fn=t_4text_len)
   318:[184] ArgText(var[164]) -> "2"[184]
   321:[200] LengthText(v1="2"[184]) -> 1[184]
   322:[188] Return(ret=1113[180], value=4, discard=24) -> 1[164]
  1113:[168] ArgText(var[144]) -> ""[168]
- 1116:[184] Call(size=0, fn=_tp_text_len)
+ 1116:[184] Call(size=0, fn=t_4text_len)
   318:[188] ArgText(var[168]) -> ""[188]
   321:[204] LengthText(v1=""[188]) -> 0[188]
   322:[192] Return(ret=1123[184], value=4, discard=24) -> 0[168]

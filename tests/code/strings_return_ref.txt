@@ -10,12 +10,12 @@ pub fn test() {
         "Test failed {test_value} != \"1234\""
     );
 }
-fn return_ref(a:&text) -> text["a"] {#block(1):text["a"]
+fn n_return_ref(a:&text) -> text["a"] {#block(1):text["a"]
   [2] a(0):&text = "12345";
   [3] return OpGetTextSub(OpGetRefText(OpVarRef(a(0))), 0i32, 4i32);
 }#block(1):text["a"]
 
-byte-code for return_ref:return_ref(a: &text[0]) -> text["a"]
+byte-code for return_ref:n_return_ref(a: &text[0]) -> text["a"]
    0[12]: return-address
    0[16]: [2] ConstText(_value="12345") -> text var=a[0]:&text
    7[32]: AppendRefText(var[0], v1: text)
@@ -25,18 +25,12 @@ byte-code for return_ref:return_ref(a: &text[0]) -> text["a"]
   19[36]: ConstInt(val=4) -> integer
   24[40]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
   25[32]: Return(ret=12, value=16, discard=32)
-  31[32]: VarRef(var[0]) -> ref(reference)
-  34[44]: GetRefText(r: ref(reference)) -> text["a"]
-  35[48]: ConstInt(val=0) -> integer
-  40[52]: ConstInt(val=4) -> integer
-  45[56]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
-  46[48]: Return(ret=12, value=16, discard=48) type=text 5
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [7] test_value(1):text = {#block(2):text
-    return_ref({#default ref(3):ref(reference)["__work_1"]
+    n_return_ref({#default ref(3):ref(reference)["__work_1"]
       OpCreateRef(__work_1(1));
     }#default ref(3):ref(reference)["__work_1"]);
   }#block(2):text;
@@ -51,13 +45,13 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for return_ref:test()
+byte-code for return_ref:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
    2[52]: [7] Text() var=test_value[52]:text
    3[76]: CreateRef(var[28]) -> ref(reference)
-   6[88]: Call(size=0, fn=return_ref)
+   6[88]: Call(size=0, fn=n_return_ref)
   13[92]: AppendText(var[52], v1: text)
   16[76]: [8] VarText(var[52]) -> text var=test_value[52]:text
   19[92]: ConstText(_value="1234") -> text
@@ -84,7 +78,7 @@ Execute test:
     1:[32] [7] Text()
     2:[56] Text()
     3:[80] CreateRef(var[32]) -> ref(0,1,40)[80]
-    6:[92] Call(size=0, fn=return_ref)
+    6:[92] Call(size=0, fn=n_return_ref)
  1103:[96] ConstText(_value="12345") -> "12345"[96]
  1110:[112] AppendRefText(var[80], v1="12345"[96])
  1113:[96] VarRef(var[80]) -> ref(0,1,40)[96]
@@ -92,7 +86,7 @@ Execute test:
  1117:[112] ConstInt(val=0) -> 0[112]
  1122:[116] ConstInt(val=4) -> 4[116]
  1127:[120] GetTextSub(v1="12345"[96], from=0[112], till=4[116]) -> "1234"[96]
- 1128:[112] Return(ret=1168[92], value=16, discard=32)
+ 1128:[112] Return(ret=1147[92], value=16, discard=32)
    13:[96] AppendText(var[56], v1="1234"[80])
    16:[80] VarText(var[56]) -> "1234"[80]
    19:[96] ConstText(_value="1234") -> "1234"[96]

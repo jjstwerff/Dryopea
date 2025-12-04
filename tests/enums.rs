@@ -151,3 +151,72 @@ t.add() + i.add() + a.add()",
     )
     .result(Value::Int(234));
 }
+
+#[test]
+fn polymorph() {
+    code!(
+        "enum Value {
+    Integer { i_value: i32 },
+    Text { t_value: text },
+    Array { content: vector<i32> }
+}
+
+fn add(self: Integer) -> i32 {
+    self.i_value
+}
+
+fn add(self: Text) -> i32 {
+    self.t_value as i32
+}
+
+fn add(self: Array) -> i32 {
+    n = 0;
+    for v in self.content {
+        n += v;
+    }
+    n
+}
+"
+    )
+    .expr(
+        "l = [ Text { t_value:\"123\" }, Integer { i_value: 101 }, Array { content: [1,2,3,4] }];
+c = 0;
+for v in l {
+    a = v.add();
+    if a { c += a; }
+}
+\"{l}:{c}\"",
+    )
+    .result(Value::str(
+        "[Text {t_value:\"123\"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234",
+    ));
+}
+
+#[test]
+fn types() {
+    code!(
+        "enum Value {
+    S { data: sorted<Sort[nr]> },
+    I { data: index<Ind[nr]> },
+    H { data: hash<Elm[name]> }
+}
+
+struct Sort {
+    nr: i32,
+    d: Value
+}
+
+struct Ind {
+    nr: i32,
+    d: Value
+}
+
+struct Elm {
+    name: text,
+    d: Value
+}
+"
+    )
+    .expr("1")
+    .result(Value::Int(1));
+}

@@ -481,6 +481,21 @@ impl Parser {
         } else {
             self.data.def(is_nr).known_type
         };
+        if let Type::Reference(tp, _) = should
+            && self.data.def(*tp).returned.is_equal(is_type)
+            && matches!(is_type, Type::Enum(_, true, _))
+        {
+            let get_e = self.cl("OpGetEnum", &[code.clone(), Value::Int(0)]);
+            let get = self.cl("OpConvIntFromEnum", &[get_e]);
+            if let Value::Enum(nr, _) = self.data.def(*tp).attributes[0].value {
+                *code = v_if(
+                    self.cl("OpEqInt", &[get, Value::Int(i32::from(nr))]),
+                    code.clone(),
+                    self.cl("OpConvRefFromNull", &[]),
+                );
+            }
+            return true;
+        }
         if matches!(is_type, Type::Text(_))
             && matches!(should, Type::Enum(_, true, _) | Type::Reference(_, _))
         {
@@ -539,6 +554,11 @@ impl Parser {
             {
                 return true;
             }
+            if let (Type::Reference(r_nr, _), Type::Enum(e_nr, true, _)) = (test_type, should)
+                && e_nr == r_nr
+            {
+                return true;
+            }
             if let (Type::Enum(t, false, _), Type::Enum(s, false, _)) = (test_type, should)
                 && *t == *s
             {
@@ -577,7 +597,18 @@ impl Parser {
     fn call(&mut self, code: &mut Value, name: &str, list: &[Value], types: &[Type]) -> Type {
         // Create a new list of parameters based on the current ones
         // We still need to know the types.
-        let d_nr = self.data.def_nr(name);
+        let d_nr = if self.default && is_op(name) {
+            self.data.def_nr(name)
+        } else {
+            self.data.find_fn(
+                name,
+                if types.is_empty() {
+                    &Type::Unknown(0)
+                } else {
+                    &types[0]
+                },
+            )
+        };
         if d_nr != u32::MAX {
             self.call_nr(code, d_nr, list, types, true)
         } else if self.first_pass && !self.default {
@@ -650,6 +681,7 @@ impl Parser {
             | Type::Index(_, _, _)
             | Type::Enum(_, true, _)
             | Type::Vector(_, _) => self.cl("OpGetField", &[code, p, self.type_info(tp)]),
+            Type::Reference(_, _) => self.cl("OpGetRef", &[code, p]),
             _ => panic!(
                 "Get not implemented on '{}' at {}",
                 tp.name(&self.data),
@@ -661,6 +693,15 @@ impl Parser {
     fn set_field(&mut self, d_nr: u32, f_nr: usize, ref_code: Value, val_code: Value) -> Value {
         let tp = self.data.attr_type(d_nr, f_nr);
         let nm = self.data.attr_name(d_nr, f_nr);
+        if !self.data.attr_mutable(d_nr, f_nr) && f_nr != usize::MAX {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "Cannot write to key field {}.{} create a record instead",
+                self.data.def(d_nr).name,
+                nm
+            );
+        }
         let pos = self.database.position(self.data.def(d_nr).known_type, &nm);
         let pos_val = Value::Int(if f_nr == usize::MAX {
             0
@@ -853,7 +894,8 @@ impl Parser {
                     }
                     if !self.convert(&mut actual_code, actual_type, &tp) {
                         if report {
-                            let context = format!("call to {}", self.data.def(d_nr).name);
+                            let context =
+                                format!("call to {}", self.data.def(d_nr).original_name());
                             self.validate_convert(&context, actual_type, &tp);
                         } else if !self.can_convert(actual_type, &tp) {
                             return Type::Null;
@@ -1019,6 +1061,7 @@ impl Parser {
         );
         typedef::fill_all(&mut self.data, &mut self.database, start_def);
         self.database.finish();
+        self.enum_fn();
         let lvl = self.lexer.diagnostics().level();
         if lvl == Level::Error || lvl == Level::Fatal {
             return;
@@ -1082,6 +1125,123 @@ impl Parser {
             f = format!("{base_dir}/{id}.lav");
         }
         f
+    }
+
+    // Determine if there need to be special enum functions that call enum_value variants.
+    fn enum_fn(&mut self) {
+        if !self.first_pass {
+            return;
+        }
+        let mut todo = HashMap::new();
+        for (d_nr, d) in self.data.definitions.iter().enumerate() {
+            if d.def_type != DefType::Function || d.attributes.is_empty() {
+                continue;
+            }
+            if let Type::Reference(e_tp, _) = &d.attributes[0].typedef
+                && matches!(self.data.def(*e_tp).returned, Type::Enum(_, true, _))
+                && self
+                    .data
+                    .find_fn(&d.original_name(), &self.data.def(*e_tp).returned)
+                    == u32::MAX
+                && let Type::Enum(e_nr, true, _) = self.data.def(*e_tp).returned
+            {
+                todo.entry(e_nr).or_insert(vec![]).push(d_nr);
+            }
+        }
+        for (e_nr, nrs) in todo {
+            let from_nr = nrs[0] as u32;
+            let name = self.data.def(from_nr).original_name().clone();
+            let attrs = self.data.def(from_nr).attributes[1..].to_vec();
+            let mut common = attrs.len();
+            for nr in &nrs[1..] {
+                let mut c = 0;
+                for a in &self.data.def(*nr as u32).attributes[1..] {
+                    for o in &attrs {
+                        if a.name == o.name && a.typedef == o.typedef {
+                            c += 1;
+                        }
+                    }
+                }
+                if c < common {
+                    common = c;
+                }
+            }
+            for nr in &nrs {
+                if self.data.def(*nr as u32).attributes.len() > common + 1 {
+                    for a in &self.data.def(*nr as u32).attributes[common + 1..] {
+                        if a.value == Value::Null {
+                            return;
+                        }
+                    }
+                }
+            }
+            let mut args = Vec::new();
+            args.push(Argument {
+                name: "self".to_string(),
+                typedef: Type::Enum(e_nr, true, vec![]),
+                default: Value::Null,
+                constant: false,
+            });
+            for a in &attrs[..common] {
+                args.push(Argument {
+                    name: a.name.clone(),
+                    typedef: a.typedef.clone(),
+                    default: a.value.clone(),
+                    constant: false,
+                });
+            }
+            let fn_nr = self.data.add_fn(&mut self.lexer, &name, &args);
+            self.context = fn_nr;
+            self.data
+                .set_returned(fn_nr, self.data.def(from_nr).returned.clone());
+            for a in args {
+                let v_nr = self.create_var(&a.name, &a.typedef);
+                if v_nr != u16::MAX {
+                    self.vars.become_argument(v_nr);
+                }
+            }
+            let mut ls = Vec::new();
+            let get_enum = self.cl("OpGetEnum", &[Value::Var(0), Value::Int(0)]);
+            let get_int = self.cl("OpConvIntFromEnum", &[get_enum]);
+            self.enum_numbers(nrs, &name, &mut ls, &get_int);
+            ls.push(Value::Null);
+            self.data.definitions[fn_nr as usize].code =
+                v_block(ls, self.data.def(from_nr).returned.clone(), "dynamic_fn");
+            self.data.definitions[self.context as usize].variables = self.vars.clone();
+        }
+    }
+
+    fn enum_numbers(&mut self, nrs: Vec<usize>, name: &str, ls: &mut Vec<Value>, get_int: &Value) {
+        for nr in nrs {
+            let d_nr = nr as u32;
+            let a_nr = if let Type::Reference(nr, _) = self.data.def(d_nr).attributes[0].typedef {
+                nr
+            } else {
+                0
+            };
+            let e_nr = if let Value::Enum(nr, _) = self.data.def(a_nr).attributes[0].value {
+                nr
+            } else {
+                0
+            };
+            let mut code = Value::Null;
+            self.call(
+                &mut code,
+                name,
+                &[Value::Var(0)],
+                &[self.data.def(d_nr).attributes[0].typedef.clone()],
+            );
+            let ret_call = v_block(
+                vec![Value::Return(Box::new(code.clone()))],
+                Type::Void,
+                "ret",
+            );
+            ls.push(v_if(
+                self.cl("OpEqInt", &[get_int.clone(), Value::Int(i32::from(e_nr))]),
+                ret_call,
+                Value::Null,
+            ));
+        }
     }
 
     // <typedef> ::= 'enum' <identifier> '{' <value> {, <value>} '}' [';']
@@ -1321,18 +1481,6 @@ impl Parser {
             return false;
         };
         self.vars = Function::new(&fn_name, &self.lexer.pos().file);
-        if self.data.def_nr(&fn_name) != u32::MAX
-            && self.first_pass
-            && self.data.def_name(&fn_name).def_type != DefType::Dynamic
-        {
-            diagnostic!(
-                self.lexer,
-                Level::Fatal,
-                "Cannot redefine {} {fn_name}",
-                self.data.def_name(&fn_name).def_type
-            );
-            return false;
-        }
         if !self.default && !is_lower(&fn_name) {
             diagnostic!(
                 self.lexer,
@@ -1351,6 +1499,8 @@ impl Parser {
             self.data.add_op(&mut self.lexer, &fn_name, &arguments)
         } else if self.first_pass {
             self.data.add_fn(&mut self.lexer, &fn_name, &arguments)
+        } else if is_op(&fn_name) {
+            self.data.def_nr(&fn_name)
         } else {
             self.data.get_fn(&fn_name, &arguments)
         };
@@ -1384,8 +1534,10 @@ impl Parser {
             for (a_nr, a) in arguments.iter().enumerate() {
                 if self.first_pass {
                     let v_nr = self.create_var(&a.name, &a.typedef);
-                    self.vars.become_argument(v_nr);
-                    self.var_usages(v_nr, false);
+                    if v_nr != u16::MAX {
+                        self.vars.become_argument(v_nr);
+                        self.var_usages(v_nr, false);
+                    }
                 } else {
                     self.change_var_type(a_nr as u16, &a.typedef);
                 }
@@ -1615,23 +1767,15 @@ impl Parser {
                 let mut fields = Vec::new();
                 return Some(match type_name {
                     "index" => {
-                        self.parse_fields(true, sub_nr, &mut fields);
-                        let mut f = Vec::new();
-                        for fld in fields {
-                            if fld < 0 {
-                                f.push(((-1 - fld) as u16, false));
-                            } else {
-                                f.push((fld as u16, true));
-                            }
-                        }
-                        Type::Index(self.data.type_def_nr(&tp), f, Vec::new())
+                        self.parse_fields(true, &mut fields);
+                        Type::Index(self.data.type_def_nr(&tp), fields, Vec::new())
                     }
                     "hash" => {
-                        self.parse_fields(false, sub_nr, &mut fields);
+                        self.parse_fields(false, &mut fields);
                         self.data.set_referenced(sub_nr, on_d, Value::Null);
                         let mut f = Vec::new();
-                        for fld in fields {
-                            f.push(fld as u16);
+                        for (field, _) in fields {
+                            f.push(field);
                         }
                         Type::Hash(sub_nr, f, Vec::new())
                     }
@@ -1640,16 +1784,8 @@ impl Parser {
                         Type::Vector(Box::new(tp), Vec::new())
                     }
                     "sorted" => {
-                        self.parse_fields(true, sub_nr, &mut fields);
-                        let mut f = Vec::new();
-                        for fld in fields {
-                            if fld < 0 {
-                                f.push(((-1 - fld) as u16, false));
-                            } else {
-                                f.push((fld as u16, true));
-                            }
-                        }
-                        Type::Sorted(sub_nr, f, Vec::new())
+                        self.parse_fields(true, &mut fields);
+                        Type::Sorted(sub_nr, fields, Vec::new())
                     }
                     /*
                     "spacial" => {
@@ -1719,7 +1855,7 @@ impl Parser {
         }
     }
 
-    fn parse_fields(&mut self, directions: bool, d_nr: u32, result: &mut Vec<i32>) {
+    fn parse_fields(&mut self, directions: bool, result: &mut Vec<(String, bool)>) {
         self.lexer.token("[");
         loop {
             let desc = self.lexer.has_token("-");
@@ -1731,17 +1867,7 @@ impl Parser {
                 );
             }
             if let Some(field) = self.lexer.has_identifier() {
-                if self.data.def(d_nr).attr_names.contains_key(&field) {
-                    let f_nr = self.data.def(d_nr).attr_names[&field] as i32;
-                    result.push(if desc { -1 - f_nr } else { f_nr });
-                } else {
-                    diagnostic!(
-                        self.lexer,
-                        Level::Error,
-                        "Unknown field {field} in {}",
-                        self.data.def(d_nr).name
-                    );
-                }
+                result.push((field, !desc));
             }
             if !self.lexer.has_token(",") {
                 break;
@@ -1955,7 +2081,6 @@ impl Parser {
     /// Parse the code on the last inserted definition.
     /// This way we can use recursion with the definition itself.
     fn parse_code(&mut self) -> Type {
-        self.lexer.token("{");
         let mut v = Value::Null;
         let result = if self.context == u32::MAX {
             Type::Void
@@ -2000,7 +2125,7 @@ impl Parser {
         } else if self.lexer.has_token("return") {
             self.parse_return(val);
             Type::Void
-        } else if self.lexer.has_token("{") {
+        } else if self.lexer.peek_token("{") {
             self.parse_block("block", val, &Type::Void)
         } else {
             let res = self.parse_assign(val);
@@ -2254,6 +2379,7 @@ impl Parser {
             self.parse_object(r, val);
             return Type::Reference(r, Vec::new());
         }
+        self.lexer.token("{");
         if self.lexer.has_token("}") {
             *val = v_block(Vec::new(), Type::Void, "empty block");
             return Type::Void;
@@ -2596,7 +2722,7 @@ impl Parser {
             let t = self.expression(val);
             self.lexer.token(")");
             t
-        } else if self.lexer.has_token("{") {
+        } else if self.lexer.peek_token("{") {
             self.parse_block("block", val, &Type::Unknown(0))
         } else if self.lexer.has_token("[") {
             self.parse_vector(var_tp, val, parent_tp)
@@ -2798,8 +2924,16 @@ impl Parser {
         if t.is_unknown() {
             t = in_t.clone();
         }
-        // double conversion check: can t become in_t or vice versa
-        if !self.convert(&mut p, &t, in_t) {
+        if let (Type::Reference(t_nr, _), Type::Reference(in_nr, _)) = (&t, &in_t.clone())
+            && let (Type::Enum(t_e, true, _), Type::Enum(in_e, true, _)) = (
+                &self.data.def(*t_nr).returned,
+                &self.data.def(*in_nr).returned,
+            )
+            && *t_e == *in_e
+        {
+            *in_t = Type::Enum(*t_e, true, Vec::new());
+        } else if !self.convert(&mut p, &t, in_t) {
+            // double conversion check: can t become in_t or vice versa
             if self.convert(&mut p, in_t, &t) {
                 *in_t = t.clone();
             } else {
@@ -2814,7 +2948,7 @@ impl Parser {
         }
         if let Type::Enum(td_nr, true, _) = t
             && let Value::Enum(enum_nr, _) = &p
-            && self.lexer.has_token("{")
+            && self.lexer.peek_token("{")
         {
             let mut ls = Vec::new();
             self.parse_enum_field(&mut ls, Value::Var(elm), td_nr, 0, *enum_nr);
@@ -2997,25 +3131,21 @@ impl Parser {
             }
             Type::Sorted(tp, key, _) => {
                 let mut name = "sorted<".to_string() + &self.data.def(*tp).name + "[";
-                self.database
-                    .field_id(self.data.def(*tp).known_type, key, &mut name);
+                field_id(key, &mut name);
                 let r = self.database.name(&name);
                 if r == u16::MAX {
                     name = "ordered<".to_string() + &self.data.def(*tp).name + "[";
-                    self.database
-                        .field_id(self.data.def(*tp).known_type, key, &mut name);
+                    field_id(key, &mut name);
                 }
                 self.database.name(&name)
             }
             Type::Index(tp, key, _) => {
                 let mut name = "index<".to_string() + &self.data.def(*tp).name + "[";
-                self.database
-                    .field_id(self.data.def(*tp).known_type, key, &mut name);
+                field_id(key, &mut name);
                 let r = self.database.name(&name);
                 if r == u16::MAX {
                     name = "index<".to_string() + &self.data.def(*tp).name + "[";
-                    self.database
-                        .field_id(self.data.def(*tp).known_type, key, &mut name);
+                    field_id(key, &mut name);
                 }
                 self.database.name(&name)
             }
@@ -3192,13 +3322,13 @@ impl Parser {
         } else if let Type::Hash(el, keys, _) | Type::Spacial(el, keys, _) = &t {
             let mut key_types = Vec::new();
             for k in keys {
-                key_types.push(self.data.def(*el).attributes[*k as usize].typedef.clone());
+                key_types.push(self.data.attr_type(*el, self.data.attr(*el, k)).clone());
             }
             self.parse_key(code, t, &key_types);
         } else if let Type::Sorted(el, keys, _) | Type::Index(el, keys, _) = &t {
             let mut key_types = Vec::new();
             for (k, _) in keys {
-                key_types.push(self.data.def(*el).attributes[*k as usize].typedef.clone());
+                key_types.push(self.data.attr_type(*el, self.data.attr(*el, k)).clone());
             }
             self.parse_key(code, t, &key_types);
         } else if !self.first_pass {
@@ -3588,9 +3718,12 @@ impl Parser {
                 self.data.def_type(d_nr),
                 DefType::Struct | DefType::EnumValue
             ) && !matches!(self.data.def(d_nr).returned, Type::Enum(_, false, _))
-                && self.lexer.has_token("{")
+                && self.lexer.peek_token("{")
             {
-                return self.parse_object(d_nr, code);
+                let tp = self.parse_object(d_nr, code);
+                if tp != Type::Unknown(0) {
+                    return tp;
+                }
             } else if self.data.def_type(d_nr) == DefType::Constant {
                 *code = self.data.def(d_nr).code.clone();
                 return self.data.def(d_nr).returned.clone();
@@ -3774,7 +3907,6 @@ impl Parser {
             } else {
                 Value::Null
             };
-            self.lexer.token("{");
             let mut create_iter = expr;
             let it = Type::Iterator(Box::new(var_tp.clone()), Box::new(Type::Null));
             let iter_next = self.iterator(&mut create_iter, &in_type, &it, iter_var);
@@ -4172,8 +4304,13 @@ impl Parser {
     // <object> ::= [ <identifier> ':' <expression> { ',' <identifier> ':' <expression> } ] '}'
     fn parse_object(&mut self, td_nr: u32, code: &mut Value) -> Type {
         let link = self.lexer.link();
+        if !self.lexer.has_token("{") {
+            self.lexer.revert(link);
+            return Type::Unknown(0);
+        }
         let mut list = Vec::new();
         let mut new_object = false;
+        let work = self.vars.work_ref();
         if let Value::Var(v_nr) = code {
             if self.vars.is_independent(*v_nr) {
                 if !self.vars.is_argument(*v_nr) {
@@ -4200,6 +4337,7 @@ impl Parser {
             if let Some(field) = self.lexer.has_identifier() {
                 if !self.lexer.has_token(":") {
                     self.lexer.revert(link);
+                    self.vars.clean_work_refs(work);
                     return Type::Unknown(0);
                 }
                 let nr = self.data.attr(td_nr, &field);
@@ -4215,7 +4353,7 @@ impl Parser {
                     let pos = self
                         .database
                         .position(self.data.def(td_nr).known_type, &field);
-                    found_fields.insert(field);
+                    found_fields.insert(field.clone());
                     let mut value = if let Type::Vector(_, _)
                     | Type::Sorted(_, _, _)
                     | Type::Hash(_, _, _)
@@ -4255,13 +4393,23 @@ impl Parser {
                             list.push(o);
                         }
                     } else {
-                        self.convert(&mut value, &exp_tp, &td);
+                        if !self.convert(&mut value, &exp_tp, &td) {
+                            diagnostic!(
+                                self.lexer,
+                                Level::Error,
+                                "Cannot write {} on field {}.{field}:{}",
+                                td.show(&self.data, &self.vars),
+                                self.data.def(td_nr).name,
+                                exp_tp.show(&self.data, &self.vars)
+                            );
+                        }
                         list.push(self.set_field(td_nr, nr, code.clone(), value));
                     }
                 }
             } else {
                 // We have not encountered an identifier
                 self.lexer.revert(link);
+                self.vars.clean_work_refs(work);
                 return Type::Unknown(0);
             }
             if !self.lexer.has_token(",") {
@@ -4327,7 +4475,6 @@ impl Parser {
         let mut test = Value::Null;
         let tp = self.expression(&mut test);
         self.convert(&mut test, &tp, &Type::Boolean);
-        self.lexer.token("{");
         let mut true_code = Value::Null;
         let mut true_type = self.parse_block("if", &mut true_code, &Type::Unknown(0));
         let mut false_type = Type::Void;
@@ -4336,7 +4483,6 @@ impl Parser {
             if self.lexer.has_token("if") {
                 self.parse_if(&mut false_code);
             } else {
-                self.lexer.token("{");
                 if true_type == Type::Null {
                     true_type = Type::Unknown(0);
                 }
@@ -4378,7 +4524,6 @@ impl Parser {
             } else {
                 Value::Null
             };
-            self.lexer.token("{");
             let mut create_iter = expr;
             let it = Type::Iterator(Box::new(var_tp.clone()), Box::new(Type::Null));
             let iter_next = self.iterator(&mut create_iter, &in_type, &it, iter_var);
@@ -4436,6 +4581,9 @@ impl Parser {
     fn for_type(&mut self, in_type: &Type) -> Type {
         if let Type::Vector(t_nr, dep) = &in_type {
             let mut t = *t_nr.clone();
+            if let Type::Enum(nr, true, _) = t {
+                t = Type::Reference(nr, vec![]);
+            }
             for d in dep {
                 t = t.depending(*d);
             }
@@ -4713,6 +4861,19 @@ fn merge_dependencies(a: &Type, b: &Type) -> Type {
     } else {
         a.clone()
     }
+}
+
+fn field_id(key: &[(String, bool)], name: &mut String) {
+    for (k_nr, (k, asc)) in key.iter().enumerate() {
+        if k_nr > 0 {
+            *name += ",";
+        }
+        if !asc {
+            *name += "-";
+        }
+        *name += k;
+    }
+    *name += "]>";
 }
 
 fn rename(op: &str) -> &str {

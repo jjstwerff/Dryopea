@@ -1,3 +1,25 @@
+enum Value {
+    S { data: sorted<Sort[nr]> },
+    I { data: index<Ind[nr]> },
+    H { data: hash<Elm[name]> }
+}
+
+struct Sort {
+    nr: i32,
+    d: Value
+}
+
+struct Ind {
+    nr: i32,
+    d: Value
+}
+
+struct Elm {
+    name: text,
+    d: Value
+}
+
+
 pub fn test() {
     test_value = {1};
     assert(
@@ -5,12 +27,50 @@ pub fn test() {
         "Test failed {test_value} != 1"
     );
 }
+Type 17:Value[8/4]: parents [Sort 19, Ind 22, Elm 25]
+    S:18
+    I:21
+    H:24
+
+Type 18:S[8/4]: EnumValue(1)
+    enum:byte[0]
+    data:sorted<Sort[nr]>[4]
+
+Type 19:Sort[12/4]: parents [S 18]
+    nr:integer[0]
+    d:Value[4]
+
+Type 20:sorted<Sort[nr]>[4/4]:Sorted(19, [(0, true)]) keys [tp:1 desc:false field:0, ]
+
+Type 21:I[8/4]: EnumValue(2)
+    enum:byte[0]
+    data:index<Ind[nr]>[4]
+
+Type 22:Ind[21/4]: parents [I 21]
+    nr:integer[0]
+    d:Value[4]
+    #left_1:integer[12]
+    #right_1:integer[16]
+    #color_1:boolean[20]
+
+Type 23:index<Ind[nr]>[4/4]:Index(22, [(0, true)], 2) keys [tp:1 desc:false field:0, ]
+
+Type 24:H[8/4]: EnumValue(3)
+    enum:byte[0]
+    data:hash<Elm[name]>[4]
+
+Type 25:Elm[12/4]: parents [H 24]
+    name:text[0]
+    d:Value[4]
+
+Type 26:hash<Elm[name]>[4/4]:Hash(25, [0]) keys [tp:6 desc:false field:0, ]
+
 fn n_test() {#block(1):void
   __work_1(1):text = "";
-  [2] test_value(1):integer = {#block(2):integer
+  [24] test_value(1):integer = {#block(2):integer
     1i32;
   }#block(2):integer;
-  [3] if OpEqInt(test_value(1), 1i32) null else OpPanic({#Formatted string(3):text["__work_1"]
+  [25] if OpEqInt(test_value(1), 1i32) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
     OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
     OpAppendText(__work_1(1), " != 1");
@@ -19,11 +79,11 @@ fn n_test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for expr_integer:n_test()
+byte-code for types:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [2] ConstInt(val=1) -> integer var=test_value[28]:integer
-   6[32]: [3] VarInt(var[28]) -> integer var=test_value[28]:integer
+   1[28]: [24] ConstInt(val=1) -> integer var=test_value[28]:integer
+   6[32]: [25] VarInt(var[28]) -> integer var=test_value[28]:integer
    9[36]: ConstInt(val=1) -> integer
   14[40]: EqInt(v1: integer, v2: integer) -> boolean
   15[33]: GotoFalseWord(jump=21, if_false: boolean)
@@ -43,7 +103,7 @@ byte-code for expr_integer:n_test()
   74[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
-    0:[8] [2] Text()
+    0:[8] [24] Text()
     1:[32] ConstInt(val=1) -> 1[32]
     6:[36] VarInt(var[32]) -> 1[36]
     9:[40] ConstInt(val=1) -> 1[40]

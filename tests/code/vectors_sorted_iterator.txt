@@ -34,7 +34,7 @@ Type 19:sorted<Elm[-nr,key]>[4/4]:Sorted(17, [(0, false), (1, true)]) keys [tp:1
 
 Type 20:vector<Elm>[4/4]:Vector(17)
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [5] test_value(1):integer = {#block(2):integer
@@ -85,9 +85,9 @@ fn test() {#block(1):void
     [16] {#For block(4):void
       _iter_2(4):long = OpIterate(OpGetField(db(2), 0i32, 19i32), 130i32, 12i32, &[Key { type_nr: -1, position: 0 }, Key { type_nr: 6, position: 4 }], 1i32, 84i32, 2i32, 63i32, "Six");
       loop {#For loop_5
-        v(5):ref(Elm)["db"] = {#Iterate keys(6):sorted<Elm,[(0, false), (1, true)]>["db"]
+        v(5):ref(Elm)["db"] = {#Iterate keys(6):sorted<Elm,[("nr", false), ("key", true)]>["db"]
           OpStep(_iter_2(4), OpGetField(db(2), 0i32, 19i32), 130i32, 12i32);
-        }#Iterate keys(6):sorted<Elm,[(0, false), (1, true)]>["db"];
+        }#Iterate keys(6):sorted<Elm,[("nr", false), ("key", true)]>["db"];
         if OpNot(OpConvBoolFromRef(v(5))) {#break(7):void
           break(0);
         }#break(7):void else null;
@@ -109,7 +109,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for sorted_iterator:test()
+byte-code for sorted_iterator:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text

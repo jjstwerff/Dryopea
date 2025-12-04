@@ -51,28 +51,28 @@ Type 21:Array[8/4]: EnumValue(3)
     enum:byte[0]
     content:vector<integer>[4]
 
-fn _tp_Integer_add(self:Integer) -> integer {#block(1):integer
+fn t_7Integer_add(self:Integer) -> integer {#block(1):integer
   [8] OpGetInt(self(0), 4i32);
 }#block(1):integer
 
-byte-code for call_enum:_tp_Integer_add(self: ref(Integer)[0]) -> integer
+byte-code for call_enum:t_7Integer_add(self: ref(Integer)[0]) -> integer
    0[12]: return-address
    0[16]: [8] VarRef(var[0]) -> ref(reference) type=Integer 19 var=self[0]:ref(Integer)
    3[28]: GetInt(v1: ref(reference), fld=4) -> integer
    6[20]: Return(ret=12, value=4, discard=20) type=integer 0
 
-fn _tp_Text_add(self:Text) -> integer {#block(1):integer
+fn t_4Text_add(self:Text) -> integer {#block(1):integer
   [12] OpCastIntFromText(OpGetText(self(0), 4i32));
 }#block(1):integer
 
-byte-code for call_enum:_tp_Text_add(self: ref(Text)[0]) -> integer
+byte-code for call_enum:t_4Text_add(self: ref(Text)[0]) -> integer
    0[12]: return-address
    0[16]: [12] VarRef(var[0]) -> ref(reference) type=Text 20 var=self[0]:ref(Text)
    3[28]: GetText(v1: ref(reference), fld=4) -> text["self"]
    6[32]: CastIntFromText(v1: text) -> integer
    7[20]: Return(ret=12, value=4, discard=20) type=integer 0
 
-fn _tp_Array_add(self:Array) -> integer {#block(1):integer
+fn t_5Array_add(self:Array) -> integer {#block(1):integer
   [16] n(1):integer = 0i32;
   [17] {#For block(2):void
     _vector_1(2):vector<integer>["self"] = OpGetField(self(0), 4i32, 17i32);
@@ -93,7 +93,7 @@ fn _tp_Array_add(self:Array) -> integer {#block(1):integer
   [20] n(1);
 }#block(1):integer
 
-byte-code for call_enum:_tp_Array_add(self: ref(Array)[0]) -> integer
+byte-code for call_enum:t_5Array_add(self: ref(Array)[0]) -> integer
    0[12]: return-address
    0[16]: [16] ConstInt(val=0) -> integer var=n[16]:integer
    5[20]: [17] VarRef(var[0]) -> ref(reference) type=Array 21 var=self[0]:ref(Array)
@@ -123,7 +123,7 @@ byte-code for call_enum:_tp_Array_add(self: ref(Array)[0]) -> integer
   76[20]: [20] VarInt(var[16]) -> integer var=n[16]:integer
   79[24]: Return(ret=12, value=4, discard=24) type=integer 0
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [25] test_value(1):integer = {#block(2):integer
     [26] t(2):ref(Text) = null;
@@ -150,7 +150,7 @@ fn test() {#block(1):void
     OpSetInt(_elm_1(2), 0i32, 4i32);
     OpFinishRecord(a(2), _elm_1(2), 21i32, 1i32);
     OpSetEnum(a(2), 0i32, 3u8(65535));
-    [29] OpAddInt(OpAddInt(_tp_Text_add(t(2)), _tp_Integer_add(i(2))), _tp_Array_add(a(2)));
+    [29] OpAddInt(OpAddInt(t_4Text_add(t(2)), t_7Integer_add(i(2))), t_5Array_add(a(2)));
     OpFreeRef(t(2));
     OpFreeRef(i(2));
     OpFreeRef(a(2));
@@ -164,7 +164,7 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for call_enum:test()
+byte-code for call_enum:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [26] ConvRefFromNull() -> ref(reference) var=t[28]:ref(Text)
@@ -227,12 +227,12 @@ byte-code for call_enum:test()
  200[88]: ConstEnum(val=3) -> boolean
  202[89]: SetEnum(v1: ref(reference), fld=0, val: boolean)
  205[76]: [29] VarRef(var[28]) -> ref(reference) type=Text 20 var=t[28]:ref(Text)
- 208[88]: Call(size=0, fn=_tp_Text_add)
+ 208[88]: Call(size=0, fn=t_4Text_add)
  215[80]: VarRef(var[40]) -> ref(reference) type=Integer 19 var=i[40]:ref(Integer)
- 218[92]: Call(size=0, fn=_tp_Integer_add)
+ 218[92]: Call(size=0, fn=t_7Integer_add)
  225[84]: AddInt(v1: integer, v2: integer) -> integer
  226[80]: VarRef(var[52]) -> ref(reference) type=Array 21 var=a[52]:ref(Array)
- 229[92]: Call(size=0, fn=_tp_Array_add)
+ 229[92]: Call(size=0, fn=t_5Array_add)
  236[84]: AddInt(v1: integer, v2: integer) -> integer
  237[80]: VarRef(var[28]) -> ref(reference) type=Text 20 var=t[28]:ref(Text)
  240[92]: FreeRef(v1: ref(reference))
@@ -259,6 +259,52 @@ byte-code for call_enum:test()
  319[48]: Panic(message: text)
  320[32]: FreeText(var[4])
  323[32]: Return(ret=0, value=0, discard=32)
+
+fn t_5Value_add(self:ref(Value)) -> integer {#dynamic_fn(1):integer
+  if OpEqInt(OpConvIntFromEnum(OpGetEnum(self(0), 0i32)), 1i32) {#ret(2):void
+    return t_7Integer_add(self(0));
+  }#ret(2):void else null;
+  if OpEqInt(OpConvIntFromEnum(OpGetEnum(self(0), 0i32)), 2i32) {#ret(3):void
+    return t_4Text_add(self(0));
+  }#ret(3):void else null;
+  if OpEqInt(OpConvIntFromEnum(OpGetEnum(self(0), 0i32)), 3i32) {#ret(4):void
+    return t_5Array_add(self(0));
+  }#ret(4):void else null;
+}#dynamic_fn(1):integer
+
+byte-code for call_enum:t_5Value_add(self: ref(Value)[0]) -> integer
+   0[12]: return-address
+   0[16]: VarRef(var[0]) -> ref(reference) type=Value 18 var=self[0]:ref(Value)
+   3[28]: GetEnum(v1: ref(reference), fld=0) -> boolean
+   6[17]: ConvIntFromEnum(v1: boolean) -> integer
+   7[20]: ConstInt(val=1) -> integer
+  12[24]: EqInt(v1: integer, v2: integer) -> boolean
+  13[17]: GotoFalseWord(jump=36, if_false: boolean)
+  16[16]: VarRef(var[0]) -> ref(reference) type=Value 18 var=self[0]:ref(Value)
+  19[28]: Call(size=0, fn=t_7Integer_add)
+  26[20]: Return(ret=12, value=4, discard=20)
+  32[20]: FreeStack(value=0, discard=4)
+  36[16]: VarRef(var[0]) -> ref(reference) type=Value 18 var=self[0]:ref(Value)
+  39[28]: GetEnum(v1: ref(reference), fld=0) -> boolean
+  42[17]: ConvIntFromEnum(v1: boolean) -> integer
+  43[20]: ConstInt(val=2) -> integer
+  48[24]: EqInt(v1: integer, v2: integer) -> boolean
+  49[17]: GotoFalseWord(jump=72, if_false: boolean)
+  52[16]: VarRef(var[0]) -> ref(reference) type=Value 18 var=self[0]:ref(Value)
+  55[28]: Call(size=0, fn=t_4Text_add)
+  62[20]: Return(ret=12, value=4, discard=20)
+  68[20]: FreeStack(value=0, discard=4)
+  72[16]: VarRef(var[0]) -> ref(reference) type=Value 18 var=self[0]:ref(Value)
+  75[28]: GetEnum(v1: ref(reference), fld=0) -> boolean
+  78[17]: ConvIntFromEnum(v1: boolean) -> integer
+  79[20]: ConstInt(val=3) -> integer
+  84[24]: EqInt(v1: integer, v2: integer) -> boolean
+  85[17]: GotoFalseWord(jump=108, if_false: boolean)
+  88[16]: VarRef(var[0]) -> ref(reference) type=Value 18 var=self[0]:ref(Value)
+  91[28]: Call(size=0, fn=t_5Array_add)
+  98[20]: Return(ret=12, value=4, discard=20)
+ 104[20]: FreeStack(value=0, discard=4)
+ 108[16]: Return(ret=12, value=4, discard=16) type=integer 0
 
 Execute test:
     0:[8] [26] Text()
@@ -322,19 +368,19 @@ Execute test:
   200:[92] ConstEnum(val=3) -> unknown(3)[92]
   202:[93] SetEnum(v1=ref(3,1,8)[80], fld=0, val=3[92])
   205:[80] VarRef(var[32]) -> ref(1,1,8)={t_value:"123"}[80]
-  208:[92] Call(size=0, fn=_tp_Text_add)
+  208:[92] Call(size=0, fn=t_4Text_add)
  1115:[96] VarRef(var[80]) -> ref(1,1,8)={t_value:"123"}[96]
  1118:[108] GetText(v1=ref(1,1,8)[96], fld=4) -> "123"[96]
  1121:[112] CastIntFromText(v1="123"[96]) -> 123[96]
  1122:[100] Return(ret=1428[92], value=4, discard=20) -> 123[80]
   215:[84] VarRef(var[44]) -> ref(2,1,8)={i_value:101}[84]
-  218:[96] Call(size=0, fn=_tp_Integer_add)
+  218:[96] Call(size=0, fn=t_7Integer_add)
  1103:[100] VarRef(var[84]) -> ref(2,1,8)={i_value:101}[100]
  1106:[112] GetInt(v1=ref(2,1,8)[100], fld=4) -> 101[100]
  1109:[104] Return(ret=1438[96], value=4, discard=20) -> 101[84]
   225:[88] AddInt(v1=123[80], v2=101[84]) -> 224[80]
   226:[84] VarRef(var[56]) -> ref(3,1,8)={content:[1,2,3,4]}[84]
-  229:[96] Call(size=0, fn=_tp_Array_add)
+  229:[96] Call(size=0, fn=t_5Array_add)
  1128:[100] ConstInt(val=0) -> 0[100]
  1133:[104] VarRef(var[84]) -> ref(3,1,8)={content:[1,2,3,4]}[104]
  1136:[116] GetField(v1=ref(3,1,8)[104], fld=4) -> ref(3,1,12)=[1,2,3,4][104]

@@ -38,7 +38,7 @@ Type 19:index<Elm[nr,-key]>[4/4]:Index(17, [(0, true), (1, false)], 3) keys [tp:
 
 Type 20:vector<Elm>[4/4]:Vector(17)
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [5] test_value(1):integer = {#block(2):integer
     db(2):ref(Db) = null;
@@ -79,9 +79,9 @@ fn test() {#block(1):void
     [15] {#For block(3):void
       _iter_2(3):long = OpIterate(OpGetField(db(2), 0i32, 19i32), 1i32, 20i32, &[Key { type_nr: 1, position: 0 }, Key { type_nr: -6, position: 4 }], 1i32, 83i32, 2i32, 92i32, "Two");
       loop {#For loop_4
-        v(4):ref(Elm)["db"] = {#Iterate keys(5):index<Elm,[(0, true), (1, false)]>["db"]
+        v(4):ref(Elm)["db"] = {#Iterate keys(5):index<Elm,[("nr", true), ("key", false)]>["db"]
           OpStep(_iter_2(3), OpGetField(db(2), 0i32, 19i32), 1i32, 20i32);
-        }#Iterate keys(5):index<Elm,[(0, true), (1, false)]>["db"];
+        }#Iterate keys(5):index<Elm,[("nr", true), ("key", false)]>["db"];
         if OpNot(OpConvBoolFromRef(v(4))) {#break(6):void
           break(0);
         }#break(6):void else null;
@@ -104,7 +104,7 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for index_iterator:test()
+byte-code for index_iterator:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [5] ConvRefFromNull() -> ref(reference) var=db[28]:ref(Db)

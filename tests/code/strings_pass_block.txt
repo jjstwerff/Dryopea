@@ -5,13 +5,13 @@ pub fn test() {
         "Test failed {test_value} != \"12\""
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [2] d(1):text = "";
   test_value(1):text["d"] = {#block(2):text["d"]
     s(2):text = "12 ";
     d(1):text = s(2);
-    _tp_text_trim(d(1));
+    t_4text_trim(d(1));
     OpFreeText(s(2));
   }#block(2):text["d"];
   [3] if OpEqText(test_value(1), "12") null else OpPanic({#Formatted string(3):text["__work_1"]
@@ -25,7 +25,7 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for pass_block:test()
+byte-code for pass_block:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] Text() var=d[28]:text
@@ -37,7 +37,7 @@ byte-code for pass_block:test()
   15[100]: VarText(var[76]) -> text var=s[76]:text
   18[116]: AppendText(var[28], v1: text)
   21[100]: VarText(var[28]) -> text var=d[28]:text
-  24[116]: StaticCall(_tp_text_trim)
+  24[116]: StaticCall(t_4text_trim)
   27[116]: FreeText(var[76])
   30[116]: FreeStack(value=16, discard=40)
   34[92]: AppendText(var[52], v1: text)
@@ -72,7 +72,7 @@ Execute test:
    15:[104] VarText(var[80]) -> "12 "[104]
    18:[120] AppendText(var[32], v1="12 "[104])
    21:[104] VarText(var[32]) -> "12 "[104]
-   24:[120] StaticCall(_tp_text_trim)
+   24:[120] StaticCall(t_4text_trim)
    27:[120] FreeText(var[80])
    30:[120] FreeStack(value=16, discard=40)
    34:[96] AppendText(var[56], v1="12"[80])

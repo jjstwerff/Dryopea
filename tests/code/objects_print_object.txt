@@ -13,7 +13,7 @@ Type 17:Object[9/4]:
     bb:text[4]
     ccc:boolean[8]
 
-fn obj() -> Object {#block(1):ref(Object)
+fn n_obj() -> Object {#block(1):ref(Object)
   __ref_1(1):ref(Object) = null;
   [2] {#Object(2):ref(Object)["__ref_1"]
     OpDatabase(__ref_1(1), 17i32);
@@ -24,7 +24,7 @@ fn obj() -> Object {#block(1):ref(Object)
   }#Object(2):ref(Object)["__ref_1"];
 }#block(1):ref(Object)
 
-byte-code for print_object:obj() -> ref(Object)
+byte-code for print_object:n_obj() -> ref(Object)
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Object)
    1[16]: [2] Database(var[4], db_tp=17) type=Object 17
@@ -44,11 +44,11 @@ byte-code for print_object:obj() -> ref(Object)
   52[16]: VarRef(var[4]) -> ref(reference) type=Object 17 var=__ref_1[4]:ref(Object)
   55[28]: Return(ret=0, value=12, discard=28) type=Object 17
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [5] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
-    o(2):ref(Object) = obj();
+    o(2):ref(Object) = n_obj();
     _field_1(2):text = OpGetText(o(2), 4i32);
     OpAppendCharacter(_field_1(2), 33i32);
     OpSetText(o(2), 4i32, _field_1(2));
@@ -73,12 +73,12 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for print_object:test()
+byte-code for print_object:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
    2[52]: [5] Text() var=test_value[52]:text["__work_1"]
-   3[76]: Call(size=0, fn=obj) var=o[76]:ref(Object)
+   3[76]: Call(size=0, fn=n_obj) var=o[76]:ref(Object)
   10[88]: Text() var=_field_1[88]:text
   11[112]: VarRef(var[76]) -> ref(reference) type=Object 17 var=o[76]:ref(Object)
   14[124]: GetText(v1: ref(reference), fld=4) -> text["test_value"]
@@ -127,7 +127,7 @@ Execute test:
     0:[8] Text()
     1:[32] [5] Text()
     2:[56] Text()
-    3:[80] Call(size=0, fn=obj)
+    3:[80] Call(size=0, fn=n_obj)
  1103:[84] [2] ConvRefFromNull() -> ref(1,0,8)[84]
  1104:[96] Database(var[84], db_tp=17)
  1109:[96] VarRef(var[84]) -> ref(1,1,8)={ccc:false}[96]

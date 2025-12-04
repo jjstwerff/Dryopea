@@ -65,9 +65,9 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
         #[cfg(debug_assertions)]
         state.execute_log(&mut w, "main", &p.data)?;
         #[cfg(not(debug_assertions))]
-        state.execute(p.data.def_nr("main"), &p.data);
+        state.execute("main", &p.data);
     } else {
-        state.execute(p.data.def_nr("main"), &p.data);
+        state.execute("main", &p.data);
     }
     Ok(())
 }

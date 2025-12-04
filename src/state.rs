@@ -192,8 +192,12 @@ impl State {
 
     #[inline]
     pub fn get_db_ref(&mut self) {
+        let fld = *self.code::<u16>();
         let r = *self.get_stack::<DbRef>();
-        let t = self.database.store(&r).addr::<DbRef>(r.rec, r.pos);
+        let t = self
+            .database
+            .store(&r)
+            .addr::<DbRef>(r.rec, r.pos + u32::from(fld));
         self.put_stack(*t);
     }
 
@@ -1222,7 +1226,9 @@ impl State {
         for a in 0..stack.data.def(def_nr).attributes.len() as u16 {
             let n = &stack.data.def(def_nr).attributes[a as usize].name;
             let v = stack.function.var(n);
-            stack.position = stack.function.claim(v, stack.position, &Context::Argument);
+            if v != u16::MAX {
+                stack.position = stack.function.claim(v, stack.position, &Context::Argument);
+            }
         }
         let start = self.code_pos;
         self.arguments = stack.position;
@@ -1734,11 +1740,13 @@ impl State {
                     self.generate(expr, stack, false);
                 }
                 self.add_return(stack, return_expr);
+                return_expr = 0;
+                tp = Type::Void;
             } else {
                 has_return = false;
+                return_expr = 0;
+                tp = self.generate(v, stack, false);
             }
-            return_expr = 0;
-            tp = self.generate(v, stack, false);
             if self.stack_pos > s_pos && !matches!(v, Value::Set(_, _)) {
                 // Normal expressions do not claim stack space (because of Value::Drop)
                 // So if there is data left it should be a return expression.
@@ -2125,7 +2133,7 @@ impl State {
         data: &Data,
     ) -> Result<(), Error> {
         writeln!(log, "Execute {name}:")?;
-        let d_nr = data.def_nr(name);
+        let d_nr = data.def_nr(&format!("n_{name}"));
         assert_ne!(d_nr, u32::MAX, "Unknown routine {name}");
         self.code_pos = data.def(d_nr).code_position;
         self.def_pos = self.code_pos;
@@ -2162,7 +2170,8 @@ impl State {
     # Panics
     When too many steps were taken, this might indicate an unending loop.
     */
-    pub fn execute(&mut self, d_nr: u32, data: &Data) {
+    pub fn execute(&mut self, name: &str, data: &Data) {
+        let d_nr = data.def_nr(&format!("n_{name}"));
         let pos = data.def(d_nr).code_position;
         self.code_pos = pos;
         self.stack_pos = 4;

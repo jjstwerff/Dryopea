@@ -105,10 +105,10 @@ pub fn vector_record() {
 pub fn sorted_vector() {
     let mut stores = Stores::new();
     let s = stores.structure("Elm", 0);
-    let c = stores.field(s, "cat", stores.name("integer"));
-    let n = stores.field(s, "name", stores.name("text"));
+    stores.field(s, "cat", stores.name("integer"));
+    stores.field(s, "name", stores.name("text"));
     stores.field(s, "value", stores.name("float"));
-    let v = stores.sorted(s, &[(c, false), (n, true)]);
+    let v = stores.sorted(s, &[("cat".to_string(), false), ("name".to_string(), true)]);
     stores.finish();
     let size = stores.size(s);
     //stores.dump_types();
@@ -178,11 +178,11 @@ pub fn sorted_vector() {
 pub fn hash() {
     let mut stores = Stores::new();
     let s = stores.structure("Elm", 0);
-    let n = stores.field(s, "name", stores.name("text"));
-    let c = stores.field(s, "cat", stores.name("integer"));
+    stores.field(s, "name", stores.name("text"));
+    stores.field(s, "cat", stores.name("integer"));
     stores.field(s, "value", stores.name("float"));
     let m = stores.structure("Main", 0);
-    let v = stores.hash(s, &[n, c]);
+    let v = stores.hash(s, &["name".to_string(), "cat".to_string()]);
     stores.field(m, "data", v);
     stores.finish();
     let db = stores.database(8);
@@ -220,10 +220,10 @@ pub fn hash() {
 pub fn array_record() {
     let mut stores = Stores::new();
     let s = stores.structure("Elm", 0);
-    let n = stores.field(s, "n", stores.name("text"));
+    stores.field(s, "n", stores.name("text"));
     stores.field(s, "c", stores.name("integer"));
     let v = stores.vector(s);
-    let h = stores.hash(s, &[n]);
+    let h = stores.hash(s, &["n".to_string()]);
     let m = stores.structure("Main", 0);
     stores.field(m, "list", v);
     stores.field(m, "search", h);
@@ -257,10 +257,10 @@ pub fn array_record() {
 pub fn ordered_record() {
     let mut stores = Stores::new();
     let s = stores.structure("Elm", 0);
-    let n = stores.field(s, "n", stores.name("text"));
+    stores.field(s, "n", stores.name("text"));
     stores.field(s, "c", stores.name("integer"));
-    let v = stores.sorted(s, &[(n, true)]);
-    let h = stores.hash(s, &[n]);
+    let v = stores.sorted(s, &[("n".to_string(), true)]);
+    let h = stores.hash(s, &["n".to_string()]);
     let m = stores.structure("Main", 0);
     stores.field(m, "list", v);
     stores.field(m, "search", h);
@@ -301,9 +301,9 @@ pub fn ordered_record() {
 pub fn index() {
     let mut stores = Stores::new();
     let s = stores.structure("Elm", 0);
-    let n = stores.field(s, "n", stores.name("text"));
+    stores.field(s, "n", stores.name("text"));
     stores.field(s, "c", stores.name("integer"));
-    let v = stores.index(s, &[(n, true)]);
+    let v = stores.index(s, &[("n".to_string(), true)]);
     let m = stores.structure("Main", 0);
     stores.field(m, "index", v);
     stores.finish();
@@ -354,9 +354,9 @@ pub fn index() {
 pub fn index_deletions() {
     let mut stores = Stores::new();
     let s = stores.structure("Elm", 0);
-    let n = stores.field(s, "k", stores.name("integer"));
+    stores.field(s, "k", stores.name("integer"));
     stores.field(s, "c", stores.name("integer"));
-    let v = stores.index(s, &[(n, true)]);
+    let v = stores.index(s, &[("k".to_string(), true)]);
     let m = stores.structure("Main", 0);
     stores.field(m, "index", v);
     stores.finish();
@@ -404,10 +404,10 @@ pub fn index_deletions() {
 pub fn index_find() {
     let mut stores = Stores::new();
     let s = stores.structure("Elm", 0);
-    let c = stores.field(s, "cat", stores.name("integer"));
-    let n = stores.field(s, "name", stores.name("text"));
+    stores.field(s, "cat", stores.name("integer"));
+    stores.field(s, "name", stores.name("text"));
     stores.field(s, "value", stores.name("float"));
-    let v = stores.index(s, &[(c, true), (n, true)]);
+    let v = stores.index(s, &[("cat".to_string(), true), ("name".to_string(), true)]);
     stores.finish();
     assert_eq!(
         stores.dump_type("Elm"),

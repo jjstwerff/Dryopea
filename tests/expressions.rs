@@ -11,7 +11,7 @@ const INTEGER: Type = Type::Integer(i32::MIN + 1, i32::MAX as u32);
 
 #[test]
 fn aa_print() {
-    code!("fn test() { OpPrint(\"hi!\"); }");
+    code!("fn test() { print(\"hi!\"); }");
 }
 
 #[test]

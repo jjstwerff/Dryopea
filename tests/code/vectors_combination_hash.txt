@@ -42,7 +42,7 @@ Type 19:array<Count>[4/4]:Array(17)
 
 Type 20:hash<Count[t]>[4/4]:Hash(17, [0]) keys [tp:6 desc:false field:0, ]
 
-fn fill(c:Counting) {#block(1):void
+fn n_fill(c:Counting) {#block(1):void
   [4] _elm_1(1):ref(Count)["c"] = OpNewRecord(c(0), 18i32, 0i32);
   OpSetText(_elm_1(1), 0i32, "One");
   OpSetInt(_elm_1(1), 4i32, 1i32);
@@ -97,7 +97,7 @@ fn fill(c:Counting) {#block(1):void
   OpFinishRecord(c(0), _elm_2(1), 18i32, 0i32);
 }#block(1):void
 
-byte-code for combination_hash:fill(c: ref(Counting)[0])
+byte-code for combination_hash:n_fill(c: ref(Counting)[0])
    0[12]: return-address
    0[16]: [4] VarRef(var[0]) -> ref(reference) type=Counting 18 var=c[0]:ref(Counting)
    3[28]: NewRecord(data: ref(reference), parent_tp=18, fld=0) -> ref(reference)
@@ -255,14 +255,14 @@ byte-code for combination_hash:fill(c: ref(Counting)[0])
  581[64]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=18, fld=0)
  586[40]: Return(ret=12, value=0, discard=40)
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [24] test_value(1):integer = {#block(2):integer
     c(2):ref(Counting) = null;
     OpDatabase(c(2), 18i32);
     OpSetInt(c(2), 0i32, 0i32);
     OpSetInt(c(2), 4i32, 0i32);
-    [25] fill(c(2));
+    [25] n_fill(c(2));
     [26] if OpNot(OpConvBoolFromRef(OpGetRecord(OpGetField(c(2), 4i32, 20i32), 20i32, 1i32, "None"))) null else OpPanic("No element");
     [27] OpAddInt(OpGetInt(OpGetRecord(OpGetField(c(2), 4i32, 20i32), 20i32, 1i32, "Five"), 4i32), OpGetInt(OpGetRecord(OpGetField(c(2), 4i32, 20i32), 20i32, 1i32, "Seven"), 4i32));
     OpFreeRef(c(2));
@@ -276,7 +276,7 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for combination_hash:test()
+byte-code for combination_hash:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [24] ConvRefFromNull() -> ref(reference) var=c[28]:ref(Counting)
@@ -288,7 +288,7 @@ byte-code for combination_hash:test()
   21[52]: ConstInt(val=0) -> integer
   26[56]: SetInt(v1: ref(reference), fld=4, val: integer)
   29[40]: [25] VarRef(var[28]) -> ref(reference) type=Counting 18 var=c[28]:ref(Counting)
-  32[52]: Call(size=0, fn=fill)
+  32[52]: Call(size=0, fn=n_fill)
   39[40]: [26] VarRef(var[28]) -> ref(reference) type=Counting 18 var=c[28]:ref(Counting)
   42[52]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=hash<Count[t]> 20
   45[52]: ConstText(_value="None") -> text
@@ -343,7 +343,7 @@ Execute test:
    21:[56] ConstInt(val=0) -> 0[56]
    26:[60] SetInt(v1=ref(1,1,8)[44], fld=4, val=0[56])
    29:[44] VarRef(var[32]) -> ref(1,1,8)={v:[]}[44]
-   32:[56] Call(size=0, fn=fill)
+   32:[56] Call(size=0, fn=n_fill)
  1103:[60] VarRef(var[44]) -> ref(1,1,8)={v:[]}[60]
  1106:[72] NewRecord(data=ref(1,1,8)[60], parent_tp=18, fld=0) -> ref(1,9,8)[60]
  1111:[72] VarRef(var[60]) -> ref(1,9,8)={}[72]

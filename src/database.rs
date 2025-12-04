@@ -803,8 +803,9 @@ impl Stores {
         }
     }
 
-    pub fn hash(&mut self, content: u16, key: &[u16]) -> u16 {
+    pub fn hash(&mut self, content: u16, key: &[String]) -> u16 {
         let mut name = "hash<".to_string() + &self.types[content as usize].name + "[";
+        let mut key_nrs = Vec::new();
         if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
             &self.types[content as usize].parts
         {
@@ -812,8 +813,12 @@ impl Stores {
                 if k_nr > 0 {
                     name += ",";
                 }
-                let fld = &fields[*k as usize];
-                name += &fld.name;
+                name += k;
+                for (f_nr, f) in fields.iter().enumerate() {
+                    if f.name == *k {
+                        key_nrs.push(f_nr as u16);
+                    }
+                }
             }
         }
         name += "]>";
@@ -822,27 +827,28 @@ impl Stores {
         } else {
             let num = self.types.len() as u16;
             self.types
-                .push(Type::data(&name, Parts::Hash(content, key.into())));
+                .push(Type::data(&name, Parts::Hash(content, key_nrs)));
             self.names.insert(name, num);
             num
         }
     }
 
-    pub fn spacial(&mut self, content: u16, key: &[u16]) -> u16 {
+    pub fn spacial(&mut self, content: u16, key: &[String]) -> u16 {
         let mut name = "spacial<".to_string() + &self.types[content as usize].name + "[";
-        self.field_name(content, key, &mut name);
+        let key_nrs = self.field_name(content, key, &mut name);
         if let Some(nr) = self.names.get(&name) {
             *nr
         } else {
             let num = self.types.len() as u16;
             self.types
-                .push(Type::data(&name, Parts::Spacial(content, Vec::from(key))));
+                .push(Type::data(&name, Parts::Spacial(content, key_nrs)));
             self.names.insert(name, num);
             num
         }
     }
 
-    pub fn field_name(&self, content: u16, key: &[u16], name: &mut String) {
+    pub fn field_name(&self, content: u16, key: &[String], name: &mut String) -> Vec<u16> {
+        let mut key_nrs = Vec::new();
         if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
             &self.types[content as usize].parts
         {
@@ -850,27 +856,16 @@ impl Stores {
                 if k_nr > 0 {
                     *name += ",";
                 }
-                *name += &fields[*k as usize].name;
+                *name += k;
+                for (f_nr, f) in fields.iter().enumerate() {
+                    if f.name == *k {
+                        key_nrs.push(f_nr as u16);
+                    }
+                }
             }
         }
         *name += "]>";
-    }
-
-    pub fn field_id(&self, content: u16, key: &[(u16, bool)], name: &mut String) {
-        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
-            &self.types[content as usize].parts
-        {
-            for (k_nr, (k, asc)) in key.iter().enumerate() {
-                if k_nr > 0 {
-                    *name += ",";
-                }
-                if !asc {
-                    *name += "-";
-                }
-                *name += &fields[*k as usize].name;
-            }
-        }
-        *name += "]>";
+        key_nrs
     }
 
     #[must_use]
@@ -894,23 +889,23 @@ impl Stores {
     /**
     Keys with field number and ascending flag.
     */
-    pub fn sorted(&mut self, content: u16, key: &[(u16, bool)]) -> u16 {
+    pub fn sorted(&mut self, content: u16, key: &[(String, bool)]) -> u16 {
         let mut name = "sorted<".to_string() + &self.types[content as usize].name + "[";
-        self.key_name(content, key, &mut name);
+        let key_nrs = self.create_key(content, key, &mut name);
         if let Some(nr) = self.names.get(&name) {
             *nr
         } else {
             let num = self.types.len() as u16;
             self.types
-                .push(Type::new(&name, Parts::Sorted(content, Vec::from(key)), 4));
+                .push(Type::new(&name, Parts::Sorted(content, key_nrs), 4));
             self.names.insert(name, num);
             num
         }
     }
 
-    pub fn index(&mut self, content: u16, key: &[(u16, bool)]) -> u16 {
+    pub fn index(&mut self, content: u16, key: &[(String, bool)]) -> u16 {
         let mut name = "index<".to_string() + &self.types[content as usize].name + "[";
-        self.key_name(content, key, &mut name);
+        let key_nrs = self.create_key(content, key, &mut name);
         let int_c = self.name("integer");
         let bool_c = self.name("boolean");
         let mut nr = 1;
@@ -956,11 +951,8 @@ impl Stores {
             *nr
         } else {
             let num = self.types.len() as u16;
-            self.types.push(Type::new(
-                &name,
-                Parts::Index(content, Vec::from(key), left),
-                4,
-            ));
+            self.types
+                .push(Type::new(&name, Parts::Index(content, key_nrs, left), 4));
             self.names.insert(name, num);
             num
         }
@@ -981,6 +973,35 @@ impl Stores {
             }
         }
         *name += "]>";
+    }
+
+    fn create_key(
+        &mut self,
+        content: u16,
+        key: &[(String, bool)],
+        name: &mut String,
+    ) -> Vec<(u16, bool)> {
+        let mut key_nrs = Vec::new();
+        if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
+            &self.types[content as usize].parts
+        {
+            for (k_nr, (k, asc)) in key.iter().enumerate() {
+                if k_nr > 0 {
+                    *name += ",";
+                }
+                if !*asc {
+                    *name += "-";
+                }
+                *name += k;
+                for (f_nr, f) in fields.iter().enumerate() {
+                    if f.name == *k {
+                        key_nrs.push((f_nr as u16, *asc));
+                    }
+                }
+            }
+        }
+        *name += "]>";
+        key_nrs
     }
 
     pub fn byte(&mut self, min: i32, nullable: bool) -> u16 {

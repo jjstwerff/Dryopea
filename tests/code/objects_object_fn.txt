@@ -20,14 +20,14 @@ Type 17:Data[8/4]:
     name:text[0]
     number:integer[4]
 
-fn data(n:text, res:Data) -> Data["res"] {#block(1):ref(Data)["res"]
+fn n_data(n:text, res:Data) -> Data["res"] {#block(1):ref(Data)["res"]
   [7] OpDatabase(res(0), 17i32);
   OpSetText(res(0), 0i32, n(0));
   OpSetInt(res(0), 4i32, 0i32);
   [8] res(0);
 }#block(1):ref(Data)["res"]
 
-byte-code for object_fn:data(n: text[0], res: ref(Data)[16]) -> ref(Data)["res"]
+byte-code for object_fn:n_data(n: text[0], res: ref(Data)[16]) -> ref(Data)["res"]
    0[28]: return-address
    0[32]: [7] Database(var[16], db_tp=17) type=Data 17
    5[32]: VarRef(var[16]) -> ref(reference) type=Data 17 var=res[16]:ref(Data)
@@ -39,12 +39,12 @@ byte-code for object_fn:data(n: text[0], res: ref(Data)[16]) -> ref(Data)["res"]
   25[32]: [8] VarRef(var[16]) -> ref(reference) type=Data 17 var=res[16]:ref(Data)
   28[44]: Return(ret=28, value=12, discard=44) type=Data 17
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_1(1):ref(Data) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
   [13] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
-    d(2):ref(Data)["__ref_1"] = data("test", __ref_1(1));
+    d(2):ref(Data)["__ref_1"] = n_data("test", __ref_1(1));
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
       OpFormatText(__work_1(1), OpGetText(d(2), 0i32), 0i32, -1i32, 32i32);
@@ -65,7 +65,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for object_fn:test()
+byte-code for object_fn:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data)
    1[16]: Text() var=__work_2[16]:text
@@ -73,7 +73,7 @@ byte-code for object_fn:test()
    3[64]: [13] Text() var=test_value[64]:text["__work_1"]
    4[88]: ConstText(_value="test") -> text var=d[88]:ref(Data)["__ref_1"]
   10[104]: VarRef(var[4]) -> ref(reference) type=Data 17 var=__ref_1[4]:ref(Data)
-  13[116]: Call(size=0, fn=data)
+  13[116]: Call(size=0, fn=n_data)
   20[100]: ClearText(var[40]) var=__work_1[40]:text
   23[100]: ConstText(_value="") -> text
   25[116]: VarRef(var[88]) -> ref(reference) type=Data 17 var=d[88]:ref(Data)["__ref_1"]
@@ -120,7 +120,7 @@ Execute test:
     3:[68] Text()
     4:[92] ConstText(_value="test") -> "test"[92]
    10:[108] VarRef(var[8]) -> ref(1,0,8)=null[108]
-   13:[120] Call(size=0, fn=data)
+   13:[120] Call(size=0, fn=n_data)
  1103:[124] Database(var[108], db_tp=17)
  1108:[124] VarRef(var[108]) -> ref(1,1,8)={}[124]
  1111:[136] ArgText(var[92]) -> "test"[136]

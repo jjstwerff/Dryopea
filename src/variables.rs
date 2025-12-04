@@ -495,6 +495,19 @@ impl Function {
         v
     }
 
+    pub fn work_ref(&self) -> u16 {
+        self.work_ref
+    }
+
+    pub fn clean_work_refs(&mut self, work_ref: u16) {
+        for w in work_ref..self.work_ref {
+            let n = format!("__ref_{}", w + 1);
+            let v_nr = self.var(&n);
+            // prevent free for this variable
+            self.variables[v_nr as usize].type_def = Type::Reference(0, vec![0]);
+        }
+    }
+
     pub fn work_refs(&mut self, tp: &Type, lexer: &mut Lexer) -> u16 {
         let n = format!("__ref_{}", self.work_ref + 1);
         self.work_ref += 1;

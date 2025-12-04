@@ -5,12 +5,12 @@ pub fn test() {
         "Test failed {test_value} != \"12\""
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [2] s(1):text = "";
   test_value(1):text["s"] = {#block(2):text["s"]
     s(1):text = " 12   ";
-    _tp_text_trim(s(1));
+    t_4text_trim(s(1));
   }#block(2):text["s"];
   [3] if OpEqText(test_value(1), "12") null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
@@ -23,7 +23,7 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for trim_block:test()
+byte-code for trim_block:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] Text() var=s[28]:text
@@ -32,7 +32,7 @@ byte-code for trim_block:test()
    6[76]: ConstText(_value=" 12   ") -> text
   14[92]: AppendText(var[28], v1: text)
   17[76]: VarText(var[28]) -> text var=s[28]:text
-  20[92]: StaticCall(_tp_text_trim)
+  20[92]: StaticCall(t_4text_trim)
   23[92]: AppendText(var[52], v1: text)
   26[76]: [3] VarText(var[52]) -> text var=test_value[52]:text["s"]
   29[92]: ConstText(_value="12") -> text
@@ -62,7 +62,7 @@ Execute test:
     6:[80] ConstText(_value=" 12   ") -> " 12   "[80]
    14:[96] AppendText(var[32], v1=" 12   "[80])
    17:[80] VarText(var[32]) -> " 12   "[80]
-   20:[96] StaticCall(_tp_text_trim)
+   20:[96] StaticCall(t_4text_trim)
    23:[96] AppendText(var[56], v1="12"[80])
    26:[80] VarText(var[56]) -> "12"[80]
    29:[96] ConstText(_value="12") -> "12"[96]

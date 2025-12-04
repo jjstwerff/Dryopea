@@ -61,7 +61,7 @@ fn double_field_name() {
 #[test]
 fn incorrect_name() {
     code!("type something;\nfn something(a: integer) {}")
-        .fatal("Cannot redefine Type something at incorrect_name:2:14")
+        .error("Cannot redefine Type something from incorrect_name:1:16 at incorrect_name:2:27")
         .error("Expect type definitions to be in camel case style at incorrect_name:1:16");
 }
 
@@ -99,6 +99,26 @@ fn mixed_enums() {
 fn wrong_cast() {
     code!("enum E1 { V1 }\nfn test() { V1 as float }")
         .error("Unknown cast from E1 to float at wrong_cast:2:26");
+}
+
+#[test]
+fn field_type() {
+    code!("struct T { v: u8 }\nfn test() { r = T { v: \"a\" }; assert(\"{r}\" == \"{{v:\\\"a\\\"}}\", \"Object\"); }")
+        .error("Cannot write integer(0, 255) on field T.v:text at field_type:2:29");
+}
+
+#[test]
+fn key_field() {
+    code!(
+        "struct T { n: text, v: u16 }
+struct N { d: vector<T>, h: hash<T[n]> }
+fn test() {
+  s = N { d:[T {n: \"a\", v:12} ] };
+  s.d[0].v = 13;
+  s.d[0].n = \"b\";
+}"
+    )
+    .error("Cannot write to key field T.n create a record instead at key_field:6:9");
 }
 
 #[test]

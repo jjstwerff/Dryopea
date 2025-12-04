@@ -29,7 +29,7 @@ Type 18:main_vector<Data>[4/4]:
 
 Type 19:vector<Data>[4/4]:Vector(17)
 
-fn data(n:text, res:vector<ref(Data)>) -> vector<ref(Data)>["??"] {#block(1):vector<ref(Data)>["res"]
+fn n_data(n:text, res:vector<ref(Data)>) -> vector<ref(Data)>["??"] {#block(1):vector<ref(Data)>["res"]
   [8] nr(1):integer = 0i32;
   [9] {#For block(2):void
     ch#index(2):integer = 0i32;
@@ -54,7 +54,7 @@ fn data(n:text, res:vector<ref(Data)>) -> vector<ref(Data)>["??"] {#block(1):vec
   [13] res(0);
 }#block(1):vector<ref(Data)>["res"]
 
-byte-code for fill_fn:data(n: text[0], res: vector<ref(Data)>[16]) -> vector<ref(Data)>["res"]
+byte-code for fill_fn:n_data(n: text[0], res: vector<ref(Data)>[16]) -> vector<ref(Data)>["res"]
    0[28]: return-address
    0[32]: [8] ConstInt(val=0) -> integer var=nr[32]:integer
    5[36]: [9] ConstInt(val=0) -> integer var=ch#index[36]:integer
@@ -96,12 +96,12 @@ byte-code for fill_fn:data(n: text[0], res: vector<ref(Data)>[16]) -> vector<ref
  114[36]: [13] VarVector(var[16]) -> vector type=vector<Data> 19 var=res[16]:vector<ref(Data)>["res"]
  117[48]: Return(ret=28, value=12, discard=48) type=vector<Data> 19
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_1(1):vector<ref(Data)> = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
   [17] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
-    d(2):vector<ref(Data)>["__ref_1"] = data("test", __ref_1(1));
+    d(2):vector<ref(Data)>["__ref_1"] = n_data("test", __ref_1(1));
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
       OpFormatDatabase(__work_1(1), d(2), 19i32, false);
@@ -120,7 +120,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for fill_fn:test()
+byte-code for fill_fn:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:vector<ref(Data)>
    1[16]: Database(var[4], db_tp=18)
@@ -135,7 +135,7 @@ byte-code for fill_fn:test()
   32[64]: [17] Text() var=test_value[64]:text["__work_1"]
   33[88]: ConstText(_value="test") -> text var=d[88]:vector<ref(Data)>["__ref_1"]
   39[104]: VarVector(var[4]) -> vector type=vector<Data> 19 var=__ref_1[4]:vector<ref(Data)>
-  42[116]: Call(size=0, fn=data)
+  42[116]: Call(size=0, fn=n_data)
   49[100]: ClearText(var[40]) var=__work_1[40]:text
   52[100]: ConstText(_value="") -> text
   54[116]: VarVector(var[88]) -> vector type=vector<Data> 19 var=d[88]:vector<ref(Data)>["__ref_1"]
@@ -180,7 +180,7 @@ Execute test:
    32:[68] Text()
    33:[92] ConstText(_value="test") -> "test"[92]
    39:[108] VarVector(var[8]) -> ref(1,1,12)=[][108]
-   42:[120] Call(size=0, fn=data)
+   42:[120] Call(size=0, fn=n_data)
  1103:[124] ConstInt(val=0) -> 0[124]
  1108:[128] ConstInt(val=0) -> 0[128]
  1113:[132] ArgText(var[92]) -> "test"[132]

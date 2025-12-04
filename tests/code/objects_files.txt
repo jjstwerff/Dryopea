@@ -5,13 +5,13 @@ pub fn test() {
         "Test failed {test_value} != \"[{{path:\"example/config\",size:4096,dir:true}},{{path:\"example/map.png\",size:3406,dir:false}},{{path:\"example/map.xcf\",size:7817,dir:false}},{{path:\"example/show.lav\",size:371,dir:false}},{{path:\"example/todo.json\",size:1461,dir:false}}]\""
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_2(1):vector<ref(File)> = null;
   __ref_1(1):ref(File) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
   [2] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
-    fs(2):vector<ref(File)>["__ref_2"] = _tp_File_files(file("example", __ref_1(1)), __ref_2(1));
+    fs(2):vector<ref(File)>["__ref_2"] = t_4File_files(n_file("example", __ref_1(1)), __ref_2(1));
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
       OpFormatDatabase(__work_1(1), fs(2), 16i32, false);
@@ -31,7 +31,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for files:test()
+byte-code for files:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:vector<ref(File)>
    1[16]: Database(var[4], db_tp=15)
@@ -47,9 +47,9 @@ byte-code for files:test()
   33[76]: [2] Text() var=test_value[76]:text["__work_1"]
   34[100]: ConstText(_value="example") -> text var=fs[100]:vector<ref(File)>["__ref_2"]
   43[116]: VarRef(var[16]) -> ref(reference) type=File 13 var=__ref_1[16]:ref(File)
-  46[128]: Call(size=0, fn=file)
+  46[128]: Call(size=0, fn=n_file)
   53[112]: VarVector(var[4]) -> vector type=vector<File> 16 var=__ref_2[4]:vector<ref(File)>
-  56[124]: Call(size=0, fn=_tp_File_files)
+  56[124]: Call(size=0, fn=t_4File_files)
   63[112]: ClearText(var[52]) var=__work_1[52]:text
   66[112]: ConstText(_value="") -> text
   68[128]: VarVector(var[100]) -> vector type=vector<File> 16 var=fs[100]:vector<ref(File)>["__ref_2"]
@@ -97,7 +97,7 @@ Execute test:
    33:[80] Text()
    34:[104] ConstText(_value="example") -> "example"[104]
    43:[120] VarRef(var[20]) -> ref(2,0,8)=null[120]
-   46:[132] Call(size=0, fn=file)
+   46:[132] Call(size=0, fn=n_file)
   724:[136] Database(var[120], db_tp=13)
   729:[136] VarRef(var[120]) -> ref(2,1,8)={dir:false}[136]
   732:[148] ArgText(var[104]) -> "example"[148]
@@ -117,7 +117,7 @@ Execute test:
   788:[148] GotoWord(jump=792)
   792:[148] Return(ret=1156[132], value=12, discard=44) -> ref(2,1,8)={path:"example",size:4096,dir:true}[104]
    53:[116] VarVector(var[8]) -> ref(1,1,12)=[][116]
-   56:[128] Call(size=0, fn=_tp_File_files)
+   56:[128] Call(size=0, fn=t_4File_files)
   798:[132] VarRef(var[104]) -> ref(2,1,8)={path:"example",size:4096,dir:true}[132]
   801:[144] GetByte(v1=ref(2,1,8)[132], fld=12, min=0) -> 1[132]
   806:[136] ConstInt(val=1) -> 1[136]
