@@ -14,8 +14,8 @@ pub fn test() {
         "Test failed {test_value} != \"cd\""
     );
 }
-fn last(filename:text) -> text["filename"] {#block(1):text["filename"]
-  [2] v(1):integer = _tp_text_rfind(filename(0), "/");
+fn n_last(filename:text) -> text["filename"] {#block(1):text["filename"]
+  [2] v(1):integer = t_4text_rfind(filename(0), "/");
   [3] if OpConvBoolFromInt(v(1)) {#block(2):text["filename"]
     [4] OpGetTextSub(filename(0), OpAddInt(v(1), 1i32), 2147483647i32);
   }#block(2):text["filename"] else {#block(3):text["filename"]
@@ -23,11 +23,11 @@ fn last(filename:text) -> text["filename"] {#block(1):text["filename"]
   }#block(3):text["filename"];
 }#block(1):text["filename"]
 
-byte-code for optional_remove:last(filename: text[0]) -> text["filename"]
+byte-code for optional_remove:n_last(filename: text[0]) -> text["filename"]
    0[16]: return-address
    0[20]: [2] ArgText(var[0]) -> text var=filename[0]:text
    3[36]: ConstText(_value="/") -> text
-   6[52]: StaticCall(_tp_text_rfind)
+   6[52]: StaticCall(t_4text_rfind)
    9[24]: [3] VarInt(var[20]) -> integer var=v[20]:integer
   12[28]: ConvBoolFromInt(v1: integer) -> boolean
   13[25]: GotoFalseWord(jump=37, if_false: boolean)
@@ -41,14 +41,14 @@ byte-code for optional_remove:last(filename: text[0]) -> text["filename"]
   37[24]: [6] ArgText(var[0]) -> text var=filename[0]:text
   40[40]: Return(ret=16, value=16, discard=40) type=text 5
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [11] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
     {#Add text(3):text["__work_1"]
       OpClearText(__work_1(1));
-      OpAppendText(__work_1(1), last("a/b/c"));
-      OpAppendText(__work_1(1), last("d"));
+      OpAppendText(__work_1(1), n_last("a/b/c"));
+      OpAppendText(__work_1(1), n_last("d"));
       __work_1(1);
     }#Add text(3):text["__work_1"];
   }#block(2):text["__work_1"];
@@ -63,17 +63,17 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for optional_remove:test()
+byte-code for optional_remove:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
    2[52]: [11] Text() var=test_value[52]:text["__work_1"]
    3[76]: ClearText(var[28])
    6[76]: ConstText(_value="a/b/c") -> text
-  13[92]: Call(size=0, fn=last)
+  13[92]: Call(size=0, fn=n_last)
   20[92]: AppendText(var[28], v1: text)
   23[76]: ConstText(_value="d") -> text
-  26[92]: Call(size=0, fn=last)
+  26[92]: Call(size=0, fn=n_last)
   33[92]: AppendText(var[28], v1: text)
   36[76]: VarText(var[28]) -> text var=__work_1[28]:text
   39[92]: AppendText(var[52], v1: text)
@@ -103,10 +103,10 @@ Execute test:
     2:[56] Text()
     3:[80] ClearText(var[32])
     6:[80] ConstText(_value="a/b/c") -> "a/b/c"[80]
-   13:[96] Call(size=0, fn=last)
+   13:[96] Call(size=0, fn=n_last)
  1103:[100] ArgText(var[80]) -> "a/b/c"[100]
  1106:[116] ConstText(_value="/") -> "/"[116]
- 1109:[132] StaticCall(_tp_text_rfind)
+ 1109:[132] StaticCall(t_4text_rfind)
  1112:[104] VarInt(var[100]) -> 3[104]
  1115:[108] ConvBoolFromInt(v1=3[104]) -> true[104]
  1116:[105] GotoFalseWord(jump=1140, if_false=true[104])
@@ -120,10 +120,10 @@ Execute test:
  1143:[120] Return(ret=1169[96], value=16, discard=40) -> "c"[80]
    20:[96] AppendText(var[32], v1="c"[80])
    23:[80] ConstText(_value="d") -> "d"[80]
-   26:[96] Call(size=0, fn=last)
+   26:[96] Call(size=0, fn=n_last)
  1103:[100] ArgText(var[80]) -> "d"[100]
  1106:[116] ConstText(_value="/") -> "/"[116]
- 1109:[132] StaticCall(_tp_text_rfind)
+ 1109:[132] StaticCall(t_4text_rfind)
  1112:[104] VarInt(var[100]) -> -2147483648[104]
  1115:[108] ConvBoolFromInt(v1=-2147483648[104]) -> false[104]
  1116:[105] GotoFalseWord(jump=1140, if_false=false[104])

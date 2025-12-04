@@ -46,7 +46,7 @@ fn main() -> std::io::Result<()> {
     scopes::check(&mut p.data);
     let mut state = State::new(p.database);
     interpreter::byte_code(&mut state, &mut p.data);
-    state.execute(p.data.def_nr("main"), &p.data);
+    state.execute("main", &p.data);
     Ok(())
     //state.execute_log(&mut w, "main", &p.data)
 }

@@ -10,13 +10,13 @@ pub fn test() {
         "Test failed {test_value} != \"var_1234\""
     );
 }
-fn add(a:text, b:&text) -> text {#block(1):text
+fn n_add(a:text, b:&text) -> text {#block(1):text
   [2] OpAppendRefText(b(0), "_");
   OpAppendRefText(b(0), a(0));
   [3] b(0);
 }#block(1):text
 
-byte-code for default_ref:add(a: text[0], b: &text[16]) -> text
+byte-code for default_ref:n_add(a: text[0], b: &text[16]) -> text
    0[28]: return-address
    0[32]: [2] ConstText(_value="_") -> text
    3[48]: AppendRefText(var[16], v1: text)
@@ -26,11 +26,11 @@ byte-code for default_ref:add(a: text[0], b: &text[16]) -> text
   15[44]: GetRefText(r: ref(reference)) -> text["a"]
   16[48]: Return(ret=28, value=16, discard=48) type=text 5
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [7] test_value(1):text = {#block(2):text
-    add("1234", {#default ref(3):ref(reference)["__work_1"]
+    n_add("1234", {#default ref(3):ref(reference)["__work_1"]
       OpAppendText(__work_1(1), "var");
       OpCreateRef(__work_1(1));
     }#default ref(3):ref(reference)["__work_1"]);
@@ -46,7 +46,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for default_ref:test()
+byte-code for default_ref:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
@@ -55,7 +55,7 @@ byte-code for default_ref:test()
    9[92]: ConstText(_value="var") -> text
   14[108]: AppendText(var[28], v1: text)
   17[92]: CreateRef(var[28]) -> ref(reference)
-  20[104]: Call(size=0, fn=add)
+  20[104]: Call(size=0, fn=n_add)
   27[92]: AppendText(var[52], v1: text)
   30[76]: [8] VarText(var[52]) -> text var=test_value[52]:text
   33[92]: ConstText(_value="var_1234") -> text
@@ -85,7 +85,7 @@ Execute test:
     9:[96] ConstText(_value="var") -> "var"[96]
    14:[112] AppendText(var[32], v1="var"[96])
    17:[96] CreateRef(var[32]) -> ref(0,1,40)[96]
-   20:[108] Call(size=0, fn=add)
+   20:[108] Call(size=0, fn=n_add)
  1103:[112] ConstText(_value="_") -> "_"[112]
  1106:[128] AppendRefText(var[96], v1="_"[112])
  1109:[112] ArgText(var[80]) -> "1234"[112]

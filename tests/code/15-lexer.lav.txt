@@ -55,7 +55,7 @@ Type 27:vector<Possible>[4/4]:Vector(19)
 
 Type 28:vector<SToken>[4/4]:Vector(20)
 
-fn _tp_Lexer_set_keywords(self:Lexer, keywords:vector<text>) {#block(1):void
+fn t_5Lexer_set_keywords(self:Lexer, keywords:vector<text>) {#block(1):void
   [53] OpGetField(self(0), 24i32, 23i32);
   [54] {#For block(2):void
     _vector_1(2):vector<text>["keywords"] = keywords(0);
@@ -79,10 +79,10 @@ fn _tp_Lexer_set_keywords(self:Lexer, keywords:vector<text>) {#block(1):void
   }#For block(2):void;
 }#block(1):void
 
-byte-code for lib/lexer.lav:_tp_Lexer_set_keywords(self: ref(Lexer)[0], keywords: vector<text>[12])
+byte-code for lib/lexer.lav:t_5Lexer_set_keywords(self: ref(Lexer)[0], keywords: vector<text>[12])
    0[24]: return-address
 
-fn _tp_Lexer_set_tokens(self:Lexer, tokens:vector<text>) {#block(1):void
+fn t_5Lexer_set_tokens(self:Lexer, tokens:vector<text>) {#block(1):void
   [61] OpGetField(self(0), 28i32, 24i32);
   [62] {#For block(2):void
     _vector_1(2):vector<text>["tokens"] = tokens(0);
@@ -104,7 +104,7 @@ fn _tp_Lexer_set_tokens(self:Lexer, tokens:vector<text>) {#block(1):void
         }#block(7):void else null;
         [67] if OpConvBoolFromRef(OpGetRecord(OpGetField(self(0), 28i32, 24i32), 24i32, 1i32, f(6))) {#block(8):void
           [68] _elm_2(8):ref(Possible)["self"] = OpNewRecord(OpGetRecord(OpGetField(self(0), 28i32, 24i32), 24i32, 1i32, f(6)), 20i32, 1i32);
-          OpSetInt(_elm_2(8), 0i32, _tp_text_len(t(3)));
+          OpSetInt(_elm_2(8), 0i32, t_4text_len(t(3)));
           OpSetText(_elm_2(8), 4i32, t(3));
           OpFinishRecord(OpGetRecord(OpGetField(self(0), 28i32, 24i32), 24i32, 1i32, f(6)), _elm_2(8), 20i32, 1i32);
         }#block(8):void else {#block(9):void
@@ -112,7 +112,7 @@ fn _tp_Lexer_set_tokens(self:Lexer, tokens:vector<text>) {#block(1):void
           OpSetInt(_elm_3(9), 0i32, f(6));
           OpSetInt(_elm_3(9), 4i32, 0i32);
           _elm_4(9):ref(Possible)["_elm_3"] = OpNewRecord(_elm_3(9), 20i32, 1i32);
-          OpSetInt(_elm_4(9), 0i32, _tp_text_len(t(3)));
+          OpSetInt(_elm_4(9), 0i32, t_4text_len(t(3)));
           OpSetText(_elm_4(9), 4i32, t(3));
           OpFinishRecord(_elm_3(9), _elm_4(9), 20i32, 1i32);
           OpFinishRecord(self(0), _elm_3(9), 22i32, 10i32);
@@ -123,47 +123,47 @@ fn _tp_Lexer_set_tokens(self:Lexer, tokens:vector<text>) {#block(1):void
   }#For block(2):void;
 }#block(1):void
 
-byte-code for lib/lexer.lav:_tp_Lexer_set_tokens(self: ref(Lexer)[0], tokens: vector<text>[12])
+byte-code for lib/lexer.lav:t_5Lexer_set_tokens(self: ref(Lexer)[0], tokens: vector<text>[12])
    0[24]: return-address
 
-fn _tp_Lexer_parse(self:Lexer, filename:text) {#block(1):void
+fn t_5Lexer_parse(self:Lexer, filename:text) {#block(1):void
   __ref_1(1):ref(File) = null;
   __work_1(1):text = "";
-  [77] v(1):integer = _tp_text_rfind(filename(0), "/");
+  [77] v(1):integer = t_4text_rfind(filename(0), "/");
   [78] OpSetText(self(0), 0i32, if OpConvBoolFromInt(v(1)) {#block(2):text["filename"]
     [79] OpGetTextSub(filename(0), OpAddInt(v(1), 1i32), 2147483647i32);
   }#block(2):text["filename"] else {#block(3):text["filename"]
     [81] filename(0);
   }#block(3):text["filename"]);
-  [83] OpSetText(self(0), 4i32, _tp_File_content(file(filename(0), __ref_1(1)), {#default ref(4):ref(reference)["__work_1"]
+  [83] OpSetText(self(0), 4i32, t_4File_content(n_file(filename(0), __ref_1(1)), {#default ref(4):ref(reference)["__work_1"]
     OpCreateRef(__work_1(1));
   }#default ref(4):ref(reference)["__work_1"]));
   [84] OpSetInt(self(0), 8i32, 0i32);
   [85] OpSetInt(self(0), 20i32, 0i32);
   [86] OpSetInt(self(0), 12i32, 1i32);
   [87] OpSetInt(self(0), 16i32, 1i32);
-  [88] _tp_Lexer_scan(self(0));
+  [88] t_5Lexer_scan(self(0));
   OpFreeRef(__ref_1(1));
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for lib/lexer.lav:_tp_Lexer_parse(self: ref(Lexer)[0], filename: text[12])
+byte-code for lib/lexer.lav:t_5Lexer_parse(self: ref(Lexer)[0], filename: text[12])
    0[28]: return-address
 
-fn _tp_Lexer_parse_string(self:Lexer, name:text, content:text) {#block(1):void
+fn t_5Lexer_parse_string(self:Lexer, name:text, content:text) {#block(1):void
   [93] OpSetText(self(0), 0i32, name(0));
   [94] OpSetText(self(0), 4i32, content(0));
   [95] OpSetInt(self(0), 8i32, 0i32);
   [96] OpSetInt(self(0), 20i32, 0i32);
   [97] OpSetInt(self(0), 12i32, 1i32);
   [98] OpSetInt(self(0), 16i32, 1i32);
-  [99] _tp_Lexer_scan(self(0));
+  [99] t_5Lexer_scan(self(0));
 }#block(1):void
 
-byte-code for lib/lexer.lav:_tp_Lexer_parse_string(self: ref(Lexer)[0], name: text[12], content: text[28])
+byte-code for lib/lexer.lav:t_5Lexer_parse_string(self: ref(Lexer)[0], name: text[12], content: text[28])
    0[44]: return-address
 
-fn _tp_Lexer_skip_whitespace(self:Lexer) {#block(1):void
+fn t_5Lexer_skip_whitespace(self:Lexer) {#block(1):void
   [104] OpSetInt(self(0), 16i32, OpAddInt(OpGetInt(self(0), 16i32), OpMinInt(OpGetInt(self(0), 8i32), OpGetInt(self(0), 20i32))));
   [105] start(1):boolean = OpEqInt(OpGetInt(self(0), 16i32), 1i32);
   [106] {#For block(2):void
@@ -207,7 +207,7 @@ fn _tp_Lexer_skip_whitespace(self:Lexer) {#block(1):void
                     OpFreeText(_field_1(15));
                   }#block(15):void else null;
                   [127] _field_2(14):text = OpGetText(self(0), 32i32);
-                  OpAppendText(_field_2(14), _tp_text_trim_start(OpGetTextSub(OpGetText(self(0), 4i32), com(8), OpGetInt(self(0), 8i32))));
+                  OpAppendText(_field_2(14), t_4text_trim_start(OpGetTextSub(OpGetText(self(0), 4i32), com(8), OpGetInt(self(0), 8i32))));
                   OpSetText(self(0), 32i32, _field_2(14));
                   [128] OpFreeText(_field_2(14));
                   break(0);
@@ -228,13 +228,13 @@ fn _tp_Lexer_skip_whitespace(self:Lexer) {#block(1):void
   [138] OpSetEnum(self(0), 36i32, 1u8(17));
 }#block(1):void
 
-byte-code for lib/lexer.lav:_tp_Lexer_skip_whitespace(self: ref(Lexer)[0])
+byte-code for lib/lexer.lav:t_5Lexer_skip_whitespace(self: ref(Lexer)[0])
    0[12]: return-address
 
-fn _tp_Lexer_scan(self:Lexer) {#block(1):void
+fn t_5Lexer_scan(self:Lexer) {#block(1):void
   [144] OpSetText(self(0), 32i32, "");
   [145] OpSetByte(self(0), 39i32, 0i32, if false 1i32 else 0i32);
-  [146] _tp_Lexer_skip_whitespace(self(0));
+  [146] t_5Lexer_skip_whitespace(self(0));
   [147] negative(1):boolean = false;
   [148] l(1):character = OpTextCharacter(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32));
   [149] if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromNull()) {#block(2):void
@@ -330,7 +330,7 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
   }#block(22):void else if negative(1) {#block(31):void
     [211] OpSetInt(self(0), 8i32, OpMinInt(OpGetInt(self(0), 8i32), 1i32));
   }#block(31):void else null;
-  [213] if _tp_character_is_alphabetic(l(1)) {#block(32):void
+  [213] if t_9character_is_alphabetic(l(1)) {#block(32):void
     [214] OpSetEnum(self(0), 36i32, 9u8(17));
     [215] {#For block(33):void
       t#index(13):integer = OpConvIntFromNull();
@@ -342,7 +342,7 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
         }#Iter range(35):integer;
         {#block(36):void
           [216] l(1):character = OpTextCharacter(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32));
-          [217] if OpNot(_tp_character_is_alphanumeric(l(1))) {#block(37):void
+          [217] if OpNot(t_9character_is_alphanumeric(l(1))) {#block(37):void
             [218] break(0);
           }#block(37):void else null;
           [220] OpSetInt(self(0), 8i32, OpAddInt(OpGetInt(self(0), 8i32), 1i32));
@@ -361,8 +361,8 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
       }#break(40):void else null;
       {#block(41):void
         [227] tok(41):text["pt"] = OpGetText(pt(39), 4i32);
-        [228] if OpEqText(OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32), OpAddInt(OpGetInt(self(0), 8i32), _tp_text_len(tok(41)))), tok(41)) {#block(42):void
-          [229] OpSetInt(self(0), 8i32, OpAddInt(OpGetInt(self(0), 8i32), _tp_text_len(tok(41))));
+        [228] if OpEqText(OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32), OpAddInt(OpGetInt(self(0), 8i32), t_4text_len(tok(41)))), tok(41)) {#block(42):void
+          [229] OpSetInt(self(0), 8i32, OpAddInt(OpGetInt(self(0), 8i32), t_4text_len(tok(41))));
           [230] OpFreeText(tok(41));
           return null;
         }#block(42):void else null;
@@ -373,36 +373,36 @@ fn _tp_Lexer_scan(self:Lexer) {#block(1):void
   [233] OpSetInt(self(0), 8i32, OpAddInt(OpGetInt(self(0), 8i32), 1i32));
 }#block(1):void
 
-byte-code for lib/lexer.lav:_tp_Lexer_scan(self: ref(Lexer)[0])
+byte-code for lib/lexer.lav:t_5Lexer_scan(self: ref(Lexer)[0])
    0[12]: return-address
 
-fn _tp_Lexer_test(self:Lexer, with:text) -> boolean {#block(1):boolean
+fn t_5Lexer_test(self:Lexer, with:text) -> boolean {#block(1):boolean
   [238] OpEqText(OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 20i32), OpGetInt(self(0), 8i32)), with(0));
 }#block(1):boolean
 
-byte-code for lib/lexer.lav:_tp_Lexer_test(self: ref(Lexer)[0], with: text[12]) -> boolean
+byte-code for lib/lexer.lav:t_5Lexer_test(self: ref(Lexer)[0], with: text[12]) -> boolean
    0[28]: return-address
 
-fn _tp_Lexer_matches(self:Lexer, with:text) -> boolean {#block(1):boolean
-  [243] if _tp_Lexer_test(self(0), with(0)) {#block(2):boolean
-    [244] _tp_Lexer_scan(self(0));
+fn t_5Lexer_matches(self:Lexer, with:text) -> boolean {#block(1):boolean
+  [243] if t_5Lexer_test(self(0), with(0)) {#block(2):boolean
+    [244] t_5Lexer_scan(self(0));
     [245] true;
   }#block(2):boolean else {#block(3):boolean
     [247] false;
   }#block(3):boolean;
 }#block(1):boolean
 
-byte-code for lib/lexer.lav:_tp_Lexer_matches(self: ref(Lexer)[0], with: text[12]) -> boolean
+byte-code for lib/lexer.lav:t_5Lexer_matches(self: ref(Lexer)[0], with: text[12]) -> boolean
    0[28]: return-address
 
-fn _tp_Lexer_peek(self:Lexer) -> text["self"] {#block(1):text["self"]
+fn t_5Lexer_peek(self:Lexer) -> text["self"] {#block(1):text["self"]
   [254] OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 20i32), OpGetInt(self(0), 8i32));
 }#block(1):text["self"]
 
-byte-code for lib/lexer.lav:_tp_Lexer_peek(self: ref(Lexer)[0]) -> text["self"]
+byte-code for lib/lexer.lav:t_5Lexer_peek(self: ref(Lexer)[0]) -> text["self"]
    0[12]: return-address
 
-fn _tp_Lexer_position(self:Lexer, __work_1:&text) -> text["__work_1"] {#block(1):text["__work_1"]
+fn t_5Lexer_position(self:Lexer, __work_1:&text) -> text["__work_1"] {#block(1):text["__work_1"]
   __work_1(0):&text = "";
   [259] {#Formatted string(2):text["__work_1"]
     __work_1(0):&text = "";
@@ -415,39 +415,39 @@ fn _tp_Lexer_position(self:Lexer, __work_1:&text) -> text["__work_1"] {#block(1)
   }#Formatted string(2):text["__work_1"];
 }#block(1):text["__work_1"]
 
-byte-code for lib/lexer.lav:_tp_Lexer_position(self: ref(Lexer)[0], __work_1: &text[12]) -> text["__work_1"]
+byte-code for lib/lexer.lav:t_5Lexer_position(self: ref(Lexer)[0], __work_1: &text[12]) -> text["__work_1"]
    0[24]: return-address
 
-fn _tp_Lexer_identifier(self:Lexer, result:&text) -> text["result"] {#block(1):text["result"]
+fn t_5Lexer_identifier(self:Lexer, result:&text) -> text["result"] {#block(1):text["result"]
   [264] result(0):&text = OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 20i32), OpGetInt(self(0), 8i32));
   [265] if OpConvBoolFromRef(OpGetRecord(OpGetField(self(0), 24i32, 23i32), 23i32, 1i32, result(0))) {#if(2):&text["result"]
     OpConvTextFromNull();
   }#if(2):&text["result"] else {#block(3):&text["result"]
-    [268] _tp_Lexer_scan(self(0));
+    [268] t_5Lexer_scan(self(0));
     [269] result(0);
   }#block(3):&text["result"];
 }#block(1):text["result"]
 
-byte-code for lib/lexer.lav:_tp_Lexer_identifier(self: ref(Lexer)[0], result: &text[12]) -> text["result"]
+byte-code for lib/lexer.lav:t_5Lexer_identifier(self: ref(Lexer)[0], result: &text[12]) -> text["result"]
    0[24]: return-address
 
-fn _tp_Lexer_int(self:Lexer) -> integer {#block(1):integer
+fn t_5Lexer_int(self:Lexer) -> integer {#block(1):integer
   [275] if OpNeInt(OpConvIntFromEnum(OpGetEnum(self(0), 36i32)), OpConvIntFromEnum(2u8(17))) {#block(2):void
     [276] return OpConvIntFromNull();
   }#block(2):void else null;
   [278] result(1):integer = OpCastIntFromText(OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 20i32), OpGetInt(self(0), 8i32)));
   [279] if OpConvBoolFromInt(result(1)) {#block(3):integer
-    [280] _tp_Lexer_scan(self(0));
+    [280] t_5Lexer_scan(self(0));
     [281] result(1);
   }#block(3):integer else {#block(4):integer
     [283] OpConvIntFromNull();
   }#block(4):integer;
 }#block(1):integer
 
-byte-code for lib/lexer.lav:_tp_Lexer_int(self: ref(Lexer)[0]) -> integer
+byte-code for lib/lexer.lav:t_5Lexer_int(self: ref(Lexer)[0]) -> integer
    0[12]: return-address
 
-fn _tp_Lexer_long_int(self:Lexer) -> long {#block(1):long
+fn t_5Lexer_long_int(self:Lexer) -> long {#block(1):long
   [289] if if OpNeInt(OpConvIntFromEnum(OpGetEnum(self(0), 36i32)), OpConvIntFromEnum(5u8(17))) OpNeInt(OpConvIntFromEnum(OpGetEnum(self(0), 36i32)), OpConvIntFromEnum(2u8(17))) else false {#block(2):void
     [290] return OpConvLongFromNull();
   }#block(2):void else null;
@@ -457,56 +457,56 @@ fn _tp_Lexer_long_int(self:Lexer) -> long {#block(1):long
   }#block(3):void else null;
   [296] result(1):long = OpCastLongFromText(OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 20i32), to(1)));
   [297] if OpConvBoolFromLong(result(1)) {#block(4):long
-    [298] _tp_Lexer_scan(self(0));
+    [298] t_5Lexer_scan(self(0));
     [299] result(1);
   }#block(4):long else {#block(5):long
     [301] OpConvLongFromNull();
   }#block(5):long;
 }#block(1):long
 
-byte-code for lib/lexer.lav:_tp_Lexer_long_int(self: ref(Lexer)[0]) -> long
+byte-code for lib/lexer.lav:t_5Lexer_long_int(self: ref(Lexer)[0]) -> long
    0[12]: return-address
 
-fn _tp_Lexer_long_float(self:Lexer) -> float {#block(1):float
+fn t_5Lexer_long_float(self:Lexer) -> float {#block(1):float
   [307] if OpNeInt(OpConvIntFromEnum(OpGetEnum(self(0), 36i32)), OpConvIntFromEnum(3u8(17))) {#block(2):void
     [308] return OpConvFloatFromNull();
   }#block(2):void else null;
   [310] result(1):float = OpCastFloatFromText(OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 20i32), OpGetInt(self(0), 8i32)));
   [311] if OpConvBoolFromFloat(result(1)) {#block(3):float
-    [312] _tp_Lexer_scan(self(0));
+    [312] t_5Lexer_scan(self(0));
     [313] result(1);
   }#block(3):float else {#block(4):float
     [315] OpConvFloatFromNull();
   }#block(4):float;
 }#block(1):float
 
-byte-code for lib/lexer.lav:_tp_Lexer_long_float(self: ref(Lexer)[0]) -> float
+byte-code for lib/lexer.lav:t_5Lexer_long_float(self: ref(Lexer)[0]) -> float
    0[12]: return-address
 
-fn _tp_Lexer_single_float(self:Lexer) -> single {#block(1):single
+fn t_5Lexer_single_float(self:Lexer) -> single {#block(1):single
   [321] if OpNeInt(OpConvIntFromEnum(OpGetEnum(self(0), 36i32)), OpConvIntFromEnum(3u8(17))) {#block(2):void
     [322] return OpConvSingleFromNull();
   }#block(2):void else null;
   [324] result(1):single = OpCastSingleFromText(OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 20i32), OpGetInt(self(0), 8i32)));
   [325] if OpConvBoolFromSingle(result(1)) {#block(3):single
-    [326] _tp_Lexer_scan(self(0));
+    [326] t_5Lexer_scan(self(0));
     [327] result(1);
   }#block(3):single else {#block(4):single
     [329] OpConvSingleFromNull();
   }#block(4):single;
 }#block(1):single
 
-byte-code for lib/lexer.lav:_tp_Lexer_single_float(self: ref(Lexer)[0]) -> single
+byte-code for lib/lexer.lav:t_5Lexer_single_float(self: ref(Lexer)[0]) -> single
    0[12]: return-address
 
-fn _tp_Lexer_is_finished(self:Lexer) -> boolean {#block(1):boolean
+fn t_5Lexer_is_finished(self:Lexer) -> boolean {#block(1):boolean
   [334] OpEqInt(OpConvIntFromEnum(OpGetEnum(self(0), 36i32)), OpConvIntFromEnum(12u8(17)));
 }#block(1):boolean
 
-byte-code for lib/lexer.lav:_tp_Lexer_is_finished(self: ref(Lexer)[0]) -> boolean
+byte-code for lib/lexer.lav:t_5Lexer_is_finished(self: ref(Lexer)[0]) -> boolean
    0[12]: return-address
 
-fn _tp_Lexer_escaped(self:Lexer, i:integer) -> character {#block(1):character
+fn t_5Lexer_escaped(self:Lexer, i:integer) -> character {#block(1):character
   [338] c(1):character = OpTextCharacter(OpGetText(self(0), 4i32), OpAddInt(i(0), 1i32));
   [339] if if if if if if OpEqInt(OpConvIntFromCharacter(c(1)), OpConvIntFromCharacter(34i32)) true else OpEqInt(OpConvIntFromCharacter(c(1)), OpConvIntFromCharacter(39i32)) true else OpEqInt(OpConvIntFromCharacter(c(1)), OpConvIntFromCharacter(92i32)) true else OpEqInt(OpConvIntFromCharacter(c(1)), OpConvIntFromCharacter(10i32)) true else OpEqInt(OpConvIntFromCharacter(c(1)), OpConvIntFromCharacter(123i32)) true else OpEqInt(OpConvIntFromCharacter(c(1)), OpConvIntFromCharacter(125i32)) {#block(2):character
     [340] c(1);
@@ -530,10 +530,10 @@ fn _tp_Lexer_escaped(self:Lexer, i:integer) -> character {#block(1):character
   }#block(8):character;
 }#block(1):character
 
-byte-code for lib/lexer.lav:_tp_Lexer_escaped(self: ref(Lexer)[0], i: integer[12]) -> character
+byte-code for lib/lexer.lav:t_5Lexer_escaped(self: ref(Lexer)[0], i: integer[12]) -> character
    0[16]: return-address
 
-fn _tp_Lexer_constant_text(self:Lexer, result:&text) -> text["result"] {#block(1):text["result"]
+fn t_5Lexer_constant_text(self:Lexer, result:&text) -> text["result"] {#block(1):text["result"]
   [360] if OpNeInt(OpConvIntFromEnum(OpGetEnum(self(0), 36i32)), OpConvIntFromEnum(6u8(17))) {#block(2):void
     [361] return OpConvTextFromNull();
   }#block(2):void else null;
@@ -548,58 +548,58 @@ fn _tp_Lexer_constant_text(self:Lexer, result:&text) -> text["result"] {#block(1
       }#Iter range(5):integer;
       {#block(6):void
         [365] if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 4i32), i(4))), OpConvIntFromCharacter(92i32)) {#block(7):void
-          [366] OpAppendRefCharacter(result(0), _tp_Lexer_escaped(self(0), i(4)));
+          [366] OpAppendRefCharacter(result(0), t_5Lexer_escaped(self(0), i(4)));
         }#block(7):void else {#block(8):void
           [368] OpAppendRefCharacter(result(0), OpTextCharacter(OpGetText(self(0), 4i32), i(4)));
         }#block(8):void;
       }#block(6):void;
     }#For loop_4;
   }#For block(3):void;
-  [371] _tp_Lexer_scan(self(0));
+  [371] t_5Lexer_scan(self(0));
   [372] result(0);
 }#block(1):text["result"]
 
-byte-code for lib/lexer.lav:_tp_Lexer_constant_text(self: ref(Lexer)[0], result: &text[12]) -> text["result"]
+byte-code for lib/lexer.lav:t_5Lexer_constant_text(self: ref(Lexer)[0], result: &text[12]) -> text["result"]
    0[24]: return-address
 
-fn _tp_Lexer_constant_character(self:Lexer) -> character {#block(1):character
+fn t_5Lexer_constant_character(self:Lexer) -> character {#block(1):character
   [377] if OpNeInt(OpConvIntFromEnum(OpGetEnum(self(0), 36i32)), OpConvIntFromEnum(8u8(17))) {#block(2):void
     [378] return OpCastCharacterFromInt(0i32);
   }#block(2):void else null;
   [380] result(1):character = if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 4i32), OpAddInt(OpGetInt(self(0), 20i32), 1i32))), OpConvIntFromCharacter(92i32)) {#block(3):character
-    [381] _tp_Lexer_escaped(self(0), OpAddInt(OpGetInt(self(0), 20i32), 2i32));
+    [381] t_5Lexer_escaped(self(0), OpAddInt(OpGetInt(self(0), 20i32), 2i32));
   }#block(3):character else {#block(4):character
     [383] OpTextCharacter(OpGetText(self(0), 4i32), OpAddInt(OpGetInt(self(0), 20i32), 1i32));
   }#block(4):character;
-  [385] _tp_Lexer_scan(self(0));
+  [385] t_5Lexer_scan(self(0));
   [386] result(1);
 }#block(1):character
 
-byte-code for lib/lexer.lav:_tp_Lexer_constant_character(self: ref(Lexer)[0]) -> character
+byte-code for lib/lexer.lav:t_5Lexer_constant_character(self: ref(Lexer)[0]) -> character
    0[12]: return-address
 
-fn _tp_Lexer_string_finished(self:Lexer) -> boolean {#block(1):boolean
+fn t_5Lexer_string_finished(self:Lexer) -> boolean {#block(1):boolean
   [391] OpEqInt(OpGetByte(self(0), 38i32, 0i32), 1i32);
 }#block(1):boolean
 
-byte-code for lib/lexer.lav:_tp_Lexer_string_finished(self: ref(Lexer)[0]) -> boolean
+byte-code for lib/lexer.lav:t_5Lexer_string_finished(self: ref(Lexer)[0]) -> boolean
    0[12]: return-address
 
-fn _tp_Lexer_last_comment(self:Lexer) -> text["self"] {#block(1):text["self"]
+fn t_5Lexer_last_comment(self:Lexer) -> text["self"] {#block(1):text["self"]
   [396] OpGetText(self(0), 32i32);
 }#block(1):text["self"]
 
-byte-code for lib/lexer.lav:_tp_Lexer_last_comment(self: ref(Lexer)[0]) -> text["self"]
+byte-code for lib/lexer.lav:t_5Lexer_last_comment(self: ref(Lexer)[0]) -> text["self"]
    0[12]: return-address
 
-fn _tp_Lexer_comment_behind(self:Lexer) -> boolean {#block(1):boolean
+fn t_5Lexer_comment_behind(self:Lexer) -> boolean {#block(1):boolean
   [401] OpEqInt(OpGetByte(self(0), 39i32, 0i32), 1i32);
 }#block(1):boolean
 
-byte-code for lib/lexer.lav:_tp_Lexer_comment_behind(self: ref(Lexer)[0]) -> boolean
+byte-code for lib/lexer.lav:t_5Lexer_comment_behind(self: ref(Lexer)[0]) -> boolean
    0[12]: return-address
 
-fn _tp_Lexer_anchor(self:Lexer) -> Anchor {#block(1):ref(Anchor)
+fn t_5Lexer_anchor(self:Lexer) -> Anchor {#block(1):ref(Anchor)
   __ref_1(1):ref(Anchor) = null;
   [405] {#Object(2):ref(Anchor)["__ref_1"]
     OpDatabase(__ref_1(1), 25i32);
@@ -610,20 +610,20 @@ fn _tp_Lexer_anchor(self:Lexer) -> Anchor {#block(1):ref(Anchor)
   }#Object(2):ref(Anchor)["__ref_1"];
 }#block(1):ref(Anchor)
 
-byte-code for lib/lexer.lav:_tp_Lexer_anchor(self: ref(Lexer)[0]) -> ref(Anchor)
+byte-code for lib/lexer.lav:t_5Lexer_anchor(self: ref(Lexer)[0]) -> ref(Anchor)
    0[12]: return-address
 
-fn _tp_Lexer_revert(self:Lexer, to:Anchor) {#block(1):void
+fn t_5Lexer_revert(self:Lexer, to:Anchor) {#block(1):void
   [409] OpSetInt(self(0), 8i32, OpGetInt(to(0), 0i32));
   [410] OpSetInt(self(0), 12i32, OpGetInt(to(0), 4i32));
   [411] OpSetInt(self(0), 16i32, OpGetInt(to(0), 8i32));
-  [412] _tp_Lexer_scan(self(0));
+  [412] t_5Lexer_scan(self(0));
 }#block(1):void
 
-byte-code for lib/lexer.lav:_tp_Lexer_revert(self: ref(Lexer)[0], to: ref(Anchor)[12])
+byte-code for lib/lexer.lav:t_5Lexer_revert(self: ref(Lexer)[0], to: ref(Anchor)[12])
    0[24]: return-address
 
-fn main() {#block(1):void
+fn n_main() {#block(1):void
   __ref_2(1):ref(main_vector<text>) = null;
   __ref_1(1):ref(main_vector<text>) = null;
   __work_7(1):text = "";
@@ -648,7 +648,7 @@ fn main() {#block(1):void
   OpSetInt(l(1), 28i32, 0i32);
   OpSetByte(l(1), 39i32, 0i32, if false 1i32 else 0i32);
   OpSetText(l(1), 32i32, "");
-  [5] _tp_Lexer_set_tokens(l(1), {#Vector(2):vector<text>
+  [5] t_5Lexer_set_tokens(l(1), {#Vector(2):vector<text>
     OpDatabase(__ref_1(1), 14i32);
     _vec_1(2):vector<text>["__ref_1"] = OpGetField(__ref_1(1), 0i32, 7i32);
     OpSetInt(__ref_1(1), 0i32, 0i32);
@@ -702,7 +702,7 @@ fn main() {#block(1):void
     OpFinishRecord(_vec_1(2), _elm_2(2), 7i32, 65535i32);
     _vec_1(2);
   }#Vector(2):vector<text>);
-  [6] _tp_Lexer_set_keywords(l(1), {#Vector(3):vector<text>
+  [6] t_5Lexer_set_keywords(l(1), {#Vector(3):vector<text>
     OpDatabase(__ref_2(1), 14i32);
     _vec_3(3):vector<text>["__ref_2"] = OpGetField(__ref_2(1), 0i32, 7i32);
     OpSetInt(__ref_2(1), 0i32, 0i32);
@@ -744,55 +744,55 @@ fn main() {#block(1):void
     OpFinishRecord(_vec_3(3), _elm_4(3), 7i32, 65535i32);
     _vec_3(3);
   }#Vector(3):vector<text>);
-  [7] _tp_Lexer_parse_string(l(1), "Tokens", "12 += -2 * 3l >> 4");
-  [8] if OpEqInt(_tp_Lexer_int(l(1)), 12i32) null else OpPanic("Integer");
-  [9] if OpNot(_tp_Lexer_matches(l(1), "+")) null else OpPanic("Incorrect plus");
-  [10] if OpNeText(_tp_Lexer_peek(l(1)), "+") null else OpPanic("Incorrect plus");
-  [11] if _tp_Lexer_matches(l(1), "+=") null else OpPanic("Incorrect plus_is");
-  [12] if OpEqInt(_tp_Lexer_int(l(1)), OpMinSingleInt(2i32)) null else OpPanic("Second integer");
-  [13] if _tp_Lexer_matches(l(1), "*") null else OpPanic("Incorrect multiply");
-  [14] if OpNeInt(_tp_Lexer_int(l(1)), 3i32) null else OpPanic("Third number");
-  [15] if OpEqLong(_tp_Lexer_long_int(l(1)), OpConvLongFromInt(3i32)) null else OpPanic("Incorrect long");
-  [16] if OpEqText(_tp_Lexer_position(l(1), {#default ref(4):ref(reference)["__work_1"]
+  [7] t_5Lexer_parse_string(l(1), "Tokens", "12 += -2 * 3l >> 4");
+  [8] if OpEqInt(t_5Lexer_int(l(1)), 12i32) null else OpPanic("Integer");
+  [9] if OpNot(t_5Lexer_matches(l(1), "+")) null else OpPanic("Incorrect plus");
+  [10] if OpNeText(t_5Lexer_peek(l(1)), "+") null else OpPanic("Incorrect plus");
+  [11] if t_5Lexer_matches(l(1), "+=") null else OpPanic("Incorrect plus_is");
+  [12] if OpEqInt(t_5Lexer_int(l(1)), OpMinSingleInt(2i32)) null else OpPanic("Second integer");
+  [13] if t_5Lexer_matches(l(1), "*") null else OpPanic("Incorrect multiply");
+  [14] if OpNeInt(t_5Lexer_int(l(1)), 3i32) null else OpPanic("Third number");
+  [15] if OpEqLong(t_5Lexer_long_int(l(1)), OpConvLongFromInt(3i32)) null else OpPanic("Incorrect long");
+  [16] if OpEqText(t_5Lexer_position(l(1), {#default ref(4):ref(reference)["__work_1"]
     OpCreateRef(__work_1(1));
   }#default ref(4):ref(reference)["__work_1"]), "Tokens:1:15") null else OpPanic({#Formatted string(5):text["__work_2"]
     __work_2(1):text = "Incorrect position ";
-    OpFormatText(__work_2(1), _tp_Lexer_position(l(1), {#default ref(6):ref(reference)["__work_3"]
+    OpFormatText(__work_2(1), t_5Lexer_position(l(1), {#default ref(6):ref(reference)["__work_3"]
       OpCreateRef(__work_3(1));
     }#default ref(6):ref(reference)["__work_3"]), 0i32, -1i32, 32i32);
     __work_2(1);
   }#Formatted string(5):text["__work_2"]);
-  [17] if OpNot(_tp_Lexer_matches(l(1), ">")) null else OpPanic("Incorrect higher");
-  [18] if _tp_Lexer_matches(l(1), ">>") null else OpPanic("Incorrect logical shift");
-  [19] if OpEqText(_tp_Lexer_position(l(1), {#default ref(7):ref(reference)["__work_4"]
+  [17] if OpNot(t_5Lexer_matches(l(1), ">")) null else OpPanic("Incorrect higher");
+  [18] if t_5Lexer_matches(l(1), ">>") null else OpPanic("Incorrect logical shift");
+  [19] if OpEqText(t_5Lexer_position(l(1), {#default ref(7):ref(reference)["__work_4"]
     OpCreateRef(__work_4(1));
   }#default ref(7):ref(reference)["__work_4"]), "Tokens:1:18") null else OpPanic({#Formatted string(8):text["__work_5"]
     __work_5(1):text = "Incorrect position ";
-    OpFormatText(__work_5(1), _tp_Lexer_position(l(1), {#default ref(9):ref(reference)["__work_6"]
+    OpFormatText(__work_5(1), t_5Lexer_position(l(1), {#default ref(9):ref(reference)["__work_6"]
       OpCreateRef(__work_6(1));
     }#default ref(9):ref(reference)["__work_6"]), 0i32, -1i32, 32i32);
     __work_5(1);
   }#Formatted string(8):text["__work_5"]);
-  [21] _tp_Lexer_parse_string(l(1), "Texts", ""123" + '4'");
-  [22] if OpEqText(_tp_Lexer_constant_text(l(1), {#default ref(10):ref(reference)["__work_7"]
+  [21] t_5Lexer_parse_string(l(1), "Texts", ""123" + '4'");
+  [22] if OpEqText(t_5Lexer_constant_text(l(1), {#default ref(10):ref(reference)["__work_7"]
     OpCreateRef(__work_7(1));
   }#default ref(10):ref(reference)["__work_7"]), "123") null else OpPanic("Incorrect text literal");
-  [23] if _tp_Lexer_matches(l(1), "+") null else OpPanic("Incorrect add");
-  [24] if OpEqBool(OpConvBoolFromCharacter(_tp_Lexer_constant_character(l(1))), OpConvBoolFromText("123")) null else OpPanic("Incorrect text literal");
-  [26] _tp_Lexer_parse_string(l(1), "Comments", "// starting comments
+  [23] if t_5Lexer_matches(l(1), "+") null else OpPanic("Incorrect add");
+  [24] if OpEqBool(OpConvBoolFromCharacter(t_5Lexer_constant_character(l(1))), OpConvBoolFromText("123")) null else OpPanic("Incorrect text literal");
+  [26] t_5Lexer_parse_string(l(1), "Comments", "// starting comments
 123 // same line comment
 // extra comment
 4");
-  [27] if OpNot(_tp_Lexer_comment_behind(l(1))) null else OpPanic("Initial comment not behind");
-  [28] if OpEqText(_tp_Lexer_last_comment(l(1)), "starting comments") null else OpPanic("Initial comment");
-  [29] if OpEqInt(_tp_Lexer_int(l(1)), 123i32) null else OpPanic("Content integer");
-  [30] if _tp_Lexer_comment_behind(l(1)) null else OpPanic("Second comment is behind");
-  [31] if OpEqText(_tp_Lexer_last_comment(l(1)), "same line comment
+  [27] if OpNot(t_5Lexer_comment_behind(l(1))) null else OpPanic("Initial comment not behind");
+  [28] if OpEqText(t_5Lexer_last_comment(l(1)), "starting comments") null else OpPanic("Initial comment");
+  [29] if OpEqInt(t_5Lexer_int(l(1)), 123i32) null else OpPanic("Content integer");
+  [30] if t_5Lexer_comment_behind(l(1)) null else OpPanic("Second comment is behind");
+  [31] if OpEqText(t_5Lexer_last_comment(l(1)), "same line comment
 extra comment") null else OpPanic("Second comment");
-  [32] if OpNot(_tp_Lexer_is_finished(l(1))) null else OpPanic("Not Ready");
-  [33] if OpEqInt(_tp_Lexer_int(l(1)), 4i32) null else OpPanic("Second integer");
-  [34] if OpEqText(_tp_Lexer_last_comment(l(1)), "") null else OpPanic("No remaining comment");
-  [35] if _tp_Lexer_is_finished(l(1)) null else OpPanic("Ready");
+  [32] if OpNot(t_5Lexer_is_finished(l(1))) null else OpPanic("Not Ready");
+  [33] if OpEqInt(t_5Lexer_int(l(1)), 4i32) null else OpPanic("Second integer");
+  [34] if OpEqText(t_5Lexer_last_comment(l(1)), "") null else OpPanic("No remaining comment");
+  [35] if t_5Lexer_is_finished(l(1)) null else OpPanic("Ready");
   OpFreeRef(l(1));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
@@ -805,6 +805,6 @@ extra comment") null else OpPanic("Second comment");
   OpFreeRef(__ref_2(1));
 }#block(1):void
 
-byte-code for tests/suite/15-lexer.lav:main()
+byte-code for tests/suite/15-lexer.lav:n_main()
    0[0]: return-address
 

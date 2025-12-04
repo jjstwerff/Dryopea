@@ -5,12 +5,12 @@ pub fn test() {
         "Test failed {test_value} != 18"
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [2] test_value(1):integer = {#block(2):integer
     t(2):text = "some";
     OpAppendText(t(2), "thing");
-    OpAddInt(_tp_text_len(t(2)), _tp_text_len(t(2)));
+    OpAddInt(t_4text_len(t(2)), t_4text_len(t(2)));
     OpFreeText(t(2));
   }#block(2):integer;
   [3] if OpEqInt(test_value(1), 18i32) null else OpPanic({#Formatted string(3):text["__work_1"]
@@ -22,7 +22,7 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for text_length:test()
+byte-code for text_length:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] Text() var=t[28]:text
@@ -31,9 +31,9 @@ byte-code for text_length:test()
   11[52]: ConstText(_value="thing") -> text
   18[68]: AppendText(var[28], v1: text)
   21[52]: VarText(var[28]) -> text var=t[28]:text
-  24[68]: Call(size=0, fn=_tp_text_len)
+  24[68]: Call(size=0, fn=t_4text_len)
   31[56]: VarText(var[28]) -> text var=t[28]:text
-  34[72]: Call(size=0, fn=_tp_text_len)
+  34[72]: Call(size=0, fn=t_4text_len)
   41[60]: AddInt(v1: integer, v2: integer) -> integer
   42[56]: FreeText(var[28])
   45[56]: FreeStack(value=4, discard=28)
@@ -64,12 +64,12 @@ Execute test:
    11:[56] ConstText(_value="thing") -> "thing"[56]
    18:[72] AppendText(var[32], v1="thing"[56])
    21:[56] VarText(var[32]) -> "something"[56]
-   24:[72] Call(size=0, fn=_tp_text_len)
+   24:[72] Call(size=0, fn=t_4text_len)
   318:[76] ArgText(var[56]) -> "something"[76]
   321:[92] LengthText(v1="something"[76]) -> 9[76]
   322:[80] Return(ret=1134[72], value=4, discard=24) -> 9[56]
    31:[60] VarText(var[32]) -> "something"[60]
-   34:[76] Call(size=0, fn=_tp_text_len)
+   34:[76] Call(size=0, fn=t_4text_len)
   318:[80] ArgText(var[60]) -> "something"[80]
   321:[96] LengthText(v1="something"[80]) -> 9[80]
   322:[84] Return(ret=1144[76], value=4, discard=24) -> 9[60]

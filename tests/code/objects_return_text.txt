@@ -19,14 +19,14 @@ Type 17:Data[8/4]:
     name:text[0]
     number:integer[4]
 
-fn data(n:text, res:Data) -> text["res"] {#block(1):text["res"]
+fn n_data(n:text, res:Data) -> text["res"] {#block(1):text["res"]
   [7] OpDatabase(res(0), 17i32);
   OpSetText(res(0), 0i32, n(0));
   OpSetInt(res(0), 4i32, 0i32);
   [8] OpGetText(res(0), 0i32);
 }#block(1):text["res"]
 
-byte-code for return_text:data(n: text[0], res: ref(Data)[16]) -> text["res"]
+byte-code for return_text:n_data(n: text[0], res: ref(Data)[16]) -> text["res"]
    0[28]: return-address
    0[32]: [7] Database(var[16], db_tp=17) type=Data 17
    5[32]: VarRef(var[16]) -> ref(reference) type=Data 17 var=res[16]:ref(Data)
@@ -39,11 +39,11 @@ byte-code for return_text:data(n: text[0], res: ref(Data)[16]) -> text["res"]
   28[44]: GetText(v1: ref(reference), fld=0) -> text["n"]
   31[48]: Return(ret=28, value=16, discard=48) type=text 5
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_1(1):ref(Data) = null;
   __work_1(1):text = "";
   [12] test_value(1):text["__ref_1"] = {#block(2):text["__ref_1"]
-    data("test", __ref_1(1));
+    n_data("test", __ref_1(1));
   }#block(2):text["__ref_1"];
   [13] if OpEqText(test_value(1), "test") null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
@@ -56,14 +56,14 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for return_text:test()
+byte-code for return_text:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data)
    1[16]: Text() var=__work_1[16]:text
    2[40]: [12] Text() var=test_value[40]:text["__ref_1"]
    3[64]: ConstText(_value="test") -> text
    9[80]: VarRef(var[4]) -> ref(reference) type=Data 17 var=__ref_1[4]:ref(Data)
-  12[92]: Call(size=0, fn=data)
+  12[92]: Call(size=0, fn=n_data)
   19[80]: AppendText(var[40], v1: text)
   22[64]: [13] VarText(var[40]) -> text var=test_value[40]:text["__ref_1"]
   25[80]: ConstText(_value="test") -> text
@@ -92,7 +92,7 @@ Execute test:
     2:[44] Text()
     3:[68] ConstText(_value="test") -> "test"[68]
     9:[84] VarRef(var[8]) -> ref(1,0,8)=null[84]
-   12:[96] Call(size=0, fn=data)
+   12:[96] Call(size=0, fn=n_data)
  1103:[100] Database(var[84], db_tp=17)
  1108:[100] VarRef(var[84]) -> ref(1,1,8)={}[100]
  1111:[112] ArgText(var[68]) -> "test"[112]

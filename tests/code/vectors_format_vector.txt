@@ -12,7 +12,7 @@ Type 17:vector<integer>[4/4]:Vector(0)
 Type 18:main_vector<integer>[4/4]:
     vector:vector<integer>[0]
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_1(1):ref(main_vector<integer>) = null;
   __work_2(1):text = "";
   __work_1(1):text = "";
@@ -39,7 +39,7 @@ fn test() {#block(1):void
       __work_1(1):text = "";
       OpFormatDatabase(__work_1(1), v(2), 17i32, false);
       OpAppendText(__work_1(1), " ");
-      OpFormatLong(__work_1(1), OpConvLongFromInt(_tp_vector_len(v(2))), 10i32, 0i32, 32i32, false, false);
+      OpFormatLong(__work_1(1), OpConvLongFromInt(t_6vector_len(v(2))), 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_1(1), " ");
       OpFormatLong(__work_1(1), OpConvLongFromInt(OpGetInt(OpGetVector(v(2), 4i32, 2i32), 0i32)), 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_1(1), " ");
@@ -114,7 +114,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for format_vector:test()
+byte-code for format_vector:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<integer>)
    1[16]: Text() var=__work_2[16]:text
@@ -176,7 +176,7 @@ byte-code for format_vector:test()
  199[140]: ConstText(_value=" ") -> text
  202[156]: AppendText(var[40], v1: text)
  205[140]: VarVector(var[88]) -> vector type=vector<integer> 17 var=v[88]:vector<integer>["__ref_1"]
- 208[152]: Call(size=0, fn=_tp_vector_len)
+ 208[152]: Call(size=0, fn=t_6vector_len)
  215[144]: ConvLongFromInt(v1: integer) -> long
  216[148]: ConstInt(val=0) -> integer
  221[152]: FormatLong(var[40], val: long, radix=10, width: integer, token=32, plus=false, note=false)
@@ -413,7 +413,7 @@ Execute test:
   199:[144] ConstText(_value=" ") -> " "[144]
   202:[160] AppendText(var[44], v1=" "[144])
   205:[144] VarVector(var[92]) -> ref(1,1,8)=[1,2,4,8,16][144]
-  208:[156] Call(size=0, fn=_tp_vector_len)
+  208:[156] Call(size=0, fn=t_6vector_len)
   338:[160] VarVector(var[144]) -> ref(1,1,8)[160]
   341:[172] LengthVector(r=ref(1,1,8)[160]) -> 5[160]
   342:[164] Return(ret=1318[156], value=4, discard=20) -> 5[144]

@@ -61,7 +61,7 @@ fn double_field_name() {
 #[test]
 fn incorrect_name() {
     code!("type something;\nfn something(a: integer) {}")
-        .fatal("Cannot redefine Type something at incorrect_name:2:14")
+        .error("Cannot redefine Type something from incorrect_name:1:16 at incorrect_name:2:27")
         .error("Expect type definitions to be in camel case style at incorrect_name:1:16");
 }
 

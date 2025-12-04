@@ -9,11 +9,11 @@ pub fn test() {
         "Test failed {test_value} != 8"
     );
 }
-fn add(a:&integer, b:integer, c:integer) {#block(1):void
+fn n_add(a:&integer, b:integer, c:integer) {#block(1):void
   [2] a(0):&integer = OpAddInt(a(0), OpAddInt(b(0), c(0)));
 }#block(1):void
 
-byte-code for reference:add(a: &integer[0], b: integer[12], c: integer[16])
+byte-code for reference:n_add(a: &integer[0], b: integer[12], c: integer[16])
    0[20]: return-address
    0[24]: [2] VarRef(var[0]) -> ref(reference) var=a[0]:&integer
    3[36]: VarRef(var[0]) -> ref(reference) var=a[0]:&integer
@@ -25,12 +25,12 @@ byte-code for reference:add(a: &integer[0], b: integer[12], c: integer[16])
   17[40]: SetInt(v1: ref(reference), fld=0, val: integer)
   20[24]: Return(ret=20, value=0, discard=24)
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [6] test_value(1):integer = {#block(2):integer
     v(2):integer = 1i32;
-    add(OpCreateRef(v(2)), 2i32, 0i32);
-    add(OpCreateRef(v(2)), 4i32, 1i32);
+    n_add(OpCreateRef(v(2)), 2i32, 0i32);
+    n_add(OpCreateRef(v(2)), 4i32, 1i32);
     v(2);
   }#block(2):integer;
   [7] if OpEqInt(test_value(1), 8i32) null else OpPanic({#Formatted string(3):text["__work_1"]
@@ -42,18 +42,18 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for reference:test()
+byte-code for reference:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [6] ConstInt(val=1) -> integer var=v[28]:integer
    6[32]: CreateRef(var[28]) -> ref(reference)
    9[44]: ConstInt(val=2) -> integer
   14[48]: ConstInt(val=0) -> integer
-  19[52]: Call(size=0, fn=add)
+  19[52]: Call(size=0, fn=n_add)
   26[32]: CreateRef(var[28]) -> ref(reference)
   29[44]: ConstInt(val=4) -> integer
   34[48]: ConstInt(val=1) -> integer
-  39[52]: Call(size=0, fn=add)
+  39[52]: Call(size=0, fn=n_add)
   46[32]: VarInt(var[28]) -> integer var=v[28]:integer
   49[36]: FreeStack(value=4, discard=8)
   53[32]: [7] VarInt(var[28]) -> integer var=test_value[28]:integer
@@ -81,7 +81,7 @@ Execute test:
     6:[36] CreateRef(var[32]) -> ref(0,1,40)[36]
     9:[48] ConstInt(val=2) -> 2[48]
    14:[52] ConstInt(val=0) -> 0[52]
-   19:[56] Call(size=0, fn=add)
+   19:[56] Call(size=0, fn=n_add)
  1103:[60] VarRef(var[36]) -> ref(0,1,40)[60]
  1106:[72] VarRef(var[36]) -> ref(0,1,40)[72]
  1109:[84] GetInt(v1=ref(0,1,40)[72], fld=0) -> 1[72]
@@ -94,7 +94,7 @@ Execute test:
    26:[36] CreateRef(var[32]) -> ref(0,1,40)[36]
    29:[48] ConstInt(val=4) -> 4[48]
    34:[52] ConstInt(val=1) -> 1[52]
-   39:[56] Call(size=0, fn=add)
+   39:[56] Call(size=0, fn=n_add)
  1103:[60] VarRef(var[36]) -> ref(0,1,40)[60]
  1106:[72] VarRef(var[36]) -> ref(0,1,40)[72]
  1109:[84] GetInt(v1=ref(0,1,40)[72], fld=0) -> 3[72]

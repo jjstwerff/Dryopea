@@ -5,12 +5,12 @@ pub fn test() {
         "Test failed {test_value} != 4"
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [2] test_value(1):integer = {#block(2):integer
     v(2):text = "something";
-    _tp_text_find(v(2), {#Add text(3):text["__work_1"]
+    t_4text_find(v(2), {#Add text(3):text["__work_1"]
       OpClearText(__work_1(1));
       OpAppendText(__work_1(1), "t");
       OpAppendText(__work_1(1), "h");
@@ -28,7 +28,7 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for find:test()
+byte-code for find:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
@@ -42,7 +42,7 @@ byte-code for find:test()
   29[92]: ConstText(_value="h") -> text
   32[108]: AppendText(var[28], v1: text)
   35[92]: VarText(var[28]) -> text var=__work_1[28]:text
-  38[108]: StaticCall(_tp_text_find)
+  38[108]: StaticCall(t_4text_find)
   41[80]: FreeText(var[52])
   44[80]: FreeStack(value=4, discard=28)
   48[56]: [3] VarInt(var[52]) -> integer var=test_value[52]:integer
@@ -78,7 +78,7 @@ Execute test:
    29:[96] ConstText(_value="h") -> "h"[96]
    32:[112] AppendText(var[32], v1="h"[96])
    35:[96] VarText(var[32]) -> "th"[96]
-   38:[112] StaticCall(_tp_text_find)
+   38:[112] StaticCall(t_4text_find)
    41:[84] FreeText(var[56])
    44:[84] FreeStack(value=4, discard=28)
    48:[60] VarInt(var[56]) -> 4[60]

@@ -201,7 +201,7 @@ impl Drop for Test {
         #[cfg(debug_assertions)]
         state.execute_log(&mut w, "test", &p.data).unwrap();
         #[cfg(not(debug_assertions))]
-        state.execute(p.data.def_nr("test"), &p.data);
+        state.execute("test", &p.data);
     }
 }
 

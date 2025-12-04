@@ -59,7 +59,7 @@ Type 22:Container[24/8]:
 
 Type 23:vector<Content>[4/4]:Vector(17)
 
-fn fill() -> Container {#block(1):ref(Container)
+fn n_fill() -> Container {#block(1):ref(Container)
   __ref_1(1):ref(Container) = null;
   [15] {#Object(2):ref(Container)["__ref_1"]
     OpDatabase(__ref_1(1), 22i32);
@@ -84,7 +84,7 @@ fn fill() -> Container {#block(1):ref(Container)
   }#Object(2):ref(Container)["__ref_1"];
 }#block(1):ref(Container)
 
-byte-code for enum_field:fill() -> ref(Container)
+byte-code for enum_field:n_fill() -> ref(Container)
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Container)
    1[16]: [15] Database(var[4], db_tp=22) type=Container 22
@@ -144,11 +144,11 @@ byte-code for enum_field:fill() -> ref(Container)
  223[40]: FreeStack(value=12, discard=24)
  227[28]: Return(ret=0, value=12, discard=28) type=Container 22
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_2(1):text = "";
   __work_1(1):text = "";
   [27] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
-    c(2):ref(Container) = fill();
+    c(2):ref(Container) = n_fill();
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "Container: ";
       OpFormatDatabase(__work_1(1), c(2), 22i32, true);
@@ -173,12 +173,12 @@ fn test() {#block(1):void
   OpFreeText(__work_2(1));
 }#block(1):void
 
-byte-code for enum_field:test()
+byte-code for enum_field:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
    2[52]: [27] Text() var=test_value[52]:text["__work_1"]
-   3[76]: Call(size=0, fn=fill) var=c[76]:ref(Container)
+   3[76]: Call(size=0, fn=n_fill) var=c[76]:ref(Container)
   10[88]: ClearText(var[28]) var=__work_1[28]:text
   13[88]: ConstText(_value="Container: ") -> text
   26[104]: AppendText(var[28], v1: text)
@@ -219,7 +219,7 @@ Execute test:
     0:[8] Text()
     1:[32] [27] Text()
     2:[56] Text()
-    3:[80] Call(size=0, fn=fill)
+    3:[80] Call(size=0, fn=n_fill)
  1103:[84] [15] ConvRefFromNull() -> ref(1,0,8)[84]
  1104:[96] Database(var[84], db_tp=22)
  1109:[96] VarRef(var[84]) -> ref(1,1,8)={}[96]

@@ -1,16 +1,19 @@
-fn test() { OpPrint("hi!"); }
-fn test() {#block(1):void
-  [1] OpPrint("hi!");
+fn test() { print("hi!"); }
+fn n_test() {#block(1):void
+  [1] n_print("hi!");
 }#block(1):void
 
-byte-code for aa_print:test()
+byte-code for aa_print:n_test()
    0[0]: return-address
    0[4]: [1] ConstText(_value="hi!") -> text
-   5[20]: Print(v1: text)
-   6[4]: Return(ret=0, value=0, discard=4)
+   5[20]: Call(size=0, fn=n_print)
+  12[4]: Return(ret=0, value=0, discard=4)
 
 Execute test:
     0:[8] ConstText(_value="hi!") -> "hi!"[8]
-    5:[24] Print(v1="hi!"[8])
-    6:[8] Return(ret=4294967295[4], value=0, discard=4)
+    5:[24] Call(size=0, fn=n_print)
+  360:[28] ArgText(var[8]) -> "hi!"[28]
+  363:[44] Print(v1="hi!"[28])
+  364:[28] Return(ret=1115[24], value=0, discard=20)
+   12:[8] Return(ret=4294967295[4], value=0, discard=4)
 Finished

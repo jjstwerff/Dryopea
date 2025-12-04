@@ -5,10 +5,10 @@ pub fn test() {
         "Test failed {test_value} != false"
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [2] test_value(1):boolean = {#block(2):boolean
-    _tp_text_starts_with("something", "someone");
+    t_4text_starts_with("something", "someone");
   }#block(2):boolean;
   [3] if OpEqBool(test_value(1), false) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
@@ -19,12 +19,12 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for starts:test()
+byte-code for starts:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] ConstText(_value="something") -> text var=test_value[28]:boolean
   12[44]: ConstText(_value="someone") -> text
-  21[60]: StaticCall(_tp_text_starts_with)
+  21[60]: StaticCall(t_4text_starts_with)
   24[29]: [3] VarBool(var[28]) -> boolean var=test_value[28]:boolean
   27[30]: ConstFalse() -> boolean
   28[31]: EqBool(v1: boolean, v2: boolean) -> boolean
@@ -48,7 +48,7 @@ Execute test:
     0:[8] [2] Text()
     1:[32] ConstText(_value="something") -> "something"[32]
    12:[48] ConstText(_value="someone") -> "someone"[48]
-   21:[64] StaticCall(_tp_text_starts_with)
+   21:[64] StaticCall(t_4text_starts_with)
    24:[33] VarBool(var[32]) -> false[33]
    27:[34] ConstFalse() -> false[34]
    28:[35] EqBool(v1=false[33], v2=false[34]) -> true[33]

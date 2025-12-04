@@ -15,7 +15,7 @@ Type 17:vector<integer>[4/4]:Vector(0)
 Type 18:main_vector<integer>[4/4]:
     vector:vector<integer>[0]
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_1(1):ref(main_vector<integer>) = null;
   __work_1(1):text = "";
   [2] test_value(1):integer = {#block(2):integer
@@ -52,7 +52,7 @@ fn test() {#block(1):void
       }#For loop_4;
     }#For block(3):void;
     [6] OpSetInt(OpGetVector(v(2), 4i32, OpAddInt(1i32, 2i32)), 0i32, 5i32);
-    [7] OpAddInt(OpAddInt(OpAddInt(t(2), OpGetInt(OpGetVector(v(2), 4i32, 0i32), 0i32)), OpGetInt(OpGetVector(v(2), 4i32, OpMinSingleInt(1i32)), 0i32)), _tp_vector_len(v(2)));
+    [7] OpAddInt(OpAddInt(OpAddInt(t(2), OpGetInt(OpGetVector(v(2), 4i32, 0i32), 0i32)), OpGetInt(OpGetVector(v(2), 4i32, OpMinSingleInt(1i32)), 0i32)), t_6vector_len(v(2)));
   }#block(2):integer;
   [8] if OpEqInt(test_value(1), 20i32) null else OpPanic({#Formatted string(8):text["__work_1"]
     __work_1(1):text = "Test failed ";
@@ -64,7 +64,7 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for vectors:test()
+byte-code for vectors:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<integer>)
    1[16]: Text() var=__work_1[16]:text
@@ -154,7 +154,7 @@ byte-code for vectors:test()
  284[96]: GetInt(v1: ref(reference), fld=0) -> integer
  287[88]: AddInt(v1: integer, v2: integer) -> integer
  288[84]: VarVector(var[40]) -> vector type=vector<integer> 17 var=v[40]:vector<integer>["__ref_1"]
- 291[96]: Call(size=0, fn=_tp_vector_len)
+ 291[96]: Call(size=0, fn=t_6vector_len)
  298[88]: AddInt(v1: integer, v2: integer) -> integer
  299[84]: FreeStack(value=4, discard=44)
  303[44]: [8] VarInt(var[40]) -> integer var=test_value[40]:integer
@@ -333,7 +333,7 @@ Execute test:
   284:[100] GetInt(v1=ref(1,5,20)[88], fld=0) -> 5[88]
   287:[92] AddInt(v1=11[84], v2=5[88]) -> 16[84]
   288:[88] VarVector(var[44]) -> ref(1,1,8)=[1,2,3,5][88]
-  291:[100] Call(size=0, fn=_tp_vector_len)
+  291:[100] Call(size=0, fn=t_6vector_len)
   338:[104] VarVector(var[88]) -> ref(1,1,8)[104]
   341:[116] LengthVector(r=ref(1,1,8)[104]) -> 4[104]
   342:[108] Return(ret=1401[100], value=4, discard=20) -> 4[88]

@@ -1222,7 +1222,9 @@ impl State {
         for a in 0..stack.data.def(def_nr).attributes.len() as u16 {
             let n = &stack.data.def(def_nr).attributes[a as usize].name;
             let v = stack.function.var(n);
-            stack.position = stack.function.claim(v, stack.position, &Context::Argument);
+            if v != u16::MAX {
+                stack.position = stack.function.claim(v, stack.position, &Context::Argument);
+            }
         }
         let start = self.code_pos;
         self.arguments = stack.position;
@@ -2125,7 +2127,7 @@ impl State {
         data: &Data,
     ) -> Result<(), Error> {
         writeln!(log, "Execute {name}:")?;
-        let d_nr = data.def_nr(name);
+        let d_nr = data.def_nr(&format!("n_{name}"));
         assert_ne!(d_nr, u32::MAX, "Unknown routine {name}");
         self.code_pos = data.def(d_nr).code_position;
         self.def_pos = self.code_pos;
@@ -2162,7 +2164,8 @@ impl State {
     # Panics
     When too many steps were taken, this might indicate an unending loop.
     */
-    pub fn execute(&mut self, d_nr: u32, data: &Data) {
+    pub fn execute(&mut self, name: &str, data: &Data) {
+        let d_nr = data.def_nr(&format!("n_{name}"));
         let pos = data.def(d_nr).code_position;
         self.code_pos = pos;
         self.stack_pos = 4;

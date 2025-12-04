@@ -5,10 +5,10 @@ pub fn test() {
         "Test failed {test_value} != 3142"
     );
 }
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __work_1(1):text = "";
   [2] test_value(1):float = {#block(2):float
-    _tp_float_round(OpMulFloat(OpMathPiFloat(), 1000f64));
+    t_5float_round(OpMulFloat(OpMathPiFloat(), 1000f64));
   }#block(2):float;
   [3] if OpEqFloat(test_value(1), OpConvFloatFromInt(3142i32)) null else OpPanic({#Formatted string(3):text["__work_1"]
     __work_1(1):text = "Test failed ";
@@ -19,13 +19,13 @@ fn test() {#block(1):void
   OpFreeText(__work_1(1));
 }#block(1):void
 
-byte-code for constants:test()
+byte-code for constants:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] MathPiFloat() -> float var=test_value[28]:float
    2[36]: ConstFloat(val=1000) -> float
   11[44]: MulFloat(v1: float, v2: float) -> float
-  12[36]: Call(size=0, fn=_tp_float_round)
+  12[36]: Call(size=0, fn=t_5float_round)
   19[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
   22[44]: ConstInt(val=3142) -> integer
   27[48]: ConvFloatFromInt(v1: integer) -> float
@@ -51,7 +51,7 @@ Execute test:
     1:[32] MathPiFloat() -> 3.141592653589793[32]
     2:[40] ConstFloat(val=1000) -> 1000[40]
    11:[48] MulFloat(v1=3.141592653589793[32], v2=1000[40]) -> 3141.592653589793[32]
-   12:[40] Call(size=0, fn=_tp_float_round)
+   12:[40] Call(size=0, fn=t_5float_round)
   272:[44] VarFloat(var[32]) -> 3141.592653589793[44]
   275:[52] MathRoundFloat(v1=3141.592653589793[44]) -> 3142[44]
   276:[52] Return(ret=1122[40], value=8, discard=20) -> 3142[32]

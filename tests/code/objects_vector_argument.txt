@@ -19,7 +19,7 @@ Type 17:vector<integer>[4/4]:Vector(0)
 Type 18:main_vector<integer>[4/4]:
     vector:vector<integer>[0]
 
-fn sum(r:vector<integer>) -> integer {#block(1):integer
+fn n_sum(r:vector<integer>) -> integer {#block(1):integer
   [2] res(1):integer = 0i32;
   [3] {#For block(2):void
     _vector_1(2):vector<integer>["r"] = r(0);
@@ -40,7 +40,7 @@ fn sum(r:vector<integer>) -> integer {#block(1):integer
   [6] res(1);
 }#block(1):integer
 
-byte-code for vector_argument:sum(r: vector<integer>[0]) -> integer
+byte-code for vector_argument:n_sum(r: vector<integer>[0]) -> integer
    0[12]: return-address
    0[16]: [2] ConstInt(val=0) -> integer var=res[16]:integer
    5[20]: [3] VarVector(var[0]) -> vector type=vector<integer> 17 var=r[0]:vector<integer>
@@ -69,14 +69,14 @@ byte-code for vector_argument:sum(r: vector<integer>[0]) -> integer
   73[20]: [6] VarInt(var[16]) -> integer var=res[16]:integer
   76[24]: Return(ret=12, value=4, discard=24) type=integer 0
 
-fn test() {#block(1):void
+fn n_test() {#block(1):void
   __ref_4(1):ref(main_vector<integer>) = null;
   __ref_3(1):ref(main_vector<integer>) = null;
   __ref_2(1):ref(main_vector<integer>) = null;
   __ref_1(1):ref(main_vector<integer>) = null;
   __work_1(1):text = "";
   [11] test_value(1):integer = {#block(2):integer
-    OpAddInt(sum({#Vector(3):vector<integer>
+    OpAddInt(n_sum({#Vector(3):vector<integer>
       OpDatabase(__ref_1(1), 18i32);
       _vec_1(3):vector<integer>["__ref_1"] = OpGetField(__ref_1(1), 0i32, 17i32);
       OpSetInt(__ref_1(1), 0i32, 0i32);
@@ -96,7 +96,7 @@ fn test() {#block(1):void
       OpSetInt(_elm_2(3), 0i32, 5i32);
       OpFinishRecord(_vec_1(3), _elm_2(3), 17i32, 65535i32);
       _vec_1(3);
-    }#Vector(3):vector<integer>), OpMulInt(100i32, sum({#Append Vector(4):vector<integer>["__ref_4"]
+    }#Vector(3):vector<integer>), OpMulInt(100i32, n_sum({#Append Vector(4):vector<integer>["__ref_4"]
       OpDatabase(__ref_4(1), 18i32);
       _vec_7(4):vector<integer>["__ref_4"] = OpGetField(__ref_4(1), 0i32, 17i32);
       OpSetInt(__ref_4(1), 0i32, 0i32);
@@ -143,7 +143,7 @@ fn test() {#block(1):void
   OpFreeRef(__ref_4(1));
 }#block(1):void
 
-byte-code for vector_argument:test()
+byte-code for vector_argument:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_4[4]:ref(main_vector<integer>)
    1[16]: ConvRefFromNull() -> ref(reference) var=__ref_3[16]:ref(main_vector<integer>)
@@ -202,7 +202,7 @@ byte-code for vector_argument:test()
  184[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=17, fld=65535)
  189[100]: VarVector(var[76]) -> vector type=vector<integer> 17 var=_vec_1[76]:vector<integer>["__ref_1"]
  192[112]: FreeStack(value=12, discard=36)
- 196[88]: Call(size=0, fn=sum)
+ 196[88]: Call(size=0, fn=n_sum)
  203[80]: ConstInt(val=100) -> integer
  208[84]: Database(var[4], db_tp=18) type=main_vector<integer> 18
  213[84]: VarRef(var[4]) -> ref(reference) type=main_vector<integer> 18 var=__ref_4[4]:ref(main_vector<integer>)
@@ -275,7 +275,7 @@ byte-code for vector_argument:test()
  456[120]: AppendVector(r: vector, other: vector, tp=0) type=integer 0
  459[96]: VarVector(var[84]) -> vector type=vector<integer> 17 var=_vec_7[84]:vector<integer>["__ref_4"]
  462[108]: FreeStack(value=12, discard=24)
- 466[96]: Call(size=0, fn=sum)
+ 466[96]: Call(size=0, fn=n_sum)
  473[88]: MulInt(v1: integer, v2: integer) -> integer
  474[84]: AddInt(v1: integer, v2: integer) -> integer
  475[80]: [12] VarInt(var[76]) -> integer var=test_value[76]:integer
@@ -363,7 +363,7 @@ Execute test:
   184:[128] FinishRecord(data=ref(4,1,8)[104], rec=ref(4,5,24)[116], parent_tp=17, fld=65535)
   189:[104] VarVector(var[80]) -> ref(4,1,8)=[1,2,3,4,5][104]
   192:[116] FreeStack(value=12, discard=36)
-  196:[92] Call(size=0, fn=sum)
+  196:[92] Call(size=0, fn=n_sum)
  1103:[96] ConstInt(val=0) -> 0[96]
  1108:[100] VarVector(var[80]) -> ref(4,1,8)=[1,2,3,4,5][100]
  1111:[112] ConstInt(val=-1) -> -1[112]
@@ -546,7 +546,7 @@ Execute test:
   456:[124] AppendVector(r=ref(1,1,8)[100], other=ref(2,1,8)[112], tp=0)
   459:[100] VarVector(var[88]) -> ref(1,1,8)=[1,2,3,4,5][100]
   462:[112] FreeStack(value=12, discard=24)
-  466:[100] Call(size=0, fn=sum)
+  466:[100] Call(size=0, fn=n_sum)
  1103:[104] ConstInt(val=0) -> 0[104]
  1108:[108] VarVector(var[88]) -> ref(1,1,8)=[1,2,3,4,5][108]
  1111:[120] ConstInt(val=-1) -> -1[120]
