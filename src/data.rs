@@ -465,6 +465,8 @@ pub struct Attribute {
     pub typedef: Type,
     /// This attribute is mutable.
     pub mutable: bool,
+    /// Only return the default on this field.
+    pub constant: bool,
     /// This attribute is allowed to be null in the substructure.
     pub nullable: bool,
     /// This attribute is holding the primary reference of its records.
@@ -768,6 +770,7 @@ impl Data {
             name: name.to_string(),
             typedef,
             mutable: true,
+            constant: false,
             nullable: true,
             primary: false,
             value: Value::Null,
@@ -981,18 +984,6 @@ impl Data {
         self.definitions[d_nr as usize].attributes[a_nr].nullable = nullable;
     }
 
-    #[must_use]
-    pub fn attr_mutable(&self, d_nr: u32, a_nr: usize) -> bool {
-        if a_nr == usize::MAX {
-            return false;
-        }
-        self.definitions[d_nr as usize].attributes[a_nr].mutable
-    }
-
-    pub fn set_attr_mutable(&mut self, d_nr: u32, a_nr: usize, mutable: bool) {
-        self.definitions[d_nr as usize].attributes[a_nr].mutable = mutable;
-    }
-
     /**
     Add a new function to the definitions.
     # Panics
@@ -1045,7 +1036,8 @@ impl Data {
         for a in arguments {
             let a_nr = self.add_attribute(lexer, d_nr, &a.name, a.typedef.clone());
             self.set_attr_value(d_nr, a_nr, a.default.clone());
-            self.set_attr_mutable(d_nr, a_nr, !a.constant);
+            self.definitions[d_nr as usize].attributes[a_nr].mutable = !a.constant;
+            self.definitions[d_nr as usize].attributes[a_nr].constant = a.constant;
         }
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].typedef);
@@ -1054,7 +1046,8 @@ impl Data {
                 return u32::MAX;
             }
             let a_nr = self.add_attribute(lexer, type_nr, fn_name, Type::Routine(d_nr));
-            self.set_attr_mutable(type_nr, a_nr, false);
+            self.definitions[type_nr as usize].attributes[a_nr].mutable = false;
+            self.definitions[type_nr as usize].attributes[a_nr].constant = true;
         }
         if is_both {
             let mut main = self.def_nr(fn_name);
@@ -1072,7 +1065,8 @@ impl Data {
             );
             let name = &self.def(type_nr).name.clone();
             let a_nr = self.add_attribute(lexer, main, name, Type::Routine(d_nr));
-            self.set_attr_mutable(main, a_nr, false);
+            self.definitions[main as usize].attributes[a_nr].mutable = false;
+            self.definitions[main as usize].attributes[a_nr].constant = true;
         }
         d_nr
     }
@@ -1122,7 +1116,8 @@ impl Data {
         let d_nr = self.add_def(fn_name, lexer.pos(), DefType::Function);
         for a in arguments {
             let a_nr = self.add_attribute(lexer, d_nr, &a.name, a.typedef.clone());
-            self.set_attr_mutable(d_nr, a_nr, !a.constant);
+            self.definitions[d_nr as usize].attributes[a_nr].mutable = !a.constant;
+            self.definitions[d_nr as usize].attributes[a_nr].constant = a.constant;
             self.set_attr_value(d_nr, a_nr, a.default.clone());
         }
         if self.def(d_nr).is_operator() {

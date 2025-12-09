@@ -15,13 +15,15 @@ use crate::vector;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::env;
-use std::fmt::{Debug, Formatter, Write};
+use std::fmt::Write as _;
+use std::fmt::{Debug, Formatter};
+use std::io::Write as _;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
-    name: String,
+    pub name: String,
     content: u16,
-    position: u16,
+    pub position: u16,
     pub default: Content,
     other_indexes: Vec<u16>, // For now only fields on the same record
 }
@@ -165,11 +167,11 @@ fn compare(a: &Content, b: &Content) -> Ordering {
     }
 }
 
-#[derive(Clone)]
 pub struct Stores {
     pub types: Vec<Type>,
     pub names: HashMap<String, u16>,
     pub allocations: Vec<Store>,
+    pub files: Vec<std::fs::File>,
     max: u16,
 }
 
@@ -315,6 +317,7 @@ impl Stores {
             types: Vec::new(),
             names: HashMap::new(),
             allocations: Vec::new(),
+            files: Vec::new(),
             max: 0,
         };
         result.base_type("integer", 4); // 0
@@ -2227,10 +2230,11 @@ impl Stores {
                 }
             }
             for (name, entry) in res {
-                let elm = vector::vector_append(&vector, 13, &mut self.allocations);
+                let elm = vector::vector_append(&vector, 17, &mut self.allocations);
                 let store = self.store_mut(result);
                 let name_pos = store.set_str(&name) as i32;
                 store.set_int(elm.rec, elm.pos + 8, name_pos);
+                store.set_int(elm.rec, elm.pos + 12, i32::MIN);
                 vector::vector_finish(&vector, &mut self.allocations);
                 let store = self.store_mut(result);
                 if !fill_file(&entry.path(), store, &elm) {
@@ -2783,6 +2787,23 @@ impl Stores {
         Str::new(s)
     }
 
+    pub fn write_file(&mut self, file: &DbRef, v: &str) {
+        let f_nr = self.files.len() as i32;
+        let s = self.store_mut(file);
+        let mut file_ref = s.get_int(file.rec, file.pos + 12);
+        if file_ref == i32::MIN {
+            let file_name = s.get_str(s.get_int(file.rec, file.pos + 8) as u32);
+            if let Ok(f) = std::fs::File::create(file_name) {
+                s.set_int(file.rec, file.pos + 12, f_nr);
+                self.files.push(f);
+            }
+            file_ref = f_nr;
+        }
+        self.files[file_ref as usize]
+            .write_all(v.as_bytes())
+            .unwrap_or_default();
+    }
+
     /**
     Get the executable directory
     # Panics
@@ -2989,7 +3010,7 @@ fn match_text(text: &str, pos: &mut usize, value: &mut String) -> bool {
 fn fill_file(path: &std::path::Path, store: &mut Store, file: &DbRef) -> bool {
     if let Ok(data) = path.metadata() {
         store.set_long(file.rec, file.pos, data.len() as i64); // write size
-        store.set_byte(file.rec, file.pos + 12, 0, i32::from(data.is_dir()));
+        store.set_byte(file.rec, file.pos + 16, 0, i32::from(data.is_dir()));
         true
     } else {
         false

@@ -367,3 +367,18 @@ fn get_object_value() {
     .expr("s = N { d:[T {n: \"a\", v:12} ] }; \"{s.d[0]} v={s.d[0].v}\"")
     .result(Value::str("{n:\"a\",v:12} v=12"));
 }
+
+#[test]
+fn assign_text() {
+    code!(
+        "struct T { n: text, v: u16 }
+    struct N { d: vector<T>, h: hash<T[v]> }"
+    )
+    .expr(
+        "
+s = N { d:[T {n: \"a\", v:12} ] };
+s.d[0].n = \"bb\";
+\"{s.d[0]} v={s.d[0].v}\"",
+    )
+    .result(Value::str("{n:\"bb\",v:12} v=12"));
+}

@@ -693,15 +693,6 @@ impl Parser {
     fn set_field(&mut self, d_nr: u32, f_nr: usize, ref_code: Value, val_code: Value) -> Value {
         let tp = self.data.attr_type(d_nr, f_nr);
         let nm = self.data.attr_name(d_nr, f_nr);
-        if !self.data.attr_mutable(d_nr, f_nr) && f_nr != usize::MAX {
-            diagnostic!(
-                self.lexer,
-                Level::Error,
-                "Cannot write to key field {}.{} create a record instead",
-                self.data.def(d_nr).name,
-                nm
-            );
-        }
         let pos = self.database.position(self.data.def(d_nr).known_type, &nm);
         let pos_val = Value::Int(if f_nr == usize::MAX {
             0
@@ -1954,16 +1945,13 @@ impl Parser {
         let mut value = Value::Null;
         //let mut check = Value::Null;
         let mut nullable = true;
-        let mut is_virtual = false;
         loop {
             if self.lexer.has_keyword("not") {
                 // This field cannot be null, this allows for 256 values in a byte
                 self.lexer.token("null");
                 nullable = false;
             }
-            if self.parse_field_default(&mut value, &mut a_type, d_nr, a_name, &mut defined) {
-                is_virtual = true;
-            }
+            self.parse_field_default(&mut value, &mut a_type, d_nr, a_name, &mut defined);
             /* TODO for now ignore this, we have to properly implement this in the future
             if self.lexer.has_keyword("check") {
                 self.lexer.token("(");
@@ -1992,15 +1980,8 @@ impl Parser {
             let a = self
                 .data
                 .add_attribute(&mut self.lexer, d_nr, a_name, a_type);
-            /* TODO implement me!
-            if check != Value::Null {
-                self.data.set_attr_check(d_nr, a, check);
-            }
-            */
-            if is_virtual {
-                self.data.set_attr_mutable(d_nr, a, false);
-            }
             self.data.set_attr_nullable(d_nr, a, nullable);
+            self.data.set_attr_value(d_nr, a, value);
         } else {
             let a = self.data.attr(d_nr, a_name);
             if value != Value::Null {
@@ -2189,6 +2170,9 @@ impl Parser {
                 if let Type::Rewritten(tp) = s_type {
                     s_type = *tp;
                 }
+                if var_nr == u16::MAX {
+                    self.validate_write(&to, &parent_tp);
+                }
                 self.change_var(&to, &s_type);
                 if matches!(f_type, Type::Text(_)) {
                     self.assign_text(code, &s_type, &to, op, var_nr);
@@ -2222,6 +2206,33 @@ impl Parser {
         f_type
     }
 
+    fn validate_write(&mut self, to: &Value, parent_tp: &Type) {
+        if let Value::Call(_, vars) = to
+            && let Value::Int(pos) = vars[1]
+        {
+            let d_nr = self.data.type_def_nr(parent_tp);
+            if d_nr != u32::MAX {
+                let known = self.data.def(d_nr).known_type;
+                if known != u16::MAX
+                    && let Parts::Struct(fields) = &self.database.types[known as usize].parts
+                {
+                    for (f_nr, f) in fields.iter().enumerate() {
+                        if f.position == pos as u16 && !self.data.def(d_nr).attributes[f_nr].mutable
+                        {
+                            diagnostic!(
+                                self.lexer,
+                                Level::Error,
+                                "Cannot write to key field {}.{} create a record instead",
+                                self.data.def(d_nr).name,
+                                f.name
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn assign_text(&mut self, code: &mut Value, tp: &Type, to: &Value, op: &str, var_nr: u16) {
         if let Value::Call(_, parms) = to.clone() {
             if op == "=" {
@@ -2249,7 +2260,7 @@ impl Parser {
             if op == "=" {
                 ls.insert(0, v_set(var_nr, Value::Text(String::new())));
             }
-        } else if op == "=" {
+        } else if op == "=" && var_nr != u16::MAX {
             *code = v_set(var_nr, code.clone());
         } else if *tp == Type::Character {
             *code = self.cl("OpAppendCharacter", &[Value::Var(var_nr), code.clone()]);
@@ -3226,7 +3237,7 @@ impl Parser {
                         self.data.attr_name(dnr, fnr)
                     );
                 }
-            } else if !self.data.attr_mutable(dnr, fnr) {
+            } else if self.data.def(dnr).attributes[fnr].constant {
                 let mut new = self.data.attr_value(dnr, fnr);
                 if let Value::Call(_, args) = &mut new {
                     args[0] = code.clone();
@@ -4381,30 +4392,7 @@ impl Parser {
                         parent_tp = parent_tp.depending(*v);
                     }
                     let exp_tp = self.parse_operators(&td, &mut value, &mut parent_tp, 0);
-                    if let Type::Vector(_, _)
-                    | Type::Sorted(_, _, _)
-                    | Type::Hash(_, _, _)
-                    | Type::Spacial(_, _, _)
-                    | Type::Index(_, _, _) = td
-                    {
-                        list.push(value);
-                    } else if let Value::Insert(ops) = value {
-                        for o in ops {
-                            list.push(o);
-                        }
-                    } else {
-                        if !self.convert(&mut value, &exp_tp, &td) {
-                            diagnostic!(
-                                self.lexer,
-                                Level::Error,
-                                "Cannot write {} on field {}.{field}:{}",
-                                td.show(&self.data, &self.vars),
-                                self.data.def(td_nr).name,
-                                exp_tp.show(&self.data, &self.vars)
-                            );
-                        }
-                        list.push(self.set_field(td_nr, nr, code.clone(), value));
-                    }
+                    self.handle_field(td_nr, code, &mut list, &field, &mut value, &exp_tp);
                 }
             } else {
                 // We have not encountered an identifier
@@ -4420,7 +4408,7 @@ impl Parser {
         // fill the not mentioned fields with their default value
         for aid in 0..self.data.attributes(td_nr) {
             if found_fields.contains(&self.data.attr_name(td_nr, aid))
-                || !self.data.attr_mutable(td_nr, aid)
+                || matches!(self.data.attr_type(td_nr, aid), Type::Routine(_))
             {
                 continue;
             }
@@ -4437,6 +4425,45 @@ impl Parser {
         } else {
             *code = Value::Insert(list);
             Type::Rewritten(Box::new(Type::Reference(td_nr, Vec::new())))
+        }
+    }
+
+    fn handle_field(
+        &mut self,
+        td_nr: u32,
+        code: &mut Value,
+        list: &mut Vec<Value>,
+        field: &str,
+        value: &mut Value,
+        exp_tp: &Type,
+    ) {
+        let nr = self.data.attr(td_nr, field);
+        let td = self.data.attr_type(td_nr, nr);
+        if matches!(
+            td,
+            Type::Vector(_, _)
+                | Type::Sorted(_, _, _)
+                | Type::Hash(_, _, _)
+                | Type::Spacial(_, _, _)
+                | Type::Index(_, _, _)
+        ) {
+            list.push(value.clone());
+        } else if let Value::Insert(ops) = value {
+            for o in ops {
+                list.push(o.clone());
+            }
+        } else {
+            if !self.convert(value, exp_tp, &td) {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Cannot write {} on field {}.{field}:{}",
+                    td.show(&self.data, &self.vars),
+                    self.data.def(td_nr).name,
+                    exp_tp.show(&self.data, &self.vars)
+                );
+            }
+            list.push(self.set_field(td_nr, nr, code.clone(), value.clone()));
         }
     }
 

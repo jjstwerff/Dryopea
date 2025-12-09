@@ -1,15 +1,21 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+// This is the user documentation of the Loft language.
+// Every example can be executed inside the language as it is an integral part of its testing suite.
+
+// Loft is a language inspired by rust, but designed to be easier to write.
+// There are many details that are different, some of those will be highlighted in the documentation.
+
 fn main() {
-    // Lavition is a language inspired by rust, but designed to be easier to write.
-    // There are many details that differentiate it from it, some of those will be highlighted in the documentation.
-    // A simple if statement, 'panic' acts like a normal function.
-    // Production code will never panic though it will be logged with possibly addition information.
+    // A program can be stopped by calling the panic function.
+    // Production code will never panic, the problem will only be logged.
     if 2 > 5 {
        panic("Incorrect test");
     }
 
-    // More complex logic can be used in boolean expressions.
+    // Boolean expressions can be written with gradually more complex logic.
     // Both '&&' '||' and 'and' 'or' can be used in logical expressions.
-    // There are no 'let' or 'mut' keywords for variables, however they cannot switch types inside a function.
     // The '&' expression is the binary and operation.
     a = 12;
     if a > 10 and a & 7 == 4 {
@@ -17,16 +23,16 @@ fn main() {
     } else {
         a -= 1;
     }
-    // Assert acts as a normal function because each text constant can contain formatting expressions.
-    // In production code the assert statements are omitted, so the code will not break on a missed problem.
-    // While debugging the asserts will be evaluated and logged. They can also be used a break points.
+    // Each text constant can contain formatting expressions.
+    // In production code the assert statements are omitted, so the code will not stop on each found problem.
+    // While debugging the asserts will be evaluated and logged.
     assert(a == 13, "Incorrect value {a} != 13");
 
     // Each block returns its last expression, so an if statement can be used as an expression.
     b = if a == 13 { "Correct" } else { "Wrong" };
     assert(b == "Correct", "Logic expression");
 
-    // A simple for loop including 1 and omitting 6.
+    // A simple for loop that including 1 and omits 6.
     t = 0;
     for a in 1..6 {
         t += a;

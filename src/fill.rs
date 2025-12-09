@@ -1903,6 +1903,7 @@ fn append_ref_text(s: &mut State) {
 fn append_ref_character(s: &mut State) {
     s.append_ref_character();
 }
+
 fn clear_ref_text(s: &mut State) {
     s.clear_ref_text();
 }

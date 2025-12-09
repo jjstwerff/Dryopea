@@ -6,13 +6,13 @@ fn n_texts(dir:File, l:vector<ref(File)>) {#block(1):void
     loop {#For loop_3
       f(3):ref(File)["_vector_1"] = {#iter next(4):ref(File)
         f#index(2):integer = OpAddInt(f#index(2), 1i32);
-        OpGetVector(_vector_1(2), 13i32, f#index(2));
+        OpGetVector(_vector_1(2), 17i32, f#index(2));
       }#iter next(4):ref(File);
       if OpNot(OpConvBoolFromRef(f(3))) {#break(5):void
         break(0);
       }#break(5):void else null;
       {#block(6):void
-        [3] if OpEqInt(OpGetByte(f(3), 12i32, 0i32), 1i32) {#block(7):void
+        [3] if OpEqInt(OpGetByte(f(3), 16i32, 0i32), 1i32) {#block(7):void
           [4] n_texts(f(3), l(0));
         }#block(7):void else if t_4text_ends_with(OpGetText(f(3), 8i32), ".txt") {#block(8):void
           [6] _elm_2(8):ref(File)["l"] = OpNewRecord(l(0), 16i32, 65535i32);
@@ -38,13 +38,13 @@ fn n_main() {#block(1):void
   l(1):vector<ref(File)>["__ref_1"] = OpGetField(__ref_1(1), 0i32, 16i32);
   OpSetInt(__ref_1(1), 0i32, 0i32);
   [13] n_texts(n_file("example", __ref_2(1)), l(1));
-  [14] if OpEqText(OpGetText(OpGetVector(l(1), 13i32, 0i32), 8i32), "example/config/terrain.txt") null else OpPanic({#Formatted string(2):text["__work_1"]
+  [14] if OpEqText(OpGetText(OpGetVector(l(1), 17i32, 0i32), 8i32), "example/config/terrain.txt") null else OpPanic({#Formatted string(2):text["__work_1"]
     __work_1(1):text = "Found file '";
-    OpFormatText(__work_1(1), OpGetText(OpGetVector(l(1), 13i32, 0i32), 8i32), 0i32, -1i32, 32i32);
+    OpFormatText(__work_1(1), OpGetText(OpGetVector(l(1), 17i32, 0i32), 8i32), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), "'");
     __work_1(1);
   }#Formatted string(2):text["__work_1"]);
-  [15] f(1):ref(File)["l"] = OpGetVector(l(1), 13i32, 0i32);
+  [15] f(1):ref(File)["l"] = OpGetVector(l(1), 17i32, 0i32);
   [16] c(1):vector<text>["__ref_3"] = t_4File_lines(f(1), __ref_3(1));
   [17] if OpEqText(OpGetText(OpGetVector(c(1), 4i32, 1i32), 0i32), "   terrain = [") null else OpPanic({#Formatted string(3):text["__work_2"]
     __work_2(1):text = "Line was '";

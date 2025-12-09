@@ -118,7 +118,7 @@ fn test() {
   s.d[0].n = \"b\";
 }"
     )
-    .error("Cannot write to key field T.n create a record instead at key_field:6:9");
+    .error("Cannot write to key field T.n create a record instead at key_field:6:18");
 }
 
 #[test]

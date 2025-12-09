@@ -210,7 +210,7 @@ fn scope_text() {
 
 #[test]
 fn files() {
-    expr!("fs = file(\"example\").files(); \"{fs}\"").result(Value::str(
+    expr!("\"{file(\"example\").files()}\"").result(Value::str(
         "[\
 {path:\"example/config\",size:4096,dir:true},\
 {path:\"example/map.png\",size:3406,dir:false},\

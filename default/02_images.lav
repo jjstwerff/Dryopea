@@ -26,7 +26,8 @@ pub struct Image {
 pub struct File {
     path: text,
     size: long,
-    dir: boolean
+    dir: boolean,
+    ref: i32
 }
 
 fn OpGetFile(file: File) -> boolean;
@@ -71,12 +72,9 @@ pub fn lines(self: File) -> vector<text> {
 }
 
 pub fn file(path: text) -> File {
-    result = File { path: path };
-    if OpGetFile(result) {
-        result
-    } else {
-        null
-    }
+    result = File { path: path, ref: null };
+    OpGetFile(result);
+    result
 }
 
 pub fn files(self: File) -> vector<File> {
@@ -86,6 +84,9 @@ pub fn files(self: File) -> vector<File> {
     }
     result
 }
+
+pub fn write(self: File, v: text);
+#rust "stores.write_file(&@self, @v);"
 
 pub fn png(self: File) -> Image {
     if !self.dir {
