@@ -1,25 +1,47 @@
 // Copyright (c) 2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-use lexer
+use lexer;
 
-struct File {
+struct SourceFile {
     path: text,
-    done: boolean,
+    done: boolean
 }
 
 struct Definition {
     name: text,
     file: u16,
-    line: u32,
+    line: i32
 }
 
 struct Type {
-    name: text,
+    name: text
 }
 
 struct Parser {
-    file: vector<File>,
+    file: vector<SourceFile>,
     definitions: vector<Definition>,
-    types: vector<Type>,
+    types: vector<Type>
+}
+
+pub fn parse(name: text, s: text) {
+    println("name {name} s {s}");
+}
+
+pub fn parse_str(name: text, s: text) {
+    l = lexer::Lexer {};
+    l.set_tokens(["+=", "*=", "-=", "<=", ">=", "!=", "==", ">>", "<<", "->", "=>", ">>>", "..", "..=", "&&", "||"]);
+    l.set_keywords(["for", "in", "if", "else", "fn", "pub", "use", "struct", "enum", "match", "and", "or"]);
+    l.parse_string(name, s);
+    for x in 0..1000 {
+        if l.matches("fn") {
+            parse_function(l);
+        }
+    }
+}
+
+fn parse_function(l: lexer::Lexer) {
+    println("peek {l.peek()}");
+    n = l.identifier();
+    println("fn {n}()");
 }

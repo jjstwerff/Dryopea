@@ -39,7 +39,7 @@ fn dir() -> std::io::Result<()> {
 
 #[test]
 fn last() -> std::io::Result<()> {
-    run_test(PathBuf::from("tests/suite/15-lexer.lav"), false)
+    run_test(PathBuf::from("tests/suite/16-parser.lav"), false)
 }
 
 fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {

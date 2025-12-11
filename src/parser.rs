@@ -33,7 +33,7 @@ This number indicated the depth of these expressions, not the number of these ex
 function.
 */
 pub struct Parser {
-    pub todo_files: HashMap<String, u16>,
+    pub todo_files: Vec<(String, u16)>,
     /// All definitions
     pub data: Data,
     pub database: Stores,
@@ -149,7 +149,7 @@ impl Parser {
     #[must_use]
     pub fn new() -> Self {
         Parser {
-            todo_files: HashMap::new(),
+            todo_files: Vec::new(),
             data: Data::new(),
             database: Stores::new(),
             lexer: Lexer::default(),
@@ -594,13 +594,21 @@ impl Parser {
     }
 
     /// Search for definitions with the given name and call that with the given parameters.
-    fn call(&mut self, code: &mut Value, name: &str, list: &[Value], types: &[Type]) -> Type {
+    fn call(
+        &mut self,
+        code: &mut Value,
+        source: u16,
+        name: &str,
+        list: &[Value],
+        types: &[Type],
+    ) -> Type {
         // Create a new list of parameters based on the current ones
         // We still need to know the types.
         let d_nr = if self.default && is_op(name) {
             self.data.def_nr(name)
         } else {
             self.data.find_fn(
+                source,
                 name,
                 if types.is_empty() {
                     &Type::Unknown(0)
@@ -1017,8 +1025,8 @@ impl Parser {
                 }
                 let f = self.lib_path(&id);
                 if std::path::Path::new(&f).exists() {
-                    self.todo_files
-                        .insert(self.lexer.pos().file.clone(), self.data.source);
+                    let cur = &self.lexer.pos().file;
+                    self.todo_files.push((cur.clone(), self.data.source));
                     self.data.use_add(&id);
                     self.lexer = Lexer::lines(BufReader::new(File::open(&f).unwrap()).lines(), &f);
                 } else {
@@ -1058,8 +1066,7 @@ impl Parser {
             return;
         }
         // Parse all files left in the todo_files list, as they are halted to parse a use file.
-        for (t, s) in self.todo_files.clone() {
-            self.todo_files.remove(&t);
+        while let Some((t, s)) = self.todo_files.pop() {
             self.lexer = Lexer::lines(BufReader::new(File::open(&t).unwrap()).lines(), &t);
             self.data.source = s;
             self.parse_file();
@@ -1132,7 +1139,7 @@ impl Parser {
                 && matches!(self.data.def(*e_tp).returned, Type::Enum(_, true, _))
                 && self
                     .data
-                    .find_fn(&d.original_name(), &self.data.def(*e_tp).returned)
+                    .find_fn(u16::MAX, &d.original_name(), &self.data.def(*e_tp).returned)
                     == u32::MAX
                 && let Type::Enum(e_nr, true, _) = self.data.def(*e_tp).returned
             {
@@ -1218,6 +1225,7 @@ impl Parser {
             let mut code = Value::Null;
             self.call(
                 &mut code,
+                u16::MAX,
                 name,
                 &[Value::Var(0)],
                 &[self.data.def(d_nr).attributes[0].typedef.clone()],
@@ -1490,11 +1498,14 @@ impl Parser {
             self.data.add_op(&mut self.lexer, &fn_name, &arguments)
         } else if self.first_pass {
             self.data.add_fn(&mut self.lexer, &fn_name, &arguments)
-        } else if is_op(&fn_name) {
+        } else if self.default && is_op(&fn_name) {
             self.data.def_nr(&fn_name)
         } else {
             self.data.get_fn(&fn_name, &arguments)
         };
+        if self.context == u32::MAX {
+            return false;
+        }
         let result = if self.lexer.has_token("->") {
             // Will be the correct def_nr on the second pass
             if let Some(type_name) = self.lexer.has_identifier() {
@@ -1510,15 +1521,13 @@ impl Parser {
         } else {
             Type::Void
         };
-        if self.context != u32::MAX {
-            self.vars
-                .append(&mut self.data.definitions[self.context as usize].variables);
-        }
+        self.vars
+            .append(&mut self.data.definitions[self.context as usize].variables);
         /*
         if !self.default {
             self.vars.logging = true;
         }*/
-        if self.first_pass && self.context != u32::MAX {
+        if self.first_pass {
             self.data.set_returned(self.context, result);
         }
         if !self.lexer.has_token(";") {
@@ -1535,7 +1544,7 @@ impl Parser {
             }
             self.parse_code();
         }
-        if !self.first_pass && self.context != u32::MAX {
+        if !self.first_pass {
             self.vars.test_used(&mut self.lexer, &self.data);
         }
         self.lexer.has_token(";");
@@ -2439,15 +2448,21 @@ impl Parser {
         if matches!(l.last(), Some(Value::Line(_))) {
             l.pop();
         }
-        if let Type::RefVar(tp) = t.clone() {
+        if matches!(t, Type::RefVar(_)) {
             let mut code = l.pop().unwrap().clone();
-            self.convert(&mut code, &t, &tp);
+            self.un_ref(&mut t, &mut code);
             l.push(code);
-            t = *tp;
         }
         t = self.block_result(context, result, &t, &mut l);
         *val = v_block(l, t.clone(), "block");
         t
+    }
+
+    fn un_ref(&mut self, t: &mut Type, code: &mut Value) {
+        if let Type::RefVar(tp) = t.clone() {
+            self.convert(code, t, &tp);
+            *t = *tp;
+        }
     }
 
     fn move_insert_elements(l: &mut Vec<Value>, elms: Vec<Value>) {
@@ -3596,7 +3611,7 @@ impl Parser {
             if name == "sizeof" {
                 t = self.parse_size(code);
             } else {
-                t = self.parse_call(code, name);
+                t = self.parse_call(code, source, &nm);
             }
         } else if self.vars.name_exists(name) {
             let index_var = self.vars.var(name);
@@ -3786,11 +3801,12 @@ impl Parser {
         while self.lexer.mode() == Mode::Formatting {
             self.lexer.set_mode(Mode::Code);
             let mut format = Value::Null;
-            let tp = if self.lexer.has_token("for") {
+            let mut tp = if self.lexer.has_token("for") {
                 self.iter_for(&mut format, &mut append_value)
             } else {
                 self.expression(&mut format)
             };
+            self.un_ref(&mut tp, &mut format);
             if !self.first_pass && tp.is_unknown() {
                 diagnostic!(
                     self.lexer,
@@ -4768,11 +4784,11 @@ impl Parser {
     }
 
     // <call> ::= [ <expression> { ',' <expression> } ] ')'
-    fn parse_call(&mut self, val: &mut Value, name: &str) -> Type {
+    fn parse_call(&mut self, val: &mut Value, source: u16, name: &str) -> Type {
         let mut list = Vec::new();
         let mut types = Vec::new();
         if self.lexer.has_token(")") {
-            return self.call(val, name, &list, &Vec::new());
+            return self.call(val, source, name, &list, &Vec::new());
         }
         loop {
             let mut p = Value::Null;
@@ -4796,7 +4812,7 @@ impl Parser {
             *val = v_if(test, Value::Null, show);
             Type::Void
         } else {
-            self.call(val, name, &list, &types)
+            self.call(val, source, name, &list, &types)
         }
     }
 
