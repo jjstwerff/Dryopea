@@ -214,6 +214,10 @@ pub fn hash() {
     let key = [Content::Str(Str::new("third")), Content::Long(2)];
     let rec = hash::find(&into, &stores.allocations, stores.keys(v), &key);
     assert_eq!("/data[third,2]", stores.path(&rec, s));
+    // Unknown key
+    let key = [Content::Str(Str::new("first")), Content::Long(4)];
+    let rec = hash::find(&into, &stores.allocations, stores.keys(v), &key);
+    assert_eq!(rec.rec, 0, "Null result");
 }
 
 #[test]

@@ -39,7 +39,7 @@ fn dir() -> std::io::Result<()> {
 
 #[test]
 fn last() -> std::io::Result<()> {
-    run_test(PathBuf::from("tests/suite/15-lexer.lav"), false)
+    run_test(PathBuf::from("tests/suite/16-parser.lav"), false)
 }
 
 fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
@@ -58,9 +58,9 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     }
     scopes::check(&mut p.data);
     let mut state = State::new(p.database);
+    byte_code(&mut state, &mut p.data);
     #[cfg(debug_assertions)]
     let mut w = dump_results(entry, &mut p.data, types, &mut state)?;
-    byte_code(&mut state, &mut p.data);
     if debug {
         #[cfg(debug_assertions)]
         state.execute_log(&mut w, "main", &p.data)?;

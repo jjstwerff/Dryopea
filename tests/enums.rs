@@ -156,22 +156,22 @@ t.add() + i.add() + a.add()",
 fn polymorph() {
     code!(
         "enum Value {
-    Integer { i_value: i32 },
-    Text { t_value: text },
-    Array { content: vector<i32> }
+    Integer { v: i32 },
+    Text { v: text },
+    Array { v: vector<i32> }
 }
 
 fn add(self: Integer) -> i32 {
-    self.i_value
+    self.v
 }
 
 fn add(self: Text) -> i32 {
-    self.t_value as i32
+    self.v as i32
 }
 
 fn add(self: Array) -> i32 {
     n = 0;
-    for v in self.content {
+    for v in self.v {
         n += v;
     }
     n
@@ -179,16 +179,17 @@ fn add(self: Array) -> i32 {
 "
     )
     .expr(
-        "l = [ Text { t_value:\"123\" }, Integer { i_value: 101 }, Array { content: [1,2,3,4] }];
+        "l = [ Text { v:\"123\" }, Integer { v: 101 }, Array { v: [1,2,3,4] }];
 c = 0;
 for v in l {
     a = v.add();
     if a { c += a; }
 }
-\"{l}:{c}\"",
+t = l[1] as Integer;
+\"{l}:{c} {t.v}\"",
     )
     .result(Value::str(
-        "[Text {t_value:\"123\"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234",
+        "[Text {v:\"123\"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101",
     ));
 }
 

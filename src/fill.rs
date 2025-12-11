@@ -11,7 +11,6 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     goto_word,
     goto_false,
     goto_false_word,
-    stack_pos,
     call,
     op_return,
     free_stack,
@@ -289,10 +288,6 @@ fn goto_false_word(s: &mut State) {
     }
 }
 
-fn stack_pos(s: &mut State) {
-    s.stack_pos();
-}
-
 fn call(s: &mut State) {
     let v_size = *s.code::<u16>();
     let v_to = *s.code::<i32>();
@@ -418,13 +413,13 @@ fn cast_long_from_text(s: &mut State) {
 
 fn cast_single_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = v_v1.str().parse().unwrap_or(f32::MIN);
+    let new_value = v_v1.str().parse().unwrap_or(f32::NAN);
     s.put_stack(new_value);
 }
 
 fn cast_float_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = v_v1.str().parse().unwrap_or(f64::MIN);
+    let new_value = v_v1.str().parse().unwrap_or(f64::NAN);
     s.put_stack(new_value);
 }
 
@@ -1237,7 +1232,7 @@ fn length_character(s: &mut State) {
 
 fn conv_bool_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = !v_v1.str().is_empty();
+    let new_value = v_v1.str() != crate::state::STRING_NULL;
     s.put_stack(new_value);
 }
 
@@ -1767,7 +1762,7 @@ fn remove_vector(s: &mut State) {
     let new_value = vector::remove_vector(
         &v_r,
         u32::from(v_size),
-        v_index as u32,
+        v_index,
         &mut s.database.allocations,
     );
     s.put_stack(new_value);

@@ -1,19 +1,19 @@
 // Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-pub type boolean;
-pub type integer;
-pub type long;
-pub type single;
-pub type float;
-pub type text;
-pub type character;
+pub type boolean size(1);
+pub type integer size(4);
+pub type long size(8);
+pub type single size(4);
+pub type float size(8);
+pub type text size(4);
+pub type character size(4);
 
-pub type u8=integer limit(0, 255);
-pub type i8=integer limit(-128, 127);
-pub type u16=integer limit(0, 65535);
-pub type i16=integer limit(-32768, 32767);
-pub type i32=integer;
+pub type u8=integer limit(0, 255) size(1);
+pub type i8=integer limit(-128, 127) size(1);
+pub type u16=integer limit(0, 65535) size(2);
+pub type i16=integer limit(-32768, 32767) size(2);
+pub type i32=integer size(4);
 
 // General operations
 fn OpGoto(step: const i8);
@@ -27,9 +27,6 @@ fn OpGotoFalse(step: const i8, if_false: boolean);
 
 fn OpGotoFalseWord(step: const i16, if_false: boolean);
 #rust "if !@if_false {{s.code_pos = (s.code_pos as i32 + i32::from(@step)) as u32;}}"
-
-fn OpStackPos();
-#rust "s.stack_pos();"
 
 fn OpCall(size: const u16, to: const i32);
 #rust "s.fn_call(@size, @to);"
@@ -91,16 +88,16 @@ fn OpConstLongText(start: const i32, size: const i32) -> text;
 #rust "s.string_from_texts(@start, @size);"
 
 fn OpCastIntFromText(v1: text) -> integer;
-#rust "if let Ok(i) = @v1.parse() {{ i }} else {{ i32::MIN }}"
+#rust "@v1.parse().unwrap_or(i32::MIN)"
 
 fn OpCastLongFromText(v1: text) -> long;
-#rust "if let Ok(i) = @v1.parse() {{ i }} else {{ i64::MIN }}"
+#rust "@v1.parse().unwrap_or(i64::MIN)"
 
 fn OpCastSingleFromText(v1: text) -> single;
-#rust "if let Ok(i) = @v1.parse() {{ i }} else {{ f32::NAN }}"
+#rust "@v1.parse().unwrap_or(f32::NAN)"
 
 fn OpCastFloatFromText(v1: text) -> float;
-#rust "if let Ok(i) = @v1.parse() {{ i }} else {{ f64::NAN }}"
+#rust "@v1.parse().unwrap_or(f64::NAN)"
 
 fn OpAbsInt(v1: integer) -> integer;
 #rust "external::op_abs_int(@v1)"
@@ -512,7 +509,7 @@ pub fn len(both: text) -> integer { OpLengthText(both) }
 fn OpLengthCharacter(v1: character) -> integer;
 pub fn len(both: character) -> integer { OpLengthCharacter(both) }
 fn OpConvBoolFromText(v1: text) -> boolean;
-#rust "!@v1.is_empty()"
+#rust "@v1 != crate::state::STRING_NULL"
 fn OpText();
 fn OpAppendText(pos: const u16, v1: text);
 fn OpGetTextSub(v1: text, from: integer, till: integer) -> text[v1];
@@ -543,7 +540,7 @@ fn OpCastCharacterFromInt(v1: i32) -> character;
 fn OpConvIntFromCharacter(v1: character) -> i32;
 #rust "if @v1 == char::from(0) {{ i32::MIN }} else {{ @v1 as i32 }}"
 
-type enumerate;
+type enumerate size(1);
 fn OpVarEnum(pos: const u16) -> enumerate;
 #rust "*s.get_var::<u8>(@pos)"
 fn OpConstEnum(val: const enumerate) -> enumerate;
@@ -566,7 +563,7 @@ fn OpConvEnumFromNull() -> enumerate;
 // A reference to a record, this can 'live' inside an array
 // Might this be a reference to a record field? As It might be a reference to a single value inside an array.
 // This allows a vector to be a reference to a field.
-type reference;
+type reference size(12);
 
 fn OpDatabase(pos: const u16, db_tp: const u16);
 fn OpFormatDatabase(pos: const u16, val: reference, db_tp: const u16, pretty: const boolean);
@@ -654,8 +651,8 @@ fn OpSetText(v1: reference, fld: const u16, val: text);
 #rust "{{let db = @v1; let s_val = @val.to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from(@fld), s_pos as i32);}}"
 
 // All structures are passed by reference instead of by value
-type vector;
-type sorted;
+type vector size(4);
+type sorted size(4);
 
 // All vectors are referenced by the field that points towards them.
 fn OpVarVector(pos: const u16) -> vector;
@@ -677,7 +674,7 @@ fn OpCastVectorFromText(val: text, db_tp: const u16) -> vector;
 #rust "s.db_from_text(@val, @db_tp)"
 
 fn OpRemoveVector(r: vector, size: const u16, index: integer) -> boolean;
-#rust "vector::remove_vector(&@r, u32::from(@size), @index as u32, &mut s.database.allocations)"
+#rust "vector::remove_vector(&@r, u32::from(@size), @index, &mut s.database.allocations)"
 
 // Insert space into a vector, no data written
 fn OpInsertVector(r: vector, size: const u16, index: integer, db_tp: const u16) -> reference[r];
@@ -697,12 +694,12 @@ fn OpGetRecord(data: reference, db_tp: const u16, no_keys: const u8) -> referenc
 fn OpValidate(data: reference, db_tp: const u16);
 
 // These types should eventually become unnecessary because of the unified internal database API
-type hash;
+type hash size(4);
 
 fn OpHashAdd(data: reference, rec: reference, tp: const u16);
 fn OpHashFind(data: reference, tp: const u16) -> reference[data];
 fn OpHashRemove(data: reference, rec: reference, tp: const u16);
-type index;
+type index size(4);
 // type spacial;
 
 fn OpEqBool(v1: boolean, v2: boolean) -> boolean;

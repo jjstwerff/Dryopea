@@ -33,8 +33,7 @@ pub struct Lexer {
     pos: integer,
     start: integer, // the start of the last encountered token (till index)
     scanned: Scanned, // the type of the last scanned thing or token
-    string: boolean, // we are parsing a string content that contains expressions
-    finished: boolean, // is the last parsed string finished
+    formatting: boolean, // the last scan was a formatting expression
     keywords: hash<SKeyword[name]>,
     tokens: hash<SToken[start]>,
     behind: boolean, // was the last comment behind code
@@ -73,7 +72,7 @@ pub fn set_tokens(self: Lexer, tokens: vector<text>) {
 }
 
 // Open a file for parsing.
-pub fn parse(self: Lexer, filename: text) {
+pub fn parse_file(self: Lexer, filename: text) {
     v = filename.rfind("/");
     self.file = if v {
         filename[v + 1..]
@@ -86,6 +85,10 @@ pub fn parse(self: Lexer, filename: text) {
     self.line = 1;
     self.pos = 1;
     self.scan();
+}
+
+pub fn at(self: Lexer) -> text {
+    " on {self.file}:{self.line}:{self.pos}"
 }
 
 // Use a text for parsing.
@@ -143,14 +146,48 @@ fn skip_whitespace(self: Lexer) {
 fn scan(self: Lexer) {
     self.comment = "";
     self.behind = false;
-    self.skip_whitespace();
+    if !self.formatting {
+        self.skip_whitespace();
+    }
     negative = false;
     l = self.data[self.index];
     if l == null {
         self.scanned = Finished;
         return;
     }
-    if l == '\'' { // Constant character
+    if l == '"' || self.formatting { // Constant string
+        if self.formatting {
+            self.formatting = false;
+        }
+        self.index += 1;
+        self.scanned = Text;
+        for t in 0..60000 {
+            l = self.data[self.index];
+            if l == '"' { // The end of the text
+                self.index += 1;
+                return;
+            }
+            if l == '{' { // Start of a formatting expression
+                if self.data[self.index+1] == '{' { // An escaped '{'
+                    self.index += 2;
+                    t#continue;
+                }
+                self.index += 1;
+                self.formatting = true;
+                return;
+            }
+            if l == '\\' { // Encountered an escape sequence
+                self.index += 1;
+                n = self.data[self.index];
+                if n == '"' || n == '\n' { // Skip escaped token or newline
+                    self.index += 1;
+                }
+            } else {
+                self.index += 1;
+            }
+        }
+        return;
+    } else if l == '\'' { // Constant character
         self.index += 1;
         self.scanned = Character;
         for t in 0..20 {
@@ -168,26 +205,6 @@ fn scan(self: Lexer) {
                 self.index += 1;
             }
         }
-    } else if l == '"' { // Constant string
-        self.index += 1;
-        self.scanned = Text;
-        for t in 0..60000 {
-            l = self.data[self.index];
-            if l == '"' { // The end of the text
-                self.index += 1;
-                return;
-            }
-            if l == '\\' { // Encountered an escape sequence
-                self.index += 1;
-                n = self.data[self.index];
-                if n == '"' || n == '\n' { // Skip escaped token or newline
-                    self.index += 1;
-                }
-            } else {
-                self.index += 1;
-            }
-        }
-        return;
     } else if l == '-' { // Negative number
         self.index += 1;
         negative = true;
@@ -210,11 +227,11 @@ fn scan(self: Lexer) {
     } else if negative {
         self.index -= 1;
     }
-    if l.is_alphabetic() { // Identifiers or keywords
+    if l == '_' or l.is_alphabetic() { // Identifiers or keywords
         self.scanned = Identifier;
         for t in 0..300 {
             l = self.data[self.index];
-            if !l.is_alphanumeric() {
+            if !l.is_alphanumeric() and l != '_' {
                 break;
             }
             self.index += 1;
@@ -261,8 +278,11 @@ pub fn position(self: Lexer) -> text {
 
 // Get an identifier and skip it.
 pub fn identifier(self: Lexer) -> text {
+    if self.scanned != Identifier {
+        return null;
+    }
     result = self.data[self.start..self.index];
-    if self.keywords[result] {
+    if result.len() == 0 || self.keywords[result] {
         null
     } else {
         self.scan();
@@ -303,7 +323,7 @@ pub fn long_int(self: Lexer) -> long {
 }
 
 // Get a float
-pub fn long_float(self: Lexer) -> float {
+pub fn get_float(self: Lexer) -> float {
     if self.scanned != Float {
         return null;
     }
@@ -317,7 +337,7 @@ pub fn long_float(self: Lexer) -> float {
 }
 
 // Get a single length float
-pub fn single_float(self: Lexer) -> single {
+pub fn get_single(self: Lexer) -> single {
     if self.scanned != Float {
         return null;
     }
@@ -355,20 +375,29 @@ fn escaped(self: Lexer, i: integer) -> character {
     }
 }
 
-// TODO allow for partial matching of a text till the next single { token.
 pub fn constant_text(self: Lexer) -> text {
     if self.scanned != Text {
         return null;
     }
     result = "";
     for i in self.start+1..self.index-1 {
-        if self.data[i] == '\\' {
+        if self.data[i..i+2] == "{{" {
+            result += '{';
+        } else if self.data[i..i+2] == "}}" {
+            result += '}';
+        } else if self.data[i] == '\\' {
             result += self.escaped(i);
         } else {
             result += self.data[i];
         }
     }
-    self.scan();
+    if self.formatting {
+        self.formatting = false;
+        self.scan();
+        self.formatting = true;
+    } else {
+        self.scan();
+    }
     result
 }
 
@@ -386,9 +415,12 @@ pub fn constant_character(self: Lexer) -> character {
     result
 }
 
-// Is the last parsed constant string finished or is it on another formatting expression.
-pub fn string_finished(self: Lexer) -> boolean {
-    self.finished
+pub fn is_formatting(self: Lexer) -> boolean {
+    self.formatting
+}
+
+pub fn set_formatting(self: Lexer, v: boolean) {
+    self.formatting = v;
 }
 
 // Get the last parsed comment, can contain multiple lines.
@@ -410,4 +442,8 @@ pub fn revert(self: Lexer, to: Anchor) {
     self.line = to.line;
     self.pos = to.pos;
     self.scan();
+}
+
+pub fn get_line(self: Lexer) -> integer {
+    self.line
 }

@@ -9,7 +9,8 @@ use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
-use std::io::Result as IoResult;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Result as IoResult};
 use std::iter::Peekable;
 use std::rc::Rc;
 use std::vec::IntoIter;
@@ -31,7 +32,7 @@ pub enum LexItem {
     Long(u64),
     Float(f64),
     Single(f32),
-    /// Can be both a keyword and a one or two position token.
+    /// Can be both a keyword and one or more position tokens.
     Token(String),
     /// A still unknown identifier.
     Identifier(String),
@@ -176,7 +177,7 @@ fn oct_parse(val: &str) -> Option<u64> {
 
 impl Default for Lexer {
     fn default() -> Self {
-        Lexer {
+        let mut result = Lexer {
             lines: Box::new(Vec::new().into_iter()),
             peek: LexResult {
                 has: LexItem::None,
@@ -199,11 +200,19 @@ impl Default for Lexer {
             keywords: HashSet::new(),
             mode: Mode::Code,
             diagnostics: Diagnostics::new(),
+        };
+        for s in TOKENS {
+            result.tokens.insert(String::from(*s));
         }
+        for s in KEYWORDS {
+            result.keywords.insert(String::from(*s));
+        }
+        result
     }
 }
 
 impl Lexer {
+    #[allow(unused)]
     fn new(lines: impl Iterator<Item = IoResult<String>> + 'static, filename: &str) -> Lexer {
         let mut result = Lexer {
             lines: Box::new(lines),
@@ -500,7 +509,6 @@ impl Lexer {
                 || ident.is_ascii_uppercase()
                 || ident.is_ascii_digit()
                 || ident == '_'
-                || (self.mode == Mode::Formatting && ident == '\\')
             {
                 string.push(ident);
                 self.next_char();
@@ -638,11 +646,41 @@ impl Lexer {
         }
     }
 
-    /// Create a lexer from a line iterator, useful for parsing text file content.
-    pub fn lines(it: impl Iterator<Item = IoResult<String>> + 'static, filename: &str) -> Lexer {
-        let mut l = Lexer::new(it, filename);
-        l.cont();
-        l
+    pub fn parse_string(&mut self, string: &str, filename: &str) {
+        let mut v = Vec::new();
+        for l in string.split('\n') {
+            v.push(Ok(String::from(l)));
+        }
+        self.lines = Box::new(v.into_iter());
+        self.restart(filename);
+    }
+
+    pub fn switch(&mut self, filename: &str) {
+        let Ok(fp) = File::open(filename) else {
+            self.diagnostics
+                .add(Level::Fatal, &format!("Unknown file:{filename}"));
+            return;
+        };
+        self.lines = Box::new(BufReader::new(fp).lines());
+        self.restart(filename);
+    }
+
+    fn restart(&mut self, filename: &str) {
+        self.position = Position {
+            file: filename.to_string(),
+            line: 0,
+            pos: 0,
+        };
+        self.peek = LexResult {
+            has: LexItem::None,
+            position: self.position.clone(),
+        };
+        self.memory.clear();
+        self.link = 0;
+        self.links = Rc::new(RefCell::new(0));
+        self.iter = LINE.chars().collect::<Vec<_>>().into_iter().peekable();
+        self.mode = Mode::Code;
+        self.cont();
     }
 
     fn err(&mut self, level: Level, error: &str) {
@@ -823,6 +861,7 @@ impl Lexer {
     }
 
     /// Create a lexer from a static string
+    #[allow(unused)]
     pub fn from_str(s: &str, filename: &str) -> Lexer {
         let mut v = Vec::new();
         for l in s.split('\n') {

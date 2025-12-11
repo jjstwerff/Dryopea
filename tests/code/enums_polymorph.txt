@@ -1,20 +1,20 @@
 enum Value {
-    Integer { i_value: i32 },
-    Text { t_value: text },
-    Array { content: vector<i32> }
+    Integer { v: i32 },
+    Text { v: text },
+    Array { v: vector<i32> }
 }
 
 fn add(self: Integer) -> i32 {
-    self.i_value
+    self.v
 }
 
 fn add(self: Text) -> i32 {
-    self.t_value as i32
+    self.v as i32
 }
 
 fn add(self: Array) -> i32 {
     n = 0;
-    for v in self.content {
+    for v in self.v {
         n += v;
     }
     n
@@ -22,16 +22,17 @@ fn add(self: Array) -> i32 {
 
 
 pub fn test() {
-    test_value = {l = [ Text { t_value:"123" }, Integer { i_value: 101 }, Array { content: [1,2,3,4] }];
+    test_value = {l = [ Text { v:"123" }, Integer { v: 101 }, Array { v: [1,2,3,4] }];
 c = 0;
 for v in l {
     a = v.add();
     if a { c += a; }
 }
-"{l}:{c}"};
+t = l[1] as Integer;
+"{l}:{c} {t.v}"};
     assert(
-        test_value == "[Text {{t_value:\"123\"}},Integer {{i_value:101}},Array {{content:[1,2,3,4]}}]:234",
-        "Test failed {test_value} != \"[Text {{t_value:\"123\"}},Integer {{i_value:101}},Array {{content:[1,2,3,4]}}]:234\""
+        test_value == "[Text {{v:\"123\"}},Integer {{v:101}},Array {{v:[1,2,3,4]}}]:234 101",
+        "Test failed {test_value} != \"[Text {{v:\"123\"}},Integer {{v:101}},Array {{v:[1,2,3,4]}}]:234 101\""
     );
 }
 Type 17:vector<integer>[4/4]:Vector(0)
@@ -43,15 +44,15 @@ Type 18:Value[8/4]: parents [main_vector<Value> 22]
 
 Type 19:Integer[8/4]: EnumValue(1)
     enum:byte[0]
-    i_value:integer[4]
+    v:integer[4]
 
 Type 20:Text[8/4]: EnumValue(2)
     enum:byte[0]
-    t_value:text[4]
+    v:text[4]
 
 Type 21:Array[8/4]: EnumValue(3)
     enum:byte[0]
-    content:vector<integer>[4]
+    v:vector<integer>[4]
 
 Type 22:main_vector<Value>[4/4]:
     vector:vector<Value>[0]
@@ -182,18 +183,21 @@ fn n_test() {#block(1):void
         }#block(7):void;
       }#For loop_4;
     }#For block(3):void;
-    [31] {#Formatted string(9):text["__work_1"]
+    [31] t(2):ref(Integer)["l"] = if OpEqInt(OpConvIntFromEnum(OpGetEnum(OpGetField(OpGetVector(l(2), 8i32, 1i32), 0i32, 18i32), 0i32)), 1i32) OpGetField(OpGetVector(l(2), 8i32, 1i32), 0i32, 18i32) else OpConvRefFromNull();
+    [32] {#Formatted string(9):text["__work_1"]
       __work_1(1):text = "";
       OpFormatDatabase(__work_1(1), l(2), 23i32, false);
       OpAppendText(__work_1(1), ":");
       OpFormatLong(__work_1(1), OpConvLongFromInt(c(2)), 10i32, 0i32, 32i32, false, false);
+      OpAppendText(__work_1(1), " ");
+      OpFormatLong(__work_1(1), OpConvLongFromInt(OpGetInt(t(2), 4i32)), 10i32, 0i32, 32i32, false, false);
       __work_1(1);
     }#Formatted string(9):text["__work_1"];
   }#block(2):text["__work_1"];
-  [32] if OpEqText(test_value(1), "[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234") null else OpPanic({#Formatted string(10):text["__work_2"]
+  [33] if OpEqText(test_value(1), "[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101") null else OpPanic({#Formatted string(10):text["__work_2"]
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
-    OpAppendText(__work_2(1), " != "[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234"");
+    OpAppendText(__work_2(1), " != "[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101"");
     __work_2(1);
   }#Formatted string(10):text["__work_2"]);
   OpFreeText(test_value(1));
@@ -314,41 +318,63 @@ byte-code for polymorph:n_test()
  358[156]: FreeStack(value=0, discard=12)
  362[144]: GotoWord(jump=288)
  365[144]: FreeStack(value=0, discard=16)
- 369[128]: [31] ClearText(var[40]) var=__work_1[40]:text
- 372[128]: ConstText(_value="") -> text
- 374[144]: VarVector(var[88]) -> vector type=vector<Value> 23 var=l[88]:vector<ref(Value)>["__ref_1"]
- 377[156]: FormatDatabase(var[40], val: ref(reference), db_tp=23, pretty=false)
- 383[144]: ConstText(_value=":") -> text
- 386[160]: AppendText(var[40], v1: text)
- 389[144]: VarInt(var[124]) -> integer var=c[124]:integer
- 392[148]: ConvLongFromInt(v1: integer) -> long
- 393[152]: ConstInt(val=0) -> integer
- 398[156]: FormatLong(var[40], val: long, radix=10, width: integer, token=32, plus=false, note=false)
- 405[144]: VarText(var[40]) -> text var=__work_1[40]:text
- 408[160]: FreeStack(value=16, discard=32)
- 412[144]: FreeStack(value=16, discard=56)
- 416[104]: AppendText(var[64], v1: text)
- 419[88]: [32] VarText(var[64]) -> text var=test_value[64]:text["__work_1"]
- 422[104]: ConstText(_value="[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234") -> text
- 498[120]: EqText(v1: text, v2: text) -> boolean
- 499[89]: GotoFalseWord(jump=505, if_false: boolean)
- 502[88]: GotoWord(jump=627)
- 505[88]: ClearText(var[16]) var=__work_2[16]:text
- 508[88]: ConstText(_value="Test failed ") -> text
- 522[104]: AppendText(var[16], v1: text)
- 525[88]: VarText(var[64]) -> text var=test_value[64]:text["__work_1"]
- 528[104]: ConstInt(val=0) -> integer
- 533[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
- 538[88]: ConstText(_value=" != "[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234"") -> text
- 620[104]: AppendText(var[16], v1: text)
- 623[88]: VarText(var[16]) -> text var=__work_2[16]:text
- 626[104]: Panic(message: text)
- 627[88]: FreeText(var[64])
- 630[88]: VarRef(var[4]) -> ref(reference) type=main_vector<Value> 22 var=__ref_1[4]:ref(main_vector<Value>)
- 633[100]: FreeRef(v1: ref(reference))
- 634[88]: FreeText(var[40])
- 637[88]: FreeText(var[16])
- 640[88]: Return(ret=0, value=0, discard=88)
+ 369[128]: [31] VarVector(var[88]) -> vector type=vector<Value> 23 var=l[88]:vector<ref(Value)>["__ref_1"]
+ 372[140]: ConstInt(val=1) -> integer
+ 377[144]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=Value 18
+ 380[140]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 18
+ 383[140]: GetEnum(v1: ref(reference), fld=0) -> boolean
+ 386[129]: ConvIntFromEnum(v1: boolean) -> integer
+ 387[132]: ConstInt(val=1) -> integer
+ 392[136]: EqInt(v1: integer, v2: integer) -> boolean
+ 393[129]: GotoFalseWord(jump=413, if_false: boolean)
+ 396[128]: VarVector(var[88]) -> vector type=vector<Value> 23 var=l[88]:vector<ref(Value)>["__ref_1"]
+ 399[140]: ConstInt(val=1) -> integer
+ 404[144]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=Value 18
+ 407[140]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 18
+ 410[140]: GotoWord(jump=414)
+ 413[128]: ConvRefFromNull() -> ref(reference)
+ 414[140]: [32] ClearText(var[40]) var=__work_1[40]:text
+ 417[140]: ConstText(_value="") -> text
+ 419[156]: VarVector(var[88]) -> vector type=vector<Value> 23 var=l[88]:vector<ref(Value)>["__ref_1"]
+ 422[168]: FormatDatabase(var[40], val: ref(reference), db_tp=23, pretty=false)
+ 428[156]: ConstText(_value=":") -> text
+ 431[172]: AppendText(var[40], v1: text)
+ 434[156]: VarInt(var[124]) -> integer var=c[124]:integer
+ 437[160]: ConvLongFromInt(v1: integer) -> long
+ 438[164]: ConstInt(val=0) -> integer
+ 443[168]: FormatLong(var[40], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 450[156]: ConstText(_value=" ") -> text
+ 453[172]: AppendText(var[40], v1: text)
+ 456[156]: VarRef(var[128]) -> ref(reference) type=Integer 19 var=t[128]:ref(Integer)["l"]
+ 459[168]: GetInt(v1: ref(reference), fld=4) -> integer
+ 462[160]: ConvLongFromInt(v1: integer) -> long
+ 463[164]: ConstInt(val=0) -> integer
+ 468[168]: FormatLong(var[40], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 475[156]: VarText(var[40]) -> text var=__work_1[40]:text
+ 478[172]: FreeStack(value=16, discard=32)
+ 482[156]: FreeStack(value=16, discard=68)
+ 486[104]: AppendText(var[64], v1: text)
+ 489[88]: [33] VarText(var[64]) -> text var=test_value[64]:text["__work_1"]
+ 492[104]: ConstText(_value="[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101") -> text
+ 554[120]: EqText(v1: text, v2: text) -> boolean
+ 555[89]: GotoFalseWord(jump=561, if_false: boolean)
+ 558[88]: GotoWord(jump=669)
+ 561[88]: ClearText(var[16]) var=__work_2[16]:text
+ 564[88]: ConstText(_value="Test failed ") -> text
+ 578[104]: AppendText(var[16], v1: text)
+ 581[88]: VarText(var[64]) -> text var=test_value[64]:text["__work_1"]
+ 584[104]: ConstInt(val=0) -> integer
+ 589[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
+ 594[88]: ConstText(_value=" != "[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101"") -> text
+ 662[104]: AppendText(var[16], v1: text)
+ 665[88]: VarText(var[16]) -> text var=__work_2[16]:text
+ 668[104]: Panic(message: text)
+ 669[88]: FreeText(var[64])
+ 672[88]: VarRef(var[4]) -> ref(reference) type=main_vector<Value> 22 var=__ref_1[4]:ref(main_vector<Value>)
+ 675[100]: FreeRef(v1: ref(reference))
+ 676[88]: FreeText(var[40])
+ 679[88]: FreeText(var[16])
+ 682[88]: Return(ret=0, value=0, discard=88)
 
 fn t_5Value_add(self:ref(Value)) -> integer {#dynamic_fn(1):integer
   if OpEqInt(OpConvIntFromEnum(OpGetEnum(self(0), 0i32)), 1i32) {#ret(2):void
@@ -418,7 +444,7 @@ Execute test:
    53:[116] VarVector(var[92]) -> ref(1,1,8)=[][116]
    56:[128] VarRef(var[104]) -> ref(1,5,8)=true[128]
    59:[140] FinishRecord(data=ref(1,1,8)[116], rec=ref(1,5,8)[128], parent_tp=23, fld=65535)
-   64:[116] VarVector(var[92]) -> ref(1,1,8)=[Text {t_value:"123"}][116]
+   64:[116] VarVector(var[92]) -> ref(1,1,8)=[Text {v:"123"}][116]
    67:[128] NewRecord(data=ref(1,1,8)[116], parent_tp=23, fld=65535) -> ref(1,5,16)[116]
    72:[128] PutRef(var[104], value=ref(1,5,16)[116])
    75:[116] VarRef(var[104]) -> ref(1,5,16)=false[116]
@@ -427,10 +453,10 @@ Execute test:
    86:[116] VarRef(var[104]) -> ref(1,5,16)=false[116]
    89:[128] ConstEnum(val=1) -> unknown(1)[128]
    91:[129] SetEnum(v1=ref(1,5,16)[116], fld=0, val=1[128])
-   94:[116] VarVector(var[92]) -> ref(1,1,8)=[Text {t_value:"123"}][116]
+   94:[116] VarVector(var[92]) -> ref(1,1,8)=[Text {v:"123"}][116]
    97:[128] VarRef(var[104]) -> ref(1,5,16)=true[128]
   100:[140] FinishRecord(data=ref(1,1,8)[116], rec=ref(1,5,16)[128], parent_tp=23, fld=65535)
-  105:[116] VarVector(var[92]) -> ref(1,1,8)=[Text {t_value:"123"},Integer {i_value:101}][116]
+  105:[116] VarVector(var[92]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101}][116]
   108:[128] NewRecord(data=ref(1,1,8)[116], parent_tp=23, fld=65535) -> ref(1,5,24)[116]
   113:[128] PutRef(var[104], value=ref(1,5,24)[116])
   116:[116] VarRef(var[104]) -> ref(1,5,24)=false[116]
@@ -474,45 +500,45 @@ Execute test:
   256:[128] VarRef(var[104]) -> ref(1,5,24)=false[128]
   259:[140] ConstEnum(val=3) -> unknown(3)[140]
   261:[141] SetEnum(v1=ref(1,5,24)[128], fld=0, val=3[140])
-  264:[128] VarVector(var[92]) -> ref(1,1,8)=[Text {t_value:"123"},Integer {i_value:101}][128]
+  264:[128] VarVector(var[92]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101}][128]
   267:[140] VarRef(var[104]) -> ref(1,5,24)=true[140]
   270:[152] FinishRecord(data=ref(1,1,8)[128], rec=ref(1,5,24)[140], parent_tp=23, fld=65535)
   275:[128] ConstInt(val=0) -> 0[128]
-  280:[132] VarVector(var[92]) -> ref(1,1,8)=[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}][132]
+  280:[132] VarVector(var[92]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}][132]
   283:[144] ConstInt(val=-1) -> -1[144]
   288:[148] VarInt(var[144]) -> -1[148]
   291:[152] ConstInt(val=1) -> 1[152]
   296:[156] AddInt(v1=-1[148], v2=1[152]) -> 0[148]
   297:[152] PutInt(var[144], value=0[148])
-  300:[148] VarVector(var[132]) -> ref(1,1,8)=[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}][148]
+  300:[148] VarVector(var[132]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}][148]
   303:[160] VarInt(var[144]) -> 0[160]
-  306:[164] GetVector(r=ref(1,1,8)[148], size=8, index=0[160]) -> ref(1,5,8)=Text {t_value:"123"}[148]
-  309:[160] GetField(v1=ref(1,5,8)[148], fld=0) -> ref(1,5,8)=Text {t_value:"123"}[148]
-  312:[160] VarRef(var[148]) -> ref(1,5,8)=Text {t_value:"123"}[160]
+  306:[164] GetVector(r=ref(1,1,8)[148], size=8, index=0[160]) -> ref(1,5,8)=Text {v:"123"}[148]
+  309:[160] GetField(v1=ref(1,5,8)[148], fld=0) -> ref(1,5,8)=Text {v:"123"}[148]
+  312:[160] VarRef(var[148]) -> ref(1,5,8)=Text {v:"123"}[160]
   315:[172] ConvBoolFromRef(val=ref(1,5,8)[160]) -> true[160]
   316:[161] Not(v1=true[160]) -> false[160]
   317:[161] GotoFalseWord(jump=327, if_false=false[160])
-  327:[160] VarRef(var[148]) -> ref(1,5,8)=Text {t_value:"123"}[160]
+  327:[160] VarRef(var[148]) -> ref(1,5,8)=Text {v:"123"}[160]
   330:[172] Call(size=0, fn=t_5Value_add)
-  646:[176] VarRef(var[160]) -> ref(1,5,8)=Text {t_value:"123"}[176]
-  649:[188] GetEnum(v1=ref(1,5,8)[176], fld=0) -> null(2)[176]
-  652:[177] ConvIntFromEnum(v1=2[176]) -> 2[176]
-  653:[180] ConstInt(val=1) -> 1[180]
-  658:[184] EqInt(v1=2[176], v2=1[180]) -> false[176]
-  659:[177] GotoFalseWord(jump=682, if_false=false[176])
-  682:[176] VarRef(var[160]) -> ref(1,5,8)=Text {t_value:"123"}[176]
-  685:[188] GetEnum(v1=ref(1,5,8)[176], fld=0) -> null(2)[176]
-  688:[177] ConvIntFromEnum(v1=2[176]) -> 2[176]
-  689:[180] ConstInt(val=2) -> 2[180]
-  694:[184] EqInt(v1=2[176], v2=2[180]) -> true[176]
-  695:[177] GotoFalseWord(jump=718, if_false=true[176])
-  698:[176] VarRef(var[160]) -> ref(1,5,8)=Text {t_value:"123"}[176]
-  701:[188] Call(size=0, fn=t_4Text_add)
- 1125:[192] VarRef(var[176]) -> ref(1,5,8)={t_value:"123"}[192]
+  688:[176] VarRef(var[160]) -> ref(1,5,8)=Text {v:"123"}[176]
+  691:[188] GetEnum(v1=ref(1,5,8)[176], fld=0) -> null(2)[176]
+  694:[177] ConvIntFromEnum(v1=2[176]) -> 2[176]
+  695:[180] ConstInt(val=1) -> 1[180]
+  700:[184] EqInt(v1=2[176], v2=1[180]) -> false[176]
+  701:[177] GotoFalseWord(jump=724, if_false=false[176])
+  724:[176] VarRef(var[160]) -> ref(1,5,8)=Text {v:"123"}[176]
+  727:[188] GetEnum(v1=ref(1,5,8)[176], fld=0) -> null(2)[176]
+  730:[177] ConvIntFromEnum(v1=2[176]) -> 2[176]
+  731:[180] ConstInt(val=2) -> 2[180]
+  736:[184] EqInt(v1=2[176], v2=2[180]) -> true[176]
+  737:[177] GotoFalseWord(jump=760, if_false=true[176])
+  740:[176] VarRef(var[160]) -> ref(1,5,8)=Text {v:"123"}[176]
+  743:[188] Call(size=0, fn=t_4Text_add)
+ 1125:[192] VarRef(var[176]) -> ref(1,5,8)={v:"123"}[192]
  1128:[204] GetText(v1=ref(1,5,8)[192], fld=4) -> "123"[192]
  1131:[208] CastIntFromText(v1="123"[192]) -> 123[192]
- 1132:[196] Return(ret=1931[188], value=4, discard=20) -> 123[176]
-  708:[180] Return(ret=1560[172], value=4, discard=20)
+ 1132:[196] Return(ret=1973[188], value=4, discard=20) -> 123[176]
+  750:[180] Return(ret=1560[172], value=4, discard=20)
   337:[164] VarInt(var[160]) -> 123[164]
   340:[168] ConvBoolFromInt(v1=123[164]) -> true[164]
   341:[165] GotoFalseWord(jump=354, if_false=true[164])
@@ -527,28 +553,28 @@ Execute test:
   291:[152] ConstInt(val=1) -> 1[152]
   296:[156] AddInt(v1=0[148], v2=1[152]) -> 1[148]
   297:[152] PutInt(var[144], value=1[148])
-  300:[148] VarVector(var[132]) -> ref(1,1,8)=[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}][148]
+  300:[148] VarVector(var[132]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}][148]
   303:[160] VarInt(var[144]) -> 1[160]
-  306:[164] GetVector(r=ref(1,1,8)[148], size=8, index=1[160]) -> ref(1,5,16)=Integer {i_value:101}[148]
-  309:[160] GetField(v1=ref(1,5,16)[148], fld=0) -> ref(1,5,16)=Integer {i_value:101}[148]
-  312:[160] VarRef(var[148]) -> ref(1,5,16)=Integer {i_value:101}[160]
+  306:[164] GetVector(r=ref(1,1,8)[148], size=8, index=1[160]) -> ref(1,5,16)=Integer {v:101}[148]
+  309:[160] GetField(v1=ref(1,5,16)[148], fld=0) -> ref(1,5,16)=Integer {v:101}[148]
+  312:[160] VarRef(var[148]) -> ref(1,5,16)=Integer {v:101}[160]
   315:[172] ConvBoolFromRef(val=ref(1,5,16)[160]) -> true[160]
   316:[161] Not(v1=true[160]) -> false[160]
   317:[161] GotoFalseWord(jump=327, if_false=false[160])
-  327:[160] VarRef(var[148]) -> ref(1,5,16)=Integer {i_value:101}[160]
+  327:[160] VarRef(var[148]) -> ref(1,5,16)=Integer {v:101}[160]
   330:[172] Call(size=0, fn=t_5Value_add)
-  646:[176] VarRef(var[160]) -> ref(1,5,16)=Integer {i_value:101}[176]
-  649:[188] GetEnum(v1=ref(1,5,16)[176], fld=0) -> null(1)[176]
-  652:[177] ConvIntFromEnum(v1=1[176]) -> 1[176]
-  653:[180] ConstInt(val=1) -> 1[180]
-  658:[184] EqInt(v1=1[176], v2=1[180]) -> true[176]
-  659:[177] GotoFalseWord(jump=682, if_false=true[176])
-  662:[176] VarRef(var[160]) -> ref(1,5,16)=Integer {i_value:101}[176]
-  665:[188] Call(size=0, fn=t_7Integer_add)
- 1113:[192] VarRef(var[176]) -> ref(1,5,16)={i_value:101}[192]
+  688:[176] VarRef(var[160]) -> ref(1,5,16)=Integer {v:101}[176]
+  691:[188] GetEnum(v1=ref(1,5,16)[176], fld=0) -> null(1)[176]
+  694:[177] ConvIntFromEnum(v1=1[176]) -> 1[176]
+  695:[180] ConstInt(val=1) -> 1[180]
+  700:[184] EqInt(v1=1[176], v2=1[180]) -> true[176]
+  701:[177] GotoFalseWord(jump=724, if_false=true[176])
+  704:[176] VarRef(var[160]) -> ref(1,5,16)=Integer {v:101}[176]
+  707:[188] Call(size=0, fn=t_7Integer_add)
+ 1113:[192] VarRef(var[176]) -> ref(1,5,16)={v:101}[192]
  1116:[204] GetInt(v1=ref(1,5,16)[192], fld=4) -> 101[192]
- 1119:[196] Return(ret=1895[188], value=4, discard=20) -> 101[176]
-  672:[180] Return(ret=1560[172], value=4, discard=20)
+ 1119:[196] Return(ret=1937[188], value=4, discard=20) -> 101[176]
+  714:[180] Return(ret=1560[172], value=4, discard=20)
   337:[164] VarInt(var[160]) -> 101[164]
   340:[168] ConvBoolFromInt(v1=101[164]) -> true[164]
   341:[165] GotoFalseWord(jump=354, if_false=true[164])
@@ -563,38 +589,38 @@ Execute test:
   291:[152] ConstInt(val=1) -> 1[152]
   296:[156] AddInt(v1=1[148], v2=1[152]) -> 2[148]
   297:[152] PutInt(var[144], value=2[148])
-  300:[148] VarVector(var[132]) -> ref(1,1,8)=[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}][148]
+  300:[148] VarVector(var[132]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}][148]
   303:[160] VarInt(var[144]) -> 2[160]
-  306:[164] GetVector(r=ref(1,1,8)[148], size=8, index=2[160]) -> ref(1,5,24)=Array {content:[1,2,3,4]}[148]
-  309:[160] GetField(v1=ref(1,5,24)[148], fld=0) -> ref(1,5,24)=Array {content:[1,2,3,4]}[148]
-  312:[160] VarRef(var[148]) -> ref(1,5,24)=Array {content:[1,2,3,4]}[160]
+  306:[164] GetVector(r=ref(1,1,8)[148], size=8, index=2[160]) -> ref(1,5,24)=Array {v:[1,2,3,4]}[148]
+  309:[160] GetField(v1=ref(1,5,24)[148], fld=0) -> ref(1,5,24)=Array {v:[1,2,3,4]}[148]
+  312:[160] VarRef(var[148]) -> ref(1,5,24)=Array {v:[1,2,3,4]}[160]
   315:[172] ConvBoolFromRef(val=ref(1,5,24)[160]) -> true[160]
   316:[161] Not(v1=true[160]) -> false[160]
   317:[161] GotoFalseWord(jump=327, if_false=false[160])
-  327:[160] VarRef(var[148]) -> ref(1,5,24)=Array {content:[1,2,3,4]}[160]
+  327:[160] VarRef(var[148]) -> ref(1,5,24)=Array {v:[1,2,3,4]}[160]
   330:[172] Call(size=0, fn=t_5Value_add)
-  646:[176] VarRef(var[160]) -> ref(1,5,24)=Array {content:[1,2,3,4]}[176]
-  649:[188] GetEnum(v1=ref(1,5,24)[176], fld=0) -> null(3)[176]
-  652:[177] ConvIntFromEnum(v1=3[176]) -> 3[176]
-  653:[180] ConstInt(val=1) -> 1[180]
-  658:[184] EqInt(v1=3[176], v2=1[180]) -> false[176]
-  659:[177] GotoFalseWord(jump=682, if_false=false[176])
-  682:[176] VarRef(var[160]) -> ref(1,5,24)=Array {content:[1,2,3,4]}[176]
-  685:[188] GetEnum(v1=ref(1,5,24)[176], fld=0) -> null(3)[176]
-  688:[177] ConvIntFromEnum(v1=3[176]) -> 3[176]
-  689:[180] ConstInt(val=2) -> 2[180]
-  694:[184] EqInt(v1=3[176], v2=2[180]) -> false[176]
-  695:[177] GotoFalseWord(jump=718, if_false=false[176])
-  718:[176] VarRef(var[160]) -> ref(1,5,24)=Array {content:[1,2,3,4]}[176]
-  721:[188] GetEnum(v1=ref(1,5,24)[176], fld=0) -> null(3)[176]
-  724:[177] ConvIntFromEnum(v1=3[176]) -> 3[176]
-  725:[180] ConstInt(val=3) -> 3[180]
-  730:[184] EqInt(v1=3[176], v2=3[180]) -> true[176]
-  731:[177] GotoFalseWord(jump=754, if_false=true[176])
-  734:[176] VarRef(var[160]) -> ref(1,5,24)=Array {content:[1,2,3,4]}[176]
-  737:[188] Call(size=0, fn=t_5Array_add)
+  688:[176] VarRef(var[160]) -> ref(1,5,24)=Array {v:[1,2,3,4]}[176]
+  691:[188] GetEnum(v1=ref(1,5,24)[176], fld=0) -> null(3)[176]
+  694:[177] ConvIntFromEnum(v1=3[176]) -> 3[176]
+  695:[180] ConstInt(val=1) -> 1[180]
+  700:[184] EqInt(v1=3[176], v2=1[180]) -> false[176]
+  701:[177] GotoFalseWord(jump=724, if_false=false[176])
+  724:[176] VarRef(var[160]) -> ref(1,5,24)=Array {v:[1,2,3,4]}[176]
+  727:[188] GetEnum(v1=ref(1,5,24)[176], fld=0) -> null(3)[176]
+  730:[177] ConvIntFromEnum(v1=3[176]) -> 3[176]
+  731:[180] ConstInt(val=2) -> 2[180]
+  736:[184] EqInt(v1=3[176], v2=2[180]) -> false[176]
+  737:[177] GotoFalseWord(jump=760, if_false=false[176])
+  760:[176] VarRef(var[160]) -> ref(1,5,24)=Array {v:[1,2,3,4]}[176]
+  763:[188] GetEnum(v1=ref(1,5,24)[176], fld=0) -> null(3)[176]
+  766:[177] ConvIntFromEnum(v1=3[176]) -> 3[176]
+  767:[180] ConstInt(val=3) -> 3[180]
+  772:[184] EqInt(v1=3[176], v2=3[180]) -> true[176]
+  773:[177] GotoFalseWord(jump=796, if_false=true[176])
+  776:[176] VarRef(var[160]) -> ref(1,5,24)=Array {v:[1,2,3,4]}[176]
+  779:[188] Call(size=0, fn=t_5Array_add)
  1138:[192] ConstInt(val=0) -> 0[192]
- 1143:[196] VarRef(var[176]) -> ref(1,5,24)={content:[1,2,3,4]}[196]
+ 1143:[196] VarRef(var[176]) -> ref(1,5,24)={v:[1,2,3,4]}[196]
  1146:[208] GetField(v1=ref(1,5,24)[196], fld=4) -> ref(1,5,28)=[1,2,3,4][196]
  1149:[208] ConstInt(val=-1) -> -1[208]
  1154:[212] VarInt(var[208]) -> -1[212]
@@ -685,8 +711,8 @@ Execute test:
  1190:[212] GotoWord(jump=1210)
  1210:[212] FreeStack(value=0, discard=16)
  1214:[196] VarInt(var[192]) -> 10[196]
- 1217:[200] Return(ret=1967[188], value=4, discard=24) -> 10[176]
-  744:[180] Return(ret=1560[172], value=4, discard=20)
+ 1217:[200] Return(ret=2009[188], value=4, discard=24) -> 10[176]
+  786:[180] Return(ret=1560[172], value=4, discard=20)
   337:[164] VarInt(var[160]) -> 10[164]
   340:[168] ConvBoolFromInt(v1=10[164]) -> true[164]
   341:[165] GotoFalseWord(jump=354, if_false=true[164])
@@ -701,7 +727,7 @@ Execute test:
   291:[152] ConstInt(val=1) -> 1[152]
   296:[156] AddInt(v1=2[148], v2=1[152]) -> 3[148]
   297:[152] PutInt(var[144], value=3[148])
-  300:[148] VarVector(var[132]) -> ref(1,1,8)=[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}][148]
+  300:[148] VarVector(var[132]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}][148]
   303:[160] VarInt(var[144]) -> 3[160]
   306:[164] GetVector(r=ref(1,1,8)[148], size=8, index=3[160]) -> ref(1,0,0)=null[148]
   309:[160] GetField(v1=ref(1,0,0)[148], fld=0) -> ref(1,0,0)=null[148]
@@ -712,29 +738,50 @@ Execute test:
   320:[160] FreeStack(value=0, discard=12)
   324:[148] GotoWord(jump=365)
   365:[148] FreeStack(value=0, discard=16)
-  369:[132] ClearText(var[44])
-  372:[132] ConstText(_value="") -> ""[132]
-  374:[148] VarVector(var[92]) -> ref(1,1,8)=[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}][148]
-  377:[160] FormatDatabase(var[44], val=ref(1,1,8)[148], db_tp=23, pretty=false)
-  383:[148] ConstText(_value=":") -> ":"[148]
-  386:[164] AppendText(var[44], v1=":"[148])
-  389:[148] VarInt(var[128]) -> 234[148]
-  392:[152] ConvLongFromInt(v1=234[148]) -> 234[148]
-  393:[156] ConstInt(val=0) -> 0[156]
-  398:[160] FormatLong(var[44], val=234[148], radix=10, width=0[156], token=32, plus=false, note=false)
-  405:[148] VarText(var[44]) -> "[Text {t_value:\"123\"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234"[148]
-  408:[164] FreeStack(value=16, discard=32)
-  412:[148] FreeStack(value=16, discard=56)
-  416:[108] AppendText(var[68], v1="[Text {t_value:\"123\"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234"[92])
-  419:[92] VarText(var[68]) -> "[Text {t_value:\"123\"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234"[92]
-  422:[108] ConstText(_value="[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234") -> "[Text {t_value:\"123\"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234"[108]
-  498:[124] EqText(v1="[Text {t_value:\"123\"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234"[92], v2="[Text {t_value:\"123\"},Integer {i_value:101},Array {content:[1,2,3,4]}]:234"[108]) -> true[92]
-  499:[93] GotoFalseWord(jump=505, if_false=true[92])
-  502:[92] GotoWord(jump=627)
-  627:[92] FreeText(var[68])
-  630:[92] VarRef(var[8]) -> ref(1,1,8)={vector:[Text {t_value:"123"},Integer {i_value:101},Array {content:[1,2,3,4]}]}[92]
-  633:[104] FreeRef(v1=ref(1,1,8)[92])
-  634:[92] FreeText(var[44])
-  637:[92] FreeText(var[20])
-  640:[92] Return(ret=4294967295[4], value=0, discard=88)
+  369:[132] VarVector(var[92]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}][132]
+  372:[144] ConstInt(val=1) -> 1[144]
+  377:[148] GetVector(r=ref(1,1,8)[132], size=8, index=1[144]) -> ref(1,5,16)=Integer {v:101}[132]
+  380:[144] GetField(v1=ref(1,5,16)[132], fld=0) -> ref(1,5,16)=Integer {v:101}[132]
+  383:[144] GetEnum(v1=ref(1,5,16)[132], fld=0) -> null(1)[132]
+  386:[133] ConvIntFromEnum(v1=1[132]) -> 1[132]
+  387:[136] ConstInt(val=1) -> 1[136]
+  392:[140] EqInt(v1=1[132], v2=1[136]) -> true[132]
+  393:[133] GotoFalseWord(jump=413, if_false=true[132])
+  396:[132] VarVector(var[92]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}][132]
+  399:[144] ConstInt(val=1) -> 1[144]
+  404:[148] GetVector(r=ref(1,1,8)[132], size=8, index=1[144]) -> ref(1,5,16)=Integer {v:101}[132]
+  407:[144] GetField(v1=ref(1,5,16)[132], fld=0) -> ref(1,5,16)=Integer {v:101}[132]
+  410:[144] GotoWord(jump=414)
+  414:[144] ClearText(var[44])
+  417:[144] ConstText(_value="") -> ""[144]
+  419:[160] VarVector(var[92]) -> ref(1,1,8)=[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}][160]
+  422:[172] FormatDatabase(var[44], val=ref(1,1,8)[160], db_tp=23, pretty=false)
+  428:[160] ConstText(_value=":") -> ":"[160]
+  431:[176] AppendText(var[44], v1=":"[160])
+  434:[160] VarInt(var[128]) -> 234[160]
+  437:[164] ConvLongFromInt(v1=234[160]) -> 234[160]
+  438:[168] ConstInt(val=0) -> 0[168]
+  443:[172] FormatLong(var[44], val=234[160], radix=10, width=0[168], token=32, plus=false, note=false)
+  450:[160] ConstText(_value=" ") -> " "[160]
+  453:[176] AppendText(var[44], v1=" "[160])
+  456:[160] VarRef(var[132]) -> ref(1,5,16)={v:101}[160]
+  459:[172] GetInt(v1=ref(1,5,16)[160], fld=4) -> 101[160]
+  462:[164] ConvLongFromInt(v1=101[160]) -> 101[160]
+  463:[168] ConstInt(val=0) -> 0[168]
+  468:[172] FormatLong(var[44], val=101[160], radix=10, width=0[168], token=32, plus=false, note=false)
+  475:[160] VarText(var[44]) -> "[Text {v:\"123\"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101"[160]
+  478:[176] FreeStack(value=16, discard=32)
+  482:[160] FreeStack(value=16, discard=68)
+  486:[108] AppendText(var[68], v1="[Text {v:\"123\"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101"[92])
+  489:[92] VarText(var[68]) -> "[Text {v:\"123\"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101"[92]
+  492:[108] ConstText(_value="[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101") -> "[Text {v:\"123\"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101"[108]
+  554:[124] EqText(v1="[Text {v:\"123\"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101"[92], v2="[Text {v:\"123\"},Integer {v:101},Array {v:[1,2,3,4]}]:234 101"[108]) -> true[92]
+  555:[93] GotoFalseWord(jump=561, if_false=true[92])
+  558:[92] GotoWord(jump=669)
+  669:[92] FreeText(var[68])
+  672:[92] VarRef(var[8]) -> ref(1,1,8)={vector:[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}]}[92]
+  675:[104] FreeRef(v1=ref(1,1,8)[92])
+  676:[92] FreeText(var[44])
+  679:[92] FreeText(var[20])
+  682:[92] Return(ret=4294967295[4], value=0, discard=88)
 Finished

@@ -241,20 +241,27 @@ pub fn get_vector(db: &DbRef, size: u32, from: i32, stores: &[Store]) -> DbRef {
     }
 }
 
-pub fn remove_vector(db: &DbRef, size: u32, index: u32, stores: &mut [Store]) -> bool {
-    let len = length_vector(db, stores);
+pub fn remove_vector(db: &DbRef, size: u32, index: i32, stores: &mut [Store]) -> bool {
+    let len = i64::from(length_vector(db, stores));
     let store = keys::mut_store(db, stores);
     let vec_rec = store.get_int(db.rec, db.pos) as u32;
-    if index >= len || vec_rec == 0 {
+    let i = if index < 0 {
+        i64::from(index) + len
+    } else {
+        i64::from(index)
+    };
+    if i >= len || i < 0 || vec_rec == 0 {
         return false;
     }
-    store.copy_block(
-        vec_rec,
-        8 + size as isize * (index as isize + 1),
-        vec_rec,
-        8 + size as isize * index as isize,
-        (len as isize - index as isize) * size as isize,
-    );
+    if len - i > 1 {
+        store.copy_block(
+            vec_rec,
+            8 + size as isize * (i as isize + 1),
+            vec_rec,
+            8 + size as isize * i as isize,
+            (len as isize - i as isize) * size as isize,
+        );
+    }
     store.set_int(vec_rec, 4, len as i32 - 1);
     true
 }
@@ -272,6 +279,9 @@ pub fn sorted_find(
     keys: &[Key],
     key: &[Content],
 ) -> (u32, bool) {
+    if sorted.rec == 0 {
+        return (0, false);
+    }
     let store = keys::store(sorted, stores);
     let sorted_rec = store.get_int(sorted.rec, sorted.pos) as u32;
     let length = store.get_int(sorted_rec, 4) as u32;

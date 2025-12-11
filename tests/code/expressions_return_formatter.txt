@@ -1,10 +1,10 @@
 fn format(a: integer) -> text { "a{a}b" }
 
 pub fn test() {
-    test_value = {format(123)};
+    test_value = {format(123) + format(null)};
     assert(
-        test_value == "a123b",
-        "Test failed {test_value} != \"a123b\""
+        test_value == "a123banullb",
+        "Test failed {test_value} != \"a123banullb\""
     );
 }
 fn n_format(a:integer, __work_1:&text) -> text["__work_1"] {#block(1):text["__work_1"]
@@ -32,79 +32,123 @@ byte-code for return_formatter:n_format(a: integer[0], __work_1: &text[4]) -> te
   32[36]: Return(ret=16, value=16, discard=36) type=text 5
 
 fn n_test() {#block(1):void
+  __work_4(1):text = "";
+  __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [4] test_value(1):text = {#block(2):text
-    n_format(123i32, {#default ref(3):ref(reference)["__work_1"]
-      OpCreateRef(__work_1(1));
-    }#default ref(3):ref(reference)["__work_1"]);
-  }#block(2):text;
-  [5] if OpEqText(test_value(1), "a123b") null else OpPanic({#Formatted string(4):text["__work_2"]
-    __work_2(1):text = "Test failed ";
-    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
-    OpAppendText(__work_2(1), " != "a123b"");
-    __work_2(1);
-  }#Formatted string(4):text["__work_2"]);
+  [4] test_value(1):text["__work_3"] = {#block(2):text["__work_3"]
+    {#Add text(3):text["__work_3"]
+      OpClearText(__work_3(1));
+      OpAppendText(__work_3(1), n_format(123i32, {#default ref(4):ref(reference)["__work_1"]
+        OpCreateRef(__work_1(1));
+      }#default ref(4):ref(reference)["__work_1"]));
+      OpAppendText(__work_3(1), n_format(OpConvIntFromNull(), {#default ref(5):ref(reference)["__work_2"]
+        OpCreateRef(__work_2(1));
+      }#default ref(5):ref(reference)["__work_2"]));
+      __work_3(1);
+    }#Add text(3):text["__work_3"];
+  }#block(2):text["__work_3"];
+  [5] if OpEqText(test_value(1), "a123banullb") null else OpPanic({#Formatted string(6):text["__work_4"]
+    __work_4(1):text = "Test failed ";
+    OpFormatText(__work_4(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_4(1), " != "a123banullb"");
+    __work_4(1);
+  }#Formatted string(6):text["__work_4"]);
   OpFreeText(test_value(1));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
+  OpFreeText(__work_3(1));
+  OpFreeText(__work_4(1));
 }#block(1):void
 
 byte-code for return_formatter:n_test()
    0[0]: return-address
-   0[4]: Text() var=__work_2[4]:text
-   1[28]: Text() var=__work_1[28]:text
-   2[52]: [4] Text() var=test_value[52]:text
-   3[76]: ConstInt(val=123) -> integer
-   8[80]: CreateRef(var[28]) -> ref(reference)
-  11[92]: Call(size=0, fn=n_format)
-  18[92]: AppendText(var[52], v1: text)
-  21[76]: [5] VarText(var[52]) -> text var=test_value[52]:text
-  24[92]: ConstText(_value="a123b") -> text
-  31[108]: EqText(v1: text, v2: text) -> boolean
-  32[77]: GotoFalseWord(jump=38, if_false: boolean)
-  35[76]: GotoWord(jump=91)
-  38[76]: ClearText(var[4]) var=__work_2[4]:text
-  41[76]: ConstText(_value="Test failed ") -> text
-  55[92]: AppendText(var[4], v1: text)
-  58[76]: VarText(var[52]) -> text var=test_value[52]:text
-  61[92]: ConstInt(val=0) -> integer
-  66[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-  71[76]: ConstText(_value=" != "a123b"") -> text
-  84[92]: AppendText(var[4], v1: text)
-  87[76]: VarText(var[4]) -> text var=__work_2[4]:text
-  90[92]: Panic(message: text)
-  91[76]: FreeText(var[52])
-  94[76]: FreeText(var[28])
-  97[76]: FreeText(var[4])
- 100[76]: Return(ret=0, value=0, discard=76)
+   0[4]: Text() var=__work_4[4]:text
+   1[28]: Text() var=__work_3[28]:text
+   2[52]: Text() var=__work_2[52]:text
+   3[76]: Text() var=__work_1[76]:text
+   4[100]: [4] Text() var=test_value[100]:text["__work_3"]
+   5[124]: ClearText(var[28])
+   8[124]: ConstInt(val=123) -> integer
+  13[128]: CreateRef(var[76]) -> ref(reference)
+  16[140]: Call(size=0, fn=n_format)
+  23[140]: AppendText(var[28], v1: text)
+  26[124]: ConvIntFromNull() -> integer
+  27[128]: CreateRef(var[52]) -> ref(reference)
+  30[140]: Call(size=0, fn=n_format)
+  37[140]: AppendText(var[28], v1: text)
+  40[124]: VarText(var[28]) -> text var=__work_3[28]:text
+  43[140]: AppendText(var[100], v1: text)
+  46[124]: [5] VarText(var[100]) -> text var=test_value[100]:text["__work_3"]
+  49[140]: ConstText(_value="a123banullb") -> text
+  62[156]: EqText(v1: text, v2: text) -> boolean
+  63[125]: GotoFalseWord(jump=69, if_false: boolean)
+  66[124]: GotoWord(jump=128)
+  69[124]: ClearText(var[4]) var=__work_4[4]:text
+  72[124]: ConstText(_value="Test failed ") -> text
+  86[140]: AppendText(var[4], v1: text)
+  89[124]: VarText(var[100]) -> text var=test_value[100]:text["__work_3"]
+  92[140]: ConstInt(val=0) -> integer
+  97[144]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 102[124]: ConstText(_value=" != "a123banullb"") -> text
+ 121[140]: AppendText(var[4], v1: text)
+ 124[124]: VarText(var[4]) -> text var=__work_4[4]:text
+ 127[140]: Panic(message: text)
+ 128[124]: FreeText(var[100])
+ 131[124]: FreeText(var[76])
+ 134[124]: FreeText(var[52])
+ 137[124]: FreeText(var[28])
+ 140[124]: FreeText(var[4])
+ 143[124]: Return(ret=0, value=0, discard=124)
 
 Execute test:
     0:[8] Text()
-    1:[32] [4] Text()
+    1:[32] Text()
     2:[56] Text()
-    3:[80] ConstInt(val=123) -> 123[80]
-    8:[84] CreateRef(var[32]) -> ref(0,1,40)[84]
-   11:[96] Call(size=0, fn=n_format)
- 1113:[100] ConstText(_value="a") -> "a"[100]
- 1116:[116] AppendRefText(var[84], v1="a"[100])
- 1119:[100] VarInt(var[80]) -> 123[100]
- 1122:[104] ConvLongFromInt(v1=123[100]) -> 123[100]
- 1123:[108] ConstInt(val=0) -> 0[108]
- 1128:[112] FormatRefLong(var[84], val=123[100], radix=10, width=0[108], token=32, plus=false, note=false)
- 1135:[100] ConstText(_value="b") -> "b"[100]
- 1138:[116] AppendRefText(var[84], v1="b"[100])
- 1141:[100] VarRef(var[84]) -> ref(0,1,40)[100]
- 1144:[112] GetRefText(r=ref(0,1,40)[100]) -> "a123b"[100]
- 1145:[116] Return(ret=1169[96], value=16, discard=36) -> "a123b"[80]
-   18:[96] AppendText(var[56], v1="a123b"[80])
-   21:[80] VarText(var[56]) -> "a123b"[80]
-   24:[96] ConstText(_value="a123b") -> "a123b"[96]
-   31:[112] EqText(v1="a123b"[80], v2="a123b"[96]) -> true[80]
-   32:[81] GotoFalseWord(jump=38, if_false=true[80])
-   35:[80] GotoWord(jump=91)
-   91:[80] FreeText(var[56])
-   94:[80] FreeText(var[32])
-   97:[80] FreeText(var[8])
-  100:[80] Return(ret=4294967295[4], value=0, discard=76)
+    3:[80] [4] Text()
+    4:[104] Text()
+    5:[128] ClearText(var[32])
+    8:[128] ConstInt(val=123) -> 123[128]
+   13:[132] CreateRef(var[80]) -> ref(0,1,88)[132]
+   16:[144] Call(size=0, fn=n_format)
+ 1113:[148] ConstText(_value="a") -> "a"[148]
+ 1116:[164] AppendRefText(var[132], v1="a"[148])
+ 1119:[148] VarInt(var[128]) -> 123[148]
+ 1122:[152] ConvLongFromInt(v1=123[148]) -> 123[148]
+ 1123:[156] ConstInt(val=0) -> 0[156]
+ 1128:[160] FormatRefLong(var[132], val=123[148], radix=10, width=0[156], token=32, plus=false, note=false)
+ 1135:[148] ConstText(_value="b") -> "b"[148]
+ 1138:[164] AppendRefText(var[132], v1="b"[148])
+ 1141:[148] VarRef(var[132]) -> ref(0,1,88)[148]
+ 1144:[160] GetRefText(r=ref(0,1,88)[148]) -> "a123b"[148]
+ 1145:[164] Return(ret=1174[144], value=16, discard=36) -> "a123b"[128]
+   23:[144] AppendText(var[32], v1="a123b"[128])
+   26:[128] ConvIntFromNull() -> -2147483648[128]
+   27:[132] CreateRef(var[56]) -> ref(0,1,64)[132]
+   30:[144] Call(size=0, fn=n_format)
+ 1113:[148] ConstText(_value="a") -> "a"[148]
+ 1116:[164] AppendRefText(var[132], v1="a"[148])
+ 1119:[148] VarInt(var[128]) -> -2147483648[148]
+ 1122:[152] ConvLongFromInt(v1=-2147483648[148]) -> -9223372036854775808[148]
+ 1123:[156] ConstInt(val=0) -> 0[156]
+ 1128:[160] FormatRefLong(var[132], val=-9223372036854775808[148], radix=10, width=0[156], token=32, plus=false, note=false)
+ 1135:[148] ConstText(_value="b") -> "b"[148]
+ 1138:[164] AppendRefText(var[132], v1="b"[148])
+ 1141:[148] VarRef(var[132]) -> ref(0,1,64)[148]
+ 1144:[160] GetRefText(r=ref(0,1,64)[148]) -> "anullb"[148]
+ 1145:[164] Return(ret=1188[144], value=16, discard=36) -> "anullb"[128]
+   37:[144] AppendText(var[32], v1="anullb"[128])
+   40:[128] VarText(var[32]) -> "a123banullb"[128]
+   43:[144] AppendText(var[104], v1="a123banullb"[128])
+   46:[128] VarText(var[104]) -> "a123banullb"[128]
+   49:[144] ConstText(_value="a123banullb") -> "a123banullb"[144]
+   62:[160] EqText(v1="a123banullb"[128], v2="a123banullb"[144]) -> true[128]
+   63:[129] GotoFalseWord(jump=69, if_false=true[128])
+   66:[128] GotoWord(jump=128)
+  128:[128] FreeText(var[104])
+  131:[128] FreeText(var[80])
+  134:[128] FreeText(var[56])
+  137:[128] FreeText(var[32])
+  140:[128] FreeText(var[8])
+  143:[128] Return(ret=4294967295[4], value=0, discard=124)
 Finished

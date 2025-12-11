@@ -31,6 +31,9 @@ clippy:
 memory:
 	valgrind target/debug/deps/vectors-1ff9433be145872a
 
+last:
+	cargo test --package dryopea --test wrap last --release -- --nocapture
+
 meld:
 	rustfmt tests/generated/text.rs --edition 2024
 	cmp -s tests/generated/text.rs src/text.rs; if [ $$? -eq 1 ]; then meld tests/generated/text.rs src/text.rs; fi

@@ -12,14 +12,14 @@ pub fn test() {
 }
 fn n_return_ref(a:&text) -> text["a"] {#block(1):text["a"]
   [2] a(0):&text = "12345";
-  [3] return OpGetTextSub(OpGetRefText(OpVarRef(a(0))), 0i32, 4i32);
+  [3] return OpGetTextSub(a(0), 0i32, 4i32);
 }#block(1):text["a"]
 
 byte-code for return_ref:n_return_ref(a: &text[0]) -> text["a"]
    0[12]: return-address
    0[16]: [2] ConstText(_value="12345") -> text var=a[0]:&text
    7[32]: AppendRefText(var[0], v1: text)
-  10[16]: [3] VarRef(var[0]) -> ref(reference)
+  10[16]: [3] VarRef(var[0]) -> ref(reference) var=a[0]:&text
   13[28]: GetRefText(r: ref(reference)) -> text["a"]
   14[32]: ConstInt(val=0) -> integer
   19[36]: ConstInt(val=4) -> integer

@@ -24,6 +24,7 @@ use std::io::{Error, Read, Write};
 use std::str::FromStr;
 
 pub type Call = fn(&mut Stores, &mut DbRef);
+pub const STRING_NULL: &str = "\0";
 
 /// Internal State of the interpreter to run bytecode.
 pub struct State {
@@ -33,6 +34,8 @@ pub struct State {
     pub stack_pos: u32,
     pub code_pos: u32,
     def_pos: u32,
+    source: u16,
+    // The current source during the generation of code.
     pub database: Stores,
     // Stack size of the arguments
     pub arguments: u16,
@@ -73,6 +76,7 @@ impl State {
             stack_pos: 4,
             code_pos: 0,
             def_pos: 0,
+            source: u16::MAX,
             database: db,
             arguments: 0,
             stack: HashMap::new(),
@@ -93,7 +97,7 @@ impl State {
     }
 
     pub fn conv_text_from_null(&mut self) {
-        self.put_stack(Str::new(""));
+        self.put_stack(Str::new(STRING_NULL));
     }
 
     pub fn string_from_code(&mut self) {
@@ -518,10 +522,6 @@ impl State {
         self.stack_pos += size_of::<T>() as u32;
     }
 
-    pub fn stack_pos(&mut self) {
-        self.put_stack(self.stack_pos);
-    }
-
     /// Call a function, remember the current code position on the stack.
     ///
     /// * `size` - the amount of stack space maximally needed for the new function.
@@ -831,9 +831,12 @@ impl State {
         let on = *self.code::<u8>();
         let arg = *self.code::<u16>();
         let cur = *self.get_var::<u32>(state_var);
-        let finish = *self.get_var::<u32>(state_var - 4);
+        let mut finish = *self.get_var::<u32>(state_var - 4);
         let reverse = on & 64 != 0;
         let data = *self.get_stack::<DbRef>();
+        if data.rec == 0 {
+            finish = u32::MAX;
+        }
         let store = keys::store(&data, &self.database.allocations);
         let cur = if finish == u32::MAX {
             new_ref(&data, 0, 0)
@@ -915,7 +918,7 @@ impl State {
                 vector::remove_vector(
                     &data,
                     u32::from(self.database.size(tp)),
-                    cur as u32,
+                    cur,
                     &mut self.database.allocations,
                 );
                 self.put_var(state_var - 8, n);
@@ -1241,6 +1244,7 @@ impl State {
         for a in stack.data.def(def_nr).variables.arguments() {
             started.insert(a);
         }
+        self.source = stack.data.def(def_nr).source;
         self.generate(&stack.data.def(def_nr).code, &mut stack, true);
         let mut stack_pos = Vec::new();
         for v_nr in 0..stack.function.next_var() {
@@ -1450,8 +1454,13 @@ impl State {
                         stack.add_op("OpDatabase", self);
                         self.code_add(size_of::<DbRef>() as u16);
                         let name = format!("main_vector<{}>", elm_tp.name(stack.data));
-                        let known = stack.data.def_name(&name).known_type;
-                        debug_assert_ne!(known, u16::MAX, "Incomplete type {name}");
+                        let known = stack.data.name_type(&name, self.source);
+                        debug_assert_ne!(
+                            known,
+                            u16::MAX,
+                            "Incomplete type {name} in {}",
+                            stack.function.name
+                        );
                         self.code_add(known);
                         stack.add_op("OpVarRef", self);
                         self.code_add(size_of::<DbRef>() as u16);
@@ -1680,8 +1689,12 @@ impl State {
                 } else if matches!(typedef, Type::Text(_)) {
                     self.database.vector(5)
                 } else {
-                    let name = tp.name(stack.data);
-                    self.database.vector(self.database.name(&name))
+                    let name = typedef.name(stack.data);
+                    let mut tp_nr = self.database.name(&name);
+                    if tp_nr == u16::MAX {
+                        tp_nr = self.database.db_type(typedef, stack.data);
+                    }
+                    self.database.vector(tp_nr)
                 };
                 if known != u16::MAX {
                     self.types.insert(self.code_pos, known);
@@ -2102,7 +2115,14 @@ impl State {
             Type::Long => format!("{}", *self.code::<i64>()),
             Type::Single => format!("{}", *self.code::<f32>()),
             Type::Float => format!("{}", *self.code::<f64>()),
-            Type::Text(_) => format!("\"{}\"", self.code_str()),
+            Type::Text(_) => {
+                let s = self.code_str();
+                if s == STRING_NULL {
+                    "null".to_string()
+                } else {
+                    format!("\"{s}\"")
+                }
+            }
             Type::Character => format!("{}", *self.code::<char>()),
             Type::Keys => {
                 let len = *self.code::<u8>();
@@ -2367,9 +2387,16 @@ impl State {
                 2 => format!("{}", *self.get_stack::<f32>()), // single
                 3 => format!("{}", *self.get_stack::<f64>()), // float
                 4 => format!("{}", *self.get_stack::<u8>() == 1), // boolean
-                5 => format!("\"{}\"", self.string().str().replace('"', "\\\"")), // text
+                5 => {
+                    let s = self.string().str();
+                    if s == STRING_NULL {
+                        "null".to_string()
+                    } else {
+                        format!("\"{}\"", s.replace('"', "\\\""))
+                    }
+                } // text
                 6 => format!("{}", *self.get_stack::<char>()), // character
-                _ => match &self.database.types[known as usize].parts {
+                _ if known != u16::MAX => match &self.database.types[known as usize].parts {
                     Parts::Enum(_) => {
                         let val = *self.get_stack::<u8>();
                         format!("{}({val})", self.database.enum_val(known, val))
@@ -2382,6 +2409,7 @@ impl State {
                     }
                     _ => String::new(),
                 },
+                _ => String::new(),
             };
             let after = self.stack_pos;
             self.stack_pos = stack;
@@ -2421,7 +2449,14 @@ impl State {
             Type::Long => format!("{}", *self.get_stack::<i64>()),
             Type::Single => format!("{}", *self.get_stack::<f32>()),
             Type::Float => format!("{}", *self.get_stack::<f64>()),
-            Type::Text(_) => format!("\"{}\"", self.string().str().replace('"', "\\\"")),
+            Type::Text(_) => {
+                let s = self.string().str();
+                if s == STRING_NULL {
+                    "null".to_string()
+                } else {
+                    format!("\"{}\"", s.replace('"', "\\\""))
+                }
+            }
             Type::Boolean => format!("{}", *self.get_stack::<u8>() == 1),
             Type::Reference(tp, _) | Type::Enum(tp, true, _) => {
                 let known = if self.types.contains_key(&code) {
