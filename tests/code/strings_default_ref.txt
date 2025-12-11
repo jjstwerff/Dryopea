@@ -10,13 +10,13 @@ pub fn test() {
         "Test failed {test_value} != \"var_1234\""
     );
 }
-fn n_add(a:text, b:&text) -> text {#block(1):text
+fn n_add(a:text, b:&text) -> text["b"] {#block(1):text["b"]
   [2] OpAppendRefText(b(0), "_");
   OpAppendRefText(b(0), a(0));
   [3] b(0);
-}#block(1):text
+}#block(1):text["b"]
 
-byte-code for default_ref:n_add(a: text[0], b: &text[16]) -> text
+byte-code for default_ref:n_add(a: text[0], b: &text[16]) -> text["b"]
    0[28]: return-address
    0[32]: [2] ConstText(_value="_") -> text
    3[48]: AppendRefText(var[16], v1: text)

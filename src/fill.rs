@@ -406,41 +406,25 @@ fn const_long_text(s: &mut State) {
 
 fn cast_int_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = if let Ok(i) = v_v1.str().parse() {
-        i
-    } else {
-        i32::MIN
-    };
+    let new_value = v_v1.str().parse().unwrap_or(i32::MIN);
     s.put_stack(new_value);
 }
 
 fn cast_long_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = if let Ok(i) = v_v1.str().parse() {
-        i
-    } else {
-        i64::MIN
-    };
+    let new_value = v_v1.str().parse().unwrap_or(i64::MIN);
     s.put_stack(new_value);
 }
 
 fn cast_single_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = if let Ok(i) = v_v1.str().parse() {
-        i
-    } else {
-        f32::NAN
-    };
+    let new_value = v_v1.str().parse().unwrap_or(f32::MIN);
     s.put_stack(new_value);
 }
 
 fn cast_float_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = if let Ok(i) = v_v1.str().parse() {
-        i
-    } else {
-        f64::NAN
-    };
+    let new_value = v_v1.str().parse().unwrap_or(f64::MIN);
     s.put_stack(new_value);
 }
 

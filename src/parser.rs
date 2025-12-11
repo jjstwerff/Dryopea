@@ -2439,6 +2439,12 @@ impl Parser {
         if matches!(l.last(), Some(Value::Line(_))) {
             l.pop();
         }
+        if let Type::RefVar(tp) = t.clone() {
+            let mut code = l.pop().unwrap().clone();
+            self.convert(&mut code, &t, &tp);
+            l.push(code);
+            t = *tp;
+        }
         t = self.block_result(context, result, &t, &mut l);
         *val = v_block(l, t.clone(), "block");
         t
@@ -4515,10 +4521,12 @@ impl Parser {
                 }
                 false_type = self.parse_block("if", &mut false_code, &true_type);
                 if true_type == Type::Unknown(0) {
-                    true_code = v_block(vec![self.null(&false_type)], false_type.clone(), "if");
+                    true_code = v_block(vec![self.null(&false_type)], false_type.clone(), "else");
                     true_type = false_type.clone();
                 }
             }
+        } else if true_type != Type::Void {
+            false_code = v_block(vec![self.null(&true_type)], true_type.clone(), "else");
         }
         *code = v_if(test, true_code, false_code);
         merge_dependencies(&true_type, &false_type)

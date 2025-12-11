@@ -224,6 +224,21 @@ fn optional_remove() {
     .result(Value::str("cd"));
 }
 
+#[test]
+fn strange_if() {
+    code!(
+        "
+fn build() -> text {
+    t = \"abcde\";
+    if t.len() > 3 {
+        t
+    }
+}"
+    )
+    .expr("build()")
+    .result(Value::str("abcde"));
+}
+
 // Only run this test locally, do not make it part of the release as it will log all kinds of
 // data that is not for public consumption and not stable through multiple runs.
 /*

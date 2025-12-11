@@ -1,0 +1,119 @@
+
+fn build() -> text {
+    t = "abcde";
+    if t.len() > 3 {
+        t
+    }
+}
+
+pub fn test() {
+    test_value = {build()};
+    assert(
+        test_value == "abcde",
+        "Test failed {test_value} != \"abcde\""
+    );
+}
+fn n_build(t:&text) -> text["t"] {#block(1):text["t"]
+  [3] t(0):&text = "abcde";
+  [4] if OpGtInt(t_4text_len(t(0)), 3i32) {#block(2):text["t"]
+    [5] t(0);
+  }#block(2):text["t"] else {#else(3):text["t"]
+    OpConvTextFromNull();
+  }#else(3):text["t"];
+}#block(1):text["t"]
+
+byte-code for strange_if:n_build(t: &text[0]) -> text["t"]
+   0[12]: return-address
+   0[16]: [3] ConstText(_value="abcde") -> text var=t[0]:&text
+   7[32]: AppendRefText(var[0], v1: text)
+  10[16]: [4] VarRef(var[0]) -> ref(reference) var=t[0]:&text
+  13[28]: GetRefText(r: ref(reference)) -> text["t"]
+  14[32]: Call(size=0, fn=t_4text_len)
+  21[20]: ConstInt(val=3) -> integer
+  26[24]: GtInt(v1: integer, v2: integer) -> boolean
+  27[17]: GotoFalseWord(jump=37, if_false: boolean)
+  30[16]: [5] VarRef(var[0]) -> ref(reference) var=t[0]:&text
+  33[28]: GetRefText(r: ref(reference)) -> text["t"]
+  34[32]: GotoWord(jump=38)
+  37[16]: ConvTextFromNull() -> text
+  38[32]: Return(ret=12, value=16, discard=32) type=text 5
+
+fn n_test() {#block(1):void
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  [10] test_value(1):text = {#block(2):text
+    n_build({#default ref(3):ref(reference)["__work_1"]
+      OpCreateRef(__work_1(1));
+    }#default ref(3):ref(reference)["__work_1"]);
+  }#block(2):text;
+  [11] if OpEqText(test_value(1), "abcde") null else OpPanic({#Formatted string(4):text["__work_2"]
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "abcde"");
+    __work_2(1);
+  }#Formatted string(4):text["__work_2"]);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
+
+byte-code for strange_if:n_test()
+   0[0]: return-address
+   0[4]: Text() var=__work_2[4]:text
+   1[28]: Text() var=__work_1[28]:text
+   2[52]: [10] Text() var=test_value[52]:text
+   3[76]: CreateRef(var[28]) -> ref(reference)
+   6[88]: Call(size=0, fn=n_build)
+  13[92]: AppendText(var[52], v1: text)
+  16[76]: [11] VarText(var[52]) -> text var=test_value[52]:text
+  19[92]: ConstText(_value="abcde") -> text
+  26[108]: EqText(v1: text, v2: text) -> boolean
+  27[77]: GotoFalseWord(jump=33, if_false: boolean)
+  30[76]: GotoWord(jump=86)
+  33[76]: ClearText(var[4]) var=__work_2[4]:text
+  36[76]: ConstText(_value="Test failed ") -> text
+  50[92]: AppendText(var[4], v1: text)
+  53[76]: VarText(var[52]) -> text var=test_value[52]:text
+  56[92]: ConstInt(val=0) -> integer
+  61[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  66[76]: ConstText(_value=" != "abcde"") -> text
+  79[92]: AppendText(var[4], v1: text)
+  82[76]: VarText(var[4]) -> text var=__work_2[4]:text
+  85[92]: Panic(message: text)
+  86[76]: FreeText(var[52])
+  89[76]: FreeText(var[28])
+  92[76]: FreeText(var[4])
+  95[76]: Return(ret=0, value=0, discard=76)
+
+Execute test:
+    0:[8] Text()
+    1:[32] [10] Text()
+    2:[56] Text()
+    3:[80] CreateRef(var[32]) -> ref(0,1,40)[80]
+    6:[92] Call(size=0, fn=n_build)
+ 1113:[96] ConstText(_value="abcde") -> "abcde"[96]
+ 1120:[112] AppendRefText(var[80], v1="abcde"[96])
+ 1123:[96] VarRef(var[80]) -> ref(0,1,40)[96]
+ 1126:[108] GetRefText(r=ref(0,1,40)[96]) -> "abcde"[96]
+ 1127:[112] Call(size=0, fn=t_4text_len)
+  318:[116] ArgText(var[96]) -> "abcde"[116]
+  321:[132] LengthText(v1="abcde"[116]) -> 5[116]
+  322:[120] Return(ret=1134[112], value=4, discard=24) -> 5[96]
+ 1134:[100] ConstInt(val=3) -> 3[100]
+ 1139:[104] GtInt(v1=5[96], v2=3[100]) -> true[96]
+ 1140:[97] GotoFalseWord(jump=1150, if_false=true[96])
+ 1143:[96] VarRef(var[80]) -> ref(0,1,40)[96]
+ 1146:[108] GetRefText(r=ref(0,1,40)[96]) -> "abcde"[96]
+ 1147:[112] GotoWord(jump=1151)
+ 1151:[112] Return(ret=1170[92], value=16, discard=32) -> "abcde"[80]
+   13:[96] AppendText(var[56], v1="abcde"[80])
+   16:[80] VarText(var[56]) -> "abcde"[80]
+   19:[96] ConstText(_value="abcde") -> "abcde"[96]
+   26:[112] EqText(v1="abcde"[80], v2="abcde"[96]) -> true[80]
+   27:[81] GotoFalseWord(jump=33, if_false=true[80])
+   30:[80] GotoWord(jump=86)
+   86:[80] FreeText(var[56])
+   89:[80] FreeText(var[32])
+   92:[80] FreeText(var[8])
+   95:[80] Return(ret=4294967295[4], value=0, discard=76)
+Finished

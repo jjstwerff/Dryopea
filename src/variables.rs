@@ -151,7 +151,7 @@ impl Function {
         let l = &mut self.loops[self.current_loop as usize];
         l.on = on;
         l.db_tp = db_tp;
-        l.value = Box::new(value.clone());
+        *l.value = value.clone();
     }
 
     /**
