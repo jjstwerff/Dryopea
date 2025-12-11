@@ -1,0 +1,635 @@
+// Copyright 2019 - 2026, Jurjen J. Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+struct Map {
+
+}
+
+fn min(x: float, y: float) -> float { if x < y { x } else { y } }
+
+// (r-t)^2 * (r+t)^2
+fn hill_line(r: float, t: float) -> float { (r - t) * (r - t) * (r + t) * (r + t) }
+
+// hill_line(r, min(1, sqrt(x^2 + y^2)))
+// distance to (x,y) with a minimum of 1
+fn hill(r: integer, x: integer, y: integer) -> float { hill_line(r, min(1, sqrt(x * x + y * y))) }
+
+enum Action { Flatten, Add, Subtract, Smooth, Pillar };
+
+fn circle(radius: float, height: float, x:integer, y:integer, action: Action) {
+    for dx in -radius..radius {
+        for dy in -radius..radius {
+            h = hill(radius, dx, dy);
+            ElementData *e = elm(_x + dx, _y + dy);
+ if (e == 0)
+ continue;
+ switch (action) {
+ case Action::Flatten:
+ e->_elevation = (1 - h) * abs(e->_elevation - height);
+ break;
+ case Action::Add:
+ e->_elevation += h * height;
+ break;
+ case Action::Subtract:
+ e->_elevation -= h * height;
+ break;
+ case Action::Smooth:
+ // nothing yet
+ break;
+ case Action::Pillar:
+ // nothing yet
+ break;
+ }
+ }
+ }
+ }
+
+
+/*
+
+
+ void Position::check() {
+ while (_level >= static_cast<int>(_levels.size())) {
+ data::World w(_store, _strings, pos());
+ PositionBlock d;
+ for (int i = 0; i < 5; i++) {
+ for (int j = 0; j < 5; j++) {
+ int bx = ((_x - 64) & -32) + (i << 5);
+ int by = ((_y - 64) & -32) + (j << 5);
+ Coordinate coord(bx, by, _level);
+ Map m = w.map(coord);
+ if (m.pos() == 0)
+ m.set_pos(w.add_map(coord).pos());
+ auto arr = m.data();
+ if (arr.size() == 0)
+ for (int p = 0; p < 1024; p++) { // TODO more efficient claim of array
+ Element e = arr.add(); // TODO move to user defined "default_tile"
+ if (_level == 0)
+ e.set_terrain(1);
+ else
+ e.set_elevation(_level * 100); // roughly a floor height
+ }
+ d.pos[i + j * 5] = arr.begin().pos();
+ }
+ }
+ _levels.push_back(d);
+ }
+ }
+
+ std::string wtoken(int w, int d) {
+ switch (d) {
+ case 0:
+ return w < 0 ? ".." : w > 0 ? "__" : "  ";
+ case 2:
+ return w < 0 ? "*" : w > 0 ? "\\" : " ";
+ case 4:
+ return w < 0 ? "*" : w > 0 ? "/" : " ";
+ }
+ return "";
+ }
+
+ void Position::show(std::ostream &o, int width, int height) {
+ for (int y = height; y >= -height; y--) { // top is higher Y, down is lower Y
+ for (int x = -width; x <= width; x++) {
+ if (x & 1) {
+ ElementData *e = elm(x, y);
+ if (e->_terrain == 1)
+ o << "  ";
+ else
+ o << std::setfill('0') << std::setw(2)
+ << static_cast<int>(e->_terrain);
+ o << wtoken(wall(x, y, 2), 2);
+ } else {
+ o << wtoken(wall(x, y, 0), 0);
+ o << wtoken(wall(x, y, 1), 4);
+ }
+ }
+ o << std::endl;
+ for (int x = -width; x <= width; x++) { // left is lower X
+ if (x & 1) {
+ o << wtoken(wall(x, y, 6), 0);
+ o << wtoken(wall(x, y, 4), 4);
+ } else {
+ ElementData *e = elm(x, y);
+ if (e->_terrain == 1)
+ o << "  ";
+ else
+ o << std::setfill('0') << std::setw(2)
+ << static_cast<int>(e->_terrain);
+ o << wtoken(wall(x, y, 2), 2);
+ }
+ }
+ o << std::endl;
+ }
+ }
+
+ *
+ * move (x,y) into a direction d, only for the 6 prime sides
+ */
+void move(int &x, int &y, int d) {
+  switch ((d % 12 + 12) % 12) {
+  case 0:
+    y--;
+    break;
+  case 1:
+    move(x, y, 0);
+    move(x, y, 2);
+    break;
+  case 2:
+    x++;
+    if (x & 1)
+      y--;
+    break;
+  case 3:
+    move(x, y, 2);
+    move(x, y, 4);
+    break;
+  case 4:
+    x++;
+    y++;
+    if (x & 1)
+      y--;
+    break;
+  case 5:
+    move(x, y, 4);
+    move(x, y, 6);
+    break;
+  case 6:
+    y++;
+    break;
+  case 7:
+    move(x, y, 6);
+    move(x, y, 8);
+    break;
+  case 8:
+    x--;
+    y++;
+    if (x & 1)
+      y--;
+    break;
+  case 9:
+    move(x, y, 8);
+    move(x, y, 10);
+    break;
+  case 10:
+    x--;
+    if (x & 1)
+      y--;
+    break;
+  case 11:
+    move(x, y, 10);
+    move(x, y, 0);
+    break;
+  default:
+    break;
+  }
+}
+/*
+ int Position::wall(int x, int y, int d) {
+ ElementData *e;
+ switch (d % 12) {
+ case 0:
+ e = elm(x, y);
+ if (e == 0)
+ return 0;
+ return e->_wall_n;
+ case 1:
+ e = elm(x, y + 1);
+ if (e == 0)
+ return 0;
+ return e->_wall_se;
+ case 2:
+ e = elm(x, y);
+ if (e == 0)
+ return 0;
+ return e->_wall_ne;
+ case 3:
+ e = elm(x + 1, y - 1 + (x & 1));
+ if (e == 0)
+ return 0;
+ return e->_wall_n;
+ case 4:
+ e = elm(x, y);
+ if (e == 0)
+ return 0;
+ return e->_wall_se;
+ case 5:
+ e = elm(x, y - 1);
+ if (e == 0)
+ return 0;
+ return e->_wall_ne;
+ case 6:
+ e = elm(x, y - 1);
+ if (e == 0)
+ return 0;
+ return e->_wall_n;
+ case 7:
+ e = elm(x - 1, y - 1 + (x & 1));
+ if (e == 0)
+ return 0;
+ return e->_wall_se;
+ case 8:
+ e = elm(x - 1, y - 1 + (x & 1));
+ if (e == 0)
+ return 0;
+ return e->_wall_ne;
+ case 9:
+ e = elm(x - 1, y - 1 + (x & 1));
+ if (e == 0)
+ return 0;
+ return e->_wall_n;
+ case 10:
+ e = elm(x - 1, y + (x & 1));
+ if (e == 0)
+ return 0;
+ return e->_wall_se;
+ case 11:
+ e = elm(x - 1, y + (x & 1));
+ if (e == 0)
+ return 0;
+ return e->_wall_ne;
+ default:
+ return 0;
+ }
+ }
+
+ void Position::set_wall(int x, int y, int d, int wall, bool middle) {
+ ElementData *e;
+ switch (d % 12) {
+ case 0:
+ e = elm(x, y);
+ if (e == 0)
+ break;
+ e->_middle_n = middle;
+ e->_wall_n = wall;
+ break;
+ case 1:
+ e = elm(x, y + 1);
+ if (e == 0)
+ break;
+ e->_middle_se = middle;
+ e->_wall_se = wall;
+ break;
+ case 2:
+ e = elm(x, y);
+ if (e == 0)
+ break;
+ e->_middle_ne = middle;
+ e->_wall_ne = wall;
+ break;
+ case 3:
+ e = elm(x + 1, y - 1 + (x & 1));
+ if (e == 0)
+ break;
+ e->_middle_n = middle;
+ e->_wall_n = wall;
+ break;
+ case 4:
+ e = elm(x, y);
+ if (e == 0)
+ break;
+ e->_middle_se = middle;
+ e->_wall_se = wall;
+ break;
+ case 5:
+ e = elm(x, y - 1);
+ if (e == 0)
+ break;
+ e->_middle_ne = middle;
+ e->_wall_ne = wall;
+ break;
+ case 6:
+ e = elm(x, y - 1);
+ if (e == 0)
+ break;
+ e->_middle_n = middle;
+ e->_wall_n = wall;
+ break;
+ case 7:
+ e = elm(x - 1, y - 1 + (x & 1));
+ if (e == 0)
+ break;
+ e->_middle_se = middle;
+ e->_wall_se = wall;
+ break;
+ case 8:
+ e = elm(x - 1, y - 1 + (x & 1));
+ if (e == 0)
+ break;
+ e->_middle_ne = middle;
+ e->_wall_ne = wall;
+ return;
+ case 9:
+ e = elm(x - 1, y - 1 + (x & 1));
+ if (e == 0)
+ break;
+ e->_middle_n = middle;
+ e->_wall_n = wall;
+ break;
+ case 10:
+ e = elm(x - 1, y + (x & 1));
+ if (e == 0)
+ break;
+ e->_middle_se = middle;
+ e->_wall_se = wall;
+ break;
+ case 11:
+ e = elm(x - 1, y + (x & 1));
+ if (e == 0)
+ break;
+ e->_middle_ne = middle;
+ e->_wall_ne = wall;
+ break;
+ default:
+ break;
+ }
+ }
+
+ void Position::draw(int &x, int &y, int d, int length, int wall) {
+ if (length <= 0)
+ return;
+ if (d & 1) {
+ set_wall(x, y, 11 + d, wall, true);
+ while (length > 0) {
+ set_wall(x, y, d, wall, true);
+ set_wall(x, y, 2 + d, wall, true);
+ move(x, y, d + 4);
+ length--;
+ }
+ } else if ((x & 1) xor (d % 12 >= 6)) {
+ set_wall(x, y, 10 + d, wall, true);
+ while (length > 0) {
+ set_wall(x, y, d, wall, false);
+ set_wall(x, y, d + 2, wall, true);
+ move(x, y, d + 2);
+ length--;
+ if (length == 1)
+ break;
+ set_wall(x, y, d, wall, false);
+ set_wall(x, y, d + 1, wall, true);
+ move(x, y, d + 4);
+ length--;
+ }
+ } else {
+ set_wall(x, y, 11 + d, wall, true);
+ while (length > 0) {
+ set_wall(x, y, d, wall, false);
+ set_wall(x, y, d + 1, wall, true);
+ move(x, y, d + 4);
+ length--;
+ if (length == 1)
+ break;
+ set_wall(x, y, d, wall, false);
+ set_wall(x, y, d + 2, wall, true);
+ move(x, y, d + 2);
+ length--;
+ }
+ }
+ }
+
+ void Position::set(int fill, int x, int y) {
+ ElementData *e = elm(x, y);
+ e->_terrain = fill;
+ }
+
+ void Position::box(int width, int depth, int wall, int fill, int slope) {
+ if (_d & 1) {
+ int lx = _x;
+ int ly = _y;
+ int h = _z;
+ for (int line = 0; line < depth; line++) {
+ int px = lx;
+ int py = ly;
+ for (int pos = 0; pos < width; width++) {
+ ElementData *e = elm(px, py);
+ e->_terrain = fill;
+ e->_elevation = (line & 1) ? h + slope * 2 : h + slope;
+ move(px, py, _d + 4);
+ }
+ if ((lx + line) & 1)
+ move(lx, ly, _d - 1);
+ else
+ move(lx, ly, _d + 1);
+ h += slope * 4;
+ }
+ } else {
+ int lx = _x;
+ int ly = _y;
+ int h = _z;
+ for (int line = 0; line < depth; line++) {
+ int px = lx;
+ int py = ly;
+ for (int pos = 0; pos < width; width++) {
+ ElementData *e = elm(px, py);
+ e->_terrain = fill;
+ if ((px + pos) & 1) {
+ move(px, py, _d + 2);
+ e->_elevation = h + slope;
+ } else {
+ move(px, py, _d + 4);
+ e->_elevation = h + slope * 2;
+ }
+ }
+ h += slope * 4;
+ move(lx, ly, _d);
+ }
+ }
+ int x = _x;
+ int y = _y;
+ draw(x, y, _d, wall, depth);
+ draw(x, y, _d + 3, wall, width);
+ draw(x, y, _d + 6, wall, depth);
+ draw(x, y, _d + 9, wall, width);
+ }
+
+ void Position::cirlce(int radius, int height, int, int, Action action) {
+ for (int dx = -radius; dx < radius; dx++) {
+ for (int dy = -radius; dy < radius; dy++) {
+ double h = hill(radius, dx, dy);
+ ElementData *e = elm(_x + dx, _y + dy);
+ if (e == 0)
+ continue;
+ switch (action) {
+ case Action::Flatten:
+ e->_elevation = (1 - h) * abs(e->_elevation - height);
+ break;
+ case Action::Add:
+ e->_elevation += h * height;
+ break;
+ case Action::Subtract:
+ e->_elevation -= h * height;
+ break;
+ case Action::Smooth:
+ // nothing yet
+ break;
+ case Action::Pillar:
+ // nothing yet
+ break;
+ }
+ }
+ }
+ }
+ */
+#define HORIZ 15
+
+int x_pos(int x, int, int d) {
+  const int m = 6 * HORIZ;
+  switch (d) {
+  case -1: // centre
+  case 0:  // north
+  case 6:  // south
+    return x * m;
+  case 1: // nne
+  case 2: // ne
+  case 4: // se
+  case 5: // sse
+    return x * m + 3 * HORIZ;
+  case 3: // e
+    return x * m + m;
+  case 7:  // ssw
+  case 8:  // sw
+  case 10: // nw
+  case 11: // nnw
+    return x * m - 3 * HORIZ;
+  case 9: // w
+    return x * m - m;
+  default:
+    break;
+  }
+  return 0;
+}
+
+#define VERT 26
+
+int y_pos(int x, int y, int d) {
+  const int m = 4 * VERT;
+  int add = 2 * VERT * (x & 1);
+  switch (d) {
+  case -1: // centre
+  case 3:  // e
+  case 9:  // w
+    return y * m + add;
+  case 0: // n
+    return y * m + add + 2 * VERT;
+  case 1:  // nne
+  case 11: // nnw
+    return y * m + add + 3 * VERT;
+  case 2:  // ne
+  case 10: // nw
+    return y * m + add + 1 * VERT;
+  case 4: // se
+  case 8: // sw
+    return y * m + add - 1 * VERT;
+  case 5: // sse
+  case 7: // ssw
+    return y * m + add - 3 * VERT;
+  case 6: // s
+    return y * m + add - 2 * VERT;
+  default:
+    break;
+  }
+  return 0;
+}
+
+// view distance to skybox 1km
+// tile = 0,0015
+// 1m   = 0,0001
+
+unsigned short create_vertex(DMesh &m, int x, int y, int d, uint8_t r,
+                             uint8_t g, uint8_t b) {
+  VertexBase v;
+  v.position.x = x_pos(x, y, d);
+  v.position.y = y_pos(x, y, d);
+  v.position.z = 0;
+  v.color.r = r;
+  v.color.g = g;
+  v.color.b = b;
+  return m.add_vertex(v, DIVIDER);
+}
+
+uint8_t red(int terr) {
+  switch (terr) {
+  case 1: // yellow
+    return 240;
+  case 2: // red
+    return 240;
+  case 3: // dark-blue
+    return 0;
+  case 4: // flat-brown
+    return 140;
+  default:
+    break;
+  }
+  return 255;
+}
+
+uint8_t green(int terr) {
+  switch (terr) {
+  case 1: // yellow
+    return 240;
+  case 2: // red
+    return 34;
+  case 3: // dark-blue
+    return 0;
+  case 4: // flat-brown
+    return 80;
+  default:
+    break;
+  }
+  return 255;
+}
+
+uint8_t blue(int terr) {
+  switch (terr) {
+  case 1: // yellow
+    return 10;
+  case 2: // red
+    return 34;
+  case 3: // dark-blue
+    return 139;
+  case 4: // flat-brown
+    return 40;
+  default:
+    break;
+  }
+  return 255;
+}
+
+unsigned short vertex(DMesh &m, int x, int y, int d) {
+  int terrain = 123; // elm(x, y)->_terrain;
+  if (terrain == 0)
+    return -1;
+  // TODO create blend colors between different tiles instead
+  // keep track if those are part of the floor or the wall
+  uint8_t r = red(terrain) - x * 2;
+  uint8_t g = green(terrain) - y * 2;
+  uint8_t b = blue(terrain);
+  return create_vertex(m, x, y, d, r, g, b);
+}
+
+void render(DMesh &mesh, int depth, int width) {
+  for (int y = 0; y < depth; y++) {
+    for (int x = 0; x < width; x++) {
+      unsigned short v1 = vertex(mesh, x, y, -1);
+      int x2 = x;
+      int y2 = y;
+      move(x2, y2, 8);
+      unsigned short v2 = vertex(mesh, x2, y2, -1);
+      int x3 = x;
+      int y3 = y;
+      move(x3, y3, 10);
+      unsigned short v3 = vertex(mesh, x3, y3, -1);
+      int x4 = x;
+      int y4 = y;
+      move(x4, y4, 0);
+      unsigned short v4 = vertex(mesh, x4, y4, -1);
+      int x5 = x;
+      int y5 = y;
+      move(x5, y5, 2);
+      unsigned short v5 = vertex(mesh, x5, y5, -1);
+      mesh.add_triangle(v1, v2, v3);
+      mesh.add_triangle(v1, v3, v4);
+      mesh.add_triangle(v1, v4, v5);
+    }
+  }
+}

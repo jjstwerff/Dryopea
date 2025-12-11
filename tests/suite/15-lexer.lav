@@ -33,4 +33,16 @@ fn main() {
     assert(l.int() == 4, "Second integer");
     assert(l.last_comment() == "", "No remaining comment");
     assert(l.is_finished(), "Ready");
+
+    l.parse_string("Formatting", "\"abc{{12 + 34}}def\"");
+    assert(l.constant_text() == "abc", "Before formatting");
+    assert(l.is_formatting(), "Formatting");
+    l.set_formatting(false);
+    assert(l.int() == 12, "First integer");
+    assert(l.matches("+"), "Incorrect plus");
+    assert(l.int() == 34, "Second integer");
+    l.set_formatting(true);
+    assert(l.matches("}}"), "Incorrect closing brace");
+    assert(l.constant_text() == "def", "After formatting");
+    assert(!l.is_formatting(), "Formatting");
 }

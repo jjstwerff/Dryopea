@@ -1,0 +1,76 @@
+fn add(a: integer, b: integer) -> integer { a + b }
+
+pub fn test() {
+    test_value = {add(1, null)};
+    assert(
+        test_value == null,
+        "Test failed {test_value} != null"
+    );
+}
+fn n_add(a:integer, b:integer) -> integer {#block(1):integer
+  [1] OpAddInt(a(0), b(0));
+}#block(1):integer
+
+byte-code for call_with_null:n_add(a: integer[0], b: integer[4]) -> integer
+   0[8]: return-address
+   0[12]: [1] VarInt(var[0]) -> integer var=a[0]:integer
+   3[16]: VarInt(var[4]) -> integer var=b[4]:integer
+   6[20]: AddInt(v1: integer, v2: integer) -> integer
+   7[16]: Return(ret=8, value=4, discard=16) type=integer 0
+
+fn n_test() {#block(1):void
+  __work_1(1):text = "";
+  [4] test_value(1):integer = {#block(2):integer
+    n_add(1i32, OpConvIntFromNull());
+  }#block(2):integer;
+  [5] if OpEqInt(test_value(1), OpConvIntFromNull()) null else OpPanic({#Formatted string(3):text["__work_1"]
+    __work_1(1):text = "Test failed ";
+    OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != null");
+    __work_1(1);
+  }#Formatted string(3):text["__work_1"]);
+  OpFreeText(__work_1(1));
+}#block(1):void
+
+byte-code for call_with_null:n_test()
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [4] ConstInt(val=1) -> integer var=test_value[28]:integer
+   6[32]: ConvIntFromNull() -> integer
+   7[36]: Call(size=0, fn=n_add)
+  14[32]: [5] VarInt(var[28]) -> integer var=test_value[28]:integer
+  17[36]: ConvIntFromNull() -> integer
+  18[40]: EqInt(v1: integer, v2: integer) -> boolean
+  19[33]: GotoFalseWord(jump=25, if_false: boolean)
+  22[32]: GotoWord(jump=78)
+  25[32]: ClearText(var[4]) var=__work_1[4]:text
+  28[32]: ConstText(_value="Test failed ") -> text
+  42[48]: AppendText(var[4], v1: text)
+  45[32]: VarInt(var[28]) -> integer var=test_value[28]:integer
+  48[36]: ConvLongFromInt(v1: integer) -> long
+  49[40]: ConstInt(val=0) -> integer
+  54[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  61[32]: ConstText(_value=" != null") -> text
+  71[48]: AppendText(var[4], v1: text)
+  74[32]: VarText(var[4]) -> text var=__work_1[4]:text
+  77[48]: Panic(message: text)
+  78[32]: FreeText(var[4])
+  81[32]: Return(ret=0, value=0, discard=32)
+
+Execute test:
+    0:[8] [4] Text()
+    1:[32] ConstInt(val=1) -> 1[32]
+    6:[36] ConvIntFromNull() -> -2147483648[36]
+    7:[40] Call(size=0, fn=n_add)
+ 1113:[44] VarInt(var[32]) -> 1[44]
+ 1116:[48] VarInt(var[36]) -> -2147483648[48]
+ 1119:[52] AddInt(v1=1[44], v2=-2147483648[48]) -> -2147483648[44]
+ 1120:[48] Return(ret=1140[40], value=4, discard=16) -> -2147483648[32]
+   14:[36] VarInt(var[32]) -> -2147483648[36]
+   17:[40] ConvIntFromNull() -> -2147483648[40]
+   18:[44] EqInt(v1=-2147483648[36], v2=-2147483648[40]) -> true[36]
+   19:[37] GotoFalseWord(jump=25, if_false=true[36])
+   22:[36] GotoWord(jump=78)
+   78:[36] FreeText(var[8])
+   81:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished

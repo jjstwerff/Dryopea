@@ -177,8 +177,16 @@ fn continue_loop() {
 #[test]
 fn return_formatter() {
     code!("fn format(a: integer) -> text { \"a{a}b\" }")
-        .expr("format(123)")
-        .result(Value::str("a123b"));
+        .expr("format(123) + format(null)")
+        .result(Value::str("a123banullb"));
+}
+
+#[test]
+fn call_with_null() {
+    code!("fn add(a: integer, b: integer) -> integer { a + b }")
+        .expr("add(1, null)")
+        .tp(INTEGER)
+        .result(Value::Null);
 }
 
 #[test]
@@ -214,13 +222,15 @@ fn call_void() {
 fn call_text_null() {
     code!("fn routine(a: integer) -> text { if a > 2 { return null }; \"#{a}#\"}")
         .expr("routine(5)")
-        .result(Value::str(""));
+        .tp(Type::Text(vec![]))
+        .result(Value::Null);
 }
 
 #[test]
 fn call_int_null() {
     code!("fn routine(a: integer) -> integer { if a > 2 { return null }; a+1 }")
         .expr("routine(5)")
+        .tp(INTEGER)
         .result(Value::Null);
 }
 
@@ -234,7 +244,9 @@ fn compare() {
 #[test]
 fn if_typing() {
     expr!("a = \"12\"; if a.len()>2 { null } else { \"error\" }").result(Value::str("error"));
-    expr!("a = \"12\"; if a.len()==2 { null } else { \"error\" }").result(Value::str(""));
+    expr!("a = \"12\"; if a.len()==2 { null } else { \"error\" }")
+        .tp(Type::Text(vec![]))
+        .result(Value::Null);
 }
 
 #[test]

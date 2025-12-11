@@ -255,6 +255,7 @@ impl Type {
             | Type::Spacial(_, _, dep)
             | Type::Hash(_, _, dep)
             | Type::Sorted(_, _, dep)
+            | Type::Enum(_, _, dep)
             | Type::Vector(_, dep) => v.append(&mut dep.clone()),
             Type::RefVar(tp) => return tp.depend(),
             _ => {}
@@ -1089,9 +1090,9 @@ impl Data {
     }
 
     #[must_use]
-    pub fn find_fn(&self, fn_name: &str, tp: &Type) -> u32 {
+    pub fn find_fn(&self, source: u16, fn_name: &str, tp: &Type) -> u32 {
         if matches!(tp, Type::Unknown(_)) {
-            return self.def_nr(&format!("n_{fn_name}"));
+            return self.source_nr(source, &format!("n_{fn_name}"));
         }
         let type_nr = self.type_def_nr(tp);
         let name = format!(
@@ -1099,9 +1100,9 @@ impl Data {
             self.def(type_nr).name.len(),
             self.def(type_nr).name
         );
-        let d_nr = self.def_nr(&name);
+        let d_nr = self.source_nr(source, &name);
         if d_nr == u32::MAX {
-            self.def_nr(&format!("n_{fn_name}"))
+            self.source_nr(source, &format!("n_{fn_name}"))
         } else {
             d_nr
         }
@@ -1185,6 +1186,9 @@ impl Data {
 
     #[must_use]
     pub fn source_nr(&self, source: u16, name: &str) -> u32 {
+        if source == u16::MAX {
+            return self.def_nr(name);
+        }
         let Some(nr) = self.def_names.get(&(name.to_string(), source)) else {
             return u32::MAX;
         };
@@ -1196,15 +1200,15 @@ impl Data {
     When an unknown definition is requested
     */
     #[must_use]
-    pub fn def_name(&self, name: &str) -> &Definition {
-        let nr = if let Some(nr) = self.def_names.get(&(name.to_string(), self.source)) {
+    pub fn name_type(&self, name: &str, source: u16) -> u16 {
+        let nr = if let Some(nr) = self.def_names.get(&(name.to_string(), source)) {
             *nr
         } else if let Some(nr) = self.def_names.get(&(name.to_string(), 0)) {
             *nr
         } else {
-            panic!("Unknown definition {name}");
+            return u16::MAX;
         };
-        &self.definitions[nr as usize]
+        self.definitions[nr as usize].known_type
     }
 
     /** Get the definition by name from a given source file
