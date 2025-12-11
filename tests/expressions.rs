@@ -214,13 +214,15 @@ fn call_void() {
 fn call_text_null() {
     code!("fn routine(a: integer) -> text { if a > 2 { return null }; \"#{a}#\"}")
         .expr("routine(5)")
-        .result(Value::str(""));
+        .tp(Type::Text(vec![]))
+        .result(Value::Null);
 }
 
 #[test]
 fn call_int_null() {
     code!("fn routine(a: integer) -> integer { if a > 2 { return null }; a+1 }")
         .expr("routine(5)")
+        .tp(INTEGER)
         .result(Value::Null);
 }
 
@@ -234,7 +236,9 @@ fn compare() {
 #[test]
 fn if_typing() {
     expr!("a = \"12\"; if a.len()>2 { null } else { \"error\" }").result(Value::str("error"));
-    expr!("a = \"12\"; if a.len()==2 { null } else { \"error\" }").result(Value::str(""));
+    expr!("a = \"12\"; if a.len()==2 { null } else { \"error\" }")
+        .tp(Type::Text(vec![]))
+        .result(Value::Null);
 }
 
 #[test]

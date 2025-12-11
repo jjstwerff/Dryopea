@@ -1065,6 +1065,23 @@ impl Stores {
         }
     }
 
+    pub fn db_type(&mut self, tp: &crate::data::Type, data: &crate::data::Data) -> u16 {
+        match tp {
+            crate::data::Type::Integer(minimum, _) => {
+                let s = tp.size(true);
+                if s == 1 {
+                    self.byte(*minimum, true)
+                } else if s == 2 {
+                    self.short(*minimum, true)
+                } else {
+                    self.name("integer")
+                }
+            }
+            crate::data::Type::Enum(_, false, _) => self.name("byte"),
+            _ => data.def(data.type_def_nr(tp)).known_type,
+        }
+    }
+
     /**
     Add a value to an enumerated type.
     # Panics

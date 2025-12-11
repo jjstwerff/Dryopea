@@ -80,7 +80,7 @@ fn wrong_plus() {
 #[test]
 fn wrong_if() {
     code!("fn test() {if 1 > 0 { 2 } else {\"a\"}\n}")
-        .error("text should be integer on if at wrong_if:2:1");
+        .error("text should be integer on else at wrong_if:2:1");
 }
 
 #[test]

@@ -272,6 +272,9 @@ pub fn sorted_find(
     keys: &[Key],
     key: &[Content],
 ) -> (u32, bool) {
+    if sorted.rec == 0 {
+        return (0, false);
+    }
     let store = keys::store(sorted, stores);
     let sorted_rec = store.get_int(sorted.rec, sorted.pos) as u32;
     let length = store.get_int(sorted_rec, 4) as u32;

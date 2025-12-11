@@ -239,6 +239,24 @@ fn build() -> text {
     .result(Value::str("abcde"));
 }
 
+#[test]
+fn string_parse() {
+    code!(
+        "
+fn parse(s: text) -> integer {
+    for t in 0..300 {
+        l = s[t];
+        if !l.is_alphanumeric() and l != '_' {
+            return t;
+        }
+    }
+    return 0;
+}"
+    )
+    .expr("parse(\"if_cond \")")
+    .result(Value::Int(7));
+}
+
 // Only run this test locally, do not make it part of the release as it will log all kinds of
 // data that is not for public consumption and not stable through multiple runs.
 /*

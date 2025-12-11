@@ -418,13 +418,13 @@ fn cast_long_from_text(s: &mut State) {
 
 fn cast_single_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = v_v1.str().parse().unwrap_or(f32::MIN);
+    let new_value = v_v1.str().parse().unwrap_or(f32::NAN);
     s.put_stack(new_value);
 }
 
 fn cast_float_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = v_v1.str().parse().unwrap_or(f64::MIN);
+    let new_value = v_v1.str().parse().unwrap_or(f64::NAN);
     s.put_stack(new_value);
 }
 
@@ -1237,7 +1237,7 @@ fn length_character(s: &mut State) {
 
 fn conv_bool_from_text(s: &mut State) {
     let v_v1 = s.string();
-    let new_value = !v_v1.str().is_empty();
+    let new_value = v_v1.str() != crate::state::STRING_NULL;
     s.put_stack(new_value);
 }
 

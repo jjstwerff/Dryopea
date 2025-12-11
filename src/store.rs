@@ -401,7 +401,7 @@ impl Store {
 
     #[inline]
     pub fn set_int(&mut self, rec: u32, fld: u32, val: i32) -> bool {
-        if self.valid(rec, fld) {
+        if rec != 0 && self.valid(rec, fld) {
             *self.addr_mut(rec, fld) = val;
             true
         } else {
@@ -411,7 +411,7 @@ impl Store {
 
     #[inline]
     pub fn get_long(&self, rec: u32, fld: u32) -> i64 {
-        if self.valid(rec, fld) {
+        if rec != 0 && self.valid(rec, fld) {
             *self.addr(rec, fld)
         } else {
             i64::MIN
@@ -420,7 +420,7 @@ impl Store {
 
     #[inline]
     pub fn set_long(&mut self, rec: u32, fld: u32, val: i64) -> bool {
-        if self.valid(rec, fld) {
+        if rec != 0 && self.valid(rec, fld) {
             *self.addr_mut(rec, fld) = val;
             true
         } else {
@@ -430,7 +430,7 @@ impl Store {
 
     #[inline]
     pub fn get_short(&self, rec: u32, fld: u32, min: i32) -> i32 {
-        if self.valid(rec, fld) {
+        if rec != 0 && self.valid(rec, fld) {
             let read: u16 = *self.addr(rec, fld);
             if read != 0 {
                 i32::from(read) + min - 1
@@ -444,7 +444,7 @@ impl Store {
 
     #[inline]
     pub fn set_short(&mut self, rec: u32, fld: u32, min: i32, val: i32) -> bool {
-        if self.valid(rec, fld) {
+        if rec != 0 && self.valid(rec, fld) {
             if val == i32::MIN {
                 *self.addr_mut(rec, fld) = 0;
                 true
@@ -461,7 +461,7 @@ impl Store {
 
     #[inline]
     pub fn get_byte(&self, rec: u32, fld: u32, min: i32) -> i32 {
-        if self.valid(rec, fld) {
+        if rec != 0 && self.valid(rec, fld) {
             let read: u8 = *self.addr(rec, fld);
             i32::from(read) + min
         } else {
@@ -471,7 +471,7 @@ impl Store {
 
     #[inline]
     pub fn set_byte(&mut self, rec: u32, fld: u32, min: i32, val: i32) -> bool {
-        if self.valid(rec, fld) {
+        if rec != 0 && self.valid(rec, fld) {
             if val == i32::MIN {
                 *self.addr_mut(rec, fld) = 255;
                 true
@@ -489,7 +489,7 @@ impl Store {
     #[inline]
     pub fn get_str<'a>(&self, rec: u32) -> &'a str {
         if rec == 0 || rec > i32::MAX as u32 {
-            return "";
+            return crate::state::STRING_NULL;
         }
         let len = self.get_int(rec, 4);
         #[cfg(debug_assertions)]

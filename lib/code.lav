@@ -1,0 +1,86 @@
+struct Part {
+    name: text,
+    typedef: u16
+}
+
+struct Type {
+    name: text,
+    nr: u16,
+    parent: u16,
+    parts: vector<Part>
+}
+
+enum Structure {
+    Function, // The corresponding typedef holds the parameters.
+    Enum, // The typedef holds the alternatives. An alternative can be a Struct.
+    Struct, // The typedef holds the fields.
+    TypeDef, // The typedef holds the actual type beside the name.
+    Constant // The code defines the value.
+}
+
+struct Variable {
+    name: text,
+    typedef: u16,
+    scope: u16,
+    position: u16,
+    uses: u16,
+    argument: boolean
+}
+
+enum Value {
+    Integer { v: integer },
+    EnumValue { v: integer, typedef: u16 },
+    Long { v: long },
+    Float { v: float },
+    Single { v: single },
+    Text { v: text },
+    Boolean { v: boolean },
+    Null,
+
+    CallFunction { to: text, parameters: u8 },
+    Var { var: text },
+    Brackets,
+
+    Block { length: u16, into: u16, id: text }, // writes to stack
+    If { yes: u16, no: u16, into: u16 }, // reads and writes stack
+    Loop { length: u16, id: text },
+    As { into: u16 }, // reads and writes stack
+    List { length: u16 },
+    Line { line: integer },
+    Break { levels: u8 },
+    Continue { levels: u8 },
+    Return { typedef: u16 }, // reads from stack
+
+    Get { var: u16 }, // write to stack
+    Set { var: u16 }, // reads from stack
+    Call { to: integer },
+    Drop { typedef: u16 } // drops from stack
+}
+
+struct Definition {
+    name: text,
+    file: u16,
+    line: i32,
+    structure: Structure,
+    typedef: u16,
+    variables: vector<Variable>,
+    code: vector<Value>
+}
+
+struct Code {
+    definitions: vector<Definition>,
+    def_names: hash<Definition[name]>,
+    types: vector<Type>,
+    type_names: hash<Type[name]>,
+    loops: vector<integer>
+}
+
+fn get_type(self: Code, name: text) -> u16 {
+    self.type_names[name].nr
+}
+
+fn create_type(self: Code, name: text) -> u16 {
+    nr = self.types.len();
+    self.types += [ Type { name: name } ];
+    nr
+}

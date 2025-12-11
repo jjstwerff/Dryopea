@@ -92,6 +92,8 @@ pub fn find(hash_ref: &DbRef, stores: &[Store], keys: &[Key], key: &[Content]) -
     let mut rec_pos = store.get_int(claim, 8 + index * 4) as u32;
     'Record: for _ in 0..elms {
         if rec_pos == 0 {
+            record.rec = 0;
+            record.pos = 0;
             break;
         }
         record.rec = rec_pos;

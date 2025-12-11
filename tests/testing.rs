@@ -121,7 +121,12 @@ impl Test {
             Value::Text(v) => replace_tokens(v),
             Value::Float(v) => v.to_string(),
             Value::Single(v) => v.to_string(),
-            Value::Null => return format!("pub fn test() {{\n    {};\n}}", self.expr),
+            Value::Null if matches!(self.tp, Type::Text(_) | Type::Integer(_, _)) => {
+                "null".to_string()
+            }
+            Value::Null if !matches!(self.tp, Type::Text(_)) => {
+                return format!("pub fn test() {{\n    {};\n}}", self.expr);
+            }
             _ => panic!("test {:?}", self.result),
         };
         let mut message = res.clone();
