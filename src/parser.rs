@@ -76,7 +76,7 @@ static OPERATORS: &[&[&str]] = &[
 ];
 
 static SKIP_TOKEN: [&str; 8] = ["}", ".", "<", ">", "^", "+", "-", "#"];
-static SKIP_WIDTH: [&str; 7] = ["}", ".", "x", "X", "o", "b", "e"];
+static SKIP_WIDTH: [&str; 8] = ["}", ".", "x", "X", "o", "b", "e", "j"];
 
 struct OutputState<'a> {
     radix: i32,
@@ -86,6 +86,12 @@ struct OutputState<'a> {
     note: bool,
     dir: i32,
     float: bool,
+}
+
+impl OutputState<'_> {
+    fn db_format(&self) -> i32 {
+        i32::from(self.note) + if self.radix < 0 { 2 } else { 0 }
+    }
 }
 
 const OUTPUT_DEFAULT: OutputState = OutputState {
@@ -188,7 +194,7 @@ impl Parser {
     /// Parse all .lav files found in a directory tree in alphabetical ordering.
     /// # Errors
     /// With filesystem problems.
-    pub fn parse_dir(&mut self, dir: &str, default: bool) -> std::io::Result<()> {
+    pub fn parse_dir(&mut self, dir: &str, default: bool, debug: bool) -> std::io::Result<()> {
         let paths = read_dir(dir)?;
         let mut files: BTreeSet<String> = BTreeSet::new();
         for path in paths {
@@ -208,7 +214,7 @@ impl Parser {
             let from = self.data.definitions();
             let data = metadata(&f)?;
             if data.is_dir() {
-                self.parse_dir(&f, default)?;
+                self.parse_dir(&f, default, debug)?;
             } else if !self.parse(&f, default) {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
@@ -216,7 +222,9 @@ impl Parser {
                 ));
             }
             scopes::check(&mut self.data);
-            self.output(&f, types, from)?;
+            if debug {
+                self.output(&f, types, from)?;
+            }
         }
         Ok(())
     }
@@ -227,20 +235,24 @@ impl Parser {
         } else {
             f
         };
-        let mut w = File::create(format!("tests/code/{file}.txt"))?;
-        let to = self.database.types.len();
-        for tp in types..to {
-            writeln!(w, "Type {tp}:{}", self.database.show_type(tp as u16, true))?;
-        }
-        for d_nr in from..self.data.definitions() {
-            if self.data.def(d_nr).code == Value::Null {
-                continue;
+        let to = format!("tests/code/{file}.txt");
+        if let Ok(mut w) = File::create(to.clone()) {
+            let to = self.database.types.len();
+            for tp in types..to {
+                writeln!(w, "Type {tp}:{}", self.database.show_type(tp as u16, true))?;
             }
-            write!(w, "{} ", self.data.def(d_nr).header(&self.data, d_nr))?;
-            let mut vars = Function::copy(&self.data.def(d_nr).variables);
-            self.data
-                .show_code(&mut w, &mut vars, &self.data.def(d_nr).code, 0, false)?;
-            writeln!(w, "\n")?;
+            for d_nr in from..self.data.definitions() {
+                if self.data.def(d_nr).code == Value::Null {
+                    continue;
+                }
+                write!(w, "{} ", self.data.def(d_nr).header(&self.data, d_nr))?;
+                let mut vars = Function::copy(&self.data.def(d_nr).variables);
+                self.data
+                    .show_code(&mut w, &mut vars, &self.data.def(d_nr).code, 0, false)?;
+                writeln!(w, "\n")?;
+            }
+        } else {
+            diagnostic!(self.lexer, Level::Error, "Could not write: {to}");
         }
         Ok(())
     }
@@ -310,17 +322,28 @@ impl Parser {
             *code = Value::Null; // there is no iterator to create, we got it already
             return orig;
         }
+        if self.first_pass {
+            return Value::Null;
+        }
         if let Type::Iterator(_, _) = should {
             match is_type {
                 Type::Vector(vtp, dep) => {
                     let i = Value::Var(iter_var);
                     let vec_tp = self.data.type_def_nr(vtp);
-                    let size = self.database.size(self.data.def(vec_tp).known_type);
+                    let db_tp = self.data.def(vec_tp).known_type;
+                    let size = if self.database.is_linked(db_tp) {
+                        4
+                    } else {
+                        self.database.size(db_tp)
+                    };
                     let mut ref_expr = self.cl(
                         "OpGetVector",
                         &[code.clone(), Value::Int(i32::from(size)), i.clone()],
                     );
                     if let Type::Reference(_, _) = *vtp.clone() {
+                        if self.database.is_linked(db_tp) {
+                            ref_expr = self.cl("OpVectorRef", &[code.clone(), i.clone()]);
+                        }
                     } else {
                         ref_expr = self.get_field(vec_tp, usize::MAX, ref_expr);
                     }
@@ -396,7 +419,7 @@ impl Parser {
         if let Type::RefVar(ref_tp) = should
             && ref_tp.is_equal(is_type)
         {
-            *code = self.cl("OpCreateRef", std::slice::from_ref(code));
+            *code = self.cl("OpCreateStack", std::slice::from_ref(code));
             return true;
         }
         let mut check_type = is_type;
@@ -995,7 +1018,7 @@ impl Parser {
                     } else {
                         panic!("Unexpected reference type {}", vtp.name(&self.data));
                     };
-                    ls.push(self.cl("OpCreateRef", &[Value::Var(vr)]));
+                    ls.push(self.cl("OpCreateStack", &[Value::Var(vr)]));
                     actual.push(v_block(
                         ls,
                         Type::Reference(self.data.def_nr("reference"), vec![vr]),
@@ -2168,6 +2191,12 @@ impl Parser {
         }
         let to = code.clone();
         for op in ["=", "+=", "-=", "*=", "%=", "/="] {
+            if op == "="
+                && let Value::Var(v_nr) = code
+                && !self.first_pass
+            {
+                self.vars.defined(*v_nr);
+            }
             if self.lexer.has_token(op) {
                 let var_nr = if let Value::Var(v_nr) = *code {
                     v_nr
@@ -2201,10 +2230,12 @@ impl Parser {
                     } else if op == "=" {
                         *code = v_set(var_nr, code.clone());
                     } else if s_type == Type::Character {
-                        *code =
-                            self.cl("OpAppendRefCharacter", &[Value::Var(var_nr), code.clone()]);
+                        *code = self.cl(
+                            "OpAppendStackCharacter",
+                            &[Value::Var(var_nr), code.clone()],
+                        );
                     } else {
-                        *code = self.cl("OpAppendRefText", &[Value::Var(var_nr), code.clone()]);
+                        *code = self.cl("OpAppendStackText", &[Value::Var(var_nr), code.clone()]);
                     }
                     return Type::Void;
                 }
@@ -2290,6 +2321,13 @@ impl Parser {
                 for (s_nr, s) in self.vector_db(tp, var_nr).iter().enumerate() {
                     ls.insert(s_nr, s.clone());
                 }
+                if ls.is_empty()
+                    && !self.first_pass
+                    && var_nr != u16::MAX
+                    && matches!(f_type, Type::Vector(_, _))
+                {
+                    ls.push(self.cl("OpClearVector", &[Value::Var(var_nr)]));
+                }
             }
             true
         } else {
@@ -2356,6 +2394,10 @@ impl Parser {
         }
         let code = if op == "=" {
             val.clone()
+        } else if op == ">" {
+            self.op("Lt", val.clone(), to.clone(), f_type.clone())
+        } else if op == ">=" {
+            self.op("Le", val.clone(), to.clone(), f_type.clone())
         } else {
             self.op(rename(op), to.clone(), val.clone(), f_type.clone())
         };
@@ -2638,12 +2680,28 @@ impl Parser {
             let second_type =
                 self.parse_operators(var_tp, &mut second_code, parent_tp, precedence + 1);
             self.known_var_or_type(&second_code);
-            *ctp = self.call_op(
-                code,
-                operator,
-                &[code.clone(), second_code],
-                &[ctp.clone(), second_type],
-            );
+            if operator == ">" {
+                *ctp = self.call_op(
+                    code,
+                    "<",
+                    &[second_code, code.clone()],
+                    &[second_type, ctp.clone()],
+                );
+            } else if operator == ">=" {
+                *ctp = self.call_op(
+                    code,
+                    "<=",
+                    &[second_code, code.clone()],
+                    &[second_type, ctp.clone()],
+                );
+            } else {
+                *ctp = self.call_op(
+                    code,
+                    operator,
+                    &[code.clone(), second_code],
+                    &[ctp.clone(), second_type],
+                );
+            }
             *parent_tp = tp;
         } else {
             let mut second_code = Value::Null;
@@ -2720,8 +2778,8 @@ impl Parser {
         let var_nr = if orig_var == u16::MAX {
             let v = self.vars.work_text(&mut self.lexer);
             if matches!(self.vars.tp(v), Type::RefVar(_)) {
-                ls.push(self.cl("OpClearRefText", &[Value::Var(v)]));
-                ls.push(self.cl("OpAppendRefText", &[Value::Var(v), code.clone()]));
+                ls.push(self.cl("OpClearStackText", &[Value::Var(v)]));
+                ls.push(self.cl("OpAppendStackText", &[Value::Var(v), code.clone()]));
             } else if tp == &Type::Character {
                 ls.push(self.cl("OpClearText", &[Value::Var(v)]));
                 ls.push(self.cl("OpAppendCharacter", &[Value::Var(v), code.clone()]));
@@ -2731,7 +2789,7 @@ impl Parser {
             }
             v
         } else if matches!(self.vars.tp(orig_var), Type::RefVar(_)) {
-            ls.push(self.cl("OpAppendRefText", &[Value::Var(orig_var), code.clone()]));
+            ls.push(self.cl("OpAppendStackText", &[Value::Var(orig_var), code.clone()]));
             orig_var
         } else {
             ls.push(self.cl("OpAppendText", &[Value::Var(orig_var), code.clone()]));
@@ -2740,9 +2798,9 @@ impl Parser {
         for (val, tp) in parts {
             if matches!(self.vars.tp(var_nr), Type::RefVar(_)) {
                 if *tp == Type::Character {
-                    ls.push(self.cl("OpAppendRefCharacter", &[Value::Var(var_nr), val.clone()]));
+                    ls.push(self.cl("OpAppendStackCharacter", &[Value::Var(var_nr), val.clone()]));
                 } else {
-                    ls.push(self.cl("OpAppendRefText", &[Value::Var(var_nr), val.clone()]));
+                    ls.push(self.cl("OpAppendStackText", &[Value::Var(var_nr), val.clone()]));
                 }
             } else if *tp == Type::Character {
                 ls.push(self.cl("OpAppendCharacter", &[Value::Var(var_nr), val.clone()]));
@@ -3662,6 +3720,13 @@ impl Parser {
         if self.lexer.has_token("(") {
             if name == "sizeof" {
                 t = self.parse_size(code);
+            } else if name == "typedef" {
+                let mut p = Value::Null;
+                let et = self.expression(&mut p);
+                self.lexer.token(")");
+                let tp = self.data.def(self.data.type_def_nr(&et)).known_type;
+                t = Type::Integer(0, 65536);
+                *code = Value::Int(i32::from(tp));
             } else {
                 t = self.parse_call(code, source, &nm);
             }
@@ -3834,7 +3899,7 @@ impl Parser {
             if self.default && matches!(self.vars.tp(*nr), Type::Vector(_, _)) {
                 return;
             }
-            if !self.first_pass && self.vars.tp(*nr).is_unknown() {
+            if !self.first_pass && (self.vars.tp(*nr).is_unknown() || !self.vars.is_defined(*nr)) {
                 diagnostic!(
                     self.lexer,
                     Level::Error,
@@ -3919,7 +3984,7 @@ impl Parser {
             if let Some(text) = self.lexer.has_cstring() {
                 if !text.is_empty() {
                     let call = if matches!(self.vars.tp(var), Type::RefVar(_)) {
-                        "OpAppendRefText"
+                        "OpAppendStackText"
                     } else {
                         "OpAppendText"
                     };
@@ -3961,7 +4026,9 @@ impl Parser {
 
     fn get_radix(&mut self) -> i32 {
         if let Some(id) = self.lexer.has_identifier() {
-            if id == "x" || id == "X" {
+            if id.to_lowercase() == "j" || id.to_lowercase() == "json" {
+                -1
+            } else if id == "x" || id == "X" {
                 16
             } else if id == "b" {
                 2
@@ -3983,6 +4050,7 @@ impl Parser {
     fn iter_for(&mut self, val: &mut Value, append_value: &mut u16) -> Type {
         if let Some(id) = self.lexer.has_identifier() {
             let iter_var = self.create_var(&format!("{id}#index"), &I32);
+            self.vars.defined(iter_var);
             self.lexer.token("in");
             let loop_nr = self.vars.start_loop();
             let mut expr = Value::Null;
@@ -3990,6 +4058,7 @@ impl Parser {
             let var_tp = self.for_type(&in_type);
             *append_value = self.create_unique("val", &Type::Unknown(0));
             let for_var = self.create_var(&id, &var_tp);
+            self.vars.defined(for_var);
             let if_step = if self.lexer.has_token("if") {
                 let mut if_expr = Value::Null;
                 self.expression(&mut if_expr);
@@ -4134,11 +4203,11 @@ impl Parser {
                 ),
             ));
             self.conv_op(
-                if incl { ">" } else { ">=" },
-                Value::Var(ivar),
+                if incl { "<" } else { "<=" },
                 till,
-                in_type.clone(),
+                Value::Var(ivar),
                 till_tp,
+                in_type.clone(),
             )
         };
         ls.push(v_if(test, Value::Break(0), Value::Null));
@@ -4165,7 +4234,7 @@ impl Parser {
     ) {
         let var = Value::Var(append);
         let start = (if matches!(self.vars.tp(append), Type::RefVar(_)) {
-            "OpFormatRef"
+            "OpFormatStack"
         } else {
             "OpFormat"
         })
@@ -4279,7 +4348,7 @@ impl Parser {
                         var,
                         fmt,
                         Value::Int(i32::from(vec_tp)),
-                        Value::Boolean(state.note),
+                        Value::Int(state.db_format()),
                     ],
                 ));
             }
@@ -4295,7 +4364,7 @@ impl Parser {
                         var,
                         fmt,
                         Value::Int(i32::from(db_tp)),
-                        Value::Boolean(state.note),
+                        Value::Int(state.db_format()),
                     ],
                 ));
             }
@@ -4321,7 +4390,7 @@ impl Parser {
                             var,
                             fmt,
                             Value::Int(i32::from(e_tp)),
-                            Value::Boolean(state.note),
+                            Value::Int(state.db_format()),
                         ],
                     ));
                 }
@@ -4372,7 +4441,7 @@ impl Parser {
             let mut steps = Vec::new();
             steps.push(v_set(append_var, *next.clone()));
             steps.push(v_if(
-                self.cl("OpGtInt", &[Value::Var(count), Value::Int(0)]),
+                self.cl("OpLtInt", &[Value::Int(0), Value::Var(count)]),
                 self.cl("OpAppendText", &[Value::Var(append), Value::str(",")]),
                 Value::Null,
             ));
@@ -4646,7 +4715,9 @@ impl Parser {
             }
             let var_tp = self.for_type(&in_type);
             let iter_var = self.create_var(&format!("{id}#index"), &I32);
+            self.vars.defined(iter_var);
             let for_var = self.create_var(&id, &var_tp);
+            self.vars.defined(for_var);
             if matches!(var_tp, Type::Integer(_, _)) {
                 self.vars.in_use(for_var, true);
             }
@@ -4721,7 +4792,7 @@ impl Parser {
                 t = t.depending(*d);
             }
             t
-        } else if let Type::Sorted(dnr, _, dep) = &in_type {
+        } else if let Type::Sorted(dnr, _, dep) | Type::Index(dnr, _, dep) = &in_type {
             Type::Reference(*dnr, dep.clone())
         } else if let Type::Iterator(i_tp, _) = &in_type {
             if **i_tp == Type::Null {
@@ -5024,8 +5095,6 @@ fn rename(op: &str) -> &str {
         "!=" => "Ne",
         "<" => "Lt",
         "<=" => "Le",
-        ">" => "Gt",
-        ">=" => "Ge",
         "%" => "Rem",
         "!" => "Not",
         "+=" => "Append",

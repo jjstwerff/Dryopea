@@ -13,7 +13,7 @@ fn n_test() {#block(1):void
   [2] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
-      OpFormatDatabase(__work_1(1), t_4File_files(n_file("example", __ref_1(1)), __ref_2(1)), 16i32, false);
+      OpFormatDatabase(__work_1(1), t_4File_files(n_file("example", __ref_1(1)), __ref_2(1)), 17i32, 0i32);
       __work_1(1);
     }#Formatted string(3):text["__work_1"];
   }#block(2):text["__work_1"];
@@ -33,11 +33,11 @@ fn n_test() {#block(1):void
 byte-code for files:n_test()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:vector<ref(File)>
-   1[16]: Database(var[4], db_tp=15)
+   1[16]: Database(var[4], db_tp=16)
    6[16]: VarRef(var[4]) -> ref(reference)
    9[28]: ConstInt(val=0) -> integer
   14[32]: SetInt(v1: ref(reference), fld=4, val: integer)
-  17[16]: CreateRef(var[4]) -> ref(reference)
+  17[16]: CreateStack(var[4]) -> ref(reference)
   20[28]: ConstInt(val=12) -> integer
   25[32]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
   30[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(File)
@@ -47,11 +47,11 @@ byte-code for files:n_test()
   34[100]: ClearText(var[52]) var=__work_1[52]:text
   37[100]: ConstText(_value="") -> text
   39[116]: ConstText(_value="example") -> text
-  48[132]: VarRef(var[16]) -> ref(reference) type=File 13 var=__ref_1[16]:ref(File)
+  48[132]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_1[16]:ref(File)
   51[144]: Call(size=0, fn=n_file)
-  58[128]: VarVector(var[4]) -> vector type=vector<File> 16 var=__ref_2[4]:vector<ref(File)>
+  58[128]: VarVector(var[4]) -> vector type=vector<File> 17 var=__ref_2[4]:vector<ref(File)>
   61[140]: Call(size=0, fn=t_4File_files)
-  68[128]: FormatDatabase(var[52], val: ref(reference), db_tp=16, pretty=false)
+  68[128]: FormatDatabase(var[52], val: ref(reference), db_tp=17, db_format=0)
   74[116]: VarText(var[52]) -> text var=__work_1[52]:text
   77[132]: FreeStack(value=16, discard=32)
   81[116]: AppendText(var[76], v1: text)
@@ -72,20 +72,20 @@ byte-code for files:n_test()
  595[116]: Panic(message: text)
  596[100]: FreeText(var[76])
  599[100]: FreeText(var[52])
- 602[100]: VarRef(var[16]) -> ref(reference) type=File 13 var=__ref_1[16]:ref(File)
+ 602[100]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_1[16]:ref(File)
  605[112]: FreeRef(v1: ref(reference))
- 606[100]: VarVector(var[4]) -> vector type=vector<File> 16 var=__ref_2[4]:vector<ref(File)>
+ 606[100]: VarVector(var[4]) -> vector type=vector<File> 17 var=__ref_2[4]:vector<ref(File)>
  609[112]: FreeRef(v1: ref(reference))
  610[100]: FreeText(var[28])
  613[100]: Return(ret=0, value=0, discard=100)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
-    1:[20] Database(var[8], db_tp=15)
+    1:[20] Database(var[8], db_tp=16)
     6:[20] VarRef(var[8]) -> ref(1,1,8)[20]
     9:[32] ConstInt(val=0) -> 0[32]
    14:[36] SetInt(v1=ref(1,1,8)[20], fld=4, val=0[32])
-   17:[20] CreateRef(var[8]) -> ref(0,1,16)[20]
+   17:[20] CreateStack(var[8]) -> ref(0,1,16)[20]
    20:[32] ConstInt(val=12) -> 12[32]
    25:[36] SetByte(v1=ref(0,1,16)[20], fld=4, min=0, val=12[32])
    30:[20] ConvRefFromNull() -> ref(2,0,8)[20]
@@ -97,55 +97,33 @@ Execute test:
    39:[120] ConstText(_value="example") -> "example"[120]
    48:[136] VarRef(var[20]) -> ref(2,0,8)=null[136]
    51:[148] Call(size=0, fn=n_file)
-  724:[152] Database(var[136], db_tp=13)
-  729:[152] VarRef(var[136]) -> ref(2,1,8)={dir:false}[152]
-  732:[164] ArgText(var[120]) -> "example"[164]
-  735:[180] SetText(v1=ref(2,1,8)[152], fld=8, val="example"[164])
-  738:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",dir:false}[152]
-  741:[164] ConvIntFromNull() -> -2147483648[164]
-  742:[168] SetInt(v1=ref(2,1,8)[152], fld=12, val=-2147483648[164])
-  745:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",dir:false}[152]
-  748:[164] ConstLong(val=0) -> 0[164]
-  757:[172] SetLong(v1=ref(2,1,8)[152], fld=0, val=0[164])
-  760:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0,dir:false}[152]
-  763:[164] ConstFalse() -> false[164]
-  764:[165] GotoFalseWord(jump=775, if_false=false[164])
-  775:[164] ConstInt(val=0) -> 0[164]
-  780:[168] SetByte(v1=ref(2,1,8)[152], fld=16, min=0, val=0[164])
-  785:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0,dir:false}[152]
-  788:[164] GetFile(file=ref(2,1,8)={path:"example",size:0,dir:false}[152]) -> true[152]
-  789:[153] FreeStack(value=0, discard=1)
-  793:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:4096,dir:true}[152]
-  796:[164] Return(ret=1171[148], value=12, discard=44) -> ref(2,1,8)={path:"example",size:4096,dir:true}[120]
+ 1474:[152] Database(var[136], db_tp=14)
+ 1479:[152] VarRef(var[136]) -> ref(2,1,8)={}[152]
+ 1482:[164] ArgText(var[120]) -> "example"[164]
+ 1485:[180] SetText(v1=ref(2,1,8)[152], fld=8, val="example"[164])
+ 1488:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example"}[152]
+ 1491:[164] ConvIntFromNull() -> -2147483648[164]
+ 1492:[168] SetInt(v1=ref(2,1,8)[152], fld=12, val=-2147483648[164])
+ 1495:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example"}[152]
+ 1498:[164] ConstLong(val=0) -> 0[164]
+ 1507:[172] SetLong(v1=ref(2,1,8)[152], fld=0, val=0[164])
+ 1510:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0}[152]
+ 1513:[164] ConstEnum(val=0) -> null(0)[164]
+ 1515:[165] SetEnum(v1=ref(2,1,8)[152], fld=16, val=0[164])
+ 1518:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0}[152]
+ 1521:[164] GetFile(file=ref(2,1,8)={path:"example",size:0}[152]) -> true[152]
+ 1522:[153] FreeStack(value=0, discard=1)
+ 1526:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:4096,format:Directory}[152]
+ 1529:[164] Return(ret=1897[148], value=12, discard=44) -> ref(2,1,8)={path:"example",size:4096,format:Directory}[120]
    58:[132] VarVector(var[8]) -> ref(1,1,12)=[][132]
    61:[144] Call(size=0, fn=t_4File_files)
-  802:[148] VarRef(var[120]) -> ref(2,1,8)={path:"example",size:4096,dir:true}[148]
-  805:[160] GetByte(v1=ref(2,1,8)[148], fld=16, min=0) -> 1[148]
-  810:[152] ConstInt(val=1) -> 1[152]
-  815:[156] EqInt(v1=1[148], v2=1[152]) -> true[148]
-  816:[149] GotoFalseWord(jump=833, if_false=true[148])
-  819:[148] VarRef(var[120]) -> ref(2,1,8)={path:"example",size:4096,dir:true}[148]
-  822:[160] GetText(v1=ref(2,1,8)[148], fld=8) -> "example"[148]
-  825:[164] VarVector(var[132]) -> ref(1,1,12)=[][164]
-  828:[176] GetDir(path="example"[148], result=ref(1,1,12)[164]) -> true[148]
-  829:[149] FreeStack(value=0, discard=1)
-  833:[148] VarVector(var[132]) -> ref(1,1,12)=[{path:"example/config",size:4096,dir:true},{path:"example/map.png",size:3406,dir:false},{path:"example/map.xcf",size:7817,dir:false},{path:"example/show.lav",size:371,dir:false},{path:"example/todo.json",size:1461,dir:false}][148]
-  836:[160] Return(ret=1181[144], value=12, discard=40) -> ref(1,1,12)=[{path:"example/config",size:4096,dir:true},{path:"example/map.png",size:3406,dir:false},{path:"example/map.xcf",size:7817,dir:false},{path:"example/show.lav",size:371,dir:false},{path:"example/todo.json",size:1461,dir:false}][120]
-   68:[132] FormatDatabase(var[56], val=ref(1,1,12)[120], db_tp=16, pretty=false)
-   74:[120] VarText(var[56]) -> "[{path:\"example/config\",size:4096,dir:true},{path:\"example/map.png\",size:3406,dir:false},{path:\"example/map.xcf\",size:7817,dir:false},{path:\"example/show.lav\",size:371,dir:false},{path:\"example/todo.json\",size:1461,dir:false}]"[120]
-   77:[136] FreeStack(value=16, discard=32)
-   81:[120] AppendText(var[80], v1="[{path:\"example/config\",size:4096,dir:true},{path:\"example/map.png\",size:3406,dir:false},{path:\"example/map.xcf\",size:7817,dir:false},{path:\"example/show.lav\",size:371,dir:false},{path:\"example/todo.json\",size:1461,dir:false}]"[104])
-   84:[104] VarText(var[80]) -> "[{path:\"example/config\",size:4096,dir:true},{path:\"example/map.png\",size:3406,dir:false},{path:\"example/map.xcf\",size:7817,dir:false},{path:\"example/show.lav\",size:371,dir:false},{path:\"example/todo.json\",size:1461,dir:false}]"[104]
-   87:[120] ConstText(_value="[{path:"example/config",size:4096,dir:true},{path:"example/map.png",size:3406,dir:false},{path:"example/map.xcf",size:7817,dir:false},{path:"example/show.lav",size:371,dir:false},{path:"example/todo.json",size:1461,dir:false}]") -> "[{path:\"example/config\",size:4096,dir:true},{path:\"example/map.png\",size:3406,dir:false},{path:\"example/map.xcf\",size:7817,dir:false},{path:\"example/show.lav\",size:371,dir:false},{path:\"example/todo.json\",size:1461,dir:false}]"[120]
-  315:[136] EqText(v1="[{path:\"example/config\",size:4096,dir:true},{path:\"example/map.png\",size:3406,dir:false},{path:\"example/map.xcf\",size:7817,dir:false},{path:\"example/show.lav\",size:371,dir:false},{path:\"example/todo.json\",size:1461,dir:false}]"[104], v2="[{path:\"example/config\",size:4096,dir:true},{path:\"example/map.png\",size:3406,dir:false},{path:\"example/map.xcf\",size:7817,dir:false},{path:\"example/show.lav\",size:371,dir:false},{path:\"example/todo.json\",size:1461,dir:false}]"[120]) -> true[104]
-  316:[105] GotoFalseWord(jump=322, if_false=true[104])
-  319:[104] GotoWord(jump=596)
-  596:[104] FreeText(var[80])
-  599:[104] FreeText(var[56])
-  602:[104] VarRef(var[20]) -> ref(2,0,8)=null[104]
-  605:[116] FreeRef(v1=ref(2,0,8)[104])
-  606:[104] VarVector(var[8]) -> ref(1,1,12)=[{path:"example/config",size:4096,dir:true},{path:"example/map.png",size:3406,dir:false},{path:"example/map.xcf",size:7817,dir:false},{path:"example/show.lav",size:371,dir:false},{path:"example/todo.json",size:1461,dir:false}][104]
-  609:[116] FreeRef(v1=ref(1,1,12)[104])
-  610:[104] FreeText(var[32])
-  613:[104] Return(ret=4294967295[4], value=0, discard=100)
-Finished
+ 1535:[148] VarVector(var[132]) -> ref(1,1,12)=[][148]
+ 1538:[160] [148] ClearVector(r=ref(1,1,12)[148])
+ 1539:[148] VarRef(var[120]) -> ref(2,1,8)={path:"example",size:4096,format:Directory}[148]
+ 1542:[160] GetEnum(v1=ref(2,1,8)[148], fld=16) -> null(4)[148]
+ 1545:[149] ConvIntFromEnum(v1=4[148]) -> 4[148]
+ 1546:[152] ConvIntFromEnum(v1=0[151]) -> 0[151]
+ 1547:[155] EqInt(v1=1024[147], v2=0[151]) -> false[147]
+ 1548:[148] GotoFalseWord(jump=1565, if_false=false[147])
+ 1565:[147] VarVector(var[132]) -> ref(1,1,12)=[][147]
+ 1568:[159] Return(ret=16779123[144], value=12, discard=39) -> ref(1,1,12)=[][120]

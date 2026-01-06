@@ -7,6 +7,11 @@ all:
 install: all
 	sudo ln -f -s ${PWD}/target/release/lavition /usr/local/bin/lavition
 
+debug:
+	RUSTFLAGS=-g cargo build -v
+	sudo ln -f -s ${PWD}/target/debug/lavition /usr/local/bin/lavition
+	export RUST_BACKTRACE=1
+
 test: clippy
 	rm tests/generated/* -f
 	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f

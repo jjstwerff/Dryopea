@@ -160,12 +160,6 @@ fn OpLtInt(v1: integer, v2: integer) -> boolean;
 fn OpLeInt(v1: integer, v2: integer) -> boolean;
 #rust "@v1 <= @v2"
 
-fn OpGtInt(v1: integer, v2: integer) -> boolean;
-#rust "@v1 > @v2"
-
-fn OpGeInt(v1: integer, v2: integer) -> boolean;
-#rust "@v1 >= @v2"
-
 // Long operations
 fn OpConstLong(val: const long) -> long;
 #rust "@val"
@@ -237,14 +231,8 @@ fn OpLtLong(v1: long, v2: long) -> boolean;
 fn OpLeLong(v1: long, v2: long) -> boolean;
 #rust "@v1 <= @v2"
 
-fn OpGtLong(v1: long, v2: long) -> boolean;
-#rust "@v1 > @v2"
-
-fn OpGeLong(v1: long, v2: long) -> boolean;
-#rust "@v1 >= @v2"
-
 fn OpFormatLong(pos: const u16, val: long, radix: const u8, width: integer, token: const u8, plus: const boolean, note: const boolean);
-fn OpFormatRefLong(pos: const u16, val: long, radix: const u8, width: integer, token: const u8, plus: const boolean, note: const boolean);
+fn OpFormatStackLong(pos: const u16, val: long, radix: const u8, width: integer, token: const u8, plus: const boolean, note: const boolean);
 
 // Single operations
 fn OpConstSingle(val: const single) -> single;
@@ -357,14 +345,8 @@ fn OpLtSingle(v1: single, v2: single) -> boolean;
 fn OpLeSingle(v1: single, v2: single) -> boolean;
 #rust "@v1 <= @v2"
 
-fn OpGtSingle(v1: single, v2: single) -> boolean;
-#rust "@v1 > @v2"
-
-fn OpGeSingle(v1: single, v2: single) -> boolean;
-#rust "@v1 >= @v2"
-
 fn OpFormatSingle(pos: const u16, val: single, width: integer, precision: integer);
-fn OpFormatRefSingle(pos: const u16, val: single, width: integer, precision: integer);
+fn OpFormatStackSingle(pos: const u16, val: single, width: integer, precision: integer);
 
 // float operations
 fn OpConstFloat(val: const float) -> float;
@@ -485,14 +467,8 @@ fn OpLtFloat(v1: float, v2: float) -> boolean;
 fn OpLeFloat(v1: float, v2: float) -> boolean;
 #rust "@v1 <= @v2"
 
-fn OpGtFloat(v1: float, v2: float) -> boolean;
-#rust "@v1 > @v2"
-
-fn OpGeFloat(v1: float, v2: float) -> boolean;
-#rust "@v1 >= @v2"
-
 fn OpFormatFloat(pos: const u16, val: float, width: integer, precision: integer);
-fn OpFormatRefFloat(pos: const u16, val: float, width: integer, precision: integer);
+fn OpFormatStackFloat(pos: const u16, val: float, width: integer, precision: integer);
 
 // Text operations
 
@@ -526,12 +502,8 @@ fn OpLtText(v1: text, v2: text) -> boolean;
 #rust "@v1 < @v2"
 fn OpLeText(v1: text, v2: text) -> boolean;
 #rust "@v1 <= @v2"
-fn OpGtText(v1: text, v2: text) -> boolean;
-#rust "@v1 > @v2"
-fn OpGeText(v1: text, v2: text) -> boolean;
-#rust "@v1 >= @v2"
 fn OpFormatText(pos: const u16, val: text, width: integer, dir: const i8, token: const u8);
-fn OpFormatRefText(pos: const u16, val: text, width: integer, dir: const i8, token: const u8);
+fn OpFormatStackText(pos: const u16, val: text, width: integer, dir: const i8, token: const u8);
 
 fn OpAppendCharacter(pos: const u16, v1: character);
 fn OpTextCompare(v1: text, v2: character) -> i32;
@@ -566,8 +538,9 @@ fn OpConvEnumFromNull() -> enumerate;
 type reference size(12);
 
 fn OpDatabase(pos: const u16, db_tp: const u16);
-fn OpFormatDatabase(pos: const u16, val: reference, db_tp: const u16, pretty: const boolean);
-fn OpFormatRefDatabase(pos: const u16, val: reference, db_tp: const u16, pretty: const boolean);
+// db_format: bit0 = pretty, bit1 = json
+fn OpFormatDatabase(pos: const u16, val: reference, db_tp: const u16, db_format: const u8);
+fn OpFormatStackDatabase(pos: const u16, val: reference, db_tp: const u16, db_format: const u8);
 fn OpConvBoolFromRef(val: reference) -> boolean;
 #rust "@val.rec != 0"
 fn OpConvRefFromNull() -> reference;
@@ -670,6 +643,10 @@ fn OpClearVector(r: vector);
 fn OpGetVector(r: vector, size: const u16, index: integer) -> reference[r];
 #rust "vector::get_vector(&@r, u32::from(@size), @index, &s.database.allocations)"
 
+// This returns the position inside the vector of a record or a value, get the actual value with fld=0
+fn OpVectorRef(r: vector, index: integer) -> reference[r];
+#rust "stores.get_ref(&vector::get_vector(&@r, 4, @index, &s.database.allocations), 0)"
+
 fn OpCastVectorFromText(val: text, db_tp: const u16) -> vector;
 #rust "s.db_from_text(@val, @db_tp)"
 
@@ -736,11 +713,26 @@ fn OpCopyRecord(data: reference, to: reference, tp: const u16);
 
 type iterator;
 
+// Call a predefined system function (but not an operator).
 fn OpStaticCall(call: const u16);
-fn OpCreateRef(pos: const u16) -> reference;
-fn OpGetRefText(r: reference) -> text[r];
-fn OpGetDbRef(r: reference, fld: const u16) -> reference;
-fn OpSetDbRef(r: reference, xv1: reference);
-fn OpAppendRefText(pos: const u16, v1: text);
-fn OpAppendRefCharacter(pos: const u16, v1: character);
-fn OpClearRefText(pos: const u16);
+
+// Create a stack position from a variable.
+fn OpCreateStack(pos: const u16) -> reference;
+
+// Read a text from a stack position.
+fn OpGetStackText(r: reference) -> text[r];
+
+// Read a reference from a stack position.
+fn OpGetStackRef(r: reference, fld: const u16) -> reference;
+
+// Write a reference from a stack position.
+fn OpSetStackRef(r: reference, v1: reference);
+
+// Append a text to a stack text variable.
+fn OpAppendStackText(pos: const u16, v1: text);
+
+// Append a character to a stack text variable.
+fn OpAppendStackCharacter(pos: const u16, v1: character);
+
+// Clear a stack text variable.
+fn OpClearStackText(pos: const u16);

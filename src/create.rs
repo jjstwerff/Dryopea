@@ -110,6 +110,12 @@ fn replace_attributes(data: &Data, d_nr: u32, res: &mut String) {
 /// When the resulting file cannot be correctly written.
 pub fn generate_code(data: &Data) -> std::io::Result<()> {
     let mut into = File::create("tests/generated/fill.rs")?;
+    let mut count = 0;
+    for d_nr in 0..data.definitions() {
+        if data.def(d_nr).is_operator() {
+            count += 1;
+        }
+    }
     writeln!(
         into,
         "#![allow(clippy::cast_possible_wrap)]
@@ -120,7 +126,7 @@ use crate::keys::{{DbRef, Str}};
 use crate::state::State;
 use crate::vector;
 
-pub const OPERATORS: &[fn(&mut State)] = &["
+pub const OPERATORS: &[fn(&mut State); {count}] = &["
     )?;
     for d_nr in 0..data.definitions() {
         let n = &data.def(d_nr).name;

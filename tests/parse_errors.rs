@@ -25,6 +25,12 @@ fn unknown_var() {
 }
 
 #[test]
+fn use_before_define() {
+    code!("fn test() { if a == 1 { panic(); }; a = 1; }")
+        .error("Unknown variable 'a' at use_before_define:1:22");
+}
+
+#[test]
 fn wrong_text() {
     code!("fn rout(a: integer) -> integer {if a > 4 {return \"a\"} 2}\nfn test() {}")
         .error("text should be integer on return at wrong_text:1:53");

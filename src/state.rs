@@ -20,7 +20,7 @@ use crate::{external, hash};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
-use std::io::{Error, Read, Write};
+use std::io::{Error, Read, Seek, SeekFrom, Write};
 use std::str::FromStr;
 
 pub type Call = fn(&mut Stores, &mut DbRef);
@@ -158,7 +158,7 @@ impl State {
     }
 
     #[inline]
-    pub fn create_ref(&mut self) {
+    pub fn create_stack(&mut self) {
         let pos = *self.code::<u16>();
         let db = DbRef {
             store_nr: self.stack_cur.store_nr,
@@ -187,15 +187,86 @@ impl State {
         }
     }
 
+    pub fn write_file(&mut self) {
+        let val = *self.get_stack::<DbRef>();
+        let file = *self.get_stack::<DbRef>();
+        let db_tp = *self.code::<u16>();
+        if file.rec == 0 {
+            return;
+        }
+        let f_nr = self.database.files.len() as i32;
+        let store = self.database.store_mut(&file);
+        let format = store.get_byte(file.rec, file.pos + 16, 1);
+        if format == 4 || format == 1 {
+            // Only binary files allowed
+            return;
+        }
+        let little_endian = format == 2;
+        let mut file_ref = store.get_int(file.rec, file.pos + 12);
+        if file_ref == i32::MIN {
+            let file_name = store.get_str(store.get_int(file.rec, file.pos + 8) as u32);
+            if let Ok(f) = File::create(file_name) {
+                store.set_int(file.rec, file.pos + 12, f_nr);
+                self.database.files.push(f);
+            }
+            file_ref = f_nr;
+        }
+        let mut data = Vec::new();
+        self.database
+            .read_data(&val, db_tp, little_endian, &mut data);
+        self.database.files[file_ref as usize]
+            .write_all(&data)
+            .unwrap_or_default();
+    }
+
+    pub fn read_file(&mut self) {
+        let val = *self.get_stack::<DbRef>();
+        let file = *self.get_stack::<DbRef>();
+        let db_tp = *self.code::<u16>();
+        if file.rec == 0 {
+            return;
+        }
+        let f_nr = self.database.files.len() as i32;
+        let store = self.database.store_mut(&file);
+        let mut file_ref = store.get_int(file.rec, file.pos + 12);
+        if file_ref == i32::MIN {
+            let file_name = store.get_str(store.get_int(file.rec, file.pos + 8) as u32);
+            if let Ok(f) = File::open(file_name) {
+                store.set_int(file.rec, file.pos + 12, f_nr);
+                self.database.files.push(f);
+            }
+            file_ref = f_nr;
+        }
+        let s = self.database.size(db_tp) as usize;
+        let mut data = vec![0u8; s];
+        self.database.files[file_ref as usize]
+            .read_exact(&mut data)
+            .unwrap_or_default();
+        self.database.write_data(&val, db_tp, &data);
+    }
+
+    pub fn seek_file(&mut self) {
+        let pos = *self.get_stack::<i64>();
+        let file = *self.get_stack::<DbRef>();
+        if file.rec == 0 {
+            return;
+        }
+        let store = self.database.store(&file);
+        let file_ref = store.get_int(file.rec, file.pos + 12);
+        self.database.files[file_ref as usize]
+            .seek(SeekFrom::Start(pos as u64))
+            .unwrap_or_default();
+    }
+
     #[inline]
-    pub fn get_ref_text(&mut self) {
+    pub fn get_stack_text(&mut self) {
         let r = *self.get_stack::<DbRef>();
         let t: &str = self.database.store(&r).addr::<String>(r.rec, r.pos);
         self.put_stack(Str::new(t));
     }
 
     #[inline]
-    pub fn get_db_ref(&mut self) {
+    pub fn get_stack_ref(&mut self) {
         let fld = *self.code::<u16>();
         let r = *self.get_stack::<DbRef>();
         let t = self
@@ -206,21 +277,21 @@ impl State {
     }
 
     #[inline]
-    pub fn set_db_ref(&mut self) {
+    pub fn set_stack_ref(&mut self) {
         let v1 = *self.get_stack::<DbRef>();
         let r = *self.get_stack::<DbRef>();
         let t = self.database.store_mut(&r).addr_mut::<DbRef>(r.rec, r.pos);
         *t = v1;
     }
 
-    pub fn append_ref_text(&mut self) {
+    pub fn append_stack_text(&mut self) {
         let text = self.string();
         let pos = *self.code::<u16>();
         let v1 = self.string_ref_mut(pos - size_ptr() as u16);
         *v1 += text.str();
     }
 
-    pub fn append_ref_character(&mut self) {
+    pub fn append_stack_character(&mut self) {
         let pos = *self.code::<u16>();
         let c = *self.get_stack::<char>();
         if c as u32 != 0 {
@@ -228,7 +299,7 @@ impl State {
         }
     }
 
-    pub fn clear_ref_text(&mut self) {
+    pub fn clear_stack_text(&mut self) {
         let pos = *self.code::<u16>();
         let v1 = self.string_ref_mut(pos);
         v1.clear();
@@ -564,7 +635,7 @@ impl State {
         external::format_long(s, val, radix, width, token, plus, note);
     }
 
-    pub fn format_ref_long(&mut self) {
+    pub fn format_stack_long(&mut self) {
         let pos = *self.code::<u16>();
         let radix = *self.code::<u8>();
         let token = *self.code::<u8>();
@@ -585,7 +656,7 @@ impl State {
         external::format_float(s, val, width, precision);
     }
 
-    pub fn format_ref_float(&mut self) {
+    pub fn format_stack_float(&mut self) {
         let pos = *self.code::<u16>();
         let precision = *self.get_stack::<i32>();
         let width = *self.get_stack::<i32>();
@@ -602,7 +673,7 @@ impl State {
         external::format_single(s, val, width, precision);
     }
 
-    pub fn format_ref_single(&mut self) {
+    pub fn format_stack_single(&mut self) {
         let pos = *self.code::<u16>();
         let precision = *self.get_stack::<i32>();
         let width = *self.get_stack::<i32>();
@@ -621,7 +692,7 @@ impl State {
         external::format_text(s, val.str(), width, dir, token);
     }
 
-    pub fn format_ref_text(&mut self) {
+    pub fn format_stack_text(&mut self) {
         let pos = *self.code::<u16>();
         let dir = *self.code::<i8>();
         let token = *self.code::<u8>();
@@ -639,7 +710,7 @@ impl State {
     pub fn format_database(&mut self) {
         let pos = *self.code::<u16>();
         let db_tp = *self.code::<u16>();
-        let pretty = *self.code::<bool>();
+        let format = *self.code::<u8>();
         let val = *self.get_stack::<DbRef>();
         let mut s = String::new();
         ShowDb {
@@ -648,16 +719,16 @@ impl State {
             rec: val.rec,
             pos: val.pos,
             known_type: db_tp,
-            pretty,
+            pretty: format & 1 > 0,
         }
         .write(&mut s, 0);
         self.string_mut(pos - size_ref() as u16).push_str(&s);
     }
 
-    pub fn format_ref_database(&mut self) {
+    pub fn format_stack_database(&mut self) {
         let pos = *self.code::<u16>();
         let db_tp = *self.code::<u16>();
-        let pretty = *self.code::<bool>();
+        let format = *self.code::<u8>();
         let val = *self.get_stack::<DbRef>();
         let mut s = String::new();
         ShowDb {
@@ -666,7 +737,7 @@ impl State {
             rec: val.rec,
             pos: val.pos,
             known_type: db_tp,
-            pretty,
+            pretty: format & 1 > 0,
         }
         .write(&mut s, 0);
         self.string_ref_mut(pos - size_ref() as u16).push_str(&s);
@@ -831,20 +902,23 @@ impl State {
         let on = *self.code::<u8>();
         let arg = *self.code::<u16>();
         let cur = *self.get_var::<u32>(state_var);
-        let mut finish = *self.get_var::<u32>(state_var - 4);
+        let finish = *self.get_var::<u32>(state_var - 4);
         let reverse = on & 64 != 0;
         let data = *self.get_stack::<DbRef>();
-        if data.rec == 0 {
-            finish = u32::MAX;
-        }
         let store = keys::store(&data, &self.database.allocations);
-        let cur = if finish == u32::MAX {
+        let cur = if data.rec == 0 || finish == u32::MAX {
             new_ref(&data, 0, 0)
         } else {
             match on & 63 {
                 1 => {
                     let rec = new_ref(&data, cur, arg);
-                    let n = if reverse {
+                    let n = if cur == 0 {
+                        if reverse {
+                            tree::last(&data, arg, &self.database.allocations).rec
+                        } else {
+                            tree::first(&data, arg, &self.database.allocations).rec
+                        }
+                    } else if reverse {
                         tree::previous(store, &rec)
                     } else {
                         tree::next(store, &rec)
@@ -1442,7 +1516,7 @@ impl State {
                     if dep.is_empty() {
                         stack.add_op("OpConvRefFromNull", self);
                     } else {
-                        stack.add_op("OpCreateRef", self);
+                        stack.add_op("OpCreateStack", self);
                         self.code_add(dep[0]);
                     }
                 }
@@ -1468,7 +1542,7 @@ impl State {
                         self.code_add(0);
                         stack.add_op("OpSetInt", self);
                         self.code_add(4u16);
-                        stack.add_op("OpCreateRef", self);
+                        stack.add_op("OpCreateStack", self);
                         self.code_add(size_of::<DbRef>() as u16);
                         stack.add_op("OpConstInt", self);
                         self.code_add(12);
@@ -1476,7 +1550,7 @@ impl State {
                         self.code_add(4u16);
                         self.code_add(0u16);
                     } else {
-                        stack.add_op("OpCreateRef", self);
+                        stack.add_op("OpCreateStack", self);
                         self.code_add(dep[0]);
                     }
                 }
@@ -1614,7 +1688,7 @@ impl State {
             | "OpCastEnumFromText" | "OpGetField" => {
                 self.types.insert(code, last);
             }
-            "OpGetVector" | "OpInsertVector" | "OpAppendVector" => {
+            "OpGetVector" | "OpVectorRef" | "OpInsertVector" | "OpAppendVector" => {
                 if let Type::Vector(v, _) = &tps[0] {
                     self.types
                         .insert(code, stack.data.def(stack.data.type_def_nr(v)).known_type);
@@ -1723,9 +1797,9 @@ impl State {
                 Type::Single => stack.add_op("OpGetSingle", self),
                 Type::Float => stack.add_op("OpGetFloat", self),
                 Type::Enum(_, false, _) => stack.add_op("OpGetByte", self),
-                Type::Text(_) => stack.add_op("OpGetRefText", self),
+                Type::Text(_) => stack.add_op("OpGetStackText", self),
                 Type::Vector(_, _) | Type::Reference(_, _) | Type::Enum(_, true, _) => {
-                    stack.add_op("OpGetDbRef", self);
+                    stack.add_op("OpGetStackRef", self);
                 }
                 _ => panic!("Unknown referenced variable type: {tp}"),
             }
@@ -1890,7 +1964,7 @@ impl State {
                 }
                 self.generate(value, stack, false);
                 let var_pos = stack.position - stack.function.stack(var);
-                stack.add_op("OpAppendRefText", self);
+                stack.add_op("OpAppendStackText", self);
                 self.code_add(var_pos);
                 return;
             }
@@ -1906,7 +1980,7 @@ impl State {
                 Type::Float => stack.add_op("OpSetFloat", self),
                 Type::Enum(_, false, _) => stack.add_op("OpSetByte", self),
                 Type::Vector(_, _) | Type::Reference(_, _) | Type::Enum(_, true, _) => {
-                    stack.add_op("OpSetDbRef", self);
+                    stack.add_op("OpSetStackRef", self);
                 }
                 _ => panic!("Unknown reference variable type"),
             }

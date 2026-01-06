@@ -1,15 +1,15 @@
 fn n_main() {#block(1):void
-  [2] if OpNot(OpGtInt(3i32, OpAddInt(2i32, 4i32))) null else OpPanic("Boolean test");
+  [2] if OpNot(OpLtInt(OpAddInt(2i32, 4i32), 3i32)) null else OpPanic("Boolean test");
   [3] if OpEqText(OpCastTextFromBool(true), "true") null else OpPanic("Convert boolean");
 }#block(1):void
 
 byte-code for tests/suite/04-boolean.lav:n_main()
    0[0]: return-address
-   0[4]: [2] ConstInt(val=3) -> integer
-   5[8]: ConstInt(val=2) -> integer
-  10[12]: ConstInt(val=4) -> integer
-  15[16]: AddInt(v1: integer, v2: integer) -> integer
-  16[12]: GtInt(v1: integer, v2: integer) -> boolean
+   0[4]: [2] ConstInt(val=2) -> integer
+   5[8]: ConstInt(val=4) -> integer
+  10[12]: AddInt(v1: integer, v2: integer) -> integer
+  11[8]: ConstInt(val=3) -> integer
+  16[12]: LtInt(v1: integer, v2: integer) -> boolean
   17[5]: Not(v1: boolean) -> boolean
   18[5]: GotoFalseWord(jump=24, if_false: boolean)
   21[4]: GotoWord(jump=39)

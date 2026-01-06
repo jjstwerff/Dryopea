@@ -28,27 +28,56 @@ mod vector;
 use crate::state::State;
 use std::env;
 
-fn main() -> std::io::Result<()> {
+fn main() {
     let mut args = env::args_os();
     args.next();
+    let mut file_name = String::new();
+    let mut dir = project_dir();
+    while let Some(arg) = args.next() {
+        let a = arg.to_str().unwrap();
+        if a == "--version" {
+            println!("lavition {}", env!("CARGO_PKG_VERSION"));
+            return;
+        } else if a == "--path" {
+            dir = args.next().unwrap().to_str().unwrap().to_string();
+        } else if a == "--help" || a == "-h" || a == "-?" {
+            println!("usage: lavition [option] [file]");
+            println!("Options:");
+            println!("--version       : print version information");
+            println!("-h, --help, -?  : print this help message");
+            println!("--path [DIR]    : set a specific project directory");
+            return;
+        } else if a.starts_with('-') {
+            println!("unknown option: {a}");
+            println!("usage: lavition [option] [file]");
+            println!("Try `lavition --help` for more information.");
+            return;
+        } else if file_name.is_empty() {
+            file_name = a.to_string();
+        } else {
+            // TODO allow arguments to be passed to the program
+            println!("Duplicate file name: {a}");
+            return;
+        }
+    }
     let mut p = parser::Parser::new();
-    let dir = project_dir();
-    p.parse_dir(&(dir + "default"), true)?;
-    if let Some(file_name) = args.next() {
-        p.parse(file_name.to_str().unwrap(), false);
+    p.parse_dir(&(dir + "default"), true, false).unwrap();
+    if file_name.is_empty() {
+        println!("lavition: no input file specified.");
+        println!("usage: lavition [option] [file]");
+        return;
     }
-    for l in p.diagnostics.lines() {
-        println!("{l}");
-    }
+    p.parse(&file_name, false);
     if !p.diagnostics.is_empty() {
-        return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
+        for l in p.diagnostics.lines() {
+            println!("{l}");
+        }
+        return;
     }
     scopes::check(&mut p.data);
     let mut state = State::new(p.database);
     interpreter::byte_code(&mut state, &mut p.data);
     state.execute("main", &p.data);
-    Ok(())
-    //state.execute_log(&mut w, "main", &p.data)
 }
 
 fn project_dir() -> String {
@@ -64,6 +93,9 @@ fn project_dir() -> String {
     };
     if dir.ends_with("target/release/") {
         dir = &dir[..dir.len() - 15];
+    }
+    if dir.ends_with("target/debug/") {
+        dir = &dir[..dir.len() - 13];
     }
     dir.to_string()
 }

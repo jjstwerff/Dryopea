@@ -5,15 +5,15 @@ pub fn test() {
         "Test failed {test_value} != 18120.00000001001"
     );
 }
-Type 17:main_vector<float>[4/4]:
+Type 18:main_vector<float>[4/4]:
     vector:vector<float>[0]
 
-Type 18:vector<float>[4/4]:Vector(3)
+Type 19:vector<float>[4/4]:Vector(3)
 
 fn n_test() {#block(1):void
   __work_1(1):text = "";
   [2] test_value(1):float = {#block(2):float
-    a(2):vector<float> = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 18i32);
+    a(2):vector<float> = OpCastVectorFromText("[ 1.2, -10.3, 1.812e4, 1.001e-8 ]", 19i32);
     OpAddFloat(OpGetFloat(OpGetVector(a(2), 8i32, 2i32), 0i32), OpGetFloat(OpGetVector(a(2), 8i32, 3i32), 0i32));
     OpFreeRef(a(2));
   }#block(2):float;
@@ -30,17 +30,17 @@ byte-code for parse_vector:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text var=a[28]:vector<float>
-  36[44]: CastVectorFromText(val: text, db_tp=18) -> vector
-  39[40]: VarVector(var[28]) -> vector type=vector<float> 18 var=a[28]:vector<float>
+  36[44]: CastVectorFromText(val: text, db_tp=19) -> vector
+  39[40]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
   42[52]: ConstInt(val=2) -> integer
   47[56]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float 3
   50[52]: GetFloat(v1: ref(reference), fld=0) -> float
-  53[48]: VarVector(var[28]) -> vector type=vector<float> 18 var=a[28]:vector<float>
+  53[48]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
   56[60]: ConstInt(val=3) -> integer
   61[64]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float 3
   64[60]: GetFloat(v1: ref(reference), fld=0) -> float
   67[56]: AddFloat(v1: float, v2: float) -> float
-  68[48]: VarVector(var[28]) -> vector type=vector<float> 18 var=a[28]:vector<float>
+  68[48]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
   71[60]: FreeRef(v1: ref(reference))
   72[48]: FreeStack(value=8, discard=20)
   76[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
@@ -65,7 +65,7 @@ byte-code for parse_vector:n_test()
 Execute test:
     0:[8] [2] Text()
     1:[32] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> "[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32]
-   36:[48] CastVectorFromText(val="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32], db_tp=18) -> ref(1,1,8)[32]
+   36:[48] CastVectorFromText(val="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32], db_tp=19) -> ref(1,1,8)[32]
    39:[44] VarVector(var[32]) -> ref(1,1,8)=[1.2,-10.3,18120,0.00000001001][44]
    42:[56] ConstInt(val=2) -> 2[56]
    47:[60] GetVector(r=ref(1,1,8)[44], size=8, index=2[56]) -> ref(1,9,24)=18120[44]

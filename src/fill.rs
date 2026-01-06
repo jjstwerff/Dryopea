@@ -6,7 +6,7 @@ use crate::keys::{DbRef, Str};
 use crate::state::State;
 use crate::vector;
 
-pub const OPERATORS: &[fn(&mut State)] = &[
+pub const OPERATORS: &[fn(&mut State); 247] = &[
     goto,
     goto_word,
     goto_false,
@@ -54,8 +54,6 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     ne_int,
     lt_int,
     le_int,
-    gt_int,
-    ge_int,
     const_long,
     var_long,
     put_long,
@@ -79,10 +77,8 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     ne_long,
     lt_long,
     le_long,
-    gt_long,
-    ge_long,
     format_long,
-    format_ref_long,
+    format_stack_long,
     const_single,
     var_single,
     put_single,
@@ -115,10 +111,8 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     ne_single,
     lt_single,
     le_single,
-    gt_single,
-    ge_single,
     format_single,
-    format_ref_single,
+    format_stack_single,
     const_float,
     var_float,
     put_float,
@@ -153,10 +147,8 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     ne_float,
     lt_float,
     le_float,
-    gt_float,
-    ge_float,
     format_float,
-    format_ref_float,
+    format_stack_float,
     var_text,
     arg_text,
     const_text,
@@ -175,10 +167,8 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     ne_text,
     lt_text,
     le_text,
-    gt_text,
-    ge_text,
     format_text,
-    format_ref_text,
+    format_stack_text,
     append_character,
     text_compare,
     cast_character_from_int,
@@ -194,7 +184,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     conv_enum_from_null,
     database,
     format_database,
-    format_ref_database,
+    format_stack_database,
     conv_bool_from_ref,
     conv_ref_from_null,
     free_ref,
@@ -227,6 +217,7 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     length_vector,
     clear_vector,
     get_vector,
+    vector_ref,
     cast_vector_from_text,
     remove_vector,
     insert_vector,
@@ -249,17 +240,20 @@ pub const OPERATORS: &[fn(&mut State)] = &[
     append_copy,
     copy_record,
     static_call,
-    create_ref,
-    get_ref_text,
-    get_db_ref,
-    set_db_ref,
-    append_ref_text,
-    append_ref_character,
-    clear_ref_text,
+    create_stack,
+    get_stack_text,
+    get_stack_ref,
+    set_stack_ref,
+    append_stack_text,
+    append_stack_character,
+    clear_stack_text,
     get_file,
     get_dir,
     get_png_image,
     get_file_text,
+    write_file,
+    read_file,
+    seek_file,
 ];
 
 fn goto(s: &mut State) {
@@ -557,20 +551,6 @@ fn le_int(s: &mut State) {
     s.put_stack(new_value);
 }
 
-fn gt_int(s: &mut State) {
-    let v_v2 = *s.get_stack::<i32>();
-    let v_v1 = *s.get_stack::<i32>();
-    let new_value = v_v1 > v_v2;
-    s.put_stack(new_value);
-}
-
-fn ge_int(s: &mut State) {
-    let v_v2 = *s.get_stack::<i32>();
-    let v_v1 = *s.get_stack::<i32>();
-    let new_value = v_v1 >= v_v2;
-    s.put_stack(new_value);
-}
-
 fn const_long(s: &mut State) {
     let v_val = *s.code::<i64>();
     let new_value = v_val;
@@ -722,26 +702,12 @@ fn le_long(s: &mut State) {
     s.put_stack(new_value);
 }
 
-fn gt_long(s: &mut State) {
-    let v_v2 = *s.get_stack::<i64>();
-    let v_v1 = *s.get_stack::<i64>();
-    let new_value = v_v1 > v_v2;
-    s.put_stack(new_value);
-}
-
-fn ge_long(s: &mut State) {
-    let v_v2 = *s.get_stack::<i64>();
-    let v_v1 = *s.get_stack::<i64>();
-    let new_value = v_v1 >= v_v2;
-    s.put_stack(new_value);
-}
-
 fn format_long(s: &mut State) {
     s.format_long();
 }
 
-fn format_ref_long(s: &mut State) {
-    s.format_ref_long();
+fn format_stack_long(s: &mut State) {
+    s.format_stack_long();
 }
 
 fn const_single(s: &mut State) {
@@ -947,26 +913,12 @@ fn le_single(s: &mut State) {
     s.put_stack(new_value);
 }
 
-fn gt_single(s: &mut State) {
-    let v_v2 = *s.get_stack::<f32>();
-    let v_v1 = *s.get_stack::<f32>();
-    let new_value = v_v1 > v_v2;
-    s.put_stack(new_value);
-}
-
-fn ge_single(s: &mut State) {
-    let v_v2 = *s.get_stack::<f32>();
-    let v_v1 = *s.get_stack::<f32>();
-    let new_value = v_v1 >= v_v2;
-    s.put_stack(new_value);
-}
-
 fn format_single(s: &mut State) {
     s.format_single();
 }
 
-fn format_ref_single(s: &mut State) {
-    s.format_ref_single();
+fn format_stack_single(s: &mut State) {
+    s.format_stack_single();
 }
 
 fn const_float(s: &mut State) {
@@ -1182,26 +1134,12 @@ fn le_float(s: &mut State) {
     s.put_stack(new_value);
 }
 
-fn gt_float(s: &mut State) {
-    let v_v2 = *s.get_stack::<f64>();
-    let v_v1 = *s.get_stack::<f64>();
-    let new_value = v_v1 > v_v2;
-    s.put_stack(new_value);
-}
-
-fn ge_float(s: &mut State) {
-    let v_v2 = *s.get_stack::<f64>();
-    let v_v1 = *s.get_stack::<f64>();
-    let new_value = v_v1 >= v_v2;
-    s.put_stack(new_value);
-}
-
 fn format_float(s: &mut State) {
     s.format_float();
 }
 
-fn format_ref_float(s: &mut State) {
-    s.format_ref_float();
+fn format_stack_float(s: &mut State) {
+    s.format_stack_float();
 }
 
 fn var_text(s: &mut State) {
@@ -1294,26 +1232,12 @@ fn le_text(s: &mut State) {
     s.put_stack(new_value);
 }
 
-fn gt_text(s: &mut State) {
-    let v_v2 = s.string();
-    let v_v1 = s.string();
-    let new_value = v_v1.str() > v_v2.str();
-    s.put_stack(new_value);
-}
-
-fn ge_text(s: &mut State) {
-    let v_v2 = s.string();
-    let v_v1 = s.string();
-    let new_value = v_v1.str() >= v_v2.str();
-    s.put_stack(new_value);
-}
-
 fn format_text(s: &mut State) {
     s.format_text();
 }
 
-fn format_ref_text(s: &mut State) {
-    s.format_ref_text();
+fn format_stack_text(s: &mut State) {
+    s.format_stack_text();
 }
 
 fn append_character(s: &mut State) {
@@ -1407,8 +1331,8 @@ fn format_database(s: &mut State) {
     s.format_database();
 }
 
-fn format_ref_database(s: &mut State) {
-    s.format_ref_database();
+fn format_stack_database(s: &mut State) {
+    s.format_stack_database();
 }
 
 fn conv_bool_from_ref(s: &mut State) {
@@ -1748,6 +1672,16 @@ fn get_vector(s: &mut State) {
     s.put_stack(new_value);
 }
 
+fn vector_ref(s: &mut State) {
+    let v_index = *s.get_stack::<i32>();
+    let v_r = *s.get_stack::<DbRef>();
+    let new_value = s.database.get_ref(
+        &vector::get_vector(&v_r, 4, v_index, &s.database.allocations),
+        0,
+    );
+    s.put_stack(new_value);
+}
+
 fn cast_vector_from_text(s: &mut State) {
     let v_db_tp = *s.code::<u16>();
     let v_val = s.string();
@@ -1859,32 +1793,32 @@ fn static_call(s: &mut State) {
     s.static_call();
 }
 
-fn create_ref(s: &mut State) {
-    s.create_ref();
+fn create_stack(s: &mut State) {
+    s.create_stack();
 }
 
-fn get_ref_text(s: &mut State) {
-    s.get_ref_text();
+fn get_stack_text(s: &mut State) {
+    s.get_stack_text();
 }
 
-fn get_db_ref(s: &mut State) {
-    s.get_db_ref();
+fn get_stack_ref(s: &mut State) {
+    s.get_stack_ref();
 }
 
-fn set_db_ref(s: &mut State) {
-    s.set_db_ref();
+fn set_stack_ref(s: &mut State) {
+    s.set_stack_ref();
 }
 
-fn append_ref_text(s: &mut State) {
-    s.append_ref_text();
+fn append_stack_text(s: &mut State) {
+    s.append_stack_text();
 }
 
-fn append_ref_character(s: &mut State) {
-    s.append_ref_character();
+fn append_stack_character(s: &mut State) {
+    s.append_stack_character();
 }
 
-fn clear_ref_text(s: &mut State) {
-    s.clear_ref_text();
+fn clear_stack_text(s: &mut State) {
+    s.clear_stack_text();
 }
 
 fn get_file(s: &mut State) {
@@ -1909,4 +1843,16 @@ fn get_png_image(s: &mut State) {
 
 fn get_file_text(s: &mut State) {
     s.get_file_text();
+}
+
+fn write_file(s: &mut State) {
+    s.write_file();
+}
+
+fn read_file(s: &mut State) {
+    s.read_file();
+}
+
+fn seek_file(s: &mut State) {
+    s.seek_file();
 }

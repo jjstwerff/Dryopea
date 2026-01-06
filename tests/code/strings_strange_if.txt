@@ -15,7 +15,7 @@ pub fn test() {
 }
 fn n_build(t:&text) -> text["t"] {#block(1):text["t"]
   [3] t(0):&text = "abcde";
-  [4] if OpGtInt(t_4text_len(t(0)), 3i32) {#block(2):text["t"]
+  [4] if OpLtInt(3i32, t_4text_len(t(0))) {#block(2):text["t"]
     [5] t(0);
   }#block(2):text["t"] else {#else(3):text["t"]
     OpConvTextFromNull();
@@ -25,15 +25,15 @@ fn n_build(t:&text) -> text["t"] {#block(1):text["t"]
 byte-code for strange_if:n_build(t: &text[0]) -> text["t"]
    0[12]: return-address
    0[16]: [3] ConstText(_value="abcde") -> text var=t[0]:&text
-   7[32]: AppendRefText(var[0], v1: text)
-  10[16]: [4] VarRef(var[0]) -> ref(reference) var=t[0]:&text
-  13[28]: GetRefText(r: ref(reference)) -> text["t"]
-  14[32]: Call(size=0, fn=t_4text_len)
-  21[20]: ConstInt(val=3) -> integer
-  26[24]: GtInt(v1: integer, v2: integer) -> boolean
+   7[32]: AppendStackText(var[0], v1: text)
+  10[16]: [4] ConstInt(val=3) -> integer
+  15[20]: VarRef(var[0]) -> ref(reference) var=t[0]:&text
+  18[32]: GetStackText(r: ref(reference)) -> text["t"]
+  19[36]: Call(size=0, fn=t_4text_len)
+  26[24]: LtInt(v1: integer, v2: integer) -> boolean
   27[17]: GotoFalseWord(jump=37, if_false: boolean)
   30[16]: [5] VarRef(var[0]) -> ref(reference) var=t[0]:&text
-  33[28]: GetRefText(r: ref(reference)) -> text["t"]
+  33[28]: GetStackText(r: ref(reference)) -> text["t"]
   34[32]: GotoWord(jump=38)
   37[16]: ConvTextFromNull() -> text
   38[32]: Return(ret=12, value=16, discard=32) type=text 5
@@ -43,7 +43,7 @@ fn n_test() {#block(1):void
   __work_1(1):text = "";
   [10] test_value(1):text = {#block(2):text
     n_build({#default ref(3):ref(reference)["__work_1"]
-      OpCreateRef(__work_1(1));
+      OpCreateStack(__work_1(1));
     }#default ref(3):ref(reference)["__work_1"]);
   }#block(2):text;
   [11] if OpEqText(test_value(1), "abcde") null else OpPanic({#Formatted string(4):text["__work_2"]
@@ -62,7 +62,7 @@ byte-code for strange_if:n_test()
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
    2[52]: [10] Text() var=test_value[52]:text
-   3[76]: CreateRef(var[28]) -> ref(reference)
+   3[76]: CreateStack(var[28]) -> ref(reference)
    6[88]: Call(size=0, fn=n_build)
   13[92]: AppendText(var[52], v1: text)
   16[76]: [11] VarText(var[52]) -> text var=test_value[52]:text
@@ -89,23 +89,23 @@ Execute test:
     0:[8] Text()
     1:[32] [10] Text()
     2:[56] Text()
-    3:[80] CreateRef(var[32]) -> ref(0,1,40)[80]
+    3:[80] CreateStack(var[32]) -> ref(0,1,40)[80]
     6:[92] Call(size=0, fn=n_build)
- 1113:[96] ConstText(_value="abcde") -> "abcde"[96]
- 1120:[112] AppendRefText(var[80], v1="abcde"[96])
- 1123:[96] VarRef(var[80]) -> ref(0,1,40)[96]
- 1126:[108] GetRefText(r=ref(0,1,40)[96]) -> "abcde"[96]
- 1127:[112] Call(size=0, fn=t_4text_len)
-  318:[116] ArgText(var[96]) -> "abcde"[116]
-  321:[132] LengthText(v1="abcde"[116]) -> 5[116]
-  322:[120] Return(ret=1134[112], value=4, discard=24) -> 5[96]
- 1134:[100] ConstInt(val=3) -> 3[100]
- 1139:[104] GtInt(v1=5[96], v2=3[100]) -> true[96]
- 1140:[97] GotoFalseWord(jump=1150, if_false=true[96])
- 1143:[96] VarRef(var[80]) -> ref(0,1,40)[96]
- 1146:[108] GetRefText(r=ref(0,1,40)[96]) -> "abcde"[96]
- 1147:[112] GotoWord(jump=1151)
- 1151:[112] Return(ret=1170[92], value=16, discard=32) -> "abcde"[80]
+ 1839:[96] ConstText(_value="abcde") -> "abcde"[96]
+ 1846:[112] AppendStackText(var[80], v1="abcde"[96])
+ 1849:[96] ConstInt(val=3) -> 3[96]
+ 1854:[100] VarRef(var[80]) -> ref(0,1,40)[100]
+ 1857:[112] GetStackText(r=ref(0,1,40)[100]) -> "abcde"[100]
+ 1858:[116] Call(size=0, fn=t_4text_len)
+  318:[120] ArgText(var[100]) -> "abcde"[120]
+  321:[136] LengthText(v1="abcde"[120]) -> 5[120]
+  322:[124] Return(ret=1865[116], value=4, discard=24) -> 5[100]
+ 1865:[104] LtInt(v1=3[96], v2=5[100]) -> true[96]
+ 1866:[97] GotoFalseWord(jump=1876, if_false=true[96])
+ 1869:[96] VarRef(var[80]) -> ref(0,1,40)[96]
+ 1872:[108] GetStackText(r=ref(0,1,40)[96]) -> "abcde"[96]
+ 1873:[112] GotoWord(jump=1877)
+ 1877:[112] Return(ret=1896[92], value=16, discard=32) -> "abcde"[80]
    13:[96] AppendText(var[56], v1="abcde"[80])
    16:[80] VarText(var[56]) -> "abcde"[80]
    19:[96] ConstText(_value="abcde") -> "abcde"[96]

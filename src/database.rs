@@ -411,6 +411,102 @@ impl Stores {
         res
     }
 
+    pub fn read_data(&self, r: &DbRef, tp: u16, little_endian: bool, data: &mut Vec<u8>) {
+        let store = &self.allocations[r.store_nr as usize];
+        match tp {
+            0 | 6 => {
+                // integer | character
+                let v = store.get_int(r.rec, r.pos);
+                (if little_endian {
+                    v.to_le_bytes()
+                } else {
+                    v.to_be_bytes()
+                })
+                .iter()
+                .for_each(|&x| data.push(x));
+            }
+            1 => {
+                // long
+                let v = store.get_long(r.rec, r.pos);
+                (if little_endian {
+                    v.to_le_bytes()
+                } else {
+                    v.to_be_bytes()
+                })
+                .iter()
+                .for_each(|&x| data.push(x));
+            }
+            2 => {
+                // single
+                let v = store.get_single(r.rec, r.pos);
+                (if little_endian {
+                    v.to_le_bytes()
+                } else {
+                    v.to_be_bytes()
+                })
+                .iter()
+                .for_each(|&x| data.push(x));
+            }
+            3 => {
+                // float
+                let v = store.get_float(r.rec, r.pos);
+                (if little_endian {
+                    v.to_le_bytes()
+                } else {
+                    v.to_be_bytes()
+                })
+                .iter()
+                .for_each(|&x| data.push(x));
+            }
+            4 => {
+                // boolean
+                let v = store.get_byte(r.rec, r.pos, 0) as u8;
+                data.push(v);
+            }
+            5 => {
+                // text
+                let v = store.get_str(store.get_int(r.rec, r.pos) as u32);
+                v.as_bytes().iter().for_each(|&x| data.push(x));
+            }
+            _ => match self.types[tp as usize].parts.clone() {
+                Parts::Struct(s) | Parts::EnumValue(_, s) => {
+                    for f in s {
+                        self.read_data(r, f.content, little_endian, data);
+                    }
+                }
+                Parts::Enum(_) => {
+                    data.push(store.get_byte(r.rec, r.pos, 0) as u8);
+                }
+                Parts::Byte(min, _) => {
+                    let v = store.get_byte(r.rec, r.pos, min);
+                    (if little_endian {
+                        v.to_le_bytes()
+                    } else {
+                        v.to_be_bytes()
+                    })
+                    .iter()
+                    .for_each(|&x| data.push(x));
+                }
+                Parts::Short(min, _) => {
+                    let v = store.get_short(r.rec, r.pos, min);
+                    (if little_endian {
+                        v.to_le_bytes()
+                    } else {
+                        v.to_be_bytes()
+                    })
+                    .iter()
+                    .for_each(|&x| data.push(x));
+                }
+                _ => panic!(
+                    "Not implemented type for file writing {}",
+                    self.types[tp as usize].name
+                ),
+            },
+        }
+    }
+
+    pub fn write_data(&mut self, _r: &DbRef, _db_tp: u16, _data: &[u8]) {}
+
     fn show_fields(&self, pretty: bool, res: &mut String, v: &[Field]) {
         if pretty {
             *res += "\n";
@@ -1901,6 +1997,13 @@ impl Stores {
 
     #[must_use]
     pub fn get_ref(&self, db: &DbRef, fld: u32) -> DbRef {
+        if db.rec == 0 {
+            return DbRef {
+                store_nr: db.store_nr,
+                rec: 0,
+                pos: 0,
+            };
+        }
         let store = self.store(db);
         let res = store.get_int(db.rec, db.pos + fld) as u32;
         DbRef {
@@ -2468,14 +2571,25 @@ impl Stores {
                     u16::MAX
                 };
                 let rec = tree::find(data, true, left, &self.allocations, self.keys(db), key);
-                let result = DbRef {
+                let mut result = DbRef {
                     store_nr: data.store_nr,
                     rec,
                     pos: 8,
                 };
-                if keys::key_compare(key, &result, &self.allocations, self.keys(db))
-                    == Ordering::Equal
-                {
+                result.rec = if rec == 0 {
+                    tree::first(data, left, &self.allocations).rec
+                } else {
+                    tree::next(
+                        keys::store(&result, &self.allocations),
+                        &DbRef {
+                            store_nr: result.store_nr,
+                            rec,
+                            pos: u32::from(left),
+                        },
+                    )
+                };
+                let cmp = keys::key_compare(key, &result, &self.allocations, self.keys(db));
+                if cmp == Ordering::Equal {
                     result
                 } else {
                     DbRef {
@@ -3029,12 +3143,26 @@ fn match_text(text: &str, pos: &mut usize, value: &mut String) -> bool {
     }
 }
 
+enum Format {
+    Unknown,
+    Text,
+    LittleEndian,
+    BigEndian,
+    Directory,
+}
+
 fn fill_file(path: &std::path::Path, store: &mut Store, file: &DbRef) -> bool {
     if let Ok(data) = path.metadata() {
         store.set_long(file.rec, file.pos, data.len() as i64); // write size
-        store.set_byte(file.rec, file.pos + 16, 0, i32::from(data.is_dir()));
+        let tp = if data.is_dir() {
+            Format::Directory
+        } else {
+            Format::Text
+        };
+        store.set_byte(file.rec, file.pos + 16, 0, tp as i32);
         true
     } else {
+        store.set_byte(file.rec, file.pos + 16, 0, Format::Unknown as i32);
         false
     }
 }

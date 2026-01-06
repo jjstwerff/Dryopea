@@ -8,7 +8,7 @@ pub fn test() {
         "Test failed {test_value} != \"{{a:12,bb:\"hi!\",ccc:false}} pretty {{ a: 12, bb: \"hi!\", ccc: false }}\""
     );
 }
-Type 17:Object[9/4]:
+Type 18:Object[9/4]:
     a:integer[0]
     bb:text[4]
     ccc:boolean[8]
@@ -16,7 +16,7 @@ Type 17:Object[9/4]:
 fn n_obj() -> Object {#block(1):ref(Object)
   __ref_1(1):ref(Object) = null;
   [2] {#Object(2):ref(Object)["__ref_1"]
-    OpDatabase(__ref_1(1), 17i32);
+    OpDatabase(__ref_1(1), 18i32);
     OpSetInt(__ref_1(1), 0i32, 12i32);
     OpSetText(__ref_1(1), 4i32, "hi");
     OpSetByte(__ref_1(1), 8i32, 0i32, if false 1i32 else 0i32);
@@ -27,22 +27,22 @@ fn n_obj() -> Object {#block(1):ref(Object)
 byte-code for print_object:n_obj() -> ref(Object)
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Object)
-   1[16]: [2] Database(var[4], db_tp=17) type=Object 17
-   6[16]: VarRef(var[4]) -> ref(reference) type=Object 17 var=__ref_1[4]:ref(Object)
+   1[16]: [2] Database(var[4], db_tp=18) type=Object 18
+   6[16]: VarRef(var[4]) -> ref(reference) type=Object 18 var=__ref_1[4]:ref(Object)
    9[28]: ConstInt(val=12) -> integer
   14[32]: SetInt(v1: ref(reference), fld=0, val: integer)
-  17[16]: VarRef(var[4]) -> ref(reference) type=Object 17 var=__ref_1[4]:ref(Object)
+  17[16]: VarRef(var[4]) -> ref(reference) type=Object 18 var=__ref_1[4]:ref(Object)
   20[28]: ConstText(_value="hi") -> text
   24[44]: SetText(v1: ref(reference), fld=4, val: text)
-  27[16]: VarRef(var[4]) -> ref(reference) type=Object 17 var=__ref_1[4]:ref(Object)
+  27[16]: VarRef(var[4]) -> ref(reference) type=Object 18 var=__ref_1[4]:ref(Object)
   30[28]: ConstFalse() -> boolean
   31[29]: GotoFalseWord(jump=42, if_false: boolean)
   34[28]: ConstInt(val=1) -> integer
   39[32]: GotoWord(jump=47)
   42[28]: ConstInt(val=0) -> integer
   47[32]: SetByte(v1: ref(reference), fld=8, min=0, val: integer)
-  52[16]: VarRef(var[4]) -> ref(reference) type=Object 17 var=__ref_1[4]:ref(Object)
-  55[28]: Return(ret=0, value=12, discard=28) type=Object 17
+  52[16]: VarRef(var[4]) -> ref(reference) type=Object 18 var=__ref_1[4]:ref(Object)
+  55[28]: Return(ret=0, value=12, discard=28) type=Object 18
 
 fn n_test() {#block(1):void
   __work_2(1):text = "";
@@ -54,9 +54,9 @@ fn n_test() {#block(1):void
     OpSetText(o(2), 4i32, _field_1(2));
     {#Formatted string(3):text["__work_1"]
       __work_1(1):text = "";
-      OpFormatDatabase(__work_1(1), o(2), 17i32, false);
+      OpFormatDatabase(__work_1(1), o(2), 18i32, 0i32);
       OpAppendText(__work_1(1), " pretty ");
-      OpFormatDatabase(__work_1(1), o(2), 17i32, true);
+      OpFormatDatabase(__work_1(1), o(2), 18i32, 1i32);
       OpFreeRef(o(2));
       OpFreeText(_field_1(2));
       __work_1(1);
@@ -80,23 +80,23 @@ byte-code for print_object:n_test()
    2[52]: [5] Text() var=test_value[52]:text["__work_1"]
    3[76]: Call(size=0, fn=n_obj) var=o[76]:ref(Object)
   10[88]: Text() var=_field_1[88]:text
-  11[112]: VarRef(var[76]) -> ref(reference) type=Object 17 var=o[76]:ref(Object)
+  11[112]: VarRef(var[76]) -> ref(reference) type=Object 18 var=o[76]:ref(Object)
   14[124]: GetText(v1: ref(reference), fld=4) -> text["test_value"]
   17[128]: AppendText(var[88], v1: text)
   20[112]: ConstInt(val=33) -> integer
   25[116]: AppendCharacter(var[88], v1: character)
-  28[112]: VarRef(var[76]) -> ref(reference) type=Object 17 var=o[76]:ref(Object)
+  28[112]: VarRef(var[76]) -> ref(reference) type=Object 18 var=o[76]:ref(Object)
   31[124]: VarText(var[88]) -> text var=_field_1[88]:text
   34[140]: SetText(v1: ref(reference), fld=4, val: text)
   37[112]: ClearText(var[28]) var=__work_1[28]:text
   40[112]: ConstText(_value="") -> text
-  42[128]: VarRef(var[76]) -> ref(reference) type=Object 17 var=o[76]:ref(Object)
-  45[140]: FormatDatabase(var[28], val: ref(reference), db_tp=17, pretty=false)
+  42[128]: VarRef(var[76]) -> ref(reference) type=Object 18 var=o[76]:ref(Object)
+  45[140]: FormatDatabase(var[28], val: ref(reference), db_tp=18, db_format=0)
   51[128]: ConstText(_value=" pretty ") -> text
   61[144]: AppendText(var[28], v1: text)
-  64[128]: VarRef(var[76]) -> ref(reference) type=Object 17 var=o[76]:ref(Object)
-  67[140]: FormatDatabase(var[28], val: ref(reference), db_tp=17, pretty=true)
-  73[128]: VarRef(var[76]) -> ref(reference) type=Object 17 var=o[76]:ref(Object)
+  64[128]: VarRef(var[76]) -> ref(reference) type=Object 18 var=o[76]:ref(Object)
+  67[140]: FormatDatabase(var[28], val: ref(reference), db_tp=18, db_format=1)
+  73[128]: VarRef(var[76]) -> ref(reference) type=Object 18 var=o[76]:ref(Object)
   76[140]: FreeRef(v1: ref(reference))
   77[128]: FreeText(var[88])
   80[128]: VarText(var[28]) -> text var=__work_1[28]:text
@@ -128,21 +128,21 @@ Execute test:
     1:[32] [5] Text()
     2:[56] Text()
     3:[80] Call(size=0, fn=n_obj)
- 1113:[84] [2] ConvRefFromNull() -> ref(1,0,8)[84]
- 1114:[96] Database(var[84], db_tp=17)
- 1119:[96] VarRef(var[84]) -> ref(1,1,8)={ccc:false}[96]
- 1122:[108] ConstInt(val=12) -> 12[108]
- 1127:[112] SetInt(v1=ref(1,1,8)[96], fld=0, val=12[108])
- 1130:[96] VarRef(var[84]) -> ref(1,1,8)={a:12,ccc:false}[96]
- 1133:[108] ConstText(_value="hi") -> "hi"[108]
- 1137:[124] SetText(v1=ref(1,1,8)[96], fld=4, val="hi"[108])
- 1140:[96] VarRef(var[84]) -> ref(1,1,8)={a:12,bb:"hi",ccc:false}[96]
- 1143:[108] ConstFalse() -> false[108]
- 1144:[109] GotoFalseWord(jump=1155, if_false=false[108])
- 1155:[108] ConstInt(val=0) -> 0[108]
- 1160:[112] SetByte(v1=ref(1,1,8)[96], fld=8, min=0, val=0[108])
- 1165:[96] VarRef(var[84]) -> ref(1,1,8)={a:12,bb:"hi",ccc:false}[96]
- 1168:[108] Return(ret=1184[80], value=12, discard=28) -> ref(1,1,8)={a:12,bb:"hi",ccc:false}[80]
+ 1839:[84] [2] ConvRefFromNull() -> ref(1,0,8)[84]
+ 1840:[96] Database(var[84], db_tp=18)
+ 1845:[96] VarRef(var[84]) -> ref(1,1,8)={ccc:false}[96]
+ 1848:[108] ConstInt(val=12) -> 12[108]
+ 1853:[112] SetInt(v1=ref(1,1,8)[96], fld=0, val=12[108])
+ 1856:[96] VarRef(var[84]) -> ref(1,1,8)={a:12,ccc:false}[96]
+ 1859:[108] ConstText(_value="hi") -> "hi"[108]
+ 1863:[124] SetText(v1=ref(1,1,8)[96], fld=4, val="hi"[108])
+ 1866:[96] VarRef(var[84]) -> ref(1,1,8)={a:12,bb:"hi",ccc:false}[96]
+ 1869:[108] ConstFalse() -> false[108]
+ 1870:[109] GotoFalseWord(jump=1881, if_false=false[108])
+ 1881:[108] ConstInt(val=0) -> 0[108]
+ 1886:[112] SetByte(v1=ref(1,1,8)[96], fld=8, min=0, val=0[108])
+ 1891:[96] VarRef(var[84]) -> ref(1,1,8)={a:12,bb:"hi",ccc:false}[96]
+ 1894:[108] Return(ret=1910[80], value=12, discard=28) -> ref(1,1,8)={a:12,bb:"hi",ccc:false}[80]
    10:[92] Text()
    11:[116] VarRef(var[80]) -> ref(1,1,8)={a:12,bb:"hi",ccc:false}[116]
    14:[128] GetText(v1=ref(1,1,8)[116], fld=4) -> "hi"[116]
@@ -155,11 +155,11 @@ Execute test:
    37:[116] ClearText(var[32])
    40:[116] ConstText(_value="") -> ""[116]
    42:[132] VarRef(var[80]) -> ref(1,1,8)={a:12,bb:"hi!",ccc:false}[132]
-   45:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=17, pretty=false)
+   45:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=18, db_format=0)
    51:[132] ConstText(_value=" pretty ") -> " pretty "[132]
    61:[148] AppendText(var[32], v1=" pretty "[132])
    64:[132] VarRef(var[80]) -> ref(1,1,8)={a:12,bb:"hi!",ccc:false}[132]
-   67:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=17, pretty=true)
+   67:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=18, db_format=1)
    73:[132] VarRef(var[80]) -> ref(1,1,8)={a:12,bb:"hi!",ccc:false}[132]
    76:[144] FreeRef(v1=ref(1,1,8)[132])
    77:[132] FreeText(var[92])

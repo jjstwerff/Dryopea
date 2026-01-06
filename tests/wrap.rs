@@ -45,7 +45,7 @@ fn last() -> std::io::Result<()> {
 fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     println!("run {entry:?}");
     let mut p = Parser::new();
-    p.parse_dir("default", true)?;
+    p.parse_dir("default", true, debug)?;
     #[cfg(debug_assertions)]
     let types = p.database.types.len();
     let path = entry.to_string_lossy().to_string();
@@ -54,7 +54,7 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
         println!("{l}");
     }
     if !p.diagnostics.is_empty() {
-        return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
+        return Err(Error::from(std::io::ErrorKind::InvalidData));
     }
     scopes::check(&mut p.data);
     let mut state = State::new(p.database);

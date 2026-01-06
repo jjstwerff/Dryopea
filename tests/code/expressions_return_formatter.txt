@@ -11,8 +11,8 @@ fn n_format(a:integer, __work_1:&text) -> text["__work_1"] {#block(1):text["__wo
   __work_1(0):&text = "";
   [1] {#Formatted string(2):text["__work_1"]
     __work_1(0):&text = "a";
-    OpFormatRefLong(__work_1(0), OpConvLongFromInt(a(0)), 10i32, 0i32, 32i32, false, false);
-    OpAppendRefText(__work_1(0), "b");
+    OpFormatStackLong(__work_1(0), OpConvLongFromInt(a(0)), 10i32, 0i32, 32i32, false, false);
+    OpAppendStackText(__work_1(0), "b");
     __work_1(0);
   }#Formatted string(2):text["__work_1"];
 }#block(1):text["__work_1"]
@@ -20,15 +20,15 @@ fn n_format(a:integer, __work_1:&text) -> text["__work_1"] {#block(1):text["__wo
 byte-code for return_formatter:n_format(a: integer[0], __work_1: &text[4]) -> text["__work_1"]
    0[16]: return-address
    0[20]: [1] ConstText(_value="a") -> text var=__work_1[4]:&text
-   3[36]: AppendRefText(var[4], v1: text)
+   3[36]: AppendStackText(var[4], v1: text)
    6[20]: VarInt(var[0]) -> integer var=a[0]:integer
    9[24]: ConvLongFromInt(v1: integer) -> long
   10[28]: ConstInt(val=0) -> integer
-  15[32]: FormatRefLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  15[32]: FormatStackLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
   22[20]: ConstText(_value="b") -> text
-  25[36]: AppendRefText(var[4], v1: text)
+  25[36]: AppendStackText(var[4], v1: text)
   28[20]: VarRef(var[4]) -> ref(reference) var=__work_1[4]:&text
-  31[32]: GetRefText(r: ref(reference)) -> text["a"]
+  31[32]: GetStackText(r: ref(reference)) -> text["a"]
   32[36]: Return(ret=16, value=16, discard=36) type=text 5
 
 fn n_test() {#block(1):void
@@ -40,10 +40,10 @@ fn n_test() {#block(1):void
     {#Add text(3):text["__work_3"]
       OpClearText(__work_3(1));
       OpAppendText(__work_3(1), n_format(123i32, {#default ref(4):ref(reference)["__work_1"]
-        OpCreateRef(__work_1(1));
+        OpCreateStack(__work_1(1));
       }#default ref(4):ref(reference)["__work_1"]));
       OpAppendText(__work_3(1), n_format(OpConvIntFromNull(), {#default ref(5):ref(reference)["__work_2"]
-        OpCreateRef(__work_2(1));
+        OpCreateStack(__work_2(1));
       }#default ref(5):ref(reference)["__work_2"]));
       __work_3(1);
     }#Add text(3):text["__work_3"];
@@ -70,11 +70,11 @@ byte-code for return_formatter:n_test()
    4[100]: [4] Text() var=test_value[100]:text["__work_3"]
    5[124]: ClearText(var[28])
    8[124]: ConstInt(val=123) -> integer
-  13[128]: CreateRef(var[76]) -> ref(reference)
+  13[128]: CreateStack(var[76]) -> ref(reference)
   16[140]: Call(size=0, fn=n_format)
   23[140]: AppendText(var[28], v1: text)
   26[124]: ConvIntFromNull() -> integer
-  27[128]: CreateRef(var[52]) -> ref(reference)
+  27[128]: CreateStack(var[52]) -> ref(reference)
   30[140]: Call(size=0, fn=n_format)
   37[140]: AppendText(var[28], v1: text)
   40[124]: VarText(var[28]) -> text var=__work_3[28]:text
@@ -109,34 +109,34 @@ Execute test:
     4:[104] Text()
     5:[128] ClearText(var[32])
     8:[128] ConstInt(val=123) -> 123[128]
-   13:[132] CreateRef(var[80]) -> ref(0,1,88)[132]
+   13:[132] CreateStack(var[80]) -> ref(0,1,88)[132]
    16:[144] Call(size=0, fn=n_format)
- 1113:[148] ConstText(_value="a") -> "a"[148]
- 1116:[164] AppendRefText(var[132], v1="a"[148])
- 1119:[148] VarInt(var[128]) -> 123[148]
- 1122:[152] ConvLongFromInt(v1=123[148]) -> 123[148]
- 1123:[156] ConstInt(val=0) -> 0[156]
- 1128:[160] FormatRefLong(var[132], val=123[148], radix=10, width=0[156], token=32, plus=false, note=false)
- 1135:[148] ConstText(_value="b") -> "b"[148]
- 1138:[164] AppendRefText(var[132], v1="b"[148])
- 1141:[148] VarRef(var[132]) -> ref(0,1,88)[148]
- 1144:[160] GetRefText(r=ref(0,1,88)[148]) -> "a123b"[148]
- 1145:[164] Return(ret=1174[144], value=16, discard=36) -> "a123b"[128]
+ 1839:[148] ConstText(_value="a") -> "a"[148]
+ 1842:[164] AppendStackText(var[132], v1="a"[148])
+ 1845:[148] VarInt(var[128]) -> 123[148]
+ 1848:[152] ConvLongFromInt(v1=123[148]) -> 123[148]
+ 1849:[156] ConstInt(val=0) -> 0[156]
+ 1854:[160] FormatStackLong(var[132], val=123[148], radix=10, width=0[156], token=32, plus=false, note=false)
+ 1861:[148] ConstText(_value="b") -> "b"[148]
+ 1864:[164] AppendStackText(var[132], v1="b"[148])
+ 1867:[148] VarRef(var[132]) -> ref(0,1,88)[148]
+ 1870:[160] GetStackText(r=ref(0,1,88)[148]) -> "a123b"[148]
+ 1871:[164] Return(ret=1900[144], value=16, discard=36) -> "a123b"[128]
    23:[144] AppendText(var[32], v1="a123b"[128])
    26:[128] ConvIntFromNull() -> -2147483648[128]
-   27:[132] CreateRef(var[56]) -> ref(0,1,64)[132]
+   27:[132] CreateStack(var[56]) -> ref(0,1,64)[132]
    30:[144] Call(size=0, fn=n_format)
- 1113:[148] ConstText(_value="a") -> "a"[148]
- 1116:[164] AppendRefText(var[132], v1="a"[148])
- 1119:[148] VarInt(var[128]) -> -2147483648[148]
- 1122:[152] ConvLongFromInt(v1=-2147483648[148]) -> -9223372036854775808[148]
- 1123:[156] ConstInt(val=0) -> 0[156]
- 1128:[160] FormatRefLong(var[132], val=-9223372036854775808[148], radix=10, width=0[156], token=32, plus=false, note=false)
- 1135:[148] ConstText(_value="b") -> "b"[148]
- 1138:[164] AppendRefText(var[132], v1="b"[148])
- 1141:[148] VarRef(var[132]) -> ref(0,1,64)[148]
- 1144:[160] GetRefText(r=ref(0,1,64)[148]) -> "anullb"[148]
- 1145:[164] Return(ret=1188[144], value=16, discard=36) -> "anullb"[128]
+ 1839:[148] ConstText(_value="a") -> "a"[148]
+ 1842:[164] AppendStackText(var[132], v1="a"[148])
+ 1845:[148] VarInt(var[128]) -> -2147483648[148]
+ 1848:[152] ConvLongFromInt(v1=-2147483648[148]) -> -9223372036854775808[148]
+ 1849:[156] ConstInt(val=0) -> 0[156]
+ 1854:[160] FormatStackLong(var[132], val=-9223372036854775808[148], radix=10, width=0[156], token=32, plus=false, note=false)
+ 1861:[148] ConstText(_value="b") -> "b"[148]
+ 1864:[164] AppendStackText(var[132], v1="b"[148])
+ 1867:[148] VarRef(var[132]) -> ref(0,1,64)[148]
+ 1870:[160] GetStackText(r=ref(0,1,64)[148]) -> "anullb"[148]
+ 1871:[164] Return(ret=1914[144], value=16, discard=36) -> "anullb"[128]
    37:[144] AppendText(var[32], v1="anullb"[128])
    40:[128] VarText(var[32]) -> "a123banullb"[128]
    43:[144] AppendText(var[104], v1="a123banullb"[128])
