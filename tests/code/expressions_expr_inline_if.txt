@@ -8,7 +8,7 @@ pub fn test() {
 fn n_test() {#block(1):void
   __work_1(1):text = "";
   [2] test_value(1):text = {#block(2):text
-    if OpGtInt(OpAddInt(2i32, 2i32), 3i32) {#block(3):text
+    if OpLtInt(3i32, OpAddInt(2i32, 2i32)) {#block(3):text
       "A";
     }#block(3):text else {#block(4):text
       "B";
@@ -28,11 +28,11 @@ byte-code for expr_inline_if:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] Text() var=test_value[28]:text
-   2[52]: ConstInt(val=2) -> integer
+   2[52]: ConstInt(val=3) -> integer
    7[56]: ConstInt(val=2) -> integer
-  12[60]: AddInt(v1: integer, v2: integer) -> integer
-  13[56]: ConstInt(val=3) -> integer
-  18[60]: GtInt(v1: integer, v2: integer) -> boolean
+  12[60]: ConstInt(val=2) -> integer
+  17[64]: AddInt(v1: integer, v2: integer) -> integer
+  18[60]: LtInt(v1: integer, v2: integer) -> boolean
   19[53]: GotoFalseWord(jump=28, if_false: boolean)
   22[52]: ConstText(_value="A") -> text
   25[68]: GotoWord(jump=31)
@@ -60,11 +60,11 @@ byte-code for expr_inline_if:n_test()
 Execute test:
     0:[8] [2] Text()
     1:[32] Text()
-    2:[56] ConstInt(val=2) -> 2[56]
+    2:[56] ConstInt(val=3) -> 3[56]
     7:[60] ConstInt(val=2) -> 2[60]
-   12:[64] AddInt(v1=2[56], v2=2[60]) -> 4[56]
-   13:[60] ConstInt(val=3) -> 3[60]
-   18:[64] GtInt(v1=4[56], v2=3[60]) -> true[56]
+   12:[64] ConstInt(val=2) -> 2[64]
+   17:[68] AddInt(v1=2[60], v2=2[64]) -> 4[60]
+   18:[64] LtInt(v1=3[56], v2=4[60]) -> true[56]
    19:[57] GotoFalseWord(jump=28, if_false=true[56])
    22:[56] ConstText(_value="A") -> "A"[56]
    25:[72] GotoWord(jump=31)

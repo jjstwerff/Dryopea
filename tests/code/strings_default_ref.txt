@@ -11,19 +11,19 @@ pub fn test() {
     );
 }
 fn n_add(a:text, b:&text) -> text["b"] {#block(1):text["b"]
-  [2] OpAppendRefText(b(0), "_");
-  OpAppendRefText(b(0), a(0));
+  [2] OpAppendStackText(b(0), "_");
+  OpAppendStackText(b(0), a(0));
   [3] b(0);
 }#block(1):text["b"]
 
 byte-code for default_ref:n_add(a: text[0], b: &text[16]) -> text["b"]
    0[28]: return-address
    0[32]: [2] ConstText(_value="_") -> text
-   3[48]: AppendRefText(var[16], v1: text)
+   3[48]: AppendStackText(var[16], v1: text)
    6[32]: ArgText(var[0]) -> text var=a[0]:text
-   9[48]: AppendRefText(var[16], v1: text)
+   9[48]: AppendStackText(var[16], v1: text)
   12[32]: [3] VarRef(var[16]) -> ref(reference) var=b[16]:&text
-  15[44]: GetRefText(r: ref(reference)) -> text["a"]
+  15[44]: GetStackText(r: ref(reference)) -> text["a"]
   16[48]: Return(ret=28, value=16, discard=48) type=text 5
 
 fn n_test() {#block(1):void
@@ -32,7 +32,7 @@ fn n_test() {#block(1):void
   [7] test_value(1):text = {#block(2):text
     n_add("1234", {#default ref(3):ref(reference)["__work_1"]
       OpAppendText(__work_1(1), "var");
-      OpCreateRef(__work_1(1));
+      OpCreateStack(__work_1(1));
     }#default ref(3):ref(reference)["__work_1"]);
   }#block(2):text;
   [8] if OpEqText(test_value(1), "var_1234") null else OpPanic({#Formatted string(4):text["__work_2"]
@@ -54,7 +54,7 @@ byte-code for default_ref:n_test()
    3[76]: ConstText(_value="1234") -> text
    9[92]: ConstText(_value="var") -> text
   14[108]: AppendText(var[28], v1: text)
-  17[92]: CreateRef(var[28]) -> ref(reference)
+  17[92]: CreateStack(var[28]) -> ref(reference)
   20[104]: Call(size=0, fn=n_add)
   27[92]: AppendText(var[52], v1: text)
   30[76]: [8] VarText(var[52]) -> text var=test_value[52]:text
@@ -84,15 +84,15 @@ Execute test:
     3:[80] ConstText(_value="1234") -> "1234"[80]
     9:[96] ConstText(_value="var") -> "var"[96]
    14:[112] AppendText(var[32], v1="var"[96])
-   17:[96] CreateRef(var[32]) -> ref(0,1,40)[96]
+   17:[96] CreateStack(var[32]) -> ref(0,1,40)[96]
    20:[108] Call(size=0, fn=n_add)
- 1113:[112] ConstText(_value="_") -> "_"[112]
- 1116:[128] AppendRefText(var[96], v1="_"[112])
- 1119:[112] ArgText(var[80]) -> "1234"[112]
- 1122:[128] AppendRefText(var[96], v1="1234"[112])
- 1125:[112] VarRef(var[96]) -> ref(0,1,40)[112]
- 1128:[124] GetRefText(r=ref(0,1,40)[112]) -> "var_1234"[112]
- 1129:[128] Return(ret=1162[108], value=16, discard=48) -> "var_1234"[80]
+ 1839:[112] ConstText(_value="_") -> "_"[112]
+ 1842:[128] AppendStackText(var[96], v1="_"[112])
+ 1845:[112] ArgText(var[80]) -> "1234"[112]
+ 1848:[128] AppendStackText(var[96], v1="1234"[112])
+ 1851:[112] VarRef(var[96]) -> ref(0,1,40)[112]
+ 1854:[124] GetStackText(r=ref(0,1,40)[112]) -> "var_1234"[112]
+ 1855:[128] Return(ret=1888[108], value=16, discard=48) -> "var_1234"[80]
    27:[96] AppendText(var[56], v1="var_1234"[80])
    30:[80] VarText(var[56]) -> "var_1234"[80]
    33:[96] ConstText(_value="var_1234") -> "var_1234"[96]

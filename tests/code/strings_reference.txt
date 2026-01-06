@@ -10,13 +10,13 @@ pub fn test() {
     );
 }
 fn n_add(a:&text, b:text) {#block(1):void
-  [2] OpAppendRefText(a(0), b(0));
+  [2] OpAppendStackText(a(0), b(0));
 }#block(1):void
 
 byte-code for reference:n_add(a: &text[0], b: text[12])
    0[28]: return-address
    0[32]: [2] ArgText(var[12]) -> text var=b[12]:text
-   3[48]: AppendRefText(var[0], v1: text)
+   3[48]: AppendStackText(var[0], v1: text)
    6[32]: Return(ret=28, value=0, discard=32)
 
 fn n_test() {#block(1):void
@@ -24,7 +24,7 @@ fn n_test() {#block(1):void
   [6] v(1):text = "";
   test_value(1):text["v"] = {#block(2):text["v"]
     v(1):text = "Hello";
-    n_add(OpCreateRef(v(1)), " world!");
+    n_add(OpCreateStack(v(1)), " world!");
     v(1);
   }#block(2):text["v"];
   [7] if OpEqText(test_value(1), "Hello world!") null else OpPanic({#Formatted string(3):text["__work_1"]
@@ -46,7 +46,7 @@ byte-code for reference:n_test()
    3[76]: ClearText(var[28]) var=v[28]:text
    6[76]: ConstText(_value="Hello") -> text
   13[92]: AppendText(var[28], v1: text)
-  16[76]: CreateRef(var[28]) -> ref(reference)
+  16[76]: CreateStack(var[28]) -> ref(reference)
   19[88]: ConstText(_value=" world!") -> text
   28[104]: Call(size=0, fn=n_add)
   35[76]: VarText(var[28]) -> text var=v[28]:text
@@ -78,12 +78,12 @@ Execute test:
     3:[80] ClearText(var[32])
     6:[80] ConstText(_value="Hello") -> "Hello"[80]
    13:[96] AppendText(var[32], v1="Hello"[80])
-   16:[80] CreateRef(var[32]) -> ref(0,1,40)[80]
+   16:[80] CreateStack(var[32]) -> ref(0,1,40)[80]
    19:[92] ConstText(_value=" world!") -> " world!"[92]
    28:[108] Call(size=0, fn=n_add)
- 1113:[112] ArgText(var[92]) -> " world!"[112]
- 1116:[128] AppendRefText(var[80], v1=" world!"[112])
- 1119:[112] Return(ret=1160[108], value=0, discard=32)
+ 1839:[112] ArgText(var[92]) -> " world!"[112]
+ 1842:[128] AppendStackText(var[80], v1=" world!"[112])
+ 1845:[112] Return(ret=1886[108], value=0, discard=32)
    35:[80] VarText(var[32]) -> "Hello world!"[80]
    38:[96] AppendText(var[56], v1="Hello world!"[80])
    41:[80] VarText(var[56]) -> "Hello world!"[80]

@@ -257,7 +257,7 @@ fn t_5Lexer_parse_file(self:Lexer, filename:text) {#block(1):void
     [80] filename(0);
   }#block(3):text["filename"]);
   [82] OpSetText(self(0), 4i32, t_4File_content(n_file(filename(0), __ref_1(1)), {#default ref(4):ref(reference)["__work_1"]
-    OpCreateRef(__work_1(1));
+    OpCreateStack(__work_1(1));
   }#default ref(4):ref(reference)["__work_1"]));
   [83] OpSetInt(self(0), 8i32, 0i32);
   [84] OpSetInt(self(0), 20i32, 0i32);
@@ -292,7 +292,7 @@ byte-code for lib/lexer.lav:t_5Lexer_parse_file(self: ref(Lexer)[0], filename: t
   51[84]: ArgText(var[12]) -> text var=filename[12]:text
   54[100]: VarRef(var[32]) -> ref(reference) type=File 13 var=__ref_1[32]:ref(File)
   57[112]: Call(size=0, fn=n_file)
-  64[96]: CreateRef(var[44]) -> ref(reference)
+  64[96]: CreateStack(var[44]) -> ref(reference)
   67[108]: Call(size=0, fn=t_4File_content)
   74[100]: SetText(v1: ref(reference), fld=4, val: text)
   77[72]: [83] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
@@ -318,11 +318,11 @@ fn t_5Lexer_at(self:Lexer, __work_1:&text) -> text["__work_1"] {#block(1):text["
   __work_1(0):&text = "";
   [91] {#Formatted string(2):text["__work_1"]
     __work_1(0):&text = " on ";
-    OpFormatRefText(__work_1(0), OpGetText(self(0), 0i32), 0i32, -1i32, 32i32);
-    OpAppendRefText(__work_1(0), ":");
-    OpFormatRefLong(__work_1(0), OpConvLongFromInt(OpGetInt(self(0), 12i32)), 10i32, 0i32, 32i32, false, false);
-    OpAppendRefText(__work_1(0), ":");
-    OpFormatRefLong(__work_1(0), OpConvLongFromInt(OpGetInt(self(0), 16i32)), 10i32, 0i32, 32i32, false, false);
+    OpFormatStackText(__work_1(0), OpGetText(self(0), 0i32), 0i32, -1i32, 32i32);
+    OpAppendStackText(__work_1(0), ":");
+    OpFormatStackLong(__work_1(0), OpConvLongFromInt(OpGetInt(self(0), 12i32)), 10i32, 0i32, 32i32, false, false);
+    OpAppendStackText(__work_1(0), ":");
+    OpFormatStackLong(__work_1(0), OpConvLongFromInt(OpGetInt(self(0), 16i32)), 10i32, 0i32, 32i32, false, false);
     __work_1(0);
   }#Formatted string(2):text["__work_1"];
 }#block(1):text["__work_1"]
@@ -330,27 +330,27 @@ fn t_5Lexer_at(self:Lexer, __work_1:&text) -> text["__work_1"] {#block(1):text["
 byte-code for lib/lexer.lav:t_5Lexer_at(self: ref(Lexer)[0], __work_1: &text[12]) -> text["__work_1"]
    0[24]: return-address
    0[28]: [91] ConstText(_value=" on ") -> text var=__work_1[12]:&text
-   6[44]: AppendRefText(var[12], v1: text)
+   6[44]: AppendStackText(var[12], v1: text)
    9[28]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
   12[40]: GetText(v1: ref(reference), fld=0) -> text["self"]
   15[44]: ConstInt(val=0) -> integer
-  20[48]: FormatRefText(var[12], val: text, width: integer, dir=-1, token=32)
+  20[48]: FormatStackText(var[12], val: text, width: integer, dir=-1, token=32)
   25[28]: ConstText(_value=":") -> text
-  28[44]: AppendRefText(var[12], v1: text)
+  28[44]: AppendStackText(var[12], v1: text)
   31[28]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
   34[40]: GetInt(v1: ref(reference), fld=12) -> integer
   37[32]: ConvLongFromInt(v1: integer) -> long
   38[36]: ConstInt(val=0) -> integer
-  43[40]: FormatRefLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  43[40]: FormatStackLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
   50[28]: ConstText(_value=":") -> text
-  53[44]: AppendRefText(var[12], v1: text)
+  53[44]: AppendStackText(var[12], v1: text)
   56[28]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
   59[40]: GetInt(v1: ref(reference), fld=16) -> integer
   62[32]: ConvLongFromInt(v1: integer) -> long
   63[36]: ConstInt(val=0) -> integer
-  68[40]: FormatRefLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  68[40]: FormatStackLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
   75[28]: VarRef(var[12]) -> ref(reference) var=__work_1[12]:&text
-  78[40]: GetRefText(r: ref(reference)) -> text["self"]
+  78[40]: GetStackText(r: ref(reference)) -> text["self"]
   79[44]: Return(ret=24, value=16, discard=44) type=text 5
 
 fn t_5Lexer_parse_string(self:Lexer, name:text, content:text) {#block(1):void
@@ -395,7 +395,7 @@ fn t_5Lexer_skip_whitespace(self:Lexer) {#block(1):void
     loop {#For loop_3
       t(3):integer = {#Iter range(4):integer
         t#index(2):integer = if OpNot(OpConvBoolFromInt(t#index(2))) 0i32 else OpAddInt(t#index(2), 1i32);
-        if OpGeInt(t#index(2), 300i32) break(0) else null;
+        if OpLeInt(300i32, t#index(2)) break(0) else null;
         t#index(2);
       }#Iter range(4):integer;
       {#block(5):void
@@ -419,7 +419,7 @@ fn t_5Lexer_skip_whitespace(self:Lexer) {#block(1):void
             loop {#For loop_11
               c(11):integer = {#Iter range(12):integer
                 c#index(10):integer = if OpNot(OpConvBoolFromInt(c#index(10))) 0i32 else OpAddInt(c#index(10), 1i32);
-                if OpGeInt(c#index(10), 1000i32) break(0) else null;
+                if OpLeInt(1000i32, c#index(10)) break(0) else null;
                 c#index(10);
               }#Iter range(12):integer;
               {#block(13):void
@@ -479,9 +479,9 @@ byte-code for lib/lexer.lav:t_5Lexer_skip_whitespace(self: ref(Lexer)[0])
   58[25]: ConstInt(val=1) -> integer
   63[29]: AddInt(v1: integer, v2: integer) -> integer
   64[25]: PutInt(var[17], value: integer)
-  67[21]: VarInt(var[17]) -> integer var=t#index[17]:integer
-  70[25]: ConstInt(val=300) -> integer
-  75[29]: GeInt(v1: integer, v2: integer) -> boolean
+  67[21]: ConstInt(val=300) -> integer
+  72[25]: VarInt(var[17]) -> integer var=t#index[17]:integer
+  75[29]: LeInt(v1: integer, v2: integer) -> boolean
   76[22]: GotoFalseWord(jump=82, if_false: boolean)
   79[21]: GotoWord(jump=604)
   82[21]: VarInt(var[17]) -> integer var=t#index[17]:integer
@@ -595,9 +595,9 @@ byte-code for lib/lexer.lav:t_5Lexer_skip_whitespace(self: ref(Lexer)[0])
  381[37]: ConstInt(val=1) -> integer
  386[41]: AddInt(v1: integer, v2: integer) -> integer
  387[37]: PutInt(var[29], value: integer)
- 390[33]: VarInt(var[29]) -> integer var=c#index[29]:integer
- 393[37]: ConstInt(val=1000) -> integer
- 398[41]: GeInt(v1: integer, v2: integer) -> boolean
+ 390[33]: ConstInt(val=1000) -> integer
+ 395[37]: VarInt(var[29]) -> integer var=c#index[29]:integer
+ 398[41]: LeInt(v1: integer, v2: integer) -> boolean
  399[34]: GotoFalseWord(jump=405, if_false: boolean)
  402[33]: GotoWord(jump=579)
  405[33]: VarInt(var[29]) -> integer var=c#index[29]:integer
@@ -701,7 +701,7 @@ fn t_5Lexer_scan(self:Lexer) {#block(1):void
       loop {#For loop_7
         t(7):integer = {#Iter range(8):integer
           t#index(6):integer = if OpNot(OpConvBoolFromInt(t#index(6))) 0i32 else OpAddInt(t#index(6), 1i32);
-          if OpGeInt(t#index(6), 60000i32) break(0) else null;
+          if OpLeInt(60000i32, t#index(6)) break(0) else null;
           t#index(6);
         }#Iter range(8):integer;
         {#block(9):void
@@ -740,7 +740,7 @@ fn t_5Lexer_scan(self:Lexer) {#block(1):void
       loop {#For loop_18
         t(18):integer = {#Iter range(19):integer
           t#index(17):integer = if OpNot(OpConvBoolFromInt(t#index(17))) 0i32 else OpAddInt(t#index(17), 1i32);
-          if OpGeInt(t#index(17), 20i32) break(0) else null;
+          if OpLeInt(20i32, t#index(17)) break(0) else null;
           t#index(17);
         }#Iter range(19):integer;
         {#block(20):void
@@ -764,15 +764,15 @@ fn t_5Lexer_scan(self:Lexer) {#block(1):void
     [209] OpSetInt(self(0), 8i32, OpAddInt(OpGetInt(self(0), 8i32), 1i32));
     [210] negative(1):boolean = true;
   }#block(25):void else null;
-  [212] if if OpGeInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32))), OpConvIntFromCharacter(48i32)) OpLeInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32))), OpConvIntFromCharacter(57i32)) else false {#block(26):void
+  [212] if if OpLeInt(OpConvIntFromCharacter(48i32), OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32)))) OpLeInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32))), OpConvIntFromCharacter(57i32)) else false {#block(26):void
     [213] OpSetEnum(self(0), 36i32, 2u8(17));
     [214] {#For block(27):void
-      t#index(17):integer = OpConvIntFromNull();
+      tn#index(27):integer = OpConvIntFromNull();
       loop {#For loop_28
-        t(18):integer = {#Iter range(29):integer
-          t#index(17):integer = if OpNot(OpConvBoolFromInt(t#index(17))) 0i32 else OpAddInt(t#index(17), 1i32);
-          if OpGeInt(t#index(17), 30i32) break(0) else null;
-          t#index(17);
+        tn(28):integer = {#Iter range(29):integer
+          tn#index(27):integer = if OpNot(OpConvBoolFromInt(tn#index(27))) 0i32 else OpAddInt(tn#index(27), 1i32);
+          if OpLeInt(30i32, tn#index(27)) break(0) else null;
+          tn#index(27);
         }#Iter range(29):integer;
         {#block(30):void
           [215] l(1):character = OpTextCharacter(OpGetText(self(0), 4i32), OpGetInt(self(0), 8i32));
@@ -780,7 +780,7 @@ fn t_5Lexer_scan(self:Lexer) {#block(1):void
             [217] OpSetEnum(self(0), 36i32, 3u8(17));
           }#block(31):void else if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(108i32)) {#block(32):void
             [219] OpSetEnum(self(0), 36i32, 5u8(17));
-          }#block(32):void else if if if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(120i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(111i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(98i32))  else if if OpNeInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(95i32)) if OpLtInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(48i32)) true else OpGtInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(57i32)) else false {#block(34):void
+          }#block(32):void else if if if OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(120i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(111i32)) true else OpEqInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(98i32))  else if if OpNeInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(95i32)) if OpLtInt(OpConvIntFromCharacter(l(1)), OpConvIntFromCharacter(48i32)) true else OpLtInt(OpConvIntFromCharacter(57i32), OpConvIntFromCharacter(l(1))) else false {#block(34):void
             [222] break(0);
           }#block(34):void else null;
           [224] OpSetInt(self(0), 8i32, OpAddInt(OpGetInt(self(0), 8i32), 1i32));
@@ -798,7 +798,7 @@ fn t_5Lexer_scan(self:Lexer) {#block(1):void
       loop {#For loop_38
         t(18):integer = {#Iter range(39):integer
           t#index(17):integer = if OpNot(OpConvBoolFromInt(t#index(17))) 0i32 else OpAddInt(t#index(17), 1i32);
-          if OpGeInt(t#index(17), 300i32) break(0) else null;
+          if OpLeInt(300i32, t#index(17)) break(0) else null;
           t#index(17);
         }#Iter range(39):integer;
         {#block(40):void
@@ -914,9 +914,9 @@ byte-code for lib/lexer.lav:t_5Lexer_scan(self: ref(Lexer)[0])
  221[29]: ConstInt(val=1) -> integer
  226[33]: AddInt(v1: integer, v2: integer) -> integer
  227[29]: PutInt(var[21], value: integer)
- 230[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
- 233[29]: ConstInt(val=60000) -> integer
- 238[33]: GeInt(v1: integer, v2: integer) -> boolean
+ 230[25]: ConstInt(val=60000) -> integer
+ 235[29]: VarInt(var[21]) -> integer var=t#index[21]:integer
+ 238[33]: LeInt(v1: integer, v2: integer) -> boolean
  239[26]: GotoFalseWord(jump=245, if_false: boolean)
  242[25]: GotoWord(jump=547)
  245[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
@@ -1055,9 +1055,9 @@ byte-code for lib/lexer.lav:t_5Lexer_scan(self: ref(Lexer)[0])
  620[29]: ConstInt(val=1) -> integer
  625[33]: AddInt(v1: integer, v2: integer) -> integer
  626[29]: PutInt(var[21], value: integer)
- 629[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
- 632[29]: ConstInt(val=20) -> integer
- 637[33]: GeInt(v1: integer, v2: integer) -> boolean
+ 629[25]: ConstInt(val=20) -> integer
+ 634[29]: VarInt(var[21]) -> integer var=t#index[21]:integer
+ 637[33]: LeInt(v1: integer, v2: integer) -> boolean
  638[26]: GotoFalseWord(jump=644, if_false: boolean)
  641[25]: GotoWord(jump=803)
  644[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
@@ -1133,15 +1133,15 @@ byte-code for lib/lexer.lav:t_5Lexer_scan(self: ref(Lexer)[0])
  839[37]: SetInt(v1: ref(reference), fld=8, val: integer)
  842[21]: [210] ConstTrue() -> boolean var=negative[16]:boolean
  843[22]: PutBool(var=6, value: boolean)
- 846[21]: [212] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
- 849[33]: GetText(v1: ref(reference), fld=4) -> text["self"]
- 852[37]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
- 855[49]: GetInt(v1: ref(reference), fld=8) -> integer
- 858[41]: TextCharacter(v1: text, v2: integer) -> character
- 859[25]: ConvIntFromCharacter(v1: character) -> integer
- 860[25]: ConstInt(val=48) -> integer
+ 846[21]: [212] ConstInt(val=48) -> integer
+ 851[25]: ConvIntFromCharacter(v1: character) -> integer
+ 852[25]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+ 855[37]: GetText(v1: ref(reference), fld=4) -> text["self"]
+ 858[41]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+ 861[53]: GetInt(v1: ref(reference), fld=8) -> integer
+ 864[45]: TextCharacter(v1: text, v2: integer) -> character
  865[29]: ConvIntFromCharacter(v1: character) -> integer
- 866[29]: GeInt(v1: integer, v2: integer) -> boolean
+ 866[29]: LeInt(v1: integer, v2: integer) -> boolean
  867[22]: GotoFalseWord(jump=894, if_false: boolean)
  870[21]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
  873[33]: GetText(v1: ref(reference), fld=4) -> text["self"]
@@ -1154,253 +1154,254 @@ byte-code for lib/lexer.lav:t_5Lexer_scan(self: ref(Lexer)[0])
  890[29]: LeInt(v1: integer, v2: integer) -> boolean
  891[22]: GotoWord(jump=895)
  894[21]: ConstFalse() -> boolean
- 895[22]: GotoFalseWord(jump=1197, if_false: boolean)
+ 895[22]: GotoFalseWord(jump=1203, if_false: boolean)
  898[21]: [213] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
  901[33]: ConstEnum(val=2) -> boolean type=Scanned 17
  903[34]: SetEnum(v1: ref(reference), fld=36, val: boolean)
- 906[21]: [214] ConvIntFromNull() -> integer var=t#index[21]:integer
- 907[25]: PutInt(var[21], value: integer)
- 910[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
- 913[25]: ConvBoolFromInt(v1: integer) -> boolean
- 914[22]: Not(v1: boolean) -> boolean
- 915[22]: GotoFalseWord(jump=926, if_false: boolean)
- 918[21]: ConstInt(val=0) -> integer
- 923[25]: GotoWord(jump=935)
- 926[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
- 929[25]: ConstInt(val=1) -> integer
- 934[29]: AddInt(v1: integer, v2: integer) -> integer
- 935[25]: PutInt(var[21], value: integer)
- 938[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
- 941[25]: ConstInt(val=30) -> integer
- 946[29]: GeInt(v1: integer, v2: integer) -> boolean
- 947[22]: GotoFalseWord(jump=953, if_false: boolean)
- 950[21]: GotoWord(jump=1188)
- 953[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
- 956[25]: PutInt(var[25], value: integer)
- 959[21]: [215] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
- 962[33]: GetText(v1: ref(reference), fld=4) -> text["self"]
- 965[37]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
- 968[49]: GetInt(v1: ref(reference), fld=8) -> integer
- 971[41]: TextCharacter(v1: text, v2: integer) -> character
- 972[25]: PutCharacter(var[17], value: character)
- 975[21]: [216] VarCharacter(var[17]) -> character var=l[17]:character
- 978[25]: ConvIntFromCharacter(v1: character) -> integer
- 979[25]: ConstInt(val=46) -> integer
- 984[29]: ConvIntFromCharacter(v1: character) -> integer
- 985[29]: EqInt(v1: integer, v2: integer) -> boolean
- 986[22]: GotoFalseWord(jump=993, if_false: boolean)
- 989[21]: ConstTrue() -> boolean
- 990[22]: GotoWord(jump=1004)
- 993[21]: VarCharacter(var[17]) -> character var=l[17]:character
- 996[25]: ConvIntFromCharacter(v1: character) -> integer
- 997[25]: ConstInt(val=101) -> integer
-1002[29]: ConvIntFromCharacter(v1: character) -> integer
-1003[29]: EqInt(v1: integer, v2: integer) -> boolean
-1004[22]: GotoFalseWord(jump=1011, if_false: boolean)
-1007[21]: ConstTrue() -> boolean
-1008[22]: GotoWord(jump=1022)
-1011[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1014[25]: ConvIntFromCharacter(v1: character) -> integer
-1015[25]: ConstInt(val=45) -> integer
-1020[29]: ConvIntFromCharacter(v1: character) -> integer
-1021[29]: EqInt(v1: integer, v2: integer) -> boolean
-1022[22]: GotoFalseWord(jump=1036, if_false: boolean)
-1025[21]: [217] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1028[33]: ConstEnum(val=3) -> boolean type=Scanned 17
-1030[34]: SetEnum(v1: ref(reference), fld=36, val: boolean)
-1033[21]: GotoWord(jump=1167)
-1036[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1039[25]: ConvIntFromCharacter(v1: character) -> integer
-1040[25]: ConstInt(val=108) -> integer
-1045[29]: ConvIntFromCharacter(v1: character) -> integer
-1046[29]: EqInt(v1: integer, v2: integer) -> boolean
-1047[22]: GotoFalseWord(jump=1061, if_false: boolean)
-1050[21]: [219] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1053[33]: ConstEnum(val=5) -> boolean type=Scanned 17
-1055[34]: SetEnum(v1: ref(reference), fld=36, val: boolean)
-1058[21]: GotoWord(jump=1167)
-1061[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1064[25]: ConvIntFromCharacter(v1: character) -> integer
-1065[25]: ConstInt(val=120) -> integer
-1070[29]: ConvIntFromCharacter(v1: character) -> integer
-1071[29]: EqInt(v1: integer, v2: integer) -> boolean
-1072[22]: GotoFalseWord(jump=1079, if_false: boolean)
-1075[21]: ConstTrue() -> boolean
-1076[22]: GotoWord(jump=1090)
-1079[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1082[25]: ConvIntFromCharacter(v1: character) -> integer
-1083[25]: ConstInt(val=111) -> integer
-1088[29]: ConvIntFromCharacter(v1: character) -> integer
-1089[29]: EqInt(v1: integer, v2: integer) -> boolean
-1090[22]: GotoFalseWord(jump=1097, if_false: boolean)
-1093[21]: ConstTrue() -> boolean
-1094[22]: GotoWord(jump=1108)
-1097[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1100[25]: ConvIntFromCharacter(v1: character) -> integer
-1101[25]: ConstInt(val=98) -> integer
-1106[29]: ConvIntFromCharacter(v1: character) -> integer
-1107[29]: EqInt(v1: integer, v2: integer) -> boolean
-1108[22]: GotoFalseWord(jump=1114, if_false: boolean)
-1111[21]: GotoWord(jump=1167)
-1114[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1117[25]: ConvIntFromCharacter(v1: character) -> integer
-1118[25]: ConstInt(val=95) -> integer
-1123[29]: ConvIntFromCharacter(v1: character) -> integer
-1124[29]: NeInt(v1: integer, v2: integer) -> boolean
-1125[22]: GotoFalseWord(jump=1160, if_false: boolean)
-1128[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1131[25]: ConvIntFromCharacter(v1: character) -> integer
-1132[25]: ConstInt(val=48) -> integer
-1137[29]: ConvIntFromCharacter(v1: character) -> integer
-1138[29]: LtInt(v1: integer, v2: integer) -> boolean
-1139[22]: GotoFalseWord(jump=1146, if_false: boolean)
-1142[21]: ConstTrue() -> boolean
-1143[22]: GotoWord(jump=1157)
-1146[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1149[25]: ConvIntFromCharacter(v1: character) -> integer
-1150[25]: ConstInt(val=57) -> integer
-1155[29]: ConvIntFromCharacter(v1: character) -> integer
-1156[29]: GtInt(v1: integer, v2: integer) -> boolean
-1157[22]: GotoWord(jump=1161)
-1160[21]: ConstFalse() -> boolean
-1161[22]: GotoFalseWord(jump=1167, if_false: boolean)
-1164[21]: [222] GotoWord(jump=1188)
-1167[21]: [224] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1170[33]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1173[45]: GetInt(v1: ref(reference), fld=8) -> integer
-1176[37]: ConstInt(val=1) -> integer
-1181[41]: AddInt(v1: integer, v2: integer) -> integer
-1182[37]: SetInt(v1: ref(reference), fld=8, val: integer)
-1185[21]: GotoWord(jump=910)
-1188[21]: [226] Return(ret=12, value=0, discard=21)
-1194[21]: GotoWord(jump=1221)
-1197[21]: VarBool(var[16]) -> boolean var=negative[16]:boolean
-1200[22]: GotoFalseWord(jump=1221, if_false: boolean)
-1203[21]: [228] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1206[33]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1209[45]: GetInt(v1: ref(reference), fld=8) -> integer
-1212[37]: ConstInt(val=1) -> integer
-1217[41]: MinInt(v1: integer, v2: integer) -> integer
-1218[37]: SetInt(v1: ref(reference), fld=8, val: integer)
-1221[21]: [230] VarCharacter(var[17]) -> character var=l[17]:character
-1224[25]: ConvIntFromCharacter(v1: character) -> integer
-1225[25]: ConstInt(val=95) -> integer
-1230[29]: ConvIntFromCharacter(v1: character) -> integer
-1231[29]: EqInt(v1: integer, v2: integer) -> boolean
-1232[22]: GotoFalseWord(jump=1239, if_false: boolean)
-1235[21]: ConstTrue() -> boolean
-1236[22]: GotoWord(jump=1245)
-1239[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1242[25]: StaticCall(t_9character_is_alphabetic)
-1245[22]: GotoFalseWord(jump=1383, if_false: boolean)
-1248[21]: [231] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1251[33]: ConstEnum(val=9) -> boolean type=Scanned 17
-1253[34]: SetEnum(v1: ref(reference), fld=36, val: boolean)
-1256[21]: [232] ConvIntFromNull() -> integer var=t#index[21]:integer
-1257[25]: PutInt(var[21], value: integer)
-1260[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
-1263[25]: ConvBoolFromInt(v1: integer) -> boolean
-1264[22]: Not(v1: boolean) -> boolean
-1265[22]: GotoFalseWord(jump=1276, if_false: boolean)
-1268[21]: ConstInt(val=0) -> integer
-1273[25]: GotoWord(jump=1285)
-1276[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
-1279[25]: ConstInt(val=1) -> integer
-1284[29]: AddInt(v1: integer, v2: integer) -> integer
-1285[25]: PutInt(var[21], value: integer)
-1288[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
-1291[25]: ConstInt(val=300) -> integer
-1296[29]: GeInt(v1: integer, v2: integer) -> boolean
-1297[22]: GotoFalseWord(jump=1303, if_false: boolean)
-1300[21]: GotoWord(jump=1377)
-1303[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
-1306[25]: PutInt(var[25], value: integer)
-1309[21]: [233] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1312[33]: GetText(v1: ref(reference), fld=4) -> text["self"]
-1315[37]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1318[49]: GetInt(v1: ref(reference), fld=8) -> integer
-1321[41]: TextCharacter(v1: text, v2: integer) -> character
-1322[25]: PutCharacter(var[17], value: character)
-1325[21]: [234] VarCharacter(var[17]) -> character var=l[17]:character
-1328[25]: StaticCall(t_9character_is_alphanumeric)
-1331[22]: Not(v1: boolean) -> boolean
-1332[22]: GotoFalseWord(jump=1349, if_false: boolean)
-1335[21]: VarCharacter(var[17]) -> character var=l[17]:character
-1338[25]: ConvIntFromCharacter(v1: character) -> integer
-1339[25]: ConstInt(val=95) -> integer
-1344[29]: ConvIntFromCharacter(v1: character) -> integer
-1345[29]: NeInt(v1: integer, v2: integer) -> boolean
-1346[22]: GotoWord(jump=1350)
-1349[21]: ConstFalse() -> boolean
-1350[22]: GotoFalseWord(jump=1356, if_false: boolean)
-1353[21]: [235] GotoWord(jump=1377)
-1356[21]: [237] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1359[33]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1362[45]: GetInt(v1: ref(reference), fld=8) -> integer
-1365[37]: ConstInt(val=1) -> integer
-1370[41]: AddInt(v1: integer, v2: integer) -> integer
-1371[37]: SetInt(v1: ref(reference), fld=8, val: integer)
-1374[21]: GotoWord(jump=1260)
-1377[21]: [239] Return(ret=12, value=0, discard=21)
-1383[21]: [242] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1386[33]: ConstEnum(val=10) -> boolean type=Scanned 17
-1388[34]: SetEnum(v1: ref(reference), fld=36, val: boolean)
-1391[21]: [243] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1394[33]: GetField(v1: ref(reference), fld=28) -> ref(reference) type=hash<SToken[start]> 24
-1397[33]: VarCharacter(var[17]) -> character var=l[17]:character
-1400[37]: GetRecord(data: ref(reference), db_tp=24, no_keys=1) -> ref(reference)
-1404[33]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=sorted<Possible[-length,token]> 21
-1407[33]: Iterate(data: ref(reference), on=130, arg=8, keys=[Key { type_nr: -1, position: 0 }, Key { type_nr: 6, position: 4 }], from_key=0, till_key=0) -> long
-1420[29]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1423[41]: GetField(v1: ref(reference), fld=28) -> ref(reference) type=hash<SToken[start]> 24
-1426[41]: VarCharacter(var[17]) -> character var=l[17]:character
-1429[45]: GetRecord(data: ref(reference), db_tp=24, no_keys=1) -> ref(reference)
-1433[41]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=sorted<Possible[-length,token]> 21
-1436[41]: Step(state_var=20, data: ref(reference), on=130, arg=8) -> ref(reference)
-1442[41]: VarRef(var[29]) -> ref(reference) type=Possible 19 var=pt[29]:ref(Possible)["self"]
-1445[53]: ConvBoolFromRef(val: ref(reference)) -> boolean
-1446[42]: Not(v1: boolean) -> boolean
-1447[42]: GotoFalseWord(jump=1457, if_false: boolean)
-1450[41]: FreeStack(value=0, discard=12)
-1454[29]: GotoWord(jump=1550)
-1457[41]: [244] Text() var=tok[41]:text["pt"]
-1458[65]: VarRef(var[29]) -> ref(reference) type=Possible 19 var=pt[29]:ref(Possible)["self"]
-1461[77]: GetText(v1: ref(reference), fld=4) -> text["self"]
-1464[81]: AppendText(var[41], v1: text)
-1467[65]: [245] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1470[77]: GetText(v1: ref(reference), fld=4) -> text["self"]
-1473[81]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1476[93]: GetInt(v1: ref(reference), fld=8) -> integer
-1479[85]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1482[97]: GetInt(v1: ref(reference), fld=8) -> integer
-1485[89]: VarText(var[41]) -> text var=tok[41]:text["pt"]
-1488[105]: Call(size=0, fn=t_4text_len)
-1495[93]: AddInt(v1: integer, v2: integer) -> integer
-1496[89]: GetTextSub(v1: text, from: integer, till: integer) -> text["self"]
-1497[81]: VarText(var[41]) -> text var=tok[41]:text["pt"]
-1500[97]: EqText(v1: text, v2: text) -> boolean
-1501[66]: GotoFalseWord(jump=1536, if_false: boolean)
-1504[65]: [246] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1507[77]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1510[89]: GetInt(v1: ref(reference), fld=8) -> integer
-1513[81]: VarText(var[41]) -> text var=tok[41]:text["pt"]
-1516[97]: Call(size=0, fn=t_4text_len)
-1523[85]: AddInt(v1: integer, v2: integer) -> integer
-1524[81]: SetInt(v1: ref(reference), fld=8, val: integer)
-1527[65]: [247] FreeText(var[41])
-1530[65]: Return(ret=12, value=0, discard=65)
-1536[65]: FreeText(var[41])
-1539[65]: FreeStack(value=0, discard=24)
-1543[41]: FreeStack(value=0, discard=12)
-1547[29]: GotoWord(jump=1420)
-1550[29]: FreeStack(value=0, discard=8)
-1554[21]: [250] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1557[33]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-1560[45]: GetInt(v1: ref(reference), fld=8) -> integer
-1563[37]: ConstInt(val=1) -> integer
-1568[41]: AddInt(v1: integer, v2: integer) -> integer
-1569[37]: SetInt(v1: ref(reference), fld=8, val: integer)
-1572[21]: Return(ret=12, value=0, discard=21)
+ 906[21]: [214] ConvIntFromNull() -> integer var=tn#index[21]:integer
+ 907[25]: VarInt(var[21]) -> integer var=tn#index[21]:integer
+ 910[29]: ConvBoolFromInt(v1: integer) -> boolean
+ 911[26]: Not(v1: boolean) -> boolean
+ 912[26]: GotoFalseWord(jump=923, if_false: boolean)
+ 915[25]: ConstInt(val=0) -> integer
+ 920[29]: GotoWord(jump=932)
+ 923[25]: VarInt(var[21]) -> integer var=tn#index[21]:integer
+ 926[29]: ConstInt(val=1) -> integer
+ 931[33]: AddInt(v1: integer, v2: integer) -> integer
+ 932[29]: PutInt(var[21], value: integer)
+ 935[25]: ConstInt(val=30) -> integer
+ 940[29]: VarInt(var[21]) -> integer var=tn#index[21]:integer
+ 943[33]: LeInt(v1: integer, v2: integer) -> boolean
+ 944[26]: GotoFalseWord(jump=950, if_false: boolean)
+ 947[25]: GotoWord(jump=1190)
+ 950[25]: VarInt(var[21]) -> integer var=tn#index[21]:integer
+ 953[29]: [215] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+ 956[41]: GetText(v1: ref(reference), fld=4) -> text["self"]
+ 959[45]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+ 962[57]: GetInt(v1: ref(reference), fld=8) -> integer
+ 965[49]: TextCharacter(v1: text, v2: integer) -> character
+ 966[33]: PutCharacter(var[17], value: character)
+ 969[29]: [216] VarCharacter(var[17]) -> character var=l[17]:character
+ 972[33]: ConvIntFromCharacter(v1: character) -> integer
+ 973[33]: ConstInt(val=46) -> integer
+ 978[37]: ConvIntFromCharacter(v1: character) -> integer
+ 979[37]: EqInt(v1: integer, v2: integer) -> boolean
+ 980[30]: GotoFalseWord(jump=987, if_false: boolean)
+ 983[29]: ConstTrue() -> boolean
+ 984[30]: GotoWord(jump=998)
+ 987[29]: VarCharacter(var[17]) -> character var=l[17]:character
+ 990[33]: ConvIntFromCharacter(v1: character) -> integer
+ 991[33]: ConstInt(val=101) -> integer
+ 996[37]: ConvIntFromCharacter(v1: character) -> integer
+ 997[37]: EqInt(v1: integer, v2: integer) -> boolean
+ 998[30]: GotoFalseWord(jump=1005, if_false: boolean)
+1001[29]: ConstTrue() -> boolean
+1002[30]: GotoWord(jump=1016)
+1005[29]: VarCharacter(var[17]) -> character var=l[17]:character
+1008[33]: ConvIntFromCharacter(v1: character) -> integer
+1009[33]: ConstInt(val=45) -> integer
+1014[37]: ConvIntFromCharacter(v1: character) -> integer
+1015[37]: EqInt(v1: integer, v2: integer) -> boolean
+1016[30]: GotoFalseWord(jump=1030, if_false: boolean)
+1019[29]: [217] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1022[41]: ConstEnum(val=3) -> boolean type=Scanned 17
+1024[42]: SetEnum(v1: ref(reference), fld=36, val: boolean)
+1027[29]: GotoWord(jump=1165)
+1030[29]: VarCharacter(var[17]) -> character var=l[17]:character
+1033[33]: ConvIntFromCharacter(v1: character) -> integer
+1034[33]: ConstInt(val=108) -> integer
+1039[37]: ConvIntFromCharacter(v1: character) -> integer
+1040[37]: EqInt(v1: integer, v2: integer) -> boolean
+1041[30]: GotoFalseWord(jump=1055, if_false: boolean)
+1044[29]: [219] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1047[41]: ConstEnum(val=5) -> boolean type=Scanned 17
+1049[42]: SetEnum(v1: ref(reference), fld=36, val: boolean)
+1052[29]: GotoWord(jump=1165)
+1055[29]: VarCharacter(var[17]) -> character var=l[17]:character
+1058[33]: ConvIntFromCharacter(v1: character) -> integer
+1059[33]: ConstInt(val=120) -> integer
+1064[37]: ConvIntFromCharacter(v1: character) -> integer
+1065[37]: EqInt(v1: integer, v2: integer) -> boolean
+1066[30]: GotoFalseWord(jump=1073, if_false: boolean)
+1069[29]: ConstTrue() -> boolean
+1070[30]: GotoWord(jump=1084)
+1073[29]: VarCharacter(var[17]) -> character var=l[17]:character
+1076[33]: ConvIntFromCharacter(v1: character) -> integer
+1077[33]: ConstInt(val=111) -> integer
+1082[37]: ConvIntFromCharacter(v1: character) -> integer
+1083[37]: EqInt(v1: integer, v2: integer) -> boolean
+1084[30]: GotoFalseWord(jump=1091, if_false: boolean)
+1087[29]: ConstTrue() -> boolean
+1088[30]: GotoWord(jump=1102)
+1091[29]: VarCharacter(var[17]) -> character var=l[17]:character
+1094[33]: ConvIntFromCharacter(v1: character) -> integer
+1095[33]: ConstInt(val=98) -> integer
+1100[37]: ConvIntFromCharacter(v1: character) -> integer
+1101[37]: EqInt(v1: integer, v2: integer) -> boolean
+1102[30]: GotoFalseWord(jump=1108, if_false: boolean)
+1105[29]: GotoWord(jump=1165)
+1108[29]: VarCharacter(var[17]) -> character var=l[17]:character
+1111[33]: ConvIntFromCharacter(v1: character) -> integer
+1112[33]: ConstInt(val=95) -> integer
+1117[37]: ConvIntFromCharacter(v1: character) -> integer
+1118[37]: NeInt(v1: integer, v2: integer) -> boolean
+1119[30]: GotoFalseWord(jump=1154, if_false: boolean)
+1122[29]: VarCharacter(var[17]) -> character var=l[17]:character
+1125[33]: ConvIntFromCharacter(v1: character) -> integer
+1126[33]: ConstInt(val=48) -> integer
+1131[37]: ConvIntFromCharacter(v1: character) -> integer
+1132[37]: LtInt(v1: integer, v2: integer) -> boolean
+1133[30]: GotoFalseWord(jump=1140, if_false: boolean)
+1136[29]: ConstTrue() -> boolean
+1137[30]: GotoWord(jump=1151)
+1140[29]: ConstInt(val=57) -> integer
+1145[33]: ConvIntFromCharacter(v1: character) -> integer
+1146[33]: VarCharacter(var[17]) -> character var=l[17]:character
+1149[37]: ConvIntFromCharacter(v1: character) -> integer
+1150[37]: LtInt(v1: integer, v2: integer) -> boolean
+1151[30]: GotoWord(jump=1155)
+1154[29]: ConstFalse() -> boolean
+1155[30]: GotoFalseWord(jump=1165, if_false: boolean)
+1158[29]: [222] FreeStack(value=0, discard=4)
+1162[25]: GotoWord(jump=1190)
+1165[29]: [224] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1168[41]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1171[53]: GetInt(v1: ref(reference), fld=8) -> integer
+1174[45]: ConstInt(val=1) -> integer
+1179[49]: AddInt(v1: integer, v2: integer) -> integer
+1180[45]: SetInt(v1: ref(reference), fld=8, val: integer)
+1183[29]: FreeStack(value=0, discard=4)
+1187[25]: GotoWord(jump=907)
+1190[25]: FreeStack(value=0, discard=4)
+1194[21]: [226] Return(ret=12, value=0, discard=21)
+1200[21]: GotoWord(jump=1227)
+1203[21]: VarBool(var[16]) -> boolean var=negative[16]:boolean
+1206[22]: GotoFalseWord(jump=1227, if_false: boolean)
+1209[21]: [228] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1212[33]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1215[45]: GetInt(v1: ref(reference), fld=8) -> integer
+1218[37]: ConstInt(val=1) -> integer
+1223[41]: MinInt(v1: integer, v2: integer) -> integer
+1224[37]: SetInt(v1: ref(reference), fld=8, val: integer)
+1227[21]: [230] VarCharacter(var[17]) -> character var=l[17]:character
+1230[25]: ConvIntFromCharacter(v1: character) -> integer
+1231[25]: ConstInt(val=95) -> integer
+1236[29]: ConvIntFromCharacter(v1: character) -> integer
+1237[29]: EqInt(v1: integer, v2: integer) -> boolean
+1238[22]: GotoFalseWord(jump=1245, if_false: boolean)
+1241[21]: ConstTrue() -> boolean
+1242[22]: GotoWord(jump=1251)
+1245[21]: VarCharacter(var[17]) -> character var=l[17]:character
+1248[25]: StaticCall(t_9character_is_alphabetic)
+1251[22]: GotoFalseWord(jump=1389, if_false: boolean)
+1254[21]: [231] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1257[33]: ConstEnum(val=9) -> boolean type=Scanned 17
+1259[34]: SetEnum(v1: ref(reference), fld=36, val: boolean)
+1262[21]: [232] ConvIntFromNull() -> integer var=t#index[21]:integer
+1263[25]: PutInt(var[21], value: integer)
+1266[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
+1269[25]: ConvBoolFromInt(v1: integer) -> boolean
+1270[22]: Not(v1: boolean) -> boolean
+1271[22]: GotoFalseWord(jump=1282, if_false: boolean)
+1274[21]: ConstInt(val=0) -> integer
+1279[25]: GotoWord(jump=1291)
+1282[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
+1285[25]: ConstInt(val=1) -> integer
+1290[29]: AddInt(v1: integer, v2: integer) -> integer
+1291[25]: PutInt(var[21], value: integer)
+1294[21]: ConstInt(val=300) -> integer
+1299[25]: VarInt(var[21]) -> integer var=t#index[21]:integer
+1302[29]: LeInt(v1: integer, v2: integer) -> boolean
+1303[22]: GotoFalseWord(jump=1309, if_false: boolean)
+1306[21]: GotoWord(jump=1383)
+1309[21]: VarInt(var[21]) -> integer var=t#index[21]:integer
+1312[25]: PutInt(var[25], value: integer)
+1315[21]: [233] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1318[33]: GetText(v1: ref(reference), fld=4) -> text["self"]
+1321[37]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1324[49]: GetInt(v1: ref(reference), fld=8) -> integer
+1327[41]: TextCharacter(v1: text, v2: integer) -> character
+1328[25]: PutCharacter(var[17], value: character)
+1331[21]: [234] VarCharacter(var[17]) -> character var=l[17]:character
+1334[25]: StaticCall(t_9character_is_alphanumeric)
+1337[22]: Not(v1: boolean) -> boolean
+1338[22]: GotoFalseWord(jump=1355, if_false: boolean)
+1341[21]: VarCharacter(var[17]) -> character var=l[17]:character
+1344[25]: ConvIntFromCharacter(v1: character) -> integer
+1345[25]: ConstInt(val=95) -> integer
+1350[29]: ConvIntFromCharacter(v1: character) -> integer
+1351[29]: NeInt(v1: integer, v2: integer) -> boolean
+1352[22]: GotoWord(jump=1356)
+1355[21]: ConstFalse() -> boolean
+1356[22]: GotoFalseWord(jump=1362, if_false: boolean)
+1359[21]: [235] GotoWord(jump=1383)
+1362[21]: [237] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1365[33]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1368[45]: GetInt(v1: ref(reference), fld=8) -> integer
+1371[37]: ConstInt(val=1) -> integer
+1376[41]: AddInt(v1: integer, v2: integer) -> integer
+1377[37]: SetInt(v1: ref(reference), fld=8, val: integer)
+1380[21]: GotoWord(jump=1266)
+1383[21]: [239] Return(ret=12, value=0, discard=21)
+1389[21]: [242] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1392[33]: ConstEnum(val=10) -> boolean type=Scanned 17
+1394[34]: SetEnum(v1: ref(reference), fld=36, val: boolean)
+1397[21]: [243] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1400[33]: GetField(v1: ref(reference), fld=28) -> ref(reference) type=hash<SToken[start]> 24
+1403[33]: VarCharacter(var[17]) -> character var=l[17]:character
+1406[37]: GetRecord(data: ref(reference), db_tp=24, no_keys=1) -> ref(reference)
+1410[33]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=sorted<Possible[-length,token]> 21
+1413[33]: Iterate(data: ref(reference), on=130, arg=8, keys=[Key { type_nr: -1, position: 0 }, Key { type_nr: 6, position: 4 }], from_key=0, till_key=0) -> long
+1426[29]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1429[41]: GetField(v1: ref(reference), fld=28) -> ref(reference) type=hash<SToken[start]> 24
+1432[41]: VarCharacter(var[17]) -> character var=l[17]:character
+1435[45]: GetRecord(data: ref(reference), db_tp=24, no_keys=1) -> ref(reference)
+1439[41]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=sorted<Possible[-length,token]> 21
+1442[41]: Step(state_var=20, data: ref(reference), on=130, arg=8) -> ref(reference)
+1448[41]: VarRef(var[29]) -> ref(reference) type=Possible 19 var=pt[29]:ref(Possible)["self"]
+1451[53]: ConvBoolFromRef(val: ref(reference)) -> boolean
+1452[42]: Not(v1: boolean) -> boolean
+1453[42]: GotoFalseWord(jump=1463, if_false: boolean)
+1456[41]: FreeStack(value=0, discard=12)
+1460[29]: GotoWord(jump=1556)
+1463[41]: [244] Text() var=tok[41]:text["pt"]
+1464[65]: VarRef(var[29]) -> ref(reference) type=Possible 19 var=pt[29]:ref(Possible)["self"]
+1467[77]: GetText(v1: ref(reference), fld=4) -> text["self"]
+1470[81]: AppendText(var[41], v1: text)
+1473[65]: [245] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1476[77]: GetText(v1: ref(reference), fld=4) -> text["self"]
+1479[81]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1482[93]: GetInt(v1: ref(reference), fld=8) -> integer
+1485[85]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1488[97]: GetInt(v1: ref(reference), fld=8) -> integer
+1491[89]: VarText(var[41]) -> text var=tok[41]:text["pt"]
+1494[105]: Call(size=0, fn=t_4text_len)
+1501[93]: AddInt(v1: integer, v2: integer) -> integer
+1502[89]: GetTextSub(v1: text, from: integer, till: integer) -> text["self"]
+1503[81]: VarText(var[41]) -> text var=tok[41]:text["pt"]
+1506[97]: EqText(v1: text, v2: text) -> boolean
+1507[66]: GotoFalseWord(jump=1542, if_false: boolean)
+1510[65]: [246] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1513[77]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1516[89]: GetInt(v1: ref(reference), fld=8) -> integer
+1519[81]: VarText(var[41]) -> text var=tok[41]:text["pt"]
+1522[97]: Call(size=0, fn=t_4text_len)
+1529[85]: AddInt(v1: integer, v2: integer) -> integer
+1530[81]: SetInt(v1: ref(reference), fld=8, val: integer)
+1533[65]: [247] FreeText(var[41])
+1536[65]: Return(ret=12, value=0, discard=65)
+1542[65]: FreeText(var[41])
+1545[65]: FreeStack(value=0, discard=24)
+1549[41]: FreeStack(value=0, discard=12)
+1553[29]: GotoWord(jump=1426)
+1556[29]: FreeStack(value=0, discard=8)
+1560[21]: [250] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1563[33]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+1566[45]: GetInt(v1: ref(reference), fld=8) -> integer
+1569[37]: ConstInt(val=1) -> integer
+1574[41]: AddInt(v1: integer, v2: integer) -> integer
+1575[37]: SetInt(v1: ref(reference), fld=8, val: integer)
+1578[21]: Return(ret=12, value=0, discard=21)
 
 fn t_5Lexer_test(self:Lexer, with:text) -> boolean {#block(1):boolean
   [255] OpEqText(OpGetTextSub(OpGetText(self(0), 4i32), OpGetInt(self(0), 20i32), OpGetInt(self(0), 8i32)), with(0));
@@ -1460,11 +1461,11 @@ fn t_5Lexer_position(self:Lexer, __work_1:&text) -> text["__work_1"] {#block(1):
   __work_1(0):&text = "";
   [276] {#Formatted string(2):text["__work_1"]
     __work_1(0):&text = "";
-    OpFormatRefText(__work_1(0), OpGetText(self(0), 0i32), 0i32, -1i32, 32i32);
-    OpAppendRefText(__work_1(0), ":");
-    OpFormatRefLong(__work_1(0), OpConvLongFromInt(OpGetInt(self(0), 12i32)), 10i32, 0i32, 32i32, false, false);
-    OpAppendRefText(__work_1(0), ":");
-    OpFormatRefLong(__work_1(0), OpConvLongFromInt(OpGetInt(self(0), 16i32)), 10i32, 0i32, 32i32, false, false);
+    OpFormatStackText(__work_1(0), OpGetText(self(0), 0i32), 0i32, -1i32, 32i32);
+    OpAppendStackText(__work_1(0), ":");
+    OpFormatStackLong(__work_1(0), OpConvLongFromInt(OpGetInt(self(0), 12i32)), 10i32, 0i32, 32i32, false, false);
+    OpAppendStackText(__work_1(0), ":");
+    OpFormatStackLong(__work_1(0), OpConvLongFromInt(OpGetInt(self(0), 16i32)), 10i32, 0i32, 32i32, false, false);
     __work_1(0);
   }#Formatted string(2):text["__work_1"];
 }#block(1):text["__work_1"]
@@ -1474,23 +1475,23 @@ byte-code for lib/lexer.lav:t_5Lexer_position(self: ref(Lexer)[0], __work_1: &te
    0[28]: [276] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
    3[40]: GetText(v1: ref(reference), fld=0) -> text["self"]
    6[44]: ConstInt(val=0) -> integer
-  11[48]: FormatRefText(var[12], val: text, width: integer, dir=-1, token=32)
+  11[48]: FormatStackText(var[12], val: text, width: integer, dir=-1, token=32)
   16[28]: ConstText(_value=":") -> text
-  19[44]: AppendRefText(var[12], v1: text)
+  19[44]: AppendStackText(var[12], v1: text)
   22[28]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
   25[40]: GetInt(v1: ref(reference), fld=12) -> integer
   28[32]: ConvLongFromInt(v1: integer) -> long
   29[36]: ConstInt(val=0) -> integer
-  34[40]: FormatRefLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  34[40]: FormatStackLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
   41[28]: ConstText(_value=":") -> text
-  44[44]: AppendRefText(var[12], v1: text)
+  44[44]: AppendStackText(var[12], v1: text)
   47[28]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
   50[40]: GetInt(v1: ref(reference), fld=16) -> integer
   53[32]: ConvLongFromInt(v1: integer) -> long
   54[36]: ConstInt(val=0) -> integer
-  59[40]: FormatRefLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  59[40]: FormatStackLong(var[12], val: long, radix=10, width: integer, token=32, plus=false, note=false)
   66[28]: VarRef(var[12]) -> ref(reference) var=__work_1[12]:&text
-  69[40]: GetRefText(r: ref(reference)) -> text["self"]
+  69[40]: GetStackText(r: ref(reference)) -> text["self"]
   70[44]: Return(ret=24, value=16, discard=44) type=text 5
 
 fn t_5Lexer_identifier(self:Lexer, result:&text) -> text["result"] {#block(1):text["result"]
@@ -1525,9 +1526,9 @@ byte-code for lib/lexer.lav:t_5Lexer_identifier(self: ref(Lexer)[0], result: &te
   37[48]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
   40[60]: GetInt(v1: ref(reference), fld=8) -> integer
   43[52]: GetTextSub(v1: text, from: integer, till: integer) -> text["self"]
-  44[44]: AppendRefText(var[12], v1: text)
+  44[44]: AppendStackText(var[12], v1: text)
   47[28]: [285] VarRef(var[12]) -> ref(reference) var=result[12]:&text
-  50[40]: GetRefText(r: ref(reference)) -> text["self"]
+  50[40]: GetStackText(r: ref(reference)) -> text["self"]
   51[44]: Call(size=0, fn=t_4text_len)
   58[32]: ConstInt(val=0) -> integer
   63[36]: EqInt(v1: integer, v2: integer) -> boolean
@@ -1537,7 +1538,7 @@ byte-code for lib/lexer.lav:t_5Lexer_identifier(self: ref(Lexer)[0], result: &te
   71[28]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
   74[40]: GetField(v1: ref(reference), fld=24) -> ref(reference) type=hash<SKeyword[name]> 23
   77[40]: VarRef(var[12]) -> ref(reference) var=result[12]:&text
-  80[52]: GetRefText(r: ref(reference)) -> text["self"]
+  80[52]: GetStackText(r: ref(reference)) -> text["self"]
   81[56]: GetRecord(data: ref(reference), db_tp=23, no_keys=1) -> ref(reference)
   85[40]: ConvBoolFromRef(val: ref(reference)) -> boolean
   86[29]: GotoFalseWord(jump=93, if_false: boolean)
@@ -1546,7 +1547,7 @@ byte-code for lib/lexer.lav:t_5Lexer_identifier(self: ref(Lexer)[0], result: &te
   93[28]: [288] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
   96[40]: Call(size=0, fn=t_5Lexer_scan)
  103[28]: [289] VarRef(var[12]) -> ref(reference) var=result[12]:&text
- 106[40]: GetRefText(r: ref(reference)) -> text["self"]
+ 106[40]: GetStackText(r: ref(reference)) -> text["self"]
  107[44]: Return(ret=24, value=16, discard=44) type=text 5
 
 fn t_5Lexer_int(self:Lexer) -> integer {#block(1):integer
@@ -1917,18 +1918,18 @@ fn t_5Lexer_constant_text(self:Lexer, result:&text) -> text["result"] {#block(1)
     loop {#For loop_4
       i(4):integer = {#Iter range(5):integer
         i#index(3):integer = if OpNot(OpConvBoolFromInt(i#index(3))) OpAddInt(OpGetInt(self(0), 20i32), 1i32) else OpAddInt(i#index(3), 1i32);
-        if OpGeInt(i#index(3), OpMinInt(OpGetInt(self(0), 8i32), 1i32)) break(0) else null;
+        if OpLeInt(OpMinInt(OpGetInt(self(0), 8i32), 1i32), i#index(3)) break(0) else null;
         i#index(3);
       }#Iter range(5):integer;
       {#block(6):void
         [384] if OpEqText(OpGetTextSub(OpGetText(self(0), 4i32), i(4), OpAddInt(i(4), 2i32)), "{") {#block(7):void
-          [385] OpAppendRefCharacter(result(0), 123i32);
+          [385] OpAppendStackCharacter(result(0), 123i32);
         }#block(7):void else if OpEqText(OpGetTextSub(OpGetText(self(0), 4i32), i(4), OpAddInt(i(4), 2i32)), "}") {#block(8):void
-          [387] OpAppendRefCharacter(result(0), 125i32);
+          [387] OpAppendStackCharacter(result(0), 125i32);
         }#block(8):void else if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(OpGetText(self(0), 4i32), i(4))), OpConvIntFromCharacter(92i32)) {#block(9):void
-          [389] OpAppendRefCharacter(result(0), t_5Lexer_escaped(self(0), i(4)));
+          [389] OpAppendStackCharacter(result(0), t_5Lexer_escaped(self(0), i(4)));
         }#block(9):void else {#block(10):void
-          [391] OpAppendRefCharacter(result(0), OpTextCharacter(OpGetText(self(0), 4i32), i(4)));
+          [391] OpAppendStackCharacter(result(0), OpTextCharacter(OpGetText(self(0), 4i32), i(4)));
         }#block(10):void;
       }#block(6):void;
     }#For loop_4;
@@ -1969,12 +1970,12 @@ byte-code for lib/lexer.lav:t_5Lexer_constant_text(self: ref(Lexer)[0], result: 
   52[36]: ConstInt(val=1) -> integer
   57[40]: AddInt(v1: integer, v2: integer) -> integer
   58[36]: PutInt(var[28], value: integer)
-  61[32]: VarInt(var[28]) -> integer var=i#index[28]:integer
-  64[36]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
-  67[48]: GetInt(v1: ref(reference), fld=8) -> integer
-  70[40]: ConstInt(val=1) -> integer
-  75[44]: MinInt(v1: integer, v2: integer) -> integer
-  76[40]: GeInt(v1: integer, v2: integer) -> boolean
+  61[32]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
+  64[44]: GetInt(v1: ref(reference), fld=8) -> integer
+  67[36]: ConstInt(val=1) -> integer
+  72[40]: MinInt(v1: integer, v2: integer) -> integer
+  73[36]: VarInt(var[28]) -> integer var=i#index[28]:integer
+  76[40]: LeInt(v1: integer, v2: integer) -> boolean
   77[33]: GotoFalseWord(jump=83, if_false: boolean)
   80[32]: GotoWord(jump=220)
   83[32]: VarInt(var[28]) -> integer var=i#index[28]:integer
@@ -1989,7 +1990,7 @@ byte-code for lib/lexer.lav:t_5Lexer_constant_text(self: ref(Lexer)[0], result: 
  108[68]: EqText(v1: text, v2: text) -> boolean
  109[37]: GotoFalseWord(jump=123, if_false: boolean)
  112[36]: [385] ConstInt(val=123) -> integer
- 117[40]: AppendRefCharacter(var[12], v1: character)
+ 117[40]: AppendStackCharacter(var[12], v1: character)
  120[36]: GotoWord(jump=213)
  123[36]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
  126[48]: GetText(v1: ref(reference), fld=4) -> text["self"]
@@ -2002,7 +2003,7 @@ byte-code for lib/lexer.lav:t_5Lexer_constant_text(self: ref(Lexer)[0], result: 
  145[68]: EqText(v1: text, v2: text) -> boolean
  146[37]: GotoFalseWord(jump=160, if_false: boolean)
  149[36]: [387] ConstInt(val=125) -> integer
- 154[40]: AppendRefCharacter(var[12], v1: character)
+ 154[40]: AppendStackCharacter(var[12], v1: character)
  157[36]: GotoWord(jump=213)
  160[36]: VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
  163[48]: GetText(v1: ref(reference), fld=4) -> text["self"]
@@ -2016,13 +2017,13 @@ byte-code for lib/lexer.lav:t_5Lexer_constant_text(self: ref(Lexer)[0], result: 
  181[36]: [389] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
  184[48]: VarInt(var[32]) -> integer var=i[32]:integer
  187[52]: Call(size=0, fn=t_5Lexer_escaped)
- 194[40]: AppendRefCharacter(var[12], v1: character)
+ 194[40]: AppendStackCharacter(var[12], v1: character)
  197[36]: GotoWord(jump=213)
  200[36]: [391] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
  203[48]: GetText(v1: ref(reference), fld=4) -> text["self"]
  206[52]: VarInt(var[32]) -> integer var=i[32]:integer
  209[56]: TextCharacter(v1: text, v2: integer) -> character
- 210[40]: AppendRefCharacter(var[12], v1: character)
+ 210[40]: AppendStackCharacter(var[12], v1: character)
  213[36]: FreeStack(value=0, discard=4)
  217[32]: GotoWord(jump=26)
  220[32]: FreeStack(value=0, discard=4)
@@ -2051,7 +2052,7 @@ byte-code for lib/lexer.lav:t_5Lexer_constant_text(self: ref(Lexer)[0], result: 
  304[28]: [399] VarRef(var[0]) -> ref(reference) type=Lexer 22 var=self[0]:ref(Lexer)
  307[40]: Call(size=0, fn=t_5Lexer_scan)
  314[28]: [401] VarRef(var[12]) -> ref(reference) var=result[12]:&text
- 317[40]: GetRefText(r: ref(reference)) -> text["self"]
+ 317[40]: GetStackText(r: ref(reference)) -> text["self"]
  318[44]: Return(ret=24, value=16, discard=44) type=text 5
 
 fn t_5Lexer_constant_character(self:Lexer) -> character {#block(1):character
@@ -2357,28 +2358,28 @@ fn n_main() {#block(1):void
   [14] if OpNeInt(t_5Lexer_int(l(1)), 3i32) null else OpPanic("Third number");
   [15] if OpEqLong(t_5Lexer_long_int(l(1)), OpConvLongFromInt(3i32)) null else OpPanic("Incorrect long");
   [16] if OpEqText(t_5Lexer_position(l(1), {#default ref(4):ref(reference)["__work_1"]
-    OpCreateRef(__work_1(1));
+    OpCreateStack(__work_1(1));
   }#default ref(4):ref(reference)["__work_1"]), "Tokens:1:15") null else OpPanic({#Formatted string(5):text["__work_2"]
     __work_2(1):text = "Incorrect position ";
     OpFormatText(__work_2(1), t_5Lexer_position(l(1), {#default ref(6):ref(reference)["__work_3"]
-      OpCreateRef(__work_3(1));
+      OpCreateStack(__work_3(1));
     }#default ref(6):ref(reference)["__work_3"]), 0i32, -1i32, 32i32);
     __work_2(1);
   }#Formatted string(5):text["__work_2"]);
   [17] if OpNot(t_5Lexer_matches(l(1), ">")) null else OpPanic("Incorrect higher");
   [18] if t_5Lexer_matches(l(1), ">>") null else OpPanic("Incorrect logical shift");
   [19] if OpEqText(t_5Lexer_position(l(1), {#default ref(7):ref(reference)["__work_4"]
-    OpCreateRef(__work_4(1));
+    OpCreateStack(__work_4(1));
   }#default ref(7):ref(reference)["__work_4"]), "Tokens:1:18") null else OpPanic({#Formatted string(8):text["__work_5"]
     __work_5(1):text = "Incorrect position ";
     OpFormatText(__work_5(1), t_5Lexer_position(l(1), {#default ref(9):ref(reference)["__work_6"]
-      OpCreateRef(__work_6(1));
+      OpCreateStack(__work_6(1));
     }#default ref(9):ref(reference)["__work_6"]), 0i32, -1i32, 32i32);
     __work_5(1);
   }#Formatted string(8):text["__work_5"]);
   [21] t_5Lexer_parse_string(l(1), "Texts", ""123" + '4'");
   [22] if OpEqText(t_5Lexer_constant_text(l(1), {#default ref(10):ref(reference)["__work_7"]
-    OpCreateRef(__work_7(1));
+    OpCreateStack(__work_7(1));
   }#default ref(10):ref(reference)["__work_7"]), "123") null else OpPanic("Incorrect text literal");
   [23] if t_5Lexer_matches(l(1), "+") null else OpPanic("Incorrect add");
   [24] if OpEqBool(OpConvBoolFromCharacter(t_5Lexer_constant_character(l(1))), OpConvBoolFromText("123")) null else OpPanic("Incorrect text literal");
@@ -2398,7 +2399,7 @@ extra comment") null else OpPanic("Second comment");
   [35] if t_5Lexer_is_finished(l(1)) null else OpPanic("Ready");
   [37] t_5Lexer_parse_string(l(1), "Formatting", ""abc{12 + 34}def"");
   [38] if OpEqText(t_5Lexer_constant_text(l(1), {#default ref(11):ref(reference)["__work_8"]
-    OpCreateRef(__work_8(1));
+    OpCreateStack(__work_8(1));
   }#default ref(11):ref(reference)["__work_8"]), "abc") null else OpPanic("Before formatting");
   [39] if t_5Lexer_is_formatting(l(1)) null else OpPanic("Formatting");
   [40] t_5Lexer_set_formatting(l(1), false);
@@ -2408,7 +2409,7 @@ extra comment") null else OpPanic("Second comment");
   [44] t_5Lexer_set_formatting(l(1), true);
   [45] if t_5Lexer_matches(l(1), "}") null else OpPanic("Incorrect closing brace");
   [46] if OpEqText(t_5Lexer_constant_text(l(1), {#default ref(12):ref(reference)["__work_9"]
-    OpCreateRef(__work_9(1));
+    OpCreateStack(__work_9(1));
   }#default ref(12):ref(reference)["__work_9"]), "def") null else OpPanic("After formatting");
   [47] if OpNot(t_5Lexer_is_formatting(l(1))) null else OpPanic("Formatting");
   OpFreeRef(l(1));
@@ -2823,7 +2824,7 @@ byte-code for tests/suite/15-lexer.lav:n_main()
 1474[256]: ConstText(_value="Incorrect long") -> text
 1490[272]: Panic(message: text)
 1491[256]: [16] VarRef(var[244]) -> ref(reference) type=Lexer 22 var=l[244]:ref(Lexer)
-1494[268]: CreateRef(var[220]) -> ref(reference)
+1494[268]: CreateStack(var[220]) -> ref(reference)
 1497[280]: Call(size=0, fn=t_5Lexer_position)
 1504[272]: ConstText(_value="Tokens:1:15") -> text
 1517[288]: EqText(v1: text, v2: text) -> boolean
@@ -2833,7 +2834,7 @@ byte-code for tests/suite/15-lexer.lav:n_main()
 1527[256]: ConstText(_value="Incorrect position ") -> text
 1548[272]: AppendText(var[196], v1: text)
 1551[256]: VarRef(var[244]) -> ref(reference) type=Lexer 22 var=l[244]:ref(Lexer)
-1554[268]: CreateRef(var[172]) -> ref(reference)
+1554[268]: CreateStack(var[172]) -> ref(reference)
 1557[280]: Call(size=0, fn=t_5Lexer_position)
 1564[272]: ConstInt(val=0) -> integer
 1569[276]: FormatText(var[196], val: text, width: integer, dir=-1, token=32)
@@ -2855,7 +2856,7 @@ byte-code for tests/suite/15-lexer.lav:n_main()
 1637[256]: ConstText(_value="Incorrect logical shift") -> text
 1662[272]: Panic(message: text)
 1663[256]: [19] VarRef(var[244]) -> ref(reference) type=Lexer 22 var=l[244]:ref(Lexer)
-1666[268]: CreateRef(var[148]) -> ref(reference)
+1666[268]: CreateStack(var[148]) -> ref(reference)
 1669[280]: Call(size=0, fn=t_5Lexer_position)
 1676[272]: ConstText(_value="Tokens:1:18") -> text
 1689[288]: EqText(v1: text, v2: text) -> boolean
@@ -2865,7 +2866,7 @@ byte-code for tests/suite/15-lexer.lav:n_main()
 1699[256]: ConstText(_value="Incorrect position ") -> text
 1720[272]: AppendText(var[124], v1: text)
 1723[256]: VarRef(var[244]) -> ref(reference) type=Lexer 22 var=l[244]:ref(Lexer)
-1726[268]: CreateRef(var[100]) -> ref(reference)
+1726[268]: CreateStack(var[100]) -> ref(reference)
 1729[280]: Call(size=0, fn=t_5Lexer_position)
 1736[272]: ConstInt(val=0) -> integer
 1741[276]: FormatText(var[124], val: text, width: integer, dir=-1, token=32)
@@ -2876,7 +2877,7 @@ byte-code for tests/suite/15-lexer.lav:n_main()
 1760[284]: ConstText(_value=""123" + '4'") -> text
 1773[300]: Call(size=0, fn=t_5Lexer_parse_string)
 1780[256]: [22] VarRef(var[244]) -> ref(reference) type=Lexer 22 var=l[244]:ref(Lexer)
-1783[268]: CreateRef(var[76]) -> ref(reference)
+1783[268]: CreateStack(var[76]) -> ref(reference)
 1786[280]: Call(size=0, fn=t_5Lexer_constant_text)
 1793[272]: ConstText(_value="123") -> text
 1798[288]: EqText(v1: text, v2: text) -> boolean
@@ -2980,7 +2981,7 @@ extra comment") -> text
 2399[284]: ConstText(_value=""abc{12 + 34}def"") -> text
 2418[300]: Call(size=0, fn=t_5Lexer_parse_string)
 2425[256]: [38] VarRef(var[244]) -> ref(reference) type=Lexer 22 var=l[244]:ref(Lexer)
-2428[268]: CreateRef(var[52]) -> ref(reference)
+2428[268]: CreateStack(var[52]) -> ref(reference)
 2431[280]: Call(size=0, fn=t_5Lexer_constant_text)
 2438[272]: ConstText(_value="abc") -> text
 2443[288]: EqText(v1: text, v2: text) -> boolean
@@ -3031,7 +3032,7 @@ extra comment") -> text
 2653[256]: ConstText(_value="Incorrect closing brace") -> text
 2678[272]: Panic(message: text)
 2679[256]: [46] VarRef(var[244]) -> ref(reference) type=Lexer 22 var=l[244]:ref(Lexer)
-2682[268]: CreateRef(var[28]) -> ref(reference)
+2682[268]: CreateStack(var[28]) -> ref(reference)
 2685[280]: Call(size=0, fn=t_5Lexer_constant_text)
 2692[272]: ConstText(_value="def") -> text
 2697[288]: EqText(v1: text, v2: text) -> boolean

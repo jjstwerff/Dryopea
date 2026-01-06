@@ -59,6 +59,13 @@ actual change.
 */
 pub fn vector_append(db: &DbRef, size: u32, stores: &mut [Store]) -> DbRef {
     let store = keys::mut_store(db, stores);
+    if db.rec == 0 {
+        return DbRef {
+            store_nr: db.store_nr,
+            rec: 0,
+            pos: 0,
+        };
+    }
     let mut vec_rec = store.get_int(db.rec, db.pos) as u32;
     let pos = if vec_rec == 0 {
         // new array
@@ -83,6 +90,9 @@ pub fn vector_append(db: &DbRef, size: u32, stores: &mut [Store]) -> DbRef {
 }
 
 pub fn vector_finish(db: &DbRef, stores: &mut [Store]) {
+    if db.rec == 0 {
+        return;
+    }
     let store = keys::mut_store(db, stores);
     let vec_rec = store.get_int(db.rec, db.pos) as u32;
     let length = store.get_int(vec_rec, 4);

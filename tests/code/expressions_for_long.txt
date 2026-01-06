@@ -14,7 +14,7 @@ fn n_test() {#block(1):void
       loop {#For loop_4
         a(4):long = {#Iter range(5):long
           a#index(3):long = if OpNot(OpConvBoolFromLong(a#index(3))) 10i64 else OpAddLong(a#index(3), OpConvLongFromInt(1i32));
-          if OpGtLong(a#index(3), 20i64) break(0) else null;
+          if OpLtLong(20i64, a#index(3)) break(0) else null;
           a#index(3);
         }#Iter range(5):long;
         {#block(6):void
@@ -49,9 +49,9 @@ byte-code for for_long:n_test()
   39[56]: ConvLongFromInt(v1: integer) -> long
   40[60]: AddLong(v1: long, v2: long) -> long
   41[52]: PutLong(var[36], value: long)
-  44[44]: VarLong(var[36]) -> long var=a#index[36]:long
-  47[52]: ConstLong(val=20) -> long
-  56[60]: GtLong(v1: long, v2: long) -> boolean
+  44[44]: ConstLong(val=20) -> long
+  53[52]: VarLong(var[36]) -> long var=a#index[36]:long
+  56[60]: LtLong(v1: long, v2: long) -> boolean
   57[45]: GotoFalseWord(jump=63, if_false: boolean)
   60[44]: GotoWord(jump=83)
   63[44]: VarLong(var[36]) -> long var=a#index[36]:long
@@ -93,9 +93,9 @@ Execute test:
    19:[48] ConstLong(val=10) -> 10[48]
    28:[56] GotoWord(jump=41)
    41:[56] PutLong(var[40], value=10[48])
-   44:[48] VarLong(var[40]) -> 10[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=10[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 10[56]
+   56:[64] LtLong(v1=20[48], v2=10[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 10[48]
    66:[56] VarLong(var[32]) -> 0[56]
@@ -113,9 +113,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=10[48], v2=1[56]) -> 11[48]
    41:[56] PutLong(var[40], value=11[48])
-   44:[48] VarLong(var[40]) -> 11[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=11[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 11[56]
+   56:[64] LtLong(v1=20[48], v2=11[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 11[48]
    66:[56] VarLong(var[32]) -> 10[56]
@@ -133,9 +133,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=11[48], v2=1[56]) -> 12[48]
    41:[56] PutLong(var[40], value=12[48])
-   44:[48] VarLong(var[40]) -> 12[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=12[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 12[56]
+   56:[64] LtLong(v1=20[48], v2=12[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 12[48]
    66:[56] VarLong(var[32]) -> 21[56]
@@ -153,9 +153,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=12[48], v2=1[56]) -> 13[48]
    41:[56] PutLong(var[40], value=13[48])
-   44:[48] VarLong(var[40]) -> 13[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=13[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 13[56]
+   56:[64] LtLong(v1=20[48], v2=13[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 13[48]
    66:[56] VarLong(var[32]) -> 33[56]
@@ -173,9 +173,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=13[48], v2=1[56]) -> 14[48]
    41:[56] PutLong(var[40], value=14[48])
-   44:[48] VarLong(var[40]) -> 14[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=14[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 14[56]
+   56:[64] LtLong(v1=20[48], v2=14[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 14[48]
    66:[56] VarLong(var[32]) -> 46[56]
@@ -193,9 +193,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=14[48], v2=1[56]) -> 15[48]
    41:[56] PutLong(var[40], value=15[48])
-   44:[48] VarLong(var[40]) -> 15[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=15[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 15[56]
+   56:[64] LtLong(v1=20[48], v2=15[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 15[48]
    66:[56] VarLong(var[32]) -> 60[56]
@@ -213,9 +213,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=15[48], v2=1[56]) -> 16[48]
    41:[56] PutLong(var[40], value=16[48])
-   44:[48] VarLong(var[40]) -> 16[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=16[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 16[56]
+   56:[64] LtLong(v1=20[48], v2=16[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 16[48]
    66:[56] VarLong(var[32]) -> 75[56]
@@ -233,9 +233,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=16[48], v2=1[56]) -> 17[48]
    41:[56] PutLong(var[40], value=17[48])
-   44:[48] VarLong(var[40]) -> 17[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=17[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 17[56]
+   56:[64] LtLong(v1=20[48], v2=17[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 17[48]
    66:[56] VarLong(var[32]) -> 91[56]
@@ -253,9 +253,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=17[48], v2=1[56]) -> 18[48]
    41:[56] PutLong(var[40], value=18[48])
-   44:[48] VarLong(var[40]) -> 18[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=18[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 18[56]
+   56:[64] LtLong(v1=20[48], v2=18[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 18[48]
    66:[56] VarLong(var[32]) -> 108[56]
@@ -273,9 +273,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=18[48], v2=1[56]) -> 19[48]
    41:[56] PutLong(var[40], value=19[48])
-   44:[48] VarLong(var[40]) -> 19[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=19[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 19[56]
+   56:[64] LtLong(v1=20[48], v2=19[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 19[48]
    66:[56] VarLong(var[32]) -> 126[56]
@@ -293,9 +293,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=19[48], v2=1[56]) -> 20[48]
    41:[56] PutLong(var[40], value=20[48])
-   44:[48] VarLong(var[40]) -> 20[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=20[48], v2=20[56]) -> false[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 20[56]
+   56:[64] LtLong(v1=20[48], v2=20[56]) -> false[48]
    57:[49] GotoFalseWord(jump=63, if_false=false[48])
    63:[48] VarLong(var[40]) -> 20[48]
    66:[56] VarLong(var[32]) -> 145[56]
@@ -313,9 +313,9 @@ Execute test:
    39:[60] ConvLongFromInt(v1=1[56]) -> 1[56]
    40:[64] AddLong(v1=20[48], v2=1[56]) -> 21[48]
    41:[56] PutLong(var[40], value=21[48])
-   44:[48] VarLong(var[40]) -> 21[48]
-   47:[56] ConstLong(val=20) -> 20[56]
-   56:[64] GtLong(v1=21[48], v2=20[56]) -> true[48]
+   44:[48] ConstLong(val=20) -> 20[48]
+   53:[56] VarLong(var[40]) -> 21[56]
+   56:[64] LtLong(v1=20[48], v2=21[56]) -> true[48]
    57:[49] GotoFalseWord(jump=63, if_false=true[48])
    60:[48] GotoWord(jump=83)
    83:[48] FreeStack(value=0, discard=8)

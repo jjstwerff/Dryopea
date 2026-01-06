@@ -37,7 +37,7 @@ fn n_test() {#block(1):void
             }#Formatted string(9):text["__work_2"];
           }#block(8):text["__work_2"];
         }#Iter For(5):text["__work_2"];
-        if OpGtInt(c#count(3), 0i32) OpAppendText(__work_1(1), ",") else null;
+        if OpLtInt(0i32, c#count(3)) OpAppendText(__work_1(1), ",") else null;
         c#count(3):integer = OpAddInt(c#count(3), 1i32);
         OpFormatText(__work_1(1), _val_1(4), 0i32, -1i32, 32i32);
         OpFreeText(_val_1(4));
@@ -112,9 +112,9 @@ byte-code for format_chars:n_test()
  139[192]: FreeStack(value=16, discard=32)
  143[176]: FreeStack(value=16, discard=20)
  147[172]: AppendText(var[132], v1: text)
- 150[156]: VarInt(var[128]) -> integer var=c#count[128]:integer
- 153[160]: ConstInt(val=0) -> integer
- 158[164]: GtInt(v1: integer, v2: integer) -> boolean
+ 150[156]: ConstInt(val=0) -> integer
+ 155[160]: VarInt(var[128]) -> integer var=c#count[128]:integer
+ 158[164]: LtInt(v1: integer, v2: integer) -> boolean
  159[157]: GotoFalseWord(jump=168, if_false: boolean)
  162[156]: ConstText(_value=",") -> text
  165[172]: AppendText(var[52], v1: text)
@@ -206,9 +206,9 @@ Execute test:
   139:[196] FreeStack(value=16, discard=32)
   143:[180] FreeStack(value=16, discard=20)
   147:[176] AppendText(var[136], v1="4:😊"[160])
-  150:[160] VarInt(var[132]) -> 0[160]
-  153:[164] ConstInt(val=0) -> 0[164]
-  158:[168] GtInt(v1=0[160], v2=0[164]) -> false[160]
+  150:[160] ConstInt(val=0) -> 0[160]
+  155:[164] VarInt(var[132]) -> 0[164]
+  158:[168] LtInt(v1=0[160], v2=0[164]) -> false[160]
   159:[161] GotoFalseWord(jump=168, if_false=false[160])
   168:[160] VarInt(var[132]) -> 0[160]
   171:[164] ConstInt(val=1) -> 1[164]
@@ -253,9 +253,9 @@ Execute test:
   139:[196] FreeStack(value=16, discard=32)
   143:[180] FreeStack(value=16, discard=20)
   147:[176] AppendText(var[136], v1="8:🙃"[160])
-  150:[160] VarInt(var[132]) -> 1[160]
-  153:[164] ConstInt(val=0) -> 0[164]
-  158:[168] GtInt(v1=1[160], v2=0[164]) -> true[160]
+  150:[160] ConstInt(val=0) -> 0[160]
+  155:[164] VarInt(var[132]) -> 1[164]
+  158:[168] LtInt(v1=0[160], v2=1[164]) -> true[160]
   159:[161] GotoFalseWord(jump=168, if_false=true[160])
   162:[160] ConstText(_value=",") -> ","[160]
   165:[176] AppendText(var[56], v1=","[160])
@@ -302,9 +302,9 @@ Execute test:
   139:[196] FreeStack(value=16, discard=32)
   143:[180] FreeStack(value=16, discard=20)
   147:[176] AppendText(var[136], v1="9:4"[160])
-  150:[160] VarInt(var[132]) -> 2[160]
-  153:[164] ConstInt(val=0) -> 0[164]
-  158:[168] GtInt(v1=2[160], v2=0[164]) -> true[160]
+  150:[160] ConstInt(val=0) -> 0[160]
+  155:[164] VarInt(var[132]) -> 2[164]
+  158:[168] LtInt(v1=0[160], v2=2[164]) -> true[160]
   159:[161] GotoFalseWord(jump=168, if_false=true[160])
   162:[160] ConstText(_value=",") -> ","[160]
   165:[176] AppendText(var[56], v1=","[160])
