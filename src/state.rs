@@ -158,7 +158,7 @@ impl State {
     }
 
     #[inline]
-    pub fn create_ref(&mut self) {
+    pub fn create_stack(&mut self) {
         let pos = *self.code::<u16>();
         let db = DbRef {
             store_nr: self.stack_cur.store_nr,
@@ -188,14 +188,14 @@ impl State {
     }
 
     #[inline]
-    pub fn get_ref_text(&mut self) {
+    pub fn get_stack_text(&mut self) {
         let r = *self.get_stack::<DbRef>();
         let t: &str = self.database.store(&r).addr::<String>(r.rec, r.pos);
         self.put_stack(Str::new(t));
     }
 
     #[inline]
-    pub fn get_db_ref(&mut self) {
+    pub fn get_stack_ref(&mut self) {
         let fld = *self.code::<u16>();
         let r = *self.get_stack::<DbRef>();
         let t = self
@@ -206,21 +206,21 @@ impl State {
     }
 
     #[inline]
-    pub fn set_db_ref(&mut self) {
+    pub fn set_stack_ref(&mut self) {
         let v1 = *self.get_stack::<DbRef>();
         let r = *self.get_stack::<DbRef>();
         let t = self.database.store_mut(&r).addr_mut::<DbRef>(r.rec, r.pos);
         *t = v1;
     }
 
-    pub fn append_ref_text(&mut self) {
+    pub fn append_stack_text(&mut self) {
         let text = self.string();
         let pos = *self.code::<u16>();
         let v1 = self.string_ref_mut(pos - size_ptr() as u16);
         *v1 += text.str();
     }
 
-    pub fn append_ref_character(&mut self) {
+    pub fn append_stack_character(&mut self) {
         let pos = *self.code::<u16>();
         let c = *self.get_stack::<char>();
         if c as u32 != 0 {
@@ -228,7 +228,7 @@ impl State {
         }
     }
 
-    pub fn clear_ref_text(&mut self) {
+    pub fn clear_stack_text(&mut self) {
         let pos = *self.code::<u16>();
         let v1 = self.string_ref_mut(pos);
         v1.clear();
@@ -564,7 +564,7 @@ impl State {
         external::format_long(s, val, radix, width, token, plus, note);
     }
 
-    pub fn format_ref_long(&mut self) {
+    pub fn format_stack_long(&mut self) {
         let pos = *self.code::<u16>();
         let radix = *self.code::<u8>();
         let token = *self.code::<u8>();
@@ -585,7 +585,7 @@ impl State {
         external::format_float(s, val, width, precision);
     }
 
-    pub fn format_ref_float(&mut self) {
+    pub fn format_stack_float(&mut self) {
         let pos = *self.code::<u16>();
         let precision = *self.get_stack::<i32>();
         let width = *self.get_stack::<i32>();
@@ -602,7 +602,7 @@ impl State {
         external::format_single(s, val, width, precision);
     }
 
-    pub fn format_ref_single(&mut self) {
+    pub fn format_stack_single(&mut self) {
         let pos = *self.code::<u16>();
         let precision = *self.get_stack::<i32>();
         let width = *self.get_stack::<i32>();
@@ -621,7 +621,7 @@ impl State {
         external::format_text(s, val.str(), width, dir, token);
     }
 
-    pub fn format_ref_text(&mut self) {
+    pub fn format_stack_text(&mut self) {
         let pos = *self.code::<u16>();
         let dir = *self.code::<i8>();
         let token = *self.code::<u8>();
@@ -654,7 +654,7 @@ impl State {
         self.string_mut(pos - size_ref() as u16).push_str(&s);
     }
 
-    pub fn format_ref_database(&mut self) {
+    pub fn format_stack_database(&mut self) {
         let pos = *self.code::<u16>();
         let db_tp = *self.code::<u16>();
         let pretty = *self.code::<bool>();
@@ -1442,7 +1442,7 @@ impl State {
                     if dep.is_empty() {
                         stack.add_op("OpConvRefFromNull", self);
                     } else {
-                        stack.add_op("OpCreateRef", self);
+                        stack.add_op("OpCreateStack", self);
                         self.code_add(dep[0]);
                     }
                 }
@@ -1468,7 +1468,7 @@ impl State {
                         self.code_add(0);
                         stack.add_op("OpSetInt", self);
                         self.code_add(4u16);
-                        stack.add_op("OpCreateRef", self);
+                        stack.add_op("OpCreateStack", self);
                         self.code_add(size_of::<DbRef>() as u16);
                         stack.add_op("OpConstInt", self);
                         self.code_add(12);
@@ -1476,7 +1476,7 @@ impl State {
                         self.code_add(4u16);
                         self.code_add(0u16);
                     } else {
-                        stack.add_op("OpCreateRef", self);
+                        stack.add_op("OpCreateStack", self);
                         self.code_add(dep[0]);
                     }
                 }
@@ -1723,9 +1723,9 @@ impl State {
                 Type::Single => stack.add_op("OpGetSingle", self),
                 Type::Float => stack.add_op("OpGetFloat", self),
                 Type::Enum(_, false, _) => stack.add_op("OpGetByte", self),
-                Type::Text(_) => stack.add_op("OpGetRefText", self),
+                Type::Text(_) => stack.add_op("OpGetStackText", self),
                 Type::Vector(_, _) | Type::Reference(_, _) | Type::Enum(_, true, _) => {
-                    stack.add_op("OpGetDbRef", self);
+                    stack.add_op("OpGetStackRef", self);
                 }
                 _ => panic!("Unknown referenced variable type: {tp}"),
             }
@@ -1890,7 +1890,7 @@ impl State {
                 }
                 self.generate(value, stack, false);
                 let var_pos = stack.position - stack.function.stack(var);
-                stack.add_op("OpAppendRefText", self);
+                stack.add_op("OpAppendStackText", self);
                 self.code_add(var_pos);
                 return;
             }
@@ -1906,7 +1906,7 @@ impl State {
                 Type::Float => stack.add_op("OpSetFloat", self),
                 Type::Enum(_, false, _) => stack.add_op("OpSetByte", self),
                 Type::Vector(_, _) | Type::Reference(_, _) | Type::Enum(_, true, _) => {
-                    stack.add_op("OpSetDbRef", self);
+                    stack.add_op("OpSetStackRef", self);
                 }
                 _ => panic!("Unknown reference variable type"),
             }

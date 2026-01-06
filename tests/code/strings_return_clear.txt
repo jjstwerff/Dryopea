@@ -14,13 +14,13 @@ fn n_res() -> integer {#block(1):integer
     loop {#For loop_3
       _t(3):integer = {#Iter range(4):integer
         _t#index(2):integer = if OpNot(OpConvBoolFromInt(_t#index(2))) 1i32 else OpAddInt(_t#index(2), 1i32);
-        if OpGeInt(_t#index(2), 5i32) break(0) else null;
+        if OpLeInt(5i32, _t#index(2)) break(0) else null;
         _t#index(2);
       }#Iter range(4):integer;
       {#block(5):void
         b(5):text = "123";
         a(1):integer = OpAddInt(a(1), OpCastIntFromText(b(5)));
-        if OpGtInt(a(1), 200i32) {#block(6):void
+        if OpLtInt(200i32, a(1)) {#block(6):void
           OpFreeText(b(5));
           return a(1);
         }#block(6):void else null;
@@ -45,9 +45,9 @@ byte-code for return_clear:n_res() -> integer
   25[16]: ConstInt(val=1) -> integer
   30[20]: AddInt(v1: integer, v2: integer) -> integer
   31[16]: PutInt(var[8], value: integer)
-  34[12]: VarInt(var[8]) -> integer var=_t#index[8]:integer
-  37[16]: ConstInt(val=5) -> integer
-  42[20]: GeInt(v1: integer, v2: integer) -> boolean
+  34[12]: ConstInt(val=5) -> integer
+  39[16]: VarInt(var[8]) -> integer var=_t#index[8]:integer
+  42[20]: LeInt(v1: integer, v2: integer) -> boolean
   43[13]: GotoFalseWord(jump=49, if_false: boolean)
   46[12]: GotoWord(jump=114)
   49[12]: VarInt(var[8]) -> integer var=_t#index[8]:integer
@@ -59,9 +59,9 @@ byte-code for return_clear:n_res() -> integer
   67[60]: CastIntFromText(v1: text) -> integer
   68[48]: AddInt(v1: integer, v2: integer) -> integer
   69[44]: PutInt(var[4], value: integer)
-  72[40]: VarInt(var[4]) -> integer var=a[4]:integer
-  75[44]: ConstInt(val=200) -> integer
-  80[48]: GtInt(v1: integer, v2: integer) -> boolean
+  72[40]: ConstInt(val=200) -> integer
+  77[44]: VarInt(var[4]) -> integer var=a[4]:integer
+  80[48]: LtInt(v1: integer, v2: integer) -> boolean
   81[41]: GotoFalseWord(jump=100, if_false: boolean)
   84[40]: FreeText(var[16])
   87[40]: VarInt(var[4]) -> integer var=a[4]:integer
@@ -124,9 +124,9 @@ Execute test:
  1127:[44] ConstInt(val=1) -> 1[44]
  1132:[48] GotoWord(jump=1144)
  1144:[48] PutInt(var[40], value=1[44])
- 1147:[44] VarInt(var[40]) -> 1[44]
- 1150:[48] ConstInt(val=5) -> 5[48]
- 1155:[52] GeInt(v1=1[44], v2=5[48]) -> false[44]
+ 1147:[44] ConstInt(val=5) -> 5[44]
+ 1152:[48] VarInt(var[40]) -> 1[48]
+ 1155:[52] LeInt(v1=5[44], v2=1[48]) -> false[44]
  1156:[45] GotoFalseWord(jump=1162, if_false=false[44])
  1162:[44] VarInt(var[40]) -> 1[44]
  1165:[48] Text()
@@ -137,9 +137,9 @@ Execute test:
  1180:[92] CastIntFromText(v1="123"[76]) -> 123[76]
  1181:[80] AddInt(v1=0[72], v2=123[76]) -> 123[72]
  1182:[76] PutInt(var[36], value=123[72])
- 1185:[72] VarInt(var[36]) -> 123[72]
- 1188:[76] ConstInt(val=200) -> 200[76]
- 1193:[80] GtInt(v1=123[72], v2=200[76]) -> false[72]
+ 1185:[72] ConstInt(val=200) -> 200[72]
+ 1190:[76] VarInt(var[36]) -> 123[76]
+ 1193:[80] LtInt(v1=200[72], v2=123[76]) -> false[72]
  1194:[73] GotoFalseWord(jump=1213, if_false=false[72])
  1213:[72] FreeText(var[48])
  1216:[72] FreeStack(value=0, discard=24)
@@ -153,9 +153,9 @@ Execute test:
  1138:[48] ConstInt(val=1) -> 1[48]
  1143:[52] AddInt(v1=1[44], v2=1[48]) -> 2[44]
  1144:[48] PutInt(var[40], value=2[44])
- 1147:[44] VarInt(var[40]) -> 2[44]
- 1150:[48] ConstInt(val=5) -> 5[48]
- 1155:[52] GeInt(v1=2[44], v2=5[48]) -> false[44]
+ 1147:[44] ConstInt(val=5) -> 5[44]
+ 1152:[48] VarInt(var[40]) -> 2[48]
+ 1155:[52] LeInt(v1=5[44], v2=2[48]) -> false[44]
  1156:[45] GotoFalseWord(jump=1162, if_false=false[44])
  1162:[44] VarInt(var[40]) -> 2[44]
  1165:[48] Text()
@@ -166,9 +166,9 @@ Execute test:
  1180:[92] CastIntFromText(v1="123"[76]) -> 123[76]
  1181:[80] AddInt(v1=123[72], v2=123[76]) -> 246[72]
  1182:[76] PutInt(var[36], value=246[72])
- 1185:[72] VarInt(var[36]) -> 246[72]
- 1188:[76] ConstInt(val=200) -> 200[76]
- 1193:[80] GtInt(v1=246[72], v2=200[76]) -> true[72]
+ 1185:[72] ConstInt(val=200) -> 200[72]
+ 1190:[76] VarInt(var[36]) -> 246[76]
+ 1193:[80] LtInt(v1=200[72], v2=246[76]) -> true[72]
  1194:[73] GotoFalseWord(jump=1213, if_false=true[72])
  1197:[72] FreeText(var[48])
  1200:[72] VarInt(var[36]) -> 246[72]

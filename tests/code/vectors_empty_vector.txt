@@ -25,7 +25,7 @@ fn n_test() {#block(1):void
       loop {#For loop_4
         v(4):integer = {#Iter range(5):integer
           v#index(3):integer = if OpNot(OpConvBoolFromInt(v#index(3))) 1i32 else OpAddInt(v#index(3), 1i32);
-          if OpGeInt(v#index(3), 4i32) break(0) else null;
+          if OpLeInt(4i32, v#index(3)) break(0) else null;
           v#index(3);
         }#Iter range(5):integer;
         {#block(6):void
@@ -76,9 +76,9 @@ byte-code for empty_vector:n_test()
   46[108]: ConstInt(val=1) -> integer
   51[112]: AddInt(v1: integer, v2: integer) -> integer
   52[108]: PutInt(var[100], value: integer)
-  55[104]: VarInt(var[100]) -> integer var=v#index[100]:integer
-  58[108]: ConstInt(val=4) -> integer
-  63[112]: GeInt(v1: integer, v2: integer) -> boolean
+  55[104]: ConstInt(val=4) -> integer
+  60[108]: VarInt(var[100]) -> integer var=v#index[100]:integer
+  63[112]: LeInt(v1: integer, v2: integer) -> boolean
   64[105]: GotoFalseWord(jump=70, if_false: boolean)
   67[104]: GotoWord(jump=118)
   70[104]: VarInt(var[100]) -> integer var=v#index[100]:integer
@@ -145,9 +145,9 @@ Execute test:
    35:[108] ConstInt(val=1) -> 1[108]
    40:[112] GotoWord(jump=52)
    52:[112] PutInt(var[104], value=1[108])
-   55:[108] VarInt(var[104]) -> 1[108]
-   58:[112] ConstInt(val=4) -> 4[112]
-   63:[116] GeInt(v1=1[108], v2=4[112]) -> false[108]
+   55:[108] ConstInt(val=4) -> 4[108]
+   60:[112] VarInt(var[104]) -> 1[112]
+   63:[116] LeInt(v1=4[108], v2=1[112]) -> false[108]
    64:[109] GotoFalseWord(jump=70, if_false=false[108])
    70:[108] VarInt(var[104]) -> 1[108]
    73:[112] VarVector(var[92]) -> ref(1,1,8)=[][112]
@@ -171,9 +171,9 @@ Execute test:
    46:[112] ConstInt(val=1) -> 1[112]
    51:[116] AddInt(v1=1[108], v2=1[112]) -> 2[108]
    52:[112] PutInt(var[104], value=2[108])
-   55:[108] VarInt(var[104]) -> 2[108]
-   58:[112] ConstInt(val=4) -> 4[112]
-   63:[116] GeInt(v1=2[108], v2=4[112]) -> false[108]
+   55:[108] ConstInt(val=4) -> 4[108]
+   60:[112] VarInt(var[104]) -> 2[112]
+   63:[116] LeInt(v1=4[108], v2=2[112]) -> false[108]
    64:[109] GotoFalseWord(jump=70, if_false=false[108])
    70:[108] VarInt(var[104]) -> 2[108]
    73:[112] VarVector(var[92]) -> ref(1,1,8)=[10][112]
@@ -197,9 +197,9 @@ Execute test:
    46:[112] ConstInt(val=1) -> 1[112]
    51:[116] AddInt(v1=2[108], v2=1[112]) -> 3[108]
    52:[112] PutInt(var[104], value=3[108])
-   55:[108] VarInt(var[104]) -> 3[108]
-   58:[112] ConstInt(val=4) -> 4[112]
-   63:[116] GeInt(v1=3[108], v2=4[112]) -> false[108]
+   55:[108] ConstInt(val=4) -> 4[108]
+   60:[112] VarInt(var[104]) -> 3[112]
+   63:[116] LeInt(v1=4[108], v2=3[112]) -> false[108]
    64:[109] GotoFalseWord(jump=70, if_false=false[108])
    70:[108] VarInt(var[104]) -> 3[108]
    73:[112] VarVector(var[92]) -> ref(1,1,8)=[10,20][112]
@@ -223,9 +223,9 @@ Execute test:
    46:[112] ConstInt(val=1) -> 1[112]
    51:[116] AddInt(v1=3[108], v2=1[112]) -> 4[108]
    52:[112] PutInt(var[104], value=4[108])
-   55:[108] VarInt(var[104]) -> 4[108]
-   58:[112] ConstInt(val=4) -> 4[112]
-   63:[116] GeInt(v1=4[108], v2=4[112]) -> true[108]
+   55:[108] ConstInt(val=4) -> 4[108]
+   60:[112] VarInt(var[104]) -> 4[112]
+   63:[116] LeInt(v1=4[108], v2=4[112]) -> true[108]
    64:[109] GotoFalseWord(jump=70, if_false=true[108])
    67:[108] GotoWord(jump=118)
   118:[108] FreeStack(value=0, discard=4)

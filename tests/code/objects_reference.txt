@@ -29,8 +29,8 @@ fn n_test() {#block(1):void
   __work_1(1):text = "";
   [6] test_value(1):integer = {#block(2):integer
     v(2):integer = 1i32;
-    n_add(OpCreateRef(v(2)), 2i32, 0i32);
-    n_add(OpCreateRef(v(2)), 4i32, 1i32);
+    n_add(OpCreateStack(v(2)), 2i32, 0i32);
+    n_add(OpCreateStack(v(2)), 4i32, 1i32);
     v(2);
   }#block(2):integer;
   [7] if OpEqInt(test_value(1), 8i32) null else OpPanic({#Formatted string(3):text["__work_1"]
@@ -46,11 +46,11 @@ byte-code for reference:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [6] ConstInt(val=1) -> integer var=v[28]:integer
-   6[32]: CreateRef(var[28]) -> ref(reference)
+   6[32]: CreateStack(var[28]) -> ref(reference)
    9[44]: ConstInt(val=2) -> integer
   14[48]: ConstInt(val=0) -> integer
   19[52]: Call(size=0, fn=n_add)
-  26[32]: CreateRef(var[28]) -> ref(reference)
+  26[32]: CreateStack(var[28]) -> ref(reference)
   29[44]: ConstInt(val=4) -> integer
   34[48]: ConstInt(val=1) -> integer
   39[52]: Call(size=0, fn=n_add)
@@ -78,7 +78,7 @@ byte-code for reference:n_test()
 Execute test:
     0:[8] [6] Text()
     1:[32] ConstInt(val=1) -> 1[32]
-    6:[36] CreateRef(var[32]) -> ref(0,1,40)[36]
+    6:[36] CreateStack(var[32]) -> ref(0,1,40)[36]
     9:[48] ConstInt(val=2) -> 2[48]
    14:[52] ConstInt(val=0) -> 0[52]
    19:[56] Call(size=0, fn=n_add)
@@ -91,7 +91,7 @@ Execute test:
  1129:[80] AddInt(v1=1[72], v2=2[76]) -> 3[72]
  1130:[76] SetInt(v1=ref(0,1,40)[60], fld=0, val=3[72])
  1133:[60] Return(ret=1165[56], value=0, discard=24)
-   26:[36] CreateRef(var[32]) -> ref(0,1,40)[36]
+   26:[36] CreateStack(var[32]) -> ref(0,1,40)[36]
    29:[48] ConstInt(val=4) -> 4[48]
    34:[52] ConstInt(val=1) -> 1[52]
    39:[56] Call(size=0, fn=n_add)

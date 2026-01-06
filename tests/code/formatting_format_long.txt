@@ -15,7 +15,7 @@ fn n_test() {#block(1):void
       OpAppendText(__work_1(1), "b");
       OpFormatLong(__work_1(1), OpConvLongFromInt(OpCastIntFromLong(12i64)), 10i32, 0i32, 32i32, false, false);
       OpAppendText(__work_1(1), "c ");
-      OpFormatText(__work_1(1), OpCastTextFromBool(OpGeLong(OpMulLong(2i64, OpRemLong(4i64, 6i64)), OpConvLongFromInt(8i32))), 0i32, -1i32, 32i32);
+      OpFormatText(__work_1(1), OpCastTextFromBool(OpLeLong(OpConvLongFromInt(8i32), OpMulLong(2i64, OpRemLong(4i64, 6i64)))), 0i32, -1i32, 32i32);
       OpAppendText(__work_1(1), " d");
       __work_1(1);
     }#Formatted string(3):text["__work_1"];
@@ -54,14 +54,14 @@ byte-code for format_long:n_test()
   62[88]: FormatLong(var[28], val: long, radix=10, width: integer, token=32, plus=false, note=false)
   69[76]: ConstText(_value="c ") -> text
   73[92]: AppendText(var[28], v1: text)
-  76[76]: ConstLong(val=2) -> long
-  85[84]: ConstLong(val=4) -> long
-  94[92]: ConstLong(val=6) -> long
- 103[100]: RemLong(v1: long, v2: long) -> long
- 104[92]: MulLong(v1: long, v2: long) -> long
- 105[84]: ConstInt(val=8) -> integer
- 110[88]: ConvLongFromInt(v1: integer) -> long
- 111[92]: GeLong(v1: long, v2: long) -> boolean
+  76[76]: ConstInt(val=8) -> integer
+  81[80]: ConvLongFromInt(v1: integer) -> long
+  82[84]: ConstLong(val=2) -> long
+  91[92]: ConstLong(val=4) -> long
+ 100[100]: ConstLong(val=6) -> long
+ 109[108]: RemLong(v1: long, v2: long) -> long
+ 110[100]: MulLong(v1: long, v2: long) -> long
+ 111[92]: LeLong(v1: long, v2: long) -> boolean
  112[77]: CastTextFromBool(v1: boolean) -> text
  113[92]: ConstInt(val=0) -> integer
  118[96]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
@@ -111,14 +111,14 @@ Execute test:
    62:[92] FormatLong(var[32], val=12[80], radix=10, width=0[88], token=32, plus=false, note=false)
    69:[80] ConstText(_value="c ") -> "c "[80]
    73:[96] AppendText(var[32], v1="c "[80])
-   76:[80] ConstLong(val=2) -> 2[80]
-   85:[88] ConstLong(val=4) -> 4[88]
-   94:[96] ConstLong(val=6) -> 6[96]
-  103:[104] RemLong(v1=4[88], v2=6[96]) -> 4[88]
-  104:[96] MulLong(v1=2[80], v2=4[88]) -> 8[80]
-  105:[88] ConstInt(val=8) -> 8[88]
-  110:[92] ConvLongFromInt(v1=8[88]) -> 8[88]
-  111:[96] GeLong(v1=8[80], v2=8[88]) -> true[80]
+   76:[80] ConstInt(val=8) -> 8[80]
+   81:[84] ConvLongFromInt(v1=8[80]) -> 8[80]
+   82:[88] ConstLong(val=2) -> 2[88]
+   91:[96] ConstLong(val=4) -> 4[96]
+  100:[104] ConstLong(val=6) -> 6[104]
+  109:[112] RemLong(v1=4[96], v2=6[104]) -> 4[96]
+  110:[104] MulLong(v1=2[88], v2=4[96]) -> 8[88]
+  111:[96] LeLong(v1=8[80], v2=8[88]) -> true[80]
   112:[81] CastTextFromBool(v1=true[80]) -> "true"[80]
   113:[96] ConstInt(val=0) -> 0[96]
   118:[100] FormatText(var[32], val="true"[80], width=0[96], dir=-1, token=32)

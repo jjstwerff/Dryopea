@@ -6,11 +6,11 @@ fn n_main() {#block(1):void
   __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [13] if OpGtInt(2i32, 5i32) {#block(2):void
+  [13] if OpLtInt(5i32, 2i32) {#block(2):void
     [14] n_panic("Incorrect test");
   }#block(2):void else null;
   [20] a(1):integer = 12i32;
-  [21] if if OpGtInt(a(1), 10i32) OpEqInt(OpLandInt(a(1), 7i32), 4i32) else false {#block(3):void
+  [21] if if OpLtInt(10i32, a(1)) OpEqInt(OpLandInt(a(1), 7i32), 4i32) else false {#block(3):void
     [22] a(1):integer = OpAddInt(a(1), 1i32);
   }#block(3):void else {#block(4):void
     [24] a(1):integer = OpMinInt(a(1), 1i32);
@@ -33,7 +33,7 @@ fn n_main() {#block(1):void
     loop {#For loop_9
       a(1):integer = {#Iter range(10):integer
         a#index(8):integer = if OpNot(OpConvBoolFromInt(a#index(8))) 1i32 else OpAddInt(a#index(8), 1i32);
-        if OpGeInt(a#index(8), 6i32) break(0) else null;
+        if OpLeInt(6i32, a#index(8)) break(0) else null;
         a#index(8);
       }#Iter range(10):integer;
       {#block(11):void
@@ -73,7 +73,7 @@ fn n_main() {#block(1):void
     loop {#For loop_19
       x(19):integer = {#Iter range(20):integer
         x#index(18):integer = if OpNot(OpConvBoolFromInt(x#index(18))) 1i32 else OpAddInt(x#index(18), 1i32);
-        if OpGeInt(x#index(18), 5i32) break(0) else null;
+        if OpLeInt(5i32, x#index(18)) break(0) else null;
         x#index(18);
       }#Iter range(20):integer;
       {#block(21):void
@@ -82,17 +82,17 @@ fn n_main() {#block(1):void
           loop {#For loop_23
             y(23):integer = {#Iter range(24):integer
               y#index(22):integer = if OpNot(OpConvBoolFromInt(y#index(22))) 1i32 else OpAddInt(y#index(22), 1i32);
-              if OpGeInt(y#index(22), 5i32) break(0) else null;
+              if OpLeInt(5i32, y#index(22)) break(0) else null;
               y#index(22);
             }#Iter range(24):integer;
             {#block(25):void
-              [56] if OpGtInt(y(23), x(19)) {#block(26):void
+              [56] if OpLtInt(x(19), y(23)) {#block(26):void
                 [57] break(0);
               }#block(26):void else null;
-              [59] if OpGeInt(OpMulInt(x(19), y(23)), 16i32) {#block(27):void
+              [59] if OpLeInt(16i32, OpMulInt(x(19), y(23))) {#block(27):void
                 [60] break(1);
               }#block(27):void else null;
-              [62] if OpGtInt(t_4text_len(b(1)), 0i32) {#block(28):void
+              [62] if OpLtInt(0i32, t_4text_len(b(1))) {#block(28):void
                 [63] OpAppendText(b(1), "; ");
               }#block(28):void else null;
               [65] OpAppendText(b(1), {#Formatted string(29):text["__work_4"]
@@ -121,7 +121,7 @@ fn n_main() {#block(1):void
     loop {#For loop_32
       x(32):integer = {#Iter range(33):integer
         x#index(31):integer = if OpNot(OpConvBoolFromInt(x#index(31))) 1i32 else OpAddInt(x#index(31), 1i32);
-        if OpGtInt(x#index(31), 9i32) break(0) else null;
+        if OpLtInt(9i32, x#index(31)) break(0) else null;
         x#index(31);
       }#Iter range(33):integer;
       if OpNeInt(OpRemInt(x(32), 3i32), 1i32) null else continue(0);
@@ -165,16 +165,16 @@ byte-code for tests/suite/01-keywords.lav:n_main()
    4[100]: Text() var=__work_3[100]:text
    5[124]: Text() var=__work_2[124]:text
    6[148]: Text() var=__work_1[148]:text
-   7[172]: [13] ConstInt(val=2) -> integer
-  12[176]: ConstInt(val=5) -> integer
-  17[180]: GtInt(v1: integer, v2: integer) -> boolean
+   7[172]: [13] ConstInt(val=5) -> integer
+  12[176]: ConstInt(val=2) -> integer
+  17[180]: LtInt(v1: integer, v2: integer) -> boolean
   18[173]: GotoFalseWord(jump=40, if_false: boolean)
   21[172]: [14] ConstText(_value="Incorrect test") -> text
   37[188]: StaticCall(n_panic)
   40[172]: [20] ConstInt(val=12) -> integer var=a[172]:integer
-  45[176]: [21] VarInt(var[172]) -> integer var=a[172]:integer
-  48[180]: ConstInt(val=10) -> integer
-  53[184]: GtInt(v1: integer, v2: integer) -> boolean
+  45[176]: [21] ConstInt(val=10) -> integer
+  50[180]: VarInt(var[172]) -> integer var=a[172]:integer
+  53[184]: LtInt(v1: integer, v2: integer) -> boolean
   54[177]: GotoFalseWord(jump=75, if_false: boolean)
   57[176]: VarInt(var[172]) -> integer var=a[172]:integer
   60[180]: ConstInt(val=7) -> integer
@@ -237,9 +237,9 @@ byte-code for tests/suite/01-keywords.lav:n_main()
  274[212]: ConstInt(val=1) -> integer
  279[216]: AddInt(v1: integer, v2: integer) -> integer
  280[212]: PutInt(var[204], value: integer)
- 283[208]: VarInt(var[204]) -> integer var=a#index[204]:integer
- 286[212]: ConstInt(val=6) -> integer
- 291[216]: GeInt(v1: integer, v2: integer) -> boolean
+ 283[208]: ConstInt(val=6) -> integer
+ 288[212]: VarInt(var[204]) -> integer var=a#index[204]:integer
+ 291[216]: LeInt(v1: integer, v2: integer) -> boolean
  292[209]: GotoFalseWord(jump=298, if_false: boolean)
  295[208]: GotoWord(jump=317)
  298[208]: VarInt(var[204]) -> integer var=a#index[204]:integer
@@ -323,9 +323,9 @@ byte-code for tests/suite/01-keywords.lav:n_main()
  575[228]: ConstInt(val=1) -> integer
  580[232]: AddInt(v1: integer, v2: integer) -> integer
  581[228]: PutInt(var[220], value: integer)
- 584[224]: VarInt(var[220]) -> integer var=x#index[220]:integer
- 587[228]: ConstInt(val=5) -> integer
- 592[232]: GeInt(v1: integer, v2: integer) -> boolean
+ 584[224]: ConstInt(val=5) -> integer
+ 589[228]: VarInt(var[220]) -> integer var=x#index[220]:integer
+ 592[232]: LeInt(v1: integer, v2: integer) -> boolean
  593[225]: GotoFalseWord(jump=599, if_false: boolean)
  596[224]: GotoWord(jump=786)
  599[224]: VarInt(var[220]) -> integer var=x#index[220]:integer
@@ -340,30 +340,30 @@ byte-code for tests/suite/01-keywords.lav:n_main()
  622[236]: ConstInt(val=1) -> integer
  627[240]: AddInt(v1: integer, v2: integer) -> integer
  628[236]: PutInt(var[228], value: integer)
- 631[232]: VarInt(var[228]) -> integer var=y#index[228]:integer
- 634[236]: ConstInt(val=5) -> integer
- 639[240]: GeInt(v1: integer, v2: integer) -> boolean
+ 631[232]: ConstInt(val=5) -> integer
+ 636[236]: VarInt(var[228]) -> integer var=y#index[228]:integer
+ 639[240]: LeInt(v1: integer, v2: integer) -> boolean
  640[233]: GotoFalseWord(jump=646, if_false: boolean)
  643[232]: GotoWord(jump=775)
  646[232]: VarInt(var[228]) -> integer var=y#index[228]:integer
- 649[236]: [56] VarInt(var[232]) -> integer var=y[232]:integer
- 652[240]: VarInt(var[224]) -> integer var=x[224]:integer
- 655[244]: GtInt(v1: integer, v2: integer) -> boolean
+ 649[236]: [56] VarInt(var[224]) -> integer var=x[224]:integer
+ 652[240]: VarInt(var[232]) -> integer var=y[232]:integer
+ 655[244]: LtInt(v1: integer, v2: integer) -> boolean
  656[237]: GotoFalseWord(jump=666, if_false: boolean)
  659[236]: [57] FreeStack(value=0, discard=4)
  663[232]: GotoWord(jump=775)
- 666[236]: [59] VarInt(var[224]) -> integer var=x[224]:integer
- 669[240]: VarInt(var[232]) -> integer var=y[232]:integer
- 672[244]: MulInt(v1: integer, v2: integer) -> integer
- 673[240]: ConstInt(val=16) -> integer
- 678[244]: GeInt(v1: integer, v2: integer) -> boolean
+ 666[236]: [59] ConstInt(val=16) -> integer
+ 671[240]: VarInt(var[224]) -> integer var=x[224]:integer
+ 674[244]: VarInt(var[232]) -> integer var=y[232]:integer
+ 677[248]: MulInt(v1: integer, v2: integer) -> integer
+ 678[244]: LeInt(v1: integer, v2: integer) -> boolean
  679[237]: GotoFalseWord(jump=689, if_false: boolean)
  682[236]: [60] FreeStack(value=0, discard=12)
  686[224]: GotoWord(jump=786)
- 689[236]: [62] VarText(var[176]) -> text var=b[176]:text["__work_6"]
- 692[252]: Call(size=0, fn=t_4text_len)
- 699[240]: ConstInt(val=0) -> integer
- 704[244]: GtInt(v1: integer, v2: integer) -> boolean
+ 689[236]: [62] ConstInt(val=0) -> integer
+ 694[240]: VarText(var[176]) -> text var=b[176]:text["__work_6"]
+ 697[256]: Call(size=0, fn=t_4text_len)
+ 704[244]: LtInt(v1: integer, v2: integer) -> boolean
  705[237]: GotoFalseWord(jump=715, if_false: boolean)
  708[236]: [63] ConstText(_value="; ") -> text
  712[252]: AppendText(var[176], v1: text)
@@ -417,9 +417,9 @@ byte-code for tests/suite/01-keywords.lav:n_main()
  926[248]: ConstInt(val=1) -> integer
  931[252]: AddInt(v1: integer, v2: integer) -> integer
  932[248]: PutInt(var[240], value: integer)
- 935[244]: VarInt(var[240]) -> integer var=x#index[240]:integer
- 938[248]: ConstInt(val=9) -> integer
- 943[252]: GtInt(v1: integer, v2: integer) -> boolean
+ 935[244]: ConstInt(val=9) -> integer
+ 940[248]: VarInt(var[240]) -> integer var=x#index[240]:integer
+ 943[252]: LtInt(v1: integer, v2: integer) -> boolean
  944[245]: GotoFalseWord(jump=950, if_false: boolean)
  947[244]: GotoWord(jump=1073)
  950[244]: VarInt(var[240]) -> integer var=x#index[240]:integer

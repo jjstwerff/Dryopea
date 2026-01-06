@@ -22,7 +22,7 @@ fn n_parse(s:text) -> integer {#block(1):integer
     loop {#For loop_3
       t(3):integer = {#Iter range(4):integer
         t#index(2):integer = if OpNot(OpConvBoolFromInt(t#index(2))) 0i32 else OpAddInt(t#index(2), 1i32);
-        if OpGeInt(t#index(2), 300i32) break(0) else null;
+        if OpLeInt(300i32, t#index(2)) break(0) else null;
         t#index(2);
       }#Iter range(4):integer;
       {#block(5):void
@@ -49,9 +49,9 @@ byte-code for string_parse:n_parse(s: text[0]) -> integer
   20[28]: ConstInt(val=1) -> integer
   25[32]: AddInt(v1: integer, v2: integer) -> integer
   26[28]: PutInt(var[20], value: integer)
-  29[24]: VarInt(var[20]) -> integer var=t#index[20]:integer
-  32[28]: ConstInt(val=300) -> integer
-  37[32]: GeInt(v1: integer, v2: integer) -> boolean
+  29[24]: ConstInt(val=300) -> integer
+  34[28]: VarInt(var[20]) -> integer var=t#index[20]:integer
+  37[32]: LeInt(v1: integer, v2: integer) -> boolean
   38[25]: GotoFalseWord(jump=44, if_false: boolean)
   41[24]: GotoWord(jump=106)
   44[24]: VarInt(var[20]) -> integer var=t#index[20]:integer
@@ -130,9 +130,9 @@ Execute test:
  1122:[56] ConstInt(val=0) -> 0[56]
  1127:[60] GotoWord(jump=1139)
  1139:[60] PutInt(var[52], value=0[56])
- 1142:[56] VarInt(var[52]) -> 0[56]
- 1145:[60] ConstInt(val=300) -> 300[60]
- 1150:[64] GeInt(v1=0[56], v2=300[60]) -> false[56]
+ 1142:[56] ConstInt(val=300) -> 300[56]
+ 1147:[60] VarInt(var[52]) -> 0[60]
+ 1150:[64] LeInt(v1=300[56], v2=0[60]) -> false[56]
  1151:[57] GotoFalseWord(jump=1157, if_false=false[56])
  1157:[56] VarInt(var[52]) -> 0[56]
  1160:[60] ArgText(var[32]) -> "if_cond "[60]
@@ -155,9 +155,9 @@ Execute test:
  1133:[60] ConstInt(val=1) -> 1[60]
  1138:[64] AddInt(v1=0[56], v2=1[60]) -> 1[56]
  1139:[60] PutInt(var[52], value=1[56])
- 1142:[56] VarInt(var[52]) -> 1[56]
- 1145:[60] ConstInt(val=300) -> 300[60]
- 1150:[64] GeInt(v1=1[56], v2=300[60]) -> false[56]
+ 1142:[56] ConstInt(val=300) -> 300[56]
+ 1147:[60] VarInt(var[52]) -> 1[60]
+ 1150:[64] LeInt(v1=300[56], v2=1[60]) -> false[56]
  1151:[57] GotoFalseWord(jump=1157, if_false=false[56])
  1157:[56] VarInt(var[52]) -> 1[56]
  1160:[60] ArgText(var[32]) -> "if_cond "[60]
@@ -180,9 +180,9 @@ Execute test:
  1133:[60] ConstInt(val=1) -> 1[60]
  1138:[64] AddInt(v1=1[56], v2=1[60]) -> 2[56]
  1139:[60] PutInt(var[52], value=2[56])
- 1142:[56] VarInt(var[52]) -> 2[56]
- 1145:[60] ConstInt(val=300) -> 300[60]
- 1150:[64] GeInt(v1=2[56], v2=300[60]) -> false[56]
+ 1142:[56] ConstInt(val=300) -> 300[56]
+ 1147:[60] VarInt(var[52]) -> 2[60]
+ 1150:[64] LeInt(v1=300[56], v2=2[60]) -> false[56]
  1151:[57] GotoFalseWord(jump=1157, if_false=false[56])
  1157:[56] VarInt(var[52]) -> 2[56]
  1160:[60] ArgText(var[32]) -> "if_cond "[60]
@@ -210,9 +210,9 @@ Execute test:
  1133:[60] ConstInt(val=1) -> 1[60]
  1138:[64] AddInt(v1=2[56], v2=1[60]) -> 3[56]
  1139:[60] PutInt(var[52], value=3[56])
- 1142:[56] VarInt(var[52]) -> 3[56]
- 1145:[60] ConstInt(val=300) -> 300[60]
- 1150:[64] GeInt(v1=3[56], v2=300[60]) -> false[56]
+ 1142:[56] ConstInt(val=300) -> 300[56]
+ 1147:[60] VarInt(var[52]) -> 3[60]
+ 1150:[64] LeInt(v1=300[56], v2=3[60]) -> false[56]
  1151:[57] GotoFalseWord(jump=1157, if_false=false[56])
  1157:[56] VarInt(var[52]) -> 3[56]
  1160:[60] ArgText(var[32]) -> "if_cond "[60]
@@ -235,9 +235,9 @@ Execute test:
  1133:[60] ConstInt(val=1) -> 1[60]
  1138:[64] AddInt(v1=3[56], v2=1[60]) -> 4[56]
  1139:[60] PutInt(var[52], value=4[56])
- 1142:[56] VarInt(var[52]) -> 4[56]
- 1145:[60] ConstInt(val=300) -> 300[60]
- 1150:[64] GeInt(v1=4[56], v2=300[60]) -> false[56]
+ 1142:[56] ConstInt(val=300) -> 300[56]
+ 1147:[60] VarInt(var[52]) -> 4[60]
+ 1150:[64] LeInt(v1=300[56], v2=4[60]) -> false[56]
  1151:[57] GotoFalseWord(jump=1157, if_false=false[56])
  1157:[56] VarInt(var[52]) -> 4[56]
  1160:[60] ArgText(var[32]) -> "if_cond "[60]
@@ -260,9 +260,9 @@ Execute test:
  1133:[60] ConstInt(val=1) -> 1[60]
  1138:[64] AddInt(v1=4[56], v2=1[60]) -> 5[56]
  1139:[60] PutInt(var[52], value=5[56])
- 1142:[56] VarInt(var[52]) -> 5[56]
- 1145:[60] ConstInt(val=300) -> 300[60]
- 1150:[64] GeInt(v1=5[56], v2=300[60]) -> false[56]
+ 1142:[56] ConstInt(val=300) -> 300[56]
+ 1147:[60] VarInt(var[52]) -> 5[60]
+ 1150:[64] LeInt(v1=300[56], v2=5[60]) -> false[56]
  1151:[57] GotoFalseWord(jump=1157, if_false=false[56])
  1157:[56] VarInt(var[52]) -> 5[56]
  1160:[60] ArgText(var[32]) -> "if_cond "[60]
@@ -285,9 +285,9 @@ Execute test:
  1133:[60] ConstInt(val=1) -> 1[60]
  1138:[64] AddInt(v1=5[56], v2=1[60]) -> 6[56]
  1139:[60] PutInt(var[52], value=6[56])
- 1142:[56] VarInt(var[52]) -> 6[56]
- 1145:[60] ConstInt(val=300) -> 300[60]
- 1150:[64] GeInt(v1=6[56], v2=300[60]) -> false[56]
+ 1142:[56] ConstInt(val=300) -> 300[56]
+ 1147:[60] VarInt(var[52]) -> 6[60]
+ 1150:[64] LeInt(v1=300[56], v2=6[60]) -> false[56]
  1151:[57] GotoFalseWord(jump=1157, if_false=false[56])
  1157:[56] VarInt(var[52]) -> 6[56]
  1160:[60] ArgText(var[32]) -> "if_cond "[60]
@@ -310,9 +310,9 @@ Execute test:
  1133:[60] ConstInt(val=1) -> 1[60]
  1138:[64] AddInt(v1=6[56], v2=1[60]) -> 7[56]
  1139:[60] PutInt(var[52], value=7[56])
- 1142:[56] VarInt(var[52]) -> 7[56]
- 1145:[60] ConstInt(val=300) -> 300[60]
- 1150:[64] GeInt(v1=7[56], v2=300[60]) -> false[56]
+ 1142:[56] ConstInt(val=300) -> 300[56]
+ 1147:[60] VarInt(var[52]) -> 7[60]
+ 1150:[64] LeInt(v1=300[56], v2=7[60]) -> false[56]
  1151:[57] GotoFalseWord(jump=1157, if_false=false[56])
  1157:[56] VarInt(var[52]) -> 7[56]
  1160:[60] ArgText(var[32]) -> "if_cond "[60]

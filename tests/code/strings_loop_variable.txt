@@ -14,13 +14,13 @@ fn n_test() {#block(1):void
       loop {#For loop_4
         _t(4):integer = {#Iter range(5):integer
           _t#index(3):integer = if OpNot(OpConvBoolFromInt(_t#index(3))) 1i32 else OpAddInt(_t#index(3), 1i32);
-          if OpGeInt(_t#index(3), 5i32) break(0) else null;
+          if OpLeInt(5i32, _t#index(3)) break(0) else null;
           _t#index(3);
         }#Iter range(5):integer;
         {#block(6):void
           b(6):text = "123";
           a(2):integer = OpAddInt(a(2), OpCastIntFromText(b(6)));
-          if OpGtInt(a(2), 200i32) {#block(7):void
+          if OpLtInt(200i32, a(2)) {#block(7):void
             OpFreeText(b(6));
             break(0);
           }#block(7):void else null;
@@ -54,9 +54,9 @@ byte-code for loop_variable:n_test()
   26[40]: ConstInt(val=1) -> integer
   31[44]: AddInt(v1: integer, v2: integer) -> integer
   32[40]: PutInt(var[32], value: integer)
-  35[36]: VarInt(var[32]) -> integer var=_t#index[32]:integer
-  38[40]: ConstInt(val=5) -> integer
-  43[44]: GeInt(v1: integer, v2: integer) -> boolean
+  35[36]: ConstInt(val=5) -> integer
+  40[40]: VarInt(var[32]) -> integer var=_t#index[32]:integer
+  43[44]: LeInt(v1: integer, v2: integer) -> boolean
   44[37]: GotoFalseWord(jump=50, if_false: boolean)
   47[36]: GotoWord(jump=109)
   50[36]: VarInt(var[32]) -> integer var=_t#index[32]:integer
@@ -68,9 +68,9 @@ byte-code for loop_variable:n_test()
   68[84]: CastIntFromText(v1: text) -> integer
   69[72]: AddInt(v1: integer, v2: integer) -> integer
   70[68]: PutInt(var[28], value: integer)
-  73[64]: VarInt(var[28]) -> integer var=a[28]:integer
-  76[68]: ConstInt(val=200) -> integer
-  81[72]: GtInt(v1: integer, v2: integer) -> boolean
+  73[64]: ConstInt(val=200) -> integer
+  78[68]: VarInt(var[28]) -> integer var=a[28]:integer
+  81[72]: LtInt(v1: integer, v2: integer) -> boolean
   82[65]: GotoFalseWord(jump=95, if_false: boolean)
   85[64]: FreeText(var[40])
   88[64]: FreeStack(value=0, discard=28)
@@ -112,9 +112,9 @@ Execute test:
    15:[40] ConstInt(val=1) -> 1[40]
    20:[44] GotoWord(jump=32)
    32:[44] PutInt(var[36], value=1[40])
-   35:[40] VarInt(var[36]) -> 1[40]
-   38:[44] ConstInt(val=5) -> 5[44]
-   43:[48] GeInt(v1=1[40], v2=5[44]) -> false[40]
+   35:[40] ConstInt(val=5) -> 5[40]
+   40:[44] VarInt(var[36]) -> 1[44]
+   43:[48] LeInt(v1=5[40], v2=1[44]) -> false[40]
    44:[41] GotoFalseWord(jump=50, if_false=false[40])
    50:[40] VarInt(var[36]) -> 1[40]
    53:[44] Text()
@@ -125,9 +125,9 @@ Execute test:
    68:[88] CastIntFromText(v1="123"[72]) -> 123[72]
    69:[76] AddInt(v1=0[68], v2=123[72]) -> 123[68]
    70:[72] PutInt(var[32], value=123[68])
-   73:[68] VarInt(var[32]) -> 123[68]
-   76:[72] ConstInt(val=200) -> 200[72]
-   81:[76] GtInt(v1=123[68], v2=200[72]) -> false[68]
+   73:[68] ConstInt(val=200) -> 200[68]
+   78:[72] VarInt(var[32]) -> 123[72]
+   81:[76] LtInt(v1=200[68], v2=123[72]) -> false[68]
    82:[69] GotoFalseWord(jump=95, if_false=false[68])
    95:[68] FreeText(var[44])
    98:[68] FreeStack(value=0, discard=24)
@@ -141,9 +141,9 @@ Execute test:
    26:[44] ConstInt(val=1) -> 1[44]
    31:[48] AddInt(v1=1[40], v2=1[44]) -> 2[40]
    32:[44] PutInt(var[36], value=2[40])
-   35:[40] VarInt(var[36]) -> 2[40]
-   38:[44] ConstInt(val=5) -> 5[44]
-   43:[48] GeInt(v1=2[40], v2=5[44]) -> false[40]
+   35:[40] ConstInt(val=5) -> 5[40]
+   40:[44] VarInt(var[36]) -> 2[44]
+   43:[48] LeInt(v1=5[40], v2=2[44]) -> false[40]
    44:[41] GotoFalseWord(jump=50, if_false=false[40])
    50:[40] VarInt(var[36]) -> 2[40]
    53:[44] Text()
@@ -154,9 +154,9 @@ Execute test:
    68:[88] CastIntFromText(v1="123"[72]) -> 123[72]
    69:[76] AddInt(v1=123[68], v2=123[72]) -> 246[68]
    70:[72] PutInt(var[32], value=246[68])
-   73:[68] VarInt(var[32]) -> 246[68]
-   76:[72] ConstInt(val=200) -> 200[72]
-   81:[76] GtInt(v1=246[68], v2=200[72]) -> true[68]
+   73:[68] ConstInt(val=200) -> 200[68]
+   78:[72] VarInt(var[32]) -> 246[72]
+   81:[76] LtInt(v1=200[68], v2=246[72]) -> true[68]
    82:[69] GotoFalseWord(jump=95, if_false=true[68])
    85:[68] FreeText(var[44])
    88:[68] FreeStack(value=0, discard=28)
