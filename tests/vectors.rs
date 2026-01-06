@@ -125,7 +125,13 @@ v[2].b=6;
 fn object_vectors() {
     code!("struct Elm {a:integer, b:integer}")
         .expr(
-            "v=[Elm{a:1, b:2}, Elm{a:12, b:13}, Elm{a:4, b:5}]; v[2].b=6; e=v[0]; e.b + v[1].a + v[2].b",
+            "v = [Elm{a:1, b:2}, Elm{a:12, b:13}, Elm{a:4, b:5}];
+v[2].b = 6;
+e = v[0];
+t = 0;
+for el in v { t += el.a + el.b; };
+assert(t == 38, \"Incorrect sum {t}\");
+e.b + v[1].a + v[2].b",
         )
         .result(Value::Int(20));
 }
@@ -258,6 +264,11 @@ fn fill(c: Counting) {
         "c = Counting {};
   fill(c);
   assert(!c.h[\"None\"], \"No element\");
+  add = 0;
+  for v in c.v {
+    add += v.v;
+  }
+  assert(add == 91, \"Incorrect sum\");
   c.h[\"Five\"].v + c.h[\"Seven\"].v",
     )
     .result(Value::Int(12));
@@ -322,6 +333,11 @@ sum = 0;
 for v in db.map[83..92,\"Two\"] {
   sum = sum * 10 + v.value;
 };
+total = 0;
+for r in db.map {
+    total += r.value;
+}
+assert(total == 21, \"Incorrect total {total}\");
 assert(!db.map[12,\"\"], \"No element\");
 assert(!db.map[83,\"One\"], \"No element\");
 sum",

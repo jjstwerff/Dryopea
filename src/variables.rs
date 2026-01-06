@@ -38,6 +38,7 @@ pub struct Variable {
     stack_pos: u16,
     uses: u16,
     argument: bool,
+    defined: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -288,6 +289,10 @@ impl Function {
         self.variables[var_nr as usize].uses
     }
 
+    pub fn is_defined(&self, var_nr: u16) -> bool {
+        self.variables[var_nr as usize].defined
+    }
+
     pub fn stack(&self, var_nr: u16) -> u16 {
         self.variables[var_nr as usize].stack_pos
     }
@@ -302,6 +307,10 @@ impl Function {
         } else {
             self.variables[var_nr as usize].uses -= 1;
         }
+    }
+
+    pub fn defined(&mut self, var_nr: u16) {
+        self.variables[var_nr as usize].defined = true;
     }
 
     pub fn exists(&self, var_nr: u16) -> bool {
@@ -367,6 +376,7 @@ impl Function {
             stack_pos: u16::MAX,
             uses: 1,
             argument: false,
+            defined: self.variables[var as usize].defined,
         });
         v
     }
@@ -384,6 +394,7 @@ impl Function {
             stack_pos: u16::MAX,
             uses: 1,
             argument: false,
+            defined: false,
         });
         v
     }
@@ -398,6 +409,7 @@ impl Function {
             stack_pos: u16::MAX,
             uses: 1,
             argument: false,
+            defined: true,
         });
         v
     }
@@ -455,6 +467,7 @@ impl Function {
 
     pub fn become_argument(&mut self, var_nr: u16) {
         self.variables[var_nr as usize].argument = true;
+        self.variables[var_nr as usize].defined = true;
     }
 
     pub fn is_argument(&self, var_nr: u16) -> bool {

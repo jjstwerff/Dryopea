@@ -40,10 +40,11 @@ pub fn find(
         rec: 0,
         pos: 0,
     };
+    let mut cmp = Ordering::Equal;
     while rec > 0 {
         result.rec = rec;
         result.pos = 8;
-        let cmp = keys::key_compare(key, &result, stores, keys);
+        cmp = keys::key_compare(key, &result, stores, keys);
         let action = if cmp == Ordering::Equal {
             if before {
                 Ordering::Less
@@ -64,6 +65,13 @@ pub fn find(
         );
         rec = if to >= 0 { to as u32 } else { 0 };
     }
+    if cmp == Ordering::Equal {
+        result.pos = u32::from(fields);
+        if before {
+            return previous(store, &result);
+        }
+        return next(store, &result);
+    }
     result.rec
 }
 
@@ -82,7 +90,7 @@ pub fn add(data: &DbRef, record: &DbRef, fields: u16, stores: &mut [Store], keys
         let top = store.get_int(data.rec, data.pos);
         put(0, top, &rec, 0, 0, keys, stores) as u32
     };
-    if new_top == 0 {
+    if new_top == 0 || new_top == u32::MAX {
         return; // problem encountered: probably duplicate key
     }
     let store = keys::mut_store(data, stores);

@@ -12,7 +12,7 @@ pub fn test() {
         "Test failed {test_value} != \"{{a:\"bcdef\"}}\""
     );
 }
-Type 17:Object[4/4]:
+Type 18:Object[4/4]:
     a:text[0]
 
 fn n_test() {#block(1):void
@@ -21,7 +21,7 @@ fn n_test() {#block(1):void
   __work_1(1):text = "";
   [4] test_value(1):text["__work_2"] = {#block(2):text["__work_2"]
     o(2):ref(Object) = null;
-    OpDatabase(o(2), 17i32);
+    OpDatabase(o(2), 18i32);
     OpSetText(o(2), 0i32, "a");
     [5] OpSetText(o(2), 0i32, "b");
     [6] _field_1(2):text = OpGetText(o(2), 0i32);
@@ -39,7 +39,7 @@ fn n_test() {#block(1):void
     }#Formatted string(3):text["__work_1"]);
     [9] {#Formatted string(4):text["__work_2"]
       __work_2(1):text = "";
-      OpFormatDatabase(__work_2(1), o(2), 17i32, false);
+      OpFormatDatabase(__work_2(1), o(2), 18i32, 0i32);
       OpFreeRef(o(2));
       OpFreeText(_field_1(2));
       OpFreeText(_field_2(2));
@@ -65,37 +65,37 @@ byte-code for assign_text:n_test()
    2[52]: Text() var=__work_1[52]:text
    3[76]: [4] Text() var=test_value[76]:text["__work_2"]
    4[100]: ConvRefFromNull() -> ref(reference) var=o[100]:ref(Object)
-   5[112]: Database(var[100], db_tp=17) type=Object 17
-  10[112]: VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+   5[112]: Database(var[100], db_tp=18) type=Object 18
+  10[112]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   13[124]: ConstText(_value="a") -> text
   16[140]: SetText(v1: ref(reference), fld=0, val: text)
-  19[112]: [5] VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+  19[112]: [5] VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   22[124]: ConstText(_value="b") -> text
   25[140]: SetText(v1: ref(reference), fld=0, val: text)
   28[112]: [6] Text() var=_field_1[112]:text
-  29[136]: VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+  29[136]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   32[148]: GetText(v1: ref(reference), fld=0) -> text["test_value"]
   35[152]: AppendText(var[112], v1: text)
   38[136]: ConstText(_value="c") -> text
   41[152]: AppendText(var[112], v1: text)
-  44[136]: VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+  44[136]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   47[148]: VarText(var[112]) -> text var=_field_1[112]:text
   50[164]: SetText(v1: ref(reference), fld=0, val: text)
   53[136]: [7] Text() var=_field_2[136]:text
-  54[160]: VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+  54[160]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   57[172]: GetText(v1: ref(reference), fld=0) -> text["test_value"]
   60[176]: AppendText(var[136], v1: text)
   63[160]: ConstText(_value="d") -> text
   66[176]: AppendText(var[136], v1: text)
   69[160]: ConstText(_value="e") -> text
   72[176]: AppendText(var[136], v1: text)
-  75[160]: VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+  75[160]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   78[172]: VarText(var[136]) -> text var=_field_2[136]:text
   81[188]: SetText(v1: ref(reference), fld=0, val: text)
-  84[160]: [8] VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+  84[160]: [8] VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   87[172]: ClearText(var[52]) var=__work_1[52]:text
   90[172]: ConstText(_value="") -> text
-  92[188]: VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+  92[188]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   95[200]: GetText(v1: ref(reference), fld=0) -> text["test_value"]
   98[204]: ConstInt(val=0) -> integer
  103[208]: FormatText(var[52], val: text, width: integer, dir=-1, token=32)
@@ -106,9 +106,9 @@ byte-code for assign_text:n_test()
  121[188]: SetText(v1: ref(reference), fld=0, val: text)
  124[160]: [9] ClearText(var[28]) var=__work_2[28]:text
  127[160]: ConstText(_value="") -> text
- 129[176]: VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
- 132[188]: FormatDatabase(var[28], val: ref(reference), db_tp=17, pretty=false)
- 138[176]: VarRef(var[100]) -> ref(reference) type=Object 17 var=o[100]:ref(Object)
+ 129[176]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
+ 132[188]: FormatDatabase(var[28], val: ref(reference), db_tp=18, db_format=0)
+ 138[176]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
  141[188]: FreeRef(v1: ref(reference))
  142[176]: FreeText(var[112])
  145[176]: FreeText(var[136])
@@ -143,7 +143,7 @@ Execute test:
     2:[56] [4] Text()
     3:[80] Text()
     4:[104] ConvRefFromNull() -> ref(1,0,8)[104]
-    5:[116] Database(var[104], db_tp=17)
+    5:[116] Database(var[104], db_tp=18)
    10:[116] VarRef(var[104]) -> ref(1,1,8)={}[116]
    13:[128] ConstText(_value="a") -> "a"[128]
    16:[144] SetText(v1=ref(1,1,8)[116], fld=0, val="a"[128])
@@ -185,7 +185,7 @@ Execute test:
   124:[164] ClearText(var[32])
   127:[164] ConstText(_value="") -> ""[164]
   129:[180] VarRef(var[104]) -> ref(1,1,8)={a:"bcdef"}[180]
-  132:[192] FormatDatabase(var[32], val=ref(1,1,8)[180], db_tp=17, pretty=false)
+  132:[192] FormatDatabase(var[32], val=ref(1,1,8)[180], db_tp=18, db_format=0)
   138:[180] VarRef(var[104]) -> ref(1,1,8)={a:"bcdef"}[180]
   141:[192] FreeRef(v1=ref(1,1,8)[180])
   142:[180] FreeText(var[116])

@@ -172,7 +172,7 @@ impl Drop for Test {
     #[allow(unused_variables)]
     fn drop(&mut self) {
         let mut p = Parser::new();
-        p.parse_dir("default", true).unwrap();
+        p.parse_dir("default", true, true).unwrap();
         let types = p.database.types.len();
         let start = p.data.definitions();
         let mut code = self.code.clone();

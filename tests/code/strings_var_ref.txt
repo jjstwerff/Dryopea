@@ -18,9 +18,9 @@ fn n_text_ref(a:&text) -> text["a"] {#block(1):text["a"]
 byte-code for var_ref:n_text_ref(a: &text[0]) -> text["a"]
    0[12]: return-address
    0[16]: [2] ConstText(_value="12345") -> text var=a[0]:&text
-   7[32]: AppendRefText(var[0], v1: text)
+   7[32]: AppendStackText(var[0], v1: text)
   10[16]: [3] VarRef(var[0]) -> ref(reference) var=a[0]:&text
-  13[28]: GetRefText(r: ref(reference)) -> text["a"]
+  13[28]: GetStackText(r: ref(reference)) -> text["a"]
   14[32]: ConstInt(val=0) -> integer
   19[36]: ConstInt(val=4) -> integer
   24[40]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
@@ -31,7 +31,7 @@ fn n_test() {#block(1):void
   __work_1(1):text = "";
   [7] test_value(1):text = {#block(2):text
     n_text_ref({#default ref(3):ref(reference)["__work_1"]
-      OpCreateRef(__work_1(1));
+      OpCreateStack(__work_1(1));
     }#default ref(3):ref(reference)["__work_1"]);
   }#block(2):text;
   [8] if OpEqText(test_value(1), "1234") null else OpPanic({#Formatted string(4):text["__work_2"]
@@ -50,7 +50,7 @@ byte-code for var_ref:n_test()
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
    2[52]: [7] Text() var=test_value[52]:text
-   3[76]: CreateRef(var[28]) -> ref(reference)
+   3[76]: CreateStack(var[28]) -> ref(reference)
    6[88]: Call(size=0, fn=n_text_ref)
   13[92]: AppendText(var[52], v1: text)
   16[76]: [8] VarText(var[52]) -> text var=test_value[52]:text
@@ -77,16 +77,16 @@ Execute test:
     0:[8] Text()
     1:[32] [7] Text()
     2:[56] Text()
-    3:[80] CreateRef(var[32]) -> ref(0,1,40)[80]
+    3:[80] CreateStack(var[32]) -> ref(0,1,40)[80]
     6:[92] Call(size=0, fn=n_text_ref)
- 1113:[96] ConstText(_value="12345") -> "12345"[96]
- 1120:[112] AppendRefText(var[80], v1="12345"[96])
- 1123:[96] VarRef(var[80]) -> ref(0,1,40)[96]
- 1126:[108] GetRefText(r=ref(0,1,40)[96]) -> "12345"[96]
- 1127:[112] ConstInt(val=0) -> 0[112]
- 1132:[116] ConstInt(val=4) -> 4[116]
- 1137:[120] GetTextSub(v1="12345"[96], from=0[112], till=4[116]) -> "1234"[96]
- 1138:[112] Return(ret=1157[92], value=16, discard=32) -> "1234"[80]
+ 1839:[96] ConstText(_value="12345") -> "12345"[96]
+ 1846:[112] AppendStackText(var[80], v1="12345"[96])
+ 1849:[96] VarRef(var[80]) -> ref(0,1,40)[96]
+ 1852:[108] GetStackText(r=ref(0,1,40)[96]) -> "12345"[96]
+ 1853:[112] ConstInt(val=0) -> 0[112]
+ 1858:[116] ConstInt(val=4) -> 4[116]
+ 1863:[120] GetTextSub(v1="12345"[96], from=0[112], till=4[116]) -> "1234"[96]
+ 1864:[112] Return(ret=1883[92], value=16, discard=32) -> "1234"[80]
    13:[96] AppendText(var[56], v1="1234"[80])
    16:[80] VarText(var[56]) -> "1234"[80]
    19:[96] ConstText(_value="1234") -> "1234"[96]

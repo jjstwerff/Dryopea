@@ -109,7 +109,7 @@ impl Store {
         unsafe {
             self.ptr.cast::<u32>().write_unaligned(SIGNATURE);
             // The first empty space
-            self.ptr.offset(4).cast::<u32>().write_unaligned(1);
+            self.ptr.add(4).cast::<u32>().write_unaligned(1);
         }
         // Indicate the complete store as empty
         *self.addr_mut(1, 0) = -(self.size as i32) + 1;

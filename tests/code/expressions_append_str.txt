@@ -9,18 +9,18 @@ pub fn test() {
 }
 fn n_append(ch:character, s:&text) -> text["s"] {#block(1):text["s"]
   [1] s(0):&text = "abc_de";
-  OpAppendRefCharacter(s(0), ch(0));
+  OpAppendStackCharacter(s(0), ch(0));
   s(0);
 }#block(1):text["s"]
 
 byte-code for append_str:n_append(ch: character[0], s: &text[4]) -> text["s"]
    0[16]: return-address
    0[20]: [1] ConstText(_value="abc_de") -> text var=s[4]:&text
-   8[36]: AppendRefText(var[4], v1: text)
+   8[36]: AppendStackText(var[4], v1: text)
   11[20]: VarCharacter(var[0]) -> character var=ch[0]:character
-  14[24]: AppendRefCharacter(var[4], v1: character)
+  14[24]: AppendStackCharacter(var[4], v1: character)
   17[20]: VarRef(var[4]) -> ref(reference) var=s[4]:&text
-  20[32]: GetRefText(r: ref(reference)) -> text["ch"]
+  20[32]: GetStackText(r: ref(reference)) -> text["ch"]
   21[36]: Return(ret=16, value=16, discard=36) type=text 5
 
 fn n_test() {#block(1):void
@@ -28,7 +28,7 @@ fn n_test() {#block(1):void
   __work_1(1):text = "";
   [4] test_value(1):text = {#block(2):text
     n_append(120i32, {#default ref(3):ref(reference)["__work_1"]
-      OpCreateRef(__work_1(1));
+      OpCreateStack(__work_1(1));
     }#default ref(3):ref(reference)["__work_1"]);
   }#block(2):text;
   [5] if OpEqText(test_value(1), "abc_dex") null else OpPanic({#Formatted string(4):text["__work_2"]
@@ -48,7 +48,7 @@ byte-code for append_str:n_test()
    1[28]: Text() var=__work_1[28]:text
    2[52]: [4] Text() var=test_value[52]:text
    3[76]: ConstInt(val=120) -> integer
-   8[80]: CreateRef(var[28]) -> ref(reference)
+   8[80]: CreateStack(var[28]) -> ref(reference)
   11[92]: Call(size=0, fn=n_append)
   18[92]: AppendText(var[52], v1: text)
   21[76]: [5] VarText(var[52]) -> text var=test_value[52]:text
@@ -76,15 +76,15 @@ Execute test:
     1:[32] [4] Text()
     2:[56] Text()
     3:[80] ConstInt(val=120) -> 120[80]
-    8:[84] CreateRef(var[32]) -> ref(0,1,40)[84]
+    8:[84] CreateStack(var[32]) -> ref(0,1,40)[84]
    11:[96] Call(size=0, fn=n_append)
- 1113:[100] ConstText(_value="abc_de") -> "abc_de"[100]
- 1121:[116] AppendRefText(var[84], v1="abc_de"[100])
- 1124:[100] VarCharacter(var[80]) -> 'x'[100]
- 1127:[104] AppendRefCharacter(var[84], v1='x'[100])
- 1130:[100] VarRef(var[84]) -> ref(0,1,40)[100]
- 1133:[112] GetRefText(r=ref(0,1,40)[100]) -> "abc_dex"[100]
- 1134:[116] Return(ret=1158[96], value=16, discard=36) -> "abc_dex"[80]
+ 1839:[100] ConstText(_value="abc_de") -> "abc_de"[100]
+ 1847:[116] AppendStackText(var[84], v1="abc_de"[100])
+ 1850:[100] VarCharacter(var[80]) -> 'x'[100]
+ 1853:[104] AppendStackCharacter(var[84], v1='x'[100])
+ 1856:[100] VarRef(var[84]) -> ref(0,1,40)[100]
+ 1859:[112] GetStackText(r=ref(0,1,40)[100]) -> "abc_dex"[100]
+ 1860:[116] Return(ret=1884[96], value=16, discard=36) -> "abc_dex"[80]
    18:[96] AppendText(var[56], v1="abc_dex"[80])
    21:[80] VarText(var[56]) -> "abc_dex"[80]
    24:[96] ConstText(_value="abc_dex") -> "abc_dex"[96]

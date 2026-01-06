@@ -233,3 +233,14 @@ fn assign_text() {
         )
         .result(Value::str("{a:\"bcdef\"}"));
 }
+
+#[test]
+fn calculated_field() {
+    code!("struct Object {
+        name_length: integer = len($.name),
+        name: text CHECK(len($.name) > 3, \"name too short, minimal 4 characters\"),
+        buffer_size: integer = len($.buffer) * 4,
+        buffer: vector<integer>,
+    }").expr("o = Object { name: \"This is example data\", buffer: [1,2,3,4,5] }; \"{o:j}\"").
+        result(Value::str("{\"name_length\":20,\"name\":\"This is example data\",\"buffer_size\":20,\"buffer\":[1,2,3,4,5]}"));
+}

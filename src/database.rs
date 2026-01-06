@@ -34,8 +34,8 @@ pub struct Type {
     pub parts: Parts,
     pub keys: Vec<Key>,
     parents: BTreeSet<u16>, // the parent record types of Struct, Enum or EnumValue
-    complex: bool,          // Is this type normally written to multiple lines.
-    linked: bool,           // Is this type linked to in a structure (not a direct part of it)
+    complex: bool,          // Normally written to multiple lines.
+    linked: bool,           // Linked to in a structure (not a direct part of it)
     size: u16,
     align: u8,
 }
@@ -96,7 +96,7 @@ pub enum Parts {
     Ordered(u16, Vec<(u16, bool)>),    // Sorted array on fields with an ascending flag
     Hash(u16, Vec<u16>), // A hash table, listing the field numbers that define its key
     Index(u16, Vec<(u16, bool)>, u16), // An index to a table, listing the key fields and the left field-nr
-    Spacial(u16, Vec<u16>),            // A spacial index with the listed coordinate fields as key
+    Spacial(u16, Vec<u16>),            // A spacial index with the listed coordinate fields as a key
 }
 
 impl PartialEq for Content {
@@ -409,6 +409,196 @@ impl Stores {
             }
         }
         res
+    }
+
+    /// # Panics
+    /// Panics if `tp` refers to a type that is not implemented for file reading.
+    pub fn read_data(&self, r: &DbRef, tp: u16, little_endian: bool, data: &mut Vec<u8>) {
+        let store = &self.allocations[r.store_nr as usize];
+        match tp {
+            0 | 6 => {
+                // integer | character
+                let v = store.get_int(r.rec, r.pos);
+                (if little_endian {
+                    v.to_le_bytes()
+                } else {
+                    v.to_be_bytes()
+                })
+                .iter()
+                .for_each(|&x| data.push(x));
+            }
+            1 => {
+                // long
+                let v = store.get_long(r.rec, r.pos);
+                (if little_endian {
+                    v.to_le_bytes()
+                } else {
+                    v.to_be_bytes()
+                })
+                .iter()
+                .for_each(|&x| data.push(x));
+            }
+            2 => {
+                // single
+                let v = store.get_single(r.rec, r.pos);
+                (if little_endian {
+                    v.to_le_bytes()
+                } else {
+                    v.to_be_bytes()
+                })
+                .iter()
+                .for_each(|&x| data.push(x));
+            }
+            3 => {
+                // float
+                let v = store.get_float(r.rec, r.pos);
+                (if little_endian {
+                    v.to_le_bytes()
+                } else {
+                    v.to_be_bytes()
+                })
+                .iter()
+                .for_each(|&x| data.push(x));
+            }
+            4 => {
+                // boolean
+                let v = store.get_byte(r.rec, r.pos, 0) as u8;
+                data.push(v);
+            }
+            5 => {
+                // text
+                let v = store.get_str(store.get_int(r.rec, r.pos) as u32);
+                v.as_bytes().iter().for_each(|&x| data.push(x));
+            }
+            _ => match self.types[tp as usize].parts.clone() {
+                Parts::Struct(s) | Parts::EnumValue(_, s) => {
+                    for f in s {
+                        self.read_data(r, f.content, little_endian, data);
+                    }
+                }
+                Parts::Enum(_) => {
+                    data.push(store.get_byte(r.rec, r.pos, 0) as u8);
+                }
+                Parts::Byte(min, _) => {
+                    let v = store.get_byte(r.rec, r.pos, min);
+                    (if little_endian {
+                        v.to_le_bytes()
+                    } else {
+                        v.to_be_bytes()
+                    })
+                    .iter()
+                    .for_each(|&x| data.push(x));
+                }
+                Parts::Short(min, _) => {
+                    let v = store.get_short(r.rec, r.pos, min);
+                    (if little_endian {
+                        v.to_le_bytes()
+                    } else {
+                        v.to_be_bytes()
+                    })
+                    .iter()
+                    .for_each(|&x| data.push(x));
+                }
+                _ => panic!(
+                    "Not implemented type for file writing {}",
+                    self.types[tp as usize].name
+                ),
+            },
+        }
+    }
+
+    /// # Panics
+    /// Panics if `data` does not contain enough bytes for the given type.
+    pub fn write_data(&mut self, r: &DbRef, tp: u16, little_endian: bool, data: &[u8]) {
+        let store = &mut self.allocations[r.store_nr as usize];
+        match tp {
+            0 | 6 => {
+                let d = data[0..4].try_into().unwrap();
+                let v = if little_endian {
+                    i32::from_le_bytes(d)
+                } else {
+                    i32::from_be_bytes(d)
+                };
+                store.set_int(r.rec, r.pos, v);
+            }
+            1 => {
+                // long
+                let d = data[0..8].try_into().unwrap();
+                let v = if little_endian {
+                    i64::from_le_bytes(d)
+                } else {
+                    i64::from_be_bytes(d)
+                };
+                store.set_long(r.rec, r.pos, v);
+            }
+            2 => {
+                // single
+                let d = data[0..4].try_into().unwrap();
+                let v = if little_endian {
+                    f32::from_le_bytes(d)
+                } else {
+                    f32::from_be_bytes(d)
+                };
+                store.set_single(r.rec, r.pos, v);
+            }
+            3 => {
+                // float
+                let d = data[0..8].try_into().unwrap();
+                let v = if little_endian {
+                    f64::from_le_bytes(d)
+                } else {
+                    f64::from_be_bytes(d)
+                };
+                store.set_float(r.rec, r.pos, v);
+            }
+            4 => {
+                // boolean
+                let v = data[0];
+                store.set_byte(r.rec, r.pos, 0, i32::from(v));
+            }
+            5 => {
+                // text
+                let v = unsafe {
+                    let mut v = Vec::new();
+                    v.extend_from_slice(data);
+                    String::from_utf8_unchecked(v)
+                };
+                let s = store.set_str(v.as_str());
+                store.set_int(r.rec, r.pos, s as i32);
+            }
+            _ => match self.types[tp as usize].parts.clone() {
+                Parts::Struct(s) | Parts::EnumValue(_, s) => {
+                    for f in s {
+                        self.write_data(r, f.content, little_endian, data);
+                    }
+                }
+                Parts::Enum(_) => {
+                    store.set_byte(r.rec, r.pos, 0, i32::from(data[0]));
+                }
+                Parts::Byte(min, _) => {
+                    let d = data[0..4].try_into().unwrap();
+                    let v = if little_endian {
+                        i32::from_le_bytes(d)
+                    } else {
+                        i32::from_be_bytes(d)
+                    };
+                    store.set_byte(r.rec, r.pos, min, v);
+                }
+                Parts::Short(min, _) => {
+                    let d = data[0..4].try_into().unwrap();
+                    let v = if little_endian {
+                        i32::from_le_bytes(d)
+                    } else {
+                        i32::from_be_bytes(d)
+                    };
+                    store.set_short(r.rec, r.pos, min, v);
+                }
+                _ => panic!(
+                    "Not implemented type for file writing {}",
+                    self.types[tp as usize].name
+                ),
+            },
+        }
     }
 
     fn show_fields(&self, pretty: bool, res: &mut String, v: &[Field]) {
@@ -874,7 +1064,7 @@ impl Stores {
     #[must_use]
     pub fn field_nr(&self, record: u16, position: i32) -> u16 {
         if record == u16::MAX {
-            // Should normally only occur in first_phase
+            // Should normally only occur in the first_phase of the parser.
             return 0;
         }
         if let Parts::Struct(fields) | Parts::EnumValue(_, fields) =
@@ -1085,7 +1275,7 @@ impl Stores {
     /**
     Add a value to an enumerated type.
     # Panics
-    When adding a value to a non-enumerate.
+    When adding a value to a non-enumerate variable.
     */
     pub fn value(&mut self, known_type: u16, name: &str, value_type: u16) -> u16 {
         if let Parts::Enum(values) = &mut self.types[known_type as usize].parts {
@@ -1280,12 +1470,13 @@ impl Stores {
             pos: db.pos,
             known_type: tp,
             pretty,
+            json: false,
         }
         .write(s, 0);
     }
 
     /**
-    Get the Json path inspired path to a record.
+    Get the Json-path inspired path to a record.
     # Panics
     When this path cannot be detected correctly.
     */
@@ -1901,6 +2092,13 @@ impl Stores {
 
     #[must_use]
     pub fn get_ref(&self, db: &DbRef, fld: u32) -> DbRef {
+        if db.rec == 0 {
+            return DbRef {
+                store_nr: db.store_nr,
+                rec: 0,
+                pos: 0,
+            };
+        }
         let store = self.store(db);
         let res = store.get_int(db.rec, db.pos + fld) as u32;
         DbRef {
@@ -2468,14 +2666,25 @@ impl Stores {
                     u16::MAX
                 };
                 let rec = tree::find(data, true, left, &self.allocations, self.keys(db), key);
-                let result = DbRef {
+                let mut result = DbRef {
                     store_nr: data.store_nr,
                     rec,
                     pos: 8,
                 };
-                if keys::key_compare(key, &result, &self.allocations, self.keys(db))
-                    == Ordering::Equal
-                {
+                result.rec = if rec == 0 {
+                    tree::first(data, left, &self.allocations).rec
+                } else {
+                    tree::next(
+                        keys::store(&result, &self.allocations),
+                        &DbRef {
+                            store_nr: result.store_nr,
+                            rec,
+                            pos: u32::from(left),
+                        },
+                    )
+                };
+                let cmp = keys::key_compare(key, &result, &self.allocations, self.keys(db));
+                if cmp == Ordering::Equal {
                     result
                 } else {
                     DbRef {
@@ -3029,12 +3238,26 @@ fn match_text(text: &str, pos: &mut usize, value: &mut String) -> bool {
     }
 }
 
+enum Format {
+    Unknown,
+    Text,
+    _LittleEndian,
+    _BigEndian,
+    Directory,
+}
+
 fn fill_file(path: &std::path::Path, store: &mut Store, file: &DbRef) -> bool {
     if let Ok(data) = path.metadata() {
         store.set_long(file.rec, file.pos, data.len() as i64); // write size
-        store.set_byte(file.rec, file.pos + 16, 0, i32::from(data.is_dir()));
+        let tp = if data.is_dir() {
+            Format::Directory
+        } else {
+            Format::Text
+        };
+        store.set_byte(file.rec, file.pos + 16, 0, tp as i32);
         true
     } else {
+        store.set_byte(file.rec, file.pos + 16, 0, Format::Unknown as i32);
         false
     }
 }
@@ -3046,6 +3269,7 @@ pub struct ShowDb<'a> {
     pub pos: u32,
     pub known_type: u16,
     pub pretty: bool,
+    pub json: bool,
 }
 
 impl Debug for ShowDb<'_> {
@@ -3216,7 +3440,13 @@ impl ShowDb<'_> {
                 s.push(',');
                 self.write_indent(complex, s, indent, true);
             }
+            if self.json {
+                s.push('"');
+            }
             s.push_str(&fld.name);
+            if self.json {
+                s.push('"');
+            }
             s.push(':');
             if self.pretty {
                 s.push(' ');
@@ -3228,6 +3458,7 @@ impl ShowDb<'_> {
                 pos: self.pos + u32::from(fld.position),
                 known_type: fld.content,
                 pretty: self.pretty,
+                json: self.json,
             };
             sub.write(s, indent + 1);
         }
@@ -3291,6 +3522,7 @@ impl ShowDb<'_> {
                 pos: rec.pos,
                 known_type: content,
                 pretty: self.pretty,
+                json: self.json,
             };
             sub.write(s, indent + 1);
         }
@@ -3356,6 +3588,7 @@ impl ShowDb<'_> {
                 pos: 8,
                 known_type: content,
                 pretty: self.pretty,
+                json: self.json,
             };
             sub.write(s, indent + 1);
         }
