@@ -1,3 +1,54 @@
-<html><body>
-<h1>/12-hash.lav</h1>
-</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lav — 12 — Hash</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <span class="cur">Hash</span> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<h1>12 — Hash</h1>
+<article>
+<p>A 'hash' field provides O(1) average-time lookup by one or more key fields. The key fields are listed in brackets: 'hash&lt;Type[field1, field2]&gt;'. A hash is not ordered; for ordered access combine it with a 'sorted' or 'vector' field.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Keyword</span> { name: <span class="ty"><a href="stdlib.html#types">text</a></span> }
+<span class="kw">struct</span> <span class="en">Data</span> { h: <span class="ty">hash</span>&lt;<span class="en">Keyword</span>[name]&gt; }</code></pre>
+<p>A hash backed by a vector allows fast key lookup while the vector maintains insertion order.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Count</span> { t: <span class="ty"><a href="stdlib.html#types">text</a></span>, v: <span class="ty"><a href="stdlib.html#types">integer</a></span> }
+<span class="kw">struct</span> <span class="en">Counting</span> {
+    entries: <span class="ty"><a href="stdlib.html#collections">vector</a></span>&lt;<span class="en">Count</span>&gt;,
+    lookup:  <span class="ty">hash</span>&lt;<span class="en">Count</span>[t]&gt;
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">fill</span>(c: <span class="en">Counting</span>) {
+    c.entries = [
+        { t: <span class="st">"One"</span>,   v: <span class="nm">1</span> },
+        { t: <span class="st">"Two"</span>,   v: <span class="nm">2</span> },
+        { t: <span class="st">"Three"</span>, v: <span class="nm">3</span> },
+        { t: <span class="st">"Four"</span>,  v: <span class="nm">4</span> }
+    ]
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Populate a hash; lookup uses index syntax with the key value(s).</p>
+<pre><code>    d = <span class="en">Data</span> {};
+    d.h = [{ name: <span class="st">"one"</span> }, { name: <span class="st">"two"</span> }];
+    d.h += [{ name: <span class="st">"three"</span> }, { name: <span class="st">"four"</span> }];</code></pre>
+<p>Found elements are truthy; a missing key returns null (falsy).</p>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(d.h[<span class="st">"three"</span>], <span class="st">"Key exists"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(!d.h[<span class="st">"None"</span>], <span class="st">"Missing key returns null"</span>);</code></pre>
+<p>Combining a vector and a hash on the same records gives ordered traversal (via the vector) and O(1) key-based access (via the hash).</p>
+<pre><code>    c = <span class="en">Counting</span> {};
+    <span class="fn-call">fill</span>(c);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(c.lookup[<span class="st">"Three"</span>].v == <span class="nm">3</span>, <span class="st">"Hash lookup: Three"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(c.lookup[<span class="st">"One"</span>].v == <span class="nm">1</span>, <span class="st">"Hash lookup: One"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(!c.lookup[<span class="st">"Five"</span>], <span class="st">"Missing key returns null"</span>);</code></pre>
+<p>Iterate the vector in insertion order while using the hash for lookups.</p>
+<pre><code>    add = <span class="nm">0</span>;
+    <span class="kw">for</span> item <span class="kw">in</span> c.entries {
+        add += item.v;
+    }
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(add == <span class="nm">10</span>, <span class="st">"Sum via vector iteration: {add}"</span>);
+}</code></pre>
+
+  </article>
+</body>
+</html>

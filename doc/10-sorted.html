@@ -1,3 +1,44 @@
-<html><body>
-<h1>/10-sorted.lav</h1>
-</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lav — 10 — Sorted</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <span class="cur">Sorted</span> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<h1>10 — Sorted</h1>
+<article>
+<p>A 'sorted' field keeps records in a sorted binary tree that can be traversed in key order and looked up by key in O(log n) time. Key fields are listed in brackets: '-field' sorts descending, 'field' ascending.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Elm</span> { key: <span class="ty"><a href="stdlib.html#types">text</a></span>, value: <span class="ty"><a href="stdlib.html#types">integer</a></span> }
+<span class="kw">struct</span> <span class="en">Db</span> { map: <span class="ty"><a href="stdlib.html#collections">sorted</a></span>&lt;<span class="en">Elm</span>[-key]&gt; }</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Populate a sorted collection; the collection maintains its order automatically.</p>
+<pre><code>    db = <span class="en">Db</span> { map: [
+        <span class="en">Elm</span> { key: <span class="st">"One"</span>,   value: <span class="nm">1</span> },
+        <span class="en">Elm</span> { key: <span class="st">"Two"</span>,   value: <span class="nm">2</span> },
+        <span class="en">Elm</span> { key: <span class="st">"Three"</span>, value: <span class="nm">3</span> },
+        <span class="en">Elm</span> { key: <span class="st">"Four"</span>,  value: <span class="nm">4</span> }
+    ]};</code></pre>
+<p>Look up an element by its sort key using index syntax. Returns null if the key is not present.</p>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(db.map[<span class="st">"Two"</span>].value == <span class="nm">2</span>, <span class="st">"Key lookup: Two"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(db.map[<span class="st">"Three"</span>].value == <span class="nm">3</span>, <span class="st">"Key lookup: Three"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(!db.map[<span class="st">"Five"</span>], <span class="st">"Missing key returns null"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(!db.map[<span class="kw">null</span>], <span class="st">"Null key returns null"</span>);</code></pre>
+<p>New elements can be appended; they are inserted in the right position.</p>
+<pre><code>    db.map += [<span class="en">Elm</span> { key: <span class="st">"Zero"</span>, value: <span class="nm">0</span> }];
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(db.map[<span class="st">"Zero"</span>].value == <span class="nm">0</span>, <span class="st">"Newly added element"</span>);</code></pre>
+<p>Iterating visits elements in sorted order. With '-key' (descending text), the order is: Zero, Two, Three, One, Four.</p>
+<pre><code>    sum = <span class="nm">0</span>;
+    <span class="kw">for</span> v <span class="kw">in</span> db.map {
+        sum = sum * <span class="nm">10</span> + v.value;
+    }</code></pre>
+<p>Zero(0), Two(2), Three(3), One(1), Four(4) → 0*10+2=2, *10+3=23, *10+1=231, *10+4=2314</p>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(sum == <span class="nm">2314</span>, <span class="st">"Sorted iteration total: {sum}"</span>);
+}</code></pre>
+<p>filling and finding values</p>
+
+  </article>
+</body>
+</html>
