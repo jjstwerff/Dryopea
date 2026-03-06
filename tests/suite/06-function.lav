@@ -1,3 +1,45 @@
-fn main() {
+// A function is declared with 'fn', a parameter list, and an optional return type.
+// The last expression in the body is the implicit return value.
+fn greet(name: text, greeting: text = "Hello") -> text {
+    greeting + ", " + name + "!"
 }
-// defaults on arguments
+
+// Functions with no return type perform side effects only.
+// Reference parameters (prefixed with '&') let the function modify the caller's variable.
+// Default values are specified with '= value' after the type.
+fn add(a: &integer, b: integer, c: integer = 0) {
+    a += b + c;
+}
+
+// A function can return early with an explicit 'return' statement.
+fn classify(n: integer) -> text {
+    if n < 0 { return "negative"; }
+    if n == 0 { return "zero"; }
+    "positive"
+}
+
+fn describe_int(v: integer) -> text { "integer:{v}" }
+fn describe_text(v: text) -> text { "text:{v}" }
+
+fn main() {
+    // Calling a function with all arguments.
+    assert(greet("World", "Hi") == "Hi, World!", "Explicit argument");
+
+    // Calling with the default value for 'greeting'.
+    assert(greet("World") == "Hello, World!", "Default argument");
+
+    // Reference parameters allow the function to modify the caller's variable.
+    v = 1;
+    add(v, 2);       // v = 1 + 2 = 3
+    add(v, 4, 1);    // v = 3 + 4 + 1 = 8
+    assert(v == 8, "Reference parameter: {v}");
+
+    // Early return example.
+    assert(classify(-5) == "negative", "Classify negative");
+    assert(classify(0) == "zero", "Classify zero");
+    assert(classify(3) == "positive", "Classify positive");
+
+    // Functions with different names handle different types.
+    assert(describe_int(42) == "integer:42", "Integer describe");
+    assert(describe_text("hi") == "text:hi", "Text describe");
+}

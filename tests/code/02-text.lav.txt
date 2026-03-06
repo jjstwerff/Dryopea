@@ -1,65 +1,268 @@
 fn n_main() {#block(1):void
+  __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [2] a(1):text["a"] = "";
+  [3] a(1):text["a"] = "";
   OpAppendText(a(1), "1");
   OpAppendText(a(1), "2");
-  [3] if OpEqText({#Formatted string(2):text["__work_1"]
+  [4] if OpEqText({#Formatted string(2):text["__work_1"]
     __work_1(1):text = "'";
     OpFormatText(__work_1(1), a(1), 4i32, -1i32, 32i32);
     OpAppendText(__work_1(1), "'");
     __work_1(1);
   }#Formatted string(2):text["__work_1"], "'12  '") null else OpPanic("Formatting text");
-  [4] if OpEqInt(t_4text_len({#Add text(3):text["__work_2"]
+  [5] if OpEqInt(t_4text_len({#Add text(3):text["__work_2"]
     OpClearText(__work_2(1));
     OpAppendText(__work_2(1), a(1));
     OpAppendText(__work_2(1), "123");
     __work_2(1);
   }#Add text(3):text["__work_2"]), 5i32) null else OpPanic("Text length");
+  [9] if OpEqInt(t_4text_len("😃"), 4i32) null else OpPanic("Emoji byte length");
+  [10] if OpEqInt(t_4text_len("♥"), 3i32) null else OpPanic("Heart byte length");
+  [11] if OpEqInt(t_4text_len("abc"), 3i32) null else OpPanic("ASCII byte length");
+  [15] s(1):text = "ABCDE";
+  [16] if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(s(1), 0i32)), OpConvIntFromCharacter(65i32)) null else OpPanic("Character at byte 0");
+  [17] if OpEqInt(OpConvIntFromCharacter(OpTextCharacter(s(1), 2i32)), OpConvIntFromCharacter(67i32)) null else OpPanic("Character at byte 2");
+  [21] if OpEqText(OpGetTextSub(s(1), 1i32, 4i32), "BCD") null else OpPanic("Sub-string by byte range");
+  [22] if OpEqText(OpGetTextSub(s(1), 3i32, 2147483647i32), "DE") null else OpPanic("Open-ended sub-string");
+  [26] txt(1):text = "12😊🙃45";
+  [27] if OpEqText(OpGetTextSub(txt(1), 2i32, OpMinSingleInt(1i32)), "😊🙃4") null else OpPanic("UTF-8 sub-string by byte range");
+  [31] result(1):text["__work_3"] = "";
+  [32] {#For block(4):void
+    c#index(4):integer = 0i32;
+    loop {#For loop_5
+      c(5):character = {#for text next(6):character
+        _for_result_1(6):character = OpTextCharacter("Hi!", c#index(4));
+        c#index(4):integer = OpAddInt(c#index(4), OpLengthCharacter(_for_result_1(6)));
+        _for_result_1(6);
+      }#for text next(6):character;
+      if OpNot(OpConvBoolFromCharacter(c(5))) {#break(7):void
+        break(0);
+      }#break(7):void else null;
+      {#block(8):void
+        [33] OpAppendText(result(1), {#Formatted string(9):text["__work_3"]
+          __work_3(1):text = "";
+          OpAppendCharacter(__work_3(1), c(5));
+          __work_3(1);
+        }#Formatted string(9):text["__work_3"]);
+      }#block(8):void;
+    }#For loop_5;
+  }#For block(4):void;
+  [35] if OpEqText(result(1), "Hi!") null else OpPanic("Character iteration");
+  [38] if t_4text_starts_with("something", "some") null else OpPanic("starts_with");
+  [39] if t_4text_ends_with("something", "thing") null else OpPanic("ends_with");
+  [40] if OpEqInt(t_4text_find("something", "th"), 4i32) null else OpPanic("find returns byte offset");
+  [41] if t_4text_contains("a longer text", "longer") null else OpPanic("contains");
+  [44] if OpEqText(t_4text_trim("  hello  "), "hello") null else OpPanic("trim");
   OpFreeText(a(1));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
+  OpFreeText(s(1));
+  OpFreeText(txt(1));
+  OpFreeText(result(1));
+  OpFreeText(__work_3(1));
 }#block(1):void
 
 byte-code for tests/suite/02-text.lav:n_main()
    0[0]: return-address
-   0[4]: Text() var=__work_2[4]:text
-   1[28]: Text() var=__work_1[28]:text
-   2[52]: [2] Text() var=a[52]:text["a"]
-   3[76]: ConstText(_value="1") -> text
-   6[92]: AppendText(var[52], v1: text)
-   9[76]: ConstText(_value="2") -> text
-  12[92]: AppendText(var[52], v1: text)
-  15[76]: [3] ClearText(var[28]) var=__work_1[28]:text
-  18[76]: ConstText(_value="'") -> text
-  21[92]: AppendText(var[28], v1: text)
-  24[76]: VarText(var[52]) -> text var=a[52]:text["a"]
-  27[92]: ConstInt(val=4) -> integer
-  32[96]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
-  37[76]: ConstText(_value="'") -> text
-  40[92]: AppendText(var[28], v1: text)
-  43[76]: VarText(var[28]) -> text var=__work_1[28]:text
-  46[92]: ConstText(_value="'12  '") -> text
-  54[108]: EqText(v1: text, v2: text) -> boolean
-  55[77]: GotoFalseWord(jump=61, if_false: boolean)
-  58[76]: GotoWord(jump=79)
-  61[76]: ConstText(_value="Formatting text") -> text
-  78[92]: Panic(message: text)
-  79[76]: [4] ClearText(var[4])
-  82[76]: VarText(var[52]) -> text var=a[52]:text["a"]
-  85[92]: AppendText(var[4], v1: text)
-  88[76]: ConstText(_value="123") -> text
-  93[92]: AppendText(var[4], v1: text)
-  96[76]: VarText(var[4]) -> text var=__work_2[4]:text
-  99[92]: Call(size=0, fn=t_4text_len)
- 106[80]: ConstInt(val=5) -> integer
- 111[84]: EqInt(v1: integer, v2: integer) -> boolean
- 112[77]: GotoFalseWord(jump=118, if_false: boolean)
- 115[76]: GotoWord(jump=132)
- 118[76]: ConstText(_value="Text length") -> text
- 131[92]: Panic(message: text)
- 132[76]: FreeText(var[52])
- 135[76]: FreeText(var[28])
- 138[76]: FreeText(var[4])
- 141[76]: Return(ret=0, value=0, discard=76)
+   0[4]: Text() var=__work_3[4]:text
+   1[28]: Text() var=__work_2[28]:text
+   2[52]: Text() var=__work_1[52]:text
+   3[76]: [3] Text() var=a[76]:text["a"]
+   4[100]: ConstText(_value="1") -> text
+   7[116]: AppendText(var[76], v1: text)
+  10[100]: ConstText(_value="2") -> text
+  13[116]: AppendText(var[76], v1: text)
+  16[100]: [4] ClearText(var[52]) var=__work_1[52]:text
+  19[100]: ConstText(_value="'") -> text
+  22[116]: AppendText(var[52], v1: text)
+  25[100]: VarText(var[76]) -> text var=a[76]:text["a"]
+  28[116]: ConstInt(val=4) -> integer
+  33[120]: FormatText(var[52], val: text, width: integer, dir=-1, token=32)
+  38[100]: ConstText(_value="'") -> text
+  41[116]: AppendText(var[52], v1: text)
+  44[100]: VarText(var[52]) -> text var=__work_1[52]:text
+  47[116]: ConstText(_value="'12  '") -> text
+  55[132]: EqText(v1: text, v2: text) -> boolean
+  56[101]: GotoFalseWord(jump=62, if_false: boolean)
+  59[100]: GotoWord(jump=80)
+  62[100]: ConstText(_value="Formatting text") -> text
+  79[116]: Panic(message: text)
+  80[100]: [5] ClearText(var[28])
+  83[100]: VarText(var[76]) -> text var=a[76]:text["a"]
+  86[116]: AppendText(var[28], v1: text)
+  89[100]: ConstText(_value="123") -> text
+  94[116]: AppendText(var[28], v1: text)
+  97[100]: VarText(var[28]) -> text var=__work_2[28]:text
+ 100[116]: Call(size=0, fn=t_4text_len)
+ 107[104]: ConstInt(val=5) -> integer
+ 112[108]: EqInt(v1: integer, v2: integer) -> boolean
+ 113[101]: GotoFalseWord(jump=119, if_false: boolean)
+ 116[100]: GotoWord(jump=133)
+ 119[100]: ConstText(_value="Text length") -> text
+ 132[116]: Panic(message: text)
+ 133[100]: [9] ConstText(_value="😃") -> text
+ 139[116]: Call(size=0, fn=t_4text_len)
+ 146[104]: ConstInt(val=4) -> integer
+ 151[108]: EqInt(v1: integer, v2: integer) -> boolean
+ 152[101]: GotoFalseWord(jump=158, if_false: boolean)
+ 155[100]: GotoWord(jump=178)
+ 158[100]: ConstText(_value="Emoji byte length") -> text
+ 177[116]: Panic(message: text)
+ 178[100]: [10] ConstText(_value="♥") -> text
+ 183[116]: Call(size=0, fn=t_4text_len)
+ 190[104]: ConstInt(val=3) -> integer
+ 195[108]: EqInt(v1: integer, v2: integer) -> boolean
+ 196[101]: GotoFalseWord(jump=202, if_false: boolean)
+ 199[100]: GotoWord(jump=222)
+ 202[100]: ConstText(_value="Heart byte length") -> text
+ 221[116]: Panic(message: text)
+ 222[100]: [11] ConstText(_value="abc") -> text
+ 227[116]: Call(size=0, fn=t_4text_len)
+ 234[104]: ConstInt(val=3) -> integer
+ 239[108]: EqInt(v1: integer, v2: integer) -> boolean
+ 240[101]: GotoFalseWord(jump=246, if_false: boolean)
+ 243[100]: GotoWord(jump=266)
+ 246[100]: ConstText(_value="ASCII byte length") -> text
+ 265[116]: Panic(message: text)
+ 266[100]: [15] Text() var=s[100]:text
+ 267[124]: ConstText(_value="ABCDE") -> text
+ 274[140]: AppendText(var[100], v1: text)
+ 277[124]: [16] VarText(var[100]) -> text var=s[100]:text
+ 280[140]: ConstInt(val=0) -> integer
+ 285[144]: TextCharacter(v1: text, v2: integer) -> character
+ 286[128]: ConvIntFromCharacter(v1: character) -> integer
+ 287[128]: ConstInt(val=65) -> integer
+ 292[132]: ConvIntFromCharacter(v1: character) -> integer
+ 293[132]: EqInt(v1: integer, v2: integer) -> boolean
+ 294[125]: GotoFalseWord(jump=300, if_false: boolean)
+ 297[124]: GotoWord(jump=322)
+ 300[124]: ConstText(_value="Character at byte 0") -> text
+ 321[140]: Panic(message: text)
+ 322[124]: [17] VarText(var[100]) -> text var=s[100]:text
+ 325[140]: ConstInt(val=2) -> integer
+ 330[144]: TextCharacter(v1: text, v2: integer) -> character
+ 331[128]: ConvIntFromCharacter(v1: character) -> integer
+ 332[128]: ConstInt(val=67) -> integer
+ 337[132]: ConvIntFromCharacter(v1: character) -> integer
+ 338[132]: EqInt(v1: integer, v2: integer) -> boolean
+ 339[125]: GotoFalseWord(jump=345, if_false: boolean)
+ 342[124]: GotoWord(jump=367)
+ 345[124]: ConstText(_value="Character at byte 2") -> text
+ 366[140]: Panic(message: text)
+ 367[124]: [21] VarText(var[100]) -> text var=s[100]:text
+ 370[140]: ConstInt(val=1) -> integer
+ 375[144]: ConstInt(val=4) -> integer
+ 380[148]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
+ 381[140]: ConstText(_value="BCD") -> text
+ 386[156]: EqText(v1: text, v2: text) -> boolean
+ 387[125]: GotoFalseWord(jump=393, if_false: boolean)
+ 390[124]: GotoWord(jump=420)
+ 393[124]: ConstText(_value="Sub-string by byte range") -> text
+ 419[140]: Panic(message: text)
+ 420[124]: [22] VarText(var[100]) -> text var=s[100]:text
+ 423[140]: ConstInt(val=3) -> integer
+ 428[144]: ConstInt(val=2147483647) -> integer
+ 433[148]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
+ 434[140]: ConstText(_value="DE") -> text
+ 438[156]: EqText(v1: text, v2: text) -> boolean
+ 439[125]: GotoFalseWord(jump=445, if_false: boolean)
+ 442[124]: GotoWord(jump=469)
+ 445[124]: ConstText(_value="Open-ended sub-string") -> text
+ 468[140]: Panic(message: text)
+ 469[124]: [26] Text() var=txt[124]:text
+ 470[148]: ConstText(_value="12😊🙃45") -> text
+ 484[164]: AppendText(var[124], v1: text)
+ 487[148]: [27] VarText(var[124]) -> text var=txt[124]:text
+ 490[164]: ConstInt(val=2) -> integer
+ 495[168]: ConstInt(val=1) -> integer
+ 500[172]: MinSingleInt(v1: integer) -> integer
+ 501[172]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
+ 502[164]: ConstText(_value="😊🙃4") -> text
+ 513[180]: EqText(v1: text, v2: text) -> boolean
+ 514[149]: GotoFalseWord(jump=520, if_false: boolean)
+ 517[148]: GotoWord(jump=553)
+ 520[148]: ConstText(_value="UTF-8 sub-string by byte range") -> text
+ 552[164]: Panic(message: text)
+ 553[148]: [31] Text() var=result[148]:text["__work_3"]
+ 554[172]: [32] ConstInt(val=0) -> integer var=c#index[172]:integer
+ 559[176]: ConstText(_value="Hi!") -> text var=_for_result_1[176]:character
+ 564[192]: VarInt(var[172]) -> integer var=c#index[172]:integer
+ 567[196]: TextCharacter(v1: text, v2: integer) -> character
+ 568[180]: VarInt(var[172]) -> integer var=c#index[172]:integer
+ 571[184]: VarCharacter(var[176]) -> character var=_for_result_1[176]:character
+ 574[188]: LengthCharacter(v1: character) -> integer
+ 575[188]: AddInt(v1: integer, v2: integer) -> integer
+ 576[184]: PutInt(var[172], value: integer)
+ 579[180]: VarCharacter(var[176]) -> character var=_for_result_1[176]:character
+ 582[184]: FreeStack(value=4, discard=8)
+ 586[180]: VarCharacter(var[176]) -> character var=c[176]:character
+ 589[184]: ConvBoolFromCharacter(v1: character) -> boolean
+ 590[181]: Not(v1: boolean) -> boolean
+ 591[181]: GotoFalseWord(jump=601, if_false: boolean)
+ 594[180]: FreeStack(value=0, discard=4)
+ 598[176]: GotoWord(jump=629)
+ 601[180]: [33] ClearText(var[4]) var=__work_3[4]:text
+ 604[180]: ConstText(_value="") -> text
+ 606[196]: VarCharacter(var[176]) -> character var=c[176]:character
+ 609[200]: AppendCharacter(var[4], v1: character)
+ 612[196]: VarText(var[4]) -> text var=__work_3[4]:text
+ 615[212]: FreeStack(value=16, discard=32)
+ 619[196]: AppendText(var[148], v1: text)
+ 622[180]: FreeStack(value=0, discard=4)
+ 626[176]: GotoWord(jump=559)
+ 629[176]: FreeStack(value=0, discard=4)
+ 633[172]: [35] VarText(var[148]) -> text var=result[148]:text["__work_3"]
+ 636[188]: ConstText(_value="Hi!") -> text
+ 641[204]: EqText(v1: text, v2: text) -> boolean
+ 642[173]: GotoFalseWord(jump=648, if_false: boolean)
+ 645[172]: GotoWord(jump=670)
+ 648[172]: ConstText(_value="Character iteration") -> text
+ 669[188]: Panic(message: text)
+ 670[172]: [38] ConstText(_value="something") -> text
+ 681[188]: ConstText(_value="some") -> text
+ 687[204]: StaticCall(t_4text_starts_with)
+ 690[173]: GotoFalseWord(jump=696, if_false: boolean)
+ 693[172]: GotoWord(jump=710)
+ 696[172]: ConstText(_value="starts_with") -> text
+ 709[188]: Panic(message: text)
+ 710[172]: [39] ConstText(_value="something") -> text
+ 721[188]: ConstText(_value="thing") -> text
+ 728[204]: StaticCall(t_4text_ends_with)
+ 731[173]: GotoFalseWord(jump=737, if_false: boolean)
+ 734[172]: GotoWord(jump=749)
+ 737[172]: ConstText(_value="ends_with") -> text
+ 748[188]: Panic(message: text)
+ 749[172]: [40] ConstText(_value="something") -> text
+ 760[188]: ConstText(_value="th") -> text
+ 764[204]: StaticCall(t_4text_find)
+ 767[176]: ConstInt(val=4) -> integer
+ 772[180]: EqInt(v1: integer, v2: integer) -> boolean
+ 773[173]: GotoFalseWord(jump=779, if_false: boolean)
+ 776[172]: GotoWord(jump=806)
+ 779[172]: ConstText(_value="find returns byte offset") -> text
+ 805[188]: Panic(message: text)
+ 806[172]: [41] ConstText(_value="a longer text") -> text
+ 821[188]: ConstText(_value="longer") -> text
+ 829[204]: StaticCall(t_4text_contains)
+ 832[173]: GotoFalseWord(jump=838, if_false: boolean)
+ 835[172]: GotoWord(jump=849)
+ 838[172]: ConstText(_value="contains") -> text
+ 848[188]: Panic(message: text)
+ 849[172]: [44] ConstText(_value="  hello  ") -> text
+ 860[188]: StaticCall(t_4text_trim)
+ 863[188]: ConstText(_value="hello") -> text
+ 870[204]: EqText(v1: text, v2: text) -> boolean
+ 871[173]: GotoFalseWord(jump=877, if_false: boolean)
+ 874[172]: GotoWord(jump=884)
+ 877[172]: ConstText(_value="trim") -> text
+ 883[188]: Panic(message: text)
+ 884[172]: FreeText(var[76])
+ 887[172]: FreeText(var[52])
+ 890[172]: FreeText(var[28])
+ 893[172]: FreeText(var[100])
+ 896[172]: FreeText(var[124])
+ 899[172]: FreeText(var[148])
+ 902[172]: FreeText(var[4])
+ 905[172]: Return(ret=0, value=0, discard=172)
 

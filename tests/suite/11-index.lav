@@ -1,2 +1,41 @@
+// An 'index' stores records in a balanced red-black tree, maintaining strict
+// sorted order and supporting O(log n) lookup and range iteration.
+// Unlike 'sorted', an index embeds the tree pointers inside each record itself,
+// so each element can belong to only one index at a time.
+// Key fields are listed in brackets: 'field' ascending, '-field' descending.
+struct Elm { nr: integer, key: text, value: integer }
+struct Db { map: index<Elm[nr, -key]> }
+
 fn main() {
+    // Populate the index; elements are sorted by (nr ascending, key descending).
+    db = Db { map: [
+        Elm { nr: 101, key: "One",   value: 1 },
+        Elm { nr: 92,  key: "Two",   value: 2 },
+        Elm { nr: 83,  key: "Three", value: 3 },
+        Elm { nr: 83,  key: "Four",  value: 4 },
+        Elm { nr: 83,  key: "Five",  value: 5 },
+        Elm { nr: 63,  key: "Six",   value: 6 },
+    ]};
+
+    // Look up an element by its full key tuple; returns null for missing keys.
+    assert(db.map[101, "One"].value == 1, "Key lookup");
+    assert(!db.map[12, ""], "Missing key returns null");
+    assert(!db.map[83, "One"], "Wrong secondary key returns null");
+
+    // Iterate all elements in key order (nr asc, key desc).
+    total = 0;
+    for r in db.map {
+        total += r.value;
+    }
+    assert(total == 21, "Sum of all values: {total}");
+
+    // Range iteration: visit elements whose key falls between two bounds.
+    // The range [83..92, "Two"] visits elements with 83 <= nr < 92 and key <= "Two"
+    // (in descending key order, "Two" is the lower bound).
+    sum = 0;
+    for v in db.map[83..92, "Two"] {
+        sum = sum * 10 + v.value;
+    }
+    // Elements in range: (83,Three,3), (83,Four,4), (83,Five,5)
+    assert(sum == 345, "Range iteration result: {sum}");
 }

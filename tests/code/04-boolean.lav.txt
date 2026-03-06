@@ -1,6 +1,19 @@
 fn n_main() {#block(1):void
   [2] if OpNot(OpLtInt(OpAddInt(2i32, 4i32), 3i32)) null else OpPanic("Boolean test");
-  [3] if OpEqText(OpCastTextFromBool(true), "true") null else OpPanic("Convert boolean");
+  [3] if OpEqText(OpCastTextFromBool(true), "true") null else OpPanic("Convert boolean to text");
+  [8] if if OpLtInt(0i32, 1i32) OpLtInt(1i32, 2i32) else false null else OpPanic("Both conditions true");
+  [9] if if OpLtInt(2i32, 1i32) true else OpLtInt(2i32, 3i32) null else OpPanic("Second condition true");
+  [10] if OpNot(if OpLtInt(2i32, 1i32) OpLtInt(2i32, 3i32) else false) null else OpPanic("First false, whole 'and' is false");
+  [11] if OpNot(if OpLtInt(2i32, 1i32) true else OpLtInt(4i32, 3i32)) null else OpPanic("Both false, whole 'or' is false");
+  [15] zero(1):integer = 0i32;
+  [16] if OpNot(OpConvBoolFromInt(OpDivInt(12i32, zero(1)))) null else OpPanic("Null from division-by-zero is false");
+  [17] if OpLtInt(0i32, 12i32) null else OpPanic("Positive integer is true");
+  [21] if OpEqInt(OpLandInt(15i32, 168i32), 8i32) null else OpPanic("Bitwise and");
+  [22] if OpEqInt(OpLorInt(240i32, 15i32), 255i32) null else OpPanic("Bitwise or");
+  [23] if OpEqInt(OpSLeftInt(1i32, 4i32), 16i32) null else OpPanic("Left shift");
+  [24] if OpEqInt(OpSRightInt(256i32, 3i32), 32i32) null else OpPanic("Right shift");
+  [27] if OpNot(false) null else OpPanic("Not false is true");
+  [28] if OpNot(OpLtInt(2i32, 1i32)) null else OpPanic("Not (false comparison) is true");
 }#block(1):void
 
 byte-code for tests/suite/04-boolean.lav:n_main()
@@ -20,8 +33,129 @@ byte-code for tests/suite/04-boolean.lav:n_main()
   41[20]: ConstText(_value="true") -> text
   47[36]: EqText(v1: text, v2: text) -> boolean
   48[5]: GotoFalseWord(jump=54, if_false: boolean)
-  51[4]: GotoWord(jump=72)
-  54[4]: ConstText(_value="Convert boolean") -> text
-  71[20]: Panic(message: text)
-  72[4]: Return(ret=0, value=0, discard=4)
+  51[4]: GotoWord(jump=80)
+  54[4]: ConstText(_value="Convert boolean to text") -> text
+  79[20]: Panic(message: text)
+  80[4]: [8] ConstInt(val=0) -> integer
+  85[8]: ConstInt(val=1) -> integer
+  90[12]: LtInt(v1: integer, v2: integer) -> boolean
+  91[5]: GotoFalseWord(jump=108, if_false: boolean)
+  94[4]: ConstInt(val=1) -> integer
+  99[8]: ConstInt(val=2) -> integer
+ 104[12]: LtInt(v1: integer, v2: integer) -> boolean
+ 105[5]: GotoWord(jump=109)
+ 108[4]: ConstFalse() -> boolean
+ 109[5]: GotoFalseWord(jump=115, if_false: boolean)
+ 112[4]: GotoWord(jump=138)
+ 115[4]: ConstText(_value="Both conditions true") -> text
+ 137[20]: Panic(message: text)
+ 138[4]: [9] ConstInt(val=2) -> integer
+ 143[8]: ConstInt(val=1) -> integer
+ 148[12]: LtInt(v1: integer, v2: integer) -> boolean
+ 149[5]: GotoFalseWord(jump=156, if_false: boolean)
+ 152[4]: ConstTrue() -> boolean
+ 153[5]: GotoWord(jump=167)
+ 156[4]: ConstInt(val=2) -> integer
+ 161[8]: ConstInt(val=3) -> integer
+ 166[12]: LtInt(v1: integer, v2: integer) -> boolean
+ 167[5]: GotoFalseWord(jump=173, if_false: boolean)
+ 170[4]: GotoWord(jump=197)
+ 173[4]: ConstText(_value="Second condition true") -> text
+ 196[20]: Panic(message: text)
+ 197[4]: [10] ConstInt(val=2) -> integer
+ 202[8]: ConstInt(val=1) -> integer
+ 207[12]: LtInt(v1: integer, v2: integer) -> boolean
+ 208[5]: GotoFalseWord(jump=225, if_false: boolean)
+ 211[4]: ConstInt(val=2) -> integer
+ 216[8]: ConstInt(val=3) -> integer
+ 221[12]: LtInt(v1: integer, v2: integer) -> boolean
+ 222[5]: GotoWord(jump=226)
+ 225[4]: ConstFalse() -> boolean
+ 226[5]: Not(v1: boolean) -> boolean
+ 227[5]: GotoFalseWord(jump=233, if_false: boolean)
+ 230[4]: GotoWord(jump=269)
+ 233[4]: ConstText(_value="First false, whole 'and' is false") -> text
+ 268[20]: Panic(message: text)
+ 269[4]: [11] ConstInt(val=2) -> integer
+ 274[8]: ConstInt(val=1) -> integer
+ 279[12]: LtInt(v1: integer, v2: integer) -> boolean
+ 280[5]: GotoFalseWord(jump=287, if_false: boolean)
+ 283[4]: ConstTrue() -> boolean
+ 284[5]: GotoWord(jump=298)
+ 287[4]: ConstInt(val=4) -> integer
+ 292[8]: ConstInt(val=3) -> integer
+ 297[12]: LtInt(v1: integer, v2: integer) -> boolean
+ 298[5]: Not(v1: boolean) -> boolean
+ 299[5]: GotoFalseWord(jump=305, if_false: boolean)
+ 302[4]: GotoWord(jump=339)
+ 305[4]: ConstText(_value="Both false, whole 'or' is false") -> text
+ 338[20]: Panic(message: text)
+ 339[4]: [15] ConstInt(val=0) -> integer var=zero[4]:integer
+ 344[8]: [16] ConstInt(val=12) -> integer
+ 349[12]: VarInt(var[4]) -> integer var=zero[4]:integer
+ 352[16]: DivInt(v1: integer, v2: integer) -> integer
+ 353[12]: ConvBoolFromInt(v1: integer) -> boolean
+ 354[9]: Not(v1: boolean) -> boolean
+ 355[9]: GotoFalseWord(jump=361, if_false: boolean)
+ 358[8]: GotoWord(jump=399)
+ 361[8]: ConstText(_value="Null from division-by-zero is false") -> text
+ 398[24]: Panic(message: text)
+ 399[8]: [17] ConstInt(val=0) -> integer
+ 404[12]: ConstInt(val=12) -> integer
+ 409[16]: LtInt(v1: integer, v2: integer) -> boolean
+ 410[9]: GotoFalseWord(jump=416, if_false: boolean)
+ 413[8]: GotoWord(jump=443)
+ 416[8]: ConstText(_value="Positive integer is true") -> text
+ 442[24]: Panic(message: text)
+ 443[8]: [21] ConstInt(val=15) -> integer
+ 448[12]: ConstInt(val=168) -> integer
+ 453[16]: LandInt(v1: integer, v2: integer) -> integer
+ 454[12]: ConstInt(val=8) -> integer
+ 459[16]: EqInt(v1: integer, v2: integer) -> boolean
+ 460[9]: GotoFalseWord(jump=466, if_false: boolean)
+ 463[8]: GotoWord(jump=480)
+ 466[8]: ConstText(_value="Bitwise and") -> text
+ 479[24]: Panic(message: text)
+ 480[8]: [22] ConstInt(val=240) -> integer
+ 485[12]: ConstInt(val=15) -> integer
+ 490[16]: LorInt(v1: integer, v2: integer) -> integer
+ 491[12]: ConstInt(val=255) -> integer
+ 496[16]: EqInt(v1: integer, v2: integer) -> boolean
+ 497[9]: GotoFalseWord(jump=503, if_false: boolean)
+ 500[8]: GotoWord(jump=516)
+ 503[8]: ConstText(_value="Bitwise or") -> text
+ 515[24]: Panic(message: text)
+ 516[8]: [23] ConstInt(val=1) -> integer
+ 521[12]: ConstInt(val=4) -> integer
+ 526[16]: SLeftInt(v1: integer, v2: integer) -> integer
+ 527[12]: ConstInt(val=16) -> integer
+ 532[16]: EqInt(v1: integer, v2: integer) -> boolean
+ 533[9]: GotoFalseWord(jump=539, if_false: boolean)
+ 536[8]: GotoWord(jump=552)
+ 539[8]: ConstText(_value="Left shift") -> text
+ 551[24]: Panic(message: text)
+ 552[8]: [24] ConstInt(val=256) -> integer
+ 557[12]: ConstInt(val=3) -> integer
+ 562[16]: SRightInt(v1: integer, v2: integer) -> integer
+ 563[12]: ConstInt(val=32) -> integer
+ 568[16]: EqInt(v1: integer, v2: integer) -> boolean
+ 569[9]: GotoFalseWord(jump=575, if_false: boolean)
+ 572[8]: GotoWord(jump=589)
+ 575[8]: ConstText(_value="Right shift") -> text
+ 588[24]: Panic(message: text)
+ 589[8]: [27] ConstFalse() -> boolean
+ 590[9]: Not(v1: boolean) -> boolean
+ 591[9]: GotoFalseWord(jump=597, if_false: boolean)
+ 594[8]: GotoWord(jump=617)
+ 597[8]: ConstText(_value="Not false is true") -> text
+ 616[24]: Panic(message: text)
+ 617[8]: [28] ConstInt(val=2) -> integer
+ 622[12]: ConstInt(val=1) -> integer
+ 627[16]: LtInt(v1: integer, v2: integer) -> boolean
+ 628[9]: Not(v1: boolean) -> boolean
+ 629[9]: GotoFalseWord(jump=635, if_false: boolean)
+ 632[8]: GotoWord(jump=668)
+ 635[8]: ConstText(_value="Not (false comparison) is true") -> text
+ 667[24]: Panic(message: text)
+ 668[8]: Return(ret=0, value=0, discard=8)
 

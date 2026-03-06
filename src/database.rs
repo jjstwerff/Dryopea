@@ -1380,7 +1380,7 @@ impl Stores {
         }
     }
 
-    /// Allocate a new isolated record of the given type (used in generated code for OpDatabase).
+    /// Allocate a new isolated record of the given type (used in generated code for `OpDatabase`).
     pub fn alloc_record(&mut self, db_tp: u16) -> DbRef {
         let size = self.size(db_tp);
         let db = self.database(u32::from(size));
@@ -2576,6 +2576,8 @@ impl Stores {
         self.find(data, db, &[Content::Long(key)])
     }
 
+    /// # Panics
+    /// Panics if the key type does not match the index type (e.g. integer key on a string index).
     #[must_use]
     pub fn find(&self, data: &DbRef, db: u16, key: &[Content]) -> DbRef {
         match &self.types[db as usize].parts {

@@ -1,18 +1,23 @@
-fn texts(dir: File, l: vector<File>) {
-    for f in dir.files() {
-        if f.dir {
-            texts(f, l);
+// 'file(path)' creates a File handle; 'files()' lists the contents of a directory.
+// 'format == Format.Directory' tests whether a file is a directory.
+fn collect_txt(folder: File, l: vector<text>) {
+    for f in folder.files() {
+        if f.format == Format.Directory {
+            collect_txt(f, l);
         } else if f.path.ends_with(".txt") {
-            l += [f];
+            l += [f.path];
         }
     }
 }
 
 fn main() {
-    l = [];
-    texts(file("example"), l);
-    assert(l[0].path == "example/config/terrain.txt", "Found file '{l[0].path}'");
-    f = l[0];
+    // Recursively collect all .txt file paths under the 'example' directory.
+    paths = [];
+    collect_txt(file("example"), paths);
+    assert(paths[0] == "example/config/terrain.txt", "Found file '{paths[0]}'");
+
+    // 'content()' reads the file as text; 'lines()' splits it into a vector of lines.
+    f = file(paths[0]);
     c = f.lines();
     assert(c[1] == "   terrain = [", "Line was '{c[1]}'");
 }

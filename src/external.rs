@@ -20,6 +20,7 @@ pub fn text_character(val: &str, i: i32) -> char {
     }
 }
 
+#[must_use]
 pub fn sub_text(val: &str, from: i32, till: i32) -> &str {
     let size = val.len() as i32;
     let mut f = if from < 0 { from + size } else { from };

@@ -1,3 +1,59 @@
-<html><body>
-<h1>/03-integer.lav</h1>
-</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lav — 03 — Integer</title>
+<style>
+:root {--bg:#fff; --text:#1a1a2e; --code-bg:#f8f9fa;--border:#e5e7eb; --accent:#2563eb; --nav-bg:#f3f4f6;--kw:#d1242f; --ty:#8250df; --st:#0a3069; --cm:#6a737d;--nm:#0550ae; --bi:#953800; --en:#1a7f37;}
+*, *::before, *::after { box-sizing: border-box; }
+body {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;font-size: 16px; line-height: 1.7; color: var(--text); background: var(--bg);max-width: 860px; margin: 0 auto; padding: 24px 32px;}
+nav {background: var(--nav-bg); border: 1px solid var(--border); border-radius: 8px;padding: 10px 16px; margin-bottom: 32px; line-height: 2.2; font-size: 0.9em;}
+nav a { color: var(--accent); text-decoration: none; margin: 0 3px; }
+nav a:hover { text-decoration: underline; }
+.cur { font-weight: 700; color: var(--text); margin: 0 3px; }
+h1 { font-size: 1.75em; margin: 0 0 24px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+p { margin: 0.4em 0 1em; color: #374151; }
+pre {background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;padding: 14px 16px; overflow-x: auto; margin: 0 0 18px;font-size: 0.875em; line-height: 1.55;}
+code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+.cm { color: var(--cm); font-style: italic; }
+.kw { color: var(--kw); font-weight: 600; }
+.ty { color: var(--ty); }
+.st, .ch { color: var(--st); }
+.nm { color: var(--nm); }
+.bi { color: var(--bi); }
+.en { color: var(--en); }
+.fn-call { color: #005cc5; }
+  </style>
+</head>
+<body>
+<nav><a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <span class="cur">Integer</span> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<h1>03 — Integer</h1>
+<article>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Integer is the default type for any number, it is comparable with i32 in rust.</p>
+<p>It is possible to convert numbers into texts and texts into numbers.</p>
+<pre><code>    v = <span class="nm">4</span>;
+    <span class="bi">assert</span>(<span class="st">"{v}"</span> == <span class="st">"4"</span>, <span class="st">"Convert numbers to text"</span>);
+    <span class="bi">assert</span>(<span class="st">"123"</span> <span class="kw">as</span> <span class="ty">integer</span> == <span class="nm">123</span>, <span class="st">"Convert text to number"</span>);</code></pre>
+<p>Priority rules determine the order of operators.</p>
+<pre><code>    <span class="bi">assert</span>(<span class="nm">1</span> + <span class="nm">2</span> * <span class="nm">4</span> == <span class="nm">9</span>, <span class="st">"Integer calculus"</span>);
+    <span class="bi">assert</span>(<span class="nm">1</span> + <span class="nm">2</span> &lt;&lt; <span class="nm">2</span> == <span class="nm">12</span>, <span class="st">"Binary shift"</span>);
+    <span class="bi">assert</span>(<span class="nm">0x0a8</span> &amp; <span class="nm">15</span> == <span class="nm">8</span>, <span class="st">"Binary and"</span>);
+    <span class="bi">assert</span>(<span class="nm">105</span> % <span class="nm">100</span> == <span class="nm">5</span>, <span class="st">"Modulus"</span>);
+    <span class="bi">assert</span>(<span class="nm">2</span> ^ <span class="nm">3</span> == <span class="nm">8</span>, <span class="st">"Power"</span>);</code></pre>
+<p>The absolute value function is not a operation on numbers like `-1.abs()` in rust.</p>
+<pre><code>    <span class="bi">assert</span>(<span class="nm">1</span> + <span class="bi">abs</span>(-<span class="nm">2</span>) == <span class="nm">3</span>, <span class="st">"Absolute integer"</span>);</code></pre>
+<p>Division by zero results in a null (undefined) value that is equal to false in test.</p>
+<pre><code>    a = <span class="nm">2</span> * <span class="nm">2</span>;
+    a -= <span class="nm">4</span>;
+    <span class="bi">assert</span>(!(<span class="nm">12</span> / a), <span class="st">"Null on division by zero"</span>);</code></pre>
+<pre><code>    <span class="bi">assert</span>(<span class="st">"a{12}b"</span> == <span class="st">"a12b"</span>, <span class="st">"Formatting problem"</span>);</code></pre>
+<p>It is allowed to have full expressions inside a formatting block.</p>
+<pre><code>    <span class="bi">assert</span>(<span class="st">"a{1 + 2 * 3:#x}b"</span> == <span class="st">"a0x7b"</span>, <span class="st">"Hex formatting"</span>);
+}</code></pre>
+<p>library functions abs</p>
+
+  </article>
+</body>
+</html>

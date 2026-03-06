@@ -1,4 +1,4 @@
-Type 18:Area[5/2]: parents [main_vector<Area> 21]
+Type 18:Area[5/2]: parents [main_vector<Area> 23]
     height:short<0,true>[0]
     terrain:byte<0,true>[2]
     water:byte<0,true>[3]
@@ -8,26 +8,58 @@ Type 19:short<0,true>[2/2]:Short(0, true)
 
 Type 20:byte<0,true>[1/1]:Byte(0, true)
 
-Type 21:main_vector<Area>[4/4]:
+Type 21:Point[3/1]:
+    r:byte[0]
+    g:byte[1]
+    b:byte[2]
+
+Type 22:Object[8/4]:
+    name_length:integer[0]
+    name:text[4]
+
+Type 23:main_vector<Area>[4/4]:
     vector:vector<Area>[0]
 
-Type 22:vector<Area>[4/4]:Vector(18)
+Type 24:vector<Area>[4/4]:Vector(18)
+
+fn t_5Point_value(self:Point) -> integer {#block(1):integer
+  [20] OpAddInt(OpAddInt(OpMulInt(OpGetByte(self(0), 0i32, 0i32), 65536i32), OpMulInt(OpGetByte(self(0), 1i32, 0i32), 256i32)), OpGetByte(self(0), 2i32, 0i32));
+}#block(1):integer
+
+byte-code for tests/suite/08-struct.lav:t_5Point_value(self: ref(Point)[0]) -> integer
+   0[12]: return-address
+   0[16]: [20] VarRef(var[0]) -> ref(reference) type=Point 21 var=self[0]:ref(Point)
+   3[28]: GetByte(v1: ref(reference), fld=0, min=0) -> integer
+   8[20]: ConstInt(val=65536) -> integer
+  13[24]: MulInt(v1: integer, v2: integer) -> integer
+  14[20]: VarRef(var[0]) -> ref(reference) type=Point 21 var=self[0]:ref(Point)
+  17[32]: GetByte(v1: ref(reference), fld=1, min=0) -> integer
+  22[24]: ConstInt(val=256) -> integer
+  27[28]: MulInt(v1: integer, v2: integer) -> integer
+  28[24]: AddInt(v1: integer, v2: integer) -> integer
+  29[20]: VarRef(var[0]) -> ref(reference) type=Point 21 var=self[0]:ref(Point)
+  32[32]: GetByte(v1: ref(reference), fld=2, min=0) -> integer
+  37[24]: AddInt(v1: integer, v2: integer) -> integer
+  38[20]: Return(ret=12, value=4, discard=20) type=integer 0
 
 fn n_main() {#block(1):void
   __ref_1(1):ref(main_vector<Area>) = null;
+  __work_5(1):text = "";
+  __work_4(1):text = "";
+  __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [9] OpDatabase(__ref_1(1), 21i32);
-  map(1):vector<ref(Area)>["__ref_1"] = OpGetField(__ref_1(1), 0i32, 22i32);
+  [32] OpDatabase(__ref_1(1), 23i32);
+  map(1):vector<ref(Area)>["__ref_1"] = OpGetField(__ref_1(1), 0i32, 24i32);
   OpSetInt(__ref_1(1), 0i32, 0i32);
-  _elm_1(1):ref(Area)["map"] = OpNewRecord(map(1), 22i32, 65535i32);
+  _elm_1(1):ref(Area)["map"] = OpNewRecord(map(1), 24i32, 65535i32);
   OpSetShort(_elm_1(1), 0i32, 0i32, 0i32);
   OpSetByte(_elm_1(1), 2i32, 0i32, 1i32);
   OpSetByte(_elm_1(1), 3i32, 0i32, 1i32);
   OpSetByte(_elm_1(1), 4i32, 0i32, 1i32);
-  OpFinishRecord(map(1), _elm_1(1), 22i32, 65535i32);
-  OpAppendCopy(map(1), 16i32, 22i32);
-  [10] if OpEqText({#Formatted string(2):text["__work_1"]
+  OpFinishRecord(map(1), _elm_1(1), 24i32, 65535i32);
+  OpAppendCopy(map(1), 16i32, 24i32);
+  [33] if OpEqText({#Formatted string(2):text["__work_1"]
     __work_1(1):text = "";
     OpFormatDatabase(__work_1(1), OpGetVector(map(1), 5i32, 3i32), 18i32, 0i32);
     __work_1(1);
@@ -36,66 +68,202 @@ fn n_main() {#block(1):void
     OpFormatDatabase(__work_2(1), OpGetVector(map(1), 5i32, 3i32), 18i32, 0i32);
     __work_2(1);
   }#Formatted string(3):text["__work_2"]);
+  [36] p(1):ref(Point) = null;
+  OpDatabase(p(1), 21i32);
+  OpSetByte(p(1), 0i32, 0i32, 128i32);
+  OpSetByte(p(1), 2i32, 0i32, 128i32);
+  OpSetByte(p(1), 1i32, 0i32, 0i32);
+  [37] if OpEqInt(OpGetByte(p(1), 1i32, 0i32), 0i32) null else OpPanic("Omitted field defaults to zero");
+  [38] if OpEqText({#Formatted string(4):text["__work_3"]
+    __work_3(1):text = "";
+    OpFormatDatabase(__work_3(1), p(1), 21i32, 0i32);
+    __work_3(1);
+  }#Formatted string(4):text["__work_3"], "{r:128,g:0,b:128}") null else OpPanic("Struct compact formatting");
+  [42] o(1):ref(Object) = null;
+  OpDatabase(o(1), 22i32);
+  OpSetText(o(1), 4i32, "hello");
+  OpSetInt(o(1), 0i32, t_4text_len(OpGetText(o(1), 4i32)));
+  [43] if OpEqInt(OpGetInt(o(1), 0i32), 5i32) null else OpPanic("Calculated field");
+  [44] if OpEqText({#Formatted string(5):text["__work_4"]
+    __work_4(1):text = "";
+    OpFormatDatabase(__work_4(1), o(1), 22i32, 2i32);
+    __work_4(1);
+  }#Formatted string(5):text["__work_4"], "{"name_length":5,"name":"hello"}") null else OpPanic("JSON format");
+  [47] purple(1):ref(Point) = null;
+  OpDatabase(purple(1), 21i32);
+  OpSetByte(purple(1), 0i32, 0i32, 128i32);
+  OpSetByte(purple(1), 2i32, 0i32, 128i32);
+  OpSetByte(purple(1), 1i32, 0i32, 0i32);
+  [48] if OpEqText({#Formatted string(6):text["__work_5"]
+    __work_5(1):text = "";
+    OpFormatLong(__work_5(1), OpConvLongFromInt(t_5Point_value(purple(1))), 16i32, 0i32, 32i32, false, false);
+    __work_5(1);
+  }#Formatted string(6):text["__work_5"], "800080") null else OpPanic("Method result in format");
   OpFreeRef(__ref_1(1));
   OpFreeText(__work_1(1));
   OpFreeText(__work_2(1));
+  OpFreeRef(p(1));
+  OpFreeText(__work_3(1));
+  OpFreeRef(o(1));
+  OpFreeText(__work_4(1));
+  OpFreeRef(purple(1));
+  OpFreeText(__work_5(1));
 }#block(1):void
 
 byte-code for tests/suite/08-struct.lav:n_main()
    0[0]: return-address
    0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Area>)
-   1[16]: Text() var=__work_2[16]:text
-   2[40]: Text() var=__work_1[40]:text
-   3[64]: [9] Database(var[4], db_tp=21) type=main_vector<Area> 21
-   8[64]: VarRef(var[4]) -> ref(reference) type=main_vector<Area> 21 var=__ref_1[4]:ref(main_vector<Area>)
-  11[76]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=vector<Area> 22
-  14[76]: VarRef(var[4]) -> ref(reference) type=main_vector<Area> 21 var=__ref_1[4]:ref(main_vector<Area>)
-  17[88]: ConstInt(val=0) -> integer
-  22[92]: SetInt(v1: ref(reference), fld=0, val: integer)
-  25[76]: VarVector(var[64]) -> vector type=vector<Area> 22 var=map[64]:vector<ref(Area)>["__ref_1"]
-  28[88]: NewRecord(data: ref(reference), parent_tp=22, fld=65535) -> ref(reference)
-  33[88]: VarRef(var[76]) -> ref(reference) type=Area 18 var=_elm_1[76]:ref(Area)["map"]
-  36[100]: ConstInt(val=0) -> integer
-  41[104]: SetShort(v1: ref(reference), fld=0, min=0, val: integer)
-  46[88]: VarRef(var[76]) -> ref(reference) type=Area 18 var=_elm_1[76]:ref(Area)["map"]
-  49[100]: ConstInt(val=1) -> integer
-  54[104]: SetByte(v1: ref(reference), fld=2, min=0, val: integer)
-  59[88]: VarRef(var[76]) -> ref(reference) type=Area 18 var=_elm_1[76]:ref(Area)["map"]
-  62[100]: ConstInt(val=1) -> integer
-  67[104]: SetByte(v1: ref(reference), fld=3, min=0, val: integer)
-  72[88]: VarRef(var[76]) -> ref(reference) type=Area 18 var=_elm_1[76]:ref(Area)["map"]
-  75[100]: ConstInt(val=1) -> integer
-  80[104]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
-  85[88]: VarVector(var[64]) -> vector type=vector<Area> 22 var=map[64]:vector<ref(Area)>["__ref_1"]
-  88[100]: VarRef(var[76]) -> ref(reference) type=Area 18 var=_elm_1[76]:ref(Area)["map"]
-  91[112]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=22, fld=65535)
-  96[88]: VarVector(var[64]) -> vector type=vector<Area> 22 var=map[64]:vector<ref(Area)>["__ref_1"]
-  99[100]: ConstInt(val=16) -> integer
- 104[104]: AppendCopy(data: ref(reference), count: integer, tp=22)
- 107[88]: [10] ClearText(var[40]) var=__work_1[40]:text
- 110[88]: ConstText(_value="") -> text
- 112[104]: VarVector(var[64]) -> vector type=vector<Area> 22 var=map[64]:vector<ref(Area)>["__ref_1"]
- 115[116]: ConstInt(val=3) -> integer
- 120[120]: GetVector(r: vector, size=5, index: integer) -> ref(reference) type=Area 18
- 123[116]: FormatDatabase(var[40], val: ref(reference), db_tp=18, db_format=0)
- 129[104]: VarText(var[40]) -> text var=__work_1[40]:text
- 132[120]: FreeStack(value=16, discard=32)
- 136[104]: ConstText(_value="{height:0,terrain:1,water:1,direction:1}") -> text
- 178[120]: EqText(v1: text, v2: text) -> boolean
- 179[89]: GotoFalseWord(jump=185, if_false: boolean)
- 182[88]: GotoWord(jump=221)
- 185[88]: ClearText(var[16]) var=__work_2[16]:text
- 188[88]: ConstText(_value="record ") -> text
- 197[104]: AppendText(var[16], v1: text)
- 200[88]: VarVector(var[64]) -> vector type=vector<Area> 22 var=map[64]:vector<ref(Area)>["__ref_1"]
- 203[100]: ConstInt(val=3) -> integer
- 208[104]: GetVector(r: vector, size=5, index: integer) -> ref(reference) type=Area 18
- 211[100]: FormatDatabase(var[16], val: ref(reference), db_tp=18, db_format=0)
- 217[88]: VarText(var[16]) -> text var=__work_2[16]:text
- 220[104]: Panic(message: text)
- 221[88]: VarRef(var[4]) -> ref(reference) type=main_vector<Area> 21 var=__ref_1[4]:ref(main_vector<Area>)
- 224[100]: FreeRef(v1: ref(reference))
- 225[88]: FreeText(var[40])
- 228[88]: FreeText(var[16])
- 231[88]: Return(ret=0, value=0, discard=88)
+   1[16]: Text() var=__work_5[16]:text
+   2[40]: Text() var=__work_4[40]:text
+   3[64]: Text() var=__work_3[64]:text
+   4[88]: Text() var=__work_2[88]:text
+   5[112]: Text() var=__work_1[112]:text
+   6[136]: [32] Database(var[4], db_tp=23) type=main_vector<Area> 23
+  11[136]: VarRef(var[4]) -> ref(reference) type=main_vector<Area> 23 var=__ref_1[4]:ref(main_vector<Area>)
+  14[148]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=vector<Area> 24
+  17[148]: VarRef(var[4]) -> ref(reference) type=main_vector<Area> 23 var=__ref_1[4]:ref(main_vector<Area>)
+  20[160]: ConstInt(val=0) -> integer
+  25[164]: SetInt(v1: ref(reference), fld=0, val: integer)
+  28[148]: VarVector(var[136]) -> vector type=vector<Area> 24 var=map[136]:vector<ref(Area)>["__ref_1"]
+  31[160]: NewRecord(data: ref(reference), parent_tp=24, fld=65535) -> ref(reference)
+  36[160]: VarRef(var[148]) -> ref(reference) type=Area 18 var=_elm_1[148]:ref(Area)["map"]
+  39[172]: ConstInt(val=0) -> integer
+  44[176]: SetShort(v1: ref(reference), fld=0, min=0, val: integer)
+  49[160]: VarRef(var[148]) -> ref(reference) type=Area 18 var=_elm_1[148]:ref(Area)["map"]
+  52[172]: ConstInt(val=1) -> integer
+  57[176]: SetByte(v1: ref(reference), fld=2, min=0, val: integer)
+  62[160]: VarRef(var[148]) -> ref(reference) type=Area 18 var=_elm_1[148]:ref(Area)["map"]
+  65[172]: ConstInt(val=1) -> integer
+  70[176]: SetByte(v1: ref(reference), fld=3, min=0, val: integer)
+  75[160]: VarRef(var[148]) -> ref(reference) type=Area 18 var=_elm_1[148]:ref(Area)["map"]
+  78[172]: ConstInt(val=1) -> integer
+  83[176]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
+  88[160]: VarVector(var[136]) -> vector type=vector<Area> 24 var=map[136]:vector<ref(Area)>["__ref_1"]
+  91[172]: VarRef(var[148]) -> ref(reference) type=Area 18 var=_elm_1[148]:ref(Area)["map"]
+  94[184]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=24, fld=65535)
+  99[160]: VarVector(var[136]) -> vector type=vector<Area> 24 var=map[136]:vector<ref(Area)>["__ref_1"]
+ 102[172]: ConstInt(val=16) -> integer
+ 107[176]: AppendCopy(data: ref(reference), count: integer, tp=24)
+ 110[160]: [33] ClearText(var[112]) var=__work_1[112]:text
+ 113[160]: ConstText(_value="") -> text
+ 115[176]: VarVector(var[136]) -> vector type=vector<Area> 24 var=map[136]:vector<ref(Area)>["__ref_1"]
+ 118[188]: ConstInt(val=3) -> integer
+ 123[192]: GetVector(r: vector, size=5, index: integer) -> ref(reference) type=Area 18
+ 126[188]: FormatDatabase(var[112], val: ref(reference), db_tp=18, db_format=0)
+ 132[176]: VarText(var[112]) -> text var=__work_1[112]:text
+ 135[192]: FreeStack(value=16, discard=32)
+ 139[176]: ConstText(_value="{height:0,terrain:1,water:1,direction:1}") -> text
+ 181[192]: EqText(v1: text, v2: text) -> boolean
+ 182[161]: GotoFalseWord(jump=188, if_false: boolean)
+ 185[160]: GotoWord(jump=224)
+ 188[160]: ClearText(var[88]) var=__work_2[88]:text
+ 191[160]: ConstText(_value="record ") -> text
+ 200[176]: AppendText(var[88], v1: text)
+ 203[160]: VarVector(var[136]) -> vector type=vector<Area> 24 var=map[136]:vector<ref(Area)>["__ref_1"]
+ 206[172]: ConstInt(val=3) -> integer
+ 211[176]: GetVector(r: vector, size=5, index: integer) -> ref(reference) type=Area 18
+ 214[172]: FormatDatabase(var[88], val: ref(reference), db_tp=18, db_format=0)
+ 220[160]: VarText(var[88]) -> text var=__work_2[88]:text
+ 223[176]: Panic(message: text)
+ 224[160]: [36] ConvRefFromNull() -> ref(reference) var=p[160]:ref(Point)
+ 225[172]: Database(var[160], db_tp=21) type=Point 21
+ 230[172]: VarRef(var[160]) -> ref(reference) type=Point 21 var=p[160]:ref(Point)
+ 233[184]: ConstInt(val=128) -> integer
+ 238[188]: SetByte(v1: ref(reference), fld=0, min=0, val: integer)
+ 243[172]: VarRef(var[160]) -> ref(reference) type=Point 21 var=p[160]:ref(Point)
+ 246[184]: ConstInt(val=128) -> integer
+ 251[188]: SetByte(v1: ref(reference), fld=2, min=0, val: integer)
+ 256[172]: VarRef(var[160]) -> ref(reference) type=Point 21 var=p[160]:ref(Point)
+ 259[184]: ConstInt(val=0) -> integer
+ 264[188]: SetByte(v1: ref(reference), fld=1, min=0, val: integer)
+ 269[172]: [37] VarRef(var[160]) -> ref(reference) type=Point 21 var=p[160]:ref(Point)
+ 272[184]: GetByte(v1: ref(reference), fld=1, min=0) -> integer
+ 277[176]: ConstInt(val=0) -> integer
+ 282[180]: EqInt(v1: integer, v2: integer) -> boolean
+ 283[173]: GotoFalseWord(jump=289, if_false: boolean)
+ 286[172]: GotoWord(jump=322)
+ 289[172]: ConstText(_value="Omitted field defaults to zero") -> text
+ 321[188]: Panic(message: text)
+ 322[172]: [38] ClearText(var[64]) var=__work_3[64]:text
+ 325[172]: ConstText(_value="") -> text
+ 327[188]: VarRef(var[160]) -> ref(reference) type=Point 21 var=p[160]:ref(Point)
+ 330[200]: FormatDatabase(var[64], val: ref(reference), db_tp=21, db_format=0)
+ 336[188]: VarText(var[64]) -> text var=__work_3[64]:text
+ 339[204]: FreeStack(value=16, discard=32)
+ 343[188]: ConstText(_value="{r:128,g:0,b:128}") -> text
+ 362[204]: EqText(v1: text, v2: text) -> boolean
+ 363[173]: GotoFalseWord(jump=369, if_false: boolean)
+ 366[172]: GotoWord(jump=397)
+ 369[172]: ConstText(_value="Struct compact formatting") -> text
+ 396[188]: Panic(message: text)
+ 397[172]: [42] ConvRefFromNull() -> ref(reference) var=o[172]:ref(Object)
+ 398[184]: Database(var[172], db_tp=22) type=Object 22
+ 403[184]: VarRef(var[172]) -> ref(reference) type=Object 22 var=o[172]:ref(Object)
+ 406[196]: ConstText(_value="hello") -> text
+ 413[212]: SetText(v1: ref(reference), fld=4, val: text)
+ 416[184]: VarRef(var[172]) -> ref(reference) type=Object 22 var=o[172]:ref(Object)
+ 419[196]: VarRef(var[172]) -> ref(reference) type=Object 22 var=o[172]:ref(Object)
+ 422[208]: GetText(v1: ref(reference), fld=4) -> text["map"]
+ 425[212]: Call(size=0, fn=t_4text_len)
+ 432[200]: SetInt(v1: ref(reference), fld=0, val: integer)
+ 435[184]: [43] VarRef(var[172]) -> ref(reference) type=Object 22 var=o[172]:ref(Object)
+ 438[196]: GetInt(v1: ref(reference), fld=0) -> integer
+ 441[188]: ConstInt(val=5) -> integer
+ 446[192]: EqInt(v1: integer, v2: integer) -> boolean
+ 447[185]: GotoFalseWord(jump=453, if_false: boolean)
+ 450[184]: GotoWord(jump=472)
+ 453[184]: ConstText(_value="Calculated field") -> text
+ 471[200]: Panic(message: text)
+ 472[184]: [44] ClearText(var[40]) var=__work_4[40]:text
+ 475[184]: ConstText(_value="") -> text
+ 477[200]: VarRef(var[172]) -> ref(reference) type=Object 22 var=o[172]:ref(Object)
+ 480[212]: FormatDatabase(var[40], val: ref(reference), db_tp=22, db_format=2)
+ 486[200]: VarText(var[40]) -> text var=__work_4[40]:text
+ 489[216]: FreeStack(value=16, discard=32)
+ 493[200]: ConstText(_value="{"name_length":5,"name":"hello"}") -> text
+ 527[216]: EqText(v1: text, v2: text) -> boolean
+ 528[185]: GotoFalseWord(jump=534, if_false: boolean)
+ 531[184]: GotoWord(jump=548)
+ 534[184]: ConstText(_value="JSON format") -> text
+ 547[200]: Panic(message: text)
+ 548[184]: [47] ConvRefFromNull() -> ref(reference) var=purple[184]:ref(Point)
+ 549[196]: Database(var[184], db_tp=21) type=Point 21
+ 554[196]: VarRef(var[184]) -> ref(reference) type=Point 21 var=purple[184]:ref(Point)
+ 557[208]: ConstInt(val=128) -> integer
+ 562[212]: SetByte(v1: ref(reference), fld=0, min=0, val: integer)
+ 567[196]: VarRef(var[184]) -> ref(reference) type=Point 21 var=purple[184]:ref(Point)
+ 570[208]: ConstInt(val=128) -> integer
+ 575[212]: SetByte(v1: ref(reference), fld=2, min=0, val: integer)
+ 580[196]: VarRef(var[184]) -> ref(reference) type=Point 21 var=purple[184]:ref(Point)
+ 583[208]: ConstInt(val=0) -> integer
+ 588[212]: SetByte(v1: ref(reference), fld=1, min=0, val: integer)
+ 593[196]: [48] ClearText(var[16]) var=__work_5[16]:text
+ 596[196]: ConstText(_value="") -> text
+ 598[212]: VarRef(var[184]) -> ref(reference) type=Point 21 var=purple[184]:ref(Point)
+ 601[224]: Call(size=0, fn=t_5Point_value)
+ 608[216]: ConvLongFromInt(v1: integer) -> long
+ 609[220]: ConstInt(val=0) -> integer
+ 614[224]: FormatLong(var[16], val: long, radix=16, width: integer, token=32, plus=false, note=false)
+ 621[212]: VarText(var[16]) -> text var=__work_5[16]:text
+ 624[228]: FreeStack(value=16, discard=32)
+ 628[212]: ConstText(_value="800080") -> text
+ 636[228]: EqText(v1: text, v2: text) -> boolean
+ 637[197]: GotoFalseWord(jump=643, if_false: boolean)
+ 640[196]: GotoWord(jump=669)
+ 643[196]: ConstText(_value="Method result in format") -> text
+ 668[212]: Panic(message: text)
+ 669[196]: VarRef(var[4]) -> ref(reference) type=main_vector<Area> 23 var=__ref_1[4]:ref(main_vector<Area>)
+ 672[208]: FreeRef(v1: ref(reference))
+ 673[196]: FreeText(var[112])
+ 676[196]: FreeText(var[88])
+ 679[196]: VarRef(var[160]) -> ref(reference) type=Point 21 var=p[160]:ref(Point)
+ 682[208]: FreeRef(v1: ref(reference))
+ 683[196]: FreeText(var[64])
+ 686[196]: VarRef(var[172]) -> ref(reference) type=Object 22 var=o[172]:ref(Object)
+ 689[208]: FreeRef(v1: ref(reference))
+ 690[196]: FreeText(var[40])
+ 693[196]: VarRef(var[184]) -> ref(reference) type=Point 21 var=purple[184]:ref(Point)
+ 696[208]: FreeRef(v1: ref(reference))
+ 697[196]: FreeText(var[16])
+ 700[196]: Return(ret=0, value=0, discard=196)
 

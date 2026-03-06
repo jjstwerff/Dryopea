@@ -27,11 +27,12 @@ and can emit Rust code for host integration.
 | `boolean`   | `true` / `false`                                 |
 | `integer`   | 32-bit signed integer (range can be constrained) |
 | `long`      | 64-bit signed integer; literals end with `l`     |
-| `float`     | 64-bit floating-point; literals end with `.`     |
+| `float`     | 64-bit floating-point; literals contain a `.`    |
 | `single`    | 32-bit float; literals end with `f`              |
 | `character` | A single Unicode character                       |
-| `text`      | A Unicode string                                 |
-| `null`      | The null/absent value                            |
+| `text`      | A UTF-8 string; `len()` counts bytes             |
+
+Any variable or field can hold a `null` (absent) value unless declared `not null`.
 
 Integer ranges can be constrained with `limit`:
 ```
@@ -39,17 +40,34 @@ integer limit(-128, 127)   // fits in a byte
 integer limit(0, 65535)    // fits in a short
 ```
 
+The default library also defines convenient width-specific aliases:
+```
+u8    // integer limit(0, 255)
+i8    // integer limit(-128, 127)
+u16   // integer limit(0, 65535)
+i16   // integer limit(-32768, 32767)
+i32   // integer (explicit 32-bit)
+```
+
 ### Composite types
 
 | Type syntax                        | Description                                           |
 |------------------------------------|-------------------------------------------------------|
 | `vector<T>`                        | Dynamic array of `T`                                  |
-| `hash<T>[field1, field2]`          | Hash-indexed collection of `T` on the given fields    |
-| `index<T>[field1, -field2]`        | B-tree index (ascending/descending)                   |
-| `sorted<T>[field]`                 | Sorted vector on the given fields                     |
+| `hash<T[field1, field2]>`          | Hash-indexed collection of `T` on the given fields    |
+| `index<T[field1, -field2]>`        | B-tree index (ascending/descending)                   |
+| `sorted<T[field]>`                 | Sorted vector on the given fields                     |
 | `reference<T>`                     | Reference (pointer) to a stored `T` record            |
 | `iterator<T, I>`                   | Iterator yielding `T` using internal state `I`        |
 | `fn(T1, T2) -> R`                  | First-class function type                             |
+
+The key fields are declared **inside** the angle brackets with the element type.
+A `-` prefix on a field name means descending order:
+```
+sorted<Elm[-key]>           // single key, descending
+index<Elm[nr, -key]>        // two keys: nr ascending, key descending
+hash<Count[c, t]>           // compound hash key
+```
 
 ### Enum types
 
@@ -81,10 +99,28 @@ struct Argument {
 }
 ```
 
-Fields may have:
-- `default(expr)` — a default value
-- `virtual(expr)` — a read-only computed field (no storage)
+Fields are declared as `name: type` with optional modifiers **after** the type:
+- `limit(min, max)` — constrain an integer field to a range
 - `not null` — disallow the null value (enables full integer range in storage)
+- `default(expr)` — a stored default value; `= expr` is a shorthand for `default(expr)`
+- `virtual(expr)` — a read-only computed field (evaluated at init, not stored)
+
+In default expressions, `$` refers to the record being initialised:
+```
+struct Object {
+    name_length: integer = len($.name),   // computed from another field
+    name: text
+}
+```
+
+Example with all modifiers:
+```
+struct Point {
+    r: integer limit(0, 255) not null,
+    g: integer limit(0, 255) not null,
+    b: integer limit(0, 255) not null
+}
+```
 
 ---
 
@@ -98,8 +134,8 @@ fn function_name(param: type, other: type = default_value) -> return_type {
 }
 ```
 
-- `pub` prefix makes a definition publicly visible.
-- Parameters with a `&` prefix are passed as stack references (used for in-out text parameters).
+- `pub` prefix makes a definition publicly visible (applies to functions, structs, and enums).
+- Parameters with a `&` prefix are passed by mutable reference (in-out for any type).
 - Parameters with `const` are compile-time constants.
 - Default parameter values are supported.
 - Functions without a `->` clause return `void`.
@@ -123,6 +159,12 @@ Constants must be `UPPER_CASE` and are defined at file scope.
 
 ```
 type MyInt = integer;
+type Coord = integer limit(-32768, 32767);
+```
+
+In library/default files, `size(n)` specifies the storage size in bytes:
+```
+pub type u8 = integer limit(0, 255) size(1);
 ```
 
 ### Library imports
@@ -133,6 +175,7 @@ use arguments;
 
 Searches for `arguments.lav` in `lib/`, the current directory, directories from the
 `LAVITION_LIB` environment variable, and relative to the current script.
+`use` declarations must appear at the top of the file, before any other declarations.
 
 ---
 
@@ -140,18 +183,21 @@ Searches for `arguments.lav` in `lib/`, the current directory, directories from 
 
 Listed by precedence (lowest to highest):
 
-| Precedence | Operators                              |
-|------------|----------------------------------------|
-| 1 (lowest) | `\|\|`, `or`                           |
-| 2          | `&&`, `and`                            |
-| 3          | `==`, `!=`, `<`, `<=`, `>`, `>=`       |
-| 4          | `\|`                                   |
-| 5          | `^`                                    |
-| 6          | `&`                                    |
-| 7          | `<<`, `>>`                             |
-| 8          | `-`, `+`                               |
-| 9          | `*`, `/`, `%`                          |
-| 10         | `as` (type cast/conversion)            |
+| Precedence | Operators                              | Notes                         |
+|------------|----------------------------------------|-------------------------------|
+| 1 (lowest) | `\|\|`, `or`                           | logical OR                    |
+| 2          | `&&`, `and`                            | logical AND                   |
+| 3          | `==`, `!=`, `<`, `<=`, `>`, `>=`       | comparison                    |
+| 4          | `\|`                                   | bitwise OR                    |
+| 5          | `^`                                    | **exponentiation** (`4.0^5 == 1024.0`) |
+| 6          | `&`                                    | bitwise AND                   |
+| 7          | `<<`, `>>`                             | bit shift                     |
+| 8          | `-`, `+`                               | addition/subtraction          |
+| 9          | `*`, `/`, `%`                          | multiplication/division       |
+| 10         | `as` (type cast/conversion)            |                               |
+
+Note: `^` is exponentiation, **not** bitwise XOR. Because it has lower precedence than `*`,
+parentheses are needed in expressions like `PI * (r ^ 2)`.
 
 Unary operators: `!` (logical not), `-` (negation).
 
@@ -197,6 +243,8 @@ Strings support inline expressions and format specifiers using `{...}`:
 "Left: {s:<5}"           // left-aligned width 5
 "Right: {s:>5}"          // right-aligned
 "Center: {s:^7}"         // center-aligned
+"{x:j}"                  // JSON output
+"{x:#}"                  // pretty-printed multi-line output
 ```
 
 Escape `{` and `}` as `{{` and `}}`.
@@ -257,8 +305,21 @@ Reverse iteration:
 for i in rev(1..10) { }
 ```
 
-Inside a loop, `{var}#index` gives the current iteration index, and `{var}#count` gives
-how many iterations have completed so far.
+Inside a loop, the iteration variable supports several attributes using `#`:
+
+| Attribute    | Meaning                                             |
+|--------------|-----------------------------------------------------|
+| `v#index`    | 0-based position of the current element             |
+| `v#count`    | number of iterations completed so far               |
+| `v#first`    | `true` for the first element only                   |
+| `v#remove`   | remove the current element (only in filtered loops) |
+
+`v#remove` is only valid inside `for ... if ...` loops:
+```
+for v in x if v % 3 != 0 {
+    v#remove;
+}
+```
 
 ### Break and continue
 
@@ -300,24 +361,34 @@ data = configuration as Program
 
 ```
 v = [1, 2, 3]               // create
-v += 4                      // append one element
-v = v + [5, 6]              // concatenate
-v.remove(index)             // remove by index
+v += [4]                    // append one element
+v += [5, 6]                 // append multiple elements
 for x in v { }             // iterate
-v[i]                        // index access
+v[i]                        // index (null if out of bounds)
 v[2..-1]                    // slice (negative indices count from end)
-v[start..end]               // slice range
+v[start..end]               // slice range (end exclusive)
+v[start..]                  // open-ended slice to end
+[elem; 16]                  // repeat initializer: 16 copies of elem
 ```
+
+To remove elements while iterating, use `v#remove` inside a filtered loop (see [For loops](#for-loops)).
 
 ---
 
 ## Structs and record initialization
 
+Named form (recommended; type is explicit):
+```
+point = Point { x: 1.0, y: 2.0 }
+```
+
+Anonymous form (type is inferred from context):
 ```
 point = { x: 1.0, y: 2.0 }
 ```
 
 Fields not specified get their `default(...)` value, or the zero value for their type.
+Nullable fields default to `null`.
 
 Field access uses `.`:
 ```
@@ -356,8 +427,24 @@ Panics at runtime if the condition is false.
 
 ## Polymorphism / dynamic dispatch
 
-When multiple function definitions share the same name and differ only in the type of their
-first argument (for enum variants), lav automatically generates a dispatch function.
+For struct-enum types, multiple functions may share the same name if each handles a
+different variant as its `self` parameter. Lav generates a dispatch wrapper automatically:
+
+```
+enum Shape {
+    Circle { radius: float },
+    Rect { width: float, height: float }
+}
+
+fn area(self: Circle) -> float { PI * (self.radius ^ 2) }
+fn area(self: Rect) -> float { self.width * self.height }
+
+c = Circle { radius: 2.0 };
+c.area()   // dispatches to the Circle overload
+```
+
+Note: ordinary (non-enum) function overloading by argument type is **not** supported —
+two functions with the same name and different non-variant parameter types are a compile error.
 
 ---
 
@@ -406,26 +493,37 @@ fn main() { ... }
 
 ## Summary of grammar (informal)
 
+`use` declarations must appear before any other top-level declarations.
+
 ```
 file         ::= { use_decl } { top_level_decl }
 use_decl     ::= 'use' identifier ';'
 top_level    ::= [ 'pub' ] ( fn_decl | struct_decl | enum_decl | type_decl | constant )
 fn_decl      ::= 'fn' ident '(' args ')' [ '->' type ] ( ';' | block )
-struct_decl  ::= 'struct' CamelIdent '{' field { ',' field } '}'
+struct_decl  ::= 'struct' CamelIdent '{' field { ',' field } [ ',' ] '}'
 enum_decl    ::= 'enum' CamelIdent '{' variant { ',' variant } '}'
 variant      ::= CamelIdent [ '{' field { ',' field } '}' ]
-field        ::= ident ':' [ 'not' 'null' ] [ 'default' '(' expr ')' ] [ 'virtual' '(' expr ')' ] type
+field        ::= ident ':' type { field_mod }
+field_mod    ::= 'limit' '(' expr ',' expr ')'
+               | 'not' 'null'
+               | 'default' '(' expr ')' | '=' expr
+               | 'virtual' '(' expr ')'
 type_decl    ::= 'type' CamelIdent '=' type ';'
 constant     ::= UPPER_IDENT '=' expr ';'
 block        ::= '{' { stmt } '}'
 stmt         ::= expr [ ';' ]
-expr         ::= for_expr | 'continue' | 'break' | 'return' [expr]
-               | '{' block '}' | assignment
+expr         ::= for_expr | 'continue' | 'break' | 'return' [ expr ]
+               | assignment
 assignment   ::= operators [ ( '=' | '+=' | '-=' | '*=' | '/=' | '%=' ) operators ]
-operators    ::= single { '.' field | '[' index ']' } { op operators }
-single       ::= '!' single | '-' single | '(' expr ')' | block | '[' vector ']'
-               | 'if' expr block [ 'else' (single | block) ]
+operators    ::= single { '.' ident [ '(' args ')' ] | '[' index ']' | '#' ident }
+               { op operators }
+single       ::= '!' single | '-' single | '(' expr ')' | block | '[' vector_lit ']'
+               | 'if' expr block [ 'else' ( single | block ) ]
                | 'for' ident 'in' range_expr [ 'if' expr ] block
+               | CamelIdent [ '{' field_init { ',' field_init } '}' ]
                | ident | integer | long | float | single | string | character
                | 'true' | 'false' | 'null'
+range_expr   ::= expr '..' [ '=' ] expr   // exclusive or inclusive end
+               | expr '..'                 // open-ended
+               | 'rev' '(' range_expr ')' // reverse
 ```

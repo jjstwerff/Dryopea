@@ -1,0 +1,265 @@
+# Lav Standard Library Reference
+
+This document describes all public functions, constants, and types available in the lav standard library.
+
+---
+
+## Types
+
+The primitive types built into lav.
+
+| Type        | Size   | Description |
+|-------------|--------|-------------|
+| `boolean`   | 1 byte | True or false value. |
+| `integer`   | 4 bytes | 32-bit signed integer. |
+| `long`      | 8 bytes | 64-bit signed integer. Use when values exceed ~2 billion. |
+| `single`    | 4 bytes | 32-bit floating-point. Good for graphics and performance-sensitive math. |
+| `float`     | 8 bytes | 64-bit floating-point. Use when precision matters. |
+| `text`      | —      | UTF-8 string. |
+| `character` | 4 bytes | A single Unicode code point. |
+
+**Integer subtypes** (ranged aliases for compact storage):
+
+| Type  | Range           | Size   |
+|-------|-----------------|--------|
+| `u8`  | 0 – 255         | 1 byte |
+| `i8`  | -128 – 127      | 1 byte |
+| `u16` | 0 – 65535       | 2 bytes |
+| `i16` | -32768 – 32767  | 2 bytes |
+| `i32` | full integer    | 4 bytes |
+
+Use the sized subtypes in struct fields to reduce memory usage. They behave as `integer` in expressions.
+
+---
+
+## Math
+
+Functions for numeric computation. All trigonometric functions work in radians.
+Both `single` and `float` variants exist for every function — choose `single` for speed, `float` for precision.
+
+### Constants
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `PI` | 3.14159… | The ratio of a circle's circumference to its diameter. |
+| `E`  | 2.71828… | Euler's number, the base of natural logarithms. |
+
+### General
+
+| Function | Description |
+|----------|-------------|
+| `abs(v: integer) -> integer` | Absolute value. Removes the sign from a negative integer. |
+| `abs(v: long) -> long` | Absolute value for long integers. |
+| `abs(v: single) -> single` | Absolute value for single-precision floats. |
+| `abs(v: float) -> float` | Absolute value for double-precision floats. |
+
+### Rounding
+
+| Function | Description |
+|----------|-------------|
+| `floor(v: single) -> single` | Round down to the nearest integer value. Use to convert a float position to a tile index. |
+| `floor(v: float) -> float` | Double-precision floor. |
+| `ceil(v: single) -> single` | Round up to the nearest integer value. Use to compute required buffer sizes from fractional counts. |
+| `ceil(v: float) -> float` | Double-precision ceil. |
+| `round(v: single) -> single` | Round to the nearest integer value (half rounds away from zero). |
+| `round(v: float) -> float` | Double-precision round. |
+| `sqrt(v: single) -> single` | Square root. Use for distances and normalization. |
+| `sqrt(v: float) -> float` | Double-precision square root. |
+
+### Power and Logarithm
+
+| Function | Description |
+|----------|-------------|
+| `pow(base: single, exp: single) -> single` | Raises `base` to the power `exp`. Use for exponential growth curves and scaling. |
+| `pow(base: float, exp: float) -> float` | Double-precision power. |
+| `log(v: single, base: single) -> single` | Logarithm of `v` in the given `base`. Use for converting between scales (e.g., decibels). |
+| `log(v: float, base: float) -> float` | Double-precision logarithm. |
+
+### Trigonometry
+
+| Function | Description |
+|----------|-------------|
+| `cos(angle: single) -> single` | Cosine. Use for circular motion: `x = r * cos(angle)`. |
+| `cos(angle: float) -> float` | Double-precision cosine. |
+| `sin(angle: single) -> single` | Sine. Use for circular motion: `y = r * sin(angle)`. |
+| `sin(angle: float) -> float` | Double-precision sine. |
+| `tan(angle: single) -> single` | Tangent. Use for slopes and perspective projection. |
+| `tan(angle: float) -> float` | Double-precision tangent. |
+| `acos(v: single) -> single` | Arc cosine. Returns the angle (in radians) whose cosine is `v`. |
+| `acos(v: float) -> float` | Double-precision arc cosine. |
+| `asin(v: single) -> single` | Arc sine. Returns the angle whose sine is `v`. |
+| `asin(v: float) -> float` | Double-precision arc sine. |
+| `atan(v: single) -> single` | Arc tangent of a single value. Returns angle in (-PI/2, PI/2). |
+| `atan(v: float) -> float` | Double-precision arc tangent. |
+| `atan2(y: single, x: single) -> single` | Arc tangent of `y/x`, preserving the correct quadrant. Use instead of `atan` when you have separate x/y components. |
+| `atan2(y: float, x: float) -> float` | Double-precision atan2. |
+
+---
+
+## Text
+
+Functions for working with `text` (UTF-8 strings) and `character` values.
+
+### Length
+
+| Function | Description |
+|----------|-------------|
+| `len(v: text) -> integer` | Number of bytes in the text. Use for bounds checks and iteration limits. |
+| `len(v: character) -> integer` | Byte length of the character's UTF-8 encoding (1–4). |
+
+### Searching
+
+| Function | Description |
+|----------|-------------|
+| `find(self: text, value: text) -> integer` | Returns the byte index of the first occurrence of `value`, or null if not found. Use to locate substrings before slicing. |
+| `rfind(self: text, value: text) -> integer` | Returns the byte index of the last occurrence of `value`, or null if not found. Use to find file extensions or the last path separator. |
+| `contains(self: text, value: text) -> boolean` | Returns true if `value` appears anywhere in `self`. Simpler than `find` when you only need a yes/no answer. |
+| `starts_with(self: text, value: text) -> boolean` | Returns true if `self` begins with `value`. Use for prefix matching (e.g., protocol detection). |
+| `ends_with(self: text, value: text) -> boolean` | Returns true if `self` ends with `value`. Use for suffix matching (e.g., file extension checks). |
+
+### Transformation
+
+| Function | Description |
+|----------|-------------|
+| `replace(self: text, value: text, with: text) -> text` | Returns a copy of `self` with every occurrence of `value` replaced by `with`. |
+| `to_lowercase(self: text) -> text` | Returns a lowercase copy. Use for case-insensitive comparisons. |
+| `to_uppercase(self: text) -> text` | Returns an uppercase copy. |
+| `trim(self: text) -> text` | Removes leading and trailing whitespace. Use when processing user input or file content. |
+| `trim_start(self: text) -> text` | Removes leading whitespace only. |
+| `trim_end(self: text) -> text` | Removes trailing whitespace only. |
+| `split(self: text, separator: character) -> vector<text>` | Splits `self` on every occurrence of `separator` and returns the parts as a vector. Use to parse CSV lines or space-separated tokens. |
+
+### Character Classification
+
+These functions return true only if **every character** in the text satisfies the condition.
+The single-`character` variants test one code point.
+
+| Function | Description |
+|----------|-------------|
+| `is_lowercase(self: text/character) -> boolean` | All characters are lowercase letters. |
+| `is_uppercase(self: text/character) -> boolean` | All characters are uppercase letters. |
+| `is_numeric(self: text/character) -> boolean` | All characters are numeric digits (Unicode numeric, not just ASCII 0–9). |
+| `is_alphanumeric(self: text/character) -> boolean` | All characters are letters or digits. Use to validate identifiers or tokens. |
+| `is_alphabetic(self: text/character) -> boolean` | All characters are alphabetic. |
+| `is_whitespace(self: text) -> boolean` | All characters are whitespace. Use to detect blank lines. |
+| `is_control(self: text) -> boolean` | All characters are control characters. |
+
+---
+
+## Collections
+
+Operations on `vector<T>` — the primary ordered collection type.
+
+| Function | Description |
+|----------|-------------|
+| `len(v: vector) -> integer` | Number of elements in the vector. Use in loop bounds: `for i in 0..v.len()`. |
+
+Vectors are grown by appending with `+=` and elements are accessed by index. Removal and insertion are handled by the parser's built-in operators.
+
+---
+
+## Output and Diagnostics
+
+| Function | Description |
+|----------|-------------|
+| `print(v: text)` | Writes `v` to standard output without a newline. Use for progress output and building up a line incrementally. |
+| `println(v: text)` | Writes `v` followed by a newline. The standard choice for line-oriented output. |
+| `assert(test: boolean, message: text)` | Panics with `message` if `test` is false. Use to verify invariants during development. |
+| `panic(message: text)` | Immediately terminates execution with `message`. Use for unrecoverable error states. |
+
+---
+
+## File System
+
+Types and functions for reading and writing files. A `File` value is obtained via `file()` and carries the path, format, and an internal reference.
+
+### Types
+
+**`Format`** (enum): Describes how a file is opened.
+
+| Value           | Description |
+|-----------------|-------------|
+| `Format.TextFile`     | Default. Read or write as UTF-8 text. |
+| `Format.LittleEndian` | Binary mode, least-significant byte first. |
+| `Format.BigEndian`    | Binary mode, most-significant byte first. |
+| `Format.Directory`    | Represents a directory path. |
+
+**`File`**: A handle to a filesystem entry. Fields: `path: text`, `size: long`, `format: Format`.
+
+### Opening Files
+
+| Function | Description |
+|----------|-------------|
+| `file(path: text) -> File` | Opens the file at `path` and returns a `File` handle. This is the entry point for all file I/O. |
+
+### Reading Text Files
+
+| Function | Description |
+|----------|-------------|
+| `content(self: File) -> text` | Reads the entire file as a UTF-8 text value. Use for small configuration files or scripts. |
+| `lines(self: File) -> vector<text>` | Reads the file and splits it into lines. Use when processing line-by-line (logs, CSV, etc.). |
+
+### Writing Text Files
+
+| Function | Description |
+|----------|-------------|
+| `write(self: File, v: text)` | Writes `v` as UTF-8 text to the file. Overwrites existing content. |
+
+### Binary Files
+
+Binary mode must be activated before reading or writing raw data.
+
+| Function | Description |
+|----------|-------------|
+| `little_endian(self: File)` | Switches the file to little-endian binary mode. Use for most modern file formats. |
+| `big_endian(self: File)` | Switches the file to big-endian binary mode. Use for network protocols and formats like PNG. |
+| `write_bin(self: File, v: reference)` | Writes a struct value as raw binary data. File must be in binary mode first. |
+| `read(self: File, v: reference)` | Reads binary data into a struct value. File must be in binary mode first. |
+| `seek(self: File, pos: long)` | Moves the read/write position to `pos` bytes from the start. Use to jump to a specific record in a binary file. |
+
+### Directories
+
+| Function | Description |
+|----------|-------------|
+| `files(self: File) -> vector<File>` | Returns the entries inside a directory. The `File` must have `format == Format.Directory`. Use to iterate over all files in a folder. |
+
+### Images
+
+| Function | Description |
+|----------|-------------|
+| `png(self: File) -> Image` | Decodes a PNG file and returns an `Image`. Returns null if the file is not in text format. Use to load sprite sheets or textures. |
+
+**`Image`** struct fields: `name: text`, `width: integer`, `height: integer`, `data: vector<Pixel>`.
+
+**`Pixel`** struct fields: `r: integer`, `g: integer`, `b: integer` (each 0–255).
+
+| Function | Description |
+|----------|-------------|
+| `value(self: Pixel) -> integer` | Returns the pixel colour as a packed 24-bit integer (`0xRRGGBB`). Use for fast colour comparison or storage. |
+
+---
+
+## Environment
+
+Functions for interacting with the host operating system.
+
+### Command-Line Arguments
+
+| Function | Description |
+|----------|-------------|
+| `arguments() -> vector<text>` | Returns the command-line arguments passed to the program. The first element is typically the program name. |
+
+### Environment Variables
+
+| Function | Description |
+|----------|-------------|
+| `env_variable(name: text) -> text` | Returns the value of the environment variable `name`, or null if it is not set. Use to read configuration from the shell environment. |
+| `env_variables() -> vector<EnvVariable>` | Returns all environment variables as a vector of `EnvVariable` records (fields: `name`, `value`). Use to inspect or forward the full environment. |
+
+### Paths
+
+| Function | Description |
+|----------|-------------|
+| `directory(v: text = "") -> text` | Returns the current working directory, optionally with `v` appended as a subpath. Use to construct absolute paths relative to where the program was launched. |
+| `user_directory(v: text = "") -> text` | Returns the current user's home directory, optionally with `v` appended. Use for storing user-specific data or configuration. |
+| `program_directory(v: text = "") -> text` | Returns the directory containing the running executable, optionally with `v` appended. Use to locate assets bundled alongside the program. |
