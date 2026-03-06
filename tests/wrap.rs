@@ -17,6 +17,9 @@ use std::fs::File;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
+/// Run every `.lav` file in `tests/suite/` in alphabetical order.
+/// Regenerates all HTML documentation in `doc/` before executing the tests,
+/// so the docs are always in sync with the suite source files.
 #[test]
 fn dir() -> std::io::Result<()> {
     let mut files: Vec<PathBuf> = std::fs::read_dir("tests/suite")?
@@ -31,11 +34,23 @@ fn dir() -> std::io::Result<()> {
     Ok(())
 }
 
+/// Quick iteration test: run only the final suite file (`16-parser.lav`) without
+/// regenerating documentation.  Use this during active development on the parser
+/// to get a fast feedback cycle.
 #[test]
 fn last() -> std::io::Result<()> {
     run_test(PathBuf::from("tests/suite/16-parser.lav"), false)
 }
 
+/// Parse, type-check, compile, and execute one `.lav` test file.
+///
+/// The default library in `default/` is loaded first, then `entry` is parsed on
+/// top of it.  Any parse or type errors are printed and immediately fail the
+/// test.  On success the bytecode is generated and `main` is called.
+///
+/// In debug builds a human-readable bytecode dump is written to
+/// `tests/code/<filename>.txt` before execution.  When `debug` is true the
+/// interpreter also emits an execution trace to that file.
 fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     println!("run {entry:?}");
     let mut p = Parser::new();
@@ -66,6 +81,12 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Write a debug snapshot of a compiled test to `tests/code/<filename>.txt`.
+///
+/// Writes every type definition introduced by the test file (i.e. types beyond
+/// those already present in the default library), followed by the full bytecode
+/// listing produced by `show_code`.  Returns the open file so the caller can
+/// append an execution trace if needed.
 #[cfg(debug_assertions)]
 fn dump_results(
     entry: PathBuf,
@@ -185,6 +206,7 @@ fn topic_description(stem: &str) -> &'static str {
 /// to `doc/<stem>.html`, then write `doc/index.html`.
 /// Called unconditionally from `dir()` so docs are always up-to-date.
 fn generate_docs(entries: &[PathBuf]) -> std::io::Result<()> {
+    std::fs::write("doc/style.css", STYLE_CSS)?;
     let nav: Vec<(String, String)> = entries
         .iter()
         .map(|e| {
@@ -233,10 +255,7 @@ fn write_index(nav: &[(String, String)]) -> std::io::Result<()> {
   <meta charset=\"utf-8\">\n\
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
   <title>Lav Language</title>\n\
-  <style>\n\
-{DOC_CSS}\n\
-{INDEX_EXTRA_CSS}\n\
-  </style>\n\
+  <link rel=\"stylesheet\" href=\"style.css\">\n\
 </head>\n\
 <body>\n\
   <header>\n\
@@ -290,6 +309,7 @@ fn doc_full_title(stem: &str) -> String {
     }
 }
 
+/// Escape `&`, `<`, and `>` so that `s` is safe to embed in HTML text content.
 fn html_esc(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -361,40 +381,107 @@ fn parse_sections(source: &str) -> Vec<DocSection> {
 
 // ─── Syntax highlighter ───────────────────────────────────────────────────────
 
+const KW: &[&str] = &[
+    "fn", "if", "else", "for", "in", "return", "break", "continue", "struct", "enum", "pub", "use",
+    "type", "as", "not", "null", "true", "false", "and", "or", "limit", "default", "virtual",
+];
+const TY: &[&str] = &[
+    "integer",
+    "text",
+    "boolean",
+    "float",
+    "single",
+    "long",
+    "character",
+    "vector",
+    "sorted",
+    "index",
+    "hash",
+    "reference",
+    "u8",
+    "u16",
+    "u32",
+    "i8",
+    "i16",
+    "i32",
+    "i64",
+];
+const BI: &[&str] = &[
+    "assert", "panic", "len", "round", "ceil", "floor", "abs", "sin", "cos", "log", "rev", "file",
+    "min", "max", "sqrt", "typeof", "typedef",
+];
+
+/// Scan a quoted literal (string `"` or char `'`) starting at `i`.
+/// Returns the index after the closing delimiter, or `n` if unclosed.
+fn scan_quoted(chars: &[char], i: usize, n: usize, delim: char) -> usize {
+    let mut j = i + 1;
+    while j < n && chars[j] != delim {
+        j += 1;
+    }
+    if j < n { j + 1 } else { j }
+}
+
+/// Scan a numeric literal starting at `i`. Returns the index after the last digit/suffix.
+fn scan_number(chars: &[char], i: usize, n: usize) -> usize {
+    let mut j = i;
+    if chars[i] == '0' && i + 1 < n {
+        match chars[i + 1] {
+            'x' | 'X' => {
+                j += 2;
+                while j < n && chars[j].is_ascii_hexdigit() {
+                    j += 1;
+                }
+            }
+            'b' | 'B' => {
+                j += 2;
+                while j < n && (chars[j] == '0' || chars[j] == '1') {
+                    j += 1;
+                }
+            }
+            'o' | 'O' => {
+                j += 2;
+                while j < n && chars[j].is_ascii_digit() {
+                    j += 1;
+                }
+            }
+            _ => {
+                while j < n && (chars[j].is_ascii_digit() || chars[j] == '.' || chars[j] == '_') {
+                    j += 1;
+                }
+            }
+        }
+    } else {
+        while j < n && (chars[j].is_ascii_digit() || chars[j] == '.' || chars[j] == '_') {
+            j += 1;
+        }
+    }
+    // Optional suffix: l (long) or f (single).
+    if j < n && (chars[j] == 'l' || chars[j] == 'f') {
+        j += 1;
+    }
+    j
+}
+
+/// Return the CSS highlight class for an identifier word.
+fn word_class(word: &str, is_call: bool) -> &'static str {
+    if KW.contains(&word) {
+        "kw"
+    } else if TY.contains(&word) {
+        "ty"
+    } else if BI.contains(&word) {
+        "bi"
+    } else if word.starts_with(|c: char| c.is_uppercase()) {
+        "en"
+    } else if is_call {
+        "fn-call"
+    } else {
+        ""
+    }
+}
+
 /// Apply HTML syntax highlighting to a block of lav source code.
 /// Returns HTML with `<span class="…">` wrappers for each token class.
 fn highlight_lav(code: &str) -> String {
-    const KW: &[&str] = &[
-        "fn", "if", "else", "for", "in", "return", "break", "continue", "struct", "enum", "pub",
-        "use", "type", "as", "not", "null", "true", "false", "and", "or", "limit", "default",
-        "virtual",
-    ];
-    const TY: &[&str] = &[
-        "integer",
-        "text",
-        "boolean",
-        "float",
-        "single",
-        "long",
-        "character",
-        "vector",
-        "sorted",
-        "index",
-        "hash",
-        "reference",
-        "u8",
-        "u16",
-        "u32",
-        "i8",
-        "i16",
-        "i32",
-        "i64",
-    ];
-    const BI: &[&str] = &[
-        "assert", "panic", "len", "round", "ceil", "floor", "abs", "sin", "cos", "log", "rev",
-        "file", "min", "max", "sqrt", "typeof", "typedef",
-    ];
-
     let mut out = String::with_capacity(code.len() * 2);
 
     for line in code.lines() {
@@ -413,15 +500,9 @@ fn highlight_lav(code: &str) -> String {
                 continue;
             }
 
-            // String literal: find the closing '"'.
+            // String literal.
             if chars[i] == '"' {
-                let mut j = i + 1;
-                while j < n && chars[j] != '"' {
-                    j += 1;
-                }
-                if j < n {
-                    j += 1;
-                }
+                let j = scan_quoted(&chars, i, n, '"');
                 let s: String = chars[i..j].iter().collect();
                 out.push_str("<span class=\"st\">");
                 out.push_str(&html_esc(&s));
@@ -430,15 +511,9 @@ fn highlight_lav(code: &str) -> String {
                 continue;
             }
 
-            // Character literal: find the closing '\''.
+            // Character literal.
             if chars[i] == '\'' {
-                let mut j = i + 1;
-                while j < n && chars[j] != '\'' {
-                    j += 1;
-                }
-                if j < n {
-                    j += 1;
-                }
+                let j = scan_quoted(&chars, i, n, '\'');
                 let s: String = chars[i..j].iter().collect();
                 out.push_str("<span class=\"ch\">");
                 out.push_str(&html_esc(&s));
@@ -449,46 +524,7 @@ fn highlight_lav(code: &str) -> String {
 
             // Numeric literal.
             if chars[i].is_ascii_digit() {
-                let mut j = i;
-                // Hex / binary / octal prefix.
-                if chars[i] == '0' && i + 1 < n {
-                    match chars[i + 1] {
-                        'x' | 'X' => {
-                            j += 2;
-                            while j < n && chars[j].is_ascii_hexdigit() {
-                                j += 1;
-                            }
-                        }
-                        'b' | 'B' => {
-                            j += 2;
-                            while j < n && (chars[j] == '0' || chars[j] == '1') {
-                                j += 1;
-                            }
-                        }
-                        'o' | 'O' => {
-                            j += 2;
-                            while j < n && chars[j].is_ascii_digit() {
-                                j += 1;
-                            }
-                        }
-                        _ => {
-                            while j < n
-                                && (chars[j].is_ascii_digit() || chars[j] == '.' || chars[j] == '_')
-                            {
-                                j += 1;
-                            }
-                        }
-                    }
-                } else {
-                    while j < n && (chars[j].is_ascii_digit() || chars[j] == '.' || chars[j] == '_')
-                    {
-                        j += 1;
-                    }
-                }
-                // Optional suffix: l (long) or f (single).
-                if j < n && (chars[j] == 'l' || chars[j] == 'f') {
-                    j += 1;
-                }
+                let j = scan_number(&chars, i, n);
                 let s: String = chars[i..j].iter().collect();
                 out.push_str("<span class=\"nm\">");
                 out.push_str(&html_esc(&s));
@@ -504,29 +540,12 @@ fn highlight_lav(code: &str) -> String {
                     j += 1;
                 }
                 let word: String = chars[i..j].iter().collect();
-
-                // Peek past whitespace for '(' to detect calls.
+                // Peek past whitespace for '(' to detect function calls.
                 let mut k = j;
                 while k < n && chars[k] == ' ' {
                     k += 1;
                 }
-                let is_call = k < n && chars[k] == '(';
-                let first_upper = word.starts_with(|c: char| c.is_uppercase());
-
-                let cls = if KW.contains(&word.as_str()) {
-                    "kw"
-                } else if TY.contains(&word.as_str()) {
-                    "ty"
-                } else if BI.contains(&word.as_str()) {
-                    "bi"
-                } else if first_upper {
-                    "en"
-                } else if is_call {
-                    "fn-call"
-                } else {
-                    ""
-                };
-
+                let cls = word_class(&word, k < n && chars[k] == '(');
                 if cls.is_empty() {
                     out.push_str(&html_esc(&word));
                 } else {
@@ -556,21 +575,29 @@ fn highlight_lav(code: &str) -> String {
 
 // ─── HTML page renderer ───────────────────────────────────────────────────────
 
+/// Build the complete HTML for one documentation page.
+///
+/// `source` is the raw text of a `.lav` suite file.  It is split by
+/// `parse_sections` into alternating prose (comment) and code blocks.  Code
+/// blocks are syntax-highlighted by `highlight_lav` and wrapped in `<pre>`;
+/// prose blocks become `<p>` paragraphs.
+///
+/// `nav` is the ordered list of all pages (stem + short title).  The entry at
+/// `idx` is rendered as the bolded current page; all others become links.
+/// A fixed link to the vs-Rust comparison page is prepended to the nav bar.
 fn render_doc_page(source: &str, nav: &[(String, String)], idx: usize) -> String {
     let stem = &nav[idx].0;
     let full_title = doc_full_title(stem);
 
     // Navigation bar: all pages listed, current one bolded.
-    let nav_html: String = nav
-        .iter()
-        .enumerate()
-        .map(|(i, (s, t))| {
+    let nav_html: String = std::iter::once("<a href=\"00-vs-rust.html\">vs Rust</a>".to_string())
+        .chain(nav.iter().enumerate().map(|(i, (s, t))| {
             if i == idx {
                 format!("<span class=\"cur\">{t}</span>")
             } else {
                 format!("<a href=\"{s}.html\">{t}</a>")
             }
-        })
+        }))
         .collect::<Vec<_>>()
         .join(" · ");
 
@@ -602,7 +629,7 @@ fn render_doc_page(source: &str, nav: &[(String, String)], idx: usize) -> String
   <meta charset=\"utf-8\">\n\
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
   <title>Lav — {full_title}</title>\n\
-  <style>\n{DOC_CSS}\n  </style>\n\
+  <link rel=\"stylesheet\" href=\"style.css\">\n\
 </head>\n\
 <body>\n\
   <nav>{nav_html}</nav>\n\
@@ -613,53 +640,190 @@ fn render_doc_page(source: &str, nav: &[(String, String)], idx: usize) -> String
     )
 }
 
-const INDEX_EXTRA_CSS: &str = "\
-header { text-align: center; padding: 48px 0 32px; border-bottom: 2px solid var(--border); margin-bottom: 32px; }\n\
-header h1 { font-size: 3em; margin: 0 0 8px; letter-spacing: -1px; }\n\
-.tagline { font-size: 1.1em; color: var(--dim); margin: 0; }\n\
-.intro { margin-bottom: 40px; }\n\
-.intro ul { padding-left: 1.4em; }\n\
-.intro li { margin: 6px 0; color: #374151; }\n\
-.topics-heading { font-size: 1.3em; margin: 0 0 16px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }\n\
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }\n\
-.card { display: block; padding: 16px 18px; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; text-decoration: none; color: inherit; transition: border-color .15s, box-shadow .15s; }\n\
-.card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(37,99,235,.12); }\n\
-.card h2 { font-size: 1em; margin: 0 0 6px; color: var(--accent); }\n\
-.card p { font-size: .85em; margin: 0; color: #4b5563; line-height: 1.5; }";
+/// Shared stylesheet written to `doc/style.css` on every doc-generation run.
+/// All generated HTML pages reference it via `<link rel="stylesheet" href="style.css">`.
+/// Edit this constant to change the look of all documentation pages.
+const STYLE_CSS: &str = r#"/* Copyright (c) 2025 Jurjen Stellingwerff                        */
+/* SPDX-License-Identifier: LGPL-3.0-or-later                     */
+/* Shared stylesheet for all Lav documentation pages.              */
+/* Generated by tests/wrap.rs — edit the STYLE_CSS constant there. */
 
-const DOC_CSS: &str = "\
-:root {\
-  --bg:#fff; --text:#1a1a2e; --code-bg:#f8f9fa;\
-  --border:#e5e7eb; --accent:#2563eb; --nav-bg:#f3f4f6;\
-  --kw:#d1242f; --ty:#8250df; --st:#0a3069; --cm:#6a737d;\
-  --nm:#0550ae; --bi:#953800; --en:#1a7f37;\
-}\n\
-*, *::before, *::after { box-sizing: border-box; }\n\
-body {\
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;\
-  font-size: 16px; line-height: 1.7; color: var(--text); background: var(--bg);\
-  max-width: 860px; margin: 0 auto; padding: 24px 32px;\
-}\n\
-nav {\
-  background: var(--nav-bg); border: 1px solid var(--border); border-radius: 8px;\
-  padding: 10px 16px; margin-bottom: 32px; line-height: 2.2; font-size: 0.9em;\
-}\n\
-nav a { color: var(--accent); text-decoration: none; margin: 0 3px; }\n\
-nav a:hover { text-decoration: underline; }\n\
-.cur { font-weight: 700; color: var(--text); margin: 0 3px; }\n\
-h1 { font-size: 1.75em; margin: 0 0 24px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }\n\
-p { margin: 0.4em 0 1em; color: #374151; }\n\
-pre {\
-  background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;\
-  padding: 14px 16px; overflow-x: auto; margin: 0 0 18px;\
-  font-size: 0.875em; line-height: 1.55;\
-}\n\
-code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }\n\
-.cm { color: var(--cm); font-style: italic; }\n\
-.kw { color: var(--kw); font-weight: 600; }\n\
-.ty { color: var(--ty); }\n\
-.st, .ch { color: var(--st); }\n\
-.nm { color: var(--nm); }\n\
-.bi { color: var(--bi); }\n\
-.en { color: var(--en); }\n\
-.fn-call { color: #005cc5; }";
+:root {
+  --bg: #fff;
+  --text: #1a1a2e;
+  --code-bg: #f8f9fa;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  --nav-bg: #f3f4f6;
+  --kw: #d1242f;
+  --ty: #8250df;
+  --st: #0a3069;
+  --cm: #6a737d;
+  --nm: #0550ae;
+  --bi: #953800;
+  --en: #1a7f37;
+  --dim: #6b7280;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--bg);
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 32px;
+}
+
+nav {
+  background: var(--nav-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 32px;
+  line-height: 2.2;
+  font-size: 0.9em;
+}
+nav a { color: var(--accent); text-decoration: none; margin: 0 3px; }
+nav a:hover { text-decoration: underline; }
+.cur { font-weight: 700; color: var(--text); margin: 0 3px; }
+
+h1 {
+  font-size: 1.75em;
+  margin: 0 0 24px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+}
+h2 { font-size: 1.1em; font-weight: 700; margin: 2em 0 0.4em; }
+
+p { margin: 0.4em 0 1em; color: #374151; }
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 0 0 18px;
+  font-size: 0.875em;
+  line-height: 1.55;
+}
+
+code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* Syntax highlight classes */
+.cm { color: var(--cm); font-style: italic; }
+.kw { color: var(--kw); font-weight: 600; }
+.ty { color: var(--ty); }
+.st, .ch { color: var(--st); }
+.nm { color: var(--nm); }
+.bi { color: var(--bi); }
+.en { color: var(--en); }
+.fn-call { color: #005cc5; }
+
+/* stdlib links inside code blocks: inherit span colour, subtle underline */
+pre a { color: inherit; text-decoration: underline dotted; }
+pre a:hover { text-decoration: underline; }
+
+/* ── Index page ─────────────────────────────────────────────────────────── */
+
+header {
+  text-align: center;
+  padding: 48px 0 32px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 32px;
+}
+header h1 { font-size: 3em; margin: 0 0 8px; letter-spacing: -1px; }
+.tagline { font-size: 1.1em; color: var(--dim); margin: 0; }
+
+.intro { margin-bottom: 40px; }
+.intro ul { padding-left: 1.4em; }
+.intro li { margin: 6px 0; color: #374151; }
+
+.topics-heading {
+  font-size: 1.3em;
+  margin: 0 0 16px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  display: block;
+  padding: 16px 18px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+.card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(37,99,235,.12); }
+.card h2 { font-size: 1em; margin: 0 0 6px; color: var(--accent); }
+.card p { font-size: .85em; margin: 0; color: #4b5563; line-height: 1.5; }
+
+/* ── vs-Rust comparison page ────────────────────────────────────────────── */
+
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0.6em 0 0.8em;
+}
+
+pre.rust-pre { background: #fff8f0; border-color: #fcd9ad; }
+
+.lang-label {
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.lav-label  { color: #2563eb; }
+.rust-label { color: #b45309; }
+
+.verdict {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0.4em 0 1em;
+}
+
+.up, .down {
+  margin: 0;
+  padding: 0.5em 0.75em;
+  border-radius: 5px;
+  font-size: 0.92em;
+  line-height: 1.5;
+}
+.up   { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.down { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+.up   strong, .down strong {
+  display: block;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.2em;
+}
+
+/* vs-rust section headers */
+section-header, h2.diff {
+  padding: 0.3em 0.7em;
+  background: var(--nav-bg);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+"#;

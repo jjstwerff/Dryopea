@@ -4,65 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lav — 06 — Function</title>
-<style>
-:root {--bg:#fff; --text:#1a1a2e; --code-bg:#f8f9fa;--border:#e5e7eb; --accent:#2563eb; --nav-bg:#f3f4f6;--kw:#d1242f; --ty:#8250df; --st:#0a3069; --cm:#6a737d;--nm:#0550ae; --bi:#953800; --en:#1a7f37;}
-*, *::before, *::after { box-sizing: border-box; }
-body {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;font-size: 16px; line-height: 1.7; color: var(--text); background: var(--bg);max-width: 860px; margin: 0 auto; padding: 24px 32px;}
-nav {background: var(--nav-bg); border: 1px solid var(--border); border-radius: 8px;padding: 10px 16px; margin-bottom: 32px; line-height: 2.2; font-size: 0.9em;}
-nav a { color: var(--accent); text-decoration: none; margin: 0 3px; }
-nav a:hover { text-decoration: underline; }
-.cur { font-weight: 700; color: var(--text); margin: 0 3px; }
-h1 { font-size: 1.75em; margin: 0 0 24px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
-p { margin: 0.4em 0 1em; color: #374151; }
-pre {background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;padding: 14px 16px; overflow-x: auto; margin: 0 0 18px;font-size: 0.875em; line-height: 1.55;}
-code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
-.cm { color: var(--cm); font-style: italic; }
-.kw { color: var(--kw); font-weight: 600; }
-.ty { color: var(--ty); }
-.st, .ch { color: var(--st); }
-.nm { color: var(--nm); }
-.bi { color: var(--bi); }
-.en { color: var(--en); }
-.fn-call { color: #005cc5; }
-  </style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <span class="cur">Function</span> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <span class="cur">Function</span> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
 <h1>06 — Function</h1>
 <article>
 <p>A function is declared with 'fn', a parameter list, and an optional return type. The last expression in the body is the implicit return value.</p>
-<pre><code><span class="kw">fn</span> <span class="fn-call">greet</span>(name: <span class="ty">text</span>, greeting: <span class="ty">text</span> = <span class="st">"Hello"</span>) -&gt; <span class="ty">text</span> {
+<pre><code><span class="kw">fn</span> <span class="fn-call">greet</span>(name: <span class="ty"><a href="stdlib.html#types">text</a></span>, greeting: <span class="ty"><a href="stdlib.html#types">text</a></span> = <span class="st">"Hello"</span>) -&gt; <span class="ty"><a href="stdlib.html#types">text</a></span> {
     greeting + <span class="st">", "</span> + name + <span class="st">"!"</span>
 }</code></pre>
 <p>Functions with no return type perform side effects only. Reference parameters (prefixed with '&amp;') let the function modify the caller's variable. Default values are specified with '= value' after the type.</p>
-<pre><code><span class="kw">fn</span> <span class="fn-call">add</span>(a: &amp;<span class="ty">integer</span>, b: <span class="ty">integer</span>, c: <span class="ty">integer</span> = <span class="nm">0</span>) {
+<pre><code><span class="kw">fn</span> <span class="fn-call">add</span>(a: &amp;<span class="ty"><a href="stdlib.html#types">integer</a></span>, b: <span class="ty"><a href="stdlib.html#types">integer</a></span>, c: <span class="ty"><a href="stdlib.html#types">integer</a></span> = <span class="nm">0</span>) {
     a += b + c;
 }</code></pre>
 <p>A function can return early with an explicit 'return' statement.</p>
-<pre><code><span class="kw">fn</span> <span class="fn-call">classify</span>(n: <span class="ty">integer</span>) -&gt; <span class="ty">text</span> {
+<pre><code><span class="kw">fn</span> <span class="fn-call">classify</span>(n: <span class="ty"><a href="stdlib.html#types">integer</a></span>) -&gt; <span class="ty"><a href="stdlib.html#types">text</a></span> {
     <span class="kw">if</span> n &lt; <span class="nm">0</span> { <span class="kw">return</span> <span class="st">"negative"</span>; }
     <span class="kw">if</span> n == <span class="nm">0</span> { <span class="kw">return</span> <span class="st">"zero"</span>; }
     <span class="st">"positive"</span>
 }</code></pre>
-<pre><code><span class="kw">fn</span> <span class="fn-call">describe_int</span>(v: <span class="ty">integer</span>) -&gt; <span class="ty">text</span> { <span class="st">"integer:{v}"</span> }
-<span class="kw">fn</span> <span class="fn-call">describe_text</span>(v: <span class="ty">text</span>) -&gt; <span class="ty">text</span> { <span class="st">"text:{v}"</span> }</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">describe_int</span>(v: <span class="ty"><a href="stdlib.html#types">integer</a></span>) -&gt; <span class="ty"><a href="stdlib.html#types">text</a></span> { <span class="st">"integer:{v}"</span> }
+<span class="kw">fn</span> <span class="fn-call">describe_text</span>(v: <span class="ty"><a href="stdlib.html#types">text</a></span>) -&gt; <span class="ty"><a href="stdlib.html#types">text</a></span> { <span class="st">"text:{v}"</span> }</code></pre>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
 <p>Calling a function with all arguments.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="fn-call">greet</span>(<span class="st">"World"</span>, <span class="st">"Hi"</span>) == <span class="st">"Hi, World!"</span>, <span class="st">"Explicit argument"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="fn-call">greet</span>(<span class="st">"World"</span>, <span class="st">"Hi"</span>) == <span class="st">"Hi, World!"</span>, <span class="st">"Explicit argument"</span>);</code></pre>
 <p>Calling with the default value for 'greeting'.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="fn-call">greet</span>(<span class="st">"World"</span>) == <span class="st">"Hello, World!"</span>, <span class="st">"Default argument"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="fn-call">greet</span>(<span class="st">"World"</span>) == <span class="st">"Hello, World!"</span>, <span class="st">"Default argument"</span>);</code></pre>
 <p>Reference parameters allow the function to modify the caller's variable.</p>
 <pre><code>    v = <span class="nm">1</span>;
     <span class="fn-call">add</span>(v, <span class="nm">2</span>);       <span class="cm">// v = 1 + 2 = 3</span>
     <span class="fn-call">add</span>(v, <span class="nm">4</span>, <span class="nm">1</span>);    <span class="cm">// v = 3 + 4 + 1 = 8</span>
-    <span class="bi">assert</span>(v == <span class="nm">8</span>, <span class="st">"Reference parameter: {v}"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(v == <span class="nm">8</span>, <span class="st">"Reference parameter: {v}"</span>);</code></pre>
 <p>Early return example.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="fn-call">classify</span>(-<span class="nm">5</span>) == <span class="st">"negative"</span>, <span class="st">"Classify negative"</span>);
-    <span class="bi">assert</span>(<span class="fn-call">classify</span>(<span class="nm">0</span>) == <span class="st">"zero"</span>, <span class="st">"Classify zero"</span>);
-    <span class="bi">assert</span>(<span class="fn-call">classify</span>(<span class="nm">3</span>) == <span class="st">"positive"</span>, <span class="st">"Classify positive"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="fn-call">classify</span>(-<span class="nm">5</span>) == <span class="st">"negative"</span>, <span class="st">"Classify negative"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="fn-call">classify</span>(<span class="nm">0</span>) == <span class="st">"zero"</span>, <span class="st">"Classify zero"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="fn-call">classify</span>(<span class="nm">3</span>) == <span class="st">"positive"</span>, <span class="st">"Classify positive"</span>);</code></pre>
 <p>Functions with different names handle different types.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="fn-call">describe_int</span>(<span class="nm">42</span>) == <span class="st">"integer:42"</span>, <span class="st">"Integer describe"</span>);
-    <span class="bi">assert</span>(<span class="fn-call">describe_text</span>(<span class="st">"hi"</span>) == <span class="st">"text:hi"</span>, <span class="st">"Text describe"</span>);
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="fn-call">describe_int</span>(<span class="nm">42</span>) == <span class="st">"integer:42"</span>, <span class="st">"Integer describe"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="fn-call">describe_text</span>(<span class="st">"hi"</span>) == <span class="st">"text:hi"</span>, <span class="st">"Text describe"</span>);
 }</code></pre>
 
   </article>

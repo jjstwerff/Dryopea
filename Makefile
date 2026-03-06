@@ -16,6 +16,7 @@ test: clippy
 	rm tests/generated/* -f
 	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f
 	RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
+	cargo run --bin gendoc
 
 quick:
 	RUST_BACKTRACE=1 cargo test --release -- --nocapture --test-threads=1 > result.txt 2>&1

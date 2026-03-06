@@ -4,68 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lav — 08 — Struct</title>
-<style>
-:root {--bg:#fff; --text:#1a1a2e; --code-bg:#f8f9fa;--border:#e5e7eb; --accent:#2563eb; --nav-bg:#f3f4f6;--kw:#d1242f; --ty:#8250df; --st:#0a3069; --cm:#6a737d;--nm:#0550ae; --bi:#953800; --en:#1a7f37;}
-*, *::before, *::after { box-sizing: border-box; }
-body {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;font-size: 16px; line-height: 1.7; color: var(--text); background: var(--bg);max-width: 860px; margin: 0 auto; padding: 24px 32px;}
-nav {background: var(--nav-bg); border: 1px solid var(--border); border-radius: 8px;padding: 10px 16px; margin-bottom: 32px; line-height: 2.2; font-size: 0.9em;}
-nav a { color: var(--accent); text-decoration: none; margin: 0 3px; }
-nav a:hover { text-decoration: underline; }
-.cur { font-weight: 700; color: var(--text); margin: 0 3px; }
-h1 { font-size: 1.75em; margin: 0 0 24px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
-p { margin: 0.4em 0 1em; color: #374151; }
-pre {background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;padding: 14px 16px; overflow-x: auto; margin: 0 0 18px;font-size: 0.875em; line-height: 1.55;}
-code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
-.cm { color: var(--cm); font-style: italic; }
-.kw { color: var(--kw); font-weight: 600; }
-.ty { color: var(--ty); }
-.st, .ch { color: var(--st); }
-.nm { color: var(--nm); }
-.bi { color: var(--bi); }
-.en { color: var(--en); }
-.fn-call { color: #005cc5; }
-  </style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <span class="cur">Struct</span> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <span class="cur">Struct</span> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
 <h1>08 — Struct</h1>
 <article>
 <pre><code><span class="kw">struct</span> <span class="en">Area</span> {
-    height: <span class="ty">u16</span>,
-    terrain: <span class="ty">u8</span>,
-    water: <span class="ty">u8</span>,
-    direction: <span class="ty">u8</span>
+    height: <span class="ty"><a href="stdlib.html#types">u16</a></span>,
+    terrain: <span class="ty"><a href="stdlib.html#types">u8</a></span>,
+    water: <span class="ty"><a href="stdlib.html#types">u8</a></span>,
+    direction: <span class="ty"><a href="stdlib.html#types">u8</a></span>
 }</code></pre>
 <p>'limit(min, max)' constrains an integer field to a range. 'not null' makes zero a valid stored value instead of the null sentinel. Fields omitted in a constructor default to zero (or null for nullable fields).</p>
 <pre><code><span class="kw">struct</span> <span class="en">Point</span> {
-    r: <span class="ty">integer</span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>,
-    g: <span class="ty">integer</span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>,
-    b: <span class="ty">integer</span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>
+    r: <span class="ty"><a href="stdlib.html#types">integer</a></span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>,
+    g: <span class="ty"><a href="stdlib.html#types">integer</a></span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>,
+    b: <span class="ty"><a href="stdlib.html#types">integer</a></span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>
 }</code></pre>
 <p>A method is a function whose first parameter is named 'self' with the struct type. It is called with dot notation: value.method().</p>
-<pre><code><span class="kw">fn</span> <span class="fn-call">value</span>(self: <span class="en">Point</span>) -&gt; <span class="ty">integer</span> {
+<pre><code><span class="kw">fn</span> <span class="fn-call"><a href="stdlib.html#file-system">value</a></span>(self: <span class="en">Point</span>) -&gt; <span class="ty"><a href="stdlib.html#types">integer</a></span> {
     self.r * <span class="nm">0x10000</span> + self.g * <span class="nm">0x100</span> + self.b
 }</code></pre>
 <p>'default(expr)' and 'virtual(expr)' compute a field value from other fields. '$' refers to the struct being initialised.</p>
 <pre><code><span class="kw">struct</span> <span class="en">Object</span> {
-    name_length: <span class="ty">integer</span> = <span class="bi">len</span>($.name),
-    name: <span class="ty">text</span>
+    name_length: <span class="ty"><a href="stdlib.html#types">integer</a></span> = <span class="bi"><a href="stdlib.html#text">len</a></span>($.name),
+    name: <span class="ty"><a href="stdlib.html#types">text</a></span>
 }</code></pre>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
 <p>A vector of structs can be initialised with a repeated element using '; count'.</p>
 <pre><code>    map = [<span class="en">Area</span> {height:<span class="nm">0</span>, terrain:<span class="nm">1</span>, water:<span class="nm">1</span>, direction:<span class="nm">1</span>}; <span class="nm">16</span> ];
-    <span class="bi">assert</span>(<span class="st">"{map[3]}"</span> == <span class="st">"{{height:0,terrain:1,water:1,direction:1}}"</span>, <span class="st">"record {map[3]}"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{map[3]}"</span> == <span class="st">"{{height:0,terrain:1,water:1,direction:1}}"</span>, <span class="st">"record {map[3]}"</span>);</code></pre>
 <p>Fields not mentioned in the constructor receive their zero/null default.</p>
 <pre><code>    p = <span class="en">Point</span> { r:<span class="nm">128</span>, b:<span class="nm">128</span> };
-    <span class="bi">assert</span>(p.g == <span class="nm">0</span>, <span class="st">"Omitted field defaults to zero"</span>);
-    <span class="bi">assert</span>(<span class="st">"{p}"</span> == <span class="st">"{{r:128,g:0,b:128}}"</span>, <span class="st">"Struct compact formatting"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(p.g == <span class="nm">0</span>, <span class="st">"Omitted field defaults to zero"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{p}"</span> == <span class="st">"{{r:128,g:0,b:128}}"</span>, <span class="st">"Struct compact formatting"</span>);</code></pre>
 <p>The ':# ' format specifier produces pretty-printed output with newlines. The ':j' specifier produces JSON.</p>
 <pre><code>    o = <span class="en">Object</span> { name: <span class="st">"hello"</span> };
-    <span class="bi">assert</span>(o.name_length == <span class="nm">5</span>, <span class="st">"Calculated field"</span>);
-    <span class="bi">assert</span>(<span class="st">"{o:j}"</span> == <span class="st">"{{\"</span>name_length\<span class="st">":5,\"</span>name\<span class="st">":\"</span>hello\<span class="st">"}}"</span>, <span class="st">"JSON format"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(o.name_length == <span class="nm">5</span>, <span class="st">"Calculated field"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{o:j}"</span> == <span class="st">"{{\"</span>name_length\<span class="st">":5,\"</span>name\<span class="st">":\"</span>hello\<span class="st">"}}"</span>, <span class="st">"JSON format"</span>);</code></pre>
 <p>Methods are called with dot notation; the result can be formatted inline.</p>
 <pre><code>    purple = <span class="en">Point</span> { r:<span class="nm">128</span>, b:<span class="nm">128</span> };
-    <span class="bi">assert</span>(<span class="st">"{purple.value():x}"</span> == <span class="st">"800080"</span>, <span class="st">"Method result in format"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{purple.value():x}"</span> == <span class="st">"800080"</span>, <span class="st">"Method result in format"</span>);
 }</code></pre>
 <p>defaults on fields &amp; null defaults</p>
 

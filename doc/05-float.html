@@ -4,61 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lav — 05 — Float</title>
-<style>
-:root {--bg:#fff; --text:#1a1a2e; --code-bg:#f8f9fa;--border:#e5e7eb; --accent:#2563eb; --nav-bg:#f3f4f6;--kw:#d1242f; --ty:#8250df; --st:#0a3069; --cm:#6a737d;--nm:#0550ae; --bi:#953800; --en:#1a7f37;}
-*, *::before, *::after { box-sizing: border-box; }
-body {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;font-size: 16px; line-height: 1.7; color: var(--text); background: var(--bg);max-width: 860px; margin: 0 auto; padding: 24px 32px;}
-nav {background: var(--nav-bg); border: 1px solid var(--border); border-radius: 8px;padding: 10px 16px; margin-bottom: 32px; line-height: 2.2; font-size: 0.9em;}
-nav a { color: var(--accent); text-decoration: none; margin: 0 3px; }
-nav a:hover { text-decoration: underline; }
-.cur { font-weight: 700; color: var(--text); margin: 0 3px; }
-h1 { font-size: 1.75em; margin: 0 0 24px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
-p { margin: 0.4em 0 1em; color: #374151; }
-pre {background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;padding: 14px 16px; overflow-x: auto; margin: 0 0 18px;font-size: 0.875em; line-height: 1.55;}
-code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
-.cm { color: var(--cm); font-style: italic; }
-.kw { color: var(--kw); font-weight: 600; }
-.ty { color: var(--ty); }
-.st, .ch { color: var(--st); }
-.nm { color: var(--nm); }
-.bi { color: var(--bi); }
-.en { color: var(--en); }
-.fn-call { color: #005cc5; }
-  </style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <span class="cur">Float</span> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <span class="cur">Float</span> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
 <h1>05 — Float</h1>
 <article>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
 <p>Float is a 64-bit floating-point number (equivalent to f64 in Rust). A literal with a decimal point is a float by default.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="nm">1.5</span> + <span class="nm">0.5</span> == <span class="nm">2.0</span>, <span class="st">"Float addition"</span>);
-    <span class="bi">assert</span>(<span class="nm">3.0</span> / <span class="nm">2.0</span> == <span class="nm">1.5</span>, <span class="st">"Float division"</span>);
-    <span class="bi">assert</span>(<span class="nm">2.0</span> * <span class="nm">1.5</span> == <span class="nm">3.0</span>, <span class="st">"Float multiplication"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="nm">1.5</span> + <span class="nm">0.5</span> == <span class="nm">2.0</span>, <span class="st">"Float addition"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="nm">3.0</span> / <span class="nm">2.0</span> == <span class="nm">1.5</span>, <span class="st">"Float division"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="nm">2.0</span> * <span class="nm">1.5</span> == <span class="nm">3.0</span>, <span class="st">"Float multiplication"</span>);</code></pre>
 <p>Use the 'f' suffix for single-precision (32-bit) floats.</p>
 <pre><code>    x = <span class="nm">0.1f</span> + <span class="nm">2</span> * <span class="nm">1.0f</span>;
-    <span class="bi">assert</span>(x == <span class="nm">2.1f</span>, <span class="st">"Single precision float"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(x == <span class="nm">2.1f</span>, <span class="st">"Single precision float"</span>);</code></pre>
 <p>Conversions between float, integer and text.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="nm">3</span> <span class="kw">as</span> <span class="ty">float</span> == <span class="nm">3.0</span>, <span class="st">"Integer to float"</span>);
-    <span class="bi">assert</span>(<span class="st">"1.5"</span> <span class="kw">as</span> <span class="ty">float</span> == <span class="nm">1.5</span>, <span class="st">"Text to float"</span>);
-    <span class="bi">assert</span>(<span class="st">"{1.5}"</span> == <span class="st">"1.5"</span>, <span class="st">"Float formatted as text"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="nm">3</span> <span class="kw">as</span> <span class="ty"><a href="stdlib.html#types">float</a></span> == <span class="nm">3.0</span>, <span class="st">"Integer to float"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"1.5"</span> <span class="kw">as</span> <span class="ty"><a href="stdlib.html#types">float</a></span> == <span class="nm">1.5</span>, <span class="st">"Text to float"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{1.5}"</span> == <span class="st">"1.5"</span>, <span class="st">"Float formatted as text"</span>);</code></pre>
 <p>Float formatting: '{value:width.precision}'. Width pads the whole number; precision controls decimal places.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="st">"{1.2:4.2}"</span> == <span class="st">"1.20"</span>, <span class="st">"Float with width and precision"</span>);
-    <span class="bi">assert</span>(<span class="st">"{334.1:.2}"</span> == <span class="st">"334.10"</span>, <span class="st">"Float with precision only"</span>);
-    <span class="bi">assert</span>(<span class="st">"{1.4:5}"</span> == <span class="st">"  1.4"</span>, <span class="st">"Float with width only"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{1.2:4.2}"</span> == <span class="st">"1.20"</span>, <span class="st">"Float with width and precision"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{334.1:.2}"</span> == <span class="st">"334.10"</span>, <span class="st">"Float with precision only"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{1.4:5}"</span> == <span class="st">"  1.4"</span>, <span class="st">"Float with width only"</span>);</code></pre>
 <p>Math constants: PI is the ratio of a circle's circumference to its diameter.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="bi">round</span>(<span class="en">PI</span> * <span class="nm">1000.0</span>) == <span class="nm">3142.0</span>, <span class="st">"PI constant"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">round</a></span>(<span class="en"><a href="stdlib.html#math">PI</a></span> * <span class="nm">1000.0</span>) == <span class="nm">3142.0</span>, <span class="st">"PI constant"</span>);</code></pre>
 <p>Exponentiation uses the '^' operator; log(x, base) computes the logarithm.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="bi">log</span>(<span class="nm">4.0</span> ^ <span class="nm">5</span>, <span class="nm">2</span>) == <span class="nm">10.0</span>, <span class="st">"log base 2 of 4^5"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">log</a></span>(<span class="nm">4.0</span> ^ <span class="nm">5</span>, <span class="nm">2</span>) == <span class="nm">10.0</span>, <span class="st">"log base 2 of 4^5"</span>);</code></pre>
 <p>Trigonometric functions operate in radians. sin(PI) is near zero; cos(PI) is -1.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="bi">ceil</span>(<span class="bi">sin</span>(<span class="en">PI</span>) + <span class="bi">cos</span>(<span class="en">PI</span>) * <span class="nm">1000</span>) == -<span class="nm">1000.0</span>, <span class="st">"sin and cos"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">ceil</a></span>(<span class="bi"><a href="stdlib.html#math">sin</a></span>(<span class="en"><a href="stdlib.html#math">PI</a></span>) + <span class="bi"><a href="stdlib.html#math">cos</a></span>(<span class="en"><a href="stdlib.html#math">PI</a></span>) * <span class="nm">1000</span>) == -<span class="nm">1000.0</span>, <span class="st">"sin and cos"</span>);</code></pre>
 <p>abs() returns the absolute value.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="bi">abs</span>(-<span class="nm">2.5</span>) == <span class="nm">2.5</span>, <span class="st">"Absolute value of float"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">abs</a></span>(-<span class="nm">2.5</span>) == <span class="nm">2.5</span>, <span class="st">"Absolute value of float"</span>);</code></pre>
 <p>round(), ceil(), floor() convert float to the nearest integer value.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="bi">round</span>(<span class="nm">2.6</span>) == <span class="nm">3.0</span>, <span class="st">"round up"</span>);
-    <span class="bi">assert</span>(<span class="bi">round</span>(<span class="nm">2.4</span>) == <span class="nm">2.0</span>, <span class="st">"round down"</span>);
-    <span class="bi">assert</span>(<span class="bi">ceil</span>(<span class="nm">2.1</span>) == <span class="nm">3.0</span>, <span class="st">"ceil"</span>);
-    <span class="bi">assert</span>(<span class="bi">floor</span>(<span class="nm">2.9</span>) == <span class="nm">2.0</span>, <span class="st">"floor"</span>);
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">round</a></span>(<span class="nm">2.6</span>) == <span class="nm">3.0</span>, <span class="st">"round up"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">round</a></span>(<span class="nm">2.4</span>) == <span class="nm">2.0</span>, <span class="st">"round down"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">ceil</a></span>(<span class="nm">2.1</span>) == <span class="nm">3.0</span>, <span class="st">"ceil"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">floor</a></span>(<span class="nm">2.9</span>) == <span class="nm">2.0</span>, <span class="st">"floor"</span>);
 }</code></pre>
 
   </article>

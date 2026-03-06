@@ -4,65 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lav — 09 — Enum</title>
-<style>
-:root {--bg:#fff; --text:#1a1a2e; --code-bg:#f8f9fa;--border:#e5e7eb; --accent:#2563eb; --nav-bg:#f3f4f6;--kw:#d1242f; --ty:#8250df; --st:#0a3069; --cm:#6a737d;--nm:#0550ae; --bi:#953800; --en:#1a7f37;}
-*, *::before, *::after { box-sizing: border-box; }
-body {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;font-size: 16px; line-height: 1.7; color: var(--text); background: var(--bg);max-width: 860px; margin: 0 auto; padding: 24px 32px;}
-nav {background: var(--nav-bg); border: 1px solid var(--border); border-radius: 8px;padding: 10px 16px; margin-bottom: 32px; line-height: 2.2; font-size: 0.9em;}
-nav a { color: var(--accent); text-decoration: none; margin: 0 3px; }
-nav a:hover { text-decoration: underline; }
-.cur { font-weight: 700; color: var(--text); margin: 0 3px; }
-h1 { font-size: 1.75em; margin: 0 0 24px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
-p { margin: 0.4em 0 1em; color: #374151; }
-pre {background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;padding: 14px 16px; overflow-x: auto; margin: 0 0 18px;font-size: 0.875em; line-height: 1.55;}
-code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
-.cm { color: var(--cm); font-style: italic; }
-.kw { color: var(--kw); font-weight: 600; }
-.ty { color: var(--ty); }
-.st, .ch { color: var(--st); }
-.nm { color: var(--nm); }
-.bi { color: var(--bi); }
-.en { color: var(--en); }
-.fn-call { color: #005cc5; }
-  </style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <span class="cur">Enum</span> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <span class="cur">Enum</span> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
 <h1>09 — Enum</h1>
 <article>
 <p>A plain enum maps names to integer values starting at 0. Enum values can be compared, ordered, and converted to/from integer and text.</p>
 <pre><code><span class="kw">enum</span> <span class="en">Direction</span> { <span class="en">North</span>, <span class="en">East</span>, <span class="en">South</span>, <span class="en">West</span> }</code></pre>
 <p>An enum variant can carry data as named fields, making it a 'struct enum'. Each variant is its own type and can have its own methods.</p>
 <pre><code><span class="kw">enum</span> <span class="en">Shape</span> {
-    <span class="en">Circle</span> { radius: <span class="ty">float</span> },
-    <span class="en">Rect</span> { width: <span class="ty">float</span>, height: <span class="ty">float</span> }
+    <span class="en">Circle</span> { radius: <span class="ty"><a href="stdlib.html#types">float</a></span> },
+    <span class="en">Rect</span> { width: <span class="ty"><a href="stdlib.html#types">float</a></span>, height: <span class="ty"><a href="stdlib.html#types">float</a></span> }
 }</code></pre>
 <p>Polymorphic dispatch: define the same function name for each variant. The call site picks the right version based on the runtime type.</p>
-<pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Circle</span>) -&gt; <span class="ty">float</span> {
-    <span class="en">PI</span> * (self.radius ^ <span class="nm">2</span>)
+<pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Circle</span>) -&gt; <span class="ty"><a href="stdlib.html#types">float</a></span> {
+    <span class="en"><a href="stdlib.html#math">PI</a></span> * (self.radius ^ <span class="nm">2</span>)
 }</code></pre>
-<pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Rect</span>) -&gt; <span class="ty">float</span> {
+<pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Rect</span>) -&gt; <span class="ty"><a href="stdlib.html#types">float</a></span> {
     self.width * self.height
 }</code></pre>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
 <p>Plain enum: comparison and ordering (by declaration order).</p>
 <pre><code>    d = <span class="en">East</span>;
-    <span class="bi">assert</span>(d == <span class="en">East</span>, <span class="st">"Enum equality"</span>);
-    <span class="bi">assert</span>(d != <span class="en">North</span>, <span class="st">"Enum inequality"</span>);
-    <span class="bi">assert</span>(d &gt; <span class="en">North</span>, <span class="st">"East declared after North, so it is greater"</span>);
-    <span class="bi">assert</span>(<span class="en">West</span> &gt; <span class="en">South</span>, <span class="st">"West declared last, so it is greatest"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(d == <span class="en">East</span>, <span class="st">"Enum equality"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(d != <span class="en">North</span>, <span class="st">"Enum inequality"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(d &gt; <span class="en">North</span>, <span class="st">"East declared after North, so it is greater"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="en">West</span> &gt; <span class="en">South</span>, <span class="st">"West declared last, so it is greatest"</span>);</code></pre>
 <p>Convert text to an enum value.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="st">"West"</span> <span class="kw">as</span> <span class="en">Direction</span> == <span class="en">West</span>, <span class="st">"Text to enum"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"West"</span> <span class="kw">as</span> <span class="en">Direction</span> == <span class="en">West</span>, <span class="st">"Text to enum"</span>);</code></pre>
 <p>Struct-enum variants are constructed like structs. Access their fields with dot notation.</p>
 <pre><code>    c = <span class="en">Circle</span> { radius: <span class="nm">1.0</span> };
-    <span class="bi">assert</span>(c.radius == <span class="nm">1.0</span>, <span class="st">"Variant field access"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(c.radius == <span class="nm">1.0</span>, <span class="st">"Variant field access"</span>);</code></pre>
 <pre><code>    r = <span class="en">Rect</span> { width: <span class="nm">4.0</span>, height: <span class="nm">5.0</span> };
-    <span class="bi">assert</span>(r.width * r.height == <span class="nm">20.0</span>, <span class="st">"Rect area manually"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(r.width * r.height == <span class="nm">20.0</span>, <span class="st">"Rect area manually"</span>);</code></pre>
 <p>Polymorphic dispatch: the correct 'area' function is chosen by variant type.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="bi">round</span>(c.<span class="fn-call">area</span>() * <span class="nm">1000</span>) == <span class="bi">round</span>(<span class="en">PI</span> * <span class="nm">1000</span>), <span class="st">"Circle area = PI*r^2"</span>);
-    <span class="bi">assert</span>(r.<span class="fn-call">area</span>() == <span class="nm">20.0</span>, <span class="st">"Rect area = width*height"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="bi"><a href="stdlib.html#math">round</a></span>(c.<span class="fn-call">area</span>() * <span class="nm">1000</span>) == <span class="bi"><a href="stdlib.html#math">round</a></span>(<span class="en"><a href="stdlib.html#math">PI</a></span> * <span class="nm">1000</span>), <span class="st">"Circle area = PI*r^2"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(r.<span class="fn-call">area</span>() == <span class="nm">20.0</span>, <span class="st">"Rect area = width*height"</span>);</code></pre>
 <p>Plain enums can be formatted to their variant name.</p>
-<pre><code>    <span class="bi">assert</span>(<span class="st">"{d}"</span> == <span class="st">"East"</span>, <span class="st">"Format plain enum"</span>);
+<pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{d}"</span> == <span class="st">"East"</span>, <span class="st">"Format plain enum"</span>);
 }</code></pre>
 <p>normal enums versus structure enums conversions towards integer and text polymorph</p>
 
