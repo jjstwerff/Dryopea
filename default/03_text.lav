@@ -2,31 +2,31 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 pub fn starts_with(self: text, value: text) -> boolean;
-#rust "@self.starts_with(@value)"
+#rust "@self.starts_with(@value.as_str())"
 
 pub fn ends_with(self: text, value: text) -> boolean;
-#rust "@self.ends_with(@value)"
+#rust "@self.ends_with(@value.as_str())"
 
 pub fn trim(both: text) -> text[both];
-#rust "@both.trim()"
+#rust "@both.trim().to_string()"
 
 pub fn trim_start(self: text) -> text[self];
-#rust "@self.trim_start()"
+#rust "@self.trim_start().to_string()"
 
 pub fn trim_end(self: text) -> text[self];
-#rust "@self.trim_end()"
+#rust "@self.trim_end().to_string()"
 
 pub fn find(self: text, value: text) -> integer;
-#rust "if let Some(v) = @self.find(@value) {{ v as i32 }} else {{ i32::MIN }}"
+#rust "if let Some(v) = @self.find(@value.as_str()) {{ v as i32 }} else {{ i32::MIN }}"
 
 pub fn rfind(self: text, value: text) -> integer;
-#rust "if let Some(v) = @self.rfind(@value) {{ v as i32 }} else {{ i32::MIN }}"
+#rust "if let Some(v) = @self.rfind(@value.as_str()) {{ v as i32 }} else {{ i32::MIN }}"
 
 pub fn contains(self: text, value: text) -> boolean;
-#rust "@self.contains(@value)"
+#rust "@self.contains(@value.as_str())"
 
 pub fn replace(self: text, value: text, with: text) -> text;
-#rust "@self.replace(@value, @with)"
+#rust "@self.replace(@value.as_str(), @with.as_str())"
 
 pub fn to_lowercase(self: text) -> text;
 #rust "@self.to_lowercase()"

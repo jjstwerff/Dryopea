@@ -35,6 +35,19 @@ impl Str {
     }
 }
 
+impl std::ops::Deref for Str {
+    type Target = str;
+    fn deref(&self) -> &str {
+        self.str()
+    }
+}
+
+impl std::fmt::Display for Str {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.str())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Key {
     pub type_nr: i8,

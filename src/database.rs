@@ -1380,6 +1380,15 @@ impl Stores {
         }
     }
 
+    /// Allocate a new isolated record of the given type (used in generated code for OpDatabase).
+    pub fn alloc_record(&mut self, db_tp: u16) -> DbRef {
+        let size = self.size(db_tp);
+        let db = self.database(u32::from(size));
+        self.store_mut(&db).set_int(db.rec, 4, i32::from(db_tp));
+        self.set_default_value(db_tp, &db);
+        db
+    }
+
     /**
     Free a reference to a store. Make it available again for later code.
     # Panics
@@ -2557,6 +2566,16 @@ impl Stores {
     # Panics
     When the given database type doesn't support searcher.
     */
+    #[must_use]
+    pub fn find_str(&self, data: &DbRef, db: u16, key: &str) -> DbRef {
+        self.find(data, db, &[Content::Str(Str::new(key))])
+    }
+
+    #[must_use]
+    pub fn find_int(&self, data: &DbRef, db: u16, key: i64) -> DbRef {
+        self.find(data, db, &[Content::Long(key)])
+    }
+
     #[must_use]
     pub fn find(&self, data: &DbRef, db: u16, key: &[Content]) -> DbRef {
         match &self.types[db as usize].parts {

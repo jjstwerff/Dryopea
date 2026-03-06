@@ -1332,8 +1332,7 @@ impl Data {
             Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 65536 => "i16",
             Type::Integer(_, _) => "i32",
             Type::Enum(_, false, _) => "u8",
-            Type::Text(_) if context == &Context::Variable => "String",
-            Type::Text(_) => "Str",
+            Type::Text(_) => "String",
             Type::Long => "i64",
             Type::Boolean => "bool",
             Type::Float => "f64",
@@ -1349,6 +1348,7 @@ impl Data {
             Type::Routine(_) => "u32",
             Type::Unknown(_) => "??",
             Type::Iterator(_, _) => "Iterator",
+            Type::Keys => "&[Key]",
             _ => panic!("Incorrect type {}", tp.name(self)),
         }
         .to_string()

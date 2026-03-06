@@ -41,18 +41,22 @@ fn OpGetFile(file: File) -> boolean;
 #rust "stores.get_file(&@file)"
 
 fn OpGetDir(path: text, result: vector<File>) -> boolean;
-#rust "stores.get_dir(@path, &@result)"
+#rust "stores.get_dir(&@path, &@result)"
 
 fn OpGetPngImage(path: text, image: Image) -> boolean;
-#rust "stores.get_png(@path, &@image)"
+#rust "stores.get_png(&@path, &@image)"
 
 fn OpGetFileText(file: File, content: &text);
+#rust "todo!()"
 
 fn OpWriteFile(file: File, val: reference, db_tp: const u16);
+#rust "todo!()"
 
 fn OpReadFile(file: File, val: reference, db_tp: const u16);
+#rust "todo!()"
 
 fn OpSeekFile(file: File, pos: long);
+#rust "todo!()"
 
 pub fn value(self: Pixel) -> integer {
     self.r * 0x10000 + self.g * 0x100 + self.b
@@ -152,7 +156,7 @@ pub fn files(self: File) -> vector<File> {
 }
 
 pub fn write(self: File, v: text);
-#rust "stores.write_file(&@self, @v);"
+#rust "stores.write_file(&@self, &@v);"
 
 pub fn png(self: File) -> Image {
     if self.format == Format.TextFile {
@@ -168,4 +172,4 @@ pub fn env_variables() -> vector<EnvVariable>;
 #rust "stores.os_variables()"
 
 pub fn env_variable(name: text) -> text;
-#rust "Stores::os_variable(@name)"
+#rust "Stores::os_variable(&@name)"

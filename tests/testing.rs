@@ -222,14 +222,12 @@ impl Test {
         if self.result != Value::Null || !self.tp.is_unknown() {
             let w = &mut File::create(format!("tests/generated/{}_{}.rs", self.file, self.name))?;
             let def_nr = p.data.definitions();
-            o.output(w, start, def_nr)?;
+            o.output(w, 0, def_nr)?;
             writeln!(w, "#[test]\nfn code_{}() {{", self.name)?;
-            writeln!(w, "    let mut types = KnownTypes::new();")?;
-            writeln!(w, "    init(&mut types);")?;
-            writeln!(w, "    let mut stores = Stores::new(&types);")?;
-            write!(w, "    assert_eq!(")?;
-            o.output_code(w, &self.result, def_nr, 0)?;
-            writeln!(w, ", test(&mut stores));\n}}")?;
+            writeln!(w, "    let mut stores = Stores::new();")?;
+            writeln!(w, "    init(&mut stores);")?;
+            writeln!(w, "    n_test(&mut stores);")?;
+            writeln!(w, "}}")?;
         }
         Ok(())
     }
