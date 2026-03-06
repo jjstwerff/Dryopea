@@ -305,8 +305,12 @@ extern crate dryopea;"
             declared.insert(arg_nr);
         }
         if use_todo {
+            eprintln!(
+                "Warning: '{}' has &type (RefVar) parameters — generated body is todo!() and will panic at runtime",
+                def.name
+            );
             writeln!(w, "{{")?;
-            writeln!(w, "  todo!()")?;
+            writeln!(w, "  todo!(\"RefVar parameters are not yet supported in generated code\")")?;
             writeln!(w, "\n}}")?;
         } else if let Value::Block(_) = def.code {
             self.output_code_inner(w, &def.code, def_nr, 0, &mut declared)?;
@@ -775,6 +779,11 @@ extern crate dryopea;"
             }
             writeln!(w, "_ret")?;
         } else if needs_todo {
+            eprintln!(
+                "Warning: block '{}' in '{}' has no non-void return expression — generated code contains todo!()",
+                bl.name,
+                self.data.def(def_nr).name
+            );
             for _i in 0..=indent {
                 write!(w, "  ")?;
             }

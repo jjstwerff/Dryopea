@@ -278,6 +278,18 @@ impl Function {
         d.is_empty() || (d.len() == 1 && d[0] == var_nr)
     }
 
+    /// Clear all lifetime dependencies for this variable, marking it as owning its own store.
+    pub fn make_independent(&mut self, var_nr: u16) {
+        let tp = &self.variables[var_nr as usize].type_def;
+        let new_tp = match tp {
+            Type::Reference(d, _) => Type::Reference(*d, Vec::new()),
+            Type::Enum(d, is_ref, _) => Type::Enum(*d, *is_ref, Vec::new()),
+            Type::Vector(elm, _) => Type::Vector(elm.clone(), Vec::new()),
+            _ => return,
+        };
+        self.variables[var_nr as usize].type_def = new_tp;
+    }
+
     pub fn depend(&mut self, var_nr: u16, on: u16) {
         if on != u16::MAX {
             self.variables[var_nr as usize].type_def =

@@ -240,6 +240,14 @@ fn build() -> text {
 }
 
 #[test]
+fn reversed_text_slice() {
+    // P13: state.rs:445 a reversed slice (till < from) casts a negative length to u32,
+    // yielding a huge value that causes a panic or returns garbage bytes.
+    // Expected correct behaviour: return an empty string.
+    expr!("a = \"12345\"; a[3..1]").result(Value::str(""));
+}
+
+#[test]
 fn string_parse() {
     code!(
         "

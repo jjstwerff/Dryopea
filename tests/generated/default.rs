@@ -421,7 +421,7 @@ fn t_4File_seek(stores: &mut Stores, mut var_self: DbRef, mut var_pos: i64) { //
 } /*block_1: void*/
 
 fn t_4File_content(stores: &mut Stores, mut var_self: DbRef, mut var_result: DbRef) -> String {
-  todo!()
+  todo!("RefVar parameters are not yet supported in generated code")
 
 }
 

@@ -35,12 +35,6 @@ impl Debug for Store {
     }
 }
 
-impl Clone for Store {
-    fn clone(&self) -> Self {
-        todo!()
-    }
-}
-
 impl PartialEq for Store {
     fn eq(&self, other: &Self) -> bool {
         self.ptr == other.ptr
@@ -207,10 +201,12 @@ impl Store {
         self.valid(rec, 4);
         let mut claim = *self.addr::<i32>(rec, 0);
         // Try to combine with possibly free spaces after it
-        let mut next = *self.addr::<i32>(rec + claim as u32, 0);
-        while next < 0 {
+        while (rec + claim as u32) < self.size {
+            let next = *self.addr::<i32>(rec + claim as u32, 0);
+            if next >= 0 {
+                break;
+            }
             claim -= next;
-            next = *self.addr::<i32>(rec + claim as u32, 0);
         }
         *self.addr_mut(rec, 0) = -claim;
         self.claims.remove(&rec);
@@ -265,7 +261,7 @@ impl Store {
             return;
         }
         let bytes = size as usize * 8;
-        let l = Layout::from_size_align(1, 8).expect("Problem");
+        let l = Layout::from_size_align(self.size as usize * 8, 8).expect("Problem");
         self.ptr = unsafe { A.realloc(self.ptr, l, bytes) };
         self.size = size;
     }

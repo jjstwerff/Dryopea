@@ -154,3 +154,26 @@ fn unknown_sizeof() {
         .error("Expect a variable or type after sizeof at unknown_sizeof:1:22")
         .error("Unknown variable 'C' at unknown_sizeof:1:22");
 }
+
+#[test]
+fn index_non_indexable() {
+    // P5: parser.rs:3489 — applying [] to a non-indexable type now produces a clean
+    // "Indexing a non vector" diagnostic from index_type() without cascading parse errors.
+    code!("fn test() { v = 5; v[1]; }").error("Indexing a non vector at index_non_indexable:1:23");
+}
+
+#[test]
+fn fn_name_as_param_type() {
+    // P4: using a function name as a parameter type now produces a diagnostic via
+    // the Undefined-type mechanism instead of panicking.
+    code!("fn helper() {}\nfn test(v: helper) {}")
+        .error("Undefined type helper at fn_name_as_param_type:2:19");
+}
+
+#[test]
+fn fn_name_as_typedef() {
+    // P4: using a function name as the target of a type alias now produces a diagnostic
+    // via the Undefined-type mechanism instead of panicking.
+    code!("fn helper() {}\ntype Alias = helper;\nfn test() { 1 }")
+        .error("Undefined type helper at fn_name_as_typedef:2:21");
+}

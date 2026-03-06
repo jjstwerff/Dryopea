@@ -421,7 +421,7 @@ fn t_4File_seek(stores: &mut Stores, mut var_self: DbRef, mut var_pos: i64) { //
 } /*block_1: void*/
 
 fn t_4File_content(stores: &mut Stores, mut var_self: DbRef, mut var_result: DbRef) -> String {
-  todo!()
+  todo!("RefVar parameters are not yet supported in generated code")
 
 }
 
@@ -712,7 +712,7 @@ fn n_program_directory(stores: &mut Stores, mut var_v: DbRef) -> String {
 
 
 fn n_add(stores: &mut Stores, mut var_a: DbRef, mut var_b: i32, mut var_c: i32) {
-  todo!()
+  todo!("RefVar parameters are not yet supported in generated code")
 
 }
 

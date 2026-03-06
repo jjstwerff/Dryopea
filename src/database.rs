@@ -173,6 +173,7 @@ pub struct Stores {
     pub allocations: Vec<Store>,
     pub files: Vec<std::fs::File>,
     max: u16,
+    free_list: Vec<u16>,
 }
 
 impl Default for Stores {
@@ -319,6 +320,7 @@ impl Stores {
             allocations: Vec::new(),
             files: Vec::new(),
             max: 0,
+            free_list: Vec::new(),
         };
         result.base_type("integer", 4); // 0
         result.base_type("long", 8); // 1
@@ -1355,16 +1357,24 @@ impl Stores {
 
     /**
     Try to allocate a new store.
-    # Panics
-    When the next assumed free store is not free
+    Reuses a previously freed store from the free list when one is available,
+    otherwise extends the high-water mark.
     */
     pub fn database(&mut self, size: u32) -> DbRef {
-        if self.max >= self.allocations.len() as u16 {
-            self.allocations.push(Store::new(100));
+        let store_nr = if let Some(idx) = self.free_list.pop() {
+            self.allocations[idx as usize].init();
+            idx
         } else {
-            self.allocations[self.max as usize].init();
-        }
-        let store = &mut self.allocations[self.max as usize];
+            if self.max >= self.allocations.len() as u16 {
+                self.allocations.push(Store::new(100));
+            } else {
+                self.allocations[self.max as usize].init();
+            }
+            let idx = self.max;
+            self.max += 1;
+            idx
+        };
+        let store = &mut self.allocations[store_nr as usize];
         assert!(store.free, "Allocating a used store");
         store.free = false;
         let rec = if size == u32::MAX {
@@ -1372,9 +1382,8 @@ impl Stores {
         } else {
             store.claim(size)
         };
-        self.max += 1;
         DbRef {
-            store_nr: self.max - 1,
+            store_nr,
             rec,
             pos: 8,
         }
@@ -1390,16 +1399,15 @@ impl Stores {
     }
 
     /**
-    Free a reference to a store. Make it available again for later code.
-    # Panics
-    When the code doesn't free the last claimed store first.
+    Free a reference to a store. Pushes the store index onto the free list so it
+    can be reused by the next `database()` call regardless of order.
     */
     pub fn free(&mut self, db: &DbRef) {
         let al = db.store_nr;
         debug_assert!(al < self.allocations.len() as u16, "Incorrect store");
         debug_assert!(!self.allocations[al as usize].free, "Double free store");
         self.allocations[al as usize].free = true;
-        self.max -= 1;
+        self.free_list.push(al);
     }
 
     /**

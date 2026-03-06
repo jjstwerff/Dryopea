@@ -49,10 +49,17 @@ fn init(db: &mut Stores) {
     let vec_vector = db.vector(14);
     db.field(s, "vector", vec_vector);
     db.vector(14);
-    db.vector(0);
-    let s = db.structure("main_vector<integer>", 0); // 19
-    let vec_vector = db.vector(0);
-    db.field(s, "vector", vec_vector);
+    let e = db.enumerate("Val");
+    db.value(e, "A", u16::MAX);
+    db.value(e, "B", u16::MAX);
+    let s = db.structure("A", 1); // 19
+    let byte_enum = db.byte(0, false);
+    db.field(s, "enum", byte_enum);
+    db.field(s, "n", 0);
+    let s = db.structure("B", 2); // 20
+    let byte_enum = db.byte(0, false);
+    db.field(s, "enum", byte_enum);
+    db.field(s, "n", 0);
     db.finish();
 }
 
@@ -715,48 +722,37 @@ fn n_program_directory(stores: &mut Stores, mut var_v: DbRef) -> String {
 }
 
 
-fn n_add(stores: &mut Stores, mut var_r: DbRef, mut var_val: i32) {
-  todo!("RefVar parameters are not yet supported in generated code")
-
-}
-
+fn n_get_n(stores: &mut Stores, mut var_v: DbRef) -> i32 { //block_1: integer
+  ;
+  var_v
+} /*block_1: integer*/
 
 fn n_test(stores: &mut Stores) { //block_1: void
   let mut var___ref_1: DbRef = stores.null();
-  let mut var___work_2: String = "".to_string();
   let mut var___work_1: String = "".to_string();
   ;
-  let mut var_test_value = String::new();
-    var_test_value = { //block_2: text["__work_1"]
-    (var___ref_1) = stores.alloc_record((19_i32) as u16);
-    let mut var_v: DbRef = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + (0_i32) as u32};
-    {let db = (var___ref_1); let _val = (0_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (0_i32) as u32, _val);};
-    let mut var__elm_1: DbRef = stores.record_new(&(var_v), (18_i32) as u16, (65535_i32) as u16);
-    {let db = (var__elm_1); let _val = (1_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (0_i32) as u32, _val);};
-    stores.record_finish(&(var_v), &(var__elm_1), (18_i32) as u16, (65535_i32) as u16);
-    n_add(stores, todo!(), 2_i32);
-    n_add(stores, todo!(), 3_i32);
-    { //Formatted string_3: text["__work_1"]
-      var___work_1 = "".to_string();
-      (var___work_1).push_str(&stores.rec(&(var_v), (18_i32) as u16));
-      var___work_1
-    } /*Formatted string_3: text["__work_1"]*/.to_string()
-  } /*block_2: text["__work_1"]*/;
+  let mut var_test_value: i32 = { //block_2: integer
+    let _pre0 = { //Object_3: ref(A)["__ref_1"]
+      (var___ref_1) = stores.alloc_record((19_i32) as u16);
+      {let db = (var___ref_1); let _val = (42_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (4_i32) as u32, _val);};
+      {let db = (var___ref_1); let _val = i32::from((1_u8)); stores.store_mut(&db).set_byte(db.rec, db.pos + (0_i32) as u32, 0, _val);};
+      var___ref_1
+    } /*Object_3: ref(A)["__ref_1"]*/;
+    n_get_n(stores, _pre0)
+  } /*block_2: integer*/;
   ;
-  if (var_test_value) == ("[1,2,3]".to_string()) {()} else {panic!("{}", ({ //Formatted string_4: text["__work_2"]
-      var___work_2 = "Test failed ".to_string();
-      external::format_text(&mut (var___work_2), &(var_test_value), (0_i32), (-1_i32) as i8, (32_i32) as u8);
-      (var___work_2).push_str(&(" != \"[1,2,3]\"".to_string()));
-      var___work_2
-    } /*Formatted string_4: text["__work_2"]*/));};
+  if (var_test_value) == (42_i32) {()} else {panic!("{}", ({ //Formatted string_4: text["__work_1"]
+      var___work_1 = "Test failed ".to_string();
+      external::format_long(&mut (var___work_1), (external::op_conv_long_from_int((var_test_value))), (10_i32) as u8, (0_i32), (32_i32) as u8, (false), (false));
+      (var___work_1).push_str(&(" != 42".to_string()));
+      var___work_1
+    } /*Formatted string_4: text["__work_1"]*/));};
   {};
   drop((var___ref_1));
-  {};
-  {};
 } /*block_1: void*/
 
 #[test]
-fn code_mutable_vector() {
+fn code_enum_base_field_access() {
     let mut stores = Stores::new();
     init(&mut stores);
     n_test(&mut stores);

@@ -1429,7 +1429,7 @@ impl Parser {
                         self.data.set_returned(d_nr, tp);
                     }
                 } else if !self.first_pass {
-                    panic!("Incorrect handling of unknown types");
+                    diagnostic!(self.lexer, Level::Error, "'{type_name}' is not a type");
                 }
             } else {
                 diagnostic!(self.lexer, Level::Error, "Expected a type after =");
@@ -1659,9 +1659,10 @@ impl Parser {
                             } else {
                                 tp
                             }
-                        } else if !self.first_pass {
-                            panic!("Incorrect handling of unknown types");
                         } else {
+                            if !self.first_pass {
+                                diagnostic!(self.lexer, Level::Error, "'{type_name}' is not a type");
+                            }
                             Type::Unknown(0)
                         }
                     } else {
@@ -2435,7 +2436,12 @@ impl Parser {
                 "OpGetFloat" => self.cl("OpSetFloat", &[args[0].clone(), args[1].clone(), code]),
                 "OpGetSingle" => self.cl("OpSetSingle", &[args[0].clone(), args[1].clone(), code]),
                 "OpGetField" => code.clone(),
-                _ => panic!("Unknown {op} for {name} at {}", self.lexer.pos()),
+                _ => {
+                    if !self.first_pass {
+                        diagnostic!(self.lexer, Level::Error, "Unknown {op} for {name}");
+                    }
+                    Value::Null
+                }
             }
         } else if let Value::Var(nr) = to {
             // This variable was created here and thus not yet used.
@@ -3485,8 +3491,11 @@ impl Parser {
                 key_types.push(self.data.attr_type(*el, self.data.attr(*el, k)).clone());
             }
             self.parse_key(code, &t, &key_types);
-        } else if !self.first_pass {
-            panic!("Unknown type to index");
+        } else {
+            // index_type() already emitted a diagnostic; consume the inner expression
+            // so that the caller can still parse the closing `]` without cascading errors.
+            let mut p = Value::Null;
+            self.expression(&mut p);
         }
         elm_type
     }
@@ -3540,7 +3549,7 @@ impl Parser {
                     Box::new(Type::Null),
                 ));
             }
-            panic!("Incorrect iter");
+            unreachable!("Value::Iter with non-Block next field");
         }
         if !self.first_pass && !self.convert(&mut p, &index_t, &I32) {
             diagnostic!(
@@ -3768,16 +3777,20 @@ impl Parser {
                     && let Type::Reference(vd_nr, _) = self.vars.tp(v_nr)
                     && d_nr == vd_nr
                 {
-                    let tp = self.data.def(*d_nr).known_type;
+                    let d_nr = *d_nr;
+                    let into_var = *into;
+                    let tp = self.data.def(d_nr).known_type;
                     *code = self.cl(
                         "OpCopyRecord",
                         &[
                             Value::Var(v_nr),
-                            Value::Var(*into),
+                            Value::Var(into_var),
                             Value::Int(i32::from(tp)),
                         ],
                     );
-                    return t;
+                    // The destination owns its own deep-copied store; no dependency on source.
+                    self.vars.make_independent(into_var);
+                    return Type::Reference(d_nr, Vec::new());
                 }
                 *code = Value::Var(v_nr);
             } else {
@@ -4509,6 +4522,7 @@ impl Parser {
             let ret = &self.data.def(td_nr).returned;
             let w = self.vars.work_refs(ret, &mut self.lexer);
             let tp = i32::from(self.data.def(td_nr).known_type);
+            list.push(v_set(w, Value::Null));
             list.push(self.cl("OpDatabase", &[Value::Var(w), Value::Int(tp)]));
             *code = Value::Var(w);
         }
@@ -4949,13 +4963,10 @@ impl Parser {
                 self.vars.become_argument(*v);
                 dep.push(a as u16);
             }
-            self.data.definitions[self.context as usize].returned = if let Type::Vector(it, _) = ret
-            {
-                Type::Vector(it, dep)
-            } else if let Type::Reference(td, _) = ret {
-                Type::Reference(td, dep)
-            } else {
-                panic!("Unknown return type");
+            self.data.definitions[self.context as usize].returned = match ret {
+                Type::Vector(it, _) => Type::Vector(it, dep),
+                Type::Reference(td, _) => Type::Reference(td, dep),
+                _ => unreachable!("ref_return called with non-Vector/Reference return type"),
             };
         }
     }

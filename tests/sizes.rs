@@ -25,6 +25,23 @@ fn expr_enum() {
 }
 
 #[test]
+fn sizeof_polymorphic_enum_variants_differ() {
+    // P12: parser.rs:5050 sizeof(v) where v has the base polymorphic enum type always
+    // returns the compile-time base-enum size, ignoring the actual runtime variant.
+    // A Small value (u8 field, 1 byte) and a Large value (long field, 8 bytes) must
+    // report different sizes; with the bug both calls return the same base-enum size.
+    code!(
+        "enum Val {
+    Small { n: u8 },
+    Large { n: long }
+}
+fn get_size(v: Val) -> integer { sizeof(v) }"
+    )
+    .expr("if get_size(Small { n: 1 }) == get_size(Large { n: 42l }) { 1 } else { 0 }")
+    .result(Value::Int(0)); // 0 = sizes differ (correct). With P12 bug: 1 (both same base size).
+}
+
+#[test]
 fn expr_struct() {
     code!(
         "struct S {a: integer, b: long, c: En}

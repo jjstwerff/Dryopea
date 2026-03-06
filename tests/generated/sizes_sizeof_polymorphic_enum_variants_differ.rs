@@ -49,10 +49,18 @@ fn init(db: &mut Stores) {
     let vec_vector = db.vector(14);
     db.field(s, "vector", vec_vector);
     db.vector(14);
-    db.vector(0);
-    let s = db.structure("main_vector<integer>", 0); // 19
-    let vec_vector = db.vector(0);
-    db.field(s, "vector", vec_vector);
+    let e = db.enumerate("Val");
+    db.value(e, "Small", u16::MAX);
+    db.value(e, "Large", u16::MAX);
+    let s = db.structure("Small", 1); // 19
+    let byte_enum = db.byte(0, false);
+    db.field(s, "enum", byte_enum);
+    let byte_n = db.byte(0, true);
+    db.field(s, "n", byte_n);
+    let s = db.structure("Large", 2); // 21
+    let byte_enum = db.byte(0, false);
+    db.field(s, "enum", byte_enum);
+    db.field(s, "n", 1);
     db.finish();
 }
 
@@ -715,48 +723,47 @@ fn n_program_directory(stores: &mut Stores, mut var_v: DbRef) -> String {
 }
 
 
-fn n_add(stores: &mut Stores, mut var_r: DbRef, mut var_val: i32) {
-  todo!("RefVar parameters are not yet supported in generated code")
-
-}
-
+fn n_get_size(stores: &mut Stores, mut var_v: DbRef) -> i32 { //block_1: integer
+  ;
+  16_i32
+} /*block_1: integer*/
 
 fn n_test(stores: &mut Stores) { //block_1: void
+  let mut var___ref_2: DbRef = stores.null();
   let mut var___ref_1: DbRef = stores.null();
-  let mut var___work_2: String = "".to_string();
   let mut var___work_1: String = "".to_string();
   ;
-  let mut var_test_value = String::new();
-    var_test_value = { //block_2: text["__work_1"]
-    (var___ref_1) = stores.alloc_record((19_i32) as u16);
-    let mut var_v: DbRef = DbRef {store_nr: (var___ref_1).store_nr, rec: (var___ref_1).rec, pos: (var___ref_1).pos + (0_i32) as u32};
-    {let db = (var___ref_1); let _val = (0_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (0_i32) as u32, _val);};
-    let mut var__elm_1: DbRef = stores.record_new(&(var_v), (18_i32) as u16, (65535_i32) as u16);
-    {let db = (var__elm_1); let _val = (1_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (0_i32) as u32, _val);};
-    stores.record_finish(&(var_v), &(var__elm_1), (18_i32) as u16, (65535_i32) as u16);
-    n_add(stores, todo!(), 2_i32);
-    n_add(stores, todo!(), 3_i32);
-    { //Formatted string_3: text["__work_1"]
-      var___work_1 = "".to_string();
-      (var___work_1).push_str(&stores.rec(&(var_v), (18_i32) as u16));
-      var___work_1
-    } /*Formatted string_3: text["__work_1"]*/.to_string()
-  } /*block_2: text["__work_1"]*/;
+  let mut var_test_value: i32 = { //block_2: integer
+    if (n_get_size(stores, { //Object_3: ref(Small)["__ref_1"]
+      (var___ref_1) = stores.alloc_record((19_i32) as u16);
+      {let db = (var___ref_1); let _val = (1_i32); stores.store_mut(&db).set_byte(db.rec, db.pos + (7_i32) as u32, i32::from((0_i32)), _val);};
+      {let db = (var___ref_1); let _val = i32::from((1_u8)); stores.store_mut(&db).set_byte(db.rec, db.pos + (0_i32) as u32, 0, _val);};
+      var___ref_1
+    } /*Object_3: ref(Small)["__ref_1"]*/)) == (n_get_size(stores, { //Object_4: ref(Large)["__ref_2"]
+      (var___ref_2) = stores.alloc_record((21_i32) as u16);
+      {let db = (var___ref_2); let _val = (42_i64); stores.store_mut(&db).set_long(db.rec, db.pos + (8_i32) as u32, _val);};
+      {let db = (var___ref_2); let _val = i32::from((2_u8)); stores.store_mut(&db).set_byte(db.rec, db.pos + (0_i32) as u32, 0, _val);};
+      var___ref_2
+    } /*Object_4: ref(Large)["__ref_2"]*/)) { //block_5: integer
+      1_i32
+    } /*block_5: integer*/ else { //block_6: integer
+      0_i32
+    } /*block_6: integer*/
+  } /*block_2: integer*/;
   ;
-  if (var_test_value) == ("[1,2,3]".to_string()) {()} else {panic!("{}", ({ //Formatted string_4: text["__work_2"]
-      var___work_2 = "Test failed ".to_string();
-      external::format_text(&mut (var___work_2), &(var_test_value), (0_i32), (-1_i32) as i8, (32_i32) as u8);
-      (var___work_2).push_str(&(" != \"[1,2,3]\"".to_string()));
-      var___work_2
-    } /*Formatted string_4: text["__work_2"]*/));};
+  if (var_test_value) == (0_i32) {()} else {panic!("{}", ({ //Formatted string_7: text["__work_1"]
+      var___work_1 = "Test failed ".to_string();
+      external::format_long(&mut (var___work_1), (external::op_conv_long_from_int((var_test_value))), (10_i32) as u8, (0_i32), (32_i32) as u8, (false), (false));
+      (var___work_1).push_str(&(" != 0".to_string()));
+      var___work_1
+    } /*Formatted string_7: text["__work_1"]*/));};
   {};
   drop((var___ref_1));
-  {};
-  {};
+  drop((var___ref_2));
 } /*block_1: void*/
 
 #[test]
-fn code_mutable_vector() {
+fn code_sizeof_polymorphic_enum_variants_differ() {
     let mut stores = Stores::new();
     init(&mut stores);
     n_test(&mut stores);

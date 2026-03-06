@@ -431,6 +431,13 @@ impl State {
             till += v1.len as i32;
         }
         let mut len = till - from;
+        if len <= 0 {
+            self.put_stack(Str {
+                ptr: v1.ptr,
+                len: 0,
+            });
+            return;
+        }
         if len + from > v1.len as i32 {
             len = v1.len as i32 - from;
         } else if till < v1.len as i32 {
@@ -442,7 +449,6 @@ impl State {
                 len += 1;
             }
         }
-        // TODO allow negative till values or till < from
         unsafe {
             self.put_stack(Str {
                 ptr: v1.ptr.offset(from as isize),
@@ -1510,16 +1516,33 @@ impl State {
                 } else {
                     self.set_var(stack, v, value);
                 }
-            } else if matches!(stack.function.tp(v), Type::Reference(_, _)) && *value == Value::Null
+            } else if matches!(
+                stack.function.tp(v),
+                Type::Reference(_, _) | Type::Enum(_, true, _)
+            ) && *value == Value::Null
             {
-                if let Type::Reference(_, dep) = stack.function.tp(v).clone() {
-                    if dep.is_empty() {
-                        stack.add_op("OpConvRefFromNull", self);
-                    } else {
-                        stack.add_op("OpCreateStack", self);
-                        self.code_add(dep[0]);
-                    }
+                let dep = match stack.function.tp(v).clone() {
+                    Type::Reference(_, d) | Type::Enum(_, _, d) => d,
+                    _ => Vec::new(),
+                };
+                if dep.is_empty() {
+                    stack.add_op("OpConvRefFromNull", self);
+                } else {
+                    stack.add_op("OpCreateStack", self);
+                    self.code_add(dep[0]);
                 }
+            } else if let Type::Reference(d_nr, _) = stack.function.tp(v).clone()
+                && let Value::Call(op_nr, _) = value
+                && stack.data.def(*op_nr).name == "OpCopyRecord"
+            {
+                // First assignment of a Reference variable being copied from another:
+                // allocate a fresh store, initialize the struct record, then copy the data.
+                stack.add_op("OpConvRefFromNull", self);
+                stack.add_op("OpDatabase", self);
+                self.code_add(size_of::<DbRef>() as u16);
+                let tp_nr = stack.data.def(d_nr).known_type;
+                self.code_add(tp_nr);
+                self.generate(value, stack, false);
             } else if matches!(stack.function.tp(v), Type::Vector(_, _)) && *value == Value::Null {
                 if let Type::Vector(elm_tp, dep) = stack.function.tp(v).clone() {
                     if dep.is_empty() {
