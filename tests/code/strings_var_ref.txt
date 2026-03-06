@@ -18,13 +18,13 @@ fn n_text_ref(a:&text) -> text["a"] {#block(1):text["a"]
 byte-code for var_ref:n_text_ref(a: &text[0]) -> text["a"]
    0[12]: return-address
    0[16]: [2] ConstText(_value="12345") -> text var=a[0]:&text
-   7[32]: AppendStackText(var[0], v1: text)
-  10[16]: [3] VarRef(var[0]) -> ref(reference) var=a[0]:&text
-  13[28]: GetStackText(r: ref(reference)) -> text["a"]
-  14[32]: ConstInt(val=0) -> integer
-  19[36]: ConstInt(val=4) -> integer
-  24[40]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
-  25[32]: Return(ret=12, value=16, discard=32) type=text 5
+   8[32]: AppendStackText(var[0], v1: text)
+  11[16]: [3] VarRef(var[0]) -> ref(reference) var=a[0]:&text
+  14[28]: GetStackText(r: ref(reference)) -> text["a"]
+  15[32]: ConstInt(val=0) -> integer
+  20[36]: ConstInt(val=4) -> integer
+  25[40]: GetTextSub(v1: text, from: integer, till: integer) -> text["a"]
+  26[32]: Return(ret=12, value=16, discard=32) type=text 5
 
 fn n_test() {#block(1):void
   __work_2(1):text = "";
@@ -55,23 +55,23 @@ byte-code for var_ref:n_test()
   13[92]: AppendText(var[52], v1: text)
   16[76]: [8] VarText(var[52]) -> text var=test_value[52]:text
   19[92]: ConstText(_value="1234") -> text
-  25[108]: EqText(v1: text, v2: text) -> boolean
-  26[77]: GotoFalseWord(jump=32, if_false: boolean)
-  29[76]: GotoWord(jump=84)
-  32[76]: ClearText(var[4]) var=__work_2[4]:text
-  35[76]: ConstText(_value="Test failed ") -> text
-  49[92]: AppendText(var[4], v1: text)
-  52[76]: VarText(var[52]) -> text var=test_value[52]:text
-  55[92]: ConstInt(val=0) -> integer
-  60[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-  65[76]: ConstText(_value=" != "1234"") -> text
-  77[92]: AppendText(var[4], v1: text)
-  80[76]: VarText(var[4]) -> text var=__work_2[4]:text
-  83[92]: Panic(message: text)
-  84[76]: FreeText(var[52])
-  87[76]: FreeText(var[28])
-  90[76]: FreeText(var[4])
-  93[76]: Return(ret=0, value=0, discard=76)
+  26[108]: EqText(v1: text, v2: text) -> boolean
+  27[77]: GotoFalseWord(jump=33, if_false: boolean)
+  30[76]: GotoWord(jump=87)
+  33[76]: ClearText(var[4]) var=__work_2[4]:text
+  36[76]: ConstText(_value="Test failed ") -> text
+  51[92]: AppendText(var[4], v1: text)
+  54[76]: VarText(var[52]) -> text var=test_value[52]:text
+  57[92]: ConstInt(val=0) -> integer
+  62[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  67[76]: ConstText(_value=" != "1234"") -> text
+  80[92]: AppendText(var[4], v1: text)
+  83[76]: VarText(var[4]) -> text var=__work_2[4]:text
+  86[92]: Panic(message: text)
+  87[76]: FreeText(var[52])
+  90[76]: FreeText(var[28])
+  93[76]: FreeText(var[4])
+  96[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -79,22 +79,22 @@ Execute test:
     2:[56] Text()
     3:[80] CreateStack(var[32]) -> ref(0,1,40)[80]
     6:[92] Call(size=0, fn=n_text_ref)
- 1839:[96] ConstText(_value="12345") -> "12345"[96]
- 1846:[112] AppendStackText(var[80], v1="12345"[96])
- 1849:[96] VarRef(var[80]) -> ref(0,1,40)[96]
- 1852:[108] GetStackText(r=ref(0,1,40)[96]) -> "12345"[96]
- 1853:[112] ConstInt(val=0) -> 0[112]
- 1858:[116] ConstInt(val=4) -> 4[116]
- 1863:[120] GetTextSub(v1="12345"[96], from=0[112], till=4[116]) -> "1234"[96]
- 1864:[112] Return(ret=1883[92], value=16, discard=32) -> "1234"[80]
+ 1864:[96] ConstText(_value="12345") -> "12345"[96]
+ 1872:[112] AppendStackText(var[80], v1="12345"[96])
+ 1875:[96] VarRef(var[80]) -> ref(0,1,40)[96]
+ 1878:[108] GetStackText(r=ref(0,1,40)[96]) -> "12345"[96]
+ 1879:[112] ConstInt(val=0) -> 0[112]
+ 1884:[116] ConstInt(val=4) -> 4[116]
+ 1889:[120] GetTextSub(v1="12345"[96], from=0[112], till=4[116]) -> "1234"[96]
+ 1890:[112] Return(ret=1909[92], value=16, discard=32) -> "1234"[80]
    13:[96] AppendText(var[56], v1="1234"[80])
    16:[80] VarText(var[56]) -> "1234"[80]
    19:[96] ConstText(_value="1234") -> "1234"[96]
-   25:[112] EqText(v1="1234"[80], v2="1234"[96]) -> true[80]
-   26:[81] GotoFalseWord(jump=32, if_false=true[80])
-   29:[80] GotoWord(jump=84)
-   84:[80] FreeText(var[56])
-   87:[80] FreeText(var[32])
-   90:[80] FreeText(var[8])
-   93:[80] Return(ret=4294967295[4], value=0, discard=76)
+   26:[112] EqText(v1="1234"[80], v2="1234"[96]) -> true[80]
+   27:[81] GotoFalseWord(jump=33, if_false=true[80])
+   30:[80] GotoWord(jump=87)
+   87:[80] FreeText(var[56])
+   90:[80] FreeText(var[32])
+   93:[80] FreeText(var[8])
+   96:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

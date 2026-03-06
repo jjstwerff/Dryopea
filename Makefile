@@ -20,13 +20,19 @@ test: clippy
 	RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
 	for f in tests/generated/*.rs; do \
 		name=$$(basename $$f .rs); \
-		if [ "$$name" != "default" ] && [ ! -f "tests/$$name.rs" ]; then \
+		if [ "$$name" != "default" ] && [ ! -f "tests/$$name.rs" ] && [ ! -f "src/$$name.rs" ]; then \
 			printf '\n[[test]]\nname = "%s"\npath = "%s"\n' "$$name" "$$f" >> Cargo.toml; \
 		fi; \
 	done
 	RUST_BACKTRACE=1 cargo test --tests -- --nocapture --test-threads=1 >>result.txt 2>&1
 	sed -i '/^# BEGIN_GENERATED_TESTS$$/,$$d' Cargo.toml
 	echo '# BEGIN_GENERATED_TESTS' >> Cargo.toml
+	cargo run --bin gendoc
+
+tst: clippy
+	rm tests/generated/* -f
+	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f
+	RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
 	cargo run --bin gendoc
 
 quick:

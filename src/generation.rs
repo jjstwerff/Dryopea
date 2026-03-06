@@ -89,8 +89,13 @@ use external::*;
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
 #![allow(unused_mut)]
+#![allow(non_snake_case)]
+#![allow(dead_code)]
+#![allow(redundant_semicolons)]
 #![allow(clippy::unnecessary_to_owned)]
 #![allow(clippy::double_parens)]
+#![allow(clippy::drop_copy)]
+#![allow(clippy::bool_comparison)]
 
 extern crate dryopea;"
         )?;
@@ -310,7 +315,10 @@ extern crate dryopea;"
                 def.name
             );
             writeln!(w, "{{")?;
-            writeln!(w, "  todo!(\"RefVar parameters are not yet supported in generated code\")")?;
+            writeln!(
+                w,
+                "  todo!(\"RefVar parameters are not yet supported in generated code\")"
+            )?;
             writeln!(w, "\n}}")?;
         } else if let Value::Block(_) = def.code {
             self.output_code_inner(w, &def.code, def_nr, 0, &mut declared)?;
@@ -697,6 +705,7 @@ extern crate dryopea;"
     ///    `let _ret` before those operators run, then yielded at the end.
     /// 3. **String conversion** — a text-typed block may receive a `Str` (database slice) from
     ///    a field read; `.to_string()` is appended to convert it to an owned `String`.
+    #[allow(clippy::cognitive_complexity)]
     fn output_block(
         &self,
         w: &mut dyn Write,
@@ -727,6 +736,10 @@ extern crate dryopea;"
         let needs_todo = !is_void_block && return_idx.is_none();
         let mut pre_counter = 0usize;
         for (vnr, v) in bl.operators.iter().enumerate() {
+            // Line markers are debug annotations only; skip entirely.
+            if matches!(v, Value::Line(_)) {
+                continue;
+            }
             // Collect pre-evaluations needed for this operator (to avoid double
             // mutable borrow of stores when user-defined functions are nested).
             let pre_evals =

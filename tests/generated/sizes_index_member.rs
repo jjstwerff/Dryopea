@@ -3,8 +3,13 @@
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
 #![allow(unused_mut)]
+#![allow(non_snake_case)]
+#![allow(dead_code)]
+#![allow(redundant_semicolons)]
 #![allow(clippy::unnecessary_to_owned)]
 #![allow(clippy::double_parens)]
+#![allow(clippy::drop_copy)]
+#![allow(clippy::bool_comparison)]
 
 extern crate dryopea;
 use dryopea::database::Stores;
@@ -60,82 +65,66 @@ fn init(db: &mut Stores) {
 }
 
 fn t_7integer_abs(stores: &mut Stores, mut var_both: i32) -> i32 { //block_1: integer
-  ;
   external::op_abs_int((var_both))
 } /*block_1: integer*/
 
 fn t_4long_abs(stores: &mut Stores, mut var_both: i64) -> i64 { //block_1: long
-  ;
   external::op_abs_long((var_both))
 } /*block_1: long*/
 
 fn t_6single_abs(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).abs()
 } /*block_1: single*/
 
 fn t_6single_cos(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).cos()
 } /*block_1: single*/
 
 fn t_6single_sin(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).sin()
 } /*block_1: single*/
 
 fn t_6single_tan(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).tan()
 } /*block_1: single*/
 
 fn t_6single_acos(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).acos()
 } /*block_1: single*/
 
 fn t_6single_asin(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).asin()
 } /*block_1: single*/
 
 fn t_6single_atan(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).atan()
 } /*block_1: single*/
 
 fn t_6single_atan2(stores: &mut Stores, mut var_both: f32, mut var_v2: f32) -> f32 { //block_1: single
-  ;
   (var_both).atan2((var_v2))
 } /*block_1: single*/
 
 fn t_6single_ceil(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).ceil()
 } /*block_1: single*/
 
 fn t_6single_floor(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).floor()
 } /*block_1: single*/
 
 fn t_6single_round(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).round()
 } /*block_1: single*/
 
 fn t_6single_sqrt(stores: &mut Stores, mut var_both: f32) -> f32 { //block_1: single
-  ;
   (var_both).sqrt()
 } /*block_1: single*/
 
 fn t_6single_log(stores: &mut Stores, mut var_both: f32, mut var_v2: f32) -> f32 { //block_1: single
-  ;
   (var_both).log((var_v2))
 } /*block_1: single*/
 
 fn t_6single_pow(stores: &mut Stores, mut var_both: f32, mut var_v2: f32) -> f32 { //block_1: single
-  ;
   (var_both).powf((var_v2))
 } /*block_1: single*/
 
@@ -145,72 +134,58 @@ fn OpFormatStackSingle(stores: &mut Stores, mut var_pos: u16, mut var_val: f32, 
 
 
 fn t_5float_abs(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).abs()
 } /*block_1: float*/
 
 fn t_5float_cos(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).cos()
 } /*block_1: float*/
 
 fn t_5float_sin(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).sin()
 } /*block_1: float*/
 
 fn t_5float_tan(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).tan()
 } /*block_1: float*/
 
 fn t_5float_acos(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).acos()
 } /*block_1: float*/
 
 fn t_5float_asin(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).asin()
 } /*block_1: float*/
 
 fn t_5float_atan(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).atan()
 } /*block_1: float*/
 
 fn t_5float_atan2(stores: &mut Stores, mut var_both: f64, mut var_v2: f64) -> f64 { //block_1: float
-  ;
   (var_both).atan2((var_v2))
 } /*block_1: float*/
 
 fn t_5float_ceil(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).ceil()
 } /*block_1: float*/
 
 fn t_5float_floor(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).floor()
 } /*block_1: float*/
 
 fn t_5float_round(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).round()
 } /*block_1: float*/
 
 fn t_5float_sqrt(stores: &mut Stores, mut var_both: f64) -> f64 { //block_1: float
-  ;
   (var_both).sqrt()
 } /*block_1: float*/
 
 fn t_5float_log(stores: &mut Stores, mut var_both: f64, mut var_v2: f64) -> f64 { //block_1: float
-  ;
   (var_both).log((var_v2))
 } /*block_1: float*/
 
 fn t_5float_pow(stores: &mut Stores, mut var_both: f64, mut var_v2: f64) -> f64 { //block_1: float
-  ;
   (var_both).powf((var_v2))
 } /*block_1: float*/
 
@@ -225,12 +200,10 @@ fn OpArgText(stores: &mut Stores, mut var_pos: u16) -> String {
 
 
 fn t_4text_len(stores: &mut Stores, mut var_both: String) -> i32 { //block_1: integer
-  ;
   (var_both).len() as i32
 } /*block_1: integer*/
 
 fn t_9character_len(stores: &mut Stores, mut var_both: char) -> i32 { //block_1: integer
-  ;
   ((var_both).len_utf8() as i32)
 } /*block_1: integer*/
 
@@ -249,8 +222,12 @@ fn OpFormatStackDatabase(stores: &mut Stores, mut var_pos: u16, mut var_val: DbR
 }
 
 
+fn OpSizeofRef(stores: &mut Stores, mut var_val: DbRef) -> i32 {
+  todo!()
+}
+
+
 fn t_6vector_len(stores: &mut Stores, mut var_both: DbRef) -> i32 { //block_1: integer
-  ;
   vector::length_vector(&(var_both), &stores.allocations) as i32
 } /*block_1: integer*/
 
@@ -290,13 +267,11 @@ fn n_panic(stores: &mut Stores, mut var_message: String) {
 
 
 fn n_print(stores: &mut Stores, mut var_v1: String) { //block_1: void
-  ;
   print!("{}", (var_v1));;
 } /*block_1: void*/
 
 fn n_println(stores: &mut Stores, mut var_v1: String) { //block_1: void
   let mut var___work_1: String = "".to_string();
-  ;
   let _pre0 = { //Formatted string_2: text["__work_1"]
     var___work_1 = "".to_string();
     external::format_text(&mut (var___work_1), &(var_v1), (0_i32), (-1_i32) as i8, (32_i32) as u8);
@@ -328,18 +303,14 @@ fn OpStaticCall(stores: &mut Stores, mut var_call: u16) {
 
 
 fn t_5Pixel_value(stores: &mut Stores, mut var_self: DbRef) -> i32 { //block_1: integer
-  ;
   external::op_add_int((external::op_add_int((external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (0_i32) as u32, i32::from((0_i32)))}), (65536_i32))), (external::op_mul_int(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (1_i32) as u32, i32::from((0_i32)))}), (256_i32))))), ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (2_i32) as u32, i32::from((0_i32)))}))
 } /*block_1: integer*/
 
 fn t_4File_little_endian(stores: &mut Stores, mut var_self: DbRef) { //block_1: void
   let mut var___work_1: String = "".to_string();
-  ;
-  if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) }) { //block_2: void
-    ;
-    {let db = (var_self); let _val = i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})); stores.store_mut(&db).set_byte(db.rec, db.pos + (16_i32) as u32, 0, _val);};
+  if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (1_u8) == 255 { i32::MIN } else { i32::from((1_u8)) }) { //block_2: void
+    {let db = (var_self); let _val = i32::from((2_u8)); stores.store_mut(&db).set_byte(db.rec, db.pos + (16_i32) as u32, 0, _val);};
   } /*block_2: void*/ else { //block_3: void
-    ;
     let _pre0 = { //Formatted string_4: text["__work_1"]
       var___work_1 = "Cannot set '".to_string();
       external::format_text(&mut (var___work_1), &({let db = (var_self); let store = stores.store(&db); Str::new(store.get_str(store.get_int(db.rec, db.pos + (8_i32) as u32) as u32))}), (0_i32), (-1_i32) as i8, (32_i32) as u8);
@@ -353,12 +324,9 @@ fn t_4File_little_endian(stores: &mut Stores, mut var_self: DbRef) { //block_1: 
 
 fn t_4File_big_endian(stores: &mut Stores, mut var_self: DbRef) { //block_1: void
   let mut var___work_1: String = "".to_string();
-  ;
-  if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) }) { //block_2: void
-    ;
-    {let db = (var_self); let _val = i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})); stores.store_mut(&db).set_byte(db.rec, db.pos + (16_i32) as u32, 0, _val);};
+  if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (1_u8) == 255 { i32::MIN } else { i32::from((1_u8)) }) { //block_2: void
+    {let db = (var_self); let _val = i32::from((3_u8)); stores.store_mut(&db).set_byte(db.rec, db.pos + (16_i32) as u32, 0, _val);};
   } /*block_2: void*/ else { //block_3: void
-    ;
     let _pre0 = { //Formatted string_4: text["__work_1"]
       var___work_1 = "Cannot set '".to_string();
       external::format_text(&mut (var___work_1), &({let db = (var_self); let store = stores.store(&db); Str::new(store.get_str(store.get_int(db.rec, db.pos + (8_i32) as u32) as u32))}), (0_i32), (-1_i32) as i8, (32_i32) as u8);
@@ -372,12 +340,9 @@ fn t_4File_big_endian(stores: &mut Stores, mut var_self: DbRef) { //block_1: voi
 
 fn t_4File_write_bin(stores: &mut Stores, mut var_self: DbRef, mut var_v: DbRef) { //block_1: void
   let mut var___work_1: String = "".to_string();
-  ;
-  if if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) }) {true} else {(if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) })} { //block_2: void
-    ;
+  if if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (3_u8) == 255 { i32::MIN } else { i32::from((3_u8)) }) {true} else {(if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (2_u8) == 255 { i32::MIN } else { i32::from((2_u8)) })} { //block_2: void
     todo!();
   } /*block_2: void*/ else { //block_3: void
-    ;
     let _pre0 = { //Formatted string_4: text["__work_1"]
       var___work_1 = "Set file '".to_string();
       external::format_text(&mut (var___work_1), &({let db = (var_self); let store = stores.store(&db); Str::new(store.get_str(store.get_int(db.rec, db.pos + (8_i32) as u32) as u32))}), (0_i32), (-1_i32) as i8, (32_i32) as u8);
@@ -391,12 +356,9 @@ fn t_4File_write_bin(stores: &mut Stores, mut var_self: DbRef, mut var_v: DbRef)
 
 fn t_4File_read(stores: &mut Stores, mut var_self: DbRef, mut var_v: DbRef) { //block_1: void
   let mut var___work_1: String = "".to_string();
-  ;
-  if if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) }) {true} else {(if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) })} { //block_2: void
-    ;
+  if if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (3_u8) == 255 { i32::MIN } else { i32::from((3_u8)) }) {true} else {(if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (2_u8) == 255 { i32::MIN } else { i32::from((2_u8)) })} { //block_2: void
     todo!();
   } /*block_2: void*/ else { //block_3: void
-    ;
     let _pre0 = { //Formatted string_4: text["__work_1"]
       var___work_1 = "Set file '".to_string();
       external::format_text(&mut (var___work_1), &({let db = (var_self); let store = stores.store(&db); Str::new(store.get_str(store.get_int(db.rec, db.pos + (8_i32) as u32) as u32))}), (0_i32), (-1_i32) as i8, (32_i32) as u8);
@@ -410,12 +372,9 @@ fn t_4File_read(stores: &mut Stores, mut var_self: DbRef, mut var_v: DbRef) { //
 
 fn t_4File_seek(stores: &mut Stores, mut var_self: DbRef, mut var_pos: i64) { //block_1: void
   let mut var___work_1: String = "".to_string();
-  ;
-  if if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) }) {true} else {(if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) })} { //block_2: void
-    ;
+  if if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (3_u8) == 255 { i32::MIN } else { i32::from((3_u8)) }) {true} else {(if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (2_u8) == 255 { i32::MIN } else { i32::from((2_u8)) })} { //block_2: void
     todo!();
   } /*block_2: void*/ else { //block_3: void
-    ;
     let _pre0 = { //Formatted string_4: text["__work_1"]
       var___work_1 = "Set file '".to_string();
       external::format_text(&mut (var___work_1), &({let db = (var_self); let store = stores.store(&db); Str::new(store.get_str(store.get_int(db.rec, db.pos + (8_i32) as u32) as u32))}), (0_i32), (-1_i32) as i8, (32_i32) as u8);
@@ -428,22 +387,18 @@ fn t_4File_seek(stores: &mut Stores, mut var_self: DbRef, mut var_pos: i64) { //
 } /*block_1: void*/
 
 fn t_4File_content(stores: &mut Stores, mut var_self: DbRef, mut var_result: DbRef) -> String {
-  todo!()
+  todo!("RefVar parameters are not yet supported in generated code")
 
 }
 
 
 fn t_4File_lines(stores: &mut Stores, mut var_self: DbRef, mut var_result: DbRef) -> DbRef { //block_1: vector<text>["result"]
   let mut var___work_1: String = "".to_string();
-  ;
   vector::clear_vector(&(var_result), &mut stores.allocations);;
-  ;
   let mut var_c: String = t_4File_content(stores, var_self, { //default ref_2: ref(reference)["__work_1"]
     todo!()
   } /*default ref_2: ref(reference)["__work_1"]*/).to_string();
-  ;
   let mut var_p: i32 = 0_i32;
-  ;
   { //For block_3: void
     let mut var_ch__index: i32 = 0_i32;
     loop { //For loop_4
@@ -456,38 +411,29 @@ fn t_4File_lines(stores: &mut Stores, mut var_self: DbRef, mut var_result: DbRef
         break;
       } /*break_6: void*/ else {()};
       { //block_7: void
-        ;
         if (if (var_ch) == char::from(0) { i32::MIN } else { (var_ch) as i32 }) == (if (char::from_u32(10_u32).unwrap_or('\0')) == char::from(0) { i32::MIN } else { (char::from_u32(10_u32).unwrap_or('\0')) as i32 }) { //block_8: void
-          ;
           let mut var__elm_2: DbRef = stores.record_new(&(var_result), (7_i32) as u16, (65535_i32) as u16);
           {let db = (var__elm_2); let s_val = (external::sub_text(&(var_c), (var_p), (external::op_min_int((var_ch__index), (1_i32)))).to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + (0_i32) as u32, s_pos as i32);};
           stores.record_finish(&(var_result), &(var__elm_2), (7_i32) as u16, (65535_i32) as u16);
-          ;
           var_p = var_ch__index;
         } /*block_8: void*/ else {()};
       } /*block_7: void*/;
     } /*For loop_4*/;
   } /*For block_3: void*/;
-  ;
   if (0_i32) < (var_p) { //block_9: void
-    ;
     let mut var__elm_3: DbRef = stores.record_new(&(var_result), (7_i32) as u16, (65535_i32) as u16);
     let _pre0 = external::sub_text(&(var_c), (var_p), (t_4text_len(stores, var_c.clone()))).to_string();
     {let db = (var__elm_3); let s_val = (_pre0).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + (0_i32) as u32, s_pos as i32);};
     stores.record_finish(&(var_result), &(var__elm_3), (7_i32) as u16, (65535_i32) as u16);
   } /*block_9: void*/ else {()};
-  ;
   {};
   {};
   var_result
 } /*block_1: vector<text>["result"]*/
 
 fn t_4text_split(stores: &mut Stores, mut var_self: String, mut var_separator: char, mut var_result: DbRef) -> DbRef { //block_1: vector<text>["result"]
-  ;
   vector::clear_vector(&(var_result), &mut stores.allocations);;
-  ;
   let mut var_p: i32 = 0_i32;
-  ;
   { //For block_2: void
     let mut var_c__index: i32 = 0_i32;
     loop { //For loop_3
@@ -500,52 +446,39 @@ fn t_4text_split(stores: &mut Stores, mut var_self: String, mut var_separator: c
         break;
       } /*break_5: void*/ else {()};
       { //block_6: void
-        ;
         if (if (var_c) == char::from(0) { i32::MIN } else { (var_c) as i32 }) == (if (var_separator) == char::from(0) { i32::MIN } else { (var_separator) as i32 }) { //block_7: void
-          ;
           let mut var__elm_2: DbRef = stores.record_new(&(var_result), (7_i32) as u16, (65535_i32) as u16);
           {let db = (var__elm_2); let s_val = (external::sub_text(&(var_self), (var_p), (external::op_min_int((var_c__index), (1_i32)))).to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + (0_i32) as u32, s_pos as i32);};
           stores.record_finish(&(var_result), &(var__elm_2), (7_i32) as u16, (65535_i32) as u16);
-          ;
           var_p = var_c__index;
         } /*block_7: void*/ else {()};
       } /*block_6: void*/;
     } /*For loop_3*/;
   } /*For block_2: void*/;
-  ;
   if (0_i32) < (var_p) { //block_8: void
-    ;
     let mut var__elm_3: DbRef = stores.record_new(&(var_result), (7_i32) as u16, (65535_i32) as u16);
     let _pre0 = external::sub_text(&(var_self), (var_p), (t_4text_len(stores, var_self.clone()))).to_string();
     {let db = (var__elm_3); let s_val = (_pre0).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + (0_i32) as u32, s_pos as i32);};
     stores.record_finish(&(var_result), &(var__elm_3), (7_i32) as u16, (65535_i32) as u16);
   } /*block_8: void*/ else {()};
-  ;
   var_result
 } /*block_1: vector<text>["result"]*/
 
 fn n_file(stores: &mut Stores, mut var_path: String, mut var_result: DbRef) -> DbRef { //block_1: ref(File)["result"]
-  ;
   (var_result) = stores.alloc_record((14_i32) as u16);
   {let db = (var_result); let s_val = (var_path).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + (8_i32) as u32, s_pos as i32);};
   {let db = (var_result); let _val = (i32::MIN); stores.store_mut(&db).set_int(db.rec, db.pos + (12_i32) as u32, _val);};
   {let db = (var_result); let _val = (0_i64); stores.store_mut(&db).set_long(db.rec, db.pos + (0_i32) as u32, _val);};
   {let db = (var_result); let _val = i32::from((0_u8)); stores.store_mut(&db).set_byte(db.rec, db.pos + (16_i32) as u32, 0, _val);};
-  ;
   stores.get_file(&(var_result));
-  ;
   var_result
 } /*block_1: ref(File)["result"]*/
 
 fn t_4File_files(stores: &mut Stores, mut var_self: DbRef, mut var_result: DbRef) -> DbRef { //block_1: vector<ref(File)>["result"]
-  ;
   vector::clear_vector(&(var_result), &mut stores.allocations);;
-  ;
-  if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) }) { //block_2: void
-    ;
+  if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (4_u8) == 255 { i32::MIN } else { i32::from((4_u8)) }) { //block_2: void
     stores.get_dir(&({let db = (var_self); let store = stores.store(&db); Str::new(store.get_str(store.get_int(db.rec, db.pos + (8_i32) as u32) as u32))}), &(var_result));
   } /*block_2: void*/ else {()};
-  ;
   var_result
 } /*block_1: vector<ref(File)>["result"]*/
 
@@ -555,20 +488,15 @@ fn t_4File_write(stores: &mut Stores, mut var_self: DbRef, mut var_v: String) {
 
 
 fn t_4File_png(stores: &mut Stores, mut var_self: DbRef, mut var_result: DbRef) -> DbRef { //block_1: ref(Image)["result"]
-  ;
-  if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (255u8) == 255 { i32::MIN } else { i32::from((255u8)) }) { //block_2: ref(Image)["result"]
-    ;
+  if (if ({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8}) == 255 { i32::MIN } else { i32::from(({let db = (var_self); stores.store(&db).get_byte(db.rec, db.pos + (16_i32) as u32, 0) as u8})) }) == (if (1_u8) == 255 { i32::MIN } else { i32::from((1_u8)) }) { //block_2: ref(Image)["result"]
     (var_result) = stores.alloc_record((12_i32) as u16);
     {let db = (var_result); let s_val = ("".to_string()).to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + (0_i32) as u32, s_pos as i32);};
     {let db = (var_result); let _val = (0_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (4_i32) as u32, _val);};
     {let db = (var_result); let _val = (0_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (8_i32) as u32, _val);};
     {let db = (var_result); let _val = (0_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (12_i32) as u32, _val);};
-    ;
     stores.get_png(&({let db = (var_self); let store = stores.store(&db); Str::new(store.get_str(store.get_int(db.rec, db.pos + (8_i32) as u32) as u32))}), &(var_result));
-    ;
     var_result
   } /*block_2: ref(Image)["result"]*/ else { //block_3: ref(Image)["result"]
-    ;
     stores.null()
   } /*block_3: ref(Image)["result"]*/
 } /*block_1: ref(Image)["result"]*/
@@ -720,16 +648,14 @@ fn n_program_directory(stores: &mut Stores, mut var_v: DbRef) -> String {
 
 fn n_test(stores: &mut Stores) { //block_1: void
   let mut var___work_1: String = "".to_string();
-  ;
   let mut var_test_value: i32 = { //block_2: integer
     let mut var_m: DbRef = stores.null();
     (var_m) = stores.alloc_record((19_i32) as u16);
     {let db = (var_m); let _val = (0_i32); stores.store_mut(&db).set_int(db.rec, db.pos + (0_i32) as u32, _val);};
-    let _ret = external::op_add_int((25_i32), (external::op_mul_int((100_i32), (4_i32))));
+    let _ret = external::op_add_int((25_i32), (external::op_mul_int((100_i32), (OpSizeofRef(stores, var_m)))));
     drop((var_m));
     _ret
   } /*block_2: integer*/;
-  ;
   if (var_test_value) == (425_i32) {()} else {panic!("{}", ({ //Formatted string_3: text["__work_1"]
       var___work_1 = "Test failed ".to_string();
       external::format_long(&mut (var___work_1), (external::op_conv_long_from_int((var_test_value))), (10_i32) as u8, (0_i32), (32_i32) as u8, (false), (false));

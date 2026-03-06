@@ -30,16 +30,16 @@ byte-code for call_text_null:n_routine(a: integer[0], __work_1: &text[4]) -> tex
   13[36]: Return(ret=16, value=16, discard=36)
   19[36]: FreeStack(value=0, discard=16)
   23[20]: ConstText(_value="#") -> text var=__work_1[4]:&text
-  26[36]: AppendStackText(var[4], v1: text)
-  29[20]: VarInt(var[0]) -> integer var=a[0]:integer
-  32[24]: ConvLongFromInt(v1: integer) -> long
-  33[28]: ConstInt(val=0) -> integer
-  38[32]: FormatStackLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
-  45[20]: ConstText(_value="#") -> text
-  48[36]: AppendStackText(var[4], v1: text)
-  51[20]: VarRef(var[4]) -> ref(reference) var=__work_1[4]:&text
-  54[32]: GetStackText(r: ref(reference)) -> text["a"]
-  55[36]: Return(ret=16, value=16, discard=36) type=text 5
+  27[36]: AppendStackText(var[4], v1: text)
+  30[20]: VarInt(var[0]) -> integer var=a[0]:integer
+  33[24]: ConvLongFromInt(v1: integer) -> long
+  34[28]: ConstInt(val=0) -> integer
+  39[32]: FormatStackLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  46[20]: ConstText(_value="#") -> text
+  50[36]: AppendStackText(var[4], v1: text)
+  53[20]: VarRef(var[4]) -> ref(reference) var=__work_1[4]:&text
+  56[32]: GetStackText(r: ref(reference)) -> text["a"]
+  57[36]: Return(ret=16, value=16, discard=36) type=text 5
 
 fn n_test() {#block(1):void
   __work_2(1):text = "";
@@ -73,21 +73,21 @@ byte-code for call_text_null:n_test()
   24[92]: ConvTextFromNull() -> text
   25[108]: EqText(v1: text, v2: text) -> boolean
   26[77]: GotoFalseWord(jump=32, if_false: boolean)
-  29[76]: GotoWord(jump=82)
+  29[76]: GotoWord(jump=84)
   32[76]: ClearText(var[4]) var=__work_2[4]:text
   35[76]: ConstText(_value="Test failed ") -> text
-  49[92]: AppendText(var[4], v1: text)
-  52[76]: VarText(var[52]) -> text var=test_value[52]:text
-  55[92]: ConstInt(val=0) -> integer
-  60[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-  65[76]: ConstText(_value=" != null") -> text
-  75[92]: AppendText(var[4], v1: text)
-  78[76]: VarText(var[4]) -> text var=__work_2[4]:text
-  81[92]: Panic(message: text)
-  82[76]: FreeText(var[52])
-  85[76]: FreeText(var[28])
-  88[76]: FreeText(var[4])
-  91[76]: Return(ret=0, value=0, discard=76)
+  50[92]: AppendText(var[4], v1: text)
+  53[76]: VarText(var[52]) -> text var=test_value[52]:text
+  56[92]: ConstInt(val=0) -> integer
+  61[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  66[76]: ConstText(_value=" != null") -> text
+  77[92]: AppendText(var[4], v1: text)
+  80[76]: VarText(var[4]) -> text var=__work_2[4]:text
+  83[92]: Panic(message: text)
+  84[76]: FreeText(var[52])
+  87[76]: FreeText(var[28])
+  90[76]: FreeText(var[4])
+  93[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -96,20 +96,20 @@ Execute test:
     3:[80] ConstInt(val=5) -> 5[80]
     8:[84] CreateStack(var[32]) -> ref(0,1,40)[84]
    11:[96] Call(size=0, fn=n_routine)
- 1839:[100] ConstInt(val=2) -> 2[100]
- 1844:[104] VarInt(var[80]) -> 5[104]
- 1847:[108] LtInt(v1=2[100], v2=5[104]) -> true[100]
- 1848:[101] GotoFalseWord(jump=1862, if_false=true[100])
- 1851:[100] ConvTextFromNull() -> null[100]
- 1852:[116] Return(ret=1918[96], value=16, discard=36)
+ 1864:[100] ConstInt(val=2) -> 2[100]
+ 1869:[104] VarInt(var[80]) -> 5[104]
+ 1872:[108] LtInt(v1=2[100], v2=5[104]) -> true[100]
+ 1873:[101] GotoFalseWord(jump=1887, if_false=true[100])
+ 1876:[100] ConvTextFromNull() -> null[100]
+ 1877:[116] Return(ret=1945[96], value=16, discard=36)
    18:[96] AppendText(var[56], v1=null[80])
    21:[80] VarText(var[56]) -> null[80]
    24:[96] ConvTextFromNull() -> null[96]
    25:[112] EqText(v1=null[80], v2=null[96]) -> true[80]
    26:[81] GotoFalseWord(jump=32, if_false=true[80])
-   29:[80] GotoWord(jump=82)
-   82:[80] FreeText(var[56])
-   85:[80] FreeText(var[32])
-   88:[80] FreeText(var[8])
-   91:[80] Return(ret=4294967295[4], value=0, discard=76)
+   29:[80] GotoWord(jump=84)
+   84:[80] FreeText(var[56])
+   87:[80] FreeText(var[32])
+   90:[80] FreeText(var[8])
+   93:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

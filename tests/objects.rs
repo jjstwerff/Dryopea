@@ -212,11 +212,11 @@ fn scope_text() {
 fn files() {
     expr!("\"{file(\"example\").files()}\"").result(Value::str(
         "[\
-{path:\"example/config\",size:4096,dir:true},\
-{path:\"example/map.png\",size:3406,dir:false},\
-{path:\"example/map.xcf\",size:7817,dir:false},\
-{path:\"example/show.lav\",size:371,dir:false},\
-{path:\"example/todo.json\",size:1461,dir:false}]",
+{path:\"example/config\",size:4096,format:Directory},\
+{path:\"example/map.png\",size:3406,format:TextFile},\
+{path:\"example/map.xcf\",size:7817,format:TextFile},\
+{path:\"example/show.lav\",size:371,format:TextFile},\
+{path:\"example/todo.json\",size:1461,format:TextFile}]",
     ));
 }
 

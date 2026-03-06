@@ -16,12 +16,12 @@ fn n_append(ch:character, s:&text) -> text["s"] {#block(1):text["s"]
 byte-code for append_str:n_append(ch: character[0], s: &text[4]) -> text["s"]
    0[16]: return-address
    0[20]: [1] ConstText(_value="abc_de") -> text var=s[4]:&text
-   8[36]: AppendStackText(var[4], v1: text)
-  11[20]: VarCharacter(var[0]) -> character var=ch[0]:character
-  14[24]: AppendStackCharacter(var[4], v1: character)
-  17[20]: VarRef(var[4]) -> ref(reference) var=s[4]:&text
-  20[32]: GetStackText(r: ref(reference)) -> text["ch"]
-  21[36]: Return(ret=16, value=16, discard=36) type=text 5
+   9[36]: AppendStackText(var[4], v1: text)
+  12[20]: VarCharacter(var[0]) -> character var=ch[0]:character
+  15[24]: AppendStackCharacter(var[4], v1: character)
+  18[20]: VarRef(var[4]) -> ref(reference) var=s[4]:&text
+  21[32]: GetStackText(r: ref(reference)) -> text["ch"]
+  22[36]: Return(ret=16, value=16, discard=36) type=text 5
 
 fn n_test() {#block(1):void
   __work_2(1):text = "";
@@ -53,23 +53,23 @@ byte-code for append_str:n_test()
   18[92]: AppendText(var[52], v1: text)
   21[76]: [5] VarText(var[52]) -> text var=test_value[52]:text
   24[92]: ConstText(_value="abc_dex") -> text
-  33[108]: EqText(v1: text, v2: text) -> boolean
-  34[77]: GotoFalseWord(jump=40, if_false: boolean)
-  37[76]: GotoWord(jump=95)
-  40[76]: ClearText(var[4]) var=__work_2[4]:text
-  43[76]: ConstText(_value="Test failed ") -> text
-  57[92]: AppendText(var[4], v1: text)
-  60[76]: VarText(var[52]) -> text var=test_value[52]:text
-  63[92]: ConstInt(val=0) -> integer
-  68[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-  73[76]: ConstText(_value=" != "abc_dex"") -> text
-  88[92]: AppendText(var[4], v1: text)
-  91[76]: VarText(var[4]) -> text var=__work_2[4]:text
-  94[92]: Panic(message: text)
-  95[76]: FreeText(var[52])
-  98[76]: FreeText(var[28])
- 101[76]: FreeText(var[4])
- 104[76]: Return(ret=0, value=0, discard=76)
+  34[108]: EqText(v1: text, v2: text) -> boolean
+  35[77]: GotoFalseWord(jump=41, if_false: boolean)
+  38[76]: GotoWord(jump=98)
+  41[76]: ClearText(var[4]) var=__work_2[4]:text
+  44[76]: ConstText(_value="Test failed ") -> text
+  59[92]: AppendText(var[4], v1: text)
+  62[76]: VarText(var[52]) -> text var=test_value[52]:text
+  65[92]: ConstInt(val=0) -> integer
+  70[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  75[76]: ConstText(_value=" != "abc_dex"") -> text
+  91[92]: AppendText(var[4], v1: text)
+  94[76]: VarText(var[4]) -> text var=__work_2[4]:text
+  97[92]: Panic(message: text)
+  98[76]: FreeText(var[52])
+ 101[76]: FreeText(var[28])
+ 104[76]: FreeText(var[4])
+ 107[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -78,21 +78,21 @@ Execute test:
     3:[80] ConstInt(val=120) -> 120[80]
     8:[84] CreateStack(var[32]) -> ref(0,1,40)[84]
    11:[96] Call(size=0, fn=n_append)
- 1839:[100] ConstText(_value="abc_de") -> "abc_de"[100]
- 1847:[116] AppendStackText(var[84], v1="abc_de"[100])
- 1850:[100] VarCharacter(var[80]) -> 'x'[100]
- 1853:[104] AppendStackCharacter(var[84], v1='x'[100])
- 1856:[100] VarRef(var[84]) -> ref(0,1,40)[100]
- 1859:[112] GetStackText(r=ref(0,1,40)[100]) -> "abc_dex"[100]
- 1860:[116] Return(ret=1884[96], value=16, discard=36) -> "abc_dex"[80]
+ 1864:[100] ConstText(_value="abc_de") -> "abc_de"[100]
+ 1873:[116] AppendStackText(var[84], v1="abc_de"[100])
+ 1876:[100] VarCharacter(var[80]) -> 'x'[100]
+ 1879:[104] AppendStackCharacter(var[84], v1='x'[100])
+ 1882:[100] VarRef(var[84]) -> ref(0,1,40)[100]
+ 1885:[112] GetStackText(r=ref(0,1,40)[100]) -> "abc_dex"[100]
+ 1886:[116] Return(ret=1910[96], value=16, discard=36) -> "abc_dex"[80]
    18:[96] AppendText(var[56], v1="abc_dex"[80])
    21:[80] VarText(var[56]) -> "abc_dex"[80]
    24:[96] ConstText(_value="abc_dex") -> "abc_dex"[96]
-   33:[112] EqText(v1="abc_dex"[80], v2="abc_dex"[96]) -> true[80]
-   34:[81] GotoFalseWord(jump=40, if_false=true[80])
-   37:[80] GotoWord(jump=95)
-   95:[80] FreeText(var[56])
-   98:[80] FreeText(var[32])
-  101:[80] FreeText(var[8])
-  104:[80] Return(ret=4294967295[4], value=0, discard=76)
+   34:[112] EqText(v1="abc_dex"[80], v2="abc_dex"[96]) -> true[80]
+   35:[81] GotoFalseWord(jump=41, if_false=true[80])
+   38:[80] GotoWord(jump=98)
+   98:[80] FreeText(var[56])
+  101:[80] FreeText(var[32])
+  104:[80] FreeText(var[8])
+  107:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

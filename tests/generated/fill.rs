@@ -6,7 +6,7 @@ use crate::keys::{DbRef, Str};
 use crate::state::State;
 use crate::vector;
 
-pub const OPERATORS: &[fn(&mut State); 247] = &[
+pub const OPERATORS: &[fn(&mut State); 248] = &[
     goto,
     goto_word,
     goto_false,
@@ -188,6 +188,7 @@ pub const OPERATORS: &[fn(&mut State); 247] = &[
     conv_bool_from_ref,
     conv_ref_from_null,
     free_ref,
+    sizeof_ref,
     var_ref,
     put_ref,
     eq_ref,
@@ -1395,6 +1396,10 @@ fn conv_ref_from_null(s: &mut State) {
 fn free_ref(s: &mut State) {
     let v_v1 = *s.get_stack::<DbRef>();
     drop(v_v1)
+}
+
+fn sizeof_ref(s: &mut State) {
+    s.sizeof_ref();
 }
 
 fn var_ref(s: &mut State) {

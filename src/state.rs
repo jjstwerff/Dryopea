@@ -101,7 +101,7 @@ impl State {
     }
 
     pub fn string_from_code(&mut self) {
-        let size = *self.code::<u8>();
+        let size = *self.code::<u16>();
         unsafe {
             let off = self.bytecode.as_ptr().offset(self.code_pos as isize);
             let m = self
@@ -529,7 +529,7 @@ impl State {
     }
 
     pub fn code_str(&mut self) -> &str {
-        let len = *self.code::<u8>();
+        let len = *self.code::<u16>();
         unsafe {
             let off = self.bytecode.as_ptr().offset(self.code_pos as isize);
             self.code_pos += u32::from(len);
@@ -1274,7 +1274,7 @@ impl State {
     }
 
     pub fn code_add_str(&mut self, value: &str) {
-        self.code_add(value.len() as u8);
+        self.code_add(value.len() as u16);
         if self.code_pos as usize + value.len() > self.bytecode.len() {
             self.bytecode
                 .resize(self.code_pos as usize + value.len(), 0);

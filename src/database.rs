@@ -1359,6 +1359,8 @@ impl Stores {
     Try to allocate a new store.
     Reuses a previously freed store from the free list when one is available,
     otherwise extends the high-water mark.
+    # Panics
+    When a store already in use is allocated again.
     */
     pub fn database(&mut self, size: u32) -> DbRef {
         let store_nr = if let Some(idx) = self.free_list.pop() {

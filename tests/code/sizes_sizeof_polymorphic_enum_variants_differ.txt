@@ -26,13 +26,14 @@ Type 21:Large[16/8]: EnumValue(2)
     n:long[8]
 
 fn n_get_size(v:ref(Val)) -> integer {#block(1):integer
-  [5] 16i32;
+  [5] OpSizeofRef(v(0));
 }#block(1):integer
 
 byte-code for sizeof_polymorphic_enum_variants_differ:n_get_size(v: ref(Val)[0]) -> integer
    0[12]: return-address
-   0[16]: [5] ConstInt(val=16) -> integer
-   5[20]: Return(ret=12, value=4, discard=20) type=integer 0
+   0[16]: [5] VarRef(var[0]) -> ref(reference) type=Val 18 var=v[0]:ref(Val)
+   3[28]: SizeofRef(val: ref(reference)) -> integer
+   4[20]: Return(ret=12, value=4, discard=20) type=integer 0
 
 fn n_test() {#block(1):void
   __ref_2(1):ref(Val) = null;
@@ -98,24 +99,24 @@ byte-code for sizeof_polymorphic_enum_variants_differ:n_test()
   97[60]: ConstInt(val=0) -> integer
  102[64]: EqInt(v1: integer, v2: integer) -> boolean
  103[57]: GotoFalseWord(jump=109, if_false: boolean)
- 106[56]: GotoWord(jump=159)
+ 106[56]: GotoWord(jump=161)
  109[56]: ClearText(var[28]) var=__work_1[28]:text
  112[56]: ConstText(_value="Test failed ") -> text
- 126[72]: AppendText(var[28], v1: text)
- 129[56]: VarInt(var[52]) -> integer var=test_value[52]:integer
- 132[60]: ConvLongFromInt(v1: integer) -> long
- 133[64]: ConstInt(val=0) -> integer
- 138[68]: FormatLong(var[28], val: long, radix=10, width: integer, token=32, plus=false, note=false)
- 145[56]: ConstText(_value=" != 0") -> text
- 152[72]: AppendText(var[28], v1: text)
- 155[56]: VarText(var[28]) -> text var=__work_1[28]:text
- 158[72]: Panic(message: text)
- 159[56]: FreeText(var[28])
- 162[56]: VarRef(var[16]) -> ref(reference) type=Val 18 var=__ref_1[16]:ref(Val)
- 165[68]: FreeRef(v1: ref(reference))
- 166[56]: VarRef(var[4]) -> ref(reference) type=Val 18 var=__ref_2[4]:ref(Val)
- 169[68]: FreeRef(v1: ref(reference))
- 170[56]: Return(ret=0, value=0, discard=56)
+ 127[72]: AppendText(var[28], v1: text)
+ 130[56]: VarInt(var[52]) -> integer var=test_value[52]:integer
+ 133[60]: ConvLongFromInt(v1: integer) -> long
+ 134[64]: ConstInt(val=0) -> integer
+ 139[68]: FormatLong(var[28], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 146[56]: ConstText(_value=" != 0") -> text
+ 154[72]: AppendText(var[28], v1: text)
+ 157[56]: VarText(var[28]) -> text var=__work_1[28]:text
+ 160[72]: Panic(message: text)
+ 161[56]: FreeText(var[28])
+ 164[56]: VarRef(var[16]) -> ref(reference) type=Val 18 var=__ref_1[16]:ref(Val)
+ 167[68]: FreeRef(v1: ref(reference))
+ 168[56]: VarRef(var[4]) -> ref(reference) type=Val 18 var=__ref_2[4]:ref(Val)
+ 171[68]: FreeRef(v1: ref(reference))
+ 172[56]: Return(ret=0, value=0, discard=56)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
@@ -130,8 +131,9 @@ Execute test:
    26:[69] SetEnum(v1=ref(2,1,8)[56], fld=0, val=1[68])
    29:[56] VarRef(var[20]) -> ref(2,1,8)=Small {n:1}[56]
    32:[68] Call(size=0, fn=n_get_size)
- 1839:[72] ConstInt(val=16) -> 16[72]
- 1844:[76] Return(ret=1889[68], value=4, discard=20) -> 16[56]
+ 1864:[72] VarRef(var[56]) -> ref(2,1,8)=Small {n:1}[72]
+ 1867:[84] SizeofRef(val=ref(2,1,8)[72]) -> 8[72]
+ 1868:[76] Return(ret=1913[68], value=4, discard=20) -> 8[56]
    39:[60] Database(var[8], db_tp=21)
    44:[60] VarRef(var[8]) -> ref(1,1,8)=null[60]
    47:[72] ConstLong(val=42) -> 42[72]
@@ -141,24 +143,21 @@ Execute test:
    64:[73] SetEnum(v1=ref(1,1,8)[60], fld=0, val=2[72])
    67:[60] VarRef(var[8]) -> ref(1,1,8)=Large {n:42}[60]
    70:[72] Call(size=0, fn=n_get_size)
- 1839:[76] ConstInt(val=16) -> 16[76]
- 1844:[80] Return(ret=1927[72], value=4, discard=20) -> 16[60]
-   77:[64] EqInt(v1=16[56], v2=16[60]) -> true[56]
-   78:[57] GotoFalseWord(jump=89, if_false=true[56])
-   81:[56] ConstInt(val=1) -> 1[56]
-   86:[60] GotoWord(jump=94)
-   94:[60] VarInt(var[56]) -> 1[60]
+ 1864:[76] VarRef(var[60]) -> ref(1,1,8)=Large {n:42}[76]
+ 1867:[88] SizeofRef(val=ref(1,1,8)[76]) -> 16[76]
+ 1868:[80] Return(ret=1951[72], value=4, discard=20) -> 16[60]
+   77:[64] EqInt(v1=8[56], v2=16[60]) -> false[56]
+   78:[57] GotoFalseWord(jump=89, if_false=false[56])
+   89:[56] ConstInt(val=0) -> 0[56]
+   94:[60] VarInt(var[56]) -> 0[60]
    97:[64] ConstInt(val=0) -> 0[64]
-  102:[68] EqInt(v1=1[60], v2=0[64]) -> false[60]
-  103:[61] GotoFalseWord(jump=109, if_false=false[60])
-  109:[60] ClearText(var[32])
-  112:[60] ConstText(_value="Test failed ") -> "Test failed "[60]
-  126:[76] AppendText(var[32], v1="Test failed "[60])
-  129:[60] VarInt(var[56]) -> 1[60]
-  132:[64] ConvLongFromInt(v1=1[60]) -> 1[60]
-  133:[68] ConstInt(val=0) -> 0[68]
-  138:[72] FormatLong(var[32], val=1[60], radix=10, width=0[68], token=32, plus=false, note=false)
-  145:[60] ConstText(_value=" != 0") -> " != 0"[60]
-  152:[76] AppendText(var[32], v1=" != 0"[60])
-  155:[60] VarText(var[32]) -> "Test failed 1 != 0"[60]
-  158:[76] Panic(message="Test failed 1 != 0"[60])
+  102:[68] EqInt(v1=0[60], v2=0[64]) -> true[60]
+  103:[61] GotoFalseWord(jump=109, if_false=true[60])
+  106:[60] GotoWord(jump=161)
+  161:[60] FreeText(var[32])
+  164:[60] VarRef(var[20]) -> ref(2,1,8)=Small {n:1}[60]
+  167:[72] FreeRef(v1=ref(2,1,8)[60])
+  168:[60] VarRef(var[8]) -> ref(1,1,8)=Large {n:42}[60]
+  171:[72] FreeRef(v1=ref(1,1,8)[60])
+  172:[60] Return(ret=4294967295[4], value=0, discard=56)
+Finished
