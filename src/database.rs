@@ -412,7 +412,7 @@ impl Stores {
     }
 
     /// # Panics
-    /// Panics if `tp` refers to a type that is not implemented for file reading.
+    /// If `tp` refers to a type that is not implemented for file reading.
     pub fn read_data(&self, r: &DbRef, tp: u16, little_endian: bool, data: &mut Vec<u8>) {
         let store = &self.allocations[r.store_nr as usize];
         match tp {
@@ -508,7 +508,7 @@ impl Stores {
     }
 
     /// # Panics
-    /// Panics if `data` does not contain enough bytes for the given type.
+    /// If `data` does not contain enough bytes for the given type.
     pub fn write_data(&mut self, r: &DbRef, tp: u16, little_endian: bool, data: &[u8]) {
         let store = &mut self.allocations[r.store_nr as usize];
         match tp {
@@ -1275,7 +1275,7 @@ impl Stores {
     /**
     Add a value to an enumerated type.
     # Panics
-    When adding a value to a non-enumerate variable.
+    When adding a value to a non-enumerated variable.
     */
     pub fn value(&mut self, known_type: u16, name: &str, value_type: u16) -> u16 {
         if let Parts::Enum(values) = &mut self.types[known_type as usize].parts {
@@ -2412,7 +2412,10 @@ impl Stores {
             Parts::Enum(values) => {
                 let e_nr = self.store(rec).get_byte(rec.rec, rec.pos, -1);
                 let tp = values[e_nr as usize].0;
-                self.copy_claims(rec, to, tp);
+                // Do not copy claims on simple enumerate types.
+                if tp != u16::MAX {
+                    self.copy_claims(rec, to, tp);
+                }
             }
             _ => {}
         }

@@ -108,6 +108,9 @@ fn index_intro(topic: &Topic) -> std::io::Result<String> {
             }
         }
     }
+    if in_list {
+        writeln!(result, "</ul>").expect("");
+    }
     Ok(result)
 }
 

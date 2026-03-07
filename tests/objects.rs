@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2025 Jurjen Stellingwerff
+// Copyright (c) 2022-2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! Testing framework
@@ -212,11 +212,11 @@ fn scope_text() {
 fn files() {
     expr!("\"{file(\"example\").files()}\"").result(Value::str(
         "[\
-{path:\"example/config\",size:4096,dir:true},\
-{path:\"example/map.png\",size:3406,dir:false},\
-{path:\"example/map.xcf\",size:7817,dir:false},\
-{path:\"example/show.lav\",size:371,dir:false},\
-{path:\"example/todo.json\",size:1461,dir:false}]",
+{path:\"example/config\",size:4096,format:Directory},\
+{path:\"example/map.png\",size:3406,format:TextFile},\
+{path:\"example/map.xcf\",size:7817,format:TextFile},\
+{path:\"example/show.lav\",size:371,format:TextFile},\
+{path:\"example/todo.json\",size:1461,format:TextFile}]",
     ));
 }
 
@@ -232,6 +232,18 @@ fn assign_text() {
         \"{o}\"",
         )
         .result(Value::str("{a:\"bcdef\"}"));
+}
+
+#[test]
+fn independent_strings() {
+    code!("struct T { name: text }")
+        .expr(
+            "a = T { name: \"hello\" };
+b = a;
+b.name += \" world\";
+a.name",
+        )
+        .result(Value::str("hello"));
 }
 
 #[test]

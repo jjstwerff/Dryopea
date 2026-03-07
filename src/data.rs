@@ -1349,6 +1349,7 @@ impl Data {
             Type::Routine(_) => "u32",
             Type::Unknown(_) => "??",
             Type::Iterator(_, _) => "Iterator",
+            Type::Keys => "&[Key]",
             _ => panic!("Incorrect type {}", tp.name(self)),
         }
         .to_string()

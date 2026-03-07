@@ -15,7 +15,7 @@ enum Entry {
     /// A named section (// --- Name ---).
     Section(String),
     /// A public item or section description.
-    /// sig is empty for section-description items.
+    /// Sig is empty for section-description items.
     Item { sig: String, doc: Vec<String> },
 }
 
@@ -38,8 +38,8 @@ fn main() -> std::io::Result<()> {
     }
 
     let html = render_html(&entries);
-    fs::create_dir_all("doc").unwrap();
-    fs::write("doc/stdlib.html", &html).unwrap();
+    fs::create_dir_all("doc")?;
+    fs::write("doc/stdlib.html", &html)?;
     println!("Generated doc/stdlib.html ({} bytes)", html.len());
 
     link_doc_files(&entries);
@@ -122,7 +122,7 @@ fn parse_lav(content: &str, entries: &mut Vec<Entry>) {
     }
 }
 
-/// Extract the section name from a `// --- Name ---` line, or return None.
+/// Extract the section name from a `// --- Name ---` line or return None.
 fn parse_section(trimmed: &str) -> Option<String> {
     if !trimmed.starts_with("// ---") {
         return None;
@@ -199,7 +199,7 @@ fn strip_body(sig: &str) -> String {
                 depth -= 1;
                 result.push(ch);
             }
-            // Stop at `{` or `;` only when outside any parenthesised list
+            // Stop at `{` or `;` only when outside any parenthesized list
             '{' | ';' if depth == 0 => break,
             _ => result.push(ch),
         }
@@ -214,7 +214,7 @@ type DocSection = (String, Vec<DocItem>); // (section name, items)
 
 fn render_html(entries: &[Entry]) -> String {
     // Group items by section, merging any sections that share the same name
-    // (e.g. the Text section appears in both 01_code.lav and 03_text.lav).
+    // (e.g., the Text section appears in both 01_code.lav and 03_text.lav).
     let mut sections: Vec<DocSection> = Vec::new();
     let mut cur: Option<usize> = None;
 
@@ -236,19 +236,8 @@ fn render_html(entries: &[Entry]) -> String {
         }
     }
 
-    let mut html = html_head();
-
-    // Sidebar table of contents
-    html.push_str("<nav id=\"toc\">\n");
-    html.push_str("<p class=\"toc-title\">Lav Standard Library</p>\n<ul>\n");
-    for (name, _) in &sections {
-        html.push_str(&format!(
-            "<li><a href=\"#{}\">{}</a></li>\n",
-            section_id(name),
-            esc(name)
-        ));
-    }
-    html.push_str("</ul>\n</nav>\n");
+    let mut html = String::new();
+    html.push_str(HTML_HEAD);
 
     // Main content
     html.push_str("<main>\n<h1>Lav Standard Library</h1>\n");
@@ -339,19 +328,15 @@ fn group_paragraphs(lines: &[String]) -> Vec<String> {
 
 // ---  HTML boilerplate  ---
 
-fn html_head() -> String {
-    format!(
-        "<!DOCTYPE html>\n\
+const HTML_HEAD: &str = "<!DOCTYPE html>\n\
          <html lang=\"en\">\n\
          <head>\n\
          <meta charset=\"UTF-8\">\n\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n\
-         <title>Lav Standard Library</title>\n\
-         <style>\n{CSS}</style>\n\
+         <title>Loft Standard Library</title>\n\
+         <link rel=\"stylesheet\" href=\"style.css\">\n\
          </head>\n\
-         <body>\n"
-    )
-}
+         <body>\n";
 
 // ---  Link map  ---
 
@@ -371,7 +356,7 @@ fn build_link_maps(entries: &[Entry]) -> LinkMaps {
     let mut ty_map: HashMap<String, String> = HashMap::new();
     let mut en_map: HashMap<String, String> = HashMap::new();
 
-    // Track first-seen section id for each section name (mirrors render_html merging).
+    // Track the first-seen section id for each section name (mirrors render_html merging).
     let mut section_first: HashMap<String, String> = HashMap::new();
     let mut cur_section = String::new();
 
@@ -405,7 +390,7 @@ fn build_link_maps(entries: &[Entry]) -> LinkMaps {
         }
     }
 
-    // `vector` is declared as `type vector` (not pub) but it is user-visible;
+    // `vector` is declared as `type vector` (not pub), but it is user-visible;
     // add it manually so class="ty">vector</span> links to the Collections section.
     ty_map
         .entry("vector".into())
@@ -454,7 +439,7 @@ fn parse_sig_name(sig: &str) -> Option<(String, &'static str)> {
     }
 }
 
-// ---  Doc HTML post-processing  ---
+// --- Doc HTML post-processing  ---
 
 /// Inject stdlib links into every doc HTML file (except stdlib.html itself).
 fn link_doc_files(entries: &[Entry]) {
@@ -536,129 +521,3 @@ fn apply_links(html: &str, maps: &LinkMaps) -> String {
 
     out
 }
-
-// ---  HTML boilerplate  ---
-
-const CSS: &str = "\
-* { box-sizing: border-box; margin: 0; padding: 0; }\n\
-\n\
-body {\n\
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n\
-    font-size: 16px;\n\
-    line-height: 1.6;\n\
-    color: #24292e;\n\
-    display: flex;\n\
-    min-height: 100vh;\n\
-    background: #fff;\n\
-}\n\
-\n\
-/* ---- Sidebar ---- */\n\
-#toc {\n\
-    width: 230px;\n\
-    flex-shrink: 0;\n\
-    background: #1a1b26;\n\
-    padding: 1.5rem 0;\n\
-    position: sticky;\n\
-    top: 0;\n\
-    height: 100vh;\n\
-    overflow-y: auto;\n\
-}\n\
-\n\
-.toc-title {\n\
-    font-size: 0.7rem;\n\
-    font-weight: 700;\n\
-    text-transform: uppercase;\n\
-    letter-spacing: 0.12em;\n\
-    color: #7aa2f7;\n\
-    padding: 0 1.25rem 0.75rem;\n\
-    margin-bottom: 0.4rem;\n\
-    border-bottom: 1px solid #2a2b3d;\n\
-}\n\
-\n\
-#toc ul { list-style: none; padding: 0.25rem 0; }\n\
-\n\
-#toc a {\n\
-    display: block;\n\
-    padding: 0.3rem 1.25rem;\n\
-    color: #a9b1d6;\n\
-    text-decoration: none;\n\
-    font-size: 0.875rem;\n\
-    border-left: 3px solid transparent;\n\
-}\n\
-\n\
-#toc a:hover {\n\
-    color: #c0caf5;\n\
-    background: #1e2030;\n\
-    border-left-color: #7aa2f7;\n\
-}\n\
-\n\
-/* ---- Main content ---- */\n\
-main {\n\
-    flex: 1;\n\
-    padding: 2.5rem 3rem;\n\
-    max-width: 860px;\n\
-    overflow-x: hidden;\n\
-}\n\
-\n\
-h1 {\n\
-    font-size: 2rem;\n\
-    font-weight: 700;\n\
-    color: #1a1b26;\n\
-    margin-bottom: 2.5rem;\n\
-    padding-bottom: 0.75rem;\n\
-    border-bottom: 2px solid #e1e4e8;\n\
-}\n\
-\n\
-/* ---- Sections ---- */\n\
-section { margin-bottom: 3rem; }\n\
-\n\
-section h2 {\n\
-    font-size: 1.3rem;\n\
-    font-weight: 600;\n\
-    color: #1a1b26;\n\
-    padding-bottom: 0.4rem;\n\
-    margin-bottom: 1rem;\n\
-    border-bottom: 2px solid #7aa2f7;\n\
-}\n\
-\n\
-.section-desc {\n\
-    margin-bottom: 1.25rem;\n\
-}\n\
-\n\
-.section-desc p {\n\
-    color: #57606a;\n\
-    font-size: 0.95rem;\n\
-    line-height: 1.7;\n\
-}\n\
-\n\
-/* ---- Items ---- */\n\
-.item {\n\
-    padding: 0.9rem 0;\n\
-    border-bottom: 1px solid #eaecef;\n\
-}\n\
-\n\
-.item:last-child { border-bottom: none; }\n\
-\n\
-pre {\n\
-    background: #f6f8fa;\n\
-    border: 1px solid #e1e4e8;\n\
-    border-radius: 6px;\n\
-    padding: 0.65rem 1rem;\n\
-    overflow-x: auto;\n\
-    margin-bottom: 0.45rem;\n\
-}\n\
-\n\
-code {\n\
-    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;\n\
-    font-size: 0.84rem;\n\
-    color: #24292e;\n\
-    white-space: pre;\n\
-}\n\
-\n\
-.item p {\n\
-    color: #444d56;\n\
-    font-size: 0.925rem;\n\
-    line-height: 1.65;\n\
-    margin-top: 0.2rem;\n\
-}\n\
-";

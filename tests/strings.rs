@@ -240,6 +240,11 @@ fn build() -> text {
 }
 
 #[test]
+fn reversed_text_slice() {
+    expr!("a = \"12345\"; a[3..1]").result(Value::str(""));
+}
+
+#[test]
 fn string_parse() {
     code!(
         "

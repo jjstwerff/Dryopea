@@ -46,15 +46,15 @@ pub struct Parser {
     /// The definition that is currently parsed (function or struct)
     context: u32,
     /// Is this the first pass on parsing:
-    /// - do not assume that all struct / enum types are already parsed
-    /// - define variables, try to determine their type (can become clear from later code)
-    /// - claim working text variables for expressions that gather text data outside variables
-    /// - links between memory allocations (text, stores) their type knows the variable numbers
-    /// - move variables to a lower scope if an expression still links to their content
-    /// - determine mutations to stores and administer these in arguments
+    /// - Do not assume that all struct / enum types are already parsed.
+    /// - Define variables, try to determine their type (can become clear from later code).
+    /// - Claim working text variables for expressions that gather text data outside variables.
+    /// - Links between memory allocations (text, stores) their type knows the variable numbers.
+    /// - Move variables to a lower scope if an expression still links to their content.
+    /// - Determine mutations to stores and administer these in arguments.
     ///
     /// The second pass:
-    /// - creates code, assumes that all types are known
+    /// - Creates code, assumes that all types are known.
     first_pass: bool,
     vars: Function,
     /// Last seen line inside the source code, an increase inserts it in the internal code.
@@ -114,7 +114,7 @@ fn is_op(name: &str) -> bool {
     name.len() >= 3 && name.starts_with("Op") && name.chars().nth(2).unwrap().is_uppercase()
 }
 
-/// Validate function, attribute, value and field names
+/// Validate function, attribute, value, and field names
 fn is_lower(name: &str) -> bool {
     for c in name.chars() {
         if c.is_uppercase() {
@@ -1096,7 +1096,7 @@ impl Parser {
     }
 
     fn lib_path(&mut self, id: &String) -> String {
-        // - a source file the lib directory in the project (project-supplied)
+        // - a source file, the lib directory in the project (project-supplied)
         let mut f = format!("lib/{id}.lav");
         if !std::path::Path::new(&f).exists() {
             f = format!("{id}.lav");
@@ -1332,6 +1332,7 @@ impl Parser {
                         &value_name,
                         Type::Enum(d_nr, true, Vec::new()),
                     );
+                    self.data.definitions[d_nr as usize].attributes[nr as usize].constant = true;
                     // Enum values start with 1 as 0 is de null/undefined value.
                     self.data
                         .set_attr_value(d_nr, nr as usize, Value::Enum(nr + 1, u16::MAX));
@@ -1375,6 +1376,7 @@ impl Parser {
                     &value_name,
                     Type::Enum(d_nr, false, Vec::new()),
                 );
+                self.data.definitions[d_nr as usize].attributes[nr as usize].constant = true;
                 // Enum values start with 1 as 0 is de null/undefined value.
                 self.data
                     .set_attr_value(d_nr, nr as usize, Value::Enum(nr + 1, u16::MAX));
@@ -1429,7 +1431,7 @@ impl Parser {
                         self.data.set_returned(d_nr, tp);
                     }
                 } else if !self.first_pass {
-                    panic!("Incorrect handling of unknown types");
+                    diagnostic!(self.lexer, Level::Error, "'{type_name}' is not a type");
                 }
             } else {
                 diagnostic!(self.lexer, Level::Error, "Expected a type after =");
@@ -1659,9 +1661,14 @@ impl Parser {
                             } else {
                                 tp
                             }
-                        } else if !self.first_pass {
-                            panic!("Incorrect handling of unknown types");
                         } else {
+                            if !self.first_pass {
+                                diagnostic!(
+                                    self.lexer,
+                                    Level::Error,
+                                    "'{type_name}' is not a type"
+                                );
+                            }
                             Type::Unknown(0)
                         }
                     } else {
@@ -2435,7 +2442,12 @@ impl Parser {
                 "OpGetFloat" => self.cl("OpSetFloat", &[args[0].clone(), args[1].clone(), code]),
                 "OpGetSingle" => self.cl("OpSetSingle", &[args[0].clone(), args[1].clone(), code]),
                 "OpGetField" => code.clone(),
-                _ => panic!("Unknown {op} for {name} at {}", self.lexer.pos()),
+                _ => {
+                    if !self.first_pass {
+                        diagnostic!(self.lexer, Level::Error, "Unknown {op} for {name}");
+                    }
+                    Value::Null
+                }
             }
         } else if let Value::Var(nr) = to {
             // This variable was created here and thus not yet used.
@@ -3098,7 +3110,7 @@ impl Parser {
         {
             *in_t = Type::Enum(*t_e, true, Vec::new());
         } else if !self.convert(&mut p, &t, in_t) {
-            // double conversion check: can t become in_t or vice versa
+            // double conversion check: can't become in_t or vice versa
             if self.convert(&mut p, in_t, &t) {
                 *in_t = t.clone();
             } else {
@@ -3344,93 +3356,130 @@ impl Parser {
             return tp;
         }
         let mut t = tp;
-        if let Some(field) = self.lexer.has_identifier() {
-            let enr = self.data.type_elm(&t);
-            if enr == u32::MAX {
-                diagnostic!(
-                    self.lexer,
-                    Level::Error,
-                    "Unknown type {}",
-                    t.show(&self.data, &self.vars)
-                );
-                return Type::Unknown(0);
-            }
-            let e_size = i32::from(self.database.size(self.data.def(enr).known_type));
-            if let Type::RefVar(tp) = t {
-                t = *tp;
-            }
-            let dnr = self.data.type_def_nr(&t);
-            if matches!(t, Type::Vector(_, _)) && self.vector_operations(code, &field, e_size) {
-                return Type::Void;
-            }
-            let fnr = self.data.attr(dnr, &field);
-            if fnr == usize::MAX {
-                if self.first_pass && self.lexer.has_token("(") {
-                    loop {
-                        if self.lexer.peek_token(")") {
-                            break;
-                        }
-                        let mut p = Value::Null;
-                        self.expression(&mut p);
-                        if !self.lexer.has_token(",") {
-                            break;
-                        }
+        let Some(field) = self.lexer.has_identifier() else {
+            diagnostic!(self.lexer, Level::Error, "Expect a field name");
+            return t;
+        };
+        let enr = self.data.type_elm(&t);
+        if enr == u32::MAX {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "Unknown type {}",
+                t.show(&self.data, &self.vars)
+            );
+            return Type::Unknown(0);
+        }
+        let e_size = i32::from(self.database.size(self.data.def(enr).known_type));
+        if let Type::RefVar(tp) = t {
+            t = *tp;
+        }
+        let dnr = self.data.type_def_nr(&t);
+        if matches!(t, Type::Vector(_, _)) && self.vector_operations(code, &field, e_size) {
+            return Type::Void;
+        }
+        let fnr = self.data.attr(dnr, &field);
+        if fnr == usize::MAX {
+            if self.first_pass && self.lexer.has_token("(") {
+                self.skip_remaining_args();
+            } else if !self.first_pass {
+                // For polymorphic enums, this field may be in a struct (not the enum itself).
+                if let Type::Enum(enum_d_nr, true, _) = &t
+                    && let Some((found_d_nr, found_fnr)) =
+                        self.find_poly_enum_field(*enum_d_nr, &field)
+                {
+                    let dep = t.depend();
+                    t = self.data.attr_type(found_d_nr, found_fnr);
+                    for on in dep {
+                        t = t.depending(on);
                     }
-                    self.lexer.token(")");
-                } else if !self.first_pass {
-                    diagnostic!(
-                        self.lexer,
-                        Level::Error,
-                        "Unknown field {}.{field}",
-                        self.data.def(dnr).name
-                    );
-                }
-                return Type::Unknown(0);
-            }
-            if let Type::Routine(r_nr) = self.data.attr_type(dnr, fnr) {
-                if self.lexer.has_token("(") {
-                    t = self.parse_method(code, r_nr, t.clone());
-                } else {
-                    diagnostic!(
-                        self.lexer,
-                        Level::Error,
-                        "Expect call of method {}.{}",
-                        self.data.def(dnr).name,
-                        self.data.attr_name(dnr, fnr)
-                    );
-                }
-            } else if self.data.def(dnr).attributes[fnr].constant {
-                let mut new = self.data.attr_value(dnr, fnr);
-                if let Value::Call(_, args) = &mut new {
-                    args[0] = code.clone();
-                }
-                *code = new;
-                let dep = t.depend();
-                t = self.data.attr_type(dnr, fnr);
-                for on in dep {
-                    t = t.depending(on);
-                }
-            } else {
-                let dep = t.depend();
-                let last_t = t.clone();
-                t = self.data.attr_type(dnr, fnr);
-                for on in dep {
-                    t = t.depending(on);
-                }
-                if let Type::Enum(_, _, _) = last_t.clone() {
-                    // TODO do something with enum fields
-                } else {
                     if let Value::Var(nr) = code {
                         t = t.depending(*nr);
                     }
-                    *code = self.get_field(dnr, fnr, code.clone());
+                    *code = self.get_field(found_d_nr, found_fnr, code.clone());
+                    self.data.attr_used(found_d_nr, found_fnr);
+                    return t;
                 }
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Unknown field {}.{field}",
+                    self.data.def(dnr).name
+                );
             }
-            self.data.attr_used(dnr, fnr);
-        } else {
-            diagnostic!(self.lexer, Level::Error, "Expect a field name");
+            return Type::Unknown(0);
         }
+        if let Type::Routine(r_nr) = self.data.attr_type(dnr, fnr) {
+            if self.lexer.has_token("(") {
+                t = self.parse_method(code, r_nr, t.clone());
+            } else {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Expect call of method {}.{}",
+                    self.data.def(dnr).name,
+                    self.data.attr_name(dnr, fnr)
+                );
+            }
+        } else if self.data.def(dnr).attributes[fnr].constant {
+            let mut new = self.data.attr_value(dnr, fnr);
+            if let Value::Call(_, args) = &mut new {
+                args[0] = code.clone();
+            }
+            *code = new;
+            let dep = t.depend();
+            t = self.data.attr_type(dnr, fnr);
+            for on in dep {
+                t = t.depending(on);
+            }
+        } else {
+            let dep = t.depend();
+            t = self.data.attr_type(dnr, fnr);
+            for on in dep {
+                t = t.depending(on);
+            }
+            if let Value::Var(nr) = code {
+                t = t.depending(*nr);
+            }
+            *code = self.get_field(dnr, fnr, code.clone());
+        }
+        self.data.attr_used(dnr, fnr);
         t
+    }
+
+    /// Consume remaining function call arguments after `(` has already been consumed.
+    fn skip_remaining_args(&mut self) {
+        loop {
+            if self.lexer.peek_token(")") {
+                break;
+            }
+            let mut p = Value::Null;
+            self.expression(&mut p);
+            if !self.lexer.has_token(",") {
+                break;
+            }
+        }
+        self.lexer.token(")");
+    }
+
+    /// Search for `field` in the variant structs of a polymorphic enum.
+    /// Returns `(variant_d_nr, attr_nr)` if found.
+    fn find_poly_enum_field(&self, enum_d_nr: u32, field: &str) -> Option<(u32, usize)> {
+        for a_nr in 0..self.data.attributes(enum_d_nr) {
+            let a_name = self.data.attr_name(enum_d_nr, a_nr);
+            let variant_d_nr = self.data.def_nr(&a_name);
+            if variant_d_nr == u32::MAX {
+                continue;
+            }
+            if !matches!(self.data.def_type(variant_d_nr), DefType::EnumValue) {
+                continue;
+            }
+            let f = self.data.attr(variant_d_nr, field);
+            if f != usize::MAX {
+                return Some((variant_d_nr, f));
+            }
+        }
+        None
     }
 
     fn vector_operations(&mut self, code: &mut Value, field: &str, e_size: i32) -> bool {
@@ -3485,8 +3534,11 @@ impl Parser {
                 key_types.push(self.data.attr_type(*el, self.data.attr(*el, k)).clone());
             }
             self.parse_key(code, &t, &key_types);
-        } else if !self.first_pass {
-            panic!("Unknown type to index");
+        } else {
+            // index_type() already emitted a diagnostic; consume the inner expression
+            // so that the caller can still parse the closing `]` without cascading errors.
+            let mut p = Value::Null;
+            self.expression(&mut p);
         }
         elm_type
     }
@@ -3540,7 +3592,7 @@ impl Parser {
                     Box::new(Type::Null),
                 ));
             }
-            panic!("Incorrect iter");
+            unreachable!("Value::Iter with non-Block next field");
         }
         if !self.first_pass && !self.convert(&mut p, &index_t, &I32) {
             diagnostic!(
@@ -3768,16 +3820,19 @@ impl Parser {
                     && let Type::Reference(vd_nr, _) = self.vars.tp(v_nr)
                     && d_nr == vd_nr
                 {
-                    let tp = self.data.def(*d_nr).known_type;
+                    let d_nr = *d_nr;
+                    let into_var = *into;
+                    let tp = self.data.def(d_nr).known_type;
                     *code = self.cl(
                         "OpCopyRecord",
                         &[
                             Value::Var(v_nr),
-                            Value::Var(*into),
+                            Value::Var(into_var),
                             Value::Int(i32::from(tp)),
                         ],
                     );
-                    return t;
+                    self.vars.make_independent(into_var, v_nr);
+                    return Type::Reference(d_nr, Vec::new());
                 }
                 *code = Value::Var(v_nr);
             } else {
@@ -4509,6 +4564,7 @@ impl Parser {
             let ret = &self.data.def(td_nr).returned;
             let w = self.vars.work_refs(ret, &mut self.lexer);
             let tp = i32::from(self.data.def(td_nr).known_type);
+            list.push(v_set(w, Value::Null));
             list.push(self.cl("OpDatabase", &[Value::Var(w), Value::Int(tp)]));
             *code = Value::Var(w);
         }
@@ -4949,13 +5005,10 @@ impl Parser {
                 self.vars.become_argument(*v);
                 dep.push(a as u16);
             }
-            self.data.definitions[self.context as usize].returned = if let Type::Vector(it, _) = ret
-            {
-                Type::Vector(it, dep)
-            } else if let Type::Reference(td, _) = ret {
-                Type::Reference(td, dep)
-            } else {
-                panic!("Unknown return type");
+            self.data.definitions[self.context as usize].returned = match ret {
+                Type::Vector(it, _) => Type::Vector(it, dep),
+                Type::Reference(td, _) => Type::Reference(td, dep),
+                _ => unreachable!("ref_return called with non-Vector/Reference return type"),
             };
         }
     }
@@ -5047,13 +5100,18 @@ impl Parser {
             let mut drop = Value::Null;
             self.lexer.revert(lnk);
             let tp = self.expression(&mut drop);
-            // TODO FEA0002 call function to get size or alignment of correct child
             let e_tp = self.data.type_elm(&tp);
             if e_tp != u32::MAX {
                 found = true;
-                *val = Value::Int(i32::from(
-                    self.database.size(self.data.def(e_tp).known_type),
-                ));
+                if matches!(tp, Type::Enum(_, true, _) | Type::Reference(_, _)) && !self.first_pass
+                {
+                    // Polymorphic enum or reference: size depends on runtime variant.
+                    *val = self.cl("OpSizeofRef", &[drop]);
+                } else {
+                    *val = Value::Int(i32::from(
+                        self.database.size(self.data.def(e_tp).known_type),
+                    ));
+                }
             }
         }
         if !self.first_pass && !found {

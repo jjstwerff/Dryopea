@@ -10,6 +10,21 @@
 use std::cmp::Ordering;
 
 #[must_use]
+pub fn text_character(val: &str, from: i32) -> char {
+    let len = val.len() as i32;
+    let mut idx = if from < 0 { from + len } else { from };
+    if idx < 0 || idx >= len {
+        return char::from(0);
+    }
+    let mut b = val.as_bytes()[idx as usize];
+    while b & 0xC0 == 0x80 && idx > 0 {
+        idx -= 1;
+        b = val.as_bytes()[idx as usize];
+    }
+    val[idx as usize..].chars().next().unwrap_or(char::from(0))
+}
+
+#[must_use]
 pub fn sub_text(val: &str, from: i32, till: i32) -> &str {
     let size = val.len() as i32;
     let mut f = if from < 0 { from + size } else { from };

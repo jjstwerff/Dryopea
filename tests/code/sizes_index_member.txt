@@ -27,7 +27,7 @@ fn n_test() {#block(1):void
     m(2):ref(Main) = null;
     OpDatabase(m(2), 19i32);
     OpSetInt(m(2), 0i32, 0i32);
-    OpAddInt(25i32, OpMulInt(100i32, 4i32));
+    OpAddInt(25i32, OpMulInt(100i32, OpSizeofRef(m(2))));
     OpFreeRef(m(2));
   }#block(2):integer;
   [6] if OpEqInt(test_value(1), 425i32) null else OpPanic({#Formatted string(3):text["__work_1"]
@@ -49,30 +49,31 @@ byte-code for index_member:n_test()
   15[56]: SetInt(v1: ref(reference), fld=0, val: integer)
   18[40]: ConstInt(val=25) -> integer
   23[44]: ConstInt(val=100) -> integer
-  28[48]: ConstInt(val=4) -> integer
-  33[52]: MulInt(v1: integer, v2: integer) -> integer
-  34[48]: AddInt(v1: integer, v2: integer) -> integer
-  35[44]: VarRef(var[28]) -> ref(reference) type=Main 19 var=m[28]:ref(Main)
-  38[56]: FreeRef(v1: ref(reference))
-  39[44]: FreeStack(value=4, discard=16)
-  43[32]: [6] VarInt(var[28]) -> integer var=test_value[28]:integer
-  46[36]: ConstInt(val=425) -> integer
-  51[40]: EqInt(v1: integer, v2: integer) -> boolean
-  52[33]: GotoFalseWord(jump=58, if_false: boolean)
-  55[32]: GotoWord(jump=110)
-  58[32]: ClearText(var[4]) var=__work_1[4]:text
-  61[32]: ConstText(_value="Test failed ") -> text
-  75[48]: AppendText(var[4], v1: text)
-  78[32]: VarInt(var[28]) -> integer var=test_value[28]:integer
-  81[36]: ConvLongFromInt(v1: integer) -> long
-  82[40]: ConstInt(val=0) -> integer
-  87[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
-  94[32]: ConstText(_value=" != 425") -> text
- 103[48]: AppendText(var[4], v1: text)
- 106[32]: VarText(var[4]) -> text var=__work_1[4]:text
- 109[48]: Panic(message: text)
- 110[32]: FreeText(var[4])
- 113[32]: Return(ret=0, value=0, discard=32)
+  28[48]: VarRef(var[28]) -> ref(reference) type=Main 19 var=m[28]:ref(Main)
+  31[60]: SizeofRef(val: ref(reference)) -> integer
+  32[52]: MulInt(v1: integer, v2: integer) -> integer
+  33[48]: AddInt(v1: integer, v2: integer) -> integer
+  34[44]: VarRef(var[28]) -> ref(reference) type=Main 19 var=m[28]:ref(Main)
+  37[56]: FreeRef(v1: ref(reference))
+  38[44]: FreeStack(value=4, discard=16)
+  42[32]: [6] VarInt(var[28]) -> integer var=test_value[28]:integer
+  45[36]: ConstInt(val=425) -> integer
+  50[40]: EqInt(v1: integer, v2: integer) -> boolean
+  51[33]: GotoFalseWord(jump=57, if_false: boolean)
+  54[32]: GotoWord(jump=109)
+  57[32]: ClearText(var[4]) var=__work_1[4]:text
+  60[32]: ConstText(_value="Test failed ") -> text
+  74[48]: AppendText(var[4], v1: text)
+  77[32]: VarInt(var[28]) -> integer var=test_value[28]:integer
+  80[36]: ConvLongFromInt(v1: integer) -> long
+  81[40]: ConstInt(val=0) -> integer
+  86[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  93[32]: ConstText(_value=" != 425") -> text
+ 102[48]: AppendText(var[4], v1: text)
+ 105[32]: VarText(var[4]) -> text var=__work_1[4]:text
+ 108[48]: Panic(message: text)
+ 109[32]: FreeText(var[4])
+ 112[32]: Return(ret=0, value=0, discard=32)
 
 Execute test:
     0:[8] [5] Text()
@@ -83,17 +84,18 @@ Execute test:
    15:[60] SetInt(v1=ref(1,1,8)[44], fld=0, val=0[56])
    18:[44] ConstInt(val=25) -> 25[44]
    23:[48] ConstInt(val=100) -> 100[48]
-   28:[52] ConstInt(val=4) -> 4[52]
-   33:[56] MulInt(v1=100[48], v2=4[52]) -> 400[48]
-   34:[52] AddInt(v1=25[44], v2=400[48]) -> 425[44]
-   35:[48] VarRef(var[32]) -> ref(1,1,8)={s:[]}[48]
-   38:[60] FreeRef(v1=ref(1,1,8)[48])
-   39:[48] FreeStack(value=4, discard=16)
-   43:[36] VarInt(var[32]) -> 425[36]
-   46:[40] ConstInt(val=425) -> 425[40]
-   51:[44] EqInt(v1=425[36], v2=425[40]) -> true[36]
-   52:[37] GotoFalseWord(jump=58, if_false=true[36])
-   55:[36] GotoWord(jump=110)
-  110:[36] FreeText(var[8])
-  113:[36] Return(ret=4294967295[4], value=0, discard=32)
+   28:[52] VarRef(var[32]) -> ref(1,1,8)={s:[]}[52]
+   31:[64] SizeofRef(val=ref(1,1,8)[52]) -> 4[52]
+   32:[56] MulInt(v1=100[48], v2=4[52]) -> 400[48]
+   33:[52] AddInt(v1=25[44], v2=400[48]) -> 425[44]
+   34:[48] VarRef(var[32]) -> ref(1,1,8)={s:[]}[48]
+   37:[60] FreeRef(v1=ref(1,1,8)[48])
+   38:[48] FreeStack(value=4, discard=16)
+   42:[36] VarInt(var[32]) -> 425[36]
+   45:[40] ConstInt(val=425) -> 425[40]
+   50:[44] EqInt(v1=425[36], v2=425[40]) -> true[36]
+   51:[37] GotoFalseWord(jump=57, if_false=true[36])
+   54:[36] GotoWord(jump=109)
+  109:[36] FreeText(var[8])
+  112:[36] Return(ret=4294967295[4], value=0, discard=32)
 Finished

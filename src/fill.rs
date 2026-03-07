@@ -6,7 +6,7 @@ use crate::keys::{DbRef, Str};
 use crate::state::State;
 use crate::vector;
 
-pub const OPERATORS: &[fn(&mut State); 247] = &[
+pub const OPERATORS: &[fn(&mut State); 248] = &[
     goto,
     goto_word,
     goto_false,
@@ -188,6 +188,7 @@ pub const OPERATORS: &[fn(&mut State); 247] = &[
     conv_bool_from_ref,
     conv_ref_from_null,
     free_ref,
+    sizeof_ref,
     var_ref,
     put_ref,
     eq_ref,
@@ -1187,7 +1188,10 @@ fn get_text_sub(s: &mut State) {
 }
 
 fn text_character(s: &mut State) {
-    s.text_character();
+    let v_v2 = *s.get_stack::<i32>();
+    let v_v1 = s.string();
+    let new_value = external::text_character(v_v1.str(), v_v2);
+    s.put_stack(new_value);
 }
 
 fn conv_bool_from_character(s: &mut State) {
@@ -1348,6 +1352,10 @@ fn conv_ref_from_null(s: &mut State) {
 
 fn free_ref(s: &mut State) {
     s.free_ref();
+}
+
+fn sizeof_ref(s: &mut State) {
+    s.sizeof_ref();
 }
 
 fn var_ref(s: &mut State) {

@@ -194,6 +194,19 @@ t = l[1] as Integer;
 }
 
 #[test]
+fn base_field() {
+    code!(
+        "enum Val {
+    A { n: integer },
+    B { n: integer }
+}
+fn get_n(v: Val) -> integer { v.n }"
+    )
+    .expr("get_n(A { n: 42 })")
+    .result(Value::Int(42));
+}
+
+#[test]
 fn types() {
     code!(
         "enum Value {

@@ -154,3 +154,20 @@ fn unknown_sizeof() {
         .error("Expect a variable or type after sizeof at unknown_sizeof:1:22")
         .error("Unknown variable 'C' at unknown_sizeof:1:22");
 }
+
+#[test]
+fn index_non_indexable() {
+    code!("fn test() { v = 5; v[1]; }").error("Indexing a non vector at index_non_indexable:1:23");
+}
+
+#[test]
+fn fn_name_as_param_type() {
+    code!("fn helper() {}\nfn test(v: helper) {}")
+        .error("Undefined type helper at fn_name_as_param_type:2:19");
+}
+
+#[test]
+fn fn_name_as_typedef() {
+    code!("fn helper() {}\ntype Alias = helper;\nfn test() { 1 }")
+        .error("Undefined type helper at fn_name_as_typedef:2:21");
+}

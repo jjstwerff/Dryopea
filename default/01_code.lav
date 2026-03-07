@@ -561,6 +561,7 @@ fn OpText();
 fn OpAppendText(pos: const u16, v1: text);
 fn OpGetTextSub(v1: text, from: integer, till: integer) -> text[v1];
 fn OpTextCharacter(v1: text, v2: integer) -> character;
+#rust "external::text_character(@v1, @v2)"
 fn OpConvBoolFromCharacter(v1: character) -> boolean;
 #rust "external::op_conv_bool_from_character(@v1)"
 fn OpClearText(pos: const u16);
@@ -617,6 +618,7 @@ fn OpConvBoolFromRef(val: reference) -> boolean;
 fn OpConvRefFromNull() -> reference;
 #rust "stores.null()"
 fn OpFreeRef(v1: reference);
+fn OpSizeofRef(val: reference) -> integer;
 
 fn OpVarRef(pos: const u16) -> reference;
 #rust "{{let r = *s.get_var::<DbRef>(@pos); stores.valid(&r); r}}"

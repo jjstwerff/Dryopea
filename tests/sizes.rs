@@ -25,6 +25,19 @@ fn expr_enum() {
 }
 
 #[test]
+fn sizeof_enum_structs() {
+    code!(
+        "enum Val {
+    Small { n: u8 },
+    Large { n: long }
+}
+fn get_size(v: Val) -> integer { sizeof(v) }"
+    )
+    .expr("if get_size(Small { n: 1 }) == get_size(Large { n: 42l }) { 1 } else { 0 }")
+    .result(Value::Int(0)); // 0 = sizes differ (correct). With P12 bug: 1 (both same base size).
+}
+
+#[test]
 fn expr_struct() {
     code!(
         "struct S {a: integer, b: long, c: En}
