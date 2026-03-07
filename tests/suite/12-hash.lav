@@ -1,2 +1,53 @@
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Hash
+// @TITLE: Lookup efficient hash table indexes
+// hash<T[key]>: O(1) average-time key lookup; combining a hash with a vector for ordered traversal and fast access.
+
+// A 'hash' field provides O(1) average-time lookup by one or more key fields.
+// The key fields are listed in brackets: 'hash<Type[field1, field2]>'.
+// A hash is not ordered; for ordered access combine it with a 'sorted' or 'vector' field.
+struct Keyword { name: text }
+struct Data { h: hash<Keyword[name]> }
+
+// A hash backed by a vector allows fast key lookup while the vector maintains insertion order.
+struct Count { t: text, v: integer }
+struct Counting {
+    entries: vector<Count>,
+    lookup:  hash<Count[t]>
+}
+
+fn fill(c: Counting) {
+    c.entries = [
+        { t: "One",   v: 1 },
+        { t: "Two",   v: 2 },
+        { t: "Three", v: 3 },
+        { t: "Four",  v: 4 }
+    ]
+}
+
 fn main() {
+    // Populate a hash; lookup uses index syntax with the key value(s).
+    d = Data {};
+    d.h = [{ name: "one" }, { name: "two" }];
+    d.h += [{ name: "three" }, { name: "four" }];
+
+    // Found elements are truthy; a missing key returns null (falsy).
+    assert(d.h["three"], "Key exists");
+    assert(!d.h["None"], "Missing key returns null");
+
+    // Combining a vector and a hash on the same records gives ordered traversal
+    // (via the vector) and O(1) key-based access (via the hash).
+    c = Counting {};
+    fill(c);
+    assert(c.lookup["Three"].v == 3, "Hash lookup: Three");
+    assert(c.lookup["One"].v == 1, "Hash lookup: One");
+    assert(!c.lookup["Five"], "Missing key returns null");
+
+    // Iterate the vector in insertion order while using the hash for lookups.
+    add = 0;
+    for item in c.entries {
+        add += item.v;
+    }
+    assert(add == 10, "Sum via vector iteration: {add}");
 }

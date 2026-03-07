@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lav — 09 — Enum</title>
+<title>Loft - Enums</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <span class="cur">Enum</span> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
-<h1>09 — Enum</h1>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <span class="cur">Enums</span> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<h1>Enums</h1>
 <article>
-<p>A plain enum maps names to integer values starting at 0. Enum values can be compared, ordered, and converted to/from integer and text.</p>
+<p>Enums: plain value enums with ordering and text conversion; struct enums with field access and polymorphic dispatch.</p>
+<p>Enum values can be compared, ordered, and converted to/from integer and text.</p>
 <pre><code><span class="kw">enum</span> <span class="en">Direction</span> { <span class="en">North</span>, <span class="en">East</span>, <span class="en">South</span>, <span class="en">West</span> }</code></pre>
 <p>An enum variant can carry data as named fields, making it a 'struct enum'. Each variant is its own type and can have its own methods.</p>
 <pre><code><span class="kw">enum</span> <span class="en">Shape</span> {
@@ -19,7 +20,7 @@
 }</code></pre>
 <p>Polymorphic dispatch: define the same function name for each variant. The call site picks the right version based on the runtime type.</p>
 <pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Circle</span>) -&gt; <span class="ty"><a href="stdlib.html#types">float</a></span> {
-    <span class="en"><a href="stdlib.html#math">PI</a></span> * (self.radius ^ <span class="nm">2</span>)
+    <span class="en"><a href="stdlib.html#math">PI</a></span> * <span class="fn-call"><a href="stdlib.html#math">pow</a></span>(self.radius, <span class="nm">2</span>)
 }</code></pre>
 <pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Rect</span>) -&gt; <span class="ty"><a href="stdlib.html#types">float</a></span> {
     self.width * self.height
@@ -44,7 +45,6 @@
 <p>Plain enums can be formatted to their variant name.</p>
 <pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{d}"</span> == <span class="st">"East"</span>, <span class="st">"Format plain enum"</span>);
 }</code></pre>
-<p>normal enums versus structure enums conversions towards integer and text polymorph</p>
 
   </article>
 </body>

@@ -5142,7 +5142,7 @@ fn rename(op: &str) -> &str {
         "/" => "Div",
         "&" => "Land",
         "|" => "Lor",
-        "^" => "Pow",
+        "^" => "Eor",
         "<<" => "SLeft",
         ">>" => "SRight",
         "==" => "Eq",

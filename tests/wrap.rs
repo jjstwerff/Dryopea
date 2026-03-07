@@ -17,31 +17,39 @@ use std::fs::File;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
+/// Run every `.lav` file in `tests/suite/` in alphabetical order.
+/// Regenerates all HTML documentation in `doc/` before executing the tests,
+/// so the docs are always in sync with the suite source files.
 #[test]
 fn dir() -> std::io::Result<()> {
-    let dir = "tests/suite";
-    let mut files = Vec::new();
-    for f in std::fs::read_dir(dir)? {
-        files.push(f?.path());
-    }
+    let mut files: Vec<PathBuf> = std::fs::read_dir("tests/suite")?
+        .filter_map(|f| f.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("lav")))
+        .collect();
     files.sort();
     for entry in files {
-        let own_file = entry
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("lav"));
-        if !own_file {
-            continue;
-        }
         run_test(entry, false)?;
     }
     Ok(())
 }
 
+/// Quick iteration test: run only the final suite file (`16-parser.lav`) without
+/// regenerating documentation.  Use this during active development on the parser
+/// to get a fast feedback cycle.
 #[test]
 fn last() -> std::io::Result<()> {
     run_test(PathBuf::from("tests/suite/16-parser.lav"), false)
 }
 
+/// Parse, type-check, compile, and execute one `.lav` test file.
+///
+/// The default library in `default/` is loaded first, then `entry` is parsed on
+/// top of it.  Any parse or type errors are printed and immediately fail the
+/// test.  On success the bytecode is generated and `main` is called.
+///
+/// In debug builds a human-readable bytecode dump is written to
+/// `tests/code/<filename>.txt` before execution.  When `debug` is true, the
+/// interpreter also emits an execution trace to that file.
 fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     println!("run {entry:?}");
     let mut p = Parser::new();
@@ -72,6 +80,12 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Write a debug snapshot of a compiled test to `tests/code/<filename>.txt`.
+///
+/// Writes every type definition introduced by the test file (i.e. types beyond
+/// those already present in the default library), followed by the full bytecode
+/// listing produced by `show_code`.  Returns the open file so the caller can
+/// append an execution trace if needed.
 #[cfg(debug_assertions)]
 fn dump_results(
     entry: PathBuf,

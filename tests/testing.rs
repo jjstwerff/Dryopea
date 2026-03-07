@@ -212,6 +212,7 @@ impl Drop for Test {
 
 impl Test {
     fn generate_code(&self, p: &Parser, start: u32) -> std::io::Result<()> {
+        std::fs::create_dir_all("tests/generated")?;
         let w = &mut File::create("tests/generated/default.rs")?;
         let o = Output {
             data: &p.data,
@@ -224,12 +225,10 @@ impl Test {
             let def_nr = p.data.definitions();
             o.output(w, start, def_nr)?;
             writeln!(w, "#[test]\nfn code_{}() {{", self.name)?;
-            writeln!(w, "    let mut types = KnownTypes::new();")?;
-            writeln!(w, "    init(&mut types);")?;
-            writeln!(w, "    let mut stores = Stores::new(&types);")?;
-            write!(w, "    assert_eq!(")?;
-            o.output_code(w, &self.result, def_nr, 0)?;
-            writeln!(w, ", test(&mut stores));\n}}")?;
+            writeln!(w, "    let mut stores = Stores::new();")?;
+            writeln!(w, "    init(&mut stores);")?;
+            writeln!(w, "    n_test(&mut stores);")?;
+            writeln!(w, "}}")?;
         }
         Ok(())
     }

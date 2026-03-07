@@ -1,11 +1,58 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Texts
+// @TITLE: Text handling and functions
+
+// UTF-8 strings: byte-based indexing, slices, concatenation, formatting, and built-in functions.
+
 fn main() {
+    // Text concatenation produces a new string.
     a = "1" + "2";
     assert("'{a:4}'" == "'12  '", "Formatting text");
     assert(len(a + "123") == 5, "Text length");
-}
 
-// for loop over utf-8 characters
-// index to get a character
-// range to get a sub-string
-// append characters to a result
-// library functions: starts_with
+    // len() counts bytes, not Unicode code points.
+    // A multi-byte emoji occupies 4 bytes; a heart symbol occupies 3 bytes.
+    assert(len("😃") == 4, "Emoji byte length");
+    assert(len("♥") == 3, "Heart byte length");
+    assert(len("abc") == 3, "ASCII byte length");
+
+    // Indexing a string with [n] returns the character whose UTF-8 encoding
+    // contains byte n. For ASCII strings, byte index equals character index.
+    s = "ABCDE";
+    assert(s[0] == 'A', "Character at byte 0");
+    assert(s[2] == 'C', "Character at byte 2");
+
+    // A range index extracts a sub-string by byte offsets.
+    // The upper bound is exclusive; omitting it goes to the end.
+    assert(s[1..4] == "BCD", "Sub-string by byte range");
+    assert(s[3..] == "DE", "Open-ended sub-string");
+
+    // For UTF-8 strings, byte offsets snap to the nearest character boundary.
+    // Use a range to extract the portion from byte 2 up to (not including) the last byte.
+    txt = "12😊🙃45";
+    assert(txt[2..-1] == "😊🙃4", "UTF-8 sub-string by byte range");
+
+    // Iterating over a string yields one character per UTF-8 code point.
+    // '#index' gives the byte offset of the character that follows the current one.
+    // This behaviour is bound to change in a future release to the position of the current.
+    result = "";
+    positions = [];
+    for c in "Hi 😊!" {
+        positions += [c#index];
+        if c#index > 3 {
+            result += c;
+        }
+    }
+    assert(result == "😊!", "Character iteration was {result}");
+    assert("{positions}" == "[1,2,3,7,8]", "Character positions was {positions}");
+
+    // Standard string search functions (all offsets are byte-based).
+    assert("something".starts_with("some"), "starts_with");
+    assert("something".ends_with("thing"), "ends_with");
+    assert("something".find("th") == 4, "find returns byte offset");
+    assert("a longer text".contains("longer"), "contains");
+
+    // trim() removes leading and trailing whitespace.
+    assert(trim("  hello  ") == "hello", "trim");
+}

@@ -257,6 +257,27 @@ fn parse(s: text) -> integer {
     .result(Value::Int(7));
 }
 
+// This shows a current fault of the language #index should have been at the start of the current
+// character instead of at the next character.
+#[test]
+fn string_iter() {
+    expr!(
+        "
+result = \"\";
+    positions = [];
+    for c in \"Hi 😊!\" {
+        positions += [c#index];
+        if c#index > 3 {
+            result += c;
+        }
+    }
+    assert(\"{positions}\" == \"[1,2,3,7,8]\", \"Character positions was {positions}\");
+    result
+"
+    )
+    .result(Value::str("😊!"));
+}
+
 // Only run this test locally, do not make it part of the release as it will log all kinds of
 // data that is not for public consumption and not stable through multiple runs.
 /*

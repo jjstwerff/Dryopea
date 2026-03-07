@@ -3,32 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lav — 13 — File</title>
+<title>Loft - File</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <span class="cur">File</span> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
-<h1>13 — File</h1>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <span class="cur">File</span> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<h1>File</h1>
 <article>
+<p>File system access: creating File handles, listing directory contents, reading file text, and splitting into lines.</p>
 <p>'file(path)' creates a File handle; 'files()' lists the contents of a directory. 'format == Format.Directory' tests whether a file is a directory.</p>
-<pre><code><span class="kw">fn</span> <span class="fn-call">collect_txt</span>(folder: <span class="en"><a href="stdlib.html#file-system">File</a></span>, l: <span class="ty"><a href="stdlib.html#collections">vector</a></span>&lt;<span class="ty"><a href="stdlib.html#types">text</a></span>&gt;) {
-    <span class="kw">for</span> f <span class="kw">in</span> folder.<span class="fn-call"><a href="stdlib.html#file-system">files</a></span>() {
+<pre><code><span class="kw">fn</span> <span class="fn-call">text_files</span>(dir: <span class="en"><a href="stdlib.html#file-system">File</a></span>, l: <span class="ty"><a href="stdlib.html#collections">vector</a></span>&lt;<span class="en"><a href="stdlib.html#file-system">File</a></span>&gt;) {
+    <span class="kw">for</span> f <span class="kw">in</span> dir.<span class="fn-call"><a href="stdlib.html#file-system">files</a></span>() {
         <span class="kw">if</span> f.format == <span class="en"><a href="stdlib.html#file-system">Format</a></span>.<span class="en">Directory</span> {
-            <span class="fn-call">collect_txt</span>(f, l);
+            <span class="fn-call">text_files</span>(f, l);
         } <span class="kw">else</span> <span class="kw">if</span> f.path.<span class="fn-call"><a href="stdlib.html#text">ends_with</a></span>(<span class="st">".txt"</span>) {
-            l += [f.path];
+            l += [f];
         }
     }
 }</code></pre>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
 <p>Recursively collect all .txt file paths under the 'example' directory.</p>
 <pre><code>    paths = [];
-    <span class="fn-call">collect_txt</span>(<span class="bi"><a href="stdlib.html#file-system">file</a></span>(<span class="st">"example"</span>), paths);
-    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(paths[<span class="nm">0</span>] == <span class="st">"example/config/terrain.txt"</span>, <span class="st">"Found file '{paths[0]}'"</span>);</code></pre>
+    <span class="fn-call">text_files</span>(<span class="bi"><a href="stdlib.html#file-system">file</a></span>(<span class="st">"example"</span>), paths);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(paths[<span class="nm">0</span>].path == <span class="st">"example/config/terrain.txt"</span>, <span class="st">"Found file '{paths[0].path}'"</span>);</code></pre>
 <p>'content()' reads the file as text; 'lines()' splits it into a vector of lines.</p>
-<pre><code>    f = <span class="bi"><a href="stdlib.html#file-system">file</a></span>(paths[<span class="nm">0</span>]);
+<pre><code>    f = paths[<span class="nm">0</span>];
     c = f.<span class="fn-call"><a href="stdlib.html#file-system">lines</a></span>();
-    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(c[<span class="nm">1</span>] == <span class="st">"    terrain = ["</span>, <span class="st">"Line was '{c[1]}'"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(c[<span class="nm">1</span>] == <span class="st">"   terrain = ["</span>, <span class="st">"Line was '{c[1]}'"</span>);
 }</code></pre>
 
   </article>

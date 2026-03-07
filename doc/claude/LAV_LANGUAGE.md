@@ -183,21 +183,18 @@ Searches for `arguments.lav` in `lib/`, the current directory, directories from 
 
 Listed by precedence (lowest to highest):
 
-| Precedence | Operators                              | Notes                         |
-|------------|----------------------------------------|-------------------------------|
-| 1 (lowest) | `\|\|`, `or`                           | logical OR                    |
-| 2          | `&&`, `and`                            | logical AND                   |
-| 3          | `==`, `!=`, `<`, `<=`, `>`, `>=`       | comparison                    |
-| 4          | `\|`                                   | bitwise OR                    |
-| 5          | `^`                                    | **exponentiation** (`4.0^5 == 1024.0`) |
-| 6          | `&`                                    | bitwise AND                   |
-| 7          | `<<`, `>>`                             | bit shift                     |
-| 8          | `-`, `+`                               | addition/subtraction          |
-| 9          | `*`, `/`, `%`                          | multiplication/division       |
-| 10         | `as` (type cast/conversion)            |                               |
-
-Note: `^` is exponentiation, **not** bitwise XOR. Because it has lower precedence than `*`,
-parentheses are needed in expressions like `PI * (r ^ 2)`.
+| Precedence | Operators                              | Notes                   |
+|------------|----------------------------------------|-------------------------|
+| 1 (lowest) | `\|\|`, `or`                           | logical OR              |
+| 2          | `&&`, `and`                            | logical AND             |
+| 3          | `==`, `!=`, `<`, `<=`, `>`, `>=`       | comparison              |
+| 4          | `\|`                                   | bitwise OR              |
+| 5          | `^`                                    | bitwise EOR             |
+| 6          | `&`                                    | bitwise AND             |
+| 7          | `<<`, `>>`                             | bit shift               |
+| 8          | `-`, `+`                               | addition/subtraction    |
+| 9          | `*`, `/`, `%`                          | multiplication/division |
+| 10         | `as` (type cast/conversion)            |                         |
 
 Unary operators: `!` (logical not), `-` (negation).
 

@@ -20,6 +20,11 @@ fn expr_integer() {
 }
 
 #[test]
+fn expr_binary() {
+    expr!("0b101010").result(Value::Int(42));
+}
+
+#[test]
 fn expr_add() {
     expr!("1 + 2").result(Value::Int(3));
 }

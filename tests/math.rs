@@ -14,7 +14,7 @@ fn constants() {
 
 #[test]
 fn exponents() {
-    expr!("log(4.0^5, 2)").result(Value::Float(10.0));
+    expr!("log(pow(4.0, 5), 2)").result(Value::Float(10.0));
 }
 
 #[test]

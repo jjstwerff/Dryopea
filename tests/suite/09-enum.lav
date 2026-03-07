@@ -1,5 +1,52 @@
-fn main() {
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Enums
+// @TITLE: Enumerate types in plain or structured form.
+// Enums: plain value enums with ordering and text conversion; struct enums with field access and polymorphic dispatch.
+
+// Enum values can be compared, ordered, and converted to/from integer and text.
+enum Direction { North, East, South, West }
+
+// An enum variant can carry data as named fields, making it a 'struct enum'.
+// Each variant is its own type and can have its own methods.
+enum Shape {
+    Circle { radius: float },
+    Rect { width: float, height: float }
 }
-// normal enums versus structure enums
-// conversions towards integer and text
-// polymorph
+
+// Polymorphic dispatch: define the same function name for each variant.
+// The call site picks the right version based on the runtime type.
+fn area(self: Circle) -> float {
+    PI * pow(self.radius, 2)
+}
+
+fn area(self: Rect) -> float {
+    self.width * self.height
+}
+
+fn main() {
+    // Plain enum: comparison and ordering (by declaration order).
+    d = East;
+    assert(d == East, "Enum equality");
+    assert(d != North, "Enum inequality");
+    assert(d > North, "East declared after North, so it is greater");
+    assert(West > South, "West declared last, so it is greatest");
+
+    // Convert text to an enum value.
+    assert("West" as Direction == West, "Text to enum");
+
+    // Struct-enum variants are constructed like structs.
+    // Access their fields with dot notation.
+    c = Circle { radius: 1.0 };
+    assert(c.radius == 1.0, "Variant field access");
+
+    r = Rect { width: 4.0, height: 5.0 };
+    assert(r.width * r.height == 20.0, "Rect area manually");
+
+    // Polymorphic dispatch: the correct 'area' function is chosen by variant type.
+    assert(round(c.area() * 1000) == round(PI * 1000), "Circle area = PI*r^2");
+    assert(r.area() == 20.0, "Rect area = width*height");
+
+    // Plain enums can be formatted to their variant name.
+    assert("{d}" == "East", "Format plain enum");
+}

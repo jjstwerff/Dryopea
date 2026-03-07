@@ -1356,7 +1356,7 @@ impl Stores {
     /**
     Try to allocate a new store.
     # Panics
-    When the next assumed free store is not free
+    When a store already in use is allocated again.
     */
     pub fn database(&mut self, size: u32) -> DbRef {
         if self.max >= self.allocations.len() as u16 {

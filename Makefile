@@ -32,6 +32,7 @@ clippy:
 	cargo clippy --tests -- -W clippy::all -W clippy::cognitive_complexity >> result.txt 2>&1
 	rustfmt src/*.rs --edition 2024
 	rustfmt tests/*.rs --edition 2024
+	cargo run --bin gendoc
 
 memory:
 	valgrind target/debug/deps/vectors-1ff9433be145872a

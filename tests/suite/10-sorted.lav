@@ -1,3 +1,42 @@
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Sorted
+// @TITLE: Automatically and memory efficient sorted vectors
+// "sorted<T[key]>: O(log n) key lookup and in-order iteration in a sorted binary tree; ascending and descending sort keys.
+
+// A 'sorted' field keeps records in a sorted binary tree that can be traversed
+// in key order and looked up by key in O(log n) time.
+// Key fields are listed in brackets: '-field' sorts descending, 'field' ascending.
+struct Elm { key: text, value: integer }
+struct Db { map: sorted<Elm[-key]> }
+
 fn main() {
+    // Populate a sorted collection; the collection maintains its order automatically.
+    db = Db { map: [
+        Elm { key: "One",   value: 1 },
+        Elm { key: "Two",   value: 2 },
+        Elm { key: "Three", value: 3 },
+        Elm { key: "Four",  value: 4 }
+    ]};
+
+    // Look up an element by its sort key using index syntax.
+    // Returns null if the key is not present.
+    assert(db.map["Two"].value == 2, "Key lookup: Two");
+    assert(db.map["Three"].value == 3, "Key lookup: Three");
+    assert(!db.map["Five"], "Missing key returns null");
+    assert(!db.map[null], "Null key returns null");
+
+    // New elements can be appended; they are inserted in the right position.
+    db.map += [Elm { key: "Zero", value: 0 }];
+    assert(db.map["Zero"].value == 0, "Newly added element");
+
+    // Iterating visits elements in sorted order.
+    // With '-key' (descending text), the order is: Zero, Two, Three, One, Four.
+    sum = 0;
+    for v in db.map {
+        sum = sum * 10 + v.value;
+    }
+    // Zero(0), Two(2), Three(3), One(1), Four(4) → 0*10+2=2, *10+3=23, *10+1=231, *10+4=2314
+    assert(sum == 2314, "Sorted iteration total: {sum}");
 }
 // filling and finding values

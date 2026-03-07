@@ -1,18 +1,34 @@
 // Copyright (c) 2022-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+// --- Types ---
+// Primitive types built into lav.
+
+// True or false value.
 pub type boolean size(1);
+// 32-bit signed integer.
 pub type integer size(4);
+// 64-bit signed integer. Use when values exceed ~2 billion.
 pub type long size(8);
+// 32-bit floating-point. Good for graphics and performance-sensitive math.
 pub type single size(4);
+// 64-bit floating-point. Use when precision matters.
 pub type float size(8);
+// UTF-8 string.
 pub type text size(4);
+// A single Unicode code point.
 pub type character size(4);
 
+// Integer subtypes for compact storage in struct fields. Behave as integer in expressions.
+// 0 – 255, 1 byte.
 pub type u8=integer limit(0, 255) size(1);
+// -128 – 127, 1 byte.
 pub type i8=integer limit(-128, 127) size(1);
+// 0 – 65535, 2 bytes.
 pub type u16=integer limit(0, 65535) size(2);
+// -32768 – 32767, 2 bytes.
 pub type i16=integer limit(-32768, 32767) size(2);
+// Full 32-bit integer range, 4 bytes.
 pub type i32=integer size(4);
 
 // General operations
@@ -55,6 +71,12 @@ fn OpPutBool(var: const u16, value: boolean);
 
 fn OpNot(v1: boolean) -> boolean;
 #rust "!@v1"
+
+// --- Math ---
+// Functions for numeric computation.
+// All trigonometric functions work in radians.
+// Both single and float variants exist for every function —
+// choose single for speed, float for precision.
 
 // Integer operations
 fn OpConstInt(val: const integer) -> integer;
@@ -101,6 +123,7 @@ fn OpCastFloatFromText(v1: text) -> float;
 
 fn OpAbsInt(v1: integer) -> integer;
 #rust "external::op_abs_int(@v1)"
+// Absolute value. Removes the sign from a negative integer.
 pub fn abs(both: integer) -> integer { OpAbsInt(both) }
 
 fn OpMinSingleInt(v1: integer) -> integer;
@@ -175,6 +198,7 @@ fn OpConvLongFromNull() -> long;
 
 fn OpAbsLong(v1: long) -> long;
 #rust "external::op_abs_long(@v1)"
+// Absolute value for long integers.
 pub fn abs(both: long) -> long { OpAbsLong(both) }
 
 fn OpMinSingleLong(v1: long) -> long;
@@ -234,7 +258,9 @@ fn OpLeLong(v1: long, v2: long) -> boolean;
 fn OpFormatLong(pos: const u16, val: long, radix: const u8, width: integer, token: const u8, plus: const boolean, note: const boolean);
 fn OpFormatStackLong(pos: const u16, val: long, radix: const u8, width: integer, token: const u8, plus: const boolean, note: const boolean);
 
-// Single operations
+// Single-precision (32-bit) floating-point math.
+// Choose single for performance-sensitive work such as graphics.
+
 fn OpConstSingle(val: const single) -> single;
 #rust "@val"
 
@@ -249,6 +275,7 @@ fn OpConvSingleFromNull() -> single;
 
 fn OpAbsSingle(v1: single) -> single;
 #rust "@v1.abs()"
+// Absolute value for single-precision floats.
 pub fn abs(both: single) -> single { OpAbsSingle(both) }
 
 fn OpMinSingleSingle(v1: single) -> single;
@@ -283,54 +310,72 @@ fn OpRemSingle(v1: single, v2: single) -> single;
 
 fn OpMathCosSingle(v1: single) -> single;
 #rust "@v1.cos()"
+// Cosine. Use for circular motion: x = r * cos(angle).
 pub fn cos(both: single) -> single { OpMathCosSingle(both) }
 
 fn OpMathSinSingle(v1: single) -> single;
 #rust "@v1.sin()"
+// Sine. Use for circular motion: y = r * sin(angle).
 pub fn sin(both: single) -> single { OpMathSinSingle(both) }
 
 fn OpMathTanSingle(v1: single) -> single;
 #rust "@v1.tan()"
+// Tangent. Use for slopes and perspective projection.
 pub fn tan(both: single) -> single { OpMathTanSingle(both) }
 
 fn OpMathAcosSingle(v1: single) -> single;
 #rust "@v1.acos()"
+// Arc cosine. Returns the angle (in radians) whose cosine is v.
 pub fn acos(both: single) -> single { OpMathAcosSingle(both) }
 
 fn OpMathAsinSingle(v1: single) -> single;
 #rust "@v1.asin()"
+// Arc sine. Returns the angle whose sine is v.
 pub fn asin(both: single) -> single { OpMathAsinSingle(both) }
 
 fn OpMathAtanSingle(v1: single) -> single;
 #rust "@v1.atan()"
+// Arc tangent of a single value. Returns angle in (-PI/2, PI/2).
 pub fn atan(both: single) -> single { OpMathAtanSingle(both) }
 
 fn OpMathAtan2Single(v1: single, v2: single) -> single;
 #rust "@v1.atan2(@v2)"
+// Arc tangent of y/x, preserving the correct quadrant.
+// Use instead of atan when you have separate x/y components.
 pub fn atan2(both: single, v2: single) -> single { OpMathAtan2Single(both, v2) }
 
 fn OpMathCeilSingle(v1: single) -> single;
 #rust "@v1.ceil()"
+// Round up to the nearest integer value.
+// Use to compute required buffer sizes from fractional counts.
 pub fn ceil(both: single) -> single { OpMathCeilSingle(both) }
 
 fn OpMathFloorSingle(v1: single) -> single;
 #rust "@v1.floor()"
+// Round down to the nearest integer value.
+// Use to convert a float position to a tile index.
 pub fn floor(both: single) -> single { OpMathFloorSingle(both) }
 
 fn OpMathRoundSingle(v1: single) -> single;
 #rust "@v1.round()"
+// Round to the nearest integer value (half rounds away from zero).
 pub fn round(both: single) -> single { OpMathRoundSingle(both) }
 
 fn OpMathSqrtSingle(v1: single) -> single;
 #rust "@v1.sqrt()"
+// Square root. Use for distances and normalization.
 pub fn sqrt(both: single) -> single { OpMathSqrtSingle(both) }
 
 fn OpMathLogSingle(v1: single, v2: single) -> single;
 #rust "@v1.log(@v2)"
+// Logarithm of v in the given base.
+// Use for converting between scales (e.g., decibels).
 pub fn log(both: single, v2: single) -> single { OpMathLogSingle(both, v2) }
 
 fn OpPowSingle(v1: single, v2: single) -> single;
 #rust "@v1.powf(@v2)"
+// Raises base to the power exp.
+// Use for exponential growth curves and scaling.
 pub fn pow(both: single, v2: single) -> single { OpPowSingle(both, v2) }
 
 fn OpEqSingle(v1: single, v2: single) -> boolean;
@@ -348,7 +393,9 @@ fn OpLeSingle(v1: single, v2: single) -> boolean;
 fn OpFormatSingle(pos: const u16, val: single, width: integer, precision: integer);
 fn OpFormatStackSingle(pos: const u16, val: single, width: integer, precision: integer);
 
-// float operations
+// Double-precision (64-bit) floating-point math.
+// Choose float over single when precision matters.
+
 fn OpConstFloat(val: const float) -> float;
 #rust "@val"
 
@@ -363,66 +410,87 @@ fn OpConvFloatFromNull() -> float;
 
 fn OpAbsFloat(v1: float) -> float;
 #rust "@v1.abs()"
+// Absolute value for double-precision floats.
 pub fn abs(both: float) -> float { OpAbsFloat(both) }
 
 fn OpMathPiFloat() -> float;
 #rust "std::f64::consts::PI"
+// The ratio of a circle's circumference to its diameter (3.14159...).
 pub PI = OpMathPiFloat();
 
 fn OpMathEFloat() -> float;
 #rust "std::f64::consts::E"
+// Euler's number, the base of natural logarithms (2.71828...).
 pub E = OpMathEFloat();
 
 fn OpMathCosFloat(v1: float) -> float;
 #rust "@v1.cos()"
+// Cosine. Use for circular motion: x = r * cos(angle).
 pub fn cos(both: float) -> float { OpMathCosFloat(both) }
 
 fn OpMathSinFloat(v1: float) -> float;
 #rust "@v1.sin()"
+// Sine. Use for circular motion: y = r * sin(angle).
 pub fn sin(both: float) -> float { OpMathSinFloat(both) }
 
 fn OpMathTanFloat(v1: float) -> float;
 #rust "@v1.tan()"
+// Tangent. Use for slopes and perspective projection.
 pub fn tan(both: float) -> float { OpMathTanFloat(both) }
 
 fn OpMathAcosFloat(v1: float) -> float;
 #rust "@v1.acos()"
+// Arc cosine. Returns the angle (in radians) whose cosine is v.
 pub fn acos(both: float) -> float { OpMathAcosFloat(both) }
 
 fn OpMathAsinFloat(v1: float) -> float;
 #rust "@v1.asin()"
+// Arc sine. Returns the angle whose sine is v.
 pub fn asin(both: float) -> float { OpMathAsinFloat(both) }
 
 fn OpMathAtanFloat(v1: float) -> float;
 #rust "@v1.atan()"
+// Arc tangent of a single value. Returns angle in (-PI/2, PI/2).
 pub fn atan(both: float) -> float { OpMathAtanFloat(both) }
 
 fn OpMathAtan2Float(v1: float, v2: float) -> float;
 #rust "@v1.atan2(@v2)"
+// Arc tangent of y/x, preserving the correct quadrant.
+// Use instead of atan when you have separate x/y components.
 pub fn atan2(both: float, v2: float) -> float { OpMathAtan2Float(both, v2) }
 
 fn OpMathCeilFloat(v1: float) -> float;
 #rust "@v1.ceil()"
+// Round up to the nearest integer value.
+// Use to compute required buffer sizes from fractional counts.
 pub fn ceil(both: float) -> float { OpMathCeilFloat(both) }
 
 fn OpMathFloorFloat(v1: float) -> float;
 #rust "@v1.floor()"
+// Round down to the nearest integer value.
+// Use to convert a float position to a tile index.
 pub fn floor(both: float) -> float { OpMathFloorFloat(both) }
 
 fn OpMathRoundFloat(v1: float) -> float;
 #rust "@v1.round()"
+// Round to the nearest integer value (half rounds away from zero).
 pub fn round(both: float) -> float { OpMathRoundFloat(both) }
 
 fn OpMathSqrtFloat(v1: float) -> float;
 #rust "@v1.sqrt()"
+// Square root. Use for distances and normalization.
 pub fn sqrt(both: float) -> float { OpMathSqrtFloat(both) }
 
 fn OpMathLogFloat(v1: float, v2: float) -> float;
 #rust "@v1.log(@v2)"
+// Logarithm of v in the given base.
+// Use for converting between scales (e.g., decibels).
 pub fn log(both: float, v2: float) -> float { OpMathLogFloat(both, v2) }
 
 fn OpPowFloat(v1: float, v2: float) -> float;
 #rust "@v1.powf(@v2)"
+// Raises base to the power exp.
+// Use for exponential growth curves and scaling.
 pub fn pow(both: float, v2: float) -> float { OpPowFloat(both, v2) }
 
 fn OpMinSingleFloat(v1: float) -> float;
@@ -470,7 +538,8 @@ fn OpLeFloat(v1: float, v2: float) -> boolean;
 fn OpFormatFloat(pos: const u16, val: float, width: integer, precision: integer);
 fn OpFormatStackFloat(pos: const u16, val: float, width: integer, precision: integer);
 
-// Text operations
+// --- Text ---
+// Functions for working with text (UTF-8 strings) and character values.
 
 // Read the value of a variable and put a reference to it on the stack
 fn OpVarText(pos: const u16) -> text;
@@ -481,8 +550,10 @@ fn OpConstText(_value: const text) -> text;
 fn OpConvTextFromNull() -> text;
 fn OpLengthText(v1: text) -> integer;
 #rust "@v1.len() as i32"
+// Number of bytes in the text. Use for bounds checks and iteration limits.
 pub fn len(both: text) -> integer { OpLengthText(both) }
 fn OpLengthCharacter(v1: character) -> integer;
+// Byte length of the character's UTF-8 encoding (1–4).
 pub fn len(both: character) -> integer { OpLengthCharacter(both) }
 fn OpConvBoolFromText(v1: text) -> boolean;
 #rust "@v1 != crate::state::STRING_NULL"
@@ -623,6 +694,10 @@ fn OpSetShort(v1: reference, fld: const u16, min: const i16, val: integer);
 fn OpSetText(v1: reference, fld: const u16, val: text);
 #rust "{{let db = @v1; let s_val = @val.to_string(); let store = stores.store_mut(&db); let s_pos = store.set_str(&s_val); store.set_int(db.rec, db.pos + u32::from(@fld), s_pos as i32);}}"
 
+// --- Collections ---
+// Operations on vector<T> — the primary ordered collection type.
+// Vectors are grown by appending with += and elements are accessed by index.
+
 // All structures are passed by reference instead of by value
 type vector size(4);
 type sorted size(4);
@@ -634,6 +709,7 @@ fn OpVarVector(pos: const u16) -> vector;
 // The length of vectors is written at the start of their allocation.
 fn OpLengthVector(r: vector) -> integer;
 #rust "vector::length_vector(&@r, &s.database.allocations) as i32"
+// Number of elements in the vector. Use in loop bounds: for i in 0..v.len().
 pub fn len(both: vector) -> integer { OpLengthVector(both) }
 
 fn OpClearVector(r: vector);
@@ -684,20 +760,27 @@ fn OpEqBool(v1: boolean, v2: boolean) -> boolean;
 fn OpNeBool(v1: boolean, v2: boolean) -> boolean;
 #rust "@v1 != @v2"
 
+// --- Output and Diagnostics ---
+
 fn OpPanic(message: text);
 #rust "panic!(\"{{}}\", @message);"
 
+// Panics with message if test is false. Use to verify invariants during development.
 fn assert(test: boolean, message: text);
 #rust "assert!(@test, \"{{}}\", @message);"
 
+// Immediately terminates execution with message. Use for unrecoverable error states.
 fn panic(message: text);
 #rust "panic!(\"{{}}\", @message);"
 
 fn OpPrint(v1: text);
 #rust "print!(\"{{}}\", @v1);"
+// Writes v to standard output without a newline.
+// Use for progress output and building up a line incrementally.
 fn print(v1: text) {
     OpPrint(v1);
 }
+// Writes v followed by a newline. The standard choice for line-oriented output.
 fn println(v1: text) {
     OpPrint("{v1}\n");
 }

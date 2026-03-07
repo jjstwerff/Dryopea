@@ -1,7 +1,15 @@
-fn texts(dir: File, l: vector<File>) {
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: File
+// @TITLE: Finding, reading, and writing files.
+// File system access: creating File handles, listing directory contents, reading file text, and splitting into lines.
+
+// 'file(path)' creates a File handle; 'files()' lists the contents of a directory.
+// 'format == Format.Directory' tests whether a file is a directory.
+fn text_files(dir: File, l: vector<File>) {
     for f in dir.files() {
-        if f.dir {
-            texts(f, l);
+        if f.format == Format.Directory {
+            text_files(f, l);
         } else if f.path.ends_with(".txt") {
             l += [f];
         }
@@ -9,10 +17,12 @@ fn texts(dir: File, l: vector<File>) {
 }
 
 fn main() {
-    l = [];
-    texts(file("example"), l);
-    assert(l[0].path == "example/config/terrain.txt", "Found file '{l[0].path}'");
-    f = l[0];
+    // Recursively collect all .txt file paths under the 'example' directory.
+    paths = [];
+    text_files(file("example"), paths);
+    assert(paths[0].path == "example/config/terrain.txt", "Found file '{paths[0].path}'");
+    // 'content()' reads the file as text; 'lines()' splits it into a vector of lines.
+    f = paths[0];
     c = f.lines();
     assert(c[1] == "   terrain = [", "Line was '{c[1]}'");
 }
