@@ -46,15 +46,15 @@ pub struct Parser {
     /// The definition that is currently parsed (function or struct)
     context: u32,
     /// Is this the first pass on parsing:
-    /// - do not assume that all struct / enum types are already parsed
-    /// - define variables, try to determine their type (can become clear from later code)
-    /// - claim working text variables for expressions that gather text data outside variables
-    /// - links between memory allocations (text, stores) their type knows the variable numbers
-    /// - move variables to a lower scope if an expression still links to their content
-    /// - determine mutations to stores and administer these in arguments
+    /// - Do not assume that all struct / enum types are already parsed.
+    /// - Define variables, try to determine their type (can become clear from later code).
+    /// - Claim working text variables for expressions that gather text data outside variables.
+    /// - Links between memory allocations (text, stores) their type knows the variable numbers.
+    /// - Move variables to a lower scope if an expression still links to their content.
+    /// - Determine mutations to stores and administer these in arguments.
     ///
     /// The second pass:
-    /// - creates code, assumes that all types are known
+    /// - Creates code, assumes that all types are known.
     first_pass: bool,
     vars: Function,
     /// Last seen line inside the source code, an increase inserts it in the internal code.
@@ -114,7 +114,7 @@ fn is_op(name: &str) -> bool {
     name.len() >= 3 && name.starts_with("Op") && name.chars().nth(2).unwrap().is_uppercase()
 }
 
-/// Validate function, attribute, value and field names
+/// Validate function, attribute, value, and field names
 fn is_lower(name: &str) -> bool {
     for c in name.chars() {
         if c.is_uppercase() {
@@ -1096,7 +1096,7 @@ impl Parser {
     }
 
     fn lib_path(&mut self, id: &String) -> String {
-        // - a source file the lib directory in the project (project-supplied)
+        // - a source file, the lib directory in the project (project-supplied)
         let mut f = format!("lib/{id}.lav");
         if !std::path::Path::new(&f).exists() {
             f = format!("{id}.lav");
@@ -3110,7 +3110,7 @@ impl Parser {
         {
             *in_t = Type::Enum(*t_e, true, Vec::new());
         } else if !self.convert(&mut p, &t, in_t) {
-            // double conversion check: can t become in_t or vice versa
+            // double conversion check: can't become in_t or vice versa
             if self.convert(&mut p, in_t, &t) {
                 *in_t = t.clone();
             } else {
@@ -3383,7 +3383,7 @@ impl Parser {
             if self.first_pass && self.lexer.has_token("(") {
                 self.skip_remaining_args();
             } else if !self.first_pass {
-                // For polymorphic enums, field may be in a variant struct (not in enum itself).
+                // For polymorphic enums, this field may be in a struct (not the enum itself).
                 if let Type::Enum(enum_d_nr, true, _) = &t
                     && let Some((found_d_nr, found_fnr)) =
                         self.find_poly_enum_field(*enum_d_nr, &field)
@@ -3831,8 +3831,7 @@ impl Parser {
                             Value::Int(i32::from(tp)),
                         ],
                     );
-                    // The destination owns its own deep-copied store; no dependency on source.
-                    self.vars.make_independent(into_var);
+                    self.vars.make_independent(into_var, v_nr);
                     return Type::Reference(d_nr, Vec::new());
                 }
                 *code = Value::Var(v_nr);
@@ -5201,7 +5200,7 @@ fn rename(op: &str) -> &str {
         "/" => "Div",
         "&" => "Land",
         "|" => "Lor",
-        "^" => "Pow",
+        "^" => "Eor",
         "<<" => "SLeft",
         ">>" => "SRight",
         "==" => "Eq",

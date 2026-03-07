@@ -20,16 +20,16 @@ fn n_format(a:integer, __work_1:&text) -> text["__work_1"] {#block(1):text["__wo
 byte-code for return_formatter:n_format(a: integer[0], __work_1: &text[4]) -> text["__work_1"]
    0[16]: return-address
    0[20]: [1] ConstText(_value="a") -> text var=__work_1[4]:&text
-   4[36]: AppendStackText(var[4], v1: text)
-   7[20]: VarInt(var[0]) -> integer var=a[0]:integer
-  10[24]: ConvLongFromInt(v1: integer) -> long
-  11[28]: ConstInt(val=0) -> integer
-  16[32]: FormatStackLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
-  23[20]: ConstText(_value="b") -> text
-  27[36]: AppendStackText(var[4], v1: text)
-  30[20]: VarRef(var[4]) -> ref(reference) var=__work_1[4]:&text
-  33[32]: GetStackText(r: ref(reference)) -> text["a"]
-  34[36]: Return(ret=16, value=16, discard=36) type=text 5
+   3[36]: AppendStackText(var[4], v1: text)
+   6[20]: VarInt(var[0]) -> integer var=a[0]:integer
+   9[24]: ConvLongFromInt(v1: integer) -> long
+  10[28]: ConstInt(val=0) -> integer
+  15[32]: FormatStackLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  22[20]: ConstText(_value="b") -> text
+  25[36]: AppendStackText(var[4], v1: text)
+  28[20]: VarRef(var[4]) -> ref(reference) var=__work_1[4]:&text
+  31[32]: GetStackText(r: ref(reference)) -> text["a"]
+  32[36]: Return(ret=16, value=16, discard=36) type=text 5
 
 fn n_test() {#block(1):void
   __work_4(1):text = "";
@@ -81,25 +81,25 @@ byte-code for return_formatter:n_test()
   43[140]: AppendText(var[100], v1: text)
   46[124]: [5] VarText(var[100]) -> text var=test_value[100]:text["__work_3"]
   49[140]: ConstText(_value="a123banullb") -> text
-  63[156]: EqText(v1: text, v2: text) -> boolean
-  64[125]: GotoFalseWord(jump=70, if_false: boolean)
-  67[124]: GotoWord(jump=131)
-  70[124]: ClearText(var[4]) var=__work_4[4]:text
-  73[124]: ConstText(_value="Test failed ") -> text
-  88[140]: AppendText(var[4], v1: text)
-  91[124]: VarText(var[100]) -> text var=test_value[100]:text["__work_3"]
-  94[140]: ConstInt(val=0) -> integer
-  99[144]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 104[124]: ConstText(_value=" != "a123banullb"") -> text
- 124[140]: AppendText(var[4], v1: text)
- 127[124]: VarText(var[4]) -> text var=__work_4[4]:text
- 130[140]: Panic(message: text)
- 131[124]: FreeText(var[100])
- 134[124]: FreeText(var[76])
- 137[124]: FreeText(var[52])
- 140[124]: FreeText(var[28])
- 143[124]: FreeText(var[4])
- 146[124]: Return(ret=0, value=0, discard=124)
+  62[156]: EqText(v1: text, v2: text) -> boolean
+  63[125]: GotoFalseWord(jump=69, if_false: boolean)
+  66[124]: GotoWord(jump=128)
+  69[124]: ClearText(var[4]) var=__work_4[4]:text
+  72[124]: ConstText(_value="Test failed ") -> text
+  86[140]: AppendText(var[4], v1: text)
+  89[124]: VarText(var[100]) -> text var=test_value[100]:text["__work_3"]
+  92[140]: ConstInt(val=0) -> integer
+  97[144]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 102[124]: ConstText(_value=" != "a123banullb"") -> text
+ 121[140]: AppendText(var[4], v1: text)
+ 124[124]: VarText(var[4]) -> text var=__work_4[4]:text
+ 127[140]: Panic(message: text)
+ 128[124]: FreeText(var[100])
+ 131[124]: FreeText(var[76])
+ 134[124]: FreeText(var[52])
+ 137[124]: FreeText(var[28])
+ 140[124]: FreeText(var[4])
+ 143[124]: Return(ret=0, value=0, discard=124)
 
 Execute test:
     0:[8] Text()
@@ -111,44 +111,44 @@ Execute test:
     8:[128] ConstInt(val=123) -> 123[128]
    13:[132] CreateStack(var[80]) -> ref(0,1,88)[132]
    16:[144] Call(size=0, fn=n_format)
- 1864:[148] ConstText(_value="a") -> "a"[148]
- 1868:[164] AppendStackText(var[132], v1="a"[148])
- 1871:[148] VarInt(var[128]) -> 123[148]
- 1874:[152] ConvLongFromInt(v1=123[148]) -> 123[148]
- 1875:[156] ConstInt(val=0) -> 0[156]
- 1880:[160] FormatStackLong(var[132], val=123[148], radix=10, width=0[156], token=32, plus=false, note=false)
- 1887:[148] ConstText(_value="b") -> "b"[148]
- 1891:[164] AppendStackText(var[132], v1="b"[148])
- 1894:[148] VarRef(var[132]) -> ref(0,1,88)[148]
- 1897:[160] GetStackText(r=ref(0,1,88)[148]) -> "a123b"[148]
- 1898:[164] Return(ret=1927[144], value=16, discard=36) -> "a123b"[128]
+ 1851:[148] ConstText(_value="a") -> "a"[148]
+ 1854:[164] AppendStackText(var[132], v1="a"[148])
+ 1857:[148] VarInt(var[128]) -> 123[148]
+ 1860:[152] ConvLongFromInt(v1=123[148]) -> 123[148]
+ 1861:[156] ConstInt(val=0) -> 0[156]
+ 1866:[160] FormatStackLong(var[132], val=123[148], radix=10, width=0[156], token=32, plus=false, note=false)
+ 1873:[148] ConstText(_value="b") -> "b"[148]
+ 1876:[164] AppendStackText(var[132], v1="b"[148])
+ 1879:[148] VarRef(var[132]) -> ref(0,1,88)[148]
+ 1882:[160] GetStackText(r=ref(0,1,88)[148]) -> "a123b"[148]
+ 1883:[164] Return(ret=1912[144], value=16, discard=36) -> "a123b"[128]
    23:[144] AppendText(var[32], v1="a123b"[128])
    26:[128] ConvIntFromNull() -> -2147483648[128]
    27:[132] CreateStack(var[56]) -> ref(0,1,64)[132]
    30:[144] Call(size=0, fn=n_format)
- 1864:[148] ConstText(_value="a") -> "a"[148]
- 1868:[164] AppendStackText(var[132], v1="a"[148])
- 1871:[148] VarInt(var[128]) -> -2147483648[148]
- 1874:[152] ConvLongFromInt(v1=-2147483648[148]) -> -9223372036854775808[148]
- 1875:[156] ConstInt(val=0) -> 0[156]
- 1880:[160] FormatStackLong(var[132], val=-9223372036854775808[148], radix=10, width=0[156], token=32, plus=false, note=false)
- 1887:[148] ConstText(_value="b") -> "b"[148]
- 1891:[164] AppendStackText(var[132], v1="b"[148])
- 1894:[148] VarRef(var[132]) -> ref(0,1,64)[148]
- 1897:[160] GetStackText(r=ref(0,1,64)[148]) -> "anullb"[148]
- 1898:[164] Return(ret=1941[144], value=16, discard=36) -> "anullb"[128]
+ 1851:[148] ConstText(_value="a") -> "a"[148]
+ 1854:[164] AppendStackText(var[132], v1="a"[148])
+ 1857:[148] VarInt(var[128]) -> -2147483648[148]
+ 1860:[152] ConvLongFromInt(v1=-2147483648[148]) -> -9223372036854775808[148]
+ 1861:[156] ConstInt(val=0) -> 0[156]
+ 1866:[160] FormatStackLong(var[132], val=-9223372036854775808[148], radix=10, width=0[156], token=32, plus=false, note=false)
+ 1873:[148] ConstText(_value="b") -> "b"[148]
+ 1876:[164] AppendStackText(var[132], v1="b"[148])
+ 1879:[148] VarRef(var[132]) -> ref(0,1,64)[148]
+ 1882:[160] GetStackText(r=ref(0,1,64)[148]) -> "anullb"[148]
+ 1883:[164] Return(ret=1926[144], value=16, discard=36) -> "anullb"[128]
    37:[144] AppendText(var[32], v1="anullb"[128])
    40:[128] VarText(var[32]) -> "a123banullb"[128]
    43:[144] AppendText(var[104], v1="a123banullb"[128])
    46:[128] VarText(var[104]) -> "a123banullb"[128]
    49:[144] ConstText(_value="a123banullb") -> "a123banullb"[144]
-   63:[160] EqText(v1="a123banullb"[128], v2="a123banullb"[144]) -> true[128]
-   64:[129] GotoFalseWord(jump=70, if_false=true[128])
-   67:[128] GotoWord(jump=131)
-  131:[128] FreeText(var[104])
-  134:[128] FreeText(var[80])
-  137:[128] FreeText(var[56])
-  140:[128] FreeText(var[32])
-  143:[128] FreeText(var[8])
-  146:[128] Return(ret=4294967295[4], value=0, discard=124)
+   62:[160] EqText(v1="a123banullb"[128], v2="a123banullb"[144]) -> true[128]
+   63:[129] GotoFalseWord(jump=69, if_false=true[128])
+   66:[128] GotoWord(jump=128)
+  128:[128] FreeText(var[104])
+  131:[128] FreeText(var[80])
+  134:[128] FreeText(var[56])
+  137:[128] FreeText(var[32])
+  140:[128] FreeText(var[8])
+  143:[128] Return(ret=4294967295[4], value=0, discard=124)
 Finished

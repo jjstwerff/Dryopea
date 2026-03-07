@@ -10,14 +10,18 @@
 use std::cmp::Ordering;
 
 #[must_use]
-pub fn text_character(val: &str, i: i32) -> char {
+pub fn text_character(val: &str, from: i32) -> char {
     let len = val.len() as i32;
-    let idx = if i < 0 { i + len } else { i };
+    let mut idx = if from < 0 { from + len } else { from };
     if idx < 0 || idx >= len {
-        char::from(0)
-    } else {
-        val[idx as usize..].chars().next().unwrap_or(char::from(0))
+        return char::from(0);
     }
+    let mut b = val.as_bytes()[idx as usize];
+    while b & 0xC0 == 0x80 && idx > 0 {
+        idx -= 1;
+        b = val.as_bytes()[idx as usize];
+    }
+    val[idx as usize..].chars().next().unwrap_or(char::from(0))
 }
 
 #[must_use]
@@ -46,6 +50,12 @@ pub fn sub_text(val: &str, from: i32, till: i32) -> &str {
         f -= 1;
     }
     &val[f as usize..t as usize]
+}
+
+#[inline]
+#[must_use]
+pub fn to_char(val: i32) -> char {
+    unsafe { char::from_u32_unchecked(val as u32) }
 }
 
 #[inline]

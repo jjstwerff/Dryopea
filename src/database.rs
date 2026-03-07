@@ -173,7 +173,6 @@ pub struct Stores {
     pub allocations: Vec<Store>,
     pub files: Vec<std::fs::File>,
     max: u16,
-    free_list: Vec<u16>,
 }
 
 impl Default for Stores {
@@ -320,7 +319,6 @@ impl Stores {
             allocations: Vec::new(),
             files: Vec::new(),
             max: 0,
-            free_list: Vec::new(),
         };
         result.base_type("integer", 4); // 0
         result.base_type("long", 8); // 1
@@ -414,7 +412,7 @@ impl Stores {
     }
 
     /// # Panics
-    /// Panics if `tp` refers to a type that is not implemented for file reading.
+    /// If `tp` refers to a type that is not implemented for file reading.
     pub fn read_data(&self, r: &DbRef, tp: u16, little_endian: bool, data: &mut Vec<u8>) {
         let store = &self.allocations[r.store_nr as usize];
         match tp {
@@ -510,7 +508,7 @@ impl Stores {
     }
 
     /// # Panics
-    /// Panics if `data` does not contain enough bytes for the given type.
+    /// If `data` does not contain enough bytes for the given type.
     pub fn write_data(&mut self, r: &DbRef, tp: u16, little_endian: bool, data: &[u8]) {
         let store = &mut self.allocations[r.store_nr as usize];
         match tp {
@@ -1277,7 +1275,7 @@ impl Stores {
     /**
     Add a value to an enumerated type.
     # Panics
-    When adding a value to a non-enumerate variable.
+    When adding a value to a non-enumerated variable.
     */
     pub fn value(&mut self, known_type: u16, name: &str, value_type: u16) -> u16 {
         if let Parts::Enum(values) = &mut self.types[known_type as usize].parts {
@@ -1357,26 +1355,16 @@ impl Stores {
 
     /**
     Try to allocate a new store.
-    Reuses a previously freed store from the free list when one is available,
-    otherwise extends the high-water mark.
     # Panics
     When a store already in use is allocated again.
     */
     pub fn database(&mut self, size: u32) -> DbRef {
-        let store_nr = if let Some(idx) = self.free_list.pop() {
-            self.allocations[idx as usize].init();
-            idx
+        if self.max >= self.allocations.len() as u16 {
+            self.allocations.push(Store::new(100));
         } else {
-            if self.max >= self.allocations.len() as u16 {
-                self.allocations.push(Store::new(100));
-            } else {
-                self.allocations[self.max as usize].init();
-            }
-            let idx = self.max;
-            self.max += 1;
-            idx
-        };
-        let store = &mut self.allocations[store_nr as usize];
+            self.allocations[self.max as usize].init();
+        }
+        let store = &mut self.allocations[self.max as usize];
         assert!(store.free, "Allocating a used store");
         store.free = false;
         let rec = if size == u32::MAX {
@@ -1384,32 +1372,25 @@ impl Stores {
         } else {
             store.claim(size)
         };
+        self.max += 1;
         DbRef {
-            store_nr,
+            store_nr: self.max - 1,
             rec,
             pos: 8,
         }
     }
 
-    /// Allocate a new isolated record of the given type (used in generated code for `OpDatabase`).
-    pub fn alloc_record(&mut self, db_tp: u16) -> DbRef {
-        let size = self.size(db_tp);
-        let db = self.database(u32::from(size));
-        self.store_mut(&db).set_int(db.rec, 4, i32::from(db_tp));
-        self.set_default_value(db_tp, &db);
-        db
-    }
-
     /**
-    Free a reference to a store. Pushes the store index onto the free list so it
-    can be reused by the next `database()` call regardless of order.
+    Free a reference to a store. Make it available again for later code.
+    # Panics
+    When the code doesn't free the last claimed store first.
     */
     pub fn free(&mut self, db: &DbRef) {
         let al = db.store_nr;
         debug_assert!(al < self.allocations.len() as u16, "Incorrect store");
         debug_assert!(!self.allocations[al as usize].free, "Double free store");
         self.allocations[al as usize].free = true;
-        self.free_list.push(al);
+        self.max -= 1;
     }
 
     /**
@@ -2431,7 +2412,10 @@ impl Stores {
             Parts::Enum(values) => {
                 let e_nr = self.store(rec).get_byte(rec.rec, rec.pos, -1);
                 let tp = values[e_nr as usize].0;
-                self.copy_claims(rec, to, tp);
+                // Do not copy claims on simple enumerate types.
+                if tp != u16::MAX {
+                    self.copy_claims(rec, to, tp);
+                }
             }
             _ => {}
         }
@@ -2576,18 +2560,6 @@ impl Stores {
     # Panics
     When the given database type doesn't support searcher.
     */
-    #[must_use]
-    pub fn find_str(&self, data: &DbRef, db: u16, key: &str) -> DbRef {
-        self.find(data, db, &[Content::Str(Str::new(key))])
-    }
-
-    #[must_use]
-    pub fn find_int(&self, data: &DbRef, db: u16, key: i64) -> DbRef {
-        self.find(data, db, &[Content::Long(key)])
-    }
-
-    /// # Panics
-    /// Panics if the key type does not match the index type (e.g. integer key on a string index).
     #[must_use]
     pub fn find(&self, data: &DbRef, db: u16, key: &[Content]) -> DbRef {
         match &self.types[db as usize].parts {

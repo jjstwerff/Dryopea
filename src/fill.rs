@@ -1188,7 +1188,10 @@ fn get_text_sub(s: &mut State) {
 }
 
 fn text_character(s: &mut State) {
-    s.text_character();
+    let v_v2 = *s.get_stack::<i32>();
+    let v_v1 = s.string();
+    let new_value = external::text_character(v_v1.str(), v_v2);
+    s.put_stack(new_value);
 }
 
 fn conv_bool_from_character(s: &mut State) {
@@ -1352,14 +1355,7 @@ fn free_ref(s: &mut State) {
 }
 
 fn sizeof_ref(s: &mut State) {
-    let db = *s.get_stack::<DbRef>();
-    let new_value = if db.rec == 0 {
-        0i32
-    } else {
-        let db_tp = s.database.store(&db).get_int(db.rec, 4) as u16;
-        i32::from(s.database.size(db_tp))
-    };
-    s.put_stack(new_value);
+    s.sizeof_ref();
 }
 
 fn var_ref(s: &mut State) {

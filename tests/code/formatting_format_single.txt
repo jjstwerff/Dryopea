@@ -34,39 +34,39 @@ byte-code for format_single:n_test()
    2[52]: [2] Text() var=test_value[52]:text["__work_1"]
    3[76]: ClearText(var[28]) var=__work_1[28]:text
    6[76]: ConstText(_value="a") -> text
-  10[92]: AppendText(var[28], v1: text)
-  13[76]: ConstSingle(val=0.1) -> single
-  18[80]: ConstInt(val=2) -> integer
-  23[84]: ConvSingleFromInt(v1: integer) -> single
-  24[84]: ConstSingle(val=1) -> single
-  29[88]: MulSingle(v1: single, v2: single) -> single
-  30[84]: AddSingle(v1: single, v2: single) -> single
-  31[80]: ConstInt(val=0) -> integer
-  36[84]: ConstInt(val=0) -> integer
-  41[88]: FormatSingle(var[28], val: single, width: integer, precision: integer)
-  44[76]: ConstText(_value="b") -> text
-  48[92]: AppendText(var[28], v1: text)
-  51[76]: VarText(var[28]) -> text var=__work_1[28]:text
-  54[92]: AppendText(var[52], v1: text)
-  57[76]: [3] VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
-  60[92]: ConstText(_value="a2.1b") -> text
-  68[108]: EqText(v1: text, v2: text) -> boolean
-  69[77]: GotoFalseWord(jump=75, if_false: boolean)
-  72[76]: GotoWord(jump=130)
-  75[76]: ClearText(var[4]) var=__work_2[4]:text
-  78[76]: ConstText(_value="Test failed ") -> text
-  93[92]: AppendText(var[4], v1: text)
-  96[76]: VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
-  99[92]: ConstInt(val=0) -> integer
- 104[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
- 109[76]: ConstText(_value=" != "a2.1b"") -> text
- 123[92]: AppendText(var[4], v1: text)
- 126[76]: VarText(var[4]) -> text var=__work_2[4]:text
- 129[92]: Panic(message: text)
- 130[76]: FreeText(var[52])
- 133[76]: FreeText(var[28])
- 136[76]: FreeText(var[4])
- 139[76]: Return(ret=0, value=0, discard=76)
+   9[92]: AppendText(var[28], v1: text)
+  12[76]: ConstSingle(val=0.1) -> single
+  17[80]: ConstInt(val=2) -> integer
+  22[84]: ConvSingleFromInt(v1: integer) -> single
+  23[84]: ConstSingle(val=1) -> single
+  28[88]: MulSingle(v1: single, v2: single) -> single
+  29[84]: AddSingle(v1: single, v2: single) -> single
+  30[80]: ConstInt(val=0) -> integer
+  35[84]: ConstInt(val=0) -> integer
+  40[88]: FormatSingle(var[28], val: single, width: integer, precision: integer)
+  43[76]: ConstText(_value="b") -> text
+  46[92]: AppendText(var[28], v1: text)
+  49[76]: VarText(var[28]) -> text var=__work_1[28]:text
+  52[92]: AppendText(var[52], v1: text)
+  55[76]: [3] VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+  58[92]: ConstText(_value="a2.1b") -> text
+  65[108]: EqText(v1: text, v2: text) -> boolean
+  66[77]: GotoFalseWord(jump=72, if_false: boolean)
+  69[76]: GotoWord(jump=125)
+  72[76]: ClearText(var[4]) var=__work_2[4]:text
+  75[76]: ConstText(_value="Test failed ") -> text
+  89[92]: AppendText(var[4], v1: text)
+  92[76]: VarText(var[52]) -> text var=test_value[52]:text["__work_1"]
+  95[92]: ConstInt(val=0) -> integer
+ 100[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+ 105[76]: ConstText(_value=" != "a2.1b"") -> text
+ 118[92]: AppendText(var[4], v1: text)
+ 121[76]: VarText(var[4]) -> text var=__work_2[4]:text
+ 124[92]: Panic(message: text)
+ 125[76]: FreeText(var[52])
+ 128[76]: FreeText(var[28])
+ 131[76]: FreeText(var[4])
+ 134[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -74,27 +74,27 @@ Execute test:
     2:[56] Text()
     3:[80] ClearText(var[32])
     6:[80] ConstText(_value="a") -> "a"[80]
-   10:[96] AppendText(var[32], v1="a"[80])
-   13:[80] ConstSingle(val=0.1) -> 0.1[80]
-   18:[84] ConstInt(val=2) -> 2[84]
-   23:[88] ConvSingleFromInt(v1=2[84]) -> 2[84]
-   24:[88] ConstSingle(val=1) -> 1[88]
-   29:[92] MulSingle(v1=2[84], v2=1[88]) -> 2[84]
-   30:[88] AddSingle(v1=0.1[80], v2=2[84]) -> 2.1[80]
-   31:[84] ConstInt(val=0) -> 0[84]
-   36:[88] ConstInt(val=0) -> 0[88]
-   41:[92] FormatSingle(var[32], val=2.1[80], width=0[84], precision=0[88])
-   44:[80] ConstText(_value="b") -> "b"[80]
-   48:[96] AppendText(var[32], v1="b"[80])
-   51:[80] VarText(var[32]) -> "a2.1b"[80]
-   54:[96] AppendText(var[56], v1="a2.1b"[80])
-   57:[80] VarText(var[56]) -> "a2.1b"[80]
-   60:[96] ConstText(_value="a2.1b") -> "a2.1b"[96]
-   68:[112] EqText(v1="a2.1b"[80], v2="a2.1b"[96]) -> true[80]
-   69:[81] GotoFalseWord(jump=75, if_false=true[80])
-   72:[80] GotoWord(jump=130)
-  130:[80] FreeText(var[56])
-  133:[80] FreeText(var[32])
-  136:[80] FreeText(var[8])
-  139:[80] Return(ret=4294967295[4], value=0, discard=76)
+    9:[96] AppendText(var[32], v1="a"[80])
+   12:[80] ConstSingle(val=0.1) -> 0.1[80]
+   17:[84] ConstInt(val=2) -> 2[84]
+   22:[88] ConvSingleFromInt(v1=2[84]) -> 2[84]
+   23:[88] ConstSingle(val=1) -> 1[88]
+   28:[92] MulSingle(v1=2[84], v2=1[88]) -> 2[84]
+   29:[88] AddSingle(v1=0.1[80], v2=2[84]) -> 2.1[80]
+   30:[84] ConstInt(val=0) -> 0[84]
+   35:[88] ConstInt(val=0) -> 0[88]
+   40:[92] FormatSingle(var[32], val=2.1[80], width=0[84], precision=0[88])
+   43:[80] ConstText(_value="b") -> "b"[80]
+   46:[96] AppendText(var[32], v1="b"[80])
+   49:[80] VarText(var[32]) -> "a2.1b"[80]
+   52:[96] AppendText(var[56], v1="a2.1b"[80])
+   55:[80] VarText(var[56]) -> "a2.1b"[80]
+   58:[96] ConstText(_value="a2.1b") -> "a2.1b"[96]
+   65:[112] EqText(v1="a2.1b"[80], v2="a2.1b"[96]) -> true[80]
+   66:[81] GotoFalseWord(jump=72, if_false=true[80])
+   69:[80] GotoWord(jump=125)
+  125:[80] FreeText(var[56])
+  128:[80] FreeText(var[32])
+  131:[80] FreeText(var[8])
+  134:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

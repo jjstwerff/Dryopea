@@ -241,9 +241,6 @@ fn build() -> text {
 
 #[test]
 fn reversed_text_slice() {
-    // P13: state.rs:445 a reversed slice (till < from) casts a negative length to u32,
-    // yielding a huge value that causes a panic or returns garbage bytes.
-    // Expected correct behaviour: return an empty string.
     expr!("a = \"12345\"; a[3..1]").result(Value::str(""));
 }
 
@@ -263,6 +260,27 @@ fn parse(s: text) -> integer {
     )
     .expr("parse(\"if_cond \")")
     .result(Value::Int(7));
+}
+
+// This shows a current fault of the language #index should have been at the start of the current
+// character instead of at the next character.
+#[test]
+fn string_iter() {
+    expr!(
+        "
+result = \"\";
+    positions = [];
+    for c in \"Hi 😊!\" {
+        positions += [c#index];
+        if c#index > 3 {
+            result += c;
+        }
+    }
+    assert(\"{positions}\" == \"[1,2,3,7,8]\", \"Character positions was {positions}\");
+    result
+"
+    )
+    .result(Value::str("😊!"));
 }
 
 // Only run this test locally, do not make it part of the release as it will log all kinds of

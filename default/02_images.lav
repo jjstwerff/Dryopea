@@ -53,22 +53,18 @@ fn OpGetFile(file: File) -> boolean;
 #rust "stores.get_file(&@file)"
 
 fn OpGetDir(path: text, result: vector<File>) -> boolean;
-#rust "stores.get_dir(&@path, &@result)"
+#rust "stores.get_dir(@path, &@result)"
 
 fn OpGetPngImage(path: text, image: Image) -> boolean;
-#rust "stores.get_png(&@path, &@image)"
+#rust "stores.get_png(@path, &@image)"
 
 fn OpGetFileText(file: File, content: &text);
-#rust "todo!()"
 
 fn OpWriteFile(file: File, val: reference, db_tp: const u16);
-#rust "todo!()"
 
 fn OpReadFile(file: File, val: reference, db_tp: const u16);
-#rust "todo!()"
 
 fn OpSeekFile(file: File, pos: long);
-#rust "todo!()"
 
 // Returns the pixel colour as a packed 24-bit integer (0xRRGGBB).
 // Use for fast colour comparison or storage.
@@ -190,7 +186,7 @@ pub fn files(self: File) -> vector<File> {
 
 // Writes v as UTF-8 text to the file. Overwrites existing content.
 pub fn write(self: File, v: text);
-#rust "stores.write_file(&@self, &@v);"
+#rust "stores.write_file(&@self, @v);"
 
 // Decodes a PNG file and returns an Image.
 // Returns null if the file is not in text format.
@@ -213,4 +209,4 @@ pub fn env_variables() -> vector<EnvVariable>;
 // Returns the value of the environment variable name, or null if it is not set.
 // Use to read configuration from the shell environment.
 pub fn env_variable(name: text) -> text;
-#rust "Stores::os_variable(&@name)"
+#rust "Stores::os_variable(@name)"

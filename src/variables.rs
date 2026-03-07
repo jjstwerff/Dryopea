@@ -16,6 +16,7 @@ This administrates variables and scopes for a specific function.
 */
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use stdext::vec::VecExt;
 
 // Iterator details on each for loop inside the current function
 #[derive(Debug, Clone)]
@@ -278,16 +279,14 @@ impl Function {
         d.is_empty() || (d.len() == 1 && d[0] == var_nr)
     }
 
-    /// Clear all lifetime dependencies for this variable, marking it as owning its own store.
-    pub fn make_independent(&mut self, var_nr: u16) {
-        let tp = &self.variables[var_nr as usize].type_def;
-        let new_tp = match tp {
-            Type::Reference(d, _) => Type::Reference(*d, Vec::new()),
-            Type::Enum(d, is_ref, _) => Type::Enum(*d, *is_ref, Vec::new()),
-            Type::Vector(elm, _) => Type::Vector(elm.clone(), Vec::new()),
-            _ => return,
-        };
-        self.variables[var_nr as usize].type_def = new_tp;
+    /// Remove a lifetime dependency for this variable.
+    pub fn make_independent(&mut self, var_nr: u16, remove: u16) {
+        match &mut self.variables[var_nr as usize].type_def {
+            Type::Reference(_, to) | Type::Enum(_, _, to) | Type::Vector(_, to) => {
+                to.remove_item(&remove);
+            }
+            _ => (),
+        }
     }
 
     pub fn depend(&mut self, var_nr: u16, on: u16) {

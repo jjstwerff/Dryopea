@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2025 Jurjen Stellingwerff
+// Copyright (c) 2022-2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 //! Testing framework
@@ -235,10 +235,7 @@ fn assign_text() {
 }
 
 #[test]
-fn struct_copy_independent_strings() {
-    // P14: database.rs:1733 OpCopyRecord only copies the top-level record bytes.
-    // Text fields in both the original and the copy point to the same store record,
-    // so appending to the copy's field also modifies the original.
+fn independent_strings() {
     code!("struct T { name: text }")
         .expr(
             "a = T { name: \"hello\" };

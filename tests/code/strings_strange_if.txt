@@ -25,18 +25,18 @@ fn n_build(t:&text) -> text["t"] {#block(1):text["t"]
 byte-code for strange_if:n_build(t: &text[0]) -> text["t"]
    0[12]: return-address
    0[16]: [3] ConstText(_value="abcde") -> text var=t[0]:&text
-   8[32]: AppendStackText(var[0], v1: text)
-  11[16]: [4] ConstInt(val=3) -> integer
-  16[20]: VarRef(var[0]) -> ref(reference) var=t[0]:&text
-  19[32]: GetStackText(r: ref(reference)) -> text["t"]
-  20[36]: Call(size=0, fn=t_4text_len)
-  27[24]: LtInt(v1: integer, v2: integer) -> boolean
-  28[17]: GotoFalseWord(jump=38, if_false: boolean)
-  31[16]: [5] VarRef(var[0]) -> ref(reference) var=t[0]:&text
-  34[28]: GetStackText(r: ref(reference)) -> text["t"]
-  35[32]: GotoWord(jump=39)
-  38[16]: ConvTextFromNull() -> text
-  39[32]: Return(ret=12, value=16, discard=32) type=text 5
+   7[32]: AppendStackText(var[0], v1: text)
+  10[16]: [4] ConstInt(val=3) -> integer
+  15[20]: VarRef(var[0]) -> ref(reference) var=t[0]:&text
+  18[32]: GetStackText(r: ref(reference)) -> text["t"]
+  19[36]: Call(size=0, fn=t_4text_len)
+  26[24]: LtInt(v1: integer, v2: integer) -> boolean
+  27[17]: GotoFalseWord(jump=37, if_false: boolean)
+  30[16]: [5] VarRef(var[0]) -> ref(reference) var=t[0]:&text
+  33[28]: GetStackText(r: ref(reference)) -> text["t"]
+  34[32]: GotoWord(jump=38)
+  37[16]: ConvTextFromNull() -> text
+  38[32]: Return(ret=12, value=16, discard=32) type=text 5
 
 fn n_test() {#block(1):void
   __work_2(1):text = "";
@@ -67,23 +67,23 @@ byte-code for strange_if:n_test()
   13[92]: AppendText(var[52], v1: text)
   16[76]: [11] VarText(var[52]) -> text var=test_value[52]:text
   19[92]: ConstText(_value="abcde") -> text
-  27[108]: EqText(v1: text, v2: text) -> boolean
-  28[77]: GotoFalseWord(jump=34, if_false: boolean)
-  31[76]: GotoWord(jump=89)
-  34[76]: ClearText(var[4]) var=__work_2[4]:text
-  37[76]: ConstText(_value="Test failed ") -> text
-  52[92]: AppendText(var[4], v1: text)
-  55[76]: VarText(var[52]) -> text var=test_value[52]:text
-  58[92]: ConstInt(val=0) -> integer
-  63[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
-  68[76]: ConstText(_value=" != "abcde"") -> text
-  82[92]: AppendText(var[4], v1: text)
-  85[76]: VarText(var[4]) -> text var=__work_2[4]:text
-  88[92]: Panic(message: text)
-  89[76]: FreeText(var[52])
-  92[76]: FreeText(var[28])
-  95[76]: FreeText(var[4])
-  98[76]: Return(ret=0, value=0, discard=76)
+  26[108]: EqText(v1: text, v2: text) -> boolean
+  27[77]: GotoFalseWord(jump=33, if_false: boolean)
+  30[76]: GotoWord(jump=86)
+  33[76]: ClearText(var[4]) var=__work_2[4]:text
+  36[76]: ConstText(_value="Test failed ") -> text
+  50[92]: AppendText(var[4], v1: text)
+  53[76]: VarText(var[52]) -> text var=test_value[52]:text
+  56[92]: ConstInt(val=0) -> integer
+  61[96]: FormatText(var[4], val: text, width: integer, dir=-1, token=32)
+  66[76]: ConstText(_value=" != "abcde"") -> text
+  79[92]: AppendText(var[4], v1: text)
+  82[76]: VarText(var[4]) -> text var=__work_2[4]:text
+  85[92]: Panic(message: text)
+  86[76]: FreeText(var[52])
+  89[76]: FreeText(var[28])
+  92[76]: FreeText(var[4])
+  95[76]: Return(ret=0, value=0, discard=76)
 
 Execute test:
     0:[8] Text()
@@ -91,29 +91,29 @@ Execute test:
     2:[56] Text()
     3:[80] CreateStack(var[32]) -> ref(0,1,40)[80]
     6:[92] Call(size=0, fn=n_build)
- 1864:[96] ConstText(_value="abcde") -> "abcde"[96]
- 1872:[112] AppendStackText(var[80], v1="abcde"[96])
- 1875:[96] ConstInt(val=3) -> 3[96]
- 1880:[100] VarRef(var[80]) -> ref(0,1,40)[100]
- 1883:[112] GetStackText(r=ref(0,1,40)[100]) -> "abcde"[100]
- 1884:[116] Call(size=0, fn=t_4text_len)
+ 1851:[96] ConstText(_value="abcde") -> "abcde"[96]
+ 1858:[112] AppendStackText(var[80], v1="abcde"[96])
+ 1861:[96] ConstInt(val=3) -> 3[96]
+ 1866:[100] VarRef(var[80]) -> ref(0,1,40)[100]
+ 1869:[112] GetStackText(r=ref(0,1,40)[100]) -> "abcde"[100]
+ 1870:[116] Call(size=0, fn=t_4text_len)
   318:[120] ArgText(var[100]) -> "abcde"[120]
   321:[136] LengthText(v1="abcde"[120]) -> 5[120]
-  322:[124] Return(ret=1891[116], value=4, discard=24) -> 5[100]
- 1891:[104] LtInt(v1=3[96], v2=5[100]) -> true[96]
- 1892:[97] GotoFalseWord(jump=1902, if_false=true[96])
- 1895:[96] VarRef(var[80]) -> ref(0,1,40)[96]
- 1898:[108] GetStackText(r=ref(0,1,40)[96]) -> "abcde"[96]
- 1899:[112] GotoWord(jump=1903)
- 1903:[112] Return(ret=1922[92], value=16, discard=32) -> "abcde"[80]
+  322:[124] Return(ret=1877[116], value=4, discard=24) -> 5[100]
+ 1877:[104] LtInt(v1=3[96], v2=5[100]) -> true[96]
+ 1878:[97] GotoFalseWord(jump=1888, if_false=true[96])
+ 1881:[96] VarRef(var[80]) -> ref(0,1,40)[96]
+ 1884:[108] GetStackText(r=ref(0,1,40)[96]) -> "abcde"[96]
+ 1885:[112] GotoWord(jump=1889)
+ 1889:[112] Return(ret=1908[92], value=16, discard=32) -> "abcde"[80]
    13:[96] AppendText(var[56], v1="abcde"[80])
    16:[80] VarText(var[56]) -> "abcde"[80]
    19:[96] ConstText(_value="abcde") -> "abcde"[96]
-   27:[112] EqText(v1="abcde"[80], v2="abcde"[96]) -> true[80]
-   28:[81] GotoFalseWord(jump=34, if_false=true[80])
-   31:[80] GotoWord(jump=89)
-   89:[80] FreeText(var[56])
-   92:[80] FreeText(var[32])
-   95:[80] FreeText(var[8])
-   98:[80] Return(ret=4294967295[4], value=0, discard=76)
+   26:[112] EqText(v1="abcde"[80], v2="abcde"[96]) -> true[80]
+   27:[81] GotoFalseWord(jump=33, if_false=true[80])
+   30:[80] GotoWord(jump=86)
+   86:[80] FreeText(var[56])
+   89:[80] FreeText(var[32])
+   92:[80] FreeText(var[8])
+   95:[80] Return(ret=4294967295[4], value=0, discard=76)
 Finished

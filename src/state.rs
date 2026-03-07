@@ -101,28 +101,32 @@ impl State {
     }
 
     pub fn string_from_code(&mut self) {
-        let size = *self.code::<u16>();
+        let size = *self.code::<u8>();
         unsafe {
-            let off = self.bytecode.as_ptr().offset(self.code_pos as isize);
-            let m = self
-                .database
-                .store_mut(&self.stack_cur)
-                .addr_mut::<Str>(self.stack_cur.rec, self.stack_cur.pos + self.stack_pos);
-            *m = Str {
-                ptr: off,
-                len: u32::from(size),
-            };
-            self.stack_pos += size_of::<Str>() as u32;
+            self.set_string(
+                i32::from(size),
+                self.bytecode.as_ptr().offset(self.code_pos as isize),
+            );
         }
         self.code_pos += u32::from(size);
     }
 
-    pub fn string_from_texts(&mut self, start: i32, size: i32) {
-        let p = start as usize;
-        let s = unsafe {
-            std::str::from_utf8_unchecked(&self.text_code[p..p + size as usize]).to_string()
+    unsafe fn set_string(&mut self, size: i32, off: *const u8) {
+        let m = self
+            .database
+            .store_mut(&self.stack_cur)
+            .addr_mut::<Str>(self.stack_cur.rec, self.stack_cur.pos + self.stack_pos);
+        *m = Str {
+            ptr: off,
+            len: size as u32,
         };
-        self.put_stack(s);
+        self.stack_pos += size_of::<Str>() as u32;
+    }
+
+    pub fn string_from_texts(&mut self, start: i32, size: i32) {
+        unsafe {
+            self.set_string(size, self.text_code.as_ptr().offset(start as isize));
+        }
     }
 
     #[must_use]
@@ -368,29 +372,6 @@ impl State {
     }
 
     #[inline]
-    pub fn text_character(&mut self) {
-        let mut from = *self.get_stack::<i32>();
-        let v1 = self.string();
-        if from < 0 {
-            from += v1.len as i32;
-        }
-        if from < 0 || from >= v1.len as i32 {
-            self.put_stack(char::from(0));
-            return;
-        }
-        let mut b = v1.str().as_bytes()[from as usize];
-        while b & 0xC0 == 0x80 && from > 0 {
-            from -= 1;
-            b = v1.str().as_bytes()[from as usize];
-        }
-        self.put_stack(if let Some(ch) = v1.str()[from as usize..].chars().next() {
-            ch
-        } else {
-            char::from(0)
-        });
-    }
-
-    #[inline]
     pub fn get_text_sub(&mut self) {
         let mut till = *self.get_stack::<i32>();
         let mut from = *self.get_stack::<i32>();
@@ -529,7 +510,7 @@ impl State {
     }
 
     pub fn code_str(&mut self) -> &str {
-        let len = *self.code::<u16>();
+        let len = *self.code::<u8>();
         unsafe {
             let off = self.bytecode.as_ptr().offset(self.code_pos as isize);
             self.code_pos += u32::from(len);
@@ -729,6 +710,17 @@ impl State {
         let pos = *self.code::<u16>();
         let s = self.format_db();
         self.string_ref_mut(pos - size_ref() as u16).push_str(&s);
+    }
+
+    pub fn sizeof_ref(&mut self) {
+        let db = *self.get_stack::<DbRef>();
+        let new_value = if db.rec == 0 {
+            0i32
+        } else {
+            let db_tp = self.database.store(&db).get_int(db.rec, 4) as u16;
+            i32::from(self.database.size(db_tp))
+        };
+        self.put_stack(new_value);
     }
 
     fn format_db(&mut self) -> String {
@@ -1183,8 +1175,8 @@ impl State {
     /**
     Returns from a function, the data structures that went out of scope should already have
     been freed at this point.
-    * `ret`     - Size of the parameters to get the return address after it.
-    * `value`   - Size of the return value.
+    * `ret` - Size of the parameters to get the return address after it.
+    * `value` - Size of the return value.
     * `discard` - The amount of space claimed on the stack at this point.
     # Panics
     When there are claimed texts that are not freed yet.
@@ -1211,7 +1203,7 @@ impl State {
 
     /**
     Clear the stack of local variables, possibly return a value.
-    * `value`   - Size of the return value.
+    * `value` - Size of the return value.
     * `discard` - The amount of space claimed on the stack at this point.
     # Panics
     When texts are not freed from the stack beforehand.
@@ -1274,7 +1266,7 @@ impl State {
     }
 
     pub fn code_add_str(&mut self, value: &str) {
-        self.code_add(value.len() as u16);
+        self.code_add(value.len() as u8);
         if self.code_pos as usize + value.len() > self.bytecode.len() {
             self.bytecode
                 .resize(self.code_pos as usize + value.len(), 0);
@@ -1396,8 +1388,16 @@ impl State {
                 Type::Boolean
             }
             Value::Text(value) => {
-                stack.add_op("OpConstText", self);
-                self.code_add_str(value);
+                if value.len() < 256 {
+                    stack.add_op("OpConstText", self);
+                    self.code_add_str(value);
+                } else {
+                    let start = self.text_code.len() as i32;
+                    self.text_code.extend_from_slice(value.as_bytes());
+                    stack.add_op("OpConstLongText", self);
+                    self.code_add(start);
+                    self.code_add(value.len() as i32);
+                }
                 Type::Text(Vec::new())
             }
             Value::Var(v) => self.generate_var(stack, *v),
@@ -1535,7 +1535,7 @@ impl State {
                 && let Value::Call(op_nr, _) = value
                 && stack.data.def(*op_nr).name == "OpCopyRecord"
             {
-                // First assignment of a Reference variable being copied from another:
+                // The first assignment of a Reference variable being copied from another:
                 // allocate a fresh store, initialize the struct record, then copy the data.
                 stack.add_op("OpConvRefFromNull", self);
                 stack.add_op("OpDatabase", self);
@@ -1858,8 +1858,8 @@ impl State {
                 tp = self.generate(v, stack, false);
             }
             if self.stack_pos > s_pos && !matches!(v, Value::Set(_, _)) {
-                // Normal expressions do not claim stack space (because of Value::Drop)
-                // So if there is data left it should be a return expression.
+                // Normal expressions do not claim stack space (because of Value::Drop).
+                // So, if there is data left, it should be a return expression.
                 return_expr = s_pos;
             }
         }

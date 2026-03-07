@@ -25,11 +25,7 @@ fn expr_enum() {
 }
 
 #[test]
-fn sizeof_polymorphic_enum_variants_differ() {
-    // P12: parser.rs:5050 sizeof(v) where v has the base polymorphic enum type always
-    // returns the compile-time base-enum size, ignoring the actual runtime variant.
-    // A Small value (u8 field, 1 byte) and a Large value (long field, 8 bytes) must
-    // report different sizes; with the bug both calls return the same base-enum size.
+fn sizeof_enum_structs() {
     code!(
         "enum Val {
     Small { n: u8 },

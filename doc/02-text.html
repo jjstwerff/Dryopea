@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lav — 02 — Text</title>
+<title>Loft - Texts</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <span class="cur">Text</span> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
-<h1>02 — Text</h1>
+<nav><a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <span class="cur">Texts</span> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
+<h1>Texts</h1>
 <article>
+<p>UTF-8 strings: byte-based indexing, slices, concatenation, formatting, and built-in functions.</p>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
 <p>Text concatenation produces a new string.</p>
 <pre><code>    a = <span class="st">"1"</span> + <span class="st">"2"</span>;
@@ -29,12 +30,17 @@
 <p>For UTF-8 strings, byte offsets snap to the nearest character boundary. Use a range to extract the portion from byte 2 up to (not including) the last byte.</p>
 <pre><code>    txt = <span class="st">"12😊🙃45"</span>;
     <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(txt[<span class="nm">2..</span>-<span class="nm">1</span>] == <span class="st">"😊🙃4"</span>, <span class="st">"UTF-8 sub-string by byte range"</span>);</code></pre>
-<p>Iterating over a string yields one character per UTF-8 code point. '#index' gives the byte offset of the character that follows the current one.</p>
+<p>Iterating over a string yields one character per UTF-8 code point. '#index' gives the byte offset of the character that follows the current one. This behaviour is bound to change in a future release to the position of the current.</p>
 <pre><code>    result = <span class="st">""</span>;
-    <span class="kw">for</span> c <span class="kw">in</span> <span class="st">"Hi!"</span> {
-        result += <span class="st">"{c}"</span>;
+    positions = [];
+    <span class="kw">for</span> c <span class="kw">in</span> <span class="st">"Hi 😊!"</span> {
+        positions += [c#<span class="ty">index</span>];
+        <span class="kw">if</span> c#<span class="ty">index</span> &gt; <span class="nm">3</span> {
+            result += c;
+        }
     }
-    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(result == <span class="st">"Hi!"</span>, <span class="st">"Character iteration"</span>);</code></pre>
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(result == <span class="st">"😊!"</span>, <span class="st">"Character iteration was {result}"</span>);
+    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"{positions}"</span> == <span class="st">"[1,2,3,7,8]"</span>, <span class="st">"Character positions was {positions}"</span>);</code></pre>
 <p>Standard string search functions (all offsets are byte-based).</p>
 <pre><code>    <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"something"</span>.<span class="fn-call"><a href="stdlib.html#text">starts_with</a></span>(<span class="st">"some"</span>), <span class="st">"starts_with"</span>);
     <span class="bi"><a href="stdlib.html#output-and-diagnostics">assert</a></span>(<span class="st">"something"</span>.<span class="fn-call"><a href="stdlib.html#text">ends_with</a></span>(<span class="st">"thing"</span>), <span class="st">"ends_with"</span>);

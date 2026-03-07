@@ -1,3 +1,10 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Texts
+// @TITLE: Text handling and functions
+
+// UTF-8 strings: byte-based indexing, slices, concatenation, formatting, and built-in functions.
+
 fn main() {
     // Text concatenation produces a new string.
     a = "1" + "2";
@@ -28,11 +35,17 @@ fn main() {
 
     // Iterating over a string yields one character per UTF-8 code point.
     // '#index' gives the byte offset of the character that follows the current one.
+    // This behaviour is bound to change in a future release to the position of the current.
     result = "";
-    for c in "Hi!" {
-        result += "{c}";
+    positions = [];
+    for c in "Hi 😊!" {
+        positions += [c#index];
+        if c#index > 3 {
+            result += c;
+        }
     }
-    assert(result == "Hi!", "Character iteration");
+    assert(result == "😊!", "Character iteration was {result}");
+    assert("{positions}" == "[1,2,3,7,8]", "Character positions was {positions}");
 
     // Standard string search functions (all offsets are byte-based).
     assert("something".starts_with("some"), "starts_with");

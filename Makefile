@@ -13,27 +13,9 @@ debug:
 	export RUST_BACKTRACE=1
 
 test: clippy
-	sed -i '/^# BEGIN_GENERATED_TESTS$$/,$$d' Cargo.toml
-	echo '# BEGIN_GENERATED_TESTS' >> Cargo.toml
 	rm tests/generated/* -f
 	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f
 	RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
-	for f in tests/generated/*.rs; do \
-		name=$$(basename $$f .rs); \
-		if [ "$$name" != "default" ] && [ ! -f "tests/$$name.rs" ] && [ ! -f "src/$$name.rs" ]; then \
-			printf '\n[[test]]\nname = "%s"\npath = "%s"\n' "$$name" "$$f" >> Cargo.toml; \
-		fi; \
-	done
-	RUST_BACKTRACE=1 cargo test --tests -- --nocapture --test-threads=1 >>result.txt 2>&1
-	sed -i '/^# BEGIN_GENERATED_TESTS$$/,$$d' Cargo.toml
-	echo '# BEGIN_GENERATED_TESTS' >> Cargo.toml
-	cargo run --bin gendoc
-
-tst: clippy
-	rm tests/generated/* -f
-	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f
-	RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
-	cargo run --bin gendoc
 
 quick:
 	RUST_BACKTRACE=1 cargo test --release -- --nocapture --test-threads=1 > result.txt 2>&1
@@ -50,6 +32,7 @@ clippy:
 	cargo clippy --tests -- -W clippy::all -W clippy::cognitive_complexity >> result.txt 2>&1
 	rustfmt src/*.rs --edition 2024
 	rustfmt tests/*.rs --edition 2024
+	cargo run --bin gendoc
 
 memory:
 	valgrind target/debug/deps/vectors-1ff9433be145872a
@@ -62,3 +45,13 @@ meld:
 	cmp -s tests/generated/text.rs src/text.rs; if [ $$? -eq 1 ]; then meld tests/generated/text.rs src/text.rs; fi
 	rustfmt tests/generated/fill.rs --edition 2024
 	cmp -s tests/generated/fill.rs src/fill.rs; if [ $$? -eq 1 ]; then meld tests/generated/fill.rs src/fill.rs; fi
+
+generate:
+	# cd tests/generated && rustfmt *.rs --edition 2024
+	meld tests/generated/ generated/tests/
+
+gtest:
+	cd generated && cargo clippy --tests -- -W clippy::all -W clippy::cognitive_complexity > result.txt 2>&1
+	cd generated && rustfmt tests/*.rs --edition 2024 >> result.txt 2>&1
+	cd generated && cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
+

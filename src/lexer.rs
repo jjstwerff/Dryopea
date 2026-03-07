@@ -523,7 +523,7 @@ impl Lexer {
         let mut number = String::new();
         let mut hex = false;
         while let Some(&c) = self.iter.peek() {
-            if c.is_ascii_digit() {
+            if c.is_ascii_digit() || c == 'b' || c == 'o' {
                 number.push(c);
                 self.next_char();
             } else if c == 'x' && !hex && number == "0" {

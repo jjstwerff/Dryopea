@@ -194,9 +194,7 @@ t = l[1] as Integer;
 }
 
 #[test]
-fn enum_base_field_access() {
-    // P11: parser.rs:3421 silently discards field access on a base enum type.
-    // The TODO block emits no code, so v.n evaluates to null instead of the field value.
+fn base_field() {
     code!(
         "enum Val {
     A { n: integer },

@@ -1,38 +1,44 @@
-c_fn("1" + "2" + "3" + "4");
-    w_1 = "";
-    c_fn({w_1.clear(); w_1+="1"; w_1+="2"; w_1+="3"; w_1+="4"; w_1});
+Code generation:
+- return stack text: create Str::new()
+- prevent creating a stack variable at all (we rever only to the depend variable)
+- calls with stack var should become '&mut var' with the depend variable
 
-a += "1" + "2" + "3";
-    a=+"1"; a+="2"; a+="3";
+Test for reading and writing binary data.
 
-a = "1" + "2" + "3";
-    a.clear(); a+="1"; a+="2"; a+="3";
+Check on #remove outside for..if?
+More free polymorphism tests: meld of the two forms
+Change the #index on a string iterator to hold the start of the current character.
+- We probably need another 'hidden' index variable to make this work and only create the #index as an output variable.
 
-a += 'a' + 'b' + "c";
-    a+='a'; a+='b'; a+="c";
+Keep the "Format" class usable in user code. Even think about "File".
+- Part of library name spacing?
 
-{ "a" + 'c' }
-    w_1 = ""; { w_1.clear(); w_1+="a"; w_1+="c"; w_1 }
+Introduce a separate null string value.
+- Validate in unit-tests that the empty string is not null.
+- Think about what a null append to another string should do.
 
-{ return 'a' + 'c'; "" + ' '; 12; "123" }
-    w_1 = "";
-    w_2 = "";
-    { w_1.clear(); w_1+='a'; w_1+='c'; return w_1; w_2.clear; w_2+=' '; w_2; 12; "123" }
+Migrate from .lav to .loft as the extension of the language.
 
-{ a="12345"; a[0] + a[1] + a[2] + " " + a[3] + " " + a[4]}
-    w_1 = "";
-    { a="12345"; w_1.clear(); w_1+=a[0]; w_1+=a[1]; w_1+=a[2]; w_1+=" "; w_1+=a[3]; w_1+=" "; w_1+=a[4]; w_1}
+Start a code rules document: doc/claude/CODE.md
+- Function names should indicate what a function does. Keep them short but prevent ambiguity.
+- A function should do one thing, split it up when different algorithms are there.
+- Try to prevent code duplication by creating helper functions.
+- Variable-, argument-, and field names should indicate what data it holds. Keep them short but prevent ambiguity.
+- Documentation above a function should not describe what is does but why it should be used.
+- Only when an algorithm is unclear write documentation inside a function.
+- When the same fields are given as an argument on many functions, try to move them to a common struct.
 
-Left type Text or Character:
-    No work variable:
-        pick one
-        start a block (with current list)
-        clear work
-        end it after all parsing
-    Otherwise replace with append (text, character and other types?).
-        append to text
+Are these rules clear, can you describe what conclusions they lead to.
 
-Same handling for vectors with multiple additions.
+Generate documentation for /lib/parser.lav, /lib/lexer.lav, tests/suite/15-lexer.lav, tests/suite/16-parser.lav
+
+Documentation generation: documentation.rs gendoc.rs style.css
+- Split the standard library stdlib.html into files per topic.
+- Directly create links to standard library instead in a separate pass.
+- Visually integrate standard library and documentation with a common menu.
+- Back links to the main page on all pages.
+- Add a search feature to find functions, types, constants and classes.
+
 
 click on hex grid: assume vertical view
     x,y to correct hex position & relative position on the hex

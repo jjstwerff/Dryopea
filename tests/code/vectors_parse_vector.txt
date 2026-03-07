@@ -30,59 +30,59 @@ byte-code for parse_vector:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
    1[28]: [2] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> text var=a[28]:vector<float>
-  37[44]: CastVectorFromText(val: text, db_tp=19) -> vector
-  40[40]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
-  43[52]: ConstInt(val=2) -> integer
-  48[56]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float 3
-  51[52]: GetFloat(v1: ref(reference), fld=0) -> float
-  54[48]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
-  57[60]: ConstInt(val=3) -> integer
-  62[64]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float 3
-  65[60]: GetFloat(v1: ref(reference), fld=0) -> float
-  68[56]: AddFloat(v1: float, v2: float) -> float
-  69[48]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
-  72[60]: FreeRef(v1: ref(reference))
-  73[48]: FreeStack(value=8, discard=20)
-  77[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
-  80[44]: ConstFloat(val=18120.00000001001) -> float
-  89[52]: EqFloat(v1: float, v2: float) -> boolean
-  90[37]: GotoFalseWord(jump=96, if_false: boolean)
-  93[36]: GotoWord(jump=164)
-  96[36]: ClearText(var[4]) var=__work_1[4]:text
-  99[36]: ConstText(_value="Test failed ") -> text
- 114[52]: AppendText(var[4], v1: text)
- 117[36]: VarFloat(var[28]) -> float var=test_value[28]:float
- 120[44]: ConstInt(val=0) -> integer
- 125[48]: ConstInt(val=0) -> integer
- 130[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
- 133[36]: ConstText(_value=" != 18120.00000001001") -> text
- 157[52]: AppendText(var[4], v1: text)
- 160[36]: VarText(var[4]) -> text var=__work_1[4]:text
- 163[52]: Panic(message: text)
- 164[36]: FreeText(var[4])
- 167[36]: Return(ret=0, value=0, discard=36)
+  36[44]: CastVectorFromText(val: text, db_tp=19) -> vector
+  39[40]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
+  42[52]: ConstInt(val=2) -> integer
+  47[56]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float 3
+  50[52]: GetFloat(v1: ref(reference), fld=0) -> float
+  53[48]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
+  56[60]: ConstInt(val=3) -> integer
+  61[64]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=float 3
+  64[60]: GetFloat(v1: ref(reference), fld=0) -> float
+  67[56]: AddFloat(v1: float, v2: float) -> float
+  68[48]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
+  71[60]: FreeRef(v1: ref(reference))
+  72[48]: FreeStack(value=8, discard=20)
+  76[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
+  79[44]: ConstFloat(val=18120.00000001001) -> float
+  88[52]: EqFloat(v1: float, v2: float) -> boolean
+  89[37]: GotoFalseWord(jump=95, if_false: boolean)
+  92[36]: GotoWord(jump=161)
+  95[36]: ClearText(var[4]) var=__work_1[4]:text
+  98[36]: ConstText(_value="Test failed ") -> text
+ 112[52]: AppendText(var[4], v1: text)
+ 115[36]: VarFloat(var[28]) -> float var=test_value[28]:float
+ 118[44]: ConstInt(val=0) -> integer
+ 123[48]: ConstInt(val=0) -> integer
+ 128[52]: FormatFloat(var[4], val: float, width: integer, precision: integer)
+ 131[36]: ConstText(_value=" != 18120.00000001001") -> text
+ 154[52]: AppendText(var[4], v1: text)
+ 157[36]: VarText(var[4]) -> text var=__work_1[4]:text
+ 160[52]: Panic(message: text)
+ 161[36]: FreeText(var[4])
+ 164[36]: Return(ret=0, value=0, discard=36)
 
 Execute test:
     0:[8] [2] Text()
     1:[32] ConstText(_value="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]") -> "[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32]
-   37:[48] CastVectorFromText(val="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32], db_tp=19) -> ref(1,1,8)[32]
-   40:[44] VarVector(var[32]) -> ref(1,1,8)=[1.2,-10.3,18120,0.00000001001][44]
-   43:[56] ConstInt(val=2) -> 2[56]
-   48:[60] GetVector(r=ref(1,1,8)[44], size=8, index=2[56]) -> ref(1,9,24)=18120[44]
-   51:[56] GetFloat(v1=ref(1,9,24)[44], fld=0) -> 18120[44]
-   54:[52] VarVector(var[32]) -> ref(1,1,8)=[1.2,-10.3,18120,0.00000001001][52]
-   57:[64] ConstInt(val=3) -> 3[64]
-   62:[68] GetVector(r=ref(1,1,8)[52], size=8, index=3[64]) -> ref(1,9,32)=0.00000001001[52]
-   65:[64] GetFloat(v1=ref(1,9,32)[52], fld=0) -> 0.00000001001[52]
-   68:[60] AddFloat(v1=18120[44], v2=0.00000001001[52]) -> 18120.00000001001[44]
-   69:[52] VarVector(var[32]) -> ref(1,1,8)=[1.2,-10.3,18120,0.00000001001][52]
-   72:[64] FreeRef(v1=ref(1,1,8)[52])
-   73:[52] FreeStack(value=8, discard=20)
-   77:[40] VarFloat(var[32]) -> 18120.00000001001[40]
-   80:[48] ConstFloat(val=18120.00000001001) -> 18120.00000001001[48]
-   89:[56] EqFloat(v1=18120.00000001001[40], v2=18120.00000001001[48]) -> true[40]
-   90:[41] GotoFalseWord(jump=96, if_false=true[40])
-   93:[40] GotoWord(jump=164)
-  164:[40] FreeText(var[8])
-  167:[40] Return(ret=4294967295[4], value=0, discard=36)
+   36:[48] CastVectorFromText(val="[ 1.2, -10.3, 1.812e4, 1.001e-8 ]"[32], db_tp=19) -> ref(1,1,8)[32]
+   39:[44] VarVector(var[32]) -> ref(1,1,8)=[1.2,-10.3,18120,0.00000001001][44]
+   42:[56] ConstInt(val=2) -> 2[56]
+   47:[60] GetVector(r=ref(1,1,8)[44], size=8, index=2[56]) -> ref(1,9,24)=18120[44]
+   50:[56] GetFloat(v1=ref(1,9,24)[44], fld=0) -> 18120[44]
+   53:[52] VarVector(var[32]) -> ref(1,1,8)=[1.2,-10.3,18120,0.00000001001][52]
+   56:[64] ConstInt(val=3) -> 3[64]
+   61:[68] GetVector(r=ref(1,1,8)[52], size=8, index=3[64]) -> ref(1,9,32)=0.00000001001[52]
+   64:[64] GetFloat(v1=ref(1,9,32)[52], fld=0) -> 0.00000001001[52]
+   67:[60] AddFloat(v1=18120[44], v2=0.00000001001[52]) -> 18120.00000001001[44]
+   68:[52] VarVector(var[32]) -> ref(1,1,8)=[1.2,-10.3,18120,0.00000001001][52]
+   71:[64] FreeRef(v1=ref(1,1,8)[52])
+   72:[52] FreeStack(value=8, discard=20)
+   76:[40] VarFloat(var[32]) -> 18120.00000001001[40]
+   79:[48] ConstFloat(val=18120.00000001001) -> 18120.00000001001[48]
+   88:[56] EqFloat(v1=18120.00000001001[40], v2=18120.00000001001[48]) -> true[40]
+   89:[41] GotoFalseWord(jump=95, if_false=true[40])
+   92:[40] GotoWord(jump=161)
+  161:[40] FreeText(var[8])
+  164:[40] Return(ret=4294967295[4], value=0, discard=36)
 Finished

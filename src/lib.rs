@@ -30,3 +30,5 @@ pub mod state;
 
 pub mod interpreter;
 mod stack;
+
+pub mod documentation;
