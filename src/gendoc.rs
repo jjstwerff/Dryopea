@@ -1,10 +1,12 @@
 // Copyright (c) 2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// Generate doc/stdlib.html from the documented default/*.lav standard library files.
+// Generate standard library HTML pages from the documented default/*.lav files.
 // Run with: cargo run --bin gendoc
 
-use dryopea::documentation::generate_docs;
+use dryopea::documentation::{
+    StdlibSection, build_nav, gather_topic_info, generate_docs, page_html,
+};
 use std::collections::HashMap;
 use std::fs;
 
@@ -12,17 +14,22 @@ use std::fs;
 
 #[derive(Debug)]
 enum Entry {
-    /// A named section (// --- Name ---).
+    /// A named section header (// --- Name ---).
     Section(String),
     /// A public item or section description.
-    /// Sig is empty for section-description items.
+    /// sig is empty for section-description items.
     Item { sig: String, doc: Vec<String> },
+}
+
+struct SectionFull {
+    id: String,
+    name: String,
+    items: Vec<(String, Vec<String>)>, // (signature, doc_lines)
 }
 
 // ---  Entry point  ---
 
 fn main() -> std::io::Result<()> {
-    generate_docs()?;
     let files = [
         "default/01_code.lav",
         "default/02_images.lav",
@@ -37,12 +44,29 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    let html = render_html(&entries);
-    fs::create_dir_all("doc")?;
-    fs::write("doc/stdlib.html", &html)?;
-    println!("Generated doc/stdlib.html ({} bytes)", html.len());
+    let sections = build_sections(&entries);
+    let link_map = build_link_map(&sections);
 
-    link_doc_files(&entries);
+    let stdlib_info: Vec<StdlibSection> = sections
+        .iter()
+        .map(|s| StdlibSection {
+            id: s.id.clone(),
+            name: s.name.clone(),
+        })
+        .collect();
+
+    generate_docs(&stdlib_info, &link_map)?;
+
+    let topic_info = gather_topic_info();
+
+    for section in &sections {
+        generate_stdlib_section(section, &stdlib_info, &topic_info)?;
+    }
+
+    generate_stdlib_toc(&sections, &stdlib_info, &topic_info)?;
+    generate_search_index(&sections, &stdlib_info)?;
+
+    println!("Generated {} stdlib section pages", sections.len());
     Ok(())
 }
 
@@ -52,14 +76,11 @@ fn parse_lav(content: &str, entries: &mut Vec<Entry>) {
     let lines: Vec<&str> = content.lines().collect();
     let mut i = 0;
     let mut doc: Vec<String> = Vec::new();
-    // Set after a section header so that the next comment block becomes the
-    // section description rather than a per-item doc comment.
     let mut after_section = false;
 
     while i < lines.len() {
         let trimmed = lines[i].trim();
 
-        // Section header: // --- Name ---
         if let Some(name) = parse_section(trimmed) {
             entries.push(Entry::Section(name));
             doc.clear();
@@ -68,7 +89,6 @@ fn parse_lav(content: &str, entries: &mut Vec<Entry>) {
             continue;
         }
 
-        // Comment line: accumulate into doc buffer
         if trimmed.starts_with("//") {
             let text = trimmed.trim_start_matches('/').trim().to_string();
             doc.push(text);
@@ -76,7 +96,6 @@ fn parse_lav(content: &str, entries: &mut Vec<Entry>) {
             continue;
         }
 
-        // Public declaration — always collected regardless of doc
         if trimmed.starts_with("pub ") {
             let (sig, consumed) = collect_sig(&lines[i..]);
             entries.push(Entry::Item {
@@ -88,7 +107,7 @@ fn parse_lav(content: &str, entries: &mut Vec<Entry>) {
             continue;
         }
 
-        // Non-pub fn with a doc comment: user-visible functions like print/println/assert/panic.
+        // Non-pub fn with a doc comment: user-visible helpers like print/println/assert/panic.
         // Internal operator functions (fn Op...) are excluded.
         if trimmed.starts_with("fn ") && !trimmed.starts_with("fn Op") && !doc.is_empty() {
             let (sig, consumed) = collect_sig(&lines[i..]);
@@ -101,11 +120,7 @@ fn parse_lav(content: &str, entries: &mut Vec<Entry>) {
             continue;
         }
 
-        // Anything else (blank lines, code, #rust attributes):
-        // - #rust lines never disturb the doc buffer
-        // - everything else triggers a flush:
-        //   * right after a section header → emit as section description
-        //   * otherwise → discard
+        // #rust attribute lines do not break doc accumulation.
         if !trimmed.starts_with('#') {
             if after_section && !doc.is_empty() {
                 entries.push(Entry::Item {
@@ -122,7 +137,6 @@ fn parse_lav(content: &str, entries: &mut Vec<Entry>) {
     }
 }
 
-/// Extract the section name from a `// --- Name ---` line or return None.
 fn parse_section(trimmed: &str) -> Option<String> {
     if !trimmed.starts_with("// ---") {
         return None;
@@ -139,20 +153,16 @@ fn parse_section(trimmed: &str) -> Option<String> {
     }
 }
 
-/// Collect a complete declaration starting at lines[0].
-/// Returns (signature_string, number_of_lines_consumed).
+/// Use this rather than `collect_block` directly; it selects between
+/// signature-only and full-body capture based on the declaration kind.
 fn collect_sig(lines: &[&str]) -> (String, usize) {
     let first = lines[0].trim();
-    // Structs and enums: keep the full body with fields/variants.
     if first.starts_with("pub struct") || first.starts_with("pub enum") {
         return collect_block(lines);
     }
-    // Functions and other declarations: strip the body, show only the signature.
     (strip_body(first), 1)
 }
 
-/// Collect a brace-delimited block (struct or enum), stripping implementation-detail
-/// comments such as byte-offset annotations (`// 8`).
 fn collect_block(lines: &[&str]) -> (String, usize) {
     let mut result: Vec<String> = Vec::new();
     let mut depth = 0i32;
@@ -172,8 +182,6 @@ fn collect_block(lines: &[&str]) -> (String, usize) {
     (result.join("\n"), lines.len())
 }
 
-/// Strip a trailing `// <integer>` byte-offset annotation from a line,
-/// preserving all other leading whitespace and content.
 fn strip_offset_comment(s: &str) -> String {
     if let Some(pos) = s.rfind("//")
         && s[pos + 2..].trim().parse::<i64>().is_ok()
@@ -183,9 +191,6 @@ fn strip_offset_comment(s: &str) -> String {
     s.trim_end().to_string()
 }
 
-/// Strip a function body `{ ... }` from a single-line declaration,
-/// respecting parenthesis depth so inner braces in type arguments are not confused
-/// with the body delimiter.
 fn strip_body(sig: &str) -> String {
     let mut depth = 0i32;
     let mut result = String::new();
@@ -199,7 +204,6 @@ fn strip_body(sig: &str) -> String {
                 depth -= 1;
                 result.push(ch);
             }
-            // Stop at `{` or `;` only when outside any parenthesized list
             '{' | ';' if depth == 0 => break,
             _ => result.push(ch),
         }
@@ -207,75 +211,86 @@ fn strip_body(sig: &str) -> String {
     result.trim_end().to_string()
 }
 
-// ---  HTML renderer  ---
+// ---  Section grouping  ---
 
-type DocItem = (String, Vec<String>); // (signature, doc lines)
-type DocSection = (String, Vec<DocItem>); // (section name, items)
-
-fn render_html(entries: &[Entry]) -> String {
-    // Group items by section, merging any sections that share the same name
-    // (e.g., the Text section appears in both 01_code.lav and 03_text.lav).
-    let mut sections: Vec<DocSection> = Vec::new();
-    let mut cur: Option<usize> = None;
+/// Build this before generating HTML or the link map; it groups the flat entry
+/// list into the structure both renderers need, merging sections that share a
+/// name across multiple source files.
+fn build_sections(entries: &[Entry]) -> Vec<SectionFull> {
+    let mut sections: Vec<SectionFull> = Vec::new();
+    let mut section_idx: Option<usize> = None;
 
     for entry in entries {
         match entry {
             Entry::Section(name) => {
-                if let Some(idx) = sections.iter().position(|(n, _)| n == name) {
-                    cur = Some(idx);
+                if let Some(idx) = sections.iter().position(|s| &s.name == name) {
+                    section_idx = Some(idx);
                 } else {
-                    sections.push((name.clone(), Vec::new()));
-                    cur = Some(sections.len() - 1);
+                    sections.push(SectionFull {
+                        id: section_id(name),
+                        name: name.clone(),
+                        items: Vec::new(),
+                    });
+                    section_idx = Some(sections.len() - 1);
                 }
             }
             Entry::Item { sig, doc } => {
-                if let Some(idx) = cur {
-                    sections[idx].1.push((sig.clone(), doc.clone()));
+                if let Some(idx) = section_idx {
+                    sections[idx].items.push((sig.clone(), doc.clone()));
                 }
             }
         }
     }
-
-    let mut html = String::new();
-    html.push_str(HTML_HEAD);
-
-    // Main content
-    html.push_str("<main>\n<h1>Lav Standard Library</h1>\n");
-
-    for (name, items) in &sections {
-        html.push_str(&format!(
-            "<section id=\"{}\">\n<h2>{}</h2>\n",
-            section_id(name),
-            esc(name)
-        ));
-
-        for (sig, doc_lines) in items {
-            let paras = group_paragraphs(doc_lines);
-            if sig.is_empty() {
-                // Section description (no code block)
-                html.push_str("<div class=\"section-desc\">");
-                for p in &paras {
-                    html.push_str(&format!("<p>{}</p>", esc(p)));
-                }
-                html.push_str("</div>\n");
-            } else {
-                html.push_str("<div class=\"item\">\n");
-                html.push_str(&format!("<pre><code>{}</code></pre>\n", esc(sig)));
-                for p in &paras {
-                    html.push_str(&format!("<p>{}</p>\n", esc(p)));
-                }
-                html.push_str("</div>\n");
-            }
-        }
-
-        html.push_str("</section>\n");
-    }
-
-    html.push_str("</main>\n</body>\n</html>\n");
-    html
+    sections
 }
 
-/// Convert a section name to a safe HTML anchor id.
+// ---  Link map  ---
+
+/// Build this before calling `generate_docs` and `generate_stdlib_section`;
+/// the map lets the syntax highlighter inject stdlib links without a second
+/// pass over the generated HTML.
+fn build_link_map(sections: &[SectionFull]) -> HashMap<String, String> {
+    let mut map: HashMap<String, String> = HashMap::new();
+
+    for section in sections {
+        let url = format!("stdlib-{}.html", section.id);
+        for (sig, _) in &section.items {
+            if sig.is_empty() {
+                continue;
+            }
+            if let Some(name) = sig_name(sig) {
+                map.entry(name).or_insert_with(|| url.clone());
+            }
+        }
+    }
+
+    // vector and sorted are user-visible type aliases not captured by pub declarations.
+    map.entry("vector".into())
+        .or_insert_with(|| "stdlib-collections.html".into());
+    map.entry("sorted".into())
+        .or_insert_with(|| "stdlib-collections.html".into());
+
+    map
+}
+
+fn sig_name(sig: &str) -> Option<String> {
+    let trimmed = sig.trim();
+    let rest = trimmed
+        .strip_prefix("pub fn ")
+        .or_else(|| trimmed.strip_prefix("fn "))
+        .or_else(|| trimmed.strip_prefix("pub type "))
+        .or_else(|| trimmed.strip_prefix("pub struct "))
+        .or_else(|| trimmed.strip_prefix("pub enum "))
+        .or_else(|| trimmed.strip_prefix("pub "))?;
+    let name: String = rest
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_')
+        .collect();
+    if name.is_empty() { None } else { Some(name) }
+}
+
+// ---  HTML rendering  ---
+
 fn section_id(name: &str) -> String {
     name.to_lowercase()
         .chars()
@@ -287,14 +302,12 @@ fn section_id(name: &str) -> String {
             }
         })
         .collect::<String>()
-        // Collapse multiple consecutive hyphens
         .split('-')
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
         .join("-")
 }
 
-/// Escape characters that have special meaning in HTML.
 fn esc(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -302,8 +315,6 @@ fn esc(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// Join consecutive non-empty lines into a single paragraph string.
-/// Blank lines create a new paragraph.
 fn group_paragraphs(lines: &[String]) -> Vec<String> {
     let mut result = Vec::new();
     let mut current = String::new();
@@ -326,198 +337,111 @@ fn group_paragraphs(lines: &[String]) -> Vec<String> {
     result
 }
 
-// ---  HTML boilerplate  ---
-
-const HTML_HEAD: &str = "<!DOCTYPE html>\n\
-         <html lang=\"en\">\n\
-         <head>\n\
-         <meta charset=\"UTF-8\">\n\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n\
-         <title>Loft Standard Library</title>\n\
-         <link rel=\"stylesheet\" href=\"style.css\">\n\
-         </head>\n\
-         <body>\n";
-
-// ---  Link map  ---
-
-/// Maps stdlib item names to the section anchor they live in, split by the
-/// span class used in the doc HTML files:
-///   fn_map  → class="bi" and class="fn-call"  (functions)
-///   ty_map  → class="ty"                       (primitive types)
-///   en_map  → class="en"                       (structs, enums, constants)
-struct LinkMaps {
-    fn_map: HashMap<String, String>,
-    ty_map: HashMap<String, String>,
-    en_map: HashMap<String, String>,
-}
-
-fn build_link_maps(entries: &[Entry]) -> LinkMaps {
-    let mut fn_map: HashMap<String, String> = HashMap::new();
-    let mut ty_map: HashMap<String, String> = HashMap::new();
-    let mut en_map: HashMap<String, String> = HashMap::new();
-
-    // Track the first-seen section id for each section name (mirrors render_html merging).
-    let mut section_first: HashMap<String, String> = HashMap::new();
-    let mut cur_section = String::new();
-
-    for entry in entries {
-        match entry {
-            Entry::Section(name) => {
-                let id = section_id(name);
-                cur_section = section_first
-                    .entry(name.clone())
-                    .or_insert_with(|| id)
-                    .clone();
+/// Call once per section after building the link map; generates a self-contained
+/// page with full nav so readers can navigate to any other section or topic.
+fn generate_stdlib_section(
+    section: &SectionFull,
+    stdlib_info: &[StdlibSection],
+    topic_info: &[(String, String)],
+) -> std::io::Result<()> {
+    let stem = format!("stdlib-{}", section.id);
+    let nav = build_nav(topic_info, stdlib_info, &stem);
+    let mut body = String::new();
+    for (sig, doc_lines) in &section.items {
+        let paras = group_paragraphs(doc_lines);
+        if sig.is_empty() {
+            body.push_str("<div class=\"section-desc\">");
+            for p in &paras {
+                body.push_str(&format!("<p>{}</p>", esc(p)));
             }
-            Entry::Item { sig, .. } if !sig.is_empty() => {
-                if let Some((name, kind)) = parse_sig_name(sig) {
-                    let sec = cur_section.clone();
-                    match kind {
-                        "fn" => {
-                            fn_map.entry(name).or_insert(sec);
-                        }
-                        "type" => {
-                            ty_map.entry(name).or_insert(sec);
-                        }
-                        "struct" | "enum" | "const" => {
-                            en_map.entry(name).or_insert(sec);
-                        }
-                        _ => {}
-                    }
-                }
+            body.push_str("</div>\n");
+        } else {
+            body.push_str("<div class=\"item\">\n");
+            body.push_str(&format!("<pre><code>{}</code></pre>\n", esc(sig)));
+            for p in &paras {
+                body.push_str(&format!("<p>{}</p>\n", esc(p)));
             }
-            _ => {}
+            body.push_str("</div>\n");
         }
     }
-
-    // `vector` is declared as `type vector` (not pub), but it is user-visible;
-    // add it manually so class="ty">vector</span> links to the Collections section.
-    ty_map
-        .entry("vector".into())
-        .or_insert_with(|| "collections".into());
-    ty_map
-        .entry("sorted".into())
-        .or_insert_with(|| "collections".into());
-
-    LinkMaps {
-        fn_map,
-        ty_map,
-        en_map,
-    }
+    let html = page_html(&section.name, &nav, &section.name, &body);
+    fs::create_dir_all("doc")?;
+    fs::write(format!("doc/{stem}.html"), html)?;
+    println!("Generated doc/{stem}.html");
+    Ok(())
 }
 
-/// Extract the identifier name and kind from a signature string.
-/// Returns None for anonymous or unrecognised signatures.
-fn parse_sig_name(sig: &str) -> Option<(String, &'static str)> {
-    let s = sig.trim();
-    let (kind, rest) = if let Some(r) = s.strip_prefix("pub fn ") {
-        ("fn", r)
-    } else if let Some(r) = s.strip_prefix("fn ") {
-        ("fn", r)
-    } else if let Some(r) = s.strip_prefix("pub type ") {
-        ("type", r)
-    } else if let Some(r) = s.strip_prefix("pub struct ") {
-        ("struct", r)
-    } else if let Some(r) = s.strip_prefix("pub enum ") {
-        ("enum", r)
-    } else if let Some(r) = s.strip_prefix("pub ") {
-        // Constants: `pub PI = ...`, `pub E = ...`
-        ("const", r)
-    } else {
-        return None;
-    };
-
-    let name: String = rest
-        .chars()
-        .take_while(|c| c.is_alphanumeric() || *c == '_')
-        .collect();
-
-    if name.is_empty() {
-        None
-    } else {
-        Some((name, kind))
+/// Generate after all section pages exist so the item counts are accurate and
+/// readers get a complete overview when landing on the stdlib index.
+fn generate_stdlib_toc(
+    sections: &[SectionFull],
+    stdlib_info: &[StdlibSection],
+    topic_info: &[(String, String)],
+) -> std::io::Result<()> {
+    let nav = build_nav(topic_info, stdlib_info, "stdlib");
+    let mut body = String::new();
+    body.push_str("<div class=\"grid\">\n");
+    for section in sections {
+        let count = section.items.iter().filter(|(s, _)| !s.is_empty()).count();
+        body.push_str(&format!(
+            "  <a class=\"card\" href=\"stdlib-{id}.html\"><h2>{name}</h2><p>{count} items</p></a>\n",
+            id = section.id,
+            name = esc(&section.name),
+        ));
     }
+    body.push_str("</div>\n");
+    let html = page_html("Standard Library", &nav, "Lav Standard Library", &body);
+    fs::write("doc/stdlib.html", &html)?;
+    println!("Generated doc/stdlib.html");
+    Ok(())
 }
 
-// --- Doc HTML post-processing  ---
+/// Generate last so all section URLs are stable before they are written into
+/// the index; the index is consumed at page load so stale URLs cause silent
+/// broken links.
+fn generate_search_index(
+    sections: &[SectionFull],
+    stdlib_info: &[StdlibSection],
+) -> std::io::Result<()> {
+    let mut entries: Vec<String> = Vec::new();
 
-/// Inject stdlib links into every doc HTML file (except stdlib.html itself).
-fn link_doc_files(entries: &[Entry]) {
-    let maps = build_link_maps(entries);
+    for sec in stdlib_info {
+        entries.push(format!(
+            "{{name:{:?},kind:\"section\",url:\"stdlib-{}.html\"}}",
+            sec.name, sec.id
+        ));
+    }
 
-    let dir = match fs::read_dir("doc") {
-        Ok(d) => d,
-        Err(e) => {
-            eprintln!("Cannot read doc/: {e}");
-            return;
-        }
-    };
-
-    let mut paths: Vec<_> = dir
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| {
-            p.extension().and_then(|e| e.to_str()) == Some("html")
-                && p.file_name().and_then(|n| n.to_str()) != Some("stdlib.html")
-        })
-        .collect();
-    paths.sort();
-
-    let mut count = 0usize;
-    for path in &paths {
-        let original = match fs::read_to_string(path) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("Cannot read {}: {e}", path.display());
+    for section in sections {
+        let url = format!("stdlib-{}.html", section.id);
+        for (sig, _) in &section.items {
+            if sig.is_empty() {
                 continue;
             }
-        };
-        let linked = apply_links(&original, &maps);
-        if linked != original {
-            if let Err(e) = fs::write(path, &linked) {
-                eprintln!("Cannot write {}: {e}", path.display());
-            } else {
-                count += 1;
+            if let Some(name) = sig_name(sig) {
+                let kind = sig_kind(sig);
+                entries.push(format!("{{name:{:?},kind:{:?},url:{:?}}}", name, kind, url));
             }
         }
     }
-    println!(
-        "Linked stdlib references in {count}/{} doc files",
-        paths.len()
-    );
+
+    let js = format!("const SEARCH_INDEX=[\n{}\n];\n", entries.join(",\n"));
+    fs::write("doc/search-index.js", js)?;
+    println!("Generated doc/search-index.js ({} entries)", entries.len());
+    Ok(())
 }
 
-/// Replace unlinked `<span class="CLASS">NAME</span>` patterns with links to
-/// the stdlib.html anchor for that name.  Idempotent: already-linked spans are
-/// left untouched because the inner content no longer matches a plain name.
-fn apply_links(html: &str, maps: &LinkMaps) -> String {
-    let mut out = html.to_string();
-
-    // Functions: span classes "bi" and "fn-call"
-    for (name, sec) in &maps.fn_map {
-        let href = format!("stdlib.html#{sec}");
-        for class in &["bi", "fn-call"] {
-            let old = format!("<span class=\"{class}\">{name}</span>");
-            let new = format!("<span class=\"{class}\"><a href=\"{href}\">{name}</a></span>");
-            out = out.replace(&old, &new);
-        }
+fn sig_kind(sig: &str) -> &'static str {
+    let trimmed = sig.trim();
+    if trimmed.starts_with("pub fn ") || trimmed.starts_with("fn ") {
+        "fn"
+    } else if trimmed.starts_with("pub type ") {
+        "type"
+    } else if trimmed.starts_with("pub struct ") {
+        "struct"
+    } else if trimmed.starts_with("pub enum ") {
+        "enum"
+    } else {
+        "const"
     }
-
-    // Primitive types: span class "ty"
-    for (name, sec) in &maps.ty_map {
-        let href = format!("stdlib.html#{sec}");
-        let old = format!("<span class=\"ty\">{name}</span>");
-        let new = format!("<span class=\"ty\"><a href=\"{href}\">{name}</a></span>");
-        out = out.replace(&old, &new);
-    }
-
-    // Structs, enums, constants: span class "en"
-    for (name, sec) in &maps.en_map {
-        let href = format!("stdlib.html#{sec}");
-        let old = format!("<span class=\"en\">{name}</span>");
-        let new = format!("<span class=\"en\"><a href=\"{href}\">{name}</a></span>");
-        out = out.replace(&old, &new);
-    }
-
-    out
 }

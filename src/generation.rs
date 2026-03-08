@@ -134,7 +134,12 @@ use external::*;
     ///
     /// # Errors
     /// Returns an error if any write action to `w` fails.
-    pub fn output_native(&mut self, w: &mut dyn Write, from: u32, till: u32) -> std::io::Result<()> {
+    pub fn output_native(
+        &mut self,
+        w: &mut dyn Write,
+        from: u32,
+        till: u32,
+    ) -> std::io::Result<()> {
         writeln!(
             w,
             "\
@@ -227,7 +232,12 @@ extern crate dryopea;"
     /// so field order and builder calls here must match what the compiler produced.
     ///
     /// `enum_value` is 0 for plain structs and the 1-based variant index for enum-value structs.
-    fn output_struct(&self, w: &mut dyn Write, def_nr: u32, enum_value: i32) -> std::io::Result<()> {
+    fn output_struct(
+        &self,
+        w: &mut dyn Write,
+        def_nr: u32,
+        enum_value: i32,
+    ) -> std::io::Result<()> {
         let def = self.data.def(def_nr);
         writeln!(
             w,
@@ -261,10 +271,22 @@ extern crate dryopea;"
             } else if let Type::Integer(min, _) = a.typedef {
                 let field_size = a.typedef.size(a.nullable);
                 if field_size == 1 {
-                    emit_db_field(w, "s", &field_name, "byte", &format!("db.byte({min}, {})", a.nullable))?;
+                    emit_db_field(
+                        w,
+                        "s",
+                        &field_name,
+                        "byte",
+                        &format!("db.byte({min}, {})", a.nullable),
+                    )?;
                     done = true;
                 } else if field_size == 2 {
-                    emit_db_field(w, "s", &field_name, "short", &format!("db.short({min}, {})", a.nullable))?;
+                    emit_db_field(
+                        w,
+                        "s",
+                        &field_name,
+                        "short",
+                        &format!("db.short({min}, {})", a.nullable),
+                    )?;
                     done = true;
                 } else {
                     writeln!(w, "    db.field(s, \"{field_name}\", 0);")?;
@@ -279,7 +301,13 @@ extern crate dryopea;"
                         .map(|(k, asc)| format!("(\"{k}\".to_string(), {asc})"))
                         .collect::<Vec<_>>()
                         .join(", ");
-                    emit_db_field(w, "s", &field_name, "sorted", &format!("db.sorted({c_tp}, &[{keys_str}])"))?;
+                    emit_db_field(
+                        w,
+                        "s",
+                        &field_name,
+                        "sorted",
+                        &format!("db.sorted({c_tp}, &[{keys_str}])"),
+                    )?;
                     done = true;
                 } else if let Type::Hash(c_nr, keys, _) = &a.typedef {
                     let c_tp = self.data.def(*c_nr).known_type;
@@ -288,7 +316,13 @@ extern crate dryopea;"
                         .map(|k| format!("\"{k}\".to_string()"))
                         .collect::<Vec<_>>()
                         .join(", ");
-                    emit_db_field(w, "s", &field_name, "hash", &format!("db.hash({c_tp}, &[{keys_str}])"))?;
+                    emit_db_field(
+                        w,
+                        "s",
+                        &field_name,
+                        "hash",
+                        &format!("db.hash({c_tp}, &[{keys_str}])"),
+                    )?;
                     done = true;
                 } else if let Type::Index(c_nr, keys, _) = &a.typedef {
                     let c_tp = self.data.def(*c_nr).known_type;
@@ -297,7 +331,13 @@ extern crate dryopea;"
                         .map(|(k, asc)| format!("(\"{k}\".to_string(), {asc})"))
                         .collect::<Vec<_>>()
                         .join(", ");
-                    emit_db_field(w, "s", &field_name, "index", &format!("db.index({c_tp}, &[{keys_str}])"))?;
+                    emit_db_field(
+                        w,
+                        "s",
+                        &field_name,
+                        "index",
+                        &format!("db.index({c_tp}, &[{keys_str}])"),
+                    )?;
                     done = true;
                 } else if field_type_id != u16::MAX {
                     writeln!(w, "    db.field(s, \"{field_name}\", {field_type_id});")?;
@@ -774,7 +814,12 @@ extern crate dryopea;"
     /// Use this to dispatch a `Value::Call` to either the user-function or template emitter.
     /// Certain built-in text operations are intercepted here because their generated Rust
     /// differs structurally from both a regular call and a template substitution.
-    fn output_call(&mut self, w: &mut dyn Write, def_nr: u32, vals: &[Value]) -> std::io::Result<()> {
+    fn output_call(
+        &mut self,
+        w: &mut dyn Write,
+        def_nr: u32,
+        vals: &[Value],
+    ) -> std::io::Result<()> {
         let def_fn = self.data.def(def_nr);
         let name: &str = &def_fn.name;
         match name {
@@ -960,7 +1005,7 @@ fn emit_db_field(
     prefix: &str,
     builder: &str,
 ) -> std::io::Result<()> {
-    let var = format!("{}_{}", prefix, sanitize(field_name));
+    let var = format!("{prefix}_{}", sanitize(field_name));
     writeln!(w, "    let {var} = {builder};")?;
     writeln!(w, "    db.field({struct_var}, \"{field_name}\", {var});")?;
     Ok(())

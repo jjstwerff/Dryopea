@@ -7974,13 +7974,21 @@ byte-code for lib/parser.lav:t_6Parser_expect(self: ref(Parser)[0], value: text[
  100[80]: Return(ret=28, value=0, discard=80)
 
 fn n_main() {#block(1):void
-  [10] n_parse("test1", "fn main() { println("Hello World"); }");
+  [27] n_parse("hello", "fn main() { println("Hello World"); }");
+  [31] n_parse("point", "struct Point { x: integer, y: integer } fn origin() -> Point { Point { x: 0, y: 0 } }");
+  [34] n_parse("shape", "enum Shape { Circle { radius: float }, Rectangle { w: float, h: float } }");
 }#block(1):void
 
 byte-code for tests/suite/16-parser.lav:n_main()
    0[0]: return-address
-   0[4]: [10] ConstText(_value="test1") -> text
+   0[4]: [27] ConstText(_value="hello") -> text
    7[20]: ConstText(_value="fn main() { println("Hello World"); }") -> text
   46[36]: Call(size=0, fn=n_parse)
-  53[4]: Return(ret=0, value=0, discard=4)
+  53[4]: [31] ConstText(_value="point") -> text
+  60[20]: ConstText(_value="struct Point { x: integer, y: integer } fn origin() -> Point { Point { x: 0, y: 0 } }") -> text
+ 147[36]: Call(size=0, fn=n_parse)
+ 154[4]: [34] ConstText(_value="shape") -> text
+ 161[20]: ConstText(_value="enum Shape { Circle { radius: float }, Rectangle { w: float, h: float } }") -> text
+ 236[36]: Call(size=0, fn=n_parse)
+ 243[4]: Return(ret=0, value=0, discard=4)
 
