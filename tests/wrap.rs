@@ -17,14 +17,17 @@ use std::fs::File;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
-/// Run every `.lav` file in `tests/suite/` in alphabetical order.
+/// Run every `.loft` file in `tests/suite/` in alphabetical order.
 /// Regenerates all HTML documentation in `doc/` before executing the tests,
 /// so the docs are always in sync with the suite source files.
 #[test]
 fn dir() -> std::io::Result<()> {
     let mut files: Vec<PathBuf> = std::fs::read_dir("tests/suite")?
         .filter_map(|f| f.ok().map(|e| e.path()))
-        .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("lav")))
+        .filter(|p| {
+            p.extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("loft"))
+        })
         .collect();
     files.sort();
     for entry in files {
@@ -33,15 +36,15 @@ fn dir() -> std::io::Result<()> {
     Ok(())
 }
 
-/// Quick iteration test: run only the final suite file (`16-parser.lav`) without
+/// Quick iteration test: run only the final suite file (`16-parser.loft`) without
 /// regenerating documentation.  Use this during active development on the parser
 /// to get a fast feedback cycle.
 #[test]
 fn last() -> std::io::Result<()> {
-    run_test(PathBuf::from("tests/suite/16-parser.lav"), false)
+    run_test(PathBuf::from("tests/suite/16-parser.loft"), false)
 }
 
-/// Parse, type-check, compile, and execute one `.lav` test file.
+/// Parse, type-check, compile, and execute one `.loft` test file.
 ///
 /// The default library in `default/` is loaded first, then `entry` is parsed on
 /// top of it.  Any parse or type errors are printed and immediately fail the

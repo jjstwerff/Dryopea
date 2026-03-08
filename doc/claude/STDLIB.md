@@ -1,12 +1,12 @@
-# Lav Standard Library Reference
+# Loft Standard Library Reference
 
-This document describes all public functions, constants, and types available in the lav standard library.
+This document describes all public functions, constants, and types available in the loft standard library.
 
 ---
 
 ## Types
 
-The primitive types built into lav.
+The primitive types built into loft.
 
 | Type        | Size   | Description |
 |-------------|--------|-------------|
@@ -260,6 +260,6 @@ Functions for interacting with the host operating system.
 
 | Function | Description |
 |----------|-------------|
-| `directory(v: text = "") -> text` | Returns the current working directory, optionally with `v` appended as a subpath. Use to construct absolute paths relative to where the program was launched. |
-| `user_directory(v: text = "") -> text` | Returns the current user's home directory, optionally with `v` appended. Use for storing user-specific data or configuration. |
-| `program_directory(v: text = "") -> text` | Returns the directory containing the running executable, optionally with `v` appended. Use to locate assets bundled alongside the program. |
+| `directory(v: &text = "") -> text` | Returns the current working directory, optionally with `v` appended as a subpath. Use to construct absolute paths relative to where the program was launched. |
+| `user_directory(v: &text = "") -> text` | Returns the current user's home directory, optionally with `v` appended. Use for storing user-specific data or configuration. |
+| `program_directory(v: &text = "") -> text` | Returns the directory containing the running executable, optionally with `v` appended. Use to locate assets bundled alongside the program. |

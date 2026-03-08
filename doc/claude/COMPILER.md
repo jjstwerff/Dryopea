@@ -1,13 +1,13 @@
 # Compiler Pipeline
 
-This document covers how lav source code is turned into executable bytecode: the lexer, the two-pass parser, the IR, type resolution, scope analysis, and bytecode generation.
+This document covers how loft source code is turned into executable bytecode: the lexer, the two-pass parser, the IR, type resolution, scope analysis, and bytecode generation.
 
 ---
 
 ## Pipeline overview
 
 ```
-Source text (.lav)
+Source text (.loft)
        │
        ▼
   [ Lexer ]           src/lexer.rs
@@ -191,9 +191,9 @@ The two-pass approach allows forward references — a struct or function can be 
 
 ```rust
 // Parse a file (two full passes)
-parser.parse("path/to/file.lav", is_default);
+parser.parse("path/to/file.loft", is_default);
 
-// Parse all .lav files in a directory, alphabetically
+// Parse all .loft files in a directory, alphabetically
 parser.parse_dir("default", true, debug);
 
 // Parse from an in-memory string (used in tests)
@@ -232,15 +232,15 @@ fn parse_file(&mut self) {
 
 ### `use` resolution — `lib_path`
 
-When `use foo;` is encountered, the parser looks for `foo.lav` in the following order:
+When `use foo;` is encountered, the parser looks for `foo.loft` in the following order:
 
-1. `lib/foo.lav` (project-local library)
-2. `foo.lav` (current directory)
-3. `<current_dir>/lib/foo.lav`
-4. `<base_dir>/lib/foo.lav` (when inside `tests/`)
-5. Directories from the `LAVITION_LIB` environment variable
-6. `<current_dir>/foo.lav`
-7. `<base_dir>/foo.lav`
+1. `lib/foo.loft` (project-local library)
+2. `foo.loft` (current directory)
+3. `<current_dir>/lib/foo.loft`
+4. `<base_dir>/lib/foo.loft` (when inside `tests/`)
+5. Directories from the `LOFT_LIB` environment variable
+6. `<current_dir>/foo.loft`
+7. `<base_dir>/foo.loft`
 
 ### Operator precedence
 
@@ -543,7 +543,7 @@ The bytecode is a compact encoding of the `Call`/`Set`/`If`/`Loop` IR nodes. It 
 
 ---
 
-## Default library (`default/*.lav`)
+## Default library (`default/*.loft`)
 
 The default library is loaded before any user source. It is parsed with `default: true`, which:
 - Allows `OpXxx`-prefixed names (operator definitions).
@@ -551,9 +551,9 @@ The default library is loaded before any user source. It is parsed with `default
 - Registers all built-in types, operators, and standard functions in `Data` and `Stores`.
 
 Files are loaded in alphabetical order:
-- `01_code.lav` — all operators and standard functions
-- `02_images.lav` — image, file, pixel types
-- `03_text.lav` — text utility functions
+- `01_code.loft` — all operators and standard functions
+- `02_images.loft` — image, file, pixel types
+- `03_text.loft` — text utility functions
 
 ---
 
@@ -599,4 +599,4 @@ Diagnostics are collected on the `Lexer` and merged into `Parser::diagnostics` a
 | `src/diagnostics.rs` | Error/warning collection and formatting |
 | `src/database.rs` | `Stores` — runtime type schema (field offsets, sizes) |
 | `src/generation.rs` | Rust code generator (for `tests/generated/`) |
-| `default/*.lav` | Built-in operators and standard library |
+| `default/*.loft` | Built-in operators and standard library |
