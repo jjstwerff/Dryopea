@@ -3,9 +3,33 @@
 // @NAME: Parser
 // @TITLE: Parser library.
 // Parser library: parsing lav source code programmatically from within a lav program.
+//
+// `parse(name, source)` is the single entry point. It takes a display name (used in
+// error messages) and a lav source string. The name argument does not need to correspond
+// to a real file; it is only used when reporting parse errors.
+//
+// The parser understands the full lav grammar:
+// - `struct Name { field: type [= default] }` — named-field aggregates
+// - `enum Name { Variant [{ field: type }] }` — tagged unions with optional payload
+// - `fn name(params) [-> type] { body }` — functions with a block body
+// - `fn name(params) [-> type]; #rust "template"` — operator templates backed by Rust
+// - `use module;` — module imports
+// - Expressions: binary operators with precedence, function calls, field access,
+//   index expressions, if/else, for loops, blocks, and formatted string literals
+// - Type expressions: plain names, generic types like `vector<T>`, sorted/hash/index
+//   collections with key fields, and integer ranges with `limit(min, max)`
 
 use parser;
 
 fn main() {
-    parser::parse("test1", "fn main() {{ println(\"Hello World\"); }}");
+    // Parse a minimal function definition. The double braces `{{` and `}}` are the
+    // lav way to write literal braces inside a format string.
+    parser::parse("hello", "fn main() {{ println(\"Hello World\"); }}");
+
+    // Parse a struct definition followed by a function that references it.
+    // The parser validates the syntax but does not execute the code.
+    parser::parse("point", "struct Point {{ x: integer, y: integer }} fn origin() -> Point {{ Point {{ x: 0, y: 0 }} }}");
+
+    // Parse an enum with a plain variant and a variant carrying fields.
+    parser::parse("shape", "enum Shape {{ Circle {{ radius: float }}, Rectangle {{ w: float, h: float }} }}");
 }

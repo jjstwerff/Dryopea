@@ -3,6 +3,10 @@
 // @NAME: Lexer
 // @TITLE: Lexer library.
 // Lexer library: tokenising source text, handling multi-character operators, comments, string literals, and formatting expressions.
+//
+// Before parsing, register the multi-character tokens and reserved keywords for your language.
+// `set_tokens` ensures operators like `+=` or `>>` are scanned as one token instead of two.
+// `set_keywords` prevents reserved words from being returned by `identifier()`.
 
 use lexer;
 
@@ -10,6 +14,11 @@ fn main() {
     l = lexer::Lexer {};
     l.set_tokens(["+=", "*=", "-=", "<=", ">=", "!=", "==", ">>", "<<", "->", "=>", ">>>", "..", "..=", "&&", "||"]);
     l.set_keywords(["for", "in", "if", "else", "fn", "pub", "use", "struct", "enum", "match", "and", "or"]);
+
+    // `parse_string` feeds source text into the lexer.
+    // `int()` consumes and returns the next integer token, or null if the current token is not an integer.
+    // `matches()` consumes a token only when it equals the given string; `peek()` returns it without consuming.
+    // `long_int()` reads a long integer (suffixed with `l`). `position()` returns `file:line:col`.
     l.parse_string("Tokens", "12 += -2 * 3l >> 4");
     assert(l.int() == 12, "Integer");
     assert(!l.matches("+"), "Incorrect plus");
@@ -24,11 +33,18 @@ fn main() {
     assert(l.matches(">>"), "Incorrect logical shift");
     assert(l.position() == "Tokens:1:18", "Incorrect position {l.position()}");
 
+    // `constant_text()` reads and unescapes a quoted string literal.
+    // `constant_character()` reads a quoted character literal.
     l.parse_string("Texts", "\"123\" + '4'");
     assert(l.constant_text() == "123", "Incorrect text literal");
     assert(l.matches("+"), "Incorrect add");
     assert(l.constant_character() == "123", "Incorrect text literal");
 
+    // Comments are collected automatically during scanning.
+    // `last_comment()` returns accumulated comment text since the last consumed token.
+    // `comment_behind()` is true when the comment appeared on the same line as preceding code.
+    // Multiple consecutive comment lines are joined with newlines into one string.
+    // `is_finished()` returns true once all input has been consumed.
     l.parse_string("Comments", "// starting comments\n123 // same line comment\n// extra comment\n4");
     assert(!l.comment_behind(), "Initial comment not behind");
     assert(l.last_comment() == "starting comments", "Initial comment");
@@ -40,6 +56,11 @@ fn main() {
     assert(l.last_comment() == "", "No remaining comment");
     assert(l.is_finished(), "Ready");
 
+    // String literals may embed expressions with `{expr}`.
+    // When the lexer reaches `{`, `constant_text()` returns the literal part before it
+    // and `is_formatting()` becomes true. Parse the embedded expression normally after
+    // calling `set_formatting(false)`, then call `set_formatting(true)` before consuming
+    // the closing `}}`. `constant_text()` then continues with the next literal segment.
     l.parse_string("Formatting", "\"abc{{12 + 34}}def\"");
     assert(l.constant_text() == "abc", "Before formatting");
     assert(l.is_formatting(), "Formatting");
