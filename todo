@@ -1,6 +1,9 @@
-Test for reading and writing binary data.
+Code generation:
+- return stack text: create Str::new()
+- prevent creating a stack variable at all (we rever only to the depend variable)
+- calls with stack var should become '&mut var' with the depend variable
 
-Start merging more #rust implementations, but not the Str fixes
+Test for reading and writing binary data.
 
 Check on #remove outside for..if?
 More free polymorphism tests: meld of the two forms
@@ -10,7 +13,20 @@ Change the #index on a string iterator to hold the start of the current characte
 Keep the "Format" class usable in user code. Even think about "File".
 - Part of library name spacing?
 
+Introduce a separate null string value.
+- Validate in unit-tests that the empty string is not null.
+- Think about what a null append to another string should do.
+
 Migrate from .lav to .loft as the extension of the language.
+
+Code rules:
+- Function names should indicate what a function does. Keep them short but prevent ambiguity.
+- A function should do one thing, split it up when different algorithms are there.
+- Try to prevent code duplication.
+- Variable-, argument-, and field names should indicate what data it holds. Keep them short but prevent ambiguity.
+- Documentation above a function should not describe what is does but why it should be used.
+- Only when an algorithm is unclear write documentation inside a function.
+- When the same fields are given as an argument on many functions, try to move them to a common struct.
 
 Generate documentation for /lib/parser.lav, /lib/lexer.lav, tests/suite/15-lexer.lav, tests/suite/16-parser.lav
 
@@ -20,8 +36,6 @@ Documentation generation: documentation.rs gendoc.rs style.css
 - Visually integrate standard library and documentation with a common menu.
 - Back links to the main page on all pages.
 - Add a search feature to find functions, types, constants and classes.
-
-Merge of code generation
 
 
 click on hex grid: assume vertical view

@@ -1,22 +1,115 @@
 // Copyright (c) 2024-2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-use crate::data::{Context, Data, DefType, Definition, Type, Value};
+use crate::data::{Block, Context, Data, DefType, Definition, Type, Value};
 use crate::database::Stores;
+use std::collections::HashSet;
 use std::io::Write;
 
+/// Holds the compile-time context required to emit Rust source code from a parsed lav program.
+///
+/// `data` carries the full definition table (types, functions, variables) built by the parser.
+/// `stores` carries the compile-time database layout, which is needed to cross-check field
+/// positions when emitting `init` calls for polymorphic enum-value structs.
+/// `counter` is used to create unique variable names in the code.
 pub struct Output<'a> {
     pub data: &'a Data,
     pub stores: &'a Stores,
+    pub counter: u32,
+    pub def_nr: u32,
+    pub indent: u32,
+    pub declared: HashSet<u16>,
+}
+
+/// Convert a lav variable name to a valid Rust identifier.
+///
+/// Lav uses `#` as a separator in compiler-generated names (e.g., loop iterators).
+/// Rust does not allow `#` in identifiers, so every occurrence is replaced with `__`.
+fn sanitize(name: &str) -> String {
+    name.replace('#', "__")
+}
+
+/**
+Return the rust type for definitions.
+These are the internal types as in use by the interpreter.
+# Panics
+When the rust type cannot be determined.
+ */
+#[must_use]
+pub fn rust_type(tp: &Type, context: &Context) -> String {
+    if context == &Context::Reference {
+        let mut result = String::new();
+        result += "&";
+        result += &rust_type(tp, &Context::Argument);
+        return result;
+    }
+    if let Type::RefVar(in_tp) = tp {
+        return format!("&mut {}", rust_type(in_tp, &Context::Variable));
+    }
+    match tp {
+        Type::Integer(from, to)
+            if i64::from(*to) - i64::from(*from) <= 255 && i64::from(*from) >= 0 =>
+        {
+            "u8"
+        }
+        Type::Integer(from, to)
+            if i64::from(*to) - i64::from(*from) <= 65536 && i64::from(*from) >= 0 =>
+        {
+            "u16"
+        }
+        Type::Enum(_, false, _) => "u8",
+        Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 255 => "i8",
+        Type::Integer(from, to) if i64::from(*to) - i64::from(*from) <= 65536 => "i16",
+        Type::Integer(_, _) | Type::Character => "i32",
+        Type::Text(_) if context == &Context::Variable => "String",
+        Type::Text(_) => "Str",
+        Type::Long => "i64",
+        Type::Boolean => "bool",
+        Type::Float => "f64",
+        Type::Single => "f32",
+        Type::Reference(_, _)
+        | Type::Vector(_, _)
+        | Type::Sorted(_, _, _)
+        | Type::Hash(_, _, _)
+        | Type::Enum(_, true, _)
+        | Type::Index(_, _, _) => "DbRef",
+        Type::Routine(_) => "u32",
+        Type::Unknown(_) => "??",
+        Type::Iterator(_, _) => "Iterator",
+        Type::Keys => "&[Key]",
+        _ => panic!("Incorrect type {tp:?}"),
+    }
+    .to_string()
 }
 
 impl Output<'_> {
-    /**
-    Try to output the webassembly needed for this code.
-    # Errors
-    When not possible to generate this correctly.
-    */
-    pub fn output_webassembly(&self, dir: &str) -> std::io::Result<()> {
+    /// Indent the current line in the output.
+    /// # Errors
+    /// When the output cannot be written
+    pub fn indent(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for _i in 0..=self.indent {
+            write!(w, "  ")?;
+        }
+        Ok(())
+    }
+
+    pub fn start_fn(&mut self, def_nr: u32) {
+        self.def_nr = def_nr;
+        self.indent = 0;
+        self.declared.clear();
+    }
+
+    /// Generate a self-contained Rust crate under `code/<dir>/` that is intended to be compiled
+    /// to `WebAssembly`.
+    ///
+    /// The generated crate copies the platform stubs (`external.rs`, `store.rs`) from the
+    /// `webassembly/` template directory and writes a `main.rs` that imports them alongside the
+    /// lav-compiled functions.  Call this instead of [`Self::output`] when targeting a WASM
+    /// runtime rather than native Rust.
+    ///
+    /// # Errors
+    /// Returns an error if any file-system operation fails.
+    pub fn output_webassembly(&mut self, dir: &str) -> std::io::Result<()> {
         let program = "code/".to_string() + dir;
         let source = "code/".to_string() + dir + "/src";
         std::fs::create_dir_all(&source)?;
@@ -46,12 +139,21 @@ use external::*;
         self.output(w, 0, self.data.definitions())
     }
 
-    /**
-    Output rust code for a definition.
-    # Errors
-    When this resulted in a filesystem error.
-    */
-    pub fn output(&self, w: &mut dyn Write, from: u32, till: u32) -> std::io::Result<()> {
+    /// Emit a complete Rust source file for the definitions in the range `from..till`.
+    ///
+    /// Two things are emitted:
+    /// 1. A `fn init(db: &mut Stores)` that registers every struct, enum, and vector type so
+    ///    that the runtime database layout matches the compile-time layout (same field order,
+    ///    same type IDs).
+    /// 2. One Rust function per lav `Function` definition.
+    ///
+    /// This is the main entry point for native Rust code generation.  For `WebAssembly` output
+    /// use [`Self::output_webassembly`] instead, which wraps this function with additional
+    /// scaffolding.
+    ///
+    /// # Errors
+    /// Returns an error if any write action to `w` fails.
+    pub fn output(&mut self, w: &mut dyn Write, from: u32, till: u32) -> std::io::Result<()> {
         writeln!(
             w,
             "\
@@ -60,18 +162,57 @@ use external::*;
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
 #![allow(unused_mut)]
-#![allow(clippy::unnecessary_to_owned)]
+#![allow(non_snake_case)]
+#![allow(dead_code)]
+#![allow(redundant_semicolons)]
+#![allow(unused_assignments)]
 #![allow(clippy::double_parens)]
+#![allow(clippy::unused_unit)]
 
 extern crate dryopea;"
         )?;
-        writeln!(w, "use dryopea::database::{{Stores, KnownTypes, DbRef}};")?;
-        writeln!(w, "use dryopea::external::*;\n")?;
-        writeln!(w, "fn init(db: &mut KnownTypes) {{")?;
+        writeln!(w, "use dryopea::database::Stores;")?;
+        writeln!(w, "use dryopea::keys::{{DbRef, Str, Key, Content}};")?;
+        writeln!(w, "use dryopea::external;")?;
+        writeln!(w, "use dryopea::vector;\n")?;
+        writeln!(w, "fn init(db: &mut Stores) {{")?;
+        // Collect types to emit, sorted by known_type to match compile-time type ordering.
+        // The compile-time DB creates vector types during parsing (via new_record), enums via
+        // actual_types, and structs via fill_all — in that order. Sorting by known_type ensures
+        // the runtime init recreates the same ordering so type IDs match.
+        let mut type_defs: Vec<(u16, u32)> = Vec::new();
         for dnr in from..till {
+            self.start_fn(dnr);
+            let def = self.data.def(dnr);
+            let kt = def.known_type;
+            let is_enum_value_with_attrs =
+                def.def_type == DefType::EnumValue && !def.attributes.is_empty();
+            if kt != u16::MAX
+                && (matches!(def.def_type, DefType::Struct)
+                    || def.def_type == DefType::Enum
+                    || def.def_type == DefType::Vector
+                    || is_enum_value_with_attrs)
+            {
+                type_defs.push((kt, dnr));
+            }
+        }
+        type_defs.sort_by_key(|(kt, _)| *kt);
+        for (_, dnr) in &type_defs {
+            let dnr = *dnr;
             let def = self.data.def(dnr);
             if matches!(def.def_type, DefType::Struct) {
-                self.output_struct(w, dnr)?;
+                self.output_struct(w, dnr, 0)?;
+            } else if def.def_type == DefType::EnumValue && !def.attributes.is_empty() {
+                // Determine the 1-based position in the parent enum's attributes
+                let parent_nr = def.parent;
+                let parent = self.data.def(parent_nr);
+                let enum_value = parent
+                    .attributes
+                    .iter()
+                    .enumerate()
+                    .find(|(_, a)| a.name == def.name)
+                    .map_or(0, |(i, _)| i32::try_from(i).unwrap_or(0) + 1);
+                self.output_struct(w, dnr, enum_value)?;
             } else if def.def_type == DefType::Enum {
                 output_enum(w, def)?;
             } else if def.def_type == DefType::Vector {
@@ -82,7 +223,7 @@ extern crate dryopea;"
                 )?;
             }
         }
-        writeln!(w, "}}\n")?;
+        writeln!(w, "    db.finish();\n}}\n")?;
         for dnr in from..till {
             if matches!(self.data.def(dnr).def_type, DefType::Function) {
                 self.output_function(w, dnr)?;
@@ -91,227 +232,434 @@ extern crate dryopea;"
         Ok(())
     }
 
-    #[allow(clippy::cast_possible_truncation)]
-    fn output_struct(&self, w: &mut dyn Write, d_nr: u32) -> std::io::Result<()> {
+    /// Emit the `db.structure(...)` and `db.field(...)` calls for one struct or enum-value type.
+    ///
+    /// Every struct field is emitted with the appropriate `Stores` builder call (`db.vector`,
+    /// `db.byte`, `db.short`, `db.sorted`, `db.hash`, `db.index`, or a bare type ID) so that
+    /// the runtime field layout is byte-for-byte identical to the compile-time layout.
+    ///
+    /// `enum_value` is 0 for plain structs and the 1-based variant index for enum-value structs.
+    /// A non-zero `enum_value` may also trigger emission of an implicit `"enum"` discriminator
+    /// field when the compile-time database already placed one at position 0.
+    fn output_struct(&self, w: &mut dyn Write, d_nr: u32, enum_value: i32) -> std::io::Result<()> {
         let def = self.data.def(d_nr);
-        let p = if def.parent == u32::MAX {
-            u32::MAX
-        } else {
-            def.parent
-        };
-        let size = self.stores.size(def.known_type);
         writeln!(
             w,
-            "    let s = db.structure(\"{}\".to_string(), {size}, {p}); // {}",
+            "    let s = db.structure(\"{}\", {enum_value}); // {}",
             def.name, def.known_type
         )?;
+        // For EnumValue types, the compile-time DB may have an implicit "enum" discriminator
+        // field at position 0 (added when a "byte" type already existed from another struct).
+        // If the compile-time type has "enum" at position 0, we must emit it here so that
+        // field indices match (content field is at index 1, not 0).
+        if enum_value > 0
+            && def.known_type != u16::MAX
+            && self.stores.position(def.known_type, "enum") == 0
+        {
+            writeln!(w, "    let byte_enum = db.byte(0, false);")?;
+            writeln!(w, "    db.field(s, \"enum\", byte_enum);")?;
+        }
         for a in &def.attributes {
-            if !a.mutable {
-                continue;
-            }
             let nm = a.name.clone();
             let td_nr = self.data.type_def_nr(&a.typedef);
             let tp = self.data.def(td_nr).known_type;
-            let pos = self.stores.position(def.known_type, &a.name);
             assert_ne!(d_nr, u32::MAX, "Unknown def_nr for {:?}", a.typedef);
             let mut done = false;
             if let Type::Vector(c, _) = &a.typedef {
                 let c_def = self.data.type_def_nr(c);
                 if c_def != u32::MAX {
                     let content = self.data.def(c_def).known_type;
-                    writeln!(
-                        w,
-                        "    db.field(s, \"{nm}\".to_string(), db.vector({content}), {pos});",
-                    )?;
+                    let vec_var = format!("vec_{}", sanitize(&nm));
+                    writeln!(w, "    let {vec_var} = db.vector({content});")?;
+                    writeln!(w, "    db.field(s, \"{nm}\", {vec_var});")?;
                 }
                 done = true;
             } else if let Type::Integer(min, _) = a.typedef {
                 let s = a.typedef.size(a.nullable);
                 if s == 1 {
-                    writeln!(
-                        w,
-                        "    db.field(s, \"{nm}\".to_string(), db.byte({min}, {}), {pos});",
-                        a.nullable
-                    )?;
+                    let byte_var = format!("byte_{}", sanitize(&nm));
+                    writeln!(w, "    let {byte_var} = db.byte({min}, {});", a.nullable)?;
+                    writeln!(w, "    db.field(s, \"{nm}\", {byte_var});")?;
                     done = true;
                 } else if s == 2 {
-                    writeln!(
-                        w,
-                        "    db.field(s, \"{nm}\".to_string(), db.short({min}, {}), {pos});",
-                        a.nullable
-                    )?;
+                    let short_var = format!("short_{}", sanitize(&nm));
+                    writeln!(w, "    let {short_var} = db.short({min}, {});", a.nullable)?;
+                    writeln!(w, "    db.field(s, \"{nm}\", {short_var});")?;
                     done = true;
                 } else {
-                    writeln!(w, "    db.field(s, \"{nm}\".to_string(), db.int(), {pos});")?;
+                    writeln!(w, "    db.field(s, \"{nm}\", 0);")?;
                     done = true;
                 }
             }
-            if !done && tp != u16::MAX {
-                writeln!(w, "    db.field(s, \"{nm}\".to_string(), {tp}, {pos});")?;
+            if !done {
+                if let Type::Sorted(c_nr, keys, _) = &a.typedef {
+                    let c_tp = self.data.def(*c_nr).known_type;
+                    let sv = format!("sorted_{}", sanitize(&nm));
+                    let keys_str = keys
+                        .iter()
+                        .map(|(k, asc)| format!("(\"{k}\".to_string(), {asc})"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    writeln!(w, "    let {sv} = db.sorted({c_tp}, &[{keys_str}]);")?;
+                    writeln!(w, "    db.field(s, \"{nm}\", {sv});")?;
+                    done = true;
+                } else if let Type::Hash(c_nr, keys, _) = &a.typedef {
+                    let c_tp = self.data.def(*c_nr).known_type;
+                    let hv = format!("hash_{}", sanitize(&nm));
+                    let keys_str = keys
+                        .iter()
+                        .map(|k| format!("\"{k}\".to_string()"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    writeln!(w, "    let {hv} = db.hash({c_tp}, &[{keys_str}]);")?;
+                    writeln!(w, "    db.field(s, \"{nm}\", {hv});")?;
+                    done = true;
+                } else if let Type::Index(c_nr, keys, _) = &a.typedef {
+                    let c_tp = self.data.def(*c_nr).known_type;
+                    let iv = format!("index_{}", sanitize(&nm));
+                    let keys_str = keys
+                        .iter()
+                        .map(|(k, asc)| format!("(\"{k}\".to_string(), {asc})"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    writeln!(w, "    let {iv} = db.index({c_tp}, &[{keys_str}]);")?;
+                    writeln!(w, "    db.field(s, \"{nm}\", {iv});")?;
+                    done = true;
+                } else if tp != u16::MAX {
+                    writeln!(w, "    db.field(s, \"{nm}\", {tp});")?;
+                    done = true;
+                }
             }
+            let _ = done;
         }
         Ok(())
     }
 
-    fn output_function(&self, w: &mut dyn Write, def_nr: u32) -> std::io::Result<()> {
+    /// Emit the Rust function signature and body for a single loft `Function` definition.
+    ///
+    /// Every loft function becomes a Rust function that receives `stores: &mut Stores` as its
+    /// first argument followed by the declared parameters.  The body is produced by recursively
+    /// calling [`Self::output_code_inner`] on the function's `code` value.
+    fn output_function(&mut self, w: &mut dyn Write, def_nr: u32) -> std::io::Result<()> {
+        self.start_fn(def_nr);
         let def = self.data.def(def_nr);
-        if def.position.file == "default/01_code.lav"
-            && def.name.starts_with("Op")
-            && def.code == Value::Null
-        {
+        // Skip Op functions that are only used via inline #rust templates (no callable body needed).
+        if def.name.starts_with("Op") && def.code == Value::Null && !def.rust.is_empty() {
             return Ok(());
         }
         write!(w, "fn {}(stores: &mut Stores", def.name)?;
-        for (anr, a) in def.attributes.iter().enumerate() {
-            write!(
-                w,
-                ", var_{anr}: {}",
-                self.data.rust_type(&a.typedef, &Context::Argument)
-            )?;
+        for a in &def.attributes {
+            let tp = rust_type(&a.typedef, &Context::Argument);
+            write!(w, ", mut var_{}: {tp}", sanitize(&a.name),)?;
         }
         write!(w, ") ")?;
         if def.returned != Type::Void {
-            write!(
-                w,
-                "-> {} ",
-                self.data.rust_type(&def.returned, &Context::Result)
-            )?;
+            write!(w, "-> {} ", rust_type(&def.returned, &Context::Result))?;
+        }
+        let mut declared = HashSet::new();
+        // Mark argument variables as already declared so Set won't re-declare them.
+        for arg_nr in def.variables.arguments() {
+            declared.insert(arg_nr);
         }
         if let Value::Block(_) = def.code {
-            self.output_code(w, &def.code, def_nr, 0)?;
+            self.output_code_inner(w, &def.code)?;
         } else {
             writeln!(w, "{{")?;
             if def.code != Value::Null {
-                self.output_code(w, &def.code, def_nr, 0)?;
+                self.output_code_inner(w, &def.code)?;
             }
             writeln!(w, "\n}}")?;
         }
         writeln!(w, "\n")
     }
 
-    /**
-    Output rust code for a specific value.
-    # Errors
-    On encountered filesystem problems.
-    # Panics
-    When internal output code calls would return non utf-8 data.
-    */
-    pub fn output_code(
-        &self,
-        w: &mut dyn Write,
-        code: &Value,
-        def_nr: u32,
-        indent: u32,
+    /// Emit Rust code for a single `Value` expression.
+    ///
+    /// This is the public entry point used by tests and other callers that need to generate
+    /// code for an isolated expression rather than a whole function.  It initializes the
+    /// `declared` variable set to empty and delegates to [`Self::output_code_inner`].
+    ///
+    /// # Errors
+    /// Returns an error if any writing to `w` fails.
+    ///
+    /// # Panics
+    /// If internal buffer-to-string conversions encounter non-UTF-8 data, which should
+    /// never happen for well-formed generated code.
+    pub fn output_code(&mut self, w: &mut dyn Write, code: &Value) -> std::io::Result<()> {
+        self.declared.clear();
+        self.output_code_inner(w, code)
+    }
+
+    /// Returns true if the value contains any call to a user-defined function
+    /// (non-rust-template) that takes `stores: &mut Stores`. Such sub-expressions
+    /// need to be pre-evaluated to let bindings, avoiding the double-borrow of stores.
+    fn needs_pre_eval(&self, v: &Value) -> bool {
+        match v {
+            Value::Call(d_nr, vals) => {
+                let def = self.data.def(*d_nr);
+                if def.rust.is_empty() {
+                    // User-defined function: itself needs stores, so pre-eval needed
+                    true
+                } else {
+                    // Template: check if any argument needs pre-eval
+                    vals.iter().any(|a| self.needs_pre_eval(a))
+                }
+            }
+            Value::Block(_) => true, // blocks can use stores internally
+            Value::If(test, t, f) => {
+                self.needs_pre_eval(test) || self.needs_pre_eval(t) || self.needs_pre_eval(f)
+            }
+            Value::Drop(v) => self.needs_pre_eval(v),
+            _ => false,
+        }
+    }
+
+    /// Render the Rust code for `v` into a `String` without writing anything to the main output.
+    ///
+    /// Used by the pre-evaluation machinery to inspect or compare generated code text before
+    /// deciding whether to hoist a sub-expression into a `let _preN = ...;` binding.
+    fn generate_expr_buf(&mut self, v: &Value) -> std::io::Result<String> {
+        let mut buf = std::io::BufWriter::new(Vec::new());
+        self.output_code_inner(&mut buf, v)?;
+        Ok(String::from_utf8(buf.into_inner()?).unwrap())
+    }
+
+    /// Walk `v` and return all sub-expressions that must be hoisted into `let _preN` bindings.
+    ///
+    /// Rust does not allow two simultaneous `&mut Stores` borrows.  When a function call passes
+    /// another function call (or a block) as an argument, both sides would borrow `stores` at
+    /// once.  This function identifies those conflicting sub-expressions so that
+    /// [`Self::output_block`] can emit them as separate `let` bindings before the enclosing
+    /// expression, replacing the inline occurrences with the bound variable name.
+    ///
+    /// Returns a list of `(var_name, expr_code)` pairs ordered innermost-first so that each
+    /// pre-eval can safely reference earlier ones.
+    fn collect_pre_evals(&mut self, v: &Value) -> std::io::Result<Vec<(String, String)>> {
+        let mut result = Vec::new();
+        self.collect_pre_evals_inner(v, &mut result)?;
+        Ok(result)
+    }
+
+    /// Recursive worker for [`Self::collect_pre_evals`].
+    ///
+    /// Split from the public wrapper so that the result `Vec` can be initialized once by the
+    /// caller and then accumulated across recursive calls without reallocating.  The `counter`
+    /// is shared across all levels so that pre-eval variable names (`_pre0`, `_pre1`, …) are
+    /// globally unique within a block.
+    fn collect_pre_evals_inner(
+        &mut self,
+        v: &Value,
+        result: &mut Vec<(String, String)>,
     ) -> std::io::Result<()> {
+        if let Value::Call(d_nr, vals) = v {
+            let def_fn = self.data.def(*d_nr);
+            if def_fn.rust.is_empty() {
+                // User-defined function: pre-eval any Block or nested user-fn arguments
+                // (both cause double-borrow of stores if left inline).
+                for arg in vals {
+                    let needs_pre = matches!(arg, Value::Block(_)) || self.needs_pre_eval(arg);
+                    if needs_pre {
+                        let name = format!("_pre{}", self.counter);
+                        self.counter += 1;
+                        self.rewrite_code(result, arg, name)?;
+                    } else {
+                        // Recurse into non-stores arguments
+                        self.collect_pre_evals_inner(arg, result)?;
+                    }
+                }
+            } else {
+                // Template function: pre-eval Block args (they may use stores) and,
+                // when multiple user-fn args exist, pre-eval those too to avoid
+                // double-borrow of stores.
+                let block_count = vals.iter().filter(|a| matches!(a, Value::Block(_))).count();
+                let user_fn_count = vals.iter().filter(|a| self.needs_pre_eval(a)).count();
+                // Pre-eval when the template uses stores itself (any user-fn arg causes conflict)
+                // or when multiple user-fn args exist (they'd conflict with each other).
+                let template_uses_stores = def_fn.rust.contains("stores");
+                let needs_pre_eval_args = block_count > 0
+                    || user_fn_count > 1
+                    || (template_uses_stores && user_fn_count > 0);
+                if needs_pre_eval_args {
+                    for arg in vals {
+                        let is_block = matches!(arg, Value::Block(_));
+                        let is_multi_user_fn = user_fn_count > 1 && self.needs_pre_eval(arg);
+                        let is_stores_conflict = template_uses_stores && self.needs_pre_eval(arg);
+                        if is_block || is_multi_user_fn || is_stores_conflict {
+                            let name = format!("_pre{}", self.counter);
+                            self.counter += 1;
+                            self.rewrite_code(result, arg, name)?;
+                        } else {
+                            self.collect_pre_evals_inner(arg, result)?;
+                        }
+                    }
+                } else {
+                    // No blocks, single or no user-fn call: recurse into args.
+                    for arg in vals {
+                        self.collect_pre_evals_inner(arg, result)?;
+                    }
+                }
+            }
+        } // Other values don't need pre-eval
+        Ok(())
+    }
+
+    fn rewrite_code(
+        &mut self,
+        result: &mut Vec<(String, String)>,
+        arg: &Value,
+        name: String,
+    ) -> std::io::Result<()> {
+        // Collect inner pre-evals first, so the pre-eval code itself
+        // is free of double borrows.
+        let decl_clone = self.declared.clone();
+        let start_idx = result.len();
+        self.collect_pre_evals_inner(arg, result)?;
+        let inner_pre_evals = result[start_idx..].to_vec();
+        let raw_code = self.generate_expr_buf(arg)?;
+        let code = if inner_pre_evals.is_empty() {
+            raw_code
+        } else {
+            let mut c = raw_code;
+            for (pre_name, pre_code) in &inner_pre_evals {
+                c = c.replace(pre_code.as_str(), pre_name.as_str());
+            }
+            c
+        };
+        result.push((name, code));
+        self.declared = decl_clone;
+        Ok(())
+    }
+
+    /// Emit Rust code for `v`, replacing any sub-expression whose generated text matches a
+    /// pre-eval entry with the corresponding `_preN` variable name.
+    ///
+    /// Called instead of [`Self::output_code_inner`] when `pre_evals` is non-empty.  Without
+    /// this substitution the same expression would be emitted twice — once in the `let _preN`
+    /// binding and again inline — causing a second mutable borrow of `stores`.
+    fn output_code_with_subst(
+        &mut self,
+        w: &mut dyn Write,
+        v: &Value,
+        pre_evals: &[(String, String)],
+    ) -> std::io::Result<()> {
+        if pre_evals.is_empty() {
+            self.output_code_inner(w, v)?;
+            return Ok(());
+        }
+        // Check if this expression was pre-evaluated
+        let mut buf_check = std::io::BufWriter::new(Vec::new());
+        self.output_code_inner(&mut buf_check, v)?;
+        let code = String::from_utf8(buf_check.into_inner()?).unwrap();
+        // Check if this whole value's code matches any pre-eval
+        for (name, pre_code) in pre_evals {
+            if code == *pre_code {
+                write!(w, "{name}")?;
+                return Ok(());
+            }
+        }
+        // Not matched: try to do substitution within sub-expressions
+        // For now, fall back to writing the code with simple text substitution
+        let mut result = code;
+        for (name, pre_code) in pre_evals {
+            result = result.replace(pre_code, name);
+        }
+        write!(w, "{result}")?;
+        Ok(())
+    }
+
+    /// Returns true if `v` produces no value (i.e., the generated Rust expression has type `()`).
+    ///
+    /// Used by [`Self::output_block`] to locate the last non-void operator in a block so it
+    /// can be identified as the block's return expression.  When void operators trail the
+    /// return expression, the return value must be captured into `let _ret` first.
+    fn is_void_value(&self, v: &Value) -> bool {
+        match v {
+            Value::Null | Value::Drop(_) | Value::Set(_, _) => true,
+            Value::If(_, _, false_v) => matches!(**false_v, Value::Null),
+            Value::Call(d_nr, _) => {
+                let def = self.data.def(*d_nr);
+                matches!(def.returned, Type::Void)
+            }
+            Value::Block(bl) => matches!(bl.result, Type::Void),
+            _ => false,
+        }
+    }
+
+    /// Central recursive code generator: translate one `Value` node into its Rust representation.
+    ///
+    /// Every other emit function ultimately calls this.  It dispatches on the `Value` variant
+    /// and writes the corresponding Rust syntax to `w`.  Complex variants (`Block`, `Set`,
+    /// `Call`) are delegated to dedicated helpers to keep each match arm concise.
+    ///
+    /// `declared` tracks which local variables have already been emitted as `let mut` so that
+    /// later assignments to the same variable are written as plain assignments rather than
+    /// re-declarations.  Argument variables are pre-inserted by [`Self::output_function`].
+    fn output_code_inner(&mut self, w: &mut dyn Write, code: &Value) -> std::io::Result<()> {
         match code {
             Value::Text(txt) => {
-                write!(w, "\"{txt}\".to_string()")?;
+                // Use debug format to produce a properly escaped Rust string literal.
+                write!(w, "{txt:?}")?;
             }
-            Value::Long(v) => {
-                write!(w, "{v}_i64")?;
+            Value::Long(v) => write!(w, "{v}_i64")?,
+            Value::Int(v) => write!(w, "{v}_i32")?,
+            Value::Enum(v, _) => write!(w, "{v}_u8")?,
+            Value::Boolean(v) => write!(w, "{v}")?,
+            Value::Float(v) => write!(w, "{v}_f64")?,
+            Value::Single(v) => write!(w, "{v}_f32")?,
+            Value::Null => write!(w, "()")?,
+            Value::Line(_) => {
+                // Line markers are debug annotations; skip in Rust output.
             }
-            Value::Int(v) => {
-                write!(w, "{v}_i32")?;
-            }
-            Value::Enum(v, _) => {
-                write!(w, "{v}_u8")?;
-            }
-            Value::Boolean(v) => {
-                write!(w, "{v}")?;
-            }
-            Value::Float(v) => {
-                write!(w, "{v}_f64")?;
-            }
-            Value::Single(v) => {
-                write!(w, "{v}_f32")?;
-            }
-            Value::Block(bl) => {
-                writeln!(
-                    w,
-                    "{{ //{}_{}: {}",
-                    bl.name,
-                    bl.scope,
-                    bl.result.show(self.data, &self.data.def(def_nr).variables)
-                )?;
-                for (vnr, v) in bl.operators.iter().enumerate() {
-                    for _i in 0..=indent {
-                        write!(w, "  ")?;
-                    }
-                    self.output_code(w, v, def_nr, indent + 1)?;
-                    if vnr < bl.operators.len() - 1 {
+            Value::Break(_) => write!(w, "break")?,
+            Value::Continue(_) => write!(w, "continue")?,
+            Value::Drop(v) => self.output_code_inner(w, v)?,
+            Value::Insert(ops) => {
+                for (vnr, v) in ops.iter().enumerate() {
+                    self.indent(w)?;
+                    self.indent += 1;
+                    self.output_code_inner(w, v)?;
+                    self.indent -= 1;
+                    if vnr < ops.len() - 1 {
                         writeln!(w, ";")?;
                     } else {
                         writeln!(w)?;
                     }
                 }
-                for _i in 0..indent {
-                    write!(w, "  ")?;
-                }
-                write!(
-                    w,
-                    "}} //{}_{}: {}",
-                    bl.name,
-                    bl.scope,
-                    bl.result.show(self.data, &self.data.def(def_nr).variables)
-                )?;
             }
+            Value::Block(bl) => self.output_block(w, bl)?,
             Value::Loop(lp) => {
                 writeln!(w, "loop {{ //{}_{}", lp.name, lp.scope)?;
                 for v in &lp.operators {
-                    for _i in 0..=indent {
-                        write!(w, "  ")?;
-                    }
-                    self.output_code(w, v, def_nr, indent + 1)?;
+                    self.indent(w)?;
+                    self.indent += 1;
+                    self.output_code_inner(w, v)?;
+                    self.indent -= 1;
                     writeln!(w, ";")?;
                 }
-                for _i in 0..indent {
-                    write!(w, "  ")?;
-                }
-                write!(w, "}} //{}_{}", lp.name, lp.scope)?;
+                self.indent(w)?;
+                write!(w, "}} /*{}_{}*/", lp.name, lp.scope)?;
             }
-            Value::Set(var, to) => {
-                write!(w, "var_{} = ", self.data.def(def_nr).variables.name(*var))?;
-                self.output_code(w, to, def_nr, indent)?;
-            }
+            Value::Set(var, to) => self.output_set(w, *var, to)?,
             Value::Var(var) => {
-                write!(w, "var_{}", self.data.def(def_nr).variables.name(*var))?;
-            }
-            Value::If(test, true_v, false_v) => {
-                self.output_if(w, def_nr, test, true_v, false_v, indent)?;
-            }
-            Value::Call(d_nr, vals) => {
-                let def_fn = self.data.def(*d_nr);
-                if def_fn.rust.is_empty() {
-                    write!(w, "{}(stores", self.data.def(*d_nr).name)?;
-                    for v in vals {
-                        write!(w, ", ")?;
-                        self.output_code(w, v, def_nr, indent)?;
-                    }
-                    write!(w, ")")?;
+                let variables = &self.data.def(self.def_nr).variables;
+                let text_var = if matches!(variables.tp(*var), Type::Text(_)) {
+                    "&"
                 } else {
-                    let mut res = def_fn.rust.clone();
-                    for (a_nr, a) in def_fn.attributes.iter().enumerate() {
-                        let name = "@".to_string() + &a.name;
-                        let mut val_code = std::io::BufWriter::new(Vec::new());
-                        if a_nr < vals.len() {
-                            self.output_code(&mut val_code, &vals[a_nr], def_nr, indent)?;
-                            let with = String::from_utf8(val_code.into_inner()?).unwrap();
-                            // TODO if with == "Null" { println!("Here! {} {code:?}", self.def_name(*d_nr));}
-                            res = res.replace(&name, &format!("({with})"));
-                        } else {
-                            println!(
-                                "Problem def_fn {def_fn} attributes {:?} vals {vals:?}",
-                                def_fn.attributes
-                            );
-                            break;
-                        }
-                    }
-                    write!(w, "{res}")?;
-                }
+                    ""
+                };
+                write!(
+                    w,
+                    "{text_var}var_{}",
+                    sanitize(self.data.def(self.def_nr).variables.name(*var))
+                )?;
+            }
+            Value::If(test, true_v, false_v) => self.output_if(w, test, true_v, false_v)?,
+            Value::Call(d_nr, vals) => {
+                self.output_call(w, *d_nr, vals)?;
             }
             Value::Return(val) => {
                 write!(w, "return ")?;
-                self.output_code(w, val, def_nr, indent)?;
+                self.output_code_inner(w, val)?;
             }
             _ => write!(w, "{code:?}")?,
         }
@@ -319,24 +667,24 @@ extern crate dryopea;"
     }
 
     fn output_if(
-        &self,
+        &mut self,
         w: &mut dyn Write,
-        def_nr: u32,
         test: &Value,
         true_v: &Value,
         false_v: &Value,
-        indent: u32,
     ) -> std::io::Result<()> {
         write!(w, "if ")?;
         let b_true = matches!(*true_v, Value::Block(_));
         let b_false = matches!(*false_v, Value::Block(_));
-        self.output_code(w, test, def_nr, indent)?;
+        self.output_code_inner(w, test)?;
         if b_true {
             write!(w, " ")?;
         } else {
             write!(w, " {{")?;
         }
-        self.output_code(w, true_v, def_nr, indent + u32::from(!b_true))?;
+        self.indent += u32::from(!b_true);
+        self.output_code_inner(w, true_v)?;
+        self.indent -= u32::from(!b_true);
         if let Value::Block(_) = *true_v {
             write!(w, " else ")?;
         } else {
@@ -345,18 +693,348 @@ extern crate dryopea;"
         if !b_false {
             write!(w, "{{")?;
         }
-        self.output_code(w, false_v, def_nr, indent + u32::from(!b_false))?;
+        self.indent += u32::from(!b_false);
+        self.output_code_inner(w, false_v)?;
+        self.indent -= u32::from(!b_false);
         if !b_false {
             write!(w, "}}")?;
         }
         Ok(())
     }
+
+    /// Emit the Rust code for a `Value::Block` — a scoped sequence of operators with an
+    /// optional return value.
+    ///
+    /// This is the most complex emitter because blocks must handle three interacting concerns:
+    /// 1. **Pre-evaluation hoisting** — any operator whose sub-expressions would cause a double
+    ///    mutable borrow of `stores` is emitted first as `let _preN = ...;` via
+    ///    [`Self::collect_pre_evals`].
+    /// 2. **Return-value tracking** — the last non-void operator is the block's value.  When
+    ///    void operators follow it (e.g., a `drop` on `break`), the return value is captured into
+    ///    `let _ret` before those operators run, then yielded at the end.
+    /// 3. **String conversion** — a text-typed block may receive a `Str` (database slice) from
+    ///    a field read; `.to_string()` is appended to convert it to an owned `String`.
+    fn output_block(&mut self, w: &mut dyn Write, bl: &Block) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "{{ //{}_{}: {}",
+            bl.name,
+            bl.scope,
+            bl.result
+                .show(self.data, &self.data.def(self.def_nr).variables)
+        )?;
+        let is_void_block = matches!(bl.result, Type::Void);
+        // When the block expects a non-void result but trailing operator(s) are
+        // void (drops, if-without-else, etc.), find the last non-void operator
+        // and capture its value before the trailing void ops run.
+        let last_op_idx = bl.operators.len().saturating_sub(1);
+        let return_idx = if is_void_block || bl.operators.is_empty() {
+            None
+        } else {
+            bl.operators.iter().rposition(|v| !self.is_void_value(v))
+        };
+        // When the return value is NOT the last operator, we need a temp binding.
+        let has_trailing_void = return_idx.is_some_and(|i| i < last_op_idx);
+        for (vnr, v) in bl.operators.iter().enumerate() {
+            // Line markers are debug annotations only; skip entirely.
+            if matches!(v, Value::Line(_)) {
+                continue;
+            }
+            // Collect pre-evaluations needed for this operator (to avoid double
+            // mutable borrow of stores when user-defined functions are nested).
+            self.indent += 1;
+            let pre_evals = self.collect_pre_evals(v)?;
+            self.indent -= 1;
+            for (name, code) in &pre_evals {
+                self.indent(w)?;
+                writeln!(w, "let {name} = {code};")?;
+            }
+            self.indent(w)?;
+            if has_trailing_void && return_idx == Some(vnr) {
+                // Capture the return value into a temp so trailing void ops can follow.
+                write!(w, "let _ret = ")?;
+                self.indent += 1;
+                self.output_code_with_subst(w, v, &pre_evals)?;
+                self.indent -= 1;
+                writeln!(w, ";")?;
+            } else {
+                self.indent += 1;
+                self.output_code_with_subst(w, v, &pre_evals)?;
+                self.indent -= 1;
+                let is_return_expr =
+                    !is_void_block && !has_trailing_void && return_idx == Some(vnr);
+                if is_return_expr {
+                    writeln!(w)?;
+                } else {
+                    writeln!(w, ";")?;
+                }
+            }
+        }
+        if has_trailing_void {
+            self.indent(w)?;
+            writeln!(w, "_ret")?;
+        }
+        self.indent(w)?;
+        write!(
+            w,
+            "}} /*{}_{}: {}*/",
+            bl.name,
+            bl.scope,
+            bl.result
+                .show(self.data, &self.data.def(self.def_nr).variables)
+        )?;
+        Ok(())
+    }
+
+    /// Emit a `Value::Set` — a variable assignment, which may be a first declaration or a
+    /// later assignment to an already-declared variable.
+    ///
+    /// On first use a `let mut var_<name>: <type> = ...` declaration is emitted, and the
+    /// variable is added to `declared`.  On later uses only `var_<name> = ...` is emitted.
+    ///
+    /// Two special cases require extra handling:
+    /// - Text variables assigned from a block are pre-declared as `String::new()` before the
+    ///   block opens, so that a `drop(@var)` inside the block (e.g., on `break`) can still
+    ///   reference the variable even though `let` has not been reached.
+    /// - `DbRef` variables assigned `Null` call `stores.null()` rather than emitting `()`.
+    fn output_set(&mut self, w: &mut dyn Write, var: u16, to: &Value) -> std::io::Result<()> {
+        let variables = &self.data.def(self.def_nr).variables;
+        if variables.is_argument(var)
+            && let Type::RefVar(_) = variables.tp(var)
+        {
+            // Skip work variables that became arguments
+            return Ok(());
+        }
+        let needs_to_string = matches!(variables.tp(var), Type::Text(_));
+        let name = sanitize(variables.name(var));
+        // For text/reference block assignments, pre-declare the variable so that
+        // any drop(@var) inside the block (e.g., on break) can reference it.
+        if !self.declared.contains(&var) && matches!(to, Value::Block(_)) {
+            let var_tp = variables.tp(var);
+            if matches!(var_tp, Type::Text(_)) {
+                self.declared.insert(var);
+                write!(w, "let mut var_{name} = ")?;
+                self.output_code_inner(w, to)?;
+                if needs_to_string {
+                    write!(w, ".to_string()")?;
+                }
+                return Ok(());
+            }
+        }
+        if self.declared.contains(&var) {
+            write!(w, "var_{name} = ")?;
+        } else {
+            self.declared.insert(var);
+            let var_tp = variables.tp(var);
+            let tp_str = rust_type(var_tp, &Context::Variable);
+            write!(w, "let mut var_{name}: {tp_str} = ")?;
+        }
+        if matches!(to, Value::Null) && rust_type(variables.tp(var), &Context::Variable) == "DbRef"
+        {
+            write!(w, "stores.null()")?;
+        } else {
+            self.output_code_inner(w, to)?;
+            if needs_to_string {
+                write!(w, ".to_string()")?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Emit a `Value::Call` by dispatching to the appropriate call-site emitter.
+    ///
+    /// Lav has two kinds of callable definitions:
+    /// - **User-defined functions** (`def.rust` is empty) — compiled to real Rust functions and
+    ///   called as `fn_name(stores, args…)`.  Calls `output_call_user_fn`.
+    /// - **Template operators** (`def.rust` is a `#rust` snippet) — inlined by substituting
+    ///   `@param` placeholders with generated argument expressions. Calls `output_call_template`
+    fn output_call(&mut self, w: &mut dyn Write, d_nr: u32, vals: &[Value]) -> std::io::Result<()> {
+        let def_fn = self.data.def(d_nr);
+        let name: &str = &def_fn.name;
+        match name {
+            "OpFormatLong" => return self.format_long(w, vals),
+            "OpFormatText" => return self.format_text(w, vals),
+            "OpAppendText" => return self.append_text(w, vals),
+            "OpAppendStackText" => {
+                write!(w, "*")?;
+                return self.append_text(w, vals);
+            }
+            "OpAppendCharacter" | "OpAppendStackCharacter" => {
+                return self.append_character(w, vals);
+            }
+            "OpClearStackText" => return self.clear_stack_text(w, vals),
+            "OpFreeText" | "OpCreateStack" => return Ok(()),
+            _ => {}
+        }
+        if def_fn.rust.is_empty() {
+            self.output_call_user_fn(w, def_fn, vals)
+        } else {
+            self.output_call_template(w, def_fn, vals)
+        }
+    }
+
+    fn clear_stack_text(&mut self, w: &mut dyn Write, vals: &[Value]) -> std::io::Result<()> {
+        if let [Value::Var(nr)] = vals {
+            let s_nr = sanitize(self.data.def(self.def_nr).variables.name(*nr));
+            write!(w, "var_{s_nr}.clear()")?;
+            return Ok(());
+        }
+        panic!("Could not parse {vals:?}");
+    }
+
+    fn append_character(&mut self, w: &mut dyn Write, vals: &[Value]) -> std::io::Result<()> {
+        if let [Value::Var(nr), val] = vals {
+            let s_nr = sanitize(self.data.def(self.def_nr).variables.name(*nr));
+            let val_expr = self.generate_expr_buf(val)?;
+            write!(
+                w,
+                "{{let c = {val_expr}; if c != 0 {{ var_{s_nr}.push(external::to_char(c)); }} }}"
+            )?;
+            return Ok(());
+        }
+        panic!("Could not parse {vals:?}");
+    }
+
+    fn append_text(&mut self, w: &mut dyn Write, vals: &[Value]) -> std::io::Result<()> {
+        if let [Value::Var(nr), val] = vals {
+            let s_nr = sanitize(self.data.def(self.def_nr).variables.name(*nr));
+            let val_expr = self.generate_expr_buf(val)?;
+            write!(w, "var_{s_nr} += {val_expr}")?;
+            return Ok(());
+        }
+        panic!("Could not parse {vals:?}");
+    }
+
+    fn format_text(&mut self, w: &mut dyn Write, vals: &[Value]) -> std::io::Result<()> {
+        if let [
+            Value::Var(nr),
+            val,
+            width,
+            Value::Int(dir),
+            Value::Int(token),
+        ] = vals
+        {
+            let s_nr = sanitize(self.data.def(self.def_nr).variables.name(*nr));
+            let val_expr = self.generate_expr_buf(val)?;
+            let width_expr = self.generate_expr_buf(width)?;
+            write!(
+                w,
+                "external::format_text(&mut var_{s_nr}, {val_expr}, {width_expr}, {dir}, {token})"
+            )?;
+            return Ok(());
+        }
+        panic!("Could not parse {vals:?}");
+    }
+
+    fn format_long(&mut self, w: &mut dyn Write, vals: &[Value]) -> std::io::Result<()> {
+        if let [
+            Value::Var(nr),
+            val,
+            Value::Int(radix),
+            width,
+            Value::Int(token),
+            Value::Boolean(plus),
+            Value::Boolean(note),
+        ] = vals
+        {
+            let s_nr = sanitize(self.data.def(self.def_nr).variables.name(*nr));
+            let val_expr = self.generate_expr_buf(val)?;
+            let width_expr = self.generate_expr_buf(width)?;
+            write!(
+                w,
+                "external::format_long(&mut var_{s_nr}, {val_expr}, {radix} as u8, {width_expr}, {token} as u8, {plus}, {note})"
+            )?;
+            return Ok(());
+        }
+        panic!("Could not parse {vals:?}");
+    }
+
+    /// Emit a call to a user-defined lav function as `fn_name(stores, arg0, arg1, …)`.
+    ///
+    /// All user functions receive `stores` as their first implicit argument.  Two argument
+    /// conversions are applied per parameter:
+    fn output_call_user_fn(
+        &mut self,
+        w: &mut dyn Write,
+        def_fn: &Definition,
+        vals: &[Value],
+    ) -> std::io::Result<()> {
+        write!(w, "{}(stores", def_fn.name)?;
+        for v in vals {
+            write!(w, ", ")?;
+            self.output_code_inner(w, v)?;
+        }
+        write!(w, ")")
+    }
+
+    /// Emit an operator call backed by a `#rust` template string.
+    ///
+    /// The template is stored in `def_fn.rust` and contains `@param` placeholders named after
+    /// the operator's declared attributes.  Each placeholder is replaced with the generated
+    /// Rust expression for the corresponding argument value.
+    fn output_call_template(
+        &mut self,
+        w: &mut dyn Write,
+        def_fn: &Definition,
+        vals: &[Value],
+    ) -> std::io::Result<()> {
+        let mut res = def_fn.rust.clone();
+        for (a_nr, a) in def_fn.attributes.iter().enumerate() {
+            let name = "@".to_string() + &a.name;
+            let mut val_code = std::io::BufWriter::new(Vec::new());
+            if a_nr < vals.len() {
+                // For enum-typed parameters, Value::Null means the null enum byte (255).
+                if matches!(a.typedef, Type::Enum(_, _, _)) && matches!(vals[a_nr], Value::Null) {
+                    res = res.replace(&name, "(255u8)");
+                    continue;
+                }
+                // For character-typed parameters, Value::Int means a character code point.
+                if matches!(a.typedef, Type::Character)
+                    && let Value::Int(n) = vals[a_nr]
+                {
+                    let with = format!("char::from_u32({n}_u32).unwrap_or('\\0')");
+                    res = res.replace(&name, &format!("({with})"));
+                    continue;
+                }
+                self.output_code_inner(&mut val_code, &vals[a_nr])?;
+                let mut with = String::from_utf8(val_code.into_inner()?).unwrap();
+                // Integer parameter receiving a char value needs explicit cast.
+                if matches!(a.typedef, Type::Integer(_, _)) {
+                    let val_is_char = match &vals[a_nr] {
+                        Value::Var(n) => {
+                            matches!(self.data.def(self.def_nr).variables.tp(*n), Type::Character)
+                        }
+                        Value::Call(d, _) => {
+                            matches!(self.data.def(*d).returned, Type::Character)
+                        }
+                        _ => false,
+                    };
+                    if val_is_char {
+                        with += " as u32 as i32";
+                    }
+                }
+                res = res.replace(&name, &format!("({with})"));
+            } else {
+                println!(
+                    "Problem def_fn {def_fn} attributes {:?} vals {vals:?}",
+                    def_fn.attributes
+                );
+                break;
+            }
+        }
+        write!(w, "{res}")
+    }
 }
 
+/// Emit the `db.enumerate(...)` and `db.value(...)` calls for one enum type.
+///
+/// Enums without attached attributes (plain tag enums) are registered this way.
+/// Enum values that carry their own struct fields are handled separately by
+/// [`Output::output_struct`] with a non-zero `enum_value` index.
 fn output_enum(w: &mut dyn Write, def: &Definition) -> std::io::Result<()> {
-    writeln!(w, "    let e = db.enumerate(\"{}\".to_string());", def.name)?;
+    writeln!(w, "    let e = db.enumerate(\"{}\");", def.name)?;
     for a in &def.attributes {
-        writeln!(w, "    db.value(e, \"{}\".to_string());", a.name)?;
+        writeln!(w, "    db.value(e, \"{}\", u16::MAX);", a.name)?;
     }
     Ok(())
 }

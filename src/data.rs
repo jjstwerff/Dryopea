@@ -600,8 +600,7 @@ impl Definition {
     }
 }
 
-#[derive(PartialEq)]
-
+#[derive(PartialEq, Debug)]
 pub enum Context {
     Argument,
     Reference,
@@ -1305,7 +1304,7 @@ impl Data {
     }
 
     /**
-    Return the rust type on a definitions.
+    Return the rust type for definitions.
     # Panics
     When the rust type cannot be determined.
     */

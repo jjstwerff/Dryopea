@@ -53,6 +53,12 @@ pub fn sub_text(val: &str, from: i32, till: i32) -> &str {
 }
 
 #[inline]
+#[must_use]
+pub fn to_char(val: i32) -> char {
+    unsafe { char::from_u32_unchecked(val as u32) }
+}
+
+#[inline]
 pub fn format_text(s: &mut String, val: &str, width: i32, dir: i8, token: u8) {
     let mut tokens = width as usize;
     for _ in val.chars() {

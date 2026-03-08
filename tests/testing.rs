@@ -214,9 +214,13 @@ impl Test {
     fn generate_code(&self, p: &Parser, start: u32) -> std::io::Result<()> {
         std::fs::create_dir_all("tests/generated")?;
         let w = &mut File::create("tests/generated/default.rs")?;
-        let o = Output {
+        let mut o = Output {
             data: &p.data,
             stores: &p.database,
+            counter: 0,
+            indent: 0,
+            def_nr: 0,
+            declared: Default::default(),
         };
         o.output(w, 0, start)?;
         // Write code output when the result is tested, not only for errors or warnings.
