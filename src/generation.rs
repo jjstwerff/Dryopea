@@ -6,9 +6,9 @@ use crate::database::Stores;
 use std::collections::HashSet;
 use std::io::Write;
 
-/// Use this to drive all Rust code generation from a compiled lav program.
+/// Use this to drive Rust code generation from a compiled loft program.
 /// It bundles the read-only compile-time data with the mutable emission state
-/// so that individual emit functions don't need to pass both separately.
+/// so that individual emits functions don't need to pass both separately.
 pub struct Output<'a> {
     pub data: &'a Data,
     pub stores: &'a Stores,
@@ -18,13 +18,13 @@ pub struct Output<'a> {
     pub declared: HashSet<u16>,
 }
 
-/// Use this to convert lav names that contain `#` into valid Rust identifiers.
-/// Lav uses `#` as a separator in compiler-generated names (e.g., loop iterators).
+/// Use this to convert loft names that contain `#` into valid Rust identifiers.
+/// Loft uses `#` as a separator in compiler-generated names (e.g., loop iterators).
 fn sanitize(name: &str) -> String {
     name.replace('#', "__")
 }
 
-/// Use this to map a lav type to the Rust type used in generated code.
+/// Use this to map a loft type to the Rust type used in generated code.
 /// The context controls whether the type appears as an owned value, argument, variable, or reference.
 ///
 /// # Panics
@@ -87,7 +87,7 @@ impl Output<'_> {
         Ok(())
     }
 
-    /// Use this to reset emission state when starting a new function.
+    /// Use this to reset the emission state when starting a new function.
     pub fn start_fn(&mut self, def_nr: u32) {
         self.def_nr = def_nr;
         self.indent = 0;
@@ -349,8 +349,8 @@ extern crate dryopea;"
         Ok(())
     }
 
-    /// Use this to emit one lav function as a Rust function.
-    /// Every lav function receives `stores: &mut Stores` as its first implicit argument.
+    /// Use this to emit one loft function as a Rust function.
+    /// Every loft function receives `stores: &mut Stores` as its first implicit argument.
     fn output_function(&mut self, w: &mut dyn Write, def_nr: u32) -> std::io::Result<()> {
         self.start_fn(def_nr);
         let def = self.data.def(def_nr);
@@ -438,8 +438,8 @@ extern crate dryopea;"
     }
 
     /// Use this as the recursive worker for `collect_pre_evals`.
-    /// Splitting from the wrapper keeps the result `Vec` allocated once and the pre-eval
-    /// counter globally unique within a block.
+    /// Splitting from the wrapper keeps the result `Vec` allocated once, and the pre-eval
+    ///  counter is globally unique within a block.
     fn collect_pre_evals_inner(
         &mut self,
         v: &Value,
@@ -855,7 +855,7 @@ extern crate dryopea;"
     }
 
     /// Use this to emit `OpAppendCharacter` with a null-character guard,
-    /// because lav represents characters as integers and zero means no character.
+    /// because loft represents characters as integers and zero means no character.
     fn append_character(&mut self, w: &mut dyn Write, vals: &[Value]) -> std::io::Result<()> {
         if let [Value::Var(nr), val] = vals {
             let s_nr = sanitize(self.data.def(self.def_nr).variables.name(*nr));
@@ -926,7 +926,7 @@ extern crate dryopea;"
         panic!("Could not parse {vals:?}");
     }
 
-    /// Use this to emit a call to a user-defined lav function as `fn_name(stores, arg0, …)`.
+    /// Use this to emit a call to a user-defined loft function as `fn_name(stores, arg0, …)`.
     fn output_call_user_fn(
         &mut self,
         w: &mut dyn Write,

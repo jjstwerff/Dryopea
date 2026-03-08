@@ -1,7 +1,7 @@
-# Lav Language Reference
+# Loft Language Reference
 
-Lav is a statically-typed, imperative scripting language used by the Dryopea project.
-Source files use the `.lav` extension. The language compiles to an internal bytecode representation
+Loft is a statically-typed, imperative scripting language used by the Dryopea project.
+Source files use the `.loft` extension. The language compiles to an internal bytecode representation
 and can emit Rust code for host integration.
 
 ---
@@ -173,8 +173,8 @@ pub type u8 = integer limit(0, 255) size(1);
 use arguments;
 ```
 
-Searches for `arguments.lav` in `lib/`, the current directory, directories from the
-`LAVITION_LIB` environment variable, and relative to the current script.
+Searches for `arguments.loft` in `lib/`, the current directory, directories from the
+`LOFT_LIB` environment variable, and relative to the current script.
 `use` declarations must appear at the top of the file, before any other declarations.
 
 ---
@@ -425,7 +425,7 @@ Panics at runtime if the condition is false.
 ## Polymorphism / dynamic dispatch
 
 For struct-enum types, multiple functions may share the same name if each handles a
-different variant as its `self` parameter. Lav generates a dispatch wrapper automatically:
+different variant as its `self` parameter. Loft generates a dispatch wrapper automatically:
 
 ```
 enum Shape {
@@ -447,7 +447,7 @@ two functions with the same name and different non-variant parameter types are a
 
 ## File structure
 
-A lav file may contain (in any order):
+A loft file may contain (in any order):
 - `use <library>;` imports (must appear at the top)
 - `pub` / non-`pub` function definitions
 - Struct definitions
@@ -459,7 +459,7 @@ A lav file may contain (in any order):
 
 ## External function annotations (`#rust`, `#iterator`)
 
-Used only in default/library files to bind lav declarations to Rust implementations:
+Used only in default/library files to bind loft declarations to Rust implementations:
 
 ```
 pub fn len(self: text) -> integer;
@@ -480,9 +480,9 @@ infix/prefix syntax by the parser. Examples: `OpAdd`, `OpEq`, `OpNot`, `OpConv`,
 
 ## Shebang
 
-Lav scripts support a Unix shebang line for direct execution:
+Loft scripts support a Unix shebang line for direct execution:
 ```
-#!/path/to/lav-interpreter
+#!/path/to/loft-interpreter
 fn main() { ... }
 ```
 
@@ -490,7 +490,7 @@ fn main() { ... }
 
 ## Summary of grammar (informal)
 
-`use` declarations must appear before any other top-level declarations.
+`use` declarations must appear before any other top-level declarations in a loft file.
 
 ```
 file         ::= { use_decl } { top_level_decl }

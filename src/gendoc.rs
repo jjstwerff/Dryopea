@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// Generate standard library HTML pages from the documented default/*.lav files.
+// Generate standard library HTML pages from the documented default/*.loft files.
 // Run with: cargo run --bin gendoc
 
 use dryopea::documentation::{
@@ -31,15 +31,15 @@ struct SectionFull {
 
 fn main() -> std::io::Result<()> {
     let files = [
-        "default/01_code.lav",
-        "default/02_images.lav",
-        "default/03_text.lav",
+        "default/01_code.loft",
+        "default/02_images.loft",
+        "default/03_text.loft",
     ];
 
     let mut entries: Vec<Entry> = Vec::new();
     for path in &files {
         match fs::read_to_string(path) {
-            Ok(content) => parse_lav(&content, &mut entries),
+            Ok(content) => parse_loft(&content, &mut entries),
             Err(e) => eprintln!("Cannot read {path}: {e}"),
         }
     }
@@ -72,7 +72,7 @@ fn main() -> std::io::Result<()> {
 
 // ---  Parser  ---
 
-fn parse_lav(content: &str, entries: &mut Vec<Entry>) {
+fn parse_loft(content: &str, entries: &mut Vec<Entry>) {
     let lines: Vec<&str> = content.lines().collect();
     let mut i = 0;
     let mut doc: Vec<String> = Vec::new();

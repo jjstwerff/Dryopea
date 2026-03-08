@@ -191,7 +191,7 @@ impl Parser {
         self.diagnostics.is_empty()
     }
 
-    /// Parse all .lav files found in a directory tree in alphabetical ordering.
+    /// Parse all .loft files found in a directory tree in alphabetical ordering.
     /// # Errors
     /// With filesystem problems.
     pub fn parse_dir(&mut self, dir: &str, default: bool, debug: bool) -> std::io::Result<()> {
@@ -202,7 +202,7 @@ impl Parser {
             let own_file = p
                 .path()
                 .extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case("lav"));
+                .is_some_and(|e| e.eq_ignore_ascii_case("loft"));
             let file_name = p.path().to_string_lossy().to_string();
             let data = metadata(&file_name)?;
             if own_file || data.is_dir() {
@@ -1097,9 +1097,9 @@ impl Parser {
 
     fn lib_path(&mut self, id: &String) -> String {
         // - a source file, the lib directory in the project (project-supplied)
-        let mut f = format!("lib/{id}.lav");
+        let mut f = format!("lib/{id}.loft");
         if !std::path::Path::new(&f).exists() {
-            f = format!("{id}.lav");
+            f = format!("{id}.loft");
         }
         let cur_script = &self.lexer.pos().file;
         let cur_dir = if let Some(p) = cur_script.rfind('/') {
@@ -1114,23 +1114,23 @@ impl Parser {
         };
         // - a lib directory relative to the current directory
         if !cur_dir.is_empty() && !std::path::Path::new(&f).exists() {
-            f = format!("{cur_dir}/lib/{id}.lav");
+            f = format!("{cur_dir}/lib/{id}.loft");
         }
         // - a lib directory relative to the base directory when inside /tests/
         if !base_dir.is_empty() && !std::path::Path::new(&f).exists() {
-            f = format!("{base_dir}/lib/{id}.lav");
+            f = format!("{base_dir}/lib/{id}.loft");
         }
         // - a directory with the same name of the current script
         if !std::path::Path::new(&f).exists() {
-            f = format!("{}/{id}.lav", &cur_script[0..cur_script.len() - 4]);
+            f = format!("{}/{id}.loft", &cur_script[0..cur_script.len() - 5]);
         }
         // - a user-defined lib directory (externally downloaded)
         if !std::path::Path::new(&f).exists()
-            && let Some(v) = env::var_os("LAVITION_LIB")
+            && let Some(v) = env::var_os("LOFT_LIB")
         {
             let libs = v.to_str().unwrap();
             for l in libs.split(':') {
-                f = format!("{l}/{id}.lav");
+                f = format!("{l}/{id}.loft");
                 if std::path::Path::new(&f).exists() {
                     break;
                 }
@@ -1138,11 +1138,11 @@ impl Parser {
         }
         // - the current directory (beside the parsed file)
         if !cur_dir.is_empty() && !std::path::Path::new(&f).exists() {
-            f = format!("{cur_dir}/{id}.lav");
+            f = format!("{cur_dir}/{id}.loft");
         }
         // - the base directory when inside /tests/
         if !base_dir.is_empty() && !std::path::Path::new(&f).exists() {
-            f = format!("{base_dir}/{id}.lav");
+            f = format!("{base_dir}/{id}.loft");
         }
         f
     }

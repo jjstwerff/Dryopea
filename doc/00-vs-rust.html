@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lav — vs Rust</title>
+<title>Loft — vs Rust</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <nav><span class="cur">vs Rust</span> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Text</a> · <a href="03-integer.html">Integer</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Function</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Struct</a> · <a href="09-enum.html">Enum</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a></nav>
-<h1>Lav vs Rust — Key Differences</h1>
-<p class="intro">Lav is inspired by Rust but designed for embedded scripting in the Dryopea engine. It trades some of Rust's safety guarantees and expressive power for a shorter learning curve and less ceremony. This page documents the most important differences so that Rust programmers know exactly what they gain and what they give up.</p>
+<h1>Loft vs Rust — Key Differences</h1>
+<p class="intro">Loft is inspired by Rust but designed for embedded scripting in the Dryopea engine. It trades some of Rust's safety guarantees and expressive power for a shorter learning curve and less ceremony. This page documents the most important differences so that Rust programmers know exactly what they gain and what they give up.</p>
 
 <article>
 
 <h2>1. Variables — no <code>let</code> or <code>mut</code></h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code>x = <span class="nm">42</span>
 x += <span class="nm">1</span></code></pre>
 </div>
@@ -34,7 +34,7 @@ x += 1;</code></pre>
 <h2>2. Null instead of <code>Option&lt;T&gt;</code></h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">struct</span> <span class="en">Point</span> {
     label: <span class="ty"><a href="stdlib.html#types">text</a></span>,          <span class="cm">// nullable</span>
     x: <span class="ty"><a href="stdlib.html#types">integer</a></span> <span class="kw">not null</span>,  <span class="cm">// never null</span>
@@ -60,7 +60,7 @@ assert!(p.label.is_none());</code></pre>
 <h2>3. No ownership, borrowing, or lifetimes</h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">fn</span> <span class="fn-call">push_two</span>(v: <span class="ty"><a href="stdlib.html#collections">vector</a></span>&lt;<span class="ty"><a href="stdlib.html#types">integer</a></span>&gt;) {
     v += [<span class="nm">1</span>, <span class="nm">2</span>];  <span class="cm">// v is a reference; caller sees the change</span>
 }</code></pre>
@@ -81,7 +81,7 @@ assert!(p.label.is_none());</code></pre>
 <h2>4. <code>^</code> is exponentiation, not XOR</h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code>area = <span class="en"><a href="stdlib.html#math">PI</a></span> * (r ^ <span class="nm">2.0</span>)   <span class="cm">// exponentiation</span>
 bits = a | b              <span class="cm">// bitwise OR</span>
 mask = a &amp; b              <span class="cm">// bitwise AND</span></code></pre>
@@ -91,18 +91,18 @@ mask = a &amp; b              <span class="cm">// bitwise AND</span></code></pre
   <pre class="rust-pre"><code>let area = PI * r.powi(2); // no ^ operator
 let bits = a | b;          // bitwise OR
 let mask = a &amp; b;          // bitwise AND
-let xor  = a ^ b;          // bitwise XOR — no lav equivalent</code></pre>
+let xor  = a ^ b;          // bitwise XOR — no loft equivalent</code></pre>
 </div>
 </div>
 <div class="verdict">
 <p class="up"><strong>Upside</strong> <code>x^2</code> reads like mathematical notation. No need for <code>.powi()</code> or <code>.powf()</code> method calls. The library functions <code>pow(x, y)</code> also exist for the free-function style.</p>
-<p class="down"><strong>Downside</strong> Rust developers expect <code>^</code> to be XOR; the adjustment takes time. <code>^</code> has lower precedence than <code>*</code>, so <code>PI * r^2</code> must be written <code>PI * (r^2)</code> — easy to forget. Bitwise XOR has no operator in lav.</p>
+<p class="down"><strong>Downside</strong> Rust developers expect <code>^</code> to be XOR; the adjustment takes time. <code>^</code> has lower precedence than <code>*</code>, so <code>PI * r^2</code> must be written <code>PI * (r^2)</code> — easy to forget. Bitwise XOR has no operator in loft.</p>
 </div>
 
 <h2>5. No <code>loop</code> or <code>while</code></h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">for</span> _ <span class="kw">in</span> <span class="nm">0..</span> {         <span class="cm">// open-ended range</span>
     <span class="kw">if</span> <span class="fn-call">done</span>() { <span class="kw">break</span>; }
     <span class="fn-call">step</span>();
@@ -125,7 +125,7 @@ while !done() { step(); }</code></pre>
 <h2>6. Filtered loops — <code>for ... if ...</code></h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">for</span> x <span class="kw">in</span> items <span class="kw">if</span> x &gt; <span class="nm">0</span> {
     total += x;
 }</code></pre>
@@ -139,13 +139,13 @@ while !done() { step(); }</code></pre>
 </div>
 <div class="verdict">
 <p class="up"><strong>Upside</strong> Reads like natural language. No closure syntax, no double-reference in the filter predicate. <code>v#remove</code> inside a filtered loop also safely removes the current element while iterating — something that requires careful index management in Rust.</p>
-<p class="down"><strong>Downside</strong> Cannot compose with other adapters. Rust's iterator chain (<code>.filter().map().take_while()</code>) is far more expressive for complex data pipelines. Each extra step in lav requires a new loop or a helper variable.</p>
+<p class="down"><strong>Downside</strong> Cannot compose with other adapters. Rust's iterator chain (<code>.filter().map().take_while()</code>) is far more expressive for complex data pipelines. Each extra step in loft requires a new loop or a helper variable.</p>
 </div>
 
 <h2>7. Loop attributes: <code>#first</code>, <code>#count</code>, <code>#index</code></h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">for</span> x <span class="kw">in</span> <span class="nm">1..</span>=<span class="nm">5</span> {
     <span class="kw">if</span> !x#first { b += <span class="st">", "</span>; }
     b += <span class="st">"{x#count}:{x}"</span>;
@@ -161,13 +161,13 @@ while !done() { step(); }</code></pre>
 </div>
 <div class="verdict">
 <p class="up"><strong>Upside</strong> No tuple destructuring needed. <code>x#first</code> reads as "is this the first x", which is self-explanatory. Eliminates helper counter variables for the common pattern of comma-separated output.</p>
-<p class="down"><strong>Downside</strong> The <code>#attribute</code> syntax is unique to lav and unfamiliar to everyone else. Rust's <code>.enumerate()</code> composes freely with other adapters; lav's attributes are only available on the loop variable of the innermost loop.</p>
+<p class="down"><strong>Downside</strong> The <code>#attribute</code> syntax is unique to loft and unfamiliar to everyone else. Rust's <code>.enumerate()</code> composes freely with other adapters; loft's attributes are only available on the loop variable of the innermost loop.</p>
 </div>
 
 <h2>8. Named loop break — <code>x#break</code></h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">for</span> x <span class="kw">in</span> <span class="nm">1..5</span> {
     <span class="kw">for</span> y <span class="kw">in</span> <span class="nm">1..5</span> {
         <span class="kw">if</span> x * y &gt;= <span class="nm">6</span> { x#<span class="kw">break</span>; }
@@ -191,7 +191,7 @@ while !done() { step(); }</code></pre>
 <h2>9. Methods by <code>self</code> name, not <code>impl</code> blocks</h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">fn</span> <span class="fn-call">greet</span>(self: <span class="en">Person</span>) -> <span class="ty"><a href="stdlib.html#types">text</a></span> {
     <span class="st">"Hello, {self.name}!"</span>
 }
@@ -216,7 +216,7 @@ p.greet();     // only dot syntax</code></pre>
 <h2>10. Polymorphic enum dispatch</h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">enum</span> <span class="en">Shape</span> {
     <span class="en">Circle</span> { r: <span class="ty"><a href="stdlib.html#types">float</a></span> },
     <span class="en">Rect</span>   { w: <span class="ty"><a href="stdlib.html#types">float</a></span>, h: <span class="ty"><a href="stdlib.html#types">float</a></span> }
@@ -242,13 +242,13 @@ fn area(s: &amp;Shape) -&gt; f64 {
 </div>
 <div class="verdict">
 <p class="up"><strong>Upside</strong> Each variant's behaviour lives in its own small function — easy to read and extend. Adding a new type of shape only requires a new <code>fn area(self: NewShape)</code> without modifying the dispatch site. Feels like OOP method overriding without the inheritance.</p>
-<p class="down"><strong>Downside</strong> Rust's <code>match</code> is exhaustive: the compiler forces you to handle every variant. In lav, adding a new variant silently leaves <code>area</code> unimplemented for it — the call will panic at runtime. Correctness relies on discipline, not the compiler.</p>
+<p class="down"><strong>Downside</strong> Rust's <code>match</code> is exhaustive: the compiler forces you to handle every variant. In loft, adding a new variant silently leaves <code>area</code> unimplemented for it — the call will panic at runtime. Correctness relies on discipline, not the compiler.</p>
 </div>
 
 <h2>11. No closures</h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="kw">fn</span> <span class="fn-call">apply</span>(v: <span class="ty"><a href="stdlib.html#collections">vector</a></span>&lt;<span class="ty"><a href="stdlib.html#types">integer</a></span>&gt;, offset: <span class="ty"><a href="stdlib.html#types">integer</a></span>) {
     <span class="kw">for</span> x <span class="kw">in</span> v {
         x += offset;   <span class="cm">// must thread offset as a parameter</span>
@@ -271,7 +271,7 @@ let shifted: Vec&lt;i32&gt; = v.iter()
 <h2>12. No generic functions or trait system</h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code><span class="cm">// No generic functions — must write a version per type</span>
 <span class="kw">fn</span> <span class="fn-call">max_int</span>(a: <span class="ty"><a href="stdlib.html#types">integer</a></span>, b: <span class="ty"><a href="stdlib.html#types">integer</a></span>) -> <span class="ty"><a href="stdlib.html#types">integer</a></span> {
     <span class="kw">if</span> a > b { a } <span class="kw">else</span> { b }
@@ -295,7 +295,7 @@ let shifted: Vec&lt;i32&gt; = v.iter()
 <h2>13. String formatting — embedded expressions</h2>
 <div class="compare">
 <div>
-  <p class="lang-label lav-label">Lav</p>
+  <p class="lang-label loft-label">Loft</p>
   <pre><code>msg = <span class="st">"Hi {name}, score: {score:+6.2}"</span>
 hex = <span class="st">"{n:#x}"</span>
 list = <span class="st">"{for x in 1..4 {x*2}}"</span>   <span class="cm">// "2,4,6"</span></code></pre>
@@ -309,7 +309,7 @@ let hex = format!("{:#x}", n);
 </div>
 <div class="verdict">
 <p class="up"><strong>Upside</strong> Concise — no <code>format!()</code> call, no separate variable to name. Iteration can produce formatted lists inline. Rich specifiers for width, precision, sign, radix, and alignment are available directly in the string.</p>
-<p class="down"><strong>Downside</strong> No compile-time validation of format strings — typos in specifiers are runtime errors. The specifier syntax differs from Rust: width comes before precision (<code>:6.2</code> not <code>:.2</code>), and some Rust specifiers do not exist in lav (and vice-versa).</p>
+<p class="down"><strong>Downside</strong> No compile-time validation of format strings — typos in specifiers are runtime errors. The specifier syntax differs from Rust: width comes before precision (<code>:6.2</code> not <code>:.2</code>), and some Rust specifiers do not exist in loft (and vice-versa).</p>
 </div>
 
 </article>

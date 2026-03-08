@@ -4,12 +4,12 @@
 
 The compiler pipeline is:
 ```
-.lav source -> Parser (Value tree IR) -> State.byte_code() -> bytecode Vec<u8> -> fill::OPERATORS[opcode](&mut State) at runtime
+.loft source -> Parser (Value tree IR) -> State.byte_code() -> bytecode Vec<u8> -> fill::OPERATORS[opcode](&mut State) at runtime
 ```
 
 The intermediate representation is the `Value` enum tree defined in `src/data.rs`.
 Bytecode generation is done in `src/state.rs` via `State`.
-The 247 operator functions are in `src/fill.rs`.
+The 248 operator functions are in `src/fill.rs`.
 Variable/scope tracking during parsing is in `src/variables.rs` via `Function`.
 
 ---
@@ -195,7 +195,7 @@ The same variable name may have multiple `Variable` instances across scopes.
 
 ---
 
-## 247 Bytecode Operators — `src/fill.rs`
+## 248 Bytecode Operators — `src/fill.rs`
 
 Operators are indexed by their position in the `OPERATORS` array.
 Categories:

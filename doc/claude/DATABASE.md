@@ -373,7 +373,7 @@ Deletion uses **backward shift**: after removing a slot, scan forward and shift 
 ## How the Layers Fit Together
 
 ```
-lav runtime value
+loft runtime value
     └── DbRef { store_nr, rec, pos }
             │
             ├── Stores::allocations[store_nr]   (Store — raw allocator)

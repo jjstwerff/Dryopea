@@ -1,8 +1,8 @@
 pub fn test() {
     test_value = {"{file("example").files()}"};
     assert(
-        test_value == "[{{path:\"example/config\",size:4096,format:Directory}},{{path:\"example/map.png\",size:3406,format:TextFile}},{{path:\"example/map.xcf\",size:7817,format:TextFile}},{{path:\"example/show.lav\",size:371,format:TextFile}},{{path:\"example/todo.json\",size:1461,format:TextFile}}]",
-        "Test failed {test_value} != \"[{{path:\"example/config\",size:4096,format:Directory}},{{path:\"example/map.png\",size:3406,format:TextFile}},{{path:\"example/map.xcf\",size:7817,format:TextFile}},{{path:\"example/show.lav\",size:371,format:TextFile}},{{path:\"example/todo.json\",size:1461,format:TextFile}}]\""
+        test_value == "[{{path:\"example/config\",size:4096,format:Directory}},{{path:\"example/map.png\",size:3406,format:TextFile}},{{path:\"example/map.xcf\",size:7817,format:TextFile}},{{path:\"example/show.loft\",size:371,format:TextFile}},{{path:\"example/todo.json\",size:1461,format:TextFile}}]",
+        "Test failed {test_value} != \"[{{path:\"example/config\",size:4096,format:Directory}},{{path:\"example/map.png\",size:3406,format:TextFile}},{{path:\"example/map.xcf\",size:7817,format:TextFile}},{{path:\"example/show.loft\",size:371,format:TextFile}},{{path:\"example/todo.json\",size:1461,format:TextFile}}]\""
     );
 }
 fn n_test() {#block(1):void
@@ -17,10 +17,10 @@ fn n_test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text["__work_1"];
   }#block(2):text["__work_1"];
-  [3] if OpEqText(test_value(1), "[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.lav",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]") null else OpPanic({#Formatted string(4):text["__work_2"]
+  [3] if OpEqText(test_value(1), "[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]") null else OpPanic({#Formatted string(4):text["__work_2"]
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
-    OpAppendText(__work_2(1), " != "[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.lav",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]"");
+    OpAppendText(__work_2(1), " != "[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]"");
     __work_2(1);
   }#Formatted string(4):text["__work_2"]);
   OpFreeText(test_value(1));
@@ -56,7 +56,7 @@ byte-code for files:n_test()
   77[132]: FreeStack(value=16, discard=32)
   81[116]: AppendText(var[76], v1: text)
   84[100]: [3] VarText(var[76]) -> text var=test_value[76]:text["__work_1"]
-  87[116]: ConstLongText(start=0, size=258) -> text
+  87[116]: ConstLongText(start=0, size=259) -> text
   96[132]: EqText(v1: text, v2: text) -> boolean
   97[101]: GotoFalseWord(jump=103, if_false: boolean)
  100[100]: GotoWord(jump=152)
@@ -66,7 +66,7 @@ byte-code for files:n_test()
  123[100]: VarText(var[76]) -> text var=test_value[76]:text["__work_1"]
  126[116]: ConstInt(val=0) -> integer
  131[120]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
- 136[100]: ConstLongText(start=258, size=264) -> text
+ 136[100]: ConstLongText(start=259, size=265) -> text
  145[116]: AppendText(var[28], v1: text)
  148[100]: VarText(var[28]) -> text var=__work_2[28]:text
  151[116]: Panic(message: text)
@@ -131,22 +131,22 @@ Execute test:
  1567:[164] VarVector(var[132]) -> ref(1,1,12)=[][164]
  1570:[176] GetDir(path="example"[148], result=ref(1,1,12)[164]) -> true[148]
  1571:[149] FreeStack(value=0, discard=1)
- 1575:[148] VarVector(var[132]) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.lav",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][148]
- 1578:[160] Return(ret=1919[144], value=12, discard=40) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.lav",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][120]
+ 1575:[148] VarVector(var[132]) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][148]
+ 1578:[160] Return(ret=1919[144], value=12, discard=40) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][120]
    68:[132] FormatDatabase(var[56], val=ref(1,1,12)[120], db_tp=17, db_format=0)
-   74:[120] VarText(var[56]) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.lav\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]
+   74:[120] VarText(var[56]) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]
    77:[136] FreeStack(value=16, discard=32)
-   81:[120] AppendText(var[80], v1="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.lav\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104])
-   84:[104] VarText(var[80]) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.lav\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104]
-   87:[120] ConstLongText(start=0, size=258) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.lav\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]
-   96:[136] EqText(v1="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.lav\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104], v2="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.lav\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]) -> true[104]
+   81:[120] AppendText(var[80], v1="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104])
+   84:[104] VarText(var[80]) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104]
+   87:[120] ConstLongText(start=0, size=259) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]
+   96:[136] EqText(v1="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104], v2="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]) -> true[104]
    97:[105] GotoFalseWord(jump=103, if_false=true[104])
   100:[104] GotoWord(jump=152)
   152:[104] FreeText(var[80])
   155:[104] FreeText(var[56])
   158:[104] VarRef(var[20]) -> ref(2,0,8)=null[104]
   161:[116] FreeRef(v1=ref(2,0,8)[104])
-  162:[104] VarVector(var[8]) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.lav",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][104]
+  162:[104] VarVector(var[8]) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][104]
   165:[116] FreeRef(v1=ref(1,1,12)[104])
   166:[104] FreeText(var[32])
   169:[104] Return(ret=4294967295[4], value=0, discard=100)

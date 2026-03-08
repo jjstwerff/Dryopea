@@ -29,7 +29,10 @@ fn gather_topics() -> Vec<Topic> {
     entries
         .iter()
         .map(DirEntry::path)
-        .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("lav")))
+        .filter(|p| {
+            p.extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("loft"))
+        })
         .for_each(|file| {
             let file_handle = File::open(file.clone()).expect("failed to open file");
             let reader = BufReader::new(file_handle);
@@ -489,7 +492,7 @@ pub fn build_nav(
     parts.push("<a href=\"index.html\">Home</a>".to_string());
     parts.push("<span class=\"nav-sep\">Language:</span>".to_string());
 
-    // vs-Rust is a hand-maintained page with no corresponding .lav file.
+    // vs-Rust is a hand-maintained page with no corresponding .loft file.
     if active == "00-vs-rust" {
         parts.push("<span class=\"cur\">vs Rust</span>".to_string());
     } else {
