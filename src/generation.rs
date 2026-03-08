@@ -6,9 +6,9 @@ use crate::database::Stores;
 use std::collections::HashSet;
 use std::io::Write;
 
-/// Use this to drive all Rust code generation from a compiled loft program.
+/// Use this to drive Rust code generation from a compiled loft program.
 /// It bundles the read-only compile-time data with the mutable emission state
-/// so that individual emit functions don't need to pass both separately.
+/// so that individual emits functions don't need to pass both separately.
 pub struct Output<'a> {
     pub data: &'a Data,
     pub stores: &'a Stores,
@@ -87,7 +87,7 @@ impl Output<'_> {
         Ok(())
     }
 
-    /// Use this to reset emission state when starting a new function.
+    /// Use this to reset the emission state when starting a new function.
     pub fn start_fn(&mut self, def_nr: u32) {
         self.def_nr = def_nr;
         self.indent = 0;
@@ -372,8 +372,9 @@ extern crate dryopea;"
         for arg_nr in def.variables.arguments() {
             declared.insert(arg_nr);
         }
-        if let Value::Block(_) = def.code {
-            self.output_code_inner(w, &def.code)?;
+        let returns_text = matches!(def.returned, Type::Text(_));
+        if let Value::Block(bl) = &def.code {
+            self.output_block(w, bl, returns_text)?;
         } else {
             writeln!(w, "{{")?;
             if def.code != Value::Null {
@@ -396,6 +397,23 @@ extern crate dryopea;"
     pub fn output_code(&mut self, w: &mut dyn Write, code: &Value) -> std::io::Result<()> {
         self.declared.clear();
         self.output_code_inner(w, code)
+    }
+
+    /// Use this instead of emitting an argument block when the block exists only to pass a
+    /// local text variable by mutable reference. Returns the variable index so the call site
+    /// can emit `&mut var_<name>` without generating a spurious empty block expression.
+    fn create_stack_var(&self, v: &Value) -> Option<u16> {
+        let Value::Block(bl) = v else { return None };
+        let Type::Reference(_, vars) = &bl.result else {
+            return None;
+        };
+        let [vr] = vars.as_slice() else { return None };
+        let only_create_stack = bl
+            .operators
+            .iter()
+            .filter(|op| !matches!(op, Value::Line(_)))
+            .all(|op| matches!(op, Value::Call(d_nr, _) if self.data.def(*d_nr).name == "OpCreateStack"));
+        only_create_stack.then_some(*vr)
     }
 
     /// Use this to detect sub-expressions that would cause a double-borrow of `stores`
@@ -438,8 +456,8 @@ extern crate dryopea;"
     }
 
     /// Use this as the recursive worker for `collect_pre_evals`.
-    /// Splitting from the wrapper keeps the result `Vec` allocated once and the pre-eval
-    /// counter globally unique within a block.
+    /// Splitting from the wrapper keeps the result `Vec` allocated once, and the pre-eval
+    ///  counter is globally unique within a block.
     fn collect_pre_evals_inner(
         &mut self,
         v: &Value,
@@ -451,7 +469,8 @@ extern crate dryopea;"
                 // User-defined function: pre-eval any Block or nested user-fn arguments
                 // (both cause double-borrow of stores if left inline).
                 for arg in vals {
-                    let needs_pre = matches!(arg, Value::Block(_)) || self.needs_pre_eval(arg);
+                    let needs_pre = self.create_stack_var(arg).is_none()
+                        && (matches!(arg, Value::Block(_)) || self.needs_pre_eval(arg));
                     if needs_pre {
                         let name = format!("_pre{}", self.counter);
                         self.counter += 1;
@@ -603,7 +622,7 @@ extern crate dryopea;"
                     }
                 }
             }
-            Value::Block(bl) => self.output_block(w, bl)?,
+            Value::Block(bl) => self.output_block(w, bl, false)?,
             Value::Loop(lp) => {
                 writeln!(w, "loop {{ //{}_{}", lp.name, lp.scope)?;
                 for v in &lp.operators {
@@ -635,8 +654,15 @@ extern crate dryopea;"
                 self.output_call(w, *def_nr, vals)?;
             }
             Value::Return(val) => {
+                let returns_text = matches!(self.data.def(self.def_nr).returned, Type::Text(_));
                 write!(w, "return ")?;
+                if returns_text {
+                    write!(w, "Str::new(")?;
+                }
                 self.output_code_inner(w, val)?;
+                if returns_text {
+                    write!(w, ")")?;
+                }
             }
             _ => write!(w, "{code:?}")?,
         }
@@ -689,7 +715,12 @@ extern crate dryopea;"
     ///    that expression is captured into `let _ret` first, then yielded at the end.
     /// 3. **String conversion** — a text-typed block may receive a `Str` from a field read;
     ///    `.to_string()` converts it to an owned `String`.
-    fn output_block(&mut self, w: &mut dyn Write, bl: &Block) -> std::io::Result<()> {
+    fn output_block(
+        &mut self,
+        w: &mut dyn Write,
+        bl: &Block,
+        wrap_text: bool,
+    ) -> std::io::Result<()> {
         writeln!(
             w,
             "{{ //{}_{}: {}",
@@ -699,6 +730,7 @@ extern crate dryopea;"
                 .show(self.data, &self.data.def(self.def_nr).variables)
         )?;
         let is_void_block = matches!(bl.result, Type::Void);
+        let is_text_result = wrap_text && matches!(bl.result, Type::Text(_));
         // When the block expects a non-void result but trailing operator(s) are
         // void (drops, if-without-else, etc.), find the last non-void operator
         // and capture its value before the trailing void ops run.
@@ -730,11 +762,18 @@ extern crate dryopea;"
                 self.indent -= 1;
                 writeln!(w, ";")?;
             } else {
+                let is_return_expr =
+                    !is_void_block && !has_trailing_void && return_idx == Some(vnr);
+                let wrap_result = is_return_expr && is_text_result;
+                if wrap_result {
+                    write!(w, "Str::new(")?;
+                }
                 self.indent += 1;
                 self.output_code_with_subst(w, v, &pre_evals)?;
                 self.indent -= 1;
-                let is_return_expr =
-                    !is_void_block && !has_trailing_void && return_idx == Some(vnr);
+                if wrap_result {
+                    write!(w, ")")?;
+                }
                 if is_return_expr {
                     writeln!(w)?;
                 } else {
@@ -744,7 +783,11 @@ extern crate dryopea;"
         }
         if has_trailing_void {
             self.indent(w)?;
-            writeln!(w, "_ret")?;
+            if is_text_result {
+                writeln!(w, "Str::new(_ret)")?;
+            } else {
+                writeln!(w, "_ret")?;
+            }
         }
         self.indent(w)?;
         write!(
@@ -770,9 +813,14 @@ extern crate dryopea;"
     fn output_set(&mut self, w: &mut dyn Write, var: u16, to: &Value) -> std::io::Result<()> {
         let variables = &self.data.def(self.def_nr).variables;
         if variables.is_argument(var)
-            && let Type::RefVar(_) = variables.tp(var)
+            && let Type::RefVar(inner) = variables.tp(var)
         {
-            // Skip work variables that became arguments
+            if to != &Value::Null && matches!(**inner, Type::Text(_)) {
+                let name = sanitize(variables.name(var));
+                write!(w, "*var_{name} = ")?;
+                self.output_code_inner(w, to)?;
+                write!(w, ".to_string()")?;
+            }
             return Ok(());
         }
         let needs_to_string = matches!(variables.tp(var), Type::Text(_));
@@ -936,7 +984,12 @@ extern crate dryopea;"
         write!(w, "{}(stores", def_fn.name)?;
         for v in vals {
             write!(w, ", ")?;
-            self.output_code_inner(w, v)?;
+            if let Some(vr) = self.create_stack_var(v) {
+                let name = sanitize(self.data.def(self.def_nr).variables.name(vr));
+                write!(w, "&mut var_{name}")?;
+            } else {
+                self.output_code_inner(w, v)?;
+            }
         }
         write!(w, ")")
     }

@@ -20,21 +20,17 @@ fn init(db: &mut Stores) {
     db.finish();
 }
 
-fn n_append(stores: &mut Stores, mut var_ch: i32, mut var___work_1: &mut String) -> Str {
-    //block_1: text["__work_1"]
-    Str::new({
-        //Add text_2: text["__work_1"]
-        var___work_1.clear();
-        *var___work_1 += "abc_de";
-        {
-            let c = var_ch;
-            if c != 0 {
-                var___work_1.push(external::to_char(c));
-            }
-        };
-        var___work_1
-    } /*Add text_2: text["__work_1"]*/)
-} /*block_1: text["__work_1"]*/
+fn n_append(stores: &mut Stores, mut var_ch: i32, mut var_s: &mut String) -> Str {
+    //block_1: text["s"]
+    *var_s = "abc_de".to_string();
+    {
+        let c = var_ch;
+        if c != 0 {
+            var_s.push(external::to_char(c));
+        }
+    };
+    Str::new(var_s)
+} /*block_1: text["s"]*/
 
 fn n_test(stores: &mut Stores) {
     //block_1: void
@@ -62,7 +58,7 @@ fn n_test(stores: &mut Stores) {
 } /*block_1: void*/
 
 #[test]
-fn code_append_fn() {
+fn code_append_str() {
     let mut stores = Stores::new();
     init(&mut stores);
     n_test(&mut stores);
