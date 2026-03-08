@@ -404,7 +404,9 @@ extern crate dryopea;"
     /// can emit `&mut var_<name>` without generating a spurious empty block expression.
     fn create_stack_var(&self, v: &Value) -> Option<u16> {
         let Value::Block(bl) = v else { return None };
-        let Type::Reference(_, vars) = &bl.result else { return None };
+        let Type::Reference(_, vars) = &bl.result else {
+            return None;
+        };
         let [vr] = vars.as_slice() else { return None };
         let only_create_stack = bl
             .operators
@@ -654,9 +656,13 @@ extern crate dryopea;"
             Value::Return(val) => {
                 let returns_text = matches!(self.data.def(self.def_nr).returned, Type::Text(_));
                 write!(w, "return ")?;
-                if returns_text { write!(w, "Str::new(")?; }
+                if returns_text {
+                    write!(w, "Str::new(")?;
+                }
                 self.output_code_inner(w, val)?;
-                if returns_text { write!(w, ")")?; }
+                if returns_text {
+                    write!(w, ")")?;
+                }
             }
             _ => write!(w, "{code:?}")?,
         }
@@ -709,7 +715,12 @@ extern crate dryopea;"
     ///    that expression is captured into `let _ret` first, then yielded at the end.
     /// 3. **String conversion** — a text-typed block may receive a `Str` from a field read;
     ///    `.to_string()` converts it to an owned `String`.
-    fn output_block(&mut self, w: &mut dyn Write, bl: &Block, wrap_text: bool) -> std::io::Result<()> {
+    fn output_block(
+        &mut self,
+        w: &mut dyn Write,
+        bl: &Block,
+        wrap_text: bool,
+    ) -> std::io::Result<()> {
         writeln!(
             w,
             "{{ //{}_{}: {}",
@@ -754,11 +765,15 @@ extern crate dryopea;"
                 let is_return_expr =
                     !is_void_block && !has_trailing_void && return_idx == Some(vnr);
                 let wrap_result = is_return_expr && is_text_result;
-                if wrap_result { write!(w, "Str::new(")?; }
+                if wrap_result {
+                    write!(w, "Str::new(")?;
+                }
                 self.indent += 1;
                 self.output_code_with_subst(w, v, &pre_evals)?;
                 self.indent -= 1;
-                if wrap_result { write!(w, ")")?; }
+                if wrap_result {
+                    write!(w, ")")?;
+                }
                 if is_return_expr {
                     writeln!(w)?;
                 } else {
@@ -798,9 +813,14 @@ extern crate dryopea;"
     fn output_set(&mut self, w: &mut dyn Write, var: u16, to: &Value) -> std::io::Result<()> {
         let variables = &self.data.def(self.def_nr).variables;
         if variables.is_argument(var)
-            && let Type::RefVar(_) = variables.tp(var)
+            && let Type::RefVar(inner) = variables.tp(var)
         {
-            // Skip work variables that became arguments
+            if to != &Value::Null && matches!(**inner, Type::Text(_)) {
+                let name = sanitize(variables.name(var));
+                write!(w, "*var_{name} = ")?;
+                self.output_code_inner(w, to)?;
+                write!(w, ".to_string()")?;
+            }
             return Ok(());
         }
         let needs_to_string = matches!(variables.tp(var), Type::Text(_));
