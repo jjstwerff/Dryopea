@@ -8,12 +8,17 @@
 // 'format == Format.Directory' tests whether a file is a directory.
 fn text_files(dir: File, l: vector<File>) {
     for f in dir.files() {
-        if f.format == Format.Directory {
+        if f#format == Format.Directory {
             text_files(f, l);
         } else if f.path.ends_with(".txt") {
             l += [f];
         }
     }
+}
+
+struct Buffer {
+   size: i32,
+   data: vector<single>
 }
 
 fn main() {
@@ -25,4 +30,63 @@ fn main() {
     f = paths[0];
     c = f.lines();
     assert(c[1] == "    terrain = [", "Line was '{c[1]}'");
+
+    assert(!delete("test.bin"), "Did not expect the file to exist.");
+    // exists is a shorthand for file(name)#format != NotExists
+    assert(!exists("test.bin"), "File should not exist.");
+    { f = file("test.bin");
+      assert(f#format == NotExists, "File should not exist yet.");
+      f#format = BigEndian;
+      f += 0 as u8;
+      f += 1 as u8;
+      f += 0x203 as u16;
+      f += 0x4050607;
+      f += 0x8090a0b0c0d0e0fl;
+      assert(f#size == 16, "Should have written 16 bytes.");
+      f += 12 as u8;
+      f += "Hello world!"; // Writes the text data without size 
+      assert(f#size == 16+13, "Size of the file is not correct.");
+      assert(f#read(2) as text == "", "Not expecting data, we are at the end of the file");
+      assert(!(f#read(4) as i32), "Null expected on incomplete read");
+    } // close the file because it runs out of scope.
+    assert(exists("test.bin"), "File should exist.");
+    assert(!move("test.bin", "../test.bin"), "Could move the file outside the project directory.");
+    assert(move("test.bin", "test2.bin"), "Could not move the file.");
+    { f = file("test2.bin"); // Open the file again for reading.
+      assert(f#format == TextFile, "The default format is not TextFile.");
+      f#format = LittleEndian;
+      for i in 0..16 {
+        assert(f#read(1) as u8 == i, "Read value is not correct.");
+        assert(f#index == i, "Read index of the last read value is not correct.");
+        assert(f#next == i+1, "Current position in the file is not correct.");
+      }
+      l = f#read(1) as u8;
+      s = f#read(5) as text;
+      assert(s == "Hello", "Read string is not correct.");
+      assert(f#index == 17, "Read index of the string value is not correct.");
+      assert(f#next == 22, "End of the string position is not correct.");
+      assert(f#read(100) == " world!", "Read string is not finished at file end.");
+      assert(f#index == 22, "Index of the start of the string value is not correct.");
+      assert(f#next == f#size, "Current position is not at the end of the file.");
+      f#next = 0; // Reset the position to the beginning of the file.
+      assert(f#read(4) as i32 == 0x3020100, "Is previously written in BigEndian format.");
+    } // the file gets closed again.
+    assert(delete("test2.bin"), "Could not remove the remaining test file.");
+
+    delete("buffer.bin");
+    // Write a binary array of singles to a file.
+    { buf = file("buffer.bin");
+      buf#format = LittleEndian;
+      buf += 4 as i32;
+      buf += [ 1.1f, 1.2f, 2.1f, 2.2f ];
+    }
+
+    // Read this binary array directly into a structure.
+    { b = Buffer {};
+      f = file("buffer.bin");
+      f#format = LittleEndian;
+      len = f#read(4) as i32;
+      b.data = f#read(len * sizeof(single));
+    }
 }
+

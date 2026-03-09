@@ -1,9 +1,47 @@
 Code generation:
-- return stack text: create Str::new()
-- prevent creating a stack variable at all (we rever only to the depend variable)
-- calls with stack var should become '&mut var' with the depend variable
+- move through the tests
 
 Test for reading and writing binary data.
+- create a unit-test with the syntax to read and write binary data.
+- including the f#index to hold or change the current position in the file.
+
+
+assert(!delete("test.bin"), "Did not expect the file to exist.");
+// exists is a shorthand for File(name).format != NotExists
+assert(!exists("test.bin"), "File should not exist.");
+{ f = File("test.bin");
+  assert(f.format == NotExists, "File should not exist yet.");
+  f.format = BigEndian; // This creates the file.
+  f += 0 as u8;
+  f += 1 as u8;
+  f += 0x203 as u16;
+  f += 0x4050607;
+  f += 0x8090a0b0c0d0e0fl;
+  assert(f#size == 16, "Should have written 16 bytes.")
+  f += 12 as u8;
+  f += "Hello world!";
+  assert(f#size == 16+13, "Size of the file is not correct.");
+} // close the file because it runs out of scope.
+assert(exists("test.bin"), "File should exist.");
+assert(!move("test.bin", "../test.bin"), "Could move the file outside the project directory.");
+assert(move("test.bin", "test2.bin"), "Could not move the file.");
+{ f = File("test2.bin"); // Open the file again for reading.
+  assert(f.format == TextFile, "The default format is not TextFile.")''
+  f.format = LittleEndian;
+  for i in 0..15 {
+    assert(f#read as u8 == i, "Read value is not correct.");
+    assert(f#index == i, "Read index of the last read value is not correct.");
+    assert(f#next == i, "Current position in the file is not correct.");
+  }
+  l = f#read as u8;
+  s = f#read as text[l];
+  assert(s == "Hello world!", "Read string is not correct.");
+  assert(f#index == 17, "Read index of the string value is not correct.");
+  assert(f#next == f#size, "Current position is not at the end of the file.");
+  f#next = 0; // Reset the position to the beginning of the file.
+  assert(f#read(4) as u31 = 0x3020100, "Is previously written in BigEndian format.");
+} // the file gets closed again.
+assert(delete("test2.bin"), "Could not remove the remaining test file.");
 
 Check on #remove outside for..if?
 More free polymorphism tests: meld of the two forms

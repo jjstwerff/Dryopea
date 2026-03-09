@@ -1,0 +1,55 @@
+Implement every piece of work needed to make `13-file.loft` pass. This test exercises binary file I/O, file system operations, and several new language features around reading and writing files that do not yet exist anywhere in the codebase.
+
+---
+
+## What the test exercises
+
+```
+text_files()           — recursive directory listing (already works)
+delete(path)           — delete a file; returns boolean       [MISSING]
+exists(path)           — test whether a file exists           [MISSING]
+move(from, to)         — rename / move a file                 [MISSING]
+file("path")           — File handle constructor (already works via OpGetFile)
+f#format = BigEndian   — set format                           [MISSING]
+f += X as u8/u16       — binary append                        [MISSING]
+f += "text"            — string data append                   [MISSING]
+f#size                 — current file size                    [MISSING]
+f#read(n) as T         — typed read; null on incomplete read  [MISSING]
+f#read(n)              — bare text read up to n bytes         [MISSING]
+f#index                — byte position of last read (both forms) [MISSING]
+f#next                 — current read position                [MISSING]
+f#next = pos           — seek to position                     [MISSING]
+scope-close File       — OS file closed when var goes OOS     [MISSING]
+```
+
+---
+
+## General work to facilitate these features
+
+- Implement a function valid_path inside 02_images.rs to verify if it breaks out of the project directory. Allow directory navigation but count the number of steps that went into a directory and the amount of steps out with ..
+- Implement exists 02_images.rs without calling an Op operator and with the valid_path test, a file call and a test on the format field for the boolean.
+- Implement delete calling exists and a new OpDelete call with the limited rust delete implementation.
+- Implement move with an exists call and a new OpMoveFile call with the limited rust move implementation.
+- Add two fields to struct File inside `02_images.loft` current: long, next: long after the current size. Update the field positions as documented behind the fields here. Update the function write_file, get_file_text, write_file, read_file, seek_file in database.rs with the increased position of the ref field.
+- Implement size_file function in state.rs with similar structure of seek_file already there. For f#size insert IL code with OpSizeFile.
+- For f#index, f#format, f#size and f#next read code insert IL code to reads the fields from the File struct.
+- For f#next writes call IL code to call OpSeekFile and update the next field from File.
+- For f#format writes call IL to update the field in File.
+
+## `f += X`
+
+- Determine the type of the value to be appended. From as u8/u16 or from the expression that is written.
+- When writing a non database expression, create a temporary variable and IL code OpVarRef.
+- IL code OpWriteFile.
+
+## `f#read(n)` implementation
+
+- Defaults to a String with n size unless `as T` is added, then reads a different type.
+- There are three semantic cases about where the data gets stored: into a variable, inside a store field or a store vector (possibly a new data structure).
+  - when inside a store: define a DbVar typed temporary variable with a reference to the store field position.
+  - when inside a vector: insert IL code to claim enough space to fit the data, calculate it from the read bytes divided by the sizeof of the T type
+- Updates `f#index` with the current `f#next` value.
+- Increases `f#next` with the requested n bytes.
+- Insert IL code OpVarRef(var) to get a DbVar pointing to the position where the data needs to be stored.
+- IL code OpReadFile
+

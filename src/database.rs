@@ -3254,8 +3254,10 @@ fn fill_file(path: &std::path::Path, store: &mut Store, file: &DbRef) -> bool {
         store.set_long(file.rec, file.pos, data.len() as i64); // write size
         let tp = if data.is_dir() {
             Format::Directory
-        } else {
+        } else if data.is_file() {
             Format::Text
+        } else {
+            Format::Unknown
         };
         store.set_byte(file.rec, file.pos + 16, 0, tp as i32);
         true

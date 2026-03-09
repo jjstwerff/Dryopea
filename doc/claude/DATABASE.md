@@ -12,6 +12,7 @@ The runtime data layer is split across six source files that together implement 
 | `src/vector.rs` | Dynamic arrays: by-value (Vector), by-reference (Array/Ordered) |
 | `src/tree.rs` | Left-leaning red-black tree for `sorted<T>` / `index<T>` |
 | `src/hash.rs` | Open-addressing hash table for `hash<T>` / `index<T>` by hash |
+| `src/radix_tree.rs` | Radix tree for `spacial<T>` (partially implemented) |
 
 ---
 
@@ -370,6 +371,14 @@ Deletion uses **backward shift**: after removing a slot, scan forward and shift 
 
 ---
 
+## Spatial Index (`src/radix_tree.rs`)
+
+The `Spacial(u16, Vec<u16>)` variant of `Parts` is the schema-level marker for a spatial index collection. Its planned backing structure is a **radix tree** implemented in `src/radix_tree.rs`.
+
+The radix tree is partially implemented (inserts and finds work; iteration and removal are stubs). See `doc/claude/INTERNALS.md` for the full API and record layout. The `Spacial` type is reserved in the schema today but not yet wired to the radix tree operations in the interpreter.
+
+---
+
 ## How the Layers Fit Together
 
 ```
@@ -386,6 +395,7 @@ loft runtime value
                             ├── Vector layout   → src/vector.rs
                             ├── Sorted/Index    → src/tree.rs  (+ src/vector.rs for Ordered)
                             ├── Hash            → src/hash.rs
+                            ├── Spacial         → src/radix_tree.rs (partial)
                             └── Key comparison  → src/keys.rs
 ```
 
