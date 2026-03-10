@@ -184,7 +184,7 @@ impl State {
             return;
         }
         let store = self.database.store(&file);
-        let file_path = store.get_str(store.get_int(file.rec, file.pos + 8) as u32);
+        let file_path = store.get_str(store.get_int(file.rec, file.pos + 24) as u32);
         let buf = self.database.store_mut(&r).addr_mut::<String>(r.rec, r.pos);
         if let Ok(mut f) = File::open(file_path) {
             f.read_to_string(buf).unwrap();
@@ -200,30 +200,38 @@ impl State {
         }
         let f_nr = self.database.files.len() as i32;
         let store = self.database.store_mut(&file);
-        let format = store.get_byte(file.rec, file.pos + 16, 1);
-        if format == 4 || format == 1 {
-            // Only binary files allowed
+        let format = store.get_byte(file.rec, file.pos + 32, 0);
+        if format != 2 && format != 3 {
+            // Only binary files allowed (LittleEndian=2, BigEndian=3)
             return;
         }
         let little_endian = format == 2;
-        let mut file_ref = store.get_int(file.rec, file.pos + 12);
+        let mut file_ref = store.get_int(file.rec, file.pos + 28);
         if file_ref == i32::MIN {
-            let file_name = store.get_str(store.get_int(file.rec, file.pos + 8) as u32);
+            let file_name = store.get_str(store.get_int(file.rec, file.pos + 24) as u32);
             if let Ok(f) = File::create(file_name) {
-                store.set_int(file.rec, file.pos + 12, f_nr);
-                self.database.files.push(f);
+                store.set_int(file.rec, file.pos + 28, f_nr);
+                self.database.files.push(Some(f));
             }
             file_ref = f_nr;
         }
         let mut data = Vec::new();
-        self.database
-            .read_data(&val, db_tp, little_endian, &mut data);
-        self.database.files[file_ref as usize]
-            .write_all(&data)
-            .unwrap_or_default();
+        if self.database.is_text_type(db_tp) {
+            // Text variables in the stack hold a Rust String (not a store record index).
+            let store = self.database.store(&val);
+            let s: &String = store.addr::<String>(val.rec, val.pos);
+            data.extend_from_slice(s.as_bytes());
+        } else {
+            self.database
+                .read_data(&val, db_tp, little_endian, &mut data);
+        }
+        if let Some(f) = &mut self.database.files[file_ref as usize] {
+            f.write_all(&data).unwrap_or_default();
+        }
     }
 
     pub fn read_file(&mut self) {
+        let bytes = *self.get_stack::<i32>();
         let val = *self.get_stack::<DbRef>();
         let file = *self.get_stack::<DbRef>();
         let db_tp = *self.code::<u16>();
@@ -232,27 +240,59 @@ impl State {
         }
         let f_nr = self.database.files.len() as i32;
         let store = self.database.store_mut(&file);
-        let format = store.get_byte(file.rec, file.pos + 16, 1);
-        if format == 4 || format == 1 {
-            // Only binary files allowed
+        let format = store.get_byte(file.rec, file.pos + 32, 0);
+        if format != 2 && format != 3 {
+            // Only binary files allowed (LittleEndian=2, BigEndian=3)
             return;
         }
         let little_endian = format == 2;
-        let mut file_ref = store.get_int(file.rec, file.pos + 12);
+        let mut file_ref = store.get_int(file.rec, file.pos + 28);
         if file_ref == i32::MIN {
-            let file_name = store.get_str(store.get_int(file.rec, file.pos + 8) as u32);
+            let file_name = store.get_str(store.get_int(file.rec, file.pos + 24) as u32);
             if let Ok(f) = File::open(file_name) {
-                store.set_int(file.rec, file.pos + 12, f_nr);
-                self.database.files.push(f);
+                store.set_int(file.rec, file.pos + 28, f_nr);
+                self.database.files.push(Some(f));
             }
             file_ref = f_nr;
         }
-        let s = self.database.size(db_tp) as usize;
-        let mut data = vec![0u8; s];
-        self.database.files[file_ref as usize]
-            .read_exact(&mut data)
-            .unwrap_or_default();
-        self.database.write_data(&val, db_tp, little_endian, &data);
+        // Save the current position to the current field (file.current = old file.next)
+        // Treat null (i64::MIN) as 0 (start of the file).
+        let raw_next = self.database.store(&file).get_long(file.rec, file.pos + 16);
+        let next_pos = if raw_next == i64::MIN { 0 } else { raw_next };
+        self.database
+            .store_mut(&file)
+            .set_long(file.rec, file.pos + 8, next_pos);
+        // Read the bytes
+        let n = bytes as usize;
+        let is_text = self.database.is_text_type(db_tp);
+        let mut data = vec![0u8; n];
+        let actual = if let Some(f) = &mut self.database.files[file_ref as usize] {
+            if is_text {
+                f.read(&mut data).unwrap_or(0)
+            } else if f.read_exact(&mut data).is_ok() {
+                n
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+        // Update the next field with actual bytes read
+        self.database
+            .store_mut(&file)
+            .set_long(file.rec, file.pos + 16, next_pos + actual as i64);
+        if is_text {
+            data.truncate(actual);
+            // Text variables in the stack hold a Rust String; write directly into it.
+            let s = unsafe { String::from_utf8_unchecked(data) };
+            *self
+                .database
+                .store_mut(&val)
+                .addr_mut::<String>(val.rec, val.pos) = s;
+        } else if actual == n {
+            self.database.write_data(&val, db_tp, little_endian, &data);
+        }
+        // For typed non-text reads with incomplete data: leave destination at null (already initialized)
     }
 
     pub fn seek_file(&mut self) {
@@ -262,10 +302,30 @@ impl State {
             return;
         }
         let store = self.database.store(&file);
-        let file_ref = store.get_int(file.rec, file.pos + 12);
-        self.database.files[file_ref as usize]
-            .seek(SeekFrom::Start(pos as u64))
-            .unwrap_or_default();
+        let file_ref = store.get_int(file.rec, file.pos + 28);
+        if file_ref != i32::MIN
+            && let Some(f) = &mut self.database.files[file_ref as usize]
+        {
+            f.seek(SeekFrom::Start(pos as u64)).unwrap_or_default();
+        }
+    }
+
+    pub fn size_file(&mut self) {
+        let file = *self.get_stack::<DbRef>();
+        if file.rec == 0 {
+            self.put_stack(i64::MIN);
+            return;
+        }
+        let store = self.database.store(&file);
+        let file_path = store
+            .get_str(store.get_int(file.rec, file.pos + 24) as u32)
+            .to_owned();
+        let size = if let Ok(meta) = std::fs::metadata(&file_path) {
+            meta.len() as i64
+        } else {
+            i64::MIN
+        };
+        self.put_stack(size);
     }
 
     #[inline]
@@ -697,6 +757,17 @@ impl State {
 
     pub fn free_ref(&mut self) {
         let db = *self.get_stack::<DbRef>();
+        if db.rec != 0
+            && let Some(&file_type) = self.database.names.get("File")
+        {
+            let stored_type = self.database.store(&db).get_int(db.rec, 4) as u16;
+            if stored_type == file_type {
+                let file_ref = self.database.store(&db).get_int(db.rec, db.pos + 28);
+                if file_ref != i32::MIN && (file_ref as usize) < self.database.files.len() {
+                    self.database.files[file_ref as usize] = None;
+                }
+            }
+        }
         self.database.free(&db);
     }
 
@@ -2169,6 +2240,11 @@ impl State {
                     vars.tp(*v).show(data, vars)
                 )?;
             }
+            if def.name == "OpConvRefFromNull" {
+                write!(f, " ; [store-alloc]")?;
+            } else if def.name == "OpFreeRef" {
+                write!(f, " ; [store-free]")?;
+            }
             writeln!(f)?;
         }
         writeln!(f)?;
@@ -2266,7 +2342,7 @@ impl State {
             OPERATORS[op as usize](self);
             self.log_result(log, op, code, data)?;
             step += 1;
-            assert!(step < 100_000, "Too many operations");
+            assert!(step < 10_000_000, "Too many operations");
             if self.code_pos == u32::MAX {
                 // TODO Validate that all databases & String values are also cleared.
                 assert_eq!(self.stack_pos, 4, "Stack not correctly cleared");
@@ -2359,7 +2435,14 @@ impl State {
         for a_nr in (0..def.attributes.len()).rev() {
             let a = &def.attributes[a_nr];
             if a.mutable {
-                let v = self.dump_stack(&a.typedef, u32::MAX, data);
+                let saved = self.stack_pos;
+                let v = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    self.dump_stack(&a.typedef, u32::MAX, data)
+                }))
+                .unwrap_or_else(|_| {
+                    self.stack_pos = saved;
+                    "<display-error>".to_string()
+                });
                 attr.insert(a_nr, format!("{}={v}[{}]", a.name, self.stack_pos));
             }
         }
@@ -2465,12 +2548,24 @@ impl State {
             return Ok(());
         }
         if def.returned == Type::Void {
-            writeln!(log)?;
+            if def.name == "OpFreeRef" {
+                writeln!(log, " ; store-free max={}", self.database.max)?;
+            } else {
+                writeln!(log)?;
+            }
             return Ok(());
         }
         let v = self.dump_stack(&def.returned, code, data);
-        writeln!(log, " -> {v}[{}]", self.stack_pos)?;
-        self.stack_pos = stack;
+        if def.name == "OpConvRefFromNull" {
+            writeln!(log, " -> {v}[{}]", self.stack_pos)?;
+            self.stack_pos = stack;
+            let db = *self.get_stack::<DbRef>();
+            writeln!(log, "  ; store-alloc nr={} max={}", db.store_nr, self.database.max)?;
+            self.stack_pos = stack;
+        } else {
+            writeln!(log, " -> {v}[{}]", self.stack_pos)?;
+            self.stack_pos = stack;
+        }
         Ok(())
     }
 

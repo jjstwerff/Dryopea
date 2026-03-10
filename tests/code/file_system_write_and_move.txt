@@ -1,0 +1,3645 @@
+pub fn test() {
+    test_value = {delete("test_fs_wm_dst.txt");
+f = file("test_fs_wm_src.txt");
+f.write("data");
+ok = move("test_fs_wm_src.txt", "test_fs_wm_dst.txt");
+delete("test_fs_wm_dst.txt");
+if ok { 1 } else { 0 }};
+    assert(
+        test_value == 1,
+        "Test failed {test_value} != 1"
+    );
+}
+fn n_test() {#block(1):void
+  __ref_1(1):ref(File) = null;
+  __work_1(1):text = "";
+  [2] test_value(1):integer = {#block(2):integer
+    drop n_delete("test_fs_wm_dst.txt");
+    [3] f(2):ref(File)["__ref_1"] = n_file("test_fs_wm_src.txt", __ref_1(1));
+    [4] t_4File_write(f(2), "data");
+    [5] ok(2):boolean = n_move("test_fs_wm_src.txt", "test_fs_wm_dst.txt");
+    [6] drop n_delete("test_fs_wm_dst.txt");
+    [7] if ok(2) {#block(3):integer
+      1i32;
+    }#block(3):integer else {#block(4):integer
+      0i32;
+    }#block(4):integer;
+  }#block(2):integer;
+  [8] if OpEqInt(test_value(1), 1i32) null else OpPanic({#Formatted string(5):text["__work_1"]
+    __work_1(1):text = "Test failed ";
+    OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 1");
+    __work_1(1);
+  }#Formatted string(5):text["__work_1"]);
+  OpFreeRef(__ref_1(1));
+  OpFreeText(__work_1(1));
+}#block(1):void
+
+byte-code for write_and_move:n_test()
+   0[0]: return-address
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(File)
+   1[16]: Text() var=__work_1[16]:text
+   2[40]: [2] ConstText(_value="test_fs_wm_dst.txt") -> text var=test_value[40]:integer
+  22[56]: Call(size=0, fn=n_delete)
+  29[41]: FreeStack(value=0, discard=1)
+  33[40]: [3] ConstText(_value="test_fs_wm_src.txt") -> text var=f[40]:ref(File)["__ref_1"]
+  53[56]: VarRef(var[4]) -> ref(reference) type=File 14 var=__ref_1[4]:ref(File)
+  56[68]: Call(size=0, fn=n_file)
+  63[52]: [4] VarRef(var[40]) -> ref(reference) type=File 14 var=f[40]:ref(File)["__ref_1"]
+  66[64]: ConstText(_value="data") -> text
+  72[80]: StaticCall(t_4File_write)
+  75[52]: [5] ConstText(_value="test_fs_wm_src.txt") -> text var=ok[52]:boolean
+  95[68]: ConstText(_value="test_fs_wm_dst.txt") -> text
+ 115[84]: Call(size=0, fn=n_move)
+ 122[53]: [6] ConstText(_value="test_fs_wm_dst.txt") -> text
+ 142[69]: Call(size=0, fn=n_delete)
+ 149[54]: FreeStack(value=0, discard=1)
+ 153[53]: [7] VarBool(var[52]) -> boolean var=ok[52]:boolean
+ 156[54]: GotoFalseWord(jump=167, if_false: boolean)
+ 159[53]: ConstInt(val=1) -> integer
+ 164[57]: GotoWord(jump=172)
+ 167[53]: ConstInt(val=0) -> integer
+ 172[57]: FreeStack(value=4, discard=17)
+ 176[44]: [8] VarInt(var[40]) -> integer var=test_value[40]:integer
+ 179[48]: ConstInt(val=1) -> integer
+ 184[52]: EqInt(v1: integer, v2: integer) -> boolean
+ 185[45]: GotoFalseWord(jump=191, if_false: boolean)
+ 188[44]: GotoWord(jump=241)
+ 191[44]: ClearText(var[16]) var=__work_1[16]:text
+ 194[44]: ConstText(_value="Test failed ") -> text
+ 208[60]: AppendText(var[16], v1: text)
+ 211[44]: VarInt(var[40]) -> integer var=test_value[40]:integer
+ 214[48]: ConvLongFromInt(v1: integer) -> long
+ 215[52]: ConstInt(val=0) -> integer
+ 220[56]: FormatLong(var[16], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 227[44]: ConstText(_value=" != 1") -> text
+ 234[60]: AppendText(var[16], v1: text)
+ 237[44]: VarText(var[16]) -> text var=__work_1[16]:text
+ 240[60]: Panic(message: text)
+ 241[44]: VarRef(var[4]) -> ref(reference) type=File 14 var=__ref_1[4]:ref(File)
+ 244[56]: FreeRef(v1: ref(reference))
+ 245[44]: FreeText(var[16])
+ 248[44]: Return(ret=0, value=0, discard=44)
+
+Execute test:
+    0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+    1:[20] [2] Text()
+    2:[44] ConstText(_value="test_fs_wm_dst.txt") -> "test_fs_wm_dst.txt"[44]
+   22:[60] Call(size=0, fn=n_delete)
+ 1357:[64] ArgText(var[44]) -> "test_fs_wm_dst.txt"[64]
+ 1360:[80] Call(size=0, fn=n_exists)
+ 1325:[84] [175] ConvRefFromNull() -> ref(2,0,8)[84]
+ 1326:[96] ArgText(var[64]) -> "test_fs_wm_dst.txt"[96]
+ 1329:[112] VarRef(var[84]) -> ref(2,0,8)=null[112]
+ 1332:[124] Call(size=0, fn=n_file)
+ 1210:[128] Database(var[112], db_tp=14)
+ 1215:[128] VarRef(var[112]) -> ref(2,1,8)={}[128]
+ 1218:[140] ArgText(var[96]) -> "test_fs_wm_dst.txt"[140]
+ 1221:[156] SetText(v1=ref(2,1,8)[128], fld=24, val="test_fs_wm_dst.txt"[140])
+ 1224:[128] VarRef(var[112]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt"}[128]
+ 1227:[140] ConvIntFromNull() -> -2147483648[140]
+ 1228:[144] SetInt(v1=ref(2,1,8)[128], fld=28, val=-2147483648[140])
+ 1231:[128] VarRef(var[112]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt"}[128]
+ 1234:[140] ConstLong(val=0) -> 0[140]
+ 1243:[148] SetLong(v1=ref(2,1,8)[128], fld=0, val=0[140])
+ 1246:[128] VarRef(var[112]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0}[128]
+ 1249:[140] ConstEnum(val=0) -> null(0)[140]
+ 1251:[141] SetEnum(v1=ref(2,1,8)[128], fld=32, val=0[140])
+ 1254:[128] VarRef(var[112]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0}[128]
+ 1257:[140] ConstLong(val=0) -> 0[140]
+ 1266:[148] SetLong(v1=ref(2,1,8)[128], fld=8, val=0[140])
+ 1269:[128] VarRef(var[112]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0}[128]
+ 1272:[140] ConstLong(val=0) -> 0[140]
+ 1281:[148] SetLong(v1=ref(2,1,8)[128], fld=16, val=0[140])
+ 1284:[128] ArgText(var[96]) -> "test_fs_wm_dst.txt"[128]
+ 1287:[144] Call(size=0, fn=n_valid_path)
+  899:[148] ConstInt(val=0) -> 0[148]
+  904:[152] ConstInt(val=0) -> 0[152]
+  909:[156] ConstInt(val=0) -> 0[156]
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 0[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=0[176]) -> 't'[160]
+  921:[164] VarInt(var[156]) -> 0[164]
+  924:[168] VarCharacter(var[160]) -> 't'[168]
+  927:[172] LengthCharacter(v1='t'[168]) -> 1[168]
+  928:[172] AddInt(v1=0[164], v2=1[168]) -> 1[164]
+  929:[168] PutInt(var[156], value=1[164])
+  932:[164] VarCharacter(var[160]) -> 't'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 't'[164]
+  942:[168] ConvBoolFromCharacter(v1='t'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 't'[164]
+  957:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=116[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 't'[164]
+  975:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=116[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 1[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=1[176]) -> 'e'[160]
+  921:[164] VarInt(var[156]) -> 1[164]
+  924:[168] VarCharacter(var[160]) -> 'e'[168]
+  927:[172] LengthCharacter(v1='e'[168]) -> 1[168]
+  928:[172] AddInt(v1=1[164], v2=1[168]) -> 2[164]
+  929:[168] PutInt(var[156], value=2[164])
+  932:[164] VarCharacter(var[160]) -> 'e'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 'e'[164]
+  942:[168] ConvBoolFromCharacter(v1='e'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 'e'[164]
+  957:[168] ConvIntFromCharacter(v1='e'[164]) -> 101[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=101[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 'e'[164]
+  975:[168] ConvIntFromCharacter(v1='e'[164]) -> 101[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=101[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 2[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=2[176]) -> 's'[160]
+  921:[164] VarInt(var[156]) -> 2[164]
+  924:[168] VarCharacter(var[160]) -> 's'[168]
+  927:[172] LengthCharacter(v1='s'[168]) -> 1[168]
+  928:[172] AddInt(v1=2[164], v2=1[168]) -> 3[164]
+  929:[168] PutInt(var[156], value=3[164])
+  932:[164] VarCharacter(var[160]) -> 's'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 's'[164]
+  942:[168] ConvBoolFromCharacter(v1='s'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 's'[164]
+  957:[168] ConvIntFromCharacter(v1='s'[164]) -> 115[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=115[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 's'[164]
+  975:[168] ConvIntFromCharacter(v1='s'[164]) -> 115[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=115[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 3[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=3[176]) -> 't'[160]
+  921:[164] VarInt(var[156]) -> 3[164]
+  924:[168] VarCharacter(var[160]) -> 't'[168]
+  927:[172] LengthCharacter(v1='t'[168]) -> 1[168]
+  928:[172] AddInt(v1=3[164], v2=1[168]) -> 4[164]
+  929:[168] PutInt(var[156], value=4[164])
+  932:[164] VarCharacter(var[160]) -> 't'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 't'[164]
+  942:[168] ConvBoolFromCharacter(v1='t'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 't'[164]
+  957:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=116[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 't'[164]
+  975:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=116[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 4[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=4[176]) -> '_'[160]
+  921:[164] VarInt(var[156]) -> 4[164]
+  924:[168] VarCharacter(var[160]) -> '_'[168]
+  927:[172] LengthCharacter(v1='_'[168]) -> 1[168]
+  928:[172] AddInt(v1=4[164], v2=1[168]) -> 5[164]
+  929:[168] PutInt(var[156], value=5[164])
+  932:[164] VarCharacter(var[160]) -> '_'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> '_'[164]
+  942:[168] ConvBoolFromCharacter(v1='_'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> '_'[164]
+  957:[168] ConvIntFromCharacter(v1='_'[164]) -> 95[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=95[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> '_'[164]
+  975:[168] ConvIntFromCharacter(v1='_'[164]) -> 95[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=95[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 5[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=5[176]) -> 'f'[160]
+  921:[164] VarInt(var[156]) -> 5[164]
+  924:[168] VarCharacter(var[160]) -> 'f'[168]
+  927:[172] LengthCharacter(v1='f'[168]) -> 1[168]
+  928:[172] AddInt(v1=5[164], v2=1[168]) -> 6[164]
+  929:[168] PutInt(var[156], value=6[164])
+  932:[164] VarCharacter(var[160]) -> 'f'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 'f'[164]
+  942:[168] ConvBoolFromCharacter(v1='f'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 'f'[164]
+  957:[168] ConvIntFromCharacter(v1='f'[164]) -> 102[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=102[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 'f'[164]
+  975:[168] ConvIntFromCharacter(v1='f'[164]) -> 102[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=102[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 6[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=6[176]) -> 's'[160]
+  921:[164] VarInt(var[156]) -> 6[164]
+  924:[168] VarCharacter(var[160]) -> 's'[168]
+  927:[172] LengthCharacter(v1='s'[168]) -> 1[168]
+  928:[172] AddInt(v1=6[164], v2=1[168]) -> 7[164]
+  929:[168] PutInt(var[156], value=7[164])
+  932:[164] VarCharacter(var[160]) -> 's'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 's'[164]
+  942:[168] ConvBoolFromCharacter(v1='s'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 's'[164]
+  957:[168] ConvIntFromCharacter(v1='s'[164]) -> 115[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=115[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 's'[164]
+  975:[168] ConvIntFromCharacter(v1='s'[164]) -> 115[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=115[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 7[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=7[176]) -> '_'[160]
+  921:[164] VarInt(var[156]) -> 7[164]
+  924:[168] VarCharacter(var[160]) -> '_'[168]
+  927:[172] LengthCharacter(v1='_'[168]) -> 1[168]
+  928:[172] AddInt(v1=7[164], v2=1[168]) -> 8[164]
+  929:[168] PutInt(var[156], value=8[164])
+  932:[164] VarCharacter(var[160]) -> '_'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> '_'[164]
+  942:[168] ConvBoolFromCharacter(v1='_'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> '_'[164]
+  957:[168] ConvIntFromCharacter(v1='_'[164]) -> 95[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=95[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> '_'[164]
+  975:[168] ConvIntFromCharacter(v1='_'[164]) -> 95[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=95[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 8[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=8[176]) -> 'w'[160]
+  921:[164] VarInt(var[156]) -> 8[164]
+  924:[168] VarCharacter(var[160]) -> 'w'[168]
+  927:[172] LengthCharacter(v1='w'[168]) -> 1[168]
+  928:[172] AddInt(v1=8[164], v2=1[168]) -> 9[164]
+  929:[168] PutInt(var[156], value=9[164])
+  932:[164] VarCharacter(var[160]) -> 'w'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 'w'[164]
+  942:[168] ConvBoolFromCharacter(v1='w'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 'w'[164]
+  957:[168] ConvIntFromCharacter(v1='w'[164]) -> 119[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=119[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 'w'[164]
+  975:[168] ConvIntFromCharacter(v1='w'[164]) -> 119[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=119[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 9[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=9[176]) -> 'm'[160]
+  921:[164] VarInt(var[156]) -> 9[164]
+  924:[168] VarCharacter(var[160]) -> 'm'[168]
+  927:[172] LengthCharacter(v1='m'[168]) -> 1[168]
+  928:[172] AddInt(v1=9[164], v2=1[168]) -> 10[164]
+  929:[168] PutInt(var[156], value=10[164])
+  932:[164] VarCharacter(var[160]) -> 'm'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 'm'[164]
+  942:[168] ConvBoolFromCharacter(v1='m'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 'm'[164]
+  957:[168] ConvIntFromCharacter(v1='m'[164]) -> 109[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=109[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 'm'[164]
+  975:[168] ConvIntFromCharacter(v1='m'[164]) -> 109[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=109[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 10[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=10[176]) -> '_'[160]
+  921:[164] VarInt(var[156]) -> 10[164]
+  924:[168] VarCharacter(var[160]) -> '_'[168]
+  927:[172] LengthCharacter(v1='_'[168]) -> 1[168]
+  928:[172] AddInt(v1=10[164], v2=1[168]) -> 11[164]
+  929:[168] PutInt(var[156], value=11[164])
+  932:[164] VarCharacter(var[160]) -> '_'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> '_'[164]
+  942:[168] ConvBoolFromCharacter(v1='_'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> '_'[164]
+  957:[168] ConvIntFromCharacter(v1='_'[164]) -> 95[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=95[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> '_'[164]
+  975:[168] ConvIntFromCharacter(v1='_'[164]) -> 95[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=95[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 11[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=11[176]) -> 'd'[160]
+  921:[164] VarInt(var[156]) -> 11[164]
+  924:[168] VarCharacter(var[160]) -> 'd'[168]
+  927:[172] LengthCharacter(v1='d'[168]) -> 1[168]
+  928:[172] AddInt(v1=11[164], v2=1[168]) -> 12[164]
+  929:[168] PutInt(var[156], value=12[164])
+  932:[164] VarCharacter(var[160]) -> 'd'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 'd'[164]
+  942:[168] ConvBoolFromCharacter(v1='d'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 'd'[164]
+  957:[168] ConvIntFromCharacter(v1='d'[164]) -> 100[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=100[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 'd'[164]
+  975:[168] ConvIntFromCharacter(v1='d'[164]) -> 100[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=100[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 12[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=12[176]) -> 's'[160]
+  921:[164] VarInt(var[156]) -> 12[164]
+  924:[168] VarCharacter(var[160]) -> 's'[168]
+  927:[172] LengthCharacter(v1='s'[168]) -> 1[168]
+  928:[172] AddInt(v1=12[164], v2=1[168]) -> 13[164]
+  929:[168] PutInt(var[156], value=13[164])
+  932:[164] VarCharacter(var[160]) -> 's'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 's'[164]
+  942:[168] ConvBoolFromCharacter(v1='s'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 's'[164]
+  957:[168] ConvIntFromCharacter(v1='s'[164]) -> 115[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=115[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 's'[164]
+  975:[168] ConvIntFromCharacter(v1='s'[164]) -> 115[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=115[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 13[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=13[176]) -> 't'[160]
+  921:[164] VarInt(var[156]) -> 13[164]
+  924:[168] VarCharacter(var[160]) -> 't'[168]
+  927:[172] LengthCharacter(v1='t'[168]) -> 1[168]
+  928:[172] AddInt(v1=13[164], v2=1[168]) -> 14[164]
+  929:[168] PutInt(var[156], value=14[164])
+  932:[164] VarCharacter(var[160]) -> 't'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 't'[164]
+  942:[168] ConvBoolFromCharacter(v1='t'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 't'[164]
+  957:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=116[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 't'[164]
+  975:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=116[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 14[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=14[176]) -> '.'[160]
+  921:[164] VarInt(var[156]) -> 14[164]
+  924:[168] VarCharacter(var[160]) -> '.'[168]
+  927:[172] LengthCharacter(v1='.'[168]) -> 1[168]
+  928:[172] AddInt(v1=14[164], v2=1[168]) -> 15[164]
+  929:[168] PutInt(var[156], value=15[164])
+  932:[164] VarCharacter(var[160]) -> '.'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> '.'[164]
+  942:[168] ConvBoolFromCharacter(v1='.'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> '.'[164]
+  957:[168] ConvIntFromCharacter(v1='.'[164]) -> 46[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=46[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> '.'[164]
+  975:[168] ConvIntFromCharacter(v1='.'[164]) -> 46[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=46[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 15[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=15[176]) -> 't'[160]
+  921:[164] VarInt(var[156]) -> 15[164]
+  924:[168] VarCharacter(var[160]) -> 't'[168]
+  927:[172] LengthCharacter(v1='t'[168]) -> 1[168]
+  928:[172] AddInt(v1=15[164], v2=1[168]) -> 16[164]
+  929:[168] PutInt(var[156], value=16[164])
+  932:[164] VarCharacter(var[160]) -> 't'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 't'[164]
+  942:[168] ConvBoolFromCharacter(v1='t'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 't'[164]
+  957:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=116[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 't'[164]
+  975:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=116[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 16[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=16[176]) -> 'x'[160]
+  921:[164] VarInt(var[156]) -> 16[164]
+  924:[168] VarCharacter(var[160]) -> 'x'[168]
+  927:[172] LengthCharacter(v1='x'[168]) -> 1[168]
+  928:[172] AddInt(v1=16[164], v2=1[168]) -> 17[164]
+  929:[168] PutInt(var[156], value=17[164])
+  932:[164] VarCharacter(var[160]) -> 'x'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 'x'[164]
+  942:[168] ConvBoolFromCharacter(v1='x'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 'x'[164]
+  957:[168] ConvIntFromCharacter(v1='x'[164]) -> 120[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=120[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 'x'[164]
+  975:[168] ConvIntFromCharacter(v1='x'[164]) -> 120[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=120[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 17[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=17[176]) -> 't'[160]
+  921:[164] VarInt(var[156]) -> 17[164]
+  924:[168] VarCharacter(var[160]) -> 't'[168]
+  927:[172] LengthCharacter(v1='t'[168]) -> 1[168]
+  928:[172] AddInt(v1=17[164], v2=1[168]) -> 18[164]
+  929:[168] PutInt(var[156], value=18[164])
+  932:[164] VarCharacter(var[160]) -> 't'[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> 't'[164]
+  942:[168] ConvBoolFromCharacter(v1='t'[164]) -> true[164]
+  943:[165] Not(v1=true[164]) -> false[164]
+  944:[165] GotoFalseWord(jump=954, if_false=false[164])
+  954:[164] VarCharacter(var[160]) -> 't'[164]
+  957:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  958:[168] ConstInt(val=47) -> 47[168]
+  963:[172] ConvIntFromCharacter(v1='/'[168]) -> 47[168]
+  964:[172] EqInt(v1=116[164], v2=47[168]) -> false[164]
+  965:[165] GotoFalseWord(jump=972, if_false=false[164])
+  972:[164] VarCharacter(var[160]) -> 't'[164]
+  975:[168] ConvIntFromCharacter(v1='t'[164]) -> 116[164]
+  976:[168] ConstInt(val=92) -> 92[168]
+  981:[172] ConvIntFromCharacter(v1='\'[168]) -> 92[168]
+  982:[172] EqInt(v1=116[164], v2=92[168]) -> false[164]
+  983:[165] GotoFalseWord(jump=1116, if_false=false[164])
+ 1116:[164] FreeStack(value=0, discard=4)
+ 1120:[160] GotoWord(jump=914)
+  914:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+  917:[176] VarInt(var[156]) -> 18[176]
+  920:[180] TextCharacter(v1="test_fs_wm_dst.txt"[160], v2=18[176]) -> null[160]
+  921:[164] VarInt(var[156]) -> 18[164]
+  924:[168] VarCharacter(var[160]) -> null[168]
+  927:[172] LengthCharacter(v1=null[168]) -> 0[168]
+  928:[172] AddInt(v1=18[164], v2=0[168]) -> 18[164]
+  929:[168] PutInt(var[156], value=18[164])
+  932:[164] VarCharacter(var[160]) -> null[164]
+  935:[168] FreeStack(value=4, discard=8)
+  939:[164] VarCharacter(var[160]) -> null[164]
+  942:[168] ConvBoolFromCharacter(v1=null[164]) -> false[164]
+  943:[165] Not(v1=false[164]) -> true[164]
+  944:[165] GotoFalseWord(jump=954, if_false=true[164])
+  947:[164] FreeStack(value=0, discard=4)
+  951:[160] GotoWord(jump=1123)
+ 1123:[160] FreeStack(value=0, discard=4)
+ 1127:[156] VarInt(var[152]) -> 0[156]
+ 1130:[160] ArgText(var[128]) -> "test_fs_wm_dst.txt"[160]
+ 1133:[176] Call(size=0, fn=t_4text_len)
+  318:[180] ArgText(var[160]) -> "test_fs_wm_dst.txt"[180]
+  321:[196] LengthText(v1="test_fs_wm_dst.txt"[180]) -> 18[180]
+  322:[184] Return(ret=1140[176], value=4, discard=24) -> 18[160]
+ 1140:[164] LtInt(v1=0[156], v2=18[160]) -> true[156]
+ 1141:[157] GotoFalseWord(jump=1195, if_false=true[156])
+ 1144:[156] Text()
+ 1145:[180] ArgText(var[128]) -> "test_fs_wm_dst.txt"[180]
+ 1148:[196] VarInt(var[152]) -> 0[196]
+ 1151:[200] ArgText(var[128]) -> "test_fs_wm_dst.txt"[200]
+ 1154:[216] Call(size=0, fn=t_4text_len)
+  318:[220] ArgText(var[200]) -> "test_fs_wm_dst.txt"[220]
+  321:[236] LengthText(v1="test_fs_wm_dst.txt"[220]) -> 18[220]
+  322:[224] Return(ret=1161[216], value=4, discard=24) -> 18[200]
+ 1161:[204] GetTextSub(v1="test_fs_wm_dst.txt"[180], from=0[196], till=18[200]) -> "test_fs_wm_dst.txt"[180]
+ 1162:[196] AppendText(var[156], v1="test_fs_wm_dst.txt"[180])
+ 1165:[180] VarText(var[156]) -> "test_fs_wm_dst.txt"[180]
+ 1168:[196] ConstText(_value="..") -> ".."[196]
+ 1172:[212] EqText(v1="test_fs_wm_dst.txt"[180], v2=".."[196]) -> false[180]
+ 1173:[181] GotoFalseWord(jump=1188, if_false=false[180])
+ 1188:[180] FreeText(var[156])
+ 1191:[180] FreeStack(value=0, discard=24)
+ 1195:[156] ConstInt(val=0) -> 0[156]
+ 1200:[160] VarInt(var[148]) -> 0[160]
+ 1203:[164] LeInt(v1=0[156], v2=0[160]) -> true[156]
+ 1204:[157] Return(ret=1294[144], value=1, discard=29) -> true[128]
+ 1294:[129] GotoFalseWord(jump=1308, if_false=true[128])
+ 1297:[128] VarRef(var[112]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0,next:0}[128]
+ 1300:[140] GetFile(file=ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0,next:0}[128]) -> false[128]
+ 1301:[129] FreeStack(value=0, discard=1)
+ 1305:[128] GotoWord(jump=1316)
+ 1316:[128] VarRef(var[112]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,format:NotExists}[128]
+ 1319:[140] Return(ret=1339[124], value=12, discard=44) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,format:NotExists}[96]
+ 1339:[108] GetEnum(v1=ref(2,1,8)[96], fld=32) -> null(5)[96]
+ 1342:[97] ConvIntFromEnum(v1=5[96]) -> 5[96]
+ 1343:[100] ConstEnum(val=5) -> NotExists(5)[100]
+ 1345:[101] ConvIntFromEnum(v1=5[100]) -> 5[100]
+ 1346:[104] NeInt(v1=5[96], v2=5[100]) -> false[96]
+ 1347:[97] VarRef(var[84]) -> ref(2,0,8)=null[97]
+ 1350:[109] FreeRef(v1=ref(2,0,8)[97])
+ 1351:[97] Return(ret=1367[80], value=1, discard=33) -> false[64]
+ 1367:[65] GotoFalseWord(jump=1377, if_false=false[64])
+ 1377:[64] ConstFalse() -> false[64]
+ 1378:[65] Return(ret=1786[60], value=1, discard=21) -> false[44]
+   29:[45] FreeStack(value=0, discard=1)
+   33:[44] ConstText(_value="test_fs_wm_src.txt") -> "test_fs_wm_src.txt"[44]
+   53:[60] VarRef(var[8]) -> ref(1,0,8)=null[60]
+   56:[72] Call(size=0, fn=n_file)
+ 1210:[76] Database(var[60], db_tp=14)
+ 1215:[76] VarRef(var[60]) -> ref(1,1,8)={}[76]
+ 1218:[88] ArgText(var[44]) -> "test_fs_wm_src.txt"[88]
+ 1221:[104] SetText(v1=ref(1,1,8)[76], fld=24, val="test_fs_wm_src.txt"[88])
+ 1224:[76] VarRef(var[60]) -> ref(1,1,8)={path:"test_fs_wm_src.txt"}[76]
+ 1227:[88] ConvIntFromNull() -> -2147483648[88]
+ 1228:[92] SetInt(v1=ref(1,1,8)[76], fld=28, val=-2147483648[88])
+ 1231:[76] VarRef(var[60]) -> ref(1,1,8)={path:"test_fs_wm_src.txt"}[76]
+ 1234:[88] ConstLong(val=0) -> 0[88]
+ 1243:[96] SetLong(v1=ref(1,1,8)[76], fld=0, val=0[88])
+ 1246:[76] VarRef(var[60]) -> ref(1,1,8)={path:"test_fs_wm_src.txt",size:0}[76]
+ 1249:[88] ConstEnum(val=0) -> null(0)[88]
+ 1251:[89] SetEnum(v1=ref(1,1,8)[76], fld=32, val=0[88])
+ 1254:[76] VarRef(var[60]) -> ref(1,1,8)={path:"test_fs_wm_src.txt",size:0}[76]
+ 1257:[88] ConstLong(val=0) -> 0[88]
+ 1266:[96] SetLong(v1=ref(1,1,8)[76], fld=8, val=0[88])
+ 1269:[76] VarRef(var[60]) -> ref(1,1,8)={path:"test_fs_wm_src.txt",size:0,current:0}[76]
+ 1272:[88] ConstLong(val=0) -> 0[88]
+ 1281:[96] SetLong(v1=ref(1,1,8)[76], fld=16, val=0[88])
+ 1284:[76] ArgText(var[44]) -> "test_fs_wm_src.txt"[76]
+ 1287:[92] Call(size=0, fn=n_valid_path)
+  899:[96] ConstInt(val=0) -> 0[96]
+  904:[100] ConstInt(val=0) -> 0[100]
+  909:[104] ConstInt(val=0) -> 0[104]
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 0[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=0[124]) -> 't'[108]
+  921:[112] VarInt(var[104]) -> 0[112]
+  924:[116] VarCharacter(var[108]) -> 't'[116]
+  927:[120] LengthCharacter(v1='t'[116]) -> 1[116]
+  928:[120] AddInt(v1=0[112], v2=1[116]) -> 1[112]
+  929:[116] PutInt(var[104], value=1[112])
+  932:[112] VarCharacter(var[108]) -> 't'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 't'[112]
+  942:[116] ConvBoolFromCharacter(v1='t'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 't'[112]
+  957:[116] ConvIntFromCharacter(v1='t'[112]) -> 116[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=116[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 't'[112]
+  975:[116] ConvIntFromCharacter(v1='t'[112]) -> 116[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=116[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 1[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=1[124]) -> 'e'[108]
+  921:[112] VarInt(var[104]) -> 1[112]
+  924:[116] VarCharacter(var[108]) -> 'e'[116]
+  927:[120] LengthCharacter(v1='e'[116]) -> 1[116]
+  928:[120] AddInt(v1=1[112], v2=1[116]) -> 2[112]
+  929:[116] PutInt(var[104], value=2[112])
+  932:[112] VarCharacter(var[108]) -> 'e'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 'e'[112]
+  942:[116] ConvBoolFromCharacter(v1='e'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 'e'[112]
+  957:[116] ConvIntFromCharacter(v1='e'[112]) -> 101[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=101[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 'e'[112]
+  975:[116] ConvIntFromCharacter(v1='e'[112]) -> 101[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=101[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 2[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=2[124]) -> 's'[108]
+  921:[112] VarInt(var[104]) -> 2[112]
+  924:[116] VarCharacter(var[108]) -> 's'[116]
+  927:[120] LengthCharacter(v1='s'[116]) -> 1[116]
+  928:[120] AddInt(v1=2[112], v2=1[116]) -> 3[112]
+  929:[116] PutInt(var[104], value=3[112])
+  932:[112] VarCharacter(var[108]) -> 's'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 's'[112]
+  942:[116] ConvBoolFromCharacter(v1='s'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 's'[112]
+  957:[116] ConvIntFromCharacter(v1='s'[112]) -> 115[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=115[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 's'[112]
+  975:[116] ConvIntFromCharacter(v1='s'[112]) -> 115[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=115[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 3[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=3[124]) -> 't'[108]
+  921:[112] VarInt(var[104]) -> 3[112]
+  924:[116] VarCharacter(var[108]) -> 't'[116]
+  927:[120] LengthCharacter(v1='t'[116]) -> 1[116]
+  928:[120] AddInt(v1=3[112], v2=1[116]) -> 4[112]
+  929:[116] PutInt(var[104], value=4[112])
+  932:[112] VarCharacter(var[108]) -> 't'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 't'[112]
+  942:[116] ConvBoolFromCharacter(v1='t'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 't'[112]
+  957:[116] ConvIntFromCharacter(v1='t'[112]) -> 116[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=116[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 't'[112]
+  975:[116] ConvIntFromCharacter(v1='t'[112]) -> 116[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=116[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 4[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=4[124]) -> '_'[108]
+  921:[112] VarInt(var[104]) -> 4[112]
+  924:[116] VarCharacter(var[108]) -> '_'[116]
+  927:[120] LengthCharacter(v1='_'[116]) -> 1[116]
+  928:[120] AddInt(v1=4[112], v2=1[116]) -> 5[112]
+  929:[116] PutInt(var[104], value=5[112])
+  932:[112] VarCharacter(var[108]) -> '_'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> '_'[112]
+  942:[116] ConvBoolFromCharacter(v1='_'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> '_'[112]
+  957:[116] ConvIntFromCharacter(v1='_'[112]) -> 95[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=95[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> '_'[112]
+  975:[116] ConvIntFromCharacter(v1='_'[112]) -> 95[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=95[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 5[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=5[124]) -> 'f'[108]
+  921:[112] VarInt(var[104]) -> 5[112]
+  924:[116] VarCharacter(var[108]) -> 'f'[116]
+  927:[120] LengthCharacter(v1='f'[116]) -> 1[116]
+  928:[120] AddInt(v1=5[112], v2=1[116]) -> 6[112]
+  929:[116] PutInt(var[104], value=6[112])
+  932:[112] VarCharacter(var[108]) -> 'f'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 'f'[112]
+  942:[116] ConvBoolFromCharacter(v1='f'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 'f'[112]
+  957:[116] ConvIntFromCharacter(v1='f'[112]) -> 102[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=102[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 'f'[112]
+  975:[116] ConvIntFromCharacter(v1='f'[112]) -> 102[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=102[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 6[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=6[124]) -> 's'[108]
+  921:[112] VarInt(var[104]) -> 6[112]
+  924:[116] VarCharacter(var[108]) -> 's'[116]
+  927:[120] LengthCharacter(v1='s'[116]) -> 1[116]
+  928:[120] AddInt(v1=6[112], v2=1[116]) -> 7[112]
+  929:[116] PutInt(var[104], value=7[112])
+  932:[112] VarCharacter(var[108]) -> 's'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 's'[112]
+  942:[116] ConvBoolFromCharacter(v1='s'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 's'[112]
+  957:[116] ConvIntFromCharacter(v1='s'[112]) -> 115[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=115[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 's'[112]
+  975:[116] ConvIntFromCharacter(v1='s'[112]) -> 115[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=115[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 7[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=7[124]) -> '_'[108]
+  921:[112] VarInt(var[104]) -> 7[112]
+  924:[116] VarCharacter(var[108]) -> '_'[116]
+  927:[120] LengthCharacter(v1='_'[116]) -> 1[116]
+  928:[120] AddInt(v1=7[112], v2=1[116]) -> 8[112]
+  929:[116] PutInt(var[104], value=8[112])
+  932:[112] VarCharacter(var[108]) -> '_'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> '_'[112]
+  942:[116] ConvBoolFromCharacter(v1='_'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> '_'[112]
+  957:[116] ConvIntFromCharacter(v1='_'[112]) -> 95[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=95[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> '_'[112]
+  975:[116] ConvIntFromCharacter(v1='_'[112]) -> 95[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=95[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 8[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=8[124]) -> 'w'[108]
+  921:[112] VarInt(var[104]) -> 8[112]
+  924:[116] VarCharacter(var[108]) -> 'w'[116]
+  927:[120] LengthCharacter(v1='w'[116]) -> 1[116]
+  928:[120] AddInt(v1=8[112], v2=1[116]) -> 9[112]
+  929:[116] PutInt(var[104], value=9[112])
+  932:[112] VarCharacter(var[108]) -> 'w'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 'w'[112]
+  942:[116] ConvBoolFromCharacter(v1='w'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 'w'[112]
+  957:[116] ConvIntFromCharacter(v1='w'[112]) -> 119[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=119[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 'w'[112]
+  975:[116] ConvIntFromCharacter(v1='w'[112]) -> 119[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=119[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 9[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=9[124]) -> 'm'[108]
+  921:[112] VarInt(var[104]) -> 9[112]
+  924:[116] VarCharacter(var[108]) -> 'm'[116]
+  927:[120] LengthCharacter(v1='m'[116]) -> 1[116]
+  928:[120] AddInt(v1=9[112], v2=1[116]) -> 10[112]
+  929:[116] PutInt(var[104], value=10[112])
+  932:[112] VarCharacter(var[108]) -> 'm'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 'm'[112]
+  942:[116] ConvBoolFromCharacter(v1='m'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 'm'[112]
+  957:[116] ConvIntFromCharacter(v1='m'[112]) -> 109[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=109[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 'm'[112]
+  975:[116] ConvIntFromCharacter(v1='m'[112]) -> 109[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=109[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 10[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=10[124]) -> '_'[108]
+  921:[112] VarInt(var[104]) -> 10[112]
+  924:[116] VarCharacter(var[108]) -> '_'[116]
+  927:[120] LengthCharacter(v1='_'[116]) -> 1[116]
+  928:[120] AddInt(v1=10[112], v2=1[116]) -> 11[112]
+  929:[116] PutInt(var[104], value=11[112])
+  932:[112] VarCharacter(var[108]) -> '_'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> '_'[112]
+  942:[116] ConvBoolFromCharacter(v1='_'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> '_'[112]
+  957:[116] ConvIntFromCharacter(v1='_'[112]) -> 95[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=95[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> '_'[112]
+  975:[116] ConvIntFromCharacter(v1='_'[112]) -> 95[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=95[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 11[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=11[124]) -> 's'[108]
+  921:[112] VarInt(var[104]) -> 11[112]
+  924:[116] VarCharacter(var[108]) -> 's'[116]
+  927:[120] LengthCharacter(v1='s'[116]) -> 1[116]
+  928:[120] AddInt(v1=11[112], v2=1[116]) -> 12[112]
+  929:[116] PutInt(var[104], value=12[112])
+  932:[112] VarCharacter(var[108]) -> 's'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 's'[112]
+  942:[116] ConvBoolFromCharacter(v1='s'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 's'[112]
+  957:[116] ConvIntFromCharacter(v1='s'[112]) -> 115[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=115[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 's'[112]
+  975:[116] ConvIntFromCharacter(v1='s'[112]) -> 115[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=115[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 12[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=12[124]) -> 'r'[108]
+  921:[112] VarInt(var[104]) -> 12[112]
+  924:[116] VarCharacter(var[108]) -> 'r'[116]
+  927:[120] LengthCharacter(v1='r'[116]) -> 1[116]
+  928:[120] AddInt(v1=12[112], v2=1[116]) -> 13[112]
+  929:[116] PutInt(var[104], value=13[112])
+  932:[112] VarCharacter(var[108]) -> 'r'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 'r'[112]
+  942:[116] ConvBoolFromCharacter(v1='r'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 'r'[112]
+  957:[116] ConvIntFromCharacter(v1='r'[112]) -> 114[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=114[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 'r'[112]
+  975:[116] ConvIntFromCharacter(v1='r'[112]) -> 114[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=114[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 13[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=13[124]) -> 'c'[108]
+  921:[112] VarInt(var[104]) -> 13[112]
+  924:[116] VarCharacter(var[108]) -> 'c'[116]
+  927:[120] LengthCharacter(v1='c'[116]) -> 1[116]
+  928:[120] AddInt(v1=13[112], v2=1[116]) -> 14[112]
+  929:[116] PutInt(var[104], value=14[112])
+  932:[112] VarCharacter(var[108]) -> 'c'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 'c'[112]
+  942:[116] ConvBoolFromCharacter(v1='c'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 'c'[112]
+  957:[116] ConvIntFromCharacter(v1='c'[112]) -> 99[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=99[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 'c'[112]
+  975:[116] ConvIntFromCharacter(v1='c'[112]) -> 99[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=99[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 14[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=14[124]) -> '.'[108]
+  921:[112] VarInt(var[104]) -> 14[112]
+  924:[116] VarCharacter(var[108]) -> '.'[116]
+  927:[120] LengthCharacter(v1='.'[116]) -> 1[116]
+  928:[120] AddInt(v1=14[112], v2=1[116]) -> 15[112]
+  929:[116] PutInt(var[104], value=15[112])
+  932:[112] VarCharacter(var[108]) -> '.'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> '.'[112]
+  942:[116] ConvBoolFromCharacter(v1='.'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> '.'[112]
+  957:[116] ConvIntFromCharacter(v1='.'[112]) -> 46[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=46[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> '.'[112]
+  975:[116] ConvIntFromCharacter(v1='.'[112]) -> 46[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=46[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 15[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=15[124]) -> 't'[108]
+  921:[112] VarInt(var[104]) -> 15[112]
+  924:[116] VarCharacter(var[108]) -> 't'[116]
+  927:[120] LengthCharacter(v1='t'[116]) -> 1[116]
+  928:[120] AddInt(v1=15[112], v2=1[116]) -> 16[112]
+  929:[116] PutInt(var[104], value=16[112])
+  932:[112] VarCharacter(var[108]) -> 't'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 't'[112]
+  942:[116] ConvBoolFromCharacter(v1='t'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 't'[112]
+  957:[116] ConvIntFromCharacter(v1='t'[112]) -> 116[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=116[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 't'[112]
+  975:[116] ConvIntFromCharacter(v1='t'[112]) -> 116[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=116[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 16[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=16[124]) -> 'x'[108]
+  921:[112] VarInt(var[104]) -> 16[112]
+  924:[116] VarCharacter(var[108]) -> 'x'[116]
+  927:[120] LengthCharacter(v1='x'[116]) -> 1[116]
+  928:[120] AddInt(v1=16[112], v2=1[116]) -> 17[112]
+  929:[116] PutInt(var[104], value=17[112])
+  932:[112] VarCharacter(var[108]) -> 'x'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 'x'[112]
+  942:[116] ConvBoolFromCharacter(v1='x'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 'x'[112]
+  957:[116] ConvIntFromCharacter(v1='x'[112]) -> 120[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=120[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 'x'[112]
+  975:[116] ConvIntFromCharacter(v1='x'[112]) -> 120[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=120[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 17[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=17[124]) -> 't'[108]
+  921:[112] VarInt(var[104]) -> 17[112]
+  924:[116] VarCharacter(var[108]) -> 't'[116]
+  927:[120] LengthCharacter(v1='t'[116]) -> 1[116]
+  928:[120] AddInt(v1=17[112], v2=1[116]) -> 18[112]
+  929:[116] PutInt(var[104], value=18[112])
+  932:[112] VarCharacter(var[108]) -> 't'[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> 't'[112]
+  942:[116] ConvBoolFromCharacter(v1='t'[112]) -> true[112]
+  943:[113] Not(v1=true[112]) -> false[112]
+  944:[113] GotoFalseWord(jump=954, if_false=false[112])
+  954:[112] VarCharacter(var[108]) -> 't'[112]
+  957:[116] ConvIntFromCharacter(v1='t'[112]) -> 116[112]
+  958:[116] ConstInt(val=47) -> 47[116]
+  963:[120] ConvIntFromCharacter(v1='/'[116]) -> 47[116]
+  964:[120] EqInt(v1=116[112], v2=47[116]) -> false[112]
+  965:[113] GotoFalseWord(jump=972, if_false=false[112])
+  972:[112] VarCharacter(var[108]) -> 't'[112]
+  975:[116] ConvIntFromCharacter(v1='t'[112]) -> 116[112]
+  976:[116] ConstInt(val=92) -> 92[116]
+  981:[120] ConvIntFromCharacter(v1='\'[116]) -> 92[116]
+  982:[120] EqInt(v1=116[112], v2=92[116]) -> false[112]
+  983:[113] GotoFalseWord(jump=1116, if_false=false[112])
+ 1116:[112] FreeStack(value=0, discard=4)
+ 1120:[108] GotoWord(jump=914)
+  914:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+  917:[124] VarInt(var[104]) -> 18[124]
+  920:[128] TextCharacter(v1="test_fs_wm_src.txt"[108], v2=18[124]) -> null[108]
+  921:[112] VarInt(var[104]) -> 18[112]
+  924:[116] VarCharacter(var[108]) -> null[116]
+  927:[120] LengthCharacter(v1=null[116]) -> 0[116]
+  928:[120] AddInt(v1=18[112], v2=0[116]) -> 18[112]
+  929:[116] PutInt(var[104], value=18[112])
+  932:[112] VarCharacter(var[108]) -> null[112]
+  935:[116] FreeStack(value=4, discard=8)
+  939:[112] VarCharacter(var[108]) -> null[112]
+  942:[116] ConvBoolFromCharacter(v1=null[112]) -> false[112]
+  943:[113] Not(v1=false[112]) -> true[112]
+  944:[113] GotoFalseWord(jump=954, if_false=true[112])
+  947:[112] FreeStack(value=0, discard=4)
+  951:[108] GotoWord(jump=1123)
+ 1123:[108] FreeStack(value=0, discard=4)
+ 1127:[104] VarInt(var[100]) -> 0[104]
+ 1130:[108] ArgText(var[76]) -> "test_fs_wm_src.txt"[108]
+ 1133:[124] Call(size=0, fn=t_4text_len)
+  318:[128] ArgText(var[108]) -> "test_fs_wm_src.txt"[128]
+  321:[144] LengthText(v1="test_fs_wm_src.txt"[128]) -> 18[128]
+  322:[132] Return(ret=1140[124], value=4, discard=24) -> 18[108]
+ 1140:[112] LtInt(v1=0[104], v2=18[108]) -> true[104]
+ 1141:[105] GotoFalseWord(jump=1195, if_false=true[104])
+ 1144:[104] Text()
+ 1145:[128] ArgText(var[76]) -> "test_fs_wm_src.txt"[128]
+ 1148:[144] VarInt(var[100]) -> 0[144]
+ 1151:[148] ArgText(var[76]) -> "test_fs_wm_src.txt"[148]
+ 1154:[164] Call(size=0, fn=t_4text_len)
+  318:[168] ArgText(var[148]) -> "test_fs_wm_src.txt"[168]
+  321:[184] LengthText(v1="test_fs_wm_src.txt"[168]) -> 18[168]
+  322:[172] Return(ret=1161[164], value=4, discard=24) -> 18[148]
+ 1161:[152] GetTextSub(v1="test_fs_wm_src.txt"[128], from=0[144], till=18[148]) -> "test_fs_wm_src.txt"[128]
+ 1162:[144] AppendText(var[104], v1="test_fs_wm_src.txt"[128])
+ 1165:[128] VarText(var[104]) -> "test_fs_wm_src.txt"[128]
+ 1168:[144] ConstText(_value="..") -> ".."[144]
+ 1172:[160] EqText(v1="test_fs_wm_src.txt"[128], v2=".."[144]) -> false[128]
+ 1173:[129] GotoFalseWord(jump=1188, if_false=false[128])
+ 1188:[128] FreeText(var[104])
+ 1191:[128] FreeStack(value=0, discard=24)
+ 1195:[104] ConstInt(val=0) -> 0[104]
+ 1200:[108] VarInt(var[96]) -> 0[108]
+ 1203:[112] LeInt(v1=0[104], v2=0[108]) -> true[104]
+ 1204:[105] Return(ret=1294[92], value=1, discard=29) -> true[76]
+ 1294:[77] GotoFalseWord(jump=1308, if_false=true[76])
+ 1297:[76] VarRef(var[60]) -> ref(1,1,8)={path:"test_fs_wm_src.txt",size:0,current:0,next:0}[76]
+ 1300:[88] GetFile(file=ref(1,1,8)={path:"test_fs_wm_src.txt",size:0,current:0,next:0}[76]) -> false[76]
+ 1301:[77] FreeStack(value=0, discard=1)
+ 1305:[76] GotoWord(jump=1316)
+ 1316:[76] VarRef(var[60]) -> ref(1,1,8)={path:"test_fs_wm_src.txt",size:0,format:NotExists}[76]
+ 1319:[88] Return(ret=1820[72], value=12, discard=44) -> ref(1,1,8)={path:"test_fs_wm_src.txt",size:0,format:NotExists}[44]
+   63:[56] VarRef(var[44]) -> ref(1,1,8)={path:"test_fs_wm_src.txt",size:0,format:NotExists}[56]
+   66:[68] ConstText(_value="data") -> "data"[68]
+   72:[84] StaticCall(t_4File_write)
+   75:[56] ConstText(_value="test_fs_wm_src.txt") -> "test_fs_wm_src.txt"[56]
+   95:[72] ConstText(_value="test_fs_wm_dst.txt") -> "test_fs_wm_dst.txt"[72]
+  115:[88] Call(size=0, fn=n_move)
+ 1384:[92] ArgText(var[72]) -> "test_fs_wm_dst.txt"[92]
+ 1387:[108] Call(size=0, fn=n_valid_path)
+  899:[112] ConstInt(val=0) -> 0[112]
+  904:[116] ConstInt(val=0) -> 0[116]
+  909:[120] ConstInt(val=0) -> 0[120]
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 0[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=0[140]) -> 't'[124]
+  921:[128] VarInt(var[120]) -> 0[128]
+  924:[132] VarCharacter(var[124]) -> 't'[132]
+  927:[136] LengthCharacter(v1='t'[132]) -> 1[132]
+  928:[136] AddInt(v1=0[128], v2=1[132]) -> 1[128]
+  929:[132] PutInt(var[120], value=1[128])
+  932:[128] VarCharacter(var[124]) -> 't'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 't'[128]
+  942:[132] ConvBoolFromCharacter(v1='t'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 't'[128]
+  957:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=116[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 't'[128]
+  975:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=116[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 1[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=1[140]) -> 'e'[124]
+  921:[128] VarInt(var[120]) -> 1[128]
+  924:[132] VarCharacter(var[124]) -> 'e'[132]
+  927:[136] LengthCharacter(v1='e'[132]) -> 1[132]
+  928:[136] AddInt(v1=1[128], v2=1[132]) -> 2[128]
+  929:[132] PutInt(var[120], value=2[128])
+  932:[128] VarCharacter(var[124]) -> 'e'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 'e'[128]
+  942:[132] ConvBoolFromCharacter(v1='e'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 'e'[128]
+  957:[132] ConvIntFromCharacter(v1='e'[128]) -> 101[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=101[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 'e'[128]
+  975:[132] ConvIntFromCharacter(v1='e'[128]) -> 101[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=101[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 2[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=2[140]) -> 's'[124]
+  921:[128] VarInt(var[120]) -> 2[128]
+  924:[132] VarCharacter(var[124]) -> 's'[132]
+  927:[136] LengthCharacter(v1='s'[132]) -> 1[132]
+  928:[136] AddInt(v1=2[128], v2=1[132]) -> 3[128]
+  929:[132] PutInt(var[120], value=3[128])
+  932:[128] VarCharacter(var[124]) -> 's'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 's'[128]
+  942:[132] ConvBoolFromCharacter(v1='s'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 's'[128]
+  957:[132] ConvIntFromCharacter(v1='s'[128]) -> 115[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=115[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 's'[128]
+  975:[132] ConvIntFromCharacter(v1='s'[128]) -> 115[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=115[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 3[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=3[140]) -> 't'[124]
+  921:[128] VarInt(var[120]) -> 3[128]
+  924:[132] VarCharacter(var[124]) -> 't'[132]
+  927:[136] LengthCharacter(v1='t'[132]) -> 1[132]
+  928:[136] AddInt(v1=3[128], v2=1[132]) -> 4[128]
+  929:[132] PutInt(var[120], value=4[128])
+  932:[128] VarCharacter(var[124]) -> 't'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 't'[128]
+  942:[132] ConvBoolFromCharacter(v1='t'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 't'[128]
+  957:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=116[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 't'[128]
+  975:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=116[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 4[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=4[140]) -> '_'[124]
+  921:[128] VarInt(var[120]) -> 4[128]
+  924:[132] VarCharacter(var[124]) -> '_'[132]
+  927:[136] LengthCharacter(v1='_'[132]) -> 1[132]
+  928:[136] AddInt(v1=4[128], v2=1[132]) -> 5[128]
+  929:[132] PutInt(var[120], value=5[128])
+  932:[128] VarCharacter(var[124]) -> '_'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> '_'[128]
+  942:[132] ConvBoolFromCharacter(v1='_'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> '_'[128]
+  957:[132] ConvIntFromCharacter(v1='_'[128]) -> 95[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=95[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> '_'[128]
+  975:[132] ConvIntFromCharacter(v1='_'[128]) -> 95[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=95[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 5[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=5[140]) -> 'f'[124]
+  921:[128] VarInt(var[120]) -> 5[128]
+  924:[132] VarCharacter(var[124]) -> 'f'[132]
+  927:[136] LengthCharacter(v1='f'[132]) -> 1[132]
+  928:[136] AddInt(v1=5[128], v2=1[132]) -> 6[128]
+  929:[132] PutInt(var[120], value=6[128])
+  932:[128] VarCharacter(var[124]) -> 'f'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 'f'[128]
+  942:[132] ConvBoolFromCharacter(v1='f'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 'f'[128]
+  957:[132] ConvIntFromCharacter(v1='f'[128]) -> 102[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=102[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 'f'[128]
+  975:[132] ConvIntFromCharacter(v1='f'[128]) -> 102[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=102[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 6[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=6[140]) -> 's'[124]
+  921:[128] VarInt(var[120]) -> 6[128]
+  924:[132] VarCharacter(var[124]) -> 's'[132]
+  927:[136] LengthCharacter(v1='s'[132]) -> 1[132]
+  928:[136] AddInt(v1=6[128], v2=1[132]) -> 7[128]
+  929:[132] PutInt(var[120], value=7[128])
+  932:[128] VarCharacter(var[124]) -> 's'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 's'[128]
+  942:[132] ConvBoolFromCharacter(v1='s'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 's'[128]
+  957:[132] ConvIntFromCharacter(v1='s'[128]) -> 115[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=115[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 's'[128]
+  975:[132] ConvIntFromCharacter(v1='s'[128]) -> 115[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=115[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 7[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=7[140]) -> '_'[124]
+  921:[128] VarInt(var[120]) -> 7[128]
+  924:[132] VarCharacter(var[124]) -> '_'[132]
+  927:[136] LengthCharacter(v1='_'[132]) -> 1[132]
+  928:[136] AddInt(v1=7[128], v2=1[132]) -> 8[128]
+  929:[132] PutInt(var[120], value=8[128])
+  932:[128] VarCharacter(var[124]) -> '_'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> '_'[128]
+  942:[132] ConvBoolFromCharacter(v1='_'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> '_'[128]
+  957:[132] ConvIntFromCharacter(v1='_'[128]) -> 95[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=95[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> '_'[128]
+  975:[132] ConvIntFromCharacter(v1='_'[128]) -> 95[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=95[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 8[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=8[140]) -> 'w'[124]
+  921:[128] VarInt(var[120]) -> 8[128]
+  924:[132] VarCharacter(var[124]) -> 'w'[132]
+  927:[136] LengthCharacter(v1='w'[132]) -> 1[132]
+  928:[136] AddInt(v1=8[128], v2=1[132]) -> 9[128]
+  929:[132] PutInt(var[120], value=9[128])
+  932:[128] VarCharacter(var[124]) -> 'w'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 'w'[128]
+  942:[132] ConvBoolFromCharacter(v1='w'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 'w'[128]
+  957:[132] ConvIntFromCharacter(v1='w'[128]) -> 119[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=119[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 'w'[128]
+  975:[132] ConvIntFromCharacter(v1='w'[128]) -> 119[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=119[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 9[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=9[140]) -> 'm'[124]
+  921:[128] VarInt(var[120]) -> 9[128]
+  924:[132] VarCharacter(var[124]) -> 'm'[132]
+  927:[136] LengthCharacter(v1='m'[132]) -> 1[132]
+  928:[136] AddInt(v1=9[128], v2=1[132]) -> 10[128]
+  929:[132] PutInt(var[120], value=10[128])
+  932:[128] VarCharacter(var[124]) -> 'm'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 'm'[128]
+  942:[132] ConvBoolFromCharacter(v1='m'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 'm'[128]
+  957:[132] ConvIntFromCharacter(v1='m'[128]) -> 109[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=109[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 'm'[128]
+  975:[132] ConvIntFromCharacter(v1='m'[128]) -> 109[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=109[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 10[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=10[140]) -> '_'[124]
+  921:[128] VarInt(var[120]) -> 10[128]
+  924:[132] VarCharacter(var[124]) -> '_'[132]
+  927:[136] LengthCharacter(v1='_'[132]) -> 1[132]
+  928:[136] AddInt(v1=10[128], v2=1[132]) -> 11[128]
+  929:[132] PutInt(var[120], value=11[128])
+  932:[128] VarCharacter(var[124]) -> '_'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> '_'[128]
+  942:[132] ConvBoolFromCharacter(v1='_'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> '_'[128]
+  957:[132] ConvIntFromCharacter(v1='_'[128]) -> 95[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=95[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> '_'[128]
+  975:[132] ConvIntFromCharacter(v1='_'[128]) -> 95[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=95[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 11[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=11[140]) -> 'd'[124]
+  921:[128] VarInt(var[120]) -> 11[128]
+  924:[132] VarCharacter(var[124]) -> 'd'[132]
+  927:[136] LengthCharacter(v1='d'[132]) -> 1[132]
+  928:[136] AddInt(v1=11[128], v2=1[132]) -> 12[128]
+  929:[132] PutInt(var[120], value=12[128])
+  932:[128] VarCharacter(var[124]) -> 'd'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 'd'[128]
+  942:[132] ConvBoolFromCharacter(v1='d'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 'd'[128]
+  957:[132] ConvIntFromCharacter(v1='d'[128]) -> 100[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=100[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 'd'[128]
+  975:[132] ConvIntFromCharacter(v1='d'[128]) -> 100[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=100[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 12[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=12[140]) -> 's'[124]
+  921:[128] VarInt(var[120]) -> 12[128]
+  924:[132] VarCharacter(var[124]) -> 's'[132]
+  927:[136] LengthCharacter(v1='s'[132]) -> 1[132]
+  928:[136] AddInt(v1=12[128], v2=1[132]) -> 13[128]
+  929:[132] PutInt(var[120], value=13[128])
+  932:[128] VarCharacter(var[124]) -> 's'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 's'[128]
+  942:[132] ConvBoolFromCharacter(v1='s'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 's'[128]
+  957:[132] ConvIntFromCharacter(v1='s'[128]) -> 115[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=115[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 's'[128]
+  975:[132] ConvIntFromCharacter(v1='s'[128]) -> 115[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=115[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 13[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=13[140]) -> 't'[124]
+  921:[128] VarInt(var[120]) -> 13[128]
+  924:[132] VarCharacter(var[124]) -> 't'[132]
+  927:[136] LengthCharacter(v1='t'[132]) -> 1[132]
+  928:[136] AddInt(v1=13[128], v2=1[132]) -> 14[128]
+  929:[132] PutInt(var[120], value=14[128])
+  932:[128] VarCharacter(var[124]) -> 't'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 't'[128]
+  942:[132] ConvBoolFromCharacter(v1='t'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 't'[128]
+  957:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=116[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 't'[128]
+  975:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=116[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 14[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=14[140]) -> '.'[124]
+  921:[128] VarInt(var[120]) -> 14[128]
+  924:[132] VarCharacter(var[124]) -> '.'[132]
+  927:[136] LengthCharacter(v1='.'[132]) -> 1[132]
+  928:[136] AddInt(v1=14[128], v2=1[132]) -> 15[128]
+  929:[132] PutInt(var[120], value=15[128])
+  932:[128] VarCharacter(var[124]) -> '.'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> '.'[128]
+  942:[132] ConvBoolFromCharacter(v1='.'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> '.'[128]
+  957:[132] ConvIntFromCharacter(v1='.'[128]) -> 46[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=46[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> '.'[128]
+  975:[132] ConvIntFromCharacter(v1='.'[128]) -> 46[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=46[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 15[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=15[140]) -> 't'[124]
+  921:[128] VarInt(var[120]) -> 15[128]
+  924:[132] VarCharacter(var[124]) -> 't'[132]
+  927:[136] LengthCharacter(v1='t'[132]) -> 1[132]
+  928:[136] AddInt(v1=15[128], v2=1[132]) -> 16[128]
+  929:[132] PutInt(var[120], value=16[128])
+  932:[128] VarCharacter(var[124]) -> 't'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 't'[128]
+  942:[132] ConvBoolFromCharacter(v1='t'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 't'[128]
+  957:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=116[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 't'[128]
+  975:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=116[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 16[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=16[140]) -> 'x'[124]
+  921:[128] VarInt(var[120]) -> 16[128]
+  924:[132] VarCharacter(var[124]) -> 'x'[132]
+  927:[136] LengthCharacter(v1='x'[132]) -> 1[132]
+  928:[136] AddInt(v1=16[128], v2=1[132]) -> 17[128]
+  929:[132] PutInt(var[120], value=17[128])
+  932:[128] VarCharacter(var[124]) -> 'x'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 'x'[128]
+  942:[132] ConvBoolFromCharacter(v1='x'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 'x'[128]
+  957:[132] ConvIntFromCharacter(v1='x'[128]) -> 120[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=120[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 'x'[128]
+  975:[132] ConvIntFromCharacter(v1='x'[128]) -> 120[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=120[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 17[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=17[140]) -> 't'[124]
+  921:[128] VarInt(var[120]) -> 17[128]
+  924:[132] VarCharacter(var[124]) -> 't'[132]
+  927:[136] LengthCharacter(v1='t'[132]) -> 1[132]
+  928:[136] AddInt(v1=17[128], v2=1[132]) -> 18[128]
+  929:[132] PutInt(var[120], value=18[128])
+  932:[128] VarCharacter(var[124]) -> 't'[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> 't'[128]
+  942:[132] ConvBoolFromCharacter(v1='t'[128]) -> true[128]
+  943:[129] Not(v1=true[128]) -> false[128]
+  944:[129] GotoFalseWord(jump=954, if_false=false[128])
+  954:[128] VarCharacter(var[124]) -> 't'[128]
+  957:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  958:[132] ConstInt(val=47) -> 47[132]
+  963:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  964:[136] EqInt(v1=116[128], v2=47[132]) -> false[128]
+  965:[129] GotoFalseWord(jump=972, if_false=false[128])
+  972:[128] VarCharacter(var[124]) -> 't'[128]
+  975:[132] ConvIntFromCharacter(v1='t'[128]) -> 116[128]
+  976:[132] ConstInt(val=92) -> 92[132]
+  981:[136] ConvIntFromCharacter(v1='\'[132]) -> 92[132]
+  982:[136] EqInt(v1=116[128], v2=92[132]) -> false[128]
+  983:[129] GotoFalseWord(jump=1116, if_false=false[128])
+ 1116:[128] FreeStack(value=0, discard=4)
+ 1120:[124] GotoWord(jump=914)
+  914:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+  917:[140] VarInt(var[120]) -> 18[140]
+  920:[144] TextCharacter(v1="test_fs_wm_dst.txt"[124], v2=18[140]) -> null[124]
+  921:[128] VarInt(var[120]) -> 18[128]
+  924:[132] VarCharacter(var[124]) -> null[132]
+  927:[136] LengthCharacter(v1=null[132]) -> 0[132]
+  928:[136] AddInt(v1=18[128], v2=0[132]) -> 18[128]
+  929:[132] PutInt(var[120], value=18[128])
+  932:[128] VarCharacter(var[124]) -> null[128]
+  935:[132] FreeStack(value=4, discard=8)
+  939:[128] VarCharacter(var[124]) -> null[128]
+  942:[132] ConvBoolFromCharacter(v1=null[128]) -> false[128]
+  943:[129] Not(v1=false[128]) -> true[128]
+  944:[129] GotoFalseWord(jump=954, if_false=true[128])
+  947:[128] FreeStack(value=0, discard=4)
+  951:[124] GotoWord(jump=1123)
+ 1123:[124] FreeStack(value=0, discard=4)
+ 1127:[120] VarInt(var[116]) -> 0[120]
+ 1130:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+ 1133:[140] Call(size=0, fn=t_4text_len)
+  318:[144] ArgText(var[124]) -> "test_fs_wm_dst.txt"[144]
+  321:[160] LengthText(v1="test_fs_wm_dst.txt"[144]) -> 18[144]
+  322:[148] Return(ret=1140[140], value=4, discard=24) -> 18[124]
+ 1140:[128] LtInt(v1=0[120], v2=18[124]) -> true[120]
+ 1141:[121] GotoFalseWord(jump=1195, if_false=true[120])
+ 1144:[120] Text()
+ 1145:[144] ArgText(var[92]) -> "test_fs_wm_dst.txt"[144]
+ 1148:[160] VarInt(var[116]) -> 0[160]
+ 1151:[164] ArgText(var[92]) -> "test_fs_wm_dst.txt"[164]
+ 1154:[180] Call(size=0, fn=t_4text_len)
+  318:[184] ArgText(var[164]) -> "test_fs_wm_dst.txt"[184]
+  321:[200] LengthText(v1="test_fs_wm_dst.txt"[184]) -> 18[184]
+  322:[188] Return(ret=1161[180], value=4, discard=24) -> 18[164]
+ 1161:[168] GetTextSub(v1="test_fs_wm_dst.txt"[144], from=0[160], till=18[164]) -> "test_fs_wm_dst.txt"[144]
+ 1162:[160] AppendText(var[120], v1="test_fs_wm_dst.txt"[144])
+ 1165:[144] VarText(var[120]) -> "test_fs_wm_dst.txt"[144]
+ 1168:[160] ConstText(_value="..") -> ".."[160]
+ 1172:[176] EqText(v1="test_fs_wm_dst.txt"[144], v2=".."[160]) -> false[144]
+ 1173:[145] GotoFalseWord(jump=1188, if_false=false[144])
+ 1188:[144] FreeText(var[120])
+ 1191:[144] FreeStack(value=0, discard=24)
+ 1195:[120] ConstInt(val=0) -> 0[120]
+ 1200:[124] VarInt(var[112]) -> 0[124]
+ 1203:[128] LeInt(v1=0[120], v2=0[124]) -> true[120]
+ 1204:[121] Return(ret=1394[108], value=1, discard=29) -> true[92]
+ 1394:[93] GotoFalseWord(jump=1410, if_false=true[92])
+ 1397:[92] ArgText(var[56]) -> "test_fs_wm_src.txt"[92]
+ 1400:[108] Call(size=0, fn=n_exists)
+ 1325:[112] [175] ConvRefFromNull() -> ref(2,0,8)[112]
+ 1326:[124] ArgText(var[92]) -> "test_fs_wm_src.txt"[124]
+ 1329:[140] VarRef(var[112]) -> ref(2,0,8)=null[140]
+ 1332:[152] Call(size=0, fn=n_file)
+ 1210:[156] Database(var[140], db_tp=14)
+ 1215:[156] VarRef(var[140]) -> ref(2,1,8)={}[156]
+ 1218:[168] ArgText(var[124]) -> "test_fs_wm_src.txt"[168]
+ 1221:[184] SetText(v1=ref(2,1,8)[156], fld=24, val="test_fs_wm_src.txt"[168])
+ 1224:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_src.txt"}[156]
+ 1227:[168] ConvIntFromNull() -> -2147483648[168]
+ 1228:[172] SetInt(v1=ref(2,1,8)[156], fld=28, val=-2147483648[168])
+ 1231:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_src.txt"}[156]
+ 1234:[168] ConstLong(val=0) -> 0[168]
+ 1243:[176] SetLong(v1=ref(2,1,8)[156], fld=0, val=0[168])
+ 1246:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_src.txt",size:0}[156]
+ 1249:[168] ConstEnum(val=0) -> null(0)[168]
+ 1251:[169] SetEnum(v1=ref(2,1,8)[156], fld=32, val=0[168])
+ 1254:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_src.txt",size:0}[156]
+ 1257:[168] ConstLong(val=0) -> 0[168]
+ 1266:[176] SetLong(v1=ref(2,1,8)[156], fld=8, val=0[168])
+ 1269:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_src.txt",size:0,current:0}[156]
+ 1272:[168] ConstLong(val=0) -> 0[168]
+ 1281:[176] SetLong(v1=ref(2,1,8)[156], fld=16, val=0[168])
+ 1284:[156] ArgText(var[124]) -> "test_fs_wm_src.txt"[156]
+ 1287:[172] Call(size=0, fn=n_valid_path)
+  899:[176] ConstInt(val=0) -> 0[176]
+  904:[180] ConstInt(val=0) -> 0[180]
+  909:[184] ConstInt(val=0) -> 0[184]
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 0[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=0[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 0[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=0[192], v2=1[196]) -> 1[192]
+  929:[196] PutInt(var[184], value=1[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 1[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=1[204]) -> 'e'[188]
+  921:[192] VarInt(var[184]) -> 1[192]
+  924:[196] VarCharacter(var[188]) -> 'e'[196]
+  927:[200] LengthCharacter(v1='e'[196]) -> 1[196]
+  928:[200] AddInt(v1=1[192], v2=1[196]) -> 2[192]
+  929:[196] PutInt(var[184], value=2[192])
+  932:[192] VarCharacter(var[188]) -> 'e'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'e'[192]
+  942:[196] ConvBoolFromCharacter(v1='e'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'e'[192]
+  957:[196] ConvIntFromCharacter(v1='e'[192]) -> 101[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=101[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'e'[192]
+  975:[196] ConvIntFromCharacter(v1='e'[192]) -> 101[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=101[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 2[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=2[204]) -> 's'[188]
+  921:[192] VarInt(var[184]) -> 2[192]
+  924:[196] VarCharacter(var[188]) -> 's'[196]
+  927:[200] LengthCharacter(v1='s'[196]) -> 1[196]
+  928:[200] AddInt(v1=2[192], v2=1[196]) -> 3[192]
+  929:[196] PutInt(var[184], value=3[192])
+  932:[192] VarCharacter(var[188]) -> 's'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 's'[192]
+  942:[196] ConvBoolFromCharacter(v1='s'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 's'[192]
+  957:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=115[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 's'[192]
+  975:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=115[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 3[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=3[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 3[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=3[192], v2=1[196]) -> 4[192]
+  929:[196] PutInt(var[184], value=4[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 4[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=4[204]) -> '_'[188]
+  921:[192] VarInt(var[184]) -> 4[192]
+  924:[196] VarCharacter(var[188]) -> '_'[196]
+  927:[200] LengthCharacter(v1='_'[196]) -> 1[196]
+  928:[200] AddInt(v1=4[192], v2=1[196]) -> 5[192]
+  929:[196] PutInt(var[184], value=5[192])
+  932:[192] VarCharacter(var[188]) -> '_'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> '_'[192]
+  942:[196] ConvBoolFromCharacter(v1='_'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> '_'[192]
+  957:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=95[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> '_'[192]
+  975:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=95[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 5[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=5[204]) -> 'f'[188]
+  921:[192] VarInt(var[184]) -> 5[192]
+  924:[196] VarCharacter(var[188]) -> 'f'[196]
+  927:[200] LengthCharacter(v1='f'[196]) -> 1[196]
+  928:[200] AddInt(v1=5[192], v2=1[196]) -> 6[192]
+  929:[196] PutInt(var[184], value=6[192])
+  932:[192] VarCharacter(var[188]) -> 'f'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'f'[192]
+  942:[196] ConvBoolFromCharacter(v1='f'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'f'[192]
+  957:[196] ConvIntFromCharacter(v1='f'[192]) -> 102[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=102[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'f'[192]
+  975:[196] ConvIntFromCharacter(v1='f'[192]) -> 102[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=102[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 6[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=6[204]) -> 's'[188]
+  921:[192] VarInt(var[184]) -> 6[192]
+  924:[196] VarCharacter(var[188]) -> 's'[196]
+  927:[200] LengthCharacter(v1='s'[196]) -> 1[196]
+  928:[200] AddInt(v1=6[192], v2=1[196]) -> 7[192]
+  929:[196] PutInt(var[184], value=7[192])
+  932:[192] VarCharacter(var[188]) -> 's'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 's'[192]
+  942:[196] ConvBoolFromCharacter(v1='s'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 's'[192]
+  957:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=115[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 's'[192]
+  975:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=115[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 7[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=7[204]) -> '_'[188]
+  921:[192] VarInt(var[184]) -> 7[192]
+  924:[196] VarCharacter(var[188]) -> '_'[196]
+  927:[200] LengthCharacter(v1='_'[196]) -> 1[196]
+  928:[200] AddInt(v1=7[192], v2=1[196]) -> 8[192]
+  929:[196] PutInt(var[184], value=8[192])
+  932:[192] VarCharacter(var[188]) -> '_'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> '_'[192]
+  942:[196] ConvBoolFromCharacter(v1='_'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> '_'[192]
+  957:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=95[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> '_'[192]
+  975:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=95[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 8[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=8[204]) -> 'w'[188]
+  921:[192] VarInt(var[184]) -> 8[192]
+  924:[196] VarCharacter(var[188]) -> 'w'[196]
+  927:[200] LengthCharacter(v1='w'[196]) -> 1[196]
+  928:[200] AddInt(v1=8[192], v2=1[196]) -> 9[192]
+  929:[196] PutInt(var[184], value=9[192])
+  932:[192] VarCharacter(var[188]) -> 'w'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'w'[192]
+  942:[196] ConvBoolFromCharacter(v1='w'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'w'[192]
+  957:[196] ConvIntFromCharacter(v1='w'[192]) -> 119[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=119[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'w'[192]
+  975:[196] ConvIntFromCharacter(v1='w'[192]) -> 119[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=119[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 9[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=9[204]) -> 'm'[188]
+  921:[192] VarInt(var[184]) -> 9[192]
+  924:[196] VarCharacter(var[188]) -> 'm'[196]
+  927:[200] LengthCharacter(v1='m'[196]) -> 1[196]
+  928:[200] AddInt(v1=9[192], v2=1[196]) -> 10[192]
+  929:[196] PutInt(var[184], value=10[192])
+  932:[192] VarCharacter(var[188]) -> 'm'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'm'[192]
+  942:[196] ConvBoolFromCharacter(v1='m'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'm'[192]
+  957:[196] ConvIntFromCharacter(v1='m'[192]) -> 109[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=109[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'm'[192]
+  975:[196] ConvIntFromCharacter(v1='m'[192]) -> 109[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=109[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 10[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=10[204]) -> '_'[188]
+  921:[192] VarInt(var[184]) -> 10[192]
+  924:[196] VarCharacter(var[188]) -> '_'[196]
+  927:[200] LengthCharacter(v1='_'[196]) -> 1[196]
+  928:[200] AddInt(v1=10[192], v2=1[196]) -> 11[192]
+  929:[196] PutInt(var[184], value=11[192])
+  932:[192] VarCharacter(var[188]) -> '_'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> '_'[192]
+  942:[196] ConvBoolFromCharacter(v1='_'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> '_'[192]
+  957:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=95[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> '_'[192]
+  975:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=95[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 11[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=11[204]) -> 's'[188]
+  921:[192] VarInt(var[184]) -> 11[192]
+  924:[196] VarCharacter(var[188]) -> 's'[196]
+  927:[200] LengthCharacter(v1='s'[196]) -> 1[196]
+  928:[200] AddInt(v1=11[192], v2=1[196]) -> 12[192]
+  929:[196] PutInt(var[184], value=12[192])
+  932:[192] VarCharacter(var[188]) -> 's'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 's'[192]
+  942:[196] ConvBoolFromCharacter(v1='s'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 's'[192]
+  957:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=115[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 's'[192]
+  975:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=115[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 12[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=12[204]) -> 'r'[188]
+  921:[192] VarInt(var[184]) -> 12[192]
+  924:[196] VarCharacter(var[188]) -> 'r'[196]
+  927:[200] LengthCharacter(v1='r'[196]) -> 1[196]
+  928:[200] AddInt(v1=12[192], v2=1[196]) -> 13[192]
+  929:[196] PutInt(var[184], value=13[192])
+  932:[192] VarCharacter(var[188]) -> 'r'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'r'[192]
+  942:[196] ConvBoolFromCharacter(v1='r'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'r'[192]
+  957:[196] ConvIntFromCharacter(v1='r'[192]) -> 114[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=114[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'r'[192]
+  975:[196] ConvIntFromCharacter(v1='r'[192]) -> 114[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=114[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 13[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=13[204]) -> 'c'[188]
+  921:[192] VarInt(var[184]) -> 13[192]
+  924:[196] VarCharacter(var[188]) -> 'c'[196]
+  927:[200] LengthCharacter(v1='c'[196]) -> 1[196]
+  928:[200] AddInt(v1=13[192], v2=1[196]) -> 14[192]
+  929:[196] PutInt(var[184], value=14[192])
+  932:[192] VarCharacter(var[188]) -> 'c'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'c'[192]
+  942:[196] ConvBoolFromCharacter(v1='c'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'c'[192]
+  957:[196] ConvIntFromCharacter(v1='c'[192]) -> 99[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=99[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'c'[192]
+  975:[196] ConvIntFromCharacter(v1='c'[192]) -> 99[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=99[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 14[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=14[204]) -> '.'[188]
+  921:[192] VarInt(var[184]) -> 14[192]
+  924:[196] VarCharacter(var[188]) -> '.'[196]
+  927:[200] LengthCharacter(v1='.'[196]) -> 1[196]
+  928:[200] AddInt(v1=14[192], v2=1[196]) -> 15[192]
+  929:[196] PutInt(var[184], value=15[192])
+  932:[192] VarCharacter(var[188]) -> '.'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> '.'[192]
+  942:[196] ConvBoolFromCharacter(v1='.'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> '.'[192]
+  957:[196] ConvIntFromCharacter(v1='.'[192]) -> 46[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=46[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> '.'[192]
+  975:[196] ConvIntFromCharacter(v1='.'[192]) -> 46[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=46[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 15[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=15[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 15[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=15[192], v2=1[196]) -> 16[192]
+  929:[196] PutInt(var[184], value=16[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 16[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=16[204]) -> 'x'[188]
+  921:[192] VarInt(var[184]) -> 16[192]
+  924:[196] VarCharacter(var[188]) -> 'x'[196]
+  927:[200] LengthCharacter(v1='x'[196]) -> 1[196]
+  928:[200] AddInt(v1=16[192], v2=1[196]) -> 17[192]
+  929:[196] PutInt(var[184], value=17[192])
+  932:[192] VarCharacter(var[188]) -> 'x'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'x'[192]
+  942:[196] ConvBoolFromCharacter(v1='x'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'x'[192]
+  957:[196] ConvIntFromCharacter(v1='x'[192]) -> 120[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=120[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'x'[192]
+  975:[196] ConvIntFromCharacter(v1='x'[192]) -> 120[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=120[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 17[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=17[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 17[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=17[192], v2=1[196]) -> 18[192]
+  929:[196] PutInt(var[184], value=18[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+  917:[204] VarInt(var[184]) -> 18[204]
+  920:[208] TextCharacter(v1="test_fs_wm_src.txt"[188], v2=18[204]) -> null[188]
+  921:[192] VarInt(var[184]) -> 18[192]
+  924:[196] VarCharacter(var[188]) -> null[196]
+  927:[200] LengthCharacter(v1=null[196]) -> 0[196]
+  928:[200] AddInt(v1=18[192], v2=0[196]) -> 18[192]
+  929:[196] PutInt(var[184], value=18[192])
+  932:[192] VarCharacter(var[188]) -> null[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> null[192]
+  942:[196] ConvBoolFromCharacter(v1=null[192]) -> false[192]
+  943:[193] Not(v1=false[192]) -> true[192]
+  944:[193] GotoFalseWord(jump=954, if_false=true[192])
+  947:[192] FreeStack(value=0, discard=4)
+  951:[188] GotoWord(jump=1123)
+ 1123:[188] FreeStack(value=0, discard=4)
+ 1127:[184] VarInt(var[180]) -> 0[184]
+ 1130:[188] ArgText(var[156]) -> "test_fs_wm_src.txt"[188]
+ 1133:[204] Call(size=0, fn=t_4text_len)
+  318:[208] ArgText(var[188]) -> "test_fs_wm_src.txt"[208]
+  321:[224] LengthText(v1="test_fs_wm_src.txt"[208]) -> 18[208]
+  322:[212] Return(ret=1140[204], value=4, discard=24) -> 18[188]
+ 1140:[192] LtInt(v1=0[184], v2=18[188]) -> true[184]
+ 1141:[185] GotoFalseWord(jump=1195, if_false=true[184])
+ 1144:[184] Text()
+ 1145:[208] ArgText(var[156]) -> "test_fs_wm_src.txt"[208]
+ 1148:[224] VarInt(var[180]) -> 0[224]
+ 1151:[228] ArgText(var[156]) -> "test_fs_wm_src.txt"[228]
+ 1154:[244] Call(size=0, fn=t_4text_len)
+  318:[248] ArgText(var[228]) -> "test_fs_wm_src.txt"[248]
+  321:[264] LengthText(v1="test_fs_wm_src.txt"[248]) -> 18[248]
+  322:[252] Return(ret=1161[244], value=4, discard=24) -> 18[228]
+ 1161:[232] GetTextSub(v1="test_fs_wm_src.txt"[208], from=0[224], till=18[228]) -> "test_fs_wm_src.txt"[208]
+ 1162:[224] AppendText(var[184], v1="test_fs_wm_src.txt"[208])
+ 1165:[208] VarText(var[184]) -> "test_fs_wm_src.txt"[208]
+ 1168:[224] ConstText(_value="..") -> ".."[224]
+ 1172:[240] EqText(v1="test_fs_wm_src.txt"[208], v2=".."[224]) -> false[208]
+ 1173:[209] GotoFalseWord(jump=1188, if_false=false[208])
+ 1188:[208] FreeText(var[184])
+ 1191:[208] FreeStack(value=0, discard=24)
+ 1195:[184] ConstInt(val=0) -> 0[184]
+ 1200:[188] VarInt(var[176]) -> 0[188]
+ 1203:[192] LeInt(v1=0[184], v2=0[188]) -> true[184]
+ 1204:[185] Return(ret=1294[172], value=1, discard=29) -> true[156]
+ 1294:[157] GotoFalseWord(jump=1308, if_false=true[156])
+ 1297:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_src.txt",size:0,current:0,next:0}[156]
+ 1300:[168] GetFile(file=ref(2,1,8)={path:"test_fs_wm_src.txt",size:0,current:0,next:0}[156]) -> true[156]
+ 1301:[157] FreeStack(value=0, discard=1)
+ 1305:[156] GotoWord(jump=1316)
+ 1316:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_src.txt",size:4,format:TextFile}[156]
+ 1319:[168] Return(ret=1339[152], value=12, discard=44) -> ref(2,1,8)={path:"test_fs_wm_src.txt",size:4,format:TextFile}[124]
+ 1339:[136] GetEnum(v1=ref(2,1,8)[124], fld=32) -> null(1)[124]
+ 1342:[125] ConvIntFromEnum(v1=1[124]) -> 1[124]
+ 1343:[128] ConstEnum(val=5) -> NotExists(5)[128]
+ 1345:[129] ConvIntFromEnum(v1=5[128]) -> 5[128]
+ 1346:[132] NeInt(v1=1[124], v2=5[128]) -> true[124]
+ 1347:[125] VarRef(var[112]) -> ref(2,0,8)=null[125]
+ 1350:[137] FreeRef(v1=ref(2,0,8)[125])
+ 1351:[125] Return(ret=1407[108], value=1, discard=33) -> true[92]
+ 1407:[93] GotoWord(jump=1411)
+ 1411:[93] GotoFalseWord(jump=1428, if_false=true[92])
+ 1414:[92] ArgText(var[72]) -> "test_fs_wm_dst.txt"[92]
+ 1417:[108] Call(size=0, fn=n_exists)
+ 1325:[112] [175] ConvRefFromNull() -> ref(2,0,8)[112]
+ 1326:[124] ArgText(var[92]) -> "test_fs_wm_dst.txt"[124]
+ 1329:[140] VarRef(var[112]) -> ref(2,0,8)=null[140]
+ 1332:[152] Call(size=0, fn=n_file)
+ 1210:[156] Database(var[140], db_tp=14)
+ 1215:[156] VarRef(var[140]) -> ref(2,1,8)={}[156]
+ 1218:[168] ArgText(var[124]) -> "test_fs_wm_dst.txt"[168]
+ 1221:[184] SetText(v1=ref(2,1,8)[156], fld=24, val="test_fs_wm_dst.txt"[168])
+ 1224:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt"}[156]
+ 1227:[168] ConvIntFromNull() -> -2147483648[168]
+ 1228:[172] SetInt(v1=ref(2,1,8)[156], fld=28, val=-2147483648[168])
+ 1231:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt"}[156]
+ 1234:[168] ConstLong(val=0) -> 0[168]
+ 1243:[176] SetLong(v1=ref(2,1,8)[156], fld=0, val=0[168])
+ 1246:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0}[156]
+ 1249:[168] ConstEnum(val=0) -> null(0)[168]
+ 1251:[169] SetEnum(v1=ref(2,1,8)[156], fld=32, val=0[168])
+ 1254:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0}[156]
+ 1257:[168] ConstLong(val=0) -> 0[168]
+ 1266:[176] SetLong(v1=ref(2,1,8)[156], fld=8, val=0[168])
+ 1269:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0}[156]
+ 1272:[168] ConstLong(val=0) -> 0[168]
+ 1281:[176] SetLong(v1=ref(2,1,8)[156], fld=16, val=0[168])
+ 1284:[156] ArgText(var[124]) -> "test_fs_wm_dst.txt"[156]
+ 1287:[172] Call(size=0, fn=n_valid_path)
+  899:[176] ConstInt(val=0) -> 0[176]
+  904:[180] ConstInt(val=0) -> 0[180]
+  909:[184] ConstInt(val=0) -> 0[184]
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 0[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=0[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 0[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=0[192], v2=1[196]) -> 1[192]
+  929:[196] PutInt(var[184], value=1[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 1[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=1[204]) -> 'e'[188]
+  921:[192] VarInt(var[184]) -> 1[192]
+  924:[196] VarCharacter(var[188]) -> 'e'[196]
+  927:[200] LengthCharacter(v1='e'[196]) -> 1[196]
+  928:[200] AddInt(v1=1[192], v2=1[196]) -> 2[192]
+  929:[196] PutInt(var[184], value=2[192])
+  932:[192] VarCharacter(var[188]) -> 'e'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'e'[192]
+  942:[196] ConvBoolFromCharacter(v1='e'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'e'[192]
+  957:[196] ConvIntFromCharacter(v1='e'[192]) -> 101[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=101[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'e'[192]
+  975:[196] ConvIntFromCharacter(v1='e'[192]) -> 101[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=101[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 2[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=2[204]) -> 's'[188]
+  921:[192] VarInt(var[184]) -> 2[192]
+  924:[196] VarCharacter(var[188]) -> 's'[196]
+  927:[200] LengthCharacter(v1='s'[196]) -> 1[196]
+  928:[200] AddInt(v1=2[192], v2=1[196]) -> 3[192]
+  929:[196] PutInt(var[184], value=3[192])
+  932:[192] VarCharacter(var[188]) -> 's'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 's'[192]
+  942:[196] ConvBoolFromCharacter(v1='s'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 's'[192]
+  957:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=115[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 's'[192]
+  975:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=115[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 3[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=3[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 3[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=3[192], v2=1[196]) -> 4[192]
+  929:[196] PutInt(var[184], value=4[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 4[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=4[204]) -> '_'[188]
+  921:[192] VarInt(var[184]) -> 4[192]
+  924:[196] VarCharacter(var[188]) -> '_'[196]
+  927:[200] LengthCharacter(v1='_'[196]) -> 1[196]
+  928:[200] AddInt(v1=4[192], v2=1[196]) -> 5[192]
+  929:[196] PutInt(var[184], value=5[192])
+  932:[192] VarCharacter(var[188]) -> '_'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> '_'[192]
+  942:[196] ConvBoolFromCharacter(v1='_'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> '_'[192]
+  957:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=95[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> '_'[192]
+  975:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=95[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 5[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=5[204]) -> 'f'[188]
+  921:[192] VarInt(var[184]) -> 5[192]
+  924:[196] VarCharacter(var[188]) -> 'f'[196]
+  927:[200] LengthCharacter(v1='f'[196]) -> 1[196]
+  928:[200] AddInt(v1=5[192], v2=1[196]) -> 6[192]
+  929:[196] PutInt(var[184], value=6[192])
+  932:[192] VarCharacter(var[188]) -> 'f'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'f'[192]
+  942:[196] ConvBoolFromCharacter(v1='f'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'f'[192]
+  957:[196] ConvIntFromCharacter(v1='f'[192]) -> 102[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=102[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'f'[192]
+  975:[196] ConvIntFromCharacter(v1='f'[192]) -> 102[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=102[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 6[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=6[204]) -> 's'[188]
+  921:[192] VarInt(var[184]) -> 6[192]
+  924:[196] VarCharacter(var[188]) -> 's'[196]
+  927:[200] LengthCharacter(v1='s'[196]) -> 1[196]
+  928:[200] AddInt(v1=6[192], v2=1[196]) -> 7[192]
+  929:[196] PutInt(var[184], value=7[192])
+  932:[192] VarCharacter(var[188]) -> 's'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 's'[192]
+  942:[196] ConvBoolFromCharacter(v1='s'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 's'[192]
+  957:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=115[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 's'[192]
+  975:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=115[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 7[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=7[204]) -> '_'[188]
+  921:[192] VarInt(var[184]) -> 7[192]
+  924:[196] VarCharacter(var[188]) -> '_'[196]
+  927:[200] LengthCharacter(v1='_'[196]) -> 1[196]
+  928:[200] AddInt(v1=7[192], v2=1[196]) -> 8[192]
+  929:[196] PutInt(var[184], value=8[192])
+  932:[192] VarCharacter(var[188]) -> '_'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> '_'[192]
+  942:[196] ConvBoolFromCharacter(v1='_'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> '_'[192]
+  957:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=95[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> '_'[192]
+  975:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=95[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 8[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=8[204]) -> 'w'[188]
+  921:[192] VarInt(var[184]) -> 8[192]
+  924:[196] VarCharacter(var[188]) -> 'w'[196]
+  927:[200] LengthCharacter(v1='w'[196]) -> 1[196]
+  928:[200] AddInt(v1=8[192], v2=1[196]) -> 9[192]
+  929:[196] PutInt(var[184], value=9[192])
+  932:[192] VarCharacter(var[188]) -> 'w'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'w'[192]
+  942:[196] ConvBoolFromCharacter(v1='w'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'w'[192]
+  957:[196] ConvIntFromCharacter(v1='w'[192]) -> 119[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=119[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'w'[192]
+  975:[196] ConvIntFromCharacter(v1='w'[192]) -> 119[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=119[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 9[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=9[204]) -> 'm'[188]
+  921:[192] VarInt(var[184]) -> 9[192]
+  924:[196] VarCharacter(var[188]) -> 'm'[196]
+  927:[200] LengthCharacter(v1='m'[196]) -> 1[196]
+  928:[200] AddInt(v1=9[192], v2=1[196]) -> 10[192]
+  929:[196] PutInt(var[184], value=10[192])
+  932:[192] VarCharacter(var[188]) -> 'm'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'm'[192]
+  942:[196] ConvBoolFromCharacter(v1='m'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'm'[192]
+  957:[196] ConvIntFromCharacter(v1='m'[192]) -> 109[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=109[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'm'[192]
+  975:[196] ConvIntFromCharacter(v1='m'[192]) -> 109[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=109[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 10[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=10[204]) -> '_'[188]
+  921:[192] VarInt(var[184]) -> 10[192]
+  924:[196] VarCharacter(var[188]) -> '_'[196]
+  927:[200] LengthCharacter(v1='_'[196]) -> 1[196]
+  928:[200] AddInt(v1=10[192], v2=1[196]) -> 11[192]
+  929:[196] PutInt(var[184], value=11[192])
+  932:[192] VarCharacter(var[188]) -> '_'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> '_'[192]
+  942:[196] ConvBoolFromCharacter(v1='_'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> '_'[192]
+  957:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=95[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> '_'[192]
+  975:[196] ConvIntFromCharacter(v1='_'[192]) -> 95[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=95[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 11[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=11[204]) -> 'd'[188]
+  921:[192] VarInt(var[184]) -> 11[192]
+  924:[196] VarCharacter(var[188]) -> 'd'[196]
+  927:[200] LengthCharacter(v1='d'[196]) -> 1[196]
+  928:[200] AddInt(v1=11[192], v2=1[196]) -> 12[192]
+  929:[196] PutInt(var[184], value=12[192])
+  932:[192] VarCharacter(var[188]) -> 'd'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'd'[192]
+  942:[196] ConvBoolFromCharacter(v1='d'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'd'[192]
+  957:[196] ConvIntFromCharacter(v1='d'[192]) -> 100[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=100[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'd'[192]
+  975:[196] ConvIntFromCharacter(v1='d'[192]) -> 100[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=100[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 12[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=12[204]) -> 's'[188]
+  921:[192] VarInt(var[184]) -> 12[192]
+  924:[196] VarCharacter(var[188]) -> 's'[196]
+  927:[200] LengthCharacter(v1='s'[196]) -> 1[196]
+  928:[200] AddInt(v1=12[192], v2=1[196]) -> 13[192]
+  929:[196] PutInt(var[184], value=13[192])
+  932:[192] VarCharacter(var[188]) -> 's'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 's'[192]
+  942:[196] ConvBoolFromCharacter(v1='s'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 's'[192]
+  957:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=115[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 's'[192]
+  975:[196] ConvIntFromCharacter(v1='s'[192]) -> 115[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=115[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 13[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=13[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 13[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=13[192], v2=1[196]) -> 14[192]
+  929:[196] PutInt(var[184], value=14[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 14[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=14[204]) -> '.'[188]
+  921:[192] VarInt(var[184]) -> 14[192]
+  924:[196] VarCharacter(var[188]) -> '.'[196]
+  927:[200] LengthCharacter(v1='.'[196]) -> 1[196]
+  928:[200] AddInt(v1=14[192], v2=1[196]) -> 15[192]
+  929:[196] PutInt(var[184], value=15[192])
+  932:[192] VarCharacter(var[188]) -> '.'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> '.'[192]
+  942:[196] ConvBoolFromCharacter(v1='.'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> '.'[192]
+  957:[196] ConvIntFromCharacter(v1='.'[192]) -> 46[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=46[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> '.'[192]
+  975:[196] ConvIntFromCharacter(v1='.'[192]) -> 46[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=46[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 15[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=15[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 15[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=15[192], v2=1[196]) -> 16[192]
+  929:[196] PutInt(var[184], value=16[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 16[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=16[204]) -> 'x'[188]
+  921:[192] VarInt(var[184]) -> 16[192]
+  924:[196] VarCharacter(var[188]) -> 'x'[196]
+  927:[200] LengthCharacter(v1='x'[196]) -> 1[196]
+  928:[200] AddInt(v1=16[192], v2=1[196]) -> 17[192]
+  929:[196] PutInt(var[184], value=17[192])
+  932:[192] VarCharacter(var[188]) -> 'x'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 'x'[192]
+  942:[196] ConvBoolFromCharacter(v1='x'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 'x'[192]
+  957:[196] ConvIntFromCharacter(v1='x'[192]) -> 120[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=120[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 'x'[192]
+  975:[196] ConvIntFromCharacter(v1='x'[192]) -> 120[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=120[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 17[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=17[204]) -> 't'[188]
+  921:[192] VarInt(var[184]) -> 17[192]
+  924:[196] VarCharacter(var[188]) -> 't'[196]
+  927:[200] LengthCharacter(v1='t'[196]) -> 1[196]
+  928:[200] AddInt(v1=17[192], v2=1[196]) -> 18[192]
+  929:[196] PutInt(var[184], value=18[192])
+  932:[192] VarCharacter(var[188]) -> 't'[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> 't'[192]
+  942:[196] ConvBoolFromCharacter(v1='t'[192]) -> true[192]
+  943:[193] Not(v1=true[192]) -> false[192]
+  944:[193] GotoFalseWord(jump=954, if_false=false[192])
+  954:[192] VarCharacter(var[188]) -> 't'[192]
+  957:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  958:[196] ConstInt(val=47) -> 47[196]
+  963:[200] ConvIntFromCharacter(v1='/'[196]) -> 47[196]
+  964:[200] EqInt(v1=116[192], v2=47[196]) -> false[192]
+  965:[193] GotoFalseWord(jump=972, if_false=false[192])
+  972:[192] VarCharacter(var[188]) -> 't'[192]
+  975:[196] ConvIntFromCharacter(v1='t'[192]) -> 116[192]
+  976:[196] ConstInt(val=92) -> 92[196]
+  981:[200] ConvIntFromCharacter(v1='\'[196]) -> 92[196]
+  982:[200] EqInt(v1=116[192], v2=92[196]) -> false[192]
+  983:[193] GotoFalseWord(jump=1116, if_false=false[192])
+ 1116:[192] FreeStack(value=0, discard=4)
+ 1120:[188] GotoWord(jump=914)
+  914:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+  917:[204] VarInt(var[184]) -> 18[204]
+  920:[208] TextCharacter(v1="test_fs_wm_dst.txt"[188], v2=18[204]) -> null[188]
+  921:[192] VarInt(var[184]) -> 18[192]
+  924:[196] VarCharacter(var[188]) -> null[196]
+  927:[200] LengthCharacter(v1=null[196]) -> 0[196]
+  928:[200] AddInt(v1=18[192], v2=0[196]) -> 18[192]
+  929:[196] PutInt(var[184], value=18[192])
+  932:[192] VarCharacter(var[188]) -> null[192]
+  935:[196] FreeStack(value=4, discard=8)
+  939:[192] VarCharacter(var[188]) -> null[192]
+  942:[196] ConvBoolFromCharacter(v1=null[192]) -> false[192]
+  943:[193] Not(v1=false[192]) -> true[192]
+  944:[193] GotoFalseWord(jump=954, if_false=true[192])
+  947:[192] FreeStack(value=0, discard=4)
+  951:[188] GotoWord(jump=1123)
+ 1123:[188] FreeStack(value=0, discard=4)
+ 1127:[184] VarInt(var[180]) -> 0[184]
+ 1130:[188] ArgText(var[156]) -> "test_fs_wm_dst.txt"[188]
+ 1133:[204] Call(size=0, fn=t_4text_len)
+  318:[208] ArgText(var[188]) -> "test_fs_wm_dst.txt"[208]
+  321:[224] LengthText(v1="test_fs_wm_dst.txt"[208]) -> 18[208]
+  322:[212] Return(ret=1140[204], value=4, discard=24) -> 18[188]
+ 1140:[192] LtInt(v1=0[184], v2=18[188]) -> true[184]
+ 1141:[185] GotoFalseWord(jump=1195, if_false=true[184])
+ 1144:[184] Text()
+ 1145:[208] ArgText(var[156]) -> "test_fs_wm_dst.txt"[208]
+ 1148:[224] VarInt(var[180]) -> 0[224]
+ 1151:[228] ArgText(var[156]) -> "test_fs_wm_dst.txt"[228]
+ 1154:[244] Call(size=0, fn=t_4text_len)
+  318:[248] ArgText(var[228]) -> "test_fs_wm_dst.txt"[248]
+  321:[264] LengthText(v1="test_fs_wm_dst.txt"[248]) -> 18[248]
+  322:[252] Return(ret=1161[244], value=4, discard=24) -> 18[228]
+ 1161:[232] GetTextSub(v1="test_fs_wm_dst.txt"[208], from=0[224], till=18[228]) -> "test_fs_wm_dst.txt"[208]
+ 1162:[224] AppendText(var[184], v1="test_fs_wm_dst.txt"[208])
+ 1165:[208] VarText(var[184]) -> "test_fs_wm_dst.txt"[208]
+ 1168:[224] ConstText(_value="..") -> ".."[224]
+ 1172:[240] EqText(v1="test_fs_wm_dst.txt"[208], v2=".."[224]) -> false[208]
+ 1173:[209] GotoFalseWord(jump=1188, if_false=false[208])
+ 1188:[208] FreeText(var[184])
+ 1191:[208] FreeStack(value=0, discard=24)
+ 1195:[184] ConstInt(val=0) -> 0[184]
+ 1200:[188] VarInt(var[176]) -> 0[188]
+ 1203:[192] LeInt(v1=0[184], v2=0[188]) -> true[184]
+ 1204:[185] Return(ret=1294[172], value=1, discard=29) -> true[156]
+ 1294:[157] GotoFalseWord(jump=1308, if_false=true[156])
+ 1297:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0,next:0}[156]
+ 1300:[168] GetFile(file=ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0,next:0}[156]) -> false[156]
+ 1301:[157] FreeStack(value=0, discard=1)
+ 1305:[156] GotoWord(jump=1316)
+ 1316:[156] VarRef(var[140]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,format:NotExists}[156]
+ 1319:[168] Return(ret=1339[152], value=12, discard=44) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,format:NotExists}[124]
+ 1339:[136] GetEnum(v1=ref(2,1,8)[124], fld=32) -> null(5)[124]
+ 1342:[125] ConvIntFromEnum(v1=5[124]) -> 5[124]
+ 1343:[128] ConstEnum(val=5) -> NotExists(5)[128]
+ 1345:[129] ConvIntFromEnum(v1=5[128]) -> 5[128]
+ 1346:[132] NeInt(v1=5[124], v2=5[128]) -> false[124]
+ 1347:[125] VarRef(var[112]) -> ref(2,0,8)=null[125]
+ 1350:[137] FreeRef(v1=ref(2,0,8)[125])
+ 1351:[125] Return(ret=1424[108], value=1, discard=33) -> false[92]
+ 1424:[93] Not(v1=false[92]) -> true[92]
+ 1425:[93] GotoWord(jump=1429)
+ 1429:[93] GotoFalseWord(jump=1442, if_false=true[92])
+ 1432:[92] ArgText(var[56]) -> "test_fs_wm_src.txt"[92]
+ 1435:[108] ArgText(var[72]) -> "test_fs_wm_dst.txt"[108]
+ 1438:[124] MoveFile(from="test_fs_wm_src.txt"[92], to="test_fs_wm_dst.txt"[108]) -> true[92]
+ 1439:[93] GotoWord(jump=1443)
+ 1443:[93] Return(ret=1879[88], value=1, discard=37) -> true[56]
+  122:[57] ConstText(_value="test_fs_wm_dst.txt") -> "test_fs_wm_dst.txt"[57]
+  142:[73] Call(size=0, fn=n_delete)
+ 1357:[77] ArgText(var[57]) -> "test_fs_wm_dst.txt"[77]
+ 1360:[93] Call(size=0, fn=n_exists)
+ 1325:[97] [175] ConvRefFromNull() -> ref(2,0,8)[97]
+ 1326:[109] ArgText(var[77]) -> "test_fs_wm_dst.txt"[109]
+ 1329:[125] VarRef(var[97]) -> ref(2,0,8)=null[125]
+ 1332:[137] Call(size=0, fn=n_file)
+ 1210:[141] Database(var[125], db_tp=14)
+ 1215:[141] VarRef(var[125]) -> ref(2,1,8)={}[141]
+ 1218:[153] ArgText(var[109]) -> "test_fs_wm_dst.txt"[153]
+ 1221:[169] SetText(v1=ref(2,1,8)[141], fld=24, val="test_fs_wm_dst.txt"[153])
+ 1224:[141] VarRef(var[125]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt"}[141]
+ 1227:[153] ConvIntFromNull() -> -2147483648[153]
+ 1228:[157] SetInt(v1=ref(2,1,8)[141], fld=28, val=-2147483648[153])
+ 1231:[141] VarRef(var[125]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt"}[141]
+ 1234:[153] ConstLong(val=0) -> 0[153]
+ 1243:[161] SetLong(v1=ref(2,1,8)[141], fld=0, val=0[153])
+ 1246:[141] VarRef(var[125]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0}[141]
+ 1249:[153] ConstEnum(val=0) -> null(0)[153]
+ 1251:[154] SetEnum(v1=ref(2,1,8)[141], fld=32, val=0[153])
+ 1254:[141] VarRef(var[125]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0}[141]
+ 1257:[153] ConstLong(val=0) -> 0[153]
+ 1266:[161] SetLong(v1=ref(2,1,8)[141], fld=8, val=0[153])
+ 1269:[141] VarRef(var[125]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0}[141]
+ 1272:[153] ConstLong(val=0) -> 0[153]
+ 1281:[161] SetLong(v1=ref(2,1,8)[141], fld=16, val=0[153])
+ 1284:[141] ArgText(var[109]) -> "test_fs_wm_dst.txt"[141]
+ 1287:[157] Call(size=0, fn=n_valid_path)
+  899:[161] ConstInt(val=0) -> 0[161]
+  904:[165] ConstInt(val=0) -> 0[165]
+  909:[169] ConstInt(val=0) -> 0[169]
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 0[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=0[189]) -> 't'[173]
+  921:[177] VarInt(var[169]) -> 0[177]
+  924:[181] VarCharacter(var[173]) -> 't'[181]
+  927:[185] LengthCharacter(v1='t'[181]) -> 1[181]
+  928:[185] AddInt(v1=0[177], v2=1[181]) -> 1[177]
+  929:[181] PutInt(var[169], value=1[177])
+  932:[177] VarCharacter(var[173]) -> 't'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 't'[177]
+  942:[181] ConvBoolFromCharacter(v1='t'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 't'[177]
+  957:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=116[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 't'[177]
+  975:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=116[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 1[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=1[189]) -> 'e'[173]
+  921:[177] VarInt(var[169]) -> 1[177]
+  924:[181] VarCharacter(var[173]) -> 'e'[181]
+  927:[185] LengthCharacter(v1='e'[181]) -> 1[181]
+  928:[185] AddInt(v1=1[177], v2=1[181]) -> 2[177]
+  929:[181] PutInt(var[169], value=2[177])
+  932:[177] VarCharacter(var[173]) -> 'e'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 'e'[177]
+  942:[181] ConvBoolFromCharacter(v1='e'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 'e'[177]
+  957:[181] ConvIntFromCharacter(v1='e'[177]) -> 101[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=101[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 'e'[177]
+  975:[181] ConvIntFromCharacter(v1='e'[177]) -> 101[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=101[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 2[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=2[189]) -> 's'[173]
+  921:[177] VarInt(var[169]) -> 2[177]
+  924:[181] VarCharacter(var[173]) -> 's'[181]
+  927:[185] LengthCharacter(v1='s'[181]) -> 1[181]
+  928:[185] AddInt(v1=2[177], v2=1[181]) -> 3[177]
+  929:[181] PutInt(var[169], value=3[177])
+  932:[177] VarCharacter(var[173]) -> 's'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 's'[177]
+  942:[181] ConvBoolFromCharacter(v1='s'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 's'[177]
+  957:[181] ConvIntFromCharacter(v1='s'[177]) -> 115[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=115[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 's'[177]
+  975:[181] ConvIntFromCharacter(v1='s'[177]) -> 115[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=115[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 3[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=3[189]) -> 't'[173]
+  921:[177] VarInt(var[169]) -> 3[177]
+  924:[181] VarCharacter(var[173]) -> 't'[181]
+  927:[185] LengthCharacter(v1='t'[181]) -> 1[181]
+  928:[185] AddInt(v1=3[177], v2=1[181]) -> 4[177]
+  929:[181] PutInt(var[169], value=4[177])
+  932:[177] VarCharacter(var[173]) -> 't'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 't'[177]
+  942:[181] ConvBoolFromCharacter(v1='t'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 't'[177]
+  957:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=116[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 't'[177]
+  975:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=116[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 4[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=4[189]) -> '_'[173]
+  921:[177] VarInt(var[169]) -> 4[177]
+  924:[181] VarCharacter(var[173]) -> '_'[181]
+  927:[185] LengthCharacter(v1='_'[181]) -> 1[181]
+  928:[185] AddInt(v1=4[177], v2=1[181]) -> 5[177]
+  929:[181] PutInt(var[169], value=5[177])
+  932:[177] VarCharacter(var[173]) -> '_'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> '_'[177]
+  942:[181] ConvBoolFromCharacter(v1='_'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> '_'[177]
+  957:[181] ConvIntFromCharacter(v1='_'[177]) -> 95[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=95[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> '_'[177]
+  975:[181] ConvIntFromCharacter(v1='_'[177]) -> 95[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=95[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 5[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=5[189]) -> 'f'[173]
+  921:[177] VarInt(var[169]) -> 5[177]
+  924:[181] VarCharacter(var[173]) -> 'f'[181]
+  927:[185] LengthCharacter(v1='f'[181]) -> 1[181]
+  928:[185] AddInt(v1=5[177], v2=1[181]) -> 6[177]
+  929:[181] PutInt(var[169], value=6[177])
+  932:[177] VarCharacter(var[173]) -> 'f'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 'f'[177]
+  942:[181] ConvBoolFromCharacter(v1='f'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 'f'[177]
+  957:[181] ConvIntFromCharacter(v1='f'[177]) -> 102[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=102[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 'f'[177]
+  975:[181] ConvIntFromCharacter(v1='f'[177]) -> 102[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=102[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 6[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=6[189]) -> 's'[173]
+  921:[177] VarInt(var[169]) -> 6[177]
+  924:[181] VarCharacter(var[173]) -> 's'[181]
+  927:[185] LengthCharacter(v1='s'[181]) -> 1[181]
+  928:[185] AddInt(v1=6[177], v2=1[181]) -> 7[177]
+  929:[181] PutInt(var[169], value=7[177])
+  932:[177] VarCharacter(var[173]) -> 's'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 's'[177]
+  942:[181] ConvBoolFromCharacter(v1='s'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 's'[177]
+  957:[181] ConvIntFromCharacter(v1='s'[177]) -> 115[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=115[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 's'[177]
+  975:[181] ConvIntFromCharacter(v1='s'[177]) -> 115[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=115[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 7[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=7[189]) -> '_'[173]
+  921:[177] VarInt(var[169]) -> 7[177]
+  924:[181] VarCharacter(var[173]) -> '_'[181]
+  927:[185] LengthCharacter(v1='_'[181]) -> 1[181]
+  928:[185] AddInt(v1=7[177], v2=1[181]) -> 8[177]
+  929:[181] PutInt(var[169], value=8[177])
+  932:[177] VarCharacter(var[173]) -> '_'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> '_'[177]
+  942:[181] ConvBoolFromCharacter(v1='_'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> '_'[177]
+  957:[181] ConvIntFromCharacter(v1='_'[177]) -> 95[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=95[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> '_'[177]
+  975:[181] ConvIntFromCharacter(v1='_'[177]) -> 95[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=95[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 8[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=8[189]) -> 'w'[173]
+  921:[177] VarInt(var[169]) -> 8[177]
+  924:[181] VarCharacter(var[173]) -> 'w'[181]
+  927:[185] LengthCharacter(v1='w'[181]) -> 1[181]
+  928:[185] AddInt(v1=8[177], v2=1[181]) -> 9[177]
+  929:[181] PutInt(var[169], value=9[177])
+  932:[177] VarCharacter(var[173]) -> 'w'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 'w'[177]
+  942:[181] ConvBoolFromCharacter(v1='w'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 'w'[177]
+  957:[181] ConvIntFromCharacter(v1='w'[177]) -> 119[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=119[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 'w'[177]
+  975:[181] ConvIntFromCharacter(v1='w'[177]) -> 119[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=119[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 9[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=9[189]) -> 'm'[173]
+  921:[177] VarInt(var[169]) -> 9[177]
+  924:[181] VarCharacter(var[173]) -> 'm'[181]
+  927:[185] LengthCharacter(v1='m'[181]) -> 1[181]
+  928:[185] AddInt(v1=9[177], v2=1[181]) -> 10[177]
+  929:[181] PutInt(var[169], value=10[177])
+  932:[177] VarCharacter(var[173]) -> 'm'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 'm'[177]
+  942:[181] ConvBoolFromCharacter(v1='m'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 'm'[177]
+  957:[181] ConvIntFromCharacter(v1='m'[177]) -> 109[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=109[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 'm'[177]
+  975:[181] ConvIntFromCharacter(v1='m'[177]) -> 109[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=109[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 10[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=10[189]) -> '_'[173]
+  921:[177] VarInt(var[169]) -> 10[177]
+  924:[181] VarCharacter(var[173]) -> '_'[181]
+  927:[185] LengthCharacter(v1='_'[181]) -> 1[181]
+  928:[185] AddInt(v1=10[177], v2=1[181]) -> 11[177]
+  929:[181] PutInt(var[169], value=11[177])
+  932:[177] VarCharacter(var[173]) -> '_'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> '_'[177]
+  942:[181] ConvBoolFromCharacter(v1='_'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> '_'[177]
+  957:[181] ConvIntFromCharacter(v1='_'[177]) -> 95[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=95[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> '_'[177]
+  975:[181] ConvIntFromCharacter(v1='_'[177]) -> 95[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=95[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 11[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=11[189]) -> 'd'[173]
+  921:[177] VarInt(var[169]) -> 11[177]
+  924:[181] VarCharacter(var[173]) -> 'd'[181]
+  927:[185] LengthCharacter(v1='d'[181]) -> 1[181]
+  928:[185] AddInt(v1=11[177], v2=1[181]) -> 12[177]
+  929:[181] PutInt(var[169], value=12[177])
+  932:[177] VarCharacter(var[173]) -> 'd'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 'd'[177]
+  942:[181] ConvBoolFromCharacter(v1='d'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 'd'[177]
+  957:[181] ConvIntFromCharacter(v1='d'[177]) -> 100[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=100[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 'd'[177]
+  975:[181] ConvIntFromCharacter(v1='d'[177]) -> 100[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=100[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 12[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=12[189]) -> 's'[173]
+  921:[177] VarInt(var[169]) -> 12[177]
+  924:[181] VarCharacter(var[173]) -> 's'[181]
+  927:[185] LengthCharacter(v1='s'[181]) -> 1[181]
+  928:[185] AddInt(v1=12[177], v2=1[181]) -> 13[177]
+  929:[181] PutInt(var[169], value=13[177])
+  932:[177] VarCharacter(var[173]) -> 's'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 's'[177]
+  942:[181] ConvBoolFromCharacter(v1='s'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 's'[177]
+  957:[181] ConvIntFromCharacter(v1='s'[177]) -> 115[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=115[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 's'[177]
+  975:[181] ConvIntFromCharacter(v1='s'[177]) -> 115[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=115[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 13[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=13[189]) -> 't'[173]
+  921:[177] VarInt(var[169]) -> 13[177]
+  924:[181] VarCharacter(var[173]) -> 't'[181]
+  927:[185] LengthCharacter(v1='t'[181]) -> 1[181]
+  928:[185] AddInt(v1=13[177], v2=1[181]) -> 14[177]
+  929:[181] PutInt(var[169], value=14[177])
+  932:[177] VarCharacter(var[173]) -> 't'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 't'[177]
+  942:[181] ConvBoolFromCharacter(v1='t'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 't'[177]
+  957:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=116[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 't'[177]
+  975:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=116[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 14[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=14[189]) -> '.'[173]
+  921:[177] VarInt(var[169]) -> 14[177]
+  924:[181] VarCharacter(var[173]) -> '.'[181]
+  927:[185] LengthCharacter(v1='.'[181]) -> 1[181]
+  928:[185] AddInt(v1=14[177], v2=1[181]) -> 15[177]
+  929:[181] PutInt(var[169], value=15[177])
+  932:[177] VarCharacter(var[173]) -> '.'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> '.'[177]
+  942:[181] ConvBoolFromCharacter(v1='.'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> '.'[177]
+  957:[181] ConvIntFromCharacter(v1='.'[177]) -> 46[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=46[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> '.'[177]
+  975:[181] ConvIntFromCharacter(v1='.'[177]) -> 46[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=46[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 15[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=15[189]) -> 't'[173]
+  921:[177] VarInt(var[169]) -> 15[177]
+  924:[181] VarCharacter(var[173]) -> 't'[181]
+  927:[185] LengthCharacter(v1='t'[181]) -> 1[181]
+  928:[185] AddInt(v1=15[177], v2=1[181]) -> 16[177]
+  929:[181] PutInt(var[169], value=16[177])
+  932:[177] VarCharacter(var[173]) -> 't'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 't'[177]
+  942:[181] ConvBoolFromCharacter(v1='t'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 't'[177]
+  957:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=116[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 't'[177]
+  975:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=116[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 16[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=16[189]) -> 'x'[173]
+  921:[177] VarInt(var[169]) -> 16[177]
+  924:[181] VarCharacter(var[173]) -> 'x'[181]
+  927:[185] LengthCharacter(v1='x'[181]) -> 1[181]
+  928:[185] AddInt(v1=16[177], v2=1[181]) -> 17[177]
+  929:[181] PutInt(var[169], value=17[177])
+  932:[177] VarCharacter(var[173]) -> 'x'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 'x'[177]
+  942:[181] ConvBoolFromCharacter(v1='x'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 'x'[177]
+  957:[181] ConvIntFromCharacter(v1='x'[177]) -> 120[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=120[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 'x'[177]
+  975:[181] ConvIntFromCharacter(v1='x'[177]) -> 120[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=120[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 17[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=17[189]) -> 't'[173]
+  921:[177] VarInt(var[169]) -> 17[177]
+  924:[181] VarCharacter(var[173]) -> 't'[181]
+  927:[185] LengthCharacter(v1='t'[181]) -> 1[181]
+  928:[185] AddInt(v1=17[177], v2=1[181]) -> 18[177]
+  929:[181] PutInt(var[169], value=18[177])
+  932:[177] VarCharacter(var[173]) -> 't'[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> 't'[177]
+  942:[181] ConvBoolFromCharacter(v1='t'[177]) -> true[177]
+  943:[178] Not(v1=true[177]) -> false[177]
+  944:[178] GotoFalseWord(jump=954, if_false=false[177])
+  954:[177] VarCharacter(var[173]) -> 't'[177]
+  957:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  958:[181] ConstInt(val=47) -> 47[181]
+  963:[185] ConvIntFromCharacter(v1='/'[181]) -> 47[181]
+  964:[185] EqInt(v1=116[177], v2=47[181]) -> false[177]
+  965:[178] GotoFalseWord(jump=972, if_false=false[177])
+  972:[177] VarCharacter(var[173]) -> 't'[177]
+  975:[181] ConvIntFromCharacter(v1='t'[177]) -> 116[177]
+  976:[181] ConstInt(val=92) -> 92[181]
+  981:[185] ConvIntFromCharacter(v1='\'[181]) -> 92[181]
+  982:[185] EqInt(v1=116[177], v2=92[181]) -> false[177]
+  983:[178] GotoFalseWord(jump=1116, if_false=false[177])
+ 1116:[177] FreeStack(value=0, discard=4)
+ 1120:[173] GotoWord(jump=914)
+  914:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+  917:[189] VarInt(var[169]) -> 18[189]
+  920:[193] TextCharacter(v1="test_fs_wm_dst.txt"[173], v2=18[189]) -> null[173]
+  921:[177] VarInt(var[169]) -> 18[177]
+  924:[181] VarCharacter(var[173]) -> null[181]
+  927:[185] LengthCharacter(v1=null[181]) -> 0[181]
+  928:[185] AddInt(v1=18[177], v2=0[181]) -> 18[177]
+  929:[181] PutInt(var[169], value=18[177])
+  932:[177] VarCharacter(var[173]) -> null[177]
+  935:[181] FreeStack(value=4, discard=8)
+  939:[177] VarCharacter(var[173]) -> null[177]
+  942:[181] ConvBoolFromCharacter(v1=null[177]) -> false[177]
+  943:[178] Not(v1=false[177]) -> true[177]
+  944:[178] GotoFalseWord(jump=954, if_false=true[177])
+  947:[177] FreeStack(value=0, discard=4)
+  951:[173] GotoWord(jump=1123)
+ 1123:[173] FreeStack(value=0, discard=4)
+ 1127:[169] VarInt(var[165]) -> 0[169]
+ 1130:[173] ArgText(var[141]) -> "test_fs_wm_dst.txt"[173]
+ 1133:[189] Call(size=0, fn=t_4text_len)
+  318:[193] ArgText(var[173]) -> "test_fs_wm_dst.txt"[193]
+  321:[209] LengthText(v1="test_fs_wm_dst.txt"[193]) -> 18[193]
+  322:[197] Return(ret=1140[189], value=4, discard=24) -> 18[173]
+ 1140:[177] LtInt(v1=0[169], v2=18[173]) -> true[169]
+ 1141:[170] GotoFalseWord(jump=1195, if_false=true[169])
+ 1144:[169] Text()
+ 1145:[193] ArgText(var[141]) -> "test_fs_wm_dst.txt"[193]
+ 1148:[209] VarInt(var[165]) -> 0[209]
+ 1151:[213] ArgText(var[141]) -> "test_fs_wm_dst.txt"[213]
+ 1154:[229] Call(size=0, fn=t_4text_len)
+  318:[233] ArgText(var[213]) -> "test_fs_wm_dst.txt"[233]
+  321:[249] LengthText(v1="test_fs_wm_dst.txt"[233]) -> 18[233]
+  322:[237] Return(ret=1161[229], value=4, discard=24) -> 18[213]
+ 1161:[217] GetTextSub(v1="test_fs_wm_dst.txt"[193], from=0[209], till=18[213]) -> "test_fs_wm_dst.txt"[193]
+ 1162:[209] AppendText(var[169], v1="test_fs_wm_dst.txt"[193])
+ 1165:[193] VarText(var[169]) -> "test_fs_wm_dst.txt"[193]
+ 1168:[209] ConstText(_value="..") -> ".."[209]
+ 1172:[225] EqText(v1="test_fs_wm_dst.txt"[193], v2=".."[209]) -> false[193]
+ 1173:[194] GotoFalseWord(jump=1188, if_false=false[193])
+ 1188:[193] FreeText(var[169])
+ 1191:[193] FreeStack(value=0, discard=24)
+ 1195:[169] ConstInt(val=0) -> 0[169]
+ 1200:[173] VarInt(var[161]) -> 0[173]
+ 1203:[177] LeInt(v1=0[169], v2=0[173]) -> true[169]
+ 1204:[170] Return(ret=1294[157], value=1, discard=29) -> true[141]
+ 1294:[142] GotoFalseWord(jump=1308, if_false=true[141])
+ 1297:[141] VarRef(var[125]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0,next:0}[141]
+ 1300:[153] GetFile(file=ref(2,1,8)={path:"test_fs_wm_dst.txt",size:0,current:0,next:0}[141]) -> true[141]
+ 1301:[142] FreeStack(value=0, discard=1)
+ 1305:[141] GotoWord(jump=1316)
+ 1316:[141] VarRef(var[125]) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:4,format:TextFile}[141]
+ 1319:[153] Return(ret=1339[137], value=12, discard=44) -> ref(2,1,8)={path:"test_fs_wm_dst.txt",size:4,format:TextFile}[109]
+ 1339:[121] GetEnum(v1=ref(2,1,8)[109], fld=32) -> null(1)[109]
+ 1342:[110] ConvIntFromEnum(v1=1[109]) -> 1[109]
+ 1343:[113] ConstEnum(val=5) -> NotExists(5)[113]
+ 1345:[114] ConvIntFromEnum(v1=5[113]) -> 5[113]
+ 1346:[117] NeInt(v1=1[109], v2=5[113]) -> true[109]
+ 1347:[110] VarRef(var[97]) -> ref(2,0,8)=null[110]
+ 1350:[122] FreeRef(v1=ref(2,0,8)[110])
+ 1351:[110] Return(ret=1367[93], value=1, discard=33) -> true[77]
+ 1367:[78] GotoFalseWord(jump=1377, if_false=true[77])
+ 1370:[77] ArgText(var[57]) -> "test_fs_wm_dst.txt"[77]
+ 1373:[93] Delete(path="test_fs_wm_dst.txt"[77]) -> true[77]
+ 1374:[78] GotoWord(jump=1378)
+ 1378:[78] Return(ret=1906[73], value=1, discard=21) -> true[57]
+  149:[58] FreeStack(value=0, discard=1)
+  153:[57] VarBool(var[56]) -> true[57]
+  156:[58] GotoFalseWord(jump=167, if_false=true[57])
+  159:[57] ConstInt(val=1) -> 1[57]
+  164:[61] GotoWord(jump=172)
+  172:[61] FreeStack(value=4, discard=17)
+  176:[48] VarInt(var[44]) -> 1[48]
+  179:[52] ConstInt(val=1) -> 1[52]
+  184:[56] EqInt(v1=1[48], v2=1[52]) -> true[48]
+  185:[49] GotoFalseWord(jump=191, if_false=true[48])
+  188:[48] GotoWord(jump=241)
+  241:[48] VarRef(var[8]) -> ref(1,0,8)=null[48]
+  244:[60] FreeRef(v1=ref(1,0,8)[48])
+  245:[48] FreeText(var[20])
+  248:[48] Return(ret=4294967295[4], value=0, discard=44)
+Finished

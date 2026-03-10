@@ -104,10 +104,18 @@ Nullable integers with range exactly 256 or 65536 also use 1 or 2 bytes respecti
 
 ### Dependency Lists (`Vec<u16>`)
 
-Types that hold heap-allocated data (Text, Reference, Vector, Enum, collections)
-carry a `Vec<u16>` of variable stack positions that this value depends on.
-Used for lifetime / free tracking: when a variable goes out of scope, the runtime
-frees dependent heap allocations.
+Types that hold heap-allocated data (`Text`, `Reference`, `Vector`, `Enum(ref)`, collections)
+carry a `Vec<u16>` of **variable indices** that this value borrows storage from.
+
+The dep list is a *borrow tracker*:
+- **Empty dep** → the variable owns its allocation; `OpFreeRef` will be emitted when it goes out of scope.
+- **Non-empty dep** → the variable borrows from another; `OpFreeRef` is suppressed; code generation emits `OpCreateStack(dep[0])` instead of `OpConvRefFromNull`/`OpDatabase`.
+- If the **return type** of a block/function depends on variable `v` (`tp.depend().contains(&v)`), `OpFreeRef(v)` is also suppressed even when dep is empty.
+
+`Type::depend()` extracts the full dep list, recursing through `RefVar`.
+`Type::depending(on)` returns a copy of the type with `on` prepended.
+
+`Type::RefVar(Box<Type>)` means "stack reference": a DbRef pointing into another variable's stack slot rather than an independently-owned record. Used for `&text` (alias) parameters; `depend()` delegates to the inner type.
 
 ---
 
@@ -145,7 +153,7 @@ pub struct State {
     pub types: HashMap<u32, u16>,      // code_pos -> type id
     pub library: Vec<Call>,            // Extern Rust function table
     pub library_names: HashMap<String, u16>,
-    text_positions: BTreeSet<u32>,
+    text_positions: BTreeSet<u32>,   // debug: set of absolute positions of live Strings
     line_numbers: HashMap<u32, u32>,
 }
 
@@ -154,6 +162,17 @@ pub type Call = fn(&mut Stores, &mut DbRef);
 
 The stack is stored as a database record in store 1000.
 `stack_pos` starts at 4 (offset past the record header).
+
+### `text_positions` (debug-only `String` liveness tracker)
+
+Text variables on the stack are stored as Rust `String` objects (`size_of::<String>() = 24 bytes`
+on 64-bit). In debug builds, `State` tracks which stack positions hold live `String`s:
+
+- `OpText` (`state.text()`) → inserts `stack_cur.pos + stack_pos` into `text_positions` before advancing `stack_pos`.
+- `OpFreeText(pos)` (`state.free_text()`) → computes `stack_cur.pos + stack_pos - pos`, calls `shrink_to(0)` on the `String`, and removes the absolute position from `text_positions`. Asserts it was present (double-free detection).
+- `OpFreeStack(value, discard)` (`state.free_stack()`) → after decrementing `stack_pos` by `discard`, asserts that `text_positions` has **no entries** in the discarded range. Violation = "Not freed texts" panic.
+
+**Consequence**: every `String` allocated by `OpText` in a block must be freed by `OpFreeText` before the block's `OpFreeStack` runs — except the block's *return* variable, which must be allocated **outside** the block's stack range (i.e. at an enclosing scope) so its position falls below the discard range.
 
 ---
 
@@ -248,22 +267,9 @@ Extra: `format_single`, `format_stack_single`, `format_float`, `format_stack_flo
 
 ---
 
-## DbRef — `src/keys.rs`
+## DbRef
 
-```rust
-pub struct DbRef {
-    pub store_nr: u16,  // Which store (database partition)
-    pub rec: u32,       // Record number within the store
-    pub pos: u32,       // Byte offset within the record
-}
-```
-
-`DbRef` is the universal pointer used for:
-- Stack frames (store 1000)
-- Database records (struct instances)
-- Vectors (elements within a record)
-
-Field access uses `store.get_int(rec, pos + field_offset)` etc.
+Universal pointer `(store_nr: u16, rec: u32, pos: u32)` — see `DATABASE.md` for the full definition and key/compare API. Used for stack frames (store 1000), struct instances, and vector elements.
 
 ---
 

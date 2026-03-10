@@ -385,35 +385,12 @@ The parser produces a tree of `Value` nodes that represents a function body.
 
 ### `Value` enum
 
-```rust
-pub enum Value {
-    Null,
-    Line(u32),             // source line marker
-    Int(i32),
-    Long(i64),
-    Float(f64),
-    Single(f32),
-    Boolean(bool),
-    Text(String),
-    Enum(u8, u16),         // (variant_index, database_type_id)
-
-    Var(u16),              // read variable slot nr
-    Set(u16, Box<Value>),  // write variable slot nr = expr
-
-    Call(u32, Vec<Value>), // call definition nr with arguments
-
-    Block(Box<Block>),     // { statements... ; result }
-    Insert(Vec<Value>),    // inline block (no new scope)
-    If(Box<Value>, Box<Value>, Box<Value>),  // if cond { then } else { else }
-    Loop(Box<Block>),      // loop { ... }
-    Break(u16),            // break n loops
-    Continue(u16),         // continue n-th loop
-    Return(Box<Value>),    // return expr
-    Drop(Box<Value>),      // evaluate and discard result
-    Iter(u16, Box<Value>, Box<Value>),  // iterator: (var, init, next)
-    Keys(Vec<Key>),        // key specification for sorted/index/hash
-}
-```
+IR node variants (full definition in `INTERMEDIATE.md`):
+- Literals: `Null`, `Int(i32)`, `Long(i64)`, `Float(f64)`, `Single(f32)`, `Boolean(bool)`, `Text(String)`, `Enum(u8, u16)`
+- Variables: `Var(u16)` (read), `Set(u16, Box<Value>)` (write)
+- Calls: `Call(u32, Vec<Value>)` — definition nr + args
+- Control: `Block`, `Insert`, `If`, `Loop`, `Break(u16)`, `Continue(u16)`, `Return`, `Drop`
+- Iteration: `Iter(u16, init, step)`, `Keys(Vec<Key>)`
 
 `Block` wraps a `Vec<Value>` (statement list), the result `Type`, a `scope` number, and a name used in bytecode dumps.
 
@@ -452,6 +429,20 @@ Carries the static type of a `Value`. Key variants:
 | `Rewritten(Box<Type>)` | Marker that text/vector append was rewritten |
 
 The dependency lists (`deps: Vec<u16>`) track which variables a reference-typed value "depends on" for lifetime purposes, used by scope analysis.
+
+#### `Type::depend()` and `Type::depending()`
+
+`depend() -> Vec<u16>` extracts the full dep list from any type, recursing through `RefVar`.
+
+`depending(on: u16) -> Type` returns a copy of the type with `on` prepended to the dep list. Called during expression parsing whenever a compound value borrows storage from a local variable (e.g. a text value built from variable 3 → `Type::Text(vec![3])`).
+
+#### `Type::RefVar`
+
+`Type::RefVar(Box<Type>)` means "stack reference" — a DbRef pointing into the stack allocation of another variable, rather than an independently-owned record in a Store. It is used for `&text` parameters (function arguments that alias a caller's text variable). `depend()` on `RefVar` delegates to the inner type.
+
+#### Text return dependencies
+
+When a function returns `Type::Text`, `text_return()` in `parser.rs` promotes local text variables to function *attributes* of type `RefVar(Text)`, and lists the resulting attribute indices in the return type's dep vec. This means a returned text value keeps the caller's stack alive until the return value is consumed.
 
 ### `DefType` — definition categories
 
@@ -522,12 +513,63 @@ Calls `database.finish()` to compute final field byte offsets for all record typ
 
 `scopes::check(data)` is called after parsing a file. It visits every function's IR tree and:
 
-1. Assigns each variable declaration to a scope number (0 = function arguments).
-2. Tracks which scopes are "open" at each point.
-3. When a variable goes out of scope and its value depends on store memory (text, references), inserts `OpFreeText` / `OpFreeRef` calls.
-4. Detects re-use of a variable name across scopes and remaps the second occurrence to a fresh slot.
+1. Assigns each variable declaration to a scope number (0 = function arguments, 1 = function body, 2+ = nested blocks).
+2. Tracks which scopes are currently open via a scope stack.
+3. When a scope closes, inserts `OpFreeText` / `OpFreeRef` cleanup calls for variables that go out of scope.
+4. Detects re-use of a variable name across sibling scopes and remaps the second occurrence to a fresh slot via `copy_variable`.
 
-The scope numbers are written back into `Function` (the variable table) and used by the bytecode generator to determine when to emit cleanup operations.
+The scope numbers are written back into `Function.variables[i].scope` after the pass.
+
+### Key data structures
+
+- `var_scope: BTreeMap<u16, u16>` — maps variable number → scope number where it was first assigned.
+- `var_mapping: HashMap<u16, u16>` — maps an original variable to its locally-copied replacement when a variable from an outer (exited) scope is reused in an inner scope.
+
+### Variable assignment (`scan` on `Value::Set`)
+
+When `Value::Set(v, value)` is processed:
+
+1. If `v` already has a `var_scope` entry from a scope that is **no longer open** (not in the scope stack) and no mapping yet exists → call `copy_variable(v)` to create a fresh slot, and record the mapping.
+2. For every variable index `d` in `function.tp(v).depend()` that is not yet in `var_scope` → insert `d` into `var_scope` at the current scope and prepend a null/empty initializer for `d` into the output as a `Value::Insert`.
+3. Insert `v` into `var_scope` at the current scope (if not already present).
+
+This ensures dependency variables are always initialised in the same scope as the variable that borrows them.
+
+### Cleanup generation (`get_free_vars` / `free_vars`)
+
+`get_free_vars(function, data, to_scope, tp, ret_var)` produces the `OpFree*` calls for all variables in `var_scope` up to `to_scope`:
+
+```
+for each variable v in scope:
+    skip if v == ret_var  (it is being returned)
+
+    if type is Text(_)
+        → emit OpFreeText(v)
+
+    if type is Reference/Vector/Enum(ref)
+       AND dep list is empty        ← variable owns its allocation
+       AND v ∉ tp.depend()          ← not needed by the return value
+        → emit OpFreeRef(v)
+```
+
+`free_vars` then inserts the free ops into the IR:
+- If the final expression is a `Value::Block`, free ops are inserted **inside** the block just before the block's last operator (`insert_free`), so cleanup runs before the block's `OpFreeStack`.
+- Otherwise, free ops are inserted before or after the expression in the statement list.
+
+### Block returns and `OpFreeStack`
+
+`OpFreeStack(value_bytes, discard_bytes)` collapses a block's stack frame:
+- decrements `stack_pos` by `discard_bytes`
+- asserts no `text_positions` entries remain in the discarded range (debug builds)
+- bitwise-copies `value_bytes` bytes as the block's result
+
+**Constraint**: all `String`-typed (text) variables allocated **inside** a block must be freed with `OpFreeText` before `OpFreeStack` runs. The one exception is the *return variable* (`ret_var`), which is skipped in `get_free_vars`. This works safely only when the text variable was allocated **outside** the block (function scope or an enclosing block scope), so that its stack position falls below the `OpFreeStack` discard range.
+
+If a block allocates a new text variable internally and returns it, the variable's position falls inside the discard range and the debug assertion fires. The fix in such cases is to hoist the text variable's initialisation (`claim_temp`) to the enclosing scope.
+
+### `copy_variable` (`variables.rs`)
+
+Creates an exact duplicate of a variable (same name, same type including deps) with fresh `scope = u16::MAX` and `stack_pos = u16::MAX`. Used when a variable from an outer scope is assigned again in an inner sibling scope that no longer has the outer scope in its stack.
 
 ---
 

@@ -1,0 +1,233 @@
+pub fn test() {
+    test_value = {"{file("../Cargo.toml").format}"};
+    assert(
+        test_value == "NotExists",
+        "Test failed {test_value} != \"NotExists\""
+    );
+}
+fn n_test() {#block(1):void
+  __ref_1(1):ref(File) = null;
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  [2] test_value(1):text["__work_1"] = {#block(2):text["__work_1"]
+    {#Formatted string(3):text["__work_1"]
+      __work_1(1):text = "";
+      OpFormatText(__work_1(1), OpCastTextFromEnum(OpGetEnum(n_file("../Cargo.toml", __ref_1(1)), 32i32), 8i32), 0i32, -1i32, 32i32);
+      __work_1(1);
+    }#Formatted string(3):text["__work_1"];
+  }#block(2):text["__work_1"];
+  [3] if OpEqText(test_value(1), "NotExists") null else OpPanic({#Formatted string(4):text["__work_2"]
+    __work_2(1):text = "Test failed ";
+    OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
+    OpAppendText(__work_2(1), " != "NotExists"");
+    __work_2(1);
+  }#Formatted string(4):text["__work_2"]);
+  OpFreeText(test_value(1));
+  OpFreeText(__work_1(1));
+  OpFreeRef(__ref_1(1));
+  OpFreeText(__work_2(1));
+}#block(1):void
+
+byte-code for file_outside_project:n_test()
+   0[0]: return-address
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(File)
+   1[16]: Text() var=__work_2[16]:text
+   2[40]: Text() var=__work_1[40]:text
+   3[64]: [2] Text() var=test_value[64]:text["__work_1"]
+   4[88]: ClearText(var[40]) var=__work_1[40]:text
+   7[88]: ConstText(_value="") -> text
+   9[104]: ConstText(_value="../Cargo.toml") -> text
+  24[120]: VarRef(var[4]) -> ref(reference) type=File 14 var=__ref_1[4]:ref(File)
+  27[132]: Call(size=0, fn=n_file)
+  34[116]: GetEnum(v1: ref(reference), fld=32) -> boolean
+  37[105]: CastTextFromEnum(v1: boolean, enum_tp=8) -> text
+  40[120]: ConstInt(val=0) -> integer
+  45[124]: FormatText(var[40], val: text, width: integer, dir=-1, token=32)
+  50[104]: VarText(var[40]) -> text var=__work_1[40]:text
+  53[120]: FreeStack(value=16, discard=32)
+  57[104]: AppendText(var[64], v1: text)
+  60[88]: [3] VarText(var[64]) -> text var=test_value[64]:text["__work_1"]
+  63[104]: ConstText(_value="NotExists") -> text
+  74[120]: EqText(v1: text, v2: text) -> boolean
+  75[89]: GotoFalseWord(jump=81, if_false: boolean)
+  78[88]: GotoWord(jump=138)
+  81[88]: ClearText(var[16]) var=__work_2[16]:text
+  84[88]: ConstText(_value="Test failed ") -> text
+  98[104]: AppendText(var[16], v1: text)
+ 101[88]: VarText(var[64]) -> text var=test_value[64]:text["__work_1"]
+ 104[104]: ConstInt(val=0) -> integer
+ 109[108]: FormatText(var[16], val: text, width: integer, dir=-1, token=32)
+ 114[88]: ConstText(_value=" != "NotExists"") -> text
+ 131[104]: AppendText(var[16], v1: text)
+ 134[88]: VarText(var[16]) -> text var=__work_2[16]:text
+ 137[104]: Panic(message: text)
+ 138[88]: FreeText(var[64])
+ 141[88]: FreeText(var[40])
+ 144[88]: VarRef(var[4]) -> ref(reference) type=File 14 var=__ref_1[4]:ref(File)
+ 147[100]: FreeRef(v1: ref(reference))
+ 148[88]: FreeText(var[16])
+ 151[88]: Return(ret=0, value=0, discard=88)
+
+Execute test:
+    0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+    1:[20] Text()
+    2:[44] [2] Text()
+    3:[68] Text()
+    4:[92] ClearText(var[44])
+    7:[92] ConstText(_value="") -> ""[92]
+    9:[108] ConstText(_value="../Cargo.toml") -> "../Cargo.toml"[108]
+   24:[124] VarRef(var[8]) -> ref(1,0,8)=null[124]
+   27:[136] Call(size=0, fn=n_file)
+ 1210:[140] Database(var[124], db_tp=14)
+ 1215:[140] VarRef(var[124]) -> ref(1,1,8)={}[140]
+ 1218:[152] ArgText(var[108]) -> "../Cargo.toml"[152]
+ 1221:[168] SetText(v1=ref(1,1,8)[140], fld=24, val="../Cargo.toml"[152])
+ 1224:[140] VarRef(var[124]) -> ref(1,1,8)={path:"../Cargo.toml"}[140]
+ 1227:[152] ConvIntFromNull() -> -2147483648[152]
+ 1228:[156] SetInt(v1=ref(1,1,8)[140], fld=28, val=-2147483648[152])
+ 1231:[140] VarRef(var[124]) -> ref(1,1,8)={path:"../Cargo.toml"}[140]
+ 1234:[152] ConstLong(val=0) -> 0[152]
+ 1243:[160] SetLong(v1=ref(1,1,8)[140], fld=0, val=0[152])
+ 1246:[140] VarRef(var[124]) -> ref(1,1,8)={path:"../Cargo.toml",size:0}[140]
+ 1249:[152] ConstEnum(val=0) -> null(0)[152]
+ 1251:[153] SetEnum(v1=ref(1,1,8)[140], fld=32, val=0[152])
+ 1254:[140] VarRef(var[124]) -> ref(1,1,8)={path:"../Cargo.toml",size:0}[140]
+ 1257:[152] ConstLong(val=0) -> 0[152]
+ 1266:[160] SetLong(v1=ref(1,1,8)[140], fld=8, val=0[152])
+ 1269:[140] VarRef(var[124]) -> ref(1,1,8)={path:"../Cargo.toml",size:0,current:0}[140]
+ 1272:[152] ConstLong(val=0) -> 0[152]
+ 1281:[160] SetLong(v1=ref(1,1,8)[140], fld=16, val=0[152])
+ 1284:[140] ArgText(var[108]) -> "../Cargo.toml"[140]
+ 1287:[156] Call(size=0, fn=n_valid_path)
+  899:[160] ConstInt(val=0) -> 0[160]
+  904:[164] ConstInt(val=0) -> 0[164]
+  909:[168] ConstInt(val=0) -> 0[168]
+  914:[172] ArgText(var[140]) -> "../Cargo.toml"[172]
+  917:[188] VarInt(var[168]) -> 0[188]
+  920:[192] TextCharacter(v1="../Cargo.toml"[172], v2=0[188]) -> '.'[172]
+  921:[176] VarInt(var[168]) -> 0[176]
+  924:[180] VarCharacter(var[172]) -> '.'[180]
+  927:[184] LengthCharacter(v1='.'[180]) -> 1[180]
+  928:[184] AddInt(v1=0[176], v2=1[180]) -> 1[176]
+  929:[180] PutInt(var[168], value=1[176])
+  932:[176] VarCharacter(var[172]) -> '.'[176]
+  935:[180] FreeStack(value=4, discard=8)
+  939:[176] VarCharacter(var[172]) -> '.'[176]
+  942:[180] ConvBoolFromCharacter(v1='.'[176]) -> true[176]
+  943:[177] Not(v1=true[176]) -> false[176]
+  944:[177] GotoFalseWord(jump=954, if_false=false[176])
+  954:[176] VarCharacter(var[172]) -> '.'[176]
+  957:[180] ConvIntFromCharacter(v1='.'[176]) -> 46[176]
+  958:[180] ConstInt(val=47) -> 47[180]
+  963:[184] ConvIntFromCharacter(v1='/'[180]) -> 47[180]
+  964:[184] EqInt(v1=46[176], v2=47[180]) -> false[176]
+  965:[177] GotoFalseWord(jump=972, if_false=false[176])
+  972:[176] VarCharacter(var[172]) -> '.'[176]
+  975:[180] ConvIntFromCharacter(v1='.'[176]) -> 46[176]
+  976:[180] ConstInt(val=92) -> 92[180]
+  981:[184] ConvIntFromCharacter(v1='\'[180]) -> 92[180]
+  982:[184] EqInt(v1=46[176], v2=92[180]) -> false[176]
+  983:[177] GotoFalseWord(jump=1116, if_false=false[176])
+ 1116:[176] FreeStack(value=0, discard=4)
+ 1120:[172] GotoWord(jump=914)
+  914:[172] ArgText(var[140]) -> "../Cargo.toml"[172]
+  917:[188] VarInt(var[168]) -> 1[188]
+  920:[192] TextCharacter(v1="../Cargo.toml"[172], v2=1[188]) -> '.'[172]
+  921:[176] VarInt(var[168]) -> 1[176]
+  924:[180] VarCharacter(var[172]) -> '.'[180]
+  927:[184] LengthCharacter(v1='.'[180]) -> 1[180]
+  928:[184] AddInt(v1=1[176], v2=1[180]) -> 2[176]
+  929:[180] PutInt(var[168], value=2[176])
+  932:[176] VarCharacter(var[172]) -> '.'[176]
+  935:[180] FreeStack(value=4, discard=8)
+  939:[176] VarCharacter(var[172]) -> '.'[176]
+  942:[180] ConvBoolFromCharacter(v1='.'[176]) -> true[176]
+  943:[177] Not(v1=true[176]) -> false[176]
+  944:[177] GotoFalseWord(jump=954, if_false=false[176])
+  954:[176] VarCharacter(var[172]) -> '.'[176]
+  957:[180] ConvIntFromCharacter(v1='.'[176]) -> 46[176]
+  958:[180] ConstInt(val=47) -> 47[180]
+  963:[184] ConvIntFromCharacter(v1='/'[180]) -> 47[180]
+  964:[184] EqInt(v1=46[176], v2=47[180]) -> false[176]
+  965:[177] GotoFalseWord(jump=972, if_false=false[176])
+  972:[176] VarCharacter(var[172]) -> '.'[176]
+  975:[180] ConvIntFromCharacter(v1='.'[176]) -> 46[176]
+  976:[180] ConstInt(val=92) -> 92[180]
+  981:[184] ConvIntFromCharacter(v1='\'[180]) -> 92[180]
+  982:[184] EqInt(v1=46[176], v2=92[180]) -> false[176]
+  983:[177] GotoFalseWord(jump=1116, if_false=false[176])
+ 1116:[176] FreeStack(value=0, discard=4)
+ 1120:[172] GotoWord(jump=914)
+  914:[172] ArgText(var[140]) -> "../Cargo.toml"[172]
+  917:[188] VarInt(var[168]) -> 2[188]
+  920:[192] TextCharacter(v1="../Cargo.toml"[172], v2=2[188]) -> '/'[172]
+  921:[176] VarInt(var[168]) -> 2[176]
+  924:[180] VarCharacter(var[172]) -> '/'[180]
+  927:[184] LengthCharacter(v1='/'[180]) -> 1[180]
+  928:[184] AddInt(v1=2[176], v2=1[180]) -> 3[176]
+  929:[180] PutInt(var[168], value=3[176])
+  932:[176] VarCharacter(var[172]) -> '/'[176]
+  935:[180] FreeStack(value=4, discard=8)
+  939:[176] VarCharacter(var[172]) -> '/'[176]
+  942:[180] ConvBoolFromCharacter(v1='/'[176]) -> true[176]
+  943:[177] Not(v1=true[176]) -> false[176]
+  944:[177] GotoFalseWord(jump=954, if_false=false[176])
+  954:[176] VarCharacter(var[172]) -> '/'[176]
+  957:[180] ConvIntFromCharacter(v1='/'[176]) -> 47[176]
+  958:[180] ConstInt(val=47) -> 47[180]
+  963:[184] ConvIntFromCharacter(v1='/'[180]) -> 47[180]
+  964:[184] EqInt(v1=47[176], v2=47[180]) -> true[176]
+  965:[177] GotoFalseWord(jump=972, if_false=true[176])
+  968:[176] ConstTrue() -> true[176]
+  969:[177] GotoWord(jump=983)
+  983:[177] GotoFalseWord(jump=1116, if_false=true[176])
+  986:[176] Text()
+  987:[200] ArgText(var[140]) -> "../Cargo.toml"[200]
+  990:[216] VarInt(var[164]) -> 0[216]
+  993:[220] VarInt(var[168]) -> 3[220]
+  996:[224] ConstInt(val=1) -> 1[224]
+ 1001:[228] MinInt(v1=3[220], v2=1[224]) -> 2[220]
+ 1002:[224] GetTextSub(v1="../Cargo.toml"[200], from=0[216], till=2[220]) -> ".."[200]
+ 1003:[216] AppendText(var[176], v1=".."[200])
+ 1006:[200] VarInt(var[168]) -> 3[200]
+ 1009:[204] PutInt(var[164], value=3[200])
+ 1012:[200] VarText(var[176]) -> ".."[200]
+ 1015:[216] ConstText(_value="..") -> ".."[216]
+ 1019:[232] EqText(v1=".."[200], v2=".."[216]) -> true[200]
+ 1020:[201] GotoFalseWord(jump=1064, if_false=true[200])
+ 1023:[200] VarInt(var[160]) -> 0[200]
+ 1026:[204] ConstInt(val=1) -> 1[204]
+ 1031:[208] MinInt(v1=0[200], v2=1[204]) -> -1[200]
+ 1032:[204] PutInt(var[160], value=-1[200])
+ 1035:[200] VarInt(var[160]) -> -1[200]
+ 1038:[204] ConstInt(val=0) -> 0[204]
+ 1043:[208] LtInt(v1=-1[200], v2=0[204]) -> true[200]
+ 1044:[201] GotoFalseWord(jump=1061, if_false=true[200])
+ 1047:[200] ConstFalse() -> false[200]
+ 1048:[201] FreeText(var[176])
+ 1051:[201] Return(ret=1294[156], value=1, discard=61)
+ 1294:[141] GotoFalseWord(jump=1308, if_false=false[140])
+ 1308:[140] VarRef(var[124]) -> ref(1,1,8)={path:"../Cargo.toml",size:0,current:0,next:0}[140]
+ 1311:[152] ConstEnum(val=5) -> NotExists(5)[152]
+ 1313:[153] SetEnum(v1=ref(1,1,8)[140], fld=32, val=5[152])
+ 1316:[140] VarRef(var[124]) -> ref(1,1,8)={path:"../Cargo.toml",size:0,format:NotExists,current:0,next:0}[140]
+ 1319:[152] Return(ret=1791[136], value=12, discard=44) -> ref(1,1,8)={path:"../Cargo.toml",size:0,format:NotExists,current:0,next:0}[108]
+   34:[120] GetEnum(v1=ref(1,1,8)[108], fld=32) -> null(5)[108]
+   37:[109] CastTextFromEnum(v1=5[108], enum_tp=8) -> "NotExists"[108]
+   40:[124] ConstInt(val=0) -> 0[124]
+   45:[128] FormatText(var[44], val="NotExists"[108], width=0[124], dir=-1, token=32)
+   50:[108] VarText(var[44]) -> "NotExists"[108]
+   53:[124] FreeStack(value=16, discard=32)
+   57:[108] AppendText(var[68], v1="NotExists"[92])
+   60:[92] VarText(var[68]) -> "NotExists"[92]
+   63:[108] ConstText(_value="NotExists") -> "NotExists"[108]
+   74:[124] EqText(v1="NotExists"[92], v2="NotExists"[108]) -> true[92]
+   75:[93] GotoFalseWord(jump=81, if_false=true[92])
+   78:[92] GotoWord(jump=138)
+  138:[92] FreeText(var[68])
+  141:[92] FreeText(var[44])
+  144:[92] VarRef(var[8]) -> ref(1,0,8)=null[92]
+  147:[104] FreeRef(v1=ref(1,0,8)[92])
+  148:[92] FreeText(var[20])
+  151:[92] Return(ret=4294967295[4], value=0, discard=88)
+Finished

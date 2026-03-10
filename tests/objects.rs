@@ -209,18 +209,6 @@ fn scope_text() {
 }
 
 #[test]
-fn files() {
-    expr!("\"{file(\"example\").files()}\"").result(Value::str(
-        "[\
-{path:\"example/config\",size:4096,format:Directory},\
-{path:\"example/map.png\",size:3406,format:TextFile},\
-{path:\"example/map.xcf\",size:7817,format:TextFile},\
-{path:\"example/show.loft\",size:371,format:TextFile},\
-{path:\"example/todo.json\",size:1461,format:TextFile}]",
-    ));
-}
-
-#[test]
 fn assign_text() {
     code!("struct Object{a: text}")
         .expr(

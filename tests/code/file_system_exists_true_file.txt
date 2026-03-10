@@ -1,0 +1,662 @@
+pub fn test() {
+    test_value = {if exists("example/show.loft") { 1 } else { 0 }};
+    assert(
+        test_value == 1,
+        "Test failed {test_value} != 1"
+    );
+}
+fn n_test() {#block(1):void
+  __work_1(1):text = "";
+  [2] test_value(1):integer = {#block(2):integer
+    if n_exists("example/show.loft") {#block(3):integer
+      1i32;
+    }#block(3):integer else {#block(4):integer
+      0i32;
+    }#block(4):integer;
+  }#block(2):integer;
+  [3] if OpEqInt(test_value(1), 1i32) null else OpPanic({#Formatted string(5):text["__work_1"]
+    __work_1(1):text = "Test failed ";
+    OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 1");
+    __work_1(1);
+  }#Formatted string(5):text["__work_1"]);
+  OpFreeText(__work_1(1));
+}#block(1):void
+
+byte-code for exists_true_file:n_test()
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [2] ConstText(_value="example/show.loft") -> text var=test_value[28]:integer
+  20[44]: Call(size=0, fn=n_exists)
+  27[29]: GotoFalseWord(jump=38, if_false: boolean)
+  30[28]: ConstInt(val=1) -> integer
+  35[32]: GotoWord(jump=43)
+  38[28]: ConstInt(val=0) -> integer
+  43[32]: [3] VarInt(var[28]) -> integer var=test_value[28]:integer
+  46[36]: ConstInt(val=1) -> integer
+  51[40]: EqInt(v1: integer, v2: integer) -> boolean
+  52[33]: GotoFalseWord(jump=58, if_false: boolean)
+  55[32]: GotoWord(jump=108)
+  58[32]: ClearText(var[4]) var=__work_1[4]:text
+  61[32]: ConstText(_value="Test failed ") -> text
+  75[48]: AppendText(var[4], v1: text)
+  78[32]: VarInt(var[28]) -> integer var=test_value[28]:integer
+  81[36]: ConvLongFromInt(v1: integer) -> long
+  82[40]: ConstInt(val=0) -> integer
+  87[44]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+  94[32]: ConstText(_value=" != 1") -> text
+ 101[48]: AppendText(var[4], v1: text)
+ 104[32]: VarText(var[4]) -> text var=__work_1[4]:text
+ 107[48]: Panic(message: text)
+ 108[32]: FreeText(var[4])
+ 111[32]: Return(ret=0, value=0, discard=32)
+
+Execute test:
+    0:[8] [2] Text()
+    1:[32] ConstText(_value="example/show.loft") -> "example/show.loft"[32]
+   20:[48] Call(size=0, fn=n_exists)
+ 1325:[52] [175] ConvRefFromNull() -> ref(1,0,8)[52]
+ 1326:[64] ArgText(var[32]) -> "example/show.loft"[64]
+ 1329:[80] VarRef(var[52]) -> ref(1,0,8)=null[80]
+ 1332:[92] Call(size=0, fn=n_file)
+ 1210:[96] Database(var[80], db_tp=14)
+ 1215:[96] VarRef(var[80]) -> ref(1,1,8)={}[96]
+ 1218:[108] ArgText(var[64]) -> "example/show.loft"[108]
+ 1221:[124] SetText(v1=ref(1,1,8)[96], fld=24, val="example/show.loft"[108])
+ 1224:[96] VarRef(var[80]) -> ref(1,1,8)={path:"example/show.loft"}[96]
+ 1227:[108] ConvIntFromNull() -> -2147483648[108]
+ 1228:[112] SetInt(v1=ref(1,1,8)[96], fld=28, val=-2147483648[108])
+ 1231:[96] VarRef(var[80]) -> ref(1,1,8)={path:"example/show.loft"}[96]
+ 1234:[108] ConstLong(val=0) -> 0[108]
+ 1243:[116] SetLong(v1=ref(1,1,8)[96], fld=0, val=0[108])
+ 1246:[96] VarRef(var[80]) -> ref(1,1,8)={path:"example/show.loft",size:0}[96]
+ 1249:[108] ConstEnum(val=0) -> null(0)[108]
+ 1251:[109] SetEnum(v1=ref(1,1,8)[96], fld=32, val=0[108])
+ 1254:[96] VarRef(var[80]) -> ref(1,1,8)={path:"example/show.loft",size:0}[96]
+ 1257:[108] ConstLong(val=0) -> 0[108]
+ 1266:[116] SetLong(v1=ref(1,1,8)[96], fld=8, val=0[108])
+ 1269:[96] VarRef(var[80]) -> ref(1,1,8)={path:"example/show.loft",size:0,current:0}[96]
+ 1272:[108] ConstLong(val=0) -> 0[108]
+ 1281:[116] SetLong(v1=ref(1,1,8)[96], fld=16, val=0[108])
+ 1284:[96] ArgText(var[64]) -> "example/show.loft"[96]
+ 1287:[112] Call(size=0, fn=n_valid_path)
+  899:[116] ConstInt(val=0) -> 0[116]
+  904:[120] ConstInt(val=0) -> 0[120]
+  909:[124] ConstInt(val=0) -> 0[124]
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 0[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=0[144]) -> 'e'[128]
+  921:[132] VarInt(var[124]) -> 0[132]
+  924:[136] VarCharacter(var[128]) -> 'e'[136]
+  927:[140] LengthCharacter(v1='e'[136]) -> 1[136]
+  928:[140] AddInt(v1=0[132], v2=1[136]) -> 1[132]
+  929:[136] PutInt(var[124], value=1[132])
+  932:[132] VarCharacter(var[128]) -> 'e'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'e'[132]
+  942:[136] ConvBoolFromCharacter(v1='e'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'e'[132]
+  957:[136] ConvIntFromCharacter(v1='e'[132]) -> 101[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=101[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'e'[132]
+  975:[136] ConvIntFromCharacter(v1='e'[132]) -> 101[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=101[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 1[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=1[144]) -> 'x'[128]
+  921:[132] VarInt(var[124]) -> 1[132]
+  924:[136] VarCharacter(var[128]) -> 'x'[136]
+  927:[140] LengthCharacter(v1='x'[136]) -> 1[136]
+  928:[140] AddInt(v1=1[132], v2=1[136]) -> 2[132]
+  929:[136] PutInt(var[124], value=2[132])
+  932:[132] VarCharacter(var[128]) -> 'x'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'x'[132]
+  942:[136] ConvBoolFromCharacter(v1='x'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'x'[132]
+  957:[136] ConvIntFromCharacter(v1='x'[132]) -> 120[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=120[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'x'[132]
+  975:[136] ConvIntFromCharacter(v1='x'[132]) -> 120[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=120[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 2[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=2[144]) -> 'a'[128]
+  921:[132] VarInt(var[124]) -> 2[132]
+  924:[136] VarCharacter(var[128]) -> 'a'[136]
+  927:[140] LengthCharacter(v1='a'[136]) -> 1[136]
+  928:[140] AddInt(v1=2[132], v2=1[136]) -> 3[132]
+  929:[136] PutInt(var[124], value=3[132])
+  932:[132] VarCharacter(var[128]) -> 'a'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'a'[132]
+  942:[136] ConvBoolFromCharacter(v1='a'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'a'[132]
+  957:[136] ConvIntFromCharacter(v1='a'[132]) -> 97[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=97[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'a'[132]
+  975:[136] ConvIntFromCharacter(v1='a'[132]) -> 97[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=97[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 3[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=3[144]) -> 'm'[128]
+  921:[132] VarInt(var[124]) -> 3[132]
+  924:[136] VarCharacter(var[128]) -> 'm'[136]
+  927:[140] LengthCharacter(v1='m'[136]) -> 1[136]
+  928:[140] AddInt(v1=3[132], v2=1[136]) -> 4[132]
+  929:[136] PutInt(var[124], value=4[132])
+  932:[132] VarCharacter(var[128]) -> 'm'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'm'[132]
+  942:[136] ConvBoolFromCharacter(v1='m'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'm'[132]
+  957:[136] ConvIntFromCharacter(v1='m'[132]) -> 109[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=109[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'm'[132]
+  975:[136] ConvIntFromCharacter(v1='m'[132]) -> 109[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=109[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 4[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=4[144]) -> 'p'[128]
+  921:[132] VarInt(var[124]) -> 4[132]
+  924:[136] VarCharacter(var[128]) -> 'p'[136]
+  927:[140] LengthCharacter(v1='p'[136]) -> 1[136]
+  928:[140] AddInt(v1=4[132], v2=1[136]) -> 5[132]
+  929:[136] PutInt(var[124], value=5[132])
+  932:[132] VarCharacter(var[128]) -> 'p'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'p'[132]
+  942:[136] ConvBoolFromCharacter(v1='p'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'p'[132]
+  957:[136] ConvIntFromCharacter(v1='p'[132]) -> 112[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=112[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'p'[132]
+  975:[136] ConvIntFromCharacter(v1='p'[132]) -> 112[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=112[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 5[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=5[144]) -> 'l'[128]
+  921:[132] VarInt(var[124]) -> 5[132]
+  924:[136] VarCharacter(var[128]) -> 'l'[136]
+  927:[140] LengthCharacter(v1='l'[136]) -> 1[136]
+  928:[140] AddInt(v1=5[132], v2=1[136]) -> 6[132]
+  929:[136] PutInt(var[124], value=6[132])
+  932:[132] VarCharacter(var[128]) -> 'l'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'l'[132]
+  942:[136] ConvBoolFromCharacter(v1='l'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'l'[132]
+  957:[136] ConvIntFromCharacter(v1='l'[132]) -> 108[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=108[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'l'[132]
+  975:[136] ConvIntFromCharacter(v1='l'[132]) -> 108[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=108[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 6[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=6[144]) -> 'e'[128]
+  921:[132] VarInt(var[124]) -> 6[132]
+  924:[136] VarCharacter(var[128]) -> 'e'[136]
+  927:[140] LengthCharacter(v1='e'[136]) -> 1[136]
+  928:[140] AddInt(v1=6[132], v2=1[136]) -> 7[132]
+  929:[136] PutInt(var[124], value=7[132])
+  932:[132] VarCharacter(var[128]) -> 'e'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'e'[132]
+  942:[136] ConvBoolFromCharacter(v1='e'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'e'[132]
+  957:[136] ConvIntFromCharacter(v1='e'[132]) -> 101[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=101[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'e'[132]
+  975:[136] ConvIntFromCharacter(v1='e'[132]) -> 101[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=101[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 7[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=7[144]) -> '/'[128]
+  921:[132] VarInt(var[124]) -> 7[132]
+  924:[136] VarCharacter(var[128]) -> '/'[136]
+  927:[140] LengthCharacter(v1='/'[136]) -> 1[136]
+  928:[140] AddInt(v1=7[132], v2=1[136]) -> 8[132]
+  929:[136] PutInt(var[124], value=8[132])
+  932:[132] VarCharacter(var[128]) -> '/'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> '/'[132]
+  942:[136] ConvBoolFromCharacter(v1='/'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> '/'[132]
+  957:[136] ConvIntFromCharacter(v1='/'[132]) -> 47[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=47[132], v2=47[136]) -> true[132]
+  965:[133] GotoFalseWord(jump=972, if_false=true[132])
+  968:[132] ConstTrue() -> true[132]
+  969:[133] GotoWord(jump=983)
+  983:[133] GotoFalseWord(jump=1116, if_false=true[132])
+  986:[132] Text()
+  987:[156] ArgText(var[96]) -> "example/show.loft"[156]
+  990:[172] VarInt(var[120]) -> 0[172]
+  993:[176] VarInt(var[124]) -> 8[176]
+  996:[180] ConstInt(val=1) -> 1[180]
+ 1001:[184] MinInt(v1=8[176], v2=1[180]) -> 7[176]
+ 1002:[180] GetTextSub(v1="example/show.loft"[156], from=0[172], till=7[176]) -> "example"[156]
+ 1003:[172] AppendText(var[132], v1="example"[156])
+ 1006:[156] VarInt(var[124]) -> 8[156]
+ 1009:[160] PutInt(var[120], value=8[156])
+ 1012:[156] VarText(var[132]) -> "example"[156]
+ 1015:[172] ConstText(_value="..") -> ".."[172]
+ 1019:[188] EqText(v1="example"[156], v2=".."[172]) -> false[156]
+ 1020:[157] GotoFalseWord(jump=1064, if_false=false[156])
+ 1064:[156] VarText(var[132]) -> "example"[156]
+ 1067:[172] ConstText(_value=".") -> "."[172]
+ 1070:[188] NeText(v1="example"[156], v2="."[172]) -> true[156]
+ 1071:[157] GotoFalseWord(jump=1093, if_false=true[156])
+ 1074:[156] ConstInt(val=0) -> 0[156]
+ 1079:[160] VarText(var[132]) -> "example"[160]
+ 1082:[176] Call(size=0, fn=t_4text_len)
+  318:[180] ArgText(var[160]) -> "example"[180]
+  321:[196] LengthText(v1="example"[180]) -> 7[180]
+  322:[184] Return(ret=1089[176], value=4, discard=24) -> 7[160]
+ 1089:[164] LtInt(v1=0[156], v2=7[160]) -> true[156]
+ 1090:[157] GotoWord(jump=1094)
+ 1094:[157] GotoFalseWord(jump=1109, if_false=true[156])
+ 1097:[156] VarInt(var[116]) -> 0[156]
+ 1100:[160] ConstInt(val=1) -> 1[160]
+ 1105:[164] AddInt(v1=0[156], v2=1[160]) -> 1[156]
+ 1106:[160] PutInt(var[116], value=1[156])
+ 1109:[156] FreeText(var[132])
+ 1112:[156] FreeStack(value=0, discard=24)
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 8[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=8[144]) -> 's'[128]
+  921:[132] VarInt(var[124]) -> 8[132]
+  924:[136] VarCharacter(var[128]) -> 's'[136]
+  927:[140] LengthCharacter(v1='s'[136]) -> 1[136]
+  928:[140] AddInt(v1=8[132], v2=1[136]) -> 9[132]
+  929:[136] PutInt(var[124], value=9[132])
+  932:[132] VarCharacter(var[128]) -> 's'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 's'[132]
+  942:[136] ConvBoolFromCharacter(v1='s'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 's'[132]
+  957:[136] ConvIntFromCharacter(v1='s'[132]) -> 115[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=115[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 's'[132]
+  975:[136] ConvIntFromCharacter(v1='s'[132]) -> 115[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=115[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 9[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=9[144]) -> 'h'[128]
+  921:[132] VarInt(var[124]) -> 9[132]
+  924:[136] VarCharacter(var[128]) -> 'h'[136]
+  927:[140] LengthCharacter(v1='h'[136]) -> 1[136]
+  928:[140] AddInt(v1=9[132], v2=1[136]) -> 10[132]
+  929:[136] PutInt(var[124], value=10[132])
+  932:[132] VarCharacter(var[128]) -> 'h'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'h'[132]
+  942:[136] ConvBoolFromCharacter(v1='h'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'h'[132]
+  957:[136] ConvIntFromCharacter(v1='h'[132]) -> 104[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=104[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'h'[132]
+  975:[136] ConvIntFromCharacter(v1='h'[132]) -> 104[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=104[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 10[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=10[144]) -> 'o'[128]
+  921:[132] VarInt(var[124]) -> 10[132]
+  924:[136] VarCharacter(var[128]) -> 'o'[136]
+  927:[140] LengthCharacter(v1='o'[136]) -> 1[136]
+  928:[140] AddInt(v1=10[132], v2=1[136]) -> 11[132]
+  929:[136] PutInt(var[124], value=11[132])
+  932:[132] VarCharacter(var[128]) -> 'o'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'o'[132]
+  942:[136] ConvBoolFromCharacter(v1='o'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'o'[132]
+  957:[136] ConvIntFromCharacter(v1='o'[132]) -> 111[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=111[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'o'[132]
+  975:[136] ConvIntFromCharacter(v1='o'[132]) -> 111[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=111[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 11[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=11[144]) -> 'w'[128]
+  921:[132] VarInt(var[124]) -> 11[132]
+  924:[136] VarCharacter(var[128]) -> 'w'[136]
+  927:[140] LengthCharacter(v1='w'[136]) -> 1[136]
+  928:[140] AddInt(v1=11[132], v2=1[136]) -> 12[132]
+  929:[136] PutInt(var[124], value=12[132])
+  932:[132] VarCharacter(var[128]) -> 'w'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'w'[132]
+  942:[136] ConvBoolFromCharacter(v1='w'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'w'[132]
+  957:[136] ConvIntFromCharacter(v1='w'[132]) -> 119[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=119[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'w'[132]
+  975:[136] ConvIntFromCharacter(v1='w'[132]) -> 119[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=119[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 12[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=12[144]) -> '.'[128]
+  921:[132] VarInt(var[124]) -> 12[132]
+  924:[136] VarCharacter(var[128]) -> '.'[136]
+  927:[140] LengthCharacter(v1='.'[136]) -> 1[136]
+  928:[140] AddInt(v1=12[132], v2=1[136]) -> 13[132]
+  929:[136] PutInt(var[124], value=13[132])
+  932:[132] VarCharacter(var[128]) -> '.'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> '.'[132]
+  942:[136] ConvBoolFromCharacter(v1='.'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> '.'[132]
+  957:[136] ConvIntFromCharacter(v1='.'[132]) -> 46[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=46[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> '.'[132]
+  975:[136] ConvIntFromCharacter(v1='.'[132]) -> 46[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=46[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 13[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=13[144]) -> 'l'[128]
+  921:[132] VarInt(var[124]) -> 13[132]
+  924:[136] VarCharacter(var[128]) -> 'l'[136]
+  927:[140] LengthCharacter(v1='l'[136]) -> 1[136]
+  928:[140] AddInt(v1=13[132], v2=1[136]) -> 14[132]
+  929:[136] PutInt(var[124], value=14[132])
+  932:[132] VarCharacter(var[128]) -> 'l'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'l'[132]
+  942:[136] ConvBoolFromCharacter(v1='l'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'l'[132]
+  957:[136] ConvIntFromCharacter(v1='l'[132]) -> 108[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=108[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'l'[132]
+  975:[136] ConvIntFromCharacter(v1='l'[132]) -> 108[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=108[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 14[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=14[144]) -> 'o'[128]
+  921:[132] VarInt(var[124]) -> 14[132]
+  924:[136] VarCharacter(var[128]) -> 'o'[136]
+  927:[140] LengthCharacter(v1='o'[136]) -> 1[136]
+  928:[140] AddInt(v1=14[132], v2=1[136]) -> 15[132]
+  929:[136] PutInt(var[124], value=15[132])
+  932:[132] VarCharacter(var[128]) -> 'o'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'o'[132]
+  942:[136] ConvBoolFromCharacter(v1='o'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'o'[132]
+  957:[136] ConvIntFromCharacter(v1='o'[132]) -> 111[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=111[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'o'[132]
+  975:[136] ConvIntFromCharacter(v1='o'[132]) -> 111[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=111[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 15[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=15[144]) -> 'f'[128]
+  921:[132] VarInt(var[124]) -> 15[132]
+  924:[136] VarCharacter(var[128]) -> 'f'[136]
+  927:[140] LengthCharacter(v1='f'[136]) -> 1[136]
+  928:[140] AddInt(v1=15[132], v2=1[136]) -> 16[132]
+  929:[136] PutInt(var[124], value=16[132])
+  932:[132] VarCharacter(var[128]) -> 'f'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 'f'[132]
+  942:[136] ConvBoolFromCharacter(v1='f'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 'f'[132]
+  957:[136] ConvIntFromCharacter(v1='f'[132]) -> 102[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=102[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 'f'[132]
+  975:[136] ConvIntFromCharacter(v1='f'[132]) -> 102[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=102[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 16[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=16[144]) -> 't'[128]
+  921:[132] VarInt(var[124]) -> 16[132]
+  924:[136] VarCharacter(var[128]) -> 't'[136]
+  927:[140] LengthCharacter(v1='t'[136]) -> 1[136]
+  928:[140] AddInt(v1=16[132], v2=1[136]) -> 17[132]
+  929:[136] PutInt(var[124], value=17[132])
+  932:[132] VarCharacter(var[128]) -> 't'[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> 't'[132]
+  942:[136] ConvBoolFromCharacter(v1='t'[132]) -> true[132]
+  943:[133] Not(v1=true[132]) -> false[132]
+  944:[133] GotoFalseWord(jump=954, if_false=false[132])
+  954:[132] VarCharacter(var[128]) -> 't'[132]
+  957:[136] ConvIntFromCharacter(v1='t'[132]) -> 116[132]
+  958:[136] ConstInt(val=47) -> 47[136]
+  963:[140] ConvIntFromCharacter(v1='/'[136]) -> 47[136]
+  964:[140] EqInt(v1=116[132], v2=47[136]) -> false[132]
+  965:[133] GotoFalseWord(jump=972, if_false=false[132])
+  972:[132] VarCharacter(var[128]) -> 't'[132]
+  975:[136] ConvIntFromCharacter(v1='t'[132]) -> 116[132]
+  976:[136] ConstInt(val=92) -> 92[136]
+  981:[140] ConvIntFromCharacter(v1='\'[136]) -> 92[136]
+  982:[140] EqInt(v1=116[132], v2=92[136]) -> false[132]
+  983:[133] GotoFalseWord(jump=1116, if_false=false[132])
+ 1116:[132] FreeStack(value=0, discard=4)
+ 1120:[128] GotoWord(jump=914)
+  914:[128] ArgText(var[96]) -> "example/show.loft"[128]
+  917:[144] VarInt(var[124]) -> 17[144]
+  920:[148] TextCharacter(v1="example/show.loft"[128], v2=17[144]) -> null[128]
+  921:[132] VarInt(var[124]) -> 17[132]
+  924:[136] VarCharacter(var[128]) -> null[136]
+  927:[140] LengthCharacter(v1=null[136]) -> 0[136]
+  928:[140] AddInt(v1=17[132], v2=0[136]) -> 17[132]
+  929:[136] PutInt(var[124], value=17[132])
+  932:[132] VarCharacter(var[128]) -> null[132]
+  935:[136] FreeStack(value=4, discard=8)
+  939:[132] VarCharacter(var[128]) -> null[132]
+  942:[136] ConvBoolFromCharacter(v1=null[132]) -> false[132]
+  943:[133] Not(v1=false[132]) -> true[132]
+  944:[133] GotoFalseWord(jump=954, if_false=true[132])
+  947:[132] FreeStack(value=0, discard=4)
+  951:[128] GotoWord(jump=1123)
+ 1123:[128] FreeStack(value=0, discard=4)
+ 1127:[124] VarInt(var[120]) -> 8[124]
+ 1130:[128] ArgText(var[96]) -> "example/show.loft"[128]
+ 1133:[144] Call(size=0, fn=t_4text_len)
+  318:[148] ArgText(var[128]) -> "example/show.loft"[148]
+  321:[164] LengthText(v1="example/show.loft"[148]) -> 17[148]
+  322:[152] Return(ret=1140[144], value=4, discard=24) -> 17[128]
+ 1140:[132] LtInt(v1=8[124], v2=17[128]) -> true[124]
+ 1141:[125] GotoFalseWord(jump=1195, if_false=true[124])
+ 1144:[124] Text()
+ 1145:[148] ArgText(var[96]) -> "example/show.loft"[148]
+ 1148:[164] VarInt(var[120]) -> 8[164]
+ 1151:[168] ArgText(var[96]) -> "example/show.loft"[168]
+ 1154:[184] Call(size=0, fn=t_4text_len)
+  318:[188] ArgText(var[168]) -> "example/show.loft"[188]
+  321:[204] LengthText(v1="example/show.loft"[188]) -> 17[188]
+  322:[192] Return(ret=1161[184], value=4, discard=24) -> 17[168]
+ 1161:[172] GetTextSub(v1="example/show.loft"[148], from=8[164], till=17[168]) -> "show.loft"[148]
+ 1162:[164] AppendText(var[124], v1="show.loft"[148])
+ 1165:[148] VarText(var[124]) -> "show.loft"[148]
+ 1168:[164] ConstText(_value="..") -> ".."[164]
+ 1172:[180] EqText(v1="show.loft"[148], v2=".."[164]) -> false[148]
+ 1173:[149] GotoFalseWord(jump=1188, if_false=false[148])
+ 1188:[148] FreeText(var[124])
+ 1191:[148] FreeStack(value=0, discard=24)
+ 1195:[124] ConstInt(val=0) -> 0[124]
+ 1200:[128] VarInt(var[116]) -> 1[128]
+ 1203:[132] LeInt(v1=0[124], v2=1[128]) -> true[124]
+ 1204:[125] Return(ret=1294[112], value=1, discard=29) -> true[96]
+ 1294:[97] GotoFalseWord(jump=1308, if_false=true[96])
+ 1297:[96] VarRef(var[80]) -> ref(1,1,8)={path:"example/show.loft",size:0,current:0,next:0}[96]
+ 1300:[108] GetFile(file=ref(1,1,8)={path:"example/show.loft",size:0,current:0,next:0}[96]) -> true[96]
+ 1301:[97] FreeStack(value=0, discard=1)
+ 1305:[96] GotoWord(jump=1316)
+ 1316:[96] VarRef(var[80]) -> ref(1,1,8)={path:"example/show.loft",size:371,format:TextFile}[96]
+ 1319:[108] Return(ret=1339[92], value=12, discard=44) -> ref(1,1,8)={path:"example/show.loft",size:371,format:TextFile}[64]
+ 1339:[76] GetEnum(v1=ref(1,1,8)[64], fld=32) -> null(1)[64]
+ 1342:[65] ConvIntFromEnum(v1=1[64]) -> 1[64]
+ 1343:[68] ConstEnum(val=5) -> NotExists(5)[68]
+ 1345:[69] ConvIntFromEnum(v1=5[68]) -> 5[68]
+ 1346:[72] NeInt(v1=1[64], v2=5[68]) -> true[64]
+ 1347:[65] VarRef(var[52]) -> ref(1,0,8)=null[65]
+ 1350:[77] FreeRef(v1=ref(1,0,8)[65])
+ 1351:[65] Return(ret=1784[48], value=1, discard=33) -> true[32]
+   27:[33] GotoFalseWord(jump=38, if_false=true[32])
+   30:[32] ConstInt(val=1) -> 1[32]
+   35:[36] GotoWord(jump=43)
+   43:[36] VarInt(var[32]) -> 1[36]
+   46:[40] ConstInt(val=1) -> 1[40]
+   51:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
+   52:[37] GotoFalseWord(jump=58, if_false=true[36])
+   55:[36] GotoWord(jump=108)
+  108:[36] FreeText(var[8])
+  111:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished

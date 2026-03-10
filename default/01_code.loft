@@ -768,22 +768,22 @@ fn OpPanic(message: text);
 #rust "panic!(\"{{}}\", @message);"
 
 // Panics with message if test is false. Use to verify invariants during development.
-fn assert(test: boolean, message: text);
+pub fn assert(test: boolean, message: text);
 #rust "assert!(@test, \"{{}}\", @message);"
 
 // Immediately terminates execution with message. Use for unrecoverable error states.
-fn panic(message: text);
+pub fn panic(message: text);
 #rust "panic!(\"{{}}\", @message);"
 
 fn OpPrint(v1: text);
 #rust "print!(\"{{}}\", @v1);"
 // Writes v to standard output without a newline.
 // Use for progress output and building up a line incrementally.
-fn print(v1: text) {
+pub fn print(v1: text) {
     OpPrint(v1);
 }
 // Writes v followed by a newline. The standard choice for line-oriented output.
-fn println(v1: text) {
+pub fn println(v1: text) {
     OpPrint("{v1}\n");
 }
 

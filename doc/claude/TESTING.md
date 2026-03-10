@@ -268,85 +268,15 @@ make test
 
 ## Validating Generated Code — the `generated/` Workspace
 
-After `cargo test` (debug) populates `tests/generated/*.rs`, those files must be promoted into
-a separate Cargo workspace (`generated/`) and validated there. This is a **manual two-step
-process** driven by two Makefile targets.
+Two directories:
+- `tests/generated/` — ephemeral output from interpreter tests (158+ files, cleared by `make test`)
+- `generated/tests/` — committed reviewed subset; standalone Cargo workspace with `dryopea = { path = ".." }`
 
-### Directory layout
-
-```
-generated/            # standalone Cargo workspace for second-pass validation
-  Cargo.toml          # [dependencies] dryopea = { path = ".." }
-  src/
-    lib.rs            # minimal lib entry; pedantic clippy enabled
-  tests/
-    expressions_add_loop.rs   # promoted generated test files
-    expressions_append_fn.rs  # (only two files currently committed)
-    ...
-tests/generated/      # raw output from the interpreter tests (158+ files)
-  default.rs          # default-library schema snapshot
-  <file>_<name>.rs    # one file per result-bearing test
-```
-
-The two directories are deliberately kept separate: `tests/generated/` is ephemeral
-(cleared by `make test`), while `generated/tests/` is committed and used as the stable
-validation corpus.
-
-### Step 1 — Review and promote: `make generate`
-
-```makefile
-generate:
-    meld tests/generated/ generated/tests/
-```
-
-Opens the **meld** visual diff tool to compare the freshly-generated files on the left
-(`tests/generated/`) against the committed validation corpus on the right (`generated/tests/`).
-The developer manually reviews each changed or new file and copies approved files to the right.
-
-This step acts as a gated code-review checkpoint: generated Rust that looks wrong is rejected
-before it ever enters the validation suite.
-
-### Step 2 — Validate: `make gtest`
-
-```makefile
-gtest:
-    cd generated && cargo clippy --tests -- -W clippy::all -W clippy::cognitive_complexity > result.txt 2>&1
-    cd generated && rustfmt tests/*.rs --edition 2024 >> result.txt 2>&1
-    cd generated && cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
-```
-
-Runs entirely inside the `generated/` workspace (which is its own Cargo workspace with
-`members = []` so it does not interfere with the main build). Three stages:
-
-1. **`cargo clippy --tests`** — lints every promoted test file. Because generated code uses
-   many `#![allow(...)]` pragmas at the top of each file, clippy is configured to flag
-   anything the generator should never emit.
-2. **`rustfmt tests/*.rs`** — formats the files in place. Any formatting diff after this
-   step indicates the generator emitted non-canonical whitespace.
-3. **`cargo test`** — actually runs every `code_<name>()` function. Because the workspace
-   depends on `dryopea = { path = ".." }`, it exercises the same runtime library as the
-   main crate.
-
-Output is appended to `generated/result.txt` so all three stages are captured together.
-
-### Promoting individual source files: `make meld`
-
-A related but distinct target compares specific **generated source files** against their
-hand-maintained counterparts in `src/`:
-
-```makefile
-meld:
-    rustfmt tests/generated/text.rs --edition 2024
-    cmp -s tests/generated/text.rs src/text.rs; if [ $$? -eq 1 ]; then meld tests/generated/text.rs src/text.rs; fi
-    rustfmt tests/generated/fill.rs --edition 2024
-    cmp -s tests/generated/fill.rs src/fill.rs; if [ $$? -eq 1 ]; then meld tests/generated/fill.rs src/fill.rs; fi
-```
-
-Used when the code generator is updated and its output for core modules (`text.rs`,
-`fill.rs`) should replace the manually written source. `cmp -s` suppresses diff output;
-meld only opens when the files actually differ.
-
-### Full workflow summary
+| Target | Purpose |
+|---|---|
+| `make generate` | `meld tests/generated/ generated/tests/` — review and copy approved files into the committed corpus |
+| `make gtest` | `cargo clippy --tests`, `rustfmt`, `cargo test` inside `generated/` — lint, format-check, and run all promoted tests |
+| `make meld` | Compare `tests/generated/text.rs` and `fill.rs` against `src/` counterparts; open meld if they differ |
 
 ```
 cargo test (debug)

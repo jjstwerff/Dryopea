@@ -1,21 +1,32 @@
+Type 18:short<0,false>[2/2]:Short(0, false)
+
+Type 19:vector<single>[4/4]:Vector(2)
+
+Type 20:Buffer[8/4]:
+    size:integer[0]
+    data:vector<single>[4]
+
+Type 21:main_vector<single>[4/4]:
+    vector:vector<single>[0]
+
 fn n_text_files(dir:File, l:vector<ref(File)>) {#block(1):void
   __ref_1(1):vector<ref(File)> = null;
-  [10] {#For block(2):void
+  [11] {#For block(2):void
     _vector_1(2):vector<ref(File)>["__ref_1"] = t_4File_files(dir(0), __ref_1(1));
     f#index(2):integer = -1i32;
     loop {#For loop_3
       f(3):ref(File)["_vector_1"] = {#iter next(4):ref(File)
         f#index(2):integer = OpAddInt(f#index(2), 1i32);
-        OpGetVector(_vector_1(2), 17i32, f#index(2));
+        OpGetVector(_vector_1(2), 33i32, f#index(2));
       }#iter next(4):ref(File);
       if OpNot(OpConvBoolFromRef(f(3))) {#break(5):void
         break(0);
       }#break(5):void else null;
       {#block(6):void
-        [11] if OpEqInt(OpConvIntFromEnum(OpGetEnum(f(3), 16i32)), OpConvIntFromEnum(4u8(8))) {#block(7):void
-          [12] n_text_files(f(3), l(0));
-        }#block(7):void else if t_4text_ends_with(OpGetText(f(3), 8i32), ".txt") {#block(8):void
-          [14] _elm_2(8):ref(File)["l"] = OpNewRecord(l(0), 17i32, 65535i32);
+        [12] if OpEqInt(OpConvIntFromEnum(OpGetEnum(f(3), 32i32)), OpConvIntFromEnum(4u8(8))) {#block(7):void
+          [13] n_text_files(f(3), l(0));
+        }#block(7):void else if t_4text_ends_with(OpGetText(f(3), 24i32), ".txt") {#block(8):void
+          [15] _elm_2(8):ref(File)["l"] = OpNewRecord(l(0), 17i32, 65535i32);
           OpCopyRecord(f(3), _elm_2(8), 14i32);
           OpFinishRecord(l(0), _elm_2(8), 17i32, 65535i32);
         }#block(8):void else null;
@@ -35,7 +46,7 @@ byte-code for tests/suite/13-file.loft:n_text_files(dir: ref(File)[0], l: vector
   17[40]: CreateStack(var[28]) -> ref(reference)
   20[52]: ConstInt(val=12) -> integer
   25[56]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
-  30[40]: [10] VarRef(var[0]) -> ref(reference) type=File 14 var=dir[0]:ref(File)
+  30[40]: [11] VarRef(var[0]) -> ref(reference) type=File 14 var=dir[0]:ref(File)
   33[52]: VarVector(var[28]) -> vector type=vector<File> 17 var=__ref_1[28]:vector<ref(File)>
   36[64]: Call(size=0, fn=t_4File_files)
   43[52]: ConstInt(val=-1) -> integer var=f#index[52]:integer
@@ -45,30 +56,30 @@ byte-code for tests/suite/13-file.loft:n_text_files(dir: ref(File)[0], l: vector
   57[60]: PutInt(var[52], value: integer)
   60[56]: VarVector(var[40]) -> vector type=vector<File> 17 var=_vector_1[40]:vector<ref(File)>["__ref_1"]
   63[68]: VarInt(var[52]) -> integer var=f#index[52]:integer
-  66[72]: GetVector(r: vector, size=17, index: integer) -> ref(reference) type=File 14
+  66[72]: GetVector(r: vector, size=33, index: integer) -> ref(reference) type=File 14
   69[68]: VarRef(var[56]) -> ref(reference) type=File 14 var=f[56]:ref(File)["_vector_1"]
   72[80]: ConvBoolFromRef(val: ref(reference)) -> boolean
   73[69]: Not(v1: boolean) -> boolean
   74[69]: GotoFalseWord(jump=84, if_false: boolean)
   77[68]: FreeStack(value=0, discard=12)
   81[56]: GotoWord(jump=171)
-  84[68]: [11] VarRef(var[56]) -> ref(reference) type=File 14 var=f[56]:ref(File)["_vector_1"]
-  87[80]: GetEnum(v1: ref(reference), fld=16) -> boolean
+  84[68]: [12] VarRef(var[56]) -> ref(reference) type=File 14 var=f[56]:ref(File)["_vector_1"]
+  87[80]: GetEnum(v1: ref(reference), fld=32) -> boolean
   90[69]: ConvIntFromEnum(v1: boolean) -> integer
   91[72]: ConstEnum(val=4) -> boolean type=Format 8
   93[73]: ConvIntFromEnum(v1: boolean) -> integer
   94[76]: EqInt(v1: integer, v2: integer) -> boolean
   95[69]: GotoFalseWord(jump=114, if_false: boolean)
-  98[68]: [12] VarRef(var[56]) -> ref(reference) type=File 14 var=f[56]:ref(File)["_vector_1"]
+  98[68]: [13] VarRef(var[56]) -> ref(reference) type=File 14 var=f[56]:ref(File)["_vector_1"]
  101[80]: VarVector(var[12]) -> vector type=vector<File> 17 var=l[12]:vector<ref(File)>["__ref_2"]
  104[92]: Call(size=0, fn=n_text_files)
  111[68]: GotoWord(jump=164)
  114[68]: VarRef(var[56]) -> ref(reference) type=File 14 var=f[56]:ref(File)["_vector_1"]
- 117[80]: GetText(v1: ref(reference), fld=8) -> text["dir"]
+ 117[80]: GetText(v1: ref(reference), fld=24) -> text["dir"]
  120[84]: ConstText(_value=".txt") -> text
  126[100]: StaticCall(t_4text_ends_with)
  129[69]: GotoFalseWord(jump=164, if_false: boolean)
- 132[68]: [14] VarVector(var[12]) -> vector type=vector<File> 17 var=l[12]:vector<ref(File)>["__ref_2"]
+ 132[68]: [15] VarVector(var[12]) -> vector type=vector<File> 17 var=l[12]:vector<ref(File)>["__ref_2"]
  135[80]: NewRecord(data: ref(reference), parent_tp=17, fld=65535) -> ref(reference)
  140[80]: VarRef(var[56]) -> ref(reference) type=File 14 var=f[56]:ref(File)["_vector_1"]
  143[92]: VarRef(var[68]) -> ref(reference) type=File 14 var=_elm_2[68]:ref(File)["l"]
@@ -85,116 +96,591 @@ byte-code for tests/suite/13-file.loft:n_text_files(dir: ref(File)[0], l: vector
  179[40]: Return(ret=24, value=0, discard=40)
 
 fn n_main() {#block(1):void
+  __ref_8(1):ref(File) = null;
+  __ref_7(1):ref(main_vector<single>) = null;
+  __ref_6(1):ref(File) = null;
+  __ref_5(1):ref(File) = null;
+  __ref_4(1):ref(File) = null;
   __ref_3(1):vector<text> = null;
   __ref_2(1):ref(File) = null;
   __ref_1(1):ref(main_vector<File>) = null;
+  __work_5(1):text = "";
+  __work_4(1):text = "";
+  __work_3(1):text = "";
   __work_2(1):text = "";
   __work_1(1):text = "";
-  [21] OpDatabase(__ref_1(1), 16i32);
+  [28] OpDatabase(__ref_1(1), 16i32);
   paths(1):vector<ref(File)>["__ref_1"] = OpGetField(__ref_1(1), 0i32, 17i32);
   OpSetInt(__ref_1(1), 0i32, 0i32);
-  [22] n_text_files(n_file("example", __ref_2(1)), paths(1));
-  [23] if OpEqText(OpGetText(OpGetVector(paths(1), 17i32, 0i32), 8i32), "example/config/terrain.txt") null else OpPanic({#Formatted string(2):text["__work_1"]
+  [29] n_text_files(n_file("example", __ref_2(1)), paths(1));
+  [30] if OpEqText(OpGetText(OpGetVector(paths(1), 33i32, 0i32), 24i32), "example/config/terrain.txt") null else OpPanic({#Formatted string(2):text["__work_1"]
     __work_1(1):text = "Found file '";
-    OpFormatText(__work_1(1), OpGetText(OpGetVector(paths(1), 17i32, 0i32), 8i32), 0i32, -1i32, 32i32);
+    OpFormatText(__work_1(1), OpGetText(OpGetVector(paths(1), 33i32, 0i32), 24i32), 0i32, -1i32, 32i32);
     OpAppendText(__work_1(1), "'");
     __work_1(1);
   }#Formatted string(2):text["__work_1"]);
-  [25] f(1):ref(File)["paths"] = OpGetVector(paths(1), 17i32, 0i32);
-  [26] c(1):vector<text>["__ref_3"] = t_4File_lines(f(1), __ref_3(1));
-  [27] if OpEqText(OpGetText(OpGetVector(c(1), 4i32, 1i32), 0i32), "    terrain = [") null else OpPanic({#Formatted string(3):text["__work_2"]
+  [33] c(1):vector<text>["__ref_3"] = t_4File_lines(OpGetVector(paths(1), 33i32, 0i32), __ref_3(1));
+  [34] if OpEqText(OpGetText(OpGetVector(c(1), 4i32, 1i32), 0i32), "    terrain = [") null else OpPanic({#Formatted string(3):text["__work_2"]
     __work_2(1):text = "Line was '";
     OpFormatText(__work_2(1), OpGetText(OpGetVector(c(1), 4i32, 1i32), 0i32), 0i32, -1i32, 32i32);
     OpAppendText(__work_2(1), "'");
     __work_2(1);
   }#Formatted string(3):text["__work_2"]);
+  [38] if OpNot(n_delete("test.bin")) null else OpPanic("Did not expect the file to exist.");
+  [39] if OpNot(n_exists("test.bin")) null else OpPanic("File should not exist before the test.");
+  [45] {#block(4):void
+    f(4):ref(File)["__ref_8"] = n_file("test.bin", __ref_4(1));
+    [46] if OpEqInt(OpConvIntFromEnum(OpGetEnum(f(4), 32i32)), OpConvIntFromEnum(5u8(8))) null else OpPanic("File should not exist yet.");
+    [47] OpSetEnum(f(4), 32i32, 3u8(8));
+    [48] _wf_1(4):integer(0, 255) = 0i32;
+    OpWriteFile(f(4), OpCreateStack(_wf_1(4)), 11i32);
+    [49] _wf_2(4):integer(0, 255) = 1i32;
+    OpWriteFile(f(4), OpCreateStack(_wf_2(4)), 11i32);
+    [50] _wf_3(4):integer(0, 65535) = 515i32;
+    OpWriteFile(f(4), OpCreateStack(_wf_3(4)), 18i32);
+    [51] _wf_4(4):integer = 67438087i32;
+    OpWriteFile(f(4), OpCreateStack(_wf_4(4)), 0i32);
+    [52] _wf_5(4):long = 579005069656919567i64;
+    OpWriteFile(f(4), OpCreateStack(_wf_5(4)), 1i32);
+    [54] if OpEqLong(OpSizeFile(f(4)), OpConvLongFromInt(16i32)) null else OpPanic("Should have written 16 bytes.");
+    [56] _wf_6(4):text = "Hello world!";
+    OpWriteFile(f(4), OpCreateStack(_wf_6(4)), 5i32);
+    [57] if OpEqLong(OpSizeFile(f(4)), OpConvLongFromInt(28i32)) null else OpPanic("Size should be 28 bytes (16 + 12).");
+    OpFreeText(_wf_6(4));
+  }#block(4):void;
+  [60] if n_exists("test.bin") null else OpPanic("File should exist after writing.");
+  [62] if OpNot(n_move("test.bin", "../test.bin")) null else OpPanic("Should refuse to move outside the project.");
+  [63] if n_move("test.bin", "test2.bin") null else OpPanic("Could not move the file.");
+  [68] {#block(5):void
+    f(5):ref(File)["__ref_8"] = n_file("test2.bin", __ref_5(1));
+    [69] if OpEqInt(OpConvIntFromEnum(OpGetEnum(f(5), 32i32)), OpConvIntFromEnum(1u8(8))) null else OpPanic("The default format is TextFile.");
+    [70] OpSetEnum(f(5), 32i32, 2u8(8));
+    [75] v(5):integer = {#reading file(6):integer
+      _read_7(6):integer = OpConvIntFromNull();
+      OpReadFile(f(5), OpCreateStack(_read_7(6)), 4i32, 0i32);
+      _read_7(6);
+    }#reading file(6):integer;
+    [76] if OpEqInt(v(5), 50462976i32) null else OpPanic("BigEndian bytes 0..3 read as LittleEndian i32.");
+    [77] if OpEqLong(OpGetLong(f(5), 8i32), OpConvLongFromInt(0i32)) null else OpPanic("Last read started at byte 0.");
+    [78] if OpEqLong(OpGetLong(f(5), 16i32), OpConvLongFromInt(4i32)) null else OpPanic("Next read starts at byte 4.");
+    [81] OpSeekFile(f(5), OpConvLongFromInt(16i32));
+    OpSetLong(f(5), 16i32, OpConvLongFromInt(16i32));
+    [82] s(5):text = {#reading file(7):text
+      OpReadFile(f(5), OpCreateStack(__work_3(1)), 5i32, 5i32);
+      __work_3(1);
+    }#reading file(7):text;
+    [83] if OpEqText(s(5), "Hello") null else OpPanic("Partial text read from offset 16.");
+    [84] if OpEqLong(OpGetLong(f(5), 8i32), OpConvLongFromInt(16i32)) null else OpPanic("Last read started at byte 16.");
+    [85] if OpEqLong(OpGetLong(f(5), 16i32), OpConvLongFromInt(21i32)) null else OpPanic("Next position after 5-byte text read.");
+    [88] rest(5):text = {#reading file(8):text
+      OpReadFile(f(5), OpCreateStack(__work_4(1)), 100i32, 5i32);
+      __work_4(1);
+    }#reading file(8):text;
+    [89] if OpEqText(rest(5), " world!") null else OpPanic("Read continues to end of file.");
+    [90] if OpEqLong(OpGetLong(f(5), 16i32), OpSizeFile(f(5))) null else OpPanic("Position should be at end of file.");
+    [93] OpSeekFile(f(5), OpConvLongFromInt(0i32));
+    OpSetLong(f(5), 16i32, OpConvLongFromInt(0i32));
+    [94] if OpEqInt({#reading file(9):integer
+      _read_8(9):integer = OpConvIntFromNull();
+      OpReadFile(f(5), OpCreateStack(_read_8(9)), 4i32, 0i32);
+      _read_8(9);
+    }#reading file(9):integer, 50462976i32) null else OpPanic("Seek-and-reread matches original.");
+    OpFreeText(s(5));
+    OpFreeText(rest(5));
+  }#block(5):void;
+  [96] if n_delete("test2.bin") null else OpPanic("Could not remove the test file.");
+  [100] {#block(10):void
+    buf(10):ref(File)["__ref_6"] = n_file("buffer.bin", __ref_6(1));
+    [101] OpSetEnum(buf(10), 32i32, 2u8(8));
+    [102] _wf_9(10):integer = 4i32;
+    OpWriteFile(buf(10), OpCreateStack(_wf_9(10)), 0i32);
+    [103] _wf_12(10):vector<single>["__ref_7"] = {#Vector(11):vector<single>["__ref_7"]
+      OpDatabase(__ref_7(1), 21i32);
+      _vec_10(11):vector<single>["__ref_7"] = OpGetField(__ref_7(1), 0i32, 19i32);
+      OpSetInt(__ref_7(1), 0i32, 0i32);
+      _elm_11(11):ref(boolean)["_vec_10"] = OpNewRecord(_vec_10(11), 19i32, 65535i32);
+      OpSetSingle(_elm_11(11), 0i32, 1.1f32);
+      OpFinishRecord(_vec_10(11), _elm_11(11), 19i32, 65535i32);
+      _elm_11(11):ref(boolean)["_vec_10"] = OpNewRecord(_vec_10(11), 19i32, 65535i32);
+      OpSetSingle(_elm_11(11), 0i32, 1.2f32);
+      OpFinishRecord(_vec_10(11), _elm_11(11), 19i32, 65535i32);
+      _elm_11(11):ref(boolean)["_vec_10"] = OpNewRecord(_vec_10(11), 19i32, 65535i32);
+      OpSetSingle(_elm_11(11), 0i32, 2.1f32);
+      OpFinishRecord(_vec_10(11), _elm_11(11), 19i32, 65535i32);
+      _elm_11(11):ref(boolean)["_vec_10"] = OpNewRecord(_vec_10(11), 19i32, 65535i32);
+      OpSetSingle(_elm_11(11), 0i32, 2.2f32);
+      OpFinishRecord(_vec_10(11), _elm_11(11), 19i32, 65535i32);
+      _vec_10(11);
+    }#Vector(11):vector<single>["__ref_7"];
+    OpWriteFile(buf(10), OpCreateStack(_wf_12(10)), 19i32);
+  }#block(10):void;
+  [108] {#block(12):void
+    b(12):ref(Buffer) = null;
+    OpDatabase(b(12), 20i32);
+    OpSetInt(b(12), 0i32, 0i32);
+    OpSetInt(b(12), 4i32, 0i32);
+    [109] f(5):ref(File)["__ref_8"] = n_file("buffer.bin", __ref_8(1));
+    [110] OpSetEnum(f(5), 32i32, 2u8(8));
+    [111] n(12):integer = {#reading file(13):integer
+      _read_13(13):integer = OpConvIntFromNull();
+      OpReadFile(f(5), OpCreateStack(_read_13(13)), 4i32, 0i32);
+      _read_13(13);
+    }#reading file(13):integer;
+    [112] {#reading file(14):text
+      OpReadFile(f(5), OpCreateStack(__work_5(1)), OpMulInt(n(12), 4i32), 5i32);
+      __work_5(1);
+    }#reading file(14):text;
+    OpFreeRef(b(12));
+  }#block(12):void;
+  [114] if n_delete("buffer.bin") null else OpPanic("Could not remove buffer.bin.");
   OpFreeRef(__ref_1(1));
   OpFreeText(__work_1(1));
   OpFreeRef(__ref_2(1));
   OpFreeText(__work_2(1));
   OpFreeRef(__ref_3(1));
+  OpFreeRef(__ref_4(1));
+  OpFreeText(__work_3(1));
+  OpFreeText(__work_4(1));
+  OpFreeRef(__ref_5(1));
+  OpFreeRef(__ref_6(1));
+  OpFreeText(__work_5(1));
+  OpFreeRef(__ref_7(1));
+  OpFreeRef(__ref_8(1));
 }#block(1):void
 
 byte-code for tests/suite/13-file.loft:n_main()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_3[4]:vector<text>
-   1[16]: Database(var[4], db_tp=15)
-   6[16]: VarRef(var[4]) -> ref(reference)
-   9[28]: ConstInt(val=0) -> integer
-  14[32]: SetInt(v1: ref(reference), fld=4, val: integer)
-  17[16]: CreateStack(var[4]) -> ref(reference)
-  20[28]: ConstInt(val=12) -> integer
-  25[32]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
-  30[16]: ConvRefFromNull() -> ref(reference) var=__ref_2[16]:ref(File)
-  31[28]: ConvRefFromNull() -> ref(reference) var=__ref_1[28]:ref(main_vector<File>)
-  32[40]: Text() var=__work_2[40]:text
-  33[64]: Text() var=__work_1[64]:text
-  34[88]: [21] Database(var[28], db_tp=16) type=main_vector<File> 16
-  39[88]: VarRef(var[28]) -> ref(reference) type=main_vector<File> 16 var=__ref_1[28]:ref(main_vector<File>)
-  42[100]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=vector<File> 17
-  45[100]: VarRef(var[28]) -> ref(reference) type=main_vector<File> 16 var=__ref_1[28]:ref(main_vector<File>)
-  48[112]: ConstInt(val=0) -> integer
-  53[116]: SetInt(v1: ref(reference), fld=0, val: integer)
-  56[100]: [22] ConstText(_value="example") -> text
-  65[116]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_2[16]:ref(File)
-  68[128]: Call(size=0, fn=n_file)
-  75[112]: VarVector(var[88]) -> vector type=vector<File> 17 var=paths[88]:vector<ref(File)>["__ref_1"]
-  78[124]: Call(size=0, fn=n_text_files)
-  85[100]: [23] VarVector(var[88]) -> vector type=vector<File> 17 var=paths[88]:vector<ref(File)>["__ref_1"]
-  88[112]: ConstInt(val=0) -> integer
-  93[116]: GetVector(r: vector, size=17, index: integer) -> ref(reference) type=File 14
-  96[112]: GetText(v1: ref(reference), fld=8) -> text["paths"]
-  99[116]: ConstText(_value="example/config/terrain.txt") -> text
- 127[132]: EqText(v1: text, v2: text) -> boolean
- 128[101]: GotoFalseWord(jump=134, if_false: boolean)
- 131[100]: GotoWord(jump=188)
- 134[100]: ClearText(var[64]) var=__work_1[64]:text
- 137[100]: ConstText(_value="Found file '") -> text
- 151[116]: AppendText(var[64], v1: text)
- 154[100]: VarVector(var[88]) -> vector type=vector<File> 17 var=paths[88]:vector<ref(File)>["__ref_1"]
- 157[112]: ConstInt(val=0) -> integer
- 162[116]: GetVector(r: vector, size=17, index: integer) -> ref(reference) type=File 14
- 165[112]: GetText(v1: ref(reference), fld=8) -> text["paths"]
- 168[116]: ConstInt(val=0) -> integer
- 173[120]: FormatText(var[64], val: text, width: integer, dir=-1, token=32)
- 178[100]: ConstText(_value="'") -> text
- 181[116]: AppendText(var[64], v1: text)
- 184[100]: VarText(var[64]) -> text var=__work_1[64]:text
- 187[116]: Panic(message: text)
- 188[100]: [25] VarVector(var[88]) -> vector type=vector<File> 17 var=paths[88]:vector<ref(File)>["__ref_1"]
- 191[112]: ConstInt(val=0) -> integer
- 196[116]: GetVector(r: vector, size=17, index: integer) -> ref(reference) type=File 14
- 199[112]: [26] VarRef(var[100]) -> ref(reference) type=File 14 var=f[100]:ref(File)["paths"]
- 202[124]: VarVector(var[4]) -> vector type=vector<text> 7 var=__ref_3[4]:vector<text>
- 205[136]: Call(size=0, fn=t_4File_lines)
- 212[124]: [27] VarVector(var[112]) -> vector type=vector<text> 7 var=c[112]:vector<text>["__ref_3"]
- 215[136]: ConstInt(val=1) -> integer
- 220[140]: GetVector(r: vector, size=4, index: integer) -> ref(reference) type=text 5
- 223[136]: GetText(v1: ref(reference), fld=0) -> text["paths"]
- 226[140]: ConstText(_value="    terrain = [") -> text
- 243[156]: EqText(v1: text, v2: text) -> boolean
- 244[125]: GotoFalseWord(jump=250, if_false: boolean)
- 247[124]: GotoWord(jump=302)
- 250[124]: ClearText(var[40]) var=__work_2[40]:text
- 253[124]: ConstText(_value="Line was '") -> text
- 265[140]: AppendText(var[40], v1: text)
- 268[124]: VarVector(var[112]) -> vector type=vector<text> 7 var=c[112]:vector<text>["__ref_3"]
- 271[136]: ConstInt(val=1) -> integer
- 276[140]: GetVector(r: vector, size=4, index: integer) -> ref(reference) type=text 5
- 279[136]: GetText(v1: ref(reference), fld=0) -> text["paths"]
- 282[140]: ConstInt(val=0) -> integer
- 287[144]: FormatText(var[40], val: text, width: integer, dir=-1, token=32)
- 292[124]: ConstText(_value="'") -> text
- 295[140]: AppendText(var[40], v1: text)
- 298[124]: VarText(var[40]) -> text var=__work_2[40]:text
- 301[140]: Panic(message: text)
- 302[124]: VarRef(var[28]) -> ref(reference) type=main_vector<File> 16 var=__ref_1[28]:ref(main_vector<File>)
- 305[136]: FreeRef(v1: ref(reference))
- 306[124]: FreeText(var[64])
- 309[124]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_2[16]:ref(File)
- 312[136]: FreeRef(v1: ref(reference))
- 313[124]: FreeText(var[40])
- 316[124]: VarVector(var[4]) -> vector type=vector<text> 7 var=__ref_3[4]:vector<text>
- 319[136]: FreeRef(v1: ref(reference))
- 320[124]: Return(ret=0, value=0, discard=124)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_8[4]:ref(File)
+   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_7[16]:ref(main_vector<single>)
+   2[28]: ConvRefFromNull() -> ref(reference) var=__ref_6[28]:ref(File)
+   3[40]: ConvRefFromNull() -> ref(reference) var=__ref_5[40]:ref(File)
+   4[52]: ConvRefFromNull() -> ref(reference) var=__ref_4[52]:ref(File)
+   5[64]: ConvRefFromNull() -> ref(reference) var=__ref_3[64]:vector<text>
+   6[76]: Database(var[64], db_tp=15)
+  11[76]: VarRef(var[64]) -> ref(reference)
+  14[88]: ConstInt(val=0) -> integer
+  19[92]: SetInt(v1: ref(reference), fld=4, val: integer)
+  22[76]: CreateStack(var[64]) -> ref(reference)
+  25[88]: ConstInt(val=12) -> integer
+  30[92]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
+  35[76]: ConvRefFromNull() -> ref(reference) var=__ref_2[76]:ref(File)
+  36[88]: ConvRefFromNull() -> ref(reference) var=__ref_1[88]:ref(main_vector<File>)
+  37[100]: Text() var=__work_5[100]:text
+  38[124]: Text() var=__work_4[124]:text
+  39[148]: Text() var=__work_3[148]:text
+  40[172]: Text() var=__work_2[172]:text
+  41[196]: Text() var=__work_1[196]:text
+  42[220]: [28] Database(var[88], db_tp=16) type=main_vector<File> 16
+  47[220]: VarRef(var[88]) -> ref(reference) type=main_vector<File> 16 var=__ref_1[88]:ref(main_vector<File>)
+  50[232]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=vector<File> 17
+  53[232]: VarRef(var[88]) -> ref(reference) type=main_vector<File> 16 var=__ref_1[88]:ref(main_vector<File>)
+  56[244]: ConstInt(val=0) -> integer
+  61[248]: SetInt(v1: ref(reference), fld=0, val: integer)
+  64[232]: [29] ConstText(_value="example") -> text
+  73[248]: VarRef(var[76]) -> ref(reference) type=File 14 var=__ref_2[76]:ref(File)
+  76[260]: Call(size=0, fn=n_file)
+  83[244]: VarVector(var[220]) -> vector type=vector<File> 17 var=paths[220]:vector<ref(File)>["__ref_1"]
+  86[256]: Call(size=0, fn=n_text_files)
+  93[232]: [30] VarVector(var[220]) -> vector type=vector<File> 17 var=paths[220]:vector<ref(File)>["__ref_1"]
+  96[244]: ConstInt(val=0) -> integer
+ 101[248]: GetVector(r: vector, size=33, index: integer) -> ref(reference) type=File 14
+ 104[244]: GetText(v1: ref(reference), fld=24) -> text["paths"]
+ 107[248]: ConstText(_value="example/config/terrain.txt") -> text
+ 135[264]: EqText(v1: text, v2: text) -> boolean
+ 136[233]: GotoFalseWord(jump=142, if_false: boolean)
+ 139[232]: GotoWord(jump=196)
+ 142[232]: ClearText(var[196]) var=__work_1[196]:text
+ 145[232]: ConstText(_value="Found file '") -> text
+ 159[248]: AppendText(var[196], v1: text)
+ 162[232]: VarVector(var[220]) -> vector type=vector<File> 17 var=paths[220]:vector<ref(File)>["__ref_1"]
+ 165[244]: ConstInt(val=0) -> integer
+ 170[248]: GetVector(r: vector, size=33, index: integer) -> ref(reference) type=File 14
+ 173[244]: GetText(v1: ref(reference), fld=24) -> text["paths"]
+ 176[248]: ConstInt(val=0) -> integer
+ 181[252]: FormatText(var[196], val: text, width: integer, dir=-1, token=32)
+ 186[232]: ConstText(_value="'") -> text
+ 189[248]: AppendText(var[196], v1: text)
+ 192[232]: VarText(var[196]) -> text var=__work_1[196]:text
+ 195[248]: Panic(message: text)
+ 196[232]: [33] VarVector(var[220]) -> vector type=vector<File> 17 var=paths[220]:vector<ref(File)>["__ref_1"]
+ 199[244]: ConstInt(val=0) -> integer
+ 204[248]: GetVector(r: vector, size=33, index: integer) -> ref(reference) type=File 14
+ 207[244]: VarVector(var[64]) -> vector type=vector<text> 7 var=__ref_3[64]:vector<text>
+ 210[256]: Call(size=0, fn=t_4File_lines)
+ 217[244]: [34] VarVector(var[232]) -> vector type=vector<text> 7 var=c[232]:vector<text>["__ref_3"]
+ 220[256]: ConstInt(val=1) -> integer
+ 225[260]: GetVector(r: vector, size=4, index: integer) -> ref(reference) type=text 5
+ 228[256]: GetText(v1: ref(reference), fld=0) -> text["paths"]
+ 231[260]: ConstText(_value="    terrain = [") -> text
+ 248[276]: EqText(v1: text, v2: text) -> boolean
+ 249[245]: GotoFalseWord(jump=255, if_false: boolean)
+ 252[244]: GotoWord(jump=307)
+ 255[244]: ClearText(var[172]) var=__work_2[172]:text
+ 258[244]: ConstText(_value="Line was '") -> text
+ 270[260]: AppendText(var[172], v1: text)
+ 273[244]: VarVector(var[232]) -> vector type=vector<text> 7 var=c[232]:vector<text>["__ref_3"]
+ 276[256]: ConstInt(val=1) -> integer
+ 281[260]: GetVector(r: vector, size=4, index: integer) -> ref(reference) type=text 5
+ 284[256]: GetText(v1: ref(reference), fld=0) -> text["paths"]
+ 287[260]: ConstInt(val=0) -> integer
+ 292[264]: FormatText(var[172], val: text, width: integer, dir=-1, token=32)
+ 297[244]: ConstText(_value="'") -> text
+ 300[260]: AppendText(var[172], v1: text)
+ 303[244]: VarText(var[172]) -> text var=__work_2[172]:text
+ 306[260]: Panic(message: text)
+ 307[244]: [38] ConstText(_value="test.bin") -> text
+ 317[260]: Call(size=0, fn=n_delete)
+ 324[245]: Not(v1: boolean) -> boolean
+ 325[245]: GotoFalseWord(jump=331, if_false: boolean)
+ 328[244]: GotoWord(jump=367)
+ 331[244]: ConstText(_value="Did not expect the file to exist.") -> text
+ 366[260]: Panic(message: text)
+ 367[244]: [39] ConstText(_value="test.bin") -> text
+ 377[260]: Call(size=0, fn=n_exists)
+ 384[245]: Not(v1: boolean) -> boolean
+ 385[245]: GotoFalseWord(jump=391, if_false: boolean)
+ 388[244]: GotoWord(jump=432)
+ 391[244]: ConstText(_value="File should not exist before the test.") -> text
+ 431[260]: Panic(message: text)
+ 432[244]: [45] ConstText(_value="test.bin") -> text var=f[244]:ref(File)["__ref_8"]
+ 442[260]: VarRef(var[52]) -> ref(reference) type=File 14 var=__ref_4[52]:ref(File)
+ 445[272]: Call(size=0, fn=n_file)
+ 452[256]: [46] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 455[268]: GetEnum(v1: ref(reference), fld=32) -> boolean
+ 458[257]: ConvIntFromEnum(v1: boolean) -> integer
+ 459[260]: ConstEnum(val=5) -> boolean type=Format 8
+ 461[261]: ConvIntFromEnum(v1: boolean) -> integer
+ 462[264]: EqInt(v1: integer, v2: integer) -> boolean
+ 463[257]: GotoFalseWord(jump=469, if_false: boolean)
+ 466[256]: GotoWord(jump=498)
+ 469[256]: ConstText(_value="File should not exist yet.") -> text
+ 497[272]: Panic(message: text)
+ 498[256]: [47] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 501[268]: ConstEnum(val=3) -> boolean type=Format 8
+ 503[269]: SetEnum(v1: ref(reference), fld=32, val: boolean)
+ 506[256]: [48] ConstInt(val=0) -> integer var=_wf_1[256]:integer(0, 255)
+ 511[260]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 514[272]: CreateStack(var[256]) -> ref(reference)
+ 517[284]: WriteFile(file: ref(File), val: ref(reference), db_tp=11)
+ 520[260]: [49] ConstInt(val=1) -> integer var=_wf_2[260]:integer(0, 255)
+ 525[264]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 528[276]: CreateStack(var[260]) -> ref(reference)
+ 531[288]: WriteFile(file: ref(File), val: ref(reference), db_tp=11)
+ 534[264]: [50] ConstInt(val=515) -> integer var=_wf_3[264]:integer(0, 65535)
+ 539[268]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 542[280]: CreateStack(var[264]) -> ref(reference)
+ 545[292]: WriteFile(file: ref(File), val: ref(reference), db_tp=18)
+ 548[268]: [51] ConstInt(val=67438087) -> integer var=_wf_4[268]:integer
+ 553[272]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 556[284]: CreateStack(var[268]) -> ref(reference)
+ 559[296]: WriteFile(file: ref(File), val: ref(reference), db_tp=0)
+ 562[272]: [52] ConstLong(val=579005069656919567) -> long var=_wf_5[272]:long
+ 571[280]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 574[292]: CreateStack(var[272]) -> ref(reference)
+ 577[304]: WriteFile(file: ref(File), val: ref(reference), db_tp=1)
+ 580[280]: [54] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 583[292]: SizeFile(file: ref(File)) -> long
+ 584[288]: ConstInt(val=16) -> integer
+ 589[292]: ConvLongFromInt(v1: integer) -> long
+ 590[296]: EqLong(v1: long, v2: long) -> boolean
+ 591[281]: GotoFalseWord(jump=597, if_false: boolean)
+ 594[280]: GotoWord(jump=629)
+ 597[280]: ConstText(_value="Should have written 16 bytes.") -> text
+ 628[296]: Panic(message: text)
+ 629[280]: [56] Text() var=_wf_6[280]:text
+ 630[304]: ConstText(_value="Hello world!") -> text
+ 644[320]: AppendText(var[280], v1: text)
+ 647[304]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 650[316]: CreateStack(var[280]) -> ref(reference)
+ 653[328]: WriteFile(file: ref(File), val: ref(reference), db_tp=5)
+ 656[304]: [57] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 659[316]: SizeFile(file: ref(File)) -> long
+ 660[312]: ConstInt(val=28) -> integer
+ 665[316]: ConvLongFromInt(v1: integer) -> long
+ 666[320]: EqLong(v1: long, v2: long) -> boolean
+ 667[305]: GotoFalseWord(jump=673, if_false: boolean)
+ 670[304]: GotoWord(jump=710)
+ 673[304]: ConstText(_value="Size should be 28 bytes (16 + 12).") -> text
+ 709[320]: Panic(message: text)
+ 710[304]: FreeText(var[280])
+ 713[304]: FreeStack(value=0, discard=60)
+ 717[244]: [60] ConstText(_value="test.bin") -> text
+ 727[260]: Call(size=0, fn=n_exists)
+ 734[245]: GotoFalseWord(jump=740, if_false: boolean)
+ 737[244]: GotoWord(jump=775)
+ 740[244]: ConstText(_value="File should exist after writing.") -> text
+ 774[260]: Panic(message: text)
+ 775[244]: [62] ConstText(_value="test.bin") -> text
+ 785[260]: ConstText(_value="../test.bin") -> text
+ 798[276]: Call(size=0, fn=n_move)
+ 805[245]: Not(v1: boolean) -> boolean
+ 806[245]: GotoFalseWord(jump=812, if_false: boolean)
+ 809[244]: GotoWord(jump=857)
+ 812[244]: ConstText(_value="Should refuse to move outside the project.") -> text
+ 856[260]: Panic(message: text)
+ 857[244]: [63] ConstText(_value="test.bin") -> text
+ 867[260]: ConstText(_value="test2.bin") -> text
+ 878[276]: Call(size=0, fn=n_move)
+ 885[245]: GotoFalseWord(jump=891, if_false: boolean)
+ 888[244]: GotoWord(jump=918)
+ 891[244]: ConstText(_value="Could not move the file.") -> text
+ 917[260]: Panic(message: text)
+ 918[244]: [68] ConstText(_value="test2.bin") -> text var=f[244]:ref(File)["__ref_8"]
+ 929[260]: VarRef(var[40]) -> ref(reference) type=File 14 var=__ref_5[40]:ref(File)
+ 932[272]: Call(size=0, fn=n_file)
+ 939[256]: [69] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 942[268]: GetEnum(v1: ref(reference), fld=32) -> boolean
+ 945[257]: ConvIntFromEnum(v1: boolean) -> integer
+ 946[260]: ConstEnum(val=1) -> boolean type=Format 8
+ 948[261]: ConvIntFromEnum(v1: boolean) -> integer
+ 949[264]: EqInt(v1: integer, v2: integer) -> boolean
+ 950[257]: GotoFalseWord(jump=956, if_false: boolean)
+ 953[256]: GotoWord(jump=990)
+ 956[256]: ConstText(_value="The default format is TextFile.") -> text
+ 989[272]: Panic(message: text)
+ 990[256]: [70] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+ 993[268]: ConstEnum(val=2) -> boolean type=Format 8
+ 995[269]: SetEnum(v1: ref(reference), fld=32, val: boolean)
+ 998[256]: [75] ConvIntFromNull() -> integer var=_read_7[256]:integer
+ 999[260]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1002[272]: CreateStack(var[256]) -> ref(reference)
+1005[284]: ConstInt(val=4) -> integer
+1010[288]: ReadFile(file: ref(File), val: ref(reference), bytes: integer, db_tp=0)
+1013[260]: VarInt(var[256]) -> integer var=_read_7[256]:integer
+1016[264]: FreeStack(value=4, discard=8)
+1020[260]: [76] VarInt(var[256]) -> integer var=v[256]:integer
+1023[264]: ConstInt(val=50462976) -> integer
+1028[268]: EqInt(v1: integer, v2: integer) -> boolean
+1029[261]: GotoFalseWord(jump=1035, if_false: boolean)
+1032[260]: GotoWord(jump=1084)
+1035[260]: ConstText(_value="BigEndian bytes 0..3 read as LittleEndian i32.") -> text
+1083[276]: Panic(message: text)
+1084[260]: [77] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1087[272]: GetLong(v1: ref(reference), fld=8) -> long
+1090[268]: ConstInt(val=0) -> integer
+1095[272]: ConvLongFromInt(v1: integer) -> long
+1096[276]: EqLong(v1: long, v2: long) -> boolean
+1097[261]: GotoFalseWord(jump=1103, if_false: boolean)
+1100[260]: GotoWord(jump=1134)
+1103[260]: ConstText(_value="Last read started at byte 0.") -> text
+1133[276]: Panic(message: text)
+1134[260]: [78] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1137[272]: GetLong(v1: ref(reference), fld=16) -> long
+1140[268]: ConstInt(val=4) -> integer
+1145[272]: ConvLongFromInt(v1: integer) -> long
+1146[276]: EqLong(v1: long, v2: long) -> boolean
+1147[261]: GotoFalseWord(jump=1153, if_false: boolean)
+1150[260]: GotoWord(jump=1183)
+1153[260]: ConstText(_value="Next read starts at byte 4.") -> text
+1182[276]: Panic(message: text)
+1183[260]: [81] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1186[272]: ConstInt(val=16) -> integer
+1191[276]: ConvLongFromInt(v1: integer) -> long
+1192[280]: SeekFile(file: ref(File), pos: long)
+1193[260]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1196[272]: ConstInt(val=16) -> integer
+1201[276]: ConvLongFromInt(v1: integer) -> long
+1202[280]: SetLong(v1: ref(reference), fld=16, val: long)
+1205[260]: [82] Text() var=s[260]:text
+1206[284]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1209[296]: CreateStack(var[148]) -> ref(reference)
+1212[308]: ConstInt(val=5) -> integer
+1217[312]: ReadFile(file: ref(File), val: ref(reference), bytes: integer, db_tp=5)
+1220[284]: VarText(var[148]) -> text var=__work_3[148]:text
+1223[300]: AppendText(var[260], v1: text)
+1226[284]: [83] VarText(var[260]) -> text var=s[260]:text
+1229[300]: ConstText(_value="Hello") -> text
+1236[316]: EqText(v1: text, v2: text) -> boolean
+1237[285]: GotoFalseWord(jump=1243, if_false: boolean)
+1240[284]: GotoWord(jump=1279)
+1243[284]: ConstText(_value="Partial text read from offset 16.") -> text
+1278[300]: Panic(message: text)
+1279[284]: [84] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1282[296]: GetLong(v1: ref(reference), fld=8) -> long
+1285[292]: ConstInt(val=16) -> integer
+1290[296]: ConvLongFromInt(v1: integer) -> long
+1291[300]: EqLong(v1: long, v2: long) -> boolean
+1292[285]: GotoFalseWord(jump=1298, if_false: boolean)
+1295[284]: GotoWord(jump=1330)
+1298[284]: ConstText(_value="Last read started at byte 16.") -> text
+1329[300]: Panic(message: text)
+1330[284]: [85] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1333[296]: GetLong(v1: ref(reference), fld=16) -> long
+1336[292]: ConstInt(val=21) -> integer
+1341[296]: ConvLongFromInt(v1: integer) -> long
+1342[300]: EqLong(v1: long, v2: long) -> boolean
+1343[285]: GotoFalseWord(jump=1349, if_false: boolean)
+1346[284]: GotoWord(jump=1389)
+1349[284]: ConstText(_value="Next position after 5-byte text read.") -> text
+1388[300]: Panic(message: text)
+1389[284]: [88] Text() var=rest[284]:text
+1390[308]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1393[320]: CreateStack(var[124]) -> ref(reference)
+1396[332]: ConstInt(val=100) -> integer
+1401[336]: ReadFile(file: ref(File), val: ref(reference), bytes: integer, db_tp=5)
+1404[308]: VarText(var[124]) -> text var=__work_4[124]:text
+1407[324]: AppendText(var[284], v1: text)
+1410[308]: [89] VarText(var[284]) -> text var=rest[284]:text
+1413[324]: ConstText(_value=" world!") -> text
+1422[340]: EqText(v1: text, v2: text) -> boolean
+1423[309]: GotoFalseWord(jump=1429, if_false: boolean)
+1426[308]: GotoWord(jump=1462)
+1429[308]: ConstText(_value="Read continues to end of file.") -> text
+1461[324]: Panic(message: text)
+1462[308]: [90] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1465[320]: GetLong(v1: ref(reference), fld=16) -> long
+1468[316]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1471[328]: SizeFile(file: ref(File)) -> long
+1472[324]: EqLong(v1: long, v2: long) -> boolean
+1473[309]: GotoFalseWord(jump=1479, if_false: boolean)
+1476[308]: GotoWord(jump=1516)
+1479[308]: ConstText(_value="Position should be at end of file.") -> text
+1515[324]: Panic(message: text)
+1516[308]: [93] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1519[320]: ConstInt(val=0) -> integer
+1524[324]: ConvLongFromInt(v1: integer) -> long
+1525[328]: SeekFile(file: ref(File), pos: long)
+1526[308]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1529[320]: ConstInt(val=0) -> integer
+1534[324]: ConvLongFromInt(v1: integer) -> long
+1535[328]: SetLong(v1: ref(reference), fld=16, val: long)
+1538[308]: [94] ConvIntFromNull() -> integer var=_read_8[308]:integer
+1539[312]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1542[324]: CreateStack(var[308]) -> ref(reference)
+1545[336]: ConstInt(val=4) -> integer
+1550[340]: ReadFile(file: ref(File), val: ref(reference), bytes: integer, db_tp=0)
+1553[312]: VarInt(var[308]) -> integer var=_read_8[308]:integer
+1556[316]: FreeStack(value=4, discard=8)
+1560[312]: ConstInt(val=50462976) -> integer
+1565[316]: EqInt(v1: integer, v2: integer) -> boolean
+1566[309]: GotoFalseWord(jump=1572, if_false: boolean)
+1569[308]: GotoWord(jump=1608)
+1572[308]: ConstText(_value="Seek-and-reread matches original.") -> text
+1607[324]: Panic(message: text)
+1608[308]: FreeText(var[260])
+1611[308]: FreeText(var[284])
+1614[308]: FreeStack(value=0, discard=64)
+1618[244]: [96] ConstText(_value="test2.bin") -> text
+1629[260]: Call(size=0, fn=n_delete)
+1636[245]: GotoFalseWord(jump=1642, if_false: boolean)
+1639[244]: GotoWord(jump=1676)
+1642[244]: ConstText(_value="Could not remove the test file.") -> text
+1675[260]: Panic(message: text)
+1676[244]: [100] ConstText(_value="buffer.bin") -> text var=buf[244]:ref(File)["__ref_6"]
+1688[260]: VarRef(var[28]) -> ref(reference) type=File 14 var=__ref_6[28]:ref(File)
+1691[272]: Call(size=0, fn=n_file)
+1698[256]: [101] VarRef(var[244]) -> ref(reference) type=File 14 var=buf[244]:ref(File)["__ref_6"]
+1701[268]: ConstEnum(val=2) -> boolean type=Format 8
+1703[269]: SetEnum(v1: ref(reference), fld=32, val: boolean)
+1706[256]: [102] ConstInt(val=4) -> integer var=_wf_9[256]:integer
+1711[260]: VarRef(var[244]) -> ref(reference) type=File 14 var=buf[244]:ref(File)["__ref_6"]
+1714[272]: CreateStack(var[256]) -> ref(reference)
+1717[284]: WriteFile(file: ref(File), val: ref(reference), db_tp=0)
+1720[260]: [103] Database(var[16], db_tp=21) type=main_vector<single> 21 var=_wf_12[260]:vector<single>["__ref_7"]
+1725[260]: VarRef(var[16]) -> ref(reference) type=main_vector<single> 21 var=__ref_7[16]:ref(main_vector<single>)
+1728[272]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=vector<single> 19
+1731[272]: VarRef(var[16]) -> ref(reference) type=main_vector<single> 21 var=__ref_7[16]:ref(main_vector<single>)
+1734[284]: ConstInt(val=0) -> integer
+1739[288]: SetInt(v1: ref(reference), fld=0, val: integer)
+1742[272]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1745[284]: NewRecord(data: ref(reference), parent_tp=19, fld=65535) -> ref(reference)
+1750[284]: VarRef(var[272]) -> ref(reference) type=boolean 4 var=_elm_11[272]:ref(boolean)["_vec_10"]
+1753[296]: ConstSingle(val=1.1) -> single
+1758[300]: SetSingle(v1: ref(reference), fld=0, val: single)
+1761[284]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1764[296]: VarRef(var[272]) -> ref(reference) type=boolean 4 var=_elm_11[272]:ref(boolean)["_vec_10"]
+1767[308]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=65535)
+1772[284]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1775[296]: NewRecord(data: ref(reference), parent_tp=19, fld=65535) -> ref(reference)
+1780[296]: PutRef(var[272], value: ref(reference))
+1783[284]: VarRef(var[272]) -> ref(reference) type=boolean 4 var=_elm_11[272]:ref(boolean)["_vec_10"]
+1786[296]: ConstSingle(val=1.2) -> single
+1791[300]: SetSingle(v1: ref(reference), fld=0, val: single)
+1794[284]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1797[296]: VarRef(var[272]) -> ref(reference) type=boolean 4 var=_elm_11[272]:ref(boolean)["_vec_10"]
+1800[308]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=65535)
+1805[284]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1808[296]: NewRecord(data: ref(reference), parent_tp=19, fld=65535) -> ref(reference)
+1813[296]: PutRef(var[272], value: ref(reference))
+1816[284]: VarRef(var[272]) -> ref(reference) type=boolean 4 var=_elm_11[272]:ref(boolean)["_vec_10"]
+1819[296]: ConstSingle(val=2.1) -> single
+1824[300]: SetSingle(v1: ref(reference), fld=0, val: single)
+1827[284]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1830[296]: VarRef(var[272]) -> ref(reference) type=boolean 4 var=_elm_11[272]:ref(boolean)["_vec_10"]
+1833[308]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=65535)
+1838[284]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1841[296]: NewRecord(data: ref(reference), parent_tp=19, fld=65535) -> ref(reference)
+1846[296]: PutRef(var[272], value: ref(reference))
+1849[284]: VarRef(var[272]) -> ref(reference) type=boolean 4 var=_elm_11[272]:ref(boolean)["_vec_10"]
+1852[296]: ConstSingle(val=2.2) -> single
+1857[300]: SetSingle(v1: ref(reference), fld=0, val: single)
+1860[284]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1863[296]: VarRef(var[272]) -> ref(reference) type=boolean 4 var=_elm_11[272]:ref(boolean)["_vec_10"]
+1866[308]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=65535)
+1871[284]: VarVector(var[260]) -> vector type=vector<single> 19 var=_vec_10[260]:vector<single>["__ref_7"]
+1874[296]: FreeStack(value=12, discard=36)
+1878[272]: VarRef(var[244]) -> ref(reference) type=File 14 var=buf[244]:ref(File)["__ref_6"]
+1881[284]: CreateStack(var[260]) -> ref(reference)
+1884[296]: WriteFile(file: ref(File), val: ref(reference), db_tp=19)
+1887[272]: FreeStack(value=0, discard=28)
+1891[244]: [108] ConvRefFromNull() -> ref(reference) var=b[244]:ref(Buffer)
+1892[256]: Database(var[244], db_tp=20) type=Buffer 20
+1897[256]: VarRef(var[244]) -> ref(reference) type=Buffer 20 var=b[244]:ref(Buffer)
+1900[268]: ConstInt(val=0) -> integer
+1905[272]: SetInt(v1: ref(reference), fld=0, val: integer)
+1908[256]: VarRef(var[244]) -> ref(reference) type=Buffer 20 var=b[244]:ref(Buffer)
+1911[268]: ConstInt(val=0) -> integer
+1916[272]: SetInt(v1: ref(reference), fld=4, val: integer)
+1919[256]: [109] ConstText(_value="buffer.bin") -> text var=f[244]:ref(File)["__ref_8"]
+1931[272]: VarRef(var[4]) -> ref(reference) type=File 14 var=__ref_8[4]:ref(File)
+1934[284]: Call(size=0, fn=n_file)
+1941[268]: PutRef(var[244], value: ref(reference))
+1944[256]: [110] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1947[268]: ConstEnum(val=2) -> boolean type=Format 8
+1949[269]: SetEnum(v1: ref(reference), fld=32, val: boolean)
+1952[256]: [111] ConvIntFromNull() -> integer var=_read_13[256]:integer
+1953[260]: VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1956[272]: CreateStack(var[256]) -> ref(reference)
+1959[284]: ConstInt(val=4) -> integer
+1964[288]: ReadFile(file: ref(File), val: ref(reference), bytes: integer, db_tp=0)
+1967[260]: VarInt(var[256]) -> integer var=_read_13[256]:integer
+1970[264]: FreeStack(value=4, discard=8)
+1974[260]: [112] VarRef(var[244]) -> ref(reference) type=File 14 var=f[244]:ref(File)["__ref_8"]
+1977[272]: CreateStack(var[100]) -> ref(reference)
+1980[284]: VarInt(var[256]) -> integer var=n[256]:integer
+1983[288]: ConstInt(val=4) -> integer
+1988[292]: MulInt(v1: integer, v2: integer) -> integer
+1989[288]: ReadFile(file: ref(File), val: ref(reference), bytes: integer, db_tp=5)
+1992[260]: VarText(var[100]) -> text var=__work_5[100]:text
+1995[276]: VarRef(var[244]) -> ref(reference) type=Buffer 20 var=b[244]:ref(Buffer)
+1998[288]: FreeRef(v1: ref(reference))
+1999[276]: FreeStack(value=0, discard=32)
+2003[244]: [114] ConstText(_value="buffer.bin") -> text
+2015[260]: Call(size=0, fn=n_delete)
+2022[245]: GotoFalseWord(jump=2028, if_false: boolean)
+2025[244]: GotoWord(jump=2059)
+2028[244]: ConstText(_value="Could not remove buffer.bin.") -> text
+2058[260]: Panic(message: text)
+2059[244]: VarRef(var[88]) -> ref(reference) type=main_vector<File> 16 var=__ref_1[88]:ref(main_vector<File>)
+2062[256]: FreeRef(v1: ref(reference))
+2063[244]: FreeText(var[196])
+2066[244]: VarRef(var[76]) -> ref(reference) type=File 14 var=__ref_2[76]:ref(File)
+2069[256]: FreeRef(v1: ref(reference))
+2070[244]: FreeText(var[172])
+2073[244]: VarVector(var[64]) -> vector type=vector<text> 7 var=__ref_3[64]:vector<text>
+2076[256]: FreeRef(v1: ref(reference))
+2077[244]: VarRef(var[52]) -> ref(reference) type=File 14 var=__ref_4[52]:ref(File)
+2080[256]: FreeRef(v1: ref(reference))
+2081[244]: FreeText(var[148])
+2084[244]: FreeText(var[124])
+2087[244]: VarRef(var[40]) -> ref(reference) type=File 14 var=__ref_5[40]:ref(File)
+2090[256]: FreeRef(v1: ref(reference))
+2091[244]: VarRef(var[28]) -> ref(reference) type=File 14 var=__ref_6[28]:ref(File)
+2094[256]: FreeRef(v1: ref(reference))
+2095[244]: FreeText(var[100])
+2098[244]: VarRef(var[16]) -> ref(reference) type=main_vector<single> 21 var=__ref_7[16]:ref(main_vector<single>)
+2101[256]: FreeRef(v1: ref(reference))
+2102[244]: VarRef(var[4]) -> ref(reference) type=File 14 var=__ref_8[4]:ref(File)
+2105[256]: FreeRef(v1: ref(reference))
+2106[244]: Return(ret=0, value=0, discard=244)
 
