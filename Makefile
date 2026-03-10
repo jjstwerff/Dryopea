@@ -13,8 +13,8 @@ debug:
 	export RUST_BACKTRACE=1
 
 test: clippy
-	rm tests/generated/* -f
-	rm tests/result/*.txt tests/result/*.svg tests/result/*.glb -f
+	-rm -f tests/generated/*
+	-rm -f tests/result/*.txt tests/result/*.svg tests/result/*.glb
 	RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
 
 quick:
@@ -25,7 +25,7 @@ profile:
 	flamegraph -o profiler.svg -- target/release/dryopea auto
 
 clean:
-	rm result.txt tests/code/* tests/result/* tests/generated/* pkg target/* perf.data perf.data.old profiler.svg -rf
+	-rm -rf result.txt tests/code/* tests/result/* tests/generated/* pkg target/* perf.data perf.data.old profiler.svg
 
 clippy:
 	cargo clippy -- -W clippy::all -W clippy::cognitive_complexity > result.txt 2>&1

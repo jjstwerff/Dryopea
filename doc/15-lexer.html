@@ -10,13 +10,19 @@
 <nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <span class="cur">Lexer</span> · <a href="16-parser.html">Parser</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
 <h1>Lexer</h1>
 <article>
-<p>Lexer library: tokenising source text, handling multi-character operators, comments, string literals, and formatting expressions.  Before parsing, register the multi-character tokens and reserved keywords for your language. `set_tokens` ensures operators like `+=` or `&gt;&gt;` are scanned as one token instead of two. `set_keywords` prevents reserved words from being returned by `identifier()`.</p>
+<p>Lexer library: tokenising source text, handling multi-character operators, comments, string literals, and formatting expressions.</p>
+<p>Before parsing, register the multi-character tokens and reserved keywords for your language.</p>
+<p>`set_tokens` ensures operators like `+=` or `&gt;&gt;` are scanned as one token instead of two.</p>
+<p>`set_keywords` prevents reserved words from being returned by `identifier()`.</p>
 <pre><code><span class="kw">use</span> lexer;</code></pre>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {
     l = lexer::<span class="en">Lexer</span> {};
     l.<span class="fn-call">set_tokens</span>([<span class="st">"+="</span>, <span class="st">"*="</span>, <span class="st">"-="</span>, <span class="st">"&lt;="</span>, <span class="st">"&gt;="</span>, <span class="st">"!="</span>, <span class="st">"=="</span>, <span class="st">"&gt;&gt;"</span>, <span class="st">"&lt;&lt;"</span>, <span class="st">"-&gt;"</span>, <span class="st">"=&gt;"</span>, <span class="st">"&gt;&gt;&gt;"</span>, <span class="st">".."</span>, <span class="st">"..="</span>, <span class="st">"&amp;&amp;"</span>, <span class="st">"||"</span>]);
     l.<span class="fn-call">set_keywords</span>([<span class="st">"for"</span>, <span class="st">"in"</span>, <span class="st">"if"</span>, <span class="st">"else"</span>, <span class="st">"fn"</span>, <span class="st">"pub"</span>, <span class="st">"use"</span>, <span class="st">"struct"</span>, <span class="st">"enum"</span>, <span class="st">"match"</span>, <span class="st">"and"</span>, <span class="st">"or"</span>]);</code></pre>
-<p>`parse_string` feeds source text into the lexer. `int()` consumes and returns the next integer token, or null if the current token is not an integer. `matches()` consumes a token only when it equals the given string; `peek()` returns it without consuming. `long_int()` reads a long integer (suffixed with `l`). `position()` returns `file:line:col`.</p>
+<p>`parse_string` feeds source text into the lexer.</p>
+<p>`int()` consumes and returns the next integer token, or null if the current token is not an integer.</p>
+<p>`matches()` consumes a token only when it equals the given string; `peek()` returns it without consuming.</p>
+<p>`long_int()` reads a long integer (suffixed with `l`). `position()` returns `file:line:col`.</p>
 <pre><code>    l.<span class="fn-call">parse_string</span>(<span class="st">"Tokens"</span>, <span class="st">"12 += -2 * 3l &gt;&gt; 4"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() == <span class="nm">12</span>, <span class="st">"Integer"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!l.<span class="fn-call">matches</span>(<span class="st">"+"</span>), <span class="st">"Incorrect plus"</span>);
@@ -30,12 +36,17 @@
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!l.<span class="fn-call">matches</span>(<span class="st">"&gt;"</span>), <span class="st">"Incorrect higher"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">matches</span>(<span class="st">"&gt;&gt;"</span>), <span class="st">"Incorrect logical shift"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">position</span>() == <span class="st">"Tokens:1:18"</span>, <span class="st">"Incorrect position {l.position()}"</span>);</code></pre>
-<p>`constant_text()` reads and unescapes a quoted string literal. `constant_character()` reads a quoted character literal.</p>
+<p>`constant_text()` reads and unescapes a quoted string literal.</p>
+<p>`constant_character()` reads a quoted character literal.</p>
 <pre><code>    l.<span class="fn-call">parse_string</span>(<span class="st">"Texts"</span>, <span class="st">"\"</span><span class="nm">123</span>\<span class="st">" + '4'"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">constant_text</span>() == <span class="st">"123"</span>, <span class="st">"Incorrect text literal"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">matches</span>(<span class="st">"+"</span>), <span class="st">"Incorrect add"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">constant_character</span>() == <span class="st">"123"</span>, <span class="st">"Incorrect text literal"</span>);</code></pre>
-<p>Comments are collected automatically during scanning. `last_comment()` returns accumulated comment text since the last consumed token. `comment_behind()` is true when the comment appeared on the same line as preceding code. Multiple consecutive comment lines are joined with newlines into one string. `is_finished()` returns true once all input has been consumed.</p>
+<p>Comments are collected automatically during scanning.</p>
+<p>`last_comment()` returns accumulated comment text since the last consumed token.</p>
+<p>`comment_behind()` is true when the comment appeared on the same line as preceding code.</p>
+<p>Multiple consecutive comment lines are joined with newlines into one string.</p>
+<p>`is_finished()` returns true once all input has been consumed.</p>
 <pre><code>    l.<span class="fn-call">parse_string</span>(<span class="st">"Comments"</span>, <span class="st">"// starting comments\n123 // same line comment\n// extra comment\n4"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!l.<span class="fn-call">comment_behind</span>(), <span class="st">"Initial comment not behind"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">last_comment</span>() == <span class="st">"starting comments"</span>, <span class="st">"Initial comment"</span>);
@@ -46,7 +57,8 @@
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() == <span class="nm">4</span>, <span class="st">"Second integer"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">last_comment</span>() == <span class="st">""</span>, <span class="st">"No remaining comment"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">is_finished</span>(), <span class="st">"Ready"</span>);</code></pre>
-<p>String literals may embed expressions with `{expr}`. When the lexer reaches `{`, `constant_text()` returns the literal part before it and `is_formatting()` becomes true. Parse the embedded expression normally after calling `set_formatting(false)`, then call `set_formatting(true)` before consuming the closing `}}`. `constant_text()` then continues with the next literal segment.</p>
+<p>String literals may embed expressions with `{expr}`.</p>
+<p>When the lexer reaches `{`, `constant_text()` returns the literal part before it and `is_formatting()` becomes true. Parse the embedded expression normally after calling `set_formatting(false)`, then call `set_formatting(true)` before consuming the closing `}}`. `constant_text()` then continues with the next literal segment.</p>
 <pre><code>    l.<span class="fn-call">parse_string</span>(<span class="st">"Formatting"</span>, <span class="st">"\"</span>abc{{<span class="nm">12</span> + <span class="nm">34</span>}}def\<span class="st">""</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">constant_text</span>() == <span class="st">"abc"</span>, <span class="st">"Before formatting"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">is_formatting</span>(), <span class="st">"Formatting"</span>);

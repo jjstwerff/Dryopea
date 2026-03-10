@@ -40,42 +40,25 @@
     TextFile,
     LittleEndian,
     BigEndian,
-    Directory
+    Directory,
+    NotExists
 }</code></pre>
-<p>Describes how a file is opened. TextFile: read or write as UTF-8 text (default). LittleEndian: binary mode, least-significant byte first. BigEndian: binary mode, most-significant byte first. Directory: represents a directory path.</p>
+<p>Describes how a file is opened. TextFile: read or write as UTF-8 text (default). LittleEndian: binary mode, least-significant byte first. BigEndian: binary mode, most-significant byte first. Directory: represents a directory path. NotExists: no file or directory exist.</p>
 </div>
 <div class="item">
 <pre><code>pub struct File {
     path: text,
     size: long,
     format: Format,
-    ref: i32
+    ref: i32,
+    current: long,
+    next: long
 }</code></pre>
-<p>A handle to a filesystem entry. Fields: path (full path), size (file size in bytes), format (open mode).</p>
+<p>A handle to a filesystem entry. Fields: path (full path), size (file size in bytes), format (open mode), current (byte position after last read), next (byte position to read next).</p>
 </div>
 <div class="item">
 <pre><code>pub fn value(self: Pixel) -&gt; integer</code></pre>
 <p>Returns the pixel colour as a packed 24-bit integer (0xRRGGBB). Use for fast colour comparison or storage.</p>
-</div>
-<div class="item">
-<pre><code>pub fn little_endian(self: File)</code></pre>
-<p>Switches the file to little-endian binary mode. Use for most modern file formats.</p>
-</div>
-<div class="item">
-<pre><code>pub fn big_endian(self: File)</code></pre>
-<p>Switches the file to big-endian binary mode. Use for network protocols and formats like PNG.</p>
-</div>
-<div class="item">
-<pre><code>pub fn write_bin(self: File, v: reference)</code></pre>
-<p>Writes a struct value as raw binary data. File must be in binary mode first.</p>
-</div>
-<div class="item">
-<pre><code>pub fn read(self: File, v: reference)</code></pre>
-<p>Reads binary data into a struct value. File must be in binary mode first.</p>
-</div>
-<div class="item">
-<pre><code>pub fn seek(self: File, pos: long)</code></pre>
-<p>Moves the read/write position to pos bytes from the start. Use to jump to a specific record in a binary file.</p>
 </div>
 <div class="item">
 <pre><code>pub fn content(self: File) -&gt; text</code></pre>
@@ -91,7 +74,19 @@
 </div>
 <div class="item">
 <pre><code>pub fn file(path: text) -&gt; File</code></pre>
-<p>Opens the file at path and returns a File handle. This is the entry point for all file I/O.</p>
+<p>Use as the entry point for all file I/O. Paths outside the project directory are treated as NotExists without touching the filesystem.</p>
+</div>
+<div class="item">
+<pre><code>pub fn exists(path: text) -&gt; boolean</code></pre>
+<p>Use to check whether a path is accessible before reading or writing it. Paths outside the project directory are always absent.</p>
+</div>
+<div class="item">
+<pre><code>pub fn delete(path: text) -&gt; boolean</code></pre>
+<p>Use to remove a file after processing or as a cleanup step. Returns false when the file did not exist or is outside the project directory.</p>
+</div>
+<div class="item">
+<pre><code>pub fn move(from: text, to: text) -&gt; boolean</code></pre>
+<p>Use to rename or relocate a file within the project. Both paths must stay within the project directory; the destination must not already exist.</p>
 </div>
 <div class="item">
 <pre><code>pub fn files(self: File) -&gt; vector&lt;File&gt;</code></pre>

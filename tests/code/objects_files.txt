@@ -1,8 +1,8 @@
 pub fn test() {
     test_value = {"{file("example").files()}"};
     assert(
-        test_value == "[{{path:\"example/config\",size:4096,format:Directory}},{{path:\"example/map.png\",size:3406,format:TextFile}},{{path:\"example/map.xcf\",size:7817,format:TextFile}},{{path:\"example/show.loft\",size:371,format:TextFile}},{{path:\"example/todo.json\",size:1461,format:TextFile}}]",
-        "Test failed {test_value} != \"[{{path:\"example/config\",size:4096,format:Directory}},{{path:\"example/map.png\",size:3406,format:TextFile}},{{path:\"example/map.xcf\",size:7817,format:TextFile}},{{path:\"example/show.loft\",size:371,format:TextFile}},{{path:\"example/todo.json\",size:1461,format:TextFile}}]\""
+        test_value == "[{{path:\"example/config\",format:Directory}},{{path:\"example/map.png\",size:3406,format:TextFile}},{{path:\"example/map.xcf\",size:7817,format:TextFile}},{{path:\"example/show.loft\",size:371,format:TextFile}},{{path:\"example/todo.json\",size:1461,format:TextFile}}]",
+        "Test failed {test_value} != \"[{{path:\"example/config\",format:Directory}},{{path:\"example/map.png\",size:3406,format:TextFile}},{{path:\"example/map.xcf\",size:7817,format:TextFile}},{{path:\"example/show.loft\",size:371,format:TextFile}},{{path:\"example/todo.json\",size:1461,format:TextFile}}]\""
     );
 }
 fn n_test() {#block(1):void
@@ -17,10 +17,10 @@ fn n_test() {#block(1):void
       __work_1(1);
     }#Formatted string(3):text["__work_1"];
   }#block(2):text["__work_1"];
-  [3] if OpEqText(test_value(1), "[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]") null else OpPanic({#Formatted string(4):text["__work_2"]
+  [3] if OpEqText(test_value(1), "[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]") null else OpPanic({#Formatted string(4):text["__work_2"]
     __work_2(1):text = "Test failed ";
     OpFormatText(__work_2(1), test_value(1), 0i32, -1i32, 32i32);
-    OpAppendText(__work_2(1), " != "[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]"");
+    OpAppendText(__work_2(1), " != "[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]"");
     __work_2(1);
   }#Formatted string(4):text["__work_2"]);
   OpFreeText(test_value(1));
@@ -56,28 +56,28 @@ byte-code for files:n_test()
   77[132]: FreeStack(value=16, discard=32)
   81[116]: AppendText(var[76], v1: text)
   84[100]: [3] VarText(var[76]) -> text var=test_value[76]:text["__work_1"]
-  87[116]: ConstLongText(start=0, size=259) -> text
-  96[132]: EqText(v1: text, v2: text) -> boolean
-  97[101]: GotoFalseWord(jump=103, if_false: boolean)
- 100[100]: GotoWord(jump=152)
- 103[100]: ClearText(var[28]) var=__work_2[28]:text
- 106[100]: ConstText(_value="Test failed ") -> text
- 120[116]: AppendText(var[28], v1: text)
- 123[100]: VarText(var[76]) -> text var=test_value[76]:text["__work_1"]
- 126[116]: ConstInt(val=0) -> integer
- 131[120]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
- 136[100]: ConstLongText(start=259, size=265) -> text
- 145[116]: AppendText(var[28], v1: text)
- 148[100]: VarText(var[28]) -> text var=__work_2[28]:text
- 151[116]: Panic(message: text)
- 152[100]: FreeText(var[76])
- 155[100]: FreeText(var[52])
- 158[100]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_1[16]:ref(File)
- 161[112]: FreeRef(v1: ref(reference))
- 162[100]: VarVector(var[4]) -> vector type=vector<File> 17 var=__ref_2[4]:vector<ref(File)>
- 165[112]: FreeRef(v1: ref(reference))
- 166[100]: FreeText(var[28])
- 169[100]: Return(ret=0, value=0, discard=100)
+  87[116]: ConstText(_value="[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]") -> text
+ 338[132]: EqText(v1: text, v2: text) -> boolean
+ 339[101]: GotoFalseWord(jump=345, if_false: boolean)
+ 342[100]: GotoWord(jump=642)
+ 345[100]: ClearText(var[28]) var=__work_2[28]:text
+ 348[100]: ConstText(_value="Test failed ") -> text
+ 362[116]: AppendText(var[28], v1: text)
+ 365[100]: VarText(var[76]) -> text var=test_value[76]:text["__work_1"]
+ 368[116]: ConstInt(val=0) -> integer
+ 373[120]: FormatText(var[28], val: text, width: integer, dir=-1, token=32)
+ 378[100]: ConstText(_value=" != "[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]"") -> text
+ 635[116]: AppendText(var[28], v1: text)
+ 638[100]: VarText(var[28]) -> text var=__work_2[28]:text
+ 641[116]: Panic(message: text)
+ 642[100]: FreeText(var[76])
+ 645[100]: FreeText(var[52])
+ 648[100]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_1[16]:ref(File)
+ 651[112]: FreeRef(v1: ref(reference))
+ 652[100]: VarVector(var[4]) -> vector type=vector<File> 17 var=__ref_2[4]:vector<ref(File)>
+ 655[112]: FreeRef(v1: ref(reference))
+ 656[100]: FreeText(var[28])
+ 659[100]: Return(ret=0, value=0, discard=100)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
@@ -97,57 +97,63 @@ Execute test:
    39:[120] ConstText(_value="example") -> "example"[120]
    48:[136] VarRef(var[20]) -> ref(2,0,8)=null[136]
    51:[148] Call(size=0, fn=n_file)
- 1482:[152] Database(var[136], db_tp=14)
- 1487:[152] VarRef(var[136]) -> ref(2,1,8)={}[152]
- 1490:[164] ArgText(var[120]) -> "example"[164]
- 1493:[180] SetText(v1=ref(2,1,8)[152], fld=8, val="example"[164])
- 1496:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example"}[152]
- 1499:[164] ConvIntFromNull() -> -2147483648[164]
- 1500:[168] SetInt(v1=ref(2,1,8)[152], fld=12, val=-2147483648[164])
- 1503:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example"}[152]
- 1506:[164] ConstLong(val=0) -> 0[164]
- 1515:[172] SetLong(v1=ref(2,1,8)[152], fld=0, val=0[164])
- 1518:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0}[152]
- 1521:[164] ConstEnum(val=0) -> null(0)[164]
- 1523:[165] SetEnum(v1=ref(2,1,8)[152], fld=16, val=0[164])
- 1526:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0}[152]
- 1529:[164] GetFile(file=ref(2,1,8)={path:"example",size:0}[152]) -> true[152]
- 1530:[153] FreeStack(value=0, discard=1)
- 1534:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:4096,format:Directory}[152]
- 1537:[164] Return(ret=1909[148], value=12, discard=44) -> ref(2,1,8)={path:"example",size:4096,format:Directory}[120]
+  899:[152] Database(var[136], db_tp=14)
+  904:[152] VarRef(var[136]) -> ref(2,1,8)={}[152]
+  907:[164] ArgText(var[120]) -> "example"[164]
+  910:[180] SetText(v1=ref(2,1,8)[152], fld=24, val="example"[164])
+  913:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example"}[152]
+  916:[164] ConvIntFromNull() -> -2147483648[164]
+  917:[168] SetInt(v1=ref(2,1,8)[152], fld=28, val=-2147483648[164])
+  920:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example"}[152]
+  923:[164] ConstLong(val=0) -> 0[164]
+  932:[172] SetLong(v1=ref(2,1,8)[152], fld=0, val=0[164])
+  935:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0}[152]
+  938:[164] ConstEnum(val=0) -> null(0)[164]
+  940:[165] SetEnum(v1=ref(2,1,8)[152], fld=32, val=0[164])
+  943:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0}[152]
+  946:[164] ConstLong(val=0) -> 0[164]
+  955:[172] SetLong(v1=ref(2,1,8)[152], fld=8, val=0[164])
+  958:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0,current:0}[152]
+  961:[164] ConstLong(val=0) -> 0[164]
+  970:[172] SetLong(v1=ref(2,1,8)[152], fld=16, val=0[164])
+  973:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",size:0,current:0,next:0}[152]
+  976:[164] GetFile(file=ref(2,1,8)={path:"example",size:0,current:0,next:0}[152]) -> true[152]
+  977:[153] FreeStack(value=0, discard=1)
+  981:[152] VarRef(var[136]) -> ref(2,1,8)={path:"example",format:Directory}[152]
+  984:[164] Return(ret=1824[148], value=12, discard=44) -> ref(2,1,8)={path:"example",format:Directory}[120]
    58:[132] VarVector(var[8]) -> ref(1,1,12)=[][132]
    61:[144] Call(size=0, fn=t_4File_files)
- 1543:[148] VarVector(var[132]) -> ref(1,1,12)=[][148]
- 1546:[160] [181] ClearVector(r=ref(1,1,12)[148])
- 1547:[148] VarRef(var[120]) -> ref(2,1,8)={path:"example",size:4096,format:Directory}[148]
- 1550:[160] GetEnum(v1=ref(2,1,8)[148], fld=16) -> null(4)[148]
- 1553:[149] ConvIntFromEnum(v1=4[148]) -> 4[148]
- 1554:[152] ConstEnum(val=4) -> Directory(4)[152]
- 1556:[153] ConvIntFromEnum(v1=4[152]) -> 4[152]
- 1557:[156] EqInt(v1=4[148], v2=4[152]) -> true[148]
- 1558:[149] GotoFalseWord(jump=1575, if_false=true[148])
- 1561:[148] VarRef(var[120]) -> ref(2,1,8)={path:"example",size:4096,format:Directory}[148]
- 1564:[160] GetText(v1=ref(2,1,8)[148], fld=8) -> "example"[148]
- 1567:[164] VarVector(var[132]) -> ref(1,1,12)=[][164]
- 1570:[176] GetDir(path="example"[148], result=ref(1,1,12)[164]) -> true[148]
- 1571:[149] FreeStack(value=0, discard=1)
- 1575:[148] VarVector(var[132]) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][148]
- 1578:[160] Return(ret=1919[144], value=12, discard=40) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][120]
+ 1458:[148] VarVector(var[132]) -> ref(1,1,12)=[][148]
+ 1461:[160] [194] ClearVector(r=ref(1,1,12)[148])
+ 1462:[148] VarRef(var[120]) -> ref(2,1,8)={path:"example",format:Directory}[148]
+ 1465:[160] GetEnum(v1=ref(2,1,8)[148], fld=32) -> null(4)[148]
+ 1468:[149] ConvIntFromEnum(v1=4[148]) -> 4[148]
+ 1469:[152] ConstEnum(val=4) -> Directory(4)[152]
+ 1471:[153] ConvIntFromEnum(v1=4[152]) -> 4[152]
+ 1472:[156] EqInt(v1=4[148], v2=4[152]) -> true[148]
+ 1473:[149] GotoFalseWord(jump=1490, if_false=true[148])
+ 1476:[148] VarRef(var[120]) -> ref(2,1,8)={path:"example",format:Directory}[148]
+ 1479:[160] GetText(v1=ref(2,1,8)[148], fld=24) -> "example"[148]
+ 1482:[164] VarVector(var[132]) -> ref(1,1,12)=[][164]
+ 1485:[176] GetDir(path="example"[148], result=ref(1,1,12)[164]) -> true[148]
+ 1486:[149] FreeStack(value=0, discard=1)
+ 1490:[148] VarVector(var[132]) -> ref(1,1,12)=[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][148]
+ 1493:[160] Return(ret=1834[144], value=12, discard=40) -> ref(1,1,12)=[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][120]
    68:[132] FormatDatabase(var[56], val=ref(1,1,12)[120], db_tp=17, db_format=0)
-   74:[120] VarText(var[56]) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]
+   74:[120] VarText(var[56]) -> "[{path:\"example/config\",format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]
    77:[136] FreeStack(value=16, discard=32)
-   81:[120] AppendText(var[80], v1="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104])
-   84:[104] VarText(var[80]) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104]
-   87:[120] ConstLongText(start=0, size=259) -> "[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]
-   96:[136] EqText(v1="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104], v2="[{path:\"example/config\",size:4096,format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]) -> true[104]
-   97:[105] GotoFalseWord(jump=103, if_false=true[104])
-  100:[104] GotoWord(jump=152)
-  152:[104] FreeText(var[80])
-  155:[104] FreeText(var[56])
-  158:[104] VarRef(var[20]) -> ref(2,0,8)=null[104]
-  161:[116] FreeRef(v1=ref(2,0,8)[104])
-  162:[104] VarVector(var[8]) -> ref(1,1,12)=[{path:"example/config",size:4096,format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][104]
-  165:[116] FreeRef(v1=ref(1,1,12)[104])
-  166:[104] FreeText(var[32])
-  169:[104] Return(ret=4294967295[4], value=0, discard=100)
+   81:[120] AppendText(var[80], v1="[{path:\"example/config\",format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104])
+   84:[104] VarText(var[80]) -> "[{path:\"example/config\",format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104]
+   87:[120] ConstText(_value="[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}]") -> "[{path:\"example/config\",format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]
+  338:[136] EqText(v1="[{path:\"example/config\",format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[104], v2="[{path:\"example/config\",format:Directory},{path:\"example/map.png\",size:3406,format:TextFile},{path:\"example/map.xcf\",size:7817,format:TextFile},{path:\"example/show.loft\",size:371,format:TextFile},{path:\"example/todo.json\",size:1461,format:TextFile}]"[120]) -> true[104]
+  339:[105] GotoFalseWord(jump=345, if_false=true[104])
+  342:[104] GotoWord(jump=642)
+  642:[104] FreeText(var[80])
+  645:[104] FreeText(var[56])
+  648:[104] VarRef(var[20]) -> ref(2,0,8)=null[104]
+  651:[116] FreeRef(v1=ref(2,0,8)[104])
+  652:[104] VarVector(var[8]) -> ref(1,1,12)=[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][104]
+  655:[116] FreeRef(v1=ref(1,1,12)[104])
+  656:[104] FreeText(var[32])
+  659:[104] Return(ret=4294967295[4], value=0, discard=100)
 Finished

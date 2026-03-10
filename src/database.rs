@@ -171,8 +171,8 @@ pub struct Stores {
     pub types: Vec<Type>,
     pub names: HashMap<String, u16>,
     pub allocations: Vec<Store>,
-    pub files: Vec<std::fs::File>,
-    max: u16,
+    pub files: Vec<Option<std::fs::File>>,
+    pub max: u16,
 }
 
 impl Default for Stores {
@@ -479,8 +479,11 @@ impl Stores {
                 Parts::Enum(_) => {
                     data.push(store.get_byte(r.rec, r.pos, 0) as u8);
                 }
-                Parts::Byte(min, _) => {
-                    let v = store.get_byte(r.rec, r.pos, min);
+                Parts::Byte(_, _) => {
+                    data.push(store.get_int(r.rec, r.pos) as u8);
+                }
+                Parts::Short(_, _) => {
+                    let v = store.get_int(r.rec, r.pos) as i16;
                     (if little_endian {
                         v.to_le_bytes()
                     } else {
@@ -489,15 +492,27 @@ impl Stores {
                     .iter()
                     .for_each(|&x| data.push(x));
                 }
-                Parts::Short(min, _) => {
-                    let v = store.get_short(r.rec, r.pos, min);
-                    (if little_endian {
-                        v.to_le_bytes()
+                Parts::Vector(elem_tp) => {
+                    let v_rec = {
+                        let store = &self.allocations[r.store_nr as usize];
+                        store.get_int(r.rec, r.pos) as u32
+                    };
+                    let length = if v_rec == 0 {
+                        0u32
                     } else {
-                        v.to_be_bytes()
-                    })
-                    .iter()
-                    .for_each(|&x| data.push(x));
+                        let store = &self.allocations[r.store_nr as usize];
+                        store.get_int(v_rec, 4) as u32
+                    };
+                    let elem_size = u32::from(self.size(elem_tp));
+                    let store_nr = r.store_nr;
+                    for i in 0..length {
+                        let elem = DbRef {
+                            store_nr,
+                            rec: v_rec,
+                            pos: 8 + elem_size * i,
+                        };
+                        self.read_data(&elem, elem_tp, little_endian, data);
+                    }
                 }
                 _ => panic!(
                     "Not implemented type for file writing {}",
@@ -572,26 +587,30 @@ impl Stores {
                         self.write_data(r, f.content, little_endian, data);
                     }
                 }
-                Parts::Enum(_) => {
-                    store.set_byte(r.rec, r.pos, 0, i32::from(data[0]));
+                Parts::Enum(_) | Parts::Byte(_, _) => {
+                    store.set_int(r.rec, r.pos, i32::from(data[0]));
                 }
-                Parts::Byte(min, _) => {
-                    let d = data[0..4].try_into().unwrap();
+                Parts::Short(_, _) => {
+                    let d: [u8; 2] = data[0..2].try_into().unwrap();
                     let v = if little_endian {
-                        i32::from_le_bytes(d)
+                        i32::from(i16::from_le_bytes(d))
                     } else {
-                        i32::from_be_bytes(d)
+                        i32::from(i16::from_be_bytes(d))
                     };
-                    store.set_byte(r.rec, r.pos, min, v);
+                    store.set_int(r.rec, r.pos, v);
                 }
-                Parts::Short(min, _) => {
-                    let d = data[0..4].try_into().unwrap();
-                    let v = if little_endian {
-                        i32::from_le_bytes(d)
-                    } else {
-                        i32::from_be_bytes(d)
-                    };
-                    store.set_short(r.rec, r.pos, min, v);
+                Parts::Vector(elem_tp) => {
+                    let elem_size = u32::from(self.size(elem_tp));
+                    if elem_size == 0 {
+                        return;
+                    }
+                    let n_elems = data.len() / elem_size as usize;
+                    for i in 0..n_elems {
+                        let elem_ref = vector::vector_append(r, elem_size, &mut self.allocations);
+                        let slice = &data[i * elem_size as usize..(i + 1) * elem_size as usize];
+                        self.write_data(&elem_ref, elem_tp, little_endian, slice);
+                        vector::vector_finish(r, &mut self.allocations);
+                    }
                 }
                 _ => panic!(
                     "Not implemented type for file writing {}",
@@ -2426,7 +2445,7 @@ impl Stores {
             return false;
         }
         let store = self.store_mut(file);
-        let filename = store.get_str(store.get_int(file.rec, file.pos + 8) as u32);
+        let filename = store.get_str(store.get_int(file.rec, file.pos + 24) as u32);
         let path = std::path::Path::new(filename);
         fill_file(path, store, file)
     }
@@ -2448,11 +2467,14 @@ impl Stores {
                 }
             }
             for (name, entry) in res {
-                let elm = vector::vector_append(&vector, 17, &mut self.allocations);
+                let elm = vector::vector_append(&vector, 33, &mut self.allocations);
                 let store = self.store_mut(result);
                 let name_pos = store.set_str(&name) as i32;
-                store.set_int(elm.rec, elm.pos + 8, name_pos);
-                store.set_int(elm.rec, elm.pos + 12, i32::MIN);
+                store.set_int(elm.rec, elm.pos + 24, name_pos);
+                store.set_int(elm.rec, elm.pos + 28, i32::MIN);
+                // Initialize current and next to null (i64::MIN) so they're not shown
+                store.set_long(elm.rec, elm.pos + 8, i64::MIN);
+                store.set_long(elm.rec, elm.pos + 16, i64::MIN);
                 vector::vector_finish(&vector, &mut self.allocations);
                 let store = self.store_mut(result);
                 if !fill_file(&entry.path(), store, &elm) {
@@ -3024,18 +3046,23 @@ impl Stores {
     pub fn write_file(&mut self, file: &DbRef, v: &str) {
         let f_nr = self.files.len() as i32;
         let s = self.store_mut(file);
-        let mut file_ref = s.get_int(file.rec, file.pos + 12);
+        let mut file_ref = s.get_int(file.rec, file.pos + 28);
         if file_ref == i32::MIN {
-            let file_name = s.get_str(s.get_int(file.rec, file.pos + 8) as u32);
+            let file_name = s.get_str(s.get_int(file.rec, file.pos + 24) as u32);
             if let Ok(f) = std::fs::File::create(file_name) {
-                s.set_int(file.rec, file.pos + 12, f_nr);
-                self.files.push(f);
+                s.set_int(file.rec, file.pos + 28, f_nr);
+                self.files.push(Some(f));
             }
             file_ref = f_nr;
         }
-        self.files[file_ref as usize]
-            .write_all(v.as_bytes())
-            .unwrap_or_default();
+        if let Some(f) = &mut self.files[file_ref as usize] {
+            f.write_all(v.as_bytes()).unwrap_or_default();
+        }
+    }
+
+    #[must_use]
+    pub fn is_text_type(&self, tp: u16) -> bool {
+        self.names.get("text").copied() == Some(tp)
     }
 
     /**
@@ -3242,27 +3269,30 @@ fn match_text(text: &str, pos: &mut usize, value: &mut String) -> bool {
 }
 
 enum Format {
-    Unknown,
-    Text,
-    _LittleEndian,
-    _BigEndian,
-    Directory,
+    TextFile = 1,
+    _LittleEndian = 2,
+    _BigEndian = 3,
+    Directory = 4,
+    NotExists = 5,
 }
 
 fn fill_file(path: &std::path::Path, store: &mut Store, file: &DbRef) -> bool {
+    store.set_long(file.rec, file.pos + 8, i64::MIN); // current
+    store.set_long(file.rec, file.pos + 16, i64::MIN); // next
     if let Ok(data) = path.metadata() {
-        store.set_long(file.rec, file.pos, data.len() as i64); // write size
+        store.set_long(file.rec, file.pos, i64::MIN); // no size
         let tp = if data.is_dir() {
             Format::Directory
         } else if data.is_file() {
-            Format::Text
+            store.set_long(file.rec, file.pos, data.len() as i64); // write size
+            Format::TextFile
         } else {
-            Format::Unknown
+            Format::NotExists
         };
-        store.set_byte(file.rec, file.pos + 16, 0, tp as i32);
+        store.set_byte(file.rec, file.pos + 32, 0, tp as i32);
         true
     } else {
-        store.set_byte(file.rec, file.pos + 16, 0, Format::Unknown as i32);
+        store.set_byte(file.rec, file.pos + 32, 0, Format::NotExists as i32);
         false
     }
 }

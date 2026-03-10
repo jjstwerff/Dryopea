@@ -2234,6 +2234,14 @@ impl Parser {
                 } else {
                     u16::MAX
                 };
+                // Handle `f += X` for File variables before type-changing logic.
+                if op == "+="
+                    && self.is_file_var_type(&f_type)
+                    && let Value::Var(file_v) = to
+                {
+                    self.append_to_file(code, file_v);
+                    return Type::Void;
+                }
                 let mut s_type = self.parse_operators(&f_type, code, &mut parent_tp, 0);
                 if let Type::Rewritten(tp) = s_type {
                     s_type = *tp;
@@ -2249,22 +2257,19 @@ impl Parser {
                 if let Type::RefVar(t) = &f_type
                     && matches!(**t, Type::Text(_))
                 {
-                    if matches!(code, Value::Insert(_)) {
-                        // nothing
-                    } else if op == "=" {
-                        *code = v_set(var_nr, code.clone());
-                    } else if s_type == Type::Character {
-                        *code = self.cl(
-                            "OpAppendStackCharacter",
-                            &[Value::Var(var_nr), code.clone()],
-                        );
-                    } else {
-                        *code = self.cl("OpAppendStackText", &[Value::Var(var_nr), code.clone()]);
-                    }
+                    self.append_to_text(code, op, var_nr, &s_type);
                     return Type::Void;
                 }
                 if var_nr != u16::MAX && self.create_vector(code, &f_type, op, var_nr) {
                     return Type::Void;
+                }
+                // Auto-convert integer to long for a long-typed LHS assignment.
+                if matches!(f_type, Type::Long)
+                    && matches!(s_type, Type::Integer(_, _))
+                    && op == "="
+                    && !self.first_pass
+                {
+                    *code = self.cl("OpConvLongFromInt", std::slice::from_ref(code));
                 }
                 if !matches!(code, Value::Insert(_)) {
                     *code = self.towards_set(&to, code, &f_type, &op[0..1]);
@@ -2274,6 +2279,31 @@ impl Parser {
         }
         *code = to;
         f_type
+    }
+
+    fn append_to_text(&mut self, code: &mut Value, op: &str, var_nr: u16, s_type: &Type) {
+        if matches!(code, Value::Insert(_)) {
+            // nothing
+        } else if op == "=" {
+            *code = v_set(var_nr, code.clone());
+        } else if s_type == &Type::Character {
+            *code = self.cl(
+                "OpAppendStackCharacter",
+                &[Value::Var(var_nr), code.clone()],
+            );
+        } else {
+            *code = self.cl("OpAppendStackText", &[Value::Var(var_nr), code.clone()]);
+        }
+    }
+
+    fn append_to_file(&mut self, code: &mut Value, file_v: u16) {
+        let mut rhs_code = Value::Null;
+        let mut unused = Type::Null; // parent_tp, this is normally used to unpack the vector fill
+        let mut rhs_type = self.parse_operators(&Type::Unknown(0), &mut rhs_code, &mut unused, 0);
+        if let Type::Rewritten(tp) = rhs_type {
+            rhs_type = *tp;
+        }
+        *code = self.write_to_file(file_v, rhs_code, &rhs_type);
     }
 
     fn validate_write(&mut self, to: &Value, parent_tp: &Type) {
@@ -2438,7 +2468,22 @@ impl Parser {
                     "OpSetShort",
                     &[args[0].clone(), args[1].clone(), args[2].clone(), code],
                 ),
-                "OpGetLong" => self.cl("OpSetLong", &[args[0].clone(), args[1].clone(), code]),
+                "OpGetLong" => {
+                    // Check if this is the 'next' field of a File (offset 16)
+                    if args[1] == Value::Int(16)
+                        && let Value::Var(v_nr) = &args[0]
+                        && self.is_file_var(*v_nr)
+                    {
+                        // f#next = pos: seek the file AND update the field
+                        let seek = self.cl("OpSeekFile", &[args[0].clone(), code.clone()]);
+                        let set = self.cl(
+                            "OpSetLong",
+                            &[args[0].clone(), args[1].clone(), code.clone()],
+                        );
+                        return Value::Insert(vec![seek, set]);
+                    }
+                    self.cl("OpSetLong", &[args[0].clone(), args[1].clone(), code])
+                }
                 "OpGetFloat" => self.cl("OpSetFloat", &[args[0].clone(), args[1].clone(), code]),
                 "OpGetSingle" => self.cl("OpSetSingle", &[args[0].clone(), args[1].clone(), code]),
                 "OpGetField" => code.clone(),
@@ -3024,6 +3069,9 @@ impl Parser {
         }
         if !is_var && !is_field {
             ls.push(Value::Var(vec));
+            for d in self.vars.tp(vec).depend() {
+                tp = tp.depending(d);
+            }
         }
         self.lexer.token("]");
         if block {
@@ -3302,6 +3350,17 @@ impl Parser {
             return u16::MAX;
         }
         match in_t {
+            Type::Integer(min, _) => match in_t.size(false) {
+                1 if *min == 0 => self.database.name("byte"),
+                1 => self.database.name(&format!("byte<{min},false>")),
+                2 => self.database.name(&format!("short<{min},false>")),
+                _ => self.database.name("integer"),
+            },
+            Type::Character => self.database.name("integer"),
+            Type::Long => self.database.name("long"),
+            Type::Float => self.database.name("float"),
+            Type::Single => self.database.name("single"),
+            Type::Text(_) => self.database.name("text"),
             Type::Reference(r, _) | Type::Enum(r, _, _) => self.data.def(*r).known_type,
             Type::Hash(tp, key, _) => {
                 let mut name = "hash<".to_string() + &self.data.def(*tp).name + "[";
@@ -3330,20 +3389,13 @@ impl Parser {
                 self.database.name(&name)
             }
             Type::Vector(tp, _) => {
-                let vec_name = format!("vector<{}>", tp.name(&self.data));
-                let typedef: &Type = if self.data.def_nr(&vec_name) == u32::MAX {
-                    &Type::Unknown(0)
+                let elem_tp = self.get_type(tp);
+                let vec_name = if elem_tp == u16::MAX {
+                    "vector".to_string()
                 } else {
-                    tp
+                    format!("vector<{}>", self.database.types[elem_tp as usize].name)
                 };
-                self.data.name_type(
-                    if matches!(typedef, Type::Unknown(_)) {
-                        "vector"
-                    } else {
-                        &vec_name
-                    },
-                    self.data.source,
-                )
+                self.database.name(&vec_name)
             }
             _ => u16::MAX,
         }
@@ -3869,6 +3921,11 @@ impl Parser {
     }
 
     fn iter_op(&mut self, code: &mut Value, name: &str, t: &mut Type, index_var: u16) {
+        // File variables handle their own # operations before iterator operations.
+        if self.is_file_var(index_var) {
+            self.file_op(code, t, index_var);
+            return;
+        }
         if self.lexer.has_keyword("index") {
             let i_name = &format!("{name}#index");
             if self.vars.name_exists(i_name) {
@@ -3931,6 +3988,123 @@ impl Parser {
             diagnostic!(self.lexer, Level::Error, "Incorrect # variable on {}", name);
             *t = Type::Unknown(0);
         }
+    }
+
+    fn is_file_var(&self, var_nr: u16) -> bool {
+        let file_def = self.data.def_nr("File");
+        matches!(self.vars.tp(var_nr), Type::Reference(d, _) if *d == file_def)
+    }
+
+    fn file_op(&mut self, code: &mut Value, t: &mut Type, var_nr: u16) {
+        if self.lexer.has_keyword("format") {
+            let file_ref = Value::Var(var_nr);
+            *code = self.cl("OpGetEnum", &[file_ref, Value::Int(32)]);
+            let fmt_def = self.data.def_nr("Format");
+            *t = Type::Enum(fmt_def, false, Vec::new());
+        } else if self.lexer.has_keyword("size") {
+            *code = self.cl("OpSizeFile", &[Value::Var(var_nr)]);
+            *t = Type::Long;
+        } else if self.lexer.has_keyword("index") {
+            // Read the current field at offset 8
+            *code = self.cl("OpGetLong", &[Value::Var(var_nr), Value::Int(8)]);
+            *t = Type::Long;
+        } else if self.lexer.has_keyword("next") {
+            // Read the next field at offset 16
+            *code = self.cl("OpGetLong", &[Value::Var(var_nr), Value::Int(16)]);
+            *t = Type::Long;
+        } else if self.lexer.has_keyword("read") {
+            self.lexer.token("(");
+            let mut n_code = Value::Null;
+            self.expression(&mut n_code);
+            self.lexer.token(")");
+            // Determine read type from optional "as T"
+            let (read_type, db_tp) = if self.lexer.has_token("as") {
+                if let Some(type_name) = self.lexer.has_identifier() {
+                    let tp = self
+                        .parse_type(u32::MAX, &type_name, false)
+                        .unwrap_or(Type::Text(vec![]));
+                    self.ensure_io_type(&tp.clone());
+                    let id = self.get_type(&tp);
+                    (tp, id)
+                } else {
+                    let text_tp = Type::Text(vec![]);
+                    let id = self.get_type(&text_tp);
+                    (text_tp, id)
+                }
+            } else {
+                let text_tp = Type::Text(vec![]);
+                let id = self.get_type(&text_tp);
+                (text_tp, id)
+            };
+            let mut ls = Vec::new();
+            let temp_var = if let Type::Text(_) = read_type {
+                self.vars.work_text(&mut self.lexer)
+            } else {
+                let t = self.vars.unique("read", &read_type, &mut self.lexer);
+                ls.push(v_set(t, self.null(&read_type)));
+                t
+            };
+            let var_ref = self.cl("OpCreateStack", &[Value::Var(temp_var)]);
+            ls.push(self.cl(
+                "OpReadFile",
+                &[
+                    Value::Var(var_nr),
+                    var_ref,
+                    n_code,
+                    Value::Int(i32::from(db_tp)),
+                ],
+            ));
+            ls.push(Value::Var(temp_var));
+            *code = v_block(ls, read_type.clone(), "reading file");
+            *t = read_type;
+        } else {
+            if !self.first_pass {
+                diagnostic!(self.lexer, Level::Error, "Unknown # operation on File");
+            }
+            *t = Type::Unknown(0);
+        }
+    }
+
+    fn is_file_var_type(&self, tp: &Type) -> bool {
+        let file_def = self.data.def_nr("File");
+        matches!(tp, Type::Reference(d, _) if *d == file_def)
+    }
+
+    /// Ensure byte/short integer types used in file I/O are registered in the database.
+    fn ensure_io_type(&mut self, t: &Type) {
+        match t {
+            Type::Integer(min, _) => match t.size(false) {
+                1 => {
+                    self.database.byte(*min, false);
+                }
+                2 => {
+                    self.database.short(*min, false);
+                }
+                _ => {}
+            },
+            Type::Vector(tp, _) => {
+                let tp = tp.clone();
+                self.ensure_io_type(&tp);
+            }
+            _ => {}
+        }
+    }
+
+    fn write_to_file(&mut self, file_var: u16, val: Value, val_type: &Type) -> Value {
+        let val_type_clone = val_type.clone();
+        self.ensure_io_type(&val_type_clone);
+        let db_tp = self.get_type(val_type);
+        let temp_var = self.vars.unique("wf", val_type, &mut self.lexer);
+        for d in val_type.depend() {
+            self.vars.depend(temp_var, d);
+        }
+        let assign = v_set(temp_var, val);
+        let var_ref = self.cl("OpCreateStack", &[Value::Var(temp_var)]);
+        let write = self.cl(
+            "OpWriteFile",
+            &[Value::Var(file_var), var_ref, Value::Int(i32::from(db_tp))],
+        );
+        Value::Insert(vec![assign, write])
     }
 
     fn parse_constant_value(&mut self, code: &mut Value, source: u16, name: &str) -> Type {

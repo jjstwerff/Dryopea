@@ -1,11 +1,12 @@
 // Copyright (c) 2024-2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // @NAME: File
-// @TITLE: Finding, reading, and writing files.
-// File system access: creating File handles, listing directory contents, reading file text, and splitting into lines.
+// @TITLE: File system — text, binary, and directory access.
+// Files are opened lazily: file(path) creates a handle; the OS file opens
+// on the first read or write and closes when the handle goes out of scope.
 
-// 'file(path)' creates a File handle; 'files()' lists the contents of a directory.
-// 'format == Format.Directory' tests whether a file is a directory.
+// 'file(path)' creates a File handle; 'files()' lists directory contents.
+// Recurse into directories by checking f#format == Format.Directory.
 fn text_files(dir: File, l: vector<File>) {
     for f in dir.files() {
         if f#format == Format.Directory {
@@ -22,18 +23,25 @@ struct Buffer {
 }
 
 fn main() {
+    // --- Directory listing and text reading ---
     // Recursively collect all .txt file paths under the 'example' directory.
     paths = [];
     text_files(file("example"), paths);
     assert(paths[0].path == "example/config/terrain.txt", "Found file '{paths[0].path}'");
-    // 'content()' reads the file as text; 'lines()' splits it into a vector of lines.
-    f = paths[0];
-    c = f.lines();
+
+    // 'lines()' reads the file and splits it into a vector of text lines.
+    c = paths[0].lines();
     assert(c[1] == "    terrain = [", "Line was '{c[1]}'");
 
+    // --- exists(), delete(), and move() ---
+    // 'exists(path)' is shorthand for file(path)#format != NotExists.
     assert(!delete("test.bin"), "Did not expect the file to exist.");
-    // exists is a shorthand for file(name)#format != NotExists
-    assert(!exists("test.bin"), "File should not exist.");
+    assert(!exists("test.bin"), "File should not exist before the test.");
+
+    // --- Binary write ---
+    // Set f#format before writing: LittleEndian or BigEndian.
+    // f += value writes the value's bytes to the file.
+    // Supported types: u8, u16, i32, long, single, float, text, vector.
     { f = file("test.bin");
       assert(f#format == NotExists, "File should not exist yet.");
       f#format = BigEndian;
@@ -42,51 +50,66 @@ fn main() {
       f += 0x203 as u16;
       f += 0x4050607;
       f += 0x8090a0b0c0d0e0fl;
+      // 'f#size' returns the total number of bytes written so far.
       assert(f#size == 16, "Should have written 16 bytes.");
-      f += 12 as u8;
-      f += "Hello world!"; // Writes the text data without size 
-      assert(f#size == 16+13, "Size of the file is not correct.");
-      assert(f#read(2) as text == "", "Not expecting data, we are at the end of the file");
-      assert(!(f#read(4) as i32), "Null expected on incomplete read");
-    } // close the file because it runs out of scope.
-    assert(exists("test.bin"), "File should exist.");
-    assert(!move("test.bin", "../test.bin"), "Could move the file outside the project directory.");
-    assert(move("test.bin", "test2.bin"), "Could not move the file.");
-    { f = file("test2.bin"); // Open the file again for reading.
-      assert(f#format == TextFile, "The default format is not TextFile.");
-      f#format = LittleEndian;
-      for i in 0..16 {
-        assert(f#read(1) as u8 == i, "Read value is not correct.");
-        assert(f#index == i, "Read index of the last read value is not correct.");
-        assert(f#next == i+1, "Current position in the file is not correct.");
-      }
-      l = f#read(1) as u8;
-      s = f#read(5) as text;
-      assert(s == "Hello", "Read string is not correct.");
-      assert(f#index == 17, "Read index of the string value is not correct.");
-      assert(f#next == 22, "End of the string position is not correct.");
-      assert(f#read(100) == " world!", "Read string is not finished at file end.");
-      assert(f#index == 22, "Index of the start of the string value is not correct.");
-      assert(f#next == f#size, "Current position is not at the end of the file.");
-      f#next = 0; // Reset the position to the beginning of the file.
-      assert(f#read(4) as i32 == 0x3020100, "Is previously written in BigEndian format.");
-    } // the file gets closed again.
-    assert(delete("test2.bin"), "Could not remove the remaining test file.");
+      // Text is written as raw UTF-8 bytes with no length prefix.
+      f += "Hello world!";
+      assert(f#size == 28, "Size should be 28 bytes (16 + 12).");
+    } // The file closes when the handle goes out of scope.
 
-    delete("buffer.bin");
-    // Write a binary array of singles to a file.
+    assert(exists("test.bin"), "File should exist after writing.");
+    // move(src, dst) refuses if dst exists, or if either path leaves the project directory.
+    assert(!move("test.bin", "../test.bin"), "Should refuse to move outside the project.");
+    assert(move("test.bin", "test2.bin"), "Could not move the file.");
+
+    // --- Binary read ---
+    // Open a file for reading; the default format is TextFile.
+    // Set f#format to the format used when writing before reading.
+    { f = file("test2.bin");
+      assert(f#format == TextFile, "The default format is TextFile.");
+      f#format = LittleEndian;
+
+      // f#read(n) as T reads n bytes and interprets them as type T.
+      // f#index is the byte offset where the last read started.
+      // f#next is the current byte position (start of the next read).
+      v = f#read(4) as i32;
+      assert(v == 0x3020100, "BigEndian bytes 0..3 read as LittleEndian i32.");
+      assert(f#index == 0, "Last read started at byte 0.");
+      assert(f#next == 4, "Next read starts at byte 4.");
+
+      // f#next = pos seeks to an arbitrary byte position.
+      f#next = 16;
+      s = f#read(5) as text;
+      assert(s == "Hello", "Partial text read from offset 16.");
+      assert(f#index == 16, "Last read started at byte 16.");
+      assert(f#next == 21, "Next position after 5-byte text read.");
+
+      // Reading past EOF returns whatever bytes are available.
+      rest = f#read(100) as text;
+      assert(rest == " world!", "Read continues to end of file.");
+      assert(f#next == f#size, "Position should be at end of file.");
+
+      // Seek back to start and re-read the first integer.
+      f#next = 0;
+      assert(f#read(4) as i32 == 0x3020100, "Seek-and-reread matches original.");
+    }
+    assert(delete("test2.bin"), "Could not remove the test file.");
+
+    // --- Binary array write and struct read ---
+    // A vector of singles can be written directly to a binary file.
     { buf = file("buffer.bin");
       buf#format = LittleEndian;
       buf += 4 as i32;
       buf += [ 1.1f, 1.2f, 2.1f, 2.2f ];
     }
 
-    // Read this binary array directly into a structure.
+    // Read the binary data back into a struct field.
+    // sizeof(T) returns the byte size of a type.
     { b = Buffer {};
       f = file("buffer.bin");
       f#format = LittleEndian;
-      len = f#read(4) as i32;
-      b.data = f#read(len * sizeof(single));
+      n = f#read(4) as i32;
+      b.data = f#read(n * sizeof(single));
     }
+    assert(delete("buffer.bin"), "Could not remove buffer.bin.");
 }
-

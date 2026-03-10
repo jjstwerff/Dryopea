@@ -6,7 +6,7 @@ use crate::keys::{DbRef, Str};
 use crate::state::State;
 use crate::vector;
 
-pub const OPERATORS: &[fn(&mut State); 248] = &[
+pub const OPERATORS: &[fn(&mut State); 251] = &[
     goto,
     goto_word,
     goto_false,
@@ -255,6 +255,9 @@ pub const OPERATORS: &[fn(&mut State); 248] = &[
     write_file,
     read_file,
     seek_file,
+    size_file,
+    delete,
+    move_file,
 ];
 
 fn goto(s: &mut State) {
@@ -1863,4 +1866,21 @@ fn read_file(s: &mut State) {
 
 fn seek_file(s: &mut State) {
     s.seek_file();
+}
+
+fn size_file(s: &mut State) {
+    s.size_file();
+}
+
+fn delete(s: &mut State) {
+    let v_path = s.string();
+    let new_value = std::fs::remove_file(v_path.str()).is_ok();
+    s.put_stack(new_value);
+}
+
+fn move_file(s: &mut State) {
+    let v_to = s.string();
+    let v_from = s.string();
+    let new_value = std::fs::rename(v_from.str(), v_to.str()).is_ok();
+    s.put_stack(new_value);
 }

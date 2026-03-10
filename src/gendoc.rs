@@ -107,19 +107,6 @@ fn parse_loft(content: &str, entries: &mut Vec<Entry>) {
             continue;
         }
 
-        // Non-pub fn with a doc comment: user-visible helpers like print/println/assert/panic.
-        // Internal operator functions (fn Op...) are excluded.
-        if trimmed.starts_with("fn ") && !trimmed.starts_with("fn Op") && !doc.is_empty() {
-            let (sig, consumed) = collect_sig(&lines[i..]);
-            entries.push(Entry::Item {
-                sig,
-                doc: std::mem::take(&mut doc),
-            });
-            after_section = false;
-            i += consumed;
-            continue;
-        }
-
         // #rust attribute lines do not break doc accumulation.
         if !trimmed.starts_with('#') {
             if after_section && !doc.is_empty() {

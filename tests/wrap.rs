@@ -44,6 +44,13 @@ fn last() -> std::io::Result<()> {
     run_test(PathBuf::from("tests/suite/16-parser.loft"), false)
 }
 
+/// Debug run of `13-file.loft` with full execution trace written to
+/// `tests/code/13-file.loft.txt`.  Use this to diagnose store-allocation bugs.
+#[test]
+fn file_debug() -> std::io::Result<()> {
+    run_test(PathBuf::from("tests/suite/13-file.loft"), true)
+}
+
 /// Parse, type-check, compile, and execute one `.loft` test file.
 ///
 /// The default library in `default/` is loaded first, then `entry` is parsed on
