@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 use crate::data::{Block, Data, DefType, Type, Value, v_set};
-use crate::variables::Function;
+use crate::variables::{Function, compute_intervals};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 struct Scopes {
@@ -49,6 +49,18 @@ pub fn check(data: &mut Data) {
                 .variables
                 .set_scope(v_nr, scope);
         }
+        // Compute live intervals so validate_slots can check for slot conflicts after codegen.
+        let free_text_nr = data.def_nr("OpFreeText");
+        let free_ref_nr = data.def_nr("OpFreeRef");
+        let code_ref = data.definitions[d_nr as usize].code.clone();
+        let mut seq = 0u32;
+        compute_intervals(
+            &code_ref,
+            &mut data.definitions[d_nr as usize].variables,
+            free_text_nr,
+            free_ref_nr,
+            &mut seq,
+        );
     }
 }
 
@@ -80,9 +92,18 @@ impl Scopes {
                 if let Some(s) = self.var_scope.get(ov)
                     && self.scope != *s
                     && !self.stack.contains(s)
-                    && !self.var_mapping.contains_key(ov)
                 {
-                    self.var_mapping.insert(*ov, function.copy_variable(*ov));
+                    if let Some(&existing_copy) = self.var_mapping.get(ov) {
+                        // Replace the mapping only if the existing copy's scope has exited.
+                        if let Some(&copy_scope) = self.var_scope.get(&existing_copy)
+                            && copy_scope != self.scope
+                            && !self.stack.contains(&copy_scope)
+                        {
+                            self.var_mapping.insert(*ov, function.copy_variable(*ov));
+                        }
+                    } else {
+                        self.var_mapping.insert(*ov, function.copy_variable(*ov));
+                    }
                 }
                 let v = self.var_mapping.get(ov).unwrap_or(ov);
                 if self.var_scope.contains_key(v) && **value == Value::Null {
@@ -217,7 +238,8 @@ impl Scopes {
         } else {
             ls.pop().unwrap()
         };
-        for v in self.variables(self.scope) {
+        let scope_vars = self.variables(self.scope);
+        for &v in &scope_vars {
             self.var_mapping.remove(&v);
         }
         for v in self.free_vars(false, &expr, function, data, &bl.result, self.scope) {

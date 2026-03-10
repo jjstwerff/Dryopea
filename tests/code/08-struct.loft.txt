@@ -112,7 +112,7 @@ fn n_main() {#block(1):void
 
 byte-code for tests/suite/08-struct.loft:n_main()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Area>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Area>) ; [store-alloc]
    1[16]: Text() var=__work_5[16]:text
    2[40]: Text() var=__work_4[40]:text
    3[64]: Text() var=__work_3[64]:text
@@ -165,7 +165,7 @@ byte-code for tests/suite/08-struct.loft:n_main()
  214[172]: FormatDatabase(var[88], val: ref(reference), db_tp=18, db_format=0)
  220[160]: VarText(var[88]) -> text var=__work_2[88]:text
  223[176]: Panic(message: text)
- 224[160]: [41] ConvRefFromNull() -> ref(reference) var=p[160]:ref(Point)
+ 224[160]: [41] ConvRefFromNull() -> ref(reference) var=p[160]:ref(Point) ; [store-alloc]
  225[172]: Database(var[160], db_tp=21) type=Point 21
  230[172]: VarRef(var[160]) -> ref(reference) type=Point 21 var=p[160]:ref(Point)
  233[184]: ConstInt(val=128) -> integer
@@ -196,7 +196,7 @@ byte-code for tests/suite/08-struct.loft:n_main()
  366[172]: GotoWord(jump=397)
  369[172]: ConstText(_value="Struct compact formatting") -> text
  396[188]: Panic(message: text)
- 397[172]: [47] ConvRefFromNull() -> ref(reference) var=o[172]:ref(Object)
+ 397[172]: [47] ConvRefFromNull() -> ref(reference) var=o[172]:ref(Object) ; [store-alloc]
  398[184]: Database(var[172], db_tp=22) type=Object 22
  403[184]: VarRef(var[172]) -> ref(reference) type=Object 22 var=o[172]:ref(Object)
  406[196]: ConstText(_value="hello") -> text
@@ -226,7 +226,7 @@ byte-code for tests/suite/08-struct.loft:n_main()
  531[184]: GotoWord(jump=548)
  534[184]: ConstText(_value="JSON format") -> text
  547[200]: Panic(message: text)
- 548[184]: [52] ConvRefFromNull() -> ref(reference) var=purple[184]:ref(Point)
+ 548[184]: [52] ConvRefFromNull() -> ref(reference) var=purple[184]:ref(Point) ; [store-alloc]
  549[196]: Database(var[184], db_tp=21) type=Point 21
  554[196]: VarRef(var[184]) -> ref(reference) type=Point 21 var=purple[184]:ref(Point)
  557[208]: ConstInt(val=128) -> integer
@@ -253,17 +253,17 @@ byte-code for tests/suite/08-struct.loft:n_main()
  643[196]: ConstText(_value="Method result in format") -> text
  668[212]: Panic(message: text)
  669[196]: VarRef(var[4]) -> ref(reference) type=main_vector<Area> 23 var=__ref_1[4]:ref(main_vector<Area>)
- 672[208]: FreeRef(v1: ref(reference))
+ 672[208]: FreeRef(v1: ref(reference)) ; [store-free]
  673[196]: FreeText(var[112])
  676[196]: FreeText(var[88])
  679[196]: VarRef(var[160]) -> ref(reference) type=Point 21 var=p[160]:ref(Point)
- 682[208]: FreeRef(v1: ref(reference))
+ 682[208]: FreeRef(v1: ref(reference)) ; [store-free]
  683[196]: FreeText(var[64])
  686[196]: VarRef(var[172]) -> ref(reference) type=Object 22 var=o[172]:ref(Object)
- 689[208]: FreeRef(v1: ref(reference))
+ 689[208]: FreeRef(v1: ref(reference)) ; [store-free]
  690[196]: FreeText(var[40])
  693[196]: VarRef(var[184]) -> ref(reference) type=Point 21 var=purple[184]:ref(Point)
- 696[208]: FreeRef(v1: ref(reference))
+ 696[208]: FreeRef(v1: ref(reference)) ; [store-free]
  697[196]: FreeText(var[16])
  700[196]: Return(ret=0, value=0, discard=196)
 

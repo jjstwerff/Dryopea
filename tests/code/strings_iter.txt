@@ -77,8 +77,8 @@ fn n_test() {#block(1):void
 
 byte-code for iter:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:ref(main_vector<integer>)
-   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(main_vector<character>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:ref(main_vector<integer>) ; [store-alloc]
+   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(main_vector<character>) ; [store-alloc]
    2[28]: Text() var=__work_2[28]:text
    3[52]: Text() var=__work_1[52]:text
    4[76]: [2] Text() var=test_value[76]:text["__work_1"]
@@ -160,16 +160,18 @@ byte-code for iter:n_test()
  420[116]: Panic(message: text)
  421[100]: FreeText(var[76])
  424[100]: VarRef(var[16]) -> ref(reference) type=main_vector<character> 20 var=__ref_1[16]:ref(main_vector<character>)
- 427[112]: FreeRef(v1: ref(reference))
+ 427[112]: FreeRef(v1: ref(reference)) ; [store-free]
  428[100]: VarRef(var[4]) -> ref(reference) type=main_vector<integer> 21 var=__ref_2[4]:ref(main_vector<integer>)
- 431[112]: FreeRef(v1: ref(reference))
+ 431[112]: FreeRef(v1: ref(reference)) ; [store-free]
  432[100]: FreeText(var[52])
  435[100]: FreeText(var[28])
  438[100]: Return(ret=0, value=0, discard=100)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] ConvRefFromNull() -> ref(2,0,8)[20]
+  ; store-alloc nr=2 max=3
     2:[32] Text()
     3:[56] [2] Text()
     4:[80] Text()
@@ -453,9 +455,9 @@ Execute test:
   305:[104] GotoWord(jump=421)
   421:[104] FreeText(var[80])
   424:[104] VarRef(var[20]) -> ref(2,1,8)={vector:['1','2','3','😊','🙃','😋','8']}[104]
-  427:[116] FreeRef(v1=ref(2,1,8)[104])
+  427:[116] FreeRef(v1=ref(2,1,8)[104]) ; store-free max=2
   428:[104] VarRef(var[8]) -> ref(1,1,8)={vector:[1,2,3,7,11,15,16]}[104]
-  431:[116] FreeRef(v1=ref(1,1,8)[104])
+  431:[116] FreeRef(v1=ref(1,1,8)[104]) ; store-free max=1
   432:[104] FreeText(var[56])
   435:[104] FreeText(var[32])
   438:[104] Return(ret=4294967295[4], value=0, discard=100)

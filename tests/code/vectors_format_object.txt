@@ -65,7 +65,7 @@ fn n_test() {#block(1):void
 
 byte-code for format_object:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Elm>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Elm>) ; [store-alloc]
    1[16]: Text() var=__work_2[16]:text
    2[40]: Text() var=__work_1[40]:text
    3[64]: [4] Text() var=test_value[64]:text["__work_1"]
@@ -146,13 +146,14 @@ byte-code for format_object:n_test()
  376[104]: Panic(message: text)
  377[88]: FreeText(var[64])
  380[88]: VarRef(var[4]) -> ref(reference) type=main_vector<Elm> 19 var=__ref_1[4]:ref(main_vector<Elm>)
- 383[100]: FreeRef(v1: ref(reference))
+ 383[100]: FreeRef(v1: ref(reference)) ; [store-free]
  384[88]: FreeText(var[40])
  387[88]: FreeText(var[16])
  390[88]: Return(ret=0, value=0, discard=88)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Text()
     2:[44] [4] Text()
     3:[68] Text()
@@ -223,7 +224,7 @@ Execute test:
   284:[92] GotoWord(jump=377)
   377:[92] FreeText(var[68])
   380:[92] VarRef(var[8]) -> ref(1,1,8)={vector:[{a:1,b:2},{a:12,b:13},{a:4,b:6}]}[92]
-  383:[104] FreeRef(v1=ref(1,1,8)[92])
+  383:[104] FreeRef(v1=ref(1,1,8)[92]) ; store-free max=1
   384:[92] FreeText(var[44])
   387:[92] FreeText(var[20])
   390:[92] Return(ret=4294967295[4], value=0, discard=88)

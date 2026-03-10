@@ -64,7 +64,7 @@ byte-code for assign_text:n_test()
    1[28]: Text() var=__work_2[28]:text
    2[52]: Text() var=__work_1[52]:text
    3[76]: [4] Text() var=test_value[76]:text["__work_2"]
-   4[100]: ConvRefFromNull() -> ref(reference) var=o[100]:ref(Object)
+   4[100]: ConvRefFromNull() -> ref(reference) var=o[100]:ref(Object) ; [store-alloc]
    5[112]: Database(var[100], db_tp=18) type=Object 18
   10[112]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
   13[124]: ConstText(_value="a") -> text
@@ -109,7 +109,7 @@ byte-code for assign_text:n_test()
  129[176]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
  132[188]: FormatDatabase(var[28], val: ref(reference), db_tp=18, db_format=0)
  138[176]: VarRef(var[100]) -> ref(reference) type=Object 18 var=o[100]:ref(Object)
- 141[188]: FreeRef(v1: ref(reference))
+ 141[188]: FreeRef(v1: ref(reference)) ; [store-free]
  142[176]: FreeText(var[112])
  145[176]: FreeText(var[136])
  148[176]: VarText(var[28]) -> text var=__work_2[28]:text
@@ -143,6 +143,7 @@ Execute test:
     2:[56] [4] Text()
     3:[80] Text()
     4:[104] ConvRefFromNull() -> ref(1,0,8)[104]
+  ; store-alloc nr=1 max=2
     5:[116] Database(var[104], db_tp=18)
    10:[116] VarRef(var[104]) -> ref(1,1,8)={}[116]
    13:[128] ConstText(_value="a") -> "a"[128]
@@ -187,7 +188,7 @@ Execute test:
   129:[180] VarRef(var[104]) -> ref(1,1,8)={a:"bcdef"}[180]
   132:[192] FormatDatabase(var[32], val=ref(1,1,8)[180], db_tp=18, db_format=0)
   138:[180] VarRef(var[104]) -> ref(1,1,8)={a:"bcdef"}[180]
-  141:[192] FreeRef(v1=ref(1,1,8)[180])
+  141:[192] FreeRef(v1=ref(1,1,8)[180]) ; store-free max=1
   142:[180] FreeText(var[116])
   145:[180] FreeText(var[140])
   148:[180] VarText(var[32]) -> "{a:\"bcdef\"}"[180]

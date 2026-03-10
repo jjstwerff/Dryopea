@@ -76,9 +76,9 @@ fn n_test() {#block(1):void
 
 byte-code for append_vector:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_3[4]:ref(main_vector<Val>)
-   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_2[16]:ref(main_vector<Val>)
-   2[28]: ConvRefFromNull() -> ref(reference) var=__ref_1[28]:ref(main_vector<Val>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_3[4]:ref(main_vector<Val>) ; [store-alloc]
+   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_2[16]:ref(main_vector<Val>) ; [store-alloc]
+   2[28]: ConvRefFromNull() -> ref(reference) var=__ref_1[28]:ref(main_vector<Val>) ; [store-alloc]
    3[40]: Text() var=__work_2[40]:text
    4[64]: Text() var=__work_1[64]:text
    5[88]: [4] Text() var=test_value[88]:text["__work_1"]
@@ -174,19 +174,22 @@ byte-code for append_vector:n_test()
  345[128]: Panic(message: text)
  346[112]: FreeText(var[88])
  349[112]: VarRef(var[28]) -> ref(reference) type=main_vector<Val> 19 var=__ref_1[28]:ref(main_vector<Val>)
- 352[124]: FreeRef(v1: ref(reference))
+ 352[124]: FreeRef(v1: ref(reference)) ; [store-free]
  353[112]: FreeText(var[64])
  356[112]: FreeText(var[40])
  359[112]: VarRef(var[16]) -> ref(reference) type=main_vector<Val> 19 var=__ref_2[16]:ref(main_vector<Val>)
- 362[124]: FreeRef(v1: ref(reference))
+ 362[124]: FreeRef(v1: ref(reference)) ; [store-free]
  363[112]: VarRef(var[4]) -> ref(reference) type=main_vector<Val> 19 var=__ref_3[4]:ref(main_vector<Val>)
- 366[124]: FreeRef(v1: ref(reference))
+ 366[124]: FreeRef(v1: ref(reference)) ; [store-free]
  367[112]: Return(ret=0, value=0, discard=112)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] ConvRefFromNull() -> ref(2,0,8)[20]
+  ; store-alloc nr=2 max=3
     2:[32] ConvRefFromNull() -> ref(3,0,8)[32]
+  ; store-alloc nr=3 max=4
     3:[44] Text()
     4:[68] [4] Text()
     5:[92] Text()
@@ -272,12 +275,12 @@ Execute test:
   284:[116] GotoWord(jump=346)
   346:[116] FreeText(var[92])
   349:[116] VarRef(var[32]) -> ref(3,1,8)={vector:[A,A,B,C,A]}[116]
-  352:[128] FreeRef(v1=ref(3,1,8)[116])
+  352:[128] FreeRef(v1=ref(3,1,8)[116]) ; store-free max=3
   353:[116] FreeText(var[68])
   356:[116] FreeText(var[44])
   359:[116] VarRef(var[20]) -> ref(2,1,8)={vector:[C]}[116]
-  362:[128] FreeRef(v1=ref(2,1,8)[116])
+  362:[128] FreeRef(v1=ref(2,1,8)[116]) ; store-free max=2
   363:[116] VarRef(var[8]) -> ref(1,1,8)={vector:[A]}[116]
-  366:[128] FreeRef(v1=ref(1,1,8)[116])
+  366:[128] FreeRef(v1=ref(1,1,8)[116]) ; store-free max=1
   367:[116] Return(ret=4294967295[4], value=0, discard=112)
 Finished

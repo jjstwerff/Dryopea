@@ -32,7 +32,7 @@ fn n_test() {#block(1):void
 
 byte-code for files:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:vector<ref(File)>
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:vector<ref(File)> ; [store-alloc]
    1[16]: Database(var[4], db_tp=16)
    6[16]: VarRef(var[4]) -> ref(reference)
    9[28]: ConstInt(val=0) -> integer
@@ -40,7 +40,7 @@ byte-code for files:n_test()
   17[16]: CreateStack(var[4]) -> ref(reference)
   20[28]: ConstInt(val=12) -> integer
   25[32]: SetByte(v1: ref(reference), fld=4, min=0, val: integer)
-  30[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(File)
+  30[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(File) ; [store-alloc]
   31[28]: Text() var=__work_2[28]:text
   32[52]: Text() var=__work_1[52]:text
   33[76]: [2] Text() var=test_value[76]:text["__work_1"]
@@ -73,14 +73,15 @@ byte-code for files:n_test()
  642[100]: FreeText(var[76])
  645[100]: FreeText(var[52])
  648[100]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_1[16]:ref(File)
- 651[112]: FreeRef(v1: ref(reference))
+ 651[112]: FreeRef(v1: ref(reference)) ; [store-free]
  652[100]: VarVector(var[4]) -> vector type=vector<File> 17 var=__ref_2[4]:vector<ref(File)>
- 655[112]: FreeRef(v1: ref(reference))
+ 655[112]: FreeRef(v1: ref(reference)) ; [store-free]
  656[100]: FreeText(var[28])
  659[100]: Return(ret=0, value=0, discard=100)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Database(var[8], db_tp=16)
     6:[20] VarRef(var[8]) -> ref(1,1,8)[20]
     9:[32] ConstInt(val=0) -> 0[32]
@@ -89,6 +90,7 @@ Execute test:
    20:[32] ConstInt(val=12) -> 12[32]
    25:[36] SetByte(v1=ref(0,1,16)[20], fld=4, min=0, val=12[32])
    30:[20] ConvRefFromNull() -> ref(2,0,8)[20]
+  ; store-alloc nr=2 max=3
    31:[32] Text()
    32:[56] [2] Text()
    33:[80] Text()
@@ -399,9 +401,9 @@ Execute test:
   642:[104] FreeText(var[80])
   645:[104] FreeText(var[56])
   648:[104] VarRef(var[20]) -> ref(2,0,8)=null[104]
-  651:[116] FreeRef(v1=ref(2,0,8)[104])
+  651:[116] FreeRef(v1=ref(2,0,8)[104]) ; store-free max=2
   652:[104] VarVector(var[8]) -> ref(1,1,12)=[{path:"example/config",format:Directory},{path:"example/map.png",size:3406,format:TextFile},{path:"example/map.xcf",size:7817,format:TextFile},{path:"example/show.loft",size:371,format:TextFile},{path:"example/todo.json",size:1461,format:TextFile}][104]
-  655:[116] FreeRef(v1=ref(1,1,12)[104])
+  655:[116] FreeRef(v1=ref(1,1,12)[104]) ; store-free max=1
   656:[104] FreeText(var[32])
   659:[104] Return(ret=4294967295[4], value=0, discard=100)
 Finished

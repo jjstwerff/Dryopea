@@ -1408,6 +1408,12 @@ impl State {
                 .variables
                 .set_stack(v_nr as u16, pos);
         }
+        #[cfg(debug_assertions)]
+        crate::variables::validate_slots(
+            &data.definitions[def_nr as usize].variables,
+            data,
+            def_nr,
+        );
     }
 
     /**
@@ -2128,6 +2134,7 @@ impl State {
     # Panics
     When unknown operators are encountered in the byte-code.
     */
+    #[allow(clippy::cognitive_complexity)]
     pub fn dump_code(&mut self, f: &mut dyn Write, d_nr: u32, data: &Data) -> Result<(), Error> {
         write!(f, "{}(", data.def(d_nr).name)?;
         let mut stack_pos = 0;
@@ -2560,7 +2567,11 @@ impl State {
             writeln!(log, " -> {v}[{}]", self.stack_pos)?;
             self.stack_pos = stack;
             let db = *self.get_stack::<DbRef>();
-            writeln!(log, "  ; store-alloc nr={} max={}", db.store_nr, self.database.max)?;
+            writeln!(
+                log,
+                "  ; store-alloc nr={} max={}",
+                db.store_nr, self.database.max
+            )?;
             self.stack_pos = stack;
         } else {
             writeln!(log, " -> {v}[{}]", self.stack_pos)?;

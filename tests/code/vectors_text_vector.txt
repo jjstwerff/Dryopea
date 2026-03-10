@@ -33,7 +33,7 @@ fn n_test() {#block(1):void
 
 byte-code for text_vector:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<text>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<text>) ; [store-alloc]
    1[16]: [1] Database(var[4], db_tp=15) type=main_vector<text> 15
    6[16]: VarRef(var[4]) -> ref(reference) type=main_vector<text> 15 var=__ref_1[4]:ref(main_vector<text>)
    9[28]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=vector<text> 7
@@ -83,11 +83,12 @@ byte-code for text_vector:n_test()
  155[56]: GotoWord(jump=92)
  158[56]: FreeStack(value=0, discard=16)
  162[40]: VarRef(var[4]) -> ref(reference) type=main_vector<text> 15 var=__ref_1[4]:ref(main_vector<text>)
- 165[52]: FreeRef(v1: ref(reference))
+ 165[52]: FreeRef(v1: ref(reference)) ; [store-free]
  166[40]: Return(ret=0, value=0, discard=40)
 
 Execute test:
     0:[8] [1] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Database(var[8], db_tp=15)
     6:[20] VarRef(var[8]) -> ref(1,1,8)={}[20]
     9:[32] GetField(v1=ref(1,1,8)[20], fld=0) -> ref(1,1,8)=[][20]
@@ -176,6 +177,6 @@ Execute test:
   135:[60] GotoWord(jump=158)
   158:[60] FreeStack(value=0, discard=16)
   162:[44] VarRef(var[8]) -> ref(1,1,8)={vector:["+=","*="]}[44]
-  165:[56] FreeRef(v1=ref(1,1,8)[44])
+  165:[56] FreeRef(v1=ref(1,1,8)[44]) ; store-free max=1
   166:[44] Return(ret=4294967295[4], value=0, discard=40)
 Finished

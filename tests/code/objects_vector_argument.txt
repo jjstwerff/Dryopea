@@ -145,10 +145,10 @@ fn n_test() {#block(1):void
 
 byte-code for vector_argument:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_4[4]:ref(main_vector<integer>)
-   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_3[16]:ref(main_vector<integer>)
-   2[28]: ConvRefFromNull() -> ref(reference) var=__ref_2[28]:ref(main_vector<integer>)
-   3[40]: ConvRefFromNull() -> ref(reference) var=__ref_1[40]:ref(main_vector<integer>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_4[4]:ref(main_vector<integer>) ; [store-alloc]
+   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_3[16]:ref(main_vector<integer>) ; [store-alloc]
+   2[28]: ConvRefFromNull() -> ref(reference) var=__ref_2[28]:ref(main_vector<integer>) ; [store-alloc]
+   3[40]: ConvRefFromNull() -> ref(reference) var=__ref_1[40]:ref(main_vector<integer>) ; [store-alloc]
    4[52]: Text() var=__work_1[52]:text
    5[76]: [11] Database(var[40], db_tp=19) type=main_vector<integer> 19 var=test_value[76]:integer
   10[76]: VarRef(var[40]) -> ref(reference) type=main_vector<integer> 19 var=__ref_1[40]:ref(main_vector<integer>)
@@ -296,20 +296,24 @@ byte-code for vector_argument:n_test()
  542[96]: Panic(message: text)
  543[80]: FreeText(var[52])
  546[80]: VarRef(var[40]) -> ref(reference) type=main_vector<integer> 19 var=__ref_1[40]:ref(main_vector<integer>)
- 549[92]: FreeRef(v1: ref(reference))
+ 549[92]: FreeRef(v1: ref(reference)) ; [store-free]
  550[80]: VarRef(var[28]) -> ref(reference) type=main_vector<integer> 19 var=__ref_2[28]:ref(main_vector<integer>)
- 553[92]: FreeRef(v1: ref(reference))
+ 553[92]: FreeRef(v1: ref(reference)) ; [store-free]
  554[80]: VarRef(var[16]) -> ref(reference) type=main_vector<integer> 19 var=__ref_3[16]:ref(main_vector<integer>)
- 557[92]: FreeRef(v1: ref(reference))
+ 557[92]: FreeRef(v1: ref(reference)) ; [store-free]
  558[80]: VarRef(var[4]) -> ref(reference) type=main_vector<integer> 19 var=__ref_4[4]:ref(main_vector<integer>)
- 561[92]: FreeRef(v1: ref(reference))
+ 561[92]: FreeRef(v1: ref(reference)) ; [store-free]
  562[80]: Return(ret=0, value=0, discard=80)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] ConvRefFromNull() -> ref(2,0,8)[20]
+  ; store-alloc nr=2 max=3
     2:[32] ConvRefFromNull() -> ref(3,0,8)[32]
+  ; store-alloc nr=3 max=4
     3:[44] ConvRefFromNull() -> ref(4,0,8)[44]
+  ; store-alloc nr=4 max=5
     4:[56] [11] Text()
     5:[80] Database(var[44], db_tp=19)
    10:[80] VarRef(var[44]) -> ref(4,1,8)={}[80]
@@ -666,12 +670,12 @@ Execute test:
   487:[84] GotoWord(jump=543)
   543:[84] FreeText(var[56])
   546:[84] VarRef(var[44]) -> ref(4,1,8)={vector:[1,2,3,4,5]}[84]
-  549:[96] FreeRef(v1=ref(4,1,8)[84])
+  549:[96] FreeRef(v1=ref(4,1,8)[84]) ; store-free max=4
   550:[84] VarRef(var[32]) -> ref(3,1,8)={vector:[1,2,3]}[84]
-  553:[96] FreeRef(v1=ref(3,1,8)[84])
+  553:[96] FreeRef(v1=ref(3,1,8)[84]) ; store-free max=3
   554:[84] VarRef(var[20]) -> ref(2,1,8)={vector:[4,5]}[84]
-  557:[96] FreeRef(v1=ref(2,1,8)[84])
+  557:[96] FreeRef(v1=ref(2,1,8)[84]) ; store-free max=2
   558:[84] VarRef(var[8]) -> ref(1,1,8)={vector:[1,2,3,4,5]}[84]
-  561:[96] FreeRef(v1=ref(1,1,8)[84])
+  561:[96] FreeRef(v1=ref(1,1,8)[84]) ; store-free max=1
   562:[84] Return(ret=4294967295[4], value=0, discard=80)
 Finished

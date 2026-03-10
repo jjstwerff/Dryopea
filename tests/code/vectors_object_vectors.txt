@@ -81,7 +81,7 @@ fn n_test() {#block(1):void
 
 byte-code for object_vectors:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Elm>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Elm>) ; [store-alloc]
    1[16]: Text() var=__work_2[16]:text
    2[40]: Text() var=__work_1[40]:text
    3[64]: [4] Database(var[4], db_tp=19) type=main_vector<Elm> 19 var=test_value[64]:integer
@@ -204,13 +204,14 @@ byte-code for object_vectors:n_test()
  423[68]: VarText(var[16]) -> text var=__work_2[16]:text
  426[84]: Panic(message: text)
  427[68]: VarRef(var[4]) -> ref(reference) type=main_vector<Elm> 19 var=__ref_1[4]:ref(main_vector<Elm>)
- 430[80]: FreeRef(v1: ref(reference))
+ 430[80]: FreeRef(v1: ref(reference)) ; [store-free]
  431[68]: FreeText(var[40])
  434[68]: FreeText(var[16])
  437[68]: Return(ret=0, value=0, discard=68)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Text()
     2:[44] [4] Text()
     3:[68] Database(var[8], db_tp=19)
@@ -366,7 +367,7 @@ Execute test:
   370:[73] GotoFalseWord(jump=376, if_false=true[72])
   373:[72] GotoWord(jump=427)
   427:[72] VarRef(var[8]) -> ref(1,1,8)={vector:[{a:1,b:2},{a:12,b:13},{a:4,b:6}]}[72]
-  430:[84] FreeRef(v1=ref(1,1,8)[72])
+  430:[84] FreeRef(v1=ref(1,1,8)[72]) ; store-free max=1
   431:[72] FreeText(var[44])
   434:[72] FreeText(var[20])
   437:[72] Return(ret=4294967295[4], value=0, discard=68)

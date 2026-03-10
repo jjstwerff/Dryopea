@@ -51,8 +51,8 @@ fn n_test() {#block(1):void
 
 byte-code for array_write:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:ref(main_vector<integer>)
-   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(File)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_2[4]:ref(main_vector<integer>) ; [store-alloc]
+   1[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(File) ; [store-alloc]
    2[28]: Text() var=__work_1[28]:text
    3[52]: [2] ConstText(_value="buffer2.bin") -> text var=buf[52]:ref(File)["__ref_1"]
   16[68]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_1[16]:ref(File)
@@ -110,15 +110,17 @@ byte-code for array_write:n_test()
  229[56]: VarText(var[28]) -> text var=__work_1[28]:text
  232[72]: Panic(message: text)
  233[56]: VarRef(var[16]) -> ref(reference) type=File 14 var=__ref_1[16]:ref(File)
- 236[68]: FreeRef(v1: ref(reference))
+ 236[68]: FreeRef(v1: ref(reference)) ; [store-free]
  237[56]: FreeText(var[28])
  240[56]: VarRef(var[4]) -> ref(reference) type=main_vector<integer> 19 var=__ref_2[4]:ref(main_vector<integer>)
- 243[68]: FreeRef(v1: ref(reference))
+ 243[68]: FreeRef(v1: ref(reference)) ; [store-free]
  244[56]: Return(ret=0, value=0, discard=56)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] ConvRefFromNull() -> ref(2,0,8)[20]
+  ; store-alloc nr=2 max=3
     2:[32] [2] Text()
     3:[56] ConstText(_value="buffer2.bin") -> "buffer2.bin"[56]
    16:[72] VarRef(var[20]) -> ref(2,0,8)=null[72]
@@ -543,6 +545,7 @@ Execute test:
  1357:[100] ArgText(var[80]) -> "buffer2.bin"[100]
  1360:[116] Call(size=0, fn=n_exists)
  1325:[120] [175] ConvRefFromNull() -> ref(3,0,8)[120]
+  ; store-alloc nr=3 max=4
  1326:[132] ArgText(var[100]) -> "buffer2.bin"[132]
  1329:[148] VarRef(var[120]) -> ref(3,0,8)=null[148]
  1332:[160] Call(size=0, fn=n_file)
@@ -936,7 +939,7 @@ Execute test:
  1345:[137] ConvIntFromEnum(v1=5[136]) -> 5[136]
  1346:[140] NeInt(v1=1[132], v2=5[136]) -> true[132]
  1347:[133] VarRef(var[120]) -> ref(3,0,8)=null[133]
- 1350:[145] FreeRef(v1=ref(3,0,8)[133])
+ 1350:[145] FreeRef(v1=ref(3,0,8)[133]) ; store-free max=3
  1351:[133] Return(ret=1367[116], value=1, discard=33) -> true[100]
  1367:[101] GotoFalseWord(jump=1377, if_false=true[100])
  1370:[100] ArgText(var[80]) -> "buffer2.bin"[100]
@@ -952,9 +955,9 @@ Execute test:
   177:[61] GotoFalseWord(jump=183, if_false=true[60])
   180:[60] GotoWord(jump=233)
   233:[60] VarRef(var[20]) -> ref(2,0,8)=null[60]
-  236:[72] FreeRef(v1=ref(2,0,8)[60])
+  236:[72] FreeRef(v1=ref(2,0,8)[60]) ; store-free max=2
   237:[60] FreeText(var[32])
   240:[60] VarRef(var[8]) -> ref(1,1,8)={vector:[1,2]}[60]
-  243:[72] FreeRef(v1=ref(1,1,8)[60])
+  243:[72] FreeRef(v1=ref(1,1,8)[60]) ; store-free max=1
   244:[60] Return(ret=4294967295[4], value=0, discard=56)
 Finished

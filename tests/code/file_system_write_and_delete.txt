@@ -37,7 +37,7 @@ fn n_test() {#block(1):void
 
 byte-code for write_and_delete:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(File)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(File) ; [store-alloc]
    1[16]: Text() var=__work_1[16]:text
    2[40]: [2] ConstText(_value="test_fs_wd.txt") -> text var=test_value[40]:integer
   18[56]: Call(size=0, fn=n_delete)
@@ -82,18 +82,20 @@ byte-code for write_and_delete:n_test()
  233[44]: VarText(var[16]) -> text var=__work_1[16]:text
  236[60]: Panic(message: text)
  237[44]: VarRef(var[4]) -> ref(reference) type=File 14 var=__ref_1[4]:ref(File)
- 240[56]: FreeRef(v1: ref(reference))
+ 240[56]: FreeRef(v1: ref(reference)) ; [store-free]
  241[44]: FreeText(var[16])
  244[44]: Return(ret=0, value=0, discard=44)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] [2] Text()
     2:[44] ConstText(_value="test_fs_wd.txt") -> "test_fs_wd.txt"[44]
    18:[60] Call(size=0, fn=n_delete)
  1357:[64] ArgText(var[44]) -> "test_fs_wd.txt"[64]
  1360:[80] Call(size=0, fn=n_exists)
  1325:[84] [175] ConvRefFromNull() -> ref(2,0,8)[84]
+  ; store-alloc nr=2 max=3
  1326:[96] ArgText(var[64]) -> "test_fs_wd.txt"[96]
  1329:[112] VarRef(var[84]) -> ref(2,0,8)=null[112]
  1332:[124] Call(size=0, fn=n_file)
@@ -571,7 +573,7 @@ Execute test:
  1345:[101] ConvIntFromEnum(v1=5[100]) -> 5[100]
  1346:[104] NeInt(v1=5[96], v2=5[100]) -> false[96]
  1347:[97] VarRef(var[84]) -> ref(2,0,8)=null[97]
- 1350:[109] FreeRef(v1=ref(2,0,8)[97])
+ 1350:[109] FreeRef(v1=ref(2,0,8)[97]) ; store-free max=2
  1351:[97] Return(ret=1367[80], value=1, discard=33) -> false[64]
  1367:[65] GotoFalseWord(jump=1377, if_false=false[64])
  1377:[64] ConstFalse() -> false[64]
@@ -1054,6 +1056,7 @@ Execute test:
    68:[56] ConstText(_value="test_fs_wd.txt") -> "test_fs_wd.txt"[56]
    84:[72] Call(size=0, fn=n_exists)
  1325:[76] [175] ConvRefFromNull() -> ref(2,0,8)[76]
+  ; store-alloc nr=2 max=3
  1326:[88] ArgText(var[56]) -> "test_fs_wd.txt"[88]
  1329:[104] VarRef(var[76]) -> ref(2,0,8)=null[104]
  1332:[116] Call(size=0, fn=n_file)
@@ -1531,13 +1534,14 @@ Execute test:
  1345:[93] ConvIntFromEnum(v1=5[92]) -> 5[92]
  1346:[96] NeInt(v1=1[88], v2=5[92]) -> true[88]
  1347:[89] VarRef(var[76]) -> ref(2,0,8)=null[89]
- 1350:[101] FreeRef(v1=ref(2,0,8)[89])
+ 1350:[101] FreeRef(v1=ref(2,0,8)[89]) ; store-free max=2
  1351:[89] Return(ret=1848[72], value=1, discard=33) -> true[56]
    91:[57] ConstText(_value="test_fs_wd.txt") -> "test_fs_wd.txt"[57]
   107:[73] Call(size=0, fn=n_delete)
  1357:[77] ArgText(var[57]) -> "test_fs_wd.txt"[77]
  1360:[93] Call(size=0, fn=n_exists)
  1325:[97] [175] ConvRefFromNull() -> ref(2,0,8)[97]
+  ; store-alloc nr=2 max=3
  1326:[109] ArgText(var[77]) -> "test_fs_wd.txt"[109]
  1329:[125] VarRef(var[97]) -> ref(2,0,8)=null[125]
  1332:[137] Call(size=0, fn=n_file)
@@ -2015,7 +2019,7 @@ Execute test:
  1345:[114] ConvIntFromEnum(v1=5[113]) -> 5[113]
  1346:[117] NeInt(v1=1[109], v2=5[113]) -> true[109]
  1347:[110] VarRef(var[97]) -> ref(2,0,8)=null[110]
- 1350:[122] FreeRef(v1=ref(2,0,8)[110])
+ 1350:[122] FreeRef(v1=ref(2,0,8)[110]) ; store-free max=2
  1351:[110] Return(ret=1367[93], value=1, discard=33) -> true[77]
  1367:[78] GotoFalseWord(jump=1377, if_false=true[77])
  1370:[77] ArgText(var[57]) -> "test_fs_wd.txt"[77]
@@ -2028,6 +2032,7 @@ Execute test:
   124:[57] ConstText(_value="test_fs_wd.txt") -> "test_fs_wd.txt"[57]
   140:[73] Call(size=0, fn=n_exists)
  1325:[77] [175] ConvRefFromNull() -> ref(2,0,8)[77]
+  ; store-alloc nr=2 max=3
  1326:[89] ArgText(var[57]) -> "test_fs_wd.txt"[89]
  1329:[105] VarRef(var[77]) -> ref(2,0,8)=null[105]
  1332:[117] Call(size=0, fn=n_file)
@@ -2505,7 +2510,7 @@ Execute test:
  1345:[94] ConvIntFromEnum(v1=5[93]) -> 5[93]
  1346:[97] NeInt(v1=5[89], v2=5[93]) -> false[89]
  1347:[90] VarRef(var[77]) -> ref(2,0,8)=null[90]
- 1350:[102] FreeRef(v1=ref(2,0,8)[90])
+ 1350:[102] FreeRef(v1=ref(2,0,8)[90]) ; store-free max=2
  1351:[90] Return(ret=1904[73], value=1, discard=33) -> false[57]
   147:[58] Not(v1=false[57]) -> true[57]
   148:[58] GotoWord(jump=152)
@@ -2519,7 +2524,7 @@ Execute test:
   181:[49] GotoFalseWord(jump=187, if_false=true[48])
   184:[48] GotoWord(jump=237)
   237:[48] VarRef(var[8]) -> ref(1,0,8)=null[48]
-  240:[60] FreeRef(v1=ref(1,0,8)[48])
+  240:[60] FreeRef(v1=ref(1,0,8)[48]) ; store-free max=1
   241:[48] FreeText(var[20])
   244:[48] Return(ret=4294967295[4], value=0, discard=44)
 Finished

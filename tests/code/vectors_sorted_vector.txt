@@ -85,7 +85,7 @@ fn n_test() {#block(1):void
 byte-code for sorted_vector:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [5] ConvRefFromNull() -> ref(reference) var=db[28]:ref(Db)
+   1[28]: [5] ConvRefFromNull() -> ref(reference) var=db[28]:ref(Db) ; [store-alloc]
    2[40]: Database(var[28], db_tp=19) type=Db 19
    7[40]: VarRef(var[28]) -> ref(reference) type=Db 19 var=db[28]:ref(Db)
   10[52]: ConstInt(val=0) -> integer
@@ -210,7 +210,7 @@ byte-code for sorted_vector:n_test()
  447[76]: AddInt(v1: integer, v2: integer) -> integer
  448[72]: PutInt(var[64], value: integer)
  451[68]: [16] VarRef(var[28]) -> ref(reference) type=Db 19 var=db[28]:ref(Db)
- 454[80]: FreeRef(v1: ref(reference))
+ 454[80]: FreeRef(v1: ref(reference)) ; [store-free]
  455[68]: VarInt(var[64]) -> integer var=sum[64]:integer
  458[72]: FreeStack(value=4, discard=44)
  462[32]: [17] VarInt(var[28]) -> integer var=test_value[28]:integer
@@ -235,6 +235,7 @@ byte-code for sorted_vector:n_test()
 Execute test:
     0:[8] [5] Text()
     1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
+  ; store-alloc nr=1 max=2
     2:[44] Database(var[32], db_tp=19)
     7:[44] VarRef(var[32]) -> ref(1,1,8)={map:[]}[44]
    10:[56] ConstInt(val=0) -> 0[56]
@@ -406,7 +407,7 @@ Execute test:
   447:[80] AddInt(v1=23140[72], v2=3[76]) -> 23143[72]
   448:[76] PutInt(var[68], value=23143[72])
   451:[72] VarRef(var[32]) -> ref(1,1,8)={map:[{key:"Two",value:2},{key:"Three",value:3},{key:"One",value:1},{key:"Four",value:4}]}[72]
-  454:[84] FreeRef(v1=ref(1,1,8)[72])
+  454:[84] FreeRef(v1=ref(1,1,8)[72]) ; store-free max=1
   455:[72] VarInt(var[68]) -> 23143[72]
   458:[76] FreeStack(value=4, discard=44)
   462:[36] VarInt(var[32]) -> 23143[36]

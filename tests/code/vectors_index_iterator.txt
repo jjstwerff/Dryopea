@@ -133,7 +133,7 @@ byte-code for index_iterator:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
-   2[52]: [5] ConvRefFromNull() -> ref(reference) var=db[52]:ref(Db)
+   2[52]: [5] ConvRefFromNull() -> ref(reference) var=db[52]:ref(Db) ; [store-alloc]
    3[64]: Database(var[52], db_tp=19) type=Db 19
    8[64]: VarRef(var[52]) -> ref(reference) type=Db 19 var=db[52]:ref(Db)
   11[76]: ConstInt(val=0) -> integer
@@ -323,7 +323,7 @@ byte-code for index_iterator:n_test()
  699[84]: ConstText(_value="No element") -> text
  711[100]: Panic(message: text)
  712[84]: [25] VarRef(var[52]) -> ref(reference) type=Db 19 var=db[52]:ref(Db)
- 715[96]: FreeRef(v1: ref(reference))
+ 715[96]: FreeRef(v1: ref(reference)) ; [store-free]
  716[84]: VarInt(var[76]) -> integer var=sum[76]:integer
  719[88]: FreeStack(value=4, discard=36)
  723[56]: [26] VarInt(var[52]) -> integer var=test_value[52]:integer
@@ -350,6 +350,7 @@ Execute test:
     0:[8] Text()
     1:[32] [5] Text()
     2:[56] ConvRefFromNull() -> ref(1,0,8)[56]
+  ; store-alloc nr=1 max=2
     3:[68] Database(var[56], db_tp=19)
     8:[68] VarRef(var[56]) -> ref(1,1,8)={map:[]}[68]
    11:[80] ConstInt(val=0) -> 0[80]
@@ -640,7 +641,7 @@ Execute test:
   693:[89] GotoFalseWord(jump=699, if_false=true[88])
   696:[88] GotoWord(jump=712)
   712:[88] VarRef(var[56]) -> ref(1,1,8)={map:[{nr:63,key:"Six",value:6},{nr:83,key:"Three",value:3},{nr:83,key:"Four",value:4},{nr:83,key:"Five",value:5},{nr:92,key:"Two",value:2},{nr:101,key:"One",value:1}]}[88]
-  715:[100] FreeRef(v1=ref(1,1,8)[88])
+  715:[100] FreeRef(v1=ref(1,1,8)[88]) ; store-free max=1
   716:[88] VarInt(var[80]) -> 345[88]
   719:[92] FreeStack(value=4, discard=36)
   723:[60] VarInt(var[56]) -> 345[60]

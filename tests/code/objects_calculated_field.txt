@@ -68,7 +68,7 @@ byte-code for calculated_field:n_test()
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
    2[52]: [9] Text() var=test_value[52]:text["__work_1"]
-   3[76]: ConvRefFromNull() -> ref(reference) var=o[76]:ref(Object)
+   3[76]: ConvRefFromNull() -> ref(reference) var=o[76]:ref(Object) ; [store-alloc]
    4[88]: Database(var[76], db_tp=19) type=Object 19
    9[88]: VarRef(var[76]) -> ref(reference) type=Object 19 var=o[76]:ref(Object)
   12[100]: ConstText(_value="This is example data") -> text
@@ -137,7 +137,7 @@ byte-code for calculated_field:n_test()
  259[116]: VarRef(var[76]) -> ref(reference) type=Object 19 var=o[76]:ref(Object)
  262[128]: FormatDatabase(var[28], val: ref(reference), db_tp=19, db_format=2)
  268[116]: VarRef(var[76]) -> ref(reference) type=Object 19 var=o[76]:ref(Object)
- 271[128]: FreeRef(v1: ref(reference))
+ 271[128]: FreeRef(v1: ref(reference)) ; [store-free]
  272[116]: VarText(var[28]) -> text var=__work_1[28]:text
  275[132]: FreeStack(value=16, discard=32)
  279[116]: FreeStack(value=16, discard=40)
@@ -167,6 +167,7 @@ Execute test:
     1:[32] [9] Text()
     2:[56] Text()
     3:[80] ConvRefFromNull() -> ref(1,0,8)[80]
+  ; store-alloc nr=1 max=2
     4:[92] Database(var[80], db_tp=19)
     9:[92] VarRef(var[80]) -> ref(1,1,8)={}[92]
    12:[104] ConstText(_value="This is example data") -> "This is example data"[104]
@@ -241,7 +242,7 @@ Execute test:
   259:[120] VarRef(var[80]) -> ref(1,1,8)={name_length:20,name:"This is example data",buffer_size:20,buffer:[1,2,3,4,5]}[120]
   262:[132] FormatDatabase(var[32], val=ref(1,1,8)[120], db_tp=19, db_format=2)
   268:[120] VarRef(var[80]) -> ref(1,1,8)={name_length:20,name:"This is example data",buffer_size:20,buffer:[1,2,3,4,5]}[120]
-  271:[132] FreeRef(v1=ref(1,1,8)[120])
+  271:[132] FreeRef(v1=ref(1,1,8)[120]) ; store-free max=1
   272:[120] VarText(var[32]) -> "{\"name_length\":20,\"name\":\"This is example data\",\"buffer_size\":20,\"buffer\":[1,2,3,4,5]}"[120]
   275:[136] FreeStack(value=16, discard=32)
   279:[120] FreeStack(value=16, discard=40)

@@ -78,7 +78,7 @@ byte-code for hash:n_test()
    0[4]: Text() var=__work_3[4]:text
    1[28]: Text() var=__work_2[28]:text
    2[52]: Text() var=__work_1[52]:text
-   3[76]: [7] ConvRefFromNull() -> ref(reference) var=c[76]:ref(Data)
+   3[76]: [7] ConvRefFromNull() -> ref(reference) var=c[76]:ref(Data) ; [store-alloc]
    4[88]: Database(var[76], db_tp=19) type=Data 19
    9[88]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
   12[100]: ConstInt(val=0) -> integer
@@ -154,7 +154,7 @@ byte-code for hash:n_test()
  339[116]: GotoWord(jump=347)
  342[112]: ConstInt(val=0) -> integer
  347[116]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
- 350[128]: FreeRef(v1: ref(reference))
+ 350[128]: FreeRef(v1: ref(reference)) ; [store-free]
  351[116]: FreeStack(value=4, discard=40)
  355[80]: [13] VarInt(var[76]) -> integer var=test_value[76]:integer
  358[84]: ConstInt(val=12) -> integer
@@ -182,6 +182,7 @@ Execute test:
     1:[32] Text()
     2:[56] [7] Text()
     3:[80] ConvRefFromNull() -> ref(1,0,8)[80]
+  ; store-alloc nr=1 max=2
     4:[92] Database(var[80], db_tp=19)
     9:[92] VarRef(var[80]) -> ref(1,1,8)={h:[]}[92]
    12:[104] ConstInt(val=0) -> 0[104]
@@ -247,7 +248,7 @@ Execute test:
   334:[116] ConstInt(val=12) -> 12[116]
   339:[120] GotoWord(jump=347)
   347:[120] VarRef(var[80]) -> ref(1,1,8)={h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}[120]
-  350:[132] FreeRef(v1=ref(1,1,8)[120])
+  350:[132] FreeRef(v1=ref(1,1,8)[120]) ; store-free max=1
   351:[120] FreeStack(value=4, discard=40)
   355:[84] VarInt(var[80]) -> 12[84]
   358:[88] ConstInt(val=12) -> 12[88]

@@ -80,7 +80,7 @@ fn n_test() {#block(1):void
 
 byte-code for string_iter:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<integer>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<integer>) ; [store-alloc]
    1[16]: Text() var=__work_3[16]:text
    2[40]: Text() var=__work_2[40]:text
    3[64]: Text() var=__work_1[64]:text
@@ -167,7 +167,7 @@ byte-code for string_iter:n_test()
  312[136]: FreeText(var[112])
  315[136]: FreeText(var[88])
  318[136]: VarRef(var[4]) -> ref(reference) type=main_vector<integer> 19 var=__ref_1[4]:ref(main_vector<integer>)
- 321[148]: FreeRef(v1: ref(reference))
+ 321[148]: FreeRef(v1: ref(reference)) ; [store-free]
  322[136]: FreeText(var[64])
  325[136]: FreeText(var[40])
  328[136]: FreeText(var[16])
@@ -175,6 +175,7 @@ byte-code for string_iter:n_test()
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Text()
     2:[44] Text()
     3:[68] [2] Text()
@@ -376,7 +377,7 @@ Execute test:
   312:[140] FreeText(var[116])
   315:[140] FreeText(var[92])
   318:[140] VarRef(var[8]) -> ref(1,1,8)={vector:[1,2,3,7,8]}[140]
-  321:[152] FreeRef(v1=ref(1,1,8)[140])
+  321:[152] FreeRef(v1=ref(1,1,8)[140]) ; store-free max=1
   322:[140] FreeText(var[68])
   325:[140] FreeText(var[44])
   328:[140] FreeText(var[20])

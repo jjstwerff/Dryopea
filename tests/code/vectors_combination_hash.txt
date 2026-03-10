@@ -302,7 +302,7 @@ fn n_test() {#block(1):void
 byte-code for combination_hash:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [24] ConvRefFromNull() -> ref(reference) var=c[28]:ref(Counting)
+   1[28]: [24] ConvRefFromNull() -> ref(reference) var=c[28]:ref(Counting) ; [store-alloc]
    2[40]: Database(var[28], db_tp=19) type=Counting 19
    7[40]: VarRef(var[28]) -> ref(reference) type=Counting 19 var=c[28]:ref(Counting)
   10[52]: ConstInt(val=0) -> integer
@@ -366,7 +366,7 @@ byte-code for combination_hash:n_test()
  217[60]: GetInt(v1: ref(reference), fld=4) -> integer
  220[52]: AddInt(v1: integer, v2: integer) -> integer
  221[48]: VarRef(var[28]) -> ref(reference) type=Counting 19 var=c[28]:ref(Counting)
- 224[60]: FreeRef(v1: ref(reference))
+ 224[60]: FreeRef(v1: ref(reference)) ; [store-free]
  225[48]: FreeStack(value=4, discard=20)
  229[32]: [33] VarInt(var[28]) -> integer var=test_value[28]:integer
  232[36]: ConstInt(val=12) -> integer
@@ -390,6 +390,7 @@ byte-code for combination_hash:n_test()
 Execute test:
     0:[8] [24] Text()
     1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
+  ; store-alloc nr=1 max=2
     2:[44] Database(var[32], db_tp=19)
     7:[44] VarRef(var[32]) -> ref(1,1,8)={v:[]}[44]
    10:[56] ConstInt(val=0) -> 0[56]
@@ -831,7 +832,7 @@ Execute test:
   217:[64] GetInt(v1=ref(1,49,8)[52], fld=4) -> 7[52]
   220:[56] AddInt(v1=5[48], v2=7[52]) -> 12[48]
   221:[52] VarRef(var[32]) -> ref(1,1,8)={v:[{t:"One",v:1},{t:"Two",v:2},{t:"Three",v:3},{t:"Four",v:4},{t:"Five",v:5},{t:"Six",v:6},{t:"Seven",v:7},{t:"Eight",v:8},{t:"Nine",v:9},{t:"Ten",v:10},{t:"Eleven",v:11},{t:"Twelve",v:12},{t:"Thirteen",v:13}]}[52]
-  224:[64] FreeRef(v1=ref(1,1,8)[52])
+  224:[64] FreeRef(v1=ref(1,1,8)[52]) ; store-free max=1
   225:[52] FreeStack(value=4, discard=20)
   229:[36] VarInt(var[32]) -> 12[36]
   232:[40] ConstInt(val=12) -> 12[40]

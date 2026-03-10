@@ -167,7 +167,7 @@ fn n_test() {#block(1):void
 byte-code for multi_hash:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [15] ConvRefFromNull() -> ref(reference) var=c[28]:ref(Counting)
+   1[28]: [15] ConvRefFromNull() -> ref(reference) var=c[28]:ref(Counting) ; [store-alloc]
    2[40]: Database(var[28], db_tp=20) type=Counting 20
    7[40]: VarRef(var[28]) -> ref(reference) type=Counting 20 var=c[28]:ref(Counting)
   10[52]: ConstInt(val=0) -> integer
@@ -198,7 +198,7 @@ byte-code for multi_hash:n_test()
  103[56]: GetInt(v1: ref(reference), fld=4) -> integer
  106[48]: AddInt(v1: integer, v2: integer) -> integer
  107[44]: VarRef(var[28]) -> ref(reference) type=Counting 20 var=c[28]:ref(Counting)
- 110[56]: FreeRef(v1: ref(reference))
+ 110[56]: FreeRef(v1: ref(reference)) ; [store-free]
  111[44]: FreeStack(value=4, discard=16)
  115[32]: [16] VarInt(var[28]) -> integer var=test_value[28]:integer
  118[36]: ConstInt(val=27) -> integer
@@ -222,6 +222,7 @@ byte-code for multi_hash:n_test()
 Execute test:
     0:[8] [15] Text()
     1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
+  ; store-alloc nr=1 max=2
     2:[44] Database(var[32], db_tp=20)
     7:[44] VarRef(var[32]) -> ref(1,1,8)={v:[]}[44]
    10:[56] ConstInt(val=0) -> 0[56]
@@ -327,7 +328,7 @@ Execute test:
   103:[60] GetInt(v1=ref(1,45,8)[48], fld=4) -> 4[48]
   106:[52] AddInt(v1=23[44], v2=4[48]) -> 27[44]
   107:[48] VarRef(var[32]) -> ref(1,1,8)={v:[{c:C,t:"Four",v:4},{c:A,t:"One",v:1},{c:A,t:"Three",v:3},{c:B,t:"Two",v:2},{c:C,t:"Two",v:20}]}[48]
-  110:[60] FreeRef(v1=ref(1,1,8)[48])
+  110:[60] FreeRef(v1=ref(1,1,8)[48]) ; store-free max=1
   111:[48] FreeStack(value=4, discard=16)
   115:[36] VarInt(var[32]) -> 27[36]
   118:[40] ConstInt(val=27) -> 27[40]

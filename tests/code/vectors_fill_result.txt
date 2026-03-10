@@ -72,7 +72,7 @@ fn n_test() {#block(1):void
 
 byte-code for fill_result:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:vector<text>
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:vector<text> ; [store-alloc]
    1[16]: Database(var[4], db_tp=15)
    6[16]: VarRef(var[4]) -> ref(reference)
    9[28]: ConstInt(val=0) -> integer
@@ -110,13 +110,14 @@ byte-code for fill_result:n_test()
  152[104]: Panic(message: text)
  153[88]: FreeText(var[64])
  156[88]: VarVector(var[4]) -> vector type=vector<text> 7 var=__ref_1[4]:vector<text>
- 159[100]: FreeRef(v1: ref(reference))
+ 159[100]: FreeRef(v1: ref(reference)) ; [store-free]
  160[88]: FreeText(var[40])
  163[88]: FreeText(var[16])
  166[88]: Return(ret=0, value=0, discard=88)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Database(var[8], db_tp=15)
     6:[20] VarRef(var[8]) -> ref(1,1,8)[20]
     9:[32] ConstInt(val=0) -> 0[32]
@@ -164,7 +165,7 @@ Execute test:
    91:[92] GotoWord(jump=153)
   153:[92] FreeText(var[68])
   156:[92] VarVector(var[8]) -> ref(1,1,12)=["aa","bb"][92]
-  159:[104] FreeRef(v1=ref(1,1,12)[92])
+  159:[104] FreeRef(v1=ref(1,1,12)[92]) ; store-free max=1
   160:[92] FreeText(var[44])
   163:[92] FreeText(var[20])
   166:[92] Return(ret=4294967295[4], value=0, discard=88)

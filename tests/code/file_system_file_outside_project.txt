@@ -30,7 +30,7 @@ fn n_test() {#block(1):void
 
 byte-code for file_outside_project:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(File)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(File) ; [store-alloc]
    1[16]: Text() var=__work_2[16]:text
    2[40]: Text() var=__work_1[40]:text
    3[64]: [2] Text() var=test_value[64]:text["__work_1"]
@@ -64,12 +64,13 @@ byte-code for file_outside_project:n_test()
  138[88]: FreeText(var[64])
  141[88]: FreeText(var[40])
  144[88]: VarRef(var[4]) -> ref(reference) type=File 14 var=__ref_1[4]:ref(File)
- 147[100]: FreeRef(v1: ref(reference))
+ 147[100]: FreeRef(v1: ref(reference)) ; [store-free]
  148[88]: FreeText(var[16])
  151[88]: Return(ret=0, value=0, discard=88)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Text()
     2:[44] [2] Text()
     3:[68] Text()
@@ -227,7 +228,7 @@ Execute test:
   138:[92] FreeText(var[68])
   141:[92] FreeText(var[44])
   144:[92] VarRef(var[8]) -> ref(1,0,8)=null[92]
-  147:[104] FreeRef(v1=ref(1,0,8)[92])
+  147:[104] FreeRef(v1=ref(1,0,8)[92]) ; store-free max=1
   148:[92] FreeText(var[20])
   151:[92] Return(ret=4294967295[4], value=0, discard=88)
 Finished

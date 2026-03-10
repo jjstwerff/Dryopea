@@ -208,7 +208,7 @@ fn n_test() {#block(1):void
 
 byte-code for polymorph:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Value>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Value>) ; [store-alloc]
    1[16]: Text() var=__work_2[16]:text
    2[40]: Text() var=__work_1[40]:text
    3[64]: [25] Text() var=test_value[64]:text["__work_1"]
@@ -332,7 +332,7 @@ byte-code for polymorph:n_test()
  404[144]: GetVector(r: vector, size=8, index: integer) -> ref(reference) type=Value 19
  407[140]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 19
  410[140]: GotoWord(jump=414)
- 413[128]: ConvRefFromNull() -> ref(reference)
+ 413[128]: ConvRefFromNull() -> ref(reference) ; [store-alloc]
  414[140]: [32] ClearText(var[40]) var=__work_1[40]:text
  417[140]: ConstText(_value="") -> text
  419[156]: VarVector(var[88]) -> vector type=vector<Value> 24 var=l[88]:vector<ref(Value)>["__ref_1"]
@@ -371,7 +371,7 @@ byte-code for polymorph:n_test()
  668[104]: Panic(message: text)
  669[88]: FreeText(var[64])
  672[88]: VarRef(var[4]) -> ref(reference) type=main_vector<Value> 23 var=__ref_1[4]:ref(main_vector<Value>)
- 675[100]: FreeRef(v1: ref(reference))
+ 675[100]: FreeRef(v1: ref(reference)) ; [store-free]
  676[88]: FreeText(var[40])
  679[88]: FreeText(var[16])
  682[88]: Return(ret=0, value=0, discard=88)
@@ -424,6 +424,7 @@ byte-code for polymorph:t_5Value_add(self: ref(Value)[0]) -> integer
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Text()
     2:[44] [25] Text()
     3:[68] Text()
@@ -780,7 +781,7 @@ Execute test:
   558:[92] GotoWord(jump=669)
   669:[92] FreeText(var[68])
   672:[92] VarRef(var[8]) -> ref(1,1,8)={vector:[Text {v:"123"},Integer {v:101},Array {v:[1,2,3,4]}]}[92]
-  675:[104] FreeRef(v1=ref(1,1,8)[92])
+  675:[104] FreeRef(v1=ref(1,1,8)[92]) ; store-free max=1
   676:[92] FreeText(var[44])
   679:[92] FreeText(var[20])
   682:[92] Return(ret=4294967295[4], value=0, discard=88)

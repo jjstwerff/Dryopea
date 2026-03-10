@@ -480,7 +480,7 @@ fn t_5Lexer_parse_file(self:Lexer, filename:text) {#block(1):void
 
 byte-code for lib/lexer.loft:t_5Lexer_parse_file(self: ref(Lexer)[0], filename: text[12])
    0[28]: return-address
-   0[32]: ConvRefFromNull() -> ref(reference) var=__ref_1[32]:ref(File)
+   0[32]: ConvRefFromNull() -> ref(reference) var=__ref_1[32]:ref(File) ; [store-alloc]
    1[44]: Text() var=__work_1[44]:text
    2[68]: [76] ArgText(var[12]) -> text var=filename[12]:text
    5[84]: ConstText(_value="/") -> text
@@ -520,7 +520,7 @@ byte-code for lib/lexer.loft:t_5Lexer_parse_file(self: ref(Lexer)[0], filename: 
  121[72]: [87] VarRef(var[0]) -> ref(reference) type=Lexer 23 var=self[0]:ref(Lexer)
  124[84]: Call(size=0, fn=t_5Lexer_scan)
  131[72]: VarRef(var[32]) -> ref(reference) type=File 14 var=__ref_1[32]:ref(File)
- 134[84]: FreeRef(v1: ref(reference))
+ 134[84]: FreeRef(v1: ref(reference)) ; [store-free]
  135[72]: FreeText(var[44])
  138[72]: Return(ret=28, value=0, discard=72)
 
@@ -2384,7 +2384,7 @@ fn t_5Lexer_anchor(self:Lexer) -> Anchor {#block(1):ref(Anchor)
 
 byte-code for lib/lexer.loft:t_5Lexer_anchor(self: ref(Lexer)[0]) -> ref(Anchor)
    0[12]: return-address
-   0[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(Anchor)
+   0[16]: ConvRefFromNull() -> ref(reference) var=__ref_1[16]:ref(Anchor) ; [store-alloc]
    1[28]: [437] Database(var[16], db_tp=26) type=Anchor 26
    6[28]: VarRef(var[16]) -> ref(reference) type=Anchor 26 var=__ref_1[16]:ref(Anchor)
    9[40]: VarRef(var[0]) -> ref(reference) type=Lexer 23 var=self[0]:ref(Lexer)
@@ -2618,7 +2618,7 @@ byte-code for lib/code.loft:t_4Code_define(self: ref(Code)[0], public: boolean[1
    9[82]: GetField(v1: ref(reference), fld=4) -> ref(reference) type=hash<Definition[name]> 58
   12[82]: ArgText(var[13]) -> text var=name[13]:text
   15[98]: GetRecord(data: ref(reference), db_tp=58, no_keys=1) -> ref(reference)
-  19[82]: ConvRefFromNull() -> ref(reference)
+  19[82]: ConvRefFromNull() -> ref(reference) ; [store-alloc]
   20[94]: NeRef(v1: ref(reference), v2: ref(reference)) -> boolean
   21[71]: GotoFalseWord(jump=131, if_false: boolean)
   24[70]: [88] VarRef(var[0]) -> ref(reference) type=Code 56 var=self[0]:ref(Code)
@@ -3656,7 +3656,7 @@ byte-code for lib/code.loft:t_4Code_end_block(self: ref(Code)[0], tp: integer(0,
   68[40]: GetVector(r: vector, size=16, index: integer) -> ref(reference)
   71[36]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 30
   74[36]: GotoWord(jump=78)
-  77[24]: ConvRefFromNull() -> ref(reference)
+  77[24]: ConvRefFromNull() -> ref(reference) ; [store-alloc]
   78[36]: [212] VarRef(var[24]) -> ref(reference) type=Block 47 var=bl[24]:ref(Block)["self"]
   81[48]: VarRef(var[0]) -> ref(reference) type=Code 56 var=self[0]:ref(Code)
   84[60]: GetField(v1: ref(reference), fld=16) -> ref(reference) type=vector<Value> 36
@@ -3707,7 +3707,7 @@ byte-code for lib/code.loft:t_4Code_else_if(self: ref(Code)[0])
   68[36]: GetVector(r: vector, size=16, index: integer) -> ref(reference)
   71[32]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 30
   74[32]: GotoWord(jump=78)
-  77[20]: ConvRefFromNull() -> ref(reference)
+  77[20]: ConvRefFromNull() -> ref(reference) ; [store-alloc]
   78[32]: [220] VarRef(var[20]) -> ref(reference) type=If 48 var=i[20]:ref(If)["self"]
   81[44]: VarRef(var[0]) -> ref(reference) type=Code 56 var=self[0]:ref(Code)
   84[56]: GetField(v1: ref(reference), fld=16) -> ref(reference) type=vector<Value> 36
@@ -3753,7 +3753,7 @@ byte-code for lib/code.loft:t_4Code_end_if(self: ref(Code)[0], tp: integer(0, 65
   68[40]: GetVector(r: vector, size=16, index: integer) -> ref(reference)
   71[36]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 30
   74[36]: GotoWord(jump=78)
-  77[24]: ConvRefFromNull() -> ref(reference)
+  77[24]: ConvRefFromNull() -> ref(reference) ; [store-alloc]
   78[36]: [226] VarRef(var[24]) -> ref(reference) type=If 48 var=i[24]:ref(If)["self"]
   81[48]: GetShort(v1: ref(reference), fld=6, min=0) -> integer
   86[40]: [227] VarRef(var[24]) -> ref(reference) type=If 48 var=i[24]:ref(If)["self"]
@@ -3833,7 +3833,7 @@ byte-code for lib/code.loft:t_4Code_end_loop(self: ref(Code)[0])
   68[36]: GetVector(r: vector, size=16, index: integer) -> ref(reference)
   71[32]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=Value 30
   74[32]: GotoWord(jump=78)
-  77[20]: ConvRefFromNull() -> ref(reference)
+  77[20]: ConvRefFromNull() -> ref(reference) ; [store-alloc]
   78[32]: [239] VarRef(var[20]) -> ref(reference) type=Loop 49 var=l[20]:ref(Loop)["self"]
   81[44]: VarRef(var[0]) -> ref(reference) type=Code 56 var=self[0]:ref(Code)
   84[56]: GetField(v1: ref(reference), fld=16) -> ref(reference) type=vector<Value> 36
@@ -4146,9 +4146,9 @@ fn n_parse(name:text, s:text) {#block(1):void
 
 byte-code for lib/parser.loft:n_parse(name: text[0], s: text[16])
    0[32]: return-address
-   0[36]: ConvRefFromNull() -> ref(reference) var=__ref_2[36]:ref(main_vector<text>)
-   1[48]: ConvRefFromNull() -> ref(reference) var=__ref_1[48]:ref(main_vector<text>)
-   2[60]: [39] ConvRefFromNull() -> ref(reference) var=p[60]:ref(Parser)
+   0[36]: ConvRefFromNull() -> ref(reference) var=__ref_2[36]:ref(main_vector<text>) ; [store-alloc]
+   1[48]: ConvRefFromNull() -> ref(reference) var=__ref_1[48]:ref(main_vector<text>) ; [store-alloc]
+   2[60]: [39] ConvRefFromNull() -> ref(reference) var=p[60]:ref(Parser) ; [store-alloc]
    3[72]: Database(var[60], db_tp=63) type=Parser 63
    8[72]: VarRef(var[60]) -> ref(reference) type=Parser 63 var=p[60]:ref(Parser)
   11[84]: ConstInt(val=0) -> integer
@@ -4905,11 +4905,11 @@ byte-code for lib/parser.loft:n_parse(name: text[0], s: text[16])
 2785[84]: [64] VarRef(var[60]) -> ref(reference) type=Parser 63 var=p[60]:ref(Parser)
 2788[96]: Call(size=0, fn=t_6Parser_parse_file)
 2795[84]: VarRef(var[60]) -> ref(reference) type=Parser 63 var=p[60]:ref(Parser)
-2798[96]: FreeRef(v1: ref(reference))
+2798[96]: FreeRef(v1: ref(reference)) ; [store-free]
 2799[84]: VarRef(var[48]) -> ref(reference) type=main_vector<text> 15 var=__ref_1[48]:ref(main_vector<text>)
-2802[96]: FreeRef(v1: ref(reference))
+2802[96]: FreeRef(v1: ref(reference)) ; [store-free]
 2803[84]: VarRef(var[36]) -> ref(reference) type=main_vector<text> 15 var=__ref_2[36]:ref(main_vector<text>)
-2806[96]: FreeRef(v1: ref(reference))
+2806[96]: FreeRef(v1: ref(reference)) ; [store-free]
 2807[84]: Return(ret=32, value=0, discard=84)
 
 fn t_6Parser_parse_file(self:Parser) {#block(1):void
@@ -6160,7 +6160,7 @@ byte-code for lib/parser.loft:t_6Parser_object(self: ref(Parser)[0]) -> boolean
   31[53]: GotoFalseWord(jump=52, if_false: boolean)
   34[52]: [308] ConstFalse() -> boolean
   35[53]: VarRef(var[40]) -> ref(reference) type=Anchor 26 var=before[40]:ref(Anchor)
-  38[65]: FreeRef(v1: ref(reference))
+  38[65]: FreeRef(v1: ref(reference)) ; [store-free]
   39[53]: FreeText(var[16])
   42[53]: Return(ret=12, value=1, discard=53)
   48[53]: FreeStack(value=0, discard=1)
@@ -6205,7 +6205,7 @@ byte-code for lib/parser.loft:t_6Parser_object(self: ref(Parser)[0]) -> boolean
  160[108]: Call(size=0, fn=t_5Lexer_revert)
  167[84]: [314] ConstFalse() -> boolean
  168[85]: VarRef(var[40]) -> ref(reference) type=Anchor 26 var=before[40]:ref(Anchor)
- 171[97]: FreeRef(v1: ref(reference))
+ 171[97]: FreeRef(v1: ref(reference)) ; [store-free]
  172[85]: FreeText(var[60])
  175[85]: FreeText(var[16])
  178[85]: Return(ret=12, value=1, discard=85)
@@ -6241,7 +6241,7 @@ byte-code for lib/parser.loft:t_6Parser_object(self: ref(Parser)[0]) -> boolean
  286[80]: Call(size=0, fn=t_6Parser_expect)
  293[52]: [325] ConstTrue() -> boolean
  294[53]: VarRef(var[40]) -> ref(reference) type=Anchor 26 var=before[40]:ref(Anchor)
- 297[65]: FreeRef(v1: ref(reference))
+ 297[65]: FreeRef(v1: ref(reference)) ; [store-free]
  298[53]: FreeText(var[16])
  301[53]: Return(ret=12, value=1, discard=53) type=boolean 4
 
@@ -7036,8 +7036,8 @@ fn t_6Parser_type_def(self:Parser, define:boolean) -> integer(0, 65535) {#block(
 
 byte-code for lib/parser.loft:t_6Parser_type_def(self: ref(Parser)[0], define: boolean[12]) -> integer(0, 65535)
    0[13]: return-address
-   0[17]: ConvRefFromNull() -> ref(reference) var=__ref_2[17]:ref(main_vector<text>)
-   1[29]: ConvRefFromNull() -> ref(reference) var=__ref_1[29]:ref(main_vector<integer(0, 65535)>)
+   0[17]: ConvRefFromNull() -> ref(reference) var=__ref_2[17]:ref(main_vector<text>) ; [store-alloc]
+   1[29]: ConvRefFromNull() -> ref(reference) var=__ref_1[29]:ref(main_vector<integer(0, 65535)>) ; [store-alloc]
    2[41]: Text() var=__work_3[41]:text
    3[65]: Text() var=__work_2[65]:text
    4[89]: Text() var=__work_1[89]:text
@@ -7317,30 +7317,30 @@ byte-code for lib/parser.loft:t_6Parser_type_def(self: ref(Parser)[0], define: b
  937[169]: FreeText(var[113])
  940[169]: FreeText(var[89])
  943[169]: VarRef(var[29]) -> ref(reference) type=main_vector<integer(0, 65535)> 69 var=__ref_1[29]:ref(main_vector<integer(0, 65535)>)
- 946[181]: FreeRef(v1: ref(reference))
+ 946[181]: FreeRef(v1: ref(reference)) ; [store-free]
  947[169]: FreeText(var[65])
  950[169]: VarRef(var[17]) -> ref(reference) type=main_vector<text> 15 var=__ref_2[17]:ref(main_vector<text>)
- 953[181]: FreeRef(v1: ref(reference))
+ 953[181]: FreeRef(v1: ref(reference)) ; [store-free]
  954[169]: FreeText(var[41])
  957[169]: Return(ret=13, value=4, discard=169)
  963[169]: FreeStack(value=0, discard=4)
  967[165]: [531] FreeText(var[113])
  970[165]: FreeText(var[89])
  973[165]: VarRef(var[29]) -> ref(reference) type=main_vector<integer(0, 65535)> 69 var=__ref_1[29]:ref(main_vector<integer(0, 65535)>)
- 976[177]: FreeRef(v1: ref(reference))
+ 976[177]: FreeRef(v1: ref(reference)) ; [store-free]
  977[165]: FreeText(var[65])
  980[165]: VarRef(var[17]) -> ref(reference) type=main_vector<text> 15 var=__ref_2[17]:ref(main_vector<text>)
- 983[177]: FreeRef(v1: ref(reference))
+ 983[177]: FreeRef(v1: ref(reference)) ; [store-free]
  984[165]: FreeText(var[41])
  987[165]: VarInt(var[161]) -> integer var=t[161]:integer(0, 65535)
  990[169]: Return(ret=13, value=4, discard=169)
  996[169]: FreeText(var[113])
  999[169]: FreeText(var[89])
 1002[169]: VarRef(var[29]) -> ref(reference) type=main_vector<integer(0, 65535)> 69 var=__ref_1[29]:ref(main_vector<integer(0, 65535)>)
-1005[181]: FreeRef(v1: ref(reference))
+1005[181]: FreeRef(v1: ref(reference)) ; [store-free]
 1006[169]: FreeText(var[65])
 1009[169]: VarRef(var[17]) -> ref(reference) type=main_vector<text> 15 var=__ref_2[17]:ref(main_vector<text>)
-1012[181]: FreeRef(v1: ref(reference))
+1012[181]: FreeRef(v1: ref(reference)) ; [store-free]
 1013[169]: FreeText(var[41])
 1016[169]: Return(ret=13, value=4, discard=169)
 
@@ -7722,7 +7722,7 @@ fn t_6Parser_flags(self:Parser) {#block(1):void
 
 byte-code for lib/parser.loft:t_6Parser_flags(self: ref(Parser)[0])
    0[12]: return-address
-   0[16]: [598] ConvRefFromNull() -> ref(reference) var=format[16]:ref(FormatSpec)
+   0[16]: [598] ConvRefFromNull() -> ref(reference) var=format[16]:ref(FormatSpec) ; [store-alloc]
    1[28]: Database(var[16], db_tp=66) type=FormatSpec 66
    6[28]: VarRef(var[16]) -> ref(reference) type=FormatSpec 66 var=format[16]:ref(FormatSpec)
    9[40]: ConstText(_value="0") -> text
@@ -7769,7 +7769,7 @@ byte-code for lib/parser.loft:t_6Parser_flags(self: ref(Parser)[0])
  160[29]: Not(v1: boolean) -> boolean
  161[29]: GotoFalseWord(jump=174, if_false: boolean)
  164[28]: [600] VarRef(var[16]) -> ref(reference) type=FormatSpec 66 var=format[16]:ref(FormatSpec)
- 167[40]: FreeRef(v1: ref(reference))
+ 167[40]: FreeRef(v1: ref(reference)) ; [store-free]
  168[28]: Return(ret=12, value=0, discard=28)
  174[28]: [602] Text() var=n[28]:text["self"]
  175[52]: VarRef(var[0]) -> ref(reference) type=Parser 63 var=self[0]:ref(Parser)
@@ -7922,7 +7922,7 @@ byte-code for lib/parser.loft:t_6Parser_flags(self: ref(Parser)[0])
  690[72]: ConstInt(val=1) -> integer
  695[76]: SetByte(v1: ref(reference), fld=9, min=0, val: integer)
  700[60]: VarRef(var[16]) -> ref(reference) type=FormatSpec 66 var=format[16]:ref(FormatSpec)
- 703[72]: FreeRef(v1: ref(reference))
+ 703[72]: FreeRef(v1: ref(reference)) ; [store-free]
  704[60]: FreeText(var[28])
  707[60]: Return(ret=12, value=0, discard=60)
 

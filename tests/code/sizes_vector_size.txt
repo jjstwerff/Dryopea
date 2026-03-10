@@ -40,7 +40,7 @@ fn n_test() {#block(1):void
 byte-code for vector_size:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [5] ConvRefFromNull() -> ref(reference) var=m[28]:ref(Main)
+   1[28]: [5] ConvRefFromNull() -> ref(reference) var=m[28]:ref(Main) ; [store-alloc]
    2[40]: Database(var[28], db_tp=19) type=Main 19
    7[40]: VarRef(var[28]) -> ref(reference) type=Main 19 var=m[28]:ref(Main)
   10[52]: ConstInt(val=0) -> integer
@@ -60,7 +60,7 @@ byte-code for vector_size:n_test()
   56[52]: MulInt(v1: integer, v2: integer) -> integer
   57[48]: AddInt(v1: integer, v2: integer) -> integer
   58[44]: VarRef(var[28]) -> ref(reference) type=Main 19 var=m[28]:ref(Main)
-  61[56]: FreeRef(v1: ref(reference))
+  61[56]: FreeRef(v1: ref(reference)) ; [store-free]
   62[44]: FreeStack(value=4, discard=16)
   66[32]: [7] VarInt(var[28]) -> integer var=test_value[28]:integer
   69[36]: ConstInt(val=1240412) -> integer
@@ -84,6 +84,7 @@ byte-code for vector_size:n_test()
 Execute test:
     0:[8] [5] Text()
     1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
+  ; store-alloc nr=1 max=2
     2:[44] Database(var[32], db_tp=19)
     7:[44] VarRef(var[32]) -> ref(1,1,8)={}[44]
    10:[56] ConstInt(val=0) -> 0[56]
@@ -103,7 +104,7 @@ Execute test:
    56:[56] MulInt(v1=100000[48], v2=12[52]) -> 1200000[48]
    57:[52] AddInt(v1=40412[44], v2=1200000[48]) -> 1240412[44]
    58:[48] VarRef(var[32]) -> ref(1,1,8)={}[48]
-   61:[60] FreeRef(v1=ref(1,1,8)[48])
+   61:[60] FreeRef(v1=ref(1,1,8)[48]) ; store-free max=1
    62:[48] FreeStack(value=4, discard=16)
    66:[36] VarInt(var[32]) -> 1240412[36]
    69:[40] ConstInt(val=1240412) -> 1240412[40]

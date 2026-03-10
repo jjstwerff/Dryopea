@@ -90,7 +90,7 @@ fn n_test() {#block(1):void
 
 byte-code for colours:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Point>)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(main_vector<Point>) ; [store-alloc]
    1[16]: Text() var=__work_2[16]:text
    2[40]: Text() var=__work_1[40]:text
    3[64]: [12] Text() var=test_value[64]:text["__work_1"]
@@ -177,13 +177,14 @@ byte-code for colours:n_test()
  476[104]: Panic(message: text)
  477[88]: FreeText(var[64])
  480[88]: VarRef(var[4]) -> ref(reference) type=main_vector<Point> 19 var=__ref_1[4]:ref(main_vector<Point>)
- 483[100]: FreeRef(v1: ref(reference))
+ 483[100]: FreeRef(v1: ref(reference)) ; [store-free]
  484[88]: FreeText(var[40])
  487[88]: FreeText(var[16])
  490[88]: Return(ret=0, value=0, discard=88)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] Text()
     2:[44] [12] Text()
     3:[68] Text()
@@ -273,7 +274,7 @@ Execute test:
   361:[92] GotoWord(jump=477)
   477:[92] FreeText(var[68])
   480:[92] VarRef(var[8]) -> ref(1,1,8)={vector:[{r:128,g:0,b:128},{r:0,g:0,b:255}]}[92]
-  483:[104] FreeRef(v1=ref(1,1,8)[92])
+  483:[104] FreeRef(v1=ref(1,1,8)[92]) ; store-free max=1
   484:[92] FreeText(var[44])
   487:[92] FreeText(var[20])
   490:[92] Return(ret=4294967295[4], value=0, discard=88)

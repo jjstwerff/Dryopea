@@ -167,7 +167,7 @@ fn n_test() {#block(1):void
 byte-code for call_enum:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [26] ConvRefFromNull() -> ref(reference) var=t[28]:ref(Text)
+   1[28]: [26] ConvRefFromNull() -> ref(reference) var=t[28]:ref(Text) ; [store-alloc]
    2[40]: Database(var[28], db_tp=21) type=Text 21
    7[40]: VarRef(var[28]) -> ref(reference) type=Text 21 var=t[28]:ref(Text)
   10[52]: ConstText(_value="123") -> text
@@ -175,7 +175,7 @@ byte-code for call_enum:n_test()
   18[40]: VarRef(var[28]) -> ref(reference) type=Text 21 var=t[28]:ref(Text)
   21[52]: ConstEnum(val=2) -> boolean
   23[53]: SetEnum(v1: ref(reference), fld=0, val: boolean)
-  26[40]: [27] ConvRefFromNull() -> ref(reference) var=i[40]:ref(Integer)
+  26[40]: [27] ConvRefFromNull() -> ref(reference) var=i[40]:ref(Integer) ; [store-alloc]
   27[52]: Database(var[40], db_tp=20) type=Integer 20
   32[52]: VarRef(var[40]) -> ref(reference) type=Integer 20 var=i[40]:ref(Integer)
   35[64]: ConstInt(val=101) -> integer
@@ -183,7 +183,7 @@ byte-code for call_enum:n_test()
   43[52]: VarRef(var[40]) -> ref(reference) type=Integer 20 var=i[40]:ref(Integer)
   46[64]: ConstEnum(val=1) -> boolean
   48[65]: SetEnum(v1: ref(reference), fld=0, val: boolean)
-  51[52]: [28] ConvRefFromNull() -> ref(reference) var=a[52]:ref(Array)
+  51[52]: [28] ConvRefFromNull() -> ref(reference) var=a[52]:ref(Array) ; [store-alloc]
   52[64]: Database(var[52], db_tp=22) type=Array 22
   57[64]: VarRef(var[52]) -> ref(reference) type=Array 22 var=a[52]:ref(Array)
   60[76]: ConstInt(val=0) -> integer
@@ -235,11 +235,11 @@ byte-code for call_enum:n_test()
  229[92]: Call(size=0, fn=t_5Array_add)
  236[84]: AddInt(v1: integer, v2: integer) -> integer
  237[80]: VarRef(var[28]) -> ref(reference) type=Text 21 var=t[28]:ref(Text)
- 240[92]: FreeRef(v1: ref(reference))
+ 240[92]: FreeRef(v1: ref(reference)) ; [store-free]
  241[80]: VarRef(var[40]) -> ref(reference) type=Integer 20 var=i[40]:ref(Integer)
- 244[92]: FreeRef(v1: ref(reference))
+ 244[92]: FreeRef(v1: ref(reference)) ; [store-free]
  245[80]: VarRef(var[52]) -> ref(reference) type=Array 22 var=a[52]:ref(Array)
- 248[92]: FreeRef(v1: ref(reference))
+ 248[92]: FreeRef(v1: ref(reference)) ; [store-free]
  249[80]: FreeStack(value=4, discard=52)
  253[32]: [30] VarInt(var[28]) -> integer var=test_value[28]:integer
  256[36]: ConstInt(val=234) -> integer
@@ -309,6 +309,7 @@ byte-code for call_enum:t_5Value_add(self: ref(Value)[0]) -> integer
 Execute test:
     0:[8] [26] Text()
     1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
+  ; store-alloc nr=1 max=2
     2:[44] Database(var[32], db_tp=21)
     7:[44] VarRef(var[32]) -> ref(1,1,8)={}[44]
    10:[56] ConstText(_value="123") -> "123"[56]
@@ -317,6 +318,7 @@ Execute test:
    21:[56] ConstEnum(val=2) -> unknown(2)[56]
    23:[57] SetEnum(v1=ref(1,1,8)[44], fld=0, val=2[56])
    26:[44] ConvRefFromNull() -> ref(2,0,8)[44]
+  ; store-alloc nr=2 max=3
    27:[56] Database(var[44], db_tp=20)
    32:[56] VarRef(var[44]) -> ref(2,1,8)={}[56]
    35:[68] ConstInt(val=101) -> 101[68]
@@ -325,6 +327,7 @@ Execute test:
    46:[68] ConstEnum(val=1) -> unknown(1)[68]
    48:[69] SetEnum(v1=ref(2,1,8)[56], fld=0, val=1[68])
    51:[56] ConvRefFromNull() -> ref(3,0,8)[56]
+  ; store-alloc nr=3 max=4
    52:[68] Database(var[56], db_tp=22)
    57:[68] VarRef(var[56]) -> ref(3,1,8)={}[68]
    60:[80] ConstInt(val=0) -> 0[80]
@@ -476,11 +479,11 @@ Execute test:
  1861:[108] Return(ret=2103[96], value=4, discard=24) -> 10[84]
   236:[88] AddInt(v1=224[80], v2=10[84]) -> 234[80]
   237:[84] VarRef(var[32]) -> ref(1,1,8)={t_value:"123"}[84]
-  240:[96] FreeRef(v1=ref(1,1,8)[84])
+  240:[96] FreeRef(v1=ref(1,1,8)[84]) ; store-free max=3
   241:[84] VarRef(var[44]) -> ref(2,1,8)={i_value:101}[84]
-  244:[96] FreeRef(v1=ref(2,1,8)[84])
+  244:[96] FreeRef(v1=ref(2,1,8)[84]) ; store-free max=2
   245:[84] VarRef(var[56]) -> ref(3,1,8)={content:[1,2,3,4]}[84]
-  248:[96] FreeRef(v1=ref(3,1,8)[84])
+  248:[96] FreeRef(v1=ref(3,1,8)[84]) ; store-free max=1
   249:[84] FreeStack(value=4, discard=52)
   253:[36] VarInt(var[32]) -> 234[36]
   256:[40] ConstInt(val=234) -> 234[40]

@@ -86,7 +86,7 @@ fn n_fill() -> Container {#block(1):ref(Container)
 
 byte-code for enum_field:n_fill() -> ref(Container)
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Container)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Container) ; [store-alloc]
    1[16]: [15] Database(var[4], db_tp=23) type=Container 23
    6[16]: VarRef(var[4]) -> ref(reference) type=Container 23 var=__ref_1[4]:ref(Container)
    9[28]: ConstText(_value="testing") -> text
@@ -185,7 +185,7 @@ byte-code for enum_field:n_test()
   29[88]: VarRef(var[76]) -> ref(reference) type=Container 23 var=c[76]:ref(Container)
   32[100]: FormatDatabase(var[28], val: ref(reference), db_tp=23, db_format=1)
   38[88]: VarRef(var[76]) -> ref(reference) type=Container 23 var=c[76]:ref(Container)
-  41[100]: FreeRef(v1: ref(reference))
+  41[100]: FreeRef(v1: ref(reference)) ; [store-free]
   42[88]: VarText(var[28]) -> text var=__work_1[28]:text
   45[104]: FreeStack(value=16, discard=28)
   49[92]: AppendText(var[52], v1: text)
@@ -221,6 +221,7 @@ Execute test:
     2:[56] Text()
     3:[80] Call(size=0, fn=n_fill)
  1757:[84] [15] ConvRefFromNull() -> ref(1,0,8)[84]
+  ; store-alloc nr=1 max=2
  1758:[96] Database(var[84], db_tp=23)
  1763:[96] VarRef(var[84]) -> ref(1,1,8)={}[96]
  1766:[108] ConstText(_value="testing") -> "testing"[108]
@@ -283,7 +284,7 @@ Execute test:
    29:[92] VarRef(var[80]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"},Float {v:3.141592653589793}]}[92]
    32:[104] FormatDatabase(var[32], val=ref(1,1,8)[92], db_tp=23, db_format=1)
    38:[92] VarRef(var[80]) -> ref(1,1,8)={name:"testing",content:Single {v:1234.56},list:[Long {v:9876543210},Text {v:"An example sentence of text"},Float {v:3.141592653589793}]}[92]
-   41:[104] FreeRef(v1=ref(1,1,8)[92])
+   41:[104] FreeRef(v1=ref(1,1,8)[92]) ; store-free max=1
    42:[92] VarText(var[32]) -> "Container: { name: \"testing\",
   content: Single { v: 1234.56 },
   list: [ Long { v: 9876543210 }, Text { v: \"An example sentence of text\" }, Float { v: 3.141592653589793 } ]

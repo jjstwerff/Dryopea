@@ -42,7 +42,7 @@ fn n_test() {#block(1):void
 byte-code for index_member:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [5] ConvRefFromNull() -> ref(reference) var=m[28]:ref(Main)
+   1[28]: [5] ConvRefFromNull() -> ref(reference) var=m[28]:ref(Main) ; [store-alloc]
    2[40]: Database(var[28], db_tp=19) type=Main 19
    7[40]: VarRef(var[28]) -> ref(reference) type=Main 19 var=m[28]:ref(Main)
   10[52]: ConstInt(val=0) -> integer
@@ -54,7 +54,7 @@ byte-code for index_member:n_test()
   32[52]: MulInt(v1: integer, v2: integer) -> integer
   33[48]: AddInt(v1: integer, v2: integer) -> integer
   34[44]: VarRef(var[28]) -> ref(reference) type=Main 19 var=m[28]:ref(Main)
-  37[56]: FreeRef(v1: ref(reference))
+  37[56]: FreeRef(v1: ref(reference)) ; [store-free]
   38[44]: FreeStack(value=4, discard=16)
   42[32]: [6] VarInt(var[28]) -> integer var=test_value[28]:integer
   45[36]: ConstInt(val=425) -> integer
@@ -78,6 +78,7 @@ byte-code for index_member:n_test()
 Execute test:
     0:[8] [5] Text()
     1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
+  ; store-alloc nr=1 max=2
     2:[44] Database(var[32], db_tp=19)
     7:[44] VarRef(var[32]) -> ref(1,1,8)={s:[]}[44]
    10:[56] ConstInt(val=0) -> 0[56]
@@ -89,7 +90,7 @@ Execute test:
    32:[56] MulInt(v1=100[48], v2=4[52]) -> 400[48]
    33:[52] AddInt(v1=25[44], v2=400[48]) -> 425[44]
    34:[48] VarRef(var[32]) -> ref(1,1,8)={s:[]}[48]
-   37:[60] FreeRef(v1=ref(1,1,8)[48])
+   37:[60] FreeRef(v1=ref(1,1,8)[48]) ; store-free max=1
    38:[48] FreeStack(value=4, discard=16)
    42:[36] VarInt(var[32]) -> 425[36]
    45:[40] ConstInt(val=425) -> 425[40]

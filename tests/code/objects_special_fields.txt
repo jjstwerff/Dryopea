@@ -120,7 +120,7 @@ byte-code for special_fields:n_test()
    0[4]: Text() var=__work_2[4]:text
    1[28]: Text() var=__work_1[28]:text
    2[52]: [10] Text() var=test_value[52]:text["__work_1"]
-   3[76]: ConvRefFromNull() -> ref(reference) var=o[76]:ref(Object)
+   3[76]: ConvRefFromNull() -> ref(reference) var=o[76]:ref(Object) ; [store-alloc]
    4[88]: Database(var[76], db_tp=20) type=Object 20
    9[88]: VarRef(var[76]) -> ref(reference) type=Object 20 var=o[76]:ref(Object)
   12[100]: ConstInt(val=0) -> integer
@@ -168,7 +168,7 @@ byte-code for special_fields:n_test()
  164[128]: VarRef(var[76]) -> ref(reference) type=Object 20 var=o[76]:ref(Object)
  167[140]: FormatDatabase(var[28], val: ref(reference), db_tp=20, db_format=0)
  173[128]: VarRef(var[76]) -> ref(reference) type=Object 20 var=o[76]:ref(Object)
- 176[140]: FreeRef(v1: ref(reference))
+ 176[140]: FreeRef(v1: ref(reference)) ; [store-free]
  177[128]: VarText(var[28]) -> text var=__work_1[28]:text
  180[144]: FreeStack(value=16, discard=32)
  184[128]: FreeStack(value=16, discard=52)
@@ -198,6 +198,7 @@ Execute test:
     1:[32] [10] Text()
     2:[56] Text()
     3:[80] ConvRefFromNull() -> ref(1,0,8)[80]
+  ; store-alloc nr=1 max=2
     4:[92] Database(var[80], db_tp=20)
     9:[92] VarRef(var[80]) -> ref(1,1,8)={}[92]
    12:[104] ConstInt(val=0) -> 0[104]
@@ -320,7 +321,7 @@ Execute test:
   164:[132] VarRef(var[80]) -> ref(1,1,8)={a:[1,4,3,8],b:Fluid}[132]
   167:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=20, db_format=0)
   173:[132] VarRef(var[80]) -> ref(1,1,8)={a:[1,4,3,8],b:Fluid}[132]
-  176:[144] FreeRef(v1=ref(1,1,8)[132])
+  176:[144] FreeRef(v1=ref(1,1,8)[132]) ; store-free max=1
   177:[132] VarText(var[32]) -> "{a:[1,4,3,8],b:Fluid}"[132]
   180:[148] FreeStack(value=16, discard=32)
   184:[132] FreeStack(value=16, discard=52)

@@ -41,7 +41,7 @@ byte-code for parse_vector:n_test()
   64[60]: GetFloat(v1: ref(reference), fld=0) -> float
   67[56]: AddFloat(v1: float, v2: float) -> float
   68[48]: VarVector(var[28]) -> vector type=vector<float> 19 var=a[28]:vector<float>
-  71[60]: FreeRef(v1: ref(reference))
+  71[60]: FreeRef(v1: ref(reference)) ; [store-free]
   72[48]: FreeStack(value=8, discard=20)
   76[36]: [3] VarFloat(var[28]) -> float var=test_value[28]:float
   79[44]: ConstFloat(val=18120.00000001001) -> float
@@ -76,7 +76,7 @@ Execute test:
    64:[64] GetFloat(v1=ref(1,9,32)[52], fld=0) -> 0.00000001001[52]
    67:[60] AddFloat(v1=18120[44], v2=0.00000001001[52]) -> 18120.00000001001[44]
    68:[52] VarVector(var[32]) -> ref(1,1,8)=[1.2,-10.3,18120,0.00000001001][52]
-   71:[64] FreeRef(v1=ref(1,1,8)[52])
+   71:[64] FreeRef(v1=ref(1,1,8)[52]) ; store-free max=1
    72:[52] FreeStack(value=8, discard=20)
    76:[40] VarFloat(var[32]) -> 18120.00000001001[40]
    79:[48] ConstFloat(val=18120.00000001001) -> 18120.00000001001[48]

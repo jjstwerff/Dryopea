@@ -147,7 +147,7 @@ fn n_main() {#block(1):void
 byte-code for tests/suite/12-hash.loft:n_main()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [31] ConvRefFromNull() -> ref(reference) var=d[28]:ref(Data)
+   1[28]: [31] ConvRefFromNull() -> ref(reference) var=d[28]:ref(Data) ; [store-alloc]
    2[40]: Database(var[28], db_tp=19) type=Data 19
    7[40]: VarRef(var[28]) -> ref(reference) type=Data 19 var=d[28]:ref(Data)
   10[52]: ConstInt(val=0) -> integer
@@ -205,7 +205,7 @@ byte-code for tests/suite/12-hash.loft:n_main()
  205[64]: GotoWord(jump=235)
  208[64]: ConstText(_value="Missing key returns null") -> text
  234[80]: Panic(message: text)
- 235[64]: [41] ConvRefFromNull() -> ref(reference) var=c[64]:ref(Counting)
+ 235[64]: [41] ConvRefFromNull() -> ref(reference) var=c[64]:ref(Counting) ; [store-alloc]
  236[76]: Database(var[64], db_tp=22) type=Counting 22
  241[76]: VarRef(var[64]) -> ref(reference) type=Counting 22 var=c[64]:ref(Counting)
  244[88]: ConstInt(val=0) -> integer
@@ -287,9 +287,9 @@ byte-code for tests/suite/12-hash.loft:n_main()
  565[80]: VarText(var[4]) -> text var=__work_1[4]:text
  568[96]: Panic(message: text)
  569[80]: VarRef(var[28]) -> ref(reference) type=Data 19 var=d[28]:ref(Data)
- 572[92]: FreeRef(v1: ref(reference))
+ 572[92]: FreeRef(v1: ref(reference)) ; [store-free]
  573[80]: VarRef(var[64]) -> ref(reference) type=Counting 22 var=c[64]:ref(Counting)
- 576[92]: FreeRef(v1: ref(reference))
+ 576[92]: FreeRef(v1: ref(reference)) ; [store-free]
  577[80]: FreeText(var[4])
  580[80]: Return(ret=0, value=0, discard=80)
 

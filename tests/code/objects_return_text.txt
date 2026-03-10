@@ -58,7 +58,7 @@ fn n_test() {#block(1):void
 
 byte-code for return_text:n_test()
    0[0]: return-address
-   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data)
+   0[4]: ConvRefFromNull() -> ref(reference) var=__ref_1[4]:ref(Data) ; [store-alloc]
    1[16]: Text() var=__work_1[16]:text
    2[40]: [12] Text() var=test_value[40]:text["__ref_1"]
    3[64]: ConstText(_value="test") -> text
@@ -82,12 +82,13 @@ byte-code for return_text:n_test()
   89[80]: Panic(message: text)
   90[64]: FreeText(var[40])
   93[64]: VarRef(var[4]) -> ref(reference) type=Data 18 var=__ref_1[4]:ref(Data)
-  96[76]: FreeRef(v1: ref(reference))
+  96[76]: FreeRef(v1: ref(reference)) ; [store-free]
   97[64]: FreeText(var[16])
  100[64]: Return(ret=0, value=0, discard=64)
 
 Execute test:
     0:[8] ConvRefFromNull() -> ref(1,0,8)[8]
+  ; store-alloc nr=1 max=2
     1:[20] [12] Text()
     2:[44] Text()
     3:[68] ConstText(_value="test") -> "test"[68]
@@ -111,7 +112,7 @@ Execute test:
    35:[68] GotoWord(jump=90)
    90:[68] FreeText(var[44])
    93:[68] VarRef(var[8]) -> ref(1,0,8)=null[68]
-   96:[80] FreeRef(v1=ref(1,0,8)[68])
+   96:[80] FreeRef(v1=ref(1,0,8)[68]) ; store-free max=1
    97:[68] FreeText(var[20])
   100:[68] Return(ret=4294967295[4], value=0, discard=64)
 Finished

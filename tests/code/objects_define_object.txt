@@ -30,7 +30,7 @@ fn n_obj() -> boolean {#block(1):boolean
 
 byte-code for define_object:n_obj() -> boolean
    0[0]: return-address
-   0[4]: [3] ConvRefFromNull() -> ref(reference) var=o[4]:ref(Object)
+   0[4]: [3] ConvRefFromNull() -> ref(reference) var=o[4]:ref(Object) ; [store-alloc]
    1[16]: Database(var[4], db_tp=18) type=Object 18
    6[16]: VarRef(var[4]) -> ref(reference) type=Object 18 var=o[4]:ref(Object)
    9[28]: ConstInt(val=1234) -> integer
@@ -74,7 +74,7 @@ byte-code for define_object:n_obj() -> boolean
  140[17]: GotoWord(jump=144)
  143[16]: ConstFalse() -> boolean
  144[17]: VarRef(var[4]) -> ref(reference) type=Object 18 var=o[4]:ref(Object)
- 147[29]: FreeRef(v1: ref(reference))
+ 147[29]: FreeRef(v1: ref(reference)) ; [store-free]
  148[17]: Return(ret=0, value=1, discard=17) type=boolean 4
 
 fn n_test() {#block(1):void
@@ -126,6 +126,7 @@ Execute test:
     0:[8] [9] Text()
     1:[32] Call(size=0, fn=n_obj)
  1757:[36] ConvRefFromNull() -> ref(1,0,8)[36]
+  ; store-alloc nr=1 max=2
  1758:[48] Database(var[36], db_tp=18)
  1763:[48] VarRef(var[36]) -> ref(1,1,8)={third:false}[48]
  1766:[60] ConstInt(val=1234) -> 1234[60]
@@ -167,7 +168,7 @@ Execute test:
  1896:[56] EqInt(v1=1[48], v2=1[52]) -> true[48]
  1897:[49] GotoWord(jump=1901)
  1901:[49] VarRef(var[36]) -> ref(1,1,8)={first:1234,second:"data",third:true}[49]
- 1904:[61] FreeRef(v1=ref(1,1,8)[49])
+ 1904:[61] FreeRef(v1=ref(1,1,8)[49]) ; store-free max=1
  1905:[49] Return(ret=1919[32], value=1, discard=17) -> true[32]
     8:[33] GotoFalseWord(jump=19, if_false=true[32])
    11:[32] ConstInt(val=1) -> 1[32]

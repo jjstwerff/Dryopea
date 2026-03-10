@@ -38,7 +38,7 @@ fn n_test() {#block(1):void
 byte-code for scope_text:n_test()
    0[0]: return-address
    0[4]: Text() var=__work_1[4]:text
-   1[28]: [8] ConvRefFromNull() -> ref(reference) var=d[28]:ref(Data)
+   1[28]: [8] ConvRefFromNull() -> ref(reference) var=d[28]:ref(Data) ; [store-alloc]
    2[40]: Text() var=test_value[40]:text["d"]
    3[64]: Database(var[28], db_tp=18) type=Data 18
    8[64]: VarRef(var[28]) -> ref(reference) type=Data 18 var=d[28]:ref(Data)
@@ -67,13 +67,14 @@ byte-code for scope_text:n_test()
  116[80]: Panic(message: text)
  117[64]: FreeText(var[40])
  120[64]: VarRef(var[28]) -> ref(reference) type=Data 18 var=d[28]:ref(Data)
- 123[76]: FreeRef(v1: ref(reference))
+ 123[76]: FreeRef(v1: ref(reference)) ; [store-free]
  124[64]: FreeText(var[4])
  127[64]: Return(ret=0, value=0, discard=64)
 
 Execute test:
     0:[8] [8] Text()
     1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
+  ; store-alloc nr=1 max=2
     2:[44] Text()
     3:[68] Database(var[32], db_tp=18)
     8:[68] VarRef(var[32]) -> ref(1,1,8)={}[68]
@@ -92,7 +93,7 @@ Execute test:
    59:[68] GotoWord(jump=117)
   117:[68] FreeText(var[44])
   120:[68] VarRef(var[32]) -> ref(1,1,8)={name:"testing",number:0}[68]
-  123:[80] FreeRef(v1=ref(1,1,8)[68])
+  123:[80] FreeRef(v1=ref(1,1,8)[68]) ; store-free max=1
   124:[68] FreeText(var[8])
   127:[68] Return(ret=4294967295[4], value=0, discard=64)
 Finished

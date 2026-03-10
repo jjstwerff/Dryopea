@@ -126,7 +126,7 @@ byte-code for tests/suite/09-enum.loft:n_main()
  195[29]: GotoWord(jump=213)
  198[29]: ConstText(_value="Text to enum") -> text
  212[45]: Panic(message: text)
- 213[29]: [40] ConvRefFromNull() -> ref(reference) var=c[29]:ref(Circle)
+ 213[29]: [40] ConvRefFromNull() -> ref(reference) var=c[29]:ref(Circle) ; [store-alloc]
  214[41]: Database(var[29], db_tp=20) type=Circle 20
  219[41]: VarRef(var[29]) -> ref(reference) type=Circle 20 var=c[29]:ref(Circle)
  222[53]: ConstFloat(val=1) -> float
@@ -142,7 +142,7 @@ byte-code for tests/suite/09-enum.loft:n_main()
  261[41]: GotoWord(jump=287)
  264[41]: ConstText(_value="Variant field access") -> text
  286[57]: Panic(message: text)
- 287[41]: [43] ConvRefFromNull() -> ref(reference) var=r[41]:ref(Rect)
+ 287[41]: [43] ConvRefFromNull() -> ref(reference) var=r[41]:ref(Rect) ; [store-alloc]
  288[53]: Database(var[41], db_tp=21) type=Rect 21
  293[53]: VarRef(var[41]) -> ref(reference) type=Rect 21 var=r[41]:ref(Rect)
  296[65]: ConstFloat(val=4) -> float
@@ -203,9 +203,9 @@ byte-code for tests/suite/09-enum.loft:n_main()
  544[53]: ConstText(_value="Format plain enum") -> text
  563[69]: Panic(message: text)
  564[53]: VarRef(var[29]) -> ref(reference) type=Circle 20 var=c[29]:ref(Circle)
- 567[65]: FreeRef(v1: ref(reference))
+ 567[65]: FreeRef(v1: ref(reference)) ; [store-free]
  568[53]: VarRef(var[41]) -> ref(reference) type=Rect 21 var=r[41]:ref(Rect)
- 571[65]: FreeRef(v1: ref(reference))
+ 571[65]: FreeRef(v1: ref(reference)) ; [store-free]
  572[53]: FreeText(var[4])
  575[53]: Return(ret=0, value=0, discard=53)
 
