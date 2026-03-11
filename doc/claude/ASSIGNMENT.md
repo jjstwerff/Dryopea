@@ -373,7 +373,7 @@ references in function signatures.  This bug was always present but hidden behin
 | `src/scopes.rs` | Added `find_first_ref_vars` method on `Scopes` |
 | `src/scopes.rs` | Modified `scan` arm for `Value::If` to emit pre-inits |
 | `src/state.rs` | Fixed `OpCreateStack` offset for borrowed Reference and Vector types |
-| `src/variables.rs` | Added `first_def()` and `min_safe_claim_pos()` helpers (from Option B attempt, unused) |
+| `src/variables.rs` | Added `first_def()` and `min_safe_claim_pos()` helpers (from Option B attempt — **removed 2026-03-11**, confirmed unused) |
 
 #### Testing checklist
 
@@ -502,7 +502,7 @@ intervals and can safely share a slot (or not) based on the interval check.
 | Bug 2 (`t_4Code_define`) root cause identified | **Done** |
 | Option B guard (compile-time only) | **Attempted, reverted** — breaks bridging invariant |
 | Option A sub-3 pre-init for owned refs | **Done** — `validate_slots` no longer panics for `t_4Code_define` |
-| Option A sub-3 pre-init for borrowed refs | **Partially done** — runtime crash still occurs (store_nr=8) |
+| Option A sub-3 pre-init for borrowed refs | **Partially done** — runtime crash still occurs (store_nr=8); next step: inspect IR/bytecode for `fn process` in `long_lived` test to confirm `OpPutRef` var_pos and `OpVarRef` address correctness, then determine whether the bug is in offset computation or in `OpCreateStack` aliasing adjacent memory |
 | `OpCreateStack` offset bug in `state.rs` | **Fixed** — now emits correct `before_stack - dep_pos` |
 | Assignment pass | **TODO** |
 | Remove `claim()` from `state.rs` | **TODO** |
@@ -546,4 +546,4 @@ post-loop variable accesses to use wrong offsets).
 | `src/scopes.rs` | Calls `compute_intervals()` at end of `check()` |
 | `src/state.rs` | Calls `validate_slots()` after `def_code()`; future: remove `claim()` |
 | `src/stack.rs` | `Stack` struct; `position` field; `claim()` via `Function` |
-| `tests/slot_assign.rs` | 3 integration tests for conflict patterns |
+| `tests/slot_assign.rs` | 5 integration tests (4 pass, 1 ignored); ignore reason updated 2026-03-11 to reflect current failure mode (runtime crash, not compile-time panic) |

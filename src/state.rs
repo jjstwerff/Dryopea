@@ -161,6 +161,24 @@ impl State {
         *v1 += text.str();
     }
 
+    /// Runtime implementation of `OpCreateStack(pos)`.
+    ///
+    /// Pushes a DbRef that points INTO the current stack frame:
+    ///   result = { store_nr: stack_cur.store_nr,
+    ///              rec:      stack_cur.rec,
+    ///              pos:      stack_cur.pos + stack_pos − pos }
+    ///
+    /// The compile-time caller (`state.rs::generate_set`) emits `pos` as:
+    ///   `stack.position_before_op − dep_var.stack_pos`
+    /// which makes `result.pos = stack_cur.pos + dep_var.stack_pos` — a pointer into
+    /// the dep variable's stack slot, used as a null-state for borrowed references.
+    ///
+    /// WARNING: the store_nr is the *stack frame* store, not a data store.
+    /// Any code that dereferences a field through this DbRef (e.g. `last.val`) will
+    /// index into `stores[stack_cur.store_nr]` which is out of range for the heap
+    /// store array and will panic.  This DbRef must be overwritten by `OpPutRef`
+    /// before any field access.  See `ASSIGNMENT.md` §"Option A sub-option 3" and
+    /// the known bug in `tests/slot_assign.rs::long_lived_int_and_copy_record_followed_by_ref`.
     #[inline]
     pub fn create_stack(&mut self) {
         let pos = *self.code::<u16>();
@@ -1605,10 +1623,13 @@ impl State {
                 if dep.is_empty() {
                     stack.add_op("OpConvRefFromNull", self);
                 } else {
-                    // OpCreateStack(pos) at runtime: result.pos = stack_cur.pos + State::stack_pos - pos.
-                    // We need pos = (stack.position before this op) - dep[0].stack_pos,
-                    // which makes result.pos = stack_cur.pos + dep[0].stack_pos (a reference into
-                    // the dep variable's slot — a valid null-state for the borrowed variable).
+                    // Pre-init a borrowed Reference with a null-state DbRef pointing into dep's slot.
+                    // The DbRef uses stack_cur.store_nr (the stack-frame store) — it is NOT a valid
+                    // data-store pointer and must be overwritten by OpPutRef before any field access.
+                    // See State::create_stack() and ASSIGNMENT.md §"Option A sub-option 3" for details.
+                    //
+                    // Argument: pos = (stack.position before this op) - dep[0].stack_pos
+                    //   → result.pos = stack_cur.pos + dep[0].stack_pos (points into dep's slot)
                     stack.add_op("OpCreateStack", self);
                     let dep_pos = stack.function.stack(dep[0]);
                     let before_stack = stack.position - size_of::<DbRef>() as u16;
@@ -1656,7 +1677,9 @@ impl State {
                         self.code_add(4u16);
                         self.code_add(0u16);
                     } else {
-                        // Same offset correction as for borrowed Reference types above.
+                        // Same pre-init logic as for borrowed Reference types above:
+                        // OpCreateStack produces a stack-frame DbRef pointing into dep's slot.
+                        // Must be overwritten by OpPutRef before any field access.
                         stack.add_op("OpCreateStack", self);
                         let dep_pos = stack.function.stack(dep[0]);
                         let before_stack = stack.position - size_of::<DbRef>() as u16;

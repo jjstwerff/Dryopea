@@ -801,7 +801,31 @@ type iterator;
 // Call a predefined system function (but not an operator).
 fn OpStaticCall(call: const u16);
 
-// Create a stack position from a variable.
+// Create a DbRef that points INTO the current stack frame (not into a data store).
+//
+// `pos` is a compile-time u16 offset.  At runtime the produced DbRef is:
+//   { store_nr: stack_cur.store_nr,
+//     rec:      stack_cur.rec,
+//     pos:      stack_cur.pos + State::stack_pos - pos }
+//
+// Intended uses:
+//   1. Obtain a typed pointer to a variable's stack slot (e.g. to pass a struct
+//      field by borrowed reference without copying it to a store).
+//   2. Pre-initialise a borrowed Reference/Vector variable to a null-state before
+//      an if/else branch (Option A sub-3 of ASSIGNMENT.md): the pre-init DbRef
+//      points into the dep-variable's slot and is overwritten by OpPutRef when the
+//      real assignment is reached inside the branch.
+//
+// IMPORTANT LIMITATIONS:
+//   • The resulting DbRef uses stack_cur.store_nr, which is the *stack frame* store.
+//     This store index is NOT a valid data store — using the DbRef to access a
+//     struct field (e.g. last.val) will panic with an index-out-of-bounds on the
+//     stores array.  OpCreateStack DbRefs must always be overwritten by OpPutRef
+//     before any field access is attempted.
+//   • The `pos` argument must equal (stack.position_before_op − dep_var.stack_pos)
+//     so that the produced DbRef.pos = stack_cur.pos + dep_var.stack_pos — a
+//     pointer into the dep variable's own slot.  Using the raw variable number
+//     instead of this offset (the old pre-fix bug) produces a garbage DbRef.
 fn OpCreateStack(pos: const u16) -> reference;
 
 // Read a text from a stack position.

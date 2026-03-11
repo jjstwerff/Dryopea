@@ -60,11 +60,12 @@ fn test() {
 /// allocated at a slot that overlaps the accumulator.
 ///
 /// This is the pattern in `lib/code.loft::define` that triggers the `t_4Code_define`
-/// slot conflict.  The test is currently **#[ignore]**-ed because `validate_slots`
-/// panics in debug builds — it documents the known bug until the assignment pass is
-/// implemented.  See `doc/claude/ASSIGNMENT.md` for the fix plan.
+/// slot conflict.  The `validate_slots` panic is fixed (Option A sub-3 pre-init), but
+/// the test still fails at runtime: a borrowed Reference pre-init via `OpCreateStack`
+/// produces a garbage DbRef (store_nr=8) that is read instead of the real value.
+/// See `doc/claude/ASSIGNMENT.md` §"Option A sub-option 3" for the investigation path.
 #[test]
-#[ignore = "known slot conflict bug: validate_slots panics (t_4Code_define geometry)"]
+#[ignore = "borrowed-ref pre-init runtime crash: garbage DbRef (store_nr=8) reaches set_int"]
 fn long_lived_int_and_copy_record_followed_by_ref() {
     code!(
         "struct Item { val: integer }
