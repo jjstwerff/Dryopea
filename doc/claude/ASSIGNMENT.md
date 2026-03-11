@@ -1,243 +1,155 @@
-# Stack Slot Assignment — Analysis, Plan, and Current Status
+# Stack Slot Assignment
 
-## Problem
+## Unresolved Issues
 
-Stack slot positions are currently assigned **during code generation** in `state.rs`, driven
-by the order in which `Value::Set` nodes are encountered while walking the IR.  The allocator
-is a simple bump-pointer: each variable gets the next free byte offset and keeps it for the
-lifetime of the whole function.
+### Issue 1 — Borrowed-reference pre-init causes runtime crash
 
-Scope analysis (`scopes.rs`) uses *structural nesting* as a proxy for variable lifetime.
-When a variable is re-assigned in a sibling or child scope, `copy_variable` creates a fresh
-`Variable` entry so the two lifetimes get distinct positions.  But `copy_variable` is an
-ad-hoc patch and does not cover every case.
+**Test:** `slot_assign::long_lived_int_and_copy_record_followed_by_ref` (currently `#[ignore]`d)
 
----
+**Symptom:** `database.rs:1462` — index out of bounds, `store_nr=8` on a garbage DbRef.
+Backtrace: `fill::set_int → database::store_mut`.
 
-## Confirmed bugs
+**Pattern:**
 
-### Bug 1 — `13-file.loft` (fixed 2026-03-10)
-
-Two variables inside the buf-read block — `b` (Buffer, scope 12) and the local copy of
-`f` (File alias for `__ref_8`, scope 5) — were both allocated at stack position 244.  `b`
-was still live when `f`'s `PutRef` overwrote slot 244, orphaning `b`'s store.  On the next
-`ConvRefFromNull`, the LIFO store allocator found `allocations[max].free == false` and
-panicked with "Allocating a used store".
-
-### Bug 2 — `t_4Code_define` slot conflict (investigated 2026-03-11, not yet fixed)
-
-Inside the `define` function in `lib/code.loft`, the variable `res` (integer, 4 bytes) is
-allocated at slot 66 — slot [66, 70).  In the else-branch of an if-statement inside a loop,
-the code goes through a sequence that:
-
-1. Pushes two temporary DbRefs onto the stack at positions [62,74) and [74,86),
-2. Runs `CopyRecord` which consumes both (stack drops from 86 → 62),
-3. Then runs `generate_set` for the new variable `_elm_1` (DbRef, 12 bytes), which
-   calls `claim(_elm_1, stack.position=62, ...)`.
-
-`_elm_1` ends up at slot [62,74), which overlaps `res` at [66,70) — the integer and
-a DbRef share bytes [66,70).
-
-**Why this is a runtime bug, not just a validation failure:** the first op inside
-`generate_set(_elm_1)` is a `VarRef(self)` that pushes a 12-byte DbRef starting at
-slot 62, physically overwriting `res`'s bytes [66,70) on the runtime stack.
-
-`validate_slots` catches this at compile time (debug builds) and panics before execution.
-
----
-
-## Root cause
-
-The bump-pointer allocator in `generate_set` uses `stack.position` as the next free slot.
-`stack.position` tracks the "logical top of the expression stack" during code generation —
-it advances when values are pushed and recedes when operators consume arguments.
-
-After a net-negative operator (one that consumes more bytes than it produces — e.g.
-`CopyRecord` consumes 2×12 bytes and produces 0), `stack.position` drops below previously-
-allocated variable slots. Those variables are **still alive** but their slots are now
-"below the current stack top". The next `generate_set` call incorrectly claims the dropped
-position for a new variable, overlapping the live ones.
-
-The fundamental invariant that breaks:
-> `stack.position` at the moment `claim(v, stack.position, …)` is called must be ≥ the
-> top of all slots occupied by currently-live variables.
-
----
-
-## Why the naive fix doesn't work
-
-An obvious attempt is to advance `stack.position` to `min_var_position()` (the maximum
-end-slot of all already-assigned variables) before every `claim` in `generate_set`.
-
-**This breaks other tests** (confirmed by regression in `enums::polymorph`).
-
-The reason: `stack.position` is not just a compile-time bookkeeping value — it is the
-source of truth for **relative offset calculations** in all subsequent bytecode. Each
-`VarRef`, `FreeStack`, and related op encodes the distance between the current
-`stack.position` and the variable's `stack_pos`.  If you advance `stack.position` at
-compile time without emitting bytecode that correspondingly advances the **runtime** stack
-pointer (`State::stack_pos`), the two go out of sync.
-
-Concretely: after a loop body, the runtime stack pointer is restored to `loop_pos` (by
-`OpFreeStack`). If a post-loop variable is then claimed at `min_var_position() > loop_pos`,
-all accesses to that variable compute offsets relative to the inflated compile-time
-`stack.position` (e.g. 160) but the runtime pointer is at the true `loop_pos` (e.g. 128).
-Every address is wrong by the gap, causing reads from incorrect memory and
-`copy_nonoverlapping` panics in debug builds.
-
-### What makes the two cases different
-
-| Scenario | Runtime stack at claim time | Variable below stack.position | Live? | Safe? |
-|---|---|---|---|---|
-| `_elm_1` in `t_4Code_define` | 62 (after CopyRecord) | `res` at [66,70) | **Yes** | **No — real conflict** |
-| `t` after loop in `polymorph` | 128 (loop_pos) | `v` at [144,156), `a` at [156,160) | **No** | Yes — safe slot reuse |
-
-The correct fix must distinguish between these cases using **live interval** information.
-
----
-
-## Correct fix strategy
-
-The proper solution is to check live intervals at slot-assignment time.  There are two
-viable options; see the **Recommendation** section at the end for which to do first.
-
----
-
-### Option A — Full separation (right long-term architecture)
-
-Compute all slot positions in a dedicated pass **before** code generation, using the live
-intervals already produced by `compute_intervals`.  Then `generate_set` in `state.rs`
-simply reads the pre-assigned `stack_pos` instead of calling `claim()`.
-
-**The bridging problem** — the hard part of Option A.  When `generate_set(_elm_1)` is
-reached, `stack.position` is 62 (after `CopyRecord` consumed its arguments) but the
-pre-assigned slot is 70 (above `res`).  The code generator must advance the **runtime**
-stack pointer from 62 to 70 before generating the value expression.  There is currently no
-bytecode instruction that just bumps the runtime stack by N bytes without doing anything
-else.  Three sub-options:
-
-1. **New opcode `OpAdvanceStack(N)`** — clean, minimal addition; bumps `State::stack_pos`
-   by N without writing anything.
-
-2. **N/4 `OpConstInt(0)` padding pushes** — no new opcode needed; ugly but functionally
-   correct.  The garbage values are never read (they fall below the variable's slot which
-   starts at the advanced position).
-
-3. **Scope-analysis pre-init (cleanest variant)** — extend `scopes.rs` to emit a
-   `Set(v, Null)` for any DbRef/Reference variable `v` that is first assigned inside an
-   if/else branch.  This fires `claim(v)` before the if-else, when `stack.position` is
-   still safely high.  The branch assignment then becomes a *re*-assignment, which goes
-   through the `set_var` path that copies the expression result into the pre-claimed slot
-   — no bridging needed.  This is analogous to what `scopes.rs` already does for
-   depend-typed variables.  It is the preferred sub-option because it requires no new
-   opcodes and no changes to `state.rs`; all the work stays in `scopes.rs`.
-
-**Pros:** architecturally correct; enables real slot reuse; sets the stage for removing
-`copy_variable`; no per-call overhead in the code generator.
-
-**Cons:** bigger change; sub-option 3 requires a careful audit of `scopes.rs` to ensure
-all first-use-in-branch cases are covered.
-
----
-
-### Option B — Live-interval guard in `generate_set` (ATTEMPTED — DOES NOT WORK)
-
-**Status: attempted 2026-03-11, reverted.  Do not implement.**
-
-The idea was: before calling `claim(v, stack.position, ...)` in `generate_set`, advance
-`stack.position` past all variables that are still alive at `v`'s `first_def` point:
-
-```rust
-let my_first_def = stack.function.first_def(v);
-if my_first_def != u32::MAX {
-    let min_pos = stack.function.min_safe_claim_pos(my_first_def);
-    if stack.position < min_pos {
-        stack.position = min_pos;
-    }
+```loft
+fn process(b: Bag) -> integer {
+    result = 0;
+    if b.items[0].val > 0 {
+        result = b.items[0].val;
+    } else {
+        b.items += [b.extra];
+        last = b.items[b.items.len() - 1];   // ← borrowed ref, first assigned here
+        result = last.val;
+    };
+    result
 }
 ```
 
-(Public helpers `first_def(v)` and `min_safe_claim_pos(seq)` were added to `Function` in
-`variables.rs`.)
+`last` is `Type::Reference(Item, dep=[b])`.  Proposal P1 pre-inits `last` before the `if`
+with `OpCreateStack(before_stack - b.stack_pos)`, then the actual assignment inside the
+else-branch should overwrite via `OpPutRef`.  The garbage `store_nr=8` reaching `set_int`
+means either `OpPutRef` wrote to the wrong address (leaving the pre-init DbRef in `last`'s
+slot) or the `OpCreateStack` DbRef corrupted adjacent memory.
 
-#### Why it fails: the bridging invariant
+**Next step:** Print or inspect the IR and bytecode for `fn process` to verify:
+- `last`'s pre-claimed `stack_pos`
+- `var_pos = stack.position_after_generate - last.stack_pos` at the `OpPutRef` site inside
+  the else-branch
+- Whether `OpVarRef` for `last` (in `result = last.val`) addresses the correct slot
 
-`stack.position` in `Stack` is not just a bookkeeping value — it is the **source of truth
-for every `VarRef` offset** emitted during code generation.  `OpVarRef(var_pos)` at runtime
-computes `address = State::stack_pos − var_pos`, where `var_pos = stack.position −
-var.stack_pos` at compile time.  This is correct only when `stack.position == State::stack_pos`
-at every code point — the **bridging invariant**.
-
-When the guard fires (e.g., advancing `stack.position` from 62 to 70 to skip over `res`), no
-bytecode is emitted.  The runtime `State::stack_pos` stays at 62.  Every subsequent `VarRef`
-in the value expression for the new variable now uses an offset computed from 70, but the
-runtime reads from `62 − offset` — which is 8 bytes too low.  For `self` at argument
-position 0 that underflows to a garbage address.
-
-#### Observed failures (2026-03-11)
-
-Both `wrap::last` and `wrap::dir` crashed with **SIGSEGV** (invalid memory reference) during
-execution.  `wrap::dir` also produced an index-out-of-bounds panic in `keys.rs`.  These tests
-were previously failing only with a `validate_slots` panic at compile time; the guard changed
-the failure mode from "compile-time panic" to "runtime memory corruption".
-
-#### Conclusion
-
-There is **no way to advance `stack.position` at compile time without simultaneously emitting
-bytecode** that advances the runtime stack pointer to match.  Any guard-only approach
-(without bridging bytecode) is fundamentally broken whenever the value expression reads
-variables.
-
-The only correct fixes are:
-- **`OpAdvanceStack(N)` opcode** — emit a new instruction that bumps `State::stack_pos` by N.
-- **Scope-analysis pre-init (Option A sub-3)** — hoist the `claim` to a safe point BEFORE the
-  if/else, so the value expression is never generated while there is a divergence.
-
-Option A sub-3 is preferred (no new opcode, all changes in `scopes.rs`).  See below.
+**Solved by:** P1 (partially implemented; owned-ref case works, borrowed-ref case crashes)
 
 ---
 
-### Recommendation
+### Issue 2 — "Different definition of Point." in wrap tests
 
-**Implement Option A sub-option 3 directly.**
+**Tests:** `wrap::last`, `wrap::dir` — fail with "Different definition of Point."
 
-Option B was attempted and failed.  Option A sub-3 is the correct solution: it moves the
-slot claim to a structurally safe point so no divergence can arise, fixes both the
-`validate_slots` panic and runtime correctness, and covers all cases including those where the
-conflicting code path is actually executed.
+**Symptom:** A struct named `Point` is registered twice with incompatible types when
+`lib/parser.loft` processes function return type references after a struct definition.
+This is a pre-existing correctness bug in the loft parser library, unrelated to slot
+assignment.  It was previously hidden behind the `validate_slots` panic.
+
+**Status:** Not yet analysed.  Needs its own investigation.
 
 ---
 
-### Option A sub-option 3 — Scope-analysis pre-init (PARTIALLY IMPLEMENTED — 2026-03-11)
+### Issue 3 — Full slot assignment pass not implemented
+
+Steps 3 and 4 of Proposal P2 (the assignment pass and removal of `claim()`) have not been
+implemented.  The current pre-init approach (P1) is a targeted fix; P2 is the correct
+long-term architecture.
+
+**Solved by:** P2
+
+---
+
+### Issue 4 — Dead Option-B helpers in `variables.rs`
+
+`first_def(var_nr)` and `min_safe_claim_pos(check_seq)` were added to `Function` during
+the failed Option B attempt.  They are unused now that Option B was reverted.
+
+**Fix:** Delete them from `src/variables.rs`.
+
+---
+
+## Resolved Issues
+
+### Bug 1 — `13-file.loft` overlapping allocations (fixed 2026-03-10)
+
+Two variables (`b: Buffer` in scope 12, `f: File alias` in scope 5) were both allocated at
+stack position 244.  `b` was still live when `f`'s `PutRef` overwrote slot 244, orphaning
+`b`'s store.  The next `ConvRefFromNull` found `allocations[max].free == false` and panicked.
+
+Fixed by ensuring distinct stack positions for variables with overlapping lifetimes.
+
+---
+
+### Bug 2 — `t_4Code_define` slot conflict for owned references (fixed by P1 for owned refs)
+
+`_elm_1` (DbRef, 12 bytes) was claimed at slot 62 after a `CopyRecord` dropped
+`stack.position` from 86 to 62, overlapping `res: integer` at [66, 70).  `validate_slots`
+detected and panicked.
+
+Fixed by P1: `scopes.rs` now emits `Set(_elm_1, Null)` before the `if`, pre-claiming the
+slot at a safe position before the `CopyRecord` fires.  `validate_slots` no longer panics
+for `t_4Code_define`.
+
+---
+
+### Bug 3 — `OpCreateStack` used variable number instead of stack offset (fixed 2026-03-11)
+
+In `state.rs::generate_set`, the borrowed-Reference/Vector pre-init path emitted:
+
+```rust
+stack.add_op("OpCreateStack", self);
+self.code_add(dep[0]);  // BUG: dep[0] is a variable index, not an offset
+```
+
+`OpCreateStack(pos)` at runtime computes `result.pos = stack_cur.pos + State::stack_pos - pos`,
+so `pos` must be a relative offset, not a variable number.  Fixed to:
+
+```rust
+stack.add_op("OpCreateStack", self);
+let dep_pos = stack.function.stack(dep[0]);
+let before_stack = stack.position - size_of::<DbRef>() as u16;
+self.code_add(before_stack - dep_pos);
+```
+
+Applied to both the Reference/Enum-ref branch and the Vector branch in `generate_set`.
+
+---
+
+## Proposals
+
+### P1 — Scope-analysis pre-init (Option A sub-3)
+
+**Solves:** Bug 2 (owned refs — done), Issue 1 (borrowed refs — incomplete)
+
+**Status:** Partially implemented 2026-03-11.
 
 #### Core idea
 
 `scopes.rs` already pre-emits `Set(dep, Null)` for dependent-type variables before they are
-used (see the `depend` block inside `scan` for `Value::Set`).  Extend the same mechanism to
-**Reference/Vector/Text variables that are first assigned inside an if/else branch**: emit
-`Set(v, Null)` *before* the `Value::If` node, at the enclosing scope where `stack.position`
-is still safely above all live variable slots.
+used.  Extend this to Reference/Vector/Text variables first assigned inside an if/else
+branch: emit `Set(v, Null)` *before* the `Value::If` node, while `stack.position` is still
+safely above all live variable slots.
 
-When codegen later reaches `Set(v, actual_value)` inside the branch, `v` is already claimed
-(pos != u16::MAX).  The assignment takes the **re-assignment path** in `generate_set`, which
-calls `set_var`.  `set_var` generates the value expression at the current (valid)
-`stack.position` and copies the result into `v`'s pre-claimed slot via `OpPutRef`
-— no bridging needed, no divergence possible.
+When codegen reaches `Set(v, actual_value)` inside the branch, `v` is already claimed
+(`pos != u16::MAX`).  The assignment takes the re-assignment path in `generate_set`, which
+calls `set_var`.  `set_var` generates the value at the current (valid) `stack.position` and
+copies the result into `v`'s pre-claimed slot via `OpPutRef` — no bridging needed.
 
 #### Why the pre-init is always at a safe stack position
 
-The pre-init fires before the `Value::If` node is entered.  At that point, the runtime stack
-contains only variables claimed by enclosing scopes plus the result of any preceding
-expressions.  The CopyRecord that would otherwise lower `stack.position` into the danger zone
-lives *inside* the if/else branch — it has not run yet when the pre-init fires.  Therefore
-`stack.position == State::stack_pos` and the `OpConvRefFromNull` (or `OpText`) emitted by the
-pre-init writes at the correct address with no divergence.
+The pre-init fires before the `Value::If` node is entered.  Any `CopyRecord` that would
+lower `stack.position` into the danger zone lives *inside* the if/else branch — it has not
+run yet.  Therefore `stack.position == State::stack_pos` and the pre-init's
+`OpConvRefFromNull`/`OpText` writes at the correct address.
 
-#### What is implemented
+#### Implementation
 
-##### `needs_pre_init` predicate (implemented in `src/scopes.rs`)
-
-All Reference, Vector, Enum-ref, and Text types are included regardless of dep:
+**`needs_pre_init` predicate** (`src/scopes.rs`):
 
 ```rust
 fn needs_pre_init(tp: &Type) -> bool {
@@ -248,199 +160,113 @@ fn needs_pre_init(tp: &Type) -> bool {
 }
 ```
 
-Borrowed variables (non-empty `dep`) are included because they occupy 12 bytes on the stack
-and can cause the same slot overlap as owned variables.  A separate `deps_ready` check in
-`find_first_ref_vars` ensures we only pre-init a borrowed variable when all its deps are
-already in `var_scope` (otherwise the `OpCreateStack` emitted for a borrowed-Null pre-init
-would reference an uninitialised slot).
+All Reference, Vector, Enum-ref, and Text types are included regardless of `dep`, because
+all occupy 12 bytes on the stack and can cause the same slot overlap.  A `deps_ready`
+check in `find_first_ref_vars` gates borrowed variables on all deps already being in
+`var_scope` (otherwise `OpCreateStack` would reference an uninitialised slot).
 
-##### `find_first_ref_vars` helper on `Scopes` (implemented in `src/scopes.rs`)
+**`find_first_ref_vars` method** (`src/scopes.rs`, inside `impl Scopes`):
 
 Recursively walks a `Value` subtree and collects variables that:
 - appear as the target of `Value::Set(v, ...)`,
 - are not yet in `var_scope`, and
 - satisfy `needs_pre_init` and `deps_ready`.
 
-Recurses into nested `If` and `Block` but NOT `Loop`.
+Recurses into nested `If` and `Block` but NOT `Loop` (loop variables have per-iteration
+scope management and must not be pre-inited at the enclosing scope).
 
-##### Modified `scan` arm for `Value::If` (implemented in `src/scopes.rs`)
+**Modified `scan` arm for `Value::If`** (`src/scopes.rs`):
 
-Before scanning the branches, `find_first_ref_vars` collects pre-init candidates.
-Their var_scope entries are inserted at the current scope, then the branches are scanned.
-Pre-init `Set(v, Null)` nodes are prepended before the scanned if in a `Value::Insert`.
+1. Call `find_first_ref_vars` on both branches to collect pre-init candidates.
+2. Register each candidate in `var_scope` at the current scope.
+3. Scan the if normally (branches see the candidates as already assigned).
+4. Prepend `Set(v, Null/empty)` for each candidate before the scanned if in a
+   `Value::Insert`.
 
-##### Bug fix in `generate_set` for borrowed references (implemented in `src/state.rs`)
+**Pre-init `Set(v, Null)` codegen** (`src/state.rs::generate_set`):
 
-The original `generate_set` code for a borrowed Reference/Vector with `value == Null` was:
+- Owned Reference/Enum-ref → `OpConvRefFromNull` (pushes a null DbRef)
+- Borrowed Reference/Enum-ref → `OpCreateStack(before_stack - dep_pos)`
+- Owned Vector → `OpConvRefFromNull` + `OpDatabase` + `OpVarRef` + length init
+- Borrowed Vector → `OpCreateStack(before_stack - dep_pos)`
+- Text → `OpText` (pushes empty string)
 
-```rust
-stack.add_op("OpCreateStack", self);
-self.code_add(dep[0]);  // BUG: dep[0] is a variable NUMBER, not a stack offset
-```
-
-`OpCreateStack(pos)` at runtime computes `result.pos = stack_cur.pos + State::stack_pos - pos`.
-So `pos` must be `(stack.position before the op) - dep[0].stack_pos`, not the variable number.
-Using the variable number (e.g. 0 for `self`) instead of the correct offset produced a
-self-referential or garbage DbRef.
-
-Fixed in both the Reference/Enum-ref branch and the Vector branch:
-
-```rust
-stack.add_op("OpCreateStack", self);
-let dep_pos = stack.function.stack(dep[0]);
-let before_stack = stack.position - size_of::<DbRef>() as u16;
-self.code_add(before_stack - dep_pos);
-```
-
-This creates a DbRef pointing into the dep variable's stack slot, which is a valid null-state
-for the borrowed variable and is immediately overwritten by `OpPutRef` in the re-assignment.
-
-#### Current status (as of 2026-03-11): owned references pass, borrowed references fail at runtime
-
-**`validate_slots` no longer panics** — the slot conflict for `t_4Code_define` is resolved
-for the cases tested.  The `enums::polymorph` regression test still passes.
-
-However, **borrowed-reference pre-inits cause a runtime crash** in the
-`long_lived_int_and_copy_record_followed_by_ref` test
-(`database.rs:1462`: index out of bounds, store_nr=8 on a garbage DbRef).
-
-The failing test pattern:
-
-```loft
-fn process(b: Bag) -> integer {
-    result = 0;
-    if b.items[0].val > 0 {
-        result = b.items[0].val;
-    } else {
-        b.items += [b.extra];     // ← CopyRecord inside else-branch
-        last = b.items[b.items.len() - 1];   // ← borrowed ref, first assigned here
-        result = last.val;
-    };
-    result
-}
-```
-
-`last` is `Type::Reference(Item, dep=[b])`.  The pre-init emits `Set(last, Null)` before the
-`if`, which generates `OpCreateStack(before_stack - b.stack_pos)` to initialise `last`'s
-pre-claimed slot with a DbRef pointing to `b`'s stack position.  The actual assignment
-(`last = b.items[...]`) is supposed to overwrite this via `OpPutRef`.
-
-**Root cause (still under investigation):** The garbage `store_nr=8` in the DbRef reaching
-`set_int` (backtrace: `fill.rs::set_int → database.rs::store_mut`) indicates that either:
-
-1. `OpPutRef` is computing the wrong `var_pos` and writing the real DbRef to the wrong slot,
-   leaving the pre-init DbRef in `last`'s slot when `last.val` is read; OR
-2. The `OpCreateStack`-produced pre-init DbRef itself is somehow corrupting adjacent memory
-   and being read as the result of `last.val`.
-
-The key difference from `t_4Code_define` (which no longer panics): in `t_4Code_define`,
-`_elm_1` is a borrowed ref that is only read inside the false-branch AFTER its actual
-assignment via `OpPutRef`.  In the `long_lived` test, `result = last.val` reads `last` and
-then writes to `result` (a different integer variable) via `set_int`, which is where the bad
-DbRef surfaces.
-
-#### Next investigation step
-
-Print or inspect the IR and bytecode for `fn process` in the `long_lived` test (by enabling
-debug output in the test harness or adding a temporary `validate_slots` assert) to confirm:
-
-- Where `last` is claimed (pre-claimed slot position).
-- That `OpPutRef` computes `var_pos = stack.position_after_generate - last.stack_pos` correctly
-  at the point of the re-assignment inside the else-branch.
-- Whether `OpVarRef` for `last` (in `result = last.val`) correctly addresses the pre-claimed
-  slot.
-
-If the slot positions and var_pos values are correct, the problem must be in the runtime
-behaviour of `OpCreateStack` producing a DbRef that somehow aliases or overwrites adjacent
-data before `OpPutRef` fires.
-
-#### Owned-reference case (WORKING)
-
-The `t_4Code_define` slot conflict is resolved: `validate_slots` no longer panics.
-`_elm_1` and `_elm_2` (both borrowed refs to `self`) get correct pre-inits.
-All four `slot_assign` non-ignored tests pass.  `enums::polymorph` still passes.
-
-The `wrap::last` and `wrap::dir` tests still fail, but now with "Different definition of
-Point." — a **pre-existing correctness bug** in `lib/parser.loft`'s handling of type
-references in function signatures.  This bug was always present but hidden behind the
-`validate_slots` panic.  It is a separate issue from the slot-assignment fix.
-
-#### Files changed so far
+#### Files changed
 
 | File | Change |
 |---|---|
-| `src/scopes.rs` | Added `needs_pre_init` free function |
-| `src/scopes.rs` | Added `find_first_ref_vars` method on `Scopes` |
-| `src/scopes.rs` | Modified `scan` arm for `Value::If` to emit pre-inits |
-| `src/state.rs` | Fixed `OpCreateStack` offset for borrowed Reference and Vector types |
-| `src/variables.rs` | Added `first_def()` and `min_safe_claim_pos()` helpers (from Option B attempt — **removed 2026-03-11**, confirmed unused) |
+| `src/scopes.rs` | `needs_pre_init` free function |
+| `src/scopes.rs` | `find_first_ref_vars` method |
+| `src/scopes.rs` | `scan` arm for `Value::If` emits pre-inits |
+| `src/state.rs` | `OpCreateStack` offset fixed (Bug 3 above) |
 
-#### Testing checklist
+#### Test results (2026-03-11)
 
 ```
-cargo test --test wrap -- last dir          # still FAILS (Different definition of Point — separate bug)
-cargo test --test enums -- polymorph        # PASSES ✓
-cargo test --test slot_assign               # 4 pass, 1 ignored (long_lived still fails at runtime)
-cargo test --test slot_assign -- --include-ignored  # long_lived FAILS (store_nr=8 crash)
+cargo test --test enums -- polymorph                # PASSES ✓
+cargo test --test slot_assign                       # 4 pass, 1 ignored
+cargo test --test slot_assign -- --include-ignored  # long_lived FAILS (Issue 1)
+cargo test --test wrap -- last dir                  # FAILS (Issue 2, separate bug)
 ```
 
 ---
 
-## Full separation plan (Option A — preferred long-term)
+### P2 — Full slot assignment pass (Option A)
 
-### Proposed data flow
+**Solves:** Issue 3 (long-term correct architecture)
+
+**Status:** Planned; Steps 1 and 2 done, Steps 3–5 not yet implemented.
+
+#### Core idea
+
+Compute all stack slot positions in a dedicated pass *before* code generation, using the
+live intervals produced by `compute_intervals`.  Code generation in `state.rs` reads
+pre-assigned `stack_pos` instead of calling `claim()`.
+
+The bridging problem is avoided because slots are assigned globally — there is no longer a
+moment where `stack.position` drops below a live variable's slot and then a new claim is
+made at the wrong position.
+
+#### Data flow
 
 ```
 Parser (two passes)
   └─ variables.rs: add_variable(), copy_variable()   ← names, types, scopes (unchanged)
-       scope_analysis (scopes.rs)                    ← scope IDs, OpFreeText/OpFreeRef (unchanged)
+       scope_analysis (scopes.rs)                    ← scope IDs, OpFreeText/OpFreeRef
             compute_intervals (variables.rs)         ← first_def/last_use per variable [DONE]
-                 assignment pass (NEW — variables.rs)← assign stack_pos from intervals
-                      [debug] validate_slots (NEW)   ← assert no overlapping live slots [DONE]
-                           byte_code (state.rs)      ← reads stack_pos, does NOT call claim()
+                 assign_slots (variables.rs)         ← assign stack_pos from intervals [TODO]
+                      [debug] validate_slots         ← assert no overlapping live slots [DONE]
+                           byte_code (state.rs)      ← reads stack_pos, no claim() [TODO]
                                 execute()
 ```
-
-### Key concepts
-
-**Live interval** — For variable `v`, `[first_def, last_use]` measured in instruction
-sequence numbers (monotonically increasing counter assigned to each `Value` node).
-
-- `first_def`: sequence number of the `Value::Set(v, …)` that first defines `v`.
-- `last_use`:  sequence number of the last `Value::Var(v)` (or implicit `OpFreeText`/
-  `OpFreeRef` use) for `v`.
-
-**Overlapping lifetimes**: `u.first_def <= v.last_use && v.first_def <= u.last_use`.
-
-### Implementation steps
 
 #### Step 1 — `compute_intervals` (DONE — `src/variables.rs`)
 
 `compute_intervals(val, function, free_text_nr, free_ref_nr, seq)` walks the IR in
-execution order, recording `first_def` and `last_use` on each `Variable`.  Currently called
-from `scopes::check` after the scope pass.
+execution order, recording `first_def` and `last_use` on each `Variable`.  Called from
+`scopes::check` after the scope pass.
+
+**Key concepts:**
+
+- `first_def`: sequence number of the `Value::Set(v, …)` that first defines `v`.
+- `last_use`: sequence number of the last `Value::Var(v)` (or implicit `OpFreeText`/
+  `OpFreeRef`) for `v`.
+- Overlapping lifetimes: `u.first_def <= v.last_use && v.first_def <= u.last_use`.
 
 #### Step 2 — `validate_slots` (DONE — `src/variables.rs`)
 
 `validate_slots(function, data, def_nr)` (debug-only) checks every variable pair for
-simultaneous live-interval and slot overlap. Logs a full diagnostic (variable table + IR
-dump) then panics. Uses the extracted `find_conflict(vars) → Option<(i, u_end, j, v_end)>`
-helper for testability.
+simultaneous live-interval overlap and slot overlap.  Logs a full diagnostic then panics.
+Uses the extracted `find_conflict(vars)` helper for testability.
 
-Unit tests in `src/variables.rs` (`#[cfg(test)]`) cover:
-- Non-overlapping intervals (no conflict)
-- Non-overlapping slots (no conflict)
-- Integer inside wider DbRef slot (conflict detected)
-- Various edge cases
+Unit tests in `src/variables.rs` cover non-overlapping intervals, non-overlapping slots,
+integer inside wider DbRef slot, and edge cases.
 
-Integration tests in `tests/slot_assign.rs` cover the three patterns:
-- Long-lived int accumulator with loop DbRef element
-- DbRef before loop + loop element (both DbRef-sized, distinct slots)
-- Nested loops (outer/inner loop elements both alive simultaneously)
+Integration tests in `tests/slot_assign.rs` (5 tests; 1 still ignored — Issue 1).
 
-#### Step 3 — Assignment pass (TODO)
+#### Step 3 — `assign_slots` (TODO — `src/variables.rs`)
 
-Add `assign_slots(vars: &mut [Variable], arguments_size: u16)` to `src/variables.rs`.
+Add `assign_slots(vars: &mut [Variable], arguments_size: u16)`.
 
 Algorithm (linear scan):
 
@@ -473,77 +299,90 @@ for each variable v in sorted order:
     active.push((v.last_use, v.stack_pos, size(v)))
 ```
 
+Skip variables with `argument == true` — they already have `stack_pos` set by argument
+layout.  `OpFreeText`/`OpFreeRef` insertion by `scopes.rs` must happen before this pass
+runs, so those implicit last-uses are visible to liveness.
+
 #### Step 4 — Remove `claim()` from `state.rs` (TODO)
 
-After the assignment pass, `stack_pos` is pre-assigned. `generate_set` should read it
-directly instead of calling `claim`.
+After the assignment pass, `generate_set` reads the pre-assigned `stack_pos` instead of
+calling `claim`.  `stack.position` still needs advancing so subsequent offset computations
+are correct:
 
-**Important:** `stack.position` in `state.rs` (the compile-time stack pointer) still needs
-to be advanced correctly so that relative offsets for all subsequent ops are right. The
-cleanest approach: set `stack.position = max(stack.position, v.stack_pos + size(v))` after
-reading the pre-assigned slot, rather than calling `claim`.
+```rust
+// In generate_set, when pos != u16::MAX:
+stack.position = stack.position.max(pos + var_size);
+```
 
 #### Step 5 — Remove `copy_variable` (deferred)
 
-After Steps 3–4 are complete and `validate_slots` is green across all tests, `copy_variable`
-can be removed. Variables re-used across sibling scopes will simply have non-overlapping
-intervals and can safely share a slot (or not) based on the interval check.
+After Steps 3–4 are complete and `validate_slots` is green, `copy_variable` can be
+removed.  Variables re-used across sibling scopes will simply have non-overlapping
+intervals and can share or not share slots based on the interval check.
+
+#### Invariants to preserve
+
+- Arguments occupy positions 0 … arguments_size−1; skip them in `assign_slots`.
+- `OpFreeText`/`OpFreeRef` insertion happens before `assign_slots` runs.
+- The runtime stack pointer (`State::stack_pos`) is unchanged by the pass; it still
+  advances and retreats during block execution via `OpFreeStack`.
+- After `assign_slots`, `state.rs::generate_set` must advance `stack.position` past each
+  variable's slot so subsequent ops compute correct relative offsets.
 
 ---
 
-## Current state (as of 2026-03-11)
+### P3 — Live-interval guard in `generate_set` (ABANDONED)
+
+**Status:** Attempted 2026-03-11, reverted.  Do not implement.
+
+The idea was to advance `stack.position` past all live variables before calling `claim()`:
+
+```rust
+let my_first_def = stack.function.first_def(v);
+if my_first_def != u32::MAX {
+    let min_pos = stack.function.min_safe_claim_pos(my_first_def);
+    if stack.position < min_pos {
+        stack.position = min_pos;
+    }
+}
+```
+
+#### Why it fails: the bridging invariant
+
+`stack.position` is the source of truth for every `VarRef` offset emitted during code
+generation.  `OpVarRef(var_pos)` at runtime computes `address = State::stack_pos − var_pos`,
+where `var_pos = stack.position − var.stack_pos` at compile time.  This is correct only
+when `stack.position == State::stack_pos` at every code point.
+
+When the guard fires (advancing compile-time `stack.position` from 62 to 70 without emitting
+bytecode), the runtime `State::stack_pos` stays at 62.  Every subsequent `VarRef` in the
+value expression uses an offset computed from 70 but the runtime reads from
+`62 − offset` — 8 bytes too low.  For `self` at argument position 0 this underflows to a
+garbage address.
+
+Observed failures: both `wrap::last` and `wrap::dir` crashed with SIGSEGV.  The guard
+changed the failure mode from "compile-time panic" to "runtime memory corruption".
+
+#### Conclusion
+
+There is no way to advance `stack.position` at compile time without simultaneously emitting
+bytecode that advances the runtime stack pointer.  P1 and P2 are the only correct fixes.
+
+---
+
+## Current status (2026-03-11)
 
 | Step | Status |
 |---|---|
-| `compute_intervals` | **Done** (called from `scopes::check`) |
-| `validate_slots` + `find_conflict` | **Done** (debug-only, panics with full diagnostics) |
-| Unit tests for `find_conflict` | **Done** (`src/variables.rs` test module) |
-| Integration tests for slot conflicts | **Done** (`tests/slot_assign.rs`, 5 tests; 1 still ignored) |
-| Bug 2 (`t_4Code_define`) root cause identified | **Done** |
-| Option B guard (compile-time only) | **Attempted, reverted** — breaks bridging invariant |
-| Option A sub-3 pre-init for owned refs | **Done** — `validate_slots` no longer panics for `t_4Code_define` |
-| Option A sub-3 pre-init for borrowed refs | **Partially done** — runtime crash still occurs (store_nr=8); next step: inspect IR/bytecode for `fn process` in `long_lived` test to confirm `OpPutRef` var_pos and `OpVarRef` address correctness, then determine whether the bug is in offset computation or in `OpCreateStack` aliasing adjacent memory |
-| `OpCreateStack` offset bug in `state.rs` | **Fixed** — now emits correct `before_stack - dep_pos` |
-| Assignment pass | **TODO** |
-| Remove `claim()` from `state.rs` | **TODO** |
-| Remove `copy_variable` | **Deferred** |
-
-The naive `min_var_position()` guard in `generate_set` was attempted but **reverted**
-because it breaks the `polymorph` enums test (it advanced the compile-time `stack.position`
-without a corresponding bytecode instruction to advance the runtime pointer, causing all
-post-loop variable accesses to use wrong offsets).
-
----
-
-## Invariants to preserve
-
-- **Arguments** are allocated first (positions 0 … arguments_size−1) before any locals.
-  The assignment pass must skip variables with `argument == true` (they already have
-  `stack_pos` set by the existing argument-layout logic).
-- **`OpFreeText` / `OpFreeRef` insertion** by `scopes.rs` must happen *before*
-  `assign_slots()` runs, because those ops introduce implicit last-uses that must be
-  visible to liveness.
-- **Dependent types** (`Type::Text(deps)`, `Type::Reference(_, deps)`, etc.) carry
-  borrow information; the assignment pass must not place a borrowed variable in a slot
-  that is freed before the borrow ends.  For the initial implementation, treating all
-  ref/text types as non-reusable is sufficient.
-- The **runtime stack pointer** (`State::stack_pos`) is unaffected by the assignment pass;
-  it still advances and retreats during `Value::Block` execution via `OpFreeStack`.
-  The compile-time `Variable::stack_pos` only determines where within the frame a variable
-  lives.
-- After the assignment pass sets all `stack_pos` values, `state.rs::generate_set` must
-  still advance `stack.position` past each variable's slot so that subsequent ops compute
-  correct relative offsets. The simplest way: `stack.position = max(stack.position,
-  var.stack_pos + var_size)` when processing a variable whose slot is already set.
-
----
-
-## Files affected
-
-| File | Change |
-|------|--------|
-| `src/variables.rs` | `first_def`/`last_use` on `Variable`; `compute_intervals()`; `find_conflict()`; `validate_slots()`; `min_var_position()` (helper); unit tests |
-| `src/scopes.rs` | Calls `compute_intervals()` at end of `check()` |
-| `src/state.rs` | Calls `validate_slots()` after `def_code()`; future: remove `claim()` |
-| `src/stack.rs` | `Stack` struct; `position` field; `claim()` via `Function` |
-| `tests/slot_assign.rs` | 5 integration tests (4 pass, 1 ignored); ignore reason updated 2026-03-11 to reflect current failure mode (runtime crash, not compile-time panic) |
+| `compute_intervals` | **Done** |
+| `validate_slots` + `find_conflict` | **Done** (debug-only) |
+| Unit tests for `find_conflict` | **Done** (`src/variables.rs`) |
+| Integration tests (`tests/slot_assign.rs`) | **Done** (5 tests; 1 ignored) |
+| P1: pre-init for owned refs | **Done** — `validate_slots` no longer panics for `t_4Code_define` |
+| P1: pre-init for borrowed refs | **Partial** — runtime crash (Issue 1) |
+| Bug 3: `OpCreateStack` offset | **Fixed** |
+| P2: `assign_slots` | **TODO** |
+| P2: remove `claim()` | **TODO** |
+| P2: remove `copy_variable` | **Deferred** |
+| Issue 2: "Different definition of Point." | **Open** (separate bug) |
+| Issue 4: dead Option-B helpers | **Open** (delete from `variables.rs`) |

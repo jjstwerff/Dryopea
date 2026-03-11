@@ -12,9 +12,8 @@ Cleanup the ASSIGNMENT.md document:
 - add the proposals to the issues that they solve.
 - then create a section per proposal with their designs.
 
-Is there a reasonable way to make the logging in /tests/code/*.txt more to the point and useful, by for example adding filters about what to output to the compiler. Propose filters, even for things that are not yet part of this logging.q
-
-Implement all 7 logging filters for tests/code/*.txt with presets and documentation:
+Write way to make the logging in /tests/code/*.txt more to the point and useful, by adding filters about what to output to the compiler.
+Implement these 7 logging filters for tests/code/*.txt with presets and documentation:
 1. Function name filter (`show_functions: Option<Vec<String>>`)
 2. Execution opcode filter (`trace_opcodes: Option<Vec<String>>`)
 3. Execution tail filter/ring buffer (`trace_tail: Option<usize>`) with `catch_unwind` panic flushing
@@ -27,35 +26,35 @@ Env var: `LOFT_LOG` to select preset at test time
 Files to create/modify: `src/log_config.rs` (new), `src/lib.rs` (add module), `src/state.rs`, `src/interpreter.rs`, `tests/testing.rs`
 
 The designed `LogConfig` struct:
-        ```rust
-        pub struct LogPhase {
-            pub ir: bool,
-            pub bytecode: bool,
-            pub execution: bool,
-        }
+```rust
+pub struct LogPhase {
+    pub ir: bool,
+    pub bytecode: bool,
+    pub execution: bool,
+}
 
-        pub struct LogConfig {
-            pub phases: LogPhase,
-            pub show_functions: Option<Vec<String>>,
-            pub trace_opcodes: Option<Vec<String>>,
-            pub trace_tail: Option<usize>,
-            pub annotate_slots: bool,
-            pub snapshot_opcodes: Option<Vec<String>>,
-            pub snapshot_window: usize,
-            pub check_bridging: bool,
-        }
-        ```
+pub struct LogConfig {
+    pub phases: LogPhase,
+    pub show_functions: Option<Vec<String>>,
+    pub trace_opcodes: Option<Vec<String>>,
+    pub trace_tail: Option<usize>,
+    pub annotate_slots: bool,
+    pub snapshot_opcodes: Option<Vec<String>>,
+    pub snapshot_window: usize,
+    pub check_bridging: bool,
+}
+```
 
-        Key implementation decisions made during planning:
-        - `LogConfig` goes in new `src/log_config.rs`, exported via `src/lib.rs`
-        - `log_step` signature becomes: `fn log_step(&mut self, log: &mut dyn Write, op: u8, code: u32, d_nr: u32, frame_offset: i64, config: &LogConfig, data: &Data)`
-        - `execute_log` signature becomes: `pub fn execute_log(&mut self, log: &mut dyn Write, name: &str, config: &LogConfig, data: &Data)`
-        - `show_code` signature becomes: `pub fn show_code(writer: &mut dyn Write, state: &mut State, data: &mut Data, config: &LogConfig)`
-        - Tail buffer uses `VecDeque<Vec<u8>>` with `std::panic::catch_unwind(AssertUnwindSafe(...))`
-        - Bridging check normalises by `frame_offset = runtime_initial - compile_initial` at function entry
-        - `current_d_nr` helper finds function containing current code_pos by scanning definitions
-        - Snapshot reads bytes from stack via `self.database.store(&self.stack_cur).addr::<u8>(rec, pos + offset)`
-        - `LOFT_LOG` env var in testing.rs selects preset: `full`, `static`, `minimal`, `ref_debug`, `bridging`, `crash_tail`, `fn:<name>`
+Key implementation decisions:
+- `LogConfig` goes in new `src/log_config.rs`, exported via `src/lib.rs`
+- `log_step` signature becomes: `fn log_step(&mut self, log: &mut dyn Write, op: u8, code: u32, d_nr: u32, frame_offset: i64, config: &LogConfig, data: &Data)`
+- `execute_log` signature becomes: `pub fn execute_log(&mut self, log: &mut dyn Write, name: &str, config: &LogConfig, data: &Data)`
+- `show_code` signature becomes: `pub fn show_code(writer: &mut dyn Write, state: &mut State, data: &mut Data, config: &LogConfig)`
+- Tail buffer uses `VecDeque<Vec<u8>>` with `std::panic::catch_unwind(AssertUnwindSafe(...))`
+- Bridging check normalises by `frame_offset = runtime_initial - compile_initial` at function entry
+- `current_d_nr` helper finds function containing current code_pos by scanning definitions
+- Snapshot reads bytes from stack via `self.database.store(&self.stack_cur).addr::<u8>(rec, pos + offset)`
+- `LOFT_LOG` env var in testing.rs selects preset: `full`, `static`, `minimal`, `ref_debug`, `bridging`, `crash_tail`, `fn:<name>`
 
 
 
