@@ -8,6 +8,8 @@ use dryopea::data::Data;
 use dryopea::interpreter::byte_code;
 #[cfg(debug_assertions)]
 use dryopea::interpreter::show_code;
+#[cfg(debug_assertions)]
+use dryopea::log_config::LogConfig;
 use dryopea::parser::Parser;
 use dryopea::scopes;
 use dryopea::state::State;
@@ -44,7 +46,7 @@ fn last() -> std::io::Result<()> {
     run_test(PathBuf::from("tests/suite/16-parser.loft"), false)
 }
 
-/// Debug run of `13-file.loft` with full execution trace written to
+/// Debug the run of `13-file.loft` with a full execution trace written to
 /// `tests/code/13-file.loft.txt`.  Use this to diagnose store-allocation bugs.
 #[test]
 fn file_debug() -> std::io::Result<()> {
@@ -78,10 +80,12 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
     let mut state = State::new(p.database);
     byte_code(&mut state, &mut p.data);
     #[cfg(debug_assertions)]
-    let mut w = dump_results(entry, &mut p.data, types, &mut state)?;
+    let config = LogConfig::from_env();
+    #[cfg(debug_assertions)]
+    let mut w = dump_results(entry, &mut p.data, types, &mut state, &config)?;
     if debug {
         #[cfg(debug_assertions)]
-        state.execute_log(&mut w, "main", &p.data)?;
+        state.execute_log(&mut w, "main", &config, &p.data)?;
         #[cfg(not(debug_assertions))]
         state.execute("main", &p.data);
     } else {
@@ -92,7 +96,7 @@ fn run_test(entry: PathBuf, debug: bool) -> std::io::Result<()> {
 
 /// Write a debug snapshot of a compiled test to `tests/code/<filename>.txt`.
 ///
-/// Writes every type definition introduced by the test file (i.e. types beyond
+/// Writes every type definition introduced by the test file (i.e., types beyond
 /// those already present in the default library), followed by the full bytecode
 /// listing produced by `show_code`.  Returns the open file so the caller can
 /// append an execution trace if needed.
@@ -102,6 +106,7 @@ fn dump_results(
     data: &mut Data,
     types: usize,
     state: &mut State,
+    config: &LogConfig,
 ) -> Result<File, Error> {
     let filename = entry.file_name().unwrap_or_default().to_string_lossy();
     let mut w = File::create(format!("tests/code/{filename}.txt"))?;
@@ -112,6 +117,6 @@ fn dump_results(
             state.database.show_type(tp as u16, true)
         )?;
     }
-    show_code(&mut w, state, data)?;
+    show_code(&mut w, state, data, config)?;
     Ok(w)
 }

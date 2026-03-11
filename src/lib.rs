@@ -29,6 +29,7 @@ pub mod fill;
 pub mod state;
 
 pub mod interpreter;
+pub mod log_config;
 mod stack;
 
 pub mod documentation;

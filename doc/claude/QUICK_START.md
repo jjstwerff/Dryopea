@@ -91,5 +91,21 @@ default/03_text.loft    — text utilities
 | `STDLIB.md` | Standard library API reference |
 | `INTERNALS.md` | calc.rs, stack.rs, create.rs, external.rs, text.rs, png_store.rs, main.rs, radix_tree.rs |
 | `DOC.md` | HTML documentation generation (gendoc.rs + documentation.rs) |
-| `TESTING.md` | Test framework |
+| `TESTING.md` | Test framework + `LogConfig` debug-logging presets and `LOFT_LOG` env var |
 | `LOFT.md` | Loft language reference |
+
+## Debug logging — `LOFT_LOG` quick reference
+
+Set this env var before `cargo test` to control what appears in `tests/code/*.txt`:
+
+| Value | What you get |
+|---|---|
+| *(unset)* or `full` | IR + bytecode + execution, slot annotations (default) |
+| `static` | IR + bytecode only — fastest for codegen debugging |
+| `minimal` | Execution trace for `test` only — cleanest for runtime bugs |
+| `ref_debug` | Full + stack snapshots after every Ref/CreateStack op |
+| `bridging` | Execution + bridging-invariant warnings |
+| `crash_tail:N` | Last N execution lines; flushed on panic |
+| `fn:<name>` | Only the named function |
+
+See `TESTING.md § LogConfig` and `src/log_config.rs` for the full API.

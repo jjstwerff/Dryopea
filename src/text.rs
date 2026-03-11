@@ -39,6 +39,8 @@ pub const FUNCTIONS: &[(&str, Call)] = &[
     ("n_directory", n_directory),
     ("n_user_directory", n_user_directory),
     ("n_program_directory", n_program_directory),
+    ("n_get_store_lock", n_get_store_lock),
+    ("n_set_store_lock", n_set_store_lock),
 ];
 
 pub fn init(state: &mut State) {
@@ -312,4 +314,24 @@ fn n_program_directory(stores: &mut Stores, stack: &mut DbRef) {
     let v_v = stores.store_mut(&v_v).addr_mut::<String>(v_v.rec, v_v.pos);
     let new_value = { Stores::os_executable(v_v) };
     stores.put(stack, new_value);
+}
+
+/// Read the lock state of the store that owns the record pointed to by `r`.
+fn n_get_store_lock(stores: &mut Stores, stack: &mut DbRef) {
+    let r = *stores.get::<DbRef>(stack);
+    let locked = stores.is_store_locked(&r);
+    stores.put(stack, locked);
+}
+
+/// Lock (or unlock) the store that owns the record pointed to by `r`.
+/// From loft, only `d#lock = true` is accepted by the parser; `false` is only
+/// reachable here if the variable is not marked `const`.
+fn n_set_store_lock(stores: &mut Stores, stack: &mut DbRef) {
+    let locked = *stores.get::<bool>(stack);
+    let r = *stores.get::<DbRef>(stack);
+    if locked {
+        stores.lock_store(&r);
+    } else {
+        stores.unlock_store(&r);
+    }
 }

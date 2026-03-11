@@ -845,3 +845,12 @@ fn OpAppendStackCharacter(pos: const u16, v1: character);
 
 // Clear a stack text variable.
 fn OpClearStackText(pos: const u16);
+
+// Read the lock state of the store containing a reference.
+// Returns true when the store is locked against writes.
+fn get_store_lock(r: reference) -> boolean;
+
+// Lock the store containing a reference, preventing further writes.
+// Only `true` is accepted from loft code via d#lock = true.
+// A non-const variable may also use d#lock = false to unlock.
+fn set_store_lock(r: reference, locked: boolean);

@@ -7,17 +7,19 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <span class="cur">Enums</span> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
+<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <span class="cur">Enums</span> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
 <h1>Enums</h1>
 <article>
 <p>Enums: plain value enums with ordering and text conversion; struct enums with field access and polymorphic dispatch.</p>
 <p>Enum values can be compared, ordered, and converted to/from integer and text.</p>
 <pre><code><span class="kw">enum</span> <span class="en">Direction</span> { <span class="en">North</span>, <span class="en">East</span>, <span class="en">South</span>, <span class="en">West</span> }</code></pre>
+<h2 id="struct-enums">Struct Enums</h2>
 <p>An enum variant can carry data as named fields, making it a 'struct enum'. Each variant is its own type and can have its own methods.</p>
 <pre><code><span class="kw">enum</span> <span class="en">Shape</span> {
     <span class="en">Circle</span> { radius: <span class="ty"><a href="stdlib-types.html">float</a></span> },
     <span class="en">Rect</span> { width: <span class="ty"><a href="stdlib-types.html">float</a></span>, height: <span class="ty"><a href="stdlib-types.html">float</a></span> }
 }</code></pre>
+<h2 id="polymorphic-dispatch">Polymorphic Dispatch</h2>
 <p>Polymorphic dispatch: define the same function name for each variant. The call site picks the right version based on the runtime type.</p>
 <pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Circle</span>) -&gt; <span class="ty"><a href="stdlib-types.html">float</a></span> {
     <span class="en"><a href="stdlib-math.html">PI</a></span> * <span class="fn-call"><a href="stdlib-math.html">pow</a></span>(self.radius, <span class="nm">2</span>)
@@ -43,8 +45,9 @@
 <pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">round</a></span>(c.<span class="fn-call">area</span>() * <span class="nm">1000</span>) == <span class="bi"><a href="stdlib-math.html">round</a></span>(<span class="en"><a href="stdlib-math.html">PI</a></span> * <span class="nm">1000</span>), <span class="st">"Circle area = PI*r^2"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(r.<span class="fn-call">area</span>() == <span class="nm">20.0</span>, <span class="st">"Rect area = width*height"</span>);</code></pre>
 <p>Plain enums can be formatted to their variant name.</p>
-<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{d}"</span> == <span class="st">"East"</span>, <span class="st">"Format plain enum"</span>);
-}</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{d}"</span> == <span class="st">"East"</span>, <span class="st">"Format plain enum"</span>);</code></pre>
+<p>Limitation: polymorphic methods that return text and use format strings to access fields ('fn describe(self: Circle) -&gt; text { "r={self.radius}" }') cause a runtime crash when defined on multiple struct-enum variants. Workaround: return a scalar value and build the text in the caller, or use a single non-polymorphic function that dispatches on the enum variant.</p>
+<pre><code>}</code></pre>
 
   </article>
 <script src="search-index.js"></script>

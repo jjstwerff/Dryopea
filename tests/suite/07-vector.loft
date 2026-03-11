@@ -44,7 +44,12 @@ fn main() {
     }
     assert(c == 8421, "Reverse sub-vector iteration");
 
-    // Vectors are passed by reference to functions; changes are visible to the caller.
     // A vector of structs can be created with a repeated element using '; count'.
     // (See 08-struct.loft for struct syntax.)
+
+    // Limitation: appending to a vector inside a '&' reference function (v += [item])
+    // does NOT propagate back to the caller. Only field-level mutations (v[i].field = x)
+    // are visible after the call. To return a larger vector, use a return value instead:
+    //   fn with_extra(v: vector<integer>, x: integer) -> vector<integer> { v += [x]; v }
+    //   items = with_extra(items, 99);
 }

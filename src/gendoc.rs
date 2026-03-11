@@ -5,7 +5,8 @@
 // Run with: cargo run --bin gendoc
 
 use dryopea::documentation::{
-    StdlibSection, build_nav, gather_topic_info, generate_docs, page_html,
+    StdlibSection, TopicSource, build_nav, gather_topic_info, generate_docs, get_topic_sources,
+    page_html, render_topic_body, render_topic_typst,
 };
 use std::collections::HashMap;
 use std::fs;
@@ -65,6 +66,10 @@ fn main() -> std::io::Result<()> {
 
     generate_stdlib_toc(&sections, &stdlib_info, &topic_info)?;
     generate_search_index(&sections, &stdlib_info)?;
+
+    let topic_sources = get_topic_sources();
+    generate_print_page(&topic_sources, &sections, &stdlib_info, &link_map)?;
+    generate_typst(&topic_sources, &sections)?;
 
     println!("Generated {} stdlib section pages", sections.len());
     Ok(())
@@ -431,4 +436,191 @@ fn sig_kind(sig: &str) -> &'static str {
     } else {
         "const"
     }
+}
+
+fn typst_escape(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('#', "\\#")
+        .replace('@', "\\@")
+        .replace('$', "\\$")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
+}
+
+// ---  Print page  ---
+
+/// Generate a single-file HTML page containing all documentation for offline
+/// reading and PDF printing. The page links back to individual online pages
+/// and includes a clickable table of contents.
+fn generate_print_page(
+    topic_sources: &[TopicSource],
+    sections: &[SectionFull],
+    stdlib_info: &[StdlibSection],
+    link_map: &HashMap<String, String>,
+) -> std::io::Result<()> {
+    let mut toc = String::from("<nav class=\"print-toc\">\n<h2>Contents</h2>\n<ul>\n");
+    toc.push_str(
+        "<li><a href=\"00-vs-rust.html\">vs Rust — Key Differences</a> <span class=\"toc-note\">(online only)</span></li>\n",
+    );
+    for ts in topic_sources {
+        toc.push_str(&format!(
+            "<li><a href=\"#{fn}\">{name}</a> — <span class=\"toc-desc\">{title}</span></li>\n",
+            fn = ts.filename,
+            name = esc(&ts.name),
+            title = esc(&ts.title),
+        ));
+    }
+    toc.push_str("<li class=\"toc-section\"><a href=\"#stdlib\">Standard Library</a></li>\n");
+    for sec in stdlib_info {
+        toc.push_str(&format!(
+            "<li class=\"toc-indent\"><a href=\"#stdlib-{id}\">{name}</a></li>\n",
+            id = sec.id,
+            name = esc(&sec.name),
+        ));
+    }
+    toc.push_str("</ul>\n</nav>\n");
+
+    let mut content = toc;
+
+    for ts in topic_sources {
+        content.push_str(&format!(
+            "<section class=\"print-section\" id=\"{fn}\">\n<h1>{name}</h1>\n",
+            fn = ts.filename,
+            name = esc(&ts.name),
+        ));
+        content.push_str(&render_topic_body(&ts.source, link_map));
+        content.push_str("</section>\n");
+    }
+
+    content.push_str("<section class=\"print-section\" id=\"stdlib\">\n<h1>Standard Library</h1>\n");
+    for section in sections {
+        content.push_str(&format!(
+            "<h2 id=\"stdlib-{id}\">{name}</h2>\n",
+            id = section.id,
+            name = esc(&section.name),
+        ));
+        for (sig, doc_lines) in &section.items {
+            let paras = group_paragraphs(doc_lines);
+            if sig.is_empty() {
+                for p in &paras {
+                    content.push_str(&format!("<p class=\"section-desc\">{}</p>\n", esc(p)));
+                }
+            } else {
+                content.push_str("<div class=\"item\">\n");
+                content.push_str(&format!("<pre><code>{}</code></pre>\n", esc(sig)));
+                for p in &paras {
+                    content.push_str(&format!("<p>{}</p>\n", esc(p)));
+                }
+                content.push_str("</div>\n");
+            }
+        }
+    }
+    content.push_str("</section>\n");
+
+    let count = topic_sources.len() + sections.len();
+    let html = format!(
+        "<!DOCTYPE html>\n\
+<html lang=\"en\">\n\
+<head>\n\
+  <meta charset=\"utf-8\">\n\
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
+  <title>Loft Language — Complete Reference</title>\n\
+  <link rel=\"stylesheet\" href=\"style.css\">\n\
+</head>\n\
+<body class=\"print-page\">\n\
+  <header class=\"print-header\">\n\
+    <h1>Loft Language Reference</h1>\n\
+    <p class=\"tagline\">Complete language and standard library documentation</p>\n\
+    <p><a href=\"index.html\">&#8592; Back to online documentation</a> \
+       &nbsp;|&nbsp; <a href=\"00-vs-rust.html\">vs Rust comparison</a></p>\n\
+  </header>\n\
+{content}\
+</body>\n\
+</html>\n",
+        content = content,
+    );
+    fs::write("doc/print.html", &html)?;
+    println!("Generated doc/print.html ({count} sections)");
+    Ok(())
+}
+
+// ---  Typst generation  ---
+
+/// Generate a Typst source file for the full language reference.
+/// Compile with: typst compile doc/loft-reference.typ doc/loft-reference.pdf
+fn generate_typst(
+    topic_sources: &[TopicSource],
+    sections: &[SectionFull],
+) -> std::io::Result<()> {
+    let mut out = String::new();
+
+    // Document preamble
+    out.push_str("// Loft Language Reference — generated by `cargo run --bin gendoc`\n");
+    out.push_str("// Compile with: typst compile loft-reference.typ loft-reference.pdf\n\n");
+    out.push_str("#set document(title: \"Loft Language Reference\")\n");
+    out.push_str("#set page(paper: \"a4\", margin: (x: 2.5cm, y: 3cm))\n");
+    out.push_str("#set text(font: (\"Libertinus Serif\", \"Liberation Serif\", \"DejaVu Serif\"), size: 11pt)\n");
+    out.push_str("#set par(justify: true, leading: 0.75em)\n");
+    out.push_str("#set heading(numbering: \"1.1.\")\n");
+    out.push_str("\n");
+    out.push_str("#show raw.where(block: true): it => block(\n");
+    out.push_str("  fill: luma(245),\n");
+    out.push_str("  inset: (x: 10pt, y: 8pt),\n");
+    out.push_str("  radius: 4pt,\n");
+    out.push_str("  width: 100%,\n");
+    out.push_str("  it,\n");
+    out.push_str(")\n\n");
+    out.push_str("#show heading.where(level: 1): it => {\n");
+    out.push_str("  pagebreak(weak: true)\n");
+    out.push_str("  v(0.5em)\n");
+    out.push_str("  it\n");
+    out.push_str("}\n\n");
+
+    // Title page
+    out.push_str("= Loft Language Reference\n\n");
+    out.push_str("#v(1em)\n\n");
+    out.push_str("_A statically-typed scripting language inspired by Rust, designed for embedding in the Dryopea engine._\n\n");
+    out.push_str("Every code example in this document is an executable part of the test suite.\n\n");
+    out.push_str("#outline(depth: 3)\n\n");
+    out.push_str("#pagebreak()\n\n");
+
+    // Language topic sections
+    for ts in topic_sources {
+        out.push_str(&format!("= {}\n\n", typst_escape(&ts.name)));
+        out.push_str(&render_topic_typst(&ts.source));
+        out.push('\n');
+    }
+
+    // Standard library
+    out.push_str("= Standard Library\n\n");
+    for section in sections {
+        out.push_str(&format!("== {}\n\n", typst_escape(&section.name)));
+        for (sig, doc_lines) in &section.items {
+            let paras = group_paragraphs(doc_lines);
+            if sig.is_empty() {
+                for p in &paras {
+                    if !p.is_empty() {
+                        out.push_str(&typst_escape(p));
+                        out.push_str("\n\n");
+                    }
+                }
+            } else {
+                // Code signature block
+                out.push_str(&format!("```rust\n{}\n```\n\n", sig));
+                for p in &paras {
+                    if !p.is_empty() {
+                        out.push_str(&typst_escape(p));
+                        out.push('\n');
+                    }
+                }
+                if paras.iter().any(|p| !p.is_empty()) {
+                    out.push('\n');
+                }
+            }
+        }
+    }
+
+    fs::write("doc/loft-reference.typ", &out)?;
+    println!("Generated doc/loft-reference.typ");
+    Ok(())
 }

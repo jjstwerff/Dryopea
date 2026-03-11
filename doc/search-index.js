@@ -93,6 +93,7 @@ const SEARCH_INDEX=[
 {name:"exists",kind:"fn",url:"stdlib-file-system.html"},
 {name:"delete",kind:"fn",url:"stdlib-file-system.html"},
 {name:"move",kind:"fn",url:"stdlib-file-system.html"},
+{name:"set_file_size",kind:"fn",url:"stdlib-file-system.html"},
 {name:"files",kind:"fn",url:"stdlib-file-system.html"},
 {name:"write",kind:"fn",url:"stdlib-file-system.html"},
 {name:"png",kind:"fn",url:"stdlib-file-system.html"},

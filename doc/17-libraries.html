@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loft - Libraries</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <span class="cur">Libraries</span> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
+<h1>Libraries</h1>
+<article>
+<p>Libraries let you split code across files. A library is any `.loft` file placed in a `lib/` directory. Use `use name;` to import it, then access its definitions as `name::Thing`.</p>
+<p>`use` statements must appear at the very top of the file, before any function or struct definitions. Placing a `use` after a definition is a syntax error.</p>
+<pre><code><span class="kw">use</span> testlib;</code></pre>
+<p>--- Constants --- Library constants are accessed with the `libname::CONSTANT` prefix.</p>
+<p>--- Enums --- Library enum variants are also accessed with the prefix.</p>
+<p>--- Struct construction --- All library types must be constructed with their namespace prefix. Writing `Point {}` without the prefix is a parse error.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Constants from a library require the library prefix.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="en">MAX_SIZE</span> == <span class="nm">100</span>, <span class="st">"library constant MAX_SIZE"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="en">MIN_SIZE</span> == <span class="nm">1</span>, <span class="st">"library constant MIN_SIZE"</span>);</code></pre>
+<p>Library enum variants: comparison and ordering work as normal.</p>
+<pre><code>    s = testlib::<span class="en">Ok</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s == testlib::<span class="en">Ok</span>, <span class="st">"enum equality"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s &lt; testlib::<span class="en">Error</span>, <span class="st">"enum ordering"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{s}"</span> == <span class="st">"Ok"</span>, <span class="st">"enum to text: {s}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"Warning"</span> <span class="kw">as</span> testlib::<span class="en">Status</span> == testlib::<span class="en">Warning</span>, <span class="st">"text to enum"</span>);</code></pre>
+<p>Library enum values can be passed to library free functions.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="fn-call">status_text</span>(testlib::<span class="en">Error</span>) == <span class="st">"err"</span>, <span class="st">"free fn with enum arg"</span>);</code></pre>
+<p>Structs are constructed with namespace prefix and accessed by field.</p>
+<pre><code>    p = testlib::<span class="en">Point</span> { x: <span class="nm">3.0</span>, y: <span class="nm">4.0</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(p.x == <span class="nm">3.0</span>, <span class="st">"field access: x={p.x}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(p.y == <span class="nm">4.0</span>, <span class="st">"field access: y={p.y}"</span>);</code></pre>
+<p>Methods defined in the library are called without a prefix.</p>
+<pre><code>    dist = p.<span class="fn-call">distance</span>();
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">round</a></span>(dist) == <span class="nm">5.0</span>, <span class="st">"method call: distance={dist}"</span>);</code></pre>
+<p>Scalar fields can be mutated directly.</p>
+<pre><code>    b = testlib::<span class="en">Bag</span> { label: <span class="st">"test"</span>, count: <span class="nm">0</span> };
+    b.label = <span class="st">"updated"</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b.label == <span class="st">"updated"</span>, <span class="st">"direct scalar field mutation"</span>);</code></pre>
+<p>Methods that mutate scalar fields work.</p>
+<pre><code>    b.<span class="fn-call">bump</span>();
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b.count == <span class="nm">1</span>, <span class="st">"method scalar mutation: count={b.count}"</span>);
+    b.<span class="fn-call">bump</span>();
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b.count == <span class="nm">2</span>, <span class="st">"method scalar mutation: count={b.count}"</span>);</code></pre>
+<p>Free functions: called with the library prefix.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="fn-call">add</span>(<span class="nm">3</span>, <span class="nm">4</span>) == <span class="nm">7</span>, <span class="st">"free function add"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="fn-call">add</span>(<span class="nm">0</span>, -<span class="nm">5</span>) == -<span class="nm">5</span>, <span class="st">"free function negative"</span>);</code></pre>
+<p>Library types can be used as function parameter types (by their full name). Passing them to locally-defined functions works as long as the parameter type is written as the plain struct name (not with :: prefix — see limitation below).</p>
+<p>Library struct with vector field: initialization via struct literal works.</p>
+<pre><code>    bag2 = testlib::<span class="en">Bag</span> { label: <span class="st">"full"</span>, count: <span class="nm">3</span>, items: [
+        testlib::<span class="en">Point</span> { x: <span class="nm">1.0</span>, y: <span class="nm">0.0</span> },
+        testlib::<span class="en">Point</span> { x: <span class="nm">0.0</span>, y: <span class="nm">1.0</span> }
+    ]};
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-text.html">len</a></span>(bag2.items) == <span class="nm">2</span>, <span class="st">"initialized vector field: {len(bag2.items)}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(bag2.items[<span class="nm">0</span>].x == <span class="nm">1.0</span>, <span class="st">"vector field element access"</span>);</code></pre>
+<p>Duplicate `use` of the same library is silently ignored (no error). Multiple libraries can be imported in one file. Libraries can themselves use other libraries (nested use).</p>
+<p>--- Limitations ---</p>
+<p>Limitation 1: `use` must appear before all definitions. The following would be a fatal syntax error: fn foo() {} use testlib;   // ERROR: Syntax error</p>
+<p>Limitation 2: Unqualified access to library names is not supported. `Point {}` without prefix → parse error ("Expect token ;") `MAX_SIZE` without prefix → unknown variable `add(1, 2)` without prefix → unknown function</p>
+<p>Limitation 3: You cannot write a method that takes a library type as `self` in the importing file. The `::` namespace separator is not allowed in function parameter type positions: fn extend(self: testlib::Point) -&gt; float { ... }   // ERROR: Syntax error Workaround: define all methods that operate on a library type inside the library.</p>
+<p>Limitation 4: `pub` on struct fields is not supported and causes a parse error. `pub` on top-level `struct` and `fn` definitions is accepted but has no effect (there is no visibility system — all library definitions are always accessible).</p>
+<p>Limitation 5: Appending to a scalar vector field with `+=` on an existing struct variable does not persist. Use struct literal initialization instead: b.items += p   // has no visible effect bag2 = Bag { items: [p1, p2] }   // works Struct vector fields (vector&lt;MyStruct&gt;) can be appended with `+= [elem]`.</p>
+<p>Limitation 6: You cannot add methods to a library type from an importing file. `self:` parameters do not accept the `::` namespace separator: fn extend(self: testlib::Point) -&gt; float { ... }   // ERROR: Syntax error fn extend(self: Point) -&gt; float { ... }            // ERROR: Undefined type Workaround: add all methods inside the library file itself. Regular (non-self) parameters do accept `libname::Type`: fn check(p: testlib::Point) -&gt; boolean { ... }    // works</p>
+<pre><code>}</code></pre>
+
+  </article>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+</body>
+</html>

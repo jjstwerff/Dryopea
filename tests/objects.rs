@@ -103,17 +103,6 @@ fn calc(self: Data) -> integer {
 }
 
 #[test]
-fn reference() {
-    code!(
-        "fn add(a: &integer, b: integer, c: integer=0) {
-    a += b + c;
-}"
-    )
-    .expr("v = 1; add(v, 2); add(v, 4, 1); v")
-    .result(Value::Int(8));
-}
-
-#[test]
 fn mutable_reference() {
     code!(
         "struct Data {

@@ -34,10 +34,12 @@ fn n_data(n:text, res:vector<ref(Data)>) -> vector<ref(Data)>["??"] {#block(1):v
   [8] nr(1):integer = 0i32;
   [9] {#For block(2):void
     ch#index(2):integer = 0i32;
+    ch#next(2):integer = 0i32;
     loop {#For loop_3
       ch(3):character = {#for text next(4):character
-        _for_result_1(4):character = OpTextCharacter(n(0), ch#index(2));
-        ch#index(2):integer = OpAddInt(ch#index(2), OpLengthCharacter(_for_result_1(4)));
+        ch#index(2):integer = ch#next(2);
+        _for_result_1(4):character = OpTextCharacter(n(0), ch#next(2));
+        ch#next(2):integer = OpAddInt(ch#next(2), OpLengthCharacter(_for_result_1(4)));
         _for_result_1(4);
       }#for text next(4):character;
       if OpNot(OpConvBoolFromCharacter(ch(3))) {#break(5):void
@@ -61,43 +63,46 @@ byte-code for fill_fn:n_data(n: text[0], res: vector<ref(Data)>[16]) -> vector<r
    3[44]: ClearVector(r: vector)
    4[32]: [8] ConstInt(val=0) -> integer var=nr[32]:integer
    9[36]: [9] ConstInt(val=0) -> integer var=ch#index[36]:integer
-  14[40]: ArgText(var[0]) -> text var=n[0]:text
-  17[56]: VarInt(var[36]) -> integer var=ch#index[36]:integer
-  20[60]: TextCharacter(v1: text, v2: integer) -> character
-  21[44]: VarInt(var[36]) -> integer var=ch#index[36]:integer
-  24[48]: VarCharacter(var[40]) -> character var=_for_result_1[40]:character
-  27[52]: LengthCharacter(v1: character) -> integer
-  28[52]: AddInt(v1: integer, v2: integer) -> integer
-  29[48]: PutInt(var[36], value: integer)
-  32[44]: VarCharacter(var[40]) -> character var=_for_result_1[40]:character
-  35[48]: FreeStack(value=4, discard=8)
-  39[44]: VarCharacter(var[40]) -> character var=ch[40]:character
-  42[48]: ConvBoolFromCharacter(v1: character) -> boolean
-  43[45]: Not(v1: boolean) -> boolean
-  44[45]: GotoFalseWord(jump=54, if_false: boolean)
-  47[44]: FreeStack(value=0, discard=4)
-  51[40]: GotoWord(jump=114)
-  54[44]: [10] VarVector(var[16]) -> vector type=vector<Data> 20 var=res[16]:vector<ref(Data)>["res"]
-  57[56]: NewRecord(data: ref(reference), parent_tp=20, fld=65535) -> ref(reference)
-  62[56]: VarRef(var[44]) -> ref(reference) type=Data 18 var=_elm_2[44]:ref(Data)["res"]
-  65[68]: VarCharacter(var[40]) -> character var=ch[40]:character
-  68[72]: SetInt(v1: ref(reference), fld=0, val: integer)
-  71[56]: VarRef(var[44]) -> ref(reference) type=Data 18 var=_elm_2[44]:ref(Data)["res"]
-  74[68]: VarInt(var[32]) -> integer var=nr[32]:integer
-  77[72]: SetInt(v1: ref(reference), fld=4, val: integer)
-  80[56]: VarVector(var[16]) -> vector type=vector<Data> 20 var=res[16]:vector<ref(Data)>["res"]
-  83[68]: VarRef(var[44]) -> ref(reference) type=Data 18 var=_elm_2[44]:ref(Data)["res"]
-  86[80]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=20, fld=65535)
-  91[56]: [11] VarInt(var[32]) -> integer var=nr[32]:integer
-  94[60]: ConstInt(val=1) -> integer
-  99[64]: AddInt(v1: integer, v2: integer) -> integer
- 100[60]: PutInt(var[32], value: integer)
- 103[56]: FreeStack(value=0, discard=12)
- 107[44]: FreeStack(value=0, discard=4)
- 111[40]: GotoWord(jump=14)
- 114[40]: FreeStack(value=0, discard=4)
- 118[36]: [13] VarVector(var[16]) -> vector type=vector<Data> 20 var=res[16]:vector<ref(Data)>["res"]
- 121[48]: Return(ret=28, value=12, discard=48) type=vector<Data> 20
+  14[40]: ConstInt(val=0) -> integer var=ch#next[40]:integer
+  19[44]: VarInt(var[40]) -> integer var=ch#next[40]:integer
+  22[48]: PutInt(var[36], value: integer)
+  25[44]: ArgText(var[0]) -> text var=n[0]:text
+  28[60]: VarInt(var[40]) -> integer var=ch#next[40]:integer
+  31[64]: TextCharacter(v1: text, v2: integer) -> character
+  32[48]: VarInt(var[40]) -> integer var=ch#next[40]:integer
+  35[52]: VarCharacter(var[44]) -> character var=_for_result_1[44]:character
+  38[56]: LengthCharacter(v1: character) -> integer
+  39[56]: AddInt(v1: integer, v2: integer) -> integer
+  40[52]: PutInt(var[40], value: integer)
+  43[48]: VarCharacter(var[44]) -> character var=_for_result_1[44]:character
+  46[52]: FreeStack(value=4, discard=8)
+  50[48]: VarCharacter(var[44]) -> character var=ch[44]:character
+  53[52]: ConvBoolFromCharacter(v1: character) -> boolean
+  54[49]: Not(v1: boolean) -> boolean
+  55[49]: GotoFalseWord(jump=65, if_false: boolean)
+  58[48]: FreeStack(value=0, discard=4)
+  62[44]: GotoWord(jump=125)
+  65[48]: [10] VarVector(var[16]) -> vector type=vector<Data> 20 var=res[16]:vector<ref(Data)>["res"]
+  68[60]: NewRecord(data: ref(reference), parent_tp=20, fld=65535) -> ref(reference)
+  73[60]: VarRef(var[48]) -> ref(reference) type=Data 18 var=_elm_2[48]:ref(Data)["res"]
+  76[72]: VarCharacter(var[44]) -> character var=ch[44]:character
+  79[76]: SetInt(v1: ref(reference), fld=0, val: integer)
+  82[60]: VarRef(var[48]) -> ref(reference) type=Data 18 var=_elm_2[48]:ref(Data)["res"]
+  85[72]: VarInt(var[32]) -> integer var=nr[32]:integer
+  88[76]: SetInt(v1: ref(reference), fld=4, val: integer)
+  91[60]: VarVector(var[16]) -> vector type=vector<Data> 20 var=res[16]:vector<ref(Data)>["res"]
+  94[72]: VarRef(var[48]) -> ref(reference) type=Data 18 var=_elm_2[48]:ref(Data)["res"]
+  97[84]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=20, fld=65535)
+ 102[60]: [11] VarInt(var[32]) -> integer var=nr[32]:integer
+ 105[64]: ConstInt(val=1) -> integer
+ 110[68]: AddInt(v1: integer, v2: integer) -> integer
+ 111[64]: PutInt(var[32], value: integer)
+ 114[60]: FreeStack(value=0, discard=12)
+ 118[48]: FreeStack(value=0, discard=4)
+ 122[44]: GotoWord(jump=19)
+ 125[44]: FreeStack(value=0, discard=8)
+ 129[36]: [13] VarVector(var[16]) -> vector type=vector<Data> 20 var=res[16]:vector<ref(Data)>["res"]
+ 132[48]: Return(ret=28, value=12, discard=48) type=vector<Data> 20
 
 fn n_test() {#block(1):void
   __ref_1(1):vector<ref(Data)> = null;
@@ -183,174 +188,185 @@ Execute test:
    31:[44] [17] Text()
    32:[68] Text()
    33:[92] ConstText(_value="test") -> "test"[92]
-   39:[108] VarVector(var[8]) -> ref(1,1,12)=[][108]
+   39:[108] VarVector(var[8]=__ref_1) -> ref(1,1,12)=[][108]
    42:[120] Call(size=0, fn=n_data)
- 1776:[124] VarVector(var[108]) -> ref(1,1,12)=[][124]
- 1779:[136] [8] ClearVector(r=ref(1,1,12)[124])
- 1780:[124] ConstInt(val=0) -> 0[124]
- 1785:[128] ConstInt(val=0) -> 0[128]
- 1790:[132] ArgText(var[92]) -> "test"[132]
- 1793:[148] VarInt(var[128]) -> 0[148]
- 1796:[152] TextCharacter(v1="test"[132], v2=0[148]) -> 't'[132]
- 1797:[136] VarInt(var[128]) -> 0[136]
- 1800:[140] VarCharacter(var[132]) -> 't'[140]
- 1803:[144] LengthCharacter(v1='t'[140]) -> 1[140]
- 1804:[144] AddInt(v1=0[136], v2=1[140]) -> 1[136]
- 1805:[140] PutInt(var[128], value=1[136])
- 1808:[136] VarCharacter(var[132]) -> 't'[136]
- 1811:[140] FreeStack(value=4, discard=8)
- 1815:[136] VarCharacter(var[132]) -> 't'[136]
- 1818:[140] ConvBoolFromCharacter(v1='t'[136]) -> true[136]
- 1819:[137] Not(v1=true[136]) -> false[136]
- 1820:[137] GotoFalseWord(jump=1830, if_false=false[136])
- 1830:[136] VarVector(var[108]) -> ref(1,1,12)=[][136]
- 1833:[148] NewRecord(data=ref(1,1,12)[136], parent_tp=20, fld=65535) -> ref(1,5,8)[136]
- 1838:[148] VarRef(var[136]) -> ref(1,5,8)={name:}[148]
- 1841:[160] VarCharacter(var[132]) -> 't'[160]
- 1844:[164] SetInt(v1=ref(1,5,8)[148], fld=0, val=116[160])
- 1847:[148] VarRef(var[136]) -> ref(1,5,8)={name:'t'}[148]
- 1850:[160] VarInt(var[124]) -> 0[160]
- 1853:[164] SetInt(v1=ref(1,5,8)[148], fld=4, val=0[160])
- 1856:[148] VarVector(var[108]) -> ref(1,1,12)=[][148]
- 1859:[160] VarRef(var[136]) -> ref(1,5,8)={name:'t',number:0}[160]
- 1862:[172] FinishRecord(data=ref(1,1,12)[148], rec=ref(1,5,8)[160], parent_tp=20, fld=65535)
- 1867:[148] VarInt(var[124]) -> 0[148]
- 1870:[152] ConstInt(val=1) -> 1[152]
- 1875:[156] AddInt(v1=0[148], v2=1[152]) -> 1[148]
- 1876:[152] PutInt(var[124], value=1[148])
- 1879:[148] FreeStack(value=0, discard=12)
- 1883:[136] FreeStack(value=0, discard=4)
- 1887:[132] GotoWord(jump=1790)
- 1790:[132] ArgText(var[92]) -> "test"[132]
- 1793:[148] VarInt(var[128]) -> 1[148]
- 1796:[152] TextCharacter(v1="test"[132], v2=1[148]) -> 'e'[132]
- 1797:[136] VarInt(var[128]) -> 1[136]
- 1800:[140] VarCharacter(var[132]) -> 'e'[140]
- 1803:[144] LengthCharacter(v1='e'[140]) -> 1[140]
- 1804:[144] AddInt(v1=1[136], v2=1[140]) -> 2[136]
- 1805:[140] PutInt(var[128], value=2[136])
- 1808:[136] VarCharacter(var[132]) -> 'e'[136]
- 1811:[140] FreeStack(value=4, discard=8)
- 1815:[136] VarCharacter(var[132]) -> 'e'[136]
- 1818:[140] ConvBoolFromCharacter(v1='e'[136]) -> true[136]
- 1819:[137] Not(v1=true[136]) -> false[136]
- 1820:[137] GotoFalseWord(jump=1830, if_false=false[136])
- 1830:[136] VarVector(var[108]) -> ref(1,1,12)=[{name:'t',number:0}][136]
- 1833:[148] NewRecord(data=ref(1,1,12)[136], parent_tp=20, fld=65535) -> ref(1,5,16)[136]
- 1838:[148] VarRef(var[136]) -> ref(1,5,16)={name:}[148]
- 1841:[160] VarCharacter(var[132]) -> 'e'[160]
- 1844:[164] SetInt(v1=ref(1,5,16)[148], fld=0, val=101[160])
- 1847:[148] VarRef(var[136]) -> ref(1,5,16)={name:'e'}[148]
- 1850:[160] VarInt(var[124]) -> 1[160]
- 1853:[164] SetInt(v1=ref(1,5,16)[148], fld=4, val=1[160])
- 1856:[148] VarVector(var[108]) -> ref(1,1,12)=[{name:'t',number:0}][148]
- 1859:[160] VarRef(var[136]) -> ref(1,5,16)={name:'e',number:1}[160]
- 1862:[172] FinishRecord(data=ref(1,1,12)[148], rec=ref(1,5,16)[160], parent_tp=20, fld=65535)
- 1867:[148] VarInt(var[124]) -> 1[148]
- 1870:[152] ConstInt(val=1) -> 1[152]
- 1875:[156] AddInt(v1=1[148], v2=1[152]) -> 2[148]
- 1876:[152] PutInt(var[124], value=2[148])
- 1879:[148] FreeStack(value=0, discard=12)
- 1883:[136] FreeStack(value=0, discard=4)
- 1887:[132] GotoWord(jump=1790)
- 1790:[132] ArgText(var[92]) -> "test"[132]
- 1793:[148] VarInt(var[128]) -> 2[148]
- 1796:[152] TextCharacter(v1="test"[132], v2=2[148]) -> 's'[132]
- 1797:[136] VarInt(var[128]) -> 2[136]
- 1800:[140] VarCharacter(var[132]) -> 's'[140]
- 1803:[144] LengthCharacter(v1='s'[140]) -> 1[140]
- 1804:[144] AddInt(v1=2[136], v2=1[140]) -> 3[136]
- 1805:[140] PutInt(var[128], value=3[136])
- 1808:[136] VarCharacter(var[132]) -> 's'[136]
- 1811:[140] FreeStack(value=4, discard=8)
- 1815:[136] VarCharacter(var[132]) -> 's'[136]
- 1818:[140] ConvBoolFromCharacter(v1='s'[136]) -> true[136]
- 1819:[137] Not(v1=true[136]) -> false[136]
- 1820:[137] GotoFalseWord(jump=1830, if_false=false[136])
- 1830:[136] VarVector(var[108]) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1}][136]
- 1833:[148] NewRecord(data=ref(1,1,12)[136], parent_tp=20, fld=65535) -> ref(1,5,24)[136]
- 1838:[148] VarRef(var[136]) -> ref(1,5,24)={name:}[148]
- 1841:[160] VarCharacter(var[132]) -> 's'[160]
- 1844:[164] SetInt(v1=ref(1,5,24)[148], fld=0, val=115[160])
- 1847:[148] VarRef(var[136]) -> ref(1,5,24)={name:'s'}[148]
- 1850:[160] VarInt(var[124]) -> 2[160]
- 1853:[164] SetInt(v1=ref(1,5,24)[148], fld=4, val=2[160])
- 1856:[148] VarVector(var[108]) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1}][148]
- 1859:[160] VarRef(var[136]) -> ref(1,5,24)={name:'s',number:2}[160]
- 1862:[172] FinishRecord(data=ref(1,1,12)[148], rec=ref(1,5,24)[160], parent_tp=20, fld=65535)
- 1867:[148] VarInt(var[124]) -> 2[148]
- 1870:[152] ConstInt(val=1) -> 1[152]
- 1875:[156] AddInt(v1=2[148], v2=1[152]) -> 3[148]
- 1876:[152] PutInt(var[124], value=3[148])
- 1879:[148] FreeStack(value=0, discard=12)
- 1883:[136] FreeStack(value=0, discard=4)
- 1887:[132] GotoWord(jump=1790)
- 1790:[132] ArgText(var[92]) -> "test"[132]
- 1793:[148] VarInt(var[128]) -> 3[148]
- 1796:[152] TextCharacter(v1="test"[132], v2=3[148]) -> 't'[132]
- 1797:[136] VarInt(var[128]) -> 3[136]
- 1800:[140] VarCharacter(var[132]) -> 't'[140]
- 1803:[144] LengthCharacter(v1='t'[140]) -> 1[140]
- 1804:[144] AddInt(v1=3[136], v2=1[140]) -> 4[136]
- 1805:[140] PutInt(var[128], value=4[136])
- 1808:[136] VarCharacter(var[132]) -> 't'[136]
- 1811:[140] FreeStack(value=4, discard=8)
- 1815:[136] VarCharacter(var[132]) -> 't'[136]
- 1818:[140] ConvBoolFromCharacter(v1='t'[136]) -> true[136]
- 1819:[137] Not(v1=true[136]) -> false[136]
- 1820:[137] GotoFalseWord(jump=1830, if_false=false[136])
- 1830:[136] VarVector(var[108]) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2}][136]
- 1833:[148] NewRecord(data=ref(1,1,12)[136], parent_tp=20, fld=65535) -> ref(1,5,32)[136]
- 1838:[148] VarRef(var[136]) -> ref(1,5,32)={name:}[148]
- 1841:[160] VarCharacter(var[132]) -> 't'[160]
- 1844:[164] SetInt(v1=ref(1,5,32)[148], fld=0, val=116[160])
- 1847:[148] VarRef(var[136]) -> ref(1,5,32)={name:'t'}[148]
- 1850:[160] VarInt(var[124]) -> 3[160]
- 1853:[164] SetInt(v1=ref(1,5,32)[148], fld=4, val=3[160])
- 1856:[148] VarVector(var[108]) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2}][148]
- 1859:[160] VarRef(var[136]) -> ref(1,5,32)={name:'t',number:3}[160]
- 1862:[172] FinishRecord(data=ref(1,1,12)[148], rec=ref(1,5,32)[160], parent_tp=20, fld=65535)
- 1867:[148] VarInt(var[124]) -> 3[148]
- 1870:[152] ConstInt(val=1) -> 1[152]
- 1875:[156] AddInt(v1=3[148], v2=1[152]) -> 4[148]
- 1876:[152] PutInt(var[124], value=4[148])
- 1879:[148] FreeStack(value=0, discard=12)
- 1883:[136] FreeStack(value=0, discard=4)
- 1887:[132] GotoWord(jump=1790)
- 1790:[132] ArgText(var[92]) -> "test"[132]
- 1793:[148] VarInt(var[128]) -> 4[148]
- 1796:[152] TextCharacter(v1="test"[132], v2=4[148]) -> null[132]
- 1797:[136] VarInt(var[128]) -> 4[136]
- 1800:[140] VarCharacter(var[132]) -> null[140]
- 1803:[144] LengthCharacter(v1=null[140]) -> 0[140]
- 1804:[144] AddInt(v1=4[136], v2=0[140]) -> 4[136]
- 1805:[140] PutInt(var[128], value=4[136])
- 1808:[136] VarCharacter(var[132]) -> null[136]
- 1811:[140] FreeStack(value=4, discard=8)
- 1815:[136] VarCharacter(var[132]) -> null[136]
- 1818:[140] ConvBoolFromCharacter(v1=null[136]) -> false[136]
- 1819:[137] Not(v1=false[136]) -> true[136]
- 1820:[137] GotoFalseWord(jump=1830, if_false=true[136])
- 1823:[136] FreeStack(value=0, discard=4)
- 1827:[132] GotoWord(jump=1890)
- 1890:[132] FreeStack(value=0, discard=4)
- 1894:[128] VarVector(var[108]) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}][128]
- 1897:[140] Return(ret=1952[120], value=12, discard=48) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}][92]
-   49:[104] ClearText(var[44])
+ 1791:[124] VarVector(var[108]=res) -> ref(1,1,12)=[][124]
+ 1794:[136] [8] ClearVector(r=ref(1,1,12)[124])
+ 1795:[124] ConstInt(val=0) -> 0[124]
+ 1800:[128] ConstInt(val=0) -> 0[128]
+ 1805:[132] ConstInt(val=0) -> 0[132]
+ 1810:[136] VarInt(var[132]=ch#next) -> 0[136]
+ 1813:[140] PutInt(var[128], value=0[136])
+ 1816:[136] ArgText(var[92]=n) -> "test"[136]
+ 1819:[152] VarInt(var[132]=ch#next) -> 0[152]
+ 1822:[156] TextCharacter(v1="test"[136], v2=0[152]) -> 't'[136]
+ 1823:[140] VarInt(var[132]=ch#next) -> 0[140]
+ 1826:[144] VarCharacter(var[136]=_for_result_1) -> 't'[144]
+ 1829:[148] LengthCharacter(v1='t'[144]) -> 1[144]
+ 1830:[148] AddInt(v1=0[140], v2=1[144]) -> 1[140]
+ 1831:[144] PutInt(var[132], value=1[140])
+ 1834:[140] VarCharacter(var[136]=_for_result_1) -> 't'[140]
+ 1837:[144] FreeStack(value=4, discard=8)
+ 1841:[140] VarCharacter(var[136]=ch) -> 't'[140]
+ 1844:[144] ConvBoolFromCharacter(v1='t'[140]) -> true[140]
+ 1845:[141] Not(v1=true[140]) -> false[140]
+ 1846:[141] GotoFalseWord(jump=1856, if_false=false[140])
+ 1856:[140] VarVector(var[108]=res) -> ref(1,1,12)=[][140]
+ 1859:[152] NewRecord(data=ref(1,1,12)[140], parent_tp=20, fld=65535) -> ref(1,5,8)[140]
+ 1864:[152] VarRef(var[140]=_elm_2) -> ref(1,5,8)={name:}[152]
+ 1867:[164] VarCharacter(var[136]=ch) -> 't'[164]
+ 1870:[168] SetInt(v1=ref(1,5,8)[152], fld=0, val=116[164])
+ 1873:[152] VarRef(var[140]=_elm_2) -> ref(1,5,8)={name:'t'}[152]
+ 1876:[164] VarInt(var[124]=nr) -> 0[164]
+ 1879:[168] SetInt(v1=ref(1,5,8)[152], fld=4, val=0[164])
+ 1882:[152] VarVector(var[108]=res) -> ref(1,1,12)=[][152]
+ 1885:[164] VarRef(var[140]=_elm_2) -> ref(1,5,8)={name:'t',number:0}[164]
+ 1888:[176] FinishRecord(data=ref(1,1,12)[152], rec=ref(1,5,8)[164], parent_tp=20, fld=65535)
+ 1893:[152] VarInt(var[124]=nr) -> 0[152]
+ 1896:[156] ConstInt(val=1) -> 1[156]
+ 1901:[160] AddInt(v1=0[152], v2=1[156]) -> 1[152]
+ 1902:[156] PutInt(var[124], value=1[152])
+ 1905:[152] FreeStack(value=0, discard=12)
+ 1909:[140] FreeStack(value=0, discard=4)
+ 1913:[136] GotoWord(jump=1810)
+ 1810:[136] VarInt(var[132]=ch#next) -> 1[136]
+ 1813:[140] PutInt(var[128], value=1[136])
+ 1816:[136] ArgText(var[92]=n) -> "test"[136]
+ 1819:[152] VarInt(var[132]=ch#next) -> 1[152]
+ 1822:[156] TextCharacter(v1="test"[136], v2=1[152]) -> 'e'[136]
+ 1823:[140] VarInt(var[132]=ch#next) -> 1[140]
+ 1826:[144] VarCharacter(var[136]=_for_result_1) -> 'e'[144]
+ 1829:[148] LengthCharacter(v1='e'[144]) -> 1[144]
+ 1830:[148] AddInt(v1=1[140], v2=1[144]) -> 2[140]
+ 1831:[144] PutInt(var[132], value=2[140])
+ 1834:[140] VarCharacter(var[136]=_for_result_1) -> 'e'[140]
+ 1837:[144] FreeStack(value=4, discard=8)
+ 1841:[140] VarCharacter(var[136]=ch) -> 'e'[140]
+ 1844:[144] ConvBoolFromCharacter(v1='e'[140]) -> true[140]
+ 1845:[141] Not(v1=true[140]) -> false[140]
+ 1846:[141] GotoFalseWord(jump=1856, if_false=false[140])
+ 1856:[140] VarVector(var[108]=res) -> ref(1,1,12)=[{name:'t',number:0}][140]
+ 1859:[152] NewRecord(data=ref(1,1,12)[140], parent_tp=20, fld=65535) -> ref(1,5,16)[140]
+ 1864:[152] VarRef(var[140]=_elm_2) -> ref(1,5,16)={name:}[152]
+ 1867:[164] VarCharacter(var[136]=ch) -> 'e'[164]
+ 1870:[168] SetInt(v1=ref(1,5,16)[152], fld=0, val=101[164])
+ 1873:[152] VarRef(var[140]=_elm_2) -> ref(1,5,16)={name:'e'}[152]
+ 1876:[164] VarInt(var[124]=nr) -> 1[164]
+ 1879:[168] SetInt(v1=ref(1,5,16)[152], fld=4, val=1[164])
+ 1882:[152] VarVector(var[108]=res) -> ref(1,1,12)=[{name:'t',number:0}][152]
+ 1885:[164] VarRef(var[140]=_elm_2) -> ref(1,5,16)={name:'e',number:1}[164]
+ 1888:[176] FinishRecord(data=ref(1,1,12)[152], rec=ref(1,5,16)[164], parent_tp=20, fld=65535)
+ 1893:[152] VarInt(var[124]=nr) -> 1[152]
+ 1896:[156] ConstInt(val=1) -> 1[156]
+ 1901:[160] AddInt(v1=1[152], v2=1[156]) -> 2[152]
+ 1902:[156] PutInt(var[124], value=2[152])
+ 1905:[152] FreeStack(value=0, discard=12)
+ 1909:[140] FreeStack(value=0, discard=4)
+ 1913:[136] GotoWord(jump=1810)
+ 1810:[136] VarInt(var[132]=ch#next) -> 2[136]
+ 1813:[140] PutInt(var[128], value=2[136])
+ 1816:[136] ArgText(var[92]=n) -> "test"[136]
+ 1819:[152] VarInt(var[132]=ch#next) -> 2[152]
+ 1822:[156] TextCharacter(v1="test"[136], v2=2[152]) -> 's'[136]
+ 1823:[140] VarInt(var[132]=ch#next) -> 2[140]
+ 1826:[144] VarCharacter(var[136]=_for_result_1) -> 's'[144]
+ 1829:[148] LengthCharacter(v1='s'[144]) -> 1[144]
+ 1830:[148] AddInt(v1=2[140], v2=1[144]) -> 3[140]
+ 1831:[144] PutInt(var[132], value=3[140])
+ 1834:[140] VarCharacter(var[136]=_for_result_1) -> 's'[140]
+ 1837:[144] FreeStack(value=4, discard=8)
+ 1841:[140] VarCharacter(var[136]=ch) -> 's'[140]
+ 1844:[144] ConvBoolFromCharacter(v1='s'[140]) -> true[140]
+ 1845:[141] Not(v1=true[140]) -> false[140]
+ 1846:[141] GotoFalseWord(jump=1856, if_false=false[140])
+ 1856:[140] VarVector(var[108]=res) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1}][140]
+ 1859:[152] NewRecord(data=ref(1,1,12)[140], parent_tp=20, fld=65535) -> ref(1,5,24)[140]
+ 1864:[152] VarRef(var[140]=_elm_2) -> ref(1,5,24)={name:}[152]
+ 1867:[164] VarCharacter(var[136]=ch) -> 's'[164]
+ 1870:[168] SetInt(v1=ref(1,5,24)[152], fld=0, val=115[164])
+ 1873:[152] VarRef(var[140]=_elm_2) -> ref(1,5,24)={name:'s'}[152]
+ 1876:[164] VarInt(var[124]=nr) -> 2[164]
+ 1879:[168] SetInt(v1=ref(1,5,24)[152], fld=4, val=2[164])
+ 1882:[152] VarVector(var[108]=res) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1}][152]
+ 1885:[164] VarRef(var[140]=_elm_2) -> ref(1,5,24)={name:'s',number:2}[164]
+ 1888:[176] FinishRecord(data=ref(1,1,12)[152], rec=ref(1,5,24)[164], parent_tp=20, fld=65535)
+ 1893:[152] VarInt(var[124]=nr) -> 2[152]
+ 1896:[156] ConstInt(val=1) -> 1[156]
+ 1901:[160] AddInt(v1=2[152], v2=1[156]) -> 3[152]
+ 1902:[156] PutInt(var[124], value=3[152])
+ 1905:[152] FreeStack(value=0, discard=12)
+ 1909:[140] FreeStack(value=0, discard=4)
+ 1913:[136] GotoWord(jump=1810)
+ 1810:[136] VarInt(var[132]=ch#next) -> 3[136]
+ 1813:[140] PutInt(var[128], value=3[136])
+ 1816:[136] ArgText(var[92]=n) -> "test"[136]
+ 1819:[152] VarInt(var[132]=ch#next) -> 3[152]
+ 1822:[156] TextCharacter(v1="test"[136], v2=3[152]) -> 't'[136]
+ 1823:[140] VarInt(var[132]=ch#next) -> 3[140]
+ 1826:[144] VarCharacter(var[136]=_for_result_1) -> 't'[144]
+ 1829:[148] LengthCharacter(v1='t'[144]) -> 1[144]
+ 1830:[148] AddInt(v1=3[140], v2=1[144]) -> 4[140]
+ 1831:[144] PutInt(var[132], value=4[140])
+ 1834:[140] VarCharacter(var[136]=_for_result_1) -> 't'[140]
+ 1837:[144] FreeStack(value=4, discard=8)
+ 1841:[140] VarCharacter(var[136]=ch) -> 't'[140]
+ 1844:[144] ConvBoolFromCharacter(v1='t'[140]) -> true[140]
+ 1845:[141] Not(v1=true[140]) -> false[140]
+ 1846:[141] GotoFalseWord(jump=1856, if_false=false[140])
+ 1856:[140] VarVector(var[108]=res) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2}][140]
+ 1859:[152] NewRecord(data=ref(1,1,12)[140], parent_tp=20, fld=65535) -> ref(1,5,32)[140]
+ 1864:[152] VarRef(var[140]=_elm_2) -> ref(1,5,32)={name:}[152]
+ 1867:[164] VarCharacter(var[136]=ch) -> 't'[164]
+ 1870:[168] SetInt(v1=ref(1,5,32)[152], fld=0, val=116[164])
+ 1873:[152] VarRef(var[140]=_elm_2) -> ref(1,5,32)={name:'t'}[152]
+ 1876:[164] VarInt(var[124]=nr) -> 3[164]
+ 1879:[168] SetInt(v1=ref(1,5,32)[152], fld=4, val=3[164])
+ 1882:[152] VarVector(var[108]=res) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2}][152]
+ 1885:[164] VarRef(var[140]=_elm_2) -> ref(1,5,32)={name:'t',number:3}[164]
+ 1888:[176] FinishRecord(data=ref(1,1,12)[152], rec=ref(1,5,32)[164], parent_tp=20, fld=65535)
+ 1893:[152] VarInt(var[124]=nr) -> 3[152]
+ 1896:[156] ConstInt(val=1) -> 1[156]
+ 1901:[160] AddInt(v1=3[152], v2=1[156]) -> 4[152]
+ 1902:[156] PutInt(var[124], value=4[152])
+ 1905:[152] FreeStack(value=0, discard=12)
+ 1909:[140] FreeStack(value=0, discard=4)
+ 1913:[136] GotoWord(jump=1810)
+ 1810:[136] VarInt(var[132]=ch#next) -> 4[136]
+ 1813:[140] PutInt(var[128], value=4[136])
+ 1816:[136] ArgText(var[92]=n) -> "test"[136]
+ 1819:[152] VarInt(var[132]=ch#next) -> 4[152]
+ 1822:[156] TextCharacter(v1="test"[136], v2=4[152]) -> null[136]
+ 1823:[140] VarInt(var[132]=ch#next) -> 4[140]
+ 1826:[144] VarCharacter(var[136]=_for_result_1) -> null[144]
+ 1829:[148] LengthCharacter(v1=null[144]) -> 0[144]
+ 1830:[148] AddInt(v1=4[140], v2=0[144]) -> 4[140]
+ 1831:[144] PutInt(var[132], value=4[140])
+ 1834:[140] VarCharacter(var[136]=_for_result_1) -> null[140]
+ 1837:[144] FreeStack(value=4, discard=8)
+ 1841:[140] VarCharacter(var[136]=ch) -> null[140]
+ 1844:[144] ConvBoolFromCharacter(v1=null[140]) -> false[140]
+ 1845:[141] Not(v1=false[140]) -> true[140]
+ 1846:[141] GotoFalseWord(jump=1856, if_false=true[140])
+ 1849:[140] FreeStack(value=0, discard=4)
+ 1853:[136] GotoWord(jump=1916)
+ 1916:[136] FreeStack(value=0, discard=8)
+ 1920:[128] VarVector(var[108]=res) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}][128]
+ 1923:[140] Return(ret=1978[120], value=12, discard=48) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}][92]
+   49:[104] ClearText(var[44]=__work_1)
    52:[104] ConstText(_value="") -> ""[104]
-   54:[120] VarVector(var[92]) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}][120]
+   54:[120] VarVector(var[92]=d) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}][120]
    57:[132] FormatDatabase(var[44], val=ref(1,1,12)[120], db_tp=20, db_format=0)
-   63:[120] VarText(var[44]) -> "[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]"[120]
+   63:[120] VarText(var[44]=__work_1) -> "[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]"[120]
    66:[136] FreeStack(value=16, discard=32)
    70:[120] FreeStack(value=16, discard=28)
    74:[108] AppendText(var[68], v1="[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]"[92])
-   77:[92] VarText(var[68]) -> "[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]"[92]
+   77:[92] VarText(var[68]=test_value) -> "[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]"[92]
    80:[108] ConstText(_value="[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]") -> "[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]"[108]
   163:[124] EqText(v1="[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]"[92], v2="[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}]"[108]) -> true[92]
   164:[93] GotoFalseWord(jump=170, if_false=true[92])
   167:[92] GotoWord(jump=299)
   299:[92] FreeText(var[68])
-  302:[92] VarVector(var[8]) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}][92]
+  302:[92] VarVector(var[8]=__ref_1) -> ref(1,1,12)=[{name:'t',number:0},{name:'e',number:1},{name:'s',number:2},{name:'t',number:3}][92]
   305:[104] FreeRef(v1=ref(1,1,12)[92]) ; store-free max=1
   306:[92] FreeText(var[44])
   309:[92] FreeText(var[20])

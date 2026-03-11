@@ -1,0 +1,68 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Functions: default args, reference params, early return, recursion.
+
+fn greet(name: text, greeting: text = "Hello") -> text {
+    greeting + ", " + name + "!"
+}
+
+fn add(a: &integer, b: integer, c: integer = 0) {
+    a += b + c;
+}
+
+fn classify(n: integer) -> text {
+    if n < 0 { return "negative"; }
+    if n == 0 { return "zero"; }
+    "positive"
+}
+
+fn fib(n: integer) -> integer {
+    if n <= 1 { return n; }
+    fib(n - 1) + fib(n - 2)
+}
+
+fn sum_to(n: integer) -> integer {
+    t = 0;
+    for i in 1..=n { t += i; }
+    t
+}
+
+fn append_to(buf: &text, item: text) {
+    buf += item;
+}
+
+fn main() {
+    // --- Default arguments ---
+    assert(greet("World", "Hi") == "Hi, World!", "explicit greeting");
+    assert(greet("World") == "Hello, World!", "default greeting");
+
+    // --- Reference parameters ---
+    v = 1;
+    add(v, 2);
+    assert(v == 3, "ref param: after add(v,2)");
+    add(v, 4, 1);
+    assert(v == 8, "ref param: after add(v,4,1)");
+
+    // --- Early return ---
+    assert(classify(-5) == "negative", "classify negative");
+    assert(classify(0) == "zero", "classify zero");
+    assert(classify(7) == "positive", "classify positive");
+
+    // --- Recursion ---
+    assert(fib(0) == 0, "fib(0)");
+    assert(fib(1) == 1, "fib(1)");
+    assert(fib(6) == 8, "fib(6)");
+    assert(fib(10) == 55, "fib(10)");
+
+    // --- Local helper ---
+    assert(sum_to(5) == 15, "sum_to(5)");
+    assert(sum_to(10) == 55, "sum_to(10)");
+
+    // --- Reference text parameter ---
+    s = "Hello";
+    append_to(s, " World");
+    assert(s == "Hello World", "ref text param append");
+
+    // --- Implicit return (last expression) ---
+    assert(greet("X", "Y") == "Y, X!", "implicit return");
+}

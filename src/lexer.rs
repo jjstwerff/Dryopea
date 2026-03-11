@@ -142,8 +142,8 @@ fn hex_parse(val: &str) -> Option<u64> {
     for ch in val.chars() {
         if ch.is_ascii_digit() {
             res = res * 16 + ch as u64 - '0' as u64;
-        } else if ('a'..='f').contains(&ch) {
-            res = res * 16 + 10 + ch as u64 - 'a' as u64;
+        } else if ch.is_ascii_hexdigit() {
+            res = res * 16 + 10 + ch.to_ascii_lowercase() as u64 - 'a' as u64;
         } else {
             return None;
         }

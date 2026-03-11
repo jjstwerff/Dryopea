@@ -81,8 +81,9 @@ pub enum Value {
     // Closure(u32, u32),
     /// Drop the returned value of a call
     Drop(Box<Value>),
-    /// An iterator (name, create, next)
-    Iter(u16, Box<Value>, Box<Value>),
+    /// An iterator (name, create, next, extra_init)
+    /// extra_init is Value::Null for non-text loops, or v_set(index_var, 0) for text loops.
+    Iter(u16, Box<Value>, Box<Value>, Box<Value>),
     /// Key structure
     Keys(Vec<Key>),
 }
@@ -1036,8 +1037,12 @@ impl Data {
         for a in arguments {
             let a_nr = self.add_attribute(lexer, d_nr, &a.name, a.typedef.clone());
             self.set_attr_value(d_nr, a_nr, a.default.clone());
-            self.definitions[d_nr as usize].attributes[a_nr].mutable = !a.constant;
-            self.definitions[d_nr as usize].attributes[a_nr].constant = a.constant;
+            // Note: Argument.constant (the `const` keyword on a parameter) is enforced at the
+            // parser level via Variable.const_param — NOT by setting Attribute.mutable = false
+            // here. Setting mutable = false for a user-defined function parameter would cause
+            // the bytecode generator to skip pushing the argument value onto the stack, breaking
+            // all calls to the function. Attribute.constant/mutable semantics are only correct
+            // for operator definitions (add_op), where non-mutable params are bytecode constants.
         }
         if is_self || is_both {
             let type_nr = self.type_def_nr(&arguments[0].typedef);
@@ -1430,7 +1435,7 @@ impl Data {
             Value::Long(l) => write!(write, "{l}i64"),
             Value::Single(f) => write!(write, "{f}f32"),
             Value::Text(t) => write!(write, "\"{t}\""),
-            Value::Iter(_, _, _) => panic!("Rewrite!"),
+            Value::Iter(_, _, _, _) => panic!("Rewrite!"),
             Value::Call(t, ex) => {
                 write!(write, "{}(", self.def(*t).name)?;
                 for (v_nr, v) in ex.iter().enumerate() {

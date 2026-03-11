@@ -130,26 +130,26 @@ Execute test:
     3:[80] ConvRefFromNull() -> ref(1,0,8)[80]
   ; store-alloc nr=1 max=2
     4:[92] Database(var[80], db_tp=20)
-    9:[92] VarRef(var[80]) -> ref(1,1,8)={d:[]}[92]
+    9:[92] VarRef(var[80]=s) -> ref(1,1,8)={d:[]}[92]
    12:[104] ConstInt(val=0) -> 0[104]
    17:[108] SetInt(v1=ref(1,1,8)[92], fld=0, val=0[104])
-   20:[92] VarRef(var[80]) -> ref(1,1,8)={d:[]}[92]
+   20:[92] VarRef(var[80]=s) -> ref(1,1,8)={d:[]}[92]
    23:[104] NewRecord(data=ref(1,1,8)[92], parent_tp=20, fld=0) -> ref(1,9,8)[92]
-   28:[104] VarRef(var[92]) -> ref(1,9,8)={v:-2147483648}[104]
+   28:[104] VarRef(var[92]=_elm_1) -> ref(1,9,8)={v:-2147483648}[104]
    31:[116] ConstText(_value="a") -> "a"[116]
    34:[132] SetText(v1=ref(1,9,8)[104], fld=0, val="a"[116])
-   37:[104] VarRef(var[92]) -> ref(1,9,8)={n:"a",v:-2147483648}[104]
+   37:[104] VarRef(var[92]=_elm_1) -> ref(1,9,8)={n:"a",v:-2147483648}[104]
    40:[116] ConstInt(val=12) -> 12[116]
    45:[120] SetShort(v1=ref(1,9,8)[104], fld=4, min=0, val=12[116])
-   50:[104] VarRef(var[80]) -> ref(1,1,8)={d:[]}[104]
-   53:[116] VarRef(var[92]) -> ref(1,9,8)={n:"a",v:12}[116]
+   50:[104] VarRef(var[80]=s) -> ref(1,1,8)={d:[]}[104]
+   53:[116] VarRef(var[92]=_elm_1) -> ref(1,9,8)={n:"a",v:12}[116]
    56:[128] FinishRecord(data=ref(1,1,8)[104], rec=ref(1,9,8)[116], parent_tp=20, fld=0)
-   61:[104] VarRef(var[80]) -> ref(1,1,8)={d:[{n:"a",v:12}]}[104]
+   61:[104] VarRef(var[80]=s) -> ref(1,1,8)={d:[{n:"a",v:12}]}[104]
    64:[116] ConstInt(val=0) -> 0[116]
    69:[120] SetInt(v1=ref(1,1,8)[104], fld=4, val=0[116])
-   72:[104] ClearText(var[32])
+   72:[104] ClearText(var[32]=__work_1)
    75:[104] ConstText(_value="") -> ""[104]
-   77:[120] VarRef(var[80]) -> ref(1,1,8)={d:[{n:"a",v:12}]}[120]
+   77:[120] VarRef(var[80]=s) -> ref(1,1,8)={d:[{n:"a",v:12}]}[120]
    80:[132] GetField(v1=ref(1,1,8)[120], fld=0) -> ref(1,1,8)=[{n:"a",v:12}][120]
    83:[132] ConstInt(val=0) -> 0[132]
    88:[136] GetVector(r=ref(1,1,8)[120], size=6, index=0[132]) -> ref(1,13,8)[120]
@@ -157,7 +157,7 @@ Execute test:
    94:[132] FormatDatabase(var[32], val=ref(1,9,8)[120], db_tp=18, db_format=0)
   100:[120] ConstText(_value=" v=") -> " v="[120]
   105:[136] AppendText(var[32], v1=" v="[120])
-  108:[120] VarRef(var[80]) -> ref(1,1,8)={d:[{n:"a",v:12}]}[120]
+  108:[120] VarRef(var[80]=s) -> ref(1,1,8)={d:[{n:"a",v:12}]}[120]
   111:[132] GetField(v1=ref(1,1,8)[120], fld=0) -> ref(1,1,8)=[{n:"a",v:12}][120]
   114:[132] ConstInt(val=0) -> 0[132]
   119:[136] GetVector(r=ref(1,1,8)[120], size=6, index=0[132]) -> ref(1,13,8)[120]
@@ -166,13 +166,13 @@ Execute test:
   130:[124] ConvLongFromInt(v1=12[120]) -> 12[120]
   131:[128] ConstInt(val=0) -> 0[128]
   136:[132] FormatLong(var[32], val=12[120], radix=10, width=0[128], token=32, plus=false, note=false)
-  143:[120] VarRef(var[80]) -> ref(1,1,8)={d:[{n:"a",v:12}]}[120]
+  143:[120] VarRef(var[80]=s) -> ref(1,1,8)={d:[{n:"a",v:12}]}[120]
   146:[132] FreeRef(v1=ref(1,1,8)[120]) ; store-free max=1
-  147:[120] VarText(var[32]) -> "{n:\"a\",v:12} v=12"[120]
+  147:[120] VarText(var[32]=__work_1) -> "{n:\"a\",v:12} v=12"[120]
   150:[136] FreeStack(value=16, discard=32)
   154:[120] FreeStack(value=16, discard=40)
   158:[96] AppendText(var[56], v1="{n:\"a\",v:12} v=12"[80])
-  161:[80] VarText(var[56]) -> "{n:\"a\",v:12} v=12"[80]
+  161:[80] VarText(var[56]=test_value) -> "{n:\"a\",v:12} v=12"[80]
   164:[96] ConstText(_value="{n:"a",v:12} v=12") -> "{n:\"a\",v:12} v=12"[96]
   183:[112] EqText(v1="{n:\"a\",v:12} v=12"[80], v2="{n:\"a\",v:12} v=12"[96]) -> true[80]
   184:[81] GotoFalseWord(jump=190, if_false=true[80])

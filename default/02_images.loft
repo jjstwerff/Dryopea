@@ -79,6 +79,8 @@ fn OpDelete(path: text) -> boolean;
 fn OpMoveFile(from: text, to: text) -> boolean;
 #rust "std::fs::rename(@from, @to).is_ok()"
 
+fn OpTruncateFile(self: File, size: long) -> boolean;
+
 // Returns the pixel colour as a packed 24-bit integer (0xRRGGBB).
 // Use for fast colour comparison or storage.
 pub fn value(self: Pixel) -> integer {
@@ -103,8 +105,8 @@ pub fn lines(self: File) -> vector<text> {
     p = 0;
     for ch in c {
         if ch == '\n' {
-            result += [ c[p..ch#index-1] ];
-            p = ch#index;
+            result += [ c[p..ch#index] ];
+            p = ch#next;
         }
     }
     if p > 0 {
@@ -120,8 +122,8 @@ pub fn split(self: text, separator: character) -> vector<text> {
     p = 0;
     for c in self {
         if c == separator {
-            result += [ self[p..c#index-1] ];
-            p = c#index;
+            result += [ self[p..c#index] ];
+            p = c#next;
         }
     }
     if p > 0 {
@@ -136,8 +138,8 @@ fn valid_path(path: text) -> boolean {
     start = 0;
     for c in path {
         if c == '/' || c == '\\' {
-            part = path[start..c#index-1];
-            start = c#index;
+            part = path[start..c#index];
+            start = c#next;
             if part == ".." {
                 depth -= 1;
                 if depth < 0 {
@@ -185,6 +187,14 @@ pub fn delete(path: text) -> boolean {
 // Both paths must stay within the project directory; the destination must not already exist.
 pub fn move(from: text, to: text) -> boolean {
     valid_path(to) && exists(from) && !exists(to) && OpMoveFile(from, to)
+}
+
+// Truncate or extend the file to exactly `size` bytes.
+// Truncating removes bytes beyond `size`; extending fills with null bytes.
+// Returns false if the file is a directory, does not exist, or `size` is negative.
+// Any open handle to the file is closed; reopen the file for further I/O.
+pub fn set_file_size(self: File, size: long) -> boolean {
+    self.format != Format.Directory && self.format != Format.NotExists && size >= 0l && OpTruncateFile(self, size)
 }
 
 // Returns the entries inside a directory.

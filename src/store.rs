@@ -27,6 +27,9 @@ pub struct Store {
     size: u32,
     file: Option<mmap_storage::file::Storage>,
     pub(crate) free: bool,
+    /// When `true`, all writes to this store are illegal.
+    /// In debug builds this panics; in release builds writes are silently discarded.
+    pub locked: bool,
 }
 
 impl Debug for Store {
@@ -61,6 +64,7 @@ impl Store {
             claims: HashSet::new(),
             file: None,
             free: true,
+            locked: false,
         };
         store.claims.insert(1);
         store.init();
@@ -83,6 +87,7 @@ impl Store {
             claims: HashSet::new(),
             size,
             free: true,
+            locked: false,
         };
         if init {
             store.init();
@@ -113,6 +118,11 @@ impl Store {
     /// # Arguments
     /// * `size` - The requested record size in 8 byte words
     pub fn claim(&mut self, size: u32) -> u32 {
+        debug_assert!(!self.locked, "Claim on locked store (size={size})");
+        #[cfg(not(debug_assertions))]
+        if self.locked {
+            return 0;
+        }
         assert!(size >= 1, "Incomplete record");
         let req_size = size as i32;
         // search big enough open space: currently very inefficient
@@ -198,6 +208,11 @@ impl Store {
 
     /// Delete a record, this assumes that all links towards this record are already removed
     pub fn delete(&mut self, rec: u32) {
+        debug_assert!(!self.locked, "Delete on locked store (rec={rec})");
+        #[cfg(not(debug_assertions))]
+        if self.locked {
+            return;
+        }
         self.valid(rec, 4);
         let mut claim = *self.addr::<i32>(rec, 0);
         // Try to combine with possibly free spaces after it
@@ -266,6 +281,24 @@ impl Store {
         self.size = size;
     }
 
+    /// Lock this store against writes. In debug builds any subsequent write panics.
+    /// In release builds writes are silently discarded.
+    pub fn lock(&mut self) {
+        self.locked = true;
+    }
+
+    /// Unlock this store (only callable from Rust; loft code cannot unlock via d#lock = false
+    /// on a const variable).
+    pub fn unlock(&mut self) {
+        self.locked = false;
+    }
+
+    /// Return the current lock state.
+    #[must_use]
+    pub fn is_locked(&self) -> bool {
+        self.locked
+    }
+
     #[inline]
     pub fn addr<T>(&self, rec: u32, fld: u32) -> &T {
         unsafe {
@@ -276,6 +309,21 @@ impl Store {
 
     #[inline]
     pub fn addr_mut<T>(&mut self, rec: u32, fld: u32) -> &mut T {
+        debug_assert!(
+            !self.locked,
+            "Write to locked store at rec={rec} fld={fld}"
+        );
+        #[cfg(not(debug_assertions))]
+        if self.locked {
+            // In release builds silently discard the write by returning a thread-local dummy.
+            thread_local! {
+                static DUMMY: std::cell::UnsafeCell<[u8; 256]> =
+                    const { std::cell::UnsafeCell::new([0u8; 256]) };
+            }
+            return DUMMY.with(|d| unsafe {
+                ((*d.get()).as_mut_ptr() as *mut T).as_mut().expect("dummy")
+            });
+        }
         unsafe {
             let off = self.ptr.offset(rec as isize * 8 + fld as isize).cast::<T>();
             off.as_mut().expect("Reference")

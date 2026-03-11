@@ -26,42 +26,6 @@ fn utf8_index() {
 }
 
 #[test]
-fn str_len() {
-    expr!("a=\"12345\";a.len() * 100 + len(\"😃\") * 10 + len(\"♥\")").result(Value::Int(543));
-}
-
-#[test]
-fn sub_str() {
-    expr!("a=\"12345\";a[1..len(a)-1]").result(Value::str("234"));
-}
-
-#[test]
-fn sub_open() {
-    expr!("a=\"12345\";a[2..]").result(Value::str("345"));
-}
-
-#[test]
-fn sub_utf8() {
-    expr!("a=\"12😊🙃45\";a[1..7]").result(Value::str("2😊🙃"));
-}
-
-#[test]
-fn iter() {
-    expr!(
-        "a=[];
-b=[];
-for c in \"123😊🙃😋8\" {
-    a += [c];
-    b += [c#index]
-};
-\"{a} indexes:{b}\""
-    )
-    .result(Value::str(
-        "['1','2','3','😊','🙃','😋','8'] indexes:[1,2,3,7,11,15,16]",
-    ));
-}
-
-#[test]
 fn string_fn() {
     code!(
         "fn to_text() -> text {
@@ -122,27 +86,6 @@ fn string_scope() {
 }
 
 #[test]
-fn starts() {
-    expr!("\"something\".starts_with(\"someone\")").result(Value::Boolean(false));
-}
-
-#[test]
-fn ends() {
-    expr!("v = \"someth\" + \"ing\"; v.ends_with(\"thing\")").result(Value::Boolean(true));
-}
-
-#[test]
-fn find() {
-    expr!("v = \"something\"; v.find(\"t\" + \"h\")").result(Value::Int(4));
-}
-
-#[test]
-fn contains() {
-    expr!("t = \"longer\"; v = \"a longer text\"; v.contains(\"a {t}\")")
-        .result(Value::Boolean(true));
-}
-
-#[test]
 fn reference() {
     code!(
         "fn add(a: &text, b: text=\" world!\") {
@@ -166,18 +109,8 @@ fn default_ref() {
 }
 
 #[test]
-fn block() {
-    expr!("s = \"1\"; s += \"2\"; s").result(Value::str("12"));
-}
-
-#[test]
 fn index_block() {
     expr!("s = \"1😊2\"; s[1]").result(Value::Int('😊' as i32));
-}
-
-#[test]
-fn trim_block() {
-    expr!("s = \" 12   \"; trim(s)").result(Value::str("12"));
 }
 
 #[test]
@@ -260,27 +193,6 @@ fn parse(s: text) -> integer {
     )
     .expr("parse(\"if_cond \")")
     .result(Value::Int(7));
-}
-
-// This shows a current fault of the language #index should have been at the start of the current
-// character instead of at the next character.
-#[test]
-fn string_iter() {
-    expr!(
-        "
-result = \"\";
-    positions = [];
-    for c in \"Hi 😊!\" {
-        positions += [c#index];
-        if c#index > 3 {
-            result += c;
-        }
-    }
-    assert(\"{positions}\" == \"[1,2,3,7,8]\", \"Character positions was {positions}\");
-    result
-"
-    )
-    .result(Value::str("😊!"));
 }
 
 // Only run this test locally, do not make it part of the release as it will log all kinds of

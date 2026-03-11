@@ -1,0 +1,77 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Vectors: creation, append, slicing, iteration, removal, #index/#first/#count.
+
+struct Item { name: text, value: integer }
+
+fn set_val(v: &vector<Item>, idx: integer, val: integer) {
+    v[idx].value = val;
+}
+
+fn main() {
+    // --- Literal and append ---
+    x = [1, 3, 6, 9];
+    assert(len(x) == 4, "vector len");
+    x += [12, 14, 15];
+    assert(len(x) == 7, "vector len after append");
+
+    // --- Index access ---
+    assert(x[0] == 1, "vector [0]");
+    assert(x[6] == 15, "vector [6]");
+    assert(!x[99], "vector out-of-bounds is null");
+
+    // --- Slice ---
+    pows = [1, 2, 4, 8, 16];
+    assert("{pows[1..3]}" == "[2,4]", "slice 1..3");
+    assert("{pows[3..]}" == "[8,16]", "slice 3..");
+
+    // --- Iteration: #first, #index ---
+    b = "";
+    for v in [1, 3, 6, 9] {
+        if !v#first { b += " "; }
+        b += "{v#index}:{v}";
+    }
+    assert(b == "0:1 1:3 2:6 3:9", "iteration with #index");
+
+    // --- Removal with filter ---
+    nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    for v in nums if v % 2 == 0 {
+        v#remove;
+    }
+    assert("{nums}" == "[1,3,5,7,9]", "remove even elements");
+
+    // --- Remove inside condition ---
+    vv = [1, 3, 6, 9, 12, 14, 15];
+    for v in vv if v % 3 != 0 {
+        v#remove;
+    }
+    assert("{vv}" == "[3,6,9,12,15]", "remove non-multiples of 3");
+
+    // --- Reverse iteration ---
+    c = 0;
+    for e in pows[rev(0..=3)] {
+        c = c * 10 + e;
+    }
+    assert(c == 8421, "reverse sub-vector iteration");
+
+    // --- Format in string ---
+    assert("{for n in 1..7 {n*2}:02}" == "[02,04,06,08,10,12]", "vector in format");
+
+    // --- #count in filter loop ---
+    cnt = 0;
+    for v in [10, 11, 12, 13, 14, 15] if v % 2 == 0 {
+        cnt = v#count;
+    }
+    assert(cnt == 2, "#count in filter loop");
+
+    // --- Vector of structs ---
+    items = [Item { name: "a", value: 1 }, Item { name: "b", value: 2 }];
+    assert(items[0].name == "a", "struct vector [0].name");
+    assert(items[1].value == 2, "struct vector [1].value");
+
+    // --- Ref param field mutation ---
+    // Note: v += items inside a ref-param function does NOT modify the caller's vector (known bug).
+    // Field mutation via ref-param does work:
+    set_val(items, 0, 42);
+    assert(items[0].value == 42, "ref param field mutation");
+}

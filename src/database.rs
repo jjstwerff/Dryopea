@@ -1462,6 +1462,29 @@ impl Stores {
         &mut self.allocations[r.store_nr as usize]
     }
 
+    /// Lock the store that contains the record pointed to by `r`.
+    /// The lock persists until explicitly cleared via `unlock_store`.
+    pub fn lock_store(&mut self, r: &DbRef) {
+        if r.rec != 0 && (r.store_nr as usize) < self.allocations.len() {
+            self.allocations[r.store_nr as usize].lock();
+        }
+    }
+
+    /// Unlock the store that contains the record pointed to by `r`.
+    pub fn unlock_store(&mut self, r: &DbRef) {
+        if r.rec != 0 && (r.store_nr as usize) < self.allocations.len() {
+            self.allocations[r.store_nr as usize].unlock();
+        }
+    }
+
+    /// Return whether the store containing the record pointed to by `r` is locked.
+    #[must_use]
+    pub fn is_store_locked(&self, r: &DbRef) -> bool {
+        r.rec != 0
+            && (r.store_nr as usize) < self.allocations.len()
+            && self.allocations[r.store_nr as usize].is_locked()
+    }
+
     #[must_use]
     pub fn store_nr(&self, nr: u16) -> &Store {
         &self.allocations[nr as usize]

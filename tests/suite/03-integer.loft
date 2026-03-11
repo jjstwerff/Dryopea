@@ -33,4 +33,17 @@ fn main() {
 
     // It is allowed to have full expressions inside a formatting block.
     assert("a{1 + 2 * 3:#x}b" == "a0x7b", "Hex formatting");
+
+    // Hex literals must use lowercase digits.
+    // Uppercase hex digits (0xFF) are a parse error — always write 0xff.
+    assert(0xff == 255, "Lowercase hex literal");
+    assert(0x2a == 42, "Lowercase hex literal 2");
+
+    // Integer format specifiers: '#x' (hex with prefix), 'o' (octal), 'b' (binary),
+    // '+' (force sign), zero-padding with '0N'.
+    assert("ab{1+2+32:#x}c{12:o}d{391}e{12:+4}f{1:03}g{42:b}h" == "ab0x23c14d391e +12f001g101010h", "Integer formats");
+
+    // Long integers use the 'l' suffix. Arithmetic and comparisons work as expected.
+    // Long values can be formatted and converted to integer with 'as integer'.
+    assert("a{1l+1:+4}b{12l as integer}c {2l * (4l % 6l) >= 8} d" == "a +2b12c true d", "Long formatting");
 }

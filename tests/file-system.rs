@@ -247,9 +247,8 @@ result"
     .result(Value::Long(0x0102030405060708));
 }
 
-// Note: binary text write (f += "Hello") is not yet supported because text
-// is stored as a Str fat pointer on the stack, not as a record reference that
-// read_data can dereference. Use f.write(text) for text-mode file writes instead.
+// Note: f += "text" writes raw UTF-8 bytes. Binary modes (LittleEndian/BigEndian) and
+// TextFile mode both support text writes. TextFile is the default for new files.
 
 // --- f#size ---
 
@@ -514,4 +513,414 @@ delete(\"test_bin_be_seq.bin\");
 result"
     )
     .result(Value::Int(4));
+}
+
+// --- text file partial read and write via #read / += ---
+
+/// Writing text to a TextFile with += appends the raw UTF-8 bytes.
+/// Reading them back with #read(n) as text returns the same string.
+#[test]
+fn text_file_write_read() {
+    expr!(
+        "delete(\"test_tf_wr.txt\");
+f = file(\"test_tf_wr.txt\");
+f +=\"Hello\";
+g = file(\"test_tf_wr.txt\");
+result = g#read(5) as text;
+delete(\"test_tf_wr.txt\");
+result"
+    )
+    .result(Value::str("Hello"));
+}
+
+/// Multiple += calls on a TextFile append sequentially.
+#[test]
+fn text_file_append_multiple() {
+    expr!(
+        "delete(\"test_tf_am.txt\");
+f = file(\"test_tf_am.txt\");
+f +=\"Hel\";
+f += \"lo\";
+g = file(\"test_tf_am.txt\");
+result = g#read(5) as text;
+delete(\"test_tf_am.txt\");
+result"
+    )
+    .result(Value::str("Hello"));
+}
+
+/// f#read(n) on a TextFile with n larger than the file returns the partial content.
+#[test]
+fn text_file_read_partial_eof() {
+    expr!(
+        "delete(\"test_tf_pe.txt\");
+f = file(\"test_tf_pe.txt\");
+f +=\"Hi\";
+g = file(\"test_tf_pe.txt\");
+result = g#read(100) as text;
+delete(\"test_tf_pe.txt\");
+result"
+    )
+    .result(Value::str("Hi"));
+}
+
+/// After reading from a TextFile, g#index holds the byte offset where the read started.
+#[test]
+fn text_file_index_after_read() {
+    expr!(
+        "delete(\"test_tf_idx.txt\");
+f = file(\"test_tf_idx.txt\");
+f +=\"Hello\";
+g = file(\"test_tf_idx.txt\");
+g#read(3) as text;
+result = g#index;
+delete(\"test_tf_idx.txt\");
+result"
+    )
+    .result(Value::Long(0));
+}
+
+/// After reading from a TextFile, g#next holds the byte offset after the read.
+#[test]
+fn text_file_next_after_read() {
+    expr!(
+        "delete(\"test_tf_nxt.txt\");
+f = file(\"test_tf_nxt.txt\");
+f +=\"Hello\";
+g = file(\"test_tf_nxt.txt\");
+g#read(3) as text;
+result = g#next;
+delete(\"test_tf_nxt.txt\");
+result"
+    )
+    .result(Value::Long(3));
+}
+
+/// After two reads, g#index points to the start of the second read and g#next to after it.
+#[test]
+fn text_file_index_next_after_two_reads() {
+    expr!(
+        "delete(\"test_tf_2r.txt\");
+f = file(\"test_tf_2r.txt\");
+f +=\"Hello World\";
+g = file(\"test_tf_2r.txt\");
+g#read(5) as text;
+g#read(6) as text;
+idx = g#index;
+nxt = g#next;
+delete(\"test_tf_2r.txt\");
+\"{idx} {nxt}\""
+    )
+    .result(Value::str("5 11"));
+}
+
+/// Setting g#next = 0 on a TextFile seeks back to the start; the next read returns
+/// from the beginning again.
+#[test]
+fn text_file_seek_rerereads_start() {
+    expr!(
+        "delete(\"test_tf_sk.txt\");
+f = file(\"test_tf_sk.txt\");
+f +=\"Hello\";
+g = file(\"test_tf_sk.txt\");
+g#read(5) as text;
+g#next = 0l;
+result = g#read(5) as text;
+delete(\"test_tf_sk.txt\");
+result"
+    )
+    .result(Value::str("Hello"));
+}
+
+/// Seeking into the middle of a TextFile reads from that offset.
+#[test]
+fn text_file_seek_to_offset() {
+    expr!(
+        "delete(\"test_tf_so.txt\");
+f = file(\"test_tf_so.txt\");
+f +=\"Hello World\";
+g = file(\"test_tf_so.txt\");
+g#read(5) as text;
+g#next = 6l;
+result = g#read(5) as text;
+delete(\"test_tf_so.txt\");
+result"
+    )
+    .result(Value::str("World"));
+}
+
+// --- #index and #next tracking on writes (binary and text) ---
+// Writes update the same fields as reads:
+//   #index = byte offset where the write started
+//   #next  = byte offset immediately after the write
+
+/// After one binary integer write, f#index == 0 (write started at start of file).
+#[test]
+fn write_binary_index_after_first() {
+    expr!(
+        "delete(\"test_wbi1.bin\");
+f = file(\"test_wbi1.bin\");
+f.format = Format.LittleEndian;
+f += 42;
+result = f#index;
+delete(\"test_wbi1.bin\");
+result"
+    )
+    .result(Value::Long(0));
+}
+
+/// After one binary integer write, f#next == 4 (4 bytes written).
+#[test]
+fn write_binary_next_after_first() {
+    expr!(
+        "delete(\"test_wbn1.bin\");
+f = file(\"test_wbn1.bin\");
+f.format = Format.LittleEndian;
+f += 42;
+result = f#next;
+delete(\"test_wbn1.bin\");
+result"
+    )
+    .result(Value::Long(4));
+}
+
+/// After two binary integer writes, f#index == 4 (second write started at byte 4).
+#[test]
+fn write_binary_index_after_second() {
+    expr!(
+        "delete(\"test_wbi2.bin\");
+f = file(\"test_wbi2.bin\");
+f.format = Format.LittleEndian;
+f += 1;
+f += 2;
+result = f#index;
+delete(\"test_wbi2.bin\");
+result"
+    )
+    .result(Value::Long(4));
+}
+
+/// After two binary integer writes, f#next == 8 (8 bytes written total).
+#[test]
+fn write_binary_next_after_second() {
+    expr!(
+        "delete(\"test_wbn2.bin\");
+f = file(\"test_wbn2.bin\");
+f.format = Format.LittleEndian;
+f += 1;
+f += 2;
+result = f#next;
+delete(\"test_wbn2.bin\");
+result"
+    )
+    .result(Value::Long(8));
+}
+
+/// After writing "Hello" to a TextFile, f#index == 0 and f#next == 5.
+#[test]
+fn write_text_index_next() {
+    expr!(
+        "delete(\"test_wti.txt\");
+f = file(\"test_wti.txt\");
+f += \"Hello\";
+idx = f#index;
+nxt = f#next;
+delete(\"test_wti.txt\");
+\"{idx} {nxt}\""
+    )
+    .result(Value::str("0 5"));
+}
+
+/// After writing \"Hel\" then \"lo\", f#index == 3 (second write started at 3), f#next == 5.
+#[test]
+fn write_text_index_next_two_writes() {
+    expr!(
+        "delete(\"test_wt2.txt\");
+f = file(\"test_wt2.txt\");
+f += \"Hel\";
+f += \"lo\";
+idx = f#index;
+nxt = f#next;
+delete(\"test_wt2.txt\");
+\"{idx} {nxt}\""
+    )
+    .result(Value::str("3 5"));
+}
+
+/// Seeking the write handle back to 0 and writing again overwrites from the start.
+/// This works identically for binary and text files (both opened with File::create).
+#[test]
+fn write_seek_overwrites_binary() {
+    expr!(
+        "delete(\"test_wso.bin\");
+f = file(\"test_wso.bin\");
+f.format = Format.LittleEndian;
+f += 0x11223344;
+f#next = 0l;
+f += 0x55667788;
+g = file(\"test_wso.bin\");
+g.format = Format.LittleEndian;
+result = g#read(4) as i32;
+delete(\"test_wso.bin\");
+result"
+    )
+    .result(Value::Int(0x55667788));
+}
+
+/// Same seek-and-overwrite behaviour for a TextFile write handle.
+#[test]
+fn write_seek_overwrites_text() {
+    expr!(
+        "delete(\"test_wsot.txt\");
+f = file(\"test_wsot.txt\");
+f += \"Hello\";
+f#next = 0l;
+f += \"World\";
+g = file(\"test_wsot.txt\");
+result = g#read(5) as text;
+delete(\"test_wsot.txt\");
+result"
+    )
+    .result(Value::str("World"));
+}
+
+// --- f#size = n: truncate and extend ---
+
+/// Truncating a text file to fewer bytes discards the tail.
+#[test]
+fn set_size_truncates_text() {
+    expr!(
+        "delete(\"test_sz_tr.txt\");
+f = file(\"test_sz_tr.txt\");
+f += \"Hello World\";
+f#size = 5l;
+g = file(\"test_sz_tr.txt\");
+result = g#read(100) as text;
+delete(\"test_sz_tr.txt\");
+result"
+    )
+    .result(Value::str("Hello"));
+}
+
+/// Truncating a binary file: write two ints (8 bytes), resize to 4 — only the first remains.
+#[test]
+fn set_size_truncates_binary() {
+    expr!(
+        "delete(\"test_sz_tb.bin\");
+f = file(\"test_sz_tb.bin\");
+f.format = Format.LittleEndian;
+f += 0x11223344;
+f += 0x55667788;
+f#size = 4l;
+g = file(\"test_sz_tb.bin\");
+g.format = Format.LittleEndian;
+result = g#read(4) as i32;
+delete(\"test_sz_tb.bin\");
+result"
+    )
+    .result(Value::Int(0x11223344));
+}
+
+/// After truncation the file size reported by f#size matches the new length.
+#[test]
+fn set_size_reports_new_size() {
+    expr!(
+        "delete(\"test_sz_rs.txt\");
+f = file(\"test_sz_rs.txt\");
+f += \"Hello World\";
+f#size = 5l;
+g = file(\"test_sz_rs.txt\");
+result = g#size;
+delete(\"test_sz_rs.txt\");
+result"
+    )
+    .result(Value::Long(5));
+}
+
+/// Extending a file pads with null bytes; the reported size grows to the requested length.
+#[test]
+fn set_size_extends_file() {
+    expr!(
+        "delete(\"test_sz_ex.txt\");
+f = file(\"test_sz_ex.txt\");
+f += \"Hi\";
+f#size = 10l;
+g = file(\"test_sz_ex.txt\");
+result = g#size;
+delete(\"test_sz_ex.txt\");
+result"
+    )
+    .result(Value::Long(10));
+}
+
+/// Setting f#size = 0 empties the file completely.
+#[test]
+fn set_size_zero_clears_file() {
+    expr!(
+        "delete(\"test_sz_z.txt\");
+f = file(\"test_sz_z.txt\");
+f += \"Hello\";
+f#size = 0l;
+g = file(\"test_sz_z.txt\");
+result = g#size;
+delete(\"test_sz_z.txt\");
+result"
+    )
+    .result(Value::Long(0));
+}
+
+/// Negative size is rejected: set_file_size returns false and leaves the file unchanged.
+#[test]
+fn set_size_negative_fails() {
+    expr!(
+        "delete(\"test_sz_neg.txt\");
+f = file(\"test_sz_neg.txt\");
+f += \"Hello\";
+ok = f.set_file_size(-1l);
+g = file(\"test_sz_neg.txt\");
+result = g#size;
+delete(\"test_sz_neg.txt\");
+if !ok && result == 5l { 1 } else { 0 }"
+    )
+    .result(Value::Int(1));
+}
+
+/// Applying f#size to a directory handle returns false.
+#[test]
+fn set_size_directory_fails() {
+    expr!(
+        "d = file(\"example\");
+ok = d.set_file_size(0l);
+if !ok { 1 } else { 0 }"
+    )
+    .result(Value::Int(1));
+}
+
+/// Applying f#size to a non-existent file returns false.
+#[test]
+fn set_size_nonexistent_fails() {
+    expr!(
+        "f = file(\"nonexistent_xyz_set_size.txt\");
+ok = f.set_file_size(0l);
+if !ok { 1 } else { 0 }"
+    )
+    .result(Value::Int(1));
+}
+
+/// After truncation via f#size, a new write reopens the file and appends from the start.
+#[test]
+fn set_size_then_write() {
+    expr!(
+        "delete(\"test_sz_tw.txt\");
+f = file(\"test_sz_tw.txt\");
+f += \"Hello World\";
+f#size = 0l;
+g = file(\"test_sz_tw.txt\");
+g += \"Hi\";
+h = file(\"test_sz_tw.txt\");
+result = h#read(100) as text;
+delete(\"test_sz_tw.txt\");
+result"
+    )
+    .result(Value::str("Hi"));
 }

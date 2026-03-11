@@ -7,11 +7,12 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <span class="cur">Texts</span> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
+<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <span class="cur">Texts</span> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
 <h1>Texts</h1>
 <article>
 <p>UTF-8 strings: byte-based indexing, slices, concatenation, formatting, and built-in functions.</p>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<h2 id="creating-and-measuring-strings">Creating and Measuring Strings</h2>
 <p>Text concatenation produces a new string.</p>
 <pre><code>    a = <span class="st">"1"</span> + <span class="st">"2"</span>;
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"'{a:4}'"</span> == <span class="st">"'12  '"</span>, <span class="st">"Formatting text"</span>);
@@ -24,23 +25,29 @@
 <pre><code>    s = <span class="st">"ABCDE"</span>;
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">0</span>] == <span class="ch">'A'</span>, <span class="st">"Character at byte 0"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">2</span>] == <span class="ch">'C'</span>, <span class="st">"Character at byte 2"</span>);</code></pre>
-<p>A range index extracts a sub-string by byte offsets. The upper bound is exclusive; omitting it goes to the end.</p>
-<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">1..4</span>] == <span class="st">"BCD"</span>, <span class="st">"Sub-string by byte range"</span>);
+<p>A range index extracts a sub-string by byte offsets. The upper bound is exclusive; omitting it goes to the end. Both 'start' and 'end' must be explicit when both are given. Open-start slices (s[..n]) are not supported — use s[0..n] instead.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">0..2</span>] == <span class="st">"AB"</span>, <span class="st">"Open-start slice: use 0..n, not ..n"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">1..4</span>] == <span class="st">"BCD"</span>, <span class="st">"Sub-string by byte range"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">3..</span>] == <span class="st">"DE"</span>, <span class="st">"Open-ended sub-string"</span>);</code></pre>
 <p>For UTF-8 strings, byte offsets snap to the nearest character boundary. Use a range to extract the portion from byte 2 up to (not including) the last byte.</p>
 <pre><code>    txt = <span class="st">"12😊🙃45"</span>;
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(txt[<span class="nm">2..</span>-<span class="nm">1</span>] == <span class="st">"😊🙃4"</span>, <span class="st">"UTF-8 sub-string by byte range"</span>);</code></pre>
-<p>Iterating over a string yields one character per UTF-8 code point. '#index' gives the byte offset of the character that follows the current one. This behaviour is bound to change in a future release to the position of the current.</p>
+<h2 id="iterating-over-characters">Iterating Over Characters</h2>
+<p>Iterating over a string yields one character per UTF-8 code point. '#index' gives the byte offset of the start of the current character. '#next'  gives the byte offset immediately after the current character. For "Hi 😊!": H@0, i@1, ' '@2, '😊'@3..7, '!'@7..8</p>
 <pre><code>    result = <span class="st">""</span>;
     positions = [];
+    nexts = [];
     <span class="kw">for</span> c <span class="kw">in</span> <span class="st">"Hi 😊!"</span> {
         positions += [c#<span class="ty">index</span>];
-        <span class="kw">if</span> c#<span class="ty">index</span> &gt; <span class="nm">3</span> {
+        nexts += [c#next];
+        <span class="kw">if</span> c#<span class="ty">index</span> &gt;= <span class="nm">3</span> {
             result += c;
         }
     }
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(result == <span class="st">"😊!"</span>, <span class="st">"Character iteration was {result}"</span>);
-    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{positions}"</span> == <span class="st">"[1,2,3,7,8]"</span>, <span class="st">"Character positions was {positions}"</span>);</code></pre>
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{positions}"</span> == <span class="st">"[0,1,2,3,7]"</span>, <span class="st">"Character positions was {positions}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{nexts}"</span> == <span class="st">"[1,2,3,7,8]"</span>, <span class="st">"Character nexts was {nexts}"</span>);</code></pre>
+<h2 id="searching-and-splitting">Searching and Splitting</h2>
 <p>Standard string search functions (all offsets are byte-based).</p>
 <pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"something"</span>.<span class="fn-call"><a href="stdlib-text.html">starts_with</a></span>(<span class="st">"some"</span>), <span class="st">"starts_with"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"something"</span>.<span class="fn-call"><a href="stdlib-text.html">ends_with</a></span>(<span class="st">"thing"</span>), <span class="st">"ends_with"</span>);

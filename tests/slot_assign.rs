@@ -65,7 +65,6 @@ fn test() {
 /// produces a garbage DbRef (store_nr=8) that is read instead of the real value.
 /// See `doc/claude/ASSIGNMENT.md` §"Option A sub-option 3" for the investigation path.
 #[test]
-#[ignore = "borrowed-ref pre-init runtime crash: garbage DbRef (store_nr=8) reaches set_int"]
 fn long_lived_int_and_copy_record_followed_by_ref() {
     code!(
         "struct Item { val: integer }

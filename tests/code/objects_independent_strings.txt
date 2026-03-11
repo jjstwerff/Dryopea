@@ -95,38 +95,38 @@ Execute test:
   ; store-alloc nr=1 max=2
     2:[44] Text()
     3:[68] Database(var[32], db_tp=18)
-    8:[68] VarRef(var[32]) -> ref(1,1,8)={}[68]
+    8:[68] VarRef(var[32]=a) -> ref(1,1,8)={}[68]
    11:[80] ConstText(_value="hello") -> "hello"[80]
    18:[96] SetText(v1=ref(1,1,8)[68], fld=0, val="hello"[80])
    21:[68] ConvRefFromNull() -> ref(2,0,8)[68]
   ; store-alloc nr=2 max=3
    22:[80] Database(var[68], db_tp=18)
-   27:[80] VarRef(var[32]) -> ref(1,1,8)={name:"hello"}[80]
-   30:[92] VarRef(var[68]) -> ref(2,1,8)={}[92]
+   27:[80] VarRef(var[32]=a) -> ref(1,1,8)={name:"hello"}[80]
+   30:[92] VarRef(var[68]=b) -> ref(2,1,8)={}[92]
    33:[104] CopyRecord(data=ref(1,1,8)[80], to=ref(2,1,8)[92], tp=18)
    36:[80] Text()
-   37:[104] VarRef(var[68]) -> ref(2,1,8)={name:"hello"}[104]
+   37:[104] VarRef(var[68]=b) -> ref(2,1,8)={name:"hello"}[104]
    40:[116] GetText(v1=ref(2,1,8)[104], fld=0) -> "hello"[104]
    43:[120] AppendText(var[80], v1="hello"[104])
    46:[104] ConstText(_value=" world") -> " world"[104]
    54:[120] AppendText(var[80], v1=" world"[104])
-   57:[104] VarRef(var[68]) -> ref(2,1,8)={name:"hello"}[104]
-   60:[116] VarText(var[80]) -> "hello world"[116]
+   57:[104] VarRef(var[68]=b) -> ref(2,1,8)={name:"hello"}[104]
+   60:[116] VarText(var[80]=_field_1) -> "hello world"[116]
    63:[132] SetText(v1=ref(2,1,8)[104], fld=0, val="hello world"[116])
-   66:[104] VarRef(var[32]) -> ref(1,1,8)={name:"hello"}[104]
+   66:[104] VarRef(var[32]=a) -> ref(1,1,8)={name:"hello"}[104]
    69:[116] GetText(v1=ref(1,1,8)[104], fld=0) -> "hello"[104]
-   72:[120] VarRef(var[68]) -> ref(2,1,8)={name:"hello world"}[120]
+   72:[120] VarRef(var[68]=b) -> ref(2,1,8)={name:"hello world"}[120]
    75:[132] FreeRef(v1=ref(2,1,8)[120]) ; store-free max=2
    76:[120] FreeText(var[80])
    79:[120] FreeStack(value=16, discard=52)
    83:[84] AppendText(var[44], v1="hello"[68])
-   86:[68] VarText(var[44]) -> "hello"[68]
+   86:[68] VarText(var[44]=test_value) -> "hello"[68]
    89:[84] ConstText(_value="hello") -> "hello"[84]
    96:[100] EqText(v1="hello"[68], v2="hello"[84]) -> true[68]
    97:[69] GotoFalseWord(jump=103, if_false=true[68])
   100:[68] GotoWord(jump=156)
   156:[68] FreeText(var[44])
-  159:[68] VarRef(var[32]) -> ref(1,1,8)={name:"hello"}[68]
+  159:[68] VarRef(var[32]=a) -> ref(1,1,8)={name:"hello"}[68]
   162:[80] FreeRef(v1=ref(1,1,8)[68]) ; store-free max=1
   163:[68] FreeText(var[8])
   166:[68] Return(ret=4294967295[4], value=0, discard=64)

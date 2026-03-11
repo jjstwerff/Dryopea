@@ -13,6 +13,7 @@ mod hash;
 mod interpreter;
 mod keys;
 mod lexer;
+mod log_config;
 mod parser;
 mod png_store;
 mod scopes;
@@ -33,6 +34,8 @@ fn main() {
     args.next();
     let mut file_name = String::new();
     let mut dir = project_dir();
+    let mut project: Option<String> = None;
+    let mut lib_dirs: Vec<String> = Vec::new();
     while let Some(arg) = args.next() {
         let a = arg.to_str().unwrap();
         if a == "--version" {
@@ -40,39 +43,63 @@ fn main() {
             return;
         } else if a == "--path" {
             dir = args.next().unwrap().to_str().unwrap().to_string();
+        } else if a == "--project" {
+            project = Some(args.next().unwrap().to_str().unwrap().to_string());
+        } else if a == "--lib" {
+            lib_dirs.push(args.next().unwrap().to_str().unwrap().to_string());
         } else if a == "--help" || a == "-h" || a == "-?" {
-            println!("usage: lavition [option] [file]");
+            println!("usage: lavition [options] <file>");
             println!("Options:");
-            println!("--version       : print version information");
-            println!("-h, --help, -?  : print this help message");
-            println!("--path [DIR]    : set a specific project directory");
+            println!("  --version          print version information");
+            println!("  -h, --help, -?     print this help message");
+            println!("  --path <dir>       directory containing the default/ library (default: binary location)");
+            println!("  --project <dir>    run the script as if launched from <dir>; file I/O is");
+            println!("                     sandboxed there and its lib/ sub-directory is searched");
+            println!("                     for 'use' imports (useful when the script lives in /tmp)");
+            println!("  --lib <dir>        add <dir> to the 'use' import search path; may be");
+            println!("                     repeated for multiple directories");
             return;
         } else if a.starts_with('-') {
             println!("unknown option: {a}");
-            println!("usage: lavition [option] [file]");
+            println!("usage: lavition [options] <file>");
             println!("Try `lavition --help` for more information.");
-            return;
+            std::process::exit(1);
         } else if file_name.is_empty() {
             file_name = a.to_string();
         } else {
             // TODO allow arguments to be passed to the program
             println!("Duplicate file name: {a}");
-            return;
+            std::process::exit(1);
         }
     }
-    let mut p = parser::Parser::new();
-    p.parse_dir(&(dir + "default"), true, false).unwrap();
     if file_name.is_empty() {
         println!("lavition: no input file specified.");
-        println!("usage: lavition [option] [file]");
-        return;
+        println!("usage: lavition [options] <file>");
+        std::process::exit(1);
     }
-    p.parse(&file_name, false);
+    // Resolve the script path to absolute before potentially changing directory.
+    let abs_file = std::path::Path::new(&file_name)
+        .canonicalize()
+        .unwrap_or_else(|_| std::path::PathBuf::from(&file_name));
+    let abs_file = abs_file.to_str().unwrap().to_string();
+    // --project: change working directory so file I/O is sandboxed to the project root.
+    if let Some(ref proj) = project {
+        if let Err(e) = env::set_current_dir(proj) {
+            println!("Error: cannot change to project directory '{proj}': {e}");
+            std::process::exit(1);
+        }
+        // Also expose the project's lib/ sub-directory for 'use' imports.
+        lib_dirs.insert(0, format!("{proj}/lib"));
+    }
+    let mut p = parser::Parser::new();
+    p.lib_dirs = lib_dirs;
+    p.parse_dir(&(dir + "default"), true, false).unwrap();
+    p.parse(&abs_file, false);
     if !p.diagnostics.is_empty() {
         for l in p.diagnostics.lines() {
             println!("{l}");
         }
-        return;
+        std::process::exit(1);
     }
     scopes::check(&mut p.data);
     let mut state = State::new(p.database);

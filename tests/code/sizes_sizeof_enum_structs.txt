@@ -124,42 +124,42 @@ Execute test:
     1:[20] ConvRefFromNull() -> ref(2,0,8)[20]
   ; store-alloc nr=2 max=3
     2:[32] [8] Text()
-    3:[56] Database(var[20], db_tp=19)
-    8:[56] VarRef(var[20]) -> ref(2,1,8)=null[56]
+    3:[56] Database(var[20]=test_value, db_tp=19)
+    8:[56] VarRef(var[20]=__ref_1) -> ref(2,1,8)=null[56]
    11:[68] ConstInt(val=1) -> 1[68]
    16:[72] SetByte(v1=ref(2,1,8)[56], fld=7, min=0, val=1[68])
-   21:[56] VarRef(var[20]) -> ref(2,1,8)=null[56]
+   21:[56] VarRef(var[20]=__ref_1) -> ref(2,1,8)=null[56]
    24:[68] ConstEnum(val=1) -> unknown(1)[68]
    26:[69] SetEnum(v1=ref(2,1,8)[56], fld=0, val=1[68])
-   29:[56] VarRef(var[20]) -> ref(2,1,8)=Small {n:1}[56]
+   29:[56] VarRef(var[20]=__ref_1) -> ref(2,1,8)=Small {n:1}[56]
    32:[68] Call(size=0, fn=n_get_size)
- 1776:[72] VarRef(var[56]) -> ref(2,1,8)=Small {n:1}[72]
- 1779:[84] SizeofRef(val=ref(2,1,8)[72]) -> 8[72]
- 1780:[76] Return(ret=1825[68], value=4, discard=20) -> 8[56]
+ 1791:[72] VarRef(var[56]=v) -> ref(2,1,8)=Small {n:1}[72]
+ 1794:[84] SizeofRef(val=ref(2,1,8)[72]) -> 8[72]
+ 1795:[76] Return(ret=1840[68], value=4, discard=20) -> 8[56]
    39:[60] Database(var[8], db_tp=21)
-   44:[60] VarRef(var[8]) -> ref(1,1,8)=null[60]
+   44:[60] VarRef(var[8]=__ref_2) -> ref(1,1,8)=null[60]
    47:[72] ConstLong(val=42) -> 42[72]
    56:[80] SetLong(v1=ref(1,1,8)[60], fld=8, val=42[72])
-   59:[60] VarRef(var[8]) -> ref(1,1,8)=null[60]
+   59:[60] VarRef(var[8]=__ref_2) -> ref(1,1,8)=null[60]
    62:[72] ConstEnum(val=2) -> unknown(2)[72]
    64:[73] SetEnum(v1=ref(1,1,8)[60], fld=0, val=2[72])
-   67:[60] VarRef(var[8]) -> ref(1,1,8)=Large {n:42}[60]
+   67:[60] VarRef(var[8]=__ref_2) -> ref(1,1,8)=Large {n:42}[60]
    70:[72] Call(size=0, fn=n_get_size)
- 1776:[76] VarRef(var[60]) -> ref(1,1,8)=Large {n:42}[76]
- 1779:[88] SizeofRef(val=ref(1,1,8)[76]) -> 16[76]
- 1780:[80] Return(ret=1863[72], value=4, discard=20) -> 16[60]
+ 1791:[76] VarRef(var[60]=v) -> ref(1,1,8)=Large {n:42}[76]
+ 1794:[88] SizeofRef(val=ref(1,1,8)[76]) -> 16[76]
+ 1795:[80] Return(ret=1878[72], value=4, discard=20) -> 16[60]
    77:[64] EqInt(v1=8[56], v2=16[60]) -> false[56]
    78:[57] GotoFalseWord(jump=89, if_false=false[56])
    89:[56] ConstInt(val=0) -> 0[56]
-   94:[60] VarInt(var[56]) -> 0[60]
+   94:[60] VarInt(var[56]=test_value) -> 0[60]
    97:[64] ConstInt(val=0) -> 0[64]
   102:[68] EqInt(v1=0[60], v2=0[64]) -> true[60]
   103:[61] GotoFalseWord(jump=109, if_false=true[60])
   106:[60] GotoWord(jump=159)
   159:[60] FreeText(var[32])
-  162:[60] VarRef(var[20]) -> ref(2,1,8)=Small {n:1}[60]
+  162:[60] VarRef(var[20]=__ref_1) -> ref(2,1,8)=Small {n:1}[60]
   165:[72] FreeRef(v1=ref(2,1,8)[60]) ; store-free max=2
-  166:[60] VarRef(var[8]) -> ref(1,1,8)=Large {n:42}[60]
+  166:[60] VarRef(var[8]=__ref_2) -> ref(1,1,8)=Large {n:42}[60]
   169:[72] FreeRef(v1=ref(1,1,8)[60]) ; store-free max=1
   170:[60] Return(ret=4294967295[4], value=0, discard=56)
 Finished

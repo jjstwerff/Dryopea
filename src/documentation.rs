@@ -141,16 +141,19 @@ fn skip_header(trimmed: &str) -> bool {
 }
 
 fn write_index(topics: &[Topic], stdlib_sections: &[StdlibSection]) -> std::io::Result<()> {
-    let lang_cards: String = topics.iter().fold(String::new(), |mut output, topic| {
+    let mut lang_cards = String::from(
+        "    <a class=\"card card-featured\" href=\"00-vs-rust.html\">\
+<h2>vs Rust</h2><p>Key differences for developers coming from Rust.</p></a>\n"
+    );
+    for topic in topics {
         if !topic.filename.starts_with("00-") {
             let _ = writeln!(
-                output,
+                lang_cards,
                 "    <a class=\"card\" href=\"{}.html\"><h2>{}</h2><p>{}</p></a>",
                 topic.filename, topic.name, topic.title
             );
         }
-        output
-    });
+    }
     let lib_cards: String = stdlib_sections
         .iter()
         .fold(String::new(), |mut output, sec| {
@@ -204,6 +207,113 @@ fn html_esc(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+}
+
+fn to_anchor_id(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+fn flush_para(para: &mut Vec<String>, body: &mut String) {
+    if !para.is_empty() {
+        let text = para.join(" ");
+        body.push_str("<p>");
+        body.push_str(&html_esc(&text));
+        body.push_str("</p>\n");
+        para.clear();
+    }
+}
+
+fn flush_list(in_list: &mut bool, body: &mut String) {
+    if *in_list {
+        body.push_str("</ul>\n");
+        *in_list = false;
+    }
+}
+
+/// Render prose lines into HTML, supporting `## Heading`, `### Sub-heading`,
+/// `- list item`, and regular paragraph text.
+fn render_prose_lines(lines: &[String], body: &mut String) {
+    let mut para: Vec<String> = Vec::new();
+    let mut in_list = false;
+    for line in lines {
+        if let Some(heading) = line.strip_prefix("## ") {
+            flush_list(&mut in_list, body);
+            flush_para(&mut para, body);
+            let id = to_anchor_id(heading);
+            body.push_str(&format!("<h2 id=\"{id}\">{}</h2>\n", html_esc(heading)));
+        } else if let Some(heading) = line.strip_prefix("### ") {
+            flush_list(&mut in_list, body);
+            flush_para(&mut para, body);
+            let id = to_anchor_id(heading);
+            body.push_str(&format!("<h3 id=\"{id}\">{}</h3>\n", html_esc(heading)));
+        } else if let Some(item) = line.strip_prefix("- ") {
+            flush_para(&mut para, body);
+            if !in_list {
+                body.push_str("<ul>\n");
+                in_list = true;
+            }
+            body.push_str(&format!("<li>{}</li>\n", html_esc(item)));
+        } else if line.is_empty() {
+            flush_list(&mut in_list, body);
+            flush_para(&mut para, body);
+        } else {
+            flush_list(&mut in_list, body);
+            para.push(line.clone());
+        }
+    }
+    flush_list(&mut in_list, body);
+    flush_para(&mut para, body);
+}
+
+fn typst_escape(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('#', "\\#")
+        .replace('@', "\\@")
+        .replace('$', "\\$")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
+}
+
+fn code_to_typst(code: &str) -> String {
+    // Use "rust" lang tag as approximation — Typst doesn't know "loft" natively
+    format!("```rust\n{code}\n```\n\n")
+}
+
+fn prose_to_typst(lines: &[String]) -> String {
+    let mut result = String::new();
+    let mut para: Vec<String> = Vec::new();
+    let mut in_list = false;
+    for line in lines {
+        if let Some(heading) = line.strip_prefix("## ") {
+            if in_list { result.push('\n'); in_list = false; }
+            if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); para.clear(); }
+            result.push_str(&format!("=== {}\n\n", typst_escape(heading)));
+        } else if let Some(heading) = line.strip_prefix("### ") {
+            if in_list { result.push('\n'); in_list = false; }
+            if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); para.clear(); }
+            result.push_str(&format!("==== {}\n\n", typst_escape(heading)));
+        } else if let Some(item) = line.strip_prefix("- ") {
+            if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); para.clear(); }
+            in_list = true;
+            result.push_str(&format!("- {}\n", typst_escape(item)));
+        } else if line.is_empty() {
+            if in_list { result.push('\n'); in_list = false; }
+            if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); para.clear(); }
+        } else {
+            if in_list { result.push('\n'); in_list = false; }
+            para.push(line.clone());
+        }
+    }
+    if in_list { result.push('\n'); }
+    if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); }
+    result
 }
 
 // ─── Section parser ───────────────────────────────────────────────────────────
@@ -558,6 +668,67 @@ pub fn page_html(title: &str, nav: &str, h1: &str, body: &str) -> String {
     )
 }
 
+/// Render the body content of a topic page (prose + code, no nav or HTML frame).
+/// Supports `// ## Section`, `// ### Sub-section`, and `// - list item` in prose.
+#[must_use]
+pub fn render_topic_body<S: std::hash::BuildHasher>(
+    source: &str,
+    link_map: &HashMap<String, String, S>,
+) -> String {
+    let mut body = String::new();
+    for section in parse_sections(source) {
+        match section {
+            DocSection::Prose(lines) => render_prose_lines(&lines, &mut body),
+            DocSection::Code(lines) => {
+                let highlighted = highlight_loft(&lines.join("\n"), link_map);
+                body.push_str("<pre><code>");
+                body.push_str(&highlighted);
+                body.push_str("</code></pre>\n");
+            }
+        }
+    }
+    body
+}
+
+/// Render a topic page's content as Typst markup (no document header; use within a `=` section).
+/// `## heading` maps to `===`, `### heading` to `====`.
+#[must_use]
+pub fn render_topic_typst(source: &str) -> String {
+    let mut out = String::new();
+    for section in parse_sections(source) {
+        match section {
+            DocSection::Prose(lines) => out.push_str(&prose_to_typst(&lines)),
+            DocSection::Code(lines) => out.push_str(&code_to_typst(&lines.join("\n"))),
+        }
+    }
+    out
+}
+
+/// A topic source file's metadata and content, ready for print/typst rendering.
+pub struct TopicSource {
+    pub filename: String,
+    pub name: String,
+    pub title: String,
+    pub source: String,
+}
+
+/// Collect all non-`00-` topic source files for use in print/typst generation.
+#[must_use]
+pub fn get_topic_sources() -> Vec<TopicSource> {
+    gather_topics()
+        .into_iter()
+        .filter(|t| !t.filename.starts_with("00-"))
+        .filter_map(|t| {
+            std::fs::read_to_string(&t.file).ok().map(|source| TopicSource {
+                filename: t.filename,
+                name: t.name,
+                title: t.title,
+                source,
+            })
+        })
+        .collect()
+}
+
 fn render_doc_page<S: std::hash::BuildHasher>(
     source: &str,
     name: &str,
@@ -567,24 +738,6 @@ fn render_doc_page<S: std::hash::BuildHasher>(
     link_map: &HashMap<String, String, S>,
 ) -> String {
     let nav = build_nav(topic_info, stdlib_sections, active);
-    let mut body = String::new();
-    for section in parse_sections(source) {
-        match section {
-            DocSection::Prose(lines) => {
-                let text = lines.join(" ");
-                if !text.is_empty() {
-                    body.push_str("<p>");
-                    body.push_str(&html_esc(&text));
-                    body.push_str("</p>\n");
-                }
-            }
-            DocSection::Code(lines) => {
-                let highlighted = highlight_loft(&lines.join("\n"), link_map);
-                body.push_str("<pre><code>");
-                body.push_str(&highlighted);
-                body.push_str("</code></pre>\n");
-            }
-        }
-    }
+    let body = render_topic_body(source, link_map);
     page_html(name, &nav, name, &body)
 }

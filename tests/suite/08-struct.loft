@@ -10,6 +10,7 @@ struct Area {
     direction: u8
 }
 
+// ## Field Constraints
 // 'limit(min, max)' constrains an integer field to a range.
 // 'not null' makes zero a valid stored value instead of the null sentinel.
 // Fields omitted in a constructor default to zero (or null for nullable fields).
@@ -19,12 +20,14 @@ struct Point {
     b: integer limit(0, 255) not null
 }
 
+// ## Methods
 // A method is a function whose first parameter is named 'self' with the struct type.
 // It is called with dot notation: value.method().
 fn value(self: Point) -> integer {
     self.r * 0x10000 + self.g * 0x100 + self.b
 }
 
+// ## Computed Fields
 // 'default(expr)' and 'virtual(expr)' compute a field value from other fields.
 // '$' refers to the struct being initialised.
 struct Object {
@@ -51,5 +54,14 @@ fn main() {
     // Methods are called with dot notation; the result can be formatted inline.
     purple = Point { r:128, b:128 };
     assert("{purple.value():x}" == "800080", "Method result in format");
+
+    // Limitation: do not call a method directly on a constructor expression.
+    // The parser rejects 'MyStruct { ... }.method()' — assign to a variable first:
+    //   tmp = Point { r: 1, g: 2, b: 3 };
+    //   result = tmp.value();
+    //
+    // Limitation: methods that return a new struct record (-> MyStruct) currently
+    // crash at runtime. Methods that return scalars (integer, float, text) or
+    // modify 'self' in place work correctly.
 }
 // defaults on fields & null defaults

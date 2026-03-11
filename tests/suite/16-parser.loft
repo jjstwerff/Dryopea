@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // @NAME: Parser
 // @TITLE: Parser library.
-// Parser library: parsing lav source code programmatically from within a lav program.
+// Parser library: parsing loft source code programmatically from within a loft program.
 //
 // `parse(name, source)` is the single entry point. It takes a display name (used in
-// error messages) and a lav source string. The name argument does not need to correspond
+// error messages) and a loft source string. The name argument does not need to correspond
 // to a real file; it is only used when reporting parse errors.
 //
-// The parser understands the full lav grammar:
+// The parser understands the full loft grammar:
 // - `struct Name { field: type [= default] }` — named-field aggregates
 // - `enum Name { Variant [{ field: type }] }` — tagged unions with optional payload
 // - `fn name(params) [-> type] { body }` — functions with a block body
@@ -23,7 +23,7 @@ use parser;
 
 fn main() {
     // Parse a minimal function definition. The double braces `{{` and `}}` are the
-    // lav way to write literal braces inside a format string.
+    // loft way to write literal braces inside a format string.
     parser::parse("hello", "fn main() {{ println(\"Hello World\"); }}");
 
     // Parse a struct definition followed by a function that references it.

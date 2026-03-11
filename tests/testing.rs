@@ -13,12 +13,14 @@ use dryopea::generation::Output;
 use dryopea::interpreter::byte_code;
 #[cfg(debug_assertions)]
 use dryopea::interpreter::show_code;
+#[cfg(debug_assertions)]
+use dryopea::log_config::LogConfig;
 use std::fs::File;
 use std::io::Write;
 
 /// Evaluate the given code.
-/// When a result is given there should be a @test routine returning this result.
-/// When a type is also given this result should be of that type.
+/// When a result is given, there should be a present @test routine returning this result.
+/// When a type is also given, this result should be of that type.
 /// Defining an error will not expect a result but will validate that this specific error is thrown.
 /// Defining warnings will just validate the given warnings and not expect a change of flow.
 #[macro_export]
@@ -79,7 +81,7 @@ impl Test {
     }
 
     /// Expect this warning during parsing.
-    /// This will not change if it should result in and error or a normal result.
+    /// This will not change if it results in an error or a normal result.
     pub fn warning(&mut self, text: &str) -> &mut Test {
         self.warnings.push(text.to_string());
         self
@@ -147,6 +149,7 @@ impl Test {
         types: usize,
         code: &mut String,
         state: &mut State,
+        config: &LogConfig,
     ) -> File {
         let mut w = File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
         writeln!(w, "{code}").unwrap();
@@ -154,7 +157,7 @@ impl Test {
         for tp in types..to {
             writeln!(w, "Type {tp}:{}", state.database.show_type(tp as u16, true)).unwrap();
         }
-        show_code(&mut w, state, data).unwrap();
+        show_code(&mut w, state, data, config).unwrap();
         w
     }
 }
@@ -202,9 +205,11 @@ impl Drop for Test {
         let mut state = State::new(p.database);
         byte_code(&mut state, &mut p.data);
         #[cfg(debug_assertions)]
-        let mut w = self.output_code(&mut p.data, types, &mut code, &mut state);
+        let config = LogConfig::from_env();
         #[cfg(debug_assertions)]
-        state.execute_log(&mut w, "test", &p.data).unwrap();
+        let mut w = self.output_code(&mut p.data, types, &mut code, &mut state, &config);
+        #[cfg(debug_assertions)]
+        state.execute_log(&mut w, "test", &config, &p.data).unwrap();
         #[cfg(not(debug_assertions))]
         state.execute("test", &p.data);
     }

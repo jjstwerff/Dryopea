@@ -6,6 +6,7 @@
 // UTF-8 strings: byte-based indexing, slices, concatenation, formatting, and built-in functions.
 
 fn main() {
+    // ## Creating and Measuring Strings
     // Text concatenation produces a new string.
     a = "1" + "2";
     assert("'{a:4}'" == "'12  '", "Formatting text");
@@ -25,6 +26,9 @@ fn main() {
 
     // A range index extracts a sub-string by byte offsets.
     // The upper bound is exclusive; omitting it goes to the end.
+    // Both 'start' and 'end' must be explicit when both are given.
+    // Open-start slices (s[..n]) are not supported — use s[0..n] instead.
+    assert(s[0..2] == "AB", "Open-start slice: use 0..n, not ..n");
     assert(s[1..4] == "BCD", "Sub-string by byte range");
     assert(s[3..] == "DE", "Open-ended sub-string");
 
@@ -33,20 +37,26 @@ fn main() {
     txt = "12😊🙃45";
     assert(txt[2..-1] == "😊🙃4", "UTF-8 sub-string by byte range");
 
+    // ## Iterating Over Characters
     // Iterating over a string yields one character per UTF-8 code point.
-    // '#index' gives the byte offset of the character that follows the current one.
-    // This behaviour is bound to change in a future release to the position of the current.
+    // '#index' gives the byte offset of the start of the current character.
+    // '#next'  gives the byte offset immediately after the current character.
+    // For "Hi 😊!": H@0, i@1, ' '@2, '😊'@3..7, '!'@7..8
     result = "";
     positions = [];
+    nexts = [];
     for c in "Hi 😊!" {
         positions += [c#index];
-        if c#index > 3 {
+        nexts += [c#next];
+        if c#index >= 3 {
             result += c;
         }
     }
     assert(result == "😊!", "Character iteration was {result}");
-    assert("{positions}" == "[1,2,3,7,8]", "Character positions was {positions}");
+    assert("{positions}" == "[0,1,2,3,7]", "Character positions was {positions}");
+    assert("{nexts}" == "[1,2,3,7,8]", "Character nexts was {nexts}");
 
+    // ## Searching and Splitting
     // Standard string search functions (all offsets are byte-based).
     assert("something".starts_with("some"), "starts_with");
     assert("something".ends_with("thing"), "ends_with");
@@ -55,4 +65,12 @@ fn main() {
 
     // trim() removes leading and trailing whitespace.
     assert(trim("  hello  ") == "hello", "trim");
+
+    // ## Text Formatting
+    // Double braces '{{' and '}}' produce a literal brace in the output.
+    assert("ab{{cd}}e" == "ab{cd}e", "Escaping braces");
+
+    // Text alignment: '<' left, '>' right (default), the width can be an expression.
+    vr = "abc";
+    assert("1{vr:<2+3}2{vr}3{vr:6}4{vr:>7}" == "1abc  2abc3abc   4    abc", "Text alignment");
 }

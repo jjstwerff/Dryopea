@@ -225,3 +225,116 @@ section-header, h2.diff {
   border-left: 4px solid var(--accent);
   border-radius: 0 4px 4px 0;
 }
+
+/* ── Article section headings (topic pages) ─────────────────────────────── */
+
+article h2 {
+  font-size: 1.25em;
+  margin-top: 2.8em;
+  margin-bottom: 0.4em;
+  padding: 0.3em 0.7em;
+  border-left: 4px solid var(--accent);
+  background: var(--code-bg);
+  border-radius: 0 4px 4px 0;
+}
+
+article h3 {
+  font-size: 1.05em;
+  margin-top: 2em;
+  margin-bottom: 0.3em;
+  color: var(--dim);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.25em;
+}
+
+/* ── Featured card (vs Rust on index) ───────────────────────────────────── */
+
+.card-featured {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, #eff6ff 0%, var(--code-bg) 100%);
+}
+.card-featured:hover { box-shadow: 0 4px 12px rgba(37,99,235,.2); }
+.card-featured h2 { color: var(--accent); }
+
+/* ── Print / single-page reference ─────────────────────────────────────── */
+
+.print-page { max-width: 1100px; }
+
+.print-header {
+  text-align: center;
+  padding: 3em 0 2em;
+  border-bottom: 3px solid var(--accent);
+  margin-bottom: 3em;
+}
+.print-header h1 { font-size: 2.5em; margin: 0 0 0.3em; }
+
+.print-toc {
+  column-count: 2;
+  column-gap: 2.5em;
+  margin: 2em 0 3em;
+  padding: 1.5em 2em;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  break-inside: avoid;
+}
+.print-toc h2 { column-span: all; margin: 0 0 1em; font-size: 1.1em; }
+.print-toc ul { margin: 0; padding-left: 1.2em; list-style: none; }
+.print-toc li { margin: 0.3em 0; font-size: 0.9em; }
+.print-toc a { color: var(--accent); text-decoration: none; }
+.print-toc a:hover { text-decoration: underline; }
+.toc-indent { padding-left: 1.5em; }
+.toc-section { font-weight: 700; margin-top: 0.8em; }
+.toc-desc { color: var(--dim); font-size: 0.85em; }
+.toc-note { color: var(--dim); font-size: 0.8em; font-style: italic; }
+
+.print-section {
+  margin-top: 4em;
+  padding-top: 2em;
+  border-top: 3px solid var(--border);
+}
+.print-section > h1 {
+  font-size: 2em;
+  margin: 0 0 1em;
+  padding-bottom: 0.4em;
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
+}
+.print-section article h2 { margin-top: 2em; }
+
+/* ── Print media ─────────────────────────────────────────────────────────── */
+
+@media print {
+  nav, .search-wrap { display: none !important; }
+
+  body {
+    max-width: 100%;
+    padding: 0.5cm 1cm;
+    font-size: 10pt;
+    line-height: 1.5;
+  }
+
+  pre {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    font-size: 0.82em;
+  }
+
+  h1, h2, h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .print-page { max-width: 100%; }
+  .print-toc { page-break-after: always; break-after: page; column-count: 2; }
+  .print-section { page-break-before: always; break-before: page; }
+
+  /* Show URLs for external links only */
+  a[href^="http"]:after {
+    content: " <" attr(href) ">";
+    font-size: 0.7em;
+    color: #666;
+  }
+  /* Don't show URLs for internal anchors or nav links */
+  a[href^="#"]:after, a[href$=".html"]:after { content: ""; }
+}

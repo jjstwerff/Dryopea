@@ -1,0 +1,113 @@
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Libraries
+// @TITLE: Library system — importing and using external loft modules.
+// Libraries let you split code across files. A library is any `.loft` file placed in a `lib/`
+// directory. Use `use name;` to import it, then access its definitions as `name::Thing`.
+
+// `use` statements must appear at the very top of the file, before any function or
+// struct definitions. Placing a `use` after a definition is a syntax error.
+
+use testlib;
+
+// --- Constants ---
+// Library constants are accessed with the `libname::CONSTANT` prefix.
+
+// --- Enums ---
+// Library enum variants are also accessed with the prefix.
+
+// --- Struct construction ---
+// All library types must be constructed with their namespace prefix.
+// Writing `Point {}` without the prefix is a parse error.
+
+fn main() {
+    // Constants from a library require the library prefix.
+    assert(testlib::MAX_SIZE == 100, "library constant MAX_SIZE");
+    assert(testlib::MIN_SIZE == 1, "library constant MIN_SIZE");
+
+    // Library enum variants: comparison and ordering work as normal.
+    s = testlib::Ok;
+    assert(s == testlib::Ok, "enum equality");
+    assert(s < testlib::Error, "enum ordering");
+    assert("{s}" == "Ok", "enum to text: {s}");
+    assert("Warning" as testlib::Status == testlib::Warning, "text to enum");
+
+    // Library enum values can be passed to library free functions.
+    assert(testlib::status_text(testlib::Error) == "err", "free fn with enum arg");
+
+    // Structs are constructed with namespace prefix and accessed by field.
+    p = testlib::Point { x: 3.0, y: 4.0 };
+    assert(p.x == 3.0, "field access: x={p.x}");
+    assert(p.y == 4.0, "field access: y={p.y}");
+
+    // Methods defined in the library are called without a prefix.
+    dist = p.distance();
+    assert(round(dist) == 5.0, "method call: distance={dist}");
+
+    // Scalar fields can be mutated directly.
+    b = testlib::Bag { label: "test", count: 0 };
+    b.label = "updated";
+    assert(b.label == "updated", "direct scalar field mutation");
+
+    // Methods that mutate scalar fields work.
+    b.bump();
+    assert(b.count == 1, "method scalar mutation: count={b.count}");
+    b.bump();
+    assert(b.count == 2, "method scalar mutation: count={b.count}");
+
+    // Free functions: called with the library prefix.
+    assert(testlib::add(3, 4) == 7, "free function add");
+    assert(testlib::add(0, -5) == -5, "free function negative");
+
+    // Library types can be used as function parameter types (by their full name).
+    // Passing them to locally-defined functions works as long as the parameter type
+    // is written as the plain struct name (not with :: prefix — see limitation below).
+
+    // Library struct with vector field: initialization via struct literal works.
+    bag2 = testlib::Bag { label: "full", count: 3, items: [
+        testlib::Point { x: 1.0, y: 0.0 },
+        testlib::Point { x: 0.0, y: 1.0 }
+    ]};
+    assert(len(bag2.items) == 2, "initialized vector field: {len(bag2.items)}");
+    assert(bag2.items[0].x == 1.0, "vector field element access");
+
+    // Duplicate `use` of the same library is silently ignored (no error).
+    // Multiple libraries can be imported in one file.
+    // Libraries can themselves use other libraries (nested use).
+
+    // --- Limitations ---
+
+    // Limitation 1: `use` must appear before all definitions.
+    // The following would be a fatal syntax error:
+    //   fn foo() {}
+    //   use testlib;   // ERROR: Syntax error
+
+    // Limitation 2: Unqualified access to library names is not supported.
+    // `Point {}` without prefix → parse error ("Expect token ;")
+    // `MAX_SIZE` without prefix → unknown variable
+    // `add(1, 2)` without prefix → unknown function
+
+    // Limitation 3: You cannot write a method that takes a library type as `self`
+    // in the importing file. The `::` namespace separator is not allowed in
+    // function parameter type positions:
+    //   fn extend(self: testlib::Point) -> float { ... }   // ERROR: Syntax error
+    // Workaround: define all methods that operate on a library type inside the library.
+
+    // Limitation 4: `pub` on struct fields is not supported and causes a parse error.
+    // `pub` on top-level `struct` and `fn` definitions is accepted but has no effect
+    // (there is no visibility system — all library definitions are always accessible).
+
+    // Limitation 5: Appending to a scalar vector field with `+=` on an existing
+    // struct variable does not persist. Use struct literal initialization instead:
+    //   b.items += p   // has no visible effect
+    //   bag2 = Bag { items: [p1, p2] }   // works
+    // Struct vector fields (vector<MyStruct>) can be appended with `+= [elem]`.
+
+    // Limitation 6: You cannot add methods to a library type from an importing file.
+    // `self:` parameters do not accept the `::` namespace separator:
+    //   fn extend(self: testlib::Point) -> float { ... }   // ERROR: Syntax error
+    //   fn extend(self: Point) -> float { ... }            // ERROR: Undefined type
+    // Workaround: add all methods inside the library file itself.
+    // Regular (non-self) parameters do accept `libname::Type`:
+    //   fn check(p: testlib::Point) -> boolean { ... }    // works
+}

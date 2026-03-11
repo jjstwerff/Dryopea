@@ -16,6 +16,7 @@ This administrates variables and scopes for a specific function.
 */
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use std::io::{Error, Write};
 use stdext::vec::VecExt;
 
 // Iterator details on each for loop inside the current function
@@ -40,6 +41,7 @@ pub struct Variable {
     uses: u16,
     argument: bool,
     defined: bool,
+    const_param: bool,
     /// Sequence number of the first `Value::Set` node for this variable; `u32::MAX` = never defined.
     pub first_def: u32,
     /// Sequence number of the last `Value::Var` (or implicit `OpFreeText`/`OpFreeRef`) for this variable.
@@ -419,6 +421,7 @@ impl Function {
             uses: 1,
             argument: false,
             defined: self.variables[var as usize].defined,
+            const_param: false,
             first_def: u32::MAX,
             last_use: 0,
         });
@@ -439,6 +442,7 @@ impl Function {
             uses: 1,
             argument: false,
             defined: false,
+            const_param: false,
             first_def: u32::MAX,
             last_use: 0,
         });
@@ -456,6 +460,7 @@ impl Function {
             uses: 1,
             argument: false,
             defined: true,
+            const_param: false,
             first_def: u32::MAX,
             last_use: 0,
         });
@@ -520,6 +525,18 @@ impl Function {
 
     pub fn is_argument(&self, var_nr: u16) -> bool {
         self.variables[var_nr as usize].argument
+    }
+
+    pub fn set_const_param(&mut self, var_nr: u16) {
+        self.variables[var_nr as usize].const_param = true;
+    }
+
+    pub fn is_const_param(&self, var_nr: u16) -> bool {
+        (var_nr as usize) < self.variables.len() && self.variables[var_nr as usize].const_param
+    }
+
+    pub fn var_source(&self, var_nr: u16) -> (u32, u32) {
+        self.variables[var_nr as usize].source
     }
 
     pub fn test_used(&self, lexer: &mut Lexer, data: &Data) {
@@ -855,6 +872,49 @@ pub fn validate_slots(function: &Function, data: &Data, def_nr: u32) {
         v.last_use,
         function.name,
     );
+}
+
+/// Write the variable table for `function` to `f`.
+///
+/// Columns: index, argument flag, name, short type, scope, stack slot range, live interval.
+/// Variables with no slot (`stack_pos == u16::MAX`) or no definition are still listed.
+///
+/// # Errors
+/// Propagates any I/O error from the writer.
+pub fn dump_variables(f: &mut dyn Write, function: &Function, data: &Data) -> Result<(), Error> {
+    writeln!(
+        f,
+        "  {:<4} {:<4} {:<20} {:<14} {:<6} {:<12} live",
+        "#", "arg", "name", "type", "scope", "slot"
+    )?;
+    writeln!(f, "  {}", "-".repeat(70))?;
+    for (idx, var) in function.variables.iter().enumerate() {
+        let vs = size(&var.type_def, &Context::Variable);
+        let slot_str = if var.stack_pos == u16::MAX {
+            "-".to_string()
+        } else {
+            format!("[{}, {})", var.stack_pos, var.stack_pos + vs)
+        };
+        let live_str = if var.first_def == u32::MAX {
+            "-".to_string()
+        } else {
+            format!("[{}, {}]", var.first_def, var.last_use)
+        };
+        let scope_str = if var.scope == u16::MAX {
+            "-".to_string()
+        } else {
+            var.scope.to_string()
+        };
+        let arg_flag = if var.argument { "arg" } else { "" };
+        let type_str = short_type(&var.type_def);
+        writeln!(
+            f,
+            "  {idx:<4} {arg_flag:<4} {:<20} {type_str:<14} {scope_str:<6} {slot_str:<12} {live_str}",
+            var.name
+        )?;
+        let _ = data; // reserved for future type name resolution
+    }
+    writeln!(f)
 }
 
 #[cfg(test)]

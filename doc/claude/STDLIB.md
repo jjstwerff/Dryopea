@@ -138,6 +138,31 @@ Functions for working with `text` (UTF-8 strings) and `character` values.
 | `trim_end(self: text) -> text` | Removes trailing whitespace only. |
 | `split(self: text, separator: character) -> vector<text>` | Splits `self` on every occurrence of `separator` and returns the parts as a vector. |
 
+### Iterating over text
+
+`for c in some_text` yields one `character` per UTF-8 code point.
+
+Inside the loop body two positional attributes are available:
+
+| Attribute | Type      | Meaning                                                          |
+|-----------|-----------|------------------------------------------------------------------|
+| `c#index` | `integer` | Byte offset of the **start** of the current character in the string. |
+| `c#next`  | `integer` | Byte offset immediately **after** the current character (= start of next char). |
+
+These satisfy: `c#next == c#index + len(c)`.
+
+Example — split on a separator character without using `split()`:
+```
+parts = [];
+p = 0;
+for c in path {
+    if c == '/' {
+        parts += [path[p..c#index]];
+        p = c#next;
+    }
+}
+```
+
 ### Character Classification
 
 These functions return true only if **every character** in the text satisfies the condition.
@@ -241,9 +266,10 @@ Binary mode must be activated before reading or writing raw data. Use `f.format 
 | `f#format` | Reads the `Format` enum value of `f`. |
 | `f#format = Format.X` | Sets the format of `f`. |
 
-**Known limitations (as of binary branch):**
-- `f += "text"` (binary text write) is not yet supported; the stack stores text as a `Str` fat pointer which `read_data` cannot dereference. Use `f.write(text)` for text-mode writes instead.
-- `f#read(n) as text` reads raw bytes and works but the result is held as a temporary — returning it from an expression may have limitations.
+**Notes:**
+- `f += "text"` writes raw UTF-8 bytes; supported for TextFile, LittleEndian, and BigEndian modes.
+- For new files (format=NotExists), `f += value` defaults to TextFile mode and creates the file.
+- `f#read(n) as text` reads exactly `n` bytes (or fewer at EOF) as a UTF-8 string.
 - `f#next = pos` is a no-op if called before the first read or write (the OS file handle does not exist until first I/O). Always perform a read or write before seeking.
 
 ### Directories

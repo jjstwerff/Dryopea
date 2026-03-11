@@ -145,57 +145,57 @@ Execute test:
     4:[104] ConvRefFromNull() -> ref(1,0,8)[104]
   ; store-alloc nr=1 max=2
     5:[116] Database(var[104], db_tp=18)
-   10:[116] VarRef(var[104]) -> ref(1,1,8)={}[116]
+   10:[116] VarRef(var[104]=o) -> ref(1,1,8)={}[116]
    13:[128] ConstText(_value="a") -> "a"[128]
    16:[144] SetText(v1=ref(1,1,8)[116], fld=0, val="a"[128])
-   19:[116] VarRef(var[104]) -> ref(1,1,8)={a:"a"}[116]
+   19:[116] VarRef(var[104]=o) -> ref(1,1,8)={a:"a"}[116]
    22:[128] ConstText(_value="b") -> "b"[128]
    25:[144] SetText(v1=ref(1,1,8)[116], fld=0, val="b"[128])
    28:[116] Text()
-   29:[140] VarRef(var[104]) -> ref(1,1,8)={a:"b"}[140]
+   29:[140] VarRef(var[104]=o) -> ref(1,1,8)={a:"b"}[140]
    32:[152] GetText(v1=ref(1,1,8)[140], fld=0) -> "b"[140]
    35:[156] AppendText(var[116], v1="b"[140])
    38:[140] ConstText(_value="c") -> "c"[140]
    41:[156] AppendText(var[116], v1="c"[140])
-   44:[140] VarRef(var[104]) -> ref(1,1,8)={a:"b"}[140]
-   47:[152] VarText(var[116]) -> "bc"[152]
+   44:[140] VarRef(var[104]=o) -> ref(1,1,8)={a:"b"}[140]
+   47:[152] VarText(var[116]=_field_1) -> "bc"[152]
    50:[168] SetText(v1=ref(1,1,8)[140], fld=0, val="bc"[152])
    53:[140] Text()
-   54:[164] VarRef(var[104]) -> ref(1,1,8)={a:"bc"}[164]
+   54:[164] VarRef(var[104]=o) -> ref(1,1,8)={a:"bc"}[164]
    57:[176] GetText(v1=ref(1,1,8)[164], fld=0) -> "bc"[164]
    60:[180] AppendText(var[140], v1="bc"[164])
    63:[164] ConstText(_value="d") -> "d"[164]
    66:[180] AppendText(var[140], v1="d"[164])
    69:[164] ConstText(_value="e") -> "e"[164]
    72:[180] AppendText(var[140], v1="e"[164])
-   75:[164] VarRef(var[104]) -> ref(1,1,8)={a:"bc"}[164]
-   78:[176] VarText(var[140]) -> "bcde"[176]
+   75:[164] VarRef(var[104]=o) -> ref(1,1,8)={a:"bc"}[164]
+   78:[176] VarText(var[140]=_field_2) -> "bcde"[176]
    81:[192] SetText(v1=ref(1,1,8)[164], fld=0, val="bcde"[176])
-   84:[164] VarRef(var[104]) -> ref(1,1,8)={a:"bcde"}[164]
-   87:[176] ClearText(var[56])
+   84:[164] VarRef(var[104]=o) -> ref(1,1,8)={a:"bcde"}[164]
+   87:[176] ClearText(var[56]=__work_1)
    90:[176] ConstText(_value="") -> ""[176]
-   92:[192] VarRef(var[104]) -> ref(1,1,8)={a:"bcde"}[192]
+   92:[192] VarRef(var[104]=o) -> ref(1,1,8)={a:"bcde"}[192]
    95:[204] GetText(v1=ref(1,1,8)[192], fld=0) -> "bcde"[192]
    98:[208] ConstInt(val=0) -> 0[208]
   103:[212] FormatText(var[56], val="bcde"[192], width=0[208], dir=-1, token=32)
   108:[192] ConstText(_value="f") -> "f"[192]
   111:[208] AppendText(var[56], v1="f"[192])
-  114:[192] VarText(var[56]) -> "bcdef"[192]
+  114:[192] VarText(var[56]=__work_1) -> "bcdef"[192]
   117:[208] FreeStack(value=16, discard=32)
   121:[192] SetText(v1=ref(1,1,8)[164], fld=0, val="bcdef"[176])
-  124:[164] ClearText(var[32])
+  124:[164] ClearText(var[32]=__work_2)
   127:[164] ConstText(_value="") -> ""[164]
-  129:[180] VarRef(var[104]) -> ref(1,1,8)={a:"bcdef"}[180]
+  129:[180] VarRef(var[104]=o) -> ref(1,1,8)={a:"bcdef"}[180]
   132:[192] FormatDatabase(var[32], val=ref(1,1,8)[180], db_tp=18, db_format=0)
-  138:[180] VarRef(var[104]) -> ref(1,1,8)={a:"bcdef"}[180]
+  138:[180] VarRef(var[104]=o) -> ref(1,1,8)={a:"bcdef"}[180]
   141:[192] FreeRef(v1=ref(1,1,8)[180]) ; store-free max=1
   142:[180] FreeText(var[116])
   145:[180] FreeText(var[140])
-  148:[180] VarText(var[32]) -> "{a:\"bcdef\"}"[180]
+  148:[180] VarText(var[32]=__work_2) -> "{a:\"bcdef\"}"[180]
   151:[196] FreeStack(value=16, discard=32)
   155:[180] FreeStack(value=16, discard=76)
   159:[120] AppendText(var[80], v1="{a:\"bcdef\"}"[104])
-  162:[104] VarText(var[80]) -> "{a:\"bcdef\"}"[104]
+  162:[104] VarText(var[80]=test_value) -> "{a:\"bcdef\"}"[104]
   165:[120] ConstText(_value="{a:"bcdef"}") -> "{a:\"bcdef\"}"[120]
   178:[136] EqText(v1="{a:\"bcdef\"}"[104], v2="{a:\"bcdef\"}"[120]) -> true[104]
   179:[105] GotoFalseWord(jump=185, if_false=true[104])

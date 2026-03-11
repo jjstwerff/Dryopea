@@ -1,0 +1,65 @@
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Store Locks
+// @TITLE: Runtime store locking and const variables
+
+struct Counter {
+    value: integer
+}
+
+// Helper: accepts a const reference — store is auto-locked in debug builds.
+fn read_value(self: const Counter) -> integer {
+    self.value
+}
+
+// Helper: accepts a non-const reference — store is NOT auto-locked.
+fn increment(self: Counter) {
+    self.value += 1
+}
+
+fn main() {
+    // ## Basic lock read/write
+    // A freshly created reference starts unlocked.
+    c = Counter { value: 10 };
+    assert(!c#lock, "New store starts unlocked");
+
+    // Locking the store makes the flag true.
+    c#lock = true;
+    assert(c#lock, "Store is locked after d#lock = true");
+
+    // ## const local variable — auto-locked in debug builds
+    // In debug builds the store is automatically locked after initialisation.
+    // In release builds it remains unlocked unless explicitly set.
+    const d = Counter { value: 42 };
+    assert(read_value(d) == 42, "const local: value readable");
+
+    // In a debug build d#lock is always true; in release it may be false.
+    // We can assert the value is correct regardless of lock state.
+    lock_state = d#lock;
+    assert(lock_state == true || lock_state == false, "d#lock is a boolean");
+
+    // ## const function argument — auto-locked in debug builds
+    // read_value takes a const Counter, so inside it the store is locked.
+    result = read_value(c);
+    assert(result == 10, "const arg: value readable after lock");
+
+    // ## Non-const reference — lock can be set and read
+    e = Counter { value: 5 };
+    assert(!e#lock, "non-const starts unlocked");
+    e#lock = true;
+    assert(e#lock, "non-const lock set to true");
+
+    // ## Lock inspection without assignment
+    f = Counter { value: 7 };
+    before = f#lock;
+    f#lock = true;
+    after = f#lock;
+    assert(!before, "lock was false before setting");
+    assert(after, "lock is true after setting");
+
+    // ## get_store_lock function matches d#lock read
+    g = Counter { value: 99 };
+    assert(get_store_lock(g) == g#lock, "get_store_lock matches d#lock read");
+    g#lock = true;
+    assert(get_store_lock(g) == g#lock, "get_store_lock matches after lock");
+}

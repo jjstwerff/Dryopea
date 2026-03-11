@@ -191,9 +191,9 @@ Execute test:
     2:[56] Text()
     3:[80] ConstText(_value="{ data: Integer { i_value: 12 } }") -> "{ data: Integer { i_value: 12 } }"[80]
    38:[96] CastVectorFromText(val="{ data: Integer { i_value: 12 } }"[80], db_tp=30) -> ref(1,1,8)[80]
-   41:[92] VarRef(var[80]) -> ref(1,1,8)={key_fields:[],data:Integer {i_value:12}}[92]
+   41:[92] VarRef(var[80]=v) -> ref(1,1,8)={key_fields:[],data:Integer {i_value:12}}[92]
    44:[104] GetField(v1=ref(1,1,8)[92], fld=0) -> ref(1,1,8)=Integer {i_value:12}[92]
-   47:[104] VarRef(var[92]) -> ref(1,1,8)=Integer {i_value:12}[104]
+   47:[104] VarRef(var[92]=i) -> ref(1,1,8)=Integer {i_value:12}[104]
    50:[116] GetEnum(v1=ref(1,1,8)[104], fld=0) -> null(2)[104]
    53:[105] ConvIntFromEnum(v1=2[104]) -> 2[104]
    54:[108] ConstEnum(val=2) -> Integer(2)[108]
@@ -203,27 +203,27 @@ Execute test:
    61:[104] GotoWord(jump=74)
    74:[104] ConstText(_value="Text { t_value: "Something" }") -> "Text { t_value: \"Something\" }"[104]
   105:[120] CastVectorFromText(val="Text { t_value: \"Something\" }"[104], db_tp=18) -> ref(2,1,8)[104]
-  108:[116] VarRef(var[104]) -> ref(2,1,8)=Text {t_value:"Something"}[116]
-  111:[128] VarRef(var[80]) -> ref(1,1,8)={key_fields:[],data:Integer {i_value:12}}[128]
+  108:[116] VarRef(var[104]=w) -> ref(2,1,8)=Text {t_value:"Something"}[116]
+  111:[128] VarRef(var[80]=v) -> ref(1,1,8)={key_fields:[],data:Integer {i_value:12}}[128]
   114:[140] GetField(v1=ref(1,1,8)[128], fld=0) -> ref(1,1,8)=Integer {i_value:12}[128]
   117:[140] CopyRecord(data=ref(2,1,8)[116], to=ref(1,1,8)[128], tp=18)
-  120:[116] ClearText(var[32])
+  120:[116] ClearText(var[32]=__work_1)
   123:[116] ConstText(_value="") -> ""[116]
-  125:[132] VarRef(var[80]) -> ref(1,1,8)={key_fields:[],data:Text {t_value:"Something"}}[132]
+  125:[132] VarRef(var[80]=v) -> ref(1,1,8)={key_fields:[],data:Text {t_value:"Something"}}[132]
   128:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=30, db_format=0)
   134:[132] ConstText(_value=" & ") -> " & "[132]
   139:[148] AppendText(var[32], v1=" & "[132])
-  142:[132] VarRef(var[92]) -> ref(1,1,8)=Text {t_value:"Something"}[132]
+  142:[132] VarRef(var[92]=i) -> ref(1,1,8)=Text {t_value:"Something"}[132]
   145:[144] FormatDatabase(var[32], val=ref(1,1,8)[132], db_tp=18, db_format=0)
-  151:[132] VarRef(var[80]) -> ref(1,1,8)={key_fields:[],data:Text {t_value:"Something"}}[132]
+  151:[132] VarRef(var[80]=v) -> ref(1,1,8)={key_fields:[],data:Text {t_value:"Something"}}[132]
   154:[144] FreeRef(v1=ref(1,1,8)[132]) ; store-free max=2
-  155:[132] VarRef(var[104]) -> ref(2,1,8)=Text {t_value:"Something"}[132]
+  155:[132] VarRef(var[104]=w) -> ref(2,1,8)=Text {t_value:"Something"}[132]
   158:[144] FreeRef(v1=ref(2,1,8)[132]) ; store-free max=1
-  159:[132] VarText(var[32]) -> "{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[132]
+  159:[132] VarText(var[32]=__work_1) -> "{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[132]
   162:[148] FreeStack(value=16, discard=32)
   166:[132] FreeStack(value=16, discard=52)
   170:[96] AppendText(var[56], v1="{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[80])
-  173:[80] VarText(var[56]) -> "{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[80]
+  173:[80] VarText(var[56]=test_value) -> "{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[80]
   176:[96] ConstText(_value="{key_fields:[],data:Text {t_value:"Something"}} & Text {t_value:"Something"}") -> "{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[96]
   254:[112] EqText(v1="{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[80], v2="{key_fields:[],data:Text {t_value:\"Something\"}} & Text {t_value:\"Something\"}"[96]) -> true[80]
   255:[81] GotoFalseWord(jump=261, if_false=true[80])

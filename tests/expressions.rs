@@ -275,16 +275,6 @@ fn convert_text_to_int() {
 }
 
 #[test]
-fn boolean_named() {
-    expr!("123 and (12 or false)").result(Value::Boolean(true));
-}
-
-#[test]
-fn boolean_symbols() {
-    expr!("123 || (12 && false)").result(Value::Boolean(true));
-}
-
-#[test]
 fn logical() {
     expr!("(1 << 8) - 3 & 127").result(Value::Int(125));
 }

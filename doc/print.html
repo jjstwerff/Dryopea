@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loft Language — Complete Reference</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="print-page">
+<header class="print-header">
+<h1>Loft Language Reference</h1>
+<p class="tagline">Complete language and standard library documentation</p>
+<p><a href="index.html">&#8592; Back to online documentation</a> &nbsp;|&nbsp; <a href="00-vs-rust.html">vs Rust comparison</a></p>
+</header>
+<nav class="print-toc">
+<h2>Contents</h2>
+<ul>
+<li><a href="00-vs-rust.html">vs Rust — Key Differences</a> <span class="toc-note">(online only)</span></li>
+<li><a href="#01-keywords">Keywords</a> — <span class="toc-desc">Keywords and control flow</span></li>
+<li><a href="#02-text">Texts</a> — <span class="toc-desc">Text handling and functions</span></li>
+<li><a href="#03-integer">Integers</a> — <span class="toc-desc">Base numeric operations</span></li>
+<li><a href="#04-boolean">Boolean</a> — <span class="toc-desc">Boolean logic and existence tests</span></li>
+<li><a href="#05-float">Float</a> — <span class="toc-desc">Floating point operations and math functions</span></li>
+<li><a href="#06-function">Functions</a> — <span class="toc-desc">User defined functions</span></li>
+<li><a href="#07-vector">Vector</a> — <span class="toc-desc">Vector creation and use</span></li>
+<li><a href="#08-struct">Structs</a> — <span class="toc-desc">Record definitions and use</span></li>
+<li><a href="#09-enum">Enums</a> — <span class="toc-desc">Enumerate types in plain or structured form.</span></li>
+<li><a href="#10-sorted">Sorted</a> — <span class="toc-desc">Automatically and memory efficient sorted vectors</span></li>
+<li><a href="#11-index">Index</a> — <span class="toc-desc">Indexes to records</span></li>
+<li><a href="#12-hash">Hash</a> — <span class="toc-desc">Lookup efficient hash table indexes</span></li>
+<li><a href="#13-file">File</a> — <span class="toc-desc">File system — text, binary, and directory access.</span></li>
+<li><a href="#14-image">Image</a> — <span class="toc-desc">Reading PNG files.</span></li>
+<li><a href="#15-lexer">Lexer</a> — <span class="toc-desc">Lexer library.</span></li>
+<li><a href="#16-parser">Parser</a> — <span class="toc-desc">Parser library.</span></li>
+<li><a href="#17-libraries">Libraries</a> — <span class="toc-desc">Library system — importing and using external loft modules.</span></li>
+<li class="toc-section"><a href="#stdlib">Standard Library</a></li>
+<li class="toc-indent"><a href="#stdlib-types">Types</a></li>
+<li class="toc-indent"><a href="#stdlib-math">Math</a></li>
+<li class="toc-indent"><a href="#stdlib-text">Text</a></li>
+<li class="toc-indent"><a href="#stdlib-collections">Collections</a></li>
+<li class="toc-indent"><a href="#stdlib-output-and-diagnostics">Output and Diagnostics</a></li>
+<li class="toc-indent"><a href="#stdlib-file-system">File System</a></li>
+<li class="toc-indent"><a href="#stdlib-environment">Environment</a></li>
+</ul>
+</nav>
+<section class="print-section" id="01-keywords">
+<h1>Keywords</h1>
+<p>Core syntax: if/else expressions, for loops, break/continue, and named breaks for nested loops.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<h2 id="conditionals">Conditionals</h2>
+<p>A program can be stopped by calling the panic function. Production code will never panic, the problem will only be logged.</p>
+<pre><code>    <span class="kw">if</span> <span class="nm">2</span> &gt; <span class="nm">5</span> {
+       <span class="bi"><a href="stdlib-output-and-diagnostics.html">panic</a></span>(<span class="st">"Incorrect test"</span>);
+    }</code></pre>
+<p>Boolean expressions can be written with gradually more complex logic. Both '&amp;&amp;' '||' and 'and' 'or' can be used in logical expressions. The '&amp;' expression is the binary and operation.</p>
+<pre><code>    a = <span class="nm">12</span>;
+    <span class="kw">if</span> a &gt; <span class="nm">10</span> <span class="kw">and</span> a &amp; <span class="nm">7</span> == <span class="nm">4</span> {
+        a += <span class="nm">1</span>;
+    } <span class="kw">else</span> {
+        a -= <span class="nm">1</span>;
+    }</code></pre>
+<p>Each text constant can contain formatting expressions. In production code the assert statements are omitted, so the code will not stop on each found problem. While debugging the asserts will be evaluated and logged.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(a == <span class="nm">13</span>, <span class="st">"Incorrect value {a} != 13"</span>);</code></pre>
+<p>Each block returns its last expression, so an if statement can be used as an expression.</p>
+<pre><code>    b = <span class="kw">if</span> a == <span class="nm">13</span> { <span class="st">"Correct"</span> } <span class="kw">else</span> { <span class="st">"Wrong"</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b == <span class="st">"Correct"</span>, <span class="st">"Logic expression"</span>);</code></pre>
+<h2 id="iteration">Iteration</h2>
+<p>A simple for loop that including 1 and omits 6.</p>
+<pre><code>    t = <span class="nm">0</span>;
+    <span class="kw">for</span> a <span class="kw">in</span> <span class="nm">1..6</span> {
+        t += a;
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(t == <span class="nm">15</span>, <span class="st">"Total was {t} instead of 15"</span>);</code></pre>
+<p>Loop the reverse of a range. Here, 'rev' disguises itself as a normal function.</p>
+<pre><code>    t = <span class="nm">0</span>;
+    <span class="kw">for</span> a <span class="kw">in</span> <span class="bi">rev</span>(<span class="nm">1..</span>=<span class="nm">5</span>) {
+        t = t * <span class="nm">10</span> + a;
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(t == <span class="nm">54321</span>, <span class="st">"Result was {t} instead of 54321"</span>);</code></pre>
+<h2 id="nested-loops-and-break">Nested Loops and Break</h2>
+<p>This language doesn't contain a 'loop' or 'while' style loop. Treat this as a limiter to prevent hanging loops. There is always a loop variable which can be used as the name of the loop. The length is requested via 'len' that acts like a function on strings or other data structures.</p>
+<pre><code>    b = <span class="st">""</span>;
+    <span class="kw">for</span> x <span class="kw">in</span> <span class="nm">1..5</span> {
+        <span class="kw">for</span> y <span class="kw">in</span> <span class="nm">1..5</span> {
+            <span class="kw">if</span> y &gt; x {
+                <span class="kw">break</span>; <span class="cm">// this breaks the inner y loop</span>
+            }
+            <span class="kw">if</span> x * y &gt;= <span class="nm">16</span> {
+                x#<span class="kw">break</span>;
+            }
+            <span class="kw">if</span> <span class="bi"><a href="stdlib-text.html">len</a></span>(b) &gt; <span class="nm">0</span> {
+                b += <span class="st">"; "</span>;
+            }
+            b += <span class="st">"{x}:{y}"</span>;
+        }
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b == <span class="st">"1:1; 2:1; 2:2; 3:1; 3:2; 3:3; 4:1; 4:2; 4:3"</span>, <span class="st">"Incorrect sequence '{b}'"</span>);</code></pre>
+<h2 id="loop-helpers-first-and-count">Loop Helpers: #first and #count</h2>
+<p>To limit the common creation of helper variables it is allowed to request the '#first' or '#count' in a loop. This is similar to the x.iter().enumerate() construction in rust. Though here, it functions with an 'if' filter.</p>
+<pre><code>    b = <span class="st">""</span>;
+    <span class="kw">for</span> x <span class="kw">in</span> <span class="nm">1..</span>=<span class="nm">9</span> <span class="kw">if</span> x % <span class="nm">3</span> != <span class="nm">1</span> {
+        <span class="kw">if</span> !x#first {
+            b += <span class="st">", "</span>;
+        }
+        b += <span class="st">"{x#count}:{x}"</span>;
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b == <span class="st">"0:2, 1:3, 2:5, 3:6, 4:8, 5:9"</span>, <span class="st">"Sequence '{b}'"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="02-text">
+<h1>Texts</h1>
+<p>UTF-8 strings: byte-based indexing, slices, concatenation, formatting, and built-in functions.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<h2 id="creating-and-measuring-strings">Creating and Measuring Strings</h2>
+<p>Text concatenation produces a new string.</p>
+<pre><code>    a = <span class="st">"1"</span> + <span class="st">"2"</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"'{a:4}'"</span> == <span class="st">"'12  '"</span>, <span class="st">"Formatting text"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-text.html">len</a></span>(a + <span class="st">"123"</span>) == <span class="nm">5</span>, <span class="st">"Text length"</span>);</code></pre>
+<p>len() counts bytes, not Unicode code points. A multi-byte emoji occupies 4 bytes; a heart symbol occupies 3 bytes.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-text.html">len</a></span>(<span class="st">"😃"</span>) == <span class="nm">4</span>, <span class="st">"Emoji byte length"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-text.html">len</a></span>(<span class="st">"♥"</span>) == <span class="nm">3</span>, <span class="st">"Heart byte length"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-text.html">len</a></span>(<span class="st">"abc"</span>) == <span class="nm">3</span>, <span class="st">"ASCII byte length"</span>);</code></pre>
+<p>Indexing a string with [n] returns the character whose UTF-8 encoding contains byte n. For ASCII strings, byte index equals character index.</p>
+<pre><code>    s = <span class="st">"ABCDE"</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">0</span>] == <span class="ch">'A'</span>, <span class="st">"Character at byte 0"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">2</span>] == <span class="ch">'C'</span>, <span class="st">"Character at byte 2"</span>);</code></pre>
+<p>A range index extracts a sub-string by byte offsets. The upper bound is exclusive; omitting it goes to the end. Both 'start' and 'end' must be explicit when both are given. Open-start slices (s[..n]) are not supported — use s[0..n] instead.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">0..2</span>] == <span class="st">"AB"</span>, <span class="st">"Open-start slice: use 0..n, not ..n"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">1..4</span>] == <span class="st">"BCD"</span>, <span class="st">"Sub-string by byte range"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s[<span class="nm">3..</span>] == <span class="st">"DE"</span>, <span class="st">"Open-ended sub-string"</span>);</code></pre>
+<p>For UTF-8 strings, byte offsets snap to the nearest character boundary. Use a range to extract the portion from byte 2 up to (not including) the last byte.</p>
+<pre><code>    txt = <span class="st">"12😊🙃45"</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(txt[<span class="nm">2..</span>-<span class="nm">1</span>] == <span class="st">"😊🙃4"</span>, <span class="st">"UTF-8 sub-string by byte range"</span>);</code></pre>
+<h2 id="iterating-over-characters">Iterating Over Characters</h2>
+<p>Iterating over a string yields one character per UTF-8 code point. '#index' gives the byte offset of the start of the current character. '#next'  gives the byte offset immediately after the current character. For "Hi 😊!": H@0, i@1, ' '@2, '😊'@3..7, '!'@7..8</p>
+<pre><code>    result = <span class="st">""</span>;
+    positions = [];
+    nexts = [];
+    <span class="kw">for</span> c <span class="kw">in</span> <span class="st">"Hi 😊!"</span> {
+        positions += [c#<span class="ty">index</span>];
+        nexts += [c#next];
+        <span class="kw">if</span> c#<span class="ty">index</span> &gt;= <span class="nm">3</span> {
+            result += c;
+        }
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(result == <span class="st">"😊!"</span>, <span class="st">"Character iteration was {result}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{positions}"</span> == <span class="st">"[0,1,2,3,7]"</span>, <span class="st">"Character positions was {positions}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{nexts}"</span> == <span class="st">"[1,2,3,7,8]"</span>, <span class="st">"Character nexts was {nexts}"</span>);</code></pre>
+<h2 id="searching-and-splitting">Searching and Splitting</h2>
+<p>Standard string search functions (all offsets are byte-based).</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"something"</span>.<span class="fn-call"><a href="stdlib-text.html">starts_with</a></span>(<span class="st">"some"</span>), <span class="st">"starts_with"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"something"</span>.<span class="fn-call"><a href="stdlib-text.html">ends_with</a></span>(<span class="st">"thing"</span>), <span class="st">"ends_with"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"something"</span>.<span class="fn-call"><a href="stdlib-text.html">find</a></span>(<span class="st">"th"</span>) == <span class="nm">4</span>, <span class="st">"find returns byte offset"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"a longer text"</span>.<span class="fn-call"><a href="stdlib-text.html">contains</a></span>(<span class="st">"longer"</span>), <span class="st">"contains"</span>);</code></pre>
+<p>trim() removes leading and trailing whitespace.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-text.html">trim</a></span>(<span class="st">"  hello  "</span>) == <span class="st">"hello"</span>, <span class="st">"trim"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="03-integer">
+<h1>Integers</h1>
+<p>32-bit integers: arithmetic, conversions to/from text and float, bitwise operations, and null from division by zero.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Integer is the default type for any number, it is comparable with i32 in rust.</p>
+<p>It is possible to convert numbers into texts and texts into numbers.</p>
+<pre><code>    v = <span class="nm">4</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{v}"</span> == <span class="st">"4"</span>, <span class="st">"Convert numbers to text"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"123"</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">integer</a></span> == <span class="nm">123</span>, <span class="st">"Convert text to number"</span>);</code></pre>
+<p>Priority rules determine the order of operators.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> + <span class="nm">2</span> * <span class="nm">4</span> == <span class="nm">9</span>, <span class="st">"Integer calculus"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> + <span class="nm">2</span> &lt;&lt; <span class="nm">2</span> == <span class="nm">12</span>, <span class="st">"Binary shift"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">0x0a8</span> &amp; <span class="nm">15</span> == <span class="nm">8</span>, <span class="st">"Binary and"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">42</span> ^ <span class="nm">0b111111</span> == <span class="nm">21</span>, <span class="st">"Binary xor"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">105</span> % <span class="nm">100</span> == <span class="nm">5</span>, <span class="st">"Modulus"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-math.html">pow</a></span>(<span class="nm">2.0</span>, <span class="nm">3.0</span>) == <span class="nm">8.0</span>, <span class="st">"Power"</span>);</code></pre>
+<p>The absolute value function is not a operation on numbers like `-1.abs()` in rust.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> + <span class="bi"><a href="stdlib-math.html">abs</a></span>(-<span class="nm">2</span>) == <span class="nm">3</span>, <span class="st">"Absolute integer"</span>);</code></pre>
+<p>Division by zero results in a null (undefined) value that is equal to false in test.</p>
+<pre><code>    a = <span class="nm">2</span> * <span class="nm">2</span>;
+    a -= <span class="nm">4</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!(<span class="nm">12</span> / a), <span class="st">"Null on division by zero"</span>);</code></pre>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"a{12}b"</span> == <span class="st">"a12b"</span>, <span class="st">"Formatting problem"</span>);</code></pre>
+<p>It is allowed to have full expressions inside a formatting block.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"a{1 + 2 * 3:#x}b"</span> == <span class="st">"a0x7b"</span>, <span class="st">"Hex formatting"</span>);</code></pre>
+<p>Hex literals must use lowercase digits. Uppercase hex digits (0xFF) are a parse error — always write 0xff.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">0xff</span> == <span class="nm">255</span>, <span class="st">"Lowercase hex literal"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">0x2a</span> == <span class="nm">42</span>, <span class="st">"Lowercase hex literal 2"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="04-boolean">
+<h1>Boolean</h1>
+<p>Boolean logic: 'and' 'or', bitwise '&amp;' '|' '&gt;&gt;' '&lt;&lt;'', and 'null' as the absent/falsy value.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!(<span class="nm">3</span> &gt; <span class="nm">2</span> + <span class="nm">4</span>), <span class="st">"Boolean test"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="kw">true</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">text</a></span> == <span class="st">"true"</span>, <span class="st">"Convert boolean to text"</span>);</code></pre>
+<p>'and' / 'or' and their symbolic equivalents '&amp;&amp;' / '||' are interchangeable. Both forms use lazy evaluation: the right-hand side is only evaluated when the left-hand side alone does not determine the outcome.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> &gt; <span class="nm">0</span> <span class="kw">and</span> <span class="nm">2</span> &gt; <span class="nm">1</span>, <span class="st">"Both conditions true"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> &gt; <span class="nm">2</span> <span class="kw">or</span> <span class="nm">3</span> &gt; <span class="nm">2</span>, <span class="st">"Second condition true"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!(<span class="nm">1</span> &gt; <span class="nm">2</span> &amp;&amp; <span class="nm">3</span> &gt; <span class="nm">2</span>), <span class="st">"First false, whole 'and' is false"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!(<span class="nm">1</span> &gt; <span class="nm">2</span> || <span class="nm">3</span> &gt; <span class="nm">4</span>), <span class="st">"Both false, whole 'or' is false"</span>);</code></pre>
+<p>Division by zero yields null, which is treated as false. Non-null values are treated as true.</p>
+<pre><code>    zero = <span class="nm">0</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!(<span class="nm">12</span> / zero), <span class="st">"Null from division-by-zero is false"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">12</span> &gt; <span class="nm">0</span>, <span class="st">"Positive integer is true"</span>);</code></pre>
+<p>Bitwise operations: '&amp;' (and), '|' (or), '&lt;&lt;' / '&gt;&gt;' (shift). Note: '&amp;' binds less tightly than comparisons, so parentheses are needed.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>((<span class="nm">0x0f</span> &amp; <span class="nm">0xa8</span>) == <span class="nm">8</span>, <span class="st">"Bitwise and"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>((<span class="nm">0xf0</span> | <span class="nm">0x0f</span>) == <span class="nm">0xff</span>, <span class="st">"Bitwise or"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> &lt;&lt; <span class="nm">4</span> == <span class="nm">16</span>, <span class="st">"Left shift"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">256</span> &gt;&gt; <span class="nm">3</span> == <span class="nm">32</span>, <span class="st">"Right shift"</span>);</code></pre>
+<p>The '!' operator negates a boolean.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!<span class="kw">false</span>, <span class="st">"Not false is true"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!(<span class="nm">1</span> &gt; <span class="nm">2</span>), <span class="st">"Not (false comparison) is true"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="05-float">
+<h1>Float</h1>
+<p>floating-point: arithmetic, math functions (sin, cos, log, round, ceil, floor), and format specifiers.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Float is a 64-bit floating-point number (equivalent to f64 in Rust). A literal with a decimal point is a float by default.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1.5</span> + <span class="nm">0.5</span> == <span class="nm">2.0</span>, <span class="st">"Float addition"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">3.0</span> / <span class="nm">2.0</span> == <span class="nm">1.5</span>, <span class="st">"Float division"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">2.0</span> * <span class="nm">1.5</span> == <span class="nm">3.0</span>, <span class="st">"Float multiplication"</span>);</code></pre>
+<p>Use the 'f' suffix for single-precision (32-bit) floats.</p>
+<pre><code>    x = <span class="nm">0.1f</span> + <span class="nm">2</span> * <span class="nm">1.0f</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(x == <span class="nm">2.1f</span>, <span class="st">"Single precision float"</span>);</code></pre>
+<p>Conversions between float, integer and text.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">3</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">float</a></span> == <span class="nm">3.0</span>, <span class="st">"Integer to float"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"1.5"</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">float</a></span> == <span class="nm">1.5</span>, <span class="st">"Text to float"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{1.5}"</span> == <span class="st">"1.5"</span>, <span class="st">"Float formatted as text"</span>);</code></pre>
+<p>Float formatting: '{value:width.precision}'. Width pads the whole number; precision controls decimal places.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{1.2:4.2}"</span> == <span class="st">"1.20"</span>, <span class="st">"Float with width and precision"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{334.1:.2}"</span> == <span class="st">"334.10"</span>, <span class="st">"Float with precision only"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{1.4:5}"</span> == <span class="st">"  1.4"</span>, <span class="st">"Float with width only"</span>);</code></pre>
+<p>Math constants: PI is the ratio of a circle's circumference to its diameter.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">round</a></span>(<span class="en"><a href="stdlib-math.html">PI</a></span> * <span class="nm">1000.0</span>) == <span class="nm">3142.0</span>, <span class="st">"PI constant"</span>);</code></pre>
+<p>Exponentiation uses the pow(a, b) operator; log(x, base) computes the logarithm.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">log</a></span>(<span class="fn-call"><a href="stdlib-math.html">pow</a></span>(<span class="nm">4.0</span>, <span class="nm">5</span>), <span class="nm">2</span>) == <span class="nm">10.0</span>, <span class="st">"log base 2 of 4^5"</span>);</code></pre>
+<p>Trigonometric functions operate in radians. sin(PI) is near zero; cos(PI) is -1.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">ceil</a></span>(<span class="bi"><a href="stdlib-math.html">sin</a></span>(<span class="en"><a href="stdlib-math.html">PI</a></span>) + <span class="bi"><a href="stdlib-math.html">cos</a></span>(<span class="en"><a href="stdlib-math.html">PI</a></span>) * <span class="nm">1000</span>) == -<span class="nm">1000.0</span>, <span class="st">"sin and cos"</span>);</code></pre>
+<p>abs() returns the absolute value.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">abs</a></span>(-<span class="nm">2.5</span>) == <span class="nm">2.5</span>, <span class="st">"Absolute value of float"</span>);</code></pre>
+<p>round(), ceil(), floor() convert float to the nearest integer value.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">round</a></span>(<span class="nm">2.6</span>) == <span class="nm">3.0</span>, <span class="st">"round up"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">round</a></span>(<span class="nm">2.4</span>) == <span class="nm">2.0</span>, <span class="st">"round down"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">ceil</a></span>(<span class="nm">2.1</span>) == <span class="nm">3.0</span>, <span class="st">"ceil"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">floor</a></span>(<span class="nm">2.9</span>) == <span class="nm">2.0</span>, <span class="st">"floor"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="06-function">
+<h1>Functions</h1>
+<p>Functions: parameter defaults, in-out references with &amp;, early return, and implicit return of the last expression.</p>
+<h2 id="declaring-functions">Declaring Functions</h2>
+<p>A function is declared with 'fn', a parameter list, and an optional return type. The last expression in the body is the implicit return value.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">greet</span>(name: <span class="ty"><a href="stdlib-types.html">text</a></span>, greeting: <span class="ty"><a href="stdlib-types.html">text</a></span> = <span class="st">"Hello"</span>) -&gt; <span class="ty"><a href="stdlib-types.html">text</a></span> {
+    greeting + <span class="st">", "</span> + name + <span class="st">"!"</span>
+}</code></pre>
+<h2 id="reference-parameters-and-defaults">Reference Parameters and Defaults</h2>
+<p>Functions with no return type perform side effects only. Reference parameters (prefixed with '&amp;') let the function modify the caller's variable. Default values are specified with '= value' after the type.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">add</span>(a: &amp;<span class="ty"><a href="stdlib-types.html">integer</a></span>, b: <span class="ty"><a href="stdlib-types.html">integer</a></span>, c: <span class="ty"><a href="stdlib-types.html">integer</a></span> = <span class="nm">0</span>) {
+    a += b + c;
+}</code></pre>
+<h2 id="early-return">Early Return</h2>
+<p>A function can return early with an explicit 'return' statement.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">classify</span>(n: <span class="ty"><a href="stdlib-types.html">integer</a></span>) -&gt; <span class="ty"><a href="stdlib-types.html">text</a></span> {
+    <span class="kw">if</span> n &lt; <span class="nm">0</span> { <span class="kw">return</span> <span class="st">"negative"</span>; }
+    <span class="kw">if</span> n == <span class="nm">0</span> { <span class="kw">return</span> <span class="st">"zero"</span>; }
+    <span class="st">"positive"</span>
+}</code></pre>
+<h2 id="const-and-reference-parameters">Const and Reference Parameters</h2>
+<p>A 'const' parameter guarantees the function will never change its value. This is a compile-time check: attempting to assign to a 'const' parameter is an error. A '&amp;' parameter passes by reference so the function *can* change the caller's variable. Passing something by '&amp;' when you never actually change it is also a compile error — use a plain value parameter instead.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">scale</span>(a: const <span class="ty"><a href="stdlib-types.html">integer</a></span>, factor: const <span class="ty"><a href="stdlib-types.html">integer</a></span>) -&gt; <span class="ty"><a href="stdlib-types.html">integer</a></span> {
+    a * factor
+}</code></pre>
+<h2 id="type-based-dispatch">Type-Based Dispatch</h2>
+<pre><code><span class="kw">fn</span> <span class="fn-call">describe_int</span>(v: <span class="ty"><a href="stdlib-types.html">integer</a></span>) -&gt; <span class="ty"><a href="stdlib-types.html">text</a></span> { <span class="st">"integer:{v}"</span> }
+<span class="kw">fn</span> <span class="fn-call">describe_text</span>(v: <span class="ty"><a href="stdlib-types.html">text</a></span>) -&gt; <span class="ty"><a href="stdlib-types.html">text</a></span> { <span class="st">"text:{v}"</span> }</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Calling a function with all arguments.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">greet</span>(<span class="st">"World"</span>, <span class="st">"Hi"</span>) == <span class="st">"Hi, World!"</span>, <span class="st">"Explicit argument"</span>);</code></pre>
+<p>Calling with the default value for 'greeting'.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">greet</span>(<span class="st">"World"</span>) == <span class="st">"Hello, World!"</span>, <span class="st">"Default argument"</span>);</code></pre>
+<p>Reference parameters allow the function to modify the caller's variable.</p>
+<pre><code>    v = <span class="nm">1</span>;
+    <span class="fn-call">add</span>(v, <span class="nm">2</span>);       <span class="cm">// v = 1 + 2 = 3</span>
+    <span class="fn-call">add</span>(v, <span class="nm">4</span>, <span class="nm">1</span>);    <span class="cm">// v = 3 + 4 + 1 = 8</span>
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(v == <span class="nm">8</span>, <span class="st">"Reference parameter: {v}"</span>);</code></pre>
+<p>Early return example.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">classify</span>(-<span class="nm">5</span>) == <span class="st">"negative"</span>, <span class="st">"Classify negative"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">classify</span>(<span class="nm">0</span>) == <span class="st">"zero"</span>, <span class="st">"Classify zero"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">classify</span>(<span class="nm">3</span>) == <span class="st">"positive"</span>, <span class="st">"Classify positive"</span>);</code></pre>
+<p>'const' parameters cannot be modified; they are checked at compile time.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">scale</span>(<span class="nm">3</span>, <span class="nm">7</span>) == <span class="nm">21</span>, <span class="st">"scale(3,7)"</span>);</code></pre>
+<p>Functions with different names handle different types.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">describe_int</span>(<span class="nm">42</span>) == <span class="st">"integer:42"</span>, <span class="st">"Integer describe"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">describe_text</span>(<span class="st">"hi"</span>) == <span class="st">"text:hi"</span>, <span class="st">"Text describe"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="07-vector">
+<h1>Vector</h1>
+<p>Dynamic arrays: literals, slices, removal, reverse iteration, and for-loops embedded in format strings.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>A vector literal is written with square brackets. '#first' is true for the first element; '#index' gives the position.</p>
+<pre><code>    x = [<span class="nm">1</span>, <span class="nm">3</span>, <span class="nm">6</span>, <span class="nm">9</span>];
+    b = <span class="st">""</span>;
+    <span class="kw">for</span> v <span class="kw">in</span> x {
+        <span class="kw">if</span> !v#first {
+            b += <span class="st">" "</span>;
+        }
+        b += <span class="st">"{v#index}:{v}"</span>
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b == <span class="st">"0:1 1:3 2:6 3:9"</span>, <span class="st">"result {b}"</span>);</code></pre>
+<p>Append another vector with '+='. Then remove elements while iterating using 'v#remove' inside a filtered loop.</p>
+<pre><code>    x += [<span class="nm">12</span>, <span class="nm">14</span>, <span class="nm">15</span>];
+    <span class="kw">for</span> v <span class="kw">in</span> x <span class="kw">if</span> v % <span class="nm">3</span> != <span class="nm">0</span> {
+        v#remove;
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{x}"</span> == <span class="st">"[3,6,9,12,15]"</span>, <span class="st">"result {x}"</span>);</code></pre>
+<p>A range index extracts a sub-vector; the upper bound is exclusive. Omitting the upper bound goes to the end of the vector.</p>
+<pre><code>    pows = [<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">4</span>, <span class="nm">8</span>, <span class="nm">16</span>];
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{pows[1..3]}"</span> == <span class="st">"[2,4]"</span>, <span class="st">"Sub-vector"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{pows[3..]}"</span> == <span class="st">"[8,16]"</span>, <span class="st">"Open-ended sub-vector"</span>);</code></pre>
+<p>Accessing an index outside the vector's bounds returns null.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!pows[<span class="nm">10</span>], <span class="st">"Out-of-bounds access returns null"</span>);</code></pre>
+<p>A for loop can be written directly inside a format string. An optional format specifier after ':' applies to every element.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{for n in 1..7 {n*2}:02}"</span> == <span class="st">"[02,04,06,08,10,12]"</span>, <span class="st">"Formatted vector loop"</span>);</code></pre>
+<p>Reverse iteration uses rev() on the range.</p>
+<pre><code>    c = <span class="nm">0</span>;
+    <span class="kw">for</span> e <span class="kw">in</span> pows[<span class="bi">rev</span>(<span class="nm">0..</span>=<span class="nm">3</span>)] {
+        c = c * <span class="nm">10</span> + e;
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(c == <span class="nm">8421</span>, <span class="st">"Reverse sub-vector iteration"</span>);</code></pre>
+<p>A vector of structs can be created with a repeated element using '; count'. (See 08-struct.loft for struct syntax.)</p>
+<p>Limitation: appending to a vector inside a '&amp;' reference function (v += [item]) does NOT propagate back to the caller. Only field-level mutations (v[i].field = x) are visible after the call. To return a larger vector, use a return value instead: fn with_extra(v: vector&lt;integer&gt;, x: integer) -&gt; vector&lt;integer&gt; { v += [x]; v } items = with_extra(items, 99);</p>
+<pre><code>}</code></pre>
+</section>
+<section class="print-section" id="08-struct">
+<h1>Structs</h1>
+<p>Record types: field constraints, computed fields using $, methods, JSON and pretty-print formatting.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Area</span> {
+    height: <span class="ty"><a href="stdlib-types.html">u16</a></span>,
+    terrain: <span class="ty"><a href="stdlib-types.html">u8</a></span>,
+    water: <span class="ty"><a href="stdlib-types.html">u8</a></span>,
+    direction: <span class="ty"><a href="stdlib-types.html">u8</a></span>
+}</code></pre>
+<h2 id="field-constraints">Field Constraints</h2>
+<p>'limit(min, max)' constrains an integer field to a range. 'not null' makes zero a valid stored value instead of the null sentinel. Fields omitted in a constructor default to zero (or null for nullable fields).</p>
+<pre><code><span class="kw">struct</span> <span class="en">Point</span> {
+    r: <span class="ty"><a href="stdlib-types.html">integer</a></span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>,
+    g: <span class="ty"><a href="stdlib-types.html">integer</a></span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>,
+    b: <span class="ty"><a href="stdlib-types.html">integer</a></span> <span class="kw">limit</span>(<span class="nm">0</span>, <span class="nm">255</span>) <span class="kw">not</span> <span class="kw">null</span>
+}</code></pre>
+<h2 id="methods">Methods</h2>
+<p>A method is a function whose first parameter is named 'self' with the struct type. It is called with dot notation: value.method().</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call"><a href="stdlib-file-system.html">value</a></span>(self: <span class="en">Point</span>) -&gt; <span class="ty"><a href="stdlib-types.html">integer</a></span> {
+    self.r * <span class="nm">0x10000</span> + self.g * <span class="nm">0x100</span> + self.b
+}</code></pre>
+<h2 id="computed-fields">Computed Fields</h2>
+<p>'default(expr)' and 'virtual(expr)' compute a field value from other fields. '$' refers to the struct being initialised.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Object</span> {
+    name_length: <span class="ty"><a href="stdlib-types.html">integer</a></span> = <span class="bi"><a href="stdlib-text.html">len</a></span>($.name),
+    name: <span class="ty"><a href="stdlib-types.html">text</a></span>
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>A vector of structs can be initialised with a repeated element using '; count'.</p>
+<pre><code>    map = [<span class="en">Area</span> {height:<span class="nm">0</span>, terrain:<span class="nm">1</span>, water:<span class="nm">1</span>, direction:<span class="nm">1</span>}; <span class="nm">16</span> ];
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{map[3]}"</span> == <span class="st">"{{height:0,terrain:1,water:1,direction:1}}"</span>, <span class="st">"record {map[3]}"</span>);</code></pre>
+<p>Fields not mentioned in the constructor receive their zero/null default.</p>
+<pre><code>    p = <span class="en">Point</span> { r:<span class="nm">128</span>, b:<span class="nm">128</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(p.g == <span class="nm">0</span>, <span class="st">"Omitted field defaults to zero"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{p}"</span> == <span class="st">"{{r:128,g:0,b:128}}"</span>, <span class="st">"Struct compact formatting"</span>);</code></pre>
+<p>The ':# ' format specifier produces pretty-printed output with newlines. The ':j' specifier produces JSON.</p>
+<pre><code>    o = <span class="en">Object</span> { name: <span class="st">"hello"</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(o.name_length == <span class="nm">5</span>, <span class="st">"Calculated field"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{o:j}"</span> == <span class="st">"{{\"</span>name_length\<span class="st">":5,\"</span>name\<span class="st">":\"</span>hello\<span class="st">"}}"</span>, <span class="st">"JSON format"</span>);</code></pre>
+<p>Methods are called with dot notation; the result can be formatted inline.</p>
+<pre><code>    purple = <span class="en">Point</span> { r:<span class="nm">128</span>, b:<span class="nm">128</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{purple.value():x}"</span> == <span class="st">"800080"</span>, <span class="st">"Method result in format"</span>);</code></pre>
+<p>Limitation: do not call a method directly on a constructor expression. The parser rejects 'MyStruct { ... }.method()' — assign to a variable first: tmp = Point { r: 1, g: 2, b: 3 }; result = tmp.value();</p>
+<p>Limitation: methods that return a new struct record (-&gt; MyStruct) currently crash at runtime. Methods that return scalars (integer, float, text) or modify 'self' in place work correctly.</p>
+<pre><code>}</code></pre>
+<p>defaults on fields &amp; null defaults</p>
+</section>
+<section class="print-section" id="09-enum">
+<h1>Enums</h1>
+<p>Enums: plain value enums with ordering and text conversion; struct enums with field access and polymorphic dispatch.</p>
+<p>Enum values can be compared, ordered, and converted to/from integer and text.</p>
+<pre><code><span class="kw">enum</span> <span class="en">Direction</span> { <span class="en">North</span>, <span class="en">East</span>, <span class="en">South</span>, <span class="en">West</span> }</code></pre>
+<h2 id="struct-enums">Struct Enums</h2>
+<p>An enum variant can carry data as named fields, making it a 'struct enum'. Each variant is its own type and can have its own methods.</p>
+<pre><code><span class="kw">enum</span> <span class="en">Shape</span> {
+    <span class="en">Circle</span> { radius: <span class="ty"><a href="stdlib-types.html">float</a></span> },
+    <span class="en">Rect</span> { width: <span class="ty"><a href="stdlib-types.html">float</a></span>, height: <span class="ty"><a href="stdlib-types.html">float</a></span> }
+}</code></pre>
+<h2 id="polymorphic-dispatch">Polymorphic Dispatch</h2>
+<p>Polymorphic dispatch: define the same function name for each variant. The call site picks the right version based on the runtime type.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Circle</span>) -&gt; <span class="ty"><a href="stdlib-types.html">float</a></span> {
+    <span class="en"><a href="stdlib-math.html">PI</a></span> * <span class="fn-call"><a href="stdlib-math.html">pow</a></span>(self.radius, <span class="nm">2</span>)
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Rect</span>) -&gt; <span class="ty"><a href="stdlib-types.html">float</a></span> {
+    self.width * self.height
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Plain enum: comparison and ordering (by declaration order).</p>
+<pre><code>    d = <span class="en">East</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(d == <span class="en">East</span>, <span class="st">"Enum equality"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(d != <span class="en">North</span>, <span class="st">"Enum inequality"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(d &gt; <span class="en">North</span>, <span class="st">"East declared after North, so it is greater"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="en">West</span> &gt; <span class="en">South</span>, <span class="st">"West declared last, so it is greatest"</span>);</code></pre>
+<p>Convert text to an enum value.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"West"</span> <span class="kw">as</span> <span class="en">Direction</span> == <span class="en">West</span>, <span class="st">"Text to enum"</span>);</code></pre>
+<p>Struct-enum variants are constructed like structs. Access their fields with dot notation.</p>
+<pre><code>    c = <span class="en">Circle</span> { radius: <span class="nm">1.0</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(c.radius == <span class="nm">1.0</span>, <span class="st">"Variant field access"</span>);</code></pre>
+<pre><code>    r = <span class="en">Rect</span> { width: <span class="nm">4.0</span>, height: <span class="nm">5.0</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(r.width * r.height == <span class="nm">20.0</span>, <span class="st">"Rect area manually"</span>);</code></pre>
+<p>Polymorphic dispatch: the correct 'area' function is chosen by variant type.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">round</a></span>(c.<span class="fn-call">area</span>() * <span class="nm">1000</span>) == <span class="bi"><a href="stdlib-math.html">round</a></span>(<span class="en"><a href="stdlib-math.html">PI</a></span> * <span class="nm">1000</span>), <span class="st">"Circle area = PI*r^2"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(r.<span class="fn-call">area</span>() == <span class="nm">20.0</span>, <span class="st">"Rect area = width*height"</span>);</code></pre>
+<p>Plain enums can be formatted to their variant name.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{d}"</span> == <span class="st">"East"</span>, <span class="st">"Format plain enum"</span>);</code></pre>
+<p>Limitation: polymorphic methods that return text and use format strings to access fields ('fn describe(self: Circle) -&gt; text { "r={self.radius}" }') cause a runtime crash when defined on multiple struct-enum variants. Workaround: return a scalar value and build the text in the caller, or use a single non-polymorphic function that dispatches on the enum variant.</p>
+<pre><code>}</code></pre>
+</section>
+<section class="print-section" id="10-sorted">
+<h1>Sorted</h1>
+<p>"sorted&lt;T[key]&gt;: O(log n) key lookup and in-order iteration in a sorted binary tree; ascending and descending sort keys.</p>
+<p>A 'sorted' field keeps records in a sorted binary tree that can be traversed in key order and looked up by key in O(log n) time. Key fields are listed in brackets: '-field' sorts descending, 'field' ascending.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Elm</span> { key: <span class="ty"><a href="stdlib-types.html">text</a></span>, value: <span class="ty"><a href="stdlib-types.html">integer</a></span> }
+<span class="kw">struct</span> <span class="en">Db</span> { map: <span class="ty"><a href="stdlib-collections.html">sorted</a></span>&lt;<span class="en">Elm</span>[-key]&gt; }</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Populate a sorted collection; the collection maintains its order automatically.</p>
+<pre><code>    db = <span class="en">Db</span> { map: [
+        <span class="en">Elm</span> { key: <span class="st">"One"</span>,   value: <span class="nm">1</span> },
+        <span class="en">Elm</span> { key: <span class="st">"Two"</span>,   value: <span class="nm">2</span> },
+        <span class="en">Elm</span> { key: <span class="st">"Three"</span>, value: <span class="nm">3</span> },
+        <span class="en">Elm</span> { key: <span class="st">"Four"</span>,  value: <span class="nm">4</span> }
+    ]};</code></pre>
+<p>Look up an element by its sort key using index syntax. Returns null if the key is not present.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(db.map[<span class="st">"Two"</span>].value == <span class="nm">2</span>, <span class="st">"Key lookup: Two"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(db.map[<span class="st">"Three"</span>].value == <span class="nm">3</span>, <span class="st">"Key lookup: Three"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!db.map[<span class="st">"Five"</span>], <span class="st">"Missing key returns null"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!db.map[<span class="kw">null</span>], <span class="st">"Null key returns null"</span>);</code></pre>
+<p>New elements can be appended; they are inserted in the right position.</p>
+<pre><code>    db.map += [<span class="en">Elm</span> { key: <span class="st">"Zero"</span>, value: <span class="nm">0</span> }];
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(db.map[<span class="st">"Zero"</span>].value == <span class="nm">0</span>, <span class="st">"Newly added element"</span>);</code></pre>
+<p>Iterating visits elements in sorted order. With '-key' (descending text), the order is: Zero, Two, Three, One, Four.</p>
+<pre><code>    sum = <span class="nm">0</span>;
+    <span class="kw">for</span> v <span class="kw">in</span> db.map {
+        sum = sum * <span class="nm">10</span> + v.value;
+    }</code></pre>
+<p>Zero(0), Two(2), Three(3), One(1), Four(4) → 0*10+2=2, *10+3=23, *10+1=231, *10+4=2314</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(sum == <span class="nm">2314</span>, <span class="st">"Sorted iteration total: {sum}"</span>);</code></pre>
+<p>Limitation: reverse iteration over a sorted collection (for v in rev(db.map)) is not yet implemented. To iterate in the opposite order, collect elements into a plain vector first and use rev() on that: items = []; for v in db.map { items += [v]; } for v in items[rev(0..=len(items)-1)] { ... }</p>
+<pre><code>}</code></pre>
+<p>filling and finding values</p>
+</section>
+<section class="print-section" id="11-index">
+<h1>Index</h1>
+<p>index&lt;T[key]&gt;: balanced red-black tree with strict sorted order, multi-key lookup, and range iteration.</p>
+<p>An 'index' stores records in a balanced red-black tree, maintaining strict sorted order and supporting O(log n) lookup and range iteration. Unlike 'sorted', an index embeds the tree pointers inside each record itself, so each element can belong to only one index at a time. Key fields are listed in brackets: 'field' ascending, '-field' descending.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Elm</span> { nr: <span class="ty"><a href="stdlib-types.html">integer</a></span>, key: <span class="ty"><a href="stdlib-types.html">text</a></span>, value: <span class="ty"><a href="stdlib-types.html">integer</a></span> }
+<span class="kw">struct</span> <span class="en">Db</span> { map: <span class="ty">index</span>&lt;<span class="en">Elm</span>[nr, -key]&gt; }</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Populate the index; elements are sorted by (nr ascending, key descending).</p>
+<pre><code>    db = <span class="en">Db</span> { map: [
+        <span class="en">Elm</span> { nr: <span class="nm">101</span>, key: <span class="st">"One"</span>,   value: <span class="nm">1</span> },
+        <span class="en">Elm</span> { nr: <span class="nm">92</span>,  key: <span class="st">"Two"</span>,   value: <span class="nm">2</span> },
+        <span class="en">Elm</span> { nr: <span class="nm">83</span>,  key: <span class="st">"Three"</span>, value: <span class="nm">3</span> },
+        <span class="en">Elm</span> { nr: <span class="nm">83</span>,  key: <span class="st">"Four"</span>,  value: <span class="nm">4</span> },
+        <span class="en">Elm</span> { nr: <span class="nm">83</span>,  key: <span class="st">"Five"</span>,  value: <span class="nm">5</span> },
+        <span class="en">Elm</span> { nr: <span class="nm">63</span>,  key: <span class="st">"Six"</span>,   value: <span class="nm">6</span> },
+    ]};</code></pre>
+<p>Look up an element by its full key tuple; returns null for missing keys.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(db.map[<span class="nm">101</span>, <span class="st">"One"</span>].value == <span class="nm">1</span>, <span class="st">"Key lookup"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!db.map[<span class="nm">12</span>, <span class="st">""</span>], <span class="st">"Missing key returns null"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!db.map[<span class="nm">83</span>, <span class="st">"One"</span>], <span class="st">"Wrong secondary key returns null"</span>);</code></pre>
+<p>Iterate all elements in key order (nr asc, key desc).</p>
+<pre><code>    total = <span class="nm">0</span>;
+    <span class="kw">for</span> r <span class="kw">in</span> db.map {
+        total += r.value;
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(total == <span class="nm">21</span>, <span class="st">"Sum of all values: {total}"</span>);</code></pre>
+<p>Range iteration: visit elements whose key falls between two bounds. The range [83..92, "Two"] visits elements with 83 &lt;= nr &lt; 92 and key &lt;= "Two" (in descending key order, "Two" is the lower bound).</p>
+<pre><code>    sum = <span class="nm">0</span>;
+    <span class="kw">for</span> v <span class="kw">in</span> db.map[<span class="nm">83..92</span>, <span class="st">"Two"</span>] {
+        sum = sum * <span class="nm">10</span> + v.value;
+    }</code></pre>
+<p>Elements in range: (83,Three,3), (83,Four,4), (83,Five,5)</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(sum == <span class="nm">345</span>, <span class="st">"Range iteration result: {sum}"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="12-hash">
+<h1>Hash</h1>
+<p>hash&lt;T[key]&gt;: O(1) average-time key lookup; combining a hash with a vector for ordered traversal and fast access.</p>
+<p>A 'hash' field provides O(1) average-time lookup by one or more key fields. The key fields are listed in brackets: 'hash&lt;Type[field1, field2]&gt;'. A hash is not ordered; for ordered access combine it with a 'sorted' or 'vector' field.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Keyword</span> { name: <span class="ty"><a href="stdlib-types.html">text</a></span> }
+<span class="kw">struct</span> <span class="en">Data</span> { h: <span class="ty">hash</span>&lt;<span class="en">Keyword</span>[name]&gt; }</code></pre>
+<p>A hash backed by a vector allows fast key lookup while the vector maintains insertion order.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Count</span> { t: <span class="ty"><a href="stdlib-types.html">text</a></span>, v: <span class="ty"><a href="stdlib-types.html">integer</a></span> }
+<span class="kw">struct</span> <span class="en">Counting</span> {
+    entries: <span class="ty"><a href="stdlib-collections.html">vector</a></span>&lt;<span class="en">Count</span>&gt;,
+    lookup:  <span class="ty">hash</span>&lt;<span class="en">Count</span>[t]&gt;
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">fill</span>(c: <span class="en">Counting</span>) {
+    c.entries = [
+        { t: <span class="st">"One"</span>,   v: <span class="nm">1</span> },
+        { t: <span class="st">"Two"</span>,   v: <span class="nm">2</span> },
+        { t: <span class="st">"Three"</span>, v: <span class="nm">3</span> },
+        { t: <span class="st">"Four"</span>,  v: <span class="nm">4</span> }
+    ]
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Populate a hash; lookup uses index syntax with the key value(s).</p>
+<pre><code>    d = <span class="en">Data</span> {};
+    d.h = [{ name: <span class="st">"one"</span> }, { name: <span class="st">"two"</span> }];
+    d.h += [{ name: <span class="st">"three"</span> }, { name: <span class="st">"four"</span> }];</code></pre>
+<p>Found elements are truthy; a missing key returns null (falsy).</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(d.h[<span class="st">"three"</span>], <span class="st">"Key exists"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!d.h[<span class="st">"None"</span>], <span class="st">"Missing key returns null"</span>);</code></pre>
+<p>Combining a vector and a hash on the same records gives ordered traversal (via the vector) and O(1) key-based access (via the hash).</p>
+<pre><code>    c = <span class="en">Counting</span> {};
+    <span class="fn-call">fill</span>(c);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(c.lookup[<span class="st">"Three"</span>].v == <span class="nm">3</span>, <span class="st">"Hash lookup: Three"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(c.lookup[<span class="st">"One"</span>].v == <span class="nm">1</span>, <span class="st">"Hash lookup: One"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!c.lookup[<span class="st">"Five"</span>], <span class="st">"Missing key returns null"</span>);</code></pre>
+<p>Iterate the vector in insertion order while using the hash for lookups.</p>
+<pre><code>    add = <span class="nm">0</span>;
+    <span class="kw">for</span> item <span class="kw">in</span> c.entries {
+        add += item.v;
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(add == <span class="nm">10</span>, <span class="st">"Sum via vector iteration: {add}"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="13-file">
+<h1>File</h1>
+<p>Files are opened lazily: file(path) creates a handle; the OS file opens on the first read or write and closes when the handle goes out of scope.</p>
+<p>'file(path)' creates a File handle. 'f#format' returns the format of the file: TextFile, LittleEndian, BigEndian, Directory, or NotExists. 'lines()' reads a text file and returns it as a vector of lines.</p>
+<p>Clean up any leftover files from a previous interrupted run.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">cleanup</span>() {
+    <span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"test.bin"</span>);
+    <span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"test2.bin"</span>);
+    <span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"buffer.bin"</span>);
+}</code></pre>
+<pre><code><span class="kw">struct</span> <span class="en">Buffer</span> {
+   size: <span class="ty"><a href="stdlib-types.html">i32</a></span>,
+   data: <span class="ty"><a href="stdlib-collections.html">vector</a></span>&lt;<span class="ty"><a href="stdlib-types.html">single</a></span>&gt;
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {
+    <span class="fn-call">cleanup</span>();</code></pre>
+<p>--- Directory and text reading --- 'file("example")' returns a handle whose format is Directory. 'lines()' reads the file at 'example/config/terrain.txt' and splits it into lines.</p>
+<pre><code>    ex = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"example"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(ex#format == <span class="en">Directory</span>, <span class="st">"example is a directory"</span>);
+    c = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"example/config/terrain.txt"</span>).<span class="fn-call"><a href="stdlib-file-system.html">lines</a></span>();
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(c[<span class="nm">1</span>] == <span class="st">"    terrain = ["</span>, <span class="st">"Line was '{c[1]}'"</span>);</code></pre>
+<p>--- exists() and delete() --- 'exists(path)' is shorthand for file(path)#format != NotExists. 'delete()' returns false when the file does not exist.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!<span class="fn-call"><a href="stdlib-file-system.html">exists</a></span>(<span class="st">"test.bin"</span>), <span class="st">"File should not exist before the test."</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!<span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"nonexistent_xyz.bin"</span>), <span class="st">"delete on missing file returns false"</span>);</code></pre>
+<p>--- Binary write --- Set f#format before writing: LittleEndian or BigEndian. f += value writes the value's bytes to the file. Supported scalar types: u8, u16, i32, long, single, float, text. Limitation: f += vector&lt;T&gt; is not yet implemented (writes 0 bytes). Write individual elements with a loop: for v in vec { f += v; }</p>
+<pre><code>    { f = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"test.bin"</span>);
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#format == <span class="en">NotExists</span>, <span class="st">"File should not exist yet."</span>);
+      f#format = <span class="en">BigEndian</span>;
+      f += <span class="nm">0</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">u8</a></span>;
+      f += <span class="nm">1</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">u8</a></span>;
+      f += <span class="nm">0x203</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">u16</a></span>;
+      f += <span class="nm">0x4050607</span>;
+      f += <span class="nm">0x8090a0b0c0d0e0fl</span>;</code></pre>
+<p>'f#size' returns the total number of bytes written so far.</p>
+<pre><code>      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#size == <span class="nm">16l</span>, <span class="st">"Should have written 16 bytes."</span>);</code></pre>
+<p>Text is written as raw UTF-8 bytes with no length prefix.</p>
+<pre><code>      f += <span class="st">"Hello world!"</span>;
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#size == <span class="nm">28l</span>, <span class="st">"Size should be 28 bytes (16 + 12)."</span>);
+    } <span class="cm">// The file closes when the handle goes out of scope.</span></code></pre>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">exists</a></span>(<span class="st">"test.bin"</span>), <span class="st">"File should exist after writing."</span>);</code></pre>
+<p>move(src, dst) refuses if dst exists, or if either path leaves the project directory.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!<span class="fn-call"><a href="stdlib-file-system.html">move</a></span>(<span class="st">"test.bin"</span>, <span class="st">"../test.bin"</span>), <span class="st">"Should refuse to move outside the project."</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">move</a></span>(<span class="st">"test.bin"</span>, <span class="st">"test2.bin"</span>), <span class="st">"Could not move the file."</span>);</code></pre>
+<p>--- Binary read --- Open a file for reading; the default format is TextFile. Set f#format to the format used when writing before reading.</p>
+<pre><code>    { f = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"test2.bin"</span>);
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#format == <span class="en">TextFile</span>, <span class="st">"The default format is TextFile."</span>);
+      f#format = <span class="en">LittleEndian</span>;</code></pre>
+<p>f#read(n) as T reads n bytes and interprets them as type T. f#index is the byte offset where the last read started. f#next is the current byte position (start of the next read).</p>
+<pre><code>      v = f#<span class="fn-call">read</span>(<span class="nm">4</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">i32</a></span>;
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(v == <span class="nm">0x3020100</span>, <span class="st">"BigEndian bytes 0..3 read as LittleEndian i32."</span>);
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#<span class="ty">index</span> == <span class="nm">0l</span>, <span class="st">"Last read started at byte 0."</span>);
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#next == <span class="nm">4l</span>, <span class="st">"Next read starts at byte 4."</span>);</code></pre>
+<p>f#next = pos seeks to an arbitrary byte position.</p>
+<pre><code>      f#next = <span class="nm">16l</span>;
+      s = f#<span class="fn-call">read</span>(<span class="nm">5</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">text</a></span>;
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s == <span class="st">"Hello"</span>, <span class="st">"Partial text read from offset 16."</span>);
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#<span class="ty">index</span> == <span class="nm">16l</span>, <span class="st">"Last read started at byte 16."</span>);
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#next == <span class="nm">21l</span>, <span class="st">"Next position after 5-byte text read."</span>);</code></pre>
+<p>Reading past EOF returns whatever bytes are available.</p>
+<pre><code>      rest = f#<span class="fn-call">read</span>(<span class="nm">100</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">text</a></span>;
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(rest == <span class="st">" world!"</span>, <span class="st">"Read continues to end of file."</span>);
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#next == f#size, <span class="st">"Position should be at end of file."</span>);</code></pre>
+<p>Seek back to start and re-read the first integer.</p>
+<pre><code>      f#next = <span class="nm">0l</span>;
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#<span class="fn-call">read</span>(<span class="nm">4</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">i32</a></span> == <span class="nm">0x3020100</span>, <span class="st">"Seek-and-reread matches original."</span>);
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"test2.bin"</span>), <span class="st">"Could not remove the test file."</span>);</code></pre>
+<p>--- Writing individual elements and reading into a struct --- Write a count and then the floats one by one. sizeof(T) returns the byte size of a type; use it to compute the read length.</p>
+<pre><code>    { buf = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"buffer.bin"</span>);
+      buf#format = <span class="en">LittleEndian</span>;
+      buf += <span class="nm">4</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">i32</a></span>;
+      buf += <span class="nm">1.1f</span>;
+      buf += <span class="nm">1.2f</span>;
+      buf += <span class="nm">2.1f</span>;
+      buf += <span class="nm">2.2f</span>;
+    }</code></pre>
+<p>Read the binary data back into a struct field.</p>
+<pre><code>    { b = <span class="en">Buffer</span> {};
+      f = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"buffer.bin"</span>);
+      f#format = <span class="en">LittleEndian</span>;
+      n = f#<span class="fn-call">read</span>(<span class="nm">4</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">i32</a></span>;
+      b.data = f#<span class="fn-call">read</span>(n * <span class="fn-call">sizeof</span>(<span class="ty"><a href="stdlib-types.html">single</a></span>));
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"buffer.bin"</span>), <span class="st">"Could not remove buffer.bin."</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="14-image">
+<h1>Image</h1>
+<p>Image loading and pixel-level manipulation using the built-in Image type.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {
+}</code></pre>
+</section>
+<section class="print-section" id="15-lexer">
+<h1>Lexer</h1>
+<p>Lexer library: tokenising source text, handling multi-character operators, comments, string literals, and formatting expressions.</p>
+<p>Before parsing, register the multi-character tokens and reserved keywords for your language.</p>
+<p>`set_tokens` ensures operators like `+=` or `&gt;&gt;` are scanned as one token instead of two.</p>
+<p>`set_keywords` prevents reserved words from being returned by `identifier()`.</p>
+<pre><code><span class="kw">use</span> lexer;</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {
+    l = lexer::<span class="en">Lexer</span> {};
+    l.<span class="fn-call">set_tokens</span>([<span class="st">"+="</span>, <span class="st">"*="</span>, <span class="st">"-="</span>, <span class="st">"&lt;="</span>, <span class="st">"&gt;="</span>, <span class="st">"!="</span>, <span class="st">"=="</span>, <span class="st">"&gt;&gt;"</span>, <span class="st">"&lt;&lt;"</span>, <span class="st">"-&gt;"</span>, <span class="st">"=&gt;"</span>, <span class="st">"&gt;&gt;&gt;"</span>, <span class="st">".."</span>, <span class="st">"..="</span>, <span class="st">"&amp;&amp;"</span>, <span class="st">"||"</span>]);
+    l.<span class="fn-call">set_keywords</span>([<span class="st">"for"</span>, <span class="st">"in"</span>, <span class="st">"if"</span>, <span class="st">"else"</span>, <span class="st">"fn"</span>, <span class="st">"pub"</span>, <span class="st">"use"</span>, <span class="st">"struct"</span>, <span class="st">"enum"</span>, <span class="st">"match"</span>, <span class="st">"and"</span>, <span class="st">"or"</span>]);</code></pre>
+<p>`parse_string` feeds source text into the lexer.</p>
+<p>`int()` consumes and returns the next integer token, or null if the current token is not an integer.</p>
+<p>`matches()` consumes a token only when it equals the given string; `peek()` returns it without consuming.</p>
+<p>`long_int()` reads a long integer (suffixed with `l`). `position()` returns `file:line:col`.</p>
+<pre><code>    l.<span class="fn-call">parse_string</span>(<span class="st">"Tokens"</span>, <span class="st">"12 += -2 * 3l &gt;&gt; 4"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() == <span class="nm">12</span>, <span class="st">"Integer"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!l.<span class="fn-call">matches</span>(<span class="st">"+"</span>), <span class="st">"Incorrect plus"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">peek</span>() != <span class="st">"+"</span>, <span class="st">"Incorrect plus"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">matches</span>(<span class="st">"+="</span>), <span class="st">"Incorrect plus_is"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() == -<span class="nm">2</span>, <span class="st">"Second integer"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">matches</span>(<span class="st">"*"</span>), <span class="st">"Incorrect multiply"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() != <span class="nm">3</span>, <span class="st">"Third number"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">long_int</span>() == <span class="nm">3</span>, <span class="st">"Incorrect long"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">position</span>() == <span class="st">"Tokens:1:15"</span>, <span class="st">"Incorrect position {l.position()}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!l.<span class="fn-call">matches</span>(<span class="st">"&gt;"</span>), <span class="st">"Incorrect higher"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">matches</span>(<span class="st">"&gt;&gt;"</span>), <span class="st">"Incorrect logical shift"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">position</span>() == <span class="st">"Tokens:1:18"</span>, <span class="st">"Incorrect position {l.position()}"</span>);</code></pre>
+<p>`constant_text()` reads and unescapes a quoted string literal.</p>
+<p>`constant_character()` reads a quoted character literal.</p>
+<pre><code>    l.<span class="fn-call">parse_string</span>(<span class="st">"Texts"</span>, <span class="st">"\"</span><span class="nm">123</span>\<span class="st">" + '4'"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">constant_text</span>() == <span class="st">"123"</span>, <span class="st">"Incorrect text literal"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">matches</span>(<span class="st">"+"</span>), <span class="st">"Incorrect add"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">constant_character</span>() == <span class="st">"123"</span>, <span class="st">"Incorrect text literal"</span>);</code></pre>
+<p>Comments are collected automatically during scanning.</p>
+<p>`last_comment()` returns accumulated comment text since the last consumed token.</p>
+<p>`comment_behind()` is true when the comment appeared on the same line as preceding code.</p>
+<p>Multiple consecutive comment lines are joined with newlines into one string.</p>
+<p>`is_finished()` returns true once all input has been consumed.</p>
+<pre><code>    l.<span class="fn-call">parse_string</span>(<span class="st">"Comments"</span>, <span class="st">"// starting comments\n123 // same line comment\n// extra comment\n4"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!l.<span class="fn-call">comment_behind</span>(), <span class="st">"Initial comment not behind"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">last_comment</span>() == <span class="st">"starting comments"</span>, <span class="st">"Initial comment"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() == <span class="nm">123</span>, <span class="st">"Content integer"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">comment_behind</span>(), <span class="st">"Second comment is behind"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">last_comment</span>() == <span class="st">"same line comment\nextra comment"</span>, <span class="st">"Second comment"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!l.<span class="fn-call">is_finished</span>(), <span class="st">"Not Ready"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() == <span class="nm">4</span>, <span class="st">"Second integer"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">last_comment</span>() == <span class="st">""</span>, <span class="st">"No remaining comment"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">is_finished</span>(), <span class="st">"Ready"</span>);</code></pre>
+<p>String literals may embed expressions with `{expr}`.</p>
+<p>When the lexer reaches `{`, `constant_text()` returns the literal part before it and `is_formatting()` becomes true. Parse the embedded expression normally after calling `set_formatting(false)`, then call `set_formatting(true)` before consuming the closing `}}`. `constant_text()` then continues with the next literal segment.</p>
+<pre><code>    l.<span class="fn-call">parse_string</span>(<span class="st">"Formatting"</span>, <span class="st">"\"</span>abc{{<span class="nm">12</span> + <span class="nm">34</span>}}def\<span class="st">""</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">constant_text</span>() == <span class="st">"abc"</span>, <span class="st">"Before formatting"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">is_formatting</span>(), <span class="st">"Formatting"</span>);
+    l.<span class="fn-call">set_formatting</span>(<span class="kw">false</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() == <span class="nm">12</span>, <span class="st">"First integer"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">matches</span>(<span class="st">"+"</span>), <span class="st">"Incorrect plus"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">int</span>() == <span class="nm">34</span>, <span class="st">"Second integer"</span>);
+    l.<span class="fn-call">set_formatting</span>(<span class="kw">true</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">matches</span>(<span class="st">"}}"</span>), <span class="st">"Incorrect closing brace"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(l.<span class="fn-call">constant_text</span>() == <span class="st">"def"</span>, <span class="st">"After formatting"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!l.<span class="fn-call">is_formatting</span>(), <span class="st">"Formatting"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="16-parser">
+<h1>Parser</h1>
+<p>Parser library: parsing loft source code programmatically from within a loft program.</p>
+<p>`parse(name, source)` is the single entry point. It takes a display name (used in error messages) and a loft source string. The name argument does not need to correspond to a real file; it is only used when reporting parse errors.</p>
+<p>The parser understands the full loft grammar:</p>
+<ul>
+<li>`struct Name { field: type [= default] }` — named-field aggregates</li>
+<li>`enum Name { Variant [{ field: type }] }` — tagged unions with optional payload</li>
+<li>`fn name(params) [-&gt; type] { body }` — functions with a block body</li>
+<li>`fn name(params) [-&gt; type]; #rust "template"` — operator templates backed by Rust</li>
+<li>`use module;` — module imports</li>
+<li>Expressions: binary operators with precedence, function calls, field access,</li>
+</ul>
+<p>index expressions, if/else, for loops, blocks, and formatted string literals</p>
+<ul>
+<li>Type expressions: plain names, generic types like `vector&lt;T&gt;`, sorted/hash/index</li>
+</ul>
+<p>collections with key fields, and integer ranges with `limit(min, max)`</p>
+<pre><code><span class="kw">use</span> parser;</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Parse a minimal function definition. The double braces `{{` and `}}` are the loft way to write literal braces inside a format string.</p>
+<pre><code>    parser::<span class="fn-call">parse</span>(<span class="st">"hello"</span>, <span class="st">"fn main() {{ println(\"</span><span class="en">Hello</span> <span class="en">World</span>\<span class="st">"); }}"</span>);</code></pre>
+<p>Parse a struct definition followed by a function that references it. The parser validates the syntax but does not execute the code.</p>
+<pre><code>    parser::<span class="fn-call">parse</span>(<span class="st">"point"</span>, <span class="st">"struct Point {{ x: integer, y: integer }} fn origin() -&gt; Point {{ Point {{ x: 0, y: 0 }} }}"</span>);</code></pre>
+<p>Parse an enum with a plain variant and a variant carrying fields.</p>
+<pre><code>    parser::<span class="fn-call">parse</span>(<span class="st">"shape"</span>, <span class="st">"enum Shape {{ Circle {{ radius: float }}, Rectangle {{ w: float, h: float }} }}"</span>);
+}</code></pre>
+</section>
+<section class="print-section" id="17-libraries">
+<h1>Libraries</h1>
+<p>Libraries let you split code across files. A library is any `.loft` file placed in a `lib/` directory. Use `use name;` to import it, then access its definitions as `name::Thing`.</p>
+<p>`use` statements must appear at the very top of the file, before any function or struct definitions. Placing a `use` after a definition is a syntax error.</p>
+<pre><code><span class="kw">use</span> testlib;</code></pre>
+<p>--- Constants --- Library constants are accessed with the `libname::CONSTANT` prefix.</p>
+<p>--- Enums --- Library enum variants are also accessed with the prefix.</p>
+<p>--- Struct construction --- All library types must be constructed with their namespace prefix. Writing `Point {}` without the prefix is a parse error.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<p>Constants from a library require the library prefix.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="en">MAX_SIZE</span> == <span class="nm">100</span>, <span class="st">"library constant MAX_SIZE"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="en">MIN_SIZE</span> == <span class="nm">1</span>, <span class="st">"library constant MIN_SIZE"</span>);</code></pre>
+<p>Library enum variants: comparison and ordering work as normal.</p>
+<pre><code>    s = testlib::<span class="en">Ok</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s == testlib::<span class="en">Ok</span>, <span class="st">"enum equality"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s &lt; testlib::<span class="en">Error</span>, <span class="st">"enum ordering"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{s}"</span> == <span class="st">"Ok"</span>, <span class="st">"enum to text: {s}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"Warning"</span> <span class="kw">as</span> testlib::<span class="en">Status</span> == testlib::<span class="en">Warning</span>, <span class="st">"text to enum"</span>);</code></pre>
+<p>Library enum values can be passed to library free functions.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="fn-call">status_text</span>(testlib::<span class="en">Error</span>) == <span class="st">"err"</span>, <span class="st">"free fn with enum arg"</span>);</code></pre>
+<p>Structs are constructed with namespace prefix and accessed by field.</p>
+<pre><code>    p = testlib::<span class="en">Point</span> { x: <span class="nm">3.0</span>, y: <span class="nm">4.0</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(p.x == <span class="nm">3.0</span>, <span class="st">"field access: x={p.x}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(p.y == <span class="nm">4.0</span>, <span class="st">"field access: y={p.y}"</span>);</code></pre>
+<p>Methods defined in the library are called without a prefix.</p>
+<pre><code>    dist = p.<span class="fn-call">distance</span>();
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-math.html">round</a></span>(dist) == <span class="nm">5.0</span>, <span class="st">"method call: distance={dist}"</span>);</code></pre>
+<p>Scalar fields can be mutated directly.</p>
+<pre><code>    b = testlib::<span class="en">Bag</span> { label: <span class="st">"test"</span>, count: <span class="nm">0</span> };
+    b.label = <span class="st">"updated"</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b.label == <span class="st">"updated"</span>, <span class="st">"direct scalar field mutation"</span>);</code></pre>
+<p>Methods that mutate scalar fields work.</p>
+<pre><code>    b.<span class="fn-call">bump</span>();
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b.count == <span class="nm">1</span>, <span class="st">"method scalar mutation: count={b.count}"</span>);
+    b.<span class="fn-call">bump</span>();
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(b.count == <span class="nm">2</span>, <span class="st">"method scalar mutation: count={b.count}"</span>);</code></pre>
+<p>Free functions: called with the library prefix.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="fn-call">add</span>(<span class="nm">3</span>, <span class="nm">4</span>) == <span class="nm">7</span>, <span class="st">"free function add"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(testlib::<span class="fn-call">add</span>(<span class="nm">0</span>, -<span class="nm">5</span>) == -<span class="nm">5</span>, <span class="st">"free function negative"</span>);</code></pre>
+<p>Library types can be used as function parameter types (by their full name). Passing them to locally-defined functions works as long as the parameter type is written as the plain struct name (not with :: prefix — see limitation below).</p>
+<p>Library struct with vector field: initialization via struct literal works.</p>
+<pre><code>    bag2 = testlib::<span class="en">Bag</span> { label: <span class="st">"full"</span>, count: <span class="nm">3</span>, items: [
+        testlib::<span class="en">Point</span> { x: <span class="nm">1.0</span>, y: <span class="nm">0.0</span> },
+        testlib::<span class="en">Point</span> { x: <span class="nm">0.0</span>, y: <span class="nm">1.0</span> }
+    ]};
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="bi"><a href="stdlib-text.html">len</a></span>(bag2.items) == <span class="nm">2</span>, <span class="st">"initialized vector field: {len(bag2.items)}"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(bag2.items[<span class="nm">0</span>].x == <span class="nm">1.0</span>, <span class="st">"vector field element access"</span>);</code></pre>
+<p>Duplicate `use` of the same library is silently ignored (no error). Multiple libraries can be imported in one file. Libraries can themselves use other libraries (nested use).</p>
+<p>--- Limitations ---</p>
+<p>Limitation 1: `use` must appear before all definitions. The following would be a fatal syntax error: fn foo() {} use testlib;   // ERROR: Syntax error</p>
+<p>Limitation 2: Unqualified access to library names is not supported. `Point {}` without prefix → parse error ("Expect token ;") `MAX_SIZE` without prefix → unknown variable `add(1, 2)` without prefix → unknown function</p>
+<p>Limitation 3: You cannot write a method that takes a library type as `self` in the importing file. The `::` namespace separator is not allowed in function parameter type positions: fn extend(self: testlib::Point) -&gt; float { ... }   // ERROR: Syntax error Workaround: define all methods that operate on a library type inside the library.</p>
+<p>Limitation 4: `pub` on struct fields is not supported and causes a parse error. `pub` on top-level `struct` and `fn` definitions is accepted but has no effect (there is no visibility system — all library definitions are always accessible).</p>
+<p>Limitation 5: Appending to a scalar vector field with `+=` on an existing struct variable does not persist. Use struct literal initialization instead: b.items += p   // has no visible effect bag2 = Bag { items: [p1, p2] }   // works Struct vector fields (vector&lt;MyStruct&gt;) can be appended with `+= [elem]`.</p>
+<p>Limitation 6: You cannot add methods to a library type from an importing file. `self:` parameters do not accept the `::` namespace separator: fn extend(self: testlib::Point) -&gt; float { ... }   // ERROR: Syntax error fn extend(self: Point) -&gt; float { ... }            // ERROR: Undefined type Workaround: add all methods inside the library file itself. Regular (non-self) parameters do accept `libname::Type`: fn check(p: testlib::Point) -&gt; boolean { ... }    // works</p>
+<pre><code>}</code></pre>
+</section>
+<section class="print-section" id="stdlib">
+<h1>Standard Library</h1>
+<h2 id="stdlib-types">Types</h2>
+<p class="section-desc">Primitive types built into lav.</p>
+<div class="item">
+<pre><code>pub type boolean size(1)</code></pre>
+<p>True or false value.</p>
+</div>
+<div class="item">
+<pre><code>pub type integer size(4)</code></pre>
+<p>32-bit signed integer.</p>
+</div>
+<div class="item">
+<pre><code>pub type long size(8)</code></pre>
+<p>64-bit signed integer. Use when values exceed ~2 billion.</p>
+</div>
+<div class="item">
+<pre><code>pub type single size(4)</code></pre>
+<p>32-bit floating-point. Good for graphics and performance-sensitive math.</p>
+</div>
+<div class="item">
+<pre><code>pub type float size(8)</code></pre>
+<p>64-bit floating-point. Use when precision matters.</p>
+</div>
+<div class="item">
+<pre><code>pub type text size(4)</code></pre>
+<p>UTF-8 string.</p>
+</div>
+<div class="item">
+<pre><code>pub type character size(4)</code></pre>
+<p>A single Unicode code point.</p>
+</div>
+<div class="item">
+<pre><code>pub type u8=integer limit(0, 255) size(1)</code></pre>
+<p>Integer subtypes for compact storage in struct fields. Behave as integer in expressions. 0 – 255, 1 byte.</p>
+</div>
+<div class="item">
+<pre><code>pub type i8=integer limit(-128, 127) size(1)</code></pre>
+<p>-128 – 127, 1 byte.</p>
+</div>
+<div class="item">
+<pre><code>pub type u16=integer limit(0, 65535) size(2)</code></pre>
+<p>0 – 65535, 2 bytes.</p>
+</div>
+<div class="item">
+<pre><code>pub type i16=integer limit(-32768, 32767) size(2)</code></pre>
+<p>-32768 – 32767, 2 bytes.</p>
+</div>
+<div class="item">
+<pre><code>pub type i32=integer size(4)</code></pre>
+<p>Full 32-bit integer range, 4 bytes.</p>
+</div>
+<h2 id="stdlib-math">Math</h2>
+<p class="section-desc">Functions for numeric computation. All trigonometric functions work in radians. Both single and float variants exist for every function — choose single for speed, float for precision.</p>
+<div class="item">
+<pre><code>pub fn abs(both: integer) -&gt; integer</code></pre>
+<p>Absolute value. Removes the sign from a negative integer.</p>
+</div>
+<div class="item">
+<pre><code>pub fn abs(both: long) -&gt; long</code></pre>
+<p>Absolute value for long integers.</p>
+</div>
+<div class="item">
+<pre><code>pub fn abs(both: single) -&gt; single</code></pre>
+<p>Absolute value for single-precision floats.</p>
+</div>
+<div class="item">
+<pre><code>pub fn cos(both: single) -&gt; single</code></pre>
+<p>Cosine. Use for circular motion: x = r * cos(angle).</p>
+</div>
+<div class="item">
+<pre><code>pub fn sin(both: single) -&gt; single</code></pre>
+<p>Sine. Use for circular motion: y = r * sin(angle).</p>
+</div>
+<div class="item">
+<pre><code>pub fn tan(both: single) -&gt; single</code></pre>
+<p>Tangent. Use for slopes and perspective projection.</p>
+</div>
+<div class="item">
+<pre><code>pub fn acos(both: single) -&gt; single</code></pre>
+<p>Arc cosine. Returns the angle (in radians) whose cosine is v.</p>
+</div>
+<div class="item">
+<pre><code>pub fn asin(both: single) -&gt; single</code></pre>
+<p>Arc sine. Returns the angle whose sine is v.</p>
+</div>
+<div class="item">
+<pre><code>pub fn atan(both: single) -&gt; single</code></pre>
+<p>Arc tangent of a single value. Returns angle in (-PI/2, PI/2).</p>
+</div>
+<div class="item">
+<pre><code>pub fn atan2(both: single, v2: single) -&gt; single</code></pre>
+<p>Arc tangent of y/x, preserving the correct quadrant. Use instead of atan when you have separate x/y components.</p>
+</div>
+<div class="item">
+<pre><code>pub fn ceil(both: single) -&gt; single</code></pre>
+<p>Round up to the nearest integer value. Use to compute required buffer sizes from fractional counts.</p>
+</div>
+<div class="item">
+<pre><code>pub fn floor(both: single) -&gt; single</code></pre>
+<p>Round down to the nearest integer value. Use to convert a float position to a tile index.</p>
+</div>
+<div class="item">
+<pre><code>pub fn round(both: single) -&gt; single</code></pre>
+<p>Round to the nearest integer value (half rounds away from zero).</p>
+</div>
+<div class="item">
+<pre><code>pub fn sqrt(both: single) -&gt; single</code></pre>
+<p>Square root. Use for distances and normalization.</p>
+</div>
+<div class="item">
+<pre><code>pub fn log(both: single, v2: single) -&gt; single</code></pre>
+<p>Logarithm of v in the given base. Use for converting between scales (e.g., decibels).</p>
+</div>
+<div class="item">
+<pre><code>pub fn pow(both: single, v2: single) -&gt; single</code></pre>
+<p>Raises base to the power exp. Use for exponential growth curves and scaling.</p>
+</div>
+<div class="item">
+<pre><code>pub fn abs(both: float) -&gt; float</code></pre>
+<p>Absolute value for double-precision floats.</p>
+</div>
+<div class="item">
+<pre><code>pub PI = OpMathPiFloat()</code></pre>
+<p>The ratio of a circle's circumference to its diameter (3.14159...).</p>
+</div>
+<div class="item">
+<pre><code>pub E = OpMathEFloat()</code></pre>
+<p>Euler's number, the base of natural logarithms (2.71828...).</p>
+</div>
+<div class="item">
+<pre><code>pub fn cos(both: float) -&gt; float</code></pre>
+<p>Cosine. Use for circular motion: x = r * cos(angle).</p>
+</div>
+<div class="item">
+<pre><code>pub fn sin(both: float) -&gt; float</code></pre>
+<p>Sine. Use for circular motion: y = r * sin(angle).</p>
+</div>
+<div class="item">
+<pre><code>pub fn tan(both: float) -&gt; float</code></pre>
+<p>Tangent. Use for slopes and perspective projection.</p>
+</div>
+<div class="item">
+<pre><code>pub fn acos(both: float) -&gt; float</code></pre>
+<p>Arc cosine. Returns the angle (in radians) whose cosine is v.</p>
+</div>
+<div class="item">
+<pre><code>pub fn asin(both: float) -&gt; float</code></pre>
+<p>Arc sine. Returns the angle whose sine is v.</p>
+</div>
+<div class="item">
+<pre><code>pub fn atan(both: float) -&gt; float</code></pre>
+<p>Arc tangent of a single value. Returns angle in (-PI/2, PI/2).</p>
+</div>
+<div class="item">
+<pre><code>pub fn atan2(both: float, v2: float) -&gt; float</code></pre>
+<p>Arc tangent of y/x, preserving the correct quadrant. Use instead of atan when you have separate x/y components.</p>
+</div>
+<div class="item">
+<pre><code>pub fn ceil(both: float) -&gt; float</code></pre>
+<p>Round up to the nearest integer value. Use to compute required buffer sizes from fractional counts.</p>
+</div>
+<div class="item">
+<pre><code>pub fn floor(both: float) -&gt; float</code></pre>
+<p>Round down to the nearest integer value. Use to convert a float position to a tile index.</p>
+</div>
+<div class="item">
+<pre><code>pub fn round(both: float) -&gt; float</code></pre>
+<p>Round to the nearest integer value (half rounds away from zero).</p>
+</div>
+<div class="item">
+<pre><code>pub fn sqrt(both: float) -&gt; float</code></pre>
+<p>Square root. Use for distances and normalization.</p>
+</div>
+<div class="item">
+<pre><code>pub fn log(both: float, v2: float) -&gt; float</code></pre>
+<p>Logarithm of v in the given base. Use for converting between scales (e.g., decibels).</p>
+</div>
+<div class="item">
+<pre><code>pub fn pow(both: float, v2: float) -&gt; float</code></pre>
+<p>Raises base to the power exp. Use for exponential growth curves and scaling.</p>
+</div>
+<h2 id="stdlib-text">Text</h2>
+<p class="section-desc">Functions for working with text (UTF-8 strings) and character values.</p>
+<div class="item">
+<pre><code>pub fn len(both: text) -&gt; integer</code></pre>
+<p>Number of bytes in the text. Use for bounds checks and iteration limits.</p>
+</div>
+<div class="item">
+<pre><code>pub fn len(both: character) -&gt; integer</code></pre>
+<p>Byte length of the character's UTF-8 encoding (1–4).</p>
+</div>
+<p class="section-desc">Functions for searching, transforming, and classifying text and character values. Character classification functions return true only if every character in the text satisfies the condition. The single-character variants test one code point.</p>
+<div class="item">
+<pre><code>pub fn starts_with(self: text, value: text) -&gt; boolean</code></pre>
+<p>Returns true if self begins with value. Use for prefix matching (e.g., protocol detection).</p>
+</div>
+<div class="item">
+<pre><code>pub fn ends_with(self: text, value: text) -&gt; boolean</code></pre>
+<p>Returns true if self ends with value. Use for suffix matching (e.g., file extension checks).</p>
+</div>
+<div class="item">
+<pre><code>pub fn trim(both: text) -&gt; text[both]</code></pre>
+<p>Removes leading and trailing whitespace. Use when processing user input or file content.</p>
+</div>
+<div class="item">
+<pre><code>pub fn trim_start(self: text) -&gt; text[self]</code></pre>
+<p>Removes leading whitespace only.</p>
+</div>
+<div class="item">
+<pre><code>pub fn trim_end(self: text) -&gt; text[self]</code></pre>
+<p>Removes trailing whitespace only.</p>
+</div>
+<div class="item">
+<pre><code>pub fn find(self: text, value: text) -&gt; integer</code></pre>
+<p>Returns the byte index of the first occurrence of value, or null if not found. Use to locate substrings before slicing.</p>
+</div>
+<div class="item">
+<pre><code>pub fn rfind(self: text, value: text) -&gt; integer</code></pre>
+<p>Returns the byte index of the last occurrence of value, or null if not found. Use to find file extensions or the last path separator.</p>
+</div>
+<div class="item">
+<pre><code>pub fn contains(self: text, value: text) -&gt; boolean</code></pre>
+<p>Returns true if value appears anywhere in self. Simpler than find when you only need a yes/no answer.</p>
+</div>
+<div class="item">
+<pre><code>pub fn replace(self: text, value: text, with: text) -&gt; text</code></pre>
+<p>Returns a copy of self with every occurrence of value replaced by with.</p>
+</div>
+<div class="item">
+<pre><code>pub fn to_lowercase(self: text) -&gt; text</code></pre>
+<p>Returns a lowercase copy. Use for case-insensitive comparisons.</p>
+</div>
+<div class="item">
+<pre><code>pub fn to_uppercase(self: text) -&gt; text</code></pre>
+<p>Returns an uppercase copy.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_lowercase(self: text) -&gt; boolean</code></pre>
+<p>True if all characters are lowercase letters.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_lowercase(self: character) -&gt; boolean</code></pre>
+<p>True if the character is a lowercase letter.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_uppercase(self: text) -&gt; boolean</code></pre>
+<p>True if all characters are uppercase letters.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_uppercase(self: character) -&gt; boolean</code></pre>
+<p>True if the character is an uppercase letter.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_numeric(self: text) -&gt; boolean</code></pre>
+<p>True if all characters are numeric digits (Unicode numeric, not just ASCII 0–9).</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_numeric(self: character) -&gt; boolean</code></pre>
+<p>True if the character is a numeric digit.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_alphanumeric(self: text) -&gt; boolean</code></pre>
+<p>True if all characters are letters or digits. Use to validate identifiers or tokens.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_alphanumeric(self: character) -&gt; boolean</code></pre>
+<p>True if the character is a letter or digit.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_alphabetic(self: text) -&gt; boolean</code></pre>
+<p>True if all characters are alphabetic.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_alphabetic(self: character) -&gt; boolean</code></pre>
+<p>True if the character is alphabetic.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_whitespace(self: text) -&gt; boolean</code></pre>
+<p>True if all characters are whitespace. Use to detect blank lines.</p>
+</div>
+<div class="item">
+<pre><code>pub fn is_control(self: text) -&gt; boolean</code></pre>
+<p>True if all characters are control characters.</p>
+</div>
+<h2 id="stdlib-collections">Collections</h2>
+<p class="section-desc">Operations on vector&lt;T&gt; — the primary ordered collection type. Vectors are grown by appending with += and elements are accessed by index.</p>
+<div class="item">
+<pre><code>pub fn len(both: vector) -&gt; integer</code></pre>
+<p>Number of elements in the vector. Use in loop bounds: for i in 0..v.len().</p>
+</div>
+<h2 id="stdlib-output-and-diagnostics">Output and Diagnostics</h2>
+<div class="item">
+<pre><code>pub fn assert(test: boolean, message: text)</code></pre>
+<p>Panics with message if test is false. Use to verify invariants during development.</p>
+</div>
+<div class="item">
+<pre><code>pub fn panic(message: text)</code></pre>
+<p>Immediately terminates execution with message. Use for unrecoverable error states.</p>
+</div>
+<div class="item">
+<pre><code>pub fn print(v1: text)</code></pre>
+<p>Writes v to standard output without a newline. Use for progress output and building up a line incrementally.</p>
+</div>
+<div class="item">
+<pre><code>pub fn println(v1: text)</code></pre>
+<p>Writes v followed by a newline. The standard choice for line-oriented output.</p>
+</div>
+<h2 id="stdlib-file-system">File System</h2>
+<p class="section-desc">Types and functions for reading and writing files. A File value is obtained via file() and carries the path, format, and an internal reference.</p>
+<div class="item">
+<pre><code>pub struct EnvVariable {
+    name: text,
+    value: text
+}</code></pre>
+<p>An environment variable as a name/value pair.</p>
+</div>
+<div class="item">
+<pre><code>pub struct Pixel {
+    r: integer limit(0, 255) not null,
+    g: integer limit(0, 255) not null,
+    b: integer limit(0, 255) not null
+}</code></pre>
+<p>Data per pixel of the png graph. Fields r, g, b hold red, green and blue intensity, each 0–255.</p>
+</div>
+<div class="item">
+<pre><code>pub struct Image {
+    name: text,
+    width: integer,
+    height: integer,
+    data: vector&lt;Pixel&gt;
+}</code></pre>
+<p>Database structure with image data. The actual data is in height rows of width length.</p>
+</div>
+<div class="item">
+<pre><code>pub enum Format {
+    TextFile,
+    LittleEndian,
+    BigEndian,
+    Directory,
+    NotExists
+}</code></pre>
+<p>Describes how a file is opened. TextFile: read or write as UTF-8 text (default). LittleEndian: binary mode, least-significant byte first. BigEndian: binary mode, most-significant byte first. Directory: represents a directory path. NotExists: no file or directory exist.</p>
+</div>
+<div class="item">
+<pre><code>pub struct File {
+    path: text,
+    size: long,
+    format: Format,
+    ref: i32,
+    current: long,
+    next: long
+}</code></pre>
+<p>A handle to a filesystem entry. Fields: path (full path), size (file size in bytes), format (open mode), current (byte position after last read), next (byte position to read next).</p>
+</div>
+<div class="item">
+<pre><code>pub fn value(self: Pixel) -&gt; integer</code></pre>
+<p>Returns the pixel colour as a packed 24-bit integer (0xRRGGBB). Use for fast colour comparison or storage.</p>
+</div>
+<div class="item">
+<pre><code>pub fn content(self: File) -&gt; text</code></pre>
+<p>Reads the entire file as a UTF-8 text value. Use for small configuration files or scripts.</p>
+</div>
+<div class="item">
+<pre><code>pub fn lines(self: File) -&gt; vector&lt;text&gt;</code></pre>
+<p>Reads the file and splits it into lines. Use when processing line-by-line (logs, CSV, etc.).</p>
+</div>
+<div class="item">
+<pre><code>pub fn split(self: text, separator: character) -&gt; vector&lt;text&gt;</code></pre>
+<p>Splits self on every occurrence of separator and returns the parts as a vector. Use to parse CSV lines or space-separated tokens.</p>
+</div>
+<div class="item">
+<pre><code>pub fn file(path: text) -&gt; File</code></pre>
+<p>Use as the entry point for all file I/O. Paths outside the project directory are treated as NotExists without touching the filesystem.</p>
+</div>
+<div class="item">
+<pre><code>pub fn exists(path: text) -&gt; boolean</code></pre>
+<p>Use to check whether a path is accessible before reading or writing it. Paths outside the project directory are always absent.</p>
+</div>
+<div class="item">
+<pre><code>pub fn delete(path: text) -&gt; boolean</code></pre>
+<p>Use to remove a file after processing or as a cleanup step. Returns false when the file did not exist or is outside the project directory.</p>
+</div>
+<div class="item">
+<pre><code>pub fn move(from: text, to: text) -&gt; boolean</code></pre>
+<p>Use to rename or relocate a file within the project. Both paths must stay within the project directory; the destination must not already exist.</p>
+</div>
+<div class="item">
+<pre><code>pub fn set_file_size(self: File, size: long) -&gt; boolean</code></pre>
+<p>Truncate or extend the file to exactly `size` bytes. Truncating removes bytes beyond `size`; extending fills with null bytes. Returns false if the file is a directory, does not exist, or `size` is negative. Any open handle to the file is closed; reopen the file for further I/O.</p>
+</div>
+<div class="item">
+<pre><code>pub fn files(self: File) -&gt; vector&lt;File&gt;</code></pre>
+<p>Returns the entries inside a directory. The File must have format == Format.Directory. Use to iterate over all files in a folder.</p>
+</div>
+<div class="item">
+<pre><code>pub fn write(self: File, v: text)</code></pre>
+<p>Writes v as UTF-8 text to the file. Overwrites existing content.</p>
+</div>
+<div class="item">
+<pre><code>pub fn png(self: File) -&gt; Image</code></pre>
+<p>Decodes a PNG file and returns an Image. Returns null if the file is not in text format. Use to load sprite sheets or textures.</p>
+</div>
+<div class="item">
+<pre><code>pub fn env_variables() -&gt; vector&lt;EnvVariable&gt;</code></pre>
+<p>Returns all environment variables as a vector of EnvVariable records (fields: name, value). Use to inspect or forward the full environment.</p>
+</div>
+<div class="item">
+<pre><code>pub fn env_variable(name: text) -&gt; text</code></pre>
+<p>Returns the value of the environment variable name, or null if it is not set. Use to read configuration from the shell environment.</p>
+</div>
+<h2 id="stdlib-environment">Environment</h2>
+<p class="section-desc">Functions for interacting with the host operating system.</p>
+<div class="item">
+<pre><code>pub fn arguments() -&gt; vector&lt;text&gt;</code></pre>
+<p>Returns the command-line arguments passed to the program. The first element is typically the program name.</p>
+</div>
+<div class="item">
+<pre><code>pub fn directory(v: &amp;text = &quot;&quot;) -&gt; text</code></pre>
+<p>Returns the current working directory, optionally with v appended as a subpath. Use to construct absolute paths relative to where the program was launched.</p>
+</div>
+<div class="item">
+<pre><code>pub fn user_directory(v: &amp;text = &quot;&quot;) -&gt; text</code></pre>
+<p>Returns the current user's home directory, optionally with v appended. Use for storing user-specific data or configuration.</p>
+</div>
+<div class="item">
+<pre><code>pub fn program_directory(v: &amp;text = &quot;&quot;) -&gt; text</code></pre>
+<p>Returns the directory containing the running executable, optionally with v appended. Use to locate assets bundled alongside the program.</p>
+</div>
+</section>
+</body>
+</html>

@@ -7,6 +7,7 @@
 // Enum values can be compared, ordered, and converted to/from integer and text.
 enum Direction { North, East, South, West }
 
+// ## Struct Enums
 // An enum variant can carry data as named fields, making it a 'struct enum'.
 // Each variant is its own type and can have its own methods.
 enum Shape {
@@ -14,6 +15,7 @@ enum Shape {
     Rect { width: float, height: float }
 }
 
+// ## Polymorphic Dispatch
 // Polymorphic dispatch: define the same function name for each variant.
 // The call site picks the right version based on the runtime type.
 fn area(self: Circle) -> float {
@@ -49,4 +51,10 @@ fn main() {
 
     // Plain enums can be formatted to their variant name.
     assert("{d}" == "East", "Format plain enum");
+
+    // Limitation: polymorphic methods that return text and use format strings to
+    // access fields ('fn describe(self: Circle) -> text { "r={self.radius}" }')
+    // cause a runtime crash when defined on multiple struct-enum variants.
+    // Workaround: return a scalar value and build the text in the caller, or
+    // use a single non-polymorphic function that dispatches on the enum variant.
 }

@@ -136,7 +136,11 @@ fn function_name(param: type, other: type = default_value) -> return_type {
 
 - `pub` prefix makes a definition publicly visible (applies to functions, structs, and enums).
 - Parameters with a `&` prefix are passed by mutable reference (in-out for any type).
-- Parameters with `const` are compile-time constants.
+  - **Enforced**: a `&` parameter that is never mutated (directly or transitively through a called function) is a **compile error**. Drop the `&` if the parameter is read-only.
+- Parameters with `const` prevent mutation of that parameter inside the function body.
+  - `const` is a compile-time check: any assignment to a `const` parameter is an **error**.
+  - `& const T` is syntactically valid but unusual — it means "pass by reference, but don't write to it" (which is redundant; prefer plain `const T` passed by value for primitives).
+  - `Attribute.constant/mutable` on function definitions are NOT set for `const` user-defined-function parameters (that would break bytecode generation). The check lives purely in `Variable.const_param`.
 - Default parameter values are supported.
 - Functions without a `->` clause return `void`.
 - A function body ending in an expression (without `;`) returns that value.
@@ -214,7 +218,7 @@ Used for explicit type casts and conversions:
 
 | Kind         | Syntax examples                     |
 |--------------|-------------------------------------|
-| Integer      | `42`, `0xFF`, `0b1010`, `0o17`      |
+| Integer      | `42`, `0xff`, `0b1010`, `0o17`      |
 | Long         | `10l`, `42l`                        |
 | Float        | `3.14`, `1.0`                       |
 | Single       | `1.0f`, `0.5f`                      |
@@ -304,12 +308,23 @@ for i in rev(1..10) { }
 
 Inside a loop, the iteration variable supports several attributes using `#`:
 
-| Attribute    | Meaning                                             |
-|--------------|-----------------------------------------------------|
-| `v#index`    | 0-based position of the current element             |
-| `v#count`    | number of iterations completed so far               |
-| `v#first`    | `true` for the first element only                   |
-| `v#remove`   | remove the current element (only in filtered loops) |
+| Attribute    | Meaning                                                                              |
+|--------------|--------------------------------------------------------------------------------------|
+| `v#index`    | For **text** loops: byte offset of the **start** of the current character.           |
+|              | For all other loops: 0-based position of the current element.                        |
+| `v#next`     | For **text** loops only: byte offset immediately **after** the current character.    |
+| `v#count`    | Number of iterations completed so far.                                               |
+| `v#first`    | `true` for the first element only.                                                   |
+| `v#remove`   | Remove the current element (only in filtered loops).                                 |
+
+Text iteration example — `#index` and `#next` are always consistent: `c#next == c#index + len(c)`:
+```
+// "Hi 😊!": H@0..1, i@1..2, ' '@2..3, '😊'@3..7, '!'@7..8
+for c in "Hi 😊!" {
+    // c#index = start byte of current character
+    // c#next  = first byte of the next character
+}
+```
 
 `v#remove` is only valid inside `for ... if ...` loops:
 ```
@@ -523,4 +538,184 @@ single       ::= '!' single | '-' single | '(' expr ')' | block | '[' vector_lit
 range_expr   ::= expr '..' [ '=' ] expr   // exclusive or inclusive end
                | expr '..'                 // open-ended
                | 'rev' '(' range_expr ')' // reverse
+```
+
+---
+
+## Best Practices
+
+### String comparisons containing `{` or `}`
+
+All string literals in loft are format strings — any `{...}` is interpreted as a
+format expression. When comparing formatted output against a string that contains
+literal braces, escape both sides with `{{` and `}}`:
+
+```loft
+// WRONG — {r:128,g:0,b:64} tries to look up variable r with format spec 128,...
+assert("{p}" == "{r:128,g:0,b:64}", "...");
+
+// CORRECT — double braces produce literal { and }
+assert("{p}" == "{{r:128,g:0,b:64}}", "...");
+```
+
+Similarly for JSON format output:
+```loft
+assert("{o:j}" == "{{\"key\":1}}", "json format");
+```
+
+### Hex literals — always lowercase
+
+The lexer only accepts lowercase hex digits. `0xff` is valid; `0xFF` causes a parse error.
+
+```loft
+// CORRECT
+x = 0xff;
+y = 0xdeadbeef;
+
+// WRONG — uppercase hex digits are rejected
+z = 0xFF;
+```
+
+### String slicing — always provide both bounds
+
+Open-start slices (`s[..n]`) are not supported. Always give an explicit start:
+
+```loft
+s = "ABCDE";
+s[0..3]   // "ABC"  — CORRECT
+s[..3]    // Error: Invalid index on string
+s[2..]    // "CDE"  — open-end slices work fine
+```
+
+### Struct methods — do not call directly on a constructor expression
+
+Calling a method directly on an inline constructor (`MyStruct { ... }.method()`)
+is currently rejected with `"X should be X on call to method"`. Use an intermediate
+variable:
+
+```loft
+// WRONG
+result = MyPoint { x: 1, y: 2 }.translate(3, 4);
+
+// CORRECT
+tmp = MyPoint { x: 1, y: 2 };
+result = tmp.translate(3, 4);
+```
+
+### Methods returning new struct records
+
+Methods whose return type is a struct currently crash at `database.rs:1458`.
+Until fixed, return a scalar (integer, float, text) or modify `self` in place:
+
+```loft
+// CRASHES — method returning a new Color record
+fn doubled(self: Color) -> Color { Color { r: self.r * 2 } }
+
+// WORKS — method returning an integer
+fn brightness(self: Color) -> integer { self.r + self.g + self.b }
+
+// WORKS — method mutating self in place
+fn double(self: Color) { self.r *= 2; self.g *= 2; self.b *= 2; }
+```
+
+### Unique field names across all structs in one file
+
+When two structs in the same file share a field name at different positions, the
+compiler can confuse them when resolving collection key fields. This causes wrong
+results or "Unknown field" errors in sorted/index range iteration.
+
+Use distinct field names per struct, or isolate conflicting structs in separate files:
+
+```loft
+// RISKY — both structs have a 'key' field but at different positions
+struct SortElm { key: text, value: integer }
+struct IdxElm  { nr: integer, key: text, value: integer }
+
+// SAFE — field names are unique
+struct SortElm { s_key: text, s_value: integer }
+struct IdxElm  { i_nr: integer, i_key: text, i_value: integer }
+```
+
+### Ref-param vector append
+
+`v += items` inside a `&vector<T>` function parameter does **not** propagate back
+to the caller. Only field-level mutations are visible after the call returns:
+
+```loft
+fn bad_append(v: &vector<Item>, extra: Item) {
+    v += [extra];   // silently has no effect on the caller
+}
+
+fn ok_mutate(v: &vector<Item>, idx: integer, val: integer) {
+    v[idx].value = val;   // works — field mutation via ref-param is visible
+}
+```
+
+To append to a vector from a function, return the new vector as a return value:
+```loft
+fn with_extra(v: vector<Item>, extra: Item) -> vector<Item> {
+    v += [extra];
+    v
+}
+items = with_extra(items, new_item);
+```
+
+### Polymorphic text methods on struct-enum variants
+
+Defining text-returning methods on multiple variants of a struct-enum where each
+method uses format strings to access fields causes a state machine overflow at
+runtime. Return integers or build text in the caller instead:
+
+```loft
+// CRASHES at runtime
+enum Shape {
+    Circle { radius: float },
+    Rect   { width: float, height: float }
+}
+fn describe(self: Circle) -> text { "r={self.radius}" }      // ← triggers bug
+fn describe(self: Rect)   -> text { "{self.width}x{self.height}" }
+
+// SAFE — return scalar, build text outside
+fn area(self: Circle) -> float { PI * self.radius * self.radius }
+fn area(self: Rect)   -> float { self.width * self.height }
+```
+
+---
+
+## Known Limitations
+
+A complete list with workarounds is in `PROBLEMS.md` at the repository root.
+The most commonly encountered limitations are summarised here.
+
+### Parser / lexer
+
+| Limitation | Workaround |
+|---|---|
+| Hex literals must be lowercase (`0xff`, not `0xFF`) | Always write hex in lowercase |
+| Open-start slice `s[..n]` not supported | Use `s[0..n]` |
+| `for expr { }` inside a vector literal not supported | Use `{for ... { }}` inside a format string, or build with a loop and `+=` |
+| Method call directly on constructor expression rejected | Assign to a variable first |
+| `\"` inside a `{...}` format expression causes parse error | Use `{{` / `}}` to produce literal braces so the content is not treated as a format expression |
+
+### Runtime
+
+| Limitation | Workaround |
+|---|---|
+| Method returning a new struct record crashes | Return scalars or mutate `self` in place |
+| `v += items` in a ref-param function has no effect on caller | Return the modified vector, or use field mutation |
+| Polymorphic text methods with format strings on struct-enum variants crash | Return integers; build text in the caller |
+| Reverse iteration on `sorted<T>` not implemented | Collect into a `vector<T>` and use `rev(...)` |
+| Writing a `vector<T>` to a binary file writes 0 bytes | Loop and write each element individually |
+| `f#size = n` (file truncation) not implemented | Delete and recreate the file |
+
+### Exit codes
+
+`lavition` exits with code 0 even when a parse error occurs. To detect failures in
+shell scripts, capture output and check for `Error:` or `panicked`:
+
+```sh
+out=$(lavition myfile.loft 2>&1)
+if [ $? -ne 0 ] || echo "$out" | grep -q "^Error:\|panicked"; then
+    echo "FAILED: $out"
+fi
 ```

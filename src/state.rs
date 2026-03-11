@@ -6,11 +6,12 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(dead_code)]
 
-use crate::data::{Attribute, Block, Context, Data, I32, Type, Value};
+use crate::data::{Attribute, Block, Context, Data, DefType, I32, Type, Value};
 use crate::database::{Parts, ShowDb, Stores};
 use crate::fill::OPERATORS;
 use crate::keys;
 use crate::keys::{Content, DbRef, Key, Str};
+use crate::log_config::{LogConfig, TailBuffer};
 use crate::stack::Stack;
 use crate::text::FUNCTIONS;
 use crate::tree;
@@ -19,7 +20,7 @@ use crate::vector;
 use crate::{external, hash};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{Error, Read, Seek, SeekFrom, Write};
 use std::str::FromStr;
 
@@ -163,20 +164,23 @@ impl State {
 
     /// Runtime implementation of `OpCreateStack(pos)`.
     ///
-    /// Pushes a DbRef that points INTO the current stack frame:
-    ///   result = { store_nr: stack_cur.store_nr,
-    ///              rec:      stack_cur.rec,
-    ///              pos:      stack_cur.pos + stack_pos − pos }
+    /// Pushes a `DbRef` that points INTO the current stack frame:
+    ///
+    /// ```text
+    /// result = { store_nr: stack_cur.store_nr,
+    ///            rec:      stack_cur.rec,
+    ///            pos:      stack_cur.pos + stack_pos − pos }
+    /// ```
     ///
     /// The compile-time caller (`state.rs::generate_set`) emits `pos` as:
-    ///   `stack.position_before_op − dep_var.stack_pos`
+    /// `stack.position_before_op − dep_var.stack_pos`,
     /// which makes `result.pos = stack_cur.pos + dep_var.stack_pos` — a pointer into
     /// the dep variable's stack slot, used as a null-state for borrowed references.
     ///
-    /// WARNING: the store_nr is the *stack frame* store, not a data store.
-    /// Any code that dereferences a field through this DbRef (e.g. `last.val`) will
+    /// WARNING: the `store_nr` is the *stack frame* store, not a data store.
+    /// Any code that dereferences a field through this `DbRef` (e.g. `last.val`) will
     /// index into `stores[stack_cur.store_nr]` which is out of range for the heap
-    /// store array and will panic.  This DbRef must be overwritten by `OpPutRef`
+    /// store array and will panic.  This `DbRef` must be overwritten by `OpPutRef`
     /// before any field access.  See `ASSIGNMENT.md` §"Option A sub-option 3" and
     /// the known bug in `tests/slot_assign.rs::long_lived_int_and_copy_record_followed_by_ref`.
     #[inline]
@@ -217,22 +221,35 @@ impl State {
             return;
         }
         let f_nr = self.database.files.len() as i32;
-        let store = self.database.store_mut(&file);
-        let format = store.get_byte(file.rec, file.pos + 32, 0);
-        if format != 2 && format != 3 {
-            // Only binary files allowed (LittleEndian=2, BigEndian=3)
+        let format = self.database.store(&file).get_byte(file.rec, file.pos + 32, 0);
+        // format: 1=TextFile, 2=LittleEndian, 3=BigEndian, 5=NotExists (default to TextFile).
+        if format != 1 && format != 5 && format != 2 && format != 3 {
             return;
         }
         let little_endian = format == 2;
-        let mut file_ref = store.get_int(file.rec, file.pos + 28);
-        if file_ref == i32::MIN {
-            let file_name = store.get_str(store.get_int(file.rec, file.pos + 24) as u32);
-            if let Ok(f) = File::create(file_name) {
-                store.set_int(file.rec, file.pos + 28, f_nr);
-                self.database.files.push(Some(f));
+        let file_ref = self.database.store(&file).get_int(file.rec, file.pos + 28);
+        let file_ref = if file_ref == i32::MIN {
+            // Open the file for writing (creates or truncates), same for text and binary.
+            let file_name = {
+                let store = self.database.store(&file);
+                store.get_str(store.get_int(file.rec, file.pos + 24) as u32).to_owned()
+            };
+            match File::create(&file_name) {
+                Ok(f) => {
+                    self.database.store_mut(&file).set_int(file.rec, file.pos + 28, f_nr);
+                    self.database.files.push(Some(f));
+                    f_nr
+                }
+                Err(_) => return,
             }
-            file_ref = f_nr;
-        }
+        } else {
+            file_ref
+        };
+        // Track position: set #index = where this write starts, then advance #next after.
+        let raw_next = self.database.store(&file).get_long(file.rec, file.pos + 16);
+        let next_pos = if raw_next == i64::MIN { 0 } else { raw_next };
+        self.database.store_mut(&file).set_long(file.rec, file.pos + 8, next_pos);
+        // Assemble the bytes to write.
         let mut data = Vec::new();
         if self.database.is_text_type(db_tp) {
             // Text variables in the stack hold a Rust String (not a store record index).
@@ -240,12 +257,16 @@ impl State {
             let s: &String = store.addr::<String>(val.rec, val.pos);
             data.extend_from_slice(s.as_bytes());
         } else {
-            self.database
-                .read_data(&val, db_tp, little_endian, &mut data);
+            self.database.read_data(&val, db_tp, little_endian, &mut data);
         }
+        let written = data.len();
         if let Some(f) = &mut self.database.files[file_ref as usize] {
             f.write_all(&data).unwrap_or_default();
         }
+        // Update #next to reflect the end of this write.
+        self.database
+            .store_mut(&file)
+            .set_long(file.rec, file.pos + 16, next_pos + written as i64);
     }
 
     pub fn read_file(&mut self) {
@@ -259,8 +280,8 @@ impl State {
         let f_nr = self.database.files.len() as i32;
         let store = self.database.store_mut(&file);
         let format = store.get_byte(file.rec, file.pos + 32, 0);
-        if format != 2 && format != 3 {
-            // Only binary files allowed (LittleEndian=2, BigEndian=3)
+        // format: 1=TextFile, 2=LittleEndian, 3=BigEndian, 5=NotExists (default to TextFile).
+        if format != 1 && format != 5 && format != 2 && format != 3 {
             return;
         }
         let little_endian = format == 2;
@@ -344,6 +365,34 @@ impl State {
             i64::MIN
         };
         self.put_stack(size);
+    }
+
+    pub fn truncate_file(&mut self) {
+        let size = *self.get_stack::<i64>();
+        let file = *self.get_stack::<DbRef>();
+        if file.rec == 0 {
+            self.put_stack(false);
+            return;
+        }
+        let path = {
+            let store = self.database.store(&file);
+            store.get_str(store.get_int(file.rec, file.pos + 24) as u32).to_owned()
+        };
+        // Close any open handle: the handle may be in read or write mode with a stale
+        // position, and after resize the position might be beyond the new end of file.
+        let file_ref = self.database.store(&file).get_int(file.rec, file.pos + 28);
+        if file_ref != i32::MIN && (file_ref as usize) < self.database.files.len() {
+            self.database.files[file_ref as usize] = None;
+            self.database.store_mut(&file).set_int(file.rec, file.pos + 28, i32::MIN);
+            self.database.store_mut(&file).set_long(file.rec, file.pos + 8, i64::MIN);
+            self.database.store_mut(&file).set_long(file.rec, file.pos + 16, i64::MIN);
+        }
+        let ok = OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .and_then(|f| f.set_len(size as u64))
+            .is_ok();
+        self.put_stack(ok);
     }
 
     #[inline]
@@ -1586,7 +1635,7 @@ impl State {
                 stack.position -= size;
                 Type::Void
             }
-            Value::Iter(_, _, _) => {
+            Value::Iter(_, _, _, _) => {
                 panic!("Should have rewritten {val:?}");
             }
             Value::Line(line) => {
@@ -2155,19 +2204,27 @@ impl State {
     */
     pub fn print_code(&mut self, d_nr: u32, data: &Data) {
         let mut buf = Vec::new();
-        self.dump_code(&mut buf, d_nr, data).unwrap();
+        self.dump_code(&mut buf, d_nr, data, true).unwrap();
         println!("{}", String::from_utf8(buf).unwrap());
     }
 
     /**
     Write the byte-code generated for the given function definition.
+    When `annotate_slots` is true, each instruction that accesses a named
+    variable is followed by `var=name[slot]:type`.
     # Errors
     When the writer had problems.
     # Panics
     When unknown operators are encountered in the byte-code.
     */
     #[allow(clippy::cognitive_complexity)]
-    pub fn dump_code(&mut self, f: &mut dyn Write, d_nr: u32, data: &Data) -> Result<(), Error> {
+    pub fn dump_code(
+        &mut self,
+        f: &mut dyn Write,
+        d_nr: u32,
+        data: &Data,
+        annotate_slots: bool,
+    ) -> Result<(), Error> {
         write!(f, "{}(", data.def(d_nr).name)?;
         let mut stack_pos = 0;
         for a_nr in 0..data.attributes(d_nr) {
@@ -2269,7 +2326,7 @@ impl State {
             {
                 write!(f, " type={} {t:}", self.database.types[*t as usize].name)?;
             }
-            if let Some(v) = self.vars.get(&p) {
+            if annotate_slots && let Some(v) = self.vars.get(&p) {
                 let vars = &data.def(d_nr).variables;
                 write!(
                     f,
@@ -2353,33 +2410,119 @@ impl State {
 
     /**
     Execute a function inside the `byte_code` with logging each step.
+
+    The `config` parameter controls which phases, functions, and opcodes appear
+    in the output.  When `config.trace_tail` is set the execution trace is held
+    in a ring buffer; if a panic occurs the buffer is flushed to `log` before
+    the panic is re-raised, giving you the last N lines at the crash site.
+
+    When `config.phases.execution` is `false`, or the function name does not
+    match `config.show_functions`, the function is executed silently (same as
+    [`Self::execute`]).
+
     # Errors
     When the log cannot be written.
     # Panics
-    On too many steps or when the stack or claimed structures are not correctly cleared afterward.
+    On too many steps or when the stack or claimed structures are not correctly
+    cleared afterward.
     */
     pub fn execute_log(
         &mut self,
         log: &mut dyn Write,
         name: &str,
+        config: &LogConfig,
         data: &Data,
     ) -> Result<(), Error> {
-        writeln!(log, "Execute {name}:")?;
         let d_nr = data.def_nr(&format!("n_{name}"));
         assert_ne!(d_nr, u32::MAX, "Unknown routine {name}");
+
+        // If logging is suppressed for this function, fall back to silent execution.
+        if !config.phases.execution || !config.show_function(name) {
+            self.execute(name, data);
+            return Ok(());
+        }
+
+        if let Some(tail_n) = config.trace_tail {
+            // Tail-buffer mode: keep only the last `tail_n` lines in memory.
+            // Wrap in catch_unwind so the buffer is flushed even on panic.
+            let mut tail = TailBuffer::new(tail_n);
+            writeln!(tail, "Execute {name}:")?;
+            // SAFETY: We hold all three mutable references exclusively and none
+            // of them can be invalidated during catch_unwind on this thread.
+            let self_raw = std::ptr::from_mut::<State>(self);
+            let tail_raw = &raw mut tail;
+            let data_raw = std::ptr::from_ref::<Data>(data);
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let s = unsafe { &mut *self_raw };
+                let t = unsafe { &mut *tail_raw };
+                let d = unsafe { &*data_raw };
+                s.execute_log_steps(t, d_nr, config, d)
+            }));
+            tail.flush_to(log)?;
+            match result {
+                Ok(r) => r,
+                Err(e) => std::panic::resume_unwind(e),
+            }
+        } else {
+            writeln!(log, "Execute {name}:")?;
+            self.execute_log_steps(log, d_nr, config, data)
+        }
+    }
+
+    /// Inner execution loop used by [`Self::execute_log`].
+    fn execute_log_steps(
+        &mut self,
+        log: &mut dyn Write,
+        d_nr: u32,
+        config: &LogConfig,
+        data: &Data,
+    ) -> Result<(), Error> {
         self.code_pos = data.def(d_nr).code_position;
         self.def_pos = self.code_pos;
         // Write the return address of the main function but do not override the record size.
         self.stack_pos = 4;
         self.put_stack(u32::MAX);
+
+        // Compute the initial frame offset for the bridging invariant check.
+        // At runtime we start at stack_pos=4 (the return address); the compile-time
+        // tracking in self.stack may start at a different value (usually 0).
+        let root_compile_start = self.stack.get(&self.code_pos).copied().map_or(0, i64::from);
+        let mut frame_offset = 4i64 - root_compile_start;
+        let mut prev_fn_start = self.code_pos;
+
         // TODO Allow command line parameters on main functions
         let mut step = 0;
         while self.code_pos < self.bytecode.len() as u32 {
             let code = self.code_pos;
             let op = *self.code::<u8>();
-            self.log_step(log, op, data)?;
+            let op_name = data.operator(op).name.clone();
+            let op_base = &op_name[2..]; // strip "Op" prefix
+
+            // Detect entry into a new function and re-calibrate frame_offset.
+            let cur_d_nr = State::fn_d_nr_for_pos(code, data);
+            if cur_d_nr != u32::MAX {
+                let fn_start = data.def(cur_d_nr).code_position;
+                if fn_start != prev_fn_start {
+                    prev_fn_start = fn_start;
+                    let compile_start = self.stack.get(&fn_start).copied().map_or(0, i64::from);
+                    frame_offset = i64::from(self.stack_pos) - compile_start;
+                }
+            }
+
+            let trace_this = config.trace_opcode(op_base);
+            if trace_this {
+                self.log_step(log, op, code, &(cur_d_nr, frame_offset), config, data)?;
+            }
             OPERATORS[op as usize](self);
-            self.log_result(log, op, code, data)?;
+            if trace_this {
+                self.log_result(log, op, code, data)?;
+            }
+
+            // Optional stack snapshot after the opcode.
+            if config.snapshot_window > 0 && config.snapshot_opcode(op_base) {
+                self.write_stack_snapshot(log, config.snapshot_window)?;
+            }
+
             step += 1;
             assert!(step < 10_000_000, "Too many operations");
             if self.code_pos == u32::MAX {
@@ -2394,6 +2537,35 @@ impl State {
                 return Ok(());
             }
         }
+        Ok(())
+    }
+
+    /// Find the definition number of the function whose bytecode contains `pos`.
+    fn fn_d_nr_for_pos(pos: u32, data: &Data) -> u32 {
+        for d_nr in 0..data.definitions() {
+            let def = data.def(d_nr);
+            if !matches!(def.def_type, DefType::Function) || def.is_operator() {
+                continue;
+            }
+            if def.code_position <= pos && pos < def.code_position + def.code_length {
+                return d_nr;
+            }
+        }
+        u32::MAX
+    }
+
+    /// Write a raw hex dump of the top `window` bytes of the stack to `log`.
+    fn write_stack_snapshot(&self, log: &mut dyn Write, window: usize) -> Result<(), Error> {
+        let sp = self.stack_pos;
+        let base = self.stack_cur.pos;
+        let start = sp.saturating_sub(window as u32);
+        write!(log, "  snapshot[{start}..{sp}]:")?;
+        let store = self.database.store(&self.stack_cur);
+        for offset in start..sp {
+            let byte = *store.addr::<u8>(self.stack_cur.rec, base + offset);
+            write!(log, " {byte:02x}")?;
+        }
+        writeln!(log)?;
         Ok(())
     }
 
@@ -2422,13 +2594,44 @@ impl State {
         }
     }
 
-    fn log_step(&mut self, log: &mut dyn Write, op: u8, data: &Data) -> Result<u8, Error> {
+    /// Log a single execution step.
+    ///
+    /// - `code` — bytecode position of the opcode byte (before it was consumed).
+    /// - `fn_ctx` — `(d_nr, frame_offset)`: definition number of the function
+    ///   currently executing (`u32::MAX` if unknown) and
+    ///   `runtime_stack_pos − compile_stack_pos` at the current function entry.
+    /// - `config` — logging configuration.
+    fn log_step(
+        &mut self,
+        log: &mut dyn Write,
+        op: u8,
+        code: u32,
+        fn_ctx: &(u32, i64),
+        config: &LogConfig,
+        data: &Data,
+    ) -> Result<u8, Error> {
+        let (d_nr, frame_offset) = *fn_ctx;
         let cur = self.code_pos;
         let stack = self.stack_pos;
         assert!(data.has_op(op), "Unknown operator {op}");
         let def = data.operator(op);
         let minus = if cur > self.def_pos { self.def_pos } else { 0 };
-        write!(log, "{:5}:[{}]", cur - minus - 1, self.stack_pos,)?;
+        write!(log, "{:5}:[{}]", cur - minus - 1, self.stack_pos)?;
+
+        // Bridging invariant: check runtime vs compile-time stack position.
+        if config.check_bridging
+            && let Some(&compile_pos) = self.stack.get(&code)
+        {
+            let expected = i64::from(compile_pos) + frame_offset;
+            if i64::from(self.stack_pos) != expected {
+                write!(
+                    log,
+                    " [BRIDGING VIOLATION: runtime={} expected={expected}]",
+                    self.stack_pos
+                )?;
+            }
+        }
+
         if let Some(line) = self.line_numbers.get(&cur) {
             write!(log, " [{line}]")?;
         }
@@ -2462,7 +2665,19 @@ impl State {
                         "Variable {pos} outside stack {}",
                         self.stack_pos
                     );
-                    attr.insert(a_nr, format!("var[{}]", self.stack_pos - u32::from(pos)));
+                    let abs_slot = self.stack_pos - u32::from(pos);
+                    // Optionally annotate with variable name from codegen metadata.
+                    let annotation =
+                        if config.annotate_slots && d_nr != u32::MAX && code != u32::MAX {
+                            if let Some(&v) = self.vars.get(&code) {
+                                format!("={}", data.def(d_nr).variables.name(v))
+                            } else {
+                                String::new()
+                            }
+                        } else {
+                            String::new()
+                        };
+                    attr.insert(a_nr, format!("var[{abs_slot}]{annotation}"));
                 } else {
                     attr.insert(a_nr, format!("{}={}", a.name, self.dump_attribute(a)));
                 }

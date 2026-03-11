@@ -55,3 +55,25 @@ gtest:
 	cd generated && rustfmt tests/*.rs --edition 2024 >> result.txt 2>&1
 	cd generated && cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
 
+loft-test:
+	@cargo build --bin lavition --release -q
+	@failed=0; \
+	for f in tests/loft/*.loft; do \
+		printf "  %-45s" "$$f"; \
+		out=$$(./target/release/lavition "$$f" 2>&1); \
+		code=$$?; \
+		if [ $$code -ne 0 ] || echo "$$out" | grep -q "^Error:\|panicked"; then \
+			echo "FAILED"; \
+			echo "$$out" | grep -A2 "^Error:\|panicked" | head -5; \
+			failed=$$((failed + 1)); \
+		else \
+			echo "ok"; \
+		fi; \
+	done; \
+	if [ $$failed -gt 0 ]; then \
+		echo "$$failed file(s) failed"; \
+		exit 1; \
+	else \
+		echo "All loft tests passed."; \
+	fi
+

@@ -16,13 +16,13 @@ struct Scopes {
     stack: Vec<u16>,
     /// Per encountered variable the scope where it was created. Later copied into the definition.
     var_scope: BTreeMap<u16, u16>,
-    /// Variables that are redefined after running out-of-scope gets copied with this mapping.
+    /// Variables that are redefined after running out-of-scope get copied with this mapping.
     var_mapping: HashMap<u16, u16>,
     /// The scopes of the currently traversed loops.
     loops: Vec<u16>,
 }
 
-/// Perform scope analysis on all currently known function.
+/// Perform scope analysis on all currently known functions.
 pub fn check(data: &mut Data) {
     for d_nr in 0..data.definitions() {
         if !matches!(data.def(d_nr).def_type, DefType::Function) || data.def(d_nr).variables.done {
@@ -81,64 +81,7 @@ impl Scopes {
     fn scan(&mut self, val: &Value, function: &mut Function, data: &Data) -> Value {
         match val {
             Value::Var(ov) => Value::Var(*self.var_mapping.get(ov).unwrap_or(ov)),
-            Value::Set(ov, value) => {
-                assert_ne!(
-                    *ov,
-                    u16::MAX,
-                    "Incorrect variable in {} fn {}",
-                    function.file,
-                    function.name
-                );
-                if let Some(s) = self.var_scope.get(ov)
-                    && self.scope != *s
-                    && !self.stack.contains(s)
-                {
-                    if let Some(&existing_copy) = self.var_mapping.get(ov) {
-                        // Replace the mapping only if the existing copy's scope has exited.
-                        if let Some(&copy_scope) = self.var_scope.get(&existing_copy)
-                            && copy_scope != self.scope
-                            && !self.stack.contains(&copy_scope)
-                        {
-                            self.var_mapping.insert(*ov, function.copy_variable(*ov));
-                        }
-                    } else {
-                        self.var_mapping.insert(*ov, function.copy_variable(*ov));
-                    }
-                }
-                let v = self.var_mapping.get(ov).unwrap_or(ov);
-                if self.var_scope.contains_key(v) && **value == Value::Null {
-                    return Value::Insert(Vec::new());
-                }
-                // remember scope of variable
-                let mut depend = Vec::new();
-                for d in function.tp(*v).depend() {
-                    if !self.var_scope.contains_key(&d) {
-                        depend.push(d);
-                        self.var_scope.insert(d, self.scope);
-                    }
-                }
-                if !self.var_scope.contains_key(v) {
-                    self.var_scope.insert(*v, self.scope);
-                }
-                if depend.is_empty() {
-                    Value::Set(*v, Box::new(self.scan(value, function, data)))
-                } else {
-                    let mut ls = Vec::new();
-                    for d in depend {
-                        if d == *v {
-                            continue;
-                        }
-                        if matches!(function.tp(d), Type::Text(_)) {
-                            ls.push(v_set(d, Value::Text(String::new())));
-                        } else {
-                            ls.push(v_set(d, Value::Null));
-                        }
-                        self.var_scope.insert(d, self.scope);
-                    }
-                    ls.push(Value::Set(*v, Box::new(self.scan(value, function, data))));
-                    Value::Insert(ls)
-                }
-            }
+            Value::Set(ov, value) => self.scan_set(*ov, value, function, data),
             Value::Loop(lp) => {
                 let scope = self.enter_scope();
                 self.loops.push(scope);
@@ -152,44 +95,7 @@ impl Scopes {
                     scope,
                 }))
             }
-            Value::If(test, t_val, f_val) => {
-                // Find Reference/Vector/Text variables first assigned inside either branch
-                // (including nested ifs, but not inside loops).
-                let mut pre_inits: Vec<u16> = Vec::new();
-                self.find_first_ref_vars(t_val, function, &mut pre_inits);
-                self.find_first_ref_vars(f_val, function, &mut pre_inits);
-
-                // Register pre-inited vars in var_scope BEFORE scanning branches so that
-                // the branch scans see them as already assigned and use the set_var/OpPutRef
-                // re-assignment path instead of claim().
-                for &v in &pre_inits {
-                    self.var_scope.insert(v, self.scope);
-                }
-
-                let scanned_if = Value::If(
-                    Box::new(self.scan(test, function, data)),
-                    Box::new(self.scan(t_val, function, data)),
-                    Box::new(self.scan(f_val, function, data)),
-                );
-
-                if pre_inits.is_empty() {
-                    return scanned_if;
-                }
-
-                // Emit Set(v, Null/empty) for each variable at the current scope, before the
-                // If node.  These are NOT passed through scan() again — the var_scope check
-                // in the Set arm would strip them (contains_key + Null → Insert([])).
-                let mut stmts: Vec<Value> = Vec::new();
-                for &v in &pre_inits {
-                    if matches!(function.tp(v), Type::Text(_)) {
-                        stmts.push(v_set(v, Value::Text(String::new())));
-                    } else {
-                        stmts.push(v_set(v, Value::Null));
-                    }
-                }
-                stmts.push(scanned_if);
-                Value::Insert(stmts)
-            }
+            Value::If(test, t_val, f_val) => self.scan_if(test, t_val, f_val, function, data),
             Value::Break(lv) => {
                 let mut ls = self.get_free_vars(
                     function,
@@ -251,6 +157,111 @@ impl Scopes {
             }
             _ => val.clone(),
         }
+    }
+
+    fn scan_set(&mut self, ov: u16, value: &Value, function: &mut Function, data: &Data) -> Value {
+        assert_ne!(
+            ov,
+            u16::MAX,
+            "Incorrect variable in {} fn {}",
+            function.file,
+            function.name
+        );
+        if let Some(s) = self.var_scope.get(&ov)
+            && self.scope != *s
+            && !self.stack.contains(s)
+        {
+            if let Some(&existing_copy) = self.var_mapping.get(&ov) {
+                // Replace the mapping only if the existing copy's scope has exited.
+                if let Some(&copy_scope) = self.var_scope.get(&existing_copy)
+                    && copy_scope != self.scope
+                    && !self.stack.contains(&copy_scope)
+                {
+                    self.var_mapping.insert(ov, function.copy_variable(ov));
+                }
+            } else {
+                self.var_mapping.insert(ov, function.copy_variable(ov));
+            }
+        }
+        let v = *self.var_mapping.get(&ov).unwrap_or(&ov);
+        if self.var_scope.contains_key(&v) && *value == Value::Null {
+            return Value::Insert(Vec::new());
+        }
+        // remember the scope of the variable
+        let mut depend = Vec::new();
+        for d in function.tp(v).depend() {
+            if !self.var_scope.contains_key(&d) {
+                depend.push(d);
+                self.var_scope.insert(d, self.scope);
+            }
+        }
+        if !self.var_scope.contains_key(&v) {
+            self.var_scope.insert(v, self.scope);
+        }
+        if depend.is_empty() {
+            Value::Set(v, Box::new(self.scan(value, function, data)))
+        } else {
+            let mut ls = Vec::new();
+            for d in depend {
+                if d == v {
+                    continue;
+                }
+                if matches!(function.tp(d), Type::Text(_)) {
+                    ls.push(v_set(d, Value::Text(String::new())));
+                } else {
+                    ls.push(v_set(d, Value::Null));
+                }
+                self.var_scope.insert(d, self.scope);
+            }
+            ls.push(Value::Set(v, Box::new(self.scan(value, function, data))));
+            Value::Insert(ls)
+        }
+    }
+
+    fn scan_if(
+        &mut self,
+        test: &Value,
+        t_val: &Value,
+        f_val: &Value,
+        function: &mut Function,
+        data: &Data,
+    ) -> Value {
+        // Find Reference/Vector/Text variables first assigned inside either branch
+        // (including nested ifs, but not inside loops).
+        let mut pre_inits: Vec<u16> = Vec::new();
+        self.find_first_ref_vars(t_val, function, &mut pre_inits);
+        self.find_first_ref_vars(f_val, function, &mut pre_inits);
+
+        // Register pre-inited vars in var_scope BEFORE scanning branches so that
+        // the branch scans see them as already assigned and use the set_var/OpPutRef
+        // re-assignment path instead of claim().
+        for &v in &pre_inits {
+            self.var_scope.insert(v, self.scope);
+        }
+
+        let scanned_if = Value::If(
+            Box::new(self.scan(test, function, data)),
+            Box::new(self.scan(t_val, function, data)),
+            Box::new(self.scan(f_val, function, data)),
+        );
+
+        if pre_inits.is_empty() {
+            return scanned_if;
+        }
+
+        // Emit Set(v, Null/empty) for each variable at the current scope, before the
+        // If node.  These are NOT passed through scan() again — the var_scope check
+        // in the Set arm would strip them (contains_key + Null → Insert([])).
+        let mut stmts: Vec<Value> = Vec::new();
+        for &v in &pre_inits {
+            if matches!(function.tp(v), Type::Text(_)) {
+                stmts.push(v_set(v, Value::Text(String::new())));
+            } else {
+                stmts.push(v_set(v, Value::Null));
+            }
+        }
+        stmts.push(scanned_if);
+        Value::Insert(stmts)
     }
 
     /// Convert the content of loops and blocks
@@ -374,12 +385,7 @@ impl Scopes {
     ///
     /// Recurses into nested `If` and `Block` but NOT into `Loop` — loop variables have
     /// per-iteration scope management and must not be pre-inited at the enclosing scope.
-    fn find_first_ref_vars(
-        &self,
-        val: &Value,
-        function: &Function,
-        result: &mut Vec<u16>,
-    ) {
+    fn find_first_ref_vars(&self, val: &Value, function: &Function, result: &mut Vec<u16>) {
         match val {
             Value::Set(v, _) => {
                 let resolved = *self.var_mapping.get(v).unwrap_or(v);
@@ -422,10 +428,7 @@ impl Scopes {
 fn needs_pre_init(tp: &Type) -> bool {
     matches!(
         tp,
-        Type::Text(_)
-            | Type::Reference(_, _)
-            | Type::Vector(_, _)
-            | Type::Enum(_, true, _)
+        Type::Text(_) | Type::Reference(_, _) | Type::Vector(_, _) | Type::Enum(_, true, _)
     )
 }
 
