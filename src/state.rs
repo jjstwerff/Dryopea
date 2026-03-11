@@ -1605,8 +1605,14 @@ impl State {
                 if dep.is_empty() {
                     stack.add_op("OpConvRefFromNull", self);
                 } else {
+                    // OpCreateStack(pos) at runtime: result.pos = stack_cur.pos + State::stack_pos - pos.
+                    // We need pos = (stack.position before this op) - dep[0].stack_pos,
+                    // which makes result.pos = stack_cur.pos + dep[0].stack_pos (a reference into
+                    // the dep variable's slot — a valid null-state for the borrowed variable).
                     stack.add_op("OpCreateStack", self);
-                    self.code_add(dep[0]);
+                    let dep_pos = stack.function.stack(dep[0]);
+                    let before_stack = stack.position - size_of::<DbRef>() as u16;
+                    self.code_add(before_stack - dep_pos);
                 }
             } else if let Type::Reference(d_nr, _) = stack.function.tp(v).clone()
                 && let Value::Call(op_nr, _) = value
@@ -1650,8 +1656,11 @@ impl State {
                         self.code_add(4u16);
                         self.code_add(0u16);
                     } else {
+                        // Same offset correction as for borrowed Reference types above.
                         stack.add_op("OpCreateStack", self);
-                        self.code_add(dep[0]);
+                        let dep_pos = stack.function.stack(dep[0]);
+                        let before_stack = stack.position - size_of::<DbRef>() as u16;
+                        self.code_add(before_stack - dep_pos);
                     }
                 }
             } else {

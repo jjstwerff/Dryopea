@@ -312,6 +312,10 @@ impl Function {
         self.variables[var_nr as usize].stack_pos
     }
 
+    pub fn first_def(&self, var_nr: u16) -> u32 {
+        self.variables[var_nr as usize].first_def
+    }
+
     /// Return the minimum safe position for allocating a new variable slot —
     /// the maximum end-slot of all currently assigned variables.  Ensures a
     /// freshly claimed slot never overlaps a slot already in use.
@@ -381,6 +385,23 @@ impl Function {
 
     pub fn next_var(&self) -> u16 {
         self.variables.len() as u16
+    }
+
+    /// Return the highest byte position (exclusive) occupied by any variable whose live
+    /// interval is still active at `check_seq`.  Used by `generate_set` to avoid claiming
+    /// a slot that overlaps a live variable when `stack.position` was lowered by a
+    /// net-negative operator.  Returns 0 if no such variable exists.
+    pub fn min_safe_claim_pos(&self, check_seq: u32) -> u16 {
+        self.variables
+            .iter()
+            .filter(|var| {
+                var.stack_pos != u16::MAX
+                    && var.first_def != u32::MAX
+                    && var.last_use >= check_seq
+            })
+            .map(|var| var.stack_pos + size(&var.type_def, &Context::Variable))
+            .max()
+            .unwrap_or(0)
     }
 
     pub fn unique(&mut self, name: &str, type_def: &Type, lexer: &mut Lexer) -> u16 {

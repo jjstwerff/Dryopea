@@ -152,11 +152,44 @@ impl Scopes {
                     scope,
                 }))
             }
-            Value::If(test, t_val, f_val) => Value::If(
-                Box::new(self.scan(test, function, data)),
-                Box::new(self.scan(t_val, function, data)),
-                Box::new(self.scan(f_val, function, data)),
-            ),
+            Value::If(test, t_val, f_val) => {
+                // Find Reference/Vector/Text variables first assigned inside either branch
+                // (including nested ifs, but not inside loops).
+                let mut pre_inits: Vec<u16> = Vec::new();
+                self.find_first_ref_vars(t_val, function, &mut pre_inits);
+                self.find_first_ref_vars(f_val, function, &mut pre_inits);
+
+                // Register pre-inited vars in var_scope BEFORE scanning branches so that
+                // the branch scans see them as already assigned and use the set_var/OpPutRef
+                // re-assignment path instead of claim().
+                for &v in &pre_inits {
+                    self.var_scope.insert(v, self.scope);
+                }
+
+                let scanned_if = Value::If(
+                    Box::new(self.scan(test, function, data)),
+                    Box::new(self.scan(t_val, function, data)),
+                    Box::new(self.scan(f_val, function, data)),
+                );
+
+                if pre_inits.is_empty() {
+                    return scanned_if;
+                }
+
+                // Emit Set(v, Null/empty) for each variable at the current scope, before the
+                // If node.  These are NOT passed through scan() again — the var_scope check
+                // in the Set arm would strip them (contains_key + Null → Insert([])).
+                let mut stmts: Vec<Value> = Vec::new();
+                for &v in &pre_inits {
+                    if matches!(function.tp(v), Type::Text(_)) {
+                        stmts.push(v_set(v, Value::Text(String::new())));
+                    } else {
+                        stmts.push(v_set(v, Value::Null));
+                    }
+                }
+                stmts.push(scanned_if);
+                Value::Insert(stmts)
+            }
             Value::Break(lv) => {
                 let mut ls = self.get_free_vars(
                     function,
@@ -331,6 +364,69 @@ impl Scopes {
         }
         ls
     }
+
+    /// Recursively collect variables that need a pre-init `Set(v, Null)` before an if/else.
+    ///
+    /// A variable is collected when it:
+    /// - appears as the target of `Value::Set(v, ...)`,
+    /// - has not yet been assigned (`var_scope` does not contain it), and
+    /// - owns its allocation (`needs_pre_init` returns true).
+    ///
+    /// Recurses into nested `If` and `Block` but NOT into `Loop` — loop variables have
+    /// per-iteration scope management and must not be pre-inited at the enclosing scope.
+    fn find_first_ref_vars(
+        &self,
+        val: &Value,
+        function: &Function,
+        result: &mut Vec<u16>,
+    ) {
+        match val {
+            Value::Set(v, _) => {
+                let resolved = *self.var_mapping.get(v).unwrap_or(v);
+                // For borrowed types (non-empty dep), only pre-init if every dep is already
+                // in var_scope — otherwise the OpCreateStack emitted at pre-init time would
+                // reference an uninitialised slot.
+                let deps_ready = function
+                    .tp(resolved)
+                    .depend()
+                    .iter()
+                    .all(|d| self.var_scope.contains_key(d));
+                if !self.var_scope.contains_key(&resolved)
+                    && needs_pre_init(function.tp(resolved))
+                    && deps_ready
+                    && !result.contains(&resolved)
+                {
+                    result.push(resolved);
+                }
+            }
+            Value::Block(bl) => {
+                for op in &bl.operators {
+                    self.find_first_ref_vars(op, function, result);
+                }
+            }
+            Value::If(_, t, f) => {
+                self.find_first_ref_vars(t, function, result);
+                self.find_first_ref_vars(f, function, result);
+            }
+            Value::Insert(ops) => {
+                for op in ops {
+                    self.find_first_ref_vars(op, function, result);
+                }
+            }
+            // Do NOT recurse into Value::Loop.
+            _ => {}
+        }
+    }
+}
+
+fn needs_pre_init(tp: &Type) -> bool {
+    matches!(
+        tp,
+        Type::Text(_)
+            | Type::Reference(_, _)
+            | Type::Vector(_, _)
+            | Type::Enum(_, true, _)
+    )
 }
 
 fn call(to: &'static str, v: u16, data: &Data) -> Value {
