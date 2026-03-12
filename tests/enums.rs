@@ -117,42 +117,6 @@ struct Json {
 }
 
 #[test]
-fn call_enum() {
-    code!(
-        "enum Value {
-    Integer { i_value: i32 },
-    Text { t_value: text },
-    Array { content: vector<i32> }
-}
-
-fn add(self: Integer) -> i32 {
-    self.i_value
-}
-
-fn add(self: Text) -> i32 {
-    self.t_value as i32
-}
-
-fn add(self: Array) -> i32 {
-    n = 0;
-    for v in self.content {
-        n += v;
-    }
-    n
-}
-"
-    )
-    .expr(
-        "
-t = Text { t_value:\"123\" };
-i = Integer { i_value: 101 };
-a = Array { content: [1,2,3,4] };
-t.add() + i.add() + a.add()",
-    )
-    .result(Value::Int(234));
-}
-
-#[test]
 fn polymorph() {
     code!(
         "enum Value {

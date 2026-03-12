@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loft - Store Locks</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <span class="cur">Store Locks</span> · <a href="19-threading.html">Parallel execution</a> · <a href="20-logging.html">Logging</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-parallel.html">Parallel</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
+<h1>Store Locks</h1>
+<article>
+<p>A store lock prevents accidental modification of a value after it has been set up. Loft automatically locks stores that are passed as `const` parameters so the compiler can catch any unintended writes at compile time. You can also set the lock flag by hand when you want to protect a value in your own code.</p>
+<pre><code><span class="kw">struct</span> <span class="en">Counter</span> {
+    value: <span class="ty"><a href="stdlib-types.html">integer</a></span>
+}</code></pre>
+<p>A `const` parameter signals that this function will not modify the store. In debug builds the runtime locks the store automatically when you call this function.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">read_value</span>(self: const <span class="en">Counter</span>) -&gt; <span class="ty"><a href="stdlib-types.html">integer</a></span> {
+    self.value
+}</code></pre>
+<p>A non-const parameter leaves the store unlocked so the function can write to it freely.</p>
+<pre><code><span class="kw">fn</span> <span class="fn-call">increment</span>(self: <span class="en">Counter</span>) {
+    self.value += <span class="nm">1</span>
+}</code></pre>
+<pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
+<h2 id="checking-and-setting-a-lock">Checking and Setting a Lock</h2>
+<p>A freshly created reference starts unlocked.</p>
+<pre><code>    c = <span class="en">Counter</span> { value: <span class="nm">10</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!c#lock, <span class="st">"New store starts unlocked"</span>);</code></pre>
+<p>Locking the store makes the flag true.</p>
+<pre><code>    c#lock = <span class="kw">true</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(c#lock, <span class="st">"Store is locked after d#lock = true"</span>);</code></pre>
+<h2 id="the-const-keyword-for-local-variables">The const Keyword for Local Variables</h2>
+<p>Declaring a local variable with `const` signals your intent that the value will not change. In debug builds the runtime locks the store immediately after initialisation so any accidental write is caught. In release builds the lock is not set automatically — only your explicit `#lock = true` has an effect.</p>
+<pre><code>    const d = <span class="en">Counter</span> { value: <span class="nm">42</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">read_value</span>(d) == <span class="nm">42</span>, <span class="st">"const local: value readable"</span>);</code></pre>
+<p>The lock state may differ between debug and release builds, but the stored value is always correct either way.</p>
+<pre><code>    lock_state = d#lock;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(lock_state == <span class="kw">true</span> || lock_state == <span class="kw">false</span>, <span class="st">"d#lock is a boolean"</span>);</code></pre>
+<h2 id="passing-const-to-a-function">Passing const to a Function</h2>
+<p>When you pass a value to a `const` parameter, the function can read it but not write to it. In debug builds the store is locked for the duration of the call and unlocked when the call returns.</p>
+<pre><code>    result = <span class="fn-call">read_value</span>(c);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(result == <span class="nm">10</span>, <span class="st">"const arg: value readable after lock"</span>);</code></pre>
+<p>A non-const reference starts unlocked and you can lock it yourself.</p>
+<pre><code>    e = <span class="en">Counter</span> { value: <span class="nm">5</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!e#lock, <span class="st">"non-const starts unlocked"</span>);
+    e#lock = <span class="kw">true</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(e#lock, <span class="st">"non-const lock set to true"</span>);</code></pre>
+<p>Reading the lock state before and after setting it lets you verify the transition explicitly.</p>
+<pre><code>    f = <span class="en">Counter</span> { value: <span class="nm">7</span> };
+    before = f#lock;
+    f#lock = <span class="kw">true</span>;
+    after = f#lock;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!before, <span class="st">"lock was false before setting"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(after, <span class="st">"lock is true after setting"</span>);</code></pre>
+<p>`get_store_lock(ref)` is the function form of the `#lock` property. Both return the same boolean, so you can use whichever reads more naturally in context.</p>
+<pre><code>    g = <span class="en">Counter</span> { value: <span class="nm">99</span> };
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">get_store_lock</span>(g) == g#lock, <span class="st">"get_store_lock matches d#lock read"</span>);
+    g#lock = <span class="kw">true</span>;
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call">get_store_lock</span>(g) == g#lock, <span class="st">"get_store_lock matches after lock"</span>);
+}</code></pre>
+
+  </article>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+</body>
+</html>

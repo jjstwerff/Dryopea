@@ -1,0 +1,298 @@
+struct Keyword { name: text }
+struct Data { h: hash<Keyword[name]> }
+
+pub fn test() {
+    test_value = {c = Data {};
+c.h = [{ name: "one" }, { name: "two" }, { name: "three" }];
+c.h["two"] = null;
+assert(!c.h["two"], "two should be removed");
+assert(c.h["one"], "one still present");
+assert(c.h["three"], "three still present");
+c.h["missing"] = null;
+assert(!c.h["missing"], "missing key removal is no-op");
+if c.h["one"] { 1 } else { 0 }};
+    assert(
+        test_value == 1,
+        "Test failed {test_value} != 1"
+    );
+}
+Type 18:Keyword[4/4]: parents [Data 19]
+    name:text[0]
+
+Type 19:Data[4/4]:
+    h:hash<Keyword[name]>[0]
+
+Type 20:hash<Keyword[name]>[4/4]:Hash(18, [0]) keys [tp:6 desc:false field:0, ]
+
+Type 21:vector<Keyword>[4/4]:Vector(18)
+
+fn n_test() {#block(1):void
+  __work_1(1):text = "";
+  [5] test_value(1):integer = {#block(2):integer
+    c(2):ref(Data) = null;
+    OpDatabase(c(2), 19i32);
+    OpSetInt(c(2), 0i32, 0i32);
+    [6] _elm_1(2):ref(Keyword)["c"] = OpNewRecord(c(2), 19i32, 0i32);
+    OpSetText(_elm_1(2), 0i32, "one");
+    OpFinishRecord(c(2), _elm_1(2), 19i32, 0i32);
+    _elm_1(2):ref(Keyword)["c"] = OpNewRecord(c(2), 19i32, 0i32);
+    OpSetText(_elm_1(2), 0i32, "two");
+    OpFinishRecord(c(2), _elm_1(2), 19i32, 0i32);
+    _elm_1(2):ref(Keyword)["c"] = OpNewRecord(c(2), 19i32, 0i32);
+    OpSetText(_elm_1(2), 0i32, "three");
+    OpFinishRecord(c(2), _elm_1(2), 19i32, 0i32);
+    [7] OpHashRemove(OpGetField(c(2), 0i32, 20i32), OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "two"), 20i32);
+    [8] n_assert(OpNot(OpConvBoolFromRef(OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "two"))), "two should be removed", "hash_remove_key", 8i32);
+    [9] n_assert(OpConvBoolFromRef(OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "one")), "one still present", "hash_remove_key", 9i32);
+    [10] n_assert(OpConvBoolFromRef(OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "three")), "three still present", "hash_remove_key", 10i32);
+    [11] OpHashRemove(OpGetField(c(2), 0i32, 20i32), OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "missing"), 20i32);
+    [12] n_assert(OpNot(OpConvBoolFromRef(OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "missing"))), "missing key removal is no-op", "hash_remove_key", 12i32);
+    [13] if OpConvBoolFromRef(OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "one")) {#block(3):integer
+      1i32;
+    }#block(3):integer else {#block(4):integer
+      0i32;
+    }#block(4):integer;
+    OpFreeRef(c(2));
+  }#block(2):integer;
+  [14] n_assert(OpEqInt(test_value(1), 1i32), {#Formatted string(5):text["__work_1"]
+    __work_1(1):text = "Test failed ";
+    OpFormatLong(__work_1(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_1(1), " != 1");
+    __work_1(1);
+  }#Formatted string(5):text["__work_1"], "hash_remove_key", 15i32);
+  OpFreeText(__work_1(1));
+}#block(1):void
+
+byte-code for hash_remove_key:n_test()
+   0[0]: return-address
+   0[4]: Text() var=__work_1[4]:text
+   1[28]: [5] ConvRefFromNull() -> ref(reference) var=c[28]:ref(Data) ; [store-alloc]
+   2[40]: Database(var[28], db_tp=19) type=Data 19
+   7[40]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+  10[52]: ConstInt(val=0) -> integer
+  15[56]: SetInt(v1: ref(reference), fld=0, val: integer)
+  18[40]: [6] VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+  21[52]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+  26[52]: VarRef(var[40]) -> ref(reference) type=Keyword 18 var=_elm_1[40]:ref(Keyword)["c"]
+  29[64]: ConstText(_value="one") -> text
+  34[80]: SetText(v1: ref(reference), fld=0, val: text)
+  37[52]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+  40[64]: VarRef(var[40]) -> ref(reference) type=Keyword 18 var=_elm_1[40]:ref(Keyword)["c"]
+  43[76]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+  48[52]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+  51[64]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+  56[64]: PutRef(var[40], value: ref(reference))
+  59[52]: VarRef(var[40]) -> ref(reference) type=Keyword 18 var=_elm_1[40]:ref(Keyword)["c"]
+  62[64]: ConstText(_value="two") -> text
+  67[80]: SetText(v1: ref(reference), fld=0, val: text)
+  70[52]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+  73[64]: VarRef(var[40]) -> ref(reference) type=Keyword 18 var=_elm_1[40]:ref(Keyword)["c"]
+  76[76]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+  81[52]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+  84[64]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+  89[64]: PutRef(var[40], value: ref(reference))
+  92[52]: VarRef(var[40]) -> ref(reference) type=Keyword 18 var=_elm_1[40]:ref(Keyword)["c"]
+  95[64]: ConstText(_value="three") -> text
+ 102[80]: SetText(v1: ref(reference), fld=0, val: text)
+ 105[52]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 108[64]: VarRef(var[40]) -> ref(reference) type=Keyword 18 var=_elm_1[40]:ref(Keyword)["c"]
+ 111[76]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 116[52]: [7] VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 119[64]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 122[64]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 125[76]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 128[76]: ConstText(_value="two") -> text
+ 133[92]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 137[76]: HashRemove(data: ref(reference), rec: ref(reference), tp=20)
+ 140[52]: [8] VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 143[64]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 146[64]: ConstText(_value="two") -> text
+ 151[80]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 155[64]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 156[53]: Not(v1: boolean) -> boolean
+ 157[53]: ConstText(_value="two should be removed") -> text
+ 180[69]: ConstText(_value="hash_remove_key") -> text
+ 197[85]: ConstInt(val=8) -> integer
+ 202[89]: StaticCall(n_assert)
+ 205[52]: [9] VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 208[64]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 211[64]: ConstText(_value="one") -> text
+ 216[80]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 220[64]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 221[53]: ConstText(_value="one still present") -> text
+ 240[69]: ConstText(_value="hash_remove_key") -> text
+ 257[85]: ConstInt(val=9) -> integer
+ 262[89]: StaticCall(n_assert)
+ 265[52]: [10] VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 268[64]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 271[64]: ConstText(_value="three") -> text
+ 278[80]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 282[64]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 283[53]: ConstText(_value="three still present") -> text
+ 304[69]: ConstText(_value="hash_remove_key") -> text
+ 321[85]: ConstInt(val=10) -> integer
+ 326[89]: StaticCall(n_assert)
+ 329[52]: [11] VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 332[64]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 335[64]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 338[76]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 341[76]: ConstText(_value="missing") -> text
+ 350[92]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 354[76]: HashRemove(data: ref(reference), rec: ref(reference), tp=20)
+ 357[52]: [12] VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 360[64]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 363[64]: ConstText(_value="missing") -> text
+ 372[80]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 376[64]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 377[53]: Not(v1: boolean) -> boolean
+ 378[53]: ConstText(_value="missing key removal is no-op") -> text
+ 408[69]: ConstText(_value="hash_remove_key") -> text
+ 425[85]: ConstInt(val=12) -> integer
+ 430[89]: StaticCall(n_assert)
+ 433[52]: [13] VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 436[64]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 439[64]: ConstText(_value="one") -> text
+ 444[80]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 448[64]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 449[53]: GotoFalseWord(jump=460, if_false: boolean)
+ 452[52]: ConstInt(val=1) -> integer
+ 457[56]: GotoWord(jump=465)
+ 460[52]: ConstInt(val=0) -> integer
+ 465[56]: VarRef(var[28]) -> ref(reference) type=Data 19 var=c[28]:ref(Data)
+ 468[68]: FreeRef(v1: ref(reference)) ; [store-free]
+ 469[56]: FreeStack(value=4, discard=28)
+ 473[32]: [14] VarInt(var[28]) -> integer var=test_value[28]:integer
+ 476[36]: ConstInt(val=1) -> integer
+ 481[40]: EqInt(v1: integer, v2: integer) -> boolean
+ 482[33]: ClearText(var[4]) var=__work_1[4]:text
+ 485[33]: ConstText(_value="Test failed ") -> text
+ 499[49]: AppendText(var[4], v1: text)
+ 502[33]: VarInt(var[28]) -> integer var=test_value[28]:integer
+ 505[37]: ConvLongFromInt(v1: integer) -> long
+ 506[41]: ConstInt(val=0) -> integer
+ 511[45]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 518[33]: ConstText(_value=" != 1") -> text
+ 525[49]: AppendText(var[4], v1: text)
+ 528[33]: VarText(var[4]) -> text var=__work_1[4]:text
+ 531[49]: ConstText(_value="hash_remove_key") -> text
+ 548[65]: ConstInt(val=15) -> integer
+ 553[69]: StaticCall(n_assert)
+ 556[32]: FreeText(var[4])
+ 559[32]: Return(ret=0, value=0, discard=32)
+
+Execute test:
+    0:[8] [5] Text()
+    1:[32] ConvRefFromNull() -> ref(1,0,8)[32]
+  ; store-alloc nr=1 max=2
+    2:[44] Database(var[32], db_tp=19)
+    7:[44] VarRef(var[32]=c) -> ref(1,1,8)={h:[]}[44]
+   10:[56] ConstInt(val=0) -> 0[56]
+   15:[60] SetInt(v1=ref(1,1,8)[44], fld=0, val=0[56])
+   18:[44] VarRef(var[32]=c) -> ref(1,1,8)={h:[]}[44]
+   21:[56] NewRecord(data=ref(1,1,8)[44], parent_tp=19, fld=0) -> ref(1,5,8)[44]
+   26:[56] VarRef(var[44]=_elm_1) -> ref(1,5,8)={}[56]
+   29:[68] ConstText(_value="one") -> "one"[68]
+   34:[84] SetText(v1=ref(1,5,8)[56], fld=0, val="one"[68])
+   37:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[]}[56]
+   40:[68] VarRef(var[44]=_elm_1) -> ref(1,5,8)={name:"one"}[68]
+   43:[80] FinishRecord(data=ref(1,1,8)[56], rec=ref(1,5,8)[68], parent_tp=19, fld=0)
+   48:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"}]}[56]
+   51:[68] NewRecord(data=ref(1,1,8)[56], parent_tp=19, fld=0) -> ref(1,18,8)[56]
+   56:[68] PutRef(var[44], value=ref(1,18,8)[56])
+   59:[56] VarRef(var[44]=_elm_1) -> ref(1,18,8)={}[56]
+   62:[68] ConstText(_value="two") -> "two"[68]
+   67:[84] SetText(v1=ref(1,18,8)[56], fld=0, val="two"[68])
+   70:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"}]}[56]
+   73:[68] VarRef(var[44]=_elm_1) -> ref(1,18,8)={name:"two"}[68]
+   76:[80] FinishRecord(data=ref(1,1,8)[56], rec=ref(1,18,8)[68], parent_tp=19, fld=0)
+   81:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"two"}]}[56]
+   84:[68] NewRecord(data=ref(1,1,8)[56], parent_tp=19, fld=0) -> ref(1,22,8)[56]
+   89:[68] PutRef(var[44], value=ref(1,22,8)[56])
+   92:[56] VarRef(var[44]=_elm_1) -> ref(1,22,8)={}[56]
+   95:[68] ConstText(_value="three") -> "three"[68]
+  102:[84] SetText(v1=ref(1,22,8)[56], fld=0, val="three"[68])
+  105:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"two"}]}[56]
+  108:[68] VarRef(var[44]=_elm_1) -> ref(1,22,8)={name:"three"}[68]
+  111:[80] FinishRecord(data=ref(1,1,8)[56], rec=ref(1,22,8)[68], parent_tp=19, fld=0)
+  116:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"},{name:"two"}]}[56]
+  119:[68] GetField(v1=ref(1,1,8)[56], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"},{name:"two"}][56]
+  122:[68] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"},{name:"two"}]}[68]
+  125:[80] GetField(v1=ref(1,1,8)[68], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"},{name:"two"}][68]
+  128:[80] ConstText(_value="two") -> "two"[80]
+  133:[96] GetRecord(data=ref(1,1,8)[68], db_tp=20, no_keys=1, key1="two"[80]) -> ref(1,18,8)[68]
+  137:[80] HashRemove(data=ref(1,1,8)[56], rec=ref(1,18,8)[68], tp=20)
+  140:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"}]}[56]
+  143:[68] GetField(v1=ref(1,1,8)[56], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"}][56]
+  146:[68] ConstText(_value="two") -> "two"[68]
+  151:[84] GetRecord(data=ref(1,1,8)[56], db_tp=20, no_keys=1, key1="two"[68]) -> ref(1,0,0)[56]
+  155:[68] ConvBoolFromRef(val=ref(1,0,0)[56]) -> false[56]
+  156:[57] Not(v1=false[56]) -> true[56]
+  157:[57] ConstText(_value="two should be removed") -> "two should be removed"[57]
+  180:[73] ConstText(_value="hash_remove_key") -> "hash_remove_key"[73]
+  197:[89] ConstInt(val=8) -> 8[89]
+  202:[93] StaticCall(n_assert)
+  205:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"}]}[56]
+  208:[68] GetField(v1=ref(1,1,8)[56], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"}][56]
+  211:[68] ConstText(_value="one") -> "one"[68]
+  216:[84] GetRecord(data=ref(1,1,8)[56], db_tp=20, no_keys=1, key1="one"[68]) -> ref(1,5,8)[56]
+  220:[68] ConvBoolFromRef(val=ref(1,5,8)[56]) -> true[56]
+  221:[57] ConstText(_value="one still present") -> "one still present"[57]
+  240:[73] ConstText(_value="hash_remove_key") -> "hash_remove_key"[73]
+  257:[89] ConstInt(val=9) -> 9[89]
+  262:[93] StaticCall(n_assert)
+  265:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"}]}[56]
+  268:[68] GetField(v1=ref(1,1,8)[56], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"}][56]
+  271:[68] ConstText(_value="three") -> "three"[68]
+  278:[84] GetRecord(data=ref(1,1,8)[56], db_tp=20, no_keys=1, key1="three"[68]) -> ref(1,22,8)[56]
+  282:[68] ConvBoolFromRef(val=ref(1,22,8)[56]) -> true[56]
+  283:[57] ConstText(_value="three still present") -> "three still present"[57]
+  304:[73] ConstText(_value="hash_remove_key") -> "hash_remove_key"[73]
+  321:[89] ConstInt(val=10) -> 10[89]
+  326:[93] StaticCall(n_assert)
+  329:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"}]}[56]
+  332:[68] GetField(v1=ref(1,1,8)[56], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"}][56]
+  335:[68] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"}]}[68]
+  338:[80] GetField(v1=ref(1,1,8)[68], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"}][68]
+  341:[80] ConstText(_value="missing") -> "missing"[80]
+  350:[96] GetRecord(data=ref(1,1,8)[68], db_tp=20, no_keys=1, key1="missing"[80]) -> ref(1,0,0)[68]
+  354:[80] HashRemove(data=ref(1,1,8)[56], rec=ref(1,0,0)[68], tp=20)
+  357:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"}]}[56]
+  360:[68] GetField(v1=ref(1,1,8)[56], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"}][56]
+  363:[68] ConstText(_value="missing") -> "missing"[68]
+  372:[84] GetRecord(data=ref(1,1,8)[56], db_tp=20, no_keys=1, key1="missing"[68]) -> ref(1,0,0)[56]
+  376:[68] ConvBoolFromRef(val=ref(1,0,0)[56]) -> false[56]
+  377:[57] Not(v1=false[56]) -> true[56]
+  378:[57] ConstText(_value="missing key removal is no-op") -> "missing key removal is no-op"[57]
+  408:[73] ConstText(_value="hash_remove_key") -> "hash_remove_key"[73]
+  425:[89] ConstInt(val=12) -> 12[89]
+  430:[93] StaticCall(n_assert)
+  433:[56] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"}]}[56]
+  436:[68] GetField(v1=ref(1,1,8)[56], fld=0) -> ref(1,1,8)=[{name:"one"},{name:"three"}][56]
+  439:[68] ConstText(_value="one") -> "one"[68]
+  444:[84] GetRecord(data=ref(1,1,8)[56], db_tp=20, no_keys=1, key1="one"[68]) -> ref(1,5,8)[56]
+  448:[68] ConvBoolFromRef(val=ref(1,5,8)[56]) -> true[56]
+  449:[57] GotoFalseWord(jump=460, if_false=true[56])
+  452:[56] ConstInt(val=1) -> 1[56]
+  457:[60] GotoWord(jump=465)
+  465:[60] VarRef(var[32]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"}]}[60]
+  468:[72] FreeRef(v1=ref(1,1,8)[60]) ; store-free max=1
+  469:[60] FreeStack(value=4, discard=28)
+  473:[36] VarInt(var[32]=test_value) -> 1[36]
+  476:[40] ConstInt(val=1) -> 1[40]
+  481:[44] EqInt(v1=1[36], v2=1[40]) -> true[36]
+  482:[37] ClearText(var[8]=__work_1)
+  485:[37] ConstText(_value="Test failed ") -> "Test failed "[37]
+  499:[53] AppendText(var[8], v1="Test failed "[37])
+  502:[37] VarInt(var[32]=test_value) -> 1[37]
+  505:[41] ConvLongFromInt(v1=1[37]) -> 1[37]
+  506:[45] ConstInt(val=0) -> 0[45]
+  511:[49] FormatLong(var[8], val=1[37], radix=10, width=0[45], token=32, plus=false, note=false)
+  518:[37] ConstText(_value=" != 1") -> " != 1"[37]
+  525:[53] AppendText(var[8], v1=" != 1"[37])
+  528:[37] VarText(var[8]=__work_1) -> "Test failed 1 != 1"[37]
+  531:[53] ConstText(_value="hash_remove_key") -> "hash_remove_key"[53]
+  548:[69] ConstInt(val=15) -> 15[69]
+  553:[73] StaticCall(n_assert)
+  556:[36] FreeText(var[8])
+  559:[36] Return(ret=4294967295[4], value=0, discard=32)
+Finished

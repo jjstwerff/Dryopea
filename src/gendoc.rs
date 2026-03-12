@@ -53,6 +53,7 @@ fn main() -> std::io::Result<()> {
         .map(|s| StdlibSection {
             id: s.id.clone(),
             name: s.name.clone(),
+            description: stdlib_description(&s.id).to_string(),
         })
         .collect();
 
@@ -201,6 +202,20 @@ fn strip_body(sig: &str) -> String {
         }
     }
     result.trim_end().to_string()
+}
+
+fn stdlib_description(id: &str) -> &'static str {
+    match id {
+        "types" => "Primitive type conversions and null checks",
+        "math" => "Arithmetic, rounding, and trigonometry",
+        "text" => "String manipulation and formatting",
+        "collections" => "Vector, sorted, index, and hash operations",
+        "output-and-diagnostics" => "Print, assert, and diagnostic functions",
+        "parallel" => "Parallel for-loop and worker functions",
+        "file-system" => "File, directory, and path operations",
+        "environment" => "Command-line arguments and program state",
+        _ => "",
+    }
 }
 
 // ---  Section grouping  ---
@@ -445,6 +460,119 @@ fn typst_escape(s: &str) -> String {
         .replace('$', "\\$")
         .replace('[', "\\[")
         .replace(']', "\\]")
+        .replace('<', "\\<")
+        .replace('>', "\\>")
+        .replace('*', "\\*")
+        .replace('_', "\\_")
+}
+
+/// Strip all HTML tags from `s`, returning only the text content.
+fn html_strip_tags(s: &str) -> String {
+    let mut result = String::new();
+    let mut in_tag = false;
+    for ch in s.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    result
+}
+
+/// Decode common HTML entities.
+fn html_decode(s: &str) -> String {
+    s.replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&mdash;", "\u{2014}")
+        .replace("&ndash;", "\u{2013}")
+}
+
+/// Return the substring strictly between the first `open` and the next `close`.
+fn between<'a>(s: &'a str, open: &str, close: &str) -> Option<&'a str> {
+    let start = s.find(open)? + open.len();
+    let end = s[start..].find(close)? + start;
+    Some(&s[start..end])
+}
+
+/// Render `doc/00-vs-rust.html` as Typst markup for inclusion in the PDF.
+/// The HTML is the single source of truth; this function extracts headings,
+/// Loft/Rust code blocks, and verdict paragraphs directly from it.
+fn render_vs_rust_typst(html: &str) -> String {
+    let mut out = String::new();
+
+    // Intro paragraph (between <article> and first <h2>)
+    if let Some(after_article) = html
+        .find("<article>")
+        .map(|p| &html[p + "<article>".len()..])
+        && let Some(intro_raw) = between(after_article, "<p>", "</p>")
+    {
+        let intro = html_decode(&html_strip_tags(intro_raw));
+        out.push_str(&typst_escape(intro.trim()));
+        out.push_str("\n\n");
+    }
+
+    // Walk through each <h2 ...> section
+    let mut pos = 0;
+    while let Some(rel) = html[pos..].find("<h2 ") {
+        let h2_start = pos + rel;
+
+        // Heading text: content between the first > and </h2>
+        let after_h2_tag = h2_start + html[h2_start..].find('>').unwrap_or(0) + 1;
+        let h2_close = html[after_h2_tag..].find("</h2>").unwrap_or(0);
+        let heading_raw = &html[after_h2_tag..after_h2_tag + h2_close];
+        let heading = html_decode(&html_strip_tags(heading_raw));
+        // Strip leading "N. " prefix — Typst adds its own numbering via #set heading(numbering: …)
+        let heading_text = heading.trim();
+        let heading_text = heading_text
+            .find(". ")
+            .filter(|&dot| heading_text[..dot].chars().all(|c| c.is_ascii_digit()))
+            .map(|dot| &heading_text[dot + 2..])
+            .unwrap_or(heading_text);
+        out.push_str(&format!("=== {}\n\n", typst_escape(heading_text)));
+
+        let section_start = after_h2_tag + h2_close + "</h2>".len();
+
+        // Section ends at the next <h2 or </article>
+        let section_end = html[section_start..]
+            .find("<h2 ")
+            .or_else(|| html[section_start..].find("</article>"))
+            .map(|p| section_start + p)
+            .unwrap_or(html.len());
+        let section = &html[section_start..section_end];
+
+        // Loft code block (plain <pre><code>…</code></pre>)
+        if let Some(loft_raw) = between(section, "<pre><code>", "</code></pre>") {
+            let loft_code = html_decode(&html_strip_tags(loft_raw));
+            out.push_str(&format!("```rust\n{}\n```\n\n", loft_code.trim_end()));
+        }
+
+        // Rust code block (<pre class="rust-pre"><code>…</code></pre>)
+        if let Some(rust_raw) = between(section, "<pre class=\"rust-pre\"><code>", "</code></pre>")
+        {
+            let rust_code = html_decode(rust_raw);
+            out.push_str(&format!("```rust\n{}\n```\n\n", rust_code.trim_end()));
+        }
+
+        // Verdict: upside and downside as separate paragraphs
+        if let Some(up_raw) = between(section, "<p class=\"up\">", "</p>") {
+            let up = html_decode(&html_strip_tags(up_raw));
+            out.push_str(&typst_escape(up.trim()));
+            out.push_str("\n\n");
+        }
+        if let Some(down_raw) = between(section, "<p class=\"down\">", "</p>") {
+            let down = html_decode(&html_strip_tags(down_raw));
+            out.push_str(&typst_escape(down.trim()));
+            out.push_str("\n\n");
+        }
+
+        pos = section_end;
+    }
+    out
 }
 
 // ---  Print page  ---
@@ -492,7 +620,8 @@ fn generate_print_page(
         content.push_str("</section>\n");
     }
 
-    content.push_str("<section class=\"print-section\" id=\"stdlib\">\n<h1>Standard Library</h1>\n");
+    content
+        .push_str("<section class=\"print-section\" id=\"stdlib\">\n<h1>Standard Library</h1>\n");
     for section in sections {
         content.push_str(&format!(
             "<h2 id=\"stdlib-{id}\">{name}</h2>\n",
@@ -548,10 +677,7 @@ fn generate_print_page(
 
 /// Generate a Typst source file for the full language reference.
 /// Compile with: typst compile doc/loft-reference.typ doc/loft-reference.pdf
-fn generate_typst(
-    topic_sources: &[TopicSource],
-    sections: &[SectionFull],
-) -> std::io::Result<()> {
+fn generate_typst(topic_sources: &[TopicSource], sections: &[SectionFull]) -> std::io::Result<()> {
     let mut out = String::new();
 
     // Document preamble
@@ -562,7 +688,7 @@ fn generate_typst(
     out.push_str("#set text(font: (\"Libertinus Serif\", \"Liberation Serif\", \"DejaVu Serif\"), size: 11pt)\n");
     out.push_str("#set par(justify: true, leading: 0.75em)\n");
     out.push_str("#set heading(numbering: \"1.1.\")\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("#show raw.where(block: true): it => block(\n");
     out.push_str("  fill: luma(245),\n");
     out.push_str("  inset: (x: 10pt, y: 8pt),\n");
@@ -580,9 +706,18 @@ fn generate_typst(
     out.push_str("= Loft Language Reference\n\n");
     out.push_str("#v(1em)\n\n");
     out.push_str("_A statically-typed scripting language inspired by Rust, designed for embedding in the Dryopea engine._\n\n");
-    out.push_str("Every code example in this document is an executable part of the test suite.\n\n");
+    out.push_str(
+        "Every code example in this document is an executable part of the test suite.\n\n",
+    );
     out.push_str("#outline(depth: 3)\n\n");
     out.push_str("#pagebreak()\n\n");
+
+    // vs Rust section — generated directly from the static HTML (single source of truth)
+    if let Ok(vs_rust_html) = std::fs::read_to_string("doc/00-vs-rust.html") {
+        out.push_str("= vs Rust\n\n");
+        out.push_str(&render_vs_rust_typst(&vs_rust_html));
+        out.push('\n');
+    }
 
     // Language topic sections
     for ts in topic_sources {

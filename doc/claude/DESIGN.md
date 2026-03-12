@@ -6,6 +6,31 @@ Complexity estimates use O-notation over the number of IR nodes (N), variables (
 
 ---
 
+## Contents
+- [1. Lexer / Tokeniser](#1-lexer--tokeniser)
+- [2. Two-Pass Recursive-Descent Parser](#2-two-pass-recursive-descent-parser)
+- [3. Type Resolution](#3-type-resolution)
+- [4. Scope Analysis & Lifetime Management](#4-scope-analysis--lifetime-management)
+- [5. Variable Liveness & Live Intervals](#5-variable-liveness--live-intervals)
+- [6. Bytecode Stack Tracker](#6-bytecode-stack-tracker)
+- [7. Bytecode Generation](#7-bytecode-generation)
+- [8. Operator Dispatch & Execution](#8-operator-dispatch--execution)
+- [9. Field Layout Calculator](#9-field-layout-calculator)
+- [10. Word-Addressed Heap Allocator (Store)](#10-word-addressed-heap-allocator-store)
+- [11. Type Schema & Multi-Store Manager (Stores)](#11-type-schema--multi-store-manager-stores)
+- [12. Red-Black Tree (Sorted / Index Collections)](#12-red-black-tree-sorted--index-collections)
+- [13. Open-Addressing Hash Table](#13-open-addressing-hash-table)
+- [14. Dynamic Arrays (Vector)](#14-dynamic-arrays-vector)
+- [15. Radix Tree (Spatial Index)](#15-radix-tree-spatial-index)
+- [16. Rust Code Generator](#16-rust-code-generator)
+- [17. Text Formatting & String Utilities](#17-text-formatting--string-utilities)
+- [18. PNG Image Decoder](#18-png-image-decoder)
+- [19. HTML Documentation Generator](#19-html-documentation-generator)
+- [20. CLI Entry Point & Default Library Loader](#20-cli-entry-point--default-library-loader)
+- [Summary Table](#summary-table)
+
+---
+
 ## 1. Lexer / Tokeniser
 
 **Goal.** Convert a raw UTF-8 character stream into a `LexItem` token stream with source-position tracking. Support backtracking so the parser can speculatively try grammar alternatives without re-reading the source file.
@@ -119,7 +144,7 @@ Complexity estimates use O-notation over the number of IR nodes (N), variables (
 
 **Complexity.** O(N + V) per function: one IR traversal pass, one free-variable scan per scope exit. Total across all functions: O(N_total + V_total). ~486 lines.
 
-**Reducibility.** Moderate. The pre-init logic for if/else (Option A sub-3) adds non-trivial complexity in `scan_if`. When slot assignment (Steps 3+4 of ASSIGNMENT.md) is complete, some of this pre-init complexity can be simplified. The `var_mapping` table (for `copy_variable`) is hard to reason about; a clearer ownership model would help.
+**Reducibility.** Moderate. The pre-init logic for if/else (Option A sub-3) adds non-trivial complexity in `scan_if`. When slot assignment (Steps 3+4 of [ASSIGNMENT.md](ASSIGNMENT.md)) is complete, some of this pre-init complexity can be simplified. The `var_mapping` table (for `copy_variable`) is hard to reason about; a clearer ownership model would help.
 
 **Code quality.** Fair. The algorithm is correct for owned types but borrowed-ref pre-init is still incomplete (known runtime crash). The interplay of `var_scope`, `var_mapping`, and scope stack makes invariants hard to state. Adding explicit pre/post-condition comments would improve this significantly.
 
@@ -128,7 +153,7 @@ Complexity estimates use O-notation over the number of IR nodes (N), variables (
 **Enhancement opportunities.**
 - Model liveness explicitly (as computed by `compute_intervals`) during scope analysis, eliminating the separate liveness pass.
 - Replace `var_mapping` with a proper SSA-like renaming pass, which would also simplify slot assignment.
-- Finish borrowed-ref pre-init (Steps 3+4 of ASSIGNMENT.md).
+- Finish borrowed-ref pre-init (Steps 3+4 of [ASSIGNMENT.md](ASSIGNMENT.md)).
 
 ---
 
@@ -636,3 +661,9 @@ Complexity estimates use O-notation over the number of IR nodes (N), variables (
 1. Split `parser.rs` (5 600 lines) into four focused files.
 2. Split `state.rs` / `database.rs` into codegen + runtime and schema + stores respectively.
 3. Complete radix tree (`rtree_next`, `rtree_remove`) and finish borrowed-ref pre-init in `scopes.rs`.
+
+---
+
+## See also
+- [PLANNING.md](PLANNING.md) — Priority-ordered enhancement backlog with effort/impact estimates
+- [COMPILER.md](COMPILER.md) — Lexer, parser, two-pass design, IR, type system, scope analysis, bytecode

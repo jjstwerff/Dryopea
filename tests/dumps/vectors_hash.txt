@@ -1,0 +1,282 @@
+struct Keyword {
+    name: text
+}
+struct Data { h: hash<Keyword[name]> }
+
+pub fn test() {
+    test_value = {c = Data {};
+  c.h = [ { name: "one" }, { name: "two" } ];
+  c.h += [ { name: "three" }, { name: "four" } ];
+  assert(!c.h["None"], "No element");
+  assert("{c}" == "{{h:[{{name:\"four\"}},{{name:\"one\"}},{{name:\"three\"}},{{name:\"two\"}}]}}", "Output hash was {c}");
+  if c.h["three"] { 12 } else { 0 }};
+    assert(
+        test_value == 12,
+        "Test failed {test_value} != 12"
+    );
+}
+Type 18:Keyword[4/4]: parents [Data 19]
+    name:text[0]
+
+Type 19:Data[4/4]:
+    h:hash<Keyword[name]>[0]
+
+Type 20:hash<Keyword[name]>[4/4]:Hash(18, [0]) keys [tp:6 desc:false field:0, ]
+
+Type 21:vector<Keyword>[4/4]:Vector(18)
+
+fn n_test() {#block(1):void
+  __work_3(1):text = "";
+  __work_2(1):text = "";
+  __work_1(1):text = "";
+  [7] test_value(1):integer = {#block(2):integer
+    c(2):ref(Data) = null;
+    OpDatabase(c(2), 19i32);
+    OpSetInt(c(2), 0i32, 0i32);
+    [8] _elm_1(2):ref(Keyword)["c"] = OpNewRecord(c(2), 19i32, 0i32);
+    OpSetText(_elm_1(2), 0i32, "one");
+    OpFinishRecord(c(2), _elm_1(2), 19i32, 0i32);
+    _elm_1(2):ref(Keyword)["c"] = OpNewRecord(c(2), 19i32, 0i32);
+    OpSetText(_elm_1(2), 0i32, "two");
+    OpFinishRecord(c(2), _elm_1(2), 19i32, 0i32);
+    [9] _elm_2(2):ref(Keyword)["c"] = OpNewRecord(c(2), 19i32, 0i32);
+    OpSetText(_elm_2(2), 0i32, "three");
+    OpFinishRecord(c(2), _elm_2(2), 19i32, 0i32);
+    _elm_2(2):ref(Keyword)["c"] = OpNewRecord(c(2), 19i32, 0i32);
+    OpSetText(_elm_2(2), 0i32, "four");
+    OpFinishRecord(c(2), _elm_2(2), 19i32, 0i32);
+    [10] n_assert(OpNot(OpConvBoolFromRef(OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "None"))), "No element", "hash", 10i32);
+    [11] n_assert(OpEqText({#Formatted string(3):text["__work_1"]
+      __work_1(1):text = "";
+      OpFormatDatabase(__work_1(1), c(2), 19i32, 0i32);
+      __work_1(1);
+    }#Formatted string(3):text["__work_1"], "{h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}"), {#Formatted string(4):text["__work_2"]
+      __work_2(1):text = "Output hash was ";
+      OpFormatDatabase(__work_2(1), c(2), 19i32, 0i32);
+      __work_2(1);
+    }#Formatted string(4):text["__work_2"], "hash", 11i32);
+    [12] if OpConvBoolFromRef(OpGetRecord(OpGetField(c(2), 0i32, 20i32), 20i32, 1i32, "three")) {#block(5):integer
+      12i32;
+    }#block(5):integer else {#block(6):integer
+      0i32;
+    }#block(6):integer;
+    OpFreeRef(c(2));
+  }#block(2):integer;
+  [13] n_assert(OpEqInt(test_value(1), 12i32), {#Formatted string(7):text["__work_3"]
+    __work_3(1):text = "Test failed ";
+    OpFormatLong(__work_3(1), OpConvLongFromInt(test_value(1)), 10i32, 0i32, 32i32, false, false);
+    OpAppendText(__work_3(1), " != 12");
+    __work_3(1);
+  }#Formatted string(7):text["__work_3"], "hash", 14i32);
+  OpFreeText(__work_1(1));
+  OpFreeText(__work_2(1));
+  OpFreeText(__work_3(1));
+}#block(1):void
+
+byte-code for hash:n_test()
+   0[0]: return-address
+   0[4]: Text() var=__work_3[4]:text
+   1[28]: Text() var=__work_2[28]:text
+   2[52]: Text() var=__work_1[52]:text
+   3[76]: [7] ConvRefFromNull() -> ref(reference) var=c[76]:ref(Data) ; [store-alloc]
+   4[88]: Database(var[76], db_tp=19) type=Data 19
+   9[88]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+  12[100]: ConstInt(val=0) -> integer
+  17[104]: SetInt(v1: ref(reference), fld=0, val: integer)
+  20[88]: [8] VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+  23[100]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+  28[100]: VarRef(var[88]) -> ref(reference) type=Keyword 18 var=_elm_1[88]:ref(Keyword)["c"]
+  31[112]: ConstText(_value="one") -> text
+  36[128]: SetText(v1: ref(reference), fld=0, val: text)
+  39[100]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+  42[112]: VarRef(var[88]) -> ref(reference) type=Keyword 18 var=_elm_1[88]:ref(Keyword)["c"]
+  45[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+  50[100]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+  53[112]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+  58[112]: PutRef(var[88], value: ref(reference))
+  61[100]: VarRef(var[88]) -> ref(reference) type=Keyword 18 var=_elm_1[88]:ref(Keyword)["c"]
+  64[112]: ConstText(_value="two") -> text
+  69[128]: SetText(v1: ref(reference), fld=0, val: text)
+  72[100]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+  75[112]: VarRef(var[88]) -> ref(reference) type=Keyword 18 var=_elm_1[88]:ref(Keyword)["c"]
+  78[124]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+  83[100]: [9] VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+  86[112]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+  91[112]: VarRef(var[100]) -> ref(reference) type=Keyword 18 var=_elm_2[100]:ref(Keyword)["c"]
+  94[124]: ConstText(_value="three") -> text
+ 101[140]: SetText(v1: ref(reference), fld=0, val: text)
+ 104[112]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+ 107[124]: VarRef(var[100]) -> ref(reference) type=Keyword 18 var=_elm_2[100]:ref(Keyword)["c"]
+ 110[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 115[112]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+ 118[124]: NewRecord(data: ref(reference), parent_tp=19, fld=0) -> ref(reference)
+ 123[124]: PutRef(var[100], value: ref(reference))
+ 126[112]: VarRef(var[100]) -> ref(reference) type=Keyword 18 var=_elm_2[100]:ref(Keyword)["c"]
+ 129[124]: ConstText(_value="four") -> text
+ 135[140]: SetText(v1: ref(reference), fld=0, val: text)
+ 138[112]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+ 141[124]: VarRef(var[100]) -> ref(reference) type=Keyword 18 var=_elm_2[100]:ref(Keyword)["c"]
+ 144[136]: FinishRecord(data: ref(reference), rec: ref(reference), parent_tp=19, fld=0)
+ 149[112]: [10] VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+ 152[124]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 155[124]: ConstText(_value="None") -> text
+ 161[140]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 165[124]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 166[113]: Not(v1: boolean) -> boolean
+ 167[113]: ConstText(_value="No element") -> text
+ 179[129]: ConstText(_value="hash") -> text
+ 185[145]: ConstInt(val=10) -> integer
+ 190[149]: StaticCall(n_assert)
+ 193[112]: [11] ClearText(var[52]) var=__work_1[52]:text
+ 196[112]: ConstText(_value="") -> text
+ 198[128]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+ 201[140]: FormatDatabase(var[52], val: ref(reference), db_tp=19, db_format=0)
+ 207[128]: VarText(var[52]) -> text var=__work_1[52]:text
+ 210[144]: FreeStack(value=16, discard=32)
+ 214[128]: ConstText(_value="{h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}") -> text
+ 276[144]: EqText(v1: text, v2: text) -> boolean
+ 277[113]: ClearText(var[28]) var=__work_2[28]:text
+ 280[113]: ConstText(_value="Output hash was ") -> text
+ 298[129]: AppendText(var[28], v1: text)
+ 301[113]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+ 304[125]: FormatDatabase(var[28], val: ref(reference), db_tp=19, db_format=0)
+ 310[113]: VarText(var[28]) -> text var=__work_2[28]:text
+ 313[129]: ConstText(_value="hash") -> text
+ 319[145]: ConstInt(val=11) -> integer
+ 324[149]: StaticCall(n_assert)
+ 327[112]: [12] VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+ 330[124]: GetField(v1: ref(reference), fld=0) -> ref(reference) type=hash<Keyword[name]> 20
+ 333[124]: ConstText(_value="three") -> text
+ 340[140]: GetRecord(data: ref(reference), db_tp=20, no_keys=1) -> ref(reference)
+ 344[124]: ConvBoolFromRef(val: ref(reference)) -> boolean
+ 345[113]: GotoFalseWord(jump=356, if_false: boolean)
+ 348[112]: ConstInt(val=12) -> integer
+ 353[116]: GotoWord(jump=361)
+ 356[112]: ConstInt(val=0) -> integer
+ 361[116]: VarRef(var[76]) -> ref(reference) type=Data 19 var=c[76]:ref(Data)
+ 364[128]: FreeRef(v1: ref(reference)) ; [store-free]
+ 365[116]: FreeStack(value=4, discard=40)
+ 369[80]: [13] VarInt(var[76]) -> integer var=test_value[76]:integer
+ 372[84]: ConstInt(val=12) -> integer
+ 377[88]: EqInt(v1: integer, v2: integer) -> boolean
+ 378[81]: ClearText(var[4]) var=__work_3[4]:text
+ 381[81]: ConstText(_value="Test failed ") -> text
+ 395[97]: AppendText(var[4], v1: text)
+ 398[81]: VarInt(var[76]) -> integer var=test_value[76]:integer
+ 401[85]: ConvLongFromInt(v1: integer) -> long
+ 402[89]: ConstInt(val=0) -> integer
+ 407[93]: FormatLong(var[4], val: long, radix=10, width: integer, token=32, plus=false, note=false)
+ 414[81]: ConstText(_value=" != 12") -> text
+ 422[97]: AppendText(var[4], v1: text)
+ 425[81]: VarText(var[4]) -> text var=__work_3[4]:text
+ 428[97]: ConstText(_value="hash") -> text
+ 434[113]: ConstInt(val=14) -> integer
+ 439[117]: StaticCall(n_assert)
+ 442[80]: FreeText(var[52])
+ 445[80]: FreeText(var[28])
+ 448[80]: FreeText(var[4])
+ 451[80]: Return(ret=0, value=0, discard=80)
+
+Execute test:
+    0:[8] Text()
+    1:[32] Text()
+    2:[56] [7] Text()
+    3:[80] ConvRefFromNull() -> ref(1,0,8)[80]
+  ; store-alloc nr=1 max=2
+    4:[92] Database(var[80], db_tp=19)
+    9:[92] VarRef(var[80]=c) -> ref(1,1,8)={h:[]}[92]
+   12:[104] ConstInt(val=0) -> 0[104]
+   17:[108] SetInt(v1=ref(1,1,8)[92], fld=0, val=0[104])
+   20:[92] VarRef(var[80]=c) -> ref(1,1,8)={h:[]}[92]
+   23:[104] NewRecord(data=ref(1,1,8)[92], parent_tp=19, fld=0) -> ref(1,5,8)[92]
+   28:[104] VarRef(var[92]=_elm_1) -> ref(1,5,8)={}[104]
+   31:[116] ConstText(_value="one") -> "one"[116]
+   36:[132] SetText(v1=ref(1,5,8)[104], fld=0, val="one"[116])
+   39:[104] VarRef(var[80]=c) -> ref(1,1,8)={h:[]}[104]
+   42:[116] VarRef(var[92]=_elm_1) -> ref(1,5,8)={name:"one"}[116]
+   45:[128] FinishRecord(data=ref(1,1,8)[104], rec=ref(1,5,8)[116], parent_tp=19, fld=0)
+   50:[104] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"one"}]}[104]
+   53:[116] NewRecord(data=ref(1,1,8)[104], parent_tp=19, fld=0) -> ref(1,18,8)[104]
+   58:[116] PutRef(var[92], value=ref(1,18,8)[104])
+   61:[104] VarRef(var[92]=_elm_1) -> ref(1,18,8)={}[104]
+   64:[116] ConstText(_value="two") -> "two"[116]
+   69:[132] SetText(v1=ref(1,18,8)[104], fld=0, val="two"[116])
+   72:[104] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"one"}]}[104]
+   75:[116] VarRef(var[92]=_elm_1) -> ref(1,18,8)={name:"two"}[116]
+   78:[128] FinishRecord(data=ref(1,1,8)[104], rec=ref(1,18,8)[116], parent_tp=19, fld=0)
+   83:[104] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"two"}]}[104]
+   86:[116] NewRecord(data=ref(1,1,8)[104], parent_tp=19, fld=0) -> ref(1,22,8)[104]
+   91:[116] VarRef(var[104]=_elm_2) -> ref(1,22,8)={}[116]
+   94:[128] ConstText(_value="three") -> "three"[128]
+  101:[144] SetText(v1=ref(1,22,8)[116], fld=0, val="three"[128])
+  104:[116] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"two"}]}[116]
+  107:[128] VarRef(var[104]=_elm_2) -> ref(1,22,8)={name:"three"}[128]
+  110:[140] FinishRecord(data=ref(1,1,8)[116], rec=ref(1,22,8)[128], parent_tp=19, fld=0)
+  115:[116] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"},{name:"two"}]}[116]
+  118:[128] NewRecord(data=ref(1,1,8)[116], parent_tp=19, fld=0) -> ref(1,26,8)[116]
+  123:[128] PutRef(var[104], value=ref(1,26,8)[116])
+  126:[116] VarRef(var[104]=_elm_2) -> ref(1,26,8)={}[116]
+  129:[128] ConstText(_value="four") -> "four"[128]
+  135:[144] SetText(v1=ref(1,26,8)[116], fld=0, val="four"[128])
+  138:[116] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"one"},{name:"three"},{name:"two"}]}[116]
+  141:[128] VarRef(var[104]=_elm_2) -> ref(1,26,8)={name:"four"}[128]
+  144:[140] FinishRecord(data=ref(1,1,8)[116], rec=ref(1,26,8)[128], parent_tp=19, fld=0)
+  149:[116] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}[116]
+  152:[128] GetField(v1=ref(1,1,8)[116], fld=0) -> ref(1,1,8)=[{name:"four"},{name:"one"},{name:"three"},{name:"two"}][116]
+  155:[128] ConstText(_value="None") -> "None"[128]
+  161:[144] GetRecord(data=ref(1,1,8)[116], db_tp=20, no_keys=1, key1="None"[128]) -> ref(1,0,0)[116]
+  165:[128] ConvBoolFromRef(val=ref(1,0,0)[116]) -> false[116]
+  166:[117] Not(v1=false[116]) -> true[116]
+  167:[117] ConstText(_value="No element") -> "No element"[117]
+  179:[133] ConstText(_value="hash") -> "hash"[133]
+  185:[149] ConstInt(val=10) -> 10[149]
+  190:[153] StaticCall(n_assert)
+  193:[116] ClearText(var[56]=__work_1)
+  196:[116] ConstText(_value="") -> ""[116]
+  198:[132] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}[132]
+  201:[144] FormatDatabase(var[56], val=ref(1,1,8)[132], db_tp=19, db_format=0)
+  207:[132] VarText(var[56]=__work_1) -> "{h:[{name:\"four\"},{name:\"one\"},{name:\"three\"},{name:\"two\"}]}"[132]
+  210:[148] FreeStack(value=16, discard=32)
+  214:[132] ConstText(_value="{h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}") -> "{h:[{name:\"four\"},{name:\"one\"},{name:\"three\"},{name:\"two\"}]}"[132]
+  276:[148] EqText(v1="{h:[{name:\"four\"},{name:\"one\"},{name:\"three\"},{name:\"two\"}]}"[116], v2="{h:[{name:\"four\"},{name:\"one\"},{name:\"three\"},{name:\"two\"}]}"[132]) -> true[116]
+  277:[117] ClearText(var[32]=__work_2)
+  280:[117] ConstText(_value="Output hash was ") -> "Output hash was "[117]
+  298:[133] AppendText(var[32], v1="Output hash was "[117])
+  301:[117] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}[117]
+  304:[129] FormatDatabase(var[32], val=ref(1,1,8)[117], db_tp=19, db_format=0)
+  310:[117] VarText(var[32]=__work_2) -> "Output hash was {h:[{name:\"four\"},{name:\"one\"},{name:\"three\"},{name:\"two\"}]}"[117]
+  313:[133] ConstText(_value="hash") -> "hash"[133]
+  319:[149] ConstInt(val=11) -> 11[149]
+  324:[153] StaticCall(n_assert)
+  327:[116] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}[116]
+  330:[128] GetField(v1=ref(1,1,8)[116], fld=0) -> ref(1,1,8)=[{name:"four"},{name:"one"},{name:"three"},{name:"two"}][116]
+  333:[128] ConstText(_value="three") -> "three"[128]
+  340:[144] GetRecord(data=ref(1,1,8)[116], db_tp=20, no_keys=1, key1="three"[128]) -> ref(1,22,8)[116]
+  344:[128] ConvBoolFromRef(val=ref(1,22,8)[116]) -> true[116]
+  345:[117] GotoFalseWord(jump=356, if_false=true[116])
+  348:[116] ConstInt(val=12) -> 12[116]
+  353:[120] GotoWord(jump=361)
+  361:[120] VarRef(var[80]=c) -> ref(1,1,8)={h:[{name:"four"},{name:"one"},{name:"three"},{name:"two"}]}[120]
+  364:[132] FreeRef(v1=ref(1,1,8)[120]) ; store-free max=1
+  365:[120] FreeStack(value=4, discard=40)
+  369:[84] VarInt(var[80]=test_value) -> 12[84]
+  372:[88] ConstInt(val=12) -> 12[88]
+  377:[92] EqInt(v1=12[84], v2=12[88]) -> true[84]
+  378:[85] ClearText(var[8]=__work_3)
+  381:[85] ConstText(_value="Test failed ") -> "Test failed "[85]
+  395:[101] AppendText(var[8], v1="Test failed "[85])
+  398:[85] VarInt(var[80]=test_value) -> 12[85]
+  401:[89] ConvLongFromInt(v1=12[85]) -> 12[85]
+  402:[93] ConstInt(val=0) -> 0[93]
+  407:[97] FormatLong(var[8], val=12[85], radix=10, width=0[93], token=32, plus=false, note=false)
+  414:[85] ConstText(_value=" != 12") -> " != 12"[85]
+  422:[101] AppendText(var[8], v1=" != 12"[85])
+  425:[85] VarText(var[8]=__work_3) -> "Test failed 12 != 12"[85]
+  428:[101] ConstText(_value="hash") -> "hash"[101]
+  434:[117] ConstInt(val=14) -> 14[117]
+  439:[121] StaticCall(n_assert)
+  442:[84] FreeText(var[56])
+  445:[84] FreeText(var[32])
+  448:[84] FreeText(var[8])
+  451:[84] Return(ret=4294967295[4], value=0, discard=80)
+Finished

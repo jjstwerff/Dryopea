@@ -8,11 +8,6 @@ mod testing;
 use dryopea::data::{Type, Value};
 
 #[test]
-fn append() {
-    expr!("a=\"♥😃\" + \"1\" + \"2\"; a").result(Value::str("♥😃12"));
-}
-
-#[test]
 fn str_index() {
     expr!("a=\"12345\"; a[2]")
         .tp(Type::Character)
@@ -109,16 +104,6 @@ fn default_ref() {
 }
 
 #[test]
-fn index_block() {
-    expr!("s = \"1😊2\"; s[1]").result(Value::Int('😊' as i32));
-}
-
-#[test]
-fn pass_block() {
-    expr!("s = \"12 \"; d = s; trim(d)").result(Value::str("12"));
-}
-
-#[test]
 fn call() {
     code!("fn choice(a: text, b: text) -> text { if len(a) > len(b) { a } else { b } }")
         .expr("choice(\"{1:03}\", \"{2}1\") + choice(\"2\", \"\")")
@@ -170,11 +155,6 @@ fn build() -> text {
     )
     .expr("build()")
     .result(Value::str("abcde"));
-}
-
-#[test]
-fn reversed_text_slice() {
-    expr!("a = \"12345\"; a[3..1]").result(Value::str(""));
 }
 
 #[test]

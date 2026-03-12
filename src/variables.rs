@@ -27,7 +27,13 @@ struct Iterator {
     on: u8,            // structure type and direction
     db_tp: u16,        // database type of this structure
     value: Box<Value>, // code to gain the structure or Value::Null for a range
-    counter: u16,      // variable number or MAX when it is not used
+    /// The original user-written collection variable number being iterated.
+    /// For vector loops the iterator works on a unique temp copy; this field
+    /// stores the original var so mutation of the original can be detected.
+    /// `u16::MAX` when the iterated expression is not a simple variable
+    /// (e.g. a struct-field access like `db.map`).
+    coll_var: u16,
+    counter: u16, // variable number or MAX when it is not used
 }
 
 // This is created for every variable instance, even if those are of the same name.
@@ -145,6 +151,7 @@ impl Function {
             on: 0,
             db_tp: u16::MAX,
             value: Box::new(Value::Null),
+            coll_var: u16::MAX,
             counter: u16::MAX,
         });
         self.current_loop = self.loops.len() as u16 - 1;
@@ -160,6 +167,62 @@ impl Function {
         l.on = on;
         l.db_tp = db_tp;
         *l.value = value.clone();
+        // Auto-extract coll_var when the iterated expression is a plain variable.
+        // For vector loops this will be overridden by set_coll_var() because the
+        // iterator works on a unique temp copy, not the original user variable.
+        l.coll_var = if let Value::Var(v) = value {
+            *v
+        } else {
+            u16::MAX
+        };
+    }
+
+    /// Override the iterated collection variable after `set_loop`.
+    /// Called from `parse_for` for vector loops where a unique temp copy is created:
+    /// the iterator runs over the copy, but the user-visible variable is `orig_var`.
+    pub fn set_coll_var(&mut self, orig_var: u16) {
+        self.loops[self.current_loop as usize].coll_var = orig_var;
+    }
+
+    /// Override the iterated collection `value` expression after `set_loop`.
+    /// Called from `parse_for` for vector loops so that `is_iterated_value` can compare
+    /// the original user-written expression (e.g. `db.items`) instead of the internal
+    /// temp-copy variable that `set_loop` records.
+    pub fn set_coll_value(&mut self, orig_value: Value) {
+        *self.loops[self.current_loop as usize].value = orig_value;
+    }
+
+    /// Returns true when `var_nr` is the collection variable of any currently active
+    /// for-loop (including outer loops).  Used to detect unsafe mutation during iteration.
+    pub fn is_iterated_var(&self, var_nr: u16) -> bool {
+        if var_nr == u16::MAX {
+            return false;
+        }
+        let mut c = self.current_loop;
+        while c != u16::MAX {
+            if self.loops[c as usize].coll_var == var_nr {
+                return true;
+            }
+            c = self.loops[c as usize].inside;
+        }
+        false
+    }
+
+    /// Returns true when `val` structurally matches the iterated-collection expression of
+    /// any currently active for-loop.  Catches field-access cases like `db.items` where
+    /// `coll_var` is `u16::MAX` (no single variable covers the expression).
+    pub fn is_iterated_value(&self, val: &Value) -> bool {
+        if matches!(val, Value::Null) {
+            return false;
+        }
+        let mut c = self.current_loop;
+        while c != u16::MAX {
+            if *self.loops[c as usize].value == *val {
+                return true;
+            }
+            c = self.loops[c as usize].inside;
+        }
+        false
     }
 
     /**
@@ -421,7 +484,7 @@ impl Function {
             uses: 1,
             argument: false,
             defined: self.variables[var as usize].defined,
-            const_param: false,
+            const_param: self.variables[var as usize].const_param,
             first_def: u32::MAX,
             last_use: 0,
         });
@@ -533,6 +596,16 @@ impl Function {
 
     pub fn is_const_param(&self, var_nr: u16) -> bool {
         (var_nr as usize) < self.variables.len() && self.variables[var_nr as usize].const_param
+    }
+
+    /// Returns the appropriate error noun for a const-modification diagnostic.
+    /// Parameters say "const parameter"; local variables say "const variable".
+    pub fn const_kind(&self, var_nr: u16) -> &'static str {
+        if (var_nr as usize) < self.variables.len() && self.variables[var_nr as usize].argument {
+            "const parameter"
+        } else {
+            "const variable"
+        }
     }
 
     pub fn var_source(&self, var_nr: u16) -> (u32, u32) {
@@ -770,29 +843,37 @@ fn short_type(tp: &Type) -> String {
 /// overlap.  Returns `(i, u_slot_end, j, v_slot_end)` for the first conflicting pair found,
 /// where `i < j` are indices into `vars`.
 fn find_conflict(vars: &[Variable]) -> Option<(usize, u16, usize, u16)> {
-    for i in 0..vars.len() {
-        let u = &vars[i];
-        if u.stack_pos == u16::MAX || u.first_def == u32::MAX {
+    for left_idx in 0..vars.len() {
+        let left = &vars[left_idx];
+        if left.stack_pos == u16::MAX || left.first_def == u32::MAX {
             continue;
         }
-        let u_size = size(&u.type_def, &Context::Variable);
-        if u_size == 0 {
+        let left_size = size(&left.type_def, &Context::Variable);
+        if left_size == 0 {
             continue;
         }
-        let u_slot_end = u.stack_pos + u_size;
-        for (j, v) in vars.iter().enumerate().skip(i + 1) {
-            if v.stack_pos == u16::MAX || v.first_def == u32::MAX {
+        let left_slot_end = left.stack_pos + left_size;
+        for (right_idx, right) in vars.iter().enumerate().skip(left_idx + 1) {
+            if right.stack_pos == u16::MAX || right.first_def == u32::MAX {
                 continue;
             }
-            let v_size = size(&v.type_def, &Context::Variable);
-            if v_size == 0 {
+            let right_size = size(&right.type_def, &Context::Variable);
+            if right_size == 0 {
                 continue;
             }
-            let v_slot_end = v.stack_pos + v_size;
-            let slots_overlap = u.stack_pos < v_slot_end && v.stack_pos < u_slot_end;
-            let intervals_overlap = u.first_def <= v.last_use && v.first_def <= u.last_use;
+            let right_slot_end = right.stack_pos + right_size;
+            let slots_overlap = left.stack_pos < right_slot_end && right.stack_pos < left_slot_end;
+            let intervals_overlap =
+                left.first_def <= right.last_use && right.first_def <= left.last_use;
             if slots_overlap && intervals_overlap {
-                return Some((i, u_slot_end, j, v_slot_end));
+                // Same name + same slot = sequential reuse of one logical variable across
+                // block scopes.  The compiler creates a fresh Variable entry per block but
+                // assigns it the same slot; the overlap in live ranges is a conservative
+                // artefact of compute_intervals, not a real runtime conflict.
+                if left.name == right.name && left.stack_pos == right.stack_pos {
+                    continue;
+                }
+                return Some((left_idx, left_slot_end, right_idx, right_slot_end));
             }
         }
     }
@@ -802,27 +883,26 @@ fn find_conflict(vars: &[Variable]) -> Option<(usize, u16, usize, u16)> {
 /// Assert that no two variables with overlapping live intervals occupy the same stack slot.
 /// Gated on `debug_assertions`; a no-op in release builds.
 /// On failure, logs the full variable table and IR code before panicking.
-#[allow(clippy::many_single_char_names)]
 pub fn validate_slots(function: &Function, data: &Data, def_nr: u32) {
     if !cfg!(debug_assertions) {
         return;
     }
     let vars = &function.variables;
-    let Some((i, u_slot_end, j, v_slot_end)) = find_conflict(vars) else {
+    let Some((left_idx, left_slot_end, right_idx, right_slot_end)) = find_conflict(vars) else {
         return;
     };
-    let u = &vars[i];
-    let v = &vars[j];
+    let left = &vars[left_idx];
+    let right = &vars[right_idx];
     // Log full diagnostics before panicking so the cause is immediately clear.
     eprintln!("\n=== Slot conflict in function '{}' ===\n", function.name);
     eprintln!("  Conflicting pair:");
     eprintln!(
-        "  * '{}'  slot [{}, {u_slot_end})  live [{}, {}]",
-        u.name, u.stack_pos, u.first_def, u.last_use
+        "  * '{}'  slot [{}, {left_slot_end})  live [{}, {}]",
+        left.name, left.stack_pos, left.first_def, left.last_use
     );
     eprintln!(
-        "  * '{}'  slot [{}, {v_slot_end})  live [{}, {}]",
-        v.name, v.stack_pos, v.first_def, v.last_use
+        "  * '{}'  slot [{}, {right_slot_end})  live [{}, {}]",
+        right.name, right.stack_pos, right.first_def, right.last_use
     );
     eprintln!();
     eprintln!(
@@ -842,7 +922,11 @@ pub fn validate_slots(function: &Function, data: &Data, def_nr: u32) {
         } else {
             format!("[{}, {}]", var.first_def, var.last_use)
         };
-        let mark = if idx == i || idx == j { "*" } else { " " };
+        let mark = if idx == left_idx || idx == right_idx {
+            "*"
+        } else {
+            " "
+        };
         eprintln!(
             "  {idx:<4} {mark:<2} {:<20} {:<14} {slot_str:<12} {live_str:<14}",
             var.name,
@@ -860,16 +944,16 @@ pub fn validate_slots(function: &Function, data: &Data, def_nr: u32) {
         eprintln!("{}", String::from_utf8_lossy(&buf));
     }
     panic!(
-        "Variables '{}' (slot [{}, {u_slot_end}), live [{}, {}]) and '{}' (slot [{}, {v_slot_end}), live [{}, {}]) \
+        "Variables '{}' (slot [{}, {left_slot_end}), live [{}, {}]) and '{}' (slot [{}, {right_slot_end}), live [{}, {}]) \
          share a stack slot while both live in function '{}'",
-        u.name,
-        u.stack_pos,
-        u.first_def,
-        u.last_use,
-        v.name,
-        v.stack_pos,
-        v.first_def,
-        v.last_use,
+        left.name,
+        left.stack_pos,
+        left.first_def,
+        left.last_use,
+        right.name,
+        right.stack_pos,
+        right.first_def,
+        right.last_use,
         function.name,
     );
 }

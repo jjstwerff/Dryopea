@@ -1,0 +1,53 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Loft Language
+// @TITLE: A statically-typed scripting language inspired by Rust.
+
+// Welcome! Loft is a concise, statically-typed language designed to be safe
+// and easy to embed in larger projects. These documentation pages are your
+// guided tour — each one is also a live test, so every example you see has
+// already been verified to work exactly as shown.
+
+// The best way to get started is to read the pages in order. This first page
+// introduces the handful of ideas that shape every other part of the language.
+// Later pages go deeper on text, numbers, structs, collections, and more.
+
+// ## No type declarations for local variables
+// Loft figures out the type of a variable from what you assign to it.
+// You never write 'let x: integer = 5' — just write 'x = 5' and move on.
+// The compiler still checks types strictly; it just does the bookkeeping for you.
+
+// ## Implicit return
+// The last expression in a function body is automatically its return value.
+// Short helper functions need no 'return' statement, which keeps them clean.
+
+// ## Null is visible, not hidden
+// Any value can be null unless you mark it otherwise. The type system tracks
+// this, so you always know which variables might be null and can handle them.
+// A null value behaves like false in a condition — easy to test.
+
+// ## Text is UTF-8
+// Text in Loft is stored as UTF-8, the same encoding used on the web.
+// 'len()' counts bytes, not visible characters. Be mindful of multi-byte
+// characters like emoji when slicing text by position.
+
+// ## Collections share their records
+// Vectors, sorted trees, and hash maps are not separate silos. They share
+// their underlying storage and can be combined inside a single struct, so you
+// can index the same data in multiple ways without copying anything.
+
+// ## Hello, Loft!
+// Here is a small first program to make things concrete.
+// 'println' prints a line of text to standard output.
+// Format strings let you embed values directly: write the variable inside '{}'.
+
+fn main() {
+    greeting = "Hello, Loft!";
+    assert(greeting == "Hello, Loft!", "Variable holds the assigned text");
+
+    x = 6;
+    y = 7;
+    assert(x * y == 42, "Arithmetic works as you would expect");
+
+    assert("{greeting} The answer is {x * y}." == "Hello, Loft! The answer is 42.", "Format strings interpolate expressions");
+}

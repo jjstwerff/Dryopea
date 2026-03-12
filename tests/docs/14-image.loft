@@ -1,0 +1,47 @@
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Image
+// @TITLE: Reading PNG files.
+// Loft has a built-in Image type for loading PNG files and inspecting their
+// pixels. This page has no runnable examples because PNG test files are not
+// included in the standard test suite, but the API shape below shows you
+// exactly how to use it in your own code.
+
+// ## Loading an Image
+
+// Pass a File handle to the `png()` function to load a PNG into memory.
+// The file is read in full and decoded; after that you can access pixels
+// without any further I/O.
+//
+//   img = png(file("photo.png"))
+
+// ## Reading Dimensions
+
+// Once loaded, `img#width` and `img#height` give you the pixel dimensions.
+//
+//   w = img#width
+//   h = img#height
+//   println("image is {w} x {h} pixels")
+
+// ## Accessing Individual Pixels
+
+// Index the image with two coordinates to get a pixel value. Each pixel
+// carries four channels: red, green, blue, and alpha, all in the range 0–255.
+//
+//   px = img[x, y]
+//   r  = px#red
+//   g  = px#green
+//   b  = px#blue
+//   a  = px#alpha
+
+// ## Iterating Over All Pixels
+
+// A `for` loop over an image visits every pixel from top-left to
+// bottom-right. This is the easiest way to scan or transform the whole image.
+//
+//   for px in img {
+//       if px#red > 200 { println("bright red pixel") }
+//   }
+
+fn main() {
+}

@@ -103,6 +103,9 @@ pub struct Lexer {
     keywords: HashSet<String>,
     /// Should we expect code with whitespaces here?
     mode: Mode,
+    /// True while the lexer is inside a `{...}` format expression of a string literal.
+    /// Allows `"` (and `\"`) to open a nested string literal instead of closing the outer one.
+    in_format_expr: bool,
     diagnostics: Diagnostics,
 }
 
@@ -117,7 +120,7 @@ static LINE: String = String::new();
 static TOKENS: &[&str] = &[
     ":", "::", ".", "..", ",", "{", "}", "(", ")", "[", "]", ";", "!", "!=", "+", "+=", "-", "-=",
     "*", "*=", "/", "/=", "%", "%=", "=", "==", "<", "<=", ">", ">=", "&", "&&", "|", "||", "->",
-    "=>", "^", "<<", ">>", "$", "//", "#",
+    "=>", "^", "<<", ">>", "$", "//", "#", "?", "??",
 ];
 
 static KEYWORDS: &[&str] = &[
@@ -199,6 +202,7 @@ impl Default for Lexer {
             tokens: HashSet::new(),
             keywords: HashSet::new(),
             mode: Mode::Code,
+            in_format_expr: false,
             diagnostics: Diagnostics::new(),
         };
         for s in TOKENS {
@@ -236,6 +240,7 @@ impl Lexer {
             tokens: HashSet::new(),
             keywords: HashSet::new(),
             mode: Mode::Code,
+            in_format_expr: false,
             diagnostics: Diagnostics::new(),
         };
         for s in TOKENS {
@@ -283,7 +288,11 @@ impl Lexer {
                 '0'..='9' => self.number(),
                 '"' => {
                     self.next_char();
-                    self.string()
+                    if self.in_format_expr {
+                        self.string_nested()
+                    } else {
+                        self.string()
+                    }
                 }
                 '\'' => {
                     self.next_char();
@@ -303,12 +312,28 @@ impl Lexer {
                                 self.next_char();
                                 LexResult::new(LexItem::Token(double), pos)
                             } else if self.mode == Mode::Formatting && single == "}" {
+                                self.in_format_expr = false;
                                 self.string()
                             } else {
                                 LexResult::new(LexItem::Token(single), pos)
                             }
                         } else {
                             LexResult::new(LexItem::Token(single), pos)
+                        }
+                    } else if c == '\\' && self.in_format_expr {
+                        // `\"` inside a format expression opens a nested string literal.
+                        self.next_char(); // consume '\'
+                        if let Some(&nc) = self.iter.peek() {
+                            if nc == '"' {
+                                self.next_char(); // consume '"'
+                                self.string_nested()
+                            } else {
+                                self.err(Level::Error, "Expected '\"' after '\\' in format expression");
+                                Lexer::none()
+                            }
+                        } else {
+                            self.err(Level::Error, "Unexpected end of input after '\\'");
+                            Lexer::none()
                         }
                     } else {
                         let ident = self.get_identifier();
@@ -375,6 +400,7 @@ impl Lexer {
 
     pub fn set_mode(&mut self, mode: Mode) {
         if mode == Mode::Formatting && self.peek_token("}") {
+            self.in_format_expr = false;
             self.mode = mode;
             self.peek = self.string();
         } else {
@@ -479,6 +505,7 @@ impl Lexer {
                     res.push(c);
                 } else {
                     self.mode = Mode::Formatting;
+                    self.in_format_expr = true;
                     return LexResult::new(LexItem::CString(res), pos);
                 }
             } else if c == '}' {
@@ -494,6 +521,45 @@ impl Lexer {
             self.next_char();
         }
         self.err(Level::Fatal, "String not correctly terminated");
+        Lexer::none()
+    }
+
+    /// Scan a string literal that appears as an expression inside a `{...}` format slot.
+    /// Called after the opening `"` (or `\"`) has been consumed.
+    /// Uses `"` or `\"` as the closing delimiter; does not recurse into `{...}`.
+    /// Mode is left unchanged (stays Code so the caller can continue parsing the specifier).
+    fn string_nested(&mut self) -> LexResult {
+        let pos = self.position.clone();
+        let mut res = String::new();
+        while let Some(&c) = self.iter.peek() {
+            if c == '"' {
+                // Bare " closes the nested string literal.
+                self.next_char();
+                return LexResult::new(LexItem::CString(res), pos);
+            }
+            if c == '\\' {
+                self.next_char(); // consume '\'
+                if let Some(&nc) = self.iter.peek() {
+                    if nc == '"' {
+                        // \" closes the nested string literal.
+                        self.next_char(); // consume '"'
+                        return LexResult::new(LexItem::CString(res), pos);
+                    }
+                    // Other escape sequences (\n, \t, \\, ...).
+                    if !self.escape_seq(&mut res) {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            } else if c == '\n' {
+                break;
+            } else {
+                res.push(c);
+            }
+            self.next_char();
+        }
+        self.err(Level::Fatal, "Nested string literal not correctly terminated");
         Lexer::none()
     }
 
@@ -632,7 +698,7 @@ impl Lexer {
         }
     }
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation)] // r is validated to fit in i32 range (< i32::MAX) before the u64 → i32 cast
     fn ret_number(&mut self, r: u64, p: Position, start_zero: bool) -> LexResult {
         let max = i32::MAX as usize;
         if let Some('l') = self.iter.peek() {

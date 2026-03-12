@@ -40,13 +40,12 @@ pub fn sub_text(val: &str, from: i32, till: i32) -> &str {
     if f < 0 || f > size || t < f || t > size {
         return "";
     }
-    let b = val.as_bytes();
     // when till is inside a UTF-8 token: increase it
-    while t < size && b[t as usize] >= 128 && b[t as usize] < 192 {
+    while t < size && !val.is_char_boundary(t as usize) {
         t += 1;
     }
     // when from is inside a UTF-8 token: decrease it
-    while f > 0 && b[f as usize] >= 128 && b[f as usize] < 192 {
+    while f > 0 && !val.is_char_boundary(f as usize) {
         f -= 1;
     }
     &val[f as usize..t as usize]
@@ -211,7 +210,7 @@ pub fn op_rem_long(v1: i64, v2: i64) -> i64 {
 #[inline]
 #[must_use]
 pub fn op_logical_and_long(v1: i64, v2: i64) -> i64 {
-    if v1 != i64::MIN && v2 != i64::MIN && v2 != 0 {
+    if v1 != i64::MIN && v2 != i64::MIN {
         v1 & v2
     } else {
         i64::MIN
@@ -221,7 +220,7 @@ pub fn op_logical_and_long(v1: i64, v2: i64) -> i64 {
 #[inline]
 #[must_use]
 pub fn op_logical_or_long(v1: i64, v2: i64) -> i64 {
-    if v1 != i64::MIN && v2 != i64::MIN && v2 != 0 {
+    if v1 != i64::MIN && v2 != i64::MIN {
         v1 | v2
     } else {
         i64::MIN
@@ -231,7 +230,7 @@ pub fn op_logical_or_long(v1: i64, v2: i64) -> i64 {
 #[inline]
 #[must_use]
 pub fn op_exclusive_or_long(v1: i64, v2: i64) -> i64 {
-    if v1 != i64::MIN && v2 != i64::MIN && v2 != 0 {
+    if v1 != i64::MIN && v2 != i64::MIN {
         v1 ^ v2
     } else {
         i64::MIN
@@ -365,7 +364,7 @@ pub fn op_rem_int(v1: i32, v2: i32) -> i32 {
 #[inline]
 #[must_use]
 pub fn op_logical_and_int(v1: i32, v2: i32) -> i32 {
-    if v1 != i32::MIN && v2 != i32::MIN && v2 != 0 {
+    if v1 != i32::MIN && v2 != i32::MIN {
         v1 & v2
     } else {
         i32::MIN
@@ -375,7 +374,7 @@ pub fn op_logical_and_int(v1: i32, v2: i32) -> i32 {
 #[inline]
 #[must_use]
 pub fn op_logical_or_int(v1: i32, v2: i32) -> i32 {
-    if v1 != i32::MIN && v2 != i32::MIN && v2 != 0 {
+    if v1 != i32::MIN && v2 != i32::MIN {
         v1 | v2
     } else {
         i32::MIN
@@ -385,7 +384,7 @@ pub fn op_logical_or_int(v1: i32, v2: i32) -> i32 {
 #[inline]
 #[must_use]
 pub fn op_exclusive_or_int(v1: i32, v2: i32) -> i32 {
-    if v1 != i32::MIN && v2 != i32::MIN && v2 != 0 {
+    if v1 != i32::MIN && v2 != i32::MIN {
         v1 ^ v2
     } else {
         i32::MIN
@@ -427,41 +426,43 @@ pub fn format_int(
     plus: bool,
     note: bool,
 ) {
+    if val == i32::MIN {
+        format_text(s, "null", width, 1, token);
+        return;
+    }
     let mut res = String::new();
-    format_text(
-        s,
-        if val == i32::MIN {
-            "null"
-        } else {
-            match radix {
-                2 => {
-                    res += if note { "0b" } else { "" };
-                    write!(res, "{val:b}").unwrap();
-                }
-                8 => {
-                    res += if note { "0o" } else { "" };
-                    write!(res, "{val:o}").unwrap();
-                }
-                10 => {
-                    res += if val >= 0 {
-                        if plus { "+" } else { "" }
-                    } else {
-                        "-"
-                    };
-                    write!(res, "{:}", val.abs()).unwrap();
-                }
-                16 => {
-                    res += if note { "0x" } else { "" };
-                    write!(res, "{val:x}").unwrap();
-                }
-                _ => panic!("Unknown radix"),
+    match radix {
+        2 => {
+            res += if note { "0b" } else { "" };
+            write!(res, "{val:b}").unwrap();
+        }
+        8 => {
+            res += if note { "0o" } else { "" };
+            write!(res, "{val:o}").unwrap();
+        }
+        10 => {
+            let sign = if val >= 0 {
+                if plus { "+" } else { "" }
+            } else {
+                "-"
+            };
+            if token == b'0' && !sign.is_empty() {
+                // Sign before zeros: "-01" not "0-1"
+                *s += sign;
+                write!(res, "{}", val.abs()).unwrap();
+                format_text(s, &res, width - 1, 1, token);
+                return;
             }
-            &res
-        },
-        width,
-        1,
-        token,
-    );
+            res += sign;
+            write!(res, "{}", val.abs()).unwrap();
+        }
+        16 => {
+            res += if note { "0x" } else { "" };
+            write!(res, "{val:x}").unwrap();
+        }
+        _ => panic!("Unknown radix"),
+    }
+    format_text(s, &res, width, 1, token);
 }
 
 /**
@@ -479,45 +480,47 @@ pub fn format_long(
     plus: bool,
     note: bool,
 ) {
+    if val == i64::MIN {
+        format_text(s, "null", width, 1, token);
+        return;
+    }
     let mut res = String::new();
-    format_text(
-        s,
-        if val == i64::MIN {
-            "null"
-        } else {
-            match radix {
-                2 => {
-                    if note {
-                        res += "0b";
-                    }
-                    write!(res, "{val:b}").unwrap();
-                }
-                8 => {
-                    if note {
-                        res += "0o";
-                    }
-                    write!(res, "{val:o}").unwrap();
-                }
-                10 => {
-                    res += if val >= 0 {
-                        if plus { "+" } else { "" }
-                    } else {
-                        "-"
-                    };
-                    write!(res, "{:}", val.abs()).unwrap();
-                }
-                16 => {
-                    res += if note { "0x" } else { "" };
-                    write!(res, "{val:x}").unwrap();
-                }
-                _ => panic!("Unknown radix"),
+    match radix {
+        2 => {
+            if note {
+                res += "0b";
             }
-            &res
-        },
-        width,
-        1,
-        token,
-    );
+            write!(res, "{val:b}").unwrap();
+        }
+        8 => {
+            if note {
+                res += "0o";
+            }
+            write!(res, "{val:o}").unwrap();
+        }
+        10 => {
+            let sign = if val >= 0 {
+                if plus { "+" } else { "" }
+            } else {
+                "-"
+            };
+            if token == b'0' && !sign.is_empty() {
+                // Sign before zeros: "-01" not "0-1"
+                *s += sign;
+                write!(res, "{}", val.abs()).unwrap();
+                format_text(s, &res, width - 1, 1, token);
+                return;
+            }
+            res += sign;
+            write!(res, "{}", val.abs()).unwrap();
+        }
+        16 => {
+            res += if note { "0x" } else { "" };
+            write!(res, "{val:x}").unwrap();
+        }
+        _ => panic!("Unknown radix"),
+    }
+    format_text(s, &res, width, 1, token);
 }
 
 use std::fmt::Write as _;
@@ -593,6 +596,17 @@ mod test {
         s.clear();
         format_long(&mut s, 0x123_4567, 16, 0, b' ', false, true);
         assert_eq!("0x1234567", s);
-        // validate long, float and single
+        s.clear();
+        format_int(&mut s, -1, 10, 3, b'0', false, false);
+        assert_eq!("-01", s);
+        s.clear();
+        format_int(&mut s, -1, 10, 4, b'0', false, false);
+        assert_eq!("-001", s);
+        s.clear();
+        format_long(&mut s, -1, 10, 3, b'0', false, false);
+        assert_eq!("-01", s);
+        s.clear();
+        format_int(&mut s, 1, 10, 3, b'0', true, false);
+        assert_eq!("+01", s);
     }
 }

@@ -4,6 +4,22 @@ This document covers how loft source code is turned into executable bytecode: th
 
 ---
 
+## Contents
+- [Pipeline overview](#pipeline-overview)
+- [Lexer (`src/lexer.rs`)](#lexer-srclexerrs)
+- [Parser (`src/parser.rs`)](#parser-srcparserrs)
+- [IR — The `Value` tree (`src/data.rs`)](#ir--the-value-tree-srcdatars)
+- [Type resolution (`src/typedef.rs`)](#type-resolution-srctypedefrs)
+- [Scope analysis (`src/scopes.rs`)](#scope-analysis-srcscopesrs)
+- [Rust code generation (`src/generation.rs`)](#rust-code-generation-srcgenerationrs)
+- [Bytecode generation (`src/interpreter.rs`, `src/state.rs`)](#bytecode-generation-srcinterpreterrs-srcstatersrs)
+- [Default library (`default/*.loft`)](#default-library-defaultloft)
+- [Naming conventions enforced by the parser](#naming-conventions-enforced-by-the-parser)
+- [Diagnostic system (`src/diagnostics.rs`)](#diagnostic-system-srcdiagnosticsrs)
+- [Source file summary](#source-file-summary)
+
+---
+
 ## Pipeline overview
 
 ```
@@ -274,12 +290,22 @@ Handles the innermost syntactic unit:
 | `{` block `}` | Inline block |
 | `[` ... `]` | Vector literal |
 | `if` | Inline if-expression |
+| `fn` identifier | Compile-time function reference → `Value::Int(d_nr)` (see below) |
 | identifier | Variable, function call, type constructor, or method |
 | `$` | Current record reference (inside struct field defaults) |
 | integer / long / float / single | Literal |
 | string | Format-string expression |
 | character | Character literal as integer |
 | `true` / `false` / `null` | Literal boolean / null |
+
+**Method call with same-type variable (`parse_single` Issue 1 fix):** When an identifier
+resolves to a Reference-typed variable and the current parse context is an assignment
+target of the same Reference type (i.e. `d = c.method()` where both `d` and `c` are the
+same struct), `parse_single` calls `vars.make_independent(d, c)` (records that `d` is a
+fresh copy of `c`'s slot) and returns `Value::Var(c)` directly. It does **not** emit
+`OpCopyRecord(c, d, tp)` as the method self-argument, which was the root cause of Issue 1
+(garbage `store_nr` crash). `generate_set` handles direct-assignment `d = c` via a
+`ConvRefFromNull + Database + CopyRecord` sequence in its own branch.
 
 ### Function parsing — `parse_function`
 
@@ -321,6 +347,36 @@ Two forms of variant:
 - Struct-enum: `Name '{' field* '}'` — a variant with fields (polymorphic record).
 
 After parsing, `enum_fn` synthesises dynamic dispatch wrappers so that functions defined on specific variants can be called polymorphically.
+
+**`enum_fn` / `enum_numbers` — text-buffer forwarding (2026-03-13):**
+`enum_fn` runs at the END of the **first pass**, immediately after all variant struct
+types are registered. At that point `text_return` has already added `RefVar(Text)`
+attributes to each variant function (because `text_return` runs during `parse_code` →
+`block_result` for the function body, which is second-pass-only, so the attributes ARE
+present by the time `enum_fn` runs in the *first* pass when types are complete).
+
+To forward text-buffer arguments from the dispatcher to each variant:
+1. `enum_fn` iterates `args[1..]` (all attributes beyond `self`) and creates a
+   corresponding dispatcher argument for each; for `RefVar(Text)` attributes the
+   variable is registered with `become_argument`.
+2. `extra_call_args` and `extra_call_types` are collected from the dispatcher's own
+   variable table for each such attribute.
+3. `enum_numbers` is called with these extras; each variant's call IR becomes
+   `Call(describe_Variant, [Var(0), Var(dispatcher_buf)])` instead of
+   `Call(describe_Variant, [Var(0)])`.
+
+**`generate_call` — `RefVar` forwarding special case (2026-03-13):**
+When compiling a mutable argument whose type is `RefVar(_)` and the parameter is
+`Var(v)` with `v` also typed `RefVar(_)`, emit only `OpVarRef(var_pos)` (reads the raw
+`DbRef`) instead of the usual `generate_var` path which adds `OpGetStackText` after
+`OpVarRef`.  The dereference (`OpGetStackText`) must be suppressed when the callee
+expects a `DbRef` pointer, not the `str` content.
+
+### ~~`parse_append_vector` — `RefVar(Vector)` gap~~ **FIXED (Issue 4)**
+
+Previously, `v += items` inside a `&vector<T>` parameter was silently discarded.
+The fix is `assign_refvar_vector` in `parse_assign` (see the `parse_assign` section
+above). The old `parse_append_vector` path (used for non-RefVar vectors) is unchanged.
 
 ### Type parsing — `parse_type`
 
@@ -365,6 +421,61 @@ The parser builds an `Insert` or append sequence:
 - `work_texts()` — returns slots claimed for text assembly.
 - `test_used(lexer, data)` — emits warnings for unused variables.
 
+### Vector literal parsing — `parse_vector` / `vector_db`
+
+`parse_vector` (called when `[` is encountered) builds vector literal and append IR. It internally tracks the "owner variable" slot `vec` as a `u16`:
+
+- If parsing an append to a struct field (`is_field = true`), `vec = u16::MAX` (sentinel meaning "no owning variable").
+- If parsing a plain variable append (`v += [...]`), `vec = variable_slot_number`.
+- Otherwise a temporary slot is created via `create_unique`.
+
+`vector_db` (called from `build_vector_list`) emits the `OpDatabase` op that allocates a store for new struct-valued vector elements. It must guard against `vec == u16::MAX` before calling `is_argument(vec)`:
+
+```rust
+fn vector_db(&mut self, assign_tp: &Type, vec: u16) -> Vec<Value> {
+    if self.first_pass || vec == u16::MAX || self.vars.is_argument(vec) {
+        Vec::new()  // skip: field context, first pass, or function argument
+    } else { ... }
+}
+```
+
+Without the `vec == u16::MAX` guard, calling `is_argument(u16::MAX)` would panic with an out-of-bounds index (since `u16::MAX = 65535` far exceeds the variable table size). This was a bug that triggered whenever a `vector<Struct>` field was appended to using a struct literal, e.g. `q.list += [Num{v:1}, Num{v:2}]`.
+
+---
+
+### Runtime safety checks in the second pass
+
+During the second pass, `parse_assign` and `parse_function` enforce two additional
+safety invariants beyond type-checking:
+
+**For-loop mutation guard (`parse_assign`, `variables.rs`):**
+When parsing `v += items`, if the type is a collection (`Vector`, `Sorted`, `Index`, or
+`Spacial`) and `v` resolves to a `Value::Var(v_nr)`, the parser calls `vars.is_iterated_var(v_nr)`.
+This walks the `current_loop` chain in `variables.rs` comparing against each loop's `coll_var`
+(original collection variable, set via `set_coll_var()` in `parse_for`). If the variable is
+currently being iterated, a compile error is emitted:
+
+```
+Cannot add elements to 'v' while it is being iterated — use a separate collection or add after the loop
+```
+
+The check only fires for `Value::Var` LHS, not field access (`Value::Field`), so `db.items += x`
+is not blocked. `v#remove` in a filtered loop is explicitly allowed — it is implemented via
+`OpRemove` which adjusts the iterator position before removing.
+
+**Empty-body stubs (`parse_function`, `def_code` in `state.rs`):**
+A function whose body is an empty block `{ }` AND whose first parameter is named `self` is
+treated as an intentional polymorphic stub. Two effects:
+- `parse_function` skips the `test_used` call that would emit "Parameter self is never read".
+- `def_code` detects the empty `Value::Block` case, performs normal argument claiming (so that
+  owned references like Text/Reference get their lifecycle managed correctly), then emits only
+  `OpReturn` — the stub silently returns null for its declared return type.
+
+Detection requires the first parameter to be named `self` to avoid false positives on ordinary
+empty helper functions like `fn setup() { }`.
+
+---
+
 ### `parse_assign` — assignment and mutating operators
 
 ```
@@ -377,6 +488,74 @@ For a simple `=`:
 
 For `+=` on text: delegates to `assign_text` which manages the string-assembly working variable.
 
+For `+=` on `&vector<T>` parameters: handled by `assign_refvar_vector`. When the LHS variable has type `RefVar(Vector)` and the operator is `+=`, and the RHS is not a `Value::Insert` or `Value::Block` (bracket-form literals/comprehensions), it emits `OpAppendVector(Var(v_nr), rhs_expr, rec_tp)`. Bracket-form `[elem]` and vector comprehensions produce `Value::Insert` / `Value::Block` on the RHS; those fall through to the existing `parse_block` expansion path which uses `OpFinishRecord` and already handles ref-params correctly.
+
+The key implementation detail: a `&vector<T>` parameter is passed via `OpCreateStack`, which stores the caller's actual vector `DbRef` in field 0 of the temp record. `generate_var` for `RefVar(Vector)` emits `OpVarRef + OpGetStackRef(0)` — this correctly retrieves the caller's vector. `OpAppendVector` then appends to that vector in place, so the caller sees the change.
+
+`find_written_vars` already recognises `OpAppendVector` as a write (via a pre-existing check on the opcode name), so the "Parameter 'v' has & but is never modified; remove the &" error is suppressed correctly.
+
+---
+
+### Function references — `parse_fn_ref`
+
+The `fn <name>` atom expression (parsed by `parse_fn_ref`) produces a compile-time
+integer containing the definition number of the named function:
+
+```loft
+fn double_score(r: const Score) -> integer { r.value * 2 }
+
+// Passing as an argument:
+result = parallel_for(fn double_score, items, 4);
+```
+
+The IR is `Value::Int(d_nr)` where `d_nr` is the definition index. At bytecode generation
+this becomes `ConstInt(d_nr)`. The `parallel_for` native function receives this integer
+and uses it to dispatch the worker.
+
+### Reverse collection iteration — `rev(sorted_col)`
+
+`parse_in_range()` recognises `rev(<expr>)` with no `..` when the expression type is
+`Sorted` or `Index`.  It sets `Parser::reverse_iterator = true` and consumes the closing `)`.
+`fill_iter()` checks this flag and ORs bit 64 into the `on` byte of the OpIterate/OpStep
+instruction pair.  The flag is reset after both `fill_iter` calls inside `iterator()`, and
+also on the first-pass early return (so it does not persist across parse passes).
+
+At runtime, `state::step()` for type-2 (sorted) detects `on & 64` and calls
+`vector::vector_step_rev()` instead of `vector_step()`. `vector_step_rev` treats any
+position `>= length` (the value produced by `iterate()` for the "not started" sentinel)
+as "start at the last element", then decrements on each call, and returns `i32::MAX`
+when the beginning has been passed.
+
+### Parallel for-loop — `parse_parallel_for_loop`
+
+The `par(b=<worker_call>, <threads>)` clause on a `for` loop runs a worker function on
+every element of a vector in parallel and delivers results in the original order:
+
+```loft
+for a in items par(b=my_func(a), 4) { sum += b; }   // global fn
+for a in items par(b=a.my_method(), 4) { sum += b; } // method
+```
+
+The parser intercepts a `for … in … par(…) { … }` pattern in `parse_for`. When the
+`par(` token is found after the range expression, it calls `parse_parallel_for_loop`,
+which:
+
+1. Parses the worker call expression (either `fn(elem)` or `elem.method()`) via
+   `parse_parallel_worker` to extract `(fn_d_nr, return_type)`.
+2. Infers `elem_size` from the element type's Stores byte size.
+3. Infers `return_size` from the primitive return type (1 for bool, 4 for int/single,
+   8 for float/long).
+4. Rewrites the loop into:
+   - `par_results = parallel_for(input, elem_size, return_size, threads, fn_d_nr)`
+   - A conventional for-loop over the result vector that binds `b` to each element.
+
+The worker function must take a single `const` reference argument of the element type
+and return one primitive value (integer, float, single, long, or boolean). Text and
+reference return types are not yet supported.
+
+The native function `n_parallel_for` in `text.rs` calls `run_parallel_raw` in
+`parallel.rs`, which spawns threads using Rayon and collects results in order.
+
 ---
 
 ## IR — The `Value` tree (`src/data.rs`)
@@ -385,7 +564,7 @@ The parser produces a tree of `Value` nodes that represents a function body.
 
 ### `Value` enum
 
-IR node variants (full definition in `INTERMEDIATE.md`):
+IR node variants (full definition in [INTERMEDIATE.md](INTERMEDIATE.md)):
 - Literals: `Null`, `Int(i32)`, `Long(i64)`, `Float(f64)`, `Single(f32)`, `Boolean(bool)`, `Text(String)`, `Enum(u8, u16)`
 - Variables: `Var(u16)` (read), `Set(u16, Box<Value>)` (write)
 - Calls: `Call(u32, Vec<Value>)` — definition nr + args
@@ -614,7 +793,7 @@ The bytecode is a compact encoding of the `Call`/`Set`/`If`/`Loop` IR nodes. It 
 
 `state.execute("main", data)` runs the named function.
 
-`show_code(writer, state, data)` dumps both the IR tree and the bytecode for each user-defined function to a writer — used for the debug output in `tests/code/`.
+`show_code(writer, state, data)` dumps both the IR tree and the bytecode for each user-defined function to a writer — used for the debug output in `tests/dumps/`.
 
 ---
 
@@ -678,3 +857,10 @@ Diagnostics are collected on the `Lexer` and merged into `Parser::diagnostics` a
 | `src/stack.rs` | Bytecode-generation stack frame (`Stack`, `Loop`) |
 | `src/create.rs` | Drives code generation: `generate_lib` and `generate_code` |
 | `default/*.loft` | Built-in operators and standard library |
+
+---
+
+## See also
+- [INTERMEDIATE.md](INTERMEDIATE.md) — Value/Type enums in detail; 248 bytecode operators; State layout
+- [INTERNALS.md](INTERNALS.md) — calc.rs, stack.rs, create.rs, external.rs, text.rs, parallel.rs
+- [TESTING.md](TESTING.md) — Test framework, LogConfig debug-logging presets

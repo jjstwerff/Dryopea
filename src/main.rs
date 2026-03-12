@@ -14,6 +14,8 @@ mod interpreter;
 mod keys;
 mod lexer;
 mod log_config;
+mod logger;
+mod parallel;
 mod parser;
 mod png_store;
 mod scopes;
@@ -28,6 +30,7 @@ mod vector;
 
 use crate::state::State;
 use std::env;
+use std::sync::{Arc, Mutex};
 
 fn main() {
     let mut args = env::args_os();
@@ -36,6 +39,10 @@ fn main() {
     let mut dir = project_dir();
     let mut project: Option<String> = None;
     let mut lib_dirs: Vec<String> = Vec::new();
+    let mut log_conf: Option<String> = None;
+    let mut production = false;
+    let mut generate_log_config: Option<Option<String>> = None;
+    let mut user_args: Vec<String> = Vec::new();
     while let Some(arg) = args.next() {
         let a = arg.to_str().unwrap();
         if a == "--version" {
@@ -47,17 +54,51 @@ fn main() {
             project = Some(args.next().unwrap().to_str().unwrap().to_string());
         } else if a == "--lib" {
             lib_dirs.push(args.next().unwrap().to_str().unwrap().to_string());
+        } else if a == "--log-conf" {
+            log_conf = Some(args.next().unwrap().to_str().unwrap().to_string());
+        } else if a == "--production" {
+            production = true;
+        } else if a == "--generate-log-config" {
+            // Optional path argument: peek at next arg (if it doesn't start with -)
+            let next = args.next();
+            let path = next.as_ref().and_then(|s| s.to_str()).and_then(|s| {
+                if s.starts_with('-') {
+                    None
+                } else {
+                    Some(s.to_string())
+                }
+            });
+            generate_log_config = Some(path);
         } else if a == "--help" || a == "-h" || a == "-?" {
             println!("usage: lavition [options] <file>");
             println!("Options:");
-            println!("  --version          print version information");
-            println!("  -h, --help, -?     print this help message");
-            println!("  --path <dir>       directory containing the default/ library (default: binary location)");
-            println!("  --project <dir>    run the script as if launched from <dir>; file I/O is");
-            println!("                     sandboxed there and its lib/ sub-directory is searched");
-            println!("                     for 'use' imports (useful when the script lives in /tmp)");
-            println!("  --lib <dir>        add <dir> to the 'use' import search path; may be");
-            println!("                     repeated for multiple directories");
+            println!("  --version                     print version information");
+            println!("  -h, --help, -?                print this help message");
+            println!(
+                "  --path <dir>                  directory containing the default/ library (default: binary location)"
+            );
+            println!(
+                "  --project <dir>               run the script as if launched from <dir>; file I/O is"
+            );
+            println!(
+                "                                sandboxed there and its lib/ sub-directory is searched"
+            );
+            println!(
+                "                                for 'use' imports (useful when the script lives in /tmp)"
+            );
+            println!(
+                "  --lib <dir>                   add <dir> to the 'use' import search path; may be"
+            );
+            println!("                                repeated for multiple directories");
+            println!(
+                "  --log-conf <path>             use this log config file instead of the default"
+            );
+            println!(
+                "  --production                  enable production mode (panic/assert log instead of abort)"
+            );
+            println!(
+                "  --generate-log-config [path]  write a documented config file with defaults and exit"
+            );
             return;
         } else if a.starts_with('-') {
             println!("unknown option: {a}");
@@ -67,11 +108,28 @@ fn main() {
         } else if file_name.is_empty() {
             file_name = a.to_string();
         } else {
-            // TODO allow arguments to be passed to the program
-            println!("Duplicate file name: {a}");
-            std::process::exit(1);
+            user_args.push(a.to_string());
         }
     }
+
+    // Handle --generate-log-config before requiring an input file
+    if let Some(path_opt) = generate_log_config {
+        let content = logger::generate_config();
+        match path_opt {
+            Some(ref path) => {
+                if let Err(e) = std::fs::write(path, content) {
+                    println!("Error writing config to '{path}': {e}");
+                    std::process::exit(1);
+                }
+                println!("Log config written to: {path}");
+            }
+            None => {
+                print!("{content}");
+            }
+        }
+        return;
+    }
+
     if file_name.is_empty() {
         println!("lavition: no input file specified.");
         println!("usage: lavition [options] <file>");
@@ -104,7 +162,27 @@ fn main() {
     scopes::check(&mut p.data);
     let mut state = State::new(p.database);
     interpreter::byte_code(&mut state, &mut p.data);
-    state.execute("main", &p.data);
+
+    // Initialize the runtime logger
+    let conf_path = if let Some(ref cp) = log_conf {
+        std::path::PathBuf::from(cp)
+    } else {
+        // Default: log.conf next to the main loft file
+        std::path::Path::new(&abs_file)
+            .parent()
+            .unwrap_or(std::path::Path::new("."))
+            .join("log.conf")
+    };
+    let mut lg = logger::Logger::from_config_file(&conf_path, &abs_file);
+    if production {
+        lg.config.production = true;
+    }
+    state.database.logger = Some(Arc::new(Mutex::new(lg)));
+
+    state.execute_argv("main", &p.data, &user_args);
+    if state.database.had_fatal {
+        std::process::exit(1);
+    }
 }
 
 fn project_dir() -> String {

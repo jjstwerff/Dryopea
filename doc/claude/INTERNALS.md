@@ -4,6 +4,21 @@ This document covers source files that are part of the runtime and build infrast
 
 ---
 
+## Contents
+- [Field Layout Calculator (`src/calc.rs`)](#field-layout-calculator-srccalcrs)
+- [Bytecode Generation Stack (`src/stack.rs`)](#bytecode-generation-stack-srcstackrs)
+- [Rust Code Generator (`src/create.rs`)](#rust-code-generator-srccreatrs)
+- [Native Function Registry (`src/external.rs`)](#native-function-registry-srcexternalrs)
+- [Text and Formatting Utilities (`src/text.rs`)](#text-and-formatting-utilities-srctextrs)
+- [PNG Image Loading (`src/png_store.rs`)](#png-image-loading-srcpng_storers)
+- [Radix Tree (`src/radix_tree.rs`)](#radix-tree-srcradix_treers)
+- [`Str` vs `String` in Native Functions](#str-vs-string-in-native-functions)
+- [Parallel Execution (`src/parallel.rs`)](#parallel-execution-srcparallelrs)
+- [CLI Binary (`src/main.rs`)](#cli-binary-srcmainrs)
+- [Runtime Logging (`src/logger.rs`)](#runtime-logging-srcloggerrs)
+
+---
+
 ## Field Layout Calculator (`src/calc.rs`)
 
 ### `calculate_positions`
@@ -136,10 +151,16 @@ Registers all entries from `FUNCTIONS` into the interpreter's static function ta
 
 ### Implemented Functions
 
+Note: the `FUNCTIONS` array in `text.rs` also includes logging functions (`n_log_info`, `n_log_warn`, `n_log_error`, `n_log_fatal`) and parallel execution functions (`n_parallel_for_int`, `n_parallel_for`).
+
 | Name | Loft API |
 |---|---|
-| `n_assert` | `assert(test, message)` |
-| `n_panic` | `panic(message)` |
+| `n_assert` | `assert(test, message)` — pops `(line, file, message, test)` from stack; in production mode logs `error` instead of panicking |
+| `n_panic` | `panic(message)` — pops `(line, file, message)` from stack; in production mode logs `fatal` instead of panicking |
+| `n_log_info` | `log_info(message)` — pops `(line, file, message)`; writes `Info` record to logger if present |
+| `n_log_warn` | `log_warn(message)` — pops `(line, file, message)`; writes `Warn` record |
+| `n_log_error` | `log_error(message)` — pops `(line, file, message)`; writes `Error` record |
+| `n_log_fatal` | `log_fatal(message)` — pops `(line, file, message)`; writes `Fatal` record (does not abort) |
 | `t_4File_write` | `file.write(v)` |
 | `n_env_variables` | `env_variables()` |
 | `n_env_variable` | `env_variable(name)` |
@@ -292,6 +313,197 @@ The `key` parameter to `rtree_find` and `rtree_insert` is a closure/function `fn
 
 ---
 
+## `Str` vs `String` in Native Functions
+
+Loft text is represented by two distinct Rust types:
+
+| Type | Size | Use |
+|---|---|---|
+| `Str` (= `*const u8` + `u32 len`) | **16 bytes** | Arguments, return values, stack temporaries |
+| `String` (heap-allocated) | **24 bytes** | Owned variable storage (`Context::Variable`) |
+
+The `size()` function in `variables.rs` returns `size_of::<String>()` = 24 when the context is `Context::Variable`, and `size_of::<&str>()` = 16 in all other contexts (arguments, return values, intermediate stack slots).
+
+**Native functions must always push `Str` (16 bytes), not `String` (24 bytes).**  Writing a 24-byte value into a 16-byte stack slot corrupts everything above it on the stack.
+
+Functions like `to_uppercase`, `to_lowercase`, and `replace` produce a new owned `String` at runtime.  To return this as a 16-byte `Str`, the `Stores` struct carries a **scratch buffer**:
+
+```rust
+pub struct Stores {
+    // ... other fields ...
+    pub scratch: Vec<String>,
+}
+```
+
+The pattern for returning a newly computed string from a native function:
+
+```rust
+fn t_4text_to_uppercase(stores: &mut Stores, stack: &mut DbRef) {
+    let v_self = *stores.get::<Str>(stack);
+    let new_value = v_self.str().to_uppercase();
+    stores.scratch.push(new_value);
+    let s = stores.scratch.last()
+        .map(|s| Str { ptr: s.as_ptr(), len: s.len() as u32 })
+        .unwrap();
+    stores.put(stack, s);
+}
+```
+
+The `scratch` `Vec<String>` is owned by `Stores` and lives for the entire execution, so the raw pointer inside `Str` remains valid.  Workers initialise `scratch` as `Vec::new()` in `clone_for_worker()` — no sharing across threads.
+
+**Symptom of getting this wrong:** `SIGABRT` or `signal: 6 (SIGABRT)` in the test output, with the crash occurring inside one of the string-returning native functions.  The 24-byte `String` overwrites 8 bytes of the next stack slot, corrupting a later value (typically the call-return address or a subsequent variable).
+
+See [TESTING.md](TESTING.md) for how to reproduce and debug such failures.
+
+---
+
+## Parallel Execution (`src/parallel.rs`)
+
+Provides a thread-pool execution model for running compiled loft functions over every row of an input vector, collecting integer results in original row order.
+
+### `WorkerProgram`
+
+```rust
+pub struct WorkerProgram {
+    pub bytecode: Vec<u8>,
+    pub text_code: Vec<u8>,
+    pub library: Vec<Call>,
+}
+unsafe impl Send for WorkerProgram {}
+unsafe impl Sync for WorkerProgram {}
+```
+
+An immutable snapshot of the interpreter's three read-only runtime tables. Created once by `State::worker_program()` (which clones all three `Vec`s from the main `State`) and shared across worker threads via `Arc<WorkerProgram>`. Each worker thread calls `clone_owned()` to get its own owned copies before constructing its `State`.
+
+### `run_parallel_int`
+
+```rust
+pub fn run_parallel_int(
+    stores: &Stores,
+    program: WorkerProgram,
+    fn_pos: u32,
+    input: &DbRef,
+    element_size: u32,
+    n_threads: usize,
+) -> Vec<i32>
+```
+
+Distributes the rows of `input` across `n_threads` OS threads and collects the results in order:
+
+1. Reads `n_rows` via `vector::length_vector`.
+2. Clamps `threads = min(n_threads, n_rows).max(1)`.
+3. Wraps `program` in `Arc<WorkerProgram>`.
+4. Opens an `mpsc::channel::<Vec<(usize, i32)>>()`.
+5. For each thread `t`, spawns a thread with:
+   - Row range `[t * n_rows / threads, (t+1) * n_rows / threads)`.
+   - Its own `Stores` via `stores.clone_for_worker()`.
+   - Its own `State` via `State::new_worker(worker_stores, bytecode, text_code, library)`.
+   - Calls `vector::get_vector` for each row to get a `DbRef`, then `state.execute_at(fn_pos, row_ref)` to obtain the `i32` result.
+   - Sends `Vec<(row_idx, val)>` batch over the channel.
+6. Drops `tx` so the channel closes when all threads finish.
+7. Collects all `(idx, val)` pairs into `vec![i32::MIN; n_rows]` placed by index.
+
+### `ParallelCtx` (in `src/database.rs`)
+
+```rust
+pub struct ParallelCtx {
+    pub bytecode:  *const Vec<u8>,
+    pub text_code: *const Vec<u8>,
+    pub library:   *const Vec<Call>,
+    pub data:      *const Data,
+}
+unsafe impl Send for ParallelCtx {}
+unsafe impl Sync for ParallelCtx {}
+```
+
+Stored as `Stores.parallel_ctx: Option<Box<ParallelCtx>>`. Populated by `State::execute()` immediately before the main execution loop using raw pointers into the same `State`. Cleared to `None` after the loop finishes. Enables native functions called during execution (e.g. `n_parallel_for_int` in `src/text.rs`) to access the interpreter's bytecode and `Data` metadata, which is not otherwise reachable from `&mut Stores`.
+
+The raw pointers are safe for the lifetime of `State::execute()` because `State` does not move and the pointed-to fields are only mutated between calls to `execute()`.
+
+### Store cloning for workers
+
+**`Store::clone_locked()`** (in `src/store.rs`):
+
+```rust
+pub fn clone_locked(&self) -> Store
+```
+
+Deep-copies the raw byte buffer of a `Store` into a freshly allocated heap block, sets `locked = true`, and sets `file = None` (no mmap backing on the copy). Workers call `addr()` (the read-only path) on their cloned stores; the lock flag prevents any write through `addr_mut()` from within user code.
+
+`unsafe impl Send for Store {}` is required because `Store.ptr: *mut u8`. Safe because workers only call `addr()`.
+
+**`Stores::clone_for_worker()`** (in `src/database.rs`):
+
+```rust
+pub fn clone_for_worker(&self) -> Stores
+```
+
+Clones all `allocations` via `clone_locked()` and shares the same `types` and `names` metadata. `files` is set to an empty `Vec` (no file handles in workers), and `parallel_ctx` is set to `None` (no nested parallelism). The returned `Stores` is then passed to `State::new_worker()` which appends a fresh stack store.
+
+`unsafe impl Send for Stores {}` is required because `Field::Content::Str` contains `*const u8`. Safe because workers only read parse-time type metadata and never mutate it.
+
+### State helpers for workers
+
+**`State::worker_program()`** — clones `bytecode`, `text_code`, and `library` into a `WorkerProgram` snapshot.
+
+**`State::new_worker(db, bytecode, text_code, library) -> State`** — constructs a minimal `State` for a worker thread. Calls `db.database(1000)` to allocate a 1000-word stack store (assigned to `stack_cur`), sets `stack_pos = 4`, and leaves all name maps empty (workers never parse or compile, only execute).
+
+**`State::execute_at(fn_pos, arg: DbRef) -> i32`** — runs a single-argument function:
+
+```
+stack_pos = 4
+push arg (DbRef, 12 bytes)  → stack_pos = 16
+push u32::MAX  (4 bytes)    → stack_pos = 20   ← return sentinel
+code_pos = fn_pos
+run execution loop until code_pos == u32::MAX
+return *get_stack::<i32>()  (value at stack_pos)
+```
+
+The `fn_return` opcode reads the `u32::MAX` sentinel and sets `code_pos = u32::MAX`, which breaks the loop.
+
+### Native function `n_parallel_for_int` (in `src/text.rs`)
+
+Loft signature declared in `default/01_code.loft`:
+
+```loft
+fn parallel_for_int(func: text, input: reference,
+                    element_size: integer, threads: integer) -> reference
+```
+
+Implementation pops arguments (last-pushed first: `threads`, `element_size`, `input`, `func`), resolves the function name via `ParallelCtx.data`, clones the program via `ParallelCtx`, calls `run_parallel_int`, and writes the results into a freshly allocated integer-vector layout (same structure as the input: header record at `{rec: header_rec, pos: 4}`, `fld=4` holds a pointer to `vec_rec`, `vec_rec.fld=4` = count, `vec_rec.fld=8+i*4` = elements). Pushes a `DbRef` with `pos=4` pointing at the header's vector pointer field.
+
+Function name lookup prepends `"n_"` to the loft text argument: `parallel_for_int("worker_sum", ...)` resolves to definition `"n_worker_sum"`.
+
+### Worker function calling convention
+
+The worker function must:
+1. Accept a single `const` reference argument (not `&`, which triggers a loft lint if the argument is never modified).
+2. **Not** name the first parameter `self` or `both`. Using `self` causes `add_fn` to store the function as a method under the key `t_<N><Type>_<fn>` rather than `n_<fn>`. `n_parallel_for_int` resolves the loft-text name by prepending `"n_"`, so `"worker_sum"` resolves to `"n_worker_sum"`. A `self`-parameterised function would be `"t_4Pair_worker_sum"` and would not be found, causing a panic at runtime.
+
+```loft
+fn worker_sum(r: const Pair) -> integer { r.a + r.b }  // 'r', not 'self' — stored as n_worker_sum
+```
+
+`const` passes a `DbRef` (12 bytes) pointing directly at the element within the locked input store. The element is at `vec_rec.fld = 8 + row_idx * element_size`.
+
+### Input reference layout
+
+`parallel_for_int` accepts `input: reference` — a plain `vector<T>` cannot be passed because `can_convert` only allows `Type::Reference(X)` to coerce to `reference`, not `Type::Vector`. The idiomatic pattern is a container struct whose **first field** is the vector:
+
+```loft
+struct Pairs { data: vector<Pair> }   // data is at pos=8 within the record
+```
+
+`length_vector` reads `store.get_int(input.rec, input.pos)` to find the vector record. For a struct reference with `pos=8`, this reads the first field — the vector pointer — correctly.
+
+### Limitations
+
+- No nested parallelism: `parallel_ctx` is set to `None` in worker `Stores`, so calling `parallel_for_int` from within a worker will panic.
+- Workers must not write to the input stores. Writing is prevented at runtime by the `locked` flag on cloned stores.
+- `element_size` must be a compile-time constant matching the byte size of the struct pointed to by the worker's argument type.
+
+---
+
 ## CLI Binary (`src/main.rs`)
 
 The `lavition` binary is the interpreter entry point. It is separate from the library crate (`src/lib.rs`) and not exposed via `pub`.
@@ -302,9 +514,12 @@ The `lavition` binary is the interpreter entry point. It is separate from the li
 lavition [option] [file]
 
 Options:
-  --version       Print version from Cargo.toml
-  --path DIR      Override the project directory (default: auto-detected from executable path)
-  -h, --help, -? Print usage help
+  --version                         Print version from Cargo.toml
+  --path DIR                        Override the project directory (default: auto-detected from executable path)
+  --log-conf <path>                 Use this log config file instead of the default (log.conf beside the .loft file)
+  --production                      Production mode: panic() → fatal log entry; assert() → error log entry; no abort
+  --generate-log-config [<path>]    Write a documented default log config to <path> (or stdout) and exit
+  -h, --help, -?                    Print usage help
 ```
 
 ### `main` flow
@@ -317,7 +532,8 @@ Options:
 6. Call `scopes::check` on the parsed data.
 7. Construct a `State` from the `Stores` schema.
 8. Call `interpreter::byte_code` to compile IR to bytecode.
-9. Call `state.execute("main", &data)` to run the program.
+9. Initialise the runtime logger from `log.conf` (beside the main `.loft` file) or `--log-conf` path, apply `--production` flag, and install as `state.database.logger`.
+10. Call `state.execute("main", &data)` to run the program.
 
 ### `project_dir`
 
@@ -325,3 +541,79 @@ Auto-detects the project root from the path of the running executable:
 - Strips the `lavition` binary name.
 - Strips a `target/release/` or `target/debug/` suffix if present.
 - The result is the project root, and the default library is expected at `<root>/default/`.
+
+---
+
+## Runtime Logging (`src/logger.rs`)
+
+Structured file-based logging for running loft programs. Distinct from `src/log_config.rs` (the compile/test trace framework).
+
+### `Severity` enum
+
+```rust
+pub enum Severity { Info, Warn, Error, Fatal }
+```
+
+Implements `PartialOrd`/`Ord` so levels can be compared with `<`. `as_str()` returns `"INFO "`, `"WARN "`, `"ERROR"`, `"FATAL"` (5-char padded for aligned output).
+
+### `RuntimeLogConfig`
+
+```rust
+pub struct RuntimeLogConfig {
+    pub log_path: PathBuf,
+    pub default_level: Severity,      // default: Warn
+    pub production: bool,             // default: false
+    pub max_size_bytes: u64,          // default: 500 MB
+    pub daily_rotation: bool,         // default: true
+    pub max_files: u32,               // default: 10
+    pub rate_per_minute: u32,         // default: 5
+    pub file_levels: HashMap<String, Severity>,
+}
+```
+
+Implements `Default`. `parse_config_str(content, conf_dir)` parses an INI-style `key = value` file with `[log]`, `[rotation]`, `[rate_limit]`, and `[levels]` sections.
+
+### `Logger`
+
+```rust
+pub struct Logger {
+    pub config: RuntimeLogConfig,
+    config_path: Option<PathBuf>,
+    config_mtime: Option<SystemTime>,
+    last_config_check: Instant,
+    file: Option<BufWriter<File>>,
+    current_size: u64,
+    current_ymd: (u32, u32, u32),    // UTC date for daily rotation detection
+    rate_map: HashMap<(String, u32), RateEntry>,
+}
+```
+
+| Method | Description |
+|---|---|
+| `new(config, config_path) -> Self` | Construct; opens the log file immediately. |
+| `from_config_file(path, main_loft_file) -> Self` | Parse config file or use defaults if missing. |
+| `log(sev, loft_file, line, msg)` | Write a log record (level filter → rate limit → rotation → write). |
+| `check_reload()` | Re-read config file if mtime changed and ≥5 s since last check. |
+
+Log line format: `2026-03-13T14:05:32.417Z WARN  src/foo.loft:42  message`
+
+### `generate_config() -> &'static str`
+
+Returns the documented default config template (written to stdout/file by `--generate-log-config`).
+
+### Timestamp helpers
+
+`utc_timestamp() -> String` — formats `SystemTime::now()` as ISO 8601 with millisecond precision using no external crates.
+
+`days_to_ymd(z: u64) -> (u32, u32, u32)` — converts Unix epoch days to `(year, month, day)` using Howard Hinnant's Gregorian calendar algorithm.
+
+### Thread safety
+
+`Logger` is wrapped in `Arc<Mutex<Logger>>` on `Stores`. Worker threads receive an `Arc::clone` (cheap), so all threads share the same log file handle and rate-limit state. The `Mutex` serialises writes.
+
+---
+
+## See also
+- [COMPILER.md](COMPILER.md) — Lexer, parser, two-pass design, IR, type system, scope analysis, bytecode
+- [DATABASE.md](DATABASE.md) — Store allocator, Stores schema, DbRef, vector/tree/hash implementations
+- [INTERMEDIATE.md](INTERMEDIATE.md) — Value/Type enums in detail; 248 bytecode operators; State layout

@@ -1,5 +1,23 @@
 # Testing Framework
 
+## Contents
+- [Overview](#overview)
+- [Entry Points](#entry-points)
+- [The Testing Framework (`tests/testing.rs`)](#the-testing-framework-teststestingrs)
+- [Generated Test Files (`tests/generated/`)](#generated-test-files-testsgenerated)
+- [Additional Output Files](#additional-output-files)
+- [LogConfig — Debug Logging Framework](#logconfig--debug-logging-framework)
+- [`tests/wrap.rs` — shared runner for docs and scripts tests](#testswraprs--shared-runner-for-docs-and-scripts-tests)
+- [`tests/docs/` — end-to-end loft files (user documentation)](#testsdocs--end-to-end-loft-files)
+- [File Layout Summary](#file-layout-summary)
+- [Running the Tests](#running-the-tests)
+- [Validating Generated Code — the `generated/` Workspace](#validating-generated-code--the-generated-workspace)
+- [Key Constraints](#key-constraints)
+- [`tests/scripts/` — standalone loft test suite](#testsscripts--standalone-loft-test-suite)
+- [Debugging failures in `tests/scripts/`](#debugging-failures-in-testsscripts)
+
+---
+
 ## Overview
 
 The Dryopea test suite has two distinct layers:
@@ -19,20 +37,21 @@ Each file is a Cargo integration test (auto-discovered because it lives directly
 
 | File | Contents |
 |---|---|
-| `expressions.rs` | Arithmetic, control flow, type conversions, loops |
-| `enums.rs` | Enum definitions, polymorphism, JSON formatting |
-| `strings.rs` | String operations, slicing, formatting |
-| `objects.rs` | Struct creation, field access, methods, references |
-| `vectors.rs` | Vector/sorted/index/hash operations |
-| `formatting.rs` | Format specifiers for all types |
-| `math.rs` | Math functions, constants, trigonometry |
-| `sizes.rs` | `sizeof` expressions and struct layout |
+| `expressions.rs` | Type-check tests, labeled loops, mutual recursion, null returns, character appends (simple arithmetic/loop tests live in `tests/scripts/`) |
+| `enums.rs` | Complex enum definitions, polymorphism via parent enum, JSON formatting, nested types |
+| `strings.rs` | Complex string operations: UTF-8 indexing, reference params, rfind, parsing loops |
+| `objects.rs` | Struct creation, `:#` pretty-print format, field references, text independence, mutable reference params |
+| `vectors.rs` | Complex vector/sorted/index/hash operations; remove-by-key; for-comprehension; large growth |
+| `sizes.rs` | `sizeof` expressions and struct layout (complex struct/collection byte sizes) |
 | `data_structures.rs` | Combined data structure behaviour |
-| `parse_errors.rs` | Tests that expect specific parse/type errors |
+| `parse_errors.rs` | Tests that expect specific parse/type errors (all diagnostic — must stay in `.rs`) |
+| `immutability.rs` | Immutability diagnostics (`ref never modified`, `const mutated`) |
 | `slot_assign.rs` | Stack-slot assignment correctness (no overlapping slots) |
 | `log_config.rs` | Unit tests for the `LogConfig` debug-logging framework |
+| `threading.rs` | Rust-level parallel API tests (`run_parallel_int`, `WorkerProgram`, `clone_for_worker`) |
+| `issues.rs` | Minimal reproducers for known open/fixed issues (see [PROBLEMS.md](PROBLEMS.md)) |
 | `expressions_auto_convert.rs` | Auto-conversion edge cases (hand-written) |
-| `wrap.rs` | Runs `.loft` files from `tests/suite/`; generates HTML docs |
+| `wrap.rs` | Runs `.loft` files from `tests/docs/`; generates HTML docs |
 | `testing.rs` | The framework itself; not a runnable test target |
 
 Each file includes `mod testing;` which pulls in `tests/testing.rs` as a module.
@@ -99,7 +118,7 @@ The `drop` implementation:
 6. **Debug builds only:** calls `generate_code` (writes `tests/generated/`).
 7. Calls `assert_diagnostics` — panics if the actual warnings/errors do not exactly match the expected set.
 8. If parsing succeeded: runs `byte_code` + `state.execute("test", ...)`.
-9. **Debug builds only:** logs bytecode and execution trace to `tests/code/<file>_<name>.txt`.
+9. **Debug builds only:** logs bytecode and execution trace to `tests/dumps/<file>_<name>.txt`.
 
 ### Synthesised `test()` function
 
@@ -193,7 +212,7 @@ The `init` function reconstructs the full type schema — both default-library t
 
 ## Additional Output Files
 
-### `tests/code/<file>_<name>.txt` (debug builds only)
+### `tests/dumps/<file>_<name>.txt` (debug builds only)
 
 Written by `Test::output_code`. The content is controlled by a `LogConfig` value
 selected at test time (see [LogConfig — Debug Logging Framework](#logconfig--debug-logging-framework) below).
@@ -215,7 +234,7 @@ These files are useful for debugging compiler output and are not committed.
 ## LogConfig — Debug Logging Framework
 
 `src/log_config.rs` provides structured control over what appears in the
-`tests/code/*.txt` files and in the interpreter's execution trace.
+`tests/dumps/*.txt` files and in the interpreter's execution trace.
 
 ### Selecting a preset at test time
 
@@ -318,7 +337,7 @@ let config = LogConfig {
 | `src/state.rs` | `execute_log(log, name, config, data)` — execution trace with all filters |
 | `src/state.rs` | `dump_code(f, d_nr, data, annotate_slots)` — per-function bytecode dump |
 | `tests/testing.rs` | Creates config via `LogConfig::from_env()`, passes to `show_code` + `execute_log` |
-| `tests/wrap.rs` | Same: `LogConfig::from_env()` for suite file tests |
+| `tests/wrap.rs` | Same: `LogConfig::from_env()` for docs/scripts file tests |
 | `tests/log_config.rs` | Unit tests covering all filters, presets, and pipeline integration |
 
 ### Notes for Claude
@@ -334,11 +353,135 @@ let config = LogConfig {
 
 ---
 
-## `tests/suite/` — end-to-end loft files
+## `tests/wrap.rs` — shared runner for docs and scripts tests
 
-Managed by `tests/wrap.rs`. These are standalone `.loft` programs that exercise the full compiler and interpreter pipeline. They are not connected to the `Test` builder API.
+`run_test(path, debug)` is the core of every test in `tests/wrap.rs`:
 
-The `dir` test runs all files in alphabetical order and also regenerates HTML documentation in `doc/` from the source comments. The `last` test runs only the final file for fast iteration.
+1. Creates a `Parser`, loads the default library, parses the given `.loft` file.
+2. **Fails immediately** if `p.diagnostics` is non-empty — any warning, error, or info
+   message causes the test to return `Err(InvalidData)`.  This means `for _ in x` loop
+   variables that are never read will fail a test via the "Variable never read" warning.
+3. Runs `scopes::check`, `byte_code`, then `state.execute("main", ...)`.
+4. In debug builds, writes a bytecode dump to `tests/dumps/<filename>.txt` first.
+   If `debug = true`, also writes an execution trace using `execute_log`.
+
+`LOFT_LOG` is respected: `LogConfig::from_env()` is called in `run_test` exactly as in `testing.rs`.
+
+Named test entrypoints in `tests/wrap.rs`:
+
+| Test name | What it runs | Notes |
+|---|---|---|
+| `dir` | All `tests/docs/*.loft` files + HTML doc regeneration | Skips files listed in `SUITE_SKIP` |
+| `loft_suite` | All `tests/scripts/*.loft` files | — |
+| `integers` … `stress` | One `tests/scripts/` file each (16 tests) | See `script_test!` table below |
+| `last` | `tests/docs/16-parser.loft` | `#[ignore]` — run with `cargo test -- last --ignored` |
+| `threading` | `tests/docs/19-threading.loft` | — |
+| `logging` | `tests/docs/20-logging.loft` | — |
+| `file_debug` | `tests/docs/13-file.loft` with execution trace | — |
+| `parser_debug` | `tests/docs/16-parser.loft` with execution trace | `#[ignore]` — run with `cargo test -- parser_debug --ignored` |
+
+Individual script tests (generated by `script_test!` macro):
+
+| Test name | Script file |
+|---|---|
+| `integers` | `01-integers.loft` |
+| `floats` | `02-floats.loft` |
+| `text` | `03-text.loft` |
+| `booleans` | `04-booleans.loft` |
+| `control_flow` | `05-control-flow.loft` |
+| `functions` | `06-functions.loft` |
+| `structs` | `07-structs.loft` |
+| `enums` | `08-enums.loft` |
+| `vectors` | `09-vectors.loft` |
+| `collections` | `10-collections.loft` |
+| `files` | `11-files.loft` |
+| `binary` | `12-binary.loft` |
+| `binary_ops` | `13-binary-ops.loft` |
+| `formatting` | `14-formatting.loft` |
+| `script_threading` | `15-threading.loft` (named `script_threading` to avoid clash with `threading`) |
+| `stress` | `16-stress.loft` |
+
+Run any single script with `cargo test --test wrap <name>`, e.g.:
+```bash
+cargo test --test wrap files
+cargo test --test wrap collections
+```
+
+### WRAP_LOCK — serialisation guard
+
+All `#[test]` functions in `wrap.rs` acquire a process-wide `static Mutex<()>` (`WRAP_LOCK`)
+before calling `run_test`. This prevents two tests from executing the same script concurrently
+when Cargo runs the test binary with multiple threads (the default). Without this guard,
+for example, `loft_suite` and `files` would both execute `11-files.loft` at the same time,
+causing filesystem races.
+
+The lock is poisoning-tolerant (`unwrap_or_else(|e| e.into_inner())`): a panicking test
+releases the lock and the next test can proceed.
+
+### SUITE_SKIP — skipping known-broken docs files
+
+The `SUITE_SKIP` const in `tests/wrap.rs` lists `tests/docs/` files that are currently broken and
+should not block the `dir` test. The `dir` test skips any file whose name is in this list
+and prints a note explaining why:
+
+```rust
+const SUITE_SKIP: &[&str] = &[
+    "16-parser.loft", // issue 27: set_int crash (store_nr=60 in var[N] encoding)
+];
+```
+
+Both `last` and `parser_debug` also target `16-parser.loft` but are marked `#[ignore]` so
+they do not run by default. To add a new entry: append the filename and a comment with the
+issue number. Remove it once the underlying issue is fixed.
+
+### LOFT_DUMP — controlling debug output in docs/scripts tests
+
+In debug builds, `run_test` (called by `dir`, `loft_suite`, `threading`, etc.) normally
+writes a bytecode dump to `tests/dumps/<filename>.txt`. Set `LOFT_DUMP=1` in the environment
+to enable this write for non-debug (`debug=false`) test runs:
+
+```bash
+LOFT_DUMP=1 cargo test --test wrap dir   # writes bytecode dumps for every docs file
+```
+
+Without `LOFT_DUMP=1`, the dump is suppressed for the normal `dir`/`loft_suite` tests
+(only written when `debug=true`, i.e. for `file_debug` and `parser_debug`). This avoids
+writing ~20 large files during a routine `cargo test` run.
+
+
+---
+
+## `tests/docs/` — end-to-end loft files
+
+**Purpose: user documentation.** Each file produces one HTML page via `@NAME`/`@TITLE` headers and `//`-comment prose. They are also valid runnable loft programs, so `dir` both regenerates HTML docs and validates the language features shown in each page.
+
+Not connected to the `Test` builder API. The `last` test runs only the final file for fast iteration.
+
+Current docs files (21 files, `00`–`20`):
+
+| File | Topic |
+|---|---|
+| `00-general.loft` | General language features |
+| `01-keywords.loft` | Keyword coverage |
+| `02-text.loft` | Text operations |
+| `03-integer.loft` | Integer arithmetic |
+| `04-boolean.loft` | Boolean logic |
+| `05-float.loft` | Floating-point |
+| `06-function.loft` | Functions, defaults, recursion |
+| `07-vector.loft` | Vectors |
+| `08-struct.loft` | Structs |
+| `09-enum.loft` | Enums |
+| `10-sorted.loft` | Sorted collections |
+| `11-index.loft` | B-tree index |
+| `12-hash.loft` | Hash collections |
+| `13-file.loft` | File I/O |
+| `14-image.loft` | PNG images |
+| `15-lexer.loft` | Lexer/parser library use |
+| `16-parser.loft` | Parser library use |
+| `17-libraries.loft` | Library imports and extension methods |
+| `18-locks.loft` | Store locking and `const` parameters |
+| `19-threading.loft` | Parallel execution (`par(b=worker, threads)` for-loop clause) |
+| `20-logging.loft` | Runtime logging (`log_info`, `log_warn`, `log_error`, `log_fatal`) |
 
 ---
 
@@ -347,25 +490,30 @@ The `dir` test runs all files in alphabetical order and also regenerates HTML do
 ```
 tests/
   testing.rs              # Framework: Test struct, macros, Drop impl, generate_code
-  expressions.rs          # Interpreter tests: expressions, control flow
-  enums.rs                # Interpreter tests: enums
-  strings.rs              # Interpreter tests: string operations
-  objects.rs              # Interpreter tests: structs / methods
-  vectors.rs              # Interpreter tests: vector / sorted / hash
-  formatting.rs           # Interpreter tests: format specifiers
-  math.rs                 # Interpreter tests: math functions
-  sizes.rs                # Interpreter tests: struct sizes / sizeof
+  expressions.rs          # Interpreter tests: type-check, labeled loops, null returns
+  enums.rs                # Interpreter tests: complex enums, polymorphism, JSON
+  strings.rs              # Interpreter tests: complex string ops, reference params
+  objects.rs              # Interpreter tests: structs, :#format, mutable references
+  vectors.rs              # Interpreter tests: complex vector / sorted / hash
+  sizes.rs                # Interpreter tests: struct sizes / sizeof (complex layout)
   data_structures.rs      # Interpreter tests: combined data structures
-  parse_errors.rs         # Interpreter tests: expected parser errors
+  parse_errors.rs         # Interpreter tests: expected parser errors (diagnostic)
+  immutability.rs         # Interpreter tests: immutability diagnostics
+  threading.rs            # Interpreter tests: Rust-level parallel API
   expressions_auto_convert.rs  # Hand-written generated-style test (pre-generator)
-  wrap.rs                 # Suite runner + HTML doc generator
-  suite/
-    01-keywords.loft ... 16-parser.loft   # End-to-end loft programs
+  issues.rs               # Regression tests for known issues (see [PROBLEMS.md](PROBLEMS.md))
+  wrap.rs                 # Runner for docs/ and scripts/; also generates HTML docs
+  docs/
+    00-general.loft ... 20-logging.loft    # User documentation loft programs (21 files)
+    wordlist.txt                           # Edge-case string keys for 21-stress.loft
   generated/
     default.rs            # Default-library schema snapshot (no #[test])
     <file>_<name>.rs      # One file per result-bearing interpreter test
-  code/
+  dumps/
     <file>_<name>.txt     # Bytecode + trace dumps (debug, not committed)
+  scripts/
+    01-integers.loft ...  # Feature test loft programs (no HTML generation)
+    wordlist.txt          # Edge-case string keys for 16-stress.loft
 ```
 
 ---
@@ -382,7 +530,7 @@ cargo test --test enums
 # Run a specific test function:
 cargo test --test enums define_enum
 
-# Run only suite file tests:
+# Run only docs/scripts tests (wrap.rs):
 cargo test --test wrap
 
 # Full test cycle including generated tests (see Makefile):
@@ -431,14 +579,17 @@ cargo test (debug)
 
 ---
 
-## `tests/loft/` — standalone loft test suite
+## `tests/scripts/` — standalone loft test suite
 
-A second, independent test suite that runs `.loft` files directly through the `lavition` binary.
-**No `tests/code/*.txt` files and no generated Rust code are produced** — the lavition binary never
-writes debug output.
+**Purpose: feature testing.** Each file is a self-contained loft program with a `fn main()` that
+asserts correct behaviour. No HTML generation, no `@NAME`/`@TITLE` headers. Can be run directly
+through the `lavition` binary or via `cargo test --test wrap loft_suite`.
+
+In `cargo test` mode, `run_test` writes a bytecode dump to `tests/dumps/` in debug builds.
+No generated Rust code is produced.
 
 ```
-tests/loft/
+tests/scripts/
   01-integers.loft    arithmetic, bitwise, null, type conversions
   02-floats.loft      float/single arithmetic, math functions, null (NaN)
   03-text.loft        concatenation, len, indexing, slicing, UTF-8 iteration, search
@@ -449,24 +600,55 @@ tests/loft/
   08-enums.loft       plain enums, struct-enum variants, polymorphic dispatch
   09-vectors.loft     literals, append, slice, iteration, removal, #index/#first/#count
   10-collections.loft sorted, index, hash — lookup, ordered iteration, range queries
-  11-files.loft       text + binary file I/O (u8/u16/i32/long/single/float/text/vector),
-                      seek, #size set, move/delete, path safety
-  12-formatting.loft  format specifiers: integers, floats, booleans, text, long, single, vectors
+  11-files.loft       text file I/O: lines(), move/delete, path safety, file().files() listing
+                      Note: lines() test placed last to avoid Issue 29 slot overlap
+  12-binary.loft      binary file I/O: typed reads/writes (u8/u16/i32/long/single/float/text/integer-vector), endianness, mixed
+  13-binary-ops.loft  binary file operations: seek+overwrite, set_size (truncate/extend), incomplete read, size field
+  14-formatting.loft  format specifiers: integers, floats, booleans, text, long, single, vectors
+  15-threading.loft   parallel_for, fn references, worker functions
+  16-stress.loft      build-and-free cycles for all 4 collection types; reads wordlist.txt
+  wordlist.txt        edge-case string keys: fruits, short strings, alphabet, digits, spaces, duplicates
 ```
 
 Run with:
 
 ```bash
-make loft-test          # build lavition (release) then run every file
-./target/release/lavition tests/loft/07-structs.loft   # run one file
+cargo test --test wrap loft_suite   # run all tests/scripts/ files via the test framework
+make loft-test                      # build lavition (release) then run every file
+./target/release/lavition tests/scripts/07-structs.loft   # run one file
 ```
+
+The `cargo test` path uses `run_test` from `tests/wrap.rs`, which:
+- Fails on any compiler diagnostic (including warnings such as "Variable never read")
+- Writes a bytecode dump to `tests/dumps/<filename>.txt` in debug builds
+- Respects `LOFT_LOG` for the bytecode dump
 
 Each file has a `fn main()` that calls `assert(condition, message)` for every case.
 A failing assert panics and prints the message, naming the failed test.
 
+### Known language quirks affecting test authoring
+
+The following behaviours differ from what one might naively expect:
+
+| Behaviour | Correct approach |
+|---|---|
+| `for _ in text_var` → "Variable never read" warning → test fails | Use a named variable, or restructure to avoid iterating text just for a count |
+| ~~`for _ in enum_vector` → infinite loop~~ **FIXED** | `for x in v` now terminates correctly for `vector<PlainEnum>` |
+| `empty = []` → "Indexing a non vector" compile error | Use a typed one-element vector then remove it: `t = [99]; for v in t { v#remove; }` |
+| `"Purple" as Direction` returns `0`, not null sentinel `255` | Check format string: `"{bad}" == "null"` rather than `!bad` |
+| `#index` in `for i in 10..14` returns the loop variable value (10–13), not 0-based count | Use `#count` for 0-based counting; `#index == loop_var` for integer ranges |
+| Default struct integer fields are `0`, not null | Assert `== 0`, not `== null` |
+| Same variable name in multiple sequential `{ }` blocks: `validate_slots` exempts same-name+same-slot pairs (Issue 28, fixed) | Both same-name and different-name sequential blocks now work |
+| Two *differently-named* reference/vector/text variables in a long function that share a slot and have overlapping `first_def`/`last_use` intervals trigger a false `validate_slots` panic (Issue 29, unfixed) | Order the code so the second variable is introduced after the last use of the first; see `11-files.loft` (`lines()` test placed last) |
+| `to_uppercase` / `to_lowercase` / `replace` return `Str` (16 bytes), not `String` (24 bytes) | Use `stores.scratch` pattern (see [INTERNALS.md](INTERNALS.md)) |
+| `for r in sorted if cond { r#remove; }` with large N gives silently wrong results | Use key-null removal: `for i in 0..N { sdb[i] = null; }` (PROBLEMS #33) |
+| `for r in index_var { r#remove; }` with large N panics "Unknown record" | Avoid loop-remove on index; use key-null or let scope exit reclaim memory (PROBLEMS #35) |
+| `for i in 0..N { idx[i, name] = null; }` leaves 1 record behind (large N) | Use loop `#remove` for small collections; for large N let scope exit reclaim (PROBLEMS #34) |
+| `long` is a reserved type keyword — `long = "..."` fails with "Not implemented operation = for type null" | Use a different variable name (e.g. `alphabet`, `longstr`) |
+
 ---
 
-## Debugging failures in `tests/loft/`
+## Debugging failures in `tests/scripts/` {#debugging-failures-in-testsscripts}
 
 ### Strategy overview
 
@@ -506,8 +688,8 @@ instead of a silent crash:
 
 ```bash
 cargo build --bin lavition          # debug build, slower but safer
-./target/debug/lavition tests/loft/08-enums.loft
-RUST_BACKTRACE=1 ./target/debug/lavition tests/loft/08-enums.loft
+./target/debug/lavition tests/scripts/08-enums.loft
+RUST_BACKTRACE=1 ./target/debug/lavition tests/scripts/08-enums.loft
 ```
 
 Common causes:
@@ -559,8 +741,32 @@ may resolve `key` to the wrong field number for one of the lookups.
 
 Fix: use distinct field names, or place conflicting struct definitions in separate test files.
 
+#### Compile error — "Cannot add elements to '...' while it is being iterated"
+
+```
+Error: Cannot add elements to 'v' while it is being iterated — use a separate collection or add after the loop
+Error: Cannot add elements to a collection while it is being iterated — use a separate collection or add after the loop
+```
+
+This is a deliberate compile-time guard. Appending to a collection during iteration is
+unsafe: vectors re-read their length on every step (so new elements are visited, risking
+an infinite loop), and sorted/index insertions corrupt stored iterator positions.
+
+**Fix options:**
+- Collect additions in a separate variable and append after the loop: `extra = []; ... for e in v { ... extra += [x]; } v += extra;`
+- Remove elements during iteration with `e#remove` in a filtered loop — this is the one safe in-loop mutation.
+
+**Scope:** The guard covers both direct variable mutations (`v += x`) and field-access
+mutations (`db.items += x`) as of 2026-03-14.
+
 #### Wrong iteration order in sorted/index
 
 Verify the sort direction: `-field` means **descending**, `field` means **ascending**.
 A mismatch between the declared direction and the expected order is the most common mistake.
 Trace the expected element sequence manually before writing the assert.
+
+---
+
+## See also
+- [PROBLEMS.md](PROBLEMS.md) — Known bugs, limitations, workarounds, and fix plans
+- [QUICK_START.md](QUICK_START.md) — Compact orientation: execution path, key data structures, conventions

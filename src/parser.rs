@@ -8,12 +8,12 @@
 #![allow(clippy::cast_sign_loss)]
 
 use crate::data::{
-    Argument, Data, DefType, I32, Type, Value, to_default, v_block, v_if, v_loop, v_set,
+    Argument, Context, Data, DefType, I32, Type, Value, to_default, v_block, v_if, v_loop, v_set,
 };
 use crate::database::{Parts, Stores};
 use crate::diagnostics::{Diagnostics, Level, diagnostic_format};
-use crate::lexer::{LexItem, LexResult, Lexer, Link, Mode};
-use crate::variables::Function;
+use crate::lexer::{LexItem, LexResult, Lexer, Link, Mode, Position};
+use crate::variables::{Function, size as var_size};
 use crate::{scopes, typedef};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::env;
@@ -30,6 +30,10 @@ is used a next worker variable is needed.
 This number indicated the depth of these expressions, not the number of these expressions in a
 function.
 */
+// The parser holds several independent boolean mode flags (in_loop, default, first_pass,
+// reverse_iterator) that each track a distinct parse phase or context.  Combining them into
+// an enum or state machine would add complexity without benefit.
+#[allow(clippy::struct_excessive_bools)]
 pub struct Parser {
     pub todo_files: Vec<(String, u16)>,
     /// All definitions
@@ -58,6 +62,9 @@ pub struct Parser {
     /// The second pass:
     /// - Creates code, assumes that all types are known.
     first_pass: bool,
+    /// Set by `parse_in_range` when `rev(collection)` (without a `..` range) is parsed.
+    /// Consumed by `fill_iter` to add the reverse bit (64) into the `on` byte of OpIterate/OpStep.
+    reverse_iterator: bool,
     vars: Function,
     /// Last seen line inside the source code, an increase inserts it in the internal code.
     line: u32,
@@ -65,6 +72,7 @@ pub struct Parser {
 
 // Operators ordered on their precedence
 static OPERATORS: &[&[&str]] = &[
+    &["??"],
     &["||", "or"],
     &["&&", "and"],
     &["==", "!=", "<", "<=", ">", ">="],
@@ -78,7 +86,7 @@ static OPERATORS: &[&[&str]] = &[
 ];
 
 static SKIP_TOKEN: [&str; 8] = ["}", ".", "<", ">", "^", "+", "-", "#"];
-static SKIP_WIDTH: [&str; 8] = ["}", ".", "x", "X", "o", "b", "e", "j"];
+static SKIP_WIDTH: [&str; 10] = ["}", ".", "x", "X", "o", "b", "e", "j", "d", "f"];
 
 struct OutputState<'a> {
     radix: i32,
@@ -165,6 +173,7 @@ impl Parser {
             default: false,
             context: u32::MAX,
             first_pass: true,
+            reverse_iterator: false,
             vars: Function::new("", "none"),
             line: 0,
             lib_dirs: Vec::new(),
@@ -238,7 +247,7 @@ impl Parser {
         } else {
             f
         };
-        let to = format!("tests/code/{file}.txt");
+        let to = format!("tests/dumps/{file}.txt");
         if let Ok(mut w) = File::create(to.clone()) {
             let to = self.database.types.len();
             for tp in types..to {
@@ -289,6 +298,7 @@ impl Parser {
     /// The iterable expression is in *code.
     /// Creating the iterator will be in *code afterward.
     /// Return the next expression; with `Value::None` the iterator creation was impossible.
+    #[allow(clippy::large_types_passed_by_value)] // Option<u16> is Copy; ref adds noise at all call sites
     fn iterator(
         &mut self,
         code: &mut Value,
@@ -334,6 +344,7 @@ impl Parser {
             return orig;
         }
         if self.first_pass {
+            self.reverse_iterator = false;
             return Value::Null;
         }
         if let Type::Iterator(_, _) = should {
@@ -389,6 +400,9 @@ impl Parser {
                     let iter_expr = self.cl("OpIterate", &ls);
                     let mut ls = vec![Value::Var(iter_var)];
                     self.fill_iter(&mut ls, code, is_type, false, true);
+                    // Reset the reverse flag after both fill_iter calls so the second call
+                    // also picks up the bit (fill_iter does not reset it itself).
+                    self.reverse_iterator = false;
                     let next_expr = self.cl("OpStep", &ls);
                     *code = v_set(iter_var, iter_expr);
                     return next_expr;
@@ -414,6 +428,11 @@ impl Parser {
     fn convert(&mut self, code: &mut Value, is_type: &Type, should: &Type) -> bool {
         if is_type.is_equal(should) {
             return true;
+        }
+        // Struct-literal inline constructors are typed as Rewritten(Reference(...)); strip
+        // the wrapper so method calls chained on the constructor are accepted correctly.
+        if let Type::Rewritten(inner) = is_type {
+            return self.convert(code, inner, should);
         }
         if let (Type::Reference(ref_tp, _), Type::Enum(enum_tp, true, _)) = (is_type, should) {
             for a in &self.data.def(*enum_tp).attributes {
@@ -1155,7 +1174,7 @@ impl Parser {
         }
         // - extra library directories from --lib / --project command-line flags
         if !std::path::Path::new(&f).exists() {
-            for l in &self.lib_dirs.clone() {
+            for l in &self.lib_dirs {
                 let candidate = format!("{l}/{id}.loft");
                 if std::path::Path::new(&candidate).exists() {
                     f = candidate;
@@ -1251,26 +1270,83 @@ impl Parser {
             }
             let fn_nr = self.data.add_fn(&mut self.lexer, &name, &args);
             self.context = fn_nr;
+            self.vars = Function::new(&name, &self.data.def(from_nr).position.file);
             self.data
                 .set_returned(fn_nr, self.data.def(from_nr).returned.clone());
-            for a in args {
+            for a in &args {
                 let v_nr = self.create_var(&a.name, &a.typedef);
                 if v_nr != u16::MAX {
                     self.vars.become_argument(v_nr);
                 }
             }
+            // Build forwarding args for extra (non-self) attributes (e.g. RefVar(Text) buffers).
+            // Variant calls must write into the dispatcher's own text-buffer argument, not a
+            // freshly-allocated work_text that has no stack slot yet.
+            let mut extra_call_args: Vec<Value> = Vec::new();
+            let mut extra_call_types: Vec<Type> = Vec::new();
+            for a in &args[1..] {
+                let v = self.vars.var(&a.name);
+                if v != u16::MAX {
+                    extra_call_args.push(Value::Var(v));
+                    extra_call_types.push(a.typedef.clone());
+                }
+            }
             let mut ls = Vec::new();
             let get_enum = self.cl("OpGetEnum", &[Value::Var(0), Value::Int(0)]);
             let get_int = self.cl("OpConvIntFromEnum", &[get_enum]);
-            self.enum_numbers(nrs, &name, &mut ls, &get_int);
+            self.enum_numbers(
+                nrs.clone(),
+                &name,
+                &mut ls,
+                &get_int,
+                &extra_call_args,
+                &extra_call_types,
+            );
             ls.push(Value::Null);
             self.data.definitions[fn_nr as usize].code =
                 v_block(ls, self.data.def(from_nr).returned.clone(), "dynamic_fn");
             self.data.definitions[self.context as usize].variables = self.vars.clone();
+            // Warn about enum variants that have no implementation for this function.
+            let implemented: HashSet<u32> = nrs
+                .iter()
+                .filter_map(|nr| {
+                    if let Type::Reference(a_nr, _) =
+                        self.data.def(*nr as u32).attributes[0].typedef
+                    {
+                        Some(a_nr)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            let missing: Vec<(String, Position)> = self
+                .data
+                .definitions
+                .iter()
+                .enumerate()
+                .filter(|(_, v)| v.def_type == DefType::EnumValue && v.parent == e_nr)
+                .filter(|(v_nr, _)| !implemented.contains(&(*v_nr as u32)))
+                .map(|(_, v)| (v.name.clone(), v.position.clone()))
+                .collect();
+            for (variant_name, pos) in &missing {
+                self.lexer.pos_diagnostic(
+                    Level::Warning,
+                    pos,
+                    &format!("Warning: no implementation of '{name}' for variant '{variant_name}'"),
+                );
+            }
         }
     }
 
-    fn enum_numbers(&mut self, nrs: Vec<usize>, name: &str, ls: &mut Vec<Value>, get_int: &Value) {
+    fn enum_numbers(
+        &mut self,
+        nrs: Vec<usize>,
+        name: &str,
+        ls: &mut Vec<Value>,
+        get_int: &Value,
+        extra_args: &[Value],
+        extra_types: &[Type],
+    ) {
         for nr in nrs {
             let d_nr = nr as u32;
             let a_nr = if let Type::Reference(nr, _) = self.data.def(d_nr).attributes[0].typedef {
@@ -1283,14 +1359,13 @@ impl Parser {
             } else {
                 0
             };
+            let self_type = self.data.def(d_nr).attributes[0].typedef.clone();
+            let mut call_args = vec![Value::Var(0)];
+            call_args.extend_from_slice(extra_args);
+            let mut call_types = vec![self_type];
+            call_types.extend_from_slice(extra_types);
             let mut code = Value::Null;
-            self.call(
-                &mut code,
-                u16::MAX,
-                name,
-                &[Value::Var(0)],
-                &[self.data.def(d_nr).attributes[0].typedef.clone()],
-            );
+            self.call(&mut code, u16::MAX, name, &call_args, &call_types);
             let ret_call = v_block(
                 vec![Value::Return(Box::new(code.clone()))],
                 Type::Void,
@@ -1535,24 +1610,25 @@ impl Parser {
         }
     }
 
-    /// After parsing a function body, check that each `&` (RefVar) argument is actually
+    /// After parsing a function body, check that each `&` (`RefVar`) argument is actually
     /// mutated somewhere in the body. If not, emit a compile error suggesting to drop the `&`.
     fn check_ref_mutations(&mut self, arguments: &[Argument]) {
         let code = self.data.def(self.context).code.clone();
         let mut written: HashSet<u16> = HashSet::new();
         find_written_vars(&code, &self.data, &mut written);
         for (a_nr, a) in arguments.iter().enumerate() {
-            if matches!(a.typedef, Type::RefVar(_)) && !a.constant {
-                if !written.contains(&(a_nr as u16)) {
-                    let src = self.vars.var_source(a_nr as u16);
-                    self.lexer.to(&src);
-                    diagnostic!(
-                        self.lexer,
-                        Level::Error,
-                        "Parameter '{}' has & but is never modified; remove the &",
-                        a.name
-                    );
-                }
+            if matches!(a.typedef, Type::RefVar(_))
+                && !a.constant
+                && !written.contains(&(a_nr as u16))
+            {
+                let src = self.vars.var_source(a_nr as u16);
+                self.lexer.to(&src);
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Parameter '{}' has & but is never modified; remove the &",
+                    a.name
+                );
             }
         }
     }
@@ -1642,7 +1718,18 @@ impl Parser {
             }
         }
         if !self.first_pass {
-            self.vars.test_used(&mut self.lexer, &self.data);
+            // Stub functions with an empty body `{ }` and a `self` parameter are intentional
+            // skips (e.g. to silence the "no implementation for variant" warning).
+            // Don't warn about unused parameters in that case.
+            let is_stub = {
+                let def = &self.data.definitions[self.context as usize];
+                let body_empty = matches!(&def.code, Value::Block(bl) if bl.operators.is_empty());
+                let first_is_self = def.attributes.first().is_some_and(|a| a.name == "self");
+                body_empty && first_is_self
+            };
+            if !is_stub {
+                self.vars.test_used(&mut self.lexer, &self.data);
+            }
         }
         self.lexer.has_token(";");
         self.parse_rust();
@@ -2351,22 +2438,12 @@ impl Parser {
             if op == "="
                 && let Value::Var(v_nr) = code
                 && !self.first_pass
+                && self.vars.exists(*v_nr)
             {
                 self.vars.defined(*v_nr);
             }
             if self.lexer.has_token(op) {
-                let var_nr = if let Value::Var(v_nr) = *code {
-                    v_nr
-                } else if op == "+=" && matches!(f_type, Type::Text(_)) {
-                    let v = self
-                        .vars
-                        .unique("field", &Type::Text(vec![]), &mut self.lexer);
-                    *code = Value::Var(v);
-                    parent_tp = Type::Null;
-                    v
-                } else {
-                    u16::MAX
-                };
+                let var_nr = self.assign_var_nr(code, op, &f_type, &mut parent_tp);
                 // Handle `f += X` for File variables before type-changing logic.
                 if op == "+="
                     && self.is_file_var_type(&f_type)
@@ -2375,6 +2452,49 @@ impl Parser {
                     self.append_to_file(code, file_v);
                     return Type::Void;
                 }
+                // Guard: forbid adding elements to a collection that is currently
+                // being iterated by a surrounding for-loop.  Adding elements during
+                // iteration is never safe:
+                //   • vector   — get_vector re-reads the length each step, so new
+                //                elements ARE visited, risking an infinite loop.
+                //   • sorted   — insertions shift positions in the backing array,
+                //                corrupting the pre-computed finish boundary.
+                //   • index    — B-tree insertions trigger rotations/splits; stored
+                //                record numbers become stale.
+                // Use `e#remove` (which adjusts the iterator) for safe removal.
+                if !self.first_pass
+                    && op == "+="
+                    && matches!(
+                        f_type,
+                        Type::Vector(_, _)
+                            | Type::Sorted(_, _, _)
+                            | Type::Index(_, _, _)
+                            | Type::Spacial(_, _, _)
+                    )
+                {
+                    if let Value::Var(lhs_nr) = to
+                        && self.vars.is_iterated_var(lhs_nr)
+                    {
+                        diagnostic!(
+                            self.lexer,
+                            Level::Error,
+                            "Cannot add elements to '{}' while it is being iterated — \
+use a separate collection or add after the loop",
+                            self.vars.name(lhs_nr)
+                        );
+                    } else if !matches!(to, Value::Var(_))
+                        && self.vars.is_iterated_value(&to)
+                    {
+                        diagnostic!(
+                            self.lexer,
+                            Level::Error,
+                            "Cannot add elements to a collection while it is being iterated — \
+use a separate collection or add after the loop"
+                        );
+                    }
+                }
+                // Save parent struct type before the RHS parse overwrites parent_tp.
+                let lhs_parent_tp = parent_tp.clone();
                 let mut s_type = self.parse_operators(&f_type, code, &mut parent_tp, 0);
                 if let Type::Rewritten(tp) = s_type {
                     s_type = *tp;
@@ -2387,13 +2507,54 @@ impl Parser {
                     self.assign_text(code, &s_type, &to, op, var_nr);
                     return Type::Void;
                 }
-                if let Type::RefVar(t) = &f_type
-                    && matches!(**t, Type::Text(_))
-                {
-                    self.append_to_text(code, op, var_nr, &s_type);
+                if self.assign_refvar_text(code, &f_type, &s_type, op, var_nr) {
+                    return Type::Void;
+                }
+                if self.assign_refvar_vector(code, &f_type, op, var_nr) {
                     return Type::Void;
                 }
                 if var_nr != u16::MAX && self.create_vector(code, &f_type, op, var_nr) {
+                    return Type::Void;
+                }
+                // `lhs += other_vec` where both sides are vectors: append all elements
+                // in-place via OpAppendVector.  This handles both variable LHS (a += more)
+                // and field LHS (bx.pts += more) — both produce a DbRef as their first arg.
+                if !self.first_pass
+                    && op == "+="
+                    && let Type::Vector(elm_tp, _) = &f_type.clone()
+                    && matches!(s_type, Type::Vector(_, _))
+                    && !matches!(code, Value::Insert(_))
+                {
+                    let rec_tp =
+                        i32::from(self.data.def(self.data.type_def_nr(elm_tp)).known_type);
+                    *code = Value::Insert(vec![self.cl(
+                        "OpAppendVector",
+                        &[to.clone(), code.clone(), Value::Int(rec_tp)],
+                    )]);
+                    return Type::Void;
+                }
+                // Scalar `field += elem` where field is a vector field (var_nr == u16::MAX).
+                // Route through new_record so that a null vector field is allocated in place,
+                // the same as `field += [elem]` (bracket form) does via parse_vector.
+                if !self.first_pass
+                    && var_nr == u16::MAX
+                    && op == "+="
+                    && self.is_field(&to)
+                    && let Type::Vector(elm_tp, _) = &f_type
+                    && !matches!(code, Value::Insert(_))
+                {
+                    let elm_tp = (**elm_tp).clone();
+                    let elm = self.unique_elm_var(&lhs_parent_tp, &elm_tp, u16::MAX);
+                    let scalar = code.clone();
+                    let ls = self.new_record(
+                        &mut to.clone(),
+                        &lhs_parent_tp,
+                        elm,
+                        u16::MAX,
+                        &[scalar],
+                        &elm_tp,
+                    );
+                    *code = Value::Insert(ls);
                     return Type::Void;
                 }
                 // Auto-convert integer to long for a long-typed LHS assignment.
@@ -2405,33 +2566,31 @@ impl Parser {
                     *code = self.cl("OpConvLongFromInt", std::slice::from_ref(code));
                 }
                 // Validate d#lock = <expr> assignments.
-                if !self.first_pass {
-                    if let Value::Call(lock_nr, lock_args) = &to
-                        && self.data.def(*lock_nr).name == "n_get_store_lock"
+                if !self.first_pass
+                    && let Value::Call(lock_nr, lock_args) = &to
+                    && self.data.def(*lock_nr).name == "n_get_store_lock"
+                {
+                    // Only constant boolean literals are allowed.
+                    if !matches!(code, Value::Boolean(_)) {
+                        diagnostic!(
+                            self.lexer,
+                            Level::Error,
+                            "d#lock can only be assigned a constant boolean (true or false)"
+                        );
+                        return Type::Void;
+                    }
+                    // Setting a const variable's lock to false is illegal.
+                    if matches!(code, Value::Boolean(false))
+                        && let Some(Value::Var(v_nr)) = lock_args.first()
+                        && self.vars.is_const_param(*v_nr)
                     {
-                        // Only constant boolean literals are allowed.
-                        if !matches!(code, Value::Boolean(_)) {
-                            diagnostic!(
-                                self.lexer,
-                                Level::Error,
-                                "d#lock can only be assigned a constant boolean (true or false)"
-                            );
-                            return Type::Void;
-                        }
-                        // Setting a const variable's lock to false is illegal.
-                        if matches!(code, Value::Boolean(false)) {
-                            if let Some(Value::Var(v_nr)) = lock_args.first() {
-                                if self.vars.is_const_param(*v_nr) {
-                                    diagnostic!(
-                                        self.lexer,
-                                        Level::Error,
-                                        "Cannot unlock const variable '{}' via d#lock = false",
-                                        self.vars.name(*v_nr)
-                                    );
-                                    return Type::Void;
-                                }
-                            }
-                        }
+                        diagnostic!(
+                            self.lexer,
+                            Level::Error,
+                            "Cannot unlock const variable '{}' via d#lock = false",
+                            self.vars.name(*v_nr)
+                        );
+                        return Type::Void;
                     }
                 }
                 if !matches!(code, Value::Insert(_)) {
@@ -2450,7 +2609,8 @@ impl Parser {
             diagnostic!(
                 self.lexer,
                 Level::Error,
-                "Cannot modify const parameter '{}'",
+                "Cannot modify {} '{}'",
+                self.vars.const_kind(var_nr),
                 self.vars.name(var_nr)
             );
         }
@@ -2476,6 +2636,83 @@ impl Parser {
             rhs_type = *tp;
         }
         *code = self.write_to_file(file_v, rhs_code, &rhs_type);
+    }
+
+    /// Determine the variable number for an assignment target.
+    /// For text `+=`, creates a unique temporary variable.
+    fn assign_var_nr(
+        &mut self,
+        code: &mut Value,
+        op: &str,
+        f_type: &Type,
+        parent_tp: &mut Type,
+    ) -> u16 {
+        if let Value::Var(v_nr) = *code {
+            v_nr
+        } else if op == "+=" && matches!(f_type, Type::Text(_)) {
+            let v = self
+                .vars
+                .unique("field", &Type::Text(vec![]), &mut self.lexer);
+            *code = Value::Var(v);
+            *parent_tp = Type::Null;
+            v
+        } else {
+            u16::MAX
+        }
+    }
+
+    /// Handle assignment into a `RefVar(Text)` target; returns true if handled.
+    fn assign_refvar_text(
+        &mut self,
+        code: &mut Value,
+        f_type: &Type,
+        s_type: &Type,
+        op: &str,
+        var_nr: u16,
+    ) -> bool {
+        let Type::RefVar(t) = f_type else {
+            return false;
+        };
+        if !matches!(**t, Type::Text(_)) {
+            return false;
+        }
+        self.append_to_text(code, op, var_nr, s_type);
+        true
+    }
+
+    /// Handle `v += expr` where `v: &vector<T>`; returns true if handled.
+    /// NOTE: does NOT intercept `Value::Insert` — bracket-form `[elem]` literals are already
+    /// handled by the Insert-expansion in `parse_block` → `OpFinishRecord`.
+    fn assign_refvar_vector(
+        &mut self,
+        code: &mut Value,
+        f_type: &Type,
+        op: &str,
+        var_nr: u16,
+    ) -> bool {
+        let Type::RefVar(inner) = f_type else {
+            return false;
+        };
+        let Type::Vector(elm_tp, _) = inner.as_ref() else {
+            return false;
+        };
+        if op != "+=" {
+            return false;
+        }
+        // Bracket-form [elem] and vector comprehensions produce Insert/Block; leave those
+        // to the existing parse_block expansion path which uses OpFinishRecord.
+        if matches!(code, Value::Insert(_) | Value::Block(_)) {
+            return false;
+        }
+        if self.first_pass {
+            return true;
+        }
+        let rec_tp = i32::from(self.data.def(self.data.type_def_nr(elm_tp)).known_type);
+        *code = self.cl(
+            "OpAppendVector",
+            &[Value::Var(var_nr), code.clone(), Value::Int(rec_tp)],
+        );
+        true
     }
 
     fn validate_write(&mut self, to: &Value, parent_tp: &Type) {
@@ -2507,6 +2744,15 @@ impl Parser {
     }
 
     fn assign_text(&mut self, code: &mut Value, tp: &Type, to: &Value, op: &str, var_nr: u16) {
+        if !self.first_pass && var_nr != u16::MAX && self.vars.is_const_param(var_nr) {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "Cannot modify {} '{}'",
+                self.vars.const_kind(var_nr),
+                self.vars.name(var_nr)
+            );
+        }
         if let Value::Call(_, parms) = to.clone() {
             if op == "=" {
                 let mut p = parms.clone();
@@ -2544,6 +2790,15 @@ impl Parser {
 
     fn create_vector(&mut self, code: &mut Value, f_type: &Type, op: &str, var_nr: u16) -> bool {
         if let (Value::Insert(ls), Type::Vector(tp, _)) = (code, f_type) {
+            if !self.first_pass && self.vars.is_const_param(var_nr) {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Cannot modify {} '{}'",
+                    self.vars.const_kind(var_nr),
+                    self.vars.name(var_nr)
+                );
+            }
             if op == "=" {
                 for (s_nr, s) in self.vector_db(tp, var_nr).iter().enumerate() {
                     ls.insert(s_nr, s.clone());
@@ -2575,6 +2830,27 @@ impl Parser {
     /** Mutate current code when it reads a value into writing it. This is needed for assignments.
      */
     fn towards_set(&mut self, to: &Value, val: &Value, f_type: &Type, op: &str) -> Value {
+        // Intercept `h[key] = null` → remove the key from hash/index/sorted
+        if !self.first_pass
+            && *val == Value::Null
+            && op == "="
+            && let Value::Call(get_nr, get_args) = to
+            && self.data.def(*get_nr).name == "OpGetRecord"
+            && let Some(Value::Int(db_tp_val)) = get_args.get(1)
+            && (*db_tp_val as usize) < self.database.types.len()
+            && matches!(
+                self.database.types[*db_tp_val as usize].parts,
+                Parts::Hash(_, _) | Parts::Index(_, _, _) | Parts::Sorted(_, _)
+            )
+        {
+            let db_tp = *db_tp_val;
+            let get_args = get_args.clone();
+            let get_rec = self.cl("OpGetRecord", &get_args);
+            return self.cl(
+                "OpHashRemove",
+                &[get_args[0].clone(), get_rec, Value::Int(db_tp)],
+            );
+        }
         if matches!(f_type, Type::Enum(_, true, _) | Type::Reference(_, _))
             && op == "="
             && !matches!(to, Value::Var(_))
@@ -2590,6 +2866,15 @@ impl Parser {
                 | Type::Spacial(_, _, _)
         ) {
             if let Value::Var(nr) = to {
+                if !self.first_pass && self.vars.is_const_param(*nr) {
+                    diagnostic!(
+                        self.lexer,
+                        Level::Error,
+                        "Cannot modify {} '{}'",
+                        self.vars.const_kind(*nr),
+                        self.vars.name(*nr)
+                    );
+                }
                 return v_set(*nr, val.clone());
             }
             return val.clone();
@@ -2619,84 +2904,18 @@ impl Parser {
                 &[args[0].clone(), args[1].clone(), args[2].clone(), conv],
             );
         }
-        let code = if op == "=" {
-            val.clone()
-        } else if op == ">" {
-            self.op("Lt", val.clone(), to.clone(), f_type.clone())
-        } else if op == ">=" {
-            self.op("Le", val.clone(), to.clone(), f_type.clone())
-        } else {
-            self.op(rename(op), to.clone(), val.clone(), f_type.clone())
-        };
+        let code = self.compute_op_code(op, to, val, f_type);
         if let Value::Call(d_nr, args) = &to {
-            let name = &self.data.def(*d_nr).name as &str;
-            match name {
-                "OpGetInt" => self.cl("OpSetInt", &[args[0].clone(), args[1].clone(), code]),
-                "OpGetByte" => self.cl(
-                    "OpSetByte",
-                    &[args[0].clone(), args[1].clone(), args[2].clone(), code],
-                ),
-                "OpGetEnum" => self.cl("OpSetEnum", &[args[0].clone(), args[1].clone(), code]),
-                "OpGetShort" => self.cl(
-                    "OpSetShort",
-                    &[args[0].clone(), args[1].clone(), args[2].clone(), code],
-                ),
-                "OpGetLong" => {
-                    // Check if this is the 'next' field of a File (offset 16)
-                    if args[1] == Value::Int(16)
-                        && let Value::Var(v_nr) = &args[0]
-                        && self.is_file_var(*v_nr)
-                    {
-                        // f#next = pos: seek the file AND update the field
-                        let seek = self.cl("OpSeekFile", &[args[0].clone(), code.clone()]);
-                        let set = self.cl(
-                            "OpSetLong",
-                            &[args[0].clone(), args[1].clone(), code.clone()],
-                        );
-                        return Value::Insert(vec![seek, set]);
-                    }
-                    self.cl("OpSetLong", &[args[0].clone(), args[1].clone(), code])
-                }
-                "OpGetFloat" => self.cl("OpSetFloat", &[args[0].clone(), args[1].clone(), code]),
-                "OpGetSingle" => self.cl("OpSetSingle", &[args[0].clone(), args[1].clone(), code]),
-                "OpGetField" => code.clone(),
-                "n_get_store_lock" => {
-                    // d#lock = val: set the lock state of the store.
-                    // Validation (constant boolean, const-var restriction) is enforced
-                    // in parse_assign before towards_set is called.
-                    self.cl("n_set_store_lock", &[args[0].clone(), code])
-                }
-                "OpSizeFile" => {
-                    // f#size = n: truncate or extend the file to n bytes.
-                    // Delegate to the loft-level set_file_size(file, n) which validates
-                    // the format and sign, then calls OpTruncateFile.
-                    let fn_nr = self.data.def_nr("n_set_file_size");
-                    if fn_nr != u32::MAX {
-                        Value::Call(fn_nr, vec![args[0].clone(), code])
-                    } else {
-                        if !self.first_pass {
-                            diagnostic!(
-                                self.lexer,
-                                Level::Error,
-                                "set_file_size is not defined"
-                            );
-                        }
-                        Value::Null
-                    }
-                }
-                _ => {
-                    if !self.first_pass {
-                        diagnostic!(self.lexer, Level::Error, "Unknown {op} for {name}");
-                    }
-                    Value::Null
-                }
-            }
+            let name = self.data.def(*d_nr).name.clone();
+            let args = args.clone();
+            self.call_to_set_op(&name, &args, code, op)
         } else if let Value::Var(nr) = to {
             if !self.first_pass && self.vars.is_const_param(*nr) {
                 diagnostic!(
                     self.lexer,
                     Level::Error,
-                    "Cannot modify const parameter '{}'",
+                    "Cannot modify {} '{}'",
+                    self.vars.const_kind(*nr),
                     self.vars.name(*nr)
                 );
             }
@@ -2713,6 +2932,75 @@ impl Parser {
                 );
             }
             Value::Null
+        }
+    }
+
+    /// Compute the RHS value after applying `op` to `to` and `val`.
+    fn compute_op_code(&mut self, op: &str, to: &Value, val: &Value, f_type: &Type) -> Value {
+        if op == "=" {
+            val.clone()
+        } else if op == ">" {
+            self.op("Lt", val.clone(), to.clone(), f_type.clone())
+        } else if op == ">=" {
+            self.op("Le", val.clone(), to.clone(), f_type.clone())
+        } else {
+            self.op(rename(op), to.clone(), val.clone(), f_type.clone())
+        }
+    }
+
+    /// Dispatch an `OpGetX` getter name to the corresponding `OpSetX` setter call.
+    fn call_to_set_op(&mut self, name: &str, args: &[Value], code: Value, op: &str) -> Value {
+        match name {
+            "OpGetInt" => self.cl("OpSetInt", &[args[0].clone(), args[1].clone(), code]),
+            "OpGetByte" => self.cl(
+                "OpSetByte",
+                &[args[0].clone(), args[1].clone(), args[2].clone(), code],
+            ),
+            "OpGetEnum" => self.cl("OpSetEnum", &[args[0].clone(), args[1].clone(), code]),
+            "OpGetShort" => self.cl(
+                "OpSetShort",
+                &[args[0].clone(), args[1].clone(), args[2].clone(), code],
+            ),
+            "OpGetLong" => {
+                // f#next = pos: seek the file AND update the stored field.
+                if args[1] == Value::Int(16)
+                    && let Value::Var(v_nr) = &args[0]
+                    && self.is_file_var(*v_nr)
+                {
+                    let seek = self.cl("OpSeekFile", &[args[0].clone(), code.clone()]);
+                    let set = self.cl(
+                        "OpSetLong",
+                        &[args[0].clone(), args[1].clone(), code.clone()],
+                    );
+                    return Value::Insert(vec![seek, set]);
+                }
+                self.cl("OpSetLong", &[args[0].clone(), args[1].clone(), code])
+            }
+            "OpGetFloat" => self.cl("OpSetFloat", &[args[0].clone(), args[1].clone(), code]),
+            "OpGetSingle" => self.cl("OpSetSingle", &[args[0].clone(), args[1].clone(), code]),
+            "OpGetField" => code,
+            "n_get_store_lock" => {
+                // d#lock = val — validation enforced in parse_assign before this call.
+                self.cl("n_set_store_lock", &[args[0].clone(), code])
+            }
+            "OpSizeFile" => {
+                // f#size = n: delegate to set_file_size which validates format and sign.
+                let fn_nr = self.data.def_nr("t_4File_set_file_size");
+                if fn_nr == u32::MAX {
+                    if !self.first_pass {
+                        diagnostic!(self.lexer, Level::Error, "set_file_size is not defined");
+                    }
+                    Value::Null
+                } else {
+                    Value::Call(fn_nr, vec![args[0].clone(), code])
+                }
+            }
+            _ => {
+                if !self.first_pass {
+                    diagnostic!(self.lexer, Level::Error, "Unknown {op} for {name}");
+                }
+                Value::Null
+            }
         }
     }
 
@@ -2866,6 +3154,10 @@ impl Parser {
                         return self.parse_append_text(code, &current_type, &ls, orig_var);
                     } else if matches!(current_type, Type::Vector(_, _)) {
                         return self.parse_append_vector(code, &current_type, &ls, orig_var);
+                    } else if let Type::RefVar(inner) = &current_type
+                        && matches!(**inner, Type::Vector(_, _))
+                    {
+                        return self.parse_append_vector(code, inner, &ls, orig_var);
                     }
                 }
                 return current_type;
@@ -2919,7 +3211,35 @@ impl Parser {
         ctp: &mut Type,
         operator: &str,
     ) -> Option<Type> {
-        if operator == "as" {
+        if operator == "??" {
+            // Null-coalescing: `x ?? default` evaluates to `x` if x is not null,
+            // otherwise to `default`.  Compiles as: if (x != null_sentinel) { x } else { default }.
+            // Note: `x` is evaluated twice for non-trivial expressions (known V1 limitation).
+            // Returns None so the outer loop in parse_operators continues, allowing chaining.
+            let lhs_type = ctp.clone();
+            let mut rhs = Value::Null;
+            let rhs_type = self.parse_operators(var_tp, &mut rhs, parent_tp, precedence + 1);
+            self.known_var_or_type(&rhs);
+            if matches!(lhs_type, Type::Null) {
+                // LHS is an untyped null literal: always use the RHS.
+                *code = rhs;
+                *ctp = rhs_type;
+            } else {
+                if !self.convert(&mut rhs, &rhs_type, &lhs_type) && !self.first_pass {
+                    self.can_convert(&rhs_type, &lhs_type);
+                }
+                let lhs = code.clone();
+                let mut null_check = code.clone();
+                self.call_op(
+                    &mut null_check,
+                    "!=",
+                    &[lhs.clone(), Value::Null],
+                    &[lhs_type.clone(), Type::Null],
+                );
+                *code = v_if(null_check, lhs, rhs);
+                *ctp = lhs_type;
+            }
+        } else if operator == "as" {
             if let Some(tps) = self.lexer.has_identifier() {
                 let Some(tp) = self.parse_type(u32::MAX, &tps, false) else {
                     diagnostic!(self.lexer, Level::Error, "Expect type");
@@ -3025,6 +3345,11 @@ impl Parser {
             for e in elms {
                 ls.push(e.clone());
             }
+            orig_var
+        } else if matches!(self.vars.tp(orig_var), Type::RefVar(t) if matches!(**t, Type::Vector(_, _)))
+        {
+            // RefVar(Vector): append directly without an identity Set(v, Var(v)).
+            // find_written_vars detects the write via the OpAppendVector in the parts loop.
             orig_var
         } else {
             ls.push(v_set(orig_var, code.clone()));
@@ -3137,14 +3462,15 @@ impl Parser {
     //              <identifier:var> |
     //              <number> | <float> | <cstring> |
     //              'true' | 'false' | 'null'
-    #[allow(clippy::cloned_ref_to_slice_refs)]
     fn parse_single(&mut self, var_tp: &Type, val: &mut Value, parent_tp: &mut Type) -> Type {
         if self.lexer.has_token("!") {
             let t = self.parse_part(var_tp, val, parent_tp);
-            self.call_op(val, "Not", &[val.clone()], &[t])
+            let arg = val.clone();
+            self.call_op(val, "Not", &[arg], &[t])
         } else if self.lexer.has_token("-") {
             let t = self.parse_part(var_tp, val, parent_tp);
-            self.call_op(val, "Min", &[val.clone()], &[t])
+            let arg = val.clone();
+            self.call_op(val, "Min", &[arg], &[t])
         } else if self.lexer.has_token("(") {
             let t = self.expression(val);
             self.lexer.token(")");
@@ -3155,6 +3481,8 @@ impl Parser {
             self.parse_vector(var_tp, val, parent_tp)
         } else if self.lexer.has_token("if") {
             self.parse_if(val)
+        } else if self.lexer.has_token("fn") {
+            self.parse_fn_ref(val)
         } else if let Some(name) = self.lexer.has_identifier() {
             self.parse_var(val, &name, parent_tp)
         } else if self.lexer.has_token("$") {
@@ -3188,6 +3516,240 @@ impl Parser {
         } else {
             Type::Unknown(0)
         }
+    }
+
+    // <fn-ref> ::= 'fn' <identifier>
+    // Produces a Type::Function value whose runtime representation is the
+    // definition number (d_nr) of the named function stored as an i32.
+    fn parse_fn_ref(&mut self, code: &mut Value) -> Type {
+        let Some(name) = self.lexer.has_identifier() else {
+            if !self.first_pass {
+                diagnostic!(self.lexer, Level::Error, "Expect function name after fn");
+            }
+            return Type::Unknown(0);
+        };
+        // Try user function (n_<name>) first, then fall back to bare name.
+        let d_nr = {
+            let prefixed = format!("n_{name}");
+            let nr = self.data.def_nr(&prefixed);
+            if nr == u32::MAX {
+                self.data.def_nr(&name)
+            } else {
+                nr
+            }
+        };
+        if d_nr == u32::MAX {
+            if !self.first_pass {
+                diagnostic!(self.lexer, Level::Error, "Unknown function '{name}'");
+            }
+            return Type::Unknown(0);
+        }
+        if !self.first_pass && !matches!(self.data.def_type(d_nr), DefType::Function) {
+            diagnostic!(self.lexer, Level::Error, "'{name}' is not a function");
+            return Type::Unknown(0);
+        }
+        *code = Value::Int(d_nr as i32);
+        self.data.def_used(d_nr);
+        let n_args = self.data.attributes(d_nr);
+        let arg_types: Vec<Type> = (0..n_args).map(|a| self.data.attr_type(d_nr, a)).collect();
+        let ret_type = self.data.def(d_nr).returned.clone();
+        Type::Function(arg_types, Box::new(ret_type))
+    }
+
+    // <for-vector> ::= 'for' <id> 'in' <range> ['if' <cond>] '{' <expr> '}'
+    // Implements [for n in range { body }] vector comprehensions.
+    #[allow(clippy::too_many_arguments)] // parser helper threading IR-construction params alongside &mut self; no sensible grouping reduces the count
+    fn parse_vector_for(
+        &mut self,
+        vec: u16,
+        elm: u16,
+        in_t: &mut Type,
+        val: &mut Value,
+        is_var: bool,
+        is_field: bool,
+        block: bool,
+        parent_tp: &Type,
+    ) -> Type {
+        let Some(id) = self.lexer.has_identifier() else {
+            diagnostic!(self.lexer, Level::Error, "Expect variable after for");
+            return Type::Null;
+        };
+        self.lexer.token("in");
+        let loop_nr = self.vars.start_loop();
+        let mut expr = Value::Null;
+        let mut in_type = self.parse_in_range(&mut expr, &Value::Null, &id);
+        let mut fill = Value::Null;
+        if matches!(in_type, Type::Vector(_, _)) {
+            let vec_var = self.create_unique("vector", &in_type);
+            in_type = in_type.depending(vec_var);
+            fill = v_set(vec_var, expr);
+            expr = Value::Var(vec_var);
+        }
+        let var_tp = self.for_type(&in_type);
+        let (iter_var, pre_var) = if matches!(in_type, Type::Text(_)) {
+            let pos_var = self.create_var(&format!("{id}#next"), &I32);
+            self.vars.defined(pos_var);
+            let index_var = self.create_var(&format!("{id}#index"), &I32);
+            self.vars.defined(index_var);
+            (pos_var, Some(index_var))
+        } else {
+            let iv = self.create_var(&format!("{id}#index"), &I32);
+            self.vars.defined(iv);
+            (iv, None)
+        };
+        let for_var = self.create_var(&id, &var_tp);
+        self.vars.defined(for_var);
+        let if_step = if self.lexer.has_token("if") {
+            let mut if_expr = Value::Null;
+            self.expression(&mut if_expr);
+            if_expr
+        } else {
+            Value::Null
+        };
+        let mut create_iter = expr;
+        let it = Type::Iterator(Box::new(var_tp.clone()), Box::new(Type::Null));
+        let iter_next = self.iterator(&mut create_iter, &in_type, &it, iter_var, pre_var);
+        if !self.first_pass && iter_next == Value::Null {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "Need an iterable expression in a for statement"
+            );
+            return Type::Null;
+        }
+        let for_next = v_set(for_var, iter_next);
+        self.vars.loop_var(for_var);
+        let in_loop = self.in_loop;
+        self.in_loop = true;
+        // Parse body as an expression-returning block: [for n in range { expr }]
+        let mut body = Value::Null;
+        let body_type = self.parse_block("for", &mut body, &Type::Unknown(0));
+        *in_t = body_type.clone();
+        self.in_loop = in_loop;
+        self.vars.finish_loop(loop_nr);
+        // Finalise vector element type (same as parse_vector post-loop)
+        let struct_tp = Type::Vector(Box::new(in_t.clone()), parent_tp.depend());
+        if !is_field {
+            self.vars
+                .change_var_type(vec, &struct_tp, &self.data, &mut self.lexer);
+            self.data.vector_def(&mut self.lexer, in_t);
+        }
+        let tp = Type::Vector(Box::new(in_t.clone()), parent_tp.depend());
+        if self.first_pass {
+            return tp;
+        }
+        // Second pass: build the append-in-loop bytecode.
+        self.build_comprehension_code(
+            vec,
+            elm,
+            in_t,
+            &in_type,
+            &var_tp,
+            for_var,
+            for_next,
+            pre_var,
+            fill,
+            create_iter,
+            if_step,
+            body,
+            val,
+            is_var,
+            is_field,
+            block,
+            tp,
+        )
+    }
+
+    /// Build the second-pass bytecode for a `[for ... { body }]` vector comprehension.
+    #[allow(clippy::too_many_arguments)] // parser helper threading IR-construction params alongside &mut self; no sensible grouping reduces the count
+    #[allow(clippy::large_types_passed_by_value)] // Option<u16> is Copy; ref adds noise at call sites
+    fn build_comprehension_code(
+        &mut self,
+        vec: u16,
+        elm: u16,
+        in_t: &Type,
+        in_type: &Type,
+        var_tp: &Type,
+        for_var: u16,
+        for_next: Value,
+        pre_var: Option<u16>,
+        fill: Value,
+        create_iter: Value,
+        if_step: Value,
+        body: Value,
+        val: &mut Value,
+        is_var: bool,
+        is_field: bool,
+        block: bool,
+        tp: Type,
+    ) -> Type {
+        // Per-iteration: OpNewRecord / set_field / OpFinishRecord pattern.
+        let ed_nr = self.data.type_def_nr(in_t);
+        let known = Value::Int(i32::from(
+            if ed_nr == u32::MAX || self.data.def(ed_nr).known_type == u16::MAX {
+                0
+            } else {
+                self.database.vector(self.data.def(ed_nr).known_type)
+            },
+        ));
+        let fld = Value::Int(i32::from(u16::MAX));
+        let comp_var = self.create_unique("comp", in_t);
+        let mut lp = vec![for_next];
+        if !matches!(in_type, Type::Iterator(_, _)) {
+            let mut test_for = Value::Var(for_var);
+            self.convert(&mut test_for, var_tp, &Type::Boolean);
+            test_for = self.cl("OpNot", &[test_for]);
+            lp.push(v_if(
+                test_for,
+                v_block(vec![Value::Break(0)], Type::Void, "break"),
+                Value::Null,
+            ));
+        }
+        if if_step != Value::Null {
+            lp.push(v_if(if_step, Value::Null, Value::Continue(0)));
+        }
+        lp.push(v_set(comp_var, body));
+        lp.push(v_set(
+            elm,
+            self.cl(
+                "OpNewRecord",
+                &[Value::Var(vec), known.clone(), fld.clone()],
+            ),
+        ));
+        lp.push(self.set_field(ed_nr, usize::MAX, 0, Value::Var(elm), Value::Var(comp_var)));
+        lp.push(self.cl(
+            "OpFinishRecord",
+            &[Value::Var(vec), Value::Var(elm), known, fld],
+        ));
+        let mut for_steps: Vec<Value> = Vec::new();
+        if fill != Value::Null {
+            for_steps.push(fill);
+        }
+        if let Some(idx_var) = pre_var {
+            for_steps.push(v_set(idx_var, Value::Int(0)));
+        }
+        for_steps.push(create_iter);
+        for_steps.push(v_loop(lp, "For comprehension"));
+        let mut ls: Vec<Value> = Vec::new();
+        if block {
+            ls.extend(self.vector_db(in_t, vec));
+        }
+        ls.extend(for_steps);
+        if self.vector_needs_db(vec, in_t, is_var) {
+            let db = self.insert_new(vec, elm, in_t, &mut ls);
+            self.vars.depend(vec, db);
+        } else if !is_field && !is_var && *val != Value::Null {
+            ls.insert(0, v_set(vec, val.clone()));
+        }
+        if !is_var && !is_field {
+            ls.push(Value::Var(vec));
+        }
+        *val = if block || (!is_var && !is_field) {
+            v_block(ls, tp.clone(), "Vector comprehension")
+        } else {
+            Value::Insert(ls)
+        };
+        tp
     }
 
     /**
@@ -3231,21 +3793,16 @@ impl Parser {
         let mut in_t = assign_tp.clone();
         let mut res = Vec::new();
         let elm = self.unique_elm_var(parent_tp, &assign_tp, vec);
-        loop {
-            if let Some(value) = self.parse_item(elm, &mut in_t, &mut res) {
-                return value;
-            }
-            if self.lexer.has_token(";")
-                && let Some(value) = self.parse_multiply(&mut res)
-            {
-                return value;
-            }
-            if !self.lexer.has_token(",") {
-                break;
-            }
-            if self.lexer.peek_token("]") {
-                break;
-            }
+        // Handle [for n in range [if cond] { body }] vector comprehension
+        if self.lexer.peek_token("for") {
+            self.lexer.has_token("for");
+            let tp =
+                self.parse_vector_for(vec, elm, &mut in_t, val, is_var, is_field, block, parent_tp);
+            self.lexer.token("]");
+            return tp;
+        }
+        if let Some(early) = self.collect_vector_items(elm, &mut in_t, &mut res) {
+            return early;
         }
         // convert parts to the common type
         if in_t == Type::Null {
@@ -3257,18 +3814,70 @@ impl Parser {
                 .change_var_type(vec, &struct_tp, &self.data, &mut self.lexer);
             self.data.vector_def(&mut self.lexer, &in_t);
         }
-        let mut tp = Type::Vector(Box::new(in_t.clone()), parent_tp.depend());
-        let mut ls = Vec::new();
+        let tp = Type::Vector(Box::new(in_t.clone()), parent_tp.depend());
+        let (tp, ls) =
+            self.build_vector_list(val, parent_tp, elm, vec, &res, &in_t, tp, is_var, is_field);
+        self.lexer.token("]");
         if block {
-            for l in self.vector_db(&in_t, vec) {
-                ls.push(l);
+            *val = v_block(ls, tp.clone(), "Vector");
+        } else {
+            *val = Value::Insert(ls);
+        }
+        tp
+    }
+
+    /// Parse comma-separated vector items inside `[...]`, returning an early error type on failure.
+    fn collect_vector_items(
+        &mut self,
+        elm: u16,
+        in_t: &mut Type,
+        res: &mut Vec<Value>,
+    ) -> Option<Type> {
+        loop {
+            if let Some(value) = self.parse_item(elm, in_t, res) {
+                return Some(value);
+            }
+            if self.lexer.has_token(";")
+                && let Some(value) = self.parse_multiply(res)
+            {
+                return Some(value);
+            }
+            if !self.lexer.has_token(",") {
+                break;
+            }
+            if self.lexer.peek_token("]") {
+                break;
             }
         }
-        for l in self.new_record(val, parent_tp, elm, vec, &res, &in_t) {
-            ls.push(l);
+        None
+    }
+
+    /// Build the instruction list for a parsed vector literal; returns `(tp, ls)`.
+    #[allow(clippy::too_many_arguments)] // parser helper threading IR-construction params alongside &mut self; no sensible grouping reduces the count
+    fn build_vector_list(
+        &mut self,
+        val: &mut Value,
+        parent_tp: &Type,
+        elm: u16,
+        vec: u16,
+        res: &[Value],
+        in_t: &Type,
+        mut tp: Type,
+        is_var: bool,
+        is_field: bool,
+    ) -> (Type, Vec<Value>) {
+        let mut ls = Vec::new();
+        // Only create a fresh database record here when the variable has no existing
+        // one (dep is empty).  For `v += [...]` the variable already has a dep from
+        // the initial `=` assignment; calling vector_db again would reset v to an
+        // empty record and discard the existing elements.  create_vector handles
+        // the `=` re-assignment case by calling vector_db unconditionally.
+        if self.vars.tp(vec).depend().is_empty() {
+            ls.extend(self.vector_db(in_t, vec));
         }
-        if self.vector_needs_db(vec, &in_t, is_var) {
-            let db = self.insert_new(vec, elm, &in_t, &mut ls);
+        ls.extend(self.new_record(val, parent_tp, elm, vec, res, in_t));
+        if self.vector_needs_db(vec, in_t, is_var) {
+            let db = self.insert_new(vec, elm, in_t, &mut ls);
             self.vars.depend(vec, db);
             tp = tp.depending(db);
         } else if !is_field && !is_var && *val != Value::Null {
@@ -3280,13 +3889,7 @@ impl Parser {
                 tp = tp.depending(d);
             }
         }
-        self.lexer.token("]");
-        if block {
-            *val = v_block(ls, tp.clone(), "Vector");
-        } else {
-            *val = Value::Insert(ls);
-        }
-        tp
+        (tp, ls)
     }
 
     fn vector_needs_db(&self, vec: u16, in_t: &Type, is_var: bool) -> bool {
@@ -3475,17 +4078,15 @@ impl Parser {
                     for l in steps {
                         ls.push(l.clone());
                     }
-                } else if self.is_field(p) {
-                    // Source is a field access — the struct bytes live inside another
-                    // record and must be explicitly copied into the new element slot.
+                } else {
+                    // Source is a variable, field access, or function call — the struct bytes
+                    // must be explicitly copied into the new element slot.
                     let type_nr = if self.first_pass {
                         Value::Int(i32::from(u16::MAX))
                     } else {
                         Value::Int(i32::from(self.data.def(*inner_nr).known_type))
                     };
                     ls.push(self.cl("OpCopyRecord", &[p.clone(), Value::Var(elm), type_nr]));
-                } else {
-                    ls.push(p.clone());
                 }
             } else if let Value::Insert(steps) = p {
                 for l in steps {
@@ -3525,7 +4126,7 @@ impl Parser {
     }
 
     fn vector_db(&mut self, assign_tp: &Type, vec: u16) -> Vec<Value> {
-        if self.first_pass || self.vars.is_argument(vec) {
+        if self.first_pass || vec == u16::MAX || self.vars.is_argument(vec) {
             Vec::new()
         } else {
             let mut ls = Vec::new();
@@ -3688,6 +4289,10 @@ impl Parser {
                     "Unknown field {}.{field}",
                     self.data.def(dnr).name
                 );
+                // Consume a trailing `(…)` to avoid cascading parse errors.
+                if self.lexer.has_token("(") {
+                    self.skip_remaining_args();
+                }
             }
             return Type::Unknown(0);
         }
@@ -4038,6 +4643,16 @@ impl Parser {
                 on = 3;
                 arg = 4;
             }
+            Parts::Hash(_, _) => {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Cannot iterate a hash directly — a hash has no stable element order, \
+so #index and #remove are not supported; \
+pair the hash with a vector to iterate in insertion order"
+                );
+                return;
+            }
             _ => {
                 diagnostic!(self.lexer, Level::Error, "Cannot iterate");
                 return;
@@ -4045,6 +4660,10 @@ impl Parser {
         }
         if inclusive {
             on += 128;
+        }
+        if self.reverse_iterator {
+            on += 64;
+            // Do not reset here — `iterator()` calls fill_iter twice and resets after both.
         }
         ls.push(code.clone());
         ls.push(Value::Int(i32::from(on)));
@@ -4109,18 +4728,14 @@ impl Parser {
                     && let Type::Reference(vd_nr, _) = self.vars.tp(v_nr)
                     && d_nr == vd_nr
                 {
+                    // Don't create OpCopyRecord here: generate_set handles the copy when
+                    // value=Var(src). Using Var(v_nr) directly lets method calls like
+                    // `d = c.double()` pass c as `self` without the broken CopyRecord-as-self
+                    // pattern that was causing garbage store_nr crashes (Issue 1).
                     let d_nr = *d_nr;
                     let into_var = *into;
-                    let tp = self.data.def(d_nr).known_type;
-                    *code = self.cl(
-                        "OpCopyRecord",
-                        &[
-                            Value::Var(v_nr),
-                            Value::Var(into_var),
-                            Value::Int(i32::from(tp)),
-                        ],
-                    );
                     self.vars.make_independent(into_var, v_nr);
+                    *code = Value::Var(v_nr);
                     return Type::Reference(d_nr, Vec::new());
                 }
                 *code = Value::Var(v_nr);
@@ -4420,6 +5035,9 @@ impl Parser {
 
     fn known_var_or_type(&mut self, code: &Value) {
         if let Value::Var(nr) = code {
+            if !self.vars.exists(*nr) {
+                return;
+            }
             if self.default && matches!(self.vars.tp(*nr), Type::Vector(_, _)) {
                 return;
             }
@@ -4560,6 +5178,8 @@ impl Parser {
                 8
             } else if id == "e" {
                 1
+            } else if id == "d" || id == "f" {
+                10
             } else {
                 diagnostic!(self.lexer, Level::Error, "Unexpected formatting type: {id}");
                 10
@@ -4667,8 +5287,28 @@ impl Parser {
             self.lexer.token("(");
             reverse = true;
         }
-        let in_type = self.expression(expr);
+        let in_type = if self.lexer.peek_token("..") || self.lexer.peek_token("..=") {
+            // Open-start range: treat missing start as 0.
+            *expr = Value::Int(0);
+            I32.clone()
+        } else {
+            self.expression(expr)
+        };
         if !self.lexer.has_token("..") {
+            if reverse {
+                // rev() wrapping a collection (not a range): set the reverse-iterator flag so
+                // that fill_iter adds bit 64 into the OpIterate/OpStep `on` byte.
+                if matches!(in_type, Type::Sorted(_, _, _) | Type::Index(_, _, _)) {
+                    self.reverse_iterator = true;
+                } else if !matches!(in_type, Type::Null) {
+                    diagnostic!(
+                        self.lexer,
+                        Level::Error,
+                        "rev() on a non-range expression must wrap a sorted or index collection"
+                    );
+                }
+                self.lexer.token(")");
+            }
             return in_type;
         }
         let incl = self.lexer.has_token("=");
@@ -5019,13 +5659,29 @@ impl Parser {
         let mut new_object = false;
         let work = self.vars.work_ref();
         if let Value::Var(v_nr) = code {
-            if self.vars.is_independent(*v_nr) {
+            let var_tp = self.vars.tp(*v_nr).clone();
+            let type_matches =
+                var_tp.is_unknown() || matches!(&var_tp, Type::Reference(d, _) if *d == td_nr);
+            if self.vars.is_independent(*v_nr) && type_matches {
                 if !self.vars.is_argument(*v_nr) {
                     list.push(v_set(*v_nr, Value::Null));
                 }
                 self.data.set_referenced(td_nr, self.context, Value::Null);
                 let tp = i32::from(self.data.def(td_nr).known_type);
                 list.push(self.cl("OpDatabase", &[Value::Var(*v_nr), Value::Int(tp)]));
+            } else if !type_matches && !self.first_pass {
+                // LHS variable already has an incompatible type (e.g. integer from a prior
+                // pass). Fall through to new_object so the struct gets a fresh work ref and
+                // the result is a proper Value::Block — not a Value::Insert — which can be
+                // used safely as a method-call argument.
+                new_object = true;
+                self.data.set_referenced(td_nr, self.context, Value::Null);
+                let ret = &self.data.def(td_nr).returned;
+                let w = self.vars.work_refs(ret, &mut self.lexer);
+                let tp = i32::from(self.data.def(td_nr).known_type);
+                list.push(v_set(w, Value::Null));
+                list.push(self.cl("OpDatabase", &[Value::Var(w), Value::Int(tp)]));
+                *code = Value::Var(w);
             }
         } else if !self.first_pass && !self.is_field(code) {
             new_object = true;
@@ -5278,7 +5934,11 @@ impl Parser {
         merge_dependencies(&true_type, &false_type)
     }
 
-    // <for> ::= <identifier> 'in' <expression> '{' <block>
+    // <for> ::= <identifier> 'in' <expression> [ 'par' '(' <id> '=' <worker> ',' <threads> ')' ] '{' <block>
+    //
+    // The optional parallel clause `par(b=worker(a), N)` desugars to a parallel map
+    // followed by an index-based loop over the results.  Three worker call forms
+    // are supported — see `parse_parallel_for_loop` for details.
     fn parse_for(&mut self, code: &mut Value) {
         if let Some(id) = self.lexer.has_identifier() {
             self.lexer.token("in");
@@ -5286,11 +5946,30 @@ impl Parser {
             let mut expr = Value::Null;
             let mut in_type = self.parse_in_range(&mut expr, &Value::Null, &id);
             let mut fill = Value::Null;
+            // For vector loops, the iterator runs on a unique temp copy so that the loop
+            // variable does not alias the user-visible collection.  Record the original
+            // variable number so that mutation of the original can be detected later.
+            let orig_coll_var = if let Value::Var(v) = &expr {
+                *v
+            } else {
+                u16::MAX
+            };
+            // Save the original collection expression before the vector temp-copy substitution
+            // so that is_iterated_value() can match field-access patterns like `db.items`.
+            let orig_coll_expr = expr.clone();
             if matches!(in_type, Type::Vector(_, _)) {
                 let vec_var = self.create_unique("vector", &in_type);
                 in_type = in_type.depending(vec_var);
                 fill = v_set(vec_var, expr);
                 expr = Value::Var(vec_var);
+            }
+            // Optional parallel clause: par(result=worker(elem), threads)
+            if let LexItem::Identifier(kw) = &self.lexer.peek().has
+                && kw == "par"
+            {
+                self.lexer.has_identifier(); // consume "par"
+                self.parse_parallel_for_loop(code, &id, &in_type, expr, fill, loop_nr);
+                return;
             }
             let var_tp = self.for_type(&in_type);
             // For text loops: {id}#next drives the loop; {id}#index is saved per-iteration.
@@ -5320,6 +5999,16 @@ impl Parser {
             let mut create_iter = expr;
             let it = Type::Iterator(Box::new(var_tp.clone()), Box::new(Type::Null));
             let iter_next = self.iterator(&mut create_iter, &in_type, &it, iter_var, pre_var);
+            // For vector loops: set_loop stores the temp-copy var; override with the
+            // original so that `orig += elem` is correctly identified as a mutation.
+            if matches!(in_type, Type::Vector(_, _)) {
+                if orig_coll_var != u16::MAX {
+                    self.vars.set_coll_var(orig_coll_var);
+                }
+                // Always restore the original collection expression so that
+                // is_iterated_value() can match field-access forms like `db.items`.
+                self.vars.set_coll_value(orig_coll_expr);
+            }
             if !self.first_pass && iter_next == Value::Null {
                 diagnostic!(
                     self.lexer,
@@ -5373,6 +6062,446 @@ impl Parser {
             *code = v_block(for_steps, Type::Void, "For block");
         } else {
             diagnostic!(self.lexer, Level::Error, "Expect variable after for");
+        }
+    }
+
+    // Desugar a parallel for loop:
+    //   for a in <vec> par(b=worker(a), N) { body }
+    // into an index-based loop over the parallel_for result.
+    //
+    // Supported worker call forms:
+    //   Form 1: func(a)         — global/user function; a is the element variable
+    //   Form 2: a.method()      — method on the element type; a is the loop variable
+    //   Form 3: c.method(a)     — NOT YET SUPPORTED (captured receiver + element arg)
+    //
+    // Limitations:
+    //   • Input must be a vector<T>; integer ranges (1..10) are not supported.
+    //   • The worker must return a primitive type: integer, long, float, or boolean.
+    //     text and reference return types require store-merging (deferred).
+    //   • Form 3 (captured receiver) requires IR-level wrapper synthesis (deferred).
+    //   • The element type T must be a struct (reference) or enum for form 2.
+    //
+    // The desugared IR:
+    //   par_len#N   = len(input_vec)
+    //   par_results#N = parallel_for(input_vec, elem_size, return_size, threads, fn_d_nr)
+    //   b#index     = 0
+    //   loop {
+    //     if par_len#N <= b#index { break }
+    //     b = parallel_get_T(par_results#N, b#index)
+    //     <body>
+    //     b#index += 1
+    //   }
+    fn parse_parallel_for_loop(
+        &mut self,
+        code: &mut Value,
+        elem_var: &str,
+        in_type: &Type,
+        vec_expr: Value,
+        fill: Value,
+        loop_nr: u16,
+    ) {
+        // Consume opening '('.
+        self.lexer.token("(");
+
+        // Validate: parallel syntax requires a vector input.
+        let elem_tp = if let Type::Vector(_, _) = in_type {
+            self.for_type(in_type)
+        } else {
+            if !self.first_pass {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "par(...) requires a vector<T> input, not {}",
+                    in_type.name(&self.data)
+                );
+            }
+            self.skip_to_parallel_body();
+            self.vars.finish_loop(loop_nr);
+            return;
+        };
+
+        // Parse: result_name = worker_call , threads )
+        let Some(result_name) = self.lexer.has_identifier() else {
+            if !self.first_pass {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Expect result variable name after 'par('"
+                );
+            }
+            self.skip_to_parallel_body();
+            self.vars.finish_loop(loop_nr);
+            return;
+        };
+        if !self.lexer.has_token("=") {
+            if !self.first_pass {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Expect '=' after result name '{}' in par(...)",
+                    result_name
+                );
+            }
+            self.skip_to_parallel_body();
+            self.vars.finish_loop(loop_nr);
+            return;
+        }
+
+        // Create the element variable so the worker call expression can resolve it.
+        // (e.g. `calc(a)` needs `a` in scope during parsing even though the body
+        // never runs `a` directly — the parallel map handles that.)
+        let elem_var_nr = self.create_var(elem_var, &elem_tp);
+        self.vars.defined(elem_var_nr);
+        if matches!(elem_tp, Type::Integer(_, _)) {
+            self.vars.in_use(elem_var_nr, true);
+        }
+
+        // Resolve worker function: consumes the worker call tokens up to the ','.
+        let (fn_d_nr, ret_type) = self.parse_parallel_worker(elem_var, &elem_tp);
+
+        // Comma separating worker from thread count.
+        self.lexer.token(",");
+        let mut threads_expr = Value::Null;
+        self.expression(&mut threads_expr);
+        // Closing ')'.
+        self.lexer.token(")");
+
+        // Map return type to sizes and get function names.
+        let (return_size, get_fn_name): (i32, &str) = match &ret_type {
+            Type::Integer(_, _) | Type::Character => (4, "n_parallel_get_int"),
+            Type::Long => (8, "n_parallel_get_long"),
+            Type::Float => (8, "n_parallel_get_float"),
+            Type::Boolean => (1, "n_parallel_get_bool"),
+            _ => {
+                if !self.first_pass && fn_d_nr != u32::MAX {
+                    diagnostic!(
+                        self.lexer,
+                        Level::Error,
+                        "Parallel worker return type '{}' must be integer, long, float, or boolean",
+                        ret_type.name(&self.data)
+                    );
+                }
+                (4, "n_parallel_get_int") // fallback; fn_d_nr will be u32::MAX on error
+            }
+        };
+        // Use the actual inline element size from the database (e.g. 4 for Score{value:integer},
+        // 8 for Range{lo,hi:integer}).  var_size() returns size_of::<DbRef>() for reference types,
+        // which is wrong for inline vector element storage.
+        let elem_size = {
+            let elm_td = self.data.type_elm(&elem_tp);
+            let known = self.data.def(elm_td).known_type;
+            let db_size = i32::from(self.database.size(known));
+            if db_size > 0 {
+                db_size
+            } else {
+                i32::from(var_size(&elem_tp, &Context::Argument))
+            }
+        };
+
+        let ref_d_nr = self.data.def_nr("reference");
+        let results_ref_type = Type::Reference(ref_d_nr, Vec::new());
+        let par_for_d_nr = self.data.def_nr("n_parallel_for");
+        let get_fn_d_nr = self.data.def_nr(get_fn_name);
+
+        // Create result-reference variable.
+        let results_var = self.create_unique("par_results", &results_ref_type);
+        self.vars.defined(results_var);
+
+        // Create index variable (b#index).
+        let idx_var = self.create_var(&format!("{result_name}#index"), &I32);
+        self.vars.defined(idx_var);
+        self.vars.in_use(idx_var, true);
+
+        // Create length variable (par_len#N).
+        let len_var = self.create_unique("par_len", &I32);
+        self.vars.defined(len_var);
+        self.vars.in_use(len_var, true);
+
+        // Create the result element variable (b) with the worker's return type.
+        let b_type = if fn_d_nr == u32::MAX || matches!(ret_type, Type::Unknown(_)) {
+            I32.clone()
+        } else {
+            ret_type.clone()
+        };
+        let b_var = self.create_var(&result_name, &b_type);
+        self.vars.defined(b_var);
+        if matches!(b_type, Type::Integer(_, _)) {
+            self.vars.in_use(b_var, true);
+        }
+
+        // Parse the body block.
+        self.vars.loop_var(b_var);
+        let in_loop = self.in_loop;
+        self.in_loop = true;
+        let mut block = Value::Null;
+        self.parse_block("parallel for", &mut block, &Type::Void);
+        let count = self.vars.loop_counter();
+        self.in_loop = in_loop;
+        self.vars.finish_loop(loop_nr);
+
+        // Build IR only when we have a valid function reference.
+        if fn_d_nr == u32::MAX || par_for_d_nr == u32::MAX || get_fn_d_nr == u32::MAX {
+            // Errors already reported; emit nothing useful.
+            *code = Value::Null;
+            return;
+        }
+
+        // parallel_for(input, elem_size, return_size, threads, fn_d_nr)
+        let pf_call = Value::Call(
+            par_for_d_nr,
+            vec![
+                vec_expr.clone(),
+                Value::Int(elem_size),
+                Value::Int(return_size),
+                threads_expr,
+                Value::Int(fn_d_nr as i32),
+            ],
+        );
+
+        // len(input_vec) — compute once before the loop.
+        let len_call = self.cl("OpLengthVector", &[vec_expr]);
+
+        // Loop body:
+        //   if par_len <= b#index { break }
+        //   b = parallel_get_T(par_results, b#index)
+        //   <user body>
+        //   b#index += 1
+        let stop_cond = self.cl("OpLeInt", &[Value::Var(len_var), Value::Var(idx_var)]);
+        let stop = v_if(
+            stop_cond,
+            v_block(vec![Value::Break(0)], Type::Void, "break"),
+            Value::Null,
+        );
+        let get_call = Value::Call(
+            get_fn_d_nr,
+            vec![Value::Var(results_var), Value::Var(idx_var)],
+        );
+        let b_assign = v_set(b_var, get_call);
+        let idx_inc = v_set(
+            idx_var,
+            self.cl("OpAddInt", &[Value::Var(idx_var), Value::Int(1)]),
+        );
+
+        let mut lp = vec![stop, b_assign, block, idx_inc];
+        if count != u16::MAX {
+            lp.insert(
+                3,
+                v_set(
+                    count,
+                    self.cl("OpAddInt", &[Value::Var(count), Value::Int(1)]),
+                ),
+            );
+        }
+
+        let mut for_steps = Vec::new();
+        if count != u16::MAX {
+            for_steps.push(v_set(count, Value::Int(0)));
+        }
+        if fill != Value::Null {
+            for_steps.push(fill);
+        }
+        for_steps.push(v_set(len_var, len_call));
+        for_steps.push(v_set(results_var, pf_call));
+        for_steps.push(v_set(idx_var, Value::Int(0)));
+        for_steps.push(v_loop(lp, "Parallel for loop"));
+        *code = v_block(for_steps, Type::Void, "Parallel for block");
+    }
+
+    // Consume the remaining `par(...)` tokens and then the body block so the
+    // parser can recover after an error in the parallel clause.
+    // Called after '(' has already been consumed, so this drains to ')'.
+    fn skip_to_parallel_body(&mut self) {
+        let mut depth = 1i32;
+        loop {
+            if self.lexer.peek_token("(") {
+                depth += 1;
+            } else if self.lexer.peek_token(")") {
+                depth -= 1;
+                if depth == 0 {
+                    self.lexer.has_token(")");
+                    break;
+                }
+            } else if self.lexer.peek_token("") {
+                break;
+            }
+            let mut dummy = Value::Null;
+            self.expression(&mut dummy);
+        }
+        let mut dummy = Value::Null;
+        self.parse_block("parallel for", &mut dummy, &Type::Void);
+    }
+
+    // Resolve the worker function from a parallel call pattern inside par(...).
+    //
+    // Recognised forms (elem_var is the name of the loop element, e.g. "a"):
+    //   Form 1  func(a)         — global/user function
+    //   Form 2  a.method()      — method whose receiver is the element
+    //   Form 3  c.method(a)     — captured receiver + element arg (deferred)
+    //
+    // All tokens for the call are consumed; the caller reads ',' next.
+    // On error or first pass returns (u32::MAX, Unknown).
+    fn parse_parallel_worker(&mut self, elem_var: &str, elem_tp: &Type) -> (u32, Type) {
+        let Some(first_id) = self.lexer.has_identifier() else {
+            if !self.first_pass {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Expect function name or '{elem_var}.method' inside |..|"
+                );
+            }
+            return (u32::MAX, Type::Unknown(0));
+        };
+
+        if first_id == elem_var {
+            // ── Form 2: a.method() ────────────────────────────────────────────
+            if !self.lexer.has_token(".") {
+                if !self.first_pass {
+                    diagnostic!(
+                        self.lexer,
+                        Level::Error,
+                        "Expect '.' after '{elem_var}' in parallel clause (use a.method() or func(a))"
+                    );
+                }
+                return (u32::MAX, Type::Unknown(0));
+            }
+            let Some(method_name) = self.lexer.has_identifier() else {
+                if !self.first_pass {
+                    diagnostic!(self.lexer, Level::Error, "Expect method name after '.'");
+                }
+                return (u32::MAX, Type::Unknown(0));
+            };
+            self.lexer.token("(");
+            self.lexer.token(")");
+
+            // Resolve the method on the element type.
+            let type_name = match elem_tp {
+                Type::Reference(d, _) | Type::Enum(d, _, _) => self.data.def(*d).name.clone(),
+                _ => {
+                    if !self.first_pass {
+                        diagnostic!(
+                            self.lexer,
+                            Level::Error,
+                            "Parallel method call (form 2) requires a struct element type, not {}",
+                            elem_tp.name(&self.data)
+                        );
+                    }
+                    return (u32::MAX, Type::Unknown(0));
+                }
+            };
+            // Method internal name: t_<len><TypeName>_<method>
+            let internal = format!("t_{}{type_name}_{method_name}", type_name.len());
+            let d_nr = {
+                let nr = self.data.def_nr(&internal);
+                if nr == u32::MAX {
+                    self.data.def_nr(&method_name)
+                } else {
+                    nr
+                }
+            };
+            if d_nr == u32::MAX {
+                if !self.first_pass {
+                    diagnostic!(
+                        self.lexer,
+                        Level::Error,
+                        "Unknown method '{method_name}' on type '{type_name}'"
+                    );
+                }
+                return (u32::MAX, Type::Unknown(0));
+            }
+            if !self.first_pass && !matches!(self.data.def_type(d_nr), DefType::Function) {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "'{method_name}' is not a function"
+                );
+                return (u32::MAX, Type::Unknown(0));
+            }
+            self.data.def_used(d_nr);
+            let ret_type = self.data.def(d_nr).returned.clone();
+            (d_nr, ret_type)
+        } else if self.lexer.peek_token(".") {
+            // ── Form 3: c.method(a) — deferred ───────────────────────────────
+            // Consume the rest of the call so parsing can continue.
+            self.lexer.has_token(".");
+            if self.lexer.has_identifier().is_some() && self.lexer.has_token("(") {
+                let mut depth = 1i32;
+                loop {
+                    if self.lexer.peek_token("(") {
+                        depth += 1;
+                    } else if self.lexer.peek_token(")") {
+                        depth -= 1;
+                        if depth == 0 {
+                            self.lexer.has_token(")");
+                            break;
+                        }
+                    } else if self.lexer.peek_token("") {
+                        break;
+                    }
+                    let mut dummy = Value::Null;
+                    self.expression(&mut dummy);
+                    self.lexer.has_token(",");
+                }
+            }
+            if !self.first_pass {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Parallel form '{first_id}.method({elem_var})' (captured receiver) \
+                     is not yet supported; define a wrapper function and use func({elem_var}) instead"
+                );
+            }
+            (u32::MAX, Type::Unknown(0))
+        } else {
+            // ── Form 1: func(a) ───────────────────────────────────────────────
+            // Resolve function name: try n_<name> first (user function convention).
+            let d_nr = {
+                let prefixed = format!("n_{first_id}");
+                let nr = self.data.def_nr(&prefixed);
+                if nr == u32::MAX {
+                    self.data.def_nr(&first_id)
+                } else {
+                    nr
+                }
+            };
+            // Consume the argument list.
+            if self.lexer.has_token("(") {
+                let mut depth = 1i32;
+                loop {
+                    if self.lexer.peek_token("(") {
+                        depth += 1;
+                    } else if self.lexer.peek_token(")") {
+                        depth -= 1;
+                        if depth == 0 {
+                            self.lexer.has_token(")");
+                            break;
+                        }
+                    } else if self.lexer.peek_token("") {
+                        break;
+                    }
+                    let mut dummy = Value::Null;
+                    self.expression(&mut dummy);
+                    self.lexer.has_token(",");
+                }
+            } else if !self.first_pass {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "Expect '(' after function name '{first_id}' in parallel clause"
+                );
+            }
+            if d_nr == u32::MAX {
+                if !self.first_pass {
+                    diagnostic!(self.lexer, Level::Error, "Unknown function '{first_id}'");
+                }
+                return (u32::MAX, Type::Unknown(0));
+            }
+            if !self.first_pass && !matches!(self.data.def_type(d_nr), DefType::Function) {
+                diagnostic!(self.lexer, Level::Error, "'{first_id}' is not a function");
+                return (u32::MAX, Type::Unknown(0));
+            }
+            self.data.def_used(d_nr);
+            let ret_type = self.data.def(d_nr).returned.clone();
+            (d_nr, ret_type)
         }
     }
 
@@ -5529,6 +6658,7 @@ impl Parser {
 
     // <call> ::= [ <expression> { ',' <expression> } ] ')'
     fn parse_call(&mut self, val: &mut Value, source: u16, name: &str) -> Type {
+        let call_pos = self.lexer.pos().clone();
         let mut list = Vec::new();
         let mut types = Vec::new();
         if self.lexer.has_token(")") {
@@ -5552,12 +6682,161 @@ impl Parser {
             } else {
                 Value::str("assert failure")
             };
-            let show = self.cl("OpPanic", &[message]);
-            *val = v_if(test, Value::Null, show);
+            if self.first_pass {
+                *val = Value::Null;
+                return Type::Void;
+            }
+            let d_nr = self.data.def_nr("n_assert");
+            let file_v = Value::str(&call_pos.file);
+            let line_v = Value::Int(call_pos.line as i32);
+            *val = Value::Call(d_nr, vec![test, message, file_v, line_v]);
             Type::Void
+        } else if name == "panic" {
+            let message = if list.is_empty() {
+                Value::str("panic")
+            } else {
+                list[0].clone()
+            };
+            if self.first_pass {
+                *val = Value::Null;
+                return Type::Void;
+            }
+            let d_nr = self.data.def_nr("n_panic");
+            let file_v = Value::str(&call_pos.file);
+            let line_v = Value::Int(call_pos.line as i32);
+            *val = Value::Call(d_nr, vec![message, file_v, line_v]);
+            Type::Void
+        } else if matches!(name, "log_info" | "log_warn" | "log_error" | "log_fatal") {
+            let message = if list.is_empty() {
+                Value::str("")
+            } else {
+                list[0].clone()
+            };
+            if self.first_pass {
+                *val = Value::Null;
+                return Type::Void;
+            }
+            let fn_name = format!("n_{name}");
+            let d_nr = self.data.def_nr(&fn_name);
+            let file_v = Value::str(&call_pos.file);
+            let line_v = Value::Int(call_pos.line as i32);
+            *val = Value::Call(d_nr, vec![message, file_v, line_v]);
+            Type::Void
+        } else if name == "parallel_for" {
+            self.parse_parallel_for(val, &list, &types)
         } else {
             self.call(val, source, name, &list, &types)
         }
+    }
+
+    // Validate and rewrite a user-friendly `parallel_for(fn f, vec, threads)` call
+    // into a `Value::Call(n_parallel_for_d_nr, [input, elem_size, return_size, threads, func])`.
+    //
+    // The parser intercepts calls by name "parallel_for" before normal overload
+    // resolution.  Compile-time checks performed here:
+    // - First arg must be `Type::Function(args, ret)` (produced by `fn <name>` expression).
+    // - Second arg must be `Type::Vector(T, _)`.
+    // - Worker's first parameter must be a reference to T (type checked by name).
+    // - Return type must be a primitive: integer, long, float, or boolean.
+    // - Extra arg count must match the worker's extra parameters (args[1..]).
+    fn parse_parallel_for(&mut self, val: &mut Value, list: &[Value], types: &[Type]) -> Type {
+        let ref_d_nr = self.data.def_nr("reference");
+        let result_ref_type = Type::Reference(ref_d_nr, Vec::new());
+        if self.first_pass {
+            return result_ref_type;
+        }
+        if list.len() < 3 {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "parallel_for requires at least 3 arguments: fn worker, input_vector, threads"
+            );
+            return Type::Unknown(0);
+        }
+        let (worker_arg_types, worker_ret_type) = if let Type::Function(args, ret) = &types[0] {
+            (args.clone(), (**ret).clone())
+        } else {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "parallel_for: first argument must be a function reference (use fn <name>)"
+            );
+            return Type::Unknown(0);
+        };
+        let elem_tp = if let Type::Vector(elem, _) = &types[1] {
+            (**elem).clone()
+        } else {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "parallel_for: second argument must be a vector"
+            );
+            return Type::Unknown(0);
+        };
+        // Validate return type is a supported primitive.
+        let return_size: u32 = match &worker_ret_type {
+            Type::Integer(_, _) | Type::Character => 4,
+            Type::Boolean => 1,
+            Type::Long | Type::Float => 8,
+            _ => {
+                diagnostic!(
+                    self.lexer,
+                    Level::Error,
+                    "parallel_for: worker return type '{}' must be integer, long, float, or boolean",
+                    worker_ret_type.name(&self.data)
+                );
+                return Type::Unknown(0);
+            }
+        };
+        // Validate extra arg count matches worker's extra params.
+        let n_extra = list.len().saturating_sub(3);
+        let n_worker_extra = worker_arg_types.len().saturating_sub(1);
+        if n_extra != n_worker_extra {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "parallel_for: wrong number of extra arguments: worker expects {n_worker_extra}, got {n_extra}"
+            );
+            return Type::Unknown(0);
+        }
+        // Compute element size from T — use the actual inline database size, not the IR size.
+        // var_size() returns size_of::<DbRef>() for reference types, which is wrong for inline
+        // vector element storage (e.g. Score{value:integer} is 4 bytes inline, not 12).
+        let elem_size = {
+            let elm_td = self.data.type_elm(&elem_tp);
+            let known = self.data.def(elm_td).known_type;
+            let db_size = i32::from(self.database.size(known));
+            if db_size > 0 {
+                db_size
+            } else {
+                i32::from(var_size(&elem_tp, &Context::Argument))
+            }
+        };
+        // Look up internal n_parallel_for.
+        let par_for_d_nr = self.data.def_nr("n_parallel_for");
+        if par_for_d_nr == u32::MAX {
+            diagnostic!(
+                self.lexer,
+                Level::Error,
+                "internal error: n_parallel_for not found"
+            );
+            return Type::Unknown(0);
+        }
+        // Build augmented call: [input, element_size, return_size, threads, func].
+        // (input first so gather_key reads it, not the integer func d_nr.)
+        let mut augmented = vec![
+            list[1].clone(),                // input: vector<T>
+            Value::Int(elem_size),          // element_size: synthesized
+            Value::Int(return_size as i32), // return_size: synthesized
+            list[2].clone(),                // threads: integer
+            list[0].clone(),                // func: d_nr as integer
+        ];
+        // Append any extra args (verified count above; types passed through).
+        for extra in list.iter().skip(3) {
+            augmented.push(extra.clone());
+        }
+        *val = Value::Call(par_for_d_nr, augmented);
+        result_ref_type
     }
 
     // <size> ::= ( <type> | <var> ) ')'
@@ -5676,10 +6955,49 @@ fn field_id(key: &[(String, bool)], name: &mut String) {
     *name += "]>";
 }
 
+/// Collect all `Value::Var` indices reachable anywhere in `val`.
+fn collect_vars_in(val: &Value, result: &mut HashSet<u16>) {
+    match val {
+        Value::Var(v) => {
+            result.insert(*v);
+        }
+        Value::Set(_, body) => collect_vars_in(body, result),
+        Value::Call(_, args) => {
+            for a in args {
+                collect_vars_in(a, result);
+            }
+        }
+        Value::Block(b) | Value::Loop(b) => {
+            for op in &b.operators {
+                collect_vars_in(op, result);
+            }
+        }
+        Value::Insert(list) => {
+            for item in list {
+                collect_vars_in(item, result);
+            }
+        }
+        Value::If(c, t, e) => {
+            collect_vars_in(c, result);
+            collect_vars_in(t, result);
+            collect_vars_in(e, result);
+        }
+        Value::Return(v) | Value::Drop(v) => collect_vars_in(v, result),
+        Value::Iter(_, a, b, c) => {
+            collect_vars_in(a, result);
+            collect_vars_in(b, result);
+            collect_vars_in(c, result);
+        }
+        _ => {}
+    }
+}
+
 /// Recursively walk a Value IR tree and collect all variable indices that are written.
 /// A variable is considered written if:
-/// - It appears as the target of `Value::Set(v, ...)`, or
-/// - It is passed as a `RefVar`-typed argument to a `Value::Call`.
+/// - It appears as the target of `Value::Set(v, ...)`,
+/// - It is passed as a `RefVar`-typed argument to a `Value::Call`, or
+/// - It appears anywhere in the first argument of a field-write operator (`OpSet*`),
+///   which covers the pattern `v[idx].field = val` where `v: &vector<T>`.
 fn find_written_vars(code: &Value, data: &Data, written: &mut HashSet<u16>) {
     match code {
         Value::Set(v, body) => {
@@ -5687,17 +7005,39 @@ fn find_written_vars(code: &Value, data: &Data, written: &mut HashSet<u16>) {
             find_written_vars(body, data, written);
         }
         Value::Call(fn_nr, args) => {
-            let attrs = &data.def(*fn_nr).attributes;
+            let def = data.def(*fn_nr);
+            let attrs = &def.attributes;
+            // Stack-text mutation operators (OpAppendStackText, OpAppendStackCharacter,
+            // OpClearStackText) write to their first argument via a const-u16 position.
+            // OpAppendVector mutates the vector pointed to by its first Var argument.
+            let stack_write = def.name.starts_with("OpAppendStack")
+                || def.name.starts_with("OpClearStack")
+                || def.name == "OpAppendVector";
+            // Field-write and vector-append operators: any Var appearing in the first
+            // argument is being mutated (e.g. v[idx].field = val, r += [x]).
+            let field_write = def.name.starts_with("OpSet")
+                || def.name == "OpNewRecord"
+                || def.name == "OpAppendCopy";
             for (i, arg) in args.iter().enumerate() {
-                if i < attrs.len() && matches!(attrs[i].typedef, Type::RefVar(_)) {
-                    if let Value::Var(v) = arg {
-                        written.insert(*v);
-                    }
+                if i < attrs.len()
+                    && matches!(attrs[i].typedef, Type::RefVar(_))
+                    && let Value::Var(v) = arg
+                {
+                    written.insert(*v);
+                }
+                if i == 0
+                    && stack_write
+                    && let Value::Var(v) = arg
+                {
+                    written.insert(*v);
+                }
+                if i == 0 && field_write {
+                    collect_vars_in(arg, written);
                 }
                 find_written_vars(arg, data, written);
             }
         }
-        Value::Block(block) => {
+        Value::Block(block) | Value::Loop(block) => {
             for item in &block.operators {
                 find_written_vars(item, data, written);
             }
@@ -5711,11 +7051,6 @@ fn find_written_vars(code: &Value, data: &Data, written: &mut HashSet<u16>) {
             find_written_vars(cond, data, written);
             find_written_vars(then, data, written);
             find_written_vars(els, data, written);
-        }
-        Value::Loop(block) => {
-            for item in &block.operators {
-                find_written_vars(item, data, written);
-            }
         }
         Value::Return(v) | Value::Drop(v) => {
             find_written_vars(v, data, written);

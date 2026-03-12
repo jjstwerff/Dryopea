@@ -4,6 +4,19 @@
 
 The runtime data layer is split across six source files that together implement a typed, heap-allocated, store-based memory model:
 
+## Contents
+- [Overview](#overview)
+- [Store — Raw Heap Allocator (`src/store.rs`)](#store--raw-heap-allocator-srcstorers)
+- [Stores — Type Schema + Multi-Store Manager (`src/database.rs`)](#stores--type-schema--multi-store-manager-srcdatabasers)
+- [DbRef, Key, Content — Universal Pointer and Key Types (`src/keys.rs`)](#dbref-key-content--universal-pointer-and-key-types-srckeysrs)
+- [Vector Operations (`src/vector.rs`)](#vector-operations-srcvectorrs)
+- [Red-Black Tree (`src/tree.rs`)](#red-black-tree-srctreers)
+- [Open-Addressing Hash Table (`src/hash.rs`)](#open-addressing-hash-table-srchashrs)
+- [Spatial Index (`src/radix_tree.rs`)](#spatial-index-srcradix_treers)
+- [How the Layers Fit Together](#how-the-layers-fit-together)
+
+---
+
 | File | Role |
 |---|---|
 | `src/store.rs` | Raw word-addressed heap allocator (`Store`) |
@@ -364,7 +377,8 @@ Initial capacity claim: `(11 * element_size + 15) / 8` words — room for approx
 | `vector_add(store, rec, size) -> u32` | Append one element slot; returns byte offset of new element |
 | `vector_remove(store, rec, pos, size)` | Remove element at byte position `pos`; shifts remaining elements |
 | `vector_next(store, rec, pos, size) -> u32` | Advance byte position by `size`; returns next byte offset |
-| `vector_step(store, rec, index, size) -> u32` | Convert element index to byte position |
+| `vector_step(store, rec, index, size) -> u32` | Advance to next element index (forward) |
+| `vector_step_rev(store, rec, index, size) -> u32` | Advance to previous element index (reverse) |
 | `vector_length(store, rec) -> u32` | Return element count |
 
 ### Sorted By-Value Vector (`Parts::Ordered`)
@@ -481,7 +495,19 @@ When this condition is met after an insertion, the table is rehashed into a new 
 
 ### Deletion
 
-Deletion uses **backward shift**: after removing a slot, scan forward and shift back any elements that were displaced by probing past this slot. This maintains the invariant that every element is reachable from its home slot by linear probing without encountering an empty slot.
+Deletion uses **backward shift**: after zeroing the removed slot, scan forward and shift back any element whose probe distance to the now-vacant slot is shorter than its probe distance to its current slot. This maintains the invariant that every element is reachable from its home slot by linear probing without encountering an empty slot.
+
+The probe distance formula used:
+```rust
+d = (slot - ideal + elms) % elms
+```
+An element at `idx` with ideal slot `ideal` moves to `hole` when `d_hole < d_idx`. The slot containing the element to remove is found by scanning from `hash(rec) % elms` forward until a slot equals `rec.rec`.
+
+**Null-rec guard**: `remove()` returns immediately if `rec.rec == 0` (element not found). Callers can safely call remove with a lookup result without checking first.
+
+### `database::remove()` for Index
+
+`database::remove()` routes to `tree::remove()` for `Parts::Index`. The `fields` argument passed to `tree::remove` must be the **byte offset** of the tree node pointers within the record (= `8 + struct_field[left_field_index].position`), not the raw field index. This is computed via `self.fields(db)` (same helper used by `tree::add`).
 
 ---
 
@@ -489,7 +515,7 @@ Deletion uses **backward shift**: after removing a slot, scan forward and shift 
 
 The `Spacial(u16, Vec<u16>)` variant of `Parts` is the schema-level marker for a spatial index collection. Its planned backing structure is a **radix tree** implemented in `src/radix_tree.rs`.
 
-The radix tree is partially implemented (inserts and finds work; iteration and removal are stubs). See `doc/claude/INTERNALS.md` for the full API and record layout. The `Spacial` type is reserved in the schema today but not yet wired to the radix tree operations in the interpreter.
+The radix tree is partially implemented (inserts and finds work; iteration and removal are stubs). See `doc/claude/INTERNALS.md` for the full API and record layout. The `Spacial` type is reserved in the schema today but not yet wired to the radix tree operations in the interpreter. See [INTERNALS.md](INTERNALS.md) for the full API and record layout.
 
 ---
 
@@ -518,3 +544,9 @@ loft runtime value
 - An `index<MyStruct>` combines both: the same element records are simultaneously in a red-black tree (for range queries and ordered iteration) and a hash table (for O(1) lookup by key).
 - A `vector<T>` is a single record with inline elements; a `sorted<T>` by value uses the same layout but maintains sort order via insertion sort on add.
 - All cross-record pointers are `u32` rec offsets within the same `Store`; cross-store references use the full `DbRef`.
+
+---
+
+## See also
+- [INTERMEDIATE.md](INTERMEDIATE.md) — Value/Type enums in detail; 248 bytecode operators; State layout
+- [INTERNALS.md](INTERNALS.md) — calc.rs, stack.rs, create.rs, external.rs, text.rs, parallel.rs, radix_tree.rs

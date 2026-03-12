@@ -6,6 +6,7 @@
 #![allow(clippy::cast_sign_loss)]
 
 use crate::calc;
+use crate::data::Data;
 use crate::hash;
 use crate::keys;
 use crate::keys::{Content, DbRef, Key, Str};
@@ -18,6 +19,29 @@ use std::env;
 use std::fmt::Write as _;
 use std::fmt::{Debug, Formatter};
 use std::io::Write as _;
+use std::sync::{Arc, Mutex};
+
+/// Type alias for a native function callable from loft bytecode.
+pub type Call = fn(&mut Stores, &mut DbRef);
+
+/// Context injected into `Stores` by `State::execute()` so that native
+/// functions such as `n_parallel_for_int` can access the interpreter's
+/// bytecode, text segment, library, and compiled data for spawning workers.
+///
+/// All raw pointers are valid for the duration of the `execute()` call
+/// that set them.
+pub struct ParallelCtx {
+    pub bytecode: *const Arc<Vec<u8>>,
+    pub text_code: *const Arc<Vec<u8>>,
+    pub library: *const Arc<Vec<Call>>,
+    pub data: *const Data,
+}
+
+// Safety: the pointed-to data lives for the duration of `State::execute()`,
+// which is on the main thread and outlives all worker threads it spawns
+// (workers are joined before execute() returns).
+unsafe impl Send for ParallelCtx {}
+unsafe impl Sync for ParallelCtx {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
@@ -173,6 +197,22 @@ pub struct Stores {
     pub allocations: Vec<Store>,
     pub files: Vec<Option<std::fs::File>>,
     pub max: u16,
+    /// Set by `State::execute()` to allow native functions to access the
+    /// interpreter's bytecode, library, and compiled data during execution.
+    pub parallel_ctx: Option<Box<ParallelCtx>>,
+    /// Shared runtime logger.  Set by `main.rs` after the State is created.
+    /// Cloned (Arc clone) into worker Stores so all threads share a single logger.
+    pub logger: Option<Arc<Mutex<crate::logger::Logger>>>,
+    /// Temporary strings produced by native functions (e.g. `to_uppercase`, `replace`).
+    /// Native functions that create new owned strings push them here and return a
+    /// `Str` (raw pointer + length) pointing into the stored data.  The strings live
+    /// for the lifetime of the interpreter run, which is safe for short programs and
+    /// bounded-size test suites.
+    pub scratch: Vec<String>,
+    /// Set to `true` when a loft `panic()` or failed `assert` fires in production mode
+    /// (where the error is logged instead of aborting).  `main.rs` checks this after
+    /// execution and exits with code 1 so shell scripts can detect failure.
+    pub had_fatal: bool,
 }
 
 impl Default for Stores {
@@ -180,6 +220,11 @@ impl Default for Stores {
         Self::new()
     }
 }
+
+// Safety: `Content::Str` raw pointers in type metadata point into parse-time
+// source strings that live for the program duration and are never mutated.
+// Workers only read this metadata.  `Store` is already `unsafe impl Send`.
+unsafe impl Send for Stores {}
 
 struct ParseKey {
     // The current line on the source data. Only relevant if that has a pretty print format.
@@ -319,6 +364,10 @@ impl Stores {
             allocations: Vec::new(),
             files: Vec::new(),
             max: 0,
+            parallel_ctx: None,
+            logger: None,
+            scratch: Vec::new(),
+            had_fatal: false,
         };
         result.base_type("integer", 4); // 0
         result.base_type("long", 8); // 1
@@ -1483,6 +1532,39 @@ impl Stores {
         r.rec != 0
             && (r.store_nr as usize) < self.allocations.len()
             && self.allocations[r.store_nr as usize].is_locked()
+    }
+
+    /// Clone all current stores as locked read-only copies for use in a worker thread.
+    /// The returned `Stores` has the same type schema but no files and no `parallel_ctx`.
+    /// When a worker `State` is created from this, `State::new()` will allocate its own
+    /// stack store at index `self.max` without conflicting with the cloned data stores.
+    /// Freed slots (store.free == true) are replaced with fresh empty stores so that
+    /// `State::new_worker → Stores::database` can safely re-initialise them without
+    /// hitting the "Write to locked store" debug assert.
+    #[must_use]
+    pub fn clone_for_worker(&self) -> Stores {
+        let allocations = self
+            .allocations
+            .iter()
+            .map(|s| {
+                if s.free {
+                    super::store::Store::new(100)
+                } else {
+                    s.clone_locked()
+                }
+            })
+            .collect();
+        Stores {
+            types: self.types.clone(),
+            names: self.names.clone(),
+            allocations,
+            files: Vec::new(),
+            max: self.max,
+            parallel_ctx: None,
+            logger: self.logger.clone(),
+            scratch: Vec::new(),
+            had_fatal: false,
+        }
     }
 
     #[must_use]
@@ -2923,9 +3005,10 @@ impl Stores {
                 let keys = self.keys(db).to_vec();
                 hash::remove(data, rec, &mut self.allocations, &keys);
             }
-            Parts::Index(_, _, fields) => {
+            Parts::Index(_, _, _) => {
+                let left = self.fields(db);
                 let keys = self.keys(db).to_vec();
-                tree::remove(data, rec, fields, &mut self.allocations, &keys);
+                tree::remove(data, rec, left, &mut self.allocations, &keys);
             }
             _ => panic!("Incorrect search"),
         }
@@ -2988,12 +3071,20 @@ impl Stores {
     */
     #[must_use]
     pub fn os_arguments(&mut self) -> DbRef {
+        let args: Vec<String> = env::args_os()
+            .map(|a| a.to_str().unwrap().to_string())
+            .collect();
+        self.text_vector(&args)
+    }
+
+    /// Build a `vector<text>` from an explicit string slice.
+    #[must_use]
+    pub fn text_vector(&mut self, args: &[String]) -> DbRef {
         let vec = self.database(4);
         self.store_mut(&vec).set_int(vec.rec, vec.pos, 0);
-        for t in env::args_os() {
-            let v = t.to_str().unwrap();
+        for v in args {
             let elm = vector::vector_append(&vec, 4, &mut self.allocations);
-            let s = self.store_mut(&vec).set_str(v);
+            let s = self.store_mut(&vec).set_str(v.as_str());
             self.store_mut(&vec).set_int(elm.rec, elm.pos, s as i32);
             vector::vector_finish(&vec, &mut self.allocations);
         }

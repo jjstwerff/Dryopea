@@ -1,31 +1,45 @@
-Always:
-Remember to always update the doc/claude/*.md files with the latest relevant findings.
-Update the doc/claude/*.md files with the latest relevant findings.
+Create separate Dryopea, lavition and loft projects and make loft public.
+
+***** Permanent *****
 Validate the doc/claude/*.md files for completeness and functionality for developing the application.
-Optimize the doc/claude/*.md files for discoverability and efficiency.
-Validate the changes in this branch to the coding standards, try to remove any introduced clippy ignored annotations.
+Optimize the doc/claude/*.md files for discoverability and efficiency. Cleanup the parts with almost no value.
+
+
+** Session **
+Follow the planning, state what you chose and why, validate the resulting changes against CODE.md and update all documentation with the resulting changes.
+Follow the planning, try to create separate unit-tests to create clear cases, validate the resulting changes against CODE.md and update all documentation with the resulting changes.
+Evaluate if better temporary logging, an optional internal analysis tool or boundary checking would help by investigating this issue.
+Evaluate if better temporary logging, an optional internal analysis tool or boundary checking would have helped by investigating the last issue.
+
+** Finally **
+Update the doc/claude/*.md files with the latest relevant findings. Evaluate this with user documentation in tests/suite too.
+Validate if everything that needs testing is in the tests/loft tests.
+
+** Occationally **
+Validate the project to the coding standards, try to remove any introduced clippy ignored annotations.
+Validate pdf creation for problems.
+Update the documentation in doc/*.html as generated via doc/suite/*.loft make it useful for entry level programmers with the explanation of key concepts with clear and inviting examples.
 Identify less important tests in tests/*.rs files and let them only live inside the tests/loft tests.
+Create a planning with enhancement of any kind that are documented ordered by how pressing they are, give slightly more priority to issues that might break programs.
 
-Implement the easiest fixes mentioned in PROBLEMS.md
+Find spots where the runtime implementation or functions can be made more optimal, though weigh that versus the extra cost in terms of more code or maintainability. Document these results.
+Find ways to make the full test run more efficient but still as useful.
 
-Read only Stores:
-- allow to create const variables, that will error when code change them outside the initial creation of their content
-- create a runtime lock in stores to make them readonly, this will panic under development and silently ignore the changes in production builds
-- allow to inspect and set this lock from loft code with d#lock = true and reading the boolean
-- do not allow the lock to be set via an expression other than the constant boolean
-- setting a const variable or argument to d#lock = false is illegal
-- requestion a d#lock on a const structure will aways return true
-- only during development builds will the const variables and arguments be automatically set to true, in production they will be locked only with the explicit setting from the code
-- create tests on this functionality
-- document this functionality
+Create unit-tests with multiple parameters of context on parallell dispatch function
 
-Allow multi-threading:
-- make a pool of threads that can perform compilations, define the number of possible threads on creation.
-- allow a function to be performed by multiple threads with data read from a table with data for the input for each thread.
-- the data from this and potential other databases given to this function is forced read only.
-- each function can create thread local data and return it to the main task to further process.
-- during the threading phase with with threading the data structures that are given to the function are read only, create a read-only flag inside the store.
-- validate this in unit-tests.
+Is there an obvious place to simplify the code with the same overall algorithm.
+
+/btw show the status of the current task
+
+
+investigate the versus rust conclusions and update the document with it
+update the document with versus rust conclusions with the latest insights
+
+report on possible runtime inefficiencies for the interpreter, both on processor cycles and memory consumption.
+evaluate ways to get rid of the scratch buffer for strings for efficiency.
+evaluate ways to get rid of the work variables inside loft that span the whole scope of efficiency.
+
+most important clippy and rust warnings missing in loft
 
 ---- Code generation:
 - continue with the rust code generation by evaluating one tests at the time inside /generated/tests/
@@ -33,22 +47,15 @@ Allow multi-threading:
 
 Evaluate the ways untrusted loft code could compromise a system.
 
-Evaluate how loft could trigger a runtime exception and write it in /doc/claude/QUALITY.md
+Evaluate how loft could trigger a runtime exception
 
 Evaluate how the project can be made easier to develop against, especially the type system differences between the language and the database.
 
-
 Check on #remove outside for..if?
-More free polymorphism tests: meld of the two forms
-Change the #index on a string iterator to hold the start of the current character.
-- We probably need another 'hidden' index variable to make this work and only create the #index as an output variable.
 
 Keep the "Format" class usable in user code. Even think about "File".
 - Part of library name spacing?
 
-Introduce a separate null string value.
-- Validate in unit-tests that the empty string is not null.
-- Think about what a null append to another string should do.
 
 click on hex grid: assume vertical view
     x,y to correct hex position & relative position on the hex

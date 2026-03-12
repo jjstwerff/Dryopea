@@ -3,35 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loft — vs Rust</title>
-  <link rel="stylesheet" href="style.css">
+<title>Loft - vs Rust</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <span class="cur">vs Rust</span> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
-<h1>Loft vs Rust — Key Differences</h1>
-<p class="intro">Loft is inspired by Rust but designed for embedded scripting in the Dryopea engine. It trades some of Rust's safety guarantees and expressive power for a shorter learning curve and less ceremony. This page documents the most important differences so that Rust programmers know exactly what they gain and what they give up.</p>
-
+<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <span class="cur">vs Rust</span> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <a href="18-locks.html">Store Locks</a> · <a href="19-threading.html">Parallel execution</a> · <a href="20-logging.html">Logging</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-parallel.html">Parallel</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
+<h1>vs Rust</h1>
 <article>
+<p>Loft is inspired by Rust but designed for embedded scripting in the Dryopea engine. It trades some of Rust's safety guarantees and expressive power for a shorter learning curve and less ceremony. This page documents the most important differences so that Rust programmers know exactly what they gain and what they give up.</p>
 
-<h2>1. Variables — no <code>let</code> or <code>mut</code></h2>
+<h2 id="variables">1. Variables — no <code>let</code> or <code>mut</code></h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
   <pre><code>x = <span class="nm">42</span>
-x += <span class="nm">1</span></code></pre>
+x += <span class="nm">1</span>
+<span class="kw">const</span> y = <span class="nm">42</span>   <span class="cm">// opt-in: locked in debug builds</span></code></pre>
 </div>
 <div>
   <p class="lang-label rust-label">Rust</p>
   <pre class="rust-pre"><code>let mut x = 42;
-x += 1;</code></pre>
+x += 1;
+let y = 42;     // immutable by default; compiler-enforced</code></pre>
 </div>
 </div>
 <div class="verdict">
-<p class="up"><strong>Upside</strong> Less boilerplate. No need to decide upfront whether a variable will be mutated. Variables are always reassignable, so refactoring is frictionless.</p>
-<p class="down"><strong>Downside</strong> No immutability enforcement. Accidentally overwriting a value is not caught. Rust's <code>let</code> (without <code>mut</code>) prevents many unintended mutations and makes intent explicit.</p>
+<p class="up"><strong>Upside</strong> Less boilerplate. No need to decide upfront whether a variable will be mutated. Variables are mutable by default, so refactoring is frictionless. Use <code>const</code> to signal that a value should not change — in debug builds the runtime locks the store immediately after initialisation, catching accidental writes early.</p>
+<p class="down"><strong>Downside</strong> Immutability is opt-in, not the default. Rust makes variables immutable unless you write <code>mut</code>, catching accidents at compile time for free. Loft's <code>const</code> lock is only checked at runtime and only in debug builds, so it provides less of a safety net.</p>
 </div>
 
-<h2>2. Null instead of <code>Option&lt;T&gt;</code></h2>
+<h2 id="null">2. Null instead of <code>Option&lt;T&gt;</code></h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
@@ -57,12 +58,21 @@ assert!(p.label.is_none());</code></pre>
 <p class="down"><strong>Downside</strong> Null is opt-out, not opt-in. A field is nullable unless explicitly marked <code>not null</code>, so forgetting the annotation leaves a potential null silently. In Rust, <code>Option</code> is visible in the type and forces handling at every call site.</p>
 </div>
 
-<h2>3. No ownership, borrowing, or lifetimes</h2>
+<h2 id="parameters">3. Parameter mutability — <code>const</code> and <code>&amp;</code> instead of ownership</h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
-  <pre><code><span class="kw">fn</span> <span class="fn-call">push_two</span>(v: <span class="ty"><a href="stdlib.html#collections">vector</a></span>&lt;<span class="ty"><a href="stdlib.html#types">integer</a></span>&gt;) {
-    v += [<span class="nm">1</span>, <span class="nm">2</span>];  <span class="cm">// v is a reference; caller sees the change</span>
+  <pre><code><span class="cm">// &amp;: vector growth (append) is visible to caller</span>
+<span class="kw">fn</span> <span class="fn-call">push_two</span>(v: &amp;<span class="ty"><a href="stdlib-collections.html">vector</a></span>&lt;<span class="ty"><a href="stdlib-types.html">integer</a></span>&gt;) {
+    v += [<span class="nm">1</span>, <span class="nm">2</span>];  <span class="cm">// caller sees the change</span>
+}
+<span class="cm">// const: read-only (locked in debug builds)</span>
+<span class="kw">fn</span> <span class="fn-call">count</span>(v: <span class="kw">const</span> <span class="ty"><a href="stdlib-collections.html">vector</a></span>&lt;<span class="ty"><a href="stdlib-types.html">integer</a></span>&gt;) -> <span class="ty"><a href="stdlib-types.html">integer</a></span> {
+    <span class="bi"><a href="stdlib-collections.html">length</a></span>(v)
+}
+<span class="cm">// &amp;: explicit write-back for primitives</span>
+<span class="kw">fn</span> <span class="fn-call">add_to</span>(n: &amp;<span class="ty"><a href="stdlib-types.html">integer</a></span>, delta: <span class="ty"><a href="stdlib-types.html">integer</a></span>) {
+    n += delta;
 }</code></pre>
 </div>
 <div>
@@ -70,40 +80,47 @@ assert!(p.label.is_none());</code></pre>
   <pre class="rust-pre"><code>fn push_two(v: &amp;mut Vec&lt;i32&gt;) {
     v.push(1);
     v.push(2);
+}
+fn count(v: &amp;Vec&lt;i32&gt;) -&gt; usize {
+    v.len()
+}
+fn add_to(n: &amp;mut i32, delta: i32) {
+    *n += delta;
 }</code></pre>
 </div>
 </div>
 <div class="verdict">
-<p class="up"><strong>Upside</strong> No borrow-checker errors. No lifetime annotations. No distinction between <code>&amp;T</code>, <code>&amp;mut T</code>, and <code>T</code> to reason about. Collections and structs are always passed by reference, so mutation just works.</p>
-<p class="down"><strong>Downside</strong> Memory safety and data-race freedom are not enforced at compile time. The engine's Rust runtime provides the actual safety. Multiple aliases to the same data can mutate it in ways that would be rejected in Rust.</p>
+<p class="up"><strong>Upside</strong> No borrow-checker errors. No lifetime annotations. No ownership transfer to reason about. Struct field mutations through a parameter are always visible to the caller. Use <code>&amp;</code> on a collection parameter to allow vector growth (append) to propagate back. <code>const</code> parameters signal read-only intent, and in debug builds the runtime locks the store for the duration of the call — enough to catch most accidents during development.</p>
+<p class="down"><strong>Downside</strong> The compile-time guarantees are much weaker. Rust's borrow checker statically proves no aliased mutations, no dangling references, and no data races — before the program ever runs. Loft's <code>const</code> is a debug-only runtime check. Aliasing is unchecked at compile time, and the engine's Rust runtime is what truly enforces memory safety.</p>
 </div>
 
-<h2>4. <code>^</code> is exponentiation, not XOR</h2>
+<h2 id="xor">4. <code>^</code> is XOR; exponentiation uses <code>pow()</code></h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
-  <pre><code>area = <span class="en"><a href="stdlib.html#math">PI</a></span> * (r ^ <span class="nm">2.0</span>)   <span class="cm">// exponentiation</span>
+  <pre><code>area = <span class="en"><a href="stdlib.html#math">PI</a></span> * <span class="fn-call">pow</span>(r, <span class="nm">2.0</span>)  <span class="cm">// exponentiation via pow()</span>
 bits = a | b              <span class="cm">// bitwise OR</span>
-mask = a &amp; b              <span class="cm">// bitwise AND</span></code></pre>
+mask = a &amp; b              <span class="cm">// bitwise AND</span>
+xor  = a ^ b              <span class="cm">// bitwise XOR</span></code></pre>
 </div>
 <div>
   <p class="lang-label rust-label">Rust</p>
-  <pre class="rust-pre"><code>let area = PI * r.powi(2); // no ^ operator
+  <pre class="rust-pre"><code>let area = PI * r.powi(2); // or r.powf(2.0)
 let bits = a | b;          // bitwise OR
 let mask = a &amp; b;          // bitwise AND
-let xor  = a ^ b;          // bitwise XOR — no loft equivalent</code></pre>
+let xor  = a ^ b;          // bitwise XOR</code></pre>
 </div>
 </div>
 <div class="verdict">
-<p class="up"><strong>Upside</strong> <code>x^2</code> reads like mathematical notation. No need for <code>.powi()</code> or <code>.powf()</code> method calls. The library functions <code>pow(x, y)</code> also exist for the free-function style.</p>
-<p class="down"><strong>Downside</strong> Rust developers expect <code>^</code> to be XOR; the adjustment takes time. <code>^</code> has lower precedence than <code>*</code>, so <code>PI * r^2</code> must be written <code>PI * (r^2)</code> — easy to forget. Bitwise XOR has no operator in loft.</p>
+<p class="up"><strong>Upside</strong> <code>^</code> behaves exactly as Rust developers expect — it is bitwise XOR. Bitwise operator precedence matches Rust and C: <code>|</code> (loose) → <code>^</code> → <code>&amp;</code> → shifts → arithmetic (tight).</p>
+<p class="down"><strong>Downside</strong> Exponentiation requires a function call: <code>pow(base, exp)</code> for <code>float</code>/<code>single</code> — there is no <code>**</code> or <code>^</code> exponentiation operator. Integer exponentiation is not in the standard library; compute it with a loop or cast to float first.</p>
 </div>
 
-<h2>5. No <code>loop</code> or <code>while</code></h2>
+<h2 id="loops">5. No <code>loop</code> or <code>while</code></h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
-  <pre><code><span class="kw">for</span> _ <span class="kw">in</span> <span class="nm">0..</span> {         <span class="cm">// open-ended range</span>
+  <pre><code><span class="kw">for</span> _ <span class="kw">in</span> <span class="nm">0..2147483647</span> {  <span class="cm">// large upper bound</span>
     <span class="kw">if</span> <span class="fn-call">done</span>() { <span class="kw">break</span>; }
     <span class="fn-call">step</span>();
 }</code></pre>
@@ -118,11 +135,11 @@ while !done() { step(); }</code></pre>
 </div>
 </div>
 <div class="verdict">
-<p class="up"><strong>Upside</strong> Every loop has an iteration variable, making it easy to add index tracking or break conditions without restructuring. Open-ended <code>for _ in 0..</code> is still possible when truly unbounded iteration is needed.</p>
+<p class="up"><strong>Upside</strong> Every loop has an iteration variable, making it easy to add index tracking or break conditions without restructuring. For a near-unbounded poll loop use <code>for _ in 0..2147483647</code> — the <code>break</code> will fire long before the limit is reached in practice.</p>
 <p class="down"><strong>Downside</strong> <code>while condition { }</code> is universally understood and directly expresses intent. Its absence surprises Rust and C programmers. Event loops and polling patterns are more verbose with the open-ended range workaround.</p>
 </div>
 
-<h2>6. Filtered loops — <code>for ... if ...</code></h2>
+<h2 id="filtered-loops">6. Filtered loops — <code>for ... if ...</code></h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
@@ -142,7 +159,7 @@ while !done() { step(); }</code></pre>
 <p class="down"><strong>Downside</strong> Cannot compose with other adapters. Rust's iterator chain (<code>.filter().map().take_while()</code>) is far more expressive for complex data pipelines. Each extra step in loft requires a new loop or a helper variable.</p>
 </div>
 
-<h2>7. Loop attributes: <code>#first</code>, <code>#count</code>, <code>#index</code></h2>
+<h2 id="loop-attributes">7. Loop attributes: <code>#first</code>, <code>#count</code>, <code>#index</code></h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
@@ -164,7 +181,7 @@ while !done() { step(); }</code></pre>
 <p class="down"><strong>Downside</strong> The <code>#attribute</code> syntax is unique to loft and unfamiliar to everyone else. Rust's <code>.enumerate()</code> composes freely with other adapters; loft's attributes are only available on the loop variable of the innermost loop.</p>
 </div>
 
-<h2>8. Named loop break — <code>x#break</code></h2>
+<h2 id="named-break">8. Named loop break — <code>x#break</code></h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
@@ -188,12 +205,15 @@ while !done() { step(); }</code></pre>
 <p class="down"><strong>Downside</strong> Rust's lifetime-label syntax <code>'outer</code> is explicit and visually separate from the loop body. <code>x#break</code> is easy to confuse with the loop attributes <code>x#first</code> and <code>x#count</code>, which have completely different semantics.</p>
 </div>
 
-<h2>9. Methods by <code>self</code> name, not <code>impl</code> blocks</h2>
+<h2 id="methods">9. Methods by <code>self</code> name, not <code>impl</code> blocks</h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
-  <pre><code><span class="kw">fn</span> <span class="fn-call">greet</span>(self: <span class="en">Person</span>) -> <span class="ty"><a href="stdlib.html#types">text</a></span> {
+  <pre><code><span class="kw">fn</span> <span class="fn-call">greet</span>(self: <span class="en">Person</span>) -> <span class="ty"><a href="stdlib-types.html">text</a></span> {
     <span class="st">"Hello, {self.name}!"</span>
+}
+<span class="kw">fn</span> <span class="fn-call">name_len</span>(self: <span class="kw">const</span> <span class="en">Person</span>) -> <span class="ty"><a href="stdlib-types.html">integer</a></span> {
+    <span class="bi"><a href="stdlib-text.html">length</a></span>(self.name)  <span class="cm">// const: read-only access guaranteed</span>
 }
 p.<span class="fn-call">greet</span>()     <span class="cm">// dot syntax</span>
 <span class="fn-call">greet</span>(p)      <span class="cm">// free-function call — identical</span></code></pre>
@@ -204,16 +224,19 @@ p.<span class="fn-call">greet</span>()     <span class="cm">// dot syntax</span>
     fn greet(&amp;self) -&gt; String {
         format!("Hello, {}!", self.name)
     }
+    fn name_len(&amp;self) -&gt; usize {
+        self.name.len()
+    }
 }
 p.greet();     // only dot syntax</code></pre>
 </div>
 </div>
 <div class="verdict">
-<p class="up"><strong>Upside</strong> No <code>impl</code> block ceremony. Methods and free functions are the same thing — just a naming convention. Functions can be added to any type from any file without modifying the original struct definition, similar to extension methods.</p>
-<p class="down"><strong>Downside</strong> No control over receiver ownership: there is no <code>&amp;self</code>, <code>&amp;mut self</code>, or consuming <code>self</code>. All methods behave like <code>&amp;self</code>. Multiple functions with the same name but different non-variant <code>self</code> types are a compile error — no standard overloading.</p>
+<p class="up"><strong>Upside</strong> No <code>impl</code> block ceremony. Methods and free functions are the same thing — just a naming convention. Functions can be added to any type from any file without modifying the original struct definition, similar to extension methods. Mark the first parameter <code>const</code> to guarantee the method never modifies the receiver — analogous to Rust's <code>&amp;self</code>.</p>
+<p class="down"><strong>Downside</strong> No consuming <code>self</code>. Plain (non-<code>const</code>) methods behave like <code>&amp;mut self</code> — the caller's value is always mutably aliased. Multiple functions with the same name but different non-variant <code>self</code> types are a compile error — no standard overloading.</p>
 </div>
 
-<h2>10. Polymorphic enum dispatch</h2>
+<h2 id="enum-dispatch">10. Polymorphic enum dispatch</h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
@@ -221,7 +244,7 @@ p.greet();     // only dot syntax</code></pre>
     <span class="en">Circle</span> { r: <span class="ty"><a href="stdlib.html#types">float</a></span> },
     <span class="en">Rect</span>   { w: <span class="ty"><a href="stdlib.html#types">float</a></span>, h: <span class="ty"><a href="stdlib.html#types">float</a></span> }
 }
-<span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Circle</span>) -> <span class="ty"><a href="stdlib.html#types">float</a></span> { <span class="en"><a href="stdlib.html#math">PI</a></span> * (self.r ^ <span class="nm">2.0</span>) }
+<span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Circle</span>) -> <span class="ty"><a href="stdlib.html#types">float</a></span> { <span class="en"><a href="stdlib.html#math">PI</a></span> * <span class="fn-call">pow</span>(self.r, <span class="nm">2.0</span>) }
 <span class="kw">fn</span> <span class="fn-call">area</span>(self: <span class="en">Rect</span>)   -> <span class="ty"><a href="stdlib.html#types">float</a></span> { self.w * self.h }
 
 s.<span class="fn-call">area</span>()    <span class="cm">// dispatches on the runtime variant</span></code></pre>
@@ -242,33 +265,46 @@ fn area(s: &amp;Shape) -&gt; f64 {
 </div>
 <div class="verdict">
 <p class="up"><strong>Upside</strong> Each variant's behaviour lives in its own small function — easy to read and extend. Adding a new type of shape only requires a new <code>fn area(self: NewShape)</code> without modifying the dispatch site. Feels like OOP method overriding without the inheritance.</p>
-<p class="down"><strong>Downside</strong> Rust's <code>match</code> is exhaustive: the compiler forces you to handle every variant. In loft, adding a new variant silently leaves <code>area</code> unimplemented for it — the call will panic at runtime. Correctness relies on discipline, not the compiler.</p>
+<p class="down"><strong>Downside</strong> Rust's <code>match</code> is exhaustive: the compiler forces you to handle every variant. In loft, leaving a variant without an implementation emits a compiler warning but does not stop compilation. To suppress the warning and produce a null return, write an explicit empty-body stub: <code>fn area(self: NewShape) -&gt; float { }</code>. Exhaustiveness is enforced by discipline, not the type system.</p>
 </div>
 
-<h2>11. No closures</h2>
+<h2 id="closures">11. No closures — but compile-checked function references</h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
-  <pre><code><span class="kw">fn</span> <span class="fn-call">apply</span>(v: <span class="ty"><a href="stdlib.html#collections">vector</a></span>&lt;<span class="ty"><a href="stdlib.html#types">integer</a></span>&gt;, offset: <span class="ty"><a href="stdlib.html#types">integer</a></span>) {
-    <span class="kw">for</span> x <span class="kw">in</span> v {
-        x += offset;   <span class="cm">// must thread offset as a parameter</span>
-    }
+  <pre><code><span class="cm">// fn &lt;name&gt; produces a compile-time-checked function reference</span>
+<span class="kw">fn</span> <span class="fn-call">double</span>(r: <span class="kw">const</span> <span class="en">Score</span>) -> <span class="ty"><a href="stdlib-types.html">integer</a></span> { r.value * <span class="nm">2</span> }
+
+<span class="cm">// Pass it to par(...) for parallel dispatch:</span>
+<span class="kw">for</span> item <span class="kw">in</span> scores <span class="kw">par</span>(result=<span class="fn-call">double</span>(item), <span class="nm">4</span>) {
+    total += result;
+}
+
+<span class="cm">// Context must be embedded in the element — no captures:</span>
+<span class="kw">fn</span> <span class="fn-call">apply</span>(v: <span class="ty"><a href="stdlib-collections.html">vector</a></span>&lt;<span class="ty"><a href="stdlib-types.html">integer</a></span>&gt;, offset: <span class="ty"><a href="stdlib-types.html">integer</a></span>) {
+    <span class="kw">for</span> x <span class="kw">in</span> v { x += offset; }
 }</code></pre>
 </div>
 <div>
   <p class="lang-label rust-label">Rust</p>
-  <pre class="rust-pre"><code>let offset = 5;
+  <pre class="rust-pre"><code>fn double(r: &amp;Score) -&gt; i32 { r.value * 2 }
+
+// Rayon parallel iterator:
+let total: i32 = scores.par_iter().map(double).sum();
+
+// Closure captures context freely:
+let offset = 5;
 let shifted: Vec&lt;i32&gt; = v.iter()
-    .map(|x| x + offset)  // closure captures offset
+    .map(|x| x + offset)
     .collect();</code></pre>
 </div>
 </div>
 <div class="verdict">
-<p class="up"><strong>Upside</strong> Simpler mental model. No need to understand capture modes (<code>move</code> vs borrow), <code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code> trait bounds, or lifetime constraints on captured references. First-class function values still exist; they just cannot close over local variables.</p>
-<p class="down"><strong>Downside</strong> Callbacks that depend on surrounding state must thread all dependencies as explicit parameters. Patterns like <code>.sort_by(|a, b| …)</code>, <code>.map(|x| x + offset)</code>, and event handlers become awkward or impossible to express directly.</p>
+<p class="up"><strong>Upside</strong> Simpler mental model. No capture modes (<code>move</code> vs borrow), no <code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code> trait bounds, no lifetime constraints on captured variables. The <code>fn &lt;name&gt;</code> expression gives a compile-checked reference to any named function — the compiler verifies the name exists and has a matching signature before emitting any code.</p>
+<p class="down"><strong>Downside</strong> No general higher-order functions. <code>fn &lt;name&gt;</code> references can be assigned to a variable but their only valid use is as the worker argument to <code>par(...)</code> or <code>parallel_for()</code> — they cannot be called indirectly, compared, printed, or used in arithmetic. Callbacks that need local context must embed everything in a struct — there is no way to capture a surrounding variable the way a Rust closure would.</p>
 </div>
 
-<h2>12. No generic functions or trait system</h2>
+<h2 id="generics">12. No generic functions or trait system</h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
@@ -292,28 +328,65 @@ let shifted: Vec&lt;i32&gt; = v.iter()
 <p class="down"><strong>Downside</strong> Code cannot be written once and reused across types. Every generic algorithm must be duplicated per type or pushed down into the standard library. There is no way for user code to define an "anything sortable" or "anything printable" abstraction.</p>
 </div>
 
-<h2>13. String formatting — embedded expressions</h2>
+<h2 id="formatting">13. String formatting — embedded expressions</h2>
 <div class="compare">
 <div>
   <p class="lang-label loft-label">Loft</p>
-  <pre><code>msg = <span class="st">"Hi {name}, score: {score:+6.2}"</span>
-hex = <span class="st">"{n:#x}"</span>
-list = <span class="st">"{for x in 1..4 {x*2}}"</span>   <span class="cm">// "2,4,6"</span></code></pre>
+  <pre><code>msg  = <span class="st">"Hi {name}, score: {score:+6.2}"</span>  <span class="cm">// width.prec</span>
+prec = <span class="st">"{value:.2}"</span>                      <span class="cm">// precision only</span>
+hex  = <span class="st">"{n:#x}"</span>
+list = <span class="st">"{for x in 1..4 {x*2}}"</span>          <span class="cm">// "2,4,6"</span>
+<span class="cm">// Nested string literals in {…} are a compiler error — use a variable:</span>
+hw = <span class="st">"hello"</span>; <span class="st">"{hw:3}"</span>                  <span class="cm">// not {"hello":3}</span></code></pre>
 </div>
 <div>
   <p class="lang-label rust-label">Rust</p>
-  <pre class="rust-pre"><code>let msg = format!("Hi {name}, score: {:+6.2}", score);
-let hex = format!("{:#x}", n);
-// no in-string iteration; needs a separate collect step</code></pre>
+  <pre class="rust-pre"><code>let msg  = format!("Hi {name}, score: {:+6.2}", score);
+let prec = format!("{:.2}", value);
+let hex  = format!("{:#x}", n);
+// no in-string iteration; needs a separate collect step
+// nested string literals in format args are fine in Rust</code></pre>
 </div>
 </div>
 <div class="verdict">
-<p class="up"><strong>Upside</strong> Concise — no <code>format!()</code> call, no separate variable to name. Iteration can produce formatted lists inline. Rich specifiers for width, precision, sign, radix, and alignment are available directly in the string.</p>
-<p class="down"><strong>Downside</strong> No compile-time validation of format strings — typos in specifiers are runtime errors. The specifier syntax differs from Rust: width comes before precision (<code>:6.2</code> not <code>:.2</code>), and some Rust specifiers do not exist in loft (and vice-versa).</p>
+<p class="up"><strong>Upside</strong> Concise — no <code>format!()</code> call, no separate variable. Full format expressions (arithmetic, slices, <code>for</code> comprehensions) can appear directly inside <code>{}</code>. Specifiers mirror Rust: <code>:width</code>, <code>:.precision</code>, <code>:width.precision</code>, sign (<code>+</code>), radix (<code>#x</code>, <code>#o</code>, <code>b</code>), alignment (<code>&lt;</code>, <code>&gt;</code>, <code>^</code>), and zero-padding (<code>0N</code>) all work.</p>
+<p class="down"><strong>Downside</strong> Unknown radix letters in specifiers are compile-time errors (e.g. <code>:5z</code> or <code>:5B</code> are both rejected). Radix letters are case-sensitive: valid ones are <code>b</code>, <code>o</code>, <code>x</code>/<code>X</code>, <code>e</code>, and <code>j</code>/<code>json</code> — uppercase <code>B</code> or <code>O</code> produce an error. Applying a numeric specifier to an incompatible type (such as <code>:x</code> on a text value) is silently ignored rather than flagged. Nested string literals inside a <code>{...}</code> format expression are not yet supported — store the string in a variable first.</p>
+</div>
+
+<h2 id="parallel">14. Built-in parallel for-loops — <code>par(...)</code></h2>
+<div class="compare">
+<div>
+  <p class="lang-label loft-label">Loft</p>
+  <pre><code><span class="kw">fn</span> <span class="fn-call">double</span>(r: <span class="kw">const</span> <span class="en">Score</span>) -> <span class="ty"><a href="stdlib-types.html">integer</a></span> { r.value * <span class="nm">2</span> }
+
+sum = <span class="nm">0</span>;
+<span class="kw">for</span> item <span class="kw">in</span> scores <span class="kw">par</span>(b=<span class="fn-call">double</span>(item), <span class="nm">4</span>) {
+    sum += b;   <span class="cm">// b is double(item), computed in parallel</span>
+}               <span class="cm">// results arrive in original order</span>
+
+<span class="cm">// Method form:</span>
+<span class="kw">for</span> item <span class="kw">in</span> scores <span class="kw">par</span>(b=item.<span class="fn-call">value</span>(), <span class="nm">4</span>) { ... }</code></pre>
+</div>
+<div>
+  <p class="lang-label rust-label">Rust</p>
+  <pre class="rust-pre"><code>use rayon::prelude::*;
+
+fn double(r: &amp;Score) -&gt; i32 { r.value * 2 }
+
+let sum: i32 = scores.par_iter()
+    .map(double)
+    .sum();      // order is not guaranteed without extra work
+
+// rayon is an external crate; add to Cargo.toml first</code></pre>
+</div>
+</div>
+<div class="verdict">
+<p class="up"><strong>Upside</strong> Built into the language — no external crate, no <code>Cargo.toml</code> edit. The compiler validates the worker function signature at the call site. Results are delivered in the original vector order. The thread count is set per call, making it easy to tune for the hardware at hand.</p>
+<p class="down"><strong>Downside</strong> The worker must return a primitive (<code>integer</code>, <code>long</code>, <code>float</code>, or <code>boolean</code>) — returning <code>text</code> or a struct reference is not yet supported. Workers cannot capture local variables: context must be embedded as fields alongside the data in the element struct. The <code>parallel_for()</code> function form validates extra context-argument counts at compile time, but the runtime does not yet forward them to the worker — they must still be embedded in the struct for now. Iterator-chain composition (filter, reduce, scan) is not available; each stage needs a separate loop.</p>
 </div>
 
 </article>
-  <script src="search-index.js"></script>
-  <script src="search.js"></script>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
 </body>
 </html>

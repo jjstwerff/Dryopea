@@ -7,35 +7,47 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <span class="cur">Integers</span> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
+<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <span class="cur">Integers</span> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <a href="18-locks.html">Store Locks</a> · <a href="19-threading.html">Parallel execution</a> · <a href="20-logging.html">Logging</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-parallel.html">Parallel</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
 <h1>Integers</h1>
 <article>
-<p>32-bit integers: arithmetic, conversions to/from text and float, bitwise operations, and null from division by zero.</p>
+<p>Numbers are at the heart of almost every program. This page covers the integer types Loft provides, the arithmetic and bitwise operations you can perform on them, how to convert between numbers and text, and what Loft does when something goes wrong — such as dividing by zero.</p>
+<p>The default number type is 'integer': a 32-bit signed whole number, the same as i32 in Rust. It can hold values from roughly -2 billion to +2 billion. For larger values Loft also has 'long' (64-bit), shown at the end of this page.</p>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {</code></pre>
-<p>Integer is the default type for any number, it is comparable with i32 in rust.</p>
-<p>It is possible to convert numbers into texts and texts into numbers.</p>
+<h2 id="converting-between-numbers-and-text">Converting between numbers and text</h2>
+<p>Wrapping a value in curly braces inside a double-quoted string formats it as text and inserts it at that position. Going the other way, 'as integer' parses a text value into a number. These conversions are used constantly when reading input or producing output.</p>
 <pre><code>    v = <span class="nm">4</span>;
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"{v}"</span> == <span class="st">"4"</span>, <span class="st">"Convert numbers to text"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"123"</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">integer</a></span> == <span class="nm">123</span>, <span class="st">"Convert text to number"</span>);</code></pre>
-<p>Priority rules determine the order of operators.</p>
+<h2 id="arithmetic-and-operator-precedence">Arithmetic and operator precedence</h2>
+<p>Loft follows standard mathematical precedence: multiplication and division happen before addition and subtraction. Bitwise operators like '&lt;&lt;' (left shift), '&amp;' (bitwise AND), and '^' (bitwise XOR) also have defined precedence — when mixing them with arithmetic, parentheses make your intent clear and avoid surprises. Note: '^' is XOR, not exponentiation. For powers, use pow(base, exp).</p>
 <pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> + <span class="nm">2</span> * <span class="nm">4</span> == <span class="nm">9</span>, <span class="st">"Integer calculus"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> + <span class="nm">2</span> &lt;&lt; <span class="nm">2</span> == <span class="nm">12</span>, <span class="st">"Binary shift"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">0x0a8</span> &amp; <span class="nm">15</span> == <span class="nm">8</span>, <span class="st">"Binary and"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">42</span> ^ <span class="nm">0b111111</span> == <span class="nm">21</span>, <span class="st">"Binary xor"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">105</span> % <span class="nm">100</span> == <span class="nm">5</span>, <span class="st">"Modulus"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-math.html">pow</a></span>(<span class="nm">2.0</span>, <span class="nm">3.0</span>) == <span class="nm">8.0</span>, <span class="st">"Power"</span>);</code></pre>
-<p>The absolute value function is not a operation on numbers like `-1.abs()` in rust.</p>
+<p>'abs()' returns the absolute value of a number — always non-negative. It is a plain function call, not a method, so write abs(x) not x.abs().</p>
 <pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">1</span> + <span class="bi"><a href="stdlib-math.html">abs</a></span>(-<span class="nm">2</span>) == <span class="nm">3</span>, <span class="st">"Absolute integer"</span>);</code></pre>
-<p>Division by zero results in a null (undefined) value that is equal to false in test.</p>
+<h2 id="division-by-zero-produces-null">Division by zero produces null</h2>
+<p>Unlike many languages, Loft does not crash or throw an exception when you divide by zero. Instead the result is null — a special "no value" state. In a condition, null behaves like false, so you can test for it with '!'. This makes it easy to handle bad input gracefully without try/catch.</p>
 <pre><code>    a = <span class="nm">2</span> * <span class="nm">2</span>;
     a -= <span class="nm">4</span>;
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!(<span class="nm">12</span> / a), <span class="st">"Null on division by zero"</span>);</code></pre>
 <pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"a{12}b"</span> == <span class="st">"a12b"</span>, <span class="st">"Formatting problem"</span>);</code></pre>
-<p>It is allowed to have full expressions inside a formatting block.</p>
+<h2 id="hex-formatting-with-x">Hex formatting with '#x'</h2>
+<p>You can include a full expression inside a format placeholder, not just a variable name. Adding '#x' after the ':' formats the result as a hexadecimal number with a leading '0x' prefix.</p>
 <pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"a{1 + 2 * 3:#x}b"</span> == <span class="st">"a0x7b"</span>, <span class="st">"Hex formatting"</span>);</code></pre>
-<p>Hex literals must use lowercase digits. Uppercase hex digits (0xFF) are a parse error — always write 0xff.</p>
+<p>Hexadecimal literals in source code can use either lowercase (a–f) or uppercase (A–F) digits — both are valid and mean the same thing.</p>
 <pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">0xff</span> == <span class="nm">255</span>, <span class="st">"Lowercase hex literal"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">0x2a</span> == <span class="nm">42</span>, <span class="st">"Lowercase hex literal 2"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">0xFF</span> == <span class="nm">255</span>, <span class="st">"Uppercase hex literal"</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="nm">0x2A</span> == <span class="nm">42</span>, <span class="st">"Uppercase hex literal 2"</span>);</code></pre>
+<h2 id="number-format-specifiers">Number format specifiers</h2>
+<p>A format specifier after ':' controls how a number is displayed: '#x' = hexadecimal with '0x' prefix, 'o' = octal, 'b' = binary, '+' = always show a sign (+ or -), 'N' = minimum width (space-padded), '0N' = minimum width with zero-padding. These can be combined: '+4' means sign + at least 4 characters wide.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"ab{1+2+32:#x}c{12:o}d{391}e{12:+4}f{1:03}g{42:b}h"</span> == <span class="st">"ab0x23c14d391e +12f001g101010h"</span>, <span class="st">"Integer formats"</span>);</code></pre>
+<h2 id="the-long-type-for-large-numbers">The 'long' type for large numbers</h2>
+<p>When values might exceed the 32-bit integer range, use 'long' (64-bit). Write a long literal by appending 'l' to the number: '1l', '100l'. Long values support the same arithmetic and format specifiers as integer. Use 'as integer' to convert a long back to a regular integer.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="st">"a{1l+1:+4}b{12l as integer}c {2l * (4l % 6l) &gt;= 8} d"</span> == <span class="st">"a  +2b12c true d"</span>, <span class="st">"Long formatting"</span>);
 }</code></pre>
 
   </article>

@@ -14,6 +14,19 @@ Variable/scope tracking during parsing is in `src/variables.rs` via `Function`.
 
 ---
 
+## Contents
+- [Value Enum (IR Nodes) — `src/data.rs`](#value-enum-ir-nodes--srcdatars)
+- [Type Enum — `src/data.rs`](#type-enum--srcdatars)
+- [AST-Level Operators (Call node op_nr)](#ast-level-operators-call-node-op_nr)
+- [Bytecode State — `src/state.rs`](#bytecode-state--srcstatersrs)
+- [Variable Tracking — `src/variables.rs`](#variable-tracking--srcvariablesrs)
+- [248 Bytecode Operators — `src/fill.rs`](#248-bytecode-operators--srcfillrs)
+- [DbRef](#dbref)
+- [Key Patterns](#key-patterns)
+- [Debug Tools (`src/state.rs`, debug builds only)](#debug-tools-srcstatersrs-debug-builds-only)
+
+---
+
 ## Value Enum (IR Nodes) — `src/data.rs`
 
 ```rust
@@ -160,8 +173,59 @@ pub struct State {
 pub type Call = fn(&mut Stores, &mut DbRef);
 ```
 
-The stack is stored as a database record in store 1000.
-`stack_pos` starts at 4 (offset past the record header).
+The stack is stored as a database record in store 1000 (index 0 in `Stores::allocations`).
+`stack_pos` starts at 4 (offset past the 4-byte record header slot reserved for the return address
+of `main`). `execute()` immediately pushes `u32::MAX` as the sentinel return address, so on entry
+to `main` the effective `stack_pos = 8`.
+
+### Stack Frame Layout
+
+For a function `fn foo(a: T1, b: T2) -> R { ... }`:
+
+```
+absolute offset from stack_cur.pos:
+  [caller's stack ...]
+  [a]        ← size_of(T1) bytes, compile-time position 0
+  [b]        ← size_of(T2) bytes, compile-time position size(T1)
+  [ret-addr] ← 4 bytes (u32 code_pos), compile-time position = args_size = size(T1)+size(T2)
+  [locals]   ← compile-time positions start at args_size+4
+```
+
+`State::arguments` records `args_size` after scanning a function's parameter list.
+
+### Variable Position Encoding (`var[N]` in bytecode dumps)
+
+Each variable is accessed via `get_var(encoded_pos)` / `put_var(encoded_pos, val)`.
+
+- **Compile-time alloc position `N`**: the value of `Stack::position` at the moment the variable
+  was first pushed/allocated onto the compile-time stack. For a function argument the first bytes
+  are pushed at N=0; for locals, N=args_size+4 or higher.
+- **`var[N]` in bytecode dumps**: the dump shows `var[N]` where `N = stack_at_instruction - encoded_pos`. `N` is the compile-time allocation position of the variable.
+- **Actual encoded value**: `encoded_pos = stack_at_instruction - N`. Stored as a u16 in the bytecode stream after the opcode byte.
+
+Runtime formula for `get_var(encoded_pos)`:
+```
+absolute_address = stack_cur.pos + runtime_stack_pos - encoded_pos
+                 = stack_cur.pos + (Z + compile_stack_pos) - (compile_stack_pos - N)
+                 = stack_cur.pos + Z + N
+```
+where `Z` = absolute stack position at the start of the function's arguments (runtime `stack_pos`
+before any args were pushed).
+
+So `var[N]` always resolves to `stack_cur.pos + Z + N`, the variable's fixed absolute address for
+the current call frame — regardless of how much has been pushed onto the stack since.
+
+`put_var(encoded_pos, val)` writes to `stack_cur.pos + runtime_stack_pos + size_of::<T>() - encoded_pos`. This differs from `get_var` by `size_of::<T>()`, so callers must account for the size offset.
+
+### `OpDatabase` vs `OpConvRefFromNull`
+
+- `OpConvRefFromNull` → `Stores::null()` → allocates a fresh store with `rec=0`. This store is
+  used as the "home" for the struct allocation in `OpDatabase`.
+- `OpDatabase(var, db_tp)` → reads the existing DbRef from `var`, calls `clear`+`claim`+`set_default_value` on it, then writes `{store_nr, rec=1, pos=8}` back to `var`. The store it operates on is the one allocated by `ConvRefFromNull`.
+
+### Store LIFO Invariant
+
+`Stores::database()` allocates store `max` and increments `max`. `Stores::free()` just decrements `max` by 1 without verifying `al == max-1`. This means stores **must be freed in exact LIFO (reverse-allocation) order**; out-of-order frees corrupt `max` and will cause subsequent allocations to overwrite a still-live store.
 
 ### `text_positions` (debug-only `String` liveness tracker)
 
@@ -173,6 +237,81 @@ on 64-bit). In debug builds, `State` tracks which stack positions hold live `Str
 - `OpFreeStack(value, discard)` (`state.free_stack()`) → after decrementing `stack_pos` by `discard`, asserts that `text_positions` has **no entries** in the discarded range. Violation = "Not freed texts" panic.
 
 **Consequence**: every `String` allocated by `OpText` in a block must be freed by `OpFreeText` before the block's `OpFreeStack` runs — except the block's *return* variable, which must be allocated **outside** the block's stack range (i.e. at an enclosing scope) so its position falls below the discard range.
+
+### `Store::addr` layout
+
+```rust
+pub fn addr<T>(&self, rec: u32, fld: u32) -> &T {
+    debug_assert!(rec * 8 + fld + size_of::<T>() <= store.size * 8, "out of bounds");
+    unsafe { self.ptr.offset(rec as isize * 8 + fld as isize).cast::<T>() … }
+}
+```
+
+Address = `ptr + rec * 8 + fld`. The factor-of-8 comes from the 8-byte record header
+(the size of a single-word `u64` slot reserved per record). For the stack store,
+`stack_cur.rec` is whatever `claim(1000)` returned, and `stack_cur.pos = 8` (fixed
+by `Stores::database()`). Therefore:
+
+```
+absolute byte offset into store's backing buffer
+  = stack_cur.rec * 8 + stack_cur.pos + runtime_stack_pos
+  = stack_cur.rec * 8 + 8 + runtime_stack_pos
+```
+
+In debug builds `addr` and `addr_mut` assert `rec * 8 + fld + size_of::<T>() <= store.size * 8`.  Without this check, a garbage `DbRef` (e.g. from `format_stack_float`'s off-by-4 bug) silently reads invalid memory and causes SIGSEGV rather than a panic with a useful location.
+
+A `DbRef` created by `OpCreateStack` has `{store_nr=stack_cur.store_nr,
+rec=stack_cur.rec, pos=stack_cur.pos + var.absolute_position}`. When
+`addr::<String>(r.rec, r.pos)` is called on it, the actual byte offset is
+`r.rec * 8 + r.pos = stack_cur.rec * 8 + stack_cur.pos + var.absolute_position`.
+This is the same formula as `get_var`, so both paths address the same memory.
+
+### Stack text operators: `string_mut` vs `string_ref_mut` vs `GetStackText`
+
+Three closely related helpers deal with text buffers on the stack:
+
+| Helper | Finds the `String` via… | Used by |
+|---|---|---|
+| `string_mut(pos)` | `stack_cur.pos + stack_pos - pos` (direct — variable IS a `String`) | `OpText`, `OpAppendText`, `OpFormatFloat`, `OpFreeText` |
+| `string_ref_mut(pos)` | reads a `DbRef` at `stack_cur.pos + stack_pos - pos`, then follows `(r.rec, r.pos)` | `OpAppendStackText`, `OpFormatStackFloat`, `OpFormatStackInt`, … |
+| `GetStackText` | pops a `DbRef` `r` from stack, calls `database.store(&r).addr::<String>(r.rec, r.pos)` | `OpGetStackText` (return of a `RefVar(Text)` function) |
+
+`string_ref_mut` uses `store_mut(&self.stack_cur)` regardless of the DbRef's
+`store_nr`, because the DbRef was always created via `OpCreateStack` from the same
+stack frame.  `GetStackText` uses `database.store(&r)` which selects the store via
+`r.store_nr` — correct only if `r.store_nr == stack_cur.store_nr`, which holds when
+the DbRef was created by `OpCreateStack` in the same thread.
+
+**The "Stack" format ops** (`OpAppendStackText`, `OpFormatStackFloat`, etc.) differ
+from their plain counterparts (`OpAppendText`, `OpFormatFloat`) in that they expect the
+target text buffer to be a `RefVar(Text)` — i.e. a pointer to a `String` stored
+elsewhere on the stack — rather than directly being the `String`.  This indirection is
+what allows a text-returning function to write into a caller-supplied buffer.
+
+### `generate_var` — reading stack variables by type
+
+`generate_var` (state.rs) emits different opcode sequences depending on the variable's type:
+
+| Type | Opcodes emitted | Result on stack |
+|---|---|---|
+| `Integer` | `OpVarInt(pos)` | the `i32` value |
+| `Long` | `OpVarLong(pos)` | the `i64` value |
+| `Float` | `OpVarFloat(pos)` | the `f64` value |
+| `Text` (owned) | `OpVarText(pos)` or `OpArgText(pos)` | a `Str` (ptr+len) |
+| `Vector` | `OpVarVector(pos)` | the 12-byte `DbRef` pointing to the container record |
+| `Reference` / `Enum(true)` | `OpVarRef(pos)` | the 12-byte `DbRef` pointing to the struct record |
+| `RefVar(Integer)` | `OpVarRef(pos)` → `OpGetInt(0)` | the referenced `i32` |
+| `RefVar(Text)` | `OpVarRef(pos)` → `OpGetStackText` | dereferences the `DbRef` to a `String *` |
+| `RefVar(Vector)` | `OpVarRef(pos)` → `OpGetStackRef(0)` | dereferences the `DbRef` to another `DbRef` |
+
+**`RefVar(Vector)` note:** `OpVarRef(pos)` pushes the `DbRef` of the `OpCreateStack`
+temp record. `OpGetStackRef(0)` then reads the 12-byte `DbRef` stored at offset 0 in
+that temp record, which is the **caller's vector `DbRef`** — the `OpCreateStack`
+instruction stores it there when the call is set up. This is the correct result for
+`v += extra` (Issue 4 fix): `assign_refvar_vector` in `parser.rs` emits
+`OpAppendVector(Var(v_nr), rhs, rec_tp)`; `generate_var` for `Var(v_nr)` uses the
+`OpVarRef + OpGetStackRef(0)` path to supply the caller's vector container `DbRef`
+to `vector_append`, which modifies the caller's vector in place.
 
 ---
 
@@ -201,7 +340,9 @@ pub struct Variable {
     type_def: Type,
     source: (u32, u32),   // (line, col) of declaration
     scope: u16,           // 0 = function arguments
-    stack_pos: u16,       // Position on stack frame
+    stack_pos: u16,       // Position on stack frame (u16::MAX = unassigned)
+    first_def: u32,       // Bytecode-sequence position of first assignment (u32::MAX = never)
+    last_use: u32,        // Bytecode-sequence position of last read (0 = never)
     uses: u16,            // Reference count
     argument: bool,
     defined: bool,
@@ -211,6 +352,27 @@ pub struct Variable {
 Variables are referenced in IR by their `stack_pos` (`u16`).
 Scope 0 is always function arguments.
 The same variable name may have multiple `Variable` instances across scopes.
+
+### Live Intervals (`first_def` / `last_use`)
+
+`compute_intervals(function, ir)` in `variables.rs` walks the entire IR tree in sequential
+order (assigning each node a monotonically-increasing sequence number `seq`) and fills:
+
+- `first_def` — the sequence number of the `Value::Set(v, …)` node that first defines `v`.
+  Critically, the *value expression* inside `Set` is visited **before** `first_def` is
+  recorded, so a block-return temporary that lives only inside the RHS expression does not
+  create a false overlap with `v`.
+- `last_use` — the maximum sequence number of any `Value::Var(v)` reference.
+
+`validate_slots(function)` uses these intervals to detect conflicting stack-slot assignments:
+two variables with the same `stack_pos` overlap if their live intervals intersect
+(`left.first_def <= right.last_use && right.first_def <= left.last_use`).
+Same-name + same-slot pairs are exempt (they represent the sequential-block reuse pattern).
+Only owning types (Text, Reference, Vector, owned Enum) are checked; primitive scalars can
+safely share slots.
+
+Called (in debug builds) from `state.rs` after `byte_code()` completes, immediately before
+`state.execute()`.
 
 ---
 
@@ -269,7 +431,7 @@ Extra: `format_single`, `format_stack_single`, `format_float`, `format_stack_flo
 
 ## DbRef
 
-Universal pointer `(store_nr: u16, rec: u32, pos: u32)` — see `DATABASE.md` for the full definition and key/compare API. Used for stack frames (store 1000), struct instances, and vector elements.
+Universal pointer `(store_nr: u16, rec: u32, pos: u32)` — see [DATABASE.md](DATABASE.md) for the full definition and key/compare API. Used for stack frames (store 1000), struct instances, and vector elements.
 
 ---
 
@@ -294,3 +456,54 @@ over `Call`, `If`, `Block`, and leaf nodes.
 - `init` evaluates to the iterator state and stores it in `var_nr`
 - `step` advances the iterator and yields the next value (or signals done)
 - The outer `Loop(Block)` with `Break` exits when done
+
+---
+
+## Debug Tools (`src/state.rs`, debug builds only)
+
+Two free functions at the bottom of `src/state.rs` are compiled only in debug builds
+(`#[cfg(debug_assertions)]`).
+
+### `ir_contains_var(value, v) -> bool`
+
+Recursively checks whether a `Value` tree contains any `Var(v)` node. Handles all
+`Value` variants: `Call` args, `Set`/`Return`/`Drop` inner, `If` branches,
+`Block`/`Loop` operators, `Insert` items, and `Iter` create/next/extra nodes.
+
+Used in `generate_set` at the top of the first-assignment path (`pos == u16::MAX`) to
+detect self-reference bugs — a variable appearing in its own first-assignment expression
+always indicates a parser bug (storage not yet allocated), and panics with a clear message
+naming the function and the broken IR.
+
+### `print_ir(value, data, vars, depth)`
+
+Pretty-prints a `Value` IR tree to stderr in loft-like syntax. Handles all `Value`
+variants with appropriate indentation. Called from `def_code` when the `LOFT_IR`
+environment variable is set.
+
+**Usage:**
+```bash
+LOFT_IR=n_test    cargo test my_test -- --nocapture  # one function by name substring
+LOFT_IR=*         cargo test my_test -- --nocapture  # all user functions
+LOFT_IR=          cargo test my_test -- --nocapture  # same as *
+```
+
+Output format:
+```
+=== IR: n_test ===
+{  // block
+  d = t_5Color_double(c)
+  ...
+}
+===
+```
+
+The `LOFT_IR` gate additionally checks the `logging` flag on the function definition
+(true for non-default-library functions) to suppress output for built-in operators.
+
+---
+
+## See also
+- [COMPILER.md](COMPILER.md) — Lexer, parser, two-pass design, IR, type system, scope analysis, bytecode
+- [DATABASE.md](DATABASE.md) — Store allocator, Stores schema, DbRef, vector/tree/hash implementations
+- [INTERNALS.md](INTERNALS.md) — calc.rs, stack.rs, create.rs, external.rs, text.rs, parallel.rs

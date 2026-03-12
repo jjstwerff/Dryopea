@@ -151,7 +151,7 @@ impl Test {
         state: &mut State,
         config: &LogConfig,
     ) -> File {
-        let mut w = File::create(format!("tests/code/{}_{}.txt", self.file, self.name)).unwrap();
+        let mut w = File::create(format!("tests/dumps/{}_{}.txt", self.file, self.name)).unwrap();
         writeln!(w, "{code}").unwrap();
         let to = state.database.types.len();
         for tp in types..to {
