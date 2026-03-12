@@ -1,0 +1,39 @@
+// Copyright (c) 2024-2025 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Logging
+// @TITLE: Runtime logging functions
+
+// Logging lets you record events at runtime without stopping the program.
+// Instead of printing everything to the console, you write to a log so you
+// can filter by severity, redirect output to a file, or silence it entirely
+// in production — all without changing your source code.
+
+// There are four severity levels. Use `log_info` for routine events you want
+// to trace during development. Use `log_warn` when something unexpected
+// happened but the program can continue safely. Use `log_error` when
+// something went wrong and you need to investigate. Use `log_fatal` for the
+// most serious problems that indicate a condition the program may not be able
+// to recover from.
+
+// To configure where log output goes, place a `log.conf` file next to your
+// `.loft` file or pass `--log-conf path/to/log.conf` on the command line.
+// When no logger is configured the log calls are silent no-ops, which is why
+// the tests below produce no visible output.
+
+// `assert(condition, message)` is related to logging in production mode: when
+// assertions are disabled (release builds without the debug flag) a failing
+// assert logs an error rather than aborting the program, so your service stays
+// alive and the problem is captured in the log.
+
+fn main() {
+    // Call all four severity levels — no logger configured, so these are no-ops
+    log_info("test info message");
+    log_warn("test warn message");
+    log_error("test error message");
+    log_fatal("test fatal message");
+
+    // assert with a true condition must not abort
+    assert(true, "this should not fail");
+
+    println("logging test passed");
+}

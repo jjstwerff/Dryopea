@@ -85,18 +85,38 @@ default/03_text.loft    — text utilities
 
 | File | Topic |
 |---|---|
-| `COMPILER.md` | Lexer, parser, two-pass design, IR, type system, scope analysis, bytecode |
-| `INTERMEDIATE.md` | Value/Type enums in detail; 248 bytecode operators; State layout |
-| `DATABASE.md` | Store allocator, Stores schema, DbRef, vector/tree/hash/radix implementations |
-| `STDLIB.md` | Standard library API reference |
-| `INTERNALS.md` | calc.rs, stack.rs, create.rs, external.rs, text.rs, png_store.rs, main.rs, radix_tree.rs |
-| `DOC.md` | HTML documentation generation (gendoc.rs + documentation.rs) |
-| `TESTING.md` | Test framework + `LogConfig` debug-logging presets and `LOFT_LOG` env var |
-| `LOFT.md` | Loft language reference |
+| [QUICK_START.md](QUICK_START.md) | This file — orientation, conventions, debug logging |
+| [LOFT.md](LOFT.md) | Loft language reference (syntax, types, operators, control flow) |
+| [STDLIB.md](STDLIB.md) | Standard library API (math, text, collections, file I/O, logging, parallel) |
+| [COMPILER.md](COMPILER.md) | Lexer, parser, two-pass design, IR, type system, scope analysis, bytecode |
+| [INTERMEDIATE.md](INTERMEDIATE.md) | Value/Type enums in detail; 248 bytecode operators; State layout |
+| [DATABASE.md](DATABASE.md) | Store allocator, Stores schema, DbRef, vector/tree/hash/radix implementations |
+| [INTERNALS.md](INTERNALS.md) | calc.rs, stack.rs, create.rs, external.rs, text.rs, png_store.rs, parallel.rs, main.rs, logger.rs |
+| [THREADING.md](THREADING.md) | Parallel for-loop (`par(...)`), `fn <name>` references, runtime parallel execution |
+| [LOGGER.md](LOGGER.md) | Runtime logging framework (log_info/warn/error/fatal, config, rate limiting, production mode) |
+| [TESTING.md](TESTING.md) | Test framework, `LogConfig` debug-logging presets, `LOFT_LOG` env var, suite files |
+| [DOC.md](DOC.md) | HTML documentation generation (gendoc.rs + documentation.rs) |
+| [DESIGN.md](DESIGN.md) | Algorithm catalog with complexity analysis and enhancement priorities |
+| [CODE.md](CODE.md) | Code quality rules (naming, functions, doc comments, clippy) |
+| [ASSIGNMENT.md](ASSIGNMENT.md) | Stack slot assignment algorithm — status and design decisions |
+| [PROBLEMS.md](PROBLEMS.md) | Known bugs, limitations, workarounds, and fix plans |
+
+## Reading by goal
+
+| Goal | Start here |
+|---|---|
+| Understand the language syntax | [LOFT.md](LOFT.md), then [STDLIB.md](STDLIB.md) |
+| Add a feature to the compiler | [COMPILER.md](COMPILER.md) → [INTERMEDIATE.md](INTERMEDIATE.md) → [INTERNALS.md](INTERNALS.md) |
+| Debug a runtime crash | [PROBLEMS.md](PROBLEMS.md) (check open issues) → [TESTING.md](TESTING.md) § LogConfig → [INTERNALS.md](INTERNALS.md) |
+| Add a native (Rust) standard library function | [INTERNALS.md](INTERNALS.md) § Native Function Registry, then `default/01_code.loft` |
+| Understand the parallel execution model | [THREADING.md](THREADING.md), then [INTERNALS.md](INTERNALS.md) § Parallel Execution |
+| Set up logging in a loft program | `STDLIB.md § Logging`, then [LOGGER.md](LOGGER.md) |
+| Understand the heap / memory model | [DATABASE.md](DATABASE.md), then `INTERMEDIATE.md § DbRef` |
+| Improve the test suite | [TESTING.md](TESTING.md), then `tests/suite/` |
 
 ## Debug logging — `LOFT_LOG` quick reference
 
-Set this env var before `cargo test` to control what appears in `tests/code/*.txt`:
+Set this env var before `cargo test` to control what appears in `tests/dumps/*.txt`:
 
 | Value | What you get |
 |---|---|
@@ -108,4 +128,4 @@ Set this env var before `cargo test` to control what appears in `tests/code/*.tx
 | `crash_tail:N` | Last N execution lines; flushed on panic |
 | `fn:<name>` | Only the named function |
 
-See `TESTING.md § LogConfig` and `src/log_config.rs` for the full API.
+See [TESTING.md](TESTING.md) § LogConfig and `src/log_config.rs` for the full API.

@@ -81,8 +81,8 @@ pub enum Value {
     // Closure(u32, u32),
     /// Drop the returned value of a call
     Drop(Box<Value>),
-    /// An iterator (name, create, next, extra_init)
-    /// extra_init is Value::Null for non-text loops, or v_set(index_var, 0) for text loops.
+    /// An iterator (name, create, next, `extra_init`)
+    /// `extra_init` is `Value::Null` for non-text loops, or `v_set(index_var`, 0) for text loops.
     Iter(u16, Box<Value>, Box<Value>, Box<Value>),
     /// Key structure
     Keys(Vec<Key>),
@@ -460,7 +460,7 @@ pub struct Argument {
 }
 
 #[derive(Clone)]
-#[allow(clippy::struct_excessive_bools)]
+#[allow(clippy::struct_excessive_bools)] // four independent property flags (mutable/constant/nullable/primary); an enum would add indirection without clarity
 pub struct Attribute {
     /// Name of the attribute for this definition
     pub name: String,
@@ -847,7 +847,7 @@ impl Data {
     }
 
     #[must_use]
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation)] // definition count is always < u32::MAX in practice
     pub fn definitions(&self) -> u32 {
         self.definitions.len() as u32
     }
@@ -1087,7 +1087,15 @@ impl Data {
                 self.def(type_nr).name.len(),
                 self.def(type_nr).name
             );
-            self.source_nr(self.definitions[type_nr as usize].source, &name)
+            let struct_source = self.definitions[type_nr as usize].source;
+            let d_nr = self.source_nr(struct_source, &name);
+            if d_nr == u32::MAX {
+                // Method defined outside the struct's source file (e.g., user extends a
+                // library type). Fall back to the current parse source.
+                self.source_nr(self.source, &name)
+            } else {
+                d_nr
+            }
         } else {
             self.def_nr(&format!("n_{fn_name}"))
         }
@@ -1359,7 +1367,7 @@ impl Data {
         .to_string()
     }
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation)] // d_nr and a_nr are definition/attribute indices, always < u32::MAX
     pub fn find_unused(&self, diagnostics: &mut Diagnostics) {
         for (d_nr, def) in self.definitions.iter().enumerate() {
             if self.used_definitions.contains(&(d_nr as u32)) {

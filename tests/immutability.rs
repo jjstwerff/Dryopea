@@ -75,3 +75,41 @@ fn wrapper(a: &integer) { add_one(a) }
 fn test() {}"
     );
 }
+
+// ── Local `const` variable tests ────────────────────────────────────────────
+
+/// A `const` local integer that is only read: no compile error.
+#[test]
+fn const_local_read_only() {
+    code!("fn test() { const x = 42; assert(x == 42, \"ok\") }").result(dryopea::data::Value::Null);
+}
+
+/// A `const` local integer that is reassigned: compile error.
+#[test]
+fn const_local_int_reassigned() {
+    code!("fn test() { const x = 5; x = 10 }")
+        .error("Cannot modify const variable 'x' at const_local_int_reassigned:1:34")
+        .warning("Variable x is never read at const_local_int_reassigned:1:22");
+}
+
+/// A `const` local integer with `+=`: compile error.
+#[test]
+fn const_local_int_augmented() {
+    code!("fn test() { const x = 5; x += 1 }")
+        .error("Cannot modify const variable 'x' at const_local_int_augmented:1:34")
+        .warning("Variable x is never read at const_local_int_augmented:1:22");
+}
+
+/// A `const` local text that is reassigned: compile error.
+#[test]
+fn const_local_text_reassigned() {
+    code!("fn test() { const t = \"hello\"; t = \"world\" }")
+        .error("Cannot modify const variable 't' at const_local_text_reassigned:1:45");
+}
+
+/// A `const` local text with `+=`: compile error.
+#[test]
+fn const_local_text_appended() {
+    code!("fn test() { const t = \"hello\"; t += \"!\" }")
+        .error("Cannot modify const variable 't' at const_local_text_appended:1:42");
+}

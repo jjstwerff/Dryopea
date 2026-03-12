@@ -1,0 +1,86 @@
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Structs
+// @TITLE: Record definitions and use
+
+// A struct groups related values under one name.
+// Each piece of data is called a field. You access fields with dot notation: 'value.field'.
+struct Area {
+    height: u16,
+    terrain: u8,
+    water: u8,
+    direction: u8
+}
+
+// ## Field Constraints
+// You can restrict what values a field may hold.
+// 'limit(min, max)' rejects any value outside that range at runtime.
+// 'not null' declares that zero is a meaningful value for this field — without it,
+// zero is treated as "no value" (null), which can cause surprising behaviour.
+// Fields you omit in a constructor receive zero (or null for nullable fields) by default.
+struct Point {
+    r: integer limit(0, 255) not null,
+    g: integer limit(0, 255) not null,
+    b: integer limit(0, 255) not null
+}
+
+// ## Methods
+// A method is a function whose first parameter is named 'self'.
+// Loft uses the type of 'self' to decide which struct the method belongs to.
+// Call it with dot notation: 'myPoint.value()'.
+// Methods that return a primitive result (integer, float, text) work exactly as you
+// would expect — the call expression evaluates to the returned value.
+fn value(self: Point) -> integer {
+    self.r * 0x10000 + self.g * 0x100 + self.b
+}
+
+// ## Methods That Return a New Struct
+// A method can also return a completely new struct value.
+// Write '-> StructName' as the return type and construct the value in the body.
+// The caller receives a fresh copy with whatever fields you specify.
+fn dimmed(self: Point) -> Point {
+    Point { r: self.r / 2, g: self.g / 2, b: self.b / 2 }
+}
+
+// ## Computed Fields
+// A field can calculate its value from other fields in the same struct.
+// Write '= expression' after the type to set a default evaluated at construction time.
+// Inside that expression, '$' refers to the struct being built.
+struct Object {
+    name_length: integer = len($.name),
+    name: text
+}
+
+fn main() {
+    // You can fill a vector with copies of the same struct using '; count' syntax.
+    map = [Area {height:0, terrain:1, water:1, direction:1}; 16 ];
+    assert("{map[3]}" == "{{height:0,terrain:1,water:1,direction:1}}", "record {map[3]}");
+
+    // Fields left out of the constructor get their zero or null default.
+    p = Point { r:128, b:128 };
+    assert(p.g == 0, "Omitted field defaults to zero");
+    assert("{p}" == "{{r:128,g:0,b:128}}", "Struct compact formatting");
+
+    // ## Formatting Structs
+    // The default format lists all fields compactly.
+    // ':j' produces JSON output, which is useful for storing or sending data.
+    o = Object { name: "hello" };
+    assert(o.name_length == 5, "Calculated field");
+    assert("{o:j}" == "{{\"name_length\":5,\"name\":\"hello\"}}", "JSON format");
+
+    // Call a method on a variable using dot notation.
+    // The return value can be formatted inline inside a text.
+    purple = Point { r:128, b:128 };
+    assert("{purple.value():x}" == "800080", "Method result in format");
+
+    // You can call a method directly on a constructor expression without storing it first.
+    assert(Point { r:255, g:0, b:0 }.value() == 0xff0000, "Method on constructor");
+
+    // 'dimmed' returns a new Point with each channel halved.
+    // The original variable is not changed — you get a separate value back.
+    dark = purple.dimmed();
+    assert(dark.r == 64, "dimmed r: {dark.r}");
+    assert(dark.b == 64, "dimmed b: {dark.b}");
+    assert(dark.g == 0, "dimmed g: {dark.g}");
+}
+// defaults on fields & null defaults

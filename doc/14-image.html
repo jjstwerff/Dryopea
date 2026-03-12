@@ -7,10 +7,22 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <span class="cur">Image</span> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
+<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <a href="13-file.html">File</a> · <span class="cur">Image</span> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <a href="18-locks.html">Store Locks</a> · <a href="19-threading.html">Parallel execution</a> · <a href="20-logging.html">Logging</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-parallel.html">Parallel</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
 <h1>Image</h1>
 <article>
-<p>Image loading and pixel-level manipulation using the built-in Image type.</p>
+<p>Loft has a built-in Image type for loading PNG files and inspecting their pixels. This page has no runnable examples because PNG test files are not included in the standard test suite, but the API shape below shows you exactly how to use it in your own code.</p>
+<h2 id="loading-an-image">Loading an Image</h2>
+<p>Pass a File handle to the `png()` function to load a PNG into memory. The file is read in full and decoded; after that you can access pixels without any further I/O.</p>
+<p>img = png(file("photo.png"))</p>
+<h2 id="reading-dimensions">Reading Dimensions</h2>
+<p>Once loaded, `img#width` and `img#height` give you the pixel dimensions.</p>
+<p>w = img#width h = img#height println("image is {w} x {h} pixels")</p>
+<h2 id="accessing-individual-pixels">Accessing Individual Pixels</h2>
+<p>Index the image with two coordinates to get a pixel value. Each pixel carries four channels: red, green, blue, and alpha, all in the range 0–255.</p>
+<p>px = img[x, y] r  = px#red g  = px#green b  = px#blue a  = px#alpha</p>
+<h2 id="iterating-over-all-pixels">Iterating Over All Pixels</h2>
+<p>A `for` loop over an image visits every pixel from top-left to bottom-right. This is the easiest way to scan or transform the whole image.</p>
+<p>for px in img { if px#red &gt; 200 { println("bright red pixel") } }</p>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {
 }</code></pre>
 

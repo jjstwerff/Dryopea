@@ -9,8 +9,9 @@ use std::path::PathBuf;
 
 /// A stdlib section visible in the nav and the search index.
 pub struct StdlibSection {
-    pub id: String,   // URL-safe slug, e.g. "output-and-diagnostics"
-    pub name: String, // Human-readable label, e.g. "Output and diagnostics"
+    pub id: String,          // URL-safe slug, e.g. "output-and-diagnostics"
+    pub name: String,        // Human-readable label, e.g. "Output and diagnostics"
+    pub description: String, // One-line description shown on the index page card
 }
 
 struct Topic {
@@ -23,7 +24,7 @@ struct Topic {
 #[must_use]
 fn gather_topics() -> Vec<Topic> {
     let mut result: Vec<Topic> = Vec::new();
-    let dir = std::fs::read_dir("tests/suite").unwrap();
+    let dir = std::fs::read_dir("tests/docs").unwrap();
     let mut entries: Vec<_> = dir.filter_map(Result::ok).collect();
     entries.sort_by_key(DirEntry::file_name);
     entries
@@ -96,12 +97,20 @@ pub fn generate_docs<S: std::hash::BuildHasher>(
     Ok(())
 }
 
+fn flush_intro_para(result: &mut String, para_buf: &mut String) {
+    if !para_buf.is_empty() {
+        writeln!(result, "<p>{}</p>", para_buf.trim()).expect("");
+        para_buf.clear();
+    }
+}
+
 fn index_intro(topic: &Topic) -> std::io::Result<String> {
     let mut result = String::new();
     let file = File::open(&topic.file).expect("failed to open file");
     let source = BufReader::new(file);
     let mut in_header = true;
     let mut in_list = false;
+    let mut para_buf = String::new();
     for line_result in source.lines() {
         let line = line_result?;
         let trimmed = line.trim();
@@ -109,25 +118,47 @@ fn index_intro(topic: &Topic) -> std::io::Result<String> {
             continue;
         }
         in_header = false;
-        if trimmed.starts_with("//") {
-            let text = trimmed.strip_prefix("//").unwrap_or("").trim().to_string();
-            if let Some(n) = text.strip_prefix("- ") {
-                if !in_list {
-                    write!(result, "<ul>").expect("");
-                    in_list = true;
-                }
-                writeln!(result, "<li>{n}</li>").expect("");
+        if !trimmed.starts_with("//") {
+            // Blank line or non-comment = paragraph / list break
+            if in_list {
+                writeln!(result, "</ul>").expect("");
+                in_list = false;
             } else {
-                if in_list {
-                    writeln!(result, "</ul>").expect("");
-                    in_list = false;
-                }
-                writeln!(result, "<p>{text}</p>").expect("");
+                flush_intro_para(&mut result, &mut para_buf);
             }
+            continue;
+        }
+        let text = trimmed.strip_prefix("//").unwrap_or("").trim().to_string();
+        if let Some(n) = text.strip_prefix("- ") {
+            flush_intro_para(&mut result, &mut para_buf);
+            if !in_list {
+                write!(result, "<ul>").expect("");
+                in_list = true;
+            }
+            writeln!(result, "<li>{n}</li>").expect("");
+        } else if text.is_empty() {
+            // `//` alone on a line also breaks the paragraph
+            if in_list {
+                writeln!(result, "</ul>").expect("");
+                in_list = false;
+            } else {
+                flush_intro_para(&mut result, &mut para_buf);
+            }
+        } else {
+            if in_list {
+                writeln!(result, "</ul>").expect("");
+                in_list = false;
+            }
+            if !para_buf.is_empty() {
+                para_buf.push(' ');
+            }
+            para_buf.push_str(&text);
         }
     }
     if in_list {
         writeln!(result, "</ul>").expect("");
+    } else {
+        flush_intro_para(&mut result, &mut para_buf);
     }
     Ok(result)
 }
@@ -142,14 +173,14 @@ fn skip_header(trimmed: &str) -> bool {
 
 fn write_index(topics: &[Topic], stdlib_sections: &[StdlibSection]) -> std::io::Result<()> {
     let mut lang_cards = String::from(
-        "    <a class=\"card card-featured\" href=\"00-vs-rust.html\">\
-<h2>vs Rust</h2><p>Key differences for developers coming from Rust.</p></a>\n"
+        "      <a class=\"card card-featured\" href=\"00-vs-rust.html\">\
+<h2>vs Rust</h2><p>Key differences for developers coming from Rust.</p></a>\n",
     );
     for topic in topics {
         if !topic.filename.starts_with("00-") {
             let _ = writeln!(
                 lang_cards,
-                "    <a class=\"card\" href=\"{}.html\"><h2>{}</h2><p>{}</p></a>",
+                "      <a class=\"card\" href=\"{}.html\"><h2>{}</h2><p>{}</p></a>",
                 topic.filename, topic.name, topic.title
             );
         }
@@ -157,11 +188,19 @@ fn write_index(topics: &[Topic], stdlib_sections: &[StdlibSection]) -> std::io::
     let lib_cards: String = stdlib_sections
         .iter()
         .fold(String::new(), |mut output, sec| {
-            let _ = writeln!(
-                output,
-                "    <a class=\"card\" href=\"stdlib-{}.html\"><h2>{}</h2></a>",
-                sec.id, sec.name
-            );
+            if sec.description.is_empty() {
+                let _ = writeln!(
+                    output,
+                    "      <a class=\"card\" href=\"stdlib-{}.html\"><h2>{}</h2></a>",
+                    sec.id, sec.name
+                );
+            } else {
+                let _ = writeln!(
+                    output,
+                    "      <a class=\"card\" href=\"stdlib-{}.html\"><h2>{}</h2><p>{}</p></a>",
+                    sec.id, sec.name, sec.description
+                );
+            }
             output
         });
     let title = topics[0].title.clone();
@@ -176,9 +215,15 @@ fn write_index(topics: &[Topic], stdlib_sections: &[StdlibSection]) -> std::io::
   <link rel=\"stylesheet\" href=\"style.css\">\n\
 </head>\n\
 <body>\n\
-  <header>\n\
-    <h1>Loft</h1>\n\
-    <p class=\"tagline\">{title}</p>\n\
+  <header class=\"index-header\">\n\
+    <div class=\"index-hero\">\n\
+      <h1>Loft</h1>\n\
+      <p class=\"tagline\">{title}</p>\n\
+    </div>\n\
+    <div class=\"search-wrap index-search\">\n\
+      <input id=\"search\" type=\"search\" placeholder=\"Search docs\u{2026}\" autocomplete=\"off\">\n\
+      <div class=\"search-results\" id=\"search-results\" hidden></div>\n\
+    </div>\n\
   </header>\n\
   <section class=\"intro\">\n\
 {intro}\
@@ -247,19 +292,19 @@ fn render_prose_lines(lines: &[String], body: &mut String) {
             flush_list(&mut in_list, body);
             flush_para(&mut para, body);
             let id = to_anchor_id(heading);
-            body.push_str(&format!("<h2 id=\"{id}\">{}</h2>\n", html_esc(heading)));
+            let _ = writeln!(body, "<h2 id=\"{id}\">{}</h2>", html_esc(heading));
         } else if let Some(heading) = line.strip_prefix("### ") {
             flush_list(&mut in_list, body);
             flush_para(&mut para, body);
             let id = to_anchor_id(heading);
-            body.push_str(&format!("<h3 id=\"{id}\">{}</h3>\n", html_esc(heading)));
+            let _ = writeln!(body, "<h3 id=\"{id}\">{}</h3>", html_esc(heading));
         } else if let Some(item) = line.strip_prefix("- ") {
             flush_para(&mut para, body);
             if !in_list {
                 body.push_str("<ul>\n");
                 in_list = true;
             }
-            body.push_str(&format!("<li>{}</li>\n", html_esc(item)));
+            let _ = writeln!(body, "<li>{}</li>", html_esc(item));
         } else if line.is_empty() {
             flush_list(&mut in_list, body);
             flush_para(&mut para, body);
@@ -279,6 +324,9 @@ fn typst_escape(s: &str) -> String {
         .replace('$', "\\$")
         .replace('[', "\\[")
         .replace(']', "\\]")
+        .replace('<', "\\<")
+        .replace('>', "\\>")
+        .replace('*', "\\*")
 }
 
 fn code_to_typst(code: &str) -> String {
@@ -292,27 +340,60 @@ fn prose_to_typst(lines: &[String]) -> String {
     let mut in_list = false;
     for line in lines {
         if let Some(heading) = line.strip_prefix("## ") {
-            if in_list { result.push('\n'); in_list = false; }
-            if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); para.clear(); }
-            result.push_str(&format!("=== {}\n\n", typst_escape(heading)));
+            if in_list {
+                result.push('\n');
+                in_list = false;
+            }
+            if !para.is_empty() {
+                result.push_str(&para.join(" "));
+                result.push_str("\n\n");
+                para.clear();
+            }
+            let _ = write!(result, "=== {}\n\n", typst_escape(heading));
         } else if let Some(heading) = line.strip_prefix("### ") {
-            if in_list { result.push('\n'); in_list = false; }
-            if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); para.clear(); }
-            result.push_str(&format!("==== {}\n\n", typst_escape(heading)));
+            if in_list {
+                result.push('\n');
+                in_list = false;
+            }
+            if !para.is_empty() {
+                result.push_str(&para.join(" "));
+                result.push_str("\n\n");
+                para.clear();
+            }
+            let _ = write!(result, "==== {}\n\n", typst_escape(heading));
         } else if let Some(item) = line.strip_prefix("- ") {
-            if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); para.clear(); }
+            if !para.is_empty() {
+                result.push_str(&para.join(" "));
+                result.push_str("\n\n");
+                para.clear();
+            }
             in_list = true;
-            result.push_str(&format!("- {}\n", typst_escape(item)));
+            let _ = writeln!(result, "- {}", typst_escape(item));
         } else if line.is_empty() {
-            if in_list { result.push('\n'); in_list = false; }
-            if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); para.clear(); }
+            if in_list {
+                result.push('\n');
+                in_list = false;
+            }
+            if !para.is_empty() {
+                result.push_str(&para.join(" "));
+                result.push_str("\n\n");
+                para.clear();
+            }
         } else {
-            if in_list { result.push('\n'); in_list = false; }
-            para.push(line.clone());
+            if in_list {
+                result.push('\n');
+                in_list = false;
+            }
+            para.push(typst_escape(line));
         }
     }
-    if in_list { result.push('\n'); }
-    if !para.is_empty() { result.push_str(&para.join(" ")); result.push_str("\n\n"); }
+    if in_list {
+        result.push('\n');
+    }
+    if !para.is_empty() {
+        result.push_str(&para.join(" "));
+        result.push_str("\n\n");
+    }
     result
 }
 
@@ -719,12 +800,14 @@ pub fn get_topic_sources() -> Vec<TopicSource> {
         .into_iter()
         .filter(|t| !t.filename.starts_with("00-"))
         .filter_map(|t| {
-            std::fs::read_to_string(&t.file).ok().map(|source| TopicSource {
-                filename: t.filename,
-                name: t.name,
-                title: t.title,
-                source,
-            })
+            std::fs::read_to_string(&t.file)
+                .ok()
+                .map(|source| TopicSource {
+                    filename: t.filename,
+                    name: t.name,
+                    title: t.title,
+                    source,
+                })
         })
         .collect()
 }

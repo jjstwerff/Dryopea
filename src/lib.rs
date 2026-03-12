@@ -26,10 +26,12 @@ mod typedef;
 
 pub mod create;
 pub mod fill;
+pub mod parallel;
 pub mod state;
 
 pub mod interpreter;
 pub mod log_config;
+pub mod logger;
 mod stack;
 
 pub mod documentation;

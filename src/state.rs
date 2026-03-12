@@ -7,7 +7,8 @@
 #![allow(dead_code)]
 
 use crate::data::{Attribute, Block, Context, Data, DefType, I32, Type, Value};
-use crate::database::{Parts, ShowDb, Stores};
+pub use crate::database::Call;
+use crate::database::{ParallelCtx, Parts, ShowDb, Stores};
 use crate::fill::OPERATORS;
 use crate::keys;
 use crate::keys::{Content, DbRef, Key, Str};
@@ -15,7 +16,7 @@ use crate::log_config::{LogConfig, TailBuffer};
 use crate::stack::Stack;
 use crate::text::FUNCTIONS;
 use crate::tree;
-use crate::variables::size;
+use crate::variables::{Function, size};
 use crate::vector;
 use crate::{external, hash};
 use std::cmp::Ordering;
@@ -23,14 +24,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::{File, OpenOptions};
 use std::io::{Error, Read, Seek, SeekFrom, Write};
 use std::str::FromStr;
+use std::sync::Arc;
 
-pub type Call = fn(&mut Stores, &mut DbRef);
 pub const STRING_NULL: &str = "\0";
 
 /// Internal State of the interpreter to run bytecode.
 pub struct State {
-    bytecode: Vec<u8>,
-    text_code: Vec<u8>,
+    bytecode: Arc<Vec<u8>>,
+    text_code: Arc<Vec<u8>>,
     stack_cur: DbRef,
     pub stack_pos: u32,
     pub code_pos: u32,
@@ -48,7 +49,7 @@ pub struct State {
     pub calls: HashMap<u32, Vec<u32>>,
     // Information for enumerate-types and database (record, vectors and fields) types.
     pub types: HashMap<u32, u16>,
-    pub library: Vec<Call>,
+    pub library: Arc<Vec<Call>>,
     pub library_names: HashMap<String, u16>,
     text_positions: BTreeSet<u32>,
     line_numbers: HashMap<u32, u32>,
@@ -71,8 +72,8 @@ impl State {
     #[must_use]
     pub fn new(mut db: Stores) -> State {
         State {
-            bytecode: Vec::new(),
-            text_code: Vec::new(),
+            bytecode: Arc::new(Vec::new()),
+            text_code: Arc::new(Vec::new()),
             stack_cur: db.database(1000),
             stack_pos: 4,
             code_pos: 0,
@@ -84,7 +85,7 @@ impl State {
             vars: HashMap::new(),
             calls: HashMap::new(),
             types: HashMap::new(),
-            library: Vec::new(),
+            library: Arc::new(Vec::new()),
             library_names: HashMap::new(),
             text_positions: BTreeSet::new(),
             line_numbers: HashMap::new(),
@@ -92,9 +93,10 @@ impl State {
     }
 
     pub fn static_fn(&mut self, name: &str, call: Call) {
-        let nr = self.library.len() as u16;
+        let lib = Arc::make_mut(&mut self.library);
+        let nr = lib.len() as u16;
         self.library_names.insert(name.to_string(), nr);
-        self.library.push(call);
+        lib.push(call);
     }
 
     pub fn conv_text_from_null(&mut self) {
@@ -221,7 +223,10 @@ impl State {
             return;
         }
         let f_nr = self.database.files.len() as i32;
-        let format = self.database.store(&file).get_byte(file.rec, file.pos + 32, 0);
+        let format = self
+            .database
+            .store(&file)
+            .get_byte(file.rec, file.pos + 32, 0);
         // format: 1=TextFile, 2=LittleEndian, 3=BigEndian, 5=NotExists (default to TextFile).
         if format != 1 && format != 5 && format != 2 && format != 3 {
             return;
@@ -232,11 +237,21 @@ impl State {
             // Open the file for writing (creates or truncates), same for text and binary.
             let file_name = {
                 let store = self.database.store(&file);
-                store.get_str(store.get_int(file.rec, file.pos + 24) as u32).to_owned()
+                store
+                    .get_str(store.get_int(file.rec, file.pos + 24) as u32)
+                    .to_owned()
             };
             match File::create(&file_name) {
                 Ok(f) => {
-                    self.database.store_mut(&file).set_int(file.rec, file.pos + 28, f_nr);
+                    self.database
+                        .store_mut(&file)
+                        .set_int(file.rec, file.pos + 28, f_nr);
+                    // If the file was marked NotExists, update format to TextFile now that it exists.
+                    if format == 5 {
+                        self.database
+                            .store_mut(&file)
+                            .set_byte(file.rec, file.pos + 32, 0, 1);
+                    }
                     self.database.files.push(Some(f));
                     f_nr
                 }
@@ -248,7 +263,9 @@ impl State {
         // Track position: set #index = where this write starts, then advance #next after.
         let raw_next = self.database.store(&file).get_long(file.rec, file.pos + 16);
         let next_pos = if raw_next == i64::MIN { 0 } else { raw_next };
-        self.database.store_mut(&file).set_long(file.rec, file.pos + 8, next_pos);
+        self.database
+            .store_mut(&file)
+            .set_long(file.rec, file.pos + 8, next_pos);
         // Assemble the bytes to write.
         let mut data = Vec::new();
         if self.database.is_text_type(db_tp) {
@@ -256,8 +273,34 @@ impl State {
             let store = self.database.store(&val);
             let s: &String = store.addr::<String>(val.rec, val.pos);
             data.extend_from_slice(s.as_bytes());
+        } else if let Parts::Vector(elem_tp) = &self.database.types[db_tp as usize].parts {
+            let elem_tp = *elem_tp;
+            // Vector: `val` is a stack pointer holding a DbRef to the vector.
+            // Dereference to reach the actual vector data, then write each element.
+            let vec_ref = *self.database.store(&val).addr::<DbRef>(val.rec, val.pos);
+            let (v_ptr, store_nr) = {
+                let store = self.database.store(&vec_ref);
+                (
+                    store.get_int(vec_ref.rec, vec_ref.pos) as u32,
+                    vec_ref.store_nr,
+                )
+            };
+            if v_ptr != 0 {
+                let length = self.database.allocations[store_nr as usize].get_int(v_ptr, 4) as u32;
+                let elem_size = u32::from(self.database.size(elem_tp));
+                for i in 0..length {
+                    let elem = DbRef {
+                        store_nr,
+                        rec: v_ptr,
+                        pos: 8 + elem_size * i,
+                    };
+                    self.database
+                        .read_data(&elem, elem_tp, little_endian, &mut data);
+                }
+            }
         } else {
-            self.database.read_data(&val, db_tp, little_endian, &mut data);
+            self.database
+                .read_data(&val, db_tp, little_endian, &mut data);
         }
         let written = data.len();
         if let Some(f) = &mut self.database.files[file_ref as usize] {
@@ -376,16 +419,24 @@ impl State {
         }
         let path = {
             let store = self.database.store(&file);
-            store.get_str(store.get_int(file.rec, file.pos + 24) as u32).to_owned()
+            store
+                .get_str(store.get_int(file.rec, file.pos + 24) as u32)
+                .to_owned()
         };
         // Close any open handle: the handle may be in read or write mode with a stale
         // position, and after resize the position might be beyond the new end of file.
         let file_ref = self.database.store(&file).get_int(file.rec, file.pos + 28);
         if file_ref != i32::MIN && (file_ref as usize) < self.database.files.len() {
             self.database.files[file_ref as usize] = None;
-            self.database.store_mut(&file).set_int(file.rec, file.pos + 28, i32::MIN);
-            self.database.store_mut(&file).set_long(file.rec, file.pos + 8, i64::MIN);
-            self.database.store_mut(&file).set_long(file.rec, file.pos + 16, i64::MIN);
+            self.database
+                .store_mut(&file)
+                .set_int(file.rec, file.pos + 28, i32::MIN);
+            self.database
+                .store_mut(&file)
+                .set_long(file.rec, file.pos + 8, i64::MIN);
+            self.database
+                .store_mut(&file)
+                .set_long(file.rec, file.pos + 16, i64::MIN);
         }
         let ok = OpenOptions::new()
             .write(true)
@@ -781,7 +832,7 @@ impl State {
         let precision = *self.get_stack::<i32>();
         let width = *self.get_stack::<i32>();
         let val = *self.get_stack::<f64>();
-        let s = self.string_ref_mut(pos - 12);
+        let s = self.string_ref_mut(pos - 16); // f64(8)+i32(4)+i32(4) = 16 bytes popped
         external::format_float(s, val, width, precision);
     }
     pub fn format_single(&mut self) {
@@ -1071,12 +1122,21 @@ impl State {
                     } else {
                         cur as i32
                     };
-                    // TODO Implement reverse too
-                    vector::vector_step(&data, &mut pos, &self.database.allocations);
-                    self.put_var(state_var - 8, pos as u32);
-                    if pos as u32 >= finish {
-                        pos = i32::MAX;
-                        self.put_var(state_var - 12, u32::MAX);
+                    if reverse {
+                        // `iterate()` sets start > length for the "not started" sentinel
+                        // (pos >= length is treated as past-the-end in vector_step_rev).
+                        vector::vector_step_rev(&data, &mut pos, &self.database.allocations);
+                        self.put_var(state_var - 8, pos as u32);
+                        if pos == i32::MAX {
+                            self.put_var(state_var - 12, u32::MAX);
+                        }
+                    } else {
+                        vector::vector_step(&data, &mut pos, &self.database.allocations);
+                        self.put_var(state_var - 8, pos as u32);
+                        if pos as u32 >= finish {
+                            pos = i32::MAX;
+                            self.put_var(state_var - 12, u32::MAX);
+                        }
                     }
                     self.database.element_reference(
                         &data,
@@ -1147,6 +1207,34 @@ impl State {
                     tree::next(store, &rec)
                 };
                 self.database.remove(&data, &elm, tp);
+                self.put_var(state_var - 8, n);
+            }
+            2 => {
+                // sorted: tp is the element size in bytes (from loop_db_tp)
+                if cur < 0 {
+                    return;
+                }
+                let n = if reverse { cur + 1 } else { cur - 1 };
+                vector::remove_vector(&data, u32::from(tp), cur, &mut self.database.allocations);
+                self.put_var(state_var - 8, n);
+            }
+            3 => {
+                // ordered: tp is element size (4 bytes); cur is byte offset (8, 12, ...)
+                if cur < 0 {
+                    return;
+                }
+                let size = u32::from(tp);
+                let n = if reverse {
+                    cur + i32::from(tp)
+                } else {
+                    cur - i32::from(tp)
+                };
+                vector::remove_vector(
+                    &data,
+                    size,
+                    (cur - 8) / i32::from(tp),
+                    &mut self.database.allocations,
+                );
                 self.put_var(state_var - 8, n);
             }
             _ => panic!("Not implemented on {on}"),
@@ -1232,12 +1320,9 @@ impl State {
         let tp = *self.code::<u16>();
         let rec = *self.get_stack::<DbRef>();
         let data = *self.get_stack::<DbRef>();
-        hash::remove(
-            &data,
-            &rec,
-            &mut self.database.allocations,
-            &self.database.types[tp as usize].keys,
-        );
+        if rec.rec != 0 {
+            self.database.remove(&data, &rec, tp);
+        }
     }
 
     fn read_key(&mut self, full: bool) -> (u16, Vec<Content>) {
@@ -1376,7 +1461,7 @@ impl State {
     */
     pub fn code_put<T>(&mut self, on: u32, value: T) {
         unsafe {
-            let off = self.bytecode.as_ptr().offset(on as isize) as *mut T;
+            let off = Arc::make_mut(&mut self.bytecode).as_mut_ptr().offset(on as isize).cast::<T>();
             *off.as_mut().expect("code") = value;
         }
     }
@@ -1392,12 +1477,12 @@ impl State {
     When that was problematic
     */
     pub fn code_add<T: std::fmt::Display>(&mut self, value: T) {
-        if self.code_pos as usize + size_of::<T>() > self.bytecode.len() {
-            self.bytecode
-                .resize(self.code_pos as usize + size_of::<T>(), 0);
+        let bc = Arc::make_mut(&mut self.bytecode);
+        if self.code_pos as usize + size_of::<T>() > bc.len() {
+            bc.resize(self.code_pos as usize + size_of::<T>(), 0);
         }
         unsafe {
-            let off = self.bytecode.as_ptr().offset(self.code_pos as isize) as *mut T;
+            let off = bc.as_mut_ptr().offset(self.code_pos as isize).cast::<T>();
             self.code_pos += u32::try_from(size_of::<T>()).expect("Problem");
             *off.as_mut().expect("code") = value;
         }
@@ -1405,16 +1490,12 @@ impl State {
 
     pub fn code_add_str(&mut self, value: &str) {
         self.code_add(value.len() as u8);
-        if self.code_pos as usize + value.len() > self.bytecode.len() {
-            self.bytecode
-                .resize(self.code_pos as usize + value.len(), 0);
+        let bc = Arc::make_mut(&mut self.bytecode);
+        if self.code_pos as usize + value.len() > bc.len() {
+            bc.resize(self.code_pos as usize + value.len(), 0);
         }
         unsafe {
-            let off = self
-                .bytecode
-                .as_ptr()
-                .offset(self.code_pos as isize)
-                .cast_mut();
+            let off = bc.as_mut_ptr().offset(self.code_pos as isize);
             value.as_ptr().copy_to(off, value.len());
         }
         self.code_pos += value.len() as u32;
@@ -1436,6 +1517,8 @@ impl State {
             data.definitions[def_nr as usize].code_length = self.code_pos - start;
             return;
         }
+        let is_empty_stub =
+            matches!(&stack.data.def(def_nr).code, Value::Block(bl) if bl.operators.is_empty());
         for a in 0..stack.data.def(def_nr).attributes.len() as u16 {
             let n = &stack.data.def(def_nr).attributes[a as usize].name;
             let v = stack.function.var(n);
@@ -1446,6 +1529,12 @@ impl State {
         let start = self.code_pos;
         self.arguments = stack.position;
         stack.position += 4; // keep space for the code return address
+        if is_empty_stub {
+            self.add_return(&mut stack, start);
+            data.definitions[def_nr as usize].code_position = start;
+            data.definitions[def_nr as usize].code_length = self.code_pos - start;
+            return;
+        }
         if console {
             println!("{} ", stack.data.def(def_nr).header(stack.data, def_nr));
             stack.data.dump(def_nr);
@@ -1453,6 +1542,20 @@ impl State {
         let mut started = HashSet::new();
         for a in stack.data.def(def_nr).variables.arguments() {
             started.insert(a);
+        }
+        // Optional IR dump: set LOFT_IR=<name-filter> (or LOFT_IR=* for all user fns).
+        // Only compiled in debug builds; produces one block per matching function.
+        #[cfg(debug_assertions)]
+        if let Ok(filter) = std::env::var("LOFT_IR") {
+            let fn_name = stack.data.def(def_nr).name.as_str();
+            let want_all = filter.is_empty() || filter == "*";
+            let matches = want_all || filter == fn_name || fn_name.contains(&*filter);
+            if matches && logging {
+                eprintln!("=== IR: {fn_name} ===");
+                print_ir(&stack.data.def(def_nr).code, stack.data, &stack.function, 0);
+                eprintln!();
+                eprintln!("===");
+            }
         }
         self.source = stack.data.def(def_nr).source;
         self.generate(&stack.data.def(def_nr).code, &mut stack, true);
@@ -1536,8 +1639,9 @@ impl State {
                     stack.add_op("OpConstText", self);
                     self.code_add_str(value);
                 } else {
-                    let start = self.text_code.len() as i32;
-                    self.text_code.extend_from_slice(value.as_bytes());
+                    let tc = Arc::make_mut(&mut self.text_code);
+                    let start = tc.len() as i32;
+                    tc.extend_from_slice(value.as_bytes());
                     stack.add_op("OpConstLongText", self);
                     self.code_add(start);
                     self.code_add(value.len() as i32);
@@ -1649,6 +1753,19 @@ impl State {
         self.vars.insert(self.code_pos, v);
         let pos = stack.function.stack(v);
         if pos == u16::MAX {
+            // Check: does the first-assignment value reference v itself?
+            // Storage for v hasn't been allocated yet (pos == u16::MAX), so Var(v) inside
+            // the value reads an uninitialised stack slot — always a parser-level bug.
+            // Classic example: OpCopyRecord(src, v, tp) passed as a function's self-arg.
+            #[cfg(debug_assertions)]
+            assert!(
+                !ir_contains_var(value, v),
+                "[generate_set] first-assignment of '{}' (var_nr={v}) in '{}' contains \
+                 a Var({v}) self-reference — storage not yet allocated, will produce a \
+                 garbage DbRef at runtime. This is a parser bug. value={value:?}",
+                stack.function.name(v),
+                stack.data.def(stack.def_nr).name,
+            );
             stack.function.claim(v, stack.position, &Context::Variable);
             if matches!(*stack.function.tp(v), Type::Text(_)) {
                 stack.add_op("OpText", self);
@@ -1696,6 +1813,25 @@ impl State {
                 let tp_nr = stack.data.def(d_nr).known_type;
                 self.code_add(tp_nr);
                 self.generate(value, stack, false);
+            } else if let Type::Reference(d_nr, _) = stack.function.tp(v).clone()
+                && let Value::Var(src) = value
+                && let Type::Reference(src_d_nr, _) = stack.function.tp(*src)
+                && d_nr == *src_d_nr
+            {
+                // First assignment `d = c` where both are owned References to the same struct:
+                // give d its own independent record by allocating storage and copying c's data.
+                let src = *src;
+                let tp_nr = stack.data.def(d_nr).known_type;
+                stack.add_op("OpConvRefFromNull", self);
+                stack.add_op("OpDatabase", self);
+                self.code_add(size_of::<DbRef>() as u16);
+                self.code_add(tp_nr);
+                let copy_nr = stack.data.def_nr("OpCopyRecord");
+                let copy_val = Value::Call(
+                    copy_nr,
+                    vec![Value::Var(src), Value::Var(v), Value::Int(i32::from(tp_nr))],
+                );
+                self.generate(&copy_val, stack, false);
             } else if matches!(stack.function.tp(v), Type::Vector(_, _)) && *value == Value::Null {
                 if let Type::Vector(elm_tp, dep) = stack.function.tp(v).clone() {
                     if dep.is_empty() {
@@ -1769,7 +1905,21 @@ impl State {
         );
         for (a_nr, a) in stack.data.def(*op).attributes.iter().enumerate() {
             if a.mutable {
-                tps.push(self.generate(&parameters[a_nr], stack, false));
+                // When a RefVar argument is passed directly to a matching RefVar parameter
+                // (e.g. a dispatcher forwarding its text-buffer arg to a variant), emit only
+                // OpVarRef to push the raw DbRef — do NOT emit the trailing OpGetStackText /
+                // OpGetStackRef that generate_var would normally add.
+                if matches!(a.typedef, Type::RefVar(_))
+                    && let Value::Var(v) = &parameters[a_nr]
+                    && matches!(stack.function.tp(*v), Type::RefVar(_))
+                {
+                    let var_pos = stack.position - stack.function.stack(*v);
+                    stack.add_op("OpVarRef", self);
+                    self.code_add(var_pos);
+                    tps.push(a.typedef.clone());
+                } else {
+                    tps.push(self.generate(&parameters[a_nr], stack, false));
+                }
             }
         }
         match &stack.data.def(*op).name as &str {
@@ -1813,7 +1963,18 @@ impl State {
                 if a.mutable {
                     continue;
                 }
-                self.add_const(&a.typedef, &parameters[a_nr], stack, before_stack);
+                // OpIterate: from_key is at parameters[4], but till_key is at
+                // parameters[5 + from_count] because the from-key values occupy
+                // parameters[5..5+from_count], pushing till_key_count further out.
+                let param_idx = if name == "OpIterate"
+                    && a_nr == 5
+                    && let Value::Int(from_count) = parameters[4]
+                {
+                    (5 + from_count) as usize
+                } else {
+                    a_nr
+                };
+                self.add_const(&a.typedef, &parameters[param_idx], stack, before_stack);
             }
             self.op_type(*op, &tps, last, code, stack)
         } else if self.library_names.contains_key(&name) {
@@ -2217,7 +2378,7 @@ impl State {
     # Panics
     When unknown operators are encountered in the byte-code.
     */
-    #[allow(clippy::cognitive_complexity)]
+    #[allow(clippy::cognitive_complexity)] // bytecode disassembler with one match arm per opcode; complexity is structural and cannot be reduced without losing per-instruction annotation context
     pub fn dump_code(
         &mut self,
         f: &mut dyn Write,
@@ -2458,10 +2619,17 @@ impl State {
                 let d = unsafe { &*data_raw };
                 s.execute_log_steps(t, d_nr, config, d)
             }));
-            tail.flush_to(log)?;
             match result {
-                Ok(r) => r,
-                Err(e) => std::panic::resume_unwind(e),
+                Ok(r) => {
+                    tail.flush_to(log)?;
+                    r
+                }
+                Err(e) => {
+                    // On panic: flush tail to stderr so the trace is visible
+                    // even when `log` is a Vec<u8> that will be dropped.
+                    let _ = tail.flush_to(&mut std::io::stderr());
+                    std::panic::resume_unwind(e)
+                }
             }
         } else {
             writeln!(log, "Execute {name}:")?;
@@ -2575,22 +2743,162 @@ impl State {
     When too many steps were taken, this might indicate an unending loop.
     */
     pub fn execute(&mut self, name: &str, data: &Data) {
+        self.execute_argv(name, data, &[]);
+    }
+
+    /// Execute entry-point `name`, optionally passing `argv` as a `vector<text>` argument.
+    ///
+    /// If the named function has exactly one `vector<…>` parameter, the strings in `argv`
+    /// are built into a `vector<text>` and pushed onto the stack before the return address.
+    /// If the function takes no parameters, `argv` is ignored.
+    pub fn execute_argv(&mut self, name: &str, data: &Data, argv: &[String]) {
         let d_nr = data.def_nr(&format!("n_{name}"));
         let pos = data.def(d_nr).code_position;
+
+        // Expose bytecode, text_code, library, and Data to native functions
+        // that need to spawn worker threads (e.g. n_parallel_for_int).
+        let bc_ptr = &raw const self.bytecode;
+        let tc_ptr = &raw const self.text_code;
+        let lib_ptr = &raw const self.library;
+        let data_ptr = std::ptr::from_ref::<Data>(data);
+        self.database.parallel_ctx = Some(Box::new(ParallelCtx {
+            bytecode: bc_ptr,
+            text_code: tc_ptr,
+            library: lib_ptr,
+            data: data_ptr,
+        }));
+
+        // Drop all temporary strings from the previous execute call before starting a new one.
+        // After execute() returns, stack_pos is reset, so no Str pointer can still reference them.
+        self.database.scratch.clear();
         self.code_pos = pos;
         self.stack_pos = 4;
-        // Write the return address of the main function.
+        // If fn main declares a vector<text> parameter, push argv before the return address.
+        let attrs = &data.def(d_nr).attributes;
+        if attrs.len() == 1 && matches!(attrs[0].typedef, Type::Vector(_, _)) {
+            let args_vec = self.database.text_vector(argv);
+            self.put_stack(args_vec);
+        }
         self.put_stack(u32::MAX);
         let mut step = 0;
-        // TODO Allow command line parameters on main functions
-        while self.code_pos < self.bytecode.len() as u32 {
+        let bytecode_len = self.bytecode.len() as u32;
+        while self.code_pos < bytecode_len {
             let op = *self.code::<u8>();
             OPERATORS[op as usize](self);
             step += 1;
-            assert!(step < 10_000_000, "Too many operations");
+            debug_assert!(step < 10_000_000, "Too many operations");
             if self.code_pos == u32::MAX {
-                return;
+                break;
             }
+        }
+
+        self.database.parallel_ctx = None;
+    }
+
+    /// Snapshot the bytecode, text segment, and native-function library for
+    /// use in a parallel worker thread.  All three are `Arc`-cloned — O(1).
+    #[must_use]
+    pub fn worker_program(&self) -> crate::parallel::WorkerProgram {
+        crate::parallel::WorkerProgram {
+            bytecode: Arc::clone(&self.bytecode),
+            text_code: Arc::clone(&self.text_code),
+            library: Arc::clone(&self.library),
+        }
+    }
+
+    /// Create a `State` for use in a parallel worker thread.
+    ///
+    /// `db` should be built with `Stores::clone_for_worker()`; this call
+    /// allocates a fresh stack store at the next available index in `db`.
+    #[must_use]
+    pub fn new_worker(
+        mut db: Stores,
+        bytecode: Arc<Vec<u8>>,
+        text_code: Arc<Vec<u8>>,
+        library: Arc<Vec<Call>>,
+    ) -> State {
+        State {
+            stack_cur: db.database(1000),
+            stack_pos: 4,
+            code_pos: 0,
+            def_pos: 0,
+            source: u16::MAX,
+            database: db,
+            arguments: 0,
+            bytecode,
+            text_code,
+            library,
+            library_names: HashMap::new(),
+            stack: HashMap::new(),
+            vars: HashMap::new(),
+            calls: HashMap::new(),
+            types: HashMap::new(),
+            text_positions: BTreeSet::new(),
+            line_numbers: HashMap::new(),
+        }
+    }
+
+    /// Execute the bytecode function at `fn_pos` passing one `DbRef` argument,
+    /// then return the `i32` result left on the stack.
+    ///
+    /// Stack layout built here:
+    /// ```text
+    ///   [arg: DbRef (12 bytes)][return-addr u32::MAX (4 bytes)]
+    /// ```
+    /// This matches what `fn_return(ret=12, value=4, discard=D)` expects.
+    ///
+    /// # Panics
+    /// Panics if the worker executes more than 10 000 000 operations (infinite-loop guard).
+    pub fn execute_at(&mut self, fn_pos: u32, arg: &DbRef) -> i32 {
+        self.stack_pos = 4;
+        self.put_stack(*arg); // 12 bytes → stack_pos = 16
+        self.put_stack(u32::MAX); // 4 bytes  → stack_pos = 20
+        self.code_pos = fn_pos;
+        let mut step = 0;
+        let bytecode_len = self.bytecode.len() as u32;
+        while self.code_pos < bytecode_len {
+            let op = *self.code::<u8>();
+            OPERATORS[op as usize](self);
+            step += 1;
+            debug_assert!(step < 10_000_000, "Worker: too many operations");
+            if self.code_pos == u32::MAX {
+                break;
+            }
+        }
+        *self.get_stack::<i32>()
+    }
+
+    /// Execute the bytecode function at `fn_pos` passing one `DbRef` argument,
+    /// then return the raw result bits in a `u64`.  The caller must supply the
+    /// `return_size` (in bytes: 1, 4, or 8) to select the right pop width.
+    ///
+    /// Stack layout built here:
+    /// ```text
+    ///   [arg: DbRef (12 bytes)][return-addr u32::MAX (4 bytes)]
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if the worker executes more than 10 000 000 operations.
+    pub fn execute_at_raw(&mut self, fn_pos: u32, arg: &DbRef, return_size: u32) -> u64 {
+        self.stack_pos = 4;
+        self.put_stack(*arg); // 12 bytes → stack_pos = 16
+        self.put_stack(u32::MAX); // 4 bytes → stack_pos = 20
+        self.code_pos = fn_pos;
+        let mut step = 0;
+        let bytecode_len = self.bytecode.len() as u32;
+        while self.code_pos < bytecode_len {
+            let op = *self.code::<u8>();
+            OPERATORS[op as usize](self);
+            step += 1;
+            debug_assert!(step < 10_000_000, "Worker: too many operations");
+            if self.code_pos == u32::MAX {
+                break;
+            }
+        }
+        match return_size {
+            8 => *self.get_stack::<u64>(),
+            1 => u64::from(*self.get_stack::<u8>()),
+            _ => u64::from(*self.get_stack::<u32>()),
         }
     }
 
@@ -2918,6 +3226,16 @@ impl State {
                 if known == u16::MAX || val.store_nr as usize >= self.database.allocations.len() {
                     return format!("ref({},{},{})", val.store_nr, val.rec, val.pos);
                 }
+                // Guard: the record must be live (positive fld-0 header) before we
+                // dereference.  A stale DbRef can point to a store that was re-initialised
+                // (init() sets fld 0 negative) but not yet re-claimed — show coords only.
+                if val.rec != 0 {
+                    let hdr = *self.database.allocations[val.store_nr as usize]
+                        .addr::<i32>(val.rec, 0);
+                    if hdr <= 0 {
+                        return format!("ref({},{},{})=<freed>", val.store_nr, val.rec, val.pos);
+                    }
+                }
                 let mut res = format!("ref({},{},{})=", val.store_nr, val.rec, val.pos);
                 self.database.show(&mut res, &val, known, false);
                 res
@@ -2954,4 +3272,123 @@ pub fn size_str() -> u32 {
 #[must_use]
 pub fn size_ref() -> u32 {
     size_of::<DbRef>() as u32
+}
+
+// ── Debug utilities ──────────────────────────────────────────────────────────
+
+/// Recursively checks whether `value` contains a direct `Var(v)` reference.
+/// Used in debug builds to detect first-assignment self-reference bugs: if
+/// `Set(v, expr)` and `expr` contains `Var(v)`, the variable is used before
+/// its storage has been allocated — almost always a parser-level bug.
+#[cfg(debug_assertions)]
+fn ir_contains_var(value: &Value, v: u16) -> bool {
+    match value {
+        Value::Var(n) => *n == v,
+        Value::Call(_, args) => args.iter().any(|a| ir_contains_var(a, v)),
+        Value::Set(_, inner) | Value::Return(inner) | Value::Drop(inner) => {
+            ir_contains_var(inner, v)
+        }
+        Value::If(cond, then, els) => {
+            ir_contains_var(cond, v) || ir_contains_var(then, v) || ir_contains_var(els, v)
+        }
+        Value::Block(b) | Value::Loop(b) => b.operators.iter().any(|op| ir_contains_var(op, v)),
+        Value::Insert(items) => items.iter().any(|i| ir_contains_var(i, v)),
+        Value::Iter(_, create, next, extra) => {
+            ir_contains_var(create, v) || ir_contains_var(next, v) || ir_contains_var(extra, v)
+        }
+        _ => false,
+    }
+}
+
+/// Recursively prints a `Value` IR tree to stderr in a loft-like syntax.
+///
+/// Gated by the `LOFT_IR` environment variable (set to a function-name filter
+/// or `*` for all); only compiled in debug builds to keep release binaries
+/// clean.  Produces a lot of output for large functions, so the filter is
+/// important.
+#[cfg(debug_assertions)]
+fn print_ir(value: &Value, data: &crate::data::Data, vars: &Function, depth: usize) {
+    let pad = "  ".repeat(depth);
+    match value {
+        Value::Null => eprint!("null"),
+        Value::Int(n) => eprint!("{n}"),
+        Value::Long(n) => eprint!("{n}L"),
+        Value::Float(f) => eprint!("{f}"),
+        Value::Single(f) => eprint!("{f}f"),
+        Value::Boolean(b) => eprint!("{b}"),
+        Value::Enum(v, tp) => eprint!("enum({v},tp={tp})"),
+        Value::Text(s) => eprint!("{s:?}"),
+        Value::Line(_) => {} // source-line markers: skip
+        Value::Var(n) => eprint!("{}", vars.name(*n)),
+        Value::Break(n) => eprint!("break({n})"),
+        Value::Continue(n) => eprint!("continue({n})"),
+        Value::Keys(keys) => eprint!("keys({keys:?})"),
+        Value::Set(v, inner) => {
+            eprint!("{} = ", vars.name(*v));
+            print_ir(inner, data, vars, depth);
+        }
+        Value::Return(inner) => {
+            eprint!("return ");
+            print_ir(inner, data, vars, depth);
+        }
+        Value::Drop(inner) => {
+            eprint!("drop(");
+            print_ir(inner, data, vars, depth);
+            eprint!(")");
+        }
+        Value::Call(d, args) => {
+            eprint!("{}(", data.def(*d).name);
+            for (i, a) in args.iter().enumerate() {
+                if i > 0 {
+                    eprint!(", ");
+                }
+                print_ir(a, data, vars, depth);
+            }
+            eprint!(")");
+        }
+        Value::Block(b) => {
+            eprintln!("{{  // {}", b.name);
+            for op in &b.operators {
+                eprint!("{pad}  ");
+                print_ir(op, data, vars, depth + 1);
+                eprintln!();
+            }
+            eprint!("{pad}}}");
+        }
+        Value::Loop(b) => {
+            eprint!("loop ");
+            print_ir(&Value::Block(b.clone()), data, vars, depth);
+        }
+        Value::Insert(items) => {
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 {
+                    eprint!("{pad}  ");
+                }
+                print_ir(item, data, vars, depth);
+                if i + 1 < items.len() {
+                    eprintln!();
+                }
+            }
+        }
+        Value::If(cond, then, els) => {
+            eprint!("if ");
+            print_ir(cond, data, vars, depth);
+            eprint!(" ");
+            print_ir(then, data, vars, depth);
+            if **els != Value::Null {
+                eprint!(" else ");
+                print_ir(els, data, vars, depth);
+            }
+        }
+        Value::Iter(v, create, next, extra) => {
+            eprint!("for {} in ", vars.name(*v));
+            print_ir(create, data, vars, depth);
+            if **extra != Value::Null {
+                eprint!(", extra=");
+                print_ir(extra, data, vars, depth);
+            }
+            // `next` is the advance expression: omit for brevity
+            let _ = next;
+        }
+    }
 }

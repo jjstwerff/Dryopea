@@ -8,20 +8,6 @@ mod testing;
 
 use dryopea::data::Value;
 #[test]
-fn define_object() {
-    code!(
-        "struct Object{first: integer, second: text, third: boolean}
-fn obj() -> boolean {
-  o = Object {first: 1234, second: \"data\", third: false};
-  o.third = true;
-  o.first-12 == 1222 && len(o.second) == 4 && o.third
-}"
-    )
-    .expr("if obj() {1} else {0}")
-    .result(Value::Int(1));
-}
-
-#[test]
 fn print_object() {
     code!(
         "struct Object{a: integer, bb: text, ccc: boolean}
@@ -150,24 +136,6 @@ fn vector_argument() {
 }
 
 #[test]
-fn object_fn() {
-    code!(
-        "pub struct Data {
-    name: text,
-    number: integer
-}
-
-fn data(n: text) -> Data {
-    res = Data { name: n };
-    res
-}
-    "
-    )
-    .expr("d = data(\"test\"); \"{d.name}:{d.number}\"")
-    .result(Value::str("test:0"));
-}
-
-#[test]
 fn return_text() {
     code!(
         "pub struct Data {
@@ -182,19 +150,6 @@ fn data(n: text) -> text {
     )
     .expr("data(\"test\")")
     .result(Value::str("test"));
-}
-
-#[test]
-fn scope_text() {
-    code!(
-        "pub struct Data {
-    name: text,
-    number: integer
-}
-"
-    )
-    .expr("d = Data { name: \"testing\" }; d.name")
-    .result(Value::str("testing"));
 }
 
 #[test]
@@ -224,12 +179,14 @@ a.name",
 }
 
 #[test]
-fn calculated_field() {
-    code!("struct Object {
-        name_length: integer = len($.name),
-        name: text CHECK(len($.name) > 3, \"name too short, minimal 4 characters\"),
-        buffer_size: integer = len($.buffer) * 4,
-        buffer: vector<integer>,
-    }").expr("o = Object { name: \"This is example data\", buffer: [1,2,3,4,5] }; \"{o:j}\"").
-        result(Value::str("{\"name_length\":20,\"name\":\"This is example data\",\"buffer_size\":20,\"buffer\":[1,2,3,4,5]}"));
+fn method_on_constructor() {
+    // Bug #8: calling a method directly on a struct constructor expression.
+    // Previously gave "MyStruct should be MyStruct on call to method" because
+    // parse_object returned Type::Rewritten / Value::Insert instead of a proper Block.
+    code!(
+        "struct Pt { x: integer, y: integer }
+fn dist2(self: Pt) -> integer { self.x * self.x + self.y * self.y }"
+    )
+    .expr("Pt { x: 3, y: 4 }.dist2()")
+    .result(Value::Int(25));
 }

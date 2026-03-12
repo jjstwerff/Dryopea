@@ -70,6 +70,24 @@ fn hash_free_pos(claim: u32, rec: &DbRef, stores: &[Store], keys: &[Key]) -> u32
     8 + index * 4
 }
 
+/// Return the 0-based slot index in `claim` that currently holds `rec.rec`.
+fn hash_rec_pos(claim: u32, rec: &DbRef, stores: &[Store], keys: &[Key]) -> u32 {
+    let room = *keys::store(rec, stores).addr::<i32>(claim, 0) as u32;
+    let elms = (room - 1) * 2;
+    let hash_val = keys::hash(rec, stores, keys);
+    let mut index = (hash_val % u64::from(elms)) as u32;
+    for _ in 0..elms {
+        if keys::store(rec, stores).get_int(claim, 8 + index * 4) as u32 == rec.rec {
+            break;
+        }
+        index += 1;
+        if index >= elms {
+            index = 0;
+        }
+    }
+    index
+}
+
 #[must_use]
 pub fn find(hash_ref: &DbRef, stores: &[Store], keys: &[Key], key: &[Content]) -> DbRef {
     let store = &stores[hash_ref.store_nr as usize];
@@ -112,46 +130,43 @@ pub fn find(hash_ref: &DbRef, stores: &[Store], keys: &[Key], key: &[Content]) -
 }
 
 pub fn remove(hash_ref: &DbRef, rec: &DbRef, stores: &mut [Store], keys: &[Key]) {
+    if rec.rec == 0 {
+        return;
+    }
     let claim = keys::store(hash_ref, stores).get_int(hash_ref.rec, hash_ref.pos) as u32;
     let length = keys::store(hash_ref, stores).get_int(claim, 4);
     if length == 0 {
         return;
     }
-    let room = keys::store(hash_ref, stores).get_int(claim, 0) as u32;
+    let room = *keys::store(hash_ref, stores).addr::<i32>(claim, 0) as u32;
     let elms = (room - 1) * 2;
-    // get the index of the element, and set it to 0
-    let mut index = hash_free_pos(claim, rec, stores, keys);
-    keys::mut_store(hash_ref, stores).set_int(rec.rec, index, 0);
-    let mut index_val = 0;
-    let mut current = 0;
-    // move from there and determine if the next elements could get to a better position
+    // Find the slot holding rec and zero it (create the hole).
+    let mut hole = hash_rec_pos(claim, rec, stores, keys);
+    keys::mut_store(hash_ref, stores).set_int(claim, 8 + hole * 4, 0);
+    // Walk forward from hole+1 and pull each element back if its probe distance
+    // to the hole is shorter than its probe distance to its current slot.
+    // Stop at the first empty slot (all probe chains end at one).
+    let mut idx = (hole + 1) % elms;
     for _ in 0..elms {
-        if index_val == 0 {
+        let val = keys::store(hash_ref, stores).get_int(claim, 8 + idx * 4) as u32;
+        if val == 0 {
             break;
         }
         let next = DbRef {
-            store_nr: rec.store_nr,
-            rec: index_val,
+            store_nr: hash_ref.store_nr,
+            rec: val,
             pos: 8,
         };
-        let to = (8 + (keys::hash(&next, stores, keys) % u64::from(elms)) * 4) as u32;
-        let right = if index < to {
-            current < index && index <= to
-        } else {
-            current < index || index <= to
-        };
-        if !right {
-            let val = keys::store(hash_ref, stores).get_int(claim, index);
-            keys::mut_store(hash_ref, stores).set_int(claim, current, val);
-            current = index;
-            keys::mut_store(hash_ref, stores).set_int(claim, index, 0);
+        let ideal = (keys::hash(&next, stores, keys) % u64::from(elms)) as u32;
+        // Move if probe distance to hole is shorter than probe distance to idx.
+        let d_hole = (hole + elms - ideal) % elms;
+        let d_idx = (idx + elms - ideal) % elms;
+        if d_hole < d_idx {
+            keys::mut_store(hash_ref, stores).set_int(claim, 8 + hole * 4, val as i32);
+            keys::mut_store(hash_ref, stores).set_int(claim, 8 + idx * 4, 0);
+            hole = idx;
         }
-        if index + 4 >= elms {
-            index = 8;
-        } else {
-            index += 4;
-        }
-        index_val = keys::store(hash_ref, stores).get_int(claim, index) as u32;
+        idx = (idx + 1) % elms;
     }
     keys::mut_store(hash_ref, stores).set_int(claim, 4, length - 1);
 }

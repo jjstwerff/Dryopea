@@ -1,6 +1,8 @@
-#![allow(clippy::cast_possible_wrap)]
-#![allow(clippy::cast_sign_loss)]
-#![allow(clippy::cast_possible_truncation)]
+// The bytecode executor operates on a raw byte stack; signed/unsigned casts between stack
+// values are architecturally necessary and individually safe throughout this file.
+#![allow(clippy::cast_possible_wrap)] // i32 <-> u32 on stack bytes: 2's-complement wrap is intended
+#![allow(clippy::cast_sign_loss)] // negative i32/i8 stored as u32/u8 in the byte stream: expected
+#![allow(clippy::cast_possible_truncation)] // wider → narrower casts in bytecode encoding: range validated at encode time
 use crate::external;
 use crate::keys::{DbRef, Str};
 use crate::state::State;
@@ -1511,9 +1513,14 @@ fn get_enum(s: &mut State) {
     let v_v1 = *s.get_stack::<DbRef>();
     let new_value = {
         let db = v_v1;
-        s.database
+        // get_byte returns i32::MIN when rec==0 (null DbRef from e.g. an out-of-bounds
+        // vector access).  Map that to 255, the plain-enum null sentinel, so that
+        // conv_bool_from_enum correctly terminates for-loops on vector<PlainEnum>.
+        let raw = s
+            .database
             .store(&db)
-            .get_byte(db.rec, db.pos + u32::from(v_fld), 0) as u8
+            .get_byte(db.rec, db.pos + u32::from(v_fld), 0);
+        if raw == i32::MIN { 255u8 } else { raw as u8 }
     };
     s.put_stack(new_value);
 }

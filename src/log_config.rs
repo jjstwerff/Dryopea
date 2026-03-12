@@ -77,7 +77,7 @@ impl LogPhase {
     }
 }
 
-/// Controls what the test log files (`tests/code/*.txt`) include.
+/// Controls what the test log files (`tests/dumps/*.txt`) include.
 ///
 /// Build from a preset or from the `LOFT_LOG` environment variable with
 /// [`LogConfig::from_env`].

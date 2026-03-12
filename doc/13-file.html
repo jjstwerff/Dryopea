@@ -7,11 +7,12 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <span class="cur">File</span> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
+<nav><div class="nav-links"><a href="index.html">Home</a> · <span class="nav-sep">Language:</span> · <a href="00-vs-rust.html">vs Rust</a> · <a href="01-keywords.html">Keywords</a> · <a href="02-text.html">Texts</a> · <a href="03-integer.html">Integers</a> · <a href="04-boolean.html">Boolean</a> · <a href="05-float.html">Float</a> · <a href="06-function.html">Functions</a> · <a href="07-vector.html">Vector</a> · <a href="08-struct.html">Structs</a> · <a href="09-enum.html">Enums</a> · <a href="10-sorted.html">Sorted</a> · <a href="11-index.html">Index</a> · <a href="12-hash.html">Hash</a> · <span class="cur">File</span> · <a href="14-image.html">Image</a> · <a href="15-lexer.html">Lexer</a> · <a href="16-parser.html">Parser</a> · <a href="17-libraries.html">Libraries</a> · <a href="18-locks.html">Store Locks</a> · <a href="19-threading.html">Parallel execution</a> · <a href="20-logging.html">Logging</a> · <span class="nav-sep">Library:</span> · <a href="stdlib-types.html">Types</a> · <a href="stdlib-math.html">Math</a> · <a href="stdlib-text.html">Text</a> · <a href="stdlib-collections.html">Collections</a> · <a href="stdlib-output-and-diagnostics.html">Output and Diagnostics</a> · <a href="stdlib-parallel.html">Parallel</a> · <a href="stdlib-file-system.html">File System</a> · <a href="stdlib-environment.html">Environment</a></div><div class="search-wrap"><input type="search" id="search" placeholder="Search functions, types…" autocomplete="off"><div id="search-results" class="search-results" hidden></div></div></nav>
 <h1>File</h1>
 <article>
-<p>Files are opened lazily: file(path) creates a handle; the OS file opens on the first read or write and closes when the handle goes out of scope.</p>
-<p>'file(path)' creates a File handle. 'f#format' returns the format of the file: TextFile, LittleEndian, BigEndian, Directory, or NotExists. 'lines()' reads a text file and returns it as a vector of lines.</p>
+<p>A file handle lets you read and write files without worrying about when the OS opens or closes them. The file opens on the first read or write and closes automatically when the handle goes out of scope.</p>
+<h2 id="inspecting-the-file-system">Inspecting the File System</h2>
+<p>`file(path)` creates a File handle without opening anything yet. `f#format` tells you what kind of path you are looking at: TextFile, LittleEndian, BigEndian, Directory, or NotExists. `lines()` reads a text file and returns it as a vector of lines. `exists(path)` is a convenience shorthand for checking that a path is not NotExists. `delete(path)` removes a file and returns false if it was not there.</p>
 <p>Clean up any leftover files from a previous interrupted run.</p>
 <pre><code><span class="kw">fn</span> <span class="fn-call">cleanup</span>() {
     <span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"test.bin"</span>);
@@ -24,15 +25,16 @@
 }</code></pre>
 <pre><code><span class="kw">fn</span> <span class="fn-call">main</span>() {
     <span class="fn-call">cleanup</span>();</code></pre>
-<p>--- Directory and text reading --- 'file("example")' returns a handle whose format is Directory. 'lines()' reads the file at 'example/config/terrain.txt' and splits it into lines.</p>
+<p>Asking for the format of a directory path returns Directory, not a file format. `lines()` reads the named text file and splits it on newlines.</p>
 <pre><code>    ex = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"example"</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(ex#format == <span class="en">Directory</span>, <span class="st">"example is a directory"</span>);
     c = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"example/config/terrain.txt"</span>).<span class="fn-call"><a href="stdlib-file-system.html">lines</a></span>();
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(c[<span class="nm">1</span>] == <span class="st">"    terrain = ["</span>, <span class="st">"Line was '{c[1]}'"</span>);</code></pre>
-<p>--- exists() and delete() --- 'exists(path)' is shorthand for file(path)#format != NotExists. 'delete()' returns false when the file does not exist.</p>
+<p>`exists` and `delete` are safe to call when the file is absent. `delete` returns false rather than crashing when nothing is there.</p>
 <pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!<span class="fn-call"><a href="stdlib-file-system.html">exists</a></span>(<span class="st">"test.bin"</span>), <span class="st">"File should not exist before the test."</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!<span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"nonexistent_xyz.bin"</span>), <span class="st">"delete on missing file returns false"</span>);</code></pre>
-<p>--- Binary write --- Set f#format before writing: LittleEndian or BigEndian. f += value writes the value's bytes to the file. Supported scalar types: u8, u16, i32, long, single, float, text. Limitation: f += vector&lt;T&gt; is not yet implemented (writes 0 bytes). Write individual elements with a loop: for v in vec { f += v; }</p>
+<h2 id="writing-a-text-or-binary-file">Writing a Text or Binary File</h2>
+<p>Wrapping the file handle in a block ensures the file closes the moment the block ends. Set `f#format` to LittleEndian or BigEndian before writing binary data. Use `f += value` to append the raw bytes of any scalar value (u8, u16, i32, long, single, float, or text).</p>
 <pre><code>    { f = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"test.bin"</span>);
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#format == <span class="en">NotExists</span>, <span class="st">"File should not exist yet."</span>);
       f#format = <span class="en">BigEndian</span>;
@@ -41,41 +43,54 @@
       f += <span class="nm">0x203</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">u16</a></span>;
       f += <span class="nm">0x4050607</span>;
       f += <span class="nm">0x8090a0b0c0d0e0fl</span>;</code></pre>
-<p>'f#size' returns the total number of bytes written so far.</p>
+<p>`f#size` returns the total number of bytes written so far.</p>
 <pre><code>      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#size == <span class="nm">16l</span>, <span class="st">"Should have written 16 bytes."</span>);</code></pre>
 <p>Text is written as raw UTF-8 bytes with no length prefix.</p>
 <pre><code>      f += <span class="st">"Hello world!"</span>;
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#size == <span class="nm">28l</span>, <span class="st">"Size should be 28 bytes (16 + 12)."</span>);
     } <span class="cm">// The file closes when the handle goes out of scope.</span></code></pre>
-<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">exists</a></span>(<span class="st">"test.bin"</span>), <span class="st">"File should exist after writing."</span>);</code></pre>
-<p>move(src, dst) refuses if dst exists, or if either path leaves the project directory.</p>
-<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!<span class="fn-call"><a href="stdlib-file-system.html">move</a></span>(<span class="st">"test.bin"</span>, <span class="st">"../test.bin"</span>), <span class="st">"Should refuse to move outside the project."</span>);
+<p>`move(src, dst)` renames a file. It refuses if the destination already exists or if either path would leave the project directory.</p>
+<pre><code>    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">exists</a></span>(<span class="st">"test.bin"</span>), <span class="st">"File should exist after writing."</span>);
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(!<span class="fn-call"><a href="stdlib-file-system.html">move</a></span>(<span class="st">"test.bin"</span>, <span class="st">"../test.bin"</span>), <span class="st">"Should refuse to move outside the project."</span>);
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">move</a></span>(<span class="st">"test.bin"</span>, <span class="st">"test2.bin"</span>), <span class="st">"Could not move the file."</span>);</code></pre>
-<p>--- Binary read --- Open a file for reading; the default format is TextFile. Set f#format to the format used when writing before reading.</p>
+<h2 id="reading-back-what-you-wrote">Reading Back What You Wrote</h2>
+<p>When you open an existing file the default format is TextFile. Set `f#format` to match the format used when writing before you read any bytes. `f#read(n) as T` reads exactly n bytes and interprets them as type T. `f#index` is the byte offset where the last read started. `f#next` is the current read position; assign to it to seek anywhere.</p>
 <pre><code>    { f = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"test2.bin"</span>);
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#format == <span class="en">TextFile</span>, <span class="st">"The default format is TextFile."</span>);
       f#format = <span class="en">LittleEndian</span>;</code></pre>
-<p>f#read(n) as T reads n bytes and interprets them as type T. f#index is the byte offset where the last read started. f#next is the current byte position (start of the next read).</p>
+<p>The file was written as BigEndian, so reading the same 4 bytes as LittleEndian produces a byte-swapped value — that is intentional here and confirms that the bytes were stored in the order you chose.</p>
 <pre><code>      v = f#<span class="fn-call">read</span>(<span class="nm">4</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">i32</a></span>;
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(v == <span class="nm">0x3020100</span>, <span class="st">"BigEndian bytes 0..3 read as LittleEndian i32."</span>);
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#<span class="ty">index</span> == <span class="nm">0l</span>, <span class="st">"Last read started at byte 0."</span>);
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#next == <span class="nm">4l</span>, <span class="st">"Next read starts at byte 4."</span>);</code></pre>
-<p>f#next = pos seeks to an arbitrary byte position.</p>
+<p>Seek to byte 16 to skip past the integers and read the text directly.</p>
 <pre><code>      f#next = <span class="nm">16l</span>;
       s = f#<span class="fn-call">read</span>(<span class="nm">5</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">text</a></span>;
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(s == <span class="st">"Hello"</span>, <span class="st">"Partial text read from offset 16."</span>);
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#<span class="ty">index</span> == <span class="nm">16l</span>, <span class="st">"Last read started at byte 16."</span>);
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#next == <span class="nm">21l</span>, <span class="st">"Next position after 5-byte text read."</span>);</code></pre>
-<p>Reading past EOF returns whatever bytes are available.</p>
+<p>Requesting more bytes than remain simply returns whatever is left.</p>
 <pre><code>      rest = f#<span class="fn-call">read</span>(<span class="nm">100</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">text</a></span>;
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(rest == <span class="st">" world!"</span>, <span class="st">"Read continues to end of file."</span>);
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#next == f#size, <span class="st">"Position should be at end of file."</span>);</code></pre>
-<p>Seek back to start and re-read the first integer.</p>
+<p>You can seek back to any position and re-read.</p>
 <pre><code>      f#next = <span class="nm">0l</span>;
       <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#<span class="fn-call">read</span>(<span class="nm">4</span>) <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">i32</a></span> == <span class="nm">0x3020100</span>, <span class="st">"Seek-and-reread matches original."</span>);
     }
     <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"test2.bin"</span>), <span class="st">"Could not remove the test file."</span>);</code></pre>
-<p>--- Writing individual elements and reading into a struct --- Write a count and then the floats one by one. sizeof(T) returns the byte size of a type; use it to compute the read length.</p>
+<h2 id="working-with-vectors-and-struct-data">Working with Vectors and Struct Data</h2>
+<p>`f += vector&lt;T&gt;` writes every element in sequence as raw bytes, which is the fastest way to dump a whole collection to disk. Setting `f#size = n` truncates or zero-extends the file to exactly n bytes — useful for discarding the tail after you have finished writing.</p>
+<pre><code>    { f = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"buffer.bin"</span>);
+      f#format = <span class="en">LittleEndian</span>;
+      ints = [<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>];
+      f += ints;
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#size == <span class="nm">16l</span>, <span class="st">"Four i32 values = 16 bytes"</span>);</code></pre>
+<p>Truncate to the first two integers.</p>
+<pre><code>      f#size = <span class="nm">8l</span>;
+      <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(f#size == <span class="nm">8l</span>, <span class="st">"Truncated to 8 bytes"</span>);
+    }
+    <span class="bi"><a href="stdlib-output-and-diagnostics.html">assert</a></span>(<span class="fn-call"><a href="stdlib-file-system.html">delete</a></span>(<span class="st">"buffer.bin"</span>), <span class="st">"Could not remove buffer.bin after vector write test."</span>);</code></pre>
+<p>Write a count followed by individual float values. `sizeof(T)` returns the byte width of a type, so you can compute the correct read length without hard-coding magic numbers.</p>
 <pre><code>    { buf = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"buffer.bin"</span>);
       buf#format = <span class="en">LittleEndian</span>;
       buf += <span class="nm">4</span> <span class="kw">as</span> <span class="ty"><a href="stdlib-types.html">i32</a></span>;
@@ -84,7 +99,7 @@
       buf += <span class="nm">2.1f</span>;
       buf += <span class="nm">2.2f</span>;
     }</code></pre>
-<p>Read the binary data back into a struct field.</p>
+<p>Read the count, then use it to read exactly that many floats directly into a struct field. This pattern lets you serialise and deserialise structs with variable-length data cleanly.</p>
 <pre><code>    { b = <span class="en">Buffer</span> {};
       f = <span class="bi"><a href="stdlib-file-system.html">file</a></span>(<span class="st">"buffer.bin"</span>);
       f#format = <span class="en">LittleEndian</span>;

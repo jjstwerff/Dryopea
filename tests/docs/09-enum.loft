@@ -1,0 +1,83 @@
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Enums
+// @TITLE: Enumerate types in plain or structured form.
+
+// An enum defines a fixed set of named choices.
+// Plain enums are just names that can be compared and ordered.
+// Struct enums go further: each variant can carry its own data.
+
+// Enum values can be compared with '==' and '<', ordered by declaration position,
+// and converted to and from text.
+enum Direction { North, East, South, West }
+
+// ## Struct Enums
+// Attach named fields to a variant by writing a struct body inside the enum.
+// Each variant becomes its own type and can have its own methods.
+enum Shape {
+    Circle { radius: float },
+    Rect { width: float, height: float }
+}
+
+// ## Polymorphic Dispatch
+// Write the same function name for each variant.
+// At the call site, Loft looks at the actual type of the value and calls the right version.
+// This is called polymorphic dispatch — the behaviour changes depending on the variant.
+fn area(self: Circle) -> float {
+    PI * pow(self.radius, 2)
+}
+
+fn area(self: Rect) -> float {
+    self.width * self.height
+}
+
+// ## Polymorphic Text Methods
+// Polymorphic methods can return text and use format strings that embed field values.
+// Loft picks the right version at runtime just like it does for numeric return types.
+// This makes it easy to give each variant its own human-readable description.
+fn describe(self: Circle) -> text {
+    "circle with radius {self.radius}"
+}
+
+fn describe(self: Rect) -> text {
+    "rect {self.width} by {self.height}"
+}
+
+fn main() {
+    // Plain enum values are ordered by the position they appear in the declaration.
+    // North comes first, so it is less than East, which is less than South, and so on.
+    d = East;
+    assert(d == East, "Enum equality");
+    assert(d != North, "Enum inequality");
+    assert(d > North, "East declared after North, so it is greater");
+    assert(West > South, "West declared last, so it is greatest");
+
+    // You can parse a text value into an enum using 'as EnumName'.
+    assert("West" as Direction == West, "Text to enum");
+
+    // Struct enum variants are constructed like regular structs.
+    // Use dot notation to read their fields.
+    c = Circle { radius: 1.0 };
+    assert(c.radius == 1.0, "Variant field access");
+
+    r = Rect { width: 4.0, height: 5.0 };
+    assert(r.width * r.height == 20.0, "Rect area manually");
+
+    // Calling 'area()' on a Circle runs the Circle version; on a Rect it runs the Rect version.
+    // The correct function is chosen automatically at runtime based on the actual variant.
+    assert(round(c.area() * 1000) == round(PI * 1000), "Circle area = PI*r^2");
+    assert(r.area() == 20.0, "Rect area = width*height");
+
+    // Formatting a plain enum value prints its variant name as text.
+    assert("{d}" == "East", "Format plain enum");
+
+    // 'describe' uses a format string with field access inside each variant's method body.
+    // Loft resolves 'self.radius' and 'self.width'/'self.height' correctly at runtime.
+    assert(c.describe() == "circle with radius 1", "describe circle: {c.describe()}");
+    assert(r.describe() == "rect 4 by 5", "describe rect: {r.describe()}");
+
+    // If a variant intentionally has no implementation of a method, the compiler emits a
+    // warning. To silence the warning, provide an empty-body stub:
+    //   fn area(self: SomeVariant) -> float { }
+    // A stub is callable at runtime (returns null) and suppresses the unused-parameter warning.
+}

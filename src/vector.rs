@@ -198,7 +198,7 @@ pub fn ordered_finish(sorted: &DbRef, rec: &DbRef, keys: &[Key], stores: &mut [S
 }
 
 #[must_use]
-#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_sign_loss)] // vec_rec is stored as i32 but is always a non-negative record index; negative values are structurally impossible
 pub fn length_vector(db: &DbRef, stores: &[Store]) -> u32 {
     if db.rec == 0 || db.pos == 0 {
         return 0;
@@ -294,7 +294,13 @@ pub fn sorted_find(
     }
     let store = keys::store(sorted, stores);
     let sorted_rec = store.get_int(sorted.rec, sorted.pos) as u32;
+    if sorted_rec == 0 {
+        return (0, false);
+    }
     let length = store.get_int(sorted_rec, 4) as u32;
+    if length == 0 {
+        return (0, false);
+    }
     let mut result = DbRef {
         store_nr: sorted.store_nr,
         rec: sorted_rec,
@@ -429,5 +435,26 @@ pub fn vector_step(data: &DbRef, pos: &mut i32, stores: &[Store]) {
         *pos += 1;
     } else {
         *pos = i32::MAX;
+    }
+}
+
+/// Advance the sorted-vector position one step backwards (reverse iteration).
+/// `pos == i32::MAX` or `pos >= length` is the not-yet-started sentinel;
+/// the first call sets `pos` to `length - 1` (last element).
+/// Returns `i32::MAX` when the iterator has moved past the first element.
+pub fn vector_step_rev(data: &DbRef, pos: &mut i32, stores: &[Store]) {
+    let rec = keys::store(data, stores).get_int(data.rec, data.pos) as u32;
+    if rec == 0 {
+        *pos = i32::MAX;
+        return;
+    }
+    let length = keys::store(data, stores).get_int(rec, 4);
+    if length == 0 || *pos == i32::MAX || *pos >= length {
+        // Not started yet (sentinel) or past the end — begin at the last element.
+        *pos = if length == 0 { i32::MAX } else { length - 1 };
+    } else if *pos > 0 {
+        *pos -= 1;
+    } else {
+        *pos = i32::MAX; // Passed the beginning.
     }
 }

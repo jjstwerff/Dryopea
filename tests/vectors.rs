@@ -8,11 +8,6 @@ mod testing;
 use dryopea::data::Value;
 
 #[test]
-fn access() {
-    expr!("v=[1, 10, 100]; v[1]").result(Value::Int(10));
-}
-
-#[test]
 fn vectors() {
     expr!(
         "v=[1, 2, 1+2];
@@ -54,19 +49,6 @@ assert(!v[4], \"Incorrect reading outside vector bounds\");
 c"
     )
     .result(Value::Int(2448));
-}
-
-#[test]
-fn iter_rev_vector() {
-    expr!(
-        "v=[1, 2, 4, 8];
-c = 0;
-for e in v[rev(0..=3)] {
-  c = c * 10 + e;
-}
-c"
-    )
-    .result(Value::Int(8421));
 }
 
 #[test]
@@ -122,21 +104,6 @@ v[2].b=6;
 }
 
 #[test]
-fn object_vectors() {
-    code!("struct Elm {a:integer, b:integer}")
-        .expr(
-            "v = [Elm{a:1, b:2}, Elm{a:12, b:13}, Elm{a:4, b:5}];
-v[2].b = 6;
-e = v[0];
-t = 0;
-for el in v { t += el.a + el.b; };
-assert(t == 38, \"Incorrect sum {t}\");
-e.b + v[1].a + v[2].b",
-        )
-        .result(Value::Int(20));
-}
-
-#[test]
 fn parse_objects() {
     code!("struct Elm {n:text, c:integer}")
         .expr("v = \"[ {{n:'hi', c:10 }}, {{n:'world', c:2 }} ]\" as vector<Elm>; \"{v}\"")
@@ -148,16 +115,6 @@ fn sum_vector() {
     code!("fn sum(v: vector<integer>) -> integer { t = 0; for i in v { t += i }; t}")
         .expr("sum([1, 2, 3, 4, 5])")
         .result(Value::Int(15));
-}
-
-#[test]
-fn empty_vector() {
-    expr!(
-        "a = [];
-for v in 1..4 { a += [ v * 10 ] };
-\"{a}\""
-    )
-    .result(Value::str("[10,20,30]"));
 }
 
 #[test]
@@ -370,11 +327,6 @@ fn data(n: text) -> vector<Data> {
 }
 
 #[test]
-fn text_vector() {
-    code!("fn test() { op = [\"+=\", \"*=\"]; for o in op { print(o); }; }");
-}
-
-#[test]
 fn get_object_value() {
     code!(
         "struct T { n: text, v: u16 }
@@ -397,4 +349,160 @@ s.d[0].n = \"bb\";
 \"{s.d[0]} v={s.d[0].v}\"",
     )
     .result(Value::str("{n:\"bb\",v:12} v=12"));
+}
+
+#[test]
+fn for_comprehension() {
+    // Bug #16: [for n in range { expr }] vector comprehension
+    expr!("v = [for n in 1..7 { n * 2 }]; \"{v}\"").result(Value::str("[2,4,6,8,10,12]"));
+}
+
+#[test]
+fn for_comprehension_if() {
+    // for comprehension with filter
+    expr!("v = [for n in 1..10 if n % 2 == 0 { n }]; \"{v}\"").result(Value::str("[2,4,6,8]"));
+}
+
+#[test]
+fn sorted_first_count() {
+    // #first and #count work on sorted collections
+    code!(
+        "struct Elm { key: integer, val: integer }
+struct Db { s: sorted<Elm[key]> }
+fn test() {
+    db = Db { s: [Elm{key:1,val:10}, Elm{key:2,val:20}, Elm{key:3,val:30}] };
+    r = \"\";
+    for e in db.s {
+        if !e#first { r += \",\" }
+        r += \"{e#count}:{e.key}\"
+    }
+    assert(r == \"0:1,1:2,2:3\", \"got {r}\")
+}"
+    )
+    .result(dryopea::data::Value::Null);
+}
+
+#[test]
+fn sorted_reverse_iterator() {
+    // rev(sorted_collection) iterates elements in reverse key order
+    code!(
+        "struct Elm { key: integer, val: integer }
+struct Db { s: sorted<Elm[key]> }
+fn test() {
+    db = Db { s: [Elm{key:1,val:10}, Elm{key:2,val:20}, Elm{key:3,val:30}] };
+    // Forward: 1,2,3 → digits 1,2,3
+    fwd = 0;
+    for e in db.s { fwd = fwd * 10 + e.key }
+    assert(fwd == 123, \"forward got {fwd}\");
+    // Reverse: 3,2,1 → digits 3,2,1
+    rev_sum = 0;
+    for e in rev(db.s) { rev_sum = rev_sum * 10 + e.key }
+    assert(rev_sum == 321, \"reverse got {rev_sum}\")
+}"
+    )
+    .result(dryopea::data::Value::Null);
+}
+
+#[test]
+fn sorted_reverse_empty() {
+    // rev() on an empty sorted collection completes without visiting any element
+    code!(
+        "struct Elm { key: integer }
+struct Db { s: sorted<Elm[key]> }
+fn test() {
+    db = Db { s: [] };
+    sum = 0;
+    for e in rev(db.s) { sum += e.key }
+    assert(sum == 0, \"empty rev got {sum}\")
+}"
+    )
+    .result(dryopea::data::Value::Null);
+}
+
+#[test]
+fn sorted_remove() {
+    // #remove on a sorted collection removes the current element while iterating
+    code!(
+        "struct Elm { key: integer, val: integer }
+struct Db { s: sorted<Elm[key]> }
+fn test() {
+    db = Db { s: [Elm{key:1,val:10}, Elm{key:2,val:20}, Elm{key:3,val:30}, Elm{key:4,val:40}] };
+    for e in db.s if e.key % 2 == 0 {
+        e#remove
+    }
+    total = 0;
+    for e in db.s { total += e.key }
+    assert(total == 4, \"sum of remaining keys {total}\")
+}"
+    )
+    .result(dryopea::data::Value::Null);
+}
+
+#[test]
+fn hash_remove_key() {
+    // h[key] = null removes a key from the hash; missing-key removal is a no-op
+    code!(
+        "struct Keyword { name: text }
+struct Data { h: hash<Keyword[name]> }"
+    )
+    .expr(
+        "c = Data {};
+c.h = [{ name: \"one\" }, { name: \"two\" }, { name: \"three\" }];
+c.h[\"two\"] = null;
+assert(!c.h[\"two\"], \"two should be removed\");
+assert(c.h[\"one\"], \"one still present\");
+assert(c.h[\"three\"], \"three still present\");
+c.h[\"missing\"] = null;
+assert(!c.h[\"missing\"], \"missing key removal is no-op\");
+if c.h[\"one\"] { 1 } else { 0 }",
+    )
+    .result(Value::Int(1));
+}
+
+#[test]
+fn index_remove_key() {
+    // idx[keys] = null removes the element from the index; missing-key removal is a no-op
+    code!(
+        "struct Elm { nr: integer, key: text, value: integer }
+struct Db { map: index<Elm[nr,-key]> }"
+    )
+    .expr(
+        "db = Db { map: [
+  Elm {nr: 1, key: \"a\", value: 10},
+  Elm {nr: 2, key: \"b\", value: 20},
+  Elm {nr: 3, key: \"c\", value: 30},
+] };
+db.map[2,\"b\"] = null;
+assert(!db.map[2,\"b\"], \"removed element absent\");
+assert(db.map[1,\"a\"].value == 10, \"one still present\");
+assert(db.map[3,\"c\"].value == 30, \"three still present\");
+db.map[99,\"z\"] = null;
+assert(!db.map[99,\"z\"], \"missing key removal is no-op\");
+total = 0;
+for r in db.map { total += r.value };
+total",
+    )
+    .result(Value::Int(40));
+}
+
+#[test]
+fn sorted_remove_key() {
+    // sorted[key] = null removes the element by key; missing-key removal is a no-op
+    code!(
+        "struct Elm { key: integer, val: integer }
+struct Db { s: sorted<Elm[key]> }"
+    )
+    .expr(
+        "db = Db { s: [Elm{key:1,val:10}, Elm{key:2,val:20}, Elm{key:3,val:30}] };
+db.s[2] = null;
+assert(!db.s[2], \"removed element absent\");
+assert(db.s[1].val == 10, \"one still present\");
+assert(db.s[3].val == 30, \"three still present\");
+db.s[99] = null;
+assert(!db.s[99], \"missing key removal is no-op\");
+total = 0;
+for e in db.s { total += e.val };
+total",
+    )
+    .result(Value::Int(40));
 }

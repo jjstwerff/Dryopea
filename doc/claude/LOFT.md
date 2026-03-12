@@ -6,6 +6,31 @@ and can emit Rust code for host integration.
 
 ---
 
+## Contents
+- [Naming Conventions (enforced by the parser)](#naming-conventions-enforced-by-the-parser)
+- [Types](#types)
+- [Declarations](#declarations)
+- [Operators](#operators)
+- [Literals](#literals)
+- [String formatting](#string-formatting)
+- [Control flow](#control-flow)
+- [Variables](#variables)
+- [Vectors](#vectors)
+- [Key-based collections (hash / index / sorted)](#key-based-collections-hash--index--sorted)
+- [Structs and record initialization](#structs-and-record-initialization)
+- [Methods and function calls](#methods-and-function-calls)
+- [Assertions](#assertions)
+- [Polymorphism / dynamic dispatch](#polymorphism--dynamic-dispatch)
+- [File structure](#file-structure)
+- [External function annotations (`#rust`, `#iterator`)](#external-function-annotations-rust-iterator)
+- [Operator definitions (internal)](#operator-definitions-internal)
+- [Shebang](#shebang)
+- [Summary of grammar (informal)](#summary-of-grammar-informal)
+- [Best Practices](#best-practices)
+- [Known Limitations](#known-limitations)
+
+---
+
 ## Naming Conventions (enforced by the parser)
 
 | Construct              | Convention         | Examples               |
@@ -79,6 +104,9 @@ enum Format {
     FileName
 }
 ```
+
+Simple enum values support all six comparison operators (`==`, `!=`, `<`, `<=`, `>`, `>=`).
+The ordering follows declaration order (`Text < Number < FileName`).
 
 Polymorphic enums (each variant has its own fields, stored as a record):
 ```
@@ -189,7 +217,8 @@ Listed by precedence (lowest to highest):
 
 | Precedence | Operators                              | Notes                   |
 |------------|----------------------------------------|-------------------------|
-| 1 (lowest) | `\|\|`, `or`                           | logical OR              |
+| 0 (lowest) | `??`                                   | null-coalescing         |
+| 1          | `\|\|`, `or`                           | logical OR              |
 | 2          | `&&`, `and`                            | logical AND             |
 | 3          | `==`, `!=`, `<`, `<=`, `>`, `>=`       | comparison              |
 | 4          | `\|`                                   | bitwise OR              |
@@ -204,6 +233,23 @@ Unary operators: `!` (logical not), `-` (negation).
 
 Assignment operators: `=`, `+=`, `-=`, `*=`, `/=`, `%=`.
 
+### The `??` operator (null-coalescing)
+
+`lhs ?? rhs` evaluates to `lhs` if it is not null, otherwise evaluates to `rhs`:
+
+```loft
+name = record.optional_field ?? "unknown"
+count = map_lookup ?? 0
+first = a ?? b ?? c    // chains: first non-null of a, b, c
+```
+
+The operator is left-associative and chains: `a ?? b ?? c` is `(a ?? b) ?? c`.
+If `lhs` has a statically-known `null` type (the bare `null` literal), `??` returns `rhs` directly.
+
+**Note (V1 limitation):** For complex LHS expressions (not a variable or field), the expression
+is evaluated twice at runtime — once for the null check and once for the result.  Use a named
+temporary if double evaluation causes side effects.
+
 ### The `as` operator
 
 Used for explicit type casts and conversions:
@@ -216,16 +262,27 @@ Used for explicit type casts and conversions:
 
 ## Literals
 
-| Kind         | Syntax examples                     |
-|--------------|-------------------------------------|
-| Integer      | `42`, `0xff`, `0b1010`, `0o17`      |
-| Long         | `10l`, `42l`                        |
-| Float        | `3.14`, `1.0`                       |
-| Single       | `1.0f`, `0.5f`                      |
-| Character    | `'a'`, `'😊'`                       |
-| Boolean      | `true`, `false`                     |
-| Null         | `null`                              |
-| String       | `"hello world"`                     |
+| Kind             | Syntax examples                     |
+|------------------|-------------------------------------|
+| Integer          | `42`, `0xff`, `0b1010`, `0o17`      |
+| Long             | `10l`, `42l`                        |
+| Float            | `3.14`, `1.0`                       |
+| Single           | `1.0f`, `0.5f`                      |
+| Character        | `'a'`, `'😊'`                       |
+| Boolean          | `true`, `false`                     |
+| Null             | `null`                              |
+| String           | `"hello world"`                     |
+| Function ref     | `fn double_score`                   |
+
+A **function reference** (`fn <name>`) produces a `Type::Function` value whose runtime representation is the definition number of the named function.  Its primary use is with `parallel_for`:
+
+```loft
+result = parallel_for(fn double_score, items, 4);
+```
+
+The compiler resolves the name at **compile time** and errors if it does not exist or is not a function.  The value is 4 bytes (same as `integer`).
+
+See [THREADING.md](THREADING.md) § fn Expression for how function references are used with `par(...)`.
 
 ---
 
@@ -286,9 +343,9 @@ for item in collection {
 
 Ranges:
 ```
-for i in 1..10 { }        // 1 to 9 (exclusive end)
-for i in 1..=10 { }       // 1 to 10 (inclusive end)
-for i in 0.. { }          // open-ended (needs break)
+for i in 1..10 { }            // 1 to 9 (exclusive end)
+for i in 1..=10 { }           // 1 to 10 (inclusive end)
+for i in 0..2147483647 { }    // near-unbounded (break as needed)
 ```
 
 Text iteration yields characters:
@@ -303,7 +360,8 @@ for item in collection if item.active { }
 
 Reverse iteration:
 ```
-for i in rev(1..10) { }
+for i in rev(1..10) { }        // integer range in reverse (9, 8, 7, …, 1)
+for x in rev(sorted_col) { }   // sorted / index collection in reverse key order
 ```
 
 Inside a loop, the iteration variable supports several attributes using `#`:
@@ -332,6 +390,19 @@ for v in x if v % 3 != 0 {
     v#remove;
 }
 ```
+
+**Mutation guard:** Appending to a collection while iterating over it is a compile error:
+
+```
+for e in v { v += [4]; }  // ERROR: Cannot add elements to 'v' while it is being iterated
+```
+
+This protects against infinite loops (vectors re-read their length each step) and data
+corruption (sorted/index insertions invalidate stored iterator positions).
+
+Exceptions:
+- `e#remove` in a filtered loop is safe and allowed — it adjusts the iterator position after removal.
+- Field accesses are not blocked: `db.items += x` is allowed even if `db.items` is iterated via a local variable.
 
 ### Break and continue
 
@@ -380,10 +451,39 @@ v[i]                        // index (null if out of bounds)
 v[2..-1]                    // slice (negative indices count from end)
 v[start..end]               // slice range (end exclusive)
 v[start..]                  // open-ended slice to end
+v[..end]                    // open-start slice from 0 to end (exclusive)
 [elem; 16]                  // repeat initializer: 16 copies of elem
+[for n in 1..7 { n * 2 }]  // vector comprehension (builds [2, 4, 6, 8, 10, 12])
+[for n in 1..10 if n % 2 == 0 { n }]  // comprehension with filter
 ```
 
 To remove elements while iterating, use `v#remove` inside a filtered loop (see [For loops](#for-loops)).
+
+---
+
+## Key-based collections (hash / index / sorted)
+
+All three keyed collection types support single-element removal by assigning `null` to a subscript:
+
+```loft
+h[key] = null          // hash: remove element whose key field equals key
+idx[nr, name] = null   // index: remove element by compound key
+s[key] = null          // sorted: remove element by key field
+```
+
+Removing a key that is not present is a **no-op** (safe, no error).
+
+`sorted` and `index` collections support forward and reverse iteration:
+```loft
+for v in sorted_col { }         // forward — visits elements in key order
+for v in rev(sorted_col) { }    // reverse — visits elements in reverse key order
+```
+
+Lookup also returns `null` when an element is absent:
+```loft
+if h[key] { /* found */ }
+elem = idx[42, "foo"]    // null if not present
+```
 
 ---
 
@@ -448,12 +548,23 @@ enum Shape {
     Rect { width: float, height: float }
 }
 
-fn area(self: Circle) -> float { PI * (self.radius ^ 2) }
+fn area(self: Circle) -> float { PI * pow(self.radius, 2.0) }
 fn area(self: Rect) -> float { self.width * self.height }
 
 c = Circle { radius: 2.0 };
 c.area()   // dispatches to the Circle overload
 ```
+
+If a variant has no implementation, the compiler emits a `Warning` at the variant's
+definition site. To silence the warning deliberately, provide an **empty-body stub**:
+
+```
+fn area(self: Rect) -> float { }   // explicit skip — no warning emitted
+```
+
+A stub with an empty body `{ }` and a `self` parameter is treated as an intentional
+no-op: it emits no warnings, is callable at runtime (returns null for its return type),
+and suppresses the unused-`self` warning.
 
 Note: ordinary (non-enum) function overloading by argument type is **not** supported —
 two functions with the same name and different non-variant parameter types are a compile error.
@@ -563,61 +674,6 @@ Similarly for JSON format output:
 assert("{o:j}" == "{{\"key\":1}}", "json format");
 ```
 
-### Hex literals — always lowercase
-
-The lexer only accepts lowercase hex digits. `0xff` is valid; `0xFF` causes a parse error.
-
-```loft
-// CORRECT
-x = 0xff;
-y = 0xdeadbeef;
-
-// WRONG — uppercase hex digits are rejected
-z = 0xFF;
-```
-
-### String slicing — always provide both bounds
-
-Open-start slices (`s[..n]`) are not supported. Always give an explicit start:
-
-```loft
-s = "ABCDE";
-s[0..3]   // "ABC"  — CORRECT
-s[..3]    // Error: Invalid index on string
-s[2..]    // "CDE"  — open-end slices work fine
-```
-
-### Struct methods — do not call directly on a constructor expression
-
-Calling a method directly on an inline constructor (`MyStruct { ... }.method()`)
-is currently rejected with `"X should be X on call to method"`. Use an intermediate
-variable:
-
-```loft
-// WRONG
-result = MyPoint { x: 1, y: 2 }.translate(3, 4);
-
-// CORRECT
-tmp = MyPoint { x: 1, y: 2 };
-result = tmp.translate(3, 4);
-```
-
-### Methods returning new struct records
-
-Methods whose return type is a struct currently crash at `database.rs:1458`.
-Until fixed, return a scalar (integer, float, text) or modify `self` in place:
-
-```loft
-// CRASHES — method returning a new Color record
-fn doubled(self: Color) -> Color { Color { r: self.r * 2 } }
-
-// WORKS — method returning an integer
-fn brightness(self: Color) -> integer { self.r + self.g + self.b }
-
-// WORKS — method mutating self in place
-fn double(self: Color) { self.r *= 2; self.g *= 2; self.b *= 2; }
-```
-
 ### Unique field names across all structs in one file
 
 When two structs in the same file share a field name at different positions, the
@@ -638,75 +694,70 @@ struct IdxElm  { i_nr: integer, i_key: text, i_value: integer }
 
 ### Ref-param vector append
 
-`v += items` inside a `&vector<T>` function parameter does **not** propagate back
-to the caller. Only field-level mutations are visible after the call returns:
+`v += items` inside a `&vector<T>` function parameter propagates back to the
+caller. Both bracket-form literals and vector expressions work:
 
 ```loft
-fn bad_append(v: &vector<Item>, extra: Item) {
-    v += [extra];   // silently has no effect on the caller
+fn fill(v: &vector<Item>, extra: vector<Item>) {
+    v += extra;          // appended elements are visible to the caller
 }
 
+fn add_one(v: &vector<Item>, x: Item) {
+    v += [x];            // bracket-form also works
+}
+```
+
+Field-level mutations via a ref-param also work as expected:
+
+```loft
 fn ok_mutate(v: &vector<Item>, idx: integer, val: integer) {
-    v[idx].value = val;   // works — field mutation via ref-param is visible
+    v[idx].value = val;  // field mutation via ref-param is visible
 }
 ```
 
-To append to a vector from a function, return the new vector as a return value:
-```loft
-fn with_extra(v: vector<Item>, extra: Item) -> vector<Item> {
-    v += [extra];
-    v
-}
-items = with_extra(items, new_item);
-```
+Without `&`, element mutations on existing elements are also visible (the DbRef is shared),
+but appending via `v += [x]` is local to the callee — the caller's vector length does not
+change. Use `&vector<T>` whenever the function needs to grow the vector.
 
 ### Polymorphic text methods on struct-enum variants
 
-Defining text-returning methods on multiple variants of a struct-enum where each
-method uses format strings to access fields causes a state machine overflow at
-runtime. Return integers or build text in the caller instead:
+Text-returning methods on struct-enum variants that use format strings work
+correctly:
 
 ```loft
-// CRASHES at runtime
 enum Shape {
     Circle { radius: float },
     Rect   { width: float, height: float }
 }
-fn describe(self: Circle) -> text { "r={self.radius}" }      // ← triggers bug
+fn describe(self: Circle) -> text { "r={self.radius}" }
 fn describe(self: Rect)   -> text { "{self.width}x{self.height}" }
+```
 
-// SAFE — return scalar, build text outside
-fn area(self: Circle) -> float { PI * self.radius * self.radius }
-fn area(self: Rect)   -> float { self.width * self.height }
+If a variant does not implement a method, declare an empty stub with `self` as the
+first parameter to suppress the warning and return null:
+
+```loft
+fn describe(self: Circle) -> text { }   // stub: returns null, no warning
 ```
 
 ---
 
 ## Known Limitations
 
-A complete list with workarounds is in `PROBLEMS.md` at the repository root.
+A complete list with workarounds is in [PROBLEMS.md](PROBLEMS.md) at the repository root.
 The most commonly encountered limitations are summarised here.
 
 ### Parser / lexer
 
 | Limitation | Workaround |
 |---|---|
-| Hex literals must be lowercase (`0xff`, not `0xFF`) | Always write hex in lowercase |
-| Open-start slice `s[..n]` not supported | Use `s[0..n]` |
-| `for expr { }` inside a vector literal not supported | Use `{for ... { }}` inside a format string, or build with a loop and `+=` |
-| Method call directly on constructor expression rejected | Assign to a variable first |
 | `\"` inside a `{...}` format expression causes parse error | Use `{{` / `}}` to produce literal braces so the content is not treated as a format expression |
 
 ### Runtime
 
 | Limitation | Workaround |
 |---|---|
-| Method returning a new struct record crashes | Return scalars or mutate `self` in place |
-| `v += items` in a ref-param function has no effect on caller | Return the modified vector, or use field mutation |
-| Polymorphic text methods with format strings on struct-enum variants crash | Return integers; build text in the caller |
 | Reverse iteration on `sorted<T>` not implemented | Collect into a `vector<T>` and use `rev(...)` |
-| Writing a `vector<T>` to a binary file writes 0 bytes | Loop and write each element individually |
-| `f#size = n` (file truncation) not implemented | Delete and recreate the file |
 
 ### Exit codes
 
@@ -719,3 +770,9 @@ if [ $? -ne 0 ] || echo "$out" | grep -q "^Error:\|panicked"; then
     echo "FAILED: $out"
 fi
 ```
+
+---
+
+## See also
+- [STDLIB.md](STDLIB.md) — Standard library API (math, text, collections, file I/O, logging, parallel)
+- [COMPILER.md](COMPILER.md) — Lexer, parser, two-pass design, IR, type system, scope analysis, bytecode

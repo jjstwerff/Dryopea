@@ -2,6 +2,21 @@
 
 This document describes all public functions, constants, and types available in the loft standard library.
 
+## Contents
+- [Implementation notes](#implementation-notes)
+- [Types](#types)
+- [Math](#math)
+- [Text](#text)
+- [Collections](#collections)
+- [Keyed collections (hash / index / sorted)](#keyed-collections-hash--index--sorted)
+- [Output and Diagnostics](#output-and-diagnostics)
+- [Logging](#logging)
+- [File System](#file-system)
+- [Parallel](#parallel)
+- [Environment](#environment)
+
+---
+
 ## Implementation notes
 
 Standard library functions fall into two implementation categories:
@@ -9,7 +24,7 @@ Standard library functions fall into two implementation categories:
 - **Loft-implemented** — defined in `default/01_code.loft`, `default/02_images.loft`, or `default/03_text.loft` using the loft language itself. These have a normal function body.
 - **Native (Rust)** — declared in the default library with a `#rust "..."` annotation and implemented as hand-written Rust functions in `src/external.rs`. These handle OS interaction and operations that cannot be expressed in loft (file I/O, environment variables, string classification, etc.).
 
-See `doc/claude/INTERNALS.md` for the full list of native functions, their Rust names, and the naming convention (`n_<func>` for globals, `t_<N><Type>_<method>` for methods).
+See [INTERNALS.md](INTERNALS.md) for the full list of native functions, their Rust names, and the naming convention (`n_<func>` for globals, `t_<N><Type>_<method>` for methods).
 
 ---
 
@@ -190,6 +205,26 @@ Operations on `vector<T>` — the primary ordered collection type.
 
 Vectors are grown by appending with `+=` and elements are accessed by index. Removal and insertion are handled by the parser's built-in operators.
 
+| Operation | Description |
+|-----------|-------------|
+| `v += [elem]` | Append one element. |
+| `v.remove(i)` | Remove element at index `i` (negative counts from end); returns `boolean`. |
+| `v#remove` | Remove current element inside a `for ... if ...` loop. |
+
+---
+
+## Keyed collections (hash / index / sorted)
+
+All three keyed collection types share a common lookup and removal syntax handled by the parser, not the stdlib:
+
+| Syntax | Description |
+|--------|-------------|
+| `c[key]` | Look up element by key; returns the element or `null` if absent. |
+| `c[key] = null` | Remove the element with that key; no-op if absent. |
+| `e#remove` | Remove current element during a `for ... if ...` iteration. |
+
+These are parser-level operations; they compile to `OpGetRecord`, `OpHashRemove`, and `OpRemove` respectively. There are no corresponding callable functions.
+
 ---
 
 ## Output and Diagnostics
@@ -198,8 +233,29 @@ Vectors are grown by appending with `+=` and elements are accessed by index. Rem
 |----------|-------------|
 | `print(v: text)` | Writes `v` to standard output without a newline. |
 | `println(v: text)` | Writes `v` followed by a newline. |
-| `assert(test: boolean, message: text)` | Panics with `message` if `test` is false. |
-| `panic(message: text)` | Immediately terminates execution with `message`. |
+| `assert(test: boolean, message: text)` | Panics with `message` if `test` is false. In production mode (`--production` CLI flag), writes an `error` log entry instead of aborting. |
+| `panic(message: text)` | Immediately terminates execution with `message`. In production mode, writes a `fatal` log entry instead of aborting. |
+
+---
+
+## Logging
+
+Structured file-based output from running loft programs. Logging is configured via `log.conf` beside the main `.loft` file (or `--log-conf <path>`). See [LOGGER.md](LOGGER.md) for full configuration reference.
+
+| Function | Description |
+|----------|-------------|
+| `log_info(message: text)` | Writes a record at `INFO` severity. Silently discarded if no logger or below the configured level. |
+| `log_warn(message: text)` | Writes a record at `WARN` severity (default minimum level). |
+| `log_error(message: text)` | Writes a record at `ERROR` severity. |
+| `log_fatal(message: text)` | Writes a record at `FATAL` severity. Does **not** abort (use `panic()` to abort). |
+
+The loft source file and line number are injected by the compiler at each call site — the log record always shows exactly where in the loft code the log call was made.
+
+Rate limiting: at most 5 messages per 60-second window per call site (configurable). Suppressed messages are counted and a notice is emitted when the window resets.
+
+```
+2026-03-13T14:05:32.417Z WARN  src/compute.loft:142  division result may overflow
+```
 
 ---
 
@@ -294,6 +350,62 @@ Binary mode must be activated before reading or writing raw data. Use `f.format 
 
 ---
 
+## Parallel
+
+The public parallel API is the `par(...)` for-loop clause. The internal functions `parallel_for` and `parallel_for_int` are not part of the user API.
+
+### `par(...)` Parallel For-Loop
+
+```loft
+for a in <vector> par(b=<worker_call>, <threads>) {
+    // body — b holds the worker result for this element
+}
+```
+
+Two worker call forms:
+
+| Form | Example | Description |
+|---|---|---|
+| Form 1 | `func(a)` | Global function called with the loop element |
+| Form 2 | `a.method()` | Method on the element type |
+
+Worker must return a primitive: `integer`, `long`, `float`, or `boolean`. Input must be a `vector<T>`.
+
+```loft
+struct Score { value: integer }
+
+fn double_score(r: const Score) -> integer { r.value * 2 }
+fn get_value(self: const Score) -> integer { self.value }
+
+fn main() {
+    q = make_scores();   // vector of Score
+
+    // Form 1: global function
+    sum = 0;
+    for a in q.items par(b=double_score(a), 4) {
+        sum += b;
+    }
+
+    // Form 2: method
+    total = 0;
+    for a in q.items par(b=a.get_value(), 1) {
+        total += b;
+    }
+}
+```
+
+**Worker function rules:**
+- Accept a single `const` reference as the first parameter.
+- Do not name the first parameter `self` (this makes it a method, looked up differently).
+- Workers receive a read-only store snapshot; writing to input data panics.
+- No nested parallelism.
+
+**Limitations:**
+- Float/long result accumulation in the loop body: if `b` is float/long, using it in arithmetic with a pre-declared float/long variable can trigger a first-pass type-inference conflict. Workaround: use `b` only in boolean comparisons or cast (`sum += b as integer`).
+- Implementation: `src/parallel.rs`; see [THREADING.md](THREADING.md) for internals.
+
+---
+
 ## Environment
 
 Functions for interacting with the host operating system.
@@ -318,3 +430,9 @@ Functions for interacting with the host operating system.
 | `directory(v: &text = "") -> text` | Returns the current working directory, optionally with `v` appended as a subpath. Use to construct absolute paths relative to where the program was launched. |
 | `user_directory(v: &text = "") -> text` | Returns the current user's home directory, optionally with `v` appended. |
 | `program_directory(v: &text = "") -> text` | Returns the directory containing the running executable, optionally with `v` appended. |
+
+---
+
+## See also
+- [LOFT.md](LOFT.md) — Loft language reference (syntax, types, operators, control flow)
+- [INTERNALS.md](INTERNALS.md) — Native function registry, `src/external.rs`, `src/text.rs`

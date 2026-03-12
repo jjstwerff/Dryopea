@@ -55,6 +55,10 @@ gtest:
 	cd generated && rustfmt tests/*.rs --edition 2024 >> result.txt 2>&1
 	cd generated && cargo test -- --nocapture --test-threads=1 >>result.txt 2>&1
 
+pdf:
+	cargo run --bin gendoc
+	typst compile doc/loft-reference.typ doc/loft-reference.pdf
+
 loft-test:
 	@cargo build --bin lavition --release -q
 	@failed=0; \

@@ -768,12 +768,21 @@ fn OpPanic(message: text);
 #rust "panic!(\"{{}}\", @message);"
 
 // Panics with message if test is false. Use to verify invariants during development.
-pub fn assert(test: boolean, message: text);
-#rust "assert!(@test, \"{{}}\", @message);"
+// In production mode (--production), logs an error instead of aborting.
+// The file and line are injected by the compiler; do not pass them manually.
+pub fn assert(test: boolean, message: text, file: text, line: integer);
 
 // Immediately terminates execution with message. Use for unrecoverable error states.
-pub fn panic(message: text);
-#rust "panic!(\"{{}}\", @message);"
+// In production mode (--production), logs a fatal entry instead of aborting.
+// The file and line are injected by the compiler; do not pass them manually.
+pub fn panic(message: text, file: text, line: integer);
+
+// Write a structured log record at the chosen severity.
+// The file and line are injected by the compiler; do not pass them manually.
+pub fn log_info(message: text, file: text, line: integer);
+pub fn log_warn(message: text, file: text, line: integer);
+pub fn log_error(message: text, file: text, line: integer);
+pub fn log_fatal(message: text, file: text, line: integer);
 
 fn OpPrint(v1: text);
 #rust "print!(\"{{}}\", @v1);"
@@ -854,3 +863,21 @@ fn get_store_lock(r: reference) -> boolean;
 // Only `true` is accepted from loft code via d#lock = true.
 // A non-const variable may also use d#lock = false to unlock.
 fn set_store_lock(r: reference, locked: boolean);
+
+// --- Parallel ---
+
+// Internal: run a loft function over every element of a vector in parallel.
+// Not part of the public API — use the `par(b=worker(a), N)` for-loop clause instead.
+fn parallel_for_int(func: text, input: reference, element_size: integer, threads: integer) -> reference;
+
+// Internal: compiler-checked parallel map.
+// The compiler rewrites `par(...)` clauses into calls to this function.
+// Raw 5-arg internal signature; not callable from user code.
+fn parallel_for(input: reference, element_size: integer, return_size: integer, threads: integer, func: integer) -> reference;
+
+// Internal: read element idx from a parallel_for result reference.
+// Emitted by the compiler for the `par(...)` syntax; do not call directly.
+fn parallel_get_int(r: reference, idx: integer) -> integer;
+fn parallel_get_long(r: reference, idx: integer) -> long;
+fn parallel_get_float(r: reference, idx: integer) -> float;
+fn parallel_get_bool(r: reference, idx: integer) -> boolean;

@@ -28,7 +28,7 @@ pub struct RadixIter {
 }
 
 impl RadixIter {
-    #[allow(clippy::unused_self)]
+    #[allow(clippy::unused_self)] // stub for not-yet-implemented radix tree iterator; &mut self is kept to match the planned interface
     pub fn next(&mut self, _store: &Store, _tree: u32) -> Option<u32> {
         // in node: walk FALSE, walk TRUE; when encountered ref => up again in positions
         None

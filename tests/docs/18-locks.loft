@@ -1,0 +1,84 @@
+// Copyright (c) 2024-2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// @NAME: Store Locks
+// @TITLE: Runtime store locking and const variables
+// A store lock prevents accidental modification of a value after it has been
+// set up. Loft automatically locks stores that are passed as `const`
+// parameters so the compiler can catch any unintended writes at compile time.
+// You can also set the lock flag by hand when you want to protect a value
+// in your own code.
+
+struct Counter {
+    value: integer
+}
+
+// A `const` parameter signals that this function will not modify the store.
+// In debug builds the runtime locks the store automatically when you call
+// this function.
+fn read_value(self: const Counter) -> integer {
+    self.value
+}
+
+// A non-const parameter leaves the store unlocked so the function can write
+// to it freely.
+fn increment(self: Counter) {
+    self.value += 1
+}
+
+fn main() {
+    // ## Checking and Setting a Lock
+
+    // A freshly created reference starts unlocked.
+    c = Counter { value: 10 };
+    assert(!c#lock, "New store starts unlocked");
+
+    // Locking the store makes the flag true.
+    c#lock = true;
+    assert(c#lock, "Store is locked after d#lock = true");
+
+    // ## The const Keyword for Local Variables
+
+    // Declaring a local variable with `const` signals your intent that the
+    // value will not change. In debug builds the runtime locks the store
+    // immediately after initialisation so any accidental write is caught.
+    // In release builds the lock is not set automatically — only your
+    // explicit `#lock = true` has an effect.
+    const d = Counter { value: 42 };
+    assert(read_value(d) == 42, "const local: value readable");
+
+    // The lock state may differ between debug and release builds, but the
+    // stored value is always correct either way.
+    lock_state = d#lock;
+    assert(lock_state == true || lock_state == false, "d#lock is a boolean");
+
+    // ## Passing const to a Function
+
+    // When you pass a value to a `const` parameter, the function can read it
+    // but not write to it. In debug builds the store is locked for the
+    // duration of the call and unlocked when the call returns.
+    result = read_value(c);
+    assert(result == 10, "const arg: value readable after lock");
+
+    // A non-const reference starts unlocked and you can lock it yourself.
+    e = Counter { value: 5 };
+    assert(!e#lock, "non-const starts unlocked");
+    e#lock = true;
+    assert(e#lock, "non-const lock set to true");
+
+    // Reading the lock state before and after setting it lets you verify the
+    // transition explicitly.
+    f = Counter { value: 7 };
+    before = f#lock;
+    f#lock = true;
+    after = f#lock;
+    assert(!before, "lock was false before setting");
+    assert(after, "lock is true after setting");
+
+    // `get_store_lock(ref)` is the function form of the `#lock` property.
+    // Both return the same boolean, so you can use whichever reads more
+    // naturally in context.
+    g = Counter { value: 99 };
+    assert(get_store_lock(g) == g#lock, "get_store_lock matches d#lock read");
+    g#lock = true;
+    assert(get_store_lock(g) == g#lock, "get_store_lock matches after lock");
+}
