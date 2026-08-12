@@ -40,6 +40,37 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### `registry-sign.sh` aborts a publish on one dropped connection — no retry
+
+- **Filed:** [loft-lang/loft#887](https://github.com/loft-lang/loft/issues/887) on 2026-08-12
+- **Found while:** publishing `graphics 0.5.2` — the constant-fill optimisation
+  dryopea's own suite profile asked for (58% of its interpreted time was
+  `canvas()` building a pixel buffer one element at a time).
+- **Kind:** bug (tooling robustness — a correct check with a single-attempt
+  fetch).
+- **Behaviour:** `registry-sign.sh:278` re-downloads each new tarball to hash
+  it — the right check, and the trust-root backstop — but with
+  `urllib.request.urlopen(...)` once and no retry.  The
+  `github.com → objects.githubusercontent.com` redirect drops most of
+  urllib's connections on this box (**1/4**, against **4/4** for
+  `raw.githubusercontent.com`), while `curl` and `gh release download`
+  cope at the same moments.  Publishing took **5 full
+  `registry_maintain.sh` runs plus 7 sign attempts** for one good fetch.
+- **Fail-safe, never unsafe:** every failure refused to sign and left
+  `index.json` untouched with its signature intact — no half-published
+  state.  The cost is time, not correctness.
+- **Secondary ask:** the diagnostic says *"does the release exist with the
+  named asset?"* when the transport failed.  It did exist, every time; that
+  question cost a round of verifying the release and re-proving `loft
+  package` of `main` reproduced the tarball byte-for-byte.
+- **Workaround (dryopea-side, and the thing that made it tractable):** pass
+  `--registry-dir <persistent checkout>` to `registry_maintain.sh` so a
+  failed sign leaves the staged index in place, then re-run
+  `registry-sign.sh` alone — seconds per retry instead of ~8 minutes of
+  re-cloning every `loft-libs-*` repo and re-running `compat check --full`.
+  ⚠ **Not** `--no-download`: it skips the backstop, and
+  `registry_maintain.sh` deliberately does not plumb it through.
+
 ### An ambiguous bare struct name dumps a FALSE `lost-write` against a library
 
 - **Filed:** [loft-lang/loft#883](https://github.com/loft-lang/loft/issues/883) on 2026-08-12
