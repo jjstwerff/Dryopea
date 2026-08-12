@@ -68,6 +68,10 @@
 //   count painted <lo> <hi>    painted hexes within a band
 //   count markers <lo> <hi>    placed markers within a band
 //   count alive <lo> <hi>      live enemies — the wave-clear sentinel
+//   count targets <lo> <hi>    DISTINCT hexes the wave is attacking —
+//                              the siege's spread (plan 11 F7).  A set,
+//                              so it does not depend on spawn order
+//   target <i> <q> <r>         the EXACT hex one enemy is attacking
 //   kind <q> <r> <name>        EXACT ground type at a hex
 //   marker <q> <r> <kind> [d]  EXACT marker identity at a hex
 //   range <lo> <hi>            how far the live enemies are from
@@ -364,6 +368,29 @@ fn script_core(mw: MarkerWorld) -> (integer, integer, integer) {
     (scr_n, scr_q, scr_r)
 }
 
+// How many DISTINCT hexes the live wave is attacking — plan 11 F7.
+//
+// An enemy attacking nothing reports its own hex (`enemy_target`'s
+// convention), so those are skipped rather than counted: a wave that is
+// walking peacefully besieges zero hexes, not one per enemy.
+fn script_distinct_targets(s: EditorState, run: ScriptRun, core: Hex) -> integer {
+    sdt_seen: vector<Hex> = [];
+    sdt_ts   = wave_targets(run.wave, s.picker.palette, s.pw, core);
+    sdt_i    = 0;
+    for sdt_e in run.wave.enemies {
+        sdt_t = sdt_ts[sdt_i] ?? Hex { q: sdt_e.q, r: sdt_e.r };
+        if sdt_e.alive && !(sdt_t.q == sdt_e.q && sdt_t.r == sdt_e.r) {
+            sdt_new = true;
+            for sdt_h in sdt_seen {
+                if sdt_h.q == sdt_t.q && sdt_h.r == sdt_t.r { sdt_new = false; }
+            }
+            if sdt_new { sdt_seen += [Hex { q: sdt_t.q, r: sdt_t.r }]; }
+        }
+        sdt_i += 1;
+    }
+    len(sdt_seen)
+}
+
 // ─── The measurements ───────────────────────────────────────────
 
 // Split out of `script_command` because they are a different kind
@@ -392,7 +419,26 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sm_a1 == "alive" {
             return measure_int(run, "count alive", alive_count(run.wave), sm_lo ?? 0, sm_hi ?? 0);
         }
-        return "count: unknown subject '{sm_a1}' — painted, markers or alive";
+        // ⚠ **The anti-collapse measurement** (plan 11 F7).  How many
+        // DISTINCT hexes the wave is attacking — the set, not the
+        // list.  `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter is a
+        // claim about spread, and an implementation that computed "the
+        // nearest wall" once would still have every enemy attacking
+        // something; it would just all be the same hex.  Only the size
+        // of the set can tell those apart, and it is order-independent,
+        // which is what lets a script assert it over a roster whose
+        // spawn order comes from hash iteration.
+        if sm_a1 == "targets" {
+            sm_tcore = script_core(s.mw);
+            if sm_tcore.0 != 1 {
+                return "count targets: needs exactly ONE core marker to besiege, found {sm_tcore.0}";
+            }
+            return measure_int(run, "count targets",
+                               script_distinct_targets(s, run,
+                                                       Hex { q: sm_tcore.1, r: sm_tcore.2 }),
+                               sm_lo ?? 0, sm_hi ?? 0);
+        }
+        return "count: unknown subject '{sm_a1}' — painted, markers, alive or targets";
     }
 
     // Exact, and preferred wherever it can answer the question: a
@@ -546,6 +592,49 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         }
         sm_dead = if sm_one.alive { "" } else { " — dead" };
         measure_exact(run, "enemy {sm_i} at ({sm_q}, {sm_r}){sm_dead}");
+        return "";
+    }
+
+    // WHICH wall hex an enemy is attacking — plan 11 F7, and the
+    // invariant-gate row that asks for "the exact wall hex, named".
+    //
+    // `count targets` says the siege is spread; this says where one
+    // enemy's own route ran out.  Both are needed: a spread of the
+    // wrong hexes has the right count.
+    //
+    // The same roster-index caveat as `enemy` applies — one spawn
+    // marker, or use `count targets`, which is a SET and so cannot
+    // depend on spawn order.
+    if sm_cmd == "target" {
+        if sm_argc != 3 { return "target needs <index> <q> <r>"; }
+        sm_v = script_ints(tok, 3);
+        if len(sm_v) != 3 { return "target: <index>, <q> and <r> must be integers"; }
+        sm_i = sm_v[0] ?? 0;
+        sm_n = len(run.wave.enemies);
+        if sm_i < 0 || sm_i >= sm_n {
+            return "target {sm_i}: the roster holds {sm_n} — has the wave started?";
+        }
+        sm_tc = script_core(s.mw);
+        if sm_tc.0 != 1 {
+            return "target: needs exactly ONE core marker to besiege, found {sm_tc.0}";
+        }
+        sm_one = run.wave.enemies[sm_i];
+        if sm_one == null { return "target {sm_i}: the roster holds {sm_n}"; }
+        sm_all = wave_targets(run.wave, s.picker.palette, s.pw,
+                              Hex { q: sm_tc.1, r: sm_tc.2 });
+        sm_t = sm_all[sm_i] ?? Hex { q: sm_one.q, r: sm_one.r };
+        sm_q = sm_v[1] ?? 0;
+        sm_r = sm_v[2] ?? 0;
+        // Attacking nothing is reported as the enemy's OWN hex, and
+        // saying so beats "expected (3, 0), got (4, 0)" — which reads
+        // like a wrong target rather than like no siege at all.
+        if sm_t.q == sm_one.q && sm_t.r == sm_one.r {
+            return "enemy {sm_i} at ({sm_one.q}, {sm_one.r}) is attacking nothing, expected ({sm_q}, {sm_r})";
+        }
+        if sm_t.q != sm_q || sm_t.r != sm_r {
+            return "enemy {sm_i} is attacking ({sm_t.q}, {sm_t.r}), expected ({sm_q}, {sm_r})";
+        }
+        measure_exact(run, "target {sm_i} = ({sm_q}, {sm_r})");
         return "";
     }
 
@@ -919,7 +1008,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // changing it, so they live in their own dispatcher.
     if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker"
     || sc_cmd == "frame" || sc_cmd == "range"
-    || sc_cmd == "enemy" || sc_cmd == "enemies" {
+    || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target" {
         return script_measure(s, run, tok);
     }
 

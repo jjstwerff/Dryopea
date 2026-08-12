@@ -172,6 +172,25 @@ are never targets.  So a single wall face is chewed along its
 length rather than at one point, and the more enemies arrive, the
 wider the bite.
 
+⚠ **Built as far as "they arrive already spread"; the rest is not.**
+The spread by APPROACH is live ([plan 11](../plans/11-flow-field/README.md)
+F7): an enemy with no route follows a *desire field* — the routing
+sweep with the climb lifted, so walls are passable — and attacks
+where the height rule refuses its next step.  Enemies from
+different directions therefore meet the perimeter at different
+hexes with nothing coordinating them.
+
+What is **not** built is the sideways half of the paragraph above.
+Measured at F7: the desire gradient points **at** the wall, not
+along it, and a step is only ever taken to a strictly closer hex —
+so enemies arriving down one approach still queue behind each
+other, and a single face is bitten at one point rather than along
+its length.  Chewing it lengthwise needs an enemy to sidestep to an
+*equally* distant hex, which is a second steering rule on top of
+the field.  It would be a real change, not a fix: plan 11 F5c
+rejected exactly that shape once already, because occupancy is
+meant to be a movement constraint and not a way of steering.
+
 ⚠ **Tuning consequence.**  A spread siege divides wall HP across
 many points at once, so a sealed base falls faster than a
 single-chokepoint reading of wall HP vs nibble DPS suggests.

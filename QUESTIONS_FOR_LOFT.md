@@ -40,6 +40,34 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### A struct returned through TWO nested tail calls loses what its loop wrote
+
+- **Filed:** [loft-lang/loft#880](https://github.com/loft-lang/loft/issues/880) on 2026-08-12
+  (`bug`, `sev:high`, `area:store-lifetime`, `area:codegen`,
+  `both-backends`, `wa:clean`, `hit-by:dryopea`).  Repro:
+  [`loft_repros/struct_through_two_tail_calls.loft`](loft_repros/struct_through_two_tail_calls.loft).
+- **Found while:** plan 11 F7 — factoring `flow_build` onto a shared
+  `flow_sweep` so the routing field and the desire field are one BFS
+  with one number changed.
+- **Kind:** bug (silent wrong result, and the two backends disagree
+  about how wrong)
+- **What dryopea needs:** a struct to survive being returned through a
+  chain of tail-position calls.  Today, with the outer call passing a
+  struct LITERAL as an argument and the sweep filling its hash inside a
+  `while` loop that reassigns a `vector` frontier, the result arrives
+  with **1** cell interpreted and **0** natively where 13 are expected.
+  Binding the inner call to a local fixes it, and that is the
+  workaround in [`src/flow.loft`](src/flow.loft).
+
+  ⚠ **What made it expensive was the shape of the refactor, not the
+  bug.**  Moving an algorithm out of a function into a shared helper
+  turns every *consumer's* one-line wrapper into a second tail call —
+  so the defect appears at call sites nobody edited.  Every flow field
+  on the map came back empty and the game stopped moving; the nine red
+  tests all named the movement they no longer did, and none named the
+  wrapper.  A four-way boundary matrix (wrapper binds/tail-returns ×
+  caller binds/inlines) is what located it.
+
 ### Indexing a call's result in TAIL position — fallback on interpret, panic on native
 
 - **Filed:** [loft-lang/loft#877](https://github.com/loft-lang/loft/issues/877) on 2026-08-12

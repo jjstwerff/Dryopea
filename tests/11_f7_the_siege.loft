@@ -1,0 +1,542 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F7 — no path: the siege.
+//
+// `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter: a wall placement is
+// never refused, it is made a bad idea instead.  *"Blocked enemies still
+// want the core, and they arrive already spread — each enemy attacks
+// the wall where ITS OWN route to the core first meets it."*
+//
+// ── The failure this phase exists to avoid ──────────────────────
+//
+// **"The nearest wall", computed once, hands every enemy the same hex**
+// and collapses a whole perimeter back into one chokepoint the player
+// can concentrate fire on.  That implementation is easy, plausible, and
+// gives every enemy a target — so "they all attack something" cannot
+// tell it from the real thing.  Only the SIZE OF THE SET can, which is
+// why `count targets` is a set and why the gate below counts distinct
+// hexes rather than checking that each enemy has one.
+//
+// ── How the spread is produced: a second field ──────────────────
+//
+// The DESIRE field is the same BFS with the climb lifted, so walls are
+// passable in it.  An enemy with no route walks down it and attacks
+// where the height rule refuses the next step.  Nothing coordinates the
+// enemies; they meet the wall at different hexes because they came from
+// different places.
+//
+// ── ⚠ What this phase does NOT do, stated so a later gate can fail ──
+//
+// It does not make a wave sidestep ALONG a wall face.  F5c ended with
+// "F7 supplies the gradient" and that over-claimed: the desire field's
+// gradient points AT the wall, not along it, and `flow_steps` only ever
+// offers a strictly-closer hex — so enemies pressing one face from one
+// direction still queue behind each other.  The spread here is by
+// APPROACH, which is what `ENEMY_MOVEMENT.md` § Sealing actually
+// derives it from.  Chewing one face along its length needs an
+// equal-distance sidestep, which is a second steering rule and is not
+// in this phase; `test_one_face_from_one_side_is_still_a_queue` pins
+// the current behaviour so that whoever adds it has a gate that fails.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// examples/palette.json, in file order.
+const GRASS: integer = 5;
+const WALL:  integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn flat() -> HeightLayer {
+    height_layer_empty()
+}
+
+fn field_for(kind: integer, pw: PaintedWorld) -> FlowField {
+    ff_out = flow_build(pal(), pw, flat(), as_u8(kind), core());
+    ff_out
+}
+
+fn desire_for(pw: PaintedWorld) -> FlowField {
+    df_out = flow_desire(pal(), pw, flat(), core());
+    df_out
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Worlds
+// ─────────────────────────────────────────────────────────────────
+
+// The ring builder is F3's, character for character, and that is
+// deliberate: plan 11 F0's hand-built ring painted 16 of its 18 hexes
+// OFF the ring while looking entirely plausible, and every route
+// through that world was meaningless.  `test_the_ring_is_a_ring` is
+// the pre-flight F0 said every ring world needs.
+fn ring(centre: Hex, radius: integer) -> vector<Hex> {
+    r_out: vector<Hex> = [];
+    r_h = centre;
+    for _ in 0..radius {
+        r_h = hex_neighbor(r_h, 4);
+    }
+    for r_dir in 0..6 {
+        for _ in 0..radius {
+            r_out += [r_h];
+            r_h = hex_neighbor(r_h, r_dir);
+        }
+    }
+    r_out
+}
+
+fn disc(radius: integer, kind: integer) -> PaintedWorld {
+    d_pw = painted_empty();
+    for d_h in visible_hexes(core(), radius) {
+        paint(d_pw, d_h.q, d_h.r, as_u8(kind));
+    }
+    d_pw
+}
+
+// Land out to radius 8 with a SEALED wall ring at radius 4.
+fn sealed_base() -> PaintedWorld {
+    sb_pw = disc(8, GRASS);
+    for sb_h in ring(core(), 4) {
+        paint(sb_pw, sb_h.q, sb_h.r, as_u8(WALL));
+    }
+    sb_pw
+}
+
+// A corridor that BENDS off the heading's line, with the core sealed at
+// the end of it.
+//
+// ⚠ **This world is the phase's discriminator.**  Every enemy here has
+// heading 4, which is `(-1, 0)`: it changes `q` and NEVER `r`.  Before
+// F7 a routeless enemy walked that heading and stopped where the land
+// ran out at `(5, 0)`; following the desire field it turns at `(5, -1)`
+// and ends at `(2, -1)`.  `r = -1` is a hex no heading could produce,
+// which is the same shape F5's gate had to be built around — and for
+// the same reason, since a straight corridor cannot tell a field from a
+// heading.
+fn bent_siege() -> PaintedWorld {
+    bs_pw = painted_empty();
+    for bs_q in 5..=12 { paint(bs_pw, bs_q, 0, as_u8(GRASS)); }
+    paint(bs_pw, 5, -1, as_u8(GRASS));
+    paint(bs_pw, 4, -1, as_u8(GRASS));
+    paint(bs_pw, 3, -1, as_u8(GRASS));
+    paint(bs_pw, 2, -1, as_u8(GRASS));
+    paint(bs_pw, 0,  0, as_u8(GRASS));
+    paint(bs_pw, 1,  0, as_u8(WALL));    // the seal, and every target
+    bs_pw
+}
+
+fn enemy_at(kind: integer, q: integer, r: integer, heading: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(kind), heading: heading as u8? ?? 0, alive: true }
+}
+
+// Tick one enemy against a world it has no route through.
+fn besiege(e: Enemy, pw: PaintedWorld, ticks: integer) {
+    b_pal = pal();
+    b_f   = field_for(ENEMY_KIND_REGULAR, pw);
+    b_d   = desire_for(pw);
+    for _ in 0..ticks {
+        enemy_tick(e, b_pal, pw, flat(), b_f, b_d, occupancy_empty());
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The pre-flight F0 said every ring world needs
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_ring_is_a_ring() {
+    tri_n = 0;
+    for tri_h in ring(core(), 4) {
+        assert(hex_distance(core(), tri_h) == 4,
+               "({tri_h.q}, {tri_h.r}) is {hex_distance(core(), tri_h)} out, not 4");
+        tri_n += 1;
+    }
+    assert(tri_n == 24, "a radius-4 ring is 6 x 4 hexes, built {tri_n}");
+}
+
+fn test_the_base_is_actually_sealed() {
+    tbs_f = field_for(ENEMY_KIND_REGULAR, sealed_base());
+
+    assert(!flow_reachable(tbs_f, 8, 0), "no route in from the rim");
+    assert(!flow_reachable(tbs_f, 5, 0), "nor from just outside the wall");
+    assert(flow_reachable(tbs_f, 0, 0),  "and the core is still its own");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The desire field: the same sweep with the climb lifted
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_desire_field_crosses_what_the_routing_field_stops_at() {
+    tdf_pw  = sealed_base();
+    tdf_rt  = field_for(ENEMY_KIND_REGULAR, tdf_pw);
+    tdf_ds  = desire_for(tdf_pw);
+
+    assert(!flow_reachable(tdf_rt, 8, 0), "a robot has no route from the rim");
+    assert(flow_reachable(tdf_ds, 8, 0),  "but it still WANTS to be at the core");
+    assert(flow_distance(tdf_ds, 8, 0) == 8,
+           "and the want is the straight-line walk, walls and all: {flow_distance(tdf_ds, 8, 0)}");
+}
+
+// ⚠ ONE desire field serves every class, because the only thing a class
+// contributes to passability is its climb (`passable.loft`
+// § climb_limit) and this sweep drops the climb.  Asserted rather than
+// commented, so a class that ever gains its own SURFACE rule goes red
+// here instead of quietly sharing a field it should not.
+fn test_the_desire_field_is_the_same_for_every_class() {
+    tds_pw  = sealed_base();
+    tds_bot = field_for(ENEMY_KIND_REGULAR, tds_pw);
+    tds_bug = field_for(ENEMY_KIND_INSECT,  tds_pw);
+    tds_ds  = desire_for(tds_pw);
+
+    assert(flow_count(tds_bot) != flow_count(tds_bug),
+           "the ROUTING fields differ by class — an insect climbs the ring");
+    for tds_h in visible_hexes(core(), 9) {
+        assert(flow_distance(tds_ds, tds_h.q, tds_h.r) >= 0, "and the desire field is one field");
+    }
+    assert(flow_count(tds_ds) >= flow_count(tds_bug),
+           "which is at least as large as any class's: {flow_count(tds_ds)} vs {flow_count(tds_bug)}");
+}
+
+// The surface question survives: desire is not a licence to swim.
+fn test_the_desire_field_still_refuses_the_sea() {
+    tdr_ds = desire_for(sealed_base());
+
+    assert(!flow_reachable(tdr_ds, 20, 0), "past the edge of the land there is nothing to want");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE DISCRIMINATOR: it walks the desire field, not its heading
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_besieged_enemy_walks_the_desire_field_not_its_heading() {
+    tab_pw = bent_siege();
+    tab_e  = enemy_at(ENEMY_KIND_REGULAR, 12, 0, 4);
+
+    assert(!flow_reachable(field_for(ENEMY_KIND_REGULAR, tab_pw), 12, 0),
+           "the core is sealed, so this is the siege branch and not routing");
+
+    besiege(tab_e, tab_pw, 15);
+
+    assert(tab_e.r == -1,
+           "r = -1 is a hex a heading of (-1, 0) can NEVER reach: ({tab_e.q}, {tab_e.r})");
+    assert(tab_e.q == 2 && tab_e.r == -1,
+           "and it is the hex in front of the seal: ({tab_e.q}, {tab_e.r})");
+}
+
+// The exact wall hex, named — plan 11's invariant-gate row for F7.
+fn test_and_it_names_the_wall_hex_it_attacks() {
+    tan_pw = bent_siege();
+    tan_e  = enemy_at(ENEMY_KIND_REGULAR, 12, 0, 4);
+    besiege(tan_e, tan_pw, 15);
+
+    tan_t = enemy_target(tan_e, pal(), tan_pw, flat(),
+                         field_for(ENEMY_KIND_REGULAR, tan_pw), desire_for(tan_pw));
+    assert(tan_t.q == 1 && tan_t.r == 0,
+           "it attacks the seal at (1, 0): ({tan_t.q}, {tan_t.r})");
+}
+
+// It never walks THROUGH what it besieges — the F1 rule still holds
+// every tick of a siege, which is what stops "it reached the wall" from
+// being satisfied by an enemy standing in it.
+fn test_a_besieging_enemy_is_never_where_it_cannot_be() {
+    tbe_pw  = bent_siege();
+    tbe_pal = pal();
+    tbe_e   = enemy_at(ENEMY_KIND_REGULAR, 12, 0, 4);
+    tbe_f   = field_for(ENEMY_KIND_REGULAR, tbe_pw);
+    tbe_d   = desire_for(tbe_pw);
+
+    for _ in 0..15 {
+        enemy_tick(tbe_e, tbe_pal, tbe_pw, flat(), tbe_f, tbe_d, occupancy_empty());
+        tbe_why = occupancy_fault(tbe_pal, tbe_pw, flat(), tbe_e.kind, tbe_e.q, tbe_e.r);
+        assert(tbe_why == "", "({tbe_e.q}, {tbe_e.r}): {tbe_why}");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE GATE: N enemies from N sides attack N different hexes
+// ─────────────────────────────────────────────────────────────────
+//
+// Six enemies released on the rim, one per compass direction, walking
+// in until they stop.  The claim is about the SET.
+
+fn six_on_the_rim() -> WaveState {
+    sor_s = wave_state_empty();
+    for sor_d in 0..6 {
+        sor_h = core();
+        for _ in 0..8 { sor_h = hex_neighbor(sor_h, sor_d); }
+        sor_s.enemies += [enemy_at(ENEMY_KIND_REGULAR, sor_h.q, sor_h.r, (sor_d + 3) % 6)];
+    }
+    sor_s
+}
+
+fn distinct_targets(s: WaveState, pw: PaintedWorld) -> integer {
+    dt_seen: vector<Hex> = [];
+    dt_ts = wave_targets(s, pal(), pw, core());
+    dt_i  = 0;
+    for dt_e in s.enemies {
+        dt_t = dt_ts[dt_i] ?? Hex { q: dt_e.q, r: dt_e.r };
+        if !(dt_t.q == dt_e.q && dt_t.r == dt_e.r) {
+            dt_new = true;
+            for dt_h in dt_seen {
+                if dt_h.q == dt_t.q && dt_h.r == dt_t.r { dt_new = false; }
+            }
+            if dt_new { dt_seen += [Hex { q: dt_t.q, r: dt_t.r }]; }
+        }
+        dt_i += 1;
+    }
+    len(dt_seen)
+}
+
+fn test_six_from_six_sides_attack_six_different_hexes() {
+    tsf_pw = sealed_base();
+    tsf_s  = six_on_the_rim();
+    tsf_pal = pal();
+
+    for _ in 0..12 { wave_tick(tsf_s, tsf_pal, tsf_pw, core()); }
+
+    assert(distinct_targets(tsf_s, tsf_pw) == 6,
+           "six approaches, six wall hexes under attack, got {distinct_targets(tsf_s, tsf_pw)}");
+}
+
+// Everything the wave attacks is a WALL — not a companion (F5c:
+// occupancy is never a target), not the sea, not a patch of grass.
+fn test_every_target_is_a_wall_hex_beside_its_attacker() {
+    tet_pw  = sealed_base();
+    tet_s   = six_on_the_rim();
+    tet_pal = pal();
+
+    for _ in 0..12 { wave_tick(tet_s, tet_pal, tet_pw, core()); }
+
+    tet_ts = wave_targets(tet_s, tet_pal, tet_pw, core());
+    tet_i  = 0;
+    tet_n  = 0;
+    for tet_e in tet_s.enemies {
+        tet_t = tet_ts[tet_i] ?? Hex { q: tet_e.q, r: tet_e.r };
+        assert(!(tet_t.q == tet_e.q && tet_t.r == tet_e.r),
+               "enemy {tet_i} at ({tet_e.q}, {tet_e.r}) is besieging nothing");
+        assert(hex_ground_name(tet_pal, tet_pw, tet_t.q, tet_t.r) == "wall",
+               "it attacks a wall, not '{hex_ground_name(tet_pal, tet_pw, tet_t.q, tet_t.r)}'");
+        assert(hex_distance(Hex { q: tet_e.q, r: tet_e.r }, tet_t) == 1,
+               "and one it is standing next to");
+        tet_n += 1;
+        tet_i += 1;
+    }
+    assert(tet_n == 6, "all six were checked, not {tet_n}");
+}
+
+// ⚠ **The anti-collapse control.**  "Every enemy is attacking something"
+// is satisfied by the implementation this phase exists to avoid — one
+// nearest wall handed to everybody.  This is the assertion that tells
+// them apart, and it is written as the thing that would be TRUE of the
+// wrong one.
+fn test_a_single_shared_target_would_be_the_collapse() {
+    tas_pw = sealed_base();
+    tas_s  = six_on_the_rim();
+
+    for _ in 0..12 { wave_tick(tas_s, pal(), tas_pw, core()); }
+
+    assert(distinct_targets(tas_s, tas_pw) > 1,
+           "one hex for the whole perimeter is the siege collapsing to a chokepoint");
+}
+
+// ⚠ The limit, pinned so a later phase's gate can fail.  Four enemies
+// down ONE corridor press the same face and queue behind each other:
+// the desire gradient points AT the wall, not along it, and a step is
+// only ever taken to a strictly closer hex.  Chewing a face along its
+// LENGTH needs an equal-distance sidestep, which is a second steering
+// rule and is deliberately not here (see the file header).
+fn test_one_face_from_one_side_is_still_a_queue() {
+    tof_pw  = bent_siege();
+    tof_s   = wave_state_empty();
+    for _ in 0..4 { tof_s.enemies += [enemy_at(ENEMY_KIND_REGULAR, 12, 0, 4)]; }
+
+    for _ in 0..20 { wave_tick(tof_s, pal(), tof_pw, core()); }
+
+    assert(distinct_targets(tof_s, tof_pw) == 1,
+           "one approach meets the wall at one hex — that is honest, not a bug");
+    tof_stack = occupancy_stacked(wave_occupancy(tof_s));
+    assert(tof_stack.n == 0, "and they are still on four DIFFERENT hexes (F5c)");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What is NOT a target
+// ─────────────────────────────────────────────────────────────────
+
+fn test_an_enemy_with_a_route_attacks_nothing() {
+    tar_pw = disc(8, GRASS);
+    tar_e  = enemy_at(ENEMY_KIND_REGULAR, 5, 0, 4);
+    tar_t  = enemy_target(tar_e, pal(), tar_pw, flat(),
+                          field_for(ENEMY_KIND_REGULAR, tar_pw), desire_for(tar_pw));
+
+    assert(tar_t.q == 5 && tar_t.r == 0, "open ground: it walks, it does not besiege");
+}
+
+fn test_an_enemy_still_walking_in_attacks_nothing() {
+    taw_pw = bent_siege();
+    taw_e  = enemy_at(ENEMY_KIND_REGULAR, 12, 0, 4);
+    besiege(taw_e, taw_pw, 3);
+
+    taw_t = enemy_target(taw_e, pal(), taw_pw, flat(),
+                         field_for(ENEMY_KIND_REGULAR, taw_pw), desire_for(taw_pw));
+    assert(taw_t.q == taw_e.q && taw_t.r == taw_e.r,
+           "three ticks in it is still walking, not yet at anything");
+}
+
+fn test_a_dead_enemy_attacks_nothing() {
+    tad_pw = bent_siege();
+    tad_e  = enemy_at(ENEMY_KIND_REGULAR, 2, -1, 4);
+    tad_e.alive = false;
+    tad_t = enemy_target(tad_e, pal(), tad_pw, flat(),
+                         field_for(ENEMY_KIND_REGULAR, tad_pw), desire_for(tad_pw));
+
+    assert(tad_t.q == 2 && tad_t.r == -1, "a body besieges nothing");
+}
+
+// ⚠ **You attack what you could STAND on and cannot climb.**  An enemy
+// stopped by the sea is not besieging the sea — there is nothing there
+// to break.  A rule that returned "the hex ahead" whenever the step was
+// refused would have every coastal enemy chewing the water.
+fn test_an_enemy_at_the_waters_edge_besieges_nothing() {
+    // 30 hexes out is outside the 25-hex bubble, so this is approach
+    // mode: the route is the heading and the obstacle is the hex ahead.
+    twe_pw = painted_empty();
+    for twe_q in 30..=34 { paint(twe_pw, twe_q, 0, as_u8(GRASS)); }
+    twe_e = enemy_at(ENEMY_KIND_REGULAR, 30, 0, 4);   // heading west, into the sea
+
+    twe_t = enemy_target(twe_e, pal(), twe_pw, flat(),
+                         field_for(ENEMY_KIND_REGULAR, twe_pw), desire_for(twe_pw));
+    assert(twe_t.q == 30 && twe_t.r == 0, "the sea is not a wall: ({twe_t.q}, {twe_t.r})");
+}
+
+// The other half of that pair: a WALL ahead in approach mode IS a
+// target, so the rule above is refusing the sea rather than refusing
+// approach mode.
+fn test_but_a_wall_ahead_in_approach_mode_is() {
+    twa_pw = painted_empty();
+    for twa_q in 30..=34 { paint(twa_pw, twa_q, 0, as_u8(GRASS)); }
+    paint(twa_pw, 29, 0, as_u8(WALL));
+    twa_e = enemy_at(ENEMY_KIND_REGULAR, 30, 0, 4);
+
+    twa_t = enemy_target(twa_e, pal(), twa_pw, flat(),
+                         field_for(ENEMY_KIND_REGULAR, twa_pw), desire_for(twa_pw));
+    assert(twa_t.q == 29 && twa_t.r == 0, "it besieges the wall in front of it");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The desire field is built only when somebody is besieging
+// ─────────────────────────────────────────────────────────────────
+//
+// The same argument `wave_fields` makes about classes: a sweep built
+// for nobody is a cost in a profile nobody can explain.
+
+fn test_no_siege_no_desire_field() {
+    tns_pw = disc(8, GRASS);
+    tns_s  = wave_state_empty();
+    tns_s.enemies += [enemy_at(ENEMY_KIND_REGULAR, 5, 0, 4)];
+    tns_fs = wave_fields(tns_s, pal(), tns_pw, core());
+
+    assert(flow_count(wave_desire(tns_s, tns_fs, pal(), tns_pw, core())) == 0,
+           "everybody has a route, so nothing needs the second sweep");
+}
+
+fn test_a_siege_builds_one() {
+    tsb_pw = sealed_base();
+    tsb_s  = six_on_the_rim();
+    tsb_fs = wave_fields(tsb_s, pal(), tsb_pw, core());
+
+    assert(flow_count(wave_desire(tsb_s, tsb_fs, pal(), tsb_pw, core())) > 0,
+           "somebody is walled out, so the field they steer by exists");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The tick still resolves once
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_siege_played_with_the_roster_reversed_lands_identically() {
+    tar2_pw = sealed_base();
+    tar2_a  = six_on_the_rim();
+    tar2_b  = wave_state_empty();
+    tar2_n  = len(tar2_a.enemies);
+    for tar2_i in 0..tar2_n {
+        tar2_e = tar2_a.enemies[tar2_n - 1 - tar2_i] ?? Enemy {};
+        tar2_b.enemies += [enemy_at(tar2_e.kind as integer, tar2_e.q, tar2_e.r,
+                                    tar2_e.heading as integer)];
+    }
+
+    for _ in 0..12 {
+        wave_tick(tar2_a, pal(), tar2_pw, core());
+        wave_tick(tar2_b, pal(), tar2_pw, core());
+    }
+
+    assert(distinct_targets(tar2_a, tar2_pw) == distinct_targets(tar2_b, tar2_pw),
+           "the siege does not depend on which enemy the roster visited first");
+    tar2_occ = wave_occupancy(tar2_a);
+    for tar2_e2 in tar2_b.enemies {
+        assert(occupancy_taken(tar2_occ, tar2_e2.q, tar2_e2.r),
+               "and every hex one wave holds, the other holds too: ({tar2_e2.q}, {tar2_e2.r})");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_sealed_base_plays_green() {
+    tsp_s = editor_state_new(PALETTE);
+    editor_state_attach(tsp_s,
+                        "tests/actual/f7_siege.json",
+                        "tests/actual/f7_siege_markers.json");
+    tsp = script_run_file(tsp_s, "tests/scripts/a-sealed-base.keys", SHOTS);
+
+    assert(tsp.ok, "a-sealed-base: {script_describe(tsp)}");
+    assert(tsp.checks == 22, "it made {tsp.checks} measurements, expected 22");
+    assert(tsp.snaps == 1, "and took its picture");
+}
+
+fn test_the_scenario_file_is_on_disk() {
+    assert(file("tests/scripts/a-sealed-base.keys").exists(),
+           "the test above would pass against an empty file");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The measurements refuse to pass for the wrong reason
+// ─────────────────────────────────────────────────────────────────
+
+fn test_count_targets_needs_a_core_to_besiege() {
+    tct = script_run(editor_state_new(PALETTE), "count targets 0 0", SHOTS);
+
+    assert(!tct.ok, "a siege with no core is not a siege");
+    assert(tct.message.contains("ONE core"), "{tct.message}");
+}
+
+fn test_target_checks_its_arguments() {
+    tta_a = script_run(editor_state_new(PALETTE), "target 0 0", SHOTS);
+    assert(!tta_a.ok && tta_a.message.contains("<index>"), "{tta_a.message}");
+
+    tta_b = script_run(editor_state_new(PALETTE), "target x 0 0", SHOTS);
+    assert(!tta_b.ok && tta_b.message.contains("integers"), "{tta_b.message}");
+
+    tta_c = script_run(editor_state_new(PALETTE), "target 0 1 0", SHOTS);
+    assert(!tta_c.ok && tta_c.message.contains("roster holds 0"), "{tta_c.message}");
+}
+
+fn test_an_unknown_count_subject_names_targets() {
+    tuc = script_run(editor_state_new(PALETTE), "count sieges 0 0", SHOTS);
+
+    assert(!tuc.ok, "a typo is not a measurement");
+    assert(tuc.message.contains("targets"), "and it says what it does know: {tuc.message}");
+}

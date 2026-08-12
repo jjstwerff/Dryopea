@@ -211,7 +211,8 @@ pub fn spawn_wave(
 // it.  Stopping is what makes the wall a wall; the attack is F5+ and
 // the routing round it is F5.
 pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
-                  hl: const HeightLayer, f: FlowField, occ: Occupancy) {
+                  hl: const HeightLayer, f: FlowField, desire: FlowField,
+                  occ: Occupancy) {
     if !e.alive { return; }
 
     // ── Which mode? The bubble decides (plan 11 F5b) ─────────────
@@ -264,14 +265,96 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 
     // ── Inside the bubble, but with no route to the core ─────────
     //
-    // It presses on along its heading and stops at what it cannot
-    // cross (plan 11 F1b).  ⚠ **F7 replaces this**: a blocked enemy
-    // should follow a second field with the walls passable and attack
-    // the first impassable hex its OWN route meets, which is what
-    // spreads a siege along the perimeter instead of collapsing it to
-    // one chokepoint.  Walking a heading into the wall is the
-    // stand-in until then, and it stops in the right place.
-    enemy_walk_heading(e, pal, pw, hl, occ);
+    // The siege (plan 11 F7).  It still wants the core, so it walks
+    // down the DESIRE field — the same sweep with walls passable — and
+    // stops where the height rule refuses the next step.  That hex is
+    // what it attacks, and `enemy_target` names it.
+    //
+    // ⚠ **Why a field and not "the nearest wall".**  A target computed
+    // once from the perimeter hands every enemy the SAME hex and
+    // collapses the siege back to one chokepoint, which is the thing
+    // `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter exists to
+    // prevent.  Following each enemy's own gradient makes the target a
+    // consequence of where it came from, so enemies from different
+    // sides meet the wall at different hexes with nothing coordinating
+    // them.
+    enemy_walk_desire(e, pal, pw, hl, desire, occ);
+}
+
+// One step down the desire gradient, if the step is one this class can
+// take and nobody is standing on it — plan 11 F7.
+//
+// The same shape as the engage branch, over the other field: take the
+// first FREE and LEGAL entry in preference order, otherwise stand
+// still.  `flow_steps` offers only strictly-closer hexes, so a besieging
+// enemy never wanders away from the core while it looks for a way in.
+//
+// ⚠ Its steps are checked with `can_step` where the engage branch's are
+// not, and that asymmetry is the point: the routing field already
+// refused every hex this class cannot enter, while the desire field
+// deliberately did NOT — walls are passable in it, which is what makes
+// it able to say where the wall is.
+fn enemy_walk_desire(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
+                     hl: const HeightLayer, desire: FlowField, occ: Occupancy) {
+    ewd_from = Hex { q: e.q, r: e.r };
+    for ewd_t in flow_steps(desire, e.q, e.r) {
+        if !can_step(pal, pw, hl, e.kind, ewd_from, ewd_t) { continue; }
+        if occupancy_taken(occ, ewd_t.q, ewd_t.r) { continue; }
+        enemy_move_to(e, ewd_t.q, ewd_t.r, occ);
+        return;
+    }
+}
+
+// The hex this enemy is attacking — its own hex when it is attacking
+// nothing.
+//
+// Plan 11 F7.  `docs/ENEMY_MOVEMENT.md` § Two modes: *"An enemy never
+// halts permanently.  Blocked, it attacks — because it still wants the
+// core."*  This says WHICH hex; the damage is combat's, and nothing
+// here takes any.
+//
+// ⚠ **You attack what you could stand on and cannot climb.**  The
+// target is always a hex whose SURFACE is walkable — a wall's top, a
+// body pile — so an enemy at the water's edge is not besieging the
+// sea.  In the siege branch that is free (every cell of the desire
+// field is walkable by construction); approach mode has to ask.
+//
+// Returning the enemy's own hex for "nothing" follows `flow_step`'s
+// convention: a caller that ignores the answer attacks nobody rather
+// than attacking something arbitrary.
+pub fn enemy_target(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
+                    hl: const HeightLayer, f: FlowField, desire: FlowField) -> Hex {
+    ent_here = Hex { q: e.q, r: e.r };
+    if !e.alive { return ent_here; }
+
+    // Approach mode: the route is the heading, so the obstacle is the
+    // one hex ahead.
+    if !enemy_in_bubble(e, f.core) {
+        ent_ahead = hex_neighbor(ent_here, e.heading as integer);
+        if can_step(pal, pw, hl, e.kind, ent_here, ent_ahead) { return ent_here; }
+        if !hex_walkable(pal, pw, ent_ahead.q, ent_ahead.r) { return ent_here; }
+        return ent_ahead;
+    }
+
+    // A route exists, so nothing is in the way: F6 guarantees every
+    // step the routing field offers is one this class can take, and a
+    // companion on it is a delay rather than a target (F5c — occupancy
+    // is never attacked).
+    if flow_reachable(f, e.q, e.r) { return ent_here; }
+
+    // The siege: the first blocked step down the desire gradient — and
+    // only when NOTHING down it is legal, because an enemy that can
+    // still walk is not yet besieging anything.
+    ent_first = ent_here;
+    ent_found = false;
+    for ent_t in flow_steps(desire, e.q, e.r) {
+        if can_step(pal, pw, hl, e.kind, ent_here, ent_t) { return ent_here; }
+        if !ent_found {
+            ent_first = ent_t;
+            ent_found = true;
+        }
+    }
+    ent_first
 }
 
 // Move an enemy, keeping the occupancy it moves through in step with
@@ -476,6 +559,55 @@ fn move_order(state: const WaveState, fields: vector<ClassField>) -> vector<inte
     mo_out
 }
 
+// ─── The desire field, built only when somebody is besieging ────
+
+// Is anybody in a position to need the desire field this tick?
+//
+// It is the same argument `wave_fields` makes about classes: a sweep
+// built for nobody is a cost in a profile nobody can explain.  Only an
+// enemy INSIDE the bubble with no route consults it — outside the
+// bubble is approach mode, which follows its heading and never asks.
+fn wave_needs_desire(state: const WaveState, fields: vector<ClassField>) -> boolean {
+    for wnd_e in state.enemies {
+        if wnd_e.alive {
+            wnd_f = field_of(fields, wnd_e.kind);
+            if enemy_in_bubble(wnd_e, wnd_f.core) && !flow_reachable(wnd_f, wnd_e.q, wnd_e.r) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+// The desire field for this tick, or an empty one when nobody is
+// besieging.  ⚠ An empty field offers no steps, so a mover handed one
+// moves nobody — which is what a caller that skipped the build should
+// see, rather than a plausible wrong move.
+pub fn wave_desire(state: const WaveState, fields: vector<ClassField>,
+                   pal: vector<GroundType>, pw: PaintedWorld, core: Hex) -> FlowField {
+    if !wave_needs_desire(state, fields) { return flow_empty(); }
+    flow_desire(pal, pw, state.heights, core)
+}
+
+// What every enemy in the roster is attacking, aligned with it — an
+// enemy's OWN hex where it is attacking nothing.
+//
+// Plan 11 F7, and the door `target` / `count targets` read.  It builds
+// its own fields rather than taking a tick's: a measurement runs
+// between ticks, and one that reused a stale field could report a
+// siege the world had already ended.
+pub fn wave_targets(state: const WaveState, pal: vector<GroundType>,
+                    pw: PaintedWorld, core: Hex) -> vector<Hex> {
+    wtg_fields = wave_fields(state, pal, pw, core);
+    wtg_desire = flow_desire(pal, pw, state.heights, core);
+    wtg_out: vector<Hex> = [];
+    for wtg_e in state.enemies {
+        wtg_out += [enemy_target(wtg_e, pal, pw, state.heights,
+                                 field_of(wtg_fields, wtg_e.kind), wtg_desire)];
+    }
+    wtg_out
+}
+
 // Where everybody stands right now.
 //
 // ⚠ Built ONCE per tick and then kept in step by the mover, rather
@@ -507,11 +639,11 @@ pub fn wave_occupancy(state: const WaveState) -> Occupancy {
 //
 // ⚠ **F5c is where that stopped being free.**  While movement only
 // read the world it was trivially true; now a companion blocks a step,
-// so the order enemies act in decides where they end up.  Three things
+// so the order enemies act in decides where they end up.  Four things
 // are therefore fixed before the first enemy moves — the fields
-// (§ One field per CLASS), the occupancy (`wave_occupancy`) and the
-// order (§ The move order) — and none of the three is derived from
-// roster order.
+// (§ One field per CLIMB LIMIT), the desire field (`wave_desire`), the
+// occupancy (`wave_occupancy`) and the order (§ The move order) — and
+// none of them is derived from roster order.
 //
 // ── One field per CLIMB LIMIT, built for the roster present ─────
 //
@@ -527,10 +659,12 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld, co
     // Everything the tick reads is fixed before anybody moves: the
     // fields, where everyone stands, and the order they act in.
     wt_fields = wave_fields(state, pal, pw, core);
+    wt_desire = wave_desire(state, wt_fields, pal, pw, core);
     wt_occ    = wave_occupancy(state);
     for wt_i in move_order(state, wt_fields) {
         wt_e = state.enemies[wt_i] ?? Enemy {};
-        enemy_tick(wt_e, pal, pw, state.heights, field_of(wt_fields, wt_e.kind), wt_occ);
+        enemy_tick(wt_e, pal, pw, state.heights, field_of(wt_fields, wt_e.kind),
+                   wt_desire, wt_occ);
     }
 }
 

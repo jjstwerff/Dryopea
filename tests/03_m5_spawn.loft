@@ -24,19 +24,26 @@ use dryopea;
 const PALETTE_PATH: text = "examples/palette.json";
 const GRASS:        integer = 5;      // examples/palette.json, in file order
 
-// ⚠ Plan 11 F5 gave the walk a FLOW FIELD, and an enemy with a route
-// to the core follows it instead of its heading.  The tests below are
-// about the DIRECTION TABLE — "heading 0 steps south" — so they run
-// with an EMPTY field, which is approach mode: no route anywhere,
-// so the heading is what steers.
+// ⚠ Plan 11 F5 gave the walk a FLOW FIELD, and the tests below are
+// about the DIRECTION TABLE — "heading 0 steps south" — so they have
+// to name approach mode rather than get it by accident.
 //
-// That is a temporary way to say "approach mode, please".  F5b makes
-// the mode depend on the scrambler bubble instead of on whether a
-// route exists, and these tests should move to naming the bubble when
-// it does.
-fn no_field() -> FlowField {
+// **They used to say it with an empty field**, on the F5 rule that no
+// route means the heading steers.  F5b replaced that rule with the
+// scrambler bubble and this file said so at the time: *"these tests
+// should move to naming the bubble when it does."*  F7 is what forced
+// it — an enemy with no route now follows the DESIRE field, so "empty
+// field" stopped meaning "walk your heading" and started meaning
+// "besiege something".
+//
+// So they name the bubble, the only way a mode is chosen: a core far
+// enough away that every enemy here is outside it.  `walkable()` is a
+// disc of radius 20 about the origin and the bubble is 25, so a core
+// at (200, 0) puts the whole fixture in approach mode with nothing
+// depending on whether a route happens to exist.
+fn outside_the_bubble() -> FlowField {
     flow_build(load_palette(PALETTE_PATH), painted_empty(), height_layer_empty(),
-               ENEMY_KIND_REGULAR as u8? ?? 0, Hex { q: 0, r: 0 })
+               ENEMY_KIND_REGULAR as u8? ?? 0, Hex { q: 200, r: 0 })
 }
 
 // A disc of grass big enough to hold every walk in this file — the
@@ -208,7 +215,7 @@ fn test_enemy_tick_walks_one_hex_south() {
     tet_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 0 as u8, alive: true };
-    enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), no_field(), occupancy_empty());
+    enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), outside_the_bubble(), flow_empty(), occupancy_empty());
     assert(tet_e.q == 5, "south: q unchanged");
     assert(tet_e.r == 6, "south: r increased by 1");
 }
@@ -217,7 +224,7 @@ fn test_enemy_tick_walks_one_hex_north() {
     teh_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 3 as u8, alive: true };
-    enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), no_field(), occupancy_empty());
+    enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), outside_the_bubble(), flow_empty(), occupancy_empty());
     assert(teh_e.q == 5, "north: q unchanged");
     assert(teh_e.r == 4, "north: r decreased by 1");
 }
@@ -226,7 +233,7 @@ fn test_enemy_tick_dead_doesnt_move() {
     tedd_e = Enemy { q: 5, r: 5,
                      kind: ENEMY_KIND_REGULAR as u8,
                      heading: 0 as u8, alive: false };
-    enemy_tick(tedd_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), no_field(), occupancy_empty());
+    enemy_tick(tedd_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), outside_the_bubble(), flow_empty(), occupancy_empty());
     assert(tedd_e.q == 5, "dead: q frozen");
     assert(tedd_e.r == 5, "dead: r frozen");
 }

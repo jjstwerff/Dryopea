@@ -1,0 +1,115 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A struct built by a frontier sweep loses everything the loop wrote,
+// when the function is called in TAIL position and the outer call
+// passes a struct LITERAL as an argument.
+//
+// ── Trigger — all four are needed ───────────────────────────────
+//
+//   1. `sweep()` fills a `hash` field inside a WHILE loop that
+//      reassigns a `vector` frontier (a plain `for`, or a `while`
+//      without the vector, does NOT fire it — see the table below).
+//   2. `build()` returns `sweep(...)` as a bare TAIL expression.
+//   3. `wrap()` returns `build(...)` as a bare TAIL expression too.
+//   4. `wrap()` passes a struct LITERAL — `Hex { q: 0, r: 0 }` — as
+//      one of the arguments.  The same call with that value arriving
+//      as a PARAMETER is correct.
+//
+// ── Observed vs expected ────────────────────────────────────────
+//
+//                                    interpret  native  expected
+//   sweep direct                          13      13      13   ok
+//   build  (1 tail, literal arg)          13      13      13   ok
+//   wrap_param   (2 tails, param arg)     13      13      13   ok
+//   wrap_literal (2 tails, LITERAL arg)    1       0      13   ⚠ WRONG
+//   wrap_bound   (2 tails, bound result)  13      13      13   ok
+//
+// ⚠ **The two backends disagree about how wrong it is** — 1 cell
+// interpreted, 0 native.  Interpreted, the write made BEFORE the loop
+// survives and every write made INSIDE it is lost, which is what points
+// at the loop rather than at the return.
+//
+// ── Bisection ───────────────────────────────────────────────────
+//
+//   | variant                                    | wrap_literal |
+//   |--------------------------------------------|--------------|
+//   | as written                                 | 1  ⚠         |
+//   | early `return f` inside the loop removed   | 1  ⚠         |
+//   | `const Layer` param made non-const         | 1  ⚠         |
+//   | while+vector replaced by a plain `for`     | 13 ok        |
+//   | `while` kept, vector frontier removed      | 13 ok        |
+//   | `for` + vector kept, `while` removed       | 13 ok        |
+//
+// ── Why it matters ──────────────────────────────────────────────
+//
+// Nothing warns and nothing panics; the struct is structurally valid
+// and nearly empty.  It surfaced in dryopea when a function that had
+// always held its BFS inline was refactored into a thin wrapper over a
+// shared implementation — the most ordinary refactor there is — and
+// every consumer's own one-line helper became the second tail call.
+// Every flow field on the map came back empty, the whole game stopped
+// moving, and the nine red tests all named the movement they no longer
+// did rather than the wrapper that lost the data.
+//
+// Workaround: bind the inner call to a local and return the local.
+//
+// Same family as loft#877 (indexing a call's result in tail position
+// reads the absent sentinel): a silently wrong value rather than a
+// diagnostic.
+//
+// Filed: https://github.com/loft-lang/loft/issues/880
+//
+// Run: loft --interpret loft_repros/struct_through_two_tail_calls.loft
+//      loft           loft_repros/struct_through_two_tail_calls.loft
+
+struct Hex   { q: integer, r: integer }
+struct Cell  { q: integer, r: integer, dist: integer }
+struct Field { cells: hash<Cell[q, r]>, core: Hex, climb: float, truncated: boolean }
+struct Layer { rises: hash<Rise[q, r]> }
+struct Rise  { q: integer, r: integer, metres: float }
+
+fn layer_empty() -> Layer { Layer { rises: [] } }
+fn limit_of(kind: integer) -> float { if kind == 1 { 3.0 } else { 0.0 } }
+
+// The real shape: a const struct param, a while loop over a vector
+// frontier, and an EARLY RETURN of the same local the tail returns.
+fn sweep(hl: const Layer, climb: float, core: Hex) -> Field {
+    f = Field { cells: [], core: core, climb: climb, truncated: false };
+    f.cells[core.q, core.r] = Cell { q: core.q, r: core.r, dist: 0 };
+    frontier: vector<Hex> = [core];
+    d = 0;
+    while len(frontier) > 0 {
+        d += 1;
+        next: vector<Hex> = [];
+        for h in frontier {
+            n = Hex { q: h.q + 1, r: h.r };
+            if n.q <= 12 && f.cells[n.q, n.r] == null {
+                f.cells[n.q, n.r] = Cell { q: n.q, r: n.r, dist: d };
+                next += [n];
+            }
+        }
+        if len(f.cells) > 1000 { f.truncated = true; return f; }
+        frontier = next;
+    }
+    f
+}
+
+fn build(hl: const Layer, kind: integer, core: Hex) -> Field { sweep(hl, limit_of(kind), core) }
+
+fn wrap_literal() -> Field { build(layer_empty(), 0, Hex { q: 0, r: 0 }) }
+fn wrap_param(core: Hex) -> Field { build(layer_empty(), 0, core) }
+fn wrap_bound() -> Field { wb = build(layer_empty(), 0, Hex { q: 0, r: 0 }); wb }
+
+fn show(name: text, f: Field) {
+    g = len(f.cells);
+    println("{name}: {g} cells, expected 13   {if g == 13 { \"ok\" } else { \"⚠ WRONG\" }}");
+}
+
+fn main() {
+    show("sweep direct                       ", sweep(layer_empty(), 0.0, Hex { q: 0, r: 0 }));
+    show("build  (1 tail, literal arg)       ", build(layer_empty(), 0, Hex { q: 0, r: 0 }));
+    show("wrap_param   (2 tails, param arg)  ", wrap_param(Hex { q: 0, r: 0 }));
+    show("wrap_literal (2 tails, LITERAL arg)", wrap_literal());
+    show("wrap_bound   (2 tails, bound)      ", wrap_bound());
+}

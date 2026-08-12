@@ -10,8 +10,8 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 shipped
-2026-08-12; F7 is next.**
+**Active — F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 + F7 shipped
+2026-08-12; F8 is the last one.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -606,6 +606,86 @@ The layer's contract is already the one bodies need — it ACCUMULATES,
 and a negative rise floors at the ground so collecting more than fell
 digs no hole.
 
+## F7, the siege — and a gate that turned out to measure the other half (2026-08-12)
+
+An enemy with no route follows a **desire field** — the same BFS with the
+climb lifted, so walls are passable — and attacks where the height rule
+refuses the next step. `enemy_target` names that hex; `target <i> <q>
+<r>` and `count targets <lo> <hi>` measure it;
+[`tests/scripts/a-sealed-base.keys`](../../tests/scripts/a-sealed-base.keys)
+is the scenario.
+
+**It cost one number.** `flow_build` and `flow_desire` are now the same
+sweep with a different `climb` — `FLOW_CLIMB_ANY` — so "walls are
+passable" needed no second traversal that could disagree with the first
+about what ground is. The whole phase is that plus a branch in the
+mover.
+
+**⚠ The gate the plan named measures the TARGETING, not the steering,
+and only a negative control could have said so.** The plan's row asks
+for *"N enemies from different sides attack N different hexes"*. Six
+enemies on the rim of a sealed base do attack six distinct wall hexes —
+and they still do with the desire field **disabled**, because six
+different spawn headings already walk them to six different places. The
+same shape as F5's insect/robot row, and it means `count targets` is a
+gate on `enemy_target` (which did not exist before F7) rather than on
+what steers.
+
+What discriminates the steering is a corridor that BENDS: heading 4 is
+`(-1, 0)`, so `enemy 0 2 -1` is a hex no heading can reach, and a
+heading-follower stops at `(5, 0)` where the land turns. That is
+`bent_siege()`, and it is the third time in this plan that a gate had to
+be built around "a straight line cannot tell a field from a heading".
+
+**Measured negative controls:**
+
+| what was broken | red | what it gates |
+|---|---|---|
+| the desire field never built | **11 of 490** | everything downstream of the second sweep |
+| `enemy_target` never names a hex | **6** | the targeting, including the whole scenario |
+| the siege branch reverted to the heading | **3** | the STEERING — and only the bent-corridor tests see it |
+
+**⚠ F5c's prediction was wrong, and the test that was waiting for this
+phase stayed green.** F5c wrote *"the desire field is the gradient, and
+the spread along the face falls out of the same rule with no special
+case"*, and pinned the queue so F7's gate could fail. F7 shipped and it
+did not fail — because the desire gradient points **at** the wall, not
+**along** it, and `flow_steps` only ever offers a strictly-closer hex.
+Four enemies down one corridor still meet the face at one point.
+
+The spread this phase delivers is **by approach**, which is what
+`ENEMY_MOVEMENT.md` § Sealing actually derives it from ("they arrive
+already spread"). Chewing a single face along its length needs an
+equal-distance sidestep — a second steering rule, which F5c deliberately
+refused and F7 does not add. The test is renamed to stop claiming a
+phase is coming for it, and the limit is stated in
+[`tests/11_f7_the_siege.loft`](../../tests/11_f7_the_siege.loft)'s header
+rather than left as a promise.
+
+**You attack what you could STAND on and cannot climb.** The target is
+always a hex whose surface is walkable, so an enemy at the water's edge
+besieges nothing — there is nothing there to break. Free in the siege
+branch (every cell of the desire field is walkable by construction);
+approach mode has to ask, and a pair of tests separates "refuses the
+sea" from "refuses approach mode".
+
+**Built only when somebody is besieging.** `wave_desire` returns an
+empty field unless some alive enemy inside the bubble has no route —
+the same argument `wave_fields` makes about classes, and asserted both
+ways.
+
+**⚠ A loft bug, filed, that this phase found by refactoring.** Pulling
+the BFS out of `flow_build` into a shared `flow_sweep` made every
+CONSUMER's one-line helper a second tail call, and a struct returned
+through two nested tail calls loses everything its loop wrote — 1 cell
+interpreted, 0 native, 13 expected. Every flow field on the map came
+back empty and the game stopped moving, while the nine red tests all
+named the movement rather than the wrapper.
+[loft#880](https://github.com/loft-lang/loft/issues/880); the workaround
+is to bind the call to a local. It took a four-way boundary matrix
+(wrapper binds/tail-returns × caller binds/inlines) to locate, because
+the defect appears at call sites nobody edited.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -694,7 +774,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general. **Shipped — see § F5b, the handoff at the bubble.** No new parameter: the field has carried its core since F2. Measured: 4 tests red without the bubble test, the negative control among them | **Shipped** |
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances. **Shipped — see § F5c, they spread.** ⚠ A corridor is blind to this one too: on a hex AXIS the field offers ONE closer neighbour and off it TWO, so "beside" only exists off-axis and the gate needs an open world. Measured: 19 of 432 red without the occupancy check. ⚠ Two corrections to the row above — the spec's own snapshot rule (a vacated hex stays taken) halves a column's speed and was rejected by probe; and the four at the wall queue along their HEADING rather than spreading along the face, because approach mode has no gradient to say which way beside is. The attack, and the spread along the face, are F7's | **Shipped** |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it. **Shipped — see § F6, the height step.** ⚠ Two corrections to the row above. The "same maze, paths differ" half was ALREADY live at F5 (F5 said so and handed the row on), so F6's own discriminator is the raise — `raise 4 -1 1.5` shuts the robot's bypass with nothing painted. And the obvious composition — keep `can_occupy` as the field's node filter, add the step on top — is **vacuous**: it makes the height rule deletable without a test moving, so the field filters nodes by the SURFACE and edges by the STEP. Measured: 13 of 465 red without the layer, 3 without the rise, 2 with the BFS direction reversed | **Shipped** |
-| **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
+| **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden). **Shipped — see § F7, the siege.** It cost one number: the desire field is `flow_build` with `FLOW_CLIMB_ANY`. ⚠ Two corrections. The row's own gate measures the TARGETING and not the steering — six headings already spread six enemies, measured — so the discriminator had to be a corridor that BENDS (`enemy 0 2 -1`). And F5c's promise that the face-spread "falls out with no special case" was wrong: the desire gradient points AT the wall, not along it, so one approach still queues. Measured: 11 of 490 red without the field, 6 without the target, 3 without the steering |  **Shipped** |
 | **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result** — the order-independence ENEMY_MOVEMENT § The tick resolves once requires. A gate that only exercises editor strokes tests the rarer half | Open |
 
 ⚠ **No phase is `H`.** F5 and F6 are the largest and both are "one site at a
@@ -734,7 +814,9 @@ plausibility.
 | **F6** ✅ | insect and robot paths DIFFER on one map | passability is per class | identical paths mean the class key is ignored — but F5 already passed this, so it gates the class axis and not F6 |
 | **F6** ✅ | one hex raised at RUNTIME, and who can pass moves | height is a property of the WORLD, not of the ground types | a material lookup answers the same thing forever, so nothing else in the phase could fail |
 | **F6** ✅ | a robot walks ALONG a plateau it could never climb onto | the step is a RISE between two hexes, not the destination's height | with the source at 0 m the two rules agree — which is every world before F6, so the case had to be built |
-| **F7** | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |
+| **F7** ✅ | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |
+| **F7** ✅ | a besieged enemy reaches `r = -1` | it walks the DESIRE field, not its heading | a straight corridor gives both the same path — the third time this plan needed a bend |
+| **F7** ✅ | six approaches → six distinct target hexes | the target is per-route, never a global "nearest wall" | ⚠ passes with the steering disabled too: six headings already spread. It gates the targeting |
 | **F8** | incremental field == from-scratch field | the dirty set is used correctly | equal-but-stale after an edit is the bug this catches |
 | **F8** | reverse-iterated roster → identical wave | one rebuild per tick, so no enemy sees a world its neighbour changed | an order-dependent tick makes every scripted number unrepeatable — plan 08 could gate nothing |
 | **all** | test expectations survive plan 09 unchanged | the field is built from `nb()`, not from `q`/`r` | one expected distance moving = moros#10, again |

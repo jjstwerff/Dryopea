@@ -74,6 +74,22 @@
 // Nothing routes a robot ONTO it, because `flow_steps` checks the step
 // as well as the distance.
 //
+// ── ⚠ A struct cannot ride home on two tail calls (loft#880) ────
+//
+// `flow_build` and `flow_desire` bind the sweep's result to a local
+// and return the local, which looks like noise and is not.  A struct
+// returned through TWO nested tail-position calls arrives EMPTY: with
+// `flow_build` written as a bare `flow_sweep(...)`, a caller's own
+// one-line wrapper (`fn field_for(k, pw) { flow_build(...) }`) got a
+// field with zero cells.
+//
+// It is the same family as loft#877 — which dryopea filed at F5c for
+// an INDEX on a call's result in tail position — and it bites the same
+// way: silently, with a value that is structurally valid and
+// completely empty.  Here it emptied every flow field on the map and
+// stopped the entire game, and the 9 red tests all named the movement
+// they no longer did rather than the wrapper that lost the data.
+//
 // ── The field is DERIVED, so it is recomputed and never saved ────
 //
 // [`plans/07`](../plans/07-shared-world-substrate/README.md)
@@ -112,6 +128,15 @@ pub const FLOW_UNREACHABLE: integer = 1000000000;
 // name, and `truncated` is asserted false by the tests so it cannot
 // quietly become the normal case.
 pub const FLOW_MAX_CELLS: integer = 1048576;
+
+// A climb no step in the game can exceed — the DESIRE field's limit.
+//
+// Plan 11 phase F7.  `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter
+// needs a second sweep in which walls are passable: where an enemy
+// still WANTS to go when no route exists.  "Walls are passable" is
+// exactly "the climb does not bind", so the desire field is this
+// number and nothing else — see `flow_desire`.
+pub const FLOW_CLIMB_ANY: float = 1000000.0;
 
 // One cell's distance and the height the world had there when the
 // field was built.
@@ -197,8 +222,51 @@ pub fn flow_height(f: const FlowField, q: integer, r: integer) -> float {
 // place nothing can stand.
 pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                   kind: u8, core: Hex) -> FlowField {
-    fb_f = FlowField { cells: [], core: core, climb: climb_limit(kind), truncated: false };
-    if !can_stand(pal, pw, kind, core.q, core.r) { return fb_f; }
+    // ⚠ Bound, not returned as a bare tail call — see § A struct
+    // cannot ride home on two tail calls, below.
+    fb_out = flow_sweep(pal, pw, hl, climb_limit(kind), core);
+    fb_out
+}
+
+// Where an enemy WANTS to go when it has no route at all — the same
+// sweep with the climb lifted, so walls are passable.
+//
+// Plan 11 phase F7, and `docs/ENEMY_MOVEMENT.md` § Sealing the
+// perimeter is what it is for: *"Blocked enemies still want the core,
+// and they arrive already spread… each enemy attacks the wall where
+// ITS OWN route to the core first meets it."*  Following this gradient
+// until the height rule refuses a step is what makes the target
+// per-enemy; "the nearest wall", computed once, hands every enemy the
+// same hex and collapses the siege to one chokepoint.
+//
+// ⚠ **One field for every class**, unlike `flow_build`.  The only
+// thing a class contributes to passability is its climb
+// (`passable.loft` § climb_limit), and this sweep drops the climb —
+// so there is nothing left for a class to change.  Give a class its
+// own SURFACE rule and that stops being true, which is the case
+// `hex_walkable`'s note is watching for.
+pub fn flow_desire(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                   core: Hex) -> FlowField {
+    fd_out = flow_sweep(pal, pw, hl, FLOW_CLIMB_ANY, core);
+    fd_out
+}
+
+// An empty field — no cells, so every hex is unreachable and nothing
+// is ever offered as a step.
+//
+// What a caller passes for "there is no such field here": a mover
+// handed one moves nobody, which is a visible failure rather than a
+// wrong move.
+pub fn flow_empty() -> FlowField {
+    FlowField { cells: [], core: Hex { q: 0, r: 0 }, climb: 0.0, truncated: false }
+}
+
+// The sweep both fields are.  `climb` is the only thing that differs
+// between routing and desire.
+fn flow_sweep(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+              climb: float, core: Hex) -> FlowField {
+    fb_f = FlowField { cells: [], core: core, climb: climb, truncated: false };
+    if !hex_walkable(pal, pw, core.q, core.r) { return fb_f; }
 
     fb_f.cells[core.q, core.r] = FlowCell {
         q: core.q, r: core.r, dist: 0,
@@ -224,7 +292,7 @@ pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
                 // runs outward and the ENEMY walks inward, so the move
                 // being tested is the one it will actually make.  See
                 // § What the field is over.
-                if !can_step(pal, pw, hl, kind, fb_n, fb_h) { continue; }
+                if !can_climb(pal, pw, hl, climb, fb_n, fb_h) { continue; }
                 fb_f.cells[fb_n.q, fb_n.r] = FlowCell {
                     q: fb_n.q, r: fb_n.r, dist: fb_d,
                     height: hex_height(pal, pw, hl, fb_n.q, fb_n.r),

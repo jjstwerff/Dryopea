@@ -1,0 +1,123 @@
+# a-sealed-base — plan 11 F7.
+#
+# The player closes the perimeter completely, and it does not save
+# them: `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter is punished,
+# not forbidden.  Three enemies arrive from three directions and
+# besiege THREE different wall hexes, so there is no one place to
+# concentrate fire.
+#
+# ── What makes this one evidence ────────────────────────────────
+#
+# `count targets` is a SET, and that is the whole point.  The
+# implementation this phase exists to avoid — "the nearest wall",
+# computed once and handed to everybody — also gives every enemy a
+# target, also leaves them all attacking a wall, and also passes
+# `enemies passable`.  What it cannot do is produce THREE hexes.  So
+# the number below is the measurement, and `count alive 3 3` beside it
+# is what stops three targets from being read off one enemy.
+#
+# It is also the only enemy measurement here that does not care about
+# spawn order.  Three markers means round-robin over a hash iteration,
+# so `enemy 0` would be asserting something this file cannot repeat;
+# a set has no order to get wrong.
+#
+# ── The world ───────────────────────────────────────────────────
+#
+#   three corridors of grass, twelve hexes each, meeting at the core:
+#     east  (12, 0) -> (0, 0)      sealed at (2, 0)
+#     west  (-12, 0) -> (0, 0)     sealed at (-2, 0)
+#     south (0, 12) -> (0, 0)      sealed at (0, 2)
+#
+# Each enemy walks its own corridor in and stops one hex short of its
+# own seal, which is three different hexes because they came from
+# three different places — and nothing coordinates them.
+
+echo a sealed base: three ways in, all shut, and three different bites
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# Three spawns, twelve hexes out — clear of close_spawn_disable_radius
+# (10) and well inside the scrambler bubble (25), so the FIELD steers
+# from the first tick.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+do rotate
+click 12 0
+marker 12 0 spawn 4
+
+# ⚠ `rotate` is CUMULATIVE — it turns the ghost, it does not set it.
+# From 4, five more turns reach 3; from 3, four more reach 1.
+do rotate
+do rotate
+do rotate
+do rotate
+do rotate
+click 0 12
+marker 0 12 spawn 3
+
+do rotate
+do rotate
+do rotate
+do rotate
+click -12 0
+marker -12 0 spawn 1
+
+count markers 4 4
+do toggle_mode
+
+# The three corridors.
+palette 5
+drag 12 0 0 0
+drag -12 0 0 0
+drag 0 12 0 0
+
+count painted 37 37
+
+# And the seals — one hex across each corridor.
+palette 9
+click 2 0
+click -2 0
+click 0 2
+
+kind 2 0 wall
+kind -2 0 wall
+kind 0 2 wall
+
+# ── The wave: one enemy per corridor ────────────────────────────
+wave 3
+count alive 3 3
+enemies passable
+
+# Nobody is besieging anything yet — they are twelve hexes out and
+# walking.  This is the reading that makes the one after it mean
+# something: an assertion that were true from the first tick would say
+# nothing about the siege.
+count targets 0 0
+snap f7-the-wave-sets-out
+
+# ── Nine ticks: each enemy is one hex short of its own seal ─────
+tick 9
+count alive 3 3
+enemies passable
+enemies distinct
+range 3 3
+
+# ⚠ THE PHASE.  Three enemies, three DIFFERENT wall hexes.  One
+# nearest-wall target computed for the wave would read 1 here.
+count targets 3 3
+
+# ── And it stays a siege: they do not wander, and they do not ───
+#    find a way in that is not there.
+tick 20
+count alive 3 3
+enemies passable
+enemies distinct
+range 3 3
+count targets 3 3

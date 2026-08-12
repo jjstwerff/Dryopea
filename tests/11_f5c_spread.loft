@@ -269,8 +269,9 @@ fn test_the_core_hex_holds_exactly_one() {
 // ─────────────────────────────────────────────────────────────────
 //
 // The other half of the plan's gate.  With the corridor walled nothing
-// has a route, so every enemy is in approach mode — which is where
-// F1b left four enemies standing on ONE hex in front of the wall.
+// has a route, so every enemy is in the no-route branch — the heading
+// until F7, the desire field after it — which is where F1b left four
+// enemies standing on ONE hex in front of the wall.
 
 fn test_four_at_a_wall_face_stand_on_four_hexes() {
     tfw_pw = walled_corridor();
@@ -290,12 +291,25 @@ fn test_four_at_a_wall_face_stand_on_four_hexes() {
     assert(tfw_bad.n == 0, "four enemies, four hexes");
 }
 
-// ⚠ It is a QUEUE along the heading, not a spread along the FACE, and
-// the difference is F7's.  Approach mode has one heading and no field
-// to say which way "beside" is; the desire field is what supplies that
-// gradient.  Asserting the queue here — rather than quietly hoping for
-// a spread — is what keeps F7's gate able to fail.
-fn test_the_wall_queue_is_on_one_line_which_is_f7s_to_change() {
+// ⚠ **It is a QUEUE, and F7 did NOT change it — which is worth more
+// than the prediction was.**
+//
+// F5c wrote this test expecting the desire field to break the line up:
+// *"the desire field is the gradient, and the spread along the face
+// falls out of the same rule with no special case."*  F7 shipped the
+// desire field and this test stayed green, because the prediction was
+// wrong in a specific way: the desire gradient points AT the wall, not
+// ALONG it, and a step is only ever taken to a strictly CLOSER hex — so
+// four enemies arriving down one corridor still meet the face at one
+// point and queue behind each other.
+//
+// What F7 does spread is enemies from DIFFERENT approaches, which is
+// what `ENEMY_MOVEMENT.md` § Sealing actually derives the spread from
+// ("they arrive already spread").  Chewing a single face along its
+// LENGTH needs an equal-distance sidestep — a second steering rule, and
+// nobody has built it.  The name of this test no longer names a phase,
+// because it is no longer waiting for one.
+fn test_the_wall_queue_is_on_one_line_and_stays_there() {
     twq_pw = walled_corridor();
     twq_s  = wave_of(4, 12, 0);
 

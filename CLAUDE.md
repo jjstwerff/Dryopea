@@ -53,7 +53,8 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 shipped.  F1 is the
+Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 + F7
+shipped.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
 passable` say where an enemy is and whether its CLASS may be there,
 and `src/passable.loft` is the height-step rule they read.  **F1b is
@@ -95,6 +96,20 @@ there could step down and walk home.  Nothing routes onto them —
 `flow_steps` checks the step as well as the distance.  This is also why
 `flow_build`'s BFS asks `can_step(n, a)` and not `can_step(a, n)`: the
 sweep runs outward and the enemy walks inward.
+
+**F7 is the siege**: an enemy with no route follows the DESIRE field —
+`flow_desire`, the same sweep with the climb lifted, so walls are
+passable — and attacks where the height rule refuses the next step.
+`enemy_target` names that hex.  ⚠ **The spread is by APPROACH, not by
+sidestepping**: enemies from different directions meet the wall at
+different hexes, but four down ONE corridor still queue, because the
+desire gradient points AT the wall rather than along it.  Chewing one
+face along its length would need an equal-distance sidestep, which is a
+second steering rule and nobody has built it.
+
+⚠ **You attack what you could STAND on and cannot climb** — a target is
+always a walkable surface, so an enemy at the water's edge besieges
+nothing.
 
 ⚠ **A 1-hex-wide corridor cannot tell a flow field from a fixed
 heading** — both give the identical path, so every enemy test dryopea
@@ -138,9 +153,26 @@ suite green.  The case that discriminates is an enemy walking ALONG
 raised ground it could never have climbed onto — level steps all the
 way, and a drop at the end.
 
-**Suite: 465/465 green under `scripts/test.sh`** (~20-30 s — the
+⚠ **"N enemies attack N hexes" does NOT gate the desire field.**  Six
+enemies released on six sides spread across six wall hexes with the
+steering disabled too — their spawn headings already take them to
+different places.  Measured.  It gates the TARGETING; what gates the
+steering is a corridor that BENDS, because a straight one gives a field
+and a heading the identical path (the third time this plan hit that).
+
+**Suite: 490/490 green under `scripts/test.sh`** (~25-40 s — the
 `frame` measurements classify full 960x720 frames).
-**Gate: 13 scripts green under `scripts/validate.sh`** (~12 s).
+**Gate: 14 scripts green under `scripts/validate.sh`** (~13 s).
+⚠ Do not run two `scripts/test.sh` at once — both pre-clean
+`tests/actual/`, so they clobber each other and fail for no reason.
+
+⚠ **A struct returned through TWO nested tail calls loses what its
+loop wrote** — 1 cell interpreted, 0 native, silent on both
+([loft#880](https://github.com/loft-lang/loft/issues/880)).  It bites
+when an algorithm is factored out of a function into a shared helper,
+because every CONSUMER's one-line wrapper then becomes the second tail
+call — so the defect appears at call sites nobody edited.  Bind the
+inner call to a local.
 
 ⚠ **Never index a call's result in TAIL position** — `steps(a, b)[0] ??
 fallback` as a function's last expression reads the absent sentinel, so
@@ -347,7 +379,13 @@ src/
                    unknown name is an ERROR, because a script that
                    silently got robots would assert the opposite of
                    what it says) and `raise <q> <r> <metres>`, which
-                   piles runtime height onto a hex the way a body does
+                   piles runtime height onto a hex the way a body does.
+                   F7 added `target <i> <q> <r>` and `count targets
+                   <lo> <hi>` — the SET of hexes under attack, which is
+                   the only measurement that can tell a spread siege
+                   from one collapsed onto a single chokepoint, and the
+                   only enemy measurement that does not depend on
+                   spawn order
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
                    cube_round_axial, world_to_hex, visible_hexes
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
@@ -385,7 +423,11 @@ src/
                    every strictly-closer neighbour, best first — which
                    is what the mover reads so it can skip an occupied
                    one.  In a BFS field every entry is at `d - 1`, so
-                   the ordering is direction order alone
+                   the ordering is direction order alone.
+                   `flow_desire` (F7) is the SAME sweep with the climb
+                   lifted (`FLOW_CLIMB_ANY`) — where an enemy wants to
+                   go when it has no route.  One field for every class,
+                   because the class only ever contributed its climb
   height.loft      what RUNTIME has piled on the map (plan 11 F6) —
                    HeightLayer + height_raise / height_rise / count.
                    A sparse map of metres ADDED to what the palette
@@ -741,6 +783,7 @@ signature.
 | Ask whether an enemy may BE somewhere | `src/passable.loft::can_occupy` — what a position can say with no history.  The measurement's rule; never the field's node filter |
 | Raise a hex at runtime (bodies) | `src/height.loft` — a rise above what the palette paints.  Lives on `WaveState`, never saved |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
+| Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |
 

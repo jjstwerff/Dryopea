@@ -173,6 +173,31 @@ pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
 
 // ─── Question 1: the surface ────────────────────────────────────
 
+// Is this hex's SURFACE one an enemy stands on at all?
+//
+// ⚠ **Kind-free, and that is a claim rather than an omission.**
+// `walk_ground` is a property of the GROUND, and `climb_limit` is
+// documented above as the class's WHOLE contribution to passability —
+// so the surface question takes no class, and `tests/11_f6_height_
+// step.loft` pins the consequence by giving two kinds equal fields.
+// F7's desire field leans on it directly: one sweep serves every
+// class, because the only thing it drops is the climb.
+//
+// The day a class reads `walk_vehicle` instead, this gains a kind and
+// both of those go red — which is the warning, and is why it is
+// written as a claim here rather than left implicit in a signature.
+pub fn hex_walkable(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> boolean {
+    // ⚠ Bound to a local, NOT `hex_ground(...).walk_ground` — reading a
+    // field off a call's result in TAIL position answers the absent
+    // sentinel (loft#877, which dryopea filed at F5c for an INDEX; it
+    // is the same defect for a field access).  Written the short way
+    // this returns false for every hex on the map, which empties every
+    // flow field and stops the whole game dead — 9 tests, and none of
+    // them named this function.
+    hw_e = hex_ground(pal, pw, q, r);
+    hw_e.walk_ground
+}
+
 // Why this class cannot stand on this hex's SURFACE — "" when it can.
 //
 // The surface question alone, with no height in it: sea is not a
@@ -181,8 +206,7 @@ pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
 // field filter its cells by the surface and its edges by the step.
 pub fn stand_fault(pal: vector<GroundType>, pw: PaintedWorld,
                    kind: u8, q: integer, r: integer) -> text {
-    sf_e = hex_ground(pal, pw, q, r);
-    if sf_e.walk_ground { return ""; }
+    if hex_walkable(pal, pw, q, r) { return ""; }
     "'{hex_ground_name(pal, pw, q, r)}' is not a surface a {enemy_class_name(kind)} stands on"
 }
 
@@ -225,7 +249,25 @@ pub fn step_fault(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
 // `step_fault`, so the two can never disagree.
 pub fn can_step(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                 kind: u8, from: const Hex, to: const Hex) -> boolean {
-    step_fault(pal, pw, hl, kind, from, to) == ""
+    can_climb(pal, pw, hl, climb_limit(kind), from, to)
+}
+
+// The same rule with the climb given directly rather than looked up
+// from a class.
+//
+// ⚠ **F7's desire field is this function with a climb nothing
+// exceeds.**  `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter needs a
+// second sweep in which *walls are passable* — where an enemy WANTS to
+// go when no route exists — and "walls are passable" is exactly "the
+// climb does not bind".  Written this way the desire field is the same
+// BFS over the same surfaces with one number changed, rather than a
+// second traversal that could disagree with the first about what
+// ground is.
+pub fn can_climb(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                 climb: float, from: const Hex, to: const Hex) -> boolean {
+    if !hex_walkable(pal, pw, from.q, from.r) { return false; }
+    if !hex_walkable(pal, pw, to.q, to.r) { return false; }
+    hex_height(pal, pw, hl, to.q, to.r) - hex_height(pal, pw, hl, from.q, from.r) <= climb
 }
 
 // ─── The position rule, for a measurement with no history ───────
