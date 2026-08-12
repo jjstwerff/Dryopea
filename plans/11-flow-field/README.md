@@ -135,6 +135,26 @@ reads distances.
 block a step; they are not attacked, and they do not divert an enemy from
 the core.
 
+**4. Passability is a height step, so build it as one.** DESIGN settled it
+as `height(to) - height(from) <= climb(class)` rather than a material
+lookup. Written that way, walls, insects and body piles are one rule with a
+per-class limit; written as "is this hex a wall", every later mechanic is a
+special case bolted onto F1b. This is the cheapest possible moment to get it
+right and an expensive one to retrofit.
+
+**5. The field is recomputed on DEATH, so runtime-dirty is the common case.**
+Bodies raise height (§ Bodies are terrain), so **every kill changes
+passability** — not just a boss breaking a wall, and not just an editor
+stroke. F8 was written as "recompute after edits, with combat reusing it";
+that is backwards. Its gate must include a body dropped mid-wave, and the
+per-tick cost of a field rebuild is now a real budget rather than an
+editor-time convenience.
+
+⚠ **And a body pile is runtime state, not map data** — the § Evaluated
+reasoning in [`plans/07`](../07-shared-world-substrate/README.md) applies
+exactly: authored → a layer, derived → recompute, runtime → sim state. Pile
+heights live with the wave, not in the save.
+
 ## Sequencing
 
 **Not gated on plan 09**, by the § Computed from the neighbour relation
@@ -164,9 +184,9 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies clear of wall` holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
-| **F6** — per-class passability | M | one site at a time | same maze, one field per traversal class: the insect crosses the wall, the robot goes round, both arrive, and their **paths differ**. A per-class field that produces identical paths has not been keyed on anything | Open |
+| **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it | Open |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
-| **F8** — recompute on edit | M | parallel run | after a sequence of paint edits, the incrementally-updated field equals a from-scratch rebuild, cell for cell. `gridmesh`'s dirty set is the mechanism; this is the phase that proves it was used correctly | Open |
+| **F8** — recompute on change, edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell. `gridmesh`'s dirty set is the mechanism; a gate that only exercises editor strokes tests the rarer half | Open |
 
 ⚠ **No phase is `H`.** F5 and F6 are the largest and both are "one site at a
 time" with a scenario each.
@@ -248,21 +268,10 @@ plausibility.
    class** — an insect standing on a wall it climbs is correct, a robot
    there is not.
 
-   ⚠ **Normal mobs only — bosses may differ** (project owner, 2026-08-12).
-   That gives three behaviours at an impassable hex, not two, and the third
-   is not a passability variant at all:
-
-   | class | at a wall | the world |
-   |---|---|---|
-   | robot (normal) | **stops** | unchanged |
-   | insect | **climbs** — the hex is passable *for it* | unchanged |
-   | boss | **breaks through** (DESIGN § 6: *"forces gaps or breaks"*) | **changed — the wall is gone** |
-
-   **Breaking is a world edit, and that has a consequence for F8.** A boss
-   removing a wall invalidates the field *for every class at once*, mid-wave.
-   So the dirty-recompute path is not an editor concern that combat happens
-   to reuse — it is a **runtime** concern first, and F8's gate should include
-   a wall destroyed during a wave, not only a hex painted in the editor.
+   ⚠ Normal mobs only — bosses break instead of stopping, and the rule has
+   since generalised to a height step. Both live in
+   [`docs/DESIGN.md`](../../docs/DESIGN.md) § Enemy movement; the build
+   consequences are § What the movement spec costs to build, points 4–5.
 
 6. ~~**What does a stopped approach-mode enemy DO?**~~ **ANSWERED** (project
    owner, 2026-08-12): it **attacks the wall**, because it still wants the

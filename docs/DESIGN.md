@@ -435,18 +435,54 @@ outside the scrambler bubble an enemy follows its spawn marker's
 heading; inside it, the flow field toward the core.  The bubble
 boundary is the handoff.
 
-**Passability has none.**  Whether a hex is enterable is a
-property of `(hex, enemy class)` and is the same in both modes —
-only the steering differs.  Three behaviours at an impassable hex:
+**Passability has none, and it is a HEIGHT STEP — not a material.**
+An enemy may enter a neighbouring hex when
+
+```
+height(to) - height(from)  <=  climb(class)
+```
+
+and that single rule covers everything the wall table used to say
+separately.  A `wall` at 3 m stops a robot because the step is 3 m;
+an insect's climb limit reaches it (§ Wall climbability), so the
+per-class table *is* a table of climb limits.  Nothing needs to
+know what a wall is made of.
+
+Three behaviours at a step too tall:
 
 | class | at a wall | effect on the world |
 |---|---|---|
 | robot (normal) | **stops**, and attacks it | none |
-| insect | **climbs** — the hex is passable *for it* | none |
+| insect | **climbs** — its limit covers the step | none |
 | boss | **breaks through** (§ Wall climbability) | the wall is gone, for everyone |
 
 An enemy never halts permanently.  Blocked, it attacks — because
 it still wants the core.
+
+### Bodies are terrain
+
+An enemy body stays where it falls until the player collects it
+(drive-over pickup, § Loot).  **A body raises its hex's effective
+height, and bodies accumulate.**  Everything else follows from the
+height-step rule above, with no special case:
+
+1. **A defended entrance closes itself.**  The chokepoint is where
+   enemies die, so it is where bodies pile — the player's own kill
+   zone becomes a wall.
+2. **A closed entrance triggers the siege** (§ Sealing the
+   perimeter), and the enemies spread along the perimeter.
+3. **A pile beside a wall shortens the step onto it.**  When it is
+   high enough, enemies **climb their own dead onto the wall** —
+   the perimeter is breached without the wall ever being broken.
+
+The counter-play is to **collect the bodies**, which means driving
+into the kill zone while the wave is still coming.  A player who
+farms safely behind a chokepoint is building the ramp that ends
+them; the cost of clearing it is exposure at the worst moment.
+
+⚠ This is what makes turtling lose on a timer rather than on a
+rule, and it is the same shape as § Sealing the perimeter: no
+mechanic forbids the strategy, the strategy defeats itself.
 
 ### Sealing the perimeter is punished, not forbidden
 
@@ -473,6 +509,42 @@ many points at once, so a sealed base falls faster than a
 single-chokepoint reading of wall HP vs nibble DPS suggests.
 `wall HP`, `nibble DPS` and `wave size` are one tuning set, not
 three numbers ([`NUMBERS.md`](NUMBERS.md)).
+
+### A wall's HP is structural, not a constant
+
+`wall.wall_hp` (100) is the *braced* figure.  **A wall hex with no
+support from either side is easier to push over, and has less HP
+for it** — the same reason a free-standing straight fence topples
+and a curved one does not (a crinkle-crankle wall stands one brick
+thick because its curvature braces it).
+
+Support comes from a hex's wall neighbours and how they sit:
+
+| the hex | support | HP |
+|---|---|---|
+| wall neighbours on both sides, **turning** — the perimeter curves | braced both ways | full |
+| wall neighbours on both sides, **collinear** — a long straight run | braced along one line only | reduced |
+| one wall neighbour — an **end** | cantilevered | low |
+| no wall neighbours — an **isolated stub** | nothing to push against | lowest |
+
+This is the structural twin of the rule already stated above —
+open ends render as ramps, so *"to actually defend, the player
+must close the perimeter (every wall hex has ≥ 2 wall
+neighbours)"*.  That rule says an unsupported end is a way **in**;
+this one says it is also the place the wall **breaks**.
+
+**It interacts with the siege, and the interaction is the point.**
+Enemies spread along the perimeter and chew everywhere at once, so
+they do not need to *find* the weak hex — the perimeter fails at
+its least-braced point on its own.  A player who rings the core in
+a smooth curve is buying HP; one who runs a straight fence with
+two loose ends has built the breach for them.
+
+⚠ Curvature is measured on the hex lattice, so "turning" means the
+two wall neighbours are not opposite each other across the hex —
+a 60° or 120° bend, not a straight-through.  The exact multipliers
+belong in [`NUMBERS.md`](NUMBERS.md) § `wall`; the ordering above
+is the design, the numbers are tuning.
 
 ## 7. Combat dynamics
 
