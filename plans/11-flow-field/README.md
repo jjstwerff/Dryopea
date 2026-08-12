@@ -28,7 +28,7 @@ missing:
 
 | mode | rule | state today |
 |---|---|---|
-| **approach** — outside the bubble | straight along the spawn marker's heading, `speed_approach` | **built** — `enemy_tick` |
+| **approach** — outside the bubble | straight along the spawn marker's heading, `speed_approach`, **stopping at anything its class cannot traverse** | **built, minus the stopping** — `enemy_tick`, F1b |
 | **engage** — inside the bubble | flow field toward the core, `speed_engage` | this plan |
 | **the handoff** | `core.scrambler_bubble_radius` — [`docs/NUMBERS.md`](../../docs/NUMBERS.md) says it outright: *"The bubble boundary IS the approach→engage trigger"* | this plan, F5b |
 
@@ -80,10 +80,11 @@ writes, by construction** — a straight-line enemy walks into a wall ring and
 keeps going, so "no live enemy ever stands on a wall hex" is red before a
 line of flow-field code exists.
 
-⚠ With one condition the correction above imposes: the scenario must put the
-enemy **inside the bubble**, where engage mode owns the movement. Outside it,
-walking straight at a wall is approach mode doing its job — see § Open
-questions 5, which is now the sharpest unanswered thing in this plan.
+And it holds **anywhere on the map**, not only inside the bubble — because
+approach mode stops at walls too (§ Open questions 5, answered). A wall-walker
+is wrong in both modes, so the assertion needs no scoping by bubble, only by
+class: *no enemy occupies a hex its own class cannot traverse.* An insect on a
+wall it is climbing is correct; a robot there is not.
 
 That means the gate can be proven able to fail *before* the feature is
 built, which is the thing plan 08 § The instrument comes first is about, and
@@ -122,7 +123,8 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
 | **F0** — probe: does an entrance need DETECTING? | XS | a probe first | DESIGN says two wall ends 1–3 apart form an entrance the field routes through. Hand-build that world, run a BFS, and look: if the shortest path already goes through the gap, entrance detection is **emergent** and is a HUD hint, not a mechanic. **Deliverable is the answer** — it decides whether F4 exists | Open |
-| **F1** — the measurement: where is an enemy? | S | — | a new `.keys` assertion (`enemy <i> <q> <r>`, and `enemies clear of <kind>`) that goes RED against today's straight-line mover walking through a wall ring, and green when hand-fed a routed path. An assertion that cannot fail today is not the instrument this needs | Open |
+| **F1** — the measurement: where is an enemy? | S | — | a new `.keys` assertion (`enemy <i> <q> <r>`, and `enemies passable` — no enemy on a hex its CLASS cannot traverse) that goes RED against today's mover walking through a wall ring, and green when hand-fed a legal path. An assertion that cannot fail today is not the instrument this needs | Open |
+| **F1b** — approach mode stops at walls | S | one site at a time | fired at a wall ring, an enemy halts at the EXACT hex before it; fired at a gap, it passes through. Both fail today. **Ships before any flow-field code** — it needs only the existing `walk_*` palette fields, and it is the smallest real gameplay fix in this plan | Open |
 | **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable | Open |
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does | Open |
 | **F4** — entrances, if F0 says they are a mechanic | S | — | *(exists only if F0's answer is "not emergent")* the field prefers the gap over the shortest wall-break | Open |
@@ -197,14 +199,30 @@ plausibility.
    numbers** (`examples/numbers.json`, equal today at 1.5 hex/s). A tick that
    assumes one hex per tick is fine now and wrong the moment they diverge —
    F5b is where that assumption becomes visible.
-5. **Does approach mode respect walls at all?** Sharpened by the § Status
-   correction and NOT answered by DESIGN. Outside the bubble an enemy heads
-   along its marker's direction — through a wall a player built out there?
-   Around it? Stopped by it? The answer decides whether `enemies clear of
-   wall` is an invariant of the whole run or only of engage mode, which is
-   the difference between F1's assertion being a global check and a scoped
-   one. Cheapest to settle while F0 has a world in front of it.
-6. **Boss 2×2 footprint** — DESIGN says the boss *"forces gaps or breaks"*.
+5. ~~**Does approach mode respect walls at all?**~~ **ANSWERED** (project
+   owner, 2026-08-12): **it stops at walls; it does not walk through.**
+
+   The general form is worth stating, because it is simpler than the
+   question was: **passability is a property of `(hex, enemy class)` and is
+   independent of mode.** Only the *steering* differs — approach mode steers
+   by the marker's heading, engage mode by the field, and both are blocked
+   by the same hexes. That collapses what looked like two rule sets into
+   one, and it is why F1b can ship before any flow-field code exists.
+
+   Two consequences already folded in above: F1's assertion is a whole-run
+   invariant rather than an engage-mode one, and it must be scoped **by
+   class** — an insect standing on a wall it climbs is correct, a robot
+   there is not.
+
+6. **What does a stopped approach-mode enemy DO?** Not answered by DESIGN,
+   and deliberately not assumed here. Halt where it stands? Nibble the wall
+   per § 7's rule 3 (*"the nearest wall hex when no path through exists —
+   slow attrition that eventually breaks the wall"*)? Nibble is the
+   design-consistent default and F7 builds that mechanic anyway, so the
+   cheap answer is probably "F7 applies in both modes" — but a halted enemy
+   outside the bubble that never nibbles is a permanently stalled unit, and
+   that is a gameplay decision, not a defaulting one.
+7. **Boss 2×2 footprint** — DESIGN says the boss *"forces gaps or breaks"*.
    A 2-hex-wide unit cannot use a 1-hex-wide field. Out of scope here, but
    F6's per-class shape is where it will have to fit.
 
