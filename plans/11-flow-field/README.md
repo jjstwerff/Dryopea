@@ -102,45 +102,38 @@ The measurement that separates them is the one this plan needs, and per plan
 08's own law it lands **before** the scenario that leans on it — F1, not
 somewhere in the middle.
 
-## Sealing is punished, not forbidden
+## What the movement spec costs to build
 
-Project owner, 2026-08-12 — the design decision the rest of F7 hangs off:
+The rules themselves now live in [`docs/DESIGN.md`](../../docs/DESIGN.md)
+§ Enemy movement and § Sealing the perimeter is punished, not forbidden —
+design belongs there, not in a plan. Three of them change what this plan
+*builds*, and those are here.
 
-> when fully blocked enemies will attack walls because they will still want
-> to get to the center. But because of their initial spread they will attack
-> at many different points eventually making the whole wall a problem
-
-**1. dryopea never refuses a wall placement.** The mazing canon's rule is
-"you may not fully block the path", enforced by greying the placement out.
-dryopea allows the seal and lets it be *bad*: a sealed base converts one
-defended chokepoint into a distributed siege on the whole perimeter, which
-the player cannot concentrate fire on. Anti-turtling by consequence rather
-than by prohibition.
-
-**2. The spread is emergent, so the fallback must be derived per enemy.**
-"The nearest wall" computed once gives every enemy the same target and
-collapses the mechanic to a single chokepoint — the opposite of the intent.
-What produces the spread is that each enemy *still wants the core* and meets
-the wall wherever its own approach runs into it.
-
-So the fallback is not a new mechanic; it is **a second field over the same
-machinery**:
+**1. The no-path fallback is a second field, not a targeting system.**
+Blocked enemies still want the core and meet the wall wherever their own
+approach runs into it — that is what produces the spread. "The nearest wall"
+computed once hands every enemy the same target and collapses the siege back
+to one chokepoint. So:
 
 | field | walls | used for |
 |---|---|---|
 | passability field (F2/F3) | impassable | routing, when a route exists |
-| **desire field** | **passable** | where an enemy wants to go when no route exists |
+| **desire field** | **passable** | where an enemy wants to go when there is none |
 
 An enemy with no route follows the desire field and attacks the first
-impassable hex it meets. Enemies from different sides meet the wall at
-different hexes — the spread comes free, and F7 costs one more BFS rather
-than a targeting system.
+impassable hex it meets. The spread comes free; F7 costs one more BFS.
 
-⚠ **Balance consequence for [`docs/NUMBERS.md`](../../docs/NUMBERS.md):** a
-spread siege divides wall HP across many points at once, so a sealed
-perimeter falls *faster* than a single-chokepoint reading of wall HP vs
-nibble DPS would suggest. That is the intended pressure, but it makes those
-three numbers — wall HP, nibble DPS, wave size — a set tuned together.
+**2. The field must store DISTANCE, not a baked arrow.** Enemies do not
+queue — one whose step is taken by a companion moves *beside* them. That is
+"take the best FREE neighbour", which needs a preference ordering at move
+time. A single precomputed direction per cell cannot express it, and
+discovering that after F3 means rebuilding the field's representation.
+F3 still validates the arrows as an invariant of the field; the mover just
+reads distances.
+
+**3. Occupancy is a movement constraint and never a target.** Companions
+block a step; they are not attacked, and they do not divert an enemy from
+the core.
 
 ## Sequencing
 
@@ -170,6 +163,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F4** — entrances, if F0 says they are a mechanic | S | — | *(exists only if F0's answer is "not emergent")* the field prefers the gap over the shortest wall-break | Open |
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies clear of wall` holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
+| **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
 | **F6** — per-class passability | M | one site at a time | same maze, one field per traversal class: the insect crosses the wall, the robot goes round, both arrive, and their **paths differ**. A per-class field that produces identical paths has not been keyed on anything | Open |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
 | **F8** — recompute on edit | M | parallel run | after a sequence of paint edits, the incrementally-updated field equals a from-scratch rebuild, cell for cell. `gridmesh`'s dirty set is the mechanism; this is the phase that proves it was used correctly | Open |

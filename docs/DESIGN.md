@@ -426,6 +426,54 @@ plays won't reach the final wave — the curve is designed so
 the scramble decision usually has to be made mid-list.  The
 final wave being cleared is the "perfect run" outcome.
 
+### Enemy movement — two modes, one passability rule
+
+Settled 2026-08-12.  Plan 11 builds it; this is the spec.
+
+**Steering has two modes** (§ Multi-direction spawn markers above):
+outside the scrambler bubble an enemy follows its spawn marker's
+heading; inside it, the flow field toward the core.  The bubble
+boundary is the handoff.
+
+**Passability has none.**  Whether a hex is enterable is a
+property of `(hex, enemy class)` and is the same in both modes —
+only the steering differs.  Three behaviours at an impassable hex:
+
+| class | at a wall | effect on the world |
+|---|---|---|
+| robot (normal) | **stops**, and attacks it | none |
+| insect | **climbs** — the hex is passable *for it* | none |
+| boss | **breaks through** (§ Wall climbability) | the wall is gone, for everyone |
+
+An enemy never halts permanently.  Blocked, it attacks — because
+it still wants the core.
+
+### Sealing the perimeter is punished, not forbidden
+
+A wall placement is **never refused**.  The genre convention is to
+forbid a full block (the placement greys out); dryopea allows it
+and makes it a bad idea instead.
+
+**Blocked enemies still want the core, and they arrive already
+spread.**  So a sealed perimeter is not one fight — each enemy
+attacks the wall where *its own* route to the core first meets it,
+and enemies from different sides meet it at different hexes.  One
+defended chokepoint becomes a siege the player cannot concentrate
+fire on, and the whole perimeter becomes the problem.
+
+**They do not queue, either.**  An enemy whose target hex is taken
+by a companion does not wait behind it — it moves *beside* them and
+attacks its own stretch of wall.  Companions block movement; they
+are never targets.  So a single wall face is chewed along its
+length rather than at one point, and the more enemies arrive, the
+wider the bite.
+
+⚠ **Tuning consequence.**  A spread siege divides wall HP across
+many points at once, so a sealed base falls faster than a
+single-chokepoint reading of wall HP vs nibble DPS suggests.
+`wall HP`, `nibble DPS` and `wave size` are one tuning set, not
+three numbers ([`NUMBERS.md`](NUMBERS.md)).
+
 ## 7. Combat dynamics
 
 ### Towers — pulsed laser, attack-count decay
