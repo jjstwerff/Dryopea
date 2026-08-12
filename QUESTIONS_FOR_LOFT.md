@@ -375,8 +375,46 @@ fix / feature, move it to **Resolved**.
   same function.  Related to the @P374 tuple-return machinery
   but distinct (bare struct return + `file()` interaction).
 
+### Div-by-zero warning still fires on `float / int_literal`
+
+- **Found while:** Re-verifying the @P368 fix on 2026-05-27.
+  The headline cases (`x / 0.75`, `x / 2.0`, `n / 4`, `n / 2`)
+  no longer warn — but `12.0 / 3` (float dividend, integer
+  literal divisor) still emits the rewritten warning.
+- **Kind:** bug (partial-fix follow-up to @P368)
+- **What dryopea needs:** `lit_nonzero` in
+  `src/parser/operators.rs` recognises Int/Long/Float/Single
+  literals, but the mixed-type `float / int_literal` path
+  appears to widen the literal to float (or insert an `as
+  float` cast) *before* the warning check reaches the
+  divisor, so the literal-detection misses it.  Either lift
+  the check above the widening, or also match the cast-
+  wrapped literal.
+- **Reproducer:**
+  ```loft
+  fn test() {
+      x = 12.0;
+      _ = x / 3;        // warns (expected: no warn — 3 is a non-zero int literal)
+      _ = x / 3.0;      // no warn
+      _ = 12 / 3;       // no warn
+  }
+  ```
+- **Workaround in dryopea:** write `3.0` instead of `3` when
+  dividing a float by an integer-valued constant.  Trivial
+  but slightly fewer-bytes-on-disk-warts than the original
+  precomputed-reciprocal workaround.
+- **Loft pointer:** `src/parser/operators.rs::lit_nonzero` —
+  add the float-coerced-int-literal arm.
+
+## Submitted
+
+Filed upstream as GitHub issues on `loft-lang/loft`; kept here as
+dryopea's own record until the fix ships, then moved to Resolved.
+
 ### Native backend silently returns an EMPTY vector for a `text as vector<Struct>` cast in tail-return position
 
+- **Filed:** [loft-lang/loft#866](https://github.com/loft-lang/loft/issues/866) on 2026-08-12
+  (`bug`, `wa:clean`, `sev:medium`, `area:native`, `area:codegen`, `hit-by:dryopea`).
 - **Found while:** plan 08 V4 — building `scripts/validate.sh`, which
   runs dryopea as a PROGRAM rather than under `loft test`.  The first
   probe of the gate printed `palette: 0 entries` where the same call
@@ -426,6 +464,9 @@ fix / feature, move it to **Resolved**.
 
 ### `text as Struct` returned out of a function corrupts the store (interpreter SIGSEGV, native rustc error)
 
+- **Filed:** [loft-lang/loft#867](https://github.com/loft-lang/loft/issues/867) on 2026-08-12
+  (`bug`, `wa:partial`, `sev:high`, `area:store-lifetime`, `area:native`,
+  `both-backends`, `hit-by:dryopea`).
 - **Found while:** plan 08 V4 — looking for a dryopea-side workaround
   for the `vector<Struct>` bug above.  Binding the cast to a local is
   the obvious fix there; for the struct-shaped cast it is the trigger.
@@ -471,40 +512,6 @@ fix / feature, move it to **Resolved**.
   owned heap store (guard #306).  Probably the same area as
   OWNERSHIP_MODEL.md's store-lifetime work.
 
-### Div-by-zero warning still fires on `float / int_literal`
-
-- **Found while:** Re-verifying the @P368 fix on 2026-05-27.
-  The headline cases (`x / 0.75`, `x / 2.0`, `n / 4`, `n / 2`)
-  no longer warn — but `12.0 / 3` (float dividend, integer
-  literal divisor) still emits the rewritten warning.
-- **Kind:** bug (partial-fix follow-up to @P368)
-- **What dryopea needs:** `lit_nonzero` in
-  `src/parser/operators.rs` recognises Int/Long/Float/Single
-  literals, but the mixed-type `float / int_literal` path
-  appears to widen the literal to float (or insert an `as
-  float` cast) *before* the warning check reaches the
-  divisor, so the literal-detection misses it.  Either lift
-  the check above the widening, or also match the cast-
-  wrapped literal.
-- **Reproducer:**
-  ```loft
-  fn test() {
-      x = 12.0;
-      _ = x / 3;        // warns (expected: no warn — 3 is a non-zero int literal)
-      _ = x / 3.0;      // no warn
-      _ = 12 / 3;       // no warn
-  }
-  ```
-- **Workaround in dryopea:** write `3.0` instead of `3` when
-  dividing a float by an integer-valued constant.  Trivial
-  but slightly fewer-bytes-on-disk-warts than the original
-  precomputed-reciprocal workaround.
-- **Loft pointer:** `src/parser/operators.rs::lit_nonzero` —
-  add the float-coerced-int-literal arm.
-
-## Submitted
-
-*(none — all filed entries either Open above or Resolved below.)*
 
 ## Investigated — no bug
 

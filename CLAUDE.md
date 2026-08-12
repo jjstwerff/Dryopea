@@ -71,10 +71,29 @@ dryopea drives the bug-hunt phase that hardens the shared
 libraries.
 
 When dryopea surfaces a need from loft — a language feature, a
-stdlib gap, a runtime bug — file it in
-[`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md).  Do **not** fix
-it locally by patching loft from this repo; loft has its own
-contribution flow.  Internal-to-dryopea bugs go in
+stdlib gap, a runtime bug — **file it as a GitHub issue on
+`loft-lang/loft`** (`gh issue create --repo loft-lang/loft`;
+`jjstwerff/loft` redirects there).  A write-up that stays in this
+repo is not filed: `QUESTIONS_FOR_LOFT.md` is dryopea's outbound
+queue, not loft's inbox.
+
+The flow, in order:
+
+1. Cut the minimal reproducer into
+   [`loft_repros/`](loft_repros/README.md) and check it fails
+   standalone on the backends you claim.
+2. `gh issue create` with the repro **inline** in the body —
+   dryopea is a separate repo, so a link into `loft_repros/` is
+   not self-contained.  Label it: `bug` / `enhancement`, plus
+   `sev:*`, `area:*`, `wa:*` and `hit-by:dryopea`
+   (`gh label list --repo loft-lang/loft` for the set).  Search
+   open AND closed issues for the shape first.
+3. Record it in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)
+   under **Submitted** with the issue link, per that file's own
+   Open → Submitted → Resolved convention.
+
+Do **not** fix it locally by patching loft from this repo; loft
+has its own contribution flow.  Internal-to-dryopea bugs go in
 [`PROBLEMS.md`](PROBLEMS.md) with `@D<NNN>` IDs.
 
 ## Key commands
