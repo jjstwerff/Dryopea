@@ -13,10 +13,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 **Gated — E0 is startable, the rest is not.** Plans 07 and 09 decide which
 candidates survive (§ Extract what SURVIVES), so everything past the E0 probe
 waits on them.  Listed as Gated rather than Active so the active cap in
-[`plans/README.md`](../README.md) reflects what is really moving. dryopea has taken the reuse rule in one direction
-only: consume what exists. This plan takes the other direction — the code
-dryopea wrote that is **not** game-specific becomes a published library, so
-the next project does not write it a third time.
+[`plans/README.md`](../README.md) reflects what is really moving.
+
+dryopea has taken the reuse rule in one direction only: consume what exists.
+This plan takes the other direction — the code dryopea wrote that is **not**
+game-specific becomes a published library, so the next project does not
+write it a third time.
 
 ## Goal
 
