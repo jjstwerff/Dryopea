@@ -46,15 +46,17 @@
 // player.  If the caller resolved edges instead, the script and the
 // editor would be two different machines.
 //
-// ── Phase V0b — in progress ─────────────────────────────────────
+// ── Phase V0 — complete ─────────────────────────────────────────
 //
-// Actions move across the seam in groups, each group landing with
-// the test that drives it.  Moved so far: ground-mode paint (V0a),
-// and the tool state — mode toggle, place-direction rotation,
-// place-kind cycle, palette selection.  Everything else (camera,
-// marker placement, undo/redo/clear, save/reload) still runs its
-// old inline path in main.loft against these same fields; the two
-// paths coexist on purpose so the tree stays green at every step.
+// Every editor action is here: paint (V0a), then in groups (V0b)
+// the tool state (mode toggle, rotation, place-kind, palette),
+// the camera (pan / zoom / recentre), marker placement, the
+// history (undo / redo / clear), and disk (save / reload).
+// `src/main.loft` is now a GL shell that polls, steps and renders.
+//
+// Two rate limits stay with the caller — paint and pan — because
+// honouring them here would mean reading a clock.  They arrive as
+// `in_*_tick` booleans: the caller decides WHEN, this decides WHAT.
 
 use world;
 use painted;
@@ -64,6 +66,7 @@ use picker;
 use history;
 use chunks;
 use editor_mode;
+use save;
 use gridmesh;
 
 // ─── Input ──────────────────────────────────────────────────────
@@ -116,6 +119,10 @@ pub struct EditorInput {
     in_redo:      boolean,     // Ctrl+Y
     in_clear_all: boolean,     // Ctrl+N — empty both layers, recentre
 
+    // ── Disk (V0b group 5) ──
+    in_save:   boolean,        // Ctrl+S
+    in_reload: boolean,        // Ctrl+R — re-read both layers from disk
+
     // Palette hotkey: is one down, and which entry does it select.
     // One index rather than twelve booleans — the player presses one
     // hotkey, and a script says `key 5`.
@@ -153,6 +160,8 @@ pub fn editor_input_empty() -> EditorInput {
         in_undo:           false,
         in_redo:           false,
         in_clear_all:      false,
+        in_save:           false,
+        in_reload:         false,
     }
 }
 
@@ -180,6 +189,8 @@ fn input_copy(ic: const EditorInput) -> EditorInput {
         in_undo:           ic.in_undo,
         in_redo:           ic.in_redo,
         in_clear_all:      ic.in_clear_all,
+        in_save:           ic.in_save,
+        in_reload:         ic.in_reload,
     }
 }
 
@@ -226,6 +237,16 @@ pub struct EditorState {
     // trusting the caller to have resolved the edge.
     prev: EditorInput,
 
+    // ── Where this session saves ──
+    // Empty means "not attached to a file": save and reload both
+    // refuse rather than writing somewhere arbitrary, or — worse for
+    // reload — reading an absent file and wiping the world with the
+    // empty one that comes back.  `editor_state_new` leaves them
+    // empty on purpose; `editor_state_attach` is how a session says
+    // where it lives.
+    save_path:        text,
+    marker_save_path: text,
+
     // ── Render / save bookkeeping ──
     cf:            ChunkField,   // gridmesh dirty set — which chunks to rebuild
     dirty:         boolean,      // in-memory state differs from disk (HUD indicator)
@@ -255,6 +276,8 @@ pub fn editor_state_from(
         painting:        false,
         last_paint_hex:  Hex { q: 0, r: 0 },
         prev:            editor_input_empty(),
+        save_path:        "",
+        marker_save_path: "",
         cf:              chunks_from_painted(pw),
         dirty:           false,
         // Force the first frame: nothing is on screen yet.
@@ -270,6 +293,14 @@ pub fn editor_state_new(palette_path: text) -> EditorState {
         camera_default(),
         picker_default(palette_path),
     )
+}
+
+// Attach a session to the files it saves to and reloads from.
+// Until this is called, save and reload are refused — see the
+// `save_path` field.
+pub fn editor_state_attach(s: EditorState, save_path: text, marker_save_path: text) {
+    s.save_path        = save_path;
+    s.marker_save_path = marker_save_path;
 }
 
 // ─── The step ───────────────────────────────────────────────────
@@ -320,6 +351,43 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
         } else {
             s.place_kind = MARKER_KIND_SPAWN;
         }
+        s.render_needed = true;
+    }
+
+    // ── Save ────────────────────────────────────────────────────
+    // Edge-triggered like every other action, which is what the old
+    // half-second debounce was standing in for: one press, one save.
+    // The palette comes off the picker rather than being carried
+    // twice — the picker already IS the loaded palette.
+    if input.in_save && !s.prev.in_save && s.save_path != "" {
+        save_world(s.pw, s.cam, s.picker.palette, "interactive", s.save_path);
+        save_markers(s.mw, "interactive", s.marker_save_path);
+        s.dirty = false;
+        s.render_needed = true;   // the save indicator goes amber → green
+    }
+
+    // ── Reload from disk ────────────────────────────────────────
+    // Records the current→loaded diff as ONE undo entry first, so a
+    // mis-hit Ctrl+R is recoverable with Ctrl+Z.
+    if input.in_reload && !s.prev.in_reload && s.save_path != "" {
+        // Commit any in-flight stroke, so it is part of the diff
+        // rather than lost inside it.
+        if !undo_entry_is_noop(s.stroke) {
+            history_push(s.history, s.stroke);
+            s.stroke = undo_entry_empty();
+        }
+        es_loaded  = load_map_or_empty(s.save_path, s.picker.palette);
+        es_pw_new  = es_loaded.0;
+        es_cam_new = es_loaded.1;
+        es_mw_new  = load_markers_or_empty(s.marker_save_path);
+        reload_and_record(s.pw, s.mw, es_pw_new, es_mw_new, s.history);
+        s.pw  = es_pw_new;
+        s.mw  = es_mw_new;
+        s.cam = es_cam_new;
+        s.cf  = chunks_from_painted(s.pw);   // resync the dirty tracker
+        s.dirty    = false;   // disk and memory now match
+        s.painting = false;
+        s.prev.in_mouse_left = false;
         s.render_needed = true;
     }
 

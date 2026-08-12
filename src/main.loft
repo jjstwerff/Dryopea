@@ -70,20 +70,30 @@
 // starts on an empty (all-sea) world.  Saves on exit so paint
 // progress isn't lost when the window is closed without Ctrl+S.
 //
-// ── Structure (plan 08 phase V0a) ───────────────────────────────
+// ── Structure (plan 08 phase V0) ────────────────────────────────
 //
 // Editor state lives in ONE `EditorState` (`src/editor_step.loft`),
 // which is inside the `dryopea.loft` aggregator and therefore
 // compiled + tested.  This file is the GL shell around it: open a
 // window, poll input, call the seam, render.
 //
-// V0a has moved exactly one action across that seam — ground-mode
-// paint, which now runs entirely in `editor_step`.  Every other
-// action below still reads `gl_key_pressed` and mutates `s.*`
-// inline, exactly as before.  Those move group by group in V0b;
-// until then the two paths coexist deliberately, so the suite stays
-// green at every step.  Nothing below may read the keyboard AND
-// decide what an action means in the same place once V0b lands.
+// EVERY action now lives in `editor_step`.  Nothing here decides
+// what an action means or mutates the world — the loop below reads
+// the keyboard into an `EditorInput`, hands it over, and reports
+// what changed by reading the state back.  Two things stay on this
+// side on purpose:
+//
+//   - The rate limits (pan, paint).  `editor_step` must not read a
+//     clock, or a scripted run would not be reproducible; so the
+//     caller decides when a step is due and says so in the input.
+//   - Combo resolution (Ctrl+R is reload, plain R is rotate).
+//     Which physical keys mean an action is a keyboard concern; a
+//     script names the action directly and never sees a modifier.
+//
+// Edge detection is NOT on this side: a held key is reported as
+// held, and the seam decides whether it has just been pressed.
+// That is what makes a scripted `hold Tab 5` behave the way holding
+// Tab behaves for a player.
 
 #cwd
 
@@ -106,7 +116,6 @@ const DEFAULT_MARKER_SAVE_PATH: text = "dryopea_save_markers.json";
 // precision).  Held keys fire at the rates below, not 60Hz.
 const PAN_DEBOUNCE_US:   integer = 120000;   // ~8 hexes/sec
 const PAINT_DEBOUNCE_US: integer = 50000;    // ~20 hexes/sec
-const SAVE_DEBOUNCE_US:  integer = 500000;   // 2 saves/sec max
 
 // ASCII key codes that loft's graphics:: lib doesn't expose as
 // symbolic KEY_* constants yet — graphics.loft has 0-9 + a
@@ -156,6 +165,7 @@ fn main() {
         loaded.1,
         picker_default(PALETTE_PATH),
     );
+    editor_state_attach(s, save_path, marker_save_path);
     println("dryopea: editor open map=[{map_label}] ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers loaded)");
     println("         paths: {save_path} + {marker_save_path}");
 
@@ -171,14 +181,12 @@ fn main() {
 
     last_pan_us:   integer = 0;
     last_paint_us: integer = 0;
-    last_save_us:  integer = 0;
 
     // Edge-detection state for the still-inline actions.  A held key
     // must fire ONCE, not at 60Hz, so each one tracks its previous-
     // frame state and acts only on the rising edge.  These are input-
     // layer bookkeeping, not editor state — they stay here when the
     // actions themselves move into the seam.
-    reload_r_held_prev: boolean = false;
 
     for _ in 0..1000000 {
         if !gl_poll_events() { break; }
@@ -195,47 +203,6 @@ fn main() {
         // below.  Modifiers are not actions; they only decide WHICH
         // action a key means.
         shift_held = gl_key_pressed(graphics::KEY_SHIFT);
-
-        // Ctrl+S → save (debounced to avoid Ctrl+S held-down spam).
-        if ctrl_held && gl_key_pressed(graphics::KEY_S) {
-            if tnow - last_save_us > SAVE_DEBOUNCE_US {
-                save_world(s.pw, s.cam, palette, "interactive", save_path);
-                save_markers(s.mw, "interactive", marker_save_path);
-                last_save_us = tnow;
-                s.dirty = false;
-                s.render_needed = true;   // save indicator: amber → green
-                println("dryopea: saved ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
-            }
-        }
-
-        // Ctrl+R → reload from disk.  Re-reads dryopea_save.json
-        // and the marker sidecar; pushes a single UndoEntry that
-        // captures the current→loaded diff so Ctrl+Z restores the
-        // pre-reload state.  Marker mode's plain R is the rotation
-        // hotkey (no Ctrl); the modifier disambiguates.
-        reload_r_now = ctrl_held && gl_key_pressed(graphics::KEY_R);
-        if reload_r_now && !reload_r_held_prev {
-            // Flush any in-flight stroke first.
-            if !undo_entry_is_noop(s.stroke) {
-                history_push(s.history, s.stroke);
-                s.stroke = undo_entry_empty();
-            }
-            reload_loaded = load_map_or_empty(save_path, palette);
-            reload_pw_new = reload_loaded.0;
-            reload_cam_new = reload_loaded.1;
-            reload_mw_new = load_markers_or_empty(marker_save_path);
-            reload_and_record(s.pw, s.mw, reload_pw_new, reload_mw_new, s.history);
-            s.pw    = reload_pw_new;
-            s.mw    = reload_mw_new;
-            s.cam   = reload_cam_new;
-            s.cf    = chunks_from_painted(s.pw);   // resync dirty tracker
-            s.dirty = false;   // disk and memory now match
-            s.painting = false;
-            s.prev.in_mouse_left = false;
-            s.render_needed = true;
-            println("dryopea: reloaded from disk ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
-        }
-        reload_r_held_prev = reload_r_now;
 
         // Camera pan + zoom, rate-limited so a held key walks the
         // camera at a readable ~8 hexes/sec rather than at 60Hz.
@@ -296,6 +263,7 @@ fn main() {
         pre_kind    = s.place_kind;
         pre_markers = marker_count(s.mw);
         pre_cursor  = s.history.cursor;
+        pre_dirty   = s.dirty;
         editor_step(s, EditorInput {
             in_hover_q:        hovered.q,
             in_hover_r:        hovered.r,
@@ -319,6 +287,10 @@ fn main() {
             in_undo:           ctrl_held && gl_key_pressed(graphics::KEY_Z),
             in_redo:           ctrl_held && gl_key_pressed(graphics::KEY_Y),
             in_clear_all:      ctrl_held && gl_key_pressed(KEY_N),
+            in_save:           ctrl_held && gl_key_pressed(graphics::KEY_S),
+            // Plain R rotates, Ctrl+R reloads — the modifier is what
+            // tells the two apart.
+            in_reload:         ctrl_held && gl_key_pressed(graphics::KEY_R),
         });
         if mb_now && s.mode == MODE_GROUND && paint_tick_due {
             last_paint_us = tnow;
@@ -341,6 +313,10 @@ fn main() {
         }
         if s.history.cursor != pre_cursor {
             println("dryopea: history {s.history.cursor}/{len(s.history.entries)} ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
+        }
+        // Only a save or a reload makes memory match disk again.
+        if pre_dirty && !s.dirty {
+            println("dryopea: disk in sync ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
         }
 
         // ── Render ──────────────────────────────────────────────

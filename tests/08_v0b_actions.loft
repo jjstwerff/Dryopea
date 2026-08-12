@@ -545,6 +545,107 @@ fn test_holding_clear_fires_once() {
     assert(painted_count(thf_s.pw) == 1, "held Ctrl+N clears once, so one undo restores");
 }
 
+// ─── Group 5 — save / reload ────────────────────────────────────
+//
+// The two actions that touch disk.  They live in the seam because
+// they are actions the editor genuinely has — leaving them outside
+// would make them the two things a script cannot drive, which is
+// exactly what plan 08's round-trip scenario needs to drive.
+//
+// Paths point into `tests/actual/`, which `scripts/test.sh` wipes
+// between runs.
+
+const SAVE_PATH:   text = "tests/actual/v0b_session.json";
+const MARKER_PATH: text = "tests/actual/v0b_session_markers.json";
+
+fn save_frame() -> EditorInput {
+    svf_i = editor_input_empty();
+    svf_i.in_save = true;
+    svf_i
+}
+
+fn reload_frame() -> EditorInput {
+    rlf_i = editor_input_empty();
+    rlf_i.in_reload = true;
+    rlf_i
+}
+
+// An attached session with one grass hex painted and saved.
+fn saved_session() -> EditorState {
+    ss_s = editor_state_new(PALETTE);
+    editor_state_attach(ss_s, SAVE_PATH, MARKER_PATH);
+    picker_set_active(ss_s.picker, 5);
+    press(ss_s, paint_at(0, 0));
+    press(ss_s, save_frame());
+    ss_s
+}
+
+fn test_save_writes_the_file_and_clears_the_dirty_flag() {
+    tsw_s = saved_session();
+
+    assert(file(SAVE_PATH).exists(), "the save file is on disk");
+    assert(!tsw_s.dirty, "and memory now matches it");
+}
+
+// The round trip the plan asks for, driven entirely through the
+// seam: paint, save, change, reload, and the saved world is back.
+fn test_reload_restores_what_was_saved() {
+    trs2_s = saved_session();
+    press(trs2_s, paint_at(4, 0));
+    press(trs2_s, paint_at(5, 0));
+    assert(painted_count(trs2_s.pw) == 3, "three hexes in memory");
+
+    press(trs2_s, reload_frame());
+
+    assert(painted_count(trs2_s.pw) == 1, "reload drops what was never saved");
+    assert(lookup_painted(trs2_s.pw, 0, 0) == 5 as u8, "the saved hex is back");
+    assert(!trs2_s.dirty, "memory matches disk again");
+}
+
+// A mis-hit Ctrl+R must be recoverable — the whole current→loaded
+// diff is one undo entry.
+fn test_reload_is_undoable() {
+    tru_s = saved_session();
+    press(tru_s, paint_at(4, 0));
+    press(tru_s, reload_frame());
+    assert(painted_count(tru_s.pw) == 1, "reloaded");
+
+    press(tru_s, undo_frame());
+
+    assert(painted_count(tru_s.pw) == 2, "one undo restores the pre-reload world");
+    assert(lookup_painted(tru_s.pw, 4, 0) == 5 as u8, "including the unsaved hex");
+}
+
+fn test_holding_reload_reloads_once() {
+    thr2_s = saved_session();
+    press(thr2_s, paint_at(4, 0));
+    thr2_before = len(thr2_s.history.entries);
+
+    for _ in 0..5 {
+        editor_step(thr2_s, reload_frame());
+    }
+
+    assert(len(thr2_s.history.entries) == thr2_before + 1,
+           "held Ctrl+R reloads once, recording ONE entry");
+}
+
+// The negative control for the whole group.  A session that was
+// never attached to a file has nowhere to save — and, more
+// dangerously, nowhere to reload FROM: an unguarded reload would
+// read an absent file and wipe the world with the empty one that
+// comes back.
+fn test_an_unattached_session_refuses_disk() {
+    tua_s = editor_state_new(PALETTE);
+    picker_set_active(tua_s.picker, 5);
+    press(tua_s, paint_at(0, 0));
+
+    press(tua_s, save_frame());
+    assert(tua_s.dirty, "save was refused: the world is still unsaved");
+
+    press(tua_s, reload_frame());
+    assert(painted_count(tua_s.pw) == 1, "reload was refused: the world survives");
+}
+
 // The palette has 11 entries but 12 hotkeys — the spare ones must
 // not select anything until the palette grows into them.
 fn test_out_of_range_selection_is_ignored() {
