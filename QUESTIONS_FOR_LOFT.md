@@ -40,6 +40,29 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### Indexing a call's result in TAIL position — fallback on interpret, panic on native
+
+- **Filed:** [loft-lang/loft#877](https://github.com/loft-lang/loft/issues/877) on 2026-08-12
+  (`bug`, `sev:high`, `area:store-lifetime`, `area:codegen`,
+  `both-backends`, `wa:clean`, `hit-by:dryopea`).  Repro:
+  [`loft_repros/index_of_returned_vector.loft`](loft_repros/index_of_returned_vector.loft).
+- **Found while:** plan 11 F5c — factoring `flow_step` onto the new
+  `flow_steps` so the mover and the arrow share one preference ordering.
+- **Kind:** bug (silent wrong result; crash on native)
+- **What dryopea needs:** `callee(...)[i]` to mean the same thing as a
+  function's tail expression that it means one line earlier.  Today the
+  index reads the absent sentinel (65535), so `--interpret` answers the
+  `??` fallback and `--native` panics with `index out of bounds: the len
+  is 6 but the index is 65535` (`src/database/allocation.rs:1643`).
+
+  ⚠ **The cost is in how plausible the wrong answer is.**  A `??`
+  fallback is written to be a sane default, so a function that returns
+  *only* its default looks like a working function.  `flow_step` became
+  "the hex I am standing on" for every enemy on the map, and the nine
+  tests that caught it blamed a three-line function that reads correctly.
+
+- **Workaround in dryopea:** bind the call to a local, then index it.
+
 ### Interpolating a struct with a `hash` field SIGSEGVs the interpreter
 
 - **Filed:** [loft-lang/loft#873](https://github.com/loft-lang/loft/issues/873) on 2026-08-12

@@ -1,0 +1,118 @@
+# they-do-not-stack — plan 11 F5c.
+#
+# Three enemies leave ONE spawn hex and immediately take TWO different
+# routes to the core.  `docs/ENEMY_MOVEMENT.md` § Sealing the
+# perimeter: *"An enemy whose target hex is taken by a companion does
+# not wait behind it — it moves beside them."*
+#
+# ── Why this world and not a corridor ───────────────────────────
+#
+# Every other enemy scenario here walks a ONE-HEX-WIDE corridor, and
+# in a corridor there is no "beside": the field offers exactly one
+# closer neighbour, so a blocked enemy can only wait, and F5c looks
+# like a queue.  Measured (plan 11 § F5c): on a hex AXIS exactly one
+# neighbour is closer; OFF the axis, two are.
+#
+# So this world is an open field — rows r = 0 to 4, q = 0 to 8 — and
+# the spawn sits at (8, 4), off every axis.  The distance to the core
+# over it is simply q + r, and (8, 4) has two neighbours at 11:
+#
+#   (8, 3)  — direction 3, so it wins the tie
+#   (7, 4)  — direction 4
+#
+# Three enemies, two closer hexes: the first takes (8, 3), the second
+# CANNOT and takes (7, 4) instead of waiting, and the third has nowhere
+# closer to go and holds the spawn for a tick.  That is the whole
+# phase, stated as three coordinates.
+#
+# ⚠ `enemies distinct` is RED the moment the wave spawns — three
+# enemies on the marker hex — and green one tick later.  A wave spawns
+# stacked; it is walking that spreads it.
+
+echo they do not stack: one spawn hex, two routes, three enemies
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The spawn at (8, 4) — twelve hexes out, so clear of
+# close_spawn_disable_radius (10) and well inside the scrambler
+# bubble (25), which means the FIELD steers from the first tick and
+# the heading never gets a say.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+do rotate
+click 8 4
+marker 8 4 spawn 4
+
+count markers 2 2
+do toggle_mode
+
+# The open field: five rows of nine.
+palette 5
+drag 0 0 8 0
+drag 0 1 8 1
+drag 0 2 8 2
+drag 0 3 8 3
+drag 0 4 8 4
+
+count painted 45 45
+kind 8 4 grass
+kind 0 0 grass
+
+wave 3
+count alive 3 3
+enemy 0 8 4
+enemy 1 8 4
+enemy 2 8 4
+enemies passable
+range 12 12
+snap spread-wave-starts
+
+# ⚠ THE PHASE.  One tick, and the three enemies that all wanted (8, 3)
+# are on three different hexes: the first took it, the second went
+# BESIDE it to (7, 4) — a hex on a different route home — and the
+# third had no closer hex left and held the spawn.
+tick 1
+enemy 0 8 3
+enemy 1 7 4
+enemy 2 8 4
+enemies distinct
+enemies passable
+range 11 12
+snap spread-the-fork
+
+# And they keep the fork: two files walking home a hex apart, with the
+# third now moving too.
+tick 1
+enemy 0 8 2
+enemy 1 7 3
+enemy 2 8 3
+enemies distinct
+range 10 11
+
+# Home.  ⚠ `range 0 2` and not `0 0`: the core hex holds ONE enemy and
+# the others queue on the hexes behind it.  Before F5c all three would
+# read (0, 0) — a wave that arrives is a wave that piles up, not a
+# wave that vanishes into one hex.
+#
+# ⚠ And the one that arrives first is `enemy 1`, not `enemy 0`.  The
+# two files rejoin at (7, 0), and the enemy on the (7, 4) route reaches
+# the merge one tick before the enemy on the (8, 3) route needs it —
+# so the leader out of the spawn yields, and finishes two hexes behind.
+# Traffic, and it is repeatable: the move order is closest-to-the-core
+# first, ties by hex, so the same script gives the same three hexes
+# every run.
+tick 20
+enemy 0 2 0
+enemy 1 0 0
+enemy 2 1 0
+enemies distinct
+enemies passable
+range 0 2
+count alive 3 3

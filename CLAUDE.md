@@ -53,7 +53,7 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 + F5b shipped.  F1 is the
+Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c shipped.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
 passable` say where an enemy is and whether its CLASS may be there,
 and `src/passable.loft` is the height-step rule they read.  **F1b is
@@ -71,7 +71,10 @@ steps down it; **F5b made the scrambler bubble the mode
 selector** it was always specified to be: inside 25 hexes the field
 steers, outside it the spawn heading does.  ⚠ The bubble is a
 STRAIGHT-LINE distance, never a route length — it is a jamming
-sphere, so an enemy with no route at all is still inside it.
+sphere, so an enemy with no route at all is still inside it.  **F5c
+makes companions block a step** (`src/occupancy.loft`): an enemy takes
+the first FREE entry of `flow_steps` — the whole preference ordering —
+so two enemies wanting one hex end on two.
 
 ⚠ **A 1-hex-wide corridor cannot tell a flow field from a fixed
 heading** — both give the identical path, so every enemy test dryopea
@@ -79,6 +82,20 @@ had was blind to F5.  A scenario that means to exercise routing needs
 a route that leaves the heading's line: a heading of 4 is `(-1, 0)`,
 so `enemy 0 3 -1` is a hex no heading can reach.  That is the shape
 to reach for when gating a movement change.
+
+⚠ **A corridor cannot see F5c either, and the reason is a number: on
+a hex AXIS the field offers ONE closer neighbour, off the axis TWO.**
+So "an enemy whose step is taken moves BESIDE" has no beside in a
+corridor, and a blocked enemy can only wait.  Gate a spreading change
+on an OPEN world — `tests/11_f5c_spread.loft` paints rows `r = 0..4`
+over `q = 0..8`, where the distance to the core is exactly `q + r`.
+
+⚠ **A wave spawns STACKED** — `spawn_wave` emits the whole wave onto
+one marker hex — and leaves it one enemy per tick.  So `range` over a
+walking wave is a SPAN, not a point (`range 4 7`, not `range 4 4`),
+`enemies distinct` is red until they have walked, and "the wave
+arrived" means one enemy per hex packed against the core, never N on
+`(0, 0)`.
 
 ⚠ **The neighbour relation lives in `src/world.loft` and nowhere
 else.**  `hex_offset` / `hex_neighbor` / `hex_neighbours` are the only
@@ -94,9 +111,16 @@ all, and `enemies passable` over one is red.  Every scenario that
 walks enemies drags a corridor first; that is the game's rule, not a
 harness quirk.
 
-**Suite: 406/406 green under `scripts/test.sh`** (~20-30 s — the
+**Suite: 432/432 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
-**Gate: 11 scripts green under `scripts/validate.sh`** (~11 s).
+**Gate: 12 scripts green under `scripts/validate.sh`** (~11 s).
+
+⚠ **Never index a call's result in TAIL position** — `steps(a, b)[0] ??
+fallback` as a function's last expression reads the absent sentinel, so
+it answers the fallback on the interpreter and PANICS on native
+(loft#877).  Bind the call to a local, then index it.  It bites hardest
+where the fallback is a sane default, because a function that returns
+only its default still looks like a working function.
 
 ⚠ **Never interpolate a struct that has a `hash` field** — `"{f}"`
 SIGSEGVs the interpreter (loft#873) and exits silently on native.
@@ -286,8 +310,12 @@ src/
                    `tick`; WaveState lives on ScriptRun, not on
                    EditorState — an edited session has no enemies.
                    V3 added `range <lo> <hi>` (how far the live
-                   enemies are from the core) and the five scenario
-                   scripts in `tests/scripts/`
+                   enemies are from the core — a SPAN, because a
+                   walking wave is strung out) and the five scenario
+                   scripts in `tests/scripts/`.  Plan 11 added `enemy
+                   <i> <q> <r>` / `enemies passable` (F1) and `enemies
+                   distinct` (F5c — no two live enemies on one hex,
+                   RED until a freshly-spawned wave has walked apart)
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
                    cube_round_axial, world_to_hex, visible_hexes
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
@@ -320,7 +348,19 @@ src/
                    neighbour" search must refuse a routeless cell
                    rather than prefer it.  Built from world.loft's
                    neighbour relation only, which is what makes it
-                   independent of plan 09
+                   independent of plan 09.
+                   `flow_steps` (F5c) is the same answer as a LIST —
+                   every strictly-closer neighbour, best first — which
+                   is what the mover reads so it can skip an occupied
+                   one.  In a BFS field every entry is at `d - 1`, so
+                   the ordering is direction order alone
+  occupancy.loft   who is standing where, this tick (plan 11 F5c) —
+                   Occupancy + enter / leave / taken / count / stacked.
+                   A COUNT per hex, not a boolean set: a wave spawns
+                   stacked, so one of a pair stepping off must not free
+                   the hex.  ⚠ It is not passability (that is the
+                   GROUND, per class) and never a target — a companion
+                   blocks a step and is never attacked for it
   passable.loft    may a class of enemy be on this hex? (plan 11 F1)
                    — the enemy KIND discriminants + climb_limit()
                    + hex_height() + occupancy_fault() / can_occupy().
@@ -515,7 +555,7 @@ plans/
   08-game-validation/         — Complete (V0-V4 shipped):
                     scripted play, measured effects, PNGs for
                     inspection, and `make validate` over the lot
-  11-flow-field/              — Active (F0 + F1 shipped): enemies
+  11-flow-field/              — Active (F0-F5c shipped): enemies
                     route round walls to the core.  F0 answered it: an
                     "entrance" needs no detecting, the field finds
                     gaps by itself — and walls are walk_ground=true,
@@ -523,8 +563,11 @@ plans/
                     F1 built the instrument that can SEE that bug
                     (src/passable.loft + `enemies passable`); F1b
                     made approach mode stop at the wall — the first
-                    wall here that works.  F2 (the distance field)
-                    is next
+                    wall here that works.  F2/F3 are the field and its
+                    arrow, F5/F5b make enemies follow it and hand off
+                    at the scrambler bubble, F5c makes them spread
+                    rather than stack.  F6 (per-class passability as a
+                    height step) is next
   09-lattice-conversion/      — Active (C0 shipped): dryopea moves
                     to pointy-top odd-r offset, the convention every
                     hex_* library and moros already speak.  Checked
@@ -643,6 +686,7 @@ signature.
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
 | Change how enemies move | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) — the whole spec.  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
 | Ask whether an enemy may be on a hex | `src/passable.loft` — ONE rule, both questions.  Never `walk_ground` on its own |
+| Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |
 

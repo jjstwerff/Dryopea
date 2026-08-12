@@ -71,29 +71,43 @@ range 30 30
 snap bubble-wave-starts
 
 # Four ticks of approach — still outside, still on r = 0.  The field
-# would have turned it north at (26, 0); it kept its heading.
+# would have turned it north at (26, 0); it kept its heading.  The
+# other two are at 27 and 28, one tick behind each other: they left the
+# spawn one per tick, because a companion blocks a step (plan 11 F5c).
 tick 4
 enemy 0 26 0
-range 26 26
+enemy 2 28 0
+range 26 28
 enemies passable
+enemies distinct
 
-# One more puts it exactly on the boundary hex.
+# One more puts the leader exactly on the boundary hex.
 tick 1
 enemy 0 25 0
-range 25 25
+range 25 27
 
 # And the next step is the FIELD's: r changes, which this heading
 # cannot do.  The handoff, at the hex the radius names and not before.
+#
+# ⚠ The three are in different MODES on this line and the span says so:
+# the leader is at (25, -1) on the route home, the second is at (25, 0)
+# — the boundary hex, inside, so the field takes it next tick — and the
+# third is still at (26, 0), outside, walking its heading.
 tick 1
 enemy 0 25 -1
+enemy 1 25 0
+enemy 2 26 0
 enemies passable
-range 25 25
+enemies distinct
+range 25 26
 snap bubble-handoff
 
-# Twenty-five more and they are home.
+# Twenty-five more and the leader is home, with the other two one and
+# two steps behind it on the route.  Before F5c all three read (0, 0).
 tick 25
 enemy 0 0 0
-enemy 2 0 0
+enemy 2 2 -1
 enemies passable
-range 0 0
+enemies distinct
+range 0 2
 count alive 3 3

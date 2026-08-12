@@ -10,8 +10,8 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 + F1b + F2 + F3 + F5 + F5b shipped 2026-08-12; F5c is
-next.**
+**Active — F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c shipped 2026-08-12;
+F6 is next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -423,6 +423,98 @@ negative control would pass against a mover that ignores the field entirely.
 presses along its heading. F7 replaces that with the desire field and an
 attack; the code says so at the site.
 
+## F5c, they spread — and the order stopped being free (2026-08-12)
+
+A companion blocks a step. `enemy_tick` takes the first FREE entry of
+`flow_steps` (F5c's addition to the field — the whole preference
+ordering, which is what F3 chose to store distances for), and
+`enemy_walk_heading` refuses an occupied hex too.
+[`src/occupancy.loft`](../../src/occupancy.loft) is that rule and
+nothing else, so the mover and the new `enemies distinct` assertion
+read one implementation.
+
+**⚠ A corridor cannot see this phase either — and the reason is a
+number.** On a hex AXIS the BFS field offers **one** closer neighbour;
+off the axis it offers **two**. So in every world dryopea had, "it
+moves beside them" has no beside, and a blocked enemy can only wait.
+The world that discriminates is open — rows `r = 0..4` over `q = 0..8`,
+where distance is exactly `q + r` — and the gate is *two enemies
+leaving one hex on two different routes*: from (8, 4) both want
+(8, 3), so the second takes (7, 4) instead of queueing.
+`tests/scripts/they-do-not-stack.keys` is that, as coordinates.
+
+**⚠ The snapshot rule the spec literally describes is WRONG, and a
+probe caught it before any of this was written.** "A hex a companion
+vacated is still taken, so the follower steps beside" halves a
+column's speed in a corridor: measured, the second enemy moves every
+*other* tick and the third every third, falling behind for ever.
+Occupancy is therefore updated as each enemy moves — a vacated hex is
+free — and the column advances in lockstep.
+
+| rule | 1-wide corridor, 3 stacked | open ground |
+|---|---|---|
+| start-of-tick snapshot | leader 4 ahead of the tail after 8 ticks, and growing | no spread either |
+| **live, closest-first** | a column, every enemy moving every tick | two routes out of one hex |
+
+**Which is why WHO MOVES FIRST is now a decision.** Once movement
+writes the world it reads, `ENEMY_MOVEMENT.md` § The tick resolves once
+is no longer free. `move_order` sorts on the STATE — field distance
+ascending, then hex, then class, with roster index only as a last
+resort between enemies that are interchangeable — so the order is a
+function of the wave and not of the roster.
+
+- **Closest to the core first**, and that is not arbitrary: tail-first,
+  every enemy is blocked by one that has not moved yet and the column
+  stretches. It is the FIELD distance rather than a coordinate, so it
+  means the same thing whichever way the column runs.
+- **Order independence is asserted where it can now fail.** The
+  reversed-roster test with distinct starts passes with occupancy
+  disabled — it is a jam that discriminates, so `test_a_jam_is_order_
+  independent_too` plays nine enemies both ways round and compares the
+  occupied SETS.
+
+**⚠ What F5c deliberately does not do.** A blocked enemy takes the best
+free step that is strictly CLOSER, or it stands still — it never
+sidesteps to an equally distant hex, so F5's "distance decreases by
+exactly 1" survives untouched and occupancy stays a movement
+constraint rather than a second steering rule. At a wall, four enemies
+therefore end in a QUEUE along their heading, on four distinct hexes,
+and not spread along the face. That is honest: approach mode has no
+field to say which way "beside" is. **F7 supplies it** — the desire
+field is the gradient, and the spread along the face falls out of the
+same rule with no special case. A test asserts the queue *is* on one
+line, so F7's gate can still fail.
+
+**Measured negative control.** With `occupancy_taken` short-circuited,
+**19 of 432 tests go red** — 11 of the 26 in the phase's own file, plus
+8 across the six wave scenarios it changed. The survivors are the
+`flow_steps` ordering tests and the occupancy unit tests that never ask
+`taken`, neither of which is about spreading.
+
+**What it cost: every fixture where a wave collapsed to a point.**
+Six scripts and four tests asserted `range 4 4` or "all five arrived at
+(0, 0)". A wave spawns on ONE hex and leaves it one enemy per tick, so
+those numbers are now spans and columns — `range 4 7`, and "exactly one
+enemy at each of distances 0, 1, 2, 3". The band is a *better*
+assertion than the point was: `range 4 7` over four enemies says they
+are strung out along the route, which is the mechanic.
+
+**⚠ `enemies distinct` is RED at the moment a wave spawns**, and that
+is the instrument working. `spawn_wave` emits the whole wave onto the
+marker hex, so the red/green pair is a few lines apart in one world
+with no code changed between them — the same shape as F1's `enemies
+passable`. The red half lives in the test as an inline string, because
+every file in `tests/scripts/` must play green.
+
+**A loft bug, filed, that this phase found by refactoring.**
+`flow_step` became `flow_steps(f, q, r)[0] ?? Hex { q: q, r: r }` and
+every arrow on the map started pointing at the hex it stood on — an
+index on a call's result in TAIL position reads the absent sentinel.
+Silent on the interpreter (the `??` fallback, which is *designed* to
+look plausible), a panic on native.
+[loft#877](https://github.com/loft-lang/loft/issues/877); the
+workaround is to bind the call to a local first.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -509,7 +601,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does. **Shipped — see § F3, the arrow.** Swept over five worlds, each asserting how many cells it visited; 9 of 14 tests go red against a broken arrow. ⚠ Loops turn out to be impossible by construction (a step is only ever to a strictly smaller distance) — what the sweep really catches is a local minimum and a walk ending on a second zero | **Shipped** |
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists. **Shipped — see § F5, enemies follow the field.** ⚠ The gate had to be INVENTED: every existing world was a 1-wide corridor, where field and heading give the identical path, so the whole phase could pass without doing anything. The discriminator is `enemy 0 3 -1` — a hex no heading can reach. Measured: 6 of 13 tests red with the engage branch disabled | **Shipped** |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general. **Shipped — see § F5b, the handoff at the bubble.** No new parameter: the field has carried its core since F2. Measured: 4 tests red without the bubble test, the negative control among them | **Shipped** |
-| **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
+| **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances. **Shipped — see § F5c, they spread.** ⚠ A corridor is blind to this one too: on a hex AXIS the field offers ONE closer neighbour and off it TWO, so "beside" only exists off-axis and the gate needs an open world. Measured: 19 of 432 red without the occupancy check. ⚠ Two corrections to the row above — the spec's own snapshot rule (a vacated hex stays taken) halves a column's speed and was rejected by probe; and the four at the wall queue along their HEADING rather than spreading along the face, because approach mode has no gradient to say which way beside is. The attack, and the spread along the face, are F7's | **Shipped** |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it | Open |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
 | **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result** — the order-independence ENEMY_MOVEMENT § The tick resolves once requires. A gate that only exercises editor strokes tests the rarer half | Open |
@@ -546,6 +638,8 @@ plausibility.
 | **F2** ✅ | closed ring → outside cells unreachable | unreachable ≠ 0 ≠ at-the-core | a walled-off spawn reading 0 = "already arrived" |
 | **F3** ✅ | arrows reach the core in exactly `distance` steps, from every reachable cell | the field has no local minimum (a loop cannot occur — the step strictly decreases) | one cell whose arrow stalls is an enemy that stands there for the rest of the wave |
 | **F5** ✅ | `enemies passable` every tick, AND a hex off the heading's line | routing respects the world, and it is the FIELD that steered | a 1-wide corridor cannot tell field from heading — the gate needed a route that leaves the line |
+| **F5c** ✅ | two enemies leave ONE hex on two different routes | a companion blocks a step, and is never a target | a 1-wide corridor has no "beside" — off the axis the field offers two closer neighbours, on it one |
+| **F5c** ✅ | a jam played with the roster reversed occupies the same SET | the move order reads the state, not the roster | order-independence stopped being free the moment movement wrote what it reads |
 | **F6** | insect and robot paths DIFFER on one map | passability is per class | identical paths mean the class key is ignored |
 | **F7** | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |
 | **F8** | incremental field == from-scratch field | the dirty set is used correctly | equal-but-stale after an edit is the bug this catches |

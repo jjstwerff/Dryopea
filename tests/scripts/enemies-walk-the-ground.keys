@@ -68,13 +68,24 @@ snap enemies-on-the-ground
 # Halfway.  One spawn marker, so the roster is in spawn order and
 # `enemy 0` is repeatable — with several active spawns it would not
 # be (the marker set comes out of a hash).
+#
+# The three left the spawn one per tick and are now a column: 6, 7 and
+# 8 hexes out (plan 11 F5c — a companion blocks a step, so they spread
+# rather than stack).
 tick 6
 enemy 0 6 0
+enemy 2 8 0
 enemies passable
-range 6 6
+enemies distinct
+range 6 8
 
-# Arrived.  `range 0 0` is the core hex itself.
+# Arrived — and `range 0 2` rather than `0 0` is the whole of F5c in
+# one line: the leader is ON the core hex and the other two are queued
+# behind it, because it is standing there and they cannot enter a hex
+# somebody holds.
 tick 6
 enemy 0 0 0
+enemy 2 2 0
 enemies passable
-range 0 0
+enemies distinct
+range 0 2

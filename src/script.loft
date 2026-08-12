@@ -67,6 +67,10 @@
 //   range <lo> <hi>            how far the live enemies are from
 //                              the core, as a span (V3)
 //   enemy <i> <q> <r>          EXACT hex of one enemy (plan 11 F1)
+//   enemies distinct           no two live enemies share a hex —
+//                              they spread, they do not stack
+//                              (plan 11 F5c).  RED at the moment a
+//                              wave starts: a wave spawns stacked
 //   enemies passable           no live enemy stands where its CLASS
 //                              cannot (plan 11 F1)
 //   frame <bucket> <lo> <hi>   share of WORLD pixels in a bucket
@@ -129,6 +133,7 @@ use editor_view;
 use measure;
 use save;
 use passable;
+use occupancy;
 use spawn;
 use graphics;
 
@@ -549,9 +554,9 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     // climbs is correct and a robot there is not, so both read the
     // one rule in `passable.loft`.
     if sm_cmd == "enemies" {
-        if sm_argc != 1 { return "enemies needs <passable>"; }
-        if sm_a1 != "passable" {
-            return "enemies: unknown check '{sm_a1}' — passable";
+        if sm_argc != 1 { return "enemies needs <passable|distinct>"; }
+        if sm_a1 != "passable" && sm_a1 != "distinct" {
+            return "enemies: unknown check '{sm_a1}' — passable, distinct";
         }
         sm_live = 0;
         sm_at   = 0;
@@ -559,7 +564,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
             if sm_e.alive {
                 sm_why = occupancy_fault(s.picker.palette, s.pw,
                                          sm_e.kind, sm_e.q, sm_e.r);
-                if sm_why != "" {
+                if sm_a1 == "passable" && sm_why != "" {
                     return "enemy {sm_at} at ({sm_e.q}, {sm_e.r}): {sm_why}";
                 }
                 sm_live += 1;
@@ -568,7 +573,25 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         }
         // Green over an empty roster is the same lie `range` refuses:
         // every enemy is somewhere legal when there are no enemies.
-        if sm_live == 0 { return "enemies passable: no live enemies to check"; }
+        if sm_live == 0 { return "enemies {sm_a1}: no live enemies to check"; }
+
+        // ── distinct: no two live enemies share a hex (plan 11 F5c) ─
+        //
+        // ⚠ This one is RED at the moment a wave starts, and that is
+        // not a defect in it: `spawn_wave` emits the whole wave at one
+        // marker, so N enemies are stacked before any of them has
+        // moved.  A scenario asserts it once they are walking, which
+        // makes the red/green pair one tick apart — the same shape as
+        // F1's `enemies passable`, and the reason the assertion is
+        // known to be able to fail.
+        if sm_a1 == "distinct" {
+            sm_stack = occupancy_stacked(wave_occupancy(run.wave));
+            if sm_stack.n > 1 {
+                return "{sm_stack.n} enemies are stacked on ({sm_stack.q}, {sm_stack.r})";
+            }
+            measure_exact(run, "enemies distinct — {sm_live} live, no two on one hex");
+            return "";
+        }
         measure_exact(run, "enemies passable — {sm_live} live, none where its class cannot stand");
         return "";
     }

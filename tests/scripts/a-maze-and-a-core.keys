@@ -67,11 +67,15 @@ range 12 12
 snap maze-wave-starts
 
 # Eight ticks: down the corridor to the hex in front of the wall.
-# This is where every pre-F5 run stopped for good.
+# This is where every pre-F5 run stopped for good.  The other three
+# are behind it at 5, 6 and 7 — they left the spawn one per tick,
+# because a companion blocks a step (plan 11 F5c).
 tick 8
 enemy 0 4 0
+enemy 3 7 0
 enemies passable
-range 4 4
+enemies distinct
+range 4 7
 
 # Two more, and they are OFF the line their heading could reach.
 # (3, -1) has r = -1; a heading of (-1, 0) cannot produce that hex,
@@ -79,14 +83,21 @@ range 4 4
 tick 2
 enemy 0 3 -1
 enemies passable
-range 3 3
+enemies distinct
+range 3 5
 snap maze-round-the-wall
 
-# Three more and they are home.  13 steps for a 12-hex corridor: the
-# detour costs exactly the one extra step the bypass adds.
+# Three more and the leader is home.  13 steps for a 12-hex corridor:
+# the detour costs exactly the one extra step the bypass adds.
+#
+# ⚠ The other three do NOT pile onto the core hex behind it.  Each is
+# one tick behind the one in front, so the wave arrives as a column —
+# and `enemy 3 3 -1` is the tail still on the bypass while the leader
+# is home.  Before F5c all four read (0, 0).
 tick 3
 enemy 0 0 0
-enemy 3 0 0
+enemy 3 3 -1
 enemies passable
-range 0 0
+enemies distinct
+range 0 3
 count alive 4 4

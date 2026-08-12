@@ -208,7 +208,7 @@ fn test_enemy_tick_walks_one_hex_south() {
     tet_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 0 as u8, alive: true };
-    enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable(), no_field());
+    enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable(), no_field(), occupancy_empty());
     assert(tet_e.q == 5, "south: q unchanged");
     assert(tet_e.r == 6, "south: r increased by 1");
 }
@@ -217,7 +217,7 @@ fn test_enemy_tick_walks_one_hex_north() {
     teh_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 3 as u8, alive: true };
-    enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable(), no_field());
+    enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable(), no_field(), occupancy_empty());
     assert(teh_e.q == 5, "north: q unchanged");
     assert(teh_e.r == 4, "north: r decreased by 1");
 }
@@ -226,7 +226,7 @@ fn test_enemy_tick_dead_doesnt_move() {
     tedd_e = Enemy { q: 5, r: 5,
                      kind: ENEMY_KIND_REGULAR as u8,
                      heading: 0 as u8, alive: false };
-    enemy_tick(tedd_e, load_palette(PALETTE_PATH), walkable(), no_field());
+    enemy_tick(tedd_e, load_palette(PALETTE_PATH), walkable(), no_field(), occupancy_empty());
     assert(tedd_e.q == 5, "dead: q frozen");
     assert(tedd_e.r == 5, "dead: r frozen");
 }

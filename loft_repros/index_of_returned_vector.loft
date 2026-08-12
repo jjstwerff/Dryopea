@@ -1,0 +1,77 @@
+// Indexing a call's result in TAIL position silently yields the
+// fallback.
+//
+//     fn head(n: integer) -> Cell {
+//         make(n)[0] ?? Cell { q: -1, r: -1 }     // <- always the fallback
+//     }
+//
+// `make(n)` returns a 3-element vector and `make(n)[0]` is its first
+// element everywhere else in the language — but as a function's TAIL
+// EXPRESSION the index reads null, so the `??` fallback is taken.  The
+// same index one line earlier, assigned to a local, is correct.
+//
+// Both backends are wrong, and the native one names the cause:
+//
+//   interpret   silently answers the `??` fallback, every time
+//   native      panics — "index out of bounds: the len is 6 but the
+//               index is 65535", src/database/allocation.rs:1643
+//
+// 65535 is the absent sentinel, so the temporary the call returned is
+// gone by the time the index runs.  Only the TAIL form is affected:
+// `head_stmt` and `head_bound` below are correct on both backends,
+// and so is the same expression written in `main`.
+//
+// Hit by dryopea plan 11 F5c: `flow_step` was refactored to
+// `flow_steps(f, q, r)[0] ?? Hex { q: q, r: r }`, which made a flow
+// field's arrow always point at the hex it was standing on.  Nine
+// tests that had been green for two phases went red on a refactor that
+// changed no logic, and the three-line function they blamed reads
+// correctly.
+//
+// Run:  loft --interpret loft_repros/index_of_returned_vector.loft
+//       loft            loft_repros/index_of_returned_vector.loft
+
+struct Cell {
+    q: integer,
+    r: integer,
+}
+
+fn make(n: integer) -> vector<Cell> {
+    mk_out: vector<Cell> = [];
+    for mk_i in 0..n {
+        mk_out += [Cell { q: mk_i + 7, r: 0 }];
+    }
+    mk_out
+}
+
+// ⚠ The bug: the index is the tail expression.
+fn head_tail(n: integer) -> Cell {
+    make(n)[0] ?? Cell { q: -1, r: -1 }
+}
+
+// The identical index, one line earlier.
+fn head_stmt(n: integer) -> Cell {
+    hs_v = make(n)[0] ?? Cell { q: -1, r: -1 };
+    hs_v
+}
+
+// Tail position again, but over a local rather than over the call.
+fn head_bound(n: integer) -> Cell {
+    hb_all = make(n);
+    hb_all[0] ?? Cell { q: -1, r: -1 }
+}
+
+fn main() {
+    println("len(make(3))    = {len(make(3))}                expected 3");
+
+    // Statement position, in main — correct.
+    m0 = make(3)[0] ?? Cell { q: -1, r: -1 };
+    println("main  make(3)[0] = ({m0.q}, {m0.r})       expected (7, 0)");
+
+    hb = head_bound(3);
+    println("head_bound(3)    = ({hb.q}, {hb.r})       expected (7, 0)");
+    hs = head_stmt(3);
+    println("head_stmt(3)     = ({hs.q}, {hs.r})       expected (7, 0)");
+    ht = head_tail(3);
+    println("head_tail(3)     = ({ht.q}, {ht.r})     expected (7, 0)   <- WRONG");
+}

@@ -106,7 +106,7 @@ fn test_the_route_leaves_the_headings_line() {
     // Ten ticks puts it on the bypass, off the r = 0 line.
     trl_off = false;
     for _ in 0..10 {
-        enemy_tick(trl_e, trl_pal, trl_pw, trl_f);
+        enemy_tick(trl_e, trl_pal, trl_pw, trl_f, occupancy_empty());
         if trl_e.r != 0 { trl_off = true; }
     }
 
@@ -125,7 +125,7 @@ fn test_with_the_way_open_the_route_stays_on_the_line() {
     two_pal = load_palette(PALETTE);
 
     for _ in 0..10 {
-        enemy_tick(two_e, two_pal, two_pw, two_f);
+        enemy_tick(two_e, two_pal, two_pw, two_f, occupancy_empty());
         assert(two_e.r == 0, "the direct route is shorter, so it is taken: r = {two_e.r}");
     }
     assert(two_e.q == 2, "ten steps down a twelve-hex corridor");
@@ -145,7 +145,7 @@ fn test_every_tick_closes_exactly_one_step() {
     assert(tet_d == 13, "the bypass route is 13 steps, field says {tet_d}");
 
     while tet_d > 0 {
-        enemy_tick(tet_e, tet_pal, tet_pw, tet_f);
+        enemy_tick(tet_e, tet_pal, tet_pw, tet_f, occupancy_empty());
         tet_now = flow_distance(tet_f, tet_e.q, tet_e.r);
         assert(tet_now == tet_d - 1,
                "one step closer per tick: {tet_d} -> {tet_now}");
@@ -166,10 +166,10 @@ fn test_it_arrives_in_exactly_its_distance_in_ticks() {
     tia_d   = flow_distance(tia_f, 12, 0);
 
     // One tick short: not there yet.
-    for _ in 0..(tia_d - 1) { enemy_tick(tia_e, tia_pal, tia_pw, tia_f); }
+    for _ in 0..(tia_d - 1) { enemy_tick(tia_e, tia_pal, tia_pw, tia_f, occupancy_empty()); }
     assert(tia_e.q != 0 || tia_e.r != 0, "one tick short of arriving");
 
-    enemy_tick(tia_e, tia_pal, tia_pw, tia_f);
+    enemy_tick(tia_e, tia_pal, tia_pw, tia_f, occupancy_empty());
     assert(tia_e.q == 0 && tia_e.r == 0, "and exactly on the {tia_d}th it arrives");
 }
 
@@ -178,7 +178,7 @@ fn test_an_enemy_at_the_core_stays_on_it() {
     tac_f   = field_for(ENEMY_KIND_REGULAR, tac_pw);
     tac_e   = westbound(ENEMY_KIND_REGULAR, 0);
 
-    for _ in 0..20 { enemy_tick(tac_e, load_palette(PALETTE), tac_pw, tac_f); }
+    for _ in 0..20 { enemy_tick(tac_e, load_palette(PALETTE), tac_pw, tac_f, occupancy_empty()); }
 
     assert(tac_e.q == 0 && tac_e.r == 0,
            "arrived is not a direction — it does not walk past the core: ({tac_e.q}, {tac_e.r})");
@@ -194,7 +194,7 @@ fn test_an_enemy_with_no_route_still_presses_along_its_heading() {
     tnr_e   = westbound(ENEMY_KIND_REGULAR, 8);
 
     assert(!flow_reachable(tnr_f, 8, 0), "the core is walled off from it");
-    for _ in 0..20 { enemy_tick(tnr_e, load_palette(PALETTE), tnr_pw, tnr_f); }
+    for _ in 0..20 { enemy_tick(tnr_e, load_palette(PALETTE), tnr_pw, tnr_f, occupancy_empty()); }
 
     assert(tnr_e.q == 4 && tnr_e.r == 0,
            "it walked its heading to the wall and stopped: ({tnr_e.q}, {tnr_e.r})");
@@ -204,15 +204,29 @@ fn test_an_enemy_with_no_route_still_presses_along_its_heading() {
 // The whole wave, through `wave_tick`
 // ─────────────────────────────────────────────────────────────────
 
+// ⚠ Five enemies cannot all be at (0, 0) since plan 11 F5c — the core
+// hex holds one, and the rest queue behind it.  What "the whole wave
+// arrived" means now is that they are packed against the core: five
+// enemies on the five hexes at distance 0, 1, 2, 3 and 4, which over
+// this one-hex-wide route is the tightest they can be.
+//
+// The wave needs 13 ticks for the leader plus 4 for the tail to leave
+// the spawn; 20 is comfortably past that and the arrangement is
+// stable, which is itself part of the assertion.
 fn test_a_whole_wave_routes_round_the_wall() {
     taw_pw = bypass_world(true);
     taw_s  = one_wave(ENEMY_KIND_REGULAR, 12, 5);
+    taw_f  = field_for(ENEMY_KIND_REGULAR, taw_pw);
 
-    for _ in 0..13 { wave_tick(taw_s, load_palette(PALETTE), taw_pw, core()); }
+    for _ in 0..20 { wave_tick(taw_s, load_palette(PALETTE), taw_pw, core()); }
 
-    for taw_e in taw_s.enemies {
-        assert(taw_e.q == 0 && taw_e.r == 0,
-               "every one of the five arrived: ({taw_e.q}, {taw_e.r})");
+    for taw_i in 0..5 {
+        taw_at = 0;
+        for taw_e in taw_s.enemies {
+            if flow_distance(taw_f, taw_e.q, taw_e.r) == taw_i { taw_at += 1; }
+        }
+        assert(taw_at == 1,
+               "exactly one of the five is {taw_i} steps from the core, found {taw_at}");
     }
     assert(alive_count(taw_s) == 5, "and all five are still alive");
 }
@@ -285,7 +299,7 @@ fn test_the_insect_never_needed_the_bypass() {
     assert(flow_distance(tin_f, 12, 0) == 12, "straight over the wall is 12 steps");
     tin_used_bypass = false;
     for _ in 0..12 {
-        enemy_tick(tin_e, load_palette(PALETTE), tin_pw, tin_f);
+        enemy_tick(tin_e, load_palette(PALETTE), tin_pw, tin_f, occupancy_empty());
         if tin_e.r != 0 { tin_used_bypass = true; }
     }
     assert(!tin_used_bypass, "so it never leaves the line the robot had to");
@@ -340,7 +354,7 @@ fn test_a_maze_and_a_core_plays_green() {
     tam = script_run_file(tam_s, "tests/scripts/a-maze-and-a-core.keys", "tests/actual");
 
     assert(tam.ok, "a-maze-and-a-core: {script_describe(tam)}");
-    assert(tam.checks == 22, "it made {tam.checks} measurements, expected 22");
+    assert(tam.checks == 26, "it made {tam.checks} measurements, expected 26");
     assert(tam.snaps == 2, "and took both pictures");
     assert(alive_count(tam.wave) == 4, "four enemies walked the maze");
 }

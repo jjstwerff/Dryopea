@@ -44,16 +44,27 @@ palette 5
 drag 12 0 0 0
 count painted 13 13
 
+# ⚠ A wave spawns STACKED — all six on the marker hex — so the span
+# is a point here and `enemies distinct` would be red.  They unstack
+# as they walk (plan 11 F5c), one per tick, because a companion blocks
+# a step and this corridor is one hex wide with nowhere to go beside.
 wave 6
 count alive 6 6
 range 12 12
 snap wave-starts
 
+# Four ticks: the leader has walked four, the one behind it three, and
+# the last TWO have not moved at all — six enemies leave a one-hex
+# spawn one per tick, so a wave of six needs five ticks to unstack and
+# `enemies distinct` is still red here.  The SPAN is what F5c changed.
 tick 4
 count alive 6 6
-range 8 8
+range 8 12
 
+# Four more, and the queue has become a column: six enemies on six
+# hexes, four to nine steps out.
 tick 4
 count alive 6 6
-range 4 4
+range 4 9
+enemies distinct
 snap wave-closes

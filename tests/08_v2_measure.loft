@@ -277,12 +277,21 @@ fn test_a_wave_spawns_and_walks_towards_the_core() {
     // The measurement vocabulary cannot say "closer" yet — V3 needs
     // that and will add it. Reading the roster here says what the
     // scenario will have to.
-    taw_far = 0;
+    //
+    // ⚠ Read as a SPAN since plan 11 F5c, not as one number. A wave
+    // spawns on one hex and a companion blocks a step, so the four
+    // leave one per tick: three ticks in, the leader has walked three
+    // and the tail has not moved at all. Measuring only the furthest
+    // would now report "nobody moved" about a wave that is walking.
+    taw_near = 999;
+    taw_far  = 0;
     for taw_e in taw_run.wave.enemies {
         taw_d = hex_distance(Hex { q: 0, r: 0 }, Hex { q: taw_e.q, r: taw_e.r });
-        if taw_d > taw_far { taw_far = taw_d; }
+        if taw_d < taw_near { taw_near = taw_d; }
+        if taw_d > taw_far  { taw_far  = taw_d; }
     }
-    assert(taw_far == 9, "three ticks walked them from 12 hexes out to 9 — towards the core");
+    assert(taw_near == 9, "three ticks walked the leader from 12 hexes out to 9 — towards the core");
+    assert(taw_far == 12, "and the tail is still on the spawn: {taw_far}");
 }
 
 // The failure that would make every later `count alive` pass for

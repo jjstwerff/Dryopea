@@ -1,0 +1,113 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Occupancy — who is standing where, this tick.
+//
+// Plan 11 phase F5c.  `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter:
+// *"An enemy whose target hex is taken by a companion does not wait
+// behind it… Companions block movement; they are never targets."*
+// This file is the first half of that sentence and nothing else, so
+// the mover and the `enemies distinct` assertion that measures it read
+// ONE implementation — the same reason `passable.loft` exists.
+//
+// ── It is a COUNT per hex, not a boolean ────────────────────────
+//
+// Enemies arrive stacked: `spawn_wave` emits a whole wave at one
+// marker hex, so N enemies share a hex before any of them has moved.
+// A boolean set would say "occupied", one of them would step off, and
+// the hex would read free while N-1 still stand on it.  So a cell
+// counts its occupants, `occupancy_leave` decrements and the hex is
+// free only at zero.
+//
+// The count never goes negative: `occupancy_leave` on a hex nobody
+// holds is a no-op rather than a -1, because a single-enemy caller
+// legitimately ticks against an EMPTY occupancy ("this enemy is
+// alone") and a negative count would then read as "free" for the rest
+// of the tick.
+//
+// ── What it is NOT ──────────────────────────────────────────────
+//
+// It is not passability (`passable.loft` — a property of the GROUND,
+// per class) and it is not a target list.  A hex can be perfectly
+// walkable and still refused this tick because somebody is on it;
+// next tick they have moved and it is free.  Nothing in the game ever
+// attacks an occupied hex *because* it is occupied.
+
+use world;
+
+// One hex and how many enemies stand on it.
+pub struct OccupiedHex {
+    q: integer,
+    r: integer,
+    n: integer,
+}
+
+// Who is standing where.  A hash must be a struct field (the same
+// loft idiom `PaintedWorld` follows), and wrapping it also gives the
+// count rule one door rather than every caller doing its own
+// null-check arithmetic.
+pub struct Occupancy {
+    cells: hash<OccupiedHex[q, r]>,
+}
+
+// Factory: nobody anywhere.  What a caller ticking a lone enemy
+// passes — and it means "this enemy is alone", not "skip the check".
+pub fn occupancy_empty() -> Occupancy {
+    Occupancy { cells: [] }
+}
+
+// Somebody stepped onto (q, r).
+pub fn occupancy_enter(o: Occupancy, q: integer, r: integer) {
+    oe_c = o.cells[q, r];
+    if oe_c == null {
+        o.cells[q, r] = OccupiedHex { q: q, r: r, n: 1 };
+    } else {
+        oe_c.n = oe_c.n + 1;
+    }
+}
+
+// Somebody stepped off (q, r).  A no-op on a hex nobody holds — see
+// § It is a COUNT per hex.
+pub fn occupancy_leave(o: Occupancy, q: integer, r: integer) {
+    ol_c = o.cells[q, r];
+    if ol_c == null { return; }
+    if ol_c.n > 0 { ol_c.n = ol_c.n - 1; }
+}
+
+// Is anybody standing on (q, r)?
+pub fn occupancy_taken(o: const Occupancy, q: integer, r: integer) -> boolean {
+    ot_c = o.cells[q, r];
+    if ot_c == null { return false; }
+    ot_c.n > 0
+}
+
+// How many enemies are on (q, r)?
+pub fn occupancy_count(o: const Occupancy, q: integer, r: integer) -> integer {
+    oc_c = o.cells[q, r];
+    if oc_c == null { return 0; }
+    oc_c.n
+}
+
+// How many distinct hexes are held.
+//
+// ⚠ Counts hash entries, which include hexes whose count has fallen
+// back to zero, so it is only equal to "hexes with somebody on them"
+// on an occupancy nobody has left.  `occupancy_stacked` is what the
+// assertions ask; this is for a caller that wants the size.
+pub fn occupancy_cells(o: const Occupancy) -> integer {
+    len(o.cells)
+}
+
+// The first hex holding more than one enemy, or null-ish (n == 0) when
+// nobody is stacked.
+//
+// The hex is the return value rather than a boolean, because every
+// caller that reports a fault wants to name it: "two enemies are on
+// the same hex" costs a debugging session that "2 enemies are stacked
+// on (4, 0)" does not — the same argument `occupancy_fault` makes.
+pub fn occupancy_stacked(o: const Occupancy) -> OccupiedHex {
+    for os_c in o.cells {
+        if os_c.n > 1 { return OccupiedHex { q: os_c.q, r: os_c.r, n: os_c.n }; }
+    }
+    OccupiedHex { q: 0, r: 0, n: 0 }
+}

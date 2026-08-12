@@ -7,7 +7,7 @@
 #
 # What makes this a measurement rather than a hope: the enemies got
 # eight hexes closer first.  `range 12 12` before the walk and
-# `range 4 4` after it are the same instrument saying they moved;
+# `range 4 7` after it are the same instrument saying they moved;
 # `enemy 0 4 0` twenty ticks later says they then didn't.  A mover
 # that had simply stopped working would fail the middle assertion,
 # and an unpainted corridor would fail it too — an unpainted hex is
@@ -58,11 +58,15 @@ enemy 0 12 0
 enemies passable
 range 12 12
 
-# Eight ticks: (12, 0) to (4, 0), the hex in front of the wall.
+# Eight ticks: (12, 0) to (4, 0), the hex in front of the wall — and
+# the three behind it strung out over 5, 6 and 7, because they left the
+# spawn one per tick (plan 11 F5c).
 tick 8
 enemy 0 4 0
+enemy 3 7 0
 enemies passable
-range 4 4
+enemies distinct
+range 4 7
 
 # ⚠ The picture is the editor's frame and enemies are runtime state
 # it does not draw — so the shot is evidence about the corridor and
@@ -74,11 +78,21 @@ snap stopped-at-the-wall
 # enemies do not squeeze past, through, or around it — approach mode
 # has no way round a wall, which is what F5's flow field is for.
 #
-# All four are on the same hex here: they share a heading, so they
-# march in lockstep and stack.  F5c is where they spread along the
-# face instead, and this scenario's numbers are what will change when
-# it does.
+# ⚠ **This is where F5c shows.**  These four used to be on ONE hex:
+# they share a heading, so they marched in lockstep and piled onto
+# (4, 0).  Now the leader stops at the wall and each of the others
+# stops behind the one in front — four enemies, four hexes, a queue
+# that is stable for twenty ticks.
+#
+# It is a queue and not a spread along the FACE, and that is honest:
+# approach mode has one heading and no field to say which way "beside"
+# is.  F7 gives a blocked enemy the desire field, and that is the phase
+# where a siege chews the wall along its length.
 tick 20
 enemy 0 4 0
+enemy 1 5 0
+enemy 2 6 0
+enemy 3 7 0
 enemies passable
-range 4 4
+enemies distinct
+range 4 7

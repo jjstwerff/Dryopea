@@ -17,13 +17,14 @@
 // is the simplest substitute that produces multi-direction
 // pressure without the RNG dependency.
 //
-// Approach mode: an enemy walks one hex per tick along its
-// heading direction — and since plan 11 F1b it STOPS in front of
-// ground its class cannot cross, which is what makes a wall a
-// wall.  Still no flow field, no engage-mode hand-off and no
-// death/HP: those are plan 11 F5 / F5b and the combat work after.
+// Movement is `enemy_tick`, and it has three rules on top of each
+// other: the scrambler bubble picks the mode (F5b — heading outside,
+// flow field inside), the height step says what ground the class can
+// hold (F1b), and companions block a step (F5c — enemies spread, they
+// do not stack).  No death/HP yet: that is the combat work after.
 //
-// Plan 03 phase M5; the walk's passability is plan 11 F1b.
+// Plan 03 phase M5; the walk's passability is plan 11 F1b, the routing
+// F5/F5b, the occupancy F5c.
 
 use world;
 use markers;
@@ -31,6 +32,7 @@ use palette;
 use painted;
 use passable;
 use flow;
+use occupancy;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -189,7 +191,8 @@ pub fn spawn_wave(
 // so approach mode's whole answer to a wall is to stop in front of
 // it.  Stopping is what makes the wall a wall; the attack is F5+ and
 // the routing round it is F5.
-pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld, f: FlowField) {
+pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
+                  f: FlowField, occ: Occupancy) {
     if !e.alive { return; }
 
     // ── Which mode? The bubble decides (plan 11 F5b) ─────────────
@@ -201,7 +204,7 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld, f: FlowFi
     // The field carries the core it was built for, so the test needs
     // no extra parameter — which is why `FlowField` keeps it.
     if !enemy_in_bubble(e, f.core) {
-        enemy_walk_heading(e, pal, pw);
+        enemy_walk_heading(e, pal, pw, occ);
         return;
     }
 
@@ -209,17 +212,34 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld, f: FlowFi
     //
     // The field is per class and already refuses every hex this class
     // cannot hold, so a step down it needs no passability check of
-    // its own — `flow_build` did it.
+    // its own — `flow_build` did it.  What it does NOT know is who is
+    // standing where, which is this phase (F5c): take the first FREE
+    // step in preference order, and stand still when every one of them
+    // is held.
+    //
+    // ⚠ **Free, but still strictly CLOSER.**  A blocked enemy does not
+    // sidestep to an equally-distant hex to get round the jam: every
+    // entry `flow_steps` offers is at `d - 1`, so an enemy either
+    // closes by exactly one step or does not move — which is what
+    // keeps F5's invariant (`distance decreases by exactly 1 per tick`)
+    // true of every enemy that moves at all, and keeps occupancy a
+    // movement constraint rather than a second steering rule.  The
+    // sideways spread the spec describes at a WALL belongs to F7,
+    // where the desire field supplies the gradient that says which way
+    // "beside" is; inventing one here would be a second steering rule
+    // with nothing to derive it from.
     et_d = flow_distance(f, e.q, e.r);
     if et_d == 0 { return; }                    // arrived; attacking the core is combat's job
     if et_d < FLOW_UNREACHABLE {
-        et_t = flow_step(f, e.q, e.r);
+        for et_t in flow_steps(f, e.q, e.r) {
+            if occupancy_taken(occ, et_t.q, et_t.r) { continue; }
+            enemy_move_to(e, et_t.q, et_t.r, occ);
+            return;
+        }
         // F3's sweep proves the arrow never stalls on a reachable
-        // cell, so this moves.  If it ever did not, standing still is
-        // the right answer — a stalled field is not a licence to
-        // wander off the route.
-        e.q = et_t.q;
-        e.r = et_t.r;
+        // cell, so the only way to get here is a companion on every
+        // closer neighbour.  Standing still is the right answer — a
+        // jam is not a licence to wander off the route.
         return;
     }
 
@@ -232,7 +252,18 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld, f: FlowFi
     // spreads a siege along the perimeter instead of collapsing it to
     // one chokepoint.  Walking a heading into the wall is the
     // stand-in until then, and it stops in the right place.
-    enemy_walk_heading(e, pal, pw);
+    enemy_walk_heading(e, pal, pw, occ);
+}
+
+// Move an enemy, keeping the occupancy it moves through in step with
+// it.  ⚠ The two updates are ONE operation: an enemy that entered
+// without leaving would block the hex behind it for the rest of the
+// tick, and the enemies behind it would never advance.
+fn enemy_move_to(e: Enemy, q: integer, r: integer, occ: Occupancy) {
+    occupancy_leave(occ, e.q, e.r);
+    occupancy_enter(occ, q, r);
+    e.q = q;
+    e.r = r;
 }
 
 // Is this enemy inside the core's scrambler bubble?
@@ -252,9 +283,16 @@ pub fn enemy_in_bubble(e: const Enemy, core: Hex) -> boolean {
 }
 
 // One step along the enemy's heading, if the hex it would enter is one
-// its class can hold — approach mode's whole movement rule
-// (plan 11 F1b).
-fn enemy_walk_heading(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld) {
+// its class can hold and nobody is standing on it — approach mode's
+// whole movement rule (plan 11 F1b, plus F5c's occupancy).
+//
+// A heading has no alternatives: there is one hex ahead, so a blocked
+// enemy simply stops one hex short.  That is enough for the thing F5c
+// is for — a column pressing a wall ends on distinct hexes instead of
+// piling onto the single hex in front of it — and it is all approach
+// mode can honestly do, having no field to say which way "beside" is.
+fn enemy_walk_heading(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
+                      occ: Occupancy) {
     et_off = hex_offset(e.heading);
     et_q = e.q + et_off.0;
     et_r = e.r + et_off.1;
@@ -264,29 +302,158 @@ fn enemy_walk_heading(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld) {
     // gate would only prove the two agreed — not that either was
     // right.
     if !can_occupy(pal, pw, e.kind, et_q, et_r) { return; }
-    e.q = et_q;
-    e.r = et_r;
+    if occupancy_taken(occ, et_q, et_r) { return; }
+    enemy_move_to(e, et_q, et_r, occ);
 }
 
-// Has any enemy of this kind been spawned into the roster?
+// ─── The fields, one per class in the roster ────────────────────
+
+// One class's field for this tick.
+pub struct ClassField {
+    kind:  integer,
+    field: FlowField,
+}
+
+// A field for every class actually present among the alive enemies,
+// each built once.
 //
-// Used to skip building a field no enemy would read — two BFS sweeps
-// per tick would cost little, but a field built for nobody is also a
-// number in a profile that nobody can explain.
-fn wave_has_kind(state: const WaveState, kind: integer) -> boolean {
-    whk_any = false;
-    for whk_e in state.enemies {
-        if whk_e.alive && (whk_e.kind as integer) == kind { whk_any = true; }
+// Not a field per class the game knows about: a field built for nobody
+// is a number in a profile that nobody can explain.  And not ONE
+// shared field either — a wall stops a robot and an insect climbs it,
+// so a shared field would move insects along a route computed for
+// something that cannot climb (plan 11 F0: passability is boolean, so
+// nothing weighs an edge — it is separate fields, not one with costs).
+fn wave_fields(state: const WaveState, pal: vector<GroundType>,
+               pw: PaintedWorld, core: Hex) -> vector<ClassField> {
+    wf_out: vector<ClassField> = [];
+    for wf_e in state.enemies {
+        if wf_e.alive && !fields_have(wf_out, wf_e.kind as integer) {
+            wf_out += [ClassField {
+                kind:  wf_e.kind as integer,
+                field: flow_build(pal, pw, wf_e.kind, core),
+            }];
+        }
     }
-    whk_any
+    wf_out
 }
 
-fn kind_already_done(done: vector<integer>, kind: integer) -> boolean {
-    kad_seen = false;
-    for kad_k in done {
-        if kad_k == kind { kad_seen = true; }
+fn fields_have(fields: const vector<ClassField>, kind: integer) -> boolean {
+    fh_seen = false;
+    for fh_f in fields {
+        if fh_f.kind == kind { fh_seen = true; }
     }
-    kad_seen
+    fh_seen
+}
+
+// The field this class routes on.  An empty field on a miss, which
+// cannot happen for an alive enemy (`wave_fields` built one for every
+// class present) and which routes nobody anywhere if it ever did.
+fn field_of(fields: vector<ClassField>, kind: integer) -> FlowField {
+    fo_out = FlowField { cells: [], core: Hex { q: 0, r: 0 }, truncated: false };
+    for fo_f in fields {
+        if fo_f.kind == kind { fo_out = fo_f.field; }
+    }
+    fo_out
+}
+
+// ─── The move order ─────────────────────────────────────────────
+//
+// Plan 11 F5c.  Once companions block a step, WHO MOVES FIRST changes
+// where everybody ends up — so the order has to be a property of the
+// state and not of the roster, or `ENEMY_MOVEMENT.md` § The tick
+// resolves once is lost and with it every scripted number plan 08
+// gates on.
+//
+// ⚠ **Closest to the core moves first, and that is not arbitrary.**
+// Measured (plan 11 § F5c): with the tail moving first, a column in a
+// corridor stretches — each enemy is blocked by the one ahead, which
+// has not moved yet, so only the leader advances and the follower
+// falls a hex behind every tick.  Leader-first, the whole column steps
+// into the space the one ahead has just left and advances in lockstep,
+// which is what a queue in a corridor should look like.
+//
+// "Closest to the core" is the FIELD distance, so it means the same
+// thing whichever compass direction the column runs; ordering on a
+// coordinate would make a westbound column advance and an eastbound
+// one stretch.
+//
+// The rest of the key only has to be deterministic and state-derived.
+// Roster index is the LAST resort, and it can only decide between
+// enemies that agree on distance, hex and class — which are
+// interchangeable, so the multiset of outcomes cannot depend on it.
+// That is the whole order-independence argument, and
+// `tests/11_f5c_spread.loft` asserts it against a reversed roster.
+
+struct MoveSlot {
+    idx:   integer,
+    dist:  integer,
+    q:     integer,
+    r:     integer,
+    kind:  integer,
+    taken: boolean,
+}
+
+fn slot_before(a: const MoveSlot, b: const MoveSlot) -> boolean {
+    if a.dist != b.dist { return a.dist < b.dist; }
+    if a.q    != b.q    { return a.q    < b.q; }
+    if a.r    != b.r    { return a.r    < b.r; }
+    if a.kind != b.kind { return a.kind < b.kind; }
+    a.idx < b.idx
+}
+
+// Roster indices in move order — a selection sort, because a wave is
+// tens of enemies and the clarity is worth more than the exponent.
+fn move_order(state: const WaveState, fields: vector<ClassField>) -> vector<integer> {
+    mo_slots: vector<MoveSlot> = [];
+    mo_i = 0;
+    for mo_e in state.enemies {
+        if mo_e.alive {
+            mo_slots += [MoveSlot {
+                idx:   mo_i,
+                dist:  flow_distance(field_of(fields, mo_e.kind as integer), mo_e.q, mo_e.r),
+                q:     mo_e.q,
+                r:     mo_e.r,
+                kind:  mo_e.kind as integer,
+                taken: false,
+            }];
+        }
+        mo_i = mo_i + 1;
+    }
+
+    mo_out: vector<integer> = [];
+    for _ in 0..len(mo_slots) {
+        mo_best = -1;
+        mo_at   = 0;
+        for mo_s in mo_slots {
+            if !mo_s.taken {
+                mo_b = mo_slots[mo_best] ?? MoveSlot {};
+                if mo_best < 0 || slot_before(mo_s, mo_b) { mo_best = mo_at; }
+            }
+            mo_at = mo_at + 1;
+        }
+        if mo_best < 0 { return mo_out; }
+        mo_mark = 0;
+        for mo_t in mo_slots {
+            if mo_mark == mo_best { mo_t.taken = true; }
+            mo_mark = mo_mark + 1;
+        }
+        mo_out += [(mo_slots[mo_best] ?? MoveSlot {}).idx];
+    }
+    mo_out
+}
+
+// Where everybody stands right now.
+//
+// ⚠ Built ONCE per tick and then kept in step by the mover, rather
+// than re-derived per enemy: a hex a companion has already left this
+// tick is FREE, which is what lets a column advance in lockstep
+// instead of at half speed — see § The move order.
+pub fn wave_occupancy(state: const WaveState) -> Occupancy {
+    wo_o = occupancy_empty();
+    for wo_e in state.enemies {
+        if wo_e.alive { occupancy_enter(wo_o, wo_e.q, wo_e.r); }
+    }
+    wo_o
 }
 
 // Advance the whole wave by one game-tick.
@@ -304,30 +471,30 @@ fn kind_already_done(done: vector<integer>, kind: integer) -> boolean {
 // The invariant that holds it: the same wave, played with the roster
 // iterated in REVERSE, produces an identical result.
 //
+// ⚠ **F5c is where that stopped being free.**  While movement only
+// read the world it was trivially true; now a companion blocks a step,
+// so the order enemies act in decides where they end up.  Three things
+// are therefore fixed before the first enemy moves — the fields
+// (§ One field per CLASS), the occupancy (`wave_occupancy`) and the
+// order (§ The move order) — and none of the three is derived from
+// roster order.
+//
 // ── One field per CLASS, built for the classes present ──────────
 //
-// A wall stops a robot and an insect climbs it, so they do not share
-// a field (plan 11 F0: passability is boolean, so nothing weighs an
-// edge — it is separate fields, not one field with costs).  The
-// roster decides which get built: the classes actually in it, each
-// once, rather than a field per class the game knows about.
+// See `wave_fields`.  It is the roster that decides which fields get
+// built, not the set of classes the game knows about.
 //
 // ⚠ **From scratch every tick, deliberately.**  F8 makes it
 // incremental, and its gate is equality with this — so this path
 // stays the reference implementation and is not optimised away.
 pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld, core: Hex) {
-    wt_done: vector<integer> = [];
-    for wt_e in state.enemies {
-        wt_k = wt_e.kind as integer;
-        if !kind_already_done(wt_done, wt_k) && wave_has_kind(state, wt_k) {
-            wt_done += [wt_k];
-            wt_f = flow_build(pal, pw, wt_e.kind, core);
-            for wt_o in state.enemies {
-                if (wt_o.kind as integer) == wt_k {
-                    enemy_tick(wt_o, pal, pw, wt_f);
-                }
-            }
-        }
+    // Everything the tick reads is fixed before anybody moves: the
+    // fields, where everyone stands, and the order they act in.
+    wt_fields = wave_fields(state, pal, pw, core);
+    wt_occ    = wave_occupancy(state);
+    for wt_i in move_order(state, wt_fields) {
+        wt_e = state.enemies[wt_i] ?? Enemy {};
+        enemy_tick(wt_e, pal, pw, field_of(wt_fields, wt_e.kind as integer), wt_occ);
     }
 }
 

@@ -216,17 +216,41 @@ pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld,
 // somebody somewhere wrong. Ask `flow_distance` / `flow_reachable` to
 // tell "arrived" from "stuck".
 pub fn flow_step(f: const FlowField, q: integer, r: integer) -> Hex {
-    fs_best  = Hex { q: q, r: r };
-    fs_bestd = flow_distance(f, q, r);
-    if fs_bestd >= FLOW_UNREACHABLE { return fs_best; }
-    for fs_n in hex_neighbours(Hex { q: q, r: r }) {
-        fs_d = flow_distance(f, fs_n.q, fs_n.r);
-        // Strictly smaller, so an equal neighbour never displaces the
-        // one already chosen — this is the tie-break above.
-        if fs_d < fs_bestd {
-            fs_bestd = fs_d;
-            fs_best  = fs_n;
-        }
+    fs_all = flow_steps(f, q, r);
+    fs_all[0] ?? Hex { q: q, r: r }
+}
+
+// Every neighbour of (q, r) that is closer to the core, BEST FIRST —
+// the whole preference ordering `flow_step` returns the head of.
+//
+// Plan 11 phase F5c.  Enemies do not queue: one whose step is taken by
+// a companion moves BESIDE them (`docs/ENEMY_MOVEMENT.md` § Sealing
+// the perimeter), so the mover needs every acceptable step in
+// preference order and not just the winner.  That is the requirement
+// F3 chose the representation for — a baked direction per cell could
+// only ever have answered the head of this list.
+//
+// ⚠ **In a BFS field every entry here carries the SAME distance**,
+// `d - 1`: a neighbour of a cell at distance d is at d-1, d or d+1, so
+// "strictly closer" admits exactly one value.  The ordering is
+// therefore direction order alone — F3's tie-break — and a caller that
+// skips an occupied entry loses nothing but that hex.  A weighted
+// field would break this, which is a reason the F0 answer (boolean
+// passability, one field per class) is load-bearing beyond F2.
+//
+// Empty at the core (nothing is closer than 0) and empty on a cell
+// with no route, so a caller that moves to `[0]` and otherwise stays
+// put handles both without knowing they are different — ask
+// `flow_distance` / `flow_reachable` to tell "arrived" from "stuck".
+pub fn flow_steps(f: const FlowField, q: integer, r: integer) -> vector<Hex> {
+    fss_out: vector<Hex> = [];
+    fss_d = flow_distance(f, q, r);
+    if fss_d >= FLOW_UNREACHABLE { return fss_out; }
+    for fss_n in hex_neighbours(Hex { q: q, r: r }) {
+        // Strictly smaller, so an equal neighbour is never a step —
+        // this is what makes the walk terminate, and the direction
+        // order it is collected in is the tie-break above.
+        if flow_distance(f, fss_n.q, fss_n.r) < fss_d { fss_out += [fss_n]; }
     }
-    fs_best
+    fss_out
 }

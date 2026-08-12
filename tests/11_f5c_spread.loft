@@ -1,0 +1,577 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F5c — enemies spread, they do not stack.
+//
+// `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter: *"An enemy whose
+// target hex is taken by a companion does not wait behind it — it
+// moves beside them… Companions block movement; they are never
+// targets."*
+//
+// ── The discriminator, and why a corridor is not it ──────────────
+//
+// Every enemy world dryopea had before this phase was ONE HEX WIDE,
+// and in a corridor the field offers exactly one closer neighbour —
+// so "it moves beside them" has no beside to move to and a blocked
+// enemy can only wait.  Measured: on a hex AXIS one neighbour is
+// closer, OFF the axis two are.  So the world that can see this phase
+// is an open one, and the assertion that separates spreading from
+// waiting is **two enemies leaving one hex on two different routes**
+// (`test_two_that_want_one_hex_take_two_different_ones`).
+//
+// ── The open field ──────────────────────────────────────────────
+//
+// Rows r = 0..4 over q = 0..8, core at (0, 0).  Distance over it is
+// exactly `q + r` — every hex has a closer neighbour at (q-1, r) and
+// another at (q, r-1) — so an off-axis hex has two closer neighbours
+// and an on-axis hex has one.  That is the whole fixture.
+//
+// ── What F5c does NOT do ────────────────────────────────────────
+//
+// A blocked enemy takes the best FREE step that is strictly CLOSER, or
+// it stands still.  It does not sidestep to an equally distant hex to
+// get round a jam: every entry `flow_steps` offers is at `d - 1`, so an
+// enemy either closes by one or does not move.  The sideways spread
+// along a WALL that the spec describes is F7's, where the desire field
+// supplies the gradient that says which way "beside" is.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Worlds and fixtures
+// ─────────────────────────────────────────────────────────────────
+
+// The open field — see § The open field.
+fn field_world() -> PaintedWorld {
+    fw_pw = painted_empty();
+    for fw_r in 0..=4 {
+        for fw_q in 0..=8 {
+            paint(fw_pw, fw_q, fw_r, as_u8(GRASS));
+        }
+    }
+    fw_pw
+}
+
+fn corridor(hi: integer) -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=hi {
+        paint(c_pw, c_q, 0, as_u8(GRASS));
+    }
+    c_pw
+}
+
+// A corridor with a wall face across it at (3, 0), so nothing has a
+// route and every enemy is in approach mode.
+fn walled_corridor() -> PaintedWorld {
+    wc_pw = corridor(12);
+    paint(wc_pw, 3, 0, as_u8(9));           // wall
+    wc_pw
+}
+
+fn field_for(kind: integer, pw: PaintedWorld) -> FlowField {
+    flow_build(load_palette(PALETTE), pw, as_u8(kind), core())
+}
+
+fn enemy_at(q: integer, r: integer, kind: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(kind), heading: 4 as u8, alive: true }
+}
+
+fn wave_of(n: integer, q: integer, r: integer) -> WaveState {
+    wo_s = wave_state_empty();
+    for _ in 0..n {
+        wo_s.enemies += [enemy_at(q, r, ENEMY_KIND_REGULAR)];
+    }
+    wo_s
+}
+
+fn nth(s: const WaveState, i: integer) -> Enemy {
+    s.enemies[i] ?? Enemy {}
+}
+
+fn play(s: WaveState, pw: PaintedWorld, ticks: integer) {
+    p_pal = load_palette(PALETTE);
+    for _ in 0..ticks {
+        wave_tick(s, p_pal, pw, core());
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The field offers the whole ordering, not just the winner
+// ─────────────────────────────────────────────────────────────────
+//
+// `flow_steps` is F5c's addition to the field, and the mover reads it.
+// It is what F3 chose to store distances FOR — a baked direction per
+// cell could only ever have answered its head.
+
+fn test_off_the_axis_two_neighbours_are_closer() {
+    tot_f = field_for(ENEMY_KIND_REGULAR, field_world());
+    tot_s = flow_steps(tot_f, 8, 4);
+
+    assert(len(tot_s) == 2, "(8, 4) is off every axis: {len(tot_s)} closer neighbours");
+    tot_a = tot_s[0] ?? Hex {};
+    tot_b = tot_s[1] ?? Hex {};
+    assert(tot_a.q == 8 && tot_a.r == 3, "direction order puts (8, 3) first, got ({tot_a.q}, {tot_a.r})");
+    assert(tot_b.q == 7 && tot_b.r == 4, "then (7, 4), got ({tot_b.q}, {tot_b.r})");
+}
+
+fn test_on_the_axis_exactly_one_is() {
+    ton_f = field_for(ENEMY_KIND_REGULAR, field_world());
+    assert(len(flow_steps(ton_f, 8, 0)) == 1,
+           "an axis hex has one closer neighbour, which is why a corridor cannot see this phase");
+    assert(len(flow_steps(ton_f, 0, 4)) == 1, "and so does the other axis");
+}
+
+fn test_every_offered_step_is_exactly_one_closer() {
+    teo_f = field_for(ENEMY_KIND_REGULAR, field_world());
+    for teo_q in 0..=8 {
+        for teo_r in 0..=4 {
+            teo_d = flow_distance(teo_f, teo_q, teo_r);
+            for teo_n in flow_steps(teo_f, teo_q, teo_r) {
+                assert(flow_distance(teo_f, teo_n.q, teo_n.r) == teo_d - 1,
+                       "a BFS field has one strictly-closer value, so the ordering is direction order alone");
+            }
+        }
+    }
+}
+
+fn test_the_arrow_is_the_head_of_the_ordering() {
+    tah_f = field_for(ENEMY_KIND_REGULAR, field_world());
+    for tah_q in 0..=8 {
+        for tah_r in 0..=4 {
+            tah_all  = flow_steps(tah_f, tah_q, tah_r);
+            tah_head = tah_all[0] ?? Hex { q: tah_q, r: tah_r };
+            tah_step = flow_step(tah_f, tah_q, tah_r);
+            assert(tah_step.q == tah_head.q && tah_step.r == tah_head.r,
+                   "F3's arrow and F5c's ordering cannot disagree — one is the head of the other");
+        }
+    }
+}
+
+fn test_the_ordering_is_empty_where_there_is_nowhere_to_go() {
+    teg_f = field_for(ENEMY_KIND_REGULAR, field_world());
+    assert(len(flow_steps(teg_f, 0, 0)) == 0, "nothing is closer than the core");
+    assert(len(flow_steps(teg_f, 40, 40)) == 0, "and a cell with no route offers no step");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE GATE: two enemies that want one hex end on two
+// ─────────────────────────────────────────────────────────────────
+
+fn test_two_that_want_one_hex_take_two_different_ones() {
+    ttw_pw = field_world();
+    ttw_s  = wave_of(2, 8, 4);
+
+    // Both want (8, 3) — it is the head of the ordering from (8, 4).
+    ttw_f = field_for(ENEMY_KIND_REGULAR, ttw_pw);
+    ttw_want = flow_step(ttw_f, 8, 4);
+    assert(ttw_want.q == 8 && ttw_want.r == 3, "both of them want (8, 3)");
+
+    play(ttw_s, ttw_pw, 1);
+
+    ttw_a = nth(ttw_s, 0);
+    ttw_b = nth(ttw_s, 1);
+    assert(ttw_a.q == 8 && ttw_a.r == 3, "the first took it: ({ttw_a.q}, {ttw_a.r})");
+    assert(ttw_b.q == 7 && ttw_b.r == 4,
+           "and the second went BESIDE it rather than waiting: ({ttw_b.q}, {ttw_b.r})");
+    assert(ttw_a.q != ttw_b.q || ttw_a.r != ttw_b.r, "two enemies, two hexes");
+}
+
+// The same pair in a CORRIDOR, where there is no beside: the second
+// waits.  Without this, the test above would read as "an enemy always
+// finds another way", which is not what F5c does — and it is the
+// measurement that says a corridor could never have gated this phase.
+fn test_where_there_is_no_beside_the_second_waits() {
+    twb_pw = corridor(12);
+    twb_s  = wave_of(2, 12, 0);
+
+    play(twb_s, twb_pw, 1);
+
+    twb_a = nth(twb_s, 0);
+    twb_b = nth(twb_s, 1);
+    assert(twb_a.q == 11 && twb_a.r == 0, "the first stepped: ({twb_a.q}, {twb_a.r})");
+    assert(twb_b.q == 12 && twb_b.r == 0,
+           "the second had nowhere closer that was free and held its hex: ({twb_b.q}, {twb_b.r})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Nobody ever shares a hex, once they have left the spawn
+// ─────────────────────────────────────────────────────────────────
+//
+// ⚠ "Once they have left" is load-bearing: `spawn_wave` emits a whole
+// wave onto ONE marker hex, so a wave IS stacked before it moves.
+// F5c is about what movement does, not about an invariant of the
+// roster — which is why `occupancy` counts occupants rather than
+// holding a boolean set.
+
+fn test_a_wave_spawns_stacked_and_walks_itself_apart() {
+    tas_pw = field_world();
+    tas_s  = wave_of(4, 8, 4);
+
+    tas_at_spawn = occupancy_stacked(wave_occupancy(tas_s));
+    assert(tas_at_spawn.n == 4, "all four spawn on one hex: {tas_at_spawn.n}");
+
+    play(tas_s, tas_pw, 4);
+    tas_after = occupancy_stacked(wave_occupancy(tas_s));
+    assert(tas_after.n == 0,
+           "and four ticks later nobody shares a hex — {tas_after.n} on ({tas_after.q}, {tas_after.r})");
+}
+
+fn test_no_two_share_a_hex_on_any_tick_of_a_whole_wave() {
+    tnt_pw  = field_world();
+    tnt_s   = wave_of(4, 8, 4);
+    tnt_pal = load_palette(PALETTE);
+
+    // Past the spawn stack, then every tick to the end of the run.
+    play(tnt_s, tnt_pw, 4);
+    for tnt_t in 0..30 {
+        wave_tick(tnt_s, tnt_pal, tnt_pw, core());
+        tnt_bad = occupancy_stacked(wave_occupancy(tnt_s));
+        assert(tnt_bad.n == 0,
+               "tick {tnt_t}: {tnt_bad.n} enemies on ({tnt_bad.q}, {tnt_bad.r})");
+    }
+}
+
+// The core is not an exception.  It is the hex every enemy is walking
+// to, so it is where stacking would show first — and a rule with a
+// hole at the destination would have no visible effect at all.
+fn test_the_core_hex_holds_exactly_one() {
+    tch_pw = corridor(12);
+    tch_s  = wave_of(3, 12, 0);
+    tch_f  = field_for(ENEMY_KIND_REGULAR, tch_pw);
+
+    play(tch_s, tch_pw, 20);
+
+    for tch_i in 0..3 {
+        tch_at = 0;
+        for tch_e in tch_s.enemies {
+            if flow_distance(tch_f, tch_e.q, tch_e.r) == tch_i { tch_at += 1; }
+        }
+        assert(tch_at == 1,
+               "one enemy {tch_i} steps out — they queue on the core, not onto it: found {tch_at}");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// N at a wall face occupy N distinct hexes
+// ─────────────────────────────────────────────────────────────────
+//
+// The other half of the plan's gate.  With the corridor walled nothing
+// has a route, so every enemy is in approach mode — which is where
+// F1b left four enemies standing on ONE hex in front of the wall.
+
+fn test_four_at_a_wall_face_stand_on_four_hexes() {
+    tfw_pw = walled_corridor();
+    tfw_s  = wave_of(4, 12, 0);
+    tfw_f  = field_for(ENEMY_KIND_REGULAR, tfw_pw);
+
+    assert(!flow_reachable(tfw_f, 12, 0), "the wall seals the corridor — approach mode only");
+
+    play(tfw_s, tfw_pw, 30);
+
+    for tfw_i in 0..4 {
+        tfw_e = nth(tfw_s, tfw_i);
+        assert(tfw_e.q == 4 + tfw_i && tfw_e.r == 0,
+               "enemy {tfw_i} stopped behind the one in front: ({tfw_e.q}, {tfw_e.r})");
+    }
+    tfw_bad = occupancy_stacked(wave_occupancy(tfw_s));
+    assert(tfw_bad.n == 0, "four enemies, four hexes");
+}
+
+// ⚠ It is a QUEUE along the heading, not a spread along the FACE, and
+// the difference is F7's.  Approach mode has one heading and no field
+// to say which way "beside" is; the desire field is what supplies that
+// gradient.  Asserting the queue here — rather than quietly hoping for
+// a spread — is what keeps F7's gate able to fail.
+fn test_the_wall_queue_is_on_one_line_which_is_f7s_to_change() {
+    twq_pw = walled_corridor();
+    twq_s  = wave_of(4, 12, 0);
+
+    play(twq_s, twq_pw, 30);
+
+    for twq_e in twq_s.enemies {
+        assert(twq_e.r == 0, "every one of them is still on the heading's line: r = {twq_e.r}");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Occupancy is a movement constraint and never a target
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_blocked_enemy_never_moves_away_from_the_core() {
+    tbe_pw  = field_world();
+    tbe_s   = wave_of(5, 8, 4);
+    tbe_f   = field_for(ENEMY_KIND_REGULAR, tbe_pw);
+    tbe_pal = load_palette(PALETTE);
+
+    tbe_was: vector<integer> = [];
+    for tbe_e in tbe_s.enemies {
+        tbe_was += [flow_distance(tbe_f, tbe_e.q, tbe_e.r)];
+    }
+
+    for _ in 0..20 {
+        wave_tick(tbe_s, tbe_pal, tbe_pw, core());
+        tbe_i = 0;
+        for tbe_o in tbe_s.enemies {
+            tbe_now = flow_distance(tbe_f, tbe_o.q, tbe_o.r);
+            tbe_before = tbe_was[tbe_i] ?? 0;
+            // Exactly one closer, or exactly where it was.  Never
+            // further, and never two at once.
+            assert(tbe_now == tbe_before || tbe_now == tbe_before - 1,
+                   "a jam is not a diversion: {tbe_before} -> {tbe_now}");
+            tbe_was += [tbe_now];
+            tbe_i += 1;
+        }
+        // Drop the readings this tick consumed, keeping the new ones.
+        tbe_keep: vector<integer> = [];
+        tbe_j = 0;
+        for tbe_v in tbe_was {
+            if tbe_j >= 5 { tbe_keep += [tbe_v]; }
+            tbe_j += 1;
+        }
+        tbe_was = tbe_keep;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Order independence — which stopped being free at this phase
+// ─────────────────────────────────────────────────────────────────
+//
+// `ENEMY_MOVEMENT.md` § The tick resolves once: *"the same wave,
+// played with the enemy roster iterated in reverse, produces an
+// identical result."*  Until F5c that held because movement read the
+// world and never wrote it.  Now a companion blocks a step, so the
+// order enemies act in decides the outcome — and `move_order` earns
+// this invariant by sorting on the STATE (distance, then hex, then
+// class) with roster index only as a last resort between enemies that
+// are interchangeable.
+
+fn test_the_same_wave_reversed_lands_identically() {
+    tsw_pw = field_world();
+    tsw_a  = wave_state_empty();
+    tsw_b  = wave_state_empty();
+    // Five DISTINCT starting hexes, added in opposite orders — a wave
+    // stacked on one hex would prove much less, since the tie-break
+    // between identical enemies is the only part that may not matter.
+    tsw_a.enemies += [enemy_at(8, 4, ENEMY_KIND_REGULAR)];
+    tsw_a.enemies += [enemy_at(8, 3, ENEMY_KIND_REGULAR)];
+    tsw_a.enemies += [enemy_at(7, 4, ENEMY_KIND_REGULAR)];
+    tsw_a.enemies += [enemy_at(6, 2, ENEMY_KIND_REGULAR)];
+    tsw_a.enemies += [enemy_at(5, 1, ENEMY_KIND_REGULAR)];
+    tsw_b.enemies += [enemy_at(5, 1, ENEMY_KIND_REGULAR)];
+    tsw_b.enemies += [enemy_at(6, 2, ENEMY_KIND_REGULAR)];
+    tsw_b.enemies += [enemy_at(7, 4, ENEMY_KIND_REGULAR)];
+    tsw_b.enemies += [enemy_at(8, 3, ENEMY_KIND_REGULAR)];
+    tsw_b.enemies += [enemy_at(8, 4, ENEMY_KIND_REGULAR)];
+
+    play(tsw_a, tsw_pw, 6);
+    play(tsw_b, tsw_pw, 6);
+
+    for tsw_i in 0..5 {
+        tsw_ea = nth(tsw_a, tsw_i);
+        tsw_eb = nth(tsw_b, 4 - tsw_i);
+        assert(tsw_ea.q == tsw_eb.q && tsw_ea.r == tsw_eb.r,
+               "roster order changes nothing: ({tsw_ea.q}, {tsw_ea.r}) vs ({tsw_eb.q}, {tsw_eb.r})");
+    }
+}
+
+// A jam is where order would show if it were going to.  Nine enemies
+// on a field wide enough to fork and narrow enough to merge, played
+// both ways round.
+fn test_a_jam_is_order_independent_too() {
+    taj_pw = field_world();
+    taj_a  = wave_state_empty();
+    taj_b  = wave_state_empty();
+    for taj_i in 0..3 {
+        for taj_j in 0..3 {
+            taj_a.enemies += [enemy_at(8 - taj_i, 4 - taj_j, ENEMY_KIND_REGULAR)];
+        }
+    }
+    for taj_k in 0..3 {
+        for taj_m in 0..3 {
+            taj_b.enemies += [enemy_at(6 + taj_k, 2 + taj_m, ENEMY_KIND_REGULAR)];
+        }
+    }
+
+    play(taj_a, taj_pw, 8);
+    play(taj_b, taj_pw, 8);
+
+    // The two rosters hold the same nine starts in opposite orders, so
+    // compare the SETS: every hex one wave occupies, the other does.
+    taj_oa = wave_occupancy(taj_a);
+    for taj_e in taj_b.enemies {
+        assert(occupancy_taken(taj_oa, taj_e.q, taj_e.r),
+               "({taj_e.q}, {taj_e.r}) is held in one order and not the other");
+    }
+    taj_ob = wave_occupancy(taj_b);
+    for taj_o in taj_a.enemies {
+        assert(occupancy_taken(taj_ob, taj_o.q, taj_o.r),
+               "and the other way round: ({taj_o.q}, {taj_o.r})");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The move order itself
+// ─────────────────────────────────────────────────────────────────
+//
+// ⚠ Measured (plan 11 § F5c): with the TAIL moving first a column
+// stretches — each enemy is blocked by the one ahead, which has not
+// moved yet — so only the leader advances and every follower falls a
+// hex behind per tick.  Closest-to-the-core first, the column steps
+// into the space just vacated and advances in lockstep.  This test is
+// that measurement, kept.
+
+fn test_a_column_advances_in_lockstep() {
+    tal_pw  = corridor(12);
+    tal_s   = wave_state_empty();
+    tal_s.enemies += [enemy_at(10, 0, ENEMY_KIND_REGULAR)];
+    tal_s.enemies += [enemy_at(11, 0, ENEMY_KIND_REGULAR)];
+    tal_s.enemies += [enemy_at(12, 0, ENEMY_KIND_REGULAR)];
+    tal_pal = load_palette(PALETTE);
+
+    for tal_t in 1..=6 {
+        wave_tick(tal_s, tal_pal, tal_pw, core());
+        for tal_i in 0..3 {
+            tal_e = nth(tal_s, tal_i);
+            assert(tal_e.q == 10 + tal_i - tal_t,
+                   "tick {tal_t}: enemy {tal_i} should be at q {10 + tal_i - tal_t}, is at {tal_e.q}");
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The occupancy rule on its own
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_hex_counts_its_occupants() {
+    tho = occupancy_empty();
+    assert(!occupancy_taken(tho, 1, 2), "nobody anywhere");
+
+    occupancy_enter(tho, 1, 2);
+    occupancy_enter(tho, 1, 2);
+    assert(occupancy_count(tho, 1, 2) == 2, "two of them: {occupancy_count(tho, 1, 2)}");
+
+    // ⚠ The reason it is a count and not a boolean: one of a stacked
+    // pair steps off and the hex is still held.
+    occupancy_leave(tho, 1, 2);
+    assert(occupancy_taken(tho, 1, 2), "one left, one still standing there");
+    occupancy_leave(tho, 1, 2);
+    assert(!occupancy_taken(tho, 1, 2), "and now it is free");
+}
+
+fn test_leaving_a_hex_nobody_holds_is_a_no_op() {
+    tln = occupancy_empty();
+    occupancy_leave(tln, 5, 5);
+    occupancy_enter(tln, 5, 5);
+    assert(occupancy_taken(tln, 5, 5),
+           "a negative count would read as free — a lone enemy ticks against an EMPTY occupancy");
+}
+
+fn test_stacked_names_the_hex_it_found() {
+    tsn_s = wave_of(3, 8, 4);
+    tsn_o = wave_occupancy(tsn_s);
+    tsn_h = occupancy_stacked(tsn_o);
+    assert(tsn_h.q == 8 && tsn_h.r == 4 && tsn_h.n == 3,
+           "a fault names its hex: {tsn_h.n} on ({tsn_h.q}, {tsn_h.r})");
+}
+
+fn test_a_dead_enemy_holds_no_hex() {
+    tde_s = wave_of(2, 8, 4);
+    // ⚠ Indexed here rather than through `nth`, which returns a COPY —
+    // reading one is fine, killing one through it changes nothing.
+    tde_e = tde_s.enemies[0] ?? Enemy {};
+    tde_e.alive = false;
+    assert(occupancy_count(wave_occupancy(tde_s), 8, 4) == 1,
+           "a body is not an occupant — bodies raise HEIGHT, and that is F8");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario, and the red half of the instrument
+// ─────────────────────────────────────────────────────────────────
+
+fn test_they_do_not_stack_plays_green() {
+    tdn_s = editor_state_new(PALETTE);
+    editor_state_attach(tdn_s,
+                        "tests/actual/f5c_spread.json",
+                        "tests/actual/f5c_spread_markers.json");
+    tdn = script_run_file(tdn_s, "tests/scripts/they-do-not-stack.keys", "tests/actual");
+
+    assert(tdn.ok, "they-do-not-stack: {script_describe(tdn)}");
+    assert(tdn.checks == 30, "it made {tdn.checks} measurements, expected 30");
+    assert(tdn.snaps == 2, "and took both pictures");
+    assert(alive_count(tdn.wave) == 3, "three enemies forked and arrived");
+}
+
+fn test_the_scenario_file_is_on_disk() {
+    assert(file("tests/scripts/they-do-not-stack.keys").exists(),
+           "the test above would pass against an empty file");
+}
+
+// ⚠ An assertion that cannot fail measures nothing (plan 08 § The
+// instrument comes first).  `enemies distinct` is RED the moment a
+// wave spawns — three enemies on the marker hex — and green a few
+// ticks later, so the pair is a few lines apart in ONE world with no
+// code changed between them.
+const SPREAD_WORLD: text = `
+    do toggle_mode
+    do cycle_kind
+    click 0 0
+    do cycle_kind
+    do rotate
+    do rotate
+    do rotate
+    do rotate
+    click 8 4
+    do toggle_mode
+    palette 5
+    drag 0 0 8 0
+    drag 0 1 8 1
+    drag 0 2 8 2
+    drag 0 3 8 3
+    drag 0 4 8 4
+`;
+
+fn test_distinct_is_red_the_moment_a_wave_spawns() {
+    tdr = script_run(editor_state_new(PALETTE),
+        "{SPREAD_WORLD}\nwave 3\nenemies distinct", "tests/actual");
+
+    assert(!tdr.ok, "three enemies spawn on one hex — the assertion has to see that");
+    assert(tdr.message.contains("stacked on (8, 4)"),
+           "and it names the hex: {tdr.message}");
+}
+
+fn test_and_green_once_they_have_walked() {
+    tag = script_run(editor_state_new(PALETTE),
+        "{SPREAD_WORLD}\nwave 3\ntick 3\nenemies distinct", "tests/actual");
+
+    assert(tag.ok, "three ticks apart from the test above: {script_describe(tag)}");
+    assert(tag.checks == 1, "one measurement, and it passed");
+}
+
+fn test_distinct_over_no_enemies_is_an_error() {
+    tde = script_run(editor_state_new(PALETTE),
+        "{SPREAD_WORLD}\nenemies distinct", "tests/actual");
+
+    assert(!tde.ok, "no two of nobody share a hex — green over an empty roster is the lie plan 08 refuses");
+    assert(tde.message.contains("no live enemies"), "{tde.message}");
+}
+
+fn test_an_unknown_enemies_check_is_an_error() {
+    tau = script_run(editor_state_new(PALETTE),
+        "{SPREAD_WORLD}\nwave 3\nenemies spread", "tests/actual");
+
+    assert(!tau.ok, "an unknown check is an ERROR, never a skipped line");
+    assert(tau.message.contains("passable, distinct"), "{tau.message}");
+}
