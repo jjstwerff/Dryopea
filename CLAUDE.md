@@ -31,8 +31,12 @@ EVERY editor action is driven headlessly and `src/main.loft` is
 a GL shell that polls, steps and renders; the `.keys` script
 runner (`src/script.loft`) that plays a written-down run through
 that seam; and `snap`, which photographs the editor's own frame
-(`src/editor_view.loft`, shared with the GL loop).  V2p (probe:
-is the palette separable at all?) is next.
+(`src/editor_view.loft`, shared with the GL loop).  V2p answered
+the separability question with no code — the palette separates,
+world renders contain ONLY exact palette colours, and the real
+hazard is HUD contamination, so V2's `frame` measurement reads
+the world layer rather than the composited shot.  V2 (the
+measurement vocabulary) is next.
 
 **Suite: 272/272 green under `scripts/test.sh`.**
 

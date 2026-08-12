@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0 + V1 shipped 2026-08-12; V2p is the next work.** Nothing in
+**Active — V0 + V1 + V2p shipped 2026-08-12; V2 is the next work.** Nothing in
 dryopea validated the game as something that *runs*. The 189 tests in
 `tests/` covered pure functions and static renders; every one of them called
 a library function directly and none of them played the game.
@@ -31,6 +31,9 @@ V1b gives it **pictures**. `snap <name>` writes `<shots>/<name>.png` and a
 state line into the transcript; 14 tests in `tests/08_v1b_snap.loft` hold
 it to *its* gate — the file lands, and what is in it is a real render. Suite
 272 green.
+
+V2p is an **answer, not code** — § V2p. It falsified this plan's own
+prediction about the palette, and found a different hazard in its place.
 
 Four decisions the rest of the plan rests on — two from V0, one from each
 half of V1:
@@ -120,16 +123,27 @@ camera gate *redder*, because the classifier put wall and floor in one
 instrument could tell the two apart — **the fix was owed to the instrument
 before the number over it meant anything.**
 
-dryopea has the same hazard, worse: the palette is 11 ground types with
-deliberate family resemblance — a water family and a land family, several
-neighbours a few RGB steps apart (see
-[`docs/GROUND_TYPES.md`](../../docs/GROUND_TYPES.md)). A frame classifier
-that buckets by nearest palette colour will fuse sea with the other water
-types and report a confident, meaningless number.
+dryopea looked like it had the same hazard, worse: 11 ground types with
+deliberate family resemblance — a water family and a land family (see
+[`docs/GROUND_TYPES.md`](../../docs/GROUND_TYPES.md)). The prediction
+written here was that a nearest-palette-colour classifier *will fuse sea
+with the other water types and report a confident, meaningless number*.
+
+**V2p went and measured it, and that prediction was wrong** — see § V2p.
+The palette separates comfortably, and a world render contains nothing but
+exact palette colours, so bucketing is a table lookup rather than a nearest-
+colour guess. What the probe found instead was contamination from a source
+nobody had written down: the editor's own HUD, which puts a floor under
+every bucket that has nothing to do with what was painted.
+
+Both halves are the same lesson. The rule survives the correction intact:
+**the instrument is owed a proof before any number over it means
+anything** — and the proof is worth building precisely because it answers
+something other than the question you expected to ask.
 
 So **V2 proves separation before it asserts anything**, with negative
-controls: a frame painted entirely in one ground type must read ≈1.0 for
-that bucket and ≈0 for all ten others, for **every** entry in the palette.
+controls: a frame painted entirely in one ground type must read 1.0 for
+that bucket and 0 for all ten others, for **every** entry in the palette.
 Any pair that cannot be separated is either given a distinguishable proxy
 colour for validation runs or is merged into one *named* bucket
 deliberately — never fused by accident.
@@ -146,8 +160,8 @@ a phase that cannot name one is a phase that has not been cut yet.
 | **V0b** — move the remaining actions, in groups | M | one site at a time | per group: a test drives the action through `editor_step` and asserts its effect; `src/main.loft` shrinks to poll → step → render | **Shipped** (5 groups: tool state · camera · markers · history · disk) |
 | **V1a** — parse + run, no output | S | parallel run | a script of `at` / `do` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | **Shipped** |
 | **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | **Shipped** |
-| **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | Open |
-| **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads ≈1.0 for it and ≈0 for the other ten, for every entry | Blocked on V2p |
+| **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | **Shipped** — see § V2p. It separates; the HUD was the real hazard, and V2 measures the world layer |
+| **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads 1.0 for it and 0 for the other ten, for every entry — exactly, per V2p | Open |
 | **V3** — the scenario scripts (one step each) | M | one site at a time | each script's own assertions; five scripts, five steps — a broken one goes red alone | Blocked on V2 |
 | **V4** — wire it in | S | — | `make validate` goes red on an out-of-band measurement, and prints the number that moved | Blocked on V3 |
 
@@ -280,6 +294,67 @@ the same reason and to the same effect a player sees.
 `palette <index>` is its own command rather than an argument on `do`, because
 `hold palette 5` would not say whether the 5 is the entry or the frame count.
 
+### V2p — the answer
+
+**Shipped 2026-08-12. No code shipped with it — the deliverable is this
+section.** A throwaway probe under `loft test` measured four things and was
+then deleted; V2 turns the findings into standing assertions.
+
+**1. The palette separates comfortably. The prediction above was wrong.**
+Pairwise RGB distances over all 11 entries: the closest pair is
+`hill ↔ steep_rock` at d² = 3526 (d ≈ 59), then `hill ↔ wall` at d² = 5501.
+Nothing else is under d² = 6000. The water family — the one the plan
+expected to fuse — is the *best* separated group in the palette, because it
+ramps hard in brightness (`#0a2c5e → #2a7ec0 → #6fbce8 → #e8f4fc`);
+`sea ↔ water` alone is d ≈ 132. No pair needs a proxy colour, and no pair
+needs merging into a named bucket.
+
+**2. Better than separable: a world render needs no classifier at all.**
+The rasteriser is hard-edged. Out of 691,200 pixels, the number that were
+anything other than an *exact* palette colour was **zero** — for a canvas
+painted entirely in one type, for all 11 types, and (the case that could
+have falsified it) for a mixed world where every hex is a different type
+from its neighbours, so that every hex boundary in the frame is a colour
+boundary. There is no anti-aliasing and no alpha blend, so bucketing a world
+render is an exact table lookup. `frame` is **not** an approximate
+measurement.
+
+**3. The thing `snap` writes is contaminated by its own HUD — and the
+contamination cannot be driven to zero.** On an *empty* editor frame, every
+one of the eleven buckets already reads non-zero, because the picker draws
+one 8×8 swatch of **every** palette entry: 64 px = 0.0093 % per bucket, no
+matter what is painted. On top of that the white outlines, badge border and
+picker highlight (268 px) read as `waterfall`, and the mode badge plus save
+indicator (201 px) read as `grass`. A further 341 px per frame are not
+palette colours at all — badge `#80c060`, dirty indicator `#f0a020`, spawn
+arrow `#ff3060`, target ring `#c02020` — and each still lands in a bucket
+(grass, sand, wall, wall). A full editor frame painted entirely in one type
+reads 0.9986 for it, never 1.0.
+
+**The decision this forces on V2: measure the WORLD layer, not the shot.**
+`frame` classifies `render_to_canvas(s.cam, s.pw, …)` — its own render of
+the same state — rather than the composited picture `snap` writes. Three
+things follow:
+
+- counts are exact, so the bands exist for *geometry* (how much of the
+  canvas a base covers), not to absorb classifier fuzz;
+- "0 for the other ten" is literally 0, so the negative control of
+  § The instrument comes first is assertable as written;
+- the `fill_triangle` class of bug stays visible, because `render_to_canvas`
+  **is** the path that draws the hexes in the shot — only the HUD
+  compositing on top is excluded, and the HUD has its own tests already
+  (`03_qol_polish`, `03_m2_toggle`).
+
+The shot keeps its own job: a picture for a human. The measurement takes its
+own render of the same state, so the two can never disagree about what is
+there.
+
+⚠ **Two changes would invalidate this and must re-run the probe:** the
+renderer starting to anti-alias or alpha-blend hexes, and a twelfth palette
+entry landing near an existing one. V2 therefore carries both as standing
+tests — off-palette pixel count is 0, and the minimum pairwise distance
+stays above a floor — rather than trusting a measurement taken once.
+
 ### V2 — the instrument
 
 Measurement commands, each asserting inline so the transcript reads as the
@@ -291,13 +366,20 @@ count markers <lo> <hi>      marker_count within band
 count alive <lo> <hi>        live enemies — the wave-clear sentinel
 kind <q> <r> <name>          EXACT ground type at a hex (an exact invariant)
 marker <q> <r> <kind> [dir]  EXACT marker identity at a hex
-frame <bucket> <lo> <hi> …   share of canvas pixels per palette bucket
+frame <bucket> <lo> <hi> …   share of WORLD pixels per palette bucket
 ```
 
-`frame` is the only *approximate* one, and it is the one that needs the
-separation controls above. The rest are exact and should be preferred
-wherever they can answer the question — a hex either is grass or it is not,
-and no threshold is needed to say so.
+`frame` was written down as the only *approximate* one. V2p found it is
+not: a world render contains only exact palette colours, so the bucket
+counts are exact and the band exists to say how much of the canvas the
+subject covers, not to absorb classifier error. It still needs the
+separation controls above — as a standing check that the exactness holds,
+not as a calibration.
+
+The rest are exact too, and should be preferred wherever they can answer the
+question — a hex either is grass or it is not, and no threshold is needed to
+say so. `frame` earns its place on the one question the others cannot
+answer: *is the thing actually drawn?*
 
 ### V3 — the scenario scripts
 
@@ -341,7 +423,9 @@ and hermetic. Validation is a second gate, run deliberately.
 | **V1** | `do Tab` | the vocabulary names actions, so no key table exists to drift | A key name that WORKS means a second table was built |
 | **V1** | `snap` into a directory that cannot be made | a write that could not happen ends the run | `save_png` answers false; an unchecked answer leaves a green gate over a missing picture |
 | **V1** | the same script with and without `snap` in it | a shot is a photograph — rendering does not mutate the session | A run that plays differently because someone asked for pictures |
-| **V2** | A canvas painted entirely `grass` reads `grass ≈ 1.0`, all others `≈ 0` | the classifier separates all 11 palette entries | Two adjacent palette colours landing in one bucket fails the gate |
+| **V2** | A world canvas painted entirely `grass` reads `grass = 1.0`, all others `= 0` | the classifier separates all 11 palette entries | Two adjacent palette colours landing in one bucket fails the gate |
+| **V2** | Every pixel of a MIXED world render is an exact palette colour | the rasteriser is hard-edged, so bucketing is a lookup and not a guess | One blended edge pixel means `frame` is approximate again — and the bands were sized for exact |
+| **V2** | The minimum pairwise palette distance stays above a floor | a twelfth entry cannot quietly land on top of an existing one | A new palette colour inside the floor fails before any scenario does |
 | **V3** | paint → save → clear → reload → identical world | save/load round-trip = identity | A map with an unknown ground type is *refused*, not silently painted as sea |
 | **V3** | six `R` presses on a spawn marker | rotation by six 60° steps = identity | A seventh press must not read as the identity |
 
