@@ -56,10 +56,16 @@ the fix ships, then moved to Resolved.
   sort 497 green tests exercise every run.  The write is **not** lost:
   a purpose-built probe shows a `for` loop variable's field mutation
   persisting on the interpreter and on `--native`.
-- **Attribution (measured, so it is not filed against the wrong cause):**
-  the ambiguous-struct path specifically, not the abort path in general —
-  an `undefined_function()` error over the same two libraries emits
-  nothing, and neither does a mutation in the entry file.
+- **Attribution — corrected 2026-08-12, after filing.**  The first
+  reduction said "the ambiguous-struct path specifically" on the strength
+  of one negative, and that was wrong: a **type mismatch** and **too many
+  parameters** trigger it too, while unknown-function, too-few-parameters
+  and syntax errors do not.  The pattern is errors raised AFTER the
+  use-analysis pass; the ambiguous name is one instance.  So the bug is
+  broader than filed — a routine type error in any project with a
+  warning-emitting library produces it.  Correction posted to the issue.
+  ⚠ The lesson is the cheap one: **one negative control is not an
+  attribution.**  It was found again by accident, while profiling.
 - **Reproducer:** [`loft_repros/lost_write_false_positive/`](loft_repros/lost_write_false_positive/README.md)
   — a directory, because the trigger needs two libraries declaring one
   struct name.  `prog/amb.loft` is the bug, `prog/ok.loft` the control.

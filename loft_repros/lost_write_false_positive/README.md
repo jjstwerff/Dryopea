@@ -44,21 +44,32 @@ loop bind -> true   (want true)
 on both backends — the write persists.  A `for` loop variable is not a
 whole-value bind, and `lw_v` *is* read afterwards, two lines down.
 
-## Attribution — what it is NOT
+## Attribution — and the correction
 
-Measured while reducing, so the issue is not filed against the wrong
-cause:
+⚠ **The first reduction was too narrow.**  It concluded "the
+ambiguous-struct path specifically" from a single negative
+(`undefined_function()`), and that is wrong.  Re-measured over five
+error kinds against `use dryopea;`:
 
-| variant | false `lost-write`? |
+| deliberate error | false `lost-write`? |
 |---|---|
-| ambiguous struct name, two libraries | **yes** |
-| `undefined_function()` — same two libraries | no |
-| `undefined_function()` — one library | no |
-| the mutation in the ENTRY file, ambiguity or not | no |
+| ambiguous bare struct name | **yes** |
+| too many parameters to a function | **yes** |
+| type mismatch (`z: integer = "text"`) | **yes** |
+| unknown function | no |
+| too few parameters to a function | no |
+| syntax error (`w = 1 +;`) | no |
 
-So it is not "any compile error" and not "library code": it is the
-**ambiguous-struct-name path specifically**, and only for a mutation
-that lives in a library.
+The pattern that fits: the warning appears for errors raised **after
+the use-analysis pass has run**, and not for those that abort before
+it.  "Too many" firing while "too few" does not is consistent with
+that — they are caught at different points.
+
+So this directory is *a* reproducer, not *the* trigger, and the bug is
+**broader** than first filed: a routine type error in any project with
+a warning-emitting library produces a spurious `lost-write` against
+that library.  Two things still hold: the mutation is not lost (see
+the control), and a mutation in the ENTRY file never triggers it.
 
 ## Expected
 
