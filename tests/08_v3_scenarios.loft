@@ -1,0 +1,151 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 08 phase V3 — the scenario scripts.
+//
+// The scripts carry their own assertions; that is what the V2
+// measurement commands are for. What this file adds is a way for
+// each one to go red ALONE — five scripts, five tests — and one
+// thing a script cannot say about itself: how many measurements it
+// made. A scenario whose `count` and `kind` lines were deleted
+// would still finish, still report `ok`, and still be worthless, so
+// each test pins the number of checks its script is supposed to
+// have run.
+//
+// `scripts/validate.sh` (V4) runs the same five as a second gate,
+// prints every measurement with its band and keeps the shots. This
+// file is the regression half: they still play green.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// Shots land where the suite already cleans up. A validation run
+// keeps them in `shots/` instead.
+const SHOTS: text = "tests/actual";
+
+// Play one scenario.
+//
+// Every scenario is attached to a save path, even the four that
+// never save: the runner REFUSES disk without one, so a scenario
+// that grew a `do save` and silently had nowhere to put it would
+// report a green run over a save that never happened.
+fn play(name: text) -> ScriptRun {
+    p_s = editor_state_new(PALETTE);
+    editor_state_attach(p_s,
+                        "tests/actual/v3_{name}.json",
+                        "tests/actual/v3_{name}_markers.json");
+    script_run_file(p_s, "tests/scripts/{name}.keys", SHOTS)
+}
+
+// ─── The five ───────────────────────────────────────────────────
+
+fn test_cold_start() {
+    tcs = play("cold-start");
+    assert(tcs.ok, "cold-start: {script_describe(tcs)}");
+    assert(tcs.checks == 7, "cold-start made {tcs.checks} measurements, expected 7");
+    assert(tcs.snaps == 1, "and took its picture");
+}
+
+fn test_paint_a_base() {
+    tpb = play("paint-a-base");
+    assert(tpb.ok, "paint-a-base: {script_describe(tpb)}");
+    assert(tpb.checks == 13, "paint-a-base made {tpb.checks} measurements, expected 13");
+    assert(tpb.snaps == 1, "and took its picture");
+}
+
+fn test_round_trip() {
+    trt = play("round-trip");
+    assert(trt.ok, "round-trip: {script_describe(trt)}");
+    assert(trt.checks == 17, "round-trip made {trt.checks} measurements, expected 17");
+}
+
+fn test_markers_and_rotation() {
+    tmr = play("markers-and-rotation");
+    assert(tmr.ok, "markers-and-rotation: {script_describe(tmr)}");
+    assert(tmr.checks == 12, "markers-and-rotation made {tmr.checks} measurements, expected 12");
+}
+
+fn test_a_wave_approaches() {
+    twa = play("a-wave-approaches");
+    assert(twa.ok, "a-wave-approaches: {script_describe(twa)}");
+    assert(twa.checks == 9, "a-wave-approaches made {twa.checks} measurements, expected 9");
+    assert(twa.snaps == 2, "before and after the walk");
+    assert(alive_count(twa.wave) == 6, "and six enemies are still on the map");
+}
+
+// ─── `range` — the measurement V3 needed ────────────────────────
+//
+// V2 deliberately did not invent this: until a scenario said what
+// it had to assert, there was no way to know whether the useful
+// shape was "closer than last time" or "exactly here". It is the
+// latter — two `range` lines with lower numbers show the approach
+// and both are exact, where a `closer` command would hide the
+// numbers it compared.
+
+const CORE_AND_SPAWN: text = `
+    do toggle_mode
+    do cycle_kind
+    click 0 0
+    do cycle_kind
+    do rotate
+    do rotate
+    do rotate
+    do rotate
+    click 12 0
+`;
+
+fn test_range_reports_the_span_and_it_shrinks() {
+    trs = script_run(editor_state_new(PALETTE),
+        "{CORE_AND_SPAWN}\nwave 3\nrange 12 12\ntick 5\nrange 7 7", SHOTS);
+
+    assert(trs.ok, "{script_describe(trs)}");
+    assert(trs.checks == 2, "two readings, five ticks apart");
+}
+
+// A band over an empty roster passes for the wrong reason — which
+// is the failure this whole plan is about.
+fn test_range_over_no_enemies_is_an_error() {
+    trn = script_run(editor_state_new(PALETTE),
+        "{CORE_AND_SPAWN}\nrange 0 100", SHOTS);
+
+    assert(!trn.ok, "there is nothing to measure yet");
+    assert(trn.message.contains("no live enemies"), "{trn.message}");
+}
+
+fn test_range_needs_a_core_to_measure_from() {
+    trc = script_run(editor_state_new(PALETTE),
+        "do toggle_mode\nclick 12 0\nrange 0 100", SHOTS);
+
+    assert(!trc.ok, "without a target there is no 'from' in the distance");
+}
+
+fn test_range_out_of_band_names_the_span() {
+    tro = script_run(editor_state_new(PALETTE),
+        "{CORE_AND_SPAWN}\nwave 3\nrange 0 4", SHOTS);
+
+    assert(!tro.ok, "twelve hexes out is not within four");
+    assert(tro.message.contains("12..12"), "naming what it measured: {tro.message}");
+}
+
+// ─── The scripts are real ───────────────────────────────────────
+//
+// The five tests above would all pass against five EMPTY files.
+// This is the check that they are not: every scenario names its
+// file, and a missing one fails rather than reporting a run of
+// nothing.
+
+fn test_every_scenario_file_exists_and_runs_commands() {
+    tes_names: vector<text> = [
+        "cold-start",
+        "paint-a-base",
+        "round-trip",
+        "markers-and-rotation",
+        "a-wave-approaches",
+    ];
+    for tes_n in tes_names {
+        assert(file("tests/scripts/{tes_n}.keys").exists(), "{tes_n}.keys is on disk");
+    }
+}

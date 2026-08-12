@@ -1,0 +1,51 @@
+# paint-a-base — a wall ring with a grass interior.
+#
+# This is the scenario `graphics::fill_triangle` broke for two
+# releases: every state assertion here would have stayed green while
+# the screen drew crosses.  The `frame` lines are the ones that can
+# see it, and they are the reason this scenario exists.
+#
+# The ring is the twelve hexes at distance 2 from the origin, drawn
+# as its six straight sides; the interior is the seven hexes at
+# distance 0 and 1, drawn as its three diagonals.
+
+echo paint-a-base: a wall ring around a grass interior
+
+at 0 0 1
+
+palette 9
+drag 2 0 2 -2
+drag 2 -2 0 -2
+drag 0 -2 -2 0
+drag -2 0 -2 2
+drag -2 2 0 2
+drag 0 2 2 0
+
+palette 5
+drag -1 0 1 0
+drag 0 -1 0 1
+drag 1 -1 -1 1
+
+count painted 19 19
+
+# The ring, at a corner and at the middle of a side.
+kind 2 0 wall
+kind 0 -2 wall
+kind -1 -1 wall
+kind -2 2 wall
+
+# The interior, and that the grass did not spill over the wall.
+kind 0 0 grass
+kind 1 0 grass
+kind -1 1 grass
+kind 3 0 sea
+kind 0 -3 sea
+
+# …and that all three are actually on screen.  A state assertion
+# cannot tell "painted" from "painted and drawn".
+frame wall 0.010 0.020
+frame grass 0.005 0.013
+frame sea 0.960 0.985
+
+hover 5 -2
+snap paint-a-base

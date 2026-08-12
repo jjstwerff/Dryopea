@@ -1,0 +1,52 @@
+# round-trip — what is saved comes back, exactly.
+#
+# Paint both layers, save, clear, reload.  No thresholds anywhere:
+# a hex either is the ground type it was or it is not, and a marker
+# either faces the way it faced or it does not.
+#
+# `clear` in the middle is what makes this a real round trip.
+# Without it, reload could be a no-op and every assertion below
+# would still pass — it would be reading the world that never left.
+
+echo round-trip: save, clear, reload, and nothing moved
+
+palette 5
+drag -2 0 2 0
+palette 9
+click 0 -2
+
+do toggle_mode
+do rotate
+click 4 0
+do cycle_kind
+click 0 3
+do toggle_mode
+
+count painted 6 6
+count markers 2 2
+
+do save
+
+do clear
+count painted 0 0
+count markers 0 0
+kind 0 0 sea
+marker 4 0 none
+
+do reload
+
+count painted 6 6
+count markers 2 2
+
+kind -2 0 grass
+kind -1 0 grass
+kind 0 0 grass
+kind 1 0 grass
+kind 2 0 grass
+kind 0 -2 wall
+kind 3 0 sea
+
+marker 4 0 spawn 1
+marker 0 3 target
+
+snap round-trip

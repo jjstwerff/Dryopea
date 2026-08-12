@@ -1,0 +1,48 @@
+# a-wave-approaches — the first script in dryopea's history that
+# asserts the GAME works rather than that a function returns.
+#
+# A core at the origin, a spawn twelve hexes east of it facing back
+# the way it came, and a wave of six.  Then the thing that matters:
+# the enemies exist, they are alive, and the distance between them
+# and the core goes DOWN.
+#
+# Twelve hexes out is deliberate — a spawn inside
+# close_spawn_disable_radius (10) is silenced, and a wave that
+# emitted nothing would let every `count alive` below pass for the
+# wrong reason.
+
+echo a wave approaches: six enemies walking at the core
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# A spawn facing direction 4 — north-west, which from due east of
+# the core is the way back towards it.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+do rotate
+click 12 0
+marker 12 0 spawn 4
+
+count markers 2 2
+do toggle_mode
+
+wave 6
+count alive 6 6
+range 12 12
+snap wave-starts
+
+tick 4
+count alive 6 6
+range 8 8
+
+tick 4
+count alive 6 6
+range 4 4
+snap wave-closes

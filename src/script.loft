@@ -62,6 +62,8 @@
 //   count alive <lo> <hi>      live enemies — the wave-clear sentinel
 //   kind <q> <r> <name>        EXACT ground type at a hex
 //   marker <q> <r> <kind> [d]  EXACT marker identity at a hex
+//   range <lo> <hi>            how far the live enemies are from
+//                              the core, as a span (V3)
 //   frame <bucket> <lo> <hi>   share of WORLD pixels in a bucket
 //
 // A measurement that reads out of band ENDS the run, naming the
@@ -440,6 +442,54 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         return "";
     }
 
+    // How far the live enemies are from the core, as a span.
+    //
+    // Added in V3, not V2, because until a scenario said what it
+    // had to assert there was no way to know whether the useful
+    // shape was "is closer than last time" or "is exactly here".
+    // It is the latter: two `range` lines with lower numbers SHOW
+    // the approach, and each is exact, where a `closer` command
+    // would hide the numbers it compared.
+    if sm_cmd == "range" {
+        if sm_argc != 2 { return "range needs <lo> <hi>"; }
+        sm_lo = sm_a1 as integer?;
+        sm_hi = sm_a2 as integer?;
+        if sm_lo == null || sm_hi == null { return "range: <lo> and <hi> must be integers"; }
+        if sm_lo > sm_hi { return "range: band {sm_lo ?? 0}..{sm_hi ?? 0} is empty"; }
+        sm_core = script_core(s.mw);
+        if sm_core.0 != 1 {
+            return "range: needs exactly ONE target marker to measure from, found {sm_core.0}";
+        }
+        sm_live = 0;
+        sm_near = 0;
+        sm_far  = 0;
+        for sm_e in run.wave.enemies {
+            if sm_e.alive {
+                sm_dist = hex_distance(Hex { q: sm_core.1, r: sm_core.2 },
+                                       Hex { q: sm_e.q,    r: sm_e.r });
+                if sm_live == 0 {
+                    sm_near = sm_dist;
+                    sm_far  = sm_dist;
+                } else {
+                    if sm_dist < sm_near { sm_near = sm_dist; }
+                    if sm_dist > sm_far  { sm_far  = sm_dist; }
+                }
+                sm_live += 1;
+            }
+        }
+        // A band over an empty roster passes for the wrong reason,
+        // which is the whole failure mode this plan is about.
+        if sm_live == 0 {
+            return "range: no live enemies to measure";
+        }
+        if sm_near < (sm_lo ?? 0) || sm_far > (sm_hi ?? 0) {
+            return "range = {sm_near}..{sm_far} hexes from the core, outside {sm_lo ?? 0}..{sm_hi ?? 0}";
+        }
+        println("script: range = {sm_near}..{sm_far} hexes  [{sm_lo ?? 0}..{sm_hi ?? 0}]");
+        run.checks += 1;
+        return "";
+    }
+
     // The only measurement that reads pixels — and so the only one
     // that can see "the thing is not drawn".
     if sm_cmd == "frame" {
@@ -703,7 +753,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
 
     // The measurements ask the session questions rather than
     // changing it, so they live in their own dispatcher.
-    if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker" || sc_cmd == "frame" {
+    if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker"
+    || sc_cmd == "frame" || sc_cmd == "range" {
         return script_measure(s, run, tok);
     }
 

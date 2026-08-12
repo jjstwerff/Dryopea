@@ -1,0 +1,55 @@
+# markers-and-rotation — spawns pointing several ways, and a turn
+# that comes back to where it started.
+#
+# Six 60-degree steps are a full turn, so the spawn placed after six
+# rotations must face exactly what the one before them faced.  A
+# seventh press would not be the identity, and the wrap being off by
+# one is the kind of thing no state count would notice.
+
+echo markers: place, turn, cycle kind, undo, redo
+
+do toggle_mode
+
+do rotate
+click 0 -3
+marker 0 -3 spawn 1
+
+do rotate
+do rotate
+click 3 0
+marker 3 0 spawn 3
+
+# Six more steps is a full turn — this one must still face 3.
+do rotate
+do rotate
+do rotate
+do rotate
+do rotate
+do rotate
+click -3 3
+marker -3 3 spawn 3
+
+count markers 3 3
+
+# Undo takes the last placement back off, redo puts it back with
+# the direction it had.
+do undo
+marker -3 3 none
+count markers 2 2
+do redo
+marker -3 3 spawn 3
+count markers 3 3
+
+# A target is a different kind, and has no direction to speak of.
+do cycle_kind
+click 0 0
+marker 0 0 target
+count markers 4 4
+
+# Clicking an occupied hex removes what is there.
+click 0 0
+marker 0 0 none
+count markers 3 3
+
+hover 5 -2
+snap markers-and-rotation

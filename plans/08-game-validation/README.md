@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0 + V1 + V2 shipped 2026-08-12; V3 is the next work.** Nothing in
+**Active — V0 through V3 shipped 2026-08-12; V4 is the next work.** Nothing in
 dryopea validated the game as something that *runs*. The 189 tests in
 `tests/` covered pure functions and static renders; every one of them called
 a library function directly and none of them played the game.
@@ -39,7 +39,12 @@ V2 turns that answer into the **instrument**: six measurement commands, a
 classifier in `src/measure.loft`, and a wave for `count alive` to count.
 24 tests in `tests/08_v2_measure.loft` carry the separation control for all
 eleven entries plus the three checks that would go red if V2p's answer ever
-stopped being true. Suite 296 green.
+stopped being true.
+
+V3 is the five **scenarios** — `tests/scripts/*.keys`, each one a run
+written down, each with its own assertions. `a-wave-approaches` is the first
+thing in dryopea's history that asserts the *game* works rather than that a
+function returns. Suite 306 green.
 
 Four decisions the rest of the plan rests on — two from V0, one from each
 half of V1:
@@ -168,8 +173,8 @@ a phase that cannot name one is a phase that has not been cut yet.
 | **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | **Shipped** |
 | **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | **Shipped** — see § V2p. It separates; the HUD was the real hazard, and V2 measures the world layer |
 | **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads 1.0 for it and 0 for the other ten, for every entry — exactly, per V2p | **Shipped** |
-| **V3** — the scenario scripts (one step each) | M | one site at a time | each script's own assertions; five scripts, five steps — a broken one goes red alone | Blocked on V2 |
-| **V4** — wire it in | S | — | `make validate` goes red on an out-of-band measurement, and prints the number that moved | Blocked on V3 |
+| **V3** — the scenario scripts (one step each) | M | one site at a time | each script's own assertions; five scripts, five steps — a broken one goes red alone | **Shipped** |
+| **V4** — wire it in | S | — | `make validate` goes red on an out-of-band measurement, and prints the number that moved | Open |
 
 ⚠ **Why V0 is split.** As one `M` phase it failed the upper bound: extracting
 25 actions at once leaves a half-done state with nothing to compare against,
@@ -397,10 +402,11 @@ an answer a run can repeat. A wave that emits fewer enemies than asked for
 fails the run rather than reporting a smaller number — usually it means no
 spawn marker sits outside `close_spawn_disable_radius`.
 
-⚠ **Still missing for V3: a distance measurement.** Scenario 5 asserts that
-enemies get *closer* to the target, and nothing above can say that. It is
-deliberately not invented here — the scenario should say what it needs to
-assert before a command is shaped for it.
+**A distance measurement was deliberately left out of V2.** Scenario 5
+asserts that enemies get *closer* to the target and nothing above could say
+that — but the scenario had not yet said whether it wanted "closer than last
+time" or "exactly here". V3 answered that and added `range <lo> <hi>`; see
+§ V3.
 
 `frame` was written down as the only *approximate* one. V2p found it is
 not: a world render contains only exact palette colours, so the bucket
@@ -430,9 +436,10 @@ question — a hex either is grass or it is not, and no threshold is needed to
 say so. `frame` earns its place on the one question the others cannot
 answer: *is the thing actually drawn?*
 
-### V3 — the scenario scripts
+### V3 — the scenario scripts — **shipped**
 
-The runs worth having on day one, each its own `.keys` file:
+The runs worth having on day one, each its own `.keys` file in
+`tests/scripts/`:
 
 1. **`cold-start`** — empty world, camera at origin, palette loaded.
    Catches the load path and the sea-default render.
@@ -450,6 +457,28 @@ The runs worth having on day one, each its own `.keys` file:
    **decreases**, and that they are alive. This is the first thing in
    dryopea's history that asserts the *game* works rather than that a
    function returns.
+
+`range <lo> <hi>` landed with this phase rather than with V2 — the span
+from the core to the live enemies, nearest and farthest. Two `range` lines
+with lower numbers are what "decreases" means, and each is exact; a
+`closer` command would have hidden the numbers it compared. It refuses an
+empty roster: a band over nothing passes for the wrong reason, which is the
+failure this whole plan is about.
+
+**The scripts assert; `tests/08_v3_scenarios.loft` makes each one go red
+alone.** It adds the single thing a script cannot say about itself — how
+many measurements it made — because a scenario whose `count` and `kind`
+lines were deleted would still finish, still report `ok`, and still be
+worthless. Every scenario is attached to a save path even though only
+`round-trip` uses one, so a scenario that grows a `do save` cannot silently
+have nowhere to put it.
+
+**The claim in scenario 2, demonstrated.** With `render_to_canvas` altered
+to draw no hexes at all, `paint-a-base` runs its `count painted` and all
+nine `kind` assertions green and then dies on `frame wall = 0.000000,
+outside 0.01..0.02` — and no other scenario moves. That is the
+`fill_triangle` shape exactly: state correct, screen wrong, and only the
+pixel measurement can tell.
 
 ### V4 — wire it in
 

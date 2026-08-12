@@ -38,10 +38,14 @@ hazard is HUD contamination, so the `frame` measurement reads
 the world layer rather than the composited shot.  V2 built the
 instrument on that answer: six measurement commands, the
 classifier in `src/measure.loft`, and a wave for `count alive`
-to count.  V3 (the scenario scripts) is next.
+to count.  V3 shipped the five scenario scripts in
+`tests/scripts/*.keys` — including `a-wave-approaches`, the
+first thing here that asserts the GAME works rather than that a
+function returns.  V4 (`scripts/validate.sh` + `make validate`)
+is next.
 
-**Suite: 296/296 green under `scripts/test.sh`** (~15-20 s — the
-`frame` measurement classifies a full 960x720 frame).
+**Suite: 306/306 green under `scripts/test.sh`** (~20-30 s — the
+`frame` measurements classify full 960x720 frames).
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -169,7 +173,10 @@ src/
                    (count / kind / marker / frame — each ASSERTS and
                    ends the run when out of band) plus `wave` /
                    `tick`; WaveState lives on ScriptRun, not on
-                   EditorState — an edited session has no enemies
+                   EditorState — an edited session has no enemies.
+                   V3 added `range <lo> <hi>` (how far the live
+                   enemies are from the core) and the five scenario
+                   scripts in `tests/scripts/`
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
                    cube_round_axial, world_to_hex, visible_hexes
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
@@ -456,6 +463,7 @@ signature.
 | Continue plan 01 work | [plans/01-ground-editor/README.md](plans/01-ground-editor/README.md) § Implementation status |
 | Add a regression test | `tests/01_*.loft` for patterns; `golden.loft::assert_golden` for image tests |
 | Script a run of the editor | `tests/scripts/*.keys` for the vocabulary; `script.loft::script_run_file` to play one; `snap <name>` for a picture |
+| Add a validation scenario | a new `tests/scripts/<name>.keys` + one test in `tests/08_v3_scenarios.loft` (pin its check count — a scenario with its measurements deleted still reports ok) |
 | Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
