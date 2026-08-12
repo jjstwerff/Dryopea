@@ -11,12 +11,13 @@
 // any new action while cursor < len truncates the future-redo
 // branch.
 //
-// Delta fields use `integer` even where `u8` would fit, both
-// for safety (loft's `vector<Struct>` with trailing-u8 corrupts
-// on serialise — filed in QUESTIONS_FOR_LOFT.md; history is
-// session-only so the bug wouldn't bite, but the cost of
-// widening is tiny) AND for boolean tests that compare against
-// MARKER_KIND_SPAWN-style integer constants without a cast.
+// Delta fields use `integer` even where `u8` would fit, so that
+// comparisons against MARKER_KIND_SPAWN-style integer constants
+// need no cast.  (They were ALSO widened to dodge loft's
+// trailing-u8 serialisation bug; that reason lapsed when the bug
+// was fixed — and never really applied, since history is
+// session-only and never reaches disk.  The cast-free comparisons
+// are why they stay.)
 //
 // Plan 03 follow-up — QoL polish.
 
@@ -453,9 +454,15 @@ pub fn reload_and_record(
 // state afterward (rebinding `pw = painted_empty()` etc.) —
 // this function only captures the deltas to make the clear
 // undoable.
+// `pw` / `mw` are `const`: this reads both layers and writes only
+// the history.  The qualifier was dropped for a while because a
+// multi-`const` call writing through a third parameter's nested
+// vector tripped `Claim on read-only store`; that is fixed
+// (QUESTIONS_FOR_LOFT.md § Resolved, verified 2026-08-12) and the
+// signature says what it means again.
 pub fn clear_and_record(
-    pw:      PaintedWorld,
-    mw:      MarkerWorld,
+    pw:      const PaintedWorld,
+    mw:      const MarkerWorld,
     history: History,
 ) {
     car_entry = undo_entry_empty();

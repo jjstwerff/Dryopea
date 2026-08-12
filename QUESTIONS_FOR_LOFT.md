@@ -412,9 +412,13 @@ them would have been noise; the two that survived are § Submitted.
 - **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).
   `loft_repros/u8_vector_in_wrapper.loft` now prints the wrapped form
   identical to the standalone one — `{"q":1,"r":1,…},{"q":2,"r":2,"direction":3}`
-  where it used to print all zeros.  **Retirable:** `marker_file.loft`'s
-  widened `MarkerSaveEntry` (u8 → integer on disk) can go back to `u8`,
-  which is a save-format change and so wants its own step.
+  where it used to print all zeros.  **Workaround RETIRED 2026-08-12:**
+  `marker_file.loft`'s `MarkerSaveEntry` is `u8` again and
+  `marker_world_to_file` copies fields straight across.  It turned out
+  not to be a save-format change at all — u8 and integer both serialise
+  as a bare JSON number, so old sidecars load unchanged; there is a test
+  asserting exactly that.  `tests/03_m1_markers.loft` now carries the
+  deleted reproducer's coverage.
 - **Found while:** Plan 03 M3 — saving the marker sidecar
   (`marker_world_to_file` in `src/save.loft`).  Earlier
   verification (2026-05-27) marked this Resolved based on a
@@ -487,8 +491,10 @@ them would have been noise; the two that survived are § Submitted.
 - **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).
   `loft_repros/const_param_store_lock.loft` prints `entries=1 ds=3` — its
   documented expected output — instead of panicking with `Claim on
-  read-only store`.  **Retirable:** the `const` qualifiers dropped from
-  `history.loft::clear_and_record`'s pw + mw params can go back on.
+  read-only store`.  **Workaround RETIRED 2026-08-12:** the `const`
+  qualifiers are back on `history.loft::clear_and_record`'s pw + mw
+  params, so the signature documents again that it reads both layers and
+  writes only the history.
 - **Found while:** Plan 03 follow-up history work
   (`src/history.loft::clear_and_record`).  Initial verification
   (2026-05-27) of an earlier filing marked this Resolved based
@@ -586,7 +592,8 @@ them would have been noise; the two that survived are § Submitted.
 
 - **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).
   `x = 12.0; _ = x / 3;` compiles and runs with no diagnostic of any kind.
-  **Retirable:** the "write `3.0` not `3`" habit is no longer needed.
+  **Retirable:** the "write `3.0` not `3`" habit is no longer needed
+  (nothing in dryopea's source depends on it — no code change owed).
 - **Found while:** Re-verifying the @P368 fix on 2026-05-27.
   The headline cases (`x / 0.75`, `x / 2.0`, `n / 4`, `n / 2`)
   no longer warn — but `12.0 / 3` (float dividend, integer

@@ -17,30 +17,35 @@
 // Three top-level fields here — safely below any known cast
 // threshold.
 //
-// On-disk MarkerSaveEntry vs in-memory MarkerEntry:
-//   MarkerEntry uses u8 for kind/direction (memory-efficient
-//   discriminant + heading).  But loft's vector<Struct>
-//   serialisation corrupts u8 fields when the vector is embedded
-//   inside a wrapping struct + serialised via `:j` on the wrapper
-//   — the standalone-vector case works, but `{wrapper:j}` zeroes
-//   the u8 entries.  Filed in QUESTIONS_FOR_LOFT.md.  We widen
-//   to integer on disk to sidestep the bug; same idiom as
-//   painted.loft / map_file.loft (PaintedHex.kind: u8 in memory,
-//   GroundEntry.kind: text on disk).
+// On-disk MarkerSaveEntry mirrors in-memory MarkerEntry exactly,
+// u8 fields included, so the save path is a copy rather than a
+// widen-on-write / narrow-on-read pair.
+//
+// It was widened to `integer` for a while: loft's `:j` used to
+// zero u8 fields when the vector was embedded in a wrapping
+// struct (the standalone-vector case always worked).  That is
+// fixed — QUESTIONS_FOR_LOFT.md § Resolved, verified 2026-08-12 —
+// and `tests/03_m1_markers.loft` now carries the regression that
+// the deleted reproducer used to.
+//
+// ⚠ The narrowing is deliberately NOT a format change: u8 and
+// integer both serialise as a bare JSON number, so `{"kind":1,
+// "direction":5}` is byte-identical either way and sidecars
+// written by the widened shape load unchanged.  Checked, not
+// assumed.
 //
 // Plan 03 phase M1.
 
 use markers;
 
-// On-disk shape for one marker — integer fields throughout,
-// dodging the wrapping-struct u8-vector save-corruption bug.
-// Maps to/from MarkerEntry in save.loft (marker_world_to_file /
-// markerfile_to_world).
+// On-disk shape for one marker — the same shape MarkerEntry has
+// in memory.  Maps to/from it in save.loft (marker_world_to_file
+// / markerfile_to_world).
 pub struct MarkerSaveEntry {
     q:         integer,
     r:         integer,
-    kind:      integer,
-    direction: integer,
+    kind:      u8,
+    direction: u8,
 }
 
 // The marker sidecar record.  `markers` MUST be non-empty when

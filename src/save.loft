@@ -141,17 +141,18 @@ pub fn load_map_or_empty(
 // world (the load-or-empty pattern from above, reused).
 
 // Snapshot the current marker world into a MarkerFile.
-// Widens u8 → integer per MarkerEntry → MarkerSaveEntry to dodge
-// the wrapping-struct u8-vector save-corruption bug filed in
-// QUESTIONS_FOR_LOFT.md.
+// MarkerSaveEntry has the same shape as MarkerEntry, so this is a
+// straight field copy — the u8 → integer widening it used to do
+// went away with the loft bug that forced it (marker_file.loft
+// § On-disk MarkerSaveEntry).
 pub fn marker_world_to_file(mw: MarkerWorld, name: text) -> MarkerFile {
     mwtf_out: vector<MarkerSaveEntry> = [];
     for mwtf_e in mw.markers {
         mwtf_out += [MarkerSaveEntry {
             q:         mwtf_e.q,
             r:         mwtf_e.r,
-            kind:      mwtf_e.kind as integer,
-            direction: mwtf_e.direction as integer,
+            kind:      mwtf_e.kind,
+            direction: mwtf_e.direction,
         }];
     }
     MarkerFile {
@@ -175,18 +176,19 @@ pub fn load_marker_file(path: text) -> MarkerFile {
     file(path).content() as MarkerFile
 }
 
-// Materialise a MarkerWorld from a loaded MarkerFile.  Narrows
-// the on-disk integer fields back to u8 in the in-memory shape.
-// Unknown `kind` values (future variants we don't recognise yet)
+// Materialise a MarkerWorld from a loaded MarkerFile.  Unknown
+// `kind` values (future variants we don't recognise yet)
 // are skipped — forward-compat with the same lenient policy as
 // mapfile_to_painted.  Targets ignore the on-disk `direction`
 // field (it's stored as 0 by place_target).
 pub fn markerfile_to_world(mf: MarkerFile) -> MarkerWorld {
     mftw_out = marker_empty();
     for mftw_e in mf.markers {
-        if mftw_e.kind == MARKER_KIND_SPAWN {
-            place_spawn(mftw_out, mftw_e.q, mftw_e.r, mftw_e.direction as u8? ?? 0);
-        } else if mftw_e.kind == MARKER_KIND_TARGET {
+        // The kind constants are integers, so the u8 field is
+        // widened at the comparison rather than in the record.
+        if mftw_e.kind as integer == MARKER_KIND_SPAWN {
+            place_spawn(mftw_out, mftw_e.q, mftw_e.r, mftw_e.direction);
+        } else if mftw_e.kind as integer == MARKER_KIND_TARGET {
             place_target(mftw_out, mftw_e.q, mftw_e.r);
         }
     }

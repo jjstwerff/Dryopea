@@ -167,9 +167,9 @@ fn test_unknown_kind_skipped_on_load() {
         version: 1,
         name:    "future",
         markers: [
-            MarkerSaveEntry { q: 0, r: 0, kind: MARKER_KIND_SPAWN, direction: 0 },
-            MarkerSaveEntry { q: 1, r: 0, kind: 99,                direction: 0 },
-            MarkerSaveEntry { q: 2, r: 0, kind: MARKER_KIND_SPAWN, direction: 3 },
+            MarkerSaveEntry { q: 0, r: 0, kind: MARKER_KIND_SPAWN as u8, direction: 0 as u8 },
+            MarkerSaveEntry { q: 1, r: 0, kind: 99 as u8,                direction: 0 as u8 },
+            MarkerSaveEntry { q: 2, r: 0, kind: MARKER_KIND_SPAWN as u8, direction: 3 as u8 },
         ],
     };
     tuks_w = markerfile_to_world(tuks_mf);
@@ -177,4 +177,72 @@ fn test_unknown_kind_skipped_on_load() {
     assert(has_marker(tuks_w, 0, 0), "spawn at (0,0) loaded");
     assert(!has_marker(tuks_w, 1, 0), "future kind at (1,0) skipped");
     assert(has_marker(tuks_w, 2, 0), "spawn at (2,0) loaded");
+}
+
+// ─── The u8-on-disk regression ─────────────────────────────────
+//
+// `MarkerSaveEntry` carried `integer` kind/direction for a while
+// because loft's `:j` zeroed u8 fields reached through
+// hash → for-iterate → vector → wrapping struct — exactly the path
+// `marker_world_to_file` takes.  The standalone-vector case always
+// worked, which is what made it easy to miss.
+//
+// The bug is fixed (QUESTIONS_FOR_LOFT.md § Resolved, verified
+// 2026-08-12) and the widening is retired, so these three carry
+// the coverage the deleted reproducer used to:
+// `loft_repros/u8_vector_in_wrapper.loft`.
+
+fn test_u8_fields_survive_the_wrapping_struct_serialise() {
+    tufs_w = marker_empty();
+    place_spawn(tufs_w, 1, 1, 0 as u8);
+    place_spawn(tufs_w, 2, 2, 5 as u8);
+    place_target(tufs_w, 3, 3);
+
+    // The exact shape that used to corrupt: the vector is built by
+    // iterating the hash, then embedded in a wrapper, then `:j`.
+    tufs_mf   = marker_world_to_file(tufs_w, "u8probe");
+    tufs_json = "{tufs_mf:j}";
+
+    // Every field of every entry has to be in there. A zeroed
+    // direction would still LOOK like a valid save.
+    assert(tufs_json.contains("\"q\":1"),         "q survived: {tufs_json}");
+    assert(tufs_json.contains("\"direction\":5"), "the u8 direction survived: {tufs_json}");
+    assert(tufs_json.contains("\"kind\":1"),      "the u8 target kind survived: {tufs_json}");
+    // The corruption signature was every field zeroed at once.
+    assert(!tufs_json.contains("\"q\":0,\"r\":0,\"kind\":0,\"direction\":0"),
+           "no all-zero entry: {tufs_json}");
+}
+
+fn test_markers_round_trip_through_disk_exactly() {
+    trt_w = marker_empty();
+    place_spawn(trt_w, 4, 0, 1 as u8);
+    place_spawn(trt_w, 0, 4, 5 as u8);
+    place_target(trt_w, 0, 0);
+    save_markers(trt_w, "roundtrip", M1_SAVE);
+
+    trt_back = load_markers_or_empty(M1_SAVE);
+    assert(marker_count(trt_back) == 3, "all three came back");
+    assert(marker_direction(trt_back, 4, 0) == 1 as u8, "direction 1 survived the disk");
+    assert(marker_direction(trt_back, 0, 4) == 5 as u8, "direction 5 survived the disk");
+    assert(marker_kind(trt_back, 0, 0) == MARKER_KIND_TARGET, "the target is still a target");
+    assert(marker_kind(trt_back, 4, 0) == MARKER_KIND_SPAWN,  "the spawn is still a spawn");
+}
+
+// Narrowing the on-disk fields back to u8 must not be a FORMAT
+// change: u8 and integer both serialise as a bare JSON number, so
+// a sidecar written by the widened shape has to load unchanged.
+// Asserted rather than assumed — a silent format break would only
+// show up in someone's saved map.
+fn test_a_sidecar_written_by_the_widened_shape_still_loads() {
+    tasw_path = "tests/actual/03_m1_widened_sidecar.json";
+    // `{{` / `}}` are escaped braces — a bare `{` opens a format
+    // placeholder, so raw JSON cannot be written literally.
+    tasw_f = file(tasw_path);
+    tasw_f.write("{{\"version\":1,\"name\":\"widened\",\"markers\":[{{\"q\":7,\"r\":-2,\"kind\":0,\"direction\":4}},{{\"q\":0,\"r\":0,\"kind\":1,\"direction\":0}}]}}");
+
+    tasw_w = load_markers_or_empty(tasw_path);
+    assert(marker_count(tasw_w) == 2, "an old sidecar still loads");
+    assert(marker_kind(tasw_w, 7, -2) == MARKER_KIND_SPAWN, "spawn read from the old shape");
+    assert(marker_direction(tasw_w, 7, -2) == 4 as u8, "and its direction is intact");
+    assert(marker_kind(tasw_w, 0, 0) == MARKER_KIND_TARGET, "target read from the old shape");
 }
