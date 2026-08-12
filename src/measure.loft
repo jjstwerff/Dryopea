@@ -1,0 +1,155 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Frame measurement — plan 08 phase V2.
+//
+// The one measurement that reads PIXELS rather than state. The
+// others (`count`, `kind`, `marker`) ask the world what it holds;
+// this one asks the picture what was drawn, which is the only way
+// to catch "the thing is not rendered" — the `fill_triangle` class
+// of bug, where every state assertion stays green and the screen is
+// wrong.
+//
+// ── What V2p decided, and why this file looks like this ─────────
+//
+// The probe measured 691,200 pixels and found that the number that
+// were anything other than an EXACT palette colour is ZERO — for a
+// canvas painted entirely in one type, and for a mixed world where
+// every hex differs from its neighbours, so every hex boundary is a
+// colour boundary. The rasteriser does not blend. So:
+//
+//   - classification is a LOOKUP, not a nearest-colour guess. A
+//     pixel is a ground type or it is nothing;
+//   - `unknown` therefore means something real — the renderer began
+//     blending, or drew a colour from outside the palette. It is a
+//     fault, not noise to be absorbed;
+//   - the measurement reads the WORLD layer, not the composited
+//     shot. V2p found the editor's HUD puts a floor under every
+//     bucket — the picker draws one swatch of EVERY palette entry —
+//     so "0 for the other ten" is only true below the HUD.
+//
+// ── Whose colour table is authoritative ─────────────────────────
+//
+// `render.loft` inlines its palette colours; `examples/palette.json`
+// carries them too, hand-synced. This classifier builds its table
+// from `palette_color` — the SAME function the renderer drew with —
+// so it measures the renderer on the renderer's own terms and can
+// never report a whole frame as `unknown` just because the JSON
+// drifted.
+//
+// Drift between the two is a separate fault with its own gate (see
+// `tests/08_v2_measure.loft`), which keeps the two failures from
+// masquerading as each other: `unknown > 0` means the renderer
+// changed, a drift failure means the JSON did.
+
+use world;
+use camera;
+use painted;
+use render;
+use graphics;
+
+// Colour → bucket, so a frame costs one hash lookup per pixel
+// rather than a scan of eleven.
+struct ColorBucket { color: integer, index: integer }
+struct ColorTable  { by_color: hash<ColorBucket[color]> }
+
+// What one frame contained, per bucket.
+//
+// `unknown` is the load-bearing field: it counts pixels that were
+// not a palette colour at all. Every band in every scenario was
+// sized on the assumption that it stays 0.
+pub struct FrameCounts {
+    counts:  vector<integer>,
+    unknown: integer,
+    total:   integer,
+}
+
+fn color_table(buckets: integer) -> ColorTable {
+    ct_t = ColorTable { by_color: [] };
+    for ct_i in 0..buckets {
+        ct_t.by_color += [ColorBucket {
+            color: palette_color(ct_i as u8? ?? 0) & 0xffffff,
+            index: ct_i,
+        }];
+    }
+    ct_t
+}
+
+// Two palette entries sharing a colour would collapse into one
+// bucket in the table above — the exact accident § The instrument
+// comes first is about, arriving through the back door. Cheap to
+// check, so it is checked rather than assumed.
+pub fn palette_colors_distinct(buckets: integer) -> boolean {
+    len(color_table(buckets).by_color) == buckets
+}
+
+// Smallest squared RGB distance between any two palette colours.
+// Nothing here needs it — classification is exact — but a palette
+// whose entries a PLAYER cannot tell apart is a design fault this
+// number makes visible before a scenario trips over it.
+pub fn palette_min_distance2(buckets: integer) -> integer {
+    pmd_best = -1;
+    for pmd_i in 0..buckets {
+        for pmd_j in 0..buckets {
+            if pmd_i < pmd_j {
+                pmd_a = palette_color(pmd_i as u8? ?? 0) & 0xffffff;
+                pmd_b = palette_color(pmd_j as u8? ?? 0) & 0xffffff;
+                pmd_dr = ((pmd_a >> 16) & 255) - ((pmd_b >> 16) & 255);
+                pmd_dg = ((pmd_a >> 8) & 255)  - ((pmd_b >> 8) & 255);
+                pmd_db = (pmd_a & 255)         - (pmd_b & 255);
+                pmd_d  = pmd_dr * pmd_dr + pmd_dg * pmd_dg + pmd_db * pmd_db;
+                if pmd_best < 0 || pmd_d < pmd_best { pmd_best = pmd_d; }
+            }
+        }
+    }
+    pmd_best
+}
+
+// Count every pixel of a canvas into its bucket.
+//
+// Split from `classify_world` so that `unknown` — the guard every
+// band in every scenario leans on — can be tested by handing it a
+// pixel that is not a palette colour. A classifier that renders its
+// own input can only ever be tested on inputs it agrees with.
+pub fn classify_canvas(cv: const Canvas, buckets: integer) -> FrameCounts {
+    cc_t   = color_table(buckets);
+    cc_out = FrameCounts { counts: [], unknown: 0, total: cv.width * cv.height };
+    for _ in 0..buckets { cc_out.counts += [0]; }
+
+    for cc_y in 0..cv.height {
+        for cc_x in 0..cv.width {
+            cc_px = cv.get_pixel(cc_x, cc_y) & 0xffffff;
+            cc_b  = cc_t.by_color[cc_px];
+            if cc_b == null {
+                cc_out.unknown += 1;
+            } else {
+                cc_out.counts[cc_b.index] = (cc_out.counts[cc_b.index] ?? 0) + 1;
+            }
+        }
+    }
+    cc_out
+}
+
+// Render the world layer and count it.
+//
+// The world layer, deliberately: no hover preview, no markers, no
+// HUD. Those are drawn over the top in the editor's frame and each
+// has its own tests; here they would only put a floor under buckets
+// nobody painted.
+pub fn classify_world(
+    cam:     EditorCamera,
+    pw:      PaintedWorld,
+    buckets: integer,
+    w:       integer,
+    h:       integer,
+    ppm:     float,
+) -> FrameCounts {
+    classify_canvas(render_to_canvas(cam, pw, w, h, ppm), buckets)
+}
+
+// Share of the canvas one bucket covered, 0.0 .. 1.0.
+pub fn frame_share(fc: const FrameCounts, idx: integer) -> float {
+    if fc.total <= 0 { return 0.0; }
+    if idx < 0 || idx >= len(fc.counts) { return 0.0; }
+    ((fc.counts[idx] ?? 0) as float) / (fc.total as float) ?? 0.0
+}

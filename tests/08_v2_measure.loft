@@ -1,0 +1,339 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 08 phase V2 — the measurement vocabulary.
+//
+// The gate is § The instrument comes first, made standing: a canvas
+// painted entirely in one ground type reads 1.0 for that bucket and
+// 0 for the other ten, for EVERY entry in the palette. V2p proved
+// that is exactly true rather than approximately, so these assert
+// exact counts and not bands.
+//
+// Three of the checks here exist because V2p's answer is only true
+// until something changes underneath it, and each would invalidate
+// every band in every scenario:
+//
+//   - the rasteriser starting to blend (`unknown > 0`);
+//   - a palette entry landing on top of another;
+//   - `render.loft`'s inlined colours drifting from palette.json.
+//
+// The separation sweep runs on a small canvas on purpose. What it
+// proves does not depend on the pixel count, and a full-size sweep
+// costs ~45s — the unit suite has to stay fast, and validation is a
+// second gate that runs deliberately.
+
+#cwd
+
+use dryopea;
+use graphics;
+
+const PALETTE: text = "examples/palette.json";
+
+// Small enough to be quick, big enough that a fused bucket or a
+// blended edge could not hide in it.
+const MW: integer = 96;
+const MH: integer = 96;
+const MHAZE: integer = 6;
+
+fn world_of(kind: integer) -> PaintedWorld {
+    wo_pw = painted_empty();
+    for wo_h in visible_hexes(Hex { q: 0, r: 0 }, MHAZE) {
+        paint(wo_pw, wo_h.q, wo_h.r, kind as u8? ?? 0);
+    }
+    wo_pw
+}
+
+// ─── The separation control ─────────────────────────────────────
+
+// The plan's own words, for every entry: 1.0 for it, 0 for the
+// other ten. Painting sea erases (sea is the implicit default), so
+// entry 0's world is an empty one — which IS a canvas painted
+// entirely sea.
+fn test_every_entry_reads_one_and_the_rest_zero() {
+    tee_n = PALETTE_SIZE;
+    for tee_k in 0..tee_n {
+        tee_fc = classify_world(camera_default(), world_of(tee_k), tee_n, MW, MH, VIEW_PPM);
+
+        assert(tee_fc.unknown == 0,
+               "entry {tee_k}: {tee_fc.unknown} pixels were not a palette colour");
+        assert((tee_fc.counts[tee_k] ?? 0) == tee_fc.total,
+               "entry {tee_k}: {tee_fc.counts[tee_k] ?? 0} of {tee_fc.total} px are its own colour");
+        for tee_j in 0..tee_n {
+            if tee_j != tee_k {
+                assert((tee_fc.counts[tee_j] ?? -1) == 0,
+                       "entry {tee_k} leaked {tee_fc.counts[tee_j] ?? -1} px into bucket {tee_j}");
+            }
+        }
+    }
+}
+
+// The uniform worlds above could not have caught a blended edge —
+// every hex had the colour of its neighbours. Here every hex is a
+// different type from the ones beside it, so every hex boundary in
+// the frame is a colour boundary. This is the check that would go
+// red the day the renderer starts anti-aliasing, and it must,
+// because the bands in every scenario were sized for exact.
+fn test_a_mixed_world_is_still_only_palette_colours() {
+    tmw_pw = painted_empty();
+    for tmw_h in visible_hexes(Hex { q: 0, r: 0 }, MHAZE) {
+        tmw_k = ((tmw_h.q * 7 + tmw_h.r * 3) % PALETTE_SIZE + PALETTE_SIZE) % PALETTE_SIZE;
+        paint(tmw_pw, tmw_h.q, tmw_h.r, tmw_k as u8? ?? 0);
+    }
+
+    tmw_fc = classify_world(camera_default(), tmw_pw, PALETTE_SIZE, MW, MH, VIEW_PPM);
+
+    assert(tmw_fc.unknown == 0,
+           "{tmw_fc.unknown} pixels on a colour boundary were not a palette colour");
+    tmw_sum = 0;
+    for tmw_i in 0..PALETTE_SIZE { tmw_sum += tmw_fc.counts[tmw_i] ?? 0; }
+    assert(tmw_sum == tmw_fc.total, "every pixel landed in exactly one bucket");
+}
+
+// The guard itself, on a canvas the classifier did not draw. Every
+// band in every scenario assumes `unknown` stays 0, so the day it
+// stops being 0 the instrument has to SAY so rather than quietly
+// dropping the pixel out of the denominator.
+fn test_a_colour_outside_the_palette_is_counted_as_unknown() {
+    tco2_cv = canvas(4, 4, palette_color(5 as u8));
+    // What a blended edge between grass and wall would look like.
+    tco2_cv.set_pixel(1, 1, 0x8e7b4c);
+
+    tco2_fc = classify_canvas(tco2_cv, PALETTE_SIZE);
+
+    assert(tco2_fc.unknown == 1, "the foreign pixel is counted, not ignored");
+    assert((tco2_fc.counts[5] ?? 0) == 15, "and the other fifteen still bucket as grass");
+    assert(tco2_fc.total == 16, "the denominator is every pixel, including the odd one");
+}
+
+// Two entries sharing a colour would collapse into one bucket — the
+// accidental fusing of § The instrument comes first, arriving
+// through the back door of the lookup table.
+fn test_palette_colours_are_distinct() {
+    assert(palette_colors_distinct(PALETTE_SIZE),
+           "two palette entries share a colour, so one bucket counts both");
+}
+
+// Classification does not need distance — it is exact. This guards
+// the other reader of the palette: a PLAYER, who has to tell two
+// ground types apart on screen. V2p measured the closest pair
+// (hill / steep_rock) at 3526.
+fn test_palette_entries_stay_far_enough_apart() {
+    tpe_d = palette_min_distance2(PALETTE_SIZE);
+    assert(tpe_d >= 2000,
+           "closest palette pair is d^2={tpe_d} — too close for a player to separate");
+}
+
+// `render.loft` inlines its colours and `examples/palette.json`
+// carries them too, hand-synced. The classifier reads the
+// renderer's table on purpose, so drift here would NOT show up as
+// `unknown` — it would show up as a scenario asserting `frame
+// grass` about a bucket the JSON calls something else.
+fn test_the_renderer_and_the_palette_file_agree() {
+    tra_pal = load_palette(PALETTE);
+    assert(len(tra_pal) == PALETTE_SIZE,
+           "palette.json has {len(tra_pal)} entries, render.loft is built for {PALETTE_SIZE}");
+    for tra_i in 0..len(tra_pal) {
+        tra_e = tra_pal[tra_i];
+        if tra_e != null {
+            tra_json = parse_hex_color(tra_e.color) & 0xffffff;
+            tra_rend = palette_color(tra_i as u8? ?? 0) & 0xffffff;
+            assert(tra_json == tra_rend,
+                   "'{tra_e.name}': palette.json says #{tra_json:06x}, render.loft draws #{tra_rend:06x}");
+        }
+    }
+}
+
+// ─── count ──────────────────────────────────────────────────────
+
+fn test_count_painted_and_markers() {
+    tcp_s = editor_state_new(PALETTE);
+    tcp_run = script_run(tcp_s,
+        "palette 5\ndrag 0 0 3 0\ncount painted 4 4\ndo toggle_mode\nclick 0 -2\ncount markers 1 1");
+
+    assert(tcp_run.ok, "{script_describe(tcp_run)}");
+    assert(tcp_run.checks == 2, "both measurements were counted");
+}
+
+fn test_a_count_out_of_band_stops_the_run() {
+    tco_s = editor_state_new(PALETTE);
+    tco_run = script_run(tco_s, "palette 5\nclick 0 0\ncount painted 5 9\nclick 4 0");
+
+    assert(!tco_run.ok, "a measurement out of band fails the run");
+    assert(tco_run.line == 3, "on its own line");
+    assert(tco_run.message.contains("= 1"), "naming the number it saw: {tco_run.message}");
+    assert(tco_run.message.contains("5..9"), "and the band it wanted");
+    assert(painted_count(tco_s.pw) == 1, "and the line after it never ran");
+}
+
+fn test_an_empty_band_is_an_error() {
+    teb_s = editor_state_new(PALETTE);
+    assert(!script_run(teb_s, "count painted 9 2").ok, "lo above hi asserts nothing");
+}
+
+fn test_an_unknown_count_subject_is_an_error() {
+    tus_s = editor_state_new(PALETTE);
+    tus_run = script_run(tus_s, "count towers 0 5");
+
+    assert(!tus_run.ok, "a subject nothing measures fails the run");
+    assert(tus_run.message.contains("towers"), "{tus_run.message}");
+}
+
+// ─── kind ───────────────────────────────────────────────────────
+
+fn test_kind_is_exact() {
+    tki_s = editor_state_new(PALETTE);
+    tki_run = script_run(tki_s,
+        "palette 9\nclick 0 0\nkind 0 0 wall\nkind 4 0 sea");
+
+    assert(tki_run.ok, "{script_describe(tki_run)}");
+    assert(tki_run.checks == 2, "an unpainted hex IS sea — that is a real assertion");
+}
+
+fn test_a_wrong_kind_names_both_types() {
+    twk_s = editor_state_new(PALETTE);
+    twk_run = script_run(twk_s, "palette 5\nclick 0 0\nkind 0 0 wall");
+
+    assert(!twk_run.ok, "grass is not wall");
+    assert(twk_run.message.contains("grass"), "says what it found: {twk_run.message}");
+    assert(twk_run.message.contains("wall"), "and what was asked for");
+}
+
+// A typo in a ground-type name must FAIL rather than resolve to sea
+// — `palette_index_of` answers -1, and treating that as a bucket
+// would turn the typo into a passing assertion about the wrong hex.
+fn test_an_unknown_ground_type_is_an_error() {
+    tug_s = editor_state_new(PALETTE);
+    tug_run = script_run(tug_s, "kind 0 0 graas");
+
+    assert(!tug_run.ok, "an unknown ground type fails the run");
+    assert(tug_run.message.contains("graas"), "{tug_run.message}");
+}
+
+// ─── marker ─────────────────────────────────────────────────────
+
+fn test_marker_identity_is_exact() {
+    tmi_s = editor_state_new(PALETTE);
+    tmi_run = script_run(tmi_s,
+        "do toggle_mode\ndo rotate\ndo rotate\nclick 2 -1\nmarker 2 -1 spawn\nmarker 2 -1 spawn 2\nmarker 0 0 none");
+
+    assert(tmi_run.ok, "{script_describe(tmi_run)}");
+    assert(tmi_run.checks == 3, "kind, kind-and-direction, and absence");
+}
+
+fn test_a_wrong_direction_is_caught() {
+    twd_s = editor_state_new(PALETTE);
+    twd_run = script_run(twd_s, "do toggle_mode\ndo rotate\nclick 2 -1\nmarker 2 -1 spawn 4");
+
+    assert(!twd_run.ok, "it faces 1, not 4");
+    assert(twd_run.message.contains("faces 1"), "{twd_run.message}");
+}
+
+fn test_a_target_has_no_direction() {
+    tnd_s = editor_state_new(PALETTE);
+    tnd_run = script_run(tnd_s,
+        "do toggle_mode\ndo cycle_kind\nclick 0 3\nmarker 0 3 target 0");
+
+    assert(!tnd_run.ok, "a direction over a spherical marker is a claim about nothing");
+}
+
+fn test_marker_none_catches_one_that_is_there() {
+    tmn_s = editor_state_new(PALETTE);
+    tmn_run = script_run(tmn_s, "do toggle_mode\nclick 2 -1\nmarker 2 -1 none");
+
+    assert(!tmn_run.ok, "there IS a marker there");
+}
+
+// ─── wave / tick / count alive ──────────────────────────────────
+
+// A target at the origin is the core; a spawn twelve hexes out is
+// far enough to be live (the disable radius is 10), turned to face
+// direction 4 — north-west, which is the way back towards (0, 0).
+const BASE: text = `
+    do toggle_mode
+    do cycle_kind
+    click 0 0
+    do cycle_kind
+    do rotate
+    do rotate
+    do rotate
+    do rotate
+    click 12 0
+`;
+
+fn test_a_wave_spawns_and_walks_towards_the_core() {
+    taw_s = editor_state_new(PALETTE);
+    taw_run = script_run(taw_s, "{BASE}\nwave 4\ncount alive 4 4\ntick 3\ncount alive 4 4");
+
+    assert(taw_run.ok, "{script_describe(taw_run)}");
+    assert(alive_count(taw_run.wave) == 4, "four enemies are on the map");
+
+    // The measurement vocabulary cannot say "closer" yet — V3 needs
+    // that and will add it. Reading the roster here says what the
+    // scenario will have to.
+    taw_far = 0;
+    for taw_e in taw_run.wave.enemies {
+        taw_d = hex_distance(Hex { q: 0, r: 0 }, Hex { q: taw_e.q, r: taw_e.r });
+        if taw_d > taw_far { taw_far = taw_d; }
+    }
+    assert(taw_far == 9, "three ticks walked them from 12 hexes out to 9 — towards the core");
+}
+
+// The failure that would make every later `count alive` pass for
+// the wrong reason: a wave that emits nothing because no spawn is
+// outside the disable radius.
+fn test_a_wave_that_emits_nothing_fails() {
+    twe_s = editor_state_new(PALETTE);
+    twe_run = script_run(twe_s,
+        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo cycle_kind\nclick 2 0\nwave 5");
+
+    assert(!twe_run.ok, "a silenced spawn cannot emit, and the run must say so");
+    assert(twe_run.message.contains("emitted 0"), "{twe_run.message}");
+}
+
+fn test_a_wave_needs_exactly_one_core() {
+    twn_s = editor_state_new(PALETTE);
+    twn_run = script_run(twn_s, "do toggle_mode\nclick 12 0\nwave 3");
+    assert(!twn_run.ok, "no target marker, no core");
+    assert(twn_run.message.contains("no target"), "{twn_run.message}");
+
+    twn_s2 = editor_state_new(PALETTE);
+    twn_run2 = script_run(twn_s2,
+        "do toggle_mode\ndo cycle_kind\nclick 0 0\nclick 1 1\ndo cycle_kind\nclick 12 0\nwave 3");
+    assert(!twn_run2.ok, "two targets do not say which one to walk at");
+}
+
+fn test_alive_out_of_band_stops_the_run() {
+    tao_s = editor_state_new(PALETTE);
+    tao_run = script_run(tao_s, "{BASE}\nwave 4\ncount alive 0 0");
+
+    assert(!tao_run.ok, "four alive is not none alive");
+    assert(tao_run.message.contains("count alive = 4"), "{tao_run.message}");
+}
+
+// ─── frame ──────────────────────────────────────────────────────
+//
+// One end-to-end check at the real frame size, because a share is a
+// share OF the canvas the player looks at. It costs ~4s; the sweep
+// above is what covers the eleven entries.
+
+fn test_frame_measures_what_was_drawn() {
+    tfm_s = editor_state_new(PALETTE);
+    tfm_run = script_run(tfm_s,
+        "palette 9\nat 0 0 1\ndrag -4 0 4 0\nframe wall 0.005 0.100\nframe grass 0.0 0.0");
+
+    assert(tfm_run.ok, "{script_describe(tfm_run)}");
+    assert(tfm_run.checks == 2, "a bucket that WAS painted and one that was not");
+}
+
+fn test_an_unknown_bucket_is_an_error() {
+    tub_s = editor_state_new(PALETTE);
+    tub_run = script_run(tub_s, "frame concrete 0.0 1.0");
+
+    assert(!tub_run.ok, "a bucket nothing names fails the run");
+    assert(tub_run.message.contains("concrete"), "{tub_run.message}");
+}
+
+fn test_a_frame_band_must_be_numbers() {
+    tfb_s = editor_state_new(PALETTE);
+    assert(!script_run(tfb_s, "frame grass low high").ok, "a share is a number");
+}

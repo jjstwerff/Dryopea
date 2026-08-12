@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0 + V1 + V2p shipped 2026-08-12; V2 is the next work.** Nothing in
+**Active — V0 + V1 + V2 shipped 2026-08-12; V3 is the next work.** Nothing in
 dryopea validated the game as something that *runs*. The 189 tests in
 `tests/` covered pure functions and static renders; every one of them called
 a library function directly and none of them played the game.
@@ -34,6 +34,12 @@ it to *its* gate — the file lands, and what is in it is a real render. Suite
 
 V2p is an **answer, not code** — § V2p. It falsified this plan's own
 prediction about the palette, and found a different hazard in its place.
+
+V2 turns that answer into the **instrument**: six measurement commands, a
+classifier in `src/measure.loft`, and a wave for `count alive` to count.
+24 tests in `tests/08_v2_measure.loft` carry the separation control for all
+eleven entries plus the three checks that would go red if V2p's answer ever
+stopped being true. Suite 296 green.
 
 Four decisions the rest of the plan rests on — two from V0, one from each
 half of V1:
@@ -161,7 +167,7 @@ a phase that cannot name one is a phase that has not been cut yet.
 | **V1a** — parse + run, no output | S | parallel run | a script of `at` / `do` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | **Shipped** |
 | **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | **Shipped** |
 | **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | **Shipped** — see § V2p. It separates; the HUD was the real hazard, and V2 measures the world layer |
-| **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads 1.0 for it and 0 for the other ten, for every entry — exactly, per V2p | Open |
+| **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads 1.0 for it and 0 for the other ten, for every entry — exactly, per V2p | **Shipped** |
 | **V3** — the scenario scripts (one step each) | M | one site at a time | each script's own assertions; five scripts, five steps — a broken one goes red alone | Blocked on V2 |
 | **V4** — wire it in | S | — | `make validate` goes red on an out-of-band measurement, and prints the number that moved | Blocked on V3 |
 
@@ -355,19 +361,46 @@ entry landing near an existing one. V2 therefore carries both as standing
 tests — off-palette pixel count is 0, and the minimum pairwise distance
 stays above a floor — rather than trusting a measurement taken once.
 
-### V2 — the instrument
+### V2 — the instrument — **shipped**
 
 Measurement commands, each asserting inline so the transcript reads as the
-verdict:
+verdict — a pass prints what it saw beside the band it wanted, because a
+transcript that only speaks up on failure cannot be read afterwards as a
+record of what was checked:
 
 ```
-count painted <lo> <hi>      painted_count within band
-count markers <lo> <hi>      marker_count within band
-count alive <lo> <hi>        live enemies — the wave-clear sentinel
-kind <q> <r> <name>          EXACT ground type at a hex (an exact invariant)
-marker <q> <r> <kind> [dir]  EXACT marker identity at a hex
-frame <bucket> <lo> <hi> …   share of WORLD pixels per palette bucket
+count painted <lo> <hi>        painted hexes within a band
+count markers <lo> <hi>        placed markers within a band
+count alive <lo> <hi>          live enemies — the wave-clear sentinel
+kind <q> <r> <name>            EXACT ground type at a hex
+marker <q> <r> <kind> [dir]    EXACT marker identity at a hex ('none' too)
+frame <bucket> <lo> <hi>       share of WORLD pixels in a bucket
 ```
+
+`src/measure.loft` holds the classifier; the commands live beside the rest
+in `src/script.loft`, in their own dispatcher — the others CHANGE the
+session, these only ask it questions, and one branch list doing both reads
+as twenty unrelated cases.
+
+**V2 also had to give the runner a wave.** `count alive` over a wave that
+can never start is precisely the confident meaningless number this plan is
+about: every `count alive 0 0` would pass, for the wrong reason. So the
+runner gained `wave <n>` and `tick <n>`, and `WaveState` lives on
+`ScriptRun` rather than on `EditorState` — a session being edited has no
+enemies in it, and folding a roster into the seam would make `editor_step`
+answer for something no editor action touches. A run has a pointer, a shots
+directory and a wave; the editor has none of the three.
+
+The core is **the target marker**, and exactly one is required: a wave has
+to know what it walks towards, and "whichever the hash yielded first" is not
+an answer a run can repeat. A wave that emits fewer enemies than asked for
+fails the run rather than reporting a smaller number — usually it means no
+spawn marker sits outside `close_spawn_disable_radius`.
+
+⚠ **Still missing for V3: a distance measurement.** Scenario 5 asserts that
+enemies get *closer* to the target, and nothing above can say that. It is
+deliberately not invented here — the scenario should say what it needs to
+assert before a command is shaped for it.
 
 `frame` was written down as the only *approximate* one. V2p found it is
 not: a world render contains only exact palette colours, so the bucket
@@ -375,6 +408,22 @@ counts are exact and the band exists to say how much of the canvas the
 subject covers, not to absorb classifier error. It still needs the
 separation controls above — as a standing check that the exactness holds,
 not as a calibration.
+
+Two consequences of that exactness are built in. `frame` **stops the run**
+if a single pixel is not a palette colour, rather than dropping it from the
+denominator: a blending renderer invalidates every band a scenario carries
+instead of nudging it. And the classifier is split — `classify_canvas`
+counts a canvas someone else drew, `classify_world` renders and counts —
+so that guard can be tested by handing it a pixel it must reject. A
+classifier that only ever sees input it drew itself can only be tested on
+input it agrees with.
+
+`frame` costs about two seconds per call: it classifies all 691,200 pixels
+of a real frame, and the share means *share of the canvas the player looks
+at*, so shrinking the canvas to go faster would make the number stop
+matching the picture beside it in `shots/`. The eleven-entry separation
+sweep in the unit suite runs on a 96×96 canvas instead — what it proves does
+not depend on the pixel count.
 
 The rest are exact too, and should be preferred wherever they can answer the
 question — a hex either is grass or it is not, and no threshold is needed to

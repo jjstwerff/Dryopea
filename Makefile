@@ -18,7 +18,9 @@
 #
 #   make test       Run the dryopea test suite via scripts/test.sh.
 #                   Refreshes tests/actual/ first so stale artefacts
-#                   can't masquerade as current.  ~5 seconds.
+#                   can't masquerade as current.  ~15-20 seconds —
+#                   most of it plan 08's frame measurement, which
+#                   classifies every pixel of a full 960x720 frame.
 #
 #   make help       Print this overview again.
 #

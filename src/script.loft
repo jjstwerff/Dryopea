@@ -51,6 +51,27 @@
 //                              paint-line path
 //   snap <name>                the frame into <shots>/<name>.png,
 //                              plus a state line in the transcript
+//   wave <n>                   start a wave of n enemies at the
+//                              spawn markers, cored on the target
+//   tick <n>                   advance the wave n game-ticks
+//
+// ── Measurements (V2) — each one asserts ────────────────────────
+//
+//   count painted <lo> <hi>    painted hexes within a band
+//   count markers <lo> <hi>    placed markers within a band
+//   count alive <lo> <hi>      live enemies — the wave-clear sentinel
+//   kind <q> <r> <name>        EXACT ground type at a hex
+//   marker <q> <r> <kind> [d]  EXACT marker identity at a hex
+//   frame <bucket> <lo> <hi>   share of WORLD pixels in a bucket
+//
+// A measurement that reads out of band ENDS the run, naming the
+// number it saw and the band it wanted — the transcript is the
+// verdict, so a passing line and a failing line both say what was
+// measured.  Prefer the exact ones: a hex either is grass or it is
+// not, and no band is needed to say so.  `frame` earns its place on
+// the one question the others cannot answer — *is the thing
+// actually drawn?* — which is the question `fill_triangle` failed
+// for two releases with every state assertion green.
 //
 // ── Where a shot goes, and what it is ───────────────────────────
 //
@@ -94,9 +115,13 @@ use camera;
 use painted;
 use markers;
 use picker;
+use palette;
 use editor_mode;
 use editor_step;
 use editor_view;
+use measure;
+use save;
+use spawn;
 use graphics;
 
 // ─── The run record ─────────────────────────────────────────────
@@ -113,9 +138,18 @@ pub struct ScriptRun {
     commands: integer,   // commands executed
     frames:   integer,   // `editor_step` calls made
     snaps:    integer,   // pictures written
+    checks:   integer,   // measurements that passed
 
     hover_q:  integer,
     hover_r:  integer,
+
+    // The wave the run is playing.  It lives here rather than on
+    // `EditorState` because it is not editor state: a session that
+    // is being edited has no enemies in it, and folding a roster
+    // into the seam would make `editor_step` answer for something
+    // no editor action touches.  A run has a pointer, a shots
+    // directory and a wave; the editor has none of the three.
+    wave: WaveState,
 
     // Where `snap` writes.  Per-run rather than a constant, so the
     // suite can drop its shots in `tests/actual/` (wiped between
@@ -135,8 +169,10 @@ pub fn script_run_new(shots_dir: text) -> ScriptRun {
         commands:  0,
         frames:    0,
         snaps:     0,
+        checks:    0,
         hover_q:   0,
         hover_r:   0,
+        wave:      wave_state_empty(),
         shots_dir: shots_dir,
     }
 }
@@ -144,7 +180,7 @@ pub fn script_run_new(shots_dir: text) -> ScriptRun {
 // A one-line verdict, for a transcript or a shell gate.
 pub fn script_describe(r: const ScriptRun) -> text {
     if r.ok {
-        "ok — {r.commands} commands, {r.frames} frames, {r.snaps} shots"
+        "ok — {r.commands} commands, {r.frames} frames, {r.snaps} shots, {r.checks} checks"
     } else {
         "FAILED at line {r.line}: {r.message}"
     }
@@ -156,6 +192,13 @@ pub fn script_describe(r: const ScriptRun) -> text {
 // further than this is a mistake rather than a long journey.
 pub const SCRIPT_MAX_REPEAT:       integer = 10000;
 pub const SCRIPT_MAX_CAMERA_STEPS: integer = 4096;
+
+// Spawn markers this close to the core are silenced for the
+// mission — `examples/numbers.json § core.close_spawn_disable_radius`,
+// DESIGN.md § Updates: free-pick landing.  Restated here because
+// nothing loads numbers.json yet; when a loader lands this reads
+// from it instead of holding a second copy of the number.
+pub const SCRIPT_SPAWN_DISABLE_RADIUS: integer = 10;
 
 // ─── The action table ───────────────────────────────────────────
 
@@ -244,6 +287,185 @@ fn script_walk_camera(s: EditorState, run: ScriptRun, q: integer, r: integer, zo
 // nobody parses, are what will make these numbers assertable.
 fn script_state_line(s: EditorState) -> text {
     "{painted_count(s.pw)} hexes, {marker_count(s.mw)} markers, cam ({s.cam.pos.q}, {s.cam.pos.r}) z{s.cam.zoom}, {mode_name(s.mode)}, tool {s.picker.active}, history {s.history.cursor}/{len(s.history.entries)}"
+}
+
+// ─── Measurement plumbing ───────────────────────────────────────
+
+// One measurement, reported EITHER WAY.  A pass prints what it saw
+// beside the band it wanted, because a transcript that only speaks
+// up on failure cannot be read afterwards as a record of what was
+// actually checked — which is the whole point of the transcript
+// being the verdict.
+fn measure_int(run: ScriptRun, label: text, value: integer, lo: integer, hi: integer) -> text {
+    if lo > hi { return "{label}: band {lo}..{hi} is empty"; }
+    if value < lo || value > hi { return "{label} = {value}, outside {lo}..{hi}"; }
+    println("script: {label} = {value}  [{lo}..{hi}]");
+    run.checks += 1;
+    ""
+}
+
+fn measure_float(run: ScriptRun, label: text, value: float, lo: float, hi: float) -> text {
+    if lo > hi { return "{label}: band {lo}..{hi} is empty"; }
+    if value < lo || value > hi { return "{label} = {value:8.6}, outside {lo}..{hi}"; }
+    println("script: {label} = {value:8.6}  [{lo}..{hi}]");
+    run.checks += 1;
+    ""
+}
+
+// An exact check has no band, so it reports itself.
+fn measure_exact(run: ScriptRun, label: text) {
+    println("script: {label}");
+    run.checks += 1;
+}
+
+fn script_kind_name(pal: vector<GroundType>, idx: integer) -> text {
+    if idx < 0 || idx >= len(pal) { return "?"; }
+    skn_e = pal[idx];
+    if skn_e == null { return "?"; }
+    skn_e.name
+}
+
+// The core is where the target marker is.  Returns (how many, q, r).
+//
+// EXACTLY one is required by the caller: a wave has to know what it
+// is walking towards, and "whichever one the hash yielded first" is
+// not an answer a run can repeat.
+fn script_core(mw: MarkerWorld) -> (integer, integer, integer) {
+    scr_n = 0;
+    scr_q = 0;
+    scr_r = 0;
+    for scr_m in mw.markers {
+        if scr_m.kind == MARKER_KIND_TARGET as u8 {
+            scr_n += 1;
+            scr_q = scr_m.q;
+            scr_r = scr_m.r;
+        }
+    }
+    (scr_n, scr_q, scr_r)
+}
+
+// ─── The measurements ───────────────────────────────────────────
+
+// Split out of `script_command` because they are a different kind
+// of thing: the commands above CHANGE the session, these only ASK
+// it questions — and one dispatcher doing both reads as a list of
+// twenty unrelated branches.
+fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
+    sm_cmd  = tok[0] ?? "";
+    sm_argc = len(tok) - 1;
+    sm_a1   = tok[1] ?? "";
+    sm_a2   = tok[2] ?? "";
+    sm_a3   = tok[3] ?? "";
+    sm_a4   = tok[4] ?? "";
+
+    if sm_cmd == "count" {
+        if sm_argc != 3 { return "count needs <painted|markers|alive> <lo> <hi>"; }
+        sm_lo = sm_a2 as integer?;
+        sm_hi = sm_a3 as integer?;
+        if sm_lo == null || sm_hi == null { return "count: <lo> and <hi> must be integers"; }
+        if sm_a1 == "painted" {
+            return measure_int(run, "count painted", painted_count(s.pw), sm_lo ?? 0, sm_hi ?? 0);
+        }
+        if sm_a1 == "markers" {
+            return measure_int(run, "count markers", marker_count(s.mw), sm_lo ?? 0, sm_hi ?? 0);
+        }
+        if sm_a1 == "alive" {
+            return measure_int(run, "count alive", alive_count(run.wave), sm_lo ?? 0, sm_hi ?? 0);
+        }
+        return "count: unknown subject '{sm_a1}' — painted, markers or alive";
+    }
+
+    // Exact, and preferred wherever it can answer the question: a
+    // hex either is grass or it is not.
+    if sm_cmd == "kind" {
+        if sm_argc != 3 { return "kind needs <q> <r> <name>"; }
+        sm_v = script_ints(tok, 2);
+        if len(sm_v) != 2 { return "kind: <q> and <r> must be integers"; }
+        sm_want = palette_index_of(s.picker.palette, sm_a3);
+        // An unknown NAME must fail loudly.  `palette_index_of`
+        // answers -1, and treating that as sea would quietly turn a
+        // typo into an assertion about the wrong thing.
+        if sm_want < 0 { return "kind: unknown ground type '{sm_a3}'"; }
+        sm_q = sm_v[0] ?? 0;
+        sm_r = sm_v[1] ?? 0;
+        sm_got = lookup_painted(s.pw, sm_q, sm_r) as integer;
+        if sm_got != sm_want {
+            return "kind at ({sm_q}, {sm_r}) is '{script_kind_name(s.picker.palette, sm_got)}', expected '{sm_a3}'";
+        }
+        measure_exact(run, "kind ({sm_q}, {sm_r}) = {sm_a3}");
+        return "";
+    }
+
+    if sm_cmd == "marker" {
+        if sm_argc != 3 && sm_argc != 4 {
+            return "marker needs <q> <r> <spawn|target|none> [direction]";
+        }
+        sm_v = script_ints(tok, 2);
+        if len(sm_v) != 2 { return "marker: <q> and <r> must be integers"; }
+        sm_q = sm_v[0] ?? 0;
+        sm_r = sm_v[1] ?? 0;
+        sm_here = has_marker(s.mw, sm_q, sm_r);
+
+        if sm_a3 == "none" {
+            if sm_argc != 3 { return "marker: 'none' takes no direction"; }
+            if sm_here { return "marker at ({sm_q}, {sm_r}) exists, expected none"; }
+            measure_exact(run, "marker ({sm_q}, {sm_r}) = none");
+            return "";
+        }
+        if sm_a3 != "spawn" && sm_a3 != "target" {
+            return "marker: unknown kind '{sm_a3}' — spawn, target or none";
+        }
+        if !sm_here { return "marker at ({sm_q}, {sm_r}) is none, expected {sm_a3}"; }
+
+        sm_kind = marker_kind(s.mw, sm_q, sm_r);
+        sm_name = if sm_kind == MARKER_KIND_TARGET { "target" } else { "spawn" };
+        if sm_name != sm_a3 {
+            return "marker at ({sm_q}, {sm_r}) is {sm_name}, expected {sm_a3}";
+        }
+        if sm_argc == 4 {
+            // Targets are spherical, so a direction over one is a
+            // claim about a number the player cannot see.
+            if sm_a3 == "target" { return "marker: a target has no direction"; }
+            sm_d = sm_a4 as integer?;
+            if sm_d == null { return "marker: <direction> must be an integer 0..5"; }
+            sm_want_d = sm_d ?? 0;
+            sm_got_d  = marker_direction(s.mw, sm_q, sm_r) as integer;
+            if sm_got_d != sm_want_d {
+                return "marker at ({sm_q}, {sm_r}) faces {sm_got_d}, expected {sm_want_d}";
+            }
+            measure_exact(run, "marker ({sm_q}, {sm_r}) = spawn facing {sm_want_d}");
+            return "";
+        }
+        measure_exact(run, "marker ({sm_q}, {sm_r}) = {sm_a3}");
+        return "";
+    }
+
+    // The only measurement that reads pixels — and so the only one
+    // that can see "the thing is not drawn".
+    if sm_cmd == "frame" {
+        if sm_argc != 3 { return "frame needs <bucket> <lo> <hi>"; }
+        sm_b = palette_index_of(s.picker.palette, sm_a1);
+        if sm_b < 0 { return "frame: unknown bucket '{sm_a1}'"; }
+        sm_flo = sm_a2 as float?;
+        sm_fhi = sm_a3 as float?;
+        if sm_flo == null || sm_fhi == null {
+            return "frame: <lo> and <hi> must be shares of the canvas, 0.0..1.0";
+        }
+        sm_fc = classify_world(s.cam, s.pw, len(s.picker.palette),
+                               VIEW_W, VIEW_H, VIEW_PPM);
+        // V2p proved the rasteriser hard-edged, and every band a
+        // scenario carries was sized on that.  A pixel that is not
+        // a palette colour means the renderer changed underneath
+        // the instrument — which invalidates the number rather than
+        // nudging it, so it stops the run.
+        if sm_fc.unknown > 0 {
+            return "frame: {sm_fc.unknown} of {sm_fc.total} pixels are not a palette colour — the renderer is blending, and these bands assume it does not";
+        }
+        return measure_float(run, "frame {sm_a1}", frame_share(sm_fc, sm_b),
+                             sm_flo ?? 0.0, sm_fhi ?? 0.0);
+    }
+
+    "unknown measurement '{sm_cmd}'"
 }
 
 // ─── Argument parsing ───────────────────────────────────────────
@@ -431,6 +653,58 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         run.snaps += 1;
         println("script: snap {sc_a1} -> {sc_png} | {script_state_line(s)}");
         return "";
+    }
+
+    // Start a wave.  The core is the target marker — a wave has to
+    // walk towards something, and the marker layer already says
+    // where that is.
+    if sc_cmd == "wave" {
+        if sc_argc != 1 { return "wave needs <count>"; }
+        sc_n = sc_a1 as integer?;
+        if sc_n == null { return "wave: <count> must be an integer"; }
+        sc_count = sc_n ?? 0;
+        if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
+            return "wave: <count> must be 0..{SCRIPT_MAX_REPEAT}";
+        }
+        sc_core = script_core(s.mw);
+        if sc_core.0 == 0 {
+            return "wave: no target marker — the core is where the target is";
+        }
+        if sc_core.0 > 1 {
+            return "wave: {sc_core.0} target markers — a wave needs ONE core to walk towards";
+        }
+        sc_before = alive_count(run.wave);
+        spawn_wave(run.wave, sc_count, s.mw, sc_core.1, sc_core.2,
+                   SCRIPT_SPAWN_DISABLE_RADIUS);
+        sc_emitted = alive_count(run.wave) - sc_before;
+        // A wave that asks for five and emits none is the confident
+        // meaningless number this plan exists to stop: every later
+        // `count alive 0 0` would pass for the wrong reason.
+        if sc_emitted != sc_count {
+            return "wave: asked for {sc_count}, emitted {sc_emitted} — is any spawn marker at least {SCRIPT_SPAWN_DISABLE_RADIUS} hexes from the core?";
+        }
+        println("script: wave {sc_count} towards core ({sc_core.1}, {sc_core.2}) — {alive_count(run.wave)} alive");
+        return "";
+    }
+
+    // Advance the wave.  A game-tick, not a frame: `step` moves the
+    // editor on, `tick` moves the enemies.
+    if sc_cmd == "tick" {
+        if sc_argc != 1 { return "tick needs <ticks>"; }
+        sc_n = sc_a1 as integer?;
+        if sc_n == null { return "tick: <ticks> must be an integer"; }
+        sc_count = sc_n ?? 0;
+        if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
+            return "tick: <ticks> must be 0..{SCRIPT_MAX_REPEAT}";
+        }
+        for _ in 0..sc_count { wave_tick(run.wave); }
+        return "";
+    }
+
+    // The measurements ask the session questions rather than
+    // changing it, so they live in their own dispatcher.
+    if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker" || sc_cmd == "frame" {
+        return script_measure(s, run, tok);
     }
 
     "unknown command '{sc_cmd}'"
