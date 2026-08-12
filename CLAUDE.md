@@ -439,6 +439,11 @@ plans/
   08-game-validation/         — Complete (V0-V4 shipped):
                     scripted play, measured effects, PNGs for
                     inspection, and `make validate` over the lot
+  09-lattice-conversion/      — Active (C0 shipped): dryopea moves
+                    to pointy-top odd-r offset, the convention every
+                    hex_* library and moros already speak.  Checked
+                    against hex_grid as an ORACLE, because a
+                    rebaselined golden agrees with a shear
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -526,6 +531,7 @@ signature.
 | [plans/06-editor-stencil-pipeline/README.md](plans/06-editor-stencil-pipeline/README.md) | Plan 06 — editor-to-stencil pipeline (two purposes, three audiences) |
 | [plans/07-shared-world-substrate/README.md](plans/07-shared-world-substrate/README.md) | Plan 07 — go 3D on the shared hex substrate |
 | [plans/08-game-validation/README.md](plans/08-game-validation/README.md) | Plan 08 — scripted play, measured effects, PNGs for inspection |
+| [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — dryopea moves to the libraries' lattice (pointy-top odd-r offset) |
 | [PROBLEMS.md](PROBLEMS.md) | Dryopea-internal bugs (`@D<NNN>`) |
 | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) | Outbound queue to loft |
 

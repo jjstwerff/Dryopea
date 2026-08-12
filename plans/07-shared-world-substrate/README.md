@@ -185,11 +185,19 @@ would be sheared exactly the way moros#10 was.
 
 ### W0c — convert dryopea to odd-r offset, pointy-top
 
-The decision of § Correction, executed.  Not a phase to start
-without cutting it properly first — it touches `world.loft`'s hex
-math, `render.loft`, `marker_render.loft`, the 6-way direction
-tables, `examples/*.json`, every `.keys` scenario's coordinates
-and all 16 goldens.
+**Cut out into [`plans/09-lattice-conversion`](../09-lattice-conversion/README.md)
+on 2026-08-12.**  It is multi-phase, it stands alone — the
+conversion is worth doing whether or not dryopea ever reads a
+`.hxw` — and carrying it here would have pushed this plan well
+past its length budget.  As one `H` phase it also failed
+[`plans/README.md`](../README.md) § The two mechanical checks;
+plan 09 cuts it into six steps, none above `M`.
+
+What follows is the sketch it was cut from, kept because the gate
+argument is the reason the split happened.  It touches
+`world.loft`'s hex math, `render.loft`, `marker_render.loft`, the
+6-way direction tables, `examples/*.json`, every `.keys`
+scenario's coordinates and all 16 goldens.
 
 **The gate, and it is the interesting part.**  Not "the goldens
 were rebaselined" — a rebaselined golden agrees with whatever was
@@ -326,7 +334,7 @@ plan as it stands; the prose sections further down still describe
 | Phase | What ships | Trigger | Effort |
 |---|---|---|---|
 | **W0** | Native play + path-deps + linking spike | now | S |
-| **W0c** | Convert dryopea to odd-r offset, pointy-top — § W0c | now (owner decision 2026-08-12); independent of W0 | H |
+| **W0c** | Convert dryopea to odd-r offset, pointy-top — now [plan 09](../09-lattice-conversion/README.md) | now (owner decision 2026-08-12); independent of W0 | MH |
 | **W0x** | `hex_voxel` published so `.hxw` is readable — an upstream ASK, not dryopea code | filed with loft-libs-world | — |
 | **W1** | World model = `hex_voxel` (was `moros_map::Map`) + read a moros `.hxw` | W0c green **and** W0x landed | MH |
 | **W2** | 3D mesh editor render + chunk/dirty rebuild | W1 green | H |
