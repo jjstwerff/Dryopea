@@ -1,0 +1,99 @@
+# the-bubble-boundary — plan 11 F5b.
+#
+# The first scenario in dryopea that starts OUTSIDE the core's
+# scrambler bubble.  Every earlier one spawns twelve hexes out and the
+# bubble is twenty-five, so all of them were already inside it — which
+# is why none of them could see this phase.
+#
+# ── The handoff, stated as coordinates ──────────────────────────
+#
+# The spawn heading here is 4, which is (-1, 0): it changes q and
+# NEVER r.  So:
+#
+#   * `enemy 0 26 0` after four ticks — still on the heading's line,
+#     one hex OUTSIDE the boundary.  The field would have sent it to
+#     (26, -1) from there; it did not go, because it cannot hear the
+#     core yet.
+#   * `enemy 0 25 -1` two ticks later — r has changed, so the FIELD
+#     is steering.  That is the handoff, and it happened at exactly
+#     the hex the radius names.
+#
+# ── The world ───────────────────────────────────────────────────
+#
+#   r =  0 :  (25,0) … (30,0)     the approach leg
+#   r = -1 :  (0,-1) … (26,-1)    the route home
+#   (0,0)  :  the core
+#   (24,0) :  deliberately NOT painted
+#
+# That last line is what makes a broken handoff loud rather than
+# subtle: an enemy that never switches mode walks its heading into the
+# dead end at (25, 0) and stands there for the rest of the run.
+
+echo the bubble boundary: five hexes of heading, then the field takes over
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The spawn, THIRTY hexes out — five clear of the bubble, so the run
+# gets to watch approach mode work before the handoff.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+do rotate
+click 30 0
+marker 30 0 spawn 4
+
+count markers 2 2
+do toggle_mode
+
+# The approach leg, the route home, and the core hex itself.  The
+# route home is a SEPARATE row: it is what the field will steer along,
+# and the leg does not reach it except at (25, 0).
+palette 5
+drag 30 0 25 0
+drag 26 -1 0 -1
+click 0 0
+
+count painted 34 34
+kind 25 0 grass
+kind 24 0 sea
+
+wave 3
+count alive 3 3
+enemy 0 30 0
+enemies passable
+range 30 30
+snap bubble-wave-starts
+
+# Four ticks of approach — still outside, still on r = 0.  The field
+# would have turned it north at (26, 0); it kept its heading.
+tick 4
+enemy 0 26 0
+range 26 26
+enemies passable
+
+# One more puts it exactly on the boundary hex.
+tick 1
+enemy 0 25 0
+range 25 25
+
+# And the next step is the FIELD's: r changes, which this heading
+# cannot do.  The handoff, at the hex the radius names and not before.
+tick 1
+enemy 0 25 -1
+enemies passable
+range 25 25
+snap bubble-handoff
+
+# Twenty-five more and they are home.
+tick 25
+enemy 0 0 0
+enemy 2 0 0
+enemies passable
+range 0 0
+count alive 3 3

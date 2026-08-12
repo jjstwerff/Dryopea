@@ -1,0 +1,244 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F5b — the approach→engage handoff.
+//
+// F5 steered every enemy that HAD a route, which was a stand-in: the
+// spec says the scrambler bubble decides
+// (`docs/ENEMY_MOVEMENT.md` § Two modes).  This phase makes it so, and
+// the difference is only visible outside the bubble — where an enemy
+// now ignores a perfectly good route because it cannot hear the core.
+//
+// ── Why no existing fixture could see this ───────────────────────
+//
+// Every scenario dryopea had spawns 12 hexes from the core, and the
+// bubble is 25.  All of them were already inside it, so all 395 tests
+// stayed green when the selector changed.  This file's world is the
+// first one that starts outside.
+//
+// ── The world, and why it discriminates at BOTH hexes ────────────
+//
+//   r =  0 :  (25,0) … (30,0)     the approach leg
+//   r = -1 :  (0,-1) … (26,-1)    the route home
+//   (0,0)  :  the core
+//   (24,0) :  NOT painted — the approach leg is a dead end
+//
+// Measured, not assumed (a probe printed these before they were
+// asserted):
+//
+//   * at (26, 0) — straight-line 26, OUTSIDE — the field's arrow is
+//     (26,-1) and the heading is (25,0).  They DIFFER, so watching
+//     which one is taken says which mode ran.  Approach wins here.
+//   * at (25, 0) — straight-line 25, INSIDE — the arrow is (25,-1).
+//     Taking it changes `r`, and a heading of (-1, 0) can never
+//     change `r`.  So the handoff is visible as a coordinate.
+//
+// The dead end at (24, 0) is what makes the failure loud: an enemy
+// that never handed off walks into it and stops there for good.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+// The boundary world.  `leg_to` extends the approach leg east, so a
+// spawn can be placed further out than the handoff.
+fn boundary_world(leg_to: integer) -> PaintedWorld {
+    bw_pw = painted_empty();
+    for bw_q in 25..=leg_to {
+        paint(bw_pw, bw_q, 0, as_u8(GRASS));
+    }
+    for bw_s in 0..=26 {
+        paint(bw_pw, bw_s, -1, as_u8(GRASS));
+    }
+    paint(bw_pw, 0, 0, as_u8(GRASS));
+    bw_pw
+}
+
+fn field_for(pw: PaintedWorld) -> FlowField {
+    flow_build(load_palette(PALETTE), pw, as_u8(ENEMY_KIND_REGULAR), core())
+}
+
+fn enemy_at(q: integer, r: integer, heading: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(ENEMY_KIND_REGULAR),
+            heading: as_u8(heading), alive: true }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The boundary itself
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_radius_is_the_number_the_design_documents() {
+    // examples/numbers.json § core.scrambler_bubble_radius.
+    assert(SCRAMBLER_BUBBLE_RADIUS == 25,
+           "the bubble is 25 hexes, not {SCRAMBLER_BUBBLE_RADIUS}");
+}
+
+// Inclusive at the boundary, the same convention `active_spawn_markers`
+// uses for the spawn-disable radius: the hex the radius names is in.
+fn test_the_hex_the_radius_names_is_inside() {
+    assert(enemy_in_bubble(enemy_at(25, 0, 4), core()),
+           "straight-line 25 is INSIDE a 25-hex bubble");
+    assert(!enemy_in_bubble(enemy_at(26, 0, 4), core()),
+           "and 26 is outside");
+}
+
+// ⚠ The bubble is a straight-line distance, not a route length —
+// it is a jamming sphere, and jamming does not care how far you would
+// have to walk.  An enemy with NO route at all is still inside it.
+fn test_the_bubble_is_measured_in_straight_lines_not_in_steps() {
+    tbs_pw = painted_empty();
+    paint(tbs_pw, 0, 0, as_u8(GRASS));
+    paint(tbs_pw, 3, 0, as_u8(GRASS));      // an island, three hexes out
+    tbs_f = field_for(tbs_pw);
+    tbs_e = enemy_at(3, 0, 4);
+
+    assert(!flow_reachable(tbs_f, 3, 0), "there is no route from the island");
+    assert(enemy_in_bubble(tbs_e, core()),
+           "and it is still inside the bubble — which is about distance, not walking");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The handoff, hex by hex
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_handoff_fires_at_the_exact_hex_the_radius_names() {
+    thf_pw  = boundary_world(30);
+    thf_f   = field_for(thf_pw);
+    thf_pal = load_palette(PALETTE);
+    thf_e   = enemy_at(30, 0, 4);
+
+    // Five ticks of approach: straight down the leg, r never changes.
+    for _ in 0..5 {
+        enemy_tick(thf_e, thf_pal, thf_pw, thf_f);
+        assert(thf_e.r == 0, "approach mode cannot change r: r = {thf_e.r}");
+    }
+    assert(thf_e.q == 25 && thf_e.r == 0,
+           "and it is standing on the boundary hex: ({thf_e.q}, {thf_e.r})");
+
+    // The sixth tick is the first one taken from INSIDE the bubble.
+    enemy_tick(thf_e, thf_pal, thf_pw, thf_f);
+    assert(thf_e.q == 25 && thf_e.r == -1,
+           "the handoff: it steps off the heading's line, to (25, -1), got ({thf_e.q}, {thf_e.r})");
+}
+
+// "…and not before."  At (26, 0) the field offers (26, -1) and the
+// heading offers (25, 0); the enemy takes the heading, so the mode is
+// still approach one hex outside the boundary.
+fn test_one_hex_outside_it_ignores_a_route_it_could_have_followed() {
+    tno_pw  = boundary_world(30);
+    tno_f   = field_for(tno_pw);
+    tno_arrow = flow_step(tno_f, 26, 0);
+
+    assert(tno_arrow.q == 26 && tno_arrow.r == -1,
+           "the field would send it to (26, -1): got ({tno_arrow.q}, {tno_arrow.r})");
+    assert(flow_reachable(tno_f, 26, 0), "so a route home exists from there");
+
+    tno_e = enemy_at(26, 0, 4);
+    enemy_tick(tno_e, load_palette(PALETTE), tno_pw, tno_f);
+
+    assert(tno_e.q == 25 && tno_e.r == 0,
+           "and it took the HEADING instead: ({tno_e.q}, {tno_e.r})");
+}
+
+fn test_it_arrives_after_the_handoff() {
+    tia_pw  = boundary_world(30);
+    tia_f   = field_for(tia_pw);
+    tia_pal = load_palette(PALETTE);
+    tia_e   = enemy_at(30, 0, 4);
+
+    // 5 approach steps to the boundary, then a 26-step route home.
+    for _ in 0..31 { enemy_tick(tia_e, tia_pal, tia_pw, tia_f); }
+    assert(tia_e.q == 0 && tia_e.r == 0, "home: ({tia_e.q}, {tia_e.r})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The negative control the plan names
+// ─────────────────────────────────────────────────────────────────
+//
+// "An enemy whose heading never enters the bubble keeps its heading
+// forever — the handoff must not fire on proximity-in-general."
+//
+// A route home exists from every hex of this leg, so an enemy that
+// ever consulted the field would turn round and walk it.  This one
+// walks the other way until it runs out of land.
+
+fn test_a_heading_that_never_enters_the_bubble_is_kept_forever() {
+    tah_pw  = boundary_world(40);
+    tah_f   = field_for(tah_pw);
+    tah_pal = load_palette(PALETTE);
+    tah_e   = enemy_at(30, 0, 1);           // heading 1 is (+1, 0) — AWAY
+
+    assert(flow_reachable(tah_f, 30, 0),
+           "a route home exists from where it starts — it just cannot hear the core");
+
+    for _ in 0..30 { enemy_tick(tah_e, tah_pal, tah_pw, tah_f); }
+
+    assert(tah_e.q == 40 && tah_e.r == 0,
+           "it kept walking east to the end of the land: ({tah_e.q}, {tah_e.r})");
+    assert(!enemy_in_bubble(tah_e, core()), "never entered the bubble");
+    assert(hex_distance(core(), Hex { q: tah_e.q, r: tah_e.r }) > 30,
+           "and finished FURTHER from the core than it started");
+}
+
+// The same enemy, released one hex inside the boundary instead: now it
+// does turn round.  Without this, the test above passes just as well
+// against a mover that ignores the field entirely.
+fn test_the_same_enemy_inside_the_bubble_turns_round() {
+    tsi_pw  = boundary_world(40);
+    tsi_f   = field_for(tsi_pw);
+    tsi_e   = enemy_at(25, 0, 1);           // heading AWAY, but inside
+
+    for _ in 0..3 { enemy_tick(tsi_e, load_palette(PALETTE), tsi_pw, tsi_f); }
+
+    assert(tsi_e.r == -1, "inside the bubble the field wins over the heading: r = {tsi_e.r}");
+    assert(hex_distance(core(), Hex { q: tsi_e.q, r: tsi_e.r }) < 25,
+           "and it is closing on the core, not walking away from it");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Through the wave, and the scenario
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_whole_wave_hands_off_together() {
+    taw_pw = boundary_world(30);
+    taw_s  = wave_state_empty();
+    for _ in 0..4 {
+        taw_s.enemies += [enemy_at(30, 0, 4)];
+    }
+
+    for _ in 0..31 { wave_tick(taw_s, load_palette(PALETTE), taw_pw, core()); }
+
+    for taw_e in taw_s.enemies {
+        assert(taw_e.q == 0 && taw_e.r == 0,
+               "all four handed off and arrived: ({taw_e.q}, {taw_e.r})");
+    }
+}
+
+fn test_the_bubble_boundary_plays_green() {
+    tbb_s = editor_state_new(PALETTE);
+    editor_state_attach(tbb_s,
+                        "tests/actual/f5b_bubble.json",
+                        "tests/actual/f5b_bubble_markers.json");
+    tbb = script_run_file(tbb_s, "tests/scripts/the-bubble-boundary.keys", "tests/actual");
+
+    assert(tbb.ok, "the-bubble-boundary: {script_describe(tbb)}");
+    assert(tbb.checks == 23, "it made {tbb.checks} measurements, expected 23");
+    assert(tbb.snaps == 2, "and took both pictures");
+    assert(alive_count(tbb.wave) == 3, "three enemies crossed the boundary");
+}
+
+fn test_the_scenario_file_is_on_disk() {
+    assert(file("tests/scripts/the-bubble-boundary.keys").exists(),
+           "the test above would pass against an empty file");
+}

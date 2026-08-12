@@ -32,6 +32,17 @@ use painted;
 use passable;
 use flow;
 
+// The radius of the core's comms-jamming bubble, in hexes — the
+// boundary where an enemy stops following its spawn heading and starts
+// following the flow field (`docs/ENEMY_MOVEMENT.md` § Two modes).
+//
+// `examples/numbers.json` § core.scrambler_bubble_radius is where this
+// number lives; it is restated here because nothing loads numbers.json
+// yet, exactly as `script.loft` restates the spawn-disable radius.
+// When a loader lands, this reads from it instead of holding a second
+// copy.
+pub const SCRAMBLER_BUBBLE_RADIUS: integer = 25;
+
 // The kind discriminants an `Enemy` carries — `ENEMY_KIND_REGULAR`
 // and friends — live in `passable.loft`, because a class IS its
 // climb limit as far as movement is concerned and the mover has to
@@ -181,6 +192,19 @@ pub fn spawn_wave(
 pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld, f: FlowField) {
     if !e.alive { return; }
 
+    // ── Which mode? The bubble decides (plan 11 F5b) ─────────────
+    //
+    // `docs/ENEMY_MOVEMENT.md` § Two modes: outside the scrambler
+    // bubble an enemy follows its spawn marker's heading; inside it,
+    // the field toward the core.  The boundary IS the handoff.
+    //
+    // The field carries the core it was built for, so the test needs
+    // no extra parameter — which is why `FlowField` keeps it.
+    if !enemy_in_bubble(e, f.core) {
+        enemy_walk_heading(e, pal, pw);
+        return;
+    }
+
     // ── Engage: follow the field (plan 11 F5) ───────────────────
     //
     // The field is per class and already refuses every hex this class
@@ -199,24 +223,38 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld, f: FlowFi
         return;
     }
 
-    // ── Approach: no route, so walk the heading (plan 11 F1b) ───
+    // ── Inside the bubble, but with no route to the core ─────────
     //
-    // ⚠ **"Has a route" is a STAND-IN for the real mode selector**,
-    // and two later phases replace it:
-    //
-    //   * F5b makes the mode depend on the scrambler bubble — outside
-    //     it an enemy follows its spawn heading even when a route
-    //     exists, which is what `docs/ENEMY_MOVEMENT.md` § Two modes
-    //     actually specifies;
-    //   * F7 replaces this fallback for an enemy with NO route: it
-    //     follows a second field (walls passable) and attacks the
-    //     first impassable hex it meets, rather than walking a
-    //     heading into it.
-    //
-    // Until then this composition is what keeps both behaviours
-    // alive: an enemy that can reach the core routes to it, and one
-    // that cannot still presses in along its heading and stops at
-    // what it cannot cross.
+    // It presses on along its heading and stops at what it cannot
+    // cross (plan 11 F1b).  ⚠ **F7 replaces this**: a blocked enemy
+    // should follow a second field with the walls passable and attack
+    // the first impassable hex its OWN route meets, which is what
+    // spreads a siege along the perimeter instead of collapsing it to
+    // one chokepoint.  Walking a heading into the wall is the
+    // stand-in until then, and it stops in the right place.
+    enemy_walk_heading(e, pal, pw);
+}
+
+// Is this enemy inside the core's scrambler bubble?
+//
+// ⚠ Measured as a STRAIGHT-LINE hex distance, not as a route length.
+// The bubble is a comms-jamming sphere carved by the core
+// (`docs/DESIGN.md` § core), so an enemy three hexes from the core
+// with a forty-step route around a wall is INSIDE it — jamming does
+// not care how far you would have to walk.  Using the field distance
+// instead would make the bubble bulge and shrink as the player builds,
+// which is not what the fiction or the numbers describe.
+//
+// Inclusive at the boundary, matching `active_spawn_markers`'
+// `>= disable_radius`: the hex the radius names is in.
+pub fn enemy_in_bubble(e: const Enemy, core: Hex) -> boolean {
+    hex_distance(core, Hex { q: e.q, r: e.r }) <= SCRAMBLER_BUBBLE_RADIUS
+}
+
+// One step along the enemy's heading, if the hex it would enter is one
+// its class can hold — approach mode's whole movement rule
+// (plan 11 F1b).
+fn enemy_walk_heading(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld) {
     et_off = hex_offset(e.heading);
     et_q = e.q + et_off.0;
     et_r = e.r + et_off.1;

@@ -53,7 +53,7 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 shipped.  F1 is the
+Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 + F5b shipped.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
 passable` say where an enemy is and whether its CLASS may be there,
 and `src/passable.loft` is the height-step rule they read.  **F1b is
@@ -67,8 +67,11 @@ by an exhaustive sweep: from EVERY reachable cell, following the
 arrows reaches the core in exactly `distance` steps.  **F5 makes
 enemies follow it** — `wave_tick` rebuilds the field ONCE per tick
 before anybody moves (one per class in the roster), and `enemy_tick`
-steps down it; an enemy with no route falls back to its heading,
-which is a STAND-IN for the bubble selector F5b will bring.
+steps down it; **F5b made the scrambler bubble the mode
+selector** it was always specified to be: inside 25 hexes the field
+steers, outside it the spawn heading does.  ⚠ The bubble is a
+STRAIGHT-LINE distance, never a route length — it is a jamming
+sphere, so an enemy with no route at all is still inside it.
 
 ⚠ **A 1-hex-wide corridor cannot tell a flow field from a fixed
 heading** — both give the identical path, so every enemy test dryopea
@@ -91,9 +94,9 @@ all, and `enemies passable` over one is red.  Every scenario that
 walks enemies drags a corridor first; that is the game's rule, not a
 harness quirk.
 
-**Suite: 395/395 green under `scripts/test.sh`** (~20-30 s — the
+**Suite: 406/406 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
-**Gate: 10 scripts green under `scripts/validate.sh`** (~11 s).
+**Gate: 11 scripts green under `scripts/validate.sh`** (~11 s).
 
 ⚠ **Never interpolate a struct that has a `hash` field** — `"{f}"`
 SIGSEGVs the interpreter (loft#873) and exits silently on native.

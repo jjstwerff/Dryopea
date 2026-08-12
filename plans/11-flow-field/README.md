@@ -10,7 +10,8 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 + F1b + F2 + F3 + F5 shipped 2026-08-12; F5b is next.**
+**Active — F0 + F1 + F1b + F2 + F3 + F5 + F5b shipped 2026-08-12; F5c is
+next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -375,6 +376,53 @@ something that cannot climb — a correctness hole worth closing here rather
 than leaving for F6, which keeps the height-step generalisation and its
 raised-hex gate.
 
+## F5b, the handoff at the bubble (2026-08-12)
+
+The mode selector is now the thing the spec always said it was: inside
+`core.scrambler_bubble_radius` an enemy follows the field, outside it follows
+its spawn heading. F5's "has a route?" stand-in is gone.
+
+**It needed no new parameter.** `FlowField` has carried its core since F2,
+written down there as "F5b's approach→engage handoff needs to know which core
+it is steering to". That is the whole cost of the plumbing.
+
+**⚠ The bubble is a STRAIGHT-LINE distance, not a route length**, and that is
+a design decision rather than an implementation shortcut. It is a
+comms-jamming sphere, so an enemy three hexes from the core with a forty-step
+route around a wall is *inside* it — jamming does not care how far you would
+have to walk. Measuring it in field steps would make the bubble bulge and
+shrink as the player builds walls, which is neither the fiction nor the
+number. A test asserts the case that separates them: an enemy on an island
+with **no route at all** is still inside.
+
+**Inclusive at the boundary**, matching `active_spawn_markers`' `>=
+disable_radius`: the hex the radius names is in.
+
+**⚠ No existing fixture could see this phase.** Every scenario spawns 12
+hexes out and the bubble is 25, so all 395 tests stayed green when the
+selector changed. The new world starts at 30 and is built so both hexes
+discriminate — measured with a probe before anything was asserted:
+
+| hex | straight-line | the field says | the heading says | what happens |
+|---|---|---|---|---|
+| (26, 0) | 26 — **outside** | (26, -1) | (25, 0) | heading wins: *"…and not before"* |
+| (25, 0) | 25 — **inside** | (25, -1) | (24, 0), unpainted | field wins: `r` changes, which a heading of `(-1, 0)` never can |
+
+`(24, 0)` is deliberately left unpainted, so a broken handoff is loud: an
+enemy that never switches walks into the dead end and stands there.
+
+**Measured negative control — the one the plan named.** With the bubble test
+short-circuited, 4 tests go red, and the sharpest is the enemy heading *away*
+from the core: it turns round and walks to (1, -1) instead of east to the end
+of the land. That is precisely "the handoff must not fire on
+proximity-in-general", caught as a coordinate. Its own control is the same
+enemy released one hex *inside*, which does turn round — without that, the
+negative control would pass against a mover that ignores the field entirely.
+
+**What is still a stand-in.** An enemy inside the bubble with no route still
+presses along its heading. F7 replaces that with the desire field and an
+attack; the code says so at the site.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -460,7 +508,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable. **Shipped — see § F2, the distance field.** Measured against the negative control: with unreachable collapsed to 0, 8 of 17 tests go red. Unreachable is a LARGE value, not `-1`, so "smallest distance wins" refuses it | **Shipped** |
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does. **Shipped — see § F3, the arrow.** Swept over five worlds, each asserting how many cells it visited; 9 of 14 tests go red against a broken arrow. ⚠ Loops turn out to be impossible by construction (a step is only ever to a strictly smaller distance) — what the sweep really catches is a local minimum and a walk ending on a second zero | **Shipped** |
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists. **Shipped — see § F5, enemies follow the field.** ⚠ The gate had to be INVENTED: every existing world was a 1-wide corridor, where field and heading give the identical path, so the whole phase could pass without doing anything. The discriminator is `enemy 0 3 -1` — a hex no heading can reach. Measured: 6 of 13 tests red with the engage branch disabled | **Shipped** |
-| **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
+| **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general. **Shipped — see § F5b, the handoff at the bubble.** No new parameter: the field has carried its core since F2. Measured: 4 tests red without the bubble test, the negative control among them | **Shipped** |
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it | Open |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
