@@ -68,10 +68,11 @@ pointer, not a second copy.
 | [`04-map-library`](04-map-library/README.md) | G | M | Future | MapFile schema + map index + browser + content |
 | [`05-validation-scenario`](05-validation-scenario/README.md) | G | M | Future | Minimum playable thing; integration spec |
 | [`06-editor-stencil-pipeline`](06-editor-stencil-pipeline/README.md) | F | MH | Future | Editor-as-content-pipeline; stencil mode + mesh baker |
-| [`07-shared-world-substrate`](07-shared-world-substrate/README.md) | F | H–VH | Active (W0 partial) | Go 3D; adopt the shared hex substrate |
+| [`07-shared-world-substrate`](07-shared-world-substrate/README.md) | F | H–VH | **Blocked** (needs `hex_voxel` published; W0c cut out to plan 09) | Go 3D; adopt the shared hex substrate |
 | [`08-game-validation`](08-game-validation/README.md) | S | MH | Complete (V0-V4) | Scripted play, measured effects, PNGs for inspection |
 | [`09-lattice-conversion`](09-lattice-conversion/README.md) | F | MH | Active (C0 shipped) | dryopea moves to pointy-top odd-r offset (+ adopts `input`), checked against `hex_grid` |
-| [`10-extract-local-libraries`](10-extract-local-libraries/README.md) | C | MH | Active (E0 next) | The code dryopea owns becomes published libraries — descriptive names, never a brand |
+| [`10-extract-local-libraries`](10-extract-local-libraries/README.md) | C | MH | **Gated** (extract what survives 07 + 09) | The code dryopea owns becomes published libraries — descriptive names, never a brand |
+| [`11-flow-field`](11-flow-field/README.md) | G | MH | Active (F0 next) | Enemies route round walls to the core, per class; the mechanic Tier A waits on |
 
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.

@@ -37,6 +37,7 @@ end-to-end and *fun-shaped*.
 | 3D solver-validation viewer | drafted | [plan 02](02-solver-validation-viewer/README.md) | Painted layer + height-solved mesh overlay, 40% transparent |
 | Marker layer + spawn points | **shipped** | [plan 03](03-marker-layer-and-spawns/README.md) | M1-M5 done; sidecar JSON, mode toggle, placement + rotation, render overlay, wave engine + spawn director |
 | Map library + browser (planet-view UI) | drafted | [plan 04](04-map-library/README.md) | MapFile schema (L1), map index, content, selector |
+| Enemy flow field (route round walls, per class) | drafted | [plan 11](11-flow-field/README.md) | Replaces the straight-line `enemy_tick`; entrances, nibble fallback, per-class passability |
 | End-to-end validation scenario | drafted | [plan 05](05-validation-scenario/README.md) | The "minimum playable thing" spec |
 
 When Tier A is done the game is **playable** — a player can

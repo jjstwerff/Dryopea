@@ -5,7 +5,11 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Plan 07 — Shared world substrate (go 3D; interchange world-building routines)
 
-**Status:** Active (authored 2026-05-27).
+**Status:** **Blocked** (authored 2026-05-27; re-assessed 2026-08-12).
+W0c was cut out into [plan 09](../09-lattice-conversion/README.md); W1 needs
+both that and `hex_voxel` published (§ Asset interchange, W0x).  Nothing here
+is startable today, so it reads Blocked rather than Active — the
+[`plans/README.md`](../README.md) active cap should mean something.
 **Effort:** H–VH (foundational; reshapes the editor's data + render core).
 
 **Progress / blockers (2026-05-28):**

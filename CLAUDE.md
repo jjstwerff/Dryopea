@@ -533,6 +533,7 @@ signature.
 | [plans/08-game-validation/README.md](plans/08-game-validation/README.md) | Plan 08 — scripted play, measured effects, PNGs for inspection |
 | [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — dryopea moves to the libraries' lattice (pointy-top odd-r offset) + adopts `input` |
 | [plans/10-extract-local-libraries/README.md](plans/10-extract-local-libraries/README.md) | Plan 10 — dryopea's own reusable code becomes published libraries |
+| [plans/11-flow-field/README.md](plans/11-flow-field/README.md) | Plan 11 — enemies route round walls to the core (replaces the straight-line tick) |
 | [PROBLEMS.md](PROBLEMS.md) | Dryopea-internal bugs (`@D<NNN>`) |
 | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) | Outbound queue to loft |
 
