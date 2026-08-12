@@ -104,9 +104,9 @@ somewhere in the middle.
 
 ## What the movement spec costs to build
 
-The rules themselves now live in [`docs/DESIGN.md`](../../docs/DESIGN.md)
-§ Enemy movement and § Sealing the perimeter is punished, not forbidden —
-design belongs there, not in a plan. Three of them change what this plan
+The rules themselves live in
+[`docs/ENEMY_MOVEMENT.md`](../../docs/ENEMY_MOVEMENT.md) — design belongs
+there, not in a plan. Three of them change what this plan
 *builds*, and those are here.
 
 **1. The no-path fallback is a second field, not a targeting system.**
@@ -142,10 +142,11 @@ special case bolted onto F1b. This is the cheapest possible moment to get it
 right and an expensive one to retrofit.
 
 **5. The field is recomputed on DEATH — batched ONCE PER TICK.** Bodies
-raise height (§ Bodies are terrain), so every kill changes passability; F8
+raise height (ENEMY_MOVEMENT § Bodies are terrain), so every kill changes
+passability; F8
 was written as "recompute after edits, with combat reusing it", which is
-backwards. DESIGN § The tick resolves once settles when: one rebuild per
-tick, never per event.
+backwards. ENEMY_MOVEMENT § The tick resolves once settles when: one
+rebuild per tick, never per event.
 
 That is not primarily a cost decision. **It is what makes a tick
 order-independent**, and therefore what makes a scripted run reproducible —
@@ -189,7 +190,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it | Open |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
-| **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result** — the order-independence DESIGN § The tick resolves once requires. A gate that only exercises editor strokes tests the rarer half | Open |
+| **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result** — the order-independence ENEMY_MOVEMENT § The tick resolves once requires. A gate that only exercises editor strokes tests the rarer half | Open |
 
 ⚠ **No phase is `H`.** F5 and F6 are the largest and both are "one site at a
 time" with a scenario each.
@@ -274,7 +275,7 @@ plausibility.
 
    ⚠ Normal mobs only — bosses break instead of stopping, and the rule has
    since generalised to a height step. Both live in
-   [`docs/DESIGN.md`](../../docs/DESIGN.md) § Enemy movement; the build
+   [`docs/ENEMY_MOVEMENT.md`](../../docs/ENEMY_MOVEMENT.md); the build
    consequences are § What the movement spec costs to build, points 4–5.
 
 6. ~~**What does a stopped approach-mode enemy DO?**~~ **ANSWERED** (project
@@ -289,8 +290,9 @@ plausibility.
 
 ## See also
 
-- [`docs/DESIGN.md`](../../docs/DESIGN.md) § 6 (walls, entrances,
-  climbability) and § 7 (targeting priority, nibble) — the spec.
+- [`docs/ENEMY_MOVEMENT.md`](../../docs/ENEMY_MOVEMENT.md) — the spec this
+  plan builds. [`docs/DESIGN.md`](../../docs/DESIGN.md) § 5 (wall topology,
+  entrances) and § 7 (targeting priority, nibble) for what it sits between.
 - [`plans/05-validation-scenario`](../05-validation-scenario/README.md) —
   the consumer; "defend through some waves" needs this mechanic.
 - [`plans/08-game-validation`](../08-game-validation/README.md) — the

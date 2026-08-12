@@ -521,6 +521,7 @@ signature.
 | [docs/DESIGN.md](docs/DESIGN.md) | Master design — towers / walls / waves / scramble / camera / HUD / economy / run shape |
 | [docs/SETTING.md](docs/SETTING.md) | Fiction — autonomous AIs (girl-hacker imprint), faction wars dormant, surface-vs-underground, future contact gates, crew-doesn't-walk justification, combat-bot escalation |
 | [docs/DESIGN_HISTORY.md](docs/DESIGN_HISTORY.md) | 2023 prototype seeds |
+| [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) | Enemy movement — two steering modes, passability as a height step, bodies as terrain, sealing punished not forbidden, structural wall HP, the tick resolving once |
 | [docs/GROUND_TYPES.md](docs/GROUND_TYPES.md) | Palette spec |
 | [docs/NUMBERS.md](docs/NUMBERS.md) | Tunable values |
 | [docs/PROXY_ART.md](docs/PROXY_ART.md) | Placeholder shapes |
@@ -554,7 +555,7 @@ signature.
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
-| Change how enemies move | [docs/DESIGN.md](docs/DESIGN.md) § Enemy movement — the spec (two steering modes, one height-step passability rule, bodies as terrain, the tick resolving once).  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
+| Change how enemies move | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) — the whole spec.  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |
 
