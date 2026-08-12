@@ -53,12 +53,24 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 + F1b shipped.  F1 is the
+Plan 11 (flow field) has F0 + F1 + F1b + F2 shipped.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
 passable` say where an enemy is and whether its CLASS may be there,
 and `src/passable.loft` is the height-step rule they read.  **F1b is
 the first wall in dryopea that works** — `enemy_tick` consults that
-same rule and stops in front of what it cannot cross.
+same rule and stops in front of what it cannot cross.  F2 is the
+distance field (`src/flow.loft`): a BFS out from the core, one field
+per class, where **no-route is a LARGE value and never 0** — 0 is
+"at the core", and "smallest distance wins" must refuse a cell with
+no route rather than prefer it.
+
+⚠ **The neighbour relation lives in `src/world.loft` and nowhere
+else.**  `hex_offset` / `hex_neighbor` / `hex_neighbours` are the only
+place a hex coordinate may be stepped.  Everything that computes
+adjacency, reach or a route calls them; a `+ 1` on a `q` or `r`
+outside them is the bug (it is how moros#10 sheared every reach
+computation).  That is also what keeps plan 11's distances
+independent of plan 09: convert the table, and no distance moves.
 
 ⚠ **A walking test must paint the ground it walks on.**  An unpainted
 hex IS sea, so after F1b a wave over a blank map does not move at
@@ -66,9 +78,15 @@ all, and `enemies passable` over one is red.  Every scenario that
 walks enemies drags a corridor first; that is the game's rule, not a
 harness quirk.
 
-**Suite: 351/351 green under `scripts/test.sh`** (~20-30 s — the
+**Suite: 368/368 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
 **Gate: 9 scripts green under `scripts/validate.sh`** (~11 s).
+
+⚠ **Never interpolate a struct that has a `hash` field** — `"{f}"`
+SIGSEGVs the interpreter (loft#873) and exits silently on native.
+It bites hardest inside an assertion message, where it replaces the
+diagnostic of a failing test with a crash three lines from the real
+site.  Format the fields: `{flow_count(f)}`, never `{f}`.
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -271,6 +289,16 @@ src/
                    `height_override` are declared NULLABLE because
                    palette.json writes null in them — see the file's
                    own warning
+  flow.loft        the distance field (plan 11 F2) — flow_build(pal,
+                   pw, kind, core) -> FlowField, a BFS out from the
+                   core over what that CLASS can occupy, plus
+                   flow_distance / flow_reachable / flow_count.
+                   ⚠ no-route is FLOW_UNREACHABLE, a LARGE value:
+                   0 means "at the core", and every "closest
+                   neighbour" search must refuse a routeless cell
+                   rather than prefer it.  Built from world.loft's
+                   neighbour relation only, which is what makes it
+                   independent of plan 09
   passable.loft    may a class of enemy be on this hex? (plan 11 F1)
                    — the enemy KIND discriminants + climb_limit()
                    + hex_height() + occupancy_fault() / can_occupy().

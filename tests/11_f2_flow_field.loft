@@ -1,0 +1,370 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F2 — the distance field.
+//
+// ── The pre-flight comes first, and it is not ceremony ───────────
+//
+// F0's probe built a wall ring from the wrong corner: 18 hexes
+// painted, **16 of them off-ring**, so the "sealed" world was not
+// sealed and every route through it was meaningless — while looking
+// entirely plausible.  Every test below that says "closed ring"
+// depends on the ring actually being one, so
+// `test_the_ring_builder_really_builds_a_ring` runs that check
+// explicitly: 18 cells, all at radius 3, all distinct.  A fixture
+// nobody checked is a result nobody has.
+//
+// ── What these expectations are really pinning ───────────────────
+//
+// ⚠ **Not one number in this file may change when plan 09 converts
+// the lattice.**  The field is built from `world.loft`'s neighbour
+// relation and never from `q` / `r` arithmetic, which makes every
+// distance here a graph property — true in any lattice.  If a
+// conversion moves one of these numbers, that rule was broken
+// somewhere, and what broke is moros#10 again: a reach computed with
+// the wrong lattice's arithmetic.
+//
+// So the L-corridor test matters more than it looks.  It asserts a
+// distance of 12 where the straight-line distance is 6, which no
+// coordinate formula can produce — only a walk over the graph can.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// examples/palette.json, in file order.
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+const WALL_HIGH: integer = 10;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// ⚠ A struct-valued `const` is not supported in loft — it reads
+// `null` interpreted and fails to compile natively — so the core hex
+// is a zero-argument function, which is what the compiler's own
+// diagnostic recommends.
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Fixtures
+// ─────────────────────────────────────────────────────────────────
+
+// The hexes at exactly `radius` from `centre`, walked with the
+// neighbour relation and nothing else.
+//
+// Start one radius out along direction 4, then walk `radius` steps in
+// each of the six directions in turn — the standard ring walk.  Which
+// corner to start from is exactly what F0 got wrong, so this function
+// is checked by a test rather than trusted.
+fn ring(centre: Hex, radius: integer) -> vector<Hex> {
+    r_out: vector<Hex> = [];
+    r_h = centre;
+    for _ in 0..radius {
+        r_h = hex_neighbor(r_h, 4);
+    }
+    for r_dir in 0..6 {
+        for _ in 0..radius {
+            r_out += [r_h];
+            r_h = hex_neighbor(r_h, r_dir);
+        }
+    }
+    r_out
+}
+
+// A disc of `kind` out to `radius` — the open world, where a route is
+// never obstructed.
+fn disc(radius: integer, kind: integer) -> PaintedWorld {
+    d_pw = painted_empty();
+    for d_h in visible_hexes(core(), radius) {
+        paint(d_pw, d_h.q, d_h.r, as_u8(kind));
+    }
+    d_pw
+}
+
+// A disc of grass with a ring of `wall_kind` at radius 3 — a base
+// with a perimeter.  `gap` hexes of the ring are left as grass, so 0
+// is sealed and 1 is a base with an entrance.
+fn walled_base(wall_kind: integer, gap: integer) -> PaintedWorld {
+    wb_pw = disc(6, GRASS);
+    wb_i  = 0;
+    for wb_h in ring(core(), 3) {
+        if wb_i >= gap {
+            paint(wb_pw, wb_h.q, wb_h.r, as_u8(wall_kind));
+        }
+        wb_i += 1;
+    }
+    wb_pw
+}
+
+fn robot_field(pw: PaintedWorld) -> FlowField {
+    flow_build(load_palette(PALETTE), pw, as_u8(ENEMY_KIND_REGULAR), core())
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The pre-flight
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_ring_builder_really_builds_a_ring() {
+    trb = ring(core(), 3);
+
+    assert(len(trb) == 18, "a ring of radius 3 is 18 hexes, got {len(trb)}");
+    for trb_h in trb {
+        assert(hex_distance(core(), trb_h) == 3,
+               "({trb_h.q}, {trb_h.r}) is at radius {hex_distance(core(), trb_h)}, not 3");
+    }
+    // Distinct, too: a walk that doubled back would satisfy both
+    // checks above while leaving the ring with holes in it.
+    trb_pw = painted_empty();
+    for trb_p in trb {
+        paint(trb_pw, trb_p.q, trb_p.r, as_u8(WALL));
+    }
+    assert(painted_count(trb_pw) == 18, "18 DISTINCT hexes, got {painted_count(trb_pw)}");
+}
+
+// The other half of F0's lesson: a sealed ring must actually seal.
+// Reachability is what a ring is FOR, so it is checked on the fixture
+// directly, not inferred from the tests that use it.
+fn test_a_sealed_ring_actually_encloses_the_core() {
+    tsr = robot_field(walled_base(WALL, 0));
+
+    assert(flow_reachable(tsr, 0, 0), "the core is inside");
+    assert(!flow_reachable(tsr, 4, 0), "and radius 4 is outside, with no way in");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The neighbour relation the field is built from
+// ─────────────────────────────────────────────────────────────────
+
+fn test_every_neighbour_is_one_step_away() {
+    ten = hex_neighbours(Hex { q: 3, r: -2 });
+
+    assert(len(ten) == 6, "six neighbours, got {len(ten)}");
+    for ten_h in ten {
+        assert(hex_distance(Hex { q: 3, r: -2 }, ten_h) == 1,
+               "({ten_h.q}, {ten_h.r}) is {hex_distance(Hex { q: 3, r: -2 }, ten_h)} away, not 1");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The field itself
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_core_reads_zero_and_its_neighbours_read_one() {
+    tcz = robot_field(disc(4, GRASS));
+
+    assert(flow_distance(tcz, 0, 0) == 0, "the core is 0 steps from the core");
+    for tcz_h in hex_neighbours(core()) {
+        assert(flow_distance(tcz, tcz_h.q, tcz_h.r) == 1,
+               "({tcz_h.q}, {tcz_h.r}) is adjacent, so 1 — read {flow_distance(tcz, tcz_h.q, tcz_h.r)}");
+    }
+}
+
+// On an OPEN world a graph distance and the lattice's own distance
+// function must agree everywhere.  Two independent implementations
+// checking each other — the shape plan 09 calls an oracle — so a
+// wrong neighbour table cannot pass.
+fn test_on_open_ground_the_field_equals_the_hex_distance() {
+    tog_pw = disc(5, GRASS);
+    tog_f  = robot_field(tog_pw);
+
+    for tog_h in visible_hexes(core(), 5) {
+        assert(flow_distance(tog_f, tog_h.q, tog_h.r) == hex_distance(core(), tog_h),
+               "({tog_h.q}, {tog_h.r}): field says {flow_distance(tog_f, tog_h.q, tog_h.r)}, hex_distance says {hex_distance(core(), tog_h)}");
+    }
+    assert(flow_count(tog_f) == 91, "every hex of a radius-5 disc is reachable, got {flow_count(tog_f)}");
+    assert(!tog_f.truncated, "and the build finished");
+}
+
+// The test no coordinate formula can pass.  A corridor that FOLDS
+// BACK: six hexes out along direction 1, then six along direction 3,
+// which turns 120° rather than 60°.  The far end finishes 6 hexes
+// from the core in a straight line and TWELVE steps along the only
+// route there is.
+//
+// ⚠ Two drafts of this test were wrong, and both were caught by
+// working the answer out by hand instead of reading it off the
+// implementation.
+//
+// The first bent by 60° (directions 1 then 0): the "detour" was still
+// a shortest path — 12 steps to a hex 12 away — so it proved nothing.
+// The control assertion below, that the straight line is SHORTER, is
+// what caught it.
+//
+// The second expected 12 and the field answered 11.  The field was
+// right: the two legs TOUCH at the corner — (6, -1) is a neighbour of
+// (5, 0) — so the route cuts it and never visits (6, 0) at all:
+//
+//   (0,0) (1,0) (2,0) (3,0) (4,0) (5,0) (6,-1) (6,-2) … (6,-6)
+//
+// which is 11 steps over 12 hexes.  That is the whole point of a
+// field built from the neighbour relation: it measures the route the
+// world actually offers, not the length of the path someone painted.
+fn test_a_corridor_that_bends_is_measured_along_its_length() {
+    tcb_pw = painted_empty();
+    tcb_h  = core();
+    paint(tcb_pw, tcb_h.q, tcb_h.r, as_u8(GRASS));
+    for _ in 0..6 {
+        tcb_h = hex_neighbor(tcb_h, 1);
+        paint(tcb_pw, tcb_h.q, tcb_h.r, as_u8(GRASS));
+    }
+    tcb_corner = tcb_h;
+    for _ in 0..6 {
+        tcb_h = hex_neighbor(tcb_h, 3);
+        paint(tcb_pw, tcb_h.q, tcb_h.r, as_u8(GRASS));
+    }
+    tcb_end = tcb_h;
+    tcb_f = robot_field(tcb_pw);
+
+    assert(flow_distance(tcb_f, tcb_corner.q, tcb_corner.r) == 6, "the bend is six steps out");
+    assert(flow_distance(tcb_f, tcb_end.q, tcb_end.r) == 11,
+           "and the far end is eleven by the route that cuts the corner, read {flow_distance(tcb_f, tcb_end.q, tcb_end.r)}");
+    // The straight-line distance is shorter still, which is the
+    // point: a field computed from coordinates would answer THAT.
+    assert(hex_distance(core(), tcb_end) == 6,
+           "the straight line is six: {hex_distance(core(), tcb_end)}");
+    assert(flow_count(tcb_f) == 13, "13 corridor hexes and nothing else");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Unreachable is a distinct value, and it is not 0
+// ─────────────────────────────────────────────────────────────────
+
+fn test_unreachable_is_not_zero() {
+    tun = robot_field(walled_base(WALL, 0));
+
+    // The trap, stated as the assertion that catches it: a walled-off
+    // hex must not read as "arrived".
+    assert(flow_distance(tun, 4, 0) != 0,
+           "a hex with no route must NOT read 0 — 0 is the core");
+    assert(flow_distance(tun, 4, 0) == FLOW_UNREACHABLE, "it reads the no-route value");
+    assert(!flow_reachable(tun, 4, 0), "and answers the question directly");
+    assert(flow_distance(tun, 0, 0) == 0, "while the core still reads 0");
+    assert(flow_reachable(tun, 0, 0), "and IS reachable");
+}
+
+// The ordering property the value was chosen for: no-route must
+// compare as WORSE than any real distance, or every "closest
+// neighbour" search picks it and walks enemies into walls.
+fn test_no_route_compares_worse_than_any_real_distance() {
+    tnr = robot_field(disc(6, GRASS));
+
+    for tnr_h in visible_hexes(core(), 6) {
+        assert(flow_distance(tnr, tnr_h.q, tnr_h.r) < FLOW_UNREACHABLE,
+               "every real distance is smaller than the sentinel");
+    }
+    assert(FLOW_UNREACHABLE > 6, "and the sentinel is past the far edge of this world");
+}
+
+// A hex nothing was ever painted on is sea, so it has no route — and
+// that is the same answer as "walled off", correctly.
+fn test_open_water_has_no_route_either() {
+    tow = robot_field(disc(3, GRASS));
+
+    assert(!flow_reachable(tow, 9, 9), "unpainted is sea, and sea is not a route");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A gap is a way in, and nothing had to detect it
+// ─────────────────────────────────────────────────────────────────
+//
+// F0's answer, now asserted against the built field: shortest path IS
+// "preferred entry point", and the field does not care what the
+// opening is called.
+
+fn test_one_gap_in_the_ring_lets_the_field_out() {
+    tog_sealed = robot_field(walled_base(WALL, 0));
+    tog_open   = robot_field(walled_base(WALL, 1));
+
+    assert(!flow_reachable(tog_sealed, 4, 0), "sealed: no way out");
+    assert(flow_reachable(tog_open, 4, 0),
+           "one hex of the perimeter left open and the whole outside is reachable");
+    assert(flow_count(tog_open) > flow_count(tog_sealed),
+           "the field grew: {flow_count(tog_sealed)} -> {flow_count(tog_open)}");
+}
+
+// And the route through the gap is LONGER than the straight line —
+// the detour is the mechanic, and it only shows up in a graph.
+fn test_the_route_through_a_gap_is_longer_than_the_straight_line() {
+    trg = robot_field(walled_base(WALL, 1));
+    // The far side of the base from the gap: reachable, but only the
+    // long way round.
+    trg_far = Hex { q: 0, r: 5 };
+
+    assert(flow_reachable(trg, trg_far.q, trg_far.r), "it can be reached");
+    assert(flow_distance(trg, trg_far.q, trg_far.r) > hex_distance(core(), trg_far),
+           "but not in a straight line: {flow_distance(trg, trg_far.q, trg_far.r)} steps for {hex_distance(core(), trg_far)} hexes");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// One field per class
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_insects_field_crosses_the_wall_the_robots_cannot() {
+    tif_pw  = walled_base(WALL, 0);
+    tif_pal = load_palette(PALETTE);
+    tif_bot = flow_build(tif_pal, tif_pw, as_u8(ENEMY_KIND_REGULAR), core());
+    tif_bug = flow_build(tif_pal, tif_pw, as_u8(ENEMY_KIND_INSECT),  core());
+
+    assert(!flow_reachable(tif_bot, 4, 0), "the robot's field stops at the perimeter");
+    assert(flow_reachable(tif_bug, 4, 0),  "the insect's climbs over it");
+    assert(flow_count(tif_bug) > flow_count(tif_bot),
+           "so the two fields differ in size: {flow_count(tif_bot)} vs {flow_count(tif_bug)} cells");
+}
+
+fn test_a_high_wall_seals_the_insect_out_too() {
+    tah_pal = load_palette(PALETTE);
+    tah_bug = flow_build(tah_pal, walled_base(WALL_HIGH, 0),
+                         as_u8(ENEMY_KIND_INSECT), core());
+
+    assert(!flow_reachable(tah_bug, 4, 0), "5 m is past its climb");
+    assert(flow_reachable(tah_bug, 0, 0),  "the inside is still its own");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Degenerate worlds answer honestly rather than specially
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_core_on_ground_it_cannot_stand_on_has_an_empty_field() {
+    tce = robot_field(painted_empty());
+
+    assert(flow_count(tce) == 0, "an unpainted world holds no route at all");
+    assert(!flow_reachable(tce, 0, 0),
+           "not even the core: nothing walks to a place nothing can stand");
+    assert(flow_distance(tce, 0, 0) == FLOW_UNREACHABLE, "and it says so with the no-route value");
+}
+
+fn test_a_core_alone_on_one_hex_is_a_field_of_one() {
+    tca_pw = painted_empty();
+    paint(tca_pw, 0, 0, as_u8(GRASS));
+    tca = robot_field(tca_pw);
+
+    assert(flow_count(tca) == 1, "one hex, one cell");
+    assert(flow_distance(tca, 0, 0) == 0, "and it is the core");
+    for tca_h in hex_neighbours(core()) {
+        assert(!flow_reachable(tca, tca_h.q, tca_h.r), "surrounded by water");
+    }
+}
+
+fn test_the_field_remembers_which_core_it_is_a_field_to() {
+    ttf = flow_build(load_palette(PALETTE), disc(3, GRASS),
+                     as_u8(ENEMY_KIND_REGULAR), Hex { q: 2, r: -1 });
+
+    assert(ttf.core.q == 2 && ttf.core.r == -1, "a field without its source is ambiguous");
+    assert(flow_distance(ttf, 2, -1) == 0, "and the distances are measured from it");
+    assert(flow_distance(ttf, 0, 0) == hex_distance(Hex { q: 2, r: -1 }, core()),
+           "so the old core is now just a hex some steps away");
+}
+
+// The cap exists so a palette change turns a hang into a named fault.
+// It must not be doing anything on a normal build.
+fn test_a_normal_build_is_not_truncated() {
+    assert(!robot_field(disc(6, GRASS)).truncated,
+           "a radius-6 disc is nowhere near the cap");
+    assert(FLOW_MAX_CELLS > 91, "and the cap is well past a real base");
+}

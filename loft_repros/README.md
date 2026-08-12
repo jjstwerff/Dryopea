@@ -31,6 +31,7 @@ no longer reproducing).
 |---|---|---|
 | [`json_vector_cast_native_tail_return.loft`](json_vector_cast_native_tail_return.loft) | Native codegen SILENTLY answers `[]` for a `text as vector<Struct>` cast in tail-return position.  Empties dryopea's palette natively; no panic, no diagnostic. | [loft#866](https://github.com/loft-lang/loft/issues/866) |
 | [`struct_cast_via_text_local_returned.loft`](struct_cast_via_text_local_returned.loft) | A `text as Struct` cast returned out of a function trips guard #306 and SIGSEGVs on the interpreter; the native build fails to compile the emitted Rust. | [loft#867](https://github.com/loft-lang/loft/issues/867) |
+| [`format_struct_with_hash_field.loft`](format_struct_with_hash_field.loft) | `"{s}"` where `s` is a struct with a `hash<…>` field: SIGSEGV in `OpFormatDatabase` on the interpreter, silent exit 1 on `--native`.  Fires inside assertion messages, so a failing test loses its diagnostic. | [loft#873](https://github.com/loft-lang/loft/issues/873) |
 | [`json_null_into_non_null_scalar_field.loft`](json_null_into_non_null_scalar_field.loft) | A `text as vector<Struct>` cast stores JSON `null` into a field declared plain (non-null under DN1) — and `redundant-coalesce` then advises deleting the `?? 0.0` that guards the read.  Both backends. | [loft#870](https://github.com/loft-lang/loft/issues/870) |
 
 Five reproducers were **deleted on 2026-08-12** after re-running them

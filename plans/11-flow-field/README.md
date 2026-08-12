@@ -10,7 +10,7 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 + F1b shipped 2026-08-12; F2 is next.**
+**Active — F0 + F1 + F1b + F2 shipped 2026-08-12; F3 is next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -216,6 +216,65 @@ mode has one heading and no way round. It does not attack (no combat yet)
 and it does not route (F5). Four enemies stopped at one face all stand on
 the same hex; F5c is where they spread.
 
+## F2, the distance field (2026-08-12)
+
+[`src/flow.loft`](../../src/flow.loft): a breadth-first sweep out from the
+core over the hexes one class can occupy, storing a distance per cell.
+
+**No route is a LARGE number, not `-1`, and that is the phase's real
+decision.** The plan asked only that unreachable ≠ 0. But F3 validates
+"every arrow reaches the core in exactly `distance` steps" and F5 moves an
+enemy to "the best free neighbour" — both meaning *the smallest distance*.
+Against a `-1`, a cell with no route is the most attractive neighbour on the
+map, so the mover would walk enemies into precisely the places they cannot
+go. Made larger than any real distance, the ordering refuses it with no
+caller having to remember a special case. `FLOW_UNREACHABLE` and a
+`flow_reachable` predicate; the accessor is the only door, because reading
+`cells[q, r].dist` directly gives null and `?` turns that into 0.
+
+**Verified by breaking it.** With `flow_distance` returning 0 on a miss —
+the exact defect § F2 — the trap in the sea-default world describes — 8 of
+the 17 tests go red, including the one named for it. The instrument
+demonstrably sees the bug it was built for.
+
+**The neighbour relation moved to [`world.loft`](../../src/world.loft), and
+that is what makes this independent of plan 09.** `hex_offset` was living in
+`spawn.loft`, where the wave engine held the geometry the whole world needs.
+It is now `world.loft` § The neighbour relation together with `hex_neighbor`
+/ `hex_neighbours`, marked as the ONLY place a coordinate may be stepped.
+Every distance in this plan is therefore a graph property, and plan 09's
+conversion has one table to change.
+
+**⚠ Two drafts of the bend test were wrong, and working the answer by hand
+caught both.** The point of the test is a distance no coordinate formula can
+produce. Draft one bent 60° (directions 1 then 0) — still a shortest path,
+12 steps to a hex 12 away, proving nothing; its own control assertion caught
+it. Draft two expected 12 and the field said 11 — and **the field was
+right**: the two legs touch at the corner, so the route cuts it and never
+visits the corner hex at all. Reading the number off the implementation
+would have hidden both. The hand-worked path is now in the test.
+
+**Reuse checked first, and the answer is recorded.** Open question 2 asked
+whether `hex_field::Labels` should host the field. Measured: no, not today
+— `Labels` is a bounded rectangle (`labels_new(q0, r0, w, h)`) addressed in
+odd-r, while dryopea's world is unbounded, sparse and axial until plan 09.
+Nothing in the `hex_*` family carries a distance field to reuse; the nearest
+thing is `hex_shape::flood_outside`, which is boolean reachability over a
+bounded box by relaxation. So dryopea writes its own — a frontier sweep,
+which suits an unbounded sparse world where a box does not.
+
+**What is deliberately NOT here.** The arrow — "which neighbour is closest"
+— is F3's, because its gate is the sweep that catches loops and local
+minima. Shipping the function without that check would ship a field where
+one wrong arrow is a permanent enemy stall.
+
+**A cap with a name, not a silent one.** The sweep terminates because every
+passable hex is a painted one (unpainted is sea, sea is not walkable) and
+the painted set is finite — an argument that rests on the *palette*. Make
+sea walkable and the frontier expands forever. `FLOW_MAX_CELLS` turns that
+from a hang into a `truncated` flag, and a test asserts it is false on a
+real base.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -298,7 +357,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F0** — probe: does an entrance need DETECTING? | XS | a probe first | four hand-built worlds + a BFS. **Shipped — see § F0, the answer.** No: routing is emergent, F4 is cancelled, and the probe found a trap worth more than the question | **Shipped** |
 | **F1** — the measurement: where is an enemy? | S | — | a new `.keys` assertion (`enemy <i> <q> <r>`, and `enemies passable` — no enemy on a hex its CLASS cannot traverse) that goes RED against today's mover walking through a wall ring, and green when hand-fed a legal path. An assertion that cannot fail today is not the instrument this needs. **Shipped — see § F1, the instrument.** The gate is the same script one tick apart: red standing in a wall face, green a hex earlier. A face, not a ring — F0's hand-built ring painted 16 of 18 hexes off-ring, so a ring needs the pre-flight F2 will carry, and three hexes on a line need none | **Shipped** |
 | **F1b** — approach mode stops at walls | S | one site at a time | fired at a wall face, an enemy halts at the EXACT hex before it; fired at a gap, it passes through. Both failed today — **measured**, by short-circuiting the check: 8 of 10 tests go red without it. **Shipped — see § F1b, the first wall that works.** ⚠ The plan said "it needs only the existing `walk_*` palette fields"; F0 had already disproved that — `walk_*` is the bug, and it uses the height step | **Shipped** |
-| **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable | Open |
+| **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable. **Shipped — see § F2, the distance field.** Measured against the negative control: with unreachable collapsed to 0, 8 of 17 tests go red. Unreachable is a LARGE value, not `-1`, so "smallest distance wins" refuses it | **Shipped** |
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does | Open |
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
@@ -336,7 +395,7 @@ plausibility.
 | Phase | Concrete expected result | Invariant pinned | Negative control |
 |---|---|---|---|
 | **F1** ✅ | the new assertion goes red against today's mover | the instrument can see the failure it exists for | an assertion green on a wall-walker measures nothing |
-| **F2** | closed ring → outside cells unreachable | unreachable ≠ 0 ≠ at-the-core | a walled-off spawn reading 0 = "already arrived" |
+| **F2** ✅ | closed ring → outside cells unreachable | unreachable ≠ 0 ≠ at-the-core | a walled-off spawn reading 0 = "already arrived" |
 | **F3** | arrows reach the core in exactly `distance` steps, from every reachable cell | the field has no loop and no local minimum | one cell whose arrow increases distance is a permanent enemy stall |
 | **F5** | `enemies clear of wall` every tick | routing respects the world | today's code fails this — the gate is proven before the feature exists |
 | **F6** | insect and robot paths DIFFER on one map | passability is per class | identical paths mean the class key is ignored |
@@ -362,7 +421,12 @@ plausibility.
 
 **Still open:**
 
-2. **Does the field live on the map or beside it?** It is *derived*, so it
+2. ~~Does the field live on the map or beside it?~~ **Beside it, and
+   recomputed** — F2 measured the alternative: `hex_field::Labels` is a
+   BOUNDED rectangle addressed in odd-r, and dryopea's world is unbounded,
+   sparse and axial until plan 09, so it cannot host the field today.  No
+   `hex_*` library carries a distance field to reuse either.  *(Answered.)*
+   The original reasoning, kept: it is *derived*, so it
    should be recomputed, not saved — the reasoning is
    [`plans/07`](../07-shared-world-substrate/README.md) § Evaluated. If it
    ever needs a home, `hex_field::Labels` is a per-cell integer field

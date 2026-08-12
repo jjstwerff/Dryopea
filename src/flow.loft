@@ -1,0 +1,181 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The distance field — how far every hex is from the core, by a
+// route an enemy of one class can actually walk.
+//
+// Plan 11 phase F2.  It answers ONE question — "how many steps from
+// here to the core?" — and F3 reads the arrows out of it, F5 moves
+// enemies down it, F7 runs a second one with the walls passable to
+// decide where a blocked enemy goes.
+//
+// ── Built from the NEIGHBOUR RELATION, never from coordinates ────
+//
+// A distance field is a graph property: correct in ANY lattice, as
+// long as it is built from the world's own neighbour function.  This
+// file therefore calls `hex_neighbor` and never touches `q` / `r`
+// arithmetically — see `world.loft` § The neighbour relation, which
+// is the only place in dryopea allowed to step a coordinate.
+//
+// That is what keeps this independent of plan 09's conversion to
+// pointy-top odd-r: the lattice moves underneath and not one distance
+// here changes.  Its gate falls out for free — **the expectations in
+// `tests/11_f2_flow_field.loft` must survive plan 09 unchanged.**  If
+// a single expected distance moves, this rule was broken somewhere,
+// and what broke is moros#10 all over again.
+//
+// ── Three states, and why UNREACHABLE is a big number ───────────
+//
+// dryopea stores only painted hexes, so a field over it has three
+// states and not two: *at the core* (0), *n steps away*, and *no
+// route at all*.  The natural loft default for an absent entry is 0
+// — which is the first of them.  Conflating them makes a walled-off
+// spawn read as **arrived**, the same class of defect as
+// `EditorInput`'s `-1`-becomes-`0` sentinel (plan 08 § Neutral must
+// be the zero value).
+//
+// So no-route is an explicit value.  It is a LARGE one, not `-1`, and
+// that choice is load-bearing: F3 validates "every arrow reaches the
+// core in exactly `distance` steps" and F5 moves an enemy to "the
+// best free neighbour", both of which mean *the neighbour with the
+// SMALLEST distance*.  Against a `-1`, a cell with no route is the
+// most attractive neighbour on the map — so the mover would walk
+// enemies into exactly the places they cannot go.  Made larger than
+// any real distance, the ordering does the right thing on its own
+// and no caller has to remember a special case.
+//
+// ── The field is DERIVED, so it is recomputed and never saved ────
+//
+// [`plans/07`](../plans/07-shared-world-substrate/README.md)
+// § Evaluated: authored → a layer, derived → recompute, runtime →
+// sim state.  This is the middle one.  Plan 11's open question 2
+// asked whether `hex_field::Labels` should host it instead; the
+// answer measured at F2 is no, not today — `Labels` is a BOUNDED
+// rectangle (`labels_new(q0, r0, w, h)`) addressed in **odd-r**,
+// while dryopea's world is unbounded, sparse and axial until plan 09.
+// Nothing in the `hex_*` family carries a distance field to reuse
+// either; the closest is `hex_shape::flood_outside`, which is
+// boolean reachability over a bounded box.
+
+use world;
+use palette;
+use painted;
+use passable;
+
+// No route to the core.
+//
+// Larger than any distance a real map can produce, so that "smaller
+// is better" comparisons refuse it without knowing it exists — see
+// § Three states above.  Small enough that adding a step to it cannot
+// overflow an i64 anywhere.
+pub const FLOW_UNREACHABLE: integer = 1000000000;
+
+// A cell's build is abandoned past this many reachable hexes, and
+// `truncated` says so.
+//
+// The BFS terminates on its own today, because every passable hex is
+// a painted one (an unpainted hex is sea, and sea is not walkable) and
+// the painted set is finite.  That argument rests on the PALETTE
+// though — make sea walkable and the frontier expands forever over an
+// unbounded plane.  A cap turns that from a hang into a fault with a
+// name, and `truncated` is asserted false by the tests so it cannot
+// quietly become the normal case.
+pub const FLOW_MAX_CELLS: integer = 1048576;
+
+// One cell's distance, keyed by hex.
+pub struct FlowCell {
+    q:    integer,
+    r:    integer,
+    dist: integer,
+}
+
+// A finished field: the reachable cells, and the core they are
+// distances TO.
+//
+// Only REACHABLE cells are stored — a field over a sparse world is
+// itself sparse, and every miss is `FLOW_UNREACHABLE`.  The core is
+// kept because a field without its source is ambiguous, and F5b's
+// approach→engage handoff needs to know which core it is steering to.
+pub struct FlowField {
+    cells:     hash<FlowCell[q, r]>,
+    core:      Hex,
+    truncated: boolean,
+}
+
+// How many steps from (q, r) to the core, or `FLOW_UNREACHABLE`.
+//
+// ⚠ **The only door.**  Reading `f.cells[q, r].dist` directly gives
+// null for a cell with no route, and `?` turns that into 0 — "at the
+// core". Ask here instead.
+pub fn flow_distance(f: const FlowField, q: integer, r: integer) -> integer {
+    fd_c = f.cells[q, r];
+    if fd_c == null { return FLOW_UNREACHABLE; }
+    fd_c.dist
+}
+
+// Is there any route from (q, r) to the core?
+pub fn flow_reachable(f: const FlowField, q: integer, r: integer) -> boolean {
+    flow_distance(f, q, r) < FLOW_UNREACHABLE
+}
+
+// How many hexes can reach the core at all — the size of the field.
+pub fn flow_count(f: const FlowField) -> integer {
+    len(f.cells)
+}
+
+// Build the field for one enemy class: a breadth-first sweep out from
+// the core over hexes that class can occupy.
+//
+// One field per class, not one field with per-class edge weights —
+// plan 11 F0 settled that: the palette's movement data is boolean, so
+// there is nothing to weigh an edge with.  `kind` is the class whose
+// climb limit decides what the sweep may cross.
+//
+// A core the class cannot stand on yields an EMPTY field, where every
+// hex — including the core's own — is unreachable.  That is the
+// honest answer rather than a special case: nothing can walk to a
+// place nothing can stand.
+pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld,
+                  kind: u8, core: Hex) -> FlowField {
+    fb_f = FlowField { cells: [], core: core, truncated: false };
+    if !can_occupy(pal, pw, kind, core.q, core.r) { return fb_f; }
+
+    fb_f.cells[core.q, core.r] = FlowCell { q: core.q, r: core.r, dist: 0 };
+    fb_frontier: vector<Hex> = [core];
+    fb_d = 0;
+
+    // Frontier by frontier rather than cell by cell: every hex in one
+    // frontier is the same distance out, so a cell's distance is the
+    // ring it was found in and needs no per-cell bookkeeping.
+    while len(fb_frontier) > 0 {
+        fb_d += 1;
+        fb_next: vector<Hex> = [];
+        for fb_h in fb_frontier {
+            for fb_dir in 0..6 {
+                fb_n = hex_neighbor(fb_h, fb_dir);
+                // Already labelled — and its label is smaller or
+                // equal, because BFS reaches every cell by a shortest
+                // route first.
+                if fb_f.cells[fb_n.q, fb_n.r] != null { continue; }
+                if !can_occupy(pal, pw, kind, fb_n.q, fb_n.r) { continue; }
+                fb_f.cells[fb_n.q, fb_n.r] = FlowCell { q: fb_n.q, r: fb_n.r, dist: fb_d };
+                fb_next += [fb_n];
+            }
+        }
+        if len(fb_f.cells) > FLOW_MAX_CELLS {
+            fb_f.truncated = true;
+            return fb_f;
+        }
+        fb_frontier = fb_next;
+    }
+    fb_f
+}
+
+// ⚠ **The arrow — "which neighbour is closest to the core" — is
+// deliberately NOT here.**  It is F3's deliverable, and its gate is
+// what makes it worth having: from every reachable cell in a swept
+// world, following the arrows must reach the core in exactly
+// `distance` steps, which is the only check that catches a loop or a
+// local minimum.  Shipping the function in F2 would mean shipping it
+// without that sweep, and a field with one arrow that increases
+// distance is a permanent enemy stall.

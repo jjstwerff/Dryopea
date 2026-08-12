@@ -40,6 +40,33 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### Interpolating a struct with a `hash` field SIGSEGVs the interpreter
+
+- **Filed:** [loft-lang/loft#873](https://github.com/loft-lang/loft/issues/873) on 2026-08-12
+  (`bug`, `wa:clean`, `sev:high`, `area:runtime`, `area:native`,
+  `both-backends`, `hit-by:dryopea`).  Repro:
+  [`loft_repros/format_struct_with_hash_field.loft`](loft_repros/format_struct_with_hash_field.loft).
+  Possibly the same formatter-selection root cause as loft#845, but with
+  no generics involved.
+- **Found while:** plan 11 F2 — writing the flow-field tests.  `FlowField`
+  carries `cells: hash<FlowCell[q, r]>`, and an assertion message said
+  `"sizes differ: {a} vs {b}"`.
+- **Kind:** bug (crash)
+- **What dryopea needs:** either a formatted record or a compile-time
+  refusal.  `{x}` on a hash-bearing struct exits 139 under `--interpret`
+  (`OpFormatDatabase`) and dies with no output at all under `--native`.
+
+  ⚠ **The expensive part is where it fires: inside an assertion message.**
+  A test that was failing for an ordinary reason loses its diagnostic and
+  reports a segfault instead, and the crash report's "nearest span"
+  pointed 3 lines away.  An interpolation only evaluated on failure is the
+  least likely place for a suite to catch this.
+
+- **Workaround in dryopea:** format the fields, not the record —
+  `{flow_count(f)}`, never `{f}`.
+- **Loft pointer:** `OpFormatDatabase` (op 145); loft#845 for the
+  generic-type-variable case.
+
 ### A `text as vector<Struct>` cast stores `null` into a DN1 non-null scalar field
 
 - **Filed:** [loft-lang/loft#870](https://github.com/loft-lang/loft/issues/870) on 2026-08-12

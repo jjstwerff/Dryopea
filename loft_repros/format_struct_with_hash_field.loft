@@ -1,0 +1,55 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// REPRO: interpolating a struct that has a `hash<…>` field SIGSEGVs
+// the interpreter in OpFormatDatabase.
+//
+// Run:  loft --interpret loft_repros/format_struct_with_hash_field.loft
+//
+// ── Trigger ─────────────────────────────────────────────────────
+//
+// `"{s}"` where `s` is a struct with a hash-typed field, and the hash
+// has at least one entry.  A plain struct formats fine; so does the
+// hash's own element.  It is the parent struct that crashes.
+//
+// ── Observed (loft 2026.8.0, interpreter) ───────────────────────
+//
+//   === loft crash (loft) SIGSEGV caught ===
+//     last op:  OpFormatDatabase (op=145)
+//
+// ── Expected ────────────────────────────────────────────────────
+//
+// Either a formatted value (`{cells: {…}, n: 1}`, the way `:j` and
+// `{x:#}` render other records) or a clean compile-time refusal —
+// "a struct with a hash field cannot be formatted" would be a
+// perfectly good answer.  A segfault is not.
+//
+// ── Why it matters more than it looks ───────────────────────────
+//
+// The crash is in an ASSERTION MESSAGE.  Hit by dryopea while
+// writing the flow-field tests: `assert(a > b, "sizes differ: {f1}
+// vs {f2}")` where the two are `FlowField` records.  So the failure
+// arrives while a test is already failing, replaces the diagnostic
+// that would have explained it with a segfault, and points at the
+// wrong line — the crash report's "nearest span" was 3 lines off.
+//
+// A message only evaluated on failure is exactly where a crash is
+// most expensive and least likely to be caught by the suite.
+
+struct Cell  { q: integer, r: integer, v: integer }
+struct Field { cells: hash<Cell[q, r]>, n: integer }
+
+fn main() {
+    r_f = Field { cells: [], n: 0 };
+    r_f.cells[1, 2] = Cell { q: 1, r: 2, v: 7 };
+    r_f.n = 1;
+
+    // These are all fine:
+    r_one = r_f.cells[1, 2] ?? Cell {};
+    println("the element formats: {r_one}");
+    println("a plain field formats: {r_f.n}");
+
+    // This segfaults:
+    println("the parent struct: {r_f}");
+    println("NOT REACHED");
+}
