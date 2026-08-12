@@ -25,11 +25,13 @@ placement + R/Shift+R rotation, hot-pink triangle render
 overlay, and a runtime wave engine + spawn director with
 approach-mode enemy tick.  Plan 07 (shared world substrate) has
 W0 partially landed — `gridmesh` adopted as the chunk/dirty
-layer (`src/chunks.loft`).  Plan 08 (game validation) has V0a
-shipped — the editor input seam (`src/editor_step.loft`), with
-ground-mode paint driven headlessly through it.
+layer (`src/chunks.loft`).  Plan 08 (game validation) has V0
+shipped — the editor input seam (`src/editor_step.loft`): EVERY
+editor action is now driven headlessly, and `src/main.loft` is a
+GL shell that polls, steps and renders.  V1a (the `.keys` script
+runner) is next.
 
-**Suite: 199/199 green under `scripts/test.sh`.**
+**Suite: 238/238 green under `scripts/test.sh`.**
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -117,11 +119,12 @@ src/
                    The GL shell only: open window, poll input,
                    call the seam, render.  Parse-check it by hand
                    after every edit — `scripts/test.sh` can't see it
-  editor_step.loft the input seam (plan 08 V0a) — EditorState (all
+  editor_step.loft the input seam (plan 08 V0) — EditorState (all
                    session state) + EditorInput (one frame of intent)
-                   + editor_step(s, input), pure: no GL, no clock, no
-                   disk.  Paint runs through it; the other ~24 actions
-                   are still inline in main.loft until V0b
+                   + editor_step(s, input).  EVERY action runs through
+                   it.  No GL and no clock, ever; disk only via the
+                   save / reload actions, and only when a path is
+                   attached (editor_state_attach)
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
                    cube_round_axial, world_to_hex, visible_hexes
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
@@ -237,6 +240,20 @@ behaviour.  Full reproducers + loft-side issue refs live in
 - **`text as Struct` cast IGNORES unknown JSON fields**
   (lenient — @P366 fixed).  We rely on this for forward-compat
   saves.
+- **A missing `use` reports as `Expect token ;` on a tuple
+  access.**  Calling a function from a module the file didn't
+  import leaves its return untyped, so the *next* line's `.0`
+  fails to parse — and the whole aggregator goes red with
+  "parse errors" while the real mistake (the absent `use`) is
+  never named.  `Expect token ;` on a `.0` / `.1` line means the
+  tuple's producer didn't resolve; check the imports first.
+- **A struct literal that omits a field takes that field's
+  default silently.**  So in any struct that callers build
+  field-by-field — `EditorInput` above all — the NEUTRAL value
+  must be the ZERO value.  A "none" sentinel of `-1` becomes `0`
+  in every partial literal, which for a palette index means
+  "select sea", which erases.  Build from the `*_empty()`
+  factory, not from a literal.
 - **Loop variable name reuse must keep consistent type per
   function-scope** — different types in different loops fails
   ("loop variable 'i' has type text but was previously used as
@@ -295,7 +312,7 @@ plans/
   05-validation-scenario/
   06-editor-stencil-pipeline/ — hex_* substrate now published
   07-shared-world-substrate/  — Active (W0 partial)
-  08-game-validation/         — Active (V0a shipped, V0b next):
+  08-game-validation/         — Active (V0 shipped, V1a next):
                     scripted play, measured effects, PNGs for
                     inspection
 

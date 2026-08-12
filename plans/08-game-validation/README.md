@@ -9,18 +9,30 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0a shipped 2026-08-12; V0b is the next work.** Nothing in
+**Active — V0 shipped 2026-08-12; V1a is the next work.** Nothing in
 dryopea validated the game as something that *runs*. The 189 tests in
 `tests/` covered pure functions and static renders; every one of them called
 a library function directly and none of them played the game.
 
-V0a changes that for one action. `src/editor_step.loft` holds an
-`EditorState` + `EditorInput` + a pure `editor_step`, all inside the
-aggregator; `tests/08_v0a_editor_step.loft` drives ground-mode paint through
-it headlessly (10 tests, suite 199 green). `src/main.loft` now owns exactly
-one `EditorState` and routes paint through the seam — every other action
-still runs its old inline path against the same fields, which is what keeps
-the tree green mid-migration.
+V0 changes that for **every editor action**. `src/editor_step.loft` holds an
+`EditorState` + `EditorInput` + `editor_step`, all inside the aggregator;
+`src/main.loft` is now a GL shell that polls, steps and renders. 33 tests
+across `tests/08_v0a_editor_step.loft` (paint) and
+`tests/08_v0b_actions.loft` (the other five groups) drive the editor
+headlessly — suite 238 green.
+
+Two decisions from V0 that the rest of the plan rests on:
+
+- **Edge detection lives in the seam, not the caller.** `EditorInput`
+  carries what is HELD this frame; `editor_step` compares against the
+  remembered previous frame. That is what makes a scripted `hold Tab 5`
+  toggle the mode once, the way holding Tab does for a player. Had the
+  caller resolved edges, the script and the editor would be two different
+  machines — and V1's whole premise is that they are one.
+- **The caller keeps the clock.** Paint and pan rate limits arrive as
+  `in_*_tick` booleans: the caller decides *when* a step is due, the seam
+  decides *what* it does. `editor_step` never calls `ticks()`, which is what
+  makes a run reproducible frame by frame.
 
 The evidence this is a silent-failure problem, not a nice-to-have, is from
 2026-08-12:
@@ -102,8 +114,8 @@ a phase that cannot name one is a phase that has not been cut yet.
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
 | **V0a** — seam for ONE action (paint) | S | one site at a time | a test builds an `EditorInput` with paint set, calls `editor_step`, asserts the hex changed; the other 24 actions still run their old inline path, so the tree is green throughout | **Shipped** |
-| **V0b** — move the remaining actions, in groups | M | one site at a time | per group: a test drives the action through `editor_step` and asserts its effect; `src/main.loft` shrinks to poll → step → render | Open |
-| **V1a** — parse + run, no output | S | parallel run | a script of `at` / `key` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | Blocked on V0b |
+| **V0b** — move the remaining actions, in groups | M | one site at a time | per group: a test drives the action through `editor_step` and asserts its effect; `src/main.loft` shrinks to poll → step → render | **Shipped** (5 groups: tool state · camera · markers · history · disk) |
+| **V1a** — parse + run, no output | S | parallel run | a script of `at` / `key` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | Open |
 | **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | Blocked on V1a |
 | **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | Blocked on V1b |
 | **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads ≈1.0 for it and ≈0 for the other ten, for every entry | Blocked on V2p |
@@ -129,33 +141,54 @@ shape — and finding that out after V2 ships is how the instrument ends up
 being trusted when it should not be. This is the same shape as the probe that
 diagnosed `fill_triangle`: two cases side by side, one compile, a decision.
 
-### V0 — the input seam (V0a + V0b)
+### V0 — the input seam (V0a + V0b) — **shipped**
 
-Today `main()` calls `gl_key_pressed(...)` **inline, interleaved with the
-state mutation it causes**, for ~25 actions. There is no seam where a script
-can inject input, and no way to run a frame without a GL window.
+`main()` used to call `gl_key_pressed(...)` **inline, interleaved with the
+state mutation it caused**, for ~25 actions. There was no seam where a script
+could inject input, and no way to run a frame without a GL window.
 
-Extract an `EditorInput` snapshot covering **every** action (not just the
-camera pan that `InputState` already models: paint, mode toggle, palette
-select, marker place / rotate / cycle, undo, redo, save, reload, clear,
-recentre), and a pure
+What shipped: `src/editor_step.loft`, **inside the aggregator** — which
+closes the "nothing compiles main.loft" hole as a side effect — holding
 
 ```
-editor_step(state: &EditorState, input: EditorInput) -> void
+editor_state_from(pw, mw, cam, picker) -> EditorState
+editor_state_attach(s, save_path, marker_save_path)
+editor_step(s: EditorState, input: EditorInput)
 ```
 
-`src/main.loft` keeps only: create window, poll GL into an `EditorInput`,
-call `editor_step`, render, swap. Everything else moves into
-`src/editor_step.loft`, **inside the aggregator** — which closes the
-"nothing compiles main.loft" hole as a side effect, and is reason enough to
-do V0 even if the rest of the plan stalls.
+`src/main.loft` now keeps only: create window, poll GL into an
+`EditorInput`, call `editor_step`, render, swap.
+
+**Where the line fell.** Three things stayed with the caller, and each for a
+reason V1 depends on:
+
+| Stays with the caller | Why |
+|---|---|
+| Rate limits (paint, pan) — passed in as `in_*_tick` | the seam must not read a clock, or a run is not reproducible |
+| Combo resolution (Ctrl+R reload vs plain R rotate) | which physical keys mean an action is a *keyboard* concern; a script names the action and never sees a modifier |
+| Pixel → hex for the hover | a window concern; the input carries `(q, r)` |
+
+Edge detection did **not** stay with the caller — see § Status.
 
 ⚠ **One table, two readers.** The key→action mapping is the single
 duplication in this design: the GL poll and the script runner must agree on
-it, or every script is a lie. Keep the mapping in one place
-(`editor_step.loft`) and have both call it — moros carries the same warning
-about `script.mjs` versus `editor.html` and has to state it because theirs
-*is* duplicated. dryopea can avoid the duplication outright; do so.
+it, or every script is a lie. moros carries the same warning about
+`script.mjs` versus `editor.html` and has to state it because theirs *is*
+duplicated.
+
+V0 removes most of the exposure by making `EditorInput` a table of **named
+actions** rather than of keys: `in_toggle_mode`, `in_undo`, `in_clear_all`.
+The GL poll binds physical keys to those names in one flat block; a script
+should address the names **directly** and never learn a key code. What
+remains for V1a to settle is only the surface syntax — see § V1.
+
+⚠ **Neutral must be the zero value of every `EditorInput` field.** A loft
+struct literal that omits a field silently takes that field's default, so a
+"no action" sentinel of `-1` turns every partially-built input into a real
+action. This was not hypothetical: the first cut had `in_select_palette:
+integer` with `-1` for none, which defaulted to `0` — palette entry 0 is sea,
+painting sea erases, and five paint tests went red the moment the struct grew
+its next field. Build inputs from `editor_input_empty()`, never as literals.
 
 ### V1 — the script runner
 
@@ -181,6 +214,22 @@ snap <name>            PNG into shots/<name>.png + a state dump
 ⚠ **An unknown command is an error, not a skipped line.** A typo that
 silently does nothing turns a passing run into a lie — this is V1's negative
 control.
+
+⚠ **V1a decides what `key <K>` names.** V0 left `EditorInput` as a table of
+named actions, so the runner does not need a key-code table — but `key Tab`
+would reintroduce one (a `"Tab"` → `in_toggle_mode` mapping beside the GL
+poll's `KEY_TAB` → `in_toggle_mode`). Two options, decided in V1a:
+
+- **Name the action** — `do toggle_mode`, `do undo`. No key table anywhere;
+  the script reads as what the player *did*, not what they pressed.
+- **Name the key** — keeps the moros vocabulary and reads closer to a
+  playthrough, but the name→field table must then live in
+  `editor_step.loft` and be called by both readers, per the warning above.
+
+Leaning toward naming the action, since the seam is already action-shaped.
+Whichever is chosen, `hold <K> <n>` keeps its meaning for free: the seam
+edge-detects, so five held frames fire once without the runner doing
+anything.
 
 ### V2 — the instrument
 
@@ -237,6 +286,8 @@ and hermetic. Validation is a second gate, run deliberately.
 | Phase | Concrete expected result | Invariant pinned | Negative control |
 |---|---|---|---|
 | **V0** | An `EditorInput` with no action set leaves `EditorState` unchanged | `editor_step` is pure: same (state, input) → same state | A no-op frame that mutates *anything* fails |
+| **V0** | A key held for five frames fires its action once | edge detection lives in the seam, not the caller | An action that fires per-frame under a held key fails |
+| **V0** | A session with no `save_path` refuses to save AND to reload | disk is reached only through an attached path | An unguarded reload reads an absent file and wipes the world |
 | **V1** | `key Q` where Q maps to nothing | the runner refuses unknown commands | An unknown command must ERROR, not be skipped |
 | **V2** | A canvas painted entirely `grass` reads `grass ≈ 1.0`, all others `≈ 0` | the classifier separates all 11 palette entries | Two adjacent palette colours landing in one bucket fails the gate |
 | **V3** | paint → save → clear → reload → identical world | save/load round-trip = identity | A map with an unknown ground type is *refused*, not silently painted as sea |

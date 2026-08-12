@@ -31,6 +31,36 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
+### A missing `use` reports as `Expect token ;` at a tuple access, not as an unknown function
+
+- **Found while:** plan 08 V0b — moving the editor's reload action into
+  `src/editor_step.loft`, which called `load_map_or_empty` (returns
+  `(PaintedWorld, EditorCamera)`) without `use save;` in the file.
+- **Kind:** bug (diagnostic quality)
+- **What dryopea needs:** the error should name the unresolved call. Today
+  the whole aggregator fails to parse and the two errors point at the
+  *tuple accesses* on the following lines:
+
+  ```
+  error: Expect token ;
+    --> src/editor_step.loft:377:33
+      |
+  377 |         es_pw_new  = es_loaded.0;
+      |                                 ^
+  ```
+
+  The cause is one line above and not mentioned: `es_loaded` came from an
+  unresolvable function, so it has no type, so `.0` cannot parse as a tuple
+  index. Every test file went red with "parse errors" while the actual
+  mistake was a missing import in a library file — the reported location is
+  a consequence, and the real one is invisible.
+- **Workaround in dryopea:** add the missing `use`. Recognising the shape is
+  the whole cost: **`Expect token ;` on a `.0` / `.1` line means the tuple's
+  producer did not resolve.**
+- **Loft pointer:** none yet. Related to the resolved
+  § Tuple-component cast `local.N as Type` — parse path, which was also a
+  tuple-access site reporting someone else's problem.
+
 ### `use` does not namespace struct TYPES per library — two libraries defining the same struct name panic at registration
 
 - **Found while:** Plan 07 W1 — trying to adopt `moros_map`'s
