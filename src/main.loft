@@ -178,7 +178,6 @@ fn main() {
     // frame state and acts only on the rising edge.  These are input-
     // layer bookkeeping, not editor state — they stay here when the
     // actions themselves move into the seam.
-    mb_held_prev:       boolean = false;
     n_held_prev:        boolean = false;
     z_held_prev:        boolean = false;
     y_held_prev:        boolean = false;
@@ -225,8 +224,8 @@ fn main() {
             s.cam   = camera_default();
             s.cf    = chunks_from_painted(s.pw);   // resync dirty tracker
             s.dirty = true;
-            s.painting   = false;
-            mb_held_prev = false;
+            s.painting = false;
+            s.prev.in_mouse_left = false;
             s.render_needed = true;
             println("dryopea: cleared all (Ctrl+N)");
         }
@@ -243,8 +242,8 @@ fn main() {
             if !undo_entry_is_noop(s.stroke) {
                 history_push(s.history, s.stroke);
                 s.stroke = undo_entry_empty();
-                s.painting   = false;
-                mb_held_prev = false;
+                s.painting = false;
+                s.prev.in_mouse_left = false;
             }
             if history_undo(s.history, s.pw, s.mw) {
                 s.cf    = chunks_from_painted(s.pw);   // bulk pw change
@@ -292,8 +291,8 @@ fn main() {
             s.cam   = reload_cam_new;
             s.cf    = chunks_from_painted(s.pw);   // resync dirty tracker
             s.dirty = false;   // disk and memory now match
-            s.painting   = false;
-            mb_held_prev = false;
+            s.painting = false;
+            s.prev.in_mouse_left = false;
             s.render_needed = true;
             println("dryopea: reloaded from disk ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
         }
@@ -353,9 +352,10 @@ fn main() {
         // Ctrl is up — resolving a combo into which action was
         // meant is poll-side work.
         paint_tick_due = tnow - last_paint_us > PAINT_DEBOUNCE_US;
-        pre_mode = s.mode;
-        pre_dir  = s.place_direction;
-        pre_kind = s.place_kind;
+        pre_mode    = s.mode;
+        pre_dir     = s.place_direction;
+        pre_kind    = s.place_kind;
+        pre_markers = marker_count(s.mw);
         editor_step(s, EditorInput {
             in_hover_q:        hovered.q,
             in_hover_r:        hovered.r,
@@ -393,28 +393,9 @@ fn main() {
         if s.place_kind != pre_kind {
             println("dryopea: place_kind = {if s.place_kind == MARKER_KIND_TARGET { "TARGET" } else { "SPAWN" }}");
         }
-
-        if mb_now && !mb_held_prev && s.mode == MODE_MARKER {
-            // Marker-mode is edge-triggered: each press is one
-            // place-or-remove event, not a drag.  Click an existing
-            // marker → remove (toggle); click an empty hex → place
-            // the active kind (spawn with current rotation, OR
-            // target).  Both record one UndoEntry directly.
-            if has_marker(s.mw, hovered.q, hovered.r) {
-                remove_marker_and_record(s.mw, hovered.q, hovered.r, s.history);
-                println("dryopea: removed marker at ({hovered.q}, {hovered.r})");
-            } else if s.place_kind == MARKER_KIND_TARGET {
-                place_target_and_record(s.mw, hovered.q, hovered.r, s.history);
-                println("dryopea: placed target at ({hovered.q}, {hovered.r})");
-            } else {
-                place_spawn_and_record(s.mw, hovered.q, hovered.r,
-                                       s.place_direction, s.history);
-                println("dryopea: placed spawn at ({hovered.q}, {hovered.r}) dir={s.place_direction as integer}");
-            }
-            s.dirty = true;
-            chunks_mark_dirty(s.cf, hovered.q, hovered.r);   // marker layer changed → re-render
+        if marker_count(s.mw) != pre_markers {
+            println("dryopea: markers = {marker_count(s.mw)} (clicked {hovered.q}, {hovered.r})");
         }
-        mb_held_prev = mb_now;
 
         // ── Render ──────────────────────────────────────────────
 

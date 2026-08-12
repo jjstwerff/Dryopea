@@ -334,6 +334,89 @@ fn test_recentre_leaves_the_world_alone() {
     assert(lookup_painted(trl_s.pw, 3, -2) == 5 as u8, "the painted hex survives");
 }
 
+// ─── Group 3 — marker placement ─────────────────────────────────
+
+// A click at (q, r): button down for one frame, then up.
+fn click_at(s: EditorState, q: integer, r: integer) {
+    ca_i = editor_input_empty();
+    ca_i.in_hover_q    = q;
+    ca_i.in_hover_r    = r;
+    ca_i.in_mouse_left = true;
+    editor_step(s, ca_i);
+    editor_step(s, editor_input_empty());
+}
+
+fn test_click_places_a_spawn_facing_the_place_direction() {
+    tcp_s = marker_mode_state();
+    press(tcp_s, rotate_frame(false));
+    press(tcp_s, rotate_frame(false));
+
+    click_at(tcp_s, 2, -1);
+
+    assert(marker_count(tcp_s.mw) == 1, "one click, one marker");
+    assert(has_marker(tcp_s.mw, 2, -1), "at the hex that was clicked");
+    assert(marker_kind(tcp_s.mw, 2, -1) == MARKER_KIND_SPAWN, "a spawn");
+    assert(marker_direction(tcp_s.mw, 2, -1) == 2 as u8,
+           "facing the direction the tool was turned to");
+    assert(tcp_s.dirty, "placing marks the world unsaved");
+}
+
+fn test_click_on_an_existing_marker_removes_it() {
+    tcr2_s = marker_mode_state();
+    click_at(tcr2_s, 2, -1);
+    assert(marker_count(tcr2_s.mw) == 1, "placed");
+
+    click_at(tcr2_s, 2, -1);
+
+    assert(marker_count(tcr2_s.mw) == 0, "clicking it again takes it away");
+}
+
+fn test_click_places_a_target_when_that_is_the_kind() {
+    tct_s = marker_mode_state();
+    press(tct_s, cycle_kind_frame());
+
+    click_at(tct_s, 0, 3);
+
+    assert(marker_kind(tct_s.mw, 0, 3) == MARKER_KIND_TARGET, "a target, not a spawn");
+}
+
+// Placement is edge-triggered, so sweeping with the button held
+// lays ONE marker, not a trail.  This is the opposite of paint,
+// and getting it wrong would carpet a map with spawns.
+fn test_held_button_sweeping_places_one_marker() {
+    thb_s = marker_mode_state();
+
+    thb_i = editor_input_empty();
+    thb_i.in_mouse_left = true;
+    for thb_q in 0..5 {
+        thb_i.in_hover_q = thb_q;
+        editor_step(thb_s, thb_i);
+    }
+
+    assert(marker_count(thb_s.mw) == 1, "a held sweep places one marker");
+    assert(has_marker(thb_s.mw, 0, 0), "at the hex where the press landed");
+}
+
+fn test_click_in_ground_mode_places_no_marker() {
+    tcg_s = editor_state_new(PALETTE);
+    picker_set_active(tcg_s.picker, 5);
+
+    click_at(tcg_s, 2, -1);
+
+    assert(marker_count(tcg_s.mw) == 0, "ground mode places no markers");
+}
+
+// Placement records its own history entry, so the marker layer is
+// undoable the same way paint is.
+fn test_placement_is_undoable() {
+    tpu_s = marker_mode_state();
+    click_at(tpu_s, 2, -1);
+
+    assert(history_can_undo(tpu_s.history), "the placement is on the timeline");
+    history_undo(tpu_s.history, tpu_s.pw, tpu_s.mw);
+    assert(marker_count(tpu_s.mw) == 0, "undo takes the marker back off");
+}
+
 // The palette has 11 entries but 12 hotkeys — the spare ones must
 // not select anything until the palette grows into them.
 fn test_out_of_range_selection_is_ignored() {

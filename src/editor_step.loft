@@ -382,6 +382,24 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
         s.painting = false;
     }
 
+    // ── Marker placement (V0b group 3) ──────────────────────────
+    // Edge-triggered, unlike paint: each press is ONE place-or-remove
+    // event, so holding the button and sweeping the mouse does not
+    // lay a trail of markers.  Clicking an occupied hex removes what
+    // is there — place and remove are the same gesture.
+    if input.in_mouse_left && !s.prev.in_mouse_left && s.mode == MODE_MARKER {
+        if has_marker(s.mw, es_hover.q, es_hover.r) {
+            remove_marker_and_record(s.mw, es_hover.q, es_hover.r, s.history);
+        } else if s.place_kind == MARKER_KIND_TARGET {
+            place_target_and_record(s.mw, es_hover.q, es_hover.r, s.history);
+        } else {
+            place_spawn_and_record(s.mw, es_hover.q, es_hover.r,
+                                   s.place_direction, s.history);
+        }
+        s.dirty = true;
+        chunks_mark_dirty(s.cf, es_hover.q, es_hover.r);   // marker layer changed → re-render
+    }
+
     // Remember this frame for the next one's edge detection.  Last,
     // so every action above sees the previous frame.
     s.prev = input_copy(input);
