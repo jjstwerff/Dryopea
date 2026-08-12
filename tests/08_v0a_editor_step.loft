@@ -1,0 +1,193 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 08 phase V0a — the editor input seam, driven headlessly.
+//
+// This is the first test in dryopea's history that drives an editor
+// ACTION rather than calling the function underneath it: it builds a
+// frame of input, hands it to `editor_step`, and asserts what the
+// player would have seen change.  No GL window is opened.
+//
+// V0a moves exactly one action across the seam (ground-mode paint),
+// so that is what is covered here: the paint itself, the rate-limit
+// gate, the mode gate, drag continuation, and the one-drag-one-undo
+// stroke rule — plus the no-op frame, which is the negative control
+// that gives the rest of it meaning.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// A frame of input hovering (q, r) with the left button down and a
+// paint tick due — one painted hex per call.
+fn paint_frame(q: integer, r: integer) -> EditorInput {
+    EditorInput {
+        in_hover_q:    q,
+        in_hover_r:    r,
+        in_mouse_left: true,
+        in_paint_tick: true,
+    }
+}
+
+// ─── The negative control ───────────────────────────────────────
+//
+// If a no-op frame moved anything, every assertion below would be
+// measuring the frame count rather than the action.
+
+fn test_empty_input_changes_nothing() {
+    tec_s = editor_state_new(PALETTE);
+    picker_set_active(tec_s.picker, 5);   // grass — a real tool selected
+
+    for _ in 0..5 {
+        editor_step(tec_s, editor_input_empty());
+    }
+
+    assert(painted_count(tec_s.pw) == 0, "no-op frames paint nothing");
+    assert(marker_count(tec_s.mw) == 0,  "no-op frames place nothing");
+    assert(!tec_s.dirty,                 "no-op frames leave the world clean");
+    assert(!tec_s.painting,              "no-op frames start no stroke");
+    assert(!history_can_undo(tec_s.history), "no-op frames record no action");
+    assert(tec_s.cam.pos.q == 0 && tec_s.cam.pos.r == 0, "camera stays put");
+    assert(tec_s.picker.active == 5,     "the selected tool stays selected");
+    assert(tec_s.mode == MODE_GROUND,    "mode stays put");
+}
+
+// ─── Paint through the seam ─────────────────────────────────────
+
+fn test_paint_frame_paints_the_hovered_hex() {
+    tpf_s = editor_state_new(PALETTE);
+    picker_set_active(tpf_s.picker, 5);
+
+    editor_step(tpf_s, paint_frame(2, -1));
+
+    assert(lookup_painted(tpf_s.pw, 2, -1) == 5 as u8, "the hovered hex is grass");
+    assert(painted_count(tpf_s.pw) == 1, "and it is the only painted hex");
+    assert(tpf_s.dirty, "painting marks the world unsaved");
+    assert(tpf_s.painting, "the stroke is open while the button is down");
+}
+
+// The picker inside the state is live, not a copy taken at
+// construction — main.loft's palette hotkeys write through it.
+fn test_active_palette_entry_selects_what_is_painted() {
+    tap_s = editor_state_new(PALETTE);
+
+    picker_set_active(tap_s.picker, 5);
+    editor_step(tap_s, paint_frame(0, 0));
+    editor_step(tap_s, editor_input_empty());   // release — a tool change ends the stroke
+    picker_set_active(tap_s.picker, 9);
+    editor_step(tap_s, paint_frame(4, 0));
+
+    assert(lookup_painted(tap_s.pw, 0, 0) == 5 as u8, "first hex took the first tool");
+    assert(lookup_painted(tap_s.pw, 4, 0) == 9 as u8, "second hex took the second tool");
+}
+
+// The chunk dirty set is what gates the render loop, so a paint that
+// does not mark its chunk is a paint the player never sees.
+fn test_paint_marks_its_chunk_dirty() {
+    tpm_s = editor_state_new(PALETTE);
+    picker_set_active(tpm_s.picker, 5);
+    chunks_clear(tpm_s.cf);
+    assert(chunks_dirty_count(tpm_s.cf) == 0, "clean before the edit");
+
+    editor_step(tpm_s, paint_frame(7, -4));
+
+    assert(chunks_is_dirty(tpm_s.cf, 7, -4), "the painted hex's chunk is dirty");
+}
+
+// ─── The gates ──────────────────────────────────────────────────
+
+// The rate limit lives on the polling side; without a tick the frame
+// is a hover, not a paint.
+fn test_button_without_tick_paints_nothing() {
+    tbw_s = editor_state_new(PALETTE);
+    picker_set_active(tbw_s.picker, 5);
+
+    editor_step(tbw_s, EditorInput {
+        in_hover_q:    2,
+        in_hover_r:    -1,
+        in_mouse_left: true,
+        in_paint_tick: false,
+    });
+
+    assert(painted_count(tbw_s.pw) == 0, "no tick → no paint");
+    assert(!tbw_s.painting, "and no stroke opened");
+}
+
+// Marker mode writes the marker layer; the same click must not paint
+// ground.
+fn test_marker_mode_paints_no_ground() {
+    tmm_s = editor_state_new(PALETTE);
+    picker_set_active(tmm_s.picker, 5);
+    tmm_s.mode = MODE_MARKER;
+
+    editor_step(tmm_s, paint_frame(2, -1));
+
+    assert(painted_count(tmm_s.pw) == 0, "marker mode paints no ground");
+    assert(!tmm_s.painting, "and opens no ground stroke");
+}
+
+// ─── Drag continuation ──────────────────────────────────────────
+
+// A tick can land several hexes from the last one during a fast
+// drag; the gap is filled so the stroke has no holes in it.
+fn test_drag_fills_the_gap_between_ticks() {
+    tdf_s = editor_state_new(PALETTE);
+    picker_set_active(tdf_s.picker, 5);
+
+    editor_step(tdf_s, paint_frame(0, 0));
+    editor_step(tdf_s, paint_frame(4, 0));
+
+    assert(painted_count(tdf_s.pw) == 5, "(0,0)..(4,0) is 5 hexes, no holes");
+    for tdf_q in 0..=4 {
+        assert(lookup_painted(tdf_s.pw, tdf_q, 0) == 5 as u8,
+               "hex ({tdf_q}, 0) is on the stroke");
+    }
+}
+
+// A release then a fresh press are two strokes — the gap between
+// them must NOT be bridged.
+fn test_release_does_not_bridge_two_strokes() {
+    trd_s = editor_state_new(PALETTE);
+    picker_set_active(trd_s.picker, 5);
+
+    editor_step(trd_s, paint_frame(0, 0));
+    editor_step(trd_s, editor_input_empty());     // button up
+    editor_step(trd_s, paint_frame(4, 0));
+
+    assert(painted_count(trd_s.pw) == 2, "two presses paint two hexes, not a line");
+}
+
+// ─── One drag = one undoable action ─────────────────────────────
+
+fn test_stroke_commits_as_one_undo_entry_on_release() {
+    tsc_s = editor_state_new(PALETTE);
+    picker_set_active(tsc_s.picker, 5);
+
+    editor_step(tsc_s, paint_frame(0, 0));
+    editor_step(tsc_s, paint_frame(1, 0));
+    editor_step(tsc_s, paint_frame(2, 0));
+    assert(!history_can_undo(tsc_s.history), "an open stroke is not undoable yet");
+
+    editor_step(tsc_s, editor_input_empty());     // release commits it
+
+    assert(history_can_undo(tsc_s.history), "the released stroke is undoable");
+    assert(len(tsc_s.history.entries) == 1, "one drag is ONE entry, not three");
+    assert(!tsc_s.painting, "the stroke is closed");
+
+    history_undo(tsc_s.history, tsc_s.pw, tsc_s.mw);
+    assert(painted_count(tsc_s.pw) == 0, "undoing the drag clears all three hexes");
+}
+
+// Releasing without having painted must not push an empty entry —
+// otherwise Ctrl+Z spends its first press doing nothing visible.
+fn test_release_without_paint_records_nothing() {
+    trw_s = editor_state_new(PALETTE);
+    picker_set_active(trw_s.picker, 5);
+
+    editor_step(trw_s, editor_input_empty());
+    editor_step(trw_s, editor_input_empty());
+
+    assert(len(trw_s.history.entries) == 0, "no stroke, no history entry");
+}

@@ -25,9 +25,11 @@ placement + R/Shift+R rotation, hot-pink triangle render
 overlay, and a runtime wave engine + spawn director with
 approach-mode enemy tick.  Plan 07 (shared world substrate) has
 W0 partially landed — `gridmesh` adopted as the chunk/dirty
-layer (`src/chunks.loft`).
+layer (`src/chunks.loft`).  Plan 08 (game validation) has V0a
+shipped — the editor input seam (`src/editor_step.loft`), with
+ground-mode paint driven headlessly through it.
 
-**Suite: 189/189 green under `scripts/test.sh`.**
+**Suite: 199/199 green under `scripts/test.sh`.**
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -111,7 +113,15 @@ src/
   dryopea.loft     library aggregator — `use dryopea;` brings every
                    submodule into scope (tests use this entry)
   main.loft        interactive editor entry point — `fn main()`,
-                   NOT in the aggregator (runs via `loft src/main.loft`)
+                   NOT in the aggregator (runs via `loft src/main.loft`).
+                   The GL shell only: open window, poll input,
+                   call the seam, render.  Parse-check it by hand
+                   after every edit — `scripts/test.sh` can't see it
+  editor_step.loft the input seam (plan 08 V0a) — EditorState (all
+                   session state) + EditorInput (one frame of intent)
+                   + editor_step(s, input), pure: no GL, no clock, no
+                   disk.  Paint runs through it; the other ~24 actions
+                   are still inline in main.loft until V0b
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
                    cube_round_axial, world_to_hex, visible_hexes
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
@@ -153,8 +163,10 @@ live in `tests/golden/` (committed); actuals in `tests/actual/`
 | Type | File | Purpose |
 |---|---|---|
 | `Hex` | `world.loft` | `{ q, r }` axial flat-top coord |
+| `EditorState` | `editor_step.loft` | the whole editor session — layers, camera, picker, mode, history, chunk dirty set |
+| `EditorInput` | `editor_step.loft` | one frame of player intent (hover hex + action flags) |
 | `EditorCamera` | `camera.loft` | `{ pos: Hex, zoom: integer }` |
-| `InputState` | `camera.loft` | per-frame action flags (in_pan_*, in_zoom_*) |
+| `InputState` | `camera.loft` | per-frame camera flags (in_pan_*, in_zoom_*) — folds into `EditorInput` in plan 08 V0b |
 | `PaintedHex` | `painted.loft` | `{ q, r, kind: u8 }` — one painted cell |
 | `PaintedWorld` | `painted.loft` | wrapper holding `hash<PaintedHex[q, r]>` |
 | `GroundType` | `palette.loft` | one row from `examples/palette.json` |
@@ -283,8 +295,9 @@ plans/
   05-validation-scenario/
   06-editor-stencil-pipeline/ — hex_* substrate now published
   07-shared-world-substrate/  — Active (W0 partial)
-  08-game-validation/         — Active (V0 next): scripted play,
-                    measured effects, PNGs for inspection
+  08-game-validation/         — Active (V0a shipped, V0b next):
+                    scripted play, measured effects, PNGs for
+                    inspection
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,

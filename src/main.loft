@@ -4,10 +4,10 @@
 // Plan 01 E1-live — the interactive editor entry point.
 //
 // Launch (per CLAUDE.md § Key commands):
-//   ~/Documents/loft/target/release/loft --lib ~/Documents/loft/lib src/main.loft
+//   loft src/main.loft
 //   ↑ default — edits the single-slot save at ./dryopea_save.json
 //
-//   ~/Documents/loft/target/release/loft --lib ~/Documents/loft/lib src/main.loft starter_01
+//   loft src/main.loft starter_01
 //   ↑ named map — edits maps/starter_01.json + maps/starter_01_markers.json
 //
 // Same via `make play` / `make play MAP=starter_01`.  The `maps/`
@@ -69,6 +69,21 @@
 // On startup, loads dryopea_save.json if it exists; otherwise
 // starts on an empty (all-sea) world.  Saves on exit so paint
 // progress isn't lost when the window is closed without Ctrl+S.
+//
+// ── Structure (plan 08 phase V0a) ───────────────────────────────
+//
+// Editor state lives in ONE `EditorState` (`src/editor_step.loft`),
+// which is inside the `dryopea.loft` aggregator and therefore
+// compiled + tested.  This file is the GL shell around it: open a
+// window, poll input, call the seam, render.
+//
+// V0a has moved exactly one action across that seam — ground-mode
+// paint, which now runs entirely in `editor_step`.  Every other
+// action below still reads `gl_key_pressed` and mutates `s.*`
+// inline, exactly as before.  Those move group by group in V0b;
+// until then the two paths coexist deliberately, so the suite stays
+// green at every step.  Nothing below may read the keyboard AND
+// decide what an action means in the same place once V0b lands.
 
 #cwd
 
@@ -78,6 +93,8 @@ use graphics;
 const WINDOW_W: integer = 960;
 const WINDOW_H: integer = 720;
 const PPM: float = 24.0;
+
+const PALETTE_PATH: text = "examples/palette.json";
 
 // Default-slot paths (no CLI arg).  Named maps live under
 // `maps/{name}.json` + `maps/{name}_markers.json` instead — see
@@ -127,24 +144,27 @@ fn main() {
     }
     painter = create_painter_2d(WINDOW_W as float, WINDOW_H as float);
 
-    palette = load_palette("examples/palette.json");
-    picker = picker_default("examples/palette.json");
+    palette = load_palette(PALETTE_PATH);
 
+    // The whole editor session in one state object: painted + marker
+    // layers, camera, picker, mode, undo history, chunk dirty set.
+    // `editor_state_from` adopts the layers loaded off disk.
     loaded = load_map_or_empty(save_path, palette);
-    pw  = loaded.0;
-    cam = loaded.1;
-    mw  = load_markers_or_empty(marker_save_path);
-    println("dryopea: editor open map=[{map_label}] ({painted_count(pw)} hexes, {marker_count(mw)} markers loaded)");
+    s = editor_state_from(
+        loaded.0,
+        load_markers_or_empty(marker_save_path),
+        loaded.1,
+        picker_default(PALETTE_PATH),
+    );
+    println("dryopea: editor open map=[{map_label}] ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers loaded)");
     println("         paths: {save_path} + {marker_save_path}");
 
     // ── Render gate (plan 07) ───────────────────────────────────
     // The world is only re-rasterised + re-uploaded when something
-    // changed.  pw/mw content edits mark gridmesh's dirty set (cf);
+    // changed.  Content edits mark gridmesh's dirty set (s.cf);
     // camera / hover / mode / picker / placement changes set
-    // render_needed.  Idle frames just redraw the cached texture —
+    // s.render_needed.  Idle frames just redraw the cached texture —
     // no per-frame full recompute (the sluggishness fix).
-    cf            = chunks_from_painted(pw);
-    render_needed: boolean = true;        // force the first frame
     cur_tex:       integer = 0;           // 0 = no texture uploaded yet
     last_hover_q:  integer = 0;
     last_hover_r:  integer = 0;
@@ -153,53 +173,20 @@ fn main() {
     last_paint_us: integer = 0;
     last_save_us:  integer = 0;
 
-    // Drag-paint state.  At PAINT_DEBOUNCE_US = 50ms (20Hz),
-    // the mouse can move several hexes between paint events
-    // during a fast drag.  Connecting consecutive paint events
-    // with paint_line fills the gaps; `painting` distinguishes
-    // a continuation from the start of a new stroke so a release-
-    // then-quick-repress doesn't bridge two separate strokes.
-    painting:       boolean = false;
-    last_paint_hex: Hex     = Hex { q: 0, r: 0 };
-
-    // Editor mode + edge-detected Tab.  Tab held down across many
-    // frames must NOT oscillate the mode at 60Hz — track previous-
-    // frame state and only toggle on the rising edge.
-    mode:          integer = MODE_GROUND;
-    tab_held_prev: boolean = false;
-
-    // Marker-mode placement state.  `place_direction` is the
-    // rotation applied to the NEXT spawn marker placement.
-    // R / Shift+R rotate it (edge-detected; held key doesn't spin).
-    // `place_kind` is the marker KIND the next click will drop —
-    // K toggles it between SPAWN and TARGET.  `mb_held_prev`
-    // edge-detects the left button so a held mouse doesn't
-    // ping-pong place→remove every frame on the same hex.
-    place_direction: u8      = 0 as u8;
-    place_kind:      integer = MARKER_KIND_SPAWN;
-    r_held_prev:     boolean = false;
-    k_held_prev:     boolean = false;
-    mb_held_prev:    boolean = false;
-
-    // Save-state tracking.  `dirty` flips to true on every paint /
-    // place / remove / clear and back to false on a successful
-    // save.  The HUD save indicator reads this directly.  Other
-    // edge-detected modifier keys (Ctrl+N, H, Ctrl+Z, Ctrl+Y) live
-    // here too.
-    dirty:                 boolean = false;
-    n_held_prev:           boolean = false;
-    h_held_prev:           boolean = false;
-    z_held_prev:           boolean = false;
-    y_held_prev:           boolean = false;
-    reload_r_held_prev:    boolean = false;
-
-    // Undo / redo history.  Per-stroke deltas are accumulated in
-    // `stroke_in_flight` while the mouse button is held; on
-    // release (or mode flip), the stroke is pushed onto `history`
-    // as one UndoEntry.  Marker place/remove and clear-all push
-    // their entries directly via the *_and_record helpers.
-    history:           History   = history_empty();
-    stroke_in_flight:  UndoEntry = undo_entry_empty();
+    // Edge-detection state for the still-inline actions.  A held key
+    // must fire ONCE, not at 60Hz, so each one tracks its previous-
+    // frame state and acts only on the rising edge.  These are input-
+    // layer bookkeeping, not editor state — they stay here when the
+    // actions themselves move into the seam.
+    tab_held_prev:      boolean = false;
+    r_held_prev:        boolean = false;
+    k_held_prev:        boolean = false;
+    mb_held_prev:       boolean = false;
+    n_held_prev:        boolean = false;
+    h_held_prev:        boolean = false;
+    z_held_prev:        boolean = false;
+    y_held_prev:        boolean = false;
+    reload_r_held_prev: boolean = false;
 
     for _ in 0..1000000 {
         if !gl_poll_events() { break; }
@@ -216,19 +203,19 @@ fn main() {
         // doesn't oscillate).
         tab_now = gl_key_pressed(graphics::KEY_TAB);
         if tab_now && !tab_held_prev {
-            mode = toggle_mode(mode);
+            s.mode = toggle_mode(s.mode);
             // Flush any in-flight paint stroke before the mode
             // flip — it's a complete stroke from the player's POV.
-            if !undo_entry_is_noop(stroke_in_flight) {
-                history_push(history, stroke_in_flight);
-                stroke_in_flight = undo_entry_empty();
+            if !undo_entry_is_noop(s.stroke) {
+                history_push(s.history, s.stroke);
+                s.stroke = undo_entry_empty();
             }
             // Reset stroke + placement edge-detection on mode flip so
             // a held button doesn't bleed across the boundary.
-            painting     = false;
+            s.painting   = false;
             mb_held_prev = false;
-            render_needed = true;
-            println("dryopea: mode = {mode_name(mode)}");
+            s.render_needed = true;
+            println("dryopea: mode = {mode_name(s.mode)}");
         }
         tab_held_prev = tab_now;
 
@@ -237,14 +224,14 @@ fn main() {
         // doesn't spin.  Ctrl+R is reload, handled separately.
         shift_held = gl_key_pressed(graphics::KEY_SHIFT);
         r_now      = gl_key_pressed(graphics::KEY_R);
-        if r_now && !r_held_prev && mode == MODE_MARKER
-        && !ctrl_held && place_kind == MARKER_KIND_SPAWN {
-            place_direction = rotate_direction(
-                place_direction,
+        if r_now && !r_held_prev && s.mode == MODE_MARKER
+        && !ctrl_held && s.place_kind == MARKER_KIND_SPAWN {
+            s.place_direction = rotate_direction(
+                s.place_direction,
                 if shift_held { -1 } else { 1 }
             );
-            render_needed = true;
-            println("dryopea: place_direction = {place_direction as integer}");
+            s.render_needed = true;
+            println("dryopea: place_direction = {s.place_direction as integer}");
         }
         r_held_prev = r_now;
 
@@ -252,27 +239,27 @@ fn main() {
         // SPAWN and TARGET.  Edge-detected.  Skipped when Ctrl
         // is held to leave room for future Ctrl+K bindings.
         k_now = gl_key_pressed(KEY_K);
-        if k_now && !k_held_prev && mode == MODE_MARKER && !ctrl_held {
-            if place_kind == MARKER_KIND_SPAWN {
-                place_kind = MARKER_KIND_TARGET;
+        if k_now && !k_held_prev && s.mode == MODE_MARKER && !ctrl_held {
+            if s.place_kind == MARKER_KIND_SPAWN {
+                s.place_kind = MARKER_KIND_TARGET;
                 println("dryopea: place_kind = TARGET");
             } else {
-                place_kind = MARKER_KIND_SPAWN;
+                s.place_kind = MARKER_KIND_SPAWN;
                 println("dryopea: place_kind = SPAWN");
             }
-            render_needed = true;
+            s.render_needed = true;
         }
         k_held_prev = k_now;
 
         // Ctrl+S → save (debounced to avoid Ctrl+S held-down spam).
         if ctrl_held && gl_key_pressed(graphics::KEY_S) {
             if tnow - last_save_us > SAVE_DEBOUNCE_US {
-                save_world(pw, cam, palette, "interactive", save_path);
-                save_markers(mw, "interactive", marker_save_path);
+                save_world(s.pw, s.cam, palette, "interactive", save_path);
+                save_markers(s.mw, "interactive", marker_save_path);
                 last_save_us = tnow;
-                dirty = false;
-                render_needed = true;   // save indicator: amber → green
-                println("dryopea: saved ({painted_count(pw)} hexes, {marker_count(mw)} markers)");
+                s.dirty = false;
+                s.render_needed = true;   // save indicator: amber → green
+                println("dryopea: saved ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
             }
         }
 
@@ -283,15 +270,15 @@ fn main() {
         // frame.
         n_now = gl_key_pressed(KEY_N);
         if ctrl_held && n_now && !n_held_prev {
-            clear_and_record(pw, mw, history);
-            pw    = painted_empty();
-            mw    = marker_empty();
-            cam   = camera_default();
-            cf    = chunks_from_painted(pw);   // resync dirty tracker
-            dirty = true;
-            painting     = false;
+            clear_and_record(s.pw, s.mw, s.history);
+            s.pw    = painted_empty();
+            s.mw    = marker_empty();
+            s.cam   = camera_default();
+            s.cf    = chunks_from_painted(s.pw);   // resync dirty tracker
+            s.dirty = true;
+            s.painting   = false;
             mb_held_prev = false;
-            render_needed = true;
+            s.render_needed = true;
             println("dryopea: cleared all (Ctrl+N)");
         }
         n_held_prev = n_now;
@@ -304,16 +291,16 @@ fn main() {
             // Push any in-flight stroke FIRST so the user can
             // undo back through it.  Reset stroke + button-edge
             // so the next click starts a fresh stroke.
-            if !undo_entry_is_noop(stroke_in_flight) {
-                history_push(history, stroke_in_flight);
-                stroke_in_flight = undo_entry_empty();
-                painting     = false;
+            if !undo_entry_is_noop(s.stroke) {
+                history_push(s.history, s.stroke);
+                s.stroke = undo_entry_empty();
+                s.painting   = false;
                 mb_held_prev = false;
             }
-            if history_undo(history, pw, mw) {
-                cf    = chunks_from_painted(pw);   // bulk pw change
-                dirty = true;
-                render_needed = true;
+            if history_undo(s.history, s.pw, s.mw) {
+                s.cf    = chunks_from_painted(s.pw);   // bulk pw change
+                s.dirty = true;
+                s.render_needed = true;
                 println("dryopea: undo");
             } else {
                 println("dryopea: nothing to undo");
@@ -323,10 +310,10 @@ fn main() {
 
         y_now = gl_key_pressed(graphics::KEY_Y);
         if ctrl_held && y_now && !y_held_prev {
-            if history_redo(history, pw, mw) {
-                cf    = chunks_from_painted(pw);   // bulk pw change
-                dirty = true;
-                render_needed = true;
+            if history_redo(s.history, s.pw, s.mw) {
+                s.cf    = chunks_from_painted(s.pw);   // bulk pw change
+                s.dirty = true;
+                s.render_needed = true;
                 println("dryopea: redo");
             } else {
                 println("dryopea: nothing to redo");
@@ -342,24 +329,24 @@ fn main() {
         reload_r_now = ctrl_held && gl_key_pressed(graphics::KEY_R);
         if reload_r_now && !reload_r_held_prev {
             // Flush any in-flight stroke first.
-            if !undo_entry_is_noop(stroke_in_flight) {
-                history_push(history, stroke_in_flight);
-                stroke_in_flight = undo_entry_empty();
+            if !undo_entry_is_noop(s.stroke) {
+                history_push(s.history, s.stroke);
+                s.stroke = undo_entry_empty();
             }
             reload_loaded = load_map_or_empty(save_path, palette);
             reload_pw_new = reload_loaded.0;
             reload_cam_new = reload_loaded.1;
             reload_mw_new = load_markers_or_empty(marker_save_path);
-            reload_and_record(pw, mw, reload_pw_new, reload_mw_new, history);
-            pw    = reload_pw_new;
-            mw    = reload_mw_new;
-            cam   = reload_cam_new;
-            cf    = chunks_from_painted(pw);   // resync dirty tracker
-            dirty = false;   // disk and memory now match
-            painting     = false;
+            reload_and_record(s.pw, s.mw, reload_pw_new, reload_mw_new, s.history);
+            s.pw    = reload_pw_new;
+            s.mw    = reload_mw_new;
+            s.cam   = reload_cam_new;
+            s.cf    = chunks_from_painted(s.pw);   // resync dirty tracker
+            s.dirty = false;   // disk and memory now match
+            s.painting   = false;
             mb_held_prev = false;
-            render_needed = true;
-            println("dryopea: reloaded from disk ({painted_count(pw)} hexes, {marker_count(mw)} markers)");
+            s.render_needed = true;
+            println("dryopea: reloaded from disk ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
         }
         reload_r_held_prev = reload_r_now;
 
@@ -369,8 +356,8 @@ fn main() {
         // Ctrl+H combination, not single-H.
         h_now = gl_key_pressed(KEY_H);
         if h_now && !h_held_prev && !ctrl_held {
-            cam = camera_default();
-            render_needed = true;
+            s.cam = camera_default();
+            s.render_needed = true;
             println("dryopea: camera recentred (H)");
         }
         h_held_prev = h_now;
@@ -389,9 +376,9 @@ fn main() {
             if in_state.in_pan_north || in_state.in_pan_south
             || in_state.in_pan_east  || in_state.in_pan_west
             || in_state.in_zoom_in   || in_state.in_zoom_out {
-                camera_update(cam, in_state);
+                camera_update(s.cam, in_state);
                 last_pan_us = tnow;
-                render_needed = true;   // view moved → full re-rasterise
+                s.render_needed = true;   // view moved → full re-rasterise
             }
         }
 
@@ -399,85 +386,68 @@ fn main() {
         // same index, no need to debounce.  Compare active before/
         // after so a real change flags a re-render (preview colour +
         // picker highlight both move).
-        pre_active = picker.active;
-        if gl_key_pressed(graphics::KEY_1) { picker_set_active(picker, 0); }
-        if gl_key_pressed(graphics::KEY_2) { picker_set_active(picker, 1); }
-        if gl_key_pressed(graphics::KEY_3) { picker_set_active(picker, 2); }
-        if gl_key_pressed(graphics::KEY_4) { picker_set_active(picker, 3); }
-        if gl_key_pressed(graphics::KEY_5) { picker_set_active(picker, 4); }
-        if gl_key_pressed(graphics::KEY_6) { picker_set_active(picker, 5); }
-        if gl_key_pressed(graphics::KEY_7) { picker_set_active(picker, 6); }
-        if gl_key_pressed(graphics::KEY_8) { picker_set_active(picker, 7); }
-        if gl_key_pressed(graphics::KEY_9) { picker_set_active(picker, 8); }
-        if gl_key_pressed(graphics::KEY_0) { picker_set_active(picker, 9); }
-        if gl_key_pressed(KEY_MINUS)       { picker_set_active(picker, 10); }
-        if gl_key_pressed(KEY_EQUAL)       { picker_set_active(picker, 11); }
-        if picker.active != pre_active { render_needed = true; }
+        pre_active = s.picker.active;
+        if gl_key_pressed(graphics::KEY_1) { picker_set_active(s.picker, 0); }
+        if gl_key_pressed(graphics::KEY_2) { picker_set_active(s.picker, 1); }
+        if gl_key_pressed(graphics::KEY_3) { picker_set_active(s.picker, 2); }
+        if gl_key_pressed(graphics::KEY_4) { picker_set_active(s.picker, 3); }
+        if gl_key_pressed(graphics::KEY_5) { picker_set_active(s.picker, 4); }
+        if gl_key_pressed(graphics::KEY_6) { picker_set_active(s.picker, 5); }
+        if gl_key_pressed(graphics::KEY_7) { picker_set_active(s.picker, 6); }
+        if gl_key_pressed(graphics::KEY_8) { picker_set_active(s.picker, 7); }
+        if gl_key_pressed(graphics::KEY_9) { picker_set_active(s.picker, 8); }
+        if gl_key_pressed(graphics::KEY_0) { picker_set_active(s.picker, 9); }
+        if gl_key_pressed(KEY_MINUS)       { picker_set_active(s.picker, 10); }
+        if gl_key_pressed(KEY_EQUAL)       { picker_set_active(s.picker, 11); }
+        if s.picker.active != pre_active { s.render_needed = true; }
 
         // Mouse — hover + paint on left-button.
         mx = gl_mouse_x() as integer;
         my = gl_mouse_y() as integer;
-        hovered = screen_to_hex(cam, mx, my, WINDOW_W, WINDOW_H, PPM);
+        hovered = screen_to_hex(s.cam, mx, my, WINDOW_W, WINDOW_H, PPM);
         if hovered.q != last_hover_q || hovered.r != last_hover_r {
-            render_needed = true;   // hover preview / outline follows the cursor
+            s.render_needed = true;   // hover preview / outline follows the cursor
         }
 
         mb_now = (gl_mouse_button() & 1) != 0;
 
-        if mb_now && mode == MODE_GROUND {
-            // Ground-mode paint: writes to the painted-hex layer
-            // AND accumulates per-hex deltas into stroke_in_flight
-            // for undo.  Whole drag = one UndoEntry, pushed on
-            // button release below.
-            if tnow - last_paint_us > PAINT_DEBOUNCE_US {
-                if painting {
-                    paint_line_and_record(pw, last_paint_hex, hovered,
-                                          picker.active as u8? ?? 0,
-                                          stroke_in_flight);
-                } else {
-                    paint_and_record(pw, hovered.q, hovered.r,
-                                     picker.active as u8? ?? 0,
-                                     stroke_in_flight);
-                }
-                last_paint_hex = hovered;
-                painting       = true;
-                last_paint_us  = tnow;
-                dirty          = true;
-                chunks_mark_dirty(cf, hovered.q, hovered.r);   // pw changed → re-render
-            }
-        } else {
-            // Ground-mode stroke ended (button released, hover left,
-            // or mode flipped); commit the stroke to history and
-            // reset for the next press.
-            if painting {
-                if !undo_entry_is_noop(stroke_in_flight) {
-                    history_push(history, stroke_in_flight);
-                    stroke_in_flight = undo_entry_empty();
-                }
-                cf = chunks_from_painted(pw);   // resync cell set after the stroke
-            }
-            painting = false;
+        // ── The seam (plan 08 V0a) ──────────────────────────────
+        // Ground-mode paint — the whole action, including stroke
+        // continuation and the one-drag-one-undo commit, lives in
+        // `editor_step`.  This file's remaining job for it is the
+        // rate limit: the clock stays on the polling side so the
+        // step is reproducible, which is what lets a test or a
+        // script drive it without a window.
+        paint_tick_due = tnow - last_paint_us > PAINT_DEBOUNCE_US;
+        editor_step(s, EditorInput {
+            in_hover_q:    hovered.q,
+            in_hover_r:    hovered.r,
+            in_mouse_left: mb_now,
+            in_paint_tick: paint_tick_due,
+        });
+        if mb_now && s.mode == MODE_GROUND && paint_tick_due {
+            last_paint_us = tnow;
         }
 
-        if mb_now && !mb_held_prev && mode == MODE_MARKER {
+        if mb_now && !mb_held_prev && s.mode == MODE_MARKER {
             // Marker-mode is edge-triggered: each press is one
             // place-or-remove event, not a drag.  Click an existing
             // marker → remove (toggle); click an empty hex → place
             // the active kind (spawn with current rotation, OR
             // target).  Both record one UndoEntry directly.
-            if has_marker(mw, hovered.q, hovered.r) {
-                remove_marker_and_record(mw, hovered.q, hovered.r, history);
+            if has_marker(s.mw, hovered.q, hovered.r) {
+                remove_marker_and_record(s.mw, hovered.q, hovered.r, s.history);
                 println("dryopea: removed marker at ({hovered.q}, {hovered.r})");
-            } else if place_kind == MARKER_KIND_TARGET {
-                place_target_and_record(mw, hovered.q, hovered.r, history);
+            } else if s.place_kind == MARKER_KIND_TARGET {
+                place_target_and_record(s.mw, hovered.q, hovered.r, s.history);
                 println("dryopea: placed target at ({hovered.q}, {hovered.r})");
             } else {
-                place_spawn_and_record(mw, hovered.q, hovered.r,
-                                       place_direction, history);
-                println("dryopea: placed spawn at ({hovered.q}, {hovered.r}) dir={place_direction as integer}");
+                place_spawn_and_record(s.mw, hovered.q, hovered.r,
+                                       s.place_direction, s.history);
+                println("dryopea: placed spawn at ({hovered.q}, {hovered.r}) dir={s.place_direction as integer}");
             }
-            dirty = true;
-            chunks_mark_dirty(cf, hovered.q, hovered.r);   // marker layer changed → re-render
+            s.dirty = true;
+            chunks_mark_dirty(s.cf, hovered.q, hovered.r);   // marker layer changed → re-render
         }
         mb_held_prev = mb_now;
 
@@ -489,46 +459,46 @@ fn main() {
         // arrow (markers don't replace ground colour, so the
         // paint-preview would be misleading).
         // Re-rasterise + re-upload ONLY when the frame changed:
-        // pw/mw edits flag gridmesh's dirty set; view changes flag
-        // render_needed.  Otherwise reuse the cached texture.
-        do_render = render_needed || chunks_dirty_count(cf) > 0;
+        // content edits flag gridmesh's dirty set; view changes flag
+        // s.render_needed.  Otherwise reuse the cached texture.
+        do_render = s.render_needed || chunks_dirty_count(s.cf) > 0;
         if do_render {
-            if mode == MODE_GROUND {
-                cv = render_with_hover_preview(cam, pw, hovered,
-                                                picker.active as u8? ?? 0,
+            if s.mode == MODE_GROUND {
+                cv = render_with_hover_preview(s.cam, s.pw, hovered,
+                                                s.picker.active as u8? ?? 0,
                                                 WINDOW_W, WINDOW_H, PPM);
             } else {
-                cv = render_with_hover(cam, pw, hovered,
+                cv = render_with_hover(s.cam, s.pw, hovered,
                                         WINDOW_W, WINDOW_H, PPM);
             }
-            render_markers(cv, cam, mw, WINDOW_W, WINDOW_H, PPM);
+            render_markers(cv, s.cam, s.mw, WINDOW_W, WINDOW_H, PPM);
             // Marker-mode ghost preview at the hovered hex — only when
             // the hex is empty (placing on an occupied hex removes, so
             // no preview).  Dispatches on place_kind: spawn → arrow
             // ghost oriented per place_direction, target → bullseye
             // ghost.
-            if mode == MODE_MARKER && !has_marker(mw, hovered.q, hovered.r) {
-                if place_kind == MARKER_KIND_TARGET {
-                    render_ghost_target(cv, cam, hovered.q, hovered.r,
+            if s.mode == MODE_MARKER && !has_marker(s.mw, hovered.q, hovered.r) {
+                if s.place_kind == MARKER_KIND_TARGET {
+                    render_ghost_target(cv, s.cam, hovered.q, hovered.r,
                                         WINDOW_W, WINDOW_H, PPM);
                 } else {
-                    render_ghost_arrow(cv, cam, hovered.q, hovered.r,
-                                       place_direction, WINDOW_W, WINDOW_H, PPM);
+                    render_ghost_arrow(cv, s.cam, hovered.q, hovered.r,
+                                       s.place_direction, WINDOW_W, WINDOW_H, PPM);
                 }
             }
-            render_picker(cv, picker, 12, 12);
+            render_picker(cv, s.picker, 12, 12);
             // Save indicator sits to the right of the picker, vertically
             // aligned with the top swatch.
-            render_save_indicator(cv, dirty,
+            render_save_indicator(cv, s.dirty,
                                   12 + PICKER_SWATCH_PX + 2 + SAVE_INDICATOR_RADIUS,
                                   12 + SAVE_INDICATOR_RADIUS);
-            render_mode_indicator(cv, mode, WINDOW_W - MODE_BADGE_PX - 12, 12);
+            render_mode_indicator(cv, s.mode, WINDOW_W - MODE_BADGE_PX - 12, 12);
 
             // Swap the cached GL texture (free the old one first).
             if cur_tex != 0 { gl_delete_texture(cur_tex); }
             cur_tex = gl_upload_canvas(cv.data, cv.width, cv.height);
-            render_needed = false;
-            chunks_clear(cf);
+            s.render_needed = false;
+            chunks_clear(s.cf);
             last_hover_q = hovered.q;
             last_hover_r = hovered.r;
         }
@@ -543,9 +513,8 @@ fn main() {
     if cur_tex != 0 { gl_delete_texture(cur_tex); }
 
     // Save on exit so progress isn't lost when the window closes.
-    save_world(pw, cam, palette, "exit", save_path);
-    save_markers(mw, "exit", marker_save_path);
-    dirty = false;
-    println("dryopea: saved on exit map=[{map_label}] ({painted_count(pw)} hexes, {marker_count(mw)} markers)");
+    save_world(s.pw, s.cam, palette, "exit", save_path);
+    save_markers(s.mw, "exit", marker_save_path);
+    println("dryopea: saved on exit map=[{map_label}] ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
     gl_destroy_window();
 }

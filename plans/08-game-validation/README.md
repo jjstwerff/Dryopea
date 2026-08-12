@@ -9,10 +9,18 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0a is the next work.** Nothing in dryopea validates the game as
-something that *runs*. The 189 tests in `tests/` cover pure functions and
-static renders; every one of them calls a library function directly and none
-of them plays the game.
+**Active — V0a shipped 2026-08-12; V0b is the next work.** Nothing in
+dryopea validated the game as something that *runs*. The 189 tests in
+`tests/` covered pure functions and static renders; every one of them called
+a library function directly and none of them played the game.
+
+V0a changes that for one action. `src/editor_step.loft` holds an
+`EditorState` + `EditorInput` + a pure `editor_step`, all inside the
+aggregator; `tests/08_v0a_editor_step.loft` drives ground-mode paint through
+it headlessly (10 tests, suite 199 green). `src/main.loft` now owns exactly
+one `EditorState` and routes paint through the seam — every other action
+still runs its old inline path against the same fields, which is what keeps
+the tree green mid-migration.
 
 The evidence this is a silent-failure problem, not a nice-to-have, is from
 2026-08-12:
@@ -21,7 +29,9 @@ The evidence this is a silent-failure problem, not a nice-to-have, is from
   sits outside the `dryopea.loft` aggregator, so `scripts/test.sh` never
   parses it. Three narrowing-cast errors sat in it undetected until it was
   parse-checked by hand. The file that *is* the game was broken and every
-  gate was green.
+  gate was green. *(V0a moves the first action's logic into the aggregator;
+  the hole closes fully when V0b empties main.loft of everything but
+  poll → step → render.)*
 - **`graphics::fill_triangle` drew every hex as a cross** for at least two
   released versions. dryopea's goldens did go red — but the library's own
   tests stayed green, because each assertion sampled the apex column or the
@@ -91,8 +101,8 @@ a phase that cannot name one is a phase that has not been cut yet.
 
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
-| **V0a** — seam for ONE action (paint) | S | one site at a time | a test builds an `EditorInput` with paint set, calls `editor_step`, asserts the hex changed; the other 24 actions still run their old inline path, so the tree is green throughout | Open |
-| **V0b** — move the remaining actions, in groups | M | one site at a time | per group: a test drives the action through `editor_step` and asserts its effect; `src/main.loft` shrinks to poll → step → render | Blocked on V0a |
+| **V0a** — seam for ONE action (paint) | S | one site at a time | a test builds an `EditorInput` with paint set, calls `editor_step`, asserts the hex changed; the other 24 actions still run their old inline path, so the tree is green throughout | **Shipped** |
+| **V0b** — move the remaining actions, in groups | M | one site at a time | per group: a test drives the action through `editor_step` and asserts its effect; `src/main.loft` shrinks to poll → step → render | Open |
 | **V1a** — parse + run, no output | S | parallel run | a script of `at` / `key` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | Blocked on V0b |
 | **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | Blocked on V1a |
 | **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | Blocked on V1b |

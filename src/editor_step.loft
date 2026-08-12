@@ -1,0 +1,214 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The editor's input seam — plan 08 phase V0.
+//
+// `src/main.loft` used to read the keyboard and mutate editor state
+// in the same breath: `if gl_key_pressed(KEY_X) { ...do the thing... }`,
+// ~25 times over.  That shape has two costs.  It cannot run without a
+// GL window, so nothing can drive the editor headlessly; and main.loft
+// sits outside the `dryopea.loft` aggregator, so `scripts/test.sh`
+// never even parses the file that IS the game.
+//
+// This file is the seam that fixes both.  State lives in one
+// `EditorState`; a frame's worth of player intent lives in one
+// `EditorInput`; `editor_step` applies the second to the first and
+// touches nothing else — no GL, no clock, no disk.  main.loft polls
+// GL into an `EditorInput`, calls `editor_step`, and renders.  A test
+// (and, from V1, a `.keys` script) builds the same `EditorInput`
+// directly and gets the same state change, with no window open.
+//
+// ⚠ ONE table, two readers.  The key→action mapping must live HERE
+// and be called by both the GL poll and the script runner.  Two
+// copies that drift is how a script silently stops testing what the
+// player actually does.
+//
+// ── Phase V0a — paint only ──────────────────────────────────────
+//
+// `editor_step` currently honours exactly ONE action: ground-mode
+// paint.  Every other action (mode toggle, palette select, marker
+// place / rotate / cycle, undo, redo, save, reload, clear, recentre,
+// camera pan / zoom) still runs its old inline path in main.loft
+// against these same fields.  That is deliberate: the two paths
+// coexist, so the tree stays green while the actions move across one
+// group at a time (V0b).
+//
+// `EditorInput` therefore carries only the fields V0a honours.  It
+// grows in V0b, each new field landing together with the code that
+// reads it — an input field nothing consumes is a lie a script would
+// happily tell.
+
+use world;
+use painted;
+use markers;
+use camera;
+use picker;
+use history;
+use chunks;
+use editor_mode;
+use gridmesh;
+
+// ─── State ──────────────────────────────────────────────────────
+
+// Everything the editor mutates while a session is open, in one
+// place.  main.loft holds exactly one of these; from V0b onward it
+// holds nothing else.
+//
+// Not a save format — `map_file.loft` / `marker_file.loft` own what
+// reaches disk.  This is session state, so it also carries the
+// derived + transient bits (chunk dirty set, in-flight stroke,
+// re-render flag) that a save deliberately drops.
+pub struct EditorState {
+    // ── World layers (what a save round-trips) ──
+    pw:  PaintedWorld,
+    mw:  MarkerWorld,
+    cam: EditorCamera,
+
+    // ── Tool state ──
+    picker:          Picker,
+    mode:            integer,   // MODE_GROUND | MODE_MARKER
+    place_direction: u8,        // rotation for the NEXT spawn placement, 0..5
+    place_kind:      integer,   // MARKER_KIND_SPAWN | MARKER_KIND_TARGET
+
+    // ── Undo / redo ──
+    history: History,
+    // Deltas accumulated while the button is held.  A whole drag is
+    // ONE undoable action, so the stroke is pushed onto `history`
+    // when the button comes up, not per painted hex.
+    stroke:  UndoEntry,
+
+    // ── Stroke continuation ──
+    // A paint tick fires at most every PAINT_DEBOUNCE_US, and the
+    // mouse can cross several hexes in between, so consecutive ticks
+    // are joined with a hex line.  `painting` says whether the
+    // previous tick belongs to the same stroke — without it, a
+    // release-then-quick-repress would bridge two separate strokes.
+    painting:       boolean,
+    last_paint_hex: Hex,
+
+    // ── Render / save bookkeeping ──
+    cf:            ChunkField,   // gridmesh dirty set — which chunks to rebuild
+    dirty:         boolean,      // in-memory state differs from disk (HUD indicator)
+    render_needed: boolean,      // view changed (camera / hover / mode / picker)
+}
+
+// ─── Input ──────────────────────────────────────────────────────
+
+// One frame of player intent.  Every field here is honoured by
+// `editor_step`; see the V0a note in the file header for why it is
+// this short.
+//
+// The hover hex is carried as (q, r), NOT as mouse pixels: pixel →
+// hex is a camera-and-window concern that belongs on the polling
+// side, and a script wants to say "click hex (3, -2)" without
+// reasoning about a window that isn't open.
+pub struct EditorInput {
+    in_hover_q: integer,
+    in_hover_r: integer,
+
+    // Left button state THIS frame.  Held across frames — its
+    // falling edge is what ends a stroke.
+    in_mouse_left: boolean,
+
+    // Is a paint event due this frame?  The caller owns the rate
+    // limit (main.loft debounces on `ticks()`; a script paints once
+    // per scripted frame), which keeps `editor_step` free of the
+    // clock and therefore reproducible.
+    in_paint_tick: boolean,
+}
+
+// ─── Factories ──────────────────────────────────────────────────
+
+// Adopt already-loaded world layers — the editor-open path, where
+// `pw` / `mw` / `cam` come off disk.
+pub fn editor_state_from(
+    pw:     PaintedWorld,
+    mw:     MarkerWorld,
+    cam:    EditorCamera,
+    picker: Picker,
+) -> EditorState {
+    EditorState {
+        pw:              pw,
+        mw:              mw,
+        cam:             cam,
+        picker:          picker,
+        mode:            MODE_GROUND,
+        place_direction: 0 as u8,
+        place_kind:      MARKER_KIND_SPAWN,
+        history:         history_empty(),
+        stroke:          undo_entry_empty(),
+        painting:        false,
+        last_paint_hex:  Hex { q: 0, r: 0 },
+        cf:              chunks_from_painted(pw),
+        dirty:           false,
+        // Force the first frame: nothing is on screen yet.
+        render_needed:   true,
+    }
+}
+
+// A fresh editor on an empty (all-sea) world.
+pub fn editor_state_new(palette_path: text) -> EditorState {
+    editor_state_from(
+        painted_empty(),
+        marker_empty(),
+        camera_default(),
+        picker_default(palette_path),
+    )
+}
+
+pub fn editor_input_empty() -> EditorInput {
+    EditorInput {
+        in_hover_q:    0,
+        in_hover_r:    0,
+        in_mouse_left: false,
+        in_paint_tick: false,
+    }
+}
+
+// ─── The step ───────────────────────────────────────────────────
+
+// Apply one frame of input to the editor state.
+//
+// Pure with respect to the outside world: no GL, no `ticks()`, no
+// file access — the same (state, input) always produces the same
+// state change.  That is what lets a test and a script drive the
+// real editor instead of a stand-in.
+//
+// An input with no action set must leave the state untouched; the
+// no-op frame is a test, not a comment.
+pub fn editor_step(s: EditorState, input: EditorInput) {
+    es_hover = Hex { q: input.in_hover_q, r: input.in_hover_r };
+
+    if input.in_mouse_left && s.mode == MODE_GROUND {
+        // Ground-mode paint: writes the painted-hex layer AND
+        // accumulates per-hex deltas into `stroke` for undo.
+        if input.in_paint_tick {
+            if s.painting {
+                paint_line_and_record(s.pw, s.last_paint_hex, es_hover,
+                                      s.picker.active as u8? ?? 0,
+                                      s.stroke);
+            } else {
+                paint_and_record(s.pw, es_hover.q, es_hover.r,
+                                 s.picker.active as u8? ?? 0,
+                                 s.stroke);
+            }
+            s.last_paint_hex.q = es_hover.q;
+            s.last_paint_hex.r = es_hover.r;
+            s.painting = true;
+            s.dirty    = true;
+            chunks_mark_dirty(s.cf, es_hover.q, es_hover.r);   // pw changed → re-render
+        }
+    } else {
+        // The stroke ended — button released, or the mode flipped
+        // out from under it.  Commit it as one undoable action and
+        // reset for the next press.
+        if s.painting {
+            if !undo_entry_is_noop(s.stroke) {
+                history_push(s.history, s.stroke);
+                s.stroke = undo_entry_empty();
+            }
+            s.cf = chunks_from_painted(s.pw);   // resync the cell set after the stroke
+        }
+        s.painting = false;
+    }
+}
