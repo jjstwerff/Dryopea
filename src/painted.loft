@@ -29,9 +29,9 @@ use world;
 // 255 leaves room for many more types without changing the field
 // width).
 pub struct PaintedHex {
-    q:    integer not null,
-    r:    integer not null,
-    kind: u8      not null,
+    q:    integer,
+    r:    integer,
+    kind: u8,
 }
 
 // The world container — a hash must be a struct field (loft idiom)
@@ -47,7 +47,7 @@ pub fn painted_empty() -> PaintedWorld {
 
 // Paint a hex.  Painting sea (type 0) ERASES the entry to keep the
 // storage sparse — sea is implicit on a miss.
-pub fn paint(w: &PaintedWorld, q: integer, r: integer, kind: u8) {
+pub fn paint(w: PaintedWorld, q: integer, r: integer, kind: u8) {
     if kind == 0 as u8 {
         w.painted[q, r] = null;        // remove
     } else {
@@ -74,7 +74,7 @@ pub fn painted_count(w: const PaintedWorld) -> integer {
 // pixel B; convert each endpoint to a Hex, then paint_line
 // fills the gap with no missed hexes (cube round handles the
 // edge cases).
-pub fn paint_line(w: &PaintedWorld, a: Hex, b: Hex, kind: u8) {
+pub fn paint_line(w: PaintedWorld, a: Hex, b: Hex, kind: u8) {
     pl_n = hex_distance(a, b);
     if pl_n == 0 {
         paint(w, a.q, a.r, kind);

@@ -94,7 +94,7 @@ pub fn mapfile_to_painted(
     for mtp_e in m.ground {
         mtp_kind = palette_index_of(palette, mtp_e.kind);
         if mtp_kind > 0 {
-            paint(mtp_out, mtp_e.q, mtp_e.r, mtp_kind as u8);
+            paint(mtp_out, mtp_e.q, mtp_e.r, mtp_kind as u8? ?? 0);
         }
     }
     mtp_out
@@ -185,7 +185,7 @@ pub fn markerfile_to_world(mf: MarkerFile) -> MarkerWorld {
     mftw_out = marker_empty();
     for mftw_e in mf.markers {
         if mftw_e.kind == MARKER_KIND_SPAWN {
-            place_spawn(mftw_out, mftw_e.q, mftw_e.r, mftw_e.direction as u8);
+            place_spawn(mftw_out, mftw_e.q, mftw_e.r, mftw_e.direction as u8? ?? 0);
         } else if mftw_e.kind == MARKER_KIND_TARGET {
             place_target(mftw_out, mftw_e.q, mftw_e.r);
         }

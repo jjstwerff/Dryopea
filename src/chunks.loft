@@ -51,7 +51,7 @@ pub fn chunks_from_painted(w: const PaintedWorld) -> ChunkField {
 //   sea  -> kind : a new cell        (add)
 //   kind -> sea  : erased            (remove)
 //   kind -> kind : repaint, same cell (mark dirty only)
-pub fn chunks_note_edit(f: &ChunkField, q: integer, r: integer,
+pub fn chunks_note_edit(f: ChunkField, q: integer, r: integer,
                         was_sea: boolean, now_sea: boolean) {
     if was_sea && !now_sea {
         field_add_cell(f, q, r);
@@ -76,12 +76,12 @@ pub fn chunks_all_inputs(f: ChunkField) -> vector<ChunkInput> {
 // For repaints (kind change, cell already tracked) and for marker
 // edits (which live at a hex but aren't part of the painted cell
 // set) — enough to drive a re-render.
-pub fn chunks_mark_dirty(f: &ChunkField, q: integer, r: integer) {
+pub fn chunks_mark_dirty(f: ChunkField, q: integer, r: integer) {
     field_mark_dirty(f, q, r);
 }
 
 // Clear the dirty set after a rebuild pass.
-pub fn chunks_clear(f: &ChunkField) {
+pub fn chunks_clear(f: ChunkField) {
     clear_dirty(f);
 }
 

@@ -29,10 +29,10 @@ use markers;
 // painting it on a painted hex erases the entry (painted.loft's
 // sparse semantics).
 pub struct PaintedDelta {
-    q:        integer not null,
-    r:        integer not null,
-    old_kind: integer not null,
-    new_kind: integer not null,
+    q:        integer,
+    r:        integer,
+    old_kind: integer,
+    new_kind: integer,
 }
 
 // One marker change: (q, r) went from `(old_present, old_kind,
@@ -43,14 +43,14 @@ pub struct PaintedDelta {
 // discriminant (MARKER_KIND_SPAWN, MARKER_KIND_TARGET, …) —
 // needed so undo restores the right kind, not just direction.
 pub struct MarkerDelta {
-    q:             integer not null,
-    r:             integer not null,
-    old_present:   boolean not null,
-    old_kind:      integer not null,
-    old_direction: integer not null,
-    new_present:   boolean not null,
-    new_kind:      integer not null,
-    new_direction: integer not null,
+    q:             integer,
+    r:             integer,
+    old_present:   boolean,
+    old_kind:      integer,
+    old_direction: integer,
+    new_present:   boolean,
+    new_kind:      integer,
+    new_direction: integer,
 }
 
 // One user action's worth of changes.  An action might touch
@@ -58,8 +58,8 @@ pub struct MarkerDelta {
 // markers (a future "select region + clear" — clear-all today
 // snapshots everything into one entry).
 pub struct UndoEntry {
-    painted: vector<PaintedDelta> not null,
-    markers: vector<MarkerDelta>  not null,
+    painted: vector<PaintedDelta>,
+    markers: vector<MarkerDelta>,
 }
 
 // Linear action timeline.  Position `cursor` is "after the most
@@ -67,8 +67,8 @@ pub struct UndoEntry {
 // and above cursor are redoable.  Truncation drops the future-
 // redo branch when a new action lands during undone state.
 pub struct History {
-    entries: vector<UndoEntry> not null,
-    cursor:  integer not null,
+    entries: vector<UndoEntry>,
+    cursor:  integer,
 }
 
 // Maximum undo depth.  When `entries` grows past this, the
@@ -100,7 +100,7 @@ pub fn undo_entry_is_noop(e: const UndoEntry) -> boolean {
 // helpers rebuild the timeline as needed; O(n) per call,
 // acceptable for a 50-deep history.
 
-fn truncate_to(h: &History, te_n: integer) {
+fn truncate_to(h: History, te_n: integer) {
     if te_n >= len(h.entries) { return; }
     te_new: vector<UndoEntry> = [];
     for te_i in 0..te_n {
@@ -109,7 +109,7 @@ fn truncate_to(h: &History, te_n: integer) {
     h.entries = te_new;
 }
 
-fn drop_oldest(h: &History, doe_n: integer) {
+fn drop_oldest(h: History, doe_n: integer) {
     if doe_n <= 0 || doe_n > len(h.entries) { return; }
     doe_new: vector<UndoEntry> = [];
     for doe_i in doe_n..len(h.entries) {
@@ -126,7 +126,7 @@ fn drop_oldest(h: &History, doe_n: integer) {
 // current cursor (the "new action while undone" pattern), then
 // appends + advances + caps depth.  No-op if the entry has no
 // deltas.
-pub fn history_push(h: &History, hp_entry: UndoEntry) {
+pub fn history_push(h: History, hp_entry: UndoEntry) {
     if undo_entry_is_noop(hp_entry) { return; }
     truncate_to(h, h.cursor);
     h.entries += [hp_entry];
@@ -141,7 +141,7 @@ pub fn history_can_redo(h: const History) -> boolean { h.cursor < len(h.entries)
 
 // Apply the inverse of the most recent action.  Returns true if
 // anything was undone, false on an empty history.
-pub fn history_undo(h: &History, pw: &PaintedWorld, mw: &MarkerWorld) -> boolean {
+pub fn history_undo(h: History, pw: PaintedWorld, mw: MarkerWorld) -> boolean {
     if !history_can_undo(h) { return false; }
     // can_undo above proves cursor ∈ 1..=len(entries), so the
     // index is in range; the null check is belt-and-suspenders
@@ -151,14 +151,14 @@ pub fn history_undo(h: &History, pw: &PaintedWorld, mw: &MarkerWorld) -> boolean
     hu_entry = h.entries[hu_idx];
     if hu_entry == null { return false; }
     for hu_pd in hu_entry.painted {
-        paint(pw, hu_pd.q, hu_pd.r, hu_pd.old_kind as u8);
+        paint(pw, hu_pd.q, hu_pd.r, hu_pd.old_kind as u8? ?? 0);
     }
     for hu_md in hu_entry.markers {
         if hu_md.old_present {
             if hu_md.old_kind == MARKER_KIND_TARGET {
                 place_target(mw, hu_md.q, hu_md.r);
             } else {
-                place_spawn(mw, hu_md.q, hu_md.r, hu_md.old_direction as u8);
+                place_spawn(mw, hu_md.q, hu_md.r, hu_md.old_direction as u8? ?? 0);
             }
         } else {
             remove_marker(mw, hu_md.q, hu_md.r);
@@ -170,20 +170,20 @@ pub fn history_undo(h: &History, pw: &PaintedWorld, mw: &MarkerWorld) -> boolean
 
 // Re-apply the most recently undone action.  Returns true if
 // anything was redone, false on an empty redo branch.
-pub fn history_redo(h: &History, pw: &PaintedWorld, mw: &MarkerWorld) -> boolean {
+pub fn history_redo(h: History, pw: PaintedWorld, mw: MarkerWorld) -> boolean {
     if !history_can_redo(h) { return false; }
     hr_idx = h.cursor;
     hr_entry = h.entries[hr_idx];   // null check below: see history_undo
     if hr_entry == null { return false; }
     for hr_pd in hr_entry.painted {
-        paint(pw, hr_pd.q, hr_pd.r, hr_pd.new_kind as u8);
+        paint(pw, hr_pd.q, hr_pd.r, hr_pd.new_kind as u8? ?? 0);
     }
     for hr_md in hr_entry.markers {
         if hr_md.new_present {
             if hr_md.new_kind == MARKER_KIND_TARGET {
                 place_target(mw, hr_md.q, hr_md.r);
             } else {
-                place_spawn(mw, hr_md.q, hr_md.r, hr_md.new_direction as u8);
+                place_spawn(mw, hr_md.q, hr_md.r, hr_md.new_direction as u8? ?? 0);
             }
         } else {
             remove_marker(mw, hr_md.q, hr_md.r);
@@ -201,11 +201,11 @@ pub fn history_redo(h: &History, pw: &PaintedWorld, mw: &MarkerWorld) -> boolean
 // events into one stroke entry across a drag; main.loft pushes
 // the stroke onto the history on button release.
 pub fn paint_and_record(
-    pw:       &PaintedWorld,
+    pw:       PaintedWorld,
     q:        integer,
     r:        integer,
     new_kind: u8,
-    stroke:   &UndoEntry,
+    stroke:   UndoEntry,
 ) {
     par_old = lookup_painted(pw, q, r);
     if par_old != new_kind {
@@ -224,11 +224,11 @@ pub fn paint_and_record(
 // actually changed.  Replaces a direct paint_line call when
 // the caller wants undo support.
 pub fn paint_line_and_record(
-    pw:       &PaintedWorld,
+    pw:       PaintedWorld,
     a:        Hex,
     b:        Hex,
     new_kind: u8,
-    stroke:   &UndoEntry,
+    stroke:   UndoEntry,
 ) {
     pla_n = hex_distance(a, b);
     if pla_n == 0 {
@@ -255,11 +255,11 @@ pub fn paint_line_and_record(
 // history.  Captures the prior state (absent or different
 // direction) for clean undo.
 pub fn place_spawn_and_record(
-    mw:            &MarkerWorld,
+    mw:            MarkerWorld,
     q:             integer,
     r:             integer,
     new_direction: u8,
-    history:       &History,
+    history:       History,
 ) {
     pssr_was = has_marker(mw, q, r);
     pssr_old_dir:  u8      = 0 as u8;
@@ -288,10 +288,10 @@ pub fn place_spawn_and_record(
 // ignored on undo/redo apply.  Matches place_spawn_and_record's
 // shape so the editor's marker-mode hotpath dispatches cleanly.
 pub fn place_target_and_record(
-    mw:      &MarkerWorld,
+    mw:      MarkerWorld,
     q:       integer,
     r:       integer,
-    history: &History,
+    history: History,
 ) {
     ptar_was = has_marker(mw, q, r);
     ptar_old_dir:  u8      = 0 as u8;
@@ -319,10 +319,10 @@ pub fn place_target_and_record(
 // No-op if there's no marker to remove.  Captures the prior
 // kind so undo restores the right marker type (spawn vs target).
 pub fn remove_marker_and_record(
-    mw:      &MarkerWorld,
+    mw:      MarkerWorld,
     q:       integer,
     r:       integer,
-    history: &History,
+    history: History,
 ) {
     if !has_marker(mw, q, r) { return; }
     rmar_old_dir  = marker_direction(mw, q, r);
@@ -357,7 +357,7 @@ pub fn reload_and_record(
     mw_current: MarkerWorld,
     pw_loaded:  PaintedWorld,
     mw_loaded:  MarkerWorld,
-    history:    &History,
+    history:    History,
 ) {
     rar_entry = undo_entry_empty();
 
@@ -456,7 +456,7 @@ pub fn reload_and_record(
 pub fn clear_and_record(
     pw:      PaintedWorld,
     mw:      MarkerWorld,
-    history: &History,
+    history: History,
 ) {
     car_entry = undo_entry_empty();
     for car_pe in pw.painted {

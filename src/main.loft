@@ -70,6 +70,8 @@
 // starts on an empty (all-sea) world.  Saves on exit so paint
 // progress isn't lost when the window is closed without Ctrl+S.
 
+#cwd
+
 use dryopea;
 use graphics;
 
@@ -430,11 +432,11 @@ fn main() {
             if tnow - last_paint_us > PAINT_DEBOUNCE_US {
                 if painting {
                     paint_line_and_record(pw, last_paint_hex, hovered,
-                                          picker.active as u8,
+                                          picker.active as u8? ?? 0,
                                           stroke_in_flight);
                 } else {
                     paint_and_record(pw, hovered.q, hovered.r,
-                                     picker.active as u8,
+                                     picker.active as u8? ?? 0,
                                      stroke_in_flight);
                 }
                 last_paint_hex = hovered;
@@ -493,7 +495,7 @@ fn main() {
         if do_render {
             if mode == MODE_GROUND {
                 cv = render_with_hover_preview(cam, pw, hovered,
-                                                picker.active as u8,
+                                                picker.active as u8? ?? 0,
                                                 WINDOW_W, WINDOW_H, PPM);
             } else {
                 cv = render_with_hover(cam, pw, hovered,

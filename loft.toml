@@ -8,27 +8,22 @@ license = "LGPL-3.0-or-later"
 [library]
 entry = "src/dryopea.loft"
 
-# Dependencies are intentionally empty for plan 01 E1 (camera + world
-# math only).  Later phases add `graphics` (GL bindings) once the
-# renderer lands.  When upstream library plans (gridmesh, terrain-
-# heightmap) migrate to their own repos / the loft package registry,
-# they will be added here.
 [dependencies]
-# Path-dep into loft's monorepo while libraries haven't migrated to
-# the registry (see DESIGN.md § 17a — dryopea trail-blazes the loft
-# libraries it consumes).
+# `graphics` and `gridmesh` have migrated out of loft's monorepo to
+# their own repo (`loft-libs-graphics`) and are published to the loft
+# package registry — so they resolve by version, not by path.
 #
 # `graphics` provides the headless Canvas software rasterizer +
-# save_png (works without a GL context — see lib/graphics/tests/
-# canvas.loft for the pattern).  GL window functions also live in
-# this lib for when the live renderer lands.
-graphics = { path = "../loft/lib/graphics" }
+# save_png (works without a GL context — see the library's own
+# tests/canvas.loft for the pattern).  GL window functions also live
+# in this lib for the live renderer.
+graphics = ">=0.5.0"
 
 # Plan 07 — shared world substrate.  `gridmesh` is the standalone,
 # zero-dependency chunk + dirty + mesh-pipeline toolkit (axial).
 # dryopea adopts its ChunkField/dirty engine so edits rebuild only
 # changed chunks instead of the whole world per frame.
-gridmesh = { path = "../loft/lib/gridmesh" }
+gridmesh = ">=0.1.2"
 
 # `moros_map` is the shared world data model — Map / Chunk / Hex with
 # {q,r,cy} multi-floor, height, material, walls, items.  Plan 07 W1
@@ -41,4 +36,7 @@ gridmesh = { path = "../loft/lib/gridmesh" }
 # QUESTIONS_FOR_LOFT.md); W1 resumes once `use` namespaces struct
 # types per library.  Declared here (harmless while unused) so
 # loft_repros/dup_struct_type_across_libs.loft can demonstrate it.
-moros_map = { path = "../loft/lib/moros_map" }
+#
+# Not published to the registry, so it stays a path-dep — into the
+# moros checkout, which is where the shared world model now lives.
+moros_map = { path = "../moros/lib/moros_map" }

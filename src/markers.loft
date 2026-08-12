@@ -41,10 +41,10 @@ pub const MARKER_KIND_TARGET: integer = 1;
 // reinterpret the field (e.g. item kind id), repurpose it, or
 // ignore it.  The flat shape keeps the on-disk JSON one schema.
 pub struct MarkerEntry {
-    q:         integer not null,
-    r:         integer not null,
-    kind:      u8      not null,
-    direction: u8      not null,
+    q:         integer,
+    r:         integer,
+    kind:      u8,
+    direction: u8,
 }
 
 // The marker layer container — a hash must be a struct field
@@ -62,7 +62,7 @@ pub fn marker_empty() -> MarkerWorld {
 // Place a spawn marker.  Overwrites an existing marker at the
 // same hex — last-write-wins on direction.  Use `remove_marker`
 // to clear a placed marker.
-pub fn place_spawn(w: &MarkerWorld, q: integer, r: integer, direction: u8) {
+pub fn place_spawn(w: MarkerWorld, q: integer, r: integer, direction: u8) {
     w.markers[q, r] = MarkerEntry {
         q:         q,
         r:         r,
@@ -74,7 +74,7 @@ pub fn place_spawn(w: &MarkerWorld, q: integer, r: integer, direction: u8) {
 // Place a target marker.  Targets are spherical (no direction);
 // the direction field is stored as 0 and ignored on load.
 // Overwrites any existing marker at the same hex.
-pub fn place_target(w: &MarkerWorld, q: integer, r: integer) {
+pub fn place_target(w: MarkerWorld, q: integer, r: integer) {
     w.markers[q, r] = MarkerEntry {
         q:         q,
         r:         r,
@@ -84,7 +84,7 @@ pub fn place_target(w: &MarkerWorld, q: integer, r: integer) {
 }
 
 // Remove the marker at (q, r), if any.  No-op on an empty hex.
-pub fn remove_marker(w: &MarkerWorld, q: integer, r: integer) {
+pub fn remove_marker(w: MarkerWorld, q: integer, r: integer) {
     w.markers[q, r] = null;
 }
 
@@ -131,7 +131,7 @@ pub fn rotate_direction(d: u8, delta: integer) -> u8 {
     if rd_n < 0 {
         rd_n = rd_n + NUM_HEX_DIRECTIONS;
     }
-    rd_n as u8
+    rd_n as u8? ?? 0
 }
 
 // Rotate the direction of the marker at (q, r), if one exists.
@@ -140,7 +140,7 @@ pub fn rotate_direction(d: u8, delta: integer) -> u8 {
 // `place_direction` state and writes the new marker with that
 // direction set at place time, so this primitive isn't on the
 // main editor hot path yet.
-pub fn rotate_marker_at(w: &MarkerWorld, q: integer, r: integer, delta: integer) {
+pub fn rotate_marker_at(w: MarkerWorld, q: integer, r: integer, delta: integer) {
     rma_e = w.markers[q, r];
     if rma_e == null {
         return;

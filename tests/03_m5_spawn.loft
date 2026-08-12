@@ -8,6 +8,8 @@
 // spawn_wave's count + round-robin + heading-from-marker, and
 // the approach-mode enemy_tick that walks one hex per tick.
 
+#cwd
+
 use dryopea;
 
 // ─── hex_offset (6 cardinal directions) ─────────────────────────
@@ -29,7 +31,7 @@ fn test_hex_offset_six_directions_distinct() {
     // to compare cheaply.
     seen: vector<integer> = [];
     for tho_d in 0..6 {
-        tho_o = hex_offset(tho_d as u8);
+        tho_o = hex_offset(tho_d as u8? ?? 0);
         seen += [tho_o.0 * 10 + tho_o.1];
     }
     // Spot-check that all six values appear AND none repeat.
@@ -209,7 +211,7 @@ fn test_wave_tick_advances_every_enemy() {
 
 fn test_alive_count_all_alive() {
     tac_state = wave_state_empty();
-    for tac_i in 0..3 {
+    for _ in 0..3 {
         tac_state.enemies += [Enemy { q: 0, r: 0,
                                        kind: ENEMY_KIND_REGULAR as u8,
                                        heading: 0 as u8, alive: true }];

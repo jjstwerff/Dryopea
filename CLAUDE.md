@@ -23,10 +23,25 @@ runnable E1-live editor (`src/main.loft`).  Plan 03 (marker layer
 Tab-toggled Ground/Marker editor mode with HUD badge, spawn
 placement + R/Shift+R rotation, hot-pink triangle render
 overlay, and a runtime wave engine + spawn director with
-approach-mode enemy tick.  129/129 tests green under
-`scripts/test.sh`.  Plan 06 (editor-to-stencil pipeline) is
-drafted and waits on loft `lib_plan 24` for the shared
-substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
+approach-mode enemy tick.  Plan 07 (shared world substrate) has
+W0 partially landed — `gridmesh` adopted as the chunk/dirty
+layer (`src/chunks.loft`).
+
+**Suite: 179/189 green under `scripts/test.sh`.**  The 10 reds
+are all golden-image tests, and they are **not a dryopea bug**:
+`graphics::fill_triangle` divided before it multiplied and never
+filled its interior, so every hex rendered as a cross.  The fix
+is written and pushed upstream as `graphics v0.5.1`; dryopea's
+`graphics = ">=0.5.0"` picks it up **the moment 0.5.1 publishes
+to the registry**, and the suite is verified 189/189 against the
+fixed library with the existing goldens unchanged.  See
+[`QUESTIONS_FOR_LOFT.md` § `graphics::fill_triangle` never
+fills](QUESTIONS_FOR_LOFT.md).  Deliberately NOT worked around
+locally — dryopea does not keep private copies of library
+routines.
+
+Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
+shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
 the fiction in [`docs/SETTING.md`](docs/SETTING.md); the full
 feature roadmap in [`plans/ROADMAP.md`](plans/ROADMAP.md).
 
@@ -47,29 +62,58 @@ contribution flow.  Internal-to-dryopea bugs go in
 
 ## Key commands
 
-```bash
-# Build the loft binary (needed by scripts/test.sh; ~20s release build)
-cd ~/Documents/loft && cargo build --release
+dryopea uses the **installed** `loft` binary (`loft` on PATH —
+`/usr/local/bin/loft`).  There is no local loft build step: the
+libraries it depends on resolve from the loft package registry
+via `loft.toml` + `loft.lock`, so no `--lib` path is passed
+anywhere.
 
+```bash
 # Run dryopea's test suite (canonical entry — DO NOT run `loft test` directly)
 scripts/test.sh
 
 # Run the interactive editor (E1-live; opens a 960x720 GL window)
-~/Documents/loft/target/release/loft --lib ~/Documents/loft/lib src/main.loft
+loft src/main.loft
 
 # Parse-check a single .loft file without running it
-~/Documents/loft/target/release/loft --native-emit /tmp/check.rs \
-    --lib ~/Documents/loft/lib src/<file>.loft
+loft --native-emit /tmp/check.rs src/<file>.loft
+
+# Inspect a dependency's public API (never guess a signature)
+loft api                 # every reachable library + its path
+loft api graphics        # one library's full public surface
 ```
 
 `scripts/test.sh` is the canonical test runner.  It:
+- Creates `tests/actual/` — it is gitignored, so a fresh
+  checkout does not have it, and neither `save_png` nor the file
+  writer creates parent directories.  Without it every write
+  silently goes nowhere and the golden tests fail as a
+  "mismatch" against a file that was never written.
 - Pre-cleans `tests/actual/*.png` and `tests/actual/*.json`
   between runs so stale artefacts can't masquerade as current.
-- Invokes `loft test --lib ~/Documents/loft/lib --no-warnings`
-  against the dryopea `tests/` directory.
+  **Running `loft test` directly skips this** and leaks a save
+  file into the next run's cold-start assertions.
+- Invokes `loft test` against the dryopea `tests/` directory,
+  with warnings VISIBLE (the suite is kept warning-clean).
 - Exit code 0 = all green; non-zero = failures (the loft test
   runner surfaces assertion failures as FAIL since `@P367`
   shipped on the loft side).
+
+### Relative paths resolve against the PROGRAM's directory
+
+A relative path in a `.loft` file resolves against
+`source_dir()` — the directory of the program entry, not the
+process cwd, and not the directory of the file containing the
+`file()` call.  Under `loft test` the entry is the test file, so
+`source_dir()` is `tests/`.
+
+dryopea's paths (`examples/palette.json`, `tests/golden/…`,
+`maps/…`) are all repo-root-relative, so every entry point
+declares the **`#cwd`** directive at the top of the file, before
+the first declaration.  That restores cwd-relative resolution,
+and both `scripts/test.sh` and the `Makefile` run from the repo
+root.  A new test file needs `#cwd` or its palette load and
+golden compare will silently miss.
 
 ## Architecture — src/ layout
 
@@ -232,7 +276,7 @@ plans/
   future/03-marker-layer-and-spawns/
   future/04-map-library/
   future/05-validation-scenario/
-  future/06-editor-stencil-pipeline/ — depends on loft lib_plan 24
+  future/06-editor-stencil-pipeline/ — hex_* substrate now published
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -252,17 +296,44 @@ loft.toml               — package manifest (depends on graphics)
 
 ## Loft consumer relationship + library dependency
 
-- **Today:** dryopea consumes `lib/graphics` from
-  `~/Documents/loft/lib/graphics` via path-dep in `loft.toml`.
-- **Soon (when loft lib_plan 24 ships):** dryopea consumes
-  `hex_grid`, `hex_map`, `hex_render`, `hex_stencil`,
-  `hex_editor`, `hex_entity` — the universal hex-world editor
-  substrate extracted from moros.  See
-  [loft lib_plans/24-universal-editor/REFERENCE.md](https://github.com/jjstwerff/loft/tree/main/doc/claude/lib_plans/future/24-universal-editor)
-  for the extraction architecture.
-- **Plan 06 explicitly depends on lib_plan 24.**  Without the
-  extraction, plan 06 either reimplements or copy-pastes moros
-  code into dryopea — neither acceptable.
+**Reuse is the rule.**  Do not write a dryopea-local version of
+a routine a library already provides, and do not work around a
+library bug with a private copy — fix it upstream (or file it)
+and consume the release.  Libraries are owned by their
+first-class projects; dryopea may ADD to them under their
+existing contract, which is the right move when dryopea needs
+something adjacent to what a library already does.
+
+**Always check the real surface before writing against a
+library** — `loft api <name>` prints its full public API, and
+`.loft/api/<name>.api` holds the generated stubs.  Never guess a
+signature.
+
+- **Today:** `graphics` and `gridmesh` resolve from the loft
+  package registry (`loft.toml` + `loft.lock`); they migrated
+  out of loft's monorepo to `loft-libs-graphics`.  `moros_map`
+  is a path-dep into the moros checkout (`../moros/lib/moros_map`)
+  — it is not published, and is declared but not yet consumed.
+- **The shared hex substrate now EXISTS as published libraries.**
+  What the docs still call `lib_plan 24` shipped as the `hex_*`
+  family in the registry: `hex_field` (exact-integer hex cell
+  sets + outlines — the base), `hex_grid` (geometry: axial/pixel,
+  neighbours, distance, corners), `hex_shape` (line / box / arc),
+  `hex_form`, `hex_place`, `hex_draw`, `hex_edge`, `hex_way`,
+  `hex_roof`, `hex_fit`, `hex_recover`, `hex_world` (sparse
+  32×32-chunk world model with binary save/load), `hex_terrain`,
+  `hex_body`.  moros additionally carries `moros_map` /
+  `moros_render` / `moros_sim` / `hex_editor` / `hex_mesh` in
+  `../moros/lib/`.
+- **Convention mismatch to settle before adopting `hex_grid`:**
+  dryopea is **axial flat-top**; `hex_grid` documents itself as
+  **pointy-top odd-r offset** ("moros's convention"), while plan
+  07 records moros_map as axial.  Resolve which is authoritative
+  before porting coordinate math — this is a real decision, not
+  a detail.
+- **Plans 06 and 07 should be re-read against this.**  Both were
+  written waiting on an extraction that has since happened, so
+  their "blocked on lib_plan 24" framing is stale.
 
 ## Documentation index
 
@@ -292,7 +363,7 @@ loft.toml               — package manifest (depends on graphics)
 | Continue plan 01 work | [plans/future/01-ground-editor/README.md](plans/future/01-ground-editor/README.md) § Implementation status |
 | Add a regression test | `tests/01_*.loft` for patterns; `golden.loft::assert_golden` for image tests |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
-| Run the editor | `~/Documents/loft/target/release/loft --lib ~/Documents/loft/lib src/main.loft` |
+| Run the editor | `loft src/main.loft` |
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | loft `lib_plans/24-universal-editor/REFERENCE.md` |

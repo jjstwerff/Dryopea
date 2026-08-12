@@ -17,7 +17,7 @@ use palette;
 // currently active (the type future paint actions will use).
 pub struct Picker {
     palette: vector<GroundType>,
-    active:  integer not null,     // index into palette; 0..palette.len()-1
+    active:  integer,     // index into palette; 0..palette.len()-1
 }
 
 // Factory.  Active starts at 0 (sea — the implicit default; painting
@@ -27,7 +27,7 @@ pub fn picker_default(palette_path: text) -> Picker {
 }
 
 // Set the active index, clamped to a valid range.
-pub fn picker_set_active(p: &Picker, idx: integer) {
+pub fn picker_set_active(p: Picker, idx: integer) {
     if idx >= 0 && idx < len(p.palette) {
         p.active = idx;
     }

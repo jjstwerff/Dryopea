@@ -40,11 +40,11 @@ pub const ENEMY_KIND_REGULAR: integer = 0;
 // need on-disk persistence, mirror the painted-layer pattern:
 // widen u8 → integer in a separate on-disk struct.
 pub struct Enemy {
-    q:       integer not null,
-    r:       integer not null,
-    kind:    u8      not null,
-    heading: u8      not null,
-    alive:   boolean not null,
+    q:       integer,
+    r:       integer,
+    kind:    u8,
+    heading: u8,
+    alive:   boolean,
 }
 
 // Wave-engine state.  `enemies` is the running roster across
@@ -53,7 +53,7 @@ pub struct Enemy {
 // index into the active-marker set, advancing every spawn.
 pub struct WaveState {
     enemies:     vector<Enemy>,
-    pick_cursor: integer not null,
+    pick_cursor: integer,
 }
 
 // Factory: a fresh wave state with no enemies and a cursor at 0.
@@ -167,7 +167,7 @@ pub fn spawn_wave(
 // Dead enemies are a no-op (the runtime keeps them in the
 // roster for post-mortem accounting; final-wave-clear checks
 // alive_count to gate "wave done").
-pub fn enemy_tick(e: &Enemy) {
+pub fn enemy_tick(e: Enemy) {
     if !e.alive { return; }
     et_off = hex_offset(e.heading);
     e.q = e.q + et_off.0;
