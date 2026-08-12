@@ -29,13 +29,17 @@ gridmesh = ">=0.1.2"
 # {q,r,cy} multi-floor, height, material, walls, items.  Plan 07 W1
 # will adopt it so world-building routines interchange with moros.
 #
-# BLOCKED / not yet consumed by any src/ module: it defines `struct
-# Hex`, which collides with dryopea's `world::Hex` in loft's flat
-# global type registry — loading both panics ("Double structure
-# type …").  That's a loft namespacing bug (filed in
-# QUESTIONS_FOR_LOFT.md); W1 resumes once `use` namespaces struct
-# types per library.  Declared here (harmless while unused) so
-# loft_repros/dup_struct_type_across_libs.loft can demonstrate it.
+# Not yet consumed by any src/ module.  The reason USED to be a loft
+# bug: it defines `struct Hex`, which collided with dryopea's
+# `world::Hex` in a flat global type registry, and loading both
+# panicked ("Double structure type …").  **That is fixed** as of loft
+# 2026.8.0 — two libraries may each declare a name, and the bare use
+# site is a clean error naming its own fix.  Re-confirmed 2026-08-12
+# by plan 09 I0 against `camera::InputState` / `input::InputState`;
+# see QUESTIONS_FOR_LOFT.md § Resolved.  So W1's stated blocker is
+# gone and the phase wants re-reading; what stands between here and
+# there now is only that this path-dep is NOT INSTALLED (`loft api`
+# says so).  Declared here, harmless while unused.
 #
 # Not published to the registry, so it stays a path-dep — into the
 # moros checkout, which is where the shared world model now lives.

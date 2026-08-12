@@ -98,7 +98,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **E1** — `goldenpng` | S | parallel run | dryopea consumes the package and its 16 golden tests pass **unchanged**, byte-for-byte against the same committed PNGs; then `src/golden.loft` is deleted | Open |
 | **E2** — `pixelcensus` | S | parallel run | plan 08's 24 measurement tests pass unchanged — including the eleven-entry separation sweep and the off-palette-pixel fault; `frame` reports the same shares to 6 decimals on the same scenes | Open |
 | **E3** — `undostack` | M | one site at a time | the generic core takes an OPAQUE delta; dryopea's `PaintedDelta` / `MarkerDelta` become its payload. Per site: the same action sequence leaves the same world, and the 50-deep truncation + stroke-coalescing tests pass unchanged | Open |
-| **E4** — `keyscript` | MH | one site at a time | the five scenarios play identically — same commands, same frames, same 58 measurements — through the extracted runner driving dryopea via an injected step function; `do levitate` still errors, `do Tab` still fails | Open |
+| **E4** — `keyscript` | MH | one site at a time | the five scenarios play identically — same commands, same frames, same measurement count (233 over 14 scripts as of 2026-08-12 — read it, do not trust this number) — through the extracted runner driving dryopea via an injected step function; `do levitate` still errors, `do Tab` still fails | Open |
 
 ⚠ **Each Verify is "the existing tests pass unchanged".** That is the whole
 safety argument: an extraction that needs its tests edited is not an
@@ -132,7 +132,7 @@ tangled, and the tangle IS the design work:
 | **E1** | 16 goldens pass byte-for-byte, unedited | extraction changes packaging, never behaviour | a golden that needed rebaselining means the render moved |
 | **E2** | `frame` reports identical shares to 6 dp | the classifier is still exact, not nearest-colour | one blended pixel silently absorbed = the fault detection was lost in the move |
 | **E3** | same actions → same world; 50-deep truncation holds | the payload became opaque without the semantics moving | an undo that restores a different state means the delta lost a field |
-| **E4** | five scenarios, same 58 measurements | the driver contract fits a real caller | a scenario needing an edited `.keys` file means the vocabulary changed under it |
+| **E4** | the scenarios, same measurement count | the driver contract fits a real caller | a scenario needing an edited `.keys` file means the vocabulary changed under it |
 
 ## Open questions
 

@@ -497,7 +497,9 @@ pixel measurement can tell.
 prints each measurement beside the band it wanted, and exits non-zero when
 a reading lands outside one. `make validate`, or `make validate
 SCRIPT=paint-a-base` for one. Seven scripts, 58 measurements, 8 shots,
-~11 s.
+~11 s **at the moment V4 shipped** — plan 11 has since added scripts, so
+the sweep reads 14 / 233 / 18 as of 2026-08-12. The numbers grow with
+`tests/scripts/`; read them from the run rather than from here.
 
 It stays **separate from `scripts/test.sh`** — the unit suite is fast and
 hermetic; this one plays the game and leaves pictures behind.

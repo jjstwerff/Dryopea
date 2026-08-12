@@ -620,6 +620,19 @@ behaviour.  Full reproducers + loft-side issue refs live in
   function-scope** — different types in different loops fails
   ("loop variable 'i' has type text but was previously used as
   integer").  Prefix loop vars per function.
+- **Two libraries may declare one struct name; qualify at the use
+  site.** `camera::InputState` / `input::InputState` both work, and
+  the bare name is a clean error naming its own fix.  The old
+  `Double structure type …` panic is GONE — so plan 07 W1's stated
+  blocker is stale, and no `Hex` → `Axial` rename is needed.
+  ⚠ **But that error dumps a FALSE `warning[lost-write]` against
+  `src/spawn.loft::move_order`** ([loft#883](https://github.com/loft-lang/loft/issues/883)).
+  The write is fine — measured on both backends.  Qualify the type
+  and the warning goes with the error; do **not** go "fix"
+  `move_order`.  It bites because `lost-write` is the one warning
+  class that catches loft's most expensive real bug (plan 11 F8),
+  so it reads as urgent, and because a green suite never aborts —
+  the warning is unreachable by the warning-clean gate.
 
 ### Save path
 
@@ -699,11 +712,15 @@ plans/
                     found it OVER budget, and found the cause was a
                     per-enemy field COPY rather than the rebuild it was
                     written to optimise
-  09-lattice-conversion/      — Active (C0 shipped): dryopea moves
-                    to pointy-top odd-r offset, the convention every
-                    hex_* library and moros already speak.  Checked
-                    against hex_grid as an ORACLE, because a
-                    rebaselined golden agrees with a shear
+  09-lattice-conversion/      — Active (C0 + I0 shipped): dryopea
+                    moves to pointy-top odd-r offset, the convention
+                    every hex_* library and moros already speak.
+                    Checked against hex_grid as an ORACLE, because a
+                    rebaselined golden agrees with a shear.  I0
+                    answered the input half: `input`'s edge model and
+                    the seam's MATCH on all three semantics, so the
+                    predicted divergence was not real — and the real
+                    one is @D001, the seam forging its own `prev`
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -715,7 +732,7 @@ docs/
   NUMBERS.md            — tunable values
   PROXY_ART.md          — placeholder shapes for entities
 
-PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; none yet)
+PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; @D001 open)
 QUESTIONS_FOR_LOFT.md   — outbound queue to loft (Open / Submitted / Resolved)
 README.md               — public project intro
 loft.toml               — package manifest (depends on graphics)
@@ -891,7 +908,7 @@ indexer yet.  Triggers for adding one:
 
 - First dryopea-side P-issue gets numerous enough that prose
   references stop being practical (PROBLEMS.md currently has
-  zero `@D` rows; trigger fires somewhere around ~20).
+  one `@D` row; trigger fires somewhere around ~20).
 - Documentation count crosses ~25 (currently ~12).
 - A specific drift incident makes the manual scan painful.
 

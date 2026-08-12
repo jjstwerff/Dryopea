@@ -1,0 +1,15 @@
+// THE BUG.  `Slot` is declared by both libraries, so the bare name
+// below is ambiguous and the compile aborts — correctly, with a
+// diagnostic that names its own fix.
+//
+// What is wrong is the SECOND diagnostic: a `lost-write` warning
+// against `slotlib::mutate_through_a_loop_variable`, whose write is
+// not lost.  `ok.loft` runs that same function and prints `true`.
+
+use slotlib;
+use otherlib;
+
+fn main() {
+    s = Slot { idx: 0, taken: false };
+    println("{s.idx} {mutate_through_a_loop_variable()}");
+}

@@ -17,7 +17,7 @@ first means the bigger change happens once, on a settled seam.
 
 ## Status
 
-**Active — C0 shipped 2026-08-12; C1 is next.** This is plan 07's `W0c`,
+**Active — C0 + I0 shipped 2026-08-12; I1 is next.** This is plan 07's `W0c`,
 cut into its own plan because it is multi-phase, stands alone, and plan 07
 is long enough already. It is a **precondition** for plan 07's asset
 interchange, not a part of it: converting the lattice is worth doing whether
@@ -101,8 +101,8 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
-| **I0** — probe: does `input`'s edge model match the seam's? | XS | a probe first | reproduce the three semantics plan 08 pinned — a tap fires once, a HELD action fires once, a level action repeats — against `input`'s `is_action_just_pressed`. **The deliverable is the answer**: `input_new` documents "first frame counts as a transition", which the seam does not do, so if they differ I1 changes shape before it is built | Open |
-| **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME 58 measurements | Open |
+| **I0** — probe: does `input`'s edge model match the seam's? | XS | a probe first | reproduce the three semantics plan 08 pinned — a tap fires once, a HELD action fires once, a level action repeats — against `input`'s `is_action_just_pressed`. **The deliverable is the answer**: `input_new` documents "first frame counts as a transition", which the seam does not do, so if they differ I1 changes shape before it is built | **Shipped** — they MATCH; see § I0 |
+| **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME count it did before the swap (233 over 14 scripts as of 2026-08-12 — read it, do not trust this number) | Open |
 | **C0** — probe: can `hex_grid` be the oracle? | XS | a probe first | its answers for a hand-checked cell set, AND that they **disagree** with dryopea's current axial math — an oracle that already agrees proves nothing | **Shipped** |
 | **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | Open |
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | Open |
@@ -115,6 +115,103 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 [`plans/README.md`](../README.md) § The two mechanical checks — an `H` step
 has no half-done state with anything exact to compare against. The split
 above is what that check was for.
+
+### I0 — the answer: the edge models MATCH, and the divergence is somewhere else
+
+Measured 2026-08-12, loft 2026.8.0, interpreted.  Three throwaway probes:
+`input` alone, the seam alone, and both loaded together.
+
+```
+        input                                  the seam
+A1  first tick, key DOWN -> fires        B1  first frame, Tab DOWN -> toggles
+A2  held 5 ticks         -> 1 edge       B2  held 5 frames         -> 1 toggle
+A2  pressed              -> 5/5         B3  held palette key 5x   -> idempotent
+A3  down, up, down       -> 2 edges
+A4  first tick, key UP   -> no fire
+```
+
+**The mismatch this phase was written to find does not exist.**  The plan
+predicted that `input_new`'s documented *"first frame counts as a
+transition"* would differ from the seam.  It does not: the seam starts
+`prev = editor_input_empty()`, every flag false, which **is** "first frame
+counts as a transition".  Both agree on all three semantics plan 08
+pinned, so I1 does not change shape.  The prediction stays on the page,
+because a probe that only confirms is a probe that was not worth running
+— this one was worth running for the reason below.
+
+⚠ **What DOES diverge: the seam forges its own `prev` mid-step.**  Four
+sites write `s.prev.in_mouse_left = false` inside `editor_step`
+(`:331` mode toggle, `:390` reload, `:406` clear-all, `:418` undo).
+`input` cannot express that: `is_keys_prev` is opaque, and the only
+caller-visible lever is `input_set_bindings`, which suppresses the whole
+ACTION for as long as the rebind stands (probe A5) rather than one step's
+read of one flag.
+
+⚠ **And the forge is a BUG, so I1 deletes it rather than porting it.**
+Measured — ground mode, button held and painting, then Tab with the button
+still down:
+
+```
+B4  Tab with the button HELD  -> mode = 1, markers = 1
+B4b Tab with the button UP    -> mode = 1, markers = 0
+```
+
+A marker is placed by the very frame that flips the mode.  Clearing
+`prev.in_mouse_left` is what makes `input.in_mouse_left &&
+!s.prev.in_mouse_left` true at the marker branch (`:510`) below it — so
+the write **manufactures** the rising edge its own comment says it exists
+to suppress.  `s.prev` is overwritten wholesale at `:525`, so the write
+never reaches the next frame; its only reachable effect is on branches
+below it in the same step.  The stroke it was meant to end is already
+ended by `s.painting = false`, set beside each of the four sites.
+
+The clear-all site is worse, because there is no mode guard on it:
+
+```
+B5  Ctrl+N, button HELD -> after clear = 1, at hover(7,0) = true
+```
+
+"Clear all" empties the layer and then puts a new marker on it.  Two of
+the four sites are measured; the other two are reasoned about in @D001
+and I1 tests all four rather than trusting that.
+
+Filed as [`PROBLEMS.md` @D001](../../PROBLEMS.md).  **I0 changed no
+`src/`** — it is a probe phase — so I1 inherits the deletion and one test
+per site.  Plan 08's existing edge tests cannot see any of this: none of
+them holds the button across another action, which is the whole gesture.
+
+⚠ **A third finding, unasked for: `camera::InputState` works.**
+`camera.loft` declares `pub struct InputState`; so does `input`.  Naming
+the bare type with both loaded is a clean compile error that states its
+own fix —
+
+```
+error: `InputState` is declared by more than one package here —
+       write camera::InputState or input::InputState to say which
+```
+
+— and the qualified form compiles and runs beside `input`'s.  This is
+**not** the `Double structure type …` panic that
+[`QUESTIONS_FOR_LOFT.md`](../../QUESTIONS_FOR_LOFT.md) records as
+blocking plan 07 W1; that entry was already moved to Resolved and this
+independently confirms it.  So I1 needs no rename — but it must qualify,
+and the ambiguity error has a nasty side effect worth knowing before it
+bites someone: it dumps a **false** `warning[lost-write]` against
+`src/spawn.loft`, filed as
+[loft#883](https://github.com/loft-lang/loft/issues/883).  That warning
+is wrong; the write persists on both backends.  Do not go fix
+`move_order`.
+
+⚠ **I0 puts I1's gate in tension with itself, and the order resolves it.**
+I1's Verify is a parallel run: old path and new path compared field by
+field on the same `EditorState`. @D001's fix deliberately makes them
+DIFFER — on the one gesture where the old path places a spurious marker.
+So the two land in that order, not together: **delete the forge first,
+with its own four tests, and let the parallel run compare against the
+corrected seam.** A parallel run against the buggy one either goes red
+for the right reason and gets waved through, or gets "fixed" by porting
+the bug — and the second is what happens when a gate goes red on a day
+you are changing something else.
 
 ### I1 — and the plan-08 decision it revisits
 
@@ -185,7 +282,7 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
 | **C3** | hex centres equal `hex_grid::hex_to_px` | the picture follows the lattice, not the other way round | a rebaselined golden agrees with a shear; the centre check does not |
 | **C4** | `a-wave-approaches` range still decreases | the game's own behaviour survives the move | enemies that reach the core in a different number of ticks means the metric moved |
 | **C5** | converted maps keep painted counts + adjacency | a relabel is not a content change | a map that gains or loses a hex was converted wrong |
-| **I0** | a key held five frames fires its action ONCE | `input`'s edges mean what the seam's mean | "first frame counts as a transition" differs from the seam — if it bites, I1 is redesigned, not patched |
+| **I0** ✅ | a key held five frames fires its action ONCE — **both do** | `input`'s edges mean what the seam's mean, on all three semantics | the predicted "first frame" divergence **is not real**; the real one is the seam forging `prev` mid-step, which is @D001 |
 | **I1** | the five scenarios land on the same `EditorState` | swapping the input layer changes nothing a player could see | `do Tab` working means a second key table was built |
 
 ## Open questions

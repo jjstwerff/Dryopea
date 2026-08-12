@@ -1,0 +1,20 @@
+// The library holding the mutation the warning fires on.
+//
+// `mutate_through_a_loop_variable` is CORRECT: the write persists on
+// both backends.  `prog/ok.loft` proves it.
+
+pub struct Slot { idx: integer, taken: boolean }
+
+pub fn mutate_through_a_loop_variable() -> boolean {
+    lw_v: vector<Slot> = [];
+    for lw_i in 0..3 { lw_v += [Slot { idx: lw_i, taken: false }]; }
+
+    // The shape `warning[lost-write]` names.  A `for` loop variable is
+    // not a whole-value bind, and `lw_v` is read two lines below.
+    lw_at = 0;
+    for lw_t in lw_v {
+        if lw_at == 1 { lw_t.taken = true; }
+        lw_at = lw_at + 1;
+    }
+    (lw_v[1] ?? Slot {}).taken
+}

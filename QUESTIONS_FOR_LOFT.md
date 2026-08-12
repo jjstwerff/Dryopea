@@ -40,6 +40,40 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### An ambiguous bare struct name dumps a FALSE `lost-write` against a library
+
+- **Filed:** [loft-lang/loft#883](https://github.com/loft-lang/loft/issues/883) on 2026-08-12
+- **Found while:** plan 09 phase I0 — probing whether `input`'s edge model
+  matches the editor seam's.  `camera.loft` declares `pub struct InputState`
+  and so does `input`, so naming the bare type with both loaded is
+  ambiguous.
+- **Kind:** bug (diagnostics — a false positive in the one warning class
+  that catches loft's most expensive real bug shape).
+- **Behaviour:** the ambiguity error is correct and names its own fix.
+  Beside it the abort dumps
+  `warning[lost-write]: 'mo_t' is mutated but its value is never read —
+  the write is LOST` against `src/spawn.loft::move_order` — a selection
+  sort 497 green tests exercise every run.  The write is **not** lost:
+  a purpose-built probe shows a `for` loop variable's field mutation
+  persisting on the interpreter and on `--native`.
+- **Attribution (measured, so it is not filed against the wrong cause):**
+  the ambiguous-struct path specifically, not the abort path in general —
+  an `undefined_function()` error over the same two libraries emits
+  nothing, and neither does a mutation in the entry file.
+- **Reproducer:** [`loft_repros/lost_write_false_positive/`](loft_repros/lost_write_false_positive/README.md)
+  — a directory, because the trigger needs two libraries declaring one
+  struct name.  `prog/amb.loft` is the bug, `prog/ok.loft` the control.
+- **Why it matters more than it looks:** dryopea lost four phases to a
+  real member of this class (plan 11 F8 — a `FlowField` bound to a local
+  in a per-enemy path, 2250x the cost, 490 green tests over it).  A false
+  positive teaches the reader that `lost-write` over library code is
+  noise.  It is also unreachable by a warning-clean gate: a green suite
+  never aborts, so the warning cannot be kept clean and cannot be
+  trusted when it does appear.
+- **Workaround in dryopea:** none needed — write `camera::InputState` /
+  `input::InputState` and both the error and the warning go away.  The
+  cost is the probe it took to establish the warning was false.
+
 ### A struct returned through TWO nested tail calls loses what its loop wrote
 
 - **Filed:** [loft-lang/loft#880](https://github.com/loft-lang/loft/issues/880) on 2026-08-12

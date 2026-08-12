@@ -34,6 +34,12 @@ no longer reproducing).
 | [`format_struct_with_hash_field.loft`](format_struct_with_hash_field.loft) | `"{s}"` where `s` is a struct with a `hash<…>` field: SIGSEGV in `OpFormatDatabase` on the interpreter, silent exit 1 on `--native`.  Fires inside assertion messages, so a failing test loses its diagnostic. | [loft#873](https://github.com/loft-lang/loft/issues/873) |
 | [`json_null_into_non_null_scalar_field.loft`](json_null_into_non_null_scalar_field.loft) | A `text as vector<Struct>` cast stores JSON `null` into a field declared plain (non-null under DN1) — and `redundant-coalesce` then advises deleting the `?? 0.0` that guards the read.  Both backends. | [loft#870](https://github.com/loft-lang/loft/issues/870) |
 | [`struct_through_two_tail_calls.loft`](struct_through_two_tail_calls.loft) | A struct returned through TWO nested tail-position calls, with a struct LITERAL as an argument, loses everything its `while`+vector loop wrote.  1 cell interpreted, 0 native, 13 expected — silent on both. | [loft#880](https://github.com/loft-lang/loft/issues/880) |
+| [`lost_write_false_positive/`](lost_write_false_positive/README.md) | An ambiguous bare struct name aborts the compile correctly — and dumps a FALSE `warning[lost-write]` beside it, against a loop-variable mutation in a *different package* whose write persists on both backends. | [loft#883](https://github.com/loft-lang/loft/issues/883) |
+
+⚠ **A reproducer may be a DIRECTORY.**  `lost_write_false_positive/` is
+one, because its trigger needs two libraries declaring the same struct
+name and that cannot be written in a single file.  Its own README carries
+the run command and the attribution table.
 
 Five reproducers were **deleted on 2026-08-12** after re-running them
 against loft 2026.8.0 showed their bugs no longer reproduce — per the rule
