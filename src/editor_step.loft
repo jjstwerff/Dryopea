@@ -111,6 +111,11 @@ pub struct EditorInput {
     in_zoom_out:  boolean,
     in_recentre:  boolean,     // H — camera back to the origin
 
+    // ── History (V0b group 4) ──
+    in_undo:      boolean,     // Ctrl+Z
+    in_redo:      boolean,     // Ctrl+Y
+    in_clear_all: boolean,     // Ctrl+N — empty both layers, recentre
+
     // Palette hotkey: is one down, and which entry does it select.
     // One index rather than twelve booleans — the player presses one
     // hotkey, and a script says `key 5`.
@@ -145,6 +150,9 @@ pub fn editor_input_empty() -> EditorInput {
         in_zoom_in:        false,
         in_zoom_out:       false,
         in_recentre:       false,
+        in_undo:           false,
+        in_redo:           false,
+        in_clear_all:      false,
     }
 }
 
@@ -169,6 +177,9 @@ fn input_copy(ic: const EditorInput) -> EditorInput {
         in_zoom_in:        ic.in_zoom_in,
         in_zoom_out:       ic.in_zoom_out,
         in_recentre:       ic.in_recentre,
+        in_undo:           ic.in_undo,
+        in_redo:           ic.in_redo,
+        in_clear_all:      ic.in_clear_all,
     }
 }
 
@@ -310,6 +321,47 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
             s.place_kind = MARKER_KIND_SPAWN;
         }
         s.render_needed = true;
+    }
+
+    // ── Clear all ───────────────────────────────────────────────
+    // Snapshots everything into one undo entry first, so a mis-hit
+    // Ctrl+N costs one Ctrl+Z rather than the session.  Does NOT
+    // save: the cleared state reaches disk only on the next save.
+    if input.in_clear_all && !s.prev.in_clear_all {
+        clear_and_record(s.pw, s.mw, s.history);
+        s.pw  = painted_empty();
+        s.mw  = marker_empty();
+        s.cam = camera_default();
+        s.cf  = chunks_from_painted(s.pw);   // resync the dirty tracker
+        s.dirty    = true;
+        s.painting = false;
+        s.prev.in_mouse_left = false;
+        s.render_needed = true;
+    }
+
+    // ── Undo / redo ─────────────────────────────────────────────
+    if input.in_undo && !s.prev.in_undo {
+        // Commit any in-flight stroke FIRST, so the player can undo
+        // back through the drag they are in the middle of.
+        if !undo_entry_is_noop(s.stroke) {
+            history_push(s.history, s.stroke);
+            s.stroke   = undo_entry_empty();
+            s.painting = false;
+            s.prev.in_mouse_left = false;
+        }
+        if history_undo(s.history, s.pw, s.mw) {
+            s.cf    = chunks_from_painted(s.pw);   // bulk change to pw
+            s.dirty = true;
+            s.render_needed = true;
+        }
+    }
+
+    if input.in_redo && !s.prev.in_redo {
+        if history_redo(s.history, s.pw, s.mw) {
+            s.cf    = chunks_from_painted(s.pw);   // bulk change to pw
+            s.dirty = true;
+            s.render_needed = true;
+        }
     }
 
     // ── Camera recentre ─────────────────────────────────────────

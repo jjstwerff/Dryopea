@@ -178,9 +178,6 @@ fn main() {
     // frame state and acts only on the rising edge.  These are input-
     // layer bookkeeping, not editor state — they stay here when the
     // actions themselves move into the seam.
-    n_held_prev:        boolean = false;
-    z_held_prev:        boolean = false;
-    y_held_prev:        boolean = false;
     reload_r_held_prev: boolean = false;
 
     for _ in 0..1000000 {
@@ -210,64 +207,6 @@ fn main() {
                 println("dryopea: saved ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
             }
         }
-
-        // Ctrl+N → clear all.  Records the pre-clear state as one
-        // undoable entry (Ctrl+Z restores it), then rebinds the
-        // worlds to fresh empties + recentres the camera.
-        // Edge-detected so a held Ctrl+N doesn't re-clear every
-        // frame.
-        n_now = gl_key_pressed(KEY_N);
-        if ctrl_held && n_now && !n_held_prev {
-            clear_and_record(s.pw, s.mw, s.history);
-            s.pw    = painted_empty();
-            s.mw    = marker_empty();
-            s.cam   = camera_default();
-            s.cf    = chunks_from_painted(s.pw);   // resync dirty tracker
-            s.dirty = true;
-            s.painting = false;
-            s.prev.in_mouse_left = false;
-            s.render_needed = true;
-            println("dryopea: cleared all (Ctrl+N)");
-        }
-        n_held_prev = n_now;
-
-        // Ctrl+Z → undo / Ctrl+Y → redo.  Edge-detected.  Both
-        // mark dirty since the in-memory state now differs from
-        // what's on disk.
-        z_now = gl_key_pressed(graphics::KEY_Z);
-        if ctrl_held && z_now && !z_held_prev {
-            // Push any in-flight stroke FIRST so the user can
-            // undo back through it.  Reset stroke + button-edge
-            // so the next click starts a fresh stroke.
-            if !undo_entry_is_noop(s.stroke) {
-                history_push(s.history, s.stroke);
-                s.stroke = undo_entry_empty();
-                s.painting = false;
-                s.prev.in_mouse_left = false;
-            }
-            if history_undo(s.history, s.pw, s.mw) {
-                s.cf    = chunks_from_painted(s.pw);   // bulk pw change
-                s.dirty = true;
-                s.render_needed = true;
-                println("dryopea: undo");
-            } else {
-                println("dryopea: nothing to undo");
-            }
-        }
-        z_held_prev = z_now;
-
-        y_now = gl_key_pressed(graphics::KEY_Y);
-        if ctrl_held && y_now && !y_held_prev {
-            if history_redo(s.history, s.pw, s.mw) {
-                s.cf    = chunks_from_painted(s.pw);   // bulk pw change
-                s.dirty = true;
-                s.render_needed = true;
-                println("dryopea: redo");
-            } else {
-                println("dryopea: nothing to redo");
-            }
-        }
-        y_held_prev = y_now;
 
         // Ctrl+R → reload from disk.  Re-reads dryopea_save.json
         // and the marker sidecar; pushes a single UndoEntry that
@@ -356,6 +295,7 @@ fn main() {
         pre_dir     = s.place_direction;
         pre_kind    = s.place_kind;
         pre_markers = marker_count(s.mw);
+        pre_cursor  = s.history.cursor;
         editor_step(s, EditorInput {
             in_hover_q:        hovered.q,
             in_hover_r:        hovered.r,
@@ -376,6 +316,9 @@ fn main() {
             // Ctrl+H is left free for a future binding, so plain H
             // only means recentre when Ctrl is up.
             in_recentre:       gl_key_pressed(KEY_H) && !ctrl_held,
+            in_undo:           ctrl_held && gl_key_pressed(graphics::KEY_Z),
+            in_redo:           ctrl_held && gl_key_pressed(graphics::KEY_Y),
+            in_clear_all:      ctrl_held && gl_key_pressed(KEY_N),
         });
         if mb_now && s.mode == MODE_GROUND && paint_tick_due {
             last_paint_us = tnow;
@@ -395,6 +338,9 @@ fn main() {
         }
         if marker_count(s.mw) != pre_markers {
             println("dryopea: markers = {marker_count(s.mw)} (clicked {hovered.q}, {hovered.r})");
+        }
+        if s.history.cursor != pre_cursor {
+            println("dryopea: history {s.history.cursor}/{len(s.history.entries)} ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
         }
 
         // ── Render ──────────────────────────────────────────────

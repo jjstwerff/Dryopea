@@ -417,6 +417,134 @@ fn test_placement_is_undoable() {
     assert(marker_count(tpu_s.mw) == 0, "undo takes the marker back off");
 }
 
+// ─── Group 4 — undo / redo / clear ──────────────────────────────
+
+fn undo_frame() -> EditorInput {
+    uf_i = editor_input_empty();
+    uf_i.in_undo = true;
+    uf_i
+}
+
+fn redo_frame() -> EditorInput {
+    rdf_i = editor_input_empty();
+    rdf_i.in_redo = true;
+    rdf_i
+}
+
+fn clear_frame() -> EditorInput {
+    cf_i = editor_input_empty();
+    cf_i.in_clear_all = true;
+    cf_i
+}
+
+fn test_undo_takes_back_a_stroke() {
+    tut_s = editor_state_new(PALETTE);
+    picker_set_active(tut_s.picker, 5);
+    press(tut_s, paint_at(0, 0));
+    assert(painted_count(tut_s.pw) == 1, "painted");
+
+    press(tut_s, undo_frame());
+
+    assert(painted_count(tut_s.pw) == 0, "undo takes it back");
+    assert(tut_s.dirty, "and the world now differs from disk");
+}
+
+// Undo commits the drag you are in the middle of before undoing, so
+// Ctrl+Z during a stroke takes back that stroke rather than the one
+// before it.
+fn test_undo_during_a_stroke_takes_back_that_stroke() {
+    tud_s = editor_state_new(PALETTE);
+    picker_set_active(tud_s.picker, 5);
+    editor_step(tud_s, paint_at(0, 0));   // button still down
+
+    editor_step(tud_s, undo_frame());
+
+    assert(painted_count(tud_s.pw) == 0, "the open stroke is what came back off");
+    assert(!tud_s.painting, "and the stroke is closed");
+}
+
+fn test_holding_undo_undoes_once() {
+    thu_s = editor_state_new(PALETTE);
+    picker_set_active(thu_s.picker, 5);
+    press(thu_s, paint_at(0, 0));
+    press(thu_s, paint_at(4, 0));
+    assert(painted_count(thu_s.pw) == 2, "two separate strokes");
+
+    for _ in 0..5 {
+        editor_step(thu_s, undo_frame());
+    }
+
+    assert(painted_count(thu_s.pw) == 1, "held Ctrl+Z undoes ONE action");
+}
+
+fn test_undo_on_an_empty_history_is_harmless() {
+    tue_s = editor_state_new(PALETTE);
+
+    press(tue_s, undo_frame());
+
+    assert(painted_count(tue_s.pw) == 0, "nothing to undo, nothing happens");
+    assert(!tue_s.dirty, "and nothing is marked unsaved");
+}
+
+fn test_redo_reapplies_what_undo_took_back() {
+    trr_s = editor_state_new(PALETTE);
+    picker_set_active(trr_s.picker, 5);
+    press(trr_s, paint_at(0, 0));
+    press(trr_s, undo_frame());
+    assert(painted_count(trr_s.pw) == 0, "undone");
+
+    press(trr_s, redo_frame());
+
+    assert(painted_count(trr_s.pw) == 1, "redo puts it back");
+    assert(lookup_painted(trr_s.pw, 0, 0) == 5 as u8, "with the same ground type");
+}
+
+fn test_clear_empties_both_layers_and_recentres() {
+    tce_s = editor_state_new(PALETTE);
+    picker_set_active(tce_s.picker, 5);
+    press(tce_s, paint_at(0, 0));
+    press(tce_s, tab_frame());
+    click_at(tce_s, 2, -1);
+    editor_step(tce_s, pan_frame(false, true, false, false));
+    assert(painted_count(tce_s.pw) == 1 && marker_count(tce_s.mw) == 1, "a world to clear");
+
+    press(tce_s, clear_frame());
+
+    assert(painted_count(tce_s.pw) == 0, "painted layer emptied");
+    assert(marker_count(tce_s.mw) == 0, "marker layer emptied");
+    assert(tce_s.cam.pos.q == 0 && tce_s.cam.pos.r == 0, "camera back at the origin");
+    assert(tce_s.dirty, "the cleared state has not reached disk yet");
+}
+
+// A mis-hit Ctrl+N must cost one Ctrl+Z, not the session.
+fn test_clear_is_one_undoable_action() {
+    tcu_s = editor_state_new(PALETTE);
+    picker_set_active(tcu_s.picker, 5);
+    press(tcu_s, paint_at(0, 0));
+    press(tcu_s, paint_at(4, 0));
+    press(tcu_s, clear_frame());
+    assert(painted_count(tcu_s.pw) == 0, "cleared");
+
+    press(tcu_s, undo_frame());
+
+    assert(painted_count(tcu_s.pw) == 2, "ONE undo brings the whole world back");
+    assert(lookup_painted(tcu_s.pw, 0, 0) == 5 as u8, "first hex restored");
+    assert(lookup_painted(tcu_s.pw, 4, 0) == 5 as u8, "second hex restored");
+}
+
+fn test_holding_clear_fires_once() {
+    thf_s = editor_state_new(PALETTE);
+    picker_set_active(thf_s.picker, 5);
+    press(thf_s, paint_at(0, 0));
+
+    for _ in 0..5 {
+        editor_step(thf_s, clear_frame());
+    }
+    press(thf_s, undo_frame());
+
+    assert(painted_count(thf_s.pw) == 1, "held Ctrl+N clears once, so one undo restores");
+}
+
 // The palette has 11 entries but 12 hotkeys — the spare ones must
 // not select anything until the palette grows into them.
 fn test_out_of_range_selection_is_ignored() {
