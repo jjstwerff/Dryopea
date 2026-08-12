@@ -10,7 +10,7 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 + F1b + F2 + F3 shipped 2026-08-12; F5 is next.**
+**Active — F0 + F1 + F1b + F2 + F3 + F5 shipped 2026-08-12; F5b is next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -316,6 +316,65 @@ deterministic rule would do; having none would not, because plan 08 gates
 the game by replaying written-down runs and a tie broken differently on a
 different day makes every asserted number unrepeatable.
 
+## F5, enemies follow the field (2026-08-12)
+
+`enemy_tick` reads the field and steps down it; `wave_tick` rebuilds the
+field **once per tick, before anybody moves**, one per class present in the
+roster. `tests/scripts/a-maze-and-a-core.keys` is the scenario.
+
+**⚠ The gate had to be invented, because every existing world was blind to
+this phase.** Every enemy scenario dryopea had was a ONE-HEX-WIDE corridor —
+and on those, field-following and heading-following produce the *identical*
+path. All 382 tests stayed green when the mover changed, which is exactly the
+kind of green that means nothing. What separates the two is a route that
+leaves the heading's line: heading 4 is `(-1, 0)`, so it changes `q` and
+never `r`, and **`enemy 0 3 -1` is a hex no heading could reach.** That one
+coordinate is the phase.
+
+**Measured negative control.** With the engage branch short-circuited, 6 of
+the 13 unit tests go red and the scenario fails at exactly that line —
+*"enemy 0 is at (4, 0), expected (3, -1)"*, the pre-F5 behaviour of stopping
+dead in front of the wall. The gate is the code being replaced, as the plan
+said, and now it is a number.
+
+**⚠ Precision about what the class tests prove.** `the insect and the robot
+route differently` passes *with the field disabled too* — an insect climbing
+a wall by heading arrives just as it does by field. So it is a class-axis
+test, not an F5 discriminator, and it is F6 that owns it. Six tests
+discriminate; the rest are invariants and preserved behaviour.
+
+**The invariant, which needs no hand-worked route.** "Follows the field" has
+an exact meaning: each tick the enemy's field distance decreases by **exactly
+1**, so it arrives in exactly `flow_distance(start)` ticks. Asserted that
+way, the tests never hand-derive a maze route — which is where F2's bend test
+went wrong twice — and every intermediate hex is checked against
+`can_occupy` as the walk proceeds.
+
+**"Has a route" is a STAND-IN for the mode selector, and it is marked as
+one.** The spec says the *scrambler bubble* decides the mode; F5 uses "can
+this enemy reach the core?" instead, so engage is what runs whenever a route
+exists and approach is what is left. Two later phases replace it: F5b makes
+the bubble the selector (so an enemy outside it follows its heading even when
+a route exists), and F7 replaces the no-route fallback with the desire field
+and an attack. Until then the composition keeps both behaviours alive, and
+F1b's tests still pass unchanged.
+
+**Rebuilt from scratch every tick, deliberately.** It is what
+`ENEMY_MOVEMENT.md` § The tick resolves once asks for, and it buys the
+order-independence plan 08's replayable runs rest on — asserted directly:
+the same wave with its roster in reverse lands identically. The visible
+payoff is a test where the player walls the corridor *while the wave is
+walking* and the wave goes round, with no cache to invalidate. F8 makes it
+incremental, and its gate is equality with this path — so this stays the
+reference and is not optimised away.
+
+**One field per class, chosen by the roster.** Not one field per class the
+game knows about: `wave_tick` builds a field for each class actually present,
+once each. A shared field would have moved insects along a route computed for
+something that cannot climb — a correctness hole worth closing here rather
+than leaving for F6, which keeps the height-step generalisation and its
+raised-hex gate.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -400,7 +459,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F1b** — approach mode stops at walls | S | one site at a time | fired at a wall face, an enemy halts at the EXACT hex before it; fired at a gap, it passes through. Both failed today — **measured**, by short-circuiting the check: 8 of 10 tests go red without it. **Shipped — see § F1b, the first wall that works.** ⚠ The plan said "it needs only the existing `walk_*` palette fields"; F0 had already disproved that — `walk_*` is the bug, and it uses the height step | **Shipped** |
 | **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable. **Shipped — see § F2, the distance field.** Measured against the negative control: with unreachable collapsed to 0, 8 of 17 tests go red. Unreachable is a LARGE value, not `-1`, so "smallest distance wins" refuses it | **Shipped** |
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does. **Shipped — see § F3, the arrow.** Swept over five worlds, each asserting how many cells it visited; 9 of 14 tests go red against a broken arrow. ⚠ Loops turn out to be impossible by construction (a step is only ever to a strictly smaller distance) — what the sweep really catches is a local minimum and a walk ending on a second zero | **Shipped** |
-| **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
+| **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists. **Shipped — see § F5, enemies follow the field.** ⚠ The gate had to be INVENTED: every existing world was a 1-wide corridor, where field and heading give the identical path, so the whole phase could pass without doing anything. The discriminator is `enemy 0 3 -1` — a hex no heading can reach. Measured: 6 of 13 tests red with the engage branch disabled | **Shipped** |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it | Open |
@@ -438,7 +497,7 @@ plausibility.
 | **F1** ✅ | the new assertion goes red against today's mover | the instrument can see the failure it exists for | an assertion green on a wall-walker measures nothing |
 | **F2** ✅ | closed ring → outside cells unreachable | unreachable ≠ 0 ≠ at-the-core | a walled-off spawn reading 0 = "already arrived" |
 | **F3** ✅ | arrows reach the core in exactly `distance` steps, from every reachable cell | the field has no local minimum (a loop cannot occur — the step strictly decreases) | one cell whose arrow stalls is an enemy that stands there for the rest of the wave |
-| **F5** | `enemies clear of wall` every tick | routing respects the world | today's code fails this — the gate is proven before the feature exists |
+| **F5** ✅ | `enemies passable` every tick, AND a hex off the heading's line | routing respects the world, and it is the FIELD that steered | a 1-wide corridor cannot tell field from heading — the gate needed a route that leaves the line |
 | **F6** | insect and robot paths DIFFER on one map | passability is per class | identical paths mean the class key is ignored |
 | **F7** | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |
 | **F8** | incremental field == from-scratch field | the dirty set is used correctly | equal-but-stale after an edit is the bug this catches |

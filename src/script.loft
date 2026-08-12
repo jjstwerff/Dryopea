@@ -836,7 +836,16 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
             return "tick: <ticks> must be 0..{SCRIPT_MAX_REPEAT}";
         }
-        for _ in 0..sc_count { wave_tick(run.wave, s.picker.palette, s.pw); }
+        // The wave walks towards the core, so a tick needs to know
+        // where that is — the same ONE target marker `wave` demanded.
+        sc_tcore = script_core(s.mw);
+        if sc_tcore.0 != 1 {
+            return "tick: needs exactly ONE target marker to walk towards, found {sc_tcore.0}";
+        }
+        for _ in 0..sc_count {
+            wave_tick(run.wave, s.picker.palette, s.pw,
+                      Hex { q: sc_tcore.1, r: sc_tcore.2 });
+        }
         return "";
     }
 

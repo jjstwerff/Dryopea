@@ -30,6 +30,7 @@ use markers;
 use palette;
 use painted;
 use passable;
+use flow;
 
 // The kind discriminants an `Enemy` carries — `ENEMY_KIND_REGULAR`
 // and friends — live in `passable.loft`, because a class IS its
@@ -177,8 +178,45 @@ pub fn spawn_wave(
 // so approach mode's whole answer to a wall is to stop in front of
 // it.  Stopping is what makes the wall a wall; the attack is F5+ and
 // the routing round it is F5.
-pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld) {
+pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld, f: FlowField) {
     if !e.alive { return; }
+
+    // ── Engage: follow the field (plan 11 F5) ───────────────────
+    //
+    // The field is per class and already refuses every hex this class
+    // cannot hold, so a step down it needs no passability check of
+    // its own — `flow_build` did it.
+    et_d = flow_distance(f, e.q, e.r);
+    if et_d == 0 { return; }                    // arrived; attacking the core is combat's job
+    if et_d < FLOW_UNREACHABLE {
+        et_t = flow_step(f, e.q, e.r);
+        // F3's sweep proves the arrow never stalls on a reachable
+        // cell, so this moves.  If it ever did not, standing still is
+        // the right answer — a stalled field is not a licence to
+        // wander off the route.
+        e.q = et_t.q;
+        e.r = et_t.r;
+        return;
+    }
+
+    // ── Approach: no route, so walk the heading (plan 11 F1b) ───
+    //
+    // ⚠ **"Has a route" is a STAND-IN for the real mode selector**,
+    // and two later phases replace it:
+    //
+    //   * F5b makes the mode depend on the scrambler bubble — outside
+    //     it an enemy follows its spawn heading even when a route
+    //     exists, which is what `docs/ENEMY_MOVEMENT.md` § Two modes
+    //     actually specifies;
+    //   * F7 replaces this fallback for an enemy with NO route: it
+    //     follows a second field (walls passable) and attacks the
+    //     first impassable hex it meets, rather than walking a
+    //     heading into it.
+    //
+    // Until then this composition is what keeps both behaviours
+    // alive: an enemy that can reach the core routes to it, and one
+    // that cannot still presses in along its heading and stops at
+    // what it cannot cross.
     et_off = hex_offset(e.heading);
     et_q = e.q + et_off.0;
     et_r = e.r + et_off.1;
@@ -192,19 +230,66 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld) {
     e.r = et_r;
 }
 
-// Tick every enemy in the wave by one hex along their heading.
-// Convenience for "advance the whole wave one game-tick".
+// Has any enemy of this kind been spawned into the roster?
 //
-// Order-independent today, and only trivially so: movement does not
-// change the world, and companions do not block each other yet.
-// F5c (enemies spread rather than stack) and F8 (bodies raise
-// height) are where a single pass over the roster stops being enough
-// — `ENEMY_MOVEMENT.md` § The tick resolves once is the rule they
-// have to satisfy, and its gate is that the same wave iterated in
-// REVERSE lands identically.
-pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld) {
+// Used to skip building a field no enemy would read — two BFS sweeps
+// per tick would cost little, but a field built for nobody is also a
+// number in a profile that nobody can explain.
+fn wave_has_kind(state: const WaveState, kind: integer) -> boolean {
+    whk_any = false;
+    for whk_e in state.enemies {
+        if whk_e.alive && (whk_e.kind as integer) == kind { whk_any = true; }
+    }
+    whk_any
+}
+
+fn kind_already_done(done: vector<integer>, kind: integer) -> boolean {
+    kad_seen = false;
+    for kad_k in done {
+        if kad_k == kind { kad_seen = true; }
+    }
+    kad_seen
+}
+
+// Advance the whole wave by one game-tick.
+//
+// ── The field is rebuilt ONCE per tick, before anybody moves ─────
+//
+// `docs/ENEMY_MOVEMENT.md` § The tick resolves once: within a tick
+// every enemy acts against the same world.  That is not primarily a
+// cost decision — it is what makes a tick ORDER-INDEPENDENT, and so
+// what makes a scripted run reproducible, which is the premise plan
+// 08 gates on.  A field rebuilt mid-loop would make the outcome
+// depend on which enemy the roster happened to visit first, and no
+// `.keys` scenario could assert a stable number over that.
+//
+// The invariant that holds it: the same wave, played with the roster
+// iterated in REVERSE, produces an identical result.
+//
+// ── One field per CLASS, built for the classes present ──────────
+//
+// A wall stops a robot and an insect climbs it, so they do not share
+// a field (plan 11 F0: passability is boolean, so nothing weighs an
+// edge — it is separate fields, not one field with costs).  The
+// roster decides which get built: the classes actually in it, each
+// once, rather than a field per class the game knows about.
+//
+// ⚠ **From scratch every tick, deliberately.**  F8 makes it
+// incremental, and its gate is equality with this — so this path
+// stays the reference implementation and is not optimised away.
+pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld, core: Hex) {
+    wt_done: vector<integer> = [];
     for wt_e in state.enemies {
-        enemy_tick(wt_e, pal, pw);
+        wt_k = wt_e.kind as integer;
+        if !kind_already_done(wt_done, wt_k) && wave_has_kind(state, wt_k) {
+            wt_done += [wt_k];
+            wt_f = flow_build(pal, pw, wt_e.kind, core);
+            for wt_o in state.enemies {
+                if (wt_o.kind as integer) == wt_k {
+                    enemy_tick(wt_o, pal, pw, wt_f);
+                }
+            }
+        }
     }
 }
 

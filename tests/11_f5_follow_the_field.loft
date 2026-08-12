@@ -1,0 +1,351 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F5 — enemies follow the field.
+//
+// ── The discriminator ───────────────────────────────────────────
+//
+// Every world dryopea had tested enemies on before this phase was a
+// ONE-HEX-WIDE corridor, and on those, field-following and
+// heading-following produce the identical path.  So the whole of F5
+// could have "passed" without doing anything.
+//
+// What separates them is a route that leaves the heading's line.  A
+// heading of 4 is `(-1, 0)`: it changes `q` and NEVER `r`.  So an
+// enemy observed at `r = -1` cannot have got there by heading, and
+// `test_the_route_leaves_the_headings_line` is the phase's real gate.
+//
+// ── The invariant, which needs no hand-worked route ──────────────
+//
+// "Follows the field" has an exact meaning: **each tick, the enemy's
+// field distance decreases by exactly 1**, so it arrives in exactly
+// `flow_distance(start)` ticks.  Asserted that way, the tests do not
+// have to hand-derive a maze's route — which is where F2's bend test
+// went wrong twice — and they stay true for any world.
+//
+// ── The bypass world ────────────────────────────────────────────
+//
+// A corridor along r = 0 from (12, 0) to (0, 0) with a WALL at
+// (3, 0), plus two hexes at (4, -1) and (3, -1) that step around it.
+// Hand-checked: (3, -1) is a neighbour of (4, -1) and of (2, 0), and
+// is NOT a neighbour of (4, 0) — so the bypass is exactly two hexes
+// long and the route is 13 steps where the direct line would be 12.
+//
+// A heading-only enemy stops dead at (4, 0) in this world (that is
+// F1b), so every "it arrived" below is also a statement that the
+// field, and not the heading, is what steered.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// examples/palette.json, in file order.
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Worlds and fixtures
+// ─────────────────────────────────────────────────────────────────
+
+fn corridor(hi: integer) -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=hi {
+        paint(c_pw, c_q, 0, as_u8(GRASS));
+    }
+    c_pw
+}
+
+// The corridor plus the two-hex bypass; `block` walls (3, 0) so the
+// bypass is the only way through.
+fn bypass_world(block: boolean) -> PaintedWorld {
+    bw_pw = corridor(12);
+    paint(bw_pw, 4, -1, as_u8(GRASS));
+    paint(bw_pw, 3, -1, as_u8(GRASS));
+    if block { paint(bw_pw, 3, 0, as_u8(WALL)); }
+    bw_pw
+}
+
+fn field_for(kind: integer, pw: PaintedWorld) -> FlowField {
+    flow_build(load_palette(PALETTE), pw, as_u8(kind), core())
+}
+
+// One westbound enemy at (q, 0) — heading 4 is (-1, 0), so its
+// heading can never change `r`.
+fn westbound(kind: integer, q: integer) -> Enemy {
+    Enemy { q: q, r: 0, kind: as_u8(kind), heading: 4 as u8, alive: true }
+}
+
+fn one_wave(kind: integer, q: integer, n: integer) -> WaveState {
+    ow_s = wave_state_empty();
+    for _ in 0..n {
+        ow_s.enemies += [westbound(kind, q)];
+    }
+    ow_s
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The gate: the route leaves the heading's line
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_route_leaves_the_headings_line() {
+    trl_pw = bypass_world(true);
+    trl_e  = westbound(ENEMY_KIND_REGULAR, 12);
+    trl_f  = field_for(ENEMY_KIND_REGULAR, trl_pw);
+    trl_pal = load_palette(PALETTE);
+
+    // Ten ticks puts it on the bypass, off the r = 0 line.
+    trl_off = false;
+    for _ in 0..10 {
+        enemy_tick(trl_e, trl_pal, trl_pw, trl_f);
+        if trl_e.r != 0 { trl_off = true; }
+    }
+
+    assert(trl_off, "a heading of (-1, 0) can never change r — so this is the FIELD steering");
+    assert(trl_e.q == 3 && trl_e.r == -1,
+           "and after ten ticks it is on the far bypass hex, got ({trl_e.q}, {trl_e.r})");
+}
+
+// The same world with (3, 0) left as grass: the route never leaves
+// r = 0, so the assertion above is about the wall and not about a
+// mover that wanders.
+fn test_with_the_way_open_the_route_stays_on_the_line() {
+    two_pw = bypass_world(false);
+    two_e  = westbound(ENEMY_KIND_REGULAR, 12);
+    two_f  = field_for(ENEMY_KIND_REGULAR, two_pw);
+    two_pal = load_palette(PALETTE);
+
+    for _ in 0..10 {
+        enemy_tick(two_e, two_pal, two_pw, two_f);
+        assert(two_e.r == 0, "the direct route is shorter, so it is taken: r = {two_e.r}");
+    }
+    assert(two_e.q == 2, "ten steps down a twelve-hex corridor");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The invariant: one step closer, every tick
+// ─────────────────────────────────────────────────────────────────
+
+fn test_every_tick_closes_exactly_one_step() {
+    tet_pw  = bypass_world(true);
+    tet_f   = field_for(ENEMY_KIND_REGULAR, tet_pw);
+    tet_pal = load_palette(PALETTE);
+    tet_e   = westbound(ENEMY_KIND_REGULAR, 12);
+    tet_d   = flow_distance(tet_f, tet_e.q, tet_e.r);
+
+    assert(tet_d == 13, "the bypass route is 13 steps, field says {tet_d}");
+
+    while tet_d > 0 {
+        enemy_tick(tet_e, tet_pal, tet_pw, tet_f);
+        tet_now = flow_distance(tet_f, tet_e.q, tet_e.r);
+        assert(tet_now == tet_d - 1,
+               "one step closer per tick: {tet_d} -> {tet_now}");
+        // And it is never standing anywhere its class cannot be — the
+        // F1 invariant, checked at every hex of the route.
+        assert(can_occupy(tet_pal, tet_pw, tet_e.kind, tet_e.q, tet_e.r),
+               "({tet_e.q}, {tet_e.r}) is ground a robot can hold");
+        tet_d = tet_now;
+    }
+    assert(tet_e.q == 0 && tet_e.r == 0, "and it ends at the core");
+}
+
+fn test_it_arrives_in_exactly_its_distance_in_ticks() {
+    tia_pw  = bypass_world(true);
+    tia_f   = field_for(ENEMY_KIND_REGULAR, tia_pw);
+    tia_pal = load_palette(PALETTE);
+    tia_e   = westbound(ENEMY_KIND_REGULAR, 12);
+    tia_d   = flow_distance(tia_f, 12, 0);
+
+    // One tick short: not there yet.
+    for _ in 0..(tia_d - 1) { enemy_tick(tia_e, tia_pal, tia_pw, tia_f); }
+    assert(tia_e.q != 0 || tia_e.r != 0, "one tick short of arriving");
+
+    enemy_tick(tia_e, tia_pal, tia_pw, tia_f);
+    assert(tia_e.q == 0 && tia_e.r == 0, "and exactly on the {tia_d}th it arrives");
+}
+
+fn test_an_enemy_at_the_core_stays_on_it() {
+    tac_pw  = bypass_world(true);
+    tac_f   = field_for(ENEMY_KIND_REGULAR, tac_pw);
+    tac_e   = westbound(ENEMY_KIND_REGULAR, 0);
+
+    for _ in 0..20 { enemy_tick(tac_e, load_palette(PALETTE), tac_pw, tac_f); }
+
+    assert(tac_e.q == 0 && tac_e.r == 0,
+           "arrived is not a direction — it does not walk past the core: ({tac_e.q}, {tac_e.r})");
+}
+
+// F1b's behaviour, preserved: an enemy with no route still presses in
+// along its heading and stops at what it cannot cross.  Until F5b
+// this is also the only way approach mode is reachable.
+fn test_an_enemy_with_no_route_still_presses_along_its_heading() {
+    tnr_pw  = corridor(12);
+    paint(tnr_pw, 3, 0, as_u8(WALL));         // no bypass this time
+    tnr_f   = field_for(ENEMY_KIND_REGULAR, tnr_pw);
+    tnr_e   = westbound(ENEMY_KIND_REGULAR, 8);
+
+    assert(!flow_reachable(tnr_f, 8, 0), "the core is walled off from it");
+    for _ in 0..20 { enemy_tick(tnr_e, load_palette(PALETTE), tnr_pw, tnr_f); }
+
+    assert(tnr_e.q == 4 && tnr_e.r == 0,
+           "it walked its heading to the wall and stopped: ({tnr_e.q}, {tnr_e.r})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The whole wave, through `wave_tick`
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_whole_wave_routes_round_the_wall() {
+    taw_pw = bypass_world(true);
+    taw_s  = one_wave(ENEMY_KIND_REGULAR, 12, 5);
+
+    for _ in 0..13 { wave_tick(taw_s, load_palette(PALETTE), taw_pw, core()); }
+
+    for taw_e in taw_s.enemies {
+        assert(taw_e.q == 0 && taw_e.r == 0,
+               "every one of the five arrived: ({taw_e.q}, {taw_e.r})");
+    }
+    assert(alive_count(taw_s) == 5, "and all five are still alive");
+}
+
+// ⚠ The order-independence `ENEMY_MOVEMENT.md` § The tick resolves
+// once requires, asserted now while it is cheap.  It holds trivially
+// today — movement reads the world and never writes it — and F5c
+// (enemies spread rather than stack) is where it stops being trivial.
+// F8 owns the full gate; this is the half that can be checked already.
+fn test_the_same_wave_reversed_lands_identically() {
+    tsw_pw = bypass_world(true);
+    tsw_a  = wave_state_empty();
+    tsw_b  = wave_state_empty();
+    // Three enemies at different starts, added in opposite orders.
+    tsw_a.enemies += [westbound(ENEMY_KIND_REGULAR, 12)];
+    tsw_a.enemies += [westbound(ENEMY_KIND_REGULAR, 9)];
+    tsw_a.enemies += [westbound(ENEMY_KIND_REGULAR, 6)];
+    tsw_b.enemies += [westbound(ENEMY_KIND_REGULAR, 6)];
+    tsw_b.enemies += [westbound(ENEMY_KIND_REGULAR, 9)];
+    tsw_b.enemies += [westbound(ENEMY_KIND_REGULAR, 12)];
+
+    for _ in 0..7 {
+        wave_tick(tsw_a, load_palette(PALETTE), tsw_pw, core());
+        wave_tick(tsw_b, load_palette(PALETTE), tsw_pw, core());
+    }
+
+    // a[0] started where b[2] did, and so on.
+    for tsw_i in 0..3 {
+        tsw_ea = tsw_a.enemies[tsw_i] ?? Enemy {};
+        tsw_eb = tsw_b.enemies[2 - tsw_i] ?? Enemy {};
+        assert(tsw_ea.q == tsw_eb.q && tsw_ea.r == tsw_eb.r,
+               "roster order changes nothing: ({tsw_ea.q}, {tsw_ea.r}) vs ({tsw_eb.q}, {tsw_eb.r})");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// One field per class, selected by `wave_tick`
+// ─────────────────────────────────────────────────────────────────
+//
+// The insect climbs the wall the robot must go around, so the two
+// route DIFFERENTLY over one world — and `wave_tick` has to hand each
+// its own field for that to happen.  A single shared field would move
+// one of them along a route computed for the other.
+
+fn test_the_insect_and_the_robot_route_differently() {
+    tir_pw = bypass_world(true);
+    tir_s  = wave_state_empty();
+    tir_s.enemies += [westbound(ENEMY_KIND_REGULAR, 12)];
+    tir_s.enemies += [westbound(ENEMY_KIND_INSECT,  12)];
+
+    // The robot's route is 13 steps (round the bypass); the insect's
+    // is 12, straight over the wall.  So after 12 ticks the insect has
+    // arrived and the robot has not.
+    for _ in 0..12 { wave_tick(tir_s, load_palette(PALETTE), tir_pw, core()); }
+
+    tir_bot = tir_s.enemies[0] ?? Enemy {};
+    tir_bug = tir_s.enemies[1] ?? Enemy {};
+
+    assert(tir_bug.q == 0 && tir_bug.r == 0,
+           "the insect went over the wall and is home: ({tir_bug.q}, {tir_bug.r})");
+    assert(tir_bot.q != 0 || tir_bot.r != 0,
+           "the robot took the longer way and is one step short: ({tir_bot.q}, {tir_bot.r})");
+}
+
+fn test_the_insect_never_needed_the_bypass() {
+    tin_pw = bypass_world(true);
+    tin_f  = field_for(ENEMY_KIND_INSECT, tin_pw);
+    tin_e  = westbound(ENEMY_KIND_INSECT, 12);
+
+    assert(flow_distance(tin_f, 12, 0) == 12, "straight over the wall is 12 steps");
+    tin_used_bypass = false;
+    for _ in 0..12 {
+        enemy_tick(tin_e, load_palette(PALETTE), tin_pw, tin_f);
+        if tin_e.r != 0 { tin_used_bypass = true; }
+    }
+    assert(!tin_used_bypass, "so it never leaves the line the robot had to");
+    assert(tin_e.q == 0, "and it arrives");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Rebuilt once per tick — so the world can change under them
+// ─────────────────────────────────────────────────────────────────
+//
+// `wave_tick` builds the field from scratch every tick, which is what
+// `ENEMY_MOVEMENT.md` § The tick resolves once asks for.  The visible
+// consequence: a wall built while the wave is walking diverts it, with
+// nothing to invalidate and no cache to clear.
+
+fn test_a_wall_built_mid_wave_diverts_the_wave() {
+    twb_pw  = bypass_world(false);          // (3, 0) open: the direct route
+    twb_s   = one_wave(ENEMY_KIND_REGULAR, 12, 1);
+    twb_pal = load_palette(PALETTE);
+
+    for _ in 0..6 { wave_tick(twb_s, twb_pal, twb_pw, core()); }
+    twb_mid = twb_s.enemies[0] ?? Enemy {};
+    assert(twb_mid.q == 6 && twb_mid.r == 0, "six ticks down the direct line");
+
+    // The player walls the corridor in front of it.
+    paint(twb_pw, 3, 0, as_u8(WALL));
+
+    twb_stood_in_wall = false;
+    twb_took_bypass   = false;
+    for _ in 0..8 {
+        wave_tick(twb_s, twb_pal, twb_pw, core());
+        twb_e = twb_s.enemies[0] ?? Enemy {};
+        if twb_e.q == 3 && twb_e.r == 0  { twb_stood_in_wall = true; }
+        if twb_e.r != 0                  { twb_took_bypass = true; }
+    }
+
+    assert(!twb_stood_in_wall, "it never entered the new wall");
+    assert(twb_took_bypass, "it went round instead — the field was rebuilt, not remembered");
+    twb_end = twb_s.enemies[0] ?? Enemy {};
+    assert(twb_end.q == 0 && twb_end.r == 0, "and still arrived: ({twb_end.q}, {twb_end.r})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_maze_and_a_core_plays_green() {
+    tam_s = editor_state_new(PALETTE);
+    editor_state_attach(tam_s,
+                        "tests/actual/f5_maze.json",
+                        "tests/actual/f5_maze_markers.json");
+    tam = script_run_file(tam_s, "tests/scripts/a-maze-and-a-core.keys", "tests/actual");
+
+    assert(tam.ok, "a-maze-and-a-core: {script_describe(tam)}");
+    assert(tam.checks == 22, "it made {tam.checks} measurements, expected 22");
+    assert(tam.snaps == 2, "and took both pictures");
+    assert(alive_count(tam.wave) == 4, "four enemies walked the maze");
+}
+
+fn test_the_scenario_file_is_on_disk() {
+    assert(file("tests/scripts/a-maze-and-a-core.keys").exists(),
+           "the test above would pass against an empty file");
+}

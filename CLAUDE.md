@@ -53,7 +53,7 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 shipped.  F1 is the
+Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 shipped.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
 passable` say where an enemy is and whether its CLASS may be there,
 and `src/passable.loft` is the height-step rule they read.  **F1b is
@@ -64,7 +64,18 @@ per class, where **no-route is a LARGE value and never 0** — 0 is
 "at the core", and "smallest distance wins" must refuse a cell with
 no route rather than prefer it.  F3 is the arrow on top of it, gated
 by an exhaustive sweep: from EVERY reachable cell, following the
-arrows reaches the core in exactly `distance` steps.
+arrows reaches the core in exactly `distance` steps.  **F5 makes
+enemies follow it** — `wave_tick` rebuilds the field ONCE per tick
+before anybody moves (one per class in the roster), and `enemy_tick`
+steps down it; an enemy with no route falls back to its heading,
+which is a STAND-IN for the bubble selector F5b will bring.
+
+⚠ **A 1-hex-wide corridor cannot tell a flow field from a fixed
+heading** — both give the identical path, so every enemy test dryopea
+had was blind to F5.  A scenario that means to exercise routing needs
+a route that leaves the heading's line: a heading of 4 is `(-1, 0)`,
+so `enemy 0 3 -1` is a hex no heading can reach.  That is the shape
+to reach for when gating a movement change.
 
 ⚠ **The neighbour relation lives in `src/world.loft` and nowhere
 else.**  `hex_offset` / `hex_neighbor` / `hex_neighbours` are the only
@@ -80,9 +91,9 @@ all, and `enemies passable` over one is red.  Every scenario that
 walks enemies drags a corridor first; that is the game's rule, not a
 harness quirk.
 
-**Suite: 382/382 green under `scripts/test.sh`** (~20-30 s — the
+**Suite: 395/395 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
-**Gate: 9 scripts green under `scripts/validate.sh`** (~11 s).
+**Gate: 10 scripts green under `scripts/validate.sh`** (~11 s).
 
 ⚠ **Never interpolate a struct that has a `hash` field** — `"{f}"`
 SIGSEGVs the interpreter (loft#873) and exits silently on native.

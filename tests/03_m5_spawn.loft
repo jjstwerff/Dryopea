@@ -24,6 +24,21 @@ use dryopea;
 const PALETTE_PATH: text = "examples/palette.json";
 const GRASS:        integer = 5;      // examples/palette.json, in file order
 
+// ⚠ Plan 11 F5 gave the walk a FLOW FIELD, and an enemy with a route
+// to the core follows it instead of its heading.  The tests below are
+// about the DIRECTION TABLE — "heading 0 steps south" — so they run
+// with an EMPTY field, which is approach mode: no route anywhere,
+// so the heading is what steers.
+//
+// That is a temporary way to say "approach mode, please".  F5b makes
+// the mode depend on the scrambler bubble instead of on whether a
+// route exists, and these tests should move to naming the bubble when
+// it does.
+fn no_field() -> FlowField {
+    flow_build(load_palette(PALETTE_PATH), painted_empty(),
+               ENEMY_KIND_REGULAR as u8? ?? 0, Hex { q: 0, r: 0 })
+}
+
 // A disc of grass big enough to hold every walk in this file — the
 // furthest is a spawn at (0, -15).
 fn walkable() -> PaintedWorld {
@@ -193,7 +208,7 @@ fn test_enemy_tick_walks_one_hex_south() {
     tet_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 0 as u8, alive: true };
-    enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable());
+    enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable(), no_field());
     assert(tet_e.q == 5, "south: q unchanged");
     assert(tet_e.r == 6, "south: r increased by 1");
 }
@@ -202,7 +217,7 @@ fn test_enemy_tick_walks_one_hex_north() {
     teh_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 3 as u8, alive: true };
-    enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable());
+    enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable(), no_field());
     assert(teh_e.q == 5, "north: q unchanged");
     assert(teh_e.r == 4, "north: r decreased by 1");
 }
@@ -211,7 +226,7 @@ fn test_enemy_tick_dead_doesnt_move() {
     tedd_e = Enemy { q: 5, r: 5,
                      kind: ENEMY_KIND_REGULAR as u8,
                      heading: 0 as u8, alive: false };
-    enemy_tick(tedd_e, load_palette(PALETTE_PATH), walkable());
+    enemy_tick(tedd_e, load_palette(PALETTE_PATH), walkable(), no_field());
     assert(tedd_e.q == 5, "dead: q frozen");
     assert(tedd_e.r == 5, "dead: r frozen");
 }
@@ -224,7 +239,7 @@ fn test_wave_tick_advances_every_enemy() {
     twt_state.enemies += [Enemy { q: 10, r: 0,
                                    kind: ENEMY_KIND_REGULAR as u8,
                                    heading: 3 as u8, alive: true }];
-    wave_tick(twt_state, load_palette(PALETTE_PATH), walkable());
+    wave_tick(twt_state, load_palette(PALETTE_PATH), walkable(), Hex { q: 99, r: 99 });
     assert(twt_state.enemies[0].r == 1, "first enemy walked south by 1");
     assert(twt_state.enemies[1].r == -1, "second enemy walked north by 1");
 }
@@ -270,6 +285,6 @@ fn test_integration_spawn_and_walk_one_tick() {
     place_spawn(tisw_mw, 0, -15, 0 as u8);   // north of core, heading south
     spawn_wave(tisw_state, 1, tisw_mw, 0, 0, 10);
     assert(tisw_state.enemies[0].r == -15, "spawned at marker hex");
-    wave_tick(tisw_state, load_palette(PALETTE_PATH), walkable());
+    wave_tick(tisw_state, load_palette(PALETTE_PATH), walkable(), Hex { q: 0, r: 0 });
     assert(tisw_state.enemies[0].r == -14, "walked one hex toward core");
 }
