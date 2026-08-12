@@ -49,6 +49,16 @@ fn select_frame(idx: integer) -> EditorInput {
     sf_i
 }
 
+// Hover (q, r) with the button down and a paint tick due.
+fn paint_at(q: integer, r: integer) -> EditorInput {
+    pa_i = editor_input_empty();
+    pa_i.in_hover_q    = q;
+    pa_i.in_hover_r    = r;
+    pa_i.in_mouse_left = true;
+    pa_i.in_paint_tick = true;
+    pa_i
+}
+
 // One press: the key goes down for a frame, then comes back up.
 // Two presses in a row need the gap — that IS the edge.
 fn press(s: EditorState, p_frame: EditorInput) {
@@ -222,6 +232,106 @@ fn test_no_selection_leaves_the_tool_alone() {
     editor_step(tns_s, editor_input_empty());   // no hotkey down
 
     assert(tns_s.picker.active == 5, "a frame with no hotkey keeps the tool");
+}
+
+// ─── Group 2 — camera ───────────────────────────────────────────
+
+fn pan_frame(north: boolean, south: boolean, east: boolean, west: boolean) -> EditorInput {
+    pnf_i = editor_input_empty();
+    pnf_i.in_pan_north = north;
+    pnf_i.in_pan_south = south;
+    pnf_i.in_pan_east  = east;
+    pnf_i.in_pan_west  = west;
+    pnf_i
+}
+
+fn zoom_frame(zin: boolean) -> EditorInput {
+    zf_i = editor_input_empty();
+    zf_i.in_zoom_in  = zin;
+    zf_i.in_zoom_out = !zin;
+    zf_i
+}
+
+fn recentre_frame() -> EditorInput {
+    rcf_i = editor_input_empty();
+    rcf_i.in_recentre = true;
+    rcf_i
+}
+
+fn test_pan_walks_the_camera() {
+    tpw_s = editor_state_new(PALETTE);
+
+    editor_step(tpw_s, pan_frame(true, false, false, false));
+    assert(tpw_s.cam.pos.r == -1, "north is -r");
+
+    editor_step(tpw_s, pan_frame(false, false, true, false));
+    assert(tpw_s.cam.pos.q == 1, "east is +q");
+    assert(tpw_s.render_needed, "the view moved → re-rasterise");
+}
+
+// Pan is level-triggered, not edge-triggered: holding a direction
+// walks the camera every frame the caller says a step is due.  That
+// is the opposite of Tab, and the difference is the point.
+fn test_held_pan_keeps_walking() {
+    thp2_s = editor_state_new(PALETTE);
+
+    for _ in 0..5 {
+        editor_step(thp2_s, pan_frame(false, true, false, false));
+    }
+
+    assert(thp2_s.cam.pos.r == 5, "five steps of held pan is five hexes");
+}
+
+fn test_zoom_clamps_at_both_ends() {
+    tzc_s = editor_state_new(PALETTE);
+    assert(tzc_s.cam.zoom == ZOOM_MIN, "opens fully zoomed in");
+
+    for _ in 0..3 {
+        editor_step(tzc_s, zoom_frame(false));
+    }
+    assert(tzc_s.cam.zoom == ZOOM_MIN + 3, "three steps out");
+
+    for _ in 0..40 {
+        editor_step(tzc_s, zoom_frame(true));
+    }
+    assert(tzc_s.cam.zoom == ZOOM_MIN, "zoom in clamps at the near end");
+}
+
+fn test_recentre_returns_to_the_origin() {
+    trc_s = editor_state_new(PALETTE);
+    editor_step(trc_s, pan_frame(false, true, true, false));
+    editor_step(trc_s, zoom_frame(false));
+    assert(trc_s.cam.pos.q != 0 || trc_s.cam.pos.r != 0, "camera moved away");
+
+    press(trc_s, recentre_frame());
+
+    assert(trc_s.cam.pos.q == 0 && trc_s.cam.pos.r == 0, "H returns to the origin");
+    assert(trc_s.cam.zoom == ZOOM_MIN, "and to the default zoom");
+}
+
+// Recentre fires on the press, not while the key is down — so the
+// camera is free to move again with H still held.
+fn test_held_recentre_does_not_pin_the_camera() {
+    thr_s = editor_state_new(PALETTE);
+
+    thr_both = recentre_frame();
+    thr_both.in_pan_south = true;
+    editor_step(thr_s, thr_both);   // recentre fires, then the pan
+    editor_step(thr_s, thr_both);   // H still held: only the pan now
+
+    assert(thr_s.cam.pos.r == 2, "the camera keeps panning under a held H");
+}
+
+// Recentre is a view action: it must not touch what was painted.
+fn test_recentre_leaves_the_world_alone() {
+    trl_s = editor_state_new(PALETTE);
+    picker_set_active(trl_s.picker, 5);
+    press(trl_s, paint_at(3, -2));
+
+    press(trl_s, recentre_frame());
+
+    assert(painted_count(trl_s.pw) == 1, "recentre paints nothing away");
+    assert(lookup_painted(trl_s.pw, 3, -2) == 5 as u8, "the painted hex survives");
 }
 
 // The palette has 11 entries but 12 hotkeys — the spare ones must

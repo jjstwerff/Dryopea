@@ -99,6 +99,18 @@ pub struct EditorInput {
     in_rotate_ccw:  boolean,   // …anticlockwise instead (Shift held)
     in_cycle_kind:  boolean,   // K — spawn ↔ target
 
+    // ── Camera (V0b group 2) ──
+    // Pan and zoom are rate-limited by the caller, like paint: a key
+    // held down should walk the camera at a readable speed, not at
+    // the frame rate.  A flag set here means "step the camera now".
+    in_pan_north: boolean,
+    in_pan_south: boolean,
+    in_pan_east:  boolean,
+    in_pan_west:  boolean,
+    in_zoom_in:   boolean,
+    in_zoom_out:  boolean,
+    in_recentre:  boolean,     // H — camera back to the origin
+
     // Palette hotkey: is one down, and which entry does it select.
     // One index rather than twelve booleans — the player presses one
     // hotkey, and a script says `key 5`.
@@ -126,6 +138,13 @@ pub fn editor_input_empty() -> EditorInput {
         in_cycle_kind:     false,
         in_select_palette: false,
         in_palette_index:  0,
+        in_pan_north:      false,
+        in_pan_south:      false,
+        in_pan_east:       false,
+        in_pan_west:       false,
+        in_zoom_in:        false,
+        in_zoom_out:       false,
+        in_recentre:       false,
     }
 }
 
@@ -143,6 +162,13 @@ fn input_copy(ic: const EditorInput) -> EditorInput {
         in_cycle_kind:     ic.in_cycle_kind,
         in_select_palette: ic.in_select_palette,
         in_palette_index:  ic.in_palette_index,
+        in_pan_north:      ic.in_pan_north,
+        in_pan_south:      ic.in_pan_south,
+        in_pan_east:       ic.in_pan_east,
+        in_pan_west:       ic.in_pan_west,
+        in_zoom_in:        ic.in_zoom_in,
+        in_zoom_out:       ic.in_zoom_out,
+        in_recentre:       ic.in_recentre,
     }
 }
 
@@ -284,6 +310,32 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
             s.place_kind = MARKER_KIND_SPAWN;
         }
         s.render_needed = true;
+    }
+
+    // ── Camera recentre ─────────────────────────────────────────
+    // Leaves the painted and marker layers alone — this is "where
+    // was I?", not "start again".
+    if input.in_recentre && !s.prev.in_recentre {
+        s.cam = camera_default();
+        s.render_needed = true;
+    }
+
+    // ── Camera pan + zoom ───────────────────────────────────────
+    // `camera_update` already models this; the seam feeds it rather
+    // than restating what a pan does to a hex coordinate.
+    es_cam = InputState {
+        in_pan_north: input.in_pan_north,
+        in_pan_south: input.in_pan_south,
+        in_pan_east:  input.in_pan_east,
+        in_pan_west:  input.in_pan_west,
+        in_zoom_in:   input.in_zoom_in,
+        in_zoom_out:  input.in_zoom_out,
+    };
+    if es_cam.in_pan_north || es_cam.in_pan_south
+    || es_cam.in_pan_east  || es_cam.in_pan_west
+    || es_cam.in_zoom_in   || es_cam.in_zoom_out {
+        camera_update(s.cam, es_cam);
+        s.render_needed = true;   // the view moved → full re-rasterise
     }
 
     // ── Palette selection ───────────────────────────────────────

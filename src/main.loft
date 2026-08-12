@@ -180,7 +180,6 @@ fn main() {
     // actions themselves move into the seam.
     mb_held_prev:       boolean = false;
     n_held_prev:        boolean = false;
-    h_held_prev:        boolean = false;
     z_held_prev:        boolean = false;
     y_held_prev:        boolean = false;
     reload_r_held_prev: boolean = false;
@@ -300,36 +299,19 @@ fn main() {
         }
         reload_r_held_prev = reload_r_now;
 
-        // H → recentre camera (without disturbing painted or
-        // marker layers).  Edge-detected so a held H doesn't
-        // fire every frame.  Skip if Ctrl is held — that's the
-        // Ctrl+H combination, not single-H.
-        h_now = gl_key_pressed(KEY_H);
-        if h_now && !h_held_prev && !ctrl_held {
-            s.cam = camera_default();
-            s.render_needed = true;
-            println("dryopea: camera recentred (H)");
-        }
-        h_held_prev = h_now;
-
-        // Camera pan + zoom.  Pan-south is suppressed when Ctrl is
-        // held so Ctrl+S doesn't also pan.
-        if tnow - last_pan_us > PAN_DEBOUNCE_US {
-            in_state = InputState {
-                in_pan_north: gl_key_pressed(graphics::KEY_W),
-                in_pan_south: gl_key_pressed(graphics::KEY_S) && !ctrl_held,
-                in_pan_east:  gl_key_pressed(graphics::KEY_D),
-                in_pan_west:  gl_key_pressed(graphics::KEY_A),
-                in_zoom_in:   wheel > 0,
-                in_zoom_out:  wheel < 0,
-            };
-            if in_state.in_pan_north || in_state.in_pan_south
-            || in_state.in_pan_east  || in_state.in_pan_west
-            || in_state.in_zoom_in   || in_state.in_zoom_out {
-                camera_update(s.cam, in_state);
-                last_pan_us = tnow;
-                s.render_needed = true;   // view moved → full re-rasterise
-            }
+        // Camera pan + zoom, rate-limited so a held key walks the
+        // camera at a readable ~8 hexes/sec rather than at 60Hz.
+        // Pan-south is suppressed when Ctrl is held so Ctrl+S
+        // doesn't also pan.
+        pan_due  = tnow - last_pan_us > PAN_DEBOUNCE_US;
+        pan_n    = pan_due && gl_key_pressed(graphics::KEY_W);
+        pan_s    = pan_due && gl_key_pressed(graphics::KEY_S) && !ctrl_held;
+        pan_e    = pan_due && gl_key_pressed(graphics::KEY_D);
+        pan_w    = pan_due && gl_key_pressed(graphics::KEY_A);
+        zoom_in  = pan_due && wheel > 0;
+        zoom_out = pan_due && wheel < 0;
+        if pan_n || pan_s || pan_e || pan_w || zoom_in || zoom_out {
+            last_pan_us = tnow;
         }
 
         // Palette hotkeys → one selection index.  Idempotent, so no
@@ -385,6 +367,15 @@ fn main() {
             in_cycle_kind:     gl_key_pressed(KEY_K) && !ctrl_held,
             in_select_palette: sel_pressed,
             in_palette_index:  sel_index,
+            in_pan_north:      pan_n,
+            in_pan_south:      pan_s,
+            in_pan_east:       pan_e,
+            in_pan_west:       pan_w,
+            in_zoom_in:        zoom_in,
+            in_zoom_out:       zoom_out,
+            // Ctrl+H is left free for a future binding, so plain H
+            // only means recentre when Ctrl is up.
+            in_recentre:       gl_key_pressed(KEY_H) && !ctrl_held,
         });
         if mb_now && s.mode == MODE_GROUND && paint_tick_due {
             last_paint_us = tnow;
