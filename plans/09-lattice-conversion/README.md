@@ -17,8 +17,9 @@ first means the bigger change happens once, on a settled seam.
 
 ## Status
 
-**Active — C0 + I0 shipped 2026-08-12, and I0's finding @D001 is fixed
-the same day; I1 is next and now has the corrected seam it needs.** This is plan 07's `W0c`,
+**Active — the I phases are DONE (I0 + @D001 + I1, 2026-08-12/13); the
+lattice conversion C1–C6 is what remains, and it now happens on a
+settled input seam, which is why I0–I1 went first.** This is plan 07's `W0c`,
 cut into its own plan because it is multi-phase, stands alone, and plan 07
 is long enough already. It is a **precondition** for plan 07's asset
 interchange, not a part of it: converting the lattice is worth doing whether
@@ -103,7 +104,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
 | **I0** — probe: does `input`'s edge model match the seam's? | XS | a probe first | reproduce the three semantics plan 08 pinned — a tap fires once, a HELD action fires once, a level action repeats — against `input`'s `is_action_just_pressed`. **The deliverable is the answer**: `input_new` documents "first frame counts as a transition", which the seam does not do, so if they differ I1 changes shape before it is built | **Shipped** — they MATCH; see § I0 |
-| **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME count it did before the swap (233 over 14 scripts as of 2026-08-12 — read it, do not trust this number) | Open — its prerequisite (@D001, § The forge is deleted) is **done** |
+| **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME count it did before the swap (233 over 14 scripts as of 2026-08-12 — read it, do not trust this number) | **Shipped** — see § I1.  Compared at the INPUT level, which is stronger; 233 held |
 | **C0** — probe: can `hex_grid` be the oracle? | XS | a probe first | its answers for a hand-checked cell set, AND that they **disagree** with dryopea's current axial math — an oracle that already agrees proves nothing | **Shipped** |
 | **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | Open |
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | Open |
@@ -269,6 +270,75 @@ that still passes under remapped keys proves the indirection is real.
 ⚠ **`do Tab` must still fail.**  Whatever I1 does, the script vocabulary
 names actions.  If a key name starts working, a second table was built.
 
+### I1 — shipped, and where the gate had to move
+
+Landed 2026-08-13 in two commits: `src/bindings.loft` + the GL loop,
+then the script runner.  `main.loft` went from 28 `gl_key_pressed`
+calls to one (Escape, which is the loop's own exit and not an editor
+action), and `script.loft`'s `script_set_action` — the second table —
+is gone.
+
+⚠ **The plan predicted the wrong gate, and the right one is cheaper.**
+The Verify column says compare the two paths at the `EditorState`.
+That only sees the key combinations some scenario happens to press,
+and a binding wrong for a key no script uses is precisely what this
+phase exists to catch.  `tests/09_i1_bindings.loft` compares at the
+`EditorInput` instead: every key in the table × both modifier states
+× both rate-limit states — 208 combinations — against a transcription
+of the pre-I1 literal, all 22 fields each.  Seen RED before it was
+trusted (rebinding `cycle_kind` from `k` to `h` reports `key 107
+ctrl=0 shift=0 pan_due=0: in_cycle_kind differs`).
+
+⚠ **The "edge detection moves to the input layer" framing was the
+half that did not survive.**  § I1 above already said the V0 decision
+*survives*, and it does — but that settles a fork the Verify column
+leaves open, so it is worth stating plainly: `EditorInput` keeps HELD
+semantics and `editor_step` still finds the edge against `s.prev`.
+`input`'s `is_action_just_*` are unused, deliberately.  Flipping
+`EditorInput` to carry resolved events would have made five held
+frames fire five times and rewritten every plan-08 edge test — the
+"unchanged and green" net is what rules it out.
+
+**The ctrl rule had to be DATA, and that was not foreseen.**
+`input::ActionBinding` is a name and a list of keys; it has no
+modifier concept, and dryopea needs one for five combos.  Writing the
+rule in the resolver would have meant writing it again in the runner
+(`do undo` must know it holds Ctrl) — the second table wearing a
+different hat.  So `ea_ctrl` rides on the record and both readers get
+it from there.  Three names have no table row at all, because they
+are not keys: `zoom_in` / `zoom_out` are the wheel, `rotate_ccw` is
+rotate with Shift — each still resolved *through* the table.
+
+**The predicted bonus is real and is now a test.**
+`test_a_scenario_plays_the_same_on_a_remapped_keyboard` plays
+`paint-a-base.keys` twice — default keys, then every action moved to
+a different code — and compares the sessions.  Before I1 that test
+could not have failed, because there was no keyboard to remap.  Its
+negative control (`test_a_broken_remap_breaks_the_scenario`) kills a
+palette binding and requires the run to FAIL, so "it still passes"
+cannot mean "the script never pressed anything".
+
+**Two behaviours changed on purpose**, both narrowings:
+`palette <n>` for an entry with no hotkey is now an error rather than
+a frame the seam silently range-checks away (a script asserting
+nothing), and `do mod_ctrl` / `do palette_5` are refused so the
+vocabulary cannot widen just because the table grew a row.  `do Tab`
+still fails, as § I1 requires.
+
+⚠ **`input` ships a PARKED banner and it is stale.**  The library
+header says it is blocked on @P391 — `input_new`'s state allocated in
+CONST_STORE under a cross-package call, so writes through
+`&InputState` panic.  Probed before any of this was built, because
+the whole phase rests on it: `input_new`, `input_tick_from_state` and
+`input_set_bindings` all survive, a key held five ticks reads pressed
+5/5 with one edge, and a rebind takes effect immediately with the old
+key going dead.  Recorded in
+[`QUESTIONS_FOR_LOFT.md`](../../QUESTIONS_FOR_LOFT.md).
+
+Suite 505 → **518 green**; `scripts/validate.sh` unchanged at **233
+measurements over 14 scripts**, which is the number this row told you
+to read rather than trust.
+
 ### C1 — the new layer, and why it can go red alone
 
 `src/lattice.loft` implements the target convention: `nb(q, r, d)`,
@@ -315,7 +385,7 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
 | **C4** | `a-wave-approaches` range still decreases | the game's own behaviour survives the move | enemies that reach the core in a different number of ticks means the metric moved |
 | **C5** | converted maps keep painted counts + adjacency | a relabel is not a content change | a map that gains or loses a hex was converted wrong |
 | **I0** ✅ | a key held five frames fires its action ONCE — **both do** | `input`'s edges mean what the seam's mean, on all three semantics | the predicted "first frame" divergence **is not real**; the real one is the seam forging `prev` mid-step, which is @D001 |
-| **I1** | the five scenarios land on the same `EditorState` | swapping the input layer changes nothing a player could see | `do Tab` working means a second key table was built |
+| **I1** ✅ | 208 key/modifier combinations resolve to the SAME 22 `EditorInput` fields as the pre-I1 poll | swapping the input layer changes nothing a player could see | a scenario replayed on a keyboard with every key MOVED lands on the same session — and one with a palette key killed must FAIL, or "still passes" means "never pressed anything".  `do Tab` still refused |
 
 ## Open questions
 

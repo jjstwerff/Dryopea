@@ -415,3 +415,122 @@ fn test_rebinding_keeps_the_modifier_rule() {
     assert(editor_input_from(trk_src, Hex { q: 0, r: 0 }, false, false).in_undo,
            "Ctrl+'u' is");
 }
+
+// ─── A script on a keyboard with EVERY key moved ────────────────
+//
+// The gate the plan predicted would fall out of I1, and the one
+// that says the round trip is real: before I1 the runner mapped an
+// action name straight onto an `EditorInput` field, so this test
+// could not have failed — there was no keyboard to remap.  Now
+// `do undo` presses keys, and if any of it had been left wired
+// directly the two runs would part company.
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// Every action moved to a key code it did not have.  Codes 1..27
+// are unique, inside the keyboard, and shared with nothing in the
+// default table except by coincidence of value — what matters is
+// that no two actions collide.
+fn remapped_actions() -> vector<EditorAction> {
+    ra_out: vector<EditorAction> = [];
+    ra_code = 1;
+    for ra_a in editor_actions() {
+        ra_keys: vector<integer> = [ra_code];
+        ra_out += [EditorAction {
+            ea_name:    ra_a.ea_name,
+            ea_keys:    ra_keys,
+            ea_ctrl:    ra_a.ea_ctrl,
+            ea_palette: ra_a.ea_palette,
+        }];
+        ra_code += 1;
+    }
+    ra_out
+}
+
+// Everything about a session a script could have changed.
+fn state_summary(s: const EditorState) -> text {
+    "{painted_count(s.pw)}/{marker_count(s.mw)}/{s.mode}/{s.picker.active}/({s.cam.pos.q},{s.cam.pos.r})z{s.cam.zoom}/{s.history.cursor}"
+}
+
+fn test_a_scenario_plays_the_same_on_a_remapped_keyboard() {
+    tas_src = file("tests/scripts/paint-a-base.keys").content() ?? "";
+    assert(tas_src != "", "the scenario is on disk");
+
+    // Default keys.
+    tas_s1 = editor_state_new(PALETTE);
+    tas_r1 = script_run(tas_s1, tas_src, SHOTS);
+    assert(tas_r1.ok, "the scenario plays on the default keyboard: {tas_r1.message}");
+
+    // Every key moved.
+    tas_s2 = editor_state_new(PALETTE);
+    tas_run2 = script_run_new(SHOTS);
+    input_source_rebind(tas_run2.isrc, remapped_actions());
+    tas_r2 = script_run_on(tas_s2, tas_run2, tas_src);
+    assert(tas_r2.ok, "and on a keyboard with every key moved: {tas_r2.message}");
+
+    assert(state_summary(tas_s1) == state_summary(tas_s2),
+           "the same session either way — {state_summary(tas_s1)} vs {state_summary(tas_s2)}");
+    assert(tas_r1.frames == tas_r2.frames, "in the same number of frames");
+    assert(tas_r1.checks == tas_r2.checks && tas_r1.checks > 0,
+           "with the same measurements taken, and some taken");
+}
+
+// The negative control for the test above.  A remap that DROPS an
+// action's key must break the script — otherwise "it still passes"
+// proves only that the script never pressed anything.
+fn test_a_broken_remap_breaks_the_scenario() {
+    tbr_src = file("tests/scripts/paint-a-base.keys").content() ?? "";
+
+    // Bind the palette hotkeys to a key nothing presses, leaving
+    // everything else alone.  The scenario opens with `palette 9`,
+    // so the wall it draws becomes whatever was already selected.
+    tbr_actions: vector<EditorAction> = [];
+    for tbr_a in editor_actions() {
+        if tbr_a.ea_palette >= 0 {
+            tbr_dead: vector<integer> = [159];   // inside the keyboard, never pressed
+            tbr_actions += [EditorAction {
+                ea_name:    tbr_a.ea_name,
+                ea_keys:    tbr_dead,
+                ea_ctrl:    tbr_a.ea_ctrl,
+                ea_palette: tbr_a.ea_palette,
+            }];
+        } else {
+            tbr_actions += [tbr_a];
+        }
+    }
+
+    tbr_s = editor_state_new(PALETTE);
+    tbr_run = script_run_new(SHOTS);
+    input_source_rebind(tbr_run.isrc, tbr_actions);
+    tbr_r = script_run_on(tbr_s, tbr_run, tbr_src);
+
+    assert(!tbr_r.ok,
+           "a scenario whose palette keys went dead must FAIL, not quietly paint sea");
+}
+
+// `do` names ACTIONS.  A key name working would mean a second table
+// was built — the one thing I1 must not do.  08_v1a pins `do Tab`;
+// this pins the two names the TABLE now contains but the vocabulary
+// still must not.
+fn test_the_vocabulary_did_not_widen() {
+    tvw_s = editor_state_new(PALETTE);
+
+    assert(!script_run(tvw_s, "do Tab", SHOTS).ok, "`do Tab` is a key, not an action");
+    assert(!script_run(tvw_s, "do mod_ctrl", SHOTS).ok,
+           "a modifier is a table row but not an action");
+    assert(!script_run(tvw_s, "do palette_5", SHOTS).ok,
+           "a palette hotkey is a table row but not an action — `palette 4` is the command");
+    assert(script_run(tvw_s, "do toggle_mode", SHOTS).ok, "and a real action still works");
+}
+
+// A palette entry with no hotkey is a gesture no player can make.
+// It used to be accepted and silently ignored by the seam's range
+// check, which is a script asserting nothing.
+fn test_a_palette_entry_with_no_hotkey_is_an_error() {
+    tpe_s = editor_state_new(PALETTE);
+
+    assert(!script_run(tpe_s, "palette 12", SHOTS).ok,
+           "there are twelve hotkeys, so entry 12 is past the last of them");
+    assert(script_run(tpe_s, "palette 11", SHOTS).ok, "entry 11 is the last one reachable");
+}

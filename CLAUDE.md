@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 505/505 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 518/518 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 505 runs.
+per-function + per-line + call-path report over all 518 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -381,6 +381,22 @@ decisions in it: `main.loft` over `editor_step.loft`,
 src/
   dryopea.loft     library aggregator — `use dryopea;` brings every
                    submodule into scope (tests use this entry)
+  bindings.loft    the ONE key table (plan 09 I1) — EditorAction
+                   {name, keys, ctrl rule, palette index} +
+                   editor_actions() + editor_input_from(), the single
+                   door from keys to the seam.  The GL loop polls it
+                   and a `.keys` run FEEDS it, so `do undo` presses
+                   the keys a player presses and a wrong binding
+                   fails the gate.
+                   ⚠ The ctrl rule is DATA, not resolver code:
+                   `input::ActionBinding` has no modifier concept,
+                   and a rule written once in the resolver and once
+                   in the runner is a second table wearing a hat.
+                   ⚠ EDGES are NOT here — plan 08 V0 put edge
+                   detection in the seam and I1 kept it, so this
+                   reads LEVEL state and `input`'s `is_action_just_*`
+                   are deliberately unused.  Two edge detectors is
+                   the drift this file exists to prevent
   main.loft        interactive editor entry point — `fn main()`,
                    NOT in the aggregator (runs via `loft src/main.loft`).
                    The GL shell only: open window, poll input,
@@ -438,8 +454,16 @@ src/
                    script_run(s, source[, shots_dir]) /
                    script_run_file(s, path[, shots_dir]) -> ScriptRun.
                    Commands name ACTIONS, never keys
-                   (`do toggle_mode`), so no key table exists to
-                   drift from the GL poll's.  Reaches the editor ONLY
+                   (`do toggle_mode`); ⚠ `do Tab` must keep FAILING —
+                   a key name that starts working means a second
+                   table was built.  Since plan 09 I1 the runner
+                   TYPES on `bindings.loft`: an action name becomes
+                   key codes, which go through `input`, which the
+                   same resolver the GL loop uses turns back into an
+                   EditorInput.  The round trip looks pointless
+                   written down and is the whole point — before it, a
+                   binding could be wrong in the editor with all 14
+                   scripts green.  Reaches the editor ONLY
                    through editor_step — even `at` walks the camera
                    with pan frames.  An unknown command / action /
                    number / arity is an ERROR, never a skipped line.
@@ -762,7 +786,8 @@ plans/
                     found it OVER budget, and found the cause was a
                     per-enemy field COPY rather than the rebuild it was
                     written to optimise
-  09-lattice-conversion/      — Active (C0 + I0 shipped): dryopea
+  09-lattice-conversion/      — Active (C0 + the whole I half
+                    shipped; C1-C6 remain): dryopea
                     moves to pointy-top odd-r offset, the convention
                     every hex_* library and moros already speak.
                     Checked against hex_grid as an ORACLE, because a
@@ -771,8 +796,16 @@ plans/
                     the seam's MATCH on all three semantics, so the
                     predicted divergence was not real — and the real
                     one is @D001, the seam forging its own `prev`,
-                    now FIXED ahead of I1 so its parallel run compares
-                    against a corrected seam rather than porting a bug
+                    FIXED ahead of I1 so its parallel run compared
+                    against a corrected seam rather than porting a bug.
+                    I1 collapsed the two key tables into
+                    `src/bindings.loft`: 28 `gl_key_pressed` calls in
+                    main.loft and script.loft's action→field map both
+                    gone, and a `.keys` run now TYPES on the same
+                    table the player does.  Its gate moved from the
+                    EditorState (where it only sees keys some scenario
+                    presses) to the EditorInput, swept over 208
+                    key/modifier combinations
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -805,11 +838,19 @@ library** — `loft api <name>` prints its full public API, and
 `.loft/api/<name>.api` holds the generated stubs.  Never guess a
 signature.
 
-- **Today:** `graphics` and `gridmesh` resolve from the loft
-  package registry (`loft.toml` + `loft.lock`); they migrated
-  out of loft's monorepo to `loft-libs-graphics`.  `moros_map`
-  is a path-dep into the moros checkout (`../moros/lib/moros_map`)
-  — it is not published, and is declared but not yet consumed.
+- **Today:** `graphics`, `gridmesh` and `input` resolve from the
+  loft package registry (`loft.toml` + `loft.lock`); the first two
+  migrated out of loft's monorepo to `loft-libs-graphics`.
+  `moros_map` is a path-dep into the moros checkout
+  (`../moros/lib/moros_map`) — it is not published, and is declared
+  but not yet consumed.
+  ⚠ **`input` ships a PARKED banner that is STALE.**  Its header
+  says it is blocked on loft `@P391` (`input_new`'s state in
+  CONST_STORE under a cross-package call, so writes through
+  `&InputState` panic).  It is not: dryopea consumes it from plan 09
+  I1, and `input_new` / `input_tick_from_state` /
+  `input_set_bindings` all work interpreted.  Probe it again before
+  believing either the banner or this note.
 - **The shared hex substrate now EXISTS as published libraries.**
   What the docs still call `lib_plan 24` shipped as the `hex_*`
   family in the registry: `hex_field` (exact-integer hex cell
@@ -881,6 +922,7 @@ signature.
 | Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
+| Change what a key does | `src/bindings.loft::editor_actions` — the ONE table.  Both the GL loop and every `.keys` script read it, so a change is visible to the gate.  Never add a `gl_key_pressed` |
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |

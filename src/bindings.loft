@@ -266,6 +266,26 @@ pub fn action_ctrl(actions: const vector<EditorAction>, name: text) -> integer {
     CTRL_IGNORED
 }
 
+// Which palette entry does this action select?  -1 for every action
+// that is not one of the twelve hotkeys.
+pub fn action_palette_index(actions: const vector<EditorAction>, name: text) -> integer {
+    for api_a in actions {
+        if api_a.ea_name == name { return api_a.ea_palette; }
+    }
+    -1
+}
+
+// Which action selects palette entry `index`?  "" when no hotkey
+// does — the palette has twelve of them, so an entry past the
+// twelfth is unreachable from the keyboard and a script asking for
+// one is asking for a gesture no player can make.
+pub fn action_for_palette(actions: const vector<EditorAction>, index: integer) -> text {
+    for afp_a in actions {
+        if afp_a.ea_palette == index && index >= 0 { return afp_a.ea_name; }
+    }
+    ""
+}
+
 // ─── The resolver (both readers' half) ──────────────────────────
 
 // Is this action live, given what Ctrl is doing?

@@ -19,19 +19,31 @@
 // script can do, a player can do, because the script has no other
 // door.
 //
-// ── No key table, anywhere ──────────────────────────────────────
+// ── One key table, and this runner types on it (plan 09 I1) ─────
 //
-// V0 left `EditorInput` as a table of NAMED ACTIONS rather than of
-// keys, and V1a spends that: a script says `do toggle_mode`, not
-// `key Tab`.  So `script_set_action` below maps name → field and is
-// the only mapping in the runner; the GL poll in `src/main.loft`
-// binds physical keys straight to the same fields.  Neither side
-// holds a copy of the other's table, which is the duplication plan
-// 08 warns about (§ One table, two readers) and moros has to live
-// with.
+// A script says `do toggle_mode`, not `key Tab` — that has been
+// true since V1a and still is.  ⚠ `do Tab` must keep FAILING: the
+// vocabulary names actions, and a key name that starts working
+// means a second table has been built.
 //
-// A script therefore reads as what the player DID, and a rebinding
-// of Tab to some other key leaves every script correct.
+// What changed in I1 is underneath.  V1a's `script_set_action`
+// mapped a name STRAIGHT onto an `EditorInput` field, and
+// `main.loft` bound physical keys onto the same fields from the
+// other side.  Neither held a copy of the other's table — but
+// neither held the SAME one either, so nothing a script did was
+// evidence about the keyboard.  A binding could be wrong in the
+// editor and all 14 scripts stayed green.
+//
+// Now both sides go through `src/bindings.loft`:
+//
+//     the player   keyboard → input_tick        ┐
+//                                               ├→ editor_input_from → seam
+//     a .keys run  action   → keys → feed       ┘
+//
+// So `do undo` presses Ctrl and Z, and a wrong binding fails the
+// gate.  The rebinding a script survives is now a real remap rather
+// than a promise — `ScriptRun.isrc` is what a test hands a remapped
+// table to.
 //
 // ── Vocabulary ──────────────────────────────────────────────────
 //
@@ -139,6 +151,7 @@ use picker;
 use palette;
 use editor_mode;
 use editor_step;
+use bindings;
 use editor_view;
 use measure;
 use save;
@@ -179,6 +192,14 @@ pub struct ScriptRun {
     // suite can drop its shots in `tests/actual/` (wiped between
     // runs) while a validation run keeps them in `shots/`.
     shots_dir: text,
+
+    // The keyboard this run types on (plan 09 I1) — `input`'s
+    // abstract state plus dryopea's one key table.  Per-run rather
+    // than global so two runs in one process cannot leak a held key
+    // into each other, and so a run can be given REBOUND keys: a
+    // script that still passes under a remap is what proves the
+    // indirection is real rather than decorative.
+    isrc: EditorInputSource,
 }
 
 // Default home for shots: gitignored, rewritten every run.  A shot
@@ -198,6 +219,7 @@ pub fn script_run_new(shots_dir: text) -> ScriptRun {
         hover_r:   0,
         wave:      wave_state_empty(),
         shots_dir: shots_dir,
+        isrc:      input_source_new(),
     }
 }
 
@@ -224,56 +246,108 @@ pub const SCRIPT_MAX_CAMERA_STEPS: integer = 4096;
 // from it instead of holding a second copy of the number.
 pub const SCRIPT_SPAWN_DISABLE_RADIUS: integer = 10;
 
-// ─── The action table ───────────────────────────────────────────
+// ─── The physical layer (plan 09 I1) ────────────────────────────
 
-// Set the field a script's action name stands for.  This is the
-// runner's ONLY mapping — see § No key table above.
+// One frame of PHYSICAL input: which key codes are down, whether
+// the left button is down, what the wheel did, and whether a paint
+// tick is due.
 //
-// Returns false for a name that is not an action; the caller turns
-// that into an error rather than a quiet no-op.
-fn script_set_action(input: EditorInput, name: text) -> boolean {
-    if name == "toggle_mode" { input.in_toggle_mode = true;  return true; }
-    if name == "rotate"      { input.in_rotate      = true;  return true; }
-    if name == "rotate_ccw"  {
-        input.in_rotate     = true;
-        input.in_rotate_ccw = true;
+// ⚠ The runner used to skip all of this.  `script_set_action`
+// mapped an action name STRAIGHT onto an `EditorInput` field, so a
+// script never touched a key code — and a binding could be wrong in
+// the editor with all 14 scripts still green.  Now `do undo`
+// presses the keys a player presses and `src/bindings.loft`
+// resolves them, which is what makes a script evidence about the
+// keyboard rather than only about the seam.
+//
+// It costs a round trip that looks pointless written down —
+// name → keys → `input` → name → field — and buys the only thing
+// that made § One table, two readers true rather than aspirational.
+struct ScriptPhys {
+    sp_keys:  vector<boolean>,
+    sp_mouse: boolean,
+    sp_wheel: integer,
+    sp_paint: boolean,
+}
+
+fn script_phys_new() -> ScriptPhys {
+    ScriptPhys {
+        sp_keys:  keyboard_empty(),
+        sp_mouse: false,
+        sp_wheel: 0,
+        sp_paint: false,
+    }
+}
+
+fn script_press(p: ScriptPhys, keys: const vector<integer>) {
+    for spr_k in keys { p.sp_keys[spr_k] = true; }
+}
+
+// Press what an action name stands for, modifier included.
+//
+// Returns false for a name that is not a script action; the caller
+// turns that into an error rather than a quiet no-op, because
+// `input` will not — an unknown action name simply reads false
+// forever, which is a script that silently tests nothing.
+//
+// ⚠ Three names have no table row, because they are not keys:
+// `zoom_in` / `zoom_out` are the WHEEL, and `rotate_ccw` is rotate
+// with Shift.  They still resolve THROUGH the table (rotate's keys,
+// mod_shift's keys), so no key code is written down twice.
+fn script_phys_action(run: ScriptRun, p: ScriptPhys, name: text) -> boolean {
+    // The wheel is not a key, so it has no binding to look up.
+    if name == "zoom_in"  { p.sp_wheel =  1; return true; }
+    if name == "zoom_out" { p.sp_wheel = -1; return true; }
+
+    // Anticlockwise rotation IS rotation, with Shift held — the
+    // same gesture the player makes.
+    if name == "rotate_ccw" {
+        script_press(p, action_keys(run.isrc.eis_actions, "rotate"));
+        script_press(p, action_keys(run.isrc.eis_actions, ACTION_MOD_SHIFT));
         return true;
     }
-    if name == "cycle_kind"  { input.in_cycle_kind  = true;  return true; }
-    if name == "pan_north"   { input.in_pan_north   = true;  return true; }
-    if name == "pan_south"   { input.in_pan_south   = true;  return true; }
-    if name == "pan_east"    { input.in_pan_east    = true;  return true; }
-    if name == "pan_west"    { input.in_pan_west    = true;  return true; }
-    if name == "zoom_in"     { input.in_zoom_in     = true;  return true; }
-    if name == "zoom_out"    { input.in_zoom_out    = true;  return true; }
-    if name == "recentre"    { input.in_recentre    = true;  return true; }
-    if name == "undo"        { input.in_undo        = true;  return true; }
-    if name == "redo"        { input.in_redo        = true;  return true; }
-    if name == "clear"       { input.in_clear_all   = true;  return true; }
-    if name == "save"        { input.in_save        = true;  return true; }
-    if name == "reload"      { input.in_reload      = true;  return true; }
-    false
+
+    // The modifiers and the twelve palette hotkeys ARE table rows,
+    // but they are not script actions: `do mod_ctrl` would be a
+    // frame that does nothing, and `do palette_5` a second spelling
+    // of `palette 5`.  Refused, so the vocabulary cannot widen by
+    // accident just because the table grew a row.
+    if name == ACTION_MOD_CTRL || name == ACTION_MOD_SHIFT { return false; }
+    if action_palette_index(run.isrc.eis_actions, name) >= 0 { return false; }
+
+    if !action_exists(run.isrc.eis_actions, name) { return false; }
+    script_press(p, action_keys(run.isrc.eis_actions, name));
+    if action_ctrl(run.isrc.eis_actions, name) == CTRL_REQUIRED {
+        script_press(p, action_keys(run.isrc.eis_actions, ACTION_MOD_CTRL));
+    }
+    true
 }
 
 // ─── Frames ─────────────────────────────────────────────────────
 
-// A neutral frame with the pointer where the run left it.  Built
-// from the factory, never as a literal: a literal that omits a
-// field silently takes that field's default, which for the palette
-// index would mean "select sea" — see `editor_step.loft`'s warning
-// on `EditorInput`.
-fn script_input(run: ScriptRun) -> EditorInput {
-    si_i = editor_input_empty();
-    si_i.in_hover_q = run.hover_q;
-    si_i.in_hover_r = run.hover_r;
-    si_i
-}
-
 // One frame through the seam.  The single door — see § The
 // invariant.
-fn script_frame(s: EditorState, run: ScriptRun, input: EditorInput) {
-    editor_step(s, input);
+//
+// Physical input goes in; `bindings.loft` decides what it MEANS and
+// `editor_step` decides whether a held key has just been pressed.
+// Neither decision is made here, which is the point.
+fn script_frame(s: EditorState, run: ScriptRun, p: const ScriptPhys) {
+    sf_btn: integer = 0;
+    if p.sp_mouse { sf_btn = 1; }
+    input_source_feed(run.isrc, p.sp_keys, 0.0, 0.0, sf_btn, p.sp_wheel);
+    sf_hover = Hex { q: run.hover_q, r: run.hover_r };
+    // A script's clock is one tick per scripted frame, so the pan
+    // rate limit is always due; the paint one is due only on the
+    // frames that say so.
+    editor_step(s, editor_input_from(run.isrc, sf_hover, true, p.sp_paint));
     run.frames += 1;
+}
+
+// A frame with nothing held, at the pointer where the run left it.
+// This is the RELEASE that makes the next tap of the same action a
+// rising edge.
+fn script_idle(s: EditorState, run: ScriptRun) {
+    script_frame(s, run, script_phys_new());
 }
 
 // Walk the camera to (q, r, zoom) with pan / zoom frames, the way a
@@ -286,14 +360,16 @@ fn script_frame(s: EditorState, run: ScriptRun, input: EditorInput) {
 fn script_walk_camera(s: EditorState, run: ScriptRun, q: integer, r: integer, zoom: integer) -> text {
     swc_steps = 0;
     while s.cam.pos.q != q || s.cam.pos.r != r || s.cam.zoom != zoom {
-        swc_i = script_input(run);
-        if s.cam.pos.q < q { swc_i.in_pan_east  = true; }
-        if s.cam.pos.q > q { swc_i.in_pan_west  = true; }
-        if s.cam.pos.r < r { swc_i.in_pan_south = true; }
-        if s.cam.pos.r > r { swc_i.in_pan_north = true; }
-        if s.cam.zoom > zoom { swc_i.in_zoom_in  = true; }
-        if s.cam.zoom < zoom { swc_i.in_zoom_out = true; }
-        script_frame(s, run, swc_i);
+        swc_p = script_phys_new();
+        if s.cam.pos.q < q { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_east")); }
+        if s.cam.pos.q > q { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_west")); }
+        if s.cam.pos.r < r { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_south")); }
+        if s.cam.pos.r > r { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_north")); }
+        // Zoom is the wheel, not a key — the one axis of the walk
+        // that has no binding to press.
+        if s.cam.zoom > zoom { swc_p.sp_wheel =  1; }
+        if s.cam.zoom < zoom { swc_p.sp_wheel = -1; }
+        script_frame(s, run, swc_p);
         swc_steps += 1;
         if swc_steps > SCRIPT_MAX_CAMERA_STEPS {
             return "at: target is more than {SCRIPT_MAX_CAMERA_STEPS} camera steps away";
@@ -775,10 +851,10 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // is what makes the NEXT tap of the same action an edge.
     if sc_cmd == "do" {
         if sc_argc != 1 { return "do needs <action>"; }
-        sc_i = script_input(run);
-        if !script_set_action(sc_i, sc_a1) { return "unknown action '{sc_a1}'"; }
-        script_frame(s, run, sc_i);
-        script_frame(s, run, script_input(run));
+        sc_p = script_phys_new();
+        if !script_phys_action(run, sc_p, sc_a1) { return "unknown action '{sc_a1}'"; }
+        script_frame(s, run, sc_p);
+        script_idle(s, run);
         return "";
     }
 
@@ -795,9 +871,9 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
             return "hold: <frames> must be 0..{SCRIPT_MAX_REPEAT}";
         }
-        sc_i = script_input(run);
-        if !script_set_action(sc_i, sc_a1) { return "unknown action '{sc_a1}'"; }
-        for _ in 0..sc_count { script_frame(s, run, sc_i); }
+        sc_p = script_phys_new();
+        if !script_phys_action(run, sc_p, sc_a1) { return "unknown action '{sc_a1}'"; }
+        for _ in 0..sc_count { script_frame(s, run, sc_p); }
         return "";
     }
 
@@ -809,7 +885,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
             return "step: <frames> must be 0..{SCRIPT_MAX_REPEAT}";
         }
-        for _ in 0..sc_count { script_frame(s, run, script_input(run)); }
+        for _ in 0..sc_count { script_idle(s, run); }
         return "";
     }
 
@@ -820,11 +896,18 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_argc != 1 { return "palette needs <index>"; }
         sc_v = script_ints(tok, 1);
         if len(sc_v) != 1 { return "palette: <index> must be an integer"; }
-        sc_i = script_input(run);
-        sc_i.in_select_palette = true;
-        sc_i.in_palette_index  = sc_v[0] ?? 0;
-        script_frame(s, run, sc_i);
-        script_frame(s, run, script_input(run));
+        // Selection is a HOTKEY, so an entry with no hotkey is a
+        // gesture no player can make.  It used to be accepted and
+        // silently ignored by the seam's range check, which is a
+        // script asserting nothing.
+        sc_pal = action_for_palette(run.isrc.eis_actions, sc_v[0] ?? 0);
+        if sc_pal == "" {
+            return "palette: no hotkey selects entry {sc_v[0] ?? 0}";
+        }
+        sc_p = script_phys_new();
+        script_press(sc_p, action_keys(run.isrc.eis_actions, sc_pal));
+        script_frame(s, run, sc_p);
+        script_idle(s, run);
         return "";
     }
 
@@ -834,7 +917,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if len(sc_v) != 2 { return "hover: <q> and <r> must be integers"; }
         run.hover_q = sc_v[0] ?? 0;
         run.hover_r = sc_v[1] ?? 0;
-        script_frame(s, run, script_input(run));
+        script_idle(s, run);
         return "";
     }
 
@@ -851,11 +934,11 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if len(sc_v) != 2 { return "click: <q> and <r> must be integers"; }
         run.hover_q = sc_v[0] ?? 0;
         run.hover_r = sc_v[1] ?? 0;
-        sc_i = script_input(run);
-        sc_i.in_mouse_left = true;
-        sc_i.in_paint_tick = true;
-        script_frame(s, run, sc_i);
-        script_frame(s, run, script_input(run));
+        sc_p = script_phys_new();
+        sc_p.sp_mouse = true;
+        sc_p.sp_paint = true;
+        script_frame(s, run, sc_p);
+        script_idle(s, run);
         return "";
     }
 
@@ -870,19 +953,16 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if len(sc_v) != 4 { return "drag: every argument must be an integer"; }
         run.hover_q = sc_v[0] ?? 0;
         run.hover_r = sc_v[1] ?? 0;
-        sc_i = script_input(run);
-        sc_i.in_mouse_left = true;
-        sc_i.in_paint_tick = true;
-        script_frame(s, run, sc_i);
+        sc_p = script_phys_new();
+        sc_p.sp_mouse = true;
+        sc_p.sp_paint = true;
+        script_frame(s, run, sc_p);
 
         run.hover_q = sc_v[2] ?? 0;
         run.hover_r = sc_v[3] ?? 0;
-        sc_i = script_input(run);
-        sc_i.in_mouse_left = true;
-        sc_i.in_paint_tick = true;
-        script_frame(s, run, sc_i);
+        script_frame(s, run, sc_p);
 
-        script_frame(s, run, script_input(run));
+        script_idle(s, run);
         return "";
     }
 
@@ -1028,7 +1108,19 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
 // validation run wants, and a test overrides it to land its
 // pictures where the suite already cleans up.
 pub fn script_run(s: EditorState, source: text, shots_dir: text = SHOTS_DIR) -> ScriptRun {
-    sr_run = script_run_new(shots_dir);
+    script_run_on(s, script_run_new(shots_dir), source)
+}
+
+// Play a script on a run the CALLER prepared.
+//
+// The reason this is reachable rather than private: `ScriptRun`
+// carries the key table (`isrc`), so a caller that wants REMAPPED
+// keys builds a run, rebinds it, and plays the script on it.  A
+// script that lands on the same `EditorState` under a keyboard with
+// every key moved is what proves the indirection is real rather
+// than decorative — and that gate cannot be written if the runner
+// insists on building its own keyboard.
+pub fn script_run_on(s: EditorState, run: ScriptRun, source: text) -> ScriptRun {
     sr_no  = 0;
     for sr_line in source.split('\n') {
         sr_no += 1;
@@ -1052,16 +1144,16 @@ pub fn script_run(s: EditorState, source: text, shots_dir: text = SHOTS_DIR) -> 
             sr_rest = sr_t[(sr_sp ?? 0) + 1..sr_t.size()].trim();
         }
 
-        sr_err = script_command(s, sr_run, sr_tok, sr_rest);
+        sr_err = script_command(s, run, sr_tok, sr_rest);
         if sr_err != "" {
-            sr_run.ok      = false;
-            sr_run.line    = sr_no;
-            sr_run.message = sr_err;
-            return sr_run;
+            run.ok      = false;
+            run.line    = sr_no;
+            run.message = sr_err;
+            return run;
         }
-        sr_run.commands += 1;
+        run.commands += 1;
     }
-    sr_run
+    run
 }
 
 // Run a script from a file.  An absent file is a failure, not an

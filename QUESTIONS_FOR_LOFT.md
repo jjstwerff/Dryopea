@@ -40,6 +40,33 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### `input` 0.2.0 ships a PARKED banner citing a CLOSED bug — and the library works
+
+- **Filed:** [loft-lang/loft-libs-game#9](https://github.com/loft-lang/loft-libs-game/issues/9) on 2026-08-13
+- **Found while:** plan 09 phase I1 — adopting `input` as dryopea's one
+  key table.  The library's own header says it is unusable, so the
+  phase started with a probe of every write path before anything was
+  built on it.
+- **Kind:** bug (documentation)
+- **What dryopea needs:** the banner dropped or rewritten.  It cites
+  `@P391` (cross-package constructor return lands in CONST_STORE, so
+  writes through `&InputState` panic), which is
+  [closed](https://github.com/loft-lang/loft/issues/248) — and every
+  write path works: `input_new`, `input_tick_from_state`,
+  `input_set_bindings`.  A held key reads pressed 5/5 with one edge; a
+  rebind takes effect immediately and the old key goes dead.
+  ⚠ Measured on the INTERPRETER only — dryopea's native backend is
+  blocked for unrelated reasons, so the other two targets are still
+  unverified by us.
+- **Workaround in dryopea:** none needed; `input` is consumed as of
+  I1.  The probe is the workaround for the banner.
+- **Also asked for:** a supported `keys_for_action` (replay callers
+  have no API to turn an action name back into key codes — dryopea
+  reads `bnd_actions` directly, which works only because struct
+  fields happen to be readable), and a doc line about where a
+  MODIFIER rule is meant to live, since `ActionBinding` has no
+  concept of one and every consumer with a Ctrl combo will hit it.
+
 ### `registry-sign.sh` aborts a publish on one dropped connection — no retry
 
 - **Filed:** [loft-lang/loft#887](https://github.com/loft-lang/loft/issues/887) on 2026-08-12
