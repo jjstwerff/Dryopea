@@ -102,6 +102,46 @@ The measurement that separates them is the one this plan needs, and per plan
 08's own law it lands **before** the scenario that leans on it — F1, not
 somewhere in the middle.
 
+## Sealing is punished, not forbidden
+
+Project owner, 2026-08-12 — the design decision the rest of F7 hangs off:
+
+> when fully blocked enemies will attack walls because they will still want
+> to get to the center. But because of their initial spread they will attack
+> at many different points eventually making the whole wall a problem
+
+**1. dryopea never refuses a wall placement.** The mazing canon's rule is
+"you may not fully block the path", enforced by greying the placement out.
+dryopea allows the seal and lets it be *bad*: a sealed base converts one
+defended chokepoint into a distributed siege on the whole perimeter, which
+the player cannot concentrate fire on. Anti-turtling by consequence rather
+than by prohibition.
+
+**2. The spread is emergent, so the fallback must be derived per enemy.**
+"The nearest wall" computed once gives every enemy the same target and
+collapses the mechanic to a single chokepoint — the opposite of the intent.
+What produces the spread is that each enemy *still wants the core* and meets
+the wall wherever its own approach runs into it.
+
+So the fallback is not a new mechanic; it is **a second field over the same
+machinery**:
+
+| field | walls | used for |
+|---|---|---|
+| passability field (F2/F3) | impassable | routing, when a route exists |
+| **desire field** | **passable** | where an enemy wants to go when no route exists |
+
+An enemy with no route follows the desire field and attacks the first
+impassable hex it meets. Enemies from different sides meet the wall at
+different hexes — the spread comes free, and F7 costs one more BFS rather
+than a targeting system.
+
+⚠ **Balance consequence for [`docs/NUMBERS.md`](../../docs/NUMBERS.md):** a
+spread siege divides wall HP across many points at once, so a sealed
+perimeter falls *faster* than a single-chokepoint reading of wall HP vs
+nibble DPS would suggest. That is the intended pressure, but it makes those
+three numbers — wall HP, nibble DPS, wave size — a set tuned together.
+
 ## Sequencing
 
 **Not gated on plan 09**, by the § Computed from the neighbour relation
@@ -131,7 +171,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies clear of wall` holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
 | **F6** — per-class passability | M | one site at a time | same maze, one field per traversal class: the insect crosses the wall, the robot goes round, both arrive, and their **paths differ**. A per-class field that produces identical paths has not been keyed on anything | Open |
-| **F7** — no path: nibble the nearest wall | S | — | closed perimeter → every enemy targets a wall hex, and the scenario asserts WHICH hex, exactly. Not "some wall" | Open |
+| **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
 | **F8** — recompute on edit | M | parallel run | after a sequence of paint edits, the incrementally-updated field equals a from-scratch rebuild, cell for cell. `gridmesh`'s dirty set is the mechanism; this is the phase that proves it was used correctly | Open |
 
 ⚠ **No phase is `H`.** F5 and F6 are the largest and both are "one site at a
@@ -214,17 +254,31 @@ plausibility.
    class** — an insect standing on a wall it climbs is correct, a robot
    there is not.
 
-6. **What does a stopped approach-mode enemy DO?** Not answered by DESIGN,
-   and deliberately not assumed here. Halt where it stands? Nibble the wall
-   per § 7's rule 3 (*"the nearest wall hex when no path through exists —
-   slow attrition that eventually breaks the wall"*)? Nibble is the
-   design-consistent default and F7 builds that mechanic anyway, so the
-   cheap answer is probably "F7 applies in both modes" — but a halted enemy
-   outside the bubble that never nibbles is a permanently stalled unit, and
-   that is a gameplay decision, not a defaulting one.
-7. **Boss 2×2 footprint** — DESIGN says the boss *"forces gaps or breaks"*.
-   A 2-hex-wide unit cannot use a 1-hex-wide field. Out of scope here, but
-   F6's per-class shape is where it will have to fit.
+   ⚠ **Normal mobs only — bosses may differ** (project owner, 2026-08-12).
+   That gives three behaviours at an impassable hex, not two, and the third
+   is not a passability variant at all:
+
+   | class | at a wall | the world |
+   |---|---|---|
+   | robot (normal) | **stops** | unchanged |
+   | insect | **climbs** — the hex is passable *for it* | unchanged |
+   | boss | **breaks through** (DESIGN § 6: *"forces gaps or breaks"*) | **changed — the wall is gone** |
+
+   **Breaking is a world edit, and that has a consequence for F8.** A boss
+   removing a wall invalidates the field *for every class at once*, mid-wave.
+   So the dirty-recompute path is not an editor concern that combat happens
+   to reuse — it is a **runtime** concern first, and F8's gate should include
+   a wall destroyed during a wave, not only a hex painted in the editor.
+
+6. ~~**What does a stopped approach-mode enemy DO?**~~ **ANSWERED** (project
+   owner, 2026-08-12): it **attacks the wall**, because it still wants the
+   core. No enemy halts permanently, in either mode — which is exactly what
+   makes § Sealing is punished, not forbidden work. See F7.
+7. **Boss 2×2 footprint** — a 2-hex-wide unit cannot use a 1-hex-wide
+   field, and per § 5 above it also *breaks* rather than routes. Out of
+   scope here, but F6's per-class shape and F8's runtime-dirty path are the
+   two places it will have to fit, so neither should be built assuming a
+   1-hex unit that never edits the world.
 
 ## See also
 
