@@ -10,23 +10,33 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 is next.** Today `spawn.loft::enemy_tick` is:
+**Active — F0 is next.**
 
-```loft
-et_off = hex_offset(e.heading);
-e.q = e.q + et_off.0;
-e.r = e.r + et_off.1;
-```
+⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
+calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
+placeholder the flow field would *replace*. It is not. It is **approach
+mode, exactly as designed**, and `CLAUDE.md` has been calling it that all
+along ("approach-mode enemy tick"). [`docs/DESIGN.md`](../../docs/DESIGN.md)
+§ 6:
 
-One hex along a fixed heading, forever. No terrain, no walls, no core. An
-enemy walks **through** a wall ring without noticing it, and
-`a-wave-approaches` — dryopea's proudest scenario — currently asserts that
-straight-line motion works.
+> enemies appear at each and **head along the marker's direction until they
+> enter the scrambler bubble**, at which point they **pivot to engage mode
+> (flow field toward the core)**.
 
-This is not a refinement of that; it replaces it.
-[`docs/DESIGN.md`](../../docs/DESIGN.md) § 6 already specifies the
-destination: *"flow field toward the core"*, entrances that the field routes
-through, and a nibble fallback when no path exists.
+So there are **two movement modes and a trigger**, and only the last two are
+missing:
+
+| mode | rule | state today |
+|---|---|---|
+| **approach** — outside the bubble | straight along the spawn marker's heading, `speed_approach` | **built** — `enemy_tick` |
+| **engage** — inside the bubble | flow field toward the core, `speed_engage` | this plan |
+| **the handoff** | `core.scrambler_bubble_radius` — [`docs/NUMBERS.md`](../../docs/NUMBERS.md) says it outright: *"The bubble boundary IS the approach→engage trigger"* | this plan, F5b |
+
+Nothing is deleted. The flow field is bolted on beside a mode that already
+works, which is a much safer plan than the one first written here — and the
+misreading is worth leaving on the page, because "the existing code is a
+placeholder" is the assumption that would have thrown away a correct
+mechanic.
 
 ⚠ **Active-plan cap.** [`plans/README.md`](../README.md) caps active plans
 at 2–3; with 01, 07, 09 and 10 this is the fifth. See § Sequencing — two of
@@ -70,6 +80,11 @@ writes, by construction** — a straight-line enemy walks into a wall ring and
 keeps going, so "no live enemy ever stands on a wall hex" is red before a
 line of flow-field code exists.
 
+⚠ With one condition the correction above imposes: the scenario must put the
+enemy **inside the bubble**, where engage mode owns the movement. Outside it,
+walking straight at a wall is approach mode doing its job — see § Open
+questions 5, which is now the sharpest unanswered thing in this plan.
+
 That means the gate can be proven able to fail *before* the feature is
 built, which is the thing plan 08 § The instrument comes first is about, and
 it costs nothing here because the broken behaviour is already in the tree.
@@ -112,6 +127,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does | Open |
 | **F4** — entrances, if F0 says they are a mechanic | S | — | *(exists only if F0's answer is "not emergent")* the field prefers the gap over the shortest wall-break | Open |
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies clear of wall` holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
+| **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
 | **F6** — per-class passability | M | one site at a time | same maze, one field per traversal class: the insect crosses the wall, the robot goes round, both arrive, and their **paths differ**. A per-class field that produces identical paths has not been keyed on anything | Open |
 | **F7** — no path: nibble the nearest wall | S | — | closed perimeter → every enemy targets a wall hex, and the scenario asserts WHICH hex, exactly. Not "some wall" | Open |
 | **F8** — recompute on edit | M | parallel run | after a sequence of paint edits, the incrementally-updated field equals a from-scratch rebuild, cell for cell. `gridmesh`'s dirty set is the mechanism; this is the phase that proves it was used correctly | Open |
@@ -164,12 +180,31 @@ plausibility.
    [`plans/07`](../07-shared-world-substrate/README.md) § Evaluated. If it
    ever does need a home, `hex_field::Labels` is a per-cell integer field
    already, and dryopea should not invent a second one.
-3. **What replaces the spawn heading?** A spawn marker carries a direction
-   (0..5) that today *is* the enemy's whole movement. Once the field routes,
-   the heading is either the first step (redundant) or a genuine
-   "approach from this side" constraint. DESIGN § 6 says approach heading;
-   decide before F5 whether the field is seeded per-spawn or shared.
-4. **Boss 2×2 footprint** — DESIGN says the boss *"forces gaps or breaks"*.
+3. ~~**What replaces the spawn heading?**~~ **ANSWERED** (project owner +
+   DESIGN § 6, 2026-08-12): **nothing replaces it — it is a real approach
+   constraint**, and it governs approach mode outright. The consequence for
+   this plan is the useful half:
+
+   **The field is SHARED, not seeded per spawn.** The heading's job is
+   finished at the bubble boundary, so engage mode needs exactly one field
+   toward the core — not one per spawn marker, and not a per-spawn bias on a
+   shared field. That removes the largest open cost in F5 (N fields, N
+   rebuilds on every edit) and it is why F5b exists as its own phase: the
+   handoff is where the heading stops mattering, so it is the one place the
+   two mechanics touch.
+
+   ⚠ It also means **`speed_approach` and `speed_engage` are separate
+   numbers** (`examples/numbers.json`, equal today at 1.5 hex/s). A tick that
+   assumes one hex per tick is fine now and wrong the moment they diverge —
+   F5b is where that assumption becomes visible.
+5. **Does approach mode respect walls at all?** Sharpened by the § Status
+   correction and NOT answered by DESIGN. Outside the bubble an enemy heads
+   along its marker's direction — through a wall a player built out there?
+   Around it? Stopped by it? The answer decides whether `enemies clear of
+   wall` is an invariant of the whole run or only of engage mode, which is
+   the difference between F1's assertion being a global check and a scoped
+   one. Cheapest to settle while F0 has a world in front of it.
+6. **Boss 2×2 footprint** — DESIGN says the boss *"forces gaps or breaks"*.
    A 2-hex-wide unit cannot use a 1-hex-wide field. Out of scope here, but
    F6's per-class shape is where it will have to fit.
 
