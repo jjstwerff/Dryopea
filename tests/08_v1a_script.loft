@@ -1,0 +1,499 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 08 phase V1a — the `.keys` script runner.
+//
+// The gate: a script and the equivalent direct `editor_step` calls
+// must land on the SAME `EditorState`, compared field by field.
+// That is the phase's whole claim — the script and the editor are
+// one machine — and it is the only assertion here that can go red
+// for an interesting reason.
+//
+// The twin below is written out by hand, in the test's own terms,
+// and deliberately does NOT reuse anything from `src/script.loft`.
+// A twin built from the runner's helpers would agree with it by
+// construction and prove nothing.
+//
+// The rest of the file is the negative control the plan asks for:
+// an unknown command, an unknown action, a bad number and a wrong
+// argument count must all ERROR, naming the line. A typo that
+// silently does nothing turns a passing run into a lie.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// ─── Field-by-field comparison ──────────────────────────────────
+
+fn assert_same_input(a: const EditorInput, b: const EditorInput, label: text) {
+    assert(a.in_hover_q == b.in_hover_q, "{label}: prev hover q");
+    assert(a.in_hover_r == b.in_hover_r, "{label}: prev hover r");
+    assert(a.in_mouse_left == b.in_mouse_left, "{label}: prev mouse");
+    assert(a.in_paint_tick == b.in_paint_tick, "{label}: prev paint tick");
+    assert(a.in_toggle_mode == b.in_toggle_mode, "{label}: prev toggle");
+    assert(a.in_rotate == b.in_rotate, "{label}: prev rotate");
+    assert(a.in_rotate_ccw == b.in_rotate_ccw, "{label}: prev rotate ccw");
+    assert(a.in_cycle_kind == b.in_cycle_kind, "{label}: prev cycle kind");
+    assert(a.in_select_palette == b.in_select_palette, "{label}: prev select");
+    assert(a.in_palette_index == b.in_palette_index, "{label}: prev palette index");
+    assert(a.in_pan_north == b.in_pan_north, "{label}: prev pan north");
+    assert(a.in_pan_south == b.in_pan_south, "{label}: prev pan south");
+    assert(a.in_pan_east == b.in_pan_east, "{label}: prev pan east");
+    assert(a.in_pan_west == b.in_pan_west, "{label}: prev pan west");
+    assert(a.in_zoom_in == b.in_zoom_in, "{label}: prev zoom in");
+    assert(a.in_zoom_out == b.in_zoom_out, "{label}: prev zoom out");
+    assert(a.in_recentre == b.in_recentre, "{label}: prev recentre");
+    assert(a.in_undo == b.in_undo, "{label}: prev undo");
+    assert(a.in_redo == b.in_redo, "{label}: prev redo");
+    assert(a.in_clear_all == b.in_clear_all, "{label}: prev clear");
+    assert(a.in_save == b.in_save, "{label}: prev save");
+    assert(a.in_reload == b.in_reload, "{label}: prev reload");
+}
+
+// Every field of `EditorState`, both directions on the two sparse
+// layers — a one-directional check would pass on a world that is a
+// strict subset of the other.
+fn assert_same_state(a: EditorState, b: EditorState, label: text) {
+    assert(painted_count(a.pw) == painted_count(b.pw), "{label}: painted count");
+    for ass_p in a.pw.painted {
+        assert(lookup_painted(b.pw, ass_p.q, ass_p.r) == ass_p.kind,
+               "{label}: ground at ({ass_p.q}, {ass_p.r})");
+    }
+    for ass_bp in b.pw.painted {
+        assert(lookup_painted(a.pw, ass_bp.q, ass_bp.r) == ass_bp.kind,
+               "{label}: extra ground at ({ass_bp.q}, {ass_bp.r})");
+    }
+
+    assert(marker_count(a.mw) == marker_count(b.mw), "{label}: marker count");
+    for ass_m in a.mw.markers {
+        assert(has_marker(b.mw, ass_m.q, ass_m.r),
+               "{label}: marker at ({ass_m.q}, {ass_m.r})");
+        assert(marker_kind(b.mw, ass_m.q, ass_m.r) == ass_m.kind as integer,
+               "{label}: marker kind at ({ass_m.q}, {ass_m.r})");
+        assert(marker_direction(b.mw, ass_m.q, ass_m.r) == ass_m.direction,
+               "{label}: marker direction at ({ass_m.q}, {ass_m.r})");
+    }
+    for ass_bm in b.mw.markers {
+        assert(has_marker(a.mw, ass_bm.q, ass_bm.r),
+               "{label}: extra marker at ({ass_bm.q}, {ass_bm.r})");
+    }
+
+    assert(a.cam.pos.q == b.cam.pos.q, "{label}: camera q");
+    assert(a.cam.pos.r == b.cam.pos.r, "{label}: camera r");
+    assert(a.cam.zoom == b.cam.zoom, "{label}: camera zoom");
+
+    assert(a.picker.active == b.picker.active, "{label}: active palette entry");
+    assert(a.mode == b.mode, "{label}: mode");
+    assert(a.place_direction == b.place_direction, "{label}: place direction");
+    assert(a.place_kind == b.place_kind, "{label}: place kind");
+
+    assert(a.history.cursor == b.history.cursor, "{label}: history cursor");
+    assert(len(a.history.entries) == len(b.history.entries), "{label}: history depth");
+    assert(len(a.stroke.painted) == len(b.stroke.painted), "{label}: open stroke (ground)");
+    assert(len(a.stroke.markers) == len(b.stroke.markers), "{label}: open stroke (markers)");
+
+    assert(a.painting == b.painting, "{label}: stroke in flight");
+    assert(a.last_paint_hex.q == b.last_paint_hex.q, "{label}: last paint q");
+    assert(a.last_paint_hex.r == b.last_paint_hex.r, "{label}: last paint r");
+    assert(a.dirty == b.dirty, "{label}: dirty flag");
+    assert(a.render_needed == b.render_needed, "{label}: render flag");
+
+    assert_same_input(a.prev, b.prev, label);
+}
+
+// ─── The gate ───────────────────────────────────────────────────
+
+// One of every command class: echo, palette, click, drag, do, at,
+// hold, step, hover — plus an undo/redo pair, so the history is
+// somewhere other than its end.
+const GATE_SCRIPT: text = `
+    # a base, some markers, a camera move, and a step back
+    echo gate: painting a base
+
+    palette 5
+    click 0 0
+    drag 1 0 3 0
+
+    do toggle_mode
+    do rotate
+    click 2 -1
+    do cycle_kind
+    click 0 3
+    do toggle_mode
+
+    at 2 -1 3
+    hold pan_east 3
+    step 2
+
+    do undo
+    do redo
+    hover 4 4
+`;
+
+// GATE_SCRIPT as direct `editor_step` calls.  Written the way the
+// v0b tests write inputs — from `editor_input_empty()`, field by
+// field — so it is an independent statement of what the run means.
+//
+// The pointer is carried only where it reaches the state, which is
+// on a press: `editor_step` reads the hover hex inside the paint
+// and placement branches and nowhere else, so a neutral frame's
+// hover is invisible until the last one, which sets `prev`.
+fn twin_state() -> EditorState {
+    tw_s = editor_state_new(PALETTE);
+
+    // palette 5
+    tw_sel = editor_input_empty();
+    tw_sel.in_select_palette = true;
+    tw_sel.in_palette_index  = 5;
+    editor_step(tw_s, tw_sel);
+    editor_step(tw_s, editor_input_empty());
+
+    // click 0 0
+    tw_c1 = editor_input_empty();
+    tw_c1.in_mouse_left = true;
+    tw_c1.in_paint_tick = true;
+    editor_step(tw_s, tw_c1);
+    editor_step(tw_s, editor_input_empty());
+
+    // drag 1 0 3 0 — press, move with the button down, release
+    tw_d1 = editor_input_empty();
+    tw_d1.in_hover_q    = 1;
+    tw_d1.in_mouse_left = true;
+    tw_d1.in_paint_tick = true;
+    editor_step(tw_s, tw_d1);
+    tw_d2 = editor_input_empty();
+    tw_d2.in_hover_q    = 3;
+    tw_d2.in_mouse_left = true;
+    tw_d2.in_paint_tick = true;
+    editor_step(tw_s, tw_d2);
+    editor_step(tw_s, editor_input_empty());
+
+    // do toggle_mode
+    tw_tab = editor_input_empty();
+    tw_tab.in_toggle_mode = true;
+    editor_step(tw_s, tw_tab);
+    editor_step(tw_s, editor_input_empty());
+
+    // do rotate
+    tw_rot = editor_input_empty();
+    tw_rot.in_rotate = true;
+    editor_step(tw_s, tw_rot);
+    editor_step(tw_s, editor_input_empty());
+
+    // click 2 -1
+    tw_c2 = editor_input_empty();
+    tw_c2.in_hover_q    = 2;
+    tw_c2.in_hover_r    = -1;
+    tw_c2.in_mouse_left = true;
+    tw_c2.in_paint_tick = true;
+    editor_step(tw_s, tw_c2);
+    editor_step(tw_s, editor_input_empty());
+
+    // do cycle_kind
+    tw_ck = editor_input_empty();
+    tw_ck.in_cycle_kind = true;
+    editor_step(tw_s, tw_ck);
+    editor_step(tw_s, editor_input_empty());
+
+    // click 0 3
+    tw_c3 = editor_input_empty();
+    tw_c3.in_hover_r    = 3;
+    tw_c3.in_mouse_left = true;
+    tw_c3.in_paint_tick = true;
+    editor_step(tw_s, tw_c3);
+    editor_step(tw_s, editor_input_empty());
+
+    // do toggle_mode — back to ground
+    editor_step(tw_s, tw_tab);
+    editor_step(tw_s, editor_input_empty());
+
+    // at 2 -1 3.  The runner walks every axis at once; the twin
+    // walks them one at a time, which is the point — `at` is
+    // defined by where the camera ENDS, not by the route.
+    tw_east = editor_input_empty();
+    tw_east.in_pan_east = true;
+    editor_step(tw_s, tw_east);
+    editor_step(tw_s, tw_east);
+    tw_north = editor_input_empty();
+    tw_north.in_pan_north = true;
+    editor_step(tw_s, tw_north);
+    tw_out = editor_input_empty();
+    tw_out.in_zoom_out = true;
+    editor_step(tw_s, tw_out);
+    editor_step(tw_s, tw_out);
+
+    // hold pan_east 3 — pan is level-triggered, so three held
+    // frames are three hexes
+    editor_step(tw_s, tw_east);
+    editor_step(tw_s, tw_east);
+    editor_step(tw_s, tw_east);
+
+    // step 2
+    editor_step(tw_s, editor_input_empty());
+    editor_step(tw_s, editor_input_empty());
+
+    // do undo
+    tw_undo = editor_input_empty();
+    tw_undo.in_undo = true;
+    editor_step(tw_s, tw_undo);
+    editor_step(tw_s, editor_input_empty());
+
+    // do redo
+    tw_redo = editor_input_empty();
+    tw_redo.in_redo = true;
+    editor_step(tw_s, tw_redo);
+    editor_step(tw_s, editor_input_empty());
+
+    // hover 4 4
+    tw_hov = editor_input_empty();
+    tw_hov.in_hover_q = 4;
+    tw_hov.in_hover_r = 4;
+    editor_step(tw_s, tw_hov);
+
+    tw_s
+}
+
+fn test_a_script_reproduces_the_direct_calls() {
+    tas_s = editor_state_new(PALETTE);
+    tas_run = script_run(tas_s, GATE_SCRIPT);
+    assert(tas_run.ok, "the gate script ran: {script_describe(tas_run)}");
+
+    tas_twin = twin_state();
+
+    assert_same_state(tas_s, tas_twin, "script vs direct");
+}
+
+// The run the gate compares is not a trivial one — if it were, the
+// comparison above would pass on two empty worlds.
+fn test_the_gate_run_actually_did_something() {
+    tgr_s = editor_state_new(PALETTE);
+    tgr_run = script_run(tgr_s, GATE_SCRIPT);
+
+    assert(tgr_run.ok, "ran");
+    assert(painted_count(tgr_s.pw) == 4, "four hexes of grass: one click + a three-hex drag");
+    assert(marker_count(tgr_s.mw) == 2, "a spawn and a target");
+    assert(marker_direction(tgr_s.mw, 2, -1) == 1 as u8, "the spawn faces where R turned it");
+    assert(marker_kind(tgr_s.mw, 0, 3) == MARKER_KIND_TARGET, "the second marker is a target");
+    assert(tgr_s.cam.pos.q == 5 && tgr_s.cam.pos.r == -1, "at, then three held pans east");
+    assert(tgr_s.cam.zoom == 3, "and the zoom `at` asked for");
+    assert(tgr_s.mode == MODE_GROUND, "back in ground mode");
+    assert(len(tgr_s.history.entries) == 4, "click, drag, spawn, target");
+    assert(tgr_s.history.cursor == 4, "undone and redone again");
+    assert(tgr_run.commands == 16, "every command line ran");
+}
+
+// ─── `at` ───────────────────────────────────────────────────────
+
+// The camera is walked through the seam, never assigned — so `at`
+// has to be exact rather than approximately right, and running it
+// twice must not move anything the second time.
+fn test_at_is_exact_and_repeatable() {
+    tae_s = editor_state_new(PALETTE);
+
+    tae_first = script_run(tae_s, "at 3 -2 4");
+    assert(tae_first.ok, "first: {script_describe(tae_first)}");
+    assert(tae_s.cam.pos.q == 3 && tae_s.cam.pos.r == -2, "landed on the hex");
+    assert(tae_s.cam.zoom == 4, "and the zoom");
+
+    tae_second = script_run(tae_s, "at 3 -2 4");
+    assert(tae_second.ok, "second: {script_describe(tae_second)}");
+    assert(tae_second.frames == 0, "already there: no frames at all");
+    assert(tae_s.cam.pos.q == 3 && tae_s.cam.pos.r == -2, "and it stayed");
+}
+
+// Without the zoom argument the camera moves and the zoom does not
+// — a script that only wants to look somewhere else should not
+// have to restate the zoom it is already on.
+fn test_at_leaves_the_zoom_alone_when_it_is_not_given() {
+    taz_s = editor_state_new(PALETTE);
+    tazm_run = script_run(taz_s, "at 0 0 6\nat -4 1");
+
+    assert(tazm_run.ok, "{script_describe(tazm_run)}");
+    assert(taz_s.cam.pos.q == -4 && taz_s.cam.pos.r == 1, "moved");
+    assert(taz_s.cam.zoom == 6, "zoom untouched");
+}
+
+fn test_at_refuses_a_zoom_outside_the_range() {
+    tar_s = editor_state_new(PALETTE);
+    tar_run = script_run(tar_s, "at 0 0 99");
+
+    assert(!tar_run.ok, "a zoom the camera cannot reach is an error");
+    assert(tar_s.cam.zoom == ZOOM_MIN, "and the camera did not half-move");
+}
+
+// ─── `hold` ─────────────────────────────────────────────────────
+
+// The seam edge-detects, so the runner does nothing special to make
+// this work — which is the point of naming actions rather than keys.
+fn test_hold_fires_an_edge_action_once() {
+    thf_s = editor_state_new(PALETTE);
+    thf_run = script_run(thf_s, "hold toggle_mode 5");
+
+    assert(thf_run.ok, "{script_describe(thf_run)}");
+    assert(thf_run.frames == 5, "five frames");
+    assert(thf_s.mode == MODE_MARKER, "and ONE toggle");
+}
+
+// …and a level-triggered action repeats under the same command,
+// exactly as it does for a player leaning on the key.
+fn test_hold_repeats_a_level_action() {
+    thr_s = editor_state_new(PALETTE);
+    thr_run = script_run(thr_s, "hold pan_south 4");
+
+    assert(thr_run.ok, "{script_describe(thr_run)}");
+    assert(thr_s.cam.pos.r == 4, "four held frames, four hexes");
+}
+
+// `do` is a TAP: it releases, so the next `do` is a fresh edge.
+fn test_two_taps_are_two_actions() {
+    ttt_s = editor_state_new(PALETTE);
+    ttt_run = script_run(ttt_s, "do toggle_mode\ndo toggle_mode");
+
+    assert(ttt_run.ok, "{script_describe(ttt_run)}");
+    assert(ttt_s.mode == MODE_GROUND, "there and back");
+}
+
+// ─── Comments, blanks, whitespace ───────────────────────────────
+
+fn test_comments_and_blank_lines_are_not_commands() {
+    tcb_s = editor_state_new(PALETTE);
+    tcb_run = script_run(tcb_s, "# a comment\n\n   \n\t\n  # indented comment\ndo toggle_mode\n");
+
+    assert(tcb_run.ok, "{script_describe(tcb_run)}");
+    assert(tcb_run.commands == 1, "one real command among the noise");
+    assert(tcb_s.mode == MODE_MARKER, "and it ran");
+}
+
+fn test_extra_whitespace_is_not_an_error() {
+    tew_s = editor_state_new(PALETTE);
+    tew_run = script_run(tew_s, "   palette   7   \n\tdo\ttoggle_mode\t");
+
+    assert(tew_run.ok, "{script_describe(tew_run)}");
+    assert(tew_s.picker.active == 7, "tabs and runs of spaces are separators");
+}
+
+// ─── The negative control ───────────────────────────────────────
+//
+// Every one of these must ERROR.  A runner that skips what it does
+// not understand reports a green run for a script that did half of
+// what it says.
+
+fn test_an_unknown_command_is_an_error() {
+    tuc_s = editor_state_new(PALETTE);
+    tuc_run = script_run(tuc_s, "do toggle_mode\nteleport 4 4\ndo toggle_mode");
+
+    assert(!tuc_run.ok, "an unknown command fails the run");
+    assert(tuc_run.line == 2, "naming the line it is on");
+    assert(tuc_run.message.contains("teleport"), "and quoting the word: {tuc_run.message}");
+}
+
+fn test_an_unknown_action_is_an_error() {
+    tua_s = editor_state_new(PALETTE);
+    tua_run = script_run(tua_s, "do levitate");
+
+    assert(!tua_run.ok, "an action nothing maps to fails the run");
+    assert(tua_run.message.contains("levitate"), "{tua_run.message}");
+}
+
+// The key names the GL poll uses must NOT work: naming a key would
+// mean a second table beside `editor_step`'s, and the two would
+// drift.  A script says what the player did.
+fn test_a_key_name_is_not_an_action() {
+    tkn_s = editor_state_new(PALETTE);
+    tkn_run = script_run(tkn_s, "do Tab");
+
+    assert(!tkn_run.ok, "`do Tab` is not the vocabulary — `do toggle_mode` is");
+    assert(tkn_s.mode == MODE_GROUND, "and nothing happened");
+}
+
+fn test_a_bad_number_is_an_error() {
+    tbn_s = editor_state_new(PALETTE);
+
+    tbn_at = script_run(tbn_s, "at 3 south");
+    assert(!tbn_at.ok, "at with a word for a coordinate");
+
+    tbn_step = script_run(tbn_s, "step lots");
+    assert(!tbn_step.ok, "step with a word for a count");
+
+    tbn_click = script_run(tbn_s, "click 1 2.5");
+    assert(!tbn_click.ok, "click with a fraction for a hex");
+}
+
+fn test_a_wrong_argument_count_is_an_error() {
+    twa_s = editor_state_new(PALETTE);
+
+    assert(!script_run(twa_s, "at 3").ok, "at needs two coordinates");
+    assert(!script_run(twa_s, "do").ok, "do needs an action");
+    assert(!script_run(twa_s, "hold toggle_mode").ok, "hold needs a frame count");
+    assert(!script_run(twa_s, "drag 1 2 3").ok, "drag needs both ends");
+    assert(!script_run(twa_s, "click 1 2 3").ok, "click takes exactly one hex");
+}
+
+// A runaway repeat is a typo, not a long run — it must fail rather
+// than wedge the harness.
+fn test_an_absurd_repeat_is_an_error() {
+    tab_s = editor_state_new(PALETTE);
+    tab_run = script_run(tab_s, "hold pan_east 100000000");
+
+    assert(!tab_run.ok, "a repeat past the cap is refused");
+    assert(tab_s.cam.pos.q == 0, "and nothing was panned first");
+}
+
+// The run stops where it broke: everything before the bad line has
+// happened, nothing after it has.
+fn test_a_run_stops_at_the_first_error() {
+    trs_s = editor_state_new(PALETTE);
+    trs_run = script_run(trs_s, "palette 5\nclick 0 0\nbogus\nclick 4 0");
+
+    assert(!trs_run.ok, "the run failed");
+    assert(trs_run.line == 3, "on line 3");
+    assert(trs_run.commands == 2, "two commands got through");
+    assert(painted_count(trs_s.pw) == 1, "the click before the error happened");
+    assert(lookup_painted(trs_s.pw, 4, 0) == 0 as u8, "the one after it did not");
+}
+
+// ─── Running from a file ────────────────────────────────────────
+
+fn test_a_script_runs_from_a_file() {
+    tsf_s = editor_state_new(PALETTE);
+    tsf_run = script_run_file(tsf_s, "tests/scripts/v1a_smoke.keys");
+
+    assert(tsf_run.ok, "{script_describe(tsf_run)}");
+    assert(painted_count(tsf_s.pw) == 3, "the drag painted three hexes");
+    assert(lookup_painted(tsf_s.pw, 1, 0) == 5 as u8, "grass, including the hex between the ends");
+    assert(marker_count(tsf_s.mw) == 1, "and one spawn");
+    assert(marker_direction(tsf_s.mw, 0, -2) == 1 as u8, "turned one step before it was placed");
+}
+
+// A gate that cannot find its script must FAIL, not pass quietly on
+// zero commands — that is the exact shape of green-but-untested
+// this plan exists to catch.
+fn test_a_missing_script_file_is_an_error() {
+    tms_s = editor_state_new(PALETTE);
+    tms_run = script_run_file(tms_s, "tests/scripts/does_not_exist.keys");
+
+    assert(!tms_run.ok, "an absent script is a failure, not an empty run");
+    assert(tms_run.message.contains("does_not_exist"), "{tms_run.message}");
+}
+
+// ─── Disk, through the seam ─────────────────────────────────────
+//
+// Save and reload are actions, so a script can drive them — which
+// is what V3's round-trip scenario needs.
+
+const SAVE_PATH:   text = "tests/actual/v1a_script.json";
+const MARKER_PATH: text = "tests/actual/v1a_script_markers.json";
+
+fn test_a_script_can_save_and_reload() {
+    tsr_s = editor_state_new(PALETTE);
+    editor_state_attach(tsr_s, SAVE_PATH, MARKER_PATH);
+
+    tsr_run = script_run(tsr_s, "palette 5\nclick 0 0\ndo save\nclick 4 0\ndo reload");
+
+    assert(tsr_run.ok, "{script_describe(tsr_run)}");
+    assert(painted_count(tsr_s.pw) == 1, "reload dropped the hex that was never saved");
+    assert(lookup_painted(tsr_s.pw, 0, 0) == 5 as u8, "and brought back the one that was");
+    assert(!tsr_s.dirty, "memory matches disk");
+}

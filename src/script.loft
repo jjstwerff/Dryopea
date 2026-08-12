@@ -1,0 +1,433 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The `.keys` script runner — plan 08 phase V1a.
+//
+// V0 built the seam: every editor action is an `EditorInput` field
+// that `editor_step` applies to an `EditorState`, with no GL and no
+// clock.  This file is the reader that turns a line of text into
+// those frames, so a run can be written down, replayed, and
+// measured.
+//
+// ── The invariant ───────────────────────────────────────────────
+//
+// **The runner reaches the editor ONLY through `editor_step`.**  It
+// never assigns an `EditorState` field, not even the camera — see
+// `at` below, which walks the camera with pan frames rather than
+// setting `s.cam`.  That is what makes "the script and the editor
+// are one machine" a fact rather than an aspiration: anything a
+// script can do, a player can do, because the script has no other
+// door.
+//
+// ── No key table, anywhere ──────────────────────────────────────
+//
+// V0 left `EditorInput` as a table of NAMED ACTIONS rather than of
+// keys, and V1a spends that: a script says `do toggle_mode`, not
+// `key Tab`.  So `script_set_action` below maps name → field and is
+// the only mapping in the runner; the GL poll in `src/main.loft`
+// binds physical keys straight to the same fields.  Neither side
+// holds a copy of the other's table, which is the duplication plan
+// 08 warns about (§ One table, two readers) and moros has to live
+// with.
+//
+// A script therefore reads as what the player DID, and a rebinding
+// of Tab to some other key leaves every script correct.
+//
+// ── Vocabulary ──────────────────────────────────────────────────
+//
+//   # …                        comment — whole lines only
+//   echo <text…>               marker into the transcript
+//   at <q> <r> [zoom]          walk the camera to a hex (and zoom)
+//   do <action>                one frame with the action held, then
+//                              a release frame — a key TAP
+//   hold <action> <n>          the action held for n frames, no
+//                              release — a key HELD DOWN
+//   step <n>                   n frames with no action
+//   palette <index>            select a palette entry (a tap)
+//   hover <q> <r>              move the pointer over a hex
+//   click <q> <r>              press + release at a hex — paints or
+//                              places, whichever the mode is in
+//   drag <q1> <r1> <q2> <r2>   press, move, release — the
+//                              paint-line path
+//
+// `snap` (a PNG per step) is V1b and lands on top of this.
+//
+// ⚠ **An unknown command is an ERROR, not a skipped line**, and so
+// is an unknown action, a bad number and a wrong argument count.  A
+// typo that silently does nothing turns a passing run into a lie —
+// this is the runner's negative control, and `ScriptRun.ok` /
+// `.line` / `.message` are how it says so.
+//
+// ── Why `hold` needs no help ────────────────────────────────────
+//
+// The seam edge-detects, so `hold toggle_mode 5` is five identical
+// frames and toggles the mode ONCE — exactly what holding Tab does
+// for a player.  The runner does nothing to arrange that; it just
+// hands the same input over five times.  Level-triggered actions
+// (pan, palette) repeat under `hold` for the same reason, which is
+// also what the player sees.
+//
+// ── The pointer persists ────────────────────────────────────────
+//
+// `hover` / `click` / `drag` leave the pointer where they put it,
+// and every later frame carries that position.  A pointer does not
+// jump back to the origin when a button lifts, and V1b's `snap`
+// renders the hover preview under it.
+
+use world;
+use camera;
+use editor_step;
+
+// ─── The run record ─────────────────────────────────────────────
+
+// What a run produced: whether it survived, where it died if not,
+// and how much of it happened.  It also carries the pointer, which
+// persists across commands the way a real one does — a run's record
+// and its cursor are the same object because the cursor IS part of
+// where the run got to.
+pub struct ScriptRun {
+    ok:       boolean,
+    line:     integer,   // 1-based line of the failure; 0 when ok
+    message:  text,      // "" when ok
+    commands: integer,   // commands executed
+    frames:   integer,   // `editor_step` calls made
+
+    hover_q:  integer,
+    hover_r:  integer,
+}
+
+pub fn script_run_new() -> ScriptRun {
+    ScriptRun {
+        ok:       true,
+        line:     0,
+        message:  "",
+        commands: 0,
+        frames:   0,
+        hover_q:  0,
+        hover_r:  0,
+    }
+}
+
+// A one-line verdict, for a transcript or a shell gate.
+pub fn script_describe(r: const ScriptRun) -> text {
+    if r.ok {
+        "ok — {r.commands} commands, {r.frames} frames"
+    } else {
+        "FAILED at line {r.line}: {r.message}"
+    }
+}
+
+// Repeat counts are bounded so a typo (`hold undo 100000000`) fails
+// loudly instead of hanging the harness.  Same for the camera walk:
+// `at` is a walk, so a far-away target costs frames, and a target
+// further than this is a mistake rather than a long journey.
+pub const SCRIPT_MAX_REPEAT:       integer = 10000;
+pub const SCRIPT_MAX_CAMERA_STEPS: integer = 4096;
+
+// ─── The action table ───────────────────────────────────────────
+
+// Set the field a script's action name stands for.  This is the
+// runner's ONLY mapping — see § No key table above.
+//
+// Returns false for a name that is not an action; the caller turns
+// that into an error rather than a quiet no-op.
+fn script_set_action(input: EditorInput, name: text) -> boolean {
+    if name == "toggle_mode" { input.in_toggle_mode = true;  return true; }
+    if name == "rotate"      { input.in_rotate      = true;  return true; }
+    if name == "rotate_ccw"  {
+        input.in_rotate     = true;
+        input.in_rotate_ccw = true;
+        return true;
+    }
+    if name == "cycle_kind"  { input.in_cycle_kind  = true;  return true; }
+    if name == "pan_north"   { input.in_pan_north   = true;  return true; }
+    if name == "pan_south"   { input.in_pan_south   = true;  return true; }
+    if name == "pan_east"    { input.in_pan_east    = true;  return true; }
+    if name == "pan_west"    { input.in_pan_west    = true;  return true; }
+    if name == "zoom_in"     { input.in_zoom_in     = true;  return true; }
+    if name == "zoom_out"    { input.in_zoom_out    = true;  return true; }
+    if name == "recentre"    { input.in_recentre    = true;  return true; }
+    if name == "undo"        { input.in_undo        = true;  return true; }
+    if name == "redo"        { input.in_redo        = true;  return true; }
+    if name == "clear"       { input.in_clear_all   = true;  return true; }
+    if name == "save"        { input.in_save        = true;  return true; }
+    if name == "reload"      { input.in_reload      = true;  return true; }
+    false
+}
+
+// ─── Frames ─────────────────────────────────────────────────────
+
+// A neutral frame with the pointer where the run left it.  Built
+// from the factory, never as a literal: a literal that omits a
+// field silently takes that field's default, which for the palette
+// index would mean "select sea" — see `editor_step.loft`'s warning
+// on `EditorInput`.
+fn script_input(run: ScriptRun) -> EditorInput {
+    si_i = editor_input_empty();
+    si_i.in_hover_q = run.hover_q;
+    si_i.in_hover_r = run.hover_r;
+    si_i
+}
+
+// One frame through the seam.  The single door — see § The
+// invariant.
+fn script_frame(s: EditorState, run: ScriptRun, input: EditorInput) {
+    editor_step(s, input);
+    run.frames += 1;
+}
+
+// Walk the camera to (q, r, zoom) with pan / zoom frames, the way a
+// player holding W and D gets there.  One frame steps every axis
+// that is still off, so the walk costs max(|dq|, |dr|, |dzoom|)
+// frames rather than their sum.
+//
+// Setting `s.cam` directly would be one line and would break the
+// invariant this file rests on, so it is not done.
+fn script_walk_camera(s: EditorState, run: ScriptRun, q: integer, r: integer, zoom: integer) -> text {
+    swc_steps = 0;
+    while s.cam.pos.q != q || s.cam.pos.r != r || s.cam.zoom != zoom {
+        swc_i = script_input(run);
+        if s.cam.pos.q < q { swc_i.in_pan_east  = true; }
+        if s.cam.pos.q > q { swc_i.in_pan_west  = true; }
+        if s.cam.pos.r < r { swc_i.in_pan_south = true; }
+        if s.cam.pos.r > r { swc_i.in_pan_north = true; }
+        if s.cam.zoom > zoom { swc_i.in_zoom_in  = true; }
+        if s.cam.zoom < zoom { swc_i.in_zoom_out = true; }
+        script_frame(s, run, swc_i);
+        swc_steps += 1;
+        if swc_steps > SCRIPT_MAX_CAMERA_STEPS {
+            return "at: target is more than {SCRIPT_MAX_CAMERA_STEPS} camera steps away";
+        }
+    }
+    ""
+}
+
+// ─── Argument parsing ───────────────────────────────────────────
+
+// The first `n` arguments as integers.  Returns a SHORT vector when
+// any of them is not a number, so a caller that checks the length
+// can phrase the error in its own words.
+fn script_ints(tok: vector<text>, n: integer) -> vector<integer> {
+    sit_out: vector<integer> = [];
+    for sit_i in 1..=n {
+        sit_v = (tok[sit_i] ?? "") as integer?;
+        if sit_v == null {
+            sit_out = [];
+            break;
+        }
+        sit_out += [sit_v ?? 0];
+    }
+    sit_out
+}
+
+// ─── One command ────────────────────────────────────────────────
+
+// Execute one already-tokenised command.  Returns "" on success and
+// the error message otherwise — every failure path is a message, so
+// no command can fail quietly.
+//
+// `rest` is the raw remainder of the line after the command word,
+// which only `echo` wants.
+fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text) -> text {
+    sc_cmd  = tok[0] ?? "";
+    sc_argc = len(tok) - 1;
+    // Out-of-range reads come back null, so a missing argument is
+    // "" and fails the same checks a malformed one does.
+    sc_a1 = tok[1] ?? "";
+
+    if sc_cmd == "echo" {
+        println("script: {rest}");
+        return "";
+    }
+
+    if sc_cmd == "at" {
+        if sc_argc != 2 && sc_argc != 3 { return "at needs <q> <r> [zoom]"; }
+        sc_v = script_ints(tok, sc_argc);
+        if len(sc_v) != sc_argc { return "at: every argument must be an integer"; }
+        sc_zoom = s.cam.zoom;
+        if sc_argc == 3 { sc_zoom = sc_v[2] ?? sc_zoom; }
+        if sc_zoom < ZOOM_MIN || sc_zoom > ZOOM_MAX {
+            return "at: zoom must be {ZOOM_MIN}..{ZOOM_MAX}";
+        }
+        return script_walk_camera(s, run, sc_v[0] ?? 0, sc_v[1] ?? 0, sc_zoom);
+    }
+
+    // A key tap: one frame held, one frame released.  The release
+    // is what makes the NEXT tap of the same action an edge.
+    if sc_cmd == "do" {
+        if sc_argc != 1 { return "do needs <action>"; }
+        sc_i = script_input(run);
+        if !script_set_action(sc_i, sc_a1) { return "unknown action '{sc_a1}'"; }
+        script_frame(s, run, sc_i);
+        script_frame(s, run, script_input(run));
+        return "";
+    }
+
+    // A key held down: the SAME input, n times over, with no
+    // release.  The seam decides what that means per action —
+    // toggle_mode fires once, pan walks every frame.
+    if sc_cmd == "hold" {
+        if sc_argc != 2 { return "hold needs <action> <frames>"; }
+        // Argument 1 is the action name, so only the second is a
+        // number — `script_ints` is for the all-integer commands.
+        sc_n = (tok[2] ?? "") as integer?;
+        if sc_n == null { return "hold: <frames> must be an integer"; }
+        sc_count = sc_n ?? 0;
+        if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
+            return "hold: <frames> must be 0..{SCRIPT_MAX_REPEAT}";
+        }
+        sc_i = script_input(run);
+        if !script_set_action(sc_i, sc_a1) { return "unknown action '{sc_a1}'"; }
+        for _ in 0..sc_count { script_frame(s, run, sc_i); }
+        return "";
+    }
+
+    if sc_cmd == "step" {
+        if sc_argc != 1 { return "step needs <frames>"; }
+        sc_n = sc_a1 as integer?;
+        if sc_n == null { return "step: <frames> must be an integer"; }
+        sc_count = sc_n ?? 0;
+        if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
+            return "step: <frames> must be 0..{SCRIPT_MAX_REPEAT}";
+        }
+        for _ in 0..sc_count { script_frame(s, run, script_input(run)); }
+        return "";
+    }
+
+    // The one action that carries a value, so it gets its own
+    // command rather than an optional argument on `do` — which
+    // would make `hold palette 5` ambiguous about what the 5 is.
+    if sc_cmd == "palette" {
+        if sc_argc != 1 { return "palette needs <index>"; }
+        sc_v = script_ints(tok, 1);
+        if len(sc_v) != 1 { return "palette: <index> must be an integer"; }
+        sc_i = script_input(run);
+        sc_i.in_select_palette = true;
+        sc_i.in_palette_index  = sc_v[0] ?? 0;
+        script_frame(s, run, sc_i);
+        script_frame(s, run, script_input(run));
+        return "";
+    }
+
+    if sc_cmd == "hover" {
+        if sc_argc != 2 { return "hover needs <q> <r>"; }
+        sc_v = script_ints(tok, 2);
+        if len(sc_v) != 2 { return "hover: <q> and <r> must be integers"; }
+        run.hover_q = sc_v[0] ?? 0;
+        run.hover_r = sc_v[1] ?? 0;
+        script_frame(s, run, script_input(run));
+        return "";
+    }
+
+    // Press and release at one hex.  Paints in ground mode, places
+    // or removes a marker in marker mode — the script says what the
+    // player did with the mouse and the mode decides what it means.
+    //
+    // The press frame carries a paint tick: the caller owns the
+    // rate limit, and a script's clock is one tick per scripted
+    // frame.
+    if sc_cmd == "click" {
+        if sc_argc != 2 { return "click needs <q> <r>"; }
+        sc_v = script_ints(tok, 2);
+        if len(sc_v) != 2 { return "click: <q> and <r> must be integers"; }
+        run.hover_q = sc_v[0] ?? 0;
+        run.hover_r = sc_v[1] ?? 0;
+        sc_i = script_input(run);
+        sc_i.in_mouse_left = true;
+        sc_i.in_paint_tick = true;
+        script_frame(s, run, sc_i);
+        script_frame(s, run, script_input(run));
+        return "";
+    }
+
+    // Press at the first hex, move to the second with the button
+    // still down, release.  The seam joins consecutive paint ticks
+    // with a hex line, so the hexes between the two ends are
+    // painted too — this is the drag-paint path, and one drag is
+    // one undoable action.
+    if sc_cmd == "drag" {
+        if sc_argc != 4 { return "drag needs <q1> <r1> <q2> <r2>"; }
+        sc_v = script_ints(tok, 4);
+        if len(sc_v) != 4 { return "drag: every argument must be an integer"; }
+        run.hover_q = sc_v[0] ?? 0;
+        run.hover_r = sc_v[1] ?? 0;
+        sc_i = script_input(run);
+        sc_i.in_mouse_left = true;
+        sc_i.in_paint_tick = true;
+        script_frame(s, run, sc_i);
+
+        run.hover_q = sc_v[2] ?? 0;
+        run.hover_r = sc_v[3] ?? 0;
+        sc_i = script_input(run);
+        sc_i.in_mouse_left = true;
+        sc_i.in_paint_tick = true;
+        script_frame(s, run, sc_i);
+
+        script_frame(s, run, script_input(run));
+        return "";
+    }
+
+    "unknown command '{sc_cmd}'"
+}
+
+// ─── The runner ─────────────────────────────────────────────────
+
+// Run a script against an editor session.  Stops at the first
+// failure and reports which line it was — a run that kept going
+// past an error would report a state nobody asked for.
+//
+// Comments are whole-line only (`# …`); a `#` after a command is
+// part of the command, which keeps `echo` able to say anything.
+pub fn script_run(s: EditorState, source: text) -> ScriptRun {
+    sr_run = script_run_new();
+    sr_no  = 0;
+    for sr_line in source.split('\n') {
+        sr_no += 1;
+        // Tabs count as spaces, and `trim` takes the \r off a
+        // CRLF-authored file.
+        sr_t = sr_line.replace("\t", " ").trim();
+        if sr_t == "" { continue; }
+        if sr_t.starts_with_at(0, "#") { continue; }
+
+        sr_tok: vector<text> = [];
+        for sr_p in sr_t.split(' ') {
+            if sr_p != "" { sr_tok += [sr_p]; }
+        }
+
+        // Everything after the command word, verbatim — `echo`'s
+        // argument, where collapsing the spaces would change what
+        // the transcript says.
+        sr_rest = "";
+        sr_sp = sr_t.find(" ");
+        if sr_sp != null {
+            sr_rest = sr_t[(sr_sp ?? 0) + 1..sr_t.size()].trim();
+        }
+
+        sr_err = script_command(s, sr_run, sr_tok, sr_rest);
+        if sr_err != "" {
+            sr_run.ok      = false;
+            sr_run.line    = sr_no;
+            sr_run.message = sr_err;
+            return sr_run;
+        }
+        sr_run.commands += 1;
+    }
+    sr_run
+}
+
+// Run a script from a file.  An absent file is a failure, not an
+// empty run: a validation gate that silently passes because it
+// could not find its script is the exact shape of lie this plan
+// exists to catch.
+pub fn script_run_file(s: EditorState, path: text) -> ScriptRun {
+    if !file(path).exists() {
+        srf_run = script_run_new();
+        srf_run.ok      = false;
+        srf_run.message = "script file not found: {path}";
+        return srf_run;
+    }
+    // `content()` is UTF-8-only and answers "" on a binary file;
+    // an empty script then runs zero commands, which `ok` reports
+    // honestly as a run that did nothing.
+    script_run(s, file(path).content() ?? "")
+}

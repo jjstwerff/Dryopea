@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0 shipped 2026-08-12; V1a is the next work.** Nothing in
+**Active — V0 + V1a shipped 2026-08-12; V1b is the next work.** Nothing in
 dryopea validated the game as something that *runs*. The 189 tests in
 `tests/` covered pure functions and static renders; every one of them called
 a library function directly and none of them played the game.
@@ -19,9 +19,15 @@ V0 changes that for **every editor action**. `src/editor_step.loft` holds an
 `src/main.loft` is now a GL shell that polls, steps and renders. 33 tests
 across `tests/08_v0a_editor_step.loft` (paint) and
 `tests/08_v0b_actions.loft` (the other five groups) drive the editor
-headlessly — suite 238 green.
+headlessly.
 
-Two decisions from V0 that the rest of the plan rests on:
+V1a turns that seam into something a run can be **written down** in.
+`src/script.loft` reads a `.keys` script and plays it, and 20 tests in
+`tests/08_v1a_script.loft` hold it to the gate: the gate script and a
+hand-written twin of the same run land on the same `EditorState`, compared
+field by field. Suite 258 green.
+
+Three decisions the rest of the plan rests on — two from V0, one from V1a:
 
 - **Edge detection lives in the seam, not the caller.** `EditorInput`
   carries what is HELD this frame; `editor_step` compares against the
@@ -33,6 +39,13 @@ Two decisions from V0 that the rest of the plan rests on:
   `in_*_tick` booleans: the caller decides *when* a step is due, the seam
   decides *what* it does. `editor_step` never calls `ticks()`, which is what
   makes a run reproducible frame by frame.
+- **The runner reaches the editor ONLY through `editor_step`.** It never
+  assigns an `EditorState` field, not even the camera: `at 3 -2 4` *walks*
+  the camera with pan and zoom frames rather than setting `s.cam`. One
+  convenience assignment would have been a line shorter and would have made
+  "the script and the editor are one machine" an aspiration instead of a
+  fact — anything a script can do a player can do, because the script has no
+  other door.
 
 The evidence this is a silent-failure problem, not a nice-to-have, is from
 2026-08-12:
@@ -73,8 +86,9 @@ writes a PNG per step into `shots/` for human inspection, and
   [`docs/GROUND_TYPES.md`](../../docs/GROUND_TYPES.md) (the 11-entry
   palette the classifier must separate).
 - **Source touched:** `src/main.loft` (split), a new `src/editor_step.loft`,
-  a new `src/script/` (runner + measurements), `scripts/validate.sh`,
-  `Makefile`.
+  a new `src/script.loft` (the runner; V2's measurements get their own file
+  rather than growing this one), `tests/scripts/*.keys`,
+  `scripts/validate.sh`, `Makefile`.
 - **Neighbouring plans:** [`05-validation-scenario`](../05-validation-scenario/README.md)
   defines *what* scenario counts as playable; **08 builds the instrument
   that measures it**. 05 supplies the content, 08 supplies the gate — they
@@ -115,8 +129,8 @@ a phase that cannot name one is a phase that has not been cut yet.
 |---|---|---|---|---|
 | **V0a** — seam for ONE action (paint) | S | one site at a time | a test builds an `EditorInput` with paint set, calls `editor_step`, asserts the hex changed; the other 24 actions still run their old inline path, so the tree is green throughout | **Shipped** |
 | **V0b** — move the remaining actions, in groups | M | one site at a time | per group: a test drives the action through `editor_step` and asserts its effect; `src/main.loft` shrinks to poll → step → render | **Shipped** (5 groups: tool state · camera · markers · history · disk) |
-| **V1a** — parse + run, no output | S | parallel run | a script of `at` / `key` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | Open |
-| **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | Blocked on V1a |
+| **V1a** — parse + run, no output | S | parallel run | a script of `at` / `do` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | **Shipped** |
+| **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | Open |
 | **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | Blocked on V1b |
 | **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads ≈1.0 for it and ≈0 for the other ten, for every entry | Blocked on V2p |
 | **V3** — the scenario scripts (one step each) | M | one site at a time | each script's own assertions; five scripts, five steps — a broken one goes red alone | Blocked on V2 |
@@ -190,46 +204,56 @@ integer` with `-1` for none, which defaulted to `0` — palette entry 0 is sea,
 painting sea erases, and five paint tests went red the moment the struct grew
 its next field. Build inputs from `editor_input_empty()`, never as literals.
 
-### V1 — the script runner
+### V1 — the script runner — V1a **shipped**
 
 A `.keys` interpreter in loft, headless — no GL window, no server, no
 browser. dryopea's renderer is already a software `Canvas`, so a run is
 just: build input → `editor_step` → `render_to_canvas` → measure / save_png.
 
-Vocabulary, adapted from moros to a top-down hex editor:
+`src/script.loft` holds it: `script_run(s, source)` and
+`script_run_file(s, path)`, both returning a `ScriptRun` that says whether
+the run survived, which line killed it, and how many commands and frames it
+got through.
+
+Vocabulary as it shipped, adapted from moros to a top-down hex editor:
 
 ```
-# a comment
-echo <text>            marker into the transcript
-at <q> <r> [zoom]      put the camera on a hex — exact, repeatable
-key <K>                one frame with K held; K names the same action the GL poll maps
-hold <K> <n>           K held for n frames
-step <n>               advance n frames with no input
-hover <q> <r>          pointer over a hex (hover preview, ghost arrow)
-click <q> <r>          press at a hex (paint / place, per current mode)
-drag <q> <r> <q2> <r2> press, move, release — the paint-line path
-snap <name>            PNG into shots/<name>.png + a state dump
+# a comment                 whole lines only
+echo <text>                 marker into the transcript
+at <q> <r> [zoom]           walk the camera to a hex — exact, repeatable
+do <action>                 one frame held then released — a key TAP
+hold <action> <n>           the action held for n frames — a key HELD DOWN
+step <n>                    advance n frames with no action
+palette <index>             select a palette entry
+hover <q> <r>               pointer over a hex (hover preview, ghost arrow)
+click <q> <r>               press at a hex (paint / place, per current mode)
+drag <q> <r> <q2> <r2>      press, move, release — the paint-line path
+snap <name>                 PNG into shots/<name>.png + a state dump   (V1b)
 ```
 
 ⚠ **An unknown command is an error, not a skipped line.** A typo that
 silently does nothing turns a passing run into a lie — this is V1's negative
-control.
+control, and it covers unknown actions, malformed numbers and wrong argument
+counts too. A run stops at the first bad line rather than reporting a state
+nobody asked for.
 
-⚠ **V1a decides what `key <K>` names.** V0 left `EditorInput` as a table of
-named actions, so the runner does not need a key-code table — but `key Tab`
-would reintroduce one (a `"Tab"` → `in_toggle_mode` mapping beside the GL
-poll's `KEY_TAB` → `in_toggle_mode`). Two options, decided in V1a:
+**V1a chose to name the ACTION, not the key.** `do toggle_mode`, not
+`key Tab`. V0 had already left `EditorInput` as a table of named actions, so
+naming keys would have reintroduced exactly the duplication § One table, two
+readers warns about: a `"Tab"` → `in_toggle_mode` table in the runner beside
+the GL poll's `KEY_TAB` → `in_toggle_mode`. With actions named, the runner's
+`script_set_action` is the only mapping it has, the GL poll binds physical
+keys straight to the same fields, and neither side holds a copy of the
+other's table. A script reads as what the player *did*, and rebinding Tab
+leaves every script correct. `do Tab` is a test — it must fail.
 
-- **Name the action** — `do toggle_mode`, `do undo`. No key table anywhere;
-  the script reads as what the player *did*, not what they pressed.
-- **Name the key** — keeps the moros vocabulary and reads closer to a
-  playthrough, but the name→field table must then live in
-  `editor_step.loft` and be called by both readers, per the warning above.
+`hold <action> <n>` came for free, as predicted: the seam edge-detects, so
+five held frames toggle the mode once and the runner does nothing to arrange
+it. Level-triggered actions (pan, palette) repeat under the same command, for
+the same reason and to the same effect a player sees.
 
-Leaning toward naming the action, since the seam is already action-shaped.
-Whichever is chosen, `hold <K> <n>` keeps its meaning for free: the seam
-edge-detects, so five held frames fire once without the runner doing
-anything.
+`palette <index>` is its own command rather than an argument on `do`, because
+`hold palette 5` would not say whether the 5 is the entry or the frame count.
 
 ### V2 — the instrument
 
@@ -288,7 +312,8 @@ and hermetic. Validation is a second gate, run deliberately.
 | **V0** | An `EditorInput` with no action set leaves `EditorState` unchanged | `editor_step` is pure: same (state, input) → same state | A no-op frame that mutates *anything* fails |
 | **V0** | A key held for five frames fires its action once | edge detection lives in the seam, not the caller | An action that fires per-frame under a held key fails |
 | **V0** | A session with no `save_path` refuses to save AND to reload | disk is reached only through an attached path | An unguarded reload reads an absent file and wipes the world |
-| **V1** | `key Q` where Q maps to nothing | the runner refuses unknown commands | An unknown command must ERROR, not be skipped |
+| **V1** | `do levitate`, `teleport 4 4`, `at 3 south`, `at 3` | the runner refuses what it does not understand | An unknown command, action, number or arity must ERROR, not be skipped |
+| **V1** | `do Tab` | the vocabulary names actions, so no key table exists to drift | A key name that WORKS means a second table was built |
 | **V2** | A canvas painted entirely `grass` reads `grass ≈ 1.0`, all others `≈ 0` | the classifier separates all 11 palette entries | Two adjacent palette colours landing in one bucket fails the gate |
 | **V3** | paint → save → clear → reload → identical world | save/load round-trip = identity | A map with an unknown ground type is *refused*, not silently painted as sea |
 | **V3** | six `R` presses on a spawn marker | rotation by six 60° steps = identity | A seventh press must not read as the identity |

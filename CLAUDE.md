@@ -25,13 +25,14 @@ placement + R/Shift+R rotation, hot-pink triangle render
 overlay, and a runtime wave engine + spawn director with
 approach-mode enemy tick.  Plan 07 (shared world substrate) has
 W0 partially landed — `gridmesh` adopted as the chunk/dirty
-layer (`src/chunks.loft`).  Plan 08 (game validation) has V0
-shipped — the editor input seam (`src/editor_step.loft`): EVERY
-editor action is now driven headlessly, and `src/main.loft` is a
-GL shell that polls, steps and renders.  V1a (the `.keys` script
-runner) is next.
+layer (`src/chunks.loft`).  Plan 08 (game validation) has V0 +
+V1a shipped — the editor input seam (`src/editor_step.loft`) so
+EVERY editor action is driven headlessly and `src/main.loft` is
+a GL shell that polls, steps and renders, plus the `.keys` script
+runner (`src/script.loft`) that plays a written-down run through
+that seam.  V1b (`snap` writes a PNG per step) is next.
 
-**Suite: 238/238 green under `scripts/test.sh`.**
+**Suite: 258/258 green under `scripts/test.sh`.**
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -125,6 +126,14 @@ src/
                    it.  No GL and no clock, ever; disk only via the
                    save / reload actions, and only when a path is
                    attached (editor_state_attach)
+  script.loft      the `.keys` script runner (plan 08 V1a) —
+                   script_run(s, source) / script_run_file(s, path)
+                   -> ScriptRun.  Commands name ACTIONS, never keys
+                   (`do toggle_mode`), so no key table exists to
+                   drift from the GL poll's.  Reaches the editor ONLY
+                   through editor_step — even `at` walks the camera
+                   with pan frames.  An unknown command / action /
+                   number / arity is an ERROR, never a skipped line
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
                    cube_round_axial, world_to_hex, visible_hexes
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
@@ -157,9 +166,10 @@ src/
                    save_world, load_map_or_empty (returns tuple)
 ```
 
-Tests live in `tests/01_*.loft` (one file per phase).  Goldens
-live in `tests/golden/` (committed); actuals in `tests/actual/`
-(gitignored).
+Tests live in `tests/<plan>_<phase>_*.loft` (one file per phase).
+Goldens live in `tests/golden/` (committed); actuals in
+`tests/actual/` (gitignored).  `.keys` scripts live in
+`tests/scripts/` (committed — they are source, not output).
 
 ## Key data structures
 
@@ -176,6 +186,7 @@ live in `tests/golden/` (committed); actuals in `tests/actual/`
 | `Picker` | `picker.loft` | palette UI state |
 | `MapFile` | `map_file.loft` | save record (6 fields; see Known constraints) |
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
+| `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus where the pointer ended up |
 
 ## Important conventions
 
@@ -403,6 +414,7 @@ signature.
 | Pick next work to do | [plans/ROADMAP.md](plans/ROADMAP.md) — 5-tier feature list |
 | Continue plan 01 work | [plans/01-ground-editor/README.md](plans/01-ground-editor/README.md) § Implementation status |
 | Add a regression test | `tests/01_*.loft` for patterns; `golden.loft::assert_golden` for image tests |
+| Script a run of the editor | `tests/scripts/*.keys` for the vocabulary; `script.loft::script_run_file` to play one |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
