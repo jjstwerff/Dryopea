@@ -10,31 +10,18 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 is next.**
+**Active — F0 shipped 2026-08-12; F1 is next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
-placeholder the flow field would *replace*. It is not. It is **approach
-mode, exactly as designed**, and `CLAUDE.md` has been calling it that all
-along ("approach-mode enemy tick"). [`docs/DESIGN.md`](../../docs/DESIGN.md)
-§ 6:
+placeholder the flow field would *replace*. It is not: it is **approach
+mode, exactly as designed**, and `CLAUDE.md` had been calling it that all
+along. There are two steering modes and a handoff
+([`docs/ENEMY_MOVEMENT.md`](../../docs/ENEMY_MOVEMENT.md) § Two modes);
+approach is **built**, engage and the handoff are this plan, and **nothing
+is deleted**.
 
-> enemies appear at each and **head along the marker's direction until they
-> enter the scrambler bubble**, at which point they **pivot to engage mode
-> (flow field toward the core)**.
-
-So there are **two movement modes and a trigger**, and only the last two are
-missing:
-
-| mode | rule | state today |
-|---|---|---|
-| **approach** — outside the bubble | straight along the spawn marker's heading, `speed_approach`, **stopping at anything its class cannot traverse** | **built, minus the stopping** — `enemy_tick`, F1b |
-| **engage** — inside the bubble | flow field toward the core, `speed_engage` | this plan |
-| **the handoff** | `core.scrambler_bubble_radius` — [`docs/NUMBERS.md`](../../docs/NUMBERS.md) says it outright: *"The bubble boundary IS the approach→engage trigger"* | this plan, F5b |
-
-Nothing is deleted. The flow field is bolted on beside a mode that already
-works, which is a much safer plan than the one first written here — and the
-misreading is worth leaving on the page, because "the existing code is a
+The misreading stays on the page, because "the existing code is a
 placeholder" is the assumption that would have thrown away a correct
 mechanic.
 
@@ -73,34 +60,67 @@ The gate for that rule falls out of plan 09 for free: **the field's test
 expectations must not change when the lattice converts.** If a single
 expected distance moves, this rule was broken somewhere.
 
-## The negative control already exists
+## What can already see a failure
 
-Rare and worth spending. **Today's code fails the first scenario this plan
-writes, by construction** — a straight-line enemy walks into a wall ring and
-keeps going, so "no live enemy ever stands on a wall hex" is red before a
-line of flow-field code exists.
+**The negative control exists in the tree.** Today's straight-line enemy
+walks into a wall ring and keeps going, so *no enemy occupies a hex its class
+cannot traverse* is red before a line of flow-field code is written — and it
+holds anywhere on the map, since approach mode stops at walls too. It needs
+scoping by **class**, not by bubble: an insect on a wall it climbs is
+correct, a robot there is not.
 
-And it holds **anywhere on the map**, not only inside the bubble — because
-approach mode stops at walls too (§ Open questions 5, answered). A wall-walker
-is wrong in both modes, so the assertion needs no scoping by bubble, only by
-class: *no enemy occupies a hex its own class cannot traverse.* An insect on a
-wall it is climbing is correct; a robot there is not.
+That means the gate is provably able to fail *before* the feature exists,
+which is what plan 08 § The instrument comes first is about, and it costs
+nothing because the broken behaviour is already there.
 
-That means the gate can be proven able to fail *before* the feature is
-built, which is the thing plan 08 § The instrument comes first is about, and
-it costs nothing here because the broken behaviour is already in the tree.
+**What cannot see it yet:** plan 08 can say `count alive`, `range` and
+`kind`, but none of them says *where* an enemy is — and `range` cannot
+separate an enemy routing AROUND a wall from one walking THROUGH it, since
+both show a decreasing range. That measurement lands in F1, before the
+scenario that leans on it.
 
-## The instrument is owed first
+## F0, the answer (2026-08-12)
 
-plan 08's vocabulary can say `count alive`, `range` (span from the core) and
-`kind`. None of them can say **where an enemy is**, so none can express "it
-went through the entrance rather than through the wall".
+Four hand-built worlds, a plain BFS from the core, and the routes printed.
+The probe was thrown away; this is what it said.
 
-`range` is not enough on its own: an enemy walking *through* a wall in a
-straight line and an enemy routing *around* it both show a decreasing range.
-The measurement that separates them is the one this plan needs, and per plan
-08's own law it lands **before** the scenario that leans on it — F1, not
-somewhere in the middle.
+⚠ **First, the probe caught itself lying.** The initial ring builder walked
+from the wrong corner: 18 hexes painted, **16 of them off-ring**, so the
+"sealed" world was not sealed and every route through it was meaningless —
+while looking entirely plausible. The pre-flight that caught it (a ring is
+18 hexes, all at radius 3, and a sealed one makes the outside *unreachable*)
+is now the shape F2's gate should keep.
+
+**1. An entrance does not need detecting. F4 is cancelled.**
+
+| world | result |
+|---|---|
+| ring, one gap | routes through the gap; ring hexes unreachable |
+| ring, two gaps | south spawn takes the south gap, north the north — each `d=6` |
+| ring, **five-hex opening** (too wide to be an "entrance" by DESIGN's 1–3 rule) | routes through it identically |
+| ring, sealed | outside `d=-1`, inside `d=2` |
+
+Shortest path *is* "preferred entry point", and the field does not care what
+the opening is called. DESIGN's recognised-entrance concept is a **HUD and
+telegraph** idea — it tells the player where the fight will be — not a
+routing mechanic. Nothing needs to detect it for enemies to use it.
+
+**2. One field per class; no edge weights.** The palette's movement data is
+`walk_ground` / `walk_vehicle` — booleans. `slope` and `drop` are terrain
+*shape*, not movement cost, and no per-hex cost exists anywhere. Passability
+is binary, so open question 1 resolves to per-class fields. *(Answered.)*
+
+**3. ⚠ The trap the probe found, which was worth more than the question.**
+`wall` and `wall_high` both carry **`walk_ground = true`** — correctly, since
+the walkable thing about a wall is its top. So the obvious passability
+predicate is the bug: it lets robots walk through 3 m walls. The height the
+step rule needs is already in the palette (`height_override` 3.0 / 5.0), and
+terrain heights are **not** — they need plan 02's slope solver, so F1b and F6
+build against structure heights only.
+
+Both facts are reference, not plan, so they live in
+[`docs/ENEMY_MOVEMENT.md`](../../docs/ENEMY_MOVEMENT.md) § Where `height`
+comes from.
 
 ## What the movement spec costs to build
 
@@ -134,7 +154,9 @@ reads distances.
 **3. Occupancy is a movement constraint and never a target.** Companions
 block a step; they are not attacked, and never divert an enemy from the core.
 
-**4. Passability is a height step, so build it as one.** DESIGN settled it
+**4. Passability is a height step, so build it as one — and NOT
+`walk_ground`.** See § F0 point 3: walls are `walk_ground = true`, so the
+obvious predicate is the bug. DESIGN settled it
 as `height(to) - height(from) <= climb(class)` rather than a material
 lookup. Written that way, walls, insects and body piles are one rule with a
 per-class limit; written as "is this hex a wall", every later mechanic is a
@@ -179,12 +201,11 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
-| **F0** — probe: does an entrance need DETECTING? | XS | a probe first | DESIGN says two wall ends 1–3 apart form an entrance the field routes through. Hand-build that world, run a BFS, and look: if the shortest path already goes through the gap, entrance detection is **emergent** and is a HUD hint, not a mechanic. **Deliverable is the answer** — it decides whether F4 exists | Open |
+| **F0** — probe: does an entrance need DETECTING? | XS | a probe first | four hand-built worlds + a BFS. **Shipped — see § F0, the answer.** No: routing is emergent, F4 is cancelled, and the probe found a trap worth more than the question | **Shipped** |
 | **F1** — the measurement: where is an enemy? | S | — | a new `.keys` assertion (`enemy <i> <q> <r>`, and `enemies passable` — no enemy on a hex its CLASS cannot traverse) that goes RED against today's mover walking through a wall ring, and green when hand-fed a legal path. An assertion that cannot fail today is not the instrument this needs | Open |
 | **F1b** — approach mode stops at walls | S | one site at a time | fired at a wall ring, an enemy halts at the EXACT hex before it; fired at a gap, it passes through. Both fail today. **Ships before any flow-field code** — it needs only the existing `walk_*` palette fields, and it is the smallest real gameplay fix in this plan | Open |
 | **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable | Open |
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does | Open |
-| **F4** — entrances, if F0 says they are a mechanic | S | — | *(exists only if F0's answer is "not emergent")* the field prefers the gap over the shortest wall-break | Open |
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies clear of wall` holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
@@ -232,61 +253,33 @@ plausibility.
 
 ## Open questions
 
-1. **One field per class, or one field with per-class costs?** F6 assumes
-   per-class fields (simple, cacheable, N small). Costs would be one field
-   with class-weighted edges — cheaper in memory, harder to reason about.
-   F0 should answer it while it has the BFS in front of it.
+**Answered, kept as a record:**
+
+1. ~~One field per class, or per-class edge costs?~~ **Per-class fields** —
+   F0: the palette's movement data is boolean, so nothing weighs edges.
+3. ~~What replaces the spawn heading?~~ **Nothing** — it is a real approach
+   constraint, so the field is **shared**, not seeded per spawn. Its job ends
+   at the bubble boundary, which is why F5b is its own phase.
+5. ~~Does approach mode respect walls?~~ **It stops at them.** Generalised
+   since into the height-step rule; normal mobs stop, insects climb, bosses
+   break (ENEMY_MOVEMENT § Two modes).
+6. ~~What does a stopped enemy do?~~ **Attacks the wall** — it still wants
+   the core. No enemy halts permanently, which is what makes the siege work.
+
+**Still open:**
+
 2. **Does the field live on the map or beside it?** It is *derived*, so it
-   should be recomputed, not saved — the reasoning is in
+   should be recomputed, not saved — the reasoning is
    [`plans/07`](../07-shared-world-substrate/README.md) § Evaluated. If it
-   ever does need a home, `hex_field::Labels` is a per-cell integer field
+   ever needs a home, `hex_field::Labels` is a per-cell integer field
    already, and dryopea should not invent a second one.
-3. ~~**What replaces the spawn heading?**~~ **ANSWERED** (project owner +
-   DESIGN § 6, 2026-08-12): **nothing replaces it — it is a real approach
-   constraint**, and it governs approach mode outright. The consequence for
-   this plan is the useful half:
-
-   **The field is SHARED, not seeded per spawn.** The heading's job is
-   finished at the bubble boundary, so engage mode needs exactly one field
-   toward the core — not one per spawn marker, and not a per-spawn bias on a
-   shared field. That removes the largest open cost in F5 (N fields, N
-   rebuilds on every edit) and it is why F5b exists as its own phase: the
-   handoff is where the heading stops mattering, so it is the one place the
-   two mechanics touch.
-
-   ⚠ It also means **`speed_approach` and `speed_engage` are separate
-   numbers** (`examples/numbers.json`, equal today at 1.5 hex/s). A tick that
-   assumes one hex per tick is fine now and wrong the moment they diverge —
-   F5b is where that assumption becomes visible.
-5. ~~**Does approach mode respect walls at all?**~~ **ANSWERED** (project
-   owner, 2026-08-12): **it stops at walls; it does not walk through.**
-
-   The general form is worth stating, because it is simpler than the
-   question was: **passability is a property of `(hex, enemy class)` and is
-   independent of mode.** Only the *steering* differs — approach mode steers
-   by the marker's heading, engage mode by the field, and both are blocked
-   by the same hexes. That collapses what looked like two rule sets into
-   one, and it is why F1b can ship before any flow-field code exists.
-
-   Two consequences already folded in above: F1's assertion is a whole-run
-   invariant rather than an engage-mode one, and it must be scoped **by
-   class** — an insect standing on a wall it climbs is correct, a robot
-   there is not.
-
-   ⚠ Normal mobs only — bosses break instead of stopping, and the rule has
-   since generalised to a height step. Both live in
-   [`docs/ENEMY_MOVEMENT.md`](../../docs/ENEMY_MOVEMENT.md); the build
-   consequences are § What the movement spec costs to build, points 4–5.
-
-6. ~~**What does a stopped approach-mode enemy DO?**~~ **ANSWERED** (project
-   owner, 2026-08-12): it **attacks the wall**, because it still wants the
-   core. No enemy halts permanently, in either mode — which is exactly what
-   makes § Sealing is punished, not forbidden work. See F7.
-7. **Boss 2×2 footprint** — a 2-hex-wide unit cannot use a 1-hex-wide
-   field, and per § 5 above it also *breaks* rather than routes. Out of
-   scope here, but F6's per-class shape and F8's runtime-dirty path are the
-   two places it will have to fit, so neither should be built assuming a
-   1-hex unit that never edits the world.
+4. **`speed_approach` vs `speed_engage`** are separate numbers, equal at
+   1.5 hex/s today. A tick that assumes one hex per tick is fine now and
+   wrong the moment they diverge; F5b is where that becomes visible.
+7. **Boss 2×2 footprint** — a 2-hex-wide unit cannot use a 1-hex-wide field,
+   and it *breaks* rather than routes. Out of scope, but F6's per-class shape
+   and F8's runtime-dirty path are where it will have to fit, so neither
+   should assume a 1-hex unit that never edits the world.
 
 ## See also
 

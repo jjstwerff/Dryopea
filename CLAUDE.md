@@ -439,6 +439,11 @@ plans/
   08-game-validation/         — Complete (V0-V4 shipped):
                     scripted play, measured effects, PNGs for
                     inspection, and `make validate` over the lot
+  11-flow-field/              — Active (F0 shipped): enemies route
+                    round walls to the core.  F0 answered it: an
+                    "entrance" needs no detecting, the field finds
+                    gaps by itself — and walls are walk_ground=true,
+                    so the obvious passability predicate is the bug
   09-lattice-conversion/      — Active (C0 shipped): dryopea moves
                     to pointy-top odd-r offset, the convention every
                     hex_* library and moros already speak.  Checked

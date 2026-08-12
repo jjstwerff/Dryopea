@@ -22,6 +22,7 @@ document is about getting there.
 ## Contents
 
 - [Two modes, one passability rule](#two-modes-one-passability-rule)
+- [Where `height` comes from](#where-height-comes-from)
 - [Wall climbability per enemy type](#wall-climbability-per-enemy-type)
 - [Bodies are terrain](#bodies-are-terrain)
 - [The tick resolves once](#the-tick-resolves-once)
@@ -59,6 +60,27 @@ Three behaviours at a step too tall:
 
 An enemy never halts permanently.  Blocked, it attacks — because
 it still wants the core.
+
+### Where `height` comes from
+
+| source | value | state |
+|---|---|---|
+| structures | `height_override` — `wall` 3.0 m, `wall_high` 5.0 m (`extrusion_kind` pillar / cliff) | in the palette today |
+| terrain | the slope solver ([plan 02](../plans/02-solver-validation-viewer/README.md)) — `slope` and `drop` describe terrain SHAPE, not a step | **not built** |
+| bodies | accumulated pile height (§ Bodies are terrain) | runtime, never saved |
+
+Until the solver lands, every impassable thing in the game is a
+structure, so the step rule runs on `height_override` alone.  A
+hill too steep to climb waits on plan 02.
+
+⚠ **`walk_ground` is NOT passability.**  `wall` and `wall_high`
+both carry `walk_ground = true`, and that is correct — the
+walkable thing about a wall is its *top*, which is how enemies
+come to be up there at all.  It describes the **surface**, not
+whether anything can get onto it.  An implementation that used it
+as the passability predicate would let robots walk straight
+through a 3 m wall, which is the exact failure this whole rule
+exists to prevent.  Measured 2026-08-12 (plan 11 F0).
 
 ## Wall climbability per enemy type
 

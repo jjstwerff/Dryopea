@@ -72,7 +72,7 @@ pointer, not a second copy.
 | [`08-game-validation`](08-game-validation/README.md) | S | MH | Complete (V0-V4) | Scripted play, measured effects, PNGs for inspection |
 | [`09-lattice-conversion`](09-lattice-conversion/README.md) | F | MH | Active (C0 shipped) | dryopea moves to pointy-top odd-r offset (+ adopts `input`), checked against `hex_grid` |
 | [`10-extract-local-libraries`](10-extract-local-libraries/README.md) | C | MH | **Gated** (extract what survives 07 + 09) | The code dryopea owns becomes published libraries — descriptive names, never a brand |
-| [`11-flow-field`](11-flow-field/README.md) | G | MH | Active (F0 next) | Enemies route round walls to the core, per class; the mechanic Tier A waits on |
+| [`11-flow-field`](11-flow-field/README.md) | G | MH | Active (F0 shipped) | Enemies route round walls to the core, per class; the mechanic Tier A waits on |
 
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.
