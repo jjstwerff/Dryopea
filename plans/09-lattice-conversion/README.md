@@ -3,10 +3,17 @@ Copyright (c) 2026 Jurjen Stellingwerff
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# `09` — Lattice conversion: dryopea moves to pointy-top, odd-r offset
+# `09` — Stop hand-rolling: the lattice, and the input layer
 
 **Value:** `F` (foundation — unblocks plan 07 and every future library
 borrow) · **Effort:** `MH`
+
+Two subjects, one plan, because they touch the same three files:
+`camera.loft` (which carries both a lattice `Hex` and the pan flags),
+`editor_step.loft` and `main.loft`.  The **C** phases convert the lattice;
+the **I** phases retire dryopea's hand-written input layer for the `input`
+library.  I0–I1 land FIRST — they are lattice-independent, and doing them
+first means the bigger change happens once, on a settled seam.
 
 ## Status
 
@@ -32,6 +39,11 @@ Every coordinate dryopea owns is **pointy-top, odd-r offset** — the
 convention `hex_grid` calls "THE CONVENTION (shared with moros — the single
 executable source of it)" — and that is **proved against `hex_grid` itself**,
 cell for cell, rather than against pictures that were rebaselined to agree.
+
+And dryopea stops carrying its own input layer: named actions, key
+bindings and edge detection are `input`'s job, not `camera.loft`'s +
+`main.loft`'s 28 `gl_key_pressed` calls + `editor_step`'s remembered
+previous frame.
 
 ## The gate is an oracle, not a golden
 
@@ -89,6 +101,8 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
+| **I0** — probe: does `input`'s edge model match the seam's? | XS | a probe first | reproduce the three semantics plan 08 pinned — a tap fires once, a HELD action fires once, a level action repeats — against `input`'s `is_action_just_pressed`. **The deliverable is the answer**: `input_new` documents "first frame counts as a transition", which the seam does not do, so if they differ I1 changes shape before it is built | Open |
+| **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME 58 measurements | Open |
 | **C0** — probe: can `hex_grid` be the oracle? | XS | a probe first | its answers for a hand-checked cell set, AND that they **disagree** with dryopea's current axial math — an oracle that already agrees proves nothing | **Shipped** |
 | **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | Open |
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | Open |
@@ -101,6 +115,30 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 [`plans/README.md`](../README.md) § The two mechanical checks — an `H` step
 has no half-done state with anything exact to compare against. The split
 above is what that check was for.
+
+### I1 — and the plan-08 decision it revisits
+
+Plan 08 V0 decided **"edge detection lives in the seam, not the caller"**,
+because a caller that resolved edges would make the script and the editor
+two different machines.  Adopting `input` moves edge detection back to the
+input layer, so that decision is being revisited, not ignored.
+
+It survives, for a better reason than it was made with.  `input` ships
+`input_tick_from_state` — *"advance state from a caller-supplied snapshot
+instead of polling graphics; used by tests (no GL context) and by
+record-playback systems"* — so a script drives the SAME input object the GL
+loop drives, and the two machines stay one.
+
+But it inverts § One table, two readers.  Today there is no key table in the
+runner because scripts name actions.  With `input`, a `Bindings` set maps
+keys → actions and **both** readers use it: the GL loop polls it, and the
+runner resolves an action name through the same bindings.  The table exists
+— and there is exactly one of it, which is what that section actually
+wanted.  A bonus falls out: rebinding becomes testable, because a script
+that still passes under remapped keys proves the indirection is real.
+
+⚠ **`do Tab` must still fail.**  Whatever I1 does, the script vocabulary
+names actions.  If a key name starts working, a second table was built.
 
 ### C1 — the new layer, and why it can go red alone
 
@@ -147,6 +185,8 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
 | **C3** | hex centres equal `hex_grid::hex_to_px` | the picture follows the lattice, not the other way round | a rebaselined golden agrees with a shear; the centre check does not |
 | **C4** | `a-wave-approaches` range still decreases | the game's own behaviour survives the move | enemies that reach the core in a different number of ticks means the metric moved |
 | **C5** | converted maps keep painted counts + adjacency | a relabel is not a content change | a map that gains or loses a hex was converted wrong |
+| **I0** | a key held five frames fires its action ONCE | `input`'s edges mean what the seam's mean | "first frame counts as a transition" differs from the seam — if it bites, I1 is redesigned, not patched |
+| **I1** | the five scenarios land on the same `EditorState` | swapping the input layer changes nothing a player could see | `do Tab` working means a second key table was built |
 
 ## Open questions
 

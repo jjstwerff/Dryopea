@@ -70,7 +70,8 @@ pointer, not a second copy.
 | [`06-editor-stencil-pipeline`](06-editor-stencil-pipeline/README.md) | F | MH | Future | Editor-as-content-pipeline; stencil mode + mesh baker |
 | [`07-shared-world-substrate`](07-shared-world-substrate/README.md) | F | H–VH | Active (W0 partial) | Go 3D; adopt the shared hex substrate |
 | [`08-game-validation`](08-game-validation/README.md) | S | MH | Complete (V0-V4) | Scripted play, measured effects, PNGs for inspection |
-| [`09-lattice-conversion`](09-lattice-conversion/README.md) | F | MH | Active (C0 shipped) | dryopea moves to pointy-top odd-r offset, checked against `hex_grid` |
+| [`09-lattice-conversion`](09-lattice-conversion/README.md) | F | MH | Active (C0 shipped) | dryopea moves to pointy-top odd-r offset (+ adopts `input`), checked against `hex_grid` |
+| [`10-extract-local-libraries`](10-extract-local-libraries/README.md) | C | MH | Active (E0 next) | The code dryopea owns becomes published libraries — descriptive names, never a brand |
 
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.

@@ -531,7 +531,8 @@ signature.
 | [plans/06-editor-stencil-pipeline/README.md](plans/06-editor-stencil-pipeline/README.md) | Plan 06 — editor-to-stencil pipeline (two purposes, three audiences) |
 | [plans/07-shared-world-substrate/README.md](plans/07-shared-world-substrate/README.md) | Plan 07 — go 3D on the shared hex substrate |
 | [plans/08-game-validation/README.md](plans/08-game-validation/README.md) | Plan 08 — scripted play, measured effects, PNGs for inspection |
-| [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — dryopea moves to the libraries' lattice (pointy-top odd-r offset) |
+| [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — dryopea moves to the libraries' lattice (pointy-top odd-r offset) + adopts `input` |
+| [plans/10-extract-local-libraries/README.md](plans/10-extract-local-libraries/README.md) | Plan 10 — dryopea's own reusable code becomes published libraries |
 | [PROBLEMS.md](PROBLEMS.md) | Dryopea-internal bugs (`@D<NNN>`) |
 | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) | Outbound queue to loft |
 
