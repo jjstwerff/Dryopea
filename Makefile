@@ -82,22 +82,23 @@ help:
 # `MAP=<name>` to edit a named map under maps/ instead of the default
 # single-slot save.
 #
-# WORKAROUND: runs in `--interpret` mode because loft's native
-# codegen currently loses struct type information when a function
-# returns a struct containing a `hash<…>` (filed in
-# QUESTIONS_FOR_LOFT.md + loft_repros/struct_with_hash_native_return.loft).
-# load_markers_or_empty hits this; native compile panics before the
-# GL window opens.  When the upstream fix lands, drop `--interpret`
-# to get native performance back.
+# WORKAROUND: runs in `--interpret` mode.  The reason CHANGED on
+# 2026-08-12 — the old one (native codegen panicking on a
+# hash-bearing struct return) is fixed and verified.  What blocks
+# native now is loft-lang/loft#866: `text as vector<Struct>` in
+# tail-return position silently answers [], so `load_palette` reads
+# 0 entries and the native editor opens with an empty palette and
+# cannot paint at all.  It does not crash — it just does nothing,
+# which is worse.  Drop `--interpret` when #866 ships fixed.
 play:
 	@command -v $(LOFT_BIN) >/dev/null 2>&1 || { \
 	  echo "ERROR: loft binary not found: $(LOFT_BIN)"; \
 	  echo "Install loft, or set LOFT_BIN."; exit 2; }
 	$(LOFT_BIN) --interpret src/main.loft $(MAP)
 
-# Native-compile play target — currently broken by the upstream
-# struct-with-hash-return bug above.  Kept for testing the
-# eventual fix; flip `play` back to native when it works.
+# Native-compile play target — currently useless (empty palette,
+# see #866 above), though it no longer crashes.  Kept for testing
+# the fix; flip `play` back to native when it works.
 play-native:
 	@command -v $(LOFT_BIN) >/dev/null 2>&1 || { \
 	  echo "ERROR: loft binary not found: $(LOFT_BIN)"; \

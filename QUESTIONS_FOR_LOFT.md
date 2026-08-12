@@ -31,8 +31,23 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
+*(none — every entry is Submitted upstream or Resolved below.  New
+problems go straight to a GitHub issue; see
+[`CLAUDE.md`](CLAUDE.md) § Relationship to loft.)*
+
+## Submitted
+
+Filed upstream as GitHub issues; kept here as dryopea's own record until
+the fix ships, then moved to Resolved.
+
 ### A missing `use` reports as `Expect token ;` at a tuple access, not as an unknown function
 
+- **Filed:** [loft-lang/loft#868](https://github.com/loft-lang/loft/issues/868) on 2026-08-12
+  (`bug`, `wa:clean`, `sev:low`, `area:parser`, `both-backends`, `hit-by:dryopea`).
+  Re-verified against loft 2026.8.0 first, and minimised further than the
+  original report: no library and no missing `use` are needed — an unknown
+  function whose result is tuple-accessed reproduces it, and the unknown
+  function is never named at all.
 - **Found while:** plan 08 V0b — moving the editor's reload action into
   `src/editor_step.loft`, which called `load_map_or_empty` (returns
   `(PaintedWorld, EditorCamera)`) without `use save;` in the file.
@@ -61,60 +76,15 @@ fix / feature, move it to **Resolved**.
   § Tuple-component cast `local.N as Type` — parse path, which was also a
   tuple-access site reporting someone else's problem.
 
-### `use` does not namespace struct TYPES per library — two libraries defining the same struct name panic at registration
-
-- **Found while:** Plan 07 W1 — trying to adopt `moros_map`'s
-  `Map` as dryopea's world model.  dryopea's `world` lib defines
-  `struct Hex { q, r }` (an axial coord); `moros_map` defines
-  `struct Hex { h_height, h_material, … }` (a world cell).  Both
-  are valid; loading both is impossible.
-- **Kind:** bug (module system — type identity is not namespaced
-  by library).
-- **Behaviour:** `use world; use moros_map;` panics at
-  `src/database/types.rs:53:9` — `Double structure type Chunk`
-  (or `… Hex`, or a parse cascade inside moros_map, depending on
-  `use` order).  An internal Rust panic, not a clean diagnostic.
-- **Why it's a bug, precisely:**
-  - Qualified ACCESS already works: with `use moros_map;` alone,
-    `moros_map::map_empty()` / `moros_map::map_get_hex(...)`
-    resolve fine.  So `use` namespaces *function* access.
-  - But type REGISTRATION is a flat GLOBAL table keyed by bare
-    name.  Two `use`d libraries each registering `Hex` collide
-    there, **before** any access — so `world::Hex` vs
-    `moros_map::Hex` qualification cannot rescue it.
-  - Contrast: a USER struct clashing with a `use`d lib gives a
-    CLEAN error ("struct 'Hex' conflicts … pick a different
-    name").  loft already detects clashes gracefully in that
-    path; the lib-vs-lib path panics instead.
-  - Related facet: a standalone script that `use`s a library
-    which is also a transitive package dependency double-
-    registers that library's own structs → `Double structure
-    type Chunk` (moros_map's `Chunk` via two load paths).  So the
-    registry isn't idempotent per library either.
-- **Reproducer:** [`loft_repros/dup_struct_type_across_libs.loft`](loft_repros/dup_struct_type_across_libs.loft)
-  — `use world; use moros_map;`, panics at load.
-- **What dryopea needs:** `use` should namespace struct types per
-  library so two libraries can each define `Hex`, disambiguated
-  at the use site as `world::Hex` / `moros_map::Hex` (mirroring
-  function-access qualification).  At minimum, a clean compile
-  error instead of an internal panic.
-- **Workaround in dryopea (under consideration):** rename
-  dryopea's coordinate type `Hex` → `Axial` so no two loaded
-  libraries share a struct name.  Unblocks W1 without the loft
-  fix, and arguably more correct (moros_map's `Hex` is the world
-  cell; dryopea's was an axial coordinate).  Sizeable mechanical
-  rename across `world` / `camera` / `render` / `painted` /
-  `marker_render` / `save` + tests; golden PNGs unaffected
-  (render output is identical).  A `hex_distance` FUNCTION-name
-  clash with moros_map remains to be checked after the rename.
-- **Loft pointer:** `src/database/types.rs:53` (struct-type
-  registration) — make the type table per-library / qualified
-  rather than a flat global keyed by bare name; and make the
-  registration idempotent so a library reachable via two load
-  paths registers once.
-
 ### Converge gridmesh on ONE ground-level grid (axial flat-top); migrate audience_crystal off the offset-pointy placeholder
 
+- **Filed:** [loft-lang/loft-libs-graphics#24](https://github.com/loft-lang/loft-libs-graphics/issues/24)
+  on 2026-08-12 (`enhancement`).  Filed on **loft-libs-graphics**, not
+  loft-lang/loft — gridmesh migrated out of the monorepo.  Re-verified
+  against gridmesh 0.2.0: `layout` is still stored and read nowhere, and
+  `step_x`/`step_y` are still the unconditional offset-pointy round-trip.
+  The `audience_crystal` half of the original ask has lapsed — it is no
+  longer in the registry — so the issue asks only for the adapter.
 - **Found while:** Evaluating why the dryopea editor feels
   sluggish — the renderer rebuilds the whole world every frame
   (no chunk system, no dirty mechanism; `src/render.loft::
@@ -169,247 +139,6 @@ fix / feature, move it to **Resolved**.
   `axial_dq`/`axial_dr` (already correct); `lib/audience_crystal`
   + `tools/audience-demo` as the prototype to migrate; the
   Phase-A note in the gridmesh header.
-
-### Function returning a freshly-allocated Store leaks one Store per call when it has a struct-typed value parameter
-
-- **Found while:** Debugging the editor's exit-time warning
-  `2 stores not freed at program exit: kt=106 Canvas×59, kt=85
-  main_vector<single>×1`.  Each rendered frame leaked one Canvas
-  (`Canvas×59` ≈ ~1s of running); the count grows unbounded for
-  as long as the editor window is open (~960×720×4 bytes each).
-- **Trigger (specific + minimal):** a function that takes a
-  **struct-typed parameter by value** AND returns a **newly
-  allocated user-data Store** (e.g. `canvas(...)`), called
-  repeatedly, leaks one returned Store per call.  The *identical*
-  function with only **scalar** parameters frees the returned
-  Store correctly.  Bisected away every other suspect:
-  - scalar-param helper returning a Canvas — CLEAN (control).
-  - struct-param helper returning a Canvas — **LEAKS** ×N.
-  - hash field / hash-iteration in the body — not required
-    (a plain scalar-only struct param leaks just the same).
-  - early `break` out of the call loop — not required (leaks on
-    a loop that runs to completion too).
-  - canvas allocated **inline** in the caller (not via a
-    returning helper) — CLEAN.
-- **Minimal reproducer:** [`loft_repros/canvas_store_leak_struct_param.loft`](loft_repros/canvas_store_leak_struct_param.loft)
-  — runs via `loft --interpret`.  Core shape:
-  ```loft
-  struct P { a: integer not null }
-  fn render_struct(p: P) -> Canvas { cv = canvas(64, 48, p.a); cv }   // LEAKS ×N
-  fn render_scalar(a: integer) -> Canvas { cv = canvas(64, 48, a); cv } // CLEAN
-  ```
-  Exit report for the struct-param loop (9 calls):
-  `Warning: 1 stores not freed at program exit: kt=97 Canvas×9`.
-- **Kind:** bug (Store lifetime / drop accounting — the struct
-  value parameter appears to skew the returned Store's refcount
-  or drop bookkeeping so the per-call Store is never released).
-- **Concrete dryopea impact:** `src/render.loft::render_to_canvas(
-  cam: EditorCamera, pw: PaintedWorld, …) -> Canvas` matches the
-  shape exactly (two struct params, returns a fresh Canvas) and
-  is called every frame from `src/main.loft`'s render loop, so
-  the live editor leaks one full-screen Canvas per frame.
-- **Workaround in dryopea (not yet applied):** hoist the
-  framebuffer out of the loop — allocate one Canvas before the
-  render loop and `clear()` + redraw into it each frame, so no
-  Store is allocated/returned per frame.  Requires a
-  `render.loft` API tweak (draw-into-existing-Canvas variants
-  alongside the current allocate-and-return ones).  Retire once
-  the runtime frees the returned Store.
-- **Loft pointer:** Store drop/refcount accounting for a
-  function's freshly-allocated return value, in the presence of
-  a by-value struct parameter (interpret backend; `kt=97`
-  Canvas store type).
-
-### `vector<Struct>` with trailing `u8` fields — corrupts when wrapped in a parent struct and serialised via `:j`
-
-- **Found while:** Plan 03 M3 — saving the marker sidecar
-  (`marker_world_to_file` in `src/save.loft`).  Earlier
-  verification (2026-05-27) marked this Resolved based on a
-  partial probe; refined probe shows the bug is **still
-  present** for a specific path.
-- **Trigger (specific):** the bug only fires on the path
-  `hash<Struct[k]>` → `for`-iterate-and-append into a fresh
-  `vector<Struct>` → embed in a wrapper struct → `:j` the
-  wrapper.  Pulling any one of those steps apart makes the
-  output correct.  Concretely:
-  - Standalone `{vec:j}` — WORKS (the vec serialises right).
-  - Building the vector directly (no hash, no for-loop) and
-    wrapping → `{wrapper:j}` — WORKS.
-  - Building via hash-iteration → wrapping → `{wrapper:j}` —
-    **CORRUPTS**: every u8 field zeroes, AND the leading
-    integer fields zero too.
-- **Minimal reproducer:** [`loft_repros/u8_vector_in_wrapper.loft`](loft_repros/u8_vector_in_wrapper.loft),
-  runs via `loft --interpret`.  Code inline below for context:
-  ```loft
-  struct Pair {
-      q:         integer not null,
-      r:         integer not null,
-      kind:      u8      not null,
-      direction: u8      not null,
-  }
-  struct Bag { items: hash<Pair[q, r]> }
-  struct Wrapper {
-      version: integer not null,
-      name:    text    not null,
-      items:   vector<Pair>,
-  }
-
-  fn main() {
-      bag = Bag { items: [] };
-      bag.items[1, 1] = Pair { q: 1, r: 1, kind: 0 as u8, direction: 0 as u8 };
-      bag.items[2, 2] = Pair { q: 2, r: 2, kind: 0 as u8, direction: 3 as u8 };
-
-      out: vector<Pair> = [];
-      for e in bag.items {
-          out += [Pair { q: e.q, r: e.r, kind: e.kind, direction: e.direction }];
-      }
-      println("standalone: {out:j}");           // CORRECT
-      w = Wrapper { version: 1, name: "test", items: out };
-      println("wrapped:    {w:j}");              // ALL ZEROS
-  }
-  ```
-  Observed output:
-  ```
-  standalone: [{"q":1,"r":1,"kind":0,"direction":0},{"q":2,"r":2,"kind":0,"direction":3}]
-  wrapped:    {"version":1,"name":"test","items":[{"q":0,"r":0,"kind":0,"direction":0},
-                                                   {"q":0,"r":0,"kind":0,"direction":0}]}
-  ```
-- **Kind:** bug (`:j` formatter or vector-of-struct copy
-  semantics — context-sensitive: the wrapping struct's `:j`
-  walk reads vector members from a different / stale location
-  than the standalone walk does).
-- **Workaround in dryopea:** `marker_file.loft` declares a
-  wider on-disk shape `MarkerSaveEntry { q, r, kind: integer,
-  direction: integer }`; `save.loft`'s `marker_world_to_file`
-  widens u8 → integer when building the save vector.  Same
-  idiom as painted.loft / map_file.loft (PaintedHex.kind: u8
-  in memory ↔ GroundEntry.kind: text on disk).  Retirable
-  once the wrapper-struct path serialises correctly.
-- **Loft pointer:** `:j` formatter's nested-struct vector
-  walk vs. standalone vector walk — different code paths
-  diverge for u8 fields.
-
-### `const` parameter store-lock blocking unrelated writes — multi-const + write-through-other-param shape
-
-- **Found while:** Plan 03 follow-up history work
-  (`src/history.loft::clear_and_record`).  Initial verification
-  (2026-05-27) of an earlier filing marked this Resolved based
-  on a partial probe (single `const Bag` + write to a separate
-  `Out` param worked).  Refined probe shows the bug is **still
-  present** for the dryopea-faithful shape.
-- **Trigger (specific):** function with TWO `const` struct
-  parameters, each holding a hash, AND writing through a
-  third (non-const) parameter whose path includes a nested
-  vector field.  Single-const probes don't trigger; only the
-  multi-const + nested-vector-write combination does.
-- **Reproducer:** [`loft_repros/const_param_store_lock.loft`](loft_repros/const_param_store_lock.loft)
-  — runs `loft --interpret`, reliably panics with `Claim on
-  read-only store (size=2) (locked by: lock_store(store_nr=5,
-  rec=1))`.
-- **Kind:** bug (lock granularity for `const` parameter is
-  Store-wide rather than parameter-scoped, and only the
-  multi-const path widens the lock far enough to bite an
-  unrelated write).
-- **Workaround in dryopea:** dropped the `const` qualifier on
-  `clear_and_record`'s pw + mw params (history.loft).
-  Function still doesn't mutate them — convention enforces
-  the intent.  Signature is documentation-weaker; retire when
-  the bug ships fixed.
-- **Loft pointer:** narrow the `const`-param lock to the
-  specific record(s) named, not the whole Store.
-
-### Native codegen panics returning a hash-bearing struct from an `if…else` expression whose condition uses `file()`
-
-- **⚠️ Re-opened (2026-05-28) — earlier closure was a FALSE
-  NEGATIVE.**  loft commit `d3906ef6` closed this as "not a loft
-  bug — the repro used `struct E`, a stdlib-constant collision."
-  True for that repro, but the *real* editor shape still panics
-  natively.  The old reproducer was a trivial single-branch
-  passthrough (`fn passthrough(p) -> W { w_empty() }`) that does
-  **not** reproduce; rebisected to the precise trigger below.
-- **Found while:** native `make play MAP=a`.  Native binary
-  panics at `src/keys.rs:251:6`: `index out of bounds: the len
-  is N but the index is 65535` — the `u16::MAX` "unknown type"
-  sentinel surfacing as a real `DbRef.store_nr` (the branch-
-  result struct's type info is lost).
-- **Kind:** bug (native codegen — type tracking for a hash-
-  bearing struct returned from an if/else expression is poisoned
-  by the `file()` builtin in the same function).
-- **Trigger (bisected, precise):** a function returning a
-  hash-bearing struct via an **`if … else` EXPRESSION** whose
-  condition uses the **`file()` builtin**.  Native panics;
-  `--interpret` works.  Bisection:
-  - PANICS: `fn f(p) -> W { if file(p).exists() { build() }
-    else { w_empty() } }` (W contains a `hash<…>`).
-  - WORKS: same shape with a **plain bool** condition.
-  - WORKS: same shape with a **user fn** returning boolean as
-    the condition (so it is `file()` specifically, not "a
-    bool-returning call").
-  - STILL PANICS: binding `ex = file(p).exists();` to a local
-    first, then `if ex {…}` (so it is `file()`'s presence in
-    the function, not the inline condition).
-  - WORKS: declare once + statement-`if` reassign + single
-    return (`out = w_empty(); if file(p).exists() { out =
-    build(); } out`) — the dryopea-side workaround shape.
-  The tuple variant (`-> (W, Cam)`) panics too when the W comes
-  via a JSON cast (`text as MapFile` → `mapfile_to_painted`),
-  but works when built without the cast — the bare-struct form
-  above is the cleaner minimal case.
-- **Reproducer:** [`loft_repros/struct_with_hash_native_return.loft`](loft_repros/struct_with_hash_native_return.loft)
-  — `loft <repro>` panics at `keys.rs:251`; `loft --interpret
-  <repro>` prints `items = 0`.
-- **Concrete dryopea impact:** `src/save.loft::load_markers_or_empty`
-  is exactly this shape (`if file(path).exists() {
-  markerfile_to_world(...) } else { marker_empty() }`), and
-  `load_map_or_empty` is the tuple-via-cast variant.  The native
-  editor panics at startup before the GL window opens.
-- **Workaround in dryopea:** `Makefile`'s `play` target stays on
-  `--interpret`.  The single-return restructure (above) would
-  unblock native per-function, but is held off pending the
-  upstream fix (the user asked for a clean repro rather than a
-  dryopea-side patch); a `play-native` target keeps the native
-  invocation ready for testing the fix.
-- **Loft pointer:** native codegen — the `file()` builtin's
-  result type appears to clobber the inferred store type of a
-  hash-bearing struct returned from an if/else expression in the
-  same function.  Related to the @P374 tuple-return machinery
-  but distinct (bare struct return + `file()` interaction).
-
-### Div-by-zero warning still fires on `float / int_literal`
-
-- **Found while:** Re-verifying the @P368 fix on 2026-05-27.
-  The headline cases (`x / 0.75`, `x / 2.0`, `n / 4`, `n / 2`)
-  no longer warn — but `12.0 / 3` (float dividend, integer
-  literal divisor) still emits the rewritten warning.
-- **Kind:** bug (partial-fix follow-up to @P368)
-- **What dryopea needs:** `lit_nonzero` in
-  `src/parser/operators.rs` recognises Int/Long/Float/Single
-  literals, but the mixed-type `float / int_literal` path
-  appears to widen the literal to float (or insert an `as
-  float` cast) *before* the warning check reaches the
-  divisor, so the literal-detection misses it.  Either lift
-  the check above the widening, or also match the cast-
-  wrapped literal.
-- **Reproducer:**
-  ```loft
-  fn test() {
-      x = 12.0;
-      _ = x / 3;        // warns (expected: no warn — 3 is a non-zero int literal)
-      _ = x / 3.0;      // no warn
-      _ = 12 / 3;       // no warn
-  }
-  ```
-- **Workaround in dryopea:** write `3.0` instead of `3` when
-  dividing a float by an integer-valued constant.  Trivial
-  but slightly fewer-bytes-on-disk-warts than the original
-  precomputed-reciprocal workaround.
-- **Loft pointer:** `src/parser/operators.rs::lit_nonzero` —
-  add the float-coerced-int-literal arm.
-
-## Submitted
-
-Filed upstream as GitHub issues on `loft-lang/loft`; kept here as
-dryopea's own record until the fix ships, then moved to Resolved.
 
 ### Native backend silently returns an EMPTY vector for a `text as vector<Struct>` cast in tail-return position
 
@@ -556,6 +285,336 @@ producing a green test suite while every assertion was running
 against a 0-length palette.  Both fixed in loft commit `42f8228`.
 
 ## Resolved
+
+### Verified fixed on 2026-08-12 (loft 2026.8.0)
+
+The eight entries that had accumulated under **Open** were re-run against
+the current toolchain before filing any of them upstream.  Six no longer
+reproduce — they are below, each with what was actually observed.  Filing
+them would have been noise; the two that survived are § Submitted.
+
+### `use` does not namespace struct TYPES per library — two libraries defining the same struct name panic at registration
+
+- **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).  No panic: two libraries
+  may each declare `Hex`, and the diagnostic now says
+  ``` `Hex` is declared by more than one package here — write types::Hex or
+  world::Hex to say which ```.  Qualified literals (`liba::Hex { … }`) and
+  functions returning either type both work — checked with a purpose-built
+  two-library probe, not just the stale `moros_map` reproducer.
+  **Consequence: dryopea's proposed `Hex` → `Axial` rename is unnecessary.**
+- **Found while:** Plan 07 W1 — trying to adopt `moros_map`'s
+  `Map` as dryopea's world model.  dryopea's `world` lib defines
+  `struct Hex { q, r }` (an axial coord); `moros_map` defines
+  `struct Hex { h_height, h_material, … }` (a world cell).  Both
+  are valid; loading both is impossible.
+- **Kind:** bug (module system — type identity is not namespaced
+  by library).
+- **Behaviour:** `use world; use moros_map;` panics at
+  `src/database/types.rs:53:9` — `Double structure type Chunk`
+  (or `… Hex`, or a parse cascade inside moros_map, depending on
+  `use` order).  An internal Rust panic, not a clean diagnostic.
+- **Why it's a bug, precisely:**
+  - Qualified ACCESS already works: with `use moros_map;` alone,
+    `moros_map::map_empty()` / `moros_map::map_get_hex(...)`
+    resolve fine.  So `use` namespaces *function* access.
+  - But type REGISTRATION is a flat GLOBAL table keyed by bare
+    name.  Two `use`d libraries each registering `Hex` collide
+    there, **before** any access — so `world::Hex` vs
+    `moros_map::Hex` qualification cannot rescue it.
+  - Contrast: a USER struct clashing with a `use`d lib gives a
+    CLEAN error ("struct 'Hex' conflicts … pick a different
+    name").  loft already detects clashes gracefully in that
+    path; the lib-vs-lib path panics instead.
+  - Related facet: a standalone script that `use`s a library
+    which is also a transitive package dependency double-
+    registers that library's own structs → `Double structure
+    type Chunk` (moros_map's `Chunk` via two load paths).  So the
+    registry isn't idempotent per library either.
+- **Reproducer:** [`loft_repros/dup_struct_type_across_libs.loft`](loft_repros/dup_struct_type_across_libs.loft)
+  — `use world; use moros_map;`, panics at load.
+- **What dryopea needs:** `use` should namespace struct types per
+  library so two libraries can each define `Hex`, disambiguated
+  at the use site as `world::Hex` / `moros_map::Hex` (mirroring
+  function-access qualification).  At minimum, a clean compile
+  error instead of an internal panic.
+- **Workaround in dryopea (under consideration):** rename
+  dryopea's coordinate type `Hex` → `Axial` so no two loaded
+  libraries share a struct name.  Unblocks W1 without the loft
+  fix, and arguably more correct (moros_map's `Hex` is the world
+  cell; dryopea's was an axial coordinate).  Sizeable mechanical
+  rename across `world` / `camera` / `render` / `painted` /
+  `marker_render` / `save` + tests; golden PNGs unaffected
+  (render output is identical).  A `hex_distance` FUNCTION-name
+  clash with moros_map remains to be checked after the rename.
+- **Loft pointer:** `src/database/types.rs:53` (struct-type
+  registration) — make the type table per-library / qualified
+  rather than a flat global keyed by bare name; and make the
+  registration idempotent so a library reachable via two load
+  paths registers once.
+
+### Function returning a freshly-allocated Store leaks one Store per call when it has a struct-typed value parameter
+
+- **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).
+  `loft_repros/canvas_store_leak_struct_param.loft` runs its 9 struct-param
+  calls and exits with NO `stores not freed` warning.  The dryopea-side
+  workaround (hoist the framebuffer out of the render loop) was never
+  applied and is not needed.
+- **Found while:** Debugging the editor's exit-time warning
+  `2 stores not freed at program exit: kt=106 Canvas×59, kt=85
+  main_vector<single>×1`.  Each rendered frame leaked one Canvas
+  (`Canvas×59` ≈ ~1s of running); the count grows unbounded for
+  as long as the editor window is open (~960×720×4 bytes each).
+- **Trigger (specific + minimal):** a function that takes a
+  **struct-typed parameter by value** AND returns a **newly
+  allocated user-data Store** (e.g. `canvas(...)`), called
+  repeatedly, leaks one returned Store per call.  The *identical*
+  function with only **scalar** parameters frees the returned
+  Store correctly.  Bisected away every other suspect:
+  - scalar-param helper returning a Canvas — CLEAN (control).
+  - struct-param helper returning a Canvas — **LEAKS** ×N.
+  - hash field / hash-iteration in the body — not required
+    (a plain scalar-only struct param leaks just the same).
+  - early `break` out of the call loop — not required (leaks on
+    a loop that runs to completion too).
+  - canvas allocated **inline** in the caller (not via a
+    returning helper) — CLEAN.
+- **Minimal reproducer:** [`loft_repros/canvas_store_leak_struct_param.loft`](loft_repros/canvas_store_leak_struct_param.loft)
+  — runs via `loft --interpret`.  Core shape:
+  ```loft
+  struct P { a: integer not null }
+  fn render_struct(p: P) -> Canvas { cv = canvas(64, 48, p.a); cv }   // LEAKS ×N
+  fn render_scalar(a: integer) -> Canvas { cv = canvas(64, 48, a); cv } // CLEAN
+  ```
+  Exit report for the struct-param loop (9 calls):
+  `Warning: 1 stores not freed at program exit: kt=97 Canvas×9`.
+- **Kind:** bug (Store lifetime / drop accounting — the struct
+  value parameter appears to skew the returned Store's refcount
+  or drop bookkeeping so the per-call Store is never released).
+- **Concrete dryopea impact:** `src/render.loft::render_to_canvas(
+  cam: EditorCamera, pw: PaintedWorld, …) -> Canvas` matches the
+  shape exactly (two struct params, returns a fresh Canvas) and
+  is called every frame from `src/main.loft`'s render loop, so
+  the live editor leaks one full-screen Canvas per frame.
+- **Workaround in dryopea (not yet applied):** hoist the
+  framebuffer out of the loop — allocate one Canvas before the
+  render loop and `clear()` + redraw into it each frame, so no
+  Store is allocated/returned per frame.  Requires a
+  `render.loft` API tweak (draw-into-existing-Canvas variants
+  alongside the current allocate-and-return ones).  Retire once
+  the runtime frees the returned Store.
+- **Loft pointer:** Store drop/refcount accounting for a
+  function's freshly-allocated return value, in the presence of
+  a by-value struct parameter (interpret backend; `kt=97`
+  Canvas store type).
+
+### `vector<Struct>` with trailing `u8` fields — corrupts when wrapped in a parent struct and serialised via `:j`
+
+- **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).
+  `loft_repros/u8_vector_in_wrapper.loft` now prints the wrapped form
+  identical to the standalone one — `{"q":1,"r":1,…},{"q":2,"r":2,"direction":3}`
+  where it used to print all zeros.  **Retirable:** `marker_file.loft`'s
+  widened `MarkerSaveEntry` (u8 → integer on disk) can go back to `u8`,
+  which is a save-format change and so wants its own step.
+- **Found while:** Plan 03 M3 — saving the marker sidecar
+  (`marker_world_to_file` in `src/save.loft`).  Earlier
+  verification (2026-05-27) marked this Resolved based on a
+  partial probe; refined probe shows the bug is **still
+  present** for a specific path.
+- **Trigger (specific):** the bug only fires on the path
+  `hash<Struct[k]>` → `for`-iterate-and-append into a fresh
+  `vector<Struct>` → embed in a wrapper struct → `:j` the
+  wrapper.  Pulling any one of those steps apart makes the
+  output correct.  Concretely:
+  - Standalone `{vec:j}` — WORKS (the vec serialises right).
+  - Building the vector directly (no hash, no for-loop) and
+    wrapping → `{wrapper:j}` — WORKS.
+  - Building via hash-iteration → wrapping → `{wrapper:j}` —
+    **CORRUPTS**: every u8 field zeroes, AND the leading
+    integer fields zero too.
+- **Minimal reproducer:** [`loft_repros/u8_vector_in_wrapper.loft`](loft_repros/u8_vector_in_wrapper.loft),
+  runs via `loft --interpret`.  Code inline below for context:
+  ```loft
+  struct Pair {
+      q:         integer not null,
+      r:         integer not null,
+      kind:      u8      not null,
+      direction: u8      not null,
+  }
+  struct Bag { items: hash<Pair[q, r]> }
+  struct Wrapper {
+      version: integer not null,
+      name:    text    not null,
+      items:   vector<Pair>,
+  }
+
+  fn main() {
+      bag = Bag { items: [] };
+      bag.items[1, 1] = Pair { q: 1, r: 1, kind: 0 as u8, direction: 0 as u8 };
+      bag.items[2, 2] = Pair { q: 2, r: 2, kind: 0 as u8, direction: 3 as u8 };
+
+      out: vector<Pair> = [];
+      for e in bag.items {
+          out += [Pair { q: e.q, r: e.r, kind: e.kind, direction: e.direction }];
+      }
+      println("standalone: {out:j}");           // CORRECT
+      w = Wrapper { version: 1, name: "test", items: out };
+      println("wrapped:    {w:j}");              // ALL ZEROS
+  }
+  ```
+  Observed output:
+  ```
+  standalone: [{"q":1,"r":1,"kind":0,"direction":0},{"q":2,"r":2,"kind":0,"direction":3}]
+  wrapped:    {"version":1,"name":"test","items":[{"q":0,"r":0,"kind":0,"direction":0},
+                                                   {"q":0,"r":0,"kind":0,"direction":0}]}
+  ```
+- **Kind:** bug (`:j` formatter or vector-of-struct copy
+  semantics — context-sensitive: the wrapping struct's `:j`
+  walk reads vector members from a different / stale location
+  than the standalone walk does).
+- **Workaround in dryopea:** `marker_file.loft` declares a
+  wider on-disk shape `MarkerSaveEntry { q, r, kind: integer,
+  direction: integer }`; `save.loft`'s `marker_world_to_file`
+  widens u8 → integer when building the save vector.  Same
+  idiom as painted.loft / map_file.loft (PaintedHex.kind: u8
+  in memory ↔ GroundEntry.kind: text on disk).  Retirable
+  once the wrapper-struct path serialises correctly.
+- **Loft pointer:** `:j` formatter's nested-struct vector
+  walk vs. standalone vector walk — different code paths
+  diverge for u8 fields.
+
+### `const` parameter store-lock blocking unrelated writes — multi-const + write-through-other-param shape
+
+- **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).
+  `loft_repros/const_param_store_lock.loft` prints `entries=1 ds=3` — its
+  documented expected output — instead of panicking with `Claim on
+  read-only store`.  **Retirable:** the `const` qualifiers dropped from
+  `history.loft::clear_and_record`'s pw + mw params can go back on.
+- **Found while:** Plan 03 follow-up history work
+  (`src/history.loft::clear_and_record`).  Initial verification
+  (2026-05-27) of an earlier filing marked this Resolved based
+  on a partial probe (single `const Bag` + write to a separate
+  `Out` param worked).  Refined probe shows the bug is **still
+  present** for the dryopea-faithful shape.
+- **Trigger (specific):** function with TWO `const` struct
+  parameters, each holding a hash, AND writing through a
+  third (non-const) parameter whose path includes a nested
+  vector field.  Single-const probes don't trigger; only the
+  multi-const + nested-vector-write combination does.
+- **Reproducer:** [`loft_repros/const_param_store_lock.loft`](loft_repros/const_param_store_lock.loft)
+  — runs `loft --interpret`, reliably panics with `Claim on
+  read-only store (size=2) (locked by: lock_store(store_nr=5,
+  rec=1))`.
+- **Kind:** bug (lock granularity for `const` parameter is
+  Store-wide rather than parameter-scoped, and only the
+  multi-const path widens the lock far enough to bite an
+  unrelated write).
+- **Workaround in dryopea:** dropped the `const` qualifier on
+  `clear_and_record`'s pw + mw params (history.loft).
+  Function still doesn't mutate them — convention enforces
+  the intent.  Signature is documentation-weaker; retire when
+  the bug ships fixed.
+- **Loft pointer:** narrow the `const`-param lock to the
+  specific record(s) named, not the whole Store.
+
+### Native codegen panics returning a hash-bearing struct from an `if…else` expression whose condition uses `file()`
+
+- **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).
+  `loft --native loft_repros/struct_with_hash_native_return.loft` prints
+  `items = 0` instead of panicking at `keys.rs:251`, and dryopea's real
+  shapes — `load_markers_or_empty` and the `load_map_or_empty` tuple-via-cast
+  variant — both survive natively in a direct probe.
+  ⚠ **`make play` still cannot go native**, but for a different reason now:
+  the silent empty-palette miscompile (loft-lang/loft#866, § Submitted) makes
+  the native editor unable to paint.  The Makefile comment naming *this* bug
+  as the blocker has been corrected.
+- **⚠️ Re-opened (2026-05-28) — earlier closure was a FALSE
+  NEGATIVE.**  loft commit `d3906ef6` closed this as "not a loft
+  bug — the repro used `struct E`, a stdlib-constant collision."
+  True for that repro, but the *real* editor shape still panics
+  natively.  The old reproducer was a trivial single-branch
+  passthrough (`fn passthrough(p) -> W { w_empty() }`) that does
+  **not** reproduce; rebisected to the precise trigger below.
+- **Found while:** native `make play MAP=a`.  Native binary
+  panics at `src/keys.rs:251:6`: `index out of bounds: the len
+  is N but the index is 65535` — the `u16::MAX` "unknown type"
+  sentinel surfacing as a real `DbRef.store_nr` (the branch-
+  result struct's type info is lost).
+- **Kind:** bug (native codegen — type tracking for a hash-
+  bearing struct returned from an if/else expression is poisoned
+  by the `file()` builtin in the same function).
+- **Trigger (bisected, precise):** a function returning a
+  hash-bearing struct via an **`if … else` EXPRESSION** whose
+  condition uses the **`file()` builtin**.  Native panics;
+  `--interpret` works.  Bisection:
+  - PANICS: `fn f(p) -> W { if file(p).exists() { build() }
+    else { w_empty() } }` (W contains a `hash<…>`).
+  - WORKS: same shape with a **plain bool** condition.
+  - WORKS: same shape with a **user fn** returning boolean as
+    the condition (so it is `file()` specifically, not "a
+    bool-returning call").
+  - STILL PANICS: binding `ex = file(p).exists();` to a local
+    first, then `if ex {…}` (so it is `file()`'s presence in
+    the function, not the inline condition).
+  - WORKS: declare once + statement-`if` reassign + single
+    return (`out = w_empty(); if file(p).exists() { out =
+    build(); } out`) — the dryopea-side workaround shape.
+  The tuple variant (`-> (W, Cam)`) panics too when the W comes
+  via a JSON cast (`text as MapFile` → `mapfile_to_painted`),
+  but works when built without the cast — the bare-struct form
+  above is the cleaner minimal case.
+- **Reproducer:** [`loft_repros/struct_with_hash_native_return.loft`](loft_repros/struct_with_hash_native_return.loft)
+  — `loft <repro>` panics at `keys.rs:251`; `loft --interpret
+  <repro>` prints `items = 0`.
+- **Concrete dryopea impact:** `src/save.loft::load_markers_or_empty`
+  is exactly this shape (`if file(path).exists() {
+  markerfile_to_world(...) } else { marker_empty() }`), and
+  `load_map_or_empty` is the tuple-via-cast variant.  The native
+  editor panics at startup before the GL window opens.
+- **Workaround in dryopea:** `Makefile`'s `play` target stays on
+  `--interpret`.  The single-return restructure (above) would
+  unblock native per-function, but is held off pending the
+  upstream fix (the user asked for a clean repro rather than a
+  dryopea-side patch); a `play-native` target keeps the native
+  invocation ready for testing the fix.
+- **Loft pointer:** native codegen — the `file()` builtin's
+  result type appears to clobber the inferred store type of a
+  hash-bearing struct returned from an if/else expression in the
+  same function.  Related to the @P374 tuple-return machinery
+  but distinct (bare struct return + `file()` interaction).
+
+### Div-by-zero warning still fires on `float / int_literal`
+
+- **✅ Verified FIXED 2026-08-12** (loft 2026.8.0).
+  `x = 12.0; _ = x / 3;` compiles and runs with no diagnostic of any kind.
+  **Retirable:** the "write `3.0` not `3`" habit is no longer needed.
+- **Found while:** Re-verifying the @P368 fix on 2026-05-27.
+  The headline cases (`x / 0.75`, `x / 2.0`, `n / 4`, `n / 2`)
+  no longer warn — but `12.0 / 3` (float dividend, integer
+  literal divisor) still emits the rewritten warning.
+- **Kind:** bug (partial-fix follow-up to @P368)
+- **What dryopea needs:** `lit_nonzero` in
+  `src/parser/operators.rs` recognises Int/Long/Float/Single
+  literals, but the mixed-type `float / int_literal` path
+  appears to widen the literal to float (or insert an `as
+  float` cast) *before* the warning check reaches the
+  divisor, so the literal-detection misses it.  Either lift
+  the check above the widening, or also match the cast-
+  wrapped literal.
+- **Reproducer:**
+  ```loft
+  fn test() {
+      x = 12.0;
+      _ = x / 3;        // warns (expected: no warn — 3 is a non-zero int literal)
+      _ = x / 3.0;      // no warn
+      _ = 12 / 3;       // no warn
+  }
+  ```
+- **Workaround in dryopea:** write `3.0` instead of `3` when
+  dividing a float by an integer-valued constant.  Trivial
+  but slightly fewer-bytes-on-disk-warts than the original
+  precomputed-reciprocal workaround.
+- **Loft pointer:** `src/parser/operators.rs::lit_nonzero` —
+  add the float-coerced-int-literal arm.
 
 ### `graphics::fill_triangle` never fills — integer division before multiply collapses every scanline
 

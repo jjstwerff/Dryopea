@@ -27,10 +27,16 @@ no longer reproducing).
 
 ## Currently filed
 
-| File | Bug | Open in QUESTIONS_FOR_LOFT |
+| File | Bug | Filed upstream |
 |---|---|---|
-| [`u8_vector_in_wrapper.loft`](u8_vector_in_wrapper.loft) | `vector<Struct-with-u8>` corrupts on `:j` when reached via `hash → for-iter → vector → wrapper → :j` | § Open #1 |
-| [`const_param_store_lock.loft`](const_param_store_lock.loft) | Two `const` struct params + writing through a third (non-const) param's vector trips `Claim on read-only store` | § Open #2 |
-| [`struct_with_hash_native_return.loft`](struct_with_hash_native_return.loft) | Native codegen loses struct type info when a function returns a struct containing a `hash<…>`.  Blocks `make play` (interpret-mode workaround in place). | § Open #3 |
-| [`json_vector_cast_native_tail_return.loft`](json_vector_cast_native_tail_return.loft) | Native codegen SILENTLY answers `[]` for a `text as vector<Struct>` cast in tail-return position.  Empties dryopea's palette natively; no panic, no diagnostic. | § Open #4 |
-| [`struct_cast_via_text_local_returned.loft`](struct_cast_via_text_local_returned.loft) | A `text as Struct` cast returned out of a function trips guard #306 and SIGSEGVs on the interpreter; the native build fails to compile the emitted Rust. | § Open #5 |
+| [`json_vector_cast_native_tail_return.loft`](json_vector_cast_native_tail_return.loft) | Native codegen SILENTLY answers `[]` for a `text as vector<Struct>` cast in tail-return position.  Empties dryopea's palette natively; no panic, no diagnostic. | [loft#866](https://github.com/loft-lang/loft/issues/866) |
+| [`struct_cast_via_text_local_returned.loft`](struct_cast_via_text_local_returned.loft) | A `text as Struct` cast returned out of a function trips guard #306 and SIGSEGVs on the interpreter; the native build fails to compile the emitted Rust. | [loft#867](https://github.com/loft-lang/loft/issues/867) |
+
+Five reproducers were **deleted on 2026-08-12** after re-running them
+against loft 2026.8.0 showed their bugs no longer reproduce — per the rule
+above, a repro that has stopped reproducing has no evidentiary value and
+git history keeps it.  They were `dup_struct_type_across_libs`,
+`canvas_store_leak_struct_param`, `u8_vector_in_wrapper`,
+`const_param_store_lock` and `struct_with_hash_native_return`; what each
+one was observed to do now is recorded in
+[`QUESTIONS_FOR_LOFT.md`](../QUESTIONS_FOR_LOFT.md) § Resolved.
