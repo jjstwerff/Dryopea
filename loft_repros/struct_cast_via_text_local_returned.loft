@@ -1,0 +1,85 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// REPRODUCER — a `text as Struct` cast whose result crosses a
+// function RETURN corrupts the store, then segfaults.
+//
+//   loft --interpret <this file>
+//     → loft: BUG (#306): refused to free the stack store (#0)
+//       (rec=0, pos=0, var='') — a stack-record ref was treated as
+//       an owned heap store
+//       === loft crash (loft) SIGSEGV caught ===
+//         last op: OpAppendText (op=117)
+//
+//   loft <this file>
+//     → the generated Rust does not compile:
+//       4 × error[E0308]: mismatched types
+//       (`var_t = "".to_string()` assigned into a `DbRef` binding)
+//
+// Expected: prints `name=probe`, then `SURVIVED`.
+//
+// ── Trigger ─────────────────────────────────────────────────────
+//
+//     fn load(p: text) -> S {
+//         t = file(p).content() ?? "";     ← a TEXT local …
+//         t as S                           ← … cast, and returned
+//     }
+//
+// It is the RETURN that does it, not the cast: the identical cast
+// written inside a function that does not return the struct is
+// fine.  Bisected on 2026-08-12 —
+//
+//   SURVIVES  fn load(p) -> S { file(p).content() as S }
+//             (the cast source is the expression, not a text local;
+//              interpreter is correct, native answers a null-filled
+//              struct — that one is the sibling entry in
+//              QUESTIONS_FOR_LOFT.md)
+//   SURVIVES  the same cast inside a fn that returns nothing
+//   SURVIVES  a text local with no cast at all
+//   CRASHES   the shape above (SIGSEGV, interpreter)
+//   CORRUPTS  the same via a non-tail local — `m = t as S; m` —
+//             which does NOT crash: it prints BUG (#306) and hands
+//             back a null-filled struct
+//
+// Neither the `?? ""` nor the vector field matters: a two-field
+// flat struct with a pre-declared `t: text` crashes the same way.
+// Whether it corrupts or segfaults tracks tail vs non-tail return
+// position, which is what makes the silent half of this dangerous.
+//
+// ── Impact in dryopea ───────────────────────────────────────────
+//
+// Not hit in source today: `src/save.loft::load_map_file` and
+// `load_marker_file` use the direct `file(p).content() as MapFile`
+// form.  It is filed because the direct form is what someone
+// reaches for when working around the sibling bug — binding to a
+// local is the natural fix there, and here it is the trigger.
+//
+// See QUESTIONS_FOR_LOFT.md § "`text as Struct` returned out of a
+// function corrupts the store (interpreter SIGSEGV, native rustc
+// error)".
+
+#cwd
+
+struct Flat {
+    version: integer,
+    name:    text,
+}
+
+const DATA: text = "/tmp/loft_repro_flat.json";
+
+fn load(p: text) -> Flat {
+    l_t = file(p).content() ?? "";
+    l_t as Flat
+}
+
+fn main() {
+    // `{{` / `}}` are the escaped braces — a bare `{` starts a
+    // format placeholder.
+    w = file(DATA);
+    w.write("{{\"version\":1,\"name\":\"probe\"}}");
+
+    println("start");
+    m = load(DATA);
+    println("  name={m.name}   (want probe)");
+    println("SURVIVED");
+}

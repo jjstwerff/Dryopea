@@ -408,18 +408,13 @@ fix / feature, move it to **Resolved**.
 - **Concrete dryopea impact:** `src/palette.loft::load_palette` is
   exactly this shape.  Natively `load_palette` → 0 entries →
   `picker_default` → 0 entries.
-- **Also seen, same area, not separately filed yet** (all native, all
-  around `text as Struct` / `text as vector<Struct>`):
-  - inside the full dryopea program `text as MapFile` answers a
-    null-filled struct in *every* form tried (tail-return, untyped
-    local, typed local) — so the vector workaround above has no
-    struct-shaped twin;
-  - `t = file(p).content() ?? ""; t as MapFile` makes the **generated
-    Rust fail to compile** (4 × `error[E0308]: mismatched types`);
-  - a small program with `fn by_const()` and `fn by_param(path)` both
-    casting to the same struct **segfaults on BOTH backends**
-    (exit 139).  This one is memory-unsafety and probably wants its
-    own issue — say the word and dryopea will cut a separate repro.
+- **The struct-shaped twin is worse and is filed separately** — see
+  § "`text as Struct` returned out of a function corrupts the store"
+  below.  Two things follow for whoever picks this up: inside the full
+  dryopea program the direct `text as MapFile` form answers a
+  null-filled struct natively (so the local-binding workaround above
+  has no struct twin), and binding to a local — the obvious thing to
+  reach for — is the *trigger* of the other bug rather than a fix.
 - **Workaround in dryopea:** none applied in source.  `scripts/validate.sh`
   runs `--interpret` (the same choice `make play` already made for the
   panic above), and `validate_all` refuses to run at all when the
@@ -428,6 +423,53 @@ fix / feature, move it to **Resolved**.
 - **Loft pointer:** native codegen, `db_from_text` emission for a cast
   in tail-return position — the result is discarded rather than
   returned.
+
+### `text as Struct` returned out of a function corrupts the store (interpreter SIGSEGV, native rustc error)
+
+- **Found while:** plan 08 V4 — looking for a dryopea-side workaround
+  for the `vector<Struct>` bug above.  Binding the cast to a local is
+  the obvious fix there; for the struct-shaped cast it is the trigger.
+- **Kind:** bug (**memory unsafety** on the interpreter; emitted-Rust
+  compile failure on native)
+- **Trigger:** a `text` local cast to a struct, where the result
+  crosses a **function return**:
+  ```loft
+  fn load(p: text) -> S {
+      t = file(p).content() ?? "";   // a text local …
+      t as S                         // … cast, and returned
+  }
+  ```
+  The interpreter prints
+  `loft: BUG (#306): refused to free the stack store (#0) (rec=0,
+  pos=0, var='') — a stack-record ref was treated as an owned heap
+  store` and then takes SIGSEGV at `OpAppendText`.  The native backend
+  never gets to run it: the emitted Rust fails with 4 ×
+  `error[E0308]: mismatched types`, assigning `var_t = "".to_string()`
+  into a binding typed `DbRef`.
+- **It is the RETURN, not the cast.** Bisected 2026-08-12:
+
+  | shape | interpreter | native |
+  |---|---|---|
+  | `fn load(p) -> S { file(p).content() as S }` | correct | runs, answers a **null-filled struct** |
+  | `fn load(p) -> S { t = …content() ?? ""; t as S }` | **BUG #306 → SIGSEGV** | **rustc E0308** |
+  | `fn load(p) -> S { t = …; m = t as S; m }` (non-tail) | BUG #306, no crash, answers **null** | runs, answers null |
+  | the same cast inside a fn that returns nothing | correct | correct |
+  | a text local with no cast | correct | correct |
+
+  Neither the `?? ""` nor a `vector<…>` field is needed — a two-field
+  flat struct with a pre-declared `t: text` does it.  Whether it
+  segfaults or silently corrupts tracks tail vs non-tail position,
+  which makes the quiet half the dangerous one.
+- **Reproducer:** [`loft_repros/struct_cast_via_text_local_returned.loft`](loft_repros/struct_cast_via_text_local_returned.loft)
+  — self-contained, two-field struct, no dryopea types.
+- **Concrete dryopea impact:** none in source today —
+  `src/save.loft::load_map_file` / `load_marker_file` use the direct
+  form.  Filed because the direct form is what the sibling bug above
+  pushes you off of.
+- **Loft pointer:** store ownership — a stack-record ref from the cast
+  destination escaping through the return path and being freed as an
+  owned heap store (guard #306).  Probably the same area as
+  OWNERSHIP_MODEL.md's store-lifetime work.
 
 ### Div-by-zero warning still fires on `float / int_literal`
 
