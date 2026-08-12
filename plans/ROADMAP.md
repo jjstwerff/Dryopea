@@ -30,14 +30,14 @@ end-to-end and *fun-shaped*.
 
 | Feature | Status | Slot | Brief |
 |---|---|---|---|
-| Ground editor (sparse paint, sea default) | **shipped** | [plan 01 E1-E3](future/01-ground-editor/README.md) | Hex grid + camera + palette + click/drag paint |
-| Save/load MapFile JSON | **partial** | [plan 01 E4](future/01-ground-editor/README.md) | 6-field schema; expanded once loft JSON-cast bugs land |
-| Integration smoke test (cold-start cycle) | **shipped** | [plan 01](future/01-ground-editor/README.md) | 72/72 green under `scripts/test.sh` |
-| Interactive GL editor (E1-live) | **shipped** | [plan 01 E1-live](future/01-ground-editor/README.md) | `src/main.loft`; human playtest pending |
-| 3D solver-validation viewer | drafted | [plan 02](future/02-solver-validation-viewer/README.md) | Painted layer + height-solved mesh overlay, 40% transparent |
-| Marker layer + spawn points | **shipped** | [plan 03](future/03-marker-layer-and-spawns/README.md) | M1-M5 done; sidecar JSON, mode toggle, placement + rotation, render overlay, wave engine + spawn director |
-| Map library + browser (planet-view UI) | drafted | [plan 04](future/04-map-library/README.md) | MapFile schema (L1), map index, content, selector |
-| End-to-end validation scenario | drafted | [plan 05](future/05-validation-scenario/README.md) | The "minimum playable thing" spec |
+| Ground editor (sparse paint, sea default) | **shipped** | [plan 01 E1-E3](01-ground-editor/README.md) | Hex grid + camera + palette + click/drag paint |
+| Save/load MapFile JSON | **partial** | [plan 01 E4](01-ground-editor/README.md) | 6-field schema; expanded once loft JSON-cast bugs land |
+| Integration smoke test (cold-start cycle) | **shipped** | [plan 01](01-ground-editor/README.md) | 72/72 green under `scripts/test.sh` |
+| Interactive GL editor (E1-live) | **shipped** | [plan 01 E1-live](01-ground-editor/README.md) | `src/main.loft`; human playtest pending |
+| 3D solver-validation viewer | drafted | [plan 02](02-solver-validation-viewer/README.md) | Painted layer + height-solved mesh overlay, 40% transparent |
+| Marker layer + spawn points | **shipped** | [plan 03](03-marker-layer-and-spawns/README.md) | M1-M5 done; sidecar JSON, mode toggle, placement + rotation, render overlay, wave engine + spawn director |
+| Map library + browser (planet-view UI) | drafted | [plan 04](04-map-library/README.md) | MapFile schema (L1), map index, content, selector |
+| End-to-end validation scenario | drafted | [plan 05](05-validation-scenario/README.md) | The "minimum playable thing" spec |
 
 When Tier A is done the game is **playable** — a player can
 land, paint a base, defend through some waves, scramble.  Not
@@ -101,22 +101,22 @@ pipeline**:
   or need an art team — they ship full games on stencils
   alone.
 
-See [`plan 06`](future/06-editor-stencil-pipeline/README.md)
+See [`plan 06`](06-editor-stencil-pipeline/README.md)
 § Who this serves for the three-audience breakdown
 (dryopea team + studios + indies).
 
 | Feature | Status | Slot | Brief |
 |---|---|---|---|
-| Multi-layer painting (moros-house style) | drafted | [plan 06 S1](future/06-editor-stencil-pipeline/README.md) | Stacked layers per hex; vertical structure |
-| Bridges as a primitive | drafted | [plan 06 S1](future/06-editor-stencil-pipeline/README.md) | Multi-layer connecting spans |
-| Stencil authoring mode | drafted | [plan 06 S2](future/06-editor-stencil-pipeline/README.md) | Same editor, bounded region, separate save format |
-| Mesh baker (stencil → static mesh) | drafted | [plan 06 S2](future/06-editor-stencil-pipeline/README.md) | Scales down to entity size; per-stencil colour |
-| Mesh composition (mount + pivot) | drafted | [plan 06 S3](future/06-editor-stencil-pipeline/README.md) | Tower-base + rotating-top; swivel turrets |
-| Entity runtime (baked meshes as units) | drafted | [plan 06 S3](future/06-editor-stencil-pipeline/README.md) | Spawn, tick, render baked entities |
-| World-dressing prefabs (place a stencil into a map) | drafted | [plan 06 § 1](future/06-editor-stencil-pipeline/README.md) | Old habitats / huge trees / bridges / factories / ruins |
+| Multi-layer painting (moros-house style) | drafted | [plan 06 S1](06-editor-stencil-pipeline/README.md) | Stacked layers per hex; vertical structure |
+| Bridges as a primitive | drafted | [plan 06 S1](06-editor-stencil-pipeline/README.md) | Multi-layer connecting spans |
+| Stencil authoring mode | drafted | [plan 06 S2](06-editor-stencil-pipeline/README.md) | Same editor, bounded region, separate save format |
+| Mesh baker (stencil → static mesh) | drafted | [plan 06 S2](06-editor-stencil-pipeline/README.md) | Scales down to entity size; per-stencil colour |
+| Mesh composition (mount + pivot) | drafted | [plan 06 S3](06-editor-stencil-pipeline/README.md) | Tower-base + rotating-top; swivel turrets |
+| Entity runtime (baked meshes as units) | drafted | [plan 06 S3](06-editor-stencil-pipeline/README.md) | Spawn, tick, render baked entities |
+| World-dressing prefabs (place a stencil into a map) | drafted | [plan 06 § 1](06-editor-stencil-pipeline/README.md) | Old habitats / huge trees / bridges / factories / ruins |
 | Jointed / leg movement extensions | sketch | plan 06 S4 (deferred) | Walking robots, insect locomotion — triggers with tier-2 plan |
 
-Plan slot: [`plan 06 — Editor-to-stencil pipeline`](future/06-editor-stencil-pipeline/README.md)
+Plan slot: [`plan 06 — Editor-to-stencil pipeline`](06-editor-stencil-pipeline/README.md)
 covers all of the above as a single coherent initiative,
 with phases S1-S4.  S4 (joints / legs) explicitly deferred
 until tier-2 insects trigger it.
@@ -159,7 +159,7 @@ each mission is independent; persistence isn't shipped.
 | Q4 loadout closure | drafted | DESIGN § 7 + § 13 | Pick towers from inventory before each sortie |
 | Scouting unlocks new tower types | drafted | DESIGN § 7 + § 13 | Scouted intel persists; variants become orderable |
 | Helper rescue quests | drafted | DESIGN § 9 Helpers | Stranded helpers from past missions, rescuable |
-| Static planet-view map selector | drafted | [plan 04 L3](future/04-map-library/README.md) | Clickable markers per available map |
+| Static planet-view map selector | drafted | [plan 04 L3](04-map-library/README.md) | Clickable markers per available map |
 | Rotating planet-view UI (future UX) | sketch | SETTING § Future UX | Day/night terminator, overlay state |
 | Bounded sessions + mission chaining | drafted | DESIGN § 14 | Time-windowed run shape |
 

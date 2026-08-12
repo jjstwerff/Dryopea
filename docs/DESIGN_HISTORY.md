@@ -68,7 +68,7 @@ collaborative or competitive missions.
   missions" → DESIGN.md § Future expansion (planet-scale
   multiplayer over `lib/server` + `lib/web`).
 - "A quality editor for rapid prototyping" → the **in-game
-  ground-type editor** (now [plan 01](../plans/future/01-ground-editor/README.md)).
+  ground-type editor** (now [plan 01](../plans/01-ground-editor/README.md)).
 
 **What did NOT survive:**
 - "Vulcan executable" — Vulkan was never used; loft's render path

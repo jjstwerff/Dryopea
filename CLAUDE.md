@@ -256,27 +256,46 @@ user-data Store binding](QUESTIONS_FOR_LOFT.md); strategy in
 **Don't take the manual binary `file()` + `#read` detour** —
 it's strictly worse than the JSON we have today.
 
-### Plan numbering
+### Plan structure
 
-**Never renumber existing plans.**  New plans get the next
-unused integer.  Plan 01 = ground editor (active); plans 02-06
-= drafted in `plans/future/`.  Numbering is independent of
-priority — `plans/ROADMAP.md` carries the logical ordering.
+dryopea follows **moros's plan conventions** — see
+[`plans/README.md`](plans/README.md) for the binding, and
+[`plans/_TEMPLATE.md`](plans/_TEMPLATE.md) to start one.  The
+essentials:
+
+- **Layout is FLAT**: `plans/<NN>-<slug>/`.  There is no
+  `future/` · `finished/` · `deferred/` — lifecycle is a field
+  in the plan's own `## Status` section, so a plan that ships
+  does not move on disk and invalidate every link to it.
+- **Never renumber existing plans.**  New plans take the next
+  unused integer.  Numbering carries no priority —
+  `plans/ROADMAP.md` carries the ordering.
+- **Most work is not a plan.**  A plan earns its directory only
+  when the work is genuinely multi-phase; cap active plans at
+  2–3.  See § Pick the lightest workflow that fits.
+- Every phase names a **gate** — how you *see* it works.
+  "It compiles" is not a gate.
+- Value tags `S/R/G/F/U/C/Q/N` and effort letters
+  `XS/S/M/MH/H/VH`, the same letters as moros and loft.
 
 ## Plans, ROADMAP, docs
 
 ```
 plans/
-  README.md       — plan tracker admin
+  README.md       — plan conventions + index
+  _TEMPLATE.md    — copy this for a new plan
   ROADMAP.md      — comprehensive feature roadmap (5 tiers,
                     A validation → E narrative arcs)
   DEFERRED.md     — parked plans (none yet)
-  future/01-ground-editor/         — Active (E1-E4 + smoke + E1-live shipped)
-  future/02-solver-validation-viewer/
-  future/03-marker-layer-and-spawns/
-  future/04-map-library/
-  future/05-validation-scenario/
-  future/06-editor-stencil-pipeline/ — hex_* substrate now published
+  01-ground-editor/         — Active (E1-E4 + smoke + E1-live shipped)
+  02-solver-validation-viewer/
+  03-marker-layer-and-spawns/
+  04-map-library/
+  05-validation-scenario/
+  06-editor-stencil-pipeline/ — hex_* substrate now published
+  07-shared-world-substrate/  — Active (W0 partial)
+  08-game-validation/         — Active (V0 next): scripted play,
+                    measured effects, PNGs for inspection
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -346,10 +365,13 @@ signature.
 | [docs/GROUND_TYPES.md](docs/GROUND_TYPES.md) | Palette spec |
 | [docs/NUMBERS.md](docs/NUMBERS.md) | Tunable values |
 | [docs/PROXY_ART.md](docs/PROXY_ART.md) | Placeholder shapes |
-| [plans/README.md](plans/README.md) | Plan tracker admin |
+| [plans/README.md](plans/README.md) | Plan conventions (moros-style) + index |
+| [plans/_TEMPLATE.md](plans/_TEMPLATE.md) | Template for a new plan |
 | [plans/ROADMAP.md](plans/ROADMAP.md) | Comprehensive feature roadmap (5 tiers) |
-| [plans/future/01-ground-editor/README.md](plans/future/01-ground-editor/README.md) | Plan 01 — Active. E1-E4 + smoke + E1-live shipped |
-| [plans/future/06-editor-stencil-pipeline/README.md](plans/future/06-editor-stencil-pipeline/README.md) | Plan 06 — editor-to-stencil pipeline (two purposes, three audiences) |
+| [plans/01-ground-editor/README.md](plans/01-ground-editor/README.md) | Plan 01 — Active. E1-E4 + smoke + E1-live shipped |
+| [plans/06-editor-stencil-pipeline/README.md](plans/06-editor-stencil-pipeline/README.md) | Plan 06 — editor-to-stencil pipeline (two purposes, three audiences) |
+| [plans/07-shared-world-substrate/README.md](plans/07-shared-world-substrate/README.md) | Plan 07 — go 3D on the shared hex substrate |
+| [plans/08-game-validation/README.md](plans/08-game-validation/README.md) | Plan 08 — scripted play, measured effects, PNGs for inspection |
 | [PROBLEMS.md](PROBLEMS.md) | Dryopea-internal bugs (`@D<NNN>`) |
 | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) | Outbound queue to loft |
 
@@ -360,13 +382,14 @@ signature.
 | Understand the game | [README.md](README.md) → [docs/DESIGN.md](docs/DESIGN.md) |
 | Understand the fiction | [docs/SETTING.md](docs/SETTING.md) |
 | Pick next work to do | [plans/ROADMAP.md](plans/ROADMAP.md) — 5-tier feature list |
-| Continue plan 01 work | [plans/future/01-ground-editor/README.md](plans/future/01-ground-editor/README.md) § Implementation status |
+| Continue plan 01 work | [plans/01-ground-editor/README.md](plans/01-ground-editor/README.md) § Implementation status |
 | Add a regression test | `tests/01_*.loft` for patterns; `golden.loft::assert_golden` for image tests |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
-| Understand library extraction | loft `lib_plans/24-universal-editor/REFERENCE.md` |
+| Understand library extraction | The `hex_*` family is published — `loft api --registry` |
+| Validate the GAME (not a function) | [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 
 ## Branch policy
 

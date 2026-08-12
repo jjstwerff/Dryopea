@@ -21,7 +21,7 @@ bottom of this file for traceability.
   [`../examples/numbers.json`](../examples/numbers.json) —
   runtime parameters
 
-**Plans** in `plans/future/`: 01 ground-editor, 02 viewer,
+**Plans** in `plans/`: 01 ground-editor, 02 viewer,
 03 spawns, 04 maps, 05 validation-scenario.
 
 ---
@@ -58,7 +58,7 @@ bottom of this file for traceability.
 ## 1. Status + scope
 
 **Pre-alpha, design only — no code yet.**  Plans 01-05 in
-`plans/future/` cover the system designs.  The runtime
+`plans/` cover the system designs.  The runtime
 parameters live in
 [`../examples/numbers.json`](../examples/numbers.json); the
 fiction in [`SETTING.md`](SETTING.md).
@@ -70,7 +70,7 @@ commitment → 7 waves with ~15 s gaps → ~5-6 min wave phase →
 free scramble or earlier exit.  Validation passes when a cold
 player can play one base end-to-end with no critical
 contradiction in 30 minutes of play.  Full scope in
-[`plans/future/05-validation-scenario/README.md`](../plans/future/05-validation-scenario/README.md).
+[`plans/05-validation-scenario/README.md`](../plans/05-validation-scenario/README.md).
 
 Everything below describes the design **including its future**.
 What is in validation tier vs deferred is called out in
@@ -1365,7 +1365,7 @@ Out:
 
 These are tracked future-design items, not bugs to fix during
 validation.  Full integration plan in
-[`plans/future/05-validation-scenario/README.md`](../plans/future/05-validation-scenario/README.md).
+[`plans/05-validation-scenario/README.md`](../plans/05-validation-scenario/README.md).
 
 ## 20. Future expansion
 
@@ -1436,7 +1436,7 @@ value in `numbers.json`.
   runtime parameters.
 - [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md) — design seeds
   from the 2023 prototype.
-- Plans 01-05 in `plans/future/`.
+- Plans 01-05 in `plans/`.
 
 ---
 
@@ -1527,7 +1527,7 @@ above (sections 4-14).  See § The core, § Spawn system + waves,
 D0-D5 from the original phase plan are subsumed into the
 validation tier (D0+D1+D2+D3 minimal) and § Future expansion
 (D4 economy, D5 scramble).  Validation success criteria are
-in [`plans/future/05-validation-scenario/README.md`](../plans/future/05-validation-scenario/README.md).
+in [`plans/05-validation-scenario/README.md`](../plans/05-validation-scenario/README.md).
 
 ### Dependencies + shared primitives
 

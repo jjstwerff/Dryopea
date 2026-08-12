@@ -916,6 +916,6 @@ escape rocket, DESIGN.md § Scramble).
   body colour deliberately avoids.
 - [`DESIGN.md`](DESIGN.md) § World scale — the 1.5 m hex
   diameter that anchors proxy dimensions.
-- [`../plans/future/02-solver-validation-viewer/README.md`](../plans/future/02-solver-validation-viewer/README.md)
+- [`../plans/02-solver-validation-viewer/README.md`](../plans/02-solver-validation-viewer/README.md)
   — the first place proxy enemies will visibly walk around once
   flow-field validation joins the viewer.

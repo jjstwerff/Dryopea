@@ -26,31 +26,30 @@
 #
 #   make check FILE=src/<file>.loft
 #                   Parse-check a single .loft file without running it.
-#                   Equivalent to `loft --native-emit /tmp/x.rs --lib …`.
+#                   Equivalent to `loft --native-emit /tmp/x.rs …`.
 #                   Quick syntax/type sanity for an edit in progress.
-#
-#   make loft       Rebuild the loft binary in $(LOFT_ROOT).  Run this
-#                   after pulling loft, or when the dryopea suite trips
-#                   on a fresh loft feature.  ~20s release build.
+#                   ⚠ Worth running on src/main.loft by hand: it sits
+#                   outside the aggregator, so the test suite never
+#                   compiles it.  Plan 08 V0 closes that hole.
 #
 #   make clean      Wipe tests/actual/ plus the cwd save file
 #                   (dryopea_save.json), so the next launch starts cold.
 #
 # Tunables (env or `make VAR=…`):
 #
-#   LOFT_ROOT       Path to the loft checkout.  Default: ../loft.
-#   LOFT_BIN        Path to the loft binary.  Default: $(LOFT_ROOT)/target/release/loft.
-#   LOFT_LIB        Path to loft's stdlib.    Default: $(LOFT_ROOT)/lib.
+#   LOFT_BIN        The loft binary.  Default: `loft` from PATH.
+#                   Libraries resolve from the package registry, so
+#                   there is no stdlib path to set.
 #
 # Every target above is defined as a real rule later in this file.
 # Scroll down to any name to see exactly what it does.
 # =========================================================================
 
-LOFT_ROOT ?= $(CURDIR)/../loft
-LOFT_BIN  ?= $(LOFT_ROOT)/target/release/loft
-LOFT_LIB  ?= $(LOFT_ROOT)/lib
+# dryopea runs on the INSTALLED loft; its libraries resolve from the
+# package registry via loft.toml + loft.lock, so no --lib path is passed.
+LOFT_BIN  ?= loft
 
-.PHONY: help play play-native test check loft clean
+.PHONY: help play play-native test check clean
 
 # ── Help ─────────────────────────────────────────────────────────
 
@@ -64,7 +63,7 @@ help:
 # ── Common-use targets ───────────────────────────────────────────
 
 # Launch the interactive editor.  Fails fast with a clear message if
-# the loft binary is missing — `make loft` rebuilds it.  Pass
+# the loft binary is missing — install loft, or set LOFT_BIN.  Pass
 # `MAP=<name>` to edit a named map under maps/ instead of the default
 # single-slot save.
 #
@@ -76,23 +75,19 @@ help:
 # GL window opens.  When the upstream fix lands, drop `--interpret`
 # to get native performance back.
 play:
-	@if [ ! -x "$(LOFT_BIN)" ]; then \
-	  echo "ERROR: loft binary not found at $(LOFT_BIN)"; \
-	  echo "Run 'make loft' to build it, or set LOFT_BIN."; \
-	  exit 2; \
-	fi
-	$(LOFT_BIN) --interpret --lib $(LOFT_LIB) src/main.loft $(MAP)
+	@command -v $(LOFT_BIN) >/dev/null 2>&1 || { \
+	  echo "ERROR: loft binary not found: $(LOFT_BIN)"; \
+	  echo "Install loft, or set LOFT_BIN."; exit 2; }
+	$(LOFT_BIN) --interpret src/main.loft $(MAP)
 
 # Native-compile play target — currently broken by the upstream
 # struct-with-hash-return bug above.  Kept for testing the
 # eventual fix; flip `play` back to native when it works.
 play-native:
-	@if [ ! -x "$(LOFT_BIN)" ]; then \
-	  echo "ERROR: loft binary not found at $(LOFT_BIN)"; \
-	  echo "Run 'make loft' to build it, or set LOFT_BIN."; \
-	  exit 2; \
-	fi
-	$(LOFT_BIN) --lib $(LOFT_LIB) src/main.loft $(MAP)
+	@command -v $(LOFT_BIN) >/dev/null 2>&1 || { \
+	  echo "ERROR: loft binary not found: $(LOFT_BIN)"; \
+	  echo "Install loft, or set LOFT_BIN."; exit 2; }
+	$(LOFT_BIN) src/main.loft $(MAP)
 
 # Full test suite.  Delegates to scripts/test.sh (single source of
 # truth for the invocation — that script also cleans tests/actual/
@@ -111,12 +106,7 @@ check:
 	  echo "Usage: make check FILE=src/<file>.loft"; \
 	  exit 2; \
 	fi
-	$(LOFT_BIN) --native-emit /tmp/dryopea_check.rs --lib $(LOFT_LIB) $(FILE)
-
-# Rebuild the loft binary.  Cargo is incremental, so this is cheap
-# after the first build (~2s incremental, ~20s from clean).
-loft:
-	cd $(LOFT_ROOT) && cargo build --release
+	$(LOFT_BIN) --native-emit /tmp/dryopea_check.rs $(FILE)
 
 # Drop runtime save state and stale test artefacts.  scripts/test.sh
 # also wipes tests/actual/* between runs, so a forgotten `make clean`

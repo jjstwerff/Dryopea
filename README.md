@@ -92,7 +92,7 @@ first-class principle" for the full design stance.
 
 Dryopea exposes a curated subset of its internals as a loft
 library for downstream consumers — primarily the
-[@PLAN50 bumper-airplanes audience demo](https://github.com/jjstwerff/loft/tree/main/doc/claude/plans/future/50-bumper-airplanes)
+[@PLAN50 bumper-airplanes audience demo](https://github.com/jjstwerff/loft/tree/main/doc/claude/plans/50-bumper-airplanes)
 which reads dryopea MapFile JSON + the palette and extrudes the
 painted world into a 3D scene.  Other consumers (map-loading
 tools, validation viewers, future audience demos) plug in the

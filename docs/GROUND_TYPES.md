@@ -530,7 +530,7 @@ playable — explicitly deferred until the substrate works.
 - [`DESIGN.md`](DESIGN.md) — master design; § "Editor / game
   split" + § "Systems #4 (multi-level pathing)" use this
   palette's slope + walkable flags.
-- [`../plans/future/01-ground-editor/README.md`](../plans/future/01-ground-editor/README.md)
+- [`../plans/01-ground-editor/README.md`](../plans/01-ground-editor/README.md)
   — the first plan; phases E1-E4 turn this palette into a
   playable painting surface.
 - [`../examples/palette.json`](../examples/palette.json) — the

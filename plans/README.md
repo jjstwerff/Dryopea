@@ -3,77 +3,118 @@ Copyright (c) 2026 Jurjen Stellingwerff
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Plans
+# plans/ — dryopea's plan structure
 
-Multi-phase initiatives for dryopea. Each subdirectory holds the
-plan README (goal + phases + dependencies) and any per-phase
-files.
+dryopea organises multi-phase work the way **moros** and **loft** do, so one
+convention spans every repo. This file is the **binding** — the conventions,
+and where dryopea differs.
 
-Style mirrors the loft project's tracker, kept light. Active
-plans live at the **top level** (`plans/<NN>-<slug>/`); drafted
-ones at `future/`; closed ones at `finished/`; parked ones at
-`deferred/`. The DEFERRED index lives at
-[`DEFERRED.md`](DEFERRED.md).
+- A **reference doc** ([`docs/DESIGN.md`](../docs/DESIGN.md),
+  [`docs/GROUND_TYPES.md`](../docs/GROUND_TYPES.md), …) describes **how the
+  thing works** — the durable truth, updated in place as the code changes.
+- A **plan** describes **a change we intend to make** — phases, ordering,
+  verification. It is temporary: when a phase ships, its reference content
+  **moves out** to the doc that owns it, and the plan keeps only the closure
+  record.
 
-For a comprehensive feature roadmap that includes mechanics
-not yet promoted to plan slots, see
-[`ROADMAP.md`](ROADMAP.md) — it answers the "what could we
-do next?" question in 30 seconds.
+If you cannot say what *changes* when the plan is done, it is a doc, not a
+plan.
 
-## Current plans
+## Pick the lightest workflow that fits
 
-| Plan | E | Depends on | Notes |
-|---|---|---|---|
-| [`future/01-ground-editor/`](future/01-ground-editor/README.md) | M | loft `lib/graphics` GL + game-loop | E1-E4 + integration smoke + E1-live shipped; human playtest pending |
-
-## Future plans
-
-| Plan | E | Depends on | Notes |
-|---|---|---|---|
-| [`future/02-solver-validation-viewer/`](future/02-solver-validation-viewer/README.md) | MH | plan 01 + lib-plan 19 gridmesh + lib-plan 20 terrain-heightmap | 3D solver-output viewer; painted layer + height mesh, 40% see-through |
-| [`future/03-marker-layer-and-spawns/`](future/03-marker-layer-and-spawns/README.md) | M | plan 01 | Second sparse layer; multi-direction spawn points |
-| [`future/04-map-library/`](future/04-map-library/README.md) | M | plan 01 + plan 03 | MapFile schema + map index + browser + content |
-| [`future/05-validation-scenario/`](future/05-validation-scenario/README.md) | M | plans 01-04 | Minimum playable thing; integration spec |
-| [`future/06-editor-stencil-pipeline/`](future/06-editor-stencil-pipeline/README.md) | MH | plan 01 + loft `lib/graphics` mesh API | Editor-as-content-pipeline; multi-layer + bridges + stencil mode + mesh baker + composition.  Brings the suite into rapid prototyping; two shipping paths (polish or strike).  Indie unlock: ship full games on stencil output alone — viable engine offering for devs without an art team |
-| [`future/07-shared-world-substrate/`](future/07-shared-world-substrate/README.md) | H–VH | loft `gridmesh` + `moros_map` + `moros_render` (path-dep, now); gridmesh axial-layout adapter gates W3 | **Active (W0 starting).** Go 3D: adopt the shared hex substrate so dryopea + moros interchange world-building routines (multi-floor, stairs, rounded-structure detection, walls).  Replaces dryopea's 2D `Canvas` painter with `moros_map::Map` + `moros_render` 3D meshes + `gridmesh` chunk/dirty.  Reframes the substrate dependency under plans 02 + 06 |
-
-Several Tier-B / Tier-C / Tier-D features in
-[`ROADMAP.md`](ROADMAP.md) don't have plan slots yet
-(tower-strain arc, insects, elementals, station hub,
-contact arcs).  They're tracked in the roadmap and get
-promoted to a `future/NN-...` slot when their trigger
-fires.
-
-## Finished plans
-
-| Plan | Notes |
+| Work shape | Path |
 |---|---|
-| *(none yet — plan 01 moves here once its human playtest confirms.)* | |
+| **Bug fix** (one root cause, one commit) | Fix + a test in `tests/` + commit. No plan. |
+| **Upstream defect** (loft, or a library) | File it in [`QUESTIONS_FOR_LOFT.md`](../QUESTIONS_FOR_LOFT.md) and fix it in the owning repo. **Never a dryopea plan, never a local workaround.** |
+| **dryopea-internal bug** | A `@D<NNN>` row in [`PROBLEMS.md`](../PROBLEMS.md). |
+| **Content work** (a ground type, a palette entry, a map) | Nothing, or one line in the doc that owns it. |
+| **Light TODO** *(the default)* | An `## Open work` row in the reference doc that owns the area. |
+| **Plan** | A directory here. Earns it only when the work is genuinely **multi-phase**. Cap active plans at **2–3**. |
 
-## Deferred plans
+Most work is not a plan. A row in the doc that owns the area beats a plan
+directory that only points back at that doc.
 
-See [`DEFERRED.md`](DEFERRED.md).
+## Identity — the plan number
 
-## Workflow
+A plan's identity is its **zero-padded integer**, and the directory is
+**flat**: `plans/<NN>-<slug>/README.md`.
 
-A plan is promoted from `future/` to top-level when work starts
-(by moving the directory and updating the table above). When the
-plan's last phase ships, move it to `finished/`. A plan that
-loses its trigger but is worth keeping moves to `deferred/`
-and a row is added to DEFERRED.md.
+- **Never renumber an existing plan.** New plans take the next unused
+  integer. Numbers appear in commits and prose, so a collision is expensive
+  to unwind.
+- **Numbering carries no priority.** [`ROADMAP.md`](ROADMAP.md) carries the
+  logical ordering.
+- **No `future/` · `finished/` · `deferred/` subdirectories.** Lifecycle
+  state is a **field in the plan's own `## Status` section**, not a path — a
+  plan that ships should not move on disk and invalidate every link to it.
 
-A roadmap entry that doesn't have a plan slot yet gets one
-when its trigger fires — usually "the previous tier's plans
-are mostly shipped" or "a new consumer needs this mechanic
-now."
+> **Where dryopea differs from moros.** moros keys plan identity to its
+> GitHub **issue number** and derives the overview from `gh issue list`.
+> dryopea has no issues filed and no `plan` label, so identity stays a local
+> integer and the index below is hand-maintained. If dryopea starts using
+> issues, switching to moros's scheme is the better end state — that is an
+> open decision, not a settled difference.
 
-Effort tags follow loft conventions: XS / S / M / MH / H / VH /
-L.
+## Index
+
+Each plan's own `## Status` section is the source of truth; this table is a
+pointer, not a second copy.
+
+| Plan | Value | Effort | Lifecycle | One line |
+|---|---|---|---|---|
+| [`01-ground-editor`](01-ground-editor/README.md) | G | M | Active | In-game ground-type editor; E1–E4 + smoke + E1-live shipped |
+| [`02-solver-validation-viewer`](02-solver-validation-viewer/README.md) | G | MH | Future | 3D solver-output viewer; painted layer + height mesh |
+| [`03-marker-layer-and-spawns`](03-marker-layer-and-spawns/README.md) | G | M | Shipped (M1–M5) | Second sparse layer; multi-direction spawn points |
+| [`04-map-library`](04-map-library/README.md) | G | M | Future | MapFile schema + map index + browser + content |
+| [`05-validation-scenario`](05-validation-scenario/README.md) | G | M | Future | Minimum playable thing; integration spec |
+| [`06-editor-stencil-pipeline`](06-editor-stencil-pipeline/README.md) | F | MH | Future | Editor-as-content-pipeline; stencil mode + mesh baker |
+| [`07-shared-world-substrate`](07-shared-world-substrate/README.md) | F | H–VH | Active (W0 partial) | Go 3D; adopt the shared hex substrate |
+| [`08-game-validation`](08-game-validation/README.md) | S | MH | Active (V0 next) | Scripted play, measured effects, PNGs for inspection |
+
+Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
+slot get one when their trigger fires.
+
+## Value categories — what KIND of value
+
+Same letters as moros and loft, so the convention reads the same across
+repos. Read top-down and pick from the highest category with open work.
+
+| Tag | Meaning | dryopea examples |
+|---|---|---|
+| **S** | **Silent failure / content corruption** — it "works" but the result is wrong, with no error | a renderer that draws the wrong shape and no test can see it; a map that round-trips to different bytes |
+| **R** | **Regression / gate-blocker** — `scripts/test.sh` red, or a toolchain bump that breaks the build | a loft release that breaks the parse; a library migration that strands the deps |
+| **G** | **Goal-enabling** — directly advances the playable game | the editor, the wave engine, the scramble loop |
+| **F** | **Foundation** — unblocks 2+ downstream plans | the shared hex substrate, the map file format |
+| **U** | **Player experience** — feel, readability, controls, art coherence | editor ergonomics, HUD legibility, proxy art |
+| **C** | **Clean features** — removes special cases; keeps the game↔library seam honest | moving hex math out to the shared library |
+| **Q** | **Internal quality** — perf, refactor, cleanup with a clear payoff | warning cleanups, test-suite speed |
+| **N** | **Niche / opportunistic** — small, low-priority | one-off tools, conveniences |
+
+**Effort letters, never calendar time** — `XS / S / M / MH / H / VH`.
+"Two weeks" ships in two days and "quick" takes weeks; effort buckets stay
+stable, projections don't.
+
+## The verification rule
+
+Every phase names a **gate** — how you see it works. dryopea has three, in
+increasing order of what they can catch:
+
+1. **Unit + round-trip tests** (`scripts/test.sh`) — exact invariants.
+2. **Golden images** (`golden.loft::assert_golden`) — byte-equal renders.
+   Exact, and brittle by design: any renderer change invalidates every
+   golden at once.
+3. **Measured frames** (plan 08) — scripted play, thresholds over classified
+   pixel shares, PNGs kept for human inspection. Survives re-lighting and
+   re-styling, and still catches "the thing is not drawn".
+
+⚠ **A gate that cannot separate the things it measures is not a gate.** A
+threshold over a bucket that mixes two subjects moves for reasons that have
+nothing to do with the change under test — fix the instrument *before* you
+trust the number over it. See plan 08 § The instrument comes first.
 
 ## See also
 
-- [`ROADMAP.md`](ROADMAP.md) — logical-order feature list
-  across all tiers
-- [`../docs/DESIGN.md`](../docs/DESIGN.md) — master design.
-- [`../docs/DESIGN_HISTORY.md`](../docs/DESIGN_HISTORY.md) —
-  pre-@PLAN46 design seed material.
+- [`_TEMPLATE.md`](_TEMPLATE.md) — copy this for a new plan
+- [`ROADMAP.md`](ROADMAP.md) — logical-order feature list across all tiers
+- [`../docs/DESIGN.md`](../docs/DESIGN.md) — master design
+- [`../docs/DESIGN_HISTORY.md`](../docs/DESIGN_HISTORY.md) — 2023 seed material
