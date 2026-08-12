@@ -211,7 +211,7 @@ pub fn spawn_wave(
 // it.  Stopping is what makes the wall a wall; the attack is F5+ and
 // the routing round it is F5.
 pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
-                  hl: const HeightLayer, f: FlowField, desire: FlowField,
+                  hl: const HeightLayer, f: const FlowField, desire: const FlowField,
                   occ: Occupancy) {
     if !e.alive { return; }
 
@@ -295,7 +295,7 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 // deliberately did NOT — walls are passable in it, which is what makes
 // it able to say where the wall is.
 fn enemy_walk_desire(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
-                     hl: const HeightLayer, desire: FlowField, occ: Occupancy) {
+                     hl: const HeightLayer, desire: const FlowField, occ: Occupancy) {
     ewd_from = Hex { q: e.q, r: e.r };
     for ewd_t in flow_steps(desire, e.q, e.r) {
         if !can_step(pal, pw, hl, e.kind, ewd_from, ewd_t) { continue; }
@@ -323,7 +323,7 @@ fn enemy_walk_desire(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 // convention: a caller that ignores the answer attacks nobody rather
 // than attacking something arbitrary.
 pub fn enemy_target(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
-                    hl: const HeightLayer, f: FlowField, desire: FlowField) -> Hex {
+                    hl: const HeightLayer, f: const FlowField, desire: const FlowField) -> Hex {
     ent_here = Hex { q: e.q, r: e.r };
     if !e.alive { return ent_here; }
 
@@ -459,18 +459,42 @@ fn fields_have(fields: const vector<ClassField>, climb: float) -> boolean {
     fh_seen
 }
 
-// The field this class routes on.  An empty field on a miss, which
-// cannot happen for an alive enemy (`wave_fields` built one for every
-// climb limit present) and which routes nobody anywhere if it ever did.
-fn field_of(fields: vector<ClassField>, kind: u8) -> FlowField {
-    fo_climb = climb_limit(kind);
-    fo_out = FlowField {
-        cells: [], core: Hex { q: 0, r: 0 }, climb: fo_climb, truncated: false,
-    };
-    for fo_f in fields {
-        if fo_f.climb == fo_climb { fo_out = fo_f.field; }
+// ─── Reading a class's field WITHOUT copying it ─────────────────
+//
+// Plan 11 F8, and it is the phase's whole finding.  There used to be a
+// `field_of(fields, kind) -> FlowField` here, and every caller looked
+// exactly right:
+//
+//     enemy_tick(e, pal, pw, hl, field_of(fields, e.kind), desire, occ)
+//
+// **`fo_out = fo_f.field` is a whole-value bind, which COPIES the heap
+// value** — the entire cell hash, per enemy, per lookup.  Measured on a
+// radius-40 world (4921 hexes, the haze radius `numbers.json` bounds
+// the world at) with an 80-enemy wave, the largest the wave list goes:
+//
+//   | lookup                        | 80 calls |
+//   |-------------------------------|----------|
+//   | via `field_of`                | 162052 us |
+//   | passing `cf.field` through    |     72 us |
+//
+// **2250x, and the copy is O(cells) where the read is O(1).**  It was
+// 51% of a tick that already ran at 96% of its budget, and it had been
+// there since F5 — invisible, because a copy changes no behaviour and
+// dryopea has no gate that can see cost.
+//
+// So there is no accessor: a caller loops the fields and passes
+// `cf.field` STRAIGHT into a `const` parameter.  Nothing binds a
+// `FlowField` to a local in a per-enemy path, and the helpers below
+// exist so that no caller has to remember why.
+
+// How far this enemy's class thinks (q, r) is from the core.
+fn field_distance(fields: const vector<ClassField>, kind: u8,
+                  q: integer, r: integer) -> integer {
+    fd_climb = climb_limit(kind);
+    for fd_f in fields {
+        if fd_f.climb == fd_climb { return flow_distance(fd_f.field, q, r); }
     }
-    fo_out
+    FLOW_UNREACHABLE
 }
 
 // ─── The move order ─────────────────────────────────────────────
@@ -520,14 +544,14 @@ fn slot_before(a: const MoveSlot, b: const MoveSlot) -> boolean {
 
 // Roster indices in move order — a selection sort, because a wave is
 // tens of enemies and the clarity is worth more than the exponent.
-fn move_order(state: const WaveState, fields: vector<ClassField>) -> vector<integer> {
+fn move_order(state: const WaveState, fields: const vector<ClassField>) -> vector<integer> {
     mo_slots: vector<MoveSlot> = [];
     mo_i = 0;
     for mo_e in state.enemies {
         if mo_e.alive {
             mo_slots += [MoveSlot {
                 idx:   mo_i,
-                dist:  flow_distance(field_of(fields, mo_e.kind), mo_e.q, mo_e.r),
+                dist:  field_distance(fields, mo_e.kind, mo_e.q, mo_e.r),
                 q:     mo_e.q,
                 r:     mo_e.r,
                 kind:  mo_e.kind as integer,
@@ -567,12 +591,20 @@ fn move_order(state: const WaveState, fields: vector<ClassField>) -> vector<inte
 // built for nobody is a cost in a profile nobody can explain.  Only an
 // enemy INSIDE the bubble with no route consults it — outside the
 // bubble is approach mode, which follows its heading and never asks.
-fn wave_needs_desire(state: const WaveState, fields: vector<ClassField>) -> boolean {
+fn wave_needs_desire(state: const WaveState, fields: const vector<ClassField>) -> boolean {
     for wnd_e in state.enemies {
         if wnd_e.alive {
-            wnd_f = field_of(fields, wnd_e.kind);
-            if enemy_in_bubble(wnd_e, wnd_f.core) && !flow_reachable(wnd_f, wnd_e.q, wnd_e.r) {
-                return true;
+            // ⚠ `wnd_cf.field` is read in place, never bound — see
+            // § Reading a class's field WITHOUT copying it.  This runs
+            // once per enemy per tick, so a bind here costs as much as
+            // the whole rebuild it is deciding whether to skip.
+            wnd_climb = climb_limit(wnd_e.kind);
+            for wnd_cf in fields {
+                if wnd_cf.climb == wnd_climb
+                    && enemy_in_bubble(wnd_e, wnd_cf.field.core)
+                    && !flow_reachable(wnd_cf.field, wnd_e.q, wnd_e.r) {
+                    return true;
+                }
             }
         }
     }
@@ -583,7 +615,7 @@ fn wave_needs_desire(state: const WaveState, fields: vector<ClassField>) -> bool
 // besieging.  ⚠ An empty field offers no steps, so a mover handed one
 // moves nobody — which is what a caller that skipped the build should
 // see, rather than a plausible wrong move.
-pub fn wave_desire(state: const WaveState, fields: vector<ClassField>,
+pub fn wave_desire(state: const WaveState, fields: const vector<ClassField>,
                    pal: vector<GroundType>, pw: PaintedWorld, core: Hex) -> FlowField {
     if !wave_needs_desire(state, fields) { return flow_empty(); }
     flow_desire(pal, pw, state.heights, core)
@@ -602,8 +634,18 @@ pub fn wave_targets(state: const WaveState, pal: vector<GroundType>,
     wtg_desire = flow_desire(pal, pw, state.heights, core);
     wtg_out: vector<Hex> = [];
     for wtg_e in state.enemies {
-        wtg_out += [enemy_target(wtg_e, pal, pw, state.heights,
-                                 field_of(wtg_fields, wtg_e.kind), wtg_desire)];
+        // A dead enemy's class may have no field at all, and then the
+        // loop simply does not fire — which is the same answer
+        // `enemy_target` gives it anyway: its own hex.
+        wtg_t = Hex { q: wtg_e.q, r: wtg_e.r };
+        wtg_climb = climb_limit(wtg_e.kind);
+        for wtg_cf in wtg_fields {
+            if wtg_cf.climb == wtg_climb {
+                wtg_t = enemy_target(wtg_e, pal, pw, state.heights,
+                                     wtg_cf.field, wtg_desire);
+            }
+        }
+        wtg_out += [wtg_t];
     }
     wtg_out
 }
@@ -663,8 +705,16 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld, co
     wt_occ    = wave_occupancy(state);
     for wt_i in move_order(state, wt_fields) {
         wt_e = state.enemies[wt_i] ?? Enemy {};
-        enemy_tick(wt_e, pal, pw, state.heights, field_of(wt_fields, wt_e.kind),
-                   wt_desire, wt_occ);
+        // ⚠ The field is passed STRAIGHT from the vector into a `const`
+        // parameter.  Looking it up through an accessor that returned a
+        // `FlowField` copied the whole cell hash, once per enemy — see
+        // § Reading a class's field WITHOUT copying it.
+        wt_climb = climb_limit(wt_e.kind);
+        for wt_cf in wt_fields {
+            if wt_cf.climb == wt_climb {
+                enemy_tick(wt_e, pal, pw, state.heights, wt_cf.field, wt_desire, wt_occ);
+            }
+        }
     }
 }
 

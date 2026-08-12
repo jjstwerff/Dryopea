@@ -1,0 +1,353 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F8 — one rebuild per tick, on edits AND deaths.
+//
+// ── The phase asked the wrong question, and a probe said so ─────
+//
+// F8 was written as *"make the rebuild incremental, and gate it on
+// equality with the from-scratch one"*.  Measured first, against the
+// numbers the design actually fixes — a wave list topping out at **80
+// enemies** (`numbers.json` § wave_system.wave_list), a world bounded
+// at the **radius-40** haze (§ world.atmosphere_haze_radius), and an
+// enemy at **1.5 hex/s**, so a movement tick has **~667 ms** to spend:
+//
+//   | r=40, 80 enemies, one `wave_tick` | before | after |
+//   |-----------------------------------|--------|-------|
+//   | measured by the tests below       | 830 ms | 125 ms |
+//   | against a 667 ms budget           | **over** |  19% |
+//
+// The tick was over budget, and **the rebuild was not why**.
+// `spawn.loft` § Reading a class's field WITHOUT copying it: a
+// `FlowField` bound to a local COPIES its whole cell hash, and the old
+// `field_of` accessor did that once per enemy per lookup.
+//
+// So F8 removed the copy rather than the rebuild, and the incremental
+// path is **not built**: at 125 ms against 667 ms there is 5x headroom,
+// and `plans/11` § F8 — and why it is last is explicit that an
+// incrementally wrong field is a game routing enemies through a wall
+// the player just built.  The trigger for revisiting is in the plan.
+//
+// After the fix the rebuild IS essentially the whole tick, which is
+// what the ratio below says from the other side: sixteen times the
+// enemies costs 15-25% more, so almost nothing scales with the roster.
+//
+// ── The gate this phase had to invent ───────────────────────────
+//
+// A copy changes no behaviour, only cost — so all 490 tests were green
+// while the tick ran OVER its budget, and had been since F5.
+// **dryopea had no gate that could see cost at all**, which is why the
+// defect survived four phases.
+//
+// `test_per_enemy_work_does_not_scale_with_the_world` is that gate, and
+// it is a RATIO rather than a stopwatch: the same world, 5 enemies then
+// 80, measured back to back.  Per-enemy work that is independent of
+// world size makes 16x the enemies cost a little more; per-enemy work
+// that copies the field makes it cost several times more.  Measured on
+// both sides of the fix, and the two do not overlap:
+//
+//   | r=20, 5 vs 80 enemies | ratio |
+//   |-----------------------|-------|
+//   | reading in place      |  115-125% |
+//   | copying the field     |  316% |
+//
+// A ratio survives a loaded machine in a way a stopwatch does not:
+// both halves run back to back and both pay the same rebuild.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// examples/palette.json, in file order.
+const GRASS: integer = 5;
+const WALL:  integer = 9;
+
+// What the design fixes, restated where the test can read it.
+// `numbers.json` § enemy_regular.speed_engage is 1.5 hex/s, and a tick
+// is one hex, so a tick has a million microseconds over 1.5 to spend.
+const TICK_BUDGET_US: integer = 666666;
+
+// The largest wave `numbers.json` § wave_system.wave_list authors, and
+// the radius § world.atmosphere_haze_radius bounds the world at.
+const MAX_WAVE:   integer = 80;
+const MAX_RADIUS: integer = 40;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn disc(radius: integer) -> PaintedWorld {
+    d_pw = painted_empty();
+    for d_h in visible_hexes(core(), radius) {
+        paint(d_pw, d_h.q, d_h.r, as_u8(GRASS));
+    }
+    d_pw
+}
+
+fn corridor(hi: integer) -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=hi { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+// The corridor plus the two-hex bypass round (3, 0) — F5's world, so
+// that "it took the other way" means the same thing here as there.
+fn bypass_world() -> PaintedWorld {
+    bw_pw = corridor(12);
+    paint(bw_pw, 4, -1, as_u8(GRASS));
+    paint(bw_pw, 3, -1, as_u8(GRASS));
+    bw_pw
+}
+
+fn westbound(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(ENEMY_KIND_REGULAR), heading: 4 as u8, alive: true }
+}
+
+// A wave spread around the rim at `radius`, so the enemies are not all
+// stacked on one hex and the mover does real work for each of them.
+fn rim_wave(n: integer, radius: integer) -> WaveState {
+    rw_s = wave_state_empty();
+    rw_i = 0;
+    for _ in 0..n {
+        rw_h = core();
+        for _ in 0..radius { rw_h = hex_neighbor(rw_h, rw_i % 6); }
+        for _ in 0..(rw_i / 6) { rw_h = hex_neighbor(rw_h, ((rw_i % 6) + 2) % 6); }
+        rw_s.enemies += [westbound(rw_h.q, rw_h.r)];
+        rw_i += 1;
+    }
+    rw_s
+}
+
+// Microseconds per `wave_tick`, averaged over `n_ticks`.
+//
+// ⚠ `n_ticks`, never `ticks` — that is loft's clock builtin, and
+// shadowing it turns `ticks()` into a function reference rather than a
+// reading (`CLAUDE.md` § Loft language gotchas, the same trap `now`
+// sets).  **It bit while this phase was being measured**: a throwaway
+// probe took `ticks` as a parameter, compiled clean, and reported a
+// tick 4x cheaper than it was — a blind instrument that would have made
+// the whole phase's conclusion wrong in the safe-looking direction.
+fn us_per_tick(pw: PaintedWorld, enemies: integer, radius: integer,
+               n_ticks: integer) -> integer {
+    u_pal = pal();
+    u_s   = rim_wave(enemies, radius);
+    u_t0  = ticks();
+    for _ in 0..n_ticks { wave_tick(u_s, u_pal, pw, core()); }
+    ((ticks() - u_t0) / n_ticks) ?? 0
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The budget
+// ─────────────────────────────────────────────────────────────────
+
+// The coarse one: the biggest wave the design authors, over the biggest
+// world it allows, has to fit in the time an enemy takes to cross one
+// hex.  Before this phase it measured **830 ms** — over budget, in the
+// only configuration the design says the game must survive.
+fn test_a_tick_at_maximum_load_fits_inside_its_budget() {
+    tam_us = us_per_tick(disc(MAX_RADIUS), MAX_WAVE, MAX_RADIUS, 3);
+
+    assert(tam_us < TICK_BUDGET_US,
+           "{MAX_WAVE} enemies over a radius-{MAX_RADIUS} world: {tam_us} us/tick, budget {TICK_BUDGET_US}");
+}
+
+// ⚠ **The gate the copy needed, and dryopea had nothing like it.**
+// Sixteen times the enemies over the SAME world.  The rebuild is paid
+// once either way, so what the ratio measures is the per-enemy work —
+// and per-enemy work that copies the field grows with the world while
+// per-enemy work that reads it in place does not.
+//
+// Measured on both sides of the fix at this exact configuration, three
+// suite runs each: **115-125% reading in place, 316% copying.**  The
+// threshold sits between them with 1.6x on either side, and it is a
+// ratio rather than a stopwatch — both halves run back to back and both
+// pay the same rebuild, so a busy machine moves them together.
+fn test_per_enemy_work_does_not_scale_with_the_world() {
+    tpe_pw   = disc(20);
+    tpe_few  = us_per_tick(tpe_pw, 5, 20, 4);
+    tpe_many = us_per_tick(tpe_pw, MAX_WAVE, 20, 4);
+
+    assert(tpe_few > 0, "the clock said something: {tpe_few} us");
+    tpe_ratio = (tpe_many * 100 / tpe_few) ?? 0;
+    assert(tpe_ratio < 200,
+           "16x the enemies cost {tpe_ratio}% of the time — the field is being COPIED per enemy");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The world changes under the wave, and there is no cache
+// ─────────────────────────────────────────────────────────────────
+//
+// F5 asserts this for a wall the player BUILDS.  The half that was
+// never asserted is the one that happens constantly once combat exists:
+// `docs/ENEMY_MOVEMENT.md` § Bodies are terrain — every kill raises a
+// hex, so every kill changes passability.  Plan 11 § point 5 is
+// explicit that a gate exercising only editor strokes tests the rarer
+// half.
+
+fn test_a_pile_dropped_mid_wave_diverts_the_wave() {
+    tpd_pw  = bypass_world();
+    tpd_pal = pal();
+    tpd_s   = wave_state_empty();
+    tpd_s.enemies += [westbound(12, 0)];
+
+    for _ in 0..6 { wave_tick(tpd_s, tpd_pal, tpd_pw, core()); }
+    tpd_mid = tpd_s.enemies[0] ?? Enemy {};
+    assert(tpd_mid.q == 6 && tpd_mid.r == 0, "six ticks down the direct line");
+
+    // Six enemies die on the chokepoint and the bodies pile up.  Not a
+    // wall, not an edit, nothing saved — only the runtime layer.
+    height_raise(tpd_s.heights, 3, 0, 1.5);
+
+    for _ in 0..8 { wave_tick(tpd_s, tpd_pal, tpd_pw, core()); }
+    tpd_end = tpd_s.enemies[0] ?? Enemy {};
+
+    assert(tpd_end.q == 0 && tpd_end.r == 0,
+           "it still arrives: ({tpd_end.q}, {tpd_end.r})");
+    assert(flow_distance(flow_build(tpd_pal, tpd_pw, tpd_s.heights,
+                                    as_u8(ENEMY_KIND_REGULAR), core()), 6, 0) == 7,
+           "and by the bypass — (6,0) -> (5,0) -> (4,0) -> (4,-1) -> (3,-1) -> (2,0) -> (1,0) -> core, one step longer than the line it lost");
+}
+
+// The counter-play, and the same rule backwards: the player drives into
+// the kill zone and collects the bodies, and the route reopens on the
+// next tick with nothing to invalidate.
+fn test_collecting_the_pile_opens_the_route_again() {
+    tcp_pw  = corridor(6);
+    tcp_pal = pal();
+    tcp_s   = wave_state_empty();
+    tcp_s.enemies += [westbound(5, 0)];
+    height_raise(tcp_s.heights, 4, 0, 1.5);
+
+    wave_tick(tcp_s, tcp_pal, tcp_pw, core());
+    tcp_a = tcp_s.enemies[0] ?? Enemy {};
+    assert(tcp_a.q == 5, "a robot climbs 0.0 m, so 1.5 m of bodies stops it: q = {tcp_a.q}");
+
+    height_raise(tcp_s.heights, 4, 0, -1.5);
+
+    wave_tick(tcp_s, tcp_pal, tcp_pw, core());
+    tcp_b = tcp_s.enemies[0] ?? Enemy {};
+    assert(tcp_b.q == 4, "and the hex it could not climb is ground again: q = {tcp_b.q}");
+}
+
+// ⚠ **The tick reads a world fixed before anybody moves.**  A change
+// made between two ticks lands on the SECOND of them and never on the
+// first — which is what makes a tick a function of the state at its
+// start, and therefore what makes a scripted run repeatable at all
+// (`ENEMY_MOVEMENT.md` § The tick resolves once).
+fn test_a_change_lands_on_the_next_tick_and_not_the_one_running() {
+    tcl_pw  = corridor(6);
+    tcl_pal = pal();
+
+    // A: tick first, then pile.       B: pile first, then tick.
+    tcl_a = wave_state_empty();
+    tcl_a.enemies += [westbound(5, 0)];
+    tcl_b = wave_state_empty();
+    tcl_b.enemies += [westbound(5, 0)];
+
+    wave_tick(tcl_a, tcl_pal, tcl_pw, core());
+    height_raise(tcl_a.heights, 4, 0, 1.5);
+
+    height_raise(tcl_b.heights, 4, 0, 1.5);
+    wave_tick(tcl_b, tcl_pal, tcl_pw, core());
+
+    assert((tcl_a.enemies[0] ?? Enemy {}).q == 4, "A moved: the pile came after its tick");
+    assert((tcl_b.enemies[0] ?? Enemy {}).q == 5, "B did not: the pile was there when its tick began");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Order independence, over ground that is moving
+// ─────────────────────────────────────────────────────────────────
+//
+// F5c asserts it over a fixed world and F7 over a siege.  Neither has a
+// height layer in play, and the layer is exactly what combat will be
+// writing while the wave walks.
+
+fn test_a_wave_over_piled_ground_is_order_independent() {
+    tao_pw  = disc(8);
+    tao_pal = pal();
+    tao_a   = rim_wave(9, 6);
+    tao_b   = wave_state_empty();
+    tao_n   = len(tao_a.enemies);
+    for tao_i in 0..tao_n {
+        tao_e = tao_a.enemies[tao_n - 1 - tao_i] ?? Enemy {};
+        tao_b.enemies += [westbound(tao_e.q, tao_e.r)];
+    }
+
+    // The same ground raised under both, mid-walk.
+    for _ in 0..3 {
+        wave_tick(tao_a, tao_pal, tao_pw, core());
+        wave_tick(tao_b, tao_pal, tao_pw, core());
+    }
+    for tao_h in [Hex { q: 1, r: 0 }, Hex { q: 0, r: 1 }, Hex { q: -1, r: 1 }] {
+        height_raise(tao_a.heights, tao_h.q, tao_h.r, 1.5);
+        height_raise(tao_b.heights, tao_h.q, tao_h.r, 1.5);
+    }
+    for _ in 0..6 {
+        wave_tick(tao_a, tao_pal, tao_pw, core());
+        wave_tick(tao_b, tao_pal, tao_pw, core());
+    }
+
+    // The SET of held hexes, because the roster order differs by
+    // construction and the enemies are interchangeable.
+    tao_occ = wave_occupancy(tao_a);
+    for tao_e2 in tao_b.enemies {
+        assert(occupancy_taken(tao_occ, tao_e2.q, tao_e2.r),
+               "reversed roster holds ({tao_e2.q}, {tao_e2.r}), which the forward one does not");
+    }
+    assert(occupancy_cells(tao_occ) == len(tao_b.enemies) - 0,
+           "and the same number of hexes: {occupancy_cells(tao_occ)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The from-scratch build IS the reference, and there is no cache
+// ─────────────────────────────────────────────────────────────────
+//
+// The invariant an incremental path would have to preserve, asserted
+// now so that whoever builds one has the equality gate `plans/11` § F8
+// asks for, already written and already green against the reference.
+
+fn test_the_field_a_tick_uses_equals_a_fresh_build() {
+    tff_pw  = bypass_world();
+    tff_pal = pal();
+    tff_s   = wave_state_empty();
+    tff_s.enemies += [westbound(12, 0)];
+
+    for _ in 0..4 { wave_tick(tff_s, tff_pal, tff_pw, core()); }
+    paint(tff_pw, 3, 0, as_u8(WALL));
+    height_raise(tff_s.heights, 4, -1, 1.5);
+    for _ in 0..2 { wave_tick(tff_s, tff_pal, tff_pw, core()); }
+
+    // Two builds over the same world, one held across the edits and one
+    // made now.  They must agree cell for cell — which they do today
+    // because there is nothing to go stale, and that is the property.
+    tfa = wave_fields(tff_s, tff_pal, tff_pw, core());
+    tfb = flow_build(tff_pal, tff_pw, tff_s.heights, as_u8(ENEMY_KIND_REGULAR), core());
+
+    assert(len(tfa) == 1, "one class in the roster, one field: {len(tfa)}");
+    for tff_h in visible_hexes(core(), 14) {
+        assert(field_distance_of(tfa, as_u8(ENEMY_KIND_REGULAR), tff_h.q, tff_h.r)
+               == flow_distance(tfb, tff_h.q, tff_h.r),
+               "({tff_h.q}, {tff_h.r}) disagrees between the tick's field and a fresh one");
+    }
+}
+
+// The tick's own lookup, exposed so the equality above compares what
+// the mover actually reads rather than a second copy of it.
+fn field_distance_of(fields: const vector<ClassField>, kind: u8,
+                     q: integer, r: integer) -> integer {
+    fdo_climb = climb_limit(kind);
+    for fdo_f in fields {
+        if fdo_f.climb == fdo_climb { return flow_distance(fdo_f.field, q, r); }
+    }
+    FLOW_UNREACHABLE
+}

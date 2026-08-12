@@ -10,8 +10,10 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 + F7 shipped
-2026-08-12; F8 is the last one.**
+**Complete — F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 + F7 + F8
+shipped 2026-08-12.**  F4 was cancelled by F0's probe (an entrance
+needs no detecting).  F8's incremental rebuild is deliberately NOT
+built — measured, not skipped; see § F8 for the number and the trigger.
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -686,6 +688,79 @@ is to bind the call to a local. It took a four-way boundary matrix
 (wrapper binds/tail-returns × caller binds/inlines) to locate, because
 the defect appears at call sites nobody edited.
 
+## F8, the tick budget — and the phase asked the wrong question (2026-08-12)
+
+F8 was written as *"make the rebuild incremental, gated on equality with
+the from-scratch one"*. **Measured first, and the rebuild was not the
+problem.** The tick was over budget, and what was eating it was a
+`FlowField` being COPIED once per enemy.
+
+**The numbers the design actually fixes**, so the measurement had
+something to be measured against: `numbers.json` authors a wave list
+topping out at **80 enemies**, bounds the world at the **radius-40**
+haze, and moves an enemy at **1.5 hex/s** — so a movement tick has
+**~667 ms**.
+
+| r=40, 80 enemies, one `wave_tick` | before | after |
+|---|---|---|
+| measured by the committed tests | **830 ms** | **125 ms** |
+| against the 667 ms budget | **over** | 19% |
+
+**⚠ The defect was a whole-value bind, and it read as correct code.**
+`field_of(fields, kind) -> FlowField` did `fo_out = fo_f.field`, which
+copies the entire cell hash. Every caller looked right — `enemy_tick(e,
+…, field_of(fields, e.kind), …)` — and it ran once per enemy per lookup,
+three lookups per enemy per tick. Reading the field in place instead of
+binding it is **2250×** cheaper at r=40, and O(1) where the copy is
+O(cells). There is now no accessor at all: callers loop the fields and
+pass `cf.field` straight into a `const` parameter.
+
+**⚠ It had been there since F5, and nothing could see it.** A copy
+changes no behaviour, only cost, so 490 tests were green over a tick
+running 25% over its budget. **dryopea had no gate that could see cost**
+— that gap is the phase's real finding, and closing it is the phase's
+real deliverable.
+
+**The gate had to be a RATIO, not a stopwatch.** Sixteen times the
+enemies over the *same* world: the rebuild is paid once either way, so
+what is left is the per-enemy work. Measured on both sides, three suite
+runs each — **115-125% reading in place, 316% copying** — with the
+threshold at 200% and 1.6× on either side. Both halves run back to back
+and both pay the same rebuild, so a busy machine moves them together;
+the readings proved stable to ±2% under a full suite run.
+
+**The incremental rebuild is NOT built, and that is a decision.** At
+125 ms against 667 ms the from-scratch sweep leaves 5× headroom, and §
+F8 — and why it is last is explicit that *an incrementally wrong field
+is a game routing enemies through a wall the player just built*.
+Building a dirty-set path now would buy ~19% of a budget nobody is
+near, at the cost of the one failure mode this plan most wants to
+avoid.
+
+⚠ **The trigger for revisiting**, so the decision is not silently
+permanent: `test_a_tick_at_maximum_load_fits_inside_its_budget` going
+red, or the design raising the wave list or the world radius past what
+`numbers.json` fixes today. The equality gate the incremental path would
+need is already written and already green against the reference —
+`test_the_field_a_tick_uses_equals_a_fresh_build`.
+
+**What F8 did build beyond the fix.** The half of its own gate that was
+never asserted: **bodies dropped mid-wave**. F5 covers a wall the player
+*builds*; plan 11 § point 5 says a gate exercising only editor strokes
+tests the rarer half, and once combat exists every kill raises a hex.
+So: a pile dropped mid-wave diverts the wave, collecting it reopens the
+route, a change lands on the *next* tick and never the one running, and
+a wave over ground being raised under it is order-independent.
+
+**⚠ A blind instrument nearly made this phase's conclusion wrong, in the
+safe-looking direction.** A throwaway probe took `ticks` as a parameter
+name — shadowing loft's clock builtin, the exact trap `CLAUDE.md`
+records for `now`. It compiled clean and reported a tick **4× cheaper
+than it was**. Two correct-clock measurements disagreeing by 3× is what
+exposed it; had the shadowed number been the only one, F8 would have
+concluded "plenty of headroom" from a reading that measured nothing.
+The committed test names its parameter `n_ticks` and says why.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -775,7 +850,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances. **Shipped — see § F5c, they spread.** ⚠ A corridor is blind to this one too: on a hex AXIS the field offers ONE closer neighbour and off it TWO, so "beside" only exists off-axis and the gate needs an open world. Measured: 19 of 432 red without the occupancy check. ⚠ Two corrections to the row above — the spec's own snapshot rule (a vacated hex stays taken) halves a column's speed and was rejected by probe; and the four at the wall queue along their HEADING rather than spreading along the face, because approach mode has no gradient to say which way beside is. The attack, and the spread along the face, are F7's | **Shipped** |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it. **Shipped — see § F6, the height step.** ⚠ Two corrections to the row above. The "same maze, paths differ" half was ALREADY live at F5 (F5 said so and handed the row on), so F6's own discriminator is the raise — `raise 4 -1 1.5` shuts the robot's bypass with nothing painted. And the obvious composition — keep `can_occupy` as the field's node filter, add the step on top — is **vacuous**: it makes the height rule deletable without a test moving, so the field filters nodes by the SURFACE and edges by the STEP. Measured: 13 of 465 red without the layer, 3 without the rise, 2 with the BFS direction reversed | **Shipped** |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden). **Shipped — see § F7, the siege.** It cost one number: the desire field is `flow_build` with `FLOW_CLIMB_ANY`. ⚠ Two corrections. The row's own gate measures the TARGETING and not the steering — six headings already spread six enemies, measured — so the discriminator had to be a corridor that BENDS (`enemy 0 2 -1`). And F5c's promise that the face-spread "falls out with no special case" was wrong: the desire gradient points AT the wall, not along it, so one approach still queues. Measured: 11 of 490 red without the field, 6 without the target, 3 without the steering |  **Shipped** |
-| **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result** — the order-independence ENEMY_MOVEMENT § The tick resolves once requires. A gate that only exercises editor strokes tests the rarer half | Open |
+| **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result**. A gate that only exercises editor strokes tests the rarer half. **Shipped — see § F8, the tick budget.** ⚠ The row asked the wrong question: measured against the design's own numbers the tick was 830 ms over a 667 ms budget, and the REBUILD was not why — a `FlowField` was being COPIED per enemy per lookup, 2250x the cost of reading it in place. Removing that gives 125 ms. The incremental path is therefore NOT built (5x headroom, and an incrementally wrong field is the failure this plan most wants to avoid); its equality gate is written and green against the reference, with a named trigger. What F8 DID add is the gate dryopea had no form of — a cost gate, as a RATIO — plus the bodies-mid-wave half nobody had asserted | **Shipped** |
 
 ⚠ **No phase is `H`.** F5 and F6 are the largest and both are "one site at a
 time" with a scenario each.
@@ -817,8 +892,9 @@ plausibility.
 | **F7** ✅ | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |
 | **F7** ✅ | a besieged enemy reaches `r = -1` | it walks the DESIRE field, not its heading | a straight corridor gives both the same path — the third time this plan needed a bend |
 | **F7** ✅ | six approaches → six distinct target hexes | the target is per-route, never a global "nearest wall" | ⚠ passes with the steering disabled too: six headings already spread. It gates the targeting |
-| **F8** | incremental field == from-scratch field | the dirty set is used correctly | equal-but-stale after an edit is the bug this catches |
-| **F8** | reverse-iterated roster → identical wave | one rebuild per tick, so no enemy sees a world its neighbour changed | an order-dependent tick makes every scripted number unrepeatable — plan 08 could gate nothing |
+| **F8** ✅ | the tick's field == a fresh build after edits AND piles | there is no cache to go stale | written and green against the reference, so an incremental path has its gate waiting |
+| **F8** ✅ | reverse-iterated roster → identical wave, over ground being RAISED under it | one rebuild per tick, so no enemy sees a world its neighbour changed | an order-dependent tick makes every scripted number unrepeatable — plan 08 could gate nothing |
+| **F8** ✅ | 16x the enemies costs <200% of the time | per-enemy work does not scale with the world | a COPY changes no behaviour, so 490 green tests sat over a tick 25% past its budget for four phases |
 | **all** | test expectations survive plan 09 unchanged | the field is built from `nb()`, not from `q`/`r` | one expected distance moving = moros#10, again |
 
 ## Open questions

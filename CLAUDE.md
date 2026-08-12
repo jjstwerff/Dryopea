@@ -53,8 +53,8 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 + F7
-shipped.  F1 is the
+**Plan 11 (flow field) is COMPLETE** — F0-F8 shipped; F4 was cancelled by
+F0's probe.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
 passable` say where an enemy is and whether its CLASS may be there,
 and `src/passable.loft` is the height-step rule they read.  **F1b is
@@ -111,6 +111,31 @@ second steering rule and nobody has built it.
 always a walkable surface, so an enemy at the water's edge besieges
 nothing.
 
+**F8 measured the tick against the design's own numbers** — 80 enemies
+(the largest authored wave), a radius-40 world (the haze bound), 1.5
+hex/s (so a tick has ~667 ms) — and found it running at **830 ms, over
+budget**.  The rebuild was not why.
+
+⚠ **NEVER bind a `FlowField` (or any struct with a big hash) to a
+local in a per-enemy path.**  A whole-value bind COPIES the heap value,
+and an accessor that returned the field did it once per enemy per
+lookup — 2250x the cost of reading it in place, and it had been there
+since F5.  Loop the fields and pass `cf.field` straight into a `const`
+parameter; there is deliberately no accessor to reach for.
+
+⚠ **A copy changes no behaviour, only cost**, so 490 green tests sat
+over a tick 25% past its budget for four phases.  `tests/11_f8_the_tick_
+budget.loft` is the gate that can see cost, and it is a RATIO (16x the
+enemies over one world, <200%) rather than a stopwatch — 115-125%
+healthy vs 316% copying, stable to +-2% under a full suite run.
+
+⚠ **The incremental rebuild is deliberately NOT built.**  At 125 ms
+against 667 ms there is 5x headroom, and an incrementally wrong field
+routes enemies through a wall the player just built.  Its equality gate
+is already written and green against the from-scratch reference; the
+trigger for revisiting is the budget test going red or `numbers.json`
+raising the wave list or the world radius.
+
 ⚠ **A 1-hex-wide corridor cannot tell a flow field from a fixed
 heading** — both give the identical path, so every enemy test dryopea
 had was blind to F5.  A scenario that means to exercise routing needs
@@ -160,11 +185,18 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 490/490 green under `scripts/test.sh`** (~25-40 s — the
-`frame` measurements classify full 960x720 frames).
+**Suite: 497/497 green under `scripts/test.sh`** (~75 s — the `frame`
+measurements classify full 960x720 frames, and F8's cost gates tick a
+radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s).
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
+
+⚠ **`ticks()` is loft's clock builtin — never shadow it**, not even as
+a parameter name.  A probe that took `ticks` as a parameter compiled
+clean and reported a tick 4x cheaper than it was; the same trap `now`
+sets, and a blind stopwatch is worse than none because it fails in the
+reassuring direction.
 
 ⚠ **A struct returned through TWO nested tail calls loses what its
 loop wrote** — 1 cell interpreted, 0 native, silent on both
@@ -645,7 +677,7 @@ plans/
   08-game-validation/         — Complete (V0-V4 shipped):
                     scripted play, measured effects, PNGs for
                     inspection, and `make validate` over the lot
-  11-flow-field/              — Active (F0-F6 shipped): enemies
+  11-flow-field/              — Complete (F0-F8): enemies
                     route round walls to the core.  F0 answered it: an
                     "entrance" needs no detecting, the field finds
                     gaps by itself — and walls are walk_ground=true,
@@ -660,8 +692,13 @@ plans/
                     spec's height STEP over a runtime layer
                     (src/height.loft), so a raised hex flips who can
                     pass and insects climb their own dead onto a
-                    wall_high with no special case.  F7 (no path: the
-                    siege) is next
+                    wall_high with no special case.  F7 is the siege —
+                    a DESIRE field (walls passable) says where a
+                    routeless enemy goes and which wall hex it attacks.
+                    F8 measured the tick against the design's numbers,
+                    found it OVER budget, and found the cause was a
+                    per-enemy field COPY rather than the rebuild it was
+                    written to optimise
   09-lattice-conversion/      — Active (C0 shipped): dryopea moves
                     to pointy-top odd-r offset, the convention every
                     hex_* library and moros already speak.  Checked
@@ -757,7 +794,7 @@ signature.
 | [plans/08-game-validation/README.md](plans/08-game-validation/README.md) | Plan 08 — scripted play, measured effects, PNGs for inspection |
 | [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — dryopea moves to the libraries' lattice (pointy-top odd-r offset) + adopts `input` |
 | [plans/10-extract-local-libraries/README.md](plans/10-extract-local-libraries/README.md) | Plan 10 — dryopea's own reusable code becomes published libraries |
-| [plans/11-flow-field/README.md](plans/11-flow-field/README.md) | Plan 11 — enemies route round walls to the core (replaces the straight-line tick) |
+| [plans/11-flow-field/README.md](plans/11-flow-field/README.md) | Plan 11 — **Complete.** Enemies route round walls to the core, per class, and besiege a sealed one |
 | [PROBLEMS.md](PROBLEMS.md) | Dryopea-internal bugs (`@D<NNN>`) |
 | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) | Outbound queue to loft |
 
@@ -785,6 +822,7 @@ signature.
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
+| Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |
 
 ## Branch policy
