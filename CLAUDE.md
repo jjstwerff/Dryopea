@@ -487,12 +487,23 @@ signature.
   `hex_body`.  moros additionally carries `moros_map` /
   `moros_render` / `moros_sim` / `hex_editor` / `hex_mesh` in
   `../moros/lib/`.
-- **Convention mismatch to settle before adopting `hex_grid`:**
-  dryopea is **axial flat-top**; `hex_grid` documents itself as
-  **pointy-top odd-r offset** ("moros's convention"), while plan
-  07 records moros_map as axial.  Resolve which is authoritative
-  before porting coordinate math — this is a real decision, not
-  a detail.
+- **Convention mismatch — SETTLED 2026-08-12: dryopea adopts the
+  libraries' convention.**  The question was which lattice is
+  authoritative.  Answer, from the source: the entire `hex_*`
+  family and `moros_map` are **pointy-top, odd-r offset** —
+  `hex_grid` calls it "THE CONVENTION (shared with moros — the
+  single executable source of it)", `hex_field`'s neighbour table
+  is "odd-r offset, same SET as `hex_grid::hex_neighbor`", and
+  `moros_map` carries a fixed bug from applying axial cube
+  distance to odd-r coords (moros#10).  Plan 07's note that
+  moros_map is axial was the stale one, and dryopea's
+  **axial flat-top** is the odd one out.
+  **The decision (project owner, 2026-08-12): dryopea converts**
+  — one lattice across the ecosystem, and it is not the libraries
+  that move.  Everything below § Hex convention is therefore the
+  OLD convention until the conversion phase lands; see
+  [`plans/07-shared-world-substrate/README.md`](plans/07-shared-world-substrate/README.md)
+  § W0c.
 - **Plans 06 and 07 should be re-read against this.**  Both were
   written waiting on an extraction that has since happened, so
   their "blocked on lib_plan 24" framing is stale.
