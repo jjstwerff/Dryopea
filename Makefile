@@ -32,7 +32,7 @@
 #                   outside the aggregator, so the test suite never
 #                   compiles it.  Plan 08 V0 closes that hole.
 #
-#   make clean      Wipe tests/actual/ plus the cwd save file
+#   make clean      Wipe tests/actual/ and shots/ plus the cwd save file
 #                   (dryopea_save.json), so the next launch starts cold.
 #
 # Tunables (env or `make VAR=…`):
@@ -114,3 +114,4 @@ check:
 clean:
 	rm -f dryopea_save.json dryopea_save_markers.json
 	rm -f tests/actual/*.png tests/actual/*.json
+	rm -rf shots

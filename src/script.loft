@@ -49,8 +49,23 @@
 //                              places, whichever the mode is in
 //   drag <q1> <r1> <q2> <r2>   press, move, release — the
 //                              paint-line path
+//   snap <name>                the frame into <shots>/<name>.png,
+//                              plus a state line in the transcript
 //
-// `snap` (a PNG per step) is V1b and lands on top of this.
+// ── Where a shot goes, and what it is ───────────────────────────
+//
+// `shots_dir` is per-run and defaults to `shots/` (gitignored,
+// written fresh); a test points it at `tests/actual/` instead.
+// `snap` creates the directory, because `save_png` does NOT create
+// parents and answers false rather than raising — an unchecked
+// write there goes nowhere and leaves a gate green over a picture
+// that was never taken.  So the answer is checked, and a failed
+// write ends the run.
+//
+// The picture is `render_editor_frame` — the SAME composition
+// main.loft draws, not a second renderer that lives in the harness
+// (see `editor_view.loft`).  A shot is evidence about the editor
+// only if it is the editor's own frame.
 //
 // ⚠ **An unknown command is an ERROR, not a skipped line**, and so
 // is an unknown action, a bad number and a wrong argument count.  A
@@ -76,7 +91,13 @@
 
 use world;
 use camera;
+use painted;
+use markers;
+use picker;
+use editor_mode;
 use editor_step;
+use editor_view;
+use graphics;
 
 // ─── The run record ─────────────────────────────────────────────
 
@@ -91,27 +112,39 @@ pub struct ScriptRun {
     message:  text,      // "" when ok
     commands: integer,   // commands executed
     frames:   integer,   // `editor_step` calls made
+    snaps:    integer,   // pictures written
 
     hover_q:  integer,
     hover_r:  integer,
+
+    // Where `snap` writes.  Per-run rather than a constant, so the
+    // suite can drop its shots in `tests/actual/` (wiped between
+    // runs) while a validation run keeps them in `shots/`.
+    shots_dir: text,
 }
 
-pub fn script_run_new() -> ScriptRun {
+// Default home for shots: gitignored, rewritten every run.  A shot
+// worth keeping is copied into `docs/` by whatever cites it.
+pub const SHOTS_DIR: text = "shots";
+
+pub fn script_run_new(shots_dir: text) -> ScriptRun {
     ScriptRun {
-        ok:       true,
-        line:     0,
-        message:  "",
-        commands: 0,
-        frames:   0,
-        hover_q:  0,
-        hover_r:  0,
+        ok:        true,
+        line:      0,
+        message:   "",
+        commands:  0,
+        frames:    0,
+        snaps:     0,
+        hover_q:   0,
+        hover_r:   0,
+        shots_dir: shots_dir,
     }
 }
 
 // A one-line verdict, for a transcript or a shell gate.
 pub fn script_describe(r: const ScriptRun) -> text {
     if r.ok {
-        "ok — {r.commands} commands, {r.frames} frames"
+        "ok — {r.commands} commands, {r.frames} frames, {r.snaps} shots"
     } else {
         "FAILED at line {r.line}: {r.message}"
     }
@@ -200,6 +233,17 @@ fn script_walk_camera(s: EditorState, run: ScriptRun, q: integer, r: integer, zo
         }
     }
     ""
+}
+
+// ─── The state line ─────────────────────────────────────────────
+
+// The "state dump" that rides with every shot.  It goes into the
+// transcript beside the file name rather than into a sidecar file,
+// because the transcript is where someone reading a failed run is
+// already looking — and V2's measurement commands, not a `.txt`
+// nobody parses, are what will make these numbers assertable.
+fn script_state_line(s: EditorState) -> text {
+    "{painted_count(s.pw)} hexes, {marker_count(s.mw)} markers, cam ({s.cam.pos.q}, {s.cam.pos.r}) z{s.cam.zoom}, {mode_name(s.mode)}, tool {s.picker.active}, history {s.history.cursor}/{len(s.history.entries)}"
 }
 
 // ─── Argument parsing ───────────────────────────────────────────
@@ -367,6 +411,28 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // Photograph the frame.  Costs no `editor_step` call and
+    // changes nothing: a script must play the same way whether or
+    // not someone asked it for pictures.
+    if sc_cmd == "snap" {
+        if sc_argc != 1 { return "snap needs <name>"; }
+        // A name is a file name, not a path — a `/` would put the
+        // picture somewhere the harness never looks for it.
+        if sc_a1.contains("/") || sc_a1.contains("\\") {
+            return "snap: <name> is a file name, not a path: '{sc_a1}'";
+        }
+        mkdir_all(run.shots_dir);
+        sc_png = "{run.shots_dir}/{sc_a1}.png";
+        sc_cv  = render_editor_frame(s, VIEW_W, VIEW_H, VIEW_PPM);
+        // `save_png` ANSWERS false on a write it could not do — an
+        // absent directory above all.  Ignoring that answer is how
+        // a run stays green over a picture that does not exist.
+        if !sc_cv.save_png(sc_png) { return "snap: could not write {sc_png}"; }
+        run.snaps += 1;
+        println("script: snap {sc_a1} -> {sc_png} | {script_state_line(s)}");
+        return "";
+    }
+
     "unknown command '{sc_cmd}'"
 }
 
@@ -378,8 +444,12 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
 //
 // Comments are whole-line only (`# …`); a `#` after a command is
 // part of the command, which keeps `echo` able to say anything.
-pub fn script_run(s: EditorState, source: text) -> ScriptRun {
-    sr_run = script_run_new();
+//
+// `shots_dir` is where `snap` writes; the default is the one a
+// validation run wants, and a test overrides it to land its
+// pictures where the suite already cleans up.
+pub fn script_run(s: EditorState, source: text, shots_dir: text = SHOTS_DIR) -> ScriptRun {
+    sr_run = script_run_new(shots_dir);
     sr_no  = 0;
     for sr_line in source.split('\n') {
         sr_no += 1;
@@ -419,9 +489,9 @@ pub fn script_run(s: EditorState, source: text) -> ScriptRun {
 // empty run: a validation gate that silently passes because it
 // could not find its script is the exact shape of lie this plan
 // exists to catch.
-pub fn script_run_file(s: EditorState, path: text) -> ScriptRun {
+pub fn script_run_file(s: EditorState, path: text, shots_dir: text = SHOTS_DIR) -> ScriptRun {
     if !file(path).exists() {
-        srf_run = script_run_new();
+        srf_run = script_run_new(shots_dir);
         srf_run.ok      = false;
         srf_run.message = "script file not found: {path}";
         return srf_run;
@@ -429,5 +499,5 @@ pub fn script_run_file(s: EditorState, path: text) -> ScriptRun {
     // `content()` is UTF-8-only and answers "" on a binary file;
     // an empty script then runs zero commands, which `ok` reports
     // honestly as a run that did nothing.
-    script_run(s, file(path).content() ?? "")
+    script_run(s, file(path).content() ?? "", shots_dir)
 }

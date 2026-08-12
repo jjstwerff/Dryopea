@@ -1,0 +1,96 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The editor's frame — what the player sees, composed once.
+//
+// `src/main.loft` used to build this inline in its render block:
+// world, then hover preview, then markers, then the ghost, then the
+// picker, the save indicator and the mode badge.  Plan 08 V1b needs
+// the same picture from a script (`snap`), and there are only two
+// ways to get it: photograph a DIFFERENT picture, or restate the
+// composition beside main.loft's and let the two drift.
+//
+// So the composition moves here and both callers ask for it.  This
+// is the same rule the input seam follows — one table, two readers
+// (see `editor_step.loft`) — applied to pixels rather than to keys.
+// A shot is then evidence about the editor rather than about a
+// second renderer that happens to live in the test harness.
+//
+// ⚠ **Rendering does not touch the state.**  main.loft clears
+// `render_needed` and the chunk dirty set after it uploads, because
+// that is its render GATE, not part of drawing.  A `snap` is a
+// photograph: it must leave the session exactly as it found it, or
+// a script with a snap in it would play differently from the same
+// script without one.
+//
+// No GL here either — `Canvas` is the software rasteriser, which is
+// what lets a shot be taken with no window open.
+
+use world;
+use camera;
+use painted;
+use markers;
+use picker;
+use editor_mode;
+use editor_step;
+use render;
+use marker_render;
+use hud;
+use graphics;
+
+// The editor's window, and the size of a shot.  One definition:
+// a picture the harness measures has to be the picture the player
+// looks at, so `snap` and `gl_create_window` take their size from
+// the same place.
+pub const VIEW_W:   integer = 960;
+pub const VIEW_H:   integer = 720;
+pub const VIEW_PPM: float   = 24.0;
+
+// Inset of the HUD from the canvas edge, in pixels.
+pub const VIEW_HUD_MARGIN: integer = 12;
+
+// Compose one editor frame.
+//
+// The hover hex comes off `s.prev` — the input the last step saw —
+// rather than from a parameter.  main.loft's `hovered` IS that
+// value by the time it renders, and a script has no mouse to ask,
+// so reading it from the state makes the two callers identical and
+// puts the pointer in a shot where the script left it.
+pub fn render_editor_frame(s: EditorState, w: integer, h: integer, ppm: float) -> Canvas {
+    ref_hover = Hex { q: s.prev.in_hover_q, r: s.prev.in_hover_r };
+
+    // Ground mode previews the next paint under the pointer;
+    // marker mode shows the plain outline, because markers do not
+    // replace ground colour and a paint preview would lie.
+    if s.mode == MODE_GROUND {
+        ref_cv = render_with_hover_preview(s.cam, s.pw, ref_hover,
+                                           s.picker.active as u8? ?? 0,
+                                           w, h, ppm);
+    } else {
+        ref_cv = render_with_hover(s.cam, s.pw, ref_hover, w, h, ppm);
+    }
+
+    render_markers(ref_cv, s.cam, s.mw, w, h, ppm);
+
+    // Ghost preview of the marker the next click would place — only
+    // on an empty hex, since clicking an occupied one removes.
+    if s.mode == MODE_MARKER && !has_marker(s.mw, ref_hover.q, ref_hover.r) {
+        if s.place_kind == MARKER_KIND_TARGET {
+            render_ghost_target(ref_cv, s.cam, ref_hover.q, ref_hover.r, w, h, ppm);
+        } else {
+            render_ghost_arrow(ref_cv, s.cam, ref_hover.q, ref_hover.r,
+                               s.place_direction, w, h, ppm);
+        }
+    }
+
+    render_picker(ref_cv, s.picker, VIEW_HUD_MARGIN, VIEW_HUD_MARGIN);
+    // The save indicator sits to the right of the picker, level
+    // with the top swatch.
+    render_save_indicator(ref_cv, s.dirty,
+                          VIEW_HUD_MARGIN + PICKER_SWATCH_PX + 2 + SAVE_INDICATOR_RADIUS,
+                          VIEW_HUD_MARGIN + SAVE_INDICATOR_RADIUS);
+    render_mode_indicator(ref_cv, s.mode, w - MODE_BADGE_PX - VIEW_HUD_MARGIN,
+                          VIEW_HUD_MARGIN);
+
+    ref_cv
+}

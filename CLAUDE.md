@@ -26,13 +26,15 @@ overlay, and a runtime wave engine + spawn director with
 approach-mode enemy tick.  Plan 07 (shared world substrate) has
 W0 partially landed — `gridmesh` adopted as the chunk/dirty
 layer (`src/chunks.loft`).  Plan 08 (game validation) has V0 +
-V1a shipped — the editor input seam (`src/editor_step.loft`) so
+V1 shipped — the editor input seam (`src/editor_step.loft`) so
 EVERY editor action is driven headlessly and `src/main.loft` is
-a GL shell that polls, steps and renders, plus the `.keys` script
+a GL shell that polls, steps and renders; the `.keys` script
 runner (`src/script.loft`) that plays a written-down run through
-that seam.  V1b (`snap` writes a PNG per step) is next.
+that seam; and `snap`, which photographs the editor's own frame
+(`src/editor_view.loft`, shared with the GL loop).  V2p (probe:
+is the palette separable at all?) is next.
 
-**Suite: 258/258 green under `scripts/test.sh`.**
+**Suite: 272/272 green under `scripts/test.sh`.**
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -126,14 +128,26 @@ src/
                    it.  No GL and no clock, ever; disk only via the
                    save / reload actions, and only when a path is
                    attached (editor_state_attach)
-  script.loft      the `.keys` script runner (plan 08 V1a) —
-                   script_run(s, source) / script_run_file(s, path)
-                   -> ScriptRun.  Commands name ACTIONS, never keys
+  editor_view.loft render_editor_frame(s, w, h, ppm) -> Canvas —
+                   what the player sees, composed ONCE: world, hover
+                   preview, markers, ghost, picker, save indicator,
+                   mode badge.  Both the GL loop and the script
+                   runner's `snap` ask for it, so a shot is the
+                   editor's frame and not a harness renderer's.
+                   Also owns VIEW_W / VIEW_H / VIEW_PPM (the window
+                   size IS the shot size).  Never mutates the state
+  script.loft      the `.keys` script runner (plan 08 V1) —
+                   script_run(s, source[, shots_dir]) /
+                   script_run_file(s, path[, shots_dir]) -> ScriptRun.
+                   Commands name ACTIONS, never keys
                    (`do toggle_mode`), so no key table exists to
                    drift from the GL poll's.  Reaches the editor ONLY
                    through editor_step — even `at` walks the camera
                    with pan frames.  An unknown command / action /
-                   number / arity is an ERROR, never a skipped line
+                   number / arity is an ERROR, never a skipped line.
+                   `snap <name>` writes <shots_dir>/<name>.png
+                   (default `shots/`, gitignored) and CHECKS what
+                   save_png answers
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
                    cube_round_axial, world_to_hex, visible_hexes
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
@@ -169,7 +183,10 @@ src/
 Tests live in `tests/<plan>_<phase>_*.loft` (one file per phase).
 Goldens live in `tests/golden/` (committed); actuals in
 `tests/actual/` (gitignored).  `.keys` scripts live in
-`tests/scripts/` (committed — they are source, not output).
+`tests/scripts/` (committed — they are source, not output);
+scripted-run shots land in `shots/` (gitignored, written fresh
+each run — a shot a doc cites is copied into `docs/`), and the
+suite redirects its own shots into `tests/actual/`.
 
 ## Key data structures
 
@@ -186,7 +203,7 @@ Goldens live in `tests/golden/` (committed); actuals in
 | `Picker` | `picker.loft` | palette UI state |
 | `MapFile` | `map_file.loft` | save record (6 fields; see Known constraints) |
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
-| `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus where the pointer ended up |
+| `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus where the pointer ended up and where shots go |
 
 ## Important conventions
 
@@ -414,7 +431,8 @@ signature.
 | Pick next work to do | [plans/ROADMAP.md](plans/ROADMAP.md) — 5-tier feature list |
 | Continue plan 01 work | [plans/01-ground-editor/README.md](plans/01-ground-editor/README.md) § Implementation status |
 | Add a regression test | `tests/01_*.loft` for patterns; `golden.loft::assert_golden` for image tests |
-| Script a run of the editor | `tests/scripts/*.keys` for the vocabulary; `script.loft::script_run_file` to play one |
+| Script a run of the editor | `tests/scripts/*.keys` for the vocabulary; `script.loft::script_run_file` to play one; `snap <name>` for a picture |
+| Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |

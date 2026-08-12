@@ -1,0 +1,220 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 08 phase V1b — `snap` writes a picture.
+//
+// The gate is deliberately small: the file exists, and it is a real
+// render rather than the empty canvas. What that needs proving in
+// two halves, because they fail for different reasons:
+//
+//   - the FRAME (`render_editor_frame`) is the editor's own
+//     composition — world, markers, and the HUD on top — and not a
+//     bare world a harness renderer happens to draw. This is the
+//     half that would have caught `fill_triangle`: a gate that only
+//     samples where the artefact is drawn cannot see the artefact.
+//   - the FILE really lands. `save_png` does not create parent
+//     directories and ANSWERS false rather than raising, so an
+//     unchecked write goes nowhere and leaves the gate green over a
+//     picture that was never taken.
+//
+// Shots go to `tests/actual/`, which `scripts/test.sh` wipes
+// between runs. `shots/` is the default for a real validation run.
+
+#cwd
+
+use dryopea;
+use graphics;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// Centre of the mode badge in a full-size frame — the HUD element
+// furthest from the world, so a pixel here is only ever the HUD.
+const BADGE_CX: integer = VIEW_W - MODE_BADGE_PX - VIEW_HUD_MARGIN + MODE_BADGE_PX / 2;
+const BADGE_CY: integer = VIEW_HUD_MARGIN + MODE_BADGE_PX / 2;
+
+// ─── The frame ──────────────────────────────────────────────────
+
+fn test_the_frame_carries_the_world() {
+    ttf_s = editor_state_new(PALETTE);
+    ttf_empty = render_editor_frame(ttf_s, VIEW_W, VIEW_H, VIEW_PPM);
+    ttf_sea = ttf_empty.get_pixel(VIEW_W / 2, VIEW_H / 2 + 40);
+
+    script_run(ttf_s, "palette 5\ndrag -3 0 3 0", SHOTS);
+    ttf_painted = render_editor_frame(ttf_s, VIEW_W, VIEW_H, VIEW_PPM);
+
+    assert(ttf_painted.get_pixel(VIEW_W / 2, VIEW_H / 2) != ttf_sea,
+           "the hexes the script painted are in the picture");
+}
+
+// The HUD is part of the frame, not something main.loft adds after
+// the fact — or a shot would be evidence about a different picture
+// from the one the player looks at.
+fn test_the_frame_carries_the_hud() {
+    tfh_ground = editor_state_new(PALETTE);
+    tfh_cv_g = render_editor_frame(tfh_ground, VIEW_W, VIEW_H, VIEW_PPM);
+    assert(tfh_cv_g.get_pixel(BADGE_CX, BADGE_CY) == MODE_BADGE_GROUND_BG,
+           "the ground-mode badge is drawn");
+
+    tfh_marker = editor_state_new(PALETTE);
+    script_run(tfh_marker, "do toggle_mode", SHOTS);
+    tfh_cv_m = render_editor_frame(tfh_marker, VIEW_W, VIEW_H, VIEW_PPM);
+    assert(tfh_cv_m.get_pixel(BADGE_CX, BADGE_CY) == MODE_BADGE_MARKER_BG,
+           "and it follows the mode the script put the editor in");
+}
+
+// The marker layer composites over the ground. A frame that stopped
+// at `render_to_canvas` would pass every ground assertion above and
+// still show none of the spawns a scenario is about.
+fn test_the_frame_carries_the_markers() {
+    tfm_s = editor_state_new(PALETTE);
+    tfm_before = render_editor_frame(tfm_s, VIEW_W, VIEW_H, VIEW_PPM);
+    tfm_centre = tfm_before.get_pixel(VIEW_W / 2, VIEW_H / 2);
+
+    script_run(tfm_s, "do toggle_mode\nclick 0 0\nhover 8 8", SHOTS);
+    tfm_after = render_editor_frame(tfm_s, VIEW_W, VIEW_H, VIEW_PPM);
+
+    assert(marker_count(tfm_s.mw) == 1, "the script placed a spawn");
+    assert(tfm_after.get_pixel(VIEW_W / 2, VIEW_H / 2) != tfm_centre,
+           "and the arrow is drawn over the hex it sits on");
+}
+
+// The pointer travels with the run, so a shot shows the preview
+// under it — the pointer does not go home between commands.
+fn test_the_frame_previews_under_the_pointer() {
+    tfp_s = editor_state_new(PALETTE);
+    script_run(tfp_s, "palette 9\nhover 0 0", SHOTS);
+    tfp_cv = render_editor_frame(tfp_s, VIEW_W, VIEW_H, VIEW_PPM);
+
+    assert(tfp_cv.get_pixel(VIEW_W / 2, VIEW_H / 2) == palette_color(9 as u8),
+           "the hovered hex previews the tool that is selected");
+    assert(painted_count(tfp_s.pw) == 0, "a preview is not a paint");
+}
+
+// ─── The file ───────────────────────────────────────────────────
+
+fn test_snap_writes_a_picture() {
+    tsw_s = editor_state_new(PALETTE);
+    tsw_run = script_run(tsw_s, "palette 5\ndrag -2 0 2 0\nsnap v1b_base", SHOTS);
+
+    assert(tsw_run.ok, "{script_describe(tsw_run)}");
+    assert(tsw_run.snaps == 1, "one picture");
+    tsw_png = file("{SHOTS}/v1b_base.png");
+    assert(tsw_png.exists(), "the file is on disk");
+    assert(tsw_png.size > 0, "and it has bytes in it");
+}
+
+// The gate's own words: not the empty canvas. Two runs that differ
+// only in what they painted must not produce the same file.
+fn test_a_picture_is_not_a_fixed_empty_canvas() {
+    tpe_empty = editor_state_new(PALETTE);
+    tpe_run_a = script_run(tpe_empty, "snap v1b_cold", SHOTS);
+    assert(tpe_run_a.ok, "{script_describe(tpe_run_a)}");
+
+    tpe_painted = editor_state_new(PALETTE);
+    tpe_run_b = script_run(tpe_painted, "palette 9\ndrag -3 0 3 0\nsnap v1b_wall", SHOTS);
+    assert(tpe_run_b.ok, "{script_describe(tpe_run_b)}");
+
+    assert(!png_bytes_equal("{SHOTS}/v1b_cold.png", "{SHOTS}/v1b_wall.png"),
+           "the picture tracks the world it was taken of");
+}
+
+fn test_two_snaps_write_two_files() {
+    tts_s = editor_state_new(PALETTE);
+    tts_run = script_run(tts_s, "snap v1b_one\npalette 5\nclick 0 0\nsnap v1b_two", SHOTS);
+
+    assert(tts_run.ok, "{script_describe(tts_run)}");
+    assert(tts_run.snaps == 2, "two pictures");
+    assert(file("{SHOTS}/v1b_one.png").exists(), "the first");
+    assert(file("{SHOTS}/v1b_two.png").exists(), "the second");
+    assert(!png_bytes_equal("{SHOTS}/v1b_one.png", "{SHOTS}/v1b_two.png"),
+           "and they are pictures of different moments");
+}
+
+// A shot is a photograph: a script must play the same way whether
+// or not someone asked it for pictures.
+fn test_a_snap_changes_nothing() {
+    tsc_quiet = editor_state_new(PALETTE);
+    tsc_a = script_run(tsc_quiet, "palette 5\nclick 0 0\ndo toggle_mode\nclick 2 -1", SHOTS);
+
+    tsc_shot = editor_state_new(PALETTE);
+    tsc_b = script_run(tsc_shot,
+        "palette 5\nclick 0 0\nsnap v1b_mid\ndo toggle_mode\nclick 2 -1\nsnap v1b_end", SHOTS);
+
+    assert(tsc_a.ok && tsc_b.ok, "both ran");
+    assert(tsc_a.frames == tsc_b.frames, "snap costs no frames");
+    assert(painted_count(tsc_quiet.pw) == painted_count(tsc_shot.pw), "same ground");
+    assert(marker_count(tsc_quiet.mw) == marker_count(tsc_shot.mw), "same markers");
+    assert(tsc_quiet.mode == tsc_shot.mode, "same mode");
+    assert(tsc_quiet.cam.pos.q == tsc_shot.cam.pos.q, "same camera");
+    assert(tsc_quiet.history.cursor == tsc_shot.history.cursor, "same history");
+    assert(tsc_quiet.dirty == tsc_shot.dirty, "same dirty flag");
+    assert(tsc_quiet.render_needed == tsc_shot.render_needed,
+           "and the render gate is untouched — snapping is not rendering");
+}
+
+// ─── Where shots go ─────────────────────────────────────────────
+
+fn test_a_run_defaults_to_the_shots_directory() {
+    trd_s = editor_state_new(PALETTE);
+    trd_run = script_run(trd_s, "step 1");
+
+    assert(trd_run.shots_dir == SHOTS_DIR, "an un-redirected run writes to {SHOTS_DIR}/");
+}
+
+fn test_a_run_can_be_redirected() {
+    trr_s = editor_state_new(PALETTE);
+    trr_run = script_run(trr_s, "snap v1b_redirected", SHOTS);
+
+    assert(trr_run.shots_dir == SHOTS, "the run took the directory it was given");
+    assert(file("{SHOTS}/v1b_redirected.png").exists(), "and wrote there");
+}
+
+// ─── The negative control ───────────────────────────────────────
+
+fn test_snap_needs_a_name() {
+    tsn_s = editor_state_new(PALETTE);
+
+    assert(!script_run(tsn_s, "snap", SHOTS).ok, "snap with no name");
+    assert(!script_run(tsn_s, "snap a b", SHOTS).ok, "snap with two");
+}
+
+// A name is a file name. A `/` would put the picture somewhere the
+// harness never looks, which reads as "no shot was taken".
+fn test_snap_refuses_a_path() {
+    tsp_s = editor_state_new(PALETTE);
+    tsp_run = script_run(tsp_s, "snap ../escaped", SHOTS);
+
+    assert(!tsp_run.ok, "a path is not a name");
+    assert(tsp_run.snaps == 0, "and nothing was written");
+}
+
+// The guard that matters most: `save_png` answers false instead of
+// raising, so a write that cannot happen has to END the run. Here
+// the shots directory cannot be created — a regular file sits where
+// its parent would go.
+fn test_a_write_that_cannot_happen_fails_the_run() {
+    twc_blocker = file("{SHOTS}/v1b_blocker.json");
+    twc_blocker.write("not a directory");
+
+    twc_s = editor_state_new(PALETTE);
+    twc_run = script_run(twc_s, "snap v1b_lost", "{SHOTS}/v1b_blocker.json/shots");
+
+    assert(!twc_run.ok, "an impossible write fails the run rather than passing quietly");
+    assert(twc_run.message.contains("v1b_lost"), "naming the picture that was lost: {twc_run.message}");
+    assert(twc_run.snaps == 0, "and it is not counted");
+}
+
+// ─── From a file ────────────────────────────────────────────────
+
+fn test_the_smoke_script_can_be_photographed() {
+    tsm_s = editor_state_new(PALETTE);
+    tsm_run = script_run_file(tsm_s, "tests/scripts/v1b_snap.keys", SHOTS);
+
+    assert(tsm_run.ok, "{script_describe(tsm_run)}");
+    assert(tsm_run.snaps == 2, "the script asked for two pictures");
+    assert(file("{SHOTS}/v1b_ground.png").exists(), "before the markers");
+    assert(file("{SHOTS}/v1b_markers.png").exists(), "and after them");
+    assert(!png_bytes_equal("{SHOTS}/v1b_ground.png", "{SHOTS}/v1b_markers.png"),
+           "the run moved on between them");
+}

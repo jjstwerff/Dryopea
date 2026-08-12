@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0 + V1a shipped 2026-08-12; V1b is the next work.** Nothing in
+**Active — V0 + V1 shipped 2026-08-12; V2p is the next work.** Nothing in
 dryopea validated the game as something that *runs*. The 189 tests in
 `tests/` covered pure functions and static renders; every one of them called
 a library function directly and none of them played the game.
@@ -25,9 +25,15 @@ V1a turns that seam into something a run can be **written down** in.
 `src/script.loft` reads a `.keys` script and plays it, and 20 tests in
 `tests/08_v1a_script.loft` hold it to the gate: the gate script and a
 hand-written twin of the same run land on the same `EditorState`, compared
-field by field. Suite 258 green.
+field by field.
 
-Three decisions the rest of the plan rests on — two from V0, one from V1a:
+V1b gives it **pictures**. `snap <name>` writes `<shots>/<name>.png` and a
+state line into the transcript; 14 tests in `tests/08_v1b_snap.loft` hold
+it to *its* gate — the file lands, and what is in it is a real render. Suite
+272 green.
+
+Four decisions the rest of the plan rests on — two from V0, one from each
+half of V1:
 
 - **Edge detection lives in the seam, not the caller.** `EditorInput`
   carries what is HELD this frame; `editor_step` compares against the
@@ -46,6 +52,14 @@ Three decisions the rest of the plan rests on — two from V0, one from V1a:
   "the script and the editor are one machine" an aspiration instead of a
   fact — anything a script can do a player can do, because the script has no
   other door.
+- **A shot is the editor's own frame.** The composition main.loft drew
+  inline — world, hover preview, markers, ghost, picker, save indicator,
+  mode badge — moved into `render_editor_frame` (`src/editor_view.loft`),
+  and both the GL loop and `snap` ask for it. The alternative was a second
+  renderer living in the harness, which would make every measured frame
+  evidence about the harness. This is § One table, two readers applied to
+  pixels. And `snap` changes nothing: a script must play the same way
+  whether or not someone asked it for pictures.
 
 The evidence this is a silent-failure problem, not a nice-to-have, is from
 2026-08-12:
@@ -86,8 +100,9 @@ writes a PNG per step into `shots/` for human inspection, and
   [`docs/GROUND_TYPES.md`](../../docs/GROUND_TYPES.md) (the 11-entry
   palette the classifier must separate).
 - **Source touched:** `src/main.loft` (split), a new `src/editor_step.loft`,
-  a new `src/script.loft` (the runner; V2's measurements get their own file
-  rather than growing this one), `tests/scripts/*.keys`,
+  a new `src/editor_view.loft` (the frame both the GL loop and `snap`
+  draw), a new `src/script.loft` (the runner; V2's measurements get their
+  own file rather than growing this one), `tests/scripts/*.keys`,
   `scripts/validate.sh`, `Makefile`.
 - **Neighbouring plans:** [`05-validation-scenario`](../05-validation-scenario/README.md)
   defines *what* scenario counts as playable; **08 builds the instrument
@@ -130,8 +145,8 @@ a phase that cannot name one is a phase that has not been cut yet.
 | **V0a** — seam for ONE action (paint) | S | one site at a time | a test builds an `EditorInput` with paint set, calls `editor_step`, asserts the hex changed; the other 24 actions still run their old inline path, so the tree is green throughout | **Shipped** |
 | **V0b** — move the remaining actions, in groups | M | one site at a time | per group: a test drives the action through `editor_step` and asserts its effect; `src/main.loft` shrinks to poll → step → render | **Shipped** (5 groups: tool state · camera · markers · history · disk) |
 | **V1a** — parse + run, no output | S | parallel run | a script of `at` / `do` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | **Shipped** |
-| **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | Open |
-| **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | Blocked on V1b |
+| **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | **Shipped** |
+| **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | Open |
 | **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads ≈1.0 for it and ≈0 for the other ten, for every entry | Blocked on V2p |
 | **V3** — the scenario scripts (one step each) | M | one site at a time | each script's own assertions; five scripts, five steps — a broken one goes red alone | Blocked on V2 |
 | **V4** — wire it in | S | — | `make validate` goes red on an out-of-band measurement, and prints the number that moved | Blocked on V3 |
@@ -204,7 +219,7 @@ integer` with `-1` for none, which defaulted to `0` — palette entry 0 is sea,
 painting sea erases, and five paint tests went red the moment the struct grew
 its next field. Build inputs from `editor_input_empty()`, never as literals.
 
-### V1 — the script runner — V1a **shipped**
+### V1 — the script runner — **shipped**
 
 A `.keys` interpreter in loft, headless — no GL window, no server, no
 browser. dryopea's renderer is already a software `Canvas`, so a run is
@@ -228,8 +243,18 @@ palette <index>             select a palette entry
 hover <q> <r>               pointer over a hex (hover preview, ghost arrow)
 click <q> <r>               press at a hex (paint / place, per current mode)
 drag <q> <r> <q2> <r2>      press, move, release — the paint-line path
-snap <name>                 PNG into shots/<name>.png + a state dump   (V1b)
+snap <name>                 PNG into <shots>/<name>.png + a state line
 ```
+
+`<shots>` is per-run: `shots/` by default, `tests/actual/` under the suite.
+`snap` creates the directory and **checks what `save_png` answers** — it
+returns false rather than raising, and an unchecked write there is how a
+gate stays green over a picture that was never taken. The "state dump" is
+one line in the transcript beside the file name (hex and marker counts,
+camera, mode, tool, history) rather than a sidecar file: the transcript is
+where someone reading a failed run is already looking, and V2's measurement
+commands, not a `.txt` nothing parses, are what will make those numbers
+assertable.
 
 ⚠ **An unknown command is an error, not a skipped line.** A typo that
 silently does nothing turns a passing run into a lie — this is V1's negative
@@ -314,6 +339,8 @@ and hermetic. Validation is a second gate, run deliberately.
 | **V0** | A session with no `save_path` refuses to save AND to reload | disk is reached only through an attached path | An unguarded reload reads an absent file and wipes the world |
 | **V1** | `do levitate`, `teleport 4 4`, `at 3 south`, `at 3` | the runner refuses what it does not understand | An unknown command, action, number or arity must ERROR, not be skipped |
 | **V1** | `do Tab` | the vocabulary names actions, so no key table exists to drift | A key name that WORKS means a second table was built |
+| **V1** | `snap` into a directory that cannot be made | a write that could not happen ends the run | `save_png` answers false; an unchecked answer leaves a green gate over a missing picture |
+| **V1** | the same script with and without `snap` in it | a shot is a photograph — rendering does not mutate the session | A run that plays differently because someone asked for pictures |
 | **V2** | A canvas painted entirely `grass` reads `grass ≈ 1.0`, all others `≈ 0` | the classifier separates all 11 palette entries | Two adjacent palette colours landing in one bucket fails the gate |
 | **V3** | paint → save → clear → reload → identical world | save/load round-trip = identity | A map with an unknown ground type is *refused*, not silently painted as sea |
 | **V3** | six `R` presses on a spawn marker | rotation by six 60° steps = identity | A seventh press must not read as the identity |
@@ -353,10 +380,13 @@ frames — that is the point of having both.
 
 ## Open questions
 
-1. **Are `shots/` committed?** moros commits them as the inspection record.
-   dryopea already commits `tests/golden/` for exact comparison, and binary
-   churn is real. *Provisional: `shots/` is gitignored, written fresh each
-   run; a shot referenced by a doc gets copied into `docs/`.* Decided in V1.
+1. ~~**Are `shots/` committed?**~~ **Decided in V1b: no.** `shots/` is
+   gitignored and written fresh every run; a shot a doc cites is copied into
+   `docs/` deliberately. dryopea already commits `tests/golden/` for the
+   exact-comparison job, and a second tree of binaries that nothing compares
+   would be churn with no reader. What *is* committed is `tests/scripts/*.keys`
+   — those are source. The suite writes its shots to `tests/actual/`, which
+   `scripts/test.sh` already wipes between runs.
 2. **Does the runner ever drive the real GL build?** Headless proves the
    logic, not the GL path — the window, the input polling and
    `gl_screenshot` stay unvalidated. *Provisional: no; V0's seam means the

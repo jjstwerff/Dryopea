@@ -100,10 +100,10 @@
 use dryopea;
 use graphics;
 
-const WINDOW_W: integer = 960;
-const WINDOW_H: integer = 720;
-const PPM: float = 24.0;
-
+// The window size and the frame composition both live in
+// `src/editor_view.loft` (VIEW_W / VIEW_H / VIEW_PPM +
+// render_editor_frame), so a scripted `snap` photographs the same
+// picture at the same size this window shows.
 const PALETTE_PATH: text = "examples/palette.json";
 
 // Default-slot paths (no CLI arg).  Named maps live under
@@ -147,11 +147,11 @@ fn main() {
         mkdir_all("maps");
     }
 
-    if !gl_create_window(WINDOW_W, WINDOW_H, "dryopea editor — {map_label}") {
+    if !gl_create_window(VIEW_W, VIEW_H, "dryopea editor — {map_label}") {
         println("dryopea: failed to open window");
         return;
     }
-    painter = create_painter_2d(WINDOW_W as float, WINDOW_H as float);
+    painter = create_painter_2d(VIEW_W as float, VIEW_H as float);
 
     palette = load_palette(PALETTE_PATH);
 
@@ -239,7 +239,7 @@ fn main() {
         // Mouse — hover + paint on left-button.
         mx = gl_mouse_x() as integer;
         my = gl_mouse_y() as integer;
-        hovered = screen_to_hex(s.cam, mx, my, WINDOW_W, WINDOW_H, PPM);
+        hovered = screen_to_hex(s.cam, mx, my, VIEW_W, VIEW_H, VIEW_PPM);
         if hovered.q != last_hover_q || hovered.r != last_hover_r {
             s.render_needed = true;   // hover preview / outline follows the cursor
         }
@@ -321,46 +321,16 @@ fn main() {
 
         // ── Render ──────────────────────────────────────────────
 
-        // Ground mode: hover shows a PREVIEW of the next paint
-        // (hex filled with active palette colour + outline).
-        // Marker mode: just the plain hover outline + the ghost
-        // arrow (markers don't replace ground colour, so the
-        // paint-preview would be misleading).
-        // Re-rasterise + re-upload ONLY when the frame changed:
-        // content edits flag gridmesh's dirty set; view changes flag
-        // s.render_needed.  Otherwise reuse the cached texture.
+        // What the frame CONTAINS is `render_editor_frame`
+        // (src/editor_view.loft), shared with the script runner's
+        // `snap` so a shot is this picture and not a second one.
+        // What is left here is the render GATE: re-rasterise +
+        // re-upload ONLY when something changed — content edits
+        // flag gridmesh's dirty set, view changes flag
+        // s.render_needed — and otherwise reuse the cached texture.
         do_render = s.render_needed || chunks_dirty_count(s.cf) > 0;
         if do_render {
-            if s.mode == MODE_GROUND {
-                cv = render_with_hover_preview(s.cam, s.pw, hovered,
-                                                s.picker.active as u8? ?? 0,
-                                                WINDOW_W, WINDOW_H, PPM);
-            } else {
-                cv = render_with_hover(s.cam, s.pw, hovered,
-                                        WINDOW_W, WINDOW_H, PPM);
-            }
-            render_markers(cv, s.cam, s.mw, WINDOW_W, WINDOW_H, PPM);
-            // Marker-mode ghost preview at the hovered hex — only when
-            // the hex is empty (placing on an occupied hex removes, so
-            // no preview).  Dispatches on place_kind: spawn → arrow
-            // ghost oriented per place_direction, target → bullseye
-            // ghost.
-            if s.mode == MODE_MARKER && !has_marker(s.mw, hovered.q, hovered.r) {
-                if s.place_kind == MARKER_KIND_TARGET {
-                    render_ghost_target(cv, s.cam, hovered.q, hovered.r,
-                                        WINDOW_W, WINDOW_H, PPM);
-                } else {
-                    render_ghost_arrow(cv, s.cam, hovered.q, hovered.r,
-                                       s.place_direction, WINDOW_W, WINDOW_H, PPM);
-                }
-            }
-            render_picker(cv, s.picker, 12, 12);
-            // Save indicator sits to the right of the picker, vertically
-            // aligned with the top swatch.
-            render_save_indicator(cv, s.dirty,
-                                  12 + PICKER_SWATCH_PX + 2 + SAVE_INDICATOR_RADIUS,
-                                  12 + SAVE_INDICATOR_RADIUS);
-            render_mode_indicator(cv, s.mode, WINDOW_W - MODE_BADGE_PX - 12, 12);
+            cv = render_editor_frame(s, VIEW_W, VIEW_H, VIEW_PPM);
 
             // Swap the cached GL texture (free the old one first).
             if cur_tex != 0 { gl_delete_texture(cur_tex); }
@@ -374,7 +344,7 @@ fn main() {
         // Present the cached texture every frame (cheap GPU blit +
         // swap); only the rasterise + upload above are gated.
         gl_clear(rgb(0, 0, 0));
-        draw_texture_at(painter, cur_tex, 0.0, 0.0, WINDOW_W as float, WINDOW_H as float);
+        draw_texture_at(painter, cur_tex, 0.0, 0.0, VIEW_W as float, VIEW_H as float);
         gl_swap_buffers();
     }
 
