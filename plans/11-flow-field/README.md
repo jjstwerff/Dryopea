@@ -10,7 +10,7 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 shipped 2026-08-12; F1b is next.**
+**Active — F0 + F1 + F1b shipped 2026-08-12; F2 is next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -169,6 +169,53 @@ is at height 0 — true until plan 02's slope solver and F8's body piles, and
 written so both are additive rather than a special case
 ([`src/passable.loft`](../../src/passable.loft) § The step).
 
+## F1b, the first wall that works (2026-08-12)
+
+`enemy_tick` asks `can_occupy` about the hex it is about to enter and stays
+put when the answer is no. Six lines. Everything interesting about it is
+what the six lines cost elsewhere.
+
+**Verified by removing it.** With the check short-circuited, 8 of the 10
+new tests go red — including both halves of the pair. The two that stay
+green are the dead-enemy case and the file-exists check, neither of which
+is about passability. A gate nobody has watched fail is a gate with an
+unknown failure mode, and this one now has a measured one.
+
+**⚠ The stop is only meaningful next to a march that does NOT stop.**
+"The enemy halted" is passed by a mover that never moves — and after F1b
+that failure is *live*, because an unpainted hex is sea and a whole-map
+refusal looks exactly like a wall working. So every halt is asserted beside
+the same march with the wall removed (reaches the core) or with a gap in it
+(walks through), and beside `range 12 12` → `range 4 4`, which says they
+moved eight hexes first.
+
+**The signature changed, deliberately, and 12 call sites with it.**
+`enemy_tick(e)` became `enemy_tick(e, pal, pw)`. Default parameters would
+have kept every caller compiling and made the passability check *skippable*
+— and an empty palette answers "no ground anywhere", so a caller who
+skipped it would walk enemies through walls silently. The compile errors
+were the point: every site now says which world it ticks against.
+
+**What it cost: every scenario that walked on water.**
+`a-wave-approaches`, the V2 wave test, the V3 `range` fixtures and five M5
+movement tests all marched enemies across unpainted hexes — which F1 had
+already established is sea. They now paint the corridor they walk. That is
+not accommodation of a test-harness quirk; it is the same rule the game
+enforces, arriving in the fixtures.
+
+**⚠ F1b consumed F1's negative control, and it was re-pointed rather than
+rebaselined.** F1's red half was "the enemy is standing inside the wall at
+tick 9" — the bug F1b fixed, so the test would now fail because the enemy is
+no longer *there*. Deleting it would leave `enemies passable` with nothing
+proving it can fail. It now asserts a fault F1b cannot fix: an enemy that
+*starts* inside a wall, because the spawn marker was authored on top of one.
+No mover is involved, so no later movement phase can quietly make it green.
+
+**What it does not do.** An enemy stopped by a wall stops for good — approach
+mode has one heading and no way round. It does not attack (no combat yet)
+and it does not route (F5). Four enemies stopped at one face all stand on
+the same hex; F5c is where they spread.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -250,7 +297,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 |---|---|---|---|---|
 | **F0** — probe: does an entrance need DETECTING? | XS | a probe first | four hand-built worlds + a BFS. **Shipped — see § F0, the answer.** No: routing is emergent, F4 is cancelled, and the probe found a trap worth more than the question | **Shipped** |
 | **F1** — the measurement: where is an enemy? | S | — | a new `.keys` assertion (`enemy <i> <q> <r>`, and `enemies passable` — no enemy on a hex its CLASS cannot traverse) that goes RED against today's mover walking through a wall ring, and green when hand-fed a legal path. An assertion that cannot fail today is not the instrument this needs. **Shipped — see § F1, the instrument.** The gate is the same script one tick apart: red standing in a wall face, green a hex earlier. A face, not a ring — F0's hand-built ring painted 16 of 18 hexes off-ring, so a ring needs the pre-flight F2 will carry, and three hexes on a line need none | **Shipped** |
-| **F1b** — approach mode stops at walls | S | one site at a time | fired at a wall ring, an enemy halts at the EXACT hex before it; fired at a gap, it passes through. Both fail today. **Ships before any flow-field code** — it needs only the existing `walk_*` palette fields, and it is the smallest real gameplay fix in this plan | Open |
+| **F1b** — approach mode stops at walls | S | one site at a time | fired at a wall face, an enemy halts at the EXACT hex before it; fired at a gap, it passes through. Both failed today — **measured**, by short-circuiting the check: 8 of 10 tests go red without it. **Shipped — see § F1b, the first wall that works.** ⚠ The plan said "it needs only the existing `walk_*` palette fields"; F0 had already disproved that — `walk_*` is the bug, and it uses the height step | **Shipped** |
 | **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable | Open |
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does | Open |
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |

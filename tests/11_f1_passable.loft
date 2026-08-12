@@ -205,31 +205,62 @@ const CORE_SPAWN_AND_WALL: text = `
     wave 1
 `;
 
-// Nine ticks along a heading of (-1, 0) from (12, 0) is exactly the
-// wall hex.
-fn test_the_mover_walks_into_the_wall_and_the_assertion_sees_it() {
-    tmw = script_run(editor_state_new(PALETTE),
-        "{CORE_SPAWN_AND_WALL}\ntick 9\nenemy 0 3 0\nenemies passable", SHOTS);
+// The same world with the wall painted UNDER the spawn marker
+// instead of across the corridor — an authoring mistake, and the one
+// way an enemy is inside a wall that no movement fix can prevent.
+const CORE_SPAWN_AND_WALL_UNDER_THE_SPAWN: text = `
+    do toggle_mode
+    do cycle_kind
+    click 0 0
+    do cycle_kind
+    do rotate
+    do rotate
+    do rotate
+    do rotate
+    click 12 0
+    do toggle_mode
+    palette 5
+    drag 12 0 0 0
+    palette 9
+    click 12 0
+    wave 1
+`;
 
-    assert(!tmw.ok, "today's mover walks THROUGH the wall — the gate must be able to fail");
-    assert(tmw.message.contains("wall"), "and name the ground it is standing on: {tmw.message}");
-    assert(tmw.message.contains("3.0"),  "and the step: {tmw.message}");
-    // The `enemy` line before it passed, so the run reached the
-    // assertion under test rather than dying early for another
-    // reason — which is what makes the red above evidence.
-    assert(tmw.checks == 1, "it got as far as the wall: {tmw.checks} checks");
+// ⚠ **F1b consumed this phase's original negative control**, and the
+// replacement below is deliberate rather than a rebaseline.
+//
+// F1 shipped with the red half being "tick 9 and the enemy is
+// standing INSIDE the wall", which was the bug in the tree at the
+// time.  F1b fixed exactly that: the mover now stops at (4, 0) and
+// never enters (3, 0), so the old test would go red for the wrong
+// reason — the enemy is no longer where it was asserted to be.
+//
+// Deleting it would leave `enemies passable` with nothing proving it
+// can fail, which is the state plan 08 § The instrument comes first
+// warns about.  So it is re-pointed at a fault F1b did NOT fix and
+// cannot: an enemy that STARTS on a hex its class cannot hold,
+// because the spawn marker was authored on top of a wall.  No mover
+// is involved, so no later movement phase can quietly make it green.
+fn test_an_enemy_spawned_inside_a_wall_is_a_fault() {
+    tas = script_run(editor_state_new(PALETTE),
+        "{CORE_SPAWN_AND_WALL_UNDER_THE_SPAWN}\nenemies passable", SHOTS);
+
+    assert(!tas.ok, "the spawn marker is on a wall — the enemy is in it from tick 0");
+    assert(tas.message.contains("wall"), "and it names the ground: {tas.message}");
+    assert(tas.message.contains("3.0"),  "and the step: {tas.message}");
+    assert(tas.message.contains("(12, 0)"), "and where: {tas.message}");
 }
 
-// The same script, one tick earlier: still on the corridor, still
-// legal.  Red-then-green one hex apart is the whole gate — an
-// assertion that were always red would be as useless as one that
-// could never be.
-fn test_one_hex_earlier_the_same_enemy_is_fine() {
-    toh = script_run(editor_state_new(PALETTE),
+// The green half: the same march over the corridor, measured at the
+// hex the enemy actually reaches.  Red and green from one instrument
+// is the whole point — an assertion that were always red would be as
+// useless as one that never could be.
+fn test_a_legal_walk_reads_green() {
+    tlw = script_run(editor_state_new(PALETTE),
         "{CORE_SPAWN_AND_WALL}\ntick 8\nenemy 0 4 0\nenemies passable", SHOTS);
 
-    assert(toh.ok, "{script_describe(toh)}");
-    assert(toh.checks == 2, "the hex and the passability: {toh.checks}");
+    assert(tlw.ok, "{script_describe(tlw)}");
+    assert(tlw.checks == 2, "the hex and the passability: {tlw.checks}");
 }
 
 // And the consequence of the sea default, as a run rather than a

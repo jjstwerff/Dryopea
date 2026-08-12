@@ -1,0 +1,84 @@
+# stopped-at-the-wall — plan 11 F1b.
+#
+# The first script in dryopea that asserts a WALL WORKS.  Four
+# enemies march at the core down a painted corridor, meet a wall face
+# across it, and stop on the hex in front — for good, not for a
+# tick.
+#
+# What makes this a measurement rather than a hope: the enemies got
+# eight hexes closer first.  `range 12 12` before the walk and
+# `range 4 4` after it are the same instrument saying they moved;
+# `enemy 0 4 0` twenty ticks later says they then didn't.  A mover
+# that had simply stopped working would fail the middle assertion,
+# and an unpainted corridor would fail it too — an unpainted hex is
+# sea, and after F1b nobody walks on water.
+#
+# Its counterpart is `enemies-walk-the-ground.keys`, the same march
+# with no wall in it, which reaches the core.  Read the two together:
+# one shows the wall stopping them, the other shows that only the
+# wall does.
+
+echo stopped at the wall: four enemies, eight hexes, then a wall
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# A spawn twelve hexes east, facing direction 4 — back towards the
+# core.  Twelve is outside close_spawn_disable_radius (10), so the
+# wave actually emits.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+do rotate
+click 12 0
+marker 12 0 spawn 4
+
+count markers 2 2
+do toggle_mode
+
+# The ground they walk on, then the wall across it.  The face is
+# three hexes so it reads as a wall rather than a lone block; only
+# (3, 0) is on their line, and only it does the stopping.
+palette 5
+drag 12 0 0 0
+palette 9
+drag 3 -1 3 1
+count painted 15 15
+kind 3 0 wall
+kind 4 0 grass
+
+wave 4
+count alive 4 4
+enemy 0 12 0
+enemies passable
+range 12 12
+
+# Eight ticks: (12, 0) to (4, 0), the hex in front of the wall.
+tick 8
+enemy 0 4 0
+enemies passable
+range 4 4
+
+# ⚠ The picture is the editor's frame and enemies are runtime state
+# it does not draw — so the shot is evidence about the corridor and
+# the wall, not about where anybody stands.  The `enemy` lines are
+# that.
+snap stopped-at-the-wall
+
+# Twenty more ticks and not one hex further.  The wall holds, and the
+# enemies do not squeeze past, through, or around it — approach mode
+# has no way round a wall, which is what F5's flow field is for.
+#
+# All four are on the same hex here: they share a heading, so they
+# march in lockstep and stack.  F5c is where they spread along the
+# face instead, and this scenario's numbers are what will change when
+# it does.
+tick 20
+enemy 0 4 0
+enemies passable
+range 4 4

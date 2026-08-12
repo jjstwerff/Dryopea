@@ -260,9 +260,16 @@ const BASE: text = `
     click 12 0
 `;
 
+// ⚠ The corridor of grass is part of the SETUP now, not decoration.
+// Plan 11 F1b made `enemy_tick` consult the world, and an unpainted
+// hex is sea — so a walking test has to paint the ground it walks
+// on. `BASE` itself stays unpainted, because the tests above are
+// about spawning rather than walking and one of them measures an
+// empty world's pixel share.
 fn test_a_wave_spawns_and_walks_towards_the_core() {
     taw_s = editor_state_new(PALETTE);
-    taw_run = script_run(taw_s, "{BASE}\nwave 4\ncount alive 4 4\ntick 3\ncount alive 4 4");
+    taw_run = script_run(taw_s,
+        "{BASE}\ndo toggle_mode\npalette 5\ndrag 12 0 0 0\nwave 4\ncount alive 4 4\ntick 3\ncount alive 4 4");
 
     assert(taw_run.ok, "{script_describe(taw_run)}");
     assert(alive_count(taw_run.wave) == 4, "four enemies are on the map");

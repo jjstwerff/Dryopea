@@ -53,17 +53,22 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 shipped.  F1 is the instrument,
-not the movement: `enemy <i> <q> <r>` and `enemies passable` say
-where an enemy is and whether its CLASS may be there, and
-`src/passable.loft` is the height-step rule they read.  Its gate is
-the same script one tick apart — green on the corridor, red standing
-inside the wall — because an assertion that cannot fail before the
-feature exists measures nothing.
+Plan 11 (flow field) has F0 + F1 + F1b shipped.  F1 is the
+instrument, not the movement: `enemy <i> <q> <r>` and `enemies
+passable` say where an enemy is and whether its CLASS may be there,
+and `src/passable.loft` is the height-step rule they read.  **F1b is
+the first wall in dryopea that works** — `enemy_tick` consults that
+same rule and stops in front of what it cannot cross.
 
-**Suite: 341/341 green under `scripts/test.sh`** (~20-30 s — the
+⚠ **A walking test must paint the ground it walks on.**  An unpainted
+hex IS sea, so after F1b a wave over a blank map does not move at
+all, and `enemies passable` over one is red.  Every scenario that
+walks enemies drags a corridor first; that is the game's rule, not a
+harness quirk.
+
+**Suite: 351/351 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
-**Gate: 8 scripts green under `scripts/validate.sh`** (~11 s).
+**Gate: 9 scripts green under `scripts/validate.sh`** (~11 s).
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -467,7 +472,9 @@ plans/
                     so the obvious passability predicate is the bug.
                     F1 built the instrument that can SEE that bug
                     (src/passable.loft + `enemies passable`); F1b
-                    makes approach mode stop at the wall
+                    made approach mode stop at the wall — the first
+                    wall here that works.  F2 (the distance field)
+                    is next
   09-lattice-conversion/      — Active (C0 shipped): dryopea moves
                     to pointy-top odd-r offset, the convention every
                     hex_* library and moros already speak.  Checked

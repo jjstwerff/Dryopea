@@ -71,7 +71,7 @@ fn test_markers_and_rotation() {
 fn test_a_wave_approaches() {
     twa = play("a-wave-approaches");
     assert(twa.ok, "a-wave-approaches: {script_describe(twa)}");
-    assert(twa.checks == 9, "a-wave-approaches made {twa.checks} measurements, expected 9");
+    assert(twa.checks == 10, "a-wave-approaches made {twa.checks} measurements, expected 10");
     assert(twa.snaps == 2, "before and after the walk");
     assert(alive_count(twa.wave) == 6, "and six enemies are still on the map");
 }
@@ -85,6 +85,11 @@ fn test_a_wave_approaches() {
 // and both are exact, where a `closer` command would hide the
 // numbers it compared.
 
+// A core at the origin, a spawn twelve hexes east facing back at it,
+// and — since plan 11 F1b — the corridor of grass between them.  The
+// walk consults the world now, and an unpainted hex is sea, so
+// without the drag these enemies would not move and every `range`
+// below would read 12 forever.
 const CORE_AND_SPAWN: text = `
     do toggle_mode
     do cycle_kind
@@ -95,6 +100,9 @@ const CORE_AND_SPAWN: text = `
     do rotate
     do rotate
     click 12 0
+    do toggle_mode
+    palette 5
+    drag 12 0 0 0
 `;
 
 fn test_range_reports_the_span_and_it_shrinks() {

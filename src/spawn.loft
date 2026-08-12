@@ -17,15 +17,18 @@
 // is the simplest substitute that produces multi-direction
 // pressure without the RNG dependency.
 //
-// Approach mode (this plan's M5 scope): an enemy walks one
-// hex per tick along its heading direction.  No flow field,
-// no engage-mode hand-off, no death/HP — those land in the
-// runtime plans that follow plan 03.
+// Approach mode: an enemy walks one hex per tick along its
+// heading direction — and since plan 11 F1b it STOPS in front of
+// ground its class cannot cross, which is what makes a wall a
+// wall.  Still no flow field, no engage-mode hand-off and no
+// death/HP: those are plan 11 F5 / F5b and the combat work after.
 //
-// Plan 03 phase M5.
+// Plan 03 phase M5; the walk's passability is plan 11 F1b.
 
 use world;
 use markers;
+use palette;
+use painted;
 use passable;
 
 // The kind discriminants an `Enemy` carries — `ENEMY_KIND_REGULAR`
@@ -164,22 +167,60 @@ pub fn spawn_wave(
     }
 }
 
-// Advance one alive enemy by one hex along its heading.
-// Dead enemies are a no-op (the runtime keeps them in the
-// roster for post-mortem accounting; final-wave-clear checks
-// alive_count to gate "wave done").
-pub fn enemy_tick(e: Enemy) {
+// Advance one alive enemy by one hex along its heading — unless the
+// hex it would enter is one its class cannot hold, in which case it
+// STAYS PUT.  Plan 11 F1b.
+//
+// Dead enemies are a no-op (the runtime keeps them in the roster for
+// post-mortem accounting; final-wave-clear checks alive_count to
+// gate "wave done").
+//
+// ── The world is a parameter, and deliberately not optional ─────
+//
+// It would have been one line to give `pal` / `pw` defaults and keep
+// every existing caller compiling.  That would make the passability
+// check skippable, and a caller that skipped it would walk enemies
+// through walls exactly as this phase's own negative control did —
+// silently, because an empty palette answers "no ground anywhere".
+// So the signature changed and every call site was made to say which
+// world it ticks against.  The compile errors were the point.
+//
+// ── What a blocked enemy does ───────────────────────────────────
+//
+// Nothing, today.  It still wants the core
+// (`docs/ENEMY_MOVEMENT.md` § Two modes: "An enemy never halts
+// permanently.  Blocked, it attacks"), but there is no combat yet,
+// so approach mode's whole answer to a wall is to stop in front of
+// it.  Stopping is what makes the wall a wall; the attack is F5+ and
+// the routing round it is F5.
+pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld) {
     if !e.alive { return; }
     et_off = hex_offset(e.heading);
-    e.q = e.q + et_off.0;
-    e.r = e.r + et_off.1;
+    et_q = e.q + et_off.0;
+    et_r = e.r + et_off.1;
+    // ⚠ ONE rule, shared with the `enemies passable` assertion that
+    // measures it (`passable.loft`).  If the mover and the
+    // measurement each had their own idea of passability, a green
+    // gate would only prove the two agreed — not that either was
+    // right.
+    if !can_occupy(pal, pw, e.kind, et_q, et_r) { return; }
+    e.q = et_q;
+    e.r = et_r;
 }
 
 // Tick every enemy in the wave by one hex along their heading.
 // Convenience for "advance the whole wave one game-tick".
-pub fn wave_tick(state: WaveState) {
+//
+// Order-independent today, and only trivially so: movement does not
+// change the world, and companions do not block each other yet.
+// F5c (enemies spread rather than stack) and F8 (bodies raise
+// height) are where a single pass over the roster stops being enough
+// — `ENEMY_MOVEMENT.md` § The tick resolves once is the rule they
+// have to satisfy, and its gate is that the same wave iterated in
+// REVERSE lands identically.
+pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld) {
     for wt_e in state.enemies {
-        enemy_tick(wt_e);
+        enemy_tick(wt_e, pal, pw);
     }
 }
 

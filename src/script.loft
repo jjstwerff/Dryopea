@@ -53,7 +53,9 @@
 //                              plus a state line in the transcript
 //   wave <n>                   start a wave of n enemies at the
 //                              spawn markers, cored on the target
-//   tick <n>                   advance the wave n game-ticks
+//   tick <n>                   advance the wave n game-ticks — over
+//                              the session's own world, so an enemy
+//                              stops at what its class cannot cross
 //
 // ── Measurements (V2) — each one asserts ────────────────────────
 //
@@ -820,6 +822,12 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
 
     // Advance the wave.  A game-tick, not a frame: `step` moves the
     // editor on, `tick` moves the enemies.
+    //
+    // The wave is ticked against the session's OWN world, so an enemy
+    // stops at ground its class cannot cross (plan 11 F1b) — which
+    // also means a `tick` over an unpainted map moves nobody, because
+    // an unpainted hex is sea.  A scenario that walks enemies has to
+    // paint the ground they walk on.
     if sc_cmd == "tick" {
         if sc_argc != 1 { return "tick needs <ticks>"; }
         sc_n = sc_a1 as integer?;
@@ -828,7 +836,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
             return "tick: <ticks> must be 0..{SCRIPT_MAX_REPEAT}";
         }
-        for _ in 0..sc_count { wave_tick(run.wave); }
+        for _ in 0..sc_count { wave_tick(run.wave, s.picker.palette, s.pw); }
         return "";
     }
 

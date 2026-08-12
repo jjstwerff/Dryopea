@@ -10,6 +10,8 @@
 # close_spawn_disable_radius (10) is silenced, and a wave that
 # emitted nothing would let every `count alive` below pass for the
 # wrong reason.
+#
+# The corridor of grass is not decoration either; see the drag below.
 
 echo a wave approaches: six enemies walking at the core
 
@@ -32,6 +34,15 @@ marker 12 0 spawn 4
 
 count markers 2 2
 do toggle_mode
+
+# The ground they walk on.  Plan 11 F1b made the walk consult the
+# world — an enemy stops at what its class cannot cross — and an
+# UNPAINTED hex is sea, so before F1b these six were walking on
+# water and after it they would not move at all.  One drag paints
+# the corridor from the spawn to the core.
+palette 5
+drag 12 0 0 0
+count painted 13 13
 
 wave 6
 count alive 6 6
