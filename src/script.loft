@@ -64,6 +64,9 @@
 //   marker <q> <r> <kind> [d]  EXACT marker identity at a hex
 //   range <lo> <hi>            how far the live enemies are from
 //                              the core, as a span (V3)
+//   enemy <i> <q> <r>          EXACT hex of one enemy (plan 11 F1)
+//   enemies passable           no live enemy stands where its CLASS
+//                              cannot (plan 11 F1)
 //   frame <bucket> <lo> <hi>   share of WORLD pixels in a bucket
 //
 // A measurement that reads out of band ENDS the run, naming the
@@ -123,6 +126,7 @@ use editor_step;
 use editor_view;
 use measure;
 use save;
+use passable;
 use spawn;
 use graphics;
 
@@ -490,6 +494,83 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         return "";
     }
 
+    // WHERE an enemy is — exact, and the measurement plan 11 needs
+    // that none of V2's could give it.
+    //
+    // `count alive` says how many, `range` says how far; neither can
+    // tell an enemy routing AROUND a wall from one walking THROUGH
+    // it, because both show the same shrinking distance.  A hex can.
+    //
+    // ⚠ The index is the ROSTER index, which is spawn order, and
+    // spawn order is round-robin over `active_spawn_markers` — whose
+    // order is a hash iteration.  That is stable within a run but
+    // not across runs, so a script asserting `enemy <i>` on a map
+    // with SEVERAL active spawn markers is asserting something it
+    // cannot repeat.  One spawn marker, or measure with `enemies
+    // passable` / `range` / `count` instead.
+    if sm_cmd == "enemy" {
+        if sm_argc != 3 { return "enemy needs <index> <q> <r>"; }
+        sm_v = script_ints(tok, 3);
+        if len(sm_v) != 3 { return "enemy: <index>, <q> and <r> must be integers"; }
+        sm_i = sm_v[0] ?? 0;
+        sm_n = len(run.wave.enemies);
+        // A read past the end must fail loudly: an assertion about an
+        // enemy that was never spawned is the confident meaningless
+        // number this plan exists to stop.
+        if sm_i < 0 || sm_i >= sm_n {
+            return "enemy {sm_i}: the roster holds {sm_n} — has the wave started?";
+        }
+        // Named `sm_one` and not `sm_e`: `sm_e` is the loop variable
+        // the roster scans use, and loft rejects a loop variable that
+        // shadows a local of the same name.
+        sm_one = run.wave.enemies[sm_i];
+        if sm_one == null { return "enemy {sm_i}: the roster holds {sm_n}"; }
+        sm_q = sm_v[1] ?? 0;
+        sm_r = sm_v[2] ?? 0;
+        if sm_one.q != sm_q || sm_one.r != sm_r {
+            return "enemy {sm_i} is at ({sm_one.q}, {sm_one.r}), expected ({sm_q}, {sm_r})";
+        }
+        sm_dead = if sm_one.alive { "" } else { " — dead" };
+        measure_exact(run, "enemy {sm_i} at ({sm_q}, {sm_r}){sm_dead}");
+        return "";
+    }
+
+    // No live enemy is standing where its CLASS cannot stand.
+    //
+    // This is the assertion plan 11 F1 exists for, and it is red
+    // against the mover in the tree today: approach mode walks a
+    // straight heading, so an enemy fired at a wall ends up ON it.
+    // An assertion that could not fail before the feature was built
+    // would measure nothing (plan 08 § The instrument comes first).
+    //
+    // Scoped by CLASS, not by material: an insect on a wall it
+    // climbs is correct and a robot there is not, so both read the
+    // one rule in `passable.loft`.
+    if sm_cmd == "enemies" {
+        if sm_argc != 1 { return "enemies needs <passable>"; }
+        if sm_a1 != "passable" {
+            return "enemies: unknown check '{sm_a1}' — passable";
+        }
+        sm_live = 0;
+        sm_at   = 0;
+        for sm_e in run.wave.enemies {
+            if sm_e.alive {
+                sm_why = occupancy_fault(s.picker.palette, s.pw,
+                                         sm_e.kind, sm_e.q, sm_e.r);
+                if sm_why != "" {
+                    return "enemy {sm_at} at ({sm_e.q}, {sm_e.r}): {sm_why}";
+                }
+                sm_live += 1;
+            }
+            sm_at += 1;
+        }
+        // Green over an empty roster is the same lie `range` refuses:
+        // every enemy is somewhere legal when there are no enemies.
+        if sm_live == 0 { return "enemies passable: no live enemies to check"; }
+        measure_exact(run, "enemies passable — {sm_live} live, none where its class cannot stand");
+        return "";
+    }
+
     // The only measurement that reads pixels — and so the only one
     // that can see "the thing is not drawn".
     if sm_cmd == "frame" {
@@ -754,7 +835,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // The measurements ask the session questions rather than
     // changing it, so they live in their own dispatcher.
     if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker"
-    || sc_cmd == "frame" || sc_cmd == "range" {
+    || sc_cmd == "frame" || sc_cmd == "range"
+    || sc_cmd == "enemy" || sc_cmd == "enemies" {
         return script_measure(s, run, tok);
     }
 

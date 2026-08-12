@@ -1,0 +1,80 @@
+# enemies-walk-the-ground — plan 11 F1.
+#
+# `a-wave-approaches` proved the enemies exist and close on the
+# core.  It could not say WHERE any of them was, and `range` cannot
+# separate an enemy routing around a wall from one walking straight
+# through it — both show the same shrinking distance.  This one
+# names the hex.
+#
+# So: a corridor of grass painted from the spawn to the core, and
+# every step of the walk asserted to be on it.  The corridor is not
+# decoration.  An unpainted hex IS sea in this world, so a wave over
+# a blank map is a wave of robots walking on water — `enemies
+# passable` is red there, and it should be.
+#
+# Its negative control lives in tests/11_f1_passable.loft: the same
+# march with a wall across the corridor, which today's mover walks
+# straight through.  This file is the green half, because a file in
+# tests/scripts/ must play green — the gate sweeps them all.
+
+echo enemies walk the ground: a painted corridor, and every step on it
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# A spawn twelve hexes east, facing direction 4 (north-west) — from
+# due east of the core, that is the way back towards it.  Twelve is
+# deliberate: a spawn inside close_spawn_disable_radius (10) emits
+# nothing, and every count below would then pass for the wrong
+# reason.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+do rotate
+click 12 0
+marker 12 0 spawn 4
+
+count markers 2 2
+do toggle_mode
+
+# The ground they walk on.  One drag from the spawn to the core:
+# the seam joins the two paint ticks with a hex line, so the whole
+# corridor is painted as one undoable stroke.
+palette 5
+drag 12 0 0 0
+count painted 13 13
+kind 12 0 grass
+kind 0 0 grass
+
+wave 3
+count alive 3 3
+enemy 0 12 0
+enemy 2 12 0
+enemies passable
+range 12 12
+
+# ⚠ The picture is the EDITOR's frame, and enemies are runtime state
+# the editor does not draw — so it shows the corridor and the two
+# markers, not where anybody is standing.  The `enemy` lines above
+# and below are the evidence about that; the shot is evidence about
+# the world they walk on.
+snap enemies-on-the-ground
+
+# Halfway.  One spawn marker, so the roster is in spawn order and
+# `enemy 0` is repeatable — with several active spawns it would not
+# be (the marker set comes out of a hash).
+tick 6
+enemy 0 6 0
+enemies passable
+range 6 6
+
+# Arrived.  `range 0 0` is the core hex itself.
+tick 6
+enemy 0 0 0
+enemies passable
+range 0 0

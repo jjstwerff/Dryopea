@@ -53,9 +53,17 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-**Suite: 318/318 green under `scripts/test.sh`** (~20-30 s — the
+Plan 11 (flow field) has F0 + F1 shipped.  F1 is the instrument,
+not the movement: `enemy <i> <q> <r>` and `enemies passable` say
+where an enemy is and whether its CLASS may be there, and
+`src/passable.loft` is the height-step rule they read.  Its gate is
+the same script one tick apart — green on the corridor, red standing
+inside the wall — because an assertion that cannot fail before the
+feature exists measures nothing.
+
+**Suite: 341/341 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
-**Gate: 7 scripts green under `scripts/validate.sh`** (~11 s).
+**Gate: 8 scripts green under `scripts/validate.sh`** (~11 s).
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -254,7 +262,20 @@ src/
   palette.loft     GroundType { name, color, sub_palette, slope, drop,
                    drainage, walk_*, buildable }
                    + load_palette(path) via `text as vector<GroundType>`
-                   + parse_hex_color()
+                   + parse_hex_color().  `slope` / `drop` /
+                   `height_override` are declared NULLABLE because
+                   palette.json writes null in them — see the file's
+                   own warning
+  passable.loft    may a class of enemy be on this hex? (plan 11 F1)
+                   — the enemy KIND discriminants + climb_limit()
+                   + hex_height() + occupancy_fault() / can_occupy().
+                   TWO questions, and a hex must answer both: is the
+                   SURFACE one this class stands on (`walk_ground`),
+                   and is the step onto it within its climb.
+                   ⚠ `walk_ground` alone is the BUG — `wall` and
+                   `wall_high` are walk_ground=true (a wall's walkable
+                   part is its TOP), so the one-field predicate walks
+                   robots through 3 m walls
   picker.loft      Picker { palette, active }
                    + picker_default(), picker_set_active(),
                    render_picker(cv, p, x0, y0) — Canvas-painted UI
@@ -439,11 +460,14 @@ plans/
   08-game-validation/         — Complete (V0-V4 shipped):
                     scripted play, measured effects, PNGs for
                     inspection, and `make validate` over the lot
-  11-flow-field/              — Active (F0 shipped): enemies route
-                    round walls to the core.  F0 answered it: an
+  11-flow-field/              — Active (F0 + F1 shipped): enemies
+                    route round walls to the core.  F0 answered it: an
                     "entrance" needs no detecting, the field finds
                     gaps by itself — and walls are walk_ground=true,
-                    so the obvious passability predicate is the bug
+                    so the obvious passability predicate is the bug.
+                    F1 built the instrument that can SEE that bug
+                    (src/passable.loft + `enemies passable`); F1b
+                    makes approach mode stop at the wall
   09-lattice-conversion/      — Active (C0 shipped): dryopea moves
                     to pointy-top odd-r offset, the convention every
                     hex_* library and moros already speak.  Checked
@@ -561,6 +585,7 @@ signature.
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
 | Change how enemies move | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) — the whole spec.  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
+| Ask whether an enemy may be on a hex | `src/passable.loft` — ONE rule, both questions.  Never `walk_ground` on its own |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |
 

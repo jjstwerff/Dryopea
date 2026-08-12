@@ -10,7 +10,7 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 shipped 2026-08-12; F1 is next.**
+**Active — F0 + F1 shipped 2026-08-12; F1b is next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -77,7 +77,7 @@ nothing because the broken behaviour is already there.
 `kind`, but none of them says *where* an enemy is — and `range` cannot
 separate an enemy routing AROUND a wall from one walking THROUGH it, since
 both show a decreasing range. That measurement lands in F1, before the
-scenario that leans on it.
+scenario that leans on it.  *(Shipped — § F1, the instrument.)*
 
 ## F0, the answer (2026-08-12)
 
@@ -121,6 +121,53 @@ build against structure heights only.
 Both facts are reference, not plan, so they live in
 [`docs/ENEMY_MOVEMENT.md`](../../docs/ENEMY_MOVEMENT.md) § Where `height`
 comes from.
+
+## F1, the instrument (2026-08-12)
+
+Two measurements — `enemy <i> <q> <r>` (the exact hex) and `enemies
+passable` (no live enemy stands where its CLASS cannot) — plus
+[`src/passable.loft`](../../src/passable.loft), which is the height-step
+rule and nothing else, so F2's field, F5's mover and this assertion read
+one implementation rather than three that agree today.
+
+**The gate is a pair one tick apart.** The same script, a grass corridor
+with a wall face across it: at tick 8 the enemy is on the corridor and
+`enemies passable` is green; at tick 9 it is standing *inside* the wall and
+the assertion goes red — *"'wall' is a 3.0 m step and a robot climbs 0.0
+m"*. Red-then-green one hex apart is what proves the instrument can fail;
+an assertion that were always red would be as useless as one that never
+could be.
+
+**⚠ The sea default makes the corridor load-bearing.** An unpainted hex IS
+sea, sea is `walk_ground = false`, so `enemies passable` is RED over a blank
+map — a wave of robots walking on water. That is the right answer, and the
+consequence is that every scenario asserting it must paint the ground its
+enemies walk on. `a-wave-approaches` does not, which is why F1's scenario is
+a new file rather than four lines added to that one.
+
+**The palette's optional fields were lying, and the compiler took their
+side.** `height_override`, `slope` and `drop` were declared non-null;
+`palette.json` writes `null` in all three, and the JSON cast stores it
+regardless of loft's DN1 rule. Two ways that bites: `null > 0.0` is
+**false**, so an unguarded height read gives the right answer for flat
+ground *by luck of null-comparison semantics*; and the compiler reports the
+`?? 0.0` that defends against it as a **redundant coalesce** — it advises
+deleting the guard doing the work. The fields are now declared `?`. Filed:
+[`QUESTIONS_FOR_LOFT.md`](../../QUESTIONS_FOR_LOFT.md).
+
+**Class scoping lives in the rule, not in the caller.** `climb_limit(kind)`
+is the per-class table the spec's wall matrix implies, and its test asserts
+it against the *palette's* heights rather than against its own literals: a
+robot's limit is below `wall`, an insect's reaches `wall` and not
+`wall_high`. Retune the wall heights and the test still states the design.
+An unknown class takes the strictest limit — a permissive default would hand
+a class nobody has tuned the run of the map, silently.
+
+**What it does not do.** It measures a POSITION with a rule the spec states
+about a MOVE. Those coincide only while everything that is not a structure
+is at height 0 — true until plan 02's slope solver and F8's body piles, and
+written so both are additive rather than a special case
+([`src/passable.loft`](../../src/passable.loft) § The step).
 
 ## What the movement spec costs to build
 
@@ -202,11 +249,11 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
 | **F0** — probe: does an entrance need DETECTING? | XS | a probe first | four hand-built worlds + a BFS. **Shipped — see § F0, the answer.** No: routing is emergent, F4 is cancelled, and the probe found a trap worth more than the question | **Shipped** |
-| **F1** — the measurement: where is an enemy? | S | — | a new `.keys` assertion (`enemy <i> <q> <r>`, and `enemies passable` — no enemy on a hex its CLASS cannot traverse) that goes RED against today's mover walking through a wall ring, and green when hand-fed a legal path. An assertion that cannot fail today is not the instrument this needs | Open |
+| **F1** — the measurement: where is an enemy? | S | — | a new `.keys` assertion (`enemy <i> <q> <r>`, and `enemies passable` — no enemy on a hex its CLASS cannot traverse) that goes RED against today's mover walking through a wall ring, and green when hand-fed a legal path. An assertion that cannot fail today is not the instrument this needs. **Shipped — see § F1, the instrument.** The gate is the same script one tick apart: red standing in a wall face, green a hex earlier. A face, not a ring — F0's hand-built ring painted 16 of 18 hexes off-ring, so a ring needs the pre-flight F2 will carry, and three hexes on a line need none | **Shipped** |
 | **F1b** — approach mode stops at walls | S | one site at a time | fired at a wall ring, an enemy halts at the EXACT hex before it; fired at a gap, it passes through. Both fail today. **Ships before any flow-field code** — it needs only the existing `walk_*` palette fields, and it is the smallest real gameplay fix in this plan | Open |
 | **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable | Open |
 | **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does | Open |
-| **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies clear of wall` holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
+| **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it | Open |
@@ -241,7 +288,7 @@ plausibility.
 
 | Phase | Concrete expected result | Invariant pinned | Negative control |
 |---|---|---|---|
-| **F1** | the new assertion goes red against today's mover | the instrument can see the failure it exists for | an assertion green on a wall-walker measures nothing |
+| **F1** ✅ | the new assertion goes red against today's mover | the instrument can see the failure it exists for | an assertion green on a wall-walker measures nothing |
 | **F2** | closed ring → outside cells unreachable | unreachable ≠ 0 ≠ at-the-core | a walled-off spawn reading 0 = "already arrived" |
 | **F3** | arrows reach the core in exactly `distance` steps, from every reachable cell | the field has no loop and no local minimum | one cell whose arrow increases distance is a permanent enemy stall |
 | **F5** | `enemies clear of wall` every tick | routing respects the world | today's code fails this — the gate is proven before the feature exists |

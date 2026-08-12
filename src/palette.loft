@@ -23,18 +23,36 @@ use graphics;     // rgb() for parse_hex_color output
 // is the absolute height in metres for structure types
 // (pillar / cliff); nullable for terrain types whose height
 // comes from the slope-solver instead.
+// ⚠ `slope`, `drop` and `height_override` are declared NULLABLE
+// because `palette.json` writes `null` in each of them — `slope` for
+// every water type, `drop` for every land type, `height_override`
+// for everything that is not a structure.  The declaration follows
+// the data rather than the other way round.
+//
+// It did not always: they were plain non-null scalars, and the JSON
+// cast filled them with `null` regardless (loft's DN1 default says a
+// plain `float` rejects null; the cast is not checked against it).
+// So a reader got a null the type promised could not exist, and —
+// worse — the compiler reported the `?? 0.0` that defends against it
+// as a REDUNDANT coalesce, i.e. it advised deleting the guard that
+// was doing the work.  Measured 2026-08-12 (plan 11 F1);
+// QUESTIONS_FOR_LOFT.md § A `text as vector<Struct>` cast stores
+// `null` into a DN1 non-null scalar field.
+//
+// With `?` on the field the type tells the truth, the guard is not
+// redundant, and `passable.loft` reads a height it can trust.
 pub struct GroundType {
     name:            text,
     color:           text,
     sub_palette:     text,
-    slope:           integer,
-    drop:            integer,
+    slope:           integer?,
+    drop:            integer?,
     drainage:        boolean,
     walk_ground:     boolean,
     walk_vehicle:    boolean,
     buildable:       boolean,
     extrusion_kind:  text,
-    height_override: float,
+    height_override: float?,
 }
 
 pub fn load_palette(path: text) -> vector<GroundType> {

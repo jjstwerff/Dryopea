@@ -1,0 +1,92 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// REPRO: a `text as vector<Struct>` cast stores JSON `null` into a
+// DN1 NON-NULL scalar field — and the linter then calls the guard
+// against it redundant.
+//
+// Run:  loft --interpret loft_repros/json_null_into_non_null_scalar_field.loft
+//
+// ── Trigger ─────────────────────────────────────────────────────
+//
+// A struct whose `float` / `integer` field is declared PLAIN — so
+// non-null under @PLN25 DN1 — cast from JSON that carries `null` in
+// that field.  DN1 says a plain `float` field REJECTS null; the cast
+// stores it anyway, with no diagnostic.
+//
+// ── Observed (loft 2026.8.0, interpreter) ───────────────────────
+//
+//   height of "wall"    = 3        (correct)
+//   height of "grass"   = null     <-- a non-null field holding null
+//   grass_height <= 0.0 = true     <-- and null compares as SMALLER
+//   grass_height >  0.0 = false
+//
+//   warning[redundant-coalesce]: Redundant null coalescing —
+//     'height' is 'not null', default is never used
+//
+// ── Expected ────────────────────────────────────────────────────
+//
+// One of the two, but not both at once:
+//
+//   a) the cast honours DN1 — JSON `null` into a plain `float` is
+//      either a cast error or the type's default (0.0); or
+//   b) the cast is documented as able to produce null in a non-null
+//      slot — in which case `?? 0.0` on that field is NOT redundant
+//      and the advice must not fire.
+//
+// ── Why the pair is worse than either half ──────────────────────
+//
+// The comparison hides it and the linter removes the fix.  A null
+// height answers `<= climb` as TRUE, so a passability check reads
+// "flat ground, anyone may stand here" — the right answer, for the
+// wrong reason, until null-comparison semantics ever move.  A
+// reader who defends the site with `?? 0.0` is then told by the
+// compiler to delete that guard, because the declared type says the
+// null cannot be there.
+//
+// Hit by dryopea: examples/palette.json writes `null` for
+// `height_override` on every non-structure ground type, and
+// src/passable.loft reads that height to decide whether a 3 m wall
+// stops a robot.  Worked around by declaring the field `float?`.
+// See QUESTIONS_FOR_LOFT.md.
+
+struct Ground {
+    name:   text,
+    height: float,      // PLAIN — non-null under DN1
+    slope:  integer,    // PLAIN — non-null under DN1
+}
+
+// The braces are DOUBLED because a backtick string interpolates
+// `{…}` — that is not part of this bug, just how the JSON has to be
+// written inline.
+const PALETTE: text = `
+    [ {{ "name": "wall",  "height": 3.0,  "slope": null }},
+      {{ "name": "grass", "height": null, "slope": 6    }} ]
+`;
+
+fn main() {
+    r_pal   = PALETTE as vector<Ground>;
+    r_wall  = r_pal[0] ?? Ground {};
+    r_grass = r_pal[1] ?? Ground {};
+
+    println("entries: {len(r_pal)}");
+    println("wall.height  = {r_wall.height}    (expected 3)");
+    println("grass.height = {r_grass.height}    <-- non-null field, holding null");
+    println("wall.slope   = {r_wall.slope}     <-- same, on an integer");
+
+    // The comparison that hides it: a null height reads as BELOW any
+    // climb limit, so an unguarded passability check answers
+    // correctly by accident.
+    // (The comparisons go into locals first: a `<` inside `{…}` is
+    // read as a formatter alignment spec, not as an operator.)
+    r_below = r_grass.height <= 0.0;
+    r_above = r_grass.height > 0.0;
+    println("grass.height <= 0.0 = {r_below}   (a null reads as BELOW — so an unguarded check is right by luck)");
+    println("grass.height >  0.0 = {r_above}");
+
+    // …and the guard against it is reported REDUNDANT:
+    //   warning[redundant-coalesce]: 'height' is 'not null',
+    //   default is never used
+    r_guarded = r_grass.height ?? 0.0;
+    println("grass.height ?? 0.0 = {r_guarded}");
+}

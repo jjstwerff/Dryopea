@@ -26,12 +26,13 @@
 
 use world;
 use markers;
+use passable;
 
-// Kind discriminant for enemies.  Validation tier ships a
-// single enemy variant (placeholder magenta cuboid, per
-// PROXY_ART.md).  Future variants (combat bot, insect,
-// elemental, …) APPEND new constants — never reorder.
-pub const ENEMY_KIND_REGULAR: integer = 0;
+// The kind discriminants an `Enemy` carries — `ENEMY_KIND_REGULAR`
+// and friends — live in `passable.loft`, because a class IS its
+// climb limit as far as movement is concerned and the mover has to
+// be able to ask (plan 11 F1b).  They are in scope here through the
+// `use` above; the validation tier still emits only regulars.
 
 // One enemy on the map.  Mixes integer (q, r) with u8
 // (kind, heading) fields.  Not serialised today — vector<Enemy>

@@ -40,6 +40,36 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### A `text as vector<Struct>` cast stores `null` into a DN1 non-null scalar field
+
+- **Filed:** [loft-lang/loft#870](https://github.com/loft-lang/loft/issues/870) on 2026-08-12
+  (`bug`, `wa:clean`, `sev:medium`, `area:parser`, `area:runtime`,
+  `both-backends`, `hit-by:dryopea`).  Repro:
+  [`loft_repros/json_null_into_non_null_scalar_field.loft`](loft_repros/json_null_into_non_null_scalar_field.loft).
+- **Found while:** plan 11 F1 — building the enemy-passability rule, which
+  reads `GroundType.height_override` to decide whether a 3 m wall stops a
+  robot.
+- **Kind:** bug
+- **What dryopea needs:** a field declared plain `float` is non-null under
+  @PLN25 DN1, so either the JSON cast should honour that (error, or the
+  type's default) or the `?? 0.0` that defends the read should not be
+  reported as a **redundant coalesce**.  Today it is both: the cast stores
+  `null`, and the compiler advises deleting the guard against it.
+
+  It hides well.  A null height compares `<= climb` as **true** and
+  `> climb` as **false**, so `if height > climb { blocked }` reads flat
+  terrain as passable — the right answer, for the wrong reason, until
+  null-comparison semantics ever move.
+
+- **Workaround in dryopea:** declare the fields that `palette.json` writes
+  `null` into as nullable — `slope: integer?`, `drop: integer?`,
+  `height_override: float?` (`src/palette.loft`).  The type then matches the
+  data, the `?? 0.0` in `src/passable.loft` is honest, and the lint is
+  quiet.  `tests/01_e2_palette.loft` already asserted `slope == null`, so
+  this only made the declaration agree with what the suite measured.
+- **Loft pointer:** @PLN25 DN1 (default non-null); the `redundant-coalesce`
+  lint.
+
 ### A missing `use` reports as `Expect token ;` at a tuple access, not as an unknown function
 
 - **Filed:** [loft-lang/loft#868](https://github.com/loft-lang/loft/issues/868) on 2026-08-12

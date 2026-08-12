@@ -1,0 +1,166 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Passability — may an enemy of this class be on this hex?
+//
+// Plan 11 phase F1.  The rule is
+// `docs/ENEMY_MOVEMENT.md` § Two modes, one passability rule; this
+// file is that rule and nothing else, so the flow field (F2), the
+// mover (F5) and the measurement (`enemies passable`) all read one
+// implementation rather than three that agree today.
+//
+// ── ⚠ `walk_ground` is NOT passability ──────────────────────────
+//
+// `wall` and `wall_high` both carry `walk_ground = true`, and that
+// is CORRECT: the walkable thing about a wall is its top, which is
+// how an insect comes to be up there at all.  It describes the
+// SURFACE, not whether anything can get onto it.  So the obvious
+// one-field predicate lets robots walk through a 3 m wall — the
+// exact bug this whole rule exists to prevent, measured by plan 11
+// F0 and pinned by a test in `tests/11_f1_passable.loft`.
+//
+// Passability is therefore TWO questions, and a hex must answer
+// both:
+//
+//   1. is the surface one this class stands on?   `walk_ground`
+//   2. is the step onto it within its climb?      height vs climb
+//
+// ── The step, and why a POSITION can be measured with it ────────
+//
+// The spec's rule is about a MOVE: `height(to) - height(from) <=
+// climb(class)`.  What this file answers is about a POSITION — is
+// an enemy standing somewhere it could be?  Those coincide today
+// because everything that is not a structure is at height 0
+// (`ENEMY_MOVEMENT.md` § Where `height` comes from: terrain heights
+// wait on plan 02's slope solver, and body piles are F8's runtime
+// state).  With the ground flat, the step onto a hex IS that hex's
+// structure height.
+//
+// Written this way the generalisation is additive: when terrain
+// heights and body piles exist, `hex_height` gains their
+// contribution and every caller keeps the same shape.  Written as
+// "is this hex a wall", each of them would have been a new special
+// case.
+//
+// ── Where the climb limits come from ────────────────────────────
+//
+// They are not new numbers.  `docs/NUMBERS.md` § `wall` already
+// fixes the two heights — `wall` 3.0 m, `wall_high` 5.0 m — and
+// `ENEMY_MOVEMENT.md` § Wall climbability fixes who each one stops:
+// a wall stops robots and not insects, a high wall stops both.  The
+// constants below are the only pair of limits that produces that
+// table, which is why they are derived here rather than added to
+// `examples/numbers.json` as a third statement of the same fact.
+
+use palette;
+use painted;
+
+// ─── Enemy classes ──────────────────────────────────────────────
+//
+// The kind discriminant every `Enemy` carries.  It lives here
+// rather than in `spawn.loft` because a class IS its climb limit as
+// far as movement is concerned, and the dependency has to run this
+// way round: F1b makes the mover consult this file, so this file
+// must not depend on the mover's.
+//
+// New variants APPEND — never reorder, the numbers are stored in
+// enemy records.
+pub const ENEMY_KIND_REGULAR: integer = 0;   // the ground robot
+pub const ENEMY_KIND_INSECT:  integer = 1;   // climbs a wall, not a high one
+
+// Climb limits in metres — see § Where the climb limits come from.
+//
+// A regular robot climbs NOTHING today: no terrain step exists to
+// climb (plan 02), so 0.0 says "any structure stops me" and says it
+// without pretending to a precision the game has not measured yet.
+pub const CLIMB_REGULAR: float = 0.0;
+pub const CLIMB_INSECT:  float = 3.0;   // exactly a `wall`; a `wall_high` is 5.0
+
+// How far this class can step up, in metres.
+//
+// An unknown kind falls to the regular limit — the STRICTEST one.
+// A class the table has not learned about yet must not be handed
+// the run of the map on the strength of a number nobody chose.
+pub fn climb_limit(kind: u8) -> float {
+    if kind == ENEMY_KIND_INSECT as u8 { return CLIMB_INSECT; }
+    CLIMB_REGULAR
+}
+
+// The class's name, for a message a player or a failing script can
+// read.  An unknown kind names its number rather than lying about
+// which class it is.
+pub fn enemy_class_name(kind: u8) -> text {
+    if kind == ENEMY_KIND_REGULAR as u8 { return "robot"; }
+    if kind == ENEMY_KIND_INSECT  as u8 { return "insect"; }
+    "class {kind as integer}"
+}
+
+// ─── What a hex is ──────────────────────────────────────────────
+
+// The palette entry painted on a hex.  Unpainted is SEA (index 0),
+// the sparse world's implicit default — so an enemy on a blank map
+// is standing in the water, and this file says so rather than
+// treating "nothing painted" as "nothing in the way".
+fn hex_ground(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> GroundType {
+    hg_idx = lookup_painted(pw, q, r) as integer;
+    if hg_idx < 0 || hg_idx >= len(pal) { return GroundType {}; }
+    // An all-default GroundType is the right miss value: its
+    // `walk_ground` is false, so an index no palette entry answers
+    // for is ground nothing stands on.
+    pal[hg_idx] ?? GroundType {}
+}
+
+// The ground type's name at a hex, for the message that names it.
+pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> text {
+    hgn_e = hex_ground(pal, pw, q, r);
+    if hgn_e.name == "" { return "?"; }
+    hgn_e.name
+}
+
+// How tall the thing standing on a hex is, in metres.
+//
+// ⚠ The `?? 0.0` is load-bearing, not defensive noise.
+// `height_override` is `null` for every non-structure —
+// `palette.json` writes it that way — and a null height compares
+// `<= climb` as TRUE, so an unguarded read gives the right answer
+// for terrain by accident and would keep giving it until loft's
+// null-comparison semantics moved. Zero metres is what flat ground
+// IS; say it, rather than inherit it.
+pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> float {
+    hex_ground(pal, pw, q, r).height_override ?? 0.0
+}
+
+// ─── The rule ───────────────────────────────────────────────────
+
+// Why this class may NOT be on this hex — "" when it may.
+//
+// The reason is the return value rather than a boolean plus a
+// lookup, because every caller that reports a fault wants to name
+// it: a gate that says "enemy 3 is somewhere it should not be"
+// costs a debugging session that "enemy 3 stands on a 3.0 m wall
+// and a robot climbs 0.0 m" does not.
+pub fn occupancy_fault(pal: vector<GroundType>, pw: PaintedWorld,
+                       kind: u8, q: integer, r: integer) -> text {
+    of_e     = hex_ground(pal, pw, q, r);
+    of_name  = hex_ground_name(pal, pw, q, r);
+    of_class = enemy_class_name(kind);
+
+    // 1. the surface
+    if !of_e.walk_ground {
+        return "'{of_name}' is not a surface a {of_class} stands on";
+    }
+    // 2. the step — see § ⚠ `walk_ground` is NOT passability
+    of_h = of_e.height_override ?? 0.0;
+    of_c = climb_limit(kind);
+    if of_h > of_c {
+        return "'{of_name}' is a {of_h:3.1} m step and a {of_class} climbs {of_c:3.1} m";
+    }
+    ""
+}
+
+// May this class be on this hex?  The boolean face of
+// `occupancy_fault`, so the two can never disagree.
+pub fn can_occupy(pal: vector<GroundType>, pw: PaintedWorld,
+                  kind: u8, q: integer, r: integer) -> boolean {
+    occupancy_fault(pal, pw, kind, q, r) == ""
+}

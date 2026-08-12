@@ -151,10 +151,21 @@ fn test_load_palette_height_override() {
     // when extrusion_kind is "pillar" or "cliff".
     assert(tlpho_p[9].height_override  == 3.0, "wall height_override 3.0m");
     assert(tlpho_p[10].height_override == 5.0, "wall_high height_override 5.0m");
-    // Water + land types: consumers should NOT read height_override
-    // for "flat" / "ramp" entries (height comes from the terrain
-    // solver instead).  The exact value when JSON had `null` is
-    // loft-cast-defined; tests don't assert it.
+    // Water + land types: height comes from the terrain solver
+    // instead (plan 02), and palette.json writes `null` here.
+    //
+    // That value used to be left unasserted as "loft-cast-defined".
+    // Plan 11 F1 needed it — `passable.loft` reads this height to
+    // decide whether a wall stops a robot — so it is measured now:
+    // the cast stores `null`, which is why the field is DECLARED
+    // `float?`.  Filed as loft#870, because a plain `float` is
+    // non-null under DN1 and the cast ignored that.
+    //
+    // ⚠ If this assertion ever goes red, loft#870 shipped a fix and
+    // the reading changed: check `src/passable.loft`'s `?? 0.0`
+    // still says what it means before rebaselining.
+    assert(tlpho_p[5].height_override  == null, "grass carries no structure height");
+    assert(tlpho_p[0].height_override  == null, "nor does sea");
 }
 
 // ─────────────────────────────────────────────────────────────────

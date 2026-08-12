@@ -1,0 +1,321 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F1 — the measurement: where is an enemy?
+//
+// F1 builds no movement.  It builds the instrument that can SEE the
+// movement being wrong, and the gate it has to pass is that it goes
+// RED against the mover already in the tree: approach mode walks a
+// straight heading, so an enemy fired at a wall ends up standing on
+// it.  An assertion that cannot fail before the feature exists
+// measures nothing (plan 08 § The instrument comes first), so the
+// pair below — `test_…_walks_into_a_wall` red and
+// `test_…_one_hex_earlier` green, the SAME script one tick apart —
+// is the phase's real gate.
+//
+// The other half is the trap F0 found, which is worth more than the
+// question F0 asked: `wall` and `wall_high` carry
+// `walk_ground = true`, so the obvious passability predicate lets
+// robots through 3 m walls.  `test_a_wall_is_walkable_and_still_
+// stops_a_robot` pins that, and it is the test that goes red if
+// anyone ever simplifies `passable.loft` back down to one field.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// Palette indices — `examples/palette.json`, in file order.
+const IDX_GRASS:      integer = 5;
+const IDX_STEEP_ROCK: integer = 8;
+const IDX_WALL:       integer = 9;
+const IDX_WALL_HIGH:  integer = 10;
+
+// The palette and the class discriminants are `integer` constants
+// while the stored fields are `u8`; one named conversion beats the
+// same `as u8? ?? 0` at thirty call sites.
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// A world with one hex painted — enough to ask about one hex.
+fn one_hex(kind: integer, q: integer, r: integer) -> PaintedWorld {
+    oh_pw = painted_empty();
+    paint(oh_pw, q, r, as_u8(kind));
+    oh_pw
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The trap: `walk_ground` is not passability
+// ─────────────────────────────────────────────────────────────────
+
+// Both halves in ONE test, deliberately.  Split apart, someone
+// "fixing" the palette so a wall reads `walk_ground = false` would
+// keep the second assertion green and never learn that the first one
+// is describing a wall's TOP — which is how insects come to be up
+// there at all, and what the whole height-step rule is built on.
+fn test_a_wall_is_walkable_and_still_stops_a_robot() {
+    tws_pal = load_palette(PALETTE);
+    tws_w   = tws_pal[IDX_WALL] ?? GroundType {};
+
+    assert(tws_w.walk_ground,
+           "the palette says a wall's SURFACE is walkable — its top is");
+    assert(!can_occupy(tws_pal, one_hex(IDX_WALL, 1, 0),
+                       as_u8(ENEMY_KIND_REGULAR), 1, 0),
+           "and a robot is still not on it: walk_ground is not passability");
+}
+
+// The same trap, said as the number that matters.
+fn test_the_fault_names_the_step_and_the_climb() {
+    tfn_why = occupancy_fault(load_palette(PALETTE), one_hex(IDX_WALL, 1, 0),
+                              as_u8(ENEMY_KIND_REGULAR), 1, 0);
+    assert(tfn_why.contains("wall"),   "it names the ground: {tfn_why}");
+    assert(tfn_why.contains("3.0"),    "it names the step: {tfn_why}");
+    assert(tfn_why.contains("robot"),  "it names the class: {tfn_why}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The rule is per CLASS, and it is a height step
+// ─────────────────────────────────────────────────────────────────
+
+fn test_an_insect_climbs_a_wall_that_stops_a_robot() {
+    tai_pal = load_palette(PALETTE);
+    tai_pw  = one_hex(IDX_WALL, 2, -1);
+
+    assert( can_occupy(tai_pal, tai_pw, as_u8(ENEMY_KIND_INSECT),  2, -1),
+           "an insect climbs a 3 m wall");
+    assert(!can_occupy(tai_pal, tai_pw, as_u8(ENEMY_KIND_REGULAR), 2, -1),
+           "a robot does not — same hex, different class");
+}
+
+fn test_a_high_wall_is_the_anti_insect_barrier() {
+    tah_pal = load_palette(PALETTE);
+    tah_pw  = one_hex(IDX_WALL_HIGH, 2, -1);
+
+    assert(!can_occupy(tah_pal, tah_pw, as_u8(ENEMY_KIND_INSECT),  2, -1),
+           "5 m is past an insect's climb — that is what wall_high is FOR");
+    assert(!can_occupy(tah_pal, tah_pw, as_u8(ENEMY_KIND_REGULAR), 2, -1),
+           "and past a robot's, which never had one");
+}
+
+// The climb limits are asserted against the PALETTE, not against
+// their own literals.  A test that says `CLIMB_INSECT == 3.0` only
+// proves the constant was not mistyped; this one proves the design —
+// an insect climbs a wall and not a high one — and stays true if the
+// wall heights are ever retuned.
+fn test_the_climb_limits_reproduce_the_wall_table() {
+    tcl_pal  = load_palette(PALETTE);
+    tcl_wall = (tcl_pal[IDX_WALL]      ?? GroundType {}).height_override ?? 0.0;
+    tcl_high = (tcl_pal[IDX_WALL_HIGH] ?? GroundType {}).height_override ?? 0.0;
+
+    assert(tcl_wall < tcl_high, "a high wall is the taller of the two: {tcl_wall} / {tcl_high}");
+    assert(climb_limit(as_u8(ENEMY_KIND_REGULAR)) < tcl_wall,
+           "a wall stops a robot");
+    assert(climb_limit(as_u8(ENEMY_KIND_INSECT)) >= tcl_wall,
+           "an insect climbs a wall");
+    assert(climb_limit(as_u8(ENEMY_KIND_INSECT)) < tcl_high,
+           "and a high wall stops it");
+}
+
+// An unknown class takes the STRICTEST limit.  The alternative — a
+// permissive default — hands a class nobody has tuned yet the run of
+// the map, and it does it silently.
+fn test_an_unknown_class_gets_the_strictest_limit() {
+    assert(climb_limit(as_u8(99)) == CLIMB_REGULAR,
+           "a class the table has not learned about climbs nothing");
+    assert(enemy_class_name(as_u8(99)).contains("99"),
+           "and names its number rather than claiming to be a robot");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Surface and step are two questions, and a hex must answer both
+// ─────────────────────────────────────────────────────────────────
+
+fn test_flat_land_holds_every_class() {
+    tfl_pal = load_palette(PALETTE);
+    tfl_pw  = one_hex(IDX_GRASS, 0, 0);
+
+    assert(can_occupy(tfl_pal, tfl_pw, as_u8(ENEMY_KIND_REGULAR), 0, 0), "grass holds a robot");
+    assert(can_occupy(tfl_pal, tfl_pw, as_u8(ENEMY_KIND_INSECT),  0, 0), "and an insect");
+    assert(hex_height(tfl_pal, tfl_pw, 0, 0) == 0.0,
+           "flat ground is 0 m — the null in palette.json read as a height, not inherited");
+}
+
+// The step rule is not the only rule: steep rock is 0 m tall and
+// still nothing walks up it.  A predicate that had collapsed to
+// "height <= climb" would pass this hex.
+fn test_a_surface_can_refuse_a_class_at_zero_height() {
+    tsc_pal = load_palette(PALETTE);
+    tsc_pw  = one_hex(IDX_STEEP_ROCK, 0, 0);
+
+    assert(hex_height(tsc_pal, tsc_pw, 0, 0) == 0.0, "steep rock carries no structure");
+    assert(!can_occupy(tsc_pal, tsc_pw, as_u8(ENEMY_KIND_REGULAR), 0, 0),
+           "and is still not walkable — the SURFACE question, not the step");
+}
+
+// The sea-default world: an unpainted hex is not "nothing in the
+// way", it is water.  Every scenario that asserts `enemies passable`
+// has to paint the ground its enemies walk on, which is what makes
+// the assertion mean something.
+fn test_an_unpainted_hex_is_water_and_nothing_stands_on_it() {
+    tuh_pal = load_palette(PALETTE);
+    tuh_pw  = painted_empty();
+
+    assert(hex_ground_name(tuh_pal, tuh_pw, 7, -3) == "sea", "unpainted is sea");
+    assert(!can_occupy(tuh_pal, tuh_pw, as_u8(ENEMY_KIND_REGULAR), 7, -3),
+           "and a ground robot does not walk on the sea");
+}
+
+fn test_hex_height_reads_metres_off_the_structures() {
+    thh_pal = load_palette(PALETTE);
+    assert(hex_height(thh_pal, one_hex(IDX_WALL, 4, 4), 4, 4) == 3.0,      "a wall is 3 m");
+    assert(hex_height(thh_pal, one_hex(IDX_WALL_HIGH, 4, 4), 4, 4) == 5.0, "a high wall is 5 m");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The gate: the assertion goes RED against the mover in the tree
+// ─────────────────────────────────────────────────────────────────
+//
+// A core at the origin, a spawn twelve hexes east facing back at it,
+// a grass corridor between them so the ONLY thing wrong with the
+// world is the wall, and a wall face across the corridor at q = 3.
+//
+// A face rather than a ring: F0's probe built a ring from the wrong
+// corner and painted 16 of its 18 hexes off-ring, so a hand-built
+// ring needs the pre-flight that F2's gate will carry.  Three hexes
+// on a straight line need none, and the enemy meets the wall either
+// way.
+const CORE_SPAWN_AND_WALL: text = `
+    do toggle_mode
+    do cycle_kind
+    click 0 0
+    do cycle_kind
+    do rotate
+    do rotate
+    do rotate
+    do rotate
+    click 12 0
+    do toggle_mode
+    palette 5
+    drag 12 0 0 0
+    palette 9
+    drag 3 -1 3 1
+    wave 1
+`;
+
+// Nine ticks along a heading of (-1, 0) from (12, 0) is exactly the
+// wall hex.
+fn test_the_mover_walks_into_the_wall_and_the_assertion_sees_it() {
+    tmw = script_run(editor_state_new(PALETTE),
+        "{CORE_SPAWN_AND_WALL}\ntick 9\nenemy 0 3 0\nenemies passable", SHOTS);
+
+    assert(!tmw.ok, "today's mover walks THROUGH the wall — the gate must be able to fail");
+    assert(tmw.message.contains("wall"), "and name the ground it is standing on: {tmw.message}");
+    assert(tmw.message.contains("3.0"),  "and the step: {tmw.message}");
+    // The `enemy` line before it passed, so the run reached the
+    // assertion under test rather than dying early for another
+    // reason — which is what makes the red above evidence.
+    assert(tmw.checks == 1, "it got as far as the wall: {tmw.checks} checks");
+}
+
+// The same script, one tick earlier: still on the corridor, still
+// legal.  Red-then-green one hex apart is the whole gate — an
+// assertion that were always red would be as useless as one that
+// could never be.
+fn test_one_hex_earlier_the_same_enemy_is_fine() {
+    toh = script_run(editor_state_new(PALETTE),
+        "{CORE_SPAWN_AND_WALL}\ntick 8\nenemy 0 4 0\nenemies passable", SHOTS);
+
+    assert(toh.ok, "{script_describe(toh)}");
+    assert(toh.checks == 2, "the hex and the passability: {toh.checks}");
+}
+
+// And the consequence of the sea default, as a run rather than a
+// unit test: the same wave over an UNPAINTED world is illegal from
+// its first step, because the map is water.
+fn test_a_blank_map_is_water_under_every_enemy() {
+    tbm = script_run(editor_state_new(PALETTE),
+        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo cycle_kind\nclick 12 0\nwave 1\nenemies passable",
+        SHOTS);
+
+    assert(!tbm.ok, "an unpainted world is sea, and a robot does not swim");
+    assert(tbm.message.contains("sea"), "{tbm.message}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The measurements refuse to pass for the wrong reason
+// ─────────────────────────────────────────────────────────────────
+
+fn test_passable_over_an_empty_roster_is_an_error() {
+    tpe = script_run(editor_state_new(PALETTE), "enemies passable", SHOTS);
+
+    assert(!tpe.ok, "every enemy is somewhere legal when there are no enemies");
+    assert(tpe.message.contains("no live enemies"), "{tpe.message}");
+}
+
+fn test_an_unknown_enemies_check_is_an_error() {
+    tue = script_run(editor_state_new(PALETTE), "enemies clear", SHOTS);
+
+    assert(!tue.ok, "a typo that silently does nothing turns a passing run into a lie");
+    assert(tue.message.contains("passable"), "and says what it does know: {tue.message}");
+}
+
+fn test_an_index_past_the_roster_is_an_error() {
+    tip = script_run(editor_state_new(PALETTE),
+        "{CORE_SPAWN_AND_WALL}\nenemy 3 12 0", SHOTS);
+
+    assert(!tip.ok, "asserting about an enemy that was never spawned");
+    assert(tip.message.contains("roster holds 1"), "{tip.message}");
+}
+
+fn test_a_wrong_hex_names_where_the_enemy_actually_is() {
+    twh = script_run(editor_state_new(PALETTE),
+        "{CORE_SPAWN_AND_WALL}\ntick 2\nenemy 0 0 0", SHOTS);
+
+    assert(!twh.ok, "it is at (10, 0), not at the core");
+    assert(twh.message.contains("(10, 0)"), "naming what it measured: {twh.message}");
+}
+
+fn test_the_new_measurements_check_their_arguments() {
+    tnm_a = script_run(editor_state_new(PALETTE), "enemy 0 0", SHOTS);
+    assert(!tnm_a.ok && tnm_a.message.contains("<index>"), "{tnm_a.message}");
+
+    tnm_b = script_run(editor_state_new(PALETTE), "enemy x 0 0", SHOTS);
+    assert(!tnm_b.ok && tnm_b.message.contains("integers"), "{tnm_b.message}");
+
+    tnm_c = script_run(editor_state_new(PALETTE), "enemies", SHOTS);
+    assert(!tnm_c.ok, "a bare `enemies` names no check");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario
+// ─────────────────────────────────────────────────────────────────
+//
+// It lives in `tests/scripts/`, so `scripts/validate.sh` sweeps it
+// as a second gate.  This test is the regression half — and it pins
+// the number of measurements, because a scenario whose assertions
+// were deleted still finishes and still reports `ok`.
+//
+// Pinned here rather than in `tests/08_v3_scenarios.loft`: that file
+// is plan 08's five, and a phase's scenario should go red in its own
+// plan's test file.
+
+fn test_enemies_walk_the_ground_plays_green() {
+    tew_s = editor_state_new(PALETTE);
+    editor_state_attach(tew_s,
+                        "tests/actual/f1_walk.json",
+                        "tests/actual/f1_walk_markers.json");
+    tew = script_run_file(tew_s, "tests/scripts/enemies-walk-the-ground.keys", SHOTS);
+
+    assert(tew.ok, "enemies-walk-the-ground: {script_describe(tew)}");
+    assert(tew.checks == 17, "it made {tew.checks} measurements, expected 17");
+    assert(tew.snaps == 1, "and took its picture");
+    assert(alive_count(tew.wave) == 3, "three enemies walked the whole corridor");
+}
+
+fn test_the_scenario_file_is_on_disk() {
+    assert(file("tests/scripts/enemies-walk-the-ground.keys").exists(),
+           "the test above would pass against an empty file");
+}
