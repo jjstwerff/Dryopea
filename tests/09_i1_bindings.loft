@@ -1,0 +1,417 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 09 phase I1 — the parallel run, at the input level.
+//
+// I1 replaces `main.loft`'s 28 `gl_key_pressed` calls with one table
+// (`src/bindings.loft`) read through `input`.  The plan's Verify
+// says: run both paths side by side and compare.
+//
+// ⚠ It compares them HERE rather than at the `EditorState`, and the
+// comparison is stronger for it.  An `EditorState` comparison only
+// sees the key combinations a scenario happens to press; this sweeps
+// every key in the table against both modifier states and compares
+// all 22 `EditorInput` fields.  A binding that is wrong for a key no
+// script uses is exactly the failure this phase exists to prevent,
+// and only the sweep can see it.
+//
+// The reference is `ref_input` below — a transcription of the
+// literal `main.loft` built before I1, with the key codes written
+// out as `main.loft` wrote them.  That independence is the point: if
+// the new table says `cycle_kind` is `j`, the reference still says
+// 107 and the sweep goes red.
+//
+// ⚠ `main.loft` is not in the aggregator, so `scripts/test.sh`
+// cannot see it.  The reference is therefore a COPY, and it is only
+// honest while the two agree — which is why I1 deletes the original
+// rather than leaving both alive.
+
+#cwd
+
+use dryopea;
+
+// ─── Key codes, as `main.loft` spelled them ─────────────────────
+//
+// Deliberately literal.  Reading them out of the table under test
+// would make the sweep agree with itself.
+
+const REF_TAB:    integer = 9;
+const REF_ESCAPE: integer = 27;
+const REF_MINUS:  integer = 45;    // '-'
+const REF_EQUAL:  integer = 61;    // '='
+const REF_0:      integer = 48;
+const REF_1:      integer = 49;
+const REF_2:      integer = 50;
+const REF_3:      integer = 51;
+const REF_4:      integer = 52;
+const REF_5:      integer = 53;
+const REF_6:      integer = 54;
+const REF_7:      integer = 55;
+const REF_8:      integer = 56;
+const REF_9:      integer = 57;
+const REF_A:      integer = 97;
+const REF_D:      integer = 100;
+const REF_H:      integer = 104;
+const REF_K:      integer = 107;
+const REF_N:      integer = 110;
+const REF_R:      integer = 114;
+const REF_S:      integer = 115;
+const REF_W:      integer = 119;
+const REF_Y:      integer = 121;
+const REF_Z:      integer = 122;
+const REF_SHIFT:  integer = 132;
+const REF_CTRL:   integer = 133;
+
+// ─── The reference: main.loft's poll, transcribed ───────────────
+
+fn ref_input(
+    kb:        const vector<boolean>,
+    wheel:     integer,
+    mb_left:   boolean,
+    hq:        integer,
+    hr:        integer,
+    pan_due:   boolean,
+    paint_due: boolean,
+) -> EditorInput {
+    ri_ctrl  = kb[REF_CTRL];
+    ri_shift = kb[REF_SHIFT];
+
+    // The twelve palette hotkeys, read in the order main.loft read
+    // them — last one down wins.
+    ri_sel_pressed: boolean = false;
+    ri_sel_index:   integer = 0;
+    if kb[REF_1]     { ri_sel_pressed = true; ri_sel_index = 0;  }
+    if kb[REF_2]     { ri_sel_pressed = true; ri_sel_index = 1;  }
+    if kb[REF_3]     { ri_sel_pressed = true; ri_sel_index = 2;  }
+    if kb[REF_4]     { ri_sel_pressed = true; ri_sel_index = 3;  }
+    if kb[REF_5]     { ri_sel_pressed = true; ri_sel_index = 4;  }
+    if kb[REF_6]     { ri_sel_pressed = true; ri_sel_index = 5;  }
+    if kb[REF_7]     { ri_sel_pressed = true; ri_sel_index = 6;  }
+    if kb[REF_8]     { ri_sel_pressed = true; ri_sel_index = 7;  }
+    if kb[REF_9]     { ri_sel_pressed = true; ri_sel_index = 8;  }
+    if kb[REF_0]     { ri_sel_pressed = true; ri_sel_index = 9;  }
+    if kb[REF_MINUS] { ri_sel_pressed = true; ri_sel_index = 10; }
+    if kb[REF_EQUAL] { ri_sel_pressed = true; ri_sel_index = 11; }
+
+    EditorInput {
+        in_hover_q:        hq,
+        in_hover_r:        hr,
+        in_mouse_left:     mb_left,
+        in_paint_tick:     paint_due,
+        in_toggle_mode:    kb[REF_TAB],
+        in_rotate:         kb[REF_R] && !ri_ctrl,
+        in_rotate_ccw:     ri_shift,
+        in_cycle_kind:     kb[REF_K] && !ri_ctrl,
+        in_select_palette: ri_sel_pressed,
+        in_palette_index:  ri_sel_index,
+        in_pan_north:      pan_due && kb[REF_W],
+        in_pan_south:      pan_due && kb[REF_S] && !ri_ctrl,
+        in_pan_east:       pan_due && kb[REF_D],
+        in_pan_west:       pan_due && kb[REF_A],
+        in_zoom_in:        pan_due && wheel > 0,
+        in_zoom_out:       pan_due && wheel < 0,
+        in_recentre:       kb[REF_H] && !ri_ctrl,
+        in_undo:           ri_ctrl && kb[REF_Z],
+        in_redo:           ri_ctrl && kb[REF_Y],
+        in_clear_all:      ri_ctrl && kb[REF_N],
+        in_save:           ri_ctrl && kb[REF_S],
+        in_reload:         ri_ctrl && kb[REF_R],
+    }
+}
+
+// ─── Field-by-field comparison ──────────────────────────────────
+
+// "" when the two frames agree; otherwise the FIRST field that does
+// not, named.  A boolean answer would say "the sweep is red" without
+// saying which of 22 fields moved.
+fn input_diff(a: const EditorInput, b: const EditorInput) -> text {
+    if a.in_hover_q        != b.in_hover_q        { return "in_hover_q"; }
+    if a.in_hover_r        != b.in_hover_r        { return "in_hover_r"; }
+    if a.in_mouse_left     != b.in_mouse_left     { return "in_mouse_left"; }
+    if a.in_paint_tick     != b.in_paint_tick     { return "in_paint_tick"; }
+    if a.in_toggle_mode    != b.in_toggle_mode    { return "in_toggle_mode"; }
+    if a.in_rotate         != b.in_rotate         { return "in_rotate"; }
+    if a.in_rotate_ccw     != b.in_rotate_ccw     { return "in_rotate_ccw"; }
+    if a.in_cycle_kind     != b.in_cycle_kind     { return "in_cycle_kind"; }
+    if a.in_select_palette != b.in_select_palette { return "in_select_palette"; }
+    if a.in_palette_index  != b.in_palette_index  { return "in_palette_index"; }
+    if a.in_pan_north      != b.in_pan_north      { return "in_pan_north"; }
+    if a.in_pan_south      != b.in_pan_south      { return "in_pan_south"; }
+    if a.in_pan_east       != b.in_pan_east       { return "in_pan_east"; }
+    if a.in_pan_west       != b.in_pan_west       { return "in_pan_west"; }
+    if a.in_zoom_in        != b.in_zoom_in        { return "in_zoom_in"; }
+    if a.in_zoom_out       != b.in_zoom_out       { return "in_zoom_out"; }
+    if a.in_recentre       != b.in_recentre       { return "in_recentre"; }
+    if a.in_undo           != b.in_undo           { return "in_undo"; }
+    if a.in_redo           != b.in_redo           { return "in_redo"; }
+    if a.in_clear_all      != b.in_clear_all      { return "in_clear_all"; }
+    if a.in_save           != b.in_save           { return "in_save"; }
+    if a.in_reload         != b.in_reload         { return "in_reload"; }
+    ""
+}
+
+// Drive the new path with the same snapshot the reference reads, and
+// report the first field that disagrees.
+fn compare_paths(
+    src:       EditorInputSource,
+    kb:        const vector<boolean>,
+    wheel:     integer,
+    mb_left:   boolean,
+    hq:        integer,
+    hr:        integer,
+    pan_due:   boolean,
+    paint_due: boolean,
+) -> text {
+    cp_btn: integer = 0;
+    if mb_left { cp_btn = 1; }
+    input_source_feed(src, kb, 0.0, 0.0, cp_btn, wheel);
+    cp_new = editor_input_from(src, Hex { q: hq, r: hr }, pan_due, paint_due);
+    cp_ref = ref_input(kb, wheel, mb_left, hq, hr, pan_due, paint_due);
+    input_diff(cp_ref, cp_new)
+}
+
+// Every key code the editor reads, plus three it does not — an
+// unbound key must produce a frame with nothing set, and a table
+// that quietly bound one would go red here.
+fn swept_keys() -> vector<integer> {
+    sk: vector<integer> = [
+        REF_TAB, REF_R, REF_K, REF_W, REF_S, REF_D, REF_A, REF_H,
+        REF_Z, REF_Y, REF_N,
+        REF_1, REF_2, REF_3, REF_4, REF_5, REF_6, REF_7, REF_8,
+        REF_9, REF_0, REF_MINUS, REF_EQUAL,
+        REF_ESCAPE,          // bound to quit, which is NOT an EditorInput field
+        113,                 // 'q' — unbound
+        102,                 // 'f' — unbound
+    ];
+    sk
+}
+
+// ─── The sweep ──────────────────────────────────────────────────
+
+// One key at a time, against both modifier states and both rate-
+// limit states.  This is the phase's load-bearing check.
+fn test_every_key_resolves_the_same_as_the_old_poll() {
+    tek_src = input_source_new();
+    tek_checked = 0;
+
+    for tek_key in swept_keys() {
+        for tek_ctrl in 0..2 {
+            for tek_shift in 0..2 {
+                for tek_pan in 0..2 {
+                    tek_kb = keyboard_empty();
+                    tek_kb[tek_key] = true;
+                    if tek_ctrl  == 1 { tek_kb[REF_CTRL]  = true; }
+                    if tek_shift == 1 { tek_kb[REF_SHIFT] = true; }
+
+                    tek_bad = compare_paths(
+                        tek_src, tek_kb, 0, false, 3, -2,
+                        tek_pan == 1, false
+                    );
+                    assert(tek_bad == "",
+                           "key {tek_key} ctrl={tek_ctrl} shift={tek_shift} pan_due={tek_pan}: {tek_bad} differs");
+                    tek_checked += 1;
+                }
+            }
+        }
+    }
+
+    assert(tek_checked == 26 * 8, "the sweep ran every combination");
+}
+
+// The combos are where a one-table refactor actually goes wrong:
+// two actions share a key and only the modifier tells them apart.
+fn test_the_five_ctrl_combos_resolve() {
+    tfc_src = input_source_new();
+
+    // Ctrl+S is save and NOT pan-south — the pair that shares S.
+    tfc_kb = keyboard_empty();
+    tfc_kb[REF_S]    = true;
+    tfc_kb[REF_CTRL] = true;
+    input_source_feed(tfc_src, tfc_kb, 0.0, 0.0, 0, 0);
+    tfc_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false);
+    assert(tfc_i.in_save, "Ctrl+S saves");
+    assert(!tfc_i.in_pan_south, "and does NOT pan south");
+
+    // Ctrl+R is reload and NOT rotate — the pair that shares R.
+    tfr_kb = keyboard_empty();
+    tfr_kb[REF_R]    = true;
+    tfr_kb[REF_CTRL] = true;
+    input_source_feed(tfc_src, tfr_kb, 0.0, 0.0, 0, 0);
+    tfr_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false);
+    assert(tfr_i.in_reload, "Ctrl+R reloads");
+    assert(!tfr_i.in_rotate, "and does NOT rotate");
+
+    // Plain S pans, plain R rotates — the other half of each pair.
+    tfp_kb = keyboard_empty();
+    tfp_kb[REF_S] = true;
+    tfp_kb[REF_R] = true;
+    input_source_feed(tfc_src, tfp_kb, 0.0, 0.0, 0, 0);
+    tfp_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false);
+    assert(tfp_i.in_pan_south && tfp_i.in_rotate, "plain S pans, plain R rotates");
+    assert(!tfp_i.in_save && !tfp_i.in_reload, "and neither is the combo");
+}
+
+// The wheel is the one input with no table row, because it is not a
+// key.  It still has to come out of the same resolver.
+fn test_the_wheel_drives_zoom() {
+    twz_src = input_source_new();
+    twz_kb  = keyboard_empty();
+
+    input_source_feed(twz_src, twz_kb, 0.0, 0.0, 0, 3);
+    twz_in = editor_input_from(twz_src, Hex { q: 0, r: 0 }, true, false);
+    assert(twz_in.in_zoom_in && !twz_in.in_zoom_out, "wheel up zooms in");
+
+    input_source_feed(twz_src, twz_kb, 0.0, 0.0, 0, -3);
+    twz_out = editor_input_from(twz_src, Hex { q: 0, r: 0 }, true, false);
+    assert(twz_out.in_zoom_out && !twz_out.in_zoom_in, "wheel down zooms out");
+
+    // Rate-limited like pan: the caller owns the clock.
+    input_source_feed(twz_src, twz_kb, 0.0, 0.0, 0, 3);
+    twz_off = editor_input_from(twz_src, Hex { q: 0, r: 0 }, false, false);
+    assert(!twz_off.in_zoom_in, "and not while the rate limit says no");
+}
+
+// The mouse: held state, because the seam is what finds the edge.
+// If this ever reports an edge instead, plan 08's V0 decision has
+// been undone by accident.
+fn test_the_mouse_is_held_state_not_an_edge() {
+    tmh_src = input_source_new();
+    tmh_kb  = keyboard_empty();
+
+    tmh_down = 0;
+    for _ in 0..4 {
+        input_source_feed(tmh_src, tmh_kb, 0.0, 0.0, 1, 0);
+        tmh_i = editor_input_from(tmh_src, Hex { q: 0, r: 0 }, false, false);
+        if tmh_i.in_mouse_left { tmh_down += 1; }
+    }
+
+    assert(tmh_down == 4, "the button reads DOWN on all four frames, not just the first");
+}
+
+// A held key reads pressed every frame, for the same reason: the
+// seam edge-detects, so the resolver must not.
+fn test_a_held_key_reads_pressed_every_frame() {
+    thk_src = input_source_new();
+    thk_kb  = keyboard_empty();
+    thk_kb[REF_TAB] = true;
+
+    thk_on = 0;
+    for _ in 0..5 {
+        input_source_feed(thk_src, thk_kb, 0.0, 0.0, 0, 0);
+        thk_i = editor_input_from(thk_src, Hex { q: 0, r: 0 }, false, false);
+        if thk_i.in_toggle_mode { thk_on += 1; }
+    }
+
+    assert(thk_on == 5, "held Tab is pressed on all five frames — the SEAM makes it one toggle");
+}
+
+// ─── The table itself ───────────────────────────────────────────
+
+// The script's reverse lookup: a name it does not know must be
+// distinguishable from one bound to nothing, because the runner
+// turns the first into an error.  `input` cannot tell them apart —
+// an unknown action just reads false forever (probe P7).
+fn test_an_unknown_action_is_reportable() {
+    tua_actions = editor_actions();
+
+    assert(action_exists(tua_actions, "toggle_mode"), "a real action exists");
+    assert(!action_exists(tua_actions, "Tab"),
+           "a KEY name is not an action — the script vocabulary names actions");
+    assert(!action_exists(tua_actions, "no_such_action"), "and neither is nonsense");
+
+    tua_keys = action_keys(tua_actions, "undo");
+    assert(len(tua_keys) == 1 && tua_keys[0] == REF_Z, "undo is bound to Z");
+    assert(action_ctrl(tua_actions, "undo") == CTRL_REQUIRED, "and needs Ctrl");
+    assert(action_ctrl(tua_actions, "rotate") == CTRL_FORBIDDEN, "rotate is suppressed BY Ctrl");
+    assert(action_ctrl(tua_actions, "toggle_mode") == CTRL_IGNORED, "Tab does not care");
+}
+
+// Every action in the table is reachable: a row bound to no key, or
+// to a code past the keyboard, would sit there reading false and
+// nobody would notice.
+fn test_every_action_is_bound_to_a_real_key() {
+    tea_actions = editor_actions();
+    tea_n = 0;
+
+    for tea_a in tea_actions {
+        assert(len(tea_a.ea_keys) > 0, "action {tea_a.ea_name} is bound to at least one key");
+        for tea_k in tea_a.ea_keys {
+            assert(tea_k > 0 && tea_k < 160,
+                   "action {tea_a.ea_name} key {tea_k} is inside the keyboard");
+        }
+        tea_n += 1;
+    }
+
+    assert(tea_n == 27, "2 modifiers + 13 actions + 12 palette hotkeys");
+}
+
+// ─── Rebinding ──────────────────────────────────────────────────
+//
+// The bonus the plan predicted: rebinding is testable, and a script
+// that still passes under remapped keys is what proves the
+// indirection is real rather than decorative.  This is the unit
+// half; the scripted half rides on the `.keys` gate.
+
+fn test_rebinding_moves_the_key_and_the_old_one_goes_dead() {
+    trb_src = input_source_new();
+
+    // Move `toggle_mode` from Tab to 'j'.
+    trb_actions: vector<EditorAction> = [];
+    for trb_a in editor_actions() {
+        if trb_a.ea_name == "toggle_mode" {
+            trb_keys: vector<integer> = [106];   // 'j'
+            trb_actions += [EditorAction {
+                ea_name: "toggle_mode", ea_keys: trb_keys,
+                ea_ctrl: CTRL_IGNORED, ea_palette: -1,
+            }];
+        } else {
+            trb_actions += [trb_a];
+        }
+    }
+    input_source_rebind(trb_src, trb_actions);
+
+    trb_kb = keyboard_empty();
+    trb_kb[106] = true;
+    input_source_feed(trb_src, trb_kb, 0.0, 0.0, 0, 0);
+    trb_new = editor_input_from(trb_src, Hex { q: 0, r: 0 }, false, false);
+    assert(trb_new.in_toggle_mode, "the new key toggles the mode");
+
+    trb_old = keyboard_empty();
+    trb_old[REF_TAB] = true;
+    input_source_feed(trb_src, trb_old, 0.0, 0.0, 0, 0);
+    trb_dead = editor_input_from(trb_src, Hex { q: 0, r: 0 }, false, false);
+    assert(!trb_dead.in_toggle_mode, "and Tab does nothing any more");
+}
+
+// A rebind must carry the modifier rule with it, or Ctrl+Z stops
+// being undo the moment somebody remaps Z.
+fn test_rebinding_keeps_the_modifier_rule() {
+    trk_src = input_source_new();
+
+    trk_actions: vector<EditorAction> = [];
+    for trk_a in editor_actions() {
+        if trk_a.ea_name == "undo" {
+            trk_keys: vector<integer> = [117];   // 'u'
+            trk_actions += [EditorAction {
+                ea_name: "undo", ea_keys: trk_keys,
+                ea_ctrl: CTRL_REQUIRED, ea_palette: -1,
+            }];
+        } else {
+            trk_actions += [trk_a];
+        }
+    }
+    input_source_rebind(trk_src, trk_actions);
+
+    trk_plain = keyboard_empty();
+    trk_plain[117] = true;
+    input_source_feed(trk_src, trk_plain, 0.0, 0.0, 0, 0);
+    assert(!editor_input_from(trk_src, Hex { q: 0, r: 0 }, false, false).in_undo,
+           "plain 'u' is not undo — the rule travelled with the rebind");
+
+    trk_combo = keyboard_empty();
+    trk_combo[117] = true;
+    trk_combo[REF_CTRL] = true;
+    input_source_feed(trk_src, trk_combo, 0.0, 0.0, 0, 0);
+    assert(editor_input_from(trk_src, Hex { q: 0, r: 0 }, false, false).in_undo,
+           "Ctrl+'u' is");
+}

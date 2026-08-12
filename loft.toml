@@ -25,6 +25,14 @@ graphics = ">=0.5.0"
 # changed chunks instead of the whole world per frame.
 gridmesh = ">=0.1.2"
 
+# Plan 09 I1 — the one key→action table.  dryopea's editor had 28
+# `gl_key_pressed` calls in `main.loft` and a script runner that
+# bypassed the key layer entirely, so a wrong binding was invisible
+# to every gate.  `input` supplies the polling + binding lookup;
+# `input_tick_from_state` is what lets a script drive the SAME input
+# object the GL loop drives, which is what keeps them one machine.
+input = ">=0.2.0"
+
 # `moros_map` is the shared world data model — Map / Chunk / Hex with
 # {q,r,cy} multi-floor, height, material, walls, items.  Plan 07 W1
 # will adopt it so world-building routines interchange with moros.

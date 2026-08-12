@@ -1,0 +1,344 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The key table — plan 09 phase I1.
+//
+// ⚠ ONE table, two readers.  `editor_step.loft`'s header has asked
+// for this since plan 08 V0, and until now dryopea had the opposite:
+// `main.loft` held 28 `gl_key_pressed` calls, and `script.loft` held
+// a SECOND mapping from action names straight to `EditorInput`
+// fields — one that never touched a key code at all.  So a binding
+// could be wrong in the editor and every script would still pass.
+//
+// Here the mapping is data, in one place, and both readers derive
+// from it:
+//
+//   the GL loop   keyboard → input_tick   → editor_input_from → seam
+//   a .keys run   action   → action_keys  → input_tick_from_state
+//                                         → editor_input_from → seam
+//
+// The script's route is deliberately the long way round.  It could
+// set `EditorInput.in_undo` in one line — that is exactly what V1
+// did — but then a script proves nothing about the keyboard.  Going
+// through the table means `do undo` presses the keys the player
+// presses, so a wrong binding fails the gate.
+//
+// ── What lives here and what does not ───────────────────────────
+//
+// Keys and their modifier rule live here.  EDGES do not: plan 08 V0
+// decided edge detection lives in the seam, and plan 09 I1 revisited
+// that decision and kept it, so `editor_input_from` reads LEVEL
+// state (`is_action_pressed`) and `editor_step` still finds the
+// rising edge against `s.prev`.  `input`'s own `is_action_just_*`
+// functions are therefore unused by dryopea — deliberately, because
+// two edge detectors is the drift this file exists to prevent.
+//
+// ── Why the ctrl rule is DATA ───────────────────────────────────
+//
+// `input::ActionBinding` is a name and a list of keys; it has no
+// concept of a modifier.  dryopea needs one — Ctrl+Z is undo, plain
+// Z is nothing, plain R rotates and Ctrl+R reloads.  Resolving that
+// combo is poll-side work, as `main.loft` always said.
+//
+// But it cannot be poll-side CODE, because the script needs the same
+// answer: `do undo` has to know it must hold Ctrl.  A rule written
+// once in the resolver and once in the runner is the second table
+// again, wearing a different hat.  So `ea_ctrl` rides on the record,
+// and both readers get it from there.
+
+use graphics;
+use input;
+use world;
+use editor_step;
+
+// ─── The modifier rule ──────────────────────────────────────────
+
+// Ctrl is irrelevant to this action (Tab, W, the palette hotkeys).
+pub const CTRL_IGNORED:   integer = 0;
+// The action IS the combo: Ctrl+Z, Ctrl+S, Ctrl+N, Ctrl+Y, Ctrl+R.
+pub const CTRL_REQUIRED:  integer = 1;
+// The plain key means this, and Ctrl+key means something else — so
+// holding Ctrl must suppress it.  R is rotate / reload; S is
+// pan-south / save.
+pub const CTRL_FORBIDDEN: integer = 2;
+
+// The two modifiers, named as actions so they come out of the same
+// binding set as everything else — a remap of Ctrl is a remap like
+// any other, not a special case in the poll.
+pub const ACTION_MOD_CTRL:  text = "mod_ctrl";
+pub const ACTION_MOD_SHIFT: text = "mod_shift";
+
+// Keys `graphics` does not name.  Loft's key constants ARE the
+// lowercase ASCII codes, so these follow the same convention — the
+// same four `main.loft` used to carry privately.
+const KEY_MINUS: integer = 45;    // '-' — palette entry 11
+const KEY_EQUAL: integer = 61;    // '=' — palette entry 12
+const KEY_N:     integer = 110;   // 'n' — Ctrl+N clears all
+const KEY_H:     integer = 104;   // 'h' — recentre camera
+const KEY_K:     integer = 107;   // 'k' — cycle marker kind
+
+// ─── One row of the table ───────────────────────────────────────
+
+// A named editor action, the keys that trigger it, and what Ctrl
+// does to it.
+//
+// `ea_palette` is -1 for everything except the twelve palette
+// hotkeys, which carry the entry they select.  It is a field rather
+// than a name pattern (`"palette_{n}"`) so the resolver never builds
+// a string per frame to ask a question the record can answer.
+pub struct EditorAction {
+    ea_name:    text,
+    ea_keys:    vector<integer>,
+    ea_ctrl:    integer,
+    ea_palette: integer,
+}
+
+fn act(name: text, key: integer, ctrl: integer) -> EditorAction {
+    a_keys: vector<integer> = [key];
+    EditorAction { ea_name: name, ea_keys: a_keys, ea_ctrl: ctrl, ea_palette: -1 }
+}
+
+fn act_palette(name: text, key: integer, index: integer) -> EditorAction {
+    ap_keys: vector<integer> = [key];
+    EditorAction {
+        ea_name: name, ea_keys: ap_keys,
+        ea_ctrl: CTRL_IGNORED, ea_palette: index,
+    }
+}
+
+// THE table.  Every key the editor reads is on this list; nothing
+// reads a key code that is not.
+//
+// ⚠ Build it ONCE per session and carry it — see `EditorInputSource`.
+// Calling this per query would rebuild thirty records for every
+// question asked, twenty times a frame.
+pub fn editor_actions() -> vector<EditorAction> {
+    ea: vector<EditorAction> = [];
+
+    // Modifiers first — they decide what the rest of the list means.
+    ea += [act(ACTION_MOD_CTRL,  graphics::KEY_CTRL,  CTRL_IGNORED)];
+    ea += [act(ACTION_MOD_SHIFT, graphics::KEY_SHIFT, CTRL_IGNORED)];
+
+    // Tool state.
+    ea += [act("toggle_mode", graphics::KEY_TAB, CTRL_IGNORED)];
+    ea += [act("rotate",      graphics::KEY_R,   CTRL_FORBIDDEN)];
+    ea += [act("cycle_kind",  KEY_K,             CTRL_FORBIDDEN)];
+
+    // Camera.  Pan-south is the S key, which is also Ctrl+S — so
+    // Ctrl suppresses the pan, exactly as it always did.
+    ea += [act("pan_north", graphics::KEY_W, CTRL_IGNORED)];
+    ea += [act("pan_south", graphics::KEY_S, CTRL_FORBIDDEN)];
+    ea += [act("pan_east",  graphics::KEY_D, CTRL_IGNORED)];
+    ea += [act("pan_west",  graphics::KEY_A, CTRL_IGNORED)];
+    ea += [act("recentre",  KEY_H,           CTRL_FORBIDDEN)];
+
+    // History + disk — the five combos.
+    ea += [act("undo",   graphics::KEY_Z, CTRL_REQUIRED)];
+    ea += [act("redo",   graphics::KEY_Y, CTRL_REQUIRED)];
+    ea += [act("clear",  KEY_N,           CTRL_REQUIRED)];
+    ea += [act("save",   graphics::KEY_S, CTRL_REQUIRED)];
+    ea += [act("reload", graphics::KEY_R, CTRL_REQUIRED)];
+
+    // Palette hotkeys — 1..9, 0, -, = select entries 0..11.
+    ea += [act_palette("palette_1",  graphics::KEY_1,  0)];
+    ea += [act_palette("palette_2",  graphics::KEY_2,  1)];
+    ea += [act_palette("palette_3",  graphics::KEY_3,  2)];
+    ea += [act_palette("palette_4",  graphics::KEY_4,  3)];
+    ea += [act_palette("palette_5",  graphics::KEY_5,  4)];
+    ea += [act_palette("palette_6",  graphics::KEY_6,  5)];
+    ea += [act_palette("palette_7",  graphics::KEY_7,  6)];
+    ea += [act_palette("palette_8",  graphics::KEY_8,  7)];
+    ea += [act_palette("palette_9",  graphics::KEY_9,  8)];
+    ea += [act_palette("palette_10", graphics::KEY_0,  9)];
+    ea += [act_palette("palette_11", KEY_MINUS,       10)];
+    ea += [act_palette("palette_12", KEY_EQUAL,       11)];
+
+    ea
+}
+
+// The same table in the shape `input` wants: names → key codes, with
+// the modifier rule dropped (it has nowhere to put one).  DERIVED,
+// never written out a second time.
+pub fn editor_bindings(actions: const vector<EditorAction>) -> Bindings {
+    eb_list: vector<ActionBinding> = [];
+    for eb_a in actions {
+        eb_list += [ActionBinding { ab_name: eb_a.ea_name, ab_keys: eb_a.ea_keys }];
+    }
+    eb_axes: vector<AxisBinding> = [];
+    Bindings { bnd_actions: eb_list, bnd_axes: eb_axes }
+}
+
+// ─── The source: input's state + dryopea's table ────────────────
+
+// What a reader holds for a whole session.  The table is built once
+// and kept, because `editor_actions()` is a constructor, not an
+// accessor — see its warning.
+pub struct EditorInputSource {
+    eis_state:   input::InputState,
+    eis_actions: vector<EditorAction>,
+}
+
+pub fn input_source_new() -> EditorInputSource {
+    isn_actions = editor_actions();
+    isn_state   = input_new(editor_bindings(isn_actions));
+    EditorInputSource { eis_state: isn_state, eis_actions: isn_actions }
+}
+
+// Rebind: swap the key half of the table, keeping the modifier
+// rules.  The point of this existing is the gate — a script that
+// still passes under remapped keys is what proves the indirection is
+// real rather than decorative.
+pub fn input_source_rebind(src: EditorInputSource, actions: const vector<EditorAction>) {
+    isr_new: vector<EditorAction> = [];
+    for isr_a in actions {
+        isr_new += [EditorAction {
+            ea_name:    isr_a.ea_name,
+            ea_keys:    isr_a.ea_keys,
+            ea_ctrl:    isr_a.ea_ctrl,
+            ea_palette: isr_a.ea_palette,
+        }];
+    }
+    src.eis_actions = isr_new;
+    input_set_bindings(src.eis_state, editor_bindings(src.eis_actions));
+}
+
+// A released keyboard, sized for `input`'s key table.  A caller
+// builds one of these, sets the codes it wants down, and feeds it.
+pub fn keyboard_empty() -> vector<boolean> {
+    ke_k: vector<boolean> = [];
+    for _ in 0..KEYBOARD_SIZE { ke_k += [false]; }
+    ke_k
+}
+
+// `input::KEY_MAX` is not public, and it clamps anything longer, so
+// this only has to be large enough to cover every code in the table
+// (the highest is KEY_CTRL = 133).
+const KEYBOARD_SIZE: integer = 160;
+
+// Advance the source one tick from a caller-supplied snapshot rather
+// than from GL.  This is what lets a `.keys` script drive the SAME
+// input object the editor's own loop drives — the thing that keeps
+// the script and the editor one machine rather than two.
+pub fn input_source_feed(
+    src:   EditorInputSource,
+    keys:  const vector<boolean>,
+    mx:    float,
+    my:    float,
+    mbtn:  integer,
+    wheel: integer,
+) {
+    input_tick_from_state(src.eis_state, keys, mx, my, mbtn, wheel);
+}
+
+// Advance the source one tick by polling GL.  The editor's loop.
+pub fn input_source_poll(src: EditorInputSource) {
+    input_tick(src.eis_state);
+}
+
+// ─── Lookups (the script's half) ────────────────────────────────
+
+// Which keys does this action name stand for?  Empty means the name
+// is not an action at all — the runner turns that into an error
+// rather than a quiet no-op, because `input` will not: an unknown
+// action name simply reads `false` forever (probe P7).
+pub fn action_keys(actions: const vector<EditorAction>, name: text) -> vector<integer> {
+    for ak_a in actions {
+        if ak_a.ea_name == name { return ak_a.ea_keys; }
+    }
+    ak_none: vector<integer> = [];
+    ak_none
+}
+
+pub fn action_exists(actions: const vector<EditorAction>, name: text) -> boolean {
+    for ax_a in actions {
+        if ax_a.ea_name == name { return true; }
+    }
+    false
+}
+
+// What does Ctrl do to this action?  An unknown name answers
+// CTRL_IGNORED, which is harmless: nothing looks it up without
+// having checked `action_exists` first.
+pub fn action_ctrl(actions: const vector<EditorAction>, name: text) -> integer {
+    for ac_a in actions {
+        if ac_a.ea_name == name { return ac_a.ea_ctrl; }
+    }
+    CTRL_IGNORED
+}
+
+// ─── The resolver (both readers' half) ──────────────────────────
+
+// Is this action live, given what Ctrl is doing?
+fn action_on(src: const EditorInputSource, name: text, ctrl: boolean) -> boolean {
+    ao_rule = action_ctrl(src.eis_actions, name);
+    if ao_rule == CTRL_REQUIRED  && !ctrl { return false; }
+    if ao_rule == CTRL_FORBIDDEN &&  ctrl { return false; }
+    is_action_pressed(src.eis_state, name)
+}
+
+// One frame of player intent, resolved from the key table.
+//
+// THE single door from keys to the seam: the GL loop and the script
+// runner both come through here, so what a key means is decided in
+// exactly one place.
+//
+// The three things that are not keys arrive as parameters, because
+// they are the caller's to know: where the pointer is, and whether
+// the two rate limits are due.  Keeping the clock out here is what
+// plan 08 V0 bought and what makes a scripted run reproducible.
+pub fn editor_input_from(
+    src:       const EditorInputSource,
+    hover:     const Hex,
+    pan_due:   boolean,
+    paint_due: boolean,
+) -> EditorInput {
+    eif_i = editor_input_empty();
+
+    eif_ctrl  = is_action_pressed(src.eis_state, ACTION_MOD_CTRL);
+    eif_shift = is_action_pressed(src.eis_state, ACTION_MOD_SHIFT);
+
+    eif_i.in_hover_q = hover.q;
+    eif_i.in_hover_r = hover.r;
+
+    // Mouse: held state, not an edge — the seam finds the edge.
+    eif_i.in_mouse_left = mouse_button_down(src.eis_state, MB_LEFT);
+    eif_i.in_paint_tick = paint_due;
+
+    eif_i.in_toggle_mode = action_on(src, "toggle_mode", eif_ctrl);
+    eif_i.in_rotate      = action_on(src, "rotate",      eif_ctrl);
+    // Shift is read on its own, not gated on rotate: it says which
+    // WAY a rotation goes, and the seam only looks at it when a
+    // rotation is actually firing.
+    eif_i.in_rotate_ccw  = eif_shift;
+    eif_i.in_cycle_kind  = action_on(src, "cycle_kind",  eif_ctrl);
+    eif_i.in_recentre    = action_on(src, "recentre",    eif_ctrl);
+
+    eif_i.in_undo      = action_on(src, "undo",   eif_ctrl);
+    eif_i.in_redo      = action_on(src, "redo",   eif_ctrl);
+    eif_i.in_clear_all = action_on(src, "clear",  eif_ctrl);
+    eif_i.in_save      = action_on(src, "save",   eif_ctrl);
+    eif_i.in_reload    = action_on(src, "reload", eif_ctrl);
+
+    // Camera pan is rate-limited by the caller; zoom comes off the
+    // wheel rather than a key, so it has no table row.
+    eif_i.in_pan_north = pan_due && action_on(src, "pan_north", eif_ctrl);
+    eif_i.in_pan_south = pan_due && action_on(src, "pan_south", eif_ctrl);
+    eif_i.in_pan_east  = pan_due && action_on(src, "pan_east",  eif_ctrl);
+    eif_i.in_pan_west  = pan_due && action_on(src, "pan_west",  eif_ctrl);
+    eif_wheel = mouse_wheel(src.eis_state);
+    eif_i.in_zoom_in   = pan_due && eif_wheel > 0;
+    eif_i.in_zoom_out  = pan_due && eif_wheel < 0;
+
+    // Palette hotkeys → one index.  Idempotent, so no edge; the last
+    // row that matches wins, which is the order the old poll read
+    // them in.
+    for eif_a in src.eis_actions {
+        if eif_a.ea_palette < 0 { continue; }
+        if is_action_pressed(src.eis_state, eif_a.ea_name) {
+            eif_i.in_select_palette = true;
+            eif_i.in_palette_index  = eif_a.ea_palette;
+        }
+    }
+
+    eif_i
+}
