@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0 is the next work.** Nothing in dryopea validates the game as
+**Active — V0a is the next work.** Nothing in dryopea validates the game as
 something that *runs*. The 189 tests in `tests/` cover pure functions and
 static renders; every one of them calls a library function directly and none
 of them plays the game.
@@ -85,15 +85,41 @@ deliberately — never fused by accident.
 
 ## Phases
 
-| Phase | Effort | Verify | Status |
-|---|---|---|---|
-| **V0** — the input seam | M | `scripts/test.sh`; a test drives `editor_step` and asserts a hex was painted | Open |
-| **V1** — the script runner | M | a script that paints one hex writes `shots/<n>.png` + a transcript line | Blocked on V0 |
-| **V2** — the instrument | MH | per-palette-entry separation controls (see § The instrument comes first) | Blocked on V1 |
-| **V3** — the scenario scripts | M | each script's own assertions | Blocked on V2 |
-| **V4** — wire it in | S | `make validate` red on an out-of-band measurement | Blocked on V3 |
+Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
+**Shape** column names which of the three safe shapes each step uses —
+a phase that cannot name one is a phase that has not been cut yet.
 
-### V0 — the input seam
+| Phase | Effort | Shape | Verify | Status |
+|---|---|---|---|---|
+| **V0a** — seam for ONE action (paint) | S | one site at a time | a test builds an `EditorInput` with paint set, calls `editor_step`, asserts the hex changed; the other 24 actions still run their old inline path, so the tree is green throughout | Open |
+| **V0b** — move the remaining actions, in groups | M | one site at a time | per group: a test drives the action through `editor_step` and asserts its effect; `src/main.loft` shrinks to poll → step → render | Blocked on V0a |
+| **V1a** — parse + run, no output | S | parallel run | a script of `at` / `key` / `step` reproduces the SAME `EditorState` as the equivalent direct `editor_step` calls — compared field by field | Blocked on V0b |
+| **V1b** — `snap` writes a picture | XS | — | `shots/<name>.png` exists and is a non-trivial render (not the empty canvas) | Blocked on V1a |
+| **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | Blocked on V1b |
+| **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads ≈1.0 for it and ≈0 for the other ten, for every entry | Blocked on V2p |
+| **V3** — the scenario scripts (one step each) | M | one site at a time | each script's own assertions; five scripts, five steps — a broken one goes red alone | Blocked on V2 |
+| **V4** — wire it in | S | — | `make validate` goes red on an out-of-band measurement, and prints the number that moved | Blocked on V3 |
+
+⚠ **Why V0 is split.** As one `M` phase it failed the upper bound: extracting
+25 actions at once leaves a half-done state with nothing to compare against,
+because the old path is fused to `gl_key_pressed` and cannot run headlessly
+to be compared *to*. Split, each step keeps the untouched actions on their
+old path — the two paths coexist and the tree is green at every moment.
+
+⚠ **Why V1 is split, and why V1b is `XS` and not a step on its own.** V1a can
+go red for a real reason: the script path and the direct-call path can
+disagree. V1b cannot really — a file either exists or it does not — so it is
+deliberately marked `XS` and rides on V1a rather than pretending to be an
+independent gate.
+
+⚠ **V2p's deliverable is an ANSWER, not code.** It exists to falsify the
+frame-classifier design for the cost of a compile, before V2 is built on top
+of it. If sea and the other water types cannot be told apart, V2 changes
+shape — and finding that out after V2 ships is how the instrument ends up
+being trusted when it should not be. This is the same shape as the probe that
+diagnosed `fill_triangle`: two cases side by side, one compile, a decision.
+
+### V0 — the input seam (V0a + V0b)
 
 Today `main()` calls `gl_key_pressed(...)` **inline, interleaved with the
 state mutation it causes**, for ~25 actions. There is no seam where a script

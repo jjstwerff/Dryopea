@@ -112,6 +112,71 @@ threshold over a bucket that mixes two subjects moves for reasons that have
 nothing to do with the change under test — fix the instrument *before* you
 trust the number over it. See plan 08 § The instrument comes first.
 
+## What makes a step SAFE — and it is not how few lines it is
+
+Adopted from moros, which paid for it: two steps of equal effort an hour
+apart, one green at every moment, the other reverted whole.
+
+> **A step should be as small as possible while STILL BEING VALIDATED — and
+> those are two bounds, not one.**
+>
+> **Upper bound (safety).** A step is safe when the OLD path and the NEW one
+> can both run at once and be COMPARED exactly. If the only way to see
+> whether it worked is to swap and look, it is too big.
+>
+> **Lower bound (validity).** A step must be able to **go red on its own,
+> for a real reason.** If the only way to test it is to also do the next
+> step, they are ONE step and dividing them buys nothing but a green tick on
+> an empty claim.
+
+Two questions when cutting a phase, and a step has to pass both:
+
+1. *At the moment this step is half done, what exactly am I comparing
+   against?* If the answer is "nothing, I look at it afterwards", the step is
+   **too big** — one big step wearing a small step's effort letter, whose
+   failure mode is `git revert`.
+2. *What test would go red if I did this step wrong?* If the honest answer is
+   "none until the next step lands", the step is **too small** — merge it
+   forward.
+
+⚠ **A step that ends with something built and called by nobody cannot fail.**
+Splitting "add the function" from "call it" manufactures that state on
+purpose. If the first half cannot go red, it was never a step.
+
+⚠ **A self-test is not validation.** "The key table exists and every key maps
+to one action" is a claim about the table, checked against the table — it
+cannot be surprised. The discriminator is not *is there an assert*, it is
+*could this assert ever be surprised*.
+
+**Three shapes that pass:**
+
+- **Parallel run.** Build the new thing beside the old, compare exactly
+  (bytes, a count, a histogram), *then* delete the old.
+- **A probe first.** An `XS` step whose only job is to try to falsify the
+  design before anything is built on it. The `fill_triangle` diagnosis was
+  exactly this: two triangles side by side, one library call and one
+  reordered, for the cost of a compile.
+- **One site at a time, each with its own comparison.** "Wire four callers"
+  is four steps, and each wants the same gate: *the old call and the new call
+  leave the same world.*
+
+⚠ **The comparison is the step; the edit is the easy part.**
+
+### The two mechanical checks, when a plan STARTS
+
+A phase is mis-cut in two ways a reader can see without judgement:
+
+| it fails on | because |
+|---|---|
+| an open phase with an **empty Verify** | nothing about that step could go red — the lower bound |
+| an open phase at **`H`/`VH`** | too big to have a half-done state with anything exact to compare against — the upper bound |
+
+⚠ **One moment, not every run.** A design may be anything until it becomes
+work — a sketch, a paragraph, half-formed rows. Demanding cut steps of every
+idea is how a rule becomes something people route around. And these two
+checks are the *mechanical* half only: whether a `Verify` cell names a **real
+comparison** is judgement, and no checklist has it.
+
 ## See also
 
 - [`_TEMPLATE.md`](_TEMPLATE.md) — copy this for a new plan

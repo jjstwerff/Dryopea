@@ -31,59 +31,6 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
-### `graphics::fill_triangle` never fills — integer division before multiply collapses every scanline to one point
-
-- **Found while:** Bringing dryopea's suite back to green after
-  the library migration.  All 10 golden-image tests that draw a
-  *painted* hex fail; sea-only renders (no `fill_triangle` calls)
-  pass.  `src/render.loft::draw_hex` builds each hex from six
-  `cv.fill_triangle` calls.
-- **Kind:** bug (library — `loft-libs-graphics/graphics`).
-- **Where:** `graphics/src/graphics.loft` lines **448, 454, 457**
-  (identical in registry `graphics-0.4.3` and `-0.5.0`, and in
-  the source repo at `24626b3`).
-- **The defect:** each edge interpolation divides before it
-  multiplies, in integer arithmetic:
-
-  ```loft
-  tr_xac = ta_x + (tc_x - ta_x) * ((tr_y - ta_y) / (tc_y - ta_y) ?? 0);
-  //                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ integer div
-  ```
-
-  `(tr_y - ta_y) / (tc_y - ta_y)` is 0 for every scanline except
-  the last, where it is 1.  So the interpolated x is `ta_x` for
-  the whole triangle and `tc_x` on the final row — the fill
-  degenerates to a vertical line at the apex plus the base row.
-  The `?? 0` comments around these lines discuss div-by-zero
-  lint suppression and miss the ordering problem.
-- **Fix:** multiply before dividing at all three sites —
-  `ta_x + ((tc_x - ta_x) * (tr_y - ta_y) / (tc_y - ta_y) ?? 0)`.
-  Verified: a probe drawing the library version and the
-  reordered version side by side renders the degenerate cross
-  and a correctly filled triangle respectively, same geometry.
-- **Status: FIXED upstream, awaiting release.**  Pushed as
-  `graphics v0.5.1` on branch
-  `fix-fill-triangle-interpolation` in `loft-libs-graphics`
-  (commit `a1c2ed0`).  dryopea's `graphics = ">=0.5.0"` picks it
-  up automatically once 0.5.1 publishes to the registry; until
-  then the 10 golden tests stay red.
-- **Verified end-to-end:** with dryopea temporarily path-dep'd
-  to the fixed library, the suite is **189/189 green** and the
-  committed goldens match **byte-for-byte** — no re-baselining
-  needed.  The goldens were correct all along, which is mutual
-  confirmation that the fix restores the intended output.
-- **Workaround in dryopea:** none, deliberately — dryopea does
-  not keep a private copy of a library routine.
-- **Why the library's own tests missed it:** every assertion in
-  `test_fill_triangle` sampled the apex column or the base row —
-  exactly the two lines the broken code still drew.  The fix
-  adds `test_fill_triangle_interior_off_axis` (interior points
-  off the apex column, plus outside points so a bounding-box
-  over-fill also fails) and
-  `test_fill_triangle_flat_top_not_a_rectangle`.  Note a
-  centroid-pixel check would NOT have caught it either: for the
-  test's own triangle the centroid sits on the apex column.
-
 ### `use` does not namespace struct TYPES per library — two libraries defining the same struct name panic at registration
 
 - **Found while:** Plan 07 W1 — trying to adopt `moros_map`'s
@@ -476,6 +423,35 @@ producing a green test suite while every assertion was running
 against a 0-length palette.  Both fixed in loft commit `42f8228`.
 
 ## Resolved
+
+### `graphics::fill_triangle` never fills — integer division before multiply collapses every scanline
+
+- **Found while:** bringing dryopea's suite back to green after the
+  library migration.  All 10 golden-image tests that draw a *painted*
+  hex failed; sea-only renders passed.  `src/render.loft::draw_hex`
+  builds each hex from six `cv.fill_triangle` calls, so every hex
+  rendered as a cross.
+- **Kind:** bug (library — `loft-libs-graphics/graphics`).
+- **The defect:** each edge interpolation divided before it multiplied,
+  in integer arithmetic, so `(tr_y - ta_y) / (tc_y - ta_y)` was 0 on
+  every scanline but the last.  The fill degenerated to a vertical line
+  at the apex plus the base row; a flat-top triangle degenerated the
+  other way and filled its bounding rectangle.
+- **RESOLVED — released as `graphics v0.5.1`** and published to the
+  registry (index `updated` 2026-08-12T09:34:56Z).  Fixed by scaling the
+  run before the divide at all three interpolation sites.
+- **dryopea is 189/189 green** on 0.5.1, with the committed goldens
+  matching byte-for-byte — no re-baselining.  The goldens were correct
+  all along, which is mutual confirmation the fix restores the intended
+  output.
+- **Why the library's own tests missed it:** every assertion in
+  `test_fill_triangle` sampled the apex column or the base row — exactly
+  the two lines the broken code still drew.  A centroid check would not
+  have caught it either: for that test's triangle the centroid sits *on*
+  the apex column.  The release adds
+  `test_fill_triangle_interior_off_axis` and
+  `test_fill_triangle_flat_top_not_a_rectangle`, both verified to fail on
+  the old code and pass on the new.
 
 > Earlier batch verified against `~/Documents/loft/target/release/loft`
 > built from commit 42f8228 ("Fix @P366/@P367/@P368") on 2026-05-27.

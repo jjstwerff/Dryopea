@@ -27,18 +27,7 @@ approach-mode enemy tick.  Plan 07 (shared world substrate) has
 W0 partially landed — `gridmesh` adopted as the chunk/dirty
 layer (`src/chunks.loft`).
 
-**Suite: 179/189 green under `scripts/test.sh`.**  The 10 reds
-are all golden-image tests, and they are **not a dryopea bug**:
-`graphics::fill_triangle` divided before it multiplied and never
-filled its interior, so every hex rendered as a cross.  The fix
-is written and pushed upstream as `graphics v0.5.1`; dryopea's
-`graphics = ">=0.5.0"` picks it up **the moment 0.5.1 publishes
-to the registry**, and the suite is verified 189/189 against the
-fixed library with the existing goldens unchanged.  See
-[`QUESTIONS_FOR_LOFT.md` § `graphics::fill_triangle` never
-fills](QUESTIONS_FOR_LOFT.md).  Deliberately NOT worked around
-locally — dryopea does not keep private copies of library
-routines.
+**Suite: 189/189 green under `scripts/test.sh`.**
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
