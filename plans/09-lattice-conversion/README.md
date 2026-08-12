@@ -17,7 +17,8 @@ first means the bigger change happens once, on a settled seam.
 
 ## Status
 
-**Active — C0 + I0 shipped 2026-08-12; I1 is next.** This is plan 07's `W0c`,
+**Active — C0 + I0 shipped 2026-08-12, and I0's finding @D001 is fixed
+the same day; I1 is next and now has the corrected seam it needs.** This is plan 07's `W0c`,
 cut into its own plan because it is multi-phase, stands alone, and plan 07
 is long enough already. It is a **precondition** for plan 07's asset
 interchange, not a part of it: converting the lattice is worth doing whether
@@ -102,7 +103,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 | Phase | Effort | Shape | Verify | Status |
 |---|---|---|---|---|
 | **I0** — probe: does `input`'s edge model match the seam's? | XS | a probe first | reproduce the three semantics plan 08 pinned — a tap fires once, a HELD action fires once, a level action repeats — against `input`'s `is_action_just_pressed`. **The deliverable is the answer**: `input_new` documents "first frame counts as a transition", which the seam does not do, so if they differ I1 changes shape before it is built | **Shipped** — they MATCH; see § I0 |
-| **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME count it did before the swap (233 over 14 scripts as of 2026-08-12 — read it, do not trust this number) | Open |
+| **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME count it did before the swap (233 over 14 scripts as of 2026-08-12 — read it, do not trust this number) | Open — its prerequisite (@D001, § The forge is deleted) is **done** |
 | **C0** — probe: can `hex_grid` be the oracle? | XS | a probe first | its answers for a hand-checked cell set, AND that they **disagree** with dryopea's current axial math — an oracle that already agrees proves nothing | **Shipped** |
 | **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | Open |
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | Open |
@@ -142,6 +143,9 @@ because a probe that only confirms is a probe that was not worth running
 ⚠ **What DOES diverge: the seam forges its own `prev` mid-step.**  Four
 sites write `s.prev.in_mouse_left = false` inside `editor_step`
 (`:331` mode toggle, `:390` reload, `:406` clear-all, `:418` undo).
+*(As I0 found them — all four are **deleted** as of 2026-08-12; see
+§ The forge is deleted below.  The line numbers are I0's and have
+since moved.)*
 `input` cannot express that: `is_keys_prev` is opaque, and the only
 caller-visible lever is `input_set_bindings`, which suppresses the whole
 ACTION for as long as the rebind stands (probe A5) rather than one step's
@@ -212,6 +216,34 @@ corrected seam.** A parallel run against the buggy one either goes red
 for the right reason and gets waved through, or gets "fixed" by porting
 the bug — and the second is what happens when a gate goes red on a day
 you are changing something else.
+
+#### The forge is deleted — 2026-08-12, ahead of I1
+
+All four writes are gone from `src/editor_step.loft`; nothing replaced
+them, because the stroke each claimed to end is already ended by the
+`s.painting = false` beside it. The gate is
+[`tests/09_d001_the_forged_edge.loft`](../../tests/09_d001_the_forged_edge.loft),
+written and run BEFORE the deletion so it could be seen failing:
+
+```
+site :331 toggle     RED → green      site :406 clear all  RED → green
+site :390 reload     RED → green      site :418 undo       green → green
+```
+
+The two sites @D001 only *reasoned* about are now measured, and the
+reasoning holds both times: **reload is harmful** (it does not touch
+the mode, so the forged edge lands straight in the marker branch), and
+**undo is DEAD** — its guard implies ground mode while the marker
+branch needs marker mode, and no gesture holds both, because every
+route to marker mode runs the toggle and empties the stroke on the way
+past. So the deletion fixes three sites and removes one dead write.
+
+Suite 497 → **505 green**; `scripts/validate.sh` unchanged at **233
+measurements over 14 scripts**, which is the number I1's Verify column
+tells you to read rather than trust. The invariant is now stated at
+the chokepoint — `s.prev` is read-only for the whole of a step — so
+I1 inherits a seam whose edge record is written in exactly one place,
+which is the shape `input` can actually take over.
 
 ### I1 — and the plan-08 decision it revisits
 

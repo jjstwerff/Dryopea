@@ -24,6 +24,7 @@ allocated the number is never reused, even after a fix lands.
 ```markdown
 ### @D001 — <short title>
 
+- **Status:** Open | Fixed <date> — only once it moves to § Fixed
 - **Severity:** High | Med | Low
 - **Found while:** <what dryopea was doing when this surfaced>
 - **Repro:** <minimal steps, ideally a path to a script>
@@ -43,8 +44,19 @@ Severity tiers:
 
 ## Open
 
+*(none)*
+
+## Fixed
+
 ### @D001 — clearing `prev.in_mouse_left` mid-step MANUFACTURES the edge it means to suppress
 
+- **Status:** **Fixed 2026-08-12** — all four writes deleted from
+  `src/editor_step.loft`.  Landed as its own step BEFORE plan 09 I1
+  rather than inside it, for the reason I0 gives: I1's gate is a
+  parallel run of the old and new input paths, and this fix
+  deliberately makes them differ.  A parallel run against the buggy
+  seam either goes red for the right reason and gets waved through,
+  or gets "fixed" by porting the bug.
 - **Severity:** Med — a held button plus Tab / Ctrl+N places a marker
   the player did not ask for, and `dirty` is set so it can reach disk.
   Not High only because holding the left button while pressing a hotkey
@@ -89,26 +101,39 @@ Severity tiers:
   set beside each of the four sites — so the write is dead for its stated
   purpose and live only for the harm.
 - **Sites:** `src/editor_step.loft` `:331` (mode toggle), `:390`
-  (reload), `:406` (clear all), `:418` (undo).  `:331` and `:406` are
-  the two MEASURED above.  `:390` (reload) has the same shape and no
-  mode guard, so it should behave like `:406`; `:418` (undo) sits
-  inside `if !undo_entry_is_noop(s.stroke)`, which by inspection can
-  only be true after a ground-mode stroke — **both of those are
-  reasoned, not measured.**  I1's tests cover all four rather than
-  trusting the reasoning.
+  (reload), `:406` (clear all), `:418` (undo).  I0 measured `:331`
+  and `:406` and *reasoned* about the other two.  The fix measured
+  all four, and the reasoning was right both times:
+
+  | site | reasoned | measured |
+  |---|---|---|
+  | `:331` toggle | harmful | **harmful** — red before, green after |
+  | `:390` reload | "same shape, no mode guard" | **harmful** — red before, green after |
+  | `:406` clear all | harmful | **harmful** — red before, green after |
+  | `:418` undo | "only true after a ground-mode stroke" | **DEAD** — green before AND after |
+
+  `:418` is dead rather than harmful because its guard
+  (`!undo_entry_is_noop(s.stroke)`) implies ground mode, while the
+  marker branch it would feed requires marker mode, and the two
+  cannot hold at once: every route to marker mode runs the toggle,
+  which commits the stroke and empties it on the way past.  Pressing
+  Tab and Ctrl+Z on one frame does not reach it either — the toggle
+  empties the stroke first, so what fires is `:331`.
 - **Workaround:** none — don't hold the button while pressing a hotkey.
-- **Fix plan:** delete all four writes.  Belongs to plan 09 phase **I1**,
-  which rewrites this code anyway to take its input from `input`; folding
-  it in there means the seam's edge handling changes once.  I0 deliberately
-  changed no `src/`: it is a probe phase, and its deliverable is this
-  measurement.
-- **Test:** none yet — I1 adds one per site, asserting the marker count
-  does NOT move.  Note that plan 08's existing edge tests cannot see this:
-  none of them holds the button across another action.
-
-## Fixed
-
-*(none yet)*
+- **Fix:** all four writes deleted.  Nothing replaced them: the stroke
+  each one claimed to end is already ended by the `s.painting = false`
+  beside it.  `s.prev` is now read-only for the whole of a step and
+  written once at the end, which is stated as an invariant in the
+  file's § Held keys header — the chokepoint, so a future action that
+  wants to end a gesture reaches for the gesture's own state.
+- **Test:** [`tests/09_d001_the_forged_edge.loft`](tests/09_d001_the_forged_edge.loft)
+  — one per site, plus the compound Tab+Ctrl+Z gesture that shows
+  `:418` is unreachable, plus two controls (an ordinary press still
+  places a marker; a held sweep still lays exactly one).  Three go
+  RED against the pre-fix seam, which is what says they can see the
+  bug.  Plan 08's existing edge tests cannot: every one of them
+  releases the button first, and holding it across another action is
+  the whole gesture.
 
 ## See also
 

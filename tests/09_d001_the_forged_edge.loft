@@ -1,0 +1,262 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// @D001 — the four `s.prev.in_mouse_left = false` writes inside
+// `editor_step`, and the gesture that shows what they actually do.
+//
+// Plan 09 phase I0 found them by asking a different question: they
+// are the one thing `input` structurally cannot reproduce, so I1 had
+// to know whether to port them.  The answer is no — they MANUFACTURE
+// the edge their own comment says they suppress:
+//
+//     prev.in_mouse_left = false            ← the write
+//     …
+//     if input.in_mouse_left && !s.prev.in_mouse_left && MODE_MARKER
+//         → place a marker                  ← now true, on this frame
+//
+// `s.prev` is overwritten wholesale at the end of the step, so the
+// write never reaches the NEXT frame at all.  Its only reachable
+// effect is on branches below it in the same step, and the marker
+// branch is the one that re-reads `prev`.  The stroke it was meant
+// to end is already ended by `s.painting = false`, set beside each
+// of the four sites.
+//
+// ⚠ The gesture is "a hotkey pressed while the left button is still
+// HELD".  Plan 08's edge tests cannot see this — every one of them
+// releases the button first, which is why 490 green tests sat over
+// it.  Holding across another action is the whole bug.
+//
+// One test per site.  Three of them go RED against the pre-fix seam;
+// the fourth is the measurement that the undo site is DEAD rather
+// than harmful — see § Site 4.
+
+#cwd
+
+use dryopea;
+
+const PALETTE:     text = "examples/palette.json";
+const SAVE_PATH:   text = "tests/actual/d001_session.json";
+const MARKER_PATH: text = "tests/actual/d001_session_markers.json";
+
+// ─── Frame builders ─────────────────────────────────────────────
+
+// The left button DOWN at (q, r), with NO paint tick: in ground mode
+// this paints nothing, so the only thing the frame carries is the
+// button state — which is exactly what the bug reads.
+fn down_at(q: integer, r: integer) -> EditorInput {
+    da_i = editor_input_empty();
+    da_i.in_hover_q    = q;
+    da_i.in_hover_r    = r;
+    da_i.in_mouse_left = true;
+    da_i
+}
+
+// The button down at (q, r) AND a paint tick due — one hex of a
+// ground stroke.
+fn paint_at(q: integer, r: integer) -> EditorInput {
+    pa_i = down_at(q, r);
+    pa_i.in_paint_tick = true;
+    pa_i
+}
+
+fn tab_frame() -> EditorInput {
+    tf_i = editor_input_empty();
+    tf_i.in_toggle_mode = true;
+    tf_i
+}
+
+// One press: down for a frame, then back up.  The gap IS the edge.
+fn press(s: EditorState, p_frame: EditorInput) {
+    editor_step(s, p_frame);
+    editor_step(s, editor_input_empty());
+}
+
+// An editor in marker mode, button released — the state every
+// marker-side gesture below starts from.
+fn marker_mode_state() -> EditorState {
+    mms_s = editor_state_new(PALETTE);
+    press(mms_s, tab_frame());
+    mms_s
+}
+
+// ─── Site 1 — the mode toggle (editor_step.loft `:331`) ─────────
+//
+// Ground mode, mid-stroke, button still down, then Tab.  Measured
+// in I0 as B4: mode = 1, markers = 1.  The marker is the bug.
+
+fn test_tab_with_the_button_held_places_no_marker() {
+    ttb_s = editor_state_new(PALETTE);
+    picker_set_active(ttb_s.picker, 5);
+
+    // Painting, button down.
+    editor_step(ttb_s, paint_at(4, 0));
+    assert(ttb_s.painting, "mid-stroke, button held");
+
+    // Tab, WITHOUT letting go — and the mouse has moved to (7, 0).
+    ttb_tab = down_at(7, 0);
+    ttb_tab.in_toggle_mode = true;
+    editor_step(ttb_s, ttb_tab);
+
+    assert(ttb_s.mode == MODE_MARKER, "the mode still flips");
+    assert(marker_count(ttb_s.mw) == 0,
+           "a held button crossing the mode flip places NO marker");
+    assert(!has_marker(ttb_s.mw, 7, 0), "and nothing at the hover hex");
+}
+
+// The control that says the assertion above is about the HELD
+// button and not about Tab.  Same flip, button up — I0's B4b.
+fn test_tab_with_the_button_up_places_no_marker_either() {
+    ttu_s = editor_state_new(PALETTE);
+    picker_set_active(ttu_s.picker, 5);
+
+    press(ttu_s, paint_at(4, 0));      // stroke ends with the release
+    editor_step(ttu_s, tab_frame());   // button already up
+
+    assert(ttu_s.mode == MODE_MARKER, "mode flipped");
+    assert(marker_count(ttu_s.mw) == 0, "and no marker, as always");
+}
+
+// ─── Site 2 — reload (editor_step.loft `:390`) ──────────────────
+//
+// Marker mode, button held, Ctrl+R.  Reload does not touch the mode,
+// so the forged edge lands straight in the marker branch.  Reasoned
+// about in @D001, measured here.
+
+// An attached session holding one ground hex and one marker at
+// (0, -2), both on disk.
+fn saved_marker_session() -> EditorState {
+    sms_s = editor_state_new(PALETTE);
+    editor_state_attach(sms_s, SAVE_PATH, MARKER_PATH);
+    picker_set_active(sms_s.picker, 5);
+    press(sms_s, paint_at(0, 0));
+    press(sms_s, tab_frame());
+    press(sms_s, down_at(0, -2));
+    sms_i = editor_input_empty();
+    sms_i.in_save = true;
+    press(sms_s, sms_i);
+    sms_s
+}
+
+fn test_reload_with_the_button_held_places_no_marker() {
+    trb_s = saved_marker_session();
+    assert(marker_count(trb_s.mw) == 1, "one marker saved");
+
+    // A second marker, and the button stays DOWN afterwards.
+    editor_step(trb_s, down_at(3, -1));
+    assert(marker_count(trb_s.mw) == 2, "two in memory, one on disk");
+
+    // Ctrl+R without letting go, mouse now at (7, 0).
+    trb_reload = down_at(7, 0);
+    trb_reload.in_reload = true;
+    editor_step(trb_s, trb_reload);
+
+    assert(marker_count(trb_s.mw) == 1,
+           "reload restores the saved layer and adds nothing");
+    assert(has_marker(trb_s.mw, 0, -2), "the saved marker is back");
+    assert(!has_marker(trb_s.mw, 7, 0), "and none was forged at the hover hex");
+}
+
+// ─── Site 3 — clear all (editor_step.loft `:406`) ───────────────
+//
+// The worst of the four: no mode guard, and "empty both layers" is
+// the one action whose whole contract is that nothing is left.
+// Measured in I0 as B5 — after the clear, a marker at the hover hex.
+
+fn test_clear_all_with_the_button_held_leaves_nothing() {
+    tcb_s = marker_mode_state();
+
+    editor_step(tcb_s, down_at(4, 0));
+    assert(marker_count(tcb_s.mw) == 1, "a marker to clear");
+
+    // Ctrl+N without letting go, mouse now at (7, 0).
+    tcb_clear = down_at(7, 0);
+    tcb_clear.in_clear_all = true;
+    editor_step(tcb_s, tcb_clear);
+
+    assert(marker_count(tcb_s.mw) == 0,
+           "clear all means all — a held button forges no replacement");
+    assert(!has_marker(tcb_s.mw, 7, 0), "nothing at the hover hex");
+    assert(painted_count(tcb_s.pw) == 0, "and the ground layer is empty too");
+}
+
+// ─── Site 4 — undo (editor_step.loft `:418`) ────────────────────
+//
+// This one is DEAD, not harmful, and the test records the
+// measurement rather than a fix.  Its write sits inside
+// `if !undo_entry_is_noop(s.stroke)`, and a non-noop stroke can only
+// come from ground-mode painting — while the marker branch it would
+// feed requires MODE_MARKER.  The two cannot hold at once: every
+// route to marker mode runs the toggle, which commits the stroke and
+// empties it on the way past.
+//
+// So the gesture below is green before the deletion and after it.
+// That is worth a test anyway: it is what turns @D001's "reasoned,
+// not measured" note about this site into a measurement, and it
+// pins the behaviour the deletion must not change.
+
+fn test_undo_with_the_button_held_is_unchanged() {
+    tub_s = editor_state_new(PALETTE);
+    picker_set_active(tub_s.picker, 5);
+
+    editor_step(tub_s, paint_at(0, 0));
+    assert(painted_count(tub_s.pw) == 1, "one hex painted, stroke open");
+
+    // Ctrl+Z without letting go, mouse now at (7, 0).
+    tub_undo = down_at(7, 0);
+    tub_undo.in_undo = true;
+    editor_step(tub_s, tub_undo);
+
+    assert(painted_count(tub_s.pw) == 0,
+           "the open stroke is committed and undone by the one press");
+    assert(tub_s.mode == MODE_GROUND, "undo does not change the mode");
+    assert(marker_count(tub_s.mw) == 0, "and ground mode places no markers");
+}
+
+// The compound gesture that gets a stroke and marker mode into the
+// same step — and does NOT reach site 4.  Tab commits the stroke
+// first, so undo's guard is already false by the time it is read;
+// what fires is site 1.  This is the evidence for "dead", not a
+// second copy of the site-1 test.
+fn test_tab_and_undo_together_still_place_no_marker() {
+    tau_s = editor_state_new(PALETTE);
+    picker_set_active(tau_s.picker, 5);
+
+    editor_step(tau_s, paint_at(0, 0));
+
+    tau_both = down_at(7, 0);
+    tau_both.in_toggle_mode = true;
+    tau_both.in_undo        = true;
+    editor_step(tau_s, tau_both);
+
+    assert(tau_s.mode == MODE_MARKER, "the flip happened");
+    assert(painted_count(tau_s.pw) == 0, "and the committed stroke was undone");
+    assert(marker_count(tau_s.mw) == 0, "no marker from either site");
+}
+
+// ─── What the deletion must NOT break ───────────────────────────
+//
+// Removing the writes must leave ordinary marker placement alone.
+// 08_v0b covers this too; keeping a copy here means this file states
+// the whole contract it is changing.
+
+fn test_a_real_press_still_places_a_marker() {
+    trp_s = marker_mode_state();
+
+    editor_step(trp_s, down_at(2, -1));
+
+    assert(marker_count(trp_s.mw) == 1, "one press, one marker");
+    assert(has_marker(trp_s.mw, 2, -1), "at the hex clicked");
+}
+
+// The rule the forged edge broke from the other side: a HELD button
+// sweeping across hexes lays ONE marker, not a trail.
+fn test_a_held_sweep_still_lays_one_marker() {
+    thm_s = marker_mode_state();
+
+    editor_step(thm_s, down_at(0, 0));
+    editor_step(thm_s, down_at(1, 0));
+    editor_step(thm_s, down_at(2, 0));
+
+    assert(marker_count(thm_s.mw) == 1, "a held sweep places one marker");
+    assert(has_marker(thm_s.mw, 0, 0), "where the press landed");
+}

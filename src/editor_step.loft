@@ -46,6 +46,13 @@
 // player.  If the caller resolved edges instead, the script and the
 // editor would be two different machines.
 //
+// ⚠ `s.prev` is READ-ONLY for the whole of a step, and written once
+// at the end.  It is the record of a frame that has already
+// happened, so a mid-step write does not cancel an edge — it FORGES
+// one for every branch below it, which is exactly what @D001 was.
+// An action that wants to end a gesture sets the gesture's own state
+// (`s.painting`), never the input history.
+//
 // ── Phase V0 — complete ─────────────────────────────────────────
 //
 // Every editor action is here: paint (V0a), then in groups (V0b)
@@ -325,10 +332,13 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
             history_push(s.history, s.stroke);
             s.stroke = undo_entry_empty();
         }
-        // Drop the stroke and the button edge so a held button does
-        // not bleed across the boundary into the other mode.
+        // Drop the stroke so a held button does not bleed across the
+        // boundary into the other mode.  ⚠ Clearing the button EDGE
+        // here as well is what @D001 was: it made the marker branch
+        // below read a rising edge that never happened, so Tab with
+        // the button held placed a marker.  `s.painting = false` is
+        // what actually ends the stroke.
         s.painting = false;
-        s.prev.in_mouse_left = false;
         s.render_needed = true;
     }
 
@@ -386,8 +396,7 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
         s.cam = es_cam_new;
         s.cf  = chunks_from_painted(s.pw);   // resync the dirty tracker
         s.dirty    = false;   // disk and memory now match
-        s.painting = false;
-        s.prev.in_mouse_left = false;
+        s.painting = false;   // (never the button edge — see @D001)
         s.render_needed = true;
     }
 
@@ -402,8 +411,7 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
         s.cam = camera_default();
         s.cf  = chunks_from_painted(s.pw);   // resync the dirty tracker
         s.dirty    = true;
-        s.painting = false;
-        s.prev.in_mouse_left = false;
+        s.painting = false;   // (never the button edge — see @D001)
         s.render_needed = true;
     }
 
@@ -414,8 +422,7 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
         if !undo_entry_is_noop(s.stroke) {
             history_push(s.history, s.stroke);
             s.stroke   = undo_entry_empty();
-            s.painting = false;
-            s.prev.in_mouse_left = false;
+            s.painting = false;   // (never the button edge — see @D001)
         }
         if history_undo(s.history, s.pw, s.mw) {
             s.cf    = chunks_from_painted(s.pw);   // bulk change to pw

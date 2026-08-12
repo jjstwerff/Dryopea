@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 497/497 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 505/505 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 497 runs.
+per-function + per-line + call-path report over all 505 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -391,7 +391,17 @@ src/
                    + editor_step(s, input).  EVERY action runs through
                    it.  No GL and no clock, ever; disk only via the
                    save / reload actions, and only when a path is
-                   attached (editor_state_attach)
+                   attached (editor_state_attach).
+                   ⚠ `s.prev` is READ-ONLY for the whole of a step and
+                   written ONCE at the end.  It records a frame that
+                   already happened, so a mid-step write does not
+                   cancel an edge — it FORGES one for every branch
+                   below it.  That was @D001: four writes clearing
+                   `prev.in_mouse_left` to "drop a held button" made
+                   Tab / Ctrl+R / Ctrl+N place a marker the player
+                   never asked for.  An action that wants to end a
+                   gesture sets the GESTURE's state (`s.painting`),
+                   never the input history
   editor_view.loft render_editor_frame(s, w, h, ppm) -> Canvas —
                    what the player sees, composed ONCE: world, hover
                    preview, markers, ghost, picker, save indicator,
@@ -760,7 +770,9 @@ plans/
                     answered the input half: `input`'s edge model and
                     the seam's MATCH on all three semantics, so the
                     predicted divergence was not real — and the real
-                    one is @D001, the seam forging its own `prev`
+                    one is @D001, the seam forging its own `prev`,
+                    now FIXED ahead of I1 so its parallel run compares
+                    against a corrected seam rather than porting a bug
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -772,7 +784,7 @@ docs/
   NUMBERS.md            — tunable values
   PROXY_ART.md          — placeholder shapes for entities
 
-PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; @D001 open)
+PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; none open — @D001 fixed)
 QUESTIONS_FOR_LOFT.md   — outbound queue to loft (Open / Submitted / Resolved)
 README.md               — public project intro
 loft.toml               — package manifest (depends on graphics)
