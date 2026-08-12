@@ -132,8 +132,7 @@ F3 still validates the arrows as an invariant of the field; the mover just
 reads distances.
 
 **3. Occupancy is a movement constraint and never a target.** Companions
-block a step; they are not attacked, and they do not divert an enemy from
-the core.
+block a step; they are not attacked, and never divert an enemy from the core.
 
 **4. Passability is a height step, so build it as one.** DESIGN settled it
 as `height(to) - height(from) <= climb(class)` rather than a material
@@ -142,13 +141,17 @@ per-class limit; written as "is this hex a wall", every later mechanic is a
 special case bolted onto F1b. This is the cheapest possible moment to get it
 right and an expensive one to retrofit.
 
-**5. The field is recomputed on DEATH, so runtime-dirty is the common case.**
-Bodies raise height (§ Bodies are terrain), so **every kill changes
-passability** — not just a boss breaking a wall, and not just an editor
-stroke. F8 was written as "recompute after edits, with combat reusing it";
-that is backwards. Its gate must include a body dropped mid-wave, and the
-per-tick cost of a field rebuild is now a real budget rather than an
-editor-time convenience.
+**5. The field is recomputed on DEATH — batched ONCE PER TICK.** Bodies
+raise height (§ Bodies are terrain), so every kill changes passability; F8
+was written as "recompute after edits, with combat reusing it", which is
+backwards. DESIGN § The tick resolves once settles when: one rebuild per
+tick, never per event.
+
+That is not primarily a cost decision. **It is what makes a tick
+order-independent**, and therefore what makes a scripted run reproducible —
+which is the entire premise plan 08 gates on. A field rebuilt mid-loop makes
+the outcome depend on which enemy the roster happened to visit first, and no
+`.keys` scenario could assert a stable number over that.
 
 ⚠ **And a body pile is runtime state, not map data** — the § Evaluated
 reasoning in [`plans/07`](../07-shared-world-substrate/README.md) applies
@@ -186,7 +189,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it | Open |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
-| **F8** — recompute on change, edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell. `gridmesh`'s dirty set is the mechanism; a gate that only exercises editor strokes tests the rarer half | Open |
+| **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result** — the order-independence DESIGN § The tick resolves once requires. A gate that only exercises editor strokes tests the rarer half | Open |
 
 ⚠ **No phase is `H`.** F5 and F6 are the largest and both are "one site at a
 time" with a scenario each.
@@ -223,6 +226,7 @@ plausibility.
 | **F6** | insect and robot paths DIFFER on one map | passability is per class | identical paths mean the class key is ignored |
 | **F7** | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |
 | **F8** | incremental field == from-scratch field | the dirty set is used correctly | equal-but-stale after an edit is the bug this catches |
+| **F8** | reverse-iterated roster → identical wave | one rebuild per tick, so no enemy sees a world its neighbour changed | an order-dependent tick makes every scripted number unrepeatable — plan 08 could gate nothing |
 | **all** | test expectations survive plan 09 unchanged | the field is built from `nb()`, not from `q`/`r` | one expected distance moving = moros#10, again |
 
 ## Open questions

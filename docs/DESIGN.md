@@ -484,6 +484,29 @@ them; the cost of clearing it is exposure at the worst moment.
 rule, and it is the same shape as § Sealing the perimeter: no
 mechanic forbids the strategy, the strategy defeats itself.
 
+### The tick resolves once
+
+The world is rebuilt **once per tick, not once per event**.  Within
+a tick every enemy acts against the same world — the same heights,
+the same passability, the same routing.  A body dropped during tick
+N raises its hex for tick N+1, never for the enemy that happens to
+move two places later in the same tick.
+
+Cost is the obvious reason: a wave reaches 80 enemies and deaths
+cluster, so rebuilding per death would rebuild dozens of times
+inside one tick for a world that is only read at the end of it.
+
+**Order independence is the real one.**  With a single rebuild per
+tick, the outcome of a tick does not depend on which enemy the loop
+visited first.  dryopea validates by replaying written-down runs
+([plan 08](../plans/08-game-validation/README.md)), and a
+simulation whose result depends on roster iteration order cannot be
+gated at all — the same script would produce different numbers on a
+different day.
+
+⚠ The invariant that holds it: **the same wave, played with the
+enemy roster iterated in reverse, produces an identical result.**
+
 ### Sealing the perimeter is punished, not forbidden
 
 A wall placement is **never refused**.  The genre convention is to

@@ -554,6 +554,7 @@ signature.
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
+| Change how enemies move | [docs/DESIGN.md](docs/DESIGN.md) § Enemy movement — the spec (two steering modes, one height-step passability rule, bodies as terrain, the tick resolving once).  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |
 
