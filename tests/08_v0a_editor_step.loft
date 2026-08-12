@@ -22,13 +22,18 @@ const PALETTE: text = "examples/palette.json";
 
 // A frame of input hovering (q, r) with the left button down and a
 // paint tick due — one painted hex per call.
+//
+// Built from `editor_input_empty()` rather than as a struct literal:
+// a literal that omits a field silently takes that field's default,
+// so a literal here would quietly stop setting whatever V0b adds to
+// `EditorInput` next.
 fn paint_frame(q: integer, r: integer) -> EditorInput {
-    EditorInput {
-        in_hover_q:    q,
-        in_hover_r:    r,
-        in_mouse_left: true,
-        in_paint_tick: true,
-    }
+    pf_i = editor_input_empty();
+    pf_i.in_hover_q    = q;
+    pf_i.in_hover_r    = r;
+    pf_i.in_mouse_left = true;
+    pf_i.in_paint_tick = true;
+    pf_i
 }
 
 // ─── The negative control ───────────────────────────────────────
@@ -104,12 +109,11 @@ fn test_button_without_tick_paints_nothing() {
     tbw_s = editor_state_new(PALETTE);
     picker_set_active(tbw_s.picker, 5);
 
-    editor_step(tbw_s, EditorInput {
-        in_hover_q:    2,
-        in_hover_r:    -1,
-        in_mouse_left: true,
-        in_paint_tick: false,
-    });
+    tbw_i = editor_input_empty();
+    tbw_i.in_hover_q    = 2;
+    tbw_i.in_hover_r    = -1;
+    tbw_i.in_mouse_left = true;
+    editor_step(tbw_s, tbw_i);
 
     assert(painted_count(tbw_s.pw) == 0, "no tick → no paint");
     assert(!tbw_s.painting, "and no stroke opened");

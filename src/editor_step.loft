@@ -13,30 +13,48 @@
 // This file is the seam that fixes both.  State lives in one
 // `EditorState`; a frame's worth of player intent lives in one
 // `EditorInput`; `editor_step` applies the second to the first and
-// touches nothing else — no GL, no clock, no disk.  main.loft polls
-// GL into an `EditorInput`, calls `editor_step`, and renders.  A test
-// (and, from V1, a `.keys` script) builds the same `EditorInput`
-// directly and gets the same state change, with no window open.
+// touches nothing else — no GL, no clock.  main.loft polls GL into an
+// `EditorInput`, calls `editor_step`, and renders.  A test (and, from
+// V1, a `.keys` script) builds the same `EditorInput` directly and
+// gets the same state change, with no window open.
 //
 // ⚠ ONE table, two readers.  The key→action mapping must live HERE
 // and be called by both the GL poll and the script runner.  Two
 // copies that drift is how a script silently stops testing what the
 // player actually does.
 //
-// ── Phase V0a — paint only ──────────────────────────────────────
+// ── What "pure" means here ──────────────────────────────────────
 //
-// `editor_step` currently honours exactly ONE action: ground-mode
-// paint.  Every other action (mode toggle, palette select, marker
-// place / rotate / cycle, undo, redo, save, reload, clear, recentre,
-// camera pan / zoom) still runs its old inline path in main.loft
-// against these same fields.  That is deliberate: the two paths
-// coexist, so the tree stays green while the actions move across one
-// group at a time (V0b).
+// No GL and no clock, ever: `editor_step` never reads the keyboard
+// and never calls `ticks()`.  Rate limits belong to the caller — it
+// passes a `*_tick` boolean saying an event is due — which is what
+// makes a run reproducible frame by frame.
 //
-// `EditorInput` therefore carries only the fields V0a honours.  It
-// grows in V0b, each new field landing together with the code that
-// reads it — an input field nothing consumes is a lie a script would
-// happily tell.
+// Disk is touched by exactly two actions, save and reload, and only
+// on the frame the player asks for them.  They are actions the
+// editor genuinely has, so they live in the seam rather than being
+// the two things a script cannot drive; `save_path` /
+// `marker_save_path` on the state say where they go.
+//
+// ── Held keys are edge-detected HERE ────────────────────────────
+//
+// `EditorInput` carries what is held THIS frame, not what changed.
+// Tab held for five frames toggles the mode ONCE — `editor_step`
+// compares against `s.prev` (the previous frame's input) to find the
+// rising edge.  Keeping that inside the seam is what makes a
+// scripted `hold Tab 5` behave the way holding Tab behaves for a
+// player.  If the caller resolved edges instead, the script and the
+// editor would be two different machines.
+//
+// ── Phase V0b — in progress ─────────────────────────────────────
+//
+// Actions move across the seam in groups, each group landing with
+// the test that drives it.  Moved so far: ground-mode paint (V0a),
+// and the tool state — mode toggle, place-direction rotation,
+// place-kind cycle, palette selection.  Everything else (camera,
+// marker placement, undo/redo/clear, save/reload) still runs its
+// old inline path in main.loft against these same fields; the two
+// paths coexist on purpose so the tree stays green at every step.
 
 use world;
 use painted;
@@ -48,16 +66,96 @@ use chunks;
 use editor_mode;
 use gridmesh;
 
+// ─── Input ──────────────────────────────────────────────────────
+
+// One frame of player intent.  Every field here is honoured by
+// `editor_step`; fields arrive together with the code that reads
+// them, because an input field nothing consumes is a lie a script
+// would happily tell.
+//
+// The hover hex is carried as (q, r), NOT as mouse pixels: pixel →
+// hex is a camera-and-window concern that belongs on the polling
+// side, and a script wants to say "click hex (3, -2)" without
+// reasoning about a window that isn't open.
+//
+// Boolean fields are HELD state, not events — see § Held keys above.
+pub struct EditorInput {
+    in_hover_q: integer,
+    in_hover_r: integer,
+
+    // Left button state THIS frame.  Held across frames: its rising
+    // edge places a marker, its falling edge ends a paint stroke.
+    in_mouse_left: boolean,
+
+    // Is a paint event due this frame?  The caller owns the rate
+    // limit (main.loft debounces on `ticks()`; a script paints once
+    // per scripted frame), which keeps `editor_step` free of the
+    // clock and therefore reproducible.
+    in_paint_tick: boolean,
+
+    // ── Tool state (V0b group 1) ──
+    in_toggle_mode: boolean,   // Tab — Ground ↔ Marker
+    in_rotate:      boolean,   // R — turn the place-direction one step
+    in_rotate_ccw:  boolean,   // …anticlockwise instead (Shift held)
+    in_cycle_kind:  boolean,   // K — spawn ↔ target
+
+    // Palette hotkey: is one down, and which entry does it select.
+    // One index rather than twelve booleans — the player presses one
+    // hotkey, and a script says `key 5`.
+    //
+    // ⚠ The pair exists so that NO action is the zero value of every
+    // field.  A bare `EditorInput { … }` literal that omits a field
+    // gets that field's default, so a neutral value of -1 would turn
+    // every partially-built input into "select palette entry 0" —
+    // which is sea, which erases.  Neutral must be the default, in
+    // this struct more than anywhere: its whole job is to be built
+    // by callers that do not know what was added to it last week.
+    in_select_palette: boolean,
+    in_palette_index:  integer,
+}
+
+pub fn editor_input_empty() -> EditorInput {
+    EditorInput {
+        in_hover_q:        0,
+        in_hover_r:        0,
+        in_mouse_left:     false,
+        in_paint_tick:     false,
+        in_toggle_mode:    false,
+        in_rotate:         false,
+        in_rotate_ccw:     false,
+        in_cycle_kind:     false,
+        in_select_palette: false,
+        in_palette_index:  0,
+    }
+}
+
+// A detached copy, so remembering a frame can't alias the caller's
+// input record and mutate under us next frame.
+fn input_copy(ic: const EditorInput) -> EditorInput {
+    EditorInput {
+        in_hover_q:        ic.in_hover_q,
+        in_hover_r:        ic.in_hover_r,
+        in_mouse_left:     ic.in_mouse_left,
+        in_paint_tick:     ic.in_paint_tick,
+        in_toggle_mode:    ic.in_toggle_mode,
+        in_rotate:         ic.in_rotate,
+        in_rotate_ccw:     ic.in_rotate_ccw,
+        in_cycle_kind:     ic.in_cycle_kind,
+        in_select_palette: ic.in_select_palette,
+        in_palette_index:  ic.in_palette_index,
+    }
+}
+
 // ─── State ──────────────────────────────────────────────────────
 
 // Everything the editor mutates while a session is open, in one
-// place.  main.loft holds exactly one of these; from V0b onward it
-// holds nothing else.
+// place.  main.loft holds exactly one of these and, once V0b lands
+// in full, nothing else.
 //
 // Not a save format — `map_file.loft` / `marker_file.loft` own what
 // reaches disk.  This is session state, so it also carries the
 // derived + transient bits (chunk dirty set, in-flight stroke,
-// re-render flag) that a save deliberately drops.
+// re-render flag, last frame's input) that a save deliberately drops.
 pub struct EditorState {
     // ── World layers (what a save round-trips) ──
     pw:  PaintedWorld,
@@ -86,35 +184,15 @@ pub struct EditorState {
     painting:       boolean,
     last_paint_hex: Hex,
 
+    // Last frame's input, for rising-edge detection.  An action that
+    // must fire once per press compares against this rather than
+    // trusting the caller to have resolved the edge.
+    prev: EditorInput,
+
     // ── Render / save bookkeeping ──
     cf:            ChunkField,   // gridmesh dirty set — which chunks to rebuild
     dirty:         boolean,      // in-memory state differs from disk (HUD indicator)
     render_needed: boolean,      // view changed (camera / hover / mode / picker)
-}
-
-// ─── Input ──────────────────────────────────────────────────────
-
-// One frame of player intent.  Every field here is honoured by
-// `editor_step`; see the V0a note in the file header for why it is
-// this short.
-//
-// The hover hex is carried as (q, r), NOT as mouse pixels: pixel →
-// hex is a camera-and-window concern that belongs on the polling
-// side, and a script wants to say "click hex (3, -2)" without
-// reasoning about a window that isn't open.
-pub struct EditorInput {
-    in_hover_q: integer,
-    in_hover_r: integer,
-
-    // Left button state THIS frame.  Held across frames — its
-    // falling edge is what ends a stroke.
-    in_mouse_left: boolean,
-
-    // Is a paint event due this frame?  The caller owns the rate
-    // limit (main.loft debounces on `ticks()`; a script paints once
-    // per scripted frame), which keeps `editor_step` free of the
-    // clock and therefore reproducible.
-    in_paint_tick: boolean,
 }
 
 // ─── Factories ──────────────────────────────────────────────────
@@ -139,6 +217,7 @@ pub fn editor_state_from(
         stroke:          undo_entry_empty(),
         painting:        false,
         last_paint_hex:  Hex { q: 0, r: 0 },
+        prev:            editor_input_empty(),
         cf:              chunks_from_painted(pw),
         dirty:           false,
         // Force the first frame: nothing is on screen yet.
@@ -156,32 +235,71 @@ pub fn editor_state_new(palette_path: text) -> EditorState {
     )
 }
 
-pub fn editor_input_empty() -> EditorInput {
-    EditorInput {
-        in_hover_q:    0,
-        in_hover_r:    0,
-        in_mouse_left: false,
-        in_paint_tick: false,
-    }
-}
-
 // ─── The step ───────────────────────────────────────────────────
 
 // Apply one frame of input to the editor state.
 //
-// Pure with respect to the outside world: no GL, no `ticks()`, no
-// file access — the same (state, input) always produces the same
-// state change.  That is what lets a test and a script drive the
-// real editor instead of a stand-in.
-//
 // An input with no action set must leave the state untouched; the
 // no-op frame is a test, not a comment.
+//
+// Action order matches the order the player's keys were read in
+// before the seam existed, so a frame that sets several at once
+// resolves the same way it always did.
 pub fn editor_step(s: EditorState, input: EditorInput) {
     es_hover = Hex { q: input.in_hover_q, r: input.in_hover_r };
 
+    // ── Mode toggle ─────────────────────────────────────────────
+    if input.in_toggle_mode && !s.prev.in_toggle_mode {
+        s.mode = toggle_mode(s.mode);
+        // Flush any in-flight paint stroke before the flip — it is a
+        // complete stroke from the player's point of view.
+        if !undo_entry_is_noop(s.stroke) {
+            history_push(s.history, s.stroke);
+            s.stroke = undo_entry_empty();
+        }
+        // Drop the stroke and the button edge so a held button does
+        // not bleed across the boundary into the other mode.
+        s.painting = false;
+        s.prev.in_mouse_left = false;
+        s.render_needed = true;
+    }
+
+    // ── Place-direction rotation ────────────────────────────────
+    // Marker mode only, and only for spawns — targets are spherical,
+    // so a rotation would be a lie the ghost preview would tell.
+    if input.in_rotate && !s.prev.in_rotate
+    && s.mode == MODE_MARKER && s.place_kind == MARKER_KIND_SPAWN {
+        s.place_direction = rotate_direction(
+            s.place_direction,
+            if input.in_rotate_ccw { -1 } else { 1 }
+        );
+        s.render_needed = true;
+    }
+
+    // ── Place-kind cycle ────────────────────────────────────────
+    if input.in_cycle_kind && !s.prev.in_cycle_kind && s.mode == MODE_MARKER {
+        if s.place_kind == MARKER_KIND_SPAWN {
+            s.place_kind = MARKER_KIND_TARGET;
+        } else {
+            s.place_kind = MARKER_KIND_SPAWN;
+        }
+        s.render_needed = true;
+    }
+
+    // ── Palette selection ───────────────────────────────────────
+    // Idempotent, so no edge detection: a held hotkey re-selects the
+    // entry that is already active.  Only a real change re-renders
+    // (both the preview colour and the picker highlight move).
+    if input.in_select_palette {
+        es_pre_active = s.picker.active;
+        picker_set_active(s.picker, input.in_palette_index);
+        if s.picker.active != es_pre_active { s.render_needed = true; }
+    }
+
+    // ── Ground-mode paint ───────────────────────────────────────
     if input.in_mouse_left && s.mode == MODE_GROUND {
-        // Ground-mode paint: writes the painted-hex layer AND
-        // accumulates per-hex deltas into `stroke` for undo.
+        // Writes the painted-hex layer AND accumulates per-hex deltas
+        // into `stroke` for undo.
         if input.in_paint_tick {
             if s.painting {
                 paint_line_and_record(s.pw, s.last_paint_hex, es_hover,
@@ -211,4 +329,8 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
         }
         s.painting = false;
     }
+
+    // Remember this frame for the next one's edge detection.  Last,
+    // so every action above sees the previous frame.
+    s.prev = input_copy(input);
 }

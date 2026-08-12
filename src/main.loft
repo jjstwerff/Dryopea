@@ -178,9 +178,6 @@ fn main() {
     // frame state and acts only on the rising edge.  These are input-
     // layer bookkeeping, not editor state — they stay here when the
     // actions themselves move into the seam.
-    tab_held_prev:      boolean = false;
-    r_held_prev:        boolean = false;
-    k_held_prev:        boolean = false;
     mb_held_prev:       boolean = false;
     n_held_prev:        boolean = false;
     h_held_prev:        boolean = false;
@@ -199,57 +196,10 @@ fn main() {
         ctrl_held = gl_key_pressed(graphics::KEY_CTRL);
         wheel = gl_mouse_wheel();
 
-        // Tab → toggle Ground ↔ Marker (edge-detected; held key
-        // doesn't oscillate).
-        tab_now = gl_key_pressed(graphics::KEY_TAB);
-        if tab_now && !tab_held_prev {
-            s.mode = toggle_mode(s.mode);
-            // Flush any in-flight paint stroke before the mode
-            // flip — it's a complete stroke from the player's POV.
-            if !undo_entry_is_noop(s.stroke) {
-                history_push(s.history, s.stroke);
-                s.stroke = undo_entry_empty();
-            }
-            // Reset stroke + placement edge-detection on mode flip so
-            // a held button doesn't bleed across the boundary.
-            s.painting   = false;
-            mb_held_prev = false;
-            s.render_needed = true;
-            println("dryopea: mode = {mode_name(s.mode)}");
-        }
-        tab_held_prev = tab_now;
-
-        // R / Shift+R (marker mode + place_kind=SPAWN only) —
-        // rotate the place-direction.  Edge-detected so held R
-        // doesn't spin.  Ctrl+R is reload, handled separately.
+        // Modifier state — read once, used by the combo resolution
+        // below.  Modifiers are not actions; they only decide WHICH
+        // action a key means.
         shift_held = gl_key_pressed(graphics::KEY_SHIFT);
-        r_now      = gl_key_pressed(graphics::KEY_R);
-        if r_now && !r_held_prev && s.mode == MODE_MARKER
-        && !ctrl_held && s.place_kind == MARKER_KIND_SPAWN {
-            s.place_direction = rotate_direction(
-                s.place_direction,
-                if shift_held { -1 } else { 1 }
-            );
-            s.render_needed = true;
-            println("dryopea: place_direction = {s.place_direction as integer}");
-        }
-        r_held_prev = r_now;
-
-        // K (marker mode only) — cycle the place-kind between
-        // SPAWN and TARGET.  Edge-detected.  Skipped when Ctrl
-        // is held to leave room for future Ctrl+K bindings.
-        k_now = gl_key_pressed(KEY_K);
-        if k_now && !k_held_prev && s.mode == MODE_MARKER && !ctrl_held {
-            if s.place_kind == MARKER_KIND_SPAWN {
-                s.place_kind = MARKER_KIND_TARGET;
-                println("dryopea: place_kind = TARGET");
-            } else {
-                s.place_kind = MARKER_KIND_SPAWN;
-                println("dryopea: place_kind = SPAWN");
-            }
-            s.render_needed = true;
-        }
-        k_held_prev = k_now;
 
         // Ctrl+S → save (debounced to avoid Ctrl+S held-down spam).
         if ctrl_held && gl_key_pressed(graphics::KEY_S) {
@@ -382,24 +332,22 @@ fn main() {
             }
         }
 
-        // Picker hotkeys.  Idempotent — held keys re-set to the
-        // same index, no need to debounce.  Compare active before/
-        // after so a real change flags a re-render (preview colour +
-        // picker highlight both move).
-        pre_active = s.picker.active;
-        if gl_key_pressed(graphics::KEY_1) { picker_set_active(s.picker, 0); }
-        if gl_key_pressed(graphics::KEY_2) { picker_set_active(s.picker, 1); }
-        if gl_key_pressed(graphics::KEY_3) { picker_set_active(s.picker, 2); }
-        if gl_key_pressed(graphics::KEY_4) { picker_set_active(s.picker, 3); }
-        if gl_key_pressed(graphics::KEY_5) { picker_set_active(s.picker, 4); }
-        if gl_key_pressed(graphics::KEY_6) { picker_set_active(s.picker, 5); }
-        if gl_key_pressed(graphics::KEY_7) { picker_set_active(s.picker, 6); }
-        if gl_key_pressed(graphics::KEY_8) { picker_set_active(s.picker, 7); }
-        if gl_key_pressed(graphics::KEY_9) { picker_set_active(s.picker, 8); }
-        if gl_key_pressed(graphics::KEY_0) { picker_set_active(s.picker, 9); }
-        if gl_key_pressed(KEY_MINUS)       { picker_set_active(s.picker, 10); }
-        if gl_key_pressed(KEY_EQUAL)       { picker_set_active(s.picker, 11); }
-        if s.picker.active != pre_active { s.render_needed = true; }
+        // Palette hotkeys → one selection index.  Idempotent, so no
+        // edge detection; last key wins if several are down.
+        sel_pressed: boolean = false;
+        sel_index:   integer = 0;
+        if gl_key_pressed(graphics::KEY_1) { sel_pressed = true; sel_index = 0; }
+        if gl_key_pressed(graphics::KEY_2) { sel_pressed = true; sel_index = 1; }
+        if gl_key_pressed(graphics::KEY_3) { sel_pressed = true; sel_index = 2; }
+        if gl_key_pressed(graphics::KEY_4) { sel_pressed = true; sel_index = 3; }
+        if gl_key_pressed(graphics::KEY_5) { sel_pressed = true; sel_index = 4; }
+        if gl_key_pressed(graphics::KEY_6) { sel_pressed = true; sel_index = 5; }
+        if gl_key_pressed(graphics::KEY_7) { sel_pressed = true; sel_index = 6; }
+        if gl_key_pressed(graphics::KEY_8) { sel_pressed = true; sel_index = 7; }
+        if gl_key_pressed(graphics::KEY_9) { sel_pressed = true; sel_index = 8; }
+        if gl_key_pressed(graphics::KEY_0) { sel_pressed = true; sel_index = 9; }
+        if gl_key_pressed(KEY_MINUS)       { sel_pressed = true; sel_index = 10; }
+        if gl_key_pressed(KEY_EQUAL)       { sel_pressed = true; sel_index = 11; }
 
         // Mouse — hover + paint on left-button.
         mx = gl_mouse_x() as integer;
@@ -411,22 +359,48 @@ fn main() {
 
         mb_now = (gl_mouse_button() & 1) != 0;
 
-        // ── The seam (plan 08 V0a) ──────────────────────────────
-        // Ground-mode paint — the whole action, including stroke
-        // continuation and the one-drag-one-undo commit, lives in
-        // `editor_step`.  This file's remaining job for it is the
+        // ── The seam (plan 08 V0a + V0b) ────────────────────────
+        // Held-key state goes IN; what each action means, and
+        // whether a held key has just been pressed, is decided
+        // inside `editor_step`.  This file's remaining job is the
         // rate limit: the clock stays on the polling side so the
         // step is reproducible, which is what lets a test or a
         // script drive it without a window.
+        //
+        // Ctrl+R is reload, so plain R only means "rotate" when
+        // Ctrl is up — resolving a combo into which action was
+        // meant is poll-side work.
         paint_tick_due = tnow - last_paint_us > PAINT_DEBOUNCE_US;
+        pre_mode = s.mode;
+        pre_dir  = s.place_direction;
+        pre_kind = s.place_kind;
         editor_step(s, EditorInput {
-            in_hover_q:    hovered.q,
-            in_hover_r:    hovered.r,
-            in_mouse_left: mb_now,
-            in_paint_tick: paint_tick_due,
+            in_hover_q:        hovered.q,
+            in_hover_r:        hovered.r,
+            in_mouse_left:     mb_now,
+            in_paint_tick:     paint_tick_due,
+            in_toggle_mode:    gl_key_pressed(graphics::KEY_TAB),
+            in_rotate:         gl_key_pressed(graphics::KEY_R) && !ctrl_held,
+            in_rotate_ccw:     shift_held,
+            in_cycle_kind:     gl_key_pressed(KEY_K) && !ctrl_held,
+            in_select_palette: sel_pressed,
+            in_palette_index:  sel_index,
         });
         if mb_now && s.mode == MODE_GROUND && paint_tick_due {
             last_paint_us = tnow;
+        }
+
+        // Console echo for the tool changes the HUD can't fully
+        // show.  Read back from the state rather than predicted:
+        // the step decides, this only reports.
+        if s.mode != pre_mode {
+            println("dryopea: mode = {mode_name(s.mode)}");
+        }
+        if s.place_direction != pre_dir {
+            println("dryopea: place_direction = {s.place_direction as integer}");
+        }
+        if s.place_kind != pre_kind {
+            println("dryopea: place_kind = {if s.place_kind == MARKER_KIND_TARGET { "TARGET" } else { "SPAWN" }}");
         }
 
         if mb_now && !mb_held_prev && s.mode == MODE_MARKER {

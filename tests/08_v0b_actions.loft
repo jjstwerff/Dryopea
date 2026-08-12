@@ -1,0 +1,236 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 08 phase V0b — the remaining editor actions, driven through
+// the seam.
+//
+// V0a moved paint across and proved the shape works
+// (`08_v0a_editor_step.loft`).  V0b moves the rest, one group at a
+// time; this file grows a section per group.
+//
+// The rule every group is tested against: a HELD key fires its
+// action ONCE.  `EditorInput` carries what is held this frame, and
+// `editor_step` finds the rising edge itself — so a scripted
+// `hold Tab 5` toggles the mode once, exactly as holding Tab does
+// for a player.  Every group therefore gets a held-for-n-frames
+// test, not just a single-frame one.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// ─── Frame builders ─────────────────────────────────────────────
+
+fn tab_frame() -> EditorInput {
+    tf_i = editor_input_empty();
+    tf_i.in_toggle_mode = true;
+    tf_i
+}
+
+fn rotate_frame(ccw: boolean) -> EditorInput {
+    rf_i = editor_input_empty();
+    rf_i.in_rotate     = true;
+    rf_i.in_rotate_ccw = ccw;
+    rf_i
+}
+
+fn cycle_kind_frame() -> EditorInput {
+    ckf_i = editor_input_empty();
+    ckf_i.in_cycle_kind = true;
+    ckf_i
+}
+
+fn select_frame(idx: integer) -> EditorInput {
+    sf_i = editor_input_empty();
+    sf_i.in_select_palette = true;
+    sf_i.in_palette_index  = idx;
+    sf_i
+}
+
+// One press: the key goes down for a frame, then comes back up.
+// Two presses in a row need the gap — that IS the edge.
+fn press(s: EditorState, p_frame: EditorInput) {
+    editor_step(s, p_frame);
+    editor_step(s, editor_input_empty());
+}
+
+// An editor already in marker mode, which is where the placement
+// tools are live.
+fn marker_mode_state() -> EditorState {
+    mms_s = editor_state_new(PALETTE);
+    press(mms_s, tab_frame());
+    mms_s
+}
+
+// ─── Group 1 — mode toggle ──────────────────────────────────────
+
+fn test_tab_toggles_mode() {
+    ttm_s = editor_state_new(PALETTE);
+    assert(ttm_s.mode == MODE_GROUND, "editor opens in ground mode");
+
+    press(ttm_s, tab_frame());
+    assert(ttm_s.mode == MODE_MARKER, "one press → marker mode");
+
+    press(ttm_s, tab_frame());
+    assert(ttm_s.mode == MODE_GROUND, "another press → back to ground");
+}
+
+// The held-key rule.  Without edge detection inside the seam this
+// reads MARKER or GROUND depending on whether the frame count is
+// odd — a script would be testing arithmetic, not the editor.
+fn test_holding_tab_toggles_once() {
+    tht_s = editor_state_new(PALETTE);
+
+    for _ in 0..5 {
+        editor_step(tht_s, tab_frame());
+    }
+
+    assert(tht_s.mode == MODE_MARKER, "five frames of held Tab is ONE toggle");
+}
+
+// Flipping mode mid-drag ends the stroke: it is complete from the
+// player's point of view, and must be undoable as one action.
+fn test_toggle_commits_an_open_stroke() {
+    tcs_s = editor_state_new(PALETTE);
+    picker_set_active(tcs_s.picker, 5);
+
+    tcs_paint = editor_input_empty();
+    tcs_paint.in_hover_q    = 0;
+    tcs_paint.in_hover_r    = 0;
+    tcs_paint.in_mouse_left = true;
+    tcs_paint.in_paint_tick = true;
+    editor_step(tcs_s, tcs_paint);
+    assert(!history_can_undo(tcs_s.history), "stroke still open");
+
+    editor_step(tcs_s, tab_frame());
+
+    assert(history_can_undo(tcs_s.history), "the mode flip committed the stroke");
+    assert(len(tcs_s.history.entries) == 1, "as ONE entry");
+    assert(!tcs_s.painting, "and closed it");
+}
+
+// ─── Group 1 — place-direction rotation ─────────────────────────
+
+fn test_rotate_steps_the_place_direction() {
+    trs_s = marker_mode_state();
+    assert(trs_s.place_direction == 0 as u8, "starts pointing at direction 0");
+
+    press(trs_s, rotate_frame(false));
+    assert(trs_s.place_direction == 1 as u8, "one press → one step clockwise");
+
+    press(trs_s, rotate_frame(true));
+    assert(trs_s.place_direction == 0 as u8, "shift → back anticlockwise");
+}
+
+fn test_holding_rotate_steps_once() {
+    trh_s = marker_mode_state();
+
+    for _ in 0..5 {
+        editor_step(trh_s, rotate_frame(false));
+    }
+
+    assert(trh_s.place_direction == 1 as u8, "held R steps once, it doesn't spin");
+}
+
+// Six 60° steps is a full turn — and the seventh must not read as
+// one, or the wrap is off by one somewhere.
+fn test_six_rotations_are_the_identity() {
+    tsr_s = marker_mode_state();
+
+    for _ in 0..6 {
+        press(tsr_s, rotate_frame(false));
+    }
+    assert(tsr_s.place_direction == 0 as u8, "six steps = full turn = identity");
+
+    press(tsr_s, rotate_frame(false));
+    assert(tsr_s.place_direction == 1 as u8, "a seventh press is NOT the identity");
+}
+
+// Ground mode has no place-direction, and a target is spherical —
+// in both cases rotating would move a number the player cannot see
+// the effect of.
+fn test_rotate_ignored_outside_spawn_placement() {
+    tri_s = editor_state_new(PALETTE);
+    press(tri_s, rotate_frame(false));
+    assert(tri_s.place_direction == 0 as u8, "ground mode: no rotation");
+
+    tri_s2 = marker_mode_state();
+    press(tri_s2, cycle_kind_frame());
+    assert(tri_s2.place_kind == MARKER_KIND_TARGET, "now placing targets");
+    press(tri_s2, rotate_frame(false));
+    assert(tri_s2.place_direction == 0 as u8, "targets are spherical: no rotation");
+}
+
+// ─── Group 1 — place-kind cycle ─────────────────────────────────
+
+fn test_cycle_kind_alternates() {
+    tck_s = marker_mode_state();
+    assert(tck_s.place_kind == MARKER_KIND_SPAWN, "spawns by default");
+
+    press(tck_s, cycle_kind_frame());
+    assert(tck_s.place_kind == MARKER_KIND_TARGET, "K → target");
+
+    press(tck_s, cycle_kind_frame());
+    assert(tck_s.place_kind == MARKER_KIND_SPAWN, "K again → back to spawn");
+}
+
+fn test_holding_cycle_kind_fires_once() {
+    thc_s = marker_mode_state();
+
+    for _ in 0..5 {
+        editor_step(thc_s, cycle_kind_frame());
+    }
+
+    assert(thc_s.place_kind == MARKER_KIND_TARGET, "held K cycles once");
+}
+
+fn test_cycle_kind_ignored_in_ground_mode() {
+    tci_s = editor_state_new(PALETTE);
+    press(tci_s, cycle_kind_frame());
+    assert(tci_s.place_kind == MARKER_KIND_SPAWN, "ground mode places nothing to cycle");
+}
+
+// ─── Group 1 — palette selection ────────────────────────────────
+
+fn test_select_palette_sets_the_active_tool() {
+    tsp_s = editor_state_new(PALETTE);
+    assert(tsp_s.picker.active == 0, "opens on sea");
+
+    editor_step(tsp_s, select_frame(5));
+    assert(tsp_s.picker.active == 5, "hotkey selects the entry");
+    assert(tsp_s.render_needed, "a tool change re-renders the preview + highlight");
+}
+
+// Idempotent by design: unlike the toggles, a held hotkey re-selects
+// the entry that is already active, so no edge detection is needed.
+fn test_holding_a_palette_key_is_idempotent() {
+    thp_s = editor_state_new(PALETTE);
+
+    for _ in 0..5 {
+        editor_step(thp_s, select_frame(9));
+    }
+
+    assert(thp_s.picker.active == 9, "still the entry that was pressed");
+}
+
+fn test_no_selection_leaves_the_tool_alone() {
+    tns_s = editor_state_new(PALETTE);
+    editor_step(tns_s, select_frame(5));
+
+    editor_step(tns_s, editor_input_empty());   // no hotkey down
+
+    assert(tns_s.picker.active == 5, "a frame with no hotkey keeps the tool");
+}
+
+// The palette has 11 entries but 12 hotkeys — the spare ones must
+// not select anything until the palette grows into them.
+fn test_out_of_range_selection_is_ignored() {
+    tor_s = editor_state_new(PALETTE);
+    editor_step(tor_s, select_frame(5));
+
+    editor_step(tor_s, select_frame(11));
+
+    assert(tor_s.picker.active == 5, "hotkey past the end of the palette is ignored");
+}
