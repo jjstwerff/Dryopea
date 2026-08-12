@@ -111,20 +111,58 @@ pub fn palette_min_distance2(buckets: integer) -> integer {
 // band in every scenario leans on — can be tested by handing it a
 // pixel that is not a palette colour. A classifier that renders its
 // own input can only ever be tested on inputs it agrees with.
+// ⚠ This is the SUITE'S most expensive function after the canvas
+// allocation it reads, so it is written for the pixel count rather than
+// for the prettiest loop.  Profiled 2026-08-12 with `LOFT_PROFILE=1
+// loft test`: `classify_canvas` plus the `get_pixel` calls under it were
+// 4.3 s of the suite's 16.1 s of interpreted time.  Two changes, each
+// measured on one 960x720 frame and each answering identically:
+//
+//     get_pixel per pixel, nested y/x   683 ms   (what this was)
+//     + index the buffer directly       367 ms   1.9x
+//     + skip the hash on a colour run   265 ms   2.6x
+//
+// Neither changes a single count — see `tests/08_v2_measure.loft`, and
+// `scripts/validate.sh` reports the same 233 measurements it did before.
+// That equality is the whole gate: this function IS the instrument every
+// band was sized against, so a faster one that reads differently has
+// broken the measurement rather than sped it up.
 pub fn classify_canvas(cv: const Canvas, buckets: integer) -> FrameCounts {
     cc_t   = color_table(buckets);
     cc_out = FrameCounts { counts: [], unknown: 0, total: cv.width * cv.height };
     for _ in 0..buckets { cc_out.counts += [0]; }
 
-    for cc_y in 0..cv.height {
-        for cc_x in 0..cv.width {
-            cc_px = cv.get_pixel(cc_x, cc_y) & 0xffffff;
-            cc_b  = cc_t.by_color[cc_px];
-            if cc_b == null {
-                cc_out.unknown += 1;
-            } else {
-                cc_out.counts[cc_b.index] = (cc_out.counts[cc_b.index] ?? 0) + 1;
-            }
+    // The pixel buffer, bound ONCE and BY REFERENCE.  `get_pixel` re-does
+    // its bounds check and a `len(data)` on every call, and a frame is
+    // 691 200 calls.  The `&` matters as much as the loop: a whole-value
+    // bind would COPY the buffer (CLAUDE.md § the F8 lesson).
+    cc_d = &cv.data;
+    cc_n = cv.width * cv.height;
+
+    // One flat index instead of y/x, which is what `get_pixel` computed
+    // anyway (`gy * width + gx`) — so the visit ORDER is unchanged, and
+    // `?? 0` keeps the old out-of-range answer: a short buffer read 0
+    // through `get_pixel` too, and 0 is not a palette colour, so it
+    // still lands in `unknown`.
+    //
+    // A rendered hex world is wide flat areas of one colour, so the
+    // previous pixel usually already answers.  -1 can never be a masked
+    // pixel (those are 0..0xffffff), so the first pixel always misses
+    // and the cache needs no separate "empty" flag.
+    cc_last = -1;
+    cc_bkt  = -1;   // bucket for cc_last; -1 means "not a palette colour"
+
+    for cc_i in 0..cc_n {
+        cc_px = (cc_d[cc_i] ?? 0) & 0xffffff;
+        if cc_px != cc_last {
+            cc_last = cc_px;
+            cc_b    = cc_t.by_color[cc_px];
+            cc_bkt  = if cc_b == null { -1 } else { cc_b.index };
+        }
+        if cc_bkt < 0 {
+            cc_out.unknown += 1;
+        } else {
+            cc_out.counts[cc_bkt] = (cc_out.counts[cc_bkt] ?? 0) + 1;
         }
     }
     cc_out

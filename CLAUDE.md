@@ -185,12 +185,52 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 497/497 green under `scripts/test.sh`** (~75 s — the `frame`
+**Suite: 497/497 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
-**Gate: 14 scripts green under `scripts/validate.sh`** (~13 s).
+**Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
+measurements).
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
+
+### Profiling the suite — and why the wall clock cannot do it
+
+`LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
+per-function + per-line + call-path report over all 497 runs.
+
+- ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
+  results and silently drops the profile, which reads as "the profiler
+  says there is nothing to see".
+- ⚠ **Read the SAMPLE COUNT, not the seconds.**  It is an op counter, so
+  it is *deterministic* — two runs of an unchanged suite agree exactly
+  (1 421 358 twice, measured).  The wall clock has **~3.5 s of run-to-run
+  variance on a ~33 s suite**, so it cannot see a 2.4 s improvement at
+  all: `classify_canvas`'s 2.6x landed as 32.6 s → 32.8 s, i.e. inside
+  the noise and pointing the wrong way.  Quote the op count.
+- `LOFT_NO_NATIVE_LIBS=1` makes no difference here — both ways give
+  identical counts, so loft's "a `use`d library is a cdylib the sampler
+  cannot see into" inversion trap does not apply to `loft test`.
+- ⚠ **`loft test --check` is not a compile-only measurement** — it falls
+  through to rustc and took 72 s, twice the suite.  loft's own
+  `doc/claude/PERFORMANCE.md` § Profiling a run warns about this.
+- `ticks()` is in **microseconds** (`default/02_files.loft`), so a probe
+  that prints it as ms overstates by 1000x.
+
+**Where the time goes (profiled 2026-08-12, 13.7 s interpreted of ~33 s
+wall — the rest is per-file process start + ~37 ms/file codegen):**
+
+⚠ **58% is `graphics`'s `canvas()`**, and it is not dryopea's to fix.
+`graphics.loft:45` is `[for _ in 0..cw * ch { fill_color }]` — 691 200
+elements at 3 bytecodes each, ~231 ms per 960x720 canvas, ~35 canvases a
+run.  loft's `PERFORMANCE.md` § O8 describes exactly this cost but **O8.5
+would not fix it**: `cw * ch` is a runtime value, and 691 200 exceeds its
+hard 10 000-element unroll limit.  The gap is a *runtime* bulk fill
+(`zero_fill` / `copy_block` already exist in the store) and no design on
+that page covers it.  Worth ~7.5 s, i.e. 21% of the suite — the largest
+remaining win, and an upstream ask against `loft-libs-graphics`.
+
+All of plan 11 — `flow_sweep`, `hex_neighbor`, `hex_ground`,
+`hex_height` — is under 15% put together.
 
 ⚠ **`ticks()` is loft's clock builtin — never shadow it**, not even as
 a parameter name.  A probe that took `ticks` as a parameter compiled
@@ -840,6 +880,8 @@ signature.
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |
+| Find out what the SUITE spends its time on | `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` — § Profiling the suite.  Read the op count, never the wall clock |
+| Speed up frame measurement further | `src/measure.loft::classify_canvas` is already written for the pixel count — do not "tidy" it.  The remaining 58% is `graphics`'s `canvas()`, upstream |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |
 
 ## Branch policy
