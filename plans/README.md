@@ -69,7 +69,7 @@ pointer, not a second copy.
 | [`05-validation-scenario`](05-validation-scenario/README.md) | G | M | Future | Minimum playable thing; integration spec |
 | [`06-editor-stencil-pipeline`](06-editor-stencil-pipeline/README.md) | F | MH | Future | Editor-as-content-pipeline; stencil mode + mesh baker |
 | [`07-shared-world-substrate`](07-shared-world-substrate/README.md) | F | H–VH | Active (W0 partial) | Go 3D; adopt the shared hex substrate |
-| [`08-game-validation`](08-game-validation/README.md) | S | MH | Active (V0 next) | Scripted play, measured effects, PNGs for inspection |
+| [`08-game-validation`](08-game-validation/README.md) | S | MH | Complete (V0-V4) | Scripted play, measured effects, PNGs for inspection |
 
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.

@@ -1,0 +1,239 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 08 phase V4 — the gate, held to its own gate.
+//
+// `scripts/validate.sh` is the second gate and it runs
+// deliberately, so nothing here plays the five real scenarios —
+// `tests/08_v3_scenarios.loft` already does that, and doing it
+// twice would put two `frame` measurements' worth of full-canvas
+// classification into the fast suite for no new information.
+//
+// What this file tests is the thing the sweep can get wrong and a
+// scenario cannot: reporting GREEN over nothing.  Every case below
+// is a way for the gate to find no work and say so — a missing
+// directory, an empty one, a palette that did not load, a sweep
+// that measured nothing — plus the one case that matters most, a
+// reading out of band making the whole sweep red and naming the
+// number that moved.
+//
+// The fixtures are written fresh into `tests/actual/v4_*/` on every
+// run, so what each case sweeps is exactly what it wrote.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// Saves and shots from the fixture runs land where the suite
+// already cleans up.
+const SHOTS: text = "tests/actual";
+
+// A script that measures: one hex painted, two exact readings.
+const GOOD: text = "palette 5\nclick 0 0\ncount painted 1 1\nkind 0 0 grass\n";
+
+// The same run with one band that cannot hold — this is the
+// out-of-band reading the whole gate exists to catch.
+const BAD: text = "palette 5\nclick 0 0\ncount painted 5 9\n";
+
+// A run that does something and checks nothing.  It is what a
+// scenario looks like after someone deletes its assertions: it
+// finishes, it reports ok, and it is worthless.
+const MUTE: text = "palette 5\nclick 0 0\n";
+
+// Write one fixture script, creating its directory.
+fn put(dir: text, name: text, body: text) {
+    mkdir_all(dir);
+    put_f = file("{dir}/{name}.keys");
+    put_f.write(body);
+}
+
+// ─── The sweep reports what it swept ────────────────────────────
+
+fn test_a_green_sweep_counts_every_script_and_every_check() {
+    tgs_dir = "tests/actual/v4_green";
+    put(tgs_dir, "one", GOOD);
+    put(tgs_dir, "two", GOOD);
+
+    tgs = validate_all(tgs_dir, SHOTS, PALETTE);
+
+    assert(tgs.message == "", "green sweep: {tgs.message}");
+    assert(tgs.scripts == 2, "two scripts, got {tgs.scripts}");
+    assert(tgs.passed  == 2, "both green, got {tgs.passed}");
+    assert(tgs.failed  == 0, "none red, got {tgs.failed}");
+    assert(tgs.checks  == 4, "two measurements each, got {tgs.checks}");
+}
+
+// ─── One bad reading makes the sweep red ────────────────────────
+
+fn test_one_out_of_band_reading_fails_the_sweep() {
+    tob_dir = "tests/actual/v4_band";
+    put(tob_dir, "a-good", GOOD);
+    put(tob_dir, "b-bad",  BAD);
+
+    tob = validate_all(tob_dir, SHOTS, PALETTE);
+
+    assert(tob.message != "", "an out-of-band reading must fail the sweep");
+    assert(tob.scripts == 2, "both still ran, got {tob.scripts}");
+    assert(tob.passed  == 1, "the good one is still green");
+    assert(tob.failed  == 1, "the bad one is red");
+}
+
+// The gate's whole job is to print the number that moved — a
+// verdict of "something is wrong" sends the reader back to the run
+// they were trying to avoid re-running.
+fn test_the_verdict_names_the_number_that_moved() {
+    tvn_dir = "tests/actual/v4_names";
+    put(tvn_dir, "bad", BAD);
+
+    tvn = validate_all(tvn_dir, SHOTS, PALETTE);
+
+    assert(tvn.message.contains("bad"),          "the script: {tvn.message}");
+    assert(tvn.message.contains("line 3"),       "the line: {tvn.message}");
+    assert(tvn.message.contains("= 1"),          "what it read: {tvn.message}");
+    assert(tvn.message.contains("outside 5..9"), "what it wanted: {tvn.message}");
+
+    assert(validate_verdict(tvn).contains("FAILED"), "{validate_verdict(tvn)}");
+}
+
+// A red sweep still says how much it got through — the counts are a
+// record of what was checked, not a reward for passing.
+fn test_the_verdict_reports_counts_either_way() {
+    tvc_dir = "tests/actual/v4_counts";
+    put(tvc_dir, "good", GOOD);
+
+    tvc = validate_verdict(validate_all(tvc_dir, SHOTS, PALETTE));
+
+    assert(tvc.contains("1 scripts"),     "{tvc}");
+    assert(tvc.contains("2 measurements"), "{tvc}");
+    assert(tvc.contains("all green"),      "{tvc}");
+}
+
+// ─── Refusing to be green over nothing ──────────────────────────
+//
+// The four preconditions of `validate.loft` § The gate checks
+// itself first.  Each one is a way for a sweep to find no work and
+// report success, which is the confident meaningless number this
+// plan is named after.
+
+fn test_a_missing_scripts_directory_is_a_failure() {
+    tms = validate_all("tests/actual/v4_no_such_dir", SHOTS, PALETTE);
+
+    assert(tms.message != "", "a missing directory must not sweep green");
+    assert(tms.message.contains("no such scripts directory"), "{tms.message}");
+    assert(tms.scripts == 0, "and it played nothing");
+}
+
+// `list_dir` answers null for a missing directory and `[]` for an
+// empty one.  Both fail, and they must not fail with the same
+// sentence — "the directory is not there" and "the directory is
+// there and empty" send someone to different places.
+fn test_a_directory_with_no_scripts_is_a_different_failure() {
+    tdn_dir = "tests/actual/v4_empty";
+    mkdir_all(tdn_dir);
+    // Something that is not a script, so the directory exists and
+    // still yields no work.
+    tdn_f = file("{tdn_dir}/notes.txt");
+    tdn_f.write("not a script\n");
+
+    tdn = validate_all(tdn_dir, SHOTS, PALETTE);
+
+    assert(tdn.message != "", "an empty directory must not sweep green");
+    assert(tdn.message.contains("holds no .keys scripts"), "{tdn.message}");
+    assert(!tdn.message.contains("no such scripts directory"),
+           "and it is NOT the missing-directory message: {tdn.message}");
+}
+
+// The precondition that caught a real one: the native backend loads
+// dryopea's palette as 0 entries (QUESTIONS_FOR_LOFT.md), and every
+// `kind` and `frame` in every scenario would then be measuring
+// against an empty table.  A gate that cannot load its palette has
+// nothing to say.
+fn test_a_palette_that_did_not_load_stops_the_gate() {
+    tpl_dir = "tests/actual/v4_palette";
+    put(tpl_dir, "one", GOOD);
+
+    tpl = validate_all(tpl_dir, SHOTS, "examples/no_such_palette.json");
+
+    assert(tpl.message != "", "no palette, no measurements");
+    assert(tpl.message.contains("0 entries"), "{tpl.message}");
+    assert(tpl.scripts == 0, "and not one script ran against it");
+}
+
+fn test_a_sweep_that_measures_nothing_is_a_failure() {
+    tmn_dir = "tests/actual/v4_mute";
+    put(tmn_dir, "mute", MUTE);
+
+    tmn = validate_all(tmn_dir, SHOTS, PALETTE);
+
+    assert(tmn.message != "", "a sweep with no measurements in it is not green");
+    assert(tmn.message.contains("measured anything"), "{tmn.message}");
+    // The script itself is fine — it ran, it just claimed nothing.
+    assert(tmn.passed == 1, "the run survived; it simply asserted nothing");
+}
+
+// ─── Playing one script ─────────────────────────────────────────
+
+fn test_only_plays_the_one_named() {
+    top_dir = "tests/actual/v4_only";
+    put(top_dir, "one", GOOD);
+    put(top_dir, "two", BAD);
+
+    top = validate_all(top_dir, SHOTS, PALETTE, "one");
+
+    assert(top.scripts == 1, "one script, got {top.scripts}");
+    assert(top.message == "", "and the red one was not played: {top.message}");
+}
+
+// A name nobody has must not quietly sweep zero scripts and call
+// that green — the same shape as an empty directory, one typo
+// closer.
+fn test_only_with_an_unknown_name_is_a_failure() {
+    tou_dir = "tests/actual/v4_only_bad";
+    put(tou_dir, "one", GOOD);
+
+    tou = validate_all(tou_dir, SHOTS, PALETTE, "won");
+
+    assert(tou.message != "", "an unknown script name must fail");
+    assert(tou.message.contains("no script named 'won'"), "{tou.message}");
+}
+
+// ─── The directory the real gate sweeps ─────────────────────────
+
+fn test_script_names_are_sorted_and_lose_the_extension() {
+    tsn_dir = "tests/actual/v4_names_sorted";
+    put(tsn_dir, "zebra",  GOOD);
+    put(tsn_dir, "apple",  GOOD);
+    tsn_f = file("{tsn_dir}/README.md");
+    tsn_f.write("not a script\n");
+
+    tsn = validate_script_names(tsn_dir);
+
+    assert(len(tsn) == 2, "two scripts, not the README: {tsn}");
+    assert(tsn[0] == "apple", "sorted: {tsn}");
+    assert(tsn[1] == "zebra", "sorted: {tsn}");
+}
+
+// What `scripts/validate.sh` will actually sweep.  The five
+// scenarios are the point of the exercise; a rename that dropped
+// one out of the directory would leave every test above passing
+// over fixtures and the real gate quietly measuring less.
+fn test_the_real_directory_holds_the_five_scenarios() {
+    trd = validate_script_names(VALIDATE_SCRIPTS_DIR);
+
+    trd_want: vector<text> = [
+        "a-wave-approaches",
+        "cold-start",
+        "markers-and-rotation",
+        "paint-a-base",
+        "round-trip",
+    ];
+    for trd_n in trd_want {
+        trd_seen = false;
+        for trd_g in trd {
+            if trd_g == trd_n { trd_seen = true; }
+        }
+        assert(trd_seen, "{VALIDATE_SCRIPTS_DIR} is missing {trd_n}.keys — got {trd}");
+    }
+}

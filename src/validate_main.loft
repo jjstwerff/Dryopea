@@ -1,0 +1,43 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 08 V4 — the validation gate's entry point.
+//
+// Launch (per CLAUDE.md § Key commands):
+//   scripts/validate.sh                 every script in tests/scripts/
+//   scripts/validate.sh paint-a-base    just that one
+//   make validate  /  make validate SCRIPT=paint-a-base
+//
+// This file is to `src/validate.loft` what `src/main.loft` is to
+// the editor: the shell, and nothing else.  It holds no decision,
+// because a `#cwd` file cannot be `use`d as a library and so is
+// compiled by nothing — see `src/validate.loft` § Why the logic
+// lives here.  Everything below is a call, a print and an exit
+// status.
+//
+// ⚠ Parse-check it by hand after every edit — `scripts/test.sh`
+// cannot see it (`make check FILE=src/validate_main.loft`).
+
+#cwd
+
+use dryopea;
+
+fn main() {
+    // One optional argument: the name of a single script to play,
+    // without its `.keys`.  Absent means all of them.
+    vm_only = arguments()[0] ?? "";
+
+    println("dryopea validate — {VALIDATE_SCRIPTS_DIR}/*.keys, shots to {VALIDATE_SHOTS_DIR}/");
+    vm_rep = validate_all(VALIDATE_SCRIPTS_DIR, VALIDATE_SHOTS_DIR,
+                          VALIDATE_PALETTE, vm_only);
+    println("");
+    println(validate_verdict(vm_rep));
+
+    // `panic` is the only way a loft program hands a non-zero
+    // status to the shell today — there is no `exit`.  The verdict
+    // is already printed above; this is what makes `make validate`
+    // go red rather than merely say so.
+    if vm_rep.message != "" {
+        panic("validate: {vm_rep.message}");
+    }
+}

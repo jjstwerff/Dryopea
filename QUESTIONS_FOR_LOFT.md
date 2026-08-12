@@ -375,6 +375,60 @@ fix / feature, move it to **Resolved**.
   same function.  Related to the @P374 tuple-return machinery
   but distinct (bare struct return + `file()` interaction).
 
+### Native backend silently returns an EMPTY vector for a `text as vector<Struct>` cast in tail-return position
+
+- **Found while:** plan 08 V4 — building `scripts/validate.sh`, which
+  runs dryopea as a PROGRAM rather than under `loft test`.  The first
+  probe of the gate printed `palette: 0 entries` where the same call
+  under `--interpret` prints 11.
+- **Kind:** bug (native codegen — **silent wrong answer**, no panic and
+  no diagnostic)
+- **Trigger (bisected):** a function whose body IS the cast, with the
+  path arriving as a **parameter**:
+  - WRONG (`[]` natively, right interpreted):
+    `fn load(path: text) -> vector<Row> { file(path).content() as vector<Row> }`
+  - RIGHT: the same cast bound to a local first, then returned.
+  - RIGHT: the same cast written inline at the call site.
+  - RIGHT: the same tail-return shape reading a file-scope `const`
+    path instead of a parameter — which is why this does not show up
+    in small test programs.
+- **The generated Rust says it too:** building the native binary warns
+  `unused return value of loft::codegen_runtime::db_from_text that must
+  be used` at exactly these call sites — the cast is emitted as a
+  statement and the function returns the untouched (empty) destination.
+- **Reproducer:** [`loft_repros/json_vector_cast_native_tail_return.loft`](loft_repros/json_vector_cast_native_tail_return.loft)
+  — self-contained; `loft <repro>` prints `tail-return -> 0`,
+  `loft --interpret <repro>` prints `tail-return -> 2`.
+- **Why this one hurts more than the panic above:** it is silent.  The
+  hash-return bug (§ above) aborts the native editor before the window
+  opens, so nobody ships on it by accident.  This one hands back an
+  empty palette and lets the editor open: no picker entries, every hex
+  renders sea, and nothing anywhere says why.  dryopea's 318-test suite
+  cannot see it at all, because `loft test` runs the interpreter.
+- **Concrete dryopea impact:** `src/palette.loft::load_palette` is
+  exactly this shape.  Natively `load_palette` → 0 entries →
+  `picker_default` → 0 entries.
+- **Also seen, same area, not separately filed yet** (all native, all
+  around `text as Struct` / `text as vector<Struct>`):
+  - inside the full dryopea program `text as MapFile` answers a
+    null-filled struct in *every* form tried (tail-return, untyped
+    local, typed local) — so the vector workaround above has no
+    struct-shaped twin;
+  - `t = file(p).content() ?? ""; t as MapFile` makes the **generated
+    Rust fail to compile** (4 × `error[E0308]: mismatched types`);
+  - a small program with `fn by_const()` and `fn by_param(path)` both
+    casting to the same struct **segfaults on BOTH backends**
+    (exit 139).  This one is memory-unsafety and probably wants its
+    own issue — say the word and dryopea will cut a separate repro.
+- **Workaround in dryopea:** none applied in source.  `scripts/validate.sh`
+  runs `--interpret` (the same choice `make play` already made for the
+  panic above), and `validate_all` refuses to run at all when the
+  palette loads 0 entries — so the failure is loud from now on
+  wherever it happens.
+- **Loft pointer:** native codegen, `db_from_text` emission for a cast
+  in tail-return position — the result is discarded rather than
+  returned.
+
 ### Div-by-zero warning still fires on `float / int_literal`
 
 - **Found while:** Re-verifying the @P368 fix on 2026-05-27.

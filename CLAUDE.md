@@ -41,11 +41,21 @@ classifier in `src/measure.loft`, and a wave for `count alive`
 to count.  V3 shipped the five scenario scripts in
 `tests/scripts/*.keys` — including `a-wave-approaches`, the
 first thing here that asserts the GAME works rather than that a
-function returns.  V4 (`scripts/validate.sh` + `make validate`)
-is next.
+function returns.  V4 closed the plan with the gate itself:
+`scripts/validate.sh` / `make validate` sweeps every `.keys`
+script, prints each measurement beside its band, and exits
+non-zero on one out of band.
 
-**Suite: 306/306 green under `scripts/test.sh`** (~20-30 s — the
+**Plan 08 is complete.**  Its first real run also caught what it
+was built to catch: on the NATIVE backend `load_palette` answers
+0 entries (a silent `text as vector<Struct>` miscompile — filed
+in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
+test could see because `loft test` runs the interpreter only.
+Both gates therefore run interpreted, as `make play` already did.
+
+**Suite: 318/318 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
+**Gate: 7 scripts green under `scripts/validate.sh`** (~11 s).
 
 Plan 06 (editor-to-stencil pipeline) is drafted and waits on the
 shared substrate.  The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md);
@@ -79,8 +89,21 @@ anywhere.
 # Run dryopea's test suite (canonical entry — DO NOT run `loft test` directly)
 scripts/test.sh
 
-# Run the interactive editor (E1-live; opens a 960x720 GL window)
-loft src/main.loft
+# Play every tests/scripts/*.keys and gate on what they measure —
+# the SECOND gate (plan 08 V4).  Prints each measurement beside its
+# band, writes a PNG per `snap` into shots/, exits non-zero on a
+# reading out of band.  `make validate` is the same thing.
+scripts/validate.sh                  # all of them (~11 s)
+scripts/validate.sh paint-a-base     # just one, while iterating
+
+# Run the interactive editor (E1-live; opens a 960x720 GL window).
+# Use `make play` — it passes --interpret, and the NATIVE backend is
+# broken for dryopea today: it panics on the marker load, and where it
+# does not panic it silently loads an EMPTY palette (both filed in
+# QUESTIONS_FOR_LOFT.md).  `loft src/main.loft` is `make play-native`,
+# kept for testing the eventual fix.
+make play
+make play MAP=starter_01
 
 # Parse-check a single .loft file without running it
 loft --native-emit /tmp/check.rs src/<file>.loft
@@ -122,6 +145,15 @@ and both `scripts/test.sh` and the `Makefile` run from the repo
 root.  A new test file needs `#cwd` or its palette load and
 golden compare will silently miss.
 
+⚠ **`#cwd` is legal only in a program ENTRY.**  A file carrying it
+cannot be `use`d as a library — the import fails to parse with
+`Syntax error: unexpected '#' at <file>:1:2`, and the aggregator
+goes red naming the importer rather than the directive.  So an
+entry point cannot also be an aggregator member, which means it is
+compiled by nothing and every entry must stay a shell with no
+decisions in it: `main.loft` over `editor_step.loft`,
+`validate_main.loft` over `validate.loft`.
+
 ## Architecture — src/ layout
 
 ```
@@ -158,6 +190,19 @@ src/
                    `palette_color` — the function that drew the
                    pixels — with palette.json drift caught by its
                    own test
+  validate.loft    the gate (plan 08 V4) — validate_all(scripts_dir,
+                   shots_dir, palette[, only]) -> ValidateReport.
+                   Sweeps a directory of `.keys` scripts, plays each
+                   in a session of its own, sums the measurements and
+                   reports the FIRST failure with the number that
+                   moved.  Refuses to be green over nothing: no
+                   palette, no directory, no scripts, or no
+                   measurements taken are each a named failure
+  validate_main.loft  the gate's entry point — `fn main()`, NOT in the
+                   aggregator (runs via `scripts/validate.sh`).  Six
+                   lines, no decisions: a file carrying `#cwd` cannot
+                   be `use`d as a library, so anything written here is
+                   compiled by nothing.  Parse-check it by hand
   script.loft      the `.keys` script runner (plan 08 V1) —
                    script_run(s, source[, shots_dir]) /
                    script_run_file(s, path[, shots_dir]) -> ScriptRun.
@@ -235,6 +280,7 @@ suite redirects its own shots into `tests/actual/`.
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor — runtime, not editor state |
+| `ValidateReport` | `validate.loft` | one `make validate` sweep — scripts / passed / failed / measurements / shots, and the FIRST failure with the number that moved |
 
 ## Important conventions
 
@@ -371,9 +417,9 @@ plans/
   05-validation-scenario/
   06-editor-stencil-pipeline/ — hex_* substrate now published
   07-shared-world-substrate/  — Active (W0 partial)
-  08-game-validation/         — Active (V0 shipped, V1a next):
+  08-game-validation/         — Complete (V0-V4 shipped):
                     scripted play, measured effects, PNGs for
-                    inspection
+                    inspection, and `make validate` over the lot
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -470,7 +516,8 @@ signature.
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
-| Validate the GAME (not a function) | [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
+| Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
+| Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |
 
 ## Branch policy
 

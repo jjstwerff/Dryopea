@@ -22,6 +22,16 @@
 #                   most of it plan 08's frame measurement, which
 #                   classifies every pixel of a full 960x720 frame.
 #
+#   make validate   Play every tests/scripts/*.keys script and gate on
+#                   what they measure.  The SECOND gate — it plays the
+#                   game, where `make test` tests the pieces.  Every
+#                   measurement prints beside the band it wanted, a
+#                   reading out of band exits non-zero, and the
+#                   pictures land in shots/ to look at.  ~11 seconds.
+#
+#   make validate SCRIPT=paint-a-base
+#                   Just that one script, for iterating on a scenario.
+#
 #   make help       Print this overview again.
 #
 # If you are working on dryopea itself:
@@ -30,9 +40,12 @@
 #                   Parse-check a single .loft file without running it.
 #                   Equivalent to `loft --native-emit /tmp/x.rs …`.
 #                   Quick syntax/type sanity for an edit in progress.
-#                   ⚠ Worth running on src/main.loft by hand: it sits
-#                   outside the aggregator, so the test suite never
-#                   compiles it.  Plan 08 V0 closes that hole.
+#                   ⚠ Worth running on src/main.loft and
+#                   src/validate_main.loft by hand: both sit outside
+#                   the aggregator, so the test suite never compiles
+#                   them.  Everything they could get wrong lives in
+#                   src/editor_step.loft / src/validate.loft, which it
+#                   does.
 #
 #   make clean      Wipe tests/actual/ and shots/ plus the cwd save file
 #                   (dryopea_save.json), so the next launch starts cold.
@@ -51,7 +64,7 @@
 # package registry via loft.toml + loft.lock, so no --lib path is passed.
 LOFT_BIN  ?= loft
 
-.PHONY: help play play-native test check clean
+.PHONY: help play play-native test validate check clean
 
 # ── Help ─────────────────────────────────────────────────────────
 
@@ -96,6 +109,13 @@ play-native:
 # and respects LOFT_BIN).
 test:
 	@LOFT_BIN=$(LOFT_BIN) scripts/test.sh
+
+# The second gate (plan 08 V4): play every tests/scripts/*.keys and
+# gate on what they measure.  Kept SEPARATE from `test` on purpose —
+# the unit suite stays fast and hermetic, and this one plays the
+# game and leaves pictures behind.  SCRIPT=<name> plays just one.
+validate:
+	@LOFT_BIN=$(LOFT_BIN) scripts/validate.sh $(SCRIPT)
 
 # ── Development helpers ──────────────────────────────────────────
 

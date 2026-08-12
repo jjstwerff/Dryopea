@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — V0 through V3 shipped 2026-08-12; V4 is the next work.** Nothing in
+**Complete — V0 through V4 shipped 2026-08-12.** Nothing in
 dryopea validated the game as something that *runs*. The 189 tests in
 `tests/` covered pure functions and static renders; every one of them called
 a library function directly and none of them played the game.
@@ -45,6 +45,17 @@ V3 is the five **scenarios** — `tests/scripts/*.keys`, each one a run
 written down, each with its own assertions. `a-wave-approaches` is the first
 thing in dryopea's history that asserts the *game* works rather than that a
 function returns. Suite 306 green.
+
+V4 makes it a **gate**: `scripts/validate.sh` / `make validate` sweeps
+every script in `tests/scripts/`, prints every measurement beside its band,
+and exits non-zero on one that lands outside. 12 tests in
+`tests/08_v4_validate.loft` hold it to the only thing a sweep can get wrong
+that a scenario cannot — reporting green over nothing. Suite 318 green.
+
+**And it earned its keep on the first run.** Running dryopea as a *program*
+rather than under `loft test` immediately surfaced a silent native-backend
+miscompile that empties the palette — 318 green tests could not see it,
+because the suite only ever runs the interpreter. See § V4.
 
 Four decisions the rest of the plan rests on — two from V0, one from each
 half of V1:
@@ -174,7 +185,7 @@ a phase that cannot name one is a phase that has not been cut yet.
 | **V2p** — probe: is the palette separable AT ALL? | XS | a probe first | pairwise-classify the 11 palette colours; **the deliverable is the answer, not code.** If any pair fuses, V2's design changes before it is built | **Shipped** — see § V2p. It separates; the HUD was the real hazard, and V2 measures the world layer |
 | **V2** — the measurement vocabulary | M | — | the per-entry separation controls of § The instrument comes first: a canvas painted entirely in one type reads 1.0 for it and 0 for the other ten, for every entry — exactly, per V2p | **Shipped** |
 | **V3** — the scenario scripts (one step each) | M | one site at a time | each script's own assertions; five scripts, five steps — a broken one goes red alone | **Shipped** |
-| **V4** — wire it in | S | — | `make validate` goes red on an out-of-band measurement, and prints the number that moved | Open |
+| **V4** — wire it in | S | — | `make validate` goes red on an out-of-band measurement, and prints the number that moved | **Shipped** |
 
 ⚠ **Why V0 is split.** As one `M` phase it failed the upper bound: extracting
 25 actions at once leaves a half-done state with nothing to compare against,
@@ -480,15 +491,67 @@ outside 0.01..0.02` — and no other scenario moves. That is the
 `fill_triangle` shape exactly: state correct, screen wrong, and only the
 pixel measurement can tell.
 
-### V4 — wire it in
+### V4 — wire it in — **shipped**
 
-`scripts/validate.sh` runs every script in `tests/scripts/`, prints each
-measurement with its band, and exits non-zero on the first out-of-band
-reading. A `make validate` target, and a line in
-[`CLAUDE.md`](../../CLAUDE.md) § Key commands.
+`scripts/validate.sh` sweeps `tests/scripts/`, plays every `.keys` file,
+prints each measurement beside the band it wanted, and exits non-zero when
+a reading lands outside one. `make validate`, or `make validate
+SCRIPT=paint-a-base` for one. Seven scripts, 58 measurements, 8 shots,
+~11 s.
 
-Keep it **separate from `scripts/test.sh`** — the unit suite must stay fast
-and hermetic. Validation is a second gate, run deliberately.
+It stays **separate from `scripts/test.sh`** — the unit suite is fast and
+hermetic; this one plays the game and leaves pictures behind.
+
+**The gate goes red, demonstrated.** With `paint-a-base`'s wall band bent
+to `0.400 0.500`, the run prints its nine exact `kind` readings green and
+then dies with `frame wall = 0.015098, outside 0.4..0.5`; `make validate`
+exits 1. The number that moved is in the verdict, not just in the
+transcript.
+
+**The sweep enumerates the directory rather than naming the five.** A
+scenario added tomorrow is gated today. The cost is a rule worth writing
+down: **every `.keys` file in `tests/scripts/` must play green** — which
+is why the negative controls (the runs that MUST fail) stay inline source
+strings in the unit tests. A file expected to be red cannot sit beside
+files expected to be green and leave the sweep meaning one thing.
+
+**The logic is in the aggregator; the entry point holds no decision.**
+`src/validate.loft` is a library module `scripts/test.sh` compiles and
+`tests/08_v4_validate.loft` drives; `src/validate_main.loft` is six lines
+of shell. That split is forced, and the forcing is worth recording: a file
+carrying **`#cwd` cannot be `use`d as a library** — it fails to parse with
+`Syntax error: unexpected '#'`. So "put `main` inside the aggregator and
+get it compiled for free" is not available to any entry point that needs
+cwd-relative paths, and the only defence against § Status's opening
+complaint is to leave nothing in the entry worth compiling.
+
+**The gate checks itself before it checks anything else.** A sweep that
+finds no scripts, or loads no palette, and then reports green is this
+plan's own failure mode wearing the gate's clothes. Four preconditions,
+each its own message and its own test: the palette must load with entries;
+the scripts directory must EXIST (`list_dir` answers null for a missing
+one and `[]` for an empty one — the gate spends that distinction, because
+"not there" and "there and empty" send someone to different places); it
+must hold at least one script; and the sweep as a whole must have measured
+something. The last one is what a scenario looks like after its assertions
+are deleted: it runs, it reports `ok`, and it claims nothing.
+
+`panic` is how the verdict reaches the shell — loft has no `exit`, so a
+program's only non-zero status is a panic. The verdict is printed in full
+first; the panic just carries the status.
+
+⚠ **The gate runs `--interpret`, and V4 is why we know it must.** The
+first probe of the new entry point printed `palette: 0 entries` where the
+suite reads 11: on the native backend a `text as vector<Struct>` cast in
+tail-return position silently answers `[]`, and `load_palette` is exactly
+that shape. Nothing in dryopea could see it — `loft test` runs the
+interpreter, so all 318 tests are green over a build the player never
+runs. Filed as [`QUESTIONS_FOR_LOFT.md`](../../QUESTIONS_FOR_LOFT.md)
+§ "Native backend silently returns an EMPTY vector…" with a self-contained
+reproducer. `make play` was already on `--interpret` for a *louder*
+cousin of the same bug (a native panic), which is the whole point: the
+panic got a workaround the day it appeared, and the silent one sat there
+until something ran the program and measured what came back.
 
 ## Invariant gate
 

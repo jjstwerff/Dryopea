@@ -1,0 +1,198 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The validation gate — plan 08 phase V4.
+//
+// V1 made a run something you can write down, V2 gave it
+// measurements that assert, V3 wrote the five scenarios.  This is
+// what turns those into a GATE: one sweep over every `.keys` script
+// in `tests/scripts/`, every measurement printed with the band it
+// wanted, and a verdict a shell can act on.
+//
+// ── Why the logic lives here and not in the entry point ─────────
+//
+// `src/validate_main.loft` is a program (`#cwd` + `fn main`), and a
+// file carrying `#cwd` cannot be `use`d as a library — so anything
+// written there is compiled by nothing, which is the exact hole
+// plan 08 opened with ("src/main.loft — the entire game loop — is
+// compiled by nothing").  Everything the gate DOES is therefore
+// here, inside the aggregator, where `scripts/test.sh` parses it
+// and `tests/08_v4_validate.loft` drives it.  The entry point is
+// six lines that hold no decision.
+//
+// ── The gate checks itself first ────────────────────────────────
+//
+// A validation run that finds no scripts, or loads no palette, and
+// then reports "all green" is the precise failure this plan exists
+// to catch — the confident meaningless number.  So `validate_all`
+// refuses to be green over nothing, four ways:
+//
+//   * the palette must load and hold entries — with an empty one
+//     every `kind` and `frame` would be measuring against nothing;
+//   * the scripts directory must EXIST (`list_dir` answers null for
+//     a missing one, `[]` for an empty one — a distinction the gate
+//     spends);
+//   * it must hold at least one `.keys` file;
+//   * the sweep as a whole must have measured SOMETHING.
+//
+// Each of those is a failure with a reason, not a quiet zero.
+//
+// ── Every script in the directory, not a list ───────────────────
+//
+// The sweep enumerates `tests/scripts/` rather than naming the five
+// scenarios, so a scenario added tomorrow is gated today.  The cost
+// is a rule: **every `.keys` file in that directory must play
+// green.**  Negative controls — the runs that MUST fail — stay as
+// inline source strings in the unit tests, where the assertion is
+// that they fail; a file that is expected to be red cannot live
+// beside files that are expected to be green and still leave the
+// sweep meaning one thing.
+
+use palette;
+use editor_step;
+use script;
+
+// Where the gate looks, unless a caller says otherwise.  A test
+// points all three somewhere disposable.
+pub const VALIDATE_SCRIPTS_DIR: text = "tests/scripts";
+pub const VALIDATE_SHOTS_DIR:   text = "shots";
+pub const VALIDATE_PALETTE:     text = "examples/palette.json";
+
+const VALIDATE_EXT: text = ".keys";
+
+// What one sweep produced.  `message` is the verdict: empty means
+// green, and anything else is the FIRST reason it went red — the
+// number that moved, with the script and line that moved it.
+pub struct ValidateReport {
+    scripts: integer,   // scripts played
+    passed:  integer,
+    failed:  integer,
+    checks:  integer,   // measurements that passed, summed
+    shots:   integer,   // pictures written
+    message: text,      // "" when green
+}
+
+pub fn validate_report_empty() -> ValidateReport {
+    ValidateReport {
+        scripts: 0,
+        passed:  0,
+        failed:  0,
+        checks:  0,
+        shots:   0,
+        message: "",
+    }
+}
+
+// The scripts in `dir`, sorted, without their extension.
+//
+// A missing directory and an empty one both answer `[]` here; the
+// two are told apart by `validate_all`, which is where the
+// difference changes what the gate says.
+pub fn validate_script_names(dir: text) -> vector<text> {
+    vsn_out: vector<text> = [];
+    vsn_n = VALIDATE_EXT.size();
+    for vsn_e in list_dir(dir) ?? [] {
+        if vsn_e.size() > vsn_n && vsn_e.starts_with_at(vsn_e.size() - vsn_n, VALIDATE_EXT) {
+            vsn_out += [vsn_e[0..vsn_e.size() - vsn_n]];
+        }
+    }
+    vsn_out
+}
+
+// Play one script into a session of its own.
+//
+// Every script is attached to a save path, even the ones that never
+// save: the seam REFUSES disk without one, so a script that grew a
+// `do save` would otherwise report a green run over a save that
+// never happened.  The save lands beside the shots because it is
+// the same kind of thing — an artefact of this run, rewritten every
+// time, kept only for looking at.
+pub fn validate_one(name: text, scripts_dir: text, shots_dir: text,
+                    palette_path: text) -> ScriptRun {
+    vo_s = editor_state_new(palette_path);
+    editor_state_attach(vo_s,
+                        "{shots_dir}/{name}.save.json",
+                        "{shots_dir}/{name}.save_markers.json");
+    script_run_file(vo_s, "{scripts_dir}/{name}{VALIDATE_EXT}", shots_dir)
+}
+
+// Sweep the directory.  `only` names a single script to play ("" =
+// all of them), which is what makes iterating on one scenario cheap
+// without teaching the shell a second way in.
+//
+// The measurements print themselves as they are taken — see
+// `script.loft`'s `measure_int` / `measure_float` / `measure_exact`.
+// What this adds is the frame around them: which script is
+// speaking, how it ended, and the one verdict at the bottom.
+pub fn validate_all(scripts_dir: text, shots_dir: text, palette_path: text,
+                    only: text = "") -> ValidateReport {
+    va_rep = validate_report_empty();
+
+    // ── The gate's own preconditions ───────────────────────────
+    if len(load_palette(palette_path)) == 0 {
+        va_rep.message = "palette {palette_path} loaded 0 entries — every `kind` and `frame` below would be measuring against nothing";
+        return va_rep;
+    }
+    // Null is "no such directory"; `[]` is "an empty one".  Both
+    // are failures, and they are different failures.
+    if list_dir(scripts_dir) == null {
+        va_rep.message = "no such scripts directory: {scripts_dir}";
+        return va_rep;
+    }
+    va_names = validate_script_names(scripts_dir);
+    if len(va_names) == 0 {
+        va_rep.message = "{scripts_dir} holds no {VALIDATE_EXT} scripts — a gate that sweeps nothing passes for the wrong reason";
+        return va_rep;
+    }
+
+    // ── The sweep ──────────────────────────────────────────────
+    for va_n in va_names {
+        if only != "" && va_n != only { continue; }
+
+        println("");
+        println("── {va_n} ─────────────────────────────────────");
+        va_run = validate_one(va_n, scripts_dir, shots_dir, palette_path);
+
+        va_rep.scripts += 1;
+        va_rep.checks  += va_run.checks;
+        va_rep.shots   += va_run.snaps;
+        println("   {script_describe(va_run)}");
+
+        if va_run.ok {
+            va_rep.passed += 1;
+        } else {
+            va_rep.failed += 1;
+            // The FIRST failure is the verdict — a later one is
+            // read from the transcript above, where it printed the
+            // moment it happened.
+            if va_rep.message == "" {
+                va_rep.message = "{va_n} line {va_run.line}: {va_run.message}";
+            }
+        }
+    }
+
+    if va_rep.scripts == 0 {
+        va_rep.message = "no script named '{only}' in {scripts_dir}";
+        return va_rep;
+    }
+    // A sweep that played everything and measured nothing is green
+    // over an empty claim — which is what a scenario looks like
+    // after someone deletes its assertions.
+    if va_rep.message == "" && va_rep.checks == 0 {
+        va_rep.message = "{va_rep.scripts} scripts ran and not one of them measured anything";
+    }
+    va_rep
+}
+
+// The one line a shell (or a person) reads at the end.  It reports
+// the counts either way: a gate that only speaks up on failure
+// cannot be read afterwards as a record of what it checked — the
+// same reason `script.loft` prints every passing measurement.
+pub fn validate_verdict(r: const ValidateReport) -> text {
+    vv_head = "validate: {r.scripts} scripts, {r.passed} passed, {r.failed} failed, {r.checks} measurements, {r.shots} shots";
+    if r.message == "" {
+        "{vv_head}\nvalidate: all green"
+    } else {
+        "{vv_head}\nvalidate: FAILED — {r.message}"
+    }
+}

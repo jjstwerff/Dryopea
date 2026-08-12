@@ -1,0 +1,74 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// REPRODUCER — a `text as vector<Struct>` JSON cast in TAIL-RETURN
+// position answers an EMPTY vector on the native backend.
+//
+//   loft <this file>              →  tail-return -> 0   ← WRONG
+//   loft --interpret <this file>  →  tail-return -> 2   ← right
+//
+// Expected: all three lines read 2 on both backends.
+//
+// ── Trigger ─────────────────────────────────────────────────────
+//
+// A function whose BODY IS the cast expression, with the path
+// arriving as a PARAMETER:
+//
+//     fn load(path: text) -> vector<Row> {
+//         file(path).content() as vector<Row>      ← answers []
+//     }
+//
+// Binding the result to a local first, or writing the cast inline
+// at the call site, both answer correctly — so the value parses
+// fine and is lost on the way out of the function.  Reading a
+// file-scope `const` path instead of a parameter also answers
+// correctly, which is why this hides in small test programs.
+//
+// It is SILENT: no panic, no diagnostic, an empty vector that every
+// caller treats as "the file had nothing in it".  When the native
+// build is generated, rustc warns
+//   `unused return value of loft::codegen_runtime::db_from_text`
+// which looks like the same fact seen from the other side.
+//
+// ── Impact in dryopea ───────────────────────────────────────────
+//
+// `src/palette.loft::load_palette` is exactly this shape, so the
+// native editor comes up with an EMPTY palette: no picker entries,
+// every hex renders sea.  See QUESTIONS_FOR_LOFT.md § "Native
+// backend silently returns an EMPTY vector for a `text as
+// vector<Struct>` cast in tail-return position".
+
+#cwd
+
+struct Row {
+    name:  text,
+    color: text,
+    slope: integer,
+    drop:  integer,
+    ok:    boolean,
+}
+
+const ROWS_JSON: text = "/tmp/loft_repro_rows.json";
+
+// The dryopea shape: the cast IS the function body, path is a parameter.
+fn load_tail(path: text) -> vector<Row> {
+    file(path).content() as vector<Row>
+}
+
+// Same cast, bound to a local on the way out.
+fn load_local(path: text) -> vector<Row> {
+    ll_out = file(path).content() as vector<Row>;
+    ll_out
+}
+
+fn main() {
+    // Written here so the reproducer stays one self-contained file.
+    // `{{` / `}}` are the escaped braces — a bare `{` starts a
+    // format placeholder.
+    w = file(ROWS_JSON);
+    w.write("[{{\"name\":\"a\",\"color\":\"#0a2c5e\",\"slope\":1,\"drop\":0,\"ok\":true}},{{\"name\":\"b\",\"color\":\"#2a7ec0\",\"slope\":2,\"drop\":1,\"ok\":false}}]");
+
+    println("tail-return -> {len(load_tail(ROWS_JSON))}   (want 2)");
+    println("via a local -> {len(load_local(ROWS_JSON))}   (want 2)");
+    println("inline      -> {len(file(ROWS_JSON).content() as vector<Row>)}   (want 2)");
+}

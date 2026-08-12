@@ -32,3 +32,4 @@ no longer reproducing).
 | [`u8_vector_in_wrapper.loft`](u8_vector_in_wrapper.loft) | `vector<Struct-with-u8>` corrupts on `:j` when reached via `hash → for-iter → vector → wrapper → :j` | § Open #1 |
 | [`const_param_store_lock.loft`](const_param_store_lock.loft) | Two `const` struct params + writing through a third (non-const) param's vector trips `Claim on read-only store` | § Open #2 |
 | [`struct_with_hash_native_return.loft`](struct_with_hash_native_return.loft) | Native codegen loses struct type info when a function returns a struct containing a `hash<…>`.  Blocks `make play` (interpret-mode workaround in place). | § Open #3 |
+| [`json_vector_cast_native_tail_return.loft`](json_vector_cast_native_tail_return.loft) | Native codegen SILENTLY answers `[]` for a `text as vector<Struct>` cast in tail-return position.  Empties dryopea's palette natively; no panic, no diagnostic. | § Open #4 |
