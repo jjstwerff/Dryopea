@@ -35,7 +35,7 @@ const GRASS:        integer = 5;      // examples/palette.json, in file order
 // route exists, and these tests should move to naming the bubble when
 // it does.
 fn no_field() -> FlowField {
-    flow_build(load_palette(PALETTE_PATH), painted_empty(),
+    flow_build(load_palette(PALETTE_PATH), painted_empty(), height_layer_empty(),
                ENEMY_KIND_REGULAR as u8? ?? 0, Hex { q: 0, r: 0 })
 }
 
@@ -124,7 +124,7 @@ fn test_spawn_wave_emits_count_enemies() {
     place_spawn(tswe_mw, 10,   0,  0 as u8);
     place_spawn(tswe_mw,  0,  10,  1 as u8);
     place_spawn(tswe_mw, -10,  0,  3 as u8);
-    spawn_wave(tswe_state, 5, tswe_mw, 0, 0, 5);
+    spawn_wave(tswe_state, 5, ENEMY_KIND_REGULAR as u8? ?? 0, tswe_mw, 0, 0, 5);
     assert(len(tswe_state.enemies) == 5, "5 enemies emitted");
 }
 
@@ -133,7 +133,7 @@ fn test_spawn_wave_enemy_at_active_marker_hex() {
     tsea_mw = marker_empty();
     place_spawn(tsea_mw, 10, 0,  0 as u8);
     place_spawn(tsea_mw, 0, 10,  1 as u8);
-    spawn_wave(tsea_state, 4, tsea_mw, 0, 0, 5);
+    spawn_wave(tsea_state, 4, ENEMY_KIND_REGULAR as u8? ?? 0, tsea_mw, 0, 0, 5);
     // Every spawned enemy is at one of the two marker positions.
     for tsea_e in tsea_state.enemies {
         tsea_at_a = tsea_e.q == 10 && tsea_e.r == 0;
@@ -146,7 +146,7 @@ fn test_spawn_wave_heading_from_marker() {
     tswh_state = wave_state_empty();
     tswh_mw = marker_empty();
     place_spawn(tswh_mw, 10, 0, 2 as u8);   // direction = 2
-    spawn_wave(tswh_state, 1, tswh_mw, 0, 0, 5);
+    spawn_wave(tswh_state, 1, ENEMY_KIND_REGULAR as u8? ?? 0, tswh_mw, 0, 0, 5);
     assert(tswh_state.enemies[0].heading == 2 as u8,
            "first enemy inherits marker's direction (2)");
 }
@@ -159,7 +159,7 @@ fn test_spawn_wave_round_robin_distributes() {
     place_spawn(tsrr_mw, 10,   0,  0 as u8);
     place_spawn(tsrr_mw,  0,  10,  1 as u8);
     place_spawn(tsrr_mw, -10,  0,  3 as u8);
-    spawn_wave(tsrr_state, 6, tsrr_mw, 0, 0, 5);
+    spawn_wave(tsrr_state, 6, ENEMY_KIND_REGULAR as u8? ?? 0, tsrr_mw, 0, 0, 5);
     // Cursor must have advanced 6 steps.
     assert(tsrr_state.pick_cursor == 6, "cursor advanced by spawn count");
     // Active-marker iteration order is whatever the underlying
@@ -182,7 +182,7 @@ fn test_spawn_wave_no_active_emits_nothing() {
     tsna_state = wave_state_empty();
     tsna_mw = marker_empty();
     place_spawn(tsna_mw, 2, 0, 0 as u8);    // close, filtered
-    spawn_wave(tsna_state, 5, tsna_mw, 0, 0, 10);
+    spawn_wave(tsna_state, 5, ENEMY_KIND_REGULAR as u8? ?? 0, tsna_mw, 0, 0, 10);
     assert(len(tsna_state.enemies) == 0,
            "all markers disabled → no spawns");
     assert(tsna_state.pick_cursor == 0,
@@ -196,8 +196,8 @@ fn test_spawn_wave_appends_to_existing() {
     tswa_mw = marker_empty();
     place_spawn(tswa_mw, 10, 0, 0 as u8);
     place_spawn(tswa_mw, 0, 10, 1 as u8);
-    spawn_wave(tswa_state, 3, tswa_mw, 0, 0, 5);
-    spawn_wave(tswa_state, 2, tswa_mw, 0, 0, 5);
+    spawn_wave(tswa_state, 3, ENEMY_KIND_REGULAR as u8? ?? 0, tswa_mw, 0, 0, 5);
+    spawn_wave(tswa_state, 2, ENEMY_KIND_REGULAR as u8? ?? 0, tswa_mw, 0, 0, 5);
     assert(len(tswa_state.enemies) == 5, "3 + 2 = 5 enemies total");
     assert(tswa_state.pick_cursor == 5, "cursor advanced over both calls");
 }
@@ -208,7 +208,7 @@ fn test_enemy_tick_walks_one_hex_south() {
     tet_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 0 as u8, alive: true };
-    enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable(), no_field(), occupancy_empty());
+    enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), no_field(), occupancy_empty());
     assert(tet_e.q == 5, "south: q unchanged");
     assert(tet_e.r == 6, "south: r increased by 1");
 }
@@ -217,7 +217,7 @@ fn test_enemy_tick_walks_one_hex_north() {
     teh_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 3 as u8, alive: true };
-    enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable(), no_field(), occupancy_empty());
+    enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), no_field(), occupancy_empty());
     assert(teh_e.q == 5, "north: q unchanged");
     assert(teh_e.r == 4, "north: r decreased by 1");
 }
@@ -226,7 +226,7 @@ fn test_enemy_tick_dead_doesnt_move() {
     tedd_e = Enemy { q: 5, r: 5,
                      kind: ENEMY_KIND_REGULAR as u8,
                      heading: 0 as u8, alive: false };
-    enemy_tick(tedd_e, load_palette(PALETTE_PATH), walkable(), no_field(), occupancy_empty());
+    enemy_tick(tedd_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), no_field(), occupancy_empty());
     assert(tedd_e.q == 5, "dead: q frozen");
     assert(tedd_e.r == 5, "dead: r frozen");
 }
@@ -283,7 +283,7 @@ fn test_integration_spawn_and_walk_one_tick() {
     tisw_state = wave_state_empty();
     tisw_mw = marker_empty();
     place_spawn(tisw_mw, 0, -15, 0 as u8);   // north of core, heading south
-    spawn_wave(tisw_state, 1, tisw_mw, 0, 0, 10);
+    spawn_wave(tisw_state, 1, ENEMY_KIND_REGULAR as u8? ?? 0, tisw_mw, 0, 0, 10);
     assert(tisw_state.enemies[0].r == -15, "spawned at marker hex");
     wave_tick(tisw_state, load_palette(PALETTE_PATH), walkable(), Hex { q: 0, r: 0 });
     assert(tisw_state.enemies[0].r == -14, "walked one hex toward core");

@@ -1,0 +1,570 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F6 — passability as a height STEP, per climb limit.
+//
+// ── What F1 could not do, and why it had to change ──────────────
+//
+// F1 measured a POSITION with a rule the spec states about a MOVE,
+// and said so at the site: they coincide only while everything that
+// is not a structure sits at height 0.  `height.loft` ends that.
+// Once runtime can raise a hex, two neighbours can both be raised and
+// the step between them be nothing at all — so "is this hex taller
+// than my climb?" stops being the question and "is the RISE between
+// these two hexes more than my climb?" starts being it.
+//
+// ── The discriminator ───────────────────────────────────────────
+//
+// A rule that reads only the palette answers the same thing forever.
+// So every gate here is a PAIR over one unchanged world: the same
+// classes, the same painted hexes, the same predicate, with one hex
+// raised between the halves.  If who-can-pass does not move, the
+// implementation is a material lookup wearing a height rule's name —
+// which is exactly what plan 11 F0 point 3 found in `walk_ground`.
+//
+// ── Two consequences worth stating as tests ─────────────────────
+//
+// 1. **The step is asymmetric.**  A drop is free and a climb is not,
+//    so a wall beside the core is in a robot's field (it could step
+//    down and walk home) and is still not somewhere a robot can be
+//    put.  An implementation comparing `abs(rise)` would seal enemies
+//    onto whatever they fell from.
+// 2. **A class reaches passability ONLY through `climb_limit`.**  That
+//    is what lets `wave_fields` key on the limit rather than the kind,
+//    and it is asserted rather than asserted-in-a-comment: two kinds
+//    that agree on their limit must produce equal fields.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// examples/palette.json, in file order.
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+const WALL_HIGH: integer = 10;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+// A grass corridor from the core out to (hi, 0) — flat, so every
+// height below is one this file put there.
+fn corridor(hi: integer) -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=hi {
+        paint(c_pw, c_q, 0, as_u8(GRASS));
+    }
+    c_pw
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A layer with one pile on it.
+fn pile(q: integer, r: integer, metres: float) -> HeightLayer {
+    p_hl = height_layer_empty();
+    height_raise(p_hl, q, r, metres);
+    p_hl
+}
+
+fn field_for(kind: integer, pw: PaintedWorld, hl: HeightLayer) -> FlowField {
+    flow_build(pal(), pw, hl, as_u8(kind), core())
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The layer: a RISE above the map as painted
+// ─────────────────────────────────────────────────────────────────
+
+fn test_an_empty_layer_is_the_map_exactly_as_painted() {
+    tel_pw = corridor(3);
+    paint(tel_pw, 2, 0, as_u8(WALL));
+
+    assert(height_rise(height_layer_empty(), 2, 0) == 0.0, "nothing has been piled");
+    assert(height_count(height_layer_empty()) == 0, "and the layer is empty");
+    assert(hex_height(pal(), tel_pw, height_layer_empty(), 2, 0) == 3.0,
+           "so a wall is its palette height and no more");
+    assert(hex_height(pal(), tel_pw, height_layer_empty(), 1, 0) == 0.0,
+           "and flat grass is 0 m");
+}
+
+// Bodies accumulate (`ENEMY_MOVEMENT.md` § Bodies are terrain), so a
+// second death on a hex must raise it further rather than replace the
+// first — a setter would cap every pile at one body and the chokepoint
+// that closes itself would never close.
+fn test_a_pile_accumulates_rather_than_replacing() {
+    tpa_hl = height_layer_empty();
+    height_raise(tpa_hl, 4, 0, 0.5);
+    height_raise(tpa_hl, 4, 0, 0.5);
+    height_raise(tpa_hl, 4, 0, 0.5);
+
+    assert(height_rise(tpa_hl, 4, 0) == 1.5, "three half-metre bodies: {height_rise(tpa_hl, 4, 0)}");
+    assert(height_count(tpa_hl) == 1, "on one hex");
+}
+
+// Collecting bodies is the counter-play the same section describes, so
+// a negative rise is how a pile shrinks — and it stops at the ground.
+fn test_collecting_more_than_fell_digs_no_hole() {
+    tcm_hl = pile(4, 0, 1.0);
+    height_raise(tcm_hl, 4, 0, -4.0);
+
+    assert(height_rise(tcm_hl, 4, 0) == 0.0, "the ground is the floor, not a starting point");
+}
+
+// The layer ADDS.  A pile on a wall is the wall plus the pile, which
+// is what makes bodies and structures one rule instead of two.
+fn test_the_layer_adds_to_what_the_palette_paints() {
+    tla_pw = corridor(3);
+    paint(tla_pw, 2, 0, as_u8(WALL));
+
+    assert(hex_height(pal(), tla_pw, pile(2, 0, 1.5), 2, 0) == 4.5,
+           "a 3 m wall under a 1.5 m pile");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The step is an EDGE, and it is asymmetric
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_climb_is_refused_and_the_drop_back_is_free() {
+    tcr_pw = corridor(4);
+    tcr_hl = pile(2, 0, 1.5);
+
+    assert(!can_step(pal(), tcr_pw, tcr_hl, as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0)),
+           "a robot climbs 0.0 m and this is a 1.5 m step up");
+    assert(can_step(pal(), tcr_pw, tcr_hl, as_u8(ENEMY_KIND_REGULAR), hex(2, 0), hex(3, 0)),
+           "and the same edge the other way is a drop, which is free");
+}
+
+fn test_the_step_fault_names_both_numbers() {
+    tsf_why = step_fault(pal(), corridor(4), pile(2, 0, 1.5),
+                         as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0));
+
+    assert(tsf_why.contains("1.5"),   "it names the step: {tsf_why}");
+    assert(tsf_why.contains("0.0"),   "and the climb: {tsf_why}");
+    assert(tsf_why.contains("robot"), "and the class: {tsf_why}");
+    assert(tsf_why.contains("(2, 0)"), "and where: {tsf_why}");
+}
+
+// ⚠ **The test an absolute-height rule cannot pass.**  Both hexes are
+// 1.5 m up — well past a robot's 0.0 m climb — and the move between
+// them is level ground, so it is legal.  A predicate that asked "is
+// the destination taller than my climb?" refuses this, and with it
+// refuses an enemy ever walking ALONG a pile it is standing on.
+fn test_a_step_between_two_raised_hexes_is_no_step_at_all() {
+    tsb_hl = height_layer_empty();
+    height_raise(tsb_hl, 2, 0, 1.5);
+    height_raise(tsb_hl, 3, 0, 1.5);
+
+    assert(can_step(pal(), corridor(4), tsb_hl, as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0)),
+           "1.5 m to 1.5 m is level, whatever the absolute height is");
+}
+
+// The surface question survives untouched: sea is not walkable at any
+// height, and no amount of level ground makes it so.
+fn test_a_level_step_onto_water_is_still_refused() {
+    assert(!can_step(pal(), corridor(4), height_layer_empty(),
+                     as_u8(ENEMY_KIND_REGULAR), hex(4, 0), hex(5, 0)),
+           "(5, 0) is unpainted, and unpainted is sea");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE GATE: a raised hex flips who can pass
+// ─────────────────────────────────────────────────────────────────
+//
+// One world, one palette, two classes, one hex raised between the
+// halves.  This is plan 11's F6 row stated as code.
+
+fn test_a_raised_hex_flips_who_can_pass() {
+    trh_pw   = corridor(6);
+    trh_flat = height_layer_empty();
+    trh_pile = pile(3, 0, 1.5);
+
+    // Before: the corridor is flat and every class walks it.
+    assert(can_step(pal(), trh_pw, trh_flat, as_u8(ENEMY_KIND_REGULAR), hex(4, 0), hex(3, 0)),
+           "flat ground holds a robot");
+    assert(can_step(pal(), trh_pw, trh_flat, as_u8(ENEMY_KIND_INSECT), hex(4, 0), hex(3, 0)),
+           "and an insect");
+
+    // After: nothing about the MAP changed — only the runtime layer.
+    assert(!can_step(pal(), trh_pw, trh_pile, as_u8(ENEMY_KIND_REGULAR), hex(4, 0), hex(3, 0)),
+           "1.5 m is past a robot's climb");
+    assert(can_step(pal(), trh_pw, trh_pile, as_u8(ENEMY_KIND_INSECT), hex(4, 0), hex(3, 0)),
+           "and inside an insect's — the flip is PER CLASS");
+}
+
+// The same flip, seen through the field rather than the predicate: a
+// pile in a corridor severs a robot's route and leaves an insect's.
+fn test_the_field_stops_where_the_pile_starts() {
+    tfs_pw = corridor(6);
+
+    tfs_flat = field_for(ENEMY_KIND_REGULAR, tfs_pw, height_layer_empty());
+    assert(flow_distance(tfs_flat, 6, 0) == 6, "flat: the far end is six steps out");
+
+    tfs_bot = field_for(ENEMY_KIND_REGULAR, tfs_pw, pile(3, 0, 1.5));
+    assert(!flow_reachable(tfs_bot, 6, 0), "piled: a robot has no route past it");
+    assert(flow_reachable(tfs_bot, 2, 0),  "the near side is still its own");
+
+    tfs_bug = field_for(ENEMY_KIND_INSECT, tfs_pw, pile(3, 0, 1.5));
+    assert(flow_distance(tfs_bug, 6, 0) == 6, "and an insect walks straight over it");
+}
+
+// ⚠ The field records the heights it was SWEPT with, which is what
+// lets `flow_steps` check a step without the world.  A field that
+// forgot them would offer the pile as a step because it is closer.
+fn test_the_field_carries_the_heights_it_was_built_against() {
+    tfc_f = field_for(ENEMY_KIND_INSECT, corridor(6), pile(3, 0, 1.5));
+
+    assert(flow_height(tfc_f, 3, 0) == 1.5, "the pile: {flow_height(tfc_f, 3, 0)}");
+    assert(flow_height(tfc_f, 4, 0) == 0.0, "and the flat hex beside it");
+}
+
+// The consequence, stated as the mover's own question: a robot beside
+// a pile that is closer to the core is NOT offered it.
+fn test_closer_is_not_enough_the_step_has_to_be_legal() {
+    tcn_f = field_for(ENEMY_KIND_REGULAR, corridor(6), pile(3, 0, 1.5));
+    tcn_s = flow_steps(tcn_f, 4, 0);
+
+    assert(!flow_reachable(tcn_f, 4, 0), "with the pile in the way there is no route at all");
+    assert(len(tcn_s) == 0, "so nothing is offered: {len(tcn_s)} steps");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Bodies as a ramp — the mechanic the spec promises, with no
+// special case anywhere
+// ─────────────────────────────────────────────────────────────────
+//
+// `ENEMY_MOVEMENT.md` § Bodies are terrain, point 3: *"a pile beside a
+// wall shortens the step onto it.  When it is high enough, enemies
+// climb their own dead onto the wall — the perimeter is breached
+// without the wall ever being broken."*  Nothing below implements
+// that; it falls out of the height step.
+
+fn wall_high_world() -> PaintedWorld {
+    whw_pw = corridor(6);
+    paint(whw_pw, 3, 0, as_u8(WALL_HIGH));
+    whw_pw
+}
+
+fn test_a_high_wall_is_the_anti_insect_barrier() {
+    tah_f = field_for(ENEMY_KIND_INSECT, wall_high_world(), height_layer_empty());
+
+    assert(!flow_reachable(tah_f, 6, 0),
+           "5 m is past an insect's 3 m climb — that is what wall_high is FOR");
+}
+
+fn test_and_the_barrier_holds_until_the_pile_is_high_enough() {
+    tab_f = field_for(ENEMY_KIND_INSECT, wall_high_world(), pile(4, 0, 1.0));
+
+    assert(!flow_reachable(tab_f, 6, 0),
+           "a 1 m pile leaves a 4 m step, which is still too much");
+}
+
+fn test_an_insect_climbs_its_own_dead_onto_the_high_wall() {
+    tai_f = field_for(ENEMY_KIND_INSECT, wall_high_world(), pile(4, 0, 3.0));
+
+    assert(flow_reachable(tai_f, 6, 0),
+           "3 m of bodies leaves a 2 m step onto a 5 m wall, and an insect climbs 3");
+    assert(flow_distance(tai_f, 6, 0) == 6,
+           "over the top, not around: {flow_distance(tai_f, 6, 0)} steps");
+}
+
+// And the ramp is per class, like everything else: the same pile does
+// nothing for a robot, which climbs nothing at all.
+fn test_the_same_ramp_does_nothing_for_a_robot() {
+    tsr_f = field_for(ENEMY_KIND_REGULAR, wall_high_world(), pile(4, 0, 3.0));
+
+    assert(!flow_reachable(tsr_f, 6, 0), "a robot cannot even get onto the pile");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A class reaches passability ONLY through its climb limit
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ The claim `wave_fields` keys on, asserted rather than commented.
+// Kind 99 is a class the table has never heard of, so `climb_limit`
+// hands it the strictest limit — the robot's.  Its field must
+// therefore be the robot's field, cell for cell.  Give a class a
+// second movement axis (a vehicle reading `walk_vehicle`, say) and
+// this goes red, which is the warning the key needs.
+fn test_two_kinds_that_climb_alike_get_the_same_field() {
+    ttk_pw  = corridor(6);
+    paint(ttk_pw, 3, 0, as_u8(WALL));
+
+    ttk_bot = field_for(ENEMY_KIND_REGULAR, ttk_pw, height_layer_empty());
+    ttk_unk = field_for(99, ttk_pw, height_layer_empty());
+
+    assert(climb_limit(as_u8(99)) == climb_limit(as_u8(ENEMY_KIND_REGULAR)),
+           "an unknown class takes the strictest limit");
+    assert(flow_count(ttk_bot) == flow_count(ttk_unk),
+           "so the fields are the same size: {flow_count(ttk_bot)} vs {flow_count(ttk_unk)}");
+    for ttk_h in visible_hexes(core(), 8) {
+        assert(flow_distance(ttk_bot, ttk_h.q, ttk_h.r) == flow_distance(ttk_unk, ttk_h.q, ttk_h.r),
+               "and equal at ({ttk_h.q}, {ttk_h.r})");
+    }
+}
+
+fn test_a_roster_of_two_such_classes_builds_one_field() {
+    tro_s = wave_state_empty();
+    tro_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 4 as u8, alive: true }];
+    tro_s.enemies += [Enemy { q: 5, r: 0, kind: as_u8(99),                 heading: 4 as u8, alive: true }];
+
+    assert(len(wave_fields(tro_s, pal(), corridor(6), core())) == 1,
+           "two classes, one climb limit, one sweep");
+}
+
+fn test_and_a_roster_of_two_climb_limits_builds_two() {
+    tat_s = wave_state_empty();
+    tat_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 4 as u8, alive: true }];
+    tat_s.enemies += [Enemy { q: 5, r: 0, kind: as_u8(ENEMY_KIND_INSECT),  heading: 4 as u8, alive: true }];
+
+    assert(len(wave_fields(tat_s, pal(), corridor(6), core())) == 2,
+           "a wall stops one and not the other, so they cannot share a route");
+}
+
+fn test_a_dead_enemys_class_builds_no_field() {
+    tde_s = wave_state_empty();
+    tde_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_INSECT), heading: 4 as u8, alive: false }];
+
+    assert(len(wave_fields(tde_s, pal(), corridor(6), core())) == 0,
+           "a field built for nobody is a number nobody can explain");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The mover asks about the MOVE, in both steering modes
+// ─────────────────────────────────────────────────────────────────
+//
+// Outside the bubble an enemy follows its heading, and F1b made that
+// stop at what it cannot cross.  F6 makes "cannot cross" the step
+// rather than the destination, so a pile stops it exactly as a wall
+// does — and it can still walk DOWN off one.
+
+fn far_east(kind: integer, q: integer) -> Enemy {
+    Enemy { q: q, r: 0, kind: as_u8(kind), heading: 4 as u8, alive: true }
+}
+
+fn test_approach_mode_will_not_climb_a_pile() {
+    // 30 hexes out is outside the 25-hex scrambler bubble, so this is
+    // the heading walking, not the field.
+    tap_pw = corridor(30);
+    tap_hl = pile(27, 0, 1.5);
+    tap_e  = far_east(ENEMY_KIND_REGULAR, 30);
+    tap_f  = field_for(ENEMY_KIND_REGULAR, tap_pw, tap_hl);
+
+    for _ in 0..10 { enemy_tick(tap_e, pal(), tap_pw, tap_hl, tap_f, occupancy_empty()); }
+
+    assert(tap_e.q == 28 && tap_e.r == 0,
+           "it stops the hex before the pile: ({tap_e.q}, {tap_e.r})");
+}
+
+fn test_but_it_walks_down_off_one() {
+    tbw_pw = corridor(30);
+    tbw_hl = pile(30, 0, 1.5);
+    tbw_e  = far_east(ENEMY_KIND_REGULAR, 30);
+    tbw_f  = field_for(ENEMY_KIND_REGULAR, tbw_pw, tbw_hl);
+
+    enemy_tick(tbw_e, pal(), tbw_pw, tbw_hl, tbw_f, occupancy_empty());
+
+    assert(tbw_e.q == 29, "a drop is free: ({tbw_e.q}, {tbw_e.r})");
+}
+
+// The same in engage mode — inside the bubble, steered by the field.
+fn test_engage_mode_routes_a_wave_round_a_pile() {
+    // The corridor plus a bypass at r = -1 round (3, 0), and a pile ON
+    // (3, 0) rather than a wall.  Nothing in the palette changed; the
+    // route did.
+    ter_pw = corridor(12);
+    paint(ter_pw, 4, -1, as_u8(GRASS));
+    paint(ter_pw, 3, -1, as_u8(GRASS));
+
+    ter_s = wave_state_empty();
+    height_raise(ter_s.heights, 3, 0, 1.5);
+    ter_s.enemies += [far_east(ENEMY_KIND_REGULAR, 12)];
+
+    for _ in 0..10 { wave_tick(ter_s, pal(), ter_pw, core()); }
+
+    ter_e = ter_s.enemies[0] ?? Enemy {};
+    assert(ter_e.r == -1,
+           "r = -1 is a hex the heading could never reach — the pile made it route: ({ter_e.q}, {ter_e.r})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The position rule keeps up with the step rule
+// ─────────────────────────────────────────────────────────────────
+//
+// `enemies passable` has no history to ask where an enemy came from,
+// so it asks whether SOME neighbour offers a legal step in.  On flat
+// ground that is F1's rule unchanged — which is why none of F1's
+// tests moved — and beside a raised hex it is strictly better.
+
+fn test_on_flat_ground_the_position_rule_is_f1s_rule() {
+    tof_pw = corridor(4);
+    paint(tof_pw, 2, 0, as_u8(WALL));
+
+    assert(!can_occupy(pal(), tof_pw, height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), 2, 0),
+           "a robot is not on a 3 m wall with flat ground all round it");
+    assert(can_occupy(pal(), tof_pw, height_layer_empty(), as_u8(ENEMY_KIND_INSECT), 2, 0),
+           "and an insect is");
+}
+
+// The half F1's absolute rule could not say: raise the ground beside
+// the hex and standing there becomes legal, because the way up got
+// shorter.  This is the same arithmetic as the ramp above, asked as a
+// position rather than as a route.
+fn test_a_pile_beside_a_wall_makes_its_top_a_place_a_robot_could_be() {
+    tpb_pw = corridor(4);
+    paint(tpb_pw, 2, 0, as_u8(WALL));
+    tpb_hl = height_layer_empty();
+    height_raise(tpb_hl, 1, 0, 3.0);
+    height_raise(tpb_hl, 3, 0, 3.0);
+
+    assert(can_occupy(pal(), tpb_pw, tpb_hl, as_u8(ENEMY_KIND_REGULAR), 2, 0),
+           "3 m of bodies on both sides makes the wall top level with them");
+}
+
+// ⚠ The induction the two rules rest on, checked rather than argued:
+// every hex the mover puts an enemy on is one `can_occupy` accepts.
+// If they ever disagree, a green `enemies passable` would only prove
+// the mover and the measurement shared a mistake.
+fn test_every_hex_the_mover_uses_passes_the_position_rule() {
+    teh_pw = corridor(12);
+    paint(teh_pw, 4, -1, as_u8(GRASS));
+    paint(teh_pw, 3, -1, as_u8(GRASS));
+    paint(teh_pw, 3, 0, as_u8(WALL));
+
+    teh_s = wave_state_empty();
+    height_raise(teh_s.heights, 5, 0, 0.0);
+    teh_s.enemies += [far_east(ENEMY_KIND_REGULAR, 12)];
+    teh_s.enemies += [far_east(ENEMY_KIND_INSECT, 12)];
+
+    for _ in 0..16 {
+        wave_tick(teh_s, pal(), teh_pw, core());
+        for teh_e in teh_s.enemies {
+            teh_why = occupancy_fault(pal(), teh_pw, teh_s.heights, teh_e.kind, teh_e.q, teh_e.r);
+            assert(teh_why == "", "({teh_e.q}, {teh_e.r}): {teh_why}");
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario: two classes, two routes
+// ─────────────────────────────────────────────────────────────────
+//
+// Pinned here with its measurement count, because a scenario whose
+// assertions were deleted still finishes and still reports `ok`.
+
+fn test_two_classes_two_routes_plays_green() {
+    ttc_s = editor_state_new(PALETTE);
+    editor_state_attach(ttc_s,
+                        "tests/actual/f6_routes.json",
+                        "tests/actual/f6_routes_markers.json");
+    ttc = script_run_file(ttc_s, "tests/scripts/two-classes-two-routes.keys", SHOTS);
+
+    assert(ttc.ok, "two-classes-two-routes: {script_describe(ttc)}");
+    assert(ttc.checks == 23, "it made {ttc.checks} measurements, expected 23");
+    assert(ttc.snaps == 1, "and took its picture");
+}
+
+fn test_the_scenario_file_is_on_disk() {
+    assert(file("tests/scripts/two-classes-two-routes.keys").exists(),
+           "the test above would pass against an empty file");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The new script vocabulary refuses to fail quietly
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ An unknown class name must be an ERROR, not a fallback to robot.
+// A `.keys` file that asked for insects, silently got robots and then
+// asserted that they stopped at the wall would be GREEN — and would be
+// measuring the opposite of what it says.
+fn test_an_unknown_wave_class_is_an_error() {
+    tuw = script_run(editor_state_new(PALETTE), "wave 1 beetle", SHOTS);
+
+    assert(!tuw.ok, "a typo in a class name is not a robot");
+    assert(tuw.message.contains("robot"), "and it says what it does know: {tuw.message}");
+}
+
+fn test_raise_checks_its_arguments() {
+    trc_a = script_run(editor_state_new(PALETTE), "raise 1 0", SHOTS);
+    assert(!trc_a.ok && trc_a.message.contains("<metres>"), "{trc_a.message}");
+
+    trc_b = script_run(editor_state_new(PALETTE), "raise x 0 1.5", SHOTS);
+    assert(!trc_b.ok && trc_b.message.contains("integers"), "{trc_b.message}");
+
+    trc_c = script_run(editor_state_new(PALETTE), "raise 1 0 high", SHOTS);
+    assert(!trc_c.ok && trc_c.message.contains("number"), "{trc_c.message}");
+}
+
+// ⚠ The red half of the instrument, as a run: the SAME script with the
+// pile raised is the only difference, and it turns a wave that walks
+// home into a wave that stops.  Kept as an inline string because every
+// file in `tests/scripts/` must play green.
+const A_CORRIDOR_AND_A_WAVE: text = `
+    do toggle_mode
+    do cycle_kind
+    click 0 0
+    do cycle_kind
+    do rotate
+    do rotate
+    do rotate
+    do rotate
+    click 12 0
+    do toggle_mode
+    palette 5
+    drag 12 0 0 0
+`;
+
+fn test_the_pile_is_what_stops_them() {
+    // Without it: eight ticks and the leader is four hexes out.
+    twp_a = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 8\nenemy 0 4 0", SHOTS);
+    assert(twp_a.ok, "{script_describe(twp_a)}");
+
+    // With it, and nothing else changed: stopped in front of it.
+    twp_b = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 1.5\ntick 8\nenemy 0 7 0", SHOTS);
+    assert(twp_b.ok, "{script_describe(twp_b)}");
+}
+
+// ⚠ **The run that separates "the step is a RISE" from "the step is
+// the destination".**  Everything else in this file has its source hex
+// at 0 m, where the two rules give the same answer — so both would
+// pass, which is exactly the kind of green plan 11 keeps catching.
+//
+// Here the whole outer half of the corridor is 1.5 m up.  A robot
+// climbs 0.0 m and could never get ONTO that plateau; standing on it
+// already, every step along it is level and every step off it is a
+// drop, so it walks the lot.  Read as an absolute height, every one of
+// those hexes is 1.5 m past its climb and the enemy never moves at
+// all.
+fn test_a_robot_walks_along_a_plateau_it_could_never_climb_onto() {
+    tap_run = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 12 0 1.5\nraise 11 0 1.5\nraise 10 0 1.5\nraise 9 0 1.5\ntick 4\nenemy 0 8 0\nenemies passable",
+        SHOTS);
+
+    assert(tap_run.ok, "{script_describe(tap_run)}");
+    assert(tap_run.checks == 2, "the hex it reached and the passability: {tap_run.checks}");
+}
+
+// And the pile is RUNTIME state: it never reaches the save file, so a
+// reloaded session is the ground as painted.  The counter-test to
+// "pile heights live with the wave".
+fn test_a_pile_is_not_saved() {
+    tap = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 1.5\ndo save\ncount painted 13 13", SHOTS);
+
+    assert(tap.ok, "{script_describe(tap)}");
+    assert(!file("tests/actual/f6_unsaved.json").exists(),
+           "the run was never attached, so nothing was written anywhere else either");
+}

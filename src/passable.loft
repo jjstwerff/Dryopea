@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// Passability — may an enemy of this class be on this hex?
+// Passability — may an enemy of this class make this move?
 //
-// Plan 11 phase F1.  The rule is
+// Plan 11 phases F1 and F6.  The rule is
 // `docs/ENEMY_MOVEMENT.md` § Two modes, one passability rule; this
 // file is that rule and nothing else, so the flow field (F2), the
 // mover (F5) and the measurement (`enemies passable`) all read one
@@ -19,28 +19,52 @@
 // exact bug this whole rule exists to prevent, measured by plan 11
 // F0 and pinned by a test in `tests/11_f1_passable.loft`.
 //
-// Passability is therefore TWO questions, and a hex must answer
+// Passability is therefore TWO questions, and a move must answer
 // both:
 //
 //   1. is the surface one this class stands on?   `walk_ground`
 //   2. is the step onto it within its climb?      height vs climb
 //
-// ── The step, and why a POSITION can be measured with it ────────
+// ── The step is an EDGE, and F6 is where that started to matter ──
 //
-// The spec's rule is about a MOVE: `height(to) - height(from) <=
-// climb(class)`.  What this file answers is about a POSITION — is
-// an enemy standing somewhere it could be?  Those coincide today
-// because everything that is not a structure is at height 0
-// (`ENEMY_MOVEMENT.md` § Where `height` comes from: terrain heights
-// wait on plan 02's slope solver, and body piles are F8's runtime
-// state).  With the ground flat, the step onto a hex IS that hex's
-// structure height.
+// The spec's rule is about a MOVE:
 //
-// Written this way the generalisation is additive: when terrain
-// heights and body piles exist, `hex_height` gains their
-// contribution and every caller keeps the same shape.  Written as
-// "is this hex a wall", each of them would have been a new special
-// case.
+//     height(to) - height(from)  <=  climb(class)
+//
+// F1 could measure a POSITION with it, because everything that was
+// not a structure sat at height 0 and the step onto a hex WAS that
+// hex's height.  F6 ends that: `height.loft` lets runtime raise a
+// hex, so two neighbours can both be raised and the step between them
+// be nothing at all.  `can_step` is the rule as the spec states it,
+// and it is what the field and the mover ask.
+//
+// ⚠ **It is asymmetric, and that is the physics.**  A drop is free —
+// `height(to) - height(from)` is negative going down, and every climb
+// limit is non-negative — so a robot that somehow stands on a wall can
+// step off it and never back on.  An implementation that compared
+// `abs(...)` would seal enemies onto the terrain they fell from.
+//
+// ── What a POSITION can still honestly say ──────────────────────
+//
+// `enemies passable` asks about a hex an enemy is standing on, with no
+// history to say where it came from.  The best a position can say is
+// **"some neighbour offers a legal step in"** — which is
+// `height(here) - floor(here) <= climb`, where the floor is the LOWEST
+// standable neighbour.  On flat ground that is the F1 rule unchanged,
+// which is why F1's tests did not move; beside a raised hex it is
+// strictly better, and it is the rule that lets an insect climb its
+// own dead onto a `wall_high` (`ENEMY_MOVEMENT.md` § Bodies are
+// terrain, point 3) with no special case anywhere.
+//
+// ⚠ **A position rule cannot replace the edge rule, and F6 proved
+// it.**  If `flow_build` filtered its cells with `can_occupy`, the
+// step check would be VACUOUS: `can_occupy(x)` means `height(x)` is
+// within a climb of its lowest neighbour, so for any two adjacent
+// occupiable hexes the step between them is legal in both directions
+// by construction, and the height rule could be deleted without a
+// single test noticing.  The field therefore filters NODES by the
+// surface and EDGES by the step — see `flow.loft` § What the field is
+// over.
 //
 // ── Where the climb limits come from ────────────────────────────
 //
@@ -52,8 +76,10 @@
 // table, which is why they are derived here rather than added to
 // `examples/numbers.json` as a third statement of the same fact.
 
+use world;
 use palette;
 use painted;
+use height;
 
 // ─── Enemy classes ──────────────────────────────────────────────
 //
@@ -77,6 +103,15 @@ pub const CLIMB_REGULAR: float = 0.0;
 pub const CLIMB_INSECT:  float = 3.0;   // exactly a `wall`; a `wall_high` is 5.0
 
 // How far this class can step up, in metres.
+//
+// ⚠ **This is the class's WHOLE contribution to passability**, which
+// is what lets `spawn.loft` build one field per climb limit instead of
+// one per class (plan 11 F6).  Nothing else about a kind reaches this
+// file, and `tests/11_f6_height_step.loft` asserts it directly: two
+// kinds that agree here produce identical fields.  Give a class a
+// second movement axis — a vehicle reading `walk_vehicle` rather than
+// `walk_ground`, say — and that test goes red, which is the point of
+// pinning it rather than trusting the comment.
 //
 // An unknown kind falls to the regular limit — the STRICTEST one.
 // A class the table has not learned about yet must not be handed
@@ -117,7 +152,8 @@ pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r:
     hgn_e.name
 }
 
-// How tall the thing standing on a hex is, in metres.
+// How tall the thing standing on a hex is, in metres — the painted
+// structure PLUS whatever runtime has piled on it.
 //
 // ⚠ The `?? 0.0` is load-bearing, not defensive noise.
 // `height_override` is `null` for every non-structure —
@@ -126,41 +162,133 @@ pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r:
 // for terrain by accident and would keep giving it until loft's
 // null-comparison semantics moved. Zero metres is what flat ground
 // IS; say it, rather than inherit it.
-pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> float {
-    hex_ground(pal, pw, q, r).height_override ?? 0.0
+//
+// The third source — terrain shape — waits on plan 02's slope solver
+// and lands as one more term here, which is the whole reason this is
+// a sum rather than a lookup.
+pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                  q: integer, r: integer) -> float {
+    (hex_ground(pal, pw, q, r).height_override ?? 0.0) + height_rise(hl, q, r)
 }
 
-// ─── The rule ───────────────────────────────────────────────────
+// ─── Question 1: the surface ────────────────────────────────────
 
-// Why this class may NOT be on this hex — "" when it may.
+// Why this class cannot stand on this hex's SURFACE — "" when it can.
+//
+// The surface question alone, with no height in it: sea is not a
+// surface a ground robot stands on however low it is, and a wall's
+// top IS one however high.  Keeping it separate is what lets the
+// field filter its cells by the surface and its edges by the step.
+pub fn stand_fault(pal: vector<GroundType>, pw: PaintedWorld,
+                   kind: u8, q: integer, r: integer) -> text {
+    sf_e = hex_ground(pal, pw, q, r);
+    if sf_e.walk_ground { return ""; }
+    "'{hex_ground_name(pal, pw, q, r)}' is not a surface a {enemy_class_name(kind)} stands on"
+}
+
+// Can this class stand on this hex's surface, ignoring how it got
+// there?  The boolean face of `stand_fault`.
+pub fn can_stand(pal: vector<GroundType>, pw: PaintedWorld,
+                 kind: u8, q: integer, r: integer) -> boolean {
+    stand_fault(pal, pw, kind, q, r) == ""
+}
+
+// ─── Question 2: the step ───────────────────────────────────────
+
+// Why this class cannot move from `from` to `to` — "" when it can.
+//
+// Both ends must be standable, and the rise between them must be
+// within the class's climb.  This is the spec's rule verbatim, and it
+// is the ONLY passability question the field's edges and the mover
+// ask.
+//
+// It does not check adjacency: callers step through `hex_neighbor`,
+// which is the only place in dryopea allowed to produce a neighbouring
+// coordinate (`world.loft` § The neighbour relation).  A rule that
+// re-derived adjacency here would be a second copy of the lattice.
+pub fn step_fault(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                  kind: u8, from: const Hex, to: const Hex) -> text {
+    stf_from = stand_fault(pal, pw, kind, from.q, from.r);
+    if stf_from != "" { return stf_from; }
+    stf_to = stand_fault(pal, pw, kind, to.q, to.r);
+    if stf_to != "" { return stf_to; }
+
+    stf_rise = hex_height(pal, pw, hl, to.q, to.r) - hex_height(pal, pw, hl, from.q, from.r);
+    stf_c    = climb_limit(kind);
+    if stf_rise > stf_c {
+        return "({from.q}, {from.r}) -> ({to.q}, {to.r}) is a {stf_rise:3.1} m step and a {enemy_class_name(kind)} climbs {stf_c:3.1} m";
+    }
+    ""
+}
+
+// May this class move from `from` to `to`?  The boolean face of
+// `step_fault`, so the two can never disagree.
+pub fn can_step(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                kind: u8, from: const Hex, to: const Hex) -> boolean {
+    step_fault(pal, pw, hl, kind, from, to) == ""
+}
+
+// ─── The position rule, for a measurement with no history ───────
+
+// The height of the LOWEST hex a class could have stepped from — the
+// floor around (q, r).
+//
+// `0.0` when nothing standable adjoins it, which is the world's own
+// base level: an island hex is measured against sea level, exactly as
+// F1's absolute rule measured every hex.  That fallback is what keeps
+// a one-hex test world meaning what it meant.
+//
+// Not per class today: `walk_ground` is a property of the GROUND and
+// every enemy class reads the same field.  The day a class reads
+// `walk_vehicle` instead, this takes a kind and `climb_limit`'s
+// "the class's whole contribution" note stops being true — which
+// `tests/11_f6_height_step.loft` will say out loud.
+pub fn hex_floor(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                 kind: u8, q: integer, r: integer) -> float {
+    hf_lowest = 0.0;
+    hf_any    = false;
+    for hf_n in hex_neighbours(Hex { q: q, r: r }) {
+        if can_stand(pal, pw, kind, hf_n.q, hf_n.r) {
+            hf_h = hex_height(pal, pw, hl, hf_n.q, hf_n.r);
+            if !hf_any || hf_h < hf_lowest { hf_lowest = hf_h; }
+            hf_any = true;
+        }
+    }
+    if !hf_any { return 0.0; }
+    hf_lowest
+}
+
+// Why this class may NOT be standing on this hex — "" when it may.
 //
 // The reason is the return value rather than a boolean plus a
 // lookup, because every caller that reports a fault wants to name
 // it: a gate that says "enemy 3 is somewhere it should not be"
 // costs a debugging session that "enemy 3 stands on a 3.0 m wall
 // and a robot climbs 0.0 m" does not.
-pub fn occupancy_fault(pal: vector<GroundType>, pw: PaintedWorld,
+//
+// See § What a POSITION can still honestly say: this is the surface
+// question plus "some neighbour offers a legal step in", and it is
+// what `enemies passable` asks.  The mover never has to — every hex
+// it moves an enemy onto passed `can_step` from a hex the enemy was
+// legally on, and a legal step in is exactly what makes the
+// destination legal to stand on.  So the two rules agree by
+// induction rather than by coincidence.
+pub fn occupancy_fault(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                        kind: u8, q: integer, r: integer) -> text {
-    of_e     = hex_ground(pal, pw, q, r);
-    of_name  = hex_ground_name(pal, pw, q, r);
-    of_class = enemy_class_name(kind);
+    of_stand = stand_fault(pal, pw, kind, q, r);
+    if of_stand != "" { return of_stand; }
 
-    // 1. the surface
-    if !of_e.walk_ground {
-        return "'{of_name}' is not a surface a {of_class} stands on";
-    }
-    // 2. the step — see § ⚠ `walk_ground` is NOT passability
-    of_h = of_e.height_override ?? 0.0;
-    of_c = climb_limit(kind);
-    if of_h > of_c {
-        return "'{of_name}' is a {of_h:3.1} m step and a {of_class} climbs {of_c:3.1} m";
+    of_rise = hex_height(pal, pw, hl, q, r) - hex_floor(pal, pw, hl, kind, q, r);
+    of_c    = climb_limit(kind);
+    if of_rise > of_c {
+        return "'{hex_ground_name(pal, pw, q, r)}' is a {of_rise:3.1} m step and a {enemy_class_name(kind)} climbs {of_c:3.1} m";
     }
     ""
 }
 
 // May this class be on this hex?  The boolean face of
 // `occupancy_fault`, so the two can never disagree.
-pub fn can_occupy(pal: vector<GroundType>, pw: PaintedWorld,
+pub fn can_occupy(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                   kind: u8, q: integer, r: integer) -> boolean {
-    occupancy_fault(pal, pw, kind, q, r) == ""
+    occupancy_fault(pal, pw, hl, kind, q, r) == ""
 }

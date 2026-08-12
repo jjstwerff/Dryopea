@@ -103,7 +103,7 @@ fn walled_base(wall_kind: integer, gap: integer) -> PaintedWorld {
 }
 
 fn robot_field(pw: PaintedWorld) -> FlowField {
-    flow_build(load_palette(PALETTE), pw, as_u8(ENEMY_KIND_REGULAR), core())
+    flow_build(load_palette(PALETTE), pw, height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), core())
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -308,8 +308,8 @@ fn test_the_route_through_a_gap_is_longer_than_the_straight_line() {
 fn test_the_insects_field_crosses_the_wall_the_robots_cannot() {
     tif_pw  = walled_base(WALL, 0);
     tif_pal = load_palette(PALETTE);
-    tif_bot = flow_build(tif_pal, tif_pw, as_u8(ENEMY_KIND_REGULAR), core());
-    tif_bug = flow_build(tif_pal, tif_pw, as_u8(ENEMY_KIND_INSECT),  core());
+    tif_bot = flow_build(tif_pal, tif_pw, height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), core());
+    tif_bug = flow_build(tif_pal, tif_pw, height_layer_empty(), as_u8(ENEMY_KIND_INSECT),  core());
 
     assert(!flow_reachable(tif_bot, 4, 0), "the robot's field stops at the perimeter");
     assert(flow_reachable(tif_bug, 4, 0),  "the insect's climbs over it");
@@ -319,7 +319,7 @@ fn test_the_insects_field_crosses_the_wall_the_robots_cannot() {
 
 fn test_a_high_wall_seals_the_insect_out_too() {
     tah_pal = load_palette(PALETTE);
-    tah_bug = flow_build(tah_pal, walled_base(WALL_HIGH, 0),
+    tah_bug = flow_build(tah_pal, walled_base(WALL_HIGH, 0), height_layer_empty(),
                          as_u8(ENEMY_KIND_INSECT), core());
 
     assert(!flow_reachable(tah_bug, 4, 0), "5 m is past its climb");
@@ -352,7 +352,7 @@ fn test_a_core_alone_on_one_hex_is_a_field_of_one() {
 }
 
 fn test_the_field_remembers_which_core_it_is_a_field_to() {
-    ttf = flow_build(load_palette(PALETTE), disc(3, GRASS),
+    ttf = flow_build(load_palette(PALETTE), disc(3, GRASS), height_layer_empty(),
                      as_u8(ENEMY_KIND_REGULAR), Hex { q: 2, r: -1 });
 
     assert(ttf.core.q == 2 && ttf.core.r == -1, "a field without its source is ambiguous");

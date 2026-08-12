@@ -44,6 +44,36 @@
 // any real distance, the ordering does the right thing on its own
 // and no caller has to remember a special case.
 //
+// ── What the field is over: SURFACE nodes, STEP edges ───────────
+//
+// Plan 11 phase F6.  A cell joins the field when the class can stand
+// on its SURFACE; an edge is walkable when the class can take that
+// STEP.  Those are two different questions and the split is
+// load-bearing:
+//
+// **Filtering cells by `can_occupy` instead would make the height
+// rule vacuous.**  `can_occupy(x)` means `height(x)` is within a climb
+// of its LOWEST standable neighbour, so any two adjacent occupiable
+// hexes have a legal step between them in both directions by
+// construction — the edge check could be deleted and nothing would
+// notice.  Measured while building F6, and it is why the node filter
+// is the surface alone (`passable.loft` § What a POSITION can still
+// honestly say).
+//
+// ⚠ **The BFS runs OUTWARD and the enemy walks INWARD, so the step is
+// checked backwards.**  Expanding a labelled cell `a` to a new
+// neighbour `n`, the move an enemy will make is `n -> a`, and that is
+// the direction `can_step` is asked about.  Get it the other way round
+// and the field describes a world where enemies climb what they should
+// fall off and fall off what they should climb — invisible while every
+// height is 0, which is every world dryopea had before F6.
+//
+// The visible consequence is that a `wall` beside the core JOINS a
+// robot's field: a robot cannot climb onto it, but one that somehow
+// stood there could step down and walk home, and the field says so.
+// Nothing routes a robot ONTO it, because `flow_steps` checks the step
+// as well as the distance.
+//
 // ── The field is DERIVED, so it is recomputed and never saved ────
 //
 // [`plans/07`](../plans/07-shared-world-substrate/README.md)
@@ -60,6 +90,7 @@
 use world;
 use palette;
 use painted;
+use height;
 use passable;
 
 // No route to the core.
@@ -82,23 +113,39 @@ pub const FLOW_UNREACHABLE: integer = 1000000000;
 // quietly become the normal case.
 pub const FLOW_MAX_CELLS: integer = 1048576;
 
-// One cell's distance, keyed by hex.
+// One cell's distance and the height the world had there when the
+// field was built.
+//
+// The height is stored rather than re-read (plan 11 F6) so that
+// `flow_steps` can check the STEP without the world as a parameter.
+// It is not an optimisation: the alternative is four more arguments on
+// the function the mover calls per enemy per tick, and a field that
+// could silently be asked about a world it was not built for.  Kept
+// here, a field is self-describing — the same argument that put the
+// core on `FlowField` at F2.
 pub struct FlowCell {
-    q:    integer,
-    r:    integer,
-    dist: integer,
+    q:      integer,
+    r:      integer,
+    dist:   integer,
+    height: float,
 }
 
-// A finished field: the reachable cells, and the core they are
-// distances TO.
+// A finished field: the reachable cells, the core they are distances
+// TO, and the climb limit they were swept with.
 //
-// Only REACHABLE cells are stored — a field over a sparse world is
+// Only cells with a route are stored — a field over a sparse world is
 // itself sparse, and every miss is `FLOW_UNREACHABLE`.  The core is
 // kept because a field without its source is ambiguous, and F5b's
 // approach→engage handoff needs to know which core it is steering to.
+//
+// `climb` is the class's WHOLE contribution to this field (plan 11
+// F6 — `passable.loft` § climb_limit), which is why `spawn.loft`
+// builds one field per climb limit rather than one per class, and why
+// `flow_steps` needs no `kind`.
 pub struct FlowField {
     cells:     hash<FlowCell[q, r]>,
     core:      Hex,
+    climb:     float,
     truncated: boolean,
 }
 
@@ -123,24 +170,40 @@ pub fn flow_count(f: const FlowField) -> integer {
     len(f.cells)
 }
 
+// The height the world had at (q, r) when this field was swept, in
+// metres — what `flow_steps` measures its steps against.
+//
+// `0.0` for a cell the field does not hold, which is meaningless
+// rather than wrong: a cell with no route has no step to measure.  Ask
+// `flow_reachable` first, exactly as with `flow_distance`.
+pub fn flow_height(f: const FlowField, q: integer, r: integer) -> float {
+    fh_c = f.cells[q, r];
+    if fh_c == null { return 0.0; }
+    fh_c.height
+}
+
 // Build the field for one enemy class: a breadth-first sweep out from
-// the core over hexes that class can occupy.
+// the core over the steps that class can take.
 //
 // One field per class, not one field with per-class edge weights —
 // plan 11 F0 settled that: the palette's movement data is boolean, so
-// there is nothing to weigh an edge with.  `kind` is the class whose
-// climb limit decides what the sweep may cross.
+// there is nothing to weigh an edge with.  `kind` reaches the sweep
+// ONLY through `climb_limit`, which is what lets `spawn.loft` share
+// one field between classes that climb the same (plan 11 F6).
 //
 // A core the class cannot stand on yields an EMPTY field, where every
 // hex — including the core's own — is unreachable.  That is the
 // honest answer rather than a special case: nothing can walk to a
 // place nothing can stand.
-pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld,
+pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                   kind: u8, core: Hex) -> FlowField {
-    fb_f = FlowField { cells: [], core: core, truncated: false };
-    if !can_occupy(pal, pw, kind, core.q, core.r) { return fb_f; }
+    fb_f = FlowField { cells: [], core: core, climb: climb_limit(kind), truncated: false };
+    if !can_stand(pal, pw, kind, core.q, core.r) { return fb_f; }
 
-    fb_f.cells[core.q, core.r] = FlowCell { q: core.q, r: core.r, dist: 0 };
+    fb_f.cells[core.q, core.r] = FlowCell {
+        q: core.q, r: core.r, dist: 0,
+        height: hex_height(pal, pw, hl, core.q, core.r),
+    };
     fb_frontier: vector<Hex> = [core];
     fb_d = 0;
 
@@ -157,8 +220,15 @@ pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld,
                 // equal, because BFS reaches every cell by a shortest
                 // route first.
                 if fb_f.cells[fb_n.q, fb_n.r] != null { continue; }
-                if !can_occupy(pal, pw, kind, fb_n.q, fb_n.r) { continue; }
-                fb_f.cells[fb_n.q, fb_n.r] = FlowCell { q: fb_n.q, r: fb_n.r, dist: fb_d };
+                // ⚠ `fb_n -> fb_h`, not the other way round: the sweep
+                // runs outward and the ENEMY walks inward, so the move
+                // being tested is the one it will actually make.  See
+                // § What the field is over.
+                if !can_step(pal, pw, hl, kind, fb_n, fb_h) { continue; }
+                fb_f.cells[fb_n.q, fb_n.r] = FlowCell {
+                    q: fb_n.q, r: fb_n.r, dist: fb_d,
+                    height: hex_height(pal, pw, hl, fb_n.q, fb_n.r),
+                };
                 fb_next += [fb_n];
             }
         }
@@ -230,13 +300,21 @@ pub fn flow_step(f: const FlowField, q: integer, r: integer) -> Hex {
 // F3 chose the representation for — a baked direction per cell could
 // only ever have answered the head of this list.
 //
-// ⚠ **In a BFS field every entry here carries the SAME distance**,
-// `d - 1`: a neighbour of a cell at distance d is at d-1, d or d+1, so
-// "strictly closer" admits exactly one value.  The ordering is
-// therefore direction order alone — F3's tie-break — and a caller that
-// skips an occupied entry loses nothing but that hex.  A weighted
-// field would break this, which is a reason the F0 answer (boolean
-// passability, one field per class) is load-bearing beyond F2.
+// ⚠ **Closer is not enough — the STEP has to be legal too** (plan 11
+// F6).  Since the sweep tests edges in the enemy's direction of
+// travel, a cell can be in the field and still be unreachable FROM
+// here: a `wall` beside the core carries a small distance for a robot
+// (it could step down and walk home) and a robot on the ground beside
+// it must not be told to climb up there.  So an offered neighbour is
+// one that is both closer and within `f.climb` of this cell's height.
+//
+// ⚠ **In a BFS field every entry here still carries the SAME
+// distance**, `d - 1`.  If the step `here -> n` is legal then the
+// sweep tried exactly that edge when it expanded `n`, so `here` was
+// labelled at no more than `dist(n) + 1`; combined with "strictly
+// closer" that leaves one value.  The ordering is therefore direction
+// order alone — F3's tie-break — and a caller that skips an occupied
+// entry loses nothing but that hex.
 //
 // Empty at the core (nothing is closer than 0) and empty on a cell
 // with no route, so a caller that moves to `[0]` and otherwise stays
@@ -246,11 +324,15 @@ pub fn flow_steps(f: const FlowField, q: integer, r: integer) -> vector<Hex> {
     fss_out: vector<Hex> = [];
     fss_d = flow_distance(f, q, r);
     if fss_d >= FLOW_UNREACHABLE { return fss_out; }
+    fss_h = flow_height(f, q, r);
     for fss_n in hex_neighbours(Hex { q: q, r: r }) {
         // Strictly smaller, so an equal neighbour is never a step —
         // this is what makes the walk terminate, and the direction
         // order it is collected in is the tie-break above.
-        if flow_distance(f, fss_n.q, fss_n.r) < fss_d { fss_out += [fss_n]; }
+        if flow_distance(f, fss_n.q, fss_n.r) < fss_d
+            && flow_height(f, fss_n.q, fss_n.r) - fss_h <= f.climb {
+            fss_out += [fss_n];
+        }
     }
     fss_out
 }

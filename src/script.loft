@@ -51,8 +51,14 @@
 //                              paint-line path
 //   snap <name>                the frame into <shots>/<name>.png,
 //                              plus a state line in the transcript
-//   wave <n>                   start a wave of n enemies at the
-//                              spawn markers, cored on the target
+//   wave <n> [class]           start a wave of n enemies at the
+//                              spawn markers, cored on the target.
+//                              `class` is robot (the default) or
+//                              insect (plan 11 F6)
+//   raise <q> <r> <metres>     pile metres onto a hex at RUNTIME —
+//                              what a body does when it falls
+//                              (plan 11 F6).  Accumulates; never
+//                              saved
 //   tick <n>                   advance the wave n game-ticks — over
 //                              the session's own world, so an enemy
 //                              stops at what its class cannot cross
@@ -132,6 +138,7 @@ use editor_step;
 use editor_view;
 use measure;
 use save;
+use height;
 use passable;
 use occupancy;
 use spawn;
@@ -562,7 +569,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_at   = 0;
         for sm_e in run.wave.enemies {
             if sm_e.alive {
-                sm_why = occupancy_fault(s.picker.palette, s.pw,
+                sm_why = occupancy_fault(s.picker.palette, s.pw, run.wave.heights,
                                          sm_e.kind, sm_e.q, sm_e.r);
                 if sm_a1 == "passable" && sm_why != "" {
                     return "enemy {sm_at} at ({sm_e.q}, {sm_e.r}): {sm_why}";
@@ -656,6 +663,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // Out-of-range reads come back null, so a missing argument is
     // "" and fails the same checks a malformed one does.
     sc_a1 = tok[1] ?? "";
+    sc_a2 = tok[2] ?? "";
 
     if sc_cmd == "echo" {
         println("script: {rest}");
@@ -815,12 +823,24 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // walk towards something, and the marker layer already says
     // where that is.
     if sc_cmd == "wave" {
-        if sc_argc != 1 { return "wave needs <count>"; }
+        if sc_argc < 1 || sc_argc > 2 { return "wave needs <count> [class]"; }
         sc_n = sc_a1 as integer?;
         if sc_n == null { return "wave: <count> must be an integer"; }
         sc_count = sc_n ?? 0;
         if sc_count < 0 || sc_count > SCRIPT_MAX_REPEAT {
             return "wave: <count> must be 0..{SCRIPT_MAX_REPEAT}";
+        }
+        // The class is named, never numbered: a script that said
+        // `wave 4 1` would be unreadable and would silently follow the
+        // discriminants if they ever moved.  An unknown name is an
+        // ERROR rather than a fallback to robot — a typo that spawns
+        // the wrong class quietly turns a green run into a lie.
+        sc_kind = ENEMY_KIND_REGULAR;
+        if sc_argc == 2 {
+            if sc_a2 == "insect" { sc_kind = ENEMY_KIND_INSECT; }
+            else if sc_a2 != "robot" {
+                return "wave: unknown class '{sc_a2}' — robot, insect";
+            }
         }
         sc_core = script_core(s.mw);
         if sc_core.0 == 0 {
@@ -830,7 +850,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
             return "wave: {sc_core.0} target markers — a wave needs ONE core to walk towards";
         }
         sc_before = alive_count(run.wave);
-        spawn_wave(run.wave, sc_count, s.mw, sc_core.1, sc_core.2,
+        spawn_wave(run.wave, sc_count, sc_kind as u8? ?? 0, s.mw, sc_core.1, sc_core.2,
                    SCRIPT_SPAWN_DISABLE_RADIUS);
         sc_emitted = alive_count(run.wave) - sc_before;
         // A wave that asks for five and emits none is the confident
@@ -839,7 +859,30 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_emitted != sc_count {
             return "wave: asked for {sc_count}, emitted {sc_emitted} — is any spawn marker at least {SCRIPT_SPAWN_DISABLE_RADIUS} hexes from the core?";
         }
-        println("script: wave {sc_count} towards core ({sc_core.1}, {sc_core.2}) — {alive_count(run.wave)} alive");
+        println("script: wave {sc_count} {enemy_class_name(sc_kind as u8? ?? 0)} towards core ({sc_core.1}, {sc_core.2}) — {alive_count(run.wave)} alive");
+        return "";
+    }
+
+    // Pile height onto a hex at runtime — what a body does when it
+    // falls (`docs/ENEMY_MOVEMENT.md` § Bodies are terrain).
+    //
+    // Plan 11 F6 builds the layer; combat is what will fill it.  Until
+    // then this is how a scenario states the mechanic — *the kill zone
+    // closes itself* — and it is the only way a `.keys` run can make
+    // the height rule do something no palette entry could.
+    //
+    // ⚠ It lives on the WAVE, so it is gone when the wave is: a pile
+    // is runtime state and never reaches a save file.
+    if sc_cmd == "raise" {
+        if sc_argc != 3 { return "raise needs <q> <r> <metres>"; }
+        sc_v = script_ints(tok, 2);
+        if len(sc_v) != 2 { return "raise: <q> and <r> must be integers"; }
+        sc_m = tok[3] as float?;
+        if sc_m == null { return "raise: <metres> must be a number"; }
+        height_raise(run.wave.heights, sc_v[0] ?? 0, sc_v[1] ?? 0, sc_m ?? 0.0);
+        sc_rq = sc_v[0] ?? 0;
+        sc_rr = sc_v[1] ?? 0;
+        println("script: raise ({sc_rq}, {sc_rr}) by {sc_m ?? 0.0:4.2} m — now {height_rise(run.wave.heights, sc_rq, sc_rr):4.2} m of pile");
         return "";
     }
 

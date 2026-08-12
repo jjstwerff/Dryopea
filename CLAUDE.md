@@ -53,7 +53,7 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c shipped.  F1 is the
+Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 shipped.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
 passable` say where an enemy is and whether its CLASS may be there,
 and `src/passable.loft` is the height-step rule they read.  **F1b is
@@ -74,7 +74,27 @@ STRAIGHT-LINE distance, never a route length — it is a jamming
 sphere, so an enemy with no route at all is still inside it.  **F5c
 makes companions block a step** (`src/occupancy.loft`): an enemy takes
 the first FREE entry of `flow_steps` — the whole preference ordering —
-so two enemies wanting one hex end on two.
+so two enemies wanting one hex end on two.  **F6 makes passability the
+spec's rule verbatim** — `height(to) - height(from) <= climb(class)`,
+an EDGE and not a hex — with `src/height.loft` as the runtime layer a
+body pile raises, and the fields keyed by CLIMB LIMIT rather than by
+class.
+
+⚠ **Passability is TWO questions, and they filter different things.**
+The field filters its NODES by the surface (`can_stand`) and its EDGES
+by the step (`can_step`).  Filtering nodes by `can_occupy` instead is
+**vacuous** — `can_occupy(x)` means `height(x)` is within a climb of its
+LOWEST standable neighbour, so between two adjacent occupiable hexes the
+step is legal in both directions by construction, and the height rule
+could be deleted with no test moving.  It compiles, reads well and makes
+F6 a no-op.
+
+⚠ **A drop is free and a climb is not**, so `wall` hexes beside reachable
+ground are IN a robot's field: it cannot get up there, but one standing
+there could step down and walk home.  Nothing routes onto them —
+`flow_steps` checks the step as well as the distance.  This is also why
+`flow_build`'s BFS asks `can_step(n, a)` and not `can_step(a, n)`: the
+sweep runs outward and the enemy walks inward.
 
 ⚠ **A 1-hex-wide corridor cannot tell a flow field from a fixed
 heading** — both give the identical path, so every enemy test dryopea
@@ -111,9 +131,16 @@ all, and `enemies passable` over one is red.  Every scenario that
 walks enemies drags a corridor first; that is the game's rule, not a
 harness quirk.
 
-**Suite: 432/432 green under `scripts/test.sh`** (~20-30 s — the
+⚠ **A world where every source hex is at 0 m cannot tell "the step is a
+RISE" from "the step is the destination's height".**  That is every
+world dryopea had before F6, so the whole rule could change with the
+suite green.  The case that discriminates is an enemy walking ALONG
+raised ground it could never have climbed onto — level steps all the
+way, and a drop at the end.
+
+**Suite: 465/465 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
-**Gate: 12 scripts green under `scripts/validate.sh`** (~11 s).
+**Gate: 13 scripts green under `scripts/validate.sh`** (~12 s).
 
 ⚠ **Never index a call's result in TAIL position** — `steps(a, b)[0] ??
 fallback` as a function's last expression reads the absent sentinel, so
@@ -315,7 +342,12 @@ src/
                    scripts in `tests/scripts/`.  Plan 11 added `enemy
                    <i> <q> <r>` / `enemies passable` (F1) and `enemies
                    distinct` (F5c — no two live enemies on one hex,
-                   RED until a freshly-spawned wave has walked apart)
+                   RED until a freshly-spawned wave has walked apart).
+                   F6 added `wave <n> [class]` (robot / insect — an
+                   unknown name is an ERROR, because a script that
+                   silently got robots would assert the opposite of
+                   what it says) and `raise <q> <r> <metres>`, which
+                   piles runtime height onto a hex the way a body does
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
                    cube_round_axial, world_to_hex, visible_hexes
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
@@ -354,6 +386,13 @@ src/
                    is what the mover reads so it can skip an occupied
                    one.  In a BFS field every entry is at `d - 1`, so
                    the ordering is direction order alone
+  height.loft      what RUNTIME has piled on the map (plan 11 F6) —
+                   HeightLayer + height_raise / height_rise / count.
+                   A sparse map of metres ADDED to what the palette
+                   paints, so a pile on grass and a pile on a wall are
+                   one arithmetic.  ⚠ It ACCUMULATES (bodies do) and a
+                   negative rise floors at the ground.  Runtime state:
+                   it rides on `WaveState` and never reaches a save
   occupancy.loft   who is standing where, this tick (plan 11 F5c) —
                    Occupancy + enter / leave / taken / count / stacked.
                    A COUNT per hex, not a boolean set: a wave spawns
@@ -361,16 +400,23 @@ src/
                    the hex.  ⚠ It is not passability (that is the
                    GROUND, per class) and never a target — a companion
                    blocks a step and is never attacked for it
-  passable.loft    may a class of enemy be on this hex? (plan 11 F1)
-                   — the enemy KIND discriminants + climb_limit()
-                   + hex_height() + occupancy_fault() / can_occupy().
-                   TWO questions, and a hex must answer both: is the
-                   SURFACE one this class stands on (`walk_ground`),
-                   and is the step onto it within its climb.
+  passable.loft    may a class of enemy make this move? (plan 11 F1 +
+                   F6) — the enemy KIND discriminants + climb_limit()
+                   + hex_height() + can_stand() / can_step() /
+                   can_occupy(), each with a `*_fault` twin that names
+                   the numbers.  TWO questions: is the SURFACE one this
+                   class stands on (`walk_ground`), and is the STEP
+                   within its climb.
                    ⚠ `walk_ground` alone is the BUG — `wall` and
                    `wall_high` are walk_ground=true (a wall's walkable
                    part is its TOP), so the one-field predicate walks
-                   robots through 3 m walls
+                   robots through 3 m walls.
+                   ⚠ `can_step` is the rule (an EDGE, asymmetric — a
+                   drop is free); `can_occupy` is what a POSITION can
+                   honestly say with no history — "some neighbour
+                   offers a legal step in", i.e. height minus the
+                   LOWEST standable neighbour.  It is the measurement's
+                   rule and must never be the field's node filter
   picker.loft      Picker { palette, active }
                    + picker_default(), picker_set_active(),
                    render_picker(cv, p, x0, y0) — Canvas-painted UI
@@ -414,7 +460,9 @@ suite redirects its own shots into `tests/actual/`.
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
-| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor — runtime, not editor state |
+| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime height layer — runtime, not editor state |
+| `HeightLayer` | `height.loft` | metres piled on the map at runtime (bodies) — never saved |
+| `FlowField` | `flow.loft` | one class's distance field: cells (distance + the height it was swept with), the core, and the CLIMB it was built for |
 | `ValidateReport` | `validate.loft` | one `make validate` sweep — scripts / passed / failed / measurements / shots, and the FIRST failure with the number that moved |
 
 ## Important conventions
@@ -555,7 +603,7 @@ plans/
   08-game-validation/         — Complete (V0-V4 shipped):
                     scripted play, measured effects, PNGs for
                     inspection, and `make validate` over the lot
-  11-flow-field/              — Active (F0-F5c shipped): enemies
+  11-flow-field/              — Active (F0-F6 shipped): enemies
                     route round walls to the core.  F0 answered it: an
                     "entrance" needs no detecting, the field finds
                     gaps by itself — and walls are walk_ground=true,
@@ -566,8 +614,12 @@ plans/
                     wall here that works.  F2/F3 are the field and its
                     arrow, F5/F5b make enemies follow it and hand off
                     at the scrambler bubble, F5c makes them spread
-                    rather than stack.  F6 (per-class passability as a
-                    height step) is next
+                    rather than stack.  F6 makes passability the
+                    spec's height STEP over a runtime layer
+                    (src/height.loft), so a raised hex flips who can
+                    pass and insects climb their own dead onto a
+                    wall_high with no special case.  F7 (no path: the
+                    siege) is next
   09-lattice-conversion/      — Active (C0 shipped): dryopea moves
                     to pointy-top odd-r offset, the convention every
                     hex_* library and moros already speak.  Checked
@@ -685,7 +737,9 @@ signature.
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
 | Change how enemies move | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) — the whole spec.  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
-| Ask whether an enemy may be on a hex | `src/passable.loft` — ONE rule, both questions.  Never `walk_ground` on its own |
+| Ask whether an enemy may MOVE somewhere | `src/passable.loft::can_step` — the rule, an edge.  Never `walk_ground` on its own, and never the destination's height on its own |
+| Ask whether an enemy may BE somewhere | `src/passable.loft::can_occupy` — what a position can say with no history.  The measurement's rule; never the field's node filter |
+| Raise a hex at runtime (bodies) | `src/height.loft` — a rise above what the palette paints.  Lives on `WaveState`, never saved |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |

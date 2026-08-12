@@ -1,0 +1,116 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The height layer — what RUNTIME has piled on top of the map.
+//
+// Plan 11 phase F6.  `docs/ENEMY_MOVEMENT.md` § Where `height` comes
+// from names three sources, and they are three different KINDS of
+// state:
+//
+//   | source     | value                    | state              |
+//   |------------|--------------------------|--------------------|
+//   | structures | `height_override`        | authored — palette |
+//   | terrain    | the slope solver         | derived — plan 02  |
+//   | bodies     | accumulated pile height  | **runtime**        |
+//
+// This file is the third row and nothing else.  It is a sparse map of
+// metres ADDED to whatever the palette already puts on a hex, so a
+// pile on grass and a pile on a wall are the same arithmetic and
+// neither is a special case.
+//
+// ── Why it is not a field on `PaintedWorld` ─────────────────────
+//
+// `PaintedWorld` is AUTHORED data: it is what the editor writes and
+// what `save.loft` persists.  A body pile is none of those things —
+// [`plans/07`](../plans/07-shared-world-substrate/README.md)
+// § Evaluated sorts state as *authored → a layer, derived →
+// recompute, runtime → sim state*, and plan 11 says it directly:
+// **pile heights live with the wave, not in the save.**  So this
+// layer rides on `WaveState`, is rebuilt with every wave, and never
+// reaches a `.json`.
+//
+// ── Why F6 builds it before anything drops a body ───────────────
+//
+// F6's gate is *"the same predicate re-run with a raised hex must
+// flip who can pass"*.  Nothing can flip if height is read straight
+// off the palette — a class table that only reads materials answers
+// the same thing forever, which is exactly the implementation plan 11
+// § F0 point 3 warned about.  The layer is what makes the height rule
+// a rule about the WORLD rather than about the ground types, and it
+// is measurable today with `height_raise` standing in for the combat
+// that will fill it.
+//
+// ── A RISE, not an absolute height ──────────────────────────────
+//
+// A miss is 0.0 m — "nothing has been piled here" — and that is the
+// sparse default doing the right thing rather than an accident.  An
+// absolute-height layer would need every painted hex present before
+// it meant anything, and an absent entry would read as *sea level*
+// under a 3 m wall.  Storing the rise means the empty layer is
+// exactly "the map as painted", which is what every scene that has
+// not killed anything yet needs.
+
+use world;
+
+// One hex and how far runtime has raised it, in metres.
+pub struct HexRise {
+    q:      integer,
+    r:      integer,
+    metres: float,
+}
+
+// What runtime has piled on the map.  A hash must be a struct field
+// (the same loft idiom `PaintedWorld` and `Occupancy` follow), and
+// wrapping it gives the "a miss is 0.0" rule one door rather than
+// every caller doing its own null arithmetic — the same reason
+// `flow_distance` is the field's only door.
+pub struct HeightLayer {
+    cells: hash<HexRise[q, r]>,
+}
+
+// Factory: the map exactly as painted.
+//
+// What every caller with no bodies on the ground passes, and it means
+// "nothing has been piled", never "skip the height rule".
+pub fn height_layer_empty() -> HeightLayer {
+    HeightLayer { cells: [] }
+}
+
+// Pile `metres` more onto (q, r).
+//
+// ⚠ It ACCUMULATES, because bodies do (`ENEMY_MOVEMENT.md` § Bodies
+// are terrain: *"a body raises its hex's effective height, and bodies
+// accumulate"*).  A setter would make the second death on a hex
+// overwrite the first, and the pile that closes a chokepoint would
+// never grow past one body.
+//
+// A negative rise is how a pile SHRINKS — the player collecting
+// bodies is the counter-play the same section describes — and the
+// total is floored at 0.0 so collecting more than was dropped cannot
+// dig a hole no digger made.
+pub fn height_raise(hl: HeightLayer, q: integer, r: integer, metres: float) {
+    hr_c = hl.cells[q, r];
+    if hr_c == null {
+        hl.cells[q, r] = HexRise { q: q, r: r, metres: max(metres, 0.0) };
+    } else {
+        hr_c.metres = max(hr_c.metres + metres, 0.0);
+    }
+}
+
+// How far (q, r) has been raised above what the palette paints there.
+//
+// ⚠ **The only door.**  Reading `hl.cells[q, r].metres` directly gives
+// null on an unpiled hex, and loft's `?` turns that into 0 — which is
+// the right answer here by luck rather than by rule.  Ask here, so the
+// day a layer stores something whose zero is not its default, every
+// caller already goes through one function.
+pub fn height_rise(hl: const HeightLayer, q: integer, r: integer) -> float {
+    hrs_c = hl.cells[q, r];
+    if hrs_c == null { return 0.0; }
+    hrs_c.metres
+}
+
+// How many hexes carry a pile — the size of the layer.
+pub fn height_count(hl: const HeightLayer) -> integer {
+    len(hl.cells)
+}

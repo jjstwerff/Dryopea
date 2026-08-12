@@ -62,14 +62,14 @@ fn test_a_wall_is_walkable_and_still_stops_a_robot() {
 
     assert(tws_w.walk_ground,
            "the palette says a wall's SURFACE is walkable — its top is");
-    assert(!can_occupy(tws_pal, one_hex(IDX_WALL, 1, 0),
+    assert(!can_occupy(tws_pal, one_hex(IDX_WALL, 1, 0), height_layer_empty(),
                        as_u8(ENEMY_KIND_REGULAR), 1, 0),
            "and a robot is still not on it: walk_ground is not passability");
 }
 
 // The same trap, said as the number that matters.
 fn test_the_fault_names_the_step_and_the_climb() {
-    tfn_why = occupancy_fault(load_palette(PALETTE), one_hex(IDX_WALL, 1, 0),
+    tfn_why = occupancy_fault(load_palette(PALETTE), one_hex(IDX_WALL, 1, 0), height_layer_empty(),
                               as_u8(ENEMY_KIND_REGULAR), 1, 0);
     assert(tfn_why.contains("wall"),   "it names the ground: {tfn_why}");
     assert(tfn_why.contains("3.0"),    "it names the step: {tfn_why}");
@@ -84,9 +84,9 @@ fn test_an_insect_climbs_a_wall_that_stops_a_robot() {
     tai_pal = load_palette(PALETTE);
     tai_pw  = one_hex(IDX_WALL, 2, -1);
 
-    assert( can_occupy(tai_pal, tai_pw, as_u8(ENEMY_KIND_INSECT),  2, -1),
+    assert( can_occupy(tai_pal, tai_pw, height_layer_empty(), as_u8(ENEMY_KIND_INSECT),  2, -1),
            "an insect climbs a 3 m wall");
-    assert(!can_occupy(tai_pal, tai_pw, as_u8(ENEMY_KIND_REGULAR), 2, -1),
+    assert(!can_occupy(tai_pal, tai_pw, height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), 2, -1),
            "a robot does not — same hex, different class");
 }
 
@@ -94,9 +94,9 @@ fn test_a_high_wall_is_the_anti_insect_barrier() {
     tah_pal = load_palette(PALETTE);
     tah_pw  = one_hex(IDX_WALL_HIGH, 2, -1);
 
-    assert(!can_occupy(tah_pal, tah_pw, as_u8(ENEMY_KIND_INSECT),  2, -1),
+    assert(!can_occupy(tah_pal, tah_pw, height_layer_empty(), as_u8(ENEMY_KIND_INSECT),  2, -1),
            "5 m is past an insect's climb — that is what wall_high is FOR");
-    assert(!can_occupy(tah_pal, tah_pw, as_u8(ENEMY_KIND_REGULAR), 2, -1),
+    assert(!can_occupy(tah_pal, tah_pw, height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), 2, -1),
            "and past a robot's, which never had one");
 }
 
@@ -137,9 +137,9 @@ fn test_flat_land_holds_every_class() {
     tfl_pal = load_palette(PALETTE);
     tfl_pw  = one_hex(IDX_GRASS, 0, 0);
 
-    assert(can_occupy(tfl_pal, tfl_pw, as_u8(ENEMY_KIND_REGULAR), 0, 0), "grass holds a robot");
-    assert(can_occupy(tfl_pal, tfl_pw, as_u8(ENEMY_KIND_INSECT),  0, 0), "and an insect");
-    assert(hex_height(tfl_pal, tfl_pw, 0, 0) == 0.0,
+    assert(can_occupy(tfl_pal, tfl_pw, height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), 0, 0), "grass holds a robot");
+    assert(can_occupy(tfl_pal, tfl_pw, height_layer_empty(), as_u8(ENEMY_KIND_INSECT),  0, 0), "and an insect");
+    assert(hex_height(tfl_pal, tfl_pw, height_layer_empty(), 0, 0) == 0.0,
            "flat ground is 0 m — the null in palette.json read as a height, not inherited");
 }
 
@@ -150,8 +150,8 @@ fn test_a_surface_can_refuse_a_class_at_zero_height() {
     tsc_pal = load_palette(PALETTE);
     tsc_pw  = one_hex(IDX_STEEP_ROCK, 0, 0);
 
-    assert(hex_height(tsc_pal, tsc_pw, 0, 0) == 0.0, "steep rock carries no structure");
-    assert(!can_occupy(tsc_pal, tsc_pw, as_u8(ENEMY_KIND_REGULAR), 0, 0),
+    assert(hex_height(tsc_pal, tsc_pw, height_layer_empty(), 0, 0) == 0.0, "steep rock carries no structure");
+    assert(!can_occupy(tsc_pal, tsc_pw, height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), 0, 0),
            "and is still not walkable — the SURFACE question, not the step");
 }
 
@@ -164,14 +164,14 @@ fn test_an_unpainted_hex_is_water_and_nothing_stands_on_it() {
     tuh_pw  = painted_empty();
 
     assert(hex_ground_name(tuh_pal, tuh_pw, 7, -3) == "sea", "unpainted is sea");
-    assert(!can_occupy(tuh_pal, tuh_pw, as_u8(ENEMY_KIND_REGULAR), 7, -3),
+    assert(!can_occupy(tuh_pal, tuh_pw, height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), 7, -3),
            "and a ground robot does not walk on the sea");
 }
 
 fn test_hex_height_reads_metres_off_the_structures() {
     thh_pal = load_palette(PALETTE);
-    assert(hex_height(thh_pal, one_hex(IDX_WALL, 4, 4), 4, 4) == 3.0,      "a wall is 3 m");
-    assert(hex_height(thh_pal, one_hex(IDX_WALL_HIGH, 4, 4), 4, 4) == 5.0, "a high wall is 5 m");
+    assert(hex_height(thh_pal, one_hex(IDX_WALL, 4, 4), height_layer_empty(), 4, 4) == 3.0,      "a wall is 3 m");
+    assert(hex_height(thh_pal, one_hex(IDX_WALL_HIGH, 4, 4), height_layer_empty(), 4, 4) == 5.0, "a high wall is 5 m");
 }
 
 // ─────────────────────────────────────────────────────────────────

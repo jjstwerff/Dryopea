@@ -10,8 +10,8 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c shipped 2026-08-12;
-F6 is next.**
+**Active — F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 shipped
+2026-08-12; F7 is next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -515,6 +515,97 @@ look plausible), a panic on native.
 [loft#877](https://github.com/loft-lang/loft/issues/877); the
 workaround is to bind the call to a local first.
 
+## F6, the height step — and the rule that turned out to be vacuous (2026-08-12)
+
+Passability is now the spec's rule verbatim: `height(to) - height(from)
+<= climb(class)`, an EDGE and not a hex.
+[`src/height.loft`](../../src/height.loft) is the runtime layer that
+makes the difference measurable, and the fields are keyed by the CLIMB
+LIMIT rather than by the class.
+
+**⚠ The design decision, and a probe killed the obvious version of it.**
+The natural shape was "keep `can_occupy` as the field's node filter and
+add the step on top". Worked out on paper first, that composition is
+**vacuous**: `can_occupy(x)` means `height(x)` is within a climb of its
+LOWEST standable neighbour, so for any two adjacent occupiable hexes
+`h(x) - h(y) <= climb` holds in *both* directions by construction — the
+step check could have been deleted and no test would have moved. The
+field therefore filters **nodes by the surface** and **edges by the
+step**, which are genuinely two questions.
+
+That is not a small distinction: the vacuous version compiles, reads
+well, passes every test, and silently makes F6 a no-op.
+
+**⚠ The BFS runs OUTWARD and the enemy walks INWARD, so the step is
+checked backwards.** Expanding a labelled cell `a` to a new neighbour
+`n`, the move an enemy will make is `n -> a`. Reversed, 2 tests go red —
+so it is gated, but only because F6 went looking for the case: on flat
+ground the two directions are identical, and *every world dryopea had
+before this phase was flat*.
+
+**The visible consequence, which is a changed number and not a
+rebaseline.** A `wall` beside the core now JOINS a robot's field — a
+robot cannot climb up there, but one standing there could step down and
+walk home, and the field says so. `test_a_sealed_base_sweeps_clean` went
+from 37 cells to 61 (37 inside a radius-4 ring plus its 24 wall hexes).
+The number that must NOT move is beside it, and is now asserted
+explicitly: the outside is still unreachable, which is what *sealed*
+means.
+
+**The class's whole contribution is `climb_limit`, and that is asserted
+rather than commented.** `wave_fields` keys on the limit, so two classes
+that climb alike share one sweep — pinned by giving an unknown kind 99
+(which falls to the strictest limit) a field and comparing it cell for
+cell with a robot's. Give a class a second movement axis — a vehicle
+reading `walk_vehicle` — and that test goes red instead of the key
+quietly sharing a field it should not.
+
+**⚠ Measured negative controls, and one of them is deliberately thin.**
+
+| what was broken | red | what that says |
+|---|---|---|
+| the height layer ignored | **13 of 465** | the layer is load-bearing everywhere, scenario included |
+| the step read as the DESTINATION height, not the rise | **3** | thin *by nature* — the two rules agree whenever the source hex is at 0 m, which is every world before F6 |
+| the BFS step direction reversed | **2** | observable only because F6 built the asymmetric case |
+| fields keyed by kind again | **1** | honest: that one is a DUPLICATION, not a wrong answer, so only the test that counts fields can see it |
+
+The 3-red row is the one worth reading. The discriminating case had to
+be constructed: a robot walking ALONG a plateau it could never climb
+onto — every step level, every step off it a drop. Read as an absolute
+height, that enemy never moves at all;
+`test_a_robot_walks_along_a_plateau_it_could_never_climb_onto` is the
+whole difference between the two rules.
+
+**⚠ The class half of the plan's own gate was already live at F5, and
+saying so is the point.** F5 recorded that *"the insect and the robot
+route differently" passes with the field disabled too* and handed the
+row to F6. It is now a scenario
+([`tests/scripts/two-classes-two-routes.keys`](../../tests/scripts/two-classes-two-routes.keys)) —
+the insect stands ON the wall at `(3, 0)` while the robot stops at
+`(4, 0)` — but F6's own discriminator is the third act: `raise 4 -1 1.5`
+shuts the robot's bypass with nothing painted, nothing edited and no
+save touched. That is `ENEMY_MOVEMENT.md` § Bodies are terrain point 1,
+playable.
+
+**The mechanic that fell out with no code.** Point 3 of that section —
+*enemies climb their own dead onto the wall* — is not implemented
+anywhere. A 3 m pile beside a 5 m `wall_high` leaves a 2 m step, an
+insect climbs 3, and the anti-insect barrier is breached without the
+wall being broken. It is a test, not a feature, which is what building
+the rule as a height step rather than a material lookup bought.
+
+**What F6 did NOT need.** No new numbers: the climb limits and the wall
+heights were fixed at F1, and the ramp arithmetic is theirs. No change
+to `wave_tick`'s signature either — the layer rides on `WaveState`,
+because plan 11 already said where it belongs (*pile heights live with
+the wave, not in the save*).
+
+**What is still a stand-in.** Nothing drops a body yet, so `raise` is
+the only thing that fills the layer and combat is what will replace it.
+The layer's contract is already the one bodies need — it ACCUMULATES,
+and a negative rise floors at the ground so collecting more than fell
+digs no hole.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -602,7 +693,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists. **Shipped — see § F5, enemies follow the field.** ⚠ The gate had to be INVENTED: every existing world was a 1-wide corridor, where field and heading give the identical path, so the whole phase could pass without doing anything. The discriminator is `enemy 0 3 -1` — a hex no heading can reach. Measured: 6 of 13 tests red with the engage branch disabled | **Shipped** |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general. **Shipped — see § F5b, the handoff at the bubble.** No new parameter: the field has carried its core since F2. Measured: 4 tests red without the bubble test, the negative control among them | **Shipped** |
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances. **Shipped — see § F5c, they spread.** ⚠ A corridor is blind to this one too: on a hex AXIS the field offers ONE closer neighbour and off it TWO, so "beside" only exists off-axis and the gate needs an open world. Measured: 19 of 432 red without the occupancy check. ⚠ Two corrections to the row above — the spec's own snapshot rule (a vacated hex stays taken) halves a column's speed and was rejected by probe; and the four at the wall queue along their HEADING rather than spreading along the face, because approach mode has no gradient to say which way beside is. The attack, and the spread along the face, are F7's | **Shipped** |
-| **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it | Open |
+| **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it. **Shipped — see § F6, the height step.** ⚠ Two corrections to the row above. The "same maze, paths differ" half was ALREADY live at F5 (F5 said so and handed the row on), so F6's own discriminator is the raise — `raise 4 -1 1.5` shuts the robot's bypass with nothing painted. And the obvious composition — keep `can_occupy` as the field's node filter, add the step on top — is **vacuous**: it makes the height rule deletable without a test moving, so the field filters nodes by the SURFACE and edges by the STEP. Measured: 13 of 465 red without the layer, 3 without the rise, 2 with the BFS direction reversed | **Shipped** |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden) | Open |
 | **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result** — the order-independence ENEMY_MOVEMENT § The tick resolves once requires. A gate that only exercises editor strokes tests the rarer half | Open |
 
@@ -640,7 +731,9 @@ plausibility.
 | **F5** ✅ | `enemies passable` every tick, AND a hex off the heading's line | routing respects the world, and it is the FIELD that steered | a 1-wide corridor cannot tell field from heading — the gate needed a route that leaves the line |
 | **F5c** ✅ | two enemies leave ONE hex on two different routes | a companion blocks a step, and is never a target | a 1-wide corridor has no "beside" — off the axis the field offers two closer neighbours, on it one |
 | **F5c** ✅ | a jam played with the roster reversed occupies the same SET | the move order reads the state, not the roster | order-independence stopped being free the moment movement wrote what it reads |
-| **F6** | insect and robot paths DIFFER on one map | passability is per class | identical paths mean the class key is ignored |
+| **F6** ✅ | insect and robot paths DIFFER on one map | passability is per class | identical paths mean the class key is ignored — but F5 already passed this, so it gates the class axis and not F6 |
+| **F6** ✅ | one hex raised at RUNTIME, and who can pass moves | height is a property of the WORLD, not of the ground types | a material lookup answers the same thing forever, so nothing else in the phase could fail |
+| **F6** ✅ | a robot walks ALONG a plateau it could never climb onto | the step is a RISE between two hexes, not the destination's height | with the source at 0 m the two rules agree — which is every world before F6, so the case had to be built |
 | **F7** | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |
 | **F8** | incremental field == from-scratch field | the dirty set is used correctly | equal-but-stale after an edit is the bug this catches |
 | **F8** | reverse-iterated roster → identical wave | one rebuild per tick, so no enemy sees a world its neighbour changed | an order-dependent tick makes every scripted number unrepeatable — plan 08 could gate nothing |

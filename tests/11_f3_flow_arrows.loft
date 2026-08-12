@@ -94,7 +94,7 @@ fn walk_home(f: FlowField, start: Hex) -> integer {
 // every fixture here, filtered to the reachable ones, is exactly the
 // set the invariant is about.
 fn sweep(pw: PaintedWorld, kind: integer, radius: integer) -> integer {
-    s_f    = flow_build(load_palette(PALETTE), pw, as_u8(kind), core());
+    s_f    = flow_build(load_palette(PALETTE), pw, height_layer_empty(), as_u8(kind), core());
     s_bad  = 0;
     for s_h in visible_hexes(core(), radius) {
         if flow_reachable(s_f, s_h.q, s_h.r) {
@@ -108,7 +108,7 @@ fn sweep(pw: PaintedWorld, kind: integer, radius: integer) -> integer {
 // How many cells the sweep actually visited — so a sweep of ZERO
 // cells can never be mistaken for a sweep that found no faults.
 fn swept(pw: PaintedWorld, kind: integer, radius: integer) -> integer {
-    sw_f = flow_build(load_palette(PALETTE), pw, as_u8(kind), core());
+    sw_f = flow_build(load_palette(PALETTE), pw, height_layer_empty(), as_u8(kind), core());
     sw_n = 0;
     for sw_h in visible_hexes(core(), radius) {
         if flow_reachable(sw_f, sw_h.q, sw_h.r) { sw_n += 1; }
@@ -214,15 +214,35 @@ fn test_a_base_with_one_entrance_sweeps_clean() {
            "including every cell that has to route through the gap");
 }
 
+// ⚠ **The count moved at F6, and it moved for a reason worth reading
+// rather than for a rebaseline.**  Before F6 the field was over hexes
+// the class could OCCUPY, so a robot's field stopped at the inside
+// face of the wall: 37 cells.  F6 made the edges the passability
+// question and the surface the node one, and a wall's surface is
+// walkable (`ENEMY_MOVEMENT.md` § Where `height` comes from) — so the
+// 24 ring hexes join it, each carrying the distance a robot standing
+// up there would walk home in.  Nothing is routed ONTO them: the step
+// up is 3.0 m and a robot climbs 0.0, which `flow_steps` refuses.
+//
+// The number that must NOT move is the one below it — the outside is
+// still unreachable, which is what "sealed" means.
 fn test_a_sealed_base_sweeps_clean_over_what_is_left() {
-    // Only the inside is reachable, and it must still be internally
-    // consistent — a field that is CORRECT about a small region is
-    // the F7 siege case, and its arrows matter just as much.
-    // A ring at radius 4 encloses the radius-3 disc: 1 + 3·3·4 = 37.
-    assert(swept(walled_base(0), ENEMY_KIND_REGULAR, 8) == 37,
-           "the inside of a radius-4 ring is 37 cells, swept {swept(walled_base(0), ENEMY_KIND_REGULAR, 8)}");
+    // Only the inside and its wall are reachable, and it must still be
+    // internally consistent — a field that is CORRECT about a small
+    // region is the F7 siege case, and its arrows matter just as much.
+    // A ring at radius 4 encloses the radius-3 disc: 1 + 3·3·4 = 37,
+    // and the ring itself is 6·4 = 24 more.
+    assert(swept(walled_base(0), ENEMY_KIND_REGULAR, 8) == 61,
+           "37 inside a radius-4 ring plus its 24 wall hexes, swept {swept(walled_base(0), ENEMY_KIND_REGULAR, 8)}");
     assert(sweep(walled_base(0), ENEMY_KIND_REGULAR, 8) == 0,
            "and it sweeps clean");
+
+    // The sweep above would still pass if the ring leaked, because it
+    // only checks the cells it found.  This is the seal.
+    tsb_f = flow_build(load_palette(PALETTE), walled_base(0), height_layer_empty(),
+                       as_u8(ENEMY_KIND_REGULAR), core());
+    assert(!flow_reachable(tsb_f, 5, 0), "the first hex OUTSIDE the ring has no route in");
+    assert(flow_reachable(tsb_f, 4, 0),  "and the wall hex itself does — downward");
 }
 
 fn test_a_bent_corridor_sweeps_clean() {
@@ -257,7 +277,7 @@ fn test_an_insects_field_sweeps_clean_too() {
 // smaller.  An enemy there would stand still for the rest of the
 // wave, and no spot-check of "the field looks right" would find it.
 fn test_the_sweep_catches_a_local_minimum() {
-    tlm_f = flow_build(load_palette(PALETTE), disc(6, GRASS),
+    tlm_f = flow_build(load_palette(PALETTE), disc(6, GRASS), height_layer_empty(),
                        as_u8(ENEMY_KIND_REGULAR), core());
 
     // (5, 0) is five steps out; its neighbours read 4, 5 and 6.
@@ -274,7 +294,7 @@ fn test_the_sweep_catches_a_local_minimum() {
 // somewhere plausible-looking, having travelled the wrong distance to
 // the wrong place.
 fn test_the_sweep_catches_a_second_core() {
-    tsc_f = flow_build(load_palette(PALETTE), disc(6, GRASS),
+    tsc_f = flow_build(load_palette(PALETTE), disc(6, GRASS), height_layer_empty(),
                        as_u8(ENEMY_KIND_REGULAR), core());
     tsc_f.cells[4, 0] = FlowCell { q: 4, r: 0, dist: 0 };
 
@@ -286,7 +306,7 @@ fn test_the_sweep_catches_a_second_core() {
 // one — a field with one fault and a field riddled with them are
 // different problems.
 fn test_the_sweep_counts_every_stranded_cell() {
-    tcs_f = flow_build(load_palette(PALETTE), disc(6, GRASS),
+    tcs_f = flow_build(load_palette(PALETTE), disc(6, GRASS), height_layer_empty(),
                       as_u8(ENEMY_KIND_REGULAR), core());
     tcs_bad = 0;
     tcs_f.cells[5, 0] = FlowCell { q: 5, r: 0, dist: 1 };
@@ -308,7 +328,7 @@ fn test_the_sweep_counts_every_stranded_cell() {
 // ─────────────────────────────────────────────────────────────────
 
 fn test_the_arrow_from_a_neighbour_of_the_core_is_the_core() {
-    tan_f = flow_build(load_palette(PALETTE), disc(3, GRASS),
+    tan_f = flow_build(load_palette(PALETTE), disc(3, GRASS), height_layer_empty(),
                        as_u8(ENEMY_KIND_REGULAR), core());
     for tan_h in hex_neighbours(core()) {
         tan_s = flow_step(tan_f, tan_h.q, tan_h.r);
@@ -318,7 +338,7 @@ fn test_the_arrow_from_a_neighbour_of_the_core_is_the_core() {
 }
 
 fn test_the_arrow_at_the_core_stays_put() {
-    tas_f = flow_build(load_palette(PALETTE), disc(3, GRASS),
+    tas_f = flow_build(load_palette(PALETTE), disc(3, GRASS), height_layer_empty(),
                        as_u8(ENEMY_KIND_REGULAR), core());
     tas_s = flow_step(tas_f, 0, 0);
 
@@ -326,7 +346,7 @@ fn test_the_arrow_at_the_core_stays_put() {
 }
 
 fn test_the_arrow_from_an_unreachable_cell_stays_put() {
-    tau_f = flow_build(load_palette(PALETTE), walled_base(0),
+    tau_f = flow_build(load_palette(PALETTE), walled_base(0), height_layer_empty(),
                        as_u8(ENEMY_KIND_REGULAR), core());
     tau_s = flow_step(tau_f, 6, 0);
 
@@ -339,7 +359,7 @@ fn test_the_arrow_from_an_unreachable_cell_stays_put() {
 // deterministic rule would do; having none would make every scripted
 // run unrepeatable, so the rule is pinned.
 fn test_a_tie_breaks_by_direction_order() {
-    tbt_f = flow_build(load_palette(PALETTE), disc(4, GRASS),
+    tbt_f = flow_build(load_palette(PALETTE), disc(4, GRASS), height_layer_empty(),
                        as_u8(ENEMY_KIND_REGULAR), core());
 
     // (1, 1) is 2 steps out and has TWO neighbours at distance 1:
@@ -365,7 +385,7 @@ fn test_a_tie_breaks_by_direction_order() {
 // instead of re-routing it (which is what
 // `test_the_sweep_catches_a_local_minimum` is about).
 fn test_the_arrow_follows_the_distances_it_reads() {
-    taf_f = flow_build(load_palette(PALETTE), disc(4, GRASS),
+    taf_f = flow_build(load_palette(PALETTE), disc(4, GRASS), height_layer_empty(),
                        as_u8(ENEMY_KIND_REGULAR), core());
 
     taf_before = flow_step(taf_f, 1, 1);

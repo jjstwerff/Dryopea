@@ -67,11 +67,19 @@ it still wants the core.
 |---|---|---|
 | structures | `height_override` — `wall` 3.0 m, `wall_high` 5.0 m (`extrusion_kind` pillar / cliff) | in the palette today |
 | terrain | the slope solver ([plan 02](../plans/02-solver-validation-viewer/README.md)) — `slope` and `drop` describe terrain SHAPE, not a step | **not built** |
-| bodies | accumulated pile height (§ Bodies are terrain) | runtime, never saved |
+| bodies | accumulated pile height (§ Bodies are terrain) | runtime, never saved — the layer is [`src/height.loft`](../src/height.loft) |
 
-Until the solver lands, every impassable thing in the game is a
-structure, so the step rule runs on `height_override` alone.  A
-hill too steep to climb waits on plan 02.
+Until the solver lands, terrain contributes nothing, so every
+impassable thing the map itself puts down is a structure.  A hill too
+steep to climb waits on plan 02.
+
+The **runtime** row exists: `HeightLayer` is a sparse map of metres
+added to whatever the palette paints, it rides on the wave rather than
+on the world, and the step rule reads the sum.  Nothing drops a body
+into it yet — combat is what will — so a `.keys` script's `raise <q>
+<r> <metres>` is the only thing filling it today.  What that already
+buys, with no code beyond the arithmetic: a 3 m pile beside a 5 m
+`wall_high` leaves a 2 m step, and an insect climbs 3.
 
 ⚠ **`walk_ground` is NOT passability.**  `wall` and `wall_high`
 both carry `walk_ground = true`, and that is correct — the

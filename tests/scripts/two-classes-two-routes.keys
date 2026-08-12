@@ -1,0 +1,107 @@
+# two-classes-two-routes — plan 11 F6.
+#
+# The scenario where the CLASS decides the route, and where runtime
+# height decides it a second time.
+#
+# ── What makes this one evidence ────────────────────────────────
+#
+# Every earlier enemy scenario walks one class over ground whose
+# heights the palette fixed once.  Two things here cannot be produced
+# by a material lookup:
+#
+#   1. Two enemies, same hex, same tick, same world — and they leave
+#      on DIFFERENT routes, because a `wall` is a 3.0 m step and an
+#      insect climbs exactly 3.0 m where a robot climbs 0.0.
+#   2. A hex raised at RUNTIME shuts the robot's bypass with nothing
+#      painted, nothing edited and no save touched.  That is
+#      `docs/ENEMY_MOVEMENT.md` § Bodies are terrain, point 1 — the
+#      chokepoint is where enemies die, so it is where bodies pile,
+#      and the player's own kill zone becomes a wall.
+#
+# ── The world ───────────────────────────────────────────────────
+#
+#   r = 0 :  (0,0) … (12,0)     the corridor, core at one end
+#   (3,0) :  WALL               3.0 m — a robot stops, an insect climbs
+#   (4,-1), (3,-1)              the bypass, the robot's only way round
+#
+# The insect's route is 12 steps straight over the wall; the robot's
+# is 13 round the bypass.
+
+echo two classes, two routes: the wall is a step, not a material
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The spawn, twelve hexes out — outside close_spawn_disable_radius
+# (10), so the wave actually emits — facing back down the corridor.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+do rotate
+click 12 0
+marker 12 0 spawn 4
+
+do toggle_mode
+
+palette 5
+drag 12 0 0 0
+click 4 -1
+click 3 -1
+palette 9
+click 3 0
+
+count painted 15 15
+kind 3 0 wall
+
+# ── Act 1: the same hex, two classes ────────────────────────────
+#
+# The insect leaves first so the two are never stacked; a wave spawns
+# onto ONE marker hex, and a companion blocks a step (plan 11 F5c).
+wave 1 insect
+tick 1
+wave 1
+count alive 2 2
+enemy 0 11 0
+enemy 1 12 0
+enemies passable
+enemies distinct
+
+# ── Act 2: eight ticks, and the routes have already parted ──────
+#
+# `enemy 0 3 0` is the insect standing ON the wall — a hex a robot can
+# never occupy, and the whole per-class gate stated as one coordinate.
+# The robot is one hex short of it, exactly where F1b leaves it.
+tick 8
+enemy 0 3 0
+enemy 1 4 0
+enemies passable
+enemies distinct
+range 3 4
+snap f6-the-insect-is-on-the-wall
+
+# ── Act 3: the kill zone closes itself ──────────────────────────
+#
+# 1.5 m of bodies in the mouth of the bypass.  Nothing is painted and
+# nothing is saved — only the runtime layer moves — and the robot's
+# only route to the core is gone.  It stops; the insect is above all
+# of this and walks on.
+raise 4 -1 1.5
+
+tick 2
+enemy 0 1 0
+enemy 1 4 0
+enemies passable
+enemies distinct
+
+# ── Act 4: one arrives, one is besieged ─────────────────────────
+tick 1
+enemy 0 0 0
+enemy 1 4 0
+enemies passable
+count alive 2 2
+range 0 4
