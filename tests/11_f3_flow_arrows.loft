@@ -1,0 +1,383 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F3 — the flow direction per cell.
+//
+// ── The gate is a SWEEP, and that is the whole point ─────────────
+//
+// From EVERY reachable cell of a world, following the arrows must
+// reach the core in exactly `distance` steps.  Not a spot-check of a
+// few cells: a spot-check passes a field with one bad arrow in it,
+// and one bad arrow is a hex where an enemy stands forever.  So
+// `walk_home` below is run over every cell of five worlds — open
+// ground, a base with one entrance, a bent corridor, a spiral and a
+// two-gap perimeter — which is a few thousand walks and costs
+// nothing.
+//
+// ── The sweep is proved able to fail ────────────────────────────
+//
+// An exhaustive check that cannot fail is worth as little as a
+// spot-check that can.  `test_the_sweep_catches_a_local_minimum`
+// hand-corrupts a good field — one cell's distance lowered so that no
+// neighbour is smaller — and asserts the sweep reports it.  That is
+// the failure the sweep exists for, and it is the one no amount of
+// eyeballing a picture would find.
+//
+// ── What cannot go wrong, and why the guard is still there ───────
+//
+// A step is taken only to a strictly smaller distance, so a walk can
+// neither cycle nor run forever.  The guard counter in `walk_home` is
+// therefore belt-and-braces against a future change to that rule
+// rather than against today's code — and if it ever fires, the sweep
+// reports it as a failure instead of hanging the suite.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// examples/palette.json, in file order.
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+
+// A walk longer than this is a bug, not a long journey.
+const WALK_GUARD: integer = 4096;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The instrument
+// ─────────────────────────────────────────────────────────────────
+
+// Follow the arrows from `start` and answer how many steps it took to
+// arrive at the core — or -1 if it never got there.
+//
+// -1 covers every way the field can be wrong:
+//   * a local minimum, where the arrow points at the cell itself;
+//   * a walk that ends on a cell reading 0 that is NOT the core (a
+//     second zero somewhere in the field);
+//   * a walk that outlasts the guard.
+//
+// The caller compares the answer with `flow_distance`, and equality
+// is the invariant: reaching the core in exactly `distance` steps
+// means every step decreased the distance by exactly 1, since the
+// total decrease is `distance` and no step may decrease it by less.
+fn walk_home(f: FlowField, start: Hex) -> integer {
+    wh_h     = start;
+    wh_steps = 0;
+    while flow_distance(f, wh_h.q, wh_h.r) > 0 {
+        wh_next = flow_step(f, wh_h.q, wh_h.r);
+        if wh_next.q == wh_h.q && wh_next.r == wh_h.r {
+            return -1;          // stuck: a local minimum
+        }
+        wh_h = wh_next;
+        wh_steps += 1;
+        if wh_steps > WALK_GUARD { return -1; }
+    }
+    // It reads 0 — but is it the core, or a second zero?
+    if wh_h.q != f.core.q || wh_h.r != f.core.r { return -1; }
+    wh_steps
+}
+
+// Walk home from every reachable cell in `pw`'s field and return how
+// many cells failed to arrive in exactly their own distance.
+//
+// The world is swept by asking the FIELD which cells it holds rather
+// than by guessing a radius: `visible_hexes` out to the far edge of
+// every fixture here, filtered to the reachable ones, is exactly the
+// set the invariant is about.
+fn sweep(pw: PaintedWorld, kind: integer, radius: integer) -> integer {
+    s_f    = flow_build(load_palette(PALETTE), pw, as_u8(kind), core());
+    s_bad  = 0;
+    for s_h in visible_hexes(core(), radius) {
+        if flow_reachable(s_f, s_h.q, s_h.r) {
+            s_d = flow_distance(s_f, s_h.q, s_h.r);
+            if walk_home(s_f, s_h) != s_d { s_bad += 1; }
+        }
+    }
+    s_bad
+}
+
+// How many cells the sweep actually visited — so a sweep of ZERO
+// cells can never be mistaken for a sweep that found no faults.
+fn swept(pw: PaintedWorld, kind: integer, radius: integer) -> integer {
+    sw_f = flow_build(load_palette(PALETTE), pw, as_u8(kind), core());
+    sw_n = 0;
+    for sw_h in visible_hexes(core(), radius) {
+        if flow_reachable(sw_f, sw_h.q, sw_h.r) { sw_n += 1; }
+    }
+    sw_n
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Worlds
+// ─────────────────────────────────────────────────────────────────
+
+fn ring(centre: Hex, radius: integer) -> vector<Hex> {
+    r_out: vector<Hex> = [];
+    r_h = centre;
+    for _ in 0..radius {
+        r_h = hex_neighbor(r_h, 4);
+    }
+    for r_dir in 0..6 {
+        for _ in 0..radius {
+            r_out += [r_h];
+            r_h = hex_neighbor(r_h, r_dir);
+        }
+    }
+    r_out
+}
+
+fn disc(radius: integer, kind: integer) -> PaintedWorld {
+    d_pw = painted_empty();
+    for d_h in visible_hexes(core(), radius) {
+        paint(d_pw, d_h.q, d_h.r, as_u8(kind));
+    }
+    d_pw
+}
+
+// A base with a perimeter, `gap` hexes of it left open.
+fn walled_base(gap: integer) -> PaintedWorld {
+    wb_pw = disc(7, GRASS);
+    wb_i  = 0;
+    for wb_h in ring(core(), 4) {
+        if wb_i >= gap {
+            paint(wb_pw, wb_h.q, wb_h.r, as_u8(WALL));
+        }
+        wb_i += 1;
+    }
+    wb_pw
+}
+
+// A corridor that folds back on itself — the world where the route is
+// much longer than the straight line, so every arrow along it has to
+// be right or the walk length will not match.
+fn bent_corridor() -> PaintedWorld {
+    bc_pw = painted_empty();
+    bc_h  = core();
+    paint(bc_pw, bc_h.q, bc_h.r, as_u8(GRASS));
+    for _ in 0..7 {
+        bc_h = hex_neighbor(bc_h, 1);
+        paint(bc_pw, bc_h.q, bc_h.r, as_u8(GRASS));
+    }
+    for _ in 0..7 {
+        bc_h = hex_neighbor(bc_h, 3);
+        paint(bc_pw, bc_h.q, bc_h.r, as_u8(GRASS));
+    }
+    for _ in 0..7 {
+        bc_h = hex_neighbor(bc_h, 4);
+        paint(bc_pw, bc_h.q, bc_h.r, as_u8(GRASS));
+    }
+    bc_pw
+}
+
+// Two concentric perimeters with their gaps on OPPOSITE sides, so the
+// only route in doubles back between the rings — the shape that
+// produces long detours and dead ends, which is where a local minimum
+// would hide.
+fn spiral_base() -> PaintedWorld {
+    sb_pw = disc(8, GRASS);
+    sb_i  = 0;
+    for sb_h in ring(core(), 3) {
+        if sb_i != 0 { paint(sb_pw, sb_h.q, sb_h.r, as_u8(WALL)); }
+        sb_i += 1;
+    }
+    sb_j = 0;
+    for sb_g in ring(core(), 6) {
+        if sb_j != 18 { paint(sb_pw, sb_g.q, sb_g.r, as_u8(WALL)); }
+        sb_j += 1;
+    }
+    sb_pw
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The sweep, over five worlds
+// ─────────────────────────────────────────────────────────────────
+
+fn test_open_ground_sweeps_clean() {
+    assert(swept(disc(6, GRASS), ENEMY_KIND_REGULAR, 6) == 127,
+           "a radius-6 disc is 127 cells, swept {swept(disc(6, GRASS), ENEMY_KIND_REGULAR, 6)}");
+    assert(sweep(disc(6, GRASS), ENEMY_KIND_REGULAR, 6) == 0,
+           "every cell of open ground walks home in exactly its distance");
+}
+
+fn test_a_base_with_one_entrance_sweeps_clean() {
+    assert(swept(walled_base(1), ENEMY_KIND_REGULAR, 8) > 100, "the world is not empty");
+    assert(sweep(walled_base(1), ENEMY_KIND_REGULAR, 8) == 0,
+           "including every cell that has to route through the gap");
+}
+
+fn test_a_sealed_base_sweeps_clean_over_what_is_left() {
+    // Only the inside is reachable, and it must still be internally
+    // consistent — a field that is CORRECT about a small region is
+    // the F7 siege case, and its arrows matter just as much.
+    // A ring at radius 4 encloses the radius-3 disc: 1 + 3·3·4 = 37.
+    assert(swept(walled_base(0), ENEMY_KIND_REGULAR, 8) == 37,
+           "the inside of a radius-4 ring is 37 cells, swept {swept(walled_base(0), ENEMY_KIND_REGULAR, 8)}");
+    assert(sweep(walled_base(0), ENEMY_KIND_REGULAR, 8) == 0,
+           "and it sweeps clean");
+}
+
+fn test_a_bent_corridor_sweeps_clean() {
+    assert(swept(bent_corridor(), ENEMY_KIND_REGULAR, 16) == 22,
+           "22 corridor hexes, swept {swept(bent_corridor(), ENEMY_KIND_REGULAR, 16)}");
+    assert(sweep(bent_corridor(), ENEMY_KIND_REGULAR, 16) == 0,
+           "every arrow along a folded route points the long way round");
+}
+
+fn test_a_spiral_base_sweeps_clean() {
+    assert(swept(spiral_base(), ENEMY_KIND_REGULAR, 8) > 50, "the spiral is a real world");
+    assert(sweep(spiral_base(), ENEMY_KIND_REGULAR, 8) == 0,
+           "two perimeters with opposite gaps, and still no cell strands");
+}
+
+fn test_an_insects_field_sweeps_clean_too() {
+    // The insect crosses the walls, so its field covers cells the
+    // robot's does not — a different graph over the same world, and
+    // the invariant is a property of the field, not of the map.
+    assert(swept(walled_base(0), ENEMY_KIND_INSECT, 8) >
+           swept(walled_base(0), ENEMY_KIND_REGULAR, 8),
+           "the insect's field is the larger one");
+    assert(sweep(walled_base(0), ENEMY_KIND_INSECT, 8) == 0,
+           "and it sweeps clean as well");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The sweep can fail — and this is what it catches
+// ─────────────────────────────────────────────────────────────────
+
+// A local minimum: one cell's distance lowered until no neighbour is
+// smaller.  An enemy there would stand still for the rest of the
+// wave, and no spot-check of "the field looks right" would find it.
+fn test_the_sweep_catches_a_local_minimum() {
+    tlm_f = flow_build(load_palette(PALETTE), disc(6, GRASS),
+                       as_u8(ENEMY_KIND_REGULAR), core());
+
+    // (5, 0) is five steps out; its neighbours read 4, 5 and 6.
+    assert(flow_distance(tlm_f, 5, 0) == 5, "the cell starts out honest");
+    tlm_f.cells[5, 0] = FlowCell { q: 5, r: 0, dist: 1 };
+
+    assert(flow_step(tlm_f, 5, 0).q == 5 && flow_step(tlm_f, 5, 0).r == 0,
+           "the arrow now points at the cell itself — nowhere to go");
+    assert(walk_home(tlm_f, Hex { q: 5, r: 0 }) == -1,
+           "so the walk never arrives, and the sweep says so");
+}
+
+// A second zero: a cell that claims to be the core.  The walk ends
+// somewhere plausible-looking, having travelled the wrong distance to
+// the wrong place.
+fn test_the_sweep_catches_a_second_core() {
+    tsc_f = flow_build(load_palette(PALETTE), disc(6, GRASS),
+                       as_u8(ENEMY_KIND_REGULAR), core());
+    tsc_f.cells[4, 0] = FlowCell { q: 4, r: 0, dist: 0 };
+
+    assert(walk_home(tsc_f, Hex { q: 6, r: 0 }) == -1,
+           "it stops at (4, 0), which reads 0 and is not the core");
+}
+
+// And the sweep counts those failures rather than reporting the first
+// one — a field with one fault and a field riddled with them are
+// different problems.
+fn test_the_sweep_counts_every_stranded_cell() {
+    tcs_f = flow_build(load_palette(PALETTE), disc(6, GRASS),
+                      as_u8(ENEMY_KIND_REGULAR), core());
+    tcs_bad = 0;
+    tcs_f.cells[5, 0] = FlowCell { q: 5, r: 0, dist: 1 };
+    for tcs_h in visible_hexes(core(), 6) {
+        if flow_reachable(tcs_f, tcs_h.q, tcs_h.r) {
+            if walk_home(tcs_f, tcs_h) != flow_distance(tcs_f, tcs_h.q, tcs_h.r) {
+                tcs_bad += 1;
+            }
+        }
+    }
+    // The corrupted cell strands itself, and every cell whose only
+    // route home ran through it strands too.
+    assert(tcs_bad > 0, "the sweep sees the damage");
+    assert(tcs_bad < 127, "but not the whole disc — most routes avoid one hex");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The arrow itself
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_arrow_from_a_neighbour_of_the_core_is_the_core() {
+    tan_f = flow_build(load_palette(PALETTE), disc(3, GRASS),
+                       as_u8(ENEMY_KIND_REGULAR), core());
+    for tan_h in hex_neighbours(core()) {
+        tan_s = flow_step(tan_f, tan_h.q, tan_h.r);
+        assert(tan_s.q == 0 && tan_s.r == 0,
+               "from ({tan_h.q}, {tan_h.r}) the step is the core, got ({tan_s.q}, {tan_s.r})");
+    }
+}
+
+fn test_the_arrow_at_the_core_stays_put() {
+    tas_f = flow_build(load_palette(PALETTE), disc(3, GRASS),
+                       as_u8(ENEMY_KIND_REGULAR), core());
+    tas_s = flow_step(tas_f, 0, 0);
+
+    assert(tas_s.q == 0 && tas_s.r == 0, "arrived is not a direction");
+}
+
+fn test_the_arrow_from_an_unreachable_cell_stays_put() {
+    tau_f = flow_build(load_palette(PALETTE), walled_base(0),
+                       as_u8(ENEMY_KIND_REGULAR), core());
+    tau_s = flow_step(tau_f, 6, 0);
+
+    assert(!flow_reachable(tau_f, 6, 0), "outside a sealed perimeter");
+    assert(tau_s.q == 6 && tau_s.r == 0,
+           "and there is nowhere to go — NOT the nearest cell of some other field");
+}
+
+// A tie broken by direction order, asserted as the exact hex.  Any
+// deterministic rule would do; having none would make every scripted
+// run unrepeatable, so the rule is pinned.
+fn test_a_tie_breaks_by_direction_order() {
+    tbt_f = flow_build(load_palette(PALETTE), disc(4, GRASS),
+                       as_u8(ENEMY_KIND_REGULAR), core());
+
+    // (1, 1) is 2 steps out and has TWO neighbours at distance 1:
+    // (1, 0) in direction 3 and (0, 1) in direction 4.
+    assert(flow_distance(tbt_f, 1, 1) == 2, "the cell is two steps out");
+    assert(flow_distance(tbt_f, 1, 0) == 1, "and (1, 0) is one");
+    assert(flow_distance(tbt_f, 0, 1) == 1, "and so is (0, 1) — a genuine tie");
+
+    tbt_s = flow_step(tbt_f, 1, 1);
+    assert(tbt_s.q == 1 && tbt_s.r == 0,
+           "the lower direction index wins: expected (1, 0), got ({tbt_s.q}, {tbt_s.r})");
+}
+
+// The arrow is read out of the distances, not stored beside them — so
+// editing a distance changes the arrow with no rebuild.  That is the
+// property F5c depends on: an enemy blocked by a companion needs the
+// ordering over all six neighbours at move time, which a baked
+// direction could not give it.
+// Measured from (1, 1), which has TWO neighbours at distance 1 — so
+// making the chosen one look far away leaves a real alternative and
+// the arrow must swing to it.  From a spoke cell such as (2, 0) there
+// is only one closer neighbour, and corrupting it strands the cell
+// instead of re-routing it (which is what
+// `test_the_sweep_catches_a_local_minimum` is about).
+fn test_the_arrow_follows_the_distances_it_reads() {
+    taf_f = flow_build(load_palette(PALETTE), disc(4, GRASS),
+                       as_u8(ENEMY_KIND_REGULAR), core());
+
+    taf_before = flow_step(taf_f, 1, 1);
+    assert(taf_before.q == 1 && taf_before.r == 0, "it heads for (1, 0)");
+
+    // Make the neighbour it was heading for look far away.  Nothing is
+    // rebuilt; the next call simply reads what is there now.
+    taf_f.cells[1, 0] = FlowCell { q: 1, r: 0, dist: 9 };
+    taf_after = flow_step(taf_f, 1, 1);
+
+    assert(taf_after.q == 0 && taf_after.r == 1,
+           "and now it takes the other one: expected (0, 1), got ({taf_after.q}, {taf_after.r})");
+    assert(flow_distance(taf_f, taf_after.q, taf_after.r) == 1,
+           "which is genuinely closer");
+}

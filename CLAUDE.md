@@ -53,7 +53,7 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
-Plan 11 (flow field) has F0 + F1 + F1b + F2 shipped.  F1 is the
+Plan 11 (flow field) has F0 + F1 + F1b + F2 + F3 shipped.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
 passable` say where an enemy is and whether its CLASS may be there,
 and `src/passable.loft` is the height-step rule they read.  **F1b is
@@ -62,7 +62,9 @@ same rule and stops in front of what it cannot cross.  F2 is the
 distance field (`src/flow.loft`): a BFS out from the core, one field
 per class, where **no-route is a LARGE value and never 0** — 0 is
 "at the core", and "smallest distance wins" must refuse a cell with
-no route rather than prefer it.
+no route rather than prefer it.  F3 is the arrow on top of it, gated
+by an exhaustive sweep: from EVERY reachable cell, following the
+arrows reaches the core in exactly `distance` steps.
 
 ⚠ **The neighbour relation lives in `src/world.loft` and nowhere
 else.**  `hex_offset` / `hex_neighbor` / `hex_neighbours` are the only
@@ -78,7 +80,7 @@ all, and `enemies passable` over one is red.  Every scenario that
 walks enemies drags a corridor first; that is the game's rule, not a
 harness quirk.
 
-**Suite: 368/368 green under `scripts/test.sh`** (~20-30 s — the
+**Suite: 382/382 green under `scripts/test.sh`** (~20-30 s — the
 `frame` measurements classify full 960x720 frames).
 **Gate: 9 scripts green under `scripts/validate.sh`** (~11 s).
 
@@ -292,7 +294,13 @@ src/
   flow.loft        the distance field (plan 11 F2) — flow_build(pal,
                    pw, kind, core) -> FlowField, a BFS out from the
                    core over what that CLASS can occupy, plus
-                   flow_distance / flow_reachable / flow_count.
+                   flow_distance / flow_reachable / flow_count, and
+                   flow_step (F3): which neighbour is closest to the
+                   core, COMPUTED from the distances and never stored
+                   — F5c needs the ordering over all six neighbours
+                   at move time, which a baked direction cannot give.
+                   Ties break by lowest direction index, because a
+                   scripted run has to be repeatable.
                    ⚠ no-route is FLOW_UNREACHABLE, a LARGE value:
                    0 means "at the core", and every "closest
                    neighbour" search must refuse a routeless cell

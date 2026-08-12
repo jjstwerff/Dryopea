@@ -10,7 +10,7 @@ it) · **Effort:** `MH`
 
 ## Status
 
-**Active — F0 + F1 + F1b + F2 shipped 2026-08-12; F3 is next.**
+**Active — F0 + F1 + F1b + F2 + F3 shipped 2026-08-12; F5 is next.**
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -275,6 +275,47 @@ sea walkable and the frontier expands forever. `FLOW_MAX_CELLS` turns that
 from a hang into a `truncated` flag, and a test asserts it is false on a
 real base.
 
+## F3, the arrow — and what the sweep can actually catch (2026-08-12)
+
+`flow_step(f, q, r)` reads the distances and answers which neighbour is
+closest to the core. It is **computed, never stored**: baking a direction
+into `FlowCell` would be cheaper per query and would make F5c impossible,
+since an enemy whose step is taken by a companion needs the ordering over
+all six neighbours at move time. A test pins that property by editing a
+distance and watching the arrow swing to the other tied neighbour with no
+rebuild.
+
+**The gate is an exhaustive sweep over five worlds** — open ground, a base
+with one entrance, a sealed base, a folded corridor, and two perimeters with
+opposite gaps. From every reachable cell, following the arrows must reach
+the core in exactly `distance` steps. Each sweep also asserts **how many
+cells it visited**, so a sweep of nothing can never be read as a sweep that
+found nothing.
+
+**Load-bearing, measured:** with the arrow deliberately broken, 9 of the 14
+tests go red — every sweep among them.
+
+**⚠ The plan said the sweep catches "loops and local minima". Loops cannot
+happen, and it is worth knowing why.** A step is only ever taken to a
+*strictly* smaller distance, so a walk cannot revisit a cell and cannot run
+forever; termination is free. The real failure modes are a **local
+minimum** (the arrow points at the cell itself — an enemy that stands there
+for the rest of the wave) and a walk that ends somewhere that reads 0 but is
+not the core. Both are proved catchable by hand-corrupting a good field,
+because an exhaustive check that cannot fail is worth no more than a
+spot-check that can.
+
+**A probe that came back negative, and why it stays on the page.** Changing
+the comparison from `<` to `<=` looked like it should create a cycle. It
+does not: a BFS field always offers a `d-1` neighbour, so the step still
+strictly decreases and every sweep stayed green. What it *did* break was the
+tie-break — and those tests went red, which is the reason they exist.
+
+**Ties break by lowest direction index, and that is pinned by a test.** Any
+deterministic rule would do; having none would not, because plan 08 gates
+the game by replaying written-down runs and a tie broken differently on a
+different day makes every asserted number unrepeatable.
+
 ## What the movement spec costs to build
 
 The rules themselves live in
@@ -358,7 +399,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F1** — the measurement: where is an enemy? | S | — | a new `.keys` assertion (`enemy <i> <q> <r>`, and `enemies passable` — no enemy on a hex its CLASS cannot traverse) that goes RED against today's mover walking through a wall ring, and green when hand-fed a legal path. An assertion that cannot fail today is not the instrument this needs. **Shipped — see § F1, the instrument.** The gate is the same script one tick apart: red standing in a wall face, green a hex earlier. A face, not a ring — F0's hand-built ring painted 16 of 18 hexes off-ring, so a ring needs the pre-flight F2 will carry, and three hexes on a line need none | **Shipped** |
 | **F1b** — approach mode stops at walls | S | one site at a time | fired at a wall face, an enemy halts at the EXACT hex before it; fired at a gap, it passes through. Both failed today — **measured**, by short-circuiting the check: 8 of 10 tests go red without it. **Shipped — see § F1b, the first wall that works.** ⚠ The plan said "it needs only the existing `walk_*` palette fields"; F0 had already disproved that — `walk_*` is the bug, and it uses the height step | **Shipped** |
 | **F2** — the distance field | S | parallel run | on a hand-built world, every cell equals a BFS worked by hand; cells adjacent to the core read 1; **unreachable is a distinct value, not 0** — 0 means "at the core", and conflating them makes a walled-off spawn read as arrived. Negative control: a closed ring → every outside cell unreachable. **Shipped — see § F2, the distance field.** Measured against the negative control: with unreachable collapsed to 0, 8 of 17 tests go red. Unreachable is a LARGE value, not `-1`, so "smallest distance wins" refuses it | **Shipped** |
-| **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does | Open |
+| **F3** — the flow direction per cell | S | parallel run | from EVERY reachable cell in a swept world, following the arrows reaches the core in exactly `distance` steps. This catches loops and local minima, which no spot-check does. **Shipped — see § F3, the arrow.** Swept over five worlds, each asserting how many cells it visited; 9 of 14 tests go red against a broken arrow. ⚠ Loops turn out to be impossible by construction (a step is only ever to a strictly smaller distance) — what the sweep really catches is a local minimum and a walk ending on a second zero | **Shipped** |
 | **F5** — enemies follow the field | M | one site at a time | the maze scenario: one entrance, `enemies passable` (F1) holds every tick, `range` decreases monotonically to 0. Its negative control is the code being replaced — see § The negative control already exists | Open |
 | **F5b** — the approach→engage handoff | S | one site at a time | an enemy crossing `core.scrambler_bubble_radius` switches mode at the EXACT hex the radius names, and its steps change from "along the heading" to "along the field" there and not before. Negative control: an enemy whose heading never enters the bubble keeps its heading forever — the handoff must not fire on proximity-in-general | Open |
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances | Open |
@@ -396,7 +437,7 @@ plausibility.
 |---|---|---|---|
 | **F1** ✅ | the new assertion goes red against today's mover | the instrument can see the failure it exists for | an assertion green on a wall-walker measures nothing |
 | **F2** ✅ | closed ring → outside cells unreachable | unreachable ≠ 0 ≠ at-the-core | a walled-off spawn reading 0 = "already arrived" |
-| **F3** | arrows reach the core in exactly `distance` steps, from every reachable cell | the field has no loop and no local minimum | one cell whose arrow increases distance is a permanent enemy stall |
+| **F3** ✅ | arrows reach the core in exactly `distance` steps, from every reachable cell | the field has no local minimum (a loop cannot occur — the step strictly decreases) | one cell whose arrow stalls is an enemy that stands there for the rest of the wave |
 | **F5** | `enemies clear of wall` every tick | routing respects the world | today's code fails this — the gate is proven before the feature exists |
 | **F6** | insect and robot paths DIFFER on one map | passability is per class | identical paths mean the class key is ignored |
 | **F7** | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |

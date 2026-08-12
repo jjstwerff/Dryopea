@@ -171,11 +171,62 @@ pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld,
     fb_f
 }
 
-// ⚠ **The arrow — "which neighbour is closest to the core" — is
-// deliberately NOT here.**  It is F3's deliverable, and its gate is
-// what makes it worth having: from every reachable cell in a swept
-// world, following the arrows must reach the core in exactly
-// `distance` steps, which is the only check that catches a loop or a
-// local minimum.  Shipping the function in F2 would mean shipping it
-// without that sweep, and a field with one arrow that increases
-// distance is a permanent enemy stall.
+// ─── The arrow ──────────────────────────────────────────────────
+//
+// Plan 11 phase F3.  Which neighbour of (q, r) is closest to the
+// core — the step an enemy standing there wants to take.
+//
+// ── It is COMPUTED, never stored ────────────────────────────────
+//
+// The field holds distances and this reads them.  Baking one
+// direction per cell into `FlowCell` would be cheaper per query and
+// would make F5c impossible: enemies do not queue, so one whose step
+// is taken by a companion moves *beside* them, which needs the whole
+// preference ordering over the six neighbours at move time and not a
+// single precomputed answer (plan 11 § The field must store
+// DISTANCE).  Discovering that after the representation was chosen
+// would mean rebuilding it.
+//
+// So F5's mover will read distances too, and this function is the
+// field's INVARIANT rather than the mover's implementation: follow
+// the arrows from any reachable cell and the core is exactly
+// `distance` steps away.  `tests/11_f3_flow_arrows.loft` sweeps every
+// cell of several worlds to check it.
+//
+// ── Ties break by direction order, and that is load-bearing ─────
+//
+// Two neighbours are often equally close, and the lowest direction
+// index wins.  Any deterministic rule would do; having NO rule would
+// not — plan 08 gates the game by replaying written-down runs, and a
+// tie broken differently on a different day makes every asserted
+// number unrepeatable.
+//
+// ── Why a stall is the only way this can go wrong ───────────────
+//
+// A step is taken only to a *strictly* smaller distance, so the walk
+// cannot cycle: a cycle would need a distance to return to a value it
+// has already left. Termination is free for the same reason. What is
+// left is one failure mode — a cell with no smaller neighbour, i.e. a
+// local minimum, where an enemy would stand forever. That is what the
+// sweep is looking for.
+//
+// Returns the hex ITSELF when there is no better neighbour, which
+// covers both honest cases — at the core, or nowhere to go — so a
+// caller that ignores the answer moves nobody rather than moving
+// somebody somewhere wrong. Ask `flow_distance` / `flow_reachable` to
+// tell "arrived" from "stuck".
+pub fn flow_step(f: const FlowField, q: integer, r: integer) -> Hex {
+    fs_best  = Hex { q: q, r: r };
+    fs_bestd = flow_distance(f, q, r);
+    if fs_bestd >= FLOW_UNREACHABLE { return fs_best; }
+    for fs_n in hex_neighbours(Hex { q: q, r: r }) {
+        fs_d = flow_distance(f, fs_n.q, fs_n.r);
+        // Strictly smaller, so an equal neighbour never displaces the
+        // one already chosen — this is the tie-break above.
+        if fs_d < fs_bestd {
+            fs_bestd = fs_d;
+            fs_best  = fs_n;
+        }
+    }
+    fs_best
+}
