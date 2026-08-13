@@ -108,9 +108,9 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 | **C0** — probe: can `hex_grid` be the oracle? | XS | a probe first | its answers for a hand-checked cell set, AND that they **disagree** with dryopea's current axial math — an oracle that already agrees proves nothing | **Shipped** |
 | **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | **Shipped** — see § C1 shipped.  Negative control run: 8 of 17 red |
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | Open |
-| **C3** — the renderer draws pointy-top | M | one site at a time | hex centres equal `hex_grid::hex_to_px` under the camera transform (to a float ε); `screen_to_hex ∘ world_to_canvas` = identity over the sweep; goldens rebaselined ONCE and reviewed; plan 08's `frame` bands still hold | Open |
+| **C3** — the renderer draws pointy-top | M | one site at a time | hex centres equal `lat_to_metres` under the camera transform (to a float ε — ⚠ `lat_to_metres`, NOT `hex_grid::hex_to_px`: the compass decision negates y); `screen_to_hex ∘ world_to_canvas` = identity over the sweep; goldens rebaselined ONCE and reviewed, and they will come back VERTICALLY MIRRORED — that is the decision landing, not a bug; plan 08's `frame` bands still hold; nothing depends on corner winding, which reversed | Open |
 | **C4** — `paint_line`, marker arrows, spawn approach | M | one site at a time | per site: `paint_line` equals `hex_grid`'s line over the sweep; each marker arrow points at the neighbour it names; `a-wave-approaches` still shows `range` decreasing monotonically | Open |
-| **C5** — migrate the data | S | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand | Open |
+| **C5** — migrate the data | S | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand. ⚠ NO compensating y-flip — a map that comes back looking the same means the compass decision did not take | Open |
 | **C6** — delete the axial layer | XS | — | `grep` finds no axial helper; suite + `scripts/validate.sh` green | Open |
 
 ⚠ **No phase is `H`.** Plan 07 carried this as one `H` phase, which fails
@@ -409,12 +409,28 @@ may be stepped; after C6 there are two.
 
 ⚠ **`hex_grid`'s compass names assume +y is UP and dryopea's is DOWN.**
 It documents "r increases upward" and calls direction 5 `NE`, while
-placing row `r+1` at LARGER y — and dryopea renders +y as SOUTH with no
-y-flip.  So on dryopea's screen `hex_grid`'s NE appears south-east: the
-LATTICE is identical, the NAMES are mirrored north↔south.  C1 takes no
-position; this is open question 2 and it lands in C4/C5 where markers
-and arrows live.  ⚠ It is not a bug in either side, and "fixing" it by
-flipping the render path would silently invert every existing map.
+placing row `r+1` at LARGER y — and dryopea renders +y as SOUTH.  So
+taken literally the two agree on the LATTICE and disagree on the compass
+by a north↔south mirror.  It is not a bug in either side.
+
+**Settled the same day (project owner): follow `hex_grid`'s compass, let
+the maps flip.**  `lat_to_metres` / `lat_from_metres` /
+`lat_corner_metres` negate y, so direction 5 really is north-east on
+dryopea's screen — and existing maps render vertically mirrored, which
+is accepted.  Landed in C1 rather than deferred: it is one negation,
+nothing calls the file yet, and leaving it would have had C3 render
+against a frame it then needed to flip.  See § Open questions 2.
+
+⚠ The negation changes NO convention dryopea already had — world +y
+still grows south, the render path still has no y-flip.  It sits in the
+lattice→metres conversion beside the metre scale, the other thing
+`hex_grid` cannot know.  Its gate is
+`test_the_six_directions_point_where_hex_grid_names_them`: the SIGNS of
+`(dx, dy)` for all six directions at every cell in the window.  Dropping
+the negation fails it on all four diagonals — measured, "dir 1 is SE:
+want signs (1, 1), got (1, -1)".  ⚠ The metre ROUND-TRIP stays green
+through that mutation, because a consistent flip is invisible to it;
+that is precisely why the compass needed its own gate.
 
 ⚠ **`hex_grid::hex_round` returns AXIAL, not offset** — its own
 `px_to_hex` converts before handing back.  A caller that treats a
@@ -480,16 +496,37 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
    already carried. The two conventions already agreed on the number;
    the conversion is one multiply and `hex_grid` needs no scale
    parameter.
-2. **Do the six direction NAMES survive?** dryopea's spawn directions are
-   0..5 with a documented meaning (`R` rotates through them). `hex_grid`'s
-   `hex_neighbor` dir order is its own. If they differ, every saved marker's
-   `direction` is remapped in C5 — and § C5's open decision covers it.
-   ⚠ **C1 sharpened this and it is worse than a reordering.** `hex_grid`
-   documents "r increases upward" and names direction 5 `NE`, but places
-   row `r+1` at LARGER y — and dryopea renders +y as SOUTH. So the two
-   agree on the LATTICE and disagree on the compass by a north↔south
-   mirror. Renaming is free; flipping the render path to match the names
-   would silently invert every existing map, so it is not the fix.
+2. ~~**Do the six direction NAMES survive?**~~ **Answered: no — dryopea
+   follows `hex_grid`'s compass, and the maps flip.** (Project owner,
+   2026-08-13.)
+
+   C1 found the disagreement is not a reordering but a north↔south
+   MIRROR: `hex_grid` documents "r increases upward" and names direction
+   5 `NE` while placing row `r+1` at larger y, and dryopea's world +y is
+   south. The decision takes the library's compass as authoritative and
+   accepts that existing maps render vertically mirrored — the cheaper
+   loss, because the alternative leaves every `hex_*` library and moros
+   describing dryopea's world with the wrong words permanently, which is
+   the thing this plan exists to end.
+
+   ⚠ **Implemented in C1, not deferred to C4/C5**, because it is one
+   negation in `lat_to_metres` / `lat_from_metres` / `lat_corner_metres`
+   and nothing calls them yet — so it was free here and would have meant
+   C3 rendering against a frame it then had to flip.
+
+   ⚠ **It changes no convention dryopea already had.** World +y still
+   grows south; the render path still has no y-flip in it. The negation
+   sits in the lattice→metres conversion, which is where the other thing
+   `hex_grid` cannot know (the metre scale) already lives.
+
+   ⚠ **C5 must NOT add a compensating flip.** A converted map that comes
+   back looking the same would mean the compass had not moved. The flip
+   is the visible evidence the decision took effect.
+
+   ⚠ **The winding reverses.** `hex_grid` walks corners counter-clockwise
+   in its own frame, so in dryopea's they run clockwise. Consecutive
+   corners are still adjacent and one side apart — all a convex fill
+   needs — but C3 must check nothing depends on signed area.
 3. **Does `gridmesh` become correct-by-construction?** `src/chunks.loft`
    currently feeds axial `(q,r)` as `(x,y)` with `halo_k = 0`, which is
    sound only because the fill is per-cell-independent. After C6 that stops

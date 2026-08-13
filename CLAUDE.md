@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 535/535 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 539/539 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 535 runs.
+per-function + per-line + call-path report over all 539 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -514,7 +514,15 @@ src/
                    deleted by the conversion, not translated.
                    ⚠ `hex_grid::hex_round` answers AXIAL, not offset —
                    `lat_from_axial` is what stops that shearing a cell
-                   silently
+                   silently.
+                   ⚠ The metre conversions NEGATE y, because dryopea
+                   follows hex_grid's COMPASS and hex_grid's +y is
+                   north while dryopea's is south.  So dir 5 really is
+                   NE on screen — and existing maps will render
+                   vertically mirrored, which is the accepted cost.
+                   The metre round-trip cannot see this (a consistent
+                   flip is invisible to it); the compass sign test is
+                   what gates it
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
                    + InputState (moros-style: factories + pure tick
                    + struct of booleans)
@@ -650,11 +658,21 @@ axial consumer.
 offset**, delegating to `hex_grid`.  Nothing calls it yet.
 
 World +y grows **south** (same direction as canvas +y); there is no
-y-flip in the render path, and that does NOT change.
-⚠ `hex_grid` documents its compass with +y UP, so its `NE` is
-dryopea's visual south-east.  The lattices are identical and only the
-NAMES mirror; flipping the render path to match them would silently
-invert every existing map, so it is not the fix.
+y-flip in the render path, and neither of those changes.
+
+⚠ **dryopea follows `hex_grid`'s COMPASS** (project owner,
+2026-08-13).  The library documents "r increases upward" and names
+direction 5 `NE` while placing row `r+1` at larger y; dryopea's +y is
+south.  So `lat_to_metres` / `lat_from_metres` / `lat_corner_metres`
+**negate y**, and direction 5 really is north-east on screen.  The
+negation lives in the lattice→metres conversion, beside the metre
+scale — the two things `hex_grid` cannot know.
+⚠ The cost is accepted, not overlooked: **existing maps render
+vertically MIRRORED** once C3/C5 land.  C5 adds no compensating flip —
+a map that came back looking the same would mean the compass never
+moved.  ⚠ Corner WINDING reversed with it (counter-clockwise in
+`hex_grid`'s frame, clockwise in dryopea's); consecutive corners are
+still adjacent and one side apart, which is all a convex fill needs.
 
 ### Naming
 

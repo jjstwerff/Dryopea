@@ -239,6 +239,121 @@ fn test_the_metre_scale_is_half_the_diameter() {
            "and √3 circumradii is the flat-to-flat dryopea already carried");
 }
 
+// ─── The compass ────────────────────────────────────────────────
+//
+// Decision (project owner, 2026-08-13): follow `hex_grid`'s compass
+// and let the maps flip.  `lat_to_metres` therefore negates y, so
+// direction 5 — which the library documents as `NE` — really does
+// go up-and-right on dryopea's screen.
+//
+// This is the gate for that decision, and it is a strong one: the
+// SIGNS of (dx, dy) for all six directions, at every cell in the
+// window, in dryopea's own +y-is-south frame.  Drop the negation and
+// all four diagonals report the wrong hemisphere.
+
+// What each direction must do to (x, y), in metres, with +y SOUTH.
+// -1 / 0 / +1 are the required signs.
+fn compass_dx(d: integer) -> integer {
+    if d == 0 { 1 } else if d == 1 { 1 } else if d == 2 { -1 }
+    else if d == 3 { -1 } else if d == 4 { -1 } else { 1 }
+}
+
+fn compass_dy(d: integer) -> integer {
+    // 0 = E and 3 = W are due east/west: no northing at all.
+    // 1 = SE and 2 = SW go south (+y); 4 = NW and 5 = NE go north.
+    if d == 0 { 0 } else if d == 1 { 1 } else if d == 2 { 1 }
+    else if d == 3 { 0 } else if d == 4 { -1 } else { -1 }
+}
+
+fn compass_name(d: integer) -> text {
+    if d == 0 { "E" } else if d == 1 { "SE" } else if d == 2 { "SW" }
+    else if d == 3 { "W" } else if d == 4 { "NW" } else { "NE" }
+}
+
+fn sign_of(v: float) -> integer {
+    if v > 0.000001 { 1 } else if v < -0.000001 { -1 } else { 0 }
+}
+
+fn test_the_six_directions_point_where_hex_grid_names_them() {
+    for tsd_r in -SWEEP..=SWEEP {
+        for tsd_q in -SWEEP..=SWEEP {
+            tsd_h = Hex { q: tsd_q, r: tsd_r };
+            tsd_c = lat_to_metres(tsd_h);
+            for tsd_d in 0..6 {
+                tsd_n  = lat_neighbour(tsd_h, tsd_d);
+                tsd_nc = lat_to_metres(tsd_n);
+                tsd_sx = sign_of(tsd_nc.0 - tsd_c.0);
+                tsd_sy = sign_of(tsd_nc.1 - tsd_c.1);
+                assert(tsd_sx == compass_dx(tsd_d) && tsd_sy == compass_dy(tsd_d),
+                       "({tsd_q}, {tsd_r}) dir {tsd_d} is {compass_name(tsd_d)}: want signs ({compass_dx(tsd_d)}, {compass_dy(tsd_d)}), got ({tsd_sx}, {tsd_sy})");
+            }
+        }
+    }
+}
+
+// North is UP on screen, stated once as a number rather than as six
+// signs — the single fact the decision turns on.
+fn test_north_is_up() {
+    tni_here  = lat_to_metres(Hex { q: 0, r: 0 });
+    tni_north = lat_to_metres(lat_neighbour(Hex { q: 0, r: 0 }, 5));   // NE
+
+    assert(tni_north.1 < tni_here.1,
+           "stepping NE decreases world y, and +y is south — so NE is up the screen");
+
+    // And the row index agrees with the compass: `hex_grid` says r
+    // increases upward, so a larger r must be further north.
+    tni_r0 = lat_to_metres(Hex { q: 0, r: 0 });
+    tni_r4 = lat_to_metres(Hex { q: 0, r: 4 });
+    assert(tni_r4.1 < tni_r0.1, "a larger row is further north");
+}
+
+// The corner ring survives the negation: still six corners, still
+// one side apart, still closing on itself.  A convex fill needs
+// exactly this and nothing about winding.
+fn test_the_corner_ring_is_intact() {
+    for tcr_r in -3..=3 {
+        for tcr_q in -3..=3 {
+            tcr_h = Hex { q: tcr_q, r: tcr_r };
+            for tcr_i in 0..6 {
+                tcr_a = lat_corner_metres(tcr_h, tcr_i);
+                tcr_b = lat_corner_metres(tcr_h, (tcr_i + 1) % 6);
+                tcr_dx = tcr_b.0 - tcr_a.0;
+                tcr_dy = tcr_b.1 - tcr_a.1;
+                tcr_side = sqrt(tcr_dx * tcr_dx + tcr_dy * tcr_dy);
+                // For a regular hexagon the side equals the
+                // circumradius.
+                assert(abs(tcr_side - LAT_METRES_PER_UNIT) < 0.00001,
+                       "corner {tcr_i}→{(tcr_i + 1) % 6} of ({tcr_q}, {tcr_r}) is {tcr_side} m, want {LAT_METRES_PER_UNIT}");
+            }
+        }
+    }
+}
+
+// A pointy-top hex has a vertex straight up and one straight down —
+// which is what "pointy-top" means, and what the negation had to
+// preserve.
+fn test_a_pointy_top_hex_has_a_top_vertex() {
+    tpt_h = Hex { q: 0, r: 0 };
+    tpt_c = lat_to_metres(tpt_h);
+
+    // Northmost = SMALLEST y, so the sentinel starts high.
+    tpt_top = 99.0;
+    tpt_dx  = 99.0;
+    for tpt_i in 0..6 {
+        tpt_k = lat_corner_metres(tpt_h, tpt_i);
+        if tpt_k.1 - tpt_c.1 < tpt_top {
+            tpt_top = tpt_k.1 - tpt_c.1;
+            tpt_dx  = tpt_k.0 - tpt_c.0;
+        }
+    }
+
+    // The northmost corner is straight up: no easting, and exactly a
+    // circumradius away.
+    assert(abs(tpt_dx) < 0.00001, "the top vertex is directly above the centre");
+    assert(abs(tpt_top + LAT_METRES_PER_UNIT) < 0.00001,
+           "one circumradius NORTH of it — so the point is up, not down");
+}
+
 // ─── Lines ──────────────────────────────────────────────────────
 
 fn test_a_line_runs_from_a_to_b_along_the_metric() {

@@ -54,15 +54,34 @@
 // conversion, not translated.  (Today only `tests/03_m5_spawn.loft`
 // calls it; no `src/` module does.)
 //
-// **2. `hex_grid`'s compass names assume +y is UP; dryopea's is
-// DOWN.**  Its doc says "r increases upward" and it names direction
-// 5 `NE` — but it also places row `r+1` at LARGER y, and dryopea
-// renders +y as SOUTH (CLAUDE.md § Hex convention, no y-flip in the
-// render path).  So on dryopea's screen `hex_grid`'s NE appears
-// south-east: the LATTICE is identical and the NAMES are mirrored
-// north↔south.  This file keeps the lattice and takes no position on
-// the names — renaming the six directions is the plan's open
-// question 2 and belongs to C4/C5, where markers and arrows live.
+// **2. `hex_grid`'s compass assumes +y is UP; dryopea's is DOWN — so
+// the metre conversion NEGATES y.**  `hex_grid` documents "r
+// increases upward" and names direction 5 `NE`, while placing row
+// `r+1` at LARGER y; dryopea's world +y is SOUTH.  Taken literally
+// the two agree on the lattice and disagree on the compass by a
+// north↔south mirror.
+//
+// **Decision (project owner, 2026-08-13): follow `hex_grid`'s
+// compass, and let the maps flip.**  So `lat_to_metres` returns
+// `-y`, and direction 5 really is north-east on screen.  The
+// alternative — keep the picture and mirror the names — would have
+// left every `hex_*` library and moros describing dryopea's world
+// with the wrong words forever, which is the whole thing plan 09
+// exists to stop.
+//
+// ⚠ The negation is a FRAME convention, not a second implementation:
+// it is in the same category as the metre scale — something
+// `hex_grid` cannot know, because it does not know which way
+// dryopea's screen faces.  It costs nothing in the lattice (a
+// reflection preserves distance, adjacency and the pointy-top
+// hexagon, which is symmetric about its own horizontal axis) and it
+// keeps BOTH of dryopea's standing conventions: world +y still grows
+// south, and the render path still has no y-flip in it.
+//
+// ⚠ What it does cost: **existing maps render vertically mirrored.**
+// That is accepted, not overlooked — C5 relabels coordinates and
+// does NOT add a compensating flip.  A map that came back looking
+// the same would mean the compass had not moved.
 //
 // ── Naming ──────────────────────────────────────────────────────
 //
@@ -141,28 +160,40 @@ pub fn lat_from_axial(aq: integer, ar: integer) -> Hex {
 
 // Hex centre in world-space metres (x, y).
 //
-// ⚠ +y is SOUTH here, as everywhere else in dryopea — see finding 2.
+// ⚠ +y is SOUTH here, as everywhere else in dryopea, and `hex_grid`'s
+// +y is NORTH — hence the negation.  It is what makes the compass
+// true: direction 5 is `NE` in the library's docs, and after this it
+// is up-and-right on dryopea's screen too.  See finding 2.
 pub fn lat_to_metres(h: const Hex) -> (float, float) {
     ltm_p = hex_grid::hex_to_px(h.q, h.r);
-    (ltm_p.0 * LAT_METRES_PER_UNIT, ltm_p.1 * LAT_METRES_PER_UNIT)
+    (ltm_p.0 * LAT_METRES_PER_UNIT, -ltm_p.1 * LAT_METRES_PER_UNIT)
 }
 
 // Which hex contains the world-space point (x, y)?  The inverse of
-// `lat_to_metres`.
+// `lat_to_metres`, negation included — miss that and picking lands
+// one row off in the mirrored direction, which looks like a rounding
+// bug and is not one.
 pub fn lat_from_metres(x: float, y: float) -> Hex {
     // `?? 0.0` silences loft's div-by-zero static check; the divisor
     // is a non-zero constant.
     lfm_inv = (1.0 / LAT_METRES_PER_UNIT) ?? 0.0;
-    lfm_h = hex_grid::px_to_hex(x * lfm_inv, y * lfm_inv);
+    lfm_h = hex_grid::px_to_hex(x * lfm_inv, -y * lfm_inv);
     Hex { q: lfm_h.0, r: lfm_h.1 }
 }
 
-// Corner `i` of hex `h`, in metres.  Corner 0 is the top vertex,
-// going counter-clockwise — a pointy-top hex, so there IS a top
-// vertex, which is the visible half of this conversion.
+// Corner `i` of hex `h`, in metres.  Corner 0 is the TOP vertex — a
+// pointy-top hex has one, and the negation is what keeps it at the
+// top of dryopea's screen rather than the bottom.
+//
+// ⚠ The negation reverses the WINDING: `hex_grid` walks the corners
+// counter-clockwise in its own frame, so in dryopea's they run
+// clockwise.  Consecutive corners are still adjacent and still one
+// side apart, which is all a convex fill needs — but anything that
+// ever comes to depend on signed area or winding order must read
+// this rather than the library's doc-comment.
 pub fn lat_corner_metres(h: const Hex, i: integer) -> (float, float) {
     lcm_p = hex_grid::hex_corner_px(h.q, h.r, i);
-    (lcm_p.0 * LAT_METRES_PER_UNIT, lcm_p.1 * LAT_METRES_PER_UNIT)
+    (lcm_p.0 * LAT_METRES_PER_UNIT, -lcm_p.1 * LAT_METRES_PER_UNIT)
 }
 
 // ─── Lines and discs ────────────────────────────────────────────
