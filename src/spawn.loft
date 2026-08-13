@@ -60,6 +60,31 @@ pub const SCRAMBLER_BUBBLE_RADIUS: integer = 25;
 // second opinion to have about it.  `tests/12_b0_probe.loft` measures
 // the one-hex half against the running mover, which is what makes this
 // a derivation rather than a pair of numbers that happen to agree.
+//
+// ⚠ **And the design intends to BREAK it** — project owner,
+// 2026-08-13: *there will be a variety of speeds, so do not link speed
+// too closely to a tick*.  Three sources, and the second is decisive:
+// per role (the scout is faster), per CONDITION (**a damaged robot
+// moves slower**, so speed changes during a life and is not a class
+// constant at all), and per tier (insects differ again).
+//
+// What replaces this derivation: the tick becomes a simulation
+// timestep chosen on its own merits, and every enemy banks movement
+// progress — `speed * TICK_SECONDS`, stepping a hex whenever a whole
+// one is due.  ⚠ That is the pattern `tower.loft` already implements
+// and `tests/12_b5a_tower.loft` already gates, float-rounding trap
+// included (`TOWER_CHARGE_EPSILON`) — so reuse it rather than
+// rediscovering that a repeating fraction sums a hair short.
+//
+// `tests/12_b0_probe.loft`'s `test_a_tick_advances_an_enemy_exactly_
+// one_hex` and `test_so_a_tick_is_two_thirds_of_a_second` are the two
+// assertions that will go red, and they SHOULD: they are the gate on
+// this paragraph, in the same inverted sense B0's § 1 was for B1.
+//
+// ⚠ And it costs more than it looks: the tick's length is what plan 11
+// F8's budget is measured against.  A shorter timestep shrinks that
+// budget in proportion, and the from-scratch field rebuild that fits
+// comfortably at 667 ms does not fit at 100 ms.
 pub const ENEMY_SPEED_HEX_PER_SECOND: float = 1.5;
 pub const TICK_SECONDS: float = 1.0 / ENEMY_SPEED_HEX_PER_SECOND;
 

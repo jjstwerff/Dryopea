@@ -914,14 +914,65 @@ Secondary phase-3 behaviours:
   overcomes the scrambler) re-target marked towers.  Boss
   itself never attacks towers; stays focused on the core.
 
+#### Builders repair the BOSS — the loop closes both ways
+
+Owner, 2026-08-13.  A **builder** (§ 10 § Small robots) can
+repair a damaged boss, under three conditions, and every one of
+them is a counter the player can play against:
+
+1. **Near it** — separate them and the repair stops.
+2. **Room to reach it** — the boss is 2×2 and needs an adjacent
+   free hex for a builder to work from, so **tight terrain and
+   a narrow approach can deny the repair outright**.
+3. **Left alone by the towers** — a builder that is being shot
+   is not repairing.
+
+⚠ **Together with the heal above this is a MUTUAL-repair knot**,
+and that is the interesting part: the boss heals nearby damaged
+regulars, and the builders among those regulars heal the boss
+back.  A boss escorted by builders is a self-sustaining group,
+and the player's question stops being *how much damage can I
+do* and becomes **where do I break the loop** — kill the small
+cheap unit, or the big expensive one?
+
+⚠ **Two of the three counters are ARCHITECTURAL**, which is the
+best thing about it: "near" and "room to reach" are decided by
+where the player put their walls, not by how much DPS they
+brought.  A funnel that leaves a boss no shoulder-room is a
+counter built before the wave arrived.
+
+⚠ **Worth checking in play before it ships:** the arithmetic can
+make the knot unbreakable.  A tower is 10 HP/s and a boss heals
+5 HP/s per unit, so a couple of builders repairing at a similar
+rate out-heal a single laser.  That is a fine tension — it is
+what splash and artillery are FOR (§ Damage TYPE) — but it
+needs the rates chosen deliberately rather than inherited.
+
 Player tactics: isolate the boss from escorts to cut the
 order chain; salvage tower tops to silence specific towers
-and keep them unmarked.
+and keep them unmarked; **and pick which end of the repair
+loop to break.**
 
 2×2 footprint **cannot fit through 1-hex entrance gaps** —
 boss must use a 2-hex+ gate or **break the wall** to make
 its own path.  Wall topology becomes a tactical lever against
 bosses specifically.
+
+**And it is quite a bit slower than everything else**
+(§ 10 § Speed must NOT be tied to the tick) — deliberately, so
+the player has time to strategize against it rather than react
+to it.  ⚠ Three things already written down compound with that,
+and none was designed for it:
+
+- it stays in a tower's field of fire far longer, so it takes
+  the fire that makes it start marking towers (§ Retaliation);
+- **artillery cannot miss it**, where a fast scout dodges the
+  same shell without trying (§ Damage TYPE) — the two ends of
+  the speed spectrum are the two ends of the weapon matching
+  problem;
+- slow, 2×2 and badly routed is the same unit three times over:
+  it is the one left standing outside, which is exactly where
+  its builders have room to reach it.
 
 Until phase 3 ships, towers cannot be damaged by enemies at
 all.
@@ -1083,16 +1134,91 @@ programme, hostile only because their command links broke
 
 **What differs between them is their effectiveness against a
 wall, and it differs a lot.**  A miner cuts rock for a living;
-a scout carries nothing that bites into concrete.  So the same
-wave arriving at the same perimeter is a very different problem
-depending on what is in it.
+a scout has no real weapon at all.  So the same wave arriving
+at the same perimeter is a very different problem depending on
+what is in it.
+
+**And the scout is quite a bit faster than the others — but
+lacks a good weapon of its own.**  It is the surveyor, the eyes
+of the swarm ([`SETTING.md`](SETTING.md) § Robot diversity),
+and it is built to look rather than to fight: it arrives first
+and does almost nothing when it gets there.
+
+⚠ That pairing is what makes it interesting rather than
+filler.  Speed is not just "arrives sooner" — § Damage TYPE
+already gives it a defensive role, because artillery has travel
+time and a fast target that steps behind a wall after the shot
+is away is simply **missed**.  So the scout is the unit
+artillery cannot hit *and* the unit not worth hitting, while
+the miner is slow, deadly to a perimeter, and exactly what
+artillery is for.  **Role composition and tower composition
+become a matching problem**, which is two design threads
+meeting rather than one bolted onto the other.
+
+⚠ **The harvester is the one role without a stated mechanical
+distinction yet.**  Scout has speed, miner has bite, builder
+has repair — and a hauler's obvious axis is what it CARRIES,
+which would make it the richest salvage on the field and the
+one worth letting through the kill zone to collect later.  Not
+committed; noted because a matrix with a hole in it invites one
+to be filled deliberately rather than by default.
 
 ⚠ **Their AI is not different.**  This is the first real payoff
 of the rule in § Combat dynamics § Retaliation: they route the
 same way, target the same way and retaliate the same way, and
-the whole difference is one number per role — the damage-to-wall
-rate that `numbers.json` already carries for `enemy_regular`.
-Four enemy types, no new behaviour, no new code path.
+the whole difference is **numbers per role** — damage to a wall,
+and speed.  Four enemy types, no new behaviour, no new code
+path.
+
+#### ⚠ Speed must NOT be tied to the tick
+
+Owner, 2026-08-13, and it is a direct instruction rather than a
+consequence: **there will be a variety of speeds, so do not
+link speed too closely to a tick.**  Three sources of variety,
+and the second is the one that settles it:
+
+- **per role** — the scout is quite a bit faster than the rest,
+  and the **boss quite a bit slower**;
+- **per CONDITION** — *a damaged robot moves slower*, so speed
+  is a running quantity that changes during a life, not a
+  constant read off a class table;
+- **per tier** — insects will be quite different again.
+
+⚠ **Speed is a PACING tool, not just a stat.**  The boss is slow
+*"for effect on the player, but also to allow them to strategize
+against them"* — which is the same principle
+[§ 6](#6-spawn-system--waves) § Pre-walk visibility already
+uses, where enemies stand at their spawn markers for five
+seconds so the scramble decision has room to happen.  A slow
+boss is the same idea inside the fight: time to read the threat
+and answer it.  The scout is that principle inverted — it is
+fast *and* harmless, so it costs the player attention without
+costing them time.
+
+⚠ **This breaks a derivation the engine currently rests on**, on
+purpose.  A tick is defined today as the time an enemy takes to
+cross one hex, so the timestep is `1 / 1.5 s` and the mover
+advances exactly one hex per tick with no arithmetic at all.
+That is only available while every enemy moves at one speed.
+
+What replaces it: **the tick becomes a simulation timestep
+chosen on its own merits**, and each enemy banks movement
+progress — `speed × timestep`, stepping a hex whenever a whole
+one is due.  The codebase already has that pattern, built and
+tested: a tower banks its fire interval exactly this way
+([`plans/12`](../plans/12-combat-resolution/README.md) B5a),
+float-rounding trap included.
+
+⚠ **And it has a COST consequence nobody would look for.**  The
+tick's length is what the simulation's per-tick budget is
+measured against, and today that budget is generous *because* a
+tick is two thirds of a second.  Decouple it and the timestep
+becomes a free variable — and a shorter one, chosen for smooth
+varied speeds, shrinks the budget in direct proportion.  Plan 11
+deliberately did **not** build an incremental route rebuild
+because a from-scratch rebuild fits comfortably at 667 ms per
+tick; at 100 ms it does not.  So *"the tick got shorter"* is a
+third trigger for that work, beside the two already recorded.
 
 Two consequences worth having:
 
@@ -1113,6 +1239,12 @@ Different roles should also carry **different salvage** — a
 harvester and a miner are not made of the same parts — which is
 the contents axis § Future tower types already needs for wreck
 decay.
+
+⚠ **The builder has a second job**, and it is the one that makes
+role composition matter beyond wall-chewing: it can **repair a
+damaged boss** (§ Combat dynamics § Builders repair the BOSS).
+Still no new AI — being able to repair is an option on the role,
+exactly as a miner's bite against a wall is a number on it.
 
 **Within tier 1, early-vs-late escalation is lore-driven.**
 The first waves a player meets are **economic units** —

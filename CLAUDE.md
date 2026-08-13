@@ -185,8 +185,19 @@ healthy vs 316% copying, stable to +-2% under a full suite run.
 gate is green with room to spare, and an incrementally wrong field
 routes enemies through a wall the player just built.  Its equality gate
 is already written and green against the from-scratch reference; the
-trigger for revisiting is the budget test going red or `numbers.json`
-raising the wave list or the world radius.
+trigger for revisiting is the budget test going red, `numbers.json`
+raising the wave list or the world radius — or **the TICK getting
+shorter**, which is the one nobody would look for.
+
+⚠ **That third trigger is coming, and it is a design decision rather
+than a regression.**  A tick is 667 ms only because it is *defined* as
+the time an enemy takes to cross one hex, and the design intends to
+break that: speed varies by role, by tier, and by CONDITION (a damaged
+robot moves slower), so the tick becomes a simulation timestep chosen
+on its own merits and every enemy banks movement progress instead.
+Pick a shorter timestep for smooth varied speeds and the per-tick
+budget shrinks in direct proportion — the rebuild that fits at 667 ms
+does not fit at 100 ms.  See `spawn.loft` § What a tick is worth.
 
 ### Testing something that moves
 

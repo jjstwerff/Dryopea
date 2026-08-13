@@ -570,6 +570,10 @@ not a coincidence.
   **Harvesters** are the committed small variant.
 - **Scouts / surveyors** — map terrain; the eyes of the
   swarm; presumably the first to detect a scrambler bubble.
+  **Committed as a small variant, and notably FASTER than the
+  rest** — which is what a surveyor is built for, and which
+  gives it an accidental defence against slow projectiles
+  ([`DESIGN.md`](DESIGN.md) § Damage TYPE).
 - **Defense / security bots** — built to engage threats; the
   closest thing to "soldiers" in the original programme.
   **Largely dormant today** (see § Combat bots are dormant
