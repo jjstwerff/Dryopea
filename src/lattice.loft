@@ -1,0 +1,222 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The lattice — plan 09 phase C1.
+//
+// dryopea's hex world moves from **axial flat-top** (`world.loft`)
+// to **pointy-top, odd-r offset** — the convention `hex_grid` calls
+// "THE CONVENTION (shared with moros — the single executable source
+// of it)", which every `hex_*` library and moros already speak.
+// dryopea was the only consumer in the ecosystem holding the other
+// one, so dryopea is what moves.
+//
+// ⚠ **This file DELEGATES; it does not reimplement.**  Every lattice
+// answer here comes from `hex_grid`.  CLAUDE.md § Loft consumer
+// relationship makes that the rule ("do not write a dryopea-local
+// version of a routine a library already provides"), and it is also
+// what makes the goal true by CONSTRUCTION rather than by agreement:
+// a second implementation would speak the right lattice only for as
+// long as two copies stayed in step, and moros#10 is what happens
+// when they do not.
+//
+// What this file adds on top is exactly the two things `hex_grid`
+// cannot know:
+//
+//   - dryopea's `Hex { q, r }` type, so call sites are not threading
+//     bare tuples and reading `.0` / `.1` (which loft#877 makes
+//     actively dangerous in tail position),
+//   - dryopea's METRES.  `hex_grid` works at circumradius 1.0;
+//     dryopea's hexes are 1.5 m vertex-to-vertex.
+//
+// ── What the metre scale is, and why it is exactly 0.75 ─────────
+//
+// `hex_grid` places centres at `x = √3·(col + ½·(row&1))`,
+// `y = 1.5·row` with `HEX_SIZE = 1.0`, so a hex there has
+// circumradius 1 and neighbouring centres are `√3` apart.
+//
+// dryopea's `HEX_DIAMETER` is 1.5 m VERTEX-TO-VERTEX, so its
+// circumradius is 0.75 m and its centre-to-centre spacing is
+// `√3 × 0.75 = 1.299038` — which is exactly `HEX_FLAT_TO_FLAT`, the
+// constant `world.loft` already carried.  So the two agree already
+// and the conversion is one multiply.
+//
+// That settles the plan's open question 1: dryopea SCALES
+// `hex_grid`'s output and keeps its own metre.  It does not redefine
+// the metre, and `hex_grid` does not need a scale parameter.
+//
+// ── ⚠ Two findings that will shear something if forgotten ───────
+//
+// **1. There is no fixed (dq, dr) per direction any more.**  In
+// odd-r offset the neighbour delta DEPENDS ON ROW PARITY — that is
+// the whole point of the layout.  So `world.loft::hex_offset`, which
+// answers a constant pair per direction, has no counterpart here and
+// is deliberately absent.  An operation is DELETED by this
+// conversion, not translated.  (Today only `tests/03_m5_spawn.loft`
+// calls it; no `src/` module does.)
+//
+// **2. `hex_grid`'s compass names assume +y is UP; dryopea's is
+// DOWN.**  Its doc says "r increases upward" and it names direction
+// 5 `NE` — but it also places row `r+1` at LARGER y, and dryopea
+// renders +y as SOUTH (CLAUDE.md § Hex convention, no y-flip in the
+// render path).  So on dryopea's screen `hex_grid`'s NE appears
+// south-east: the LATTICE is identical and the NAMES are mirrored
+// north↔south.  This file keeps the lattice and takes no position on
+// the names — renaming the six directions is the plan's open
+// question 2 and belongs to C4/C5, where markers and arrows live.
+//
+// ── Naming ──────────────────────────────────────────────────────
+//
+// Everything is `lat_*`.  Two lattices coexist until C6 deletes the
+// axial one, and both take a `Hex`, so a bare `distance` sitting
+// beside `hex_distance` is precisely how a call site picks the wrong
+// answer without anybody noticing.  The prefix makes the migration
+// greppable and C6 can drop it.
+
+use world;
+use hex_grid;
+
+// Metres per `hex_grid` unit: dryopea's circumradius.  A hex is
+// `HEX_DIAMETER` vertex-to-vertex, so its circumradius is half that.
+pub const LAT_METRES_PER_UNIT: float = 0.75;   // = HEX_DIAMETER / 2
+
+// ─── Neighbours ─────────────────────────────────────────────────
+
+// The hex one step from `h` in direction `d` (0..5).
+//
+// ⚠ Parity-dependent — see finding 1 above.  This is the ONLY way
+// to step a coordinate in the new lattice; there is no offset table
+// to add by hand.
+pub fn lat_neighbour(h: const Hex, d: integer) -> Hex {
+    ln_n = hex_grid::hex_neighbor(h.q, h.r, d);
+    Hex { q: ln_n.0, r: ln_n.1 }
+}
+
+// All six neighbours, in direction order.
+pub fn lat_neighbours(h: const Hex) -> vector<Hex> {
+    lns_out: vector<Hex> = [];
+    for lns_d in 0..6 {
+        lns_out += [lat_neighbour(h, lns_d)];
+    }
+    lns_out
+}
+
+// Which direction leads from `a` to its neighbour `b`?  -1 when the
+// two are not adjacent — the inverse of `lat_neighbour`, and what a
+// marker arrow needs to point at the cell it names.
+pub fn lat_direction(a: const Hex, b: const Hex) -> integer {
+    hex_grid::hex_neighbor_dir(a.q, a.r, b.q, b.r)
+}
+
+// ─── Metric ─────────────────────────────────────────────────────
+
+// Distance in steps.
+pub fn lat_distance(a: const Hex, b: const Hex) -> integer {
+    hex_grid::hex_distance(a.q, a.r, b.q, b.r)
+}
+
+// ─── The relabel ────────────────────────────────────────────────
+//
+// odd-r offset ↔ axial.  `hex_grid` uses this internally (its
+// `hex_distance` and `px_to_hex` both convert) but does not export
+// it, and two things here need it: `lat_line`, because interpolation
+// is only linear in axial, and C2's data migration.
+//
+// ⚠ `hex_grid::hex_round` returns AXIAL, not offset — its own
+// `px_to_hex` converts the result before handing it back.  A caller
+// that treats a `hex_round` answer as offset gets a sheared cell,
+// silently.  `lat_from_axial` is the conversion that stops that.
+
+// offset (col, row) → axial (q, r).
+pub fn lat_to_axial(h: const Hex) -> (integer, integer) {
+    lta_aq = h.q - (h.r - (h.r & 1)) / 2;
+    (lta_aq, h.r)
+}
+
+// axial (q, r) → offset (col, row).
+pub fn lat_from_axial(aq: integer, ar: integer) -> Hex {
+    Hex { q: aq + (ar - (ar & 1)) / 2, r: ar }
+}
+
+// ─── Metres ─────────────────────────────────────────────────────
+
+// Hex centre in world-space metres (x, y).
+//
+// ⚠ +y is SOUTH here, as everywhere else in dryopea — see finding 2.
+pub fn lat_to_metres(h: const Hex) -> (float, float) {
+    ltm_p = hex_grid::hex_to_px(h.q, h.r);
+    (ltm_p.0 * LAT_METRES_PER_UNIT, ltm_p.1 * LAT_METRES_PER_UNIT)
+}
+
+// Which hex contains the world-space point (x, y)?  The inverse of
+// `lat_to_metres`.
+pub fn lat_from_metres(x: float, y: float) -> Hex {
+    // `?? 0.0` silences loft's div-by-zero static check; the divisor
+    // is a non-zero constant.
+    lfm_inv = (1.0 / LAT_METRES_PER_UNIT) ?? 0.0;
+    lfm_h = hex_grid::px_to_hex(x * lfm_inv, y * lfm_inv);
+    Hex { q: lfm_h.0, r: lfm_h.1 }
+}
+
+// Corner `i` of hex `h`, in metres.  Corner 0 is the top vertex,
+// going counter-clockwise — a pointy-top hex, so there IS a top
+// vertex, which is the visible half of this conversion.
+pub fn lat_corner_metres(h: const Hex, i: integer) -> (float, float) {
+    lcm_p = hex_grid::hex_corner_px(h.q, h.r, i);
+    (lcm_p.0 * LAT_METRES_PER_UNIT, lcm_p.1 * LAT_METRES_PER_UNIT)
+}
+
+// ─── Lines and discs ────────────────────────────────────────────
+
+// Every hex on the line from `a` to `b`, endpoints included.
+//
+// Interpolation happens in AXIAL, because offset coordinates are not
+// linear — lerping them directly is the shear moros#10 paid for.
+// Convert in, lerp, cube-round, convert back.
+pub fn lat_line(a: const Hex, b: const Hex) -> vector<Hex> {
+    ll_out: vector<Hex> = [];
+    ll_n = lat_distance(a, b);
+    if ll_n == 0 {
+        ll_out += [Hex { q: a.q, r: a.r }];
+        return ll_out;
+    }
+    ll_a = lat_to_axial(a);
+    ll_b = lat_to_axial(b);
+    ll_aq = ll_a.0 as float;
+    ll_ar = ll_a.1 as float;
+    ll_dq = (ll_b.0 - ll_a.0) as float;
+    ll_dr = (ll_b.1 - ll_a.1) as float;
+    // Hoisted out of the loop, and `?? 0.0` silences the div-by-zero
+    // check — `ll_n > 0` is guaranteed by the early return.
+    ll_inv = (1.0 / (ll_n as float)) ?? 0.0;
+    for ll_i in 0..=ll_n {
+        ll_t  = (ll_i as float) * ll_inv;
+        ll_rd = hex_grid::hex_round(ll_aq + ll_dq * ll_t, ll_ar + ll_dr * ll_t);
+        ll_out += [lat_from_axial(ll_rd.0, ll_rd.1)];
+    }
+    ll_out
+}
+
+// Every hex within `radius` of `centre`, the centre included — the
+// disc the camera renders.
+//
+// ⚠ Built by FILTERING a bounding box on `lat_distance`, not by
+// enumerating an axial range and converting.  The second would make
+// the disc correct by construction and its count a tautology; this
+// way the count (`3N(N+1)+1`, exact for any hex lattice) is a real
+// check on `lat_distance` itself.
+//
+// The box needs one extra column each side: the odd-row half-shift
+// moves a cell's column by one relative to its axial position.
+pub fn lat_disc(centre: const Hex, radius: integer) -> vector<Hex> {
+    ld_out: vector<Hex> = [];
+    if radius < 0 { return ld_out; }
+    for ld_r in (centre.r - radius)..=(centre.r + radius) {
+        for ld_q in (centre.q - radius - 1)..=(centre.q + radius + 1) {
+            ld_h = Hex { q: ld_q, r: ld_r };
+            if lat_distance(centre, ld_h) <= radius {
+                ld_out += [ld_h];
+            }
+        }
+    }
+    ld_out
+}

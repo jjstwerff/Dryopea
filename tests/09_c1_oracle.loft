@@ -1,0 +1,420 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 09 phase C1 — `src/lattice.loft` against `hex_grid` as an
+// ORACLE, over a swept window.
+//
+// ⚠ **This file is the whole reason C1 is a phase.**  Nothing calls
+// `lattice.loft` yet, and something built and called by nobody
+// cannot normally fail — which by `plans/README.md` § What makes a
+// step SAFE would make C1 uncuttable.  The sweep is what makes it
+// real: a wrong direction table, a transposed q/r, a metre scale
+// off by a factor, or a relabel that loses odd rows is red here with
+// no consumer in sight.
+//
+// ── What is tautological here and what is not ───────────────────
+//
+// `lattice.loft` DELEGATES to `hex_grid` (see its header — reuse is
+// the rule, and delegation makes "dryopea speaks the libraries'
+// lattice" true by construction).  So "lattice agrees with hex_grid"
+// cannot be the whole gate: for a pure pass-through it compares the
+// library to itself.
+//
+// What the comparison DOES catch is transcription — this file writes
+// `hex_grid::hex_distance(a.q, a.r, b.q, b.r)` out independently, so
+// a wrapper that passed `.r, .q` is caught.  Everything else here is
+// a property that can fail whether or not the delegation is exact:
+//
+//   · the direction round-trip     (a wrong index mapping)
+//   · the metre scale              (dryopea's own arithmetic — 0.75)
+//   · the relabel round-trip       (the parity term, on odd rows)
+//   · the line's on-line property  (lerping offset instead of axial)
+//   · the disc COUNT, 3N(N+1)+1    (exact, and independent of layout)
+//
+// ── The negative control ────────────────────────────────────────
+//
+// § The gate is an oracle, not a golden says an oracle that already
+// agrees with dryopea proves nothing.  So the last section points
+// the SAME questions at `world.loft` — the axial layer still in use
+// — and requires them to DISAGREE.  If that section ever goes green,
+// the sweep has stopped being able to see a lattice change and every
+// test above it is worthless.
+
+#cwd
+
+use dryopea;
+use hex_grid;
+
+// ±16 cells, as the phase's Verify says.  33×33 = 1089 cells; every
+// per-cell check below runs over all of them, and the six-direction
+// ones over 6534 steps.
+const SWEEP: integer = 16;
+
+// Metres are floats; compare with a tolerance rather than for
+// equality.  1e-9 is far tighter than any real error and far looser
+// than float noise on values around 1.
+fn close(a: float, b: float) -> boolean {
+    abs(a - b) < 0.000000001
+}
+
+// ─── Delegation is transcribed correctly ────────────────────────
+
+// Not "hex_grid agrees with itself": this file writes the argument
+// ORDER out independently, so a wrapper that fed `.r, .q` is red.
+fn test_the_wrapper_passes_its_arguments_in_the_right_order() {
+    twp_checked = 0;
+    for twp_r in -SWEEP..=SWEEP {
+        for twp_q in -SWEEP..=SWEEP {
+            twp_h = Hex { q: twp_q, r: twp_r };
+
+            // Distance to a fixed off-axis probe — off-axis so a
+            // transposition cannot answer the same by symmetry.
+            twp_p = Hex { q: 3, r: -2 };
+            assert(lat_distance(twp_h, twp_p)
+                   == hex_grid::hex_distance(twp_q, twp_r, 3, -2),
+                   "distance({twp_q}, {twp_r}) matches the oracle");
+
+            for twp_d in 0..6 {
+                twp_n  = lat_neighbour(twp_h, twp_d);
+                twp_og = hex_grid::hex_neighbor(twp_q, twp_r, twp_d);
+                assert(twp_n.q == twp_og.0 && twp_n.r == twp_og.1,
+                       "neighbour {twp_d} of ({twp_q}, {twp_r}) matches the oracle");
+            }
+            twp_checked += 1;
+        }
+    }
+    assert(twp_checked == 33 * 33, "the window is ±16 cells");
+}
+
+// ─── Properties that can fail on their own ──────────────────────
+
+// Step out, ask which way that was.  A direction table off by one —
+// the moros#10 shape — is red on the first cell.
+fn test_every_step_names_the_direction_it_took() {
+    for tes_r in -SWEEP..=SWEEP {
+        for tes_q in -SWEEP..=SWEEP {
+            tes_h = Hex { q: tes_q, r: tes_r };
+            for tes_d in 0..6 {
+                tes_n = lat_neighbour(tes_h, tes_d);
+                assert(lat_direction(tes_h, tes_n) == tes_d,
+                       "({tes_q}, {tes_r}) step {tes_d} is recognised as {tes_d}");
+                assert(lat_distance(tes_h, tes_n) == 1,
+                       "and a step is exactly one hex");
+            }
+        }
+    }
+}
+
+// Out and back is home.  Directions 0..5 are compass-opposite in
+// pairs three apart, so this pins the ORDER of the table as well as
+// its contents.
+fn test_a_step_and_its_opposite_cancel() {
+    for tso_r in -SWEEP..=SWEEP {
+        for tso_q in -SWEEP..=SWEEP {
+            tso_h = Hex { q: tso_q, r: tso_r };
+            for tso_d in 0..6 {
+                tso_out  = lat_neighbour(tso_h, tso_d);
+                tso_back = lat_neighbour(tso_out, (tso_d + 3) % 6);
+                assert(tso_back.q == tso_q && tso_back.r == tso_r,
+                       "({tso_q}, {tso_r}) out {tso_d} and back is home");
+            }
+        }
+    }
+}
+
+fn test_the_six_neighbours_are_distinct() {
+    for tsn_r in -SWEEP..=SWEEP {
+        for tsn_q in -SWEEP..=SWEEP {
+            tsn_ns = lat_neighbours(Hex { q: tsn_q, r: tsn_r });
+            assert(len(tsn_ns) == 6, "six of them");
+            for tsn_i in 0..6 {
+                for tsn_j in (tsn_i + 1)..6 {
+                    tsn_a = tsn_ns[tsn_i] ?? Hex { q: 0, r: 0 };
+                    tsn_b = tsn_ns[tsn_j] ?? Hex { q: 0, r: 0 };
+                    assert(tsn_a.q != tsn_b.q || tsn_a.r != tsn_b.r,
+                           "neighbours {tsn_i} and {tsn_j} of ({tsn_q}, {tsn_r}) differ");
+                }
+            }
+        }
+    }
+}
+
+// ─── The relabel ────────────────────────────────────────────────
+//
+// The parity term `(r - (r & 1)) / 2` is the thing that breaks on
+// ODD ROWS ONLY when it is wrong by one — exactly the shape that
+// hides, which is why the sweep spans both parities.
+
+fn test_the_relabel_round_trips() {
+    for trr_r in -SWEEP..=SWEEP {
+        for trr_q in -SWEEP..=SWEEP {
+            trr_h = Hex { q: trr_q, r: trr_r };
+            trr_a = lat_to_axial(trr_h);
+            trr_b = lat_from_axial(trr_a.0, trr_a.1);
+            assert(trr_b.q == trr_q && trr_b.r == trr_r,
+                   "offset ({trr_q}, {trr_r}) → axial → offset is itself");
+        }
+    }
+}
+
+// The relabel must agree with the one `hex_grid` uses INTERNALLY, or
+// `lat_line` (which round-trips through axial) lands on cells the
+// metric disagrees with.  Axial cube distance over the converted
+// coordinates must equal the oracle's offset distance.
+fn test_the_relabel_agrees_with_the_metric() {
+    tra_o = Hex { q: 0, r: 0 };
+    tra_ao = lat_to_axial(tra_o);
+    for tra_r in -SWEEP..=SWEEP {
+        for tra_q in -SWEEP..=SWEEP {
+            tra_h = Hex { q: tra_q, r: tra_r };
+            tra_a = lat_to_axial(tra_h);
+            tra_dq = tra_a.0 - tra_ao.0;
+            tra_dr = tra_a.1 - tra_ao.1;
+            tra_cube = (abs(tra_dq) + abs(tra_dq + tra_dr) + abs(tra_dr)) / 2;
+            assert(tra_cube == lat_distance(tra_o, tra_h),
+                   "axial cube distance to ({tra_q}, {tra_r}) equals the offset metric");
+        }
+    }
+}
+
+// ─── Metres — dryopea's own arithmetic ──────────────────────────
+
+// The scale is dryopea's, not `hex_grid`'s, so this is the part of
+// the file that is not delegation at all.
+fn test_neighbouring_centres_are_one_flat_to_flat_apart() {
+    for tnc_r in -SWEEP..=SWEEP {
+        for tnc_q in -SWEEP..=SWEEP {
+            tnc_h = Hex { q: tnc_q, r: tnc_r };
+            tnc_c = lat_to_metres(tnc_h);
+            for tnc_d in 0..6 {
+                tnc_n  = lat_neighbour(tnc_h, tnc_d);
+                tnc_nc = lat_to_metres(tnc_n);
+                tnc_dx = tnc_nc.0 - tnc_c.0;
+                tnc_dy = tnc_nc.1 - tnc_c.1;
+                tnc_len = sqrt(tnc_dx * tnc_dx + tnc_dy * tnc_dy);
+                assert(abs(tnc_len - HEX_FLAT_TO_FLAT) < 0.00001,
+                       "({tnc_q}, {tnc_r}) dir {tnc_d}: centres are {tnc_len} m apart, want {HEX_FLAT_TO_FLAT}");
+            }
+        }
+    }
+}
+
+// Every corner is one circumradius from its centre — which is what
+// makes HEX_DIAMETER vertex-to-vertex true rather than asserted.
+fn test_every_corner_is_a_circumradius_from_its_centre() {
+    for tec_r in -4..=4 {
+        for tec_q in -4..=4 {
+            tec_h = Hex { q: tec_q, r: tec_r };
+            tec_c = lat_to_metres(tec_h);
+            for tec_i in 0..6 {
+                tec_k  = lat_corner_metres(tec_h, tec_i);
+                tec_dx = tec_k.0 - tec_c.0;
+                tec_dy = tec_k.1 - tec_c.1;
+                tec_len = sqrt(tec_dx * tec_dx + tec_dy * tec_dy);
+                assert(abs(tec_len - LAT_METRES_PER_UNIT) < 0.00001,
+                       "corner {tec_i} of ({tec_q}, {tec_r}) is {tec_len} m out, want {LAT_METRES_PER_UNIT}");
+            }
+        }
+    }
+}
+
+fn test_metres_round_trip_back_to_the_same_hex() {
+    for tmr_r in -SWEEP..=SWEEP {
+        for tmr_q in -SWEEP..=SWEEP {
+            tmr_h = Hex { q: tmr_q, r: tmr_r };
+            tmr_m = lat_to_metres(tmr_h);
+            tmr_b = lat_from_metres(tmr_m.0, tmr_m.1);
+            assert(tmr_b.q == tmr_q && tmr_b.r == tmr_r,
+                   "({tmr_q}, {tmr_r}) → metres → hex is itself, got ({tmr_b.q}, {tmr_b.r})");
+        }
+    }
+}
+
+// The scale is exactly HEX_DIAMETER / 2, stated as a number so a
+// change to either constant has to be deliberate.
+fn test_the_metre_scale_is_half_the_diameter() {
+    assert(close(LAT_METRES_PER_UNIT, HEX_DIAMETER * 0.5),
+           "one hex_grid unit is one dryopea circumradius");
+    assert(abs(HEX_FLAT_TO_FLAT - hex_grid::SQRT3 * LAT_METRES_PER_UNIT) < 0.000001,
+           "and √3 circumradii is the flat-to-flat dryopea already carried");
+}
+
+// ─── Lines ──────────────────────────────────────────────────────
+
+fn test_a_line_runs_from_a_to_b_along_the_metric() {
+    tal_probes: vector<Hex> = [
+        Hex { q: 0, r: 0 },   Hex { q: 5, r: 0 },   Hex { q: 0, r: 5 },
+        Hex { q: -4, r: 3 },  Hex { q: 7, r: -6 },  Hex { q: -5, r: -5 },
+        Hex { q: 1, r: 9 },   Hex { q: -8, r: 2 },
+    ];
+
+    for tal_a in tal_probes {
+        for tal_b in tal_probes {
+            tal_line = lat_line(tal_a, tal_b);
+            tal_n    = lat_distance(tal_a, tal_b);
+
+            assert(len(tal_line) == tal_n + 1,
+                   "a line of distance {tal_n} has {tal_n} + 1 hexes, got {len(tal_line)}");
+
+            tal_first = tal_line[0] ?? Hex { q: 99, r: 99 };
+            tal_last  = tal_line[len(tal_line) - 1] ?? Hex { q: 99, r: 99 };
+            assert(tal_first.q == tal_a.q && tal_first.r == tal_a.r, "it starts at a");
+            assert(tal_last.q == tal_b.q && tal_last.r == tal_b.r, "and ends at b");
+
+            // Every hex is ON the line: the two legs add up to the
+            // whole.  This is what a lerp in OFFSET coordinates
+            // fails — the shear moros#10 paid for.
+            tal_prev = tal_first;
+            for tal_h in tal_line {
+                assert(lat_distance(tal_a, tal_h) + lat_distance(tal_h, tal_b) == tal_n,
+                       "({tal_h.q}, {tal_h.r}) is on the line from ({tal_a.q}, {tal_a.r}) to ({tal_b.q}, {tal_b.r})");
+                tal_step = lat_distance(tal_prev, tal_h);
+                assert(tal_step <= 1, "and the line has no gap in it");
+                tal_prev = tal_h;
+            }
+        }
+    }
+}
+
+// ─── Discs ──────────────────────────────────────────────────────
+
+// The count `3N(N+1)+1` is exact for ANY hex lattice, so it is a
+// real check on `lat_distance` rather than on the enumeration —
+// which is why `lat_disc` filters a box instead of building the disc
+// by construction.
+fn test_a_disc_has_the_hex_disc_count() {
+    tad_centres: vector<Hex> = [
+        Hex { q: 0, r: 0 },    // even row
+        Hex { q: 0, r: 1 },    // odd row — the parity that hides
+        Hex { q: -7, r: 4 },
+        Hex { q: 3, r: -5 },
+    ];
+
+    for tad_c in tad_centres {
+        for tad_n in 0..=6 {
+            tad_d = lat_disc(tad_c, tad_n);
+            tad_want = 3 * tad_n * (tad_n + 1) + 1;
+            assert(len(tad_d) == tad_want,
+                   "disc of radius {tad_n} about ({tad_c.q}, {tad_c.r}) has {tad_want} hexes, got {len(tad_d)}");
+            for tad_h in tad_d {
+                assert(lat_distance(tad_c, tad_h) <= tad_n, "and every one is within radius");
+            }
+        }
+    }
+}
+
+// The bounding box `lat_disc` filters must be wide enough — the
+// odd-row half-shift moves a column, and a box one short would drop
+// cells the count test alone might not notice if the formula were
+// also wrong.  Checked from the other side: nothing WITHIN radius is
+// missing from a much wider scan.
+fn test_the_disc_box_loses_nothing() {
+    tdb_c = Hex { q: 0, r: 1 };   // odd row
+    tdb_n = 5;
+    tdb_d = lat_disc(tdb_c, tdb_n);
+
+    tdb_found = 0;
+    for tdb_r in (tdb_c.r - tdb_n - 4)..=(tdb_c.r + tdb_n + 4) {
+        for tdb_q in (tdb_c.q - tdb_n - 4)..=(tdb_c.q + tdb_n + 4) {
+            if lat_distance(tdb_c, Hex { q: tdb_q, r: tdb_r }) <= tdb_n {
+                tdb_found += 1;
+            }
+        }
+    }
+
+    assert(len(tdb_d) == tdb_found,
+           "the disc's own box found {len(tdb_d)}; a box four wider finds {tdb_found}");
+}
+
+// ─── ⚠ THE NEGATIVE CONTROL ─────────────────────────────────────
+//
+// Everything above is worthless if the oracle already agreed with
+// the axial layer dryopea is leaving.  These require it to DISAGREE.
+// If this section ever goes green, the sweep has gone blind.
+
+// C0's measurement, pinned: the oracle answers 1 where dryopea's
+// axial math answers 2.
+fn test_the_oracle_disagrees_with_axial_on_c0s_cell() {
+    tod_a = Hex { q: 0, r: 0 };
+    tod_b = Hex { q: -1, r: -1 };
+
+    assert(lat_distance(tod_a, tod_b) == 1,
+           "in the new lattice (0,0) and (-1,-1) are ADJACENT");
+    assert(world::hex_distance(tod_a, tod_b) == 2,
+           "in the axial one they are two steps apart — this is the shear");
+}
+
+// Not one cell but most of them: the two metrics must differ widely,
+// or the conversion is not changing anything.
+fn test_the_two_metrics_disagree_over_the_sweep() {
+    ttm_origin = Hex { q: 0, r: 0 };
+    ttm_diff = 0;
+    ttm_all  = 0;
+    for ttm_r in -SWEEP..=SWEEP {
+        for ttm_q in -SWEEP..=SWEEP {
+            ttm_h = Hex { q: ttm_q, r: ttm_r };
+            if lat_distance(ttm_origin, ttm_h) != world::hex_distance(ttm_origin, ttm_h) {
+                ttm_diff += 1;
+            }
+            ttm_all += 1;
+        }
+    }
+
+    assert(ttm_diff * 4 > ttm_all,
+           "the lattices disagree on more than a quarter of the window — {ttm_diff} of {ttm_all}");
+}
+
+// The direction tables disagree too, and in the way that matters:
+// the axial one is a CONSTANT offset per direction, the new one is
+// parity-dependent.  This is why `hex_offset` has no counterpart in
+// `lattice.loft` — the operation is deleted, not translated.
+fn test_the_new_lattice_has_no_constant_direction_offset() {
+    tnl_even = Hex { q: 0, r: 0 };
+    tnl_odd  = Hex { q: 0, r: 1 };
+
+    tnl_shifts = 0;
+    for tnl_d in 0..6 {
+        tnl_ne = lat_neighbour(tnl_even, tnl_d);
+        tnl_no = lat_neighbour(tnl_odd,  tnl_d);
+        tnl_dqe = tnl_ne.q - tnl_even.q;
+        tnl_dre = tnl_ne.r - tnl_even.r;
+        tnl_dqo = tnl_no.q - tnl_odd.q;
+        tnl_dro = tnl_no.r - tnl_odd.r;
+        if tnl_dqe != tnl_dqo || tnl_dre != tnl_dro { tnl_shifts += 1; }
+    }
+
+    assert(tnl_shifts == 4,
+           "four of the six deltas change with row parity, so no (dq, dr) table exists — got {tnl_shifts}");
+
+    // And the axial layer's table really is constant, which is what
+    // makes the statement above a DIFFERENCE rather than a claim.
+    tnl_axial_shifts = 0;
+    for tnl_ad in 0..6 {
+        tnl_ae = world::hex_neighbor(tnl_even, tnl_ad);
+        tnl_ao = world::hex_neighbor(tnl_odd,  tnl_ad);
+        if (tnl_ae.q - tnl_even.q) != (tnl_ao.q - tnl_odd.q)
+        || (tnl_ae.r - tnl_even.r) != (tnl_ao.r - tnl_odd.r) {
+            tnl_axial_shifts += 1;
+        }
+    }
+    assert(tnl_axial_shifts == 0, "the axial table is the same at every row");
+}
+
+// The pictures move too: a hex's centre is somewhere else.  C0
+// measured `hex_to_px(0, 1) = (0.866, 1.5)` — the odd-row half-shift
+// that axial flat-top does not have.
+fn test_the_geometry_disagrees_with_axial() {
+    tgd_h = Hex { q: 0, r: 1 };
+    tgd_new = lat_to_metres(tgd_h);
+    tgd_old = hex_to_world(tgd_h);
+
+    assert(!close(tgd_new.0, tgd_old.0) || !close(tgd_new.1, tgd_old.1),
+           "the same label lands somewhere else on the map");
+
+    // The half-shift itself: an odd row is offset half a hex east of
+    // an even one, which is the whole point of odd-r.
+    tgd_e = lat_to_metres(Hex { q: 0, r: 0 });
+    tgd_o = lat_to_metres(Hex { q: 0, r: 1 });
+    assert(abs((tgd_o.0 - tgd_e.0) - HEX_FLAT_TO_FLAT * 0.5) < 0.00001,
+           "odd rows sit half a flat-to-flat east");
+}

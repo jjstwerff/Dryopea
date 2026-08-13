@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 518/518 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 535/535 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 518 runs.
+per-function + per-line + call-path report over all 535 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -493,7 +493,28 @@ src/
                    only enemy measurement that does not depend on
                    spawn order
   world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
-                   cube_round_axial, world_to_hex, visible_hexes
+                   cube_round_axial, world_to_hex, visible_hexes.
+                   ⚠ The OLD lattice — everything still calls it, and
+                   plan 09 C6 deletes it
+  lattice.loft     the NEW lattice (plan 09 C1) — pointy-top odd-r
+                   offset, the convention every hex_* library and moros
+                   speak.  `lat_*` names, because both lattices take a
+                   `Hex` and coexist until C6, so a bare `distance`
+                   beside `hex_distance` is how a call site picks the
+                   wrong answer.  Nothing calls it yet (C3-C5 do).
+                   ⚠ It DELEGATES to `hex_grid` — never a second
+                   implementation, which is what makes the lattice
+                   right by construction rather than by two copies
+                   agreeing.  It adds only what the library cannot
+                   know: dryopea's `Hex` type and dryopea's METRES
+                   (one hex_grid unit = 0.75 m = one circumradius).
+                   ⚠ `hex_offset` has NO counterpart — in odd-r the
+                   neighbour delta depends on row parity, so a constant
+                   (dq, dr) table does not exist.  The operation is
+                   deleted by the conversion, not translated.
+                   ⚠ `hex_grid::hex_round` answers AXIAL, not offset —
+                   `lat_from_axial` is what stops that shearing a cell
+                   silently
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
                    + InputState (moros-style: factories + pure tick
                    + struct of booleans)
@@ -617,10 +638,23 @@ suite redirects its own shots into `tests/actual/`.
 
 ### Hex convention
 
-Axial flat-top hex grid throughout — matches moros and loft
-`lib_plan 24`.  HEX_DIAMETER = 1.5m vertex-to-vertex.  World
-+y grows **south** (same direction as canvas +y); there is no
-y-flip in the render path.
+⚠ **Two lattices coexist right now** — plan 09 is mid-conversion.
+
+**In use today (`src/world.loft`): axial flat-top.**  HEX_DIAMETER =
+1.5m vertex-to-vertex.  Everything calls this; C6 deletes it.  The
+claim that it "matches moros and loft `lib_plan 24`" was WRONG and is
+what plan 09 exists to correct — dryopea was the ecosystem's only
+axial consumer.
+
+**The target (`src/lattice.loft`, shipped C1): pointy-top, odd-r
+offset**, delegating to `hex_grid`.  Nothing calls it yet.
+
+World +y grows **south** (same direction as canvas +y); there is no
+y-flip in the render path, and that does NOT change.
+⚠ `hex_grid` documents its compass with +y UP, so its `NE` is
+dryopea's visual south-east.  The lattices are identical and only the
+NAMES mirror; flipping the render path to match them would silently
+invert every existing map, so it is not the fix.
 
 ### Naming
 
@@ -927,6 +961,7 @@ signature.
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
 | Change how enemies move | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) — the whole spec.  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
+| Step a hex coordinate | `world.loft::hex_neighbor` today; `lattice.loft::lat_neighbour` after plan 09.  ⚠ Never a `+ 1` on a `q` or `r` — and after the conversion never a constant `(dq, dr)` either, because odd-r deltas depend on row parity |
 | Ask whether an enemy may MOVE somewhere | `src/passable.loft::can_step` — the rule, an edge.  Never `walk_ground` on its own, and never the destination's height on its own |
 | Ask whether an enemy may BE somewhere | `src/passable.loft::can_occupy` — what a position can say with no history.  The measurement's rule; never the field's node filter |
 | Raise a hex at runtime (bodies) | `src/height.loft` — a rise above what the palette paints.  Lives on `WaveState`, never saved |

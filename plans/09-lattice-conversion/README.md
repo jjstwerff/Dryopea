@@ -106,7 +106,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 | **I0** — probe: does `input`'s edge model match the seam's? | XS | a probe first | reproduce the three semantics plan 08 pinned — a tap fires once, a HELD action fires once, a level action repeats — against `input`'s `is_action_just_pressed`. **The deliverable is the answer**: `input_new` documents "first frame counts as a transition", which the seam does not do, so if they differ I1 changes shape before it is built | **Shipped** — they MATCH; see § I0 |
 | **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME count it did before the swap (233 over 14 scripts as of 2026-08-12 — read it, do not trust this number) | **Shipped** — see § I1.  Compared at the INPUT level, which is stronger; 233 held |
 | **C0** — probe: can `hex_grid` be the oracle? | XS | a probe first | its answers for a hand-checked cell set, AND that they **disagree** with dryopea's current axial math — an oracle that already agrees proves nothing | **Shipped** |
-| **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | Open |
+| **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | **Shipped** — see § C1 shipped.  Negative control run: 8 of 17 red |
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | Open |
 | **C3** — the renderer draws pointy-top | M | one site at a time | hex centres equal `hex_grid::hex_to_px` under the camera transform (to a float ε); `screen_to_hex ∘ world_to_canvas` = identity over the sweep; goldens rebaselined ONCE and reviewed; plan 08's `frame` bands still hold | Open |
 | **C4** — `paint_line`, marker arrows, spawn approach | M | one site at a time | per site: `paint_line` equals `hex_grid`'s line over the sweep; each marker arrow points at the neighbour it names; `a-wave-approaches` still shows `range` decreasing monotonically | Open |
@@ -351,6 +351,90 @@ a bounded window, so a wrong direction table is red immediately, with no
 consumer in sight. The negative control in the Verify column is what makes
 that claim honest — the same sweep pointed at today's `world.loft` must fail.
 
+### C1 shipped — and it DELEGATES, which changes what the gate can be
+
+Landed 2026-08-13.  `src/lattice.loft` + `tests/09_c1_oracle.loft`;
+nothing calls the new layer yet, exactly as planned.
+
+⚠ **`lattice.loft` delegates to `hex_grid`; it does not reimplement.**
+[`CLAUDE.md`](../../CLAUDE.md) § Loft consumer relationship makes that
+the rule, and it is also the stronger position: delegation makes "every
+coordinate dryopea owns is pointy-top odd-r" true by CONSTRUCTION,
+where a second implementation would be true only for as long as two
+copies stayed in step — which is the moros#10 failure exactly.  What
+the file adds is the two things `hex_grid` cannot know: dryopea's `Hex`
+type, and dryopea's metres.
+
+**Which means this row's stated gate is partly tautological, and the
+sweep had to be built out of things that can fail anyway.**  "dryopea's
+answers equal `hex_grid`'s" compares the library to itself for a pure
+pass-through.  It is still worth running — the test writes the argument
+ORDER out independently, so a wrapper that fed `.r, .q` is caught — but
+the load-bearing checks are the ones that hold regardless of
+delegation: the direction round-trip, the metre scale, the relabel
+round-trip, the line's on-line property, and the disc count `3N(N+1)+1`
+(exact for any hex lattice, which is why `lat_disc` FILTERS a bounding
+box rather than enumerating an axial range — the second would make the
+count a tautology too).
+
+**Seen RED twice before being trusted.**  Pointed at `world.loft` — the
+row's own negative control — 8 of 17 go red, including "the lattices
+disagree on more than a quarter of the window — **0** of 1089".  And
+breaking only the parity term (`(r - (r&1))/2` → `r/2`) takes down 3,
+naming cell **(-16, -15)**: an ODD row, which is the failure shape C2's
+Verify says hides.
+
+#### Open question 1 is answered: the metre survives, scaled by 0.75
+
+`hex_grid` works at circumradius 1.0 with centres `√3` apart.  dryopea's
+`HEX_DIAMETER` is 1.5 m vertex-to-vertex → circumradius 0.75 m →
+centre-to-centre `√3 × 0.75 = 1.299038`, which is **exactly
+`HEX_FLAT_TO_FLAT`, the constant `world.loft` already carried**.  So the
+two agree already and the conversion is one multiply.  dryopea scales
+`hex_grid`'s output and keeps its own metre; `hex_grid` needs no scale
+parameter.
+
+#### Two findings that will shear something if forgotten
+
+⚠ **`hex_offset` has no counterpart — the operation is DELETED.**  In
+odd-r offset the neighbour delta depends on ROW PARITY (four of the six
+change), so a function answering a constant `(dq, dr)` per direction is
+not translatable.  `lattice.loft` deliberately does not provide one, and
+the sweep asserts both halves: four deltas shift in the new lattice,
+zero shift in the axial one.  Today only `tests/03_m5_spawn.loft` calls
+`hex_offset`; no `src/` module does — so C4/C5 inherit a test to retire,
+not a call graph to unpick.  [`CLAUDE.md`](../../CLAUDE.md) § Hex
+convention names `hex_offset` as one of the three places a coordinate
+may be stepped; after C6 there are two.
+
+⚠ **`hex_grid`'s compass names assume +y is UP and dryopea's is DOWN.**
+It documents "r increases upward" and calls direction 5 `NE`, while
+placing row `r+1` at LARGER y — and dryopea renders +y as SOUTH with no
+y-flip.  So on dryopea's screen `hex_grid`'s NE appears south-east: the
+LATTICE is identical, the NAMES are mirrored north↔south.  C1 takes no
+position; this is open question 2 and it lands in C4/C5 where markers
+and arrows live.  ⚠ It is not a bug in either side, and "fixing" it by
+flipping the render path would silently invert every existing map.
+
+⚠ **`hex_grid::hex_round` returns AXIAL, not offset** — its own
+`px_to_hex` converts before handing back.  A caller that treats a
+`hex_round` answer as an offset cell gets a sheared result with no
+error.  `lat_from_axial` exists to stop that, and `lat_line` is the
+first consumer.
+
+#### The cut moved: the relabel functions are in C1, not C2
+
+`lat_to_axial` / `lat_from_axial` were nominally C2's, but `lat_line`
+cannot interpolate without them — offset coordinates are not linear, so
+lerping them directly IS the shear — and `hex_grid` does not export the
+pair.  They ship here with the round-trip gate.  **C2 keeps the harder
+half**: applying the relabel to real DATA and proving adjacency is
+preserved.
+
+Suite 518 → **535 green**; `scripts/validate.sh` unchanged at **233
+measurements over 14 scripts** (nothing calls the new layer yet, so it
+had better be).
+
 ### C3 — the one place the goldens are allowed to move
 
 Rebaselining 16 goldens is the loudest part of this plan and the least
@@ -379,7 +463,7 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
 | Phase | Concrete expected result | Invariant pinned | Negative control |
 |---|---|---|---|
 | **C0** | `hex_distance((0,0), (-1,-1)) == 1` | the oracle disagrees with axial, so it can surprise us | an oracle that already matched dryopea would be measuring nothing |
-| **C1** | the ±16 sweep is green against `hex_grid` | dryopea's lattice IS `hex_grid`'s | the same sweep against today's axial code must go RED |
+| **C1** ✅ | the ±16 sweep is green against `hex_grid`; the disc count is `3N(N+1)+1`; neighbouring centres are `HEX_FLAT_TO_FLAT` apart | dryopea's lattice IS `hex_grid`'s — by DELEGATION, so it cannot drift | pointed at `world.loft`: **8 of 17 red**, incl. "disagree on more than a quarter — 0 of 1089".  Parity term broken: 3 red at an ODD row |
 | **C2** | every axial-adjacent pair stays adjacent | the relabel is a bijection that preserves structure | an off-by-one parity term breaks odd rows only — and must be caught there |
 | **C3** | hex centres equal `hex_grid::hex_to_px` | the picture follows the lattice, not the other way round | a rebaselined golden agrees with a shear; the centre check does not |
 | **C4** | `a-wave-approaches` range still decreases | the game's own behaviour survives the move | enemies that reach the core in a different number of ticks means the metric moved |
@@ -389,14 +473,23 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
 
 ## Open questions
 
-1. **Does `HEX_DIAMETER = 1.5 m` survive?** `hex_grid` fixes its own world
-   scale (`L = √3` per hex step). dryopea's metres are a rendering constant,
-   but plan 02's solver and plan 07's 3D path both want real units — settle
-   whether dryopea scales `hex_grid`'s output or redefines its metre.
+1. ~~**Does `HEX_DIAMETER = 1.5 m` survive?**~~ **Answered in C1: yes,
+   and dryopea SCALES `hex_grid`'s output.** One `hex_grid` unit is one
+   dryopea circumradius = 0.75 m, so centre-to-centre is `√3 × 0.75 =
+   1.299038` — which is `HEX_FLAT_TO_FLAT`, a constant `world.loft`
+   already carried. The two conventions already agreed on the number;
+   the conversion is one multiply and `hex_grid` needs no scale
+   parameter.
 2. **Do the six direction NAMES survive?** dryopea's spawn directions are
    0..5 with a documented meaning (`R` rotates through them). `hex_grid`'s
    `hex_neighbor` dir order is its own. If they differ, every saved marker's
    `direction` is remapped in C5 — and § C5's open decision covers it.
+   ⚠ **C1 sharpened this and it is worse than a reordering.** `hex_grid`
+   documents "r increases upward" and names direction 5 `NE`, but places
+   row `r+1` at LARGER y — and dryopea renders +y as SOUTH. So the two
+   agree on the LATTICE and disagree on the compass by a north↔south
+   mirror. Renaming is free; flipping the render path to match the names
+   would silently invert every existing map, so it is not the fix.
 3. **Does `gridmesh` become correct-by-construction?** `src/chunks.loft`
    currently feeds axial `(q,r)` as `(x,y)` with `halo_k = 0`, which is
    sound only because the fill is per-cell-independent. After C6 that stops
