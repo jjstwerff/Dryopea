@@ -31,14 +31,16 @@
 //   · the line's on-line property  (lerping offset instead of axial)
 //   · the disc COUNT, 3N(N+1)+1    (exact, and independent of layout)
 //
-// ── The negative control ────────────────────────────────────────
+// ── The negative control, and where it went ─────────────────────
 //
 // § The gate is an oracle, not a golden says an oracle that already
-// agrees with dryopea proves nothing.  So the last section points
-// the SAME questions at `world.loft` — the axial layer still in use
-// — and requires them to DISAGREE.  If that section ever goes green,
-// the sweep has stopped being able to see a lattice change and every
-// test above it is worthless.
+// agrees with dryopea proves nothing.  This file used to end by
+// pointing the same questions at `world.loft` and requiring them to
+// DISAGREE — and they did: 8 of these 17 tests went red when the
+// lattice was aimed at the axial layer.
+//
+// C6 deleted that layer, so the control cannot be written any more.
+// See the note at the foot of this file for what replaced it.
 
 #cwd
 
@@ -441,95 +443,26 @@ fn test_the_disc_box_loses_nothing() {
            "the disc's own box found {len(tdb_d)}; a box four wider finds {tdb_found}");
 }
 
-// ─── ⚠ THE NEGATIVE CONTROL ─────────────────────────────────────
+// ─── ⚠ THE NEGATIVE CONTROL — retired by C6 ─────────────────────
 //
-// Everything above is worthless if the oracle already agreed with
-// the axial layer dryopea is leaving.  These require it to DISAGREE.
-// If this section ever goes green, the sweep has gone blind.
-
-// C0's measurement, pinned: the oracle answers 1 where dryopea's
-// axial math answers 2.
-fn test_the_oracle_disagrees_with_axial_on_c0s_cell() {
-    tod_a = Hex { q: 0, r: 0 };
-    tod_b = Hex { q: -1, r: -1 };
-
-    assert(lat_distance(tod_a, tod_b) == 1,
-           "in the new lattice (0,0) and (-1,-1) are ADJACENT");
-    assert(world::hex_distance(tod_a, tod_b) == 2,
-           "in the axial one they are two steps apart — this is the shear");
-}
-
-// Not one cell but most of them: the two metrics must differ widely,
-// or the conversion is not changing anything.
-fn test_the_two_metrics_disagree_over_the_sweep() {
-    ttm_origin = Hex { q: 0, r: 0 };
-    ttm_diff = 0;
-    ttm_all  = 0;
-    for ttm_r in -SWEEP..=SWEEP {
-        for ttm_q in -SWEEP..=SWEEP {
-            ttm_h = Hex { q: ttm_q, r: ttm_r };
-            if lat_distance(ttm_origin, ttm_h) != world::hex_distance(ttm_origin, ttm_h) {
-                ttm_diff += 1;
-            }
-            ttm_all += 1;
-        }
-    }
-
-    assert(ttm_diff * 4 > ttm_all,
-           "the lattices disagree on more than a quarter of the window — {ttm_diff} of {ttm_all}");
-}
-
-// The direction tables disagree too, and in the way that matters:
-// the axial one is a CONSTANT offset per direction, the new one is
-// parity-dependent.  This is why `hex_offset` has no counterpart in
-// `lattice.loft` — the operation is deleted, not translated.
-fn test_the_new_lattice_has_no_constant_direction_offset() {
-    tnl_even = Hex { q: 0, r: 0 };
-    tnl_odd  = Hex { q: 0, r: 1 };
-
-    tnl_shifts = 0;
-    for tnl_d in 0..6 {
-        tnl_ne = lat_neighbour(tnl_even, tnl_d);
-        tnl_no = lat_neighbour(tnl_odd,  tnl_d);
-        tnl_dqe = tnl_ne.q - tnl_even.q;
-        tnl_dre = tnl_ne.r - tnl_even.r;
-        tnl_dqo = tnl_no.q - tnl_odd.q;
-        tnl_dro = tnl_no.r - tnl_odd.r;
-        if tnl_dqe != tnl_dqo || tnl_dre != tnl_dro { tnl_shifts += 1; }
-    }
-
-    assert(tnl_shifts == 4,
-           "four of the six deltas change with row parity, so no (dq, dr) table exists — got {tnl_shifts}");
-
-    // And the axial layer's table really is constant, which is what
-    // makes the statement above a DIFFERENCE rather than a claim.
-    tnl_axial_shifts = 0;
-    for tnl_ad in 0..6 {
-        tnl_ae = world::hex_neighbor(tnl_even, tnl_ad);
-        tnl_ao = world::hex_neighbor(tnl_odd,  tnl_ad);
-        if (tnl_ae.q - tnl_even.q) != (tnl_ao.q - tnl_odd.q)
-        || (tnl_ae.r - tnl_even.r) != (tnl_ao.r - tnl_odd.r) {
-            tnl_axial_shifts += 1;
-        }
-    }
-    assert(tnl_axial_shifts == 0, "the axial table is the same at every row");
-}
-
-// The pictures move too: a hex's centre is somewhere else.  C0
-// measured `hex_to_px(0, 1) = (0.866, 1.5)` — the odd-row half-shift
-// that axial flat-top does not have.
-fn test_the_geometry_disagrees_with_axial() {
-    tgd_h = Hex { q: 0, r: 1 };
-    tgd_new = lat_to_metres(tgd_h);
-    tgd_old = hex_to_world(tgd_h);
-
-    assert(!close(tgd_new.0, tgd_old.0) || !close(tgd_new.1, tgd_old.1),
-           "the same label lands somewhere else on the map");
-
-    // The half-shift itself: an odd row is offset half a hex east of
-    // an even one, which is the whole point of odd-r.
-    tgd_e = lat_to_metres(Hex { q: 0, r: 0 });
-    tgd_o = lat_to_metres(Hex { q: 0, r: 1 });
-    assert(abs((tgd_o.0 - tgd_e.0) - HEX_FLAT_TO_FLAT * 0.5) < 0.00001,
-           "odd rows sit half a flat-to-flat east");
-}
+// This section held four tests that required the lattice to DISAGREE
+// with `world.loft`'s axial arithmetic: C0's `(0,0)`–`(-1,-1)` cell,
+// a >25% disagreement over the sweep, the parity-shifted direction
+// table, and the moved hex centre.  They were the reason C1 could
+// claim its sweep was not vacuous, and they did their job — 8 of 17
+// tests here went red when the lattice was pointed at the axial
+// layer, which is recorded in `plans/09` § C1 shipped.
+//
+// **C6 deleted `src/world.loft`, so there is no longer an axial layer
+// to differ from, and a control that cannot be written is not a
+// control that was dropped.**  The comparison they protected has a
+// better guard now anyway: every test above compares against
+// `hex_grid` DIRECTLY, so the sweep is vacuous only if the library
+// itself is, and `lattice.loft` cannot silently revert to axial
+// because it holds no arithmetic of its own to revert.
+//
+// ⚠ The axial arithmetic survives in exactly one place —
+// `tests/09_c2_relabel.loft`'s oracle — because the RELABEL's domain
+// is axial and a bijection cannot be proved from one side.  If a
+// future change needs an axial reference, take it from there and do
+// not resurrect a module.

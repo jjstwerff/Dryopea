@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 581/581 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 569/569 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 581 runs.
+per-function + per-line + call-path report over all 569 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -492,16 +492,17 @@ src/
                    from one collapsed onto a single chokepoint, and the
                    only enemy measurement that does not depend on
                    spawn order
-  world.loft       hex math (axial flat-top); HEX_DIAMETER = 1.5m;
-                   cube_round_axial, world_to_hex, visible_hexes.
-                   ⚠ The OLD lattice — everything still calls it, and
-                   plan 09 C6 deletes it
-  lattice.loft     the NEW lattice (plan 09 C1) — pointy-top odd-r
-                   offset, the convention every hex_* library and moros
-                   speak.  `lat_*` names, because both lattices take a
-                   `Hex` and coexist until C6, so a bare `distance`
-                   beside `hex_distance` is how a call site picks the
-                   wrong answer.  Nothing calls it yet (C3-C5 do).
+  lattice.loft     THE lattice (plan 09) — pointy-top odd-r offset, the
+                   convention every hex_* library and moros speak.
+                   Owns `Hex { q, r }` (q is a COLUMN, r a ROW),
+                   HEX_DIAMETER = 1.5m, HEX_FLAT_TO_FLAT, and the
+                   `lat_*` verbs: lat_neighbour(s), lat_direction,
+                   lat_distance, lat_line, lat_disc, lat_to_metres /
+                   lat_from_metres, lat_corner_*, lat_to/from_axial.
+                   ⚠ `src/world.loft` and its axial arithmetic are
+                   DELETED (C6).  The `lat_` prefix is a scar from the
+                   period when both existed; it stays because every
+                   call site reads it.
                    ⚠ It DELEGATES to `hex_grid` — never a second
                    implementation, which is what makes the lattice
                    right by construction rather than by two copies
@@ -677,13 +678,35 @@ suite redirects its own shots into `tests/actual/`.
 
 **Pointy-top, odd-r offset** — `hex_grid`'s convention, which every
 `hex_*` library and moros already speak.  `src/lattice.loft` is the
-layer, delegating to `hex_grid`; plan 09 C0–C5 converted everything to
-it and **C6 deletes the axial `src/world.loft` that remains**.
+layer and it DELEGATES to `hex_grid`, so dryopea cannot drift from the
+ecosystem: there is no second implementation to drift with.  Plan 09
+converted everything and **C6 deleted the axial layer entirely** —
+`src/world.loft` is gone, and `grep` finding `hex_offset`,
+`cube_round_axial`, `hex_to_world`, `world_to_hex` or `visible_hexes`
+anywhere means someone resurrected it.
 
-⚠ `world.loft` still exists and still answers AXIAL.  Nothing in the
-game calls it any more — only the plan-09 tests, deliberately, as
-negative controls.  Do not reach for `hex_neighbor` / `hex_distance`;
-they are `lat_neighbour` / `lat_distance` now.
+`q` is a COLUMN and `r` is a ROW.  Odd rows sit half a hex EAST of
+even ones, so a neighbour's delta depends on `r & 1` — which is why
+⚠ **nothing may step a coordinate except `lat_neighbour`**, and why
+there is deliberately no constant `(dq, dr)` table to reach for.
+
+HEX_DIAMETER = 1.5 m vertex-to-vertex; one `hex_grid` unit is one
+dryopea circumradius (0.75 m), so centre-to-centre is
+HEX_FLAT_TO_FLAT = 1.299038.
+
+World +y grows **south** (same direction as canvas +y); there is no
+y-flip in the render path.  ⚠ `hex_grid`'s frame has +y NORTH, so
+`lat_to_metres` / `lat_from_metres` / `lat_corner_*` NEGATE y — that
+is what makes its compass true on dryopea's screen (direction 0 = E,
+1 = SE, 2 = SW, 3 = W, 4 = NW, 5 = NE).  The metre round-trip cannot
+see a consistent flip; `tests/09_c3_geometry.loft`'s sign check is
+what gates it.
+
+⚠ **The axial arithmetic survives in exactly one place** —
+`tests/09_c2_relabel.loft`'s oracle — because `relabel_hex`'s DOMAIN
+is axial (every coordinate dryopea ever wrote to disk) and a
+bijection cannot be proved from one side.  Take an axial reference
+from there if you ever need one; do not recreate a module.
 
 World +y grows **south** (same direction as canvas +y); there is no
 y-flip in the render path, and neither of those changes.

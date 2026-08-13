@@ -172,6 +172,16 @@ fn test_a_malformed_coordinate_is_a_failure() {
 
 // ─── Adjacency on the real files ────────────────────────────────
 
+// The axial oracle again (see `09_c2_relabel.loft` for why it lives
+// in a test rather than in `src/`).  Deliberately a second copy: it
+// is four lines of a definition, and a shared test helper would have
+// to live in `src/`, which is exactly where C6 removed it from.
+fn axial_distance(a: const Hex, b: const Hex) -> integer {
+    ad_dq = a.q - b.q;
+    ad_dr = a.r - b.r;
+    (abs(ad_dq) + abs(ad_dq + ad_dr) + abs(ad_dr)) / 2
+}
+
 // The plan's own C5 Verify: C2's adjacency check applied to every
 // real script.  Every coordinate the fourteen scripts mention, taken
 // as a set, must keep its pairwise distances through the conversion.
@@ -202,7 +212,7 @@ fn test_real_script_coordinates_keep_their_distances() {
         for trs_b in trs_old {
             trs_A = relabel_hex(trs_a);
             trs_B = relabel_hex(trs_b);
-            assert(lat_distance(trs_A, trs_B) == world::hex_distance(trs_a, trs_b),
+            assert(lat_distance(trs_A, trs_B) == axial_distance(trs_a, trs_b),
                    "({trs_a.q},{trs_a.r})→({trs_b.q},{trs_b.r}) changed distance");
         }
     }

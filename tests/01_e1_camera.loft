@@ -15,46 +15,52 @@ use dryopea;
 // World math
 // ─────────────────────────────────────────────────────────────────
 
-fn test_hex_to_world_origin() {
-    th_xy = hex_to_world(Hex { q: 0, r: 0 });
+fn test_lat_to_metres_origin() {
+    th_xy = lat_to_metres(Hex { q: 0, r: 0 });
     assert(th_xy.0 == 0.0, "origin x = 0");
     assert(th_xy.1 == 0.0, "origin y = 0");
 }
 
-fn test_hex_to_world_q1() {
-    // q=1 shifts world.x by HEX_DIAMETER * 0.75 = 1.125
-    tw_xy = hex_to_world(Hex { q: 1, r: 0 });
-    tw_dx = tw_xy.0 - 1.125;
-    assert(abs(tw_dx) < 0.0001, "q=1 → x ≈ 1.125");
-    // q=1, r=0 shifts world.y by FLAT_TO_FLAT * 0.5 ≈ 0.6495
-    tw_dy = tw_xy.1 - 0.6495;
-    assert(abs(tw_dy) < 0.001, "q=1,r=0 → y ≈ 0.6495");
+// ⚠ Restated for the pointy-top lattice (plan 09).  `q` is a COLUMN
+// now, and a column step is due EAST: one flat-to-flat across, no
+// northing at all.  The old flat-top numbers (1.125, 0.6495) were
+// the axial shear this conversion removed.
+fn test_a_column_step_is_one_flat_to_flat_east() {
+    tw_xy = lat_to_metres(Hex { q: 1, r: 0 });
+    assert(abs(tw_xy.0 - HEX_FLAT_TO_FLAT) < 0.0001,
+           "q=1 → x ≈ {HEX_FLAT_TO_FLAT}, got {tw_xy.0}");
+    assert(abs(tw_xy.1) < 0.0001, "and y unchanged — due east, got {tw_xy.1}");
 }
 
 fn test_hex_distance_origin() {
-    assert(hex_distance(Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }) == 0,
+    assert(lat_distance(Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }) == 0,
            "distance to self = 0");
-    assert(hex_distance(Hex { q: 0, r: 0 }, Hex { q: 1, r: 0 }) == 1,
+    assert(lat_distance(Hex { q: 0, r: 0 }, Hex { q: 1, r: 0 }) == 1,
            "adjacent = 1");
-    assert(hex_distance(Hex { q: 0, r: 0 }, Hex { q: 3, r: 0 }) == 3,
+    assert(lat_distance(Hex { q: 0, r: 0 }, Hex { q: 3, r: 0 }) == 3,
            "three steps east = 3");
 }
 
-fn test_hex_distance_diagonal() {
-    // (0,0) to (2,-1) — axial diagonal: dq=2, dr=-1, ds=-1
-    // (|2|+|-1|+|-1|)/2 = 4/2 = 2
-    td_d = hex_distance(Hex { q: 0, r: 0 }, Hex { q: 2, r: -1 });
-    assert(td_d == 2, "axial diagonal distance");
+// ⚠ The same two cells are THREE steps apart in odd-r offset, not
+// two.  This is the shear the conversion existed to remove, kept as
+// a worked example: offset (2, -1) is axial (3, -1), so the cube
+// distance is (3 + 1 + 2) / 2 = 3.
+fn test_an_off_axis_distance() {
+    td_d = lat_distance(Hex { q: 0, r: 0 }, Hex { q: 2, r: -1 });
+    assert(td_d == 3, "off-axis distance is 3, got {td_d}");
+    // …and it agrees with walking it, which needs no arithmetic.
+    td_walk = lat_neighbour(lat_neighbour(lat_neighbour(Hex { q: 0, r: 0 }, 0), 0), 1);
+    assert(lat_distance(Hex { q: 0, r: 0 }, td_walk) == 3, "three steps is three");
 }
 
 // Hex disc count for radius N is 1 + 3*N*(N+1):
 //   N=0 → 1, N=1 → 7, N=2 → 19, N=3 → 37
-fn test_visible_hexes_disc_size() {
+fn test_lat_disc_size() {
     tv_origin = Hex { q: 0, r: 0 };
-    assert(len(visible_hexes(tv_origin, 0)) == 1,  "haze=0 → 1 hex");
-    assert(len(visible_hexes(tv_origin, 1)) == 7,  "haze=1 → 7 hexes");
-    assert(len(visible_hexes(tv_origin, 2)) == 19, "haze=2 → 19 hexes");
-    assert(len(visible_hexes(tv_origin, 3)) == 37, "haze=3 → 37 hexes");
+    assert(len(lat_disc(tv_origin, 0)) == 1,  "haze=0 → 1 hex");
+    assert(len(lat_disc(tv_origin, 1)) == 7,  "haze=1 → 7 hexes");
+    assert(len(lat_disc(tv_origin, 2)) == 19, "haze=2 → 19 hexes");
+    assert(len(lat_disc(tv_origin, 3)) == 37, "haze=3 → 37 hexes");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -150,34 +156,34 @@ fn test_camera_at_specific() {
 // World-to-hex (inverse of hex_to_world) — round-trips
 // ─────────────────────────────────────────────────────────────────
 
-fn test_world_to_hex_origin() {
-    tw_h = world_to_hex(0.0, 0.0);
+fn test_lat_from_metres_origin() {
+    tw_h = lat_from_metres(0.0, 0.0);
     assert(tw_h.q == 0, "origin → q=0");
     assert(tw_h.r == 0, "origin → r=0");
 }
 
-fn test_world_to_hex_roundtrip_axes() {
+fn test_lat_metres_roundtrip_axes() {
     // Forward then inverse should land on the same hex.
-    tw_xy1 = hex_to_world(Hex { q: 1, r: 0 });
-    tw_h1 = world_to_hex(tw_xy1.0, tw_xy1.1);
+    tw_xy1 = lat_to_metres(Hex { q: 1, r: 0 });
+    tw_h1 = lat_from_metres(tw_xy1.0, tw_xy1.1);
     assert(tw_h1.q == 1, "round-trip (1,0) → q=1");
     assert(tw_h1.r == 0, "round-trip (1,0) → r=0");
 
-    tw_xy2 = hex_to_world(Hex { q: 0, r: 1 });
-    tw_h2 = world_to_hex(tw_xy2.0, tw_xy2.1);
+    tw_xy2 = lat_to_metres(Hex { q: 0, r: 1 });
+    tw_h2 = lat_from_metres(tw_xy2.0, tw_xy2.1);
     assert(tw_h2.q == 0, "round-trip (0,1) → q=0");
     assert(tw_h2.r == 1, "round-trip (0,1) → r=1");
 
-    tw_xy3 = hex_to_world(Hex { q: 2, r: -1 });
-    tw_h3 = world_to_hex(tw_xy3.0, tw_xy3.1);
+    tw_xy3 = lat_to_metres(Hex { q: 2, r: -1 });
+    tw_h3 = lat_from_metres(tw_xy3.0, tw_xy3.1);
     assert(tw_h3.q ==  2, "round-trip (2,-1) → q=2");
     assert(tw_h3.r == -1, "round-trip (2,-1) → r=-1");
 }
 
-fn test_world_to_hex_near_centre() {
+fn test_lat_from_metres_near_centre() {
     // Points very close to a hex centre map to that hex.
-    tw_c = hex_to_world(Hex { q: 3, r: 2 });
-    tw_h = world_to_hex(tw_c.0 + 0.05, tw_c.1 - 0.05);
+    tw_c = lat_to_metres(Hex { q: 3, r: 2 });
+    tw_h = lat_from_metres(tw_c.0 + 0.05, tw_c.1 - 0.05);
     assert(tw_h.q == 3, "near-centre offset still picks (3,2).q");
     assert(tw_h.r == 2, "near-centre offset still picks (3,2).r");
 }

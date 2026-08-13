@@ -37,7 +37,7 @@ const MHAZE: integer = 6;
 
 fn world_of(kind: integer) -> PaintedWorld {
     wo_pw = painted_empty();
-    for wo_h in visible_hexes(Hex { q: 0, r: 0 }, MHAZE) {
+    for wo_h in lat_disc(Hex { q: 0, r: 0 }, MHAZE) {
         paint(wo_pw, wo_h.q, wo_h.r, kind as u8? ?? 0);
     }
     wo_pw
@@ -75,7 +75,7 @@ fn test_every_entry_reads_one_and_the_rest_zero() {
 // because the bands in every scenario were sized for exact.
 fn test_a_mixed_world_is_still_only_palette_colours() {
     tmw_pw = painted_empty();
-    for tmw_h in visible_hexes(Hex { q: 0, r: 0 }, MHAZE) {
+    for tmw_h in lat_disc(Hex { q: 0, r: 0 }, MHAZE) {
         tmw_k = ((tmw_h.q * 7 + tmw_h.r * 3) % PALETTE_SIZE + PALETTE_SIZE) % PALETTE_SIZE;
         paint(tmw_pw, tmw_h.q, tmw_h.r, tmw_k as u8? ?? 0);
     }
@@ -286,7 +286,7 @@ fn test_a_wave_spawns_and_walks_towards_the_core() {
     taw_near = 999;
     taw_far  = 0;
     for taw_e in taw_run.wave.enemies {
-        taw_d = hex_distance(Hex { q: 0, r: 0 }, Hex { q: taw_e.q, r: taw_e.r });
+        taw_d = lat_distance(Hex { q: 0, r: 0 }, Hex { q: taw_e.q, r: taw_e.r });
         if taw_d < taw_near { taw_near = taw_d; }
         if taw_d > taw_far  { taw_far  = taw_d; }
     }

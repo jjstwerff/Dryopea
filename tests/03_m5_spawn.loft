@@ -3,7 +3,7 @@
 //
 // Plan 03 phase M5 — runtime spawn execution.
 //
-// Covers the wave-engine substrate: hex_offset's 6-direction
+// Covers the wave-engine substrate: the 6-direction
 // table, active-marker filtering (close-spawn-disable radius),
 // spawn_wave's count + round-robin + heading-from-marker, and
 // the approach-mode enemy_tick that walks one hex per tick.
@@ -50,46 +50,26 @@ fn outside_the_bubble() -> FlowField {
 // furthest is a spawn at (0, -15).
 fn walkable() -> PaintedWorld {
     w_pw = painted_empty();
-    for w_h in visible_hexes(Hex { q: 0, r: 0 }, 20) {
+    for w_h in lat_disc(Hex { q: 0, r: 0 }, 20) {
         paint(w_pw, w_h.q, w_h.r, GRASS as u8? ?? 0);
     }
     w_pw
 }
 
-// ─── hex_offset (6 cardinal directions) ─────────────────────────
-
-fn test_hex_offset_d0_south() {
-    o = hex_offset(0 as u8);
-    assert(o.0 ==  0, "d=0 dq=0");
-    assert(o.1 ==  1, "d=0 dr=+1 (south)");
-}
-
-fn test_hex_offset_d3_north() {
-    o = hex_offset(3 as u8);
-    assert(o.0 ==  0, "d=3 dq=0");
-    assert(o.1 == -1, "d=3 dr=-1 (north)");
-}
-
-fn test_hex_offset_six_directions_distinct() {
-    // Six distinct (dq, dr) pairs; pack each as a small int
-    // to compare cheaply.
-    seen: vector<integer> = [];
-    for tho_d in 0..6 {
-        tho_o = hex_offset(tho_d as u8? ?? 0);
-        seen += [tho_o.0 * 10 + tho_o.1];
-    }
-    // Spot-check that all six values appear AND none repeat.
-    // (Loft hash gives O(1) duplicate detection without much
-    // boilerplate — but a vector scan suffices at len=6.)
-    for tho_i in 0..6 {
-        for tho_j in 0..6 {
-            if tho_i != tho_j {
-                assert(seen[tho_i] != seen[tho_j],
-                       "directions {tho_i} and {tho_j} produce distinct offsets");
-            }
-        }
-    }
-}
+// ─── hex_offset — RETIRED by plan 09 C6 ─────────────────────────
+//
+// Three tests here pinned `hex_offset`'s six constant `(dq, dr)`
+// pairs.  ⚠ The conversion DELETED that operation rather than moving
+// it: in odd-r offset a neighbour's delta depends on ROW PARITY —
+// four of the six change — so a function answering a constant pair
+// per direction cannot exist.  C1 measured that and `lattice.loft`
+// deliberately provides no counterpart.
+//
+// `lat_neighbour` is what steps a coordinate now, and it is swept
+// exhaustively in `tests/09_c1_oracle.loft`: every step names the
+// direction it took, out-and-back is home, and the six neighbours
+// are distinct — over 1089 cells and both parities, which is more
+// than the three constants these tests checked.
 
 // ─── active_spawn_markers (close-disable filter) ────────────────
 

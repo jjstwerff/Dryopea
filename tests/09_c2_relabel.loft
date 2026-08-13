@@ -39,6 +39,39 @@ use dryopea;
 const SWEEP: integer = 16;
 const PAIRS: integer = 6;
 
+
+// ─── The axial oracle ───────────────────────────────────────────
+//
+// ⚠ C6 deleted `src/world.loft`, and this file is why the axial
+// arithmetic did not die with it.  The relabel's DOMAIN is axial —
+// "every coordinate dryopea ever wrote to disk" — so a proof that it
+// preserves distance has to state the axial distance, and a claim
+// about a bijection cannot be made in terms of only one of its two
+// sides.
+//
+// It lives HERE rather than in `src/` on purpose: it is an ORACLE,
+// the same role `hex_grid` plays for `lattice.loft`, and production
+// code must never be able to reach it again.  Two lines of cube
+// arithmetic, from the definition, not from the deleted module.
+
+fn axial_distance(a: const Hex, b: const Hex) -> integer {
+    ad_dq = a.q - b.q;
+    ad_dr = a.r - b.r;
+    (abs(ad_dq) + abs(ad_dq + ad_dr) + abs(ad_dr)) / 2
+}
+
+// The six axial neighbour offsets `world.loft` carried, in its order:
+// 0 south, 1 south-east, 2 north-east, 3 north, 4 north-west,
+// 5 south-west.
+fn axial_neighbour(h: const Hex, d: integer) -> Hex {
+    if d == 0 { return Hex { q: h.q,     r: h.r + 1 }; }
+    if d == 1 { return Hex { q: h.q + 1, r: h.r     }; }
+    if d == 2 { return Hex { q: h.q + 1, r: h.r - 1 }; }
+    if d == 3 { return Hex { q: h.q,     r: h.r - 1 }; }
+    if d == 4 { return Hex { q: h.q - 1, r: h.r     }; }
+    Hex { q: h.q - 1, r: h.r + 1 }
+}
+
 // ─── The bijection ──────────────────────────────────────────────
 
 fn test_the_relabel_round_trips_both_ways() {
@@ -88,8 +121,8 @@ fn test_the_relabel_preserves_distance() {
                     tpd_b = Hex { q: tpd_q2, r: tpd_r2 };
                     tpd_B = relabel_hex(tpd_b);
                     assert(lat_distance(tpd_A, tpd_B)
-                           == world::hex_distance(tpd_a, tpd_b),
-                           "({tpd_q1}, {tpd_r1})→({tpd_q2}, {tpd_r2}): axial says {world::hex_distance(tpd_a, tpd_b)}, the lattice says {lat_distance(tpd_A, tpd_B)}");
+                           == axial_distance(tpd_a, tpd_b),
+                           "({tpd_q1}, {tpd_r1})→({tpd_q2}, {tpd_r2}): axial says {axial_distance(tpd_a, tpd_b)}, the lattice says {lat_distance(tpd_A, tpd_B)}");
                 }
             }
         }
@@ -105,7 +138,7 @@ fn test_every_axial_neighbour_stays_a_neighbour() {
             tan_a = Hex { q: tan_q, r: tan_r };
             tan_A = relabel_hex(tan_a);
             for tan_d in 0..6 {
-                tan_b = world::hex_neighbor(tan_a, tan_d);
+                tan_b = axial_neighbour(tan_a, tan_d);
                 tan_B = relabel_hex(tan_b);
                 assert(lat_distance(tan_A, tan_B) == 1,
                        "axial ({tan_q}, {tan_r}) dir {tan_d} is still one step after the relabel");
@@ -127,7 +160,7 @@ fn test_the_direction_permutation_is_uniform_and_correct() {
             tdp_a = Hex { q: tdp_q, r: tdp_r };
             tdp_A = relabel_hex(tdp_a);
             for tdp_d in 0..6 {
-                tdp_b = world::hex_neighbor(tdp_a, tdp_d);
+                tdp_b = axial_neighbour(tdp_a, tdp_d);
                 tdp_B = relabel_hex(tdp_b);
                 tdp_got = lat_direction(tdp_A, tdp_B);
                 assert(tdp_got == relabel_direction(tdp_d),
@@ -172,16 +205,17 @@ fn test_an_out_of_range_direction_folds() {
 // converted map against an old screenshot is not hunting a bug that
 // is not there.
 
-// Old direction 0 was SOUTH on the old screen.  Its relabel renders
-// NORTH-EAST — a mirror AND a 60° hex rotation, because flat-top →
-// pointy-top is itself a re-orientation.
+// Old direction 0 was SOUTH on the old screen; its relabel is new
+// direction 5, which renders NORTH-EAST — a mirror AND a 60° hex
+// rotation, because flat-top → pointy-top is itself a re-orientation.
+//
+// ⚠ C6 deleted the old geometry, so the "was south" half is no
+// longer executable and lives in `plans/09` § C2 shipped, where it
+// was measured.  What stays here is the half that still has a
+// subject: where the relabel of that step lands NOW.
 fn test_the_picture_moves_by_a_mirror_and_a_rotation() {
     tpm_old = Hex { q: 0, r: 0 };
-    tpm_south = world::hex_neighbor(tpm_old, 0);
-    tpm_owc = hex_to_world(tpm_old);
-    tpm_osc = hex_to_world(tpm_south);
-    assert(tpm_osc.1 > tpm_owc.1 && abs(tpm_osc.0 - tpm_owc.0) < 0.00001,
-           "on the OLD screen direction 0 was due south");
+    tpm_south = axial_neighbour(tpm_old, 0);
 
     tpm_A = relabel_hex(tpm_old);
     tpm_B = relabel_hex(tpm_south);
@@ -193,20 +227,11 @@ fn test_the_picture_moves_by_a_mirror_and_a_rotation() {
     assert(tpm_nsc.0 > tpm_nwc.0, "and east — north-EAST, not straight north");
 }
 
-// The flip is real and visible: the same label lands on the other
-// side of the map vertically.
-fn test_a_row_that_was_south_is_now_north() {
-    trs_o = Hex { q: 0, r: 0 };
-    trs_f = Hex { q: 0, r: 5 };
-
-    tro_o = hex_to_world(trs_o);
-    tro_f = hex_to_world(trs_f);
-    assert(tro_f.1 > tro_o.1, "row 5 used to be SOUTH of row 0");
-
-    trn_o = lat_to_metres(relabel_hex(trs_o));
-    trn_f = lat_to_metres(relabel_hex(trs_f));
-    assert(trn_f.1 < trn_o.1, "and is now NORTH of it — this is the accepted flip");
-}
+// ⚠ `test_a_row_that_was_south_is_now_north` was retired with the
+// old geometry (C6).  Its claim — that a larger row used to render
+// SOUTH and now renders NORTH — needed both pictures, and only one
+// of them still exists.  The surviving half is
+// `tests/09_c1_oracle.loft::test_north_is_up`.
 
 // ─── ⚠ THE NEGATIVE CONTROL ─────────────────────────────────────
 //
@@ -223,7 +248,7 @@ fn test_the_identity_relabel_is_not_adjacency_preserving() {
         for tir_q in -8..=8 {
             tir_a = Hex { q: tir_q, r: tir_r };
             for tir_d in 0..6 {
-                tir_b = world::hex_neighbor(tir_a, tir_d);
+                tir_b = axial_neighbour(tir_a, tir_d);
                 // NO relabel — the labels used as-is.
                 if lat_distance(tir_a, tir_b) != 1 { tir_broken += 1; }
                 tir_total += 1;
@@ -277,7 +302,7 @@ fn test_a_parity_free_relabel_breaks_the_map() {
             tpb_a = Hex { q: tpb_q, r: tpb_r };
             tpb_A = Hex { q: tpb_q + tpb_r / 2, r: tpb_r };
             for tpb_d in 0..6 {
-                tpb_b = world::hex_neighbor(tpb_a, tpb_d);
+                tpb_b = axial_neighbour(tpb_a, tpb_d);
                 tpb_B = Hex { q: tpb_b.q + tpb_b.r / 2, r: tpb_b.r };
                 if lat_distance(tpb_A, tpb_B) != 1 { tpb_broken += 1; }
             }

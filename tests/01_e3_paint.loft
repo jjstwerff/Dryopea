@@ -16,29 +16,25 @@ const E3_H: integer = 96;
 const E3_PPM: float = 16.0;
 
 // ─────────────────────────────────────────────────────────────────
-// cube_round_axial — the rounding primitive paint_line + world_to_hex
-// share.  Verify it picks the nearest hex even on awkward fractions.
+// cube_round_axial — RETIRED by plan 09 C6.
+//
+// Six tests here pinned the axial cube-rounding primitive directly.
+// It is gone: `lat_line` interpolates through `hex_grid::hex_round`,
+// and `lat_from_metres` picks through `px_to_hex`.  ⚠ Rounding is no
+// longer something dryopea implements, so there is nothing here to
+// test that is not `hex_grid`'s.
+//
+// What replaced it is stronger and is about the LINE rather than the
+// primitive: `tests/09_c1_oracle.loft` asserts every hex of a line is
+// ON it (`d(a,h) + d(h,b) == d(a,b)`) with no gaps, over a swept set
+// of endpoints, and `tests/09_c4_arrows.loft` asserts the paint and
+// the undo record cover the same hexes.  A rounding bug shows up in
+// both.
+
 // ─────────────────────────────────────────────────────────────────
 
-fn test_cube_round_axial_origin() {
-    tcr_h = cube_round_axial(0.0, 0.0);
-    assert(tcr_h.q == 0, "(0.0, 0.0) → (0,0).q");
-    assert(tcr_h.r == 0, "(0.0, 0.0) → (0,0).r");
-}
 
-fn test_cube_round_axial_integer_input() {
-    // Already-integer inputs land exactly on themselves.
-    tcr_e = cube_round_axial(3.0, -1.0);
-    assert(tcr_e.q ==  3, "(3.0, -1.0) → q=3");
-    assert(tcr_e.r == -1, "(3.0, -1.0) → r=-1");
-}
 
-fn test_cube_round_axial_near_centre() {
-    // Slightly off-centre rounds to (0, 0).
-    tcr_a = cube_round_axial(0.1, -0.1);
-    assert(tcr_a.q == 0, "(0.1,-0.1) → q=0");
-    assert(tcr_a.r == 0, "(0.1,-0.1) → r=0");
-}
 
 // ─────────────────────────────────────────────────────────────────
 // paint_line — hex line walk

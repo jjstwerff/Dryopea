@@ -91,8 +91,27 @@
 // answer without anybody noticing.  The prefix makes the migration
 // greppable and C6 can drop it.
 
-use world;
 use hex_grid;
+
+// ─── The coordinate, and the metre ──────────────────────────────
+//
+// Moved here from `world.loft` when C6 deleted it.  A hex coordinate
+// and the world's scale outlive the lattice that was hand-rolled
+// around them — what died was the axial ARITHMETIC, not the type.
+
+// A hex coordinate: **pointy-top, odd-r offset**, so `q` is a COLUMN
+// and `r` is a ROW.  Odd rows sit half a hex east of even ones,
+// which is why a neighbour's delta depends on `r & 1` and why
+// nothing may step a coordinate except `lat_neighbour`.
+pub struct Hex {
+    q: integer,
+    r: integer,
+}
+
+pub const HEX_DIAMETER: float = 1.5;            // m, vertex-to-vertex
+pub const HEX_FLAT_TO_FLAT: float = 1.299038;   // m, ≈ √3 × circumradius
+
+pub const HAZE_RADIUS_HEXES_DEFAULT: integer = 40;  // numbers.json camera.visible_radius_haze
 
 // Metres per `hex_grid` unit: dryopea's circumradius.  A hex is
 // `HEX_DIAMETER` vertex-to-vertex, so its circumradius is half that.

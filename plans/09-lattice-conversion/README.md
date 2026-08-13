@@ -17,12 +17,11 @@ first means the bigger change happens once, on a settled seam.
 
 ## Status
 
-**Active — everything is shipped except C6.**  The I phases landed
-2026-08-12/13 (I0 + @D001 + I1); the lattice conversion C0–C5 landed
-2026-08-13.  dryopea now speaks pointy-top odd-r offset throughout:
-the lattice, the relabel, the renderer, the arrows, the label-space
-code and the data.  **C6 — delete the axial layer — is all that
-remains.** This is plan 07's `W0c`,
+**COMPLETE — 2026-08-13.**  The I phases landed 2026-08-12/13
+(I0 + @D001 + I1); the lattice conversion C0–C6 landed 2026-08-13.
+dryopea speaks pointy-top odd-r offset throughout — the lattice, the
+relabel, the renderer, the arrows, the label-space code and the data
+— and `src/world.loft` is deleted. This is plan 07's `W0c`,
 cut into its own plan because it is multi-phase, stands alone, and plan 07
 is long enough already. It is a **precondition** for plan 07's asset
 interchange, not a part of it: converting the lattice is worth doing whether
@@ -764,6 +763,64 @@ C5b is still the widest step here, but its gate is exact and its
 negative control is free: if the scenario numbers move, the relabel did
 not preserve distance, and C2 says that is impossible — so a change
 means a site was missed.
+
+### C6 shipped — and deleting a layer deletes its negative controls
+
+Landed 2026-08-13.  `src/world.loft` is gone; `Hex`, `HEX_DIAMETER`,
+`HEX_FLAT_TO_FLAT` and `HAZE_RADIUS_HEXES_DEFAULT` moved into
+`lattice.loft`, because a coordinate TYPE and a world SCALE outlive the
+arithmetic that was hand-rolled around them.  The phase's own gate is
+met: `grep` finds no `hex_offset`, `cube_round_axial`, `hex_to_world`,
+`world_to_hex`, `visible_hexes` or `world::` in any code.
+
+⚠ **This row said `XS`, and it was not.**  Deleting a module deletes
+every test written against it, and plan 09's tests were written against
+it ON PURPOSE — the whole plan rests on § The gate is an oracle, not a
+golden, and the axial layer was the thing the oracle had to disagree
+WITH.  Four classes of test had to be resolved rather than deleted:
+
+- **C1's four negative controls** (the C0 cell, the >25% disagreement,
+  the parity-shifted table, the moved centre) are **retired**, with the
+  reasoning left in the file.  They proved the C1 sweep was not vacuous
+  and they did — 8 of 17 red when the lattice was aimed at axial.  With
+  no axial layer left there is nothing to differ from, and the sweep has
+  a better guard anyway: it compares against `hex_grid` DIRECTLY, and
+  `lattice.loft` cannot silently revert because it holds no arithmetic
+  of its own to revert.
+- **C2's distance proof is KEPT**, and this is the load-bearing
+  decision. `relabel_hex`'s DOMAIN is axial — "every coordinate dryopea
+  ever wrote to disk" — so a proof that it preserves distance has to
+  state the axial distance. ⚠ **A bijection cannot be proved from one
+  side.** So the axial metric survives as a test-local ORACLE in
+  `tests/09_c2_relabel.loft`, playing exactly the role `hex_grid` plays
+  for `lattice.loft`, where production code can never reach it.
+- **`hex_offset`'s three tests are retired** — C1 established the
+  conversion DELETES that operation rather than moving it, so there is
+  no counterpart to re-point them at. `lat_neighbour` is swept over
+  1089 cells and both parities instead, which is more than the three
+  constants they pinned.
+- **`cube_round_axial`'s six tests are retired** — rounding is
+  `hex_grid`'s now, and what replaced them is about the LINE rather
+  than the primitive (every hex on a line is ON it, no gaps).
+
+**The rule the four cases share:** a test that pins "the old thing
+still behaves like the old thing" is worth exactly as long as the old
+thing exists — but a test that defines a CONVERSION needs both of its
+sides, and that one keeps its oracle.
+
+Suite 581 → **569 green** (the retirements), `scripts/validate.sh`
+unchanged at **233 over 14**, ~35 s.
+
+#### The open decision, settled
+
+§ C5's open question — migrate old saves on read, or refuse them — is
+settled by there being nothing to migrate: no `maps/` directory exists
+and `examples/*.json` carries no coordinates, so no committed file was
+ever in the old lattice. `relabel.loft` and `convert.loft` stay as the
+migration tools (tested, and plan 04 will want them when saved content
+starts mattering); the loader gained no version branch it would have to
+carry forever. A stale local `dryopea_save.json` renders sheared and is
+the one artefact anybody has to re-make.
 
 ## Invariant gate
 

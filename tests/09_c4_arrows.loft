@@ -141,18 +141,19 @@ fn test_opposite_arrows_cancel() {
     }
 }
 
-// ─── ⚠ What C4 must NOT have touched ────────────────────────────
+// ─── ⚠ What C4 deferred, and where it went ──────────────────────
 //
-// The label-space graph moves with the data in C5.  If any of these
-// start failing, someone has converted half of it early, and the
-// symptom will be enemies walking by the new compass over old
-// labels.
-
-fn test_the_enemy_step_is_still_label_space() {
-    // `world::hex_neighbor` is what `enemy_tick` uses, and until C5
-    // relabels the maps and `.keys` files it has to stay that way.
-    tes_h = Hex { q: 4, r: -2 };
-    tes_n = world::hex_neighbor(tes_h, 0);
-    assert(tes_n.q == 4 && tes_n.r == -1,
-           "the axial step table is untouched — C5 moves it, not C4");
-}
+// This file used to end with `test_the_enemy_step_is_still_label_space`,
+// asserting that `world::hex_neighbor` was untouched — the marker
+// that `enemy_tick` and `paint_line` were C5's, not C4's.
+//
+// C5 moved them and C6 deleted the module, so the assertion has no
+// subject left.  It is gone rather than adapted: a test that pins
+// "the old thing still behaves like the old thing" is worth exactly
+// as long as the old thing exists.
+//
+// `test_paint_and_record_cover_the_same_hexes` above is the part
+// that outlived the deferral, and it still earns its place — the two
+// implementations now share `lat_line`, and a drag whose undo entry
+// covers a different set from the paint is a corrupt undo rather
+// than a visible bug.
