@@ -31,11 +31,23 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
+*(none — every entry is Submitted upstream or Resolved below.  New
+problems go straight to a GitHub issue; see
+[`CLAUDE.md`](CLAUDE.md) § Relationship to loft.)*
+
+## Submitted
+
+Filed upstream as GitHub issues; kept here as dryopea's own record until
+the fix ships, then moved to Resolved.
+
 ### Mutating a struct RETURNED from a function is a silent no-op, and `lost-write` stays quiet
 
+**Filed:** [loft#894](https://github.com/loft-lang/loft/issues/894)
+(`bug`, `sev:medium`, `wa:clean`, `both-backends`,
+`area:store-lifetime`, `area:parser`, `hit-by:dryopea`).
 **Repro:** [`loft_repros/mutating_a_returned_struct_is_lost.loft`](loft_repros/mutating_a_returned_struct_is_lost.loft)
 — verified on the interpreter and on `--native`, identical output on
-both.  **Not yet filed upstream.**
+both.
 
 Found in dryopea plan 12 B4 (2026-08-13).  The same element, reached
 three ways, and only two of them are a mutation the caller can see:
@@ -63,11 +75,6 @@ analysis is worth a look as a whole.
 **Dryopea's own workaround** is a rule in `CLAUDE.md` § Loft language
 gotchas: a one-line "get me the element" helper is fine to READ
 through and never to write through.
-
-## Submitted
-
-Filed upstream as GitHub issues; kept here as dryopea's own record until
-the fix ships, then moved to Resolved.
 
 ### `input` 0.2.0 ships a PARKED banner citing a CLOSED bug — and the library works
 

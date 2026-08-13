@@ -317,6 +317,8 @@ compiles, it type-checks, there is no warning, and the read-back looks
 like the mutation never happened — which reads as a bug in the thing
 being mutated rather than in the accessor.  A one-line "get me the
 element" helper is fine to READ through and never to write through.
+Filed as [loft#894](https://github.com/loft-lang/loft/issues/894); the
+ask there is the missing `lost-write`, not the value semantics.
 
 ⚠ **A struct returned through TWO nested tail calls loses what its
 loop wrote** — 1 cell interpreted, 0 native, silent on both

@@ -25,12 +25,6 @@ The dryopea test suite then carries the regression coverage
 going forward (no need to keep the standalone repro once it's
 no longer reproducing).
 
-## Ready to file
-
-| File | Bug | Status |
-|---|---|---|
-| [`mutating_a_returned_struct_is_lost.loft`](mutating_a_returned_struct_is_lost.loft) | A struct RETURNED from a function is a copy, so mutating it through a parameter is a silent no-op — and `lost-write` does not fire, though the write is to a temporary discarded one instruction later.  The SAME element indexed inline, or reached through a loop variable, writes through.  Identical on both backends. | **Repro verified, issue not yet filed** — awaiting the go-ahead |
-
 ## Currently filed
 
 | File | Bug | Filed upstream |
@@ -40,6 +34,7 @@ no longer reproducing).
 | [`format_struct_with_hash_field.loft`](format_struct_with_hash_field.loft) | `"{s}"` where `s` is a struct with a `hash<…>` field: SIGSEGV in `OpFormatDatabase` on the interpreter, silent exit 1 on `--native`.  Fires inside assertion messages, so a failing test loses its diagnostic. | [loft#873](https://github.com/loft-lang/loft/issues/873) |
 | [`json_null_into_non_null_scalar_field.loft`](json_null_into_non_null_scalar_field.loft) | A `text as vector<Struct>` cast stores JSON `null` into a field declared plain (non-null under DN1) — and `redundant-coalesce` then advises deleting the `?? 0.0` that guards the read.  Both backends. | [loft#870](https://github.com/loft-lang/loft/issues/870) |
 | [`struct_through_two_tail_calls.loft`](struct_through_two_tail_calls.loft) | A struct returned through TWO nested tail-position calls, with a struct LITERAL as an argument, loses everything its `while`+vector loop wrote.  1 cell interpreted, 0 native, 13 expected — silent on both. | [loft#880](https://github.com/loft-lang/loft/issues/880) |
+| [`mutating_a_returned_struct_is_lost.loft`](mutating_a_returned_struct_is_lost.loft) | A write through a struct RETURNED from a function is silently discarded, while the SAME element indexed inline or reached through a loop variable writes through.  No diagnostic — and `lost-write` is exactly the analysis that should have caught a write to a temporary discarded one instruction later. | [loft#894](https://github.com/loft-lang/loft/issues/894) |
 | [`lost_write_false_positive/`](lost_write_false_positive/README.md) | An ambiguous bare struct name aborts the compile correctly — and dumps a FALSE `warning[lost-write]` beside it, against a loop-variable mutation in a *different package* whose write persists on both backends. | [loft#883](https://github.com/loft-lang/loft/issues/883) |
 
 ⚠ **A reproducer may be a DIRECTORY.**  `lost_write_false_positive/` is
