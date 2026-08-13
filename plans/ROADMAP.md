@@ -38,6 +38,7 @@ end-to-end and *fun-shaped*.
 | Marker layer + spawn points | **shipped** | [plan 03](03-marker-layer-and-spawns/README.md) | M1-M5 done; sidecar JSON, mode toggle, placement + rotation, render overlay, wave engine + spawn director |
 | Map library + browser (planet-view UI) | drafted | [plan 04](04-map-library/README.md) | MapFile schema (L1), map index, content, selector |
 | Enemy flow field (route round walls, per class) | **shipped** | [plan 11](11-flow-field/README.md) | F0-F8 done.  Distance field per climb limit, arrows computed not stored, enemies spread rather than stack, passability as a height STEP over a runtime layer, and a desire field for besieging a sealed perimeter.  Does NOT replace the straight-line `enemy_tick` — that is approach mode, and the two modes hand off at the scrambler bubble |
+| Combat resolves (damage, death, rubble, towers) | drafted | [plan 12](12-combat-resolution/README.md) | B0-B7.  Towers fire and decay, enemies take damage and die, walls lose structural HP and break into climbable rubble, bodies pile as terrain, nibble drains the wallet.  Headline gate: an authored base with walls and towers, nobody defending it, falls on a clock that gets markedly longer for having the defences |
 | End-to-end validation scenario | drafted | [plan 05](05-validation-scenario/README.md) | The "minimum playable thing" spec |
 
 When Tier A is done the game is **playable** — a player can

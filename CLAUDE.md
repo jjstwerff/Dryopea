@@ -929,6 +929,19 @@ plans/
                     EditorState (where it only sees keys some scenario
                     presses) to the EditorInput, swept over 208
                     key/modifier combinations
+  12-combat-resolution/       — Open (B0-B7): damage resolves on
+                    BOTH sides, so plan 11's journey stops ending in
+                    nothing.  Towers fire and decay, enemies take
+                    damage and die, walls lose STRUCTURAL HP (bracing,
+                    not a constant) and break into climbable rubble,
+                    bodies pile as terrain, nibble drains the wallet.
+                    ⚠ B0 is the blocker: CLIMB_REGULAR is 0.0, so a
+                    robot cannot climb ANY rise — which makes both the
+                    rubble ramp and ENEMY_MOVEMENT's own body-ramp
+                    unbuildable for the class they were written about.
+                    Headline gate is a CLOCK: an authored base nobody
+                    defends falls, and falls markedly slower for
+                    having the walls and towers
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -1029,6 +1042,7 @@ signature.
 | [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — **Complete.** dryopea moved to the libraries' lattice (pointy-top odd-r offset) + adopted `input` |
 | [plans/10-extract-local-libraries/README.md](plans/10-extract-local-libraries/README.md) | Plan 10 — dryopea's own reusable code becomes published libraries |
 | [plans/11-flow-field/README.md](plans/11-flow-field/README.md) | Plan 11 — **Complete.** Enemies route round walls to the core, per class, and besiege a sealed one |
+| [plans/12-combat-resolution/README.md](plans/12-combat-resolution/README.md) | Plan 12 — **Open.** Damage resolves: towers kill, walls break into rubble, bodies pile, the wallet is the clock |
 | [PROBLEMS.md](PROBLEMS.md) | Dryopea-internal bugs (`@D<NNN>`) |
 | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) | Outbound queue to loft |
 
