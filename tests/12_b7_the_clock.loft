@@ -1,0 +1,280 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B7 — the scenario, and its control.
+//
+// ── Why this phase needs a TEST and not only three scripts ──────
+//
+// Every other phase of plan 12 gates a claim about one run.  B7's
+// claim is a COMPARISON — *"the defended base's time-to-zero is
+// markedly longer than the same base stripped of walls and towers"* —
+// and no `.keys` file can make it, because a script sees one clock.
+// The three scenarios each pin their own number; this file is where
+// the numbers are in scope together.
+//
+// `plans/12` § Invariant gate also names the negative control, and it
+// is not "the wall does nothing": it is **equal times = the scenario
+// measures nothing, whatever it draws**.  A pair of scenarios that
+// happened to agree would look exactly like a working gate.
+//
+// ── What the phase MEASURED, and it is not what the plan said ───
+//
+//   an-undefended-base            161 ticks   (107 s)
+//   a-defended-base               311 ticks   (207 s)   +93%
+//   a-tower-buries-its-own-wall   180 ticks   (120 s)   -42% against the wall
+//
+// The gate holds for the WALL and is **falsified for the TOWER**, and
+// the second half is this phase's most valuable output — the same
+// shape B3 and B5b produced.  A tower kills nine robots at the foot of
+// its own wall, three of them fall on one hex, and 1.5 m of bodies is
+// inside B0's [1.0, 2.0] ramp band onto a 3.0 m wall.  The survivors
+// walk over their dead.  The wall never loses a tenth of its HP.
+//
+// That is `docs/ENEMY_MOVEMENT.md` § Bodies are terrain firing exactly
+// as written, in a base with nobody to clear up — which `plans/12`
+// § What this plan does NOT build predicted in as many words: *"bodies
+// pile and nobody collects them ... that is not a defect of the
+// scenario, it is the scenario's most interesting outcome"*.
+//
+// ⚠ **So the assertions below pin TODAY's behaviour on purpose.**
+// Building plan 11 F7's equal-distance sidestep, or a crew that clears
+// bodies, turns them red — and red is the correct answer that day,
+// pointing at the paragraph to rewrite.
+//
+// ── Why the comparisons are ONE test function ───────────────────
+//
+// Cost.  These scenarios are the most expensive things in the suite —
+// 652 ticks between them — and a `played(BARE)` helper called from
+// each of six test functions replayed the three scripts TWELVE times.
+// Every scenario below is played exactly ONCE and every claim about it
+// is asserted from that run.  The cost of folding them is the usual
+// one: the first failing assertion hides the rest.
+//
+// ⚠ **Quote the measured work, never a suite wall clock.**  Timed
+// directly, the three replays cost 668 + 1703 + 717 ms; the suite's
+// own before-and-after swung by twenty seconds across runs of the
+// SAME tree and would have justified almost any conclusion.  That is
+// `CLAUDE.md` § Profiling the suite's warning arriving in the one
+// place it is easiest to ignore — a change whose cost you are trying
+// to judge.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+const BARE:  text = "tests/scripts/an-undefended-base.keys";
+const WALL:  text = "tests/scripts/a-defended-base.keys";
+const TOWER: text = "tests/scripts/a-tower-buries-its-own-wall.keys";
+
+// The three clocks, in game-ticks.  ⚠ Each is also pinned by a `ticks`
+// band inside its own `.keys` file — this is a second reading of the
+// same number rather than a second source of truth, and it exists
+// because the comparison needs all three at once.
+const UNDEFENDED_TICKS: integer = 161;
+const WALLED_TICKS:     integer = 311;
+const TOWERED_TICKS:    integer = 180;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn test_the_three_scenarios_are_on_disk() {
+    for ttt_p in [BARE, WALL, TOWER] {
+        assert(file(ttt_p).exists(),
+               "{ttt_p} is missing — every test below would pass against an empty file");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The phase's gate: three runs, and what separates them
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_clock_separates_and_a_tower_gives_it_back() {
+    // ⚠ A session each.  Two scenarios sharing an `EditorState` would
+    // share a painted world, and the second one's clock would be
+    // measured against the first one's breach.
+    ttc_bs = editor_state_new(PALETTE);
+    ttc_ws = editor_state_new(PALETTE);
+    ttc_ts = editor_state_new(PALETTE);
+
+    ttc_b = script_run_file(ttc_bs, BARE,  SHOTS);
+    ttc_w = script_run_file(ttc_ws, WALL,  SHOTS);
+    ttc_t = script_run_file(ttc_ts, TOWER, SHOTS);
+
+    assert(ttc_b.ok, "an-undefended-base: {script_describe(ttc_b)}");
+    assert(ttc_w.ok, "a-defended-base: {script_describe(ttc_w)}");
+    assert(ttc_t.ok, "a-tower-buries-its-own-wall: {script_describe(ttc_t)}");
+
+    // ⚠ Pinned counts: a scenario with its measurements deleted still
+    // reports ok, so the gate has to say how many it expected.
+    assert(ttc_b.checks == 10, "an-undefended-base made {ttc_b.checks} measurements, expected 10");
+    assert(ttc_w.checks == 17, "a-defended-base made {ttc_w.checks} measurements, expected 17");
+    assert(ttc_t.checks == 16, "a-tower-buries made {ttc_t.checks} measurements, expected 16");
+    assert(ttc_b.snaps == 1 && ttc_w.snaps == 1 && ttc_t.snaps == 1,
+           "each took its picture: {ttc_b.snaps}, {ttc_w.snaps}, {ttc_t.snaps}");
+
+    assert(ttc_b.ticks == UNDEFENDED_TICKS, "bare clock {ttc_b.ticks}");
+    assert(ttc_w.ticks == WALLED_TICKS,     "walled clock {ttc_w.ticks}");
+    assert(ttc_t.ticks == TOWERED_TICKS,    "towered clock {ttc_t.ticks}");
+
+    // ── The invariant, and its negative control, in one ratio ────
+    //
+    // `plans/12` § Invariant gate: *the defences are what cost the
+    // attacker time*, refused by *equal times = the scenario measures
+    // nothing*.  1.0 is the failure; a sealed wall buys 1.93.
+    //
+    // A RATIO rather than a tick count, because the two runs share
+    // every other number — same ground, core, spawn and wave list — so
+    // whatever a later balance change does to the clock it does to
+    // both, and the SEPARATION is what has to survive.
+    assert(ttc_w.ticks != ttc_b.ticks,
+           "equal clocks would mean the scenario measures nothing: both {ttc_b.ticks}");
+    assert((ttc_w.ticks as float) / (ttc_b.ticks as float) > 1.5,
+           "the wall bought {ttc_w.ticks} ticks against {ttc_b.ticks} — under half again as long");
+
+    // ── The inversion, asserted on purpose ───────────────────────
+    assert(ttc_t.ticks < ttc_w.ticks,
+           "TODAY a tower SHORTENS the clock: {ttc_t.ticks} with one, {ttc_w.ticks} without");
+    assert(ttc_t.ticks > ttc_b.ticks,
+           "but the wall under it still buys something: {ttc_t.ticks} against {ttc_b.ticks} bare");
+    assert((ttc_w.ticks - ttc_t.ticks) > (ttc_t.ticks - ttc_b.ticks),
+           "and it gives back more than it keeps: kept {ttc_t.ticks - ttc_b.ticks}, lost {ttc_w.ticks - ttc_t.ticks}");
+
+    // ── The two endings, told apart by ONE hex ───────────────────
+    //
+    // `plans/12` § What this plan does NOT build asks B7 to report
+    // which of two endings takes the base.  Each script asserts its
+    // own; this is the statement that they DIFFER, which is what makes
+    // "which ending" a question with an answer.
+    assert(painted_kind_name(ttc_ws.picker.palette, ttc_ws.pw, 5, 0) == "grass",
+           "the wall alone is CHEWED THROUGH: (5, 0) is '{painted_kind_name(ttc_ws.picker.palette, ttc_ws.pw, 5, 0)}'");
+    assert(painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, 0) == "wall",
+           "the towered wall is still standing: (5, 0) is '{painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, 0)}'");
+
+    // Masonry ON the breach where the wall broke; bodies IN FRONT of
+    // the wall that held.
+    assert(height_rise(ttc_w.wave.heights, 5, 0) > 0.5,
+           "the breach carries its own masonry: {height_rise(ttc_w.wave.heights, 5, 0)} m");
+    assert(height_rise(ttc_t.wave.heights, 5, 0) == 0.0,
+           "the intact wall carries nothing: {height_rise(ttc_t.wave.heights, 5, 0)} m");
+    assert(height_rise(ttc_t.wave.heights, 6, 0) >= 1.0
+        && height_rise(ttc_t.wave.heights, 6, 0) <= 2.0,
+           "and the ramp at its foot is inside B0's band: {height_rise(ttc_t.wave.heights, 6, 0)} m");
+}
+
+// ⚠ **A GATE is not a defence, and this is the measurement that says
+// so.**  The same five-hex wall with its middle hex never painted
+// falls in the undefended base's own clock, to the tick — walking
+// through an entrance costs an attacker nothing whatever.  It is what
+// makes `a-defended-base.keys`'s seal the interesting artefact rather
+// than an arbitrary choice, and it is a rule a player can learn: an
+// entrance is a decision about their own convenience, never a defence.
+fn test_a_wall_with_a_gate_in_it_buys_nothing() {
+    taw = script_run(editor_state_new(PALETTE), gated_base(), SHOTS);
+
+    assert(taw.ok, "the gated base: {script_describe(taw)}");
+    assert(taw.ticks == UNDEFENDED_TICKS,
+           "a gate buys nothing: {taw.ticks} ticks walled-with-a-gate against {UNDEFENDED_TICKS} bare");
+}
+
+// `a-defended-base.keys` verbatim, except that (5, 0) is never
+// painted.  Inline rather than a fourth file in `tests/scripts/`,
+// because what it is FOR is the comparison above.
+fn gated_base() -> text {
+    gb = "do toggle_mode\ndo cycle_kind\nclick 0 0\n"
+       + "do cycle_kind\ndo cycle_kind\ndo rotate\ndo rotate\ndo rotate\nclick 11 0\n"
+       + "do toggle_mode\npalette 5\n";
+    for gb_r in -2..=2 { gb = gb + "drag -3 {gb_r} 12 {gb_r}\n"; }
+    gb = gb + "palette 9\nclick 5 -2\nclick 5 -1\nclick 5 1\nclick 5 2\n";
+    gb + "wave 5\ntick 22\nwave 8\nfall 800\n"
+}
+
+// ⚠ **A base still standing when `fall` runs out is an ERROR, and
+// that is the verb's whole safety property.**  Every clock above is a
+// number `fall` produced; a `fall` that stopped quietly would hand
+// `ticks` its own bound instead, so `ticks 156 166` would read as a
+// scenario whose premise had collapsed rather than as one that
+// measured something.  The band would still be a band, and it might
+// even pass.
+fn test_the_new_verbs_refuse_to_fail_quietly() {
+    ttn_short = script_run(editor_state_new(PALETTE), standing_base(), SHOTS);
+    assert(!ttn_short.ok && ttn_short.message.contains("still standing"),
+           "a base that outlasts the bound ends the run: {ttn_short.message}");
+    assert(ttn_short.message.contains("points left"),
+           "and says how far it got: {ttn_short.message}");
+
+    ttn_a = script_run(editor_state_new(PALETTE), "fall abc", SHOTS);
+    assert(!ttn_a.ok && ttn_a.message.contains("integer"), "{ttn_a.message}");
+
+    ttn_b = script_run(editor_state_new(PALETTE), "fall 0", SHOTS);
+    assert(!ttn_b.ok && ttn_b.message.contains("1.."), "{ttn_b.message}");
+
+    ttn_c = script_run(editor_state_new(PALETTE), "ticks 0", SHOTS);
+    assert(!ttn_c.ok && ttn_c.message.contains("<lo> <hi>"), "{ttn_c.message}");
+}
+
+// One corridor, one small wave, and a bound far too short for it.
+fn standing_base() -> text {
+    "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo cycle_kind\ndo cycle_kind\n"
+  + "do rotate\ndo rotate\ndo rotate\nclick 11 0\ndo toggle_mode\npalette 5\n"
+  + "drag -3 0 12 0\nwave 5\nfall 30\n"
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Why the clock is what it is — the mechanism, priced directly
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The finding under every number above: the drain does NOT scale
+// with the wave.**  Twenty-five robots arrive at the undefended core
+// and exactly TWO ever nibble it.  They come down one axis from one
+// spawn, and on a hex AXIS the distance field offers exactly ONE
+// closer neighbour — so a blocked enemy waits, where an off-axis one
+// would have a second choice.  (`CLAUDE.md` § Testing something that
+// moves already says this about writing tests; it turns out to decide
+// the whole balance too.)  Plan 11 F7 named the missing equal-distance
+// sidestep and declined to build it; this is the first measurement of
+// what it costs.
+//
+// Priced here rather than inferred from the scenarios, and priced as
+// an INVARIANT: tripling the column changes nothing at all.
+//
+// Two more measurements taken while B7's world was chosen, both saying
+// the same thing and neither gated here because each costs a scenario
+// replay: the WIDTH is scenery (161 ticks over five rows, 161 over
+// thirteen) and so is the ROSTER (161 / 311 / 180 with two waves, and
+// the identical 161 / 311 / 180 with a third wave of twelve on top).
+fn test_a_column_drains_at_two_points_a_second_however_long_it_is() {
+    tac_pw = painted_empty();
+    for tac_r in -3..=3 {
+        for tac_q in -3..=14 { paint(tac_pw, tac_q, tac_r, as_u8(5)); }
+    }
+
+    tac_four   = column_drain(4,  tac_pw);
+    tac_twelve = column_drain(12, tac_pw);
+    tac_want   = 2.0 * per_tick(NIBBLE_POINTS_PER_SECOND) * 10.0;
+
+    assert(tac_four == tac_twelve,
+           "four in a column drain {tac_four}, twelve drain {tac_twelve} — the wave size is not the rate");
+    assert(tac_four > tac_want - 0.000001 && tac_four < tac_want + 0.000001,
+           "and the rate is exactly TWO nibblers: {tac_four} over ten ticks, wanted {tac_want}");
+}
+
+// Walk `n` robots down row 0 until the queue settles, then answer what
+// ten more ticks cost the wallet.
+fn column_drain(n: integer, pw: PaintedWorld) -> float {
+    cd_s = wave_state_empty();
+    for cd_i in 0..n {
+        cd_s.enemies += [Enemy { q: 3 + cd_i, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                                 heading: 3 as u8, alive: true }];
+    }
+    cd_core = Hex { q: 0, r: 0 };
+    cd_pal  = load_palette(PALETTE);
+    for _ in 0..12 { wave_tick(cd_s, cd_pal, pw, marker_empty(), cd_core); }
+
+    cd_before = wallet_spent(cd_s.wallet);
+    for _ in 0..10 { wave_tick(cd_s, cd_pal, pw, marker_empty(), cd_core); }
+    wallet_spent(cd_s.wallet) - cd_before
+}

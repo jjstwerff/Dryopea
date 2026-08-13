@@ -671,6 +671,23 @@ phase is coming for it, and the limit is stated in
 [`tests/11_f7_the_siege.loft`](../../tests/11_f7_the_siege.loft)'s header
 rather than left as a promise.
 
+⚠⚠ **Plan 12 B7 priced that refusal, and it turns out to set the whole
+GAME BALANCE rather than only the shape of a siege.** Thirteen robots
+reach an undefended core and exactly **two** ever nibble it: they
+arrive down one axis from one spawn, and on a hex axis the field offers
+ONE closer neighbour, so a blocked enemy waits where an off-axis one
+would have a second choice. So **the drain does not scale with the
+wave** — a column of four and a column of twelve drain identically —
+and by the same token a base's width and its roster are scenery.
+
+The perverse consequence is the one worth carrying into any future
+phase here: **anything that pushes the column off its axis lets more of
+it reach the core**, so a defending tower's own kills accelerate the
+base's fall. Building the sidestep is therefore not a polish item; it
+is the difference between wave size mattering and not.
+[`tests/12_b7_the_clock.loft`](../../tests/12_b7_the_clock.loft) prices
+it and asserts today's answer, so building it turns that file red.
+
 **You attack what you could STAND on and cannot climb.** The target is
 always a hex whose surface is walkable, so an enemy at the water's edge
 besieges nothing — there is nothing there to break. Free in the siege

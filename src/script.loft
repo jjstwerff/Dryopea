@@ -89,6 +89,12 @@
 //                              stops at what its class cannot cross.
 //                              Since B2 it also lands the siege's
 //                              damage and breaks what has run out
+//   fall <max>                 tick until the base FALLS — the wallet
+//                              at zero — and stop (plan 12 B7).
+//                              ⚠ Still standing after <max> is an
+//                              ERROR: a scenario that runs out of
+//                              ticks has measured nothing, whatever
+//                              it drew
 //
 // ── Measurements (V2) — each one asserts ────────────────────────
 //
@@ -122,6 +128,11 @@
 //                              only end state dryopea has, since the
 //                              core is invulnerable (plan 12 B6).
 //                              `wallet 0 0` is "the base fell"
+//   ticks <lo> <hi>            game-ticks played so far — the run's
+//                              CLOCK, and plan 12 B7's deliverable.
+//                              A band, because a clock is the sum of
+//                              a routing, a siege, a magazine and a
+//                              heap of bodies
 //   frame <bucket> <lo> <hi>   share of WORLD pixels in a bucket
 //
 // A measurement that reads out of band ENDS the run, naming the
@@ -206,6 +217,14 @@ pub struct ScriptRun {
     snaps:    integer,   // pictures written
     checks:   integer,   // measurements that passed
 
+    // Game-ticks played, across every `tick` and `fall` in the run
+    // (plan 12 B7).  It is the run's CLOCK, and B7's whole gate is a
+    // comparison of it between two runs — a base with defences and
+    // the same base without.  On the record rather than measured on
+    // demand because a scenario ends when the base falls, and by then
+    // there is nothing left to count.
+    ticks:    integer,
+
     hover_q:  integer,
     hover_r:  integer,
 
@@ -244,6 +263,7 @@ pub fn script_run_new(shots_dir: text) -> ScriptRun {
         frames:    0,
         snaps:     0,
         checks:    0,
+        ticks:     0,
         hover_q:   0,
         hover_r:   0,
         wave:      wave_state_empty(),
@@ -632,6 +652,23 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sm_wlo == null || sm_whi == null { return "wallet: <lo> and <hi> must be numbers"; }
         return measure_float(run, "wallet", wallet_left(run.wave.wallet),
                              sm_wlo ?? 0.0, sm_whi ?? 0.0);
+    }
+
+    // The run's CLOCK, in game-ticks — plan 12 B7.
+    //
+    // ⚠ **A band, and it has to be.**  `hp` and `kind` are exact
+    // because a wall either is at 15 HP or is not; a clock is the sum
+    // of a routing, a siege, a tower's magazine and a heap of bodies,
+    // and pinning it to a single tick would make every later phase's
+    // balance change read as a regression.  What the phase asserts is
+    // the SEPARATION between two runs, and that lives in a test where
+    // both numbers are in scope at once.
+    if sm_cmd == "ticks" {
+        if sm_argc != 2 { return "ticks needs <lo> <hi>"; }
+        sm_tlo = sm_a1 as integer?;
+        sm_thi = sm_a2 as integer?;
+        if sm_tlo == null || sm_thi == null { return "ticks: <lo> and <hi> must be integers"; }
+        return measure_int(run, "ticks", run.ticks, sm_tlo ?? 0, sm_thi ?? 0);
     }
 
     if sm_cmd == "marker" {
@@ -1288,7 +1325,48 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         for _ in 0..sc_count {
             wave_tick(run.wave, s.picker.palette, s.pw, s.mw,
                       Hex { q: sc_tcore.1, r: sc_tcore.2 });
+            run.ticks += 1;
         }
+        return "";
+    }
+
+    // Play until the base FALLS — the wallet at zero — and stop.
+    // Plan 12 B7, and the phase's whole deliverable: a base that
+    // falls in 40 s and one that falls in 400 s are the difference
+    // between "damage exists" and "defences work".
+    //
+    // ⚠ **Not falling within `<max>` is an ERROR, not a quiet stop.**
+    // A scenario called "an undefended base" that runs out of ticks
+    // still standing has measured nothing, whatever it drew — and it
+    // is exactly the failure a later `ticks` band would report as a
+    // number one hex outside its range rather than as the premise
+    // collapsing.  So the run ends here, naming what was left.
+    //
+    // ⚠ It ticks nothing at all if the base has ALREADY fallen, so a
+    // second `fall` is a no-op rather than a `<max>`-tick wait.
+    if sc_cmd == "fall" {
+        if sc_argc != 1 { return "fall needs <max ticks>"; }
+        sc_fmax = sc_a1 as integer?;
+        if sc_fmax == null { return "fall: <max ticks> must be an integer"; }
+        sc_flim = sc_fmax ?? 0;
+        if sc_flim < 1 || sc_flim > SCRIPT_MAX_REPEAT {
+            return "fall: <max ticks> must be 1..{SCRIPT_MAX_REPEAT}";
+        }
+        sc_fcore = script_core(s.mw);
+        if sc_fcore.0 != 1 {
+            return "fall: needs exactly ONE target marker to walk towards, found {sc_fcore.0}";
+        }
+        sc_fspent = 0;
+        while sc_fspent < sc_flim && !wallet_broke(run.wave.wallet) {
+            wave_tick(run.wave, s.picker.palette, s.pw, s.mw,
+                      Hex { q: sc_fcore.1, r: sc_fcore.2 });
+            run.ticks  += 1;
+            sc_fspent  += 1;
+        }
+        if !wallet_broke(run.wave.wallet) {
+            return "fall: the base was still standing after {sc_flim} ticks — {wallet_left(run.wave.wallet):8.6} points left, {alive_count(run.wave)} enemies alive";
+        }
+        println("script: the base fell after {run.ticks} ticks ({(run.ticks as float) * TICK_SECONDS:8.6} s), {alive_count(run.wave)} enemies alive");
         return "";
     }
 
@@ -1297,7 +1375,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker"
     || sc_cmd == "frame" || sc_cmd == "range"
     || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target"
-    || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet" {
+    || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
+    || sc_cmd == "ticks" {
         return script_measure(s, run, tok);
     }
 

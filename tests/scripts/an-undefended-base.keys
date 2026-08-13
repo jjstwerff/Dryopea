@@ -1,0 +1,107 @@
+# an-undefended-base — plan 12 B7, the CONTROL.
+#
+# A core, a spawn, and nothing whatsoever in between.  Three waves walk
+# in and stand on the core until the wallet runs out.  It is the number
+# every other scenario in this phase is measured against: a base that
+# falls in 161 ticks and a base that falls in 311 are the difference
+# between "damage exists" and "defences work", and only the second is
+# worth building.
+#
+# ── Why the control is not "the same map with the walls deleted" ──
+#
+# It nearly is, and deliberately: `a-defended-base.keys` is this file
+# plus five `click`s.  `plans/12` § Invariant gate names the failure —
+# *equal times = the scenario measures nothing, whatever it draws* — so
+# the two runs have to differ in the defences and in NOTHING else.  Same
+# ground, same core, same spawn, same wave list, same seed of a walk.
+#
+# ── The world ───────────────────────────────────────────────────
+#
+#   five rows of grass, sixteen columns:  (-3, -2) .. (12, 2)
+#   core at (0, 0), spawn at (11, 0) facing west
+#
+# ⚠ **The width does not matter, and that is a measurement rather than
+# an assumption.**  The same three waves against the same core give
+# 161 ticks over five rows and 161 over thirteen — because the attack
+# is a COLUMN however much room it has.  Everything east of the spawn
+# and north or south of the band is scenery, so this file buys the
+# cheapest world that answers the same.
+
+echo an undefended base: nothing in the way, and the wallet is the clock
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The spawn, eleven hexes east — clear of close_spawn_disable_radius
+# (10) and well inside the scrambler bubble (25).
+# ⚠ TWICE more: the place-kind cycle is spawn -> target -> tower ->
+# spawn since plan 12 B5a gave towers a marker kind of their own.
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+# ── The waves: `numbers.json` § wave_system, first two ──────────
+#
+# 5 and 8 off the authored `wave_list`, spaced by the file's own
+# `inter_wave_delay` of 15 s — which is 22.5 ticks, so 22.  Nothing
+# here invents a number.
+#
+# ⚠ **The third wave was measured and dropped, and what it measured is
+# the finding.**  Adding `wave 12` gives 161 ticks — the same clock, to
+# the tick, in this scenario and in both defended ones.  Twelve more
+# robots change NOTHING, because the drain is capped by the queue and
+# not by the roster (see § The clock below).  So the scenario buys the
+# two waves that fit in the gate's time budget and states why the third
+# is scenery.
+wave 5
+count alive 5 5
+wallet 200.0 200.0
+
+tick 22
+wave 8
+count alive 13 13
+
+# ── The clock ───────────────────────────────────────────────────
+#
+# ⚠ **161 ticks is not thirteen robots' worth of nibbling, and the gap
+# is this phase's central finding.**  Thirteen enemies arrive and only
+# TWO ever drain the wallet: they come down one axis from one spawn,
+# and on a hex axis the field offers exactly ONE closer neighbour, so a
+# blocked enemy waits instead of stepping beside it.  Plan 11 F7 named
+# that gap and declined to build the equal-distance sidestep; here it
+# stops being latent and sets the whole clock.
+#
+# So the drain is a flat 2 pt/s — 1.333 points a tick — from the moment
+# the first pair arrives, and every robot behind them is queueing.
+# `tests/12_b7_the_clock.loft` prices it directly: a column of four and
+# a column of twelve drain at exactly the same rate.
+fall 800
+ticks 156 166
+wallet 0.0 0.0
+
+# Nobody laid a finger on them.  This is the control's defining
+# property and the reason `count alive` is here rather than in a
+# comment: the moment something in this scenario kills an enemy, it is
+# no longer the undefended base.
+count alive 13 13
+
+snap b7_an_undefended_base

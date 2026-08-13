@@ -54,7 +54,8 @@ exists today.
 | Towers: a third MARKER kind, range 15 by `lat_distance`, two shots every three ticks | [12](plans/12-combat-resolution/README.md), B5a shipped |
 | A tower SEES: one straight line from its eye over what `hex_height` says is in the way, and thirty shots before it goes black | [12](plans/12-combat-resolution/README.md), B5b shipped |
 | A wallet: an enemy standing on the core drains 1 pt/s off 200, and zero ends the run — the core stays invulnerable | [12](plans/12-combat-resolution/README.md), B6 shipped |
-| **No SCENARIO yet, so nothing says the defences are worth their cost** | [12](plans/12-combat-resolution/README.md), B7 next |
+| An unattended base falls on a measured clock — and a sealed wall nearly doubles it while a tower CUTS it | [12](plans/12-combat-resolution/README.md), B7 shipped — plan **complete** |
+| **No player, so nobody clears the bodies that beat the tower** | the vehicle — not in any open plan |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -70,10 +71,10 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 734/734 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 739/739 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
-**Gate: 15 scripts green under `scripts/validate.sh`** (~13 s, 260
+**Gate: 18 scripts green under `scripts/validate.sh`** (~6 s, 303
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -156,6 +157,19 @@ miner**, they differ a lot in how fast they chew a wall, and they
 differ in **nothing else**.  Four enemy types for one row each in
 `numbers.json` plus one branch in `spawn.loft`'s damage-to-wall lookup
 — no new mover, no new targeting, no new code path.
+
+⚠⚠ **The missing sidestep sets the whole BALANCE, measured in plan 12
+B7.**  Thirteen robots reach an undefended core and exactly **two**
+ever nibble it: they come down one axis from one spawn, and on a hex
+AXIS the field offers ONE closer neighbour, so a blocked enemy waits
+where an off-axis one would have a second choice.  So **the drain does
+not scale with the wave** — a column of four and a column of twelve
+drain at the same rate — and by the same token a base's WIDTH and its
+ROSTER are both scenery: 161 ticks over five rows and over thirteen,
+161 / 311 / 180 with two waves and the identical numbers with a third.
+⚠ The perverse consequence: anything that pushes the column OFF the
+axis lets more of it reach the core, so a tower's own kills speed the
+base's fall.  `tests/12_b7_the_clock.loft` prices it.
 
 ⚠ **The siege chews where the ROUTE meets the wall, never where the
 wall is weakest** — measured in plan 12 B3, and it falsifies what
@@ -616,7 +630,12 @@ src/
                    `wallet 0 0` is how a run says "the base fell".
                    ⚠ It needs no core marker and no wave: the budget
                    belongs to the RUN, not to the battlefield, so 200
-                   is the honest answer before a single enemy exists
+                   is the honest answer before a single enemy exists.
+                   B7 added `fall <max>` (tick until the wallet empties
+                   — ⚠ still standing after `<max>` is an ERROR, or a
+                   later `ticks` band would read a collapsed premise as
+                   a measurement) and `ticks <lo> <hi>`, the run's
+                   CLOCK, which `ScriptRun` now carries
                    ⚠ **A new coordinate-carrying verb needs a row in
                    `convert.loft::keys_schemas`**, or a future lattice
                    conversion leaves it in the old labels — silently,
@@ -1272,6 +1291,7 @@ signature.
 | Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — the kind's figure scaled by `brace_of`.  ⚠ `numbers.json`'s wall_hp (100) is the BRACED number; a lone plug in a corridor is a STUB and gets 15 |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
+| Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock.  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; a tower CUTS it, because its bodies ramp over the wall it was defending |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |

@@ -136,6 +136,26 @@ height rather than a material ([`DESIGN.md`](DESIGN.md) § LOS is a
 HEIGHT question) and it sharpens point 1 below rather than softening
 it: the entrance closes AND the guns covering it go quiet.
 
+⚠⚠ **Measured end to end in plan 12 B7, and it beats a tower.**  Three
+scenarios differing only in their defences — same ground, core, spawn
+and wave list:
+
+| base | clock | ending |
+|---|---|---|
+| no defences | 161 ticks | they walked in |
+| sealed wall | **311** ticks | the wall broke |
+| sealed wall **+ a tower** | **180** ticks | **the pile went over** |
+
+The tower is not weak: it kills nine of thirteen with 27 of its 30
+shots.  What undoes it is that three of those bodies land on one hex —
+1.5 m, inside plan 12 B0's [1.0, 2.0] ramp band onto a 3.0 m `wall` —
+so the four survivors climb their own dead onto a wall that never lost
+a tenth of its HP.  Every clause of this section fires at once: the
+ramp (point 3), the blinding above, and the queue spreading off-axis.
+**A kill is a permanent terrain change and nobody can reverse it**, so
+until the vehicle's crew exists to collect bodies, a tower without
+cleanup shortens the base's life.  `tests/12_b7_the_clock.loft`.
+
 ⚠ **A fatal hit is followed by one last step.**  The tick moves before
 it resolves deaths, so a body lands one hex down the enemy's route from
 where the damage landed.  That is the same "consequences land at the

@@ -1,0 +1,115 @@
+# a-defended-base — plan 12 B7, the phase's headline.
+#
+# `an-undefended-base.keys` plus five `click`s: a wall sealing the band
+# at q = 5.  Same ground, same core, same spawn, same wave list, same
+# everything — so the difference in the clock is the wall and can be
+# nothing else.
+#
+#   undefended:  161 ticks   (107 s)
+#   this file:   311 ticks   (207 s)  — 93% longer
+#
+# ⚠ **A SEAL, not a funnel — and the distinction is the finding.**  The
+# same wall with a one-hex gate left open in it falls in **161 ticks**,
+# exactly the undefended number, because walking through a gate costs an
+# attacker nothing at all.  A wall buys time only where it has to be
+# CHEWED.  `plans/12` § B7 has the measurement; what a player learns
+# from it is that an entrance is a decision about their own convenience,
+# never a defence.
+#
+# ── The ending this one reaches: THE WALL BROKE ─────────────────
+#
+# `plans/12` § What this plan does NOT build asks B7 to report which of
+# two endings takes the base.  This is the first: twenty-five robots
+# chew (5, 0) down from 100 HP at 1 HP/s each, it comes down into a heap
+# of masonry, and they walk through the hole.  Nobody dies, so no body
+# ever piles — which is exactly why this base gets the long clock.
+# `a-tower-buries-its-own-wall.keys` is the other ending.
+#
+# ⚠ **The unzip is visible here.**  (5, -1) starts braced at 100 HP and
+# ends at 30: bracing is computed from the world rather than stored, so
+# the hex beside a fresh breach becomes an END and loses 70% of its
+# allowance the moment its neighbour goes (plan 12 B3).
+
+echo a defended base: a sealed wall, and it nearly doubles the clock
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+# The seal: five hexes across the whole band, no gate.
+# ⚠ A `wall` is 3.0 m and a robot climbs 2.0, so there is no way over
+# it either — B0's four constraints put the climb below a bare wall on
+# purpose.
+palette 9
+click 5 -2
+click 5 -1
+click 5 0
+click 5 1
+click 5 2
+kind 5 0 wall
+count painted 80 80
+
+# ⚠ **100 HP, and it is the BRACED figure.**  (5, 0) has a structure
+# neighbour on either side along the column, so it gets the full
+# allowance; the two ends at (5, ±2) get 30.  `a-wall-breaks.keys`'s
+# lone plug in a corridor got 15 — same `numbers.json` number, three
+# different answers, because a wall's HP is structural (plan 12 B3).
+hp 5 0 100.0 100.0
+hp 5 2 30.0 30.0
+
+# The same two waves as the control, off `numbers.json`'s own list and
+# spaced by its own `inter_wave_delay`.  ⚠ A third wave of 12 was
+# measured and changes the clock by NOTHING — see the control's note.
+wave 5
+count alive 5 5
+wallet 200.0 200.0
+
+tick 22
+wave 8
+count alive 13 13
+
+fall 800
+ticks 306 316
+wallet 0.0 0.0
+
+# ── The ending, stated ──────────────────────────────────────────
+
+# The wall is GONE from (5, 0) — `break_structure` repaints it, because
+# a broken wall really is gone rather than shadowed behind an overlay.
+kind 5 0 grass
+
+# And it left a heap.  ⚠ This is the half that makes the breach a way
+# IN: had the break ERASED the hex, the painted layer is sea-default,
+# so the breach would have read as `sea` and been strictly LESS passable
+# than the wall it replaced (plan 12 § Open question 5).
+pile 5 0 0.9 1.1
+
+# The unzip: braced at 100 before the breach, an end at 30 after it.
+hp 5 -1 30.0 30.0
+
+# Still nobody has died.  That is what separates this base from the
+# next one, and it is the whole reason this one holds twice as long.
+count alive 13 13
+
+snap b7_a_defended_base

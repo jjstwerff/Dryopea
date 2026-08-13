@@ -347,6 +347,22 @@ fully closed perimeter has **no entrance**, so enemies have no
 path to the core and fall back to **nibbling the nearest
 wall** (slow attrition, but the wall *will* fall).
 
+⚠ **A GATE IS NOT A DEFENCE — measured, plan 12 B7.**  A sealed
+wall nearly doubles the time an unattended base survives (161
+ticks bare, **311** sealed).  The *same* wall with its middle
+hex left open falls in **161** — the undefended clock, to the
+tick.  Walking through an entrance costs an attacker nothing
+whatever, so **a wall buys time only where it has to be
+chewed**.
+
+That does not make entrances a mistake; it prices them.  An
+entrance is a decision about the *player's own* convenience —
+their vehicle, their helpers, their salvage runs — paid for in
+full, and its defensive value is entirely in what the player
+puts BEHIND it.  A closed perimeter is what costs the attacker
+time; a recognised entrance is what costs the player nothing to
+drive through.
+
 ### Wall climbability per enemy type
 
 Moved to [`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § Wall
@@ -512,6 +528,29 @@ All towers ship validation as a single type: **pulsed laser**.
   per-time*.  An idle tower in a quiet corner never decays.
   A tower covering a busy entrance burns through its budget
   fast.  Player repairs to refill the budget.
+
+⚠⚠ **A tower without a cleanup crew makes a base fall SOONER
+— measured, plan 12 B7.**  Same base, same waves, the only
+difference a single tower behind a sealed wall: **311 ticks
+without it, 180 with**.  The tower is not weak; it kills nine
+of thirteen attackers with 27 of its 30 shots.  What undoes it
+is that **a kill is a permanent terrain change and nobody can
+reverse it**: three bodies on one hex is 1.5 m, a robot climbs
+2.0, and a 3.0 m wall needs a 1.0-2.0 m step — so the four
+survivors walked over their own dead onto a wall that never
+lost a tenth of its HP.  The same heap also blinds the tower
+(§ LOS is a HEIGHT question) and pushes the attacking column
+off its axis, where more of it can reach the core.
+
+This is not a balance bug to tune away.  It is the design's own
+loop demanding the piece plan 12 did not build: **salvage
+decays, so bodies have to be collected, and collecting them
+means driving into the kill zone at the worst possible
+moment.**  That is exactly the test in
+[`CLAUDE.md`](../CLAUDE.md) § What dryopea is — *does this put
+something in the player's hands at a moment when using it costs
+them something?*  A tower is the strongest argument the game
+has for why the player cannot lean back.
 - **Repair rule.**  A **firing (red) tower cannot be
   repaired** — repair only applies to a tower whose top is
   either **black** (decayed in place, no longer firing) or

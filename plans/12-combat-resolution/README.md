@@ -9,8 +9,30 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**B0-B6 shipped** (2026-08-13). B7 is next and unblocked — every
-mechanic its scenario needs now exists.
+**COMPLETE — B0-B7 shipped** (2026-08-13). The exchange resolves and a
+run can end.
+
+⚠⚠ **B7 half-falsified this plan's own Goal, and that is its most
+valuable output.** The goal says a base *"falls on a measurable clock
+that gets markedly longer when the defences are present"*. Measured,
+with the same ground, core, spawn and wave list, and only the defences
+changing:
+
+| base | clock | ending |
+|---|---|---|
+| no defences | **161** ticks (107 s) | they walked in |
+| sealed wall | **311** ticks (207 s) | **the wall broke**, and the perimeter unzipped |
+| sealed wall **+ a tower** | **180** ticks (120 s) | **the pile went over** — the wall never lost a tenth of its HP |
+
+So the goal holds for the WALL (+93%) and is **inverted by the
+TOWER**, which gives back 131 of the 150 ticks the wall bought. Four
+surviving robots take a base defended by a gun and a sealed wall,
+because nine of their friends died at its foot: three bodies on one
+hex is 1.5 m, B0's ramp band onto a 3.0 m wall is [1.0, 2.0], and the
+survivors climb their own dead. That is `ENEMY_MOVEMENT.md` § Bodies
+are terrain firing exactly as written in a base with nobody to clear
+up — which § What this plan does NOT build predicted in as many words.
+See § B7 below.
 
 B0 was a probe and changed no mechanic: it wrote down what the
 simulation does in the two places this plan leans on, and it
@@ -240,6 +262,59 @@ before building on it: a nested struct reached by field access is a
 reference and writes through; only a struct RETURNED from a function
 is a copy.
 
+**B7 built the clock and its control.** Three `.keys` scenarios that
+differ only in their defences, a `fall <max>` verb that plays until
+the wallet empties, a `ticks <lo> <hi>` measurement, and
+`tests/12_b7_the_clock.loft` — where the three clocks are in scope at
+once, which is the only place the comparison can be made. Suite **739
+green**; the gate is **18 scripts and 303 measurements**.
+
+⚠⚠ **The finding under every number: the drain does NOT scale with the
+wave.** Thirteen robots arrive at the undefended core and exactly TWO
+ever nibble it. They come down one axis from one spawn, and on a hex
+AXIS the distance field offers exactly ONE closer neighbour — so a
+blocked enemy waits where an off-axis one would have a second choice.
+**Plan 11 F7's missing equal-distance sidestep sets the entire
+balance**, and this is the first measurement of what it costs. Priced
+as an invariant rather than inferred: a column of four and a column of
+twelve drain at exactly the same rate. Two corollaries, both measured
+while the scenario's world was being chosen and both worth knowing
+before authoring any base — the WIDTH is scenery (161 ticks over five
+rows, 161 over thirteen) and so is the ROSTER (161 / 311 / 180 with
+two waves, and the identical 161 / 311 / 180 with a third wave of
+twelve on top).
+
+⚠ **A GATE is not a defence, and the measurement is exact.** The same
+five-hex wall with its middle hex left open falls in **161 ticks** —
+the undefended clock, to the tick. Walking through an entrance costs
+an attacker nothing whatever, so a wall buys time only where it has to
+be CHEWED. It is a rule a player can learn: an entrance is a decision
+about their own convenience.
+
+⚠ **Everything a tower does to the clock, it does through BODIES.**
+The tower is not weak — it kills nine of thirteen with 27 of its 30
+shots, and its magazine is gone before the wave list is. What undoes
+it is that a kill is a permanent terrain change nobody can reverse,
+and two of them do three things at once: they ramp over the wall
+(B0's band), they blind the tower that made them (B5b), and they push
+the queue off-axis so MORE of the survivors reach the core. The design
+already has the answer and plan 12 does not build it — salvage decays,
+so bodies must be collected at the worst possible moment, and the crew
+that does it arrives with the vehicle.
+
+⚠ **B7 asserts today's behaviour on purpose.** Building F7's sidestep,
+or a body-clearing crew, turns `tests/12_b7_the_clock.loft` red — and
+red is the correct answer that day, pointing at the paragraph to
+rewrite. Same discipline B3 used for the bracing consequence it
+falsified.
+
+⚠ **Quote the measured work, never a suite wall clock.** Timed
+directly, the three replays cost 668 + 1703 + 717 ms. The suite's own
+before-and-after swung by twenty seconds across runs of the SAME tree
+and would have justified almost any conclusion about them —
+`CLAUDE.md` § Profiling the suite's warning arriving in the one place
+it is easiest to ignore, judging the cost of your own change.
+
 ⚠ **Cost, honestly.** B2 adds one `enemy_target` per live enemy per
 tick — it reuses the fields the tick already built, so no new sweep —
 and `tests/11_f8_the_tick_budget.loft` stays green. A standalone
@@ -455,7 +530,7 @@ pins, and the input that must be **refused**.
 | **B5a** ✓ | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
 | **B5b** ✓ | tower kills through a `wall` three hexes out; does **not** kill through a `wall_high` there; stops firing after 30 shots; **a blocked shot is not FIRED** — neither the charge nor the budget is spent | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS; one whose budget falls while every line is blocked is spending shots it never took |
 | **B6** ✓ | N nibblers drain exactly N pt/s × tick seconds; the wallet floors at 0 | the wallet never goes negative and never refills unattended | a negative wallet means the run has no end state |
-| **B7** | the defended base's time-to-zero is markedly longer than the same base stripped of walls and towers | the defences are what cost the attacker time | equal times = the scenario measures nothing, whatever it draws |
+| **B7** ⚠ | **half met.** A sealed wall: 311 ticks against the bare base's 161. A wall **plus a tower**: 180 — the defences make it *shorter* | the wall costs the attacker time; a tower's BODIES give it back | equal times = the scenario measures nothing, whatever it draws — refused, and the gated-wall variant is exactly that failure at 161 = 161 |
 
 ⚠ **B5b's row was rewritten by building it**, and the change is the
 finding rather than a slackening. It said *"does not kill through
@@ -482,7 +557,7 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | **Done** |
 | **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires; a blocked tower spends nothing | **Done** |
 | **B6** — nibble drains the wallet, zero ends the run | S | `tests/12_b6_wallet.loft` — the rate, the floor, the reach's negative control, and `wallet <lo> <hi>` through the seam | **Done** |
-| **B7** — the scenario, and its control | S | `tests/scripts/an-undefended-base.keys` + the stripped control — the clock separates | Open |
+| **B7** — the scenario, and its control | S | `tests/12_b7_the_clock.loft` over three `.keys` scenarios — the clock separates, and a tower inverts it | **Done** |
 
 ### Why the order is this order
 

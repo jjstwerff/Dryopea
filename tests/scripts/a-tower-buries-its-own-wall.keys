@@ -1,0 +1,122 @@
+# a-tower-buries-its-own-wall — plan 12 B7, and the phase's finding.
+#
+# `a-defended-base.keys` plus ONE marker: a tower at (3, 0), one hex
+# behind the wall it covers.  Everything else is identical.
+#
+#   undefended:        161 ticks   (107 s)
+#   sealed wall:       311 ticks   (207 s)
+#   this file:         180 ticks   (120 s)  — the tower gives back 131
+#
+# ⚠⚠ **The tower makes the base fall SOONER, and it is not a bug.**  It
+# is `docs/ENEMY_MOVEMENT.md` § Bodies are terrain arriving exactly as
+# written, in a base with nobody to clear up: *"enemies climb their own
+# dead onto the wall"*.  The tower kills nine robots at the foot of its
+# own wall; three of them fall on (6, 0) and make a 1.5 m step; a robot
+# climbs 2.0, and 1.5 + 2.0 clears a 3.0 m wall.  The survivors walk
+# over their dead and into the base, and the wall never loses a tenth of
+# its HP.
+#
+# B0 derived that band before anything could die: a single-hex body ramp
+# onto a structure `H` high needs a climb of `H / 2`, so onto a `wall`
+# the workable pile is [1.0, 2.0] m — *"a couple of dead robots get the
+# next one over"*.  This is the first time it has fired in anger, and it
+# fires against the player.
+#
+# ── The ending this one reaches: THE PILE WENT OVER ─────────────
+#
+# The other of the two `plans/12` asks B7 to distinguish.  The wall is
+# INTACT — 98 of 100 HP, two seconds of chewing in three minutes — and
+# the base fell anyway.  `a-defended-base.keys` is the wall breaking;
+# which ending you get is decided by whether you built a tower.
+#
+# ⚠ **What this does NOT say is that towers are bad.**  It says a tower
+# without a cleanup crew is, and the crew is the vehicle plan 12 does
+# not build.  Salvage decays, bodies have to be collected at the worst
+# possible moment, and `CLAUDE.md` § What dryopea is calls that the
+# design's whole test — *does this put something in the player's hands
+# at a moment when using it costs them something?*  This file is that
+# question with the player removed, and the answer is the base.
+
+echo a tower buries its own wall: nine kills, a body ramp, and a shorter clock
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The tower, one hex behind the wall.
+# ⚠ **ONE hex, and B5b measured why.**  A shot descends from the eye at
+# 6.0 m to a robot's body at 1.0 m, so a 3 m wall stops it once it
+# stands past ~3/5 of the way to the target: a tower one hex behind its
+# wall covers the besiegers, and two hexes back leaves them in dead
+# ground.  A tower at the core would see nothing at all.
+do cycle_kind
+click 3 0
+marker 3 0 tower
+
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 3 3
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+palette 9
+click 5 -2
+click 5 -1
+click 5 0
+click 5 1
+click 5 2
+kind 5 0 wall
+hp 5 0 100.0 100.0
+
+wave 5
+count alive 5 5
+wallet 200.0 200.0
+
+tick 22
+wave 8
+
+# ⚠ **Four already dead, twenty-two ticks in.**  A tower fires one shot
+# a second out of a 30-shot budget, so it is spending that budget from
+# the moment the first wave walks into range — and every kill is a body
+# nobody will collect.
+count alive 9 9
+
+fall 800
+ticks 175 185
+wallet 0.0 0.0
+
+# ── The ending, stated ──────────────────────────────────────────
+
+# The wall is still there, and all but untouched.  Compare
+# `a-defended-base.keys`, where the same wall at the same q under the
+# same waves is GRASS by now.
+kind 5 0 wall
+hp 5 0 95.0 100.0
+
+# What got them in: three dead robots at the wall's foot.  0.5 m a body
+# (`numbers.json` § enemy_regular.body_height), so 1.5 m — inside B0's
+# [1.0, 2.0] band, and a 2.0 m climber steps from there onto 3.0 m.
+pile 6 0 1.4 1.6
+
+# ⚠ **The tower did its job, and that is the problem.**  Nine of
+# thirteen never made it — 27 of its 30 shots, at 3 shots a 30 HP robot
+# — and the FOUR survivors took the base anyway, walking in over the
+# nine.  A wall and a gun beat by four robots is a stronger statement
+# than any clock: the kills are what got them in.
+count alive 4 4
+
+snap b7_a_tower_buries_its_own_wall
