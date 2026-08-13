@@ -44,9 +44,10 @@ Implements, and does not restate:
   plan consumes already exists there. **This plan adds no new tunable
   without a row in that file.**
 
-Source files it touches: `src/passable.loft` (the climb number),
-`src/height.loft` (the additive layer, already built), `src/painted.loft`,
-`src/palette.loft` + `examples/palette.json` (the rubble entry),
+Source files it touches: `src/passable.loft` (the climb number and
+`hex_ground`'s fall-through), `src/height.loft` (the additive runtime layer
+— already built, gains a **source** and a **clear** and becomes the rubble
+layer), `examples/palette.json` + `docs/GROUND_TYPES.md` (the rubble entry),
 `src/spawn.loft` (the tick), `src/script.loft` (the new measurements), and a
 new `src/damage.loft` / `src/tower.loft`.
 
@@ -61,26 +62,51 @@ starting points, 1 pt/s per nibbling enemy. Unattended, nothing refills it,
 so the base falls on schedule with no design reversal. The measurement is
 the same number either way.
 
-**2. Rubble is a terrain whose height ADDS — the rubble is a hill.**
-A broken wall becomes a pile of rubble — higher than the ground it sits on,
-lower than the wall was, climbable from every side. A killed enemy becomes
-rubble too. Both are the same thing, and dryopea already has the layer for
-it: `src/height.loft` is *"a sparse map of metres ADDED to what the palette
-paints"*, it already ACCUMULATES, and `ENEMY_MOVEMENT.md` § Bodies are
-terrain already specifies the mechanic. So rubble is a **palette entry for
-the surface** plus a **`height_raise` for the pile**, and a pile on a hill
-sits higher than the same pile on grass for free.
+**2. Rubble is its OWN layer, above the ground — and the rubble is a hill.**
+A broken wall becomes a pile of rubble; a killed enemy becomes one too.
+Higher than the ground it sits on, lower than the wall was, climbable from
+every side, and **clearable by the player** — which is precisely why it is a
+layer and not a repaint. The ground underneath is never overwritten, so
+clearing a pile restores exactly what was authored, with nothing to
+reconstruct.
 
-⚠ **The rubble is the hill; what is IN it is a different layer.** Salvage
-recovered from a pile — several types, possibly mashed together in one hex,
-each visible to the player — lands on the **stacked-layer / additional-mesh
-layer**, the same one [plan 06 S1](../06-editor-stencil-pipeline/README.md)
-builds for content inside houses. It is not this plan's, and B1 must not
-encode it in the terrain: **loot type is not an axis of the ground kind.**
-A hex holding a mash of two salvage types cannot be one palette entry, so
-the moment rubble splits into `rubble_scrap` / `rubble_alloy` the
-representation has gone wrong and the item layer has been reinvented badly
-inside the palette. One rubble kind, one height, contents later and above.
+⚠ **That is what dissolves the sea trap**, and the trap is worth recording
+because it would have passed a naive test. Had rubble been a repaint, a
+broken wall would have had to erase the painted `wall` — and the painted
+layer is sparse and **sea-default**, so an erased hex reads as `sea`, which
+is `walk_ground: false`. The breach would have been *more* impassable than
+the wall it replaced, while "the wall broke" asserted true.
+
+**Extend `src/height.loft` rather than adding a third sparse map.** It is
+already *"a sparse map of metres ADDED to what the palette paints"*, already
+ACCUMULATES, already runtime-only and out of every save, and
+`ENEMY_MOVEMENT.md` § Bodies are terrain already specifies the mechanic —
+its one real semantic today *is* a body pile, which is machine rubble under
+another name. What B1 adds to it is a **source** and a **clear**. A pile on
+a hill then sits higher than the same pile on grass for free, because the
+arithmetic is already additive.
+
+⚠ **The rubble is the hill; what is IN it is a different layer** — and the
+line between them is not "rubble is one thing". **Ask whether two values
+can be true of one hex at once.**
+
+- **Source material** — machine wreckage, insect carapace, broken masonry —
+  is a **closed set, one per hex**, exactly like `sand` / `grass` / `rock`.
+  That is a legitimate ground-type axis, and eventually there are three
+  rubble entries rather than one.
+- **Salvage contents** — several types in one pile, mashed, each visible to
+  the player — is **open and multiple per hex**. A palette kind cannot hold
+  it, so it lands on the **stacked-layer / additional-mesh layer**, the same
+  one [plan 06 S1](../06-editor-stencil-pipeline/README.md) builds for
+  content inside houses.
+
+Neither is built here. **B1 ships ONE rubble kind** — three entries whose
+only difference is a colour would be two rows nothing can fail on — but the
+producer takes its **source** as an argument, so the eventual split is a
+palette row and an enum value rather than a hunt through every site that
+makes rubble. B2 and B4 are already three distinct producers (a wall
+breaking, a robot dying, an insect dying), so the argument has real callers
+from the day it exists.
 
 ⚠ **"A natural ramp on all sides" is not a new rule — it is a height under
 the climb limit.** The passability rule is already
@@ -118,8 +144,8 @@ pins, and the input that must be **refused**.
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
 | **B0** | a robot refuses a 0.1 m rise today; an erased `wall` hex is impassable today | the probe records what IS, before anything changes it | — (B0 asserts the present, so its own gate is that B1 turns it red) |
-| **B1** | robot steps onto rubble at `climb`; refuses at `climb + ε` | a ramp is a height under the climb, not a flag | rubble one notch above the climb **must** be refused — else the height rule is decorative |
-| **B2** | wall at 1 HP does not break; at 0 HP it becomes `rubble` and the hex is standable | breaking OPENS a route (the sea trap is closed) | a broken hex that reads as `sea` — impassable — is the bug this phase exists to avoid |
+| **B1** | robot steps onto rubble at `climb`; refuses at `climb + ε`; **clearing a pile leaves the hex identical to before it was piled** | a ramp is a height under the climb, not a flag — and rubble is a layer, so clear is an identity | rubble one notch above the climb **must** be refused, else the height rule is decorative; a cleared hex that differs from the authored one means the ground was overwritten after all |
+| **B2** | wall at 1 HP does not break; at 0 HP the hex carries rubble and is standable | breaking OPENS a route (the sea trap is closed) | a broken hex that reads as `sea` — impassable — is the bug this phase exists to avoid |
 | **B3** | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
 | **B4** | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
 | **B5a** | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
@@ -136,7 +162,7 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **B0** — the climb number, and what a tick is worth | XS | `tests/12_b0_probe.loft` — asserts TODAY's refusals so B1 must turn them red | Open |
-| **B1** — rubble is terrain, and a robot can climb it | S | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; F1b's wall stays green | Blocked on B0 |
+| **B1** — rubble is a clearable layer, and a robot can climb it | S | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; clear round-trips to the authored hex; F1b's wall stays green | Blocked on B0 |
 | **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | Blocked on B1 |
 | **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | Blocked on B2 |
 | **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | Blocked on B1 |
@@ -159,9 +185,13 @@ only be built once both runs are possible.
 ## What this plan does NOT build
 
 No player, no vehicle, no helpers, no runtime wall construction, no repair,
-no boost, no loot pickup, no beacon ferry, and **no item layer** — the
-recoverable salvage that will later sit on a rubble pile is plan 06 S1's
-stacked-layer work, and B1 only has to avoid foreclosing it. The base is
+no boost, no beacon ferry, and **no item layer** — the recoverable salvage
+that will later sit on a rubble pile is plan 06 S1's stacked-layer work, and
+B1 only has to avoid foreclosing it. Clearing rubble exists as an
+**operation** in B1, because a layer that cannot be cleared is a repaint
+wearing a layer's name and its round-trip is what gates it; what does not
+exist is a **player to trigger it**, which arrives with the vehicle. The
+base is
 **authored** — walls
 and towers are painted or placed before the run and nobody touches them
 after. That is what makes the clock a clean measurement: with a player in
@@ -187,16 +217,32 @@ over it.
    discriminant (`MARKER_KIND_SPAWN` 0, `MARKER_KIND_TARGET` 1) and the
    comment says to add one per kind. A third kind is the cheap answer, and
    it makes towers authorable in the existing editor. *Decided in B5a.*
-4. **Rubble is the 12th palette entry, and the 12th has no key.**
-   `numbers.json` § input says *"11 entries match the 11 ground types"* and
-   the hotkey row lists exactly 11 keys. Rubble is the first ground type the
-   player never paints, so it appends at index 11 (leaving 0-10 unsheared)
-   and simply has no binding. Whether the picker should show an unpaintable
-   entry at all is a UI question, not a blocker. *Decided in B1.*
-5. **Does rubble ever go away?** Loot pickup is a player action and there is
-   no player here, so within this plan it does not. The collection mechanic
-   arrives with the vehicle, and what it recovers comes off the item layer
-   above the rubble, not off the rubble kind — see § the two things settled.
+4. **Rubble is a palette entry reached from the rubble layer, not from the
+   painted one.** Keeping it a `GroundType` is what lets `can_stand` /
+   `can_step` read `walk_ground` with no branch for rubble — the passability
+   rule stays one rule. So `hex_ground` prefers the rubble layer when a hex
+   carries a pile and falls through to the painted kind otherwise, and the
+   entry appends at index 11 (leaving 0-10 unsheared). It is the first
+   ground type the **player never paints**: `numbers.json` § input says
+   *"11 entries match the 11 ground types"* and lists exactly 11 hotkeys, so
+   the 12th simply has no binding. Whether the picker should show an
+   unpaintable entry at all is a UI question, not a blocker. *Decided in B1.*
+5. **What is the ground under a destroyed wall?** The one question the
+   separate rubble layer does *not* answer. A broken wall is two effects,
+   not one: the wall is **removed** (authored content gone, persistent) and
+   rubble is **deposited** (runtime, clearable). Clearing the rubble must
+   therefore reveal ground — and today nothing knows what that ground was,
+   because painting `wall` in the editor overwrote it and `MapFile` cannot
+   grow a second kind per hex (the loft JSON-cast hang caps it at 6 fields).
+   Three answers, cheapest first: revert to a **default ground** (`grass`,
+   or a per-map authored default) — simple, slightly lossy; **remember the
+   overwritten kind** in the painted layer — blocked by the field cap today;
+   or move **walls out of the ground palette into their own layer**, so the
+   ground beneath was never overwritten at all. The third is the honest
+   answer and it is also plan 06 S1's direction (walls are built structures,
+   not terrain), which makes it too big for here. *Decided in B2* —
+   recommendation: default ground now, with the site routed through one
+   function so the third answer stays a change of one body.
 
 ## Found while planning, not this plan's to fix
 
