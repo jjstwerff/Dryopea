@@ -1,0 +1,370 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 11 phase F7b — an enemy blocked by a COMPANION moves beside it.
+//
+// ── The half of F5c that was never built ────────────────────────
+//
+// `docs/ENEMY_MOVEMENT.md` § Sealing the perimeter has said since
+// before any of this existed: *"An enemy whose target hex is taken by
+// a companion does not wait behind it — it moves beside them."*  F5c
+// built the first clause and stopped: it tried the next strictly-
+// CLOSER hex, and where there was none it waited.
+//
+// On a hex AXIS there is no next one.  The field offers exactly one
+// closer neighbour on an axis and two off it — F5c measured that and
+// named it — so a column arriving from a single spawn queued single
+// file all the way to the core.  F7 then named the missing rule
+// (*"chewing a face along its LENGTH needs an equal-distance
+// sidestep"*) and declined to build it, and B3 recorded the
+// consequence as latent.
+//
+// **Plan 12 B7 measured what it was worth and it was not latent at
+// all: it was the whole balance.**  Thirteen robots reached an
+// undefended core and exactly TWO ever nibbled it.  The drain did not
+// scale with the wave; neither did anything else.  This phase is that
+// measurement's answer.
+//
+// ── The rule, and the line it draws ─────────────────────────────
+//
+// A sidestep fires only when a **companion** is what stopped the
+// enemy, never when the **ground** is.  In the engage branch that
+// needs no test: every hex the routing field offers is one the ground
+// already allowed, so "nothing was free" can only mean a companion.
+// In the siege branch it needs one, because there both are possible
+// and they want opposite answers — and § A wall is not a companion
+// below is that test.
+//
+// ⚠ **An unconditional sidestep would be a JITTER, not a spread.**  An
+// enemy at a wall face has no legal step in any direction, so it would
+// shuffle along the face for ever, attacking a different hex every
+// tick and finishing none of them.  That is the failure this phase's
+// negative control exists to refuse.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+fn westbound(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: robot(), heading: 3 as u8, alive: true }
+}
+
+// An open band: five rows, wide enough that an off-axis hex exists in
+// every direction the core can be approached from.
+fn band(rows: integer, qlo: integer, qhi: integer) -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in (0 - rows)..=rows {
+        for b_q in qlo..=qhi { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// How many live enemies are within nibbling reach of the core — the
+// number this whole phase is about.
+fn nibblers(state: const WaveState) -> integer {
+    n_c = 0;
+    for n_e in state.enemies {
+        if n_e.alive && nibble_in_reach(core(), n_e.q, n_e.r) { n_c += 1; }
+    }
+    n_c
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The offering: equal distance, and never anything else
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_sidestep_is_exactly_as_far_from_the_core() {
+    tas_f = flow_build(pal(), band(3, -3, 12), height_layer_empty(), robot(), core());
+    tas_d = flow_distance(tas_f, 6, 0);
+
+    tas_n = 0;
+    for tas_s in flow_sidesteps(tas_f, 6, 0) {
+        assert(flow_distance(tas_f, tas_s.q, tas_s.r) == tas_d,
+               "({tas_s.q}, {tas_s.r}) is at {flow_distance(tas_f, tas_s.q, tas_s.r)}, not {tas_d}");
+        tas_n += 1;
+    }
+    assert(tas_n > 0, "an open hex has somewhere beside it to go: {tas_n}");
+}
+
+// ⚠ **`flow_steps` is UNCHANGED, and that is the point of it being a
+// second function.**  Its documented invariant is *every entry is at
+// `d - 1`*; `flow_step` returns its head and `enemy_target` reads it to
+// name the hex under attack.  Folding equal hexes into it would have
+// quietly changed all three.
+fn test_the_two_offerings_never_overlap() {
+    ttt_f = flow_build(pal(), band(3, -3, 12), height_layer_empty(), robot(), core());
+
+    for ttt_c in flow_steps(ttt_f, 6, 0) {
+        for ttt_s in flow_sidesteps(ttt_f, 6, 0) {
+            assert(!(ttt_c.q == ttt_s.q && ttt_c.r == ttt_s.r),
+                   "({ttt_c.q}, {ttt_c.r}) is offered as both a step and a sidestep");
+        }
+    }
+    for ttt_c2 in flow_steps(ttt_f, 6, 0) {
+        assert(flow_distance(ttt_f, ttt_c2.q, ttt_c2.r) == flow_distance(ttt_f, 6, 0) - 1,
+               "a step is still strictly one closer");
+    }
+}
+
+// ⚠ Unreachable is a LARGE sentinel, not a distance, so two routeless
+// cells read as "equal" to a careless comparison — and a stranded
+// enemy would wander the map at constant infinity.
+fn test_a_routeless_hex_is_offered_nothing() {
+    trh_f = flow_build(pal(), band(3, -3, 12), height_layer_empty(), robot(), core());
+
+    trh_n = 0;
+    for _ in flow_sidesteps(trh_f, 40, 40) { trh_n += 1; }
+    assert(trh_n == 0, "a hex with no route has nowhere to sidestep to: {trh_n}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The behaviour: a queue becomes a front
+// ─────────────────────────────────────────────────────────────────
+
+// The phase in one assertion: an enemy whose only closer hex is held
+// by someone who CANNOT move ends the tick beside it, at the same
+// distance, instead of waiting there for ever.
+//
+// ⚠ **The blocker has to be immovable, and that took two attempts to
+// arrange.**  `move_order` acts on the CLOSEST enemy first, so a
+// leader with somewhere to go simply steps off and frees the hex — the
+// follower then advances and the sidestep never fires.  An enemy
+// standing ON the core is the one that cannot move: `enemy_tick`
+// returns at `distance == 0`, because attacking the core is combat's
+// job.
+//
+// ⚠ **F5c's quadrant, not an open band**, and that was the other
+// correction: on an open band (1, 0) has a SECOND closer neighbour, so
+// nothing is blocked.  Rows 0..4 over q 0..8 make the distance exactly
+// `q + r`, which is what makes an on-axis hex offer exactly one closer
+// neighbour (`tests/11_f5c_spread.loft` § The open field derives it).
+fn test_the_one_behind_moves_beside_rather_than_waiting() {
+    tob_pw = quadrant();
+    tob_s  = wave_state_empty();
+    tob_s.enemies += [westbound(0, 0)];      // on the core: it never moves
+    tob_s.enemies += [westbound(1, 0)];      // its only closer hex is the core
+
+    tob_f = flow_build(pal(), tob_pw, height_layer_empty(), robot(), core());
+    assert(flow_distance(tob_f, 1, 0) == 1, "the fixture is one hex out");
+
+    play(tob_s, tob_pw, 1);
+    tob_b = tob_s.enemies[1] ?? Enemy { };
+
+    assert(!(tob_b.q == 1 && tob_b.r == 0),
+           "it did not stand there waiting: ({tob_b.q}, {tob_b.r})");
+    assert(flow_distance(tob_f, tob_b.q, tob_b.r) == 1,
+           "and it went BESIDE, not closer and not further: ({tob_b.q}, {tob_b.r}) is at {flow_distance(tob_f, tob_b.q, tob_b.r)}");
+}
+
+// ⚠ **F5c's own invariant survives this phase unchanged**, and it is
+// the reason a sidestep is safe: `test_a_blocked_enemy_never_moves_
+// away_from_the_core` asserts every enemy ends a tick one closer or
+// exactly where it was.  A sidestep is the second case.  Restated here
+// over a jam big enough to force many of them.
+fn test_no_enemy_is_ever_further_from_the_core_than_it_was() {
+    tne_pw = band(3, -3, 12);
+    tne_s  = wave_state_empty();
+    for tne_i in 0..10 { tne_s.enemies += [westbound(3 + tne_i, 0)]; }
+
+    tne_f   = flow_build(pal(), tne_pw, height_layer_empty(), robot(), core());
+    tne_pal = pal();
+
+    for _ in 0..30 {
+        tne_was: vector<integer> = [];
+        for tne_e in tne_s.enemies { tne_was += [flow_distance(tne_f, tne_e.q, tne_e.r)]; }
+
+        wave_tick(tne_s, tne_pal, tne_pw, marker_empty(), core());
+
+        tne_i2 = 0;
+        for tne_o in tne_s.enemies {
+            tne_now = flow_distance(tne_f, tne_o.q, tne_o.r);
+            tne_old = tne_was[tne_i2] ?? 0;
+            assert(tne_now == tne_old || tne_now == tne_old - 1,
+                   "a sidestep closes no distance and loses none: {tne_old} -> {tne_now}");
+            tne_i2 += 1;
+        }
+    }
+}
+
+// ⚠ **The number plan 12 B7 measured, and the number that replaces
+// it.**  A column reaching an undefended core used to saturate at TWO
+// nibblers whatever its length; it now fills the core's footprint —
+// centre plus six neighbours, which is `numbers.json` §
+// core.footprint_layout and the ceiling by construction.
+fn test_a_column_now_fills_the_core_rather_than_queueing_behind_it() {
+    tac_pw = band(3, -3, 16);
+
+    tac_four = column_nibblers(4,  tac_pw);
+    tac_ten  = column_nibblers(10, tac_pw);
+
+    assert(tac_four > 2,
+           "four in a column beat the old cap of two: {tac_four} nibblers");
+    assert(tac_ten > tac_four,
+           "and the drain SCALES with the wave now: {tac_four} from four, {tac_ten} from ten");
+    assert(tac_ten <= 7,
+           "capped by the core's own footprint, seven hexes: {tac_ten}");
+}
+
+fn column_nibblers(n: integer, pw: PaintedWorld) -> integer {
+    cn_s = wave_state_empty();
+    for cn_i in 0..n { cn_s.enemies += [westbound(3 + cn_i, 0)]; }
+    play(cn_s, pw, 25);
+    nibblers(cn_s)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A WALL is not a companion — the negative control
+// ─────────────────────────────────────────────────────────────────
+
+// A world sealed across `q = 5`, so a wave coming from the east has no
+// route at all and every enemy is in the siege.
+fn sealed_band() -> PaintedWorld {
+    sb_pw = band(3, -3, 20);
+    for sb_r in -3..=3 { paint(sb_pw, 5, sb_r, as_u8(WALL)); }
+    sb_pw
+}
+
+// ⚠⚠ **The failure this phase's rule exists to refuse.**  An enemy
+// stopped by a wall must STAND — `enemy_target` names the hex in front
+// of it and `wave_damage` spends its second there.  Sidestep on a
+// terrain block instead and it shuffles along the face for ever,
+// attacking a different hex every tick and finishing none of them.
+//
+// Measured as *the same enemy attacks the same hex on consecutive
+// ticks*, which is what a jitter cannot do.
+fn test_a_lone_besieger_holds_its_hex_and_keeps_chewing() {
+    tal_pw = sealed_band();
+    tal_s  = wave_state_empty();
+    tal_s.enemies += [westbound(9, 0)];
+
+    play(tal_s, tal_pw, 10);
+    tal_at = tal_s.enemies[0] ?? Enemy { };
+    assert(tal_at.q == 6, "it arrived at the face: ({tal_at.q}, {tal_at.r})");
+
+    tal_pal = pal();
+    for _ in 0..6 {
+        tal_where = Hex { q: (tal_s.enemies[0] ?? Enemy { }).q,
+                          r: (tal_s.enemies[0] ?? Enemy { }).r };
+        wave_tick(tal_s, tal_pal, tal_pw, marker_empty(), core());
+        tal_now = tal_s.enemies[0] ?? Enemy { };
+        assert(tal_now.q == tal_where.q && tal_now.r == tal_where.r,
+               "a wall is not a companion: it moved ({tal_where.q}, {tal_where.r}) -> ({tal_now.q}, {tal_now.r})");
+    }
+
+    assert(damage_count(tal_s.damage) == 1,
+           "and it spent every tick on ONE hex: {damage_count(tal_s.damage)} under attack");
+}
+
+// ⚠ **And this is what the sidestep DOES buy at a wall.**  F7's stated
+// gap, closed: a wave arriving down ONE approach used to stack onto
+// the single hex its routes crossed.  Queued enemies now fan out — the
+// eight stand on five hexes of the face and land damage on three of
+// them.
+//
+// ⚠ Three and not five, and the difference is worth knowing: where an
+// enemy STANDS is the sidestep's doing, but what it ATTACKS is still
+// `enemy_target` following its own desire gradient, and two enemies
+// standing apart can still want the same hex.  The spread is wider
+// than it was and it is not a comb.
+fn test_a_queued_wave_chews_several_hexes_of_the_face() {
+    taq_pw = sealed_band();
+    taq_s  = wave_state_empty();
+    for taq_i in 0..8 { taq_s.enemies += [westbound(9 + taq_i, 0)]; }
+
+    play(taq_s, taq_pw, 40);
+
+    taq_front = 0;
+    for taq_e in taq_s.enemies { if taq_e.q == 6 { taq_front += 1; } }
+    assert(taq_front >= 5,
+           "the queue became a front: {taq_front} of eight are on the wall face");
+    assert(damage_count(taq_s.damage) >= 3,
+           "and the damage is spread rather than on one hex: {damage_count(taq_s.damage)}");
+}
+
+// ⚠⚠ **B3's falsified claim, now TRUE — and this is the phase's most
+// valuable consequence.**  `ENEMY_MOVEMENT.md` § A wall's HP is
+// structural claimed enemies *"spread along the perimeter and chew
+// everywhere at once, so they do not need to FIND the weak hex"*.  B3
+// measured the opposite — six robots landing NOTHING on either end of
+// a fence — and asserted today's behaviour so that building this rule
+// would go red.  It has.
+//
+// A wall's ENDS are worth 30 HP against a braced middle's 100, so a
+// front that SPANS the wall breaks an end first: equal damage
+// everywhere, and the weakest hex under it runs out first.  Nothing
+// coordinates it and no enemy knows what bracing is.
+//
+// ⚠ **"Spans" is the condition, and it is not automatic.**  The front
+// is as wide as the sidestep can fan it, so against a wall WIDER than
+// that the ends are still never touched — measured: the same eight
+// robots against a seven-hex wall land nothing on either end.  So B3's
+// claim is true of a wall a wave can reach across, and the bracing
+// rule still rewards a player whose perimeter is longer than the
+// front.
+fn test_a_spread_siege_breaks_the_wall_at_its_weakest_hex() {
+    tsw_pw = narrow_sealed_band();
+    tsw_s  = wave_state_empty();
+    for tsw_i in 0..8 { tsw_s.enemies += [westbound(9 + tsw_i, 0)]; }
+
+    assert(structure_max_hp(pal(), tsw_pw, 5, -2) == 30.0,
+           "the fixture's end is the weak hex: {structure_max_hp(pal(), tsw_pw, 5, -2)} HP");
+    assert(structure_max_hp(pal(), tsw_pw, 5, 0) == 100.0,
+           "and its middle is the strong one: {structure_max_hp(pal(), tsw_pw, 5, 0)} HP");
+
+    play(tsw_s, tsw_pw, 120);
+
+    assert(painted_kind_name(pal(), tsw_pw, 5, -2) != "wall",
+           "the END came down: (5, -2) is '{painted_kind_name(pal(), tsw_pw, 5, -2)}'");
+    assert(painted_kind_name(pal(), tsw_pw, 5, 0) == "wall",
+           "while the braced middle still stands: (5, 0) is '{painted_kind_name(pal(), tsw_pw, 5, 0)}'");
+    assert(structure_max_hp(pal(), tsw_pw, 5, -1) == 30.0,
+           "and the perimeter UNZIPPED — its neighbour is an end now, at {structure_max_hp(pal(), tsw_pw, 5, -1)} HP");
+}
+
+// A five-hex wall: narrow enough that a fanned-out front reaches both
+// of its ends.  `sealed_band` is the seven-hex one, which it does not.
+fn narrow_sealed_band() -> PaintedWorld {
+    nsb_pw = band(2, -3, 20);
+    for nsb_r in -2..=2 { paint(nsb_pw, 5, nsb_r, as_u8(WALL)); }
+    nsb_pw
+}
+
+// F5c's open field: rows 0..4 over q 0..8, core at (0, 0), so the
+// distance to the core is exactly `q + r` — an off-axis hex has two
+// closer neighbours and an on-axis hex has exactly one.
+fn quadrant() -> PaintedWorld {
+    qd_pw = painted_empty();
+    for qd_r in 0..=4 {
+        for qd_q in 0..=8 { paint(qd_pw, qd_q, qd_r, as_u8(GRASS)); }
+    }
+    qd_pw
+}

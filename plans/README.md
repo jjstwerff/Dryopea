@@ -72,7 +72,7 @@ pointer, not a second copy.
 | [`08-game-validation`](08-game-validation/README.md) | S | MH | Complete (V0-V4) | Scripted play, measured effects, PNGs for inspection |
 | [`09-lattice-conversion`](09-lattice-conversion/README.md) | F | MH | **Complete** (C0–C6 + I0–I1) | dryopea moved to pointy-top odd-r offset (+ adopted `input`), checked against `hex_grid`; the axial layer is deleted |
 | [`10-extract-local-libraries`](10-extract-local-libraries/README.md) | C | MH | **Gated** (extract what survives 07 + 09) | The code dryopea owns becomes published libraries — descriptive names, never a brand |
-| [`11-flow-field`](11-flow-field/README.md) | G | MH | **Complete** (F0-F8) | Enemies route round walls to the core, per class, spread rather than stack, and besiege a sealed perimeter |
+| [`11-flow-field`](11-flow-field/README.md) | G | MH | **Complete** (F0-F8, plus F7b 2026-08-13) | Enemies route round walls to the core, per class, spread rather than stack, and besiege a sealed perimeter.  ⚠ F7b reopened it: an enemy blocked by a COMPANION steps beside it, a rule the spec always had and three phases judged latent — it turned out to set the whole balance |
 | [`12-combat-resolution`](12-combat-resolution/README.md) | G | MH | **Complete** (2026-08-13) | Damage resolves on both sides, a wallet ends the run, and an unattended base falls on a measured clock — which a sealed wall nearly doubles and a TOWER cuts, because its bodies ramp over the wall it defends |
 
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan

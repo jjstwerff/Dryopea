@@ -348,10 +348,10 @@ path to the core and fall back to **nibbling the nearest
 wall** (slow attrition, but the wall *will* fall).
 
 ⚠ **A GATE IS NOT A DEFENCE — measured, plan 12 B7.**  A sealed
-wall nearly doubles the time an unattended base survives (161
-ticks bare, **311** sealed).  The *same* wall with its middle
-hex left open falls in **161** — the undefended clock, to the
-tick.  Walking through an entrance costs an attacker nothing
+wall buys 70% more time for an unattended base (61 ticks bare,
+**104** sealed).  The *same* wall with its middle hex left open
+falls in **62** — one tick over the undefended clock, against
+the seal's forty-three.  Walking through an entrance costs an attacker nothing
 whatever, so **a wall buys time only where it has to be
 chewed**.
 
@@ -531,14 +531,13 @@ All towers ship validation as a single type: **pulsed laser**.
 
 ⚠⚠ **A tower without a cleanup crew makes a base fall SOONER
 — measured, plan 12 B7.**  Same base, same waves, the only
-difference a single tower behind a sealed wall: **311 ticks
-without it, 180 with**.  The tower is not weak; it kills nine
-of thirteen attackers with 27 of its 30 shots.  What undoes it
-is that **a kill is a permanent terrain change and nobody can
-reverse it**: three bodies on one hex is 1.5 m, a robot climbs
-2.0, and a 3.0 m wall needs a 1.0-2.0 m step — so the four
-survivors walked over their own dead onto a wall that never
-lost a tenth of its HP.  The same heap also blinds the tower
+difference a single tower behind a sealed wall: **104 ticks
+without it, 95 with**.  The tower is not weak; it kills eight
+of thirteen attackers.  What undoes it is that **a kill is a
+permanent terrain change and nobody can reverse it**: three
+bodies on one hex is 1.5 m, a robot climbs 2.0, and a 3.0 m
+wall needs a 1.0-2.0 m step — so the five survivors walked over
+their own dead onto a wall that never lost a tenth of its HP.  The same heap also blinds the tower
 (§ LOS is a HEIGHT question) and pushes the attacking column
 off its axis, where more of it can reach the core.
 

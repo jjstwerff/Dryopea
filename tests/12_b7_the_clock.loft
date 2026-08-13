@@ -19,16 +19,27 @@
 //
 // ── What the phase MEASURED, and it is not what the plan said ───
 //
-//   an-undefended-base            161 ticks   (107 s)
-//   a-defended-base               311 ticks   (207 s)   +93%
-//   a-tower-buries-its-own-wall   180 ticks   (120 s)   -42% against the wall
+//   an-undefended-base             61 ticks   ( 41 s)
+//   a-defended-base               104 ticks   ( 69 s)   +70%
+//   a-tower-buries-its-own-wall    95 ticks   ( 63 s)   -9% against the wall
 //
 // The gate holds for the WALL and is **falsified for the TOWER**, and
 // the second half is this phase's most valuable output — the same
-// shape B3 and B5b produced.  A tower kills nine robots at the foot of
-// its own wall, three of them fall on one hex, and 1.5 m of bodies is
-// inside B0's [1.0, 2.0] ramp band onto a 3.0 m wall.  The survivors
-// walk over their dead.  The wall never loses a tenth of its HP.
+// shape B3 and B5b produced.  A tower kills eight robots at the foot
+// of its own wall, three of them fall on one hex, and 1.5 m of bodies
+// is inside B0's [1.0, 2.0] ramp band onto a 3.0 m wall.  The
+// survivors walk over their dead.  The wall never loses a tenth of its
+// HP.
+//
+// ⚠ **These are the plan 11 F7b numbers, and the phase's shape
+// survived the mover changing under it.**  On the queueing mover B7
+// first read 161 / 311 / 180: a wall bought 93% and a tower gave back
+// 131 of the 150.  With the sidestep every clock is far shorter and
+// the tower's penalty is 9 ticks of 43 — the body ramp is a fixed
+// prize that used to be measured against a clock the queue had
+// inflated threefold.  Both readings say the same three things, which
+// is the strongest evidence this scenario measures the defences and
+// not an artefact of how enemies happen to walk.
 //
 // That is `docs/ENEMY_MOVEMENT.md` § Bodies are terrain firing exactly
 // as written, in a base with nobody to clear up — which `plans/12`
@@ -36,15 +47,19 @@
 // pile and nobody collects them ... that is not a defect of the
 // scenario, it is the scenario's most interesting outcome"*.
 //
-// ⚠ **So the assertions below pin TODAY's behaviour on purpose.**
-// Building plan 11 F7's equal-distance sidestep, or a crew that clears
-// bodies, turns them red — and red is the correct answer that day,
-// pointing at the paragraph to rewrite.
+// ⚠ **The assertions below pin TODAY's behaviour on purpose, and one
+// of them has already been through it.**  This file first shipped
+// saying that building plan 11 F7's equal-distance sidestep would turn
+// it red.  F7b did, the numbers here are the rebaseline, and the
+// paragraph that had to be rewritten is the one about the tower — it
+// went from *gives back more than the wall keeps* to *keeps four times
+// what it gives back*.  The remaining lever is a crew that clears
+// bodies, which is the vehicle.
 //
 // ── Why the comparisons are ONE test function ───────────────────
 //
 // Cost.  These scenarios are the most expensive things in the suite —
-// 652 ticks between them — and a `played(BARE)` helper called from
+// 260 ticks between them — and a `played(BARE)` helper called from
 // each of six test functions replayed the three scripts TWELVE times.
 // Every scenario below is played exactly ONCE and every claim about it
 // is asserted from that run.  The cost of folding them is the usual
@@ -73,9 +88,9 @@ const TOWER: text = "tests/scripts/a-tower-buries-its-own-wall.keys";
 // band inside its own `.keys` file — this is a second reading of the
 // same number rather than a second source of truth, and it exists
 // because the comparison needs all three at once.
-const UNDEFENDED_TICKS: integer = 161;
-const WALLED_TICKS:     integer = 311;
-const TOWERED_TICKS:    integer = 180;
+const UNDEFENDED_TICKS: integer = 61;
+const WALLED_TICKS:     integer = 104;
+const TOWERED_TICKS:    integer = 95;
 
 fn as_u8(n: integer) -> u8 {
     n as u8? ?? 0
@@ -111,8 +126,8 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     // ⚠ Pinned counts: a scenario with its measurements deleted still
     // reports ok, so the gate has to say how many it expected.
     assert(ttc_b.checks == 10, "an-undefended-base made {ttc_b.checks} measurements, expected 10");
-    assert(ttc_w.checks == 17, "a-defended-base made {ttc_w.checks} measurements, expected 17");
-    assert(ttc_t.checks == 16, "a-tower-buries made {ttc_t.checks} measurements, expected 16");
+    assert(ttc_w.checks == 19, "a-defended-base made {ttc_w.checks} measurements, expected 19");
+    assert(ttc_t.checks == 18, "a-tower-buries made {ttc_t.checks} measurements, expected 18");
     assert(ttc_b.snaps == 1 && ttc_w.snaps == 1 && ttc_t.snaps == 1,
            "each took its picture: {ttc_b.snaps}, {ttc_w.snaps}, {ttc_t.snaps}");
 
@@ -124,7 +139,7 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     //
     // `plans/12` § Invariant gate: *the defences are what cost the
     // attacker time*, refused by *equal times = the scenario measures
-    // nothing*.  1.0 is the failure; a sealed wall buys 1.93.
+    // nothing*.  1.0 is the failure; a sealed wall buys 1.70.
     //
     // A RATIO rather than a tick count, because the two runs share
     // every other number — same ground, core, spawn and wave list — so
@@ -140,8 +155,14 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
            "TODAY a tower SHORTENS the clock: {ttc_t.ticks} with one, {ttc_w.ticks} without");
     assert(ttc_t.ticks > ttc_b.ticks,
            "but the wall under it still buys something: {ttc_t.ticks} against {ttc_b.ticks} bare");
-    assert((ttc_w.ticks - ttc_t.ticks) > (ttc_t.ticks - ttc_b.ticks),
-           "and it gives back more than it keeps: kept {ttc_t.ticks - ttc_b.ticks}, lost {ttc_w.ticks - ttc_t.ticks}");
+    // ⚠ **This assertion was INVERTED by plan 11 F7b, and the flip is
+    // the good news.**  On the queueing mover the tower gave back MORE
+    // than the wall kept (131 lost against 19 kept).  With the
+    // sidestep it keeps 34 of 43 and loses 9 — a tower is still a net
+    // loss for a base nobody cleans up after, and it is no longer a
+    // catastrophe.
+    assert((ttc_t.ticks - ttc_b.ticks) > (ttc_w.ticks - ttc_t.ticks),
+           "the wall under it now keeps more than the tower gives back: kept {ttc_t.ticks - ttc_b.ticks}, lost {ttc_w.ticks - ttc_t.ticks}");
 
     // ── The two endings, told apart by ONE hex ───────────────────
     //
@@ -149,17 +170,21 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     // which of two endings takes the base.  Each script asserts its
     // own; this is the statement that they DIFFER, which is what makes
     // "which ending" a question with an answer.
-    assert(painted_kind_name(ttc_ws.picker.palette, ttc_ws.pw, 5, 0) == "grass",
-           "the wall alone is CHEWED THROUGH: (5, 0) is '{painted_kind_name(ttc_ws.picker.palette, ttc_ws.pw, 5, 0)}'");
-    assert(painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, 0) == "wall",
-           "the towered wall is still standing: (5, 0) is '{painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, 0)}'");
+    // ⚠ The breach is at (5, -2), the wall's weak END — plan 11 F7b
+    // widened the attacking front until it spanned the wall, so the
+    // 30 HP hex runs out before the 100 HP one.  It was (5, 0), the
+    // braced middle, when the wave still met the wall as a column.
+    assert(painted_kind_name(ttc_ws.picker.palette, ttc_ws.pw, 5, -2) == "grass",
+           "the wall alone is CHEWED THROUGH at its end: (5, -2) is '{painted_kind_name(ttc_ws.picker.palette, ttc_ws.pw, 5, -2)}'");
+    assert(painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, -2) == "wall",
+           "the towered wall is still standing: (5, -2) is '{painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, -2)}'");
 
     // Masonry ON the breach where the wall broke; bodies IN FRONT of
     // the wall that held.
-    assert(height_rise(ttc_w.wave.heights, 5, 0) > 0.5,
-           "the breach carries its own masonry: {height_rise(ttc_w.wave.heights, 5, 0)} m");
-    assert(height_rise(ttc_t.wave.heights, 5, 0) == 0.0,
-           "the intact wall carries nothing: {height_rise(ttc_t.wave.heights, 5, 0)} m");
+    assert(height_rise(ttc_w.wave.heights, 5, -2) > 0.5,
+           "the breach carries its own masonry: {height_rise(ttc_w.wave.heights, 5, -2)} m");
+    assert(height_rise(ttc_t.wave.heights, 5, -2) == 0.0,
+           "the intact wall carries nothing: {height_rise(ttc_t.wave.heights, 5, -2)} m");
     assert(height_rise(ttc_t.wave.heights, 6, 0) >= 1.0
         && height_rise(ttc_t.wave.heights, 6, 0) <= 2.0,
            "and the ramp at its foot is inside B0's band: {height_rise(ttc_t.wave.heights, 6, 0)} m");
@@ -176,8 +201,12 @@ fn test_a_wall_with_a_gate_in_it_buys_nothing() {
     taw = script_run(editor_state_new(PALETTE), gated_base(), SHOTS);
 
     assert(taw.ok, "the gated base: {script_describe(taw)}");
-    assert(taw.ticks == UNDEFENDED_TICKS,
-           "a gate buys nothing: {taw.ticks} ticks walled-with-a-gate against {UNDEFENDED_TICKS} bare");
+    // ⚠ ONE tick, where a sealed wall buys 43.  It was zero before
+    // plan 11 F7b — the fan now costs a robot a single step to find
+    // the doorway — and one tick in sixty-one is still "nothing" in
+    // any sense a player could act on.
+    assert(taw.ticks - UNDEFENDED_TICKS <= 2 && taw.ticks >= UNDEFENDED_TICKS,
+           "a gate buys nothing: {taw.ticks} ticks walled-with-a-gate against {UNDEFENDED_TICKS} bare, where a SEAL buys {WALLED_TICKS}");
 }
 
 // `a-defended-base.keys` verbatim, except that (5, 0) is never
@@ -227,39 +256,35 @@ fn standing_base() -> text {
 // Why the clock is what it is — the mechanism, priced directly
 // ─────────────────────────────────────────────────────────────────
 
-// ⚠ **The finding under every number above: the drain does NOT scale
-// with the wave.**  Twenty-five robots arrive at the undefended core
-// and exactly TWO ever nibble it.  They come down one axis from one
-// spawn, and on a hex AXIS the distance field offers exactly ONE
-// closer neighbour — so a blocked enemy waits, where an off-axis one
-// would have a second choice.  (`CLAUDE.md` § Testing something that
-// moves already says this about writing tests; it turns out to decide
-// the whole balance too.)  Plan 11 F7 named the missing equal-distance
-// sidestep and declined to build it; this is the first measurement of
-// what it costs.
+// ⚠ **The finding this scenario first surfaced, and what became of
+// it.**  B7 originally measured that the drain did NOT scale with the
+// wave: thirteen robots reached the undefended core and exactly TWO
+// ever nibbled it, because they arrived down one axis and a blocked
+// enemy waited rather than stepping beside.  Plan 11 F7b built the
+// step-beside, and this is the same measurement afterwards — the drain
+// scales, and it saturates at the core's own footprint.
 //
-// Priced here rather than inferred from the scenarios, and priced as
-// an INVARIANT: tripling the column changes nothing at all.
-//
-// Two more measurements taken while B7's world was chosen, both saying
-// the same thing and neither gated here because each costs a scenario
-// replay: the WIDTH is scenery (161 ticks over five rows, 161 over
-// thirteen) and so is the ROSTER (161 / 311 / 180 with two waves, and
-// the identical 161 / 311 / 180 with a third wave of twelve on top).
-fn test_a_column_drains_at_two_points_a_second_however_long_it_is() {
-    tac_pw = painted_empty();
-    for tac_r in -3..=3 {
-        for tac_q in -3..=14 { paint(tac_pw, tac_q, tac_r, as_u8(5)); }
+// Kept here rather than moved wholesale into
+// `tests/11_f7b_the_sidestep.loft` because the two ask different
+// questions: that file asks how many enemies REACH the core, this one
+// asks what they cost the player, and it is the second that sets every
+// clock above.
+fn test_the_drain_now_scales_with_the_wave() {
+    tds_pw = painted_empty();
+    for tds_r in -3..=3 {
+        for tds_q in -3..=14 { paint(tds_pw, tds_q, tds_r, as_u8(5)); }
     }
 
-    tac_four   = column_drain(4,  tac_pw);
-    tac_twelve = column_drain(12, tac_pw);
-    tac_want   = 2.0 * per_tick(NIBBLE_POINTS_PER_SECOND) * 10.0;
+    tds_four   = column_drain(4,  tds_pw);
+    tds_twelve = column_drain(12, tds_pw);
+    tds_one    = per_tick(NIBBLE_POINTS_PER_SECOND) * 10.0;
 
-    assert(tac_four == tac_twelve,
-           "four in a column drain {tac_four}, twelve drain {tac_twelve} — the wave size is not the rate");
-    assert(tac_four > tac_want - 0.000001 && tac_four < tac_want + 0.000001,
-           "and the rate is exactly TWO nibblers: {tac_four} over ten ticks, wanted {tac_want}");
+    assert(tds_twelve > tds_four,
+           "twelve cost more than four: {tds_four} against {tds_twelve} over ten ticks");
+    assert(tds_four > 2.0 * tds_one,
+           "and even four beat the old flat cap of two nibblers: {tds_four}");
+    assert(tds_twelve <= 7.0 * tds_one + 0.000001,
+           "capped by the core's seven-hex footprint: {tds_twelve}, ceiling {7.0 * tds_one}");
 }
 
 // Walk `n` robots down row 0 until the queue settles, then answer what

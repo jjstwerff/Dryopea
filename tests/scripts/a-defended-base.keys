@@ -5,28 +5,44 @@
 # everything — so the difference in the clock is the wall and can be
 # nothing else.
 #
-#   undefended:  161 ticks   (107 s)
-#   this file:   311 ticks   (207 s)  — 93% longer
+#   undefended:   61 ticks   ( 41 s)
+#   this file:   104 ticks   ( 69 s)  — 70% longer
 #
 # ⚠ **A SEAL, not a funnel — and the distinction is the finding.**  The
-# same wall with a one-hex gate left open in it falls in **161 ticks**,
-# exactly the undefended number, because walking through a gate costs an
-# attacker nothing at all.  A wall buys time only where it has to be
+# same wall with a one-hex gate left open in it falls in **62 ticks**
+# against the undefended base's 61, because walking through a gate costs
+# an attacker essentially nothing.  A wall buys time only where it has to be
 # CHEWED.  `plans/12` § B7 has the measurement; what a player learns
 # from it is that an entrance is a decision about their own convenience,
 # never a defence.
 #
-# ── The ending this one reaches: THE WALL BROKE ─────────────────
+# ── The ending this one reaches: THE WALL BROKE, AT ITS WEAK END ─
 #
 # `plans/12` § What this plan does NOT build asks B7 to report which of
-# two endings takes the base.  This is the first: twenty-five robots
-# chew (5, 0) down from 100 HP at 1 HP/s each, it comes down into a heap
-# of masonry, and they walk through the hole.  Nobody dies, so no body
-# ever piles — which is exactly why this base gets the long clock.
+# two endings takes the base.  This is the first: the wave chews the
+# wall at 1 HP/s each until a hex runs out, it comes down into a heap of
+# masonry, and they walk through the hole.  Nobody dies, so no body ever
+# piles — which is exactly why this base gets the long clock.
 # `a-tower-buries-its-own-wall.keys` is the other ending.
 #
+# ⚠⚠ **It breaks at (5, -2), an END worth 30 HP — not at the braced
+# middle — and that is plan 11 F7b arriving.**  `ENEMY_MOVEMENT.md` § A
+# wall's HP is structural always claimed enemies *"spread along the
+# perimeter and chew everywhere at once, so they do not need to FIND the
+# weak hex"*; plan 12 B3 measured the opposite and recorded it as
+# latent, because a queued wave met the wall at one point.  A blocked
+# enemy now steps beside, so the wave arrives as a FRONT five hexes
+# wide, lands equal damage across the face, and the weakest hex under it
+# runs out first.  Nothing coordinates it and no enemy knows what
+# bracing is.
+#
+# ⚠ **The front has a width, and a longer wall still hides its ends.**
+# Measured: the same eight robots against a SEVEN-hex wall land nothing
+# on either end, because the fan is not that wide.  So the bracing rule
+# still rewards a perimeter longer than the wave can reach across.
+#
 # ⚠ **The unzip is visible here.**  (5, -1) starts braced at 100 HP and
-# ends at 30: bracing is computed from the world rather than stored, so
+# drops to 30: bracing is computed from the world rather than stored, so
 # the hex beside a fresh breach becomes an END and loses 70% of its
 # allowance the moment its neighbour goes (plan 12 B3).
 
@@ -90,20 +106,26 @@ wave 8
 count alive 13 13
 
 fall 800
-ticks 306 316
+ticks 99 109
 wallet 0.0 0.0
 
 # ── The ending, stated ──────────────────────────────────────────
 
-# The wall is GONE from (5, 0) — `break_structure` repaints it, because
+# The wall is GONE from (5, -2) — `break_structure` repaints it, because
 # a broken wall really is gone rather than shadowed behind an overlay.
-kind 5 0 grass
+kind 5 -2 grass
 
 # And it left a heap.  ⚠ This is the half that makes the breach a way
 # IN: had the break ERASED the hex, the painted layer is sea-default,
 # so the breach would have read as `sea` and been strictly LESS passable
 # than the wall it replaced (plan 12 § Open question 5).
-pile 5 0 0.9 1.1
+pile 5 -2 0.9 1.1
+
+# ⚠ **The braced middle is still standing, at two thirds of its HP.**
+# That is the bracing rule paying out: equal damage everywhere, and the
+# 30 HP end ran out while the 100 HP middle did not.
+kind 5 0 wall
+hp 5 0 65.0 75.0
 
 # The unzip: braced at 100 before the breach, an end at 30 after it.
 hp 5 -1 30.0 30.0

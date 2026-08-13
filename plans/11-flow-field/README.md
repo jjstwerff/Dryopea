@@ -11,9 +11,21 @@ it) · **Effort:** `MH`
 ## Status
 
 **Complete — F0 + F1 + F1b + F2 + F3 + F5 + F5b + F5c + F6 + F7 + F8
-shipped 2026-08-12.**  F4 was cancelled by F0's probe (an entrance
-needs no detecting).  F8's incremental rebuild is deliberately NOT
-built — measured, not skipped; see § F8 for the number and the trigger.
+shipped 2026-08-12; F7b added 2026-08-13.**  F4 was cancelled by F0's
+probe (an entrance needs no detecting).  F8's incremental rebuild is
+deliberately NOT built — measured, not skipped; see § F8 for the number
+and the trigger.
+
+⚠⚠ **F7b reopened this plan a day after it closed, and the reason is
+worth reading before starting any phase anywhere.**  F5c, F7 and plan
+12 B3 all recorded the same missing rule — an enemy blocked by a
+COMPANION should step BESIDE it, which `ENEMY_MOVEMENT.md` had
+specified all along — and all three judged the consequence latent.
+Plan 12 B7 then measured it end to end: thirteen robots reached an
+undefended core and exactly TWO ever nibbled it, so the drain did not
+scale with the wave, a base's width and roster were both scenery, and
+**a defending tower's own kills made the base fall sooner**.  The gap
+was not latent; it was the entire balance.  See § F7b.
 
 ⚠ **Corrected 2026-08-12, before any code was written.** This plan opened by
 calling `spawn.loft::enemy_tick` — one hex along a fixed heading — a
@@ -671,8 +683,9 @@ phase is coming for it, and the limit is stated in
 [`tests/11_f7_the_siege.loft`](../../tests/11_f7_the_siege.loft)'s header
 rather than left as a promise.
 
-⚠⚠ **Plan 12 B7 priced that refusal, and it turns out to set the whole
-GAME BALANCE rather than only the shape of a siege.** Thirteen robots
+⚠⚠ **Plan 12 B7 priced that refusal, it turned out to set the whole
+GAME BALANCE rather than only the shape of a siege, and F7b then built
+it.** Thirteen robots
 reach an undefended core and exactly **two** ever nibble it: they
 arrive down one axis from one spawn, and on a hex axis the field offers
 ONE closer neighbour, so a blocked enemy waits where an off-axis one
@@ -680,13 +693,13 @@ would have a second choice. So **the drain does not scale with the
 wave** — a column of four and a column of twelve drain identically —
 and by the same token a base's width and its roster are scenery.
 
-The perverse consequence is the one worth carrying into any future
-phase here: **anything that pushes the column off its axis lets more of
-it reach the core**, so a defending tower's own kills accelerate the
-base's fall. Building the sidestep is therefore not a polish item; it
-is the difference between wave size mattering and not.
-[`tests/12_b7_the_clock.loft`](../../tests/12_b7_the_clock.loft) prices
-it and asserts today's answer, so building it turns that file red.
+The perverse consequence was the one that decided it: **anything that
+pushed the column off its axis let more of it reach the core**, so a
+defending tower's own kills accelerated the base's fall.  The sidestep
+was therefore never a polish item — it was the difference between wave
+size mattering and not — and **F7b built it**, turning
+[`tests/12_b7_the_clock.loft`](../../tests/12_b7_the_clock.loft) red
+exactly as that file said it would.  See § F7b below for what changed.
 
 **You attack what you could STAND on and cannot climb.** The target is
 always a hex whose surface is walkable, so an enemy at the water's edge
@@ -711,6 +724,81 @@ named the movement rather than the wrapper.
 is to bind the call to a local. It took a four-way boundary matrix
 (wrapper binds/tail-returns × caller binds/inlines) to locate, because
 the defect appears at call sites nobody edited.
+
+## F7b, the sidestep — the half of F5c that was never built (2026-08-13)
+
+`ENEMY_MOVEMENT.md` § Sealing the perimeter has said since before any
+of this existed: *"An enemy whose target hex is taken by a companion
+does not wait behind it — it moves beside them."*  F5c built the first
+clause and stopped — it tried the next strictly-CLOSER hex, and where
+there was none it waited.  **On a hex axis there is no next one**, so a
+wave arriving from one spawn queued single file all the way in.
+
+**The rule, in one sentence:** a sidestep fires only when a COMPANION
+is what stopped the enemy, never when the GROUND is.
+
+| where | how it is told apart |
+|---|---|
+| engage (`enemy_tick`) | free by construction — every hex the routing field offers is one the ground already allowed, so "nothing was free" can only mean a companion |
+| siege (`enemy_walk_desire`) | tracked explicitly (`ewd_queued`): a closer step that was LEGAL but occupied |
+
+⚠ **The condition IS the phase.**  An enemy at a wall face has no legal
+step in any direction, so an unconditional sidestep would shuffle it
+along the face for ever — attacking a different hex every tick and
+finishing none of them.  A jitter, not a spread.
+`test_a_lone_besieger_holds_its_hex_and_keeps_chewing` is the negative
+control, and it measures the thing a jitter cannot do: the same enemy
+attacking the same hex on six consecutive ticks.
+
+⚠ **`flow_steps` is untouched**, and `flow_sidesteps` is a second
+function rather than a second half of it.  That one's documented
+invariant is *every entry is at `d - 1`*; `flow_step` returns its head
+and `enemy_target` reads it to name the hex under attack.  Folding
+equal hexes in would have quietly changed all three.
+
+### What it cost, and what it bought
+
+Four test files moved and every one of them moved for the same reason.
+Plan 12 B7's three clocks:
+
+| base | queueing mover | with the sidestep |
+|---|---|---|
+| no defences | 161 ticks | **61** |
+| wall with a GATE | 161 | 62 |
+| sealed wall | 311 | **104** |
+| sealed wall + tower | 180 | **95** |
+
+- **The drain scales with the wave now.**  A column used to saturate at
+  TWO nibblers however long it was; it now fills the core's own
+  footprint — centre plus six neighbours, the ceiling by construction.
+- ⚠⚠ **B3's falsified claim came true.**
+  `ENEMY_MOVEMENT.md` § A wall's HP is structural claimed enemies
+  *"spread along the perimeter and chew everywhere at once, so they do
+  not need to FIND the weak hex"*; B3 measured the opposite and
+  asserted today's behaviour so that building this would go red.  It
+  has: a queued wave now arrives as a FRONT, lands equal damage across
+  the face, and **a five-hex wall breaks at its 30 HP END** while the
+  100 HP middle keeps two thirds of its allowance.
+- ⚠ **The front has a WIDTH, so bracing still pays.**  Measured: the
+  same eight robots against a SEVEN-hex wall land nothing on either
+  end.  B3's claim is true of a wall a wave can reach across, and a
+  perimeter longer than the fan still hides its weak hexes.
+- **A tower's perverse penalty shrank from ruinous to a rounding** —
+  it gave back 131 of the 150 ticks a wall bought, and now gives back
+  9 of 43.  The body ramp is a fixed prize that used to be measured
+  against a clock the queue had inflated threefold.  A tower without a
+  cleanup crew is still a net loss, and it is now a small one.
+
+⚠ **F5c's own invariant survived unchanged**, which is why the change
+is safe: `test_a_blocked_enemy_never_moves_away_from_the_core` asserts
+every enemy ends a tick one closer or exactly where it was, and a
+sidestep is the second case.  It was green through the whole phase and
+was never edited.
+
+**Cost:** one extra six-neighbour scan per enemy per tick, and only
+when every closer step came back occupied.  A radius-40 world with 80
+enemies ticks in 164 ms against the 667 ms budget; F8's ratio gate is
+green.
 
 ## F8, the tick budget — and the phase asked the wrong question (2026-08-12)
 
@@ -874,6 +962,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE.
 | **F5c** — enemies spread, they do not stack | S | one site at a time | two enemies with the same desired hex end on DIFFERENT hexes; N enemies converging on one wall face occupy N distinct hexes along it and attack N distinct wall hexes. Negative control: a mover that reads one baked arrow per cell physically cannot pass this — which is why F3 stores distances. **Shipped — see § F5c, they spread.** ⚠ A corridor is blind to this one too: on a hex AXIS the field offers ONE closer neighbour and off it TWO, so "beside" only exists off-axis and the gate needs an open world. Measured: 19 of 432 red without the occupancy check. ⚠ Two corrections to the row above — the spec's own snapshot rule (a vacated hex stays taken) halves a column's speed and was rejected by probe; and the four at the wall queue along their HEADING rather than spreading along the face, because approach mode has no gradient to say which way beside is. The attack, and the spread along the face, are F7's | **Shipped** |
 | **F6** — per-class passability, as a height step | M | one site at a time | one field per climb limit, not per material: same maze, the insect crosses the wall, the robot goes round, both arrive, **paths differ**. Then the same predicate re-run with a raised hex must flip who can pass — a class table that only reads materials cannot do that, and body piles need it. **Shipped — see § F6, the height step.** ⚠ Two corrections to the row above. The "same maze, paths differ" half was ALREADY live at F5 (F5 said so and handed the row on), so F6's own discriminator is the raise — `raise 4 -1 1.5` shuts the robot's bypass with nothing painted. And the obvious composition — keep `can_occupy` as the field's node filter, add the step on top — is **vacuous**: it makes the height rule deletable without a test moving, so the field filters nodes by the SURFACE and edges by the STEP. Measured: 13 of 465 red without the layer, 3 without the rise, 2 with the BFS direction reversed | **Shipped** |
 | **F7** — no path: the siege | S | parallel run | closed perimeter → each enemy attacks the wall hex where ITS OWN route to the core first meets an impassable hex, so N enemies from different sides attack N different hexes. The scenario asserts the **set** and that it is spread: an implementation that collapses to one hex has lost the mechanic (§ Sealing is punished, not forbidden). **Shipped — see § F7, the siege.** It cost one number: the desire field is `flow_build` with `FLOW_CLIMB_ANY`. ⚠ Two corrections. The row's own gate measures the TARGETING and not the steering — six headings already spread six enemies, measured — so the discriminator had to be a corridor that BENDS (`enemy 0 2 -1`). And F5c's promise that the face-spread "falls out with no special case" was wrong: the desire gradient points AT the wall, not along it, so one approach still queues. Measured: 11 of 490 red without the field, 6 without the target, 3 without the steering |  **Shipped** |
+| **F7b** — an enemy blocked by a COMPANION moves beside it | S | `tests/11_f7b_the_sidestep.loft` — a queue becomes a front, and a WALL is not a companion | **Shipped 2026-08-13.**  `flow_sidesteps` offers the equal-distance neighbours; the mover reaches for it only after every strictly-closer step came back OCCUPIED.  ⚠ The condition is the phase: on a terrain block an enemy must STAND and attack, or it shuffles along the wall face for ever and finishes no hex.  Every clock in plan 12 B7 moved — 161/311/180 became 61/104/95 — and B3's falsified claim came true |
 | **F8** — rebuild once per tick, on edits AND deaths | M | parallel run | after a sequence of paint edits **and of bodies dropped mid-wave**, the incrementally-updated field equals a from-scratch rebuild, cell for cell; and **the same wave with the roster iterated in REVERSE produces an identical result**. A gate that only exercises editor strokes tests the rarer half. **Shipped — see § F8, the tick budget.** ⚠ The row asked the wrong question: measured against the design's own numbers the tick was 830 ms over a 667 ms budget, and the REBUILD was not why — a `FlowField` was being COPIED per enemy per lookup, 2250x the cost of reading it in place. Removing that gives 125 ms. The incremental path is therefore NOT built (5x headroom, and an incrementally wrong field is the failure this plan most wants to avoid); its equality gate is written and green against the reference, with a named trigger. What F8 DID add is the gate dryopea had no form of — a cost gate, as a RATIO — plus the bodies-mid-wave half nobody had asserted | **Shipped** |
 
 ⚠ **No phase is `H`.** F5 and F6 are the largest and both are "one site at a
@@ -916,6 +1005,8 @@ plausibility.
 | **F7** ✅ | the exact wall hex, named | the fallback is deterministic | "some wall" is not repeatable, so a run cannot assert it |
 | **F7** ✅ | a besieged enemy reaches `r = -1` | it walks the DESIRE field, not its heading | a straight corridor gives both the same path — the third time this plan needed a bend |
 | **F7** ✅ | six approaches → six distinct target hexes | the target is per-route, never a global "nearest wall" | ⚠ passes with the steering disabled too: six headings already spread. It gates the targeting |
+| **F7b** ✅ | the one behind ends the tick BESIDE, at the same distance | a sidestep closes no distance and loses none — F5c's own invariant, unchanged | a besieger at a wall that moves: a terrain block must not sidestep, or it jitters along the face and finishes no hex |
+| **F7b** ✅ | a queued wave chews several hexes of a face, and a wall the front SPANS breaks at its 30 HP end | the spread is by occupancy now as well as by approach | a seven-hex wall still hides its ends — the fan has a width, so bracing still rewards a long perimeter |
 | **F8** ✅ | the tick's field == a fresh build after edits AND piles | there is no cache to go stale | written and green against the reference, so an incremental path has its gate waiting |
 | **F8** ✅ | reverse-iterated roster → identical wave, over ground being RAISED under it | one rebuild per tick, so no enemy sees a world its neighbour changed | an order-dependent tick makes every scripted number unrepeatable — plan 08 could gate nothing |
 | **F8** ✅ | 16x the enemies costs <200% of the time | per-enemy work does not scale with the world | a COPY changes no behaviour, so 490 green tests sat over a tick 25% past its budget for four phases |

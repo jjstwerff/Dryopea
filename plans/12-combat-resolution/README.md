@@ -20,19 +20,28 @@ changing:
 
 | base | clock | ending |
 |---|---|---|
-| no defences | **161** ticks (107 s) | they walked in |
-| sealed wall | **311** ticks (207 s) | **the wall broke**, and the perimeter unzipped |
-| sealed wall **+ a tower** | **180** ticks (120 s) | **the pile went over** — the wall never lost a tenth of its HP |
+| no defences | **61** ticks (41 s) | they walked in |
+| sealed wall | **104** ticks (69 s) | **the wall broke at its 30 HP END**, and the perimeter unzipped |
+| sealed wall **+ a tower** | **95** ticks (63 s) | **the pile went over** — the wall never lost a tenth of its HP |
 
-So the goal holds for the WALL (+93%) and is **inverted by the
-TOWER**, which gives back 131 of the 150 ticks the wall bought. Four
+So the goal holds for the WALL (+70%) and is still **inverted by the
+TOWER**, which gives back 9 of the 43 ticks the wall bought. Five
 surviving robots take a base defended by a gun and a sealed wall,
-because nine of their friends died at its foot: three bodies on one
+because eight of their friends died at its foot: three bodies on one
 hex is 1.5 m, B0's ramp band onto a 3.0 m wall is [1.0, 2.0], and the
 survivors climb their own dead. That is `ENEMY_MOVEMENT.md` § Bodies
 are terrain firing exactly as written in a base with nobody to clear
 up — which § What this plan does NOT build predicted in as many words.
 See § B7 below.
+
+⚠ **These are the plan 11 F7b numbers, and the rebaseline is itself
+evidence.** B7 first measured 161 / 311 / 180 on the queueing mover it
+was built against; its own findings then motivated F7b, which changed
+how every enemy walks. Every clock moved and **all three of the
+phase's conclusions survived** — a seal buys time, a gate buys none, a
+tower gives some back. A scenario whose verdict is stable across a
+change to the mover underneath it is measuring the defences rather
+than an artefact of how enemies happen to walk.
 
 B0 was a probe and changed no mechanic: it wrote down what the
 simulation does in the two places this plan leans on, and it
@@ -122,6 +131,20 @@ Closing the gap needs the equal-distance sidestep F7 explicitly did not
 build — a second steering rule, not a fix, and not this plan's. The
 test asserts TODAY's behaviour so that building it turns the gate red
 and points at the paragraph to rewrite.
+
+⚠⚠ **Built 2026-08-13 as [plan 11 F7b](../11-flow-field/README.md), and
+the spec's claim is now TRUE — but B3's own test stayed GREEN, which is
+the interesting part.** A queued wave now arrives as a FRONT and a wall
+it spans breaks at its 30 HP END rather than its braced middle
+(`tests/11_f7b_the_sidestep.loft` measures exactly that, and B7's
+scenario shows it end to end). B3's six robots do not queue — they come
+from six different directions, so no companion ever blocks one and no
+sidestep fires — so its measurement stands verbatim and means something
+narrower than it first read: **the spread is by approach AND by
+occupancy, and six separate approaches were never the case that needed
+fixing.** Two further conditions, both measured: the fan has a WIDTH,
+so a wall longer than it still hides its ends; and a wave spread thin
+enough never to block itself still chews where its routes cross.
 
 ⚠ **Only a ROW is straight on this lattice**, and a fixture on the
 wrong axis would have tested the opposite of what it said. Odd-r row
@@ -269,31 +292,33 @@ the wallet empties, a `ticks <lo> <hi>` measurement, and
 once, which is the only place the comparison can be made. Suite **739
 green**; the gate is **18 scripts and 303 measurements**.
 
-⚠⚠ **The finding under every number: the drain does NOT scale with the
-wave.** Thirteen robots arrive at the undefended core and exactly TWO
-ever nibble it. They come down one axis from one spawn, and on a hex
-AXIS the distance field offers exactly ONE closer neighbour — so a
-blocked enemy waits where an off-axis one would have a second choice.
-**Plan 11 F7's missing equal-distance sidestep sets the entire
-balance**, and this is the first measurement of what it costs. Priced
-as an invariant rather than inferred: a column of four and a column of
-twelve drain at exactly the same rate. Two corollaries, both measured
-while the scenario's world was being chosen and both worth knowing
-before authoring any base — the WIDTH is scenery (161 ticks over five
-rows, 161 over thirteen) and so is the ROSTER (161 / 311 / 180 with
-two waves, and the identical 161 / 311 / 180 with a third wave of
-twelve on top).
+⚠⚠ **The finding under every number was that the drain did NOT scale
+with the wave — and it is what got the mover fixed.** Thirteen robots
+arrived at the undefended core and exactly TWO ever nibbled it: they
+came down one axis from one spawn, and on a hex AXIS the distance
+field offers exactly ONE closer neighbour, so a blocked enemy waited
+where an off-axis one would have had a second choice. Priced as an
+invariant rather than inferred — a column of four and a column of
+twelve drained at exactly the same rate — with two corollaries measured
+while the scenario's world was chosen: the WIDTH was scenery (161
+ticks over five rows, 161 over thirteen) and so was the ROSTER.
 
-⚠ **A GATE is not a defence, and the measurement is exact.** The same
-five-hex wall with its middle hex left open falls in **161 ticks** —
-the undefended clock, to the tick. Walking through an entrance costs
-an attacker nothing whatever, so a wall buys time only where it has to
-be CHEWED. It is a rule a player can learn: an entrance is a decision
+**[Plan 11 F7b](../11-flow-field/README.md) built the missing rule on
+the strength of this**, and the numbers above are the rebaseline. The
+drain now scales and saturates at the core's seven-hex footprint.
+
+⚠ **A GATE is not a defence, and the measurement survived the mover
+changing.** The same five-hex wall with its middle hex left open falls
+in **62 ticks** against the undefended base's 61, where a SEAL buys
+43. (It was 161 against 161 before plan 11 F7b — exact, and now one
+tick for the step it costs a robot to find the doorway.) Walking
+through an entrance costs an attacker essentially nothing, so a wall
+buys time only where it has to be CHEWED. It is a rule a player can learn: an entrance is a decision
 about their own convenience.
 
 ⚠ **Everything a tower does to the clock, it does through BODIES.**
-The tower is not weak — it kills nine of thirteen with 27 of its 30
-shots, and its magazine is gone before the wave list is. What undoes
+The tower is not weak — it kills eight of thirteen, and its magazine is
+gone before the wave list is. What undoes
 it is that a kill is a permanent terrain change nobody can reverse,
 and two of them do three things at once: they ramp over the wall
 (B0's band), they blind the tower that made them (B5b), and they push

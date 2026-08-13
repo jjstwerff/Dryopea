@@ -142,15 +142,14 @@ and wave list:
 
 | base | clock | ending |
 |---|---|---|
-| no defences | 161 ticks | they walked in |
-| sealed wall | **311** ticks | the wall broke |
-| sealed wall **+ a tower** | **180** ticks | **the pile went over** |
+| no defences | 61 ticks | they walked in |
+| sealed wall | **104** ticks | the wall broke, at its weak end |
+| sealed wall **+ a tower** | **95** ticks | **the pile went over** |
 
-The tower is not weak: it kills nine of thirteen with 27 of its 30
-shots.  What undoes it is that three of those bodies land on one hex —
-1.5 m, inside plan 12 B0's [1.0, 2.0] ramp band onto a 3.0 m `wall` —
-so the four survivors climb their own dead onto a wall that never lost
-a tenth of its HP.  Every clause of this section fires at once: the
+The tower is not weak: it kills eight of thirteen.  What undoes it is
+that three of those bodies land on one hex — 1.5 m, inside plan 12 B0's
+[1.0, 2.0] ramp band onto a 3.0 m `wall` — so the five survivors climb
+their own dead onto a wall that never lost a tenth of its HP.  Every clause of this section fires at once: the
 ramp (point 3), the blinding above, and the queue spreading off-axis.
 **A kill is a permanent terrain change and nobody can reverse it**, so
 until the vehicle's crew exists to collect bodies, a tower without
@@ -287,24 +286,34 @@ are never targets.  So a single wall face is chewed along its
 length rather than at one point, and the more enemies arrive, the
 wider the bite.
 
-⚠ **Built as far as "they arrive already spread"; the rest is not.**
-The spread by APPROACH is live ([plan 11](../plans/11-flow-field/README.md)
-F7): an enemy with no route follows a *desire field* — the routing
-sweep with the climb lifted, so walls are passable — and attacks
-where the height rule refuses its next step.  Enemies from
-different directions therefore meet the perimeter at different
-hexes with nothing coordinating them.
+⚠ **BOTH halves are built** — the spread by APPROACH at
+[plan 11](../plans/11-flow-field/README.md) F7, the spread by
+OCCUPANCY at F7b.  An enemy with no route follows a *desire field*
+(the routing sweep with the climb lifted, so walls are passable) and
+attacks where the height rule refuses its next step; and an enemy
+whose step is taken by a companion now steps to an **equally distant**
+hex instead of waiting.  So enemies from different directions meet the
+perimeter at different hexes, AND a wave arriving down one approach
+fans out across the face rather than queueing at a point.
 
-What is **not** built is the sideways half of the paragraph above.
-Measured at F7: the desire gradient points **at** the wall, not
-along it, and a step is only ever taken to a strictly closer hex —
-so enemies arriving down one approach still queue behind each
-other, and a single face is bitten at one point rather than along
-its length.  Chewing it lengthwise needs an enemy to sidestep to an
-*equally* distant hex, which is a second steering rule on top of
-the field.  It would be a real change, not a fix: plan 11 F5c
-rejected exactly that shape once already, because occupancy is
-meant to be a movement constraint and not a way of steering.
+⚠ **A COMPANION, never the GROUND — the condition is the rule.**  An
+enemy stopped by the wall must STAND and attack: it is at what it came
+to break, and the hex in front of it is what its second of damage is
+spent on.  Sidestep on a terrain block instead and a besieger shuffles
+along the face for ever, attacking a different hex every tick and
+finishing none of them — a jitter, not a spread.  F7b's negative
+control measures exactly that: the same enemy attacking the same hex on
+six consecutive ticks.
+
+⚠ **F5c was right to reject this shape when it did, and the difference
+is the condition.**  F5c's objection was that occupancy should be a
+movement constraint and not a way of steering.  It still is: a sidestep
+closes NO distance and never increases it, so F5c's own invariant —
+every enemy ends a tick one closer or exactly where it was — holds
+unchanged, and its test was never edited.  What changed is that
+"exactly where it was" now includes a different hex at the same
+distance.  It took three phases and a measured balance (plan 12 B7) to
+establish that the rule was load-bearing rather than cosmetic.
 
 ⚠ **Tuning consequence.**  A spread siege divides wall HP across
 many points at once, so a sealed base falls faster than a
@@ -352,18 +361,39 @@ perimeter (every wall hex has ≥ 2 wall neighbours)"*.  That rule
 says an unsupported end is a way **in**; this one says it is also
 the place the wall **breaks**.
 
-**It was designed to interact with the siege, and that half is NOT
-built.**  The intention: enemies spread along the perimeter and chew
-everywhere at once, so they never have to *find* the weak hex — the
-perimeter fails at its least-braced point on its own.  A player who
-rings the core in a smooth curve is buying HP; one who runs a straight
-fence with two loose ends has built the breach for them.
+**It was designed to interact with the siege**: enemies spread along
+the perimeter and chew everywhere at once, so they never have to *find*
+the weak hex — the perimeter fails at its least-braced point on its
+own.  A player who rings the core in a smooth curve is buying HP; one
+who runs a straight fence with two loose ends has built the breach for
+them.
 
-⚠ **Plan 12 B3 measured that, and it does not happen.**  Six robots
-released across a six-wide slab at a fence spend twelve ticks chewing
-the braced MIDDLE and land **nothing at all** on either end.  The
-reason is § Sealing the perimeter's own caveat: the spread is by
-APPROACH and never by sidestepping, so enemies converge onto the hexes
+⚠ **Plan 12 B3 measured that and it did NOT happen; plan 11 F7b then
+made it happen — with two conditions.**  A queued wave now arrives at a
+wall as a FRONT, because an enemy blocked by a companion steps beside
+it, and a five-hex wall it spans **breaks at its 30 HP end** while the
+100 HP middle keeps two thirds of its allowance.  Nothing coordinates
+it and no enemy knows what bracing is: equal damage across the face,
+and the weakest hex under it runs out first.
+
+The two conditions are what a player can actually play against:
+
+- **The front has a WIDTH.**  Measured: eight robots against a
+  SEVEN-hex wall land nothing on either end, because the fan is not
+  that wide.  A perimeter longer than a wave can reach across still
+  hides its weak hexes — so bracing rewards length as well as shape.
+- **The spread is by occupancy AND by approach.**  A wave thin enough
+  never to block itself never sidesteps, and still chews where its
+  routes cross.  B3's six robots come from six directions and behave
+  exactly as B3 measured; its test is green through F7b for that
+  reason.
+
+The rest of this note records what B3 measured on the queueing mover,
+because it is why the rule above took three phases to arrive.  Six
+robots released across a six-wide slab at a fence spent twelve ticks
+chewing the braced MIDDLE and landed **nothing at all** on either end.
+The reason was § Sealing the perimeter's own caveat: the spread was by
+APPROACH only, so enemies converged onto the hexes
 their routes cross — which, with the core behind the middle of a fence,
 is its strongest part.  A loose end is only the breach if an enemy's
 route happens to meet it.

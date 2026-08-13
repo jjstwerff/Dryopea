@@ -71,10 +71,10 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 739/739 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 749/749 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
-**Gate: 18 scripts green under `scripts/validate.sh`** (~6 s, 303
+**Gate: 18 scripts green under `scripts/validate.sh`** (~6 s, 307
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -158,18 +158,21 @@ differ in **nothing else**.  Four enemy types for one row each in
 `numbers.json` plus one branch in `spawn.loft`'s damage-to-wall lookup
 — no new mover, no new targeting, no new code path.
 
-⚠⚠ **The missing sidestep sets the whole BALANCE, measured in plan 12
-B7.**  Thirteen robots reach an undefended core and exactly **two**
-ever nibble it: they come down one axis from one spawn, and on a hex
-AXIS the field offers ONE closer neighbour, so a blocked enemy waits
-where an off-axis one would have a second choice.  So **the drain does
-not scale with the wave** — a column of four and a column of twelve
-drain at the same rate — and by the same token a base's WIDTH and its
-ROSTER are both scenery: 161 ticks over five rows and over thirteen,
-161 / 311 / 180 with two waves and the identical numbers with a third.
-⚠ The perverse consequence: anything that pushes the column OFF the
-axis lets more of it reach the core, so a tower's own kills speed the
-base's fall.  `tests/12_b7_the_clock.loft` prices it.
+⚠ **An enemy blocked by a COMPANION steps BESIDE it; one blocked by
+the GROUND stands and attacks** (plan 11 F7b).  `flow_sidesteps` offers
+the equal-distance neighbours and the mover reaches for it only after
+every strictly-closer step came back OCCUPIED.  The condition is the
+whole rule: sidestep on a terrain block and a besieger jitters along a
+wall face for ever, attacking a different hex each tick and finishing
+none.
+⚠ **It was missing for three phases and it was the whole BALANCE.**
+F5c, F7 and plan 12 B3 each recorded the gap as latent; B7 measured it
+— thirteen robots reached an undefended core and exactly TWO ever
+nibbled it, so the drain did not scale with the wave and a base's width
+and roster were both scenery.  Building it moved every clock in the
+game (161/311/180 → 61/104/95) and made B3's falsified claim true: a
+wall the front SPANS now breaks at its 30 HP end.  ⚠ The fan has a
+width, so a LONGER wall still hides its ends and bracing still pays.
 
 ⚠ **The siege chews where the ROUTE meets the wall, never where the
 wall is weakest** — measured in plan 12 B3, and it falsifies what

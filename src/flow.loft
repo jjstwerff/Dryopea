@@ -405,3 +405,41 @@ pub fn flow_steps(f: const FlowField, q: integer, r: integer) -> vector<Hex> {
     }
     fss_out
 }
+
+// Every neighbour of (q, r) at the SAME distance, in direction order —
+// where an enemy blocked by a companion goes instead of waiting.
+//
+// Plan 11 phase F7b, and it is deliberately a SECOND function rather
+// than a second half of `flow_steps`.  That one's documented invariant is
+// *every entry is at `d - 1`*, `flow_step` returns its head and
+// `enemy_target` reads it to name the hex under attack; folding equal
+// hexes in would have quietly changed all three.  This one is asked
+// for by name, by the one caller that wants it.
+//
+// ⚠ **This is not a route and can never become one.**  Following it
+// does not terminate: an equal step closes no distance, so a walker
+// that preferred these would circle a contour forever.  It is only
+// ever an answer to *"the hex I want is occupied THIS tick"*, which is
+// why `enemy_tick` reaches for it only after `flow_steps` came back
+// entirely blocked, and never when what blocked it was the ground.
+//
+// ⚠ **The climb rule is the same one `flow_steps` applies**, and for
+// the same reason: a cell can be in the field and still be unreachable
+// FROM here.  A sidestep that skipped the check would walk a robot up
+// the side of a wall that a step forward would have refused.
+pub fn flow_sidesteps(f: const FlowField, q: integer, r: integer) -> vector<Hex> {
+    fsi_out: vector<Hex> = [];
+    fsi_d = flow_distance(f, q, r);
+    // ⚠ Unreachable is a LARGE sentinel, not a distance — two routeless
+    // cells would read as "equal" and let a stranded enemy wander the
+    // map.  `flow_steps` guards the same way.
+    if fsi_d >= FLOW_UNREACHABLE { return fsi_out; }
+    fsi_h = flow_height(f, q, r);
+    for fsi_n in lat_neighbours(Hex { q: q, r: r }) {
+        if flow_distance(f, fsi_n.q, fsi_n.r) == fsi_d
+            && flow_height(f, fsi_n.q, fsi_n.r) - fsi_h <= f.climb {
+            fsi_out += [fsi_n];
+        }
+    }
+    fsi_out
+}

@@ -98,23 +98,31 @@ enemy 2 9 3
 enemies distinct
 range 10 11
 
-# Home.  ⚠ `range 0 2` and not `0 0`: the core hex holds ONE enemy and
-# the others queue on the hexes behind it.  Before F5c all three would
-# read (0, 0) — a wave that arrives is a wave that piles up, not a
-# wave that vanishes into one hex.
+# Home.  ⚠ `range 0 1` and not `0 0`: the core hex holds ONE enemy and
+# the others take hexes BESIDE it.  Before F5c all three would read
+# (0, 0) — a wave that arrives is a wave that spreads out, not a wave
+# that vanishes into one hex.
+#
+# ⚠ **Plan 11 F7b moved the third one from (2, 0) to (0, 1)**, and the
+# difference is the whole of that phase.  It used to queue two hexes
+# back on the approach axis, because the only hex closer than it was
+# taken and F5c had it wait there.  It now steps BESIDE — same distance
+# from the core, a different face of it — which is what
+# `ENEMY_MOVEMENT.md` § Sealing the perimeter always said a blocked
+# enemy does.  Three arrivals, three faces of the core, nothing
+# queueing.
 #
 # ⚠ And the one that arrives first is `enemy 1`, not `enemy 0`.  The
 # two files rejoin at (7, 0), and the enemy on the (7, 4) route reaches
 # the merge one tick before the enemy on the (8, 3) route needs it —
-# so the leader out of the spawn yields, and finishes two hexes behind.
-# Traffic, and it is repeatable: the move order is closest-to-the-core
-# first, ties by hex, so the same script gives the same three hexes
-# every run.
+# so the leader out of the spawn yields.  Traffic, and it is
+# repeatable: the move order is closest-to-the-core first, ties by hex,
+# so the same script gives the same three hexes every run.
 tick 20
-enemy 0 2 0
+enemy 0 0 1
 enemy 1 0 0
 enemy 2 1 0
 enemies distinct
 enemies passable
-range 0 2
+range 0 1
 count alive 3 3

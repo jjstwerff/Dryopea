@@ -3,18 +3,26 @@
 # `a-defended-base.keys` plus ONE marker: a tower at (3, 0), one hex
 # behind the wall it covers.  Everything else is identical.
 #
-#   undefended:        161 ticks   (107 s)
-#   sealed wall:       311 ticks   (207 s)
-#   this file:         180 ticks   (120 s)  — the tower gives back 131
+#   undefended:         61 ticks   ( 41 s)
+#   sealed wall:       104 ticks   ( 69 s)
+#   this file:          95 ticks   ( 63 s)  — the tower gives back 9
 #
-# ⚠⚠ **The tower makes the base fall SOONER, and it is not a bug.**  It
-# is `docs/ENEMY_MOVEMENT.md` § Bodies are terrain arriving exactly as
-# written, in a base with nobody to clear up: *"enemies climb their own
-# dead onto the wall"*.  The tower kills nine robots at the foot of its
-# own wall; three of them fall on (6, 0) and make a 1.5 m step; a robot
-# climbs 2.0, and 1.5 + 2.0 clears a 3.0 m wall.  The survivors walk
-# over their dead and into the base, and the wall never loses a tenth of
-# its HP.
+# ⚠⚠ **The tower STILL makes the base fall sooner, and it is not a
+# bug.**  It is `docs/ENEMY_MOVEMENT.md` § Bodies are terrain arriving
+# exactly as written, in a base with nobody to clear up: *"enemies climb
+# their own dead onto the wall"*.  The tower kills eight robots at the
+# foot of its own wall; three of them fall on (6, 0) and make a 1.5 m
+# step; a robot climbs 2.0, and 1.5 + 2.0 clears a 3.0 m wall.  The
+# survivors walk over their dead and into the base, and the wall never
+# loses a tenth of its HP.
+#
+# ⚠ **Plan 11 F7b shrank the penalty from ruinous to a rounding.**  On
+# the queueing mover this file read 180 ticks against the wall's 311 —
+# the tower gave back 131 of the 150 the wall had bought.  With the
+# sidestep it gives back 9 of 43.  Both facts have the same cause: the
+# body ramp is a fixed prize, and it used to be measured against a clock
+# the queue had inflated threefold.  The tower is still a net loss for
+# an unattended base, and it is now a small one.
 #
 # B0 derived that band before anything could die: a single-hex body ramp
 # onto a structure `H` high needs a climb of `H / 2`, so onto a `wall`
@@ -25,8 +33,8 @@
 # ── The ending this one reaches: THE PILE WENT OVER ─────────────
 #
 # The other of the two `plans/12` asks B7 to distinguish.  The wall is
-# INTACT — 98 of 100 HP, two seconds of chewing in three minutes — and
-# the base fell anyway.  `a-defended-base.keys` is the wall breaking;
+# INTACT — its middle at 97 of 100 HP and its end still standing with
+# 2.7 to spare — and the base fell anyway.  `a-defended-base.keys` is the wall breaking;
 # which ending you get is decided by whether you built a tower.
 #
 # ⚠ **What this does NOT say is that towers are bad.**  It says a tower
@@ -37,7 +45,7 @@
 # at a moment when using it costs them something?*  This file is that
 # question with the player removed, and the answer is the base.
 
-echo a tower buries its own wall: nine kills, a body ramp, and a shorter clock
+echo a tower buries its own wall: eight kills, a body ramp, and a shorter clock
 
 do toggle_mode
 
@@ -89,34 +97,39 @@ wallet 200.0 200.0
 tick 22
 wave 8
 
-# ⚠ **Four already dead, twenty-two ticks in.**  A tower fires one shot
-# a second out of a 30-shot budget, so it is spending that budget from
-# the moment the first wave walks into range — and every kill is a body
-# nobody will collect.
+# ⚠ A tower fires one shot a second out of a 30-shot budget, so it is
+# spending that budget from the moment the first wave walks into range
+# — and every kill is a body nobody will collect.
 count alive 9 9
 
 fall 800
-ticks 175 185
+ticks 90 100
 wallet 0.0 0.0
 
 # ── The ending, stated ──────────────────────────────────────────
 
 # The wall is still there, and all but untouched.  Compare
-# `a-defended-base.keys`, where the same wall at the same q under the
-# same waves is GRASS by now.
+# `a-defended-base.keys`, where the same wall under the same waves has
+# lost its end and a third of its middle by now.
 kind 5 0 wall
 hp 5 0 95.0 100.0
+
+# ⚠ **And its END was 2.7 HP from going.**  The tower thinned the front
+# faster than the front could finish the hex it had nearly broken — so
+# this base died with its wall standing and a hex to spare.
+kind 5 -2 wall
+hp 5 -2 25.0 30.0
 
 # What got them in: three dead robots at the wall's foot.  0.5 m a body
 # (`numbers.json` § enemy_regular.body_height), so 1.5 m — inside B0's
 # [1.0, 2.0] band, and a 2.0 m climber steps from there onto 3.0 m.
 pile 6 0 1.4 1.6
 
-# ⚠ **The tower did its job, and that is the problem.**  Nine of
-# thirteen never made it — 27 of its 30 shots, at 3 shots a 30 HP robot
-# — and the FOUR survivors took the base anyway, walking in over the
-# nine.  A wall and a gun beat by four robots is a stronger statement
+# ⚠ **The tower did its job, and that is the problem.**  Eight of
+# thirteen never made it — 24 of its 30 shots, at 3 shots a 30 HP robot
+# — and the FIVE survivors took the base anyway, walking in over the
+# eight.  A wall and a gun beat by five robots is a stronger statement
 # than any clock: the kills are what got them in.
-count alive 4 4
+count alive 5 5
 
 snap b7_a_tower_buries_its_own_wall

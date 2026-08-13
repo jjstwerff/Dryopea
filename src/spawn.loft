@@ -376,17 +376,25 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
     // step in preference order, and stand still when every one of them
     // is held.
     //
-    // ⚠ **Free, but still strictly CLOSER.**  A blocked enemy does not
-    // sidestep to an equally-distant hex to get round the jam: every
-    // entry `flow_steps` offers is at `d - 1`, so an enemy either
-    // closes by exactly one step or does not move — which is what
-    // keeps F5's invariant (`distance decreases by exactly 1 per tick`)
-    // true of every enemy that moves at all, and keeps occupancy a
-    // movement constraint rather than a second steering rule.  The
-    // sideways spread the spec describes at a WALL belongs to F7,
-    // where the desire field supplies the gradient that says which way
-    // "beside" is; inventing one here would be a second steering rule
-    // with nothing to derive it from.
+    // ⚠ **Closer first; BESIDE only when a companion is what stopped
+    // it** (plan 11 F7b).  `ENEMY_MOVEMENT.md` § Sealing the perimeter has
+    // said since before any of this was built that *"an enemy whose
+    // target hex is taken by a companion does not wait behind it — it
+    // moves beside them"*, and F5c built only the first half of that:
+    // it tried the next strictly-closer hex and then gave up.  On a hex
+    // AXIS there IS no next one — the field offers exactly one closer
+    // neighbour on an axis and two off it — so a column arriving from a
+    // single spawn queued single file, and plan 12 B7 measured what
+    // that was worth: thirteen robots reach an undefended core and
+    // exactly TWO ever nibble it.  The drain did not scale with the
+    // wave, and neither did anything else.
+    //
+    // ⚠ **A sidestep closes NO distance, so it must never become the
+    // route.**  It fires only after every strictly-closer step came
+    // back occupied, and the enemy still ends the tick no further from
+    // the core than it started — which is why F5c's
+    // `test_a_blocked_enemy_never_moves_away_from_the_core` holds
+    // unchanged through this phase.
     et_d = flow_distance(f, e.q, e.r);
     if et_d == 0 { return; }                    // arrived; attacking the core is combat's job
     if et_d < FLOW_UNREACHABLE {
@@ -397,8 +405,17 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
         }
         // F3's sweep proves the arrow never stalls on a reachable
         // cell, so the only way to get here is a companion on every
-        // closer neighbour.  Standing still is the right answer — a
-        // jam is not a licence to wander off the route.
+        // closer neighbour — the ground already said yes.  That makes
+        // this branch the pure companion case, and moving beside is
+        // exactly what the spec asks for.
+        for et_s in flow_sidesteps(f, e.q, e.r) {
+            if occupancy_taken(occ, et_s.q, et_s.r) { continue; }
+            enemy_move_to(e, et_s.q, et_s.r, occ);
+            return;
+        }
+        // Hemmed in on every side at this distance too.  Standing
+        // still is the right answer — a jam is not a licence to
+        // wander off the route.
         return;
     }
 
@@ -433,13 +450,46 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 // refused every hex this class cannot enter, while the desire field
 // deliberately did NOT — walls are passable in it, which is what makes
 // it able to say where the wall is.
+//
+// ── Why the sidestep needs a REASON here and not in engage ───────
+//
+// Plan 11 F7b.  In the engage branch every closer step the field offers is
+// one the ground already allowed, so "nothing was free" can only mean
+// a companion and moving beside is unambiguous.  Here it can mean two
+// completely different things, and they want opposite answers:
+//
+//   - **a companion is on it** — the enemy is queueing behind someone,
+//     and `ENEMY_MOVEMENT.md` § Sealing the perimeter says it moves
+//     BESIDE them.  That is the sidestep, and along a wall it is
+//     exactly the spread F7 named and did not build: enemies arriving
+//     down one approach fan out across the face instead of stacking
+//     onto the hexes their routes happen to cross.
+//   - **the WALL is on it** — the enemy has arrived at what it came to
+//     break.  It must stand still, because `enemy_target` names the
+//     hex in front of it and `wave_damage` spends its second there.
+//
+// ⚠ **Sidestepping a terrain block would be a jitter, not a spread.**
+// An enemy at a wall face has no legal step in any direction, so an
+// unconditional sidestep would send it shuffling along the face for
+// ever, attacking a different hex every tick and finishing none of
+// them.  So the rule is not "blocked" — it is **blocked BY A
+// COMPANION**, which is what `ewd_queued` records.
 fn enemy_walk_desire(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
                      hl: const HeightLayer, desire: const FlowField, occ: Occupancy) {
     ewd_from = Hex { q: e.q, r: e.r };
+    ewd_queued = false;
     for ewd_t in flow_steps(desire, e.q, e.r) {
         if !can_step(pal, pw, hl, e.kind, ewd_from, ewd_t) { continue; }
-        if occupancy_taken(occ, ewd_t.q, ewd_t.r) { continue; }
+        if occupancy_taken(occ, ewd_t.q, ewd_t.r) { ewd_queued = true; continue; }
         enemy_move_to(e, ewd_t.q, ewd_t.r, occ);
+        return;
+    }
+    if !ewd_queued { return; }      // the wall stopped it: stand and attack
+
+    for ewd_s in flow_sidesteps(desire, e.q, e.r) {
+        if !can_step(pal, pw, hl, e.kind, ewd_from, ewd_s) { continue; }
+        if occupancy_taken(occ, ewd_s.q, ewd_s.r) { continue; }
+        enemy_move_to(e, ewd_s.q, ewd_s.r, occ);
         return;
     }
 }
