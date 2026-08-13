@@ -15,7 +15,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 | **E2** — Palette load + named picker | shipped | `src/palette.loft`, `src/picker.loft`; 18 tests; loads `examples/palette.json` via `text as vector<GroundType>` cast |
 | **E3** — Paint sparse + mouse picking | shipped | `paint_line` (hex line walk), `screen_to_hex` (mouse-pick inverse), `render_with_hover` (outline overlay); 16 tests |
 | **E4** — Save/load MapFile | shipped (constrained) | `src/map_file.loft`, `src/save.loft`; 9 round-trip tests; **MapFile schema limited to 6 fields** to dodge a loft JSON-cast hang at ≥8 fields (filed in `QUESTIONS_FOR_LOFT.md`).  Plan 04 § L1 will expand once loft fix lands. |
-| **Integration smoke test** | shipped | `tests/01_integration.loft` — cold-start → paint → save → reload, 3 tests, 72/72 total green under `scripts/test.sh` |
+| **Integration smoke test** | shipped | `tests/01_integration.loft` — cold-start → paint → save → reload, 3 tests, green as part of the whole suite under `scripts/test.sh` |
 | **E1-live** — Interactive GL editor | shipped (parse-clean) | `src/main.loft` — opens GL window, WASD pan, mouse paint, 1-0 picker, Ctrl+S save, Esc save-exit.  Compiles cleanly under `loft --native-emit`; **human playtest pending** |
 
 The original phase write-ups below remain the source of

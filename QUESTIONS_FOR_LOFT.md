@@ -31,9 +31,38 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
-*(none — every entry is Submitted upstream or Resolved below.  New
-problems go straight to a GitHub issue; see
-[`CLAUDE.md`](CLAUDE.md) § Relationship to loft.)*
+### Mutating a struct RETURNED from a function is a silent no-op, and `lost-write` stays quiet
+
+**Repro:** [`loft_repros/mutating_a_returned_struct_is_lost.loft`](loft_repros/mutating_a_returned_struct_is_lost.loft)
+— verified on the interpreter and on `--native`, identical output on
+both.  **Not yet filed upstream.**
+
+Found in dryopea plan 12 B4 (2026-08-13).  The same element, reached
+three ways, and only two of them are a mutation the caller can see:
+
+```
+hurt(first(s), 10.0);            // through a helper that RETURNS it → 0
+hurt(s.es[0] ?? E {}, 10.0);     // indexed inline                   → 10
+for e in s.es { hurt(e, 10.0); } // through a loop variable          → 20
+```
+
+Nothing distinguishes them at the call site: same types, no warning,
+no error.  Six dryopea tests failed at once on it, and each failure
+read as a bug in the thing being mutated rather than in the one-line
+accessor — because the read-back is simply the value from before the
+call.
+
+**The ask is probably a diagnostic rather than a semantics change.**
+Value semantics for a returned struct is defensible; what is not is
+that `hurt(first(s), …)` writes into a temporary discarded one
+instruction later and `lost-write` — the warning class that exists for
+exactly this — says nothing.  Note dryopea has also seen `lost-write`
+fire FALSELY (§ Submitted, loft#883), so the two together suggest that
+analysis is worth a look as a whole.
+
+**Dryopea's own workaround** is a rule in `CLAUDE.md` § Loft language
+gotchas: a one-line "get me the element" helper is fine to READ
+through and never to write through.
 
 ## Submitted
 

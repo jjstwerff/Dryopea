@@ -31,14 +31,14 @@ end-to-end and *fun-shaped*.
 | Feature | Status | Slot | Brief |
 |---|---|---|---|
 | Ground editor (sparse paint, sea default) | **shipped** | [plan 01 E1-E3](01-ground-editor/README.md) | Hex grid + camera + palette + click/drag paint |
-| Save/load MapFile JSON | **partial** | [plan 01 E4](01-ground-editor/README.md) | 6-field schema; expanded once loft JSON-cast bugs land |
-| Integration smoke test (cold-start cycle) | **shipped** | [plan 01](01-ground-editor/README.md) | 72/72 green under `scripts/test.sh` |
+| Save/load MapFile JSON | **partial** | [plan 01 E4](01-ground-editor/README.md) | 6-field schema; expanded once loft JSON-cast bugs land.  The marker sidecar round-trips all three kinds (spawn / target / tower) |
+| Integration smoke test (cold-start cycle) | **shipped** | [plan 01](01-ground-editor/README.md) | Part of the 691-test suite under `scripts/test.sh` |
 | Interactive GL editor (E1-live) | **shipped** | [plan 01 E1-live](01-ground-editor/README.md) | `src/main.loft`; human playtest pending |
 | 3D solver-validation viewer | drafted | [plan 02](02-solver-validation-viewer/README.md) | Painted layer + height-solved mesh overlay, 40% transparent |
 | Marker layer + spawn points | **shipped** | [plan 03](03-marker-layer-and-spawns/README.md) | M1-M5 done; sidecar JSON, mode toggle, placement + rotation, render overlay, wave engine + spawn director |
 | Map library + browser (planet-view UI) | drafted | [plan 04](04-map-library/README.md) | MapFile schema (L1), map index, content, selector |
 | Enemy flow field (route round walls, per class) | **shipped** | [plan 11](11-flow-field/README.md) | F0-F8 done.  Distance field per climb limit, arrows computed not stored, enemies spread rather than stack, passability as a height STEP over a runtime layer, and a desire field for besieging a sealed perimeter.  Does NOT replace the straight-line `enemy_tick` — that is approach mode, and the two modes hand off at the scrambler bubble |
-| Combat resolves (damage, death, rubble, towers) | drafted | [plan 12](12-combat-resolution/README.md) | B0-B7.  Towers fire and decay, enemies take damage and die, walls lose structural HP and break into climbable rubble, bodies pile as terrain, nibble drains the wallet.  Headline gate: an authored base with walls and towers, nobody defending it, falls on a clock that gets markedly longer for having the defences |
+| Combat resolves (damage, death, rubble, towers) | **in progress** | [plan 12](12-combat-resolution/README.md) | B0-B4 + B5a shipped: walls have structural HP and break into climbable rubble, enemies have HP and die leaving bodies that ramp a kill zone shut, towers fire at 15 hex.  Left: B5b (line of sight + the shot budget), B6 (nibble drains the wallet), B7 (the headline gate — an authored base with walls and towers, nobody defending it, falling on a clock that is markedly longer for having the defences) |
 | End-to-end validation scenario | drafted | [plan 05](05-validation-scenario/README.md) | The "minimum playable thing" spec |
 
 When Tier A is done the game is **playable** — a player can

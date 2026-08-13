@@ -1,0 +1,51 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A struct RETURNED from a function is a copy, so mutating it through
+// a `&`-style parameter is a silent no-op — and `lost-write` does not
+// fire.
+//
+// Found in dryopea plan 12 B4 (2026-08-13).  Six tests failed at once
+// and every one of them looked like a bug in the thing being mutated
+// rather than in the accessor, because the read-back is simply the
+// value before the call.
+//
+// The three forms below are the whole finding: the SAME element,
+// reached three ways, and only the middle one is a mutation the caller
+// can see.  Nothing distinguishes them at the call site — same types,
+// no warning, no error.
+//
+// Expected output:
+//     through a returning helper : 0
+//     indexed inline             : 10
+//     through a loop variable    : 20
+//
+// The ask is not necessarily "make it write through" — value semantics
+// for a returned struct is a defensible choice.  It is that
+// `hurt(first(s), 10.0)` writes to a temporary that is discarded one
+// instruction later, which is exactly what `lost-write` exists to
+// catch, and it says nothing.
+
+struct E { q: integer, taken: float }
+struct S { es: vector<E> }
+
+fn first(s: S) -> E { s.es[0] ?? E {} }
+
+fn hurt(e: E, hp: float) { e.taken = e.taken + hp; }
+
+fn main() {
+    s = S { es: [] };
+    s.es += [E { q: 1, taken: 0.0 }];
+
+    // 1. Through a helper that RETURNS the element — the write is lost.
+    hurt(first(s), 10.0);
+    print("through a returning helper : {(s.es[0] ?? E {}).taken}");
+
+    // 2. The same expression, written inline — the write lands.
+    hurt(s.es[0] ?? E {}, 10.0);
+    print("indexed inline             : {(s.es[0] ?? E {}).taken}");
+
+    // 3. And through a loop variable — the write lands.
+    for e in s.es { hurt(e, 10.0); }
+    print("through a loop variable    : {(s.es[0] ?? E {}).taken}");
+}

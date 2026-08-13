@@ -410,183 +410,53 @@ scenario, it is the scenario's most interesting outcome, and B7 should
 report which of the two ends the base: the wall broke, or the pile went
 over it.
 
-### ⚠ Wreck decay, blocking, and damage types — recorded, not built
+### ⚠ Design recorded during this plan, and NOT built by it
 
-Project owner, 2026-08-13, and it is a real mechanic rather than a note:
-**the conversion from a broken machine to a heap of rubbish is not
-instant.** A fresh wreck still has things that can be harvested off it
-directly; ignored, they deteriorate into generic rubbish. So a pile has an
-AGE as well as a height, an enemy class carries **how quickly it breaks
-down**, and a tower's **damage type** influences it — a shot that vaporises
-leaves less to salvage than one that knocks a machine over.
+A run of owner design input landed while B1-B5a were being built
+(2026-08-13). **The mechanics live in
+[`docs/DESIGN.md`](../../docs/DESIGN.md)** — § 7 § Future tower types
+for the damage-type matrix, aiming time and retaliation, § 10 § Small
+robots for the four roles and the speed rule, and
+[`ENEMY_MOVEMENT.md`](../../docs/ENEMY_MOVEMENT.md) § Bodies are
+terrain / § Retaliation for the movement halves. They are not restated
+here; a second copy is the one that gets read and the one that drifts.
 
-Where it lands, in the terms this plan already uses:
+In one paragraph, so this plan reads on its own: a wreck is not rubble
+yet — it carries harvestable salvage that decays into rubbish, and a
+**big** body seals its hex until it settles, which makes a plugged
+chokepoint push the wave onto the wall instead. Towers get damage
+TYPES that trade kill speed against salvage against how long the corpse
+plugs the gap, plus a traverse time that makes switching targets
+expensive. Enemies retaliate against towers that hurt them, by an
+information rule the scrambler gates — but never against routing, so a
+tower behind a closed perimeter is simply unreachable.
 
-- **Not the source axis.** `height.loft` stores wreckage / carapace / masonry
-  — a closed set, one per hex — and that stays a material label. Freshness is
-  a second, continuous axis on the same pile.
-- **It is the SALVAGE-CONTENTS axis** this plan already deferred (§ The
-  rubble is the hill): open, several types per hex, so a palette kind cannot
-  hold it and it belongs on [plan 06 S1](../06-editor-stencil-pipeline/README.md)'s
-  stacked layer. Decay is what makes that layer *shrink* as well as grow.
-- **It gives the tower a damage TYPE**, which B5 does not currently have —
-  `numbers.json` § tower has `damage_per_shot` and no type. B5 should avoid
-  foreclosing one; it need not build it.
-- **It gives an enemy class a decay rate**, a `numbers.json` row per class
-  alongside the `body_height` B4 added.
-- **It gives the player a clock they can lose.** Today collecting bodies is
-  purely a passability counter-play (clear the ramp); this makes it a *timed*
-  economic one — drive in early for salvage, or late for safety and get
-  rubbish. That is the same shape as the scramble decision the whole game is
-  built on, which is what makes it worth building rather than a detail.
+**What bears on the phases still open here**, and only that:
 
-#### The wreck BLOCKS while it is fresh
+- ⚠ **B5b: line of sight is a HEIGHT question, not a table of
+  materials.** `numbers.json` already fixes it — a 6.0 m tower *"peeks
+  1 m over"* a 5.0 m `wall_high` — and a *`wall_high` blocks / `wall`
+  does not* lookup would be a SECOND source of truth for heights
+  `passable.loft` already owns. This codebase has caught that shape
+  twice (`walk_ground` versus the height rule in plan 11 F0; the
+  painted kind versus the surface in B1). Reading the height also buys
+  elevation for free, which is what makes an outer-ridge tower work.
+- ⚠ **B5b: a shot that has become impossible is NOT fired** — the
+  tower holds rather than spending its charge and its budget into a
+  wall. The opposite of the naive shape, and B5b's invariant-gate row
+  carries it with its own negative control.
+- ⚠ **B5a's `tower_pick` is a placeholder.** It re-chooses the nearest
+  enemy every shot with no cost to switching, which is exactly what
+  traverse time replaces. Whatever replaces it will want hysteresis
+  and will still have to be deterministic, because plan 08 gates
+  dryopea by replaying written-down runs.
 
-Project owner, same session, and it is what makes decay a *mechanic* rather
-than an economy: **a big robot's body blocks the hex it fell on until it has
-decayed enough.** A small robot's does not — others walk straight over it.
+#### What it needs that does not exist — the implementation ledger
 
-So decay is one clock driving **two** things, and the second is passability:
-
-- a fresh big wreck stands high enough to be past a robot's climb, so it
-  **seals its own hex**;
-- as it settles, its height drops under the climb and the hex **opens again**.
-
-Everything needed for that already exists and is gated: `height.loft` stores
-metres per hex, `passable.loft` compares a step against `climb_limit`, and
-plan 12 B4 already measured the band — a heap of five robot bodies is a
-2.5 m step that a 2.0 m climber cannot get onto. What is missing is only the
-**clock** and a **per-class body height**, so a "big" robot's body starts
-above the climb where today every body is a uniform 0.5 m.
-
-⚠ **And that is where the interesting play comes from.** A blocked
-chokepoint is not a win for the player: the wave cannot get through, so it
-**attacks the wall instead** (§ Sealing the perimeter is punished — an enemy
-with no route besieges), and the perimeter starts coming down. So the
-player's own kill zone plugging itself with a big kill is a *problem*, and
-one that resolves on a timer they can influence.
-
-#### Shooting the dead, and what damage type does
-
-Four consequences the owner named, and they compose into one loop:
-
-1. **Shoot the corpse to unplug the funnel.** Aiming a tower at a fallen but
-   not-yet-decayed robot accelerates its breakdown, so it blocks for less
-   time. The player spends shots (and salvage) to keep enemies coming
-   through the kill zone rather than through the wall.
-2. **Only while the player is AT the tower.** Manual aiming is
-   presence-locked, the same shape as `DESIGN.md` § 7's overload — the
-   player has to stand there, which is the cost that makes it a decision.
-3. **Splash (explosive) towers damage WALLS as well** — the player's own
-   perimeter — and can hit several robots at once. Hard to use, potentially
-   devastating. ⚠ Cheap to build on what exists: B2's `damage_apply` already
-   takes a HEX, so a shot that splashes onto a wall needs no new machinery,
-   only a radius and the willingness to fire it.
-4. **EMP towers** break the electrical parts — brain, wiring, motors — which
-   destroys most of the **high-value** components while leaving the chassis
-   almost intact. So an EMP kill blocks **more and for longer**: maximum
-   obstruction, minimum salvage, the exact inverse of the laser.
-   ⚠ **And it is nearly useless against insects** — it only burns them
-   lightly — which gives the tower-variant axis a real rock-paper-scissors
-   rather than a strictly-better ladder.
-
-That is a genuine three-way tension per shot: **kill speed vs salvage vs how
-long the corpse plugs the gap**, chosen by which tower is firing and, with
-the player present, at what.
-
-#### Damage type is a TRIANGLE, and armour is the other axis
-
-Owner, same session, extending the above.  The full table lives in
-[`docs/DESIGN.md`](../../docs/DESIGN.md) § Future tower types §
-Damage TYPE is the axis; the parts that bear on **this** plan:
-
-- **laser is poor against heavier armour**; **artillery is good against
-  it but single-target**; a **flame thrower** has markedly shorter range
-  and is excellent against several SMALL enemies at once; a **sniper**
-  is the heaviest gun and the slowest to aim, best at long range and
-  *especially* bad up close. So two class properties fall out —
-  **armour** and **size** — and neither is invented for the weapons:
-  size is already load-bearing for the blocking rule above (a big body
-  seals its hex, a small one does not). A property two unrelated
-  mechanics both need is one worth having.
-- ⚠ **Range becomes a PROFILE rather than a number**, and that is the
-  one thing here that changes a function B5a already shipped.
-  `tower_in_range` is a single `lat_distance(...) <= TOWER_RANGE_HEXES`;
-  a sniper is bad below a minimum and best at the far end, and a flame
-  thrower is the same curve inverted, so the question becomes *how well
-  does this shot land at this distance*. The lattice half stays
-  exactly as it is — `lat_distance` and nothing else — and only the
-  comparison grows.
-- **Aiming takes time.** A tower turns toward its target, so switching
-  targets costs damage — and the **sniper is the extreme**, slowest to
-  aim and therefore the type that most needs a funnel to look down.
-  ⚠ That directly cuts against B3's finding: a siege that converges on
-  one route is *easier* for a tower than one spread along the
-  perimeter, so the sidestep steering `ENEMY_MOVEMENT` wants would also
-  weaken towers — the sniper most of all. Worth keeping as a tension.
-- ⚠ **A shot that has become impossible is NOT fired** — the tower
-  holds rather than spending it into a wall. **This is a direct
-  instruction for B5b**, and it is the opposite of the naive shape: LOS
-  is checked *before* the charge and the budget are spent, not after.
-- **A shot already in flight can still be wasted.** Artillery has
-  travel time, so a target that steps behind a wall after the shot is
-  away is missed — **faster enemies dodge without trying to**, which
-  gives enemy speed a defensive role nothing had to grant it.
-
-⚠ **What this says about B5b's line of sight — the sharpest input
-here.** LOS is a **height** question and must not become a table of
-materials. `numbers.json` already fixes it that way: a tower is 6.0 m
-and *"peeks 1 m over a normal wall"*, and a 5.0 m `wall_high` is what
-stops it. Implementing the gate as *`wall_high` blocks, `wall` does
-not* builds a SECOND table that duplicates the heights and disagrees
-with them the moment either moves — the shape this codebase has caught
-twice already (`walk_ground` versus the height rule in plan 11 F0; the
-painted kind versus the surface in B1).
-
-Reading the height also buys the mechanic the owner is after for
-nothing: **some towers are bad inside the base and excellent on an
-outer ridge**, because a tower standing on 3 m of rock is at 9 m and
-sees over what a ground-level one cannot. A sniper wants the ridge and
-a flame thrower wants the entrance, and neither needs a line of code
-about elevation.
-
-⚠ **Towers ARE targetable, and the rule is about INFORMATION rather
-than threat** (owner, same session — it settles what this plan had
-listed as an open question). An enemy retaliates against a tower that
-has hurt **it personally** while the scrambler is up; with the
-scrambler down they share what they know and a tower hurting anyone's
-companions is a target for all of them. The scrambler's fiction, made
-mechanical.
-
-⚠ **But retaliation never overrides ROUTING, and that is what keeps it
-from dominating.** An enemy with no route to the tower goes on doing
-what it was doing — heading for the core. So most of the time nothing
-changes, because a tower inside a closed perimeter cannot be reached;
-a ridge tower is exposed because it is **reachable**, not because it
-is outside. ⚠ Cheap on what plan 11 already built: two hexes in the
-same routing field are in the same connected component, so "can I get
-there at all" is a lookup rather than a second sweep — and it is a
-`flow_build` from the TOWER that would be needed for the actual path.
-
-Two consequences worth having written down: **a tower that has never
-fired has hurt nobody**, so a reserve held in check is safe by the
-rule rather than by a special case; and retaliation gives an enemy a
-**new reason to break a wall** — "the thing shooting me is behind it"
-— which is a second entry in `DESIGN.md`'s target priority and the
-first about a defence rather than the core.
-
-The ridge is therefore paid for twice: in combat (it is reachable) and
-in logistics (only a player standing at a tower can repair, boost,
-hot-swap or aim it, so an outer tower means driving out through a live
-wave mid-fight).
-
-⚠ **What this says about B5a's picker.** `tower_pick` re-chooses the
-nearest enemy every shot with no cost to switching. That is exactly the
-placeholder traverse time replaces; it will want hysteresis, and it
-will still have to be deterministic, because plan 08 gates dryopea by
-replaying written-down runs.
-
-#### What it needs that does not exist
+This table is the one thing here that is NOT in the design docs, and it
+is why the section stays: it maps each mechanic onto the file that
+would hold it, so the eventual plan starts from a survey rather than a
+reading.
 
 | Needs | Where it would go |
 |---|---|

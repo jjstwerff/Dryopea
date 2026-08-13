@@ -57,9 +57,18 @@ bottom of this file for traceability.
 
 ## 1. Status + scope
 
-**Pre-alpha, design only — no code yet.**  Plans 01-05 in
-`plans/` cover the system designs.  The runtime
-parameters live in
+**Pre-alpha, under active implementation.**  A working hex
+editor, a wave engine that routes enemies round walls per
+class, and combat that resolves — towers fire, enemies die and
+leave bodies, walls take structural damage and break into
+climbable rubble.  No player vehicle yet, and no game loop
+around the base.
+
+⚠ **This document describes the design INCLUDING its future**,
+so most of what follows is not built.  What exists is
+[`../plans/README.md`](../plans/README.md), where each plan's
+own `## Status` is the source of truth — never this file.  The
+runtime parameters live in
 [`../examples/numbers.json`](../examples/numbers.json); the
 fiction in [`SETTING.md`](SETTING.md).
 
@@ -72,7 +81,6 @@ player can play one base end-to-end with no critical
 contradiction in 30 minutes of play.  Full scope in
 [`plans/05-validation-scenario/README.md`](../plans/05-validation-scenario/README.md).
 
-Everything below describes the design **including its future**.
 What is in validation tier vs deferred is called out in
 [§ Validation tier scope](#19-validation-tier-scope).
 

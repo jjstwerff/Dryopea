@@ -26,10 +26,10 @@ each section's leaves carrying `value` + `units` + `doc`:
 |---|---|
 | `world` | hex grid scale, layout convention, map extents, atmospheric haze radius |
 | `player_vehicle` | dimensions, hover heights, speeds, boost timings, blocker-damage model |
-| `enemy_regular` | dimensions, speeds, HP, damage rates (core / wall / blocker), loot value, pre-walk standstill |
+| `enemy_regular` | dimensions, speeds, HP, **body height** (what a corpse raises its hex by — NOT the standing height), damage rates (core / wall / blocker), loot value, pre-walk standstill |
 | `enemy_boss_phase3` | 2×2 footprint, speed, HP, wall-break + repair-on-regulars rates, loot value |
 | `tower` | range, fire interval, damage, shot budget, costs + build/repair/boost timings + boost multipliers |
-| `wall` | wall + wall_high heights, HPs, build times, the end-ramp slope, entrance gap window |
+| `wall` | wall + wall_high heights, HPs, **the four bracing factors**, **the rubble a break leaves**, build times, the end-ramp slope, entrance gap window |
 | `helper` | starting + cap roster, speed, HP, order cost, lander delivery + recovery times, construction tick |
 | `core` | footprint + dims, invulnerability flag, scrambler bubble radius, launch countdown, all 5 landing geometry params |
 | `wave_system` | wave list, inter-wave delay, pre-walk visibility, both wave-1 triggers (wall-count + provocation distance) |
@@ -84,8 +84,24 @@ docs:
 | `helper.recovery_time_after_retrieval` | PROXY_ART.md § Helper § Damage | Time before retrieved helper rejoins |
 | `economy.tower_top_carryover_effect` | DESIGN.md § Q4 | Mechanic carries, effect deferred — validation = "none" |
 | `camera.swing_easing_time` | DESIGN.md § Updates: camera locked | Auto-reframe smoothing |
+| `wall.wall_hp` + `wall.brace_factor_*` | `src/damage.loft` | A wall's HP is its kind's figure scaled by how its neighbours brace it; `wall_hp` is the BRACED number and almost nothing on a real map gets it |
+| `wall.rubble_height_fraction` | `src/damage.loft` | What a broken wall leaves as a heap.  ⚠ MUST stay under a robot's climb or a breach stops being a way in |
+| `enemy_regular.body_height` | `src/damage.loft` | The unit the body ramp is counted in — two to four dead robots get the next one over a wall, five is a heap it cannot climb |
+| `enemy_regular.damage_to_wall` | `src/spawn.loft` | What a besieging enemy spends per second; the four small-robot roles will differ in THIS and nothing else |
+| `tower.range` + `fire_interval` + `damage_per_shot` | `src/tower.loft` | ⚠ The interval is 1.5 ticks, which is why a tower banks charge rather than firing per tick |
+| `enemy_regular.speed_engage` | `src/spawn.loft` | Today the tick's own length is derived from it — ⚠ a coupling the design intends to break (DESIGN.md § Speed must NOT be tied to the tick) |
 
 ## Loading + modding
+
+⚠ **Nothing loads this file yet.**  Every value the engine
+consumes today is a constant in loft with a `numbers.json §
+section.key` comment pointing back here —
+`src/damage.loft`, `src/tower.loft` and `src/spawn.loft` each
+carry that note at the top of their constants.  The file is
+therefore the *specification* the code is checked against by
+hand, and the loader below is the intended flow rather than
+the current one.  A value changed here does **not** change the
+game until the matching constant moves.
 
 The intended flow:
 

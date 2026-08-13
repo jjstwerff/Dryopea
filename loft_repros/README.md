@@ -25,6 +25,12 @@ The dryopea test suite then carries the regression coverage
 going forward (no need to keep the standalone repro once it's
 no longer reproducing).
 
+## Ready to file
+
+| File | Bug | Status |
+|---|---|---|
+| [`mutating_a_returned_struct_is_lost.loft`](mutating_a_returned_struct_is_lost.loft) | A struct RETURNED from a function is a copy, so mutating it through a parameter is a silent no-op — and `lost-write` does not fire, though the write is to a temporary discarded one instruction later.  The SAME element indexed inline, or reached through a loop variable, writes through.  Identical on both backends. | **Repro verified, issue not yet filed** — awaiting the go-ahead |
+
 ## Currently filed
 
 | File | Bug | Filed upstream |
