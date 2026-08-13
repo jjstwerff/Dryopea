@@ -1,0 +1,480 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B3 — a wall's HP is structural, not a constant.
+//
+// ── The claim, and the one thing that can falsify it ────────────
+//
+// `plans/12` § Invariant gate: *"a straight fence breaches at an END;
+// a closed curved ring of equal length and equal attackers does not
+// breach at that tick"* — and the negative control it names is blunt:
+// **the ring breaking on the same tick means bracing was never read.**
+//
+// So the headline test puts the SAME damage on every hex of two walls
+// built from the SAME number of hexes, and asks which come down.  One
+// number, three verdicts: past the ends' allowance, inside the straight
+// run's, and far inside the ring's.  A constant HP passes none of it.
+//
+// ── ⚠ Only a ROW is straight on this lattice ────────────────────
+//
+// Odd-r offset makes "straight" counter-intuitive, and a fixture built
+// on the wrong axis would quietly test the opposite of what it says.
+// Measured against `lat_neighbour` itself, not reasoned about:
+//
+//   - a ROW (constant `r`) is collinear at every hex — directions 3
+//     and 0 — on even and odd rows alike.  That is the straight fence.
+//   - a COLUMN (constant `q`) is NOT.  Row parity flips which delta a
+//     direction index carries, so the chain zigzags: 2 and 4 at one
+//     hex, 1 and 5 at the next.  A "vertical" wall a player drags is a
+//     crinkle-crankle wall and is stronger for it.
+//
+// `test_a_column_is_not_a_straight_wall_on_this_lattice` states that
+// out loud, because it is the fixture mistake this file is one edit
+// away from at all times.
+//
+// ── What B3 does NOT change ─────────────────────────────────────
+//
+// Nothing about how a break WORKS (B2) or what it leaves (B1).  Only
+// how much a hex can take before it happens.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// examples/palette.json, in file order.
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+const WALL_HIGH: integer = 10;
+
+// Past an END's allowance (30), inside a straight run's (60) and far
+// inside a braced hex's (100).  One number, three verdicts — this is
+// the whole discriminator.
+const EQUAL_BITE: float = 40.0;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+fn brace_at(pw: PaintedWorld, q: integer, r: integer) -> integer {
+    brace_of(pal(), pw, q, r)
+}
+
+fn hp_at(pw: PaintedWorld, q: integer, r: integer) -> float {
+    structure_max_hp(pal(), pw, q, r)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The four configurations
+// ─────────────────────────────────────────────────────────────────
+
+// A wall hex with nothing beside it.
+fn test_a_lone_wall_hex_is_a_stub() {
+    tal_pw = painted_empty();
+    paint(tal_pw, 0, 0, as_u8(WALL));
+
+    assert(brace_at(tal_pw, 0, 0) == BRACE_STUB,
+           "nothing to push against: '{brace_name(brace_at(tal_pw, 0, 0))}'");
+    assert(hp_at(tal_pw, 0, 0) == WALL_HP * BRACE_FACTOR_STUB,
+           "so it is the weakest thing a player can build: {hp_at(tal_pw, 0, 0)} HP");
+}
+
+// One neighbour — cantilevered.  ⚠ `DESIGN.md` § 5 already says an
+// open end is a way IN; this says it is also where the wall BREAKS.
+fn test_one_neighbour_is_an_end() {
+    ton_pw = painted_empty();
+    paint(ton_pw, 0, 0, as_u8(WALL));
+    paint(ton_pw, 1, 0, as_u8(WALL));
+
+    assert(brace_at(ton_pw, 0, 0) == BRACE_END, "both hexes of a two-hex wall are ends");
+    assert(brace_at(ton_pw, 1, 0) == BRACE_END, "the other one too");
+    assert(hp_at(ton_pw, 0, 0) == WALL_HP * BRACE_FACTOR_END,
+           "cantilevered: {hp_at(ton_pw, 0, 0)} HP");
+}
+
+// Two neighbours, straight through — braced along one line only.
+fn test_two_collinear_neighbours_are_a_straight_run() {
+    ttc_pw = painted_empty();
+    for ttc_q in 0..=2 { paint(ttc_pw, ttc_q, 0, as_u8(WALL)); }
+
+    assert(brace_at(ttc_pw, 1, 0) == BRACE_STRAIGHT,
+           "the middle of a row: '{brace_name(brace_at(ttc_pw, 1, 0))}'");
+    assert(hp_at(ttc_pw, 1, 0) == WALL_HP * BRACE_FACTOR_STRAIGHT,
+           "reduced, not full: {hp_at(ttc_pw, 1, 0)} HP");
+    assert(brace_at(ttc_pw, 0, 0) == BRACE_END, "and its ends are still ends");
+}
+
+// Two neighbours that TURN — the perimeter curves through this hex.
+fn test_two_turning_neighbours_are_fully_braced() {
+    ttt_pw = painted_empty();
+    ttt_mid = hex(4, 4);
+    paint(ttt_pw, ttt_mid.q, ttt_mid.r, as_u8(WALL));
+    // A 120 degree bend: directions 0 and 2 rather than 0 and 3.
+    for ttt_d in [0, 2] {
+        ttt_n = lat_neighbour(ttt_mid, ttt_d);
+        paint(ttt_pw, ttt_n.q, ttt_n.r, as_u8(WALL));
+    }
+
+    assert(brace_at(ttt_pw, ttt_mid.q, ttt_mid.r) == BRACE_FULL,
+           "a bend is braced both ways: '{brace_name(brace_at(ttt_pw, ttt_mid.q, ttt_mid.r))}'");
+    assert(hp_at(ttt_pw, ttt_mid.q, ttt_mid.r) == WALL_HP,
+           "and gets the whole figure — {WALL_HP} is the BRACED number");
+}
+
+// Three or more is a junction, braced from more than one line.  There
+// is no class above full.
+fn test_a_junction_is_braced_and_no_more_than_braced() {
+    taj_pw = painted_empty();
+    taj_mid = hex(4, 4);
+    paint(taj_pw, taj_mid.q, taj_mid.r, as_u8(WALL));
+    for taj_d in [0, 2, 4] {
+        taj_n = lat_neighbour(taj_mid, taj_d);
+        paint(taj_pw, taj_n.q, taj_n.r, as_u8(WALL));
+    }
+
+    assert(brace_at(taj_pw, taj_mid.q, taj_mid.r) == BRACE_FULL, "three neighbours is braced");
+    assert(hp_at(taj_pw, taj_mid.q, taj_mid.r) == WALL_HP, "and not more than braced");
+}
+
+// The design's ordering, asserted rather than left to the numbers file:
+// full > reduced > low > lowest.  A tuning change that reordered them
+// would invert the whole mechanic.
+fn test_the_multipliers_keep_the_designs_ordering() {
+    assert(BRACE_FACTOR_FULL > BRACE_FACTOR_STRAIGHT, "a bend beats a straight run");
+    assert(BRACE_FACTOR_STRAIGHT > BRACE_FACTOR_END,  "a straight run beats an end");
+    assert(BRACE_FACTOR_END > BRACE_FACTOR_STUB,      "an end beats a lone stub");
+    assert(BRACE_FACTOR_FULL == 1.0,
+           "and full is the whole figure, so `numbers.json`'s wall_hp means what it says");
+    assert(BRACE_FACTOR_STUB > 0.0, "no configuration is free to break");
+}
+
+// A `wall_high` is braced by the same rule, on its own base — bracing
+// scales a kind, it does not replace one.
+fn test_bracing_scales_whatever_kind_is_there() {
+    tbs_pw = painted_empty();
+    for tbs_q in 0..=2 { paint(tbs_pw, tbs_q, 0, as_u8(WALL_HIGH)); }
+
+    assert(structure_base_hp(pal(), tbs_pw, 1, 0) == WALL_HIGH_HP, "the kind is 200");
+    assert(hp_at(tbs_pw, 1, 0) == WALL_HIGH_HP * BRACE_FACTOR_STRAIGHT,
+           "and a straight run of them is {hp_at(tbs_pw, 1, 0)}");
+    assert(hp_at(tbs_pw, 1, 0) > WALL_HP,
+           "so a straight high wall still outlasts a braced ordinary one");
+}
+
+// A `wall` and a `wall_high` brace each other: support is structural
+// contact, not a matching material.
+fn test_the_two_wall_kinds_brace_each_other() {
+    ttw_pw = painted_empty();
+    paint(ttw_pw, 0, 0, as_u8(WALL_HIGH));
+    paint(ttw_pw, 1, 0, as_u8(WALL));
+    paint(ttw_pw, 2, 0, as_u8(WALL_HIGH));
+
+    assert(brace_at(ttw_pw, 1, 0) == BRACE_STRAIGHT,
+           "a wall between two high ones is a straight run, not a stub");
+}
+
+// ⚠ **Terrain does not brace.**  `ENEMY_MOVEMENT.md` says support
+// comes from a hex's WALL neighbours, so a wall abutting a cliff is
+// still an end — which is arguable as design and is at least written
+// down here rather than assumed.
+fn test_a_cliff_does_not_brace_the_wall_beside_it() {
+    tac_pw = painted_empty();
+    paint(tac_pw, 0, 0, as_u8(8));       // steep_rock
+    paint(tac_pw, 1, 0, as_u8(WALL));
+
+    assert(brace_at(tac_pw, 1, 0) == BRACE_STUB,
+           "a wall anchored on rock is still standing on its own");
+}
+
+// ⚠ **The fixture mistake this file is one edit away from.**  A
+// constant-`q` column looks straight when it is written down and is a
+// zigzag on the lattice, so every hex in it reads as BRACED.  Build a
+// "straight fence" that way and the phase's headline test compares a
+// braced wall with a braced wall and passes for no reason.
+fn test_a_column_is_not_a_straight_wall_on_this_lattice() {
+    tac2_pw = painted_empty();
+    for tac2_r in 0..=2 { paint(tac2_pw, 5, tac2_r, as_u8(WALL)); }
+
+    assert(lat_distance(hex(5, 0), hex(5, 1)) == 1, "a column IS a connected chain");
+    assert(brace_at(tac2_pw, 5, 1) == BRACE_FULL,
+           "and its middle is BRACED, not straight: '{brace_name(brace_at(tac2_pw, 5, 1))}'");
+
+    tac2_row = painted_empty();
+    for tac2_q in 0..=2 { paint(tac2_row, tac2_q, 5, as_u8(WALL)); }
+    assert(brace_at(tac2_row, 1, 5) == BRACE_STRAIGHT,
+           "where the same three hexes laid along a ROW are a straight run");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE GATE: a fence breaches at its ends, a ring does not breach
+// ─────────────────────────────────────────────────────────────────
+
+// Six wall hexes in a row — the straight fence.  Two ends, four
+// straight middles.
+fn fence() -> PaintedWorld {
+    f_pw = painted_empty();
+    for f_q in 0..=5 { paint(f_pw, f_q, 5, as_u8(WALL)); }
+    f_pw
+}
+
+// Six wall hexes ringing the core — the closed curve.  Every hex has
+// two ring neighbours and none of them are opposite, so all six turn.
+fn ring() -> PaintedWorld {
+    r_pw = painted_empty();
+    for r_h in lat_disc(core(), 1) {
+        if lat_distance(core(), r_h) == 1 { paint(r_pw, r_h.q, r_h.r, as_u8(WALL)); }
+    }
+    r_pw
+}
+
+// Put `hp` on every wall hex of a world and resolve once.  Answers how
+// many came down.
+fn bite_everything(pw: PaintedWorld, hp: float) -> integer {
+    be_dl = damage_layer_empty();
+    be_hl = height_layer_empty();
+    for be_h in lat_disc(core(), 12) {
+        if structure_breakable(pal(), pw, be_h.q, be_h.r) {
+            damage_apply(be_dl, be_h.q, be_h.r, hp);
+        }
+    }
+    damage_resolve(pal(), pw, be_dl, be_hl)
+}
+
+fn test_the_two_walls_are_the_same_size() {
+    ttw_f = 0;
+    ttw_r = 0;
+    for ttw_h in lat_disc(core(), 12) {
+        if structure_breakable(pal(), fence(), ttw_h.q, ttw_h.r) { ttw_f += 1; }
+        if structure_breakable(pal(), ring(),  ttw_h.q, ttw_h.r) { ttw_r += 1; }
+    }
+
+    assert(ttw_f == 6, "the fence is six hexes: {ttw_f}");
+    assert(ttw_r == 6, "and so is the ring: {ttw_r}");
+}
+
+// ⚠ **THE PHASE.**  Equal walls, equal damage, one tick — and the
+// fence loses its ends while the ring loses nothing.  A constant HP
+// makes these two numbers identical, whatever it is set to.
+fn test_equal_damage_breaches_the_fence_and_not_the_ring() {
+    tef_pw = fence();
+    assert(bite_everything(tef_pw, EQUAL_BITE) == 2,
+           "the fence loses exactly its two ends");
+    assert(painted_kind_name(pal(), tef_pw, 0, 5) == "grass", "(0, 5) is gone");
+    assert(painted_kind_name(pal(), tef_pw, 5, 5) == "grass", "(5, 5) is gone");
+    assert(painted_kind_name(pal(), tef_pw, 2, 5) == "wall",  "and the middle stands");
+
+    assert(bite_everything(ring(), EQUAL_BITE) == 0,
+           "the ring does not breach at that tick — every hex of it turns");
+}
+
+// The half of the comparison that makes the number above meaningful:
+// the ring is not simply out of reach.  Enough damage takes it too.
+fn test_the_ring_is_breakable_it_is_just_stronger() {
+    assert(bite_everything(ring(), WALL_HP) == 6,
+           "a full wall's worth on every hex brings the whole ring down");
+    assert(EQUAL_BITE < WALL_HP,
+           "so {EQUAL_BITE} is a bite the ring survived rather than one it never felt");
+}
+
+// ⚠ **A fence UNZIPS.**  Nothing implements it — bracing is computed
+// from the world, so the moment the end is gone the hex beside it IS
+// the new end and loses more than half its allowance.  This is the
+// emergent half of the mechanic and the reason nothing caches HP.
+fn test_a_fence_unzips_from_the_hole_the_end_left() {
+    tfu_pw = fence();
+
+    assert(brace_at(tfu_pw, 1, 5) == BRACE_STRAIGHT, "(1, 5) starts as a straight run");
+    assert(hp_at(tfu_pw, 1, 5) == WALL_HP * BRACE_FACTOR_STRAIGHT, "at 60 HP");
+
+    bite_everything(tfu_pw, EQUAL_BITE);      // takes (0, 5) and (5, 5)
+
+    assert(brace_at(tfu_pw, 1, 5) == BRACE_END,
+           "with its neighbour gone it is the new end: '{brace_name(brace_at(tfu_pw, 1, 5))}'");
+    assert(hp_at(tfu_pw, 1, 5) == WALL_HP * BRACE_FACTOR_END,
+           "and worth half what it was: {hp_at(tfu_pw, 1, 5)} HP");
+}
+
+// ⚠ And the cascade takes a TICK per link rather than running away
+// inside one.  `damage_resolve` collects every hex at or past its
+// allowance BEFORE it breaks any of them, so a hex that only falls
+// under its limit because a neighbour went is next tick's business —
+// which is the same "the tick resolves once" rule everywhere else.
+fn test_the_unzip_takes_a_tick_per_link() {
+    tut_pw = fence();
+    tut_dl = damage_layer_empty();
+    tut_hl = height_layer_empty();
+
+    // 35 HP everywhere: past an end's 30, inside a straight run's 60 —
+    // but past the 30 an inner hex will be worth once it becomes an end.
+    for tut_q in 0..=5 { damage_apply(tut_dl, tut_q, 5, 35.0); }
+
+    assert(damage_resolve(pal(), tut_pw, tut_dl, tut_hl) == 2,
+           "round one takes the two ends and no more");
+    assert(damage_resolve(pal(), tut_pw, tut_dl, tut_hl) == 2,
+           "round two takes the two hexes that just became ends");
+    assert(damage_resolve(pal(), tut_pw, tut_dl, tut_hl) == 2,
+           "and round three finishes it");
+    assert(damage_resolve(pal(), tut_pw, tut_dl, tut_hl) == 0, "with nothing left");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The same claim under real attackers
+// ─────────────────────────────────────────────────────────────────
+
+// The fence sealing a slab six hexes wide, with the core beyond it.
+//
+//   q = 0..5, r = 0..10 grass;  the fence is the row r = 5.
+//
+// The slab's width is exactly the fence's length, so there is no way
+// round: everything east and west of it is unpainted, which is sea.
+fn slab_world() -> PaintedWorld {
+    sw_pw = painted_empty();
+    for sw_r in 0..=10 {
+        for sw_q in 0..=5 { paint(sw_pw, sw_q, sw_r, as_u8(GRASS)); }
+    }
+    for sw_q2 in 0..=5 { paint(sw_pw, sw_q2, 5, as_u8(WALL)); }
+    sw_pw
+}
+
+fn slab_core() -> Hex {
+    hex(2, 0)
+}
+
+// ⚠⚠ **THE FINDING, and it contradicts the spec.**
+//
+// `ENEMY_MOVEMENT.md` § A wall's HP is structural claims the two rules
+// combine: *"Enemies spread along the perimeter and chew everywhere at
+// once, so they do not need to FIND the weak hex — the perimeter fails
+// at its least-braced point on its own."*
+//
+// **They do not.**  Measured here: six robots released across a slab
+// six wide, twelve ticks, and the fence's two ENDS absorb **nothing at
+// all** while the braced middle takes every point of it.  The reason is
+// plan 11 F7's, written down in `CLAUDE.md` § Movement: the spread is
+// by APPROACH and never by sidestepping, so six enemies walking toward
+// one core converge onto the hexes their routes cross — which, with the
+// core behind the middle of a fence, is the STRONGEST part of it.
+//
+// So B3's rule is exact and its interaction is not built.  A player's
+// loose end is only the breach if an enemy's route happens to meet it;
+// today nothing steers one there.  Closing the gap needs the
+// equal-distance sidestep F7 explicitly did not build — a second
+// steering rule, not a fix.
+//
+// This test asserts the CURRENT behaviour, so the day somebody builds
+// that steering it goes red and points at the paragraph to correct.
+fn test_a_besieged_fence_is_bitten_where_the_route_meets_it_not_where_it_is_weak() {
+    tbf_pw  = slab_world();
+    tbf_pal = pal();
+    tbf_s   = wave_state_empty();
+    for tbf_q in 0..=5 {
+        tbf_s.enemies += [Enemy { q: tbf_q, r: 10, kind: robot(),
+                                  heading: 4 as u8, alive: true }];
+    }
+
+    for _ in 0..12 { wave_tick(tbf_s, tbf_pal, tbf_pw, slab_core()); }
+
+    // The siege is real: the middle of the run is being chewed.
+    tbf_mid = damage_taken(tbf_s.damage, 2, 5) + damage_taken(tbf_s.damage, 3, 5)
+            + damage_taken(tbf_s.damage, 4, 5);
+    assert(tbf_mid > 0.0, "somebody is attacking the fence: {tbf_mid} HP into its middle");
+
+    // And the ends — the 30 HP hexes, the ones a player would call the
+    // weakness — are untouched.
+    assert(damage_taken(tbf_s.damage, 0, 5) == 0.0,
+           "the west END absorbed {damage_taken(tbf_s.damage, 0, 5)} HP");
+    assert(damage_taken(tbf_s.damage, 5, 5) == 0.0,
+           "and the east END {damage_taken(tbf_s.damage, 5, 5)} HP");
+
+    assert(structure_max_hp(tbf_pal, tbf_pw, 0, 5) < structure_max_hp(tbf_pal, tbf_pw, 2, 5),
+           "even though the end is the weaker hex — nothing routes an enemy to it");
+}
+
+// The negative control for the run above: with the SAME softening and
+// the SAME twelve ticks over a ring, nothing comes down.  The two
+// worlds differ in one thing — how the six hexes are arranged.
+fn test_the_same_attack_on_a_ring_breaches_nothing() {
+    tsa_pw  = painted_empty();
+    for tsa_h in lat_disc(core(), 6) { paint(tsa_pw, tsa_h.q, tsa_h.r, as_u8(GRASS)); }
+    for tsa_h2 in lat_disc(core(), 1) {
+        if lat_distance(core(), tsa_h2) == 1 {
+            paint(tsa_pw, tsa_h2.q, tsa_h2.r, as_u8(WALL));
+        }
+    }
+
+    tsa_pal = pal();
+    tsa_s   = wave_state_empty();
+    tsa_n   = 0;
+    for tsa_h3 in lat_disc(core(), 5) {
+        if lat_distance(core(), tsa_h3) == 5 && tsa_n < 6 {
+            tsa_s.enemies += [Enemy { q: tsa_h3.q, r: tsa_h3.r, kind: robot(),
+                                      heading: 3 as u8, alive: true }];
+            tsa_n += 1;
+        }
+    }
+    for tsa_h4 in lat_disc(core(), 1) {
+        if lat_distance(core(), tsa_h4) == 1 {
+            damage_apply(tsa_s.damage, tsa_h4.q, tsa_h4.r, 28.0);
+        }
+    }
+
+    for _ in 0..12 { wave_tick(tsa_s, tsa_pal, tsa_pw, core()); }
+
+    tsa_left = 0;
+    for tsa_h5 in lat_disc(core(), 1) {
+        if structure_breakable(tsa_pal, tsa_pw, tsa_h5.q, tsa_h5.r) { tsa_left += 1; }
+    }
+    // ⚠ Non-vacuous: the ring really is under attack.  Without this the
+    // test would be green over a siege that never reached the wall.
+    tsa_bitten = 0.0;
+    for tsa_h6 in lat_disc(core(), 1) {
+        if lat_distance(core(), tsa_h6) == 1 {
+            tsa_bitten = tsa_bitten + damage_taken(tsa_s.damage, tsa_h6.q, tsa_h6.r);
+        }
+    }
+
+    assert(tsa_n == 6, "six attackers, as the fence had: {tsa_n}");
+    assert(tsa_bitten > 0.0, "and they are chewing it: {tsa_bitten} HP absorbed");
+    assert(tsa_left == 6, "and the ring is intact: {tsa_left} of 6 hexes still standing");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The measurement sees it too
+// ─────────────────────────────────────────────────────────────────
+
+// A `.keys` run reads the braced figure, not the kind's — so a
+// scenario that asserted 100 over a lone plug now fails, loudly,
+// naming the number.
+fn test_the_hp_measurement_reports_the_braced_figure() {
+    thm_lone = "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo toggle_mode\npalette 9\nclick 1 0\n";
+
+    thm_a = script_run(editor_state_new(PALETTE), "{thm_lone}hp 1 0 15.0 15.0", SHOTS);
+    assert(thm_a.ok, "a lone wall reads as a stub: {script_describe(thm_a)}");
+
+    thm_b = script_run(editor_state_new(PALETTE), "{thm_lone}hp 1 0 100.0 100.0", SHOTS);
+    assert(!thm_b.ok, "and 100 is refused");
+    assert(thm_b.message.contains("15"), "naming what it saw: {thm_b.message}");
+
+    // The same hex, braced by a bend, is worth the whole figure.
+    thm_c = script_run(editor_state_new(PALETTE),
+        "{thm_lone}click 2 0\nclick 1 1\nhp 1 0 100.0 100.0", SHOTS);
+    assert(thm_c.ok, "two neighbours that turn make it a full wall: {script_describe(thm_c)}");
+}

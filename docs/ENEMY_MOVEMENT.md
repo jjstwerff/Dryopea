@@ -160,6 +160,21 @@ worth knowing before reading point 3 as "more dead is always better":
   more — so a player who farms one chokepoint forever is not building a
   staircase, they are building a second wall.
 
+⚠ **A wreck is not rubble yet** (project owner, 2026-08-13; recorded,
+not built).  The conversion from a broken machine to a heap of generic
+rubbish is **not instant**: a fresh wreck still carries things that can
+be harvested off it directly, and ignored they deteriorate into
+rubbish.  So a pile has an AGE as well as a height, an enemy class
+carries how fast it breaks down, and a tower's damage TYPE influences
+it — a shot that vaporises leaves less than one that knocks a machine
+over.  That turns the counter-play below from a purely spatial one
+(clear the ramp) into a TIMED economic one: drive in early for salvage,
+or late for safety and get rubbish.  It rides on the salvage-contents
+layer ([plan 06](../plans/06-editor-stencil-pipeline/README.md) S1), not
+on the source label `height.loft` stores; see
+[`plans/12`](../plans/12-combat-resolution/README.md) § A wreck is not
+rubble yet.
+
 The counter-play is to **collect the bodies**, which means driving
 into the kill zone while the wave is still coming.  A player who
 farms safely behind a chokepoint is building the ramp that ends
@@ -239,15 +254,21 @@ three numbers ([`NUMBERS.md`](NUMBERS.md)).
 
 ## A wall's HP is structural, not a constant
 
-⚠ **Built as far as the CONSTANT; the structural part is not.**  Plan
-12 B2 gives every hex of a kind the braced figure — a `wall` is 100 HP
-and a `wall_high` 200 — and that is what makes a besieged wall come
-down at all: an enemy with no route spends
-`enemy_regular.damage_to_wall` (1 HP/s) into the hex `enemy_target`
-names, and a wall that runs out is removed and leaves a heap of masonry
-a third of its own height, which a robot climbs.  What the rest of this
-section describes — a hex's HP depending on how its neighbours brace it
-— is plan 12 B3, and B2 is what gives it something to vary.
+⚠ **Built.**  Plan 12 B2 made a wall breakable and B3 made its HP
+structural: `src/damage.loft::brace_of` classifies a hex by its
+structure neighbours and `numbers.json` § wall.brace_factor_* scales
+the kind's figure by it.  A besieged wall comes down when an enemy with
+no route has spent `enemy_regular.damage_to_wall` (1 HP/s) into it for
+long enough; it is then removed and leaves a heap of masonry a third of
+its own height, which a robot climbs.
+
+⚠ **"Straight" is not what the eye calls straight.**  Two neighbours
+brace along one line only when they are OPPOSITE across the hex, and
+odd-r offset makes that counter-intuitive: a **row** (constant `r`) is
+collinear at every hex, but a **column** (constant `q`) zigzags — row
+parity flips which delta each direction carries — so a "vertical" wall
+a player drags is a crinkle-crankle wall and is stronger for it.
+Measured, not reasoned about; `tests/12_b3_bracing.loft` states it.
 
 `wall.wall_hp` (100) is the *braced* figure.  **A wall hex with no
 support from either side is easier to push over, and has less HP
@@ -271,18 +292,49 @@ perimeter (every wall hex has ≥ 2 wall neighbours)"*.  That rule
 says an unsupported end is a way **in**; this one says it is also
 the place the wall **breaks**.
 
-**It interacts with the siege, and the interaction is the point.**
-Enemies spread along the perimeter and chew everywhere at once, so
-they do not need to *find* the weak hex — the perimeter fails at
-its least-braced point on its own.  A player who rings the core in
-a smooth curve is buying HP; one who runs a straight fence with
-two loose ends has built the breach for them.
+**It was designed to interact with the siege, and that half is NOT
+built.**  The intention: enemies spread along the perimeter and chew
+everywhere at once, so they never have to *find* the weak hex — the
+perimeter fails at its least-braced point on its own.  A player who
+rings the core in a smooth curve is buying HP; one who runs a straight
+fence with two loose ends has built the breach for them.
+
+⚠ **Plan 12 B3 measured that, and it does not happen.**  Six robots
+released across a six-wide slab at a fence spend twelve ticks chewing
+the braced MIDDLE and land **nothing at all** on either end.  The
+reason is § Sealing the perimeter's own caveat: the spread is by
+APPROACH and never by sidestepping, so enemies converge onto the hexes
+their routes cross — which, with the core behind the middle of a fence,
+is its strongest part.  A loose end is only the breach if an enemy's
+route happens to meet it.
+
+Closing the gap needs the equal-distance sidestep that
+[plan 11](../plans/11-flow-field/README.md) F7 explicitly did not
+build: a second steering rule, not a fix.  Until then the bracing rule
+is exact and its consequence is latent —
+`tests/12_b3_bracing.loft::test_a_besieged_fence_is_bitten_where_the_route_meets_it_not_where_it_is_weak`
+asserts today's behaviour, so the day somebody builds that steering it
+goes red and points at this paragraph.
 
 ⚠ Curvature is measured on the hex lattice, so "turning" means the
 two wall neighbours are not opposite each other across the hex —
-a 60° or 120° bend, not a straight-through.  The exact multipliers
-belong in [`NUMBERS.md`](NUMBERS.md) § `wall`; the ordering above
-is the design, the numbers are tuning.
+a 60° or 120° bend, not a straight-through.  Three or more neighbours
+is a junction and takes the full figure; there is no class above full.
+The multipliers live in
+[`examples/numbers.json`](../examples/numbers.json) §
+`wall.brace_factor_*` (1.0 / 0.6 / 0.3 / 0.15); the ordering above is
+the design, the numbers are tuning.
+
+⚠ **Bracing is computed from the world, never stored**, so a perimeter
+UNZIPS: the hex beside a fresh breach becomes the new end and loses
+more than half its allowance.  Nothing implements that — it falls out
+of asking the question fresh — and the cascade takes one TICK per link,
+because a break is only ever resolved against the state its tick began
+with.
+
+⚠ **Terrain does not brace.**  Support comes from a hex's structure
+neighbours, so a wall anchored against a cliff is still an end.
+Arguable as design; written down rather than assumed.
 
 ## What a broken wall leaves
 

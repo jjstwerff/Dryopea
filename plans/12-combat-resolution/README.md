@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**B0, B1, B2 and B4 shipped** (2026-08-13). B3 and B5a are next, both
+**B0, B1, B2, B3 and B4 shipped** (2026-08-13). B5a is next; B6 is
 unblocked.
 
 B0 was a probe and changed no mechanic: it wrote down what the
@@ -75,6 +75,50 @@ silently, with no warning and no type error, and it reads as a bug in
 the thing being mutated. Indexing the vector inline or using a loop
 variable both write through. Six tests failed on it before the probe
 found it; recorded in `CLAUDE.md` § Loft language gotchas.
+
+**B3 made a wall's HP structural.** `brace_of` classifies a hex by its
+structure neighbours — braced / straight run / end / stub — and
+`numbers.json` § wall.brace_factor_* scales the kind's figure by
+1.0 / 0.6 / 0.3 / 0.15. Equal damage over two six-hex walls: the
+fence loses both ends and the ring loses nothing, which is the
+invariant gate verbatim. Suite **667 green**.
+
+⚠⚠ **B3 FALSIFIED the spec's own claim about why it matters, and the
+correction is the phase's most valuable output.**
+`ENEMY_MOVEMENT.md` said the two rules combine — *"enemies spread along
+the perimeter and chew everywhere at once, so they do not need to FIND
+the weak hex"*. **Measured: they do not.** Six robots at a six-wide
+fence spend twelve ticks chewing the braced MIDDLE and land **nothing
+at all** on either end. The cause is plan 11 F7's own caveat: the
+spread is by APPROACH and never by sidestepping, so enemies converge
+onto the hexes their routes cross — which, with the core behind the
+middle of a fence, is its strongest part.
+
+So the bracing rule is exact and its consequence is **latent**: a
+player's loose end is only the breach if a route happens to meet it.
+Closing the gap needs the equal-distance sidestep F7 explicitly did not
+build — a second steering rule, not a fix, and not this plan's. The
+test asserts TODAY's behaviour so that building it turns the gate red
+and points at the paragraph to rewrite.
+
+⚠ **Only a ROW is straight on this lattice**, and a fixture on the
+wrong axis would have tested the opposite of what it said. Odd-r row
+parity flips which delta a direction index carries, so a constant-`q`
+column zigzags and every hex in it reads as BRACED — a "vertical" wall
+a player drags is a crinkle-crankle wall and is stronger for it.
+Measured against `lat_neighbour` before the fixtures were written.
+
+⚠ **A perimeter UNZIPS, for free.** Bracing is computed from the world
+rather than stored, so the hex beside a fresh breach becomes the new
+end and loses more than half its allowance. The cascade takes one TICK
+per link, because `damage_resolve` collects everything at or past its
+limit before it breaks any of it.
+
+⚠ **What it cost:** five fixtures in B2's file plus
+`a-wall-breaks.keys`, all the same cause — a lone wall plugging a
+one-hex corridor is a STUB and worth 15 HP, not 100. `numbers.json`'s
+100 is the BRACED figure and almost nothing on a real map gets it. The
+scenario reads better for it.
 
 ⚠ **Cost, honestly.** B2 adds one `enemy_target` per live enemy per
 tick — it reuses the fields the tick already built, so no new sweep —
@@ -286,7 +330,7 @@ pins, and the input that must be **refused**.
 | **B0** ✓ | a robot refuses a 0.1 m rise today; an erased `wall` hex is impassable today | the probe records what IS, before anything changes it | — (B0 asserts the present, so its own gate is that B1 turns it red) |
 | **B1** ✓ | robot steps onto rubble at `climb`; refuses at `climb + ε`; **clearing a pile leaves the hex identical to before it was piled** | a ramp is a height under the climb, not a flag — and rubble is a layer, so clear is an identity | rubble one notch above the climb **must** be refused, else the height rule is decorative; a cleared hex that differs from the authored one means the ground was overwritten after all |
 | **B2** ✓ | wall at 1 HP does not break; at 0 HP the hex carries rubble and is standable | breaking OPENS a route (the sea trap is closed) | a broken hex that reads as `sea` — impassable — is the bug this phase exists to avoid |
-| **B3** | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
+| **B3** ✓ | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
 | **B4** ✓ | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
 | **B5a** | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
 | **B5b** | tower kills through `wall`; does **not** kill through `wall_high` or `steep_rock`; stops firing after 30 shots | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS |
@@ -304,7 +348,7 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | **B0** — the climb number, and what a tick is worth | XS | `tests/12_b0_probe.loft` — asserts TODAY's refusals so B1 must turn them red | **Done** |
 | **B1** — rubble is a clearable layer, and a robot can climb it | S→M | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; clear round-trips to the authored hex; F1b's wall stays green. Plus: B0's three ⚠ B1 tests turn red, and F6/F8's 1.5 m pile fixtures move above the new climb | **Done** |
 | **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | **Done** |
-| **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | Open |
+| **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | **Done** |
 | **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | **Done** |
 | **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | Open |
 | **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires | Blocked on B5a |
@@ -343,6 +387,40 @@ zone ramps itself shut and then over the wall. That is not a defect of the
 scenario, it is the scenario's most interesting outcome, and B7 should
 report which of the two ends the base: the wall broke, or the pile went
 over it.
+
+### ⚠ A wreck is not rubble yet — recorded, not built
+
+Project owner, 2026-08-13, and it is a real mechanic rather than a note:
+**the conversion from a broken machine to a heap of rubbish is not
+instant.** A fresh wreck still has things that can be harvested off it
+directly; ignored, they deteriorate into generic rubbish. So a pile has an
+AGE as well as a height, an enemy class carries **how quickly it breaks
+down**, and a tower's **damage type** influences it — a shot that vaporises
+leaves less to salvage than one that knocks a machine over.
+
+Where it lands, in the terms this plan already uses:
+
+- **Not the source axis.** `height.loft` stores wreckage / carapace / masonry
+  — a closed set, one per hex — and that stays a material label. Freshness is
+  a second, continuous axis on the same pile.
+- **It is the SALVAGE-CONTENTS axis** this plan already deferred (§ The
+  rubble is the hill): open, several types per hex, so a palette kind cannot
+  hold it and it belongs on [plan 06 S1](../06-editor-stencil-pipeline/README.md)'s
+  stacked layer. Decay is what makes that layer *shrink* as well as grow.
+- **It gives the tower a damage TYPE**, which B5 does not currently have —
+  `numbers.json` § tower has `damage_per_shot` and no type. B5 should avoid
+  foreclosing one; it need not build it.
+- **It gives an enemy class a decay rate**, a `numbers.json` row per class
+  alongside the `body_height` B4 added.
+- **It gives the player a clock they can lose.** Today collecting bodies is
+  purely a passability counter-play (clear the ramp); this makes it a *timed*
+  economic one — drive in early for salvage, or late for safety and get
+  rubbish. That is the same shape as the scramble decision the whole game is
+  built on, which is what makes it worth building rather than a detail.
+
+**Not this plan's.** Plan 12 ends at the exchange resolving; nothing here has
+a player, an item layer, or a tower damage type. It wants its own plan once
+plan 06 S1 exists to hold the contents.
 
 ## Open questions
 

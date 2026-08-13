@@ -50,6 +50,13 @@ const WALL_HIGH: integer = 10;
 const WALL_METRES:      float = 3.0;
 const WALL_HIGH_METRES: float = 5.0;
 
+// ⚠ **What a lone seal is actually worth, since plan 12 B3.**  The
+// wall at (2, 0) plugs a one-hex corridor, so it has no structure
+// neighbours at all — an isolated STUB, with nothing to push against
+// and 15% of a braced wall's HP.  `WALL_HP` is the BRACED figure and
+// almost nothing on a real map gets it.
+const SEAL_HP: float = WALL_HP * BRACE_FACTOR_STUB;
+
 fn as_u8(n: integer) -> u8 {
     n as u8? ?? 0
 }
@@ -95,10 +102,16 @@ fn test_only_a_structure_has_hp() {
     tos_pw  = sealed_corridor(6);
     paint(tos_pw, 4, 0, as_u8(WALL_HIGH));
 
-    assert(structure_max_hp(tos_pal, tos_pw, 2, 0) == WALL_HP, "a wall is 100 HP");
-    assert(structure_max_hp(tos_pal, tos_pw, 4, 0) == WALL_HIGH_HP, "a high wall is 200");
-    assert(structure_max_hp(tos_pal, tos_pw, 1, 0) == 0.0, "grass has none");
-    assert(structure_max_hp(tos_pal, tos_pw, 9, 9) == 0.0, "and neither does open sea");
+    assert(structure_base_hp(tos_pal, tos_pw, 2, 0) == WALL_HP, "a wall's KIND is 100 HP");
+    assert(structure_base_hp(tos_pal, tos_pw, 4, 0) == WALL_HIGH_HP, "a high wall's is 200");
+    assert(structure_base_hp(tos_pal, tos_pw, 1, 0) == 0.0, "grass has none");
+    assert(structure_base_hp(tos_pal, tos_pw, 9, 9) == 0.0, "and neither does open sea");
+
+    // ⚠ And what one is WORTH depends on the world around it — plan 12
+    // B3.  This wall stands alone, so it is a stub.
+    assert(structure_max_hp(tos_pal, tos_pw, 2, 0) == SEAL_HP,
+           "a lone wall is a stub: {structure_max_hp(tos_pal, tos_pw, 2, 0)} HP");
+    assert(structure_max_hp(tos_pal, tos_pw, 1, 0) == 0.0, "and grass is still nothing");
 
     assert(structure_breakable(tos_pal, tos_pw, 2, 0),  "a wall can be broken");
     assert(!structure_breakable(tos_pal, tos_pw, 1, 0), "grass cannot");
@@ -131,7 +144,7 @@ fn test_a_wall_under_a_pile_still_has_a_walls_hp() {
            "its surface is the heap on top");
     assert(painted_kind_name(tawp_pal, tawp_pw, 2, 0) == "wall",
            "and what the map has there is still a wall");
-    assert(structure_max_hp(tawp_pal, tawp_pw, 2, 0) == WALL_HP,
+    assert(structure_base_hp(tawp_pal, tawp_pw, 2, 0) == WALL_HP,
            "so it still has a wall's HP");
 }
 
@@ -144,8 +157,8 @@ fn test_an_empty_ledger_is_the_base_exactly_as_built() {
 
     assert(damage_count(tae_dl) == 0, "nothing has been hit");
     assert(damage_taken(tae_dl, 2, 0) == 0.0, "so nothing has absorbed anything");
-    assert(structure_hp(pal(), sealed_corridor(4), tae_dl, 2, 0) == WALL_HP,
-           "and the wall is at full HP without an entry to say so");
+    assert(structure_hp(pal(), sealed_corridor(4), tae_dl, 2, 0) == SEAL_HP,
+           "and the wall is at its full HP without an entry to say so");
 }
 
 fn test_damage_accumulates_and_repair_removes_the_entry() {
@@ -170,7 +183,7 @@ fn test_a_wall_at_one_hp_stands_and_at_zero_it_does_not() {
     tao_dl  = damage_layer_empty();
     tao_hl  = height_layer_empty();
 
-    damage_apply(tao_dl, 2, 0, WALL_HP - 1.0);
+    damage_apply(tao_dl, 2, 0, SEAL_HP - 1.0);
     assert(structure_hp(tao_pal, tao_pw, tao_dl, 2, 0) == 1.0, "one point left");
     assert(damage_resolve(tao_pal, tao_pw, tao_dl, tao_hl) == 0, "and it stands");
     assert(painted_kind_name(tao_pal, tao_pw, 2, 0) == "wall", "still a wall");
@@ -188,7 +201,7 @@ fn test_a_broken_wall_does_not_break_again() {
     tab_dl  = damage_layer_empty();
     tab_hl  = height_layer_empty();
 
-    damage_apply(tab_dl, 2, 0, WALL_HP * 3.0);
+    damage_apply(tab_dl, 2, 0, SEAL_HP * 3.0);
     assert(damage_resolve(tab_pal, tab_pw, tab_dl, tab_hl) == 1, "one break");
     assert(damage_count(tab_dl) == 0, "and the ledger forgot it: {damage_count(tab_dl)}");
     assert(damage_resolve(tab_pal, tab_pw, tab_dl, tab_hl) == 0, "with nothing left to resolve");
@@ -206,7 +219,7 @@ fn broken_corridor(hi: integer) -> (PaintedWorld, HeightLayer) {
     bc_pw = sealed_corridor(hi);
     bc_hl = height_layer_empty();
     bc_dl = damage_layer_empty();
-    damage_apply(bc_dl, 2, 0, WALL_HP);
+    damage_apply(bc_dl, 2, 0, SEAL_HP);
     damage_resolve(pal(), bc_pw, bc_dl, bc_hl);
     (bc_pw, bc_hl)
 }
@@ -338,7 +351,7 @@ fn test_a_besieging_enemy_spends_its_rate_one_tick_at_a_time() {
 fn test_the_break_lands_on_the_tick_after_the_one_that_caused_it() {
     tbl_pw = sealed_corridor(12);
     tbl_s  = besiege(9, tbl_pw);
-    damage_apply(tbl_s.damage, 2, 0, WALL_HP - 0.1);
+    damage_apply(tbl_s.damage, 2, 0, SEAL_HP - 0.1);
 
     wave_tick(tbl_s, pal(), tbl_pw, core());
     tbl_a = tbl_s.enemies[0] ?? Enemy {};

@@ -19,14 +19,14 @@
 # up INSIDE**.  `kind 2 0 grass` and `pile 2 0` say the two halves of a
 # break happened; only `enemy 0 0 0` says the breach is a way in.
 #
-# ── Why it does not tick out the whole 100 s ────────────────────
+# ── Why it does not tick the whole siege out ────────────────────
 #
-# One robot does 1 HP/s into a wall of 100 HP, which is 150 ticks — and
-# a run that spends 150 of them proving multiplication measures the
-# multiplication.  So this ticks far enough to watch the HP fall at the
-# rate the numbers say, softens the wall with one `damage` line, and
-# lets the SIEGE land the last of it.  Every step of the real path,
-# none of the waiting: `damage` cannot break anything, only a tick can.
+# One robot does 1 HP/s, so even this stub is 23 ticks of arithmetic
+# this run has already measured the rate of.  So it ticks far enough to
+# watch the HP fall at the rate the numbers say, softens the wall with
+# one `damage` line, and lets the SIEGE land the last of it.  Every
+# step of the real path, none of the waiting: `damage` cannot break
+# anything, only a tick can.
 #
 # ── The world ───────────────────────────────────────────────────
 #
@@ -73,10 +73,17 @@ count painted 13 13
 # The reading that makes the ones after it mean something.  A wall at
 # full HP twelve hexes from the nearest enemy is the state every later
 # assertion is measured against.
+#
+# ⚠ **15 HP, not 100 — the seal is a STUB.**  `numbers.json` § wall's
+# 100 is the BRACED figure, and this wall plugs a one-hex corridor with
+# no structure neighbours at all: nothing to push against, 15% of the
+# allowance (plan 12 B3).  A player who wants a wall to hold has to give
+# it something to lean on, and that is the whole of the bracing rule
+# stated as one number in a run.
 wave 1
 count alive 1 1
 count targets 0 0
-hp 2 0 100.0 100.0
+hp 2 0 15.0 15.0
 
 # ── Nine ticks: it arrives, and has not bitten yet ──────────────
 #
@@ -89,7 +96,7 @@ enemy 0 3 0
 enemies passable
 count targets 1 1
 target 0 2 0
-hp 2 0 100.0 100.0
+hp 2 0 15.0 15.0
 
 # ── Three ticks of siege: 1 HP/s, and a tick is 2/3 of a second ─
 #
@@ -97,11 +104,11 @@ hp 2 0 100.0 100.0
 # it is the reason `numbers.json` goes on saying HP/s rather than
 # HP/tick (`spawn.loft` § Why the SECONDS survive into the engine).
 tick 3
-hp 2 0 97.9 98.1
+hp 2 0 12.9 13.1
 enemy 0 3 0
 
 # ── Soften it, and let the siege finish the job ─────────────────
-damage 2 0 97.5
+damage 2 0 12.5
 hp 2 0 0.4 0.6
 
 # ⚠ The tick that breaks it does NOT let the robot through.  A wall

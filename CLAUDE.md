@@ -35,7 +35,8 @@ exists today.
 | Rubble: a runtime layer with a source, climbable at 2.0 m, clearable back to the authored ground | [12](plans/12-combat-resolution/README.md), B0 + B1 shipped |
 | A besieged wall loses HP, breaks into a heap of masonry, and the breach is a way IN | [12](plans/12-combat-resolution/README.md), B2 shipped |
 | Enemies have HP, die, and leave a body that raises its hex — so a kill zone ramps itself shut | [12](plans/12-combat-resolution/README.md), B4 shipped |
-| **No tower fires and nothing deals damage on its own** — only a besieging enemy does | [12](plans/12-combat-resolution/README.md), B3 + B5 next |
+| A wall's HP is STRUCTURAL — an end is worth 30% of a braced hex, a lone stub 15% — and a perimeter unzips from a breach | [12](plans/12-combat-resolution/README.md), B3 shipped |
+| **No tower fires and nothing deals damage on its own** — only a besieging enemy does | [12](plans/12-combat-resolution/README.md), B5 + B6 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -51,7 +52,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 648/648 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 667/667 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world).
 **Gate: 15 scripts green under `scripts/validate.sh`** (~13 s, 260
@@ -120,6 +121,15 @@ second steering rule and nobody has built it.
 ⚠ **You attack what you could STAND on and cannot climb** — a target is
 always a walkable surface, so an enemy at the water's edge besieges
 nothing.
+
+⚠ **The siege chews where the ROUTE meets the wall, never where the
+wall is weakest** — measured in plan 12 B3, and it falsifies what
+`ENEMY_MOVEMENT.md` § A wall's HP is structural used to claim.  Six
+robots at a six-hex fence land NOTHING on either end and everything on
+the braced middle, because the approaches converge on the hexes their
+routes cross.  So B3's bracing rule is exact and its consequence is
+latent; the missing half is F7's equal-distance sidestep, which is a
+second steering rule and still nobody has built it.
 
 ### Cost
 
@@ -649,7 +659,20 @@ src/
                    than the wall it replaced.
                    ⚠ Max HP is keyed on the palette NAME, not the
                    index — an index is storage, a name is what a
-                   modder edits around
+                   modder edits around.
+                   B3 added `brace_of` / `brace_name` / `brace_factor`:
+                   `structure_max_hp` is `structure_base_hp` times how
+                   the structures AROUND a hex hold it up.  ⚠ It is
+                   computed from the world and never stored, which is
+                   what makes a perimeter UNZIP from a breach.
+                   ⚠ `structure_breakable` asks the BASE figure and has
+                   to — `brace_of` asks it of all six neighbours, so
+                   routing it through `structure_max_hp` is an infinite
+                   recursion.
+                   ⚠ **Only a ROW is straight** — two neighbours brace
+                   along one line when their direction indices differ
+                   by exactly 3, and odd-r row parity means a
+                   constant-`q` COLUMN zigzags and reads as braced
 
   flow.loft        the distance field (plan 11 F2) — flow_build(pal,
                    pw, kind, core) -> FlowField, a BFS out from the
@@ -1104,6 +1127,7 @@ signature.
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — max minus taken.  ⚠ 0.0 answers BOTH "broken" and "never a structure"; ask `structure_breakable` first if you need to tell them apart |
+| Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — the kind's figure scaled by `brace_of`.  ⚠ `numbers.json`'s wall_hp (100) is the BRACED number; a lone plug in a corridor is a STUB and gets 15 |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |

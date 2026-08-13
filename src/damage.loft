@@ -73,6 +73,116 @@ use passable;
 pub const WALL_HP:      float = 100.0;   // numbers.json § wall.wall_hp
 pub const WALL_HIGH_HP: float = 200.0;   // numbers.json § wall.wall_high_hp
 
+// ─── Bracing: how much of that HP a hex actually gets (B3) ──────
+//
+// `docs/ENEMY_MOVEMENT.md` § A wall's HP is structural, not a
+// constant.  A wall hex with no support from either side is easier to
+// push over — the same reason a free-standing straight fence topples
+// and a crinkle-crankle wall stands one brick thick because its
+// curvature braces it.  The ordering below is the design; the
+// multipliers are tuning and live in `numbers.json` § wall.
+//
+// ⚠ **The interaction is the point.**  Enemies spread along a
+// perimeter and chew everywhere at once (`ENEMY_MOVEMENT.md` § Sealing
+// the perimeter), so they never have to FIND the weak hex — the
+// perimeter fails at its least-braced point on its own.  A player who
+// rings the core in a curve is buying HP; one who runs a straight
+// fence with two loose ends has built the breach for them.
+//
+// ⚠ **And it is computed from the world, not stored** — so when a hex
+// breaks, its neighbours are re-classified on the spot and a fence
+// UNZIPS from its ends: the hex beside the hole becomes the new end
+// and loses more than half its allowance.  Nothing implements that; it
+// falls out of asking the question fresh.
+//
+// New variants APPEND — the numbers reach `numbers.json` by name, not
+// by index, but a run in progress must not be re-labelled underneath
+// itself.
+pub const BRACE_FULL:     integer = 0;   // a turning pair, or a junction
+pub const BRACE_STRAIGHT: integer = 1;   // two neighbours, straight through
+pub const BRACE_END:      integer = 2;   // one neighbour — cantilevered
+pub const BRACE_STUB:     integer = 3;   // none — nothing to push against
+
+// numbers.json § wall.brace_factor_*.
+pub const BRACE_FACTOR_FULL:     float = 1.0;
+pub const BRACE_FACTOR_STRAIGHT: float = 0.6;
+pub const BRACE_FACTOR_END:      float = 0.3;
+pub const BRACE_FACTOR_STUB:     float = 0.15;
+
+// The bracing class's name, for a message a player or a failing test
+// can read.
+pub fn brace_name(brace: integer) -> text {
+    if brace == BRACE_FULL     { return "braced"; }
+    if brace == BRACE_STRAIGHT { return "straight run"; }
+    if brace == BRACE_END      { return "end"; }
+    if brace == BRACE_STUB     { return "stub"; }
+    "brace {brace}"
+}
+
+// What fraction of its kind's HP a hex of this class gets.
+//
+// An unknown class takes the FULL factor — the most generous one.  A
+// class the table has not learned about yet must not quietly halve
+// every wall on the map; a bug that makes walls too strong is visible
+// in play, and one that makes them too weak reads as balance.
+pub fn brace_factor(brace: integer) -> float {
+    if brace == BRACE_STRAIGHT { return BRACE_FACTOR_STRAIGHT; }
+    if brace == BRACE_END      { return BRACE_FACTOR_END; }
+    if brace == BRACE_STUB     { return BRACE_FACTOR_STUB; }
+    BRACE_FACTOR_FULL
+}
+
+// How this hex is braced by the structures around it.
+//
+// ⚠ **"Straight" is a DIRECTION-INDEX opposition, and on this lattice
+// that is not what a player's eye calls straight.**  Two neighbours
+// brace along one line only when their direction indices differ by
+// exactly 3 — `lat_neighbour`'s compass is 0 = E, 1 = SE, 2 = SW,
+// 3 = W, 4 = NW, 5 = NE, so the opposite pairs are 0/3, 1/4 and 2/5.
+//
+// Measured on the real lattice, because odd-r offset makes it
+// counter-intuitive:
+//
+//   - a **ROW** (constant `r`, `q` varying) is collinear at every hex,
+//     on even and odd rows alike — dirs 3 and 0.  That is the straight
+//     fence.
+//   - a **COLUMN** (constant `q`, `r` varying) is NOT.  The parity of
+//     the row flips which delta the direction index carries, so the
+//     chain zigzags: dirs 2 and 4 at one hex, 1 and 5 at the next.  A
+//     "vertical" wall a player drags is a crinkle-crankle wall and is
+//     stronger for it, which is correct and is worth knowing before
+//     reading a test fixture.
+//   - a radius-1 **RING** is turning at all six hexes.
+//
+// A junction — three or more structure neighbours — is braced from
+// more than one line and takes the full figure.  There is no class
+// above full.
+pub fn brace_of(pal: vector<GroundType>, pw: PaintedWorld,
+                q: integer, r: integer) -> integer {
+    bo_here = Hex { q: q, r: r };
+    bo_n  = 0;
+    bo_d1 = -1;
+    bo_d2 = -1;
+    // ⚠ Every neighbour comes from `lat_neighbour` — there is no
+    // constant (dq, dr) table in odd-r, because the delta depends on
+    // row parity (`lattice.loft`).
+    for bo_d in 0..6 {
+        bo_nb = lat_neighbour(bo_here, bo_d);
+        if structure_breakable(pal, pw, bo_nb.q, bo_nb.r) {
+            bo_n += 1;
+            if bo_d1 < 0 { bo_d1 = bo_d; } else { bo_d2 = bo_d; }
+        }
+    }
+
+    if bo_n == 0 { return BRACE_STUB; }
+    if bo_n == 1 { return BRACE_END; }
+    // The scan runs 0..6 in order, so bo_d1 < bo_d2 and an opposite
+    // pair is a difference of exactly 3 — no modular arithmetic, and
+    // no second direction table to keep in step with the lattice.
+    if bo_n == 2 && bo_d2 - bo_d1 == 3 { return BRACE_STRAIGHT; }
+    BRACE_FULL
+}
+
 // What a broken structure leaves behind, as a fraction of its own
 // height — `numbers.json` § wall.rubble_height_fraction.
 //
@@ -219,20 +329,39 @@ pub fn damage_count(dl: const DamageLayer) -> integer {
 
 // ─── What a structure is worth ──────────────────────────────────
 
-// The HP a hex of this kind starts with — 0.0 for anything that is not
-// a breakable structure.
+// The HP a hex of this kind starts with BEFORE bracing — 0.0 for
+// anything that is not a breakable structure.
 //
 // ⚠ Keyed on the palette NAME rather than the index, because an index
 // is storage and a name is the thing `palette.json` lets a modder
 // rename a colour under.  A modder who adds a `wall_low` gets 0.0 and
 // an indestructible barrier, which is visible; one who reorders the
 // file gets the right answer, which a hard-coded index would not give.
+//
+// ⚠ Almost nothing wants this figure.  `numbers.json`'s 100 is the
+// BRACED number, and what a hex on the map is actually worth is
+// `structure_max_hp` — this is only the half of it that the kind
+// decides.
+pub fn structure_base_hp(pal: vector<GroundType>, pw: PaintedWorld,
+                         q: integer, r: integer) -> float {
+    sbh_name = painted_kind_name(pal, pw, q, r);
+    if sbh_name == "wall"      { return WALL_HP; }
+    if sbh_name == "wall_high" { return WALL_HIGH_HP; }
+    0.0
+}
+
+// The HP the structure at this hex actually has — its kind's figure,
+// scaled by how the structures around it brace it (B3).
+//
+// ⚠ **It is a function of the WORLD, not of the hex**, so it moves when
+// a neighbour is built or broken.  That is what makes a perimeter
+// unzip from a breach rather than fail hex by independent hex, and it
+// is why nothing caches it.
 pub fn structure_max_hp(pal: vector<GroundType>, pw: PaintedWorld,
                         q: integer, r: integer) -> float {
-    smh_name = painted_kind_name(pal, pw, q, r);
-    if smh_name == "wall"      { return WALL_HP; }
-    if smh_name == "wall_high" { return WALL_HIGH_HP; }
-    0.0
+    smh_base = structure_base_hp(pal, pw, q, r);
+    if smh_base <= 0.0 { return 0.0; }
+    smh_base * brace_factor(brace_of(pal, pw, q, r))
 }
 
 // Is there something here that CAN be broken?
@@ -240,9 +369,15 @@ pub fn structure_max_hp(pal: vector<GroundType>, pw: PaintedWorld,
 // Terrain is not: `steep_rock` stops a robot as thoroughly as a wall
 // does and no phase of this plan gives it HP — a cliff is the map, and
 // a map that erodes under fire is a different game.
+//
+// ⚠ It asks the BASE figure, and it has to: `brace_of` asks this of
+// all six neighbours, so routing it through `structure_max_hp` — which
+// is base times bracing — would be an infinite recursion.  "Is there a
+// structure here" is a question about the KIND; how well it is held up
+// is a separate one.
 pub fn structure_breakable(pal: vector<GroundType>, pw: PaintedWorld,
                            q: integer, r: integer) -> boolean {
-    structure_max_hp(pal, pw, q, r) > 0.0
+    structure_base_hp(pal, pw, q, r) > 0.0
 }
 
 // What the structure at (q, r) has left, in HP — 0.0 both for "broken"

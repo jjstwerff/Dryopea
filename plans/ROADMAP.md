@@ -72,6 +72,7 @@ ignore the lot and still complete missions.
 | Ammo for variant weapons | drafted | DESIGN § 7 | Per-shot consumable, distinct from decay |
 | Tactical type-swap mid-combat | drafted | DESIGN § 7 | Different-type spare in swap pit |
 | New tower order via beacon ferry | drafted | DESIGN § 7 | Carry beacon from core to build site |
+| **Wreck decay + damage types** | **designed 2026-08-13** | ENEMY_MOVEMENT § Bodies are terrain | A fresh wreck carries harvestable salvage that deteriorates into generic rubbish if ignored. Needs: a decay clock on the rubble layer, a per-class breakdown rate, and a tower DAMAGE TYPE that influences it. Turns "collect the bodies" from a spatial counter-play into a timed economic one. Rides on the salvage-contents layer (§ Editor-to-entity, plan 06 S1), not on the rubble layer's source label — see [`plans/12`](12-combat-resolution/README.md) § A wreck is not rubble yet |
 
 Plan-shaped candidate: `plan-future-XX — Tower mechanics
 depth` covering the strain / boost / overload / hot-swap
