@@ -16,82 +16,56 @@ it came from, so grabbing salvage *hastens* the overrun.
 Evacuated components give an advantage at the next base.  A run
 is a sequence of bases, chained by what you carry out.
 
-**Status: active implementation.**  Plan 01 (in-game ground-type
-editor) has shipped E1–E4 + an integration smoke test + the
-runnable E1-live editor (`src/main.loft`).  Plan 03 (marker layer
-+ multi-direction spawns) has shipped M1-M5 — sidecar JSON save,
-Tab-toggled Ground/Marker editor mode with HUD badge, spawn
-placement + R/Shift+R rotation, hot-pink triangle render
-overlay, and a runtime wave engine + spawn director with
-approach-mode enemy tick.  Plan 07 (shared world substrate) has
-W0 partially landed — `gridmesh` adopted as the chunk/dirty
-layer (`src/chunks.loft`).  Plan 08 (game validation) has V0 +
-V1 shipped — the editor input seam (`src/editor_step.loft`) so
-EVERY editor action is driven headlessly and `src/main.loft` is
-a GL shell that polls, steps and renders; the `.keys` script
-runner (`src/script.loft`) that plays a written-down run through
-that seam; and `snap`, which photographs the editor's own frame
-(`src/editor_view.loft`, shared with the GL loop).  V2p answered
-the separability question with no code — the palette separates,
-world renders contain ONLY exact palette colours, and the real
-hazard is HUD contamination, so the `frame` measurement reads
-the world layer rather than the composited shot.  V2 built the
-instrument on that answer: six measurement commands, the
-classifier in `src/measure.loft`, and a wave for `count alive`
-to count.  V3 shipped the five scenario scripts in
-`tests/scripts/*.keys` — including `a-wave-approaches`, the
-first thing here that asserts the GAME works rather than that a
-function returns.  V4 closed the plan with the gate itself:
-`scripts/validate.sh` / `make validate` sweeps every `.keys`
-script, prints each measurement beside its band, and exits
-non-zero on one out of band.
+The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md); the
+fiction in [`docs/SETTING.md`](docs/SETTING.md); the feature
+roadmap in [`plans/ROADMAP.md`](plans/ROADMAP.md).
 
-**Plan 08 is complete.**  Its first real run also caught what it
-was built to catch: on the NATIVE backend `load_palette` answers
-0 entries (a silent `text as vector<Struct>` miscompile — filed
-in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
-test could see because `loft test` runs the interpreter only.
-Both gates therefore run interpreted, as `make play` already did.
+## Status
 
-**Plan 09 (lattice conversion) is COMPLETE** — C0-C6 plus the whole I
-half.  dryopea speaks **pointy-top odd-r offset** throughout (§ Hex
-convention), `src/lattice.loft` DELEGATES to `hex_grid` so it cannot
-drift from the ecosystem, and **C6 deleted the axial layer** —
-`src/world.loft` is gone.  The I half collapsed two key tables into
-`src/bindings.loft`, so a `.keys` run now types on the same table the
-player does.  ⚠ The gate was an ORACLE, never a rebaselined golden: a
-golden agrees with a shear, which is how moros#10 survived.  The
-conversion's strongest evidence is that **233 measurements over 14
-scripts did not move** — C2 proved the relabel preserves DISTANCE, so
-under a correct conversion they cannot.
+**Active implementation.**  Each plan's own `## Status` is the source of
+truth and [`plans/README.md`](plans/README.md) indexes them; this is what
+exists today.
 
-**Plan 11 (flow field) is COMPLETE** — F0-F8 shipped; F4 was cancelled by
-F0's probe.  F1 is the
-instrument, not the movement: `enemy <i> <q> <r>` and `enemies
-passable` say where an enemy is and whether its CLASS may be there,
-and `src/passable.loft` is the height-step rule they read.  **F1b is
-the first wall in dryopea that works** — `enemy_tick` consults that
-same rule and stops in front of what it cannot cross.  F2 is the
-distance field (`src/flow.loft`): a BFS out from the core, one field
-per class, where **no-route is a LARGE value and never 0** — 0 is
-"at the core", and "smallest distance wins" must refuse a cell with
-no route rather than prefer it.  F3 is the arrow on top of it, gated
-by an exhaustive sweep: from EVERY reachable cell, following the
-arrows reaches the core in exactly `distance` steps.  **F5 makes
-enemies follow it** — `wave_tick` rebuilds the field ONCE per tick
-before anybody moves (one per class in the roster), and `enemy_tick`
-steps down it; **F5b made the scrambler bubble the mode
-selector** it was always specified to be: inside 25 hexes the field
-steers, outside it the spawn heading does.  ⚠ The bubble is a
-STRAIGHT-LINE distance, never a route length — it is a jamming
-sphere, so an enemy with no route at all is still inside it.  **F5c
-makes companions block a step** (`src/occupancy.loft`): an enemy takes
-the first FREE entry of `flow_steps` — the whole preference ordering —
-so two enemies wanting one hex end on two.  **F6 makes passability the
-spec's rule verbatim** — `height(to) - height(from) <= climb(class)`,
-an EDGE and not a hex — with `src/height.loft` as the runtime layer a
-body pile raises, and the fields keyed by CLIMB LIMIT rather than by
-class.
+| What works | Plan |
+|---|---|
+| A hex editor: camera, palette, click/drag paint, markers, undo, save/load | [01](plans/01-ground-editor/README.md) + [03](plans/03-marker-layer-and-spawns/README.md) |
+| Every editor action driven headlessly through ONE seam; `.keys` scripts that replay a run, photograph it and MEASURE the frame | [08](plans/08-game-validation/README.md) |
+| Pointy-top odd-r offset throughout, delegated to `hex_grid`; the axial layer is deleted | [09](plans/09-lattice-conversion/README.md) |
+| Enemies that spawn, route round walls per class, spread rather than stack, and besiege a sealed perimeter | [11](plans/11-flow-field/README.md) |
+| **Nothing takes damage** — no tower fires, no enemy dies, no wall breaks | [12](plans/12-combat-resolution/README.md) is open |
+
+**Suite: 569/569 green under `scripts/test.sh`** (~33 s — the `frame`
+measurements classify full 960x720 frames, and the cost gate ticks a
+radius-40 world).
+**Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
+measurements).
+
+⚠ Do not run two `scripts/test.sh` at once — both pre-clean
+`tests/actual/`, so they clobber each other and fail for no reason.
+
+⚠ **Both gates run INTERPRETED**, and that is not a preference.  On the
+NATIVE backend `load_palette` answers 0 entries — a silent `text as
+vector<Struct>` miscompile, filed in
+[`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md) — which no test could
+see, because `loft test` runs the interpreter only.
+
+## Hard-won rules
+
+Every rule here cost a real defect to learn, and most of them describe a
+test that CANNOT see the thing it appears to test.  They are grouped by
+what they protect.
+
+### Movement + passability
+
+**How an enemy moves today.**  `wave_tick` rebuilds the distance field
+ONCE per tick before anybody moves — one field per climb limit in the
+roster — and `enemy_tick` steps down it.  Two steering modes hand off at
+the **scrambler bubble**: inside 25 hexes the field steers, outside it the
+spawn heading does.  An enemy with no route at all follows the DESIRE
+field instead and besieges what it cannot climb.
+
+⚠ **The bubble is a STRAIGHT-LINE distance, never a route length** — it is
+a jamming sphere, so an enemy with no route whatsoever is still inside it.
 
 ⚠ **Passability is TWO questions, and they filter different things.**
 The field filters its NODES by the surface (`can_stand`) and its EDGES
@@ -109,10 +83,10 @@ there could step down and walk home.  Nothing routes onto them —
 `flow_build`'s BFS asks `can_step(n, a)` and not `can_step(a, n)`: the
 sweep runs outward and the enemy walks inward.
 
-**F7 is the siege**: an enemy with no route follows the DESIRE field —
-`flow_desire`, the same sweep with the climb lifted, so walls are
-passable — and attacks where the height rule refuses the next step.
-`enemy_target` names that hex.  ⚠ **The spread is by APPROACH, not by
+**The siege.**  `flow_desire` is the same sweep with the climb lifted, so
+walls are passable; an enemy follows it and attacks where the height rule
+refuses the next step.  `enemy_target` names that hex.
+⚠ **The spread is by APPROACH, not by
 sidestepping**: enemies from different directions meet the wall at
 different hexes, but four down ONE corridor still queue, because the
 desire gradient points AT the wall rather than along it.  Chewing one
@@ -123,10 +97,11 @@ second steering rule and nobody has built it.
 always a walkable surface, so an enemy at the water's edge besieges
 nothing.
 
-**F8 measured the tick against the design's own numbers** — 80 enemies
-(the largest authored wave), a radius-40 world (the haze bound), 1.5
-hex/s (so a tick has ~667 ms) — and found it running at **830 ms, over
-budget**.  The rebuild was not why.
+### Cost
+
+**The tick's budget comes from the design's own numbers** — 80 enemies
+(the largest authored wave), a radius-40 world (the haze bound) and
+1.5 hex/s, so a tick has **~667 ms**.  It runs at ~125 ms.
 
 ⚠ **NEVER bind a `FlowField` (or any struct with a big hash) to a
 local in a per-enemy path.**  A whole-value bind COPIES the heap value,
@@ -148,9 +123,12 @@ is already written and green against the from-scratch reference; the
 trigger for revisiting is the budget test going red or `numbers.json`
 raising the wave list or the world radius.
 
+### Testing something that moves
+
 ⚠ **A 1-hex-wide corridor cannot tell a flow field from a fixed
 heading** — both give the identical path, so every enemy test dryopea
-had was blind to F5.  A scenario that means to exercise routing needs
+had was blind to the field when it landed.  A scenario that means to
+exercise routing needs
 a route that leaves the heading's line: a heading of 4 is `(-1, 0)`,
 so `enemy 0 3 -1` is a hex no heading can reach.  That is the shape
 to reach for when gating a movement change.
@@ -169,44 +147,30 @@ walking wave is a SPAN, not a point (`range 4 7`, not `range 4 4`),
 arrived" means one enemy per hex packed against the core, never N on
 `(0, 0)`.
 
-⚠ **The neighbour relation lives in `src/lattice.loft` and nowhere
-else.**  `lat_neighbour` / `lat_neighbours` are the only place a hex
-coordinate may be stepped, and they DELEGATE to `hex_grid`.
-Everything that computes adjacency, reach or a route calls them; a
-`+ 1` on a `q` or `r` outside them is the bug (it is how moros#10
-sheared every reach computation), and in odd-r there is deliberately
-no constant `(dq, dr)` table to reach for either — the delta depends
-on `r & 1`.  Routing through the one table is what kept plan 11's
-distances still across plan 09: the table converted, and no distance
-moved (233 measurements, unchanged — C5's gate).
+⚠ **Route every step through `lat_neighbour`** (§ Hex convention has the
+rule).  It is what let the whole lattice convert with **233 measurements
+unchanged** — the one table converted, so no distance could move.  A `+ 1`
+on a `q` or `r` anywhere else is the bug, and it is how moros#10 sheared
+every reach computation.
 
 ⚠ **A walking test must paint the ground it walks on.**  An unpainted
-hex IS sea, so after F1b a wave over a blank map does not move at
+hex IS sea, so a wave over a blank map does not move at
 all, and `enemies passable` over one is red.  Every scenario that
 walks enemies drags a corridor first; that is the game's rule, not a
 harness quirk.
 
 ⚠ **A world where every source hex is at 0 m cannot tell "the step is a
-RISE" from "the step is the destination's height".**  That is every
-world dryopea had before F6, so the whole rule could change with the
-suite green.  The case that discriminates is an enemy walking ALONG
-raised ground it could never have climbed onto — level steps all the
-way, and a drop at the end.
+RISE" from "the step is the destination's height".**  A world like that
+lets the whole height rule change with the suite green.  The case that
+discriminates is an enemy walking ALONG raised ground it could never have
+climbed onto — level steps all the way, and a drop at the end.
 
 ⚠ **"N enemies attack N hexes" does NOT gate the desire field.**  Six
 enemies released on six sides spread across six wall hexes with the
 steering disabled too — their spawn headings already take them to
 different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
-and a heading the identical path (the third time this plan hit that).
-
-**Suite: 569/569 green under `scripts/test.sh`** (~33 s — the `frame`
-measurements classify full 960x720 frames, and F8's cost gates tick a
-radius-40 world).
-**Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
-measurements).
-⚠ Do not run two `scripts/test.sh` at once — both pre-clean
-`tests/actual/`, so they clobber each other and fail for no reason.
+and a heading the identical path.
 
 ### Profiling the suite — and why the wall clock cannot do it
 
@@ -765,6 +729,11 @@ still adjacent and one side apart, which is all a convex fill needs.
   [`tests/golden/README.md`](tests/golden/README.md).  A golden is
   a review aid, not the drawing's gate: the exact ones live in
   `tests/09_c3_geometry.loft`.
+  ⚠ **A golden AGREES WITH A SHEAR.**  Rebaseline it and it certifies
+  whatever the code now draws, so it cannot gate a coordinate or
+  geometry change at all — that needs an independent ORACLE (plan 09
+  used `hex_grid` itself).  A golden that was rebaselined during the
+  change under test has verified nothing; it is how moros#10 survived.
 
 ### Loft language gotchas we hit
 
@@ -871,77 +840,14 @@ essentials:
 ## Plans, ROADMAP, docs
 
 ```
-plans/
-  README.md       — plan conventions + index
-  _TEMPLATE.md    — copy this for a new plan
-  ROADMAP.md      — comprehensive feature roadmap (5 tiers,
-                    A validation → E narrative arcs)
-  DEFERRED.md     — parked plans (none yet)
-  01-ground-editor/         — Active (E1-E4 + smoke + E1-live shipped)
-  02-solver-validation-viewer/
-  03-marker-layer-and-spawns/
-  04-map-library/
-  05-validation-scenario/
-  06-editor-stencil-pipeline/ — hex_* substrate now published
-  07-shared-world-substrate/  — Active (W0 partial)
-  08-game-validation/         — Complete (V0-V4 shipped):
-                    scripted play, measured effects, PNGs for
-                    inspection, and `make validate` over the lot
-  11-flow-field/              — Complete (F0-F8): enemies
-                    route round walls to the core.  F0 answered it: an
-                    "entrance" needs no detecting, the field finds
-                    gaps by itself — and walls are walk_ground=true,
-                    so the obvious passability predicate is the bug.
-                    F1 built the instrument that can SEE that bug
-                    (src/passable.loft + `enemies passable`); F1b
-                    made approach mode stop at the wall — the first
-                    wall here that works.  F2/F3 are the field and its
-                    arrow, F5/F5b make enemies follow it and hand off
-                    at the scrambler bubble, F5c makes them spread
-                    rather than stack.  F6 makes passability the
-                    spec's height STEP over a runtime layer
-                    (src/height.loft), so a raised hex flips who can
-                    pass and insects climb their own dead onto a
-                    wall_high with no special case.  F7 is the siege —
-                    a DESIRE field (walls passable) says where a
-                    routeless enemy goes and which wall hex it attacks.
-                    F8 measured the tick against the design's numbers,
-                    found it OVER budget, and found the cause was a
-                    per-enemy field COPY rather than the rebuild it was
-                    written to optimise
-  09-lattice-conversion/      — Complete (C0-C6 + the whole I half):
-                    dryopea moved to pointy-top odd-r offset, the convention
-                    every hex_* library and moros already speak, and
-                    C6 DELETED the axial layer — `src/world.loft` is gone.
-                    Checked against hex_grid as an ORACLE, because a
-                    rebaselined golden agrees with a shear.  I0
-                    answered the input half: `input`'s edge model and
-                    the seam's MATCH on all three semantics, so the
-                    predicted divergence was not real — and the real
-                    one is @D001, the seam forging its own `prev`,
-                    FIXED ahead of I1 so its parallel run compared
-                    against a corrected seam rather than porting a bug.
-                    I1 collapsed the two key tables into
-                    `src/bindings.loft`: 28 `gl_key_pressed` calls in
-                    main.loft and script.loft's action→field map both
-                    gone, and a `.keys` run now TYPES on the same
-                    table the player does.  Its gate moved from the
-                    EditorState (where it only sees keys some scenario
-                    presses) to the EditorInput, swept over 208
-                    key/modifier combinations
-  12-combat-resolution/       — Open (B0-B7): damage resolves on
-                    BOTH sides, so plan 11's journey stops ending in
-                    nothing.  Towers fire and decay, enemies take
-                    damage and die, walls lose STRUCTURAL HP (bracing,
-                    not a constant) and break into climbable rubble,
-                    bodies pile as terrain, nibble drains the wallet.
-                    ⚠ B0 is the blocker: CLIMB_REGULAR is 0.0, so a
-                    robot cannot climb ANY rise — which makes both the
-                    rubble ramp and ENEMY_MOVEMENT's own body-ramp
-                    unbuildable for the class they were written about.
-                    Headline gate is a CLOCK: an authored base nobody
-                    defends falls, and falls markedly slower for
-                    having the walls and towers
+plans/          one directory per multi-phase plan, flat: `<NN>-<slug>/`.
+                README.md carries the conventions + the index (value,
+                effort, lifecycle, one line each); _TEMPLATE.md starts a
+                new one; ROADMAP.md carries the feature ordering across
+                5 tiers; DEFERRED.md parks them.
+                ⚠ Each plan's own `## Status` is the SOURCE OF TRUTH.
+                Never keep a second copy of per-phase state here or in
+                the index — it drifts, and the copy is what gets read.
 
 docs/
   DESIGN.md             — master design (mechanics, towers, walls,
@@ -1035,14 +941,6 @@ signature.
 | [plans/README.md](plans/README.md) | Plan conventions (moros-style) + index |
 | [plans/_TEMPLATE.md](plans/_TEMPLATE.md) | Template for a new plan |
 | [plans/ROADMAP.md](plans/ROADMAP.md) | Comprehensive feature roadmap (5 tiers) |
-| [plans/01-ground-editor/README.md](plans/01-ground-editor/README.md) | Plan 01 — Active. E1-E4 + smoke + E1-live shipped |
-| [plans/06-editor-stencil-pipeline/README.md](plans/06-editor-stencil-pipeline/README.md) | Plan 06 — editor-to-stencil pipeline (two purposes, three audiences) |
-| [plans/07-shared-world-substrate/README.md](plans/07-shared-world-substrate/README.md) | Plan 07 — go 3D on the shared hex substrate |
-| [plans/08-game-validation/README.md](plans/08-game-validation/README.md) | Plan 08 — scripted play, measured effects, PNGs for inspection |
-| [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — **Complete.** dryopea moved to the libraries' lattice (pointy-top odd-r offset) + adopted `input` |
-| [plans/10-extract-local-libraries/README.md](plans/10-extract-local-libraries/README.md) | Plan 10 — dryopea's own reusable code becomes published libraries |
-| [plans/11-flow-field/README.md](plans/11-flow-field/README.md) | Plan 11 — **Complete.** Enemies route round walls to the core, per class, and besiege a sealed one |
-| [plans/12-combat-resolution/README.md](plans/12-combat-resolution/README.md) | Plan 12 — **Open.** Damage resolves: towers kill, walls break into rubble, bodies pile, the wallet is the clock |
 | [PROBLEMS.md](PROBLEMS.md) | Dryopea-internal bugs (`@D<NNN>`) |
 | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) | Outbound queue to loft |
 
