@@ -1,0 +1,96 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The relabel — plan 09 phase C2.
+//
+// One hex, two names.  Every coordinate dryopea has ever written to
+// disk is an **axial flat-top** label (`world.loft`); every
+// coordinate it will write from now on is a **pointy-top odd-r
+// offset** label (`lattice.loft`).  This file is the bijection
+// between them, and C5 is what runs it over the real maps, markers
+// and `.keys` scripts.
+//
+// ── Why it is the STANDARD conversion and not something bespoke ──
+//
+// Flat-top versus pointy-top is a RENDERING difference, not a graph
+// one: axial coordinates have the same six neighbour offsets either
+// way, and only `hex_to_*` differs.  So dryopea's old axial labels
+// and the new lattice's axial view are the same graph, and the
+// relabel is just axial → odd-r offset — `lat_from_axial`, which
+// `hex_grid` already uses internally.
+//
+// ⚠ That is a CLAIM, not an axiom.  `tests/09_c2_relabel.loft`
+// proves it, and proves it in the strong form: the relabel preserves
+// DISTANCE, not merely adjacency.  Distance is what makes "a wall
+// ring stays a wall ring" true, and it is what
+// [`CLAUDE.md`](../CLAUDE.md) § the neighbour relation is promising
+// when it says converting the table moves no distance in plan 11's
+// flow field.
+//
+// ── The direction permutation is DERIVED, not chosen ────────────
+//
+// dryopea's six directions are axial deltas (`0` = `(0, +1)`, south
+// on the old screen); `hex_grid`'s are compass points on a
+// parity-dependent table.  Feed one through the relabel and ask
+// `lat_direction` what came out, and the answer is the same at every
+// cell and on both row parities:
+//
+//     old 0 1 2 3 4 5
+//     new 5 0 1 2 3 4      i.e. new = (old + 5) % 6
+//
+// Measured before it was written down, at 25 cells × 6 directions,
+// and the test re-derives it over the whole ±16 window rather than
+// trusting this comment.
+//
+// ⚠ **The picture changes by more than a mirror.**  § Open questions
+// 2 accepted "let the maps flip", and the flip is real — but
+// flat-top → pointy-top is ITSELF a re-orientation of the hexagon,
+// so the composite is a mirror AND one 60° hex rotation.  Old
+// direction 0 pointed SOUTH on the old screen; its relabel is new
+// direction 5, which renders NORTH-EAST.  Nothing is wrong; it is
+// simply more than "upside down", and a reviewer comparing a
+// converted map against an old screenshot needs to know that before
+// they go looking for a bug.
+//
+// ── Lifetime ────────────────────────────────────────────────────
+//
+// Separate from `lattice.loft` on purpose.  The lattice is
+// permanent; this is migration, and how long it lives is C5's open
+// decision — either the loader migrates old saves on read (and this
+// stays forever) or the files are converted once and old ones
+// refused (and this can go).  Keeping it in its own file means that
+// decision is a file-level one.
+
+use world;
+use lattice;
+
+// An old axial flat-top label → the new odd-r offset label for the
+// same hex.
+pub fn relabel_hex(old: const Hex) -> Hex {
+    lat_from_axial(old.q, old.r)
+}
+
+// …and back, for reading a converted file with old-lattice code
+// (and for the round-trip the gate rests on).
+pub fn relabel_hex_back(cur: const Hex) -> Hex {
+    rhb_a = lat_to_axial(cur);
+    Hex { q: rhb_a.0, r: rhb_a.1 }
+}
+
+// An old direction index (0..5) → the new one naming the same step.
+//
+// Derived, not chosen — see the header.  Out-of-range input is
+// folded rather than rejected, because the one caller that matters
+// is C5 reading a `direction: u8` off disk, where a corrupt value
+// should land on a real direction instead of failing a whole map.
+pub fn relabel_direction(d: integer) -> integer {
+    rd_n = d % 6;
+    if rd_n < 0 { rd_n += 6; }
+    (rd_n + 5) % 6
+}
+
+pub fn relabel_direction_back(d: integer) -> integer {
+    rdb_n = d % 6;
+    if rdb_n < 0 { rdb_n += 6; }
+    (rdb_n + 1) % 6
+}

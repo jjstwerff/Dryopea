@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 539/539 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 551/551 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 539 runs.
+per-function + per-line + call-path report over all 551 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -523,6 +523,23 @@ src/
                    The metre round-trip cannot see this (a consistent
                    flip is invisible to it); the compass sign test is
                    what gates it
+  relabel.loft     old label → new label (plan 09 C2) — the bijection
+                   from every axial coordinate dryopea ever wrote to
+                   disk to its odd-r offset name, plus the direction
+                   permutation `new = (old + 5) % 6` (DERIVED from
+                   geometry, uniform on both row parities).  C5 runs
+                   it over the real files.
+                   ⚠ The invariant is DISTANCE, not adjacency — a
+                   relabel can keep neighbours neighbours and still
+                   fold the plane, and two painted hexes landing on
+                   one is silent.  Distance implies adjacency AND
+                   injectivity, and is what keeps plan 11's flow-field
+                   distances still.
+                   ⚠ The picture moves by a mirror AND a 60° hex
+                   rotation — flat-top → pointy-top is itself a
+                   re-orientation.  Old dir 0 was due SOUTH; it
+                   relabels to new dir 5, which renders NORTH-EAST.
+                   A converted map does not look "upside down"
   camera.loft      EditorCamera { pos: Hex, zoom: integer }
                    + InputState (moros-style: factories + pure tick
                    + struct of booleans)
@@ -838,8 +855,8 @@ plans/
                     found it OVER budget, and found the cause was a
                     per-enemy field COPY rather than the rebuild it was
                     written to optimise
-  09-lattice-conversion/      — Active (C0 + the whole I half
-                    shipped; C1-C6 remain): dryopea
+  09-lattice-conversion/      — Active (C0-C2 + the whole I half
+                    shipped; C3-C6 remain): dryopea
                     moves to pointy-top odd-r offset, the convention
                     every hex_* library and moros already speak.
                     Checked against hex_grid as an ORACLE, because a

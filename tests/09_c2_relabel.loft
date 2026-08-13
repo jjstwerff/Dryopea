@@ -1,0 +1,289 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 09 phase C2 — the relabel, and what it must preserve.
+//
+// C1 built the new lattice.  This is the bijection from every
+// coordinate dryopea has ever written down (axial flat-top) to the
+// one it writes now (pointy-top odd-r offset), and the proof that
+// running it over a map does not change the map.
+//
+// ── The invariant is DISTANCE, not adjacency ────────────────────
+//
+// The phase's Verify asks for adjacency: every axial-adjacent pair
+// maps to an adjacent pair.  That is necessary and it is not
+// sufficient — a relabel can keep neighbours neighbours and still
+// fold the plane, and the damage from that is silent (two painted
+// hexes landing on one, a ring that closes early).
+//
+// Distance preservation is the honest invariant: it implies
+// adjacency, it implies injectivity, and it is what makes
+// `CLAUDE.md` § the neighbour relation's promise true — convert the
+// table and plan 11's flow-field distances do not move.  So the
+// sweep checks distance over every PAIR in a window, and adjacency
+// over a much larger one.
+//
+// ── The negative control is permanent ───────────────────────────
+//
+// `test_the_identity_relabel_is_not_adjacency_preserving` is not a
+// curiosity: it is the check that this file can SEE a wrong relabel.
+// If it ever goes green, every proof above it has stopped meaning
+// anything.
+
+#cwd
+
+use dryopea;
+
+// Adjacency + direction over ±16; distance over every PAIR in ±6,
+// which is 169² = 28 561 comparisons.
+const SWEEP: integer = 16;
+const PAIRS: integer = 6;
+
+// ─── The bijection ──────────────────────────────────────────────
+
+fn test_the_relabel_round_trips_both_ways() {
+    for trr_r in -SWEEP..=SWEEP {
+        for trr_q in -SWEEP..=SWEEP {
+            trr_old = Hex { q: trr_q, r: trr_r };
+            trr_new = relabel_hex(trr_old);
+            trr_bak = relabel_hex_back(trr_new);
+            assert(trr_bak.q == trr_q && trr_bak.r == trr_r,
+                   "axial ({trr_q}, {trr_r}) → offset → axial is itself, got ({trr_bak.q}, {trr_bak.r})");
+        }
+    }
+}
+
+// Two hexes must never become one.  This is the data-loss shape: a
+// relabel that collides silently merges painted cells, and the map
+// still loads.
+fn test_the_relabel_never_collides() {
+    // Painted into the real sparse layer, which is keyed by (q, r) —
+    // so a collision shows up as a hex that is not there, exactly the
+    // way it would show up in a converted map.
+    tnc_w = painted_empty();
+    tnc_n = 0;
+    for tnc_r in -SWEEP..=SWEEP {
+        for tnc_q in -SWEEP..=SWEEP {
+            tnc_h = relabel_hex(Hex { q: tnc_q, r: tnc_r });
+            paint(tnc_w, tnc_h.q, tnc_h.r, 5 as u8);
+            tnc_n += 1;
+        }
+    }
+
+    assert(tnc_n == 33 * 33, "the whole window was relabelled");
+    assert(painted_count(tnc_w) == tnc_n,
+           "{tnc_n} distinct hexes in, {painted_count(tnc_w)} out — a shortfall is two labels landing on one");
+}
+
+// ─── What it preserves ──────────────────────────────────────────
+
+// The strong one.  Every pair, both metrics, same answer.
+fn test_the_relabel_preserves_distance() {
+    for tpd_r1 in -PAIRS..=PAIRS {
+        for tpd_q1 in -PAIRS..=PAIRS {
+            tpd_a = Hex { q: tpd_q1, r: tpd_r1 };
+            tpd_A = relabel_hex(tpd_a);
+            for tpd_r2 in -PAIRS..=PAIRS {
+                for tpd_q2 in -PAIRS..=PAIRS {
+                    tpd_b = Hex { q: tpd_q2, r: tpd_r2 };
+                    tpd_B = relabel_hex(tpd_b);
+                    assert(lat_distance(tpd_A, tpd_B)
+                           == world::hex_distance(tpd_a, tpd_b),
+                           "({tpd_q1}, {tpd_r1})→({tpd_q2}, {tpd_r2}): axial says {world::hex_distance(tpd_a, tpd_b)}, the lattice says {lat_distance(tpd_A, tpd_B)}");
+                }
+            }
+        }
+    }
+}
+
+// The phase's own Verify, over the wider window: neighbours stay
+// neighbours.  Implied by distance, checked separately because it is
+// the property a reader will look for.
+fn test_every_axial_neighbour_stays_a_neighbour() {
+    for tan_r in -SWEEP..=SWEEP {
+        for tan_q in -SWEEP..=SWEEP {
+            tan_a = Hex { q: tan_q, r: tan_r };
+            tan_A = relabel_hex(tan_a);
+            for tan_d in 0..6 {
+                tan_b = world::hex_neighbor(tan_a, tan_d);
+                tan_B = relabel_hex(tan_b);
+                assert(lat_distance(tan_A, tan_B) == 1,
+                       "axial ({tan_q}, {tan_r}) dir {tan_d} is still one step after the relabel");
+            }
+        }
+    }
+}
+
+// ─── The direction permutation ──────────────────────────────────
+
+// Re-derived from geometry over the whole window, rather than
+// trusting the table in `relabel.loft`'s header.  ⚠ The window spans
+// both row parities on purpose: `hex_grid`'s neighbour table is
+// parity-dependent, so a permutation that held only on even rows
+// would be exactly the failure that hides.
+fn test_the_direction_permutation_is_uniform_and_correct() {
+    for tdp_r in -SWEEP..=SWEEP {
+        for tdp_q in -SWEEP..=SWEEP {
+            tdp_a = Hex { q: tdp_q, r: tdp_r };
+            tdp_A = relabel_hex(tdp_a);
+            for tdp_d in 0..6 {
+                tdp_b = world::hex_neighbor(tdp_a, tdp_d);
+                tdp_B = relabel_hex(tdp_b);
+                tdp_got = lat_direction(tdp_A, tdp_B);
+                assert(tdp_got == relabel_direction(tdp_d),
+                       "axial ({tdp_q}, {tdp_r}) dir {tdp_d} → new dir {tdp_got}, but relabel_direction says {relabel_direction(tdp_d)}");
+            }
+        }
+    }
+}
+
+fn test_the_direction_permutation_round_trips() {
+    for tdr_d in 0..6 {
+        assert(relabel_direction_back(relabel_direction(tdr_d)) == tdr_d,
+               "direction {tdr_d} survives there and back");
+    }
+    // It is a permutation, so all six land somewhere different.
+    for tdr_i in 0..6 {
+        for tdr_j in (tdr_i + 1)..6 {
+            assert(relabel_direction(tdr_i) != relabel_direction(tdr_j),
+                   "old directions {tdr_i} and {tdr_j} both become {relabel_direction(tdr_i)}");
+        }
+    }
+}
+
+// A marker read off disk carries `direction: u8`, and a corrupt one
+// must land on a real direction rather than fail the whole map.
+fn test_an_out_of_range_direction_folds() {
+    for tor_d in 0..6 {
+        assert(relabel_direction(tor_d + 6) == relabel_direction(tor_d),
+               "direction {tor_d} + 6 means the same thing");
+    }
+    assert(relabel_direction(-1) == relabel_direction(5), "and so does -1");
+    for tor_e in -12..18 {
+        tor_got = relabel_direction(tor_e);
+        assert(tor_got >= 0 && tor_got < 6, "{tor_e} folds into 0..5, got {tor_got}");
+    }
+}
+
+// ─── What the player will SEE ───────────────────────────────────
+//
+// § Open questions 2 accepted "let the maps flip".  This records
+// what the flip actually is, measured, so a reviewer comparing a
+// converted map against an old screenshot is not hunting a bug that
+// is not there.
+
+// Old direction 0 was SOUTH on the old screen.  Its relabel renders
+// NORTH-EAST — a mirror AND a 60° hex rotation, because flat-top →
+// pointy-top is itself a re-orientation.
+fn test_the_picture_moves_by_a_mirror_and_a_rotation() {
+    tpm_old = Hex { q: 0, r: 0 };
+    tpm_south = world::hex_neighbor(tpm_old, 0);
+    tpm_owc = hex_to_world(tpm_old);
+    tpm_osc = hex_to_world(tpm_south);
+    assert(tpm_osc.1 > tpm_owc.1 && abs(tpm_osc.0 - tpm_owc.0) < 0.00001,
+           "on the OLD screen direction 0 was due south");
+
+    tpm_A = relabel_hex(tpm_old);
+    tpm_B = relabel_hex(tpm_south);
+    assert(lat_direction(tpm_A, tpm_B) == 5, "it relabels to new direction 5, which hex_grid calls NE");
+
+    tpm_nwc = lat_to_metres(tpm_A);
+    tpm_nsc = lat_to_metres(tpm_B);
+    assert(tpm_nsc.1 < tpm_nwc.1, "and on the NEW screen it goes north (+y is south, so up)");
+    assert(tpm_nsc.0 > tpm_nwc.0, "and east — north-EAST, not straight north");
+}
+
+// The flip is real and visible: the same label lands on the other
+// side of the map vertically.
+fn test_a_row_that_was_south_is_now_north() {
+    trs_o = Hex { q: 0, r: 0 };
+    trs_f = Hex { q: 0, r: 5 };
+
+    tro_o = hex_to_world(trs_o);
+    tro_f = hex_to_world(trs_f);
+    assert(tro_f.1 > tro_o.1, "row 5 used to be SOUTH of row 0");
+
+    trn_o = lat_to_metres(relabel_hex(trs_o));
+    trn_f = lat_to_metres(relabel_hex(trs_f));
+    assert(trn_f.1 < trn_o.1, "and is now NORTH of it — this is the accepted flip");
+}
+
+// ─── ⚠ THE NEGATIVE CONTROL ─────────────────────────────────────
+//
+// Everything above is worthless if a wrong relabel would also pass.
+// If this test ever goes green, the file has gone blind.
+
+// The obvious wrong relabel — leave the labels alone — must break
+// adjacency.  It is the exact mistake someone makes on the reasoning
+// "axial and offset are both (q, r), so the data is already fine".
+fn test_the_identity_relabel_is_not_adjacency_preserving() {
+    tir_broken = 0;
+    tir_total  = 0;
+    for tir_r in -8..=8 {
+        for tir_q in -8..=8 {
+            tir_a = Hex { q: tir_q, r: tir_r };
+            for tir_d in 0..6 {
+                tir_b = world::hex_neighbor(tir_a, tir_d);
+                // NO relabel — the labels used as-is.
+                if lat_distance(tir_a, tir_b) != 1 { tir_broken += 1; }
+                tir_total += 1;
+            }
+        }
+    }
+
+    assert(tir_broken > 0,
+           "leaving the labels alone MUST break adjacency, or this file cannot see a wrong relabel");
+    assert(tir_broken == 289,
+           "and it breaks exactly the measured amount — {tir_broken} of {tir_total}");
+}
+
+// The other wrong relabel: drop the parity term.  The phase's Verify
+// says this "goes red on odd rows only", and that is a claim about
+// which CELLS get the wrong label — not about which cells notice.
+//
+// ⚠ Those are different, and the difference is why this control was
+// wrong the first time it was written.  An EVEN-row cell is
+// relabelled correctly by the broken version, yet still fails an
+// adjacency check, because four of its six neighbours are on odd
+// rows and THOSE moved.  Measuring "breaks attributed to the source
+// row" therefore reports even-row damage and looks like the claim is
+// false.  Measure the labels instead.
+fn test_a_parity_free_relabel_moves_only_odd_rows() {
+    tpf_bad_even = 0;
+    tpf_bad_odd  = 0;
+    for tpf_r in -8..=8 {
+        for tpf_q in -8..=8 {
+            tpf_right = relabel_hex(Hex { q: tpf_q, r: tpf_r });
+            // The relabel with `(r - (r & 1)) / 2` replaced by `r / 2`.
+            tpf_wrong = Hex { q: tpf_q + tpf_r / 2, r: tpf_r };
+            if tpf_wrong.q != tpf_right.q || tpf_wrong.r != tpf_right.r {
+                if (tpf_r & 1) == 0 { tpf_bad_even += 1; } else { tpf_bad_odd += 1; }
+            }
+        }
+    }
+
+    assert(tpf_bad_odd > 0, "dropping the parity term must move something");
+    assert(tpf_bad_even == 0,
+           "and move ODD rows only — {tpf_bad_even} even-row labels moved, which the parity term cannot do");
+}
+
+// …and the damage it does is real: a map relabelled that way is no
+// longer the same map.  Attributed to nothing in particular, because
+// the previous test already located it.
+fn test_a_parity_free_relabel_breaks_the_map() {
+    tpb_broken = 0;
+    for tpb_r in -8..=8 {
+        for tpb_q in -8..=8 {
+            tpb_a = Hex { q: tpb_q, r: tpb_r };
+            tpb_A = Hex { q: tpb_q + tpb_r / 2, r: tpb_r };
+            for tpb_d in 0..6 {
+                tpb_b = world::hex_neighbor(tpb_a, tpb_d);
+                tpb_B = Hex { q: tpb_b.q + tpb_b.r / 2, r: tpb_b.r };
+                if lat_distance(tpb_A, tpb_B) != 1 { tpb_broken += 1; }
+            }
+        }
+    }
+
+    assert(tpb_broken > 0,
+           "a parity-free relabel must break adjacency, or the parity term is doing nothing");
+}

@@ -107,7 +107,7 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 | **I1** — the seam takes its input from `input` | S | parallel run | both paths run side by side and the resulting `EditorState` is compared field by field — the V1a gate, reused — then the old path is deleted. Second net: plan 08's edge tests unchanged and green, and `scripts/validate.sh` reports the SAME count it did before the swap (233 over 14 scripts as of 2026-08-12 — read it, do not trust this number) | **Shipped** — see § I1.  Compared at the INPUT level, which is stronger; 233 held |
 | **C0** — probe: can `hex_grid` be the oracle? | XS | a probe first | its answers for a hand-checked cell set, AND that they **disagree** with dryopea's current axial math — an oracle that already agrees proves nothing | **Shipped** |
 | **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | **Shipped** — see § C1 shipped.  Negative control run: 8 of 17 red |
-| **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | Open |
+| **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | **Shipped** — see § C2 shipped.  Strengthened to DISTANCE preservation, which implies adjacency AND injectivity |
 | **C3** — the renderer draws pointy-top | M | one site at a time | hex centres equal `lat_to_metres` under the camera transform (to a float ε — ⚠ `lat_to_metres`, NOT `hex_grid::hex_to_px`: the compass decision negates y); `screen_to_hex ∘ world_to_canvas` = identity over the sweep; goldens rebaselined ONCE and reviewed, and they will come back VERTICALLY MIRRORED — that is the decision landing, not a bug; plan 08's `frame` bands still hold; nothing depends on corner winding, which reversed | Open |
 | **C4** — `paint_line`, marker arrows, spawn approach | M | one site at a time | per site: `paint_line` equals `hex_grid`'s line over the sweep; each marker arrow points at the neighbour it names; `a-wave-approaches` still shows `range` decreasing monotonically | Open |
 | **C5** — migrate the data | S | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand. ⚠ NO compensating y-flip — a map that comes back looking the same means the compass decision did not take | Open |
@@ -451,6 +451,74 @@ Suite 518 → **535 green**; `scripts/validate.sh` unchanged at **233
 measurements over 14 scripts** (nothing calls the new layer yet, so it
 had better be).
 
+### C2 shipped — the invariant is DISTANCE, and the picture moves twice
+
+Landed 2026-08-13.  `src/relabel.loft` + `tests/09_c2_relabel.loft`.
+Nothing calls it yet; C5 does.
+
+**The relabel is the STANDARD axial → odd-r conversion**, because
+flat-top versus pointy-top is a RENDERING difference and not a graph
+one — axial coordinates have the same six neighbour offsets either
+way.  So dryopea's old labels and the new lattice's axial view are the
+same graph, and the relabel is `lat_from_axial`.  ⚠ That is a claim,
+and the test proves it rather than assuming it.
+
+⚠ **This row asked for adjacency; adjacency is not sufficient.**  A
+relabel can keep neighbours neighbours and still FOLD the plane, and
+the damage is silent — two painted hexes landing on one, a ring that
+closes early.  The gate is therefore **distance preservation** over
+every pair in a ±6 window (28 561 comparisons), which implies both
+adjacency and injectivity.  It is also what makes
+[`CLAUDE.md`](../../CLAUDE.md) § the neighbour relation's promise true:
+convert the table and plan 11's flow-field distances do not move.
+Injectivity is additionally checked the way it would actually bite —
+33×33 labels painted into the real sparse layer, and the count has to
+come back 1089.
+
+**The direction permutation was DERIVED before it was written down**,
+at 25 cells × 6 directions, and the test re-derives it over the full
+±16 window: `new = (old + 5) % 6`, uniform on both row parities.
+Uniformity is the load-bearing part — a permutation that held only on
+even rows is what a marker remap would trip over.
+
+#### Two negative controls, both permanent
+
+- **The identity relabel** — the mistake someone makes reasoning
+  "axial and offset are both `(q, r)`, so the data is already fine" —
+  must break adjacency, and does: exactly 289 breaks in a ±8 window.
+- **The parity-free relabel** (`r/2` for `(r - (r&1))/2`) must move
+  odd-row labels and no even-row ones.
+
+⚠ **The second control was WRONG the first time and the fix is worth
+keeping.**  Written as "count adjacency breaks and attribute them to
+the source row", it reported 153 even-row breaks and looked like it
+falsified this row's own "odd rows only" claim.  It did not: an
+even-row cell is relabelled *correctly* by the broken version and
+still fails an adjacency check, because four of its six neighbours sit
+on odd rows and THOSE moved.  "Which cells get a wrong label" and
+"which cells notice" are different questions.  Measure the labels.
+
+Mutating `relabel_hex` itself to the parity-free version takes down 4
+of the positive gates, the round-trip naming `(-16, -15)` — an odd
+row, again.
+
+#### ⚠ The picture moves by MORE than a mirror
+
+§ Open questions 2 accepted "let the maps flip", and the flip is real.
+But flat-top → pointy-top is ITSELF a re-orientation of the hexagon,
+so the composite is a mirror **and one 60° hex rotation**.  Measured:
+old direction 0 pointed due SOUTH on the old screen; its relabel is
+new direction 5, which renders NORTH-EAST.
+
+Nothing is wrong — it is the conversion doing what it says — but a
+reviewer holding a converted map against an old screenshot will not
+see "upside down", and needs to know that before hunting a bug that is
+not there.  `test_the_picture_moves_by_a_mirror_and_a_rotation` pins
+both halves so the fact stays measured rather than remembered.
+
+Suite 539 → **551 green**; `scripts/validate.sh` unchanged at **233
+measurements over 14 scripts**.
+
 ### C3 — the one place the goldens are allowed to move
 
 Rebaselining 16 goldens is the loudest part of this plan and the least
@@ -480,7 +548,7 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
 |---|---|---|---|
 | **C0** | `hex_distance((0,0), (-1,-1)) == 1` | the oracle disagrees with axial, so it can surprise us | an oracle that already matched dryopea would be measuring nothing |
 | **C1** ✅ | the ±16 sweep is green against `hex_grid`; the disc count is `3N(N+1)+1`; neighbouring centres are `HEX_FLAT_TO_FLAT` apart | dryopea's lattice IS `hex_grid`'s — by DELEGATION, so it cannot drift | pointed at `world.loft`: **8 of 17 red**, incl. "disagree on more than a quarter — 0 of 1089".  Parity term broken: 3 red at an ODD row |
-| **C2** | every axial-adjacent pair stays adjacent | the relabel is a bijection that preserves structure | an off-by-one parity term breaks odd rows only — and must be caught there |
+| **C2** ✅ | every PAIR keeps its distance (28 561 comparisons), and 1089 labels paint 1089 hexes | the relabel is a bijection that preserves structure — distance, so adjacency AND injectivity | the identity relabel breaks adjacency 289 times; a parity-free one moves odd-row LABELS only.  ⚠ Attributing breaks to the source row instead reports even-row damage and looks like a falsification — it is not |
 | **C3** | hex centres equal `hex_grid::hex_to_px` | the picture follows the lattice, not the other way round | a rebaselined golden agrees with a shear; the centre check does not |
 | **C4** | `a-wave-approaches` range still decreases | the game's own behaviour survives the move | enemies that reach the core in a different number of ticks means the metric moved |
 | **C5** | converted maps keep painted counts + adjacency | a relabel is not a content change | a map that gains or loses a hex was converted wrong |
