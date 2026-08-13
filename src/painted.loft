@@ -16,6 +16,7 @@
 // Plan 01 phase E1/E3.
 
 use world;
+use lattice;
 
 // One painted hex.
 //
@@ -93,23 +94,11 @@ pub fn painted_count(w: const PaintedWorld) -> integer {
 // B, each endpoint becomes a Hex, and this fills the gap with no
 // missed hexes.
 pub fn paint_line(w: PaintedWorld, a: Hex, b: Hex, kind: u8) {
-    pl_n = hex_distance(a, b);
-    if pl_n == 0 {
-        paint(w, a.q, a.r, kind);
-        return;
-    }
-    pl_aq = a.q as float;
-    pl_ar = a.r as float;
-    pl_bq = b.q as float;
-    pl_br = b.r as float;
-    // Hoist the divide out of the loop AND `?? 0.0` silences loft's
-    // div-by-zero static check — pl_n > 0 guaranteed above.
-    pl_inv = (1.0 / (pl_n as float)) ?? 0.0;
-    for pl_i in 0..=pl_n {
-        pl_t = (pl_i as float) * pl_inv;
-        pl_qf = pl_aq + (pl_bq - pl_aq) * pl_t;
-        pl_rf = pl_ar + (pl_br - pl_ar) * pl_t;
-        pl_h = cube_round_axial(pl_qf, pl_rf);
+    // Bound to a local, never iterated straight off the call: a
+    // struct returned through two nested tail calls loses what its
+    // loop wrote (loft#880).
+    pl_hexes = lat_line(a, b);
+    for pl_h in pl_hexes {
         paint(w, pl_h.q, pl_h.r, kind);
     }
 }

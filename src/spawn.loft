@@ -27,6 +27,7 @@
 // F5/F5b, the occupancy F5c.
 
 use world;
+use lattice;
 use markers;
 use palette;
 use painted;
@@ -121,7 +122,7 @@ pub fn active_spawn_markers(
     asm_core = Hex { q: core_q, r: core_r };
     for asm_e in mw.markers {
         if asm_e.kind == MARKER_KIND_SPAWN as u8 {
-            asm_d = hex_distance(asm_core, Hex { q: asm_e.q, r: asm_e.r });
+            asm_d = lat_distance(asm_core, Hex { q: asm_e.q, r: asm_e.r });
             if asm_d >= disable_radius {
                 asm_out += [MarkerEntry {
                     q:         asm_e.q,
@@ -330,7 +331,7 @@ pub fn enemy_target(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
     // Approach mode: the route is the heading, so the obstacle is the
     // one hex ahead.
     if !enemy_in_bubble(e, f.core) {
-        ent_ahead = hex_neighbor(ent_here, e.heading as integer);
+        ent_ahead = lat_neighbour(ent_here, e.heading as integer);
         if can_step(pal, pw, hl, e.kind, ent_here, ent_ahead) { return ent_here; }
         if !hex_walkable(pal, pw, ent_ahead.q, ent_ahead.r) { return ent_here; }
         return ent_ahead;
@@ -381,7 +382,7 @@ fn enemy_move_to(e: Enemy, q: integer, r: integer, occ: Occupancy) {
 // Inclusive at the boundary, matching `active_spawn_markers`'
 // `>= disable_radius`: the hex the radius names is in.
 pub fn enemy_in_bubble(e: const Enemy, core: Hex) -> boolean {
-    hex_distance(core, Hex { q: e.q, r: e.r }) <= SCRAMBLER_BUBBLE_RADIUS
+    lat_distance(core, Hex { q: e.q, r: e.r }) <= SCRAMBLER_BUBBLE_RADIUS
 }
 
 // One step along the enemy's heading, if the hex it would enter is one
@@ -396,7 +397,7 @@ pub fn enemy_in_bubble(e: const Enemy, core: Hex) -> boolean {
 fn enemy_walk_heading(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
                       hl: const HeightLayer, occ: Occupancy) {
     et_from = Hex { q: e.q, r: e.r };
-    et_to   = hex_neighbor(et_from, e.heading as integer);
+    et_to   = lat_neighbour(et_from, e.heading as integer);
     // ⚠ ONE rule, shared with the `enemies passable` assertion that
     // measures it (`passable.loft`).  If the mover and the
     // measurement each had their own idea of passability, a green

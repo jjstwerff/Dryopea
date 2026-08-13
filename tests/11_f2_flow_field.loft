@@ -66,12 +66,12 @@ fn ring(centre: Hex, radius: integer) -> vector<Hex> {
     r_out: vector<Hex> = [];
     r_h = centre;
     for _ in 0..radius {
-        r_h = hex_neighbor(r_h, 4);
+        r_h = lat_neighbour(r_h, 4);
     }
     for r_dir in 0..6 {
         for _ in 0..radius {
             r_out += [r_h];
-            r_h = hex_neighbor(r_h, r_dir);
+            r_h = lat_neighbour(r_h, r_dir);
         }
     }
     r_out
@@ -81,7 +81,7 @@ fn ring(centre: Hex, radius: integer) -> vector<Hex> {
 // never obstructed.
 fn disc(radius: integer, kind: integer) -> PaintedWorld {
     d_pw = painted_empty();
-    for d_h in visible_hexes(core(), radius) {
+    for d_h in lat_disc(core(), radius) {
         paint(d_pw, d_h.q, d_h.r, as_u8(kind));
     }
     d_pw
@@ -115,8 +115,8 @@ fn test_the_ring_builder_really_builds_a_ring() {
 
     assert(len(trb) == 18, "a ring of radius 3 is 18 hexes, got {len(trb)}");
     for trb_h in trb {
-        assert(hex_distance(core(), trb_h) == 3,
-               "({trb_h.q}, {trb_h.r}) is at radius {hex_distance(core(), trb_h)}, not 3");
+        assert(lat_distance(core(), trb_h) == 3,
+               "({trb_h.q}, {trb_h.r}) is at radius {lat_distance(core(), trb_h)}, not 3");
     }
     // Distinct, too: a walk that doubled back would satisfy both
     // checks above while leaving the ring with holes in it.
@@ -142,12 +142,12 @@ fn test_a_sealed_ring_actually_encloses_the_core() {
 // ─────────────────────────────────────────────────────────────────
 
 fn test_every_neighbour_is_one_step_away() {
-    ten = hex_neighbours(Hex { q: 3, r: -2 });
+    ten = lat_neighbours(Hex { q: 3, r: -2 });
 
     assert(len(ten) == 6, "six neighbours, got {len(ten)}");
     for ten_h in ten {
-        assert(hex_distance(Hex { q: 3, r: -2 }, ten_h) == 1,
-               "({ten_h.q}, {ten_h.r}) is {hex_distance(Hex { q: 3, r: -2 }, ten_h)} away, not 1");
+        assert(lat_distance(Hex { q: 3, r: -2 }, ten_h) == 1,
+               "({ten_h.q}, {ten_h.r}) is {lat_distance(Hex { q: 3, r: -2 }, ten_h)} away, not 1");
     }
 }
 
@@ -159,7 +159,7 @@ fn test_the_core_reads_zero_and_its_neighbours_read_one() {
     tcz = robot_field(disc(4, GRASS));
 
     assert(flow_distance(tcz, 0, 0) == 0, "the core is 0 steps from the core");
-    for tcz_h in hex_neighbours(core()) {
+    for tcz_h in lat_neighbours(core()) {
         assert(flow_distance(tcz, tcz_h.q, tcz_h.r) == 1,
                "({tcz_h.q}, {tcz_h.r}) is adjacent, so 1 — read {flow_distance(tcz, tcz_h.q, tcz_h.r)}");
     }
@@ -173,9 +173,9 @@ fn test_on_open_ground_the_field_equals_the_hex_distance() {
     tog_pw = disc(5, GRASS);
     tog_f  = robot_field(tog_pw);
 
-    for tog_h in visible_hexes(core(), 5) {
-        assert(flow_distance(tog_f, tog_h.q, tog_h.r) == hex_distance(core(), tog_h),
-               "({tog_h.q}, {tog_h.r}): field says {flow_distance(tog_f, tog_h.q, tog_h.r)}, hex_distance says {hex_distance(core(), tog_h)}");
+    for tog_h in lat_disc(core(), 5) {
+        assert(flow_distance(tog_f, tog_h.q, tog_h.r) == lat_distance(core(), tog_h),
+               "({tog_h.q}, {tog_h.r}): field says {flow_distance(tog_f, tog_h.q, tog_h.r)}, hex_distance says {lat_distance(core(), tog_h)}");
     }
     assert(flow_count(tog_f) == 91, "every hex of a radius-5 disc is reachable, got {flow_count(tog_f)}");
     assert(!tog_f.truncated, "and the build finished");
@@ -210,12 +210,12 @@ fn test_a_corridor_that_bends_is_measured_along_its_length() {
     tcb_h  = core();
     paint(tcb_pw, tcb_h.q, tcb_h.r, as_u8(GRASS));
     for _ in 0..6 {
-        tcb_h = hex_neighbor(tcb_h, 1);
+        tcb_h = lat_neighbour(tcb_h, 1);
         paint(tcb_pw, tcb_h.q, tcb_h.r, as_u8(GRASS));
     }
     tcb_corner = tcb_h;
     for _ in 0..6 {
-        tcb_h = hex_neighbor(tcb_h, 3);
+        tcb_h = lat_neighbour(tcb_h, 3);
         paint(tcb_pw, tcb_h.q, tcb_h.r, as_u8(GRASS));
     }
     tcb_end = tcb_h;
@@ -226,8 +226,8 @@ fn test_a_corridor_that_bends_is_measured_along_its_length() {
            "and the far end is eleven by the route that cuts the corner, read {flow_distance(tcb_f, tcb_end.q, tcb_end.r)}");
     // The straight-line distance is shorter still, which is the
     // point: a field computed from coordinates would answer THAT.
-    assert(hex_distance(core(), tcb_end) == 6,
-           "the straight line is six: {hex_distance(core(), tcb_end)}");
+    assert(lat_distance(core(), tcb_end) == 6,
+           "the straight line is six: {lat_distance(core(), tcb_end)}");
     assert(flow_count(tcb_f) == 13, "13 corridor hexes and nothing else");
 }
 
@@ -254,7 +254,7 @@ fn test_unreachable_is_not_zero() {
 fn test_no_route_compares_worse_than_any_real_distance() {
     tnr = robot_field(disc(6, GRASS));
 
-    for tnr_h in visible_hexes(core(), 6) {
+    for tnr_h in lat_disc(core(), 6) {
         assert(flow_distance(tnr, tnr_h.q, tnr_h.r) < FLOW_UNREACHABLE,
                "every real distance is smaller than the sentinel");
     }
@@ -297,8 +297,8 @@ fn test_the_route_through_a_gap_is_longer_than_the_straight_line() {
     trg_far = Hex { q: 0, r: 5 };
 
     assert(flow_reachable(trg, trg_far.q, trg_far.r), "it can be reached");
-    assert(flow_distance(trg, trg_far.q, trg_far.r) > hex_distance(core(), trg_far),
-           "but not in a straight line: {flow_distance(trg, trg_far.q, trg_far.r)} steps for {hex_distance(core(), trg_far)} hexes");
+    assert(flow_distance(trg, trg_far.q, trg_far.r) > lat_distance(core(), trg_far),
+           "but not in a straight line: {flow_distance(trg, trg_far.q, trg_far.r)} steps for {lat_distance(core(), trg_far)} hexes");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -346,7 +346,7 @@ fn test_a_core_alone_on_one_hex_is_a_field_of_one() {
 
     assert(flow_count(tca) == 1, "one hex, one cell");
     assert(flow_distance(tca, 0, 0) == 0, "and it is the core");
-    for tca_h in hex_neighbours(core()) {
+    for tca_h in lat_neighbours(core()) {
         assert(!flow_reachable(tca, tca_h.q, tca_h.r), "surrounded by water");
     }
 }
@@ -357,7 +357,7 @@ fn test_the_field_remembers_which_core_it_is_a_field_to() {
 
     assert(ttf.core.q == 2 && ttf.core.r == -1, "a field without its source is ambiguous");
     assert(flow_distance(ttf, 2, -1) == 0, "and the distances are measured from it");
-    assert(flow_distance(ttf, 0, 0) == hex_distance(Hex { q: 2, r: -1 }, core()),
+    assert(flow_distance(ttf, 0, 0) == lat_distance(Hex { q: 2, r: -1 }, core()),
            "so the old core is now just a hex some steps away");
 }
 

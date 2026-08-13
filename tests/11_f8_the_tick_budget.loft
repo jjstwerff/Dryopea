@@ -88,7 +88,7 @@ fn pal() -> vector<GroundType> {
 
 fn disc(radius: integer) -> PaintedWorld {
     d_pw = painted_empty();
-    for d_h in visible_hexes(core(), radius) {
+    for d_h in lat_disc(core(), radius) {
         paint(d_pw, d_h.q, d_h.r, as_u8(GRASS));
     }
     d_pw
@@ -103,14 +103,16 @@ fn corridor(hi: integer) -> PaintedWorld {
 // The corridor plus the two-hex bypass round (3, 0) — F5's world, so
 // that "it took the other way" means the same thing here as there.
 fn bypass_world() -> PaintedWorld {
+    // Relabelled for plan 09 C5b — odd-r names for the axial
+    // (4, -1) and (3, -1) this bypass used to be.
     bw_pw = corridor(12);
-    paint(bw_pw, 4, -1, as_u8(GRASS));
     paint(bw_pw, 3, -1, as_u8(GRASS));
+    paint(bw_pw, 2, -1, as_u8(GRASS));
     bw_pw
 }
 
 fn westbound(q: integer, r: integer) -> Enemy {
-    Enemy { q: q, r: r, kind: as_u8(ENEMY_KIND_REGULAR), heading: 4 as u8, alive: true }
+    Enemy { q: q, r: r, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8, alive: true }
 }
 
 // A wave spread around the rim at `radius`, so the enemies are not all
@@ -120,8 +122,8 @@ fn rim_wave(n: integer, radius: integer) -> WaveState {
     rw_i = 0;
     for _ in 0..n {
         rw_h = core();
-        for _ in 0..radius { rw_h = hex_neighbor(rw_h, rw_i % 6); }
-        for _ in 0..(rw_i / 6) { rw_h = hex_neighbor(rw_h, ((rw_i % 6) + 2) % 6); }
+        for _ in 0..radius { rw_h = lat_neighbour(rw_h, rw_i % 6); }
+        for _ in 0..(rw_i / 6) { rw_h = lat_neighbour(rw_h, ((rw_i % 6) + 2) % 6); }
         rw_s.enemies += [westbound(rw_h.q, rw_h.r)];
         rw_i += 1;
     }
@@ -334,7 +336,7 @@ fn test_the_field_a_tick_uses_equals_a_fresh_build() {
     tfb = flow_build(tff_pal, tff_pw, tff_s.heights, as_u8(ENEMY_KIND_REGULAR), core());
 
     assert(len(tfa) == 1, "one class in the roster, one field: {len(tfa)}");
-    for tff_h in visible_hexes(core(), 14) {
+    for tff_h in lat_disc(core(), 14) {
         assert(field_distance_of(tfa, as_u8(ENEMY_KIND_REGULAR), tff_h.q, tff_h.r)
                == flow_distance(tfb, tff_h.q, tff_h.r),
                "({tff_h.q}, {tff_h.r}) disagrees between the tick's field and a fresh one");

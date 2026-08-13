@@ -26,10 +26,9 @@
 // ── The bypass world ────────────────────────────────────────────
 //
 // A corridor along r = 0 from (12, 0) to (0, 0) with a WALL at
-// (3, 0), plus two hexes at (4, -1) and (3, -1) that step around it.
-// Hand-checked: (3, -1) is a neighbour of (4, -1) and of (2, 0), and
-// is NOT a neighbour of (4, 0) — so the bypass is exactly two hexes
-// long and the route is 13 steps where the direct line would be 12.
+// (3, 0), plus two hexes at (3, -1) and (2, -1) that step around it.
+// Checked against the lattice: the bypass is exactly two hexes long
+// and the route is 13 steps where the direct line would be 12.
 //
 // A heading-only enemy stops dead at (4, 0) in this world (that is
 // F1b), so every "it arrived" below is also a statement that the
@@ -69,8 +68,15 @@ fn corridor(hi: integer) -> PaintedWorld {
 // bypass is the only way through.
 fn bypass_world(block: boolean) -> PaintedWorld {
     bw_pw = corridor(12);
-    paint(bw_pw, 4, -1, as_u8(GRASS));
+    // ⚠ Relabelled for plan 09 C5b: the axial (4, -1) and (3, -1)
+    // this used to name are (3, -1) and (2, -1) in odd-r offset.
+    // Re-checked against the new lattice, not assumed: (3, -1) is
+    // `lat_neighbour((4, 0), 2)`, (2, -1) is `lat_neighbour((3, -1),
+    // 3)`, and (2, 0) is `lat_neighbour((2, -1), 4)` — so the bypass
+    // is still exactly two hexes and the route is still 13 steps
+    // where the direct line is 12.
     paint(bw_pw, 3, -1, as_u8(GRASS));
+    paint(bw_pw, 2, -1, as_u8(GRASS));
     if block { paint(bw_pw, 3, 0, as_u8(WALL)); }
     bw_pw
 }
@@ -87,10 +93,11 @@ fn desire_for(pw: PaintedWorld) -> FlowField {
     flow_desire(load_palette(PALETTE), pw, height_layer_empty(), core())
 }
 
-// One westbound enemy at (q, 0) — heading 4 is (-1, 0), so its
-// heading can never change `r`.
+// One westbound enemy at (q, 0) — heading 3 is WEST, `(q - 1, r)`
+// on both row parities, so its heading can never change `r`.
+// (It was heading 4 under the axial compass; plan 09 C5b moved it.)
 fn westbound(kind: integer, q: integer) -> Enemy {
-    Enemy { q: q, r: 0, kind: as_u8(kind), heading: 4 as u8, alive: true }
+    Enemy { q: q, r: 0, kind: as_u8(kind), heading: 3 as u8, alive: true }
 }
 
 fn one_wave(kind: integer, q: integer, n: integer) -> WaveState {
@@ -119,7 +126,9 @@ fn test_the_route_leaves_the_headings_line() {
     }
 
     assert(trl_off, "a heading of (-1, 0) can never change r — so this is the FIELD steering");
-    assert(trl_e.q == 3 && trl_e.r == -1,
+    // The far bypass hex is (2, -1) in odd-r offset — the axial
+    // (3, -1) this used to name (plan 09 C5b).
+    assert(trl_e.q == 2 && trl_e.r == -1,
            "and after ten ticks it is on the far bypass hex, got ({trl_e.q}, {trl_e.r})");
 }
 

@@ -10,14 +10,13 @@ echo markers: place, turn, cycle kind, undo, redo
 
 do toggle_mode
 
-do rotate
-click 0 -3
-marker 0 -3 spawn 1
+click -2 -3
+marker -2 -3 spawn 0
 
 do rotate
 do rotate
 click 3 0
-marker 3 0 spawn 3
+marker 3 0 spawn 2
 
 # Six more steps is a full turn — this one must still face 3.
 do rotate
@@ -26,18 +25,18 @@ do rotate
 do rotate
 do rotate
 do rotate
-click -3 3
-marker -3 3 spawn 3
+click -2 3
+marker -2 3 spawn 2
 
 count markers 3 3
 
 # Undo takes the last placement back off, redo puts it back with
 # the direction it had.
 do undo
-marker -3 3 none
+marker -2 3 none
 count markers 2 2
 do redo
-marker -3 3 spawn 3
+marker -2 3 spawn 2
 count markers 3 3
 
 # A target is a different kind, and has no direction to speak of.
@@ -51,5 +50,5 @@ click 0 0
 marker 0 0 none
 count markers 3 3
 
-hover 5 -2
+hover 4 -2
 snap markers-and-rotation

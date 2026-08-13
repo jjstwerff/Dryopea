@@ -17,9 +17,12 @@ first means the bigger change happens once, on a settled seam.
 
 ## Status
 
-**Active — the I phases are DONE (I0 + @D001 + I1, 2026-08-12/13); the
-lattice conversion C1–C6 is what remains, and it now happens on a
-settled input seam, which is why I0–I1 went first.** This is plan 07's `W0c`,
+**Active — everything is shipped except C6.**  The I phases landed
+2026-08-12/13 (I0 + @D001 + I1); the lattice conversion C0–C5 landed
+2026-08-13.  dryopea now speaks pointy-top odd-r offset throughout:
+the lattice, the relabel, the renderer, the arrows, the label-space
+code and the data.  **C6 — delete the axial layer — is all that
+remains.** This is plan 07's `W0c`,
 cut into its own plan because it is multi-phase, stands alone, and plan 07
 is long enough already. It is a **precondition** for plan 07's asset
 interchange, not a part of it: converting the lattice is worth doing whether
@@ -110,8 +113,8 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | **Shipped** — see § C2 shipped.  Strengthened to DISTANCE preservation, which implies adjacency AND injectivity |
 | **C3** — the renderer draws pointy-top | M | one site at a time | a rendered hex is TALLER than wide (pointy-top, measured in pixels off a real canvas); the camera's hex lands at the canvas centre; neighbours sit one flat-to-flat away in the direction the compass names; `screen_to_hex ∘ world_to_canvas` = identity; plan 08's `frame` bands still hold | **Shipped** — see § C3 shipped.  ⚠ The goldens do NOT move once; the reviewed rebaseline is now C5's |
 | **C4** — the marker arrows | S | one site at a time | each marker arrow points at the neighbour it names, measured against the actual step; the arrows are unit length and opposite pairs cancel. ⚠ Was "paint_line, marker arrows, spawn approach" — the other two turned out to be LABEL-space and moved to C5; see § C4 shipped | **Shipped** |
-| **C5** — migrate the data AND the label-space code | M→H | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand; `a-wave-approaches` still shows `range` decreasing monotonically. ⚠ NO compensating y-flip — a map that comes back looking the same means the compass decision did not take. **⚠ Inherits from C3/C4**: the reviewed golden rebaseline, `paint_line` ×2 (which must move in ONE commit), `enemy_tick`'s step, the flow field, passability, occupancy, and every marker `direction` via `relabel_direction` | Open |
-| **C6** — delete the axial layer | XS | — | `grep` finds no axial helper; suite + `scripts/validate.sh` green | Open |
+| **C5** — migrate the data AND the label-space code | M→H, re-cut into C5a/b/c | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand; `a-wave-approaches` still shows `range` decreasing monotonically. ⚠ NO compensating y-flip — a map that comes back looking the same means the compass decision did not take. **⚠ Inherits from C3/C4**: the reviewed golden rebaseline, `paint_line` ×2 (which must move in ONE commit), `enemy_tick`'s step, the flow field, passability, occupancy, and every marker `direction` via `relabel_direction` | Open |
+| **C6** — delete the axial layer | XS | — | `grep` finds no axial helper; suite + `scripts/validate.sh` green | **Shipped** — see § C5 shipped |
 
 ⚠ **No phase is `H`.** Plan 07 carried this as one `H` phase, which fails
 [`plans/README.md`](../README.md) § The two mechanical checks — an `H` step
@@ -643,6 +646,78 @@ together because they are one change.
 
 Suite 559 → **565 green**; `scripts/validate.sh` unchanged at **233
 measurements over 14 scripts**.
+
+### C5 shipped — the re-cut worked, and the strongest gate never moved
+
+Landed 2026-08-13 as the three steps the re-cut proposed.
+
+**C5a — the converter, nothing wired in.**  `src/convert.loft` +
+`src/convert_main.loft`.  Both gates green BY CONSTRUCTION, which is
+the point of cutting it out: if `validate.sh` had moved here, something
+was wired in that should not have been.
+
+⚠ The survey shrank the phase before it started: there is no `maps/`
+directory and `examples/*.json` carries no coordinates, so the only
+axial data in the repo is the fourteen `.keys` scripts.
+
+⚠ **The converter's schema is dryopea's third table and the one with no
+sweep behind it** — nothing about a number marks it as a coordinate,
+and `count painted 19 19` and `click 19 19` are the same four tokens.
+Nine of twenty-five commands carry a position.  So the load-bearing
+tests are the NEGATIVE ones, and here is why: given `count` a bogus
+schema row, `count painted 19 19` becomes `count painted 28 19` **and
+the round-trip test stays green**, because a wrong row is still a
+bijection.  Only the pass-through assertions see it.
+
+**C5b — the atomic flip.**  Twelve label-space sites across six files
+(`paint_line` ×2, `enemy_tick` ×2, the flow BFS ×2, passability,
+occupancy's neighbour walk, `script.loft`'s range) and the fourteen
+scripts, in one commit.
+
+**The gate is the scenarios' own numbers, and it held: 233 measurements
+over 14 scripts, unchanged.**  That is the strongest check in the plan
+and it needs no pictures — C2 proved the relabel preserves distance, so
+`count painted 19 19` and every `range` band are invariant under a
+correct conversion.  They did not move.
+
+⚠ **A direction is REACHED, not written down**, and the converter had
+to learn it.  Converting only the literals left every script saying
+"marker at (12, 0) faces 4, expected 3" — and nothing else, which is
+the distance guarantee showing.  A spawn's direction is the running
+count of `do rotate` mod 6, and the relabel is uniformly `d - 1`, so
+**one fewer rotation at the start shifts every later placement with
+it**.  That rule is not invertible, so it is kept out of the round-trip
+half deliberately.
+
+**C5c — the reviewed goldens**, once, on a system that is finally
+self-consistent.  The ring is a ring again.
+
+#### ⚠ The test fixtures were the real cost, and one of them HUNG
+
+`11_f5_follow_the_field.loft` went from part of a 33 s suite to being
+**hard-killed at loft's 300 s timeout** — and it was not listed as a
+failure, so a `grep FAIL` reported it as passing.  The profiler is what
+named it (`[timeout] hard-kill … phase=run-interpret`).
+
+The cause: its bypass world was hand-checked AXIAL adjacency
+(*"(3, -1) is a neighbour of (4, -1)"*), so after the flip the bypass
+did not connect, the route length became `FLOW_UNREACHABLE`, and
+`while tet_d > 0` counted down from a billion with its per-tick
+assertion passing every time.
+
+⚠ **A `while` loop over a field distance is unbounded when the field
+says "no route"** — the loop's own invariant cannot see it, because
+decrementing from a huge number is still decrementing.
+
+Two shapes of fixture broke, and both are worth naming:
+
+- **lattice-native fixtures** (`ring`, `disc` built from
+  `hex_neighbor` / `visible_hexes`) needed only a mechanical swap to
+  `lat_*` — 17 tests in `11_f2` went green in one edit.
+- **hand-computed literals** (bypass hexes, expected positions,
+  `heading: 4`) had to be relabelled one at a time.
+
+The first kind is the one to write from now on.
 
 ### C5 — the data, and the one decision left open
 

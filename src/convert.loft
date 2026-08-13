@@ -155,6 +155,51 @@ pub fn convert_keys_line(line: text, forward: boolean) -> (text, boolean) {
     (ckl_out, true)
 }
 
+// ⚠ The IMPERATIVE half of the conversion, and it is not invertible.
+//
+// A spawn's direction is never written down in a script — it is
+// REACHED, by `do rotate` repeated until the place-direction gets
+// there, and only then does `click` place a marker carrying it.  So
+// relabelling the `marker … spawn <d>` assertion is half the job:
+// the placement that produced it has to move too, or the script
+// asserts one thing and does another.  (Measured: converting only
+// the literals turns all fourteen scripts into "marker at (12, 0)
+// faces 4, expected 3" — and nothing else, which is C2's distance
+// guarantee showing.)
+//
+// The place-direction after any prefix of a script is the running
+// count of rotations mod 6, and the relabel is uniformly `d - 1`, so
+// **one fewer rotation at the start shifts every later placement
+// with it**.  That is the entire rule: drop the first `do rotate`.
+// It works because no script rotates anticlockwise and none places a
+// spawn before its first rotation — both checked.
+//
+// ⚠ Kept OUT of `convert_keys_source` because it cannot be undone:
+// reversing it would have to know where the dropped line was, and a
+// script whose first run was a single rotation has no trace of it
+// left.  The round-trip gate therefore covers the coordinate half
+// only; this half is gated by the scripts' own direction
+// assertions, which is the stronger check anyway — they state the
+// answer independently of how it was reached.
+pub fn convert_keys_rotations(src: text) -> text {
+    ckr_out   = "";
+    ckr_first = true;
+    ckr_done  = false;
+    for ckr_line in src.split('\n') {
+        if !ckr_done && ckr_line.trim() == "do rotate" {
+            ckr_done = true;
+            continue;
+        }
+        if ckr_first {
+            ckr_out = ckr_line;
+            ckr_first = false;
+        } else {
+            ckr_out = "{ckr_out}\n{ckr_line}";
+        }
+    }
+    ckr_out
+}
+
 // Convert a whole script.  Returns the text and the 1-based number
 // of the first line that could not be understood (0 when all did) —
 // a converter that skipped a line quietly would be worse than one

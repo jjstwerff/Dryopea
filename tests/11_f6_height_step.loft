@@ -308,7 +308,7 @@ fn test_two_kinds_that_climb_alike_get_the_same_field() {
            "an unknown class takes the strictest limit");
     assert(flow_count(ttk_bot) == flow_count(ttk_unk),
            "so the fields are the same size: {flow_count(ttk_bot)} vs {flow_count(ttk_unk)}");
-    for ttk_h in visible_hexes(core(), 8) {
+    for ttk_h in lat_disc(core(), 8) {
         assert(flow_distance(ttk_bot, ttk_h.q, ttk_h.r) == flow_distance(ttk_unk, ttk_h.q, ttk_h.r),
                "and equal at ({ttk_h.q}, {ttk_h.r})");
     }
@@ -316,8 +316,8 @@ fn test_two_kinds_that_climb_alike_get_the_same_field() {
 
 fn test_a_roster_of_two_such_classes_builds_one_field() {
     tro_s = wave_state_empty();
-    tro_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 4 as u8, alive: true }];
-    tro_s.enemies += [Enemy { q: 5, r: 0, kind: as_u8(99),                 heading: 4 as u8, alive: true }];
+    tro_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8, alive: true }];
+    tro_s.enemies += [Enemy { q: 5, r: 0, kind: as_u8(99),                 heading: 3 as u8, alive: true }];
 
     assert(len(wave_fields(tro_s, pal(), corridor(6), core())) == 1,
            "two classes, one climb limit, one sweep");
@@ -325,8 +325,8 @@ fn test_a_roster_of_two_such_classes_builds_one_field() {
 
 fn test_and_a_roster_of_two_climb_limits_builds_two() {
     tat_s = wave_state_empty();
-    tat_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 4 as u8, alive: true }];
-    tat_s.enemies += [Enemy { q: 5, r: 0, kind: as_u8(ENEMY_KIND_INSECT),  heading: 4 as u8, alive: true }];
+    tat_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8, alive: true }];
+    tat_s.enemies += [Enemy { q: 5, r: 0, kind: as_u8(ENEMY_KIND_INSECT),  heading: 3 as u8, alive: true }];
 
     assert(len(wave_fields(tat_s, pal(), corridor(6), core())) == 2,
            "a wall stops one and not the other, so they cannot share a route");
@@ -334,7 +334,7 @@ fn test_and_a_roster_of_two_climb_limits_builds_two() {
 
 fn test_a_dead_enemys_class_builds_no_field() {
     tde_s = wave_state_empty();
-    tde_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_INSECT), heading: 4 as u8, alive: false }];
+    tde_s.enemies += [Enemy { q: 6, r: 0, kind: as_u8(ENEMY_KIND_INSECT), heading: 3 as u8, alive: false }];
 
     assert(len(wave_fields(tde_s, pal(), corridor(6), core())) == 0,
            "a field built for nobody is a number nobody can explain");
@@ -350,7 +350,7 @@ fn test_a_dead_enemys_class_builds_no_field() {
 // does — and it can still walk DOWN off one.
 
 fn far_east(kind: integer, q: integer) -> Enemy {
-    Enemy { q: q, r: 0, kind: as_u8(kind), heading: 4 as u8, alive: true }
+    Enemy { q: q, r: 0, kind: as_u8(kind), heading: 3 as u8, alive: true }
 }
 
 fn test_approach_mode_will_not_climb_a_pile() {
@@ -383,9 +383,11 @@ fn test_engage_mode_routes_a_wave_round_a_pile() {
     // The corridor plus a bypass at r = -1 round (3, 0), and a pile ON
     // (3, 0) rather than a wall.  Nothing in the palette changed; the
     // route did.
+    // Relabelled for plan 09 C5b — the odd-r names for the axial
+    // (4, -1) and (3, -1) this bypass used to be.
     ter_pw = corridor(12);
-    paint(ter_pw, 4, -1, as_u8(GRASS));
     paint(ter_pw, 3, -1, as_u8(GRASS));
+    paint(ter_pw, 2, -1, as_u8(GRASS));
 
     ter_s = wave_state_empty();
     height_raise(ter_s.heights, 3, 0, 1.5);

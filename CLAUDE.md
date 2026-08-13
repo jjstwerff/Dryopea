@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 565/565 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 581/581 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 565 runs.
+per-function + per-line + call-path report over all 581 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -675,16 +675,15 @@ suite redirects its own shots into `tests/actual/`.
 
 ### Hex convention
 
-⚠ **Two lattices coexist right now** — plan 09 is mid-conversion.
+**Pointy-top, odd-r offset** — `hex_grid`'s convention, which every
+`hex_*` library and moros already speak.  `src/lattice.loft` is the
+layer, delegating to `hex_grid`; plan 09 C0–C5 converted everything to
+it and **C6 deletes the axial `src/world.loft` that remains**.
 
-**In use today (`src/world.loft`): axial flat-top.**  HEX_DIAMETER =
-1.5m vertex-to-vertex.  Everything calls this; C6 deletes it.  The
-claim that it "matches moros and loft `lib_plan 24`" was WRONG and is
-what plan 09 exists to correct — dryopea was the ecosystem's only
-axial consumer.
-
-**The target (`src/lattice.loft`, shipped C1): pointy-top, odd-r
-offset**, delegating to `hex_grid`.  Nothing calls it yet.
+⚠ `world.loft` still exists and still answers AXIAL.  Nothing in the
+game calls it any more — only the plan-09 tests, deliberately, as
+negative controls.  Do not reach for `hex_neighbor` / `hex_distance`;
+they are `lat_neighbour` / `lat_distance` now.
 
 World +y grows **south** (same direction as canvas +y); there is no
 y-flip in the render path, and neither of those changes.
@@ -874,8 +873,8 @@ plans/
                     found it OVER budget, and found the cause was a
                     per-enemy field COPY rather than the rebuild it was
                     written to optimise
-  09-lattice-conversion/      — Active (C0-C4 + the whole I half
-                    shipped; C5-C6 remain): dryopea
+  09-lattice-conversion/      — Active (C0-C5 + the whole I half
+                    shipped; only C6 remains — delete the axial layer): dryopea
                     moves to pointy-top odd-r offset, the convention
                     every hex_* library and moros already speak.
                     Checked against hex_grid as an ORACLE, because a

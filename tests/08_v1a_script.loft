@@ -468,7 +468,10 @@ fn test_a_script_runs_from_a_file() {
     assert(painted_count(tsf_s.pw) == 3, "the drag painted three hexes");
     assert(lookup_painted(tsf_s.pw, 1, 0) == 5 as u8, "grass, including the hex between the ends");
     assert(marker_count(tsf_s.mw) == 1, "and one spawn");
-    assert(marker_direction(tsf_s.mw, 0, -2) == 1 as u8, "turned one step before it was placed");
+    // ⚠ Both moved in plan 09 C5b, and the converter did it: the hex
+    // is the odd-r label for the axial (0, -2) this used to name, and
+    // the direction is one step back because the compass rotated.
+    assert(marker_direction(tsf_s.mw, -1, -2) == 0 as u8, "facing where the script left it");
 }
 
 // A gate that cannot find its script must FAIL, not pass quietly on

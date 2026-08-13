@@ -63,12 +63,19 @@ fn test_paint_line_horizontal() {
     }
 }
 
+// ⚠ Stated against the LATTICE rather than as a hardcoded 4.  The
+// hex count of a line is `distance + 1` in any lattice; writing the
+// number out instead made this a test of which lattice was in use,
+// which is why plan 09 C5b had to touch it at all.
 fn test_paint_line_diagonal() {
-    // (0, 0) → (3, -3) is 3 hexes NE-ish in axial flat-top.
-    // hex_distance = 3, so line covers 4 hexes (inclusive).
+    tpl_a = Hex { q: 0, r: 0 };
+    tpl_b = Hex { q: 3, r: -3 };
     tpl_d = painted_empty();
-    paint_line(tpl_d, Hex { q: 0, r: 0 }, Hex { q: 3, r: -3 }, 7 as u8);
-    assert(painted_count(tpl_d) == 4, "diagonal line: 4 hexes");
+    paint_line(tpl_d, tpl_a, tpl_b, 7 as u8);
+    tpl_n = lat_distance(tpl_a, tpl_b);
+    assert(tpl_n > 1, "the probe is a real diagonal, {tpl_n} steps");
+    assert(painted_count(tpl_d) == tpl_n + 1,
+           "a {tpl_n}-step line is {tpl_n} + 1 hexes, got {painted_count(tpl_d)}");
     assert(lookup_painted(tpl_d, 0, 0)  == 7 as u8, "start painted");
     assert(lookup_painted(tpl_d, 3, -3) == 7 as u8, "end painted");
 }
@@ -193,9 +200,14 @@ fn test_render_full_workflow() {
     //          ( 0, 1) hill
     //  rim: walls drawn as four line segments connecting the
     //  four cardinal-ish points around the centre.
+    // ⚠ Relabelled for plan 09 C5b — the odd-r names for the axial
+    // corners this used to list, produced by `relabel_hex`:
+    //   (0, -1) → (-1, -1)   (1, -1) → (0, -1)
+    //   (1, 1)  → ( 1,  1)   (-1, 1) → (-1, 1)   (-1, 0) → (-1, 0)
+    // Only the odd row moved, which is the parity term doing its job.
     trf_w = painted_empty();
-    paint_line(trf_w, Hex { q:  0, r: -1 }, Hex { q:  1, r: -1 }, 9 as u8);
-    paint_line(trf_w, Hex { q:  1, r: -1 }, Hex { q:  1, r:  1 }, 9 as u8);
+    paint_line(trf_w, Hex { q: -1, r: -1 }, Hex { q:  0, r: -1 }, 9 as u8);
+    paint_line(trf_w, Hex { q:  0, r: -1 }, Hex { q:  1, r:  1 }, 9 as u8);
     paint_line(trf_w, Hex { q:  1, r:  1 }, Hex { q: -1, r:  1 }, 9 as u8);
     paint_line(trf_w, Hex { q: -1, r:  1 }, Hex { q: -1, r:  0 }, 9 as u8);  // leaves a gap
     paint(trf_w, 0, 0, 5 as u8);   // grass in the middle

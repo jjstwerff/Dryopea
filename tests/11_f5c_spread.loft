@@ -86,7 +86,7 @@ fn field_for(kind: integer, pw: PaintedWorld) -> FlowField {
 }
 
 fn enemy_at(q: integer, r: integer, kind: integer) -> Enemy {
-    Enemy { q: q, r: r, kind: as_u8(kind), heading: 4 as u8, alive: true }
+    Enemy { q: q, r: r, kind: as_u8(kind), heading: 3 as u8, alive: true }
 }
 
 fn wave_of(n: integer, q: integer, r: integer) -> WaveState {
@@ -123,7 +123,9 @@ fn test_off_the_axis_two_neighbours_are_closer() {
     assert(len(tot_s) == 2, "(8, 4) is off every axis: {len(tot_s)} closer neighbours");
     tot_a = tot_s[0] ?? Hex {};
     tot_b = tot_s[1] ?? Hex {};
-    assert(tot_a.q == 8 && tot_a.r == 3, "direction order puts (8, 3) first, got ({tot_a.q}, {tot_a.r})");
+    // ⚠ Direction ORDER changed with the compass (plan 09 C5b):
+    // from (8, 4) the first strictly-closer neighbour is now (7, 3).
+    assert(tot_a.q == 7 && tot_a.r == 3, "direction order puts (7, 3) first, got ({tot_a.q}, {tot_a.r})");
     assert(tot_b.q == 7 && tot_b.r == 4, "then (7, 4), got ({tot_b.q}, {tot_b.r})");
 }
 
@@ -174,16 +176,16 @@ fn test_two_that_want_one_hex_take_two_different_ones() {
     ttw_pw = field_world();
     ttw_s  = wave_of(2, 8, 4);
 
-    // Both want (8, 3) — it is the head of the ordering from (8, 4).
+    // Both want (7, 3) — it is the head of the ordering from (8, 4).
     ttw_f = field_for(ENEMY_KIND_REGULAR, ttw_pw);
     ttw_want = flow_step(ttw_f, 8, 4);
-    assert(ttw_want.q == 8 && ttw_want.r == 3, "both of them want (8, 3)");
+    assert(ttw_want.q == 7 && ttw_want.r == 3, "both of them want (7, 3)");
 
     play(ttw_s, ttw_pw, 1);
 
     ttw_a = nth(ttw_s, 0);
     ttw_b = nth(ttw_s, 1);
-    assert(ttw_a.q == 8 && ttw_a.r == 3, "the first took it: ({ttw_a.q}, {ttw_a.r})");
+    assert(ttw_a.q == 7 && ttw_a.r == 3, "the first took it: ({ttw_a.q}, {ttw_a.r})");
     assert(ttw_b.q == 7 && ttw_b.r == 4,
            "and the second went BESIDE it rather than waiting: ({ttw_b.q}, {ttw_b.r})");
     assert(ttw_a.q != ttw_b.q || ttw_a.r != ttw_b.r, "two enemies, two hexes");

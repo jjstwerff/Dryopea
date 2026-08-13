@@ -22,6 +22,7 @@
 // Plan 03 follow-up — QoL polish.
 
 use world;
+use lattice;
 use painted;
 use markers;
 
@@ -239,23 +240,11 @@ pub fn paint_line_and_record(
     new_kind: u8,
     stroke:   UndoEntry,
 ) {
-    pla_n = hex_distance(a, b);
-    if pla_n == 0 {
-        paint_and_record(pw, a.q, a.r, new_kind, stroke);
-        return;
-    }
-    pla_aq = a.q as float;
-    pla_ar = a.r as float;
-    pla_bq = b.q as float;
-    pla_br = b.r as float;
-    // pla_n > 0 guaranteed above; `?? 0.0` silences loft's
-    // div-by-zero static check.
-    pla_inv = (1.0 / (pla_n as float)) ?? 0.0;
-    for pla_i in 0..=pla_n {
-        pla_t  = (pla_i as float) * pla_inv;
-        pla_qf = pla_aq + (pla_bq - pla_aq) * pla_t;
-        pla_rf = pla_ar + (pla_br - pla_ar) * pla_t;
-        pla_h  = cube_round_axial(pla_qf, pla_rf);
+    // Same source as `painted.loft::paint_line`, which is the point:
+    // a drag whose undo entry covers a different set from the paint
+    // is a corrupt undo rather than a visible bug.
+    pla_hexes = lat_line(a, b);
+    for pla_h in pla_hexes {
         paint_and_record(pw, pla_h.q, pla_h.r, new_kind, stroke);
     }
 }

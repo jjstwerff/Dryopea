@@ -77,6 +77,7 @@
 // `examples/numbers.json` as a third statement of the same fact.
 
 use world;
+use lattice;
 use palette;
 use painted;
 use height;
@@ -289,7 +290,7 @@ pub fn hex_floor(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLaye
                  kind: u8, q: integer, r: integer) -> float {
     hf_lowest = 0.0;
     hf_any    = false;
-    for hf_n in hex_neighbours(Hex { q: q, r: r }) {
+    for hf_n in lat_neighbours(Hex { q: q, r: r }) {
         if can_stand(pal, pw, kind, hf_n.q, hf_n.r) {
             hf_h = hex_height(pal, pw, hl, hf_n.q, hf_n.r);
             if !hf_any || hf_h < hf_lowest { hf_lowest = hf_h; }

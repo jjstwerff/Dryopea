@@ -1,0 +1,68 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The `.keys` converter's entry point — plan 09 phase C5b.
+//
+//   loft src/convert_main.loft tests/scripts            # axial → offset
+//   loft src/convert_main.loft tests/scripts reverse    # and back
+//
+// Rewrites every `.keys` file in the directory IN PLACE.  It exists
+// so the fourteen scenario scripts are converted by the converter
+// rather than by hand: fourteen files of coordinate pairs edited by
+// eye is not a reviewable change, and one transposed pair would move
+// a measurement that the reviewer would then "fix".
+//
+// ⚠ Six lines and no decisions, like every other entry here — a file
+// carrying `#cwd` cannot be `use`d as a library, so anything written
+// here is compiled by nothing.  The work is in `src/convert.loft`,
+// which the aggregator covers and `tests/09_c5a_converter.loft`
+// gates.
+//
+// ⚠ It REFUSES a file it does not fully understand, naming the line,
+// rather than writing a partly-converted one.  Half a file in the
+// old lattice is the failure this whole plan is about.
+
+#cwd
+
+use dryopea;
+
+fn main() {
+    cm_args = arguments();
+    cm_dir  = if len(cm_args) > 0 { cm_args[0] ?? "" } else { "tests/scripts" };
+    cm_fwd  = !(len(cm_args) > 1 && (cm_args[1] ?? "") == "reverse");
+
+    cm_names = validate_script_names(cm_dir);
+    if len(cm_names) == 0 {
+        println("convert: no .keys files in {cm_dir}");
+        return;
+    }
+
+    cm_done = 0;
+    cm_same = 0;
+    for cm_n in cm_names {
+        cm_path = "{cm_dir}/{cm_n}.keys";
+        cm_src  = file(cm_path).content() ?? "";
+        if cm_src == "" {
+            println("convert: {cm_n}.keys is empty or unreadable — REFUSED");
+            return;
+        }
+        cm_r = convert_keys_source(cm_src, cm_fwd);
+        if cm_r.1 != 0 {
+            println("convert: {cm_n}.keys line {cm_r.1} not understood — REFUSED, nothing written");
+            return;
+        }
+        // The imperative half — see `convert_keys_rotations`.  Only
+        // forward: it cannot be undone, so a reverse run leaves the
+        // rotations alone and reports what it did.
+        cm_text = if cm_fwd { convert_keys_rotations(cm_r.0) } else { cm_r.0 };
+        if cm_text == cm_src {
+            cm_same += 1;
+        } else {
+            cm_out = file(cm_path);
+            cm_out.write(cm_text);
+            cm_done += 1;
+        }
+    }
+
+    println("convert: {cm_done} rewritten, {cm_same} already in the target lattice ({len(cm_names)} scripts, {if cm_fwd { "axial → offset" } else { "offset → axial" }})");
+}

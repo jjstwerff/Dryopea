@@ -104,6 +104,7 @@
 // boolean reachability over a bounded box.
 
 use world;
+use lattice;
 use palette;
 use painted;
 use height;
@@ -283,7 +284,7 @@ fn flow_sweep(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
         fb_next: vector<Hex> = [];
         for fb_h in fb_frontier {
             for fb_dir in 0..6 {
-                fb_n = hex_neighbor(fb_h, fb_dir);
+                fb_n = lat_neighbour(fb_h, fb_dir);
                 // Already labelled — and its label is smaller or
                 // equal, because BFS reaches every cell by a shortest
                 // route first.
@@ -393,7 +394,7 @@ pub fn flow_steps(f: const FlowField, q: integer, r: integer) -> vector<Hex> {
     fss_d = flow_distance(f, q, r);
     if fss_d >= FLOW_UNREACHABLE { return fss_out; }
     fss_h = flow_height(f, q, r);
-    for fss_n in hex_neighbours(Hex { q: q, r: r }) {
+    for fss_n in lat_neighbours(Hex { q: q, r: r }) {
         // Strictly smaller, so an equal neighbour is never a step —
         // this is what makes the walk terminate, and the direction
         // order it is collected in is the tie-break above.

@@ -208,6 +208,80 @@ fn test_real_script_coordinates_keep_their_distances() {
     }
 }
 
+// ─── The imperative half ────────────────────────────────────────
+//
+// A spawn's direction is REACHED by `do rotate`, not written down,
+// so the literal conversion is only half the job.  ⚠ These are
+// separate from the round-trip tests on purpose: the rule cannot be
+// undone, and pretending otherwise would make the round trip lie.
+
+fn test_one_rotation_is_dropped_and_only_one() {
+    tor_src = "do toggle_mode\ndo rotate\ndo rotate\ndo rotate\ndo rotate\nclick 12 0";
+    tor_out = convert_keys_rotations(tor_src);
+    assert(tor_out == "do toggle_mode\ndo rotate\ndo rotate\ndo rotate\nclick 12 0",
+           "four rotations become three, got:\n{tor_out}");
+}
+
+fn test_a_single_rotation_disappears() {
+    tsr_out = convert_keys_rotations("do rotate\nclick -2 -3");
+    assert(tsr_out == "click -2 -3", "one rotation becomes none, got '{tsr_out}'");
+}
+
+// Later runs are left alone: the direction ACCUMULATES, so shifting
+// the running total once at the start moves every later placement
+// with it.  Dropping one per run would shift the second placement by
+// two.
+fn test_later_rotation_runs_are_untouched() {
+    tlr_src = "do rotate\nclick 0 0\ndo rotate\ndo rotate\nclick 1 0";
+    tlr_out = convert_keys_rotations(tlr_src);
+    assert(tlr_out == "click 0 0\ndo rotate\ndo rotate\nclick 1 0",
+           "only the FIRST run loses a line, got:\n{tlr_out}");
+}
+
+fn test_a_script_with_no_rotation_is_untouched() {
+    tnr_src = "palette 9\nclick 0 0\ncount painted 1 1";
+    assert(convert_keys_rotations(tnr_src) == tnr_src, "nothing to drop, nothing dropped");
+}
+
+// The precondition the rule rests on, checked against the real files
+// rather than assumed: no script rotates anticlockwise, which would
+// subtract from the running total instead of adding to it and break
+// "one fewer rotation shifts every placement".
+//
+// ⚠ The companion precondition — every script asserting a spawn
+// direction rotates at least once — was a claim about the files
+// BEFORE the conversion, and it held then.  It cannot be asserted
+// here any more: the rule removes exactly one rotation, so a script
+// that had precisely one now has none, correctly.  `round-trip.keys`
+// is that script, and asserting the precondition post-conversion
+// reads its correctness as a failure.
+fn test_the_real_scripts_meet_the_rules_preconditions() {
+    trm_ccw = 0;
+    trm_with_spawn = 0;
+    for trm_f in validate_script_names(SCRIPTS) {
+        trm_src = file("{SCRIPTS}/{trm_f}.keys").content() ?? "";
+        trm_rot = 0;
+        trm_asserts = false;
+        for trm_line in trm_src.split('\n') {
+            trm_t = trm_line.trim();
+            if trm_t == "do rotate_ccw" { trm_ccw += 1; }
+            if trm_t == "do rotate" { trm_rot += 1; }
+            if trm_t.starts_with_at(0, "marker ") && trm_t.size() > 7 {
+                // a spawn assertion carrying a direction
+                trm_tk: vector<text> = [];
+                for trm_p in trm_t.split(' ') {
+                    if trm_p != "" { trm_tk += [trm_p]; }
+                }
+                if len(trm_tk) == 5 && (trm_tk[3] ?? "") == "spawn" { trm_asserts = true; }
+            }
+        }
+        if trm_asserts { trm_with_spawn += 1; }
+    }
+    assert(trm_ccw == 0,
+           "no script rotates anticlockwise — {trm_ccw} do, and the rule assumes none");
+    assert(trm_with_spawn >= 5, "at least five scripts assert a spawn direction, got {trm_with_spawn}");
+}
+
 // ─── The schema is complete ─────────────────────────────────────
 
 // Every command in the vocabulary is either on the schema table or

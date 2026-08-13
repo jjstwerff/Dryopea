@@ -211,22 +211,28 @@ fn test_spawn_wave_appends_to_existing() {
 
 // ─── enemy_tick (approach-mode walk) ────────────────────────────
 
-fn test_enemy_tick_walks_one_hex_south() {
+// ⚠ Heading 0 is EAST since plan 09 C5b — `hex_grid`'s compass, not
+// the axial one where it was south.  The step is `(q + 1, r)` on
+// every row parity, which is what makes east and west the two
+// headings that never change `r`.
+fn test_enemy_tick_walks_one_hex_east() {
     tet_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 0 as u8, alive: true };
     enemy_tick(tet_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), outside_the_bubble(), flow_empty(), occupancy_empty());
-    assert(tet_e.q == 5, "south: q unchanged");
-    assert(tet_e.r == 6, "south: r increased by 1");
+    assert(tet_e.r == 5, "east: r unchanged");
+    assert(tet_e.q == 6, "east: q increased by 1");
 }
 
-fn test_enemy_tick_walks_one_hex_north() {
+// Heading 3 is WEST — the opposite of 0, and the other heading that
+// leaves `r` alone.
+fn test_enemy_tick_walks_one_hex_west() {
     teh_e = Enemy { q: 5, r: 5,
                     kind: ENEMY_KIND_REGULAR as u8,
                     heading: 3 as u8, alive: true };
     enemy_tick(teh_e, load_palette(PALETTE_PATH), walkable(), height_layer_empty(), outside_the_bubble(), flow_empty(), occupancy_empty());
-    assert(teh_e.q == 5, "north: q unchanged");
-    assert(teh_e.r == 4, "north: r decreased by 1");
+    assert(teh_e.r == 5, "west: r unchanged");
+    assert(teh_e.q == 4, "west: q decreased by 1");
 }
 
 fn test_enemy_tick_dead_doesnt_move() {
@@ -247,8 +253,9 @@ fn test_wave_tick_advances_every_enemy() {
                                    kind: ENEMY_KIND_REGULAR as u8,
                                    heading: 3 as u8, alive: true }];
     wave_tick(twt_state, load_palette(PALETTE_PATH), walkable(), Hex { q: 99, r: 99 });
-    assert(twt_state.enemies[0].r == 1, "first enemy walked south by 1");
-    assert(twt_state.enemies[1].r == -1, "second enemy walked north by 1");
+    // Headings 0 and 3 are EAST and WEST since plan 09 C5b.
+    assert(twt_state.enemies[0].q == 1, "first enemy walked east by 1");
+    assert(twt_state.enemies[1].q == 9, "second enemy walked west by 1");
 }
 
 // ─── alive_count (wave-clear sentinel) ──────────────────────────
