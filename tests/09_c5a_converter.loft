@@ -53,7 +53,7 @@ fn test_every_real_script_round_trips() {
                "{tes_f} does not survive there and back");
         tes_n += 1;
     }
-    assert(tes_n == 14, "all fourteen scripts were converted, got {tes_n}");
+    assert(tes_n == 15, "all fifteen scripts were converted, got {tes_n}");
 }
 
 // A conversion that changed nothing would round-trip perfectly too.
@@ -66,7 +66,7 @@ fn test_the_conversion_actually_changes_the_scripts() {
         if tca_fwd.0 != tca_src { tca_changed += 1; }
     }
     assert(tca_changed >= 12,
-           "at least twelve of the fourteen scripts carry coordinates — {tca_changed} changed");
+           "at least twelve of the fifteen scripts carry coordinates — {tca_changed} changed");
 }
 
 // ─── ⚠ What must NOT be touched ─────────────────────────────────
@@ -183,7 +183,7 @@ fn axial_distance(a: const Hex, b: const Hex) -> integer {
 }
 
 // The plan's own C5 Verify: C2's adjacency check applied to every
-// real script.  Every coordinate the fourteen scripts mention, taken
+// real script.  Every coordinate the scripts mention, taken
 // as a set, must keep its pairwise distances through the conversion.
 fn test_real_script_coordinates_keep_their_distances() {
     trs_old: vector<Hex> = [];
@@ -270,12 +270,10 @@ fn test_the_real_scripts_meet_the_rules_preconditions() {
     trm_with_spawn = 0;
     for trm_f in validate_script_names(SCRIPTS) {
         trm_src = file("{SCRIPTS}/{trm_f}.keys").content() ?? "";
-        trm_rot = 0;
         trm_asserts = false;
         for trm_line in trm_src.split('\n') {
             trm_t = trm_line.trim();
             if trm_t == "do rotate_ccw" { trm_ccw += 1; }
-            if trm_t == "do rotate" { trm_rot += 1; }
             if trm_t.starts_with_at(0, "marker ") && trm_t.size() > 7 {
                 // a spawn assertion carrying a direction
                 trm_tk: vector<text> = [];
@@ -300,8 +298,8 @@ fn test_the_real_scripts_meet_the_rules_preconditions() {
 // leaving a script half-converted.
 fn test_the_schema_covers_the_vocabulary() {
     tsc_coords: vector<text> = [
-        "at", "hover", "click", "drag", "raise", "kind", "marker",
-        "target", "enemy",
+        "at", "hover", "click", "drag", "raise", "clear", "damage",
+        "hp", "pile", "kind", "marker", "target", "enemy",
     ];
     tsc_plain: vector<text> = [
         "echo", "do", "hold", "step", "palette", "snap", "wave",
@@ -309,7 +307,7 @@ fn test_the_schema_covers_the_vocabulary() {
     ];
 
     tsc_n = 0;
-    for tsc_s in keys_schemas() { tsc_n += 1; }
+    for _ in keys_schemas() { tsc_n += 1; }
     assert(tsc_n == len(tsc_coords),
            "{len(tsc_coords)} coordinate commands, {tsc_n} schema rows");
 

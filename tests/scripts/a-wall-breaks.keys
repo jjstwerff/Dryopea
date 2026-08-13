@@ -1,0 +1,133 @@
+# a-wall-breaks — plan 12 B2.
+#
+# The first scenario in which the exchange RESOLVES.  A sealed base, one
+# robot, and a wall that eventually gives: it stops at the seal, chews
+# it, the wall comes down into a heap of masonry, and the robot walks
+# over the heap to the core.
+#
+# ── What makes this one evidence ────────────────────────────────
+#
+# `plans/12` § Invariant gate names the failure this phase exists to
+# avoid, and it is not "the wall never breaks" — it is a break that
+# leaves something NOTHING CAN STAND ON.  Had a break erased its hex,
+# the painted layer is sparse and sea-default, so the breach would read
+# as `sea` and be strictly LESS passable than the wall it replaced,
+# while "the wall broke" asserted true.  `tests/12_b0_probe.loft` § 3
+# measured exactly that.
+#
+# So the measurement that matters here is the last one: **an enemy ends
+# up INSIDE**.  `kind 2 0 grass` and `pile 2 0` say the two halves of a
+# break happened; only `enemy 0 0 0` says the breach is a way in.
+#
+# ── Why it does not tick out the whole 100 s ────────────────────
+#
+# One robot does 1 HP/s into a wall of 100 HP, which is 150 ticks — and
+# a run that spends 150 of them proving multiplication measures the
+# multiplication.  So this ticks far enough to watch the HP fall at the
+# rate the numbers say, softens the wall with one `damage` line, and
+# lets the SIEGE land the last of it.  Every step of the real path,
+# none of the waiting: `damage` cannot break anything, only a tick can.
+#
+# ── The world ───────────────────────────────────────────────────
+#
+#   one corridor of grass, twelve hexes:  (12, 0) -> (0, 0)
+#   sealed at (2, 0) with a wall          3.0 m, and a robot climbs 2.0
+#   core at (0, 0), spawn at (12, 0)
+#
+# The corridor is one hex wide, so there is no way round: the robot's
+# routing field covers only (0, 0) and (1, 0), and everything east of
+# the seal has no route at all.  That is what puts it in the siege.
+
+echo a wall breaks: the seal holds, then it does not, and the robot walks in
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The spawn, twelve hexes out — clear of close_spawn_disable_radius
+# (10) and inside the scrambler bubble (25).
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 12 0
+marker 12 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag 12 0 0 0
+count painted 13 13
+
+palette 9
+click 2 0
+kind 2 0 wall
+count painted 13 13
+
+# ── The wave: nobody is besieging anything yet ──────────────────
+#
+# The reading that makes the ones after it mean something.  A wall at
+# full HP twelve hexes from the nearest enemy is the state every later
+# assertion is measured against.
+wave 1
+count alive 1 1
+count targets 0 0
+hp 2 0 100.0 100.0
+
+# ── Nine ticks: it arrives, and has not bitten yet ──────────────
+#
+# ⚠ The tick lands its damage against the world it STARTED with, so the
+# tick that carries the robot to (3, 0) is one in which it could still
+# move — and an enemy that can move attacks nothing.  The wall is
+# untouched at exactly the moment the siege begins.
+tick 9
+enemy 0 3 0
+enemies passable
+count targets 1 1
+target 0 2 0
+hp 2 0 100.0 100.0
+
+# ── Three ticks of siege: 1 HP/s, and a tick is 2/3 of a second ─
+#
+# 3 x per_tick(1.0) = 2.0 HP.  This is the whole rate, measured — and
+# it is the reason `numbers.json` goes on saying HP/s rather than
+# HP/tick (`spawn.loft` § Why the SECONDS survive into the engine).
+tick 3
+hp 2 0 97.9 98.1
+enemy 0 3 0
+
+# ── Soften it, and let the siege finish the job ─────────────────
+damage 2 0 97.5
+hp 2 0 0.4 0.6
+
+# ⚠ The tick that breaks it does NOT let the robot through.  A wall
+# that fell mid-loop would open a route for whoever the roster visited
+# later, and `ENEMY_MOVEMENT.md` § The tick resolves once is what says
+# it must not — so the break lands after everybody has moved, and it is
+# the NEXT tick that routes through the hole.
+tick 1
+kind 2 0 grass
+pile 2 0 0.9 1.1
+enemy 0 3 0
+count targets 0 0
+
+# ── And in ─────────────────────────────────────────────────────
+#
+# Onto the heap first — a 0.99 m step, inside a robot's 2.0 m climb —
+# and then down the far side to the core.  THIS is the phase: a breach
+# that nothing could stand on would leave the robot at (3, 0) forever
+# with every assertion above still green.
+tick 1
+enemy 0 2 0
+enemies passable
+snap b2-the-robot-on-the-breach
+
+tick 2
+enemy 0 0 0
+enemies passable
+count alive 1 1
+range 0 0

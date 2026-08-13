@@ -406,7 +406,8 @@ paints**.  Plan 12 B1.
 Violet-grey `#8878a8`, placeholder.  A hex carries rubble when
 the **runtime rubble layer** ([`src/height.loft`](../src/height.loft))
 has piled metres onto it — a robot that died, an insect that
-died, a wall that broke.  It is a ground type so that
+died, a wall that broke (the last of those is live since plan 12 B2;
+the deaths arrive with B4).  It is a ground type so that
 passability stays one rule: `can_stand` reads `walk_ground` with
 no branch for debris.
 

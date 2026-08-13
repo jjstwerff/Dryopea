@@ -73,7 +73,7 @@ pointer, not a second copy.
 | [`09-lattice-conversion`](09-lattice-conversion/README.md) | F | MH | **Complete** (C0–C6 + I0–I1) | dryopea moved to pointy-top odd-r offset (+ adopted `input`), checked against `hex_grid`; the axial layer is deleted |
 | [`10-extract-local-libraries`](10-extract-local-libraries/README.md) | C | MH | **Gated** (extract what survives 07 + 09) | The code dryopea owns becomes published libraries — descriptive names, never a brand |
 | [`11-flow-field`](11-flow-field/README.md) | G | MH | **Complete** (F0-F8) | Enemies route round walls to the core, per class, spread rather than stack, and besiege a sealed perimeter |
-| [`12-combat-resolution`](12-combat-resolution/README.md) | G | MH | **Open** (B0, B1 done; B2–B7) | Damage resolves on both sides — towers kill, walls break into rubble, bodies pile — and an undefended base falls on a measurable clock |
+| [`12-combat-resolution`](12-combat-resolution/README.md) | G | MH | **Open** (B0–B2 done; B3–B7) | Damage resolves on both sides — towers kill, walls break into rubble, bodies pile — and an undefended base falls on a measurable clock |
 
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.

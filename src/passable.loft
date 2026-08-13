@@ -201,6 +201,38 @@ fn painted_ground(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: inte
     pal[pg_idx] ?? GroundType {}
 }
 
+// The AUTHORED kind's name at a hex — what the MAP says is here,
+// whatever runtime has since put on top of it.
+//
+// ⚠ Not `hex_ground_name`, and the difference is the whole of plan 12
+// B1: that one answers the SURFACE, so it says "rubble" for a wall
+// under a heap of bodies.  A wall under a heap is still a wall — it
+// still has a wall's HP and it still breaks like one — which is why
+// `damage.loft` asks this and not that.
+pub fn painted_kind_name(pal: vector<GroundType>, pw: PaintedWorld,
+                         q: integer, r: integer) -> text {
+    pkn_e = painted_ground(pal, pw, q, r);
+    if pkn_e.name == "" { return "?"; }
+    pkn_e.name
+}
+
+// How tall the AUTHORED structure at a hex is, in metres, with no
+// runtime on it — 0.0 for every terrain type, which is what flat
+// ground IS.
+//
+// ⚠ The `?? 0.0` is load-bearing, not defensive noise.
+// `height_override` is `null` for every non-structure —
+// `palette.json` writes it that way — and a null height compares
+// `<= climb` as TRUE, so an unguarded read gives the right answer
+// for terrain by accident and would keep giving it until loft's
+// null-comparison semantics moved.  Say the zero, rather than inherit
+// it.
+pub fn painted_height_of(pal: vector<GroundType>, pw: PaintedWorld,
+                         q: integer, r: integer) -> float {
+    pho_e = painted_ground(pal, pw, q, r);
+    pho_e.height_override ?? 0.0
+}
+
 // The SURFACE at a hex — what an enemy standing there is standing on.
 //
 // Rubble wherever the layer carries a pile, the painted kind
@@ -232,20 +264,12 @@ pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, hl: const Heig
 // ⚠ It reads the AUTHORED entry, never the surface: rubble sits on the
 // wall, so the two terms ADD.  See § Two questions again.
 //
-// ⚠ The `?? 0.0` is load-bearing, not defensive noise.
-// `height_override` is `null` for every non-structure —
-// `palette.json` writes it that way — and a null height compares
-// `<= climb` as TRUE, so an unguarded read gives the right answer
-// for terrain by accident and would keep giving it until loft's
-// null-comparison semantics moved. Zero metres is what flat ground
-// IS; say it, rather than inherit it.
-//
 // The third source — terrain shape — waits on plan 02's slope solver
 // and lands as one more term here, which is the whole reason this is
 // a sum rather than a lookup.
 pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                   q: integer, r: integer) -> float {
-    (painted_ground(pal, pw, q, r).height_override ?? 0.0) + height_rise(hl, q, r)
+    painted_height_of(pal, pw, q, r) + height_rise(hl, q, r)
 }
 
 // ─── Question 1: the surface ────────────────────────────────────

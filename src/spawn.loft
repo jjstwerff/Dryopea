@@ -34,6 +34,7 @@ use height;
 use passable;
 use flow;
 use occupancy;
+use damage;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -79,10 +80,25 @@ pub const TICK_SECONDS: float = 1.0 / ENEMY_SPEED_HEX_PER_SECOND;
 // saying `HP/s` — which is also what makes it moddable, since a
 // per-tick number is unreadable to anyone outside this engine — and a
 // rate reaches the sim by being multiplied by `TICK_SECONDS` at the
-// point it is applied.  B4 and B6 are the first two sites.
+// point it is applied.  `wave_damage` (B2) is the first site.
 pub fn per_tick(rate_per_second: float) -> float {
     rate_per_second * TICK_SECONDS
 }
+
+// What a besieging enemy does to the wall it cannot climb, per second
+// — `numbers.json` § enemy_regular.damage_to_wall, restated here for
+// the same reason the speed is.
+//
+// ⚠ **One rate for every class**, and that is the file's shape rather
+// than a simplification: `numbers.json` has an `enemy_regular` section
+// and no `enemy_insect` one, so a second number would be a tunable
+// this plan invented.  When insects get a section they get a rate, and
+// this becomes a lookup like `climb_limit`.
+//
+// Slow on purpose.  100 HP at 1 HP/s is 100 s — 150 ticks — for one
+// robot, so breaking a wall is a rare path rather than the default
+// way in, and a base only falls to a wave that stays on it.
+pub const ENEMY_DAMAGE_TO_WALL_PER_SECOND: float = 1.0;
 
 // The kind discriminants an `Enemy` carries — `ENEMY_KIND_REGULAR`
 // and friends — live in `passable.loft`, because a class IS its
@@ -109,23 +125,32 @@ pub struct Enemy {
 // metadata lives here too.  `pick_cursor` is the round-robin
 // index into the active-marker set, advancing every spawn.
 //
-// ⚠ `heights` is the RUNTIME height layer (plan 11 F6) — what bodies
-// have piled on the map.  It rides here rather than on the world
-// because plan 11 says where it belongs: *pile heights live with the
-// wave, not in the save*.  A wave is also the thing whose lifetime it
-// shares — a new wave over the same base starts on the ground as
-// painted, and no save file ever has to learn a field it should not
-// keep.
+// ⚠ `heights` is the RUNTIME rubble layer (plan 11 F6, plan 12 B1) —
+// what bodies and broken walls have piled on the map — and `damage` is
+// the ledger of what every structure has absorbed (plan 12 B2).  Both
+// ride here rather than on the world because plan 11 says where they
+// belong: *pile heights live with the wave, not in the save*.  A wave
+// is also the thing whose lifetime they share, and no save file ever
+// has to learn a field it should not keep.
+//
+// ⚠ The BREAK is the exception, and it is deliberate: a broken wall
+// really is gone, so `damage.loft::break_structure` edits the painted
+// world.  Only the heap it leaves is runtime.
 pub struct WaveState {
     enemies:     vector<Enemy>,
     pick_cursor: integer,
     heights:     HeightLayer,
+    damage:      DamageLayer,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0 and the
 // map exactly as painted.
 pub fn wave_state_empty() -> WaveState {
-    WaveState { enemies: [], pick_cursor: 0, heights: height_layer_empty() }
+    WaveState {
+        enemies: [], pick_cursor: 0,
+        heights: height_layer_empty(),
+        damage:  damage_layer_empty(),
+    }
 }
 
 // ⚠ An enemy heading steps through `lat_neighbour` (`use lattice;`),
@@ -703,6 +728,45 @@ pub fn wave_occupancy(state: const WaveState) -> Occupancy {
     wo_o
 }
 
+// What every besieging enemy does to the structure it is stopped by,
+// this tick.
+//
+// ⚠ **It runs BEFORE anybody moves, off the fields the tick already
+// built.**  An enemy attacks exactly when `enemy_target` names a hex
+// other than its own — which is to say when nothing down its route is
+// a step it can take — so the pre-move state is the state that
+// decides, and reading it once up front is what makes the answer
+// independent of the order the roster is walked in.
+//
+// ⚠ Only a BREAKABLE hex is written to.  A target can be a heap of
+// rubble too high to climb, and chewing one does nothing in this plan
+// — recording it anyway would fill the ledger with entries that can
+// never resolve, and would make `damage_count` mean something other
+// than "structures under attack".
+fn wave_damage(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
+               fields: const vector<ClassField>, desire: const FlowField) {
+    wd_bite = per_tick(ENEMY_DAMAGE_TO_WALL_PER_SECOND);
+    for wd_e in state.enemies {
+        if wd_e.alive {
+            wd_climb = climb_limit(wd_e.kind);
+            for wd_cf in fields {
+                if wd_cf.climb == wd_climb {
+                    // ⚠ The field goes STRAIGHT from the vector into a
+                    // `const` parameter — binding it to a local copies
+                    // the whole cell hash, once per enemy (plan 11 F8).
+                    wd_t = enemy_target(wd_e, pal, pw, state.heights,
+                                        wd_cf.field, desire);
+                    if wd_t.q != wd_e.q || wd_t.r != wd_e.r {
+                        if structure_breakable(pal, pw, wd_t.q, wd_t.r) {
+                            damage_apply(state.damage, wd_t.q, wd_t.r, wd_bite);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Advance the whole wave by one game-tick.
 //
 // ── The field is rebuilt ONCE per tick, before anybody moves ─────
@@ -742,6 +806,11 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld, co
     wt_fields = wave_fields(state, pal, pw, core);
     wt_desire = wave_desire(state, wt_fields, pal, pw, core);
     wt_occ    = wave_occupancy(state);
+
+    // The siege lands against the world the tick STARTED with — see
+    // `wave_damage`.
+    wave_damage(state, pal, pw, wt_fields, wt_desire);
+
     for wt_i in move_order(state, wt_fields) {
         wt_e = state.enemies[wt_i] ?? Enemy {};
         // ⚠ The field is passed STRAIGHT from the vector into a `const`
@@ -755,6 +824,15 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld, co
             }
         }
     }
+
+    // ⚠ **The break lands LAST, after every enemy has moved**, so it
+    // is tick N+1 that routes through the hole.  A wall that fell
+    // mid-loop would open a route for the enemies the roster happened
+    // to visit later and not for the ones it visited first — the same
+    // rule `height.loft`'s piles follow, and the one that makes a
+    // scripted run repeatable at all (`ENEMY_MOVEMENT.md` § The tick
+    // resolves once).
+    damage_resolve(pal, pw, state.damage, state.heights);
 }
 
 // Count of alive enemies in the wave — wave-clear check.

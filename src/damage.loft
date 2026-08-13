@@ -1,0 +1,280 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// What a structure has taken, and what happens when it has taken
+// enough.
+//
+// Plan 12 phase B2.  `docs/ENEMY_MOVEMENT.md` § A wall's HP is
+// structural and `docs/DESIGN.md` § 5 both assume a wall can be
+// broken; until B2 nothing could take a point of damage, so every
+// `HP` in `examples/numbers.json` was read by nobody.
+//
+// ── DAMAGE TAKEN, not HP remaining ──────────────────────────────
+//
+// The layer stores what a hex has ABSORBED, and the same argument
+// `height.loft` § A RISE, not an absolute height makes applies here:
+// an absent entry has to mean something useful.  Storing remaining HP
+// would need every wall hex present before the layer meant anything,
+// and a miss would read as **0 HP — already broken**, which is the
+// worst possible default for a sparse map.  Storing damage taken makes
+// the empty layer exactly "the base as built", which is what every
+// scene that has not been attacked yet needs.
+//
+// ⚠ An entry means a hex has been HIT.  A hex healed back to nothing
+// loses its entry, exactly as `painted.loft` drops a hex painted back
+// to sea and `height.loft` drops a pile shrunk to nothing.
+//
+// ── A break is TWO effects, and only one of them is this layer's ──
+//
+// `plans/12` § Open question 5: *"A broken wall is two effects, not
+// one: the wall is REMOVED (authored content gone, persistent) and
+// rubble is DEPOSITED (runtime, clearable)."*
+//
+//   - **removed** — the painted hex stops being a `wall`.  This edits
+//     the world, because a broken wall really is gone; it is not a
+//     runtime overlay that a reload would undo.
+//   - **deposited** — `height.loft` gains a pile of `masonry`, which
+//     is runtime, clearable, and never saved.
+//
+// ⚠ **What the hex becomes is a DECISION, and it is made in exactly
+// one place** (`BROKEN_GROUND`).  It has to be, because the honest
+// answer is not available: painting `wall` in the editor overwrote
+// whatever was underneath, and `MapFile` cannot grow a second kind per
+// hex to remember it (the loft JSON-cast hang caps it at 6 fields).
+// So B2 takes the cheapest of the three answers that question lists —
+// a default ground — and routes it through one constant, so the real
+// answer (walls move out of the ground palette into their own layer,
+// which is plan 06 S1's direction) stays a change of one body.
+//
+// ⚠ **It must NOT erase the hex.**  `paint(pw, q, r, 0)` removes the
+// entry, and the painted layer is sea-default, so an erased breach
+// reads as `sea` — `walk_ground: false` — and is strictly LESS
+// passable than the wall it replaced.  `tests/12_b0_probe.loft` § 3
+// measured exactly that, with an insect losing a hex it had.  The
+// rubble makes the hex standable on its own, so the two guards are
+// belt and braces; the default ground is what a player who CLEARS the
+// rubble is left standing on.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+
+// ─── The numbers ────────────────────────────────────────────────
+//
+// `examples/numbers.json` § wall, restated here because nothing loads
+// that file yet (`spawn.loft` § What a tick is worth carries the same
+// note).  They are the BRACED figures: `ENEMY_MOVEMENT.md` § A wall's
+// HP is structural makes a hex's real HP depend on its neighbours, and
+// that is B3.  B2 gives every hex of a kind the same number, which is
+// what B3 then has something to vary.
+
+pub const WALL_HP:      float = 100.0;   // numbers.json § wall.wall_hp
+pub const WALL_HIGH_HP: float = 200.0;   // numbers.json § wall.wall_high_hp
+
+// What a broken structure leaves behind, as a fraction of its own
+// height — `numbers.json` § wall.rubble_height_fraction.
+//
+// A fraction rather than two metre figures, because the physical claim
+// is "a heap of a wall is a third of the wall", and a taller wall
+// leaving a bigger heap then costs no second number.
+//
+// ⚠ **It is bounded above by a robot's climb, and that is a rule the
+// tuning has to keep.**  A 3.0 m `wall` leaves 0.99 m and a 5.0 m
+// `wall_high` leaves 1.65 m, both inside `CLIMB_REGULAR` (2.0), so a
+// breach is a way IN.  Raise this — or raise `wall_high_height` — far
+// enough and the heap becomes its own barrier, which is a coherent
+// mechanic but not the one B2 is for.  `tests/12_b2_break.loft` asserts
+// the shipped numbers leave a climbable breach, so the tuning change
+// that closes it fails loudly instead of quietly turning the phase off.
+pub const RUBBLE_HEIGHT_FRACTION: float = 0.33;
+
+// What a broken hex is painted as — plan 12 open question 5, decided
+// here and nowhere else.  `grass` (palette 5): walkable, buildable,
+// and the least surprising thing to find under a heap of masonry once
+// the player has swept it away.
+pub const BROKEN_GROUND: integer = 5;
+
+// ─── The layer ──────────────────────────────────────────────────
+
+// One hex and what it has absorbed, in HP.
+pub struct StructureHit {
+    q:     integer,
+    r:     integer,
+    taken: float,
+}
+
+// What every structure on the map has absorbed.  A hash must be a
+// struct field (the same loft idiom `PaintedWorld`, `Occupancy` and
+// `HeightLayer` follow), and wrapping it gives "a miss is undamaged"
+// one door rather than every caller doing its own null arithmetic.
+pub struct DamageLayer {
+    cells: hash<StructureHit[q, r]>,
+}
+
+// Factory: the base exactly as built.
+pub fn damage_layer_empty() -> DamageLayer {
+    DamageLayer { cells: [] }
+}
+
+// How much (q, r) has absorbed — 0.0 where nothing has hit it.
+//
+// ⚠ **The only door**, for the same reason `height_rise` is: reading
+// `dl.cells[q, r].taken` directly gives null on an untouched hex, and
+// loft's `?` turns that into 0, which is the right answer here by luck
+// rather than by rule.
+pub fn damage_taken(dl: const DamageLayer, q: integer, r: integer) -> float {
+    dt_c = dl.cells[q, r];
+    if dt_c == null { return 0.0; }
+    dt_c.taken
+}
+
+// Land `hp` more damage on (q, r).
+//
+// It ACCUMULATES: a wall under siege is hit by several enemies over
+// many ticks, and each has to count.  A negative amount is repair —
+// the mechanic `numbers.json` § wall.build_time_wall implies and no
+// phase has built — and taking a hex back to undamaged REMOVES its
+// entry rather than leaving a 0.0 one.
+//
+// It does not check that (q, r) is breakable.  Damage landing on grass
+// is recorded and means nothing, because `structure_hp` reads the
+// PAINTED kind: the layer is a ledger, and what a ledger entry is worth
+// is the structure's question.
+pub fn damage_apply(dl: DamageLayer, q: integer, r: integer, hp: float) {
+    da_c = dl.cells[q, r];
+    da_total = hp;
+    if da_c != null { da_total = da_c.taken + hp; }
+
+    if da_total <= 0.0 {
+        dl.cells[q, r] = null;
+    } else if da_c == null {
+        dl.cells[q, r] = StructureHit { q: q, r: r, taken: da_total };
+    } else {
+        da_c.taken = da_total;
+    }
+}
+
+// Forget what (q, r) has absorbed — what a break does once the
+// structure it was counting against is gone, and what a full repair
+// would do.
+pub fn damage_clear(dl: DamageLayer, q: integer, r: integer) {
+    dl.cells[q, r] = null;
+}
+
+// How many hexes have been hit — the size of the layer.
+pub fn damage_count(dl: const DamageLayer) -> integer {
+    len(dl.cells)
+}
+
+// ─── What a structure is worth ──────────────────────────────────
+
+// The HP a hex of this kind starts with — 0.0 for anything that is not
+// a breakable structure.
+//
+// ⚠ Keyed on the palette NAME rather than the index, because an index
+// is storage and a name is the thing `palette.json` lets a modder
+// rename a colour under.  A modder who adds a `wall_low` gets 0.0 and
+// an indestructible barrier, which is visible; one who reorders the
+// file gets the right answer, which a hard-coded index would not give.
+pub fn structure_max_hp(pal: vector<GroundType>, pw: PaintedWorld,
+                        q: integer, r: integer) -> float {
+    smh_name = painted_kind_name(pal, pw, q, r);
+    if smh_name == "wall"      { return WALL_HP; }
+    if smh_name == "wall_high" { return WALL_HIGH_HP; }
+    0.0
+}
+
+// Is there something here that CAN be broken?
+//
+// Terrain is not: `steep_rock` stops a robot as thoroughly as a wall
+// does and no phase of this plan gives it HP — a cliff is the map, and
+// a map that erodes under fire is a different game.
+pub fn structure_breakable(pal: vector<GroundType>, pw: PaintedWorld,
+                           q: integer, r: integer) -> boolean {
+    structure_max_hp(pal, pw, q, r) > 0.0
+}
+
+// What the structure at (q, r) has left, in HP — 0.0 both for "broken"
+// and for "there was never a structure here".
+//
+// Those two cases are deliberately not distinguished HERE, because the
+// caller that cares — `damage_resolve` — asks `structure_breakable`
+// first, and a caller that does not ask is one for which "no structure
+// stands here" is the whole answer.
+pub fn structure_hp(pal: vector<GroundType>, pw: PaintedWorld, dl: const DamageLayer,
+                    q: integer, r: integer) -> float {
+    sh_max = structure_max_hp(pal, pw, q, r);
+    if sh_max <= 0.0 { return 0.0; }
+    max(sh_max - damage_taken(dl, q, r), 0.0)
+}
+
+// The heap a hex of this kind would leave if it broke now, in metres.
+//
+// 0.0 for anything that is not a breakable structure, which is what
+// makes `break_structure` a no-op on ground rather than a way of
+// piling rubble onto grass.
+pub fn rubble_height_of(pal: vector<GroundType>, pw: PaintedWorld,
+                        q: integer, r: integer) -> float {
+    rho_h = painted_height_of(pal, pw, q, r);
+    if !structure_breakable(pal, pw, q, r) { return 0.0; }
+    rho_h * RUBBLE_HEIGHT_FRACTION
+}
+
+// ─── The break ──────────────────────────────────────────────────
+
+// Break the structure at (q, r): remove it and leave a heap.
+//
+// ⚠ **The one site.**  Both halves happen together or the world is
+// briefly wrong in a way nothing would catch — a removed wall with no
+// heap is a hole, and a heap on a standing wall is a TALLER wall.  So
+// they are one function and no caller does half of it.
+//
+// Answers false, and does nothing at all, where there is no structure
+// to break.  A caller that ignores the answer breaks nothing rather
+// than corrupting a hex of grass.
+pub fn break_structure(pal: vector<GroundType>, pw: PaintedWorld, dl: DamageLayer,
+                       hl: HeightLayer, q: integer, r: integer) -> boolean {
+    if !structure_breakable(pal, pw, q, r) { return false; }
+    bs_rubble = rubble_height_of(pal, pw, q, r);
+
+    // Order does not matter to the result — nothing between these
+    // reads the world — but the heap goes down first so that no
+    // arrangement of them can leave a hex momentarily impassable.
+    height_raise(hl, q, r, bs_rubble, RUBBLE_MASONRY as u8? ?? 0);
+    paint(pw, q, r, BROKEN_GROUND as u8? ?? 0);
+    damage_clear(dl, q, r);
+    true
+}
+
+// Break every structure that has absorbed its whole HP.  Answers how
+// many broke.
+//
+// ⚠ **Called ONCE per tick, after every enemy has moved**
+// (`spawn.loft::wave_tick`).  `ENEMY_MOVEMENT.md` § The tick resolves
+// once is the reason: a wall that fell mid-loop would open a route for
+// the enemies the roster happened to visit later and not for the ones
+// it visited first, and a simulation whose outcome depends on roster
+// order cannot be gated by a scripted run at all.
+//
+// The two-pass shape is not style.  `break_structure` writes to `pw`
+// and to `dl`, and `dl.cells` is what the first pass is iterating; the
+// hexes are collected first so the sweep is never mutating the hash it
+// is walking.
+pub fn damage_resolve(pal: vector<GroundType>, pw: PaintedWorld, dl: DamageLayer,
+                      hl: HeightLayer) -> integer {
+    dr_done: vector<Hex> = [];
+    for dr_c in dl.cells {
+        if structure_breakable(pal, pw, dr_c.q, dr_c.r)
+        && structure_hp(pal, pw, dl, dr_c.q, dr_c.r) <= 0.0 {
+            dr_done += [Hex { q: dr_c.q, r: dr_c.r }];
+        }
+    }
+
+    dr_n = 0;
+    for dr_h in dr_done {
+        if break_structure(pal, pw, dl, hl, dr_h.q, dr_h.r) { dr_n += 1; }
+    }
+    dr_n
+}

@@ -9,7 +9,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**B0 and B1 shipped** (2026-08-13). B2 and B4 are next, both unblocked.
+**B0, B1 and B2 shipped** (2026-08-13). B3 and B4 are next, both
+unblocked.
 
 B0 was a probe and changed no mechanic: it wrote down what the
 simulation does in the two places this plan leans on, and it
@@ -34,6 +35,30 @@ assertion was a string check on a fault message. F6 and F8 carry a
 named `PILE_OVER_A_ROBOT` with an assertion tying it to
 `CLIMB_REGULAR`, so the next move of that number fails once, in a test
 that names itself, instead of scattering across nine.
+
+**B2 made the exchange resolve.** `src/damage.loft` gives a structure
+HP, the tick spends each besieging enemy's 1 HP/s against the hex
+`enemy_target` names, and a wall that runs out comes down into a heap
+of masonry. `tests/scripts/a-wall-breaks.keys` is the artefact: a
+sealed corridor, a robot that stops at the seal, a wall that falls, and
+**a robot that ends up on the core**. Suite **630 green**; the gate is
+15 scripts and **260 measurements**.
+
+⚠ **Two things B2 settled that the plan had left loose.**
+*Where the break lands in the tick*: damage is spent off the PRE-move
+targets and structures are resolved AFTER every enemy has moved, so
+the breach belongs to tick N+1 and the roster order cannot change the
+outcome — the same rule bodies already followed, now with a ledger
+that a wrong answer would show up in. *What the ledger holds*: damage
+TAKEN rather than HP remaining, so an untouched base needs no entries
+and a miss reads as "undamaged" instead of "already broken".
+
+⚠ **Cost, honestly.** B2 adds one `enemy_target` per live enemy per
+tick — it reuses the fields the tick already built, so no new sweep —
+and `tests/11_f8_the_tick_budget.loft` stays green. A standalone
+stopwatch on the same load was NOT trustworthy (leaked stores, 4x
+swings between runs of an unchanged probe), so the in-suite gate is
+the number of record; do not quote a figure taken any other way.
 
 Plan 11 gave an enemy a complete journey that ends in nothing. It spawns,
 routes round walls by its climb limit, spreads rather than stacks, and when
@@ -233,7 +258,7 @@ pins, and the input that must be **refused**.
 |---|---|---|---|
 | **B0** ✓ | a robot refuses a 0.1 m rise today; an erased `wall` hex is impassable today | the probe records what IS, before anything changes it | — (B0 asserts the present, so its own gate is that B1 turns it red) |
 | **B1** ✓ | robot steps onto rubble at `climb`; refuses at `climb + ε`; **clearing a pile leaves the hex identical to before it was piled** | a ramp is a height under the climb, not a flag — and rubble is a layer, so clear is an identity | rubble one notch above the climb **must** be refused, else the height rule is decorative; a cleared hex that differs from the authored one means the ground was overwritten after all |
-| **B2** | wall at 1 HP does not break; at 0 HP the hex carries rubble and is standable | breaking OPENS a route (the sea trap is closed) | a broken hex that reads as `sea` — impassable — is the bug this phase exists to avoid |
+| **B2** ✓ | wall at 1 HP does not break; at 0 HP the hex carries rubble and is standable | breaking OPENS a route (the sea trap is closed) | a broken hex that reads as `sea` — impassable — is the bug this phase exists to avoid |
 | **B3** | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
 | **B4** | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
 | **B5a** | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
@@ -251,8 +276,8 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 |---|---|---|---|
 | **B0** — the climb number, and what a tick is worth | XS | `tests/12_b0_probe.loft` — asserts TODAY's refusals so B1 must turn them red | **Done** |
 | **B1** — rubble is a clearable layer, and a robot can climb it | S→M | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; clear round-trips to the authored hex; F1b's wall stays green. Plus: B0's three ⚠ B1 tests turn red, and F6/F8's 1.5 m pile fixtures move above the new climb | **Done** |
-| **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | Open |
-| **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | Blocked on B2 |
+| **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | **Done** |
+| **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | Open |
 | **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | Open |
 | **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | Blocked on B4 |
 | **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires | Blocked on B5a |
@@ -346,7 +371,35 @@ over it.
    *"11 entries match the 11 ground types"* and lists exactly 11 hotkeys, so
    the 12th simply has no binding. Whether the picker should show an
    unpaintable entry at all is a UI question, not a blocker. *Decided in B1.*
-5. **What is the ground under a destroyed wall?** The one question the
+5. ~~**What is the ground under a destroyed wall?**~~ — **DECIDED in
+   B2: a default ground, `grass`, named once as
+   `damage.loft::BROKEN_GROUND`** — the cheapest of the three answers
+   below, exactly as this entry recommended, with the site routed
+   through one constant so the third answer stays a change of one body.
+
+   Two things the phase found while building it:
+
+   ⚠ **"Remove the wall" really does edit the painted world.**  This
+   entry called the removal *persistent* and B2 took that literally:
+   `break_structure` repaints the hex rather than shadowing it behind
+   a runtime overlay.  The alternative — a "removed structures" set
+   consulted by `passable.loft` — would have threaded a fourth
+   parameter through `hex_walkable`, `can_step`, `can_climb`,
+   `flow_build`, `enemy_tick` and `enemy_target`, and the NEXT runtime
+   layer would have threaded a fifth.  The consequence to know: a
+   session that plays a wave and then saves persists the breach, which
+   is right for a run and would be wrong for an editor that ran one by
+   accident.
+
+   ⚠ **The default ground is the guard that LASTS.**  The heap alone
+   makes a breach standable, so the repaint looks redundant — until a
+   player clears the rubble, which B1 built.  Sweep a breach that had
+   been *erased* rather than repainted and the painted layer's sea
+   default seals it again, so tidying up would undo the breach.
+   `tests/12_b2_break.loft::test_and_it_survives_the_player_sweeping_it`
+   is the one that would catch it.  The original text follows.
+
+   **What is the ground under a destroyed wall?** The one question the
    separate rubble layer does *not* answer. A broken wall is two effects,
    not one: the wall is **removed** (authored content gone, persistent) and
    rubble is **deposited** (runtime, clearable). Clearing the rubble must

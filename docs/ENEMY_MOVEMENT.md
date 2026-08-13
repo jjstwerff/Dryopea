@@ -28,6 +28,7 @@ document is about getting there.
 - [The tick resolves once](#the-tick-resolves-once)
 - [Sealing the perimeter is punished, not forbidden](#sealing-the-perimeter-is-punished-not-forbidden)
 - [A wall's HP is structural, not a constant](#a-walls-hp-is-structural-not-a-constant)
+- [What a broken wall leaves](#what-a-broken-wall-leaves)
 
 ## Two modes, one passability rule
 
@@ -224,6 +225,16 @@ three numbers ([`NUMBERS.md`](NUMBERS.md)).
 
 ## A wall's HP is structural, not a constant
 
+⚠ **Built as far as the CONSTANT; the structural part is not.**  Plan
+12 B2 gives every hex of a kind the braced figure — a `wall` is 100 HP
+and a `wall_high` 200 — and that is what makes a besieged wall come
+down at all: an enemy with no route spends
+`enemy_regular.damage_to_wall` (1 HP/s) into the hex `enemy_target`
+names, and a wall that runs out is removed and leaves a heap of masonry
+a third of its own height, which a robot climbs.  What the rest of this
+section describes — a hex's HP depending on how its neighbours brace it
+— is plan 12 B3, and B2 is what gives it something to vary.
+
 `wall.wall_hp` (100) is the *braced* figure.  **A wall hex with no
 support from either side is easier to push over, and has less HP
 for it** — the same reason a free-standing straight fence topples
@@ -258,3 +269,28 @@ two wall neighbours are not opposite each other across the hex —
 a 60° or 120° bend, not a straight-through.  The exact multipliers
 belong in [`NUMBERS.md`](NUMBERS.md) § `wall`; the ordering above
 is the design, the numbers are tuning.
+
+## What a broken wall leaves
+
+Two effects, and they are not the same kind of state.
+
+- The wall is **removed** — persistent, and it really does edit the
+  world.  The hex is repainted to a default ground rather than erased:
+  the painted layer is sparse and **sea-default**, so an erased breach
+  would read as `sea` and be *less* passable than the wall it replaced.
+- A heap of **masonry** is deposited into the rubble layer — runtime,
+  clearable, never saved (§ Bodies are terrain).  It is a fraction of
+  the wall's own height (`numbers.json` § wall.rubble_height_fraction),
+  and that fraction has to stay under a robot's climb or the breach is
+  not a way in.
+
+⚠ **The break lands at the END of a tick**, after every enemy has
+moved, for the same reason a body does (§ The tick resolves once): a
+wall that fell mid-loop would open a route for whoever the roster
+visited later, and the outcome would depend on iteration order.
+
+⚠ What the ground under a wall *was* is not recoverable — painting the
+wall overwrote it, and the save format cannot carry a second kind per
+hex.  So the default is a decision made in one place, and the real
+answer (walls become their own layer, above the ground rather than in
+it) is deferred to plan 06.

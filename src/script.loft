@@ -67,13 +67,24 @@
 //                              spawn markers, cored on the target.
 //                              `class` is robot (the default) or
 //                              insect (plan 11 F6)
-//   raise <q> <r> <metres>     pile metres onto a hex at RUNTIME —
-//                              what a body does when it falls
-//                              (plan 11 F6).  Accumulates; never
-//                              saved
+//   raise <q> <r> <m> [source] pile metres of rubble onto a hex at
+//                              RUNTIME — what a body does when it
+//                              falls and a wall does when it breaks
+//                              (plan 11 F6, plan 12 B1).  `source` is
+//                              wreckage (the default), carapace or
+//                              masonry.  Accumulates; never saved
+//   clear <q> <r>              take the whole pile away, leaving the
+//                              hex exactly as the map paints it — the
+//                              layer's defining property (plan 12 B1)
+//   damage <q> <r> <hp>        land HP on the structure at a hex, so a
+//                              scenario need not tick out 100 s of
+//                              siege (plan 12 B2).  It cannot BREAK
+//                              anything — only a tick does that
 //   tick <n>                   advance the wave n game-ticks — over
 //                              the session's own world, so an enemy
-//                              stops at what its class cannot cross
+//                              stops at what its class cannot cross.
+//                              Since B2 it also lands the siege's
+//                              damage and breaks what has run out
 //
 // ── Measurements (V2) — each one asserts ────────────────────────
 //
@@ -95,6 +106,14 @@
 //                              wave starts: a wave spawns stacked
 //   enemies passable           no live enemy stands where its CLASS
 //                              cannot (plan 11 F1)
+//   hp <q> <r> <lo> <hi>       HP left in the structure at a hex — an
+//                              ERROR where nothing breakable stands,
+//                              because "at 0" and "not there" are the
+//                              two states a break moves between
+//                              (plan 12 B2)
+//   pile <q> <r> <lo> <hi>     metres of rubble on a hex — the other
+//                              half of a break, and the half that says
+//                              the breach is a way IN
 //   frame <bucket> <lo> <hi>   share of WORLD pixels in a bucket
 //
 // A measurement that reads out of band ENDS the run, naming the
@@ -157,6 +176,7 @@ use measure;
 use save;
 use height;
 use passable;
+use damage;
 use occupancy;
 use spawn;
 use graphics;
@@ -541,6 +561,52 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         }
         measure_exact(run, "kind ({sm_q}, {sm_r}) = {sm_a3}");
         return "";
+    }
+
+    // What the structure at a hex has left, in HP.
+    //
+    // A BAND rather than an exact number because HP falls by
+    // `per_tick(1.0)` — two thirds of a point — so an exact figure
+    // would be a float equality on an accumulated sum, and the one
+    // thing it would reliably catch is arithmetic drift rather than
+    // the mechanic.  Plan 12 B2.
+    //
+    // ⚠ A hex with nothing breakable on it is an ERROR, not 0 HP.
+    // "This wall is at 0" and "there is no wall here" are the two
+    // states a break moves BETWEEN, and a measurement that could not
+    // tell them apart would pass before the siege started.
+    if sm_cmd == "hp" {
+        if sm_argc != 4 { return "hp needs <q> <r> <lo> <hi>"; }
+        sm_hv = script_ints(tok, 2);
+        if len(sm_hv) != 2 { return "hp: <q> and <r> must be integers"; }
+        sm_hlo = sm_a3 as float?;
+        sm_hhi = sm_a4 as float?;
+        if sm_hlo == null || sm_hhi == null { return "hp: <lo> and <hi> must be numbers"; }
+        sm_hq = sm_hv[0] ?? 0;
+        sm_hr = sm_hv[1] ?? 0;
+        if !structure_breakable(s.picker.palette, s.pw, sm_hq, sm_hr) {
+            return "hp at ({sm_hq}, {sm_hr}): '{painted_kind_name(s.picker.palette, s.pw, sm_hq, sm_hr)}' has no HP — nothing there can break";
+        }
+        return measure_float(run, "hp ({sm_hq}, {sm_hr})",
+                             structure_hp(s.picker.palette, s.pw, run.wave.damage, sm_hq, sm_hr),
+                             sm_hlo ?? 0.0, sm_hhi ?? 0.0);
+    }
+
+    // How deep the rubble on a hex is, in metres — the other half of a
+    // break, and the half that says the breach is a way in rather than
+    // a hole.  Plan 12 B1 built the layer; B2 is what fills it.
+    if sm_cmd == "pile" {
+        if sm_argc != 4 { return "pile needs <q> <r> <lo> <hi>"; }
+        sm_pv = script_ints(tok, 2);
+        if len(sm_pv) != 2 { return "pile: <q> and <r> must be integers"; }
+        sm_plo = sm_a3 as float?;
+        sm_phi = sm_a4 as float?;
+        if sm_plo == null || sm_phi == null { return "pile: <lo> and <hi> must be numbers"; }
+        sm_pq = sm_pv[0] ?? 0;
+        sm_pr = sm_pv[1] ?? 0;
+        return measure_float(run, "pile ({sm_pq}, {sm_pr})",
+                             height_rise(run.wave.heights, sm_pq, sm_pr),
+                             sm_plo ?? 0.0, sm_phi ?? 0.0);
     }
 
     if sm_cmd == "marker" {
@@ -1078,6 +1144,41 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // Land damage on the structure at a hex, without waiting for a
+    // siege to do it.
+    //
+    // ⚠ **What it buys is a SHORT scenario.**  100 HP at 1 HP/s is 150
+    // ticks for one robot, and a `.keys` run that spends 150 ticks
+    // proving arithmetic measures the arithmetic, not the break.  So a
+    // scenario ticks far enough to watch the HP fall at the right
+    // rate, softens the wall with one line, and then lets the siege
+    // land the last of it — every step of the real path, none of the
+    // waiting.
+    //
+    // It goes through the same `damage_apply` the tick does, and the
+    // break is still `damage_resolve`'s at the end of a tick: this
+    // verb cannot break a wall on its own, which is what keeps it from
+    // becoming a second, shorter code path (plan 12 B2).
+    if sc_cmd == "damage" {
+        if sc_argc != 3 { return "damage needs <q> <r> <hp>"; }
+        sc_dv = script_ints(tok, 2);
+        if len(sc_dv) != 2 { return "damage: <q> and <r> must be integers"; }
+        sc_dhp = tok[3] as float?;
+        if sc_dhp == null { return "damage: <hp> must be a number"; }
+        sc_dq = sc_dv[0] ?? 0;
+        sc_dr = sc_dv[1] ?? 0;
+        // A hex with nothing breakable on it must FAIL rather than
+        // record a hit nothing can ever resolve — a script that
+        // damaged the wrong coordinate and then asserted the wall
+        // still stands would be green for the wrong reason.
+        if !structure_breakable(s.picker.palette, s.pw, sc_dq, sc_dr) {
+            return "damage: ({sc_dq}, {sc_dr}) is '{painted_kind_name(s.picker.palette, s.pw, sc_dq, sc_dr)}', which nothing can break";
+        }
+        damage_apply(run.wave.damage, sc_dq, sc_dr, sc_dhp ?? 0.0);
+        println("script: damage ({sc_dq}, {sc_dr}) by {sc_dhp ?? 0.0:6.2} HP — {structure_hp(s.picker.palette, s.pw, run.wave.damage, sc_dq, sc_dr):6.2} HP left");
+        return "";
+    }
+
     // Take a pile away, leaving the hex exactly as the map paints it.
     //
     // The player's counter-play (`ENEMY_MOVEMENT.md` § Bodies are
@@ -1129,7 +1230,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // changing it, so they live in their own dispatcher.
     if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker"
     || sc_cmd == "frame" || sc_cmd == "range"
-    || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target" {
+    || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target"
+    || sc_cmd == "hp" || sc_cmd == "pile" {
         return script_measure(s, run, tok);
     }
 

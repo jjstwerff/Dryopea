@@ -33,7 +33,8 @@ exists today.
 | Pointy-top odd-r offset throughout, delegated to `hex_grid`; the axial layer is deleted | [09](plans/09-lattice-conversion/README.md) |
 | Enemies that spawn, route round walls per class, spread rather than stack, and besiege a sealed perimeter | [11](plans/11-flow-field/README.md) |
 | Rubble: a runtime layer with a source, climbable at 2.0 m, clearable back to the authored ground | [12](plans/12-combat-resolution/README.md), B0 + B1 shipped |
-| **Nothing takes damage** — no tower fires, no enemy dies, no wall breaks, and nothing yet MAKES rubble | [12](plans/12-combat-resolution/README.md), B2 + B4 next |
+| A besieged wall loses HP, breaks into a heap of masonry, and the breach is a way IN | [12](plans/12-combat-resolution/README.md), B2 shipped |
+| **No tower fires and no enemy dies** — walls break, nothing else does | [12](plans/12-combat-resolution/README.md), B3 + B4 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -49,10 +50,10 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 607/607 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 630/630 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world).
-**Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
+**Gate: 15 scripts green under `scripts/validate.sh`** (~13 s, 260
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -123,7 +124,20 @@ nothing.
 
 **The tick's budget comes from the design's own numbers** — 80 enemies
 (the largest authored wave), a radius-40 world (the haze bound) and
-1.5 hex/s, so a tick has **~667 ms**.  It runs at ~125 ms.
+1.5 hex/s, so a tick has **~667 ms**.  Plan 11 F8 measured it at ~125 ms
+and it has not been re-measured since; plan 12 B1 added a hash lookup to
+every surface question and B2 an `enemy_target` per enemy per tick, so
+treat 125 ms as a floor rather than a reading.
+
+⚠ **Do not reach for a standalone stopwatch to check that.**  A probe
+that ticks a radius-40 world under `loft --interpret --lib src` answers
+173 ms, 737 ms and 754 ms on three runs of an UNCHANGED file, and a
+`flow_build` called three times in one process climbs 323 ms → 1006 ms →
+1407 ms.  Discarded structs are not freed, so the process degrades as it
+measures, and a long enough probe exhausts the store table outright
+("store table exhausted: 65535 stores live").  `tests/11_f8_the_tick_
+budget.loft` runs inside `loft test`, is a RATIO as well as an absolute,
+and is the number of record.
 
 ⚠ **NEVER bind a `FlowField` (or any struct with a big hash) to a
 local in a per-enemy path.**  A whole-value bind COPIES the heap value,
@@ -138,8 +152,8 @@ budget.loft` is the gate that can see cost, and it is a RATIO (16x the
 enemies over one world, <200%) rather than a stopwatch — 115-125%
 healthy vs 316% copying, stable to +-2% under a full suite run.
 
-⚠ **The incremental rebuild is deliberately NOT built.**  At 125 ms
-against 667 ms there is 5x headroom, and an incrementally wrong field
+⚠ **The incremental rebuild is deliberately NOT built.**  The budget
+gate is green with room to spare, and an incrementally wrong field
 routes enemies through a wall the player just built.  Its equality gate
 is already written and green against the from-scratch reference; the
 trigger for revisiting is the budget test going red or `numbers.json`
@@ -503,7 +517,22 @@ src/
                    the only measurement that can tell a spread siege
                    from one collapsed onto a single chokepoint, and the
                    only enemy measurement that does not depend on
-                   spawn order
+                   spawn order.
+                   Plan 12 B2 added `damage <q> <r> <hp>` (which cannot
+                   BREAK anything — only a tick does, so it stays one
+                   code path) plus the `hp` and `pile` band
+                   measurements.  ⚠ `hp` over a hex with nothing
+                   breakable on it is an ERROR, because "at 0 HP" and
+                   "no wall here" are the two states a break moves
+                   BETWEEN and one number for both is green before the
+                   siege and after the wall is gone
+                   ⚠ **A new coordinate-carrying verb needs a row in
+                   `convert.loft::keys_schemas`**, or a future lattice
+                   conversion leaves it in the old labels — silently,
+                   because an unknown command passes through unchanged.
+                   `tests/09_c5a_converter.loft` § The schema is
+                   complete is the gate, and it only fires if its
+                   vocabulary list is updated too
   lattice.loft     THE lattice (plan 09) — pointy-top odd-r offset, the
                    convention every hex_* library and moros speak.
                    Owns `Hex { q, r }` (q is a COLUMN, r a ROW),
@@ -577,6 +606,27 @@ src/
                    `height_override` are declared NULLABLE because
                    palette.json writes null in them — see the file's
                    own warning
+  damage.loft      what a structure has TAKEN, and what happens when it
+                   has taken enough (plan 12 B2) — DamageLayer +
+                   damage_apply / damage_taken / damage_clear / count,
+                   structure_max_hp / structure_breakable / structure_hp,
+                   rubble_height_of, break_structure, damage_resolve.
+                   ⚠ It stores damage TAKEN, not HP remaining, for the
+                   reason `height.loft` stores a RISE: a miss has to
+                   mean something useful, and "HP remaining" reads as
+                   ALREADY BROKEN on a sparse map.
+                   ⚠ A break is TWO effects and `break_structure` is
+                   the ONE site that does both: the wall is REMOVED
+                   (repainted to `BROKEN_GROUND`, and that edits the
+                   painted world — a broken wall really is gone) and a
+                   heap of masonry is DEPOSITED (runtime, clearable).
+                   Never ERASE the hex: the painted layer is
+                   sea-default, so an erased breach is less passable
+                   than the wall it replaced.
+                   ⚠ Max HP is keyed on the palette NAME, not the
+                   index — an index is storage, a name is what a
+                   modder edits around
+
   flow.loft        the distance field (plan 11 F2) — flow_build(pal,
                    pw, kind, core) -> FlowField, a BFS out from the
                    core over what that CLASS can occupy, plus
@@ -702,7 +752,8 @@ suite redirects its own shots into `tests/actual/`.
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime height layer — runtime, not editor state |
-| `HeightLayer` | `height.loft` | metres piled on the map at runtime (bodies) — never saved |
+| `HeightLayer` | `height.loft` | metres of rubble piled on the map at runtime, and what it is made of — never saved |
+| `DamageLayer` | `damage.loft` | HP each structure has ABSORBED — runtime, never saved; a miss means undamaged |
 | `FlowField` | `flow.loft` | one class's distance field: cells (distance + the height it was swept with), the core, and the CLIMB it was built for |
 | `ValidateReport` | `validate.loft` | one `make validate` sweep — scripts / passed / failed / measurements / shots, and the FIRST failure with the number that moved |
 
@@ -1013,6 +1064,7 @@ signature.
 | Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
+| Add a `.keys` verb that takes a hex | `src/script.loft`, AND a row in `src/convert.loft::keys_schemas` + the vocabulary list in `tests/09_c5a_converter.loft`.  A missing schema row is silent: the converter passes an unknown command through untouched |
 | Change what a key does | `src/bindings.loft::editor_actions` — the ONE table.  Both the GL loop and every `.keys` script read it, so a change is visible to the gate.  Never add a `gl_key_pressed` |
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
@@ -1026,6 +1078,8 @@ signature.
 | Ask what a hex's SURFACE is (vs what is painted on it) | `src/passable.loft::hex_ground` — rubble where a pile stands, the painted kind otherwise.  `painted_ground` is the other half and is what `hex_height` adds the layer to |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
+| Ask how much a wall has left | `src/damage.loft::structure_hp` — max minus taken.  ⚠ 0.0 answers BOTH "broken" and "never a structure"; ask `structure_breakable` first if you need to tell them apart |
+| Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |
 | Find out what the SUITE spends its time on | `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` — § Profiling the suite.  Read the op count, never the wall clock |

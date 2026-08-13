@@ -1,0 +1,466 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B2 — a wall breaks into rubble.
+//
+// ── The failure this phase exists to avoid ──────────────────────
+//
+// It is not "the wall never breaks".  It is a break that leaves
+// something NOTHING CAN STAND ON — and it would have passed a naive
+// test, because "the wall broke" would have asserted true over all of
+// it.  `tests/12_b0_probe.loft` § 3 measured the shape: the painted
+// layer is sparse and sea-default, so a break that ERASED its hex
+// reads as `sea`, and the breach is strictly LESS passable than the
+// barrier it replaced.
+//
+// So every group below ends at the same question — **is the hole a way
+// IN?** — asked four ways: as a surface (`can_stand`), as a step
+// (`can_step`), as a route (`flow_reachable`), and as a run
+// (`tests/scripts/a-wall-breaks.keys`, where a robot ends up inside).
+//
+// ── Two guards, and the second is the one that lasts ────────────
+//
+// A broken hex is standable twice over: the heap of masonry makes it
+// so on its own, AND the hex is repainted to `BROKEN_GROUND` rather
+// than erased.  That is not redundancy for its own sake — the heap is
+// CLEARABLE, so the day a player sweeps a breach the second guard is
+// the only one left.  `test_and_it_survives_the_player_sweeping_it`
+// is the one that would catch an erase.
+//
+// ── What B2 does NOT decide ─────────────────────────────────────
+//
+// Every hex of a kind has the same HP here.  `ENEMY_MOVEMENT.md` § A
+// wall's HP is structural makes the real figure depend on a hex's
+// neighbours — a straight run is weaker than a curve, an end weaker
+// still — and that is B3.  B2 is what gives B3 something to vary.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// examples/palette.json, in file order.
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+const WALL_HIGH: integer = 10;
+
+// `docs/NUMBERS.md` § wall.
+const WALL_METRES:      float = 3.0;
+const WALL_HIGH_METRES: float = 5.0;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+// A grass corridor from the core out to (hi, 0), sealed by a wall at
+// (2, 0) — the shape `tests/scripts/a-wall-breaks.keys` plays.
+fn sealed_corridor(hi: integer) -> PaintedWorld {
+    sc_pw = painted_empty();
+    for sc_q in 0..=hi {
+        paint(sc_pw, sc_q, 0, as_u8(GRASS));
+    }
+    paint(sc_pw, 2, 0, as_u8(WALL));
+    sc_pw
+}
+
+// An enemy walking west down the corridor.
+fn westbound(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: robot(), heading: 3 as u8, alive: true }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What a structure is worth
+// ─────────────────────────────────────────────────────────────────
+
+fn test_only_a_structure_has_hp() {
+    tos_pal = pal();
+    tos_pw  = sealed_corridor(6);
+    paint(tos_pw, 4, 0, as_u8(WALL_HIGH));
+
+    assert(structure_max_hp(tos_pal, tos_pw, 2, 0) == WALL_HP, "a wall is 100 HP");
+    assert(structure_max_hp(tos_pal, tos_pw, 4, 0) == WALL_HIGH_HP, "a high wall is 200");
+    assert(structure_max_hp(tos_pal, tos_pw, 1, 0) == 0.0, "grass has none");
+    assert(structure_max_hp(tos_pal, tos_pw, 9, 9) == 0.0, "and neither does open sea");
+
+    assert(structure_breakable(tos_pal, tos_pw, 2, 0),  "a wall can be broken");
+    assert(!structure_breakable(tos_pal, tos_pw, 1, 0), "grass cannot");
+}
+
+// ⚠ **Terrain is not a structure**, and the omission is a decision.
+// `steep_rock` stops a robot as thoroughly as a wall does; giving it HP
+// would make the map itself erode under fire, which is a different
+// game from the one `DESIGN.md` § 5 describes.
+fn test_a_cliff_is_the_map_and_does_not_break() {
+    tac_pw = painted_empty();
+    paint(tac_pw, 1, 0, as_u8(8));      // steep_rock
+
+    assert(!structure_breakable(pal(), tac_pw, 1, 0),
+           "steep_rock is terrain, whatever it stops");
+}
+
+// ⚠ **A wall under a heap is still a wall.**  Plan 12 B1 made a piled
+// hex's SURFACE read as `rubble`; HP is a property of what the MAP has
+// there, so `damage.loft` asks `painted_kind_name` and not
+// `hex_ground_name`.  Read the surface and a wall with one body on it
+// becomes indestructible.
+fn test_a_wall_under_a_pile_still_has_a_walls_hp() {
+    tawp_pal = pal();
+    tawp_pw  = sealed_corridor(4);
+    tawp_hl  = height_layer_empty();
+    height_raise(tawp_hl, 2, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+
+    assert(hex_ground_name(tawp_pal, tawp_pw, tawp_hl, 2, 0) == "rubble",
+           "its surface is the heap on top");
+    assert(painted_kind_name(tawp_pal, tawp_pw, 2, 0) == "wall",
+           "and what the map has there is still a wall");
+    assert(structure_max_hp(tawp_pal, tawp_pw, 2, 0) == WALL_HP,
+           "so it still has a wall's HP");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The ledger: DAMAGE TAKEN, so an untouched map needs no entries
+// ─────────────────────────────────────────────────────────────────
+
+fn test_an_empty_ledger_is_the_base_exactly_as_built() {
+    tae_dl = damage_layer_empty();
+
+    assert(damage_count(tae_dl) == 0, "nothing has been hit");
+    assert(damage_taken(tae_dl, 2, 0) == 0.0, "so nothing has absorbed anything");
+    assert(structure_hp(pal(), sealed_corridor(4), tae_dl, 2, 0) == WALL_HP,
+           "and the wall is at full HP without an entry to say so");
+}
+
+fn test_damage_accumulates_and_repair_removes_the_entry() {
+    tda_dl = damage_layer_empty();
+    damage_apply(tda_dl, 2, 0, 30.0);
+    damage_apply(tda_dl, 2, 0, 30.0);
+
+    assert(damage_taken(tda_dl, 2, 0) == 60.0, "two hits add: {damage_taken(tda_dl, 2, 0)}");
+    assert(damage_count(tda_dl) == 1, "on one hex");
+
+    damage_apply(tda_dl, 2, 0, -60.0);
+    assert(damage_count(tda_dl) == 0,
+           "repaired back to new, the entry is GONE rather than 0.0: {damage_count(tda_dl)}");
+}
+
+// ⚠ **The gate's own words: at 1 HP it does not break, at 0 it does.**
+// A break driven by "has it been hit?" rather than by the arithmetic
+// would pass everything else in this file.
+fn test_a_wall_at_one_hp_stands_and_at_zero_it_does_not() {
+    tao_pal = pal();
+    tao_pw  = sealed_corridor(4);
+    tao_dl  = damage_layer_empty();
+    tao_hl  = height_layer_empty();
+
+    damage_apply(tao_dl, 2, 0, WALL_HP - 1.0);
+    assert(structure_hp(tao_pal, tao_pw, tao_dl, 2, 0) == 1.0, "one point left");
+    assert(damage_resolve(tao_pal, tao_pw, tao_dl, tao_hl) == 0, "and it stands");
+    assert(painted_kind_name(tao_pal, tao_pw, 2, 0) == "wall", "still a wall");
+
+    damage_apply(tao_dl, 2, 0, 1.0);
+    assert(structure_hp(tao_pal, tao_pw, tao_dl, 2, 0) == 0.0, "and now none");
+    assert(damage_resolve(tao_pal, tao_pw, tao_dl, tao_hl) == 1, "so it comes down");
+}
+
+// Overkill is not a second break: the hex has nothing left to break,
+// and the ledger entry went with the wall.
+fn test_a_broken_wall_does_not_break_again() {
+    tab_pal = pal();
+    tab_pw  = sealed_corridor(4);
+    tab_dl  = damage_layer_empty();
+    tab_hl  = height_layer_empty();
+
+    damage_apply(tab_dl, 2, 0, WALL_HP * 3.0);
+    assert(damage_resolve(tab_pal, tab_pw, tab_dl, tab_hl) == 1, "one break");
+    assert(damage_count(tab_dl) == 0, "and the ledger forgot it: {damage_count(tab_dl)}");
+    assert(damage_resolve(tab_pal, tab_pw, tab_dl, tab_hl) == 0, "with nothing left to resolve");
+    assert(height_rise(tab_hl, 2, 0) > 0.0 && height_rise(tab_hl, 2, 0) < WALL_METRES,
+           "and one heap, not three: {height_rise(tab_hl, 2, 0)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE PHASE: breaking OPENS a route
+// ─────────────────────────────────────────────────────────────────
+
+// The break in one call, so the assertions below read as the world
+// before and the world after.
+fn broken_corridor(hi: integer) -> (PaintedWorld, HeightLayer) {
+    bc_pw = sealed_corridor(hi);
+    bc_hl = height_layer_empty();
+    bc_dl = damage_layer_empty();
+    damage_apply(bc_dl, 2, 0, WALL_HP);
+    damage_resolve(pal(), bc_pw, bc_dl, bc_hl);
+    (bc_pw, bc_hl)
+}
+
+fn test_the_break_is_two_effects_and_both_land() {
+    ttb = broken_corridor(4);
+
+    assert(painted_kind_name(pal(), ttb.0, 2, 0) == "grass",
+           "the wall is REMOVED: '{painted_kind_name(pal(), ttb.0, 2, 0)}'");
+    assert(hex_ground_name(pal(), ttb.0, ttb.1, 2, 0) == "rubble",
+           "and a heap is DEPOSITED, so what you stand on is masonry");
+    assert(height_source(ttb.1, 2, 0) == RUBBLE_MASONRY,
+           "which knows it came from a wall");
+    assert(height_rise(ttb.1, 2, 0) == WALL_METRES * RUBBLE_HEIGHT_FRACTION,
+           "and is a third of the wall: {height_rise(ttb.1, 2, 0)} m");
+}
+
+// ⚠ **The measurement the phase turns on.**  Before: a robot has no
+// route past (2, 0) at all.  After: the corridor is whole again.
+fn test_the_breach_is_a_way_in() {
+    ttw_before = flow_build(pal(), sealed_corridor(6), height_layer_empty(), robot(), core());
+    assert(!flow_reachable(ttw_before, 6, 0), "sealed, a robot has no route in");
+
+    ttw = broken_corridor(6);
+    ttw_after = flow_build(pal(), ttw.0, ttw.1, robot(), core());
+
+    assert(flow_reachable(ttw_after, 6, 0), "broken, it does");
+    assert(flow_distance(ttw_after, 6, 0) == 6,
+           "and straight down the corridor: {flow_distance(ttw_after, 6, 0)} steps");
+    assert(can_step(pal(), ttw.0, ttw.1, robot(), hex(3, 0), hex(2, 0)),
+           "the step ONTO the heap is one a robot makes");
+    assert(can_occupy(pal(), ttw.0, ttw.1, robot(), 2, 0),
+           "and standing on it is somewhere it may be");
+}
+
+// ⚠ **The second guard, and the one that would catch an erase.**  The
+// heap is CLEARABLE, so a player who sweeps the breach removes the
+// thing that makes it standable — and what is left has to be ground.
+// Had `break_structure` erased the hex instead of repainting it, the
+// painted layer's sea default would make this the sea, and the player
+// would have sealed their own breach by tidying up.
+fn test_and_it_survives_the_player_sweeping_it() {
+    tas = broken_corridor(6);
+    height_clear(tas.1, 2, 0);
+
+    assert(hex_ground_name(pal(), tas.0, tas.1, 2, 0) == "grass",
+           "swept, the breach is the ground under it: '{hex_ground_name(pal(), tas.0, tas.1, 2, 0)}'");
+    assert(can_stand(pal(), tas.0, tas.1, robot(), 2, 0),
+           "which is somewhere a robot stands");
+    assert(flow_reachable(flow_build(pal(), tas.0, tas.1, robot(), core()), 6, 0),
+           "and the route is still open");
+}
+
+// ⚠ **A tuning gate, not a mechanic.**  `RUBBLE_HEIGHT_FRACTION` is a
+// `numbers.json` value, and a modder is free to move it — but past a
+// robot's climb the heap becomes its own barrier and B2 quietly stops
+// being true.  This is what fails, loudly and by name, instead.
+fn test_the_shipped_numbers_leave_a_climbable_breach() {
+    ttn_pw = painted_empty();
+    paint(ttn_pw, 0, 0, as_u8(WALL));
+    paint(ttn_pw, 1, 0, as_u8(WALL_HIGH));
+
+    assert(rubble_height_of(pal(), ttn_pw, 0, 0) <= CLIMB_REGULAR,
+           "a broken wall leaves {rubble_height_of(pal(), ttn_pw, 0, 0)} m and a robot climbs {CLIMB_REGULAR}");
+    assert(rubble_height_of(pal(), ttn_pw, 1, 0) <= CLIMB_REGULAR,
+           "a broken wall_high leaves {rubble_height_of(pal(), ttn_pw, 1, 0)} m");
+    assert(rubble_height_of(pal(), ttn_pw, 0, 0) > 0.0,
+           "and a heap is a heap — a break that left nothing would be an erase");
+    assert(rubble_height_of(pal(), ttn_pw, 0, 0) < WALL_METRES,
+           "but lower than the wall was, or breaking it made it worse");
+}
+
+fn test_breaking_something_that_is_not_a_structure_does_nothing() {
+    tbs_pw = sealed_corridor(4);
+    tbs_hl = height_layer_empty();
+    tbs_dl = damage_layer_empty();
+
+    assert(!break_structure(pal(), tbs_pw, tbs_dl, tbs_hl, 1, 0),
+           "grass does not break");
+    assert(painted_kind_name(pal(), tbs_pw, 1, 0) == "grass", "and is untouched");
+    assert(height_count(tbs_hl) == 0, "with no heap invented for it");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The siege lands the damage, and the tick resolves once
+// ─────────────────────────────────────────────────────────────────
+
+// One robot walking a sealed corridor, `n` ticks in.
+fn besiege(n: integer, pw: PaintedWorld) -> WaveState {
+    bs_s = wave_state_empty();
+    bs_s.enemies += [westbound(12, 0)];
+    for _ in 0..n { wave_tick(bs_s, pal(), pw, core()); }
+    bs_s
+}
+
+// ⚠ An enemy that can still MOVE attacks nothing, so the wall is
+// untouched at the moment the siege begins — the tick that carries the
+// robot to (3, 0) is one in which it could move.
+fn test_a_walking_enemy_damages_nothing() {
+    twe_pw = sealed_corridor(12);
+    twe_s  = besiege(9, twe_pw);
+
+    twe_e = twe_s.enemies[0] ?? Enemy {};
+    assert(twe_e.q == 3, "nine ticks brings it to the seal: q = {twe_e.q}");
+    assert(damage_count(twe_s.damage) == 0, "and it has not bitten yet");
+}
+
+fn test_a_besieging_enemy_spends_its_rate_one_tick_at_a_time() {
+    tab_pw = sealed_corridor(12);
+    tab_s  = besiege(12, tab_pw);
+
+    // Ticks 10, 11 and 12 are the besieging ones — 3 x per_tick(1.0).
+    tab_want = per_tick(ENEMY_DAMAGE_TO_WALL_PER_SECOND) * 3.0;
+    tab_got  = damage_taken(tab_s.damage, 2, 0);
+    assert(tab_got > tab_want - 0.01 && tab_got < tab_want + 0.01,
+           "three ticks of 1 HP/s is {tab_got} HP, expected {tab_want}");
+    assert(damage_count(tab_s.damage) == 1, "on the one hex it is attacking");
+}
+
+// ⚠ **The break lands on the NEXT tick, not the one running.**  A wall
+// that fell mid-loop would open a route for the enemies the roster
+// visited later and not for the ones it visited first, and a
+// simulation whose outcome depends on roster order cannot be gated by
+// a scripted run at all (`ENEMY_MOVEMENT.md` § The tick resolves once).
+//
+// The negative control is the pair: if the break landed before
+// movement, the robot would already be ON the breach after the tick
+// that broke it.
+fn test_the_break_lands_on_the_tick_after_the_one_that_caused_it() {
+    tbl_pw = sealed_corridor(12);
+    tbl_s  = besiege(9, tbl_pw);
+    damage_apply(tbl_s.damage, 2, 0, WALL_HP - 0.1);
+
+    wave_tick(tbl_s, pal(), tbl_pw, core());
+    tbl_a = tbl_s.enemies[0] ?? Enemy {};
+    assert(painted_kind_name(pal(), tbl_pw, 2, 0) == "grass", "the wall came down");
+    assert(tbl_a.q == 3, "and the robot did NOT move on that tick: q = {tbl_a.q}");
+
+    wave_tick(tbl_s, pal(), tbl_pw, core());
+    tbl_b = tbl_s.enemies[0] ?? Enemy {};
+    assert(tbl_b.q == 2, "it is the next tick that routes through the hole: q = {tbl_b.q}");
+}
+
+// ⚠ **Order independence, now that a tick WRITES to the world.**  Plan
+// 11 F8 pinned it for movement; the ledger is new state, and a siege
+// whose damage depended on which enemy the roster held first would
+// make every scripted number a different number on a different day.
+fn test_the_same_siege_played_with_the_roster_reversed_lands_identically() {
+    tss_pal = pal();
+
+    // Two corridors, sealed at (2, 0) and (-2, 0), one robot down each.
+    tss_pw_a = sealed_corridor(12);
+    tss_pw_b = sealed_corridor(12);
+    for tss_q in -12..0 {
+        paint(tss_pw_a, tss_q, 0, as_u8(GRASS));
+        paint(tss_pw_b, tss_q, 0, as_u8(GRASS));
+    }
+    paint(tss_pw_a, -2, 0, as_u8(WALL));
+    paint(tss_pw_b, -2, 0, as_u8(WALL));
+
+    tss_a = wave_state_empty();
+    tss_a.enemies += [westbound(12, 0)];
+    tss_a.enemies += [Enemy { q: -12, r: 0, kind: robot(), heading: 0 as u8, alive: true }];
+
+    tss_b = wave_state_empty();
+    tss_b.enemies += [Enemy { q: -12, r: 0, kind: robot(), heading: 0 as u8, alive: true }];
+    tss_b.enemies += [westbound(12, 0)];
+
+    for _ in 0..14 {
+        wave_tick(tss_a, tss_pal, tss_pw_a, core());
+        wave_tick(tss_b, tss_pal, tss_pw_b, core());
+    }
+
+    assert(damage_count(tss_a.damage) == 2, "both seals are under attack: {damage_count(tss_a.damage)}");
+    for tss_h in [hex(2, 0), hex(-2, 0)] {
+        assert(damage_taken(tss_a.damage, tss_h.q, tss_h.r)
+            == damage_taken(tss_b.damage, tss_h.q, tss_h.r),
+               "({tss_h.q}, {tss_h.r}) took {damage_taken(tss_a.damage, tss_h.q, tss_h.r)} forward and {damage_taken(tss_b.damage, tss_h.q, tss_h.r)} reversed");
+    }
+}
+
+// ⚠ The ledger only records what can BREAK.  A target can be a heap of
+// rubble too deep to climb, and chewing one does nothing in this plan;
+// writing it down anyway would fill the ledger with entries that can
+// never resolve and make `damage_count` mean something else.
+fn test_a_siege_against_a_heap_writes_nothing_down() {
+    tas_pw = painted_empty();
+    for tas_q in 0..=12 { paint(tas_pw, tas_q, 0, as_u8(GRASS)); }
+
+    tas_s = wave_state_empty();
+    height_raise(tas_s.heights, 2, 0, WALL_METRES, as_u8(RUBBLE_WRECKAGE));
+    tas_s.enemies += [westbound(12, 0)];
+    for _ in 0..14 { wave_tick(tas_s, pal(), tas_pw, core()); }
+
+    tas_e = tas_s.enemies[0] ?? Enemy {};
+    assert(tas_e.q == 3, "it is stopped by the heap: q = {tas_e.q}");
+    assert(damage_count(tas_s.damage) == 0,
+           "and grinds against it forever without a ledger entry: {damage_count(tas_s.damage)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario, and the vocabulary that refuses to fail quietly
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_wall_breaks_plays_green() {
+    taw_s = editor_state_new(PALETTE);
+    editor_state_attach(taw_s,
+                        "tests/actual/b2_break.json",
+                        "tests/actual/b2_break_markers.json");
+    taw = script_run_file(taw_s, "tests/scripts/a-wall-breaks.keys", SHOTS);
+
+    assert(taw.ok, "a-wall-breaks: {script_describe(taw)}");
+    assert(taw.checks == 27, "it made {taw.checks} measurements, expected 27");
+    assert(taw.snaps == 1, "and took its picture");
+}
+
+fn test_the_scenario_file_is_on_disk() {
+    assert(file("tests/scripts/a-wall-breaks.keys").exists(),
+           "the test above would pass against an empty file");
+}
+
+// ⚠ "This wall is at 0 HP" and "there is no wall here" are the two
+// states a break moves BETWEEN, so a measurement that answered 0 for
+// both would be green before the siege started AND after the wall was
+// gone.  Both verbs refuse the second state instead.
+fn test_hp_and_damage_refuse_a_hex_with_nothing_to_break() {
+    thd_grass = "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo toggle_mode\npalette 5\nclick 1 0\n";
+
+    thd_a = script_run(editor_state_new(PALETTE), "{thd_grass}hp 1 0 0.0 100.0", SHOTS);
+    assert(!thd_a.ok && thd_a.message.contains("no HP"), "{thd_a.message}");
+
+    thd_b = script_run(editor_state_new(PALETTE), "{thd_grass}damage 1 0 10", SHOTS);
+    assert(!thd_b.ok && thd_b.message.contains("nothing can break"), "{thd_b.message}");
+}
+
+fn test_the_new_verbs_check_their_arguments() {
+    ttn_a = script_run(editor_state_new(PALETTE), "damage 1 0", SHOTS);
+    assert(!ttn_a.ok && ttn_a.message.contains("<hp>"), "{ttn_a.message}");
+
+    ttn_b = script_run(editor_state_new(PALETTE), "damage x 0 5", SHOTS);
+    assert(!ttn_b.ok && ttn_b.message.contains("integers"), "{ttn_b.message}");
+
+    ttn_c = script_run(editor_state_new(PALETTE), "hp 1 0 5", SHOTS);
+    assert(!ttn_c.ok && ttn_c.message.contains("<lo> <hi>"), "{ttn_c.message}");
+
+    ttn_d = script_run(editor_state_new(PALETTE), "pile 1 0 low high", SHOTS);
+    assert(!ttn_d.ok && ttn_d.message.contains("numbers"), "{ttn_d.message}");
+}
+
+// `pile` answers over ground with no heap on it, unlike `hp`: "no
+// rubble here" is 0.0 m and is a perfectly good reading, where "no
+// structure here" is not an HP.
+fn test_pile_reads_zero_over_bare_ground() {
+    tpr = script_run(editor_state_new(PALETTE), "pile 4 0 0.0 0.0", SHOTS);
+    assert(tpr.ok, "{script_describe(tpr)}");
+    assert(tpr.checks == 1, "and it counted: {tpr.checks}");
+}
