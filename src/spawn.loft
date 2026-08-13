@@ -90,12 +90,13 @@ pub fn wave_state_empty() -> WaveState {
     WaveState { enemies: [], pick_cursor: 0, heights: height_layer_empty() }
 }
 
-// ⚠ `hex_offset` — the 6-direction table an enemy heading steps
-// along — now lives in `world.loft` § The neighbour relation, and is
-// in scope here through `use world;`.  Plan 11 F2 moved it: the
-// flow field is built from the same relation, and a wave engine is
-// the wrong owner for the geometry of the whole world.  One table,
-// one place for plan 09's lattice conversion to change.
+// ⚠ An enemy heading steps through `lat_neighbour` (`use lattice;`),
+// and there is NO 6-direction offset table to reach for.  Plan 11 F2
+// moved `hex_offset` out of here — the flow field is built from the
+// same relation, and a wave engine is the wrong owner for the
+// geometry of the whole world — and plan 09 C6 then deleted the table
+// itself: in odd-r the delta depends on row parity, so a constant
+// `(dq, dr)` table does not exist.  One relation, one place.
 
 // ─── Active markers (close-spawn-disable filter) ────────────────
 

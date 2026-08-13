@@ -70,7 +70,7 @@ pointer, not a second copy.
 | [`06-editor-stencil-pipeline`](06-editor-stencil-pipeline/README.md) | F | MH | Future | Editor-as-content-pipeline; stencil mode + mesh baker |
 | [`07-shared-world-substrate`](07-shared-world-substrate/README.md) | F | H–VH | **Blocked** (needs `hex_voxel` published; W0c cut out to plan 09) | Go 3D; adopt the shared hex substrate |
 | [`08-game-validation`](08-game-validation/README.md) | S | MH | Complete (V0-V4) | Scripted play, measured effects, PNGs for inspection |
-| [`09-lattice-conversion`](09-lattice-conversion/README.md) | F | MH | Active (C0 + I0 shipped) | dryopea moves to pointy-top odd-r offset (+ adopts `input`), checked against `hex_grid` |
+| [`09-lattice-conversion`](09-lattice-conversion/README.md) | F | MH | **Complete** (C0–C6 + I0–I1) | dryopea moved to pointy-top odd-r offset (+ adopted `input`), checked against `hex_grid`; the axial layer is deleted |
 | [`10-extract-local-libraries`](10-extract-local-libraries/README.md) | C | MH | **Gated** (extract what survives 07 + 09) | The code dryopea owns becomes published libraries — descriptive names, never a brand |
 | [`11-flow-field`](11-flow-field/README.md) | G | MH | **Complete** (F0-F8) | Enemies route round walls to the core, per class, spread rather than stack, and besiege a sealed perimeter |
 

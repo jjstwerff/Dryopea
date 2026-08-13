@@ -13,16 +13,17 @@
 //
 // A distance field is a graph property: correct in ANY lattice, as
 // long as it is built from the world's own neighbour function.  This
-// file therefore calls `hex_neighbor` and never touches `q` / `r`
-// arithmetically — see `world.loft` § The neighbour relation, which
-// is the only place in dryopea allowed to step a coordinate.
+// file therefore calls `lat_neighbour` and never touches `q` / `r`
+// arithmetically — see `lattice.loft`, which is the only place in
+// dryopea allowed to step a coordinate.
 //
-// That is what keeps this independent of plan 09's conversion to
-// pointy-top odd-r: the lattice moves underneath and not one distance
-// here changes.  Its gate falls out for free — **the expectations in
-// `tests/11_f2_flow_field.loft` must survive plan 09 unchanged.**  If
-// a single expected distance moves, this rule was broken somewhere,
-// and what broke is moros#10 all over again.
+// That is what kept this independent of plan 09's conversion to
+// pointy-top odd-r: the lattice moved underneath and not one distance
+// here changed.  Its gate fell out for free — **the expectations in
+// `tests/11_f2_flow_field.loft` survived plan 09 unchanged**, and so
+// did all 233 of `scripts/validate.sh`'s measurements.  If a single
+// expected distance ever moves under a lattice change, this rule was
+// broken somewhere, and what broke is moros#10 all over again.
 //
 // ── Three states, and why UNREACHABLE is a big number ───────────
 //

@@ -12,7 +12,10 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 **Gated — E0 is startable, the rest is not.** Plans 07 and 09 decide which
 candidates survive (§ Extract what SURVIVES), so everything past the E0 probe
-waits on them.  Listed as Gated rather than Active so the active cap in
+waits on them.  **Plan 09 completed on 2026-08-13** — half the gate is
+released, and its verdict was that `world.loft` extracts to nothing:
+`hex_grid` already is it.  Plan 07 still gates the rest.  Listed as Gated
+rather than Active so the active cap in
 [`plans/README.md`](../README.md) reflects what is really moving.
 
 dryopea has taken the reuse rule in one direction only: consume what exists.

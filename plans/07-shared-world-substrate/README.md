@@ -5,11 +5,14 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Plan 07 — Shared world substrate (go 3D; interchange world-building routines)
 
-**Status:** **Blocked** (authored 2026-05-27; re-assessed 2026-08-12).
-W0c was cut out into [plan 09](../09-lattice-conversion/README.md); W1 needs
-both that and `hex_voxel` published (§ Asset interchange, W0x).  Nothing here
-is startable today, so it reads Blocked rather than Active — the
-[`plans/README.md`](../README.md) active cap should mean something.
+**Status:** **Blocked** (authored 2026-05-27; re-assessed 2026-08-13).
+W0c was cut out into [plan 09](../09-lattice-conversion/README.md), **which
+completed on 2026-08-13** — so that half of W1's trigger is green and
+dryopea already speaks odd-r offset.  The sole remaining blocker is
+`hex_voxel` being published (§ Asset interchange, W0x), an upstream ask.
+Still Blocked rather than Active because nothing here is startable until it
+lands — the [`plans/README.md`](../README.md) active cap should mean
+something.
 **Effort:** H–VH (foundational; reshapes the editor's data + render core).
 
 **Progress / blockers (2026-05-28):**
@@ -100,6 +103,14 @@ point.
 The premise above was checked against the source and does not
 hold. **moros is pointy-top, odd-r offset; dryopea is axial
 flat-top.** They are different lattices.
+
+> ⚠ **This section is a dated FINDING, not the current state.** The
+> decision it reaches was executed by
+> [plan 09](../09-lattice-conversion/README.md), complete 2026-08-13:
+> dryopea is pointy-top odd-r offset today and `src/world.loft` is
+> deleted. Read on for the evidence and the reasoning; read
+> [`CLAUDE.md`](../../CLAUDE.md) § Hex convention for what the code
+> does now.
 
 Evidence, verbatim:
 
@@ -338,9 +349,9 @@ plan as it stands; the prose sections further down still describe
 | Phase | What ships | Trigger | Effort |
 |---|---|---|---|
 | **W0** | Native play + path-deps + linking spike | now | S |
-| **W0c** | Convert dryopea to odd-r offset, pointy-top — now [plan 09](../09-lattice-conversion/README.md) | now (owner decision 2026-08-12); independent of W0 | MH |
+| **W0c** ✅ | Convert dryopea to odd-r offset, pointy-top — shipped as [plan 09](../09-lattice-conversion/README.md), complete 2026-08-13 | done | MH |
 | **W0x** | `hex_voxel` published so `.hxw` is readable — an upstream ASK, not dryopea code | filed with loft-libs-world | — |
-| **W1** | World model = `hex_voxel` (was `moros_map::Map`) + read a moros `.hxw` | W0c green **and** W0x landed | MH |
+| **W1** | World model = `hex_voxel` (was `moros_map::Map`) + read a moros `.hxw` | W0c green ✅ **and** W0x landed — W0x is what is left | MH |
 | **W2** | 3D mesh editor render + chunk/dirty rebuild | W1 green | H |
 | **W3** | Multi-floor + walls + stairs + neighbour rules | W2 green | MH |
 | **W4** | Re-home markers/spawns + retire 2D path; reframe 02/06 | W3 green | M |

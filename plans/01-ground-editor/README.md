@@ -183,7 +183,7 @@ phases simply ignore as default.
 
 | File | Purpose |
 |---|---|
-| `src/world.loft` | World-coordinate primitives.  `Hex { q: i32, r: i32 }`, conversions to/from screen / world space. |
+| `src/world.loft` | World-coordinate primitives.  `Hex { q: i32, r: i32 }`, conversions to/from screen / world space.  ⚠ **Deleted by [plan 09 C6](../09-lattice-conversion/README.md)** — `Hex` and the scale constants moved to `src/lattice.loft`, and the axial arithmetic is gone. |
 | `src/camera.loft` | `Camera { pos: Hex, zoom: i32 }` + update functions. |
 | `src/render.loft` | Visible-hex enumeration + draw of flat sea hexes. |
 | `src/main.loft` | Entry point — open GL window, init camera, frame loop. |

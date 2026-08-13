@@ -3,8 +3,9 @@
 //
 // The lattice — plan 09 phase C1.
 //
-// dryopea's hex world moves from **axial flat-top** (`world.loft`)
-// to **pointy-top, odd-r offset** — the convention `hex_grid` calls
+// dryopea's hex world moved from **axial flat-top** — the convention
+// `src/world.loft` carried, deleted in C6 — to **pointy-top, odd-r
+// offset**, the convention `hex_grid` calls
 // "THE CONVENTION (shared with moros — the single executable source
 // of it)", which every `hex_*` library and moros already speak.
 // dryopea was the only consumer in the ecosystem holding the other
@@ -37,8 +38,8 @@
 // dryopea's `HEX_DIAMETER` is 1.5 m VERTEX-TO-VERTEX, so its
 // circumradius is 0.75 m and its centre-to-centre spacing is
 // `√3 × 0.75 = 1.299038` — which is exactly `HEX_FLAT_TO_FLAT`, the
-// constant `world.loft` already carried.  So the two agree already
-// and the conversion is one multiply.
+// constant dryopea already carried (in `world.loft` then; here since
+// C6).  So the two agree already and the conversion is one multiply.
 //
 // That settles the plan's open question 1: dryopea SCALES
 // `hex_grid`'s output and keeps its own metre.  It does not redefine
@@ -48,11 +49,11 @@
 //
 // **1. There is no fixed (dq, dr) per direction any more.**  In
 // odd-r offset the neighbour delta DEPENDS ON ROW PARITY — that is
-// the whole point of the layout.  So `world.loft::hex_offset`, which
-// answers a constant pair per direction, has no counterpart here and
+// the whole point of the layout.  So the old `hex_offset`, which
+// answered a constant pair per direction, has no counterpart here and
 // is deliberately absent.  An operation is DELETED by this
-// conversion, not translated.  (Today only `tests/03_m5_spawn.loft`
-// calls it; no `src/` module does.)
+// conversion, not translated — and C6 deleted the last of it along
+// with `world.loft` itself.
 //
 // **2. `hex_grid`'s compass assumes +y is UP; dryopea's is DOWN — so
 // the metre conversion NEGATES y.**  `hex_grid` documents "r

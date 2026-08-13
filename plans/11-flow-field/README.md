@@ -240,13 +240,18 @@ the exact defect § F2 — the trap in the sea-default world describes — 8 of
 the 17 tests go red, including the one named for it. The instrument
 demonstrably sees the bug it was built for.
 
-**The neighbour relation moved to [`world.loft`](../../src/world.loft), and
-that is what makes this independent of plan 09.** `hex_offset` was living in
+**The neighbour relation moved OUT of the wave engine, and that is what
+makes this independent of plan 09.** `hex_offset` was living in
 `spawn.loft`, where the wave engine held the geometry the whole world needs.
-It is now `world.loft` § The neighbour relation together with `hex_neighbor`
-/ `hex_neighbours`, marked as the ONLY place a coordinate may be stepped.
-Every distance in this plan is therefore a graph property, and plan 09's
-conversion has one table to change.
+F2 moved it to `world.loft` § The neighbour relation together with
+`hex_neighbor` / `hex_neighbours`, marked as the ONLY place a coordinate may
+be stepped. Every distance in this plan is therefore a graph property, and
+plan 09's conversion had one table to change.
+
+⚠ **Plan 09 C6 then deleted `world.loft` itself** — the relation now lives
+in [`lattice.loft`](../../src/lattice.loft) as `lat_neighbour` /
+`lat_neighbours`, delegating to `hex_grid`. The independence claim held
+under the real conversion: 233 measurements over 14 scripts, unchanged.
 
 **⚠ Two drafts of the bend test were wrong, and working the answer by hand
 caught both.** The point of the test is a distance no coordinate formula can
@@ -260,7 +265,9 @@ would have hidden both. The hand-worked path is now in the test.
 **Reuse checked first, and the answer is recorded.** Open question 2 asked
 whether `hex_field::Labels` should host the field. Measured: no, not today
 — `Labels` is a bounded rectangle (`labels_new(q0, r0, w, h)`) addressed in
-odd-r, while dryopea's world is unbounded, sparse and axial until plan 09.
+odd-r, while dryopea's world is unbounded and sparse. (It was also axial at
+the time; plan 09 has since converted it, and the verdict is unchanged —
+BOUNDEDNESS is the reason, not the lattice.)
 Nothing in the `hex_*` family carries a distance field to reuse; the nearest
 thing is `hex_shape::flood_outside`, which is boolean reachability over a
 bounded box by relaxation. So dryopea writes its own — a frontier sweep,

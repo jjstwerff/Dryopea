@@ -53,6 +53,18 @@ in [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no
 test could see because `loft test` runs the interpreter only.
 Both gates therefore run interpreted, as `make play` already did.
 
+**Plan 09 (lattice conversion) is COMPLETE** — C0-C6 plus the whole I
+half.  dryopea speaks **pointy-top odd-r offset** throughout (§ Hex
+convention), `src/lattice.loft` DELEGATES to `hex_grid` so it cannot
+drift from the ecosystem, and **C6 deleted the axial layer** —
+`src/world.loft` is gone.  The I half collapsed two key tables into
+`src/bindings.loft`, so a `.keys` run now types on the same table the
+player does.  ⚠ The gate was an ORACLE, never a rebaselined golden: a
+golden agrees with a shear, which is how moros#10 survived.  The
+conversion's strongest evidence is that **233 measurements over 14
+scripts did not move** — C2 proved the relabel preserves DISTANCE, so
+under a correct conversion they cannot.
+
 **Plan 11 (flow field) is COMPLETE** — F0-F8 shipped; F4 was cancelled by
 F0's probe.  F1 is the
 instrument, not the movement: `enemy <i> <q> <r>` and `enemies
@@ -157,13 +169,16 @@ walking wave is a SPAN, not a point (`range 4 7`, not `range 4 4`),
 arrived" means one enemy per hex packed against the core, never N on
 `(0, 0)`.
 
-⚠ **The neighbour relation lives in `src/world.loft` and nowhere
-else.**  `hex_offset` / `hex_neighbor` / `hex_neighbours` are the only
-place a hex coordinate may be stepped.  Everything that computes
-adjacency, reach or a route calls them; a `+ 1` on a `q` or `r`
-outside them is the bug (it is how moros#10 sheared every reach
-computation).  That is also what keeps plan 11's distances
-independent of plan 09: convert the table, and no distance moves.
+⚠ **The neighbour relation lives in `src/lattice.loft` and nowhere
+else.**  `lat_neighbour` / `lat_neighbours` are the only place a hex
+coordinate may be stepped, and they DELEGATE to `hex_grid`.
+Everything that computes adjacency, reach or a route calls them; a
+`+ 1` on a `q` or `r` outside them is the bug (it is how moros#10
+sheared every reach computation), and in odd-r there is deliberately
+no constant `(dq, dr)` table to reach for either — the delta depends
+on `r & 1`.  Routing through the one table is what kept plan 11's
+distances still across plan 09: the table converted, and no distance
+moved (233 measurements, unchanged — C5's gate).
 
 ⚠ **A walking test must paint the ground it walks on.**  An unpainted
 hex IS sea, so after F1b a wave over a blank map does not move at
@@ -574,9 +589,9 @@ src/
                    ⚠ no-route is FLOW_UNREACHABLE, a LARGE value:
                    0 means "at the core", and every "closest
                    neighbour" search must refuse a routeless cell
-                   rather than prefer it.  Built from world.loft's
-                   neighbour relation only, which is what makes it
-                   independent of plan 09.
+                   rather than prefer it.  Built from lattice.loft's
+                   neighbour relation only, which is what kept it
+                   independent of plan 09's conversion.
                    `flow_steps` (F5c) is the same answer as a LIST —
                    every strictly-closer neighbour, best first — which
                    is what the mover reads so it can skip an occupied
@@ -654,7 +669,7 @@ suite redirects its own shots into `tests/actual/`.
 
 | Type | File | Purpose |
 |---|---|---|
-| `Hex` | `world.loft` | `{ q, r }` axial flat-top coord |
+| `Hex` | `lattice.loft` | `{ q, r }` pointy-top odd-r offset coord — `q` a COLUMN, `r` a ROW |
 | `EditorState` | `editor_step.loft` | the whole editor session — layers, camera, picker, mode, history, chunk dirty set |
 | `EditorInput` | `editor_step.loft` | one frame of player intent (hover hex + action flags) |
 | `EditorCamera` | `camera.loft` | `{ pos: Hex, zoom: integer }` |
@@ -708,9 +723,6 @@ is axial (every coordinate dryopea ever wrote to disk) and a
 bijection cannot be proved from one side.  Take an axial reference
 from there if you ever need one; do not recreate a module.
 
-World +y grows **south** (same direction as canvas +y); there is no
-y-flip in the render path, and neither of those changes.
-
 ⚠ **dryopea follows `hex_grid`'s COMPASS** (project owner,
 2026-08-13).  The library documents "r increases upward" and names
 direction 5 `NE` while placing row `r+1` at larger y; dryopea's +y is
@@ -718,9 +730,9 @@ south.  So `lat_to_metres` / `lat_from_metres` / `lat_corner_metres`
 **negate y**, and direction 5 really is north-east on screen.  The
 negation lives in the lattice→metres conversion, beside the metre
 scale — the two things `hex_grid` cannot know.
-⚠ The cost is accepted, not overlooked: **existing maps render
-vertically MIRRORED** once C3/C5 land.  C5 adds no compensating flip —
-a map that came back looking the same would mean the compass never
+⚠ The cost is accepted, not overlooked: **maps authored before C3/C5
+render vertically MIRRORED**, and C5 added no compensating flip — a
+map that came back looking the same would have meant the compass never
 moved.  ⚠ Corner WINDING reversed with it (counter-clockwise in
 `hex_grid`'s frame, clockwise in dryopea's); consecutive corners are
 still adjacent and one side apart, which is all a convex fill needs.
@@ -745,12 +757,13 @@ still adjacent and one side apart, which is all a convex fill needs.
   Canvas, write to `tests/actual/<n>.png`, compare bytes to
   `tests/golden/<n>.png`.  Bootstrapping a new golden: run, FAIL,
   review `tests/actual/<n>.png`, copy to `tests/golden/<n>.png`.
-  ⚠ **The committed goldens are INTERMEDIATE while plan 09 runs** —
-  a golden depends on BOTH the geometry (C3, shipped) and the
-  coordinate labels (C5, open), and neither phase alone leaves a
-  reviewable picture, so a ring currently renders as a lopsided blob.
-  See [`tests/golden/README.md`](tests/golden/README.md).  The
-  drawing's real gates are exact and live in
+  ⚠ **A golden depends on BOTH the geometry and the coordinate
+  labels**, so plan 09 could not move them once: C3 changed the
+  geometry and C5 the labels, and in between a ring rendered as a
+  lopsided blob.  They were rebaselined ONCE, in C5c, on a
+  self-consistent system — see
+  [`tests/golden/README.md`](tests/golden/README.md).  A golden is
+  a review aid, not the drawing's gate: the exact ones live in
   `tests/09_c3_geometry.loft`.
 
 ### Loft language gotchas we hit
@@ -896,10 +909,10 @@ plans/
                     found it OVER budget, and found the cause was a
                     per-enemy field COPY rather than the rebuild it was
                     written to optimise
-  09-lattice-conversion/      — Active (C0-C5 + the whole I half
-                    shipped; only C6 remains — delete the axial layer): dryopea
-                    moves to pointy-top odd-r offset, the convention
-                    every hex_* library and moros already speak.
+  09-lattice-conversion/      — Complete (C0-C6 + the whole I half):
+                    dryopea moved to pointy-top odd-r offset, the convention
+                    every hex_* library and moros already speak, and
+                    C6 DELETED the axial layer — `src/world.loft` is gone.
                     Checked against hex_grid as an ORACLE, because a
                     rebaselined golden agrees with a shear.  I0
                     answered the input half: `input`'s edge model and
@@ -982,13 +995,14 @@ signature.
   `moros_map` carries a fixed bug from applying axial cube
   distance to odd-r coords (moros#10).  Plan 07's note that
   moros_map is axial was the stale one, and dryopea's
-  **axial flat-top** is the odd one out.
+  **axial flat-top** was the odd one out.
   **The decision (project owner, 2026-08-12): dryopea converts**
   — one lattice across the ecosystem, and it is not the libraries
-  that move.  Everything below § Hex convention is therefore the
-  OLD convention until the conversion phase lands; see
-  [`plans/07-shared-world-substrate/README.md`](plans/07-shared-world-substrate/README.md)
-  § W0c.
+  that move.  **[Plan 09](plans/09-lattice-conversion/README.md)
+  executed it and is complete** (2026-08-13), so § Hex convention
+  describes what the code does today; the ask for a second
+  `gridmesh` layout was withdrawn on the strength of it
+  ([loft-libs-graphics#24](https://github.com/loft-lang/loft-libs-graphics/issues/24)).
 - **Plans 06 and 07 should be re-read against this.**  Both were
   written waiting on an extraction that has since happened, so
   their "blocked on lib_plan 24" framing is stale.
@@ -1012,7 +1026,7 @@ signature.
 | [plans/06-editor-stencil-pipeline/README.md](plans/06-editor-stencil-pipeline/README.md) | Plan 06 — editor-to-stencil pipeline (two purposes, three audiences) |
 | [plans/07-shared-world-substrate/README.md](plans/07-shared-world-substrate/README.md) | Plan 07 — go 3D on the shared hex substrate |
 | [plans/08-game-validation/README.md](plans/08-game-validation/README.md) | Plan 08 — scripted play, measured effects, PNGs for inspection |
-| [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — dryopea moves to the libraries' lattice (pointy-top odd-r offset) + adopts `input` |
+| [plans/09-lattice-conversion/README.md](plans/09-lattice-conversion/README.md) | Plan 09 — **Complete.** dryopea moved to the libraries' lattice (pointy-top odd-r offset) + adopted `input` |
 | [plans/10-extract-local-libraries/README.md](plans/10-extract-local-libraries/README.md) | Plan 10 — dryopea's own reusable code becomes published libraries |
 | [plans/11-flow-field/README.md](plans/11-flow-field/README.md) | Plan 11 — **Complete.** Enemies route round walls to the core, per class, and besiege a sealed one |
 | [PROBLEMS.md](PROBLEMS.md) | Dryopea-internal bugs (`@D<NNN>`) |
@@ -1037,8 +1051,8 @@ signature.
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
 | Change how enemies move | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) — the whole spec.  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
-| Step a hex coordinate | `world.loft::hex_neighbor` today; `lattice.loft::lat_neighbour` after plan 09.  ⚠ Never a `+ 1` on a `q` or `r` — and after the conversion never a constant `(dq, dr)` either, because odd-r deltas depend on row parity |
-| Decide whether a plan-09 site converts NOW or in C5 | Ask what it depends on. **Geometry** ("where on screen?") depends on the lattice alone and is already converted. **Label space** ("which cell?") is only meaningful relative to how the DATA is labelled, and dryopea's labels are MIXED until C5 — the editor's picking path emits new ones, `.keys` files and saved maps still hold axial ones.  `paint_line` and `enemy_tick` are label-space; converting either alone turns `scripts/validate.sh` red for a reason that is not a defect |
+| Step a hex coordinate | `lattice.loft::lat_neighbour`.  ⚠ Never a `+ 1` on a `q` or `r`, and never a constant `(dq, dr)` table either — odd-r deltas depend on row parity, so no such table exists |
+| Tell GEOMETRY from LABEL SPACE (any coordinate change) | Ask what the site depends on. **Geometry** ("where on screen?") depends on the lattice alone. **Label space** ("which cell?") is only meaningful relative to how the DATA is labelled — `paint_line`, `enemy_tick`, the flow BFS and every `.keys` literal are label-space.  Plan 09 is the worked example: the two had to move in separate phases (C3, then C5), and converting one label-space site alone turns `scripts/validate.sh` red for a reason that is not a defect |
 | Ask whether an enemy may MOVE somewhere | `src/passable.loft::can_step` — the rule, an edge.  Never `walk_ground` on its own, and never the destination's height on its own |
 | Ask whether an enemy may BE somewhere | `src/passable.loft::can_occupy` — what a position can say with no history.  The measurement's rule; never the field's node filter |
 | Raise a hex at runtime (bodies) | `src/height.loft` — a rise above what the palette paints.  Lives on `WaveState`, never saved |
