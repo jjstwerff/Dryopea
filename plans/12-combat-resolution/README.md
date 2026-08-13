@@ -9,7 +9,14 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Open.** No phase shipped.
+**B0 shipped** (2026-08-13). B1 is next and unblocked.
+
+B0 was a probe and changed no mechanic: it wrote down what the
+simulation does today in the two places this plan leans on, and it
+**falsified half of its own recommendation** — see § The blocker B0
+answered. The climb number it hands B1 is **2.0 m**, not the ~1.0 m
+the plan first proposed, and B1 costs 12 tests plus one `.keys`
+scenario rather than nothing.
 
 Plan 11 gave an enemy a complete journey that ends in nothing. It spawns,
 routes round walls by its climb limit, spreads rather than stacks, and when
@@ -114,14 +121,15 @@ the climb limit.** The passability rule is already
 exactly a ramp to it. If rubble needs a special case to be climbable, the
 number is wrong, not the rule. That is what B0 exists to settle.
 
-## The blocker B0 exists to answer
+## The blocker B0 answered
 
 **`CLIMB_REGULAR = 0.0`** (`src/passable.loft:102`). A robot cannot climb
 *any* rise whatsoever — a drop is free, a rise of 0.01 m is refused. Three
 consequences, and all three are load-bearing for this plan:
 
 - **Rubble cannot be climbable by a robot at any positive height.** The
-  request is unbuildable as the number stands.
+  request is unbuildable as the number stands. *Confirmed:* 0 of the 40
+  heights from 0.1 m to 4.0 m are climbable.
 - **The design's own body-ramp mechanic is dead for robots.**
   `ENEMY_MOVEMENT.md` § Bodies are terrain says *"enemies climb their own
   dead onto the wall"*; at climb 0.0 only insects (3.0) ever can, so the
@@ -129,12 +137,74 @@ consequences, and all three are load-bearing for this plan:
 - **It has never been visible**, because nothing has ever raised a hex
   under a robot in anger. F6 built the layer and gated it with insects.
 
-**Recommendation, to be falsified in B0:** raise `CLIMB_REGULAR` to a small
-positive value (~1.0 m). It buys the rubble ramp, revives the body ramp for
-robots, and costs nothing already gated — a `wall` at 3.0 m still stops a
-robot, so F1b's wall still works, and an insect at 3.0 still clears exactly
-a wall and not a `wall_high`. B0 measures that claim rather than assuming
-it.
+### ⚠ The recommendation of ~1.0 m was wrong, and here is the rule
+
+The plan proposed *"a small positive value (~1.0 m)"* on the strength of
+three claims. B0 measured all three. The first and third hold; **the
+second — "revives the body ramp for robots" — is false**, and the reason
+generalises:
+
+> **A single-hex body ramp onto a structure `H` high needs a climb of
+> `H / 2`.** The pile has to be low enough to step ONTO *and* high enough
+> to leave less than a climb above it, and one number does both jobs. So
+> the workable pile heights are a **band**, `[H - c, c]`, and it is EMPTY
+> whenever `c < H / 2` — however many bodies fall.
+
+A `wall` is 3.0 m, so the robot ramp opens at **1.5 m and not before**.
+One metre buys the rubble ramp and leaves the body ramp exactly as dead
+as it found it. `tests/12_b0_probe.loft` sweeps the rule rather than
+restating it, and checks it against the one ramp the game already walks
+(insect 3.0 m onto `wall_high` 5.0 m — needs 2.5, has 3.0).
+
+### The number B0 hands B1: `CLIMB_REGULAR = 2.0`
+
+Four constraints, and 2.0 is the interior of what they leave:
+
+| Constraint | Bound | Why |
+|---|---|---|
+| rubble climbable at all | `c > 0` | B1's whole request |
+| body ramp onto a `wall` | `c >= 1.5` | `H / 2` — and **B7 needs it**, since "the pile went over it" is one of the two endings B7 must be able to report |
+| `wall_high` stays the harder barrier | `c < 2.5` | else a robot single-hex-ramps a 5 m wall too, and the two wall types stop differing for robots |
+| a bare `wall` still stops a robot | `c < 3.0` | plan 11 F1b |
+
+At 2.0 the band onto a wall is `[1.0, 2.0]` — **one to two robot bodies**
+at `numbers.json` § enemy_regular.height — which reads as "a couple of
+dead robots get the next one over", the mechanic as written.
+
+⚠ **The band has a CEILING as well as a floor**, which is worth knowing
+before B4 drops bodies in anger: three bodies on one hex is a 3.0 m step
+and a 2.0 m climber cannot get onto its own ramp any more. A pile can
+grow past being a ramp.
+
+⚠ **Input for B4's body height.** At exactly 1.0 m per body, one body and
+two bodies each land exactly ON a band endpoint (float equality, exact
+here but with no margin). A collapsed wreck is flatter than a standing
+robot; a body height of ~0.5 m puts 2–4 bodies strictly inside the band
+and is the healthier number. B4 decides it.
+
+### What B1 actually costs — measured, not estimated
+
+| `CLIMB_REGULAR` | `scripts/test.sh` | `scripts/validate.sh` |
+|---|---|---|
+| 0.0 (today) | 585 pass | 233 measurements, green |
+| 1.0 | 1 fail | green |
+| **2.0** | **12 fail** | **1 scenario fails** |
+| 2.9 | 12 fail (the same 12) | — |
+| 3.0 | 51 fail across 6 files | — |
+
+⚠ **The binding constraint is a TEST FIXTURE, not a design number.** All
+12 failures are `tests/11_f6_height_step.loft` (9) and
+`tests/11_f8_the_tick_budget.loft` (3), plus
+`tests/scripts/two-classes-two-routes.keys` — and every one of them
+traces to the same choice: a **1.5 m pile** used to mean *"past a robot's
+climb"* back when any positive number meant that. Once the climb is
+positive those fixtures have to name a height above it (2.5 m does).
+That is B1's mechanical cost and it is why B1 is no longer free.
+
+⚠ **The 3.0 row is the negative control, and it is why the 1.0 row means
+anything.** A constant whose change breaks nothing might simply be read
+by nobody; 51 failures across 6 files prove the gates see this one, so
+"1.0 costs one string assertion" is a measurement rather than a silence.
 
 ## Invariant gate
 
@@ -161,8 +231,8 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **B0** — the climb number, and what a tick is worth | XS | `tests/12_b0_probe.loft` — asserts TODAY's refusals so B1 must turn them red | Open |
-| **B1** — rubble is a clearable layer, and a robot can climb it | S | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; clear round-trips to the authored hex; F1b's wall stays green | Blocked on B0 |
+| **B0** — the climb number, and what a tick is worth | XS | `tests/12_b0_probe.loft` — asserts TODAY's refusals so B1 must turn them red | **Done** |
+| **B1** — rubble is a clearable layer, and a robot can climb it | S→M | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; clear round-trips to the authored hex; F1b's wall stays green. Plus: B0's three ⚠ B1 tests turn red, and F6/F8's 1.5 m pile fixtures move above the new climb | Open |
 | **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | Blocked on B1 |
 | **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | Blocked on B2 |
 | **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | Blocked on B1 |
@@ -206,13 +276,26 @@ over it.
 
 ## Open questions
 
-1. **`CLIMB_REGULAR`** — 0.0 today, which makes every ramp in this plan and
-   in `ENEMY_MOVEMENT.md` unbuildable. *Decided in B0.* Recommendation above.
-2. **What is a tick worth in seconds?** Every damage number in
-   `numbers.json` is per-second (1 pt/s, 1 HP/s, 1 shot/s) and the tick is
-   a hex step at 1.5 hex/s ≈ 667 ms (plan 11 F8 measured against exactly
-   this). Whether rates convert at the numbers boundary or the tick carries
-   a duration is a real fork. *Decided in B0.*
+1. ~~**`CLIMB_REGULAR`**~~ — **DECIDED in B0: 2.0 m**, not the ~1.0 m first
+   proposed, because a body ramp needs half the structure it climbs and
+   half a `wall` is 1.5. The rule, the four constraints and the measured
+   cost are in § The blocker B0 answered. B1 applies it.
+2. ~~**What is a tick worth in seconds?**~~ — **DECIDED in B0: the tick
+   carries a duration, and the rates stay per-second.**
+   `spawn.loft::TICK_SECONDS` is `1 / 1.5 ≈ 667 ms`, **derived** rather
+   than chosen: `enemy_tick` advances exactly one hex and the design says
+   1.5 hex/s, so there is no second opinion to have. B0's probe measures
+   the one-hex half against the running mover, which is what makes it a
+   derivation and not two numbers that happen to agree.
+
+   The fork was settled by a measurement rather than a preference: **a
+   tower's 1.0 s fire interval is 1.5 ticks** — not a count of anything —
+   so per-tick integers cannot express the design's own numbers and
+   rounding either way moves the tower's DPS by 33%. (The 5.0 s scramble
+   window is 7.5 ticks and the 15.0 s inter-wave delay 22.5.) So
+   `numbers.json` goes on saying `HP/s`, which is also what keeps it
+   moddable, and a rate reaches the sim through **`spawn.loft::per_tick`**
+   at the point it is applied. B4 and B6 are its first two callers.
 3. **Where do towers come from?** `src/markers.loft` already has a kind
    discriminant (`MARKER_KIND_SPAWN` 0, `MARKER_KIND_TARGET` 1) and the
    comment says to add one per kind. A third kind is the cheap answer, and
@@ -246,12 +329,20 @@ over it.
 
 ## Found while planning, not this plan's to fix
 
-⚠ **`examples/numbers.json` § world is stale on the lattice.** It reads
-`"hex_layout": "axial_flat_top"` and warns that switching *"would invalidate
-all neighbour-direction code"* — which is precisely what
-[plan 09](../09-lattice-conversion/README.md) did, and dryopea has been
-pointy-top odd-r since. The file is loaded by nothing today, so it misleads
-a reader rather than breaking a run. One-line correction, separate commit.
+~~⚠ **`examples/numbers.json` § world is stale on the lattice.**~~
+**Fixed before B0 started** — it reads `offset_pointy_top_odd_r` as of
+`b45b68f`, with the neighbour-parity rule and the `lat_neighbour`
+pointer spelled out. Nothing left to do.
+
+⚠ **The climb limit is under-gated, and B0 only half-fixed that.** A
+change from 0.0 to 1.0 — a core movement rule — moved exactly one
+assertion in 585 tests, and that assertion was a `contains("0.0")`
+string check on a fault message rather than a behaviour. What gates the
+constant today is F6/F8's incidental 1.5 m pile, not any statement about
+what a robot is meant to climb. B0 adds the missing statement for the
+values it cares about (§ 2 of the probe measures the ramp band directly),
+but a class whose climb has no dedicated gate is a class whose limit can
+drift; worth a look when B4 gives bodies a real height.
 
 ## See also
 

@@ -1,0 +1,372 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B0 — the climb number, and what a tick is worth.
+//
+// ── A phase that changes nothing, on purpose ────────────────────
+//
+// B0 builds no mechanic.  It writes down what the simulation does
+// TODAY, in the two places plan 12 is about to lean on, so that B1
+// cannot move either one quietly.  Its gate is therefore inverted:
+// the assertions marked ⚠ B1 below **must go red** when B1 raises
+// `CLIMB_REGULAR`, and a B1 that leaves this file green has not
+// changed the thing it claims to have changed.
+//
+// ── The two kinds of measurement here, and why they differ ──────
+//
+// A few tests ask the CLASS ("what does a robot do?") and a few ask
+// the GEOMETRY directly, through `can_climb`, which takes a climb as
+// an argument instead of looking one up.  That split is deliberate:
+//
+//   - the class tests record a CHOICE — the value of a constant —
+//     and B1 is entitled to change them;
+//   - the geometry tests record a FACT about hex heights that no
+//     choice can move, and they must stay green forever.
+//
+// It matters because the geometry is what justifies the choice.  A
+// probe that only recorded "a robot climbs 0.0 m" would say the
+// number is wrong without saying what it should be.
+//
+// ── What B0 found, in one line each ─────────────────────────────
+//
+// 1. A robot climbs nothing, so no positive rubble height is
+//    climbable by one — plan 12's rubble ramp is unbuildable as the
+//    number stands, exactly as the plan predicted.
+// 2. ⚠ **The plan's own recommendation of ~1.0 m is FALSIFIED.**  A
+//    single-hex body ramp onto a structure `H` high needs a climb of
+//    `H / 2`, so a 3.0 m wall needs 1.5 m — one metre buys the rubble
+//    ramp and leaves the body ramp just as dead as it found it, which
+//    was one of the three reasons given for it.
+// 3. Breaking a wall by ERASING it makes its hex strictly LESS
+//    passable than the wall was — the sea trap, measured, with an
+//    insect losing a hex it had.
+// 4. A tick is one hex, so it is 1/1.5 s; and a tower's 1.0 s fire
+//    interval is 1.5 of them, which is what settles plan 12's second
+//    open question.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// examples/palette.json, in file order.
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+const WALL_HIGH: integer = 10;
+
+// `docs/NUMBERS.md` § wall, restated so the arithmetic below can be
+// read without opening another file.
+const WALL_METRES:      float = 3.0;
+const WALL_HIGH_METRES: float = 5.0;
+
+// `examples/numbers.json` § enemy_regular.height.  A body pile is
+// counted in bodies, so this is the unit the ramp band is measured in.
+const BODY_METRES: float = 1.0;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A flat grass corridor from the core out to (hi, 0), so every height
+// below is one this file put there.
+fn corridor(hi: integer) -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=hi {
+        paint(c_pw, c_q, 0, as_u8(GRASS));
+    }
+    c_pw
+}
+
+fn pile(q: integer, r: integer, metres: float) -> HeightLayer {
+    p_hl = height_layer_empty();
+    height_raise(p_hl, q, r, metres);
+    p_hl
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 1. The climb number as it stands: a robot climbs NOTHING
+// ─────────────────────────────────────────────────────────────────
+
+// Can a robot step from flat grass onto the hex beside it, piled
+// `metres` high?  The whole of question 1 in one call.
+fn robot_climbs(metres: float) -> boolean {
+    rc_pw = corridor(4);
+    rc_hl = pile(2, 0, metres);
+    can_step(pal(), rc_pw, rc_hl, as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0))
+}
+
+// ⚠ B1 — the constant itself, so the change cannot happen off-screen.
+fn test_the_class_table_says_a_robot_climbs_nothing() {
+    assert(CLIMB_REGULAR == 0.0, "a robot climbs {CLIMB_REGULAR:3.1} m");
+    assert(CLIMB_INSECT == 3.0,  "an insect climbs {CLIMB_INSECT:3.1} m");
+    assert(climb_limit(as_u8(ENEMY_KIND_REGULAR)) == 0.0, "and the table agrees");
+}
+
+// ⚠ B1 — there is no rise small enough.  A rule with a positive limit
+// turns both of these round.
+fn test_a_robot_refuses_the_smallest_rise_there_is() {
+    assert(robot_climbs(0.0),   "level ground is not a rise");
+    assert(!robot_climbs(0.1),  "a tenth of a metre is");
+    assert(!robot_climbs(0.01), "and so is a hundredth");
+}
+
+// The asymmetry is not what B0 is questioning, and it must survive B1
+// untouched: a drop is free at every climb limit, including this one.
+fn test_but_the_drop_back_off_it_is_still_free() {
+    tbd_pw = corridor(4);
+    tbd_hl = pile(2, 0, 0.1);
+
+    assert(can_step(pal(), tbd_pw, tbd_hl, as_u8(ENEMY_KIND_REGULAR), hex(2, 0), hex(3, 0)),
+           "the same edge downhill");
+}
+
+// ⚠ B1 — plan 12's headline blocker, measured over the whole range a
+// rubble pile could plausibly occupy.  While this is green, "rubble a
+// robot can walk onto" is not a thing that can be built.
+fn test_no_rubble_height_a_robot_can_climb_exists() {
+    tnr_climbable = 0;
+    for tnr_i in 1..=40 {
+        if robot_climbs((tnr_i as float) / 10.0) { tnr_climbable = tnr_climbable + 1; }
+    }
+
+    assert(tnr_climbable == 0,
+           "{tnr_climbable} of the 40 heights from 0.1 m to 4.0 m are climbable by a robot");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 2. The ramp landscape — the FACT that decides the number
+// ─────────────────────────────────────────────────────────────────
+//
+// `docs/ENEMY_MOVEMENT.md` § Bodies are terrain, point 3: *"a pile
+// beside a wall shortens the step onto it.  When it is high enough,
+// enemies climb their own dead onto the wall."*
+//
+// ⚠ **"High enough" is a BAND, not a floor, and that is the whole
+// finding.**  The pile has to be low enough to step ONTO and high
+// enough to leave less than a climb above it, and one number does
+// both jobs — so the band is `climb >= structure / 2` and it is EMPTY
+// below that, however many bodies fall.
+//
+// Nothing below reads `CLIMB_REGULAR`, so B1 may move that constant
+// freely and these stay green.  They are the measurement B1 should
+// pick its value from.
+
+// Is there ANY pile height that gets this climb from flat ground, onto
+// the pile, and from the pile onto a `structure` — the three hexes of
+// a single-hex body ramp?
+//
+// Swept rather than solved, so the answer comes from the passability
+// rule itself and not from the same arithmetic written twice.
+fn ramp_exists(climb: float, structure: integer) -> boolean {
+    re_pw = corridor(4);
+    paint(re_pw, 2, 0, as_u8(structure));
+
+    for re_i in 0..=60 {
+        re_hl = pile(3, 0, (re_i as float) / 10.0);
+        // (4, 0) flat ground -> (3, 0) the pile -> (2, 0) the structure.
+        if can_climb(pal(), re_pw, re_hl, climb, hex(4, 0), hex(3, 0))
+        && can_climb(pal(), re_pw, re_hl, climb, hex(3, 0), hex(2, 0)) {
+            return true;
+        }
+    }
+    false
+}
+
+fn test_a_body_ramp_needs_half_the_structure_it_climbs() {
+    assert(!ramp_exists(0.0, WALL), "climb 0.0 m onto a 3 m wall: never");
+    assert(!ramp_exists(1.4, WALL), "climb 1.4 m: still never");
+    assert(ramp_exists(1.5, WALL),  "climb 1.5 m — half the wall — is where it opens");
+    assert(ramp_exists(2.0, WALL),  "and 2.0 m has room either side");
+}
+
+// ⚠ **The plan's recommendation, falsified.**  `plans/12` § The blocker
+// B0 exists to answer gives three reasons for ~1.0 m and this is the
+// second of them: *"revives the body ramp for robots"*.  It does not.
+// One metre is under half a wall, so the band is empty and a robot
+// still cannot climb its own dead onto anything, however deep they lie.
+fn test_one_metre_does_not_revive_the_robots_body_ramp() {
+    assert(!ramp_exists(1.0, WALL),
+           "no pile height between 0 and 6 m gets a 1.0 m climber onto a 3 m wall");
+}
+
+// The same rule read against the one ramp the game already has
+// working, which is what says the rule is the rule and not a story
+// about robots: an insect climbs 3.0 m, a high wall is 5.0 m, and
+// `tests/11_f6_height_step.loft` walks exactly this with a 3 m pile.
+fn test_the_insects_ramp_obeys_the_same_half_rule() {
+    assert(CLIMB_INSECT >= WALL_HIGH_METRES / 2.0,
+           "3.0 m is past half of a 5.0 m wall_high");
+    assert(ramp_exists(CLIMB_INSECT, WALL_HIGH), "so the insect's ramp exists");
+    assert(ramp_exists(CLIMB_INSECT, WALL),      "and its ramp onto a plain wall does too");
+}
+
+// What the band is worth in the unit it will actually be filled in.
+// At a 2.0 m climb the band onto a wall is 1.0 m .. 2.0 m, which is
+// one to two robot bodies — so the mechanic reads as "a couple of dead
+// robots get the next one over", which is the thing the spec describes.
+fn test_at_a_two_metre_climb_the_ramp_is_one_to_two_bodies() {
+    ttm_pw = corridor(4);
+    paint(ttm_pw, 2, 0, as_u8(WALL));
+
+    assert(can_climb(pal(), ttm_pw, pile(3, 0, BODY_METRES), 2.0, hex(4, 0), hex(3, 0))
+        && can_climb(pal(), ttm_pw, pile(3, 0, BODY_METRES), 2.0, hex(3, 0), hex(2, 0)),
+           "one body is already enough at a 2.0 m climb");
+
+    assert(can_climb(pal(), ttm_pw, pile(3, 0, BODY_METRES * 2.0), 2.0, hex(4, 0), hex(3, 0))
+        && can_climb(pal(), ttm_pw, pile(3, 0, BODY_METRES * 2.0), 2.0, hex(3, 0), hex(2, 0)),
+           "and two still are");
+
+    // ⚠ Worth knowing before B4 drops bodies in anger: the band has a
+    // CEILING as well as a floor, so a pile can grow past being a ramp.
+    // Three bodies on one hex is a 3.0 m step up from flat ground, and
+    // a 2.0 m climber cannot get onto its own ramp any more.
+    assert(!can_climb(pal(), ttm_pw, pile(3, 0, BODY_METRES * 3.0), 2.0, hex(4, 0), hex(3, 0)),
+           "three bodies on one hex is a wall of its own");
+}
+
+// The ceiling B1 must stay under, whatever it picks: a bare wall has to
+// go on stopping a robot, or plan 11 F1b stops meaning anything.
+fn test_and_a_bare_wall_must_go_on_stopping_a_robot() {
+    tab_pw = corridor(4);
+    paint(tab_pw, 2, 0, as_u8(WALL));
+
+    assert(!can_climb(pal(), tab_pw, height_layer_empty(), 2.0, hex(3, 0), hex(2, 0)),
+           "2.0 m does not reach the top of a 3 m wall");
+    assert(can_climb(pal(), tab_pw, height_layer_empty(), WALL_METRES, hex(3, 0), hex(2, 0)),
+           "3.0 m does — which is the ceiling, and it is exclusive");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3. The sea trap, measured before it can be walked into
+// ─────────────────────────────────────────────────────────────────
+//
+// `plans/12` § Rubble is its OWN layer: had rubble been a repaint, a
+// broken wall would have had to erase the painted `wall` — and the
+// painted layer is sparse and sea-default, so the breach would read as
+// `sea`.  Below is what that costs, as numbers rather than as a
+// warning, because "the wall broke" would have asserted true over all
+// of it.
+
+// A wall painted and then erased — which is all "breaking it" could
+// mean without a rubble layer.  `paint(…, 0)` removes the entry
+// (`painted.loft`: sea is the implicit default), so this is also
+// exactly what an editor eraser leaves behind.
+fn erased_wall() -> PaintedWorld {
+    ew_pw = corridor(4);
+    paint(ew_pw, 2, 0, as_u8(WALL));
+    paint(ew_pw, 2, 0, as_u8(0));
+    ew_pw
+}
+
+fn test_an_erased_wall_hex_reads_as_sea() {
+    assert(hex_ground_name(pal(), erased_wall(), 2, 0) == "sea",
+           "erased is '{hex_ground_name(pal(), erased_wall(), 2, 0)}'");
+    assert(!hex_walkable(pal(), erased_wall(), 2, 0),
+           "and sea is not a surface anything stands on");
+}
+
+// ⚠ **The trap itself: breaking the wall moves the number the WRONG
+// way.**  An insect could stand on the wall — a wall's walkable part
+// is its top — and cannot stand on the hole where it was.  So the
+// breach is strictly less passable than the barrier it replaced, and
+// this is the assertion that says so out loud.
+fn test_erasing_the_wall_takes_a_hex_away_from_the_insect_that_had_it() {
+    tet_walled = corridor(4);
+    paint(tet_walled, 2, 0, as_u8(WALL));
+
+    assert(can_stand(pal(), tet_walled, as_u8(ENEMY_KIND_INSECT), 2, 0),
+           "with the wall standing, an insect stands on top of it");
+    assert(!can_stand(pal(), erased_wall(), as_u8(ENEMY_KIND_INSECT), 2, 0),
+           "'breaking' it takes that hex away");
+    assert(!can_stand(pal(), erased_wall(), as_u8(ENEMY_KIND_REGULAR), 2, 0),
+           "and gives the robot nothing in exchange");
+}
+
+// The same thing as a route, which is the form B2 will actually care
+// about: a breach that severs the corridor is worse than no breach.
+fn test_and_the_breach_severs_the_route_it_was_meant_to_open() {
+    tab_walled = corridor(4);
+    paint(tab_walled, 2, 0, as_u8(WALL));
+
+    tab_before = flow_build(pal(), tab_walled,   height_layer_empty(),
+                            as_u8(ENEMY_KIND_INSECT), core());
+    tab_after  = flow_build(pal(), erased_wall(), height_layer_empty(),
+                            as_u8(ENEMY_KIND_INSECT), core());
+
+    assert(flow_reachable(tab_before, 4, 0),
+           "with the wall standing an insect goes over it and home");
+    assert(!flow_reachable(tab_after, 4, 0),
+           "with it 'broken' there is no route at all");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 4. What a tick is worth
+// ─────────────────────────────────────────────────────────────────
+
+// The measured half of the derivation in `spawn.loft` § What a tick is
+// worth.  If the mover ever advances by something other than one hex a
+// tick, `TICK_SECONDS` is wrong and this is what says so.
+fn test_a_tick_advances_an_enemy_exactly_one_hex() {
+    tat_s = wave_state_empty();
+    tat_s.enemies += [Enemy { q: 12, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                              heading: 3 as u8, alive: true }];
+
+    for _ in 0..6 { wave_tick(tat_s, pal(), corridor(12), core()); }
+
+    tat_e = tat_s.enemies[0] ?? Enemy {};
+    assert(tat_e.q == 6 && tat_e.r == 0,
+           "six ticks, six hexes: ({tat_e.q}, {tat_e.r})");
+}
+
+fn test_so_a_tick_is_two_thirds_of_a_second() {
+    assert(ENEMY_SPEED_HEX_PER_SECOND == 1.5,
+           "numbers.json § enemy_regular.speed_engage");
+    assert(TICK_SECONDS * ENEMY_SPEED_HEX_PER_SECOND == 1.0,
+           "one tick is one hex, so the two are reciprocal");
+    assert(TICK_SECONDS > 0.666 && TICK_SECONDS < 0.667,
+           "which is {TICK_SECONDS:6.4} s, the ~667 ms plan 11 F8 budgets against");
+}
+
+// ⚠ **What settles plan 12's open question 2.**  A tower fires once a
+// second and that is 1.5 ticks — not a count of anything.  So the
+// rates cannot be converted to per-tick integers at the numbers
+// boundary; the seconds have to survive into the engine, and
+// `per_tick` is the one place they are spent.
+fn test_a_towers_fire_interval_is_not_a_whole_number_of_ticks() {
+    // numbers.json § tower.fire_interval = 1.0 s.
+    taf_shot = 1.0 / TICK_SECONDS;
+    assert(taf_shot > 1.49 && taf_shot < 1.51,
+           "one shot a second is {taf_shot:4.2} ticks");
+
+    // numbers.json § wave_system.pre_walk_visibility_interval = 5.0 s.
+    taf_window = 5.0 / TICK_SECONDS;
+    assert(taf_window > 7.49 && taf_window < 7.51,
+           "and the scramble window is {taf_window:4.2} ticks");
+}
+
+// The other half of the same decision: a per-second rate reaches the
+// sim through one function, so a site that forgets is a site that
+// never called it rather than a number that looks plausible.
+fn test_a_per_second_rate_is_spent_one_tick_at_a_time() {
+    // numbers.json § enemy_regular.damage_to_wall = 1 HP/s, and
+    // § wall.wall_hp = 100 — the file's own "100 s to break by one
+    // regular", which is 150 ticks.
+    tap_total = 0.0;
+    for _ in 0..150 { tap_total = tap_total + per_tick(1.0); }
+
+    assert(tap_total > 99.9 && tap_total < 100.1,
+           "150 ticks of 1 HP/s is {tap_total:6.2} HP — the wall's whole 100");
+}

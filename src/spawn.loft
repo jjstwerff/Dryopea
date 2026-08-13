@@ -46,6 +46,44 @@ use occupancy;
 // copy.
 pub const SCRAMBLER_BUBBLE_RADIUS: integer = 25;
 
+// ─── What a tick is worth, in seconds (plan 12 B0) ──────────────
+//
+// `examples/numbers.json` § enemy_regular.speed_engage, restated here
+// for the same reason as the bubble radius above: nothing loads that
+// file yet.
+//
+// ⚠ **The tick's duration is DERIVED, not chosen.**  `enemy_tick`
+// advances an enemy by exactly one hex, and the design says an enemy
+// covers 1.5 hexes a second — so a tick is 1/1.5 s and there is no
+// second opinion to have about it.  `tests/12_b0_probe.loft` measures
+// the one-hex half against the running mover, which is what makes this
+// a derivation rather than a pair of numbers that happen to agree.
+pub const ENEMY_SPEED_HEX_PER_SECOND: float = 1.5;
+pub const TICK_SECONDS: float = 1.0 / ENEMY_SPEED_HEX_PER_SECOND;
+
+// ── Why the SECONDS survive into the engine (plan 12 B0) ────────
+//
+// Every damage number in `numbers.json` is a per-SECOND rate — 1 pt/s
+// of wallet drain, 1 HP/s into a wall, one tower shot a second — and
+// plan 12 had a real fork open: convert them to per-tick once at the
+// numbers boundary, or keep seconds and let each site multiply.
+//
+// B0 measured the fork rather than arguing it, and the tower settles
+// it: a 1.0 s fire interval is **1.5 ticks**.  It is not a count of
+// anything, so a per-tick integer cadence cannot express the design's
+// own numbers, and rounding it either way changes the tower's DPS by
+// 33%.  The same goes for the 5.0 s scramble window (7.5 ticks) and
+// the 15.0 s inter-wave delay (22.5).
+//
+// So the boundary conversion is not available, `numbers.json` keeps
+// saying `HP/s` — which is also what makes it moddable, since a
+// per-tick number is unreadable to anyone outside this engine — and a
+// rate reaches the sim by being multiplied by `TICK_SECONDS` at the
+// point it is applied.  B4 and B6 are the first two sites.
+pub fn per_tick(rate_per_second: float) -> float {
+    rate_per_second * TICK_SECONDS
+}
+
 // The kind discriminants an `Enemy` carries — `ENEMY_KIND_REGULAR`
 // and friends — live in `passable.loft`, because a class IS its
 // climb limit as far as movement is concerned and the mover has to

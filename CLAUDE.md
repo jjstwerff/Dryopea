@@ -32,9 +32,17 @@ exists today.
 | Every editor action driven headlessly through ONE seam; `.keys` scripts that replay a run, photograph it and MEASURE the frame | [08](plans/08-game-validation/README.md) |
 | Pointy-top odd-r offset throughout, delegated to `hex_grid`; the axial layer is deleted | [09](plans/09-lattice-conversion/README.md) |
 | Enemies that spawn, route round walls per class, spread rather than stack, and besiege a sealed perimeter | [11](plans/11-flow-field/README.md) |
-| **Nothing takes damage** — no tower fires, no enemy dies, no wall breaks | [12](plans/12-combat-resolution/README.md) is open |
+| **Nothing takes damage** — no tower fires, no enemy dies, no wall breaks | [12](plans/12-combat-resolution/README.md), B0 shipped |
 
-**Suite: 569/569 green under `scripts/test.sh`** (~33 s — the `frame`
+⚠ **A robot climbs 0.0 m — it cannot get up a 1 cm rise**, so every ramp
+in `docs/ENEMY_MOVEMENT.md` is dead for the class it was written about.
+Plan 12 B0 measured the rule that fixes it: **a body ramp onto a
+structure `H` high needs a climb of `H / 2`**, so a 3 m wall needs 1.5 m
+and B1 raises `CLIMB_REGULAR` to 2.0.  B0 changed no mechanic — it is a
+probe, and `tests/12_b0_probe.loft`'s three ⚠ B1 tests are meant to go
+RED when B1 lands.
+
+**Suite: 585/585 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -175,7 +183,7 @@ and a heading the identical path.
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 569 runs.
+per-function + per-line + call-path report over all 585 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
