@@ -71,3 +71,21 @@ check rather than a coincidence: they contain no world hexes.
   nothing is drawn on top.
 - `01_e2_picker_active_*.png` — the palette picker only; UI is drawn
   in canvas pixels and owes the lattice nothing.
+
+## The four picker goldens moved again in plan 12 B1
+
+2026-08-13. B1 appended `rubble` to `examples/palette.json`, and the
+picker draws one swatch per entry, so all four `01_e2_picker_*.png`
+gained a twelfth swatch and were rebaselined.
+
+⚠ **A golden could not gate that change**, because the change under
+test is the thing the golden would have been regenerated from. What
+actually checked it was two things outside the PNGs:
+
+- a pixel-diff against the previous goldens before promoting them —
+  **64 pixels, at x 4..11 and y 114..121, all `#8878a8`**, i.e. exactly
+  one 8×8 swatch in rubble's colour and nothing else on the canvas;
+- `tests/01_e2_palette.loft::test_the_picker_draws_one_swatch_per_palette_entry`,
+  which reads the swatch column back against `palette.json` itself and
+  asserts nothing is drawn below the last entry. That test does not
+  move when a golden is rebaselined, which is the whole point of it.

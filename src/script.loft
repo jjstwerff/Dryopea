@@ -1037,8 +1037,9 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
-    // Pile height onto a hex at runtime — what a body does when it
-    // falls (`docs/ENEMY_MOVEMENT.md` § Bodies are terrain).
+    // Pile rubble onto a hex at runtime — what a body does when it
+    // falls, and what a wall does when it breaks
+    // (`docs/ENEMY_MOVEMENT.md` § Bodies are terrain).
     //
     // Plan 11 F6 builds the layer; combat is what will fill it.  Until
     // then this is how a scenario states the mechanic — *the kill zone
@@ -1047,16 +1048,51 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     //
     // ⚠ It lives on the WAVE, so it is gone when the wave is: a pile
     // is runtime state and never reaches a save file.
+    //
+    // The source is NAMED, never numbered, for the same reason `wave`'s
+    // class is: a script saying `raise 3 0 2.5 2` would be unreadable
+    // and would follow the discriminants silently if they ever moved.
+    // It is optional and defaults to wreckage — dead machines are what
+    // has piled up in every scenario written so far — and an unknown
+    // name is an ERROR, because a pile that quietly became something
+    // else is a scenario measuring a material it never asked for.
     if sc_cmd == "raise" {
-        if sc_argc != 3 { return "raise needs <q> <r> <metres>"; }
+        if sc_argc < 3 || sc_argc > 4 { return "raise needs <q> <r> <metres> [source]"; }
         sc_v = script_ints(tok, 2);
         if len(sc_v) != 2 { return "raise: <q> and <r> must be integers"; }
         sc_m = tok[3] as float?;
         if sc_m == null { return "raise: <metres> must be a number"; }
-        height_raise(run.wave.heights, sc_v[0] ?? 0, sc_v[1] ?? 0, sc_m ?? 0.0);
+        sc_src = RUBBLE_WRECKAGE;
+        if sc_argc == 4 {
+            sc_sname = tok[4] ?? "";
+            if sc_sname == "carapace" { sc_src = RUBBLE_CARAPACE; }
+            else if sc_sname == "masonry" { sc_src = RUBBLE_MASONRY; }
+            else if sc_sname != "wreckage" {
+                return "raise: unknown source '{sc_sname}' — wreckage, carapace, masonry";
+            }
+        }
         sc_rq = sc_v[0] ?? 0;
         sc_rr = sc_v[1] ?? 0;
-        println("script: raise ({sc_rq}, {sc_rr}) by {sc_m ?? 0.0:4.2} m — now {height_rise(run.wave.heights, sc_rq, sc_rr):4.2} m of pile");
+        height_raise(run.wave.heights, sc_rq, sc_rr, sc_m ?? 0.0, sc_src as u8? ?? 0);
+        println("script: raise ({sc_rq}, {sc_rr}) by {sc_m ?? 0.0:4.2} m of {rubble_source_name(sc_src as u8? ?? 0)} — now {height_rise(run.wave.heights, sc_rq, sc_rr):4.2} m of pile");
+        return "";
+    }
+
+    // Take a pile away, leaving the hex exactly as the map paints it.
+    //
+    // The player's counter-play (`ENEMY_MOVEMENT.md` § Bodies are
+    // terrain: *"collecting bodies is what stops the ramp"*), and the
+    // only way a `.keys` run can state the layer's defining property —
+    // that clearing rubble RESTORES the authored ground, because the
+    // ground was never overwritten.  Plan 12 B1.
+    if sc_cmd == "clear" {
+        if sc_argc != 2 { return "clear needs <q> <r>"; }
+        sc_cv2 = script_ints(tok, 2);
+        if len(sc_cv2) != 2 { return "clear: <q> and <r> must be integers"; }
+        sc_cq = sc_cv2[0] ?? 0;
+        sc_cr = sc_cv2[1] ?? 0;
+        height_clear(run.wave.heights, sc_cq, sc_cr);
+        println("script: clear ({sc_cq}, {sc_cr}) — {height_count(run.wave.heights)} piles left");
         return "";
     }
 

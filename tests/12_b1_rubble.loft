@@ -1,0 +1,393 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B1 — rubble is a clearable LAYER, and a robot climbs
+// it.
+//
+// ── The three claims, and why each needs its own gate ───────────
+//
+// 1. **A ramp is a height under the climb, not a flag.**  B0 measured
+//    that a robot climbed 0.0 m, so no positive rubble height was
+//    walkable by one and the request was unbuildable.  B1 raised
+//    `CLIMB_REGULAR` to 2.0, and the negative control matters more
+//    than the positive one: rubble one notch ABOVE the climb must
+//    still be refused, or the height rule is decorative and any pile
+//    would do.
+//
+// 2. **Rubble is a SURFACE, and that is what dissolves the sea trap.**
+//    `tests/12_b0_probe.loft` § 3 measured the alternative: a broken
+//    wall that ERASED its hex leaves `sea` behind — the painted layer
+//    is sparse and sea-default — so the breach would be strictly LESS
+//    passable than the wall it replaced, while "the wall broke"
+//    asserted true.  A pile makes its hex standable, so B2 can break a
+//    wall without repainting anything.
+//
+// 3. **Clear is an IDENTITY.**  A layer that cannot be taken away is a
+//    repaint wearing a layer's name, and the round trip is the only
+//    thing that tells the two apart: pile a hex, clear it, and every
+//    observable — the surface, the height, the layer's size, the flow
+//    field — must be what it was before.  ⚠ Had rubble repainted the
+//    hex, clearing would have had to RECONSTRUCT the ground beneath,
+//    and `MapFile` cannot carry a second kind per hex to reconstruct
+//    it from.
+//
+// ── What is deliberately NOT here ───────────────────────────────
+//
+// Nothing produces rubble in anger yet: a wall breaking is B2, a body
+// falling is B4.  The producer is `height_raise` and the script
+// runner's `raise` — the same instrument-first move as plan 08 V2 and
+// plan 11 F1 — so the layer is gated before the combat that fills it
+// exists.  The source argument has no reader either; it is stored
+// because B2 and B4 are already three distinct producers.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// examples/palette.json, in file order.
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+
+// `docs/NUMBERS.md` § wall.
+const WALL_METRES: float = 3.0;
+
+// One notch past the climb — the negative control's whole content.
+// Small enough that "it was refused for some other reason" is not
+// available as an explanation.
+const A_NOTCH: float = 0.1;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A flat grass corridor from the core out to (hi, 0), so every height
+// below is one this file put there.  (hi + 1, 0) is unpainted, which
+// is SEA — the hex § 2 breaks a wall over.
+fn corridor(hi: integer) -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=hi {
+        paint(c_pw, c_q, 0, as_u8(GRASS));
+    }
+    c_pw
+}
+
+fn pile(q: integer, r: integer, metres: float) -> HeightLayer {
+    p_hl = height_layer_empty();
+    height_raise(p_hl, q, r, metres, as_u8(RUBBLE_WRECKAGE));
+    p_hl
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 1. A robot climbs rubble — and stops one notch above its climb
+// ─────────────────────────────────────────────────────────────────
+
+// Step from flat grass onto the hex beside it, piled `metres` high.
+fn robot_steps_onto(metres: float) -> boolean {
+    rso_pw = corridor(4);
+    rso_hl = pile(2, 0, metres);
+    can_step(pal(), rso_pw, rso_hl, robot(), hex(3, 0), hex(2, 0))
+}
+
+fn test_a_robot_walks_onto_rubble_at_its_climb() {
+    assert(robot_steps_onto(CLIMB_REGULAR),
+           "{CLIMB_REGULAR:3.1} m of rubble is exactly what a robot climbs");
+    assert(robot_steps_onto(CLIMB_REGULAR / 2.0),
+           "and half of it is easier still");
+}
+
+// ⚠ **The negative control, and the phase turns on it.**  Without it
+// "rubble is climbable" is satisfied by deleting the height rule, and
+// every pile in the game would be a ramp however deep the dead lie.
+fn test_and_refuses_one_notch_above_it() {
+    assert(!robot_steps_onto(CLIMB_REGULAR + A_NOTCH),
+           "{A_NOTCH:3.1} m past its climb is a step it does not make");
+    assert(!robot_steps_onto(WALL_METRES),
+           "and a wall's worth of rubble is a wall");
+}
+
+// The same answer as a ROUTE, which is the form B2 and B4 will care
+// about: the field is what steers a wave, and a step the predicate
+// refuses must not appear in it.
+fn test_the_route_ends_where_the_pile_is_too_deep() {
+    trr_pw = corridor(6);
+
+    trr_ok = flow_build(pal(), trr_pw, pile(3, 0, CLIMB_REGULAR), robot(), core());
+    assert(flow_distance(trr_ok, 6, 0) == 6,
+           "over a climbable pile the corridor is six steps: {flow_distance(trr_ok, 6, 0)}");
+
+    trr_no = flow_build(pal(), trr_pw, pile(3, 0, CLIMB_REGULAR + A_NOTCH), robot(), core());
+    assert(!flow_reachable(trr_no, 6, 0),
+           "a notch deeper and there is no route past it at all");
+    assert(flow_reachable(trr_no, 2, 0),
+           "though the near side is still the core's own");
+}
+
+// ⚠ **A bare wall must go on stopping a robot**, or plan 11 F1b stops
+// meaning anything — this is the ceiling the four constraints in
+// `plans/12` § The number B0 hands B1 put on the climb.
+fn test_but_a_bare_wall_still_stops_a_robot() {
+    tbw_pw = corridor(4);
+    paint(tbw_pw, 2, 0, as_u8(WALL));
+
+    assert(!can_step(pal(), tbw_pw, height_layer_empty(), robot(), hex(3, 0), hex(2, 0)),
+           "3.0 m of wall is past a 2.0 m climb");
+    assert(can_step(pal(), tbw_pw, height_layer_empty(), as_u8(ENEMY_KIND_INSECT),
+                    hex(3, 0), hex(2, 0)),
+           "and an insect still goes over it — the per-class difference survives");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 2. Rubble is a SURFACE, and the sea trap is dissolved
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_piled_hex_stands_on_rubble() {
+    tph_pw = corridor(4);
+
+    assert(hex_ground_name(pal(), tph_pw, height_layer_empty(), 2, 0) == "grass",
+           "with nothing on it, the hex is what the map paints");
+    assert(hex_ground_name(pal(), tph_pw, pile(2, 0, 1.0), 2, 0) == "rubble",
+           "under a pile, its surface is the pile: {hex_ground_name(pal(), tph_pw, pile(2, 0, 1.0), 2, 0)}");
+}
+
+// ⚠ **The sea trap, dissolved — the reason B1 comes before B2.**  An
+// unpainted hex is sea and nothing stands on it; a pile of rubble on
+// one is a place to stand.  So a broken wall can DEPOSIT without
+// repainting, and the hex it leaves is passable rather than a hole.
+fn test_rubble_makes_even_the_sea_a_place_to_stand() {
+    trm_pw = corridor(4);          // (5, 0) is unpainted, so it is sea
+
+    assert(!can_stand(pal(), trm_pw, height_layer_empty(), robot(), 5, 0),
+           "sea is not a surface a robot stands on");
+    assert(can_stand(pal(), trm_pw, pile(5, 0, 1.0), robot(), 5, 0),
+           "a metre of rubble on it is");
+    assert(can_step(pal(), trm_pw, pile(5, 0, 1.0), robot(), hex(4, 0), hex(5, 0)),
+           "and a robot walks out onto it from the shore");
+}
+
+// The height still ADDS, which is what keeps a pile on a wall a pile
+// on a wall.  Read the surface for the height instead and rubble's
+// null `height_override` swallows the 3.0 m underneath it.
+fn test_the_pile_sits_on_the_structure_it_does_not_replace_it() {
+    tps_pw = corridor(4);
+    paint(tps_pw, 2, 0, as_u8(WALL));
+
+    assert(hex_height(pal(), tps_pw, height_layer_empty(), 2, 0) == WALL_METRES,
+           "the wall alone");
+    assert(hex_height(pal(), tps_pw, pile(2, 0, 1.0), 2, 0) == WALL_METRES + 1.0,
+           "and a metre of rubble on top: {hex_height(pal(), tps_pw, pile(2, 0, 1.0), 2, 0)}");
+    assert(hex_ground_name(pal(), tps_pw, pile(2, 0, 1.0), 2, 0) == "rubble",
+           "while what you stand on up there is the rubble");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3. Clear is an IDENTITY
+// ─────────────────────────────────────────────────────────────────
+//
+// Every observable, over a world with all three kinds of hex in it:
+// painted terrain, a painted structure, and unpainted sea.  ⚠ The
+// negative control is built into the shape — a cleared hex that
+// differs from the authored one means the ground was overwritten
+// after all, and that is exactly what a repaint could not avoid.
+
+// One line describing everything a hex is, so the round trip compares
+// the whole of it rather than the fields this file thought to name.
+fn hex_state(pw: PaintedWorld, hl: const HeightLayer, q: integer, r: integer) -> text {
+    hs_pal = pal();
+    "{hex_ground_name(hs_pal, pw, hl, q, r)}"
+    + " h={hex_height(hs_pal, pw, hl, q, r):5.2}"
+    + " rise={height_rise(hl, q, r):5.2}"
+    + " src={height_source(hl, q, r)}"
+    + " stand={can_stand(hs_pal, pw, hl, robot(), q, r)}"
+    + " in={can_step(hs_pal, pw, hl, robot(), hex(q + 1, r), hex(q, r))}"
+    + " out={can_step(hs_pal, pw, hl, robot(), hex(q, r), hex(q + 1, r))}"
+}
+
+fn test_clearing_a_pile_restores_the_hex_it_fell_on() {
+    tcp_pw = corridor(4);
+    paint(tcp_pw, 2, 0, as_u8(WALL));
+    tcp_hl = height_layer_empty();
+
+    // (1, 0) grass, (2, 0) wall, (5, 0) sea — one of each.
+    for tcp_h in [hex(1, 0), hex(2, 0), hex(5, 0)] {
+        tcp_before = hex_state(tcp_pw, tcp_hl, tcp_h.q, tcp_h.r);
+        tcp_cells  = height_count(tcp_hl);
+
+        height_raise(tcp_hl, tcp_h.q, tcp_h.r, 1.0, as_u8(RUBBLE_MASONRY));
+        assert(hex_state(tcp_pw, tcp_hl, tcp_h.q, tcp_h.r) != tcp_before,
+               "({tcp_h.q}, {tcp_h.r}) has to CHANGE when rubble lands on it, or the round trip proves nothing");
+
+        height_clear(tcp_hl, tcp_h.q, tcp_h.r);
+        assert(hex_state(tcp_pw, tcp_hl, tcp_h.q, tcp_h.r) == tcp_before,
+               "({tcp_h.q}, {tcp_h.r}) after clearing is '{hex_state(tcp_pw, tcp_hl, tcp_h.q, tcp_h.r)}', was '{tcp_before}'");
+        assert(height_count(tcp_hl) == tcp_cells,
+               "and the layer is the size it was: {height_count(tcp_hl)} vs {tcp_cells}");
+    }
+}
+
+// The same identity through the FIELD, which is the reader that
+// actually steers a wave: a pile severs a route and clearing it gives
+// the route back, cell for cell.
+fn test_clearing_gives_the_route_back_unchanged() {
+    tcg_pw = corridor(6);
+    tcg_hl = height_layer_empty();
+
+    tcg_before = flow_build(pal(), tcg_pw, tcg_hl, robot(), core());
+
+    height_raise(tcg_hl, 3, 0, WALL_METRES, as_u8(RUBBLE_MASONRY));
+    tcg_blocked = flow_build(pal(), tcg_pw, tcg_hl, robot(), core());
+    assert(!flow_reachable(tcg_blocked, 6, 0), "3 m of masonry severs the corridor");
+
+    height_clear(tcg_hl, 3, 0);
+    tcg_after = flow_build(pal(), tcg_pw, tcg_hl, robot(), core());
+
+    assert(flow_count(tcg_after) == flow_count(tcg_before),
+           "the field is the size it was: {flow_count(tcg_after)} vs {flow_count(tcg_before)}");
+    for tcg_h in lat_disc(core(), 8) {
+        assert(flow_distance(tcg_after, tcg_h.q, tcg_h.r) == flow_distance(tcg_before, tcg_h.q, tcg_h.r),
+               "and equal at ({tcg_h.q}, {tcg_h.r})");
+    }
+}
+
+// Shrinking a pile to nothing is the same state as clearing it — the
+// entry is GONE either way.  ⚠ A 0.0 m entry left behind would leave
+// the hex's SURFACE reading as rubble with no rubble on it, which over
+// water is a hex an enemy stands on and should not.
+fn test_taking_the_last_of_it_away_is_the_same_as_clearing() {
+    ttl_a = pile(5, 0, 1.0);
+    height_raise(ttl_a, 5, 0, -1.0, as_u8(RUBBLE_WRECKAGE));
+
+    ttl_b = pile(5, 0, 1.0);
+    height_clear(ttl_b, 5, 0);
+
+    assert(height_count(ttl_a) == 0, "shrunk to nothing: {height_count(ttl_a)} cells");
+    assert(height_count(ttl_b) == 0, "cleared: {height_count(ttl_b)} cells");
+    assert(!can_stand(pal(), corridor(4), ttl_a, robot(), 5, 0),
+           "and the sea under it is sea again, not a surface with an empty pile on it");
+}
+
+fn test_clearing_a_hex_that_carries_nothing_is_a_no_op() {
+    tch_hl = pile(1, 0, 1.0);
+    height_clear(tch_hl, 4, 0);
+
+    assert(height_count(tch_hl) == 1, "the pile that WAS there is untouched");
+    assert(height_rise(tch_hl, 1, 0) == 1.0, "and still its own height");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The source — stored now, read by B2 and B4
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_pile_remembers_what_it_is_made_of() {
+    tap_hl = height_layer_empty();
+    height_raise(tap_hl, 1, 0, 1.0, as_u8(RUBBLE_MASONRY));
+
+    assert(height_source(tap_hl, 1, 0) == RUBBLE_MASONRY, "a broken wall left masonry");
+    assert(height_source(tap_hl, 9, 9) == -1,
+           "and a hex with no pile answers a number outside the set, never 'wreckage'");
+    assert(rubble_source_name(as_u8(RUBBLE_MASONRY)) == "masonry", "which has a name");
+    assert(rubble_source_name(as_u8(99)).contains("99"),
+           "and one nobody chose names its number: {rubble_source_name(as_u8(99))}");
+}
+
+// One value per hex, so the newest thing to fall is what lies on top —
+// and carrying some away does not rename what is left.
+fn test_the_newest_deposit_names_the_pile_and_a_withdrawal_does_not() {
+    tnd_hl = height_layer_empty();
+    height_raise(tnd_hl, 1, 0, 1.0, as_u8(RUBBLE_MASONRY));
+    height_raise(tnd_hl, 1, 0, 1.0, as_u8(RUBBLE_CARAPACE));
+
+    assert(height_rise(tnd_hl, 1, 0) == 2.0, "the heights still add: {height_rise(tnd_hl, 1, 0)}");
+    assert(height_source(tnd_hl, 1, 0) == RUBBLE_CARAPACE, "and the insect died on top");
+
+    height_raise(tnd_hl, 1, 0, -0.5, as_u8(RUBBLE_WRECKAGE));
+    assert(height_source(tnd_hl, 1, 0) == RUBBLE_CARAPACE,
+           "carrying half a metre off does not turn the heap into wreckage");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The script runner is the caller
+// ─────────────────────────────────────────────────────────────────
+//
+// A `.keys` run is where the layer meets the rest of the game, so the
+// round trip is stated there too — and the verbs refuse to fail
+// quietly, because a scenario that skipped a line would still report
+// `ok`.
+
+const A_CORRIDOR_AND_A_WAVE: text = `
+    do toggle_mode
+    do cycle_kind
+    click 0 0
+    do cycle_kind
+    do rotate
+    do rotate
+    do rotate
+    do rotate
+    click 12 0
+    do toggle_mode
+    palette 5
+    drag 12 0 0 0
+`;
+
+// ⚠ The pair, and only the middle line differs: a pile at the climb is
+// a ramp the wave walks over, one notch deeper is a wall it stops in
+// front of.  Kept as inline strings because every file in
+// `tests/scripts/` must play green.
+fn test_a_wave_walks_over_rubble_it_can_climb() {
+    taw_a = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 2.0\ntick 8\nenemy 0 4 0\nenemies passable", SHOTS);
+    assert(taw_a.ok, "{script_describe(taw_a)}");
+
+    taw_b = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 2.1\ntick 8\nenemy 0 7 0\nenemies passable", SHOTS);
+    assert(taw_b.ok, "{script_describe(taw_b)}");
+}
+
+// And clearing it lets them on again, in the same session — the layer
+// property as a run rather than as a predicate.
+fn test_clearing_the_pile_lets_the_wave_through() {
+    tct = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 2.1\ntick 8\nenemy 0 7 0\nclear 6 0\ntick 4\nenemy 0 3 0",
+        SHOTS);
+
+    assert(tct.ok, "{script_describe(tct)}");
+    assert(tct.checks == 2, "the hex it stopped at and the hex it reached: {tct.checks}");
+}
+
+fn test_raise_names_its_source_and_refuses_a_typo() {
+    trn_a = script_run(editor_state_new(PALETTE), "raise 1 0 1.0 masonry", SHOTS);
+    assert(trn_a.ok, "{script_describe(trn_a)}");
+
+    trn_b = script_run(editor_state_new(PALETTE), "raise 1 0 1.0 bones", SHOTS);
+    assert(!trn_b.ok, "an unknown source is not silently wreckage");
+    assert(trn_b.message.contains("wreckage"), "and it says what it knows: {trn_b.message}");
+
+    trn_c = script_run(editor_state_new(PALETTE), "raise 1 0 1.0 masonry extra", SHOTS);
+    assert(!trn_c.ok && trn_c.message.contains("[source]"), "{trn_c.message}");
+}
+
+fn test_clear_checks_its_arguments() {
+    tcc_a = script_run(editor_state_new(PALETTE), "clear 1", SHOTS);
+    assert(!tcc_a.ok && tcc_a.message.contains("<q> <r>"), "{tcc_a.message}");
+
+    tcc_b = script_run(editor_state_new(PALETTE), "clear x 0", SHOTS);
+    assert(!tcc_b.ok && tcc_b.message.contains("integers"), "{tcc_b.message}");
+}

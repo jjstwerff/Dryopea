@@ -72,10 +72,28 @@ fn pal() -> vector<GroundType> {
     load_palette(PALETTE)
 }
 
+// A pile a robot cannot climb.
+//
+// ⚠ **2.5 m, not the 1.5 m this file carried until plan 12 B1.**  While
+// `CLIMB_REGULAR` was 0.0 any positive height meant "past a robot's
+// climb", so every fixture below said nothing about the number it
+// depended on — which is why raising the climb to 2.0 turned nine
+// tests in this file red at once.  It is a constant with an assertion
+// on it now, so the next move of that number fails HERE, once, naming
+// itself.
+const PILE_OVER_A_ROBOT: float = 2.5;
+
+fn test_the_pile_fixture_is_the_barrier_it_claims_to_be() {
+    assert(PILE_OVER_A_ROBOT > CLIMB_REGULAR,
+           "{PILE_OVER_A_ROBOT:3.1} m has to stop a robot, and one climbs {CLIMB_REGULAR:3.1} m");
+    assert(PILE_OVER_A_ROBOT <= CLIMB_INSECT,
+           "and must NOT stop an insect ({CLIMB_INSECT:3.1} m) — the per-class flip is what these tests measure");
+}
+
 // A layer with one pile on it.
 fn pile(q: integer, r: integer, metres: float) -> HeightLayer {
     p_hl = height_layer_empty();
-    height_raise(p_hl, q, r, metres);
+    height_raise(p_hl, q, r, metres, as_u8(RUBBLE_WRECKAGE));
     p_hl
 }
 
@@ -105,9 +123,9 @@ fn test_an_empty_layer_is_the_map_exactly_as_painted() {
 // that closes itself would never close.
 fn test_a_pile_accumulates_rather_than_replacing() {
     tpa_hl = height_layer_empty();
-    height_raise(tpa_hl, 4, 0, 0.5);
-    height_raise(tpa_hl, 4, 0, 0.5);
-    height_raise(tpa_hl, 4, 0, 0.5);
+    height_raise(tpa_hl, 4, 0, 0.5, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tpa_hl, 4, 0, 0.5, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tpa_hl, 4, 0, 0.5, as_u8(RUBBLE_WRECKAGE));
 
     assert(height_rise(tpa_hl, 4, 0) == 1.5, "three half-metre bodies: {height_rise(tpa_hl, 4, 0)}");
     assert(height_count(tpa_hl) == 1, "on one hex");
@@ -117,9 +135,13 @@ fn test_a_pile_accumulates_rather_than_replacing() {
 // a negative rise is how a pile shrinks — and it stops at the ground.
 fn test_collecting_more_than_fell_digs_no_hole() {
     tcm_hl = pile(4, 0, 1.0);
-    height_raise(tcm_hl, 4, 0, -4.0);
+    height_raise(tcm_hl, 4, 0, -4.0, as_u8(RUBBLE_WRECKAGE));
 
     assert(height_rise(tcm_hl, 4, 0) == 0.0, "the ground is the floor, not a starting point");
+    // ⚠ And the entry is GONE, not zeroed (plan 12 B1 § An entry means
+    // a PILE).  A 0.0 m pile still present would leave the hex's
+    // SURFACE reading as rubble over ground with no rubble on it.
+    assert(height_count(tcm_hl) == 0, "and the layer is empty again: {height_count(tcm_hl)}");
 }
 
 // The layer ADDS.  A pile on a wall is the wall plus the pile, which
@@ -130,6 +152,15 @@ fn test_the_layer_adds_to_what_the_palette_paints() {
 
     assert(hex_height(pal(), tla_pw, pile(2, 0, 1.5), 2, 0) == 4.5,
            "a 3 m wall under a 1.5 m pile");
+    // ⚠ The two questions plan 12 B1 split apart, in one place: the
+    // HEIGHT reads the painted wall and the SURFACE reads the pile.
+    // Answer the height off the surface instead and rubble's null
+    // `height_override` swallows the wall, so piling debris onto one
+    // would LOWER it.
+    assert(hex_ground_name(pal(), tla_pw, pile(2, 0, 1.5), 2, 0) == "rubble",
+           "and its surface is what lies on top: {hex_ground_name(pal(), tla_pw, pile(2, 0, 1.5), 2, 0)}");
+    assert(hex_ground_name(pal(), tla_pw, height_layer_empty(), 2, 0) == "wall",
+           "with nothing on it, it is the wall again");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -138,36 +169,36 @@ fn test_the_layer_adds_to_what_the_palette_paints() {
 
 fn test_a_climb_is_refused_and_the_drop_back_is_free() {
     tcr_pw = corridor(4);
-    tcr_hl = pile(2, 0, 1.5);
+    tcr_hl = pile(2, 0, PILE_OVER_A_ROBOT);
 
     assert(!can_step(pal(), tcr_pw, tcr_hl, as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0)),
-           "a robot climbs 0.0 m and this is a 1.5 m step up");
+           "a robot climbs {CLIMB_REGULAR:3.1} m and this is a {PILE_OVER_A_ROBOT:3.1} m step up");
     assert(can_step(pal(), tcr_pw, tcr_hl, as_u8(ENEMY_KIND_REGULAR), hex(2, 0), hex(3, 0)),
            "and the same edge the other way is a drop, which is free");
 }
 
 fn test_the_step_fault_names_both_numbers() {
-    tsf_why = step_fault(pal(), corridor(4), pile(2, 0, 1.5),
+    tsf_why = step_fault(pal(), corridor(4), pile(2, 0, PILE_OVER_A_ROBOT),
                          as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0));
 
-    assert(tsf_why.contains("1.5"),   "it names the step: {tsf_why}");
-    assert(tsf_why.contains("0.0"),   "and the climb: {tsf_why}");
+    assert(tsf_why.contains("2.5"),   "it names the step: {tsf_why}");
+    assert(tsf_why.contains("2.0"),   "and the climb: {tsf_why}");
     assert(tsf_why.contains("robot"), "and the class: {tsf_why}");
     assert(tsf_why.contains("(2, 0)"), "and where: {tsf_why}");
 }
 
 // ⚠ **The test an absolute-height rule cannot pass.**  Both hexes are
-// 1.5 m up — well past a robot's 0.0 m climb — and the move between
-// them is level ground, so it is legal.  A predicate that asked "is
-// the destination taller than my climb?" refuses this, and with it
-// refuses an enemy ever walking ALONG a pile it is standing on.
+// past a robot's climb — and the move between them is level ground, so
+// it is legal.  A predicate that asked "is the destination taller than
+// my climb?" refuses this, and with it refuses an enemy ever walking
+// ALONG a pile it is standing on.
 fn test_a_step_between_two_raised_hexes_is_no_step_at_all() {
     tsb_hl = height_layer_empty();
-    height_raise(tsb_hl, 2, 0, 1.5);
-    height_raise(tsb_hl, 3, 0, 1.5);
+    height_raise(tsb_hl, 2, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tsb_hl, 3, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
     assert(can_step(pal(), corridor(4), tsb_hl, as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0)),
-           "1.5 m to 1.5 m is level, whatever the absolute height is");
+           "{PILE_OVER_A_ROBOT:3.1} m to {PILE_OVER_A_ROBOT:3.1} m is level, whatever the absolute height is");
 }
 
 // The surface question survives untouched: sea is not walkable at any
@@ -188,7 +219,7 @@ fn test_a_level_step_onto_water_is_still_refused() {
 fn test_a_raised_hex_flips_who_can_pass() {
     trh_pw   = corridor(6);
     trh_flat = height_layer_empty();
-    trh_pile = pile(3, 0, 1.5);
+    trh_pile = pile(3, 0, PILE_OVER_A_ROBOT);
 
     // Before: the corridor is flat and every class walks it.
     assert(can_step(pal(), trh_pw, trh_flat, as_u8(ENEMY_KIND_REGULAR), hex(4, 0), hex(3, 0)),
@@ -198,7 +229,7 @@ fn test_a_raised_hex_flips_who_can_pass() {
 
     // After: nothing about the MAP changed — only the runtime layer.
     assert(!can_step(pal(), trh_pw, trh_pile, as_u8(ENEMY_KIND_REGULAR), hex(4, 0), hex(3, 0)),
-           "1.5 m is past a robot's climb");
+           "{PILE_OVER_A_ROBOT:3.1} m is past a robot's climb");
     assert(can_step(pal(), trh_pw, trh_pile, as_u8(ENEMY_KIND_INSECT), hex(4, 0), hex(3, 0)),
            "and inside an insect's — the flip is PER CLASS");
 }
@@ -211,11 +242,11 @@ fn test_the_field_stops_where_the_pile_starts() {
     tfs_flat = field_for(ENEMY_KIND_REGULAR, tfs_pw, height_layer_empty());
     assert(flow_distance(tfs_flat, 6, 0) == 6, "flat: the far end is six steps out");
 
-    tfs_bot = field_for(ENEMY_KIND_REGULAR, tfs_pw, pile(3, 0, 1.5));
+    tfs_bot = field_for(ENEMY_KIND_REGULAR, tfs_pw, pile(3, 0, PILE_OVER_A_ROBOT));
     assert(!flow_reachable(tfs_bot, 6, 0), "piled: a robot has no route past it");
     assert(flow_reachable(tfs_bot, 2, 0),  "the near side is still its own");
 
-    tfs_bug = field_for(ENEMY_KIND_INSECT, tfs_pw, pile(3, 0, 1.5));
+    tfs_bug = field_for(ENEMY_KIND_INSECT, tfs_pw, pile(3, 0, PILE_OVER_A_ROBOT));
     assert(flow_distance(tfs_bug, 6, 0) == 6, "and an insect walks straight over it");
 }
 
@@ -223,16 +254,16 @@ fn test_the_field_stops_where_the_pile_starts() {
 // lets `flow_steps` check a step without the world.  A field that
 // forgot them would offer the pile as a step because it is closer.
 fn test_the_field_carries_the_heights_it_was_built_against() {
-    tfc_f = field_for(ENEMY_KIND_INSECT, corridor(6), pile(3, 0, 1.5));
+    tfc_f = field_for(ENEMY_KIND_INSECT, corridor(6), pile(3, 0, PILE_OVER_A_ROBOT));
 
-    assert(flow_height(tfc_f, 3, 0) == 1.5, "the pile: {flow_height(tfc_f, 3, 0)}");
+    assert(flow_height(tfc_f, 3, 0) == PILE_OVER_A_ROBOT, "the pile: {flow_height(tfc_f, 3, 0)}");
     assert(flow_height(tfc_f, 4, 0) == 0.0, "and the flat hex beside it");
 }
 
 // The consequence, stated as the mover's own question: a robot beside
 // a pile that is closer to the core is NOT offered it.
 fn test_closer_is_not_enough_the_step_has_to_be_legal() {
-    tcn_f = field_for(ENEMY_KIND_REGULAR, corridor(6), pile(3, 0, 1.5));
+    tcn_f = field_for(ENEMY_KIND_REGULAR, corridor(6), pile(3, 0, PILE_OVER_A_ROBOT));
     tcn_s = flow_steps(tcn_f, 4, 0);
 
     assert(!flow_reachable(tcn_f, 4, 0), "with the pile in the way there is no route at all");
@@ -357,7 +388,7 @@ fn test_approach_mode_will_not_climb_a_pile() {
     // 30 hexes out is outside the 25-hex scrambler bubble, so this is
     // the heading walking, not the field.
     tap_pw = corridor(30);
-    tap_hl = pile(27, 0, 1.5);
+    tap_hl = pile(27, 0, PILE_OVER_A_ROBOT);
     tap_e  = far_east(ENEMY_KIND_REGULAR, 30);
     tap_f  = field_for(ENEMY_KIND_REGULAR, tap_pw, tap_hl);
 
@@ -369,7 +400,7 @@ fn test_approach_mode_will_not_climb_a_pile() {
 
 fn test_but_it_walks_down_off_one() {
     tbw_pw = corridor(30);
-    tbw_hl = pile(30, 0, 1.5);
+    tbw_hl = pile(30, 0, PILE_OVER_A_ROBOT);
     tbw_e  = far_east(ENEMY_KIND_REGULAR, 30);
     tbw_f  = field_for(ENEMY_KIND_REGULAR, tbw_pw, tbw_hl);
 
@@ -390,7 +421,7 @@ fn test_engage_mode_routes_a_wave_round_a_pile() {
     paint(ter_pw, 2, -1, as_u8(GRASS));
 
     ter_s = wave_state_empty();
-    height_raise(ter_s.heights, 3, 0, 1.5);
+    height_raise(ter_s.heights, 3, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
     ter_s.enemies += [far_east(ENEMY_KIND_REGULAR, 12)];
 
     for _ in 0..10 { wave_tick(ter_s, pal(), ter_pw, core()); }
@@ -427,8 +458,8 @@ fn test_a_pile_beside_a_wall_makes_its_top_a_place_a_robot_could_be() {
     tpb_pw = corridor(4);
     paint(tpb_pw, 2, 0, as_u8(WALL));
     tpb_hl = height_layer_empty();
-    height_raise(tpb_hl, 1, 0, 3.0);
-    height_raise(tpb_hl, 3, 0, 3.0);
+    height_raise(tpb_hl, 1, 0, 3.0, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tpb_hl, 3, 0, 3.0, as_u8(RUBBLE_WRECKAGE));
 
     assert(can_occupy(pal(), tpb_pw, tpb_hl, as_u8(ENEMY_KIND_REGULAR), 2, 0),
            "3 m of bodies on both sides makes the wall top level with them");
@@ -445,7 +476,7 @@ fn test_every_hex_the_mover_uses_passes_the_position_rule() {
     paint(teh_pw, 3, 0, as_u8(WALL));
 
     teh_s = wave_state_empty();
-    height_raise(teh_s.heights, 5, 0, 0.0);
+    height_raise(teh_s.heights, 5, 0, 0.0, as_u8(RUBBLE_WRECKAGE));
     teh_s.enemies += [far_east(ENEMY_KIND_REGULAR, 12)];
     teh_s.enemies += [far_east(ENEMY_KIND_INSECT, 12)];
 
@@ -535,7 +566,7 @@ fn test_the_pile_is_what_stops_them() {
 
     // With it, and nothing else changed: stopped in front of it.
     twp_b = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 1.5\ntick 8\nenemy 0 7 0", SHOTS);
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 2.5\ntick 8\nenemy 0 7 0", SHOTS);
     assert(twp_b.ok, "{script_describe(twp_b)}");
 }
 
@@ -544,15 +575,15 @@ fn test_the_pile_is_what_stops_them() {
 // at 0 m, where the two rules give the same answer — so both would
 // pass, which is exactly the kind of green plan 11 keeps catching.
 //
-// Here the whole outer half of the corridor is 1.5 m up.  A robot
-// climbs 0.0 m and could never get ONTO that plateau; standing on it
+// Here the whole outer half of the corridor is 2.5 m up.  A robot
+// climbs 2.0 m and could never get ONTO that plateau; standing on it
 // already, every step along it is level and every step off it is a
 // drop, so it walks the lot.  Read as an absolute height, every one of
-// those hexes is 1.5 m past its climb and the enemy never moves at
+// those hexes is past its climb and the enemy never moves at
 // all.
 fn test_a_robot_walks_along_a_plateau_it_could_never_climb_onto() {
     tap_run = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 12 0 1.5\nraise 11 0 1.5\nraise 10 0 1.5\nraise 9 0 1.5\ntick 4\nenemy 0 8 0\nenemies passable",
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 12 0 2.5\nraise 11 0 2.5\nraise 10 0 2.5\nraise 9 0 2.5\ntick 4\nenemy 0 8 0\nenemies passable",
         SHOTS);
 
     assert(tap_run.ok, "{script_describe(tap_run)}");
@@ -564,7 +595,7 @@ fn test_a_robot_walks_along_a_plateau_it_could_never_climb_onto() {
 // "pile heights live with the wave".
 fn test_a_pile_is_not_saved() {
     tap = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 1.5\ndo save\ncount painted 13 13", SHOTS);
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 2.5\ndo save\ncount painted 13 13", SHOTS);
 
     assert(tap.ok, "{script_describe(tap)}");
     assert(!file("tests/actual/f6_unsaved.json").exists(),

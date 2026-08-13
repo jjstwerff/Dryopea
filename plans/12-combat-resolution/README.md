@@ -9,14 +9,31 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**B0 shipped** (2026-08-13). B1 is next and unblocked.
+**B0 and B1 shipped** (2026-08-13). B2 and B4 are next, both unblocked.
 
 B0 was a probe and changed no mechanic: it wrote down what the
-simulation does today in the two places this plan leans on, and it
+simulation does in the two places this plan leans on, and it
 **falsified half of its own recommendation** — see § The blocker B0
-answered. The climb number it hands B1 is **2.0 m**, not the ~1.0 m
-the plan first proposed, and B1 costs 12 tests plus one `.keys`
-scenario rather than nothing.
+answered. The climb number it handed B1 is **2.0 m**, not the ~1.0 m
+the plan first proposed.
+
+**B1 applied it and built the rubble layer.** A robot climbs 2.0 m, so
+rubble up to 2.0 m is a ramp and 2.1 m is not; `rubble` is palette
+entry 11, reached from the runtime layer and painted by nobody;
+`height.loft` gained a **source** and a **clear**, and clearing a pile
+restores the authored hex exactly. What it cost, measured rather than
+estimated: **25 tests red at once**, all of them named in advance —
+B0's three inverted assertions, F6's nine and F8's three 1.5 m pile
+fixtures, and ten in the palette / bindings tables that a twelfth entry
+moved. The suite is **607 green** (from 585) and the gate still 233
+measurements over 14 scripts.
+
+⚠ **The under-gated constant is gated now.** B0's note said a change
+from 0.0 to 1.0 moved exactly one assertion in 585 tests, and that
+assertion was a string check on a fault message. F6 and F8 carry a
+named `PILE_OVER_A_ROBOT` with an assertion tying it to
+`CLIMB_REGULAR`, so the next move of that number fails once, in a test
+that names itself, instead of scattering across nine.
 
 Plan 11 gave an enemy a complete journey that ends in nothing. It spawns,
 routes round walls by its climb limit, spreads rather than stacks, and when
@@ -123,9 +140,10 @@ number is wrong, not the rule. That is what B0 exists to settle.
 
 ## The blocker B0 answered
 
-**`CLIMB_REGULAR = 0.0`** (`src/passable.loft:102`). A robot cannot climb
-*any* rise whatsoever — a drop is free, a rise of 0.01 m is refused. Three
-consequences, and all three are load-bearing for this plan:
+**`CLIMB_REGULAR` was 0.0** — B1 raised it to 2.0, and everything in this
+section is what B0 measured while it still was. A robot could not climb
+*any* rise whatsoever: a drop was free, a rise of 0.01 m was refused. Three
+consequences, and all three were load-bearing for this plan:
 
 - **Rubble cannot be climbable by a robot at any positive height.** The
   request is unbuildable as the number stands. *Confirmed:* 0 of the 40
@@ -213,8 +231,8 @@ pins, and the input that must be **refused**.
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
-| **B0** | a robot refuses a 0.1 m rise today; an erased `wall` hex is impassable today | the probe records what IS, before anything changes it | — (B0 asserts the present, so its own gate is that B1 turns it red) |
-| **B1** | robot steps onto rubble at `climb`; refuses at `climb + ε`; **clearing a pile leaves the hex identical to before it was piled** | a ramp is a height under the climb, not a flag — and rubble is a layer, so clear is an identity | rubble one notch above the climb **must** be refused, else the height rule is decorative; a cleared hex that differs from the authored one means the ground was overwritten after all |
+| **B0** ✓ | a robot refuses a 0.1 m rise today; an erased `wall` hex is impassable today | the probe records what IS, before anything changes it | — (B0 asserts the present, so its own gate is that B1 turns it red) |
+| **B1** ✓ | robot steps onto rubble at `climb`; refuses at `climb + ε`; **clearing a pile leaves the hex identical to before it was piled** | a ramp is a height under the climb, not a flag — and rubble is a layer, so clear is an identity | rubble one notch above the climb **must** be refused, else the height rule is decorative; a cleared hex that differs from the authored one means the ground was overwritten after all |
 | **B2** | wall at 1 HP does not break; at 0 HP the hex carries rubble and is standable | breaking OPENS a route (the sea trap is closed) | a broken hex that reads as `sea` — impassable — is the bug this phase exists to avoid |
 | **B3** | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
 | **B4** | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
@@ -232,10 +250,10 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **B0** — the climb number, and what a tick is worth | XS | `tests/12_b0_probe.loft` — asserts TODAY's refusals so B1 must turn them red | **Done** |
-| **B1** — rubble is a clearable layer, and a robot can climb it | S→M | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; clear round-trips to the authored hex; F1b's wall stays green. Plus: B0's three ⚠ B1 tests turn red, and F6/F8's 1.5 m pile fixtures move above the new climb | Open |
-| **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | Blocked on B1 |
+| **B1** — rubble is a clearable layer, and a robot can climb it | S→M | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; clear round-trips to the authored hex; F1b's wall stays green. Plus: B0's three ⚠ B1 tests turn red, and F6/F8's 1.5 m pile fixtures move above the new climb | **Done** |
+| **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | Open |
 | **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | Blocked on B2 |
-| **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | Blocked on B1 |
+| **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | Open |
 | **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | Blocked on B4 |
 | **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires | Blocked on B5a |
 | **B6** — nibble drains the wallet, zero ends the run | S | `wallet <lo> <hi>` in `script.loft`; drain rate and the floor at 0 | Blocked on B4 |
@@ -300,7 +318,25 @@ over it.
    discriminant (`MARKER_KIND_SPAWN` 0, `MARKER_KIND_TARGET` 1) and the
    comment says to add one per kind. A third kind is the cheap answer, and
    it makes towers authorable in the existing editor. *Decided in B5a.*
-4. **Rubble is a palette entry reached from the rubble layer, not from the
+4. ~~**Rubble is a palette entry reached from the rubble layer, not from
+   the painted one.**~~ — **DECIDED and BUILT in B1**, as recommended,
+   with one addition the phase found: the entry is reached for the
+   SURFACE only. `hex_height` reads the AUTHORED entry and adds the
+   layer's metres, because answering the height off the surface would
+   let rubble's null `height_override` swallow the 3.0 m wall it is
+   sitting on — piling debris onto a wall would LOWER it. So
+   `passable.loft` has two lookups, `painted_ground` for the height and
+   `hex_ground` for the surface, and `hex_walkable` / `stand_fault` /
+   `can_stand` / `hex_ground_name` took the layer as a parameter.
+   The hotkey question resolved the other way from "not a blocker":
+   `bindings.loft` HAD a twelfth palette hotkey (`=`, inert over an
+   eleven-entry palette), and B1 **deleted** it. An authored rubble hex
+   would be a second representation of a pile that `height_clear` could
+   not take away, so no key and no `.keys` verb reaches entry 11. The
+   picker still draws twelve swatches; that is the UI question, still
+   open and still not a blocker. The original text follows.
+
+   **Rubble is a palette entry reached from the rubble layer, not from the
    painted one.** Keeping it a `GroundType` is what lets `can_stand` /
    `can_step` read `walk_ground` with no branch for rubble — the passability
    rule stays one rule. So `hex_ground` prefers the rubble layer when a hex

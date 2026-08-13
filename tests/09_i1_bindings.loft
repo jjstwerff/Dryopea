@@ -76,8 +76,15 @@ fn ref_input(
     ri_ctrl  = kb[REF_CTRL];
     ri_shift = kb[REF_SHIFT];
 
-    // The twelve palette hotkeys, read in the order main.loft read
-    // them — last one down wins.
+    // The palette hotkeys, read in the order main.loft read them —
+    // last one down wins.
+    //
+    // ⚠ '=' is in the swept key list below but sets NOTHING here, and
+    // that is the assertion rather than an omission: plan 12 B1 added
+    // `rubble` at palette 11 and took its hotkey away, because it is
+    // the one ground type the runtime deposits and a player never
+    // paints.  Press '=' and the seam must produce no selection at
+    // all.
     ri_sel_pressed: boolean = false;
     ri_sel_index:   integer = 0;
     if kb[REF_1]     { ri_sel_pressed = true; ri_sel_index = 0;  }
@@ -91,7 +98,6 @@ fn ref_input(
     if kb[REF_9]     { ri_sel_pressed = true; ri_sel_index = 8;  }
     if kb[REF_0]     { ri_sel_pressed = true; ri_sel_index = 9;  }
     if kb[REF_MINUS] { ri_sel_pressed = true; ri_sel_index = 10; }
-    if kb[REF_EQUAL] { ri_sel_pressed = true; ri_sel_index = 11; }
 
     EditorInput {
         in_hover_q:        hq,
@@ -342,7 +348,7 @@ fn test_every_action_is_bound_to_a_real_key() {
         tea_n += 1;
     }
 
-    assert(tea_n == 27, "2 modifiers + 13 actions + 12 palette hotkeys");
+    assert(tea_n == 26, "2 modifiers + 13 actions + 11 palette hotkeys — `rubble` has none");
 }
 
 // ─── Rebinding ──────────────────────────────────────────────────
@@ -527,10 +533,20 @@ fn test_the_vocabulary_did_not_widen() {
 // A palette entry with no hotkey is a gesture no player can make.
 // It used to be accepted and silently ignored by the seam's range
 // check, which is a script asserting nothing.
+//
+// ⚠ **Entry 11 is the interesting one since plan 12 B1.**  `rubble`
+// EXISTS in the palette — the passability rule reads it whenever a hex
+// carries a pile — and it still has no hotkey, so neither a player nor
+// a `.keys` script can paint it.  An authored rubble hex would be a
+// second representation of a pile, and `height_clear` could not take
+// it away.
 fn test_a_palette_entry_with_no_hotkey_is_an_error() {
     tpe_s = editor_state_new(PALETTE);
 
     assert(!script_run(tpe_s, "palette 12", SHOTS).ok,
-           "there are twelve hotkeys, so entry 12 is past the last of them");
-    assert(script_run(tpe_s, "palette 11", SHOTS).ok, "entry 11 is the last one reachable");
+           "entry 12 is past the end of a twelve-entry palette");
+    assert(!script_run(tpe_s, "palette 11", SHOTS).ok,
+           "and entry 11 is rubble, which the runtime deposits and nobody paints");
+    assert(script_run(tpe_s, "palette 10", SHOTS).ok,
+           "wall_high is the last entry a player can reach");
 }

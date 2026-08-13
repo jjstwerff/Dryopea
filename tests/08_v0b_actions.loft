@@ -646,13 +646,19 @@ fn test_an_unattached_session_refuses_disk() {
     assert(painted_count(tua_s.pw) == 1, "reload was refused: the world survives");
 }
 
-// The palette has 11 entries but 12 hotkeys — the spare ones must
-// not select anything until the palette grows into them.
+// A selection past the end of the palette must not select anything.
+//
+// ⚠ The seam's range check is the LAST guard, not the only one.  The
+// palette has twelve entries since plan 12 B1 and only eleven of them
+// have a hotkey — `rubble` is deposited by the runtime, never painted
+// — so what stops a player reaching it is `bindings.loft` having no
+// row for it (`tests/09_i1_bindings.loft`).  This is the check under
+// that one: a selection nobody can produce is still refused.
 fn test_out_of_range_selection_is_ignored() {
     tor_s = editor_state_new(PALETTE);
     editor_step(tor_s, select_frame(5));
 
-    editor_step(tor_s, select_frame(11));
+    editor_step(tor_s, select_frame(12));
 
-    assert(tor_s.picker.active == 5, "hotkey past the end of the palette is ignored");
+    assert(tor_s.picker.active == 5, "index past the end of the palette is ignored");
 }

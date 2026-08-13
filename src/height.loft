@@ -1,11 +1,18 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// The height layer — what RUNTIME has piled on top of the map.
+// The rubble layer — what RUNTIME has piled on top of the map.
 //
-// Plan 11 phase F6.  `docs/ENEMY_MOVEMENT.md` § Where `height` comes
-// from names three sources, and they are three different KINDS of
-// state:
+// Plan 11 phase F6 built it; plan 12 B1 named it.  A pile of bodies
+// and a heap of broken wall are one thing wearing two words: both are
+// runtime debris that raises a hex, is climbable when it is low
+// enough, and can be cleared back to the ground it fell on.  So this
+// file gained a **source** (what the pile is made of) and a **clear**
+// (the player's counter-play) rather than a second sparse map beside
+// it.
+//
+// `docs/ENEMY_MOVEMENT.md` § Where `height` comes from names three
+// sources, and they are three different KINDS of state:
 //
 //   | source     | value                    | state              |
 //   |------------|--------------------------|--------------------|
@@ -51,11 +58,63 @@
 // not killed anything yet needs.
 
 
-// One hex and how far runtime has raised it, in metres.
+// ── An entry means a PILE, and that is an invariant ─────────────
+//
+// A hex is in the hash only while it carries rubble.  Shrinking a pile
+// to nothing removes it, exactly as `painted.loft` removes a hex
+// painted back to sea — so "is there rubble here?" is one question
+// with one answer, and `height_count` is the number of piles rather
+// than the number of hexes that have ever had one.
+//
+// ⚠ That invariant is what `passable.loft` reads.  A piled hex's
+// SURFACE is rubble, so a zeroed-but-present entry would leave an
+// enemy standing on debris that is not there — and over water, where
+// plan 12 B2 breaks a wall, that is the difference between a breach
+// and a hole in the sea.
+//
+// ── The source is one per hex, and the newest lies on top ───────
+//
+// `plans/12` § The rubble is the hill draws the line this file sits
+// on: **source material** — wreckage, carapace, masonry — is a closed
+// set with one value per hex, exactly like `sand` / `grass` / `rock`.
+// What a pile CONTAINS — several salvageable types at once — is open
+// and multiple per hex, so it is not a ground type and not this
+// layer's; it waits for plan 06 S1's stacked layer.
+//
+// B1 ships ONE rubble ground type, so nothing reads the source back
+// yet.  It is stored anyway because the producers are already three —
+// a wall breaking, a robot dying, an insect dying — and they arrive in
+// B2 and B4: taking it as an argument now makes the eventual split a
+// palette row and a lookup, rather than a hunt through every site that
+// makes rubble.
+
+
+// What a pile is MADE of.  A closed set, one value per hex.
+//
+// New variants APPEND — the numbers ride in the layer, and a run in
+// progress must not be re-labelled underneath itself.
+pub const RUBBLE_WRECKAGE: integer = 0;   // a machine that died
+pub const RUBBLE_CARAPACE: integer = 1;   // an insect that died
+pub const RUBBLE_MASONRY:  integer = 2;   // a structure that broke
+
+// The source's name, for a message a player or a failing script can
+// read.  An unknown source names its number rather than guessing at a
+// material nobody chose — the same rule
+// `passable.loft::enemy_class_name` follows.
+pub fn rubble_source_name(source: u8) -> text {
+    if source == RUBBLE_WRECKAGE as u8 { return "wreckage"; }
+    if source == RUBBLE_CARAPACE as u8 { return "carapace"; }
+    if source == RUBBLE_MASONRY  as u8 { return "masonry"; }
+    "source {source as integer}"
+}
+
+// One hex, how far runtime has raised it in metres, and what the pile
+// is made of.
 pub struct HexRise {
     q:      integer,
     r:      integer,
     metres: float,
+    source: u8,
 }
 
 // What runtime has piled on the map.  A hash must be a struct field
@@ -75,7 +134,7 @@ pub fn height_layer_empty() -> HeightLayer {
     HeightLayer { cells: [] }
 }
 
-// Pile `metres` more onto (q, r).
+// Pile `metres` more of `source` onto (q, r).
 //
 // ⚠ It ACCUMULATES, because bodies do (`ENEMY_MOVEMENT.md` § Bodies
 // are terrain: *"a body raises its hex's effective height, and bodies
@@ -83,17 +142,53 @@ pub fn height_layer_empty() -> HeightLayer {
 // overwrite the first, and the pile that closes a chokepoint would
 // never grow past one body.
 //
-// A negative rise is how a pile SHRINKS — the player collecting
-// bodies is the counter-play the same section describes — and the
-// total is floored at 0.0 so collecting more than was dropped cannot
-// dig a hole no digger made.
-pub fn height_raise(hl: HeightLayer, q: integer, r: integer, metres: float) {
+// ⚠ **The pile has a CEILING as well as a floor**, and B0 measured it:
+// a single-hex ramp onto a structure `H` high needs a climb of `H / 2`,
+// so the workable pile heights are the band `[H - c, c]`.  Three robot
+// bodies on one hex is a 3.0 m step and a 2.0 m climber cannot get onto
+// its own ramp any more.  Nothing here enforces that — it falls out of
+// the height rule — but a caller that expects "more bodies is always
+// more ramp" is wrong about the mechanic.
+//
+// A negative rise is how a pile SHRINKS: the player collecting bodies
+// is the counter-play the same section describes.  Taking away as much
+// as fell REMOVES the pile rather than leaving a 0.0 m one — see
+// § An entry means a PILE — and taking away more digs no hole.
+//
+// The source of a shrink is ignored: what is carried off does not
+// change what the rest of the heap is made of.
+pub fn height_raise(hl: HeightLayer, q: integer, r: integer, metres: float, source: u8) {
     hr_c = hl.cells[q, r];
-    if hr_c == null {
-        hl.cells[q, r] = HexRise { q: q, r: r, metres: max(metres, 0.0) };
+    hr_total = metres;
+    if hr_c != null { hr_total = hr_c.metres + metres; }
+
+    if hr_total <= 0.0 {
+        hl.cells[q, r] = null;
+    } else if hr_c == null {
+        hl.cells[q, r] = HexRise { q: q, r: r, metres: hr_total, source: source };
     } else {
-        hr_c.metres = max(hr_c.metres + metres, 0.0);
+        hr_c.metres = hr_total;
+        // The newest thing to fall lies on top, and the source is one
+        // per hex — so a deposit renames the pile and a withdrawal
+        // leaves the name alone.
+        if metres > 0.0 { hr_c.source = source; }
     }
+}
+
+// Take the whole pile away, leaving the hex exactly as the map paints
+// it.
+//
+// ⚠ **This is what makes the rubble a LAYER rather than a repaint**,
+// and it is the invariant plan 12 B1 gates: the ground underneath was
+// never overwritten, so clearing restores what was authored with
+// nothing to reconstruct.  Had a broken wall repainted its hex, clear
+// would have had to remember a kind that the painted layer — sparse
+// and sea-default — could not have told it.
+//
+// Clearing an unpiled hex is a no-op rather than an error: the player
+// sweeping ground that turned out to be clean has done nothing wrong.
+pub fn height_clear(hl: HeightLayer, q: integer, r: integer) {
+    hl.cells[q, r] = null;
 }
 
 // How far (q, r) has been raised above what the palette paints there.
@@ -107,6 +202,27 @@ pub fn height_rise(hl: const HeightLayer, q: integer, r: integer) -> float {
     hrs_c = hl.cells[q, r];
     if hrs_c == null { return 0.0; }
     hrs_c.metres
+}
+
+// Does (q, r) carry rubble at all?
+//
+// ⚠ **The question `passable.loft` asks**, and it is asked here rather
+// than as `height_rise(...) > 0.0` at the call site, so that the
+// entry-means-a-pile invariant has one reader.  A hex with a pile
+// stands on RUBBLE; a hex without one stands on what the map paints.
+pub fn height_piled(hl: const HeightLayer, q: integer, r: integer) -> boolean {
+    height_rise(hl, q, r) > 0.0
+}
+
+// What the pile on (q, r) is made of — `-1` where there is no pile.
+//
+// The absent answer is a number outside the closed set rather than a
+// material, following `bindings.loft::action_palette_index`: "no pile"
+// must not read as "a pile of wreckage" at any call site.
+pub fn height_source(hl: const HeightLayer, q: integer, r: integer) -> integer {
+    hs_c = hl.cells[q, r];
+    if hs_c == null { return -1; }
+    hs_c.source as integer
 }
 
 // How many hexes carry a pile — the size of the layer.

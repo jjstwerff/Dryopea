@@ -72,7 +72,6 @@ pub const ACTION_MOD_SHIFT: text = "mod_shift";
 // lowercase ASCII codes, so these follow the same convention — the
 // same four `main.loft` used to carry privately.
 const KEY_MINUS: integer = 45;    // '-' — palette entry 11
-const KEY_EQUAL: integer = 61;    // '=' — palette entry 12
 const KEY_N:     integer = 110;   // 'n' — Ctrl+N clears all
 const KEY_H:     integer = 104;   // 'h' — recentre camera
 const KEY_K:     integer = 107;   // 'k' — cycle marker kind
@@ -82,7 +81,7 @@ const KEY_K:     integer = 107;   // 'k' — cycle marker kind
 // A named editor action, the keys that trigger it, and what Ctrl
 // does to it.
 //
-// `ea_palette` is -1 for everything except the twelve palette
+// `ea_palette` is -1 for everything except the eleven palette
 // hotkeys, which carry the entry they select.  It is a field rather
 // than a name pattern (`"palette_{n}"`) so the resolver never builds
 // a string per frame to ask a question the record can answer.
@@ -139,7 +138,19 @@ pub fn editor_actions() -> vector<EditorAction> {
     ea += [act("save",   graphics::KEY_S, CTRL_REQUIRED)];
     ea += [act("reload", graphics::KEY_R, CTRL_REQUIRED)];
 
-    // Palette hotkeys — 1..9, 0, -, = select entries 0..11.
+    // Palette hotkeys — 1..9, 0, - select entries 0..10.
+    //
+    // ⚠ **Eleven keys for twelve entries, and the twelfth is the
+    // point.**  `rubble` (palette 11, plan 12 B1) is deposited by the
+    // runtime rubble layer, never painted: it has no hotkey, so no
+    // player and no `.keys` script can select it — `script.loft`'s
+    // `palette <n>` resolves through `action_for_palette` and finds
+    // nothing.  `examples/numbers.json` § input lists these eleven.
+    //
+    // Painting it would be worse than useless: an authored rubble hex
+    // is a second representation of a pile, and `height_clear` — whose
+    // whole claim is that clearing restores the authored ground —
+    // could not take it away.
     ea += [act_palette("palette_1",  graphics::KEY_1,  0)];
     ea += [act_palette("palette_2",  graphics::KEY_2,  1)];
     ea += [act_palette("palette_3",  graphics::KEY_3,  2)];
@@ -151,7 +162,6 @@ pub fn editor_actions() -> vector<EditorAction> {
     ea += [act_palette("palette_9",  graphics::KEY_9,  8)];
     ea += [act_palette("palette_10", graphics::KEY_0,  9)];
     ea += [act_palette("palette_11", KEY_MINUS,       10)];
-    ea += [act_palette("palette_12", KEY_EQUAL,       11)];
 
     ea
 }
@@ -267,7 +277,7 @@ pub fn action_ctrl(actions: const vector<EditorAction>, name: text) -> integer {
 }
 
 // Which palette entry does this action select?  -1 for every action
-// that is not one of the twelve hotkeys.
+// that is not one of the eleven hotkeys.
 pub fn action_palette_index(actions: const vector<EditorAction>, name: text) -> integer {
     for api_a in actions {
         if api_a.ea_name == name { return api_a.ea_palette; }
@@ -276,9 +286,9 @@ pub fn action_palette_index(actions: const vector<EditorAction>, name: text) -> 
 }
 
 // Which action selects palette entry `index`?  "" when no hotkey
-// does — the palette has twelve of them, so an entry past the
-// twelfth is unreachable from the keyboard and a script asking for
-// one is asking for a gesture no player can make.
+// does — there are eleven of them over a twelve-entry palette, so
+// `rubble` is unreachable from the keyboard and a script asking for
+// it is asking for a gesture no player can make.
 pub fn action_for_palette(actions: const vector<EditorAction>, index: integer) -> text {
     for afp_a in actions {
         if afp_a.ea_palette == index && index >= 0 { return afp_a.ea_name; }

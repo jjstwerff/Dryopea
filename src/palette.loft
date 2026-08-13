@@ -59,6 +59,20 @@ pub fn load_palette(path: text) -> vector<GroundType> {
     file(path).content() as vector<GroundType>
 }
 
+// The one palette index dryopea's code names, because the RUNTIME
+// produces it rather than a player painting it (plan 12 B1).
+//
+// A palette index is an identity — it is what `painted.loft` stores
+// and what `MapFile` round-trips — so `rubble` was APPENDED at 11 and
+// 0-10 are unsheared.  `passable.loft` reads this entry whenever a hex
+// carries a pile from `height.loft`; nothing writes it into the
+// painted layer, and `bindings.loft` gives it no hotkey.
+//
+// Named here rather than in `passable.loft` because it is a fact about
+// the palette FILE, and `tests/12_b1_rubble.loft` checks the file
+// still agrees with it.
+pub const GROUND_RUBBLE: integer = 11;
+
 // ─── Hex-color parsing ─────────────────────────────────────────
 
 // Convert one ASCII hex digit (0-9, a-f, A-F) to its 0-15 value.

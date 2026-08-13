@@ -25,9 +25,12 @@ palette right; everything downstream is cheap.
 ## Design constraints
 
 - **Three sub-palettes (water 4 + land 5 + structure 2) = 11
-  types for the first cut.**  Enough variety to paint a
+  types the player paints.**  Enough variety to paint a
   believable base + fortify it; not so many that the player
-  hesitates.  The sub-palette grouping makes the set feel
+  hesitates.  ⚠ A twelfth entry, **`rubble`**, was appended by
+  plan 12 B1 and is **not** part of that count: nothing paints
+  it, it has no hotkey, and the runtime deposits it (§ 11.
+  rubble).  The sub-palette grouping makes the set feel
   structured rather than arbitrary.
 - **Each type is visually unambiguous at a glance** — picked so
   no two adjacent rows on the master table look alike, even
@@ -68,6 +71,7 @@ palette right; everything downstream is cheap.
 | 8 | **steep_rock** | `#555555` (dark grey) | land | 40 | — | **no** (impassable) | yes (vehicle hovers) | no | — |
 | 9 | **wall** *(placeholder colour)* | `#d04848` (red) | structure | — | — | yes (top is walkable) | yes | no (no stacking) | (later) destructible HP, repair |
 | 10 | **wall_high** *(placeholder colour)* | `#7a1818` (dark red) | structure | — | — | yes (top is walkable) | yes | no | (later) destructible HP, more |
+| 11 | **rubble** *(placeholder colour, never painted)* | `#8878a8` (violet-grey) | debris | — | — | yes (a heap is walkable) | yes | no | (later) one entry per source material |
 
 > **Notes on the columns**
 >
@@ -392,6 +396,51 @@ designer leaves.  The DESIGN.md flow-field handles this for free
 (the field's markers point through gaps without any explicit
 gap-finding).
 
+## The debris sub-palette — what the runtime leaves behind
+
+One entry, and it is the only ground type a **player never
+paints**.  Plan 12 B1.
+
+### 11. rubble — the heap a broken thing leaves
+
+Violet-grey `#8878a8`, placeholder.  A hex carries rubble when
+the **runtime rubble layer** ([`src/height.loft`](../src/height.loft))
+has piled metres onto it — a robot that died, an insect that
+died, a wall that broke.  It is a ground type so that
+passability stays one rule: `can_stand` reads `walk_ground` with
+no branch for debris.
+
+Three things about it are load-bearing:
+
+- **It is a LAYER over the map, never a repaint.**  The painted
+  ground underneath is untouched, so clearing a pile restores
+  exactly what was authored with nothing to reconstruct.
+  `height_override` is therefore `null` — the metres live in the
+  layer, and a pile on a `wall` is the wall *plus* the pile
+  rather than instead of it.
+- **`walk_ground: true` is what dissolves the sea trap.**  Had a
+  broken wall erased its painted hex, the breach would have read
+  as `sea` — the painted layer is sparse and sea-default — and
+  been *less* passable than the wall it replaced.  Rubble on
+  water is somewhere to stand.
+- **A heap is a ramp when it is low enough**, and that is the
+  height rule and not a special case: a robot climbs 2.0 m
+  (`src/passable.loft` § Why a robot climbs 2.0 m), so rubble up
+  to 2.0 m is walkable and 2.1 m is not.
+
+`extrusion_kind` is **`"heap"`** — a new value under the
+append-only policy below, for geometry whose height comes from
+the runtime layer rather than from the palette (`pillar` /
+`cliff`) or the terrain solver (`flat` / `ramp`).
+
+**One entry, three eventual ones.**  Source material —
+wreckage, carapace, masonry — is a closed set with one value per
+hex, which is a legitimate ground-type axis; the layer already
+stores which, so the split is a palette row and a lookup.  What
+a pile *contains* — several salvageable types at once — is open
+and multiple per hex, so it is not a ground type at all and
+waits for plan 06's stacked layer.
+
 ## What the colour does — three jobs in one
 
 This is the @PLAN46 "slope serves three jobs" pattern restated
@@ -464,10 +513,13 @@ hex per its palette type's mapping:
 | `"ramp"` | Solver-driven slope per `slope` field; height computed from neighbours by the terrain solver | null | `grass`, `hill`, `rock`, `steep_rock` |
 | `"pillar"` | Narrow vertical column; absolute height above local terrain | metres (e.g. `3.0`) | `wall` |
 | `"cliff"` | Wider vertical face / shoulder; absolute height above local terrain | metres (e.g. `5.0`) | `wall_high` |
+| `"heap"` | Mound above local terrain; height comes from the RUNTIME rubble layer, not from the palette | null | `rubble` |
 
 `height_override` is only read when `extrusion_kind` is
 `"pillar"` or `"cliff"` — for `"flat"` and `"ramp"` types,
-the height comes from the terrain solver (lib-plan 20).  See
+the height comes from the terrain solver (lib-plan 20), and for
+`"heap"` from [`src/height.loft`](../src/height.loft), which is
+runtime state and reaches no save file.  See
 `src/palette.loft::GroundType` for the in-memory struct that
 matches this on-disk shape.
 

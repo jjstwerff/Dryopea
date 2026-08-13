@@ -267,7 +267,7 @@ pub fn flow_empty() -> FlowField {
 fn flow_sweep(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
               climb: float, core: Hex) -> FlowField {
     fb_f = FlowField { cells: [], core: core, climb: climb, truncated: false };
-    if !hex_walkable(pal, pw, core.q, core.r) { return fb_f; }
+    if !hex_walkable(pal, pw, hl, core.q, core.r) { return fb_f; }
 
     fb_f.cells[core.q, core.r] = FlowCell {
         q: core.q, r: core.r, dist: 0,

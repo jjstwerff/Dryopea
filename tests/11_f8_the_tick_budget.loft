@@ -196,6 +196,16 @@ fn test_per_enemy_work_does_not_scale_with_the_world() {
 // explicit that a gate exercising only editor strokes tests the rarer
 // half.
 
+// A pile a robot cannot climb — see `tests/11_f6_height_step.loft`
+// for why it is a named constant with an assertion on it rather than
+// a literal 1.5 that used to mean the same thing.
+const PILE_OVER_A_ROBOT: float = 2.5;
+
+fn test_the_pile_fixture_is_the_barrier_it_claims_to_be() {
+    assert(PILE_OVER_A_ROBOT > CLIMB_REGULAR,
+           "{PILE_OVER_A_ROBOT:3.1} m has to stop a robot, and one climbs {CLIMB_REGULAR:3.1} m");
+}
+
 fn test_a_pile_dropped_mid_wave_diverts_the_wave() {
     tpd_pw  = bypass_world();
     tpd_pal = pal();
@@ -208,7 +218,7 @@ fn test_a_pile_dropped_mid_wave_diverts_the_wave() {
 
     // Six enemies die on the chokepoint and the bodies pile up.  Not a
     // wall, not an edit, nothing saved — only the runtime layer.
-    height_raise(tpd_s.heights, 3, 0, 1.5);
+    height_raise(tpd_s.heights, 3, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
     for _ in 0..8 { wave_tick(tpd_s, tpd_pal, tpd_pw, core()); }
     tpd_end = tpd_s.enemies[0] ?? Enemy {};
@@ -228,13 +238,13 @@ fn test_collecting_the_pile_opens_the_route_again() {
     tcp_pal = pal();
     tcp_s   = wave_state_empty();
     tcp_s.enemies += [westbound(5, 0)];
-    height_raise(tcp_s.heights, 4, 0, 1.5);
+    height_raise(tcp_s.heights, 4, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
     wave_tick(tcp_s, tcp_pal, tcp_pw, core());
     tcp_a = tcp_s.enemies[0] ?? Enemy {};
-    assert(tcp_a.q == 5, "a robot climbs 0.0 m, so 1.5 m of bodies stops it: q = {tcp_a.q}");
+    assert(tcp_a.q == 5, "a robot climbs {CLIMB_REGULAR:3.1} m, so {PILE_OVER_A_ROBOT:3.1} m of bodies stops it: q = {tcp_a.q}");
 
-    height_raise(tcp_s.heights, 4, 0, -1.5);
+    height_raise(tcp_s.heights, 4, 0, -PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
     wave_tick(tcp_s, tcp_pal, tcp_pw, core());
     tcp_b = tcp_s.enemies[0] ?? Enemy {};
@@ -257,9 +267,9 @@ fn test_a_change_lands_on_the_next_tick_and_not_the_one_running() {
     tcl_b.enemies += [westbound(5, 0)];
 
     wave_tick(tcl_a, tcl_pal, tcl_pw, core());
-    height_raise(tcl_a.heights, 4, 0, 1.5);
+    height_raise(tcl_a.heights, 4, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
-    height_raise(tcl_b.heights, 4, 0, 1.5);
+    height_raise(tcl_b.heights, 4, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
     wave_tick(tcl_b, tcl_pal, tcl_pw, core());
 
     assert((tcl_a.enemies[0] ?? Enemy {}).q == 4, "A moved: the pile came after its tick");
@@ -291,8 +301,8 @@ fn test_a_wave_over_piled_ground_is_order_independent() {
         wave_tick(tao_b, tao_pal, tao_pw, core());
     }
     for tao_h in [Hex { q: 1, r: 0 }, Hex { q: 0, r: 1 }, Hex { q: -1, r: 1 }] {
-        height_raise(tao_a.heights, tao_h.q, tao_h.r, 1.5);
-        height_raise(tao_b.heights, tao_h.q, tao_h.r, 1.5);
+        height_raise(tao_a.heights, tao_h.q, tao_h.r, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
+        height_raise(tao_b.heights, tao_h.q, tao_h.r, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
     }
     for _ in 0..6 {
         wave_tick(tao_a, tao_pal, tao_pw, core());
@@ -326,7 +336,7 @@ fn test_the_field_a_tick_uses_equals_a_fresh_build() {
 
     for _ in 0..4 { wave_tick(tff_s, tff_pal, tff_pw, core()); }
     paint(tff_pw, 3, 0, as_u8(WALL));
-    height_raise(tff_s.heights, 4, -1, 1.5);
+    height_raise(tff_s.heights, 4, -1, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
     for _ in 0..2 { wave_tick(tff_s, tff_pal, tff_pw, core()); }
 
     // Two builds over the same world, one held across the edits and one

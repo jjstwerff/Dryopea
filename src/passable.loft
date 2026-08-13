@@ -96,10 +96,37 @@ pub const ENEMY_KIND_INSECT:  integer = 1;   // climbs a wall, not a high one
 
 // Climb limits in metres — see § Where the climb limits come from.
 //
-// A regular robot climbs NOTHING today: no terrain step exists to
-// climb (plan 02), so 0.0 says "any structure stops me" and says it
-// without pretending to a precision the game has not measured yet.
-pub const CLIMB_REGULAR: float = 0.0;
+// ── Why a robot climbs 2.0 m, and not 0.0 or 1.0 ────────────────
+//
+// It climbed 0.0 m until plan 12 B1: "any structure stops me", said
+// without pretending to a precision the game had not measured.  B0
+// measured it, and 0.0 turned out to say something stronger than it
+// meant — a robot refused a rise of one centimetre, so **no rubble
+// height a robot could walk onto existed at all** and the body ramp
+// `ENEMY_MOVEMENT.md` § Bodies are terrain promises was dead for the
+// class it was written about.
+//
+// ⚠ **A single-hex ramp onto a structure `H` high needs a climb of
+// `H / 2`.**  The pile has to be low enough to step ONTO and high
+// enough to leave less than a climb above it, and one number does both
+// jobs — so the workable pile heights are the band `[H - c, c]`, EMPTY
+// whenever `c < H / 2`, however many bodies fall.  That is why plan
+// 12's first guess of ~1.0 m was wrong: half a 3.0 m `wall` is 1.5.
+//
+// Four constraints, and 2.0 is the interior of what they leave:
+//
+//   | rubble climbable at all            | c > 0   | B1's whole request |
+//   | a body ramp onto a `wall`          | c >= 1.5 | H / 2              |
+//   | `wall_high` stays the harder wall  | c < 2.5 | else one ramp does both |
+//   | a bare `wall` still stops a robot  | c < 3.0 | plan 11 F1b        |
+//
+// At 2.0 the band onto a `wall` is [1.0, 2.0] — one to two robot
+// bodies at `numbers.json` § enemy_regular.height.
+//
+// `tests/12_b0_probe.loft` § 2 sweeps the rule rather than restating
+// it, and reads nothing from this constant, so it stays green whatever
+// this line says.
+pub const CLIMB_REGULAR: float = 2.0;
 pub const CLIMB_INSECT:  float = 3.0;   // exactly a `wall`; a `wall_high` is 5.0
 
 // How far this class can step up, in metres.
@@ -131,29 +158,79 @@ pub fn enemy_class_name(kind: u8) -> text {
 }
 
 // ─── What a hex is ──────────────────────────────────────────────
+//
+// ── Two questions again, and they are not the same hex ──────────
+//
+// Plan 12 B1 put a second layer over the map, and it splits what used
+// to be one lookup:
+//
+//   - the AUTHORED ground is what the palette paints — it is what a
+//     structure's `height_override` comes from, and rubble sits ON it
+//     rather than replacing it;
+//   - the SURFACE is what an enemy's feet are on — rubble where a pile
+//     stands, the authored kind everywhere else.
+//
+// ⚠ **Keeping them apart is what makes the arithmetic add.**  A 1.5 m
+// pile on a 3.0 m `wall` is a 4.5 m hex: the height is the AUTHORED
+// entry plus the layer.  Read the surface instead and rubble's null
+// `height_override` would swallow the wall, so piling debris onto a
+// wall would LOWER it.
+//
+// ⚠ **And keeping rubble a `GroundType` is what keeps passability one
+// rule.**  `can_stand` reads `walk_ground` with no branch for debris,
+// so a broken wall opens a route by being a surface rather than by
+// being a special case — which is exactly what dissolves the sea trap
+// B0 measured (`tests/12_b0_probe.loft` § 3): the painted layer is
+// sea-default, so a breach that ERASED its hex would be less passable
+// than the wall it replaced.
 
-// The palette entry painted on a hex.  Unpainted is SEA (index 0),
-// the sparse world's implicit default — so an enemy on a blank map
-// is standing in the water, and this file says so rather than
-// treating "nothing painted" as "nothing in the way".
-fn hex_ground(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> GroundType {
-    hg_idx = lookup_painted(pw, q, r) as integer;
-    if hg_idx < 0 || hg_idx >= len(pal) { return GroundType {}; }
+// The palette entry PAINTED on a hex, with no runtime on it.
+// Unpainted is SEA (index 0), the sparse world's implicit default — so
+// an enemy on a blank map is standing in the water, and this file says
+// so rather than treating "nothing painted" as "nothing in the way".
+//
+// This is the height's base term and nothing else asks it; every
+// question about what an enemy is standing on goes through
+// `hex_ground`.
+fn painted_ground(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> GroundType {
+    pg_idx = lookup_painted(pw, q, r) as integer;
+    if pg_idx < 0 || pg_idx >= len(pal) { return GroundType {}; }
     // An all-default GroundType is the right miss value: its
     // `walk_ground` is false, so an index no palette entry answers
     // for is ground nothing stands on.
-    pal[hg_idx] ?? GroundType {}
+    pal[pg_idx] ?? GroundType {}
 }
 
-// The ground type's name at a hex, for the message that names it.
-pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> text {
-    hgn_e = hex_ground(pal, pw, q, r);
+// The SURFACE at a hex — what an enemy standing there is standing on.
+//
+// Rubble wherever the layer carries a pile, the painted kind
+// everywhere else.  A palette missing the `rubble` entry falls back to
+// the painted kind rather than to an all-default `GroundType`: a
+// modder who shortened the palette gets the map they painted, not a
+// world nothing can walk on.
+fn hex_ground(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+              q: integer, r: integer) -> GroundType {
+    if height_piled(hl, q, r) {
+        hg_rubble = pal[GROUND_RUBBLE];
+        if hg_rubble != null { return hg_rubble; }
+    }
+    hg_painted = painted_ground(pal, pw, q, r);
+    hg_painted
+}
+
+// The surface's name at a hex, for the message that names it.
+pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                       q: integer, r: integer) -> text {
+    hgn_e = hex_ground(pal, pw, hl, q, r);
     if hgn_e.name == "" { return "?"; }
     hgn_e.name
 }
 
 // How tall the thing standing on a hex is, in metres — the painted
 // structure PLUS whatever runtime has piled on it.
+//
+// ⚠ It reads the AUTHORED entry, never the surface: rubble sits on the
+// wall, so the two terms ADD.  See § Two questions again.
 //
 // ⚠ The `?? 0.0` is load-bearing, not defensive noise.
 // `height_override` is `null` for every non-structure —
@@ -168,7 +245,7 @@ pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r:
 // a sum rather than a lookup.
 pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                   q: integer, r: integer) -> float {
-    (hex_ground(pal, pw, q, r).height_override ?? 0.0) + height_rise(hl, q, r)
+    (painted_ground(pal, pw, q, r).height_override ?? 0.0) + height_rise(hl, q, r)
 }
 
 // ─── Question 1: the surface ────────────────────────────────────
@@ -186,7 +263,8 @@ pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
 // The day a class reads `walk_vehicle` instead, this gains a kind and
 // both of those go red — which is the warning, and is why it is
 // written as a claim here rather than left implicit in a signature.
-pub fn hex_walkable(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: integer) -> boolean {
+pub fn hex_walkable(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                    q: integer, r: integer) -> boolean {
     // ⚠ Bound to a local, NOT `hex_ground(...).walk_ground` — reading a
     // field off a call's result in TAIL position answers the absent
     // sentinel (loft#877, which dryopea filed at F5c for an INDEX; it
@@ -194,7 +272,7 @@ pub fn hex_walkable(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: in
     // this returns false for every hex on the map, which empties every
     // flow field and stops the whole game dead — 9 tests, and none of
     // them named this function.
-    hw_e = hex_ground(pal, pw, q, r);
+    hw_e = hex_ground(pal, pw, hl, q, r);
     hw_e.walk_ground
 }
 
@@ -204,17 +282,20 @@ pub fn hex_walkable(pal: vector<GroundType>, pw: PaintedWorld, q: integer, r: in
 // surface a ground robot stands on however low it is, and a wall's
 // top IS one however high.  Keeping it separate is what lets the
 // field filter its cells by the surface and its edges by the step.
-pub fn stand_fault(pal: vector<GroundType>, pw: PaintedWorld,
+//
+// ⚠ It takes the LAYER, because the surface is not the painted kind
+// where rubble lies on it — a pile over water is a place to stand.
+pub fn stand_fault(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                    kind: u8, q: integer, r: integer) -> text {
-    if hex_walkable(pal, pw, q, r) { return ""; }
-    "'{hex_ground_name(pal, pw, q, r)}' is not a surface a {enemy_class_name(kind)} stands on"
+    if hex_walkable(pal, pw, hl, q, r) { return ""; }
+    "'{hex_ground_name(pal, pw, hl, q, r)}' is not a surface a {enemy_class_name(kind)} stands on"
 }
 
 // Can this class stand on this hex's surface, ignoring how it got
 // there?  The boolean face of `stand_fault`.
-pub fn can_stand(pal: vector<GroundType>, pw: PaintedWorld,
+pub fn can_stand(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                  kind: u8, q: integer, r: integer) -> boolean {
-    stand_fault(pal, pw, kind, q, r) == ""
+    stand_fault(pal, pw, hl, kind, q, r) == ""
 }
 
 // ─── Question 2: the step ───────────────────────────────────────
@@ -232,9 +313,9 @@ pub fn can_stand(pal: vector<GroundType>, pw: PaintedWorld,
 // would be a second copy of the lattice.
 pub fn step_fault(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                   kind: u8, from: const Hex, to: const Hex) -> text {
-    stf_from = stand_fault(pal, pw, kind, from.q, from.r);
+    stf_from = stand_fault(pal, pw, hl, kind, from.q, from.r);
     if stf_from != "" { return stf_from; }
-    stf_to = stand_fault(pal, pw, kind, to.q, to.r);
+    stf_to = stand_fault(pal, pw, hl, kind, to.q, to.r);
     if stf_to != "" { return stf_to; }
 
     stf_rise = hex_height(pal, pw, hl, to.q, to.r) - hex_height(pal, pw, hl, from.q, from.r);
@@ -265,8 +346,8 @@ pub fn can_step(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer
 // ground is.
 pub fn can_climb(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                  climb: float, from: const Hex, to: const Hex) -> boolean {
-    if !hex_walkable(pal, pw, from.q, from.r) { return false; }
-    if !hex_walkable(pal, pw, to.q, to.r) { return false; }
+    if !hex_walkable(pal, pw, hl, from.q, from.r) { return false; }
+    if !hex_walkable(pal, pw, hl, to.q, to.r) { return false; }
     hex_height(pal, pw, hl, to.q, to.r) - hex_height(pal, pw, hl, from.q, from.r) <= climb
 }
 
@@ -290,7 +371,7 @@ pub fn hex_floor(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLaye
     hf_lowest = 0.0;
     hf_any    = false;
     for hf_n in lat_neighbours(Hex { q: q, r: r }) {
-        if can_stand(pal, pw, kind, hf_n.q, hf_n.r) {
+        if can_stand(pal, pw, hl, kind, hf_n.q, hf_n.r) {
             hf_h = hex_height(pal, pw, hl, hf_n.q, hf_n.r);
             if !hf_any || hf_h < hf_lowest { hf_lowest = hf_h; }
             hf_any = true;
@@ -317,13 +398,13 @@ pub fn hex_floor(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLaye
 // induction rather than by coincidence.
 pub fn occupancy_fault(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                        kind: u8, q: integer, r: integer) -> text {
-    of_stand = stand_fault(pal, pw, kind, q, r);
+    of_stand = stand_fault(pal, pw, hl, kind, q, r);
     if of_stand != "" { return of_stand; }
 
     of_rise = hex_height(pal, pw, hl, q, r) - hex_floor(pal, pw, hl, kind, q, r);
     of_c    = climb_limit(kind);
     if of_rise > of_c {
-        return "'{hex_ground_name(pal, pw, q, r)}' is a {of_rise:3.1} m step and a {enemy_class_name(kind)} climbs {of_c:3.1} m";
+        return "'{hex_ground_name(pal, pw, hl, q, r)}' is a {of_rise:3.1} m step and a {enemy_class_name(kind)} climbs {of_c:3.1} m";
     }
     ""
 }

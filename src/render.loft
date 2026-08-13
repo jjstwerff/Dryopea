@@ -22,7 +22,14 @@ use painted;
 // palette.json by hand for now; a later phase can load palette.json
 // directly once a JSON-to-runtime-palette path exists.
 
-pub const PALETTE_SIZE: integer = 11;
+// ⚠ Twelve, and the twelfth is not paintable.  `rubble` (plan 12 B1)
+// is the first ground type a PLAYER never selects — it is deposited by
+// the runtime rubble layer and reached through `passable.loft`, not
+// through the picker — so `bindings.loft` deliberately stops its
+// palette hotkeys at eleven.  It still needs a colour here: this table
+// is what `measure.loft` buckets a frame with, and drawing the rubble
+// layer will read it the day the runtime has a view of its own.
+pub const PALETTE_SIZE: integer = 12;
 
 pub fn palette_color(kind: u8) -> integer {
     pc_k = kind as integer;
@@ -37,6 +44,7 @@ pub fn palette_color(kind: u8) -> integer {
     else if pc_k == 8  { rgb(0x55, 0x55, 0x55) }              // steep_rock
     else if pc_k == 9  { rgb(0xd0, 0x48, 0x48) }              // wall (placeholder red)
     else if pc_k == 10 { rgb(0x7a, 0x18, 0x18) }              // wall_high (placeholder dark red)
+    else if pc_k == 11 { rgb(0x88, 0x78, 0xa8) }              // rubble (placeholder violet-grey)
     else { rgb(0xff, 0x00, 0xff) }                            // unknown → magenta
 }
 

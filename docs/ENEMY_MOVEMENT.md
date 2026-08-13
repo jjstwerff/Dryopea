@@ -67,7 +67,7 @@ it still wants the core.
 |---|---|---|
 | structures | `height_override` — `wall` 3.0 m, `wall_high` 5.0 m (`extrusion_kind` pillar / cliff) | in the palette today |
 | terrain | the slope solver ([plan 02](../plans/02-solver-validation-viewer/README.md)) — `slope` and `drop` describe terrain SHAPE, not a step | **not built** |
-| bodies | accumulated pile height (§ Bodies are terrain) | runtime, never saved — the layer is [`src/height.loft`](../src/height.loft) |
+| rubble | accumulated pile height — bodies (§ Bodies are terrain) and broken walls alike | runtime, never saved — the layer is [`src/height.loft`](../src/height.loft) |
 
 Until the solver lands, terrain contributes nothing, so every
 impassable thing the map itself puts down is a structure.  A hill too
@@ -77,9 +77,17 @@ The **runtime** row exists: `HeightLayer` is a sparse map of metres
 added to whatever the palette paints, it rides on the wave rather than
 on the world, and the step rule reads the sum.  Nothing drops a body
 into it yet — combat is what will — so a `.keys` script's `raise <q>
-<r> <metres>` is the only thing filling it today.  What that already
-buys, with no code beyond the arithmetic: a 3 m pile beside a 5 m
-`wall_high` leaves a 2 m step, and an insect climbs 3.
+<r> <metres> [source]` is the only thing filling it today.  What that
+already buys, with no code beyond the arithmetic: a 3 m pile beside a
+5 m `wall_high` leaves a 2 m step, and an insect climbs 3.
+
+A hex carrying a pile stands on **`rubble`** (palette 11), which is a
+ground type so that this rule stays one rule — `walk_ground` is read
+with no branch for debris.  ⚠ It is a **layer over the map, never a
+repaint**: the painted ground underneath is untouched, so clearing a
+pile restores exactly what was authored.  That is also what lets a
+wall break into a way THROUGH rather than into sea; see
+[`docs/GROUND_TYPES.md`](GROUND_TYPES.md) § 11. rubble.
 
 ⚠ **`walk_ground` is NOT passability.**  `wall` and `wall_high`
 both carry `walk_ground = true`, and that is correct — the
@@ -119,6 +127,23 @@ special case:
 3. **A pile beside a wall shortens the step onto it.**  When it is
    high enough, enemies **climb their own dead onto the wall** —
    the perimeter is breached without the wall ever being broken.
+
+⚠ **"High enough" is a BAND, not a floor**, and plan 12 B0 measured
+it.  The pile has to be low enough to step ONTO *and* high enough to
+leave less than a climb above it, and one number does both jobs — so
+a single-hex ramp onto a structure `H` high needs a climb of `H / 2`,
+and the workable pile heights are `[H - c, c]`.  Two consequences
+worth knowing before reading point 3 as "more dead is always better":
+
+- **the band is EMPTY below `H / 2`**, however many bodies fall.  A
+  robot climbs 2.0 m and a `wall` is 3.0 m, so its band is
+  [1.0, 2.0] — one to two robot bodies.  A `wall_high` is 5.0 m, so a
+  robot has no single-hex ramp onto one at all, which is what keeps
+  the two wall types different for the class § Wall climbability says
+  a `wall` stops.
+- **a pile can grow PAST being a ramp.**  Three robot bodies on one
+  hex is a 3.0 m step and a 2.0 m climber cannot get onto its own
+  ramp any more.
 
 The counter-play is to **collect the bodies**, which means driving
 into the kill zone while the wave is still coming.  A player who

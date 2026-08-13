@@ -32,17 +32,24 @@ exists today.
 | Every editor action driven headlessly through ONE seam; `.keys` scripts that replay a run, photograph it and MEASURE the frame | [08](plans/08-game-validation/README.md) |
 | Pointy-top odd-r offset throughout, delegated to `hex_grid`; the axial layer is deleted | [09](plans/09-lattice-conversion/README.md) |
 | Enemies that spawn, route round walls per class, spread rather than stack, and besiege a sealed perimeter | [11](plans/11-flow-field/README.md) |
-| **Nothing takes damage** — no tower fires, no enemy dies, no wall breaks | [12](plans/12-combat-resolution/README.md), B0 shipped |
+| Rubble: a runtime layer with a source, climbable at 2.0 m, clearable back to the authored ground | [12](plans/12-combat-resolution/README.md), B0 + B1 shipped |
+| **Nothing takes damage** — no tower fires, no enemy dies, no wall breaks, and nothing yet MAKES rubble | [12](plans/12-combat-resolution/README.md), B2 + B4 next |
 
-⚠ **A robot climbs 0.0 m — it cannot get up a 1 cm rise**, so every ramp
-in `docs/ENEMY_MOVEMENT.md` is dead for the class it was written about.
-Plan 12 B0 measured the rule that fixes it: **a body ramp onto a
-structure `H` high needs a climb of `H / 2`**, so a 3 m wall needs 1.5 m
-and B1 raises `CLIMB_REGULAR` to 2.0.  B0 changed no mechanic — it is a
-probe, and `tests/12_b0_probe.loft`'s three ⚠ B1 tests are meant to go
-RED when B1 lands.
+⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
+is derived rather than picked: **a single-hex body ramp onto a structure
+`H` high needs a climb of `H / 2`**, so half a 3 m `wall` is 1.5 and 2.0
+is the interior of four constraints — see `src/passable.loft` § Why a
+robot climbs 2.0 m.  It was 0.0 until B1, which meant no rubble height a
+robot could walk onto existed at all.
 
-**Suite: 585/585 green under `scripts/test.sh`** (~33 s — the `frame`
+⚠ **Rubble is a LAYER, never a repaint** (`src/height.loft`).  A pile
+makes its hex's SURFACE `rubble` (palette 11) while the authored ground
+underneath is untouched, so clearing restores exactly what was authored.
+That is what dissolves the sea trap: the painted layer is sea-default, so
+a breach that ERASED its hex would be *less* passable than the wall it
+replaced, while "the wall broke" asserted true.
+
+**Suite: 607/607 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -74,6 +81,13 @@ field instead and besieges what it cannot climb.
 
 ⚠ **The bubble is a STRAIGHT-LINE distance, never a route length** — it is
 a jamming sphere, so an enemy with no route whatsoever is still inside it.
+
+⚠ **The SURFACE is not always the painted kind.**  A hex carrying a
+pile stands on `rubble`; `passable.loft` therefore has two lookups —
+`painted_ground` for the HEIGHT (which ADDS the layer to the authored
+structure) and `hex_ground` for the SURFACE.  Answer the height off the
+surface and rubble's null `height_override` swallows the wall under it,
+so piling debris onto a wall would LOWER it.
 
 ⚠ **Passability is TWO questions, and they filter different things.**
 The field filters its NODES by the surface (`can_stand`) and its EDGES
@@ -183,7 +197,7 @@ and a heading the identical path.
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 585 runs.
+per-function + per-line + call-path report over every run in the suite.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -375,6 +389,12 @@ src/
                    and a `.keys` run FEEDS it, so `do undo` presses
                    the keys a player presses and a wrong binding
                    fails the gate.
+                   ⚠ ELEVEN palette hotkeys over a TWELVE-entry
+                   palette: `rubble` is deposited by the runtime and
+                   painted by nobody, so plan 12 B1 deleted the `=`
+                   binding it would otherwise have had.  An authored
+                   rubble hex is a second representation of a pile that
+                   `height_clear` could not take away.
                    ⚠ The ctrl rule is DATA, not resolver code:
                    `input::ActionBinding` has no modifier concept,
                    and a rule written once in the resolver and once
@@ -473,6 +493,11 @@ src/
                    silently got robots would assert the opposite of
                    what it says) and `raise <q> <r> <metres>`, which
                    piles runtime height onto a hex the way a body does.
+                   Plan 12 B1 gave `raise` an optional `[source]`
+                   (wreckage / carapace / masonry — named, never
+                   numbered, and a typo is an ERROR) and added
+                   `clear <q> <r>`, which takes a pile away and is how
+                   a run states the layer's defining property.
                    F7 added `target <i> <q> <r>` and `count targets
                    <lo> <hi>` — the SET of hexes under attack, which is
                    the only measurement that can tell a spread siege
@@ -544,7 +569,11 @@ src/
   palette.loft     GroundType { name, color, sub_palette, slope, drop,
                    drainage, walk_*, buildable }
                    + load_palette(path) via `text as vector<GroundType>`
-                   + parse_hex_color().  `slope` / `drop` /
+                   + parse_hex_color() + GROUND_RUBBLE (11) — the one
+                   palette index dryopea's code names, because the
+                   RUNTIME produces it.  ⚠ APPENDED, so 0-10 are
+                   unsheared: an index is an identity, it is what
+                   `painted.loft` stores and `MapFile` round-trips.  `slope` / `drop` /
                    `height_override` are declared NULLABLE because
                    palette.json writes null in them — see the file's
                    own warning
@@ -573,13 +602,25 @@ src/
                    lifted (`FLOW_CLIMB_ANY`) — where an enemy wants to
                    go when it has no route.  One field for every class,
                    because the class only ever contributed its climb
-  height.loft      what RUNTIME has piled on the map (plan 11 F6) —
-                   HeightLayer + height_raise / height_rise / count.
+  height.loft      the RUBBLE layer — what runtime has piled on the map
+                   (plan 11 F6, named by plan 12 B1).  HeightLayer +
+                   height_raise (metres AND a source) / height_clear /
+                   height_rise / height_piled / height_source / count,
+                   plus RUBBLE_WRECKAGE / _CARAPACE / _MASONRY.
                    A sparse map of metres ADDED to what the palette
                    paints, so a pile on grass and a pile on a wall are
                    one arithmetic.  ⚠ It ACCUMULATES (bodies do) and a
-                   negative rise floors at the ground.  Runtime state:
-                   it rides on `WaveState` and never reaches a save
+                   negative rise floors at the ground.
+                   ⚠ **An entry means a PILE**: shrinking one to nothing
+                   REMOVES it, exactly as `painted.loft` removes a hex
+                   painted back to sea.  A zeroed-but-present entry
+                   would leave a hex standing on debris that is not
+                   there — over water that is a hole in the sea.
+                   ⚠ The source is one per hex and the NEWEST deposit
+                   names the pile; a withdrawal leaves the name alone.
+                   Nothing reads it back yet — B2 and B4 are its three
+                   producers.  Runtime state: it rides on `WaveState`
+                   and never reaches a save
   occupancy.loft   who is standing where, this tick (plan 11 F5c) —
                    Occupancy + enter / leave / taken / count / stacked.
                    A COUNT per hex, not a boolean set: a wave spawns
@@ -594,6 +635,12 @@ src/
                    the numbers.  TWO questions: is the SURFACE one this
                    class stands on (`walk_ground`), and is the STEP
                    within its climb.
+                   ⚠ Since plan 12 B1 every surface question takes the
+                   HeightLayer, because a piled hex's surface is
+                   `rubble` and not what the map paints.  `hex_height`
+                   deliberately does NOT — it reads `painted_ground`
+                   and adds the layer, which is what makes a pile on a
+                   wall the wall PLUS the pile.
                    ⚠ `walk_ground` alone is the BUG — `wall` and
                    `wall_high` are walk_ground=true (a wall's walkable
                    part is its TOP), so the one-field predicate walks
@@ -975,7 +1022,8 @@ signature.
 | Tell GEOMETRY from LABEL SPACE (any coordinate change) | Ask what the site depends on. **Geometry** ("where on screen?") depends on the lattice alone. **Label space** ("which cell?") is only meaningful relative to how the DATA is labelled — `paint_line`, `enemy_tick`, the flow BFS and every `.keys` literal are label-space.  Plan 09 is the worked example: the two had to move in separate phases (C3, then C5), and converting one label-space site alone turns `scripts/validate.sh` red for a reason that is not a defect |
 | Ask whether an enemy may MOVE somewhere | `src/passable.loft::can_step` — the rule, an edge.  Never `walk_ground` on its own, and never the destination's height on its own |
 | Ask whether an enemy may BE somewhere | `src/passable.loft::can_occupy` — what a position can say with no history.  The measurement's rule; never the field's node filter |
-| Raise a hex at runtime (bodies) | `src/height.loft` — a rise above what the palette paints.  Lives on `WaveState`, never saved |
+| Raise a hex at runtime (bodies, broken walls) | `src/height.loft` — the rubble layer: a rise above what the palette paints, plus what it is made of.  Lives on `WaveState`, never saved.  ⚠ Shrinking a pile to nothing REMOVES its entry — a 0.0 m pile would still read as a rubble surface |
+| Ask what a hex's SURFACE is (vs what is painted on it) | `src/passable.loft::hex_ground` — rubble where a pile stands, the painted kind otherwise.  `painted_ground` is the other half and is what `hex_height` adds the layer to |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |

@@ -3,14 +3,20 @@
 //
 // Plan 12 phase B0 — the climb number, and what a tick is worth.
 //
-// ── A phase that changes nothing, on purpose ────────────────────
+// ── A phase that changed nothing, on purpose ────────────────────
 //
-// B0 builds no mechanic.  It writes down what the simulation does
-// TODAY, in the two places plan 12 is about to lean on, so that B1
-// cannot move either one quietly.  Its gate is therefore inverted:
-// the assertions marked ⚠ B1 below **must go red** when B1 raises
-// `CLIMB_REGULAR`, and a B1 that leaves this file green has not
-// changed the thing it claims to have changed.
+// B0 built no mechanic.  It wrote down what the simulation did in the
+// two places plan 12 was about to lean on, so that B1 could not move
+// either one quietly.  Its gate was therefore inverted: § 1's three
+// assertions were written to **go red** when B1 raised
+// `CLIMB_REGULAR`, and a B1 that left this file green would not have
+// changed the thing it claimed to have changed.
+//
+// ⚠ **They fired.**  B1 landed on 2026-08-13 and turned all three red
+// at once; § 1 now records the number B1 chose, from the same three
+// angles, and goes on being the gate that catches the NEXT move of it.
+// What B0 measured is in the log — the header notes below are its
+// findings and none of them has been rewritten.
 //
 // ── The two kinds of measurement here, and why they differ ──────
 //
@@ -29,9 +35,10 @@
 //
 // ── What B0 found, in one line each ─────────────────────────────
 //
-// 1. A robot climbs nothing, so no positive rubble height is
-//    climbable by one — plan 12's rubble ramp is unbuildable as the
-//    number stands, exactly as the plan predicted.
+// 1. A robot climbed nothing, so no positive rubble height was
+//    climbable by one — plan 12's rubble ramp was unbuildable as the
+//    number stood, exactly as the plan predicted.  B1 raised it to
+//    2.0 m and half the sweep in § 1 is climbable now.
 // 2. ⚠ **The plan's own recommendation of ~1.0 m is FALSIFIED.**  A
 //    single-hex body ramp onto a structure `H` high needs a climb of
 //    `H / 2`, so a 3.0 m wall needs 1.5 m — one metre buys the rubble
@@ -92,13 +99,19 @@ fn corridor(hi: integer) -> PaintedWorld {
 
 fn pile(q: integer, r: integer, metres: float) -> HeightLayer {
     p_hl = height_layer_empty();
-    height_raise(p_hl, q, r, metres);
+    height_raise(p_hl, q, r, metres, as_u8(RUBBLE_WRECKAGE));
     p_hl
 }
 
 // ─────────────────────────────────────────────────────────────────
-// 1. The climb number as it stands: a robot climbs NOTHING
+// 1. The climb number — 0.0 m when B0 measured it, 2.0 m since B1
 // ─────────────────────────────────────────────────────────────────
+//
+// The inverted gate, and it has fired once.  Everything here reads
+// `CLIMB_REGULAR`, so it moves whenever that constant does — which is
+// the point: before B0 the only thing in 585 tests that could see a
+// change to it was an incidental 1.5 m pile in two F6/F8 fixtures and
+// a `contains("0.0")` on a fault message.
 
 // Can a robot step from flat grass onto the hex beside it, piled
 // `metres` high?  The whole of question 1 in one call.
@@ -108,42 +121,67 @@ fn robot_climbs(metres: float) -> boolean {
     can_step(pal(), rc_pw, rc_hl, as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0))
 }
 
-// ⚠ B1 — the constant itself, so the change cannot happen off-screen.
-fn test_the_class_table_says_a_robot_climbs_nothing() {
-    assert(CLIMB_REGULAR == 0.0, "a robot climbs {CLIMB_REGULAR:3.1} m");
+// ⚠ B1 — the constant itself, so a change cannot happen off-screen.
+//
+// 2.0 m is the interior of the four constraints in `plans/12` § The
+// number B0 hands B1, and the two bounds it must stay inside are
+// asserted here rather than only written down: below 1.5 m no body
+// ramp onto a `wall` exists (§ 2), and at 3.0 m a bare wall stops
+// stopping a robot.
+fn test_the_class_table_says_a_robot_climbs_two_metres() {
+    assert(CLIMB_REGULAR == 2.0, "a robot climbs {CLIMB_REGULAR:3.1} m");
     assert(CLIMB_INSECT == 3.0,  "an insect climbs {CLIMB_INSECT:3.1} m");
-    assert(climb_limit(as_u8(ENEMY_KIND_REGULAR)) == 0.0, "and the table agrees");
+    assert(climb_limit(as_u8(ENEMY_KIND_REGULAR)) == CLIMB_REGULAR, "and the table agrees");
+
+    assert(CLIMB_REGULAR >= WALL_METRES / 2.0,
+           "and it is at least half a wall, or the body ramp is dead again");
+    assert(CLIMB_REGULAR < WALL_HIGH_METRES / 2.0,
+           "and under half a wall_high, or one ramp does both walls");
+    assert(CLIMB_REGULAR < WALL_METRES,
+           "and under a whole wall, or plan 11 F1b stops meaning anything");
 }
 
-// ⚠ B1 — there is no rise small enough.  A rule with a positive limit
-// turns both of these round.
-fn test_a_robot_refuses_the_smallest_rise_there_is() {
-    assert(robot_climbs(0.0),   "level ground is not a rise");
-    assert(!robot_climbs(0.1),  "a tenth of a metre is");
-    assert(!robot_climbs(0.01), "and so is a hundredth");
+// ⚠ B1 — the rise that used to be refused.  While `CLIMB_REGULAR` was
+// 0.0 there was no rise small enough; a positive limit turns each of
+// these round, and the boundary is where the number is.
+fn test_a_robot_climbs_a_rise_up_to_its_limit_and_not_past_it() {
+    assert(robot_climbs(0.0),  "level ground is not a rise");
+    assert(robot_climbs(0.01), "and a hundredth of a metre is one it takes");
+    assert(robot_climbs(CLIMB_REGULAR), "exactly its climb is still a step it makes");
+    assert(!robot_climbs(CLIMB_REGULAR + 0.1),
+           "and a tenth past it is not — the limit is where the constant says");
 }
 
-// The asymmetry is not what B0 is questioning, and it must survive B1
+// The asymmetry is not what B0 was questioning, and it survived B1
 // untouched: a drop is free at every climb limit, including this one.
 fn test_but_the_drop_back_off_it_is_still_free() {
     tbd_pw = corridor(4);
-    tbd_hl = pile(2, 0, 0.1);
+    tbd_hl = pile(2, 0, WALL_METRES);
 
+    assert(!can_step(pal(), tbd_pw, tbd_hl, as_u8(ENEMY_KIND_REGULAR), hex(3, 0), hex(2, 0)),
+           "a 3 m pile is past its climb going up");
     assert(can_step(pal(), tbd_pw, tbd_hl, as_u8(ENEMY_KIND_REGULAR), hex(2, 0), hex(3, 0)),
-           "the same edge downhill");
+           "and the same edge downhill is free");
 }
 
 // ⚠ B1 — plan 12's headline blocker, measured over the whole range a
-// rubble pile could plausibly occupy.  While this is green, "rubble a
-// robot can walk onto" is not a thing that can be built.
-fn test_no_rubble_height_a_robot_can_climb_exists() {
+// rubble pile could plausibly occupy.  It answered 0 of 40 when B0
+// wrote it, which is what made "rubble a robot can walk onto"
+// unbuildable; it answers 20 now, and the 20 are exactly the heights
+// at or under the climb.
+fn test_the_rubble_heights_a_robot_can_climb_are_the_ones_under_its_limit() {
     tnr_climbable = 0;
+    tnr_expected  = 0;
     for tnr_i in 1..=40 {
-        if robot_climbs((tnr_i as float) / 10.0) { tnr_climbable = tnr_climbable + 1; }
+        tnr_h = (tnr_i as float) / 10.0;
+        if robot_climbs(tnr_h) { tnr_climbable = tnr_climbable + 1; }
+        if tnr_h <= CLIMB_REGULAR { tnr_expected = tnr_expected + 1; }
     }
 
-    assert(tnr_climbable == 0,
-           "{tnr_climbable} of the 40 heights from 0.1 m to 4.0 m are climbable by a robot");
+    assert(tnr_climbable == tnr_expected,
+           "{tnr_climbable} of the 40 heights from 0.1 m to 4.0 m are climbable, expected {tnr_expected}");
+    assert(tnr_climbable > 0,
+           "and there is at least one, or B1's rubble ramp is unbuildable again");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -272,9 +310,9 @@ fn erased_wall() -> PaintedWorld {
 }
 
 fn test_an_erased_wall_hex_reads_as_sea() {
-    assert(hex_ground_name(pal(), erased_wall(), 2, 0) == "sea",
-           "erased is '{hex_ground_name(pal(), erased_wall(), 2, 0)}'");
-    assert(!hex_walkable(pal(), erased_wall(), 2, 0),
+    assert(hex_ground_name(pal(), erased_wall(), height_layer_empty(), 2, 0) == "sea",
+           "erased is '{hex_ground_name(pal(), erased_wall(), height_layer_empty(), 2, 0)}'");
+    assert(!hex_walkable(pal(), erased_wall(), height_layer_empty(), 2, 0),
            "and sea is not a surface anything stands on");
 }
 
@@ -287,11 +325,11 @@ fn test_erasing_the_wall_takes_a_hex_away_from_the_insect_that_had_it() {
     tet_walled = corridor(4);
     paint(tet_walled, 2, 0, as_u8(WALL));
 
-    assert(can_stand(pal(), tet_walled, as_u8(ENEMY_KIND_INSECT), 2, 0),
+    assert(can_stand(pal(), tet_walled, height_layer_empty(), as_u8(ENEMY_KIND_INSECT), 2, 0),
            "with the wall standing, an insect stands on top of it");
-    assert(!can_stand(pal(), erased_wall(), as_u8(ENEMY_KIND_INSECT), 2, 0),
+    assert(!can_stand(pal(), erased_wall(), height_layer_empty(), as_u8(ENEMY_KIND_INSECT), 2, 0),
            "'breaking' it takes that hex away");
-    assert(!can_stand(pal(), erased_wall(), as_u8(ENEMY_KIND_REGULAR), 2, 0),
+    assert(!can_stand(pal(), erased_wall(), height_layer_empty(), as_u8(ENEMY_KIND_REGULAR), 2, 0),
            "and gives the robot nothing in exchange");
 }
 
