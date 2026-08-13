@@ -593,6 +593,7 @@ replaying written-down runs.
 | a decay clock per pile | `height.loft`, beside the source — the layer is already runtime and already per hex |
 | a per-class body height and decay rate | `numbers.json` rows beside B4's `enemy_regular.body_height` |
 | tower damage TYPES (laser / artillery / explosive / EMP) | `numbers.json` § tower has `damage_per_shot` and no type; B5 should avoid foreclosing one |
+| a per-ROLE damage-to-wall rate | `spawn.loft::ENEMY_DAMAGE_TO_WALL_PER_SECOND` is one constant that already carries the note saying it becomes a lookup.  ⚠ The four small-robot roles — scout, harvester, builder, miner — differ in THIS AND NOTHING ELSE, so they cost a row each in `numbers.json` and one branch, with no new behaviour |
 | enemy ARMOUR and SIZE, and damage scaled by type against them | `numbers.json` rows per class beside `hp`; the scaling belongs beside `enemy_max_hp` in `damage.loft`.  ⚠ SIZE is needed by the blocking rule anyway, so the flame thrower costs no new property |
 | tower HP, and a tower that can be destroyed | `numbers.json` § tower has a shot budget and repair times but no HP — retaliation needs one |
 | retaliation memory: which tower hurt whom | per-enemy while scrambled, shared while not; the scrambler state itself is a global nothing yet models |

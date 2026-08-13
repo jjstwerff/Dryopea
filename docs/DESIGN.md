@@ -1074,6 +1074,46 @@ units, not coordinated attacks.  The approach→engage handoff
 is the **bubble boundary itself**.  Full explanation in
 SETTING.md § Why waves happen.
 
+### Small robots: four roles, one AI
+
+Owner, 2026-08-13.  The small robots are **scouts, harvesters,
+builders and miners** — economic roles from the colonisation
+programme, hostile only because their command links broke
+([`SETTING.md`](SETTING.md) § Robot diversity).
+
+**What differs between them is their effectiveness against a
+wall, and it differs a lot.**  A miner cuts rock for a living;
+a scout carries nothing that bites into concrete.  So the same
+wave arriving at the same perimeter is a very different problem
+depending on what is in it.
+
+⚠ **Their AI is not different.**  This is the first real payoff
+of the rule in § Combat dynamics § Retaliation: they route the
+same way, target the same way and retaliate the same way, and
+the whole difference is one number per role — the damage-to-wall
+rate that `numbers.json` already carries for `enemy_regular`.
+Four enemy types, no new behaviour, no new code path.
+
+Two consequences worth having:
+
+- **Wave composition becomes something the player can READ.**
+  Spotting miners in an approaching wave means the perimeter
+  will not hold, which is exactly the kind of early signal the
+  scramble decision needs ([§ 6](#6-spawn-system--waves) §
+  Pre-walk visibility) — and it is legible without a HUD,
+  because the robots look like what they do.
+- **It sharpens the bracing rule.**  A wall's HP already depends
+  on how it is braced ([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md)
+  § A wall's HP is structural); a strong attacker arriving at a
+  weak hex is the case that decides a perimeter, and role plus
+  bracing is what makes that a real spread of outcomes rather
+  than one number against another.
+
+Different roles should also carry **different salvage** — a
+harvester and a miner are not made of the same parts — which is
+the contents axis § Future tower types already needs for wreck
+decay.
+
 **Within tier 1, early-vs-late escalation is lore-driven.**
 The first waves a player meets are **economic units** —
 workers, haulers, scouts, repair platforms — built for

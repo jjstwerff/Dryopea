@@ -549,10 +549,25 @@ its personality-shaped priorities.  The taxonomy below is
 open design space; sketched possibilities (any could ship,
 none are committed):
 
+⚠ **Four of these are committed** (owner, 2026-08-13): the SMALL
+robots a player meets are **scouts, harvesters, builders and
+miners** — every one of them an economic role, none of them
+built to fight.  The rest of the taxonomy below stays open.
+
+What separates them mechanically is what their working tools do
+to a wall: **a miner cuts rock for a living and a scout does
+not**, so their effectiveness against a perimeter differs quite
+a bit.  ⚠ **Their AI does not differ at all** — see
+[`DESIGN.md`](DESIGN.md) § 10, where that is a design rule and
+not a coincidence.
+
 - **Workers / construction bots** — the bulk of the
   population; carry out the original colonisation programme
-  (mining, building, terraforming).
+  (mining, building, terraforming).  **Builders** and
+  **miners** are the two committed small variants of this
+  role, and the miner is the one a wall should be afraid of.
 - **Haulers** — move material along the supply lines.
+  **Harvesters** are the committed small variant.
 - **Scouts / surveyors** — map terrain; the eyes of the
   swarm; presumably the first to detect a scrambler bubble.
 - **Defense / security bots** — built to engage threats; the

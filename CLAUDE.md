@@ -133,6 +133,13 @@ property (armour, size, a boss's 2x2 footprint, its option to share what
 is hurting it) belongs in the same shape.  A class that needs its own
 mover has broken it.
 
+Its first concrete payoff, and the reason it is a rule rather than a
+preference: the small robots are **scout, harvester, builder and
+miner**, they differ a lot in how fast they chew a wall, and they
+differ in **nothing else**.  Four enemy types for one row each in
+`numbers.json` plus one branch in `spawn.loft`'s damage-to-wall lookup
+— no new mover, no new targeting, no new code path.
+
 ⚠ **The siege chews where the ROUTE meets the wall, never where the
 wall is weakest** — measured in plan 12 B3, and it falsifies what
 `ENEMY_MOVEMENT.md` § A wall's HP is structural used to claim.  Six

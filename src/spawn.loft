@@ -96,6 +96,15 @@ pub fn per_tick(rate_per_second: float) -> float {
 // this plan invented.  When insects get a section they get a rate, and
 // this becomes a lookup like `climb_limit`.
 //
+// ⚠ **And that lookup is where the small-robot roles live.**  The
+// design commits four of them — scout, harvester, builder, miner
+// (`DESIGN.md` § Small robots: four roles, one AI) — whose whole
+// mechanical difference is what their working tools do to a wall: a
+// miner cuts rock for a living and a scout does not.  So four enemy
+// types cost one row each in `numbers.json` and one branch here, and
+// **no new behaviour anywhere** — which is the point of the rule, not
+// a happy accident.
+//
 // Slow on purpose.  100 HP at 1 HP/s is 100 s — 150 ticks — for one
 // robot, so breaking a wall is a rare path rather than the default
 // way in, and a base only falls to a wave that stays on it.
