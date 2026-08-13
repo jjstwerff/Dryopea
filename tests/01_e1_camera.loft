@@ -73,7 +73,7 @@ fn test_camera_pan_north() {
     tc_ni = input_empty();
     tc_ni.in_pan_north = true;
     camera_update(tc_n, tc_ni);
-    assert(tc_n.pos.r == -1, "pan-north decreases r");
+    assert(tc_n.pos.r ==  1, "pan-north INCREASES r — north is +r since plan 09 C3");
     assert(tc_n.pos.q ==  0, "pan-north leaves q alone");
 }
 
@@ -82,7 +82,7 @@ fn test_camera_pan_south() {
     tc_si = input_empty();
     tc_si.in_pan_south = true;
     camera_update(tc_s, tc_si);
-    assert(tc_s.pos.r == 1, "pan-south increases r");
+    assert(tc_s.pos.r == -1, "pan-south decreases r");
 }
 
 fn test_camera_pan_east_west() {
@@ -107,7 +107,7 @@ fn test_camera_multi_pan() {
     tc_mi.in_pan_east  = true;
     camera_update(tc_m, tc_mi);
     assert(tc_m.pos.q ==  1, "diagonal east+north → q=1");
-    assert(tc_m.pos.r == -1, "diagonal east+north → r=-1");
+    assert(tc_m.pos.r ==  1, "diagonal east+north → r=1");
 }
 
 fn test_camera_zoom() {

@@ -1,0 +1,241 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 09 phase C3 — the renderer draws pointy-top.
+//
+// ⚠ **This file exists because the goldens cannot be trusted here.**
+// C3 rebaselines all 16 of them, and a rebaselined golden agrees
+// with whatever was drawn — including a shear.  § The gate is an
+// oracle, not a golden is the whole plan; these are the checks a
+// rebaseline cannot launder.
+//
+// Three of them, in order of how much they would have hurt:
+//
+//   1. The hex on screen is TALLER than it is wide.  That is what
+//      "pointy-top" means in pixels, it is measured off a real
+//      rendered canvas, and the flat-top renderer fails it by having
+//      the ratio the other way up.
+//   2. The camera's own hex lands at the centre of the canvas, and
+//      neighbours sit one flat-to-flat away in the direction the
+//      compass names.
+//   3. `screen_to_hex ∘ world_to_canvas` is the identity.  ⚠ This one
+//      is green BEFORE the conversion too — a round trip cannot see
+//      which lattice it is round-tripping.  It is here to catch the
+//      conversion being done to the forward path and not the inverse,
+//      which is the mistake that makes picking land one hex off.
+//
+// C3 changes GEOMETRY only.  The `(q, r)` labels in maps and scripts
+// stay axial until C5, so nothing here converts a coordinate.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// Big enough that a hex is many pixels across, small enough to scan.
+const CW:  integer = 240;
+const CH:  integer = 240;
+const PPM: float   = 24.0;
+
+// ─── 1. The shape on screen ─────────────────────────────────────
+
+// The bounding box of every pixel of `color` on the canvas.
+// Returns (minx, miny, maxx, maxy, count); count 0 means none found.
+fn colour_bbox(cv: Canvas, color: integer) -> (integer, integer, integer, integer, integer) {
+    cb_minx = 99999;
+    cb_miny = 99999;
+    cb_maxx = -99999;
+    cb_maxy = -99999;
+    cb_n    = 0;
+    for cb_y in 0..CH {
+        for cb_x in 0..CW {
+            if cv.get_pixel(cb_x, cb_y) == color {
+                if cb_x < cb_minx { cb_minx = cb_x; }
+                if cb_x > cb_maxx { cb_maxx = cb_x; }
+                if cb_y < cb_miny { cb_miny = cb_y; }
+                if cb_y > cb_maxy { cb_maxy = cb_y; }
+                cb_n += 1;
+            }
+        }
+    }
+    (cb_minx, cb_miny, cb_maxx, cb_maxy, cb_n)
+}
+
+// One grass hex at the origin, nothing else.
+fn one_hex_canvas() -> Canvas {
+    ohc_pw = painted_empty();
+    paint(ohc_pw, 0, 0, GRASS as u8);
+    render_to_canvas(camera_default(), ohc_pw, CW, CH, PPM)
+}
+
+// ⚠ THE load-bearing check of this phase.  A pointy-top hex is
+// taller than it is wide: vertex-to-vertex vertically is
+// HEX_DIAMETER, flat-to-flat horizontally is HEX_FLAT_TO_FLAT, so
+// the ratio is 1.5 / 1.299038 = 1.1547.  The flat-top hex dryopea
+// drew before has it the other way up, so this cannot be satisfied
+// by accident and cannot be rebaselined away.
+fn test_a_rendered_hex_is_taller_than_it_is_wide() {
+    tar_cv = one_hex_canvas();
+    tar_box = colour_bbox(tar_cv, palette_color(GRASS as u8));
+
+    assert(tar_box.4 > 0, "the hex was drawn at all");
+
+    tar_w = (tar_box.2 - tar_box.0 + 1) as float;
+    tar_h = (tar_box.3 - tar_box.1 + 1) as float;
+    assert(tar_h > tar_w,
+           "a pointy-top hex is taller than wide — got {tar_w} x {tar_h} px");
+
+    // …and by the right amount.  ±1.5 px of slack for the
+    // rasteriser's rounding at each edge.
+    tar_want_w = HEX_FLAT_TO_FLAT * PPM;
+    tar_want_h = HEX_DIAMETER * PPM;
+    assert(abs(tar_w - tar_want_w) < 2.0,
+           "width {tar_w} px, want ~{tar_want_w} (flat-to-flat)");
+    assert(abs(tar_h - tar_want_h) < 2.0,
+           "height {tar_h} px, want ~{tar_want_h} (vertex-to-vertex)");
+}
+
+// The hex is centred where the lattice says, not merely the right
+// shape somewhere.
+fn test_the_origin_hex_is_centred_on_the_canvas() {
+    toh_cv = one_hex_canvas();
+    toh_box = colour_bbox(toh_cv, palette_color(GRASS as u8));
+
+    toh_cx = (toh_box.0 + toh_box.2) / 2;
+    toh_cy = (toh_box.1 + toh_box.3) / 2;
+    assert(abs(toh_cx - CW / 2) <= 1, "centred horizontally: {toh_cx} vs {CW / 2}");
+    assert(abs(toh_cy - CH / 2) <= 1, "centred vertically: {toh_cy} vs {CH / 2}");
+}
+
+// ─── 2. Where the camera puts things ────────────────────────────
+
+// The camera's own hex is always the middle of the screen.
+fn test_the_camera_hex_lands_at_the_canvas_centre() {
+    for tcl_r in -3..=3 {
+        for tcl_q in -3..=3 {
+            tcl_cam = camera_at(tcl_q, tcl_r, 1);
+            tcl_m = lat_to_metres(tcl_cam.pos);
+            tcl_p = world_to_canvas(tcl_cam, tcl_m.0, tcl_m.1, CW, CH, PPM);
+            assert(tcl_p.0 == CW / 2 && tcl_p.1 == CH / 2,
+                   "camera at ({tcl_q}, {tcl_r}) sees itself at ({tcl_p.0}, {tcl_p.1}), want ({CW / 2}, {CH / 2})");
+        }
+    }
+}
+
+// Neighbours land one flat-to-flat away, in the compass direction
+// `hex_grid` names — measured in PIXELS, which is what the player
+// actually sees.  ⚠ Canvas +y is down and world +y is south, so a
+// northward step must DECREASE the pixel y.
+fn test_neighbours_land_where_the_compass_says() {
+    tnl_cam = camera_default();
+    tnl_o = Hex { q: 0, r: 0 };
+    tnl_om = lat_to_metres(tnl_o);
+    tnl_op = world_to_canvas(tnl_cam, tnl_om.0, tnl_om.1, CW, CH, PPM);
+
+    // Signs per direction, in canvas pixels: 0=E, 1=SE, 2=SW, 3=W,
+    // 4=NW, 5=NE, with y growing DOWN.
+    for tnl_d in 0..6 {
+        tnl_n  = lat_neighbour(tnl_o, tnl_d);
+        tnl_nm = lat_to_metres(tnl_n);
+        tnl_np = world_to_canvas(tnl_cam, tnl_nm.0, tnl_nm.1, CW, CH, PPM);
+        tnl_dx = tnl_np.0 - tnl_op.0;
+        tnl_dy = tnl_np.1 - tnl_op.1;
+
+        if tnl_d == 0 { assert(tnl_dx > 0 && tnl_dy == 0, "dir 0 is due EAST on screen, got ({tnl_dx}, {tnl_dy})"); }
+        if tnl_d == 1 { assert(tnl_dx > 0 && tnl_dy > 0,  "dir 1 is SE on screen, got ({tnl_dx}, {tnl_dy})"); }
+        if tnl_d == 2 { assert(tnl_dx < 0 && tnl_dy > 0,  "dir 2 is SW on screen, got ({tnl_dx}, {tnl_dy})"); }
+        if tnl_d == 3 { assert(tnl_dx < 0 && tnl_dy == 0, "dir 3 is due WEST on screen, got ({tnl_dx}, {tnl_dy})"); }
+        if tnl_d == 4 { assert(tnl_dx < 0 && tnl_dy < 0,  "dir 4 is NW on screen, got ({tnl_dx}, {tnl_dy})"); }
+        if tnl_d == 5 { assert(tnl_dx > 0 && tnl_dy < 0,  "dir 5 is NE on screen, got ({tnl_dx}, {tnl_dy})"); }
+
+        // One hex step, in pixels.
+        tnl_len = sqrt(((tnl_dx * tnl_dx) + (tnl_dy * tnl_dy)) as float);
+        assert(abs(tnl_len - HEX_FLAT_TO_FLAT * PPM) < 1.5,
+               "dir {tnl_d} is {tnl_len} px away, want ~{HEX_FLAT_TO_FLAT * PPM}");
+    }
+}
+
+// Pressing "pan north" must move the view north.  ⚠ In the new
+// lattice north is LARGER r, the opposite of the axial one — so this
+// is the assertion that catches the camera keeping the old sign and
+// walking the player backwards.
+fn test_panning_north_moves_the_view_north() {
+    tpn_c = camera_default();
+    tpn_before = lat_to_metres(tpn_c.pos);
+
+    tpn_i = input_empty();
+    tpn_i.in_pan_north = true;
+    camera_update(tpn_c, tpn_i);
+
+    tpn_after = lat_to_metres(tpn_c.pos);
+    assert(tpn_after.1 < tpn_before.1,
+           "pan north decreases world y (+y is south), got {tpn_before.1} → {tpn_after.1}");
+
+    tpn_s = camera_default();
+    tpn_j = input_empty();
+    tpn_j.in_pan_south = true;
+    camera_update(tpn_s, tpn_j);
+    assert(lat_to_metres(tpn_s.pos).1 > tpn_before.1, "and pan south increases it");
+}
+
+// ─── 3. The picking round trip ──────────────────────────────────
+
+// ⚠ Green before the conversion as well — a round trip cannot see
+// which lattice it is round-tripping.  It is here to catch the
+// forward path being converted without the inverse, which is what
+// makes a click land one hex away from the cursor.
+fn test_screen_to_hex_inverts_world_to_canvas() {
+    for tsi_r in -4..=4 {
+        for tsi_q in -4..=4 {
+            tsi_h = Hex { q: tsi_q, r: tsi_r };
+            tsi_m = lat_to_metres(tsi_h);
+            tsi_p = world_to_canvas(camera_default(), tsi_m.0, tsi_m.1, CW, CH, PPM);
+            tsi_b = screen_to_hex(camera_default(), tsi_p.0, tsi_p.1, CW, CH, PPM);
+            assert(tsi_b.q == tsi_q && tsi_b.r == tsi_r,
+                   "({tsi_q}, {tsi_r}) → pixel ({tsi_p.0}, {tsi_p.1}) → ({tsi_b.q}, {tsi_b.r})");
+        }
+    }
+}
+
+// The same, with the camera somewhere else — the transform has to
+// invert under a translation too, not just at the origin.
+fn test_the_round_trip_holds_off_origin() {
+    ttr_cam = camera_at(-3, 2, 1);
+    for ttr_r in -3..=3 {
+        for ttr_q in -3..=3 {
+            ttr_h = Hex { q: ttr_q, r: ttr_r };
+            ttr_m = lat_to_metres(ttr_h);
+            ttr_p = world_to_canvas(ttr_cam, ttr_m.0, ttr_m.1, CW, CH, PPM);
+            ttr_b = screen_to_hex(ttr_cam, ttr_p.0, ttr_p.1, CW, CH, PPM);
+            assert(ttr_b.q == ttr_q && ttr_b.r == ttr_r,
+                   "off-origin ({ttr_q}, {ttr_r}) → ({ttr_b.q}, {ttr_b.r})");
+        }
+    }
+}
+
+// ─── The corner offsets the renderer draws from ─────────────────
+
+// `draw_hex` reads `lat_corner_offset` rather than carrying its own
+// vertex table, so the drawn hexagon is the lattice's.  These pin
+// what that table says before the renderer relies on it.
+fn test_the_corner_offsets_describe_a_pointy_top_hex() {
+    tco_maxx = 0.0;
+    tco_maxy = 0.0;
+    for tco_i in 0..6 {
+        tco_o = lat_corner_offset(tco_i);
+        if abs(tco_o.0) > tco_maxx { tco_maxx = abs(tco_o.0); }
+        if abs(tco_o.1) > tco_maxy { tco_maxy = abs(tco_o.1); }
+        // Every corner is one circumradius from the centre.
+        tco_len = sqrt(tco_o.0 * tco_o.0 + tco_o.1 * tco_o.1);
+        assert(abs(tco_len - LAT_METRES_PER_UNIT) < 0.00001,
+               "corner {tco_i} is {tco_len} m out, want {LAT_METRES_PER_UNIT}");
+    }
+
+    assert(abs(tco_maxy - HEX_DIAMETER * 0.5) < 0.00001,
+           "the tallest reach is a full circumradius — the POINT, at {tco_maxy}");
+    assert(abs(tco_maxx - HEX_FLAT_TO_FLAT * 0.5) < 0.00001,
+           "the widest reach is half the flat-to-flat, at {tco_maxx}");
+    assert(tco_maxy > tco_maxx, "so the hex is taller than wide");
+}

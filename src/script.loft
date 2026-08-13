@@ -363,8 +363,13 @@ fn script_walk_camera(s: EditorState, run: ScriptRun, q: integer, r: integer, zo
         swc_p = script_phys_new();
         if s.cam.pos.q < q { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_east")); }
         if s.cam.pos.q > q { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_west")); }
-        if s.cam.pos.r < r { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_south")); }
-        if s.cam.pos.r > r { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_north")); }
+        // ⚠ North is LARGER r since plan 09 C3, so the key that
+        // raises `r` is pan_NORTH.  Get this backwards and the walk
+        // diverges instead of converging, and `at` fails with
+        // "target is more than N camera steps away" rather than with
+        // anything that names the real cause.
+        if s.cam.pos.r < r { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_north")); }
+        if s.cam.pos.r > r { script_press(swc_p, action_keys(run.isrc.eis_actions, "pan_south")); }
         // Zoom is the wheel, not a key — the one axis of the walk
         // that has no binding to press.
         if s.cam.zoom > zoom { swc_p.sp_wheel =  1; }

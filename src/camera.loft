@@ -69,9 +69,16 @@ pub fn input_empty() -> InputState {
 // Pure tick: apply the input state to the camera.  Single per-tick
 // step in each axis — the dispatcher ensures held keys don't fire
 // at 60Hz.
+// ⚠ **North is LARGER r**, which is the opposite of what the axial
+// lattice did (plan 09 C3).  `hex_grid` documents "r increases
+// upward" and dryopea follows its compass, so a pan whose name is a
+// compass point has to follow it too — otherwise W walks the player
+// south and every `.keys` `at` command converges the wrong way.
+// `tests/09_c3_geometry.loft` asserts this in METRES rather than in
+// `r`, so it stays a statement about what the player sees.
 pub fn camera_update(c: EditorCamera, input: InputState) {
-    if input.in_pan_north { c.pos.r -= 1; }
-    if input.in_pan_south { c.pos.r += 1; }
+    if input.in_pan_north { c.pos.r += 1; }
+    if input.in_pan_south { c.pos.r -= 1; }
     if input.in_pan_west  { c.pos.q -= 1; }
     if input.in_pan_east  { c.pos.q += 1; }
     if input.in_zoom_in   { c.zoom = max(ZOOM_MIN, c.zoom - 1); }

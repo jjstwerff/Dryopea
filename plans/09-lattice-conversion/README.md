@@ -108,9 +108,9 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 | **C0** — probe: can `hex_grid` be the oracle? | XS | a probe first | its answers for a hand-checked cell set, AND that they **disagree** with dryopea's current axial math — an oracle that already agrees proves nothing | **Shipped** |
 | **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | **Shipped** — see § C1 shipped.  Negative control run: 8 of 17 red |
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | **Shipped** — see § C2 shipped.  Strengthened to DISTANCE preservation, which implies adjacency AND injectivity |
-| **C3** — the renderer draws pointy-top | M | one site at a time | hex centres equal `lat_to_metres` under the camera transform (to a float ε — ⚠ `lat_to_metres`, NOT `hex_grid::hex_to_px`: the compass decision negates y); `screen_to_hex ∘ world_to_canvas` = identity over the sweep; goldens rebaselined ONCE and reviewed, and they will come back VERTICALLY MIRRORED — that is the decision landing, not a bug; plan 08's `frame` bands still hold; nothing depends on corner winding, which reversed | Open |
+| **C3** — the renderer draws pointy-top | M | one site at a time | a rendered hex is TALLER than wide (pointy-top, measured in pixels off a real canvas); the camera's hex lands at the canvas centre; neighbours sit one flat-to-flat away in the direction the compass names; `screen_to_hex ∘ world_to_canvas` = identity; plan 08's `frame` bands still hold | **Shipped** — see § C3 shipped.  ⚠ The goldens do NOT move once; the reviewed rebaseline is now C5's |
 | **C4** — `paint_line`, marker arrows, spawn approach | M | one site at a time | per site: `paint_line` equals `hex_grid`'s line over the sweep; each marker arrow points at the neighbour it names; `a-wave-approaches` still shows `range` decreasing monotonically | Open |
-| **C5** — migrate the data | S | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand. ⚠ NO compensating y-flip — a map that comes back looking the same means the compass decision did not take | Open |
+| **C5** — migrate the data | S→M | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand. ⚠ NO compensating y-flip — a map that comes back looking the same means the compass decision did not take. **⚠ Also inherits the goldens**: C3 could not leave them reviewable, so the ONE reviewed rebaseline happens here, after labels and `paint_line` have both moved | Open |
 | **C6** — delete the axial layer | XS | — | `grep` finds no axial helper; suite + `scripts/validate.sh` green | Open |
 
 ⚠ **No phase is `H`.** Plan 07 carried this as one `H` phase, which fails
@@ -519,17 +519,81 @@ both halves so the fact stays measured rather than remembered.
 Suite 539 → **551 green**; `scripts/validate.sh` unchanged at **233
 measurements over 14 scripts**.
 
-### C3 — the one place the goldens are allowed to move
+### C3 — shipped, and the goldens do NOT move once
 
-Rebaselining 16 goldens is the loudest part of this plan and the least
-informative. They move once, in C3, and the review is by eye for *plausible*
-— the load-bearing check in that phase is the centre-point comparison
-against `hex_grid::hex_to_px`, which no rebaseline can launder.
+Landed 2026-08-13.  `render.loft` + `marker_render.loft` draw from
+`lattice.loft`; `camera.loft` and `script.loft`'s camera walk follow.
+
+The load-bearing gate is `tests/09_c3_geometry.loft`, and it is measured
+off a real rendered canvas rather than compared to a picture:
+
+- **a rendered hex is TALLER than it is wide** — that is what pointy-top
+  means in pixels, and it is the check the old renderer fails by having
+  the ratio the other way up (measured: `37 x 33 px` before);
+- the camera's own hex lands at the canvas centre, from any hex;
+- neighbours sit one flat-to-flat away **in the compass direction
+  `hex_grid` names**, measured in pixels;
+- `screen_to_hex ∘ world_to_canvas` is the identity, on and off origin.
+
+Run against the pre-C3 renderer, 5 of 8 go red.
+
+⚠ **The round-trip check is green BEFORE the conversion too**, because a
+round trip cannot see which lattice it is round-tripping.  It is in the
+file to catch the forward path being converted without the inverse —
+the mistake that makes a click land one hex from the cursor.
+
+#### ⚠ This section used to say the goldens move ONCE, in C3.  Wrong.
+
+A golden is a function of **two** things this plan moves separately:
+geometry (C3) and labels (C5).  They are separable in the CODE — they
+touch different files, and the relabel is a pure adjacency-preserving
+bijection — but they are **not separable in a picture**.  Neither phase
+alone leaves a reviewable image, and three of the sixteen additionally
+pass through `paint_line`, which is C4's.
+
+After C3 the ring golden is a lopsided blob, because axial labels are
+being drawn with odd-r geometry.  Verified to be the LABELS and not the
+geometry, twice:
+
+- a disc built from the lattice itself (`lat_disc`) renders as a correct
+  hexagonal flower — 19 hexes, properly centred;
+- the same ring with its labels put through `relabel_hex` — exactly what
+  C5 will do — closes perfectly.
+
+So the goldens were promoted to the intermediate and **the reviewed
+rebaseline moves to the end of the conversion**.  They still earn their
+place meanwhile: they catch *unintended* change through C4 and C5.
+`tests/golden/README.md` says all of this next to the files, because
+that is where someone will be standing when they wonder why a ring is
+not a ring.
+
+⚠ **Do not "fix" the sheared goldens by relabelling the test fixtures
+early.**  That pulls C5's work into C3 for three files and leaves the
+other eight in the same state, which is worse than one honest
+intermediate.
+
+**11 of 16 moved; the 5 that did not are the sanity check** — two
+all-sea canvases and three picker-only images, none of which contain a
+world hex.  A UI golden that HAD moved would have meant the conversion
+leaked into canvas-space drawing.
+
+#### The camera had to move with it, and that is not cosmetic
+
+`camera_update` panned north by `r -= 1`.  In the new lattice north is
+**larger** r, so that walked the player backwards — and
+`script_walk_camera`'s convergence test inverted with it, which would
+have failed every `at` command as "target is more than 4096 camera steps
+away" rather than as anything naming the cause.  Both flipped.
+`tests/09_c3_geometry.loft` asserts the pan in METRES, not in `r`, so it
+stays a statement about what the player sees.
 
 Plan 08's measurements are the second net: `kind`, `marker`, `count` and
 `range` are exact and label-only, so C3 must leave every one of them
 untouched. A renderer change that moves a `kind` assertion has changed
-something other than the drawing.
+something other than the drawing.  **Held: `scripts/validate.sh` is
+unchanged at 233 measurements over 14 scripts, `frame` bands included.**
+
+Suite 551 → **559 green**.
 
 ### C5 — the data, and the one decision left open
 
@@ -549,7 +613,7 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
 | **C0** | `hex_distance((0,0), (-1,-1)) == 1` | the oracle disagrees with axial, so it can surprise us | an oracle that already matched dryopea would be measuring nothing |
 | **C1** ✅ | the ±16 sweep is green against `hex_grid`; the disc count is `3N(N+1)+1`; neighbouring centres are `HEX_FLAT_TO_FLAT` apart | dryopea's lattice IS `hex_grid`'s — by DELEGATION, so it cannot drift | pointed at `world.loft`: **8 of 17 red**, incl. "disagree on more than a quarter — 0 of 1089".  Parity term broken: 3 red at an ODD row |
 | **C2** ✅ | every PAIR keeps its distance (28 561 comparisons), and 1089 labels paint 1089 hexes | the relabel is a bijection that preserves structure — distance, so adjacency AND injectivity | the identity relabel breaks adjacency 289 times; a parity-free one moves odd-row LABELS only.  ⚠ Attributing breaks to the source row instead reports even-row damage and looks like a falsification — it is not |
-| **C3** | hex centres equal `hex_grid::hex_to_px` | the picture follows the lattice, not the other way round | a rebaselined golden agrees with a shear; the centre check does not |
+| **C3** ✅ | a rendered hex measures ~31 x 36 px at ppm 24 — TALLER than wide | the picture follows the lattice, not the other way round | a rebaselined golden agrees with a shear; the pixel measurements do not — 5 of 8 red against the old renderer.  ⚠ And the goldens DID come back sheared, because labels are C5's; that is why they are no longer this phase's evidence |
 | **C4** | `a-wave-approaches` range still decreases | the game's own behaviour survives the move | enemies that reach the core in a different number of ticks means the metric moved |
 | **C5** | converted maps keep painted counts + adjacency | a relabel is not a content change | a map that gains or loses a hex was converted wrong |
 | **I0** ✅ | a key held five frames fires its action ONCE — **both do** | `input`'s edges mean what the seam's mean, on all three semantics | the predicted "first frame" divergence **is not real**; the real one is the seam forging `prev` mid-step, which is @D001 |

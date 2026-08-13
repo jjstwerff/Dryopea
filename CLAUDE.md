@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 551/551 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 559/559 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 551 runs.
+per-function + per-line + call-path report over all 559 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -540,7 +540,12 @@ src/
                    re-orientation.  Old dir 0 was due SOUTH; it
                    relabels to new dir 5, which renders NORTH-EAST.
                    A converted map does not look "upside down"
-  camera.loft      EditorCamera { pos: Hex, zoom: integer }
+  camera.loft      ⚠ pan NORTH is `r += 1` since plan 09 C3 — north is
+                   LARGER r in the new lattice, the opposite of axial.
+                   `script_walk_camera`'s convergence test must agree,
+                   or every `at` fails as "more than 4096 camera steps
+                   away" rather than as anything naming the cause.
+                   EditorCamera { pos: Hex, zoom: integer }
                    + InputState (moros-style: factories + pure tick
                    + struct of booleans)
                    + camera_update(c: &EditorCamera, input: InputState)
@@ -617,7 +622,14 @@ src/
   render.loft      software rasterizer using graphics::Canvas
                    + render_to_canvas, render_with_hover, palette_color,
                    draw_hex, draw_hex_outline,
-                   world_to_canvas, screen_to_world, screen_to_hex
+                   world_to_canvas, screen_to_world, screen_to_hex.
+                   ⚠ Draws from `lattice.loft` since plan 09 C3 —
+                   pointy-top, so a hex is TALLER than it is wide.
+                   `draw_hex` reads `lat_corner_offset` rather than
+                   carrying a vertex table, so the hexagon drawn IS
+                   the lattice's; there is no y-flip here, because
+                   the one sign inversion lives in the metre
+                   conversion
   golden.loft      assert_golden(cv, name) — writes tests/actual/<n>.png,
                    asserts byte-equality against tests/golden/<n>.png;
                    FAILs via loft's now-working assert (@P367 fixed)
@@ -711,6 +723,13 @@ still adjacent and one side apart, which is all a convex fill needs.
   Canvas, write to `tests/actual/<n>.png`, compare bytes to
   `tests/golden/<n>.png`.  Bootstrapping a new golden: run, FAIL,
   review `tests/actual/<n>.png`, copy to `tests/golden/<n>.png`.
+  ⚠ **The committed goldens are INTERMEDIATE while plan 09 runs** —
+  a golden depends on BOTH the geometry (C3, shipped) and the
+  coordinate labels (C5, open), and neither phase alone leaves a
+  reviewable picture, so a ring currently renders as a lopsided blob.
+  See [`tests/golden/README.md`](tests/golden/README.md).  The
+  drawing's real gates are exact and live in
+  `tests/09_c3_geometry.loft`.
 
 ### Loft language gotchas we hit
 
@@ -855,8 +874,8 @@ plans/
                     found it OVER budget, and found the cause was a
                     per-enemy field COPY rather than the rebuild it was
                     written to optimise
-  09-lattice-conversion/      — Active (C0-C2 + the whole I half
-                    shipped; C3-C6 remain): dryopea
+  09-lattice-conversion/      — Active (C0-C3 + the whole I half
+                    shipped; C4-C6 remain): dryopea
                     moves to pointy-top odd-r offset, the convention
                     every hex_* library and moros already speak.
                     Checked against hex_grid as an ORACLE, because a

@@ -12,6 +12,7 @@
 
 use graphics;
 use world;
+use lattice;
 use camera;
 use painted;
 
@@ -47,7 +48,7 @@ pub fn sea_color() -> integer { palette_color(0 as u8) }
 // Inverse of world_to_canvas: pixel (sx, sy) on a canvas
 // of size (cw, ch) at scale `ppm`, centred on the camera's
 // hex, maps back to a world-space (x, y).  Combined with
-// world_to_hex this is the screen→hex mouse-pick path.
+// lat_from_metres this is the screen→hex mouse-pick path.
 pub fn screen_to_world(
     cam: EditorCamera,
     sx:  integer,
@@ -56,7 +57,7 @@ pub fn screen_to_world(
     ch:  integer,
     ppm: float,
 ) -> (float, float) {
-    stw_camw = hex_to_world(cam.pos);
+    stw_camw = lat_to_metres(cam.pos);
     // `?? 0.0` silences loft's div-by-zero static check —
     // ppm is always > 0 at call sites (PPM = 24.0 default).
     stw_inv = (1.0 / ppm) ?? 0.0;
@@ -76,15 +77,17 @@ pub fn screen_to_hex(
     ppm: float,
 ) -> Hex {
     sth_w = screen_to_world(cam, sx, sy, cw, ch, ppm);
-    world_to_hex(sth_w.0, sth_w.1)
+    lat_from_metres(sth_w.0, sth_w.1)
 }
 
 // Translate a world-space (x, y) to canvas pixel coordinates given a
 // camera (positioned at a hex) and a pixels-per-metre scale.
 //
-// Canvas y grows DOWN (image convention); world y grows UP (math
-// convention), so the y axis is flipped here — pan-north (smaller r)
-// moves the visible world UP on screen.
+// Canvas y grows DOWN and dryopea's world y grows SOUTH, so the two
+// agree and there is NO flip here — see CLAUDE.md § Hex convention.
+// The one place a sign is inverted is `lattice.loft`'s metre
+// conversion, which is where `hex_grid`'s north-up frame is turned
+// into dryopea's south-down one (plan 09 C1, the compass decision).
 pub fn world_to_canvas(
     cam:  EditorCamera,
     wx:   float,
@@ -93,7 +96,7 @@ pub fn world_to_canvas(
     ch:   integer,
     ppm:  float,
 ) -> (integer, integer) {
-    wtc_camw = hex_to_world(cam.pos);
+    wtc_camw = lat_to_metres(cam.pos);
     wtc_dx_m = wx - wtc_camw.0;
     wtc_dy_m = wy - wtc_camw.1;
     // Half-pixel offset (0.5) so hex centres land on a single pixel
@@ -106,8 +109,8 @@ pub fn world_to_canvas(
 // ── Hex rendering primitive ─────────────────────────────────────
 //
 // Draws a single hex on the canvas at its world centre.  Uses
-// six fill_triangles (flat-top vertex layout) so the painted hex
-// reads cleanly to its edges, not as a circle.
+// six fill_triangles over the lattice's own corner ring, so the
+// painted hex reads cleanly to its edges rather than as a circle.
 
 pub fn draw_hex(
     cv:   Canvas,
@@ -118,50 +121,36 @@ pub fn draw_hex(
     ch:   integer,
     ppm:  float,
 ) {
-    dh_world = hex_to_world(h);
+    dh_world = lat_to_metres(h);
     dh_centre = world_to_canvas(cam, dh_world.0, dh_world.1, cw, ch, ppm);
     dh_cx = dh_centre.0;
     dh_cy = dh_centre.1;
 
-    // Flat-top hex vertex offsets in metres (vertex-to-vertex
-    // diameter = HEX_DIAMETER, so |centre→vertex| = 0.75):
-    //   v0 ( 0.75,   0)         (east)
-    //   v1 ( 0.375, +0.6495)    (NE)  -- world y up
-    //   v2 (-0.375, +0.6495)    (NW)
-    //   v3 (-0.75,   0)         (west)
-    //   v4 (-0.375, -0.6495)    (SW)
-    //   v5 ( 0.375, -0.6495)    (SE)
-    // Convert to canvas pixel offsets (y flips).
-    dh_rx_m = HEX_DIAMETER * 0.5;          // 0.75
-    dh_ry_m = HEX_FLAT_TO_FLAT * 0.5;      // ~0.6495
-    dh_rx_px = (dh_rx_m * ppm + 0.5) as integer;
-    dh_hx_px = (dh_rx_m * 0.5 * ppm + 0.5) as integer;
-    dh_ry_px = (dh_ry_m * ppm + 0.5) as integer;
-
-    // Vertices (in canvas pixel coords).  No y-flip — world +y and
-    // screen +y both grow south.  Vertex offsets follow the
-    // standard flat-top hex layout (v0 east, going clockwise on
-    // screen).
-    dh_v0x = dh_cx + dh_rx_px;
-    dh_v0y = dh_cy;
-    dh_v1x = dh_cx + dh_hx_px;
-    dh_v1y = dh_cy + dh_ry_px;
-    dh_v2x = dh_cx - dh_hx_px;
-    dh_v2y = dh_cy + dh_ry_px;
-    dh_v3x = dh_cx - dh_rx_px;
-    dh_v3y = dh_cy;
-    dh_v4x = dh_cx - dh_hx_px;
-    dh_v4y = dh_cy - dh_ry_px;
-    dh_v5x = dh_cx + dh_hx_px;
-    dh_v5y = dh_cy - dh_ry_px;
+    // The six corners come from `lat_corner_offset`, not from a
+    // vertex table kept here — so the hexagon drawn IS the hexagon
+    // the lattice describes, and a change to the lattice cannot
+    // leave the picture behind.  Pointy-top, so corner 0 is straight
+    // up and the shape is TALLER than it is wide.
+    //
+    // Offsets rather than absolute corners: they are the same for
+    // every hex, so this costs no camera transform per vertex.
+    //
+    // ⚠ `round`, not `+ 0.5` truncation — offsets are signed now,
+    // and truncating toward zero would pull every negative vertex a
+    // pixel inward and make the hex lopsided.
+    dh_prev = lat_corner_offset(5);
+    dh_px = dh_cx + round(dh_prev.0 * ppm) as integer;
+    dh_py = dh_cy + round(dh_prev.1 * ppm) as integer;
 
     // Six triangles, all sharing the centre.
-    cv.fill_triangle(dh_cx, dh_cy, dh_v0x, dh_v0y, dh_v1x, dh_v1y, color);
-    cv.fill_triangle(dh_cx, dh_cy, dh_v1x, dh_v1y, dh_v2x, dh_v2y, color);
-    cv.fill_triangle(dh_cx, dh_cy, dh_v2x, dh_v2y, dh_v3x, dh_v3y, color);
-    cv.fill_triangle(dh_cx, dh_cy, dh_v3x, dh_v3y, dh_v4x, dh_v4y, color);
-    cv.fill_triangle(dh_cx, dh_cy, dh_v4x, dh_v4y, dh_v5x, dh_v5y, color);
-    cv.fill_triangle(dh_cx, dh_cy, dh_v5x, dh_v5y, dh_v0x, dh_v0y, color);
+    for dh_i in 0..6 {
+        dh_cur = lat_corner_offset(dh_i);
+        dh_qx = dh_cx + round(dh_cur.0 * ppm) as integer;
+        dh_qy = dh_cy + round(dh_cur.1 * ppm) as integer;
+        cv.fill_triangle(dh_cx, dh_cy, dh_px, dh_py, dh_qx, dh_qy, color);
+        dh_px = dh_qx;
+        dh_py = dh_qy;
+    }
 }
 
 // ── The render pipeline ─────────────────────────────────────────
@@ -198,8 +187,8 @@ pub fn render_to_canvas(
 }
 
 // Draw a 1-px white outline along the perimeter of a hex —
-// used to indicate the hovered hex during painting.  Vertex
-// layout matches draw_hex (flat-top, clockwise from east).
+// used to indicate the hovered hex during painting.  Same corner
+// ring as draw_hex, from the same source.
 pub fn draw_hex_outline(
     cv:    Canvas,
     cam:   EditorCamera,
@@ -209,30 +198,26 @@ pub fn draw_hex_outline(
     ch:    integer,
     ppm:   float,
 ) {
-    dho_world = hex_to_world(h);
+    dho_world = lat_to_metres(h);
     dho_centre = world_to_canvas(cam, dho_world.0, dho_world.1, cw, ch, ppm);
     dho_cx = dho_centre.0;
     dho_cy = dho_centre.1;
 
-    dho_rx_m = HEX_DIAMETER * 0.5;
-    dho_ry_m = HEX_FLAT_TO_FLAT * 0.5;
-    dho_rx_px = (dho_rx_m * ppm + 0.5) as integer;
-    dho_hx_px = (dho_rx_m * 0.5 * ppm + 0.5) as integer;
-    dho_ry_px = (dho_ry_m * ppm + 0.5) as integer;
+    // Same corner ring as `draw_hex`, from the same source — an
+    // outline that disagreed with the fill would be a hairline of
+    // the wrong colour along every hovered hex.
+    dho_prev = lat_corner_offset(5);
+    dho_px = dho_cx + round(dho_prev.0 * ppm) as integer;
+    dho_py = dho_cy + round(dho_prev.1 * ppm) as integer;
 
-    dho_v0x = dho_cx + dho_rx_px; dho_v0y = dho_cy;
-    dho_v1x = dho_cx + dho_hx_px; dho_v1y = dho_cy + dho_ry_px;
-    dho_v2x = dho_cx - dho_hx_px; dho_v2y = dho_cy + dho_ry_px;
-    dho_v3x = dho_cx - dho_rx_px; dho_v3y = dho_cy;
-    dho_v4x = dho_cx - dho_hx_px; dho_v4y = dho_cy - dho_ry_px;
-    dho_v5x = dho_cx + dho_hx_px; dho_v5y = dho_cy - dho_ry_px;
-
-    cv.draw_line(dho_v0x, dho_v0y, dho_v1x, dho_v1y, color);
-    cv.draw_line(dho_v1x, dho_v1y, dho_v2x, dho_v2y, color);
-    cv.draw_line(dho_v2x, dho_v2y, dho_v3x, dho_v3y, color);
-    cv.draw_line(dho_v3x, dho_v3y, dho_v4x, dho_v4y, color);
-    cv.draw_line(dho_v4x, dho_v4y, dho_v5x, dho_v5y, color);
-    cv.draw_line(dho_v5x, dho_v5y, dho_v0x, dho_v0y, color);
+    for dho_i in 0..6 {
+        dho_cur = lat_corner_offset(dho_i);
+        dho_qx = dho_cx + round(dho_cur.0 * ppm) as integer;
+        dho_qy = dho_cy + round(dho_cur.1 * ppm) as integer;
+        cv.draw_line(dho_px, dho_py, dho_qx, dho_qy, color);
+        dho_px = dho_qx;
+        dho_py = dho_qy;
+    }
 }
 
 // Render the world + a hover-highlight outline on the supplied

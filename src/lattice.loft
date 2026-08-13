@@ -196,6 +196,18 @@ pub fn lat_corner_metres(h: const Hex, i: integer) -> (float, float) {
     (lcm_p.0 * LAT_METRES_PER_UNIT, -lcm_p.1 * LAT_METRES_PER_UNIT)
 }
 
+// The offset from ANY hex's centre to its corner `i`, in metres.
+//
+// Constant, because the shape does not depend on where the hex is —
+// which is what lets the renderer compute six pixel offsets once per
+// draw instead of six absolute positions per hex.  `draw_hex` reads
+// this rather than carrying its own vertex table, so the hexagon on
+// screen is the lattice's hexagon by construction.
+pub fn lat_corner_offset(i: integer) -> (float, float) {
+    lco_p = hex_grid::hex_corner_offset(i);
+    (lco_p.0 * LAT_METRES_PER_UNIT, -lco_p.1 * LAT_METRES_PER_UNIT)
+}
+
 // ─── Lines and discs ────────────────────────────────────────────
 
 // Every hex on the line from `a` to `b`, endpoints included.

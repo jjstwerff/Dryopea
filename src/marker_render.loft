@@ -11,6 +11,7 @@
 
 use graphics;
 use world;
+use lattice;
 use camera;
 use markers;
 
@@ -67,8 +68,8 @@ pub fn draw_marker_arrow(
     // loft's parser doesn't accept `(tuple.N as float)` on a
     // tuple local, so casting `world_to_canvas`'s integer return
     // is awkward.  Math is identical.
-    dma_camw  = hex_to_world(cam.pos);
-    dma_world = hex_to_world(Hex { q: q, r: r });
+    dma_camw  = lat_to_metres(cam.pos);
+    dma_world = lat_to_metres(Hex { q: q, r: r });
     dma_dx_m  = dma_world.0 - dma_camw.0;
     dma_dy_m  = dma_world.1 - dma_camw.1;
     dma_cx    = (cw as float) * 0.5 + dma_dx_m * ppm + 0.5;
@@ -125,8 +126,8 @@ pub fn draw_target_marker(
     // Same inline world→canvas math as draw_marker_arrow —
     // keeps floats end-to-end so the (tuple.N as float) parser
     // bug doesn't bite.
-    dtm_camw  = hex_to_world(cam.pos);
-    dtm_world = hex_to_world(Hex { q: q, r: r });
+    dtm_camw  = lat_to_metres(cam.pos);
+    dtm_world = lat_to_metres(Hex { q: q, r: r });
     dtm_dx_m  = dtm_world.0 - dtm_camw.0;
     dtm_dy_m  = dtm_world.1 - dtm_camw.1;
     dtm_cx_f  = (cw as float) * 0.5 + dtm_dx_m * ppm + 0.5;

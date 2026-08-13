@@ -216,9 +216,13 @@ fn twin_state() -> EditorState {
     tw_east.in_pan_east = true;
     editor_step(tw_s, tw_east);
     editor_step(tw_s, tw_east);
-    tw_north = editor_input_empty();
-    tw_north.in_pan_north = true;
-    editor_step(tw_s, tw_north);
+    // `at 2 -1 3` targets row -1, and since plan 09 C3 north is
+    // LARGER r — so reaching it is a pan SOUTH.  The twin states the
+    // route, the script states the destination; this is the one line
+    // where that difference shows.
+    tw_south = editor_input_empty();
+    tw_south.in_pan_south = true;
+    editor_step(tw_s, tw_south);
     tw_out = editor_input_empty();
     tw_out.in_zoom_out = true;
     editor_step(tw_s, tw_out);
@@ -343,7 +347,7 @@ fn test_hold_repeats_a_level_action() {
     thr_run = script_run(thr_s, "hold pan_south 4");
 
     assert(thr_run.ok, "{script_describe(thr_run)}");
-    assert(thr_s.cam.pos.r == 4, "four held frames, four hexes");
+    assert(thr_s.cam.pos.r == -4, "four held frames, four hexes SOUTH");
 }
 
 // `do` is a TAP: it releases, so the next `do` is a fresh edge.

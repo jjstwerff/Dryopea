@@ -262,7 +262,7 @@ fn test_pan_walks_the_camera() {
     tpw_s = editor_state_new(PALETTE);
 
     editor_step(tpw_s, pan_frame(true, false, false, false));
-    assert(tpw_s.cam.pos.r == -1, "north is -r");
+    assert(tpw_s.cam.pos.r == 1, "north is +r (plan 09 C3 — hex_grid's compass)");
 
     editor_step(tpw_s, pan_frame(false, false, true, false));
     assert(tpw_s.cam.pos.q == 1, "east is +q");
@@ -279,7 +279,7 @@ fn test_held_pan_keeps_walking() {
         editor_step(thp2_s, pan_frame(false, true, false, false));
     }
 
-    assert(thp2_s.cam.pos.r == 5, "five steps of held pan is five hexes");
+    assert(thp2_s.cam.pos.r == -5, "five steps of held pan SOUTH is five hexes");
 }
 
 fn test_zoom_clamps_at_both_ends() {
@@ -319,7 +319,7 @@ fn test_held_recentre_does_not_pin_the_camera() {
     editor_step(thr_s, thr_both);   // recentre fires, then the pan
     editor_step(thr_s, thr_both);   // H still held: only the pan now
 
-    assert(thr_s.cam.pos.r == 2, "the camera keeps panning under a held H");
+    assert(thr_s.cam.pos.r == -2, "the camera keeps panning under a held H");
 }
 
 // Recentre is a view action: it must not touch what was painted.
