@@ -1,0 +1,246 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 09 phase C5a — the `.keys` converter, with no consumer
+// switched.
+//
+// C5 grew into the `H` phase this plan forbids, so it was re-cut:
+// **C5a** builds the converter and proves it on the real files while
+// nothing in `src/` changes behaviour; **C5b** runs it and flips the
+// label-space code in one commit; **C5c** rebaselines the goldens.
+// So both gates stay green through this file by construction — if
+// `scripts/validate.sh` moves at C5a, something was wired in that
+// should not have been.
+//
+// ── What actually needs proving here ────────────────────────────
+//
+// The converter's schema is dryopea's THIRD table, and the one with
+// no exhaustive sweep behind it: nothing about a number marks it as
+// a coordinate.  `count painted 19 19` and `click 19 19` are the
+// same four tokens.
+//
+// ⚠ So the load-bearing tests below are the NEGATIVE ones — the
+// commands that must come back untouched.  A converter that missed a
+// coordinate leaves a script in the old lattice and C5b's
+// measurements catch it; a converter that converted a BAND rewrites
+// the assertion into a different one that still passes, and nothing
+// downstream can see that at all.
+
+#cwd
+
+use dryopea;
+
+const SCRIPTS: text = "tests/scripts";
+
+// ─── The round trip ─────────────────────────────────────────────
+
+// Every real script, there and back.  This is "C2's check applied to
+// real data" in its most direct form: the converter is a bijection
+// on the actual files, not just on a swept window.
+fn test_every_real_script_round_trips() {
+    tes_n = 0;
+    for tes_f in validate_script_names(SCRIPTS) {
+        tes_path = "{SCRIPTS}/{tes_f}.keys";
+        tes_src  = file(tes_path).content() ?? "";
+        assert(tes_src != "", "{tes_f} is readable");
+
+        tes_fwd = convert_keys_source(tes_src, true);
+        assert(tes_fwd.1 == 0, "{tes_f}: line {tes_fwd.1} was not understood");
+
+        tes_back = convert_keys_source(tes_fwd.0, false);
+        assert(tes_back.1 == 0, "{tes_f}: reverse hit line {tes_back.1}");
+        assert(tes_back.0 == tes_src,
+               "{tes_f} does not survive there and back");
+        tes_n += 1;
+    }
+    assert(tes_n == 14, "all fourteen scripts were converted, got {tes_n}");
+}
+
+// A conversion that changed nothing would round-trip perfectly too.
+// This is the control that says the converter DOES something.
+fn test_the_conversion_actually_changes_the_scripts() {
+    tca_changed = 0;
+    for tca_f in validate_script_names(SCRIPTS) {
+        tca_src = file("{SCRIPTS}/{tca_f}.keys").content() ?? "";
+        tca_fwd = convert_keys_source(tca_src, true);
+        if tca_fwd.0 != tca_src { tca_changed += 1; }
+    }
+    assert(tca_changed >= 12,
+           "at least twelve of the fourteen scripts carry coordinates — {tca_changed} changed");
+}
+
+// ─── ⚠ What must NOT be touched ─────────────────────────────────
+//
+// The dangerous half.  Each of these carries integers that are not
+// positions, and converting one rewrites an assertion into a
+// different assertion that still passes.
+
+fn unchanged(line: text) {
+    u_r = convert_keys_line(line, true);
+    assert(u_r.1, "'{line}' was understood");
+    assert(u_r.0 == line, "'{line}' must pass through untouched, got '{u_r.0}'");
+}
+
+fn test_measurement_bands_are_never_coordinates() {
+    unchanged("count painted 19 19");
+    unchanged("count markers 2 2");
+    unchanged("count alive 6 6");
+    unchanged("count targets 4 6");
+    unchanged("range 8 12");
+    unchanged("frame wall 12 18");
+}
+
+fn test_counts_and_indices_are_never_coordinates() {
+    unchanged("palette 9");
+    unchanged("wave 6");
+    unchanged("wave 6 insect");
+    unchanged("tick 5");
+    unchanged("step 2");
+    unchanged("hold pan_east 3");
+    unchanged("do toggle_mode");
+    unchanged("enemies distinct");
+    unchanged("enemies passable");
+}
+
+fn test_prose_is_never_touched() {
+    unchanged("# a comment with numbers 3 -2 in it");
+    unchanged("");
+    unchanged("echo wave-closes: 4 hexes from the core at 12 0");
+    unchanged("snap wave-starts");
+}
+
+// ─── What must be touched ───────────────────────────────────────
+
+fn converts(line: text, want: text) {
+    c_r = convert_keys_line(line, true);
+    assert(c_r.1, "'{line}' was understood");
+    assert(c_r.0 == want, "'{line}' → '{c_r.0}', want '{want}'");
+}
+
+// Worked by hand from `relabel_hex`: offset col = q + (r - (r&1))/2.
+fn test_every_coordinate_command_converts() {
+    // (2, -2) → col = 2 + (-2 - 0)/2 = 1
+    converts("click 2 -2",   "click 1 -2");
+    converts("hover 2 -2",   "hover 1 -2");
+    // `at`'s third argument is a ZOOM, not part of the pair.
+    converts("at 2 -2 3",    "at 1 -2 3");
+    // both pairs of a drag
+    converts("drag 2 -2 0 2", "drag 1 -2 1 2");
+    // `raise`'s third argument is METRES.
+    converts("raise 2 -2 3",  "raise 1 -2 3");
+    // `kind`'s third is a NAME.
+    converts("kind 2 -2 wall", "kind 1 -2 wall");
+    // `enemy` / `target` lead with an INDEX, so the pair starts at 2.
+    converts("enemy 0 2 -2",  "enemy 0 1 -2");
+    converts("target 3 2 -2", "target 3 1 -2");
+}
+
+// The marker command carries a coordinate AND a direction, and the
+// direction has its own permutation (C2: new = (old + 5) % 6).
+fn test_a_marker_converts_its_direction_too() {
+    converts("marker 2 -2 spawn 4", "marker 1 -2 spawn 3");
+    converts("marker 12 0 spawn 0", "marker 12 0 spawn 5");
+    // A target marker has no direction to convert.
+    converts("marker 2 -2 target", "marker 1 -2 target");
+}
+
+// ⚠ An odd row is where the parity term bites, so a coordinate on
+// one must move by the extra half-column.
+fn test_odd_rows_move_and_even_rows_may_not() {
+    // r = 0 (even): col = q + 0, unchanged.
+    converts("click 5 0", "click 5 0");
+    // r = 1 (odd): col = q + (1 - 1)/2 = q, also unchanged…
+    converts("click 5 1", "click 5 1");
+    // …but r = 3 (odd): col = 5 + (3 - 1)/2 = 6.
+    converts("click 5 3", "click 6 3");
+    // and r = 2 (even): col = 5 + 2/2 = 6.
+    converts("click 5 2", "click 6 2");
+}
+
+// ─── The converter refuses rather than skips ────────────────────
+
+// A coordinate command whose arguments do not parse must FAIL.
+// Passing it through unconverted is how half a file ends up in the
+// old lattice with nothing to show for it.
+fn test_a_malformed_coordinate_is_a_failure() {
+    tmc_r = convert_keys_line("click here now", true);
+    assert(!tmc_r.1, "a click with non-numeric arguments is not understood");
+
+    tms = convert_keys_source("click 0 0\nclick oops 1\nclick 2 2", true);
+    assert(tms.1 == 2, "and the source reports line 2, got {tms.1}");
+}
+
+// ─── Adjacency on the real files ────────────────────────────────
+
+// The plan's own C5 Verify: C2's adjacency check applied to every
+// real script.  Every coordinate the fourteen scripts mention, taken
+// as a set, must keep its pairwise distances through the conversion.
+fn test_real_script_coordinates_keep_their_distances() {
+    trs_old: vector<Hex> = [];
+    for trs_f in validate_script_names(SCRIPTS) {
+        trs_src = file("{SCRIPTS}/{trs_f}.keys").content() ?? "";
+        for trs_line in trs_src.split('\n') {
+            trs_t = trs_line.trim();
+            if trs_t == "" || trs_t.starts_with_at(0, "#") { continue; }
+            trs_tok: vector<text> = [];
+            for trs_p in trs_t.split(' ') {
+                if trs_p != "" { trs_tok += [trs_p]; }
+            }
+            // Only `click`, the commonest coordinate command, so the
+            // set stays a sane size while still coming off real files.
+            if (trs_tok[0] ?? "") != "click" { continue; }
+            trs_q = (trs_tok[1] ?? "") as integer?;
+            trs_r = (trs_tok[2] ?? "") as integer?;
+            if trs_q == null || trs_r == null { continue; }
+            trs_old += [Hex { q: trs_q ?? 0, r: trs_r ?? 0 }];
+        }
+    }
+
+    assert(len(trs_old) >= 20, "the scripts click at least twenty hexes, got {len(trs_old)}");
+
+    for trs_a in trs_old {
+        for trs_b in trs_old {
+            trs_A = relabel_hex(trs_a);
+            trs_B = relabel_hex(trs_b);
+            assert(lat_distance(trs_A, trs_B) == world::hex_distance(trs_a, trs_b),
+                   "({trs_a.q},{trs_a.r})→({trs_b.q},{trs_b.r}) changed distance");
+        }
+    }
+}
+
+// ─── The schema is complete ─────────────────────────────────────
+
+// Every command in the vocabulary is either on the schema table or
+// deliberately not.  Written out so that adding a coordinate command
+// to `script.loft` without adding it here fails HERE rather than by
+// leaving a script half-converted.
+fn test_the_schema_covers_the_vocabulary() {
+    tsc_coords: vector<text> = [
+        "at", "hover", "click", "drag", "raise", "kind", "marker",
+        "target", "enemy",
+    ];
+    tsc_plain: vector<text> = [
+        "echo", "do", "hold", "step", "palette", "snap", "wave",
+        "tick", "count", "range", "enemies", "frame",
+    ];
+
+    tsc_n = 0;
+    for tsc_s in keys_schemas() { tsc_n += 1; }
+    assert(tsc_n == len(tsc_coords),
+           "{len(tsc_coords)} coordinate commands, {tsc_n} schema rows");
+
+    for tsc_c in tsc_coords {
+        tsc_found = false;
+        for tsc_row in keys_schemas() {
+            if tsc_row.ks_cmd == tsc_c { tsc_found = true; }
+        }
+        assert(tsc_found, "'{tsc_c}' carries a coordinate and needs a schema row");
+    }
+
+    for tsc_p in tsc_plain {
+        for tsc_row2 in keys_schemas() {
+            assert(tsc_row2.ks_cmd != tsc_p,
+                   "'{tsc_p}' carries no coordinate and must NOT have a schema row");
+        }
+    }
+}

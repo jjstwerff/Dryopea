@@ -1,0 +1,179 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The `.keys` converter — plan 09 phase C5a.
+//
+// Rewrites a scripted run's coordinates from axial flat-top labels
+// to pointy-top odd-r offset ones, and its marker directions with
+// them.  Nothing calls it from the game; it exists so C5b can
+// convert the fourteen scenario scripts **by the converter, never by
+// hand** — fourteen files of coordinate pairs edited by eye is not a
+// reviewable change, and a single transposed pair would move a
+// measurement that the reviewer would then "fix".
+//
+// ── ⚠ This is a third table, and it is the risky one ────────────
+//
+// `bindings.loft` is the key table and `relabel.loft` is the label
+// bijection; both are gated by exhaustive sweeps.  This one says
+// WHICH ARGUMENTS of a `.keys` command are coordinates, and nothing
+// about a coordinate marks it as one — `count painted 19 19` and
+// `click 19 19` are the same four tokens with different meanings.
+//
+// So a wrong row here silently converts a band into nonsense, or
+// leaves a coordinate axial, and the script still runs.  Two things
+// guard it:
+//
+//   1. `tests/09_c5a_converter.loft` pins the schema against the
+//      vocabulary, INCLUDING the commands that must not be touched.
+//   2. C5b's real gate: a converted script must still produce the
+//      same measurements.  `relabel_hex` preserves distance (C2), so
+//      `count painted 19 19` and every `range` band are invariant
+//      under a correct conversion — if one moves, the conversion was
+//      wrong.  That check needs no pictures and cannot be fudged.
+//
+// ── What it deliberately does not touch ─────────────────────────
+//
+// Comments, blank lines and `echo` text pass through byte-for-byte.
+// A converter that reflowed the prose would bury the coordinate
+// changes in its own diff, which is the same problem as converting
+// by hand.
+
+use world;
+use lattice;
+use relabel;
+
+// One command's coordinate layout.
+//
+// `ks_pair_a` / `ks_pair_b` are the token indices of each `(q, r)`
+// pair's `q` (its `r` is the next token); -1 for absent.  `ks_dir`
+// is the token index of a marker direction, or -1.
+//
+// Token 0 is the command word itself, so indices start at 1.
+pub struct KeysSchema {
+    ks_cmd:    text,
+    ks_pair_a: integer,
+    ks_pair_b: integer,
+    ks_dir:    integer,
+}
+
+fn ks(cmd: text, a: integer, b: integer, dir: integer) -> KeysSchema {
+    KeysSchema { ks_cmd: cmd, ks_pair_a: a, ks_pair_b: b, ks_dir: dir }
+}
+
+// THE table.  Every `.keys` command that carries a hex coordinate is
+// on this list; every command NOT on it is passed through untouched.
+//
+// ⚠ The pass-through set is the dangerous half, and it is the larger
+// one: `count painted <lo> <hi>`, `range <lo> <hi>`, `frame <bucket>
+// <lo> <hi>`, `palette <n>`, `wave <n>`, `tick <n>`, `step <n>`,
+// `hold <action> <n>` all carry integers that are NOT positions.
+// Converting one of those turns an assertion into a different
+// assertion that still passes.
+pub fn keys_schemas() -> vector<KeysSchema> {
+    kss: vector<KeysSchema> = [];
+    kss += [ks("at",     1, -1, -1)];   // at <q> <r> [zoom]
+    kss += [ks("hover",  1, -1, -1)];   // hover <q> <r>
+    kss += [ks("click",  1, -1, -1)];   // click <q> <r>
+    kss += [ks("drag",   1,  3, -1)];   // drag <q1> <r1> <q2> <r2>
+    kss += [ks("raise",  1, -1, -1)];   // raise <q> <r> <metres>
+    kss += [ks("kind",   1, -1, -1)];   // kind <q> <r> <name>
+    kss += [ks("marker", 1, -1,  4)];   // marker <q> <r> <kind> [dir]
+    kss += [ks("target", 2, -1, -1)];   // target <i> <q> <r>
+    kss += [ks("enemy",  2, -1, -1)];   // enemy <i> <q> <r>
+    kss
+}
+
+// The schema for a command word, or null when the command carries no
+// coordinates.
+fn schema_for(name: text) -> KeysSchema? {
+    for sf_s in keys_schemas() {
+        if sf_s.ks_cmd == name { return sf_s; }
+    }
+    null
+}
+
+// Rewrite one pair of tokens in place.
+fn put_pair(tok: vector<text>, at: integer, forward: boolean) -> boolean {
+    if at < 0 || at + 1 >= len(tok) { return true; }   // absent is fine
+    pp_q = (tok[at]     ?? "") as integer?;
+    pp_r = (tok[at + 1] ?? "") as integer?;
+    if pp_q == null || pp_r == null { return false; }
+    pp_in = Hex { q: pp_q ?? 0, r: pp_r ?? 0 };
+    pp_out = if forward { relabel_hex(pp_in) } else { relabel_hex_back(pp_in) };
+    tok[at]     = "{pp_out.q}";
+    tok[at + 1] = "{pp_out.r}";
+    true
+}
+
+fn put_dir(tok: vector<text>, at: integer, forward: boolean) -> boolean {
+    if at < 0 || at >= len(tok) { return true; }   // optional
+    pd_d = (tok[at] ?? "") as integer?;
+    if pd_d == null { return false; }
+    pd_v = pd_d ?? 0;
+    tok[at] = if forward {
+        "{relabel_direction(pd_v)}"
+    } else {
+        "{relabel_direction_back(pd_v)}"
+    };
+    true
+}
+
+// Convert ONE line.  A comment, a blank line, or a command with no
+// coordinates comes back byte-for-byte.
+//
+// `forward` = axial → offset; false is the inverse, which is what
+// makes the round-trip gate possible.
+//
+// Returns the line and whether it was understood: a coordinate
+// command whose arguments do not parse is a FAILURE, not a
+// pass-through, because silently leaving a malformed line
+// unconverted is how half a file ends up in the old lattice.
+pub fn convert_keys_line(line: text, forward: boolean) -> (text, boolean) {
+    ckl_t = line.trim();
+    if ckl_t == "" { return (line, true); }
+    if ckl_t.starts_with_at(0, "#") { return (line, true); }
+
+    ckl_tok: vector<text> = [];
+    for ckl_p in ckl_t.split(' ') {
+        if ckl_p != "" { ckl_tok += [ckl_p]; }
+    }
+    if len(ckl_tok) == 0 { return (line, true); }
+
+    ckl_s = schema_for(ckl_tok[0] ?? "");
+    if ckl_s == null { return (line, true); }
+
+    ckl_ok = put_pair(ckl_tok, ckl_s.ks_pair_a, forward);
+    if !put_pair(ckl_tok, ckl_s.ks_pair_b, forward) { ckl_ok = false; }
+    if !put_dir(ckl_tok, ckl_s.ks_dir, forward)     { ckl_ok = false; }
+    if !ckl_ok { return (line, false); }
+
+    ckl_out = "";
+    for ckl_i in 0..len(ckl_tok) {
+        if ckl_i > 0 { ckl_out = "{ckl_out} "; }
+        ckl_out = "{ckl_out}{ckl_tok[ckl_i] ?? \"\"}";
+    }
+    (ckl_out, true)
+}
+
+// Convert a whole script.  Returns the text and the 1-based number
+// of the first line that could not be understood (0 when all did) —
+// a converter that skipped a line quietly would be worse than one
+// that refused.
+pub fn convert_keys_source(src: text, forward: boolean) -> (text, integer) {
+    cks_out  = "";
+    cks_no   = 0;
+    cks_bad  = 0;
+    cks_first = true;
+    for cks_line in src.split('\n') {
+        cks_no += 1;
+        cks_r = convert_keys_line(cks_line, forward);
+        if !cks_r.1 && cks_bad == 0 { cks_bad = cks_no; }
+        if cks_first {
+            cks_out = cks_r.0;
+            cks_first = false;
+        } else {
+            cks_out = "{cks_out}\n{cks_r.0}";
+        }
+    }
+    (cks_out, cks_bad)
+}
