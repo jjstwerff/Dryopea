@@ -184,13 +184,14 @@ pub fn load_marker_file(path: text) -> MarkerFile {
 pub fn markerfile_to_world(mf: MarkerFile) -> MarkerWorld {
     mftw_out = marker_empty();
     for mftw_e in mf.markers {
-        // The kind constants are integers, so the u8 field is
-        // widened at the comparison rather than in the record.
-        if mftw_e.kind as integer == MARKER_KIND_SPAWN {
-            place_spawn(mftw_out, mftw_e.q, mftw_e.r, mftw_e.direction);
-        } else if mftw_e.kind as integer == MARKER_KIND_TARGET {
-            place_target(mftw_out, mftw_e.q, mftw_e.r);
-        }
+        // ⚠ ONE dispatch, in `markers.loft::place_marker`.  This used
+        // to test for TARGET and fall through to spawn, so a kind it
+        // had not learned about arrived as a spawn marker with a
+        // heading — a wave from wherever a later version had put a
+        // tower.  Unrecognised kinds are skipped instead, which is
+        // the forward-compat policy `mapfile_to_painted` follows.
+        place_marker(mftw_out, mftw_e.q, mftw_e.r,
+                     mftw_e.kind as integer, mftw_e.direction);
     }
     mftw_out
 }

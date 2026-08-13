@@ -175,7 +175,12 @@ fn test_rotate_ignored_outside_spawn_placement() {
 
 // ─── Group 1 — place-kind cycle ─────────────────────────────────
 
-fn test_cycle_kind_alternates() {
+// ⚠ **A CYCLE, not a toggle, since plan 12 B5a added towers.**  Two
+// presses used to return to spawn and now land on `tower`, which is
+// what every `.keys` scenario that cycled back had to learn.  It is
+// asserted over `MARKER_KIND_COUNT` rather than over three literals,
+// so a fourth kind moves this test by one line and not by three.
+fn test_cycle_kind_walks_every_kind_and_wraps() {
     tck_s = marker_mode_state();
     assert(tck_s.place_kind == MARKER_KIND_SPAWN, "spawns by default");
 
@@ -183,7 +188,16 @@ fn test_cycle_kind_alternates() {
     assert(tck_s.place_kind == MARKER_KIND_TARGET, "K → target");
 
     press(tck_s, cycle_kind_frame());
-    assert(tck_s.place_kind == MARKER_KIND_SPAWN, "K again → back to spawn");
+    assert(tck_s.place_kind == MARKER_KIND_TOWER, "K again → tower");
+
+    press(tck_s, cycle_kind_frame());
+    assert(tck_s.place_kind == MARKER_KIND_SPAWN, "and a third wraps to spawn");
+
+    // Every kind is reachable from every other, which is the property
+    // a cycle has and a toggle does not.
+    for _ in 0..MARKER_KIND_COUNT { press(tck_s, cycle_kind_frame()); }
+    assert(tck_s.place_kind == MARKER_KIND_SPAWN,
+           "a full lap is the identity: {marker_kind_name(tck_s.place_kind)}");
 }
 
 fn test_holding_cycle_kind_fires_once() {

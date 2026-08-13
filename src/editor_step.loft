@@ -221,7 +221,7 @@ pub struct EditorState {
     picker:          Picker,
     mode:            integer,   // MODE_GROUND | MODE_MARKER
     place_direction: u8,        // rotation for the NEXT spawn placement, 0..5
-    place_kind:      integer,   // MARKER_KIND_SPAWN | MARKER_KIND_TARGET
+    place_kind:      integer,   // MARKER_KIND_SPAWN | _TARGET | _TOWER
 
     // ── Undo / redo ──
     history: History,
@@ -355,12 +355,19 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
     }
 
     // ── Place-kind cycle ────────────────────────────────────────
+    //
+    // ⚠ **A CYCLE over `MARKER_KIND_COUNT`, not a toggle.**  It was a
+    // two-way flip until plan 12 B5a added towers, and the flip is
+    // what a fourth kind would have had to remember to extend.  Now a
+    // kind joins by appending a constant and bumping the count.
+    //
+    // ⚠ The consequence for a `.keys` script is real and was paid for
+    // once: two presses used to return to spawn and now land on
+    // `tower`, so every scenario that cycled back needed a third.
+    // That is what a player does too, which is the point of the
+    // scripts going through the same seam.
     if input.in_cycle_kind && !s.prev.in_cycle_kind && s.mode == MODE_MARKER {
-        if s.place_kind == MARKER_KIND_SPAWN {
-            s.place_kind = MARKER_KIND_TARGET;
-        } else {
-            s.place_kind = MARKER_KIND_SPAWN;
-        }
+        s.place_kind = ((s.place_kind + 1) % MARKER_KIND_COUNT) ?? MARKER_KIND_SPAWN;
         s.render_needed = true;
     }
 
@@ -517,11 +524,13 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
     if input.in_mouse_left && !s.prev.in_mouse_left && s.mode == MODE_MARKER {
         if has_marker(s.mw, es_hover.q, es_hover.r) {
             remove_marker_and_record(s.mw, es_hover.q, es_hover.r, s.history);
-        } else if s.place_kind == MARKER_KIND_TARGET {
-            place_target_and_record(s.mw, es_hover.q, es_hover.r, s.history);
         } else {
-            place_spawn_and_record(s.mw, es_hover.q, es_hover.r,
-                                   s.place_direction, s.history);
+            // ⚠ ONE dispatch again — the kind decides, here and in
+            // `markers.loft::place_marker`, and nowhere in between.
+            // The direction is only meaningful for a spawn and the
+            // other kinds store 0, which `place_marker` handles.
+            place_marker_and_record(s.mw, es_hover.q, es_hover.r,
+                                    s.place_kind, s.place_direction, s.history);
         }
         s.dirty = true;
         chunks_mark_dirty(s.cf, es_hover.q, es_hover.r);   // marker layer changed → re-render

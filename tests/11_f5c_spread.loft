@@ -104,7 +104,7 @@ fn nth(s: const WaveState, i: integer) -> Enemy {
 fn play(s: WaveState, pw: PaintedWorld, ticks: integer) {
     p_pal = load_palette(PALETTE);
     for _ in 0..ticks {
-        wave_tick(s, p_pal, pw, core());
+        wave_tick(s, p_pal, pw, marker_empty(), core());
     }
 }
 
@@ -239,7 +239,7 @@ fn test_no_two_share_a_hex_on_any_tick_of_a_whole_wave() {
     // Past the spawn stack, then every tick to the end of the run.
     play(tnt_s, tnt_pw, 4);
     for tnt_t in 0..30 {
-        wave_tick(tnt_s, tnt_pal, tnt_pw, core());
+        wave_tick(tnt_s, tnt_pal, tnt_pw, marker_empty(), core());
         tnt_bad = occupancy_stacked(wave_occupancy(tnt_s));
         assert(tnt_bad.n == 0,
                "tick {tnt_t}: {tnt_bad.n} enemies on ({tnt_bad.q}, {tnt_bad.r})");
@@ -338,7 +338,7 @@ fn test_a_blocked_enemy_never_moves_away_from_the_core() {
     }
 
     for _ in 0..20 {
-        wave_tick(tbe_s, tbe_pal, tbe_pw, core());
+        wave_tick(tbe_s, tbe_pal, tbe_pw, marker_empty(), core());
         tbe_i = 0;
         for tbe_o in tbe_s.enemies {
             tbe_now = flow_distance(tbe_f, tbe_o.q, tbe_o.r);
@@ -458,7 +458,7 @@ fn test_a_column_advances_in_lockstep() {
     tal_pal = load_palette(PALETTE);
 
     for tal_t in 1..=6 {
-        wave_tick(tal_s, tal_pal, tal_pw, core());
+        wave_tick(tal_s, tal_pal, tal_pw, marker_empty(), core());
         for tal_i in 0..3 {
             tal_e = nth(tal_s, tal_i);
             assert(tal_e.q == 10 + tal_i - tal_t,
@@ -544,6 +544,8 @@ const SPREAD_WORLD: text = `
     do toggle_mode
     do cycle_kind
     click 0 0
+    # ⚠ TWICE: spawn -> target -> tower -> spawn since plan 12 B5a.
+    do cycle_kind
     do cycle_kind
     do rotate
     do rotate

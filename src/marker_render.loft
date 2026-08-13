@@ -38,6 +38,15 @@ pub const TARGET_GHOST_COLOR: integer = 0x801818;   // dimmer red for hover
 pub const TARGET_OUTER_R_M:   float = 0.40;          // outer radius in hex-relative units
 pub const TARGET_INNER_R_M:   float = 0.18;          // inner radius
 
+// Tower marker (plan 12 B5a) — a cyan ring with a hollow centre, so
+// it reads as a machine rather than as the target's solid bullseye or
+// the spawn's arrow at a glance, and reads differently again in
+// greyscale (a ring, not a disc).  A tower has no facing, so there is
+// nothing to orient.
+pub const TOWER_COLOR:       integer = 0x30d0d0;
+pub const TOWER_GHOST_COLOR: integer = 0x188080;   // dimmer for hover
+pub const TOWER_R_M:         float   = 0.34;
+
 // Unit forward vector in world metres for a hex direction d ∈ 0..5.
 //
 // ⚠ Comes from the LATTICE (plan 09 C4), not from an angle table.
@@ -156,6 +165,58 @@ pub fn draw_target_marker(
     }
 }
 
+// Draw a tower at the (q, r) hex centre — a ring, filled as a thick
+// band and outlined as a single circle for the hover ghost.
+pub fn draw_tower_marker(
+    cv:     Canvas,
+    cam:    EditorCamera,
+    q:      integer,
+    r:      integer,
+    cw:     integer,
+    ch:     integer,
+    ppm:    float,
+    filled: boolean,
+) {
+    // The same inline world→canvas maths the other two markers use —
+    // floats end to end, so the `(tuple.N as float)` parser bug does
+    // not bite.
+    dtw_camw  = lat_to_metres(cam.pos);
+    dtw_world = lat_to_metres(Hex { q: q, r: r });
+    dtw_cx    = ((cw as float) * 0.5 + (dtw_world.0 - dtw_camw.0) * ppm + 0.5) as integer;
+    dtw_cy    = ((ch as float) * 0.5 + (dtw_world.1 - dtw_camw.1) * ppm + 0.5) as integer;
+
+    dtw_outer = (TOWER_R_M * ppm) as integer;
+    if dtw_outer < 3 { dtw_outer = 3; }
+    dtw_inner = (dtw_outer * 2) / 3;
+    if dtw_inner < 1 { dtw_inner = 1; }
+
+    if filled {
+        // A band rather than a disc: fill out, then punch the middle
+        // back to the hex under it would need the ground colour, so
+        // the inner circle is drawn as an outline instead and the
+        // silhouette stays a ring.
+        cv.draw_circle(dtw_cx, dtw_cy, dtw_outer, TOWER_COLOR);
+        cv.draw_circle(dtw_cx, dtw_cy, dtw_outer - 1, TOWER_COLOR);
+        cv.draw_circle(dtw_cx, dtw_cy, dtw_inner, TOWER_COLOR);
+    } else {
+        cv.draw_circle(dtw_cx, dtw_cy, dtw_outer, TOWER_GHOST_COLOR);
+        cv.draw_circle(dtw_cx, dtw_cy, dtw_inner, TOWER_GHOST_COLOR);
+    }
+}
+
+// Hover preview for a tower — outline only, at the hovered hex.
+pub fn render_ghost_tower(
+    cv:  Canvas,
+    cam: EditorCamera,
+    q:   integer,
+    r:   integer,
+    cw:  integer,
+    ch:  integer,
+    ppm: float,
+) {
+    draw_tower_marker(cv, cam, q, r, cw, ch, ppm, false);
+}
+
 // Iterate the marker world and draw each placed marker per its
 // kind: spawn → hot-pink arrow oriented per direction, target →
 // red/white bullseye.  Sparse — most hexes have nothing.
@@ -177,6 +238,10 @@ pub fn render_markers(
             draw_target_marker(cv, cam,
                                rm_e.q, rm_e.r,
                                cw, ch, ppm, true);
+        } else if rm_e.kind == MARKER_KIND_TOWER as u8 {
+            draw_tower_marker(cv, cam,
+                              rm_e.q, rm_e.r,
+                              cw, ch, ppm, true);
         }
     }
 }

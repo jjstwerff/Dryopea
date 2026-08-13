@@ -156,11 +156,12 @@ pub fn history_undo(h: History, pw: PaintedWorld, mw: MarkerWorld) -> boolean {
     }
     for hu_md in hu_entry.markers {
         if hu_md.old_present {
-            if hu_md.old_kind == MARKER_KIND_TARGET {
-                place_target(mw, hu_md.q, hu_md.r);
-            } else {
-                place_spawn(mw, hu_md.q, hu_md.r, hu_md.old_direction as u8? ?? 0);
-            }
+            // ⚠ ONE dispatch (`markers.loft::place_marker`).  The
+            // if/else this replaced restored every kind it did not
+            // recognise as a SPAWN, so undoing over a tower would
+            // have put a wave source where the player had a gun.
+            place_marker(mw, hu_md.q, hu_md.r, hu_md.old_kind,
+                         hu_md.old_direction as u8? ?? 0);
         } else {
             remove_marker(mw, hu_md.q, hu_md.r);
         }
@@ -181,11 +182,8 @@ pub fn history_redo(h: History, pw: PaintedWorld, mw: MarkerWorld) -> boolean {
     }
     for hr_md in hr_entry.markers {
         if hr_md.new_present {
-            if hr_md.new_kind == MARKER_KIND_TARGET {
-                place_target(mw, hr_md.q, hr_md.r);
-            } else {
-                place_spawn(mw, hr_md.q, hr_md.r, hr_md.new_direction as u8? ?? 0);
-            }
+            place_marker(mw, hr_md.q, hr_md.r, hr_md.new_kind,
+                         hr_md.new_direction as u8? ?? 0);
         } else {
             remove_marker(mw, hr_md.q, hr_md.r);
         }
@@ -278,6 +276,45 @@ pub fn place_spawn_and_record(
         new_direction: new_direction as integer,
     }];
     history_push(history, pssr_entry);
+}
+
+// Place a marker of ANY kind AND push a one-marker UndoEntry.
+//
+// The general form of the two above, and what plan 12 B5a's tower
+// placement goes through: a third kind should cost a constant and a
+// row in `markers.loft::place_marker`, not a fourth near-copy of this
+// bookkeeping.  Answers false — and records nothing — for a kind
+// `place_marker` does not recognise, so an unplaceable marker cannot
+// leave an undo entry that would resurrect it.
+pub fn place_marker_and_record(
+    mw:        MarkerWorld,
+    q:         integer,
+    r:         integer,
+    kind:      integer,
+    direction: u8,
+    history:   History,
+) -> boolean {
+    pmar_was = has_marker(mw, q, r);
+    pmar_old_dir:  u8      = 0 as u8;
+    pmar_old_kind: integer = 0;
+    if pmar_was {
+        pmar_old_dir  = marker_direction(mw, q, r);
+        pmar_old_kind = marker_kind(mw, q, r);
+    }
+    if !place_marker(mw, q, r, kind, direction) { return false; }
+    pmar_entry = undo_entry_empty();
+    pmar_entry.markers += [MarkerDelta {
+        q:             q,
+        r:             r,
+        old_present:   pmar_was,
+        old_kind:      pmar_old_kind,
+        old_direction: pmar_old_dir as integer,
+        new_present:   true,
+        new_kind:      kind,
+        new_direction: direction as integer,
+    }];
+    history_push(history, pmar_entry);
+    true
 }
 
 // Place a target marker AND push a one-marker UndoEntry.

@@ -232,7 +232,7 @@ fn test_wave_tick_advances_every_enemy() {
     twt_state.enemies += [Enemy { q: 10, r: 0,
                                    kind: ENEMY_KIND_REGULAR as u8,
                                    heading: 3 as u8, alive: true }];
-    wave_tick(twt_state, load_palette(PALETTE_PATH), walkable(), Hex { q: 99, r: 99 });
+    wave_tick(twt_state, load_palette(PALETTE_PATH), walkable(), marker_empty(), Hex { q: 99, r: 99 });
     // Headings 0 and 3 are EAST and WEST since plan 09 C5b.
     assert(twt_state.enemies[0].q == 1, "first enemy walked east by 1");
     assert(twt_state.enemies[1].q == 9, "second enemy walked west by 1");
@@ -279,6 +279,6 @@ fn test_integration_spawn_and_walk_one_tick() {
     place_spawn(tisw_mw, 0, -15, 0 as u8);   // north of core, heading south
     spawn_wave(tisw_state, 1, ENEMY_KIND_REGULAR as u8? ?? 0, tisw_mw, 0, 0, 10);
     assert(tisw_state.enemies[0].r == -15, "spawned at marker hex");
-    wave_tick(tisw_state, load_palette(PALETTE_PATH), walkable(), Hex { q: 0, r: 0 });
+    wave_tick(tisw_state, load_palette(PALETTE_PATH), walkable(), marker_empty(), Hex { q: 0, r: 0 });
     assert(tisw_state.enemies[0].r == -14, "walked one hex toward core");
 }

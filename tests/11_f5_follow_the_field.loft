@@ -241,7 +241,7 @@ fn test_a_whole_wave_routes_round_the_wall() {
     taw_s  = one_wave(ENEMY_KIND_REGULAR, 12, 5);
     taw_f  = field_for(ENEMY_KIND_REGULAR, taw_pw);
 
-    for _ in 0..20 { wave_tick(taw_s, load_palette(PALETTE), taw_pw, core()); }
+    for _ in 0..20 { wave_tick(taw_s, load_palette(PALETTE), taw_pw, marker_empty(), core()); }
 
     for taw_i in 0..5 {
         taw_at = 0;
@@ -272,8 +272,8 @@ fn test_the_same_wave_reversed_lands_identically() {
     tsw_b.enemies += [westbound(ENEMY_KIND_REGULAR, 12)];
 
     for _ in 0..7 {
-        wave_tick(tsw_a, load_palette(PALETTE), tsw_pw, core());
-        wave_tick(tsw_b, load_palette(PALETTE), tsw_pw, core());
+        wave_tick(tsw_a, load_palette(PALETTE), tsw_pw, marker_empty(), core());
+        wave_tick(tsw_b, load_palette(PALETTE), tsw_pw, marker_empty(), core());
     }
 
     // a[0] started where b[2] did, and so on.
@@ -303,7 +303,7 @@ fn test_the_insect_and_the_robot_route_differently() {
     // The robot's route is 13 steps (round the bypass); the insect's
     // is 12, straight over the wall.  So after 12 ticks the insect has
     // arrived and the robot has not.
-    for _ in 0..12 { wave_tick(tir_s, load_palette(PALETTE), tir_pw, core()); }
+    for _ in 0..12 { wave_tick(tir_s, load_palette(PALETTE), tir_pw, marker_empty(), core()); }
 
     tir_bot = tir_s.enemies[0] ?? Enemy {};
     tir_bug = tir_s.enemies[1] ?? Enemy {};
@@ -343,7 +343,7 @@ fn test_a_wall_built_mid_wave_diverts_the_wave() {
     twb_s   = one_wave(ENEMY_KIND_REGULAR, 12, 1);
     twb_pal = load_palette(PALETTE);
 
-    for _ in 0..6 { wave_tick(twb_s, twb_pal, twb_pw, core()); }
+    for _ in 0..6 { wave_tick(twb_s, twb_pal, twb_pw, marker_empty(), core()); }
     twb_mid = twb_s.enemies[0] ?? Enemy {};
     assert(twb_mid.q == 6 && twb_mid.r == 0, "six ticks down the direct line");
 
@@ -353,7 +353,7 @@ fn test_a_wall_built_mid_wave_diverts_the_wave() {
     twb_stood_in_wall = false;
     twb_took_bypass   = false;
     for _ in 0..8 {
-        wave_tick(twb_s, twb_pal, twb_pw, core());
+        wave_tick(twb_s, twb_pal, twb_pw, marker_empty(), core());
         twb_e = twb_s.enemies[0] ?? Enemy {};
         if twb_e.q == 3 && twb_e.r == 0  { twb_stood_in_wall = true; }
         if twb_e.r != 0                  { twb_took_bypass = true; }

@@ -160,20 +160,41 @@ worth knowing before reading point 3 as "more dead is always better":
   more — so a player who farms one chokepoint forever is not building a
   staircase, they are building a second wall.
 
-⚠ **A wreck is not rubble yet** (project owner, 2026-08-13; recorded,
-not built).  The conversion from a broken machine to a heap of generic
-rubbish is **not instant**: a fresh wreck still carries things that can
-be harvested off it directly, and ignored they deteriorate into
-rubbish.  So a pile has an AGE as well as a height, an enemy class
-carries how fast it breaks down, and a tower's damage TYPE influences
-it — a shot that vaporises leaves less than one that knocks a machine
-over.  That turns the counter-play below from a purely spatial one
-(clear the ramp) into a TIMED economic one: drive in early for salvage,
-or late for safety and get rubbish.  It rides on the salvage-contents
-layer ([plan 06](../plans/06-editor-stencil-pipeline/README.md) S1), not
-on the source label `height.loft` stores; see
-[`plans/12`](../plans/12-combat-resolution/README.md) § A wreck is not
-rubble yet.
+⚠ **A wreck is not rubble yet, and a big one BLOCKS** (project owner,
+2026-08-13; recorded, not built).  The conversion from a broken machine
+to a heap of generic rubbish is **not instant**, and the decay clock
+drives two things at once:
+
+- **salvage** — a fresh wreck carries components that can be harvested
+  off it directly; ignored, they deteriorate into rubbish.  So driving
+  in early pays and driving in late does not, which turns "collect the
+  bodies" from a spatial counter-play into a timed economic one.
+- **passability** — a **big** robot's body stands high enough to seal
+  the hex it fell on, and settles under a climb limit as it decays.  A
+  **small** one never blocks: others walk straight over it.
+
+⚠ The second is the sharp one, because a plugged chokepoint is not a
+win: the wave that cannot get through **attacks the wall instead**
+(§ Sealing the perimeter), so the player's own kill zone plugging
+itself starts costing them the perimeter.  Shooting the corpse
+accelerates its decay and reopens the funnel — at the price of shots
+and of the salvage that goes with them.
+
+A tower's damage TYPE decides which way that trade falls: a laser
+vaporises, an explosive splashes (and damages the player's OWN walls),
+an EMP destroys the high-value electrics while leaving the chassis
+nearly intact — maximum obstruction, minimum salvage — and is nearly
+useless against insects.
+
+Everything the blocking half needs already exists and is gated —
+`height.loft` stores metres per hex, `passable.loft` compares a step
+against `climb_limit`, and plan 12 B4 measured the band — so what is
+missing is the CLOCK and a per-class body height.  The salvage half
+rides on the contents layer
+([plan 06](../plans/06-editor-stencil-pipeline/README.md) S1), not on
+the source label `height.loft` stores.  See
+[`plans/12`](../plans/12-combat-resolution/README.md) § Wreck decay,
+blocking, and damage types.
 
 The counter-play is to **collect the bodies**, which means driving
 into the kill zone while the wave is still coming.  A player who

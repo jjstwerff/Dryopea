@@ -311,7 +311,7 @@ fn test_breaking_something_that_is_not_a_structure_does_nothing() {
 fn besiege(n: integer, pw: PaintedWorld) -> WaveState {
     bs_s = wave_state_empty();
     bs_s.enemies += [westbound(12, 0)];
-    for _ in 0..n { wave_tick(bs_s, pal(), pw, core()); }
+    for _ in 0..n { wave_tick(bs_s, pal(), pw, marker_empty(), core()); }
     bs_s
 }
 
@@ -353,12 +353,12 @@ fn test_the_break_lands_on_the_tick_after_the_one_that_caused_it() {
     tbl_s  = besiege(9, tbl_pw);
     damage_apply(tbl_s.damage, 2, 0, SEAL_HP - 0.1);
 
-    wave_tick(tbl_s, pal(), tbl_pw, core());
+    wave_tick(tbl_s, pal(), tbl_pw, marker_empty(), core());
     tbl_a = tbl_s.enemies[0] ?? Enemy {};
     assert(painted_kind_name(pal(), tbl_pw, 2, 0) == "grass", "the wall came down");
     assert(tbl_a.q == 3, "and the robot did NOT move on that tick: q = {tbl_a.q}");
 
-    wave_tick(tbl_s, pal(), tbl_pw, core());
+    wave_tick(tbl_s, pal(), tbl_pw, marker_empty(), core());
     tbl_b = tbl_s.enemies[0] ?? Enemy {};
     assert(tbl_b.q == 2, "it is the next tick that routes through the hole: q = {tbl_b.q}");
 }
@@ -389,8 +389,8 @@ fn test_the_same_siege_played_with_the_roster_reversed_lands_identically() {
     tss_b.enemies += [westbound(12, 0)];
 
     for _ in 0..14 {
-        wave_tick(tss_a, tss_pal, tss_pw_a, core());
-        wave_tick(tss_b, tss_pal, tss_pw_b, core());
+        wave_tick(tss_a, tss_pal, tss_pw_a, marker_empty(), core());
+        wave_tick(tss_b, tss_pal, tss_pw_b, marker_empty(), core());
     }
 
     assert(damage_count(tss_a.damage) == 2, "both seals are under attack: {damage_count(tss_a.damage)}");
@@ -412,7 +412,7 @@ fn test_a_siege_against_a_heap_writes_nothing_down() {
     tas_s = wave_state_empty();
     height_raise(tas_s.heights, 2, 0, WALL_METRES, as_u8(RUBBLE_WRECKAGE));
     tas_s.enemies += [westbound(12, 0)];
-    for _ in 0..14 { wave_tick(tas_s, pal(), tas_pw, core()); }
+    for _ in 0..14 { wave_tick(tas_s, pal(), tas_pw, marker_empty(), core()); }
 
     tas_e = tas_s.enemies[0] ?? Enemy {};
     assert(tas_e.q == 3, "it is stopped by the heap: q = {tas_e.q}");

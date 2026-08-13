@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**B0, B1, B2, B3 and B4 shipped** (2026-08-13). B5a is next; B6 is
+**B0-B4 and B5a shipped** (2026-08-13). B5b and B6 are next, both
 unblocked.
 
 B0 was a probe and changed no mechanic: it wrote down what the
@@ -119,6 +119,28 @@ limit before it breaks any of it.
 one-hex corridor is a STUB and worth 15 HP, not 100. `numbers.json`'s
 100 is the BRACED figure and almost nothing on a real map gets it. The
 scenario reads better for it.
+
+**B5a made the tower fire.** Towers are a third marker kind, range is
+`lat_distance` and nothing else, and a tower **banks charge** rather
+than firing per tick — because B0's awkward number says a 1.0 s fire
+interval is 1.5 ticks, and a smooth rate would throw away the discrete
+SHOT that B5b has to count against the 30-shot budget. Suite **691
+green**.
+
+⚠ **The float that ate a third of the tower's damage.** `1 / 1.5` has
+no exact float form, so three ticks sum to 1.9999999999999998 and a
+bare `>= 1.0` refused the second shot — a tower quietly at two-thirds
+of its documented DPS. **No assertion about "it killed the thing"
+could have seen it**; the cadence test caught it on its first run.
+`TOWER_CHARGE_EPSILON` is the fix, and because a shot SUBTRACTS an
+interval rather than resetting the charge, the debt stays within an
+ulp of zero over 300 ticks — which is its own gate.
+
+⚠ **The tower does not miss and cannot see.** Line of sight and the
+shot budget are B5b, so everything in range is hit. The 7-hex
+footprint is not built either: a tower stands on one hex, because the
+footprint decides what it BLOCKS rather than what it can reach, and
+blocking is a passability question for plan 06 S1's structure layer.
 
 ⚠ **Cost, honestly.** B2 adds one `enemy_target` per live enemy per
 tick — it reuses the fields the tick already built, so no new sweep —
@@ -332,7 +354,7 @@ pins, and the input that must be **refused**.
 | **B2** ✓ | wall at 1 HP does not break; at 0 HP the hex carries rubble and is standable | breaking OPENS a route (the sea trap is closed) | a broken hex that reads as `sea` — impassable — is the bug this phase exists to avoid |
 | **B3** ✓ | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
 | **B4** ✓ | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
-| **B5a** | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
+| **B5a** ✓ | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
 | **B5b** | tower kills through `wall`; does **not** kill through `wall_high` or `steep_rock`; stops firing after 30 shots | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS |
 | **B6** | N nibblers drain exactly N pt/s × tick seconds; the wallet floors at 0 | the wallet never goes negative and never refills unattended | a negative wallet means the run has no end state |
 | **B7** | the defended base's time-to-zero is markedly longer than the same base stripped of walls and towers | the defences are what cost the attacker time | equal times = the scenario measures nothing, whatever it draws |
@@ -350,8 +372,8 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | **Done** |
 | **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | **Done** |
 | **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | **Done** |
-| **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | Open |
-| **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires | Blocked on B5a |
+| **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | **Done** |
+| **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires | Open |
 | **B6** — nibble drains the wallet, zero ends the run | S | `wallet <lo> <hi>` in `script.loft`; drain rate and the floor at 0 | Blocked on B4 |
 | **B7** — the scenario, and its control | S | `tests/scripts/an-undefended-base.keys` + the stripped control — the clock separates | Blocked on B3, B5b, B6 |
 
@@ -388,7 +410,7 @@ scenario, it is the scenario's most interesting outcome, and B7 should
 report which of the two ends the base: the wall broke, or the pile went
 over it.
 
-### ⚠ A wreck is not rubble yet — recorded, not built
+### ⚠ Wreck decay, blocking, and damage types — recorded, not built
 
 Project owner, 2026-08-13, and it is a real mechanic rather than a note:
 **the conversion from a broken machine to a heap of rubbish is not
@@ -418,9 +440,76 @@ Where it lands, in the terms this plan already uses:
   rubbish. That is the same shape as the scramble decision the whole game is
   built on, which is what makes it worth building rather than a detail.
 
+#### The wreck BLOCKS while it is fresh
+
+Project owner, same session, and it is what makes decay a *mechanic* rather
+than an economy: **a big robot's body blocks the hex it fell on until it has
+decayed enough.** A small robot's does not — others walk straight over it.
+
+So decay is one clock driving **two** things, and the second is passability:
+
+- a fresh big wreck stands high enough to be past a robot's climb, so it
+  **seals its own hex**;
+- as it settles, its height drops under the climb and the hex **opens again**.
+
+Everything needed for that already exists and is gated: `height.loft` stores
+metres per hex, `passable.loft` compares a step against `climb_limit`, and
+plan 12 B4 already measured the band — a heap of five robot bodies is a
+2.5 m step that a 2.0 m climber cannot get onto. What is missing is only the
+**clock** and a **per-class body height**, so a "big" robot's body starts
+above the climb where today every body is a uniform 0.5 m.
+
+⚠ **And that is where the interesting play comes from.** A blocked
+chokepoint is not a win for the player: the wave cannot get through, so it
+**attacks the wall instead** (§ Sealing the perimeter is punished — an enemy
+with no route besieges), and the perimeter starts coming down. So the
+player's own kill zone plugging itself with a big kill is a *problem*, and
+one that resolves on a timer they can influence.
+
+#### Shooting the dead, and what damage type does
+
+Four consequences the owner named, and they compose into one loop:
+
+1. **Shoot the corpse to unplug the funnel.** Aiming a tower at a fallen but
+   not-yet-decayed robot accelerates its breakdown, so it blocks for less
+   time. The player spends shots (and salvage) to keep enemies coming
+   through the kill zone rather than through the wall.
+2. **Only while the player is AT the tower.** Manual aiming is
+   presence-locked, the same shape as `DESIGN.md` § 7's overload — the
+   player has to stand there, which is the cost that makes it a decision.
+3. **Splash (explosive) towers damage WALLS as well** — the player's own
+   perimeter — and can hit several robots at once. Hard to use, potentially
+   devastating. ⚠ Cheap to build on what exists: B2's `damage_apply` already
+   takes a HEX, so a shot that splashes onto a wall needs no new machinery,
+   only a radius and the willingness to fire it.
+4. **EMP towers** break the electrical parts — brain, wiring, motors — which
+   destroys most of the **high-value** components while leaving the chassis
+   almost intact. So an EMP kill blocks **more and for longer**: maximum
+   obstruction, minimum salvage, the exact inverse of the laser.
+   ⚠ **And it is nearly useless against insects** — it only burns them
+   lightly — which gives the tower-variant axis a real rock-paper-scissors
+   rather than a strictly-better ladder.
+
+That is a genuine three-way tension per shot: **kill speed vs salvage vs how
+long the corpse plugs the gap**, chosen by which tower is firing and, with
+the player present, at what.
+
+#### What it needs that does not exist
+
+| Needs | Where it would go |
+|---|---|
+| a decay clock per pile | `height.loft`, beside the source — the layer is already runtime and already per hex |
+| a per-class body height and decay rate | `numbers.json` rows beside B4's `enemy_regular.body_height` |
+| tower damage TYPES (laser / explosive / EMP) | `numbers.json` § tower has `damage_per_shot` and no type; B5 should avoid foreclosing one |
+| splash radius, and shots that damage structures | `damage.loft::damage_apply` already takes a hex — this is a caller, not a mechanism |
+| the salvage CONTENTS a wreck carries | plan 06 S1's stacked layer (§ The rubble is the hill: open and multiple per hex, so not a ground type) |
+| a player to aim, and presence to gate it | the vehicle — not in this plan at all |
+
 **Not this plan's.** Plan 12 ends at the exchange resolving; nothing here has
-a player, an item layer, or a tower damage type. It wants its own plan once
-plan 06 S1 exists to hold the contents.
+a player, an item layer, a decay clock or a tower damage type. It wants its
+own plan once plan 06 S1 exists to hold the contents — and B5 only has to
+avoid foreclosing a damage type, which one `numbers.json` field and one
+parameter would later add.
 
 ## Open questions
 
@@ -444,10 +533,28 @@ plan 06 S1 exists to hold the contents.
    `numbers.json` goes on saying `HP/s`, which is also what keeps it
    moddable, and a rate reaches the sim through **`spawn.loft::per_tick`**
    at the point it is applied. B4 and B6 are its first two callers.
-3. **Where do towers come from?** `src/markers.loft` already has a kind
-   discriminant (`MARKER_KIND_SPAWN` 0, `MARKER_KIND_TARGET` 1) and the
-   comment says to add one per kind. A third kind is the cheap answer, and
-   it makes towers authorable in the existing editor. *Decided in B5a.*
+3. ~~**Where do towers come from?**~~ — **DECIDED in B5a: a third
+   marker kind**, `MARKER_KIND_TOWER`, exactly as this entry proposed.
+   The marker layer's own header says what it is for — *placeholder
+   content the runtime reads but the painted palette does not
+   represent* — and towers are authorable in the editor that already
+   exists, measurable by a `.keys` script that already speaks
+   `marker <q> <r> tower`.
+
+   ⚠ **It was NOT free, and the cost was the place-kind cycle.** Two
+   presses of `K` used to return to spawn and now land on `tower`, so
+   nine `.keys` scenarios and five inline fixtures each needed a third
+   press. That is what a player does too, which is the point of the
+   scripts going through the same seam — but it is the widest fixture
+   churn any phase of this plan has caused.
+
+   ⚠ **And it found a latent bug in three places.** `save.loft`'s
+   sidecar load, `history.loft`'s undo and its redo each tested for
+   TARGET and fell through to spawn, so any kind they had not learned
+   about would have been silently placed as a **spawn marker with a
+   heading** — a wave source where the player had put a gun. All three
+   go through one `markers.loft::place_marker` now, which skips a kind
+   it does not know rather than guessing.
 4. ~~**Rubble is a palette entry reached from the rubble layer, not from
    the painted one.**~~ — **DECIDED and BUILT in B1**, as recommended,
    with one addition the phase found: the entry is reached for the

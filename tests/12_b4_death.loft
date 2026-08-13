@@ -155,13 +155,13 @@ fn test_thirty_hp_survives_two_shots_and_dies_on_the_third() {
 
     for _ in 0..2 {
         enemy_hurt(tts_s.enemies[0] ?? Enemy {}, TOWER_SHOT_DAMAGE);
-        wave_tick(tts_s, pal(), tts_pw, core());
+        wave_tick(tts_s, pal(), tts_pw, marker_empty(), core());
     }
     assert(alive_count(tts_s) == 1,
            "two shots leave {enemy_hp(first(tts_s))} HP and a live robot");
 
     enemy_hurt(tts_s.enemies[0] ?? Enemy {}, TOWER_SHOT_DAMAGE);
-    wave_tick(tts_s, pal(), tts_pw, core());
+    wave_tick(tts_s, pal(), tts_pw, marker_empty(), core());
 
     assert(alive_count(tts_s) == 0, "the third kills it");
     assert(!first(tts_s).alive, "and the roster says so");
@@ -172,7 +172,7 @@ fn test_a_death_leaves_a_body_where_the_enemy_ended_its_tick() {
     tad_s  = one_robot(4);
     enemy_hurt(tad_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
 
-    wave_tick(tad_s, pal(), tad_pw, core());
+    wave_tick(tad_s, pal(), tad_pw, marker_empty(), core());
 
     // ⚠ It moved first and died second, so the body is at (3, 0) and
     // not at (4, 0) — `wave_deaths` runs after the move loop.
@@ -191,7 +191,7 @@ fn test_a_death_frees_the_hex_it_fell_on() {
     tdf_pw = corridor(6);
     tdf_s  = one_robot(4);
     enemy_hurt(tdf_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
-    wave_tick(tdf_s, pal(), tdf_pw, core());
+    wave_tick(tdf_s, pal(), tdf_pw, marker_empty(), core());
 
     assert(!occupancy_taken(wave_occupancy(tdf_s), 3, 0),
            "a corpse holds no hex");
@@ -211,9 +211,9 @@ fn test_two_deaths_on_one_hex_stack() {
     // The leader dies at (3, 0) on tick 1; the follower walks onto
     // (3, 0) and dies there on tick 2.
     enemy_hurt(ttd_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
-    wave_tick(ttd_s, pal(), ttd_pw, core());
+    wave_tick(ttd_s, pal(), ttd_pw, marker_empty(), core());
     enemy_hurt(ttd_s.enemies[1] ?? Enemy {}, ENEMY_REGULAR_HP);
-    wave_tick(ttd_s, pal(), ttd_pw, core());
+    wave_tick(ttd_s, pal(), ttd_pw, marker_empty(), core());
 
     assert(alive_count(ttd_s) == 0, "both are down");
     assert(height_count(ttd_s.heights) == 1, "on one hex: {height_count(ttd_s.heights)}");
@@ -230,7 +230,7 @@ fn test_an_insect_leaves_carapace_and_a_robot_leaves_wreckage() {
     tai_s.enemies += [Enemy { q: 4, r: 0, kind: as_u8(ENEMY_KIND_INSECT),
                               heading: 3 as u8, alive: true }];
     enemy_hurt(tai_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
-    wave_tick(tai_s, pal(), tai_pw, core());
+    wave_tick(tai_s, pal(), tai_pw, marker_empty(), core());
 
     assert(height_source(tai_s.heights, 3, 0) == RUBBLE_CARAPACE,
            "an insect leaves carapace: '{rubble_source_name(as_u8(height_source(tai_s.heights, 3, 0)))}'");
@@ -248,7 +248,7 @@ fn test_the_body_lands_after_everybody_has_moved() {
     tbl_s.enemies += [westbound(5, 0)];
     enemy_hurt(tbl_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
 
-    wave_tick(tbl_s, pal(), tbl_pw, core());
+    wave_tick(tbl_s, pal(), tbl_pw, marker_empty(), core());
 
     // The follower moved from (5, 0) to (4, 0) on the same tick the
     // leader died at (3, 0).  Had the body landed mid-loop it would
@@ -343,7 +343,7 @@ fn test_a_chokepoint_closes_itself_on_its_own_dead() {
         for tac_e in tac_s.enemies {
             if tac_e.alive && tac_e.q == 4 { enemy_hurt(tac_e, ENEMY_REGULAR_HP); }
         }
-        wave_tick(tac_s, pal(), tac_pw, core());
+        wave_tick(tac_s, pal(), tac_pw, marker_empty(), core());
     }
 
     assert(alive_count(tac_s) == 0, "all five are down: {alive_count(tac_s)} left");
@@ -363,6 +363,7 @@ const A_CORRIDOR_AND_A_WAVE: text = `
     do toggle_mode
     do cycle_kind
     click 0 0
+    do cycle_kind
     do cycle_kind
     do rotate
     do rotate

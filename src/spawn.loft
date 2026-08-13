@@ -35,6 +35,7 @@ use passable;
 use flow;
 use occupancy;
 use damage;
+use tower;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -168,6 +169,7 @@ pub struct WaveState {
     pick_cursor: integer,
     heights:     HeightLayer,
     damage:      DamageLayer,
+    towers:      TowerState,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0 and the
@@ -177,6 +179,7 @@ pub fn wave_state_empty() -> WaveState {
         enemies: [], pick_cursor: 0,
         heights: height_layer_empty(),
         damage:  damage_layer_empty(),
+        towers:  tower_state_empty(),
     }
 }
 
@@ -755,6 +758,95 @@ pub fn wave_occupancy(state: const WaveState) -> Occupancy {
     wo_o
 }
 
+// Which enemy a tower at `at` fires on — a roster index, or `-1` for
+// nothing in reach.
+//
+// **Nearest to the TOWER**, because that is what a range-limited
+// weapon does, with ties broken by `q` then `r` and never by roster
+// position.
+//
+// ⚠ **The tie-break is not decoration.**  A wave arrives spread, so
+// equidistant enemies are common, and "whichever the loop saw first"
+// would make a scripted run answer differently the moment anything
+// changed spawn order — which plan 08 gates dryopea by replaying.
+// Ordering by coordinate makes the answer a property of the WORLD
+// rather than of the roster.
+pub fn tower_pick(state: const WaveState, at: const Hex) -> integer {
+    tp_best = -1;
+    tp_dist = 0;
+    tp_q    = 0;
+    tp_r    = 0;
+    tp_i    = 0;
+    for tp_e in state.enemies {
+        if tp_e.alive {
+            tp_d = lat_distance(at, Hex { q: tp_e.q, r: tp_e.r });
+            if tp_d <= TOWER_RANGE_HEXES {
+                tp_take = tp_best < 0;
+                if !tp_take && tp_d < tp_dist { tp_take = true; }
+                if !tp_take && tp_d == tp_dist && tp_e.q < tp_q { tp_take = true; }
+                if !tp_take && tp_d == tp_dist && tp_e.q == tp_q && tp_e.r < tp_r {
+                    tp_take = true;
+                }
+                if tp_take {
+                    tp_best = tp_i;
+                    tp_dist = tp_d;
+                    tp_q    = tp_e.q;
+                    tp_r    = tp_e.r;
+                }
+            }
+        }
+        tp_i = tp_i + 1;
+    }
+    tp_best
+}
+
+// Every tower banks a tick's worth of charge and spends whatever whole
+// intervals it holds.  Answers how many shots were fired.
+//
+// ⚠ **It runs BEFORE anybody moves**, beside `wave_damage`: a tower
+// shoots at where an enemy IS at the tick's start, and the enemy then
+// takes its step.  So a fatal shot is followed by one last step and
+// the body falls one hex down the route — the consequence B4 wrote
+// down, arriving here with its first real cause.
+//
+// ⚠ It lands DAMAGE and never a death.  `wave_deaths` at the end of
+// the tick is the one death path (B4), so a tower kill and a scripted
+// `hit` leave the same body in the same place.
+//
+// ⚠ The charge is spent whether or not there was anything to shoot,
+// so a tower firing into an empty field is not banking a burst for the
+// next wave.  `DESIGN.md` § 7's decay is per SHOT, and B5b is what
+// makes that cost something.
+pub fn wave_fire(state: WaveState, mw: MarkerWorld) -> integer {
+    wf_shots = 0;
+    for wf_m in mw.markers {
+        if wf_m.kind == MARKER_KIND_TOWER as u8 {
+            tower_bank(state.towers, wf_m.q, wf_m.r, TICK_SECONDS);
+            wf_at = Hex { q: wf_m.q, r: wf_m.r };
+            // ⚠ WHILE, not IF — see `tower.loft` § Why a tower needs
+            // runtime state.  A tower ticked after a pause spends
+            // every interval it banked rather than losing them.
+            // ⚠ EPSILON, not a bare `>=` — a tick is 1/1.5 s and has
+            // no exact float form, so three of them sum a hair under
+            // two seconds and the tower silently drops every third
+            // shot (`tower.loft` § TOWER_CHARGE_EPSILON).
+            while tower_charge(state.towers, wf_m.q, wf_m.r)
+                  >= TOWER_FIRE_INTERVAL_S - TOWER_CHARGE_EPSILON {
+                tower_bank(state.towers, wf_m.q, wf_m.r, -TOWER_FIRE_INTERVAL_S);
+                wf_i = tower_pick(state, wf_at);
+                if wf_i >= 0 {
+                    // ⚠ Indexed in place, never through a helper that
+                    // RETURNS an `Enemy` — a returned struct is a copy
+                    // and the hit would land on nothing (B4).
+                    enemy_hurt(state.enemies[wf_i] ?? Enemy {}, TOWER_DAMAGE_PER_SHOT);
+                    wf_shots = wf_shots + 1;
+                }
+            }
+        }
+    }
+    wf_shots
+}
+
 // What every besieging enemy does to the structure it is stopped by,
 // this tick.
 //
@@ -846,6 +938,16 @@ fn wave_deaths(state: WaveState) -> integer {
 // occupancy (`wave_occupancy`) and the order (§ The move order) — and
 // none of them is derived from roster order.
 //
+// ── The marker world is a parameter, and deliberately not optional ─
+//
+// Towers are markers (plan 12 B5a), so the tick has to see the marker
+// layer to know what shoots.  It would have been one line to default
+// it and keep 54 call sites compiling — and a caller that took the
+// default would silently have no towers, so a test asserting "the
+// enemy survived" would pass for exactly the wrong reason.  That is
+// the same argument `enemy_tick` § The world is a parameter makes
+// about the palette, and the compile errors were the point again.
+//
 // ── One field per CLIMB LIMIT, built for the roster present ─────
 //
 // See `wave_fields`.  It is the roster that decides which fields get
@@ -856,15 +958,18 @@ fn wave_deaths(state: WaveState) -> integer {
 // ⚠ **From scratch every tick, deliberately.**  F8 makes it
 // incremental, and its gate is equality with this — so this path
 // stays the reference implementation and is not optimised away.
-pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld, core: Hex) {
+pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
+                 mw: MarkerWorld, core: Hex) {
     // Everything the tick reads is fixed before anybody moves: the
     // fields, where everyone stands, and the order they act in.
     wt_fields = wave_fields(state, pal, pw, core);
     wt_desire = wave_desire(state, wt_fields, pal, pw, core);
     wt_occ    = wave_occupancy(state);
 
-    // The siege lands against the world the tick STARTED with — see
-    // `wave_damage`.
+    // Both halves of the exchange land against the world the tick
+    // STARTED with — towers shoot at where the enemies are now, and
+    // besieging enemies bite the wall in front of them.
+    wave_fire(state, mw);
     wave_damage(state, pal, pw, wt_fields, wt_desire);
 
     for wt_i in move_order(state, wt_fields) {

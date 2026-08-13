@@ -309,7 +309,7 @@ fn test_six_from_six_sides_attack_six_different_hexes() {
     tsf_s  = six_on_the_rim();
     tsf_pal = pal();
 
-    for _ in 0..12 { wave_tick(tsf_s, tsf_pal, tsf_pw, core()); }
+    for _ in 0..12 { wave_tick(tsf_s, tsf_pal, tsf_pw, marker_empty(), core()); }
 
     assert(distinct_targets(tsf_s, tsf_pw) == 6,
            "six approaches, six wall hexes under attack, got {distinct_targets(tsf_s, tsf_pw)}");
@@ -322,7 +322,7 @@ fn test_every_target_is_a_wall_hex_beside_its_attacker() {
     tet_s   = six_on_the_rim();
     tet_pal = pal();
 
-    for _ in 0..12 { wave_tick(tet_s, tet_pal, tet_pw, core()); }
+    for _ in 0..12 { wave_tick(tet_s, tet_pal, tet_pw, marker_empty(), core()); }
 
     tet_ts = wave_targets(tet_s, tet_pal, tet_pw, core());
     tet_i  = 0;
@@ -350,7 +350,7 @@ fn test_a_single_shared_target_would_be_the_collapse() {
     tas_pw = sealed_base();
     tas_s  = six_on_the_rim();
 
-    for _ in 0..12 { wave_tick(tas_s, pal(), tas_pw, core()); }
+    for _ in 0..12 { wave_tick(tas_s, pal(), tas_pw, marker_empty(), core()); }
 
     assert(distinct_targets(tas_s, tas_pw) > 1,
            "one hex for the whole perimeter is the siege collapsing to a chokepoint");
@@ -367,7 +367,7 @@ fn test_one_face_from_one_side_is_still_a_queue() {
     tof_s   = wave_state_empty();
     for _ in 0..4 { tof_s.enemies += [enemy_at(ENEMY_KIND_REGULAR, 12, 0, 4)]; }
 
-    for _ in 0..20 { wave_tick(tof_s, pal(), tof_pw, core()); }
+    for _ in 0..20 { wave_tick(tof_s, pal(), tof_pw, marker_empty(), core()); }
 
     assert(distinct_targets(tof_s, tof_pw) == 1,
            "one approach meets the wall at one hex — that is honest, not a bug");
@@ -481,8 +481,8 @@ fn test_a_siege_played_with_the_roster_reversed_lands_identically() {
     }
 
     for _ in 0..12 {
-        wave_tick(tar2_a, pal(), tar2_pw, core());
-        wave_tick(tar2_b, pal(), tar2_pw, core());
+        wave_tick(tar2_a, pal(), tar2_pw, marker_empty(), core());
+        wave_tick(tar2_b, pal(), tar2_pw, marker_empty(), core());
     }
 
     assert(distinct_targets(tar2_a, tar2_pw) == distinct_targets(tar2_b, tar2_pw),

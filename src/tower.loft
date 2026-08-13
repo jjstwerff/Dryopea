@@ -1,0 +1,173 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The tower — the first thing in dryopea that shoots back.
+//
+// Plan 12 phase B5a.  `docs/DESIGN.md` § 7 describes a pulsed-laser
+// tower with a range, a fire interval, a damage per shot, a line of
+// sight and a shot budget; B5a builds the first three and B5b the
+// last two, so **everything here is in range and nothing here can
+// miss**.
+//
+// ── Where a tower comes from (plan 12 open question 3) ──────────
+//
+// A **marker** — `markers.loft::MARKER_KIND_TOWER`, the third kind.
+// The marker layer's own header says what it is for: *placeholder
+// content the runtime reads but the painted palette does not
+// represent*.  A tower is 6 m of machine with HP, a range and a
+// budget; putting it in a palette whose other entries are dirt and
+// water would have made every ground question ask "unless it is a
+// tower".  It also makes towers authorable in the editor that already
+// exists, and measurable by a `.keys` script that already speaks
+// `marker <q> <r> tower`.
+//
+// ⚠ **The 7-hex footprint is NOT built.**  `numbers.json` §
+// tower.footprint_layout says a tower covers a centre hex and its six
+// neighbours; B5a places it on ONE hex and fires from there.  Range
+// and LOS both measure from the centre, so the footprint changes what
+// a tower BLOCKS and what it costs to place, not what it can hit —
+// and blocking is a passability question that belongs with the
+// structure layer plan 06 S1 will build.
+//
+// ── Why a tower needs runtime state at all ──────────────────────
+//
+// Because a shot is DISCRETE and a tick is not a shot.  B0 measured
+// the awkward number this whole plan turns on: a 1.0 s fire interval
+// is **1.5 ticks**.  So a tower cannot "fire once per tick", and
+// spending its damage as a smooth 10 HP/s rate — which `per_tick`
+// would make easy — throws away the one thing B5b needs, a COUNT of
+// shots to charge against the 30-shot budget.
+//
+// So each tower carries a **charge**: every tick adds `TICK_SECONDS`
+// to it, and while it holds a whole `fire_interval` the tower fires
+// one shot and SUBTRACTS the interval — never resets — so the
+// remainder carries.  That gives two shots every three ticks forever,
+// and each one is a shot B5b can count, `docs/DESIGN.md` can call
+// pulsed, and a player can watch recharge.
+//
+// ⚠ The comparison needs `TOWER_CHARGE_EPSILON`.  `1 / 1.5` has no
+// exact float form, so three ticks sum a hair under 2.0 and a plain
+// `>=` drops every third shot — see the constant.
+//
+// ⚠ It is a WHILE and not an IF: a caller that ticked a tower after a
+// long pause would otherwise silently lose the shots it had banked.
+// Nothing does that today, and the loop costs nothing when it cannot
+// fire.
+
+use lattice;
+use markers;
+
+// ─── The numbers ────────────────────────────────────────────────
+//
+// `examples/numbers.json` § tower, restated here because nothing loads
+// that file yet — the same note `spawn.loft` and `damage.loft` carry.
+
+// numbers.json § tower.range.  ⚠ **A LATTICE distance, and nothing
+// else.**  `lat_distance` is the only thing allowed to answer "how far
+// apart", and reaching for a `+ 1` on a q or an r to compute it is
+// moros#10 again — the bug that sheared every reach computation in the
+// first project to speak this lattice.
+pub const TOWER_RANGE_HEXES: integer = 15;
+
+// numbers.json § tower.fire_interval — one shot a second.  ⚠ 1.5
+// ticks, which is the whole reason a tower banks charge instead of
+// firing on a tick boundary.
+pub const TOWER_FIRE_INTERVAL_S: float = 1.0;
+
+// numbers.json § tower.damage_per_shot — three shots kill a regular.
+pub const TOWER_DAMAGE_PER_SHOT: float = 10.0;
+
+// ⚠ **How close to a whole interval still counts as one, and it is
+// not defensive noise — without it the tower LOSES SHOTS.**
+//
+// A tick is `1 / 1.5` seconds, which has no exact float
+// representation, so three ticks sum to 1.9999999999999998 rather
+// than 2.0 and `>= 1.0` refuses the second shot.  Measured: the
+// cadence test read 1 shot in 3 ticks where the design says 2, and it
+// would have gone on reading low forever — a tower quietly at
+// two-thirds of its documented DPS, which no assertion about "it
+// killed the thing" could see.
+//
+// The residue does NOT grow, because a shot subtracts exactly one
+// interval rather than resetting the charge: the debt stays within an
+// ulp or two of zero however long a run lasts, which
+// `test_the_cadence_does_not_drift_over_a_long_run` is the gate for.
+pub const TOWER_CHARGE_EPSILON: float = 1.0e-9;
+
+// ─── What a tower remembers between ticks ───────────────────────
+
+// One tower's charge, in seconds banked toward its next shot.
+//
+// B5b adds the shot budget here, which is why this is a struct with
+// one field rather than a `hash<float>`: the second field should cost
+// a line, not a migration.
+pub struct TowerCharge {
+    q:      integer,
+    r:      integer,
+    charge: float,
+}
+
+// What every tower on the map has banked.  A hash must be a struct
+// field — the same loft idiom `PaintedWorld`, `HeightLayer` and
+// `DamageLayer` follow.
+pub struct TowerState {
+    cells: hash<TowerCharge[q, r]>,
+}
+
+// Factory: every tower cold, with nothing banked.
+//
+// ⚠ A cold tower fires on its SECOND tick, not its first: one tick
+// banks 0.667 s and two bank 1.333, which is the first time a whole
+// interval is available.  That is the recharge gap `DESIGN.md` § 7
+// says should be visible, arriving at the start of a wave rather than
+// being special-cased into it.
+pub fn tower_state_empty() -> TowerState {
+    TowerState { cells: [] }
+}
+
+// How much (q, r) has banked toward its next shot, in seconds.
+//
+// ⚠ The only door — a miss is 0.0, "this tower has not been ticked
+// yet", which is what a tower placed mid-run needs.
+pub fn tower_charge(ts: const TowerState, q: integer, r: integer) -> float {
+    tc_c = ts.cells[q, r];
+    if tc_c == null { return 0.0; }
+    tc_c.charge
+}
+
+// Bank `seconds` onto (q, r) — negative spends it.
+//
+// `pub` because the firing loop lives in `spawn.loft`, where
+// `WaveState` and `Enemy` are: this file owns what a tower IS and the
+// wave engine owns what a tick DOES to one, the same split
+// `damage.loft` and `spawn.loft` already have for enemy HP.
+pub fn tower_bank(ts: TowerState, q: integer, r: integer, seconds: float) {
+    tb_c = ts.cells[q, r];
+    if tb_c == null {
+        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: seconds };
+    } else {
+        tb_c.charge = tb_c.charge + seconds;
+    }
+}
+
+// How many towers have been ticked at least once.
+pub fn tower_count(ts: const TowerState) -> integer {
+    len(ts.cells)
+}
+
+// ─── Range ──────────────────────────────────────────────────────
+
+// Is `target` inside this tower's reach?
+//
+// ⚠ Inclusive at the limit: `numbers.json` says a range of 15 hexes,
+// and a weapon that stopped at 14 would be a different number.  The
+// invariant gate is exactly this line — *hit at 15, untouched at 16*.
+pub fn tower_in_range(tower: const Hex, target: const Hex) -> boolean {
+    lat_distance(tower, target) <= TOWER_RANGE_HEXES
+}
+
+// ─── Choosing what to shoot, and firing ─────────────────────────
+//
+// Both live in `spawn.loft` — `tower_pick` and `wave_fire` — because
+// they read the roster, and `WaveState` is the wave engine's.  This
+// file must not depend on it: the tick calls INTO here.

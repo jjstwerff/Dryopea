@@ -1,0 +1,440 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B5a — the tower fires.
+//
+// ── The gate, and the bug it is aimed at ────────────────────────
+//
+// `plans/12` § Invariant gate: *"enemy at 15 hex is hit; at 16 it is
+// not"*, and the negative control it names is specific — **a `+1` on
+// q/r reaching for range is moros#10 again**, the defect that sheared
+// every reach computation in the first project to speak this lattice.
+//
+// So the range tests do not check one direction.  They sweep all SIX,
+// stepping out through `lat_neighbour` itself, because a range built
+// from coordinate arithmetic is right along one axis and wrong along
+// the others — which is exactly the shape a single-direction fixture
+// cannot see.
+//
+// ── Why a tower banks charge instead of firing per tick ─────────
+//
+// B0's awkward number: a 1.0 s fire interval is **1.5 ticks**.  Spend
+// the damage as a smooth rate and the arithmetic is easy and the shot
+// disappears — and B5b needs a COUNT of shots to charge against the
+// 30-shot budget.  So a tower banks `TICK_SECONDS` a tick and fires
+// whole intervals: two shots every three ticks, forever, no drift.
+//
+// ── What B5a does NOT build ─────────────────────────────────────
+//
+// Line of sight and the shot budget are B5b, so **everything in range
+// is hit and nothing here can miss**.  The 7-hex footprint is not
+// built either: a tower stands on one hex and fires from it, because
+// the footprint decides what it BLOCKS rather than what it can reach.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+const GRASS: integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+// `steps` hexes out from the origin along direction `d`, stepped
+// through `lat_neighbour` — the only thing in dryopea allowed to
+// produce a neighbouring coordinate.
+fn out(d: integer, steps: integer) -> Hex {
+    o_h = core();
+    for _ in 0..steps { o_h = lat_neighbour(o_h, d); }
+    o_h
+}
+
+// ⚠ An enemy on an ISLAND: only its own hex and the tower's are
+// painted, so it cannot take a step and its distance from the tower
+// stays exactly what this test put it at.  A walking enemy would
+// wander into range and make "untouched at 16" a statement about
+// nothing.
+fn island(at: const Hex, tower: const Hex) -> PaintedWorld {
+    i_pw = painted_empty();
+    paint(i_pw, at.q, at.r, as_u8(GRASS));
+    paint(i_pw, tower.q, tower.r, as_u8(GRASS));
+    i_pw
+}
+
+fn one_tower(at: const Hex) -> MarkerWorld {
+    ot_mw = marker_empty();
+    place_tower(ot_mw, at.q, at.r);
+    ot_mw
+}
+
+// A wave of one, standing still at `at`, under a tower at the origin,
+// ticked `n` times.
+fn shot_at(at: const Hex, n: integer) -> WaveState {
+    sa_pw = island(at, core());
+    sa_mw = one_tower(core());
+    sa_s  = wave_state_empty();
+    sa_s.enemies += [Enemy { q: at.q, r: at.r, kind: robot(),
+                             heading: 3 as u8, alive: true }];
+    for _ in 0..n { wave_tick(sa_s, pal(), sa_pw, sa_mw, core()); }
+    sa_s
+}
+
+fn first(state: WaveState) -> Enemy {
+    state.enemies[0] ?? Enemy {}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Range is a LATTICE distance, in every direction
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The moros#10 guard.**  Six directions, three distances each.  A
+// range computed from `q`/`r` arithmetic answers correctly along one
+// axis and wrongly along the rest, and a fixture that only walked east
+// would call it green.
+fn test_the_range_is_the_same_in_every_direction() {
+    for trs_d in 0..6 {
+        assert(tower_in_range(core(), out(trs_d, TOWER_RANGE_HEXES - 1)),
+               "direction {trs_d} at {TOWER_RANGE_HEXES - 1} hexes is inside");
+        assert(tower_in_range(core(), out(trs_d, TOWER_RANGE_HEXES)),
+               "direction {trs_d} at exactly {TOWER_RANGE_HEXES} is inside — the limit is inclusive");
+        assert(!tower_in_range(core(), out(trs_d, TOWER_RANGE_HEXES + 1)),
+               "and direction {trs_d} at {TOWER_RANGE_HEXES + 1} is out");
+    }
+}
+
+// The same claim through the one function allowed to answer it, so a
+// range that stopped agreeing with `lat_distance` fails here rather
+// than as a scenario that drifts.
+fn test_the_range_agrees_with_lat_distance_and_nothing_else() {
+    for tra_d in 0..6 {
+        for tra_n in 0..=18 {
+            tra_h = out(tra_d, tra_n);
+            assert(lat_distance(core(), tra_h) == tra_n,
+                   "the fixture itself is {lat_distance(core(), tra_h)} out, meant to be {tra_n}");
+            assert(tower_in_range(core(), tra_h) == (tra_n <= TOWER_RANGE_HEXES),
+                   "({tra_h.q}, {tra_h.r}) at {tra_n} hexes");
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE GATE: killed at 15, untouched at 16
+// ─────────────────────────────────────────────────────────────────
+
+// Three shots of 10 kill a 30 HP robot, and a cold tower has fired
+// three by its fifth tick — see § Why a tower banks charge.
+fn test_an_enemy_at_the_limit_is_killed() {
+    for tae_d in 0..6 {
+        tae_s = shot_at(out(tae_d, TOWER_RANGE_HEXES), 5);
+        assert(alive_count(tae_s) == 0,
+               "direction {tae_d}: a robot at {TOWER_RANGE_HEXES} hexes is dead");
+    }
+}
+
+// ⚠ **The negative control, and the phase turns on it.**  One hex
+// further and the tower cannot touch it — not "kills it slower".
+fn test_and_one_hex_past_it_is_never_touched() {
+    for tao_d in 0..6 {
+        tao_s = shot_at(out(tao_d, TOWER_RANGE_HEXES + 1), 20);
+        assert(alive_count(tao_s) == 1,
+               "direction {tao_d}: a robot at {TOWER_RANGE_HEXES + 1} hexes survives");
+        assert(first(tao_s).taken == 0.0,
+               "and has absorbed nothing at all: {first(tao_s).taken} HP");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The cadence: two shots every three ticks
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_cold_tower_does_not_fire_on_its_first_tick() {
+    tac_s = shot_at(out(0, 3), 1);
+
+    assert(first(tac_s).taken == 0.0,
+           "one tick banks {TICK_SECONDS:5.3} s, which is not a whole interval");
+    assert(tower_charge(tac_s.towers, 0, 0) > 0.0, "but it IS banking: {tower_charge(tac_s.towers, 0, 0)}");
+}
+
+fn test_and_fires_on_the_second() {
+    taf_s = shot_at(out(0, 3), 2);
+    assert(taf_s.enemies[0] != null && first(taf_s).taken == TOWER_DAMAGE_PER_SHOT,
+           "two ticks bank 1.33 s — one whole shot: {first(taf_s).taken} HP");
+}
+
+// ⚠ Two shots every three ticks, and the remainder CARRIES.  A tower
+// that reset its charge instead of subtracting an interval would fire
+// once per two ticks and lose a third of its damage forever.
+//
+// ⚠ **This test found a real one.**  `1 / 1.5` has no exact float
+// form, so three ticks sum to 1.9999999999999998 and a bare `>= 1.0`
+// refused the second shot — a tower quietly at two-thirds of its
+// documented DPS, which no assertion about "it killed the thing"
+// could ever have seen.  `TOWER_CHARGE_EPSILON` is the fix and the
+// long-run test below is what stops it coming back.
+// ⚠ Counted through `wave_fire`'s own answer and NOT through the
+// target's damage: a 30 HP robot is dead after three shots, so past
+// tick 4 the damage stops growing and a cadence measured that way
+// reads low for a reason that has nothing to do with the cadence.
+// The first version of this test did exactly that.
+fn test_the_cadence_is_two_shots_every_three_ticks() {
+    for ttc_n in [3, 6, 9, 12] {
+        ttc_mw = one_tower(core());
+        ttc_s  = wave_state_empty();
+        ttc_s.enemies += [Enemy { q: 3, r: 0, kind: robot(),
+                                  heading: 3 as u8, alive: true }];
+        ttc_got = 0;
+        for _ in 0..ttc_n { ttc_got = ttc_got + wave_fire(ttc_s, ttc_mw); }
+
+        ttc_want = ((ttc_n * 2) / 3) ?? 0;
+        assert(ttc_got == ttc_want,
+               "{ttc_n} ticks is {ttc_got} shots, expected {ttc_want}");
+    }
+}
+
+// ⚠ **The drift gate.**  Three ticks was where the float error showed
+// first, but the question is whether it ACCUMULATES — a tower losing
+// one shot in three at tick 3 and one in two by tick 300 would be a
+// different and worse bug.  Because a shot subtracts an interval
+// rather than resetting the charge, the debt stays within an ulp of
+// zero and the rate is exact over any run length.
+fn test_the_cadence_does_not_drift_over_a_long_run() {
+    // 300 ticks is 200 s at 1 shot/s.  A robot at 30 HP would die
+    // long before, so this one is measured against a target that
+    // cannot: the tower's own charge, which never banks a whole shot
+    // it did not fire.
+    tcd_mw = one_tower(core());
+    tcd_s  = wave_state_empty();
+    tcd_shots = 0;
+    for _ in 0..300 { tcd_shots = tcd_shots + wave_fire(tcd_s, tcd_mw); }
+
+    // No enemies at all, so no shot LANDS — but every interval is
+    // still spent, and what is left over is what this measures.
+    assert(tcd_shots == 0, "nothing to shoot at, so nothing was hit: {tcd_shots}");
+
+    // ⚠ The residue may be a hair NEGATIVE — the epsilon lets a charge
+    // a few ulps short of an interval fire, so the subtraction leaves
+    // a tiny debt.  What matters is that it does not GROW: 300 ticks
+    // of it stays within an ulp of zero rather than approaching a
+    // whole missed shot.
+    tcd_left = tower_charge(tcd_s.towers, 0, 0);
+    assert(tcd_left < TOWER_CHARGE_EPSILON && tcd_left > -TOWER_CHARGE_EPSILON,
+           "300 ticks of banking left {tcd_left} s — the debt has to stay inside one epsilon");
+}
+
+// The same over a target that survives: 300 ticks must land exactly
+// 200 shots' worth, not 199 and not 201.
+fn test_two_hundred_shots_land_in_three_hundred_ticks() {
+    tth_mw = one_tower(core());
+    tth_s  = wave_state_empty();
+    tth_s.enemies += [Enemy { q: 3, r: 0, kind: robot(), heading: 3 as u8, alive: true }];
+
+    tth_shots = 0;
+    for _ in 0..300 { tth_shots = tth_shots + wave_fire(tth_s, tth_mw); }
+
+    assert(tth_shots == 200,
+           "300 ticks is 200 s at one shot a second: {tth_shots} shots");
+}
+
+// The charge is spent whether or not anything was there to shoot, so
+// a tower is not banking a burst for the next wave.  `DESIGN.md` § 7's
+// decay is per SHOT and B5b is what makes that cost something.
+fn test_a_tower_with_nothing_in_range_still_burns_its_charge() {
+    tan_pw = island(out(0, 3), core());
+    tan_mw = one_tower(core());
+    tan_s  = wave_state_empty();
+    for _ in 0..6 { wave_tick(tan_s, pal(), tan_pw, tan_mw, core()); }
+
+    assert(tower_count(tan_s.towers) == 1, "the tower was ticked");
+    assert(tower_charge(tan_s.towers, 0, 0) < TOWER_FIRE_INTERVAL_S,
+           "and holds less than one interval: {tower_charge(tan_s.towers, 0, 0)} s");
+}
+
+fn test_no_tower_no_shots() {
+    tnt_pw = island(out(0, 3), core());
+    tnt_s  = wave_state_empty();
+    tnt_s.enemies += [Enemy { q: 3, r: 0, kind: robot(), heading: 3 as u8, alive: true }];
+    for _ in 0..20 { wave_tick(tnt_s, pal(), tnt_pw, marker_empty(), core()); }
+
+    assert(alive_count(tnt_s) == 1, "nothing shoots without a tower marker");
+    assert(tower_count(tnt_s.towers) == 0, "and no tower state is invented");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Choosing a target, repeatably
+// ─────────────────────────────────────────────────────────────────
+
+fn wave_at(hexes: vector<Hex>) -> WaveState {
+    wa_s = wave_state_empty();
+    for wa_h in hexes {
+        wa_s.enemies += [Enemy { q: wa_h.q, r: wa_h.r, kind: robot(),
+                                 heading: 3 as u8, alive: true }];
+    }
+    wa_s
+}
+
+fn test_a_tower_shoots_the_nearest_enemy() {
+    tas_s = wave_at([out(0, 9), out(0, 4), out(0, 12)]);
+    assert(tower_pick(tas_s, core()) == 1, "index 1 is four hexes out, the closest");
+}
+
+fn test_nothing_in_range_is_minus_one() {
+    tni_s = wave_at([out(0, TOWER_RANGE_HEXES + 1)]);
+    assert(tower_pick(tni_s, core()) == -1, "a target it cannot reach is not a target");
+
+    assert(tower_pick(wave_state_empty(), core()) == -1, "and an empty roster is not one either");
+}
+
+fn test_a_dead_enemy_is_not_a_target() {
+    tad_s = wave_at([out(0, 2), out(0, 5)]);
+    (tad_s.enemies[0] ?? Enemy {}).alive = false;
+
+    assert(tower_pick(tad_s, core()) == 1, "the corpse two hexes out is skipped");
+}
+
+// ⚠ **Repeatability, which is what plan 08 gates dryopea on.**  A wave
+// arrives spread, so equidistant enemies are common; "whichever the
+// loop saw first" would answer differently the moment spawn order
+// changed, and a written-down run would stop being replayable.  The
+// tie-break is on the WORLD (q, then r), so a reversed roster picks
+// the same hex.
+fn test_equidistant_enemies_are_broken_by_hex_and_not_by_roster_order() {
+    tee_a = wave_at([out(1, 5), out(4, 5), out(0, 5)]);
+    tee_b = wave_at([out(0, 5), out(4, 5), out(1, 5)]);
+
+    tee_pa = tower_pick(tee_a, core());
+    tee_pb = tower_pick(tee_b, core());
+    tee_ha = tee_a.enemies[tee_pa] ?? Enemy {};
+    tee_hb = tee_b.enemies[tee_pb] ?? Enemy {};
+
+    assert(tee_pa >= 0 && tee_pb >= 0, "both find somebody");
+    assert(tee_ha.q == tee_hb.q && tee_ha.r == tee_hb.r,
+           "and the same HEX: ({tee_ha.q}, {tee_ha.r}) vs ({tee_hb.q}, {tee_hb.r})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A tower kill goes through the ONE death path
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ B4 built `wave_deaths` and B5a must not grow a second one: a
+// tower kill and a scripted `hit` have to leave the same body in the
+// same place, or the two ways of dying drift apart.
+fn test_a_tower_kill_leaves_a_body_like_any_other_death() {
+    tak_at = out(0, 4);
+    tak_s  = shot_at(tak_at, 5);
+
+    assert(alive_count(tak_s) == 0, "it died");
+    assert(height_rise(tak_s.heights, tak_at.q, tak_at.r) == BODY_HEIGHT_METRES,
+           "and left a body where it stood: {height_rise(tak_s.heights, tak_at.q, tak_at.r)} m");
+    assert(height_source(tak_s.heights, tak_at.q, tak_at.r) == RUBBLE_WRECKAGE,
+           "of the same wreckage a scripted kill leaves");
+}
+
+// ⚠ **The tower shoots at where the enemy IS, and the enemy then takes
+// its step** — `wave_fire` runs before the move loop, beside
+// `wave_damage`.  So a fatal shot is followed by one last step, which
+// is the consequence B4 wrote down arriving with its first real cause.
+fn test_a_fatal_shot_is_followed_by_one_last_step() {
+    tfs_pw = painted_empty();
+    for tfs_q in 0..=6 { paint(tfs_pw, tfs_q, 0, as_u8(GRASS)); }
+    tfs_mw = one_tower(core());
+    tfs_s  = wave_state_empty();
+    tfs_s.enemies += [Enemy { q: 4, r: 0, kind: robot(), heading: 3 as u8, alive: true }];
+
+    for _ in 0..5 { wave_tick(tfs_s, pal(), tfs_pw, tfs_mw, core()); }
+
+    assert(alive_count(tfs_s) == 0, "five ticks, three shots, one dead robot");
+    assert(first(tfs_s).q < 4,
+           "and it walked while it was being shot: q = {first(tfs_s).q}");
+    assert(height_rise(tfs_s.heights, first(tfs_s).q, 0) == BODY_HEIGHT_METRES,
+           "the body is where it ENDED, not where the first shot found it");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A tower is a MARKER — plan 12 open question 3, decided
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_editor_places_a_tower_through_the_same_seam() {
+    tep_s = editor_state_new(PALETTE);
+    tep = script_run(tep_s,
+        "do toggle_mode\ndo cycle_kind\ndo cycle_kind\nclick 3 0\nmarker 3 0 tower\ncount markers 1 1",
+        SHOTS);
+
+    assert(tep.ok, "{script_describe(tep)}");
+    assert(marker_kind(tep_s.mw, 3, 0) == MARKER_KIND_TOWER, "and it really is a tower");
+}
+
+// ⚠ A tower has no authored facing, so a direction over one is a claim
+// about a number the player cannot set — the same rule a target
+// follows.
+fn test_a_tower_has_no_direction() {
+    tad2 = script_run(editor_state_new(PALETTE),
+        "do toggle_mode\ndo cycle_kind\ndo cycle_kind\nclick 3 0\nmarker 3 0 tower 2", SHOTS);
+
+    assert(!tad2.ok && tad2.message.contains("no direction"), "{tad2.message}");
+}
+
+fn test_an_unknown_marker_kind_names_the_ones_there_are() {
+    tau = script_run(editor_state_new(PALETTE),
+        "do toggle_mode\nclick 3 0\nmarker 3 0 turret", SHOTS);
+
+    assert(!tau.ok, "'turret' is not a kind");
+    assert(tau.message.contains("tower"), "and the error lists the ones that are: {tau.message}");
+}
+
+// ⚠ **The bug the one-dispatch fixed, as a test.**  Undo used to
+// restore every kind it did not recognise as a SPAWN, so undoing over
+// a tower would have put a wave source where the player had a gun.
+fn test_undo_restores_a_tower_as_a_tower() {
+    tur_s = editor_state_new(PALETTE);
+    tur = script_run(tur_s,
+        "do toggle_mode\ndo cycle_kind\ndo cycle_kind\nclick 3 0\nclick 3 0\ndo undo\nmarker 3 0 tower",
+        SHOTS);
+
+    assert(tur.ok, "removing a tower and undoing it brings a TOWER back: {script_describe(tur)}");
+}
+
+// And it survives the sidecar, which is the other site that used to
+// fall through to spawn.
+fn test_a_tower_round_trips_through_the_marker_file() {
+    tar_mw = marker_empty();
+    place_tower(tar_mw, 4, -2);
+    place_spawn(tar_mw, 1, 1, 3 as u8);
+    place_target(tar_mw, 0, 0);
+
+    tar_file = marker_world_to_file(tar_mw, "b5a");
+    tar_back = markerfile_to_world(tar_file);
+
+    assert(marker_kind(tar_back, 4, -2) == MARKER_KIND_TOWER, "the tower came back a tower");
+    assert(marker_kind(tar_back, 1, 1) == MARKER_KIND_SPAWN,  "the spawn a spawn");
+    assert(marker_kind(tar_back, 0, 0) == MARKER_KIND_TARGET, "and the target a target");
+    assert(marker_count(tar_back) == 3, "with nothing lost: {marker_count(tar_back)}");
+}
+
+// A kind no version of dryopea has heard of is SKIPPED rather than
+// placed as a spawn — the forward-compat policy, and the one that
+// stops a later map's content becoming a wave from nowhere.
+fn test_a_kind_from_the_future_is_skipped_not_guessed() {
+    tak_mw = marker_empty();
+    assert(!place_marker(tak_mw, 2, 2, 99, 0 as u8), "kind 99 is not placeable");
+    assert(marker_count(tak_mw) == 0, "and nothing was invented for it");
+}

@@ -629,20 +629,28 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
             measure_exact(run, "marker ({sm_q}, {sm_r}) = none");
             return "";
         }
-        if sm_a3 != "spawn" && sm_a3 != "target" {
-            return "marker: unknown kind '{sm_a3}' — spawn, target or none";
+        if marker_kind_of(sm_a3) < 0 {
+            return "marker: unknown kind '{sm_a3}' — spawn, target, tower or none";
         }
         if !sm_here { return "marker at ({sm_q}, {sm_r}) is none, expected {sm_a3}"; }
 
+        // ⚠ Named through `markers.loft`, not with a local if/else.
+        // The one this replaced answered "spawn" for every kind that
+        // was not a target, so a tower would have measured as a spawn
+        // and a scenario asserting `marker 4 0 spawn` over one would
+        // have been green.
         sm_kind = marker_kind(s.mw, sm_q, sm_r);
-        sm_name = if sm_kind == MARKER_KIND_TARGET { "target" } else { "spawn" };
+        sm_name = marker_kind_name(sm_kind);
         if sm_name != sm_a3 {
             return "marker at ({sm_q}, {sm_r}) is {sm_name}, expected {sm_a3}";
         }
         if sm_argc == 4 {
-            // Targets are spherical, so a direction over one is a
-            // claim about a number the player cannot see.
-            if sm_a3 == "target" { return "marker: a target has no direction"; }
+            // Only a spawn has an authored facing.  A direction over
+            // any other kind is a claim about a number the player
+            // cannot see and cannot set.
+            if sm_a3 != "spawn" {
+                return "marker: a {sm_a3} has no direction";
+            }
             sm_d = sm_a4 as integer?;
             if sm_d == null { return "marker: <direction> must be an integer 0..5"; }
             sm_want_d = sm_d ?? 0;
@@ -1257,7 +1265,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
             return "tick: needs exactly ONE target marker to walk towards, found {sc_tcore.0}";
         }
         for _ in 0..sc_count {
-            wave_tick(run.wave, s.picker.palette, s.pw,
+            wave_tick(run.wave, s.picker.palette, s.pw, s.mw,
                       Hex { q: sc_tcore.1, r: sc_tcore.2 });
         }
         return "";

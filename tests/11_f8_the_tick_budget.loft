@@ -144,7 +144,7 @@ fn us_per_tick(pw: PaintedWorld, enemies: integer, radius: integer,
     u_pal = pal();
     u_s   = rim_wave(enemies, radius);
     u_t0  = ticks();
-    for _ in 0..n_ticks { wave_tick(u_s, u_pal, pw, core()); }
+    for _ in 0..n_ticks { wave_tick(u_s, u_pal, pw, marker_empty(), core()); }
     ((ticks() - u_t0) / n_ticks) ?? 0
 }
 
@@ -212,7 +212,7 @@ fn test_a_pile_dropped_mid_wave_diverts_the_wave() {
     tpd_s   = wave_state_empty();
     tpd_s.enemies += [westbound(12, 0)];
 
-    for _ in 0..6 { wave_tick(tpd_s, tpd_pal, tpd_pw, core()); }
+    for _ in 0..6 { wave_tick(tpd_s, tpd_pal, tpd_pw, marker_empty(), core()); }
     tpd_mid = tpd_s.enemies[0] ?? Enemy {};
     assert(tpd_mid.q == 6 && tpd_mid.r == 0, "six ticks down the direct line");
 
@@ -220,7 +220,7 @@ fn test_a_pile_dropped_mid_wave_diverts_the_wave() {
     // wall, not an edit, nothing saved — only the runtime layer.
     height_raise(tpd_s.heights, 3, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
-    for _ in 0..8 { wave_tick(tpd_s, tpd_pal, tpd_pw, core()); }
+    for _ in 0..8 { wave_tick(tpd_s, tpd_pal, tpd_pw, marker_empty(), core()); }
     tpd_end = tpd_s.enemies[0] ?? Enemy {};
 
     assert(tpd_end.q == 0 && tpd_end.r == 0,
@@ -240,13 +240,13 @@ fn test_collecting_the_pile_opens_the_route_again() {
     tcp_s.enemies += [westbound(5, 0)];
     height_raise(tcp_s.heights, 4, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
-    wave_tick(tcp_s, tcp_pal, tcp_pw, core());
+    wave_tick(tcp_s, tcp_pal, tcp_pw, marker_empty(), core());
     tcp_a = tcp_s.enemies[0] ?? Enemy {};
     assert(tcp_a.q == 5, "a robot climbs {CLIMB_REGULAR:3.1} m, so {PILE_OVER_A_ROBOT:3.1} m of bodies stops it: q = {tcp_a.q}");
 
     height_raise(tcp_s.heights, 4, 0, -PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
-    wave_tick(tcp_s, tcp_pal, tcp_pw, core());
+    wave_tick(tcp_s, tcp_pal, tcp_pw, marker_empty(), core());
     tcp_b = tcp_s.enemies[0] ?? Enemy {};
     assert(tcp_b.q == 4, "and the hex it could not climb is ground again: q = {tcp_b.q}");
 }
@@ -266,11 +266,11 @@ fn test_a_change_lands_on_the_next_tick_and_not_the_one_running() {
     tcl_b = wave_state_empty();
     tcl_b.enemies += [westbound(5, 0)];
 
-    wave_tick(tcl_a, tcl_pal, tcl_pw, core());
+    wave_tick(tcl_a, tcl_pal, tcl_pw, marker_empty(), core());
     height_raise(tcl_a.heights, 4, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
 
     height_raise(tcl_b.heights, 4, 0, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
-    wave_tick(tcl_b, tcl_pal, tcl_pw, core());
+    wave_tick(tcl_b, tcl_pal, tcl_pw, marker_empty(), core());
 
     assert((tcl_a.enemies[0] ?? Enemy {}).q == 4, "A moved: the pile came after its tick");
     assert((tcl_b.enemies[0] ?? Enemy {}).q == 5, "B did not: the pile was there when its tick began");
@@ -297,16 +297,16 @@ fn test_a_wave_over_piled_ground_is_order_independent() {
 
     // The same ground raised under both, mid-walk.
     for _ in 0..3 {
-        wave_tick(tao_a, tao_pal, tao_pw, core());
-        wave_tick(tao_b, tao_pal, tao_pw, core());
+        wave_tick(tao_a, tao_pal, tao_pw, marker_empty(), core());
+        wave_tick(tao_b, tao_pal, tao_pw, marker_empty(), core());
     }
     for tao_h in [Hex { q: 1, r: 0 }, Hex { q: 0, r: 1 }, Hex { q: -1, r: 1 }] {
         height_raise(tao_a.heights, tao_h.q, tao_h.r, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
         height_raise(tao_b.heights, tao_h.q, tao_h.r, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
     }
     for _ in 0..6 {
-        wave_tick(tao_a, tao_pal, tao_pw, core());
-        wave_tick(tao_b, tao_pal, tao_pw, core());
+        wave_tick(tao_a, tao_pal, tao_pw, marker_empty(), core());
+        wave_tick(tao_b, tao_pal, tao_pw, marker_empty(), core());
     }
 
     // The SET of held hexes, because the roster order differs by
@@ -334,10 +334,10 @@ fn test_the_field_a_tick_uses_equals_a_fresh_build() {
     tff_s   = wave_state_empty();
     tff_s.enemies += [westbound(12, 0)];
 
-    for _ in 0..4 { wave_tick(tff_s, tff_pal, tff_pw, core()); }
+    for _ in 0..4 { wave_tick(tff_s, tff_pal, tff_pw, marker_empty(), core()); }
     paint(tff_pw, 3, 0, as_u8(WALL));
     height_raise(tff_s.heights, 4, -1, PILE_OVER_A_ROBOT, as_u8(RUBBLE_WRECKAGE));
-    for _ in 0..2 { wave_tick(tff_s, tff_pal, tff_pw, core()); }
+    for _ in 0..2 { wave_tick(tff_s, tff_pal, tff_pw, marker_empty(), core()); }
 
     // Two builds over the same world, one held across the edits and one
     // made now.  They must agree cell for cell — which they do today

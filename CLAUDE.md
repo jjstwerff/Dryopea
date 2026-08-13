@@ -36,7 +36,8 @@ exists today.
 | A besieged wall loses HP, breaks into a heap of masonry, and the breach is a way IN | [12](plans/12-combat-resolution/README.md), B2 shipped |
 | Enemies have HP, die, and leave a body that raises its hex — so a kill zone ramps itself shut | [12](plans/12-combat-resolution/README.md), B4 shipped |
 | A wall's HP is STRUCTURAL — an end is worth 30% of a braced hex, a lone stub 15% — and a perimeter unzips from a breach | [12](plans/12-combat-resolution/README.md), B3 shipped |
-| **No tower fires and nothing deals damage on its own** — only a besieging enemy does | [12](plans/12-combat-resolution/README.md), B5 + B6 next |
+| Towers: a third MARKER kind, range 15 by `lat_distance`, two shots every three ticks | [12](plans/12-combat-resolution/README.md), B5a shipped |
+| **A tower cannot miss and cannot see** — no line of sight, no shot budget, no wallet | [12](plans/12-combat-resolution/README.md), B5b + B6 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -52,7 +53,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 667/667 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 691/691 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world).
 **Gate: 15 scripts green under `scripts/validate.sh`** (~13 s, 260
@@ -674,6 +675,23 @@ src/
                    by exactly 3, and odd-r row parity means a
                    constant-`q` COLUMN zigzags and reads as braced
 
+  tower.loft       what a TOWER is (plan 12 B5a) — the numbers
+                   (range 15 hex, 1.0 s interval, 10 HP a shot),
+                   TowerState + tower_charge / tower_bank / count, and
+                   tower_in_range.  ⚠ Range is `lat_distance` and
+                   NOTHING else; a `+ 1` on a q or an r reaching for it
+                   is moros#10 again.
+                   ⚠ A tower BANKS charge rather than firing per tick,
+                   because a 1.0 s interval is 1.5 ticks and B5b has to
+                   COUNT shots against a 30-shot budget.  A shot
+                   SUBTRACTS an interval, never resets — and the
+                   comparison needs `TOWER_CHARGE_EPSILON`, because
+                   `1/1.5` has no exact float form and a bare `>=`
+                   silently drops every third shot.
+                   ⚠ `tower_pick` and `wave_fire` are in `spawn.loft`,
+                   where `WaveState` is: this file must not depend on
+                   the wave engine, because the tick calls INTO it
+
   flow.loft        the distance field (plan 11 F2) — flow_build(pal,
                    pw, kind, core) -> FlowField, a BFS out from the
                    core over what that CLASS can occupy, plus
@@ -798,7 +816,8 @@ suite redirects its own shots into `tests/actual/`.
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
-| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger — runtime, not editor state |
+| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge — runtime, not editor state |
+| `TowerState` | `tower.loft` | seconds each tower has banked toward its next shot — runtime, never saved |
 | `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken }` — `taken` is damage ABSORBED, so an `Enemy { … }` literal that omits it is HEALTHY |
 | `HeightLayer` | `height.loft` | metres of rubble piled on the map at runtime, and what it is made of — never saved |
 | `DamageLayer` | `damage.loft` | HP each structure has ABSORBED — runtime, never saved; a miss means undamaged |
@@ -1113,6 +1132,8 @@ signature.
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
 | Add a `.keys` verb that takes a hex | `src/script.loft`, AND a row in `src/convert.loft::keys_schemas` + the vocabulary list in `tests/09_c5a_converter.loft`.  A missing schema row is silent: the converter passes an unknown command through untouched |
+| Place or restore a marker of any kind | `src/markers.loft::place_marker` (and `history.loft::place_marker_and_record`) — the ONE dispatch.  ⚠ Sidecar load, undo and redo each used to fall through to SPAWN, so a kind they had not learned about arrived as a wave source with a heading |
+| Add a marker kind | append a constant in `markers.loft`, bump `MARKER_KIND_COUNT`, add a row to `place_marker` + `marker_kind_name`.  ⚠ The editor's place-kind CYCLE grows, so every `.keys` script that cycles back to spawn needs another press — B5a paid that for nine scenarios |
 | Change what a key does | `src/bindings.loft::editor_actions` — the ONE table.  Both the GL loop and every `.keys` script read it, so a change is visible to the gate.  Never add a `gl_key_pressed` |
 | File an outbound loft request | [QUESTIONS_FOR_LOFT.md](QUESTIONS_FOR_LOFT.md) |
 | File a dryopea-internal bug | [PROBLEMS.md](PROBLEMS.md) (`@D<NNN>` convention) |
