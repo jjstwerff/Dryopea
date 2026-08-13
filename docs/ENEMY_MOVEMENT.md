@@ -28,6 +28,7 @@ document is about getting there.
 - [The tick resolves once](#the-tick-resolves-once)
 - [Sealing the perimeter is punished, not forbidden](#sealing-the-perimeter-is-punished-not-forbidden)
 - [A wall's HP is structural, not a constant](#a-walls-hp-is-structural-not-a-constant)
+- [Retaliation — designed, not built](#retaliation--designed-not-built)
 - [What a broken wall leaves](#what-a-broken-wall-leaves)
 
 ## Two modes, one passability rule
@@ -356,6 +357,43 @@ with.
 ⚠ **Terrain does not brace.**  Support comes from a hex's structure
 neighbours, so a wall anchored against a cliff is still an end.
 Arguable as design; written down rather than assumed.
+
+## Retaliation — designed, not built
+
+⚠ Owner, 2026-08-13.  Enemies attack **towers that hurt them**, and
+which towers those are is an **information** question rather than a
+threat one: with the scrambler up an enemy knows only its own
+injuries, so it retaliates against what hurt *it*; with the scrambler
+down they share, and a tower hurting anyone's companions is a target
+for all of them.
+
+⚠ **It never overrides the routing above.**  An enemy with no route to
+the tower goes on heading for the core — so most of the time nothing
+changes, because a tower behind a closed perimeter cannot be reached.
+That is what makes "put the towers behind walls" the normal answer and
+an outer ridge a real gamble: a ridge tower is exposed because it is
+**reachable**, not because it is outside.
+
+⚠ **The one exception under scrambling is the BOSS**, and it falls out
+of its size rather than being granted to it.  A boss is 2×2, so it
+cannot fit a one-hex entrance and is the unit most likely to have no
+route to the core at all — it is the one left standing outside being
+shot.  And it can **order other robots onto its attacker**, being the
+command platform of robot society, so it coordinates locally through
+the jamming.  The chain: *big footprint → no route in → stuck at the
+wall → a tower hits it → the squad is put onto that tower*.
+
+⚠ Its footprint is also a routing problem nothing here solves: the
+field is built for a ONE-hex unit, so a boss needs a sweep with a
+clearance requirement — a second key beside the climb limit that
+`wave_fields` already groups on.
+
+Two more consequences: a tower that has never fired has hurt nobody, so
+a reserve held in check is safe by the rule; and retaliation gives an
+enemy a NEW reason to break a wall — *the thing shooting me is behind
+it* — which is the first target priority in
+[`DESIGN.md`](DESIGN.md) § Enemy targeting that is about a defence
+rather than about the core.
 
 ## What a broken wall leaves
 

@@ -749,6 +749,118 @@ anybody designed for an enemy:
   therefore dodge without trying to**, which gives enemy speed
   a defensive role nothing had to grant it.
 
+#### Where a tower goes: inside the base, or out on the ridge
+
+Owner, same session, and it is the pay-off of the two tables
+above.  A **sniper or artillery piece inside the base is badly
+placed** — everything reaches it at the range it is worst at —
+and the same gun **on an outer ridge is excellent**, covering
+the whole approach at the distance it is built for.  A flame
+thrower is the exact opposite: it wants the entrance, where
+things arrive close and in numbers.
+
+So the catalogue turns *where* into a decision rather than a
+formality, and it is one the player makes with the same walls
+they defend with — funnel the approach, then look down it.
+
+The ridge is paid for twice.
+
+**In combat: enemies DO attack towers that hurt them** — see
+§ Retaliation is an information rule, below.  A tower inside
+the base is usually behind a wall, so retaliation has to chew
+through the perimeter to reach it; a tower on an outer ridge is
+standing in the open.
+
+**In logistics:** a tower's budget is spent per shot and only a
+player standing at it can repair it, boost it, hot-swap its top
+or (§ Damage TYPE) aim it at a corpse.  So an outer-ridge tower
+means driving out through a live wave, mid-fight, to service
+the thing that is doing the most work.
+
+#### Retaliation is an INFORMATION rule, not a threat rule
+
+Owner, 2026-08-13, and it is the scrambler's fiction made
+mechanical.  Robots do not evaluate which tower is most
+dangerous.  They respond to damage they have **information
+about**, and the scrambler is what decides how much that is:
+
+- **Scrambler up** (the normal case): an enemy targets a tower
+  that has hurt **it, personally**.  Comms are cut, so each
+  robot knows only its own injuries — retaliation is
+  individual, late and easy to dilute.
+- **Scrambler down**: they share what they know, so a tower
+  hurting **anyone's companions** becomes a target for all of
+  them.  Fire gets focused, and the defences that were quietly
+  doing the work become the thing the wave is aimed at.
+
+⚠ **And retaliation never overrides ROUTING, which is what stops
+it dominating.**  Wanting to reach a tower is not the same as
+being able to: an enemy that has no route to the thing shooting
+it goes on doing what it was doing — heading for the heart of
+the base.  So **most of the time nothing changes**, because a
+tower inside a closed perimeter simply cannot be reached, and
+the wave keeps its attention on the core (chewing the wall in
+its way, by the existing rule, rather than the wall nearest the
+tower).
+
+That is exactly why *"towers can often be placed behind walls"*
+is the normal answer, and it is what makes the outer ridge a
+real gamble rather than a free upgrade: a ridge tower is exposed
+because it is **reachable**, not because it is outside.
+
+⚠ **That is a real second phase, not a modifier.**  The core is
+the scrambling tower ([§ 4](#4-the-core--the-scrambling-tower)),
+so whatever ends the scrambling — and *when* it ends is the one
+thing this note does not settle — flips the wave from a crowd
+into a coordinated force at exactly the moment the player has
+least to spare.
+
+⚠ **The ONE exception under scrambling is the boss, and it is
+a causal chain rather than a special case.**  A boss has a 2×2
+footprint ([§ 10](#10-three-enemy-tiers)), so it *cannot fit a
+one-hex entrance* — which means it is the unit most likely to
+have no good route to the core and to end up standing outside
+being shot.  And a boss **can order other robots to attack its
+attacker**: it is the engineering / command platform of robot
+society (§ Boss = mobile REPAIR PLATFORM), carrying enough
+authority and power to coordinate locally even through the
+jamming.
+
+So the chain runs: **big footprint → no route in → stuck at the
+wall → a tower shoots it → it puts the squad onto that tower.**
+A boss turns a tower's success into a focused counter-attack,
+and it does so while the scrambler is still up — which is the
+only time that happens.
+
+Two consequences worth writing down before anybody builds it:
+
+- **A tower that has never fired has hurt nobody, so nothing is
+  looking for it.**  A reserve held in check is safe by the
+  rule rather than by a special case.
+- **It gives an enemy a NEW reason to break a wall.**  Today
+  § Enemy targeting attacks a wall only when no path to the
+  core exists; retaliation adds "because the thing shooting me
+  is behind it", which is a second entry in that priority list
+  and the first one that is about a *defence* rather than the
+  core.
+
+#### LOS is a HEIGHT question, not a table of materials
+
+⚠ **Input for whoever builds line of sight.**  The numbers
+already say height decides it: a tower is 6.0 m and *"peeks 1 m
+over a normal wall"*, and the 5 m `wall_high` is what stops it.
+Implementing that as a lookup — *`wall_high` blocks, `wall` does
+not* — builds a second table that duplicates the heights and
+disagrees with them the moment either moves.  dryopea has caught
+that shape twice already (`walk_ground` versus the height rule;
+the painted kind versus the surface).
+
+Reading the HEIGHT instead also makes the ridge work for free:
+a tower standing on 3 m of rock is at 9 m and sees over things
+a ground-level one cannot, with nothing written for elevation
+at all.  Which is the whole reason the outer ridge is a place
+worth putting a sniper.
+
 ⚠ Implementation note for whoever builds it: plan 12 B5a's
 `tower_pick` re-chooses the nearest enemy every shot with no
 cost to switching, which is exactly the placeholder traverse

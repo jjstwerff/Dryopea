@@ -533,6 +533,53 @@ Damage TYPE is the axis; the parts that bear on **this** plan:
   away is missed — **faster enemies dodge without trying to**, which
   gives enemy speed a defensive role nothing had to grant it.
 
+⚠ **What this says about B5b's line of sight — the sharpest input
+here.** LOS is a **height** question and must not become a table of
+materials. `numbers.json` already fixes it that way: a tower is 6.0 m
+and *"peeks 1 m over a normal wall"*, and a 5.0 m `wall_high` is what
+stops it. Implementing the gate as *`wall_high` blocks, `wall` does
+not* builds a SECOND table that duplicates the heights and disagrees
+with them the moment either moves — the shape this codebase has caught
+twice already (`walk_ground` versus the height rule in plan 11 F0; the
+painted kind versus the surface in B1).
+
+Reading the height also buys the mechanic the owner is after for
+nothing: **some towers are bad inside the base and excellent on an
+outer ridge**, because a tower standing on 3 m of rock is at 9 m and
+sees over what a ground-level one cannot. A sniper wants the ridge and
+a flame thrower wants the entrance, and neither needs a line of code
+about elevation.
+
+⚠ **Towers ARE targetable, and the rule is about INFORMATION rather
+than threat** (owner, same session — it settles what this plan had
+listed as an open question). An enemy retaliates against a tower that
+has hurt **it personally** while the scrambler is up; with the
+scrambler down they share what they know and a tower hurting anyone's
+companions is a target for all of them. The scrambler's fiction, made
+mechanical.
+
+⚠ **But retaliation never overrides ROUTING, and that is what keeps it
+from dominating.** An enemy with no route to the tower goes on doing
+what it was doing — heading for the core. So most of the time nothing
+changes, because a tower inside a closed perimeter cannot be reached;
+a ridge tower is exposed because it is **reachable**, not because it
+is outside. ⚠ Cheap on what plan 11 already built: two hexes in the
+same routing field are in the same connected component, so "can I get
+there at all" is a lookup rather than a second sweep — and it is a
+`flow_build` from the TOWER that would be needed for the actual path.
+
+Two consequences worth having written down: **a tower that has never
+fired has hurt nobody**, so a reserve held in check is safe by the
+rule rather than by a special case; and retaliation gives an enemy a
+**new reason to break a wall** — "the thing shooting me is behind it"
+— which is a second entry in `DESIGN.md`'s target priority and the
+first about a defence rather than the core.
+
+The ridge is therefore paid for twice: in combat (it is reachable) and
+in logistics (only a player standing at a tower can repair, boost,
+hot-swap or aim it, so an outer tower means driving out through a live
+wave mid-fight).
+
 ⚠ **What this says about B5a's picker.** `tower_pick` re-chooses the
 nearest enemy every shot with no cost to switching. That is exactly the
 placeholder traverse time replaces; it will want hysteresis, and it
@@ -547,6 +594,11 @@ replaying written-down runs.
 | a per-class body height and decay rate | `numbers.json` rows beside B4's `enemy_regular.body_height` |
 | tower damage TYPES (laser / artillery / explosive / EMP) | `numbers.json` § tower has `damage_per_shot` and no type; B5 should avoid foreclosing one |
 | enemy ARMOUR and SIZE, and damage scaled by type against them | `numbers.json` rows per class beside `hp`; the scaling belongs beside `enemy_max_hp` in `damage.loft`.  ⚠ SIZE is needed by the blocking rule anyway, so the flame thrower costs no new property |
+| tower HP, and a tower that can be destroyed | `numbers.json` § tower has a shot budget and repair times but no HP — retaliation needs one |
+| retaliation memory: which tower hurt whom | per-enemy while scrambled, shared while not; the scrambler state itself is a global nothing yet models |
+| a BOSS that orders the squad onto its attacker | the one coordination that happens while scrambled — and it needs the 2x2 footprint first |
+| routing for a unit wider than one hex | ⚠ the field is built for a ONE-hex unit; a boss needs a sweep with a clearance requirement, a second key beside the climb limit `wave_fields` already groups on |
+| LOS from a HEIGHT rather than a materials table | B5b, and it is the one item here that phase should not defer — a materials lookup is a second source of truth for numbers `passable.loft` already owns |
 | a per-TYPE range PROFILE, not one `TOWER_RANGE_HEXES` | `tower.loft` — `tower_in_range`'s single `<=` becomes a curve: a sniper is bad below a minimum, a flame thrower nothing beyond a short one.  ⚠ `lat_distance` stays the only thing that measures; it is the comparison that grows |
 | a tower FACING, and traverse time between targets | `TowerState` — it already carries the per-tower charge, and B5a wrote it as a struct so a second field costs a line |
 | projectile travel time, so a fast enemy can be missed | a shot in flight is state nothing has; it is the one item here that needs a new record rather than a new field |
