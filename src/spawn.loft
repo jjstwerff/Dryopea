@@ -793,7 +793,7 @@ pub fn wave_occupancy(state: const WaveState) -> Occupancy {
 }
 
 // Which enemy a tower at `at` fires on — a roster index, or `-1` for
-// nothing in reach.
+// nothing it can reach AND see.
 //
 // **Nearest to the TOWER**, because that is what a range-limited
 // weapon does, with ties broken by `q` then `r` and never by roster
@@ -805,7 +805,22 @@ pub fn wave_occupancy(state: const WaveState) -> Occupancy {
 // changed spawn order — which plan 08 gates dryopea by replaying.
 // Ordering by coordinate makes the answer a property of the WORLD
 // rather than of the roster.
-pub fn tower_pick(state: const WaveState, at: const Hex) -> integer {
+//
+// ⚠ **The sight check is LAST, and that is a cost decision.**
+// `tower_sees` walks up to 15 hexes and asks `hex_height` at each, so
+// asking it of all 80 enemies in a wave would put a line trace per
+// enemy per shot into the tick.  A candidate that does not beat the
+// best on distance cannot be picked whether it is visible or not, so
+// the trace only runs for a candidate that would otherwise be taken —
+// a handful per shot rather than a roster's worth.  The answer is
+// identical, which is what makes this an ordering and not a rule.
+//
+// ⚠ **A blind tower answers -1, exactly like an empty field**, and
+// `wave_fire` treats the two the same on purpose: a tower cannot spend
+// a shot it did not fire, whether the reason is that there was nothing
+// there or that a wall was.
+pub fn tower_pick(state: const WaveState, pal: vector<GroundType>, pw: PaintedWorld,
+                  at: const Hex) -> integer {
     tp_best = -1;
     tp_dist = 0;
     tp_q    = 0;
@@ -813,7 +828,8 @@ pub fn tower_pick(state: const WaveState, at: const Hex) -> integer {
     tp_i    = 0;
     for tp_e in state.enemies {
         if tp_e.alive {
-            tp_d = lat_distance(at, Hex { q: tp_e.q, r: tp_e.r });
+            tp_h = Hex { q: tp_e.q, r: tp_e.r };
+            tp_d = lat_distance(at, tp_h);
             if tp_d <= TOWER_RANGE_HEXES {
                 tp_take = tp_best < 0;
                 if !tp_take && tp_d < tp_dist { tp_take = true; }
@@ -821,7 +837,8 @@ pub fn tower_pick(state: const WaveState, at: const Hex) -> integer {
                 if !tp_take && tp_d == tp_dist && tp_e.q == tp_q && tp_e.r < tp_r {
                     tp_take = true;
                 }
-                if tp_take {
+                if tp_take && tower_sees(pal, pw, state.heights, at, tp_h,
+                                         enemy_height(tp_e.kind)) {
                     tp_best = tp_i;
                     tp_dist = tp_d;
                     tp_q    = tp_e.q;
@@ -847,14 +864,28 @@ pub fn tower_pick(state: const WaveState, at: const Hex) -> integer {
 // the tick is the one death path (B4), so a tower kill and a scripted
 // `hit` leave the same body in the same place.
 //
-// ⚠ The charge is spent whether or not there was anything to shoot,
-// so a tower firing into an empty field is not banking a burst for the
-// next wave.  `DESIGN.md` § 7's decay is per SHOT, and B5b is what
-// makes that cost something.
-pub fn wave_fire(state: WaveState, mw: MarkerWorld) -> integer {
+// ⚠ **A shot is spent only when it is FIRED, and it is fired only at
+// something the tower can see** (B5b).  One rule, and it covers both
+// halves of the gate: a tower with nothing in range and a tower whose
+// every line is blocked both hold their charge and their budget,
+// because neither of them took a shot.  `DESIGN.md` § 7's decay is per
+// SHOT — an idle tower in a quiet corner never decays — and a budget
+// that fell while the tower was staring at a wall would be a timer
+// wearing a magazine's name.
+//
+// ⚠ What stops that becoming a stockpile is `tower_hold`: a tower that
+// could not fire keeps ONE interval and drops the rest, so a line that
+// opens after a hundred blind ticks buys one shot and not sixty-six.
+//
+// ⚠ A **black** tower is inert — it does not even bank.  Nothing in
+// this plan repairs one, so in an unattended run that is terminal, and
+// it is half of what B7's clock measures.
+pub fn wave_fire(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
+                 mw: MarkerWorld) -> integer {
     wf_shots = 0;
     for wf_m in mw.markers {
-        if wf_m.kind == MARKER_KIND_TOWER as u8 {
+        if wf_m.kind == MARKER_KIND_TOWER as u8
+           && !tower_black(state.towers, wf_m.q, wf_m.r) {
             tower_bank(state.towers, wf_m.q, wf_m.r, TICK_SECONDS);
             wf_at = Hex { q: wf_m.q, r: wf_m.r };
             // ⚠ WHILE, not IF — see `tower.loft` § Why a tower needs
@@ -865,17 +896,23 @@ pub fn wave_fire(state: WaveState, mw: MarkerWorld) -> integer {
             // two seconds and the tower silently drops every third
             // shot (`tower.loft` § TOWER_CHARGE_EPSILON).
             while tower_charge(state.towers, wf_m.q, wf_m.r)
-                  >= TOWER_FIRE_INTERVAL_S - TOWER_CHARGE_EPSILON {
+                  >= TOWER_FIRE_INTERVAL_S - TOWER_CHARGE_EPSILON
+                  && !tower_black(state.towers, wf_m.q, wf_m.r) {
+                wf_i = tower_pick(state, pal, pw, wf_at);
+                // ⚠ **The break is the phase.**  Nothing to shoot means
+                // the interval is NOT spent, so this loop would spin
+                // for ever without it — which is the shape of the bug
+                // that says "hold your fire" and means "hang".
+                if wf_i < 0 { break; }
                 tower_bank(state.towers, wf_m.q, wf_m.r, -TOWER_FIRE_INTERVAL_S);
-                wf_i = tower_pick(state, wf_at);
-                if wf_i >= 0 {
-                    // ⚠ Indexed in place, never through a helper that
-                    // RETURNS an `Enemy` — a returned struct is a copy
-                    // and the hit would land on nothing (B4).
-                    enemy_hurt(state.enemies[wf_i] ?? Enemy {}, TOWER_DAMAGE_PER_SHOT);
-                    wf_shots = wf_shots + 1;
-                }
+                tower_spend_shot(state.towers, wf_m.q, wf_m.r);
+                // ⚠ Indexed in place, never through a helper that
+                // RETURNS an `Enemy` — a returned struct is a copy and
+                // the hit would land on nothing (B4).
+                enemy_hurt(state.enemies[wf_i] ?? Enemy {}, TOWER_DAMAGE_PER_SHOT);
+                wf_shots = wf_shots + 1;
             }
+            tower_hold(state.towers, wf_m.q, wf_m.r);
         }
     }
     wf_shots
@@ -1003,7 +1040,7 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // Both halves of the exchange land against the world the tick
     // STARTED with — towers shoot at where the enemies are now, and
     // besieging enemies bite the wall in front of them.
-    wave_fire(state, mw);
+    wave_fire(state, pal, pw, mw);
     wave_damage(state, pal, pw, wt_fields, wt_desire);
 
     for wt_i in move_order(state, wt_fields) {

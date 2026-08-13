@@ -1,0 +1,536 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B5b — line of sight, and the shot budget.
+//
+// ── The one rule under test ─────────────────────────────────────
+//
+// **A shot travels in a straight line from the tower's eye to the
+// target's body, and anything the line does not clear stops it.**
+// Every term is a height: the tower's eye is its hex plus 6.0 m, the
+// aim is the target's hex plus the 1.0 m robot standing on it, and an
+// obstacle is `hex_height` — a painted structure plus whatever runtime
+// has piled on it.
+//
+// There is deliberately no table of what blocks.  `DESIGN.md` § LOS is
+// a HEIGHT question gives the reason: a *`wall_high` blocks / `wall`
+// does not* lookup is a second source of truth for numbers
+// `passable.loft` already owns, and this codebase has caught that shape
+// twice.  So the tests below are written to fail if anyone ever puts
+// one in — § The difference is the HEIGHT is the specific gate, and it
+// works by making the SAME kind block in one place and not in another.
+//
+// ── The falsification, written down before the code ─────────────
+//
+// `DESIGN.md` § 7 summarised LOS as *"blocked by `wall_high` +
+// `steep_rock`, not by `wall`"*.  Measured against the ray, both halves
+// of that are wrong, and both are recorded here as tests rather than
+// left as prose:
+//
+// - **A `wall` DOES block** once it stands past roughly three fifths of
+//   the way to the target.  A tower one hex behind its own wall covers
+//   the robots chewing the far side; two hexes behind, they are in dead
+//   ground.  A tower has to OVERLOOK the wall it defends.
+// - **`steep_rock` blocks NOTHING**, because dryopea has no terrain
+//   elevation at all — `height_override` is null for every terrain kind
+//   and `hex_height` answers 0.0 for all of them.  It blocks for free
+//   the day plan 02's slope solver lands, and this file goes red that
+//   day and names the paragraph to rewrite.
+//
+// ── And the budget ──────────────────────────────────────────────
+//
+// 30 shots, then the tower goes black.  Decay is per SHOT and never
+// per time, so the negative control is the one that matters: **a tower
+// whose every line is blocked spends nothing at all** — not its budget
+// and not its charge.  A tower that could not fire keeps ONE interval
+// and drops the rest, because a capacitor holds one shot and not a
+// magazine.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+const GRASS:      integer = 5;
+const STEEP_ROCK: integer = 8;
+const WALL:       integer = 9;
+const WALL_HIGH:  integer = 10;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+// `steps` hexes out from the origin along direction `d`, stepped
+// through `lat_neighbour` — the only thing in dryopea allowed to
+// produce a neighbouring coordinate (§ Hex convention).
+fn out(d: integer, steps: integer) -> Hex {
+    o_h = core();
+    for _ in 0..steps { o_h = lat_neighbour(o_h, d); }
+    o_h
+}
+
+// An ISLAND: the tower's hex, the target's hex and one obstacle hex,
+// and nothing else painted.
+//
+// ⚠ The island is what keeps a ticking test honest — an enemy with no
+// standable neighbour cannot walk, so its distance from the tower stays
+// exactly what the fixture put it at.  A walking one would stroll out
+// from behind the wall and turn "it never got hit" into a statement
+// about nothing.  Same trick as `tests/12_b5a_tower.loft`.
+fn island(target: const Hex, obstacle: const Hex, kind: integer) -> PaintedWorld {
+    i_pw = painted_empty();
+    paint(i_pw, 0, 0, as_u8(GRASS));
+    paint(i_pw, target.q, target.r, as_u8(GRASS));
+    paint(i_pw, obstacle.q, obstacle.r, as_u8(kind));
+    i_pw
+}
+
+// Does a tower at the origin see a robot `at`, with `kind` painted on
+// `obstacle` and nothing piled anywhere?
+fn sees(target: const Hex, obstacle: const Hex, kind: integer) -> boolean {
+    tower_sees(pal(), island(target, obstacle, kind), height_layer_empty(),
+               core(), target, ENEMY_HEIGHT_METRES)
+}
+
+// The same question with the numbers that answered it, for a message
+// that names the hex and the two heights rather than "false".
+fn why(target: const Hex, obstacle: const Hex, kind: integer) -> text {
+    tower_sight_fault(pal(), island(target, obstacle, kind), height_layer_empty(),
+                      core(), target, ENEMY_HEIGHT_METRES)
+}
+
+fn one_tower(at: const Hex) -> MarkerWorld {
+    ot_mw = marker_empty();
+    place_tower(ot_mw, at.q, at.r);
+    ot_mw
+}
+
+fn one_robot(at: const Hex) -> WaveState {
+    or_s = wave_state_empty();
+    or_s.enemies += [Enemy { q: at.q, r: at.r, kind: robot(),
+                             heading: 3 as u8, alive: true }];
+    or_s
+}
+
+fn first(state: WaveState) -> Enemy {
+    state.enemies[0] ?? Enemy {}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE GATE: it kills through a `wall` and never through a `wall_high`
+// ─────────────────────────────────────────────────────────────────
+
+// Ten hexes out, with the obstacle three hexes from the tower: the
+// shot is 4.5 m up when it crosses it, which clears 3.0 m of `wall`
+// and does not clear 5.0 m of `wall_high`.
+//
+// ⚠ Both cases use the SAME geometry and differ only in the painted
+// kind, so what separates them is the two metres between the palette's
+// two structure heights and nothing else.
+fn test_a_tower_kills_through_a_wall() {
+    tak_t  = out(0, 10);
+    tak_pw = island(tak_t, out(0, 3), WALL);
+    tak_s  = one_robot(tak_t);
+    for _ in 0..8 { wave_tick(tak_s, pal(), tak_pw, one_tower(core()), core()); }
+
+    assert(alive_count(tak_s) == 0,
+           "three shots through a 3 m wall kill a 30 HP robot: {why(tak_t, out(0, 3), WALL)}");
+}
+
+fn test_and_never_through_a_wall_high() {
+    tan_t  = out(0, 10);
+    tan_pw = island(tan_t, out(0, 3), WALL_HIGH);
+    tan_s  = one_robot(tan_t);
+    for _ in 0..8 { wave_tick(tan_s, pal(), tan_pw, one_tower(core()), core()); }
+
+    assert(alive_count(tan_s) == 1, "5 m of wall_high stops the shot");
+    assert(first(tan_s).taken == 0.0,
+           "and stops ALL of it, not most: {first(tan_s).taken} HP got through");
+}
+
+// ⚠ **The negative control the phase turns on.**  A tower staring at a
+// wall for twenty ticks has fired nothing, so it has spent nothing —
+// not one shot of its budget, and not more than the one interval a
+// capacitor holds.  A tower that decayed while blind would go black
+// having never hit anything, which is a timer wearing a magazine's
+// name.
+fn test_a_blocked_tower_spends_neither_budget_nor_charge() {
+    tab_t  = out(0, 10);
+    tab_pw = island(tab_t, out(0, 3), WALL_HIGH);
+    tab_s  = one_robot(tab_t);
+    for _ in 0..20 { wave_tick(tab_s, pal(), tab_pw, one_tower(core()), core()); }
+
+    assert(tower_shots(tab_s.towers, 0, 0) == 0,
+           "twenty blind ticks fired {tower_shots(tab_s.towers, 0, 0)} shots");
+    assert(tower_budget_left(tab_s.towers, 0, 0) == TOWER_SHOT_BUDGET,
+           "so the budget is untouched: {tower_budget_left(tab_s.towers, 0, 0)} left");
+    assert(tower_charge(tab_s.towers, 0, 0) == TOWER_FIRE_INTERVAL_S,
+           "and it holds exactly one shot ready, never a magazine: "
+           + "{tower_charge(tab_s.towers, 0, 0)} s");
+}
+
+// ⚠ And what it held is ONE shot.  A line that opens after twenty blind
+// ticks buys a single shot, not the thirteen those ticks would have
+// banked — which is the burst `tests/12_b5a_tower.loft` § the charge
+// already refused for an empty field, and would be worse here because
+// now it would be a budget too.
+fn test_and_the_line_opening_buys_exactly_one_shot() {
+    tal_t  = out(0, 10);
+    tal_s  = one_robot(tal_t);
+    tal_mw = one_tower(core());
+    tal_blocked = island(tal_t, out(0, 3), WALL_HIGH);
+    for _ in 0..20 { wave_fire(tal_s, pal(), tal_blocked, tal_mw); }
+
+    // The wall comes down; the very next tick is the one under test.
+    tal_open = island(tal_t, out(0, 3), GRASS);
+    tal_shots = wave_fire(tal_s, pal(), tal_open, tal_mw);
+
+    assert(tal_shots == 1, "one banked shot, not twenty ticks' worth: {tal_shots}");
+    assert(first(tal_s).taken == TOWER_DAMAGE_PER_SHOT,
+           "and one shot's damage: {first(tal_s).taken} HP");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The difference is the HEIGHT, not the KIND
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The gate against a materials table.**  A `wall_high` close to the
+// tower does NOT block and a `wall` far from it DOES, so any rule of
+// the form "this kind blocks and that one does not" fails both of
+// these at once.  The ray is 5.5 m over the first obstacle and 2.5 m
+// over the second; the kinds are the wrong way round on purpose.
+fn test_a_wall_high_beside_the_tower_does_not_block() {
+    twh_t = out(0, 10);
+    assert(sees(twh_t, out(0, 1), WALL_HIGH),
+           "the shot is still 5.5 m up one hex out: {why(twh_t, out(0, 1), WALL_HIGH)}");
+}
+
+fn test_and_a_plain_wall_near_the_target_does() {
+    tpw_t = out(0, 10);
+    assert(!sees(tpw_t, out(0, 7), WALL),
+           "the shot is down to 2.5 m by then, under 3 m of wall");
+}
+
+// ⚠ **The falsification, and it is this phase's most useful output.**
+// The design summarised LOS as *"blocked by `wall_high`, not by
+// `wall`"*.  The boundary is at three fifths of the way to the target,
+// so the rule a player has to learn is **a tower must overlook the wall
+// it covers**: directly behind it, the robots chewing the far side are
+// targets; two hexes back they are in dead ground.
+//
+// It is the "sealing is punished rather than forbidden" rule arriving
+// from a direction nobody wrote down — seal the perimeter and the
+// besiegers stand where the towers cannot help.
+fn test_a_tower_one_hex_behind_its_wall_covers_the_besieger() {
+    tob_w = out(0, 1);
+    assert(sees(out(0, 2), tob_w, WALL),
+           "the shot crosses the wall at 3.5 m: {why(out(0, 2), tob_w, WALL)}");
+}
+
+fn test_and_two_hexes_behind_it_does_not() {
+    ttb_w = out(0, 2);
+    assert(!sees(out(0, 3), ttb_w, WALL),
+           "2.67 m of shot under 3 m of wall is dead ground");
+}
+
+// ⚠ **`steep_rock` blocks nothing, and this test is a placeholder for
+// the day it does.**  `DESIGN.md` § 7 lists it beside `wall_high`, but
+// dryopea has no terrain elevation at all: `palette.json` writes
+// `height_override: null` for every terrain kind and `hex_height`
+// answers 0.0, so a cliff is as flat as sand to a sight line.
+//
+// Nothing here needs to change when plan 02's slope solver lands — the
+// rule already reads the height.  This assertion is what turns red on
+// that day and points at the paragraph.
+fn test_steep_rock_blocks_nothing_because_terrain_has_no_height_yet() {
+    tsr_t = out(0, 10);
+    assert(painted_height_of(pal(), island(tsr_t, out(0, 3), STEEP_ROCK), 3, 0) == 0.0,
+           "steep_rock is 0.0 m — there is no terrain elevation in dryopea yet");
+    assert(sees(tsr_t, out(0, 3), STEEP_ROCK),
+           "so it cannot block a shot, whatever § 7 says: "
+           + "{why(tsr_t, out(0, 3), STEEP_ROCK)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Elevation, and the two endpoints
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The ridge works for free**, which is the whole argument for
+// reading a height rather than looking a kind up.  Standing the tower
+// on 3 m of wall lifts its eye to 9 m, and the same `wall_high` that
+// blinded it from the ground is now under the shot.  Nothing in
+// `tower.loft` knows what elevation is.
+fn test_a_tower_on_high_ground_sees_over_what_blinded_it() {
+    tah_t  = out(0, 10);
+    tah_ob = out(0, 3);
+
+    tah_flat = island(tah_t, tah_ob, WALL_HIGH);
+    assert(!tower_sees(pal(), tah_flat, height_layer_empty(), core(), tah_t,
+                       ENEMY_HEIGHT_METRES),
+           "from the ground the wall_high blocks");
+
+    tah_up = island(tah_t, tah_ob, WALL_HIGH);
+    paint(tah_up, 0, 0, as_u8(WALL));
+    assert(tower_eye(pal(), tah_up, height_layer_empty(), core()) == 9.0,
+           "3 m of wall under a 6 m tower is a 9 m eye: "
+           + "{tower_eye(pal(), tah_up, height_layer_empty(), core())}");
+    assert(tower_sees(pal(), tah_up, height_layer_empty(), core(), tah_t,
+                      ENEMY_HEIGHT_METRES),
+           "and from 9 m the shot crosses at 6.6 m, over the 5 m wall");
+}
+
+// ⚠ **Neither endpoint is an obstacle**, and getting that wrong is the
+// bug that reads as "towers do not work".  A tower stands ON its hex,
+// so its own wall is not in front of it; an enemy stands ON its hex, so
+// the ground under its feet is not between them.  Here both hexes are
+// 5 m of `wall_high` and the line between them is empty.
+fn test_neither_the_tower_nor_the_target_stands_in_its_own_way() {
+    tnt_t  = out(0, 10);
+    tnt_pw = painted_empty();
+    paint(tnt_pw, 0, 0, as_u8(WALL_HIGH));
+    paint(tnt_pw, tnt_t.q, tnt_t.r, as_u8(WALL_HIGH));
+
+    assert(tower_sees(pal(), tnt_pw, height_layer_empty(), core(), tnt_t,
+                      ENEMY_HEIGHT_METRES),
+           "a tower on a wall shooting an insect on a wall: "
+           + "{tower_sight_fault(pal(), tnt_pw, height_layer_empty(), core(), tnt_t, ENEMY_HEIGHT_METRES)}");
+}
+
+fn test_an_adjacent_enemy_is_always_visible() {
+    taa_pw = painted_empty();
+    paint(taa_pw, 0, 0, as_u8(WALL_HIGH));
+    for taa_d in 0..6 {
+        assert(tower_sees(pal(), taa_pw, height_layer_empty(), core(),
+                          out(taa_d, 1), ENEMY_HEIGHT_METRES),
+               "direction {taa_d}: nothing fits between two neighbours");
+    }
+}
+
+// ⚠ **The moros#10 guard, the same one B5a puts on range.**  A sight
+// line built from coordinate arithmetic instead of `lat_line` is right
+// along one axis and wrong along the rest, and a fixture that only
+// looked east would call it green.  The obstacle is stepped out with
+// `lat_neighbour` in all six directions and must block in all six.
+fn test_the_sight_line_is_the_same_in_every_direction() {
+    for tsl_d in 0..6 {
+        tsl_t  = out(tsl_d, 10);
+        tsl_ob = out(tsl_d, 3);
+        assert(!sees(tsl_t, tsl_ob, WALL_HIGH),
+               "direction {tsl_d}: a wall_high three hexes out must block: "
+               + "{why(tsl_t, tsl_ob, WALL_HIGH)}");
+        assert(sees(tsl_t, tsl_ob, WALL),
+               "direction {tsl_d}: and a wall must not: {why(tsl_t, tsl_ob, WALL)}");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A pile is a height, so the bodies blind the tower that made them
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The consequence nobody wrote down.**  `hex_height` adds the
+// runtime rubble layer, so the heap of dead robots that ramps a kill
+// zone shut (`ENEMY_MOVEMENT.md` § Bodies are terrain) also puts the
+// kill zone out of sight.  Four bodies are 2.0 m and the shot crosses
+// at 4.5 m; ten are 5.0 m and it does not.
+fn test_a_pile_of_bodies_eventually_blinds_the_tower() {
+    tap_t  = out(0, 10);
+    tap_pw = island(tap_t, out(0, 3), GRASS);
+
+    tap_low = height_layer_empty();
+    height_raise(tap_low, 3, 0, 4.0 * BODY_HEIGHT_METRES, as_u8(RUBBLE_WRECKAGE));
+    assert(tower_sees(pal(), tap_pw, tap_low, core(), tap_t, ENEMY_HEIGHT_METRES),
+           "four bodies are 2.0 m and the shot is 4.5 m up");
+
+    tap_high = height_layer_empty();
+    height_raise(tap_high, 3, 0, 10.0 * BODY_HEIGHT_METRES, as_u8(RUBBLE_WRECKAGE));
+    assert(!tower_sees(pal(), tap_pw, tap_high, core(), tap_t, ENEMY_HEIGHT_METRES),
+           "ten of them are 5.0 m and it is not: "
+           + "{tower_sight_fault(pal(), tap_pw, tap_high, core(), tap_t, ENEMY_HEIGHT_METRES)}");
+}
+
+// ⚠ And a pile ADDS to what it sits on, the same arithmetic
+// `hex_height` uses everywhere: one body on a `wall` is 3.5 m, which is
+// enough to blind a tower a `wall` alone would not have.
+fn test_a_body_on_a_wall_is_the_wall_plus_the_body() {
+    tbw_t  = out(0, 6);
+    tbw_pw = island(tbw_t, out(0, 3), WALL);
+
+    // Half way out, the shot crosses at 3.5 m — over a bare wall.
+    assert(tower_sees(pal(), tbw_pw, height_layer_empty(), core(), tbw_t,
+                      ENEMY_HEIGHT_METRES),
+           "3.5 m of shot clears 3 m of wall");
+
+    tbw_hl = height_layer_empty();
+    height_raise(tbw_hl, 3, 0, 2.0 * BODY_HEIGHT_METRES, as_u8(RUBBLE_WRECKAGE));
+    assert(!tower_sees(pal(), tbw_pw, tbw_hl, core(), tbw_t, ENEMY_HEIGHT_METRES),
+           "and two bodies on top make it 4.0 m, which it does not: "
+           + "{tower_sight_fault(pal(), tbw_pw, tbw_hl, core(), tbw_t, ENEMY_HEIGHT_METRES)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Choosing a target it can actually hit
+// ─────────────────────────────────────────────────────────────────
+
+// A blind tower has no target at all — the same answer an empty field
+// gives, and `wave_fire` treats them the same on purpose: a shot not
+// fired is a shot not spent, whatever the reason.
+fn test_a_blind_tower_picks_nobody() {
+    tbp_t  = out(0, 10);
+    tbp_pw = island(tbp_t, out(0, 3), WALL_HIGH);
+    assert(tower_pick(one_robot(tbp_t), pal(), tbp_pw, core()) == -1,
+           "the only enemy is behind five metres of wall");
+}
+
+// ⚠ **Nearest VISIBLE, not nearest.**  A robot hugging the far side of
+// a wall_high is closer than one out in the open, and a tower that
+// picked it would hold its fire while a target it could hit walked in.
+// Both roster orders, because plan 08 replays written-down runs and
+// the answer has to be a property of the world.
+fn test_it_shoots_past_a_blocked_enemy_at_one_it_can_see() {
+    tsp_ob   = out(0, 3);
+    tsp_near = out(0, 4);       // just behind the wall_high — blind
+    tsp_far  = out(1, 6);       // off the line — visible
+
+    tsp_pw = island(tsp_near, tsp_ob, WALL_HIGH);
+    paint(tsp_pw, tsp_far.q, tsp_far.r, as_u8(GRASS));
+
+    tsp_a = wave_state_empty();
+    tsp_a.enemies += [Enemy { q: tsp_near.q, r: tsp_near.r, kind: robot(),
+                              heading: 3 as u8, alive: true }];
+    tsp_a.enemies += [Enemy { q: tsp_far.q, r: tsp_far.r, kind: robot(),
+                              heading: 3 as u8, alive: true }];
+
+    tsp_b = wave_state_empty();
+    tsp_b.enemies += [Enemy { q: tsp_far.q, r: tsp_far.r, kind: robot(),
+                              heading: 3 as u8, alive: true }];
+    tsp_b.enemies += [Enemy { q: tsp_near.q, r: tsp_near.r, kind: robot(),
+                              heading: 3 as u8, alive: true }];
+
+    assert(!tower_sees(pal(), tsp_pw, height_layer_empty(), core(), tsp_near,
+                       ENEMY_HEIGHT_METRES),
+           "the near one really is blind: "
+           + "{tower_sight_fault(pal(), tsp_pw, height_layer_empty(), core(), tsp_near, ENEMY_HEIGHT_METRES)}");
+
+    tsp_pa = tower_pick(tsp_a, pal(), tsp_pw, core());
+    tsp_pb = tower_pick(tsp_b, pal(), tsp_pw, core());
+    tsp_ha = tsp_a.enemies[tsp_pa] ?? Enemy {};
+    tsp_hb = tsp_b.enemies[tsp_pb] ?? Enemy {};
+
+    assert(tsp_pa == 1 && tsp_pb == 0,
+           "the visible one is picked from either end of the roster: {tsp_pa}, {tsp_pb}");
+    assert(tsp_ha.q == tsp_far.q && tsp_ha.r == tsp_far.r
+           && tsp_hb.q == tsp_far.q && tsp_hb.r == tsp_far.r,
+           "and it is the same HEX both times");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The shot budget: thirty shots, then black
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ Measured through `wave_fire` rather than a scripted run, because a
+// 30 HP robot dies on the third shot and `wave_fire` lands damage
+// without killing (B4: `wave_deaths` is the one death path).  So this
+// target survives all thirty and the count is the tower's, not the
+// corpse's.
+fn test_a_tower_fires_its_budget_and_then_goes_black() {
+    taf_s  = one_robot(out(0, 3));
+    taf_pw = island(out(0, 3), out(0, 2), GRASS);
+    taf_mw = one_tower(core());
+
+    taf_shots = 0;
+    for _ in 0..300 { taf_shots = taf_shots + wave_fire(taf_s, pal(), taf_pw, taf_mw); }
+
+    assert(taf_shots == TOWER_SHOT_BUDGET,
+           "300 ticks is 200 s of firing, and the budget is {TOWER_SHOT_BUDGET}: {taf_shots}");
+    assert(tower_black(taf_s.towers, 0, 0), "the tower is black");
+    assert(tower_budget_left(taf_s.towers, 0, 0) == 0, "with nothing left");
+    assert(first(taf_s).taken == (TOWER_SHOT_BUDGET as float) * TOWER_DAMAGE_PER_SHOT,
+           "and it landed exactly its budget: {first(taf_s).taken} HP");
+}
+
+// ⚠ **The drift gate, and it is sharper than a shot count.**  Thirty
+// shots at a 1.0 s interval is 30.0 s of charge, and a tick banks 2/3
+// of a second — so the last shot lands on tick 45 and not on 44 or 46.
+// A per-shot float debt that accumulated (which is what B5a's missing
+// epsilon did) would push the thirtieth shot a tick late and nothing
+// else in this file would notice.
+fn test_the_last_shot_lands_on_the_tick_the_arithmetic_says() {
+    for tls_n in [44, 45] {
+        tls_s  = one_robot(out(0, 3));
+        tls_pw = island(out(0, 3), out(0, 2), GRASS);
+        tls_mw = one_tower(core());
+        for _ in 0..tls_n { wave_fire(tls_s, pal(), tls_pw, tls_mw); }
+
+        tls_want = if tls_n == 45 { 30 } else { 29 };
+        assert(tower_shots(tls_s.towers, 0, 0) == tls_want,
+               "{tls_n} ticks is {(tls_n * 2) / 3 ?? 0} whole seconds, so {tls_want} shots: "
+               + "{tower_shots(tls_s.towers, 0, 0)}");
+    }
+}
+
+// A black tower is inert: it does not bank, does not fire, and does not
+// quietly keep hurting things.
+fn test_a_black_tower_does_nothing_at_all() {
+    tbt_s  = one_robot(out(0, 3));
+    tbt_pw = island(out(0, 3), out(0, 2), GRASS);
+    tbt_mw = one_tower(core());
+    for _ in 0..300 { wave_fire(tbt_s, pal(), tbt_pw, tbt_mw); }
+
+    tbt_charge = tower_charge(tbt_s.towers, 0, 0);
+    tbt_taken  = first(tbt_s).taken;
+    for _ in 0..50 { wave_fire(tbt_s, pal(), tbt_pw, tbt_mw); }
+
+    assert(tower_shots(tbt_s.towers, 0, 0) == TOWER_SHOT_BUDGET,
+           "fifty more ticks fire nothing: {tower_shots(tbt_s.towers, 0, 0)}");
+    assert(first(tbt_s).taken == tbt_taken,
+           "and land nothing: {first(tbt_s).taken} vs {tbt_taken} HP");
+    assert(tower_charge(tbt_s.towers, 0, 0) == tbt_charge,
+           "a black tower does not even bank: {tower_charge(tbt_s.towers, 0, 0)} s");
+}
+
+// ⚠ The budget is per TOWER and not per map — two towers covering the
+// same ground are sixty shots, not thirty shared.
+fn test_the_budget_belongs_to_each_tower() {
+    tbb_s  = one_robot(out(0, 3));
+    tbb_pw = island(out(0, 3), out(0, 2), GRASS);
+    tbb_mw = marker_empty();
+    place_tower(tbb_mw, 0, 0);
+    place_tower(tbb_mw, 0, 1);
+
+    tbb_shots = 0;
+    for _ in 0..300 { tbb_shots = tbb_shots + wave_fire(tbb_s, pal(), tbb_pw, tbb_mw); }
+
+    assert(tbb_shots == 2 * TOWER_SHOT_BUDGET,
+           "two budgets, spent separately: {tbb_shots}");
+    assert(tower_shots(tbb_s.towers, 0, 0) == TOWER_SHOT_BUDGET
+           && tower_shots(tbb_s.towers, 0, 1) == TOWER_SHOT_BUDGET,
+           "and each tower spent its own");
+}
+
+// ⚠ **A fresh tower is not a black one**, which is why the ledger
+// stores shots FIRED rather than shots REMAINING.  A tower nobody has
+// ticked yet has to read as ready — the same argument `damage.loft`
+// makes for storing damage taken.
+fn test_a_tower_nobody_has_ticked_is_ready() {
+    tnt_ts = tower_state_empty();
+    assert(tower_shots(tnt_ts, 4, 7) == 0, "a hex with no tower has fired nothing");
+    assert(!tower_black(tnt_ts, 4, 7), "and is not black");
+    assert(tower_budget_left(tnt_ts, 4, 7) == TOWER_SHOT_BUDGET, "it has the full budget");
+}

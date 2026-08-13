@@ -501,9 +501,11 @@ that the tick resolves once.
 
 All towers ship validation as a single type: **pulsed laser**.
 
-- **Range** 15 hex (~20 m); LOS blocked by `wall_high` +
-  `steep_rock`, not by `wall` (the tower peeks 1 m over a
-  normal wall).
+- **Range** 15 hex (~20 m); LOS is the sight line, and what
+  blocks it depends on WHERE the obstacle stands as well as how
+  tall it is — see § LOS is a HEIGHT question below, which plan
+  12 B5b built and which corrects the *"`wall_high` blocks,
+  `wall` does not"* shorthand this line used to carry.
 - **Fire interval** 1 shot/s; **damage** 10/shot.
 - **Shot budget** 30 shots per charge; once spent, the tower
   **goes black** and stops firing — *decay is per-attack, not
@@ -923,27 +925,56 @@ Two consequences worth writing down before anybody builds it:
 
 #### LOS is a HEIGHT question, not a table of materials
 
-⚠ **Input for whoever builds line of sight.**  The numbers
-already say height decides it: a tower is 6.0 m and *"peeks 1 m
-over a normal wall"*, and the 5 m `wall_high` is what stops it.
-Implementing that as a lookup — *`wall_high` blocks, `wall` does
-not* — builds a second table that duplicates the heights and
-disagrees with them the moment either moves.  dryopea has caught
-that shape twice already (`walk_ground` versus the height rule;
-the painted kind versus the surface).
+**Built by plan 12 B5b**, and the rule is one sentence: *a shot
+travels in a straight line from the tower's eye to the target's
+body, and anything the line does not clear stops it.*  The eye
+is the tower's hex plus 6.0 m, the aim is the target's hex plus
+the 1.0 m robot standing on it, and an obstacle is whatever
+`hex_height` says is standing on a hex in between — a painted
+structure plus any rubble piled on it.
 
-Reading the HEIGHT instead also makes the ridge work for free:
-a tower standing on 3 m of rock is at 9 m and sees over things
-a ground-level one cannot, with nothing written for elevation
-at all.  Which is the whole reason the outer ridge is a place
-worth putting a sniper.
+⚠ **Why it is not a lookup.**  A *`wall_high` blocks, `wall`
+does not* table duplicates heights the palette already carries
+and disagrees with them the moment either moves; dryopea has
+caught that shape twice already (`walk_ground` versus the height
+rule; the painted kind versus the surface).  Reading the height
+also makes the ridge work for free: a tower standing on 3 m of
+rock is at 9 m and sees over things a ground-level one cannot,
+with nothing written for elevation at all — which is the whole
+reason the outer ridge is a place worth putting a sniper.
 
-⚠ Implementation note for whoever builds it: plan 12 B5a's
-`tower_pick` re-chooses the nearest enemy every shot with no
-cost to switching, which is exactly the placeholder traverse
-time replaces — it will want hysteresis (stay on target) and
-will still have to be deterministic, because dryopea gates
-itself by replaying written-down runs.
+##### ⚠ What building it falsified
+
+Two things this document used to say are **wrong**, and the
+measurements are in `tests/12_b5b_los_budget.loft`:
+
+- **A `wall` DOES block**, once it stands past roughly three
+  fifths of the way to the target: the shot has descended below
+  3 m by then.  So the rule a player learns is **a tower must
+  overlook the wall it covers** — directly behind it, the robots
+  chewing the far side are targets; two hexes back they are in
+  dead ground.  This is the *sealing is punished rather than
+  forbidden* rule arriving from a direction nobody planned:
+  seal the perimeter and the besiegers stand where the towers
+  cannot help.
+- **`steep_rock` blocks nothing at all**, because dryopea has no
+  terrain elevation: `palette.json` writes `height_override:
+  null` for every terrain kind, so a cliff is as flat as sand to
+  a sight line.  Nothing has to change when plan 02's slope
+  solver lands — the rule already reads the height — and the
+  test asserting today's answer is what goes red on that day.
+
+And one consequence nobody wrote down: **a pile of bodies blinds
+the tower that made it.**  Rubble is a height, so the heap that
+ramps a kill zone shut (§ Bodies are terrain) also puts the kill
+zone out of sight — ten dead robots are 5 m of wreckage.
+
+⚠ Implementation note for whoever builds traverse time: plan 12
+B5a's `tower_pick` re-chooses the nearest visible enemy every
+shot with no cost to switching, which is exactly the placeholder
+traverse time replaces — it will want hysteresis (stay on
+target) and will still have to be deterministic, because dryopea
+gates itself by replaying written-down runs.
 
 ### Enemy targeting + nibble
 

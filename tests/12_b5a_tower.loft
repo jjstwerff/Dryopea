@@ -87,6 +87,17 @@ fn one_tower(at: const Hex) -> MarkerWorld {
     ot_mw
 }
 
+// A world with nothing standing up in it — every hex un-painted, so
+// every hex is 0.0 m and no sight line is ever blocked.
+//
+// ⚠ It is what keeps these tests about RANGE.  Plan 12 B5b made
+// `tower_pick` ask whether it can see its target as well as reach it,
+// and a fixture that painted a wall anywhere would quietly be testing
+// both.  `tests/12_b5b_los_budget.loft` is where the wall goes.
+fn nothing_in_the_way() -> PaintedWorld {
+    painted_empty()
+}
+
 // A wave of one, standing still at `at`, under a tower at the origin,
 // ticked `n` times.
 fn shot_at(at: const Hex, n: integer) -> WaveState {
@@ -203,7 +214,9 @@ fn test_the_cadence_is_two_shots_every_three_ticks() {
         ttc_s.enemies += [Enemy { q: 3, r: 0, kind: robot(),
                                   heading: 3 as u8, alive: true }];
         ttc_got = 0;
-        for _ in 0..ttc_n { ttc_got = ttc_got + wave_fire(ttc_s, ttc_mw); }
+        for _ in 0..ttc_n {
+            ttc_got = ttc_got + wave_fire(ttc_s, pal(), nothing_in_the_way(), ttc_mw);
+        }
 
         ttc_want = ((ttc_n * 2) / 3) ?? 0;
         assert(ttc_got == ttc_want,
@@ -217,56 +230,53 @@ fn test_the_cadence_is_two_shots_every_three_ticks() {
 // different and worse bug.  Because a shot subtracts an interval
 // rather than resetting the charge, the debt stays within an ulp of
 // zero and the rate is exact over any run length.
-fn test_the_cadence_does_not_drift_over_a_long_run() {
-    // 300 ticks is 200 s at 1 shot/s.  A robot at 30 HP would die
-    // long before, so this one is measured against a target that
-    // cannot: the tower's own charge, which never banks a whole shot
-    // it did not fire.
+//
+// ⚠ **B5b moved where the long run is measured**, and the reason is the
+// budget: a tower stops after 30 shots, so 300 ticks can no longer show
+// a rate at all.  The drift question moved to
+// `tests/12_b5b_los_budget.loft` § the last shot lands on the tick the
+// arithmetic says, which is sharper — it pins the THIRTIETH shot to
+// tick 45, and an accumulating debt moves it to 46.  What is left here
+// is the shape of the arithmetic over the first three ticks.
+fn test_the_cadence_does_not_drift_inside_the_first_burst() {
+    // Twelve ticks is eight shots, comfortably inside a 30-shot budget,
+    // so this measures the cadence and nothing else.
     tcd_mw = one_tower(core());
     tcd_s  = wave_state_empty();
-    tcd_shots = 0;
-    for _ in 0..300 { tcd_shots = tcd_shots + wave_fire(tcd_s, tcd_mw); }
-
-    // No enemies at all, so no shot LANDS — but every interval is
-    // still spent, and what is left over is what this measures.
-    assert(tcd_shots == 0, "nothing to shoot at, so nothing was hit: {tcd_shots}");
+    tcd_s.enemies += [Enemy { q: 3, r: 0, kind: robot(), heading: 3 as u8, alive: true }];
+    for _ in 0..12 {
+        wave_fire(tcd_s, pal(), nothing_in_the_way(), tcd_mw);
+    }
 
     // ⚠ The residue may be a hair NEGATIVE — the epsilon lets a charge
     // a few ulps short of an interval fire, so the subtraction leaves
-    // a tiny debt.  What matters is that it does not GROW: 300 ticks
-    // of it stays within an ulp of zero rather than approaching a
+    // a tiny debt.  What matters is that it does not GROW: after eight
+    // shots it is still within an ulp of zero rather than approaching a
     // whole missed shot.
     tcd_left = tower_charge(tcd_s.towers, 0, 0);
     assert(tcd_left < TOWER_CHARGE_EPSILON && tcd_left > -TOWER_CHARGE_EPSILON,
-           "300 ticks of banking left {tcd_left} s — the debt has to stay inside one epsilon");
+           "12 ticks is exactly 8 s of firing, and left {tcd_left} s over");
 }
 
-// The same over a target that survives: 300 ticks must land exactly
-// 200 shots' worth, not 199 and not 201.
-fn test_two_hundred_shots_land_in_three_hundred_ticks() {
-    tth_mw = one_tower(core());
-    tth_s  = wave_state_empty();
-    tth_s.enemies += [Enemy { q: 3, r: 0, kind: robot(), heading: 3 as u8, alive: true }];
-
-    tth_shots = 0;
-    for _ in 0..300 { tth_shots = tth_shots + wave_fire(tth_s, tth_mw); }
-
-    assert(tth_shots == 200,
-           "300 ticks is 200 s at one shot a second: {tth_shots} shots");
-}
-
-// The charge is spent whether or not anything was there to shoot, so
-// a tower is not banking a burst for the next wave.  `DESIGN.md` § 7's
-// decay is per SHOT and B5b is what makes that cost something.
-fn test_a_tower_with_nothing_in_range_still_burns_its_charge() {
+// ⚠ **B5b rewrote this one, and the old assertion was the point.**
+// B5a spent the charge whether or not there was anything to shoot, so
+// that an idle tower could not bank a burst for the next wave.  B5b
+// replaces that with one rule covering both idleness and a blocked
+// line — *a shot is spent only when it is FIRED* — and keeps the
+// anti-burst property with a CAP instead: a tower holds exactly one
+// interval, which is a capacitor and not a magazine.
+fn test_a_tower_with_nothing_in_range_holds_one_shot_and_no_more() {
     tan_pw = island(out(0, 3), core());
     tan_mw = one_tower(core());
     tan_s  = wave_state_empty();
     for _ in 0..6 { wave_tick(tan_s, pal(), tan_pw, tan_mw, core()); }
 
     assert(tower_count(tan_s.towers) == 1, "the tower was ticked");
-    assert(tower_charge(tan_s.towers, 0, 0) < TOWER_FIRE_INTERVAL_S,
-           "and holds less than one interval: {tower_charge(tan_s.towers, 0, 0)} s");
+    assert(tower_charge(tan_s.towers, 0, 0) == TOWER_FIRE_INTERVAL_S,
+           "six idle ticks bank one shot, not four: "
+           + "{tower_charge(tan_s.towers, 0, 0)} s");
+    assert(tower_shots(tan_s.towers, 0, 0) == 0,
+           "and cost it nothing out of its budget");
 }
 
 fn test_no_tower_no_shots() {
@@ -294,21 +304,25 @@ fn wave_at(hexes: vector<Hex>) -> WaveState {
 
 fn test_a_tower_shoots_the_nearest_enemy() {
     tas_s = wave_at([out(0, 9), out(0, 4), out(0, 12)]);
-    assert(tower_pick(tas_s, core()) == 1, "index 1 is four hexes out, the closest");
+    assert(tower_pick(tas_s, pal(), nothing_in_the_way(), core()) == 1,
+           "index 1 is four hexes out, the closest");
 }
 
 fn test_nothing_in_range_is_minus_one() {
     tni_s = wave_at([out(0, TOWER_RANGE_HEXES + 1)]);
-    assert(tower_pick(tni_s, core()) == -1, "a target it cannot reach is not a target");
+    assert(tower_pick(tni_s, pal(), nothing_in_the_way(), core()) == -1,
+           "a target it cannot reach is not a target");
 
-    assert(tower_pick(wave_state_empty(), core()) == -1, "and an empty roster is not one either");
+    assert(tower_pick(wave_state_empty(), pal(), nothing_in_the_way(), core()) == -1,
+           "and an empty roster is not one either");
 }
 
 fn test_a_dead_enemy_is_not_a_target() {
     tad_s = wave_at([out(0, 2), out(0, 5)]);
     (tad_s.enemies[0] ?? Enemy {}).alive = false;
 
-    assert(tower_pick(tad_s, core()) == 1, "the corpse two hexes out is skipped");
+    assert(tower_pick(tad_s, pal(), nothing_in_the_way(), core()) == 1,
+           "the corpse two hexes out is skipped");
 }
 
 // ⚠ **Repeatability, which is what plan 08 gates dryopea on.**  A wave
@@ -321,8 +335,8 @@ fn test_equidistant_enemies_are_broken_by_hex_and_not_by_roster_order() {
     tee_a = wave_at([out(1, 5), out(4, 5), out(0, 5)]);
     tee_b = wave_at([out(0, 5), out(4, 5), out(1, 5)]);
 
-    tee_pa = tower_pick(tee_a, core());
-    tee_pb = tower_pick(tee_b, core());
+    tee_pa = tower_pick(tee_a, pal(), nothing_in_the_way(), core());
+    tee_pb = tower_pick(tee_b, pal(), nothing_in_the_way(), core());
     tee_ha = tee_a.enemies[tee_pa] ?? Enemy {};
     tee_hb = tee_b.enemies[tee_pb] ?? Enemy {};
 

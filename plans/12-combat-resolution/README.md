@@ -9,8 +9,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**B0-B4 and B5a shipped** (2026-08-13). B5b and B6 are next, both
-unblocked.
+**B0-B5b shipped** (2026-08-13). B6 is next, unblocked; B7 waits only
+on it.
 
 B0 was a probe and changed no mechanic: it wrote down what the
 simulation does in the two places this plan leans on, and it
@@ -136,11 +136,57 @@ could have seen it**; the cadence test caught it on its first run.
 interval rather than resetting the charge, the debt stays within an
 ulp of zero over 300 ticks — which is its own gate.
 
-⚠ **The tower does not miss and cannot see.** Line of sight and the
-shot budget are B5b, so everything in range is hit. The 7-hex
-footprint is not built either: a tower stands on one hex, because the
-footprint decides what it BLOCKS rather than what it can reach, and
-blocking is a passability question for plan 06 S1's structure layer.
+⚠ **The 7-hex footprint is not built:** a tower stands on one hex,
+because the footprint decides what it BLOCKS rather than what it can
+reach, and blocking is a passability question for plan 06 S1's
+structure layer.
+
+**B5b gave it eyes and a magazine.** A shot travels in a straight line
+from the tower's eye (its hex plus 6.0 m) to the target's body (its hex
+plus the 1.0 m robot on it), and anything the line does not clear stops
+it — one rule, read off `hex_height`, with **no table of what blocks**.
+Thirty shots and the tower goes black. Suite **715 green**.
+
+⚠⚠ **It falsified BOTH halves of what `DESIGN.md` § 7 said LOS was**,
+and that is this phase's most valuable output — the same shape B3 hit.
+The doc said *"blocked by `wall_high` + `steep_rock`, not by `wall`"*:
+
+- **A `wall` blocks** once it stands past ~3/5 of the way to the
+  target, because the shot has descended below 3 m by then. The rule a
+  player learns is **a tower must overlook the wall it covers**: one
+  hex behind it the besiegers are targets, two hexes back they are in
+  dead ground. It is "sealing is punished rather than forbidden"
+  arriving from a direction nobody planned.
+- **`steep_rock` blocks nothing**, because dryopea has no terrain
+  elevation at all — `height_override` is null for every terrain kind.
+  Nothing has to change when plan 02's slope solver lands; the test
+  asserting today's answer is what goes red that day.
+
+⚠ **And a pile of bodies blinds the tower that made it.** Rubble is a
+height, so the heap that ramps a kill zone shut also puts it out of
+sight — ten dead robots are 5 m of wreckage. Nobody designed that; it
+falls out of reading a height instead of a material.
+
+⚠ **One rule replaced two, and it turned two B5a assertions red.**
+B5a burnt the charge whether or not there was anything to shoot, so an
+idle tower could not bank a burst. B5b's rule is *a shot is spent only
+when it is FIRED, and it is fired only at something the tower can see*,
+which covers an empty field and a blocked line together — and keeps the
+anti-burst property with a CAP: a tower holds exactly one interval,
+because a capacitor holds one shot and not a magazine. Without the cap
+a tower blinded for a hundred ticks empties two thirds of its budget
+into the first thing it sees.
+
+⚠ **The cost gate could not see this phase, and now it can.**
+`wave_fire` does nothing in a world with no markers, so
+`tests/11_f8_the_tick_budget.loft` was measuring an undefended tick and
+would have stayed green through any sight-line cost whatever. It now
+ticks six firing towers — 173 ms against 167 ms undefended, a quarter
+of the 667 ms budget. But the honest reading is that **the budget still
+cannot see LOS**, at 3% of a tick with 3.8x headroom above it, so a
+second test prices the ALTERNATIVE: twelve shots the shipped way cost
+**51%** of ONE roster-wide `tower_sees` pass, where tracing per enemy
+would cost twelve passes. 2x margin below it, 24x above.
 
 ⚠ **Cost, honestly.** B2 adds one `enemy_target` per live enemy per
 tick — it reuses the fields the tick already built, so no new sweep —
@@ -355,9 +401,18 @@ pins, and the input that must be **refused**.
 | **B3** ✓ | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
 | **B4** ✓ | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
 | **B5a** ✓ | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
-| **B5b** | tower kills through `wall`; does **not** kill through `wall_high` or `steep_rock`; stops firing after 30 shots; **a blocked shot is not FIRED** — neither the charge nor the budget is spent | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS; one whose budget falls while every line is blocked is spending shots it never took |
+| **B5b** ✓ | tower kills through a `wall` three hexes out; does **not** kill through a `wall_high` there; stops firing after 30 shots; **a blocked shot is not FIRED** — neither the charge nor the budget is spent | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS; one whose budget falls while every line is blocked is spending shots it never took |
 | **B6** | N nibblers drain exactly N pt/s × tick seconds; the wallet floors at 0 | the wallet never goes negative and never refills unattended | a negative wallet means the run has no end state |
 | **B7** | the defended base's time-to-zero is markedly longer than the same base stripped of walls and towers | the defences are what cost the attacker time | equal times = the scenario measures nothing, whatever it draws |
+
+⚠ **B5b's row was rewritten by building it**, and the change is the
+finding rather than a slackening. It said *"does not kill through
+`wall_high` or `steep_rock`"*, which named two materials; what the
+phase built names a HEIGHT and a PLACE, so the row now fixes the
+geometry (*a `wall_high` three hexes out*) and drops `steep_rock`
+entirely — it is 0.0 m and blocks nothing, because dryopea has no
+terrain elevation yet. The original wording would have been satisfiable
+only by the materials table the phase exists to avoid.
 
 ## Phases
 
@@ -373,9 +428,9 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | **Done** |
 | **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | **Done** |
 | **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | **Done** |
-| **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires; a blocked tower spends nothing | Open |
-| **B6** — nibble drains the wallet, zero ends the run | S | `wallet <lo> <hi>` in `script.loft`; drain rate and the floor at 0 | Blocked on B4 |
-| **B7** — the scenario, and its control | S | `tests/scripts/an-undefended-base.keys` + the stripped control — the clock separates | Blocked on B3, B5b, B6 |
+| **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires; a blocked tower spends nothing | **Done** |
+| **B6** — nibble drains the wallet, zero ends the run | S | `wallet <lo> <hi>` in `script.loft`; drain rate and the floor at 0 | Open |
+| **B7** — the scenario, and its control | S | `tests/scripts/an-undefended-base.keys` + the stripped control — the clock separates | Blocked on B6 |
 
 ### Why the order is this order
 
@@ -433,18 +488,16 @@ tower behind a closed perimeter is simply unreachable.
 
 **What bears on the phases still open here**, and only that:
 
-- ⚠ **B5b: line of sight is a HEIGHT question, not a table of
-  materials.** `numbers.json` already fixes it — a 6.0 m tower *"peeks
-  1 m over"* a 5.0 m `wall_high` — and a *`wall_high` blocks / `wall`
-  does not* lookup would be a SECOND source of truth for heights
-  `passable.loft` already owns. This codebase has caught that shape
-  twice (`walk_ground` versus the height rule in plan 11 F0; the
-  painted kind versus the surface in B1). Reading the height also buys
-  elevation for free, which is what makes an outer-ridge tower work.
-- ⚠ **B5b: a shot that has become impossible is NOT fired** — the
-  tower holds rather than spending its charge and its budget into a
-  wall. The opposite of the naive shape, and B5b's invariant-gate row
-  carries it with its own negative control.
+- ✓ **B5b: line of sight is a HEIGHT question, not a table of
+  materials.** Built, and the height turned out to decide *less* than
+  the note assumed: what blocks depends on where an obstacle stands as
+  well as how tall it is, so the *`wall_high` blocks / `wall` does not*
+  shorthand is wrong in both directions. See § B5b above and
+  `DESIGN.md` § LOS is a HEIGHT question, which the phase rewrote.
+- ✓ **B5b: a shot that has become impossible is NOT fired** — built,
+  and it absorbed the empty-field case with it: one rule, *a shot is
+  spent only when it is fired*, plus a cap so holding fire is a
+  capacitor rather than a stockpile.
 - ⚠ **B5a's `tower_pick` is a placeholder.** It re-chooses the nearest
   enemy every shot with no cost to switching, which is exactly what
   traverse time replaces. Whatever replaces it will want hysteresis

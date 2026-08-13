@@ -226,6 +226,21 @@ pub const ENEMY_REGULAR_HP: float = 30.0;
 // restating it.
 pub const BODY_HEIGHT_METRES: float = 0.5;
 
+// How tall a STANDING robot is — `numbers.json` § enemy_regular.height.
+//
+// ⚠ **The other half of the pair above, and they are the same robot in
+// two states.**  1.0 m upright, 0.5 m collapsed; keeping both here is
+// what stops a future reader "unifying" them, which would either
+// double the body ramp or halve the target a tower aims at.
+//
+// Plan 12 B5b is its first consumer: a shot that reaches any part of
+// the body hits, so the tower's sight line runs to the target's TOP
+// rather than to the ground under its feet.  Aiming at the feet puts
+// the canonical case — a 6 m tower one hex behind its own 3 m wall —
+// exactly ON the comparison boundary, and B5a already paid for what a
+// float does to a rule decided at an ulp.
+pub const ENEMY_HEIGHT_METRES: float = 1.0;
+
 // The HP a class of enemy starts with.
 //
 // ⚠ **One number for every class today, and that is the numbers file's
@@ -253,6 +268,20 @@ pub fn enemy_max_hp(kind: u8) -> float {
 pub fn body_source(kind: u8) -> integer {
     if kind == ENEMY_KIND_INSECT as u8 { return RUBBLE_CARAPACE; }
     RUBBLE_WRECKAGE
+}
+
+// How tall a live one of this class stands — what a tower has to be
+// able to see a piece of.
+//
+// Same shape and same reason as `enemy_max_hp`: `numbers.json` has one
+// enemy section, so one figure, and the day a class gets its own
+// section it gets a row here.  It is written as a table rather than
+// read as a constant because `plans/12` § ONE AI, per-class DATA is a
+// design rule — a boss is a bigger target and that difference belongs
+// in this shape, not in a second sight rule.
+pub fn enemy_height(kind: u8) -> float {
+    if kind == ENEMY_KIND_INSECT as u8 { return ENEMY_HEIGHT_METRES; }
+    ENEMY_HEIGHT_METRES
 }
 
 // ─── The layer ──────────────────────────────────────────────────

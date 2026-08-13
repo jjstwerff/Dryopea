@@ -80,7 +80,7 @@ docs:
 | `core.close_spawn_disable_radius` | DESIGN.md § Updates: free-pick landing | Auto-silenced spawn markers |
 | `wave_system.wave_1_wall_trigger` + `wave_1_provocation_distance` | DESIGN.md § Updates: wave-start triggers | Either trigger fires wave 1 |
 | `wall.entrance_gap_recognition_hexes` | GROUND_TYPES.md § Entrances | Two ends form a gate when within this range |
-| `tower.shot_budget_per_charge` | PROXY_ART.md § Tower § lifecycle | Top goes black after this many shots |
+| `tower.shot_budget_per_charge` | `src/tower.loft`; PROXY_ART.md § Tower § lifecycle | Top goes black after this many shots — spent per SHOT and never per tick, so an idle tower never decays |
 | `helper.recovery_time_after_retrieval` | PROXY_ART.md § Helper § Damage | Time before retrieved helper rejoins |
 | `economy.tower_top_carryover_effect` | DESIGN.md § Q4 | Mechanic carries, effect deferred — validation = "none" |
 | `camera.swing_easing_time` | DESIGN.md § Updates: camera locked | Auto-reframe smoothing |
@@ -89,6 +89,7 @@ docs:
 | `enemy_regular.body_height` | `src/damage.loft` | The unit the body ramp is counted in — two to four dead robots get the next one over a wall, five is a heap it cannot climb |
 | `enemy_regular.damage_to_wall` | `src/spawn.loft` | What a besieging enemy spends per second; the four small-robot roles will differ in THIS and nothing else |
 | `tower.range` + `fire_interval` + `damage_per_shot` | `src/tower.loft` | ⚠ The interval is 1.5 ticks, which is why a tower banks charge rather than firing per tick |
+| `tower.height` + `enemy_regular.height` | `src/tower.loft`, `src/damage.loft` | The two ends of a sight line — a shot runs from the tower's hex plus 6.0 m to the target's hex plus 1.0 m, and every obstacle is judged against the line between them.  ⚠ Moving either moves what a tower can see over, and nothing else has to change |
 | `enemy_regular.speed_engage` | `src/spawn.loft` | Today the tick's own length is derived from it — ⚠ a coupling the design intends to break (DESIGN.md § Speed must NOT be tied to the tick) |
 
 ## Loading + modding

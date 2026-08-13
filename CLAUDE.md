@@ -52,7 +52,8 @@ exists today.
 | Enemies have HP, die, and leave a body that raises its hex — so a kill zone ramps itself shut | [12](plans/12-combat-resolution/README.md), B4 shipped |
 | A wall's HP is STRUCTURAL — an end is worth 30% of a braced hex, a lone stub 15% — and a perimeter unzips from a breach | [12](plans/12-combat-resolution/README.md), B3 shipped |
 | Towers: a third MARKER kind, range 15 by `lat_distance`, two shots every three ticks | [12](plans/12-combat-resolution/README.md), B5a shipped |
-| **A tower cannot miss and cannot see** — no line of sight, no shot budget, no wallet | [12](plans/12-combat-resolution/README.md), B5b + B6 next |
+| A tower SEES: one straight line from its eye over what `hex_height` says is in the way, and thirty shots before it goes black | [12](plans/12-combat-resolution/README.md), B5b shipped |
+| **No wallet, so nothing ends a run yet** | [12](plans/12-combat-resolution/README.md), B6 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -68,9 +69,9 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 691/691 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 715/715 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
-radius-40 world).
+radius-40 world twice, once defended).
 **Gate: 15 scripts green under `scripts/validate.sh`** (~13 s, 260
 measurements).
 
@@ -262,6 +263,19 @@ steering disabled too — their spawn headings already take them to
 different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path.
+
+⚠ **A cost gate over a world with none of the thing you changed is not
+a gate.**  `tests/11_f8_the_tick_budget.loft` ticked a MARKERLESS world,
+so `wave_fire` returned immediately and the budget would have stayed
+green through any line-of-sight cost whatever — B5b could have put a
+15-hex trace per enemy per shot into the tick unseen.  It now ticks a
+defended world too.
+⚠ And even that is not enough on its own: LOS is **3% of a tick with
+3.8x headroom above it**, so the budget cannot see a 20x regression in
+it.  What can is pricing the ALTERNATIVE and comparing — twelve shots
+the shipped way against ONE roster-wide `tower_sees` pass, 51% measured
+against 1200% for the naive shape.  Reach for that whenever the thing
+you changed is a small share of a gate that has room to spare.
 
 ### Profiling the suite — and why the wall clock cannot do it
 
@@ -683,14 +697,18 @@ src/
                    structure_max_hp / structure_breakable / structure_hp,
                    rubble_height_of, break_structure, damage_resolve,
                    plus B4's `enemy_max_hp` / `body_source` / the
-                   `BODY_HEIGHT_METRES` a death drops (the class→
-                   material table lives here; the per-enemy verbs live
+                   `BODY_HEIGHT_METRES` a death drops and B5b's
+                   `ENEMY_HEIGHT_METRES` / `enemy_height` (the class→
+                   number tables live here; the per-enemy verbs live
                    in `spawn.loft`, where `Enemy` is).
-                   ⚠ **A body is 0.5 m, NOT `numbers.json`'s
-                   enemy_regular.height (1.0).**  That is a STANDING
-                   robot; the body height is the unit the ramp band is
-                   counted in, and at 1.0 m two and four bodies land
-                   exactly on the band's endpoints with no interior.
+                   ⚠ **A body is 0.5 m and a STANDING robot is 1.0 m**,
+                   and both numbers are here because they are the same
+                   robot in two states.  The body height is the unit
+                   the ramp band is counted in, and at 1.0 m two and
+                   four bodies land exactly on the band's endpoints
+                   with no interior; the standing height is what a
+                   tower aims at, and aiming at the FEET instead puts
+                   the canonical shot exactly on the LOS boundary.
                    ⚠ It stores damage TAKEN, not HP remaining, for the
                    reason `height.loft` stores a RISE: a miss has to
                    mean something useful, and "HP remaining" reads as
@@ -720,10 +738,14 @@ src/
                    by exactly 3, and odd-r row parity means a
                    constant-`q` COLUMN zigzags and reads as braced
 
-  tower.loft       what a TOWER is (plan 12 B5a) — the numbers
-                   (range 15 hex, 1.0 s interval, 10 HP a shot),
-                   TowerState + tower_charge / tower_bank / count, and
-                   tower_in_range.  ⚠ Range is `lat_distance` and
+  tower.loft       what a TOWER is (plan 12 B5a + B5b) — the numbers
+                   (range 15 hex, 1.0 s interval, 10 HP a shot, 6.0 m
+                   tall, 30 shots), TowerState + tower_charge /
+                   tower_bank / tower_hold / tower_shots /
+                   tower_spend_shot / tower_black / tower_budget_left /
+                   count, tower_in_range, and B5b's tower_eye /
+                   tower_sees / tower_sight_fault.
+                   ⚠ Range is `lat_distance` and
                    NOTHING else; a `+ 1` on a q or an r reaching for it
                    is moros#10 again.
                    ⚠ A tower BANKS charge rather than firing per tick,
@@ -733,6 +755,24 @@ src/
                    comparison needs `TOWER_CHARGE_EPSILON`, because
                    `1/1.5` has no exact float form and a bare `>=`
                    silently drops every third shot.
+                   ⚠ **LOS is ONE straight line and no table.**
+                   `tower_sees` runs `lat_line` from the eye (the
+                   tower's hex plus 6.0 m) to the target's top and
+                   refuses any hex whose `hex_height` rises above the
+                   ray.  Both ENDPOINTS are skipped — a tower on a wall
+                   is not blinded by its own hex — and the comparison
+                   needs `TOWER_SIGHT_EPSILON`, because the canonical
+                   geometry lands exactly ON the boundary.
+                   ⚠ **Do not add a "what blocks" lookup.**  A
+                   `wall_high` beside the tower does NOT block and a
+                   `wall` near the target DOES; the kind never decides
+                   on its own.  `tests/12_b5b_los_budget.loft` § The
+                   difference is the HEIGHT fails both ways round if
+                   anyone tries.
+                   ⚠ Shots FIRED, never shots remaining — zero is the
+                   neutral value, so a tower nobody ticked is ready
+                   rather than black (the same choice `damage.loft`
+                   makes).
                    ⚠ `tower_pick` and `wave_fire` are in `spawn.loft`,
                    where `WaveState` is: this file must not depend on
                    the wave engine, because the tick calls INTO it
@@ -862,7 +902,7 @@ suite redirects its own shots into `tests/actual/`.
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge — runtime, not editor state |
-| `TowerState` | `tower.loft` | seconds each tower has banked toward its next shot — runtime, never saved |
+| `TowerState` | `tower.loft` | per tower: the seconds banked toward its next shot and the shots it has FIRED out of its 30 — runtime, never saved |
 | `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken }` — `taken` is damage ABSORBED, so an `Enemy { … }` literal that omits it is HEALTHY |
 | `HeightLayer` | `height.loft` | metres of rubble piled on the map at runtime, and what it is made of — never saved |
 | `DamageLayer` | `damage.loft` | HP each structure has ABSORBED — runtime, never saved; a miss means undamaged |
@@ -1195,6 +1235,8 @@ signature.
 | Ask what a hex's SURFACE is (vs what is painted on it) | `src/passable.loft::hex_ground` — rubble where a pile stands, the painted kind otherwise.  `painted_ground` is the other half and is what `hex_height` adds the layer to |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
+| Ask whether a tower can HIT something | `src/tower.loft::tower_sees` — one straight line from the eye over `hex_height`.  ⚠ Never a "which kinds block" table: a `wall_high` beside the tower does not block and a `wall` near the target does |
+| Ask why a tower is not shooting | `src/tower.loft::tower_sight_fault` names the hex, the two heights and how far along the line it sits; `tower_black` is the other answer |
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — max minus taken.  ⚠ 0.0 answers BOTH "broken" and "never a structure"; ask `structure_breakable` first if you need to tell them apart |
 | Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — the kind's figure scaled by `brace_of`.  ⚠ `numbers.json`'s wall_hp (100) is the BRACED number; a lone plug in a corridor is a STUB and gets 15 |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |

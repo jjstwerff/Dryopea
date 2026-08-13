@@ -56,6 +56,10 @@
 
 use lattice;
 use markers;
+use palette;
+use painted;
+use height;
+use passable;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -77,6 +81,25 @@ pub const TOWER_FIRE_INTERVAL_S: float = 1.0;
 // numbers.json § tower.damage_per_shot — three shots kill a regular.
 pub const TOWER_DAMAGE_PER_SHOT: float = 10.0;
 
+// numbers.json § tower.height — how high off its own hex the tower
+// looks and shoots from.
+//
+// ⚠ **It is measured from the tower's SURFACE, not from sea level**,
+// which is the whole reason `DESIGN.md` § LOS is a HEIGHT question
+// says the ridge works for free: a tower standing on 3 m of wall sees
+// from 9 m with nothing written for elevation at all.
+pub const TOWER_HEIGHT_METRES: float = 6.0;
+
+// numbers.json § tower.shot_budget_per_charge — how many shots a tower
+// has before it **goes black** and stops firing.
+//
+// ⚠ Decay is per SHOT and never per time (`DESIGN.md` § 7), and that
+// is a design rule rather than an implementation detail: an idle tower
+// in a quiet corner never decays, which is one of the few things in
+// dryopea that lets a player rest.  A budget that ticked down would
+// take that away and would make a tower a timer.
+pub const TOWER_SHOT_BUDGET: integer = 30;
+
 // ⚠ **How close to a whole interval still counts as one, and it is
 // not defensive noise — without it the tower LOSES SHOTS.**
 //
@@ -94,17 +117,31 @@ pub const TOWER_DAMAGE_PER_SHOT: float = 10.0;
 // `test_the_cadence_does_not_drift_over_a_long_run` is the gate for.
 pub const TOWER_CHARGE_EPSILON: float = 1.0e-9;
 
+// How far above the sight line an obstacle has to reach before it
+// blocks the shot — a metre-scale rule decided at 1 nanometre.
+//
+// ⚠ **Not defensive noise: without it a float ulp decides whether a
+// tower works.**  The canonical geometry lands ON the boundary — a
+// 6 m tower, a 3 m wall halfway to a 1 m target, ray height exactly
+// 3.0 — and the ratios that produce it (1/2, 1/3, 3/10) are exact in
+// binary for some placements and a hair either side for others.  The
+// tie goes to the SHOOTER: a wall the line grazes is grazed, not hit.
+pub const TOWER_SIGHT_EPSILON: float = 1.0e-9;
+
 // ─── What a tower remembers between ticks ───────────────────────
 
-// One tower's charge, in seconds banked toward its next shot.
+// One tower's charge in seconds banked toward its next shot, and how
+// many shots it has spent out of its budget.
 //
-// B5b adds the shot budget here, which is why this is a struct with
-// one field rather than a `hash<float>`: the second field should cost
-// a line, not a migration.
+// ⚠ Shots FIRED rather than shots REMAINING, and it is the same choice
+// `damage.loft` makes for a wall: zero is the neutral value, so a
+// tower this struct has never heard of is a fresh one rather than a
+// black one.  A `TowerCharge {}` literal is a working tower.
 pub struct TowerCharge {
     q:      integer,
     r:      integer,
     charge: float,
+    shots:  integer,
 }
 
 // What every tower on the map has banked.  A hash must be a struct
@@ -144,10 +181,72 @@ pub fn tower_charge(ts: const TowerState, q: integer, r: integer) -> float {
 pub fn tower_bank(ts: TowerState, q: integer, r: integer, seconds: float) {
     tb_c = ts.cells[q, r];
     if tb_c == null {
-        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: seconds };
+        // `shots: 0` is spelled out rather than defaulted — a literal
+        // that omits a field takes its zero SILENTLY, and this is the
+        // site where a wrong one would hand out a black tower.
+        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: seconds, shots: 0 };
     } else {
         tb_c.charge = tb_c.charge + seconds;
     }
+}
+
+// Cap the charge at one whole interval — what a tower that could NOT
+// fire does with the seconds it just banked.
+//
+// ⚠ **A capacitor holds one shot, not a magazine**, and the cap is
+// what makes "a blocked shot is not fired" survive contact with a long
+// blockage.  Hold the charge uncapped and a tower blinded for a
+// hundred ticks empties two thirds of its budget into the first thing
+// it sees, which is the burst B5a's empty-field rule already refused —
+// only worse, because now it is spending a budget as well.
+//
+// It only ever REMOVES charge, so it cannot manufacture a shot: a
+// tower a hair short of an interval stays a hair short.
+pub fn tower_hold(ts: TowerState, q: integer, r: integer) {
+    th_c = ts.cells[q, r];
+    if th_c == null { return; }
+    if th_c.charge > TOWER_FIRE_INTERVAL_S { th_c.charge = TOWER_FIRE_INTERVAL_S; }
+}
+
+// How many shots (q, r) has FIRED.  A tower nobody has ticked has
+// fired none.
+pub fn tower_shots(ts: const TowerState, q: integer, r: integer) -> integer {
+    tsh_c = ts.cells[q, r];
+    if tsh_c == null { return 0; }
+    tsh_c.shots
+}
+
+// Charge one shot against (q, r)'s budget.
+//
+// ⚠ Called from the ONE place a shot is fired (`spawn.loft::wave_fire`)
+// and never anywhere else, for the reason `wave_deaths` is the one
+// death path: a second site that spent a shot without landing one, or
+// landed one without spending, would make the budget disagree with the
+// damage and no test naming either could see it.
+pub fn tower_spend_shot(ts: TowerState, q: integer, r: integer) {
+    tss_c = ts.cells[q, r];
+    if tss_c == null {
+        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: 0.0, shots: 1 };
+    } else {
+        tss_c.shots = tss_c.shots + 1;
+    }
+}
+
+// Has (q, r) spent its budget — is it **black**?
+//
+// `DESIGN.md` § 7: a black tower stops firing and waits for a player
+// to repair it.  Nothing in this plan repairs one, so in an unattended
+// run black is terminal, and that is the point: B7's clock is partly
+// the tower budget running out.
+pub fn tower_black(ts: const TowerState, q: integer, r: integer) -> boolean {
+    tower_shots(ts, q, r) >= TOWER_SHOT_BUDGET
+}
+
+// Shots left before (q, r) goes black — 0 for a tower already there.
+pub fn tower_budget_left(ts: const TowerState, q: integer, r: integer) -> integer {
+    tbl_n = TOWER_SHOT_BUDGET - tower_shots(ts, q, r);
+    if tbl_n < 0 { return 0; }
+    tbl_n
 }
 
 // How many towers have been ticked at least once.
@@ -164,6 +263,122 @@ pub fn tower_count(ts: const TowerState) -> integer {
 // invariant gate is exactly this line — *hit at 15, untouched at 16*.
 pub fn tower_in_range(tower: const Hex, target: const Hex) -> boolean {
     lat_distance(tower, target) <= TOWER_RANGE_HEXES
+}
+
+// ─── Line of sight (plan 12 B5b) ────────────────────────────────
+//
+// **A shot travels in a straight line from the tower's eye to the
+// target's body, and anything the line does not clear stops it.**
+// That is the whole rule, and every term in it is a HEIGHT.
+//
+// ⚠ **There is deliberately no table of what blocks.**
+// `DESIGN.md` § LOS is a HEIGHT question spells out why: the numbers
+// already decide it (a 6 m tower against a 5 m `wall_high`), and a
+// *`wall_high` blocks / `wall` does not* lookup would be a second
+// source of truth for heights `passable.loft` already owns — the shape
+// this codebase has caught twice (`walk_ground` versus the height rule
+// in plan 11 F0; the painted kind versus the surface in B1).  Reading
+// the height buys three things a table cannot:
+//
+// - **elevation, free.**  A tower on a ridge or on its own wall sees
+//   from higher, with nothing written for it.
+// - **rubble blocks.**  A pile is a height, so the bodies that ramp a
+//   kill zone shut also blind the tower covering it — the same
+//   losing spiral `ENEMY_MOVEMENT.md` § Bodies are terrain describes,
+//   arriving from a direction nobody wrote down.
+// - **terrain will block itself.**  `steep_rock` is 0.0 m today and
+//   blocks nothing, because dryopea has no terrain elevation at all
+//   yet; the day plan 02's slope solver lands it blocks for free and
+//   this file does not change.
+//
+// ⚠ **And it FALSIFIES the design's own summary of itself.**
+// `DESIGN.md` § 7 says LOS is *"blocked by `wall_high` + `steep_rock`,
+// not by `wall`"*.  Measured against the ray: a `wall` blocks whenever
+// it stands past roughly three fifths of the way to the target, so a
+// tower two hexes behind its own wall cannot touch the robots chewing
+// the far side of it.  That is dead ground and it is real geometry —
+// see `tests/12_b5b_los_budget.loft` § The falsification.
+
+// How high off sea level this tower's weapon sits: the height of
+// whatever it stands on, plus the tower.
+pub fn tower_eye(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                 at: const Hex) -> float {
+    hex_height(pal, pw, hl, at.q, at.r) + TOWER_HEIGHT_METRES
+}
+
+// Can a tower at `from` put a shot into something `target_height`
+// metres tall standing at `to`?
+//
+// The line is `lat_line` and the arithmetic is one lerp: at the `i`th
+// of `n` cells the shot is `i/n` of the way from the eye down to the
+// target's top, and a cell that reaches above that stops it.
+//
+// ⚠ **Both endpoints are skipped, and neither is an off-by-one.**  The
+// tower stands ON the first cell — its own 3 m wall does not blind it
+// — and the enemy stands ON the last, so the ground under its feet is
+// not an obstacle between them.  Including either makes a tower on a
+// wall unable to shoot at all, which is the failure that looks like
+// "towers do not work" rather than like a bad line.
+//
+// ⚠ Aimed at the target's TOP, not at its feet: a shot that reaches
+// any part of the body hits.  See `damage.loft::ENEMY_HEIGHT_METRES`
+// for why the difference is not cosmetic.
+pub fn tower_sees(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                  from: const Hex, to: const Hex, target_height: float) -> boolean {
+    ts_n = lat_distance(from, to);
+    // Nothing can stand between a tower and its own hex or its
+    // neighbour, so the line is not worth walking.
+    if ts_n <= 1 { return true; }
+
+    ts_eye = tower_eye(pal, pw, hl, from);
+    ts_aim = hex_height(pal, pw, hl, to.q, to.r) + target_height;
+    ts_inv = (1.0 / (ts_n as float)) ?? 0.0;
+    ts_line = lat_line(from, to);
+
+    ts_i = 0;
+    for ts_c in ts_line {
+        if ts_i > 0 && ts_i < ts_n {
+            ts_ray = ts_eye + (ts_aim - ts_eye) * ((ts_i as float) * ts_inv);
+            if hex_height(pal, pw, hl, ts_c.q, ts_c.r) > ts_ray + TOWER_SIGHT_EPSILON {
+                return false;
+            }
+        }
+        ts_i = ts_i + 1;
+    }
+    true
+}
+
+// What stopped the shot, in the numbers that stopped it — the `*_fault`
+// twin `passable.loft` gives every one of its predicates.
+//
+// A message rather than a boolean, because a blind tower and a tower
+// out of range look identical from outside and the difference is three
+// metres on one hex halfway down the line.
+pub fn tower_sight_fault(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                         from: const Hex, to: const Hex, target_height: float) -> text {
+    tsf_n = lat_distance(from, to);
+    if tsf_n <= 1 { return "clear — nothing stands between adjacent hexes"; }
+
+    tsf_eye = tower_eye(pal, pw, hl, from);
+    tsf_aim = hex_height(pal, pw, hl, to.q, to.r) + target_height;
+    tsf_inv = (1.0 / (tsf_n as float)) ?? 0.0;
+    tsf_line = lat_line(from, to);
+
+    tsf_i = 0;
+    for tsf_c in tsf_line {
+        if tsf_i > 0 && tsf_i < tsf_n {
+            tsf_ray = tsf_eye + (tsf_aim - tsf_eye) * ((tsf_i as float) * tsf_inv);
+            tsf_h = hex_height(pal, pw, hl, tsf_c.q, tsf_c.r);
+            if tsf_h > tsf_ray + TOWER_SIGHT_EPSILON {
+                return "blocked at ({tsf_c.q}, {tsf_c.r}), {tsf_i}/{tsf_n} along: "
+                     + "{tsf_h:5.2} m of {hex_ground_name(pal, pw, hl, tsf_c.q, tsf_c.r)} "
+                     + "under a shot at {tsf_ray:5.2} m "
+                     + "(eye {tsf_eye:5.2} m, aim {tsf_aim:5.2} m)";
+            }
+        }
+        tsf_i = tsf_i + 1;
+    }
+    "clear — the shot from {tsf_eye:5.2} m reaches {tsf_aim:5.2} m over {tsf_n} hexes"
 }
 
 // ─── Choosing what to shoot, and firing ─────────────────────────

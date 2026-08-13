@@ -125,8 +125,16 @@ special case:
 and leaves `numbers.json` § enemy_regular.body_height (0.5 m) of
 wreckage — carapace, for an insect — on the hex it fell on.  Death is
 two effects and both land: the hex is FREED (a corpse holds nothing)
-and the ground is RAISED.  Nothing fires at an enemy yet; the tower is
-B5.
+and the ground is RAISED.  Since B5b a tower is what kills it.
+
+⚠ **And a fourth consequence nobody designed: the pile BLINDS the
+tower that made it.**  B5b's line of sight reads `hex_height`, which
+adds the rubble layer, so the heap that ramps a kill zone shut also
+puts the kill zone out of sight — ten dead robots are 5 m of wreckage,
+and a shot three hexes out is only 4.5 m up.  It falls out of reading a
+height rather than a material ([`DESIGN.md`](DESIGN.md) § LOS is a
+HEIGHT question) and it sharpens point 1 below rather than softening
+it: the entrance closes AND the guns covering it go quiet.
 
 ⚠ **A fatal hit is followed by one last step.**  The tick moves before
 it resolves deaths, so a body lands one hex down the enemy's route from
@@ -234,6 +242,16 @@ enemy roster iterated in reverse, produces an identical result.**
 A wall placement is **never refused**.  The genre convention is to
 forbid a full block (the placement greys out); dryopea allows it
 and makes it a bad idea instead.
+
+⚠ **Plan 12 B5b added a punishment nobody designed: dead ground.**  A
+tower's shot descends from its eye to its target, so a wall past about
+three fifths of the way blocks it — which means a tower set two hexes
+back from the perimeter **cannot touch the robots chewing the far side
+of it**.  Seal the base and the besiegers stand exactly where the guns
+cannot reach.  The counter is a placement rule rather than a mechanic:
+a tower must OVERLOOK the wall it covers.  Measured in
+`tests/12_b5b_los_budget.loft`; the geometry is in
+[`DESIGN.md`](DESIGN.md) § LOS is a HEIGHT question.
 
 **Blocked enemies still want the core, and they arrive already
 spread.**  So a sealed perimeter is not one fight — each enemy

@@ -74,6 +74,13 @@ const TICK_BUDGET_US: integer = 666666;
 const MAX_WAVE:   integer = 80;
 const MAX_RADIUS: integer = 40;
 
+// A defended base, for the tick that has to pay for one (plan 12 B5b).
+// Six towers is what `numbers.json` § tower.order_cost_points (100) and
+// § economy's 200-point start make a plausible base — a handful, not a
+// forest — and eight hexes is how far inside the wave they stand.
+const TOWERS:         integer = 6;
+const TOWER_STANDOFF: integer = 8;
+
 fn as_u8(n: integer) -> u8 {
     n as u8? ?? 0
 }
@@ -141,11 +148,41 @@ fn rim_wave(n: integer, radius: integer) -> WaveState {
 // the whole phase's conclusion wrong in the safe-looking direction.
 fn us_per_tick(pw: PaintedWorld, enemies: integer, radius: integer,
                n_ticks: integer) -> integer {
+    us_defended_per_tick(pw, enemies, radius, n_ticks, marker_empty())
+}
+
+// The same reading with a marker layer — which is to say, with towers
+// (plan 12 B5a placed them there).
+fn us_defended_per_tick(pw: PaintedWorld, enemies: integer, radius: integer,
+                        n_ticks: integer, mw: MarkerWorld) -> integer {
     u_pal = pal();
     u_s   = rim_wave(enemies, radius);
     u_t0  = ticks();
-    for _ in 0..n_ticks { wave_tick(u_s, u_pal, pw, marker_empty(), core()); }
+    for _ in 0..n_ticks { wave_tick(u_s, u_pal, pw, mw, core()); }
     ((ticks() - u_t0) / n_ticks) ?? 0
+}
+
+// `n` towers ringed `TOWER_STANDOFF` hexes inside the rim at `radius`
+// — close enough to the wave to be firing every tick, far enough that
+// every shot walks a real sight line.
+//
+// ⚠ **The standoff is the measurement.**  A tower at the CORE of a
+// radius-40 world fires at nothing (the wave is 40 out and the range
+// is 15), and a tower ON TOP of an enemy answers `tower_sees` from its
+// adjacent-hexes short circuit — both of them measure the branch that
+// skips the work.  Eight hexes in, the nearest enemies are 8 to 15
+// away and every pick traces the line.
+fn rim_towers(n: integer, radius: integer) -> MarkerWorld {
+    rt_mw = marker_empty();
+    rt_i  = 0;
+    for _ in 0..n {
+        rt_h = core();
+        for _ in 0..(radius - TOWER_STANDOFF) { rt_h = lat_neighbour(rt_h, rt_i % 6); }
+        for _ in 0..(rt_i / 6) { rt_h = lat_neighbour(rt_h, ((rt_i % 6) + 2) % 6); }
+        place_tower(rt_mw, rt_h.q, rt_h.r);
+        rt_i += 1;
+    }
+    rt_mw
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -161,6 +198,79 @@ fn test_a_tick_at_maximum_load_fits_inside_its_budget() {
 
     assert(tam_us < TICK_BUDGET_US,
            "{MAX_WAVE} enemies over a radius-{MAX_RADIUS} world: {tam_us} us/tick, budget {TICK_BUDGET_US}");
+}
+
+// ⚠ **The same load with the base DEFENDED — plan 12 B5b's gate, and
+// it is here rather than in that phase's own file because the numbers
+// it measures against are these.**
+//
+// B5b put a line of sight into the tick: every shot walks up to 15
+// hexes asking `hex_height` at each, and a wave is 80 candidates.  The
+// existing budget test cannot see a penny of that, because its marker
+// layer is empty and a world with no towers never fires — which is the
+// exact shape of blindness `test_per_enemy_work_does_not_scale_with_
+// the_world` exists to remember (a cost nothing behavioural can see).
+//
+// Measured at this configuration, 2026-08-13: an undefended tick is
+// **167 ms** and a defended one **173 ms**, so six firing towers cost
+// **3%** — and both sit at a quarter of the 667 ms budget.
+fn test_a_defended_tick_at_maximum_load_fits_inside_its_budget() {
+    tad_us = us_defended_per_tick(disc(MAX_RADIUS), MAX_WAVE, MAX_RADIUS, 3,
+                                  rim_towers(TOWERS, MAX_RADIUS));
+
+    assert(tad_us < TICK_BUDGET_US,
+           "{MAX_WAVE} enemies and {TOWERS} towers over a radius-{MAX_RADIUS} world: "
+           + "{tad_us} us/tick, budget {TICK_BUDGET_US}");
+}
+
+// ⚠ **And the budget cannot see the sight line at all, which is why
+// this second test exists.**  LOS is 3% of a tick with 3.8x headroom
+// above it, so an implementation twenty times more expensive would
+// still fit — the absolute gate above would stay green through exactly
+// the regression B5b is most likely to suffer.
+//
+// So price the ALTERNATIVE and compare against it.  `tower_pick` traces
+// a line only for a candidate that would otherwise be picked — a
+// handful per shot — where the obvious implementation asks `tower_sees`
+// of every enemy in the roster.  One roster-wide pass is measured here
+// directly, and the claim is that **twelve shots the shipped way cost
+// less than ONE shot the other way**.
+//
+// Measured: 5.6 ms for four ticks of firing (12 shots, six towers at
+// two shots per three ticks) against 10.9 ms for a single 80-enemy
+// pass — **51%**.  Per-enemy tracing would put twelve passes in those
+// four ticks, i.e. 1200%, so the threshold has 2x margin below it and
+// 24x above.  The two do not overlap, which is the same property
+// `test_per_enemy_work_does_not_scale_with_the_world` is built on.
+fn test_a_shot_traces_a_handful_of_lines_and_not_a_rosters_worth() {
+    tsh_pal = pal();
+    tsh_pw  = disc(20);
+    tsh_mw  = rim_towers(TOWERS, 20);
+
+    tsh_s  = rim_wave(MAX_WAVE, 20);
+    tsh_t0 = ticks();
+    tsh_fired = 0;
+    for _ in 0..4 { tsh_fired = tsh_fired + wave_fire(tsh_s, tsh_pal, tsh_pw, tsh_mw); }
+    tsh_shipped = ticks() - tsh_t0;
+
+    // The same towers' first hex, and a fresh wave so the two halves
+    // measure the same roster.
+    tsh_at = core();
+    for _ in 0..(20 - TOWER_STANDOFF) { tsh_at = lat_neighbour(tsh_at, 0); }
+    tsh_s2 = rim_wave(MAX_WAVE, 20);
+    tsh_t1 = ticks();
+    for tsh_e in tsh_s2.enemies {
+        tower_sees(tsh_pal, tsh_pw, tsh_s2.heights, tsh_at,
+                   Hex { q: tsh_e.q, r: tsh_e.r }, ENEMY_HEIGHT_METRES);
+    }
+    tsh_pass = ticks() - tsh_t1;
+
+    assert(tsh_fired == 12,
+           "six towers fire twice in three ticks: {tsh_fired} shots in four");
+    assert(tsh_pass > 0, "the clock said something: {tsh_pass} us");
+    assert(tsh_shipped < tsh_pass,
+           "{tsh_fired} shots cost {tsh_shipped} us against {tsh_pass} us for ONE "
+           + "roster-wide pass — the sight line is being traced per enemy");
 }
 
 // ⚠ **The gate the copy needed, and dryopea had nothing like it.**
