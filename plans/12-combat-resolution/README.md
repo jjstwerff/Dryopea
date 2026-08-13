@@ -502,16 +502,28 @@ Damage TYPE is the axis; the parts that bear on **this** plan:
 
 - **laser is poor against heavier armour**; **artillery is good against
   it but single-target**; a **flame thrower** has markedly shorter range
-  and is excellent against several SMALL enemies at once. So two class
-  properties fall out — **armour** and **size** — and neither is
-  invented for the weapons: size is already load-bearing for the
-  blocking rule above (a big body seals its hex, a small one does not).
-  A property two unrelated mechanics both need is one worth having.
+  and is excellent against several SMALL enemies at once; a **sniper**
+  is the heaviest gun and the slowest to aim, best at long range and
+  *especially* bad up close. So two class properties fall out —
+  **armour** and **size** — and neither is invented for the weapons:
+  size is already load-bearing for the blocking rule above (a big body
+  seals its hex, a small one does not). A property two unrelated
+  mechanics both need is one worth having.
+- ⚠ **Range becomes a PROFILE rather than a number**, and that is the
+  one thing here that changes a function B5a already shipped.
+  `tower_in_range` is a single `lat_distance(...) <= TOWER_RANGE_HEXES`;
+  a sniper is bad below a minimum and best at the far end, and a flame
+  thrower is the same curve inverted, so the question becomes *how well
+  does this shot land at this distance*. The lattice half stays
+  exactly as it is — `lat_distance` and nothing else — and only the
+  comparison grows.
 - **Aiming takes time.** A tower turns toward its target, so switching
-  targets costs damage. ⚠ That directly cuts against B3's finding: a
-  siege that converges on one route is *easier* for a tower than one
-  spread along the perimeter, so the sidestep steering `ENEMY_MOVEMENT`
-  wants would also weaken towers. Worth keeping as a tension.
+  targets costs damage — and the **sniper is the extreme**, slowest to
+  aim and therefore the type that most needs a funnel to look down.
+  ⚠ That directly cuts against B3's finding: a siege that converges on
+  one route is *easier* for a tower than one spread along the
+  perimeter, so the sidestep steering `ENEMY_MOVEMENT` wants would also
+  weaken towers — the sniper most of all. Worth keeping as a tension.
 - ⚠ **A shot that has become impossible is NOT fired** — the tower
   holds rather than spending it into a wall. **This is a direct
   instruction for B5b**, and it is the opposite of the naive shape: LOS
@@ -535,7 +547,7 @@ replaying written-down runs.
 | a per-class body height and decay rate | `numbers.json` rows beside B4's `enemy_regular.body_height` |
 | tower damage TYPES (laser / artillery / explosive / EMP) | `numbers.json` § tower has `damage_per_shot` and no type; B5 should avoid foreclosing one |
 | enemy ARMOUR and SIZE, and damage scaled by type against them | `numbers.json` rows per class beside `hp`; the scaling belongs beside `enemy_max_hp` in `damage.loft`.  ⚠ SIZE is needed by the blocking rule anyway, so the flame thrower costs no new property |
-| a per-TYPE range, not one `TOWER_RANGE_HEXES` | `tower.loft` — the flame thrower is much shorter; the constant becomes a lookup on the type |
+| a per-TYPE range PROFILE, not one `TOWER_RANGE_HEXES` | `tower.loft` — `tower_in_range`'s single `<=` becomes a curve: a sniper is bad below a minimum, a flame thrower nothing beyond a short one.  ⚠ `lat_distance` stays the only thing that measures; it is the comparison that grows |
 | a tower FACING, and traverse time between targets | `TowerState` — it already carries the per-tower charge, and B5a wrote it as a struct so a second field costs a line |
 | projectile travel time, so a fast enemy can be missed | a shot in flight is state nothing has; it is the one item here that needs a new record rather than a new field |
 | splash radius, and shots that damage structures | `damage.loft::damage_apply` already takes a hex — this is a caller, not a mechanism |

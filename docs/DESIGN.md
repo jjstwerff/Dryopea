@@ -693,6 +693,17 @@ cost, and two of the costs are things the player does to
 | **explosive / splash** | — | several | — | — | — | **damages the player's own walls** |
 | **EMP** | — | — | worst: destroys the high-value electrics (brain, wiring, motors) and leaves the chassis nearly whole | **longest** | nearly useless — it only lightly burns them | maximum obstruction, minimum salvage |
 | **flame thrower** | — | several, but only SMALL ones | — | — | **excellent** against a swarm | markedly **shorter range**, so it has to be placed where things get close |
+| **sniper** | heavy gun | single | — | — | — | **slowest to aim**, and it is *especially* bad at very short range — the best weapon there is at long range and nearly useless up close |
+
+⚠ **The sniper adds an axis the others did not need: range is a
+PROFILE, not a number.**  Every type above is "effective out to
+N hexes"; a sniper is bad below a minimum and best at the far
+end, so the thing a tower answers is *how well does this shot
+land at this distance* rather than *is this in range*.  The
+flame thrower is the same curve inverted — best up close,
+nothing at distance — so the two bookend both axes at once, on
+range and on target size.  A catalogue whose extremes are
+opposites in two dimensions is a coherent one.
 
 ⚠ **Two enemy properties fall out of that table, and neither is
 invented for it.**  **Armour** decides laser-vs-artillery, and
@@ -718,7 +729,11 @@ anybody designed for an enemy:
 - **Switching targets is expensive.**  Time spent traversing
   is time not firing, so a tower harassed by scattered
   approaches does markedly less damage than one watching a
-  single lane.  ⚠ This cuts against the "chew the whole
+  single lane.  ⚠ The **sniper is the extreme case** — slowest
+  to aim, so it is the type that most needs a funnel to look
+  down and the one a spread approach punishes hardest.  That is
+  a placement decision the player makes with walls, which is
+  the loop this whole design is built on.  ⚠ This cuts against the "chew the whole
   perimeter" steering (`ENEMY_MOVEMENT.md` § Sealing the
   perimeter): enemies converging on one route are *easier*
   for a tower, which is a tension worth keeping rather than
