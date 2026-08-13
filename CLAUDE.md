@@ -16,6 +16,21 @@ it came from, so grabbing salvage *hastens* the overrun.
 Evacuated components give an advantage at the next base.  A run
 is a sequence of bases, chained by what you carry out.
 
+⚠ **It is a strategy game built out of tower-defence mechanisms,
+and the player cannot lean back** (project owner, 2026-08-13;
+`docs/DESIGN.md` § What kind of game this is).  That is a design
+TEST, not flavour, and it is worth knowing before adding a
+mechanic: *does this put something in the player's hands at a
+moment when using it costs them something?*  A tower's budget
+decays per shot and only a player standing at it can refill it;
+bodies ramp a kill zone shut until someone drives in and clears
+them; salvage decays, so it must be collected at the worst
+moment.  A mechanic that hands out a permanent advantage for a
+one-time placement decision is what this design avoids — and the
+few things that DO let the player rest (an idle tower never
+decays, a tower that never fired is never retaliated against)
+are load-bearing pressure valves rather than slack.
+
 The full design lives in [`docs/DESIGN.md`](docs/DESIGN.md); the
 fiction in [`docs/SETTING.md`](docs/SETTING.md); the feature
 roadmap in [`plans/ROADMAP.md`](plans/ROADMAP.md).

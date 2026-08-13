@@ -8,10 +8,15 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 A non-standard sci-fi tower-defence built on
 [loft](https://github.com/jjstwerff/loft).
 
-Status: **pre-alpha, design only — no playable code yet.** Depends on
-two upstream library plans (terrain height-map + gridmesh Phase C)
-that are also pre-code. The design is canonical:
-[`docs/DESIGN.md`](docs/DESIGN.md).
+Status: **pre-alpha, under active implementation.** There is a working
+hex editor (paint, markers, undo, save/load), a wave engine that routes
+enemies round walls per class, and combat that resolves — towers fire,
+enemies die and leave bodies, walls take damage and break into rubble.
+No player vehicle yet, and no game loop around the base.
+
+The design is canonical: [`docs/DESIGN.md`](docs/DESIGN.md); what
+actually exists is [`plans/README.md`](plans/README.md), where each
+plan's own Status is the source of truth.
 
 ## What sets it apart — the scramble phase
 
@@ -32,9 +37,28 @@ Evacuated components give an advantage at the **next** base. A run
 is a sequence of bases, chained by what you carry out — a roguelike
 structure on top of a tower-defence base loop.
 
-If the core is destroyed *before* you scramble, the **run** ends
-(the true loss). A successful scramble is a tactical retreat, not a
-defeat.
+The core itself is **invulnerable**; enemies that reach it nibble the
+player's **point wallet** instead, and a wallet at zero is what ends
+the run. A successful scramble is a tactical retreat, not a defeat.
+
+## What kind of game it is
+
+A **strategy game built out of tower-defence mechanisms** — and one in
+which the player cannot lean back the way a normal tower defence lets
+them.
+
+In a classic tower defence you spend, place, and watch. Here almost
+every advantage has to be collected in person, at a moment when
+collecting it costs something. A tower's shot budget decays per *shot*
+and only a player standing at it can refill it. Bodies pile into a ramp
+that shuts your own kill zone, so someone has to drive into it and
+clear them. Salvage rots, so it has to be collected early — which is
+the worst moment to be out there.
+
+That constraint is what buys the variety: because so many of the
+counters are **architectural** — where the walls went, how wide the
+funnel is, what a tower can see from a ridge — one rule set poses
+genuinely different problems from map to map.
 
 ## Why on loft
 

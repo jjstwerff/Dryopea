@@ -95,6 +95,64 @@ overrun.  Hold longer for more haul; launch now to keep what
 you already have.  That tension is the core decision of the
 whole game.
 
+### What kind of game this is
+
+Owner, 2026-08-13, and it is the frame the rest of this document
+turns out to have been written against: **a real strategy game
+built out of tower-defence mechanisms, in which the player
+cannot lean back the way a normal tower defence lets them.**
+
+In a classic tower defence the player spends, places, and then
+watches.  Here almost every advantage has to be **collected in
+person, at a moment when collecting it costs something**:
+
+| The advantage | What it costs to keep |
+|---|---|
+| a tower's shot budget | decay is per **shot**, and only a player standing at it can refill it (§ 7) |
+| repairing one at all | a **firing** tower cannot be repaired — stop it first (§ 7) |
+| aiming one at a corpse | presence-locked: the player has to be there (§ 7 § Damage TYPE) |
+| a kill zone that keeps working | bodies pile into a ramp, so someone must drive **into** it and clear them ([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § Bodies are terrain) |
+| salvage worth having | a wreck decays, so it must be collected **early**, which is the worst moment |
+| a chokepoint that stays open | a big body plugs it, and unplugging it spends shots and salvage |
+| a sniper's range | it wants the outer ridge, which means driving **outside the wall** mid-wave to service it |
+| the whole run | scramble-and-salvage: every tower-top taken disables the tower it came from |
+
+⚠ **That pattern is systematic, not accumulated**, and it is
+worth stating as a test rather than a description.  A mechanic
+earns its place here when it answers yes to: *does this put
+something in the player's hands at a moment when using it costs
+them something?*  A mechanic that hands out a permanent
+advantage for a one-time placement decision is the thing this
+design is avoiding.
+
+**And it is what buys the variety.**  Because so many of the
+counters are **architectural** — decided by where the walls
+went rather than by how much damage the player brought — an
+author can pose genuinely different problems out of one rule
+set:
+
+- **bracing** decides where a perimeter fails
+  ([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § A wall's HP is
+  structural);
+- **funnel width** decides whether a boss fits, and whether its
+  builders have room to reach it (§ 7);
+- **elevation and wall height** decide what a tower can see
+  (§ 7 § LOS is a HEIGHT question);
+- **entrance placement** decides where bodies pile, and
+  therefore where the ramp forms;
+- **wave composition** decides whether the wall or the wallet is
+  the thing under threat (§ 10 § Small robots).
+
+⚠ **The risk this frame carries, stated so it is not
+rediscovered in play:** a game that never lets the player rest
+is exhausting rather than tense.  The design already has its
+pressure valves and they should be treated as load-bearing, not
+as slack — *an idle tower in a quiet corner never decays*
+(§ 7), *a tower that has never fired is never retaliated
+against* (§ 7 § Retaliation), and the inter-wave delay is
+fifteen real seconds of nothing happening ([§ 6](#6-spawn-system--waves)).
+The lean-back is meant to be **earned and brief**, not absent.
+
 Setting + tone in [`SETTING.md`](SETTING.md).
 
 ## 3. World
