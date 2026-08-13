@@ -678,6 +678,69 @@ anti-elemental dampener, anti-comms-priority disruptor,
 area-effect splash, …; exact catalogue TBD).  See
 [§ Economy + progression](#13-economy--progression).
 
+#### Damage TYPE is the axis, and it is a triangle rather than a ladder
+
+Project owner, 2026-08-13.  Designed, **not built** — plan 12
+B5a ships one untyped weapon.  What makes the catalogue worth
+having is that no type dominates: each is bought with a real
+cost, and two of the costs are things the player does to
+*themselves*.
+
+| Type | Against armour | Targets | Salvage left | How long the wreck blocks | Against insects | Its own cost |
+|---|---|---|---|---|---|---|
+| **laser** | poor | single | little — it vaporises | short | good | none; instant, so it cannot miss |
+| **artillery** | good | single | — | — | — | travel time: a moving target can be missed, and a miss is a wasted shot |
+| **explosive / splash** | — | several | — | — | — | **damages the player's own walls** |
+| **EMP** | — | — | worst: destroys the high-value electrics (brain, wiring, motors) and leaves the chassis nearly whole | **longest** | nearly useless — it only lightly burns them | maximum obstruction, minimum salvage |
+| **flame thrower** | — | several, but only SMALL ones | — | — | **excellent** against a swarm | markedly **shorter range**, so it has to be placed where things get close |
+
+⚠ **Two enemy properties fall out of that table, and neither is
+invented for it.**  **Armour** decides laser-vs-artillery, and
+**size** decides the flame thrower — and size is already
+load-bearing for a different reason: a *big* robot's body seals
+the hex it falls on and a small one does not
+([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § Bodies are terrain).
+A property that two unrelated mechanics both need is one worth
+having.
+
+Three of those columns are the same three-way tension, chosen
+per shot: **kill speed vs salvage vs how long the corpse plugs
+the gap** (see [`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) §
+Bodies are terrain — a fresh big wreck seals its hex, and a
+plugged chokepoint makes the wave attack the *wall* instead).
+
+#### Aiming costs time, so speed is a defence
+
+A tower **turns toward what it is shooting, and that takes
+time.**  Three consequences, and none of them is an ability
+anybody designed for an enemy:
+
+- **Switching targets is expensive.**  Time spent traversing
+  is time not firing, so a tower harassed by scattered
+  approaches does markedly less damage than one watching a
+  single lane.  ⚠ This cuts against the "chew the whole
+  perimeter" steering (`ENEMY_MOVEMENT.md` § Sealing the
+  perimeter): enemies converging on one route are *easier*
+  for a tower, which is a tension worth keeping rather than
+  balancing away.
+- **A shot that has become impossible is not fired.**  If the
+  line is blocked when the trigger comes, the tower holds —
+  it does not spend the shot into a wall.  That is a decision
+  at fire time, and it is what keeps the per-shot budget
+  honest.
+- **A shot already in flight can still be wasted.**  Artillery
+  has travel time, so a target that moves behind a wall after
+  the shot is away is simply missed.  **Faster enemies
+  therefore dodge without trying to**, which gives enemy speed
+  a defensive role nothing had to grant it.
+
+⚠ Implementation note for whoever builds it: plan 12 B5a's
+`tower_pick` re-chooses the nearest enemy every shot with no
+cost to switching, which is exactly the placeholder traverse
+time replaces — it will want hysteresis (stay on target) and
+will still have to be deterministic, because dryopea gates
+itself by replaying written-down runs.
+
 ### Enemy targeting + nibble
 
 Enemies have **nibble** (damage-per-second melee) when they

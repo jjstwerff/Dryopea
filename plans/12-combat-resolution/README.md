@@ -355,7 +355,7 @@ pins, and the input that must be **refused**.
 | **B3** ✓ | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
 | **B4** ✓ | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
 | **B5a** ✓ | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
-| **B5b** | tower kills through `wall`; does **not** kill through `wall_high` or `steep_rock`; stops firing after 30 shots | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS |
+| **B5b** | tower kills through `wall`; does **not** kill through `wall_high` or `steep_rock`; stops firing after 30 shots; **a blocked shot is not FIRED** — neither the charge nor the budget is spent | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS; one whose budget falls while every line is blocked is spending shots it never took |
 | **B6** | N nibblers drain exactly N pt/s × tick seconds; the wallet floors at 0 | the wallet never goes negative and never refills unattended | a negative wallet means the run has no end state |
 | **B7** | the defended base's time-to-zero is markedly longer than the same base stripped of walls and towers | the defences are what cost the attacker time | equal times = the scenario measures nothing, whatever it draws |
 
@@ -373,7 +373,7 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | **Done** |
 | **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | **Done** |
 | **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | **Done** |
-| **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires | Open |
+| **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires; a blocked tower spends nothing | Open |
 | **B6** — nibble drains the wallet, zero ends the run | S | `wallet <lo> <hi>` in `script.loft`; drain rate and the floor at 0 | Blocked on B4 |
 | **B7** — the scenario, and its control | S | `tests/scripts/an-undefended-base.keys` + the stripped control — the clock separates | Blocked on B3, B5b, B6 |
 
@@ -494,13 +494,50 @@ That is a genuine three-way tension per shot: **kill speed vs salvage vs how
 long the corpse plugs the gap**, chosen by which tower is firing and, with
 the player present, at what.
 
+#### Damage type is a TRIANGLE, and armour is the other axis
+
+Owner, same session, extending the above.  The full table lives in
+[`docs/DESIGN.md`](../../docs/DESIGN.md) § Future tower types §
+Damage TYPE is the axis; the parts that bear on **this** plan:
+
+- **laser is poor against heavier armour**; **artillery is good against
+  it but single-target**; a **flame thrower** has markedly shorter range
+  and is excellent against several SMALL enemies at once. So two class
+  properties fall out — **armour** and **size** — and neither is
+  invented for the weapons: size is already load-bearing for the
+  blocking rule above (a big body seals its hex, a small one does not).
+  A property two unrelated mechanics both need is one worth having.
+- **Aiming takes time.** A tower turns toward its target, so switching
+  targets costs damage. ⚠ That directly cuts against B3's finding: a
+  siege that converges on one route is *easier* for a tower than one
+  spread along the perimeter, so the sidestep steering `ENEMY_MOVEMENT`
+  wants would also weaken towers. Worth keeping as a tension.
+- ⚠ **A shot that has become impossible is NOT fired** — the tower
+  holds rather than spending it into a wall. **This is a direct
+  instruction for B5b**, and it is the opposite of the naive shape: LOS
+  is checked *before* the charge and the budget are spent, not after.
+- **A shot already in flight can still be wasted.** Artillery has
+  travel time, so a target that steps behind a wall after the shot is
+  away is missed — **faster enemies dodge without trying to**, which
+  gives enemy speed a defensive role nothing had to grant it.
+
+⚠ **What this says about B5a's picker.** `tower_pick` re-chooses the
+nearest enemy every shot with no cost to switching. That is exactly the
+placeholder traverse time replaces; it will want hysteresis, and it
+will still have to be deterministic, because plan 08 gates dryopea by
+replaying written-down runs.
+
 #### What it needs that does not exist
 
 | Needs | Where it would go |
 |---|---|
 | a decay clock per pile | `height.loft`, beside the source — the layer is already runtime and already per hex |
 | a per-class body height and decay rate | `numbers.json` rows beside B4's `enemy_regular.body_height` |
-| tower damage TYPES (laser / explosive / EMP) | `numbers.json` § tower has `damage_per_shot` and no type; B5 should avoid foreclosing one |
+| tower damage TYPES (laser / artillery / explosive / EMP) | `numbers.json` § tower has `damage_per_shot` and no type; B5 should avoid foreclosing one |
+| enemy ARMOUR and SIZE, and damage scaled by type against them | `numbers.json` rows per class beside `hp`; the scaling belongs beside `enemy_max_hp` in `damage.loft`.  ⚠ SIZE is needed by the blocking rule anyway, so the flame thrower costs no new property |
+| a per-TYPE range, not one `TOWER_RANGE_HEXES` | `tower.loft` — the flame thrower is much shorter; the constant becomes a lookup on the type |
+| a tower FACING, and traverse time between targets | `TowerState` — it already carries the per-tower charge, and B5a wrote it as a struct so a second field costs a line |
+| projectile travel time, so a fast enemy can be missed | a shot in flight is state nothing has; it is the one item here that needs a new record rather than a new field |
 | splash radius, and shots that damage structures | `damage.loft::damage_apply` already takes a hex — this is a caller, not a mechanism |
 | the salvage CONTENTS a wreck carries | plan 06 S1's stacked layer (§ The rubble is the hill: open and multiple per hex, so not a ground type) |
 | a player to aim, and presence to gate it | the vehicle — not in this plan at all |
