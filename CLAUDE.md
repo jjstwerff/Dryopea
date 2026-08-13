@@ -123,6 +123,16 @@ second steering rule and nobody has built it.
 always a walkable surface, so an enemy at the water's edge besieges
 nothing.
 
+⚠ **ONE AI, per-class DATA — and it is a design rule, not an accident.**
+*Bosses are not special in their AI; their size and their options are
+different, and that is what makes them special events* (project owner,
+2026-08-13).  `climb_limit` already says the same thing about movement —
+a class's climb is "its WHOLE contribution to passability", which is what
+lets one distance field serve several classes — and every later class
+property (armour, size, a boss's 2x2 footprint, its option to share what
+is hurting it) belongs in the same shape.  A class that needs its own
+mover has broken it.
+
 ⚠ **The siege chews where the ROUTE meets the wall, never where the
 wall is weakest** — measured in plan 12 B3, and it falsifies what
 `ENEMY_MOVEMENT.md` § A wall's HP is structural used to claim.  Six

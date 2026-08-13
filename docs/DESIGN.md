@@ -815,22 +815,33 @@ thing this note does not settle — flips the wave from a crowd
 into a coordinated force at exactly the moment the player has
 least to spare.
 
-⚠ **The ONE exception under scrambling is the boss, and it is
-a causal chain rather than a special case.**  A boss has a 2×2
-footprint ([§ 10](#10-three-enemy-tiers)), so it *cannot fit a
-one-hex entrance* — which means it is the unit most likely to
-have no good route to the core and to end up standing outside
-being shot.  And a boss **can order other robots to attack its
-attacker**: it is the engineering / command platform of robot
-society (§ Boss = mobile REPAIR PLATFORM), carrying enough
-authority and power to coordinate locally even through the
-jamming.
+⚠ **The ONE exception under scrambling is the boss — and it is
+NOT a different AI.**  Owner, 2026-08-13, and the framing is
+the point: *bosses are not special in their AI; their size and
+their options are different, and that is what makes them
+special events.*
 
-So the chain runs: **big footprint → no route in → stuck at the
-wall → a tower shoots it → it puts the squad onto that tower.**
-A boss turns a tower's success into a focused counter-attack,
-and it does so while the scrambler is still up — which is the
-only time that happens.
+Every class runs the same rules — the same routing, the same
+targeting, the same retaliation.  What a boss has is different
+**data**: a 2×2 footprint ([§ 10](#10-three-enemy-tiers)), so
+it cannot fit a one-hex entrance; and the option to **share
+what is hurting it** with the robots around it, being the
+engineering / command platform of robot society (§ Boss =
+mobile REPAIR PLATFORM) and carrying enough power to reach them
+through the jamming.
+
+The event is what those two produce on their own: **big
+footprint → no route in → stuck at the wall → a tower shoots it
+→ the squad is put onto that tower.**  Nobody wrote a boss
+behaviour; a boss is a row in the same table with different
+numbers, and the fight around it is emergent.
+
+⚠ That is the same discipline the movement rules already keep —
+a class's climb limit is *"its whole contribution to
+passability"*, which is why one distance field serves several
+classes ([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md)).  A boss
+that needed its own mover would break that, and the properties
+version does not.
 
 Two consequences worth writing down before anybody builds it:
 

@@ -374,14 +374,22 @@ That is what makes "put the towers behind walls" the normal answer and
 an outer ridge a real gamble: a ridge tower is exposed because it is
 **reachable**, not because it is outside.
 
-⚠ **The one exception under scrambling is the BOSS**, and it falls out
-of its size rather than being granted to it.  A boss is 2×2, so it
-cannot fit a one-hex entrance and is the unit most likely to have no
-route to the core at all — it is the one left standing outside being
-shot.  And it can **order other robots onto its attacker**, being the
-command platform of robot society, so it coordinates locally through
-the jamming.  The chain: *big footprint → no route in → stuck at the
-wall → a tower hits it → the squad is put onto that tower*.
+⚠ **The one exception under scrambling is the BOSS — and it is not a
+different AI.**  *Bosses are not special in their AI; their size and
+their options are different, and that is what makes them special
+events* (owner, 2026-08-13).  Every class runs the same rules; a boss
+is a row in the same table with different data — a 2×2 footprint, so
+it cannot fit a one-hex entrance, and the option to share what is
+hurting it with the robots around it.
+
+The event is what those two produce unaided: *big footprint → no route
+in → stuck at the wall → a tower hits it → the squad is put onto that
+tower*.  Nobody writes a boss behaviour.
+
+⚠ This is the same discipline § Two modes already keeps: a class's
+climb limit is its WHOLE contribution to passability, which is what
+lets one distance field serve several classes.  A boss that needed its
+own mover would break that; a boss that is different numbers does not.
 
 ⚠ Its footprint is also a routing problem nothing here solves: the
 field is built for a ONE-hex unit, so a boss needs a sweep with a
