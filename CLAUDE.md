@@ -34,7 +34,8 @@ exists today.
 | Enemies that spawn, route round walls per class, spread rather than stack, and besiege a sealed perimeter | [11](plans/11-flow-field/README.md) |
 | Rubble: a runtime layer with a source, climbable at 2.0 m, clearable back to the authored ground | [12](plans/12-combat-resolution/README.md), B0 + B1 shipped |
 | A besieged wall loses HP, breaks into a heap of masonry, and the breach is a way IN | [12](plans/12-combat-resolution/README.md), B2 shipped |
-| **No tower fires and no enemy dies** — walls break, nothing else does | [12](plans/12-combat-resolution/README.md), B3 + B4 next |
+| Enemies have HP, die, and leave a body that raises its hex — so a kill zone ramps itself shut | [12](plans/12-combat-resolution/README.md), B4 shipped |
+| **No tower fires and nothing deals damage on its own** — only a besieging enemy does | [12](plans/12-combat-resolution/README.md), B3 + B5 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -50,7 +51,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 630/630 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 648/648 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world).
 **Gate: 15 scripts green under `scripts/validate.sh`** (~13 s, 260
@@ -252,6 +253,16 @@ a parameter name.  A probe that took `ticks` as a parameter compiled
 clean and reported a tick 4x cheaper than it was; the same trap `now`
 sets, and a blind stopwatch is worse than none because it fails in the
 reassuring direction.
+
+⚠ **A struct RETURNED from a function is a COPY, so mutating it is a
+silent no-op.**  `hurt(first(state), 10)` — where `first` returns the
+roster's element — lands 0 damage; indexing the vector inline
+(`state.enemies[0] ?? Enemy {}`) lands it, and so does a `for e in
+state.enemies` loop variable.  Measured all three, plan 12 B4.  It
+compiles, it type-checks, there is no warning, and the read-back looks
+like the mutation never happened — which reads as a bug in the thing
+being mutated rather than in the accessor.  A one-line "get me the
+element" helper is fine to READ through and never to write through.
 
 ⚠ **A struct returned through TWO nested tail calls loses what its
 loop wrote** — 1 cell interpreted, 0 native, silent on both
@@ -521,7 +532,11 @@ src/
                    Plan 12 B2 added `damage <q> <r> <hp>` (which cannot
                    BREAK anything — only a tick does, so it stays one
                    code path) plus the `hp` and `pile` band
-                   measurements.  ⚠ `hp` over a hex with nothing
+                   measurements; B4 added `hit <i> <hp>`, the same rule
+                   for an ENEMY — a separate verb rather than an
+                   overload, because `damage 4 10` reading as either a
+                   hex or an index is a line whose meaning depends on
+                   knowing which.  ⚠ `hp` over a hex with nothing
                    breakable on it is an ERROR, because "at 0 HP" and
                    "no wall here" are the two states a break moves
                    BETWEEN and one number for both is green before the
@@ -610,7 +625,16 @@ src/
                    has taken enough (plan 12 B2) — DamageLayer +
                    damage_apply / damage_taken / damage_clear / count,
                    structure_max_hp / structure_breakable / structure_hp,
-                   rubble_height_of, break_structure, damage_resolve.
+                   rubble_height_of, break_structure, damage_resolve,
+                   plus B4's `enemy_max_hp` / `body_source` / the
+                   `BODY_HEIGHT_METRES` a death drops (the class→
+                   material table lives here; the per-enemy verbs live
+                   in `spawn.loft`, where `Enemy` is).
+                   ⚠ **A body is 0.5 m, NOT `numbers.json`'s
+                   enemy_regular.height (1.0).**  That is a STANDING
+                   robot; the body height is the unit the ramp band is
+                   counted in, and at 1.0 m two and four bodies land
+                   exactly on the band's endpoints with no interior.
                    ⚠ It stores damage TAKEN, not HP remaining, for the
                    reason `height.loft` stores a RISE: a miss has to
                    mean something useful, and "HP remaining" reads as
@@ -751,7 +775,8 @@ suite redirects its own shots into `tests/actual/`.
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
-| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime height layer — runtime, not editor state |
+| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger — runtime, not editor state |
+| `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken }` — `taken` is damage ABSORBED, so an `Enemy { … }` literal that omits it is HEALTHY |
 | `HeightLayer` | `height.loft` | metres of rubble piled on the map at runtime, and what it is made of — never saved |
 | `DamageLayer` | `damage.loft` | HP each structure has ABSORBED — runtime, never saved; a miss means undamaged |
 | `FlowField` | `flow.loft` | one class's distance field: cells (distance + the height it was swept with), the core, and the CLIMB it was built for |
@@ -1080,6 +1105,7 @@ signature.
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — max minus taken.  ⚠ 0.0 answers BOTH "broken" and "never a structure"; ask `structure_breakable` first if you need to tell them apart |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
+| Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |
 | Find out what the SUITE spends its time on | `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` — § Profiling the suite.  Read the op count, never the wall clock |

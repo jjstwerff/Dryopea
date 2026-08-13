@@ -112,12 +112,39 @@ pub const ENEMY_DAMAGE_TO_WALL_PER_SECOND: float = 1.0;
 // `:j`/vector-u8 corruption bug doesn't apply.  If enemies ever
 // need on-disk persistence, mirror the painted-layer pattern:
 // widen u8 → integer in a separate on-disk struct.
+// ⚠ `taken` is damage ABSORBED, not HP remaining, and the choice is
+// the same one `damage.loft` makes for structures — with a second
+// reason here that CLAUDE.md § Loft language gotchas spells out: a
+// struct literal that omits a field takes that field's DEFAULT
+// silently, so in a struct callers build field by field the neutral
+// value must be the ZERO value.  Store HP remaining and every
+// `Enemy { … }` literal in the suite that predates plan 12 B4 spawns a
+// corpse.
 pub struct Enemy {
     q:       integer,
     r:       integer,
     kind:    u8,
     heading: u8,
     alive:   boolean,
+    taken:   float,
+}
+
+// What this enemy has left, in HP — 0.0 once it has absorbed its whole
+// allowance.
+pub fn enemy_hp(e: const Enemy) -> float {
+    max(enemy_max_hp(e.kind) - e.taken, 0.0)
+}
+
+// Land `hp` of damage on one enemy.
+//
+// ⚠ **It does not kill.**  Death is `wave_deaths`, at the end of a
+// tick, for the same reason `damage_apply` does not break a wall: one
+// death path, so the tower B5 builds and the `hit` a script types
+// cannot drift apart.  An enemy at 0 HP is a walking dead man until
+// the tick resolves, which is exactly what "the tick resolves once"
+// means (`docs/ENEMY_MOVEMENT.md`).
+pub fn enemy_hurt(e: Enemy, hp: float) {
+    e.taken = max(e.taken + hp, 0.0);
 }
 
 // Wave-engine state.  `enemies` is the running roster across
@@ -767,6 +794,35 @@ fn wave_damage(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     }
 }
 
+// Kill every enemy that has absorbed its whole HP, and leave a body
+// where each one stood.  Answers how many died.
+//
+// ⚠ **Two effects, and the gate wants BOTH.**  A death frees its hex's
+// occupancy — `wave_occupancy` counts only the living, so that half is
+// the roster flag — and it RAISES the terrain, because
+// `ENEMY_MOVEMENT.md` § Bodies are terrain says a body is a pile and
+// piles accumulate.  A death that only cleared the flag would give the
+// player a kill zone that never closes; one that only raised the
+// ground would leave a corpse blocking the hex it fell on.
+//
+// ⚠ **Called ONCE per tick, after every enemy has moved**, so the body
+// lands where the enemy ended up and the terrain it makes belongs to
+// tick N+1.  Same rule as `damage_resolve`, same reason: a hex raised
+// mid-loop would change passability for whoever the roster visited
+// later and not for the ones it visited first.
+fn wave_deaths(state: WaveState) -> integer {
+    wd_n = 0;
+    for wd_e in state.enemies {
+        if wd_e.alive && enemy_hp(wd_e) <= 0.0 {
+            wd_e.alive = false;
+            height_raise(state.heights, wd_e.q, wd_e.r, BODY_HEIGHT_METRES,
+                         body_source(wd_e.kind) as u8? ?? 0);
+            wd_n += 1;
+        }
+    }
+    wd_n
+}
+
 // Advance the whole wave by one game-tick.
 //
 // ── The field is rebuilt ONCE per tick, before anybody moves ─────
@@ -825,13 +881,20 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld, co
         }
     }
 
-    // ⚠ **The break lands LAST, after every enemy has moved**, so it
-    // is tick N+1 that routes through the hole.  A wall that fell
-    // mid-loop would open a route for the enemies the roster happened
-    // to visit later and not for the ones it visited first — the same
-    // rule `height.loft`'s piles follow, and the one that makes a
-    // scripted run repeatable at all (`ENEMY_MOVEMENT.md` § The tick
-    // resolves once).
+    // ⚠ **The consequences land LAST, after every enemy has moved**, so
+    // it is tick N+1 that walks over the body and routes through the
+    // hole.  A hex raised or a wall felled mid-loop would change the
+    // world for the enemies the roster happened to visit later and not
+    // for the ones it visited first — the same rule `height.loft`'s
+    // piles follow, and the one that makes a scripted run repeatable
+    // at all (`ENEMY_MOVEMENT.md` § The tick resolves once).
+    //
+    // Deaths before structures, and the order is fixed rather than
+    // immaterial: both write to the same rubble layer, the heights ADD
+    // either way, but a hex that receives both in one tick takes the
+    // SOURCE of the later deposit.  Fixing the order is what makes
+    // that repeatable.
+    wave_deaths(state);
     damage_resolve(pal, pw, state.damage, state.heights);
 }
 

@@ -120,6 +120,19 @@ raises its hex's effective height, and bodies accumulate.**
 Everything else follows from the height-step rule above, with no
 special case:
 
+⚠ **Live since plan 12 B4.**  An enemy has HP, dies when it runs out,
+and leaves `numbers.json` § enemy_regular.body_height (0.5 m) of
+wreckage — carapace, for an insect — on the hex it fell on.  Death is
+two effects and both land: the hex is FREED (a corpse holds nothing)
+and the ground is RAISED.  Nothing fires at an enemy yet; the tower is
+B5.
+
+⚠ **A fatal hit is followed by one last step.**  The tick moves before
+it resolves deaths, so a body lands one hex down the enemy's route from
+where the damage landed.  That is the same "consequences land at the
+end of a tick" rule a broken wall follows, and it is worth knowing
+before reading point 1 as "they pile exactly where they were shot".
+
 1. **A defended entrance closes itself.**  The chokepoint is where
    enemies die, so it is where bodies pile — the player's own kill
    zone becomes a wall.
@@ -138,13 +151,14 @@ worth knowing before reading point 3 as "more dead is always better":
 
 - **the band is EMPTY below `H / 2`**, however many bodies fall.  A
   robot climbs 2.0 m and a `wall` is 3.0 m, so its band is
-  [1.0, 2.0] — one to two robot bodies.  A `wall_high` is 5.0 m, so a
+  [1.0, 2.0] — **two, three or four dead robots** at 0.5 m a body.  A `wall_high` is 5.0 m, so a
   robot has no single-hex ramp onto one at all, which is what keeps
   the two wall types different for the class § Wall climbability says
   a `wall` stops.
-- **a pile can grow PAST being a ramp.**  Three robot bodies on one
-  hex is a 3.0 m step and a 2.0 m climber cannot get onto its own
-  ramp any more.
+- **a pile can grow PAST being a ramp.**  Five robot bodies on one hex
+  is a 2.5 m step and a 2.0 m climber cannot get onto its own ramp any
+  more — so a player who farms one chokepoint forever is not building a
+  staircase, they are building a second wall.
 
 The counter-play is to **collect the bodies**, which means driving
 into the kill zone while the wave is still coming.  A player who

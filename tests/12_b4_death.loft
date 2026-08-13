@@ -1,0 +1,419 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B4 — enemies have HP, die, and leave rubble.
+//
+// ── Death is TWO effects, and the gate wants both ───────────────
+//
+// `plans/12` § Invariant gate: *"death frees occupancy and raises
+// terrain, both"*.  Either one alone is a plausible implementation
+// that quietly breaks the game:
+//
+//   - clear the flag and nothing else, and the player's kill zone
+//     never closes — `ENEMY_MOVEMENT.md` § Bodies are terrain is the
+//     losing line of the whole design, and it would simply not happen;
+//   - raise the ground and nothing else, and the corpse goes on
+//     blocking the hex it fell on, so a chokepoint jams on its first
+//     kill.
+//
+// ── And the pile has to STACK ───────────────────────────────────
+//
+// The negative control the plan names: *"two deaths on one hex must
+// stack — a body pile that overwrites is not a pile"*.  A setter
+// instead of an accumulator caps every heap at one body, and the
+// mechanic the design is built on — a kill zone that ramps itself shut
+// and then over the wall — never fires however many die.
+//
+// ── Why `hit` cannot kill ───────────────────────────────────────
+//
+// The same rule B2 put on `damage`: the verb lands damage, the TICK
+// resolves it.  One death path, so the tower B5 builds and the `hit` a
+// script types cannot drift apart — and so that a body lands where the
+// enemy ended its tick rather than wherever it happened to be when a
+// measurement fired.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// examples/palette.json, in file order.
+const GRASS: integer = 5;
+const WALL:  integer = 9;
+
+// `docs/NUMBERS.md` § wall, and `numbers.json` § tower.damage_per_shot.
+const WALL_METRES:     float = 3.0;
+const TOWER_SHOT_DAMAGE: float = 10.0;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+fn corridor(hi: integer) -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=hi {
+        paint(c_pw, c_q, 0, as_u8(GRASS));
+    }
+    c_pw
+}
+
+fn westbound(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: robot(), heading: 3 as u8, alive: true }
+}
+
+// One robot on a corridor, ready to be shot at.
+fn one_robot(q: integer) -> WaveState {
+    or_s = wave_state_empty();
+    or_s.enemies += [westbound(q, 0)];
+    or_s
+}
+
+// ⚠ **READ-ONLY, and that is a loft rule rather than a style choice.**
+// A struct returned from a function is a COPY, so `enemy_hurt(first(s),
+// …)` mutates a temporary and the roster never hears about it — silently,
+// with no warning and no type error.  Measured: through a returning
+// helper a hit lands 0, indexed inline it lands, through a loop variable
+// it lands.  Every mutation below therefore indexes the roster in place.
+fn first(state: WaveState) -> Enemy {
+    state.enemies[0] ?? Enemy {}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HP, and the literal that must stay healthy
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **`Enemy` stores damage TAKEN, not HP remaining**, and this is the
+// assertion that says why.  A loft struct literal that omits a field
+// takes that field's default silently (`CLAUDE.md` § Loft language
+// gotchas), and every `Enemy { … }` in the suite predates B4 — so the
+// neutral value has to be the ZERO one.  Store HP remaining and each
+// of those literals spawns a corpse.
+fn test_an_enemy_built_without_mentioning_hp_is_unhurt() {
+    tae = Enemy { q: 1, r: 0, kind: robot(), heading: 3 as u8, alive: true };
+
+    assert(tae.taken == 0.0, "an omitted ledger is an empty one");
+    assert(enemy_hp(tae) == ENEMY_REGULAR_HP,
+           "so it is at full HP: {enemy_hp(tae)}");
+}
+
+fn test_hurting_an_enemy_accumulates() {
+    tha_e = westbound(4, 0);
+    enemy_hurt(tha_e, TOWER_SHOT_DAMAGE);
+    enemy_hurt(tha_e, TOWER_SHOT_DAMAGE);
+
+    assert(enemy_hp(tha_e) == ENEMY_REGULAR_HP - 2.0 * TOWER_SHOT_DAMAGE,
+           "two shots have landed: {enemy_hp(tha_e)} HP left");
+    assert(tha_e.alive, "and it is still on its feet");
+}
+
+fn test_hp_floors_at_zero_rather_than_going_negative() {
+    thf_e = westbound(4, 0);
+    enemy_hurt(thf_e, ENEMY_REGULAR_HP * 10.0);
+
+    assert(enemy_hp(thf_e) == 0.0, "overkill is not negative HP: {enemy_hp(thf_e)}");
+}
+
+// ⚠ **`hit` lands damage; only a TICK kills.**  One death path, so the
+// tower B5 builds and the verb a script types cannot drift apart.
+fn test_hurting_an_enemy_does_not_kill_it() {
+    thd_s = one_robot(4);
+    enemy_hurt(thd_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
+
+    assert(enemy_hp(first(thd_s)) == 0.0, "it has nothing left");
+    assert(first(thd_s).alive, "and is still in the roster as a living enemy");
+    assert(alive_count(thd_s) == 1, "which `count alive` agrees with");
+    assert(height_count(thd_s.heights) == 0, "with no body on the ground yet");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// THE GATE: two shots' worth is survived, the third is not
+// ─────────────────────────────────────────────────────────────────
+
+// `plans/12` § Invariant gate, stated in the unit the tower will
+// actually fire in: 30 HP, 10 HP a shot.
+fn test_thirty_hp_survives_two_shots_and_dies_on_the_third() {
+    tts_pw = corridor(6);
+    tts_s  = one_robot(4);
+
+    for _ in 0..2 {
+        enemy_hurt(tts_s.enemies[0] ?? Enemy {}, TOWER_SHOT_DAMAGE);
+        wave_tick(tts_s, pal(), tts_pw, core());
+    }
+    assert(alive_count(tts_s) == 1,
+           "two shots leave {enemy_hp(first(tts_s))} HP and a live robot");
+
+    enemy_hurt(tts_s.enemies[0] ?? Enemy {}, TOWER_SHOT_DAMAGE);
+    wave_tick(tts_s, pal(), tts_pw, core());
+
+    assert(alive_count(tts_s) == 0, "the third kills it");
+    assert(!first(tts_s).alive, "and the roster says so");
+}
+
+fn test_a_death_leaves_a_body_where_the_enemy_ended_its_tick() {
+    tad_pw = corridor(6);
+    tad_s  = one_robot(4);
+    enemy_hurt(tad_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
+
+    wave_tick(tad_s, pal(), tad_pw, core());
+
+    // ⚠ It moved first and died second, so the body is at (3, 0) and
+    // not at (4, 0) — `wave_deaths` runs after the move loop.
+    assert(first(tad_s).q == 3, "it took its last step: q = {first(tad_s).q}");
+    assert(height_rise(tad_s.heights, 3, 0) == BODY_HEIGHT_METRES,
+           "and the body is where it fell: {height_rise(tad_s.heights, 3, 0)} m");
+    assert(height_rise(tad_s.heights, 4, 0) == 0.0,
+           "not where it started");
+    assert(height_source(tad_s.heights, 3, 0) == RUBBLE_WRECKAGE,
+           "a dead machine is wreckage");
+}
+
+// The other half of the same effect, and the one a "clear the flag"
+// implementation would pass on its own: the hex is FREE.
+fn test_a_death_frees_the_hex_it_fell_on() {
+    tdf_pw = corridor(6);
+    tdf_s  = one_robot(4);
+    enemy_hurt(tdf_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
+    wave_tick(tdf_s, pal(), tdf_pw, core());
+
+    assert(!occupancy_taken(wave_occupancy(tdf_s), 3, 0),
+           "a corpse holds no hex");
+    assert(can_occupy(pal(), tdf_pw, tdf_s.heights, robot(), 3, 0),
+           "and the body it left is somewhere a companion may stand");
+}
+
+// ⚠ **The negative control the plan names.**  A setter instead of an
+// accumulator caps every heap at one body, and the mechanic the whole
+// design rests on — a kill zone that ramps itself shut — never fires.
+fn test_two_deaths_on_one_hex_stack() {
+    ttd_pw = corridor(6);
+    ttd_s  = wave_state_empty();
+    ttd_s.enemies += [westbound(4, 0)];
+    ttd_s.enemies += [westbound(5, 0)];
+
+    // The leader dies at (3, 0) on tick 1; the follower walks onto
+    // (3, 0) and dies there on tick 2.
+    enemy_hurt(ttd_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
+    wave_tick(ttd_s, pal(), ttd_pw, core());
+    enemy_hurt(ttd_s.enemies[1] ?? Enemy {}, ENEMY_REGULAR_HP);
+    wave_tick(ttd_s, pal(), ttd_pw, core());
+
+    assert(alive_count(ttd_s) == 0, "both are down");
+    assert(height_count(ttd_s.heights) == 1, "on one hex: {height_count(ttd_s.heights)}");
+    assert(height_rise(ttd_s.heights, 3, 0) == BODY_HEIGHT_METRES * 2.0,
+           "two bodies deep, not one: {height_rise(ttd_s.heights, 3, 0)} m");
+}
+
+// An insect leaves a different material, which is the one thing about
+// a death that IS per class — and the reason B1 stored a source that
+// nothing read yet.
+fn test_an_insect_leaves_carapace_and_a_robot_leaves_wreckage() {
+    tai_pw = corridor(6);
+    tai_s  = wave_state_empty();
+    tai_s.enemies += [Enemy { q: 4, r: 0, kind: as_u8(ENEMY_KIND_INSECT),
+                              heading: 3 as u8, alive: true }];
+    enemy_hurt(tai_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
+    wave_tick(tai_s, pal(), tai_pw, core());
+
+    assert(height_source(tai_s.heights, 3, 0) == RUBBLE_CARAPACE,
+           "an insect leaves carapace: '{rubble_source_name(as_u8(height_source(tai_s.heights, 3, 0)))}'");
+    assert(body_source(robot()) == RUBBLE_WRECKAGE, "and a robot wreckage");
+}
+
+// ⚠ **The terrain a death makes belongs to the NEXT tick.**  Same rule
+// as a wall breaking (B2) and for the same reason: a hex raised
+// mid-loop would change passability for the enemies the roster visited
+// later and not for the ones it visited first.
+fn test_the_body_lands_after_everybody_has_moved() {
+    tbl_pw = corridor(6);
+    tbl_s  = wave_state_empty();
+    tbl_s.enemies += [westbound(4, 0)];
+    tbl_s.enemies += [westbound(5, 0)];
+    enemy_hurt(tbl_s.enemies[0] ?? Enemy {}, ENEMY_REGULAR_HP);
+
+    wave_tick(tbl_s, pal(), tbl_pw, core());
+
+    // The follower moved from (5, 0) to (4, 0) on the same tick the
+    // leader died at (3, 0).  Had the body landed mid-loop it would
+    // have been standing on raised ground for its own move.
+    tbl_b = tbl_s.enemies[1] ?? Enemy {};
+    assert(tbl_b.q == 4, "the follower advanced: q = {tbl_b.q}");
+    assert(hex_height(pal(), tbl_pw, tbl_s.heights, 3, 0) == BODY_HEIGHT_METRES,
+           "and the body is on the ground now, for the tick after");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The body ramp, counted in bodies
+// ─────────────────────────────────────────────────────────────────
+//
+// B0 measured the rule and B1 set the climb; B4 is where the unit
+// finally exists.  ⚠ **"High enough" is a BAND**: the heap has to be
+// low enough to step ONTO and high enough to leave less than a climb
+// above it, so it is `[H - c, c]` and it has a CEILING.
+//
+// Nothing below implements a ramp.  It falls out of the height step,
+// which is the claim — if bodies needed a special case to be
+// climbable, the number would be wrong rather than the rule.
+
+// Can a robot get from flat ground over a `wall` using `n` bodies
+// piled against it?  Swept through the passability rule itself, so the
+// answer is not the same arithmetic written twice.
+fn ramp_of(n: integer) -> boolean {
+    ro_pw = corridor(4);
+    paint(ro_pw, 2, 0, as_u8(WALL));
+    ro_hl = height_layer_empty();
+    for _ in 0..n {
+        height_raise(ro_hl, 3, 0, BODY_HEIGHT_METRES, as_u8(RUBBLE_WRECKAGE));
+    }
+    // (4, 0) flat ground -> (3, 0) the heap -> (2, 0) the wall top.
+    can_step(pal(), ro_pw, ro_hl, robot(), hex(4, 0), hex(3, 0))
+        && can_step(pal(), ro_pw, ro_hl, robot(), hex(3, 0), hex(2, 0))
+}
+
+fn test_two_to_four_dead_robots_get_the_next_one_over_a_wall() {
+    assert(!ramp_of(0), "no bodies, no ramp — a wall stops a robot");
+    assert(!ramp_of(1), "one is not enough to shorten a 3 m step");
+    assert(ramp_of(2),  "two open it");
+    assert(ramp_of(3),  "three is the comfortable middle");
+    assert(ramp_of(4),  "four still work");
+}
+
+// ⚠ **The CEILING, and it is the interesting half.**  A heap that
+// keeps growing stops being a ramp — the enemy cannot get onto its own
+// dead any more — so a player who farms one chokepoint forever is not
+// building a staircase, they are building a second wall.
+fn test_but_five_is_a_heap_the_next_one_cannot_climb() {
+    assert(!ramp_of(5), "five bodies is a 2.5 m step and a robot climbs 2.0");
+    assert(!ramp_of(8), "and it only gets worse");
+}
+
+// The unit is a DECISION, and this is where it is pinned: at 1.0 m per
+// body — `numbers.json` § enemy_regular.height, the standing figure —
+// two bodies and four bodies land exactly on the band's endpoints and
+// there is no interior at all.  B0 flagged it; B4 chose 0.5.
+fn test_the_body_height_leaves_room_on_both_sides_of_the_band() {
+    tbh_lo = WALL_METRES - CLIMB_REGULAR;      // 1.0 m — the floor
+    tbh_hi = CLIMB_REGULAR;                    // 2.0 m — the ceiling
+
+    assert(BODY_HEIGHT_METRES * 3.0 > tbh_lo && BODY_HEIGHT_METRES * 3.0 < tbh_hi,
+           "three bodies ({BODY_HEIGHT_METRES * 3.0} m) sit STRICTLY inside {tbh_lo}..{tbh_hi}");
+    assert(BODY_HEIGHT_METRES < tbh_hi - tbh_lo,
+           "and a body is finer than the band is wide, or the ramp is all-or-nothing");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A wave that dies where it stands closes its own kill zone
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ `ENEMY_MOVEMENT.md` § Bodies are terrain, point 1, as a run rather
+// than as a sentence: enemies die at the chokepoint, so the chokepoint
+// is where they pile, and the pile is what shuts it.
+fn test_a_chokepoint_closes_itself_on_its_own_dead() {
+    tac_pw = corridor(12);
+    // A one-hex-wide corridor IS the chokepoint: (3, 0) is the hex
+    // every robot walks through.
+    tac_s = wave_state_empty();
+    for tac_i in 0..5 {
+        tac_s.enemies += [westbound(4 + tac_i, 0)];
+    }
+
+    // ⚠ Each is hit at (4, 0) and dies at (3, 0), because the tick
+    // MOVES before it kills: a fatal hit is followed by one last step.
+    // That is the ordering `wave_tick` documents, and it is the input
+    // B5's tower needs — a shot lands where the enemy is, and the body
+    // one hex further down its route.
+    for _ in 0..5 {
+        for tac_e in tac_s.enemies {
+            if tac_e.alive && tac_e.q == 4 { enemy_hurt(tac_e, ENEMY_REGULAR_HP); }
+        }
+        wave_tick(tac_s, pal(), tac_pw, core());
+    }
+
+    assert(alive_count(tac_s) == 0, "all five are down: {alive_count(tac_s)} left");
+    assert(height_rise(tac_s.heights, 3, 0) == BODY_HEIGHT_METRES * 5.0,
+           "the bodies are stacked at the chokepoint: {height_rise(tac_s.heights, 3, 0)} m");
+    assert(!can_step(pal(), tac_pw, tac_s.heights, robot(), hex(4, 0), hex(3, 0)),
+           "and the survivors cannot get over their own dead");
+    assert(!flow_reachable(flow_build(pal(), tac_pw, tac_s.heights, robot(), core()), 6, 0),
+           "the kill zone has closed the only way in");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The script runner is the caller
+// ─────────────────────────────────────────────────────────────────
+
+const A_CORRIDOR_AND_A_WAVE: text = `
+    do toggle_mode
+    do cycle_kind
+    click 0 0
+    do cycle_kind
+    do rotate
+    do rotate
+    do rotate
+    do rotate
+    click 12 0
+    do toggle_mode
+    palette 5
+    drag 12 0 0 0
+`;
+
+// `plans/12` § Phases names this one: *`count alive` falling under a
+// scripted `damage`*.  The pair is the evidence — the same script with
+// and without the killing blow — because "one alive" is what an
+// unhurt wave reads too.
+fn test_count_alive_falls_when_a_scripted_hit_lands() {
+    tca_a = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 2\nhit 0 20\ntick 1\ncount alive 1 1\npile 9 0 0.0 0.0",
+        SHOTS);
+    assert(tca_a.ok, "{script_describe(tca_a)}");
+
+    tca_b = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 2\nhit 0 30\ntick 1\ncount alive 0 0\npile 9 0 0.4 0.6",
+        SHOTS);
+    assert(tca_b.ok, "{script_describe(tca_b)}");
+    assert(tca_b.checks == 2, "the roster and the body: {tca_b.checks}");
+}
+
+// ⚠ The verb lands damage and the TICK kills, stated as a run: with no
+// `tick` between the hit and the count, the wave is still alive.
+fn test_a_hit_with_no_tick_after_it_kills_nobody() {
+    tah = script_run(editor_state_new(PALETTE),
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 2\nhit 0 30\ncount alive 1 1",
+        SHOTS);
+
+    assert(tah.ok, "{script_describe(tah)}");
+}
+
+fn test_hit_checks_its_arguments() {
+    thc_a = script_run(editor_state_new(PALETTE), "hit 0", SHOTS);
+    assert(!thc_a.ok && thc_a.message.contains("<hp>"), "{thc_a.message}");
+
+    thc_b = script_run(editor_state_new(PALETTE), "hit x 10", SHOTS);
+    assert(!thc_b.ok && thc_b.message.contains("integer"), "{thc_b.message}");
+
+    thc_c = script_run(editor_state_new(PALETTE), "hit 0 lots", SHOTS);
+    assert(!thc_c.ok && thc_c.message.contains("number"), "{thc_c.message}");
+
+    // ⚠ An index past the roster must FAIL.  A script that hit nobody
+    // and then asserted the wave was still alive would be green for
+    // exactly the wrong reason.
+    thc_d = script_run(editor_state_new(PALETTE), "hit 3 10", SHOTS);
+    assert(!thc_d.ok && thc_d.message.contains("no enemy 3"), "{thc_d.message}");
+}

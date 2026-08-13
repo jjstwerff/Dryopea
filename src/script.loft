@@ -80,6 +80,10 @@
 //                              scenario need not tick out 100 s of
 //                              siege (plan 12 B2).  It cannot BREAK
 //                              anything — only a tick does that
+//   hit <i> <hp>               land HP on one ENEMY, by roster index
+//                              (plan 12 B4).  It cannot KILL — only a
+//                              tick does that, so there is one death
+//                              path for the tower to share
 //   tick <n>                   advance the wave n game-ticks — over
 //                              the session's own world, so an enemy
 //                              stops at what its class cannot cross.
@@ -1176,6 +1180,39 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         }
         damage_apply(run.wave.damage, sc_dq, sc_dr, sc_dhp ?? 0.0);
         println("script: damage ({sc_dq}, {sc_dr}) by {sc_dhp ?? 0.0:6.2} HP — {structure_hp(s.picker.palette, s.pw, run.wave.damage, sc_dq, sc_dr):6.2} HP left");
+        return "";
+    }
+
+    // Land damage on one ENEMY, by roster index.
+    //
+    // A separate verb from `damage`, not an overload of it: `damage`
+    // takes a hex and this takes an index, and `damage 4 10` reading
+    // as either would be a line whose meaning depends on knowing which.
+    // It also keeps the `.keys` converter simple — `hit` carries no
+    // coordinate, so it needs no schema row in `convert.loft`.
+    //
+    // ⚠ **It cannot KILL.**  Death is the tick's (`wave_deaths`), for
+    // the same reason `damage` cannot break a wall: one death path, so
+    // the tower B5 builds and the `hit` a script types cannot drift
+    // apart.  A script that hits an enemy for its whole HP and then
+    // asserts `count alive` without a `tick` between is asserting that
+    // — plan 12 B4.
+    if sc_cmd == "hit" {
+        if sc_argc != 2 { return "hit needs <i> <hp>"; }
+        sc_hi = sc_a1 as integer?;
+        if sc_hi == null { return "hit: <i> must be an integer"; }
+        sc_hhp = tok[2] as float?;
+        if sc_hhp == null { return "hit: <hp> must be a number"; }
+        sc_hidx = sc_hi ?? 0;
+        // An index past the roster is an ERROR rather than a no-op: a
+        // script that hit nobody and then asserted the wave was still
+        // alive would be green for the wrong reason.
+        if sc_hidx < 0 || sc_hidx >= len(run.wave.enemies) {
+            return "hit: no enemy {sc_hidx} — the roster holds {len(run.wave.enemies)}";
+        }
+        sc_he = run.wave.enemies[sc_hidx] ?? Enemy {};
+        enemy_hurt(sc_he, sc_hhp ?? 0.0);
+        println("script: hit {sc_hidx} for {sc_hhp ?? 0.0:6.2} HP — {enemy_hp(sc_he):6.2} HP left, alive={sc_he.alive}");
         return "";
     }
 

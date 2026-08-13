@@ -96,6 +96,55 @@ pub const RUBBLE_HEIGHT_FRACTION: float = 0.33;
 // the player has swept it away.
 pub const BROKEN_GROUND: integer = 5;
 
+// ─── What an enemy is worth (plan 12 B4) ────────────────────────
+
+// `numbers.json` § enemy_regular.hp — three tower shots at 10 HP each.
+pub const ENEMY_REGULAR_HP: float = 30.0;
+
+// How far one body raises the hex it falls on —
+// `numbers.json` § enemy_regular.body_height.
+//
+// ⚠ **Not `enemy_regular.height` (1.0 m), and B0 is why.**  That is a
+// STANDING robot; a collapsed wreck is flatter.  The number matters
+// because it is the unit the body ramp is counted in, and B0 measured
+// the band: a single-hex ramp onto a structure `H` high works for pile
+// heights in `[H - c, c]`, which for a 3.0 m `wall` and a 2.0 m climb
+// is 1.0 m to 2.0 m.  At 1.0 m per body that is "two bodies, or four" —
+// both endpoints, with no margin either side.  At 0.5 m it is **two,
+// three or four dead robots**, and five is a heap the next one cannot
+// climb.  `tests/12_b4_death.loft` sweeps that band rather than
+// restating it.
+pub const BODY_HEIGHT_METRES: float = 0.5;
+
+// The HP a class of enemy starts with.
+//
+// ⚠ **One number for every class today, and that is the numbers file's
+// shape rather than a simplification.**  `numbers.json` has an
+// `enemy_regular` section and no `enemy_insect` one, so a second figure
+// would be a tunable this plan invented.  When insects get a section
+// they get a row, and this becomes a table like `climb_limit`.
+//
+// An unknown kind takes the regular's HP — the only figure anyone has
+// chosen — rather than 0, which would make every class the game has
+// not learned about yet die on the first hit.
+pub fn enemy_max_hp(kind: u8) -> float {
+    if kind == ENEMY_KIND_INSECT as u8 { return ENEMY_REGULAR_HP; }
+    ENEMY_REGULAR_HP
+}
+
+// What a body of this class is MADE of — the rubble source its heap
+// carries (`height.loft` § The source is one per hex).
+//
+// This is the one thing about a death that IS per class today, and it
+// is why B1 stored a source nothing read yet: a heap of machine
+// wreckage and a heap of insect carapace are different salvage, and
+// the day they become different palette rows this is the only site
+// that has to know.
+pub fn body_source(kind: u8) -> integer {
+    if kind == ENEMY_KIND_INSECT as u8 { return RUBBLE_CARAPACE; }
+    RUBBLE_WRECKAGE
+}
+
 // ─── The layer ──────────────────────────────────────────────────
 
 // One hex and what it has absorbed, in HP.

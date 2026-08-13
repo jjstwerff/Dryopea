@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**B0, B1 and B2 shipped** (2026-08-13). B3 and B4 are next, both
+**B0, B1, B2 and B4 shipped** (2026-08-13). B3 and B5a are next, both
 unblocked.
 
 B0 was a probe and changed no mechanic: it wrote down what the
@@ -52,6 +52,29 @@ outcome — the same rule bodies already followed, now with a ledger
 that a wrong answer would show up in. *What the ledger holds*: damage
 TAKEN rather than HP remaining, so an untouched base needs no entries
 and a miss reads as "undamaged" instead of "already broken".
+
+**B4 gave enemies HP and death.** An `Enemy` carries damage TAKEN —
+zero is neutral, so every roster literal that predates the phase stays
+healthy — `hit <i> <hp>` lands damage from a script and cannot kill,
+and `wave_deaths` at the end of a tick is the ONE death path B5's tower
+will share. A death frees its hex AND drops 0.5 m of wreckage on it, so
+the kill zone `ENEMY_MOVEMENT.md` § Bodies are terrain describes now
+actually closes: five dead robots in a one-hex corridor make a 2.5 m
+heap and the survivors cannot get over their own dead. Suite **648
+green**.
+
+⚠ **A fatal hit is followed by one last STEP**, because the tick moves
+before it resolves deaths — so a body lands one hex down the route from
+where the damage landed. It is the same "consequences land at the end
+of a tick" rule a broken wall follows, and it is B5's input: a tower
+shot kills where the enemy WAS and the body falls where it was going.
+
+⚠ **A loft trap this phase paid for.** A struct returned from a
+function is a COPY, so `enemy_hurt(first(state), 10)` lands nothing —
+silently, with no warning and no type error, and it reads as a bug in
+the thing being mutated. Indexing the vector inline or using a loop
+variable both write through. Six tests failed on it before the probe
+found it; recorded in `CLAUDE.md` § Loft language gotchas.
 
 ⚠ **Cost, honestly.** B2 adds one `enemy_target` per live enemy per
 tick — it reuses the fields the tick already built, so no new sweep —
@@ -219,11 +242,15 @@ before B4 drops bodies in anger: three bodies on one hex is a 3.0 m step
 and a 2.0 m climber cannot get onto its own ramp any more. A pile can
 grow past being a ramp.
 
-⚠ **Input for B4's body height.** At exactly 1.0 m per body, one body and
-two bodies each land exactly ON a band endpoint (float equality, exact
-here but with no margin). A collapsed wreck is flatter than a standing
-robot; a body height of ~0.5 m puts 2–4 bodies strictly inside the band
-and is the healthier number. B4 decides it.
+~~⚠ **Input for B4's body height.**~~ — **DECIDED in B4: 0.5 m**, as
+recommended, and added to `numbers.json` as
+`enemy_regular.body_height` rather than reusing `enemy_regular.height`
+(1.0 m), which is a STANDING robot. At 0.5 m the band `[1.0, 2.0]` is
+**two, three or four dead robots** — three strictly inside it — and
+**five is a heap the next one cannot climb**, which is the ceiling B0
+warned about arriving as a real mechanic rather than an edge case.
+`tests/12_b4_death.loft` sweeps the band in bodies rather than
+restating the arithmetic.
 
 ### What B1 actually costs — measured, not estimated
 
@@ -260,7 +287,7 @@ pins, and the input that must be **refused**.
 | **B1** ✓ | robot steps onto rubble at `climb`; refuses at `climb + ε`; **clearing a pile leaves the hex identical to before it was piled** | a ramp is a height under the climb, not a flag — and rubble is a layer, so clear is an identity | rubble one notch above the climb **must** be refused, else the height rule is decorative; a cleared hex that differs from the authored one means the ground was overwritten after all |
 | **B2** ✓ | wall at 1 HP does not break; at 0 HP the hex carries rubble and is standable | breaking OPENS a route (the sea trap is closed) | a broken hex that reads as `sea` — impassable — is the bug this phase exists to avoid |
 | **B3** | a straight fence breaches at an **end**; a closed curved ring of equal length and equal attackers does not breach at that tick | HP is structural, from bracing, not a constant | the ring breaking on the same tick means bracing was never read |
-| **B4** | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
+| **B4** ✓ | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
 | **B5a** | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
 | **B5b** | tower kills through `wall`; does **not** kill through `wall_high` or `steep_rock`; stops firing after 30 shots | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS |
 | **B6** | N nibblers drain exactly N pt/s × tick seconds; the wallet floors at 0 | the wallet never goes negative and never refills unattended | a negative wallet means the run has no end state |
@@ -278,8 +305,8 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | **B1** — rubble is a clearable layer, and a robot can climb it | S→M | `tests/12_b1_rubble.loft` — robot crosses rubble; refused at climb+ε; clear round-trips to the authored hex; F1b's wall stays green. Plus: B0's three ⚠ B1 tests turn red, and F6/F8's 1.5 m pile fixtures move above the new climb | **Done** |
 | **B2** — a wall breaks into rubble | S | `tests/scripts/a-wall-breaks.keys` — sealed base, siege, breach, and an enemy ends up INSIDE | **Done** |
 | **B3** — structural HP by bracing | M | `tests/12_b3_bracing.loft` — straight fence vs closed ring, equal hexes and attackers | Open |
-| **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | Open |
-| **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | Blocked on B4 |
+| **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | **Done** |
+| **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | Open |
 | **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires | Blocked on B5a |
 | **B6** — nibble drains the wallet, zero ends the run | S | `wallet <lo> <hi>` in `script.loft`; drain rate and the floor at 0 | Blocked on B4 |
 | **B7** — the scenario, and its control | S | `tests/scripts/an-undefended-base.keys` + the stripped control — the clock separates | Blocked on B3, B5b, B6 |
