@@ -1,0 +1,162 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The wallet — the clock a base falls on.
+//
+// Plan 12 phase B6.  Every other phase of this plan made an exchange
+// resolve: a wall loses HP, an enemy loses HP, a tower spends shots.
+// None of them could END anything, because the one thing the design
+// says a run ends on had no representation at all.
+//
+// ── Why the CORE is not what runs out ───────────────────────────
+//
+// `docs/DESIGN.md` § Invulnerability + nibble → points, and
+// `examples/numbers.json` § core.hp, which is literally `null`:
+//
+// > The core **cannot be destroyed**.  Enemies that reach the core
+// > and "nibble" it do **not** damage its structure; each tick
+// > **drains the player's point wallet** instead.
+//
+// So "the heart is destroyed" is spelled **the wallet reaches zero**,
+// and the design says why: the player is never forced out by
+// structural collapse, they choose when to scramble, and the cost of
+// staying too long is bleeding points.  A core with HP would have
+// been the cheaper thing to build and would have retired a mechanic
+// the whole run structure is built on.
+//
+// ⚠ **The measurement is the same number either way**, which is what
+// makes B7 possible without any of the scramble machinery: 200 points
+// at 1 pt/s per nibbler is a clock, and a base that survives 400 s is
+// visibly better defended than one that survives 40.
+//
+// ── Points SPENT, not points left ───────────────────────────────
+//
+// The ledger stores what has been drained.  Same argument
+// `damage.loft` § DAMAGE TAKEN and `tower.loft` § Shots FIRED make,
+// and it matters here for a reason neither of them has: `WaveState`
+// gets ONE more field, and a struct literal that omits a field takes
+// that field's DEFAULT silently (`CLAUDE.md` § Loft language
+// gotchas).  Store points REMAINING and a `WaveState { … }` written
+// anywhere starts the run **already over** — and a test asserting
+// "the base fell" would pass without a single enemy walking.
+//
+// Zero is a full wallet.  That is the neutral value the rule asks
+// for, and it is why the floor comes out EXACT rather than within an
+// epsilon: `wallet_drain` clamps the ledger at the starting budget,
+// so `wallet_left` is a subtraction that lands on 0.0 and stops.
+//
+// ⚠ **The clamp is on the WRITE, and it is not a duplicate of the
+// read.**  Flooring only at the read would let the ledger run to 900
+// spent against a 200-point budget, and the first thing that ever
+// CREDITS the wallet — loot is 10 points a kill, `numbers.json` §
+// enemy_regular.loot_value — would buy nothing at all for the next
+// seven hundred points.  You cannot drain points that are not there;
+// the ledger has to say so.
+//
+// ── What is deliberately NOT here ───────────────────────────────
+//
+// There is **no credit verb**, and that is what enforces B6's own
+// invariant: *the wallet never refills unattended*.  Loot, the tower
+// order cost and the 1:1 carryover between bases are all real design
+// (`DESIGN.md` § Currency — points), and every one of them needs a
+// player or a next base, neither of which plan 12 builds.  A drain is
+// the only operation there is, so an unattended base can only lose.
+
+use lattice;
+
+// ─── The numbers ────────────────────────────────────────────────
+//
+// `examples/numbers.json`, restated here because nothing loads that
+// file yet — the same note `spawn.loft`, `damage.loft` and
+// `tower.loft` carry.
+
+// numbers.json § economy.starting_budget_first_base.  What a player
+// lands with, and — with nobody to earn or spend — the whole clock an
+// unattended base runs on.
+pub const WALLET_STARTING_POINTS: float = 200.0;
+
+// numbers.json § enemy_regular.damage_to_core_wallet.  What ONE enemy
+// standing on the core costs per second.
+//
+// ⚠ **One rate for every class**, for exactly the reason
+// `spawn.loft::ENEMY_DAMAGE_TO_WALL_PER_SECOND` gives: `numbers.json`
+// has an `enemy_regular` section and no `enemy_insect` one, so a
+// second number would be a tunable this plan invented.  It becomes a
+// lookup on the same day that one does.
+pub const NIBBLE_POINTS_PER_SECOND: float = 1.0;
+
+// How close an enemy has to be to be nibbling.
+//
+// ⚠ **Derived, not chosen** — the same standing `TICK_SECONDS` has.
+// `numbers.json` § core.footprint_layout is `hex_disc_radius_1`: the
+// core is a centre hex and its six neighbours.  So an enemy within
+// one hex of the centre is not *near* the core, it is standing **on**
+// it, and reach 1 is what the footprint already says rather than a
+// melee range this phase made up.
+//
+// ⚠ It is a `lat_distance` and nothing else — a `+ 1` on a q or an r
+// reaching for it is moros#10 again, the same warning
+// `tower.loft::TOWER_RANGE_HEXES` carries.
+pub const NIBBLE_REACH_HEXES: integer = 1;
+
+// ─── The ledger ─────────────────────────────────────────────────
+
+// Points drained out of the run's budget so far.
+//
+// A struct rather than a bare float on `WaveState`, so the arithmetic
+// and its clamp live in one place and can be exercised without a
+// world, a wave or a core to walk towards.
+pub struct Wallet {
+    spent: float,
+}
+
+// Factory: the budget untouched.
+//
+// ⚠ Named `_new` and not `_empty` on purpose.  Its three siblings on
+// `WaveState` — `height_layer_empty`, `damage_layer_empty`,
+// `tower_state_empty` — are all empty MAPS, and an "empty wallet" is
+// the opposite of what this returns.
+pub fn wallet_new() -> Wallet {
+    Wallet { spent: 0.0 }
+}
+
+// What the run has left to spend, in points.  Never negative: the
+// ledger is clamped where it is written.
+pub fn wallet_left(w: const Wallet) -> float {
+    WALLET_STARTING_POINTS - w.spent
+}
+
+// What the run has lost so far, in points — the other half, and the
+// number a post-mortem wants.
+pub fn wallet_spent(w: const Wallet) -> float {
+    w.spent
+}
+
+// Take `points` off the wallet.
+//
+// It ACCUMULATES over ticks and over nibblers, and it CLAMPS at the
+// starting budget — see § The clamp is on the WRITE.
+//
+// ⚠ A negative amount is refused rather than treated as income.
+// Crediting the wallet is a real mechanic (loot, carryover) and it is
+// a different verb that does not exist yet; letting a caller earn by
+// draining backwards would put the one operation this phase promises
+// not to have behind a sign error.
+pub fn wallet_drain(w: Wallet, points: float) {
+    w.spent = min(w.spent + max(points, 0.0), WALLET_STARTING_POINTS);
+}
+
+// Is the run over?  The end state, and the only one dryopea has.
+pub fn wallet_broke(w: const Wallet) -> boolean {
+    w.spent >= WALLET_STARTING_POINTS
+}
+
+// Is an enemy at (q, r) close enough to the core to be nibbling it?
+//
+// Takes coordinates rather than an `Enemy` so this file stays clear
+// of the wave engine — `spawn.loft` owns the roster and the aliveness
+// question, exactly as it owns `enemy_hurt` while `damage.loft` owns
+// the HP table.
+pub fn nibble_in_reach(core: const Hex, q: integer, r: integer) -> boolean {
+    lat_distance(core, Hex { q: q, r: r }) <= NIBBLE_REACH_HEXES
+}

@@ -53,7 +53,8 @@ exists today.
 | A wall's HP is STRUCTURAL — an end is worth 30% of a braced hex, a lone stub 15% — and a perimeter unzips from a breach | [12](plans/12-combat-resolution/README.md), B3 shipped |
 | Towers: a third MARKER kind, range 15 by `lat_distance`, two shots every three ticks | [12](plans/12-combat-resolution/README.md), B5a shipped |
 | A tower SEES: one straight line from its eye over what `hex_height` says is in the way, and thirty shots before it goes black | [12](plans/12-combat-resolution/README.md), B5b shipped |
-| **No wallet, so nothing ends a run yet** | [12](plans/12-combat-resolution/README.md), B6 next |
+| A wallet: an enemy standing on the core drains 1 pt/s off 200, and zero ends the run — the core stays invulnerable | [12](plans/12-combat-resolution/README.md), B6 shipped |
+| **No SCENARIO yet, so nothing says the defences are worth their cost** | [12](plans/12-combat-resolution/README.md), B7 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -69,7 +70,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 715/715 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 734/734 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
 **Gate: 15 scripts green under `scripts/validate.sh`** (~13 s, 260
@@ -610,7 +611,12 @@ src/
                    breakable on it is an ERROR, because "at 0 HP" and
                    "no wall here" are the two states a break moves
                    BETWEEN and one number for both is green before the
-                   siege and after the wall is gone
+                   siege and after the wall is gone.
+                   B6 added `wallet <lo> <hi>` — POINTS LEFT, so
+                   `wallet 0 0` is how a run says "the base fell".
+                   ⚠ It needs no core marker and no wave: the budget
+                   belongs to the RUN, not to the battlefield, so 200
+                   is the honest answer before a single enemy exists
                    ⚠ **A new coordinate-carrying verb needs a row in
                    `convert.loft::keys_schemas`**, or a future lattice
                    conversion leaves it in the old labels — silently,
@@ -777,6 +783,30 @@ src/
                    where `WaveState` is: this file must not depend on
                    the wave engine, because the tick calls INTO it
 
+  wallet.loft      the run's budget, and the only END STATE dryopea
+                   has (plan 12 B6) — WALLET_STARTING_POINTS (200),
+                   NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,
+                   Wallet + wallet_new / wallet_left / wallet_spent /
+                   wallet_drain / wallet_broke, and nibble_in_reach.
+                   ⚠ **The core is invulnerable** (`numbers.json` §
+                   core.hp is `null`), so "the heart is destroyed" is
+                   spelled the WALLET reaches zero.
+                   ⚠ **Reach is a straight-line `lat_distance` of 1**,
+                   derived from `core.footprint_layout` — the core is a
+                   radius-1 disc, so an enemy within one hex is
+                   standing ON it.  Draining for every live enemy
+                   passes every rate-and-floor assertion while making
+                   walls and towers pointless; that is what
+                   `tests/12_b6_wallet.loft`'s perimeter test refuses.
+                   ⚠ Points SPENT, never points left — the same
+                   zero-is-neutral rule `damage.loft` and `tower.loft`
+                   keep, and here it stops a `Wallet {}` literal from
+                   starting the run already over.
+                   ⚠ The clamp is on the WRITE, not just the read: a
+                   ledger allowed past the budget would swallow the
+                   first loot credit whole.
+                   ⚠ There is deliberately **no credit verb** — that is
+                   what enforces "the wallet never refills unattended"
   flow.loft        the distance field (plan 11 F2) — flow_build(pal,
                    pw, kind, core) -> FlowField, a BFS out from the
                    core over what that CLASS can occupy, plus
@@ -901,7 +931,8 @@ suite redirects its own shots into `tests/actual/`.
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
-| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge — runtime, not editor state |
+| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet — runtime, not editor state |
+| `Wallet` | `wallet.loft` | points SPENT out of the run's 200 — zero is a FULL wallet, and the ledger is clamped at the budget so a later credit is not swallowed |
 | `TowerState` | `tower.loft` | per tower: the seconds banked toward its next shot and the shots it has FIRED out of its 30 — runtime, never saved |
 | `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken }` — `taken` is damage ABSORBED, so an `Enemy { … }` literal that omits it is HEALTHY |
 | `HeightLayer` | `height.loft` | metres of rubble piled on the map at runtime, and what it is made of — never saved |
@@ -1240,6 +1271,7 @@ signature.
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — max minus taken.  ⚠ 0.0 answers BOTH "broken" and "never a structure"; ask `structure_breakable` first if you need to tell them apart |
 | Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — the kind's figure scaled by `brace_of`.  ⚠ `numbers.json`'s wall_hp (100) is the BRACED number; a lone plug in a corridor is a STUB and gets 15 |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
+| Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |

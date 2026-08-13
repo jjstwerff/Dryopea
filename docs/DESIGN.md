@@ -988,6 +988,24 @@ reach a target.  Target priority (highest first):
 3. **The nearest wall hex** when no path through exists —
    slow attrition that eventually breaks the wall.
 
+**Nibble reach is the core's own footprint** (built in plan 12
+B6).  Priority 2 fires for an enemy within **one hex** of the
+core centre — and that number is read off
+`numbers.json § core.footprint_layout`, which is a radius-1
+disc, rather than picked as a melee range.  An enemy at
+distance 1 is not *near* the core, it is standing on it, and
+the seven hexes it names are exactly the seven an arriving
+wave ends up queued on.
+
+⚠ **It is a straight-line `lat_distance`, and it is the whole
+rule.**  A nibbler is a POSITION, not a target: `enemy_target`
+deliberately answers an arrived enemy's own hex, because it
+names what is in the WAY and nothing is.  The tempting
+alternative — drain for every live enemy — passes every
+arithmetic check about rates and floors while making walls and
+towers pointless, since a base under siege would bleed at the
+rate of a base that had been overrun.
+
 In the absence of a blocker, the player and NPCs are
 **ignored**.
 

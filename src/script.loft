@@ -118,6 +118,10 @@
 //   pile <q> <r> <lo> <hi>     metres of rubble on a hex — the other
 //                              half of a break, and the half that says
 //                              the breach is a way IN
+//   wallet <lo> <hi>           POINTS LEFT in the run's budget — the
+//                              only end state dryopea has, since the
+//                              core is invulnerable (plan 12 B6).
+//                              `wallet 0 0` is "the base fell"
 //   frame <bucket> <lo> <hi>   share of WORLD pixels in a bucket
 //
 // A measurement that reads out of band ENDS the run, naming the
@@ -181,6 +185,7 @@ use save;
 use height;
 use passable;
 use damage;
+use wallet;
 use occupancy;
 use spawn;
 use graphics;
@@ -611,6 +616,22 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         return measure_float(run, "pile ({sm_pq}, {sm_pr})",
                              height_rise(run.wave.heights, sm_pq, sm_pr),
                              sm_plo ?? 0.0, sm_phi ?? 0.0);
+    }
+
+    // Points LEFT in the run's budget.  Plan 12 B6, and the only
+    // end state dryopea has: the core is invulnerable, so `wallet 0 0`
+    // is how a script says "the base fell".
+    //
+    // ⚠ It needs no core marker and no wave.  The wallet is the RUN's,
+    // not the battlefield's — a script may read it before a single
+    // enemy has spawned, and 200 is the honest answer then.
+    if sm_cmd == "wallet" {
+        if sm_argc != 2 { return "wallet needs <lo> <hi>"; }
+        sm_wlo = sm_a1 as float?;
+        sm_whi = sm_a2 as float?;
+        if sm_wlo == null || sm_whi == null { return "wallet: <lo> and <hi> must be numbers"; }
+        return measure_float(run, "wallet", wallet_left(run.wave.wallet),
+                             sm_wlo ?? 0.0, sm_whi ?? 0.0);
     }
 
     if sm_cmd == "marker" {
@@ -1276,7 +1297,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker"
     || sc_cmd == "frame" || sc_cmd == "range"
     || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target"
-    || sc_cmd == "hp" || sc_cmd == "pile" {
+    || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet" {
         return script_measure(s, run, tok);
     }
 

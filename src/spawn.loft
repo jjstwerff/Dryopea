@@ -36,6 +36,7 @@ use flow;
 use occupancy;
 use damage;
 use tower;
+use wallet;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -198,22 +199,32 @@ pub fn enemy_hurt(e: Enemy, hp: float) {
 // ⚠ The BREAK is the exception, and it is deliberate: a broken wall
 // really is gone, so `damage.loft::break_structure` edits the painted
 // world.  Only the heap it leaves is runtime.
+//
+// ⚠ `wallet` is the odd one out and outlives a wave: the other four
+// fields describe a battlefield, and the wallet is the RUN's budget,
+// carried between waves and (eventually) between bases.  It rides
+// here anyway because this struct is already the only thing a
+// scripted run threads through a tick, and a second runtime container
+// holding one float would be a second thing every caller has to
+// remember to pass.
 pub struct WaveState {
     enemies:     vector<Enemy>,
     pick_cursor: integer,
     heights:     HeightLayer,
     damage:      DamageLayer,
     towers:      TowerState,
+    wallet:      Wallet,
 }
 
-// Factory: a fresh wave state with no enemies, a cursor at 0 and the
-// map exactly as painted.
+// Factory: a fresh wave state with no enemies, a cursor at 0, the
+// map exactly as painted and the budget untouched.
 pub fn wave_state_empty() -> WaveState {
     WaveState {
         enemies: [], pick_cursor: 0,
         heights: height_layer_empty(),
         damage:  damage_layer_empty(),
         towers:  tower_state_empty(),
+        wallet:  wallet_new(),
     }
 }
 
@@ -957,6 +968,49 @@ fn wave_damage(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     }
 }
 
+// Drain the wallet by one tick's worth of nibbling, and answer how
+// many enemies were doing it.
+//
+// `docs/DESIGN.md` § Enemy targeting + nibble puts the core SECOND in
+// an enemy's priority list — above a wall, below a blocker — and this
+// is that entry.  An enemy that has arrived is done routing and done
+// besieging; it stands on the building and bleeds the player's
+// budget for as long as it is there.
+//
+// ⚠ **Reach, not targeting.**  `enemy_target` deliberately answers
+// the enemy's OWN hex for an enemy that has arrived — it names what
+// is in the WAY, and nothing is — so there is no target to consult
+// here and no field to walk.  What a nibbler is, is a position:
+// `wallet.loft::nibble_in_reach`, one `lat_distance` per live enemy.
+// That is also why this pass is cheap enough not to show up in
+// `tests/11_f8_the_tick_budget.loft` — it is strictly less work per
+// enemy than the `enemy_in_bubble` the mover already does.
+//
+// ⚠ **Summed, then drained ONCE.**  Not because N small drains would
+// arrive at a different number — the clamp is a `min`, so they would
+// not — but because the count is the thing B6's gate names (*N
+// nibblers drain exactly N pt/s*), and a single write is the site
+// that can be read against it.
+//
+// ⚠ **Called BEFORE the move loop**, beside `wave_damage`, so both
+// halves of the exchange are spent against the world the tick STARTED
+// with.  An enemy that arrives this tick pays next tick — the same
+// rule a breach follows, and the one that keeps a tick
+// order-independent.
+fn wave_nibble(state: WaveState, core: const Hex) -> integer {
+    wn_n = 0;
+    for wn_e in state.enemies {
+        if wn_e.alive && nibble_in_reach(core, wn_e.q, wn_e.r) {
+            wn_n += 1;
+        }
+    }
+    if wn_n > 0 {
+        wallet_drain(state.wallet,
+                     per_tick(NIBBLE_POINTS_PER_SECOND) * (wn_n as float));
+    }
+    wn_n
+}
+
 // Kill every enemy that has absorbed its whole HP, and leave a body
 // where each one stood.  Answers how many died.
 //
@@ -1037,11 +1091,13 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wt_desire = wave_desire(state, wt_fields, pal, pw, core);
     wt_occ    = wave_occupancy(state);
 
-    // Both halves of the exchange land against the world the tick
-    // STARTED with — towers shoot at where the enemies are now, and
-    // besieging enemies bite the wall in front of them.
+    // Every half of the exchange lands against the world the tick
+    // STARTED with — towers shoot at where the enemies are now,
+    // besieging enemies bite the wall in front of them, and the ones
+    // that have arrived bleed the wallet.
     wave_fire(state, pal, pw, mw);
     wave_damage(state, pal, pw, wt_fields, wt_desire);
+    wave_nibble(state, core);
 
     for wt_i in move_order(state, wt_fields) {
         wt_e = state.enemies[wt_i] ?? Enemy {};

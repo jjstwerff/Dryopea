@@ -65,7 +65,12 @@ play; tune freely):
 - **Damage to wallet ≈ slow drain.**  At 1 pt/s per nibbling
   enemy, 5 enemies on the core = 5 pt/s; 200 pts buys 40 s
   before zero.  Encourages keeping enemies AWAY, not just
-  outpacing the damage.
+  outpacing the damage.  ✓ **Built and measured** (plan 12 B6):
+  five nibblers empty the budget in 60 ticks = 40.0 s exactly,
+  and ONE takes 301 ticks ≈ 200.7 s.  ⚠ 301 rather than the 300
+  the arithmetic says — `1 / 1.5` has no exact float form, so
+  three hundred ticks sum a hair under 200 s.  The floor itself
+  is exact; only which tick crosses it moves.
 
 ## What gets used by what
 
@@ -91,6 +96,8 @@ docs:
 | `tower.range` + `fire_interval` + `damage_per_shot` | `src/tower.loft` | ⚠ The interval is 1.5 ticks, which is why a tower banks charge rather than firing per tick |
 | `tower.height` + `enemy_regular.height` | `src/tower.loft`, `src/damage.loft` | The two ends of a sight line — a shot runs from the tower's hex plus 6.0 m to the target's hex plus 1.0 m, and every obstacle is judged against the line between them.  ⚠ Moving either moves what a tower can see over, and nothing else has to change |
 | `enemy_regular.speed_engage` | `src/spawn.loft` | Today the tick's own length is derived from it — ⚠ a coupling the design intends to break (DESIGN.md § Speed must NOT be tied to the tick) |
+| `enemy_regular.damage_to_core_wallet` + `economy.starting_budget_first_base` | `src/wallet.loft` | The only end state dryopea has.  `core.hp` is `null`, so a base falls when 200 points reach zero rather than when anything is destroyed |
+| `core.footprint_layout` | `src/wallet.loft` | ⚠ Read for REACH, not for blocking.  The core is a radius-1 disc, so an enemy within one hex is standing ON it — which is where `NIBBLE_REACH_HEXES` comes from instead of a melee range plan 12 invented.  (`tower.footprint_layout` is the same shape and is still NOT built — a tower stands on one hex) |
 
 ## Loading + modding
 

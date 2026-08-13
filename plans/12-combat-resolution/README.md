@@ -9,8 +9,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**B0-B5b shipped** (2026-08-13). B6 is next, unblocked; B7 waits only
-on it.
+**B0-B6 shipped** (2026-08-13). B7 is next and unblocked — every
+mechanic its scenario needs now exists.
 
 B0 was a probe and changed no mechanic: it wrote down what the
 simulation does in the two places this plan leans on, and it
@@ -187,6 +187,58 @@ cannot see LOS**, at 3% of a tick with 3.8x headroom above it, so a
 second test prices the ALTERNATIVE: twelve shots the shipped way cost
 **51%** of ONE roster-wide `tower_sees` pass, where tracing per enemy
 would cost twelve passes. 2x margin below it, 24x above.
+
+**B6 gave the run an ending.** `src/wallet.loft` holds 200 points, an
+enemy within one hex of the core drains 1 pt/s off them, and zero is
+the only end state dryopea has — the core is invulnerable and stays
+so. `wallet <lo> <hi>` is the measurement, and `wallet 0 0` is how a
+`.keys` scenario says *the base fell*. Suite **734 green**.
+
+⚠ **The half that is not arithmetic is WHO counts as a nibbler**, and
+it is where the phase could have been silently wrong. Reach is a
+straight-line `lat_distance` of 1, read off `numbers.json` §
+core.footprint_layout — the core is a radius-1 disc, so an enemy
+within one hex is standing ON it rather than near it. The tempting
+alternative, *drain for every live enemy*, passes every assertion
+about rates and floors in this phase's file while **making walls and
+towers pointless**: a base under siege would bleed at exactly the rate
+of a base that had been overrun. `test_a_perimeter_that_holds_costs_
+the_player_nothing` is the one that refuses it — six robots grinding a
+wall ring for twenty ticks, and the budget does not move.
+
+⚠ **A nibbler is a POSITION, not a target.** `enemy_target` answers an
+arrived enemy's OWN hex, because it names what is in the way and
+nothing is — so there was no existing answer to reuse and no field to
+walk. One `lat_distance` per live enemy, which is strictly less work
+than the `enemy_in_bubble` the mover already does.
+
+⚠ **The ledger is clamped where it is WRITTEN, and that is not a
+duplicate of the read.** Flooring only at the read lets `spent` run to
+10 000 against a 200-point budget: `wallet_left` still answers 0 and
+everything looks right, until the first thing that ever CREDITS the
+wallet buys nothing for the next 9 800 points. Loot is 10 points a
+kill and the carryover between bases is 1:1, so that thing is designed
+and coming.
+
+⚠ **The clock is 301 ticks for one nibbler, not the 300 the arithmetic
+says.** `TICK_SECONDS` is `1 / 1.5`, which has no exact float form, so
+three hundred of them sum a hair under 200 s. Same fact
+`TOWER_CHARGE_EPSILON` exists for, with a consequence a hundred times
+smaller — there it dropped every third shot, here it is 0.3% of a
+200-second clock. So there is deliberately **no epsilon**: adding one
+would make `wallet_broke` answer true while `wallet_left` still
+answered a positive number, and two public verbs disagreeing about the
+floor is worse than a clock that runs two thirds of a second long.
+`numbers.json`'s own rule of thumb — *5 enemies, 200 pts, 40 s* — is
+exact at 60 ticks, because five thirds of a point per tick divides in.
+
+⚠ **A probe before a representation, and it paid.** All three existing
+runtime layers on `WaveState` are hash-backed, so nothing in the
+codebase said whether a write to a SCALAR field of a nested struct
+survives — which is loft#894's exact shape. Measured on both backends
+before building on it: a nested struct reached by field access is a
+reference and writes through; only a struct RETURNED from a function
+is a copy.
 
 ⚠ **Cost, honestly.** B2 adds one `enemy_target` per live enemy per
 tick — it reuses the fields the tick already built, so no new sweep —
@@ -402,7 +454,7 @@ pins, and the input that must be **refused**.
 | **B4** ✓ | 30 HP enemy survives 2 shots' worth, dies on the 3rd; death hex gains one body of height | death frees occupancy and raises terrain, both | two deaths on one hex must stack — a body pile that overwrites is not a pile |
 | **B5a** ✓ | enemy at 15 hex is hit; at 16 it is not | range is a lattice distance, `lat_distance` and nothing else | a `+1` on q/r reaching for range is moros#10 again |
 | **B5b** ✓ | tower kills through a `wall` three hexes out; does **not** kill through a `wall_high` there; stops firing after 30 shots; **a blocked shot is not FIRED** — neither the charge nor the budget is spent | LOS reads the height, and decay is per-shot not per-time | a tower that fires shot 31 has no budget; one that shoots through `wall_high` has no LOS; one whose budget falls while every line is blocked is spending shots it never took |
-| **B6** | N nibblers drain exactly N pt/s × tick seconds; the wallet floors at 0 | the wallet never goes negative and never refills unattended | a negative wallet means the run has no end state |
+| **B6** ✓ | N nibblers drain exactly N pt/s × tick seconds; the wallet floors at 0 | the wallet never goes negative and never refills unattended | a negative wallet means the run has no end state |
 | **B7** | the defended base's time-to-zero is markedly longer than the same base stripped of walls and towers | the defences are what cost the attacker time | equal times = the scenario measures nothing, whatever it draws |
 
 ⚠ **B5b's row was rewritten by building it**, and the change is the
@@ -429,8 +481,8 @@ the same instrument-first move as plan 08 V2 and plan 11 F1.
 | **B4** — enemies have HP, die, and leave rubble | S | `tests/12_b4_death.loft` + `count alive` falling under a scripted `damage` | **Done** |
 | **B5a** — the tower fires | M | `tests/12_b5a_tower.loft` — killed at 15 hex, untouched at 16 | **Done** |
 | **B5b** — line of sight and the shot budget | M | `tests/12_b5b_los_budget.loft` — `wall` vs `wall_high`; shot 31 never fires; a blocked tower spends nothing | **Done** |
-| **B6** — nibble drains the wallet, zero ends the run | S | `wallet <lo> <hi>` in `script.loft`; drain rate and the floor at 0 | Open |
-| **B7** — the scenario, and its control | S | `tests/scripts/an-undefended-base.keys` + the stripped control — the clock separates | Blocked on B6 |
+| **B6** — nibble drains the wallet, zero ends the run | S | `tests/12_b6_wallet.loft` — the rate, the floor, the reach's negative control, and `wallet <lo> <hi>` through the seam | **Done** |
+| **B7** — the scenario, and its control | S | `tests/scripts/an-undefended-base.keys` + the stripped control — the clock separates | Open |
 
 ### Why the order is this order
 

@@ -1,0 +1,425 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 12 phase B6 — nibble drains the wallet, and zero ends the run.
+//
+// ── The end state the core does not have ────────────────────────
+//
+// `examples/numbers.json` § core.hp is literally `null` and
+// `docs/DESIGN.md` § Invulnerability + nibble → points says why: the
+// core cannot be destroyed, so an enemy standing on it drains the
+// player's POINT WALLET instead.  Until this phase dryopea had no
+// representation of that wallet at all, which meant a base could be
+// overrun and nothing whatsoever would happen — every other phase of
+// this plan made an exchange resolve, and none of them could END
+// anything.
+//
+// ── What the gate has to pin, and what it must refuse ───────────
+//
+// `plans/12` § Invariant gate: *"N nibblers drain exactly N pt/s ×
+// tick seconds; the wallet floors at 0"*, invariant *"the wallet
+// never goes negative and never refills unattended"*, negative
+// control *"a negative wallet means the run has no end state"*.
+//
+// Three of those are arithmetic and one is not.  The one that is not
+// is **who counts as a nibbler**, and it is where this phase could
+// have been silently wrong: a rule that drained for every live enemy
+// would pass every arithmetic assertion above while making walls and
+// towers pointless, because a base under siege would bleed at exactly
+// the rate of a base that had been overrun.  So the reach has its own
+// negative control — § Reach below — and it is the same shape B5a's
+// *"at 15 hex it is hit, at 16 it is not"* has.
+//
+// ── Why the ledger is CLAMPED and not just the reading ──────────
+//
+// A read-side floor alone lets `spent` run to 900 against a
+// 200-point budget.  Nothing today would notice; the first thing that
+// ever CREDITS the wallet would, because it would buy nothing at all
+// for the next seven hundred points.  Loot is 10 points a kill
+// (`numbers.json` § enemy_regular.loot_value) and the carryover
+// between bases is 1:1, so that thing is designed and coming.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// examples/palette.json, in file order.
+const GRASS: integer = 5;
+const WALL:  integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn hex(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn core() -> Hex {
+    hex(0, 0)
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+fn westbound(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: robot(), heading: 3 as u8, alive: true }
+}
+
+// Grass over every hex within `radius` of the core — a walking test
+// has to paint the ground it walks on, and an unpainted hex IS sea.
+fn field(radius: integer) -> PaintedWorld {
+    f_pw = painted_empty();
+    for f_h in lat_disc(core(), radius) {
+        paint(f_pw, f_h.q, f_h.r, as_u8(GRASS));
+    }
+    f_pw
+}
+
+// ⚠ **READ-ONLY.**  A struct returned from a function is a COPY
+// (loft#894), so this may be read through and never written through.
+fn purse(state: WaveState) -> Wallet {
+    state.wallet
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The representation: zero is a FULL wallet
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The assertion that says why the ledger stores points SPENT.**
+// A loft struct literal that omits a field takes that field's default
+// silently (`CLAUDE.md` § Loft language gotchas), and `WaveState` just
+// grew a sixth field.  Store points REMAINING and any `Wallet { }` or
+// `WaveState { … }` written anywhere starts the run **already over** —
+// and a test asserting "the base fell" would pass without a single
+// enemy walking.
+fn test_a_wallet_built_without_mentioning_the_ledger_is_full() {
+    taw = Wallet { };
+
+    assert(wallet_spent(taw) == 0.0, "an omitted ledger is an untouched one");
+    assert(wallet_left(taw) == WALLET_STARTING_POINTS,
+           "so the budget is whole: {wallet_left(taw)}");
+    assert(!wallet_broke(taw), "and the run has not ended before it started");
+}
+
+fn test_a_fresh_wave_state_carries_the_whole_budget() {
+    taf     = wave_state_empty();
+    taf_lft = wallet_left(purse(taf));
+
+    assert(taf_lft == WALLET_STARTING_POINTS,
+           "a fresh base has its whole budget: {taf_lft}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The ledger: it accumulates, it floors, and it never earns
+// ─────────────────────────────────────────────────────────────────
+
+fn test_draining_accumulates() {
+    tda = wallet_new();
+    wallet_drain(tda, 30.0);
+    wallet_drain(tda, 30.0);
+
+    assert(wallet_spent(tda) == 60.0, "two drains have landed: {wallet_spent(tda)}");
+    assert(wallet_left(tda) == WALLET_STARTING_POINTS - 60.0,
+           "so the budget is down by both: {wallet_left(tda)}");
+}
+
+// ⚠ **EXACTLY zero, not approximately.**  The floor is a `min` on the
+// ledger followed by a subtraction, so it lands on the number rather
+// than near it — which is what lets a `.keys` scenario write
+// `wallet 0 0` and mean "the base fell" with no band at all.
+fn test_the_wallet_floors_at_zero_exactly() {
+    ttw = wallet_new();
+    wallet_drain(ttw, WALLET_STARTING_POINTS * 50.0);
+
+    assert(wallet_left(ttw) == 0.0, "overkill is not a negative wallet: {wallet_left(ttw)}");
+    assert(wallet_broke(ttw), "and the run is over");
+}
+
+// ⚠ **The negative control the plan names**, and the one place it
+// could have been satisfied cheaply and wrongly.  Flooring only at the
+// READ leaves the ledger at 10 000 spent against a 200-point budget,
+// so `wallet_left` answers 0 and everything looks right — until
+// something credits the wallet and the next 9 800 points buy nothing.
+fn test_the_ledger_is_clamped_where_it_is_written() {
+    ttl = wallet_new();
+    wallet_drain(ttl, 10000.0);
+
+    assert(wallet_spent(ttl) == WALLET_STARTING_POINTS,
+           "you cannot drain points that are not there: {wallet_spent(ttl)}");
+}
+
+// ⚠ **"Never refills unattended" is enforced by there being no verb
+// for it.**  A drain that accepted a negative amount would put the one
+// operation this phase promises not to have behind a sign error.
+fn test_draining_backwards_is_not_income() {
+    tdb = wallet_new();
+    wallet_drain(tdb, 50.0);
+    wallet_drain(tdb, -500.0);
+
+    assert(wallet_spent(tdb) == 50.0,
+           "a backwards drain is refused, not banked: {wallet_spent(tdb)}");
+}
+
+fn test_broke_is_exactly_the_floor_and_not_before() {
+    tbe = wallet_new();
+    wallet_drain(tbe, WALLET_STARTING_POINTS - 0.5);
+    assert(!wallet_broke(tbe), "half a point left is not broke: {wallet_left(tbe)}");
+
+    wallet_drain(tbe, 0.5);
+    assert(wallet_broke(tbe), "and the last half point ends it: {wallet_left(tbe)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Reach — who is a nibbler, which is the half that is not arithmetic
+// ─────────────────────────────────────────────────────────────────
+
+// `numbers.json` § core.footprint_layout is `hex_disc_radius_1`: the
+// core is a centre hex and its six neighbours.  So an enemy within one
+// hex is not NEAR the core, it is standing on it — which is why the
+// reach is 1 rather than a melee range this phase invented.
+fn test_the_whole_core_footprint_is_in_reach() {
+    assert(nibble_in_reach(core(), 0, 0), "the centre hex is the core");
+
+    for ttw_d in 0..6 {
+        ttw_n = lat_neighbour(core(), ttw_d);
+        assert(nibble_in_reach(core(), ttw_n.q, ttw_n.r),
+               "direction {ttw_d} — ({ttw_n.q}, {ttw_n.r}) — is on the footprint");
+    }
+}
+
+// ⚠ **The negative control**, and the same shape as B5a's *"at 15 hex
+// it is hit, at 16 it is not"*.  Without it a reach of "any live
+// enemy" passes every arithmetic assertion in this file while making
+// walls and towers pointless: a base under siege would bleed at the
+// rate of a base that had been overrun.
+//
+// ⚠ Swept over BOTH ROW PARITIES.  In odd-r the neighbour delta
+// depends on `r & 1`, so a reach computed with a `+ 1` on a q or an r
+// instead of `lat_distance` is right on one row and wrong on the next
+// — moros#10, the bug that sheared every reach computation in the
+// first project to speak this lattice.
+fn test_two_hexes_out_is_out_of_reach_on_every_row() {
+    for ttc_r in -3..=3 {
+        ttc_c = hex(0, ttc_r);
+        for ttc_d in 0..6 {
+            ttc_one = lat_neighbour(ttc_c, ttc_d);
+            ttc_two = lat_neighbour(ttc_one, ttc_d);
+
+            assert(lat_distance(ttc_c, ttc_two) == 2,
+                   "the fixture is two hexes out, not {lat_distance(ttc_c, ttc_two)}");
+            assert(nibble_in_reach(ttc_c, ttc_one.q, ttc_one.r),
+                   "core row {ttc_r}, direction {ttc_d}: one hex out nibbles");
+            assert(!nibble_in_reach(ttc_c, ttc_two.q, ttc_two.r),
+                   "core row {ttc_r}, direction {ttc_d}: two hexes out does NOT");
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The tick — the rate, and who pays it
+// ─────────────────────────────────────────────────────────────────
+
+// The plan's headline number: *N nibblers drain exactly N pt/s × tick
+// seconds*.
+//
+// ⚠ **One tick, and the roster is placed rather than walked.**  A wave
+// that walked in would be measuring the mover as well, and the six
+// hexes of the footprint are exactly the six an arriving wave ends up
+// on — only one enemy can hold the centre, so a queue against the core
+// IS this fixture.
+fn test_n_nibblers_drain_n_points_per_second() {
+    tnn_pw = field(4);
+
+    for tnn_n in 1..=6 {
+        tnn_s = wave_state_empty();
+        for tnn_i in 0..tnn_n {
+            tnn_at = lat_neighbour(core(), tnn_i);
+            tnn_s.enemies += [westbound(tnn_at.q, tnn_at.r)];
+        }
+        wave_tick(tnn_s, pal(), tnn_pw, marker_empty(), core());
+
+        assert(wallet_spent(purse(tnn_s))
+               == per_tick(NIBBLE_POINTS_PER_SECOND) * (tnn_n as float),
+               "{tnn_n} nibblers took {wallet_spent(purse(tnn_s))} in one tick");
+    }
+}
+
+// ⚠ **An enemy that arrives this tick pays NEXT tick**, because the
+// drain is spent off the positions the tick STARTED with — the same
+// rule a breach and a body follow, and the one that makes a tick
+// order-independent.  It is also this file's cleanest statement that
+// reach is read at all: the same enemy, one tick apart, pays nothing
+// and then pays.
+fn test_an_enemy_out_of_reach_pays_nothing_until_it_arrives() {
+    tae_pw = field(4);
+    tae_s  = wave_state_empty();
+    tae_s.enemies += [westbound(2, 0)];
+
+    wave_tick(tae_s, pal(), tae_pw, marker_empty(), core());
+    tae_e = tae_s.enemies[0] ?? Enemy {};
+    assert(wallet_spent(purse(tae_s)) == 0.0,
+           "two hexes out it owes nothing: {wallet_spent(purse(tae_s))}");
+    assert(lat_distance(core(), hex(tae_e.q, tae_e.r)) <= 1,
+           "but it has arrived: ({tae_e.q}, {tae_e.r})");
+
+    wave_tick(tae_s, pal(), tae_pw, marker_empty(), core());
+    assert(wallet_spent(purse(tae_s)) == per_tick(NIBBLE_POINTS_PER_SECOND),
+           "and now it pays: {wallet_spent(purse(tae_s))}");
+}
+
+fn test_a_dead_enemy_does_not_nibble() {
+    tad_pw = field(4);
+    tad_s  = wave_state_empty();
+    tad_s.enemies += [Enemy { q: 0, r: 0, kind: robot(), heading: 3 as u8,
+                              alive: false }];
+
+    for _ in 0..10 { wave_tick(tad_s, pal(), tad_pw, marker_empty(), core()); }
+
+    assert(wallet_spent(purse(tad_s)) == 0.0,
+           "a body on the core costs nothing: {wallet_spent(purse(tad_s))}");
+}
+
+// ⚠ **The statement the whole plan is for.**  A perimeter that holds
+// costs the attacker everything and the player nothing — six robots
+// grinding a wall ring for twenty ticks and the budget does not move.
+// It is also the assertion that would go red if "nibbler" ever meant
+// "any live enemy".
+fn test_a_perimeter_that_holds_costs_the_player_nothing() {
+    tap_pw = field(6);
+    for tap_h in lat_disc(core(), 2) {
+        if lat_distance(core(), tap_h) == 2 {
+            paint(tap_pw, tap_h.q, tap_h.r, as_u8(WALL));
+        }
+    }
+
+    tap_s = wave_state_empty();
+    for tap_d in 0..6 {
+        tap_at = lat_neighbour(lat_neighbour(lat_neighbour(core(), tap_d), tap_d), tap_d);
+        tap_s.enemies += [westbound(tap_at.q, tap_at.r)];
+    }
+    for _ in 0..20 { wave_tick(tap_s, pal(), tap_pw, marker_empty(), core()); }
+
+    assert(damage_count(tap_s.damage) > 0, "the ring is under attack");
+    assert(wallet_spent(purse(tap_s)) == 0.0,
+           "and the wallet has not moved: {wallet_spent(purse(tap_s))}");
+}
+
+// ⚠ **The clock, in ticks — and it is 301 rather than the 300 the
+// arithmetic says.**  `TICK_SECONDS` is `1 / 1.5`, which has no exact
+// float form, so three hundred of them sum a hair UNDER 200 s.  It is
+// the same fact `tower.loft::TOWER_CHARGE_EPSILON` exists for, with
+// the consequence a hundred times smaller: there it silently dropped
+// every third shot — a third of a tower's documented DPS — and here it
+// is one tick in three hundred, 0.3% of a 200-second clock.
+//
+// So there is deliberately NO epsilon on the wallet.  Adding one would
+// make `wallet_broke` answer true while `wallet_left` still answered a
+// positive number, and two public verbs disagreeing about the floor is
+// worse than a clock that runs two thirds of a second long.
+//
+// Pinned rather than tolerated: if the arithmetic ever moves, this
+// number moves with it and somebody has to look.
+fn test_one_nibbler_empties_the_budget_in_301_ticks() {
+    ton_pw = field(4);
+    ton_s  = wave_state_empty();
+    ton_s.enemies += [westbound(0, 0)];
+
+    ton_n    = 0;
+    ton_prev = WALLET_STARTING_POINTS;
+    while !wallet_broke(purse(ton_s)) && ton_n < 400 {
+        wave_tick(ton_s, pal(), ton_pw, marker_empty(), core());
+        ton_n += 1;
+        ton_now = wallet_left(purse(ton_s));
+        assert(ton_now <= ton_prev,
+               "tick {ton_n}: the wallet never refills unattended, {ton_prev} -> {ton_now}");
+        assert(ton_now >= 0.0, "tick {ton_n}: and never goes negative, {ton_now}");
+        ton_prev = ton_now;
+    }
+
+    assert(ton_n == 301, "one nibbler took {ton_n} ticks to empty the budget");
+    assert(wallet_left(purse(ton_s)) == 0.0, "and it landed exactly on nothing");
+}
+
+// It STAYS at zero: nothing in an unattended base can put a point back.
+fn test_an_empty_wallet_stays_empty() {
+    tae_pw = field(4);
+    tae2_s = wave_state_empty();
+    tae2_s.enemies += [westbound(0, 0)];
+    for _ in 0..320 { wave_tick(tae2_s, pal(), tae_pw, marker_empty(), core()); }
+
+    assert(wallet_left(purse(tae2_s)) == 0.0,
+           "twenty ticks past empty is still empty: {wallet_left(purse(tae2_s))}");
+    assert(wallet_spent(purse(tae2_s)) == WALLET_STARTING_POINTS,
+           "and the ledger did not run past the budget: {wallet_spent(purse(tae2_s))}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The verb
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ `wallet` needs no core marker and no wave.  The budget belongs to
+// the RUN, not to the battlefield, so a script may read it before a
+// single enemy exists — and 200 is the honest answer then.
+fn test_the_wallet_verb_reads_a_fresh_budget() {
+    ttw = script_run(editor_state_new(PALETTE), "wallet 200.0 200.0", SHOTS);
+
+    assert(ttw.ok, "{script_describe(ttw)}");
+    assert(ttw.checks == 1, "and it counted: {ttw.checks}");
+}
+
+fn test_the_wallet_verb_checks_its_arguments() {
+    ttv_a = script_run(editor_state_new(PALETTE), "wallet 200.0", SHOTS);
+    assert(!ttv_a.ok && ttv_a.message.contains("<lo> <hi>"), "{ttv_a.message}");
+
+    ttv_b = script_run(editor_state_new(PALETTE), "wallet low high", SHOTS);
+    assert(!ttv_b.ok && ttv_b.message.contains("numbers"), "{ttv_b.message}");
+
+    ttv_c = script_run(editor_state_new(PALETTE), "wallet 0.0 0.0", SHOTS);
+    assert(!ttv_c.ok && ttv_c.message.contains("outside"),
+           "an untouched budget is not zero: {ttv_c.message}");
+}
+
+// The whole mechanic through the seam a player's keys go through: a
+// robot walks eleven hexes to a core nobody is defending, arrives, and
+// the budget starts falling.
+//
+// ⚠ **The reading at tick 10 is the interesting one.**  The robot is
+// one hex from the core — on its footprint, in reach — and the wallet
+// still says 200, because it arrived DURING that tick and the drain
+// was spent off where everyone stood when the tick began.  It pays
+// from tick 11.  That is the same "the consequences land at the end of
+// a tick" rule a breach and a body follow, seen from outside the
+// engine for the first time.
+//
+// ⚠ The place-kind cycle is spawn -> target -> tower -> spawn, so
+// reaching `target` is ONE press and coming back round to `spawn` is
+// two more (plan 12 B5a).
+fn test_a_scripted_siege_on_the_core_drains_the_budget() {
+    tas_src =
+        "do toggle_mode\n"
+      + "do cycle_kind\nclick 0 0\nmarker 0 0 target\n"
+      + "do cycle_kind\ndo cycle_kind\n"
+      + "do rotate\ndo rotate\ndo rotate\nclick 11 0\nmarker 11 0 spawn 3\n"
+      + "do toggle_mode\n"
+      + "palette 5\ndrag 11 0 0 0\ncount painted 12 12\n"
+      + "wave 1\ncount alive 1 1\nwallet 200.0 200.0\n"
+      + "tick 10\nrange 1 1\nwallet 200.0 200.0\n"
+      + "tick 1\nwallet 199.3 199.4\n"
+      + "tick 30\nwallet 179.3 179.4\n";
+
+    tas = script_run(editor_state_new(PALETTE), tas_src, SHOTS);
+
+    assert(tas.ok, "{script_describe(tas)}");
+    // Seven wallet-and-wave readings, plus the two `marker` checks
+    // that say the base was authored the way the story above claims.
+    assert(tas.checks == 9, "it made {tas.checks} measurements, expected 9");
+}
