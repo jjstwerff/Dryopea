@@ -39,13 +39,21 @@ pub const TARGET_GHOST_COLOR: integer = 0x801818;   // dimmer red for hover
 pub const TARGET_OUTER_R_M:   float = 0.40;          // outer radius in hex-relative units
 pub const TARGET_INNER_R_M:   float = 0.18;          // inner radius
 
-// Unit forward vector in canvas coords for a hex direction
-// d ∈ 0..5.  d=0 → +y (south, matching +r axial); each step is
-// 60° clockwise from south.  Result is (sin θ, cos θ) where
-// θ = d · π/3.
+// Unit forward vector in world metres for a hex direction d ∈ 0..5.
+//
+// ⚠ Comes from the LATTICE (plan 09 C4), not from an angle table.
+// It used to be `(sin θ, cos θ)` with `θ = d · π/3` — d=0 pointing
+// south, to match axial `+r`.  Both halves of that are now wrong:
+// direction 0 is EAST in `hex_grid`'s compass, and the step order
+// runs the other way round.
+//
+// Deriving it from `lat_neighbour` rather than restating the angles
+// is what stops a direction meaning one thing to the enemy that
+// walks it and another to the arrow drawn over it.  A spawn arrow
+// that lies about where the wave comes from is a bug the player
+// discovers by losing.
 pub fn direction_unit(d: u8) -> (float, float) {
-    du_theta = (d as float) * (PI / 3.0);
-    (sin(du_theta), cos(du_theta))
+    lat_direction_unit(d as integer)
 }
 
 // Draw a spawn-arrow triangle at the (q, r) hex centre, pointing

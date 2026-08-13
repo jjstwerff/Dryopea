@@ -208,6 +208,28 @@ pub fn lat_corner_offset(i: integer) -> (float, float) {
     (lco_p.0 * LAT_METRES_PER_UNIT, -lco_p.1 * LAT_METRES_PER_UNIT)
 }
 
+// The unit vector in world metres pointing along direction `d`.
+//
+// ⚠ Uniform across the lattice, unlike the neighbour LABEL delta.
+// The label step is parity-dependent (finding 1 above); the physical
+// direction is not — direction 3 is due west from every hex on both
+// row parities.  So this is computed once from the origin, and it is
+// what a marker arrow points along.
+//
+// Derived from `lat_neighbour` rather than from an angle table, so a
+// direction can never mean one thing to the mover and another to the
+// arrow drawn over it.
+pub fn lat_direction_unit(d: integer) -> (float, float) {
+    ldu_o  = Hex { q: 0, r: 0 };
+    ldu_n  = lat_neighbour(ldu_o, d);
+    ldu_om = lat_to_metres(ldu_o);
+    ldu_nm = lat_to_metres(ldu_n);
+    // Centre-to-centre is √3 circumradii; `?? 0.0` silences the
+    // div-by-zero check on a non-zero constant.
+    ldu_inv = (1.0 / (hex_grid::SQRT3 * LAT_METRES_PER_UNIT)) ?? 0.0;
+    ((ldu_nm.0 - ldu_om.0) * ldu_inv, (ldu_nm.1 - ldu_om.1) * ldu_inv)
+}
+
 // ─── Lines and discs ────────────────────────────────────────────
 
 // Every hex on the line from `a` to `b`, endpoints included.

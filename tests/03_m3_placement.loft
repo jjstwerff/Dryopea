@@ -80,18 +80,20 @@ fn test_rotate_marker_at_wraps() {
 
 // ─── direction_unit (geometry sanity) ────────────────────────────
 
-fn test_direction_unit_d0_points_south() {
+// ⚠ Direction 0 was SOUTH under the axial compass; plan 09 C4 made
+// the arrows follow `hex_grid`'s, where it is EAST.  The pair below
+// is the same pair of assertions, re-aimed — `tests/09_c4_arrows.loft`
+// is where the compass itself is gated.
+fn test_direction_unit_d0_points_east() {
     tdu0 = direction_unit(0 as u8);
-    // d=0 → (sin(0), cos(0)) = (0, 1) — straight south in canvas.
-    assert(tdu0.0 > -0.001 && tdu0.0 < 0.001, "d=0 forward.x ≈ 0");
-    assert(tdu0.1 > 0.999  && tdu0.1 < 1.001, "d=0 forward.y ≈ 1");
+    assert(tdu0.0 > 0.999  && tdu0.0 < 1.001, "d=0 forward.x ≈ 1");
+    assert(tdu0.1 > -0.001 && tdu0.1 < 0.001, "d=0 forward.y ≈ 0");
 }
 
-fn test_direction_unit_d3_points_north() {
+fn test_direction_unit_d3_points_west() {
     tdu3 = direction_unit(3 as u8);
-    // d=3 → (sin(π), cos(π)) ≈ (0, -1) — straight north.
-    assert(tdu3.0 > -0.001 && tdu3.0 < 0.001, "d=3 forward.x ≈ 0");
-    assert(tdu3.1 > -1.001 && tdu3.1 < -0.999, "d=3 forward.y ≈ -1");
+    assert(tdu3.0 > -1.001 && tdu3.0 < -0.999, "d=3 forward.x ≈ -1");
+    assert(tdu3.1 > -0.001 && tdu3.1 < 0.001, "d=3 forward.y ≈ 0");
 }
 
 // ─── draw_marker_arrow + render_markers (pixel-paint sanity) ─────
@@ -157,17 +159,18 @@ fn test_distinct_directions_paint_distinct_triangles() {
     draw_marker_arrow(tdd_cv_b, tdd_cam, 0, 0, 3 as u8,
                       0xff3060, 96, 96, 24.0, true);
 
-    // The d=0 arrow tip is SOUTH of centre; the d=3 arrow tip is
-    // NORTH of centre.  Check that the south-strip differs between
-    // the two canvases.
-    tdd_south_a = tdd_cv_a.get_pixel(48, 60);
-    tdd_south_b = tdd_cv_b.get_pixel(48, 60);
-    tdd_north_a = tdd_cv_a.get_pixel(48, 36);
-    tdd_north_b = tdd_cv_b.get_pixel(48, 36);
-    // Either the south or the north sample point must differ
-    // between the two — both being identical would mean the
-    // direction discriminator was ignored.
-    assert(tdd_south_a != tdd_south_b || tdd_north_a != tdd_north_b,
+    // ⚠ Sampled EAST and WEST since plan 09 C4.  Under the axial
+    // compass d=0 pointed south and d=3 north, so this used to probe
+    // the vertical strip; in `hex_grid`'s compass the pair is
+    // east/west and the vertical samples are identical for both,
+    // which reads as "the discriminator was ignored" when it was not.
+    tdd_east_a = tdd_cv_a.get_pixel(60, 48);
+    tdd_east_b = tdd_cv_b.get_pixel(60, 48);
+    tdd_west_a = tdd_cv_a.get_pixel(36, 48);
+    tdd_west_b = tdd_cv_b.get_pixel(36, 48);
+    // Either sample point must differ between the two — both being
+    // identical would mean the direction discriminator was ignored.
+    assert(tdd_east_a != tdd_east_b || tdd_west_a != tdd_west_b,
            "d=0 and d=3 produce visibly different arrow patterns");
 }
 

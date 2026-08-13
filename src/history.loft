@@ -220,10 +220,18 @@ pub fn paint_and_record(
     }
 }
 
-// Paint a LINE of hexes (cube-round step, matches
-// painted.loft::paint_line) AND record one delta per hex that
-// actually changed.  Replaces a direct paint_line call when
-// the caller wants undo support.
+// Paint a LINE of hexes AND record one delta per hex that actually
+// changed.  Replaces a direct paint_line call when the caller wants
+// undo support.
+//
+// ⚠ This carries a SECOND copy of `painted.loft::paint_line`'s lerp,
+// and both are still AXIAL on purpose — see that function for why
+// the conversion waits for C5.  Two copies of an interpolation is
+// how the undo path and the paint path come to disagree about which
+// hexes a drag covered, which is a corrupt undo entry rather than a
+// visible bug, so they must convert in the SAME commit.
+// `tests/09_c4_arrows.loft::test_paint_and_record_cover_the_same_hexes`
+// is what fails if only one of them moves.
 pub fn paint_line_and_record(
     pw:       PaintedWorld,
     a:        Hex,

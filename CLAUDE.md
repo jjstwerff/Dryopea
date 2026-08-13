@@ -185,7 +185,7 @@ different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path (the third time this plan hit that).
 
-**Suite: 559/559 green under `scripts/test.sh`** (~33 s — the `frame`
+**Suite: 565/565 green under `scripts/test.sh`** (~33 s — the `frame`
 measurements classify full 960x720 frames, and F8's cost gates tick a
 radius-40 world).
 **Gate: 14 scripts green under `scripts/validate.sh`** (~13 s, 233
@@ -196,7 +196,7 @@ measurements).
 ### Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over all 559 runs.
+per-function + per-line + call-path report over all 565 runs.
 
 - ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
   results and silently drops the profile, which reads as "the profiler
@@ -874,8 +874,8 @@ plans/
                     found it OVER budget, and found the cause was a
                     per-enemy field COPY rather than the rebuild it was
                     written to optimise
-  09-lattice-conversion/      — Active (C0-C3 + the whole I half
-                    shipped; C4-C6 remain): dryopea
+  09-lattice-conversion/      — Active (C0-C4 + the whole I half
+                    shipped; C5-C6 remain): dryopea
                     moves to pointy-top odd-r offset, the convention
                     every hex_* library and moros already speak.
                     Checked against hex_grid as an ORACLE, because a
@@ -1016,6 +1016,7 @@ signature.
 | Understand library extraction | The `hex_*` family is published — `loft api --registry` |
 | Change how enemies move | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) — the whole spec.  [plans/11](plans/11-flow-field/README.md) is what it costs to build |
 | Step a hex coordinate | `world.loft::hex_neighbor` today; `lattice.loft::lat_neighbour` after plan 09.  ⚠ Never a `+ 1` on a `q` or `r` — and after the conversion never a constant `(dq, dr)` either, because odd-r deltas depend on row parity |
+| Decide whether a plan-09 site converts NOW or in C5 | Ask what it depends on. **Geometry** ("where on screen?") depends on the lattice alone and is already converted. **Label space** ("which cell?") is only meaningful relative to how the DATA is labelled, and dryopea's labels are MIXED until C5 — the editor's picking path emits new ones, `.keys` files and saved maps still hold axial ones.  `paint_line` and `enemy_tick` are label-space; converting either alone turns `scripts/validate.sh` red for a reason that is not a defect |
 | Ask whether an enemy may MOVE somewhere | `src/passable.loft::can_step` — the rule, an edge.  Never `walk_ground` on its own, and never the destination's height on its own |
 | Ask whether an enemy may BE somewhere | `src/passable.loft::can_occupy` — what a position can say with no history.  The measurement's rule; never the field's node filter |
 | Raise a hex at runtime (bodies) | `src/height.loft` — a rise above what the palette paints.  Lives on `WaveState`, never saved |

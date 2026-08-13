@@ -109,8 +109,8 @@ Cut against [`plans/README.md`](../README.md) § What makes a step SAFE. The
 | **C1** — `lattice.loft` beside `world.loft` | S | parallel run | sweep ±16 cells: dryopea's neighbour / distance / corner answers equal `hex_grid`'s cell for cell. Negative control: run the sweep against the CURRENT axial functions — it must go RED, or the sweep cannot see the bug it exists to catch | **Shipped** — see § C1 shipped.  Negative control run: 8 of 17 red |
 | **C2** — the relabel, and what it must preserve | S | parallel run | `axial_to_offset` ∘ `offset_to_axial` = identity over the sweep; and **adjacency is preserved** — every axial-adjacent pair maps to a `hex_grid`-adjacent pair. An off-by-one in the parity term goes red on odd rows only, which is exactly the shape that hides | **Shipped** — see § C2 shipped.  Strengthened to DISTANCE preservation, which implies adjacency AND injectivity |
 | **C3** — the renderer draws pointy-top | M | one site at a time | a rendered hex is TALLER than wide (pointy-top, measured in pixels off a real canvas); the camera's hex lands at the canvas centre; neighbours sit one flat-to-flat away in the direction the compass names; `screen_to_hex ∘ world_to_canvas` = identity; plan 08's `frame` bands still hold | **Shipped** — see § C3 shipped.  ⚠ The goldens do NOT move once; the reviewed rebaseline is now C5's |
-| **C4** — `paint_line`, marker arrows, spawn approach | M | one site at a time | per site: `paint_line` equals `hex_grid`'s line over the sweep; each marker arrow points at the neighbour it names; `a-wave-approaches` still shows `range` decreasing monotonically | Open |
-| **C5** — migrate the data | S→M | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand. ⚠ NO compensating y-flip — a map that comes back looking the same means the compass decision did not take. **⚠ Also inherits the goldens**: C3 could not leave them reviewable, so the ONE reviewed rebaseline happens here, after labels and `paint_line` have both moved | Open |
+| **C4** — the marker arrows | S | one site at a time | each marker arrow points at the neighbour it names, measured against the actual step; the arrows are unit length and opposite pairs cancel. ⚠ Was "paint_line, marker arrows, spawn approach" — the other two turned out to be LABEL-space and moved to C5; see § C4 shipped | **Shipped** |
+| **C5** — migrate the data AND the label-space code | M→H | parallel run | C2's adjacency check applied to every real map + `.keys` script; painted counts identical before and after; scripts converted BY the converter, never by hand; `a-wave-approaches` still shows `range` decreasing monotonically. ⚠ NO compensating y-flip — a map that comes back looking the same means the compass decision did not take. **⚠ Inherits from C3/C4**: the reviewed golden rebaseline, `paint_line` ×2 (which must move in ONE commit), `enemy_tick`'s step, the flow field, passability, occupancy, and every marker `direction` via `relabel_direction` | Open |
 | **C6** — delete the axial layer | XS | — | `grep` finds no axial helper; suite + `scripts/validate.sh` green | Open |
 
 ⚠ **No phase is `H`.** Plan 07 carried this as one `H` phase, which fails
@@ -595,6 +595,55 @@ unchanged at 233 measurements over 14 scripts, `frame` bands included.**
 
 Suite 551 → **559 green**.
 
+### C4 shipped — and it is ONE site, because two of the three were label-space
+
+Landed 2026-08-13.  `marker_render.loft::direction_unit` now comes from
+`lattice.loft::lat_direction_unit`, derived from `lat_neighbour` rather
+than from an angle table — so a direction cannot mean one thing to the
+enemy that walks it and another to the arrow drawn over it.
+
+⚠ **The phase was written as three sites and only one belongs here.**
+The distinction the conversion actually runs on, and the one worth
+carrying into C5:
+
+| | asks | depends on | when |
+|---|---|---|---|
+| **geometry** | *where on screen?* | the lattice only | C3 / C4 |
+| **label space** | *which cell?* | how the DATA is labelled | C5 |
+
+A direction index → a screen vector is geometry.  `paint_line` and
+`enemy_tick` are label-space, and **dryopea's labels are mixed until
+C5**: the editor's picking path emits new labels (C3 converted it)
+while `.keys` files and saved maps still hold axial ones.
+
+**`paint_line` was converted here and put back**, which is the
+measurement worth keeping.  Its endpoints come from `screen_to_hex` in
+the editor — already converted — but a `.keys` script feeds literal
+coordinates straight through `drag`, bypassing picking entirely.  With
+`lat_line` wired in, `paint-a-base` paints **20 hexes where it means
+19**, so `scripts/validate.sh` goes red for a reason that is not a
+defect.  A red gate blinds every phase after it, so it waits.
+
+⚠ **Neither choice makes the intermediate correct** — with the axial
+line the editor's own drag is sheared instead.  Keeping the gate green
+is what decides it.
+
+The duplicate lerp is the trap C5 inherits: `painted.loft::paint_line`
+and `history.loft::paint_line_and_record` carry the SAME loop, and a
+drag whose undo entry covers a different set from the paint is a
+corrupt undo rather than a visible bug.
+`tests/09_c4_arrows.loft::test_paint_and_record_cover_the_same_hexes`
+is green now and is what fails if C5 moves only one of them.
+
+**What C5 inherits, in one list:** `paint_line` ×2, `enemy_tick`'s
+step, the flow field, passability, occupancy, the `.keys` literals,
+the saved maps, every marker `direction` (through
+`relabel_direction`), and the reviewed golden rebaseline.  They land
+together because they are one change.
+
+Suite 559 → **565 green**; `scripts/validate.sh` unchanged at **233
+measurements over 14 scripts**.
+
 ### C5 — the data, and the one decision left open
 
 Maps, `examples/*.json` and the five `.keys` scenarios all carry axial
@@ -606,6 +655,41 @@ dryopea has no released maps and one save slot, so refusing is defensible and
 much simpler — but plan 04 (map library) is where saved content starts
 mattering, and this is the cheapest moment to decide it. **Not decided here.**
 
+⚠ **C5 has grown into the `H` this plan said it would not have, and it
+must be re-cut before it is started.** § Phases opens with "No phase is
+`H`" — an `H` step has no half-done state with anything exact to compare
+against — and C5 now carries the data, the label-space code, and the
+goldens. That is the shape the split was invented to avoid.
+
+The reason it grew is not drift: C3 and C4 each found that a site they
+were given is only meaningful relative to how the DATA is labelled, so
+it cannot move before the data does. Everything label-space piled into
+one phase because it genuinely is one atomic change of meaning.
+
+⚠ **But atomic in MEANING is not atomic in VERIFICATION**, and that is
+where the re-cut has to come from. Candidate seams, each of which keeps
+`scripts/validate.sh` green on both sides:
+
+- **C5a — the converter itself**, over the file formats, with no
+  consumer switched. Gate: round-trip every real map and `.keys` script,
+  painted counts and marker counts identical, adjacency preserved
+  (C2's check applied to real data). Nothing in `src/` changes
+  behaviour, so both gates stay green by construction.
+- **C5b — the atomic flip**: run the converter over the files AND
+  switch the label-space code (`paint_line` ×2, `enemy_tick`, flow,
+  passability, occupancy, `relabel_direction` on markers) in ONE
+  commit. Gate: the scenarios' own numbers — `count painted 19`,
+  `range` decreasing — unchanged, because a relabel that preserves
+  distance cannot move them. **That is the strongest gate in the whole
+  plan** and it needs no goldens.
+- **C5c — the reviewed golden rebaseline**, once, by eye, on a system
+  that is finally self-consistent.
+
+C5b is still the widest step here, but its gate is exact and its
+negative control is free: if the scenario numbers move, the relabel did
+not preserve distance, and C2 says that is impossible — so a change
+means a site was missed.
+
 ## Invariant gate
 
 | Phase | Concrete expected result | Invariant pinned | Negative control |
@@ -614,7 +698,7 @@ mattering, and this is the cheapest moment to decide it. **Not decided here.**
 | **C1** ✅ | the ±16 sweep is green against `hex_grid`; the disc count is `3N(N+1)+1`; neighbouring centres are `HEX_FLAT_TO_FLAT` apart | dryopea's lattice IS `hex_grid`'s — by DELEGATION, so it cannot drift | pointed at `world.loft`: **8 of 17 red**, incl. "disagree on more than a quarter — 0 of 1089".  Parity term broken: 3 red at an ODD row |
 | **C2** ✅ | every PAIR keeps its distance (28 561 comparisons), and 1089 labels paint 1089 hexes | the relabel is a bijection that preserves structure — distance, so adjacency AND injectivity | the identity relabel breaks adjacency 289 times; a parity-free one moves odd-row LABELS only.  ⚠ Attributing breaks to the source row instead reports even-row damage and looks like a falsification — it is not |
 | **C3** ✅ | a rendered hex measures ~31 x 36 px at ppm 24 — TALLER than wide | the picture follows the lattice, not the other way round | a rebaselined golden agrees with a shear; the pixel measurements do not — 5 of 8 red against the old renderer.  ⚠ And the goldens DID come back sheared, because labels are C5's; that is why they are no longer this phase's evidence |
-| **C4** | `a-wave-approaches` range still decreases | the game's own behaviour survives the move | enemies that reach the core in a different number of ticks means the metric moved |
+| **C4** ✅ | every arrow's forward vector equals the normalised step to the neighbour it names | the arrow and the mover read the same compass | the old angle table points arrow 0 at `(0, 1)` while its neighbour is at `(1, 0)` — measured.  ⚠ `a-wave-approaches` moved to C5 with the enemy step |
 | **C5** | converted maps keep painted counts + adjacency | a relabel is not a content change | a map that gains or loses a hex was converted wrong |
 | **I0** ✅ | a key held five frames fires its action ONCE — **both do** | `input`'s edges mean what the seam's mean, on all three semantics | the predicted "first frame" divergence **is not real**; the real one is the seam forging `prev` mid-step, which is @D001 |
 | **I1** ✅ | 208 key/modifier combinations resolve to the SAME 22 `EditorInput` fields as the pre-I1 poll | swapping the input layer changes nothing a player could see | a scenario replayed on a keyboard with every key MOVED lands on the same session — and one with a palette key killed must FAIL, or "still passes" means "never pressed anything".  `do Tab` still refused |

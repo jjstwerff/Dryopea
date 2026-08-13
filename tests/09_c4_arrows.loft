@@ -1,0 +1,158 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 09 phase C4 — the marker arrows.
+//
+// ⚠ **C4 is ONE site, not the three the plan named.**  It was
+// written as "paint_line, marker arrows, spawn approach".  Only the
+// arrows belong here; the other two are LABEL-space and move with
+// the data in C5.  The distinction is the useful part:
+//
+//   **Geometry** answers "where on screen?" and depends on nothing
+//   but the lattice.  A direction index → a screen vector is
+//   geometry, so the arrows convert now.
+//
+//   **Label space** answers "which cell?" and is only meaningful
+//   relative to how the DATA is labelled.  `paint_line` and
+//   `enemy_tick` are label-space, and dryopea's labels are mixed
+//   until C5 — the editor's picking path produces new labels (C3
+//   converted it) while `.keys` files and saved maps still hold
+//   axial ones.
+//
+// `paint_line` was converted here and PUT BACK, which is the
+// measurement worth keeping: with `lat_line` wired in, the
+// `paint-a-base` scenario paints 20 hexes where it means 19,
+// because its `drag` commands carry axial literals that bypass
+// picking entirely.  That is `scripts/validate.sh` going red for a
+// reason that is not a defect, and a red gate blinds every phase
+// after it.  `lat_line` is built and gated (C1); it is simply not
+// wired in yet.
+//
+// `enemy_tick` is the same story with a different symptom — it would
+// walk enemies by the new compass across old labels, and
+// `a-wave-approaches` would fail its `range` band.
+
+#cwd
+
+use dryopea;
+use hex_grid;
+
+const SWEEP: integer = 8;
+
+// ─── `paint_line` is the lattice's line ─────────────────────────
+
+// The two implementations that existed — `painted.loft::paint_line`
+// and `history.loft::paint_line_and_record` — carried the same lerp
+// twice.  They must now paint the SAME hexes, because both defer to
+// `lat_line`.  A drag whose undo entry covers a different set from
+// the paint is a corrupt undo, and it is silent.
+fn test_paint_and_record_cover_the_same_hexes() {
+    tpr_probes: vector<Hex> = [
+        Hex { q: 0, r: 0 },  Hex { q: 5, r: 0 },  Hex { q: 0, r: 5 },
+        Hex { q: -4, r: 3 }, Hex { q: 6, r: -5 }, Hex { q: -3, r: -4 },
+    ];
+
+    for tpr_a in tpr_probes {
+        for tpr_b in tpr_probes {
+            tpr_plain = painted_empty();
+            paint_line(tpr_plain, tpr_a, tpr_b, 9 as u8);
+
+            tpr_rec = painted_empty();
+            tpr_stroke = undo_entry_empty();
+            paint_line_and_record(tpr_rec, tpr_a, tpr_b, 9 as u8, tpr_stroke);
+
+            assert(painted_count(tpr_plain) == painted_count(tpr_rec),
+                   "({tpr_a.q},{tpr_a.r})→({tpr_b.q},{tpr_b.r}): {painted_count(tpr_plain)} painted vs {painted_count(tpr_rec)} recorded");
+
+            for tpr_e in tpr_plain.painted {
+                assert(lookup_painted(tpr_rec, tpr_e.q, tpr_e.r) == 9 as u8,
+                       "({tpr_e.q}, {tpr_e.r}) painted but not recorded");
+            }
+        }
+    }
+}
+
+
+
+
+// ─── The marker arrows ──────────────────────────────────────────
+
+// The phase's own words: "each marker arrow points at the neighbour
+// it names".  Measured as the angle between the arrow's forward
+// vector and the actual step to that neighbour — which is what makes
+// this a check on the ARROW rather than on the direction table.
+fn test_each_arrow_points_at_the_neighbour_it_names() {
+    tea_o  = Hex { q: 0, r: 0 };
+    tea_om = lat_to_metres(tea_o);
+
+    for tea_d in 0..6 {
+        tea_u = direction_unit(tea_d as u8? ?? 0);
+
+        tea_n  = lat_neighbour(tea_o, tea_d);
+        tea_nm = lat_to_metres(tea_n);
+        tea_dx = tea_nm.0 - tea_om.0;
+        tea_dy = tea_nm.1 - tea_om.1;
+        tea_len = sqrt(tea_dx * tea_dx + tea_dy * tea_dy);
+        tea_inv = (1.0 / tea_len) ?? 0.0;
+
+        assert(abs(tea_u.0 - tea_dx * tea_inv) < 0.00001
+            && abs(tea_u.1 - tea_dy * tea_inv) < 0.00001,
+               "arrow {tea_d} points ({tea_u.0}, {tea_u.1}) but its neighbour is at ({tea_dx * tea_inv}, {tea_dy * tea_inv})");
+    }
+}
+
+// The forward vectors are unit length, or the triangle's tip lands
+// at the wrong distance from the hex centre and the arrow spills
+// outside its own hex.
+fn test_the_arrow_vectors_are_unit_length() {
+    for tav_d in 0..6 {
+        tav_u = direction_unit(tav_d as u8? ?? 0);
+        tav_len = sqrt(tav_u.0 * tav_u.0 + tav_u.1 * tav_u.1);
+        assert(abs(tav_len - 1.0) < 0.00001,
+               "direction {tav_d} has length {tav_len}");
+    }
+}
+
+// ⚠ The old table pointed direction 0 SOUTH (`+r` axial).  In
+// `hex_grid`'s compass it is EAST.  Pinned as a fact so a future
+// reader does not "restore" the old angles on the reasoning that
+// they look more natural.
+fn test_direction_zero_is_east_not_south() {
+    tdz_u = direction_unit(0 as u8);
+    assert(tdz_u.0 > 0.99, "direction 0 points east");
+    assert(abs(tdz_u.1) < 0.00001, "with no northing at all — it is NOT south any more");
+
+    // And the northward pair really is northward: +y is south, so
+    // north is negative y.
+    assert(direction_unit(5 as u8).1 < 0.0, "direction 5 (NE) goes north");
+    assert(direction_unit(4 as u8).1 < 0.0, "direction 4 (NW) goes north");
+    assert(direction_unit(1 as u8).1 > 0.0, "direction 1 (SE) goes south");
+    assert(direction_unit(2 as u8).1 > 0.0, "direction 2 (SW) goes south");
+}
+
+// Opposite directions cancel — the table is a consistent compass and
+// not six independent guesses.
+fn test_opposite_arrows_cancel() {
+    for toa_d in 0..3 {
+        toa_a = direction_unit(toa_d as u8? ?? 0);
+        toa_b = direction_unit((toa_d + 3) as u8? ?? 0);
+        assert(abs(toa_a.0 + toa_b.0) < 0.00001 && abs(toa_a.1 + toa_b.1) < 0.00001,
+               "directions {toa_d} and {toa_d + 3} are not opposite");
+    }
+}
+
+// ─── ⚠ What C4 must NOT have touched ────────────────────────────
+//
+// The label-space graph moves with the data in C5.  If any of these
+// start failing, someone has converted half of it early, and the
+// symptom will be enemies walking by the new compass over old
+// labels.
+
+fn test_the_enemy_step_is_still_label_space() {
+    // `world::hex_neighbor` is what `enemy_tick` uses, and until C5
+    // relabels the maps and `.keys` files it has to stay that way.
+    tes_h = Hex { q: 4, r: -2 };
+    tes_n = world::hex_neighbor(tes_h, 0);
+    assert(tes_n.q == 4 && tes_n.r == -1,
+           "the axial step table is untouched — C5 moves it, not C4");
+}

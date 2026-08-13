@@ -67,13 +67,31 @@ pub fn painted_count(w: const PaintedWorld) -> integer {
 }
 
 // Paint every hex on the line from `a` to `b` (inclusive) with
-// `kind`.  Hex line via fractional axial lerp + cube round —
-// Red Blob Games' standard algorithm.
+// `kind`.
 //
-// Used by drag-paint: the mouse moves from screen pixel A to
-// pixel B; convert each endpoint to a Hex, then paint_line
-// fills the gap with no missed hexes (cube round handles the
-// edge cases).
+// Hex line via fractional AXIAL lerp + cube round — Red Blob Games'
+// standard algorithm.
+//
+// ⚠ **Still axial, and that is deliberate (plan 09).**  C4 converted
+// this to `lat_line` and had to put it back: `paint_line` is
+// LABEL-space, and its two callers are in different label spaces
+// during the conversion.  A drag in the editor arrives via
+// `screen_to_hex`, which C3 already converted — but a `.keys` script
+// feeds literal coordinates straight through `drag`, and those are
+// axial until C5 relabels the files.  Converting here alone makes
+// `paint-a-base` paint 20 hexes where it means 19, i.e. turns the
+// validation gate red for a reason that is not a defect.
+//
+// So this moves WITH the data, in C5.  `lat_line` is built and
+// gated already (`tests/09_c1_oracle.loft`); it is simply not wired
+// in yet.  `history.loft::paint_line_and_record` holds the same loop
+// and must convert in the same commit —
+// `tests/09_c4_arrows.loft::test_paint_and_record_cover_the_same_hexes`
+// is the guard that says so.
+//
+// Used by drag-paint: the mouse moves from screen pixel A to pixel
+// B, each endpoint becomes a Hex, and this fills the gap with no
+// missed hexes.
 pub fn paint_line(w: PaintedWorld, a: Hex, b: Hex, kind: u8) {
     pl_n = hex_distance(a, b);
     if pl_n == 0 {
@@ -84,9 +102,8 @@ pub fn paint_line(w: PaintedWorld, a: Hex, b: Hex, kind: u8) {
     pl_ar = a.r as float;
     pl_bq = b.q as float;
     pl_br = b.r as float;
-    // Hoist the divide out of the loop AND `?? 0.0` silences
-    // loft's div-by-zero static check — pl_n > 0 guaranteed
-    // by the early-return above.
+    // Hoist the divide out of the loop AND `?? 0.0` silences loft's
+    // div-by-zero static check — pl_n > 0 guaranteed above.
     pl_inv = (1.0 / (pl_n as float)) ?? 0.0;
     for pl_i in 0..=pl_n {
         pl_t = (pl_i as float) * pl_inv;
