@@ -61,13 +61,23 @@ waves.
 ```
     carbon plant ──────┐
                        ├──▶ factory ──▶ (new robots, outbound everywhere)
-    mine ──────────────┘        │
+    ore mine ──────────┘        │
       ▲                         ▼
       └──── repair point ◀── damaged units
                  ▲
                  │  (dormant, no traffic)
           military stockpile
+
+    withered tree = a shaft into the crust
+           │
+           ▼
+    CRYSTAL mine ──────▶ factory's boss-production machine ──▶ BOSSES
+                                    (and one energy core each)
 ```
+
+⚠ The second graph is the whole of § 1a: **crystal is the only input
+with exactly one product**, so it is the only edge whose loss the
+player can predict the effect of.
 
 The player's base is **not on this graph**.  It is a scrambler bubble
 dropped somewhere in the middle of it, and the only thing that matters
@@ -81,10 +91,25 @@ neighbourhood — and every neighbourhood is a different game.
 
 ---
 
-## 1. Mines
+## 1. Mines — and the axis is DEPTH
 
 **Fiction.** Extraction sites feeding the colonisation programme.  Ore
 out, empty haulers in, miners resident.
+
+⚠ **There is more than one kind** (owner, 2026-08-14), and rather than
+enumerate them the design takes the one axis that generates the
+differences: **how deep the mine goes.**  Depth decides yield, rarity,
+traffic and — the interesting part — *where a mine can be at all*.
+
+| depth | yields | traffic | where it can be |
+|---|---|---|---|
+| **surface** | bulk ore, structural metal | heavy, constant | anywhere the seam outcrops |
+| **shallow** | conductors, refined feedstock | moderate | most terrain |
+| **deep crust** | **crystal** | thin and precious | ⚠ **only where a withered tree left a shaft** — see § The vertical dimension |
+
+Per the governing rule this is **one mine, per-depth data**: a row
+giving yield, hauler period and resident mix.  No mine type gets its
+own behaviour.
 
 **Traffic signature.** Heavy, regular, and the least pleasant mix in
 the game: **miners and harvesters**.  A mine is the one node whose
@@ -97,10 +122,10 @@ dramatically less.  The measured wall clocks in
 generic robot at 1 HP/s; a mining crew is the reason that number is a
 per-class row rather than a constant.
 
-**What the player can do.**  Loaded ore haulers are the richest salvage
-in the economy — a kill on the outbound side of a mine route pays
-several times what a kill on the inbound side does.  So a base beside a
-mine is a **farm you cannot fortify**.
+**What the player can do.**  Loaded haulers are the richest salvage in
+the economy — a kill on the outbound side of a mine route pays several
+times what a kill on the inbound side does.  So a base beside a mine is
+a **farm you cannot fortify**.
 
 **What it costs.**  You have to hold ground with clearing and towers
 rather than with walls, which is exactly the work that cannot be done
@@ -110,8 +135,69 @@ from a parked vehicle.
 moment when using it costs them something?*): ✓ — the loot is on the
 outbound lane, which is the far side of the route from your core.
 
-**Tunables:** `mine.ore_per_hauler`, `mine.resident_mix`,
-`mine.route_period_s`.
+**Tunables:** `mine.yield_per_hauler[depth]`, `mine.resident_mix[depth]`,
+`mine.route_period_s[depth]`.
+
+### ⚠⚠ 1a. Crystal mines — the boss supply, and the best lever in the game
+
+Owner, 2026-08-14: crystal is *"needed for the energy cores of bosses
+and the production machines inside factories for them"*.
+
+**Two consumption points, and they are not the same lever.**  This is
+the whole design of crystal:
+
+| consumer | what crystal buys | cutting it |
+|---|---|---|
+| a boss's **energy core** | one core per boss, consumed | throttles the **rate** — bosses stop arriving while the pipe is dry |
+| a factory's **boss production machine** | capital plant, built once | removes the **capability** — that factory makes no bosses again until it is rebuilt |
+
+So the player who finds the crystal line has two plays at different
+prices: interdict the haulers (cheap, repeatable, temporary) or reach
+the factory machine (expensive, deep in their territory, lasting).  ⚠
+**Neither is available to a player who has not scouted**, which is
+exactly the progression loop `DESIGN.md` § Scouting already names as
+*the* one.
+
+**⚠ Why crystal is rare is not "there is little of it".**  It is deep
+crust, so it needs a shaft, and shafts only exist where a huge tree
+withered (§ The vertical dimension).  **The supply is limited by
+botany, not by geology** — which makes it locatable, finite, and worth
+a map author's attention.
+
+**⚠⚠ And the robots have a problem there that the player can read.**
+Crystal is deep-crust stone, and [`SETTING.md`](SETTING.md) § The third
+enemy makes stones and gems what **elementals** are keyed to — a gem
+disturbed *awakens the matching elemental*.  A crystal mine is
+therefore a site where economic robots, built to mine and not to fight,
+are digging up precisely the thing that wakes tier 3.
+
+Three consequences, none of them invented — they all fall out of lore
+that was already written:
+
+- **A crystal mine is the only node in the economy that is dangerous to
+  its owners.**  Expect it defended, or abandoned, or worked in short
+  desperate bursts — an authoring choice per map with a reason behind it.
+- **The counter-play to tier 1's boss is tier 3.**  Taking the crystal
+  yourself is taking a gem, and taking a gem wakes elementals.  So the
+  act that denies the swarm its bosses is the act that wakes the enemy
+  the player has no answer to.
+- **It is the sap rule, one tier up.**  `DESIGN.md` § Scouting's *every
+  reward has its own pressure* was a list of two entries (sap → insects,
+  gems → elementals); crystal makes the second entry **strategic** rather
+  than merely a loot trap, because now it also does something to the
+  robots.
+
+**Design test:** ✓✓ — the strongest strategic play in the game is
+gated behind waking the one enemy tier that has no counter.
+
+⚠ **Reconciling with § 5.**  Crystal decides whether a boss *exists*;
+a repair point decides whether one is *dispatched at you*.  Supply and
+dispatch are different questions and must stay two parameters — a
+single "boss frequency" number would hide which of the two a player's
+raid actually changed.
+
+**Tunables:** `crystal.cores_per_boss`, `crystal.machine_rebuild_s`,
+`crystal.hauler_period_s`, `crystal.elemental_wake_radius_hex`.
 
 ---
 
@@ -277,6 +363,12 @@ it believes is a serious breakdown — your core.**  Boss frequency
 becomes a function of repair-point proximity and of how much damage you
 have been doing, rather than an authored phase-3 event.
 
+⚠ **Dispatch, not supply.**  Whether a boss EXISTS to send is § 1a's
+crystal question; whether one is sent AT YOU is this one.  Keep them
+two parameters — collapsed into a single "boss frequency" they would
+hide which of the two a player's raid actually changed, and those raids
+are at opposite ends of the map.
+
 **What the player can do.**  Deny it — a raid that makes your damage
 start sticking.
 
@@ -331,6 +423,82 @@ smell*.
 
 ---
 
+## ⚠⚠ The vertical dimension — trees are the way down
+
+Owner, 2026-08-14: *"there is a tie in with the trees on the planet as
+those can grow deep into the crust of the planet leaving path into it
+after they wither eventually."*
+
+**A huge tree is not scenery and not only a sap dispenser.  It is a
+drill.**  It grows roots down through the crust over a very long life;
+when it eventually withers, the root channel is left behind — an open
+shaft into rock nothing else could have opened.
+
+### The life-cycle, and what each stage is worth
+
+| stage | what it is | who wants it | which tier it brings |
+|---|---|---|---|
+| **living** | sap — energy source and life-prolonging medicine ([`SETTING.md`](SETTING.md) § The second enemy) | insects harvest it; humans go to a cordoned planet for it | **tier 2** — taking sap invites insect chase by smell |
+| **withering** | both, briefly | everyone | both |
+| **withered** | a **shaft** into the deep crust | robots, for crystal | **tier 3** — what the shaft reaches is elemental country |
+
+⚠ **So a tree is a resource that CHANGES KIND**, and the two kinds
+attract different enemies.  That is a genuinely unusual property for a
+map fixture and it is worth protecting in the design: nothing else in
+dryopea turns into something else.
+
+### What follows from it
+
+**1. Crystal mines are located at dead trees.**  Not near them —
+*at* them.  The mine is the shaft, and the shaft is the tree.  So a
+crystal site is a place with a **history**: there was a huge tree
+here, which means insects worked it, which means there are probably
+living trees nearby still.  A crystal neighbourhood is therefore the
+one place all three enemy tiers overlap — robots hauling, insects on
+the neighbouring stands, elementals below — and dryopea gets its
+hardest map type **derived rather than declared**.
+
+**2. It explains the scarcity honestly.**  § 1a: the crystal supply is
+bounded by how many huge trees have died in a region, which a map
+author controls by placing trees rather than by tuning a rate.
+
+**3. The shaft is TWO-WAY, and that is the interesting half.**  A path
+into the crust is a path *out* of it:
+
+- **Elementals** — `SETTING.md` says earth elementals answer to stone.
+  A shaft is where the stone is, and the most natural explanation of
+  how tier 3 reaches a surface map at all.
+- **Insects** — their hives *"presumably exist somewhere in the wilds"*
+  and have never been placed.  A root system is a candidate.
+- ⚠ **The underground humans.**  `SETTING.md` § Future contact needs a
+  physical route for people who *"can't easily come up to the
+  surface"* and who nonetheless *"notice things"*.  A tree shaft is
+  one, and it is a route the fiction produced rather than one invented
+  to solve the problem — which is the test that section's own
+  no-shortcut rule sets.  **Recorded as a candidate, not a decision**;
+  it belongs to Tier E and to the owner.
+
+**4. The robots did not make the hole, which is why they are exposed
+there.**  They are opportunists at a crystal site — working a shaft
+they could not have dug, in a place that wakes something they were not
+built to fight.
+
+### ⚠ What this deliberately does NOT design
+
+**No underground level.**  A shaft is a *place on the surface map* that
+material and creatures come out of.  Whether the player can descend is
+a different game — a second movement model, a second lighting model, a
+second everything — and nothing above needs it.  If it ever happens it
+should be because the underground earned its own plan, not because a
+hole was drawn.
+
+**No tree simulation.**  Withering is an authoring state, not a clock
+ticking during a mission.  ⚠ A *between-missions* clock is a real
+possibility (a run returning to a region and finding a tree has died,
+opening a crystal site that was not there before) and it is the
+cheapest version of a living world this design could ever get — but it
+belongs with per-planet persistence (§ Open questions 1), not here.
+
 ## How the player ever learns any of this
 
 Three layers, in the order a player meets them:
@@ -370,7 +538,10 @@ Three layers, in the order a player meets them:
    one sortie changes the next one, which is what would make a *run*
    feel like a campaign.  *Recommendation: author per-map, but keep the
    node identifiers global so the per-planet version is a later join
-   rather than a rewrite.*
+   rather than a rewrite.*  ⚠ § The vertical dimension raises the stakes
+   on this one: a between-missions tree-withering clock would open
+   crystal sites that were not there last sortie, which is the cheapest
+   living world this design could buy — and it needs per-planet state.*
 2. **Is the bubble radius a player setting?**  § Transport routes makes
    it the aggro radius.  A dial is a real decision; it is also a way to
    turn the game off.  *Recommendation: leave it fixed until a base
@@ -385,6 +556,14 @@ Three layers, in the order a player meets them:
    denied?  *Recommendation: denied throughput, because it is the one
    the player controls deliberately and the one that makes § Factories'
    starve play cost something.*
+
+5. **Can the player carry crystal out?**  It is the highest-value thing
+   in the economy and `DESIGN.md` § Scramble exit already has a cargo
+   manifest.  If yes, crystal becomes the run's currency and the
+   elemental wake is its price; if no, it is purely a denial target.
+   *Recommendation: yes — a reward the player can only destroy and
+   never take is a weaker decision, and the elemental consequence is
+   already the cost.*
 
 ## See also
 

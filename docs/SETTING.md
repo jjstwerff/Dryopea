@@ -303,6 +303,43 @@ Their sap is extraordinarily valuable:
   are the real treasure; the kind of compound that humans go
   to a war-cordoned planet for.
 
+### ⚠ A tree is also a drill — and a dead one is a way down
+
+Owner, 2026-08-14: *"there is a tie in with the trees on the planet as
+those can grow deep into the crust of the planet leaving path into it
+after they wither eventually."*
+
+The huge trees do not merely stand on the crust; over their very long
+lives they **root down into it**.  When one finally withers, the root
+channel stays — an open shaft into deep rock that nothing else on this
+planet could have opened.
+
+So a tree is a resource that **changes kind** as it ages:
+
+- **Living** — sap: the energy source and the medicine, and the insects
+  that work it (below).
+- **Withered** — a shaft: the only access to the deep crust, where the
+  **crystal** is that the robots need for boss energy cores and for the
+  factory machinery that builds them
+  ([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 1a).
+
+⚠ **Three things follow, and none of them were invented for the
+purpose** — they are what the existing lore already implies:
+
+- **The robots did not dig the hole.**  They are opportunists at a
+  crystal site, working a shaft botany left them, in a place that wakes
+  something they were not built to fight: crystal is deep-crust stone,
+  and stone is what **elementals** answer to (§ The third enemy).
+- **The shaft is two-way.**  It is the most natural account of how
+  elementals reach a surface map at all, a candidate home for the
+  insect hives that *"presumably exist somewhere in the wilds"*, and —
+  recorded as a possibility for the owner rather than a decision — a
+  physical route for the underground humans of § Future contact, who
+  cannot easily come up and yet *notice things*.
+- **Crystal is scarce because of botany, not geology.**  How much of it
+  a region can yield is a question about how many great trees have died
+  there.
+
 The insects **gather sap from the huge trees** as part of
 their own natural cycle.  Their hives presumably exist
 somewhere in the wilds; they patrol, defend, and process the
