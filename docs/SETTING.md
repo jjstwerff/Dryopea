@@ -314,6 +314,28 @@ lives they **root down into it**.  When one finally withers, the root
 channel stays — an open shaft into deep rock that nothing else on this
 planet could have opened.
 
+**The growth form** (owner, 2026-08-14, from reference photographs):
+*"just like the root/branches of rhododendron plants when you cut away
+the upper branches and leaves"* — a dense tangle of thick, sinuous,
+interwoven woody limbs rising from a base, multi-stemmed, gnarled,
+spreading as much sideways as up.  **No single trunk.**
+
+⚠ **The point of that reference is that root and branch are the SAME
+form**, which is exactly what a tree that mirrors itself into the crust
+needs.  Two things follow, and both are useful:
+
+- **A shaft is a BRAID, not a bore.**  What a withered tree leaves
+  behind is not one clean hole but a network of interwoven channels
+  over an area.  So a crystal site has a **footprint** rather than a
+  location — several ways down, several ways up, and room for a map
+  author to make a place out of it.
+- **The standing tree shows the shape of the hole that will be
+  there.**  A player who learns to read the form above ground is
+  reading the form below it, so a living giant is a *prediction* of a
+  future crystal site.  ⚠ Diegetic in the way `DESIGN.md` § No wave HUD
+  demands: the information is in the world's shape, and no interface
+  ever states it.
+
 So a tree is a resource that **changes kind** as it ages:
 
 - **Living** — sap: the energy source and the medicine, and the insects

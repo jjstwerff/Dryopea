@@ -450,7 +450,18 @@ dryopea turns into something else.
 ### What follows from it
 
 **1. Crystal mines are located at dead trees.**  Not near them —
-*at* them.  The mine is the shaft, and the shaft is the tree.  So a
+*at* them.  The mine is the shaft, and the shaft is the tree.
+
+⚠ **And a shaft is a BRAID, so a crystal mine has a FOOTPRINT.**  The
+growth form is rhododendron-like — a tangle of thick sinuous limbs with
+no single trunk, the same form above ground and below
+([`SETTING.md`](SETTING.md) § A tree is also a drill) — so what a dead
+one leaves is a network of interwoven channels over an area rather than
+one hole.  A crystal site is therefore *a place*: several ways down for
+the robots, several ways up for whatever is down there, and enough
+ground for a map author to shape an encounter on.  ⚠ It also means a
+player cannot plug it: denial at a crystal mine is interdiction of the
+haulers, never corking the hole.  So a
 crystal site is a place with a **history**: there was a huge tree
 here, which means insects worked it, which means there are probably
 living trees nearby still.  A crystal neighbourhood is therefore the
