@@ -1379,6 +1379,22 @@ fiction + per-tier behaviour in
 | 2 | Insects | Passive (fly among trees) | Gather sap (smell tracking) | `wall_high` blocks; outrun delivery; or skip sap |
 | 3 | Elementals (4 kinds: water / fire / wind / earth) | Dormant — keyed to stone proximity | Author-placed stones near them; disturb a gem | TBD (deferred); player-stone interactions open by design |
 
+⚠ **All three tiers escalate, and on different axes** (owner,
+2026-08-14; [`SETTING.md`](SETTING.md) § Both factions have
+warriors, § Elementals escalate on a different axis).  Robots
+and insects each open as *maintenance* behaviour and escalate by
+gaining **units** — mothballed combat bots woken by authority (a
+**step**), insect soldiers grown by brood time (a **ramp**, and
+the brood does not un-hatch).  Elementals have no combat version
+because **every one of them is already combat-ready**; what they
+lack is a drive, and what escalation gives them is **command**,
+from a woken *old one*, on rare authored occasions.
+
+⚠⚠ **So two of the three escalations are quantity and the third
+is INTENT** — nothing about an elemental gets stronger, it simply
+starts wanting something.  Keeping that distinction is what stops
+tier 3 becoming a re-skinned tier 1.
+
 **Boss (phase 3)** sits within tier 1 — the repair-platform
 specialist (see § Combat dynamics).
 

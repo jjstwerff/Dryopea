@@ -543,15 +543,78 @@ insect escalation is the strongest argument yet for per-planet
 persistence, and the cheapest possible version of a world that
 remembers what the player did to it.
 
-### ⚠ Elementals are not a third faction
+### ⚠⚠ Elementals escalate on a different axis: COMMAND, not units
 
-Tiers 1 and 2 are **societies** — they have infrastructure, production
-and something to protect, which is what lets them have a dormant
-military at all.  Elementals (§ The third enemy) have none of that:
-they are keyed to stones, they wake or they do not, and there is no
-authority to persuade and no brood to grow.  **No escalation ladder
-belongs to them**, and inventing one would make them a third copy of
-the same idea instead of the different thing they are.
+Owner, 2026-08-14: *"the elementals do not have special combat
+versions but they are all automatically combat ready.  What they lack
+is a clear drive, but there are sleeping old ones that can be woken in
+very special occasions to give the elementals orders."*
+
+⚠ **This corrects an earlier draft of this section**, which reasoned
+that elementals have no escalation because they are not a society.
+They do have one — it is simply not made of units.
+
+**They are already at full strength, always.**  There is no dormant
+military to wake because every elemental is combat-ready from the
+moment it is: no soldier caste, no mothballed stockpile, no brood.
+What they lack is **a clear drive** — something to want.
+
+**So what escalation supplies is COMMAND.**  Sleeping **old ones**
+exist, and on very special occasions one can be woken; what it gives
+the elementals is **orders**.
+
+⚠⚠ **The escalation is therefore a change of INTENT, not of power** —
+and that is the most frightening shape of the three, because nothing
+about the threat gets stronger.  It was always at full strength.  What
+changes is that it now *wants something*.
+
+### The three factions, on one axis
+
+| | robots | insects | elementals |
+|---|---|---|---|
+| always have | economic units | workers and wound-guards | **everything — all combat ready** |
+| lack | fighters (mothballed) | fighters (must be grown) | **a drive** |
+| escalation supplies | **units** | **units** | **command** |
+| the delay is | authority | biology | ⚠ *"very special occasions"* — rarity, not duration |
+| shape | a step | a ramp | **a switch on the whole tier at once** |
+
+⚠ **Two of the three are quantity and the third is intent.**  Keeping
+that distinction is what stops the elementals from becoming a
+re-skinned robot faction.
+
+### What an old one probably changes, mechanically
+
+⚠ **Inference, not owner statement — flagged for a decision.**
+§ The third enemy already makes elemental behaviour *keyed to stones*:
+near a stone of its element an elemental is in its full pattern, far
+from one it is muted.  Stones are, in other words, currently the only
+thing an elemental answers to.
+
+So the cleanest reading of *"orders"* is that **an old one substitutes
+for the stone as the source of behaviour** — a commanded elemental acts
+far from its stone, which is exactly the constraint that keeps them a
+*spatially keyed* threat today.  If that is right, waking an old one
+does not add a new creature or a new stat: it **deletes the geography**
+that made the tier survivable, using only rules that already exist.
+
+### ⚠ What wakes an old one is OPEN
+
+*"Very special occasions"* is deliberately not a trigger list, and this
+file should not invent one.  It is clearly **not routine escalation**:
+robot and insect ladders are things ordinary play accumulates, and this
+is not.  It belongs with the rare, authored, narrative-weight events of
+§ Future contact rather than with per-mission pressure.
+
+⚠ **One candidate is worth recording because the world already
+generates it**, as a suggestion and not a decision: the swarm's
+**crystal mining** is sustained, deep-crust disturbance of exactly the
+substrate elementals answer to
+([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 1a).  If the robots' hunger
+for boss cores is what eventually wakes something that can command the
+elementals, then the planet has the same irony twice: the swarm kills
+the forest to get crystal, and digging the crystal wakes the one thing
+none of the three factions can handle.  Whether that is the story is
+the owner's call.
 
 ### ⚠ And it closes the tree life-cycle loop
 
