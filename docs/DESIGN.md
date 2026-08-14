@@ -252,37 +252,70 @@ they were objecting to, and they were never your enemy in the
 first place.
 
 **What it costs, and the number is already written.**  The same
-sentence finishes: *…and **no perimeter could hold**.*  So:
+sentence finishes: *…and **no perimeter could hold**.*  If the
+swarm ever turns on you again — when the crisis passes, or
+because your base is in the way — the one thing that made a
+perimeter viable is not running.  It is the classic bargain of
+arming your enemy against a worse one, and dryopea can price it
+exactly.
 
-- ⚠ **You permanently disarm yourself against tier 1.**  If the
-  swarm ever turns on you again — when the crisis passes, or
-  because your base is in the way — the one thing that made a
-  perimeter viable is gone.  This is the classic bargain of
-  arming your enemy against a worse one, and dryopea can price
-  it exactly.
-- ⚠ **You lose steering, which is what your base was built
-  on.**  Inside the bubble the flow field pulls everything into
-  your kill zones; outside it nothing is pulled anywhere.  Your
-  towers still cover ground, but nothing is delivered to them —
-  so an end-game base has to be built to **hold** rather than to
-  **funnel**, which is a different building problem out of the
-  same rule set.
-- ⚠ **It buys nothing against the actual enemy.**  Elementals
-  and their fellow servants *"answer to stones, not radio"*
-  (`SETTING.md`), so the scrambler was never any use against
-  tier 3.  The entire cost falls on your relationship with the
-  faction you are choosing to help.
+⚠ **It also buys nothing against the actual enemy.**  Elementals
+and their fellow servants *"answer to stones, not radio"*
+(`SETTING.md`), so the scrambler was never any use against
+tier 3.  The entire cost falls on your relationship with the
+faction you are choosing to help.
 
-**Design test:** ✓✓✓ — § What kind of game this is at cosmic
-scale.  The largest advantage in the game is usable **only by
-giving it up**, and the moment it becomes worth using is the
-moment it becomes irreplaceable.
+##### ⚠⚠ But it is not an off-switch — the scrambler changes JOB
 
-⚠ **Open: is it reversible?**  A toggle is a weaker decision than
-a commitment, and *"the player cannot lean back"* argues that
-switching off should be easy and switching back on should be
-expensive or impossible while an awakening is in progress.
-Undecided.
+Owner, 2026-08-14: *"players can still use their scramblers, for
+example to steer the robots in the right direction."*
+
+The bubble is what robots **converge on** — that has been the
+whole wave system.  So in the end game the same device stops
+being a shield and becomes a **lure**: switch it on and the swarm
+comes *here*.  Where you put a scrambler decides where the swarm
+fights.
+
+⚠⚠ **And that creates the end game's central tension, out of two
+rules that already ship:**
+
+> **The bubble ATTRACTS and DEGRADES with one act.**  Robots
+> converge on it *because* it deafened them — and a deafened
+> robot is the degraded per-unit thing the whole wave system
+> describes.  So you can have them **coordinated**, or you can
+> have them **where you want them**, and never both at once.
+
+Which makes the end-game scrambler a **rhythm rather than a
+setting**: pulse it on to gather and redirect, off to let them
+fight properly.  ⚠ That is § What kind of game this is in its
+purest form — an advantage that only works while you are
+actively working it, and that costs the thing you want most at
+the moment you use it.
+
+⚠ **So the earlier "permanently disarm yourself" reading was too
+strong** and is corrected here: the capability stays, its *job*
+changes.  What is genuinely given up is the scrambler as a
+**passive defence** — it can no longer be left on to keep a
+perimeter survivable, because leaving it on is what stops your
+allies working.
+
+##### ⚠ And you must FEED the economy you spent the game strangling
+
+Owner, same statement: *"they will also need to aid the robots in
+their war economy instead of the mid-game hampering of the
+robots."*
+
+Every lever in [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) **inverts
+its sign, and not one of them changes shape** — see that file's
+§ The whole graph inverts in the end game for the table.  The
+player who learned to strangle a supply line knows exactly how to
+protect one.
+
+⚠⚠ **And that is what "build strong bases" means in the end
+game: your base stops defending your core and starts defending
+THEIR ROAD.**  Same verb, same walls, same towers, same crew —
+a different thing behind them.  It is the largest possible change
+in what the game is about, bought with no new mechanic at all.
 
 **And it is what buys the variety.**  Because so many of the
 counters are **architectural** — decided by where the walls

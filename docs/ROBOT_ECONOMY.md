@@ -555,20 +555,46 @@ Three layers, in the order a player meets them:
    demands**: the player learns the map's economy by watching who turns
    up, with no UI at all.
 
-## ⚠ The whole graph inverts in the end game
+## ⚠⚠ The whole graph inverts in the end game
 
 `DESIGN.md` § The end game, and why it is still this game: when an old
 one wakes, robots and insects become **co-belligerents** — they can
-attack it and humans cannot — and every node and edge above **keeps its
-geometry and reverses its meaning**.  The road that delivered waves
-delivers allies; a repair point behind your line is an asset; a factory
-you were starving is one you now want fed.
+attack it and humans cannot.  Owner, 2026-08-14: the player *"will
+need to aid the robots in their war economy instead of the mid-game
+hampering of the robots."*
+
+**Every lever above inverts its sign.  Not one changes shape.**
+
+| node | the mid-game play | the end-game play |
+|---|---|---|
+| **ore mines** | farm the outbound haulers | ⚠ **protect** them — that metal is the war economy |
+| **crystal** | cut the line to deny bosses | ⚠⚠ **keep it flowing** — a boss is a mobile repair platform, and now it repairs *your side* |
+| **the factory's boss machine** | destroy it to remove the capability | **defend it** — it is the only thing that makes heavy units |
+| **factories** | starve the inputs | **feed** them |
+| **transport routes** | block, or interdict for salvage | **hold open**, and clear what blocks them |
+| **repair points** | raid it so your chip damage sticks | **garrison** it — it is what puts your allies back on their feet |
+| **military stockpiles** | ⚠ the thing to avoid waking | ⚠⚠ **wake it deliberately** — combat bots are the units that can actually fight |
+| **carbon plants** | the insect-pressure hazard | still the insects' ground — and the insects are on your side now |
+
+⚠⚠ **The boss is the sharpest one.**  The mid-game's most dangerous
+enemy is a *repair platform*; in the end game it is the support unit
+you are trying to keep supplied.  Nothing about it changes — the
+player's relationship to it does.
+
+⚠ **And the escalation ladder inverts with everything else.**  All
+mid-game long, pushing the local AI toward its dormant military is the
+mistake you avoid (`SETTING.md` § Combat bots are dormant).  In the end
+game **it is the objective**: you want that wake command sent.
 
 ⚠ **So none of this is throwaway content.**  A player's mental model of
 the economy is *re-used* at the end rather than discarded, which is the
-cheapest possible way to make an end game feel different — and it is an
-argument for building the graph to be readable, since it has to be read
-twice and mean opposite things.
+cheapest possible way to make an end game feel different — and it is a
+strong argument for building the graph to be **readable**, since it has
+to be read twice and mean opposite things.
+
+⚠⚠ **And it is what "build strong bases" means at the end**: your base
+stops defending your core and starts defending **their road**.  Same
+walls, same towers, same crew, different thing behind them.
 
 ## What this design does NOT do
 
