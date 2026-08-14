@@ -381,12 +381,12 @@ const A_CORRIDOR_AND_A_WAVE: text = `
 // unhurt wave reads too.
 fn test_count_alive_falls_when_a_scripted_hit_lands() {
     tca_a = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 2\nhit 0 20\ntick 1\ncount alive 1 1\npile 9 0 0.0 0.0",
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 10\nhit 0 20\ntick 1\ncount alive 1 1\npile 9 0 0.0 0.0",
         SHOTS);
     assert(tca_a.ok, "{script_describe(tca_a)}");
 
     tca_b = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 2\nhit 0 30\ntick 1\ncount alive 0 0\npile 9 0 0.4 0.6",
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 10\nhit 0 30\ntick 1\ncount alive 0 0\npile 9 0 0.4 0.6",
         SHOTS);
     assert(tca_b.ok, "{script_describe(tca_b)}");
     assert(tca_b.checks == 2, "the roster and the body: {tca_b.checks}");
@@ -396,7 +396,7 @@ fn test_count_alive_falls_when_a_scripted_hit_lands() {
 // `tick` between the hit and the count, the wave is still alive.
 fn test_a_hit_with_no_tick_after_it_kills_nobody() {
     tah = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 2\nhit 0 30\ncount alive 1 1",
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 10\nhit 0 30\ncount alive 1 1",
         SHOTS);
 
     assert(tah.ok, "{script_describe(tah)}");

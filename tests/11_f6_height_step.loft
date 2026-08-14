@@ -504,7 +504,7 @@ fn test_two_classes_two_routes_plays_green() {
     ttc = script_run_file(ttc_s, "tests/scripts/two-classes-two-routes.keys", SHOTS);
 
     assert(ttc.ok, "two-classes-two-routes: {script_describe(ttc)}");
-    assert(ttc.checks == 23, "it made {ttc.checks} measurements, expected 23");
+    assert(ttc.checks == 24, "it made {ttc.checks} measurements, expected 24");
     assert(ttc.snaps == 1, "and took its picture");
 }
 
@@ -563,12 +563,12 @@ const A_CORRIDOR_AND_A_WAVE: text = `
 fn test_the_pile_is_what_stops_them() {
     // Without it: eight ticks and the leader is four hexes out.
     twp_a = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 8\nenemy 0 4 0", SHOTS);
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\ntick 16\nenemy 0 4 0", SHOTS);
     assert(twp_a.ok, "{script_describe(twp_a)}");
 
     // With it, and nothing else changed: stopped in front of it.
     twp_b = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 2.5\ntick 8\nenemy 0 7 0", SHOTS);
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 6 0 2.5\ntick 16\nenemy 0 7 0", SHOTS);
     assert(twp_b.ok, "{script_describe(twp_b)}");
 }
 
@@ -585,7 +585,7 @@ fn test_the_pile_is_what_stops_them() {
 // all.
 fn test_a_robot_walks_along_a_plateau_it_could_never_climb_onto() {
     tap_run = script_run(editor_state_new(PALETTE),
-        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 12 0 2.5\nraise 11 0 2.5\nraise 10 0 2.5\nraise 9 0 2.5\ntick 4\nenemy 0 8 0\nenemies passable",
+        "{A_CORRIDOR_AND_A_WAVE}\nwave 1\nraise 12 0 2.5\nraise 11 0 2.5\nraise 10 0 2.5\nraise 9 0 2.5\ntick 12\nenemy 0 8 0\nenemies passable",
         SHOTS);
 
     assert(tap_run.ok, "{script_describe(tap_run)}");

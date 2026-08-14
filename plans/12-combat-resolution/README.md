@@ -24,6 +24,17 @@ changing:
 | sealed wall | **104** ticks (69 s) | **the wall broke at its 30 HP END**, and the perimeter unzipped |
 | sealed wall **+ a tower** | **95** ticks (63 s) | **the pile went over** — the wall never lost a tenth of its HP |
 
+⚠⚠ **Plan 16 W2 INVERTED the tower row of this table** (2026-08-14).
+The pre-walk window holds a wave stacked on its spawn marker for 8
+ticks inside a 15-hex tower range, so the tower's first kills pile up
+out THERE instead of at the foot of the wall — no ramp forms, and the
+clocks become **69 / 112 / 128**.  A tower is now worth **+16 ticks
+where it used to cost 9**, and this plan's Goal holds for the tower as
+well as the wall.  The mechanic below is not deleted, only conditional
+on where the kills land: `a-base-on-two-fronts` still falls to a ramp,
+because 1.0 m of bodies is exactly a 3.0 m wall less a 2.0 m climb.
+See [`plans/16`](../16-the-wave-system/README.md) § W2.
+
 So the goal holds for the WALL (+70%) and is still **inverted by the
 TOWER**, which gives back 9 of the 43 ticks the wall bought. Five
 surviving robots take a base defended by a gun and a sealed wall,

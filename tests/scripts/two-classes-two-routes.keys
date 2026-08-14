@@ -62,14 +62,21 @@ kind 3 0 wall
 
 # ── Act 1: the same hex, two classes ────────────────────────────
 #
-# The insect leaves first so the two are never stacked; a wave spawns
-# onto ONE marker hex, and a companion blocks a step (plan 11 F5c).
+# ⚠ **Both spawn onto ONE marker hex and share ONE pre-walk window**
+# (plan 16 W2).  Before that window they were spawned a tick apart so as
+# never to be stacked; that no longer works, because a wave spawned
+# later gets a window of its OWN and the second class would still be
+# standing when the first had crossed the map.  So they stand together
+# for 8 ticks and leave one per tick — a companion blocks a step (plan
+# 11 F5c), which is what un-stacks them.
 wave 1 insect
-tick 1
 wave 1
 count alive 2 2
-enemy 0 11 0
+enemy 0 12 0
 enemy 1 12 0
+enemies passable
+
+tick 9
 enemies passable
 enemies distinct
 

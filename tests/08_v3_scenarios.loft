@@ -71,7 +71,7 @@ fn test_markers_and_rotation() {
 fn test_a_wave_approaches() {
     twa = play("a-wave-approaches");
     assert(twa.ok, "a-wave-approaches: {script_describe(twa)}");
-    assert(twa.checks == 11, "a-wave-approaches made {twa.checks} measurements, expected 11");
+    assert(twa.checks == 12, "a-wave-approaches made {twa.checks} measurements, expected 12");
     assert(twa.snaps == 2, "before and after the walk");
     assert(alive_count(twa.wave) == 6, "and six enemies are still on the map");
 }
@@ -113,7 +113,7 @@ const CORE_AND_SPAWN: text = `
 // `distance`, precisely so it can say a wave is strung out.
 fn test_range_reports_the_span_and_it_shrinks() {
     trs = script_run(editor_state_new(PALETTE),
-        "{CORE_AND_SPAWN}\nwave 3\nrange 12 12\ntick 5\nrange 7 9", SHOTS);
+        "{CORE_AND_SPAWN}\nwave 3\nrange 12 12\ntick 13\nrange 7 9", SHOTS);
 
     assert(trs.ok, "{script_describe(trs)}");
     assert(trs.checks == 2, "two readings, five ticks apart");

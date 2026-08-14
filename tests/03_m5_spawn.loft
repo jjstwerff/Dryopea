@@ -273,12 +273,20 @@ fn test_alive_count_empty_state() {
 
 fn test_integration_spawn_and_walk_one_tick() {
     // One marker far north of (0,0), heading SOUTH (towards core).
-    // After one tick the enemy should have moved one hex south.
+    //
+    // ⚠ **Nine ticks, not one** (plan 16 W2): a spawned wave stands at
+    // its marker for the pre-walk window — 5.0 s, which is 7.5 ticks
+    // rounded up to 8 — and steps on the ninth.  The eight-tick
+    // assertion below is the window; the ninth is the walk.
     tisw_state = wave_state_empty();
     tisw_mw = marker_empty();
     place_spawn(tisw_mw, 0, -15, 0 as u8);   // north of core, heading south
     spawn_wave(tisw_state, 1, ENEMY_KIND_REGULAR as u8? ?? 0, tisw_mw, 0, 0, 10);
     assert(tisw_state.enemies[0].r == -15, "spawned at marker hex");
+    for _ in 0..8 {
+        wave_tick(tisw_state, load_palette(PALETTE_PATH), walkable(), marker_empty(), Hex { q: 0, r: 0 });
+    }
+    assert(tisw_state.enemies[0].r == -15, "still at the marker: the window");
     wave_tick(tisw_state, load_palette(PALETTE_PATH), walkable(), marker_empty(), Hex { q: 0, r: 0 });
     assert(tisw_state.enemies[0].r == -14, "walked one hex toward core");
 }

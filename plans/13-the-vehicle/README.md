@@ -12,6 +12,16 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 **COMPLETE — V0 through V5 shipped** (2026-08-14). The player exists,
 drives, clears up, boosts, gets paid, and can now be destroyed.
 
+⚠ **Plan 16 W2 moved V2's headline and blunted its instrument**
+(2026-08-14).  The crewed clock is **140** rather than 145, against a
+towered **128** rather than 95 — but the ramp-versus-no-ramp pair that
+V2 used to SEE the crew with can no longer see it, because the pre-walk
+window means no ramp forms at the wall in either run and both bases end
+with identical wall HP.  The crew's remaining 12 ticks are the WALLET
+(V3's loot), not the terrain.  A scenario that can watch a crew eat a
+ramp again is work nobody has done.  See
+[`plans/16`](../16-the-wave-system/README.md) § W2.
+
 **V5 gave standing somewhere a price**, closing the caveat every phase
 since V2 had carried: *"nothing can hurt the vehicle yet, so standing
 in a kill zone is currently free — it is not meant to be."*

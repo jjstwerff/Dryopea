@@ -15,7 +15,7 @@
 //   undefended                    61 ticks
 //   sealed wall                  104
 //   sealed wall + tower           95     ← the tower is a LIABILITY
-//   sealed wall + tower + crew   145     ← and now it is an asset
+//   sealed wall + tower + crew   140     ← and now it is an asset
 //
 // ⚠ 121 of those were V2's, from denying the ramp alone; plan 13 V3
 // added the other 24 by paying the crew for what it clears.
@@ -62,9 +62,13 @@ const TOWER: text = "tests/scripts/a-tower-buries-its-own-wall.keys";
 // a second source of truth: each is pinned by a `ticks` band inside
 // its own `.keys` file.  They are here because the comparison needs
 // them in scope together.
-const TOWERED_TICKS: integer = 95;
-const CREWED_TICKS:  integer = 145;
-const WALLED_TICKS:  integer = 104;
+const TOWERED_TICKS: integer = 128;
+// ⚠ Plan 16 W2's pre-walk window moved this by five ticks (145 -> 140)
+// where it moved the untowered clocks by exactly eight: the window
+// relocates the tower's first kills to the spawn marker, so the crew
+// has LESS to clear here and the base gets a little less out of it.
+const CREWED_TICKS:  integer = 140;
+const WALLED_TICKS:  integer = 112;
 
 fn as_u8(n: integer) -> u8 {
     n as u8? ?? 0
@@ -231,17 +235,42 @@ fn test_a_crew_turns_the_tower_from_a_liability_into_an_asset() {
     assert(tac_c.ticks > WALLED_TICKS,
            "and the tower now beats a bare wall: {tac_c.ticks} against {WALLED_TICKS}");
 
-    // The mechanism, not the consequence: the wall was actually broken
-    // through this time instead of climbed over.
+    // The mechanism, not the consequence: no ramp survives at the
+    // wall's foot in either run.
+    //
+    // ⚠⚠ **This pair used to be the whole point and plan 16 W2 broke
+    // half of it.**  It read: the crewed base has no ramp, the towered
+    // one does — so the crew is what ate it.  Since the pre-walk
+    // window the towered base has no ramp EITHER, because the window
+    // holds the wave on its spawn marker inside tower range and the
+    // first kills pile up out there instead of at the wall.
+    //
+    // So the crew's value can no longer be read off this hex, and the
+    // honest statement is the one below: the crew still buys
+    // {tac_c.ticks - tac_t.ticks} ticks, and what it is clearing is no
+    // longer the ramp this assertion was watching.  `plans/16` § W2
+    // carries it; a scenario that can SEE a crew clearing a ramp again
+    // is work this plan does not do.
     assert(height_rise(tac_c.wave.heights, 6, 0) == 0.0,
            "no ramp survived: {height_rise(tac_c.wave.heights, 6, 0)} m");
-    assert(height_rise(tac_t.wave.heights, 6, 0) >= 1.0,
-           "where without a crew there is one: {height_rise(tac_t.wave.heights, 6, 0)} m");
+    assert(height_rise(tac_t.wave.heights, 11, 0) >= 1.0,
+           "and the tower's kills went to the spawn marker: {height_rise(tac_t.wave.heights, 11, 0)} m");
 
+    // ⚠⚠ **And the wall now ends in exactly the SAME state in both.**
+    // It used to be the other half of the mechanism — the crewed base
+    // made them chew through where the towered one let them climb over
+    // — and with no ramp in either run there is nothing to tell apart.
+    //
+    // That is worth an assertion rather than a deletion, because it
+    // says where the crew's ticks now come from: not from the
+    // structure, which is identical, but from the WALLET.  A crew that
+    // salvages earns (plan 13 V3), and `tests/13_v3_loot.loft` § The
+    // scenario is funded as well as swept is the reading that prices
+    // it.
     tac_c_hp = structure_hp(tac_cs.picker.palette, tac_cs.pw, tac_c.wave.damage, 5, 0);
     tac_t_hp = structure_hp(tac_ts.picker.palette, tac_ts.pw, tac_t.wave.damage, 5, 0);
-    assert(tac_c_hp < tac_t_hp - 20.0,
-           "and they had to CHEW it: {tac_c_hp} HP left against {tac_t_hp} with the ramp");
+    assert(tac_c_hp == tac_t_hp,
+           "the wall ends the same either way: {tac_c_hp} against {tac_t_hp}");
 }
 
 fn test_the_crew_scenario_is_on_disk() {

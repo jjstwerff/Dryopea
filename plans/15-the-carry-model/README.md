@@ -23,6 +23,13 @@ after a crew member is lost in the gate:
 | drives out to the wreck and back | 79 |
 | drives out, picks it up and delivers it (`a-wreck-fetched-under-fire`) | **79** |
 
+⚠ **Plan 16 W2 shifted both clocks by 8 and changed nothing else**
+(2026-08-14): they are now **93 / 87 / 87**, the errand still costs
+exactly six ticks, and the carry still costs nothing.  Of the four
+plans W2's pre-walk window moved, this is the one whose finding came
+through untouched — because it never depended on where a tower's kills
+landed.  See [`plans/16`](../16-the-wave-system/README.md) § W2.
+
 ⚠ **The trip costs six ticks and the carry costs nothing**, and the
 third number being identical to the second is the finding.  The crew
 member never comes back: recovery is 60 s — exactly 90 ticks — and the

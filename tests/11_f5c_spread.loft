@@ -525,7 +525,7 @@ fn test_they_do_not_stack_plays_green() {
     tdn = script_run_file(tdn_s, "tests/scripts/they-do-not-stack.keys", "tests/actual");
 
     assert(tdn.ok, "they-do-not-stack: {script_describe(tdn)}");
-    assert(tdn.checks == 30, "it made {tdn.checks} measurements, expected 30");
+    assert(tdn.checks == 34, "it made {tdn.checks} measurements, expected 34");
     assert(tdn.snaps == 2, "and took both pictures");
     assert(alive_count(tdn.wave) == 3, "three enemies forked and arrived");
 }
@@ -572,7 +572,7 @@ fn test_distinct_is_red_the_moment_a_wave_spawns() {
 
 fn test_and_green_once_they_have_walked() {
     tag = script_run(editor_state_new(PALETTE),
-        "{SPREAD_WORLD}\nwave 3\ntick 3\nenemies distinct", "tests/actual");
+        "{SPREAD_WORLD}\nwave 3\ntick 11\nenemies distinct", "tests/actual");
 
     assert(tag.ok, "three ticks apart from the test above: {script_describe(tag)}");
     assert(tag.checks == 1, "one measurement, and it passed");

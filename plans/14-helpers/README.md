@@ -13,6 +13,16 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 [plan 15](../15-the-carry-model/README.md) C2**, which is where the
 carry model it was blocked on ended up.
 
+⚠⚠ **Plan 16 W2 collapsed most of H2's spread** (2026-08-14).  The
+three clocks were 77 / 214 / 242 and are now **123 / 135 / 138**: the
+pre-walk window relocates a tower's first kills to the spawn marker, so
+far fewer body ramps form at the wall — which is most of what a crew
+was clearing.  ⚠ **The SHAPE of the finding survives and its size does
+not**: coverage still beats stacking (a second helper on the other
+front is worth 3 ticks, a first one 12), but a base that could express
+a 137-tick difference now expresses 15.  See
+[`plans/16`](../16-the-wave-system/README.md) § W2.
+
 ⚠ **H4 left this plan and that was the right move, not a technicality.**
 It was blocked on a model serving tower-tops and beacons as well, so
 building it here would either have served the helper case alone or

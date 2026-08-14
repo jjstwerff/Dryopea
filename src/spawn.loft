@@ -151,6 +151,43 @@ pub const ENEMY_DAMAGE_TO_WALL_PER_SECOND: float = 1.0;
 // what makes it a positioning MISTAKE rather than a tactic.
 pub const ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND: float = 5.0;
 
+// ─── The pre-walk window (plan 16 W2) ───────────────────────────
+
+// How long an enemy stands at its spawn marker before it starts
+// walking — `numbers.json` § enemy_regular.pre_walk_standstill, which
+// § wave_system.pre_walk_visibility_interval states again from the
+// wave's side at the same 5.0 s.
+//
+// `DESIGN.md` § Pre-walk visibility — the scramble decision window:
+// *"enemies appear at their picked spawn markers and stand visible …
+// This is the player's window to see what's coming (how many, from
+// which directions) and decide whether to stand or scramble before any
+// enemy has moved."*
+//
+// ⚠ **It is the enemy's property, not the wave's**, and the two rows in
+// `numbers.json` are one number seen from both ends.  Storing it per
+// enemy is what makes it per-CLASS data under the rule that one AI
+// reads different numbers (`CLAUDE.md` § ONE AI, per-class DATA) — a
+// slower class can be given a longer window with a row in the file and
+// no code — and it is also what makes the window survive two waves
+// being on the ground at once, which a single clock on the schedule
+// could not express.
+//
+// ⚠ **Not a HUD.**  § No wave HUD is uncompromising — no wave number,
+// no countdown, no banner — so this window plus the marker pulse are
+// the entire wave UI, and this is the half that is a SIMULATION fact.
+// It costs the enemies time; a cosmetic version would cost nothing and
+// tell the player the same thing.
+//
+// ⚠ **One number for every class today**, and a bare constant rather
+// than a lookup for the reason `ENEMY_DAMAGE_TO_WALL_PER_SECOND` gives
+// three paragraphs up: `numbers.json` has an `enemy_regular` section
+// and no `enemy_insect` one, so a second figure would be a tunable this
+// plan invented.  When a class earns its own window it costs a row in
+// the file and a `climb_limit`-shaped lookup here — and nothing else,
+// because `spawn_wave` already writes the window per ENEMY.
+pub const PRE_WALK_SECONDS: float = 5.0;
+
 // The kind discriminants an `Enemy` carries — `ENEMY_KIND_REGULAR`
 // and friends — live in `passable.loft`, because a class IS its
 // climb limit as far as movement is concerned and the mover has to
@@ -171,6 +208,13 @@ pub const ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND: float = 5.0;
 // value must be the ZERO value.  Store HP remaining and every
 // `Enemy { … }` literal in the suite that predates plan 12 B4 spawns a
 // corpse.
+// ⚠ `stand` is the same rule a third time (plan 16 W2): it is SECONDS
+// LEFT at the spawn marker, so zero is an enemy that is free to walk —
+// which is what an `Enemy { … }` literal that predates the field wants
+// to be, and what every hand-placed enemy in the suite already is.  It
+// is the one field here whose neutral value is not obviously the zero,
+// so it is worth saying: "seconds STOOD" would count the wrong way and
+// make every literal a robot that has not finished arriving.
 pub struct Enemy {
     q:       integer,
     r:       integer,
@@ -178,6 +222,7 @@ pub struct Enemy {
     heading: u8,
     alive:   boolean,
     taken:   float,
+    stand:   float,
 }
 
 // What this enemy has left, in HP — 0.0 once it has absorbed its whole
@@ -196,6 +241,28 @@ pub fn enemy_hp(e: const Enemy) -> float {
 // means (`docs/ENEMY_MOVEMENT.md`).
 pub fn enemy_hurt(e: Enemy, hp: float) {
     e.taken = max(e.taken + hp, 0.0);
+}
+
+// Is this enemy still standing at its spawn marker (plan 16 W2)?
+//
+// ⚠ **It ASKS and never spends.**  The window is spent once per tick,
+// at the end, by `wave_stand` — the same place and the same shape as
+// `helper_recover_tick` — and this predicate is read by three callers
+// before that.  A question that also advanced the clock would spend it
+// three times in the tick it is read three times in, and the count
+// would depend on how many things happened to ask.
+//
+// ⚠ **A standing enemy does nothing but stand**, which is the whole
+// rule: it does not move (`enemy_tick`), it attacks nothing
+// (`enemy_target`) and nobody is blocking it (`enemy_blocked_by`).
+// Those three are the sites, and they are three rather than one
+// because an enemy that has not begun its approach cannot be blocked
+// on the way — "it is not going anywhere yet" is one fact with three
+// consequences.  What it does NOT get is immunity: it is in the
+// occupancy, it is in the roster, and a tower shoots it where it
+// stands, which is the design's *"stand VISIBLE"*.
+pub fn enemy_standing(e: const Enemy) -> boolean {
+    e.stand > 0.0
 }
 
 // Wave-engine state.  `enemies` is the running roster across
@@ -341,12 +408,20 @@ pub fn spawn_wave(
     while sw_remaining > 0 {
         sw_idx = (state.pick_cursor % sw_n) ?? 0;
         sw_m   = sw_active[sw_idx] ?? sw_active[0];
+        // ⚠ **The window is written HERE, so both spawners have it**
+        // (plan 16 W2).  A `.keys` script's `wave` verb and W1's
+        // schedule both arrive through this function, and W1's gate
+        // (`tests/16_w1_the_schedule.loft` § The two spawners agree)
+        // exists to keep it that way.  Giving the schedule its own
+        // window would make every scenario in `tests/scripts/` measure
+        // a game the player never plays.
         state.enemies += [Enemy {
             q:       sw_m.q,
             r:       sw_m.r,
             kind:    kind,
             heading: sw_m.direction,
             alive:   true,
+            stand:   PRE_WALK_SECONDS,
         }];
         state.pick_cursor = state.pick_cursor + 1;
         sw_remaining = sw_remaining - 1;
@@ -383,6 +458,12 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
                   hl: const HeightLayer, f: const FlowField, desire: const FlowField,
                   occ: Occupancy, blockers: const BlockerMap) {
     if !e.alive { return; }
+
+    // ⚠ **The pre-walk window** (plan 16 W2): an enemy that has not
+    // finished standing at its marker does not move.  It is spent at
+    // the END of the tick by `wave_stand`, never here — see
+    // `enemy_standing`.
+    if enemy_standing(e) { return; }
 
     // ── Which mode? The bubble decides (plan 11 F5b) ─────────────
     //
@@ -556,6 +637,13 @@ pub fn enemy_target(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
                     hl: const HeightLayer, f: const FlowField, desire: const FlowField) -> Hex {
     ent_here = Hex { q: e.q, r: e.r };
     if !e.alive { return ent_here; }
+
+    // An enemy still standing at its marker is not going anywhere, so
+    // nothing is in its way (plan 16 W2).  Its own hex is what this
+    // function already answers for "attacking nothing", so a standing
+    // enemy contributes no target and `wave_damage` lands nothing —
+    // one guard rather than a second condition at every reader.
+    if enemy_standing(e) { return ent_here; }
 
     // Approach mode: the route is the heading, so the obstacle is the
     // one hex ahead.
@@ -1165,6 +1253,11 @@ fn wave_nibble(state: WaveState, core: const Hex) -> integer {
 fn enemy_blocked_by(e: const Enemy, f: const FlowField,
                     occ: const Occupancy, b: const BlockerMap) -> integer {
     if !e.alive { return BLOCKER_NONE; }
+    // Nobody is in the way of an enemy that has not started walking
+    // (plan 16 W2) — so a player parked on a spawn marker is not
+    // attacked for the five seconds before the wave sets off, and the
+    // window is a window for them too.
+    if enemy_standing(e) { return BLOCKER_NONE; }
 
     ebp_hit = BLOCKER_NONE;
     for ebp_t in flow_steps(f, e.q, e.r) {
@@ -1504,6 +1597,45 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // `helper_recover_tick` is what keeps it 90 rather than 91.
     for wt_rc in state.crew {
         helper_recover_tick(wt_rc, TICK_SECONDS, core);
+    }
+
+    // ⚠ **And the wave spends its pre-walk window here too** (plan 16
+    // W2), beside the recovery clock and for the same reason: both are
+    // per-mover timers rather than changes to the world, and both are
+    // read all through the tick they are spent at the end of.
+    //
+    // ⚠ **The POSITION is what fixes the count, and it is worth the
+    // paragraph.**  A banked timer of `T` seconds spans `ceil(T / dt)`
+    // ticks if the reader asks before the spend and one FEWER if it
+    // asks after — the two forms differ by exactly one tick, always.
+    // They coincide only where `T` divides `dt` exactly, which is
+    // precisely the case plan 15 C0's epsilon is about.  So the two
+    // questions are complementary and every banked timer has exactly
+    // one of them live:
+    //
+    //   | timer                     | T / dt | live question |
+    //   |---|---|---|
+    //   | helper recovery 60.0 s    | 90     | the EPSILON (C0) |
+    //   | pre-walk window 5.0 s     | 7.5    | this ORDERING    |
+    //   | boost 2.0 s / cooldown 5.0| 3 / 7.5| epsilon / neither|
+    //
+    // Spending at the END of the tick — where `helper_recover_tick`
+    // spends — makes the enemy stand for `ceil(7.5) = 8` ticks and step
+    // on the 9th, which is the reading that keeps the design's promise:
+    // the window is a guarantee to the PLAYER, so a fractional tick
+    // rounds up rather than down.  Putting this line before the movers
+    // would silently make it 7, with no test able to say which was
+    // meant.
+    wave_stand(state, TICK_SECONDS);
+}
+
+// Spend one tick of every enemy's pre-walk window (plan 16 W2).
+//
+// ⚠ The counterpart of `enemy_standing`, and the ONLY writer: one
+// spend per enemy per tick, whatever asked and however often.
+fn wave_stand(state: WaveState, tick_seconds: float) {
+    for ws_e in state.enemies {
+        if ws_e.stand > 0.0 { ws_e.stand = ws_e.stand - tick_seconds; }
     }
 }
 

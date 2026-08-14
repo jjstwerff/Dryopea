@@ -88,9 +88,17 @@ const TOWER: text = "tests/scripts/a-tower-buries-its-own-wall.keys";
 // band inside its own `.keys` file — this is a second reading of the
 // same number rather than a second source of truth, and it exists
 // because the comparison needs all three at once.
-const UNDEFENDED_TICKS: integer = 61;
-const WALLED_TICKS:     integer = 104;
-const TOWERED_TICKS:    integer = 95;
+//
+// ⚠⚠ **Plan 16 W2 moved all three, and INVERTED the third.**  Before
+// the pre-walk window they were 61 / 104 / 95: a wall bought 43 ticks
+// and a tower gave 9 of them back, because its own kills ramped over
+// the wall it was defending.  With the window a wave stands 8 ticks at
+// its marker, the tower's first kills land out THERE instead of at the
+// wall, no ramp forms — and the tower becomes worth 16 ticks rather
+// than costing 9.  § The two endings has the mechanism.
+const UNDEFENDED_TICKS: integer = 69;
+const WALLED_TICKS:     integer = 112;
+const TOWERED_TICKS:    integer = 128;
 
 fn as_u8(n: integer) -> u8 {
     n as u8? ?? 0
@@ -127,7 +135,7 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     // reports ok, so the gate has to say how many it expected.
     assert(ttc_b.checks == 10, "an-undefended-base made {ttc_b.checks} measurements, expected 10");
     assert(ttc_w.checks == 19, "a-defended-base made {ttc_w.checks} measurements, expected 19");
-    assert(ttc_t.checks == 18, "a-tower-buries made {ttc_t.checks} measurements, expected 18");
+    assert(ttc_t.checks == 17, "a-tower-buries made {ttc_t.checks} measurements, expected 17");
     assert(ttc_b.snaps == 1 && ttc_w.snaps == 1 && ttc_t.snaps == 1,
            "each took its picture: {ttc_b.snaps}, {ttc_w.snaps}, {ttc_t.snaps}");
 
@@ -150,19 +158,25 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     assert((ttc_w.ticks as float) / (ttc_b.ticks as float) > 1.5,
            "the wall bought {ttc_w.ticks} ticks against {ttc_b.ticks} — under half again as long");
 
-    // ── The inversion, asserted on purpose ───────────────────────
-    assert(ttc_t.ticks < ttc_w.ticks,
-           "TODAY a tower SHORTENS the clock: {ttc_t.ticks} with one, {ttc_w.ticks} without");
+    // ── ⚠⚠ The inversion, INVERTED AGAIN by plan 16 W2 ───────────
+    //
+    // This assertion has now flipped twice, and both flips are the
+    // point of keeping it:
+    //
+    //   plan 12 B7   131 lost against 19 kept  — a tower was a disaster
+    //   plan 11 F7b   34 kept against 9 lost   — a tower was a small net loss
+    //   plan 16 W2    a tower BUYS 16 ticks    — a tower is an asset
+    //
+    // What changed is not the tower and not the wall: it is WHERE the
+    // kills land.  The pre-walk window holds a wave stacked on its
+    // spawn marker for 8 ticks inside a 15-hex tower range, so the
+    // first bodies pile up out there — 1.5 m on a hex that leads
+    // nowhere — instead of at the foot of the wall where they would
+    // have been a ramp.
+    assert(ttc_t.ticks > ttc_w.ticks,
+           "a tower now LENGTHENS the clock: {ttc_t.ticks} with one, {ttc_w.ticks} without");
     assert(ttc_t.ticks > ttc_b.ticks,
-           "but the wall under it still buys something: {ttc_t.ticks} against {ttc_b.ticks} bare");
-    // ⚠ **This assertion was INVERTED by plan 11 F7b, and the flip is
-    // the good news.**  On the queueing mover the tower gave back MORE
-    // than the wall kept (131 lost against 19 kept).  With the
-    // sidestep it keeps 34 of 43 and loses 9 — a tower is still a net
-    // loss for a base nobody cleans up after, and it is no longer a
-    // catastrophe.
-    assert((ttc_t.ticks - ttc_b.ticks) > (ttc_w.ticks - ttc_t.ticks),
-           "the wall under it now keeps more than the tower gives back: kept {ttc_t.ticks - ttc_b.ticks}, lost {ttc_w.ticks - ttc_t.ticks}");
+           "and the wall under it still buys something: {ttc_t.ticks} against {ttc_b.ticks} bare");
 
     // ── The two endings, told apart by ONE hex ───────────────────
     //
@@ -176,18 +190,26 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     // braced middle, when the wave still met the wall as a column.
     assert(painted_kind_name(ttc_ws.picker.palette, ttc_ws.pw, 5, -2) == "grass",
            "the wall alone is CHEWED THROUGH at its end: (5, -2) is '{painted_kind_name(ttc_ws.picker.palette, ttc_ws.pw, 5, -2)}'");
-    assert(painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, -2) == "wall",
-           "the towered wall is still standing: (5, -2) is '{painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, -2)}'");
 
-    // Masonry ON the breach where the wall broke; bodies IN FRONT of
-    // the wall that held.
+    // ⚠⚠ **The two endings became ONE ending in plan 16 W2**, and that
+    // is the finding rather than a lost assertion.  The towered base
+    // used to die with its wall standing, taken by a 1.5 m ramp of its
+    // own kills; with the pre-walk window there is NO ramp, so it dies
+    // the same way the bare wall does — chewed through at its end.
+    assert(painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, -2) == "grass",
+           "the towered wall now breaks too: (5, -2) is '{painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, -2)}'");
+
+    // Masonry ON both breaches.
     assert(height_rise(ttc_w.wave.heights, 5, -2) > 0.5,
            "the breach carries its own masonry: {height_rise(ttc_w.wave.heights, 5, -2)} m");
-    assert(height_rise(ttc_t.wave.heights, 5, -2) == 0.0,
-           "the intact wall carries nothing: {height_rise(ttc_t.wave.heights, 5, -2)} m");
-    assert(height_rise(ttc_t.wave.heights, 6, 0) >= 1.0
-        && height_rise(ttc_t.wave.heights, 6, 0) <= 2.0,
-           "and the ramp at its foot is inside B0's band: {height_rise(ttc_t.wave.heights, 6, 0)} m");
+
+    // ⚠ **And the ramp is GONE** — this is the assertion that says the
+    // window relocated the kills, and the one that would go red if the
+    // window were deleted.
+    assert(height_rise(ttc_t.wave.heights, 6, 0) == 0.0,
+           "no ramp at the wall's foot: {height_rise(ttc_t.wave.heights, 6, 0)} m");
+    assert(height_rise(ttc_t.wave.heights, 11, 0) >= 1.0,
+           "the kills piled at the SPAWN MARKER instead: {height_rise(ttc_t.wave.heights, 11, 0)} m");
 }
 
 // ⚠ **A GATE is not a defence, and this is the measurement that says

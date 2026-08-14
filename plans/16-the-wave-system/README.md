@@ -9,8 +9,81 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**W0 + W1 shipped** (2026-08-14).  W2 is next.  Suite **915 green**,
-gate **25 scripts / 447 measurements**.
+**W0 + W1 + W2 shipped** (2026-08-14).  W3 is next.  Suite **924 green**,
+gate **25 scripts / 465 measurements**.
+
+⚠ **The whole plan is scaffolding.**  Project owner, 2026-08-14: *"it
+will be gone before the first game ships as I want natural patterns
+instead of waves/spawn points anyway"*, and *"when a wave begins should
+not be an issue at all, only points away from the base should spawn"*.
+`DESIGN.md` § Wave list already called the authored list a placeholder;
+the **spawn-marker model goes with it**.  So this plan exists to make a
+base long enough to MEASURE, and nothing in it is worth polishing —
+when natural patterns arrive, expect `waves.loft` and `spawn.loft`'s
+marker round-robin to be deleted rather than migrated.
+
+### W2 — the pre-walk window, and what it moved
+
+A wave stands at its marker for **8 ticks** and steps on the 9th.  One
+float on `Enemy`, written by `spawn_wave` so both spawners have it, and
+spent by `wave_stand` at the end of the tick.
+
+⚠ **Eight, not seven, and the reason is a rule worth keeping.**  5.0 s
+is 7.5 ticks, so it has to round.  A banked timer spans `ceil(T/dt)`
+ticks if its reader asks BEFORE the spend and one fewer if it asks
+after — the two forms differ by exactly one tick, always, and they
+coincide only where `T` divides `dt` exactly.  **That is precisely the
+case plan 15 C0's epsilon is about**, so the two questions are
+complementary and every banked timer has exactly one of them live:
+
+| timer | T / dt | live question |
+|---|---|---|
+| helper recovery 60.0 s | 90 | the EPSILON (C0) |
+| pre-walk window 5.0 s | 7.5 | this ORDERING |
+
+Spending at the END of the tick — where `helper_recover_tick` spends —
+gives `ceil` and keeps the design's promise: the window is a guarantee
+to the PLAYER, so a fractional tick rounds up.
+
+⚠ **A standing enemy does nothing but stand**: it does not move, it
+attacks nothing (`enemy_target` answers its own hex) and nobody is
+blocking it.  What it does NOT get is immunity — *"stand VISIBLE"* is
+the design's own word, and making it untargetable would be a new
+special case in a design that avoids them.
+
+### ⚠⚠ And that is what inverted plan 12 B7
+
+**The window relocates a tower's first kills to the SPAWN MARKER.**  A
+wave stands stacked for 8 ticks inside a 15-hex tower range, so the
+first bodies pile 1.5 m out there — on a hex that leads nowhere —
+instead of at the foot of the wall where they would have been a ramp.
+Measured, one wall and one tower:
+
+| base | before W2 | after W2 |
+|---|---|---|
+| undefended | 61 | **69** |
+| sealed wall | 104 | **112** |
+| wall + tower | 95 | **128** |
+
+So **a tower is worth +16 ticks where it used to cost 9**, and B7's
+headline — *a tower CUTS the clock, because its bodies ramp over the
+wall it was defending* — is now conditional on where the kills land
+rather than on there being a tower.  ⚠ The mechanic is not deleted:
+`a-base-on-two-fronts` still falls to a ramp, because 1.0 m of bodies
+is EXACTLY a 3.0 m wall less a 2.0 m climb, so two dead robots still
+get the third one over.  It got thin, and it moved a row north.
+
+⚠ **Every untowered clock moved by exactly +8**, which is the control
+that says the rest is the window and not the arithmetic.
+
+⚠ **What this cost the older measurements.**  Plan 14 H2's crew
+scenarios lose most of their spread (77/214/242 → 123/135/138), because
+the crew's value came from clearing ramps that now largely do not form;
+plan 13 V2's ramp-versus-no-ramp pair can no longer see the crew at all
+(both bases end with the same wall HP), so the crew's remaining 12
+ticks are the WALLET rather than the terrain.  Plan 15 C3's six-tick
+errand **survives unchanged** (93 vs 87).  Each plan's `## Status`
+carries its own corrected numbers.
 
 **W1 made waves arrive on their own.**  `src/waves.loft` holds the
 authored list and a schedule that walks it; `wave_tick` asks it first,
@@ -168,7 +241,7 @@ everything else dryopea loads.
 |---|---|---|---|
 | **W0** — the probe: is the design's inter-wave trigger reachable? | XS | the three tables above, measured against the shipped sim | **Done** |
 | **W1** — the schedule: waves arrive on their own | S | `tests/16_w1_the_schedule.loft` — a defended base plays wave 1 then wave 2 with no script line between them, the lull is 23 ticks counted, and an undefended base still dies in wave 1 and never sees wave 2 | **Done** |
-| **W2** — pre-walk visibility: 5 s standing at the marker | S | enemies exist and do not move for 7.5 ticks after a wave begins; the wave's arrival is that much later | Planned |
+| **W2** — pre-walk visibility: 5 s standing at the marker | S | `tests/16_w2_the_window.loft` — a wave stands 8 ticks and steps on the 9th; the SAME base run twice, differing only in the window, arrives exactly 8 ticks apart | **Done** |
 | **W3** — the provocation trigger | S | driving onto a far spawn marker starts wave 1; a near one never does | Planned |
 | **W4** — re-measure the base at its real length | S | a seven-wave scenario, and what a retrieval is worth on it — the number [plan 15](../15-the-carry-model/README.md) C3 could not produce | Planned |
 
@@ -194,7 +267,7 @@ possible, and it needs all three.
 |---|---|---|---|
 | **W0** ✓ | the tables above | the schedule advances on a CLEAR, and a wave that never clears is a run that already ended | — (W0 measures; W1 is its gate) |
 | **W1** ✓ | a defended base plays waves 1..N unattended; an undefended one dies in wave 1 | the wave list is DATA and the schedule is one state machine over it | ✓ the lull is COUNTED at 23 ticks, so a no-lull schedule is red; ✓ 400 ticks on an unclearable wave sends exactly ONE wave, where a timer would have sent five |
-| **W2** | a wave stands still for 7.5 ticks, then walks | the window is the player's information, so it costs the enemies time rather than being cosmetic | enemies that move on the tick they spawn have no window at all, and every arrival clock is 7.5 ticks early |
+| **W2** ✓ | 8 ticks standing, then a step | the window is the player's information, so it costs the enemies time rather than being cosmetic | ✓ the SAME base with the window and without arrives exactly 8 ticks apart — a cosmetic window leaves both clocks identical; ✓ a tower kills it where it stands, so the window is not a shield |
 | **W3** | a far marker driven onto starts wave 1, a near one does not | provocation is a POSITION, the rule § 11 wants | a trigger with no distance test fires on the marker beside the core, which the design silences on purpose |
 | **W4** | the seven-wave clock, and what a retrieval is worth on it | a base long enough to express a 60 s recovery | a reading taken on a base that still dies in wave 1 has measured nothing new |
 

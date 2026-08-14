@@ -56,7 +56,7 @@ exists today.
 | A wallet: an enemy standing on the core drains 1 pt/s off 200, and zero ends the run — the core stays invulnerable | [12](plans/12-combat-resolution/README.md), B6 shipped |
 | An unattended base falls on a measured clock — and a sealed wall nearly doubles it while a tower CUTS it | [12](plans/12-combat-resolution/README.md), B7 shipped — plan **complete** |
 | A PLAYER: a hover unit that parks, drives at two hexes a tick, and is stopped by the same height rule everything else is | [13](plans/13-the-vehicle/README.md), V0-V1 shipped |
-| A CREW: it clears rubble it stands on or beside at one body a second — and that turns a tower from a liability into an asset (95 → 121 ticks) | [13](plans/13-the-vehicle/README.md), V2 shipped |
+| A CREW: it clears rubble it stands on or beside at one body a second — and that turns a tower from a liability into an asset (95 → 121 ticks; ⚠ **128 → 140** since plan 16 W2) | [13](plans/13-the-vehicle/README.md), V2 shipped |
 | BOOST: four hexes a tick and a 3.0 m climb for three ticks, so a crew leaves a sealed base and comes home | [13](plans/13-the-vehicle/README.md), V4 shipped |
 | LOOT: clearing wreckage pays 20 points a metre, so the wallet can rise for the first time — and a crew that clears AND collects takes the towered base from 95 ticks to 145 | [13](plans/13-the-vehicle/README.md), V3 shipped — plan **complete** |
 | The player can be DESTROYED — but only by blocking a wave with nowhere to go round, which is a property of the map rather than of parking | [13](plans/13-the-vehicle/README.md), V5 shipped |
@@ -65,9 +65,10 @@ exists today.
 | A helper can be LOST: the blocker rule covers the whole crew, and a helper that dies WRECKS where it stood while the player respawns | [14](plans/14-helpers/README.md), H3 shipped |
 | CARRY: one slot per vehicle, one record per carryable thing — an object is on the ground, in exactly one carrier's slot, or spent, and a lost helper leaves something to fetch | [15](plans/15-the-carry-model/README.md), C0-C1 shipped |
 | RETRIEVAL: a lost crew member is carried to the core and rejoins the roster after EXACTLY 90 ticks — and nothing else brings one back | [15](plans/15-the-carry-model/README.md), C2 shipped — closes [14](plans/14-helpers/README.md) H4, so plan 14 is **complete** |
-| ⚠ What a retrieval is WORTH: nothing yet — 85/79/79 ticks, because a 60 s recovery is priced against a SEVEN-wave base and dryopea plays ONE wave | [15](plans/15-the-carry-model/README.md), C3 shipped — plan **complete** |
+| ⚠ What a retrieval is WORTH: nothing yet — 85/79/79 ticks (⚠ **93/87/87** since plan 16 W2), because a 60 s recovery is priced against a SEVEN-wave base and dryopea plays ONE wave | [15](plans/15-the-carry-model/README.md), C3 shipped — plan **complete** |
 | WAVES ARRIVE ON THEIR OWN: an authored list, a lull that is COUNTED, and a schedule that advances on a CLEAR — so a base can be more than one wave long | [16](plans/16-the-wave-system/README.md), W0-W1 shipped |
-| **No pre-walk window, no wave-1 trigger, no ordering, no tower repair, no beacons and no scramble** | [16](plans/16-the-wave-system/README.md), W2 next |
+| PRE-WALK VISIBILITY: a wave stands 8 ticks at its marker and steps on the 9th — and because it stands INSIDE tower range, the kills pile up out there and plan 12 B7's tower inverts from -9 ticks to **+16** | [16](plans/16-the-wave-system/README.md), W2 shipped |
+| **No wave-1 trigger, no ordering, no tower repair, no beacons and no scramble** | [16](plans/16-the-wave-system/README.md), W3 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -83,13 +84,13 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 915/915 green under `scripts/test.sh`** (~95 s measured
+**Suite: 924/924 green under `scripts/test.sh`** (~95 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
 plan 12 until H2 re-measured it; the figure grew with the scenario
 tests, not with any one phase).
-**Gate: 25 scripts green under `scripts/validate.sh`** (~10 s, 447
+**Gate: 25 scripts green under `scripts/validate.sh`** (~10 s, 465
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -1559,10 +1560,11 @@ signature.
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the rule, taking a HEX, so the player and every helper read one implementation (`vehicle_salvage` / `helper_salvage` are the two doors).  The counter-play to `ENEMY_MOVEMENT.md` § Bodies are terrain.  ⚠ A crew inside a SEALED base can only reach the ramp by BOOSTING out (V4): the ramp forms outside the wall and an idle vehicle climbs 0.4 m — and no helper has a boost |
 | Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` — the rule with the climb passed rather than looked up.  ⚠ Never widen `climb_limit(kind)`: it is a CLASS lookup and a convenience for callers that have a kind.  `vehicle_climb` is the worked example |
+| Ask why a fresh wave is not moving | `src/spawn.loft::enemy_standing` — the pre-walk window (plan 16 W2), 8 ticks at the marker.  ⚠ Spent ONCE per tick by `wave_stand`, at the END beside `helper_recover_tick`; the predicate only asks.  ⚠ A standing enemy does not move, attacks nothing and blocks nobody — but is NOT immune, which is what "stand visible" means |
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
-| Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock.  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; a tower CUTS it, because its bodies ramp over the wall it was defending |
-| Judge whether fetching a lost crew member is worth it | [plans/15](plans/15-the-carry-model/README.md) § Status — three clocks on one base (85 / 79 / 79).  ⚠ The trip costs six ticks and the CARRY costs nothing, and the middle run is the control that keeps those apart.  ⚠ It cannot pay until a base outlives the 90-tick recovery, which is the wave system's job |
-| Judge what another CREW MEMBER is worth | [plans/14](plans/14-helpers/README.md) § Status — three scenarios that differ only in their crew lines, and the measured clock (77 / 214 / 242).  ⚠ A roster buys COVERAGE, not throughput: a second helper beside the first is worth nothing at all, and the same helper on the other front is worth 28 ticks |
+| Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock (69 / 112 / 128 since plan 16 W2).  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; and a tower now ADDS 16 ticks where it used to cost 9 — because the pre-walk window moved its kills off the wall's foot, so the ramp that used to bury it no longer forms there |
+| Judge whether fetching a lost crew member is worth it | [plans/15](plans/15-the-carry-model/README.md) § Status — three clocks on one base (93 / 87 / 87 since plan 16 W2).  ⚠ The trip costs six ticks and the CARRY costs nothing, and the middle run is the control that keeps those apart.  ⚠ It cannot pay until a base outlives the 90-tick recovery, which is the wave system's job |
+| Judge what another CREW MEMBER is worth | [plans/14](plans/14-helpers/README.md) § Status — three scenarios that differ only in their crew lines, and the measured clock (⚠ **123 / 135 / 138** since plan 16 W2, from 77 / 214 / 242).  ⚠ A roster buys COVERAGE, not throughput — but the base can now barely express it: the pre-walk window means far fewer ramps form for a crew to clear, so the whole spread is 15 ticks where it was 165 |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |

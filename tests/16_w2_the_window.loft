@@ -1,0 +1,344 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 16 phase W2 — the pre-walk window.
+//
+// `docs/DESIGN.md` § Pre-walk visibility — the scramble decision
+// window: *"When a wave begins, enemies appear at their picked spawn
+// markers and stand visible for `pre_walk_visibility_interval`
+// (default 5 s) before walking … This is the player's window to see
+// what's coming (how many, from which directions) and decide whether to
+// stand or scramble before any enemy has moved."*
+//
+// ── ⚠ What can go wrong, and what sees it ───────────────────────
+//
+// 1. **No window at all.**  Enemies step on the tick they spawn, and
+//    every arrival clock in the game is eight ticks early.  What sees it
+//    is § The window costs the wave eight ticks — the SAME base run
+//    twice, differing only in whether the wave has a window.
+// 2. **A COSMETIC window.**  The design's own § No wave HUD says the
+//    marker pulse and this window are the entire wave UI, so it is
+//    tempting to make it a rendering flag.  What sees that is the
+//    arrival clock again: a window that costs the enemies nothing is
+//    not a decision the player is being handed, it is an animation.
+// 3. **A window that is IMMUNITY.**  *"Stand VISIBLE"* is the design's
+//    word.  What sees it is § A tower kills it where it stands.
+// 4. **The wrong count.**  5.0 s is 7.5 ticks, which is not a whole
+//    number, so it must round — and both roundings are one line apart.
+//    See § Why eight and not seven.
+//
+// ── ⚠ Why eight and not seven ───────────────────────────────────
+//
+// A banked timer of `T` seconds spans `ceil(T / dt)` ticks if its
+// reader asks BEFORE the spend and one fewer if it asks after; the two
+// forms differ by exactly one tick, always.  They coincide only where
+// `T` divides `dt` exactly — which is precisely the case plan 15 C0's
+// EPSILON is about.  So the two questions are complementary, and every
+// banked timer in dryopea has exactly one of them live:
+//
+//     helper recovery 60.0 s -> 90 ticks   exact   -> the epsilon
+//     pre-walk window  5.0 s -> 7.5 ticks  not     -> this ordering
+//
+// dryopea spends this window at the END of the tick, where
+// `helper_recover_tick` spends, which makes it `ceil(7.5) = 8` ticks of
+// standing and a first step on the 9th.  That is the reading that keeps
+// the design's promise: the window is a guarantee to the PLAYER, so a
+// fractional tick rounds up rather than down.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+// 5.0 s over a 2/3 s tick, rounded up — the number this whole file is
+// about, written once.
+const WINDOW_TICKS: integer = 8;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A corridor from the spawn at (12, 0) to the core, one hex wide.
+//
+// ⚠ A corridor cannot tell a flow field from a heading (`CLAUDE.md`
+// § Testing something that moves) — and here that is exactly right,
+// because what is under test is whether the enemy moves AT ALL.
+fn corridor() -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=14 { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+fn spawn_at_twelve() -> MarkerWorld {
+    s_mw = marker_empty();
+    place_marker(s_mw, 12, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    s_mw
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The number
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **7.5 ticks, and NOT a whole number** — which is what puts this
+// timer in the ordering class rather than the epsilon class.  Plan 16
+// W0 recorded the immunity; this asserts it, so that anyone who rounds
+// `pre_walk_standstill` to a whole count of seconds fails here and
+// reads why.
+fn test_the_window_does_not_divide_the_tick_exactly() {
+    ttw_ticks = PRE_WALK_SECONDS / TICK_SECONDS;
+    assert(ttw_ticks == 7.5, "5.0 s is 7.5 ticks: {ttw_ticks}");
+
+    ttw_whole = (ttw_ticks as integer? ?? 0) as float;
+    assert(ttw_ticks != ttw_whole,
+           "and NOT whole — so it needs a rounding rule, not an epsilon");
+    assert(WINDOW_TICKS == 8, "which this file rounds UP: {WINDOW_TICKS}");
+}
+
+// The two rows in `numbers.json` are one number seen from both ends —
+// § enemy_regular.pre_walk_standstill and § wave_system.pre_walk_
+// visibility_interval — and the engine carries one constant.
+fn test_the_constant_is_the_designs_five_seconds() {
+    assert(PRE_WALK_SECONDS == 5.0, "five seconds: {PRE_WALK_SECONDS}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The phase: a wave stands, then walks
+// ─────────────────────────────────────────────────────────────────
+
+// A spawned wave does not move for eight ticks, and steps on the ninth.
+//
+// ⚠ Asserted tick by tick rather than at the end: "it is still at the
+// marker after eight" is also true of a wave that never moves at all,
+// and "it moved by tick nine" is true of one with no window.  Both
+// halves together are the window.
+fn test_a_wave_stands_for_eight_ticks_then_steps() {
+    taw_pw  = corridor();
+    taw_mw  = spawn_at_twelve();
+    taw_pal = pal();
+    taw_s   = wave_state_empty();
+
+    spawn_wave(taw_s, 1, ENEMY_KIND_REGULAR as u8, taw_mw, 0, 0,
+               SPAWN_DISABLE_RADIUS);
+    assert(len(taw_s.enemies) == 1, "one enemy: {len(taw_s.enemies)}");
+    assert(enemy_standing(taw_s.enemies[0] ?? Enemy {}),
+           "and it is standing at its marker");
+
+    for taw_n in 1..=WINDOW_TICKS {
+        wave_tick(taw_s, taw_pal, taw_pw, taw_mw, core());
+        taw_e = taw_s.enemies[0] ?? Enemy {};
+        assert(taw_e.q == 12 && taw_e.r == 0,
+               "tick {taw_n} of {WINDOW_TICKS}: still at the marker, "
+               + "not ({taw_e.q}, {taw_e.r})");
+    }
+
+    // The ninth.
+    wave_tick(taw_s, taw_pal, taw_pw, taw_mw, core());
+    taw_after = taw_s.enemies[0] ?? Enemy {};
+    assert(taw_after.q == 11 && taw_after.r == 0,
+           "and on tick {WINDOW_TICKS + 1} it steps: "
+           + "({taw_after.q}, {taw_after.r})");
+    assert(!enemy_standing(taw_after), "the window is spent");
+}
+
+// ⚠⚠ **THE GATE: the window COSTS the wave eight ticks.**  The same
+// base, the same enemy, the same corridor — run twice, differing only
+// in whether the wave has a window — and the arrival is exactly
+// `WINDOW_TICKS` later.
+//
+// This is the assertion a cosmetic window fails.  A rendering flag
+// leaves both clocks identical; a simulation fact separates them by the
+// window and by nothing else.
+fn test_the_window_costs_the_wave_eight_ticks() {
+    twc_pal = pal();
+
+    // With the window: spawned the way the game spawns.
+    twc_a = wave_state_empty();
+    spawn_wave(twc_a, 1, ENEMY_KIND_REGULAR as u8, spawn_at_twelve(), 0, 0,
+               SPAWN_DISABLE_RADIUS);
+
+    // Without: the same enemy on the same hex, its window already
+    // spent.  ⚠ `stand: 0.0` is what every hand-built `Enemy` literal
+    // in the suite gets by omitting the field, which is the neutral
+    // value being the zero.
+    twc_b = wave_state_empty();
+    twc_b.enemies += [Enemy { q: 12, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 3 as u8, alive: true }];
+    assert(!enemy_standing(twc_b.enemies[0] ?? Enemy {}),
+           "the control has no window");
+
+    twc_arrive_a = arrival_tick(twc_a, twc_pal);
+    twc_arrive_b = arrival_tick(twc_b, twc_pal);
+
+    assert(twc_arrive_b > 0, "the control arrives: {twc_arrive_b}");
+    assert(twc_arrive_a - twc_arrive_b == WINDOW_TICKS,
+           "the window costs exactly {WINDOW_TICKS} ticks: "
+           + "{twc_arrive_a} with it, {twc_arrive_b} without");
+}
+
+// How many ticks until this state's first enemy reaches the core hex.
+// 0 if it never does.
+fn arrival_tick(state: WaveState, pal: vector<GroundType>) -> integer {
+    at_pw = corridor();
+    at_mw = spawn_at_twelve();
+    at_at = 0;
+    for at_n in 1..=60 {
+        if at_at > 0 { continue; }
+        wave_tick(state, pal, at_pw, at_mw, core());
+        at_e = state.enemies[0] ?? Enemy {};
+        if at_e.q == 0 && at_e.r == 0 { at_at = at_n; }
+    }
+    at_at
+}
+
+// ⚠ **A standing enemy is VISIBLE, not invulnerable** — the design's
+// own word.  A tower behind the corridor kills it where it stands, and
+// it never took a step.
+//
+// This is what separates "the window costs the enemy time" from "the
+// window is a shield": a player who spends it building or repositioning
+// is spending it on a wave that can already be shot at.
+fn test_a_tower_kills_it_where_it_stands() {
+    tat_pw  = corridor();
+    tat_mw  = spawn_at_twelve();
+    // Range is 15 by `lat_distance`, so a tower at (2, 0) reaches the
+    // marker at (12, 0) with room to spare, and the corridor is flat.
+    place_marker(tat_mw, 2, 0, MARKER_KIND_TOWER as u8, 0 as u8);
+
+    tat_s = wave_state_empty();
+    spawn_wave(tat_s, 1, ENEMY_KIND_REGULAR as u8, tat_mw, 0, 0,
+               SPAWN_DISABLE_RADIUS);
+
+    tat_pal = pal();
+    for _ in 0..WINDOW_TICKS {
+        wave_tick(tat_s, tat_pal, tat_pw, tat_mw, core());
+    }
+
+    tat_e = tat_s.enemies[0] ?? Enemy {};
+    assert(!tat_e.alive, "the tower killed it inside the window");
+    assert(tat_e.q == 12 && tat_e.r == 0,
+           "and it died on its marker, never having moved: "
+           + "({tat_e.q}, {tat_e.r})");
+}
+
+// ⚠ **A standing enemy attacks NOTHING.**  It has not begun its
+// approach, so nothing is in its way — which is one fact
+// (`enemy_standing`) with three consequences, and this is the one a
+// wall can see.
+//
+// The wall is one hex from the marker, so the enemy is blocked from its
+// very first tick and would chew immediately without the guard.
+fn test_a_standing_enemy_chews_nothing() {
+    tas_pw = painted_empty();
+    for tas_q in 0..=14 { paint(tas_pw, tas_q, 0, as_u8(GRASS)); }
+    paint(tas_pw, 11, 0, as_u8(WALL));
+
+    tas_mw = spawn_at_twelve();
+    tas_s  = wave_state_empty();
+    spawn_wave(tas_s, 1, ENEMY_KIND_REGULAR as u8, tas_mw, 0, 0,
+               SPAWN_DISABLE_RADIUS);
+
+    tas_pal = pal();
+    for _ in 0..WINDOW_TICKS {
+        wave_tick(tas_s, tas_pal, tas_pw, tas_mw, core());
+    }
+    assert(damage_taken(tas_s.damage, 11, 0) == 0.0,
+           "nothing chewed during the window: "
+           + "{damage_taken(tas_s.damage, 11, 0)}");
+
+    // And the moment it is over, the siege starts.
+    for _ in 0..5 {
+        wave_tick(tas_s, tas_pal, tas_pw, tas_mw, core());
+    }
+    assert(damage_taken(tas_s.damage, 11, 0) > 0.0,
+           "and it chews once the window is spent: "
+           + "{damage_taken(tas_s.damage, 11, 0)}");
+}
+
+// ⚠ **Both spawners give the window**, because there is only one
+// `spawn_wave`.  W1's schedule is the other door, and a scenario that
+// got a window from a `.keys` script but not from the schedule would
+// measure a game the player never plays.
+fn test_the_schedule_gives_its_wave_a_window_too() {
+    tsg_pw  = corridor();
+    tsg_mw  = spawn_at_twelve();
+    tsg_pal = pal();
+    tsg_s   = wave_state_empty();
+
+    tsg_s.schedule = wave_schedule_of([1], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tsg_s.schedule);
+
+    // Tick 1 spawns it AND spends the first tick of its window, so the
+    // eight ticks of standing include this one.
+    for tsg_n in 1..=WINDOW_TICKS {
+        wave_tick(tsg_s, tsg_pal, tsg_pw, tsg_mw, core());
+        tsg_e = tsg_s.enemies[0] ?? Enemy {};
+        assert(tsg_e.q == 12 && tsg_e.r == 0,
+               "tick {tsg_n}: the schedule's wave stands too, "
+               + "not ({tsg_e.q}, {tsg_e.r})");
+    }
+
+    wave_tick(tsg_s, tsg_pal, tsg_pw, tsg_mw, core());
+    tsg_after = tsg_s.enemies[0] ?? Enemy {};
+    assert(tsg_after.q == 11, "and then it walks: {tsg_after.q}");
+}
+
+// A whole wave stands together and unstacks afterwards, one per tick —
+// so the window delays the queue rather than replacing it.
+//
+// ⚠ `enemies distinct` in a `.keys` script is red for `WINDOW_TICKS`
+// longer than it used to be, and this is why.
+fn test_a_stacked_wave_stands_then_unstacks() {
+    tsw_pw  = corridor();
+    tsw_mw  = spawn_at_twelve();
+    tsw_pal = pal();
+    tsw_s   = wave_state_empty();
+
+    spawn_wave(tsw_s, 3, ENEMY_KIND_REGULAR as u8, tsw_mw, 0, 0,
+               SPAWN_DISABLE_RADIUS);
+
+    for _ in 0..WINDOW_TICKS {
+        wave_tick(tsw_s, tsw_pal, tsw_pw, tsw_mw, core());
+    }
+    for tsw_e in tsw_s.enemies {
+        assert(tsw_e.q == 12, "all three still stacked on the marker");
+    }
+
+    // Three more ticks: one leaves per tick, exactly as before.
+    for _ in 0..3 {
+        wave_tick(tsw_s, tsw_pal, tsw_pw, tsw_mw, core());
+    }
+    tsw_seen: vector<integer> = [];
+    for tsw_e2 in tsw_s.enemies { tsw_seen += [tsw_e2.q]; }
+    assert(len(tsw_seen) == 3, "still three");
+    assert((tsw_seen[0] ?? 0) != (tsw_seen[1] ?? 0)
+           || (tsw_seen[1] ?? 0) != (tsw_seen[2] ?? 0),
+           "and they have come apart: {tsw_seen[0] ?? 0}, "
+           + "{tsw_seen[1] ?? 0}, {tsw_seen[2] ?? 0}");
+}
+
+// ⚠ **A hand-built `Enemy` has no window**, which is the zero-neutral
+// rule holding: every `Enemy { … }` literal in the suite predates this
+// field and must keep meaning "a robot that walks".
+fn test_a_hand_built_enemy_walks_at_once() {
+    thb_pw  = corridor();
+    thb_mw  = spawn_at_twelve();
+    thb_s   = wave_state_empty();
+    thb_s.enemies += [Enemy { q: 12, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 3 as u8, alive: true }];
+
+    wave_tick(thb_s, pal(), thb_pw, thb_mw, core());
+
+    thb_e = thb_s.enemies[0] ?? Enemy {};
+    assert(thb_e.q == 11, "it moved on the first tick: {thb_e.q}");
+}

@@ -262,7 +262,7 @@ fn test_an_enemy_spawned_inside_a_wall_is_a_fault() {
 // useless as one that never could be.
 fn test_a_legal_walk_reads_green() {
     tlw = script_run(editor_state_new(PALETTE),
-        "{CORE_SPAWN_AND_WALL}\ntick 8\nenemy 0 4 0\nenemies passable", SHOTS);
+        "{CORE_SPAWN_AND_WALL}\ntick 16\nenemy 0 4 0\nenemies passable", SHOTS);
 
     assert(tlw.ok, "{script_describe(tlw)}");
     assert(tlw.checks == 2, "the hex and the passability: {tlw.checks}");
@@ -307,8 +307,10 @@ fn test_an_index_past_the_roster_is_an_error() {
 }
 
 fn test_a_wrong_hex_names_where_the_enemy_actually_is() {
+    // ⚠ Ten ticks, not two (plan 16 W2): eight of them are the pre-walk
+    // window, so the enemy has walked two and is at (10, 0).
     twh = script_run(editor_state_new(PALETTE),
-        "{CORE_SPAWN_AND_WALL}\ntick 2\nenemy 0 0 0", SHOTS);
+        "{CORE_SPAWN_AND_WALL}\ntick 10\nenemy 0 0 0", SHOTS);
 
     assert(!twh.ok, "it is at (10, 0), not at the core");
     assert(twh.message.contains("(10, 0)"), "naming what it measured: {twh.message}");
@@ -346,7 +348,7 @@ fn test_enemies_walk_the_ground_plays_green() {
     tew = script_run_file(tew_s, "tests/scripts/enemies-walk-the-ground.keys", SHOTS);
 
     assert(tew.ok, "enemies-walk-the-ground: {script_describe(tew)}");
-    assert(tew.checks == 21, "it made {tew.checks} measurements, expected 21");
+    assert(tew.checks == 24, "it made {tew.checks} measurements, expected 24");
     assert(tew.snaps == 1, "and took its picture");
     assert(alive_count(tew.wave) == 3, "three enemies walked the whole corridor");
 }
