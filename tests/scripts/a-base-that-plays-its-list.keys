@@ -1,0 +1,96 @@
+# a-base-that-plays-its-list — plan 16 W4, the whole plan in one run.
+#
+# The first scenario in the suite where nothing outside the simulation
+# says when a wave arrives.  The script arms a list, the player drives
+# out and pokes a spawn marker eighteen hexes from home, and from that
+# point the base plays on its own: wave 1 stands its five seconds, walks
+# in, is fought, and wave 2 follows a lull later with no line here
+# asking for it.
+#
+# ⚠ **This is what plan 15 C3 was waiting for.**  Every clock plans 12,
+# 13, 14 and 15 measured was measured during wave 1, on a base that
+# ended when the first wave got in.  `tests/16_w4_the_real_length.loft`
+# is the measurement; this file is the game-level record that it is a
+# game and not a fixture.
+#
+# ⚠ The trip out is the trigger's price, and it is not decoration: the
+# player is eighteen hexes from the core at the moment the wave stands
+# up, and has to drive home in front of it.
+
+echo a base that plays its list: poked once, then it runs on its own
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+click 1 0
+click 1 2
+click 1 -2
+marker 1 0 tower
+marker 1 2 tower
+
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 18 0
+marker 18 0 spawn 3
+
+count markers 5 5
+do toggle_mode
+
+palette 5
+drag -3 -2 20 -2
+drag -3 -1 20 -1
+drag -3 0 20 0
+drag -3 1 20 1
+drag -3 2 20 2
+count painted 120 120
+
+# The wall, with (6, 0) left open — the gate a crew member can plug.
+palette 9
+click 6 -2
+click 6 -1
+click 6 1
+click 6 2
+kind 6 0 grass
+kind 6 1 wall
+
+crew 6 0
+helper 0 6 0
+roster 1 1
+park 0 0
+
+# The mission's list, armed.  Nothing has poked it.
+schedule 12 12 12 12
+waves 0 0
+count alive 0 0
+
+# ── The poke ────────────────────────────────────────────────────
+drive 18 0
+tick 10
+vehicle 18 0
+waves 1 1
+count alive 12 12
+
+# ── The drive home, in front of them ────────────────────────────
+drive 0 0
+tick 10
+vehicle 0 0
+
+# ── And the base plays on ───────────────────────────────────────
+#
+# ⚠ No line here asks for wave 2.  It arrives because wave 1 was
+# cleared and the lull ran out.
+fall 600
+waves 2 2
+ticks 240 270
+
+# The gate blocker was lost holding it, and nobody went back.
+roster 0 0
+cargo 1 1
+
+snap w4_a_base_that_plays_its_list

@@ -1,0 +1,396 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 16 phase W4 — the base at its real length, and what a retrieval
+// is worth on it.
+//
+// This is the measurement the whole plan exists to make possible.
+// [plan 15](../plans/15-the-carry-model/README.md) C3 asked whether
+// fetching a downed crew member pays, measured 93/87/87 ticks on a base
+// that ended in wave 1, and refused to answer — a 60 s recovery is
+// priced against `numbers.json` § wave_system's SEVEN waves, and
+// dryopea played one.  ⚠ C3 named the wave system as the trigger for
+// re-measuring.  It has landed; this is the re-measurement.
+//
+// ── The two findings, and neither is the one that was expected ──
+//
+// 1. **The authored seven-wave list is not survivable**, and the
+//    binding constraint is the tower's 30-shot magazine.  The list is
+//    205 robots — 6150 HP — and a tower is 300 HP of ammunition, for
+//    ever, because nothing repairs or reloads one.  The best band this
+//    suite can build plays FOUR of the seven and falls at 321.
+//
+// 2. **A retrieval is still worth nothing — and the reason has
+//    changed.**  On a base 2.7x longer than C3's the crew member really
+//    does come back (tick 187, where C3 could never reach 90 ticks of
+//    recovery at all), and the three clocks are 247 / 248 / 248.  It is
+//    no longer *"the base ends first"*.  It is that **the job is gone
+//    by the time they return**: a crew member in the gate is worth 53
+//    ticks while the wave is still outside, and the wave is on the core
+//    long before the ninety ticks are up.
+//
+// ── ⚠ Why there is no base where it pays, and the sweep that says so ─
+//
+// Two forces pull against each other and nothing sits between them:
+//
+//   too few towers -> the blocker dies, and the base is gone in ~60
+//                     ticks, which is less than the 90 it must survive
+//   enough towers  -> the wave never reaches the gate, so the blocker
+//                     is never lost and there is nothing to retrieve
+//
+// Swept over 3, 4, 5, 6, 10 and 15 towers and over waves of 8, 12, 20
+// and 30, on two base shapes: **every configuration lands in one camp
+// or the other**.  § The dichotomy is the two ends of it as assertions.
+//
+// ⚠ **So the wave system was not what unblocked this.**  What would is
+// something that lets a base RECOVER between waves — and the design has
+// exactly one: `DESIGN.md` § 7's tower-top repair and hot-swap, which
+// `plans/16` § What this plan does NOT build names as out of scope and
+// which is the carry model's second consumer.  ⚠ That is a roadmap
+// finding, not a tuning one, and shortening the recovery to fit would
+// be the same mistake C3 refused to make.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+// The one hex left open in the wall — where a crew member is worth
+// standing, and where it dies.
+const GATE_Q: integer = 6;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// What one run of a base came to.  ⚠ `fell` is 0 for a base that never
+// fell, which is why every reading below says which it means.
+struct RunFacts {
+    fell:  integer,
+    lost:  integer,
+    back:  integer,
+    sent:  integer,
+    alive: integer,
+    black: integer,
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 1. The authored seven-wave list
+// ─────────────────────────────────────────────────────────────────
+
+// A seven-row band, sealed at q = 6, with three towers behind the wall
+// and the spawn marker at 14.
+fn seven_wave_base() -> MarkerWorld {
+    swb_mw = marker_empty();
+    place_marker(swb_mw, 14, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    place_marker(swb_mw, 4,  0, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(swb_mw, 4,  2, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(swb_mw, 4, -2, MARKER_KIND_TOWER as u8, 0 as u8);
+    swb_mw
+}
+
+fn seven_wave_ground() -> PaintedWorld {
+    swg_pw = painted_empty();
+    for swg_r in -3..=3 {
+        for swg_q in -6..=20 { paint(swg_pw, swg_q, swg_r, as_u8(GRASS)); }
+    }
+    for swg_r2 in -3..=3 { paint(swg_pw, 6, swg_r2, as_u8(WALL)); }
+    swg_pw
+}
+
+fn play_seven(limit: integer) -> RunFacts {
+    ps_pw  = seven_wave_ground();
+    ps_mw  = seven_wave_base();
+    ps_pal = pal();
+    ps_s   = wave_state_empty();
+    ps_s.schedule = wave_schedule_of(wave_list_default(), INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(ps_s.schedule);
+
+    ps_fell = 0;
+    for ps_n in 1..=limit {
+        if ps_fell > 0 { continue; }
+        wave_tick(ps_s, ps_pal, ps_pw, ps_mw, core());
+        if wallet_broke(ps_s.wallet) { ps_fell = ps_n; }
+    }
+
+    ps_black = 0;
+    if tower_black(ps_s.towers, 4,  0) { ps_black += 1; }
+    if tower_black(ps_s.towers, 4,  2) { ps_black += 1; }
+    if tower_black(ps_s.towers, 4, -2) { ps_black += 1; }
+
+    RunFacts { fell: ps_fell, lost: 0, back: 0,
+               sent: wave_schedule_sent(ps_s.schedule),
+               alive: alive_count(ps_s), black: ps_black }
+}
+
+// ⚠⚠ **The list the design authored cannot be played to its end**, and
+// this is the phase's first finding rather than a scenario that needs a
+// better base.  Four waves of seven, and the run is over at 321.
+//
+// ⚠⚠ **And the constraint is the MAGAZINE, not the wall and not the
+// wave.**  Every tower on the base has fired all thirty of its shots
+// and gone black, and nothing in dryopea reloads one — `tower_black` is
+// permanent for the rest of the run.  The arithmetic says the same
+// thing without a simulation: the list is 205 robots at 30 HP, and a
+// tower is thirty shots at 10 HP.  Twenty-one towers, and that is with
+// every shot landing on something not already dead.
+//
+// ⚠ One run for both halves, deliberately — it is a 321-tick
+// simulation over the widest band in the suite, and the clock and the
+// magazine are two readings of it rather than two experiments.
+fn test_the_authored_seven_wave_list_is_not_survivable() {
+    ttl = play_seven(400);
+
+    assert(ttl.fell == 321, "the base falls at 321: {ttl.fell}");
+    assert(ttl.sent == 4,
+           "having played four of seven waves: {ttl.sent} of "
+           + "{len(wave_list_default())}");
+    assert(ttl.alive == 16,
+           "with the fourth wave still on it: {ttl.alive}");
+    assert(ttl.black == 3,
+           "and all three towers black: {ttl.black} of 3");
+
+    ttl_robots = 0;
+    for ttl_w in wave_list_default() { ttl_robots += ttl_w; }
+    ttl_hp    = (ttl_robots as float) * enemy_max_hp(ENEMY_KIND_REGULAR as u8);
+    ttl_tower = (TOWER_SHOT_BUDGET as float) * TOWER_DAMAGE_PER_SHOT;
+
+    assert(ttl_robots == 205, "the list is 205 robots: {ttl_robots}");
+    assert(ttl_hp == 6150.0, "which is 6150 HP: {ttl_hp}");
+    assert(ttl_tower == 300.0, "and a tower is 300 HP of it: {ttl_tower}");
+    assert(ttl_hp / ttl_tower > 20.0,
+           "so the list needs more than twenty towers, perfectly aimed: "
+           + "{ttl_hp / ttl_tower}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 2. What a retrieval is worth, on a base that outlives the clock
+// ─────────────────────────────────────────────────────────────────
+//
+// C3's band: five rows, a wall at q = 6 with (6, 0) left open, and a
+// spawn marker at 18.  A crew member stands in the gate — a blocker
+// with nowhere for the wave to go round — and is destroyed there.
+//
+// ⚠ **The gate is what makes this base measurable at all** (plan 15
+// C3): a one-hex corridor caps the drain at the enemies that fit beside
+// the core, so its clock cannot see anything the crew does.  Here the
+// wave funnels, so a crew member can be lost, and then spreads, so the
+// drain scales.
+
+fn gate_ground() -> PaintedWorld {
+    gg_pw = painted_empty();
+    for gg_r in -2..=2 {
+        for gg_q in -3..=20 { paint(gg_pw, gg_q, gg_r, as_u8(GRASS)); }
+    }
+    paint(gg_pw, 6, -2, as_u8(WALL));
+    paint(gg_pw, 6, -1, as_u8(WALL));
+    paint(gg_pw, 6,  1, as_u8(WALL));
+    paint(gg_pw, 6,  2, as_u8(WALL));
+    gg_pw
+}
+
+fn gate_base(towers: integer) -> MarkerWorld {
+    gb_mw = marker_empty();
+    place_marker(gb_mw, 18, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    if towers > 0 { place_marker(gb_mw, 1,  0, MARKER_KIND_TOWER as u8, 0 as u8); }
+    if towers > 1 { place_marker(gb_mw, 1,  2, MARKER_KIND_TOWER as u8, 0 as u8); }
+    if towers > 2 { place_marker(gb_mw, 1, -2, MARKER_KIND_TOWER as u8, 0 as u8); }
+    if towers > 3 { place_marker(gb_mw, 3,  1, MARKER_KIND_TOWER as u8, 0 as u8); }
+    if towers > 4 { place_marker(gb_mw, 3, -1, MARKER_KIND_TOWER as u8, 0 as u8); }
+    if towers > 5 { place_marker(gb_mw, 3,  0, MARKER_KIND_TOWER as u8, 0 as u8); }
+    gb_mw
+}
+
+// What the player does after the crew member is lost.
+const STAY:    integer = 0;   // nothing — the control
+const ERRAND:  integer = 1;   // drive out to the wreck and back, no carry
+const FETCH:   integer = 2;   // carry it home, and send it back out
+const NO_GATE: integer = 4;   // the crew member never stands in the gate
+
+// ⚠ **The player's script is driven off EVENTS, never tick numbers.**
+// A run scripted by tick number measures the ticks it was given; one
+// that reacts to the loss measures the base.
+fn gate_run(towers: integer, mode: integer, limit: integer) -> RunFacts {
+    gr_pw  = gate_ground();
+    gr_mw  = gate_base(towers);
+    gr_pal = pal();
+    gr_s   = wave_state_empty();
+    gr_s.schedule = wave_schedule_of([12, 12, 12, 12], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(gr_s.schedule);
+    if mode == NO_GATE {
+        gr_s.crew += [helper_new(0, 1)];
+    } else {
+        gr_s.crew += [helper_new(GATE_Q, 0)];
+    }
+    vehicle_place(gr_s.player, 0, 0);
+
+    gr_fell  = 0;
+    gr_lost  = 0;
+    gr_back  = 0;
+    gr_stage = 0;
+    for gr_i in 1..=limit {
+        if gr_fell > 0 { continue; }
+
+        if gr_lost > 0 && mode > STAY && mode != NO_GATE {
+            if gr_stage == 0 {
+                vehicle_drive(gr_s.player, GATE_Q, 0);
+                gr_stage = 1;
+            } else if gr_stage == 1 && gr_s.player.q == GATE_Q
+                      && gr_s.player.r == 0 {
+                if mode == FETCH { wave_take(gr_s, BLOCKER_PLAYER); }
+                vehicle_drive(gr_s.player, 0, 0);
+                gr_stage = 2;
+            } else if gr_stage == 2 && gr_s.player.q == 0 && gr_s.player.r == 0 {
+                if mode == FETCH { wave_drop(gr_s, BLOCKER_PLAYER, core()); }
+                gr_stage = 3;
+            } else if gr_stage == 3 && mode == FETCH
+                      && !helper_wrecked(gr_s.crew[0] ?? Helper { }) {
+                // Back on the roster — send it to do its job again.
+                gr_back = gr_i;
+                helper_drive(gr_s.crew[0] ?? Helper { }, GATE_Q, 0);
+                gr_stage = 4;
+            }
+        }
+
+        wave_tick(gr_s, gr_pal, gr_pw, gr_mw, core());
+
+        if gr_lost == 0 && helper_wrecked(gr_s.crew[0] ?? Helper { }) {
+            gr_lost = gr_i;
+        }
+        if wallet_broke(gr_s.wallet) { gr_fell = gr_i; }
+    }
+
+    RunFacts { fell: gr_fell, lost: gr_lost, back: gr_back,
+               sent: wave_schedule_sent(gr_s.schedule),
+               alive: alive_count(gr_s), black: 0 }
+}
+
+// ⚠⚠ **THE PHASE: three clocks on one base, and the retrieval is worth
+// one tick.**  The same band, the same gate, the same wave list, the
+// same crew member lost in the same hex on the same tick.  The runs
+// differ only in what the player does afterwards.
+//
+//   stays at the core                            247
+//   drives out to the wreck and back             248
+//   fetches it, delivers it, sends it back out   248
+//
+// ⚠ The middle run is the control that keeps the errand and the carry
+// apart — plan 15 C3's rule, and it is doing more work here than it did
+// there: without it, "247 to 248" reads as the carry buying a tick.
+fn test_the_three_clocks_on_a_multi_wave_base() {
+    ttc_stay   = gate_run(3, STAY,   400);
+    ttc_errand = gate_run(3, ERRAND, 400);
+    ttc_fetch  = gate_run(3, FETCH,  400);
+
+    assert(ttc_stay.fell == 247, "staying: {ttc_stay.fell} ticks");
+    assert(ttc_errand.fell == 248, "the errand alone: {ttc_errand.fell}");
+    assert(ttc_fetch.fell == 248, "fetching and delivering: {ttc_fetch.fell}");
+
+    assert(ttc_fetch.fell - ttc_errand.fell == 0,
+           "so the CARRY is worth nothing at all: "
+           + "{ttc_fetch.fell - ttc_errand.fell} ticks");
+
+    // The same crew member, lost on the same tick in all three — so the
+    // clocks differ in the player's answer to it and in nothing else.
+    assert(ttc_stay.lost == 90 && ttc_errand.lost == 90
+           && ttc_fetch.lost == 90,
+           "lost on tick 90 every time: {ttc_stay.lost} / "
+           + "{ttc_errand.lost} / {ttc_fetch.lost}");
+}
+
+// ⚠⚠ **And this is what is NEW: the crew member comes back.**  C3 could
+// not reach this state at all — the base had 79 ticks left when the
+// wreck was delivered and recovery is 90 — so `roster 0 0` at the end of
+// a successful retrieval was the whole of its finding.
+//
+// Here the delivery lands at ~97, the ninety ticks run out at 187, and
+// the base has another 61 ticks to live.  ⚠ **The mechanic works
+// end to end and the clock does not move**, which is a strictly sharper
+// statement than C3 could make and the reason this phase is not a
+// re-run of it.
+// ⚠ It carries the phase's NEGATIVE CONTROL with it: a reading taken on
+// a base that still dies in wave 1 has measured nothing new, so the
+// same run has to show this base outliving both C3's 93 ticks and the
+// 90-tick recovery itself.
+fn test_the_crew_member_now_comes_back_and_it_changes_nothing() {
+    tcm = gate_run(3, FETCH, 400);
+
+    assert(tcm.back == 187, "back on the roster at tick 187: {tcm.back}");
+    assert(tcm.back - tcm.lost >= 90,
+           "which is the whole 90-tick recovery after the loss: "
+           + "{tcm.back - tcm.lost}");
+    assert(tcm.fell - tcm.back == 61,
+           "and the base lives another 61 ticks with them back: "
+           + "{tcm.fell - tcm.back}");
+
+    // The negative control.
+    assert(tcm.sent >= 2, "the base played more than one wave: {tcm.sent}");
+    assert(tcm.fell > 93 * 2,
+           "and lasted more than twice C3's 93 ticks: {tcm.fell}");
+    assert((tcm.fell as float) > HELPER_RECOVERY_SECONDS / TICK_SECONDS,
+           "which is longer than the 90-tick recovery — the thing C3 "
+           + "could not arrange: {tcm.fell}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3. ⚠⚠ The dichotomy — why no base pays
+// ─────────────────────────────────────────────────────────────────
+
+// **Dying in the gate is worth 53 ticks.  Coming back is worth one.**
+//
+// The same base with the crew member parked beside the core instead of
+// in the gate falls at 194 — 53 ticks EARLIER than the run where it
+// stands in the gate and is destroyed there.  So the crew member's job
+// is real and it is large; what is worthless is having them back after
+// the wave is through, because by then there is no gate to hold.
+//
+// ⚠ This is the pair that says the finding is about TIMING rather than
+// about the crew member being useless, and it is the one to keep if
+// only one survives.
+fn test_dying_in_the_gate_is_worth_more_than_coming_back() {
+    tdg_held  = gate_run(3, STAY,    400);
+    tdg_never = gate_run(3, NO_GATE, 400);
+
+    assert(tdg_never.lost == 0,
+           "the crew member beside the core is never lost: {tdg_never.lost}");
+    assert(tdg_never.fell == 194, "and its base falls at 194: {tdg_never.fell}");
+    assert(tdg_held.fell - tdg_never.fell == 53,
+           "so standing in the gate and dying there is worth 53 ticks: "
+           + "{tdg_held.fell - tdg_never.fell}");
+
+    // Against one tick for the whole retrieval.
+    tdg_fetch = gate_run(3, FETCH, 400);
+    assert(tdg_fetch.fell - tdg_held.fell == 1,
+           "against ONE for fetching them back: "
+           + "{tdg_fetch.fell - tdg_held.fell}");
+}
+
+// ⚠⚠ **The other end of the dichotomy: a base strong enough to survive
+// never loses anybody.**  Six towers on the same band clears all four
+// waves, the wave never reaches the gate, and there is nothing to
+// retrieve.
+//
+// So the two camps are exhaustive on this base — swept over 3, 4, 5, 6,
+// 10 and 15 towers and waves of 8, 12, 20 and 30 — and nothing sits
+// between them.  A retrieval pays only where a base can RECOVER between
+// waves, which is `DESIGN.md` § 7's tower repair and is not built.
+fn test_a_base_that_survives_never_loses_anybody() {
+    tab = gate_run(6, STAY, 400);
+
+    assert(tab.fell == 0, "six towers and the base never falls: {tab.fell}");
+    assert(tab.sent == 4, "having played the whole list: {tab.sent}");
+    assert(tab.alive == 0, "with nothing left standing: {tab.alive}");
+    assert(tab.lost == 0,
+           "and the gate blocker was never even hit: {tab.lost}");
+}

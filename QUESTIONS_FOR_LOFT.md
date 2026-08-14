@@ -40,6 +40,46 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### A local bound to a FORWARD-declared call panics the parser
+
+**Filed:** [loft#918](https://github.com/loft-lang/loft/issues/918)
+(`bug`, `sev:high`, `area:parser`, `wa:clean`, `hit-by:dryopea`).
+**Repro:** [`loft_repros/forward_call_bound_to_a_local.loft`](loft_repros/forward_call_bound_to_a_local.loft)
+— identical on both backends.
+
+```loft
+fn wrapper(n: integer) -> text {
+    w_t = inner(n, 12);     // `inner` is declared BELOW
+    w_t
+}
+fn inner(a: integer, b: integer) -> text { "{a}/{b}" }
+```
+
+aborts with `H5 two-pass contract: def n_wrapper grew a pass-2-only
+attribute w_t … a real cross-pass divergence` — a raw Rust panic at
+`src/parser/mod.rs:1904`, so there is no line number for the offending
+call.
+
+⚠ **Neither half fires on its own**: the callee declared first with the
+same local is clean, and the forward reference returned directly is
+clean.  Both controls are in the repro.
+
+⚠ **It bites because binding a call to a local is dryopea's documented
+workaround for [loft#877](https://github.com/loft-lang/loft/issues/877)
+and [loft#880](https://github.com/loft-lang/loft/issues/880)** — so
+applying either fix above the callee's definition turns a working
+program into a compiler abort, and the panic names neither.
+
+⚠ Same guard as [loft#763](https://github.com/loft-lang/loft/issues/763)
+(closed), which needed an interface forwarding to a generic bounded by
+it.  There are no interfaces and no generics here, so this is a residual
+neighbouring shape rather than a regression — the same relationship
+loft#908 has to loft#867.
+
+**dryopea-side:** move the callee above the caller, or inline the call
+into the return expression.  Surfaced in a plan 16 W4 probe; no shipped
+dryopea file carries the shape.
+
 ### A struct literal that omits a field silently takes the type's zero
 
 **Filed:** [loft#914](https://github.com/loft-lang/loft/issues/914)

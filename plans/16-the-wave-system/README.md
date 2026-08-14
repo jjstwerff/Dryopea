@@ -9,8 +9,16 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**W0 + W1 + W2 + W3 shipped** (2026-08-14).  W4 is next.  Suite **938
-green**, gate **26 scripts / 478 measurements**.
+**COMPLETE** (2026-08-14) — W0 + W1 + W2 + W3 + W4.  Suite **943 green**
+(~112 s — W4's measurements are 13 s of whole-base simulations), gate
+**27 scripts / 498 measurements**.
+
+**W4 answered the question the plan was named for, and the answer is
+no.**  On a base 2.7x longer than the one plan 15 C3 measured, where a
+retrieved crew member really does come back, a retrieval is worth **one
+tick**.  ⚠ The wave system was C3's named trigger for re-measuring; it
+has landed and it is **not** what unblocks the retrieval.  § W4 has the
+numbers and what does.
 
 ⚠ **The whole plan is scaffolding.**  Project owner, 2026-08-14: *"it
 will be gone before the first game ships as I want natural patterns
@@ -21,6 +29,78 @@ the **spawn-marker model goes with it**.  So this plan exists to make a
 base long enough to MEASURE, and nothing in it is worth polishing —
 when natural patterns arrive, expect `waves.loft` and `spawn.loft`'s
 marker round-robin to be deleted rather than migrated.
+
+### W4 — the base at its real length, and what a retrieval is worth
+
+Two findings, and neither is the one the plan expected.
+
+#### ⚠⚠ 1. The authored seven-wave list is not survivable, and the constraint is the MAGAZINE
+
+The best band this suite can build — seven rows, sealed at `q = 6`,
+three towers behind the wall — plays **four of the seven waves and
+falls at 321**, with all three towers black.
+
+The arithmetic says it without a simulation: the list is `[5, 8, 12,
+20, 30, 50, 80]` = **205 robots = 6150 HP**, and a tower is thirty
+shots at 10 HP = **300 HP, for the whole run**, because nothing
+reloads or repairs one.  That is **21 towers minimum**, and only if
+every shot lands on something not already dead.
+
+⚠ So "seven waves long" is a property of `numbers.json`, not of any
+base dryopea can currently build — and the gap is a named non-goal of
+this plan (§ What this plan does NOT build: no tower repair), not a
+tuning miss.
+
+#### ⚠⚠ 2. A retrieval is still worth nothing — and the reason has changed
+
+C3's gated band, now with three towers and a four-wave list.  A crew
+member stands in the gate, blocks, and is destroyed there on tick 90 in
+every run.  The runs differ only in what the player does next:
+
+| | ticks |
+|---|---|
+| stays at the core | **247** |
+| drives out to the wreck and back (the errand control) | 248 |
+| fetches it, delivers it, and sends them back out | **248** |
+
+⚠ **The crew member DOES come back** — delivered at ~97, back on the
+roster at **187**, with 61 ticks of base still to live.  C3 could never
+reach that state at all: it had 79 ticks left when the wreck was
+delivered and recovery is 90, so `roster 0 0` at the end of a
+successful retrieval was the whole of its finding.  **The mechanic now
+works end to end and the clock still does not move**, which is a
+strictly sharper statement.
+
+⚠ **The job is gone by the time they return.**  A crew member in the
+gate is worth **53 ticks** — the same base with them parked beside the
+core instead falls at 194 — and the wave is on the core long before the
+ninety ticks are up.  Dying in the gate is worth 53; coming back is
+worth 1.
+
+#### ⚠⚠ The dichotomy: why no base pays
+
+Two forces pull against each other and nothing sits between them:
+
+| the base | the blocker | the recovery |
+|---|---|---|
+| **falls** (≤ 5 towers) | lost at tick L | the base is gone by L+90 |
+| **survives** (6+ towers) | never lost — the wave never reaches the gate | never needed |
+
+Swept over **3, 4, 5, 6, 10 and 15 towers** and over waves of **8, 12,
+20 and 30**, on two base shapes: every configuration lands in one camp
+or the other.  The one run where the crew member came back is the
+boundary case, and it bought a tick.
+
+⚠ **So what would unblock it is something that lets a base RECOVER
+between waves**, and the design has exactly one: `DESIGN.md` § 7's
+tower-top repair and hot-swap — the carry model's second consumer, and
+a named non-goal here.  ⚠ That is a roadmap finding rather than a
+tuning one, and shortening the recovery to fit would be the same
+mistake C3 refused to make.
+
+⚠ **The player's script in the measurement is driven off EVENTS, never
+tick numbers.**  A run scripted by tick number measures the ticks it
+was given; one that reacts to the loss measures the base.
 
 ### W3 — the provocation trigger: a run that starts itself
 
@@ -325,7 +405,7 @@ everything else dryopea loads.
 | **W1** — the schedule: waves arrive on their own | S | `tests/16_w1_the_schedule.loft` — a defended base plays wave 1 then wave 2 with no script line between them, the lull is 23 ticks counted, and an undefended base still dies in wave 1 and never sees wave 2 | **Done** |
 | **W2** — pre-walk visibility: 5 s standing at the marker | S | `tests/16_w2_the_window.loft` — a wave stands 8 ticks and steps on the 9th; the SAME base run twice, differing only in the window, arrives exactly 8 ticks apart | **Done** |
 | **W3** — the provocation trigger | S | `tests/16_w3_the_provocation.loft` + `tests/scripts/provoking-the-far-marker.keys` — driving onto a marker 14 hexes out starts wave 1; standing on one at 11, which is a LIVE spawn source, never does | **Done** |
-| **W4** — re-measure the base at its real length | S | a seven-wave scenario, and what a retrieval is worth on it — the number [plan 15](../15-the-carry-model/README.md) C3 could not produce | Planned |
+| **W4** — re-measure the base at its real length | S | `tests/16_w4_the_real_length.loft` + `tests/scripts/a-base-that-plays-its-list.keys` — the seven-wave list plays FOUR and falls at 321 with every tower black; and on a 248-tick base where the crew member does come back, the three clocks are 247 / 248 / 248 | **Done** |
 
 ### Why the order is this order
 
@@ -351,7 +431,7 @@ possible, and it needs all three.
 | **W1** ✓ | a defended base plays waves 1..N unattended; an undefended one dies in wave 1 | the wave list is DATA and the schedule is one state machine over it | ✓ the lull is COUNTED at 23 ticks, so a no-lull schedule is red; ✓ 400 ticks on an unclearable wave sends exactly ONE wave, where a timer would have sent five |
 | **W2** ✓ | 8 ticks standing, then a step | the window is the player's information, so it costs the enemies time rather than being cosmetic | ✓ the SAME base with the window and without arrives exactly 8 ticks apart — a cosmetic window leaves both clocks identical; ✓ a tower kills it where it stands, so the window is not a shield |
 | **W3** ✓ | a marker at 14 starts wave 1; one at 11 never does, however long it is stood on | provocation is a POSITION, the rule § 11 wants | ✓ the control marker is a LIVE spawn source, so a trigger with no distance test of its own goes red on a marker that really sends the wave; ✓ an enemy on its own marker provokes nothing, so an occupancy test is red; ✓ the lull sits at 15.0 s under a parked player, so a trigger that re-arms is red |
-| **W4** | the seven-wave clock, and what a retrieval is worth on it | a base long enough to express a 60 s recovery | a reading taken on a base that still dies in wave 1 has measured nothing new |
+| **W4** ✓ | the seven-wave list plays FOUR; the retrieval is worth one tick | a base long enough to express a 60 s recovery — and it now is, so the finding is about the JOB rather than the clock | ✓ the same run asserts the base outlives both C3's 93 ticks and the 90-tick recovery, so a reading on a base that still dies in wave 1 cannot pass; ✓ the errand control keeps the drive and the carry apart; ✓ a crew member never put in the gate falls 53 ticks EARLIER, so "the crew member is useless" is red |
 
 ## What this plan does NOT build
 
@@ -383,17 +463,25 @@ round-robin one when the plan closes.
 1. **What if a wave can neither clear nor kill?**  Enemies with no
    route at all besiege what they cannot climb (plan 11 F7), so a base
    they cannot break and a wallet they cannot reach is a stalemate: the
-   schedule waits for a clear that never comes.  W0 did not produce one
-   — every walled base in it was broken into or cleared — so it is
-   unmeasured rather than impossible.  *Recommendation: let W1's
-   schedule stall honestly rather than adding a timeout, and find out
-   whether a real map can reach the state at all.*
-2. **Does the lull start on the clear, or on the last DEATH?**  They
-   differ when the player kills the last enemy long after the rest —
-   the design says *"between the last enemy dying and the next wave's
-   spawn"*, which is the same thing given the clear is defined by
-   deaths.  *Recommendation: one definition, `alive_count == 0`, and
-   no second clock.*
+   schedule waits for a clear that never comes.  ⚠ **Still unmeasured
+   after W4** — the sweep ran two base shapes over six tower counts and
+   four wave sizes and never produced one; every base either cleared or
+   was broken into.  **Answered as built**: the schedule stalls
+   honestly and there is no timeout, which is the right behaviour for a
+   state that has not been shown to exist.
+2. **Does the lull start on the clear, or on the last DEATH?**
+   **Answered: one definition, `alive_count == 0`, and no second
+   clock** — implemented in W1 and stated at `spawn.loft::
+   wave_schedule_step`.
+3. ⚠ **NEW, from W4: what makes a base RECOVER between waves?**  The
+   phase's finding is that nothing does — a base spends its towers'
+   magazines and its wall and has no way back up, so the lull is a pause
+   rather than a repair window, and every mechanic priced against
+   "lose somebody on wave 2, get them back for wave 5" has nowhere to
+   pay.  The design's answer is `DESIGN.md` § 7's tower-top repair and
+   hot-swap, which is the carry model's second consumer.  *Recommendation:
+   that is the next trigger for re-measuring plan 15 C3, replacing the
+   wave system — recorded in `plans/ROADMAP.md`.*
 
 ## See also
 

@@ -51,6 +51,35 @@ re-measuring these files is the wave system** — shortening the recovery
 to fit a one-wave harness would be tuning a number to fit a test, and
 would be wrong again the moment waves 2..7 exist.
 
+### ⚠⚠ The trigger FIRED, and the answer is still nothing
+
+[Plan 16](../16-the-wave-system/README.md) W4 re-measured this on a
+multi-wave base (2026-08-14), and C3's diagnosis above was **right about
+the cause and wrong about the cure**.
+
+On a 248-tick base playing a four-wave list, the crew member really does
+come back — delivered at ~97, back on the roster at **187**, with 61
+ticks of base left.  The three clocks are **247 / 248 / 248**: the
+retrieval is worth **one tick**.
+
+⚠ **What changed is the reason.**  It is no longer *"the base ends
+first"* — the base now outlives the recovery comfortably.  It is that
+**the job is gone by the time they return**: a crew member in the gate
+is worth 53 ticks (the same base with them parked by the core falls 53
+ticks earlier), and the wave is on the core long before the ninety
+ticks are up.
+
+⚠ **So the wave system was not the cure, and the next trigger is
+`DESIGN.md` § 7's tower repair / hot-swap** — the thing that would let a
+base RECOVER between waves so that a returning crew member has a base
+worth returning to.  It is this plan's own second consumer.  ⚠ The rule
+C3 set still stands: do not shorten the recovery to make the number
+move.
+
+⚠ **These three `.keys` clocks are unchanged** (93 / 87 / 87) — they
+play a scripted single wave and W4 measured a different base rather
+than re-running them.
+
 ⚠ **And the first base could not see it at all.**  A one-hex CORRIDOR
 caps the drain at the one or two enemies that fit beside the core, so
 its clock read 329 ticks for six attackers and 329 for two — the

@@ -1,0 +1,58 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// TRIGGER: a local bound to the result of a call to a function declared
+// LATER in the same file.  Both halves are required — see the two
+// controls below, each of which runs clean.
+//
+// OBSERVED (both `loft --interpret` and the native backend):
+//
+//   error: aborting due to 1 previous error
+//   thread 'main' panicked at src/parser/mod.rs:1904:21:
+//   H5 two-pass contract: def `n_wrapper` (#707) grew a pass-2-only
+//   attribute `w_t` (pass1=1, pass2=2) that is not a documented lazy
+//   append — a real cross-pass divergence
+//
+// EXPECTED: `3/12`.
+//
+// ⚠ Same guard as loft#763 (an interface method forwarding to a generic
+// bounded by that interface), which is CLOSED — so this is a residual
+// neighbouring shape rather than a regression of it.  There are no
+// interfaces and no generics here.
+//
+// ⚠ It bites hardest because binding a call to a local is the
+// documented WORKAROUND for loft#877 (never index a call's result in
+// tail position) and loft#880 (a struct returned through two nested
+// tail calls).  Applying either workaround above the callee's
+// definition turns a working program into a compiler panic.
+//
+// Run:  loft --interpret loft_repros/forward_call_bound_to_a_local.loft
+
+fn wrapper(n: integer) -> text {
+    w_t = inner(n, 12);     // <-- `inner` is declared BELOW
+    w_t
+}
+
+fn inner(a: integer, b: integer) -> text {
+    "{a}/{b}"
+}
+
+// ─── The two controls, each of which compiles and runs ──────────
+//
+// 1. The callee declared FIRST, same local binding: clean.
+//
+//        fn inner2(a: integer, b: integer) -> text { "{a}/{b}" }
+//        fn ok_order(n: integer) -> text {
+//            o_t = inner2(n, 12);
+//            o_t
+//        }
+//
+// 2. The forward reference WITHOUT the local binding: clean.
+//
+//        fn ok_direct(n: integer) -> text { inner(n, 12) }
+//
+// So neither the forward reference nor the local is enough on its own.
+
+fn main() {
+    println(wrapper(3));
+}
