@@ -63,7 +63,8 @@ exists today.
 | HELPERS: an NPC crew on the player's chassis, moving at 2.5 hex/s — the first mover whose speed does NOT fit the tick | [14](plans/14-helpers/README.md), H0-H1 shipped |
 | A helper WORKS: it clears and it earns, on one shared chassis — and a base with two fronts goes 77 → 214 → 242 ticks as the crew grows to cover them | [14](plans/14-helpers/README.md), H2 shipped |
 | A helper can be LOST: the blocker rule covers the whole crew, and a helper that dies WRECKS where it stood while the player respawns | [14](plans/14-helpers/README.md), H3 shipped |
-| **No retrieval, no ordering, no tower repair and no scramble** | [14](plans/14-helpers/README.md), H4 next — blocked on a CARRY model, which serves tower-tops and beacons too and wants its own plan |
+| CARRY: one slot per vehicle, one record per carryable thing — an object is on the ground, in exactly one carrier's slot, or spent, and a lost helper leaves something to fetch | [15](plans/15-the-carry-model/README.md), C0-C1 shipped |
+| **No retrieval, no ordering, no tower repair and no scramble** | [15](plans/15-the-carry-model/README.md), C2 next — it closes [14](plans/14-helpers/README.md) H4 |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -79,7 +80,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 864/864 green under `scripts/test.sh`** (~95 s measured
+**Suite: 883/883 green under `scripts/test.sh`** (~95 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -924,6 +925,41 @@ src/
                    in the tick and reads the opposite way.  The roster
                    slot is KEPT (never compacted), which is what H4's
                    retrieval will need
+  carry.loft       what a vehicle is HOLDING (plan 15 C1) — CARGO_WRECK
+                   / CARGO_NONE / CARGO_GONE, CarryObject + CargoLayer +
+                   cargo_empty / _spawn / _count / _slots / _held_by /
+                   _carrying / _on_ground_near / _get / _owner / _take /
+                   _put / _consume / _spill / _follow / _owned_by /
+                   _slot_fault.
+                   ⚠ **NOT a hash keyed by hex**, and it is the only
+                   runtime layer that is not: two carry objects on one
+                   hex is REACHABLE (a helper carrying a downed
+                   colleague is itself destroyed), and a hash answers
+                   with one of them while the other is a crew member
+                   deleted with no fault raised.  A vector with stable
+                   slots, never compacted — `WaveState.crew`'s shape.
+                   ⚠ **Conservation is STRUCTURAL, not maintained**: ONE
+                   record with an `owner` field, where "on the ground"
+                   is a VALUE of that field rather than a different
+                   place to be.  A pickup is a single assignment, so
+                   duplication is unrepresentable — the move
+                   `damage.loft` makes with *damage TAKEN* and
+                   `wallet.loft` with *points SPENT*.  A slot on the
+                   carrier PLUS a ground layer makes a pickup two
+                   writes, and every path doing one of them duplicates
+                   or destroys.
+                   ⚠ Owner ids are `occupancy.loft`'s BLOCKER
+                   vocabulary — `BLOCKER_NONE` (-1) IS the ground — and
+                   never a second numbering, which is the door H3
+                   deleted `vehicle_on` for.
+                   ⚠ **A KIND is data, not a code path** (the enemy
+                   rule): what varies per kind is only what a valid
+                   destination is and what arriving there does.  A
+                   tower-top or a beacon that needs new CARRYING code
+                   has broken the contract in `plans/15` § C0.4.
+                   ⚠ `cargo_consume` is the ONE way out of the world;
+                   a carrier that DIES calls `cargo_spill` instead, or
+                   dying becomes a free retrieval
   wallet.loft      the run's budget, and the only END STATE dryopea
                    has (plan 12 B6) — WALLET_STARTING_POINTS (200),
                    NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,
@@ -1105,11 +1141,13 @@ suite redirects its own shots into `tests/actual/`.
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
-| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet — runtime, not editor state |
+| `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet + the crew + the cargo — runtime, not editor state |
 | `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, and whether it is in the world at all — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario |
 | `Wallet` | `wallet.loft` | points SPENT out of the run's 200 — zero is a FULL wallet, and the ledger is clamped at the budget so a later credit is not swallowed |
 | `TowerState` | `tower.loft` | per tower: the seconds banked toward its next shot and the shots it has FIRED out of its 30 — runtime, never saved |
 | `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken }` — `taken` is damage ABSORBED, so an `Enemy { … }` literal that omits it is HEALTHY |
+| `CarryObject` | `carry.loft` | one carryable thing — ⚠ `owner` is the WHOLE state machine (ground / a carrier / spent), because two fields that can disagree about one fact is the defect the model exists to make unwritable |
+| `CargoLayer` | `carry.loft` | every carryable thing in the run — ⚠ a VECTOR with stable slots, never a hash by hex: two objects share a hex and a hash deletes one |
 | `HeightLayer` | `height.loft` | metres of rubble piled on the map at runtime, and what it is made of — never saved |
 | `DamageLayer` | `damage.loft` | HP each structure has ABSORBED — runtime, never saved; a miss means undamaged |
 | `FlowField` | `flow.loft` | one class's distance field: cells (distance + the height it was swept with), the core, and the CLIMB it was built for |
@@ -1442,7 +1480,9 @@ signature.
 | Ask what a hex's SURFACE is (vs what is painted on it) | `src/passable.loft::hex_ground` — rubble where a pile stands, the painted kind otherwise.  `painted_ground` is the other half and is what `hex_height` adds the layer to |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Ask who on the PLAYER's side is standing on a hex | `src/occupancy.loft::blocker_at` over the map `spawn.loft::wave_blockers` builds each tick — it answers WHICH vehicle, because the blocker damage has to land on the one in the way.  ⚠ Never a per-vehicle predicate: `vehicle_on` was deleted for being the second door |
-| Take a crew member out of the run | `src/helper.loft::helper_wreck` — and the tick is the only caller, at the end, beside the deaths and the breaks.  ⚠ Nothing brings it back: retrieval is H4 and is blocked on a carry model |
+| Take a crew member out of the run | `src/helper.loft::helper_wreck` — and the tick is the only caller, at the end, beside the deaths and the breaks.  ⚠ It is TWO effects at one site since plan 15 C1: the helper goes down AND a carryable wreck appears where it stood.  ⚠ Nothing brings it back yet: retrieval is plan 15 C2 |
+| Pick something up, carry it, put it down | `src/carry.loft` — one record per object with an `owner`, so conservation is structural.  ⚠ Never add a "carried" field to a vehicle beside it: a slot on the carrier and an owner on the object are two facts that can disagree |
+| Add a new kind of carryable thing | a `CARGO_*` constant plus what a valid destination is and what arriving there does — and NOTHING in the carrying path.  ⚠ A kind that needs new carrying code has broken `plans/15` § C0.4 |
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Ask whether a tower can HIT something | `src/tower.loft::tower_sees` — one straight line from the eye over `hex_height`.  ⚠ Never a "which kinds block" table: a `wall_high` beside the tower does not block and a `wall` near the target does |
 | Ask why a tower is not shooting | `src/tower.loft::tower_sight_fault` names the hex, the two heights and how far along the line it sits; `tower_black` is the other answer |

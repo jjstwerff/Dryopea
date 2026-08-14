@@ -79,6 +79,8 @@ pointer, not a second copy.
 
 | [`14-helpers`](14-helpers/README.md) | G | MH | **Active** (H0-H3 done; H4 blocked on a carry model) | The crew becomes a cooperative — the first mover whose speed does not fit the tick, and a roster that buys COVERAGE rather than throughput (77 → 214 → 242 ticks on a base with two fronts), and a crew member who can be LOST for good |
 
+| [`15-the-carry-model`](15-the-carry-model/README.md) | F | M | **Active** (C0-C1 done) | One slot, one context-resolved action, and nothing is ever lost — the shared blocker helper retrieval, tower-tops and beacons all wait on.  ⚠ Conservation is STRUCTURAL (one record, one owner), so the wrong states cannot be written down; and it refuses the hash-keyed-by-hex shape every other runtime layer uses, because two carry objects on one hex is reachable and a hash deletes one |
+
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.
 

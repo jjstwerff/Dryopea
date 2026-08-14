@@ -1,0 +1,541 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 15 phase C1 — one slot, and nothing is ever lost.
+//
+// ── What this file gates, and why it is a SUM ───────────────────
+//
+// `DESIGN.md` § 11 gives the interface in one line — one slot per
+// vehicle, one context-resolved key — and says nothing about where a
+// carried object lives while it is carried.  That is the whole
+// engineering problem, because it is what conservation turns on: an
+// object is on the ground XOR in exactly one carrier's slot, and it
+// leaves the world only through a deposit.
+//
+// ⚠ **Every assertion about one pickup is green under all three wrong
+// implementations.**  Take an object and look at the carrier: it is
+// holding the thing, whether or not the ground still has a copy,
+// whether or not the carrier's hands were already full, and whether or
+// not a second object on that hex was overwritten by the first.  So
+// what this file asserts is a **sum over the whole layer** — how many
+// objects are in the world, and how many each carrier claims — which is
+// the only shape that can see any of them.
+//
+// ── The three wrong implementations ─────────────────────────────
+//
+// 1. **A hash keyed by hex** — the shape every other runtime layer in
+//    dryopea uses (`height`, `damage`, `occupancy`, `BlockerMap`).  It
+//    loses the second object on a shared hex, and § Two on one hex
+//    proves that hex is reachable in the shipped simulation.
+// 2. **A slot on the carrier plus a ground layer** — then a pickup is
+//    two writes and any path doing one of them duplicates or destroys.
+//    § The count never moves is what sees it.
+// 3. **No slot rule** — a carrier that takes a second object.  Nothing
+//    about the first pickup changes, and § A full hand takes nothing
+//    is the only assertion that fires.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn at(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn robot(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8, alive: true }
+}
+
+// A one-hex corridor: nowhere to go round, so a vehicle in it is a
+// blocker.  Plan 13 V5's shape, and the only way anything in dryopea
+// gets destroyed.
+fn corridor() -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in -3..=16 { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=16 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// ⚠ READ through this, never WRITE (loft#894 — a returned struct is a
+// copy).  Every mutation below goes through the layer's own verbs.
+fn crew_of(state: WaveState, i: integer) -> Helper {
+    state.crew[i] ?? Helper { }
+}
+
+// The whole invariant, as one function: every object is in exactly one
+// state, and no carrier claims two.  Answers a fault description, or
+// the empty text when the layer is sound.
+//
+// ⚠ **It is checked after every mutation below**, not once at the end —
+// a layer that breaks and then repairs itself would pass a final look.
+fn conservation_fault(cl: const CargoLayer, crew: integer) -> text {
+    cf_bad = cargo_slot_fault(cl, crew);
+    if cf_bad != CARGO_NONE {
+        return "carrier {cf_bad} claims {cargo_owned_by(cl, cf_bad)} objects";
+    }
+    // Every record is on the ground, held by somebody, or spent — and
+    // the three are exclusive by construction, so what is left to check
+    // is that the states add up to the records.
+    cf_n = 0;
+    for cf_i in 0..cargo_slots(cl) {
+        cf_own = cargo_owner(cl, cf_i);
+        if cf_own != CARGO_GONE { cf_n += 1; }
+    }
+    if cf_n != cargo_count(cl) {
+        return "{cf_n} live records but cargo_count says {cargo_count(cl)}";
+    }
+    ""
+}
+
+fn assert_sound(cl: const CargoLayer, crew: integer, when: text) {
+    as_f = conservation_fault(cl, crew);
+    assert(as_f == "", "{when}: {as_f}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A layer with nothing in it
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_fresh_layer_carries_nothing() {
+    taf_cl = cargo_empty();
+
+    assert(cargo_count(taf_cl) == 0, "nothing in the world: {cargo_count(taf_cl)}");
+    assert(cargo_slots(taf_cl) == 0, "and no records: {cargo_slots(taf_cl)}");
+    assert(!cargo_carrying(taf_cl, BLOCKER_PLAYER), "the player's hands are empty");
+    assert(cargo_held_by(taf_cl, BLOCKER_CREW) == CARGO_NONE, "so are helper 0's");
+    assert(cargo_on_ground_near(taf_cl, at(0, 0), 1) == CARGO_NONE,
+           "and there is nothing to pick up");
+}
+
+// ⚠ **`BLOCKER_NONE` is the ground, so it must never read as a
+// CARRIER.**  "Nobody" and "an owner" are one field here, and a
+// `cargo_held_by(cl, BLOCKER_NONE)` that answered an object would hand
+// every grounded object to a caller asking who holds it.
+fn test_nobody_is_not_a_carrier() {
+    tni_cl = cargo_empty();
+    cargo_spawn(tni_cl, CARGO_WRECK, 0, 4, 0);
+
+    assert(cargo_held_by(tni_cl, BLOCKER_NONE) == CARGO_NONE,
+           "the ground is not holding it");
+    assert(!cargo_carrying(tni_cl, BLOCKER_NONE), "and nobody is carrying");
+    assert(cargo_take(tni_cl, BLOCKER_NONE, at(4, 0), 1) == CARGO_NONE,
+           "and nobody cannot pick it up");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The phase: the count never moves
+// ─────────────────────────────────────────────────────────────────
+
+// A pickup CHANGES AN OWNER and moves nothing in or out of the world.
+//
+// ⚠ **This is the assertion a two-write implementation fails.**  Add to
+// the slot without removing from the ground and the count goes to 2 —
+// the object is in two places, and a second carrier can take the copy.
+// Remove without adding and it goes to 0, which is a crew member
+// deleted.  "The carrier is holding it" is green in both.
+fn test_a_pickup_moves_nothing_in_or_out_of_the_world() {
+    tap_cl = cargo_empty();
+    cargo_spawn(tap_cl, CARGO_WRECK, 0, 4, 0);
+    assert(cargo_count(tap_cl) == 1, "one object exists");
+
+    tap_i = cargo_take(tap_cl, BLOCKER_PLAYER, at(4, 0), 1);
+
+    assert(tap_i == 0, "the player took object 0: {tap_i}");
+    assert(cargo_count(tap_cl) == 1,
+           "and there is still exactly one: {cargo_count(tap_cl)}");
+    assert(cargo_owner(tap_cl, 0) == BLOCKER_PLAYER, "owned by the player");
+    assert(cargo_on_ground_near(tap_cl, at(4, 0), 1) == CARGO_NONE,
+           "and no copy left on the ground");
+    assert_sound(tap_cl, 0, "after a pickup");
+}
+
+// And a drop is the same statement backwards.
+fn test_a_drop_moves_nothing_in_or_out_of_the_world() {
+    tad_cl = cargo_empty();
+    cargo_spawn(tad_cl, CARGO_WRECK, 0, 4, 0);
+    cargo_take(tad_cl, BLOCKER_PLAYER, at(4, 0), 1);
+
+    tad_i = cargo_put(tad_cl, BLOCKER_PLAYER, at(9, 0));
+
+    assert(tad_i == 0, "the player put object 0 down: {tad_i}");
+    assert(cargo_count(tad_cl) == 1, "still one: {cargo_count(tad_cl)}");
+    assert(!cargo_carrying(tad_cl, BLOCKER_PLAYER), "its hands are empty");
+    assert(cargo_on_ground_near(tad_cl, at(9, 0), 0) == 0,
+           "and it is lying where it was put");
+    assert(cargo_on_ground_near(tad_cl, at(4, 0), 1) == CARGO_NONE,
+           "not where it was found");
+    assert_sound(tad_cl, 0, "after a drop");
+}
+
+// ⚠ **The slot rule, and it is checked in ONE place** — a carrier whose
+// hands are full takes nothing, and learns so from the answer.  Without
+// this, everything else in this file stays green.
+fn test_a_full_hand_takes_nothing() {
+    tfh_cl = cargo_empty();
+    cargo_spawn(tfh_cl, CARGO_WRECK, 0, 4, 0);
+    cargo_spawn(tfh_cl, CARGO_WRECK, 1, 4, 0);
+
+    tfh_first = cargo_take(tfh_cl, BLOCKER_PLAYER, at(4, 0), 1);
+    tfh_again = cargo_take(tfh_cl, BLOCKER_PLAYER, at(4, 0), 1);
+
+    assert(tfh_first == 0, "it took the first: {tfh_first}");
+    assert(tfh_again == CARGO_NONE, "and refused the second: {tfh_again}");
+    assert(cargo_owned_by(tfh_cl, BLOCKER_PLAYER) == 1,
+           "one slot, one object: {cargo_owned_by(tfh_cl, BLOCKER_PLAYER)}");
+    assert(cargo_owner(tfh_cl, 1) == BLOCKER_NONE,
+           "the other is still on the ground");
+    assert_sound(tfh_cl, 0, "after a refused second pickup");
+}
+
+// ⚠ **`numbers.json` § helper.carry_slot_count is 1 and its doc says
+// "Same as player"**, so the rule is the CHASSIS's and every crew
+// member is held to it — the shared-chassis rule plan 14 H1 and H2 make
+// for driving and clearing, arriving for carrying.
+fn test_the_slot_rule_is_the_whole_crews() {
+    tsr_cl = cargo_empty();
+    for tsr_k in 0..4 { cargo_spawn(tsr_cl, CARGO_WRECK, tsr_k, 4, 0); }
+
+    // Three different carriers each take one, and each is then full.
+    tsr_ids: vector<integer> = [BLOCKER_PLAYER, BLOCKER_CREW, BLOCKER_CREW + 1];
+    for tsr_id in tsr_ids {
+        assert(cargo_take(tsr_cl, tsr_id, at(4, 0), 1) != CARGO_NONE,
+               "carrier {tsr_id} took one");
+        assert(cargo_take(tsr_cl, tsr_id, at(4, 0), 1) == CARGO_NONE,
+               "and carrier {tsr_id} cannot take another");
+    }
+
+    assert(cargo_count(tsr_cl) == 4, "all four still exist: {cargo_count(tsr_cl)}");
+    assert(cargo_owned_by(tsr_cl, BLOCKER_NONE) == 1,
+           "one is still on the ground: {cargo_owned_by(tsr_cl, BLOCKER_NONE)}");
+    assert_sound(tsr_cl, 6, "with three carriers loaded");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ Two on one hex — the case that kills a hash
+// ─────────────────────────────────────────────────────────────────
+
+// `carry.loft` refuses the hash-keyed-by-hex shape every other runtime
+// layer uses, on the grounds that two objects on one hex is reachable.
+// This is that state, handled directly: both are there, both come back.
+fn test_two_objects_share_a_hex_and_both_survive() {
+    tto_cl = cargo_empty();
+    cargo_spawn(tto_cl, CARGO_WRECK, 0, 6, 0);
+    cargo_spawn(tto_cl, CARGO_WRECK, 1, 6, 0);
+
+    assert(cargo_count(tto_cl) == 2, "two on one hex: {cargo_count(tto_cl)}");
+
+    // ⚠ Under a hash the second spawn overwrote the first, so this
+    // second pickup finds nothing and the count reads 1.
+    tto_a = cargo_take(tto_cl, BLOCKER_PLAYER, at(6, 0), 1);
+    tto_b = cargo_take(tto_cl, BLOCKER_CREW,   at(6, 0), 1);
+
+    assert(tto_a == 0, "the player got the older one: {tto_a}");
+    assert(tto_b == 1, "the helper got the other: {tto_b}");
+    assert(cargo_count(tto_cl) == 2, "and neither was lost: {cargo_count(tto_cl)}");
+    assert_sound(tto_cl, 6, "with a shared hex emptied");
+}
+
+// ⚠ Ties break by INDEX, not by distance — the older object first — so
+// a scripted run is repeatable without a second ordering rule.
+fn test_the_older_object_is_taken_first() {
+    tto2_cl = cargo_empty();
+    cargo_spawn(tto2_cl, CARGO_WRECK, 0, 5, 0);   // one hex away
+    cargo_spawn(tto2_cl, CARGO_WRECK, 1, 4, 0);   // underfoot
+
+    assert(cargo_take(tto2_cl, BLOCKER_PLAYER, at(4, 0), 1) == 0,
+           "the older one, though the newer is nearer");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Reach — the chassis's, and it covers its own hex
+// ─────────────────────────────────────────────────────────────────
+
+fn test_reach_covers_its_own_hex_and_one_beside() {
+    trc_cl = cargo_empty();
+    cargo_spawn(trc_cl, CARGO_WRECK, 0, 4, 0);
+
+    assert(cargo_on_ground_near(trc_cl, at(4, 0), 1) == 0, "underfoot");
+    assert(cargo_on_ground_near(trc_cl, at(5, 0), 1) == 0, "and one beside");
+    assert(cargo_on_ground_near(trc_cl, at(6, 0), 1) == CARGO_NONE,
+           "but not two away");
+    assert(cargo_take(trc_cl, BLOCKER_PLAYER, at(6, 0), 1) == CARGO_NONE,
+           "so a pickup from two away takes nothing");
+}
+
+// A carried object is NOT on the ground, so nobody else can find it.
+fn test_a_carried_object_is_not_lying_anywhere() {
+    tca_cl = cargo_empty();
+    cargo_spawn(tca_cl, CARGO_WRECK, 0, 4, 0);
+    cargo_take(tca_cl, BLOCKER_PLAYER, at(4, 0), 1);
+
+    assert(cargo_on_ground_near(tca_cl, at(4, 0), 1) == CARGO_NONE,
+           "nothing lying where it was");
+    assert(cargo_take(tca_cl, BLOCKER_CREW, at(4, 0), 1) == CARGO_NONE,
+           "and a second carrier standing there takes nothing");
+    assert(cargo_owned_by(tca_cl, BLOCKER_PLAYER) == 1, "it is still the player's");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The one way out
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ A deposit is the ONLY route out of the world, and it keeps the
+// record — the slot is an identity, so consuming is a state rather than
+// a removal (the rule `WaveState.crew` follows for a wrecked helper).
+fn test_a_deposit_is_the_only_way_out() {
+    tdo_cl = cargo_empty();
+    cargo_spawn(tdo_cl, CARGO_WRECK, 0, 4, 0);
+    cargo_take(tdo_cl, BLOCKER_PLAYER, at(4, 0), 1);
+
+    cargo_consume(tdo_cl, 0);
+
+    assert(cargo_count(tdo_cl) == 0, "it has left the world: {cargo_count(tdo_cl)}");
+    assert(cargo_slots(tdo_cl) == 1, "but its slot is kept: {cargo_slots(tdo_cl)}");
+    assert(!cargo_carrying(tdo_cl, BLOCKER_PLAYER), "the carrier's hands are empty");
+    assert(cargo_on_ground_near(tdo_cl, at(4, 0), 1) == CARGO_NONE,
+           "and it is not on the ground either");
+    assert_sound(tdo_cl, 0, "after a deposit");
+}
+
+// ⚠ A spent object is not a free slot to reuse: a later pickup must not
+// resurrect it, which is what a scan that forgot `CARGO_GONE` would do.
+fn test_a_spent_object_never_comes_back() {
+    tsp_cl = cargo_empty();
+    cargo_spawn(tsp_cl, CARGO_WRECK, 0, 4, 0);
+    cargo_consume(tsp_cl, 0);
+
+    assert(cargo_take(tsp_cl, BLOCKER_PLAYER, at(4, 0), 1) == CARGO_NONE,
+           "nothing to pick up");
+    assert(cargo_held_by(tsp_cl, CARGO_GONE) == CARGO_NONE,
+           "and 'gone' is not a carrier to ask about");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The tick: where objects come from, and where they go on a loss
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **Losing a crew member is two effects at one site**: the helper
+// goes down (plan 14 H3) AND a carryable wreck appears where it stood.
+fn test_a_wrecked_helper_leaves_something_to_fetch() {
+    twh_pw = corridor();
+    twh_s  = wave_state_empty();
+    twh_s.enemies += [robot(7, 0)];
+    twh_s.crew    += [helper_new(6, 0)];
+
+    assert(cargo_count(twh_s.cargo) == 0, "nothing to fetch yet");
+
+    play(twh_s, twh_pw, 40);
+
+    assert(helper_wrecked(crew_of(twh_s, 0)), "the helper is down");
+    assert(cargo_count(twh_s.cargo) == 1,
+           "and left one thing to fetch: {cargo_count(twh_s.cargo)}");
+
+    twh_o = cargo_get(twh_s.cargo, 0);
+    assert(twh_o.kind == CARGO_WRECK, "a wreck");
+    assert(twh_o.subj == 0, "and it names crew slot 0: {twh_o.subj}");
+    assert(twh_o.q == 6 && twh_o.r == 0,
+           "lying where it stood: ({twh_o.q}, {twh_o.r})");
+    assert_sound(twh_s.cargo, len(twh_s.crew), "after a wreck");
+}
+
+// ⚠ A run in which nobody dies produces no cargo at all — the negative
+// control for "the wreck line fires on something else".
+fn test_a_run_with_no_losses_has_no_cargo() {
+    trn_pw = band();
+    trn_s  = wave_state_empty();
+    trn_s.enemies += [robot(8, 0)];
+    trn_s.crew    += [helper_new(6, 0)];
+
+    play(trn_s, trn_pw, 12);
+
+    assert(cargo_count(trn_s.cargo) == 0,
+           "nobody was lost, so there is nothing to fetch: {cargo_count(trn_s.cargo)}");
+}
+
+// ⚠⚠ **The case the representation exists for.**  A helper carrying a
+// downed colleague is itself destroyed: its load spills where it fell
+// and its OWN wreck lands on the same hex.  Two objects, one hex,
+// neither lost — under a hash keyed by hex one of them is a crew member
+// deleted from the run with no fault raised anywhere.
+fn test_a_carrier_that_wrecks_leaves_both_on_the_hex() {
+    tcw_pw = corridor();
+    tcw_s  = wave_state_empty();
+    tcw_s.enemies += [robot(7, 0)];
+    tcw_s.crew    += [helper_new(6, 0)];
+    tcw_s.crew    += [helper_new(2, 0)];
+
+    // Helper 1 was downed earlier and helper 0 is holding it while it
+    // blocks the corridor.  ⚠ It is wrecked EXPLICITLY rather than left
+    // alive further down the corridor: a one-hex corridor has no room
+    // beside, so a live crewmate behind the blocker is the NEXT thing
+    // the wave reaches and wrecks — which leaves three objects on two
+    // hexes and reads exactly like the defect this test is looking for.
+    helper_wreck(tcw_s.crew[1] ?? Helper { });
+    cargo_spawn(tcw_s.cargo, CARGO_WRECK, 1, 6, 0);
+    assert(cargo_take(tcw_s.cargo, BLOCKER_CREW, at(6, 0), 1) == 0,
+           "helper 0 is carrying helper 1");
+
+    play(tcw_s, tcw_pw, 40);
+
+    assert(helper_wrecked(crew_of(tcw_s, 0)), "the carrier was destroyed");
+    assert(cargo_count(tcw_s.cargo) == 2,
+           "and BOTH are on the ground: {cargo_count(tcw_s.cargo)}");
+    for tcw_i in 0..2 {
+        assert(cargo_owner(tcw_s.cargo, tcw_i) == BLOCKER_NONE,
+               "object {tcw_i} is lying there, unowned");
+        tcw_o = cargo_get(tcw_s.cargo, tcw_i);
+        assert(tcw_o.q == 6 && tcw_o.r == 0,
+               "object {tcw_i} is on the hex it fell on: ({tcw_o.q}, {tcw_o.r})");
+    }
+    assert_sound(tcw_s.cargo, len(tcw_s.crew), "after a carrier wrecked loaded");
+}
+
+// ⚠⚠ **Dying is not a retrieval.**  The player respawns at the core
+// (plan 13 V5) and its load does NOT come with it — otherwise the
+// retrieval you failed to make succeeds by being destroyed, which is
+// strictly better play than driving back.
+fn test_the_players_load_stays_on_the_battlefield() {
+    tpl_pw = corridor();
+    tpl_s  = wave_state_empty();
+    tpl_s.enemies += [robot(7, 0)];
+    vehicle_place(tpl_s.player, 6, 0);
+    cargo_spawn(tpl_s.cargo, CARGO_WRECK, 0, 6, 0);
+    cargo_take(tpl_s.cargo, BLOCKER_PLAYER, at(6, 0), 1);
+
+    play(tpl_s, tpl_pw, 40);
+
+    assert(tpl_s.player.q == core().q && tpl_s.player.r == core().r,
+           "the player came home: ({tpl_s.player.q}, {tpl_s.player.r})");
+    assert(!cargo_carrying(tpl_s.cargo, BLOCKER_PLAYER),
+           "empty-handed");
+
+    tpl_o = cargo_get(tpl_s.cargo, 0);
+    assert(cargo_count(tpl_s.cargo) == 1, "the wreck still exists");
+    assert(tpl_o.owner == BLOCKER_NONE, "lying on the ground");
+    assert(!(tpl_o.q == core().q && tpl_o.r == core().r),
+           "and NOT at the core: ({tpl_o.q}, {tpl_o.r})");
+    assert_sound(tpl_s.cargo, len(tpl_s.crew), "after the player died loaded");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Cargo goes where its carrier goes
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ A carried object's position is kept TRUE rather than left stale
+// until it is put down — otherwise a drop puts it back where it was
+// picked up, which is a retrieval that silently undoes itself.
+fn test_cargo_travels_with_its_carrier() {
+    tct_pw = band();
+    tct_s  = wave_state_empty();
+    vehicle_place(tct_s.player, 10, 0);
+    cargo_spawn(tct_s.cargo, CARGO_WRECK, 0, 10, 0);
+    cargo_take(tct_s.cargo, BLOCKER_PLAYER, at(10, 0), 1);
+    vehicle_drive(tct_s.player, 0, 0);
+
+    play(tct_s, tct_pw, 3);
+
+    tct_o = cargo_get(tct_s.cargo, 0);
+    assert(tct_s.player.q < 10, "the player drove: q = {tct_s.player.q}");
+    assert(tct_o.q == tct_s.player.q && tct_o.r == tct_s.player.r,
+           "its load is at ({tct_o.q}, {tct_o.r}), the player at ({tct_s.player.q}, {tct_s.player.r})");
+
+    // Put it down HERE, and here is where it stays.
+    cargo_put(tct_s.cargo, BLOCKER_PLAYER, at(tct_s.player.q, tct_s.player.r));
+    tct_where = cargo_get(tct_s.cargo, 0);
+    vehicle_drive(tct_s.player, 10, 0);
+    play(tct_s, tct_pw, 3);
+
+    tct_after = cargo_get(tct_s.cargo, 0);
+    assert(tct_after.q == tct_where.q && tct_after.r == tct_where.r,
+           "and a dropped object does not follow: ({tct_after.q}, {tct_after.r})");
+}
+
+// A helper's load travels too — the chassis rule again.
+fn test_a_helpers_load_travels_with_it() {
+    thl_pw = band();
+    thl_s  = wave_state_empty();
+    thl_s.crew += [helper_new(10, 0)];
+    cargo_spawn(thl_s.cargo, CARGO_WRECK, 0, 10, 0);
+    cargo_take(thl_s.cargo, BLOCKER_CREW, at(10, 0), 1);
+    helper_drive(thl_s.crew[0] ?? Helper { }, 0, 0);
+
+    play(thl_s, thl_pw, 3);
+
+    thl_h = crew_of(thl_s, 0);
+    thl_o = cargo_get(thl_s.cargo, 0);
+    assert(thl_h.q < 10, "the helper drove: q = {thl_h.q}");
+    assert(thl_o.q == thl_h.q && thl_o.r == thl_h.r,
+           "and its load is with it: ({thl_o.q}, {thl_o.r})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The sum, over a sequence
+// ─────────────────────────────────────────────────────────────────
+
+// Take, drop, take again, hand between carriers, tick in between — and
+// after every single step the layer is sound and the count is what it
+// was.  A single pickup is green under all three wrong implementations;
+// a sequence is not.
+fn test_conservation_holds_over_a_whole_sequence() {
+    tch_pw = band();
+    tch_s  = wave_state_empty();
+    vehicle_place(tch_s.player, 8, 0);
+    tch_s.crew += [helper_new(9, 0)];
+    tch_s.crew += [helper_new(4, 0)];
+
+    for tch_k in 0..3 { cargo_spawn(tch_s.cargo, CARGO_WRECK, tch_k, 8, 0); }
+    assert_sound(tch_s.cargo, len(tch_s.crew), "after spawning three");
+
+    tch_want = 3;
+    for tch_round in 0..4 {
+        cargo_take(tch_s.cargo, BLOCKER_PLAYER, at(8, 0), 1);
+        assert_sound(tch_s.cargo, len(tch_s.crew), "round {tch_round}, player took");
+
+        cargo_take(tch_s.cargo, BLOCKER_CREW, at(9, 0), 1);
+        assert_sound(tch_s.cargo, len(tch_s.crew), "round {tch_round}, helper took");
+
+        play(tch_s, tch_pw, 1);
+        assert_sound(tch_s.cargo, len(tch_s.crew), "round {tch_round}, after a tick");
+
+        cargo_put(tch_s.cargo, BLOCKER_PLAYER, at(8, 0));
+        cargo_put(tch_s.cargo, BLOCKER_CREW,   at(9, 0));
+        assert_sound(tch_s.cargo, len(tch_s.crew), "round {tch_round}, both put down");
+
+        assert(cargo_count(tch_s.cargo) == tch_want,
+               "round {tch_round}: {cargo_count(tch_s.cargo)} objects, wanted {tch_want}");
+    }
+
+    // And a deposit is the only thing that changes the total.
+    cargo_take(tch_s.cargo, BLOCKER_PLAYER, at(8, 0), 1);
+    cargo_consume(tch_s.cargo, cargo_held_by(tch_s.cargo, BLOCKER_PLAYER));
+    assert(cargo_count(tch_s.cargo) == tch_want - 1,
+           "one deposited: {cargo_count(tch_s.cargo)}");
+    assert_sound(tch_s.cargo, len(tch_s.crew), "after the only legitimate exit");
+}

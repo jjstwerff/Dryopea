@@ -39,6 +39,7 @@ use tower;
 use wallet;
 use vehicle;
 use helper;
+use carry;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -236,6 +237,7 @@ pub struct WaveState {
     wallet:      Wallet,
     player:      Vehicle,
     crew:        vector<Helper>,
+    cargo:       CargoLayer,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0, the
@@ -249,6 +251,7 @@ pub fn wave_state_empty() -> WaveState {
         wallet:  wallet_new(),
         player:  vehicle_empty(),
         crew:    [],
+        cargo:   cargo_empty(),
     }
 }
 
@@ -1371,6 +1374,23 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         helper_tick(wt_h, pal, pw, state.heights, TICK_SECONDS);
     }
 
+    // ⚠ **Cargo goes where its carrier goes** (plan 15 C1).  A carried
+    // object's position is kept TRUE rather than left stale until it is
+    // put down: `DESIGN.md` § Carry visibility renders cargo above its
+    // carrier as part of its geometry, which is a statement that the
+    // two are at one place, and a measurement that reads a stale hex is
+    // a lie nobody discovers until something depends on it.
+    //
+    // Immediately after the movers and before anything reads a
+    // position, so no consequence in this tick can see a carrier and
+    // its load on different hexes.
+    cargo_follow(state.cargo, BLOCKER_PLAYER, state.player.q, state.player.r);
+    wt_cg = 0;
+    for wt_c in state.crew {
+        cargo_follow(state.cargo, BLOCKER_CREW + wt_cg, wt_c.q, wt_c.r);
+        wt_cg += 1;
+    }
+
     // ⚠ **Salvage is the wallet's only income** (plan 13 V3), and it
     // is what keeps plan 12 B6's promise that the budget never refills
     // unattended: a run with nobody in it clears nothing and so earns
@@ -1411,6 +1431,17 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // the other consequences so a fatal blow lands at the end of the
     // tick it was struck in, exactly as a death and a breach do.
     if vehicle_present(state.player) && vehicle_hp(state.player) <= 0.0 {
+        // ⚠ **Dying is not a retrieval** (plan 15 C1).  The player
+        // reappears at the core; cargo that rode home with them would
+        // mean the retrieval you FAILED to make succeeds by being
+        // destroyed, which is a strictly better way to play than
+        // driving back.  So it stays on the battlefield at the hex the
+        // vehicle was lost on — where the next attempt has to go.
+        //
+        // Before the respawn, because the respawn moves the vehicle and
+        // this needs the hex it DIED on.
+        cargo_spill(state.cargo, BLOCKER_PLAYER,
+                    Hex { q: state.player.q, r: state.player.r });
         vehicle_respawn(state.player, core);
     }
 
@@ -1424,8 +1455,28 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // never compacted, so helper 2 is helper 2 for the whole run — which
     // is what lets a script name it after it has died, and what H4's
     // retrieval will need to put a recovered crew member back.
+    // ⚠ **Losing a crew member is TWO effects and this is the one site
+    // that does both** (plan 15 C1) — the rule `damage.loft::
+    // break_structure` states for a wall: the helper stops moving AND a
+    // carryable wreck appears where it stood.  Split across two sites
+    // they drift, and the drift is a crew member who is down with
+    // nothing to fetch, or a wreck on the ground whose owner is
+    // walking around.
+    //
+    // ⚠ **Spill BEFORE the wreck, and the order is load-bearing**: a
+    // helper carrying a downed colleague leaves TWO objects on this
+    // hex, which is the case `carry.loft` refuses a hash for — the
+    // second one would overwrite the first and delete a crew member
+    // with no fault raised anywhere.
+    wt_wi = 0;
     for wt_w in state.crew {
-        if wt_w.alive && helper_hp(wt_w) <= 0.0 { helper_wreck(wt_w); }
+        if wt_w.alive && helper_hp(wt_w) <= 0.0 {
+            helper_wreck(wt_w);
+            cargo_spill(state.cargo, BLOCKER_CREW + wt_wi,
+                        Hex { q: wt_w.q, r: wt_w.r });
+            cargo_spawn(state.cargo, CARGO_WRECK, wt_wi, wt_w.q, wt_w.r);
+        }
+        wt_wi += 1;
     }
 }
 

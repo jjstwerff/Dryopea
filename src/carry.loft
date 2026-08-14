@@ -1,0 +1,376 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// What a vehicle is holding — the one slot, and the promise that what
+// goes into it comes out again.
+//
+// Plan 15 phase C1.  `docs/DESIGN.md` § 11 gives the whole interface in
+// one line: **one slot per vehicle, one context-resolved key** (empty
+// hands = pickup, carrying = deposit), and § Carry visibility gives one
+// universal rule for everything it moves — loot cube, tower-top,
+// beacon, downed helper.  What the design does not say is where a
+// carried object LIVES while it is carried, and that is the whole
+// engineering problem, because it is the question conservation turns
+// on.
+//
+// ── ⚠ Why this is not a hash keyed by hex ───────────────────────
+//
+// Every other runtime layer dryopea has is one: `height.loft`,
+// `damage.loft`, `occupancy.loft` and H3's `BlockerMap`, whose header
+// even blesses the simplification — *"A hex holds ONE of them… if a
+// future one lets them, the later `blocker_set` wins"*.
+//
+// **A carry object cannot take that deal, because two of them on one
+// hex is reachable in the shipped simulation.**  A helper carrying a
+// downed crew member can itself be destroyed while blocking, and then
+// two objects are lying on that hex: the wreck it was carrying and its
+// own.  A hash answers with one of them and the other is GONE — a crew
+// member deleted from the run, with no error and no fault, and no
+// assertion in the game able to see it.
+//
+// So this is a VECTOR with stable slots, never compacted — the shape
+// `WaveState.crew` already uses, for the reason plan 14 H3 gives about
+// roster slots: an object's index is its identity for the whole run.
+//
+// ── ⚠ Why conservation is STRUCTURAL rather than maintained ─────
+//
+// The other natural shape is "the carrier holds a thing" — a field on
+// `Vehicle` and on `Helper`, with the ground holding the rest.  Then a
+// pickup is TWO writes (into the slot, out of the ground) and so is a
+// drop, and every path that does one without the other either
+// duplicates the object or destroys it.  Conservation becomes a
+// property somebody has to maintain at every call site.
+//
+// So there is ONE record with an `owner` field, and "on the ground" is
+// a VALUE of that field rather than a different place to be.  A pickup
+// is a single assignment, duplication is unrepresentable rather than
+// prevented, and the gate is a sum that cannot drift.  It is the move
+// `damage.loft` makes with *damage TAKEN, not HP remaining*, and the
+// one `wallet.loft` makes with *points SPENT*: pick the representation
+// in which the wrong state cannot be written down.
+//
+// ── ⚠ The owner ids are the BLOCKER vocabulary ──────────────────
+//
+// dryopea already has one answer to "who on the player's side":
+// `occupancy.loft`'s `BLOCKER_NONE` / `BLOCKER_PLAYER` / `BLOCKER_CREW
+// + i`, built for H3's blocker damage.  A carry model with indices of
+// its own would be exactly the second door H3 deleted `vehicle_on`
+// for, so the owner field speaks that vocabulary and `BLOCKER_NONE` —
+// which already means "nobody" — is what the ground is.
+
+use lattice;
+use occupancy;
+
+// ─── What can be carried ────────────────────────────────────────
+
+// The kinds of cargo.
+//
+// ⚠ **A kind is DATA, not a code path**, and that is the same rule
+// `CLAUDE.md` § Movement + passability states for enemies: *"ONE AI,
+// per-class DATA"*.  `DESIGN.md` names four things a vehicle carries —
+// loot cube, tower-top, beacon, downed helper — and `numbers.json`
+// § helper.carry_slot_count is 1 for every one of them.  No kind needs
+// a second slot, a different reach or a different carrier, so what
+// varies per kind is only **what a valid deposit destination is** and
+// **what arriving there does**.
+//
+// ⚠ That is also the contract the later consumers arrive under: a
+// tower-top (`DESIGN.md` § 7) or a beacon that needs new CARRYING code
+// has broken this, and `plans/15` § C0.4 is where it is written down.
+// Only the wreck exists today, because a kind with no consumer would
+// be machinery nothing could gate — the argument plan 13 V0 makes for
+// not building a banking mover before the helper needed one.
+pub const CARGO_WRECK: u8 = 0;
+
+// ⚠ No index at all, for a caller asking "which object?" — the same
+// negative-sentinel choice `occupancy.loft` makes, and deliberately
+// NOT the zero-is-neutral rule the ledgers use: slot 0 is a real
+// object, so "none" has to be negative.
+pub const CARGO_NONE: integer = -1;
+
+// An object that has left the world through a valid deposit.
+//
+// ⚠ **Consumed is a STATE, not a removal**, because the slots are
+// stable: compacting the vector to drop a spent record would renumber
+// every object after it, and an index is an identity here.  It is the
+// same choice `WaveState.crew` makes for a wrecked helper (plan 14 H3:
+// *"the roster slot is KEPT"*).
+pub const CARGO_GONE: integer = -2;
+
+// One carryable thing.
+//
+// ⚠ `owner` is the whole state machine: `BLOCKER_NONE` on the ground,
+// a blocker id while carried, `CARGO_GONE` once deposited.  There is no
+// second flag and no "carried" boolean — two fields that can disagree
+// about one fact is the defect this representation exists to make
+// unwritable.
+//
+// ⚠ `q` / `r` are kept TRUE while carried rather than left stale: the
+// tick walks the cargo onto its carrier's hex (`cargo_follow`), so
+// "where is this object" has one answer at every moment.  A render
+// (§ Carry visibility) and a measurement both want that, and a stale
+// position is a lie that only shows up once something reads it.
+pub struct CarryObject {
+    kind:  u8,
+    subj:  integer,   // which helper, for a wreck — the payload's id
+    q:     integer,
+    r:     integer,
+    owner: integer,
+}
+
+// Every carryable thing in the run.
+//
+// Runtime state: it rides on `WaveState` beside the rubble layer and
+// the damage ledger, and never reaches a save.
+pub struct CargoLayer {
+    items: vector<CarryObject>,
+}
+
+// Factory: nothing carryable exists.
+pub fn cargo_empty() -> CargoLayer {
+    CargoLayer { items: [] }
+}
+
+// ─── Creation ───────────────────────────────────────────────────
+
+// Put a new object on the ground at (q, r).  Answers its index, which
+// is its identity for the rest of the run.
+pub fn cargo_spawn(cl: CargoLayer, kind: u8, subj: integer,
+                   q: integer, r: integer) -> integer {
+    cl.items += [CarryObject { kind: kind, subj: subj, q: q, r: r,
+                               owner: BLOCKER_NONE }];
+    len(cl.items) - 1
+}
+
+// ─── Reading ────────────────────────────────────────────────────
+
+// How many objects are in the world — deposited ones excluded.
+//
+// ⚠ **The conservation gate reads this**, so it counts what is still
+// somewhere rather than how many records exist: an object leaves the
+// world only through a deposit, and any other route out is the defect.
+pub fn cargo_count(cl: const CargoLayer) -> integer {
+    cc_n = 0;
+    for cc_o in cl.items {
+        if cc_o.owner != CARGO_GONE { cc_n += 1; }
+    }
+    cc_n
+}
+
+// How many records were ever created, spent ones included.  The other
+// half of the conservation sum.
+pub fn cargo_slots(cl: const CargoLayer) -> integer {
+    len(cl.items)
+}
+
+// Which object is this carrier holding?  `CARGO_NONE` when its hands
+// are empty.
+//
+// ⚠ **This is the slot rule**, and it is a search rather than a stored
+// field for the reason the header gives: a slot on the vehicle and an
+// owner on the object are two facts that can disagree.  The roster is
+// capped at 6 (`numbers.json` § helper.roster_cap) and the cargo with
+// it, so the scan is over single digits.
+pub fn cargo_held_by(cl: const CargoLayer, owner: integer) -> integer {
+    if owner == BLOCKER_NONE || owner == CARGO_GONE { return CARGO_NONE; }
+    ch_i = 0;
+    ch_at = CARGO_NONE;
+    for ch_o in cl.items {
+        if ch_o.owner == owner && ch_at == CARGO_NONE { ch_at = ch_i; }
+        ch_i += 1;
+    }
+    ch_at
+}
+
+// Is this carrier's slot full?
+pub fn cargo_carrying(cl: const CargoLayer, owner: integer) -> boolean {
+    cargo_held_by(cl, owner) != CARGO_NONE
+}
+
+// The first object lying on the ground within `reach` of `at`, or
+// `CARGO_NONE`.
+//
+// ⚠ **Reach is the CHASSIS's reach and it covers the mover's own hex**
+// — `DESIGN.md` § 7 § Tower-core retrieval says *"drive next to it"*,
+// and `vehicle.loft`'s clearing already works that way.  It is a
+// separate constant from the salvage reach even though both are 1
+// today, because the reasons differ: salvage's is FORCED by hover
+// clearance (plan 13 V2 — a vehicle cannot stand on a 1.5 m heap),
+// and this one is the design's sentence.  One could move without the
+// other.
+//
+// ⚠ Ties break by the object's INDEX, not by distance: the oldest
+// object on the ground is taken first, which keeps a scripted run
+// repeatable without a second ordering rule.
+pub fn cargo_on_ground_near(cl: const CargoLayer, at: const Hex,
+                            reach: integer) -> integer {
+    cg_i  = 0;
+    cg_at = CARGO_NONE;
+    for cg_o in cl.items {
+        if cg_o.owner == BLOCKER_NONE && cg_at == CARGO_NONE {
+            if lat_distance(at, Hex { q: cg_o.q, r: cg_o.r }) <= reach {
+                cg_at = cg_i;
+            }
+        }
+        cg_i += 1;
+    }
+    cg_at
+}
+
+// Where an object is, and what it is.  For a caller that has an index.
+//
+// ⚠ Returned BY VALUE and therefore a COPY — writing through it is a
+// silent no-op (`CLAUDE.md` § Testing something that moves, loft#894).
+// Every mutation in this file goes through a `for` loop variable
+// instead, and there is deliberately no accessor that hands out a
+// writable object.
+pub fn cargo_get(cl: const CargoLayer, i: integer) -> CarryObject {
+    cg2 = cl.items[i] ?? CarryObject { kind: CARGO_WRECK, subj: -1,
+                                       q: 0, r: 0, owner: CARGO_GONE };
+    cg2
+}
+
+// Who holds object `i`?  `BLOCKER_NONE` when it is on the ground.
+pub fn cargo_owner(cl: const CargoLayer, i: integer) -> integer {
+    co = cargo_get(cl, i);
+    co.owner
+}
+
+// ─── The one action, in its two halves ──────────────────────────
+
+// Take the nearest object on the ground into `owner`'s slot.  Answers
+// the object taken, or `CARGO_NONE` when nothing was.
+//
+// ⚠ **The slot rule is checked HERE and nowhere else**, which is what
+// makes "one slot" a property of the model rather than of its callers:
+// a carrier whose hands are full takes nothing, and the caller learns
+// that from the answer rather than by asking first.
+//
+// ⚠ `DESIGN.md` § 11's key is **context-resolved on the CARRIER's
+// state** — empty hands = pickup, carrying = deposit — so this is half
+// of one player action and never a verb of its own in the design.  The
+// scripted layer spells the halves separately because a script says
+// what it means; a key press resolves between them.
+pub fn cargo_take(cl: CargoLayer, owner: integer, at: const Hex,
+                  reach: integer) -> integer {
+    if owner == BLOCKER_NONE || owner == CARGO_GONE { return CARGO_NONE; }
+    if cargo_carrying(cl, owner) { return CARGO_NONE; }
+
+    ct_i = cargo_on_ground_near(cl, at, reach);
+    if ct_i == CARGO_NONE { return CARGO_NONE; }
+
+    // ⚠ The single assignment the header is about.  There is no second
+    // write to pair it with, so there is no path that can do half of a
+    // pickup.
+    ct_j = 0;
+    for ct_o in cl.items {
+        if ct_j == ct_i {
+            ct_o.owner = owner;
+            ct_o.q     = at.q;
+            ct_o.r     = at.r;
+        }
+        ct_j += 1;
+    }
+    ct_i
+}
+
+// Put down whatever `owner` is holding, at `at`.  Answers the object
+// put down, or `CARGO_NONE` when its hands were empty.
+pub fn cargo_put(cl: CargoLayer, owner: integer, at: const Hex) -> integer {
+    cp_i = cargo_held_by(cl, owner);
+    if cp_i == CARGO_NONE { return CARGO_NONE; }
+
+    cp_j = 0;
+    for cp_o in cl.items {
+        if cp_j == cp_i {
+            cp_o.owner = BLOCKER_NONE;
+            cp_o.q     = at.q;
+            cp_o.r     = at.r;
+        }
+        cp_j += 1;
+    }
+    cp_i
+}
+
+// Take an object out of the world — the ONE legitimate way out.
+//
+// ⚠ **Every other route out is the defect this model exists to
+// prevent**, so this is a named door with one meaning: the object
+// reached a valid destination and that destination consumed it.  A
+// caller that wanted "the object is gone because its carrier died"
+// wants `cargo_put` at the wreck hex instead — see `cargo_spill`.
+pub fn cargo_consume(cl: CargoLayer, i: integer) {
+    cn_j = 0;
+    for cn_o in cl.items {
+        if cn_j == i { cn_o.owner = CARGO_GONE; }
+        cn_j += 1;
+    }
+}
+
+// Drop whatever `owner` was holding onto the ground where they stand.
+//
+// ⚠ **This is what makes dying not a retrieval.**  A player carrying a
+// downed crew member respawns at the core (`vehicle_respawn`), and
+// cargo that rode home with them would mean the retrieval you FAILED to
+// make succeeds by being destroyed — a strictly better way to play than
+// driving back.  So the cargo stays on the battlefield, at the hex
+// where the carrier was lost, which is exactly where the next attempt
+// has to go and start again.
+pub fn cargo_spill(cl: CargoLayer, owner: integer, at: const Hex) -> integer {
+    cs_i = cargo_put(cl, owner, at);
+    cs_i
+}
+
+// Walk `owner`'s cargo onto (q, r) — the carried object goes where the
+// carrier goes.
+//
+// ⚠ Called once a tick per carrier, so a carried object's position is
+// never stale.  `DESIGN.md` § Carry visibility renders cargo above its
+// carrier as part of its geometry, which is a statement that the two
+// are at one place; keeping the field true is what lets a measurement
+// and an eventual render read the same number.
+pub fn cargo_follow(cl: CargoLayer, owner: integer, q: integer, r: integer) {
+    cf_i = cargo_held_by(cl, owner);
+    if cf_i == CARGO_NONE { return; }
+
+    cf_j = 0;
+    for cf_o in cl.items {
+        if cf_j == cf_i {
+            cf_o.q = q;
+            cf_o.r = r;
+        }
+        cf_j += 1;
+    }
+}
+
+// ─── The conservation sum ───────────────────────────────────────
+
+// How many objects claim `owner` as their carrier.
+//
+// ⚠ **It answers a COUNT where `cargo_held_by` answers the first**,
+// and that difference is the whole point: the slot rule says this is
+// never above 1, so a function that could only ever find the first
+// could not see the state it exists to forbid.  The gate calls this
+// for every carrier; the game calls `cargo_held_by`.
+pub fn cargo_owned_by(cl: const CargoLayer, owner: integer) -> integer {
+    cb_n = 0;
+    for cb_o in cl.items {
+        if cb_o.owner == owner { cb_n += 1; }
+    }
+    cb_n
+}
+
+// The first carrier holding more than one object, or `CARGO_NONE` when
+// the slot rule holds.
+//
+// The id rather than a boolean, for the reason `occupancy_stacked`
+// returns the hex: a fault that names itself costs a reader nothing,
+// and one that does not costs a debugging session.
+pub fn cargo_slot_fault(cl: const CargoLayer, crew: integer) -> integer {
+    if cargo_owned_by(cl, BLOCKER_PLAYER) > 1 { return BLOCKER_PLAYER; }
+    for cf2_i in 0..crew {
+        cf2_id = BLOCKER_CREW + cf2_i;
+        if cargo_owned_by(cl, cf2_id) > 1 { return cf2_id; }
+    }
+    CARGO_NONE
+}
