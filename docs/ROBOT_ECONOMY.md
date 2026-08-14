@@ -44,7 +44,7 @@ contributes to a small fixed set of run parameters:
 | `cargo_value` | what a kill is worth in salvage | what the route is carrying, and which way |
 | `escalation_latency` | how long from "noticed" to combat bots | distance to the nearest military stockpile |
 | `damage_persistence` | whether chip damage sticks or is refunded | distance to the nearest repair point |
-| `insect_pressure` | the threat the scrambler does not answer | distance to the nearest carbon plant |
+| `insect_pressure` | the threat the scrambler does not answer | distance to the nearest carbon plant — ⚠ and, once [`SETTING.md`](SETTING.md) § Both factions have warriors is built, an ACCUMULATOR rather than a distance: the insect ramp does not un-hatch |
 
 An installation that needs a seventh parameter, or its own movement
 code, or its own spawn path, has broken this rule.  ⚠ **A new
@@ -326,6 +326,13 @@ opens a fight* that the setting offers.
 **Design test:** ✓✓ — this is the one that shapes the *run*, not the
 base.
 
+⚠ **It has a biological twin.**  `SETTING.md` § Both factions have
+warriors gives the insects the same shape with a different mechanism —
+their soldiers must be GROWN rather than woken, so their escalation is
+a ramp where this one is a step, and a hive is to the forest what a
+stockpile is to the swarm.  The two accumulate independently: a base
+can be robot-quiet and wasp-furious.
+
 **Tunables:** `military.wake_pressure_threshold`,
 `military.wake_delay_s`, `military.stockpile_salvage_value`.
 
@@ -566,7 +573,10 @@ Three layers, in the order a player meets them:
    rather than a rewrite.*  ⚠ § The vertical dimension raises the stakes
    on this one: a between-missions tree-withering clock would open
    crystal sites that were not there last sortie, which is the cheapest
-   living world this design could buy — and it needs per-planet state.*
+   living world this design could buy — and it needs per-planet state.
+   ⚠ **The stronger argument is escalation**: `SETTING.md` § Both
+   factions have warriors makes insect pressure a RAMP that does not
+   un-hatch, which is meaningless unless the next sortie can meet it.*
 2. **Is the bubble radius a player setting?**  § Transport routes makes
    it the aggro radius.  A dial is a real decision; it is also a way to
    turn the game off.  *Recommendation: leave it fixed until a base

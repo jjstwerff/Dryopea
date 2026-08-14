@@ -457,7 +457,7 @@ Two phases: hold the wound while extracting, then get followed home by
 what you are carrying.  The guard is local and stops when the wound
 closes; the chase is personal and stops when the sap is banked.
 
-### ⚠ Nobody in this world is attacking anybody
+### ⚠ Nobody in this world is attacking anybody — *yet*
 
 Put this beside § They were on an ERRAND and a pattern appears that is
 worth protecting:
@@ -467,11 +467,91 @@ worth protecting:
 | robots | their radio went dead | attending a peer machine that has malfunctioned |
 | insects | a tree was torn open | feeding, and holding a wound until it heals |
 
-**Both non-human tiers are MAINTENANCE behaviours.**  Neither was built
-or evolved to fight, and neither is hostile in principle — which leaves
-the player as the only party on the map who is actually attacking
-anything.  ⚠ A proposed mechanic that only makes sense as aggression is
-off-fiction for this world, and that is a usable test.
+**Both non-human tiers open as MAINTENANCE behaviours.**  Neither the
+economic robots nor the sap-guarding insects were built or evolved to
+fight, and neither is hostile in principle — which leaves the player as
+the only party on the map who is actually attacking anything.
+
+⚠⚠ **But this is the START of both factions, not their whole nature**
+(owner, 2026-08-14): *"both the robots and the insects have warriors,
+but they need time to get into combat mode and enough triggers."*  See
+§ Both factions have warriors immediately below.  So the honest form of
+the rule is:
+
+> **Aggression in this world has to be EARNED — by the player, through
+> accumulated pressure.**  A mechanic that opens with hostility is
+> off-fiction; a mechanic that arrives *because the player kept going*
+> is exactly on it.
+
+## ⚠⚠ Both factions have warriors — time, and enough triggers
+
+Owner, 2026-08-14.  Each faction has a fighting arm it does not start
+with, and reaching it takes **two things: accumulated triggers, and
+time**.  The robots' half is § Combat bots are dormant and is already
+written; the insects have the same shape.
+
+**The symmetry is the design.**  Two ecologies, both peaceable by
+default, both with a latent military, both requiring the player to push
+before it appears.  A player learns one and can predict the other.
+
+### ⚠ But the delay is a different KIND on each side
+
+This is what stops the symmetry being a copy, and it is where the two
+factions stop feeling alike:
+
+| | robots | insects |
+|---|---|---|
+| the warriors | **already exist**, mothballed in stockpiles | **must be grown** — a soldier caste is produced, not parked |
+| what the delay IS | **authority** — a dormant sub-process warming up enough to broadcast a wake command | **biology** — brood time; a colony cannot make defenders instantly |
+| what proximity means | distance to the nearest stockpile is the fuse length | distance to the nearest hive is how fast the brood reaches you |
+| the shape of the escalation | a **step** — combat units start arriving in waves | a **ramp** — each return to the wood meets more, and tougher |
+| once it has happened | it can go quiet again if authority lapses | ⚠ **the brood is already made** — it does not un-hatch |
+
+⚠ **A step versus a ramp is worth protecting.**  It means the two
+escalations are read differently by a player: the robot one is a
+threshold you can be careful not to cross, the insect one is a debt
+that accrues and is still there next time.
+
+### Triggers, and why it is plural
+
+*"Enough triggers"* — an accumulation, never one event.  § Combat bots
+are dormant already lists the robot side (persistent bubble, economic
+units destroyed, supply lines failing).  The insect side is made of the
+same kind of material:
+
+- trees wounded repeatedly rather than once,
+- insects killed at a guarded wound,
+- a hive disturbed,
+- sustained presence in the wood.
+
+⚠ **Both lists are things the player does on purpose and could stop
+doing**, which is what makes the escalation a decision rather than a
+difficulty curve.
+
+### What it does to the run
+
+**It is the scramble question, twice.**  `SETTING.md` already makes
+*"have I pushed them past combat-bot activation?"* the question the
+scramble decision turns on; the forest now asks its own version, and
+they accumulate independently.  A base can be robot-quiet and
+wasp-furious, or the reverse.
+
+⚠ **And it sharpens [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § Open
+questions 1** (per-map versus per-planet state).  A ramp that *does not
+un-hatch* only means anything if the next sortie can meet it — so
+insect escalation is the strongest argument yet for per-planet
+persistence, and the cheapest possible version of a world that
+remembers what the player did to it.
+
+### ⚠ Elementals are not a third faction
+
+Tiers 1 and 2 are **societies** — they have infrastructure, production
+and something to protect, which is what lets them have a dormant
+military at all.  Elementals (§ The third enemy) have none of that:
+they are keyed to stones, they wake or they do not, and there is no
+authority to persuade and no brood to grow.  **No escalation ladder
+belongs to them**, and inventing one would make them a third copy of
+the same idea instead of the different thing they are.
 
 ### ⚠ And it closes the tree life-cycle loop
 
