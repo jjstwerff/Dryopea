@@ -67,6 +67,14 @@
     "pre_walk_standstill": { "value": 5.0, "units": "s", "doc": "Seconds the enemy stands at its spawn marker after wave start before beginning approach. The player's scramble-decision window." }
   },
 
+  "enemy_boss_combat": {
+    "_doc": "The big COMBAT robot — a boss of a different kind from the repair platform (docs/DESIGN.md § There are TWO boss kinds). The defence/security role from SETTING.md § Combat bots are dormant: the only unit ever BUILT to fight. Comes from a woken military stockpile, not a factory line, which is what makes it an escalation rather than a production run. ⚠ NOT BUILT — design only.",
+    "weapon_range": { "value": 10, "units": "hex", "doc": "⚠ Deliberately SHORTER than tower.range (15), and the 5-hex gap is the whole design. A tower set back D from the wall hits a boss at that wall when D <= 15 and is safe when D > 10, so the tower placement window is 10 < D <= 15. Before this enemy the right answer was towers CLOSE to the wall; now they come back ten hexes, and pay for it in coverage and in the drive to refill a presence-locked shot budget. docs/DESIGN.md § The DEAD BAND." },
+    "weapon_windup": { "value": null, "units": "s", "doc": "Telegraph before a shot. ⚠ Required only for bosses whose range EXCEEDS a tower's 15 — see the range rule below. null = no wind-up at the default range." },
+    "shoots_towers": { "value": true, "doc": "⚠ The first thing in the game that does. Towers cost 100 points and carry a 30-shot budget only a player standing at them can refill, so this is the first enemy that makes the player POORER rather than merely closer to losing. A felled tower also leaves rubble, and rubble is a ramp — the failure compounds." },
+    "range_rule": { "value": null, "doc": "⚠ THE RULE FOR THE BOSS FAMILY, not a number: range above a tower's 15 is not forbidden, it is PRICED, and the currency is very slow speed plus a weapon wind-up. Under 10 -> depth alone beats it, the player BUILDS. At 10 -> the placement window, the player builds DIFFERENTLY. Over 15 -> no base can answer it, so its mitigations must make it REACHABLE and the player leaves the base to deal with it personally. Three numbers per boss, no new code path — the per-type DATA rule of DESIGN § 10." }
+  },
+
   "enemy_boss_phase3": {
     "_doc": "Heavy repair-platform enemy (phase 3, deferred). 2×2 footprint forces structural play; heals nearby regulars; never attacks towers directly.",
     "footprint_hexes": { "value": [2, 2], "doc": "2×2 hex bounding box. Cannot fit through 1-hex entrances; forces 2-hex gates or wall-breaking." },

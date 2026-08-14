@@ -1411,10 +1411,8 @@ counters the existing rule set already offers:
 - **LOS breaking** — `wall_high` at 5.0 m and terrain elevation
   decide what a 6 m tower eye can see (§ 7 § LOS is a HEIGHT
   question).  ⚠ Today `tower_sees` is one symmetric line, so a
-  layout cannot give the tower sight the boss lacks; whether the
-  boss's weapon should be **shorter-ranged than a tower's 15**
-  is the balance number that decides if outranging is an answer
-  at all, and it is undecided.
+  layout cannot give a tower sight the boss lacks.  What *does*
+  give it an edge is **range** — see § The dead band below.
 - ⚠⚠ **Evacuation** — and this is the good one.  Tower-tops are
   **carryable** (§ Tower-top salvage, § New towers via beacon
   ferry).  Against an enemy that destroys towers, pulling the top
@@ -1424,6 +1422,78 @@ counters the existing rule set already offers:
 
 **Design test:** ✓✓ — the answer to the first real challenge is
 to drive into the fire and carry something out.
+
+##### ⚠⚠ The DEAD BAND — boss range 10 against tower range 15
+
+Owner, 2026-08-14: **the default boss weapon range is 10, shorter
+than a tower's 15.**
+
+Those two numbers do the whole job, because the gap between them
+is a **five-hex band in which a tower can shoot and the boss
+cannot answer**.  Everything below is arithmetic on the numbers
+already in `numbers.json`:
+
+| | |
+|---|---|
+| tower range | **15** |
+| boss weapon range | **10** |
+| the dead band | **5 hexes** |
+| boss speed (phase-3 figure) | 1.0 hex/s → **5.0 s to cross it** |
+| tower fire interval | 1.0 s → **5 shots**, 50 HP, per tower |
+| against 200 HP | ⚠ **four towers' worth of approach fire** |
+
+⚠⚠ **And it yields a layout rule a player can actually learn:**
+
+> **Put the perimeter in the dead band.**  A tower set back a
+> distance `D` from the wall can hit a boss stopped at that wall
+> when `D ≤ 15`, and is safe from it when `D > 10`.  So the
+> tower placement window is **10 < D ≤ 15** — five hexes wide,
+> and outside it you are either out of the fight or in reach.
+
+**That is the layout change, made concrete.**  Before the combat
+boss the right answer was towers *close* to the wall — better
+coverage of it, a shorter drive to service them.  Now they must
+come back ten hexes, and ⚠ **the cost is exactly the thing the
+game is about**: a tower that far back covers less wall and is a
+much longer drive to refill, while its 30-shot budget is
+presence-locked (§ 7).  Surviving the boss makes your own battery
+harder to keep loaded.
+
+##### ⚠ Longer-ranged bosses must PAY for it
+
+Owner, same statement: there will be different bosses — *"some
+with far smaller range weapons and some with perhaps even more
+than 15, but they need to have mitigations like very slow speeds
+and a wind-up time for their weapon."*
+
+**So range above 15 is not forbidden, it is priced**, and the
+currency is named: **speed** and **wind-up**.  That makes the
+boss family per-type DATA in the sense § 10 already demands —
+three numbers per boss, no new code path.
+
+| boss range | what beats it | what the player does |
+|---|---|---|
+| **under 10** | depth alone; it dies crossing a wider band | build, and stand back |
+| **10** (default) | the placement window above | **architecture** |
+| **over 15** | ⚠ nothing you can build — it outranges every tower you own | ⚠⚠ **go out and deal with it** |
+
+⚠⚠ **That last row is the good one.**  A boss that outranges your
+towers cannot be answered by a base at all, so its mitigations
+have to make it *reachable*: **very slow** means the player's
+vehicle (3.0 hex/s, twice an enemy) can close on it, and a
+**wind-up** means there is a telegraphed window to move, evade,
+or pull a tower-top off before the shot lands.
+
+So the boss family produces a genuine progression of *kinds* of
+answer rather than of numbers:
+
+- short range → **you build**;
+- default range → **you build differently**;
+- long range → **you leave the base during the fight.**
+
+⚠ And the third is § What kind of game this is again: the answer
+to the biggest gun on the map is to drive at it personally, at
+the moment your base most needs you standing in it.
 
 ### Boss = mobile REPAIR PLATFORM (phase 3)
 

@@ -28,6 +28,7 @@ each section's leaves carrying `value` + `units` + `doc`:
 | `player_vehicle` | dimensions, hover heights, speeds, boost timings, blocker-damage model |
 | `enemy_regular` | dimensions, speeds, HP, **body height** (what a corpse raises its hex by — NOT the standing height), damage rates (core / wall / blocker), loot value, pre-walk standstill |
 | `enemy_boss_phase3` | 2×2 footprint, speed, HP, wall-break + repair-on-regulars rates, loot value |
+| `enemy_boss_combat` | ⚠ **Design only, not built** — the big COMBAT robot (the *other* boss kind).  Weapon range **10** against a tower's 15, which makes a 5-hex dead band and a tower placement window of `10 < D <= 15`; it SHOOTS TOWERS; and a `range_rule` entry stating that range above 15 must be paid for in slow speed plus wind-up |
 | `tower` | range, fire interval, damage, shot budget, costs + build/repair/boost timings + boost multipliers |
 | `wall` | wall + wall_high heights, HPs, **the four bracing factors**, **the rubble a break leaves**, build times, the end-ramp slope, entrance gap window |
 | `helper` | starting + cap roster, speed, HP, order cost, lander delivery + recovery times, construction tick |
