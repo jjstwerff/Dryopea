@@ -1,0 +1,133 @@
+# a-crew-on-one-front — plan 14 H2, and BOTH endings on one base.
+#
+# `a-base-on-two-fronts.keys` plus ONE line: `crew 7 0`.  The base has
+# two fronts and the crew has one helper, so one front is covered and
+# the other is not — and the two ends of the same wall ring tell the
+# two stories plan 12 B7 asked to be distinguished, side by side, in
+# one run.
+#
+#   nobody:                           77 ticks   ( 51 s)
+#   this file — one helper east:     214 ticks   (143 s)
+#   TWO helpers, both on the east:   214 ticks   — the second is worth
+#                                                  NOTHING
+#   one helper on each front:        242 ticks   (161 s)
+#
+# ⚠ **The east wall is BROKEN and the west wall is untouched at 97 of
+# 100** — and it is the same wall, the same tower, the same waves.  On
+# the covered front the helper ate the body ramp as fast as the tower
+# built it, so the only way in was through; on the uncovered one a
+# 1.0 m ramp stands and nobody ever had to hit the wall at all.
+#
+# ⚠ **A helper is worth 137 ticks here and its twin is worth nothing.**
+# The two-helper-east run reads 214 exactly like this one: one tower
+# makes about 0.03 m of body a tick and a vehicle clears 0.33, so the
+# first helper on a front is already ten times faster than the front
+# makes work.  What the second one is for is the OTHER front —
+# `a-crew-on-two-fronts.keys` is that file, and it reads 242.
+#
+# ⚠ So the roster buys **coverage, not throughput**, and this pair is
+# the measurement that separates them.  `tests/14_h2_the_roster.loft`
+# § A second helper beside the first re-runs THIS file with its crew
+# line doubled and gets every number in it back unchanged.
+
+echo a crew on one front: one helper, one broken wall, and one ramp nobody ate
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+click 3 0
+marker 3 0 tower
+click -3 0
+marker -3 0 tower
+
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+do rotate
+do rotate
+do rotate
+click -11 0
+marker -11 0 spawn 0
+
+count markers 5 5
+do toggle_mode
+
+palette 5
+drag -12 -2 12 -2
+drag -12 -1 12 -1
+drag -12 0 12 0
+drag -12 1 12 1
+drag -12 2 12 2
+count painted 125 125
+
+palette 9
+click 5 -2
+click 5 -1
+click 5 0
+click 5 1
+click 5 2
+click 5 -4
+click 5 -3
+click 5 3
+click 5 4
+click -5 -2
+click -5 -1
+click -5 0
+click -5 1
+click -5 2
+click -5 -4
+click -5 -3
+click -5 3
+click -5 4
+kind 5 0 wall
+kind -5 0 wall
+hp 5 0 100.0 100.0
+hp -5 0 100.0 100.0
+
+# ⚠ **The whole difference from `a-base-on-two-fronts.keys`.**  ONE
+# helper, parked one hex clear of where the east tower's kills will
+# fall.  No key is pressed and none exists: clearing is a POSITION
+# (`DESIGN.md` § 11), so what the player decides is where the crew
+# STANDS — and this file is the decision to cover one side.
+crew 7 0
+helper 0 7 0
+
+wave 10
+count alive 10 10
+wallet 200.0 200.0
+
+tick 22
+wave 16
+
+fall 800
+ticks 209 219
+wallet 0.0 0.0
+
+# ── ⚠ The two endings, one base ─────────────────────────────────
+
+# EAST — covered.  No ramp: the tower built one all run and the helper
+# ate it as fast as it appeared, so `wall` is GONE from (5, 0) and the
+# attackers came through the hole they had to make.
+pile 6 0 0.0 0.0
+kind 5 0 grass
+
+# WEST — uncovered.  A 1.0 m ramp stands where the bodies fell, and the
+# wall behind it is at 97 of 100: they walked over their own dead and
+# never touched it.  ⚠ That is plan 12 B7's ending, still happening, on
+# the front nobody was standing on.
+pile -6 0 0.9 1.1
+kind -5 0 wall
+hp -5 0 95.0 100.0
+hp -5 -1 95.0 100.0
+
+# The helper stayed where it was put — `plans/14` § Open questions 1.
+helper 0 7 0
+
+snap h2_a_crew_on_one_front

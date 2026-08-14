@@ -9,7 +9,34 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**H0 + H1 shipped** (2026-08-14). H2 is next.
+**H0 + H1 + H2 shipped** (2026-08-14). H3 is next, and is blocked on a
+carry model.
+
+**H2 put the crew to work, and it added no mechanic to do it.**
+Clearing already existed (plan 13 V2 + V3), so H2 extracted it onto the
+shared chassis — `vehicle.loft::salvage_at`, one implementation — and
+gave the roster a turn in the tick. Suite **849 green**, gate **22
+scripts / 395 measurements**.
+
+⚠ **A roster's value is COVERAGE, not throughput**, and one pair of
+scenarios separates them. On a base with two fronts:
+
+| | ticks |
+|---|---|
+| nobody clearing (`a-base-on-two-fronts`) | 77 |
+| one helper, east front (`a-crew-on-one-front`) | 214 |
+| **two helpers, both on the east front** | **214** — the second is worth nothing |
+| one helper on each front (`a-crew-on-two-fronts`) | 242 |
+
+One tower makes ~0.03 m of body a tick and one vehicle clears 0.33, so
+**the first helper on a front is already ten times faster than the
+front makes work**. What a second one is for is the other front.
+
+⚠ **And a helper is worth exactly what the player was.** Swap `park 7 0`
+for `crew 7 0` in plan 13's `a-crew-that-clears-up.keys` and every
+number in that file comes back unchanged — 145 ticks, the same emptied
+pile, the same third of a wall gone. That is `DESIGN.md` § 9's *"same
+chassis as the player"* as a measurement.
 
 **H1 put a crew in the world.** `src/helper.loft` holds an NPC vehicle
 that is placed, pointed at a hex, and covers **exactly 2.5 hex/s** —
@@ -125,13 +152,81 @@ different speed and a different climb. H1 extracts that walk so both
 read one implementation — the rule plan 11 F1 states for passability,
 applied to movement.
 
+## H2 — the roster works (2026-08-14)
+
+No new mechanic, and that was the phase's shape rather than its
+shortcut: clearing, its rate, its reach and what a metre of it is worth
+were all decided by plan 13. A phase that had invented a helper-only
+job would have gated the JOB; this one can only be read as gating the
+ROSTER.
+
+What it built is two extractions and one loop: `vehicle.loft::
+salvage_at` (the second half of the shared chassis, after H1's
+`drive_along`), `helper.loft::helper_salvage`, and a crew turn in
+`wave_tick` that pays into the same wallet.
+
+### ⚠ 1. Two wrong rosters both empty the heap
+
+The unit gate is a RATE for the reason H1's was a step PATTERN — the
+obvious assertion cannot see the defect:
+
+- a crew **not in the tick** clears exactly what one helper does, and
+  every "the rubble is gone" assertion stays green;
+- a crew **sharing one bite** — the shape you get if the tick asks the
+  layer once and hands the answer round — also clears exactly what one
+  helper does.
+
+Both read the same as the right answer unless you measure how MUCH went
+in a fixed number of ticks. So `crew_took(n, 3)` is the whole gate, for
+every `n` up to the roster cap.
+
+### ⚠ 2. The base could not see the roster at all, and the reason is arithmetic
+
+The plan's gate said *"the crewed base's clock rises again"*. Measured
+on plan 13's base, **it does not move by a tick**: one tower kills about
+eight robots over 145 ticks, which is 0.03 m of body a tick, and one
+vehicle clears 0.33. The first clearer already has ten times the
+capacity the front demands, so a second one has nothing to do.
+
+That is not a defect and it is not the roster failing — it is what
+"twice as fast" means when the work is not the bottleneck. The
+measurement that CAN see a roster is a base whose work is in two
+places, which is where `a-base-on-two-fronts.keys` came from, and the
+answer is the table in § Status.
+
+### ⚠ 3. A mirrored base is not a symmetric one — bracing decides
+
+The first two-front base read **112 ticks with a helper east and 211
+with one west**, on a map that looks mirror-symmetric. The crew had
+nothing to do with it: a wall's END is worth 30% of a braced hex (plan
+12 B3), the siege chews where the ROUTE meets the wall (also B3), and
+odd-r rows are offset — so the eastern approach fan happened to include
+an end hex and the western one did not. One front was breaking 30 HP
+while the other chewed 100.
+
+Extending both walls two hexes past the walkable band makes every
+REACHABLE wall hex fully braced, and the fronts come back to within
+three ticks of each other (214 against 211). ⚠ **So a scenario that
+compares two sides of a base has to control for bracing before it can
+measure anything else**, and the cost of not doing it is a 99-tick
+artefact that reads exactly like a finding.
+
+### What H2 did NOT touch
+
+Helpers still do not block enemies (§ Open questions 2 — `plans/13` V5's
+predicate takes one vehicle, and widening it to a roster is H3's), do
+not boost, and cannot be hurt in the world (`helper_hurt` exists and
+`wave_tick` never calls it). A crew inside a sealed base is still locked
+in, and one outside is still locked out — the one-way commitment plan 13
+V2 recorded, now with NPCs making it.
+
 ## Invariant gate
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
 | **H0** ✓ | the table above | the probe measures what a speed costs before anything banks it | — (H0 asserts arithmetic; H1 is its gate) |
 | **H1** ✓ | a helper covers 5 hexes every 3 ticks, forever | speed is a RATE and the remainder is BANKED, never dropped | a helper that covers 1 hex a tick has truncated (2.5 → 1.5 hex/s); one that covers 14 in 9 has no epsilon |
-| **H2** | two helpers clear a heap twice as fast as one, and the crewed base's clock rises again | a roster is N of the same thing, not a special case | a second helper that changes nothing is not in the tick |
+| **H2** ✓ | two helpers clear a heap twice as fast as one; on a base, the second is worth 28 ticks on the OTHER front and 0 beside the first | a roster is N of the same thing, not a special case | a second helper that changes nothing is not in the tick — and it reads identically to one that shares a single bite, which is why the gate is a rate |
 | **H3** | a helper destroyed by blocking wrecks where it stood and does NOT respawn | retrieval is the only way back (§ 9) — unlike the player, who always returns | a helper that respawns at the core has been given the player's rule |
 
 ## Phases
@@ -140,7 +235,7 @@ applied to movement.
 |---|---|---|---|
 | **H0** — the probe: what a helper's speed costs | XS | the arithmetic above, measured against `numbers.json` | **Done** |
 | **H1** — a helper exists and moves at exactly 2.5 hex/s | S | `tests/14_h1_the_helper.loft` — 5 hexes every 3 ticks, and both wrong implementations are red | **Done** |
-| **H2** — a roster that works: helpers clear rubble | S | the crewed base's clock rises again with helpers on it | Open |
+| **H2** — a roster that works: helpers clear rubble | S | `tests/14_h2_the_roster.loft` — N helpers clear N times as fast, and three `.keys` scenarios that differ only in their crew lines read 77 / 214 / 242 | **Done** |
 | **H3** — wreck, retrieve, recover | M | a downed helper stays down until someone carries it home | Blocked on H1, and on a carry model |
 
 ### Why the order is this order
@@ -171,8 +266,11 @@ ordering respects; this plan just refuses to exceed the cap.
 
 ## Open questions
 
-1. **Does a helper choose its own work?** H2's helpers clear whatever
-   rubble is in reach, which needs no decision. Anything beyond that
+1. **Does a helper choose its own work?** ⚠ **Answered for now by
+   shipping H2 without a decision in it**: helpers clear whatever
+   rubble is in reach, so the player's only input is where they STAND
+   — which is what makes the two-front table a statement about
+   positioning rather than about NPC cleverness. Anything beyond that
    — go to the nearest heap, resume another helper's frozen task —
    is a *dispatcher*, and dispatchers are where NPC AI quietly becomes
    pathfinding for the player. *Recommendation: keep helpers passive

@@ -61,7 +61,8 @@ exists today.
 | LOOT: clearing wreckage pays 20 points a metre, so the wallet can rise for the first time — and a crew that clears AND collects takes the towered base from 95 ticks to 145 | [13](plans/13-the-vehicle/README.md), V3 shipped — plan **complete** |
 | The player can be DESTROYED — but only by blocking a wave with nowhere to go round, which is a property of the map rather than of parking | [13](plans/13-the-vehicle/README.md), V5 shipped |
 | HELPERS: an NPC crew on the player's chassis, moving at 2.5 hex/s — the first mover whose speed does NOT fit the tick | [14](plans/14-helpers/README.md), H0-H1 shipped |
-| **The crew cannot yet DO anything, and no tower repair, ordering or scramble** | [14](plans/14-helpers/README.md), H2 next |
+| A helper WORKS: it clears and it earns, on one shared chassis — and a base with two fronts goes 77 → 214 → 242 ticks as the crew grows to cover them | [14](plans/14-helpers/README.md), H2 shipped |
+| **A helper cannot be hurt, retrieved or ordered, and no tower repair or scramble** | [14](plans/14-helpers/README.md), H3 next — blocked on a carry model |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -77,10 +78,13 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 832/832 green under `scripts/test.sh`** (~35 s — the `frame`
-measurements classify full 960x720 frames, and the cost gate ticks a
-radius-40 world twice, once defended).
-**Gate: 19 scripts green under `scripts/validate.sh`** (~7 s, 324
+**Suite: 849/849 green under `scripts/test.sh`** (~95 s measured
+2026-08-14 — the `frame` measurements classify full 960x720 frames, the
+cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
+run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
+plan 12 until H2 re-measured it; the figure grew with the scenario
+tests, not with any one phase).
+**Gate: 22 scripts green under `scripts/validate.sh`** (~10 s, 395
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -287,6 +291,27 @@ steering disabled too — their spawn headings already take them to
 different places.  Measured.  It gates the TARGETING; what gates the
 steering is a corridor that BENDS, because a straight one gives a field
 and a heading the identical path.
+
+⚠ **A MIRRORED base is not a symmetric one, and the artefact reads
+exactly like a finding.**  Plan 14 H2's two-front base measured 112
+ticks with a helper on the east front and 211 with one on the west — a
+99-tick spread on a map that looks mirror-symmetric, and none of it was
+the crew's.  A wall's END is worth 30% of a braced hex, the siege chews
+where the ROUTE meets the wall (both plan 12 B3), and odd-r rows are
+offset — so one approach fan included an end hex and the other did not.
+Extending both walls two hexes PAST the walkable band braces every
+reachable hex and brings the fronts to within three ticks (214 vs 211).
+⚠ So a scenario that compares two sides of a base must control for
+BRACING first; `q -> -q` is not a symmetry of this lattice.
+
+⚠ **A gate whose reading is already saturated cannot see the thing you
+built.**  H2's plan said the crewed base's clock would rise again with
+helpers on it; measured, it does not move by a tick, because one tower
+makes 0.03 m of body a tick and one vehicle clears 0.33 — **ten times
+the capacity the front demands**.  Nothing was wrong with the crew; the
+base could not express a second one.  Before believing a flat reading,
+price the SUPPLY against the CAPACITY — the same move `12_b5b`'s
+LOS-versus-alternative pricing makes.
 
 ⚠ **A cost gate over a world with none of the thing you changed is not
 a gate.**  `tests/11_f8_the_tick_budget.loft` ticked a MARKERLESS world,
@@ -843,6 +868,13 @@ src/
                    is meant to take time you do not have.
                    ⚠ It takes a BITE via `height_raise`, never
                    `height_clear` (which still has no caller).
+                   ⚠ Since plan 14 H2 the rule itself is `salvage_at`,
+                   which takes a HEX — the second half of the shared
+                   chassis, after H1's `drive_along` — so the player
+                   and every helper clear one implementation.  There is
+                   no helper salvage RATE: `numbers.json` § helper has
+                   none, and a second constant would be a tunable the
+                   plan invented.
                    V4 added boost: `vehicle_boost` / _boosting /
                    _boost_ready / _climb / _speed, four hexes a tick and
                    a 3.0 m climb for 2 s, then 5 s of cooldown armed as
@@ -871,7 +903,16 @@ src/
                    speed, compounding: without it the carry sits on
                    0.99999999999999956 and a hex is deferred for ever.
                    The gate is the 1-2-2 step PATTERN, because both
-                   wrong versions still arrive
+                   wrong versions still arrive.
+                   H2 added `helper_salvage` — the player's clearing
+                   rule, on the player's chassis, done by an NPC — and
+                   a crew turn in `wave_tick` that earns into the RUN's
+                   wallet.  ⚠ It adds no mechanic at all, which is what
+                   makes it a gate on the ROSTER rather than on a job.
+                   ⚠ **The gate is a RATE**: a crew that is not in the
+                   tick and a crew sharing ONE vehicle's bite both
+                   empty the heap and both read exactly like one
+                   helper, so "the rubble is gone" cannot see either
   wallet.loft      the run's budget, and the only END STATE dryopea
                    has (plan 12 B6) — WALLET_STARTING_POINTS (200),
                    NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,
@@ -1376,10 +1417,11 @@ signature.
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — max minus taken.  ⚠ 0.0 answers BOTH "broken" and "never a structure"; ask `structure_breakable` first if you need to tell them apart |
 | Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — the kind's figure scaled by `brace_of`.  ⚠ `numbers.json`'s wall_hp (100) is the BRACED number; a lone plug in a corridor is a STUB and gets 15 |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
-| Clear rubble / collect after a tower | `src/vehicle.loft::vehicle_salvage` — the counter-play to `ENEMY_MOVEMENT.md` § Bodies are terrain.  ⚠ A crew inside a SEALED base can only reach the ramp by BOOSTING out (V4): the ramp forms outside the wall and an idle vehicle climbs 0.4 m |
+| Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the rule, taking a HEX, so the player and every helper read one implementation (`vehicle_salvage` / `helper_salvage` are the two doors).  The counter-play to `ENEMY_MOVEMENT.md` § Bodies are terrain.  ⚠ A crew inside a SEALED base can only reach the ramp by BOOSTING out (V4): the ramp forms outside the wall and an idle vehicle climbs 0.4 m — and no helper has a boost |
 | Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` — the rule with the climb passed rather than looked up.  ⚠ Never widen `climb_limit(kind)`: it is a CLASS lookup and a convenience for callers that have a kind.  `vehicle_climb` is the worked example |
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
 | Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock.  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; a tower CUTS it, because its bodies ramp over the wall it was defending |
+| Judge what another CREW MEMBER is worth | [plans/14](plans/14-helpers/README.md) § Status — three scenarios that differ only in their crew lines, and the measured clock (77 / 214 / 242).  ⚠ A roster buys COVERAGE, not throughput: a second helper beside the first is worth nothing at all, and the same helper on the other front is worth 28 ticks |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |

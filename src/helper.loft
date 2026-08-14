@@ -164,3 +164,33 @@ pub fn helper_tick(h: Helper, pal: vector<GroundType>, pw: PaintedWorld,
     h.q = ht_at.q;
     h.r = ht_at.r;
 }
+
+// ─── The work (plan 14 H2) ──────────────────────────────────────
+
+// Clear rubble within reach for one tick, deepest heap first — the
+// player's rule, on the player's chassis, done by an NPC.
+//
+// ⚠ **This phase adds no mechanic whatsoever**, and that is the point
+// of putting it first: `vehicle_salvage` (plan 13 V2) already decides
+// what gets cleared, how fast, how far it reaches and what a bite is
+// worth, so a helper doing it exercises the ROSTER and nothing else.
+// A phase that invented a helper-only job would have gated the job.
+//
+// ⚠ **A roster is N of the same thing.**  Two helpers beside one heap
+// take two bites out of it in a tick, because each asks the layer as
+// it stands when its turn comes — so a crew of N clears N times as
+// fast until the heap runs out, and the last bite is short rather than
+// negative (`salvage_at` takes `min(bite, depth)`).  That is what makes
+// "twice as fast" an exact statement and not an approximate one.
+//
+// ⚠ A wrecked helper clears nothing — the same sentence
+// `vehicle_salvage` writes as `if !v.parked`, and the reason H3 can
+// down a helper without touching this function.
+pub fn helper_salvage(h: const Helper, hl: HeightLayer,
+                      tick_seconds: float) -> Salvage {
+    if !h.alive { return Salvage { metres: 0.0, source: -1 }; }
+
+    // ⚠ Bound to a local, per `vehicle_salvage` — loft#880.
+    hs_got = salvage_at(Hex { q: h.q, r: h.r }, hl, tick_seconds);
+    hs_got
+}

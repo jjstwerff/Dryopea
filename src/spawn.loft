@@ -1316,6 +1316,28 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         wallet_earn(state.wallet, loot_rate(wt_salv.source) * wt_salv.metres);
     }
 
+    // ⚠ **The crew's work is the player's work and pays into the same
+    // wallet** (plan 14 H2).  `DESIGN.md` § 9 calls helpers *"NPC
+    // vehicles that do the cooperative's actual work"* — one
+    // cooperative, so one budget, and a helper that earned into a purse
+    // of its own would be a second economy nothing spends from.
+    //
+    // ⚠ **After the whole crew has moved**, so a helper clears from
+    // where it ended this tick and never from a hex a later mover would
+    // have taken it off — the same reason the player's salvage is not
+    // folded into `vehicle_tick`.
+    //
+    // ⚠ Each asks the layer as it stands when its turn comes, which is
+    // what makes a crew of N clear N times as fast on ONE heap.  Order
+    // decides only who gets the short last bite, and roster order fixes
+    // that so a scripted run repeats.
+    for wt_hs in state.crew {
+        wt_hsalv = helper_salvage(wt_hs, state.heights, TICK_SECONDS);
+        if wt_hsalv.metres > 0.0 {
+            wallet_earn(state.wallet, loot_rate(wt_hsalv.source) * wt_hsalv.metres);
+        }
+    }
+
     wave_deaths(state);
     damage_resolve(pal, pw, state.damage, state.heights);
 

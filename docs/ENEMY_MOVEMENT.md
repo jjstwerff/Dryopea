@@ -155,6 +155,15 @@ ramp (point 3), the blinding above, and the queue spreading off-axis.
 until the vehicle's crew exists to collect bodies, a tower without
 cleanup shortens the base's life.  `tests/12_b7_the_clock.loft`.
 
+⚠ **The counter-play is a vehicle STANDING there, and since plan 14 H2
+it does not have to be the player's.**  A crew — the player, an NPC
+helper, or both — clears the ramp as fast as a tower builds it, and the
+attackers are put back onto the wall: 95 → 145 ticks on the base above,
+77 → 242 on one with two fronts.  ⚠ And a roster buys **coverage, not
+throughput**: a second helper beside the first is worth nothing, because
+one tower makes 0.03 m of body a tick and one vehicle clears 0.33.  What
+a second one is for is a second front.  `plans/14` § Status.
+
 ⚠ **A fatal hit is followed by one last step.**  The tick moves before
 it resolves deaths, so a body lands one hex down the enemy's route from
 where the damage landed.  That is the same "consequences land at the

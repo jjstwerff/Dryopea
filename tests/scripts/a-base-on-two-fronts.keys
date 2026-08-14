@@ -1,0 +1,134 @@
+# a-base-on-two-fronts — plan 14 H2's baseline, and B7's ending twice.
+#
+# `a-tower-buries-its-own-wall.keys` mirrored: two spawns, two towers,
+# two walls, one core.  Nobody clears up.
+#
+#   this file — nobody:               77 ticks   ( 51 s)
+#   one helper, east front:          214 ticks   (143 s)
+#   one helper, west front:          211 ticks   (141 s)
+#   TWO helpers, both on the east:   214 ticks   — worth nothing
+#   one helper on each front:        242 ticks   (161 s)
+#
+# ⚠ **The ending is plan 12 B7's, on both sides at once.**  This base
+# falls with both of its walls at 97 of 100 — barely scratched — and a
+# 1.5 m body ramp standing at (6, 0) and (-6, 0).  Nobody had to break
+# anything: each tower killed its attackers at the foot of its own
+# wall, and the survivors walked over their dead.
+#
+# ── ⚠ Why the walls run r = -4..4 over a band that is only -2..2 ──
+#
+# Not decoration, and not a wider seal — the hexes outside the band are
+# sea, so nothing walks there either way.  It is what makes the two
+# fronts COMPARABLE, and the first attempt at this base showed why it
+# had to be done: with the walls stopping at the band's edge, one
+# helper east read 112 ticks and one helper west 211, on a base that
+# looks mirror-symmetric.
+#
+# The cause is plan 12 B3 and not the crew.  A wall's END is worth 30%
+# of a braced hex, the siege chews where the ROUTE meets the wall, and
+# odd-r rows are offset — so the eastern approach fan happened to
+# include an end hex and the western one did not.  One front was
+# breaking a 30 HP hex while the other chewed 100 HP.
+#
+# Extending both walls two hexes past the walkable band makes every
+# REACHABLE wall hex fully braced, and the two fronts come back to
+# within three ticks of each other (214 against 211).  ⚠ So a base's
+# two sides are only as alike as their BRACING, and that is a property
+# of the map a scenario has to control for before it can measure
+# anything else.
+
+echo a base on two fronts: two towers, two ramps, and nobody clearing up
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# One tower a front, each one hex behind the wall it covers (B5b).
+do cycle_kind
+click 3 0
+marker 3 0 tower
+click -3 0
+marker -3 0 tower
+
+# Two spawns, pointed at each other across the core.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+do rotate
+do rotate
+do rotate
+click -11 0
+marker -11 0 spawn 0
+
+count markers 5 5
+do toggle_mode
+
+palette 5
+drag -12 -2 12 -2
+drag -12 -1 12 -1
+drag -12 0 12 0
+drag -12 1 12 1
+drag -12 2 12 2
+count painted 125 125
+
+# ⚠ Both walls run past the band on purpose — see the header.
+palette 9
+click 5 -2
+click 5 -1
+click 5 0
+click 5 1
+click 5 2
+click 5 -4
+click 5 -3
+click 5 3
+click 5 4
+click -5 -2
+click -5 -1
+click -5 0
+click -5 1
+click -5 2
+click -5 -4
+click -5 -3
+click -5 3
+click -5 4
+
+# Every reachable wall hex is braced to the full 100, both sides.
+kind 5 0 wall
+kind -5 0 wall
+hp 5 0 100.0 100.0
+hp -5 0 100.0 100.0
+hp 5 -2 100.0 100.0
+hp -5 -2 100.0 100.0
+
+# A wave round-robins over the active spawns, so ten is five a side.
+wave 10
+count alive 10 10
+wallet 200.0 200.0
+
+tick 22
+wave 16
+
+fall 800
+ticks 72 82
+wallet 0.0 0.0
+
+# ── What got them in: their own dead, on both sides ──────────────
+
+# 0.5 m a body, so three of them — inside plan 12 B0's [1.0, 2.0] band
+# onto a 3.0 m wall, for a 2.0 m climber.
+pile 6 0 1.4 1.6
+pile -6 0 1.4 1.6
+
+# ⚠ **And the walls are all but untouched.**  Both of them, on a base
+# that fell — which is the whole of B7's finding, arriving twice.
+kind 5 0 wall
+kind -5 0 wall
+hp 5 0 90.0 100.0
+hp -5 0 90.0 100.0
+
+snap h2_a_base_on_two_fronts

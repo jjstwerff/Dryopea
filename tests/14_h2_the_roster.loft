@@ -1,0 +1,409 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 14 phase H2 — the crew does the work, and a roster is N of the
+// same thing.
+//
+// ── Why this phase builds no mechanic ───────────────────────────
+//
+// Clearing already exists: plan 13 V2 decided what a vehicle clears,
+// how fast, how far it reaches, and V3 decided what a metre of it is
+// worth.  H2 hands that same job to an NPC and changes none of it —
+// which is the point.  A phase that gave helpers a job of their own
+// would have gated the JOB; this one can only be read as gating the
+// ROSTER.
+//
+// ⚠ **So the whole phase is one question: does a second helper do a
+// second helper's worth of work?**  Two answers look identical from
+// the outside if you only ask whether the heap went away:
+//
+//   1. **A crew that is not in the tick.**  Adding helpers changes
+//      nothing at all — the heap still empties, just as fast as it did
+//      with one, and every "the rubble is gone" assertion is green.
+//   2. **A crew that shares one bite.**  N helpers split one vehicle's
+//      rate N ways, which is what "the roster clears the heap" would
+//      mean if the tick asked the LAYER once and handed the answer out.
+//
+// Only the RATE separates them, so every measurement here is a rate:
+// what N helpers take away in a fixed number of ticks, against what
+// one does.
+//
+// ── ⚠ What the roster is NOT worth, measured ────────────────────
+//
+// A second clearer buys nothing on `a-crew-that-clears-up.keys`, and
+// that is a property of the base rather than of the crew: one tower
+// kills about eight robots over 145 ticks, which is 0.03 m of body a
+// tick against a clearing rate of 0.33.  **One vehicle is already ten
+// times faster than that base makes work.**
+//
+// So the roster's value is COVERAGE, not throughput — being in two
+// places — and `a-base-on-two-fronts.keys` is the base that can see
+// it.  See `plans/14` § H2.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=16 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// A heap deep enough that nobody in these tests can reach the bottom
+// of it — so what is left is a pure reading of the RATE, and never of
+// a short last bite.
+const HEAP: float = 12.0;
+
+// What one vehicle takes out of a heap in one tick.
+fn bite() -> float {
+    VEHICLE_SALVAGE_METRES_PER_SECOND * TICK_SECONDS
+}
+
+// A world with one heap at (6, 0) and `n` helpers standing beside it,
+// ticked `t` times.  Answers the metres that went.
+fn crew_took(n: integer, t: integer) -> float {
+    ct_pw = band();
+    ct_s  = wave_state_empty();
+    height_raise(ct_s.heights, 6, 0, HEAP, as_u8(RUBBLE_WRECKAGE));
+    for _ in 0..n { ct_s.crew += [helper_new(7, 0)]; }
+
+    play(ct_s, ct_pw, t);
+    HEAP - height_rise(ct_s.heights, 6, 0)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The rate — the whole phase
+// ─────────────────────────────────────────────────────────────────
+
+// One helper clears exactly what one player clears.  `DESIGN.md` § 9
+// opens with *"same chassis as the player"*, and since H2 that is one
+// function rather than two agreeing.
+fn test_a_helper_clears_at_the_players_rate() {
+    tah_took = crew_took(1, 3);
+    tah_want = 3.0 * bite();
+
+    assert(tah_took > tah_want - 0.0001 && tah_took < tah_want + 0.0001,
+           "one helper took {tah_took} m in three ticks, wanted {tah_want}");
+}
+
+// ⚠ **The phase in one assertion.**  Two helpers take two bites out of
+// the same heap in one tick — not one bite shared, and not one bite
+// because the second is decoration.
+fn test_a_crew_of_two_clears_twice_as_fast() {
+    tac_one = crew_took(1, 3);
+    tac_two = crew_took(2, 3);
+
+    assert(tac_two > 2.0 * tac_one - 0.0001 && tac_two < 2.0 * tac_one + 0.0001,
+           "two helpers took {tac_two} m where one took {tac_one} — wanted twice");
+}
+
+// ⚠ **The negative control, stated as its own reading.**  A crew that
+// is not in the tick clears exactly what one does; a crew that shares
+// one vehicle's bite clears exactly what one does.  Both are the SAME
+// number, which is why "the heap emptied" cannot be the gate.
+fn test_a_crew_that_changes_nothing_would_read_as_one_helper() {
+    tac_one = crew_took(1, 3);
+    tac_six = crew_took(6, 3);
+
+    assert(tac_six > tac_one + 0.0001,
+           "six helpers took {tac_six} m and one took {tac_one} — a roster that is not in the tick reads the same");
+}
+
+// The whole roster, up to `numbers.json` § helper.roster_cap.  N of the
+// same thing, for every N a base can have.
+fn test_every_crew_size_clears_in_proportion() {
+    for tec_n in 1..=HELPER_ROSTER_CAP {
+        tec_took = crew_took(tec_n, 3);
+        tec_want = (tec_n as float) * 3.0 * bite();
+        assert(tec_took > tec_want - 0.0001 && tec_took < tec_want + 0.0001,
+               "{tec_n} helpers took {tec_took} m in three ticks, wanted {tec_want}");
+    }
+}
+
+// ⚠ **The player is one of them.**  A base with a player and two
+// helpers in the kill zone clears at three vehicles' rate, so nothing
+// about the crew's arithmetic treats the player as a special case.
+fn test_the_player_clears_alongside_the_crew() {
+    ttp_pw = band();
+    ttp_s  = wave_state_empty();
+    height_raise(ttp_s.heights, 6, 0, HEAP, as_u8(RUBBLE_WRECKAGE));
+    vehicle_place(ttp_s.player, 7, 0);
+    ttp_s.crew += [helper_new(7, 0)];
+    ttp_s.crew += [helper_new(6, 1)];
+
+    play(ttp_s, ttp_pw, 3);
+
+    ttp_took = HEAP - height_rise(ttp_s.heights, 6, 0);
+    ttp_want = 3.0 * 3.0 * bite();
+    assert(ttp_took > ttp_want - 0.0001 && ttp_took < ttp_want + 0.0001,
+           "a player and two helpers took {ttp_took} m, wanted {ttp_want}");
+}
+
+// ⚠ **Coverage, which is the thing a rate cannot say.**  Three heaps
+// and one vehicle: it eats ONE a tick (plan 13 V2's rule), so two of
+// them stand untouched however long it works.  Three helpers, one
+// each, and all three go down together.
+fn test_a_crew_covers_what_one_vehicle_cannot_reach() {
+    tac_pw = band();
+    tac_s  = wave_state_empty();
+    height_raise(tac_s.heights, 6, 0,  1.0, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tac_s.heights, 10, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tac_s.heights, 14, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+
+    tac_s.crew += [helper_new(7, 0)];
+    play(tac_s, tac_pw, 4);
+
+    assert(height_rise(tac_s.heights, 6, 0) == 0.0, "the near heap is gone");
+    assert(height_rise(tac_s.heights, 10, 0) == 1.0, "and the far ones are untouched");
+    assert(height_rise(tac_s.heights, 14, 0) == 1.0, "both of them");
+
+    tac_s2 = wave_state_empty();
+    height_raise(tac_s2.heights, 6, 0,  1.0, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tac_s2.heights, 10, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tac_s2.heights, 14, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+
+    tac_s2.crew += [helper_new(7, 0)];
+    tac_s2.crew += [helper_new(11, 0)];
+    tac_s2.crew += [helper_new(15, 0)];
+    play(tac_s2, tac_pw, 4);
+
+    assert(height_rise(tac_s2.heights, 6, 0) == 0.0
+        && height_rise(tac_s2.heights, 10, 0) == 0.0
+        && height_rise(tac_s2.heights, 14, 0) == 0.0,
+           "a crew of three cleared all three: {height_rise(tac_s2.heights, 6, 0)}, {height_rise(tac_s2.heights, 10, 0)}, {height_rise(tac_s2.heights, 14, 0)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The rules it inherits rather than restates
+// ─────────────────────────────────────────────────────────────────
+
+// The reach is the player's — one hex, and forced (plan 13 V2: a hover
+// unit cannot stand on the 1.5 m heap it has to clear).
+fn test_a_helper_clears_what_it_is_beside_and_no_further() {
+    tah_pw = band();
+    tah_s  = wave_state_empty();
+    height_raise(tah_s.heights, 6, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tah_s.heights, 9, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    tah_s.crew += [helper_new(7, 0)];
+
+    play(tah_s, tah_pw, 4);
+
+    assert(height_rise(tah_s.heights, 6, 0) == 0.0, "the heap it stands beside is gone");
+    assert(height_rise(tah_s.heights, 9, 0) == 1.0,
+           "the one two hexes away is untouched: {height_rise(tah_s.heights, 9, 0)}");
+}
+
+// A helper takes the deepest heap in reach first — a ramp is made by
+// the tallest pile, so that is the one worth eating.
+fn test_a_helper_takes_the_deepest_heap_in_reach() {
+    tat_pw = band();
+    tat_s  = wave_state_empty();
+    height_raise(tat_s.heights, 6, 0, 0.5, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tat_s.heights, 7, 1, 2.0, as_u8(RUBBLE_WRECKAGE));
+    tat_s.crew += [helper_new(7, 0)];
+
+    play(tat_s, tat_pw, 1);
+
+    assert(height_rise(tat_s.heights, 6, 0) == 0.5, "the shallow heap is untouched");
+    assert(height_rise(tat_s.heights, 7, 1) < 2.0, "and the deep one has been bitten");
+}
+
+// ⚠ **One cooperative, one budget.**  `DESIGN.md` § 9 calls helpers
+// *"NPC vehicles that do the cooperative's actual work"*, so what a
+// helper collects pays into the run's wallet — a purse of its own
+// would be a second economy nothing spends from.
+fn test_a_helper_earns_into_the_runs_wallet() {
+    tah_pw = band();
+    tah_s  = wave_state_empty();
+    height_raise(tah_s.heights, 6, 0, HEAP, as_u8(RUBBLE_WRECKAGE));
+    tah_s.crew += [helper_new(7, 0)];
+
+    play(tah_s, tah_pw, 3);
+
+    tah_took = HEAP - height_rise(tah_s.heights, 6, 0);
+    tah_want = WALLET_STARTING_POINTS + LOOT_POINTS_PER_METRE * tah_took;
+    tah_have = wallet_left(tah_s.wallet);
+
+    assert(tah_have > tah_want - 0.0001 && tah_have < tah_want + 0.0001,
+           "it cleared {tah_took} m and the wallet reads {tah_have}, wanted {tah_want}");
+}
+
+// ⚠ And the crew earns as a crew: two of them collect twice, which is
+// the wallet's reading of § The rate.
+fn test_a_crew_earns_in_proportion_to_its_size() {
+    tac_pw = band();
+    tac_s  = wave_state_empty();
+    height_raise(tac_s.heights, 6, 0, HEAP, as_u8(RUBBLE_WRECKAGE));
+    tac_s.crew += [helper_new(7, 0)];
+    tac_s.crew += [helper_new(7, 0)];
+
+    play(tac_s, tac_pw, 3);
+
+    tac_one = LOOT_POINTS_PER_METRE * 3.0 * bite();
+    tac_got = wallet_left(tac_s.wallet) - WALLET_STARTING_POINTS;
+    assert(tac_got > 2.0 * tac_one - 0.0001 && tac_got < 2.0 * tac_one + 0.0001,
+           "two helpers earned {tac_got}, wanted {2.0 * tac_one}");
+}
+
+// ⚠ Masonry pays a helper nothing, for the reason it pays the player
+// nothing: demolishing your own wall must not be an income stream
+// (plan 13 V3).  The rule is `wallet.loft::loot_rate`'s and the crew
+// reads the same one.
+fn test_masonry_pays_a_helper_nothing() {
+    tmp_pw = band();
+    tmp_s  = wave_state_empty();
+    height_raise(tmp_s.heights, 6, 0, HEAP, as_u8(RUBBLE_MASONRY));
+    tmp_s.crew += [helper_new(7, 0)];
+
+    play(tmp_s, tmp_pw, 3);
+
+    assert(height_rise(tmp_s.heights, 6, 0) < HEAP, "it cleared the heap");
+    assert(wallet_left(tmp_s.wallet) == WALLET_STARTING_POINTS,
+           "and was paid nothing for it: {wallet_left(tmp_s.wallet)}");
+}
+
+// A helper that is not alive does no work — the same sentence
+// `vehicle_salvage` writes as `if !v.parked`, and what lets H3 down a
+// helper without touching the clearing rule.
+fn test_a_helper_that_is_not_alive_clears_nothing() {
+    tah_pw = band();
+    tah_s  = wave_state_empty();
+    height_raise(tah_s.heights, 6, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    tah_s.crew += [helper_new(7, 0)];
+    (tah_s.crew[0] ?? Helper { }).alive = false;
+
+    play(tah_s, tah_pw, 6);
+
+    assert(height_rise(tah_s.heights, 6, 0) == 1.0,
+           "the heap is untouched: {height_rise(tah_s.heights, 6, 0)}");
+    assert(wallet_left(tah_s.wallet) == WALLET_STARTING_POINTS, "and nothing was earned");
+}
+
+// A helper standing nowhere near a heap clears nothing and earns
+// nothing — so the wallet cannot fill from a crew that is not working.
+fn test_a_crew_away_from_the_work_earns_nothing() {
+    tca_pw = band();
+    tca_s  = wave_state_empty();
+    height_raise(tca_s.heights, 6, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    tca_s.crew += [helper_new(0, 0)];
+    tca_s.crew += [helper_new(12, 0)];
+
+    play(tca_s, tca_pw, 6);
+
+    assert(height_rise(tca_s.heights, 6, 0) == 1.0, "the heap stands");
+    assert(wallet_left(tca_s.wallet) == WALLET_STARTING_POINTS,
+           "and the wallet has not moved: {wallet_left(tca_s.wallet)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The base, and what a roster is worth on one
+// ─────────────────────────────────────────────────────────────────
+//
+// Three scenarios in `tests/scripts/` differ by their crew lines and
+// by nothing else, and each pins its own clock:
+//
+//   a-base-on-two-fronts.keys      nobody              77 ticks
+//   a-crew-on-one-front.keys       one helper east    214
+//   a-crew-on-two-fronts.keys      one on each front  242
+//
+// What those three cannot say on their own is WHERE the second
+// helper's 28 ticks come from, so both controls below take a gated
+// file and change one line of it — which is the only way to be sure
+// the base did not move as well.
+
+const ONE_FRONT: text = "tests/scripts/a-crew-on-one-front.keys";
+const PLAYER_CREW: text = "tests/scripts/a-crew-that-clears-up.keys";
+
+fn source_of(path: text) -> text {
+    so_f = file(path);
+    so_f.content() ?? ""
+}
+
+// ⚠ **The phase's negative control, on a real base.**  Double the crew
+// line of the one-helper scenario — two helpers standing on the same
+// hex, on the same front — and every measurement in that file comes
+// back unchanged, its 209..219 tick band included.  The second helper
+// is not idle because it is broken; it is idle because one tower makes
+// 0.03 m of body a tick and one vehicle clears 0.33.
+//
+// So `a-crew-on-two-fronts.keys` reading 242 is the OTHER FRONT's
+// doing and not the second helper's, which is the only reading that
+// separates coverage from throughput.
+fn test_a_second_helper_beside_the_first_changes_nothing() {
+    tas_src = source_of(ONE_FRONT);
+    assert(tas_src.contains("crew 7 0\n"), "the scenario still places its crew by hand");
+
+    tas_two = tas_src.replace("crew 7 0\n", "crew 7 0\ncrew 7 0\n");
+    tas_run = script_run(editor_state_new(PALETTE), tas_two, SHOTS);
+
+    assert(tas_run.ok,
+           "a stacked crew must read exactly like a single one: {script_describe(tas_run)}");
+}
+
+// ⚠ **The player is not a special case, measured on the base that
+// named the mechanic.**  `a-crew-that-clears-up.keys` is plan 13 V2's
+// scenario — a sealed base with a tower, and a PLAYER in the kill zone
+// keeping the body ramp down, worth 95 -> 145 ticks.  Swap the player
+// for a helper and every number in that file still holds: the same
+// clock, the same emptied pile, the same third of a wall gone.
+//
+// `DESIGN.md` § 9 says helpers ride *"the same chassis as the player"*;
+// this is that sentence as a measurement, and it is the reason H2 could
+// be a phase with no mechanic in it.
+fn test_a_helper_is_worth_what_the_player_was() {
+    tah_src = source_of(PLAYER_CREW);
+    assert(tah_src.contains("park 7 0\n") && tah_src.contains("vehicle 7 0\n"),
+           "the scenario still parks a PLAYER in the kill zone");
+
+    tah_npc = tah_src.replace("park 7 0\n", "crew 7 0\n")
+                     .replace("vehicle 7 0\n", "helper 0 7 0\n");
+    tah_run = script_run(editor_state_new(PALETTE), tah_npc, SHOTS);
+
+    assert(tah_run.ok,
+           "an NPC in the kill zone must read exactly like the player: {script_describe(tah_run)}");
+}
+
+// ⚠ **A helper clears where it ENDS the tick, not where it started.**
+// Drive one at a heap it cannot reach yet: it collects nothing until
+// the tick it arrives beside, and then it works every tick after.
+fn test_a_driving_helper_clears_when_it_gets_there() {
+    tad_pw = band();
+    tad_s  = wave_state_empty();
+    height_raise(tad_s.heights, 6, 0, HEAP, as_u8(RUBBLE_WRECKAGE));
+    tad_s.crew += [helper_new(14, 0)];
+    helper_drive(tad_s.crew[0] ?? Helper { }, 7, 0);
+
+    // 2.5 hex/s steps 1, 2, 2, 1, 2 — so it is at (8, 0) after four
+    // ticks, which is two hexes from the heap and out of reach.
+    play(tad_s, tad_pw, 4);
+    assert(height_rise(tad_s.heights, 6, 0) == HEAP,
+           "still on its way: it is at q = {(tad_s.crew[0] ?? Helper { }).q}");
+
+    play(tad_s, tad_pw, 1);
+    assert((tad_s.crew[0] ?? Helper { }).q == 7, "arrived beside the heap");
+    assert(height_rise(tad_s.heights, 6, 0) < HEAP, "and started work the same tick");
+}

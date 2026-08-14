@@ -143,6 +143,8 @@ docs:
 | `tower.height` + `enemy_regular.height` | `src/tower.loft`, `src/damage.loft` | The two ends of a sight line — a shot runs from the tower's hex plus 6.0 m to the target's hex plus 1.0 m, and every obstacle is judged against the line between them.  ⚠ Moving either moves what a tower can see over, and nothing else has to change |
 | `enemy_regular.speed_engage` | `src/spawn.loft` | Today the tick's own length is derived from it — ⚠ a coupling the design intends to break (DESIGN.md § Speed must NOT be tied to the tick) |
 | `enemy_regular.damage_to_core_wallet` + `economy.starting_budget_first_base` | `src/wallet.loft` | The only end state dryopea has.  `core.hp` is `null`, so a base falls when 200 points reach zero rather than when anything is destroyed |
+| `player_vehicle.salvage_rate` | `src/vehicle.loft` | ⚠ **The whole crew's rate, not just the player's** — `§ helper` deliberately has no salvage figure, because DESIGN.md § 9 puts an NPC crew on the same chassis and one rate is one implementation (`salvage_at`).  A per-helper figure arrives with § 9's skill profiles and not before |
+| `helper.speed` | `src/helper.loft` | ⚠ 2.5 hex/s is 1.667 hexes a tick — the first speed in the design that does not fit, and why a helper BANKS progress.  It does **not** ask for a shorter tick (plan 14 H0) |
 | `core.footprint_layout` | `src/wallet.loft` | ⚠ Read for REACH, not for blocking.  The core is a radius-1 disc, so an enemy within one hex is standing ON it — which is where `NIBBLE_REACH_HEXES` comes from instead of a melee range plan 12 invented.  (`tower.footprint_layout` is the same shape and is still NOT built — a tower stands on one hex) |
 
 ## Loading + modding

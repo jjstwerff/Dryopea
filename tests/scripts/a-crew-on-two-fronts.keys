@@ -1,0 +1,151 @@
+# a-crew-on-two-fronts — plan 14 H2, and what a ROSTER is worth.
+#
+# `a-base-on-two-fronts.keys` plus TWO lines: `crew 7 0` and
+# `crew -7 0`.  Everything else is identical — same ground, same core,
+# same towers, same walls, same waves.
+#
+#   nobody      (a-base-on-two-fronts):   77 ticks   ( 51 s)
+#   one helper  (a-crew-on-one-front):   214 ticks   (143 s)
+#   TWO helpers, both on the east:       214 ticks   — the second is
+#                                                      worth NOTHING
+#   this file — one on each front:       242 ticks   (161 s)
+#
+# ⚠⚠ **The third line is the phase.**  A second helper standing beside
+# the first buys not one tick; the same helper standing on the other
+# front buys 28.  So a crew's value is **COVERAGE — being in two
+# places — and not throughput**, and this base can say why: one tower
+# kills about eight robots over a couple of hundred ticks, which is
+# 0.03 m of body a tick against a clearing rate of 0.33.  **One vehicle
+# is already ten times faster than one front makes work.**
+#
+# That is `plans/14` § Goal in a number: *"the work the base needs
+# doing stops being one vehicle's problem"* — because the work is in
+# two places and a vehicle is in one.
+#
+# ── ⚠ The mechanism: both walls end BROKEN ──────────────────────
+#
+# Without a crew this base falls with both walls at 97 of 100 and a
+# 1.5 m ramp on each front — the attackers never touched them.  With a
+# helper on each front there is no ramp anywhere, and both walls are
+# broken THROUGH: (5, 0), (5, 1), (-5, -1), (-5, 0) and (-5, 1) are all
+# gone, and the hexes beside them read 30 rather than 100 because a
+# perimeter unzips from a breach (plan 12 B3).
+#
+# ⚠ **So the crew adds no damage and takes 165 ticks off the enemy.**
+# Every second of it comes from making them break a wall instead of
+# walking up a staircase they built themselves — the same mechanism
+# `a-crew-that-clears-up.keys` measures with the PLAYER in the kill
+# zone, and it is worth the same whoever is driving.
+#
+# ⚠ The helpers are OUTSIDE the perimeter, and it is the same one-way
+# commitment plan 13 V2 recorded: the ramp forms where the enemies die,
+# a hover unit climbs 0.4 m, and a sealed base locks its own crew out
+# as surely as it locks the player in.  `vehicle_boost` is the way back
+# (plan 13 V4) and no helper has one — `helper.loft` gives them the
+# chassis and not the boost, because nothing has needed to ask for it
+# yet.
+
+echo a crew on two fronts: two helpers, two denied ramps, two broken walls
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+click 3 0
+marker 3 0 tower
+click -3 0
+marker -3 0 tower
+
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+do rotate
+do rotate
+do rotate
+click -11 0
+marker -11 0 spawn 0
+
+count markers 5 5
+do toggle_mode
+
+palette 5
+drag -12 -2 12 -2
+drag -12 -1 12 -1
+drag -12 0 12 0
+drag -12 1 12 1
+drag -12 2 12 2
+count painted 125 125
+
+palette 9
+click 5 -2
+click 5 -1
+click 5 0
+click 5 1
+click 5 2
+click 5 -4
+click 5 -3
+click 5 3
+click 5 4
+click -5 -2
+click -5 -1
+click -5 0
+click -5 1
+click -5 2
+click -5 -4
+click -5 -3
+click -5 3
+click -5 4
+kind 5 0 wall
+kind -5 0 wall
+hp 5 0 100.0 100.0
+hp -5 0 100.0 100.0
+
+# ⚠ **The whole difference from `a-base-on-two-fronts.keys`.**  One
+# helper a front, each parked one hex clear of where its tower's kills
+# will fall.  No key is pressed and none exists: clearing is a POSITION
+# (`DESIGN.md` § 11), so what the player decides is where the crew
+# STANDS.
+crew 7 0
+crew -7 0
+helper 0 7 0
+helper 1 -7 0
+
+wave 10
+count alive 10 10
+wallet 200.0 200.0
+
+tick 22
+wave 16
+
+fall 800
+ticks 235 250
+wallet 0.0 0.0
+
+# ── What the crew changed ───────────────────────────────────────
+
+# No ramp on either front.  Both towers built one all run and both
+# helpers ate it as fast as it appeared.
+pile 6 0 0.0 0.0
+pile -6 0 0.0 0.0
+
+# So they came through the walls instead — `wall` is gone from the
+# middle of both, and what is left of each is an unzipping perimeter.
+kind 5 0 grass
+kind -5 0 grass
+kind 5 -1 wall
+hp 5 -1 25.0 35.0
+
+# ⚠ The helpers never left the hexes they were placed on: a crew that
+# is not ordered anywhere stays where the player put it, which is
+# `plans/14` § Open questions 1 — helpers are passive and positional,
+# and a dispatcher is where NPC AI quietly becomes pathfinding.
+helper 0 7 0
+helper 1 -7 0
+
+snap h2_a_crew_on_two_fronts

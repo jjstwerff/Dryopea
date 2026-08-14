@@ -342,13 +342,39 @@ pub fn vehicle_salvage(v: const Vehicle, hl: HeightLayer,
                        tick_seconds: float) -> Salvage {
     if !v.parked { return Salvage { metres: 0.0, source: -1 }; }
 
-    vs_here  = Hex { q: v.q, r: v.r };
-    vs_best  = vs_here;
-    vs_deep  = height_rise(hl, vs_here.q, vs_here.r);
+    // ⚠ Bound to a local rather than returned straight out of the call:
+    // a struct handed home through two nested tail calls loses what its
+    // loop wrote (loft#880), and this wrapper would be the second one.
+    vs_got = salvage_at(Hex { q: v.q, r: v.r }, hl, tick_seconds);
+    vs_got
+}
 
-    vs_src = height_source(hl, vs_here.q, vs_here.r);
+// One tick of clearing by whatever is standing at `at`.  Answers the
+// metres taken away and what they were made of.
+//
+// ── The shared chassis, second half (plan 14 H2) ────────────────
+//
+// `DESIGN.md` § 9 opens with *"same chassis as the player"*, and H1
+// made that true of DRIVING (`drive_along`).  This is the other half:
+// the player and every helper clear the same way, at the same rate,
+// with the same reach, because clearing is something the CHASSIS does
+// and the two differ in nothing that bears on it.
+//
+// ⚠ **The rate is the vehicle's and there is no helper figure**, which
+// is a statement about `numbers.json` rather than an omission: §
+// helper has speed, HP, roster and order cost, and no salvage rate at
+// all.  A second constant here would be a tunable this plan invented
+// — the rule `plans/14` § Anchors states — and `plans/14` § What this
+// plan does NOT build parks the per-helper skill profiles (§ 9's
+// *"Building / Mining / Scouting"*) that would eventually give one
+// crew member a different figure from another.
+pub fn salvage_at(at: const Hex, hl: HeightLayer, tick_seconds: float) -> Salvage {
+    vs_best  = Hex { q: at.q, r: at.r };
+    vs_deep  = height_rise(hl, at.q, at.r);
+
+    vs_src = height_source(hl, at.q, at.r);
     for vs_d in 0..6 {
-        vs_n    = lat_neighbour(vs_here, vs_d);
+        vs_n    = lat_neighbour(at, vs_d);
         vs_rise = height_rise(hl, vs_n.q, vs_n.r);
         if vs_rise > vs_deep {
             vs_deep = vs_rise;
