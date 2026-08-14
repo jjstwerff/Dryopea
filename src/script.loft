@@ -95,6 +95,12 @@
 //                              straight line — a player DRIVES, so it
 //                              stops at what it cannot climb rather
 //                              than routing round it
+//   boost                      start a boost (plan 13 V4) — four hexes
+//                              a tick and a 3.0 m climb for 2 s, then
+//                              5 s of cooldown.  ⚠ An ERROR when the
+//                              vehicle is not READY, because a script
+//                              asserts intent where a held key would
+//                              simply do nothing
 //   fall <max>                 tick until the base FALLS — the wallet
 //                              at zero — and stop (plan 12 B7).
 //                              ⚠ Still standing after <max> is an
@@ -1364,6 +1370,25 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
             return "drive: no vehicle — `park <q> <r>` puts one in the world first";
         }
         vehicle_drive(run.wave.player, sc_pq, sc_pr);
+        return "";
+    }
+
+    // Start a boost.  Plan 13 V4.
+    //
+    // ⚠ **Stricter than the key it stands for.**  A player holding
+    // Shift on cooldown gets nothing and thinks no more about it; a
+    // script that says `boost` is CLAIMING one starts, and a claim
+    // that quietly did not happen would leave every assertion after it
+    // measuring an unboosted run.  Same argument `hp` makes for
+    // refusing a hex with nothing breakable on it.
+    if sc_cmd == "boost" {
+        if sc_argc != 0 { return "boost takes no arguments"; }
+        if !vehicle_present(run.wave.player) {
+            return "boost: no vehicle — `park <q> <r>` puts one in the world first";
+        }
+        if !vehicle_boost(run.wave.player) {
+            return "boost: the vehicle is not ready — {run.wave.player.cool_left:4.2} s of cooldown left, boosting = {vehicle_boosting(run.wave.player)}";
+        }
         return "";
     }
 

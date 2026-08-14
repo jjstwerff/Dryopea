@@ -1,0 +1,318 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 13 phase V4 — boost, and the way out of a sealed base.
+//
+// ── Why this stopped being the phase nobody needed ──────────────
+//
+// V4 was written down as the last and least of the plan's phases.  V2
+// promoted it: a crew clears the body ramp that beats a tower, but the
+// ramp forms where enemies DIE — outside the wall — and a hover unit
+// climbs 0.4 m.  **A sealed base locks its own crew in.**
+// `a-crew-that-clears-up.keys` is therefore a player who parked
+// outside before the wave with no way back, and boost is what turns
+// that commitment into a decision.
+//
+// ── Boost is not a movement MODE ────────────────────────────────
+//
+// It is the same height rule with a bigger number, and `numbers.json`
+// makes that exact: `hover_clearance_boost` is 3.0 m and `wall` is
+// 3.0 m, so § 8's *"boost can cross steep_rock, walls, closed
+// perimeters"* is arithmetic rather than a special case.  A 5.0 m
+// `wall_high` is still refused — the anti-insect barrier is
+// anti-PLAYER too, which nobody wrote down.
+//
+// ⚠ **And the rule needed no change to accept it.**  Plan 13 V0 § 3
+// recorded "a climb that changes with STATE" as V4's blocker, because
+// `climb_limit(kind)` is a function of CLASS.  The answer was already
+// in the tree: `passable.loft::can_climb` takes the climb DIRECTLY,
+// built by plan 11 F7 for the desire field, which needed the same
+// thing for a completely different reason.  The blocker was a survey
+// that had not been done.
+//
+// ── The trap this phase actually paid for ───────────────────────
+//
+// A boost is 2.0 s and a tick is `1 / 1.5` s, so three ticks sum to
+// 1.9999999999999998 and a bare `> 0.0` hands the player a FOURTH tick
+// of boost — a third longer than the design says.  Exactly
+// `tower.loft::TOWER_CHARGE_EPSILON`'s trap on a timer instead of a
+// fire interval, and **no assertion about "it got over the wall" could
+// ever have seen it**.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+const WALL_HIGH: integer = 10;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A band with a one-hex-thick barrier of `kind` across q = 5.
+fn walled(kind: integer) -> PaintedWorld {
+    w_pw = painted_empty();
+    for w_r in -2..=2 {
+        for w_q in -3..=16 { paint(w_pw, w_q, w_r, as_u8(GRASS)); }
+    }
+    for w_s in -2..=2 { paint(w_pw, 5, w_s, as_u8(kind)); }
+    w_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The climb: a bigger number, not a new rule
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_boost_clearance_is_exactly_a_wall() {
+    assert(VEHICLE_BOOST_CLIMB_METRES == 3.0,
+           "numbers.json § hover_clearance_boost: {VEHICLE_BOOST_CLIMB_METRES}");
+    assert(VEHICLE_BOOST_CLIMB_METRES < 5.0,
+           "and a wall_high is 5.0, so it stays out of reach");
+}
+
+fn test_a_boosting_vehicle_climbs_what_an_idle_one_cannot() {
+    tab = wave_state_empty();
+    vehicle_place(tab.player, 9, 0);
+
+    assert(vehicle_climb(tab.player) == VEHICLE_CLIMB_METRES,
+           "idle it climbs its hover clearance: {vehicle_climb(tab.player)}");
+    assert(vehicle_boost(tab.player), "and it starts a boost");
+    assert(vehicle_climb(tab.player) == VEHICLE_BOOST_CLIMB_METRES,
+           "boosting it climbs a wall: {vehicle_climb(tab.player)}");
+    assert(vehicle_hexes_this_tick(tab.player, TICK_SECONDS) == 4,
+           "and covers four hexes: {vehicle_hexes_this_tick(tab.player, TICK_SECONDS)}");
+}
+
+// ⚠ **The phase's headline**, and both halves of it: a 3.0 m `wall` is
+// exactly the boost clearance and is crossed; a 5.0 m `wall_high` is
+// not.  Without the second half a boost that ignored height entirely
+// would pass the first.
+fn test_it_crosses_a_wall_and_never_a_wall_high() {
+    tic_w = wave_state_empty();
+    vehicle_place(tic_w.player, 9, 0);
+    vehicle_boost(tic_w.player);
+    vehicle_drive(tic_w.player, 0, 0);
+    // ⚠ Two ticks, because four hexes from q = 9 lands ON the wall at
+    // q = 5 rather than past it — which is already the climb working,
+    // but "past it" is the unambiguous reading.
+    play(tic_w, walled(WALL), 2);
+    assert(tic_w.player.q < 5,
+           "a boost clears a 3.0 m wall: it reached q = {tic_w.player.q}");
+
+    tic_h = wave_state_empty();
+    vehicle_place(tic_h.player, 9, 0);
+    vehicle_boost(tic_h.player);
+    vehicle_drive(tic_h.player, 0, 0);
+    play(tic_h, walled(WALL_HIGH), 6);
+    assert(tic_h.player.q == 6,
+           "and never a 5.0 m wall_high: it stopped at q = {tic_h.player.q}");
+}
+
+// Without a boost the same drive stops dead — the control that says
+// crossing was the boost and not the drive.
+fn test_the_same_drive_unboosted_stops_at_the_wall() {
+    tsd = wave_state_empty();
+    vehicle_place(tsd.player, 9, 0);
+    vehicle_drive(tsd.player, 0, 0);
+
+    play(tsd, walled(WALL), 6);
+    assert(tsd.player.q == 6,
+           "no boost, no crossing: q = {tsd.player.q}");
+}
+
+// ⚠ A boost that ends while the vehicle is ON the wall does not strand
+// it: a DROP is free in `can_climb`, whatever the climb is.  Worth an
+// assertion because "it got up there and could not get down" is the
+// obvious way this mechanic breaks, and `passable.loft`'s asymmetry is
+// the only thing preventing it.
+fn test_a_boost_that_expires_on_the_wall_leaves_a_way_down() {
+    tab_pw = walled(WALL);
+    tab_s  = wave_state_empty();
+    vehicle_place(tab_s.player, 6, 0);
+    vehicle_boost(tab_s.player);
+    vehicle_drive(tab_s.player, 5, 0);        // onto the wall, and stop
+    play(tab_s, tab_pw, 4);                   // boost runs out up there
+
+    assert(tab_s.player.q == 5, "it is standing on the wall: q = {tab_s.player.q}");
+    assert(!vehicle_boosting(tab_s.player), "with the boost spent");
+
+    vehicle_drive(tab_s.player, 0, 0);
+    play(tab_s, tab_pw, 6);
+    assert(tab_s.player.q == 0,
+           "and it drives down the other side: q = {tab_s.player.q}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The timers — where the float trap lives
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **THREE ticks, not four.**  2.0 s over a `1 / 1.5` s tick is
+// exactly three, and three of them sum to 1.9999999999999998 — so a
+// bare `> 0.0` gives a fourth.  This is the assertion that sees it;
+// no test about crossing a wall could.
+fn test_a_boost_lasts_exactly_three_ticks() {
+    tab_pw = walled(WALL);
+    tab_s  = wave_state_empty();
+    vehicle_place(tab_s.player, 9, 0);
+    vehicle_boost(tab_s.player);
+
+    assert(vehicle_boosting(tab_s.player), "tick 0: boosting");
+    play(tab_s, tab_pw, 1);
+    assert(vehicle_boosting(tab_s.player), "tick 1: still boosting");
+    play(tab_s, tab_pw, 1);
+    assert(vehicle_boosting(tab_s.player), "tick 2: still boosting");
+    play(tab_s, tab_pw, 1);
+    assert(!vehicle_boosting(tab_s.player),
+           "tick 3: spent — {tab_s.player.boost_left} s left, which must not be a positive dust");
+}
+
+// ⚠ The cooldown is armed as the boost EXPIRES, so the gap between
+// boosts is the full five seconds and not three.
+fn test_the_cooldown_starts_when_the_boost_ends() {
+    tcs_pw = walled(WALL);
+    tcs_s  = wave_state_empty();
+    vehicle_place(tcs_s.player, 9, 0);
+    vehicle_boost(tcs_s.player);
+    play(tcs_s, tcs_pw, 3);                   // boost just expired
+
+    assert(!vehicle_boost_ready(tcs_s.player), "it is cooling down");
+    assert(tcs_s.player.cool_left > VEHICLE_BOOST_COOLDOWN_S - 0.001,
+           "with the WHOLE five seconds ahead of it: {tcs_s.player.cool_left}");
+
+    // 5.0 s is 7.5 ticks, so the eighth is the first that can boost.
+    play(tcs_s, tcs_pw, 7);
+    assert(!vehicle_boost_ready(tcs_s.player),
+           "seven ticks is 4.67 s — not yet: {tcs_s.player.cool_left}");
+    play(tcs_s, tcs_pw, 1);
+    assert(vehicle_boost_ready(tcs_s.player), "and the eighth is");
+}
+
+fn test_a_boost_is_refused_while_one_is_running_or_cooling() {
+    tab_pw = walled(WALL);
+    tab_s  = wave_state_empty();
+    vehicle_place(tab_s.player, 9, 0);
+
+    assert(vehicle_boost(tab_s.player), "the first starts");
+    assert(!vehicle_boost(tab_s.player), "a second while boosting is refused");
+    play(tab_s, tab_pw, 3);
+    assert(!vehicle_boost(tab_s.player), "and one on cooldown is refused");
+}
+
+// ⚠ A boost burns whether or not it got you anywhere — which is what
+// makes spending it at the wrong moment a mistake a player can make.
+fn test_a_boost_spent_against_a_wall_high_is_still_spent() {
+    tas_pw = walled(WALL_HIGH);
+    tas_s  = wave_state_empty();
+    vehicle_place(tas_s.player, 9, 0);
+    vehicle_boost(tas_s.player);
+    vehicle_drive(tas_s.player, 0, 0);
+
+    play(tas_s, tas_pw, 3);
+    assert(tas_s.player.q == 6, "it never got over: q = {tas_s.player.q}");
+    assert(!vehicle_boosting(tas_s.player), "and the boost is gone anyway");
+}
+
+fn test_a_run_with_no_player_cannot_boost() {
+    tar = wave_state_empty();
+    assert(!vehicle_boost_ready(tar.player), "there is nobody to boost");
+    assert(!vehicle_boost(tar.player), "and asking does nothing");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The point of it: out of a sealed base and back
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **What V2 could not do.**  A crew that starts INSIDE a sealed
+// perimeter reaches the kill zone, clears the ramp the tower is
+// building, and comes home — which makes clearing a decision with a
+// cost rather than a one-way commitment.
+fn test_a_crew_boosts_out_clears_up_and_comes_home() {
+    tac_pw = walled(WALL);
+    tac_s  = wave_state_empty();
+
+    // The ramp a tower would have built, waiting outside the wall.
+    height_raise(tac_s.heights, 6, 0, 1.5, as_u8(RUBBLE_WRECKAGE));
+
+    vehicle_place(tac_s.player, 3, 0);
+    assert(tac_s.player.q == 3, "the crew starts inside");
+
+    // Out: one boosted tick crosses the wall and lands beside the heap.
+    vehicle_boost(tac_s.player);
+    vehicle_drive(tac_s.player, 7, 0);
+    play(tac_s, tac_pw, 1);
+    assert(tac_s.player.q == 7,
+           "one boost puts it in the kill zone: q = {tac_s.player.q}");
+
+    // Work: the heap goes at one dead robot a second — 1.5 m is 4.5
+    // ticks, so five.
+    play(tac_s, tac_pw, 5);
+    assert(height_rise(tac_s.heights, 6, 0) == 0.0,
+           "the ramp is gone: {height_rise(tac_s.heights, 6, 0)} m");
+
+    // ⚠ **And then it WAITS, in the open, for its ride home.**  The
+    // boost expired on tick 3 and the cooldown is five seconds, so the
+    // crew is still stranded when the work is finished and stays that
+    // way for five more ticks.  That is the mechanic's real cost — the
+    // dangerous part of the trip is the waiting, not the clearing —
+    // and it falls straight out of `numbers.json`: nobody designed the
+    // ratio.
+    assert(!vehicle_boost_ready(tac_s.player),
+           "still stranded with the work done: {tac_s.player.cool_left} s of cooldown");
+    play(tac_s, tac_pw, 5);
+    assert(vehicle_boost_ready(tac_s.player),
+           "and now the cooldown is spent — {tac_s.player.cool_left} s");
+    vehicle_boost(tac_s.player);
+    vehicle_drive(tac_s.player, 3, 0);
+    play(tac_s, tac_pw, 1);
+    assert(tac_s.player.q == 3,
+           "the crew is home behind its own wall: q = {tac_s.player.q}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The verb
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_boost_verb_crosses_a_wall() {
+    ttb_src =
+        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo toggle_mode\n"
+      + "palette 5\ndrag -3 0 16 0\n"
+      + "palette 9\nclick 5 0\n"
+      + "park 9 0\ndrive 0 0\n"
+      + "tick 3\nvehicle 6 0\n"
+      + "boost\ntick 1\nvehicle 2 0\n";
+
+    ttb = script_run(editor_state_new(PALETTE), ttb_src, SHOTS);
+    assert(ttb.ok, "{script_describe(ttb)}");
+    assert(ttb.checks == 2, "it made {ttb.checks} measurements, expected 2");
+}
+
+// ⚠ The verb is stricter than the key: a script that says `boost` is
+// CLAIMING one starts, and a claim that quietly did not happen leaves
+// every assertion after it measuring an unboosted run.
+fn test_the_boost_verb_refuses_what_the_key_would_ignore() {
+    ttv_a = script_run(editor_state_new(PALETTE), "boost", SHOTS);
+    assert(!ttv_a.ok && ttv_a.message.contains("no vehicle"), "{ttv_a.message}");
+
+    ttv_b = script_run(editor_state_new(PALETTE), "park 0 0\nboost\nboost", SHOTS);
+    assert(!ttv_b.ok && ttv_b.message.contains("not ready"), "{ttv_b.message}");
+
+    ttv_c = script_run(editor_state_new(PALETTE), "park 0 0\nboost 2", SHOTS);
+    assert(!ttv_c.ok && ttv_c.message.contains("no arguments"), "{ttv_c.message}");
+}

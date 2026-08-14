@@ -57,7 +57,8 @@ exists today.
 | An unattended base falls on a measured clock — and a sealed wall nearly doubles it while a tower CUTS it | [12](plans/12-combat-resolution/README.md), B7 shipped — plan **complete** |
 | A PLAYER: a hover unit that parks, drives at two hexes a tick, and is stopped by the same height rule everything else is | [13](plans/13-the-vehicle/README.md), V0-V1 shipped |
 | A CREW: it clears rubble it stands on or beside at one body a second — and that turns a tower from a liability into an asset (95 → 121 ticks) | [13](plans/13-the-vehicle/README.md), V2 shipped |
-| **No loot, and no BOOST — so a sealed base still locks its own crew out of its kill zone** | [13](plans/13-the-vehicle/README.md), V3 next; V4 is what makes clearing a decision rather than a one-way commitment |
+| BOOST: four hexes a tick and a 3.0 m climb for three ticks, so a crew leaves a sealed base and comes home | [13](plans/13-the-vehicle/README.md), V4 shipped |
+| **No LOOT — a kill is still worth nothing, and the wallet can only fall** | [13](plans/13-the-vehicle/README.md), V3 next and last |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -73,7 +74,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 782/782 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 795/795 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
 **Gate: 19 scripts green under `scripts/validate.sh`** (~7 s, 324
@@ -838,7 +839,19 @@ src/
                    ⚠ ONE heap a tick, the deepest in reach — clearing
                    is meant to take time you do not have.
                    ⚠ It takes a BITE via `height_raise`, never
-                   `height_clear` (which still has no caller)
+                   `height_clear` (which still has no caller).
+                   V4 added boost: `vehicle_boost` / _boosting /
+                   _boost_ready / _climb / _speed, four hexes a tick and
+                   a 3.0 m climb for 2 s, then 5 s of cooldown armed as
+                   the boost EXPIRES.
+                   ⚠ **Boost is not a movement mode** — it is the same
+                   height rule with a bigger number, and 3.0 m is
+                   EXACTLY a `wall`, so a `wall_high` still refuses it.
+                   ⚠ It calls `can_climb`, never `can_step`: the climb
+                   is the vehicle's STATE, not its class.
+                   ⚠ `VEHICLE_TIMER_EPSILON` — 2.0 s over a 1/1.5 s
+                   tick is three ticks that sum to 1.9999999999999998,
+                   so a bare `> 0.0` gives a FOURTH tick of boost
   wallet.loft      the run's budget, and the only END STATE dryopea
                    has (plan 12 B6) — WALLET_STARTING_POINTS (200),
                    NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,
@@ -1329,7 +1342,8 @@ signature.
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — max minus taken.  ⚠ 0.0 answers BOTH "broken" and "never a structure"; ask `structure_breakable` first if you need to tell them apart |
 | Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — the kind's figure scaled by `brace_of`.  ⚠ `numbers.json`'s wall_hp (100) is the BRACED number; a lone plug in a corridor is a STUB and gets 15 |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
-| Clear rubble / collect after a tower | `src/vehicle.loft::vehicle_salvage` — the counter-play to `ENEMY_MOVEMENT.md` § Bodies are terrain.  ⚠ A crew INSIDE a sealed base cannot reach the ramp that beats it: the ramp forms outside the wall and the vehicle climbs 0.4 m.  That is plan 13 V4's (boost) |
+| Clear rubble / collect after a tower | `src/vehicle.loft::vehicle_salvage` — the counter-play to `ENEMY_MOVEMENT.md` § Bodies are terrain.  ⚠ A crew inside a SEALED base can only reach the ramp by BOOSTING out (V4): the ramp forms outside the wall and an idle vehicle climbs 0.4 m |
+| Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` — the rule with the climb passed rather than looked up.  ⚠ Never widen `climb_limit(kind)`: it is a CLASS lookup and a convenience for callers that have a kind.  `vehicle_climb` is the worked example |
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
 | Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock.  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; a tower CUTS it, because its bodies ramp over the wall it was defending |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |

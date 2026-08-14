@@ -9,8 +9,39 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**V0 + V1 + V2 shipped** (2026-08-14). V3 is next; V4 is now the
-plan's most valuable open phase rather than its least — see § V2.
+**V0 + V1 + V2 + V4 shipped** (2026-08-14). V3 is the only phase left.
+
+**V4 gave the crew a way out and back.** Boost is the same height rule
+with a bigger number — `hover_clearance_boost` is 3.0 m and a `wall` is
+3.0 m — so a boosting vehicle crosses a wall, a 5.0 m `wall_high`
+still refuses it, and § 8's *"can cross steep_rock, walls, closed
+perimeters"* is arithmetic rather than a special case. Four hexes a
+tick for three ticks, then eight ticks of cooldown. Suite **795
+green**.
+
+⚠⚠ **V0 recorded a blocker that was already solved, and that is worth
+more than the phase.** V0 § 3 said a climb changing with STATE could
+not be expressed, because `climb_limit(kind)` is a function of CLASS —
+and named it V4's blocker. The answer was in the tree the whole time:
+`passable.loft::can_climb` takes the climb **directly**, built by plan
+11 F7 for the desire field, which needed the same shape for a
+completely unrelated reason (*"walls are passable"* is *"the climb does
+not bind"*). The rule needed no change at all. **The blocker was a
+survey that had not been done** — and V0 is exactly the phase whose job
+that survey was.
+
+⚠ **The trap V4 actually paid for.** A boost is 2.0 s and a tick is
+`1 / 1.5` s, so three ticks sum to 1.9999999999999998 and a bare
+`> 0.0` hands the player a FOURTH tick — a third more boost than the
+design says. Exactly `tower.loft::TOWER_CHARGE_EPSILON`'s trap on a
+timer instead of a fire interval, and **no assertion about getting over
+the wall could ever have seen it**; the tick-count test is what does.
+
+⚠ **The cooldown is the cost, and nobody designed the ratio.** A crew
+that boosts out to clear a 1.5 m ramp works for five ticks and is then
+stranded in the open for five more waiting on its ride home. The
+dangerous part of the trip is the waiting, and it falls straight out of
+two `numbers.json` rows meeting.
 
 **V2 closed the loop plan 12 B7 opened.** A vehicle clears rubble it is
 standing on or beside, at one dead robot a second, with no key pressed
@@ -208,7 +239,7 @@ not read the name as a claim.
 | **V1** ✓ | the vehicle covers 2 hexes while an enemy covers 1, over the same ticks | speed is a RATE, read from `numbers.json`, not a step count | a vehicle that moves 1 hex a tick has silently adopted the enemy's rate; a vehicle that reaches a hex `can_step` refuses has no passability at all |
 | **V2** ✓ | driving BESIDE a pile clears it, and the towered base's clock rises 95 → 121 | the crew is what makes a tower pay | ⚠ the gate's own wording was falsified: a crew INSIDE the sealed base moves the clock by nothing, and so does one at a gate — the mechanic pays only where the ramp is the way IN |
 | **V3** | a collected body credits the wallet; the wallet can go UP | loot is income, and it is the first thing that ever refills the budget | a wallet that rises with nobody collecting has a leak — B6 promised it never refills unattended |
-| **V4** | boosting clears a 3.0 m `wall` and never a 5.0 m `wall_high` | boost is a bigger CLIMB, not a new movement mode | a boost that crosses `wall_high` has stopped reading the height |
+| **V4** ✓ | boosting clears a 3.0 m `wall` and never a 5.0 m `wall_high` | boost is a bigger CLIMB, not a new movement mode | a boost that crosses `wall_high` has stopped reading the height; one that lasts FOUR ticks has no epsilon |
 
 ## Phases
 
@@ -218,7 +249,7 @@ not read the name as a claim.
 | **V1** — the vehicle exists, and it drives | S | `tests/13_v1_the_vehicle.loft` — two hexes to an enemy's one, and it stops at what it cannot climb | **Done** |
 | **V2** — it clears rubble, and a tower starts paying | S | `tests/13_v2_the_crew.loft` + `a-crew-that-clears-up.keys` — 121 ticks against 95, and the wall is CHEWED rather than climbed | **Done** |
 | **V3** — a body is worth points | S | `wallet.loft` gains its first credit; `tests/12_b6_wallet.loft`'s "never refills" becomes "never refills UNATTENDED" | Open |
-| **V4** — boost | S | clears a `wall`, refused by a `wall_high` — and a crew that can leave a sealed base AND COME BACK | Blocked on § V0.3.  ⚠ **Promoted by V2**: it is what turns clearing a sealed kill zone from a one-way commitment into a decision |
+| **V4** — boost | S | `tests/13_v4_boost.loft` — clears a `wall`, refused by a `wall_high`, three ticks exactly, and a crew that boosts out of a sealed base, clears, and comes home | **Done**.  ⚠ Promoted by V2, and its stated blocker turned out to be already solved — see § Status |
 
 ### Why the order is this order
 
@@ -255,9 +286,14 @@ than a design claim.
 
 ## Open questions
 
-1. **How does a climb that changes with STATE get expressed?** § 3.
-   Blocks V4; wants measuring rather than picking, and settles the
-   design's *"a damaged robot moves slower"* at the same time.
+1. ~~**How does a climb that changes with STATE get expressed?**~~ —
+   **ANSWERED by looking: it already was.**
+   `passable.loft::can_climb` takes the climb directly and plan 11 F7
+   built it. `vehicle_climb(v)` returns 0.4 or 3.0 and hands it over;
+   `climb_limit(kind)` is untouched and stays the convenience for
+   callers that have a kind. ⚠ The design's *"a damaged robot moves
+   slower"* is a SPEED question and this does not settle it — V0
+   claimed it would, and that was one guess too many.
 2. **Does the vehicle collect a body, or clear a pile?** They are the
    same hex and different mechanics: loot is a value the pile should
    have carried. `plans/12` § The rubble is the hill says contents are
