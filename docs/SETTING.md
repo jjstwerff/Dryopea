@@ -537,6 +537,59 @@ scrambler — launching the rocket — *succeeds* from the
 robots' point of view (their comms come back), even as the
 player counts it as their own escape.
 
+### ⚠ They were on an ERRAND, and they think they are helping
+
+Two refinements from the project owner (2026-08-14) that
+sharpen the section above rather than replacing it.
+
+**1. Every robot in a wave was already busy.**  *"Robots have
+a specific goal to achieve in the world; they are sent out to
+do their normal duty but communicate with the AI about it via
+radio waves."*  A robot in a wave is not dispatched at the
+player — it is a scout, harvester, builder or miner (§ Robot
+diversity) walking to a job somewhere else, whose route
+happens to cross the bubble.  **The player's base is an
+accident on somebody's commute.**
+
+⚠ **This is the generative model that replaces waves and spawn
+markers.**  The owner intends *"natural patterns instead of
+waves/spawn points"* before the first game ships, and this is
+why one is possible: wave size, direction and timing are all
+downstream of where the robot economy is actually working, so
+a base beside a mining route is attritional and one in an
+empty quarter is quiet — with nothing authored.  A spawn
+marker is a stand-in for "a road passes here", and an escalating
+wave list is a stand-in for the traffic thickening.
+[`plans/16`](../plans/16-the-wave-system/README.md) is
+scaffolding until then.
+
+**2. They approach to REPAIR, not to attack.**  *"They enter
+the area with the disrupter and suddenly lose their contact;
+this might be a malfunctioning robot in their perspective, and
+thus they try to get to the source of the disruption to see
+what they can do about it."*
+
+The section above has them converging on *"the problem"*; this
+says what they believe the problem IS — **a peer that has
+broken and is jamming the band**.  So the approach is a
+diagnostic call-out, and the nibble is a repair attempt on a
+machine they cannot identify.  Three things fall out of it:
+
+- **Nothing in a wave is hostile, at any point.**  The damage a
+  perimeter takes is robots clearing an obstruction to reach a
+  casualty; the damage the player's vehicle takes when it
+  blocks a route is the same.  Nobody in this fiction is
+  fighting.
+- **The boss being a repair platform stops being a coincidence**
+  (§ Boss enemies): send a big enough problem and the swarm
+  escalates to the machine that fixes broken robots.  It is the
+  correct response to their reading of the situation.
+- **The core's invulnerability is explained twice over.**  The
+  robots are not trying to destroy it — they are trying to
+  *fix* it, and it is not a thing that can be fixed.  They keep
+  trying, which is exactly what a drain rather than a
+  destruction models.
+
 ## Robot diversity — roles in their own society
 
 The robots are not a uniform mass.  **Eventually different
