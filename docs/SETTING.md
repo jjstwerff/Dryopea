@@ -804,6 +804,17 @@ Effects in the fiction:
   bubble are degraded to the per-unit behaviour the wave
   system already describes.
 
+  ⚠⚠ **And that sentence is the price of the end-game move**
+  (owner, 2026-08-14).  Switching the scrambler OFF is how a
+  player enlists the swarm against an old one — see
+  [`DESIGN.md`](DESIGN.md) § Shutting down the scrambler.  It
+  is also the alliance mechanism with no diplomacy in it: the
+  robots have walked to the core all game asking for exactly
+  this, so granting it needs no faction system and no
+  dialogue.  What it costs is this paragraph — from that
+  moment, if the swarm ever turns on the player again, **no
+  perimeter can hold.**
+
 This explains a number of in-design rules retroactively:
 
 - "Robots don't coordinate by default; only bosses issue

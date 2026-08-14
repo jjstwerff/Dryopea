@@ -222,16 +222,67 @@ repair point behind your line is an asset.  ⚠ A player's whole
 mental model of the map is re-used rather than discarded, which
 is the cheapest possible way to make an end game feel different.
 
-⚠ **Inference, flagged for a decision — the scrambler.**  The
-core's entire function is to **cut robot coordination** (§ 4);
-against an old one the player wants that swarm *coordinated*.
-The end-game move may therefore be to **shut down your own
-scrambler** — surrendering the bubble, the steering, and the
-thing every base in the game was built around, so that your
-co-belligerents can fight properly.  If so it is § What kind of
-game this is at cosmic scale: the largest advantage in the game,
-usable only by giving it up.  Not an owner statement; it follows
-from mechanics already shipped.
+#### ⚠⚠ Shutting down the scrambler — the end-game move
+
+**Confirmed by the owner, 2026-08-14.**  The core's entire
+function is to cut robot coordination (§ 4); against an old one
+the player wants that swarm *coordinated*.  So the end-game move
+is to **switch off your own scrambler**.
+
+**What it gains.**  Two things at once, and they are the same
+act:
+
+- **The robots become effective.**  `SETTING.md` § The core is a
+  scrambling tower: *without the scrambler, robot waves would
+  arrive as coordinated swarms running on full AI coordination*.
+  That is exactly what you now want pointed at the servants.
+- **The robots stop coming for you at all.**  The bubble IS the
+  wave system — comm-cut robots turning toward the interference
+  ([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md)).  No bubble, no
+  deafened robots, no waves.
+
+⚠⚠ **And it is the alliance mechanism, with no diplomacy in
+it.**  The robots have spent the entire game walking to your core
+to fix a malfunction they cannot identify
+([`SETTING.md`](SETTING.md) § They were on an ERRAND).  Shutting
+the scrambler down is **the player finally granting the request**
+— every wave in the run was asking for this.  No faction system,
+no dialogue tree, no reputation bar: you stop doing the thing
+they were objecting to, and they were never your enemy in the
+first place.
+
+**What it costs, and the number is already written.**  The same
+sentence finishes: *…and **no perimeter could hold**.*  So:
+
+- ⚠ **You permanently disarm yourself against tier 1.**  If the
+  swarm ever turns on you again — when the crisis passes, or
+  because your base is in the way — the one thing that made a
+  perimeter viable is gone.  This is the classic bargain of
+  arming your enemy against a worse one, and dryopea can price
+  it exactly.
+- ⚠ **You lose steering, which is what your base was built
+  on.**  Inside the bubble the flow field pulls everything into
+  your kill zones; outside it nothing is pulled anywhere.  Your
+  towers still cover ground, but nothing is delivered to them —
+  so an end-game base has to be built to **hold** rather than to
+  **funnel**, which is a different building problem out of the
+  same rule set.
+- ⚠ **It buys nothing against the actual enemy.**  Elementals
+  and their fellow servants *"answer to stones, not radio"*
+  (`SETTING.md`), so the scrambler was never any use against
+  tier 3.  The entire cost falls on your relationship with the
+  faction you are choosing to help.
+
+**Design test:** ✓✓✓ — § What kind of game this is at cosmic
+scale.  The largest advantage in the game is usable **only by
+giving it up**, and the moment it becomes worth using is the
+moment it becomes irreplaceable.
+
+⚠ **Open: is it reversible?**  A toggle is a weaker decision than
+a commitment, and *"the player cannot lean back"* argues that
+switching off should be easy and switching back on should be
+expensive or impossible while an awakening is in progress.
+Undecided.
 
 **And it is what buys the variety.**  Because so many of the
 counters are **architectural** — decided by where the walls
