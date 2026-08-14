@@ -1,0 +1,166 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The NPC crew — and the first mover in dryopea whose speed does not
+// fit the tick.
+//
+// Plan 14 phase H1.  `docs/DESIGN.md` § 9: *"NPC vehicles that do the
+// cooperative's actual work"*, on the **same chassis as the player**.
+// So a helper drives the way the player drives — `vehicle.loft::
+// drive_along`, one implementation — and differs in exactly two
+// numbers: how fast, and how much it can take.
+//
+// ── ⚠ Why this one needed machinery nothing else did ────────────
+//
+// A tick is `1 / 1.5` s because that is what an enemy takes to cross
+// one hex, and every mover built so far has covered a whole number of
+// hexes in it: an enemy 1, the player 2, a boosting player 4.  A
+// helper is **2.5 hex/s — 1.667 hexes a tick** — and there is no way
+// to round that.
+//
+// So a helper BANKS its progress: each tick it adds `speed ×
+// tick_seconds` to a running total and steps out the whole hexes,
+// keeping the remainder.  That is the pattern `tower.loft` uses for a
+// fire interval and plan 13 V4 uses for a boost timer, arriving a
+// third time — and it is deliberately LOCAL to the mover that needs
+// it.  Nothing global changes.
+//
+// ⚠ **This is NOT "the tick becomes a timestep".**  `CLAUDE.md`
+// § Cost warns that decoupling speed from the tick shrinks the
+// per-tick budget and re-opens plan 11 F8's incremental rebuild.  That
+// warning is about choosing a SHORTER tick; a helper needs fractional
+// hexes at today's tick, so the budget is untouched and F8's trigger
+// does not fire.  Measured in `plans/14` § H0.
+//
+// ── ⚠ The epsilon is worth 6.7% of a helper's speed ─────────────
+//
+// Banking `2.5 × (1/1.5)` and flooring, the carry lands on
+// 0.99999999999999956 where it should be 1.0 — so a whole hex is
+// deferred, and the residue DEGRADES every cycle, so the helper falls
+// further behind the longer it runs.  Measured over nine ticks: 14
+// hexes instead of 15, which is **2.333 hex/s instead of 2.500**.
+//
+// It is `TOWER_CHARGE_EPSILON`'s trap for the third time and its most
+// expensive appearance yet — the tower lost a third of its shots
+// visibly and a boost ran one tick long, while this loses 7% of a
+// speed silently and forever.  The clean **1, 2, 2** repeating pattern
+// is what says it is right; "it arrived" would never have told them
+// apart.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+use vehicle;
+
+// ─── The numbers ────────────────────────────────────────────────
+//
+// `examples/numbers.json` § helper, restated here because nothing
+// loads that file yet — the same note every other engine file carries.
+
+// numbers.json § helper.speed.  ⚠ 1.667 hexes a tick, and the reason
+// this file has an accumulator at all.
+pub const HELPER_SPEED_HEX_PER_SECOND: float = 2.5;
+
+// numbers.json § helper.hp — half the player's 100.
+pub const HELPER_HP: float = 50.0;
+
+// numbers.json § helper.roster_start / roster_cap.
+pub const HELPER_ROSTER_START: integer = 2;
+pub const HELPER_ROSTER_CAP:   integer = 6;
+
+// ⚠ Banked progress is in HEXES, where `tower.loft`'s charge and plan
+// 13 V4's boost are in SECONDS — same trap, different unit, so it gets
+// its own constant rather than borrowing one that means something
+// else.
+pub const HELPER_PROGRESS_EPSILON: float = 1.0e-9;
+
+// ─── The helper ─────────────────────────────────────────────────
+
+// ⚠ Zero is the neutral value for all three of `progress`, `taken` and
+// `alive`… except `alive`, which a `Helper { }` literal would default
+// to FALSE.  That is deliberate and it is the opposite of `Enemy`'s
+// choice: an enemy roster is built by a spawner, and a helper roster
+// is built one `helper_add` at a time, so the factory is the only door
+// and there is no partial literal to protect.
+pub struct Helper {
+    q:        integer,
+    r:        integer,
+    to_q:     integer,
+    to_r:     integer,
+    alive:    boolean,
+    progress: float,     // banked hexes, always < 1 between ticks
+    taken:    float,     // damage ABSORBED, never HP remaining
+}
+
+// Factory: a helper standing at (q, r) with nothing banked.
+pub fn helper_new(q: integer, r: integer) -> Helper {
+    Helper { q: q, r: r, to_q: q, to_r: r, alive: true,
+             progress: 0.0, taken: 0.0 }
+}
+
+// Point a helper at a hex.  It drives there over the next ticks.
+pub fn helper_drive(h: Helper, q: integer, r: integer) {
+    h.to_q = q;
+    h.to_r = r;
+}
+
+pub fn helper_arrived(h: const Helper) -> boolean {
+    h.q == h.to_q && h.r == h.to_r
+}
+
+// What this helper has left, in HP.
+pub fn helper_hp(h: const Helper) -> float {
+    max(HELPER_HP - h.taken, 0.0)
+}
+
+// Land damage on a helper.  ⚠ It does not wreck it — that is H3's, and
+// one death path is the rule `enemy_hurt` and `vehicle_hurt` both keep.
+pub fn helper_hurt(h: Helper, hp: float) {
+    h.taken = max(h.taken + hp, 0.0);
+}
+
+// Bank one tick of movement and answer the whole hexes it releases.
+//
+// ⚠ **The epsilon is the whole function.**  Without it the carry sits
+// a hair under a whole hex on every third tick and that hex is
+// deferred for ever — 2.333 hex/s against a documented 2.500.  See the
+// header.
+//
+// ⚠ It keeps the REMAINDER rather than discarding it, which is what
+// makes the average exact rather than merely close: over any three
+// ticks a helper releases exactly five hexes.
+pub fn helper_bank(h: Helper, tick_seconds: float) -> integer {
+    h.progress = h.progress + HELPER_SPEED_HEX_PER_SECOND * tick_seconds;
+    hb_whole   = (h.progress + HELPER_PROGRESS_EPSILON) as integer? ?? 0;
+    if hb_whole > 0 { h.progress = h.progress - (hb_whole as float); }
+    if h.progress < 0.0 { h.progress = 0.0; }
+    hb_whole
+}
+
+// Advance a helper one tick towards where it is pointed.
+//
+// The same chassis as the player — `vehicle.loft::drive_along`, which
+// walks the straight line and stops at the first step the ground
+// refuses.  A helper hovers like the player does, so it climbs the
+// same `CLIMB_VEHICLE`.
+//
+// ⚠ **It banks even when it cannot move.**  A helper parked against a
+// wall goes on accumulating, so the tick it is finally pointed
+// somewhere reachable it leaves with whatever it had — which is what
+// keeps the average a RATE rather than a function of how often it was
+// blocked.
+pub fn helper_tick(h: Helper, pal: vector<GroundType>, pw: PaintedWorld,
+                   hl: const HeightLayer, tick_seconds: float) {
+    if !h.alive { return; }
+
+    ht_hexes = helper_bank(h, tick_seconds);
+    if ht_hexes <= 0 { return; }
+
+    ht_at = drive_along(pal, pw, hl,
+                        Hex { q: h.q, r: h.r }, Hex { q: h.to_q, r: h.to_r },
+                        ht_hexes, CLIMB_VEHICLE);
+    h.q = ht_at.q;
+    h.r = ht_at.r;
+}

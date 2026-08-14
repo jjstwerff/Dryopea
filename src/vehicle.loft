@@ -372,8 +372,17 @@ pub fn vehicle_salvage(v: const Vehicle, hl: HeightLayer,
     Salvage { metres: vs_took, source: vs_src }
 }
 
-// Advance the vehicle one tick along the straight line to where it is
-// pointed, stopping early at the first step the ground refuses.
+// Walk `hexes` hexes from `from` towards `to` along the straight line,
+// stopping at the first step a climb of `climb` refuses.  Answers
+// where it ended up.
+//
+// ── The shared chassis (plan 14 H0) ─────────────────────────────
+//
+// `DESIGN.md` § 9 opens with *"same chassis as the player"*, and this
+// is that sentence in code: the player and every helper drive the same
+// way and differ only in how far and how high.  One implementation, so
+// the two cannot drift about what driving into a wall does — the rule
+// plan 11 F1 states for passability, applied to movement.
 //
 // ⚠ **A LINE, not a route, and that is `docs/DESIGN.md` § 11.**  The
 // player DRIVES: they hold a direction and the vehicle goes that way
@@ -387,35 +396,41 @@ pub fn vehicle_salvage(v: const Vehicle, hl: HeightLayer,
 // gives: a `+ 1` on a q or an r reaching for "the next hex towards" is
 // moros#10 again.
 //
-// ⚠ It takes the step rule from `passable.loft` rather than asking
-// what a hex is made of.  A hover unit's climb is its clearance, so
-// `wall` stops it, a body pile under 0.4 m does not, and water does
-// not — with no branch anywhere naming any of them.
+// ⚠ It takes the step rule from `passable.loft::can_climb` rather than
+// asking what a hex is made of, and the climb is passed rather than
+// looked up — see `vehicle_climb` for why that mattered.
+pub fn drive_along(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                   from: const Hex, to: const Hex,
+                   hexes: integer, climb: float) -> Hex {
+    da_at   = Hex { q: from.q, r: from.r };
+    da_left = hexes;
+
+    // ⚠ `lat_line` includes BOTH endpoints, so the hex it starts on is
+    // the mover's own and is skipped — stepping onto it would burn a
+    // hex of the tick's allowance going nowhere.
+    da_first = true;
+    for da_h in lat_line(from, to) {
+        if da_first { da_first = false; continue; }
+        if da_left <= 0 { return da_at; }
+        if !can_climb(pal, pw, hl, climb, da_at, da_h) { return da_at; }
+        da_at   = da_h;
+        da_left -= 1;
+    }
+    da_at
+}
+
+// Advance the vehicle one tick along the straight line to where it is
+// pointed, stopping early at the first step the ground refuses.
 pub fn vehicle_tick(v: Vehicle, pal: vector<GroundType>, pw: PaintedWorld,
                     hl: const HeightLayer, tick_seconds: float) {
     if !v.parked { return; }
 
-    vt_left  = vehicle_hexes_this_tick(v, tick_seconds);
-    vt_climb = vehicle_climb(v);
-    vt_line  = lat_line(Hex { q: v.q, r: v.r }, Hex { q: v.to_q, r: v.to_r });
-
-    // ⚠ `lat_line` includes BOTH endpoints, so the hex it starts on is
-    // the vehicle's own and is skipped — stepping onto it would burn a
-    // hex of the tick's allowance going nowhere.
-    vt_first = true;
-    for vt_h in vt_line {
-        if vt_first { vt_first = false; continue; }
-        if vt_left <= 0 { return; }
-        // ⚠ `can_climb` and not `can_step`: the climb is the vehicle's
-        // STATE, not its class — see `vehicle_climb`.
-        if !can_climb(pal, pw, hl, vt_climb, Hex { q: v.q, r: v.r }, vt_h) {
-            vehicle_burn(v, tick_seconds);
-            return;                       // drove into something
-        }
-        v.q = vt_h.q;
-        v.r = vt_h.r;
-        vt_left -= 1;
-    }
+    vt_at = drive_along(pal, pw, hl,
+                        Hex { q: v.q, r: v.r }, Hex { q: v.to_q, r: v.to_r },
+                        vehicle_hexes_this_tick(v, tick_seconds),
+                        vehicle_climb(v));
+    v.q = vt_at.q;
+    v.r = vt_at.r;
     vehicle_burn(v, tick_seconds);
 }
 

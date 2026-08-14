@@ -1,0 +1,288 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 14 phase H1 — a helper exists, and moves at exactly 2.5 hex/s.
+//
+// ── The first mover whose speed does not fit the tick ───────────
+//
+// A tick is `1 / 1.5` s because that is what an enemy takes to cross
+// one hex, and everything built so far has covered a whole number of
+// hexes in it: an enemy 1, the player 2, a boosting player 4.
+// `numbers.json` § helper.speed is **2.5 hex/s — 1.667 hexes a tick**,
+// and there is no way to round that.
+//
+// ⚠ **This is NOT "the tick becomes a timestep".**  `CLAUDE.md` § Cost
+// warns that decoupling speed from the tick shrinks the per-tick
+// budget and re-opens plan 11 F8's incremental rebuild.  That is about
+// choosing a SHORTER tick; a helper needs fractional hexes at today's
+// tick, so the budget is untouched and F8's trigger does not fire.
+// Measured in `plans/14` § H0, and it is what kept this phase small.
+//
+// ── What this file has to be able to see ────────────────────────
+//
+// Two wrong implementations, both of which arrive somewhere and look
+// fine:
+//
+//   1. **Truncation.**  `1.667 as integer` is 1, so a helper that asks
+//      "how many hexes this tick?" the way the player does moves at
+//      1.5 hex/s — a 40% loss, and the exact shape of the trap plan 13
+//      V1 named for the player.
+//   2. **No epsilon.**  Banking and flooring leaves the carry on
+//      0.99999999999999956 where it should be 1.0, so a whole hex is
+//      deferred and the residue DEGRADES every cycle.  Measured over
+//      nine ticks: 14 hexes instead of 15 — **2.333 hex/s** — and it
+//      gets worse the longer the run.
+//
+// ⚠ **So the gate is the PATTERN, not the arrival.**  A helper at
+// 2.5 hex/s covers 1, 2, 2 hexes over and over; the epsilon-less one
+// covers 1, 2, 1, 2, 2, 1, … and both reach the far end of a corridor.
+// Only counting the ticks tells them apart.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn corridor() -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in -3..=40 { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The roster
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_fresh_run_has_no_crew() {
+    taf = wave_state_empty();
+    assert(len(taf.crew) == 0, "nobody has been hired: {len(taf.crew)}");
+}
+
+fn test_a_new_helper_is_alive_whole_and_standing_still() {
+    tan = helper_new(4, 1);
+
+    assert(tan.alive, "it is in the world");
+    assert(tan.q == 4 && tan.r == 1, "on its hex: ({tan.q}, {tan.r})");
+    assert(helper_arrived(tan), "and going nowhere until it is told to");
+    assert(helper_hp(tan) == HELPER_HP, "at full HP: {helper_hp(tan)}");
+    assert(tan.progress == 0.0, "with nothing banked");
+}
+
+// `numbers.json` § helper.roster_start / roster_cap — the numbers an
+// eventual ordering mechanic has to respect, stated where they can be
+// read.
+fn test_the_roster_numbers_are_the_documented_ones() {
+    assert(HELPER_ROSTER_START == 2, "two land with the core: {HELPER_ROSTER_START}");
+    assert(HELPER_ROSTER_CAP == 6, "and six is the cap: {HELPER_ROSTER_CAP}");
+    assert(HELPER_HP == 50.0, "a helper is half a player: {HELPER_HP}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The speed — where both wrong implementations live
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The phase in one assertion.**  Five hexes every three ticks is
+// 2.5 hex/s exactly.  Truncation gives three, and a missing epsilon
+// gives five sometimes and four others — so the ratio over a long run
+// is the only reading that separates all three.
+fn test_a_helper_covers_five_hexes_every_three_ticks() {
+    tah_pw = corridor();
+    tah_s  = wave_state_empty();
+    tah_s.crew += [helper_new(30, 0)];
+    helper_drive(tah_s.crew[0] ?? Helper { }, 0, 0);
+
+    for tah_c in 1..=6 {
+        play(tah_s, tah_pw, 3);
+        tah_h    = tah_s.crew[0] ?? Helper { };
+        tah_went = 30 - tah_h.q;
+        assert(tah_went == 5 * tah_c,
+               "after {3 * tah_c} ticks it has covered {tah_went} hexes, wanted {5 * tah_c}");
+    }
+}
+
+// The same statement as a RATE, against the tick's own duration — so
+// it stays true if the timestep ever changes.
+fn test_and_that_is_two_and_a_half_hexes_a_second() {
+    tat_pw = corridor();
+    tat_s  = wave_state_empty();
+    tat_s.crew += [helper_new(30, 0)];
+    helper_drive(tat_s.crew[0] ?? Helper { }, 0, 0);
+
+    play(tat_s, tat_pw, 12);
+
+    tat_h    = tat_s.crew[0] ?? Helper { };
+    tat_went = (30 - tat_h.q) as float;
+    tat_rate = (tat_went / (12.0 * TICK_SECONDS)) ?? 0.0;
+
+    assert(tat_rate > HELPER_SPEED_HEX_PER_SECOND - 0.001
+        && tat_rate < HELPER_SPEED_HEX_PER_SECOND + 0.001,
+           "measured {tat_rate} hex/s against {HELPER_SPEED_HEX_PER_SECOND}");
+}
+
+// ⚠ **The pattern itself**, which is what a bare `floor` gets wrong.
+// 1, 2, 2 repeating; the epsilon-less version goes 1, 2, 1, 2, 2, 1 and
+// arrives at the same place several ticks later.
+fn test_the_step_pattern_is_one_two_two_repeating() {
+    tsp_pw = corridor();
+    tsp_s  = wave_state_empty();
+    tsp_s.crew += [helper_new(30, 0)];
+    helper_drive(tsp_s.crew[0] ?? Helper { }, 0, 0);
+
+    tsp_want: vector<integer> = [1, 2, 2, 1, 2, 2, 1, 2, 2];
+    tsp_was = 30;
+    tsp_i   = 0;
+    for tsp_w in tsp_want {
+        play(tsp_s, tsp_pw, 1);
+        tsp_h    = tsp_s.crew[0] ?? Helper { };
+        tsp_step = tsp_was - tsp_h.q;
+        assert(tsp_step == tsp_w,
+               "tick {tsp_i}: stepped {tsp_step}, wanted {tsp_w}");
+        tsp_was = tsp_h.q;
+        tsp_i  += 1;
+    }
+}
+
+// ⚠ The remainder is KEPT, not discarded — which is what makes the
+// average exact rather than merely close.  Between ticks it is always
+// a fraction of a hex.
+fn test_the_remainder_is_banked_and_never_exceeds_a_hex() {
+    trb_pw = corridor();
+    trb_s  = wave_state_empty();
+    trb_s.crew += [helper_new(30, 0)];
+    helper_drive(trb_s.crew[0] ?? Helper { }, 0, 0);
+
+    for _ in 0..12 {
+        play(trb_s, trb_pw, 1);
+        trb_h = trb_s.crew[0] ?? Helper { };
+        assert(trb_h.progress >= 0.0 && trb_h.progress < 1.0,
+               "carry is a fraction of a hex: {trb_h.progress}");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The chassis it shares with the player
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_helper_stops_at_what_it_cannot_climb() {
+    tah_pw = corridor();
+    paint(tah_pw, 5, 0, as_u8(WALL));
+
+    tah_s = wave_state_empty();
+    tah_s.crew += [helper_new(9, 0)];
+    helper_drive(tah_s.crew[0] ?? Helper { }, 0, 0);
+
+    play(tah_s, tah_pw, 12);
+    tah_h = tah_s.crew[0] ?? Helper { };
+    assert(tah_h.q == 6, "parked against the wall: ({tah_h.q}, {tah_h.r})");
+    assert(!helper_arrived(tah_h), "and it never got where it was pointed");
+}
+
+// ⚠ It banks even while blocked, so being stopped costs it distance
+// and not RATE — the tick it is finally pointed somewhere reachable it
+// leaves with whatever it had.
+fn test_a_blocked_helper_still_banks() {
+    tab_pw = corridor();
+    paint(tab_pw, 5, 0, as_u8(WALL));
+
+    tab_s = wave_state_empty();
+    tab_s.crew += [helper_new(6, 0)];
+    helper_drive(tab_s.crew[0] ?? Helper { }, 0, 0);
+    play(tab_s, tab_pw, 4);
+
+    tab_h = tab_s.crew[0] ?? Helper { };
+    assert(tab_h.q == 6, "it has not moved: ({tab_h.q}, {tab_h.r})");
+
+    helper_drive(tab_h, 20, 0);
+    play(tab_s, tab_pw, 1);
+    tab_h2 = tab_s.crew[0] ?? Helper { };
+    assert(tab_h2.q > 6, "and it leaves the moment it is pointed away: q = {tab_h2.q}");
+}
+
+fn test_a_helper_that_arrives_stays_put() {
+    tas_pw = corridor();
+    tas_s  = wave_state_empty();
+    tas_s.crew += [helper_new(6, 0)];
+    helper_drive(tas_s.crew[0] ?? Helper { }, 0, 0);
+
+    play(tas_s, tas_pw, 20);
+    tas_h = tas_s.crew[0] ?? Helper { };
+    assert(tas_h.q == 0 && tas_h.r == 0, "arrived: ({tas_h.q}, {tas_h.r})");
+    assert(helper_arrived(tas_h), "and knows it");
+}
+
+fn test_a_whole_crew_moves_independently() {
+    twc_pw = corridor();
+    twc_s  = wave_state_empty();
+    twc_s.crew += [helper_new(20, 0)];
+    twc_s.crew += [helper_new(30, 0)];
+    helper_drive(twc_s.crew[0] ?? Helper { }, 0, 0);
+    // the second is pointed nowhere and must not move
+
+    play(twc_s, twc_pw, 6);
+
+    assert((twc_s.crew[0] ?? Helper { }).q == 10, "the first walked ten hexes");
+    assert((twc_s.crew[1] ?? Helper { }).q == 30, "the second stayed put");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The verbs
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_crew_verbs_drive_a_helper() {
+    ttc_src =
+        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo toggle_mode\n"
+      + "palette 5\ndrag -3 0 20 0\n"
+      + "crew 15 0\nhelper 0 15 0\n"
+      + "send 0 0 0\n"
+      + "tick 3\nhelper 0 10 0\n"
+      + "tick 3\nhelper 0 5 0\n";
+
+    ttc = script_run(editor_state_new(PALETTE), ttc_src, SHOTS);
+    assert(ttc.ok, "{script_describe(ttc)}");
+    assert(ttc.checks == 3, "it made {ttc.checks} measurements, expected 3");
+}
+
+// ⚠ `numbers.json` § helper.roster_cap is 6, and the runner refuses a
+// seventh rather than quietly holding a crew no base could have.
+fn test_the_roster_cap_is_enforced() {
+    ttr_src = "";
+    for ttr_i in 0..HELPER_ROSTER_CAP { ttr_src = ttr_src + "crew {ttr_i} 0\n"; }
+    ttr_ok = script_run(editor_state_new(PALETTE), ttr_src, SHOTS);
+    assert(ttr_ok.ok, "six is allowed: {script_describe(ttr_ok)}");
+
+    ttr_over = script_run(editor_state_new(PALETTE), ttr_src + "crew 9 0\n", SHOTS);
+    assert(!ttr_over.ok && ttr_over.message.contains("holds 6"),
+           "a seventh is refused: {ttr_over.message}");
+}
+
+fn test_the_crew_verbs_check_their_arguments() {
+    ttv_a = script_run(editor_state_new(PALETTE), "send 0 0 0", SHOTS);
+    assert(!ttv_a.ok && ttv_a.message.contains("no helper 0"), "{ttv_a.message}");
+
+    ttv_b = script_run(editor_state_new(PALETTE), "helper 0 0 0", SHOTS);
+    assert(!ttv_b.ok && ttv_b.message.contains("no helper 0"), "{ttv_b.message}");
+
+    ttv_c = script_run(editor_state_new(PALETTE), "crew 1", SHOTS);
+    assert(!ttv_c.ok && ttv_c.message.contains("<q> <r>"), "{ttv_c.message}");
+}

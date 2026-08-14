@@ -101,6 +101,13 @@
 //                              vehicle is not READY, because a script
 //                              asserts intent where a held key would
 //                              simply do nothing
+//   crew <q> <r>               add a helper at a hex (plan 14 H1).
+//                              ⚠ An ERROR past `roster_cap` (6), which
+//                              is the number a base can hold
+//   send <i> <q> <r>           point helper `i` at a hex — the same
+//                              verb `drive` is for the player, named
+//                              apart because one takes an index
+//   helper <i> <q> <r>         EXACT hex of one helper
 //   fall <max>                 tick until the base FALLS — the wallet
 //                              at zero — and stop (plan 12 B7).
 //                              ⚠ Still standing after <max> is an
@@ -220,6 +227,7 @@ use passable;
 use damage;
 use wallet;
 use vehicle;
+use helper;
 use occupancy;
 use spawn;
 use graphics;
@@ -717,6 +725,24 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         }
         return measure_float(run, "hull", vehicle_hp(run.wave.player),
                              sm_hlo2 ?? 0.0, sm_hhi2 ?? 0.0);
+    }
+
+    // Where one helper is.  Plan 14 H1, and the same shape as
+    // `enemy <i> <q> <r>`: an index, because a crew is a roster.
+    if sm_cmd == "helper" {
+        if sm_argc != 3 { return "helper needs <i> <q> <r>"; }
+        sm_hv2 = script_ints(tok, 3);
+        if len(sm_hv2) != 3 { return "helper: <i>, <q> and <r> must be integers"; }
+        sm_hi2 = sm_hv2[0] ?? 0;
+        if sm_hi2 < 0 || sm_hi2 >= len(run.wave.crew) {
+            return "helper: no helper {sm_hi2} — the crew is {len(run.wave.crew)} strong";
+        }
+        sm_hh = run.wave.crew[sm_hi2] ?? Helper { };
+        if sm_hh.q != (sm_hv2[1] ?? 0) || sm_hh.r != (sm_hv2[2] ?? 0) {
+            return "helper {sm_hi2} is at ({sm_hh.q}, {sm_hh.r}), expected ({sm_hv2[1] ?? 0}, {sm_hv2[2] ?? 0})";
+        }
+        measure_exact(run, "helper {sm_hi2} ({sm_hh.q}, {sm_hh.r})");
+        return "";
     }
 
     // The run's CLOCK, in game-ticks — plan 12 B7.
@@ -1416,6 +1442,30 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // Add a helper, and point one somewhere.  Plan 14 H1.
+    if sc_cmd == "crew" {
+        if sc_argc != 2 { return "crew needs <q> <r>"; }
+        sc_crw = script_ints(tok, 2);
+        if len(sc_crw) != 2 { return "crew: <q> and <r> must be integers"; }
+        if len(run.wave.crew) >= HELPER_ROSTER_CAP {
+            return "crew: a base holds {HELPER_ROSTER_CAP} helpers and already has {len(run.wave.crew)}";
+        }
+        run.wave.crew += [helper_new(sc_crw[0] ?? 0, sc_crw[1] ?? 0)];
+        return "";
+    }
+
+    if sc_cmd == "send" {
+        if sc_argc != 3 { return "send needs <i> <q> <r>"; }
+        sc_sv = script_ints(tok, 3);
+        if len(sc_sv) != 3 { return "send: <i>, <q> and <r> must be integers"; }
+        sc_si = sc_sv[0] ?? 0;
+        if sc_si < 0 || sc_si >= len(run.wave.crew) {
+            return "send: no helper {sc_si} — the crew is {len(run.wave.crew)} strong";
+        }
+        helper_drive(run.wave.crew[sc_si] ?? Helper { }, sc_sv[1] ?? 0, sc_sv[2] ?? 0);
+        return "";
+    }
+
     if sc_cmd == "tick" {
         if sc_argc != 1 { return "tick needs <ticks>"; }
         sc_n = sc_a1 as integer?;
@@ -1484,7 +1534,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     || sc_cmd == "frame" || sc_cmd == "range"
     || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target"
     || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
-    || sc_cmd == "ticks" || sc_cmd == "vehicle" || sc_cmd == "hull" {
+    || sc_cmd == "ticks" || sc_cmd == "vehicle" || sc_cmd == "hull"
+    || sc_cmd == "helper" {
         return script_measure(s, run, tok);
     }
 

@@ -38,6 +38,7 @@ use damage;
 use tower;
 use wallet;
 use vehicle;
+use helper;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -234,6 +235,7 @@ pub struct WaveState {
     towers:      TowerState,
     wallet:      Wallet,
     player:      Vehicle,
+    crew:        vector<Helper>,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0, the
@@ -246,6 +248,7 @@ pub fn wave_state_empty() -> WaveState {
         towers:  tower_state_empty(),
         wallet:  wallet_new(),
         player:  vehicle_empty(),
+        crew:    [],
     }
 }
 
@@ -1294,6 +1297,14 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // it after would let a crew tidy a kill zone the instant it filled,
     // and would make the ordering of these three lines load-bearing.
     vehicle_tick(state.player, pal, pw, state.heights, TICK_SECONDS);
+
+    // ⚠ **The crew takes its turn with the player** (plan 14 H1), for
+    // the same reason and in the same place: they are the same chassis
+    // doing the same kind of work, and what they change about the
+    // world belongs to tick N+1.
+    for wt_h in state.crew {
+        helper_tick(wt_h, pal, pw, state.heights, TICK_SECONDS);
+    }
 
     // ⚠ **Salvage is the wallet's only income** (plan 13 V3), and it
     // is what keeps plan 12 B6's promise that the budget never refills

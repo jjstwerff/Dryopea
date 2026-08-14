@@ -60,7 +60,8 @@ exists today.
 | BOOST: four hexes a tick and a 3.0 m climb for three ticks, so a crew leaves a sealed base and comes home | [13](plans/13-the-vehicle/README.md), V4 shipped |
 | LOOT: clearing wreckage pays 20 points a metre, so the wallet can rise for the first time — and a crew that clears AND collects takes the towered base from 95 ticks to 145 | [13](plans/13-the-vehicle/README.md), V3 shipped — plan **complete** |
 | The player can be DESTROYED — but only by blocking a wave with nowhere to go round, which is a property of the map rather than of parking | [13](plans/13-the-vehicle/README.md), V5 shipped |
-| **No helpers, no tower repair/ordering, and no scramble — so a respawn starts no launch countdown** | not in any open plan |
+| HELPERS: an NPC crew on the player's chassis, moving at 2.5 hex/s — the first mover whose speed does NOT fit the tick | [14](plans/14-helpers/README.md), H0-H1 shipped |
+| **The crew cannot yet DO anything, and no tower repair, ordering or scramble** | [14](plans/14-helpers/README.md), H2 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -76,7 +77,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 818/818 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 832/832 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
 **Gate: 19 scripts green under `scripts/validate.sh`** (~7 s, 324
@@ -854,6 +855,23 @@ src/
                    ⚠ `VEHICLE_TIMER_EPSILON` — 2.0 s over a 1/1.5 s
                    tick is three ticks that sum to 1.9999999999999998,
                    so a bare `> 0.0` gives a FOURTH tick of boost
+  helper.loft      the NPC crew (plan 14 H1) — HELPER_SPEED_HEX_PER_
+                   SECOND (2.5), _HP, _ROSTER_START / _CAP, Helper +
+                   helper_new / _drive / _arrived / _hp / _hurt /
+                   _bank / helper_tick.
+                   ⚠ **The first mover whose speed does not fit the
+                   tick**: 2.5 hex/s is 1.667 hexes, so it BANKS
+                   progress and steps the whole hexes out — the pattern
+                   `tower.loft` and plan 13 V4 already use, arriving a
+                   third time and LOCAL to the mover that needs it.
+                   ⚠ **This is NOT "the tick becomes a timestep"** —
+                   that warning is about a SHORTER tick, and F8's
+                   budget trigger does not fire.
+                   ⚠ `HELPER_PROGRESS_EPSILON` is worth 6.7% of the
+                   speed, compounding: without it the carry sits on
+                   0.99999999999999956 and a hex is deferred for ever.
+                   The gate is the 1-2-2 step PATTERN, because both
+                   wrong versions still arrive
   wallet.loft      the run's budget, and the only END STATE dryopea
                    has (plan 12 B6) — WALLET_STARTING_POINTS (200),
                    NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,
