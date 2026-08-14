@@ -1352,14 +1352,78 @@ that gives the run a long arc nothing else does:
   ([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § Open questions 1),
   which is one more argument for it.
 
-⚠ **Open: does a combat boss shoot TOWERS?**  *Power weapons*
-implies it, and it would be the first thing in the game that
-does — which changes the tower economy completely, since a
-tower's 30-shot budget can only be refilled by a player standing
-at it (§ 7).  The repair platform pointedly does not
-(§ Localised tower-attack retaliation below); making its sibling
-the unit that does is the obvious reading, and it is not decided
-here.
+#### ⚠⚠ It shoots TOWERS — the first real challenge
+
+**Confirmed by the owner, 2026-08-14:** the combat boss shoots
+towers, *"it is the first real challenge a player will face
+beside being rushed earlier on.  Big chunks of their base can
+fall easily then, and their layout should be changed to have a
+chance to face a combat robot."*
+
+**Why it is the first REAL one.**  Everything before it threatens
+the **core** — the wallet drains, the run ends, and the answer is
+always more of the same defence.  A combat boss threatens the
+**investment**: towers cost 100 points each, carry a 30-shot
+budget only a player standing at them can refill (§ 7), and are
+the entire reason a base can hold anything.  ⚠ It is the first
+enemy that makes you **poorer** rather than merely closer to
+losing.
+
+⚠ **And the failure compounds, out of rules that already ship.**
+A felled structure leaves rubble
+([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § Bodies are terrain,
+`damage.loft::break_structure`), rubble raises its hex, and a
+raised hex is a ramp.  So a base losing towers is simultaneously
+a base **growing the staircase** its attackers climb.  Nothing
+needs adding for "big chunks fall easily" to be true; it already
+is, as soon as something can fell them.
+
+##### ⚠⚠ What it invalidates: the narrow funnel
+
+This is the precise sense in which *"their layout should be
+changed"*, and it is sharp rather than vague:
+
+> § 7 already makes **funnel width** decide *whether a boss fits,
+> and whether its builders have room to reach it*.  Against the
+> **repair platform** that is a complete answer — deny the 2×2
+> entry and it cannot act.
+>
+> ⚠⚠ **A boss that shoots does not need to come in.**  Every base
+> built on the tight-entrance answer is defeated without the boss
+> ever entering it.
+
+That is a genuine invalidation of a *learned optimum*, which is
+the most valuable kind of difficulty step: the player is not
+beaten by a bigger number, they are beaten by a design decision
+that was correct until now.
+
+##### What the new layout wants — inferred, not decided
+
+⚠ **Reasoning from shipped mechanics, flagged as such.**  The
+counters the existing rule set already offers:
+
+- **Depth instead of a wall** — layers to cross while towers
+  whittle, since a single line it can shoot from outside is worth
+  nothing.
+- **Dispersal instead of concentration** — clustered towers give
+  overlapping fire *and* a single volley that removes a battery.
+  The trade becomes real for the first time.
+- **LOS breaking** — `wall_high` at 5.0 m and terrain elevation
+  decide what a 6 m tower eye can see (§ 7 § LOS is a HEIGHT
+  question).  ⚠ Today `tower_sees` is one symmetric line, so a
+  layout cannot give the tower sight the boss lacks; whether the
+  boss's weapon should be **shorter-ranged than a tower's 15**
+  is the balance number that decides if outranging is an answer
+  at all, and it is undecided.
+- ⚠⚠ **Evacuation** — and this is the good one.  Tower-tops are
+  **carryable** (§ Tower-top salvage, § New towers via beacon
+  ferry).  Against an enemy that destroys towers, pulling the top
+  off one before it dies is the game's *signature* mechanic —
+  scramble-and-salvage — arriving as a **tactical** move inside a
+  single fight rather than as the end of a run.
+
+**Design test:** ✓✓ — the answer to the first real challenge is
+to drive into the fire and carry something out.
 
 ### Boss = mobile REPAIR PLATFORM (phase 3)
 

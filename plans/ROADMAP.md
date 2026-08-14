@@ -144,6 +144,7 @@ cuboid.
 | Tier 1 economic-bot vs combat-bot wave split | drafted | DESIGN § 10 + SETTING § Combat bots | Typed wave mixes; combat-bots dormant by default |
 | Combat-bot wake klaxon (diegetic activation cue) | drafted | SETTING § Combat bots | Audible signal when an AI reactivates its military |
 | Boss = mobile repair platform (2×2) | drafted | DESIGN § 7 Boss | Industrial unit, not a soldier; phase 3 |
+| **Boss 2 — the big COMBAT robot** | drafted | [DESIGN § There are TWO boss kinds](../docs/DESIGN.md) | ⚠ **The first real challenge.**  Built to fight; crystal for core AND power weapons; comes from a woken military stockpile, not a factory line.  ⚠⚠ It SHOOTS TOWERS — the first enemy that makes the player poorer rather than closer to losing, and the first that invalidates a learned optimum (a tight funnel denies a 2×2, but not something shooting from outside).  Answer is depth, dispersal, LOS-breaking and EVACUATING tower-tops under fire |
 | Tier 2 — insects + sap | drafted | SETTING § Insects | Passive fauna; smell-tracking; `wall_high` blocks |
 | Tier 3 — elementals + stones | drafted | SETTING § Elementals | Dormant; gem-keyed activation; 4 sub-kinds |
 | Hacking helpers (subvert robot units) | drafted | DESIGN § 9 Helpers | Coordinator bots = highest-value target |
