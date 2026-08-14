@@ -1165,7 +1165,7 @@ malicious and the offer is not a trap; it is simply total.
 |---|---|---|
 | disposition | **indifferent** — you are beneath notice | **benevolent** — you are welcome |
 | what it costs you | everything, incidentally | **yourself**, deliberately and with consent |
-| what it gives its servants | a drive (elementals get orders) | belonging, and an end to being alone |
+| what it gives its servants | a drive (elementals get orders) | belonging — and, because the self is gone, **resistance to the old ones**.  ⚠ The price IS the protection; see § Why the warriors can stand it |
 | how it reaches the world | disturbance from below wakes it | it *answers* — see below |
 
 **Two cosmic options, and both erase the individual** — one by not
@@ -1197,6 +1197,58 @@ Three design constraints follow, and each protects the end-game:
 - **"And other beings" is the quiet horror.**  The warriors that come
   to help are what *previous* civilisations chose to become.  Nobody
   has to say this out loud; it is in the roster.
+
+### ⚠⚠ Why the warriors can stand it — and it is not strength
+
+Owner, 2026-08-14: *"the warriors of the hive mind are far better
+resistant to the old ones, not because they understand them, but
+because they do not care anymore to understand them."*
+
+**The price IS the protection.**  Individuality is what carries the
+compulsion to comprehend; a mind with no self left has nothing in it
+that needs to know.  So the being beyond the portal is not charging a
+toll and handing out a weapon in exchange — **the loss is the
+weapon**, and there is no version of the trade where you keep both.
+
+⚠⚠ **That makes the "benevolent" label exact rather than ironic.**
+From its side, taking your individuality is *saving* you.  It is the
+only way it knows to make someone survivable, and it is right.  A
+kindness that is also an annihilation, with no bad intent anywhere in
+it, is a far better antagonist-shaped thing than a malicious one.
+
+### The three responses to the incomprehensible
+
+Everything in this section now sits on one scale — **how much self is
+left**:
+
+| who | response | self | outcome |
+|---|---|---|---|
+| the city's builders | **understand it** | intact | destroyed |
+| the underground humans | **refuse to look** — the cloth | intact | surviving, by avoidance only |
+| the hive-mind warriors | **no longer care to** | gone | resistant |
+
+⚠ **The cloth is the human, partial version of what the hive mind
+achieves by deletion.**  Sheets are an external prosthesis for a
+discipline the warriors have internalised by no longer having the
+faculty at all.  That is why the humans' strategy survives but does
+not scale: **in a fight you have to look at the thing**, and cloth
+cannot be hung over a battlefield.
+
+### ⚠ Hard consequences for anything ever built
+
+- **Resistance is a function of how little self you have.**  It is not
+  a stat, not gear, not knowledge, and there is **no upgrade path to
+  it**.  Any mechanic granting the player resistance without costing
+  self has broken the whole structure.
+- **So the warriors are ANCHORS, not artillery.**  They do not
+  out-fight an old one; they are simply the ones who do not break.  If
+  an awakening ever becomes a fight, its shape is: individuals cannot
+  stand in that place for long, and the line holds where the warriors
+  are standing.
+- **The player's own defence is the humans' one** — look away, work
+  around, refuse the invitation to understand — with all its limits,
+  because the alternative is not available to anyone who intends to
+  stay a person.
 
 ### ⚠⚠ Answered: the builders took the portal, and the statues are the old ones
 
@@ -1275,6 +1327,13 @@ old ones.  It holds the best intelligence that exists and *it is still
 a failure*.  **Nobody in this cosmology can explain them**, which is
 what keeps the mystery permanent instead of merely deferred.
 
+⚠⚠ **And the hive mind is not withholding it — it has stopped
+caring.**  § Why the warriors can stand it: what makes those warriors
+resistant is that nothing in them needs to know any more.  So the best
+archive in the cosmology is held by the one party with no motive to
+consult it, which closes the last door on comprehension as a route to
+anything.
+
 ### ⚠ Which means the portal warriors include the builders
 
 The people who come back up through the portal when an old one wakes
@@ -1312,10 +1371,13 @@ looking harder.
 
 ### Open questions — still the owner's
 
-1. **Can the player enter the portal?**  A terminal choice for a
-   character, in a game built around a persistent co-op and a hub,
-   would be enormously heavy.  It should probably exist and almost
-   never be taken.
+1. **Can the player enter the portal?**  ⚠ Now much sharper than when
+   it was first written: entering is **the only real defence against
+   the old ones that exists**, and it costs that character
+   permanently.  A genuine and terrible choice rather than a flavour
+   option — and in a game built around a persistent co-op and a hub,
+   enormously heavy.  It should probably exist and almost never be
+   taken.
 2. **Does the hive mind KNOW things?**  Largely answered by the
    builders' failure: it holds the best intelligence on the old ones
    that exists **and that intelligence is a failure**.  What is left
