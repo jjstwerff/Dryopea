@@ -222,6 +222,10 @@ already ship:
   crew inside a sealed base can only reach the ramp by boosting
   out*.
 - **Bodies pile 0.5 m each and ramp** (plan 12 B4).
+- ⚠ **The bark is very hard** (SETTING.md § It is a MUTUALISM), so a
+  stem is not chewable the way a wall is.  `structure_max_hp` is keyed
+  on the palette NAME, so this is a row rather than a rule — but it is
+  what makes the ramp the *only* way up rather than the easiest one.
 
 #### ⚠⚠ The payoff: your own kills build the staircase
 
@@ -237,6 +241,11 @@ something in the player's hands at a moment when using it costs
 them something?*): ✓✓, and it clears the harder bar too — the
 terrain advantage **decays with use**, so it is not a permanent
 advantage bought with a one-time placement decision.
+
+⚠ **A stem base is not empty of enemies, only of ROBOTS.**  Insects
+live in and around the trees, and they ignore the scrambler — so
+building on a stem trades tier 1 for tier 2 and puts the base in the
+one biome where the core's defining mechanic does nothing.
 
 ⚠ **And you cannot leave.**  Your salvage is at the bottom of a
 drop you have to boost off and cannot boost back up until the

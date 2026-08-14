@@ -422,6 +422,85 @@ mechanical and biological — that share the same terrain but
 have different rules of engagement.  The player chooses how
 to interact with each.
 
+### ⚠⚠ It is a MUTUALISM — the insects guard the wound
+
+Owner, 2026-08-14: *"the insects live in/around the trees.  When the
+very hard bark of the tree is torn the sap can be reached and the
+insects will come for it to eat but also to defend the wound so it can
+heal naturally.  So the insects get something for it but also perform a
+duty for the trees."*
+
+This is not decoration on the sap rule above; it **changes what the
+trigger is**.
+
+- **The bark is very hard.**  Sap is not lying about — it has to be
+  *cut for*, which is a job with a duration and a place, not a pickup.
+- **The trigger is a WOUND, not a theft.**  Insects converge on the
+  tear.  They are not chasing a thief; they are answering damage to the
+  thing they live in.
+- **They come to eat AND to guard.**  Feeding on the exposed sap is the
+  payment; holding the wound until it closes is the service.  The tree
+  gets defended and healed, the insects get fed, and neither party is
+  fighting anybody in principle.
+- **The wound HEALS.**  So the whole thing is a **clock**: cut, and
+  there is a window in which sap can be taken and in which the wound is
+  defended.  Then it closes.
+
+⚠ **The player's decision is therefore a siege they chose to start**,
+at a place away from their base, on a timer they opened themselves —
+and their crew cannot be defending the core while it is out here
+cutting.  That is `DESIGN.md` § What kind of game this is almost
+word for word.
+
+⚠ **It does not replace the smell-tracking rule; it precedes it.**
+Two phases: hold the wound while extracting, then get followed home by
+what you are carrying.  The guard is local and stops when the wound
+closes; the chase is personal and stops when the sap is banked.
+
+### ⚠ Nobody in this world is attacking anybody
+
+Put this beside § They were on an ERRAND and a pattern appears that is
+worth protecting:
+
+| tier | why it comes | what it thinks it is doing |
+|---|---|---|
+| robots | their radio went dead | attending a peer machine that has malfunctioned |
+| insects | a tree was torn open | feeding, and holding a wound until it heals |
+
+**Both non-human tiers are MAINTENANCE behaviours.**  Neither was built
+or evolved to fight, and neither is hostile in principle — which leaves
+the player as the only party on the map who is actually attacking
+anything.  ⚠ A proposed mechanic that only makes sense as aggression is
+off-fiction for this world, and that is a usable test.
+
+### ⚠ And it closes the tree life-cycle loop
+
+The mutualism is what makes § A tree is also a drill a *system* rather
+than two facts:
+
+1. Insects guard wounds, so a tree with a healthy insect population
+   **heals and lives longer**.
+2. The robots clear terrain, which destroys trees (above) — and drive
+   off or kill what lives in them.
+3. A tree without its insects wounds, fails to heal, and **withers
+   sooner**.
+4. A withered tree leaves a braided shaft into the crust.
+5. The shaft is where **crystal** is — which the robots need for boss
+   energy cores and the factory machinery that builds them
+   ([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 1a).
+
+⚠⚠ **So the robot economy is farming its own crystal supply by
+killing the forest, and does not know it.**  That is the planet's
+central irony, it is generated entirely by material that was already
+written, and it is the reason tier 1 and tier 2 are on a collision
+course rather than merely sharing a map.
+
+**For the player** it is a lever with a long handle and a real price:
+protecting a stand of trees is siding with the insects against the
+robots' supply, and clearing one is the fastest way to make new crystal
+sites — which are the most valuable and most dangerous ground in the
+game.
+
 ## The third enemy — elementals + stones
 
 Beyond robots (tier 1) and insects (tier 2), the planet hosts

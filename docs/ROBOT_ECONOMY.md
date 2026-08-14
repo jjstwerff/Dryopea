@@ -473,6 +473,16 @@ hardest map type **derived rather than declared**.
 bounded by how many huge trees have died in a region, which a map
 author controls by placing trees rather than by tuning a rate.
 
+⚠⚠ **And the swarm is farming that supply without knowing it.**
+[`SETTING.md`](SETTING.md) § And it closes the tree life-cycle loop:
+insects guard tree wounds until they heal, robots clearing terrain kill
+trees and drive off what lives in them, an unguarded tree withers
+sooner, and a withered tree is a crystal shaft.  **The robot economy
+destroys the forest and is paid in crystal for it.**  For the player
+that is a lever with a long handle: protecting a stand sides with the
+insects against the swarm's boss supply, and clearing one is the
+fastest way to make new crystal sites.
+
 **3. The shaft is TWO-WAY, and that is the interesting half.**  A path
 into the crust is a path *out* of it:
 
