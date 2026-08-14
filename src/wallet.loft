@@ -53,16 +53,21 @@
 // seven hundred points.  You cannot drain points that are not there;
 // the ledger has to say so.
 //
-// ── What is deliberately NOT here ───────────────────────────────
+// ── The credit, and what still enforces "never unattended" ──────
 //
-// There is **no credit verb**, and that is what enforces B6's own
-// invariant: *the wallet never refills unattended*.  Loot, the tower
-// order cost and the 1:1 carryover between bases are all real design
-// (`DESIGN.md` § Currency — points), and every one of them needs a
-// player or a next base, neither of which plan 12 builds.  A drain is
-// the only operation there is, so an unattended base can only lose.
+// Plan 12 B6 shipped with **no credit verb at all**, and said so: a
+// drain was the only operation there was, so an unattended base could
+// only lose.  Plan 13 V3 adds `wallet_earn`, and the invariant it
+// guarded is unchanged — because what enforces it was never the
+// absence of the verb, it is that **the only caller needs a vehicle**.
+// A run with nobody in it clears nothing, so it earns nothing.
+//
+// Still not here: the tower order cost and the 1:1 carryover between
+// bases (`DESIGN.md` § Currency — points).  Both need something plan
+// 13 does not build — a beacon to buy, and a next base to carry to.
 
 use lattice;
+use height;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -144,6 +149,58 @@ pub fn wallet_spent(w: const Wallet) -> float {
 // not to have behind a sign error.
 pub fn wallet_drain(w: Wallet, points: float) {
     w.spent = min(w.spent + max(points, 0.0), WALLET_STARTING_POINTS);
+}
+
+// ─── Income ─────────────────────────────────────────────────────
+
+// numbers.json § enemy_regular.loot_value (10 points) over §
+// enemy_regular.body_height (0.5 m) — **derived, not picked**.  The
+// design prices a KILL and the rubble layer stores METRES, so the
+// conversion is the one number that makes them the same statement:
+// clear a body's worth of wreckage, collect a body's worth of points.
+//
+// ⚠ **One value for every class**, the rule
+// `spawn.loft::ENEMY_DAMAGE_TO_WALL_PER_SECOND` states: `numbers.json`
+// has a `loot_value` for a regular and for a boss and none for an
+// insect, so a second number here would be a tunable this plan
+// invented.  It becomes a lookup on the day the file grows one.
+pub const LOOT_POINTS_PER_METRE: float = 20.0;
+
+// What a metre of this rubble is worth.
+//
+// ⚠ **Masonry pays NOTHING, and that is the whole reason
+// `height.loft` has carried a source since plan 12 B1** — where it was
+// written with the note *"nothing reads it back yet"*.  This is its
+// first reader, and the distinction it draws is one a player feels
+// immediately: a dead machine is salvage, and a heap of your own
+// broken wall is a mess you made.  Paying for masonry would have made
+// demolishing your own perimeter an income stream.
+//
+// ⚠ A pile is named by its NEWEST deposit (`height.loft`'s rule), so
+// masonry dropped onto a heap of wreckage makes the whole heap
+// worthless until it is cleared and re-piled.  That is the layer's
+// existing one-source-per-hex simplification showing through rather
+// than a rule this file adds; the eventual fix is plan 06 S1's
+// stacked layer, which can hold several things at once.
+pub fn loot_rate(source: integer) -> float {
+    if source == RUBBLE_MASONRY { return 0.0; }
+    LOOT_POINTS_PER_METRE
+}
+
+// Put points INTO the wallet — the first thing that ever has.
+//
+// It is the inverse of `wallet_drain` and shares its ledger: earning
+// reduces what has been spent, so a run that earns more than it has
+// lost carries a NEGATIVE `spent` and a wallet above its starting
+// budget.  That is what the design asks for — `DESIGN.md` § Currency
+// says wave 1's loot plus the starting 200 buys a tower AND a helper,
+// which is 250 — so the ledger is deliberately not clamped at the top.
+//
+// ⚠ A negative amount is refused, the mirror of `wallet_drain`
+// refusing a negative drain: draining and earning are different verbs
+// on purpose, and a sign error must not turn one into the other.
+pub fn wallet_earn(w: Wallet, points: float) {
+    w.spent = w.spent - max(points, 0.0);
 }
 
 // Is the run over?  The end state, and the only one dryopea has.

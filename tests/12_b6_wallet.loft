@@ -157,9 +157,17 @@ fn test_the_ledger_is_clamped_where_it_is_written() {
            "you cannot drain points that are not there: {wallet_spent(ttl)}");
 }
 
-// ⚠ **"Never refills unattended" is enforced by there being no verb
-// for it.**  A drain that accepted a negative amount would put the one
-// operation this phase promises not to have behind a sign error.
+// ⚠ **"Never refills unattended" WAS enforced by there being no verb
+// for it; since plan 13 V3 there is one** (`wallet_earn`), and the
+// promise is unchanged because what really enforced it is that the
+// only caller needs a VEHICLE — a run with nobody in it clears nothing
+// and so earns nothing.  `test_the_wallet_never_refills...` below
+// still runs an unattended base and still watches the number only
+// fall.
+//
+// This assertion is the other half and it did not move: draining and
+// earning are different verbs on purpose, so a drain that accepted a
+// negative amount would put income behind a sign error.
 fn test_draining_backwards_is_not_income() {
     tdb = wallet_new();
     wallet_drain(tdb, 50.0);

@@ -269,23 +269,36 @@ pub fn vehicle_hexes_this_tick(v: const Vehicle, tick_seconds: float) -> integer
 // have.  Deepest-first because a ramp is made by the tallest pile, so
 // that is the one worth eating; ties break by direction order after
 // the vehicle's own hex, which keeps a scripted run repeatable.
+// What one tick of clearing produced: how much, and what of.
+//
+// ⚠ Both halves, because the caller needs both and reading the source
+// back off the layer afterwards would be a different answer — a hex
+// cleared to nothing loses its entry, so its source is gone by the
+// time anyone could ask.
+pub struct Salvage {
+    metres: float,
+    source: integer,
+}
+
 pub fn vehicle_salvage(v: const Vehicle, hl: HeightLayer,
-                       tick_seconds: float) -> float {
-    if !v.parked { return 0.0; }
+                       tick_seconds: float) -> Salvage {
+    if !v.parked { return Salvage { metres: 0.0, source: -1 }; }
 
     vs_here  = Hex { q: v.q, r: v.r };
     vs_best  = vs_here;
     vs_deep  = height_rise(hl, vs_here.q, vs_here.r);
 
+    vs_src = height_source(hl, vs_here.q, vs_here.r);
     for vs_d in 0..6 {
         vs_n    = lat_neighbour(vs_here, vs_d);
         vs_rise = height_rise(hl, vs_n.q, vs_n.r);
         if vs_rise > vs_deep {
             vs_deep = vs_rise;
             vs_best = vs_n;
+            vs_src  = height_source(hl, vs_n.q, vs_n.r);
         }
     }
-    if vs_deep <= 0.0 { return 0.0; }
+    if vs_deep <= 0.0 { return Salvage { metres: 0.0, source: -1 }; }
 
     vs_bite = VEHICLE_SALVAGE_METRES_PER_SECOND * tick_seconds;
     vs_took = min(vs_bite, vs_deep);
@@ -295,8 +308,10 @@ pub fn vehicle_salvage(v: const Vehicle, hl: HeightLayer,
     // the entry.  That last part is the layer's own rule and it is what
     // makes a fully cleared hex read as authored ground again rather
     // than as a 0.0 m pile of nothing.
+    // ⚠ The source is read BEFORE the bite, because a hex cleared to
+    // nothing loses its entry and with it its name.
     height_raise(hl, vs_best.q, vs_best.r, 0.0 - vs_took, 0 as u8);
-    vs_took
+    Salvage { metres: vs_took, source: vs_src }
 }
 
 // Advance the vehicle one tick along the straight line to where it is

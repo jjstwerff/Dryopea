@@ -75,7 +75,7 @@ pointer, not a second copy.
 | [`11-flow-field`](11-flow-field/README.md) | G | MH | **Complete** (F0-F8, plus F7b 2026-08-13) | Enemies route round walls to the core, per class, spread rather than stack, and besiege a sealed perimeter.  ⚠ F7b reopened it: an enemy blocked by a COMPANION steps beside it, a rule the spec always had and three phases judged latent — it turned out to set the whole balance |
 | [`12-combat-resolution`](12-combat-resolution/README.md) | G | MH | **Complete** (2026-08-13) | Damage resolves on both sides, a wallet ends the run, and an unattended base falls on a measured clock — which a sealed wall nearly doubles and a TOWER cuts, because its bodies ramp over the wall it defends |
 
-| [`13-the-vehicle`](13-the-vehicle/README.md) | G | MH | **Active** (V0-V2 + V4 done; V3 left) | A player in the world — the crew plan 12 measured a need for.  It drives, clears the bodies that beat the tower (95 → 121 ticks), and boosts over its own wall to get at them |
+| [`13-the-vehicle`](13-the-vehicle/README.md) | G | MH | **Complete** (2026-08-14) | A player in the world — the crew plan 12 measured a need for.  It drives, boosts over its own wall, clears the bodies that beat the tower and gets PAID for them, taking the towered base from 95 ticks to 145 |
 
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.

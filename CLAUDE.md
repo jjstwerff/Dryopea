@@ -58,7 +58,8 @@ exists today.
 | A PLAYER: a hover unit that parks, drives at two hexes a tick, and is stopped by the same height rule everything else is | [13](plans/13-the-vehicle/README.md), V0-V1 shipped |
 | A CREW: it clears rubble it stands on or beside at one body a second — and that turns a tower from a liability into an asset (95 → 121 ticks) | [13](plans/13-the-vehicle/README.md), V2 shipped |
 | BOOST: four hexes a tick and a 3.0 m climb for three ticks, so a crew leaves a sealed base and comes home | [13](plans/13-the-vehicle/README.md), V4 shipped |
-| **No LOOT — a kill is still worth nothing, and the wallet can only fall** | [13](plans/13-the-vehicle/README.md), V3 next and last |
+| LOOT: clearing wreckage pays 20 points a metre, so the wallet can rise for the first time — and a crew that clears AND collects takes the towered base from 95 ticks to 145 | [13](plans/13-the-vehicle/README.md), V3 shipped — plan **complete** |
+| **No helpers, no tower repair/ordering, no scramble, and nothing can hurt the player** | not in any open plan |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -74,7 +75,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 795/795 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 805/805 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
 **Gate: 19 scripts green under `scripts/validate.sh`** (~7 s, 324
@@ -874,8 +875,13 @@ src/
                    ⚠ The clamp is on the WRITE, not just the read: a
                    ledger allowed past the budget would swallow the
                    first loot credit whole.
-                   ⚠ There is deliberately **no credit verb** — that is
-                   what enforces "the wallet never refills unattended"
+                   ⚠ `wallet_earn` (plan 13 V3) is the ONLY income, and
+                   "the wallet never refills unattended" still holds —
+                   because its only caller needs a VEHICLE, not because
+                   the verb is missing.
+                   ⚠ `loot_rate` reads the rubble SOURCE: wreckage and
+                   carapace pay, MASONRY pays nothing, or demolishing
+                   your own wall would be an income stream
   flow.loft        the distance field (plan 11 F2) — flow_build(pal,
                    pw, kind, core) -> FlowField, a BFS out from the
                    core over what that CLASS can occupy, plus

@@ -9,7 +9,42 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**V0 + V1 + V2 + V4 shipped** (2026-08-14). V3 is the only phase left.
+**COMPLETE — V0 through V4 shipped** (2026-08-14). The player exists,
+drives, clears up, boosts, and gets paid.
+
+**V3 gave the wallet its first income.** Clearing wreckage credits 20
+points a metre — derived, not picked: the design prices a kill at 10
+points (`enemy_regular.loot_value`) and a body is 0.5 m
+(`body_height`), so 20/m is the one number that makes those the same
+statement. Suite **805 green**.
+
+⚠ **Masonry pays nothing, and that is what `height.loft`'s SOURCE was
+for.** It has stored one per pile since plan 12 B1 under a note saying
+*"nothing reads it back yet"*; this is its first reader. A dead
+machine is salvage and a heap of your own broken wall is a mess you
+made — paying for masonry would have made demolishing your own
+perimeter an income stream.
+
+⚠ **Plan 12 B6's promise survives, enforced differently.** B6 shipped
+with no credit verb at all and credited the invariant *"the wallet
+never refills unattended"* to that absence. There is a verb now, and
+the promise holds because **the only caller needs a vehicle**. Proved
+by falsification: crediting a flat point per tick turns FIVE of B6's
+own assertions red, including its unattended base reporting *"the
+wallet never refills unattended, 200 -> 200.33"*. An invariant held by
+a mechanism rather than by an absence.
+
+⚠ **A crew now pays twice**, and the halves are separable because V2
+shipped without the second:
+
+| base | clock |
+|---|---|
+| sealed wall + tower | 95 |
+| + a crew that only DENIES the ramp (V2) | 121 |
+| + a crew that is also PAID for it (V3) | **145** |
+
+Eight dead robots is 4 m of wreckage — 80 points against a 200-point
+budget. A gun that cost the player a base now funds one.
 
 **V4 gave the crew a way out and back.** Boost is the same height rule
 with a bigger number — `hover_clearance_boost` is 3.0 m and a `wall` is
@@ -238,7 +273,7 @@ not read the name as a claim.
 | **V0** ✓ | the speed table above; `walk_vehicle` uniformly true | the probe records what IS, before anything assumes it | — (V0 asserts the present; V1 is its gate) |
 | **V1** ✓ | the vehicle covers 2 hexes while an enemy covers 1, over the same ticks | speed is a RATE, read from `numbers.json`, not a step count | a vehicle that moves 1 hex a tick has silently adopted the enemy's rate; a vehicle that reaches a hex `can_step` refuses has no passability at all |
 | **V2** ✓ | driving BESIDE a pile clears it, and the towered base's clock rises 95 → 121 | the crew is what makes a tower pay | ⚠ the gate's own wording was falsified: a crew INSIDE the sealed base moves the clock by nothing, and so does one at a gate — the mechanic pays only where the ramp is the way IN |
-| **V3** | a collected body credits the wallet; the wallet can go UP | loot is income, and it is the first thing that ever refills the budget | a wallet that rises with nobody collecting has a leak — B6 promised it never refills unattended |
+| **V3** ✓ | a collected body credits the wallet; the wallet can go UP, above its starting budget | loot is income, and it is the first thing that ever refills the budget | ✓ refused — crediting a flat point per tick turns five of B6's assertions red; and masonry paying would make demolishing your own wall an income |
 | **V4** ✓ | boosting clears a 3.0 m `wall` and never a 5.0 m `wall_high` | boost is a bigger CLIMB, not a new movement mode | a boost that crosses `wall_high` has stopped reading the height; one that lasts FOUR ticks has no epsilon |
 
 ## Phases
@@ -248,7 +283,7 @@ not read the name as a claim.
 | **V0** — the probe: speed, passability, and where it lives | XS | measurements against `numbers.json`; three of the four answers are recorded above | **Done** |
 | **V1** — the vehicle exists, and it drives | S | `tests/13_v1_the_vehicle.loft` — two hexes to an enemy's one, and it stops at what it cannot climb | **Done** |
 | **V2** — it clears rubble, and a tower starts paying | S | `tests/13_v2_the_crew.loft` + `a-crew-that-clears-up.keys` — 121 ticks against 95, and the wall is CHEWED rather than climbed | **Done** |
-| **V3** — a body is worth points | S | `wallet.loft` gains its first credit; `tests/12_b6_wallet.loft`'s "never refills" becomes "never refills UNATTENDED" | Open |
+| **V3** — a body is worth points | S | `tests/13_v3_loot.loft` — wreckage pays and masonry does not, the wallet exceeds its starting budget, and an unattended run still earns nothing | **Done** |
 | **V4** — boost | S | `tests/13_v4_boost.loft` — clears a `wall`, refused by a `wall_high`, three ticks exactly, and a crew that boosts out of a sealed base, clears, and comes home | **Done**.  ⚠ Promoted by V2, and its stated blocker turned out to be already solved — see § Status |
 
 ### Why the order is this order
@@ -294,15 +329,17 @@ than a design claim.
    callers that have a kind. ⚠ The design's *"a damaged robot moves
    slower"* is a SPEED question and this does not settle it — V0
    claimed it would, and that was one guess too many.
-2. **Does the vehicle collect a body, or clear a pile?** They are the
-   same hex and different mechanics: loot is a value the pile should
-   have carried. `plans/12` § The rubble is the hill says contents are
-   an OPEN, MULTIPLE-per-hex axis and belong on plan 06 S1's stacked
-   layer — which does not exist. *V3's job to settle;
-   recommendation: V3 credits a flat `loot_value` per METRE cleared —
-   V2 already returns the metres from `vehicle_salvage` and throws
-   them away — so the stacked layer arrives later without a
-   migration.*
+2. ~~**Does the vehicle collect a body, or clear a pile?**~~ —
+   **DECIDED in V3: one act, priced per METRE**, as recommended, with
+   one addition the phase found. Clearing IS collecting, at 20 points
+   a metre, and `vehicle_salvage` returns a `Salvage { metres,
+   source }` so the caller can price it. The addition: the SOURCE
+   decides whether it pays at all, which made `height.loft`'s
+   long-unread source field this phase's most useful existing part.
+   ⚠ A pile is named by its NEWEST deposit, so masonry dropped onto
+   wreckage makes the whole heap worthless — the layer's
+   one-source-per-hex simplification showing through, and what plan 06
+   S1's stacked layer eventually fixes.
 3. **What drives it in a `.keys` script?** A destination is
    pathfinding and § 11 says the player DRIVES. *Recommendation for
    V1: `drive <q> <r>` walks the straight `lat_line` and stops at the

@@ -1200,7 +1200,16 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // it after would let a crew tidy a kill zone the instant it filled,
     // and would make the ordering of these three lines load-bearing.
     vehicle_tick(state.player, pal, pw, state.heights, TICK_SECONDS);
-    vehicle_salvage(state.player, state.heights, TICK_SECONDS);
+
+    // ⚠ **Salvage is the wallet's only income** (plan 13 V3), and it
+    // is what keeps plan 12 B6's promise that the budget never refills
+    // unattended: a run with nobody in it clears nothing and so earns
+    // nothing.  Bound to a local rather than nested, per `flow.loft`
+    // § A struct cannot ride home on two tail calls.
+    wt_salv = vehicle_salvage(state.player, state.heights, TICK_SECONDS);
+    if wt_salv.metres > 0.0 {
+        wallet_earn(state.wallet, loot_rate(wt_salv.source) * wt_salv.metres);
+    }
 
     wave_deaths(state);
     damage_resolve(pal, pw, state.damage, state.heights);

@@ -1,0 +1,226 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 13 phase V3 — a body is worth points, and the wallet goes UP.
+//
+// ── The first income dryopea has ever had ───────────────────────
+//
+// Plan 12 B6 built a wallet that could only fall, and said so in as
+// many words: *"there is no credit verb, and that is what enforces
+// B6's own invariant — the wallet never refills unattended"*.  Every
+// number in `numbers.json` § economy — the 1:1 carryover, the 100-point
+// tower, the 10-point kill — described a pool that nothing could ever
+// add to.
+//
+// ⚠ **The invariant survives, and what enforced it was never the
+// missing verb.**  `wallet_earn` exists now; a run still cannot refill
+// unattended, because **the only caller needs a vehicle**.  Nobody in
+// the world clears nothing and so earns nothing, and
+// `tests/12_b6_wallet.loft`'s unattended base still watches the number
+// only fall.  That is the difference between an invariant held by an
+// absence and one held by a mechanism, and it is worth the phase on
+// its own.
+//
+// ── ⚠ Masonry pays nothing, and that is what the SOURCE was for ──
+//
+// `height.loft` has carried a source per pile since plan 12 B1 —
+// wreckage, carapace, masonry — under a note saying *"nothing reads it
+// back yet"*.  This is its first reader.  A dead machine is salvage; a
+// heap of your own broken wall is a mess you made.  Paying for masonry
+// would have made demolishing your own perimeter an income stream, and
+// a player who worked that out would never build a wall again.
+//
+// ── The conversion is DERIVED ───────────────────────────────────
+//
+// The design prices a KILL (`enemy_regular.loot_value`, 10 points) and
+// the rubble layer stores METRES (`enemy_regular.body_height`, 0.5 m).
+// 20 points a metre is the one number that makes those the same
+// statement, so clearing a body's worth of wreckage collects a body's
+// worth of points and no third figure was invented.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=16 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// ⚠ READ-ONLY: a struct returned from a function is a COPY (loft#894).
+fn purse(state: WaveState) -> Wallet {
+    state.wallet
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The rate, derived from two numbers that already existed
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_metre_of_wreckage_is_a_body_is_ten_points() {
+    tam_per_body = LOOT_POINTS_PER_METRE * BODY_HEIGHT_METRES;
+
+    assert(tam_per_body == 10.0,
+           "numbers.json § enemy_regular.loot_value is 10 a kill; the rate gives {tam_per_body}");
+}
+
+// ⚠ **The source's first reader.**  Both directions, because a rule
+// that paid for everything passes the first assertion on its own.
+fn test_wreckage_pays_and_masonry_does_not() {
+    assert(loot_rate(RUBBLE_WRECKAGE) == LOOT_POINTS_PER_METRE,
+           "a dead machine is salvage: {loot_rate(RUBBLE_WRECKAGE)}");
+    assert(loot_rate(RUBBLE_CARAPACE) == LOOT_POINTS_PER_METRE,
+           "and so is a dead insect: {loot_rate(RUBBLE_CARAPACE)}");
+    assert(loot_rate(RUBBLE_MASONRY) == 0.0,
+           "your own broken wall is a mess, not an income: {loot_rate(RUBBLE_MASONRY)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The ledger can now go UP
+// ─────────────────────────────────────────────────────────────────
+
+fn test_earning_puts_points_back() {
+    tep = wallet_new();
+    wallet_drain(tep, 50.0);
+    wallet_earn(tep, 30.0);
+
+    assert(wallet_left(tep) == WALLET_STARTING_POINTS - 20.0,
+           "fifty out and thirty back: {wallet_left(tep)}");
+}
+
+// ⚠ **Above the starting budget, deliberately.**  `DESIGN.md`
+// § Currency says wave 1's loot plus the starting 200 buys a tower AND
+// a helper — 250 — so a ledger clamped at the top would make the
+// design's own worked example impossible.
+fn test_a_wallet_can_hold_more_than_it_started_with() {
+    taw = wallet_new();
+    wallet_earn(taw, 50.0);
+
+    assert(wallet_left(taw) == WALLET_STARTING_POINTS + 50.0,
+           "the budget grew: {wallet_left(taw)}");
+    assert(wallet_spent(taw) < 0.0,
+           "which is a negative ledger, and that is what carries it: {wallet_spent(taw)}");
+    assert(!wallet_broke(taw), "and the run is very much still on");
+}
+
+// ⚠ The mirror of `wallet_drain` refusing a negative drain: draining
+// and earning are different verbs on purpose, so a sign error must not
+// turn one into the other.
+fn test_earning_backwards_is_not_a_drain() {
+    teb = wallet_new();
+    wallet_earn(teb, -500.0);
+
+    assert(wallet_left(teb) == WALLET_STARTING_POINTS,
+           "a backwards earn is refused, not spent: {wallet_left(teb)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Through the tick: clearing is what pays
+// ─────────────────────────────────────────────────────────────────
+
+fn test_clearing_wreckage_credits_the_wallet() {
+    tcw_pw = band();
+    tcw_s  = wave_state_empty();
+    height_raise(tcw_s.heights, 6, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    vehicle_place(tcw_s.player, 7, 0);
+
+    play(tcw_s, tcw_pw, 10);
+
+    assert(height_rise(tcw_s.heights, 6, 0) == 0.0, "the heap is cleared");
+    assert(wallet_left(purse(tcw_s)) == WALLET_STARTING_POINTS + 20.0,
+           "two bodies' worth is twenty points: {wallet_left(purse(tcw_s))}");
+}
+
+fn test_clearing_masonry_credits_nothing() {
+    tcm_pw = band();
+    tcm_s  = wave_state_empty();
+    height_raise(tcm_s.heights, 6, 0, 1.0, as_u8(RUBBLE_MASONRY));
+    vehicle_place(tcm_s.player, 7, 0);
+
+    play(tcm_s, tcm_pw, 10);
+
+    assert(height_rise(tcm_s.heights, 6, 0) == 0.0,
+           "the heap is cleared just the same");
+    assert(wallet_left(purse(tcm_s)) == WALLET_STARTING_POINTS,
+           "and paid for none of it: {wallet_left(purse(tcm_s))}");
+}
+
+// ⚠⚠ **B6's promise, re-gated against a wallet that CAN now rise.**
+// A run with nobody in it earns nothing — not because the verb is
+// missing, but because the only caller needs a vehicle.  This is the
+// negative control the phase exists to keep.
+fn test_an_unattended_run_still_cannot_earn_a_point() {
+    tau_pw = band();
+    tau_s  = wave_state_empty();
+    height_raise(tau_s.heights, 6, 0, 3.0, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tau_s.heights, 0, 0, 3.0, as_u8(RUBBLE_WRECKAGE));
+
+    play(tau_s, tau_pw, 40);
+
+    assert(wallet_left(purse(tau_s)) == WALLET_STARTING_POINTS,
+           "nobody collected anything: {wallet_left(purse(tau_s))}");
+    assert(height_rise(tau_s.heights, 6, 0) == 3.0,
+           "because nobody cleared anything: {height_rise(tau_s.heights, 6, 0)} m");
+}
+
+// A crew that clears while the base is being drained is being PAID to
+// stand there — the two halves of the wallet meeting for the first
+// time.
+fn test_a_crew_can_out_earn_the_nibblers_it_is_standing_among() {
+    tac_pw = band();
+    tac_s  = wave_state_empty();
+
+    // One nibbler on the core: 1 pt/s out.
+    tac_s.enemies += [Enemy { q: 0, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                              heading: 3 as u8, alive: true }];
+    // And a heap to work through: 0.5 m/s in, at 20 points a metre.
+    height_raise(tac_s.heights, 6, 0, 4.0, as_u8(RUBBLE_WRECKAGE));
+    vehicle_place(tac_s.player, 7, 0);
+
+    play(tac_s, tac_pw, 8);
+
+    assert(wallet_left(purse(tac_s)) > WALLET_STARTING_POINTS,
+           "salvage outruns one nibbler ten to one: {wallet_left(purse(tac_s))}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario: a crew pays twice
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ V2 measured 121 ticks for a crew that only DENIED the ramp.  With
+// the salvage paid for, the same scenario reaches 145 — so roughly a
+// sixth of that base's life is bought by the loot rather than by the
+// terrain, and the two effects are separable because V2 shipped
+// without the second.
+fn test_the_crew_scenario_is_funded_as_well_as_swept() {
+    tcs_s = editor_state_new(PALETTE);
+    tcs   = script_run_file(tcs_s, "tests/scripts/a-crew-that-clears-up.keys", SHOTS);
+
+    assert(tcs.ok, "a-crew-that-clears-up: {script_describe(tcs)}");
+    assert(tcs.ticks == 145, "the crewed clock is {tcs.ticks}");
+    assert(tcs.ticks > 121,
+           "and it beats the denial-only 121 that V2 measured: {tcs.ticks}");
+}
