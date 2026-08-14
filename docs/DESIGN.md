@@ -176,9 +176,12 @@ pipeline the game uses.
 
 ### Hex layout + scale
 
-- **Axial flat-top** (matches loft's `lib/moros_*`
-  convention; the gridmesh `HexLayout` adapter lets it
-  coexist with offset pointy-top in shared code).
+- **Pointy-top, odd-r offset** — `hex_grid`'s convention, which
+  every `hex_*` library and moros speak.  ⚠ **This line said
+  "axial flat-top" until 2026-08-14 and was stale**: plan 09
+  converted the whole lattice and C6 deleted the axial layer,
+  so the code has been pointy-top odd-r since 2026-08-13.  See
+  `CLAUDE.md` § Hex convention, which is the live statement.
 - **Hex diameter ~1.5 m** vertex-to-vertex (side ≈ 0.75 m,
   flat-to-flat ≈ 1.30 m).  Small enough that the painted
   resolution feels tactical (one hex ≈ "where one person
@@ -188,6 +191,82 @@ pipeline the game uses.
 Implications: vehicle 2-3 hexes; tower 7 hexes; wall section
 1 hex wide and several long; sniping ≈ 15-30 hexes; chunk
 (32×32) ≈ 48 m across.
+
+### Trees as terrain — stems, tops and spans
+
+Owner, 2026-08-14.  The huge trees (SETTING.md § A tree is also
+a drill) are not props: **a stem is about 10 hexes wide**,
+tapering to less at the top, *"so it might be possible to create
+a base in/on them"*, and the limbs **span caverns**.
+
+**The scale is the design.**  Ten hexes flat-to-flat is ~13 m.
+Against § Hex layout's own comparisons — vehicle 2-3 hexes,
+tower 7 — a tapered top lands at roughly **5-7 hexes**, which is
+one core footprint (`core.footprint_layout` is a radius-1 disc)
+plus standing room and essentially nothing else.  ⚠ **A stem top
+is a base site by construction, and a cramped one.**
+
+#### ⚠ It is terrain, and the model already expresses it
+
+`GroundType.height_override` is a per-palette-entry number —
+`wall` 3.0, `wall_high` 5.0 — so a stem is that idea with a
+bigger number, and every consequence below comes from rules that
+already ship:
+
+- **Robots climb 2.0 m** (`CLIMB_REGULAR`), so a sheer stem is
+  unclimbable.  **The perimeter IS the terrain**; a stem base
+  needs no wall.
+- **The player's hover climbs 0.4 m, or 3.0 m boosting** (plan
+  13 V4).  So the player cannot get up or down freely either —
+  and the boost was built for exactly this shape of problem: *a
+  crew inside a sealed base can only reach the ramp by boosting
+  out*.
+- **Bodies pile 0.5 m each and ramp** (plan 12 B4).
+
+#### ⚠⚠ The payoff: your own kills build the staircase
+
+Put those three together and a stem base is **impregnable until
+you start killing** — after which the only route up is the one
+your kills are building.  Plan 12 B7's *a tower buries its own
+wall* stops being a liability to design around and becomes **the
+whole loop of the map type**, with the crew's clearing (plan 13
+V2) as the only answer.
+
+**Design test** (§ What kind of game this is — *does this put
+something in the player's hands at a moment when using it costs
+them something?*): ✓✓, and it clears the harder bar too — the
+terrain advantage **decays with use**, so it is not a permanent
+advantage bought with a one-time placement decision.
+
+⚠ **And you cannot leave.**  Your salvage is at the bottom of a
+drop you have to boost off and cannot boost back up until the
+ramp exists — so the loot and the breach are the same object.
+
+#### Inside a stem, and spans across caverns
+
+- **"In" as well as "on"** — a hollow stem is an interior base
+  with one or two entrances.  That is the chokepoint case, and
+  plan 13 V5's rule already says what it means: *blocking is a
+  property of the map*, so an interior base is precisely where
+  the player's own parking becomes a liability.
+- **Limbs span caverns.**  A cavern is a **hole in the surface
+  map** — a non-walkable kind, the way sea already is — and a
+  limb across it is a walkable strip at height: a bridge one or
+  two hexes wide.  A span is the one chokepoint that **cannot be
+  walled and cannot be flanked**, which makes it the place where
+  a wall is pointless and a tower is everything.
+- ⚠ **Caverns give the underground geography without a second
+  level.**  The braided shafts a withered tree leaves
+  ([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The vertical
+  dimension) lead into them.  Whether the player can descend
+  stays undesigned on purpose — see that file's § What this
+  deliberately does NOT design.
+
+⚠ **Gating note for whoever builds it:** a span is a 1-hex
+corridor, and `CLAUDE.md` § Testing something that moves records
+that *a 1-hex-wide corridor cannot tell a flow field from a
+fixed heading*.  A span scenario proves nothing about routing
+unless the approach to it bends.
 
 ### Atmosphere — bounded view distance
 

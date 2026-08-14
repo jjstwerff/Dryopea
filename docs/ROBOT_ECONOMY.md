@@ -497,7 +497,11 @@ built to fight.
 ### ⚠ What this deliberately does NOT design
 
 **No underground level.**  A shaft is a *place on the surface map* that
-material and creatures come out of.  Whether the player can descend is
+material and creatures come out of.  ⚠ **Caverns do not change this**:
+[`DESIGN.md`](DESIGN.md) § Trees as terrain treats a cavern as a HOLE
+in the surface map — a non-walkable kind, the way sea already is — that
+the limbs span.  The underground gets geography without becoming a
+level.  Whether the player can descend is
 a different game — a second movement model, a second lighting model, a
 second everything — and nothing above needs it.  If it ever happens it
 should be because the underground earned its own plan, not because a

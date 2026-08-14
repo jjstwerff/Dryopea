@@ -320,9 +320,16 @@ the upper branches and leaves"* — a dense tangle of thick, sinuous,
 interwoven woody limbs rising from a base, multi-stemmed, gnarled,
 spreading as much sideways as up.  **No single trunk.**
 
-⚠ **The point of that reference is that root and branch are the SAME
-form**, which is exactly what a tree that mirrors itself into the crust
-needs.  Two things follow, and both are useful:
+**And the scale is enormous** (owner, same day): a stem is about **ten
+hexes wide** — some 13 m — tapering to less at the top, wide enough
+that *"it might be possible to create a base in/on them"*, and the
+limbs are long enough to **span caverns**.  That makes a tree a piece
+of terrain rather than a prop, and it is designed as one in
+[`DESIGN.md`](DESIGN.md) § Trees as terrain.
+
+⚠ **The point of the rhododendron reference is that root and branch
+are the SAME form**, which is exactly what a tree that mirrors itself
+into the crust needs.  Two things follow, and both are useful:
 
 - **A shaft is a BRAID, not a bore.**  What a withered tree leaves
   behind is not one clean hole but a network of interwoven channels
