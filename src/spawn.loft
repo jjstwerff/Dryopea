@@ -1413,6 +1413,21 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // ⚠ It is a no-op until something STARTS the schedule, so every
     // scenario that places its own enemies and every test that calls
     // this with `marker_empty()` behaves exactly as before.
+    //
+    // ⚠ **And the TRIGGER goes in front of it** (plan 16 W3), close
+    // enough to read as one statement: has anybody poked a far spawn
+    // marker, and is a wave due.  Same tick, because the list starting
+    // and wave 1 going out are one event — `wave_schedule_begin`
+    // leaves no lull in front of the first wave, since a fifteen-second
+    // pause after the player provoked something would read as the poke
+    // not having worked.
+    //
+    // ⚠ It reads the world the tick STARTED with, exactly as the
+    // fields, the occupancy and the move order below do.  A player
+    // arriving mid-tick is seen by the NEXT one — the same rule a body
+    // and a breach follow, and what keeps "who is where" a single
+    // answer for the whole tick.
+    wave_provoke_step(state, mw, core);
     wave_schedule_step(state, mw, core);
 
     // Everything the tick reads is fixed before anybody moves: the
@@ -1674,6 +1689,95 @@ pub fn wave_schedule_step(state: WaveState, mw: MarkerWorld, core: Hex) -> integ
     spawn_wave(state, wss_due, ENEMY_KIND_REGULAR as u8? ?? 0, mw,
                core.q, core.r, SPAWN_DISABLE_RADIUS);
     wss_due
+}
+
+// ─── What starts the list at all (plan 16 W3) ───────────────────
+//
+// `DESIGN.md` § Wave-1 triggers — walls or provocation gives wave 1
+// two triggers, and this is the second: *"the player has driven onto a
+// spawn marker that sits ≥ `wave_1_provocation_distance` hex from the
+// core — touching it = poking the enemy"*.  The other one counts walls
+// BUILT and dryopea has no construction, so it arrives with it
+// (`plans/16` § Why the order is this order).
+//
+// ⚠ **Provocation is a POSITION, and that is the whole design.**  It
+// is the shape `DESIGN.md` § 11 wants of everything the player does:
+// no key, no menu, no toggle — you go there or you do not, and going
+// there means being twelve hexes from home at the moment the list
+// starts.  A trigger the player pressed would hand out the same
+// information for nothing.
+//
+// ⚠ **Two thresholds, and the gap between them is deliberate.**  A
+// marker under `SPAWN_DISABLE_RADIUS` (10) is silenced for the whole
+// mission and never emits anything; a marker at 10 or 11 emits enemies
+// but cannot be poked.  So the middle band is a live spawn source that
+// is safe to stand on, which is what makes the distance test a rule
+// rather than a restatement of "is this marker active" — and it is
+// what `tests/16_w3_the_provocation.loft` § A near marker uses to tell
+// the two numbers apart.
+
+// A spawn marker at least this far from the core can be provoked —
+// `numbers.json` § wave_system.wave_1_provocation_distance, restated
+// here for the reason every engine constant is: nothing loads that
+// file yet.
+pub const WAVE_1_PROVOCATION_HEXES: integer = 12;
+
+// Is (q, r) a spawn marker far enough out to be worth poking?
+fn provocation_at(mw: const MarkerWorld, core: const Hex,
+                  q: integer, r: integer) -> boolean {
+    if marker_kind(mw, q, r) != MARKER_KIND_SPAWN { return false; }
+    lat_distance(core, Hex { q: q, r: r }) >= WAVE_1_PROVOCATION_HEXES
+}
+
+// Has a vehicle of the cooperative driven onto a far spawn marker?
+//
+// ⚠ **The CREW provokes too, and it is an extension of the design's
+// letter.**  § Wave-1 triggers says *"the player has driven onto"*, and
+// the crew is the player's chassis doing the player's job everywhere
+// else in this engine — `wave_blockers` puts both in one map, and
+// `salvage_at` is one implementation for both.  A helper sent out to
+// clear a distant kill zone is the player deciding to be out there,
+// and exempting it would mean the safe way to scout a far marker is to
+// send somebody else — a free look at exactly the information the
+// window in W2 charges eight ticks for.
+//
+// ⚠ **A wreck does not poke anything.**  `alive` is the wreck (plan 14
+// H3) and is false in recovery too, which is the same filter
+// `wave_blockers` applies: a crew member lying on a marker is debris,
+// and one at the core on a 60 s clock is not standing anywhere.
+//
+// ⚠ **And nor does an ENEMY.**  This asks the roster of VEHICLES and
+// never "is anybody on this hex" — a wave spawns ON its marker, so a
+// hex-occupancy test would let a scripted wave 1 provoke wave 1.
+pub fn wave_provoked(state: const WaveState, mw: const MarkerWorld,
+                     core: const Hex) -> boolean {
+    if vehicle_present(state.player)
+        && provocation_at(mw, core, state.player.q, state.player.r) {
+        return true;
+    }
+    for wp_h in state.crew {
+        if wp_h.alive && provocation_at(mw, core, wp_h.q, wp_h.r) {
+            return true;
+        }
+    }
+    false
+}
+
+// Start the wave list if something has provoked it.  Answers whether
+// THIS tick was the one that did.
+//
+// ⚠ **It fires once, ever.**  `running` is the guard, so a player who
+// parks on the marker and stays there does not restart the schedule
+// every tick — which would reset the lull to zero and turn a wave list
+// into a hose.  That is what `waves.loft` keeps `running` separate from
+// `sent > 0` for: a run that has a list and is not playing it is a real
+// state, and this is the one thing that leaves it.
+pub fn wave_provoke_step(state: WaveState, mw: const MarkerWorld,
+                         core: const Hex) -> boolean {
+    if wave_schedule_running(state.schedule) { return false; }
+    if !wave_provoked(state, mw, core) { return false; }
+    wave_schedule_begin(state.schedule);
+    true
 }
 
 // ─── The one action, from the run's side (plan 15 C2) ───────────

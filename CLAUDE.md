@@ -68,7 +68,8 @@ exists today.
 | ⚠ What a retrieval is WORTH: nothing yet — 85/79/79 ticks (⚠ **93/87/87** since plan 16 W2), because a 60 s recovery is priced against a SEVEN-wave base and dryopea plays ONE wave | [15](plans/15-the-carry-model/README.md), C3 shipped — plan **complete** |
 | WAVES ARRIVE ON THEIR OWN: an authored list, a lull that is COUNTED, and a schedule that advances on a CLEAR — so a base can be more than one wave long | [16](plans/16-the-wave-system/README.md), W0-W1 shipped |
 | PRE-WALK VISIBILITY: a wave stands 8 ticks at its marker and steps on the 9th — and because it stands INSIDE tower range, the kills pile up out there and plan 12 B7's tower inverts from -9 ticks to **+16** | [16](plans/16-the-wave-system/README.md), W2 shipped |
-| **No wave-1 trigger, no ordering, no tower repair, no beacons and no scramble** | [16](plans/16-the-wave-system/README.md), W3 next |
+| A run STARTS ITSELF: driving onto a spawn marker 12+ hexes out wakes the list — and a marker at 11, which really does send the wave, is safe to stand on | [16](plans/16-the-wave-system/README.md), W3 shipped |
+| **No wall trigger, no ordering, no tower repair, no beacons and no scramble** | [16](plans/16-the-wave-system/README.md), W4 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -84,13 +85,13 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 924/924 green under `scripts/test.sh`** (~95 s measured
+**Suite: 938/938 green under `scripts/test.sh`** (~95 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
 plan 12 until H2 re-measured it; the figure grew with the scenario
 tests, not with any one phase).
-**Gate: 25 scripts green under `scripts/validate.sh`** (~10 s, 465
+**Gate: 26 scripts green under `scripts/validate.sh`** (~10 s, 478
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -687,6 +688,15 @@ src/
                   there or lying there, so neither can see a loss.  A
                   crew member in RECOVERY is not standing either, which
                   is what makes the 60 s visible to a script.
+                  Plan 16 W1 added `schedule <counts…>` + the `waves`
+                  band, and W3 made the first of those ARM rather than
+                  start: the run's list is authored and waits for the
+                  design's trigger, so a scenario starts its own waves
+                  by DRIVING onto a spawn marker 12+ hexes out, exactly
+                  as a player does.  ⚠ A verb that also started it would
+                  be the one shortcut letting every scenario in the gate
+                  skip the rule — so `schedule 3 4` with nobody to poke
+                  it plays nothing, and says so on stdout.
                   B7 added `fall <max>` (tick until the wallet empties
                    — ⚠ still standing after `<max>` is an ERROR, or a
                    later `ticks` band would read a collapsed premise as
@@ -1565,6 +1575,7 @@ signature.
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the rule, taking a HEX, so the player and every helper read one implementation (`vehicle_salvage` / `helper_salvage` are the two doors).  The counter-play to `ENEMY_MOVEMENT.md` § Bodies are terrain.  ⚠ A crew inside a SEALED base can only reach the ramp by BOOSTING out (V4): the ramp forms outside the wall and an idle vehicle climbs 0.4 m — and no helper has a boost |
 | Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` — the rule with the climb passed rather than looked up.  ⚠ Never widen `climb_limit(kind)`: it is a CLASS lookup and a convenience for callers that have a kind.  `vehicle_climb` is the worked example |
+| Ask what STARTS the wave list | `src/spawn.loft::wave_provoke_step` — a live vehicle standing on a spawn marker `WAVE_1_PROVOCATION_HEXES` (12) or more from the core, read at the TOP of the tick and fired ONCE (plan 16 W3).  ⚠ Two thresholds: under 10 a marker is silenced entirely, 10–11 it sends enemies and cannot be poked, 12+ it does both — the middle band is what makes the distance test a rule rather than a restatement of "is this marker active".  ⚠ Never an occupancy test: a wave spawns ON its marker, so "is anybody here" lets wave 1 provoke wave 1 |
 | Ask why a fresh wave is not moving | `src/spawn.loft::enemy_standing` — the pre-walk window (plan 16 W2), 8 ticks at the marker.  ⚠ Spent ONCE per tick by `wave_stand`, at the END beside `helper_recover_tick`; the predicate only asks.  ⚠ A standing enemy does not move, attacks nothing and blocks nobody — but is NOT immune, which is what "stand visible" means |
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
 | Understand the DIFFICULTY CURVE's shape | [docs/DESIGN.md](docs/DESIGN.md) § It shoots TOWERS — the first real challenge.  Early = a RUSH (volume).  Then the combat boss, which is the first enemy that makes the player POORER rather than merely closer to losing — and the first that invalidates a LEARNED OPTIMUM (the tight funnel that denied a 2×2 repair platform is worthless against something that shoots from outside) |

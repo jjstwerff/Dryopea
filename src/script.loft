@@ -1518,7 +1518,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
-    // Author a wave list and start it running.  Plan 16 W1.
+    // Author the run's wave list.  Plan 16 W1, armed rather than
+    // started since W3.
     //
     // ⚠ **`schedule 5 8` is not `wave 5` twice.**  `wave` puts enemies
     // on the ground now and the script says when; this hands the run a
@@ -1527,9 +1528,16 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // using this has no line saying when wave 2 arrives, which is the
     // whole point of gating it.
     //
-    // ⚠ It starts the schedule as well as authoring it.  Plan 16 W3
-    // puts the design's provocation trigger in front of that, and when
-    // it lands this verb goes back to authoring only.
+    // ⚠ **It AUTHORS and does not start** (plan 16 W3): the design
+    // gives wave 1 a trigger and the trigger is a POSITION, so a script
+    // starts its own list by driving onto a spawn marker at least
+    // `WAVE_1_PROVOCATION_HEXES` from the core, exactly as a player
+    // does.  A verb that also started it would be the one shortcut that
+    // let every scenario in the gate skip the rule.
+    //
+    // ⚠ So a list with nobody to poke it never plays, and the println
+    // is what stops that reading as a broken schedule — a `waves 0 0`
+    // three lines later says the same thing as an assertion.
     if sc_cmd == "schedule" {
         if sc_argc < 1 { return "schedule needs at least one <count>"; }
         sc_sched = script_ints(tok, sc_argc);
@@ -1542,7 +1550,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
             }
         }
         run.wave.schedule = wave_schedule_of(sc_sched, INTER_WAVE_DELAY_SECONDS);
-        wave_schedule_begin(run.wave.schedule);
+        println("script: {len(sc_sched)} waves armed — a spawn marker {WAVE_1_PROVOCATION_HEXES}+ hexes out has to be driven onto before wave 1 goes");
         return "";
     }
 

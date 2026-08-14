@@ -1,0 +1,384 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 16 phase W3 — the provocation trigger.
+//
+// `docs/DESIGN.md` § Wave-1 triggers — walls or provocation: *"The
+// player has driven onto a spawn marker that sits ≥
+// `wave_1_provocation_distance` hex (default 12) from the core —
+// touching it = poking the enemy.  Markers very close to the core never
+// trigger; map authors shape pacing by close (safe) vs far
+// (provocation) placement."*
+//
+// Until this phase something outside the simulation started every wave:
+// a `.keys` line saying `wave 8`, or W1's `schedule` verb calling
+// `wave_schedule_begin` on the run's behalf.  A run had a list and no
+// way of its own to begin playing it.
+//
+// ── ⚠ What can go wrong, and what sees it ───────────────────────
+//
+// 1. **A trigger with no distance test.**  Fire on any spawn marker
+//    touched, and the marker beside the core — the one the design
+//    silences ON PURPOSE, so that a map author can offer a safe
+//    landing — wakes the whole list.  What sees it is § A near marker,
+//    below, and it is sharper than "a marker three hexes out": the
+//    control marker there is a LIVE spawn source that still must not
+//    provoke.
+// 2. **A trigger that fires on OCCUPANCY.**  "Is anybody standing on
+//    this marker" reads well and is wrong, because a wave spawns ON its
+//    marker and stands there for eight ticks (W2).  A scripted wave 1
+//    would provoke wave 1, and a schedule with a list would hose the
+//    base.  What sees it is § An enemy pokes nothing.
+// 3. **A trigger that fires EVERY tick.**  Nothing stops a player
+//    parking on the marker, so the rule has to fire once.  Re-arming
+//    calls `wave_schedule_begin` again, which zeroes the lull — the
+//    fifteen seconds W1 counted — and the list empties as fast as the
+//    base can clear it.  What sees it is § It fires once.
+// 4. **A trigger read at the wrong end of the tick.**  A player
+//    arriving mid-tick, acted on in the same tick, would let the
+//    consequence overtake the world every other reader of that tick
+//    saw.  What sees it is § Driving there.
+//
+// ── ⚠ Two thresholds, and the band between them is the point ────
+//
+// A spawn marker under `SPAWN_DISABLE_RADIUS` (10) is silenced for the
+// whole mission.  A marker at 10 or 11 emits enemies and cannot be
+// poked.  A marker at 12 or beyond does both.  So the middle band is a
+// live spawn source that is safe to stand on — which is the only reason
+// the distance test is a rule rather than a restatement of "is this
+// marker active at all".
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// The hex a provocative marker sits on in this file — 14 out on row 0,
+// so `lat_distance` is 14 and the margin over the threshold is clear.
+const FAR:  integer = 14;
+
+// And the control: active as a spawn source (>= 10), under the
+// provocation distance (< 12).
+const NEAR: integer = 11;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A one-hex-wide corridor from the far marker to the core.
+//
+// ⚠ A corridor cannot tell a flow field from a heading (`CLAUDE.md`
+// § Testing something that moves), and here that is right: what is
+// under test is whether the list starts at all, and the enemies are
+// scenery.  What the paint IS for is the VEHICLE — an unpainted hex is
+// sea, so a player with nothing painted under it cannot drive to the
+// marker to poke it.
+fn corridor() -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=FAR { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+fn spawn_at(q: integer) -> MarkerWorld {
+    s_mw = marker_empty();
+    place_marker(s_mw, q, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    s_mw
+}
+
+// A run with a two-wave list, ARMED and not running — which is what a
+// mission is before anybody has poked anything.
+fn armed() -> WaveState {
+    a_s = wave_state_empty();
+    a_s.schedule = wave_schedule_of([2, 2], INTER_WAVE_DELAY_SECONDS);
+    a_s
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The numbers
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_distance_is_the_designs_twelve() {
+    assert(WAVE_1_PROVOCATION_HEXES == 12,
+           "numbers.json § wave_system.wave_1_provocation_distance: "
+           + "{WAVE_1_PROVOCATION_HEXES}");
+}
+
+// ⚠ **The two thresholds do not coincide**, and if they ever did this
+// phase would be untestable: every provocative marker would be exactly
+// the set of active ones, and a trigger with no distance test of its
+// own would pass every assertion in this file.
+fn test_the_two_thresholds_leave_a_band_between_them() {
+    assert(WAVE_1_PROVOCATION_HEXES > SPAWN_DISABLE_RADIUS,
+           "provocation ({WAVE_1_PROVOCATION_HEXES}) is further out than "
+           + "the disable radius ({SPAWN_DISABLE_RADIUS})");
+    assert(NEAR >= SPAWN_DISABLE_RADIUS && NEAR < WAVE_1_PROVOCATION_HEXES,
+           "and the control marker sits in the band: {NEAR}");
+    assert(FAR >= WAVE_1_PROVOCATION_HEXES, "while the far one is over it: {FAR}");
+}
+
+// The control marker really is a LIVE spawn source, which is what makes
+// § A near marker a statement about the distance test rather than about
+// the marker being silenced.
+fn test_the_near_marker_is_an_active_spawn_source() {
+    ttn_mw = spawn_at(NEAR);
+    ttn_a  = active_spawn_markers(ttn_mw, 0, 0, SPAWN_DISABLE_RADIUS);
+    assert(len(ttn_a) == 1,
+           "a marker {NEAR} hexes out still emits enemies: {len(ttn_a)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The phase: a far marker starts the list, a near one does not
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_far_marker_starts_wave_one() {
+    taf_s  = armed();
+    taf_mw = spawn_at(FAR);
+    vehicle_place(taf_s.player, FAR, 0);
+
+    assert(!wave_schedule_running(taf_s.schedule), "nothing is playing yet");
+    assert(wave_provoked(taf_s, taf_mw, core()), "and the marker is poked");
+
+    wave_tick(taf_s, pal(), corridor(), taf_mw, core());
+
+    assert(wave_schedule_running(taf_s.schedule), "the list is running");
+    assert(wave_schedule_sent(taf_s.schedule) == 1,
+           "wave 1 went out: {wave_schedule_sent(taf_s.schedule)}");
+    assert(len(taf_s.enemies) == 2, "two robots: {len(taf_s.enemies)}");
+}
+
+// ⚠⚠ **THE CONTROL: a near marker never starts anything**, however long
+// the player stands on it — and it is a marker that WOULD have sent
+// those enemies if something else had started the list.
+//
+// This is the assertion a trigger with no distance test fails.
+fn test_a_near_marker_starts_nothing_ever() {
+    tan_s  = armed();
+    tan_mw = spawn_at(NEAR);
+    vehicle_place(tan_s.player, NEAR, 0);
+
+    assert(!wave_provoked(tan_s, tan_mw, core()),
+           "{NEAR} hexes is not far enough to be worth poking");
+
+    tan_pal = pal();
+    tan_pw  = corridor();
+    for _ in 0..60 { wave_tick(tan_s, tan_pal, tan_pw, tan_mw, core()); }
+
+    assert(!wave_schedule_running(tan_s.schedule), "the list never started");
+    assert(wave_schedule_sent(tan_s.schedule) == 0,
+           "and nothing was sent: {wave_schedule_sent(tan_s.schedule)}");
+    assert(len(tan_s.enemies) == 0, "the map is empty: {len(tan_s.enemies)}");
+}
+
+// The design's own case: a marker beside the core is a safe landing, and
+// a map author placing one is offering the player a rest rather than a
+// trap.
+fn test_a_marker_beside_the_core_is_silent() {
+    tam_s  = armed();
+    tam_mw = spawn_at(4);
+    vehicle_place(tam_s.player, 4, 0);
+
+    assert(!wave_provoked(tam_s, tam_mw, core()), "four hexes out is safe");
+
+    wave_tick(tam_s, pal(), corridor(), tam_mw, core());
+    assert(wave_schedule_sent(tam_s.schedule) == 0,
+           "nothing woke up: {wave_schedule_sent(tam_s.schedule)}");
+}
+
+// ⚠ **A SPAWN marker and no other kind.**  Towers are markers too (plan
+// 12 B5a) and a run's own tower can easily sit twelve hexes out; a
+// player driving to one to work on it would start the list.
+fn test_only_a_spawn_marker_provokes() {
+    tos_s  = armed();
+    tos_mw = marker_empty();
+    place_marker(tos_mw, FAR, 0, MARKER_KIND_TOWER as u8, 0 as u8);
+    vehicle_place(tos_s.player, FAR, 0);
+
+    assert(!wave_provoked(tos_s, tos_mw, core()), "a tower is not a nest");
+
+    wave_tick(tos_s, pal(), corridor(), tos_mw, core());
+    assert(wave_schedule_sent(tos_s.schedule) == 0,
+           "nothing was sent: {wave_schedule_sent(tos_s.schedule)}");
+}
+
+// ⚠⚠ **An enemy pokes NOTHING**, which is what the rule asking the
+// roster of VEHICLES buys.  A wave spawns on its marker and stands
+// there for eight ticks (W2), so a trigger that asked "is anybody on
+// this hex" would let a scripted wave start the authored list under it.
+fn test_an_enemy_on_the_marker_provokes_nothing() {
+    tae_s  = armed();
+    tae_mw = spawn_at(FAR);
+
+    // No vehicle anywhere — the way every pre-W3 scenario in the suite
+    // ticks.
+    spawn_wave(tae_s, 2, ENEMY_KIND_REGULAR as u8, tae_mw, 0, 0,
+               SPAWN_DISABLE_RADIUS);
+    assert(!wave_provoked(tae_s, tae_mw, core()),
+           "two robots standing on their own marker provoke nothing");
+
+    tae_pal = pal();
+    tae_pw  = corridor();
+    for _ in 0..12 { wave_tick(tae_s, tae_pal, tae_pw, tae_mw, core()); }
+
+    assert(wave_schedule_sent(tae_s.schedule) == 0,
+           "and the list never started: {wave_schedule_sent(tae_s.schedule)}");
+    assert(len(tae_s.enemies) == 2,
+           "the scripted wave is all there is: {len(tae_s.enemies)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// It fires once, and it is read at the top of the tick
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **Once, ever.**  A player parked on the marker would otherwise
+// re-arm the schedule every tick, and `wave_schedule_begin` zeroes the
+// lull — so the fifteen seconds W1 counted would exist only for a
+// player who drove away.
+fn test_it_fires_once_and_leaves_the_lull_alone() {
+    tif_s  = armed();
+    tif_mw = spawn_at(FAR);
+    vehicle_place(tif_s.player, FAR, 0);
+
+    tif_pal = pal();
+    tif_pw  = corridor();
+    wave_tick(tif_s, tif_pal, tif_pw, tif_mw, core());
+    assert(wave_schedule_sent(tif_s.schedule) == 1, "wave 1 is out");
+
+    // The trigger itself refuses to fire a second time.
+    assert(!wave_provoke_step(tif_s, tif_mw, core()),
+           "the running schedule is not re-armed");
+
+    // And the lull the first wave set is untouched, tick after tick, with
+    // the player still standing on the marker.  A re-arm would read 0.0.
+    for tif_n in 1..=10 {
+        wave_tick(tif_s, tif_pal, tif_pw, tif_mw, core());
+        assert(wave_schedule_lull(tif_s.schedule) == INTER_WAVE_DELAY_SECONDS,
+               "tick {tif_n}: the lull is still {INTER_WAVE_DELAY_SECONDS} s, "
+               + "not {wave_schedule_lull(tif_s.schedule)}");
+    }
+    assert(wave_schedule_sent(tif_s.schedule) == 1,
+           "and still one wave: {wave_schedule_sent(tif_s.schedule)}");
+}
+
+// ⚠⚠ **Driving there is what costs**, and the trigger is read at the
+// TOP of a tick — so a player who arrives mid-tick is seen by the next
+// one, exactly as a body dropped this tick is walked over next tick.
+//
+// The assertion is the RELATION between the two events rather than
+// either tick number, so it survives any change to the vehicle's speed.
+fn test_driving_there_starts_it_the_tick_after_arrival() {
+    tdt_s  = armed();
+    tdt_mw = spawn_at(FAR);
+    tdt_pal = pal();
+    tdt_pw  = corridor();
+
+    vehicle_place(tdt_s.player, 0, 0);
+    vehicle_drive(tdt_s.player, FAR, 0);
+
+    tdt_arrived = 0;
+    tdt_fired   = 0;
+    for tdt_n in 1..=30 {
+        wave_tick(tdt_s, tdt_pal, tdt_pw, tdt_mw, core());
+        if tdt_arrived == 0 && tdt_s.player.q == FAR && tdt_s.player.r == 0 {
+            tdt_arrived = tdt_n;
+        }
+        if tdt_fired == 0 && wave_schedule_sent(tdt_s.schedule) == 1 {
+            tdt_fired = tdt_n;
+        }
+    }
+
+    assert(tdt_arrived > 1, "the trip took ticks: {tdt_arrived}");
+    assert(tdt_fired == tdt_arrived + 1,
+           "arrived on tick {tdt_arrived}, wave 1 on tick {tdt_fired} — "
+           + "the trigger reads the world the tick STARTED with");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The crew pokes too, and a wreck does not
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **An extension of the design's letter, and a deliberate one.**
+// § Wave-1 triggers says *"the player has driven onto"*; everywhere
+// else in this engine the crew is the player's chassis doing the
+// player's job (`wave_blockers` puts both in one map, `salvage_at` is
+// one implementation for both).  Exempting helpers would make the safe
+// way to scout a far marker "send somebody else" — a free look at
+// exactly the information W2's window charges eight ticks for.
+fn test_a_helper_provokes_too() {
+    tah_s  = armed();
+    tah_mw = spawn_at(FAR);
+    tah_s.crew += [helper_new(FAR, 0)];
+
+    assert(!vehicle_present(tah_s.player), "the player is not in the world");
+    assert(wave_provoked(tah_s, tah_mw, core()), "the helper poked it");
+
+    wave_tick(tah_s, pal(), corridor(), tah_mw, core());
+    assert(wave_schedule_sent(tah_s.schedule) == 1,
+           "and the list started: {wave_schedule_sent(tah_s.schedule)}");
+}
+
+// ⚠ **A wreck pokes nothing** — `alive` IS the wreck (plan 14 H3), the
+// same filter `wave_blockers` applies.  A crew member lying on a marker
+// is debris, and one at the core in recovery is not standing anywhere.
+fn test_a_wrecked_helper_provokes_nothing() {
+    taw_s  = armed();
+    taw_mw = spawn_at(FAR);
+    taw_s.crew += [helper_new(FAR, 0)];
+    helper_wreck(taw_s.crew[0] ?? Helper { });
+    assert(helper_wrecked(taw_s.crew[0] ?? Helper { }), "it is down");
+
+    assert(!wave_provoked(taw_s, taw_mw, core()), "and pokes nothing");
+
+    taw_pal = pal();
+    taw_pw  = corridor();
+    for _ in 0..12 { wave_tick(taw_s, taw_pal, taw_pw, taw_mw, core()); }
+    assert(wave_schedule_sent(taw_s.schedule) == 0,
+           "nothing was sent: {wave_schedule_sent(taw_s.schedule)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What it does NOT change
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **Every pre-W3 scenario ticks unchanged.**  The suite is full of
+// runs that place their own enemies with a `wave` line and never touch a
+// spawn marker with a vehicle, and the trigger has to be invisible to
+// all of them — which it is, because it asks a POSITION nobody in them
+// occupies.
+fn test_a_run_with_nobody_on_a_marker_is_untouched() {
+    tar_s  = armed();
+    tar_mw = spawn_at(FAR);
+    vehicle_place(tar_s.player, 0, 0);          // parked at the core
+
+    tar_pal = pal();
+    tar_pw  = corridor();
+    for _ in 0..40 { wave_tick(tar_s, tar_pal, tar_pw, tar_mw, core()); }
+
+    assert(wave_schedule_sent(tar_s.schedule) == 0,
+           "a player who stayed home started nothing: "
+           + "{wave_schedule_sent(tar_s.schedule)}");
+}
+
+// ⚠ **`wave_provoked` ASKS and never starts**, the same split
+// `enemy_standing` keeps against `wave_stand`: one writer, at one place
+// in the tick, however many readers there are.
+fn test_the_predicate_starts_nothing_by_itself() {
+    tps_s  = armed();
+    tps_mw = spawn_at(FAR);
+    vehicle_place(tps_s.player, FAR, 0);
+
+    for _ in 0..5 {
+        assert(wave_provoked(tps_s, tps_mw, core()), "still poked");
+    }
+    assert(!wave_schedule_running(tps_s.schedule),
+           "and asking five times started nothing");
+}

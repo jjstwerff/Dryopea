@@ -1,0 +1,71 @@
+# provoking-the-far-marker — plan 16 W3, the trigger as the player meets it.
+#
+# `DESIGN.md` § Wave-1 triggers: driving onto a spawn marker at least
+# `wave_1_provocation_distance` (12) hexes from the core is what starts
+# the list.  Nothing else in this file starts it — `schedule 3 4` only
+# ARMS the mission's waves.
+#
+# ⚠ **Two markers, and the near one is the control.**  (11, 0) is a LIVE
+# spawn source — it is outside the close-spawn-disable radius of 10, so
+# wave 1 will use it once something wakes up — and it is inside the
+# provocation distance, so standing on it does nothing at all.  A
+# trigger with no distance test fires there, which is the marker a map
+# author places to offer the player a safe look.
+#
+# ⚠ The player drives the whole way rather than being parked, because
+# the trip is what the trigger COSTS: fourteen hexes out means being
+# fourteen hexes from home at the moment the wave stands up.
+
+echo provoking the far marker: eleven hexes is safe, fourteen is not
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+click 14 0
+marker 14 0 spawn 3
+count markers 3 3
+
+do toggle_mode
+
+palette 5
+drag -1 -1 16 -1
+drag -1 0 16 0
+drag -1 1 16 1
+count painted 54 54
+
+# The mission's list, armed and waiting for its trigger.
+schedule 3 4
+waves 0 0
+
+# Out to the NEAR marker, and stand on it.  It is a spawn source and it
+# is not far enough to be worth poking.
+park 0 0
+drive 11 0
+tick 10
+vehicle 11 0
+waves 0 0
+count alive 0 0
+
+# Three hexes further out is over the line.
+drive 14 0
+tick 4
+vehicle 14 0
+waves 1 1
+count alive 3 3
+
+# And the list does not re-arm under a player who stays parked on it:
+# wave 2 waits for the clear and the lull, which never come here.
+tick 30
+waves 1 1
+
+snap w3_provoking_the_far_marker

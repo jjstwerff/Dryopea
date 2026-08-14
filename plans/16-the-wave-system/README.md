@@ -9,8 +9,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**W0 + W1 + W2 shipped** (2026-08-14).  W3 is next.  Suite **924 green**,
-gate **25 scripts / 465 measurements**.
+**W0 + W1 + W2 + W3 shipped** (2026-08-14).  W4 is next.  Suite **938
+green**, gate **26 scripts / 478 measurements**.
 
 ⚠ **The whole plan is scaffolding.**  Project owner, 2026-08-14: *"it
 will be gone before the first game ships as I want natural patterns
@@ -21,6 +21,88 @@ the **spawn-marker model goes with it**.  So this plan exists to make a
 base long enough to MEASURE, and nothing in it is worth polishing —
 when natural patterns arrive, expect `waves.loft` and `spawn.loft`'s
 marker round-robin to be deleted rather than migrated.
+
+### W3 — the provocation trigger: a run that starts itself
+
+Until W3 something OUTSIDE the simulation started every wave: a `.keys`
+line saying `wave 8`, or W1's `schedule` verb calling
+`wave_schedule_begin` on the run's behalf.  A run had a list and no way
+of its own to begin playing it.
+
+`wave_provoke_step` is that way, and it goes in front of
+`wave_schedule_step` at the top of the tick — two lines that read as one
+statement: *has anybody poked a far spawn marker, and is a wave due*.
+
+⚠ **Provocation is a POSITION, which is the whole of it.**  No key, no
+menu, no toggle: you drive out there or you do not, and driving out
+there means being fourteen hexes from home at the moment the list stands
+up.  It is the shape `DESIGN.md` § 11 wants of everything the player
+does, and a trigger the player PRESSED would hand out the same
+information for nothing.
+
+#### ⚠ Two thresholds, and the band between them is the phase
+
+| distance from core | emits enemies | can be poked |
+|---|---|---|
+| < 10 (`SPAWN_DISABLE_RADIUS`) | no | no |
+| 10, 11 | **yes** | no |
+| ≥ 12 (`WAVE_1_PROVOCATION_HEXES`) | yes | yes |
+
+The middle band is a **live spawn source that is safe to stand on**, and
+it is the only reason the distance test is a rule rather than a
+restatement of "is this marker active at all".  Both the test file and
+`provoking-the-far-marker.keys` use a marker at 11 as the control, so a
+trigger that fired on any spawn marker goes red on a marker that really
+does send the wave.  ⚠ If anyone ever tunes the two numbers together the
+phase becomes untestable — `test_the_two_thresholds_leave_a_band_
+between_them` is what says so.
+
+#### ⚠ The CREW pokes too, and that extends the design's letter
+
+`DESIGN.md` § Wave-1 triggers says *"the **player** has driven onto"*.
+Everywhere else in this engine the crew is the player's chassis doing
+the player's job — `wave_blockers` puts both in one map, `salvage_at` is
+one implementation for both — and exempting helpers would make the safe
+way to scout a far marker *send somebody else*: a free look at exactly
+the information W2's window charges eight ticks for.  ⚠ Recorded as a
+deliberate divergence, beside the round-robin one in § What this plan
+does NOT build, and it wants confirming when the plan closes.
+
+A WRECK pokes nothing (`alive` is the wreck, plan 14 H3 — the same
+filter `wave_blockers` applies), and neither does an **enemy**: the rule
+asks the roster of VEHICLES and never "is anybody on this hex", because
+a wave spawns ON its marker and stands there for eight ticks.  A hex
+test would let a scripted wave 1 provoke wave 1.
+
+#### ⚠ It fires once, and it is read at the TOP of the tick
+
+Nothing stops a player parking on the marker, so `running` is the guard.
+Re-arming would call `wave_schedule_begin` again, which zeroes the lull
+— the fifteen seconds W1 counted — and the list would empty as fast as
+the base could clear it.  The test watches the lull sit at 15.0 s for
+ten ticks with the player still standing there.
+
+And the trigger reads the world the tick STARTED with, exactly as the
+fields, the occupancy and the move order do: a player arriving mid-tick
+is seen by the NEXT one.  Measured as a relation rather than a tick
+number — `fired == arrived + 1` — so it survives any change to the
+vehicle's speed.
+
+#### What it moved: nothing, and that is the assertion
+
+Every clock in the suite is unchanged, because the trigger asks a
+POSITION no pre-W3 scenario occupies — the furthest any of them drives
+is six hexes and every spawn marker is at eleven or beyond.  ⚠ It is a
+test rather than a hope: `test_a_run_with_nobody_on_a_marker_is_
+untouched` ticks an armed base for 40 ticks with the player at the core
+and asserts the list never starts.
+
+⚠ **`schedule <counts…>` now ARMS rather than starts.**  The verb
+authors the run's list and stops there, so a `.keys` scenario begins its
+own waves by driving onto a marker exactly as a player does — a verb
+that also started it would be the one shortcut letting every scenario in
+the gate skip the rule.  It prints what it did, so a list nobody pokes
+does not read as a broken schedule.
 
 ### W2 — the pre-walk window, and what it moved
 
@@ -242,7 +324,7 @@ everything else dryopea loads.
 | **W0** — the probe: is the design's inter-wave trigger reachable? | XS | the three tables above, measured against the shipped sim | **Done** |
 | **W1** — the schedule: waves arrive on their own | S | `tests/16_w1_the_schedule.loft` — a defended base plays wave 1 then wave 2 with no script line between them, the lull is 23 ticks counted, and an undefended base still dies in wave 1 and never sees wave 2 | **Done** |
 | **W2** — pre-walk visibility: 5 s standing at the marker | S | `tests/16_w2_the_window.loft` — a wave stands 8 ticks and steps on the 9th; the SAME base run twice, differing only in the window, arrives exactly 8 ticks apart | **Done** |
-| **W3** — the provocation trigger | S | driving onto a far spawn marker starts wave 1; a near one never does | Planned |
+| **W3** — the provocation trigger | S | `tests/16_w3_the_provocation.loft` + `tests/scripts/provoking-the-far-marker.keys` — driving onto a marker 14 hexes out starts wave 1; standing on one at 11, which is a LIVE spawn source, never does | **Done** |
 | **W4** — re-measure the base at its real length | S | a seven-wave scenario, and what a retrieval is worth on it — the number [plan 15](../15-the-carry-model/README.md) C3 could not produce | Planned |
 
 ### Why the order is this order
@@ -268,7 +350,7 @@ possible, and it needs all three.
 | **W0** ✓ | the tables above | the schedule advances on a CLEAR, and a wave that never clears is a run that already ended | — (W0 measures; W1 is its gate) |
 | **W1** ✓ | a defended base plays waves 1..N unattended; an undefended one dies in wave 1 | the wave list is DATA and the schedule is one state machine over it | ✓ the lull is COUNTED at 23 ticks, so a no-lull schedule is red; ✓ 400 ticks on an unclearable wave sends exactly ONE wave, where a timer would have sent five |
 | **W2** ✓ | 8 ticks standing, then a step | the window is the player's information, so it costs the enemies time rather than being cosmetic | ✓ the SAME base with the window and without arrives exactly 8 ticks apart — a cosmetic window leaves both clocks identical; ✓ a tower kills it where it stands, so the window is not a shield |
-| **W3** | a far marker driven onto starts wave 1, a near one does not | provocation is a POSITION, the rule § 11 wants | a trigger with no distance test fires on the marker beside the core, which the design silences on purpose |
+| **W3** ✓ | a marker at 14 starts wave 1; one at 11 never does, however long it is stood on | provocation is a POSITION, the rule § 11 wants | ✓ the control marker is a LIVE spawn source, so a trigger with no distance test of its own goes red on a marker that really sends the wave; ✓ an enemy on its own marker provokes nothing, so an occupancy test is red; ✓ the lull sits at 15.0 s under a parked player, so a trigger that re-arms is red |
 | **W4** | the seven-wave clock, and what a retrieval is worth on it | a base long enough to express a 60 s recovery | a reading taken on a base that still dies in wave 1 has measured nothing new |
 
 ## What this plan does NOT build
@@ -289,6 +371,12 @@ round-robin so a scripted run repeats, and the design's *"random at
 spawn time"* would make every measurement in the suite non-repeatable.
 ⚠ That last one is a deliberate divergence from `DESIGN.md`, not an
 omission; it wants recording there when this plan closes.
+
+⚠ **The second divergence is W3's crew rule** — § Wave-1 triggers says
+the *player* drives onto the marker and the shipped rule accepts any
+live vehicle of the cooperative, for the reasons in § W3.  Same
+treatment: recorded here, and it wants writing into `DESIGN.md` with the
+round-robin one when the plan closes.
 
 ## Open questions
 
