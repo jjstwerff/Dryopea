@@ -189,6 +189,7 @@ for the no-shortcut design rule.
 
 | Feature | Status | Slot | Brief |
 |---|---|---|---|
+| **Robot economy — natural wave patterns** | drafted | [docs/ROBOT_ECONOMY.md](../docs/ROBOT_ECONOMY.md) | Six installation types + transport routes; traffic replaces the authored wave list and spawn markers.  ⚠ **Retires [plan 16](16-the-wave-system/README.md)**, which the owner has committed to removing before ship |
 | Faction territory awareness | drafted | SETTING § Robot diversity | Maps tagged with AI faction; affects compositions |
 | Side quests — underground human contact | drafted | SETTING § Future contact | Breadcrumb discovery → first contact → trade |
 | Direct contact with an AI | drafted | SETTING § Future contact | Deep-lore: meet the girl-hacker AI as a person |

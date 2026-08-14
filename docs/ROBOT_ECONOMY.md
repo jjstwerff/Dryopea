@@ -1,0 +1,399 @@
+<!--
+Copyright (c) 2026 Jurjen Stellingwerff
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
+
+# The robot economy — the world the waves come out of
+
+**Status: design, not built.**  Nothing in this file exists in code.
+It is the destination [`SETTING.md`](SETTING.md) § They were on an
+ERRAND points at and the replacement for
+[`plans/16`](../plans/16-the-wave-system/README.md)'s authored wave
+list, which the project owner has committed to removing before the
+first game ships: *"I want natural patterns instead of waves/spawn
+points"* (2026-08-14).
+
+## Why this document exists
+
+Today a wave is a number in `examples/waves.json` and a direction is a
+marker somebody painted.  Both are stand-ins for a fact about the
+world:
+
+> A robot in a wave was never dispatched at the player.  It is a scout,
+> harvester, builder or miner walking to a job somewhere else, whose
+> route happens to cross the scrambler bubble — and which, deafened,
+> turns toward the interference believing a peer machine has broken
+> down.
+
+So the honest generator of waves is **the robot economy going about its
+business**.  This file designs that economy as six kinds of
+installation and the routes between them, and says what each one does
+to a base parked nearby.
+
+### ⚠ The governing rule: ONE system, per-type DATA
+
+The same rule [`DESIGN.md`](DESIGN.md) § 10 states for enemies — *one
+AI, per-class data* — and for the same reason.  Six installation types
+must not be six subsystems.  Each type is a **row in a table** that
+contributes to a small fixed set of run parameters:
+
+| parameter | what it decides | who writes it |
+|---|---|---|
+| `traffic_rate` | robots per minute crossing the bubble | routes, weighted by what they serve |
+| `traffic_mix` | which of the four small roles arrive | the installations at the route's ends |
+| `cargo_value` | what a kill is worth in salvage | what the route is carrying, and which way |
+| `escalation_latency` | how long from "noticed" to combat bots | distance to the nearest military stockpile |
+| `damage_persistence` | whether chip damage sticks or is refunded | distance to the nearest repair point |
+| `insect_pressure` | the threat the scrambler does not answer | distance to the nearest carbon plant |
+
+An installation that needs a seventh parameter, or its own movement
+code, or its own spawn path, has broken this rule.  ⚠ **A new
+installation type should cost one row and no new behaviour** — that is
+the test, and it is what makes the set extensible without the wave
+engine growing.
+
+## The graph
+
+**Nodes** are installations.  **Edges** are transport routes.  Material
+flows along the edges; the flow is the traffic; the traffic is the
+waves.
+
+```
+    carbon plant ──────┐
+                       ├──▶ factory ──▶ (new robots, outbound everywhere)
+    mine ──────────────┘        │
+      ▲                         ▼
+      └──── repair point ◀── damaged units
+                 ▲
+                 │  (dormant, no traffic)
+          military stockpile
+```
+
+The player's base is **not on this graph**.  It is a scrambler bubble
+dropped somewhere in the middle of it, and the only thing that matters
+is which edges it happens to sit on and which nodes are within reach.
+
+⚠ **This is the strategic layer the run shape has been missing.**
+[`DESIGN.md`](DESIGN.md) § Base sequence makes a run a sequence of
+bases chosen at the station hub; until now that choice has had nothing
+to be *about*.  With this graph, picking the next sortie is picking a
+neighbourhood — and every neighbourhood is a different game.
+
+---
+
+## 1. Mines
+
+**Fiction.** Extraction sites feeding the colonisation programme.  Ore
+out, empty haulers in, miners resident.
+
+**Traffic signature.** Heavy, regular, and the least pleasant mix in
+the game: **miners and harvesters**.  A mine is the one node whose
+resident class is the one [`DESIGN.md`](DESIGN.md) § 10 names as the
+wall-eater — *a miner cuts rock for a living and a scout does not*.
+
+**What it does to a base nearby.**  Your perimeter is worth
+dramatically less.  The measured wall clocks in
+[`plans/12`](../plans/12-combat-resolution/README.md) § B7 assume a
+generic robot at 1 HP/s; a mining crew is the reason that number is a
+per-class row rather than a constant.
+
+**What the player can do.**  Loaded ore haulers are the richest salvage
+in the economy — a kill on the outbound side of a mine route pays
+several times what a kill on the inbound side does.  So a base beside a
+mine is a **farm you cannot fortify**.
+
+**What it costs.**  You have to hold ground with clearing and towers
+rather than with walls, which is exactly the work that cannot be done
+from a parked vehicle.
+
+**Design test** (*does this put something in the player's hands at a
+moment when using it costs them something?*): ✓ — the loot is on the
+outbound lane, which is the far side of the route from your core.
+
+**Tunables:** `mine.ore_per_hauler`, `mine.resident_mix`,
+`mine.route_period_s`.
+
+---
+
+## 2. Factories
+
+**Fiction.** Ore and carbon in, robots and parts out.  The place new
+units come from, and therefore the place wave *growth* comes from.
+
+**Traffic signature.** The most mixed of any node: raw material
+inbound, **fresh undamaged units outbound in every direction**.  A
+factory's output is not aimed at you; you simply sit on one of the
+roads leaving it.
+
+**What it does to a base nearby.**  It is the **escalation engine**,
+and it is what `waves.json`'s ascending list `[5, 8, 12, 20, 30, 50,
+80]` is a hand-drawn picture of.  Wave size grows because a factory
+keeps producing and the local AI keeps routing more units through a
+region whose reports have stopped.
+
+⚠ **This is the single best argument for the whole file.**  An
+authored ascending list is a designer asserting that things get worse;
+a factory upstream is a *reason* they get worse, which the player can
+find, understand and act on.
+
+**What the player can do.**  Throttle its **input**, not its output.
+Cutting the mine→factory route starves it, and the effect arrives
+*late* — the waves already in transit still come.  A delayed, indirect,
+legible defence.
+
+**What it costs.**  The trip, and the attention: a supply route worth
+cutting is by definition not next to your core.  And a factory whose
+inputs fail is exactly the trigger `SETTING.md` § Combat bots are
+dormant lists at step 2 of the escalation ladder.  ⚠ **Starving the
+factory is how you wake the military.**
+
+**Design test:** ✓ — the strongest defensive play in the game is also
+the thing that ends the mission.
+
+**Tunables:** `factory.units_per_minute`, `factory.input_buffer_s`
+(how long it keeps producing once starved), `factory.output_mix`.
+
+---
+
+## 3. Transport routes
+
+**The edges, and the actual wave generator.**  Everything above and
+below is scenery until a route passes near the player.
+
+**What a route is.**  A corridor between two nodes carrying a
+throughput and a cargo.  Three properties decide everything:
+
+- **Throughput** — robots per minute → the wave rate.
+- **Cargo and direction** — what a kill drops → the salvage economy.
+- **Distance from the core** — whether the bubble touches it at all.
+
+**How it becomes a wave.**  A robot walking its route enters the
+scrambler bubble, goes deaf, stands for its reorientation interval
+(`plans/16` W2's pre-walk window — *already built, and this is what it
+was always for*), and turns toward the interference.  **A spawn marker
+is a stand-in for the point where a route crosses the bubble edge**, so
+in the finished model it is computed rather than painted, and its
+direction is the route's bearing rather than an author's choice.
+
+⚠ **Bubble radius becomes a real decision.**  It is 25 hexes today and
+fixed.  Against a route graph it is the *aggro radius*: a bigger bubble
+reaches more roads and deafens more robots.  If the scrambler ever
+gains a strength setting, this is the mechanic it acts on, and turning
+it down is a legitimate strategy that also weakens whatever else the
+bubble does.
+
+**What the player can do.**  **Block the route** — a wall across a
+corridor makes the local traffic reroute.  Three outcomes, and the
+player is choosing between them:
+
+1. It reroutes **away** — quiet base, no salvage income.
+2. It reroutes **through you** — a worse route becomes the main road.
+3. It reroutes **nowhere** (a valley, a bridge) — the traffic backs up
+   *against your wall*, which is a siege you built yourself.
+
+**What it costs.**  Case 3 is the interesting one and is what
+[`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § Sealing is punished, not
+forbidden already describes at base scale, one level up.
+
+**Design test:** ✓ — every blocking decision is reversible-looking and
+is not.
+
+**Tunables:** `route.throughput_per_minute`, `route.reroute_cost_hex`
+(how far a detour has to be before traffic prefers to chew through).
+
+---
+
+## 4. Military bases
+
+**Fiction.** Mothballed combat-bot stockpiles from the AI-vs-AI wars —
+`SETTING.md` § Combat bots are dormant.  Parked, depowered, waiting for
+orders from a sub-process that went quiet.
+
+**Traffic signature.** ⚠ **None.**  This is the one node that generates
+no traffic at all, and that is the point: it is invisible until it
+matters.
+
+**What it does to a base nearby.**  It sets `escalation_latency` — the
+delay between the local AI deciding you are no longer ignorable and
+combat units actually arriving.  A base with a stockpile over the ridge
+has a **short fuse**; one in collapsed faction territory may have no
+fuse at all, because there is no warm authority left to send the wake
+command.
+
+⚠ **It is a timer modifier, never a spawner.**  It does not emit
+anything until woken, and when woken the units arrive *alongside* the
+economic ones rather than replacing them (`SETTING.md` § Tied threads).
+
+**What the player can do.**  Two things, opposite in kind:
+
+- **Read it** — knowing the fuse length is what makes the scramble
+  decision informed.  *"Have I pushed them past activation?"* is only
+  answerable if you know how close the nearest stockpile is.
+- **Loot it** — a mothballed stockpile is military-grade salvage and
+  the most valuable scouting prize in the economy.
+
+**What it costs.**  ⚠ **Scouting it is a plausible wake condition.**
+The prize and the fuse are the same object, which is the cleanest
+expression of `DESIGN.md` § Scouting's *every find is high-value AND
+opens a fight* that the setting offers.
+
+**Design test:** ✓✓ — this is the one that shapes the *run*, not the
+base.
+
+**Tunables:** `military.wake_pressure_threshold`,
+`military.wake_delay_s`, `military.stockpile_salvage_value`.
+
+---
+
+## 5. Local repair points
+
+**Fiction.** Where damaged robots go to be fixed.  ⚠ **The node the
+new setting material makes essential**: if the robots approaching your
+core believe they are attending a malfunctioning peer, then repair is
+the swarm's central behaviour and not a footnote.
+
+**Traffic signature.** Inbound damaged units, outbound repaired ones —
+so a repair point near you means **the same robots come back**.
+
+**What it does to a base nearby.**  It sets `damage_persistence`, and
+this is the most mechanically interesting parameter in the file:
+
+- **No repair point in range** — chip damage accumulates across waves.
+  A tower that wounds is nearly as good as one that kills.
+- **A repair point in range** — a wounded robot that survives the bubble
+  walks home, is fixed, and returns whole.  **Your damage is refunded.**
+
+⚠ **That makes "kill" and "hurt" different verbs for the first time.**
+Today they differ only in bookkeeping; against a repair point, a tower's
+30-shot budget spent spreading damage across a wave achieves *nothing*,
+while the same 30 shots concentrated kills ten robots for good.  It is a
+targeting decision the player currently has no reason to think about.
+
+**Second-order, and it is the best thing in this document.**  A fixed
+repair point is where the mobile one comes from: the boss is *industrial
+repair equipment* (`DESIGN.md` § Boss = mobile REPAIR PLATFORM).  So
+**the boss arrives because the local repair point dispatched it to what
+it believes is a serious breakdown — your core.**  Boss frequency
+becomes a function of repair-point proximity and of how much damage you
+have been doing, rather than an authored phase-3 event.
+
+**What the player can do.**  Deny it — a raid that makes your damage
+start sticking.
+
+**What it costs.**  A long trip, to the one place in the economy where
+damaged robots congregate, and there is nothing to farm there: repair
+traffic carries no cargo.
+
+**Design test:** ✓ — it changes what you shoot at, every wave, for free,
+and the counter-play costs a sortie.
+
+**Tunables:** `repair.range_hex`, `repair.turnaround_s`,
+`repair.platform_dispatch_threshold`.
+
+---
+
+## 6. Carbon-gathering points (plants)
+
+**Fiction.** The terraforming half of the colonisation programme —
+growth stands cultivated and harvested for carbon.  The huge trees
+`DESIGN.md` § Scouting already hangs sap on.
+
+**Traffic signature.** Thin, slow, low-value: harvesters on long
+cycles.  As a *robot* neighbour, a carbon plant is the quiet quarter.
+
+**What it does to a base nearby.**  ⚠ **It is not a robot problem at
+all.**  Organic growth is where the **insect tier** lives, and
+`SETTING.md` § Why waves happen is explicit that *insects ignore the
+scrambler — they are biological, with no comms link to disrupt*.
+
+**So a carbon plant is the one neighbourhood where your core's defining
+mechanic does not work.**  The scrambler does not deafen them, the
+bubble does not steer them, and the pre-walk window does not exist for
+them — they simply come, by smell, when you take the sap.
+
+⚠ **This is the most valuable design property of the six**, because it
+is the only one that makes the player's central asset irrelevant, and a
+strategy game needs at least one board where the usual answer is not
+available.  It is also already half-built: dryopea has an insect class
+with its own climb limit, and `two-classes-two-routes.keys` measures it
+crossing what a robot must walk around.
+
+**What the player can do.**  Harvest the sap — high value, and
+`DESIGN.md` § Scouting already prices it: *sap invites insect chase by
+smell*.
+
+**What it costs.**  Everything you know about defending against robots.
+
+**Design test:** ✓✓ — the reward and the threat are the same action.
+
+**Tunables:** `plant.sap_value`, `plant.insect_draw_radius_hex`,
+`plant.insect_period_s`.
+
+---
+
+## How the player ever learns any of this
+
+Three layers, in the order a player meets them:
+
+1. **The sortie brief** (station hub, `ROADMAP` Tier D) — the
+   neighbourhood at low resolution: *"heavy mining traffic, no known
+   stockpile"*.  This is what makes base selection a decision.
+2. **Scouting** — driving out to find the nodes themselves, which
+   `DESIGN.md` § Scouting already establishes as *the* progression
+   activity.  A found node is intel that persists.
+3. **The waves themselves** — composition is a readout.  Miners at the
+   wall means a mine upwind; the same robot arriving twice means a
+   repair point.  ⚠ **This is diegetic in the way § No wave HUD
+   demands**: the player learns the map's economy by watching who turns
+   up, with no UI at all.
+
+## What this design does NOT do
+
+- **No economy simulation.**  Nodes do not need inventories, production
+  chains or an internal tick.  Everything above is a static graph plus
+  a rate per edge; the player's actions perturb the rates.  ⚠ A
+  simulated economy is a strictly larger project and none of the design
+  value here needs it.
+- **No AI strategy.**  Nothing in the graph reacts intelligently.  The
+  escalation ladder is a threshold, and rerouting is a shortest-path
+  recompute.
+- **No new mover.**  Robots on a route are the enemies dryopea already
+  has, walking their heading, becoming a wave when the bubble deafens
+  them — `spawn.loft`'s approach mode, unchanged.
+- **No replacement for `plans/16` yet.**  That plan's schedule and
+  triggers stay as scaffolding until this ships; see its § Status.
+
+## Open questions
+
+1. **Does the graph live per-map or per-planet?**  Per-map is cheap and
+   makes each base self-contained; per-planet means cutting a route in
+   one sortie changes the next one, which is what would make a *run*
+   feel like a campaign.  *Recommendation: author per-map, but keep the
+   node identifiers global so the per-planet version is a later join
+   rather than a rewrite.*
+2. **Is the bubble radius a player setting?**  § Transport routes makes
+   it the aggro radius.  A dial is a real decision; it is also a way to
+   turn the game off.  *Recommendation: leave it fixed until a base
+   exists that is unplayable at 25.*
+3. **Does blocking a route need pathfinding over the graph?**  Case 2
+   (*it reroutes through you*) requires knowing where traffic would go
+   instead.  *Recommendation: author two or three named alternates per
+   route rather than computing detours — the player needs the outcome
+   to be learnable, and a shortest-path recompute is not.*
+4. **What wakes the military, exactly?**  `SETTING.md` gives four
+   ladder steps and no numbers.  Kills? Elapsed time? Throughput
+   denied?  *Recommendation: denied throughput, because it is the one
+   the player controls deliberately and the one that makes § Factories'
+   starve play cost something.*
+
+## See also
+
+- [`SETTING.md`](SETTING.md) § Why waves happen, § They were on an
+  ERRAND, § Combat bots are dormant — the fiction this implements.
+- [`DESIGN.md`](DESIGN.md) § 6 Spawn system + waves (what it replaces),
+  § Scouting (how it is discovered), § Base sequence (where the choice
+  lands).
+- [`plans/16`](../plans/16-the-wave-system/README.md) — the scaffolding
+  this retires.
+- [`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) — the mover, unchanged by
+  any of it.

@@ -552,7 +552,8 @@ happens to cross the bubble.  **The player's base is an
 accident on somebody's commute.**
 
 ⚠ **This is the generative model that replaces waves and spawn
-markers.**  The owner intends *"natural patterns instead of
+markers**, and it is designed in full in
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md).  The owner intends *"natural patterns instead of
 waves/spawn points"* before the first game ships, and this is
 why one is possible: wave size, direction and timing are all
 downstream of where the robot economy is actually working, so
