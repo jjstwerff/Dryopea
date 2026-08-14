@@ -148,8 +148,27 @@ the whole design of crystal:
 
 | consumer | what crystal buys | cutting it |
 |---|---|---|
-| a boss's **energy core** | one core per boss, consumed | throttles the **rate** — bosses stop arriving while the pipe is dry |
+| a **repair platform's** energy core | one core per boss, consumed | throttles the **rate** — support bosses stop arriving while the pipe is dry |
+| a **combat robot's** core **and power weapons** | ⚠ the dearest thing in the economy — two demands in one unit | throttles the **military** specifically; see below |
 | a factory's **boss production machine** | capital plant, built once | removes the **capability** — that factory makes no bosses again until it is rebuilt |
+
+⚠⚠ **The two boss kinds are opposites and crystal is what they
+share** (`DESIGN.md` § There are TWO boss kinds).  The repair platform
+is an economic unit repurposed; the big combat robot is the one thing
+in the game that was *built to fight*, it comes from a woken military
+stockpile rather than a factory line, and it needs crystal twice over.
+**So crystal is the bottleneck on MILITARY capability specifically** —
+which is what gives cutting it a consequence that outlives the
+decision:
+
+- **mid-game**, cutting the line is insurance against ever meeting a
+  combat boss.  A good decision, made for good reasons.
+- **end-game**, combat bosses are the units that can hurt an old one's
+  servants — and the player who cut that line has crippled their own
+  allies, hours later, by their own earlier correct play.
+
+⚠ It needs per-planet state to express at all (§ Open questions 1),
+and it is the best argument on that list.
 
 So the player who finds the crystal line has two plays at different
 prices: interdict the haulers (cheap, repeatable, temporary) or reach
@@ -573,7 +592,7 @@ hampering of the robots."*
 | **factories** | starve the inputs | **feed** them |
 | **transport routes** | block, or interdict for salvage | **hold open**, and clear what blocks them |
 | **repair points** | raid it so your chip damage sticks | **garrison** it — it is what puts your allies back on their feet |
-| **military stockpiles** | ⚠ the thing to avoid waking | ⚠⚠ **wake it deliberately** — combat bots are the units that can actually fight |
+| **military stockpiles** | ⚠ the thing to avoid waking | ⚠⚠ **wake it deliberately** — and it is where the **big combat robots** come from, the only units ever built to fight |
 | **carbon plants** | the insect-pressure hazard | still the insects' ground — and the insects are on your side now |
 
 ⚠⚠ **The boss is the sharpest one.**  The mid-game's most dangerous

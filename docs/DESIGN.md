@@ -1323,6 +1323,44 @@ rate of a base that had been overrun.
 In the absence of a blocker, the player and NPCs are
 **ignored**.
 
+### ⚠ There are TWO boss kinds, and they are opposites
+
+Owner, 2026-08-14: **the big combat robots are bosses of a
+different kind than the repair platforms.  They need crystals for
+their core and their power weapons.**
+
+| | **repair platform** | **big combat robot** |
+|---|---|---|
+| origin | the **engineering role** — industrial machinery repurposed (`SETTING.md` § Robot diversity) | the **defence / security role** — built for the AI-vs-AI wars and mothballed (`SETTING.md` § Combat bots are dormant) |
+| built to fight? | **no** — never attacks towers directly | ⚠ **yes** — it is the only thing in the game that was |
+| what it does | heals nearby regulars; marks towers for others | **power weapons** |
+| crystal demand | its **energy core** | ⚠ its energy core **and its weapons** — so it costs more |
+| where it comes from | a factory's boss-production machine | ⚠ a **military stockpile**, woken — it is the top of that escalation ladder |
+
+⚠⚠ **So crystal gates MILITARY capability specifically**, and
+that gives the run a long arc nothing else does:
+
+- **Mid-game**, cutting the crystal line
+  ([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 1a) is insurance
+  against ever meeting a combat boss.  It is a good decision and
+  a player will make it for good reasons.
+- **End-game**, the combat bosses are the units that can actually
+  hurt an old one's servants — and ⚠ **the player who strangled
+  the crystal line hours ago has crippled their own allies.**
+  A correct decision, paid for much later, by the same person.
+  It needs per-planet persistence to express
+  ([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § Open questions 1),
+  which is one more argument for it.
+
+⚠ **Open: does a combat boss shoot TOWERS?**  *Power weapons*
+implies it, and it would be the first thing in the game that
+does — which changes the tower economy completely, since a
+tower's 30-shot budget can only be refilled by a player standing
+at it (§ 7).  The repair platform pointedly does not
+(§ Localised tower-attack retaliation below); making its sibling
+the unit that does is the obvious reading, and it is not decided
+here.
+
 ### Boss = mobile REPAIR PLATFORM (phase 3)
 
 The boss class is, in the fiction, the **engineering / repair
@@ -1585,8 +1623,12 @@ is INTENT** — nothing about an elemental gets stronger, it simply
 starts wanting something.  Keeping that distinction is what stops
 tier 3 becoming a re-skinned tier 1.
 
-**Boss (phase 3)** sits within tier 1 — the repair-platform
-specialist (see § Combat dynamics).
+**Bosses** sit within tier 1, and there are **two kinds**
+(owner, 2026-08-14): the **repair platform** — an economic unit
+repurposed, which never attacks towers — and the **big combat
+robot**, which was actually built to fight and needs crystal for
+its core *and* its power weapons.  See § There are TWO boss
+kinds, and they are opposites.
 
 Robot wave behaviour has a *lore* explanation that retroactively
 explains the wave system: **robots in the bubble are

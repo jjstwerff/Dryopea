@@ -1120,6 +1120,15 @@ Tied threads:
   machinery the controlling AI repurposes for hostility.
   When combat bots activate, they arrive alongside the
   economic units, not in place of them.
+- ⚠⚠ **And the top of this ladder is the OTHER boss kind**
+  (owner, 2026-08-14): the **big combat robots** are bosses of
+  a different sort from the repair platforms — actually built
+  to fight, with **power weapons**, needing crystal for their
+  core *and* their armament.  They come from these stockpiles
+  rather than from a factory line, which is what makes waking
+  one an escalation rather than a production run.  See
+  `DESIGN.md` § There are TWO boss kinds, and they are
+  opposites.
 
 ## ⚠⚠ The buried city, the covered statues, and the portal below
 
