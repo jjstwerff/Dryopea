@@ -1,0 +1,130 @@
+# a-crew-that-clears-up — plan 13 V2, and the answer to plan 12 B7.
+#
+# `a-tower-buries-its-own-wall.keys` plus ONE line: `park 7 0`.
+# Everything else is identical — same ground, same core, same wall,
+# same tower, same waves.
+#
+#   undefended:                     61 ticks   ( 41 s)
+#   sealed wall:                   104 ticks   ( 69 s)
+#   sealed wall + tower:            95 ticks   ( 63 s)   the tower LOSES
+#   this file — and a crew:        121 ticks   ( 81 s)   the tower PAYS
+#
+# ⚠⚠ **This is where the tower stops being a liability.**  B7 measured
+# a base that fell SOONER for having a gun on it: the tower killed
+# eight robots at the foot of its own wall, three of them fell on
+# (6, 0), and 1.5 m of dead is inside plan 12 B0's [1.0, 2.0] ramp band
+# onto a 3.0 m wall — so the survivors climbed over a wall that never
+# lost a tenth of its HP.  One vehicle standing in the kill zone takes
+# that ramp away as fast as the tower builds it, and the attackers are
+# put back onto the wall.
+#
+# ⚠ **The wall's HP is the evidence, not the clock.**  Without a crew
+# the wall ends at 96.7 of 100 — barely scratched, because nobody had
+# to break it.  With one it ends at 69.3, because the only way in was
+# through.  The clock is the consequence; the HP is the mechanism.
+#
+# ── ⚠ The crew is OUTSIDE, and that is this scenario's caveat ────
+#
+# `park 7 0` puts the vehicle beyond its own perimeter, and it has to
+# be there: the ramp forms where the enemies die, which is outside the
+# wall, and a hover unit climbs 0.4 m against a 3.0 m wall.  **A sealed
+# base locks its own crew in.**
+#
+# So this file is a player who chose to stay out in the open — legal,
+# and exactly the trade `DESIGN.md` § What kind of game this is
+# describes: *"a kill zone that keeps working — bodies pile into a
+# ramp, so someone must drive INTO it and clear them"*.  What it is
+# NOT is a player who can pop out and come back, and that needs
+# `hover_clearance_boost` (3.0 m, exactly a wall) — plan 13 V4.  Until
+# then, clearing a sealed base's kill zone is a one-way commitment.
+#
+# ⚠ And nothing can hurt the vehicle yet: § 8's blocker-damage model is
+# not built (`plans/13` § What this plan does NOT build), so standing
+# in a kill zone is currently free.  It is not meant to be.
+
+echo a crew that clears up: one vehicle, and the tower finally pays
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The tower, one hex behind the wall it covers (plan 12 B5b).
+do cycle_kind
+click 3 0
+marker 3 0 tower
+
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 3 3
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+palette 9
+click 5 -2
+click 5 -1
+click 5 0
+click 5 1
+click 5 2
+kind 5 0 wall
+hp 5 0 100.0 100.0
+
+# The crew: parked in the kill zone, one hex clear of where the bodies
+# will fall.  It clears whatever rubble it is standing on or beside, at
+# `numbers.json` § player_vehicle.salvage_rate — one dead robot a
+# second — with no key pressed, because clearing is a POSITION
+# (`DESIGN.md` § 11).
+park 7 0
+vehicle 7 0
+
+wave 5
+count alive 5 5
+wallet 200.0 200.0
+
+tick 22
+wave 8
+
+# ⚠ **Eleven, where the same base without a crew reads nine** — the
+# tower is two kills BEHIND at this point, not ahead.  Clearing the
+# heap changes where the survivors stand, and a robot that is not where
+# the gun is looking does not get shot.  It catches up: both bases end
+# on five alive, so the crew's whole contribution is timing and terrain
+# rather than damage.
+count alive 11 11
+
+fall 800
+ticks 116 126
+wallet 0.0 0.0
+
+# ── What the crew changed ───────────────────────────────────────
+
+# No ramp.  The tower built one all through the run and the crew ate it
+# as fast as it appeared.
+pile 6 0 0.0 0.0
+
+# So they had to come through the wall instead — a third of it gone,
+# against the 3.3 HP the same wall lost with nobody clearing up.
+kind 5 0 wall
+hp 5 0 65.0 75.0
+
+# The tower's own tally is unchanged: eight of thirteen, the same
+# 30-shot budget.  ⚠ That is the point — **the crew added no damage
+# whatsoever.**  Every extra second this base survived came from
+# denying the attackers a staircase, which is a mechanic with no
+# numbers of its own.
+count alive 5 5
+
+snap b7_a_crew_that_clears_up

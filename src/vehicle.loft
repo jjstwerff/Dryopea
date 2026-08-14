@@ -59,6 +59,31 @@ pub const VEHICLE_SPEED_HEX_PER_SECOND: float = 3.0;
 // so the two speeds sit together and the ratio is readable.
 pub const VEHICLE_BOOST_HEX_PER_SECOND: float = 6.0;
 
+// numbers.json § player_vehicle.salvage_rate — metres of rubble a
+// second, and **derived rather than picked**: a body is 0.5 m
+// (`enemy_regular.body_height`), so this is exactly one dead robot a
+// second and the three-body ramp that beats a tower takes three.
+pub const VEHICLE_SALVAGE_METRES_PER_SECOND: float = 0.5;
+
+// How far the vehicle reaches to clear, in hexes.
+//
+// ⚠ **FORCED, not chosen — and it is plan 13 V2's finding.**  The
+// obvious rule is `DESIGN.md` § 11's *"drive over loot = auto-pickup"*
+// applied to rubble: stand on the pile and clear it.  **The vehicle
+// cannot get onto it.**  A hover unit climbs its 0.4 m clearance and
+// the heap that beats a tower is 1.5 m — nearly four times that — so a
+// reach of 0 would have built a mechanic that can never fire on the
+// only case anybody wants it for.
+//
+// So it clears what it is BESIDE, which is what `DESIGN.md` § 7 §
+// Tower-core retrieval already calls *"drive next to it"* and what
+// § What kind of game this is means by *"someone must drive INTO it
+// and clear them"*.  It also gives the mechanic a shape: a heap is
+// eaten from the edge, and once it is under a hover's clearance the
+// vehicle can drive on and finish it from on top — with no second rule,
+// because the reach covers its own hex too.
+pub const VEHICLE_SALVAGE_REACH_HEXES: integer = 1;
+
 // ─── The vehicle ────────────────────────────────────────────────
 
 // Where the player is, and where they are heading.
@@ -135,6 +160,59 @@ pub fn vehicle_arrived(v: const Vehicle) -> boolean {
 // function is where that lands.
 pub fn vehicle_hexes_per_tick(tick_seconds: float) -> integer {
     (VEHICLE_SPEED_HEX_PER_SECOND * tick_seconds) as integer? ?? 0
+}
+
+// Clear rubble within reach for one tick, deepest heap first.
+// Answers the metres taken away.
+//
+// Plan 13 phase V2.  `docs/ENEMY_MOVEMENT.md` § Bodies are terrain
+// ends on the losing line — *"the kill zone ramps itself shut and then
+// over the wall"* — and plan 12 B7 measured it: a base with a tower
+// falls SOONER than the same base without one, because the tower's own
+// dead ramp over the wall it defends.  This is the counter-play, and
+// until it existed `height_clear` had been built with no caller since
+// plan 12 B1.
+//
+// ⚠ **No key, and that is `DESIGN.md` § 11.**  Clearing happens
+// because the player is THERE.  The cost is the positioning — for a
+// kill zone, driving into it while it is still a kill zone — which is
+// the test `CLAUDE.md` § What dryopea is applies to every mechanic.
+//
+// ⚠ **ONE heap a tick, the deepest in reach.**  Not all seven: a
+// vehicle that cleared its whole neighbourhood at full rate each would
+// tidy a wave's worth of dead in a single pass, and the pressure this
+// mechanic exists to create is that clearing TAKES TIME you do not
+// have.  Deepest-first because a ramp is made by the tallest pile, so
+// that is the one worth eating; ties break by direction order after
+// the vehicle's own hex, which keeps a scripted run repeatable.
+pub fn vehicle_salvage(v: const Vehicle, hl: HeightLayer,
+                       tick_seconds: float) -> float {
+    if !v.parked { return 0.0; }
+
+    vs_here  = Hex { q: v.q, r: v.r };
+    vs_best  = vs_here;
+    vs_deep  = height_rise(hl, vs_here.q, vs_here.r);
+
+    for vs_d in 0..6 {
+        vs_n    = lat_neighbour(vs_here, vs_d);
+        vs_rise = height_rise(hl, vs_n.q, vs_n.r);
+        if vs_rise > vs_deep {
+            vs_deep = vs_rise;
+            vs_best = vs_n;
+        }
+    }
+    if vs_deep <= 0.0 { return 0.0; }
+
+    vs_bite = VEHICLE_SALVAGE_METRES_PER_SECOND * tick_seconds;
+    vs_took = min(vs_bite, vs_deep);
+    // ⚠ `height_clear` takes the whole pile away; this wants a BITE, so
+    // it goes through `height_raise` with a negative rise — which
+    // `height.loft` floors at the ground and, at exactly zero, REMOVES
+    // the entry.  That last part is the layer's own rule and it is what
+    // makes a fully cleared hex read as authored ground again rather
+    // than as a 0.0 m pile of nothing.
+    height_raise(hl, vs_best.q, vs_best.r, 0.0 - vs_took, 0 as u8);
+    vs_took
 }
 
 // Advance the vehicle one tick along the straight line to where it is

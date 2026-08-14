@@ -1159,14 +1159,6 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wave_damage(state, pal, pw, wt_fields, wt_desire);
     wave_nibble(state, core);
 
-    // ⚠ **The player moves with the exchange, not with the wave.**  It
-    // is driven rather than routed, so it reads no field and no
-    // occupancy: a vehicle is not a companion an enemy can be blocked
-    // by, and an enemy is not something the player bumps into.  Both
-    // of those are `DESIGN.md` § 8's blocker-damage model, which plan
-    // 13 does not build — see `plans/13` § What this plan does NOT
-    // build.
-    vehicle_tick(state.player, pal, pw, state.heights, TICK_SECONDS);
 
     for wt_i in move_order(state, wt_fields) {
         wt_e = state.enemies[wt_i] ?? Enemy {};
@@ -1195,6 +1187,21 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // either way, but a hex that receives both in one tick takes the
     // SOURCE of the later deposit.  Fixing the order is what makes
     // that repeatable.
+    // ⚠ **The player takes its turn HERE, with the other consequences
+    // and BEFORE them.**  It is driven rather than routed, so it reads
+    // no field and no occupancy — a vehicle is not a companion an enemy
+    // can be blocked by, and an enemy is not something the player bumps
+    // into (both are `DESIGN.md` § 8's blocker-damage model, which plan
+    // 13 does not build).
+    //
+    // Before the deaths and the breaks, so that a body dropped THIS
+    // tick cannot be swept up in the same one: what the player clears
+    // belongs to tick N+1, exactly as a body and a breach do.  Putting
+    // it after would let a crew tidy a kill zone the instant it filled,
+    // and would make the ordering of these three lines load-bearing.
+    vehicle_tick(state.player, pal, pw, state.heights, TICK_SECONDS);
+    vehicle_salvage(state.player, state.heights, TICK_SECONDS);
+
     wave_deaths(state);
     damage_resolve(pal, pw, state.damage, state.heights);
 }

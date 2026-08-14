@@ -9,7 +9,52 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**V0 + V1 shipped** (2026-08-14). V2 is next and unblocked.
+**V0 + V1 + V2 shipped** (2026-08-14). V3 is next; V4 is now the
+plan's most valuable open phase rather than its least — see § V2.
+
+**V2 closed the loop plan 12 B7 opened.** A vehicle clears rubble it is
+standing on or beside, at one dead robot a second, with no key pressed
+— and the tower stops being a liability:
+
+| base | clock | what happened |
+|---|---|---|
+| no defences | 61 | they walked in |
+| sealed wall | 104 | they chewed through |
+| sealed wall + tower | 95 | **the pile went over** — the tower LOST 9 ticks |
+| sealed wall + tower **+ a crew** | **121** | they chewed through, and the tower GAINED 17 |
+
+⚠ **The wall's HP is the mechanism; the clock is only the
+consequence.** Without a crew that wall ends at **96.7 of 100** —
+nobody ever had to break it. With one it ends at **69.3**. The crew
+adds no damage whatsoever; every extra second comes from denying the
+attackers a staircase.
+
+⚠⚠ **V2 could not meet its own gate as written, and that is its second
+output.** The gate said *"the towered base's clock RISES"*. A crew
+INSIDE that base changes nothing at all — 95 ticks either way. The
+ramp forms where enemies die, which is OUTSIDE the wall, and a hover
+unit climbs 0.4 m against a 3.0 m wall: **a sealed base locks its own
+crew in.** Two more configurations, both measured, both flat:
+
+- the same wall with a GATE: 90 ticks with a crew and 90 without.
+  Where there is a way in, the ramp was never what got them in.
+- a crew parked in the gateway clears the heap perfectly (1.0 m →
+  0.0 m) and the clock does not move by a tick.
+
+So the mechanic pays **only where the ramp is the way in**, and
+reaching it needs `hover_clearance_boost` — 3.0 m, exactly a wall.
+`a-crew-that-clears-up.keys` is therefore a player who committed:
+parked outside before the wave and with no way back. **V4 is what
+makes it a decision rather than a commitment**, which promotes it from
+the phase nobody needed to the one the story turns on.
+
+⚠ **The reach is FORCED, not chosen.** The obvious rule is § 11's
+*"drive over loot = auto-pickup"* applied to rubble — stand on it and
+clear it. The vehicle cannot get on: 0.4 m of clearance against a
+1.5 m heap. So it clears what it is BESIDE, which is what § 7 §
+Tower-core retrieval already calls *"drive next to it"*, and a heap is
+eaten from the edge until it is low enough to drive onto and finish
+from on top. One rule, because the reach covers its own hex too.
 
 **V1 put a player in the world.** `src/vehicle.loft` holds a hover
 unit that parks, is pointed at a hex, and covers **two hexes a tick**
@@ -69,9 +114,10 @@ Implements, and does not restate:
 
 Source files it touches: a new `src/vehicle.loft`, plus
 `src/passable.loft` (a third kind), `src/spawn.loft` (the tick),
-`src/wallet.loft` (a credit, at V3), `src/height.loft`'s existing
-`height_clear` (which has had no caller since plan 12 B1) and
-`src/script.loft` (the verbs).
+`src/wallet.loft` (a credit, at V3), `src/height.loft` (V2 takes a
+BITE out of a pile through `height_raise`, not `height_clear` — the
+whole-pile verb still has no caller) and `src/script.loft` (the
+verbs).
 
 ## V0 — the probe (2026-08-14)
 
@@ -160,7 +206,7 @@ not read the name as a claim.
 |---|---|---|---|
 | **V0** ✓ | the speed table above; `walk_vehicle` uniformly true | the probe records what IS, before anything assumes it | — (V0 asserts the present; V1 is its gate) |
 | **V1** ✓ | the vehicle covers 2 hexes while an enemy covers 1, over the same ticks | speed is a RATE, read from `numbers.json`, not a step count | a vehicle that moves 1 hex a tick has silently adopted the enemy's rate; a vehicle that reaches a hex `can_step` refuses has no passability at all |
-| **V2** | driving onto a pile clears it, and the towered base's clock RISES | the crew is what makes a tower pay | a clock that does not move means the vehicle cleared nothing that mattered |
+| **V2** ✓ | driving BESIDE a pile clears it, and the towered base's clock rises 95 → 121 | the crew is what makes a tower pay | ⚠ the gate's own wording was falsified: a crew INSIDE the sealed base moves the clock by nothing, and so does one at a gate — the mechanic pays only where the ramp is the way IN |
 | **V3** | a collected body credits the wallet; the wallet can go UP | loot is income, and it is the first thing that ever refills the budget | a wallet that rises with nobody collecting has a leak — B6 promised it never refills unattended |
 | **V4** | boosting clears a 3.0 m `wall` and never a 5.0 m `wall_high` | boost is a bigger CLIMB, not a new movement mode | a boost that crosses `wall_high` has stopped reading the height |
 
@@ -170,9 +216,9 @@ not read the name as a claim.
 |---|---|---|---|
 | **V0** — the probe: speed, passability, and where it lives | XS | measurements against `numbers.json`; three of the four answers are recorded above | **Done** |
 | **V1** — the vehicle exists, and it drives | S | `tests/13_v1_the_vehicle.loft` — two hexes to an enemy's one, and it stops at what it cannot climb | **Done** |
-| **V2** — it clears rubble, and a tower starts paying | S | `tests/12_b7_the_clock.loft`'s towered base — the clock RISES | Open |
+| **V2** — it clears rubble, and a tower starts paying | S | `tests/13_v2_the_crew.loft` + `a-crew-that-clears-up.keys` — 121 ticks against 95, and the wall is CHEWED rather than climbed | **Done** |
 | **V3** — a body is worth points | S | `wallet.loft` gains its first credit; `tests/12_b6_wallet.loft`'s "never refills" becomes "never refills UNATTENDED" | Open |
-| **V4** — boost | S | clears a `wall`, refused by a `wall_high` | Blocked on § V0.3 |
+| **V4** — boost | S | clears a `wall`, refused by a `wall_high` — and a crew that can leave a sealed base AND COME BACK | Blocked on § V0.3.  ⚠ **Promoted by V2**: it is what turns clearing a sealed kill zone from a one-way commitment into a decision |
 
 ### Why the order is this order
 
@@ -213,14 +259,14 @@ than a design claim.
    Blocks V4; wants measuring rather than picking, and settles the
    design's *"a damaged robot moves slower"* at the same time.
 2. **Does the vehicle collect a body, or clear a pile?** They are the
-   same hex and different mechanics: `height_clear` takes a pile away
-   (plan 12 B1 built it, with no caller) and loot is a value the pile
-   should have carried. `plans/12` § The rubble is the hill says
-   contents are an OPEN, MULTIPLE-per-hex axis and belong on plan 06
-   S1's stacked layer — which does not exist. *V3's job to settle;
-   recommendation: V3 credits a flat `loot_value` per body cleared and
-   does not model contents, so the stacked layer arrives later without
-   a migration.*
+   same hex and different mechanics: loot is a value the pile should
+   have carried. `plans/12` § The rubble is the hill says contents are
+   an OPEN, MULTIPLE-per-hex axis and belong on plan 06 S1's stacked
+   layer — which does not exist. *V3's job to settle;
+   recommendation: V3 credits a flat `loot_value` per METRE cleared —
+   V2 already returns the metres from `vehicle_salvage` and throws
+   them away — so the stacked layer arrives later without a
+   migration.*
 3. **What drives it in a `.keys` script?** A destination is
    pathfinding and § 11 says the player DRIVES. *Recommendation for
    V1: `drive <q> <r>` walks the straight `lat_line` and stops at the

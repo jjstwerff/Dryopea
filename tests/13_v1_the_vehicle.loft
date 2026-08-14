@@ -242,6 +242,13 @@ fn test_the_player_is_driven_and_never_routed() {
 // A pile under the hover clearance is not an obstacle; one over it is.
 // ⚠ Both directions, because a vehicle that ignored height entirely
 // would pass the first assertion on its own.
+//
+// ⚠ **Measured at ARRIVAL, and V2 is why.**  Since the vehicle clears
+// rubble it is beside, a pile that stops it is a pile it then eats
+// through — so "stopped" is only a statement about the tick it drives
+// up on.  Two ticks is 9 -> 7 -> 6, parked against the heap with no
+// time to have dug.  The digging is
+// `tests/13_v2_the_crew.loft`'s claim, not this file's.
 fn test_it_rides_a_shallow_pile_and_is_stopped_by_a_deep_one() {
     tir_pw = band();
 
@@ -249,17 +256,17 @@ fn test_it_rides_a_shallow_pile_and_is_stopped_by_a_deep_one() {
     height_raise(tir_low.heights, 5, 0, CLIMB_VEHICLE, as_u8(RUBBLE_WRECKAGE));
     vehicle_place(tir_low.player, 9, 0);
     vehicle_drive(tir_low.player, 0, 0);
-    play(tir_low, tir_pw, 20);
-    assert(tir_low.player.q == 0,
-           "a pile exactly at the clearance is drivable: it reached q = {tir_low.player.q}");
+    play(tir_low, tir_pw, 2);
+    assert(tir_low.player.q <= 5,
+           "a pile exactly at the clearance is driven straight over: q = {tir_low.player.q}");
 
     tir_high = wave_state_empty();
     height_raise(tir_high.heights, 5, 0, CLIMB_VEHICLE + 0.1, as_u8(RUBBLE_WRECKAGE));
     vehicle_place(tir_high.player, 9, 0);
     vehicle_drive(tir_high.player, 0, 0);
-    play(tir_high, tir_pw, 20);
+    play(tir_high, tir_pw, 2);
     assert(tir_high.player.q == 6,
-           "a hand's breadth more stops it: it reached q = {tir_high.player.q}");
+           "a hand's breadth more stops it where it stands: q = {tir_high.player.q}");
 }
 
 // ─────────────────────────────────────────────────────────────────
