@@ -181,14 +181,14 @@ that was already written:
   yourself is taking a gem, and taking a gem wakes elementals.  So the
   act that denies the swarm its bosses is the act that wakes the enemy
   the player has no answer to.
-- ⚠ **And it may be what wakes an old one.**  `SETTING.md` § What wakes
-  an old one is OPEN records the candidate: sustained deep-crust
-  extraction is disturbance of exactly the substrate elementals answer
-  to, so the swarm's hunger for boss cores could be what eventually
-  wakes something able to COMMAND tier 3.  Recorded as a suggestion for
-  the owner, not a decision — but if it is the story, the planet has
-  one irony twice over: the swarm kills the forest to reach crystal,
-  and reaching crystal wakes the one thing no faction can handle.
+- ⚠ **And it is what makes an old one STIR.**  `SETTING.md` § The old
+  ones are a Lovecraft reference: sustained deep-crust extraction
+  disturbs exactly the substrate elementals answer to, so the swarm
+  supplies the *looming* — signs accumulating with no player involved.
+  ⚠ **Stirring is not waking**: an old one is end-game, world-scale,
+  many-players content and a solo sortie must be unable to reach it at
+  all.  The robots have been digging toward it for years; players are
+  what finally reaches it.
 - **It is the sap rule, one tier up.**  `DESIGN.md` § Scouting's *every
   reward has its own pressure* was a list of two entries (sap → insects,
   gems → elementals); crystal makes the second entry **strategic** rather

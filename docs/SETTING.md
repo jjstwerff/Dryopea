@@ -597,6 +597,63 @@ far from its stone, which is exactly the constraint that keeps them a
 does not add a new creature or a new stat: it **deletes the geography**
 that made the tier survivable, using only rules that already exist.
 
+### ⚠⚠ The old ones are a Lovecraft reference — and that sets the rules
+
+Owner, 2026-08-14: *"the old ones are a reference to the Cthulhu Mythos
+of HP Lovecraft and are thus a looming danger but clearly end-game
+territory when many players act together."*
+
+**Naming the register is a design instruction, not flavour.**  Four
+things follow from it, and each is a constraint on what may be built:
+
+- **Indifference, not malice.**  A Mythos entity does not hate you; you
+  are beneath its notice.  ⚠ That is the *completion* of § Nobody in
+  this world is attacking anybody — the old one is the ultimate case,
+  a thing so far above the three factions that their whole conflict is
+  not visible to it.  It gives the elementals orders the way weather
+  gives a river a direction.
+- **It explains what an elemental IS.**  *"They lack a clear drive"* is
+  a servitor race without a master — powerful, ancient, purposeless
+  until something wakes that can want on their behalf.
+- **The horror is the EVIDENCE, not the encounter.**  Mythos dread is
+  built from signs: anomalies, wrong geometry, things that should not
+  be where they are.  ⚠ dryopea is already built for this — § No wave
+  HUD's *diegetic principle applied uncompromisingly* is the same
+  discipline, and it means the old ones should be **present in the
+  world as hints for a very long time before they are ever a
+  mechanic**.
+- **Knowing is itself dangerous**, which is exactly § Future contact's
+  no-shortcut rule and the reason that section gates deep content
+  behind demonstrated competence rather than progress.
+
+**LOOMING is the operative word.**  For nearly the whole life of the
+game an old one is *not an encounter*.  It is a pressure on the
+horizon — in the signs a scout brings back, in what the deepest shafts
+open onto, in what the elementals do when nothing should have moved
+them.
+
+### ⚠ End-game, and it takes MANY PLAYERS
+
+*"Clearly end-game territory when many players act together."*  Two
+hard rules fall out, and both protect the rest of the game:
+
+1. **A single player can never wake one.**  Not as a punishment for
+   over-reaching, not as a hidden consequence of a bad run.  A solo
+   sortie must be unable to reach it at all — otherwise the looming
+   danger becomes an ordinary accident and stops looming.
+2. **It is a WORLD event, not a mission event.**  It belongs to the
+   persistent planet (`ROADMAP` Tier E § Multi-player disruption
+   missions, `DESIGN.md` § Future expansion) rather than to a base, a
+   sortie or a wave list.
+
+⚠ **This resolves the crystal-mining question below.**  The swarm's
+deep-crust extraction is what makes an old one *stir* — the slow,
+ambient, entirely non-player approach of the danger, which is the
+looming part and which the world generates on its own.  But **stirring
+is not waking**: the tipping act is coordinated players.  So the
+robots have been digging toward it for years, and the players are what
+finally reaches it.
+
 ### ⚠ What wakes an old one is OPEN
 
 *"Very special occasions"* is deliberately not a trigger list, and this
@@ -605,16 +662,17 @@ robot and insect ladders are things ordinary play accumulates, and this
 is not.  It belongs with the rare, authored, narrative-weight events of
 § Future contact rather than with per-mission pressure.
 
-⚠ **One candidate is worth recording because the world already
-generates it**, as a suggestion and not a decision: the swarm's
-**crystal mining** is sustained, deep-crust disturbance of exactly the
-substrate elementals answer to
-([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 1a).  If the robots' hunger
-for boss cores is what eventually wakes something that can command the
-elementals, then the planet has the same irony twice: the swarm kills
-the forest to get crystal, and digging the crystal wakes the one thing
-none of the three factions can handle.  Whether that is the story is
-the owner's call.
+⚠ **The swarm's crystal mining is the STIRRING, not the waking** — see
+§ End-game, and it takes MANY PLAYERS.  Sustained deep-crust extraction
+disturbs exactly the substrate elementals answer to
+([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 1a), so the robots supply the
+looming: the signs accumulate on their own, with no player involved,
+which is what makes the dread ambient rather than earned.  What tips it
+is coordinated players, and that half is undesigned.
+
+So the planet carries the same irony twice over: the swarm kills the
+forest to reach crystal, and reaching crystal is what has been waking
+something none of the three factions could handle.
 
 ### ⚠ And it closes the tree life-cycle loop
 

@@ -197,6 +197,7 @@ for the no-shortcut design rule.
 | Player-faction alignment | drafted | SETTING § Future contact | Ally with one AI vs another |
 | Off-planet meta — orbital banking, vendors | sketch | DESIGN § 13 Future expansion | Shop at the station hub |
 | Multi-player disruption missions | sketch | SETTING § How mechanics fit | Coordinate against the AI economy |
+| **The old ones — world event** | sketch | [SETTING § The old ones are a Lovecraft reference](../docs/SETTING.md) | Mythos-register looming danger; wakes only through COORDINATED MANY-PLAYER action, never a solo sortie.  ⚠ Its escalation is COMMAND for tier 3, not units — nothing gets stronger, the elementals simply start wanting something.  Present as signs long before it is a mechanic |
 
 Likely candidate for `plan 11 — Future contact arcs`, but this
 tier is **deferred** by design — it's the cap on the skill
