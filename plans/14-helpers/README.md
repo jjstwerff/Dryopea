@@ -9,8 +9,19 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**H0 + H1 + H2 shipped** (2026-08-14). H3 is next, and is blocked on a
-carry model.
+**H0 + H1 + H2 + H3 shipped** (2026-08-14). H4 is next and is blocked
+on a carry model, which is bigger than this plan — see § Why the order
+is this order.
+
+**H3 made a helper losable.** The blocker rule now covers the whole
+player's side through one per-tick map, each blocker is charged for the
+enemies it stopped, and a helper that runs out of HP **wrecks where it
+stood**. Suite **864 green**.
+
+⚠ **It is the one rule where a helper is not the player.** The player
+is destroyed and reappears at the core whole; a crew member is gone
+until somebody carries it home, and nobody can yet. The two lines sit
+next to each other in `wave_tick` on purpose.
 
 **H2 put the crew to work, and it added no mechanic to do it.**
 Clearing already existed (plan 13 V2 + V3), so H2 extracted it onto the
@@ -220,6 +231,57 @@ not boost, and cannot be hurt in the world (`helper_hurt` exists and
 in, and one outside is still locked out — the one-way commitment plan 13
 V2 recorded, now with NPCs making it.
 
+## H3 — a helper can be lost (2026-08-14)
+
+### ⚠ 1. "Who is standing here" became a MAP, and deleting the old
+### question was half the phase
+
+Plan 13 V5 asked `vehicle_on(player, …)` at three sites, because the
+player was the only thing that could be in the way. A roster breaks
+that in two places at once: the mover has to refuse a step onto ANY
+vehicle (or an enemy walks straight through an NPC), and the damage has
+to land on the one actually blocking (or a crew of six shares one
+health bar).
+
+So `occupancy.loft` grew a second map — `BlockerMap`, built once a tick
+by `wave_blockers`, beside the occupancy it already builds — and it
+answers **who**, not "is anybody there". ⚠ `vehicle_on` was then
+**deleted**: leaving it would be a second door onto one question, and
+the one a future caller reaches for, because it needs no map.
+
+⚠ **A second map rather than a second count**, and the asymmetry is the
+reason: an enemy steps BESIDE a companion and ATTACKS a vehicle. One
+structure holding both would be read with a "but which kind?" at every
+call site.
+
+### ⚠ 2. A wreck does not block, and that is a decision
+
+`DESIGN.md` § 9 says the vehicle wrecks at its hex and nothing says
+whether it is still an obstacle. It is not — because the alternative is
+worse than it looks: an obstruction with no HP left, that every later
+wave stops against and attacks for ever. The first crew member to die in
+a corridor would be a free wall, and a player who noticed would station
+helpers to be killed on purpose.
+
+⚠ `alive` is the whole of the wreck. Every verb already asks it, so a
+downed helper stops driving, clearing, earning and blocking at once —
+and the roster slot is kept, which is what H4 needs to put a recovered
+crew member back.
+
+### 3. What it cost: nothing but the refactor
+
+The blocker map went in behaviour-preserving (the suite was green
+either side, plan 13 V5's player tests included), so the only new
+behaviour is the crew's. `numbers.json` gained nothing: the rate is the
+ENEMY's (`enemy_regular.damage_to_blocker`) and the HP is § helper's
+existing 50, which is ten seconds against the player's twenty.
+
+⚠ **The scripted layer cannot see a wreck yet.** No `.keys` verb reads
+a helper's health, so H3's gate is `tests/14_h3_the_wreck.loft` alone —
+the same shape plan 13 V5 shipped in. The trigger for adding one is a
+scenario that wants to assert a crew member was lost; `hull` is the
+precedent to copy.
+
 ## Invariant gate
 
 | Phase | Expected result | Invariant | Negative control |
@@ -227,7 +289,8 @@ V2 recorded, now with NPCs making it.
 | **H0** ✓ | the table above | the probe measures what a speed costs before anything banks it | — (H0 asserts arithmetic; H1 is its gate) |
 | **H1** ✓ | a helper covers 5 hexes every 3 ticks, forever | speed is a RATE and the remainder is BANKED, never dropped | a helper that covers 1 hex a tick has truncated (2.5 → 1.5 hex/s); one that covers 14 in 9 has no epsilon |
 | **H2** ✓ | two helpers clear a heap twice as fast as one; on a base, the second is worth 28 ticks on the OTHER front and 0 beside the first | a roster is N of the same thing, not a special case | a second helper that changes nothing is not in the tick — and it reads identically to one that shares a single bite, which is why the gate is a rate |
-| **H3** | a helper destroyed by blocking wrecks where it stood and does NOT respawn | retrieval is the only way back (§ 9) — unlike the player, who always returns | a helper that respawns at the core has been given the player's rule |
+| **H3** ✓ | a helper destroyed by blocking wrecks where it stood and does NOT respawn | retrieval is the only way back (§ 9) — unlike the player, who always returns | a helper that respawns at the core has been given the player's rule |
+| **H4** | a wreck can be carried home and its helper rejoins the roster | a carry is one SLOT and carrying is a cost, not an inventory | a helper that recovers without anyone fetching it has made retrieval optional |
 
 ## Phases
 
@@ -236,7 +299,8 @@ V2 recorded, now with NPCs making it.
 | **H0** — the probe: what a helper's speed costs | XS | the arithmetic above, measured against `numbers.json` | **Done** |
 | **H1** — a helper exists and moves at exactly 2.5 hex/s | S | `tests/14_h1_the_helper.loft` — 5 hexes every 3 ticks, and both wrong implementations are red | **Done** |
 | **H2** — a roster that works: helpers clear rubble | S | `tests/14_h2_the_roster.loft` — N helpers clear N times as fast, and three `.keys` scenarios that differ only in their crew lines read 77 / 214 / 242 | **Done** |
-| **H3** — wreck, retrieve, recover | M | a downed helper stays down until someone carries it home | Blocked on H1, and on a carry model |
+| **H3** — a helper can be LOST: blocker damage, wreck, no respawn | S | `tests/14_h3_the_wreck.loft` — the same corridor plan 13 V5 uses, and the player respawns where a helper does not | **Done** |
+| **H4** — retrieve + recover | M | a downed helper rejoins the roster only after someone carries it to the core | **Blocked on a carry model**, which is bigger than this plan |
 
 ### Why the order is this order
 
@@ -246,9 +310,24 @@ ungateable — the same argument plan 13 V1 made for the player.
 
 H2 before H3 because clearing is work that already exists
 (`vehicle_salvage`, plan 13 V2) and needs no new mechanic, so it
-tests the ROSTER rather than a new verb. H3 needs a carry model —
-§ Carry visibility says a downed helper is a carried object like loot
-or a tower-top — and that is a thing dryopea does not have at all.
+tests the ROSTER rather than a new verb.
+
+⚠ **H3 was cut in two after H2, and the seam was already in the
+plan.** The phase was written as *"wreck, retrieve, recover"* and
+blocked on a carry model — but its own invariant-gate row asks only
+that a wrecked helper **stays down**, which needs no carry at all.
+So H3 is the half that can be built and gated today (the roster takes
+blocker damage, a dead helper wrecks where it stood, and nothing
+brings it back), and H4 is retrieval.
+
+⚠ **And the carry model is bigger than this plan.** `DESIGN.md` § 11
+gives ONE pickup/drop key and § Carry visibility one universal rule
+for everything it moves: loot cubes, **tower-tops** (§ 7's whole
+repair and hot-swap arc), **beacons** (§ 7's new-tower order) and a
+downed helper. Building it inside plan 14 would either serve the
+helper case alone — a fifth mechanic wearing the carry's name — or
+quietly become the carry plan with a helpers title on it. H4 stays
+open until that plan exists.
 
 ## What this plan does NOT build
 
@@ -275,11 +354,13 @@ ordering respects; this plan just refuses to exceed the cap.
    is a *dispatcher*, and dispatchers are where NPC AI quietly becomes
    pathfinding for the player. *Recommendation: keep helpers passive
    and positional for as long as possible; make the player place them.*
-2. **Do helpers block enemies the way the player does?** § 8's blocker
-   exception names *"a player vehicle (or NPC helper)"*, so yes — and
-   plan 13 V5's rule is already written in terms of a single blocker.
-   *H3's job; it wants the predicate to take a roster rather than one
-   vehicle, which is a signature change and not a new rule.*
+2. **Do helpers block enemies the way the player does?** ⚠ **Answered
+   by H3: yes, and it was not a signature change.** The prediction was
+   that `enemy_blocked_by_player` would grow a roster parameter; what
+   it actually needed was for "who is standing on this hex" to stop
+   being a per-vehicle predicate and become a per-tick MAP — after
+   which the mover, the damage pass and the wreck rule all read one
+   thing and `vehicle_on` had no callers left.
 
 ## See also
 

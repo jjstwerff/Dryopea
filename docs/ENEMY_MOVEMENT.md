@@ -305,12 +305,23 @@ hex instead of waiting.  So enemies from different directions meet the
 perimeter at different hexes, AND a wave arriving down one approach
 fans out across the face rather than queueing at a point.
 
-⚠ **A PLAYER in the way is a third case, and it is attacked**
-(plan 13 V5).  A companion blocking a step is never a target; the
-player's vehicle blocking the *same* step is, but only where the enemy
-has no sidestep either — so in the open it walks round and the player
-is ignored, and in a chokepoint it is a liability.  `DESIGN.md` § 8
-§ Conditional damage.
+⚠ **A VEHICLE in the way is a third case, and it is attacked**
+(plan 13 V5).  A companion blocking a step is never a target; a vehicle
+blocking the *same* step is, but only where the enemy has no sidestep
+either — so in the open it walks round and the vehicle is ignored, and
+in a chokepoint it is a liability.  `DESIGN.md` § 8 § Conditional
+damage.
+
+⚠ **The whole crew, not just the player** (plan 14 H3).  Who is
+standing where on the player's side is one map — `occupancy.loft`'s
+`BlockerMap`, built once a tick beside the occupancy — and it answers
+WHICH vehicle, because the damage has to land on the one that is in the
+way.  Each blocker is charged for the enemies it stopped.  ⚠ And the
+two sides part company on death: the player reappears at the core
+whole, a helper **wrecks where it stood and stays there** (`DESIGN.md`
+§ 9: *"retrieval is the only way back"*).  ⚠ A wreck blocks nothing —
+otherwise the first crew member to die in a corridor would be a free
+wall with no HP left for anyone to break.
 
 ⚠ **A COMPANION, never the GROUND — the condition is the rule.**  An
 enemy stopped by the wall must STAND and attack: it is at what it came

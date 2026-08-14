@@ -97,6 +97,87 @@ pub fn occupancy_cells(o: const Occupancy) -> integer {
     len(o.cells)
 }
 
+// ─── The other map: who on the PLAYER's side is standing where ──
+//
+// Plan 14 phase H3.  The same question as `Occupancy` and a different
+// answer, so it is a second map rather than a second count in the
+// first one: an enemy that finds a COMPANION in its way steps beside
+// it and never attacks it, and one that finds a VEHICLE in its way
+// with no route round attacks that vehicle (`DESIGN.md` § 8's blocker
+// exception).  One structure holding both would have to be read with
+// a "but which kind?" at every call site.
+//
+// ⚠ **It answers WHO, not "is anybody there".**  Plan 13 V5 asked
+// `vehicle_on(player, …)` because there was exactly one thing it could
+// be; with a roster the damage has to land on the right vehicle, so
+// the map stores an id and `blocker_at` answers it.
+//
+// ⚠ **Ids, not indices**: `BLOCKER_PLAYER` is 0 and helper `i` is
+// `BLOCKER_CREW + i`, so `BLOCKER_NONE` can be -1 and an absent cell
+// answers it.  Zero is a real blocker here, which is why "nobody" is
+// negative rather than the neutral value the ledgers use.
+//
+// ⚠ **A hex holds ONE of them.**  Two vehicles cannot share a hex in
+// any scenario the game can author, and if a future one lets them, the
+// later `blocker_set` wins — deliberately the same one-per-hex
+// simplification `height.loft` makes for a pile's source.
+pub const BLOCKER_NONE:   integer = -1;
+pub const BLOCKER_PLAYER: integer = 0;
+pub const BLOCKER_CREW:   integer = 1;
+
+pub struct BlockerHex {
+    q:  integer,
+    r:  integer,
+    id: integer,
+}
+
+pub struct BlockerMap {
+    cells: hash<BlockerHex[q, r]>,
+}
+
+// Factory: nobody on the player's side is anywhere.  What a caller
+// ticking an enemy with no vehicles in the run passes.
+pub fn blocker_empty() -> BlockerMap {
+    BlockerMap { cells: [] }
+}
+
+// Put a blocker on (q, r).
+pub fn blocker_set(b: BlockerMap, q: integer, r: integer, id: integer) {
+    bs_c = b.cells[q, r];
+    if bs_c == null {
+        b.cells[q, r] = BlockerHex { q: q, r: r, id: id };
+    } else {
+        bs_c.id = id;
+    }
+}
+
+// Who is standing on (q, r)?  `BLOCKER_NONE` when nobody is.
+pub fn blocker_at(b: const BlockerMap, q: integer, r: integer) -> integer {
+    ba_c = b.cells[q, r];
+    if ba_c == null { return BLOCKER_NONE; }
+    ba_c.id
+}
+
+// Is anybody on the player's side standing on (q, r)?
+pub fn blocker_taken(b: const BlockerMap, q: integer, r: integer) -> boolean {
+    blocker_at(b, q, r) != BLOCKER_NONE
+}
+
+// How many blockers are in the world.
+pub fn blocker_count(b: const BlockerMap) -> integer {
+    len(b.cells)
+}
+
+// The crew index an id names, or -1 when it is not a helper.
+//
+// A named door rather than a `- 1` at every reader, because an id and
+// an index differing by one is exactly the kind of arithmetic that
+// eventually damages the wrong crew member.
+pub fn blocker_crew_index(id: integer) -> integer {
+    if id < BLOCKER_CREW { return -1; }
+    id - BLOCKER_CREW
+}
+
 // The first hex holding more than one enemy, or null-ish (n == 0) when
 // nobody is stacked.
 //

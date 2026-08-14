@@ -375,7 +375,7 @@ pub fn spawn_wave(
 // the routing round it is F5.
 pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
                   hl: const HeightLayer, f: const FlowField, desire: const FlowField,
-                  occ: Occupancy, blocker: const Vehicle) {
+                  occ: Occupancy, blockers: const BlockerMap) {
     if !e.alive { return; }
 
     // ── Which mode? The bubble decides (plan 11 F5b) ─────────────
@@ -424,12 +424,16 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
     if et_d < FLOW_UNREACHABLE {
         for et_t in flow_steps(f, e.q, e.r) {
             if occupancy_taken(occ, et_t.q, et_t.r) { continue; }
-            // ⚠ The player blocks a step exactly as a companion does
+            // ⚠ A vehicle blocks a step exactly as a companion does
             // (plan 13 V5).  What differs is the CONSEQUENCE, not the
             // movement: `wave_block` charges an enemy that has no way
             // round, and a companion is never attacked for the same
             // obstruction.
-            if vehicle_on(blocker, et_t.q, et_t.r) { continue; }
+            // ⚠ Since plan 14 H3 that is the whole crew and not just
+            // the player — one map, so an enemy cannot walk through an
+            // NPC it would have been stopped by if the player were
+            // driving it.
+            if blocker_taken(blockers, et_t.q, et_t.r) { continue; }
             enemy_move_to(e, et_t.q, et_t.r, occ);
             return;
         }
@@ -440,7 +444,7 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
         // exactly what the spec asks for.
         for et_s in flow_sidesteps(f, e.q, e.r) {
             if occupancy_taken(occ, et_s.q, et_s.r) { continue; }
-            if vehicle_on(blocker, et_s.q, et_s.r) { continue; }
+            if blocker_taken(blockers, et_s.q, et_s.r) { continue; }
             enemy_move_to(e, et_s.q, et_s.r, occ);
             return;
         }
@@ -884,6 +888,35 @@ pub fn wave_occupancy(state: const WaveState) -> Occupancy {
     wo_o
 }
 
+// Where everybody on the PLAYER's side stands right now (plan 14 H3).
+//
+// The sibling of `wave_occupancy`, built at the same moment and for
+// the same reason — and a second map rather than a second count,
+// because an enemy treats the two differently: it steps beside a
+// companion and it attacks a vehicle (`occupancy.loft` § The other
+// map).
+//
+// ⚠ **A WRECK is not a blocker.**  A downed helper is scenery until
+// somebody carries it home (H4), so it does not stop an enemy and
+// cannot be attacked again — otherwise the first crew member to die in
+// a corridor would become a permanent obstruction that every later
+// wave stops to hit, which is a wall the player built by accident.
+// ⚠ It is also the reason this map is rebuilt each tick rather than
+// kept: the roster's contents are the same, and which of them COUNT
+// changes.
+pub fn wave_blockers(state: const WaveState) -> BlockerMap {
+    wb_b = blocker_empty();
+    if vehicle_present(state.player) {
+        blocker_set(wb_b, state.player.q, state.player.r, BLOCKER_PLAYER);
+    }
+    wb_i = 0;
+    for wb_h in state.crew {
+        if wb_h.alive { blocker_set(wb_b, wb_h.q, wb_h.r, BLOCKER_CREW + wb_i); }
+        wb_i += 1;
+    }
+    wb_b
+}
+
 // Which enemy a tower at `at` fires on — a roster index, or `-1` for
 // nothing it can reach AND see.
 //
@@ -1117,23 +1150,32 @@ fn wave_nibble(state: WaveState, core: const Hex) -> integer {
 // (`occupancy.loft`: *"a companion blocks a step and is never attacked
 // for it"*).  That asymmetry is the design's, not an oversight: robots
 // ignore each other and attack the thing that does not belong.
-fn enemy_blocked_by_player(e: const Enemy, f: const FlowField,
-                           occ: const Occupancy, v: const Vehicle) -> boolean {
-    if !e.alive { return false; }
-    if !v.parked { return false; }
+// ⚠ **It answers WHICH vehicle, because a roster can have several in
+// the way** (plan 14 H3).  The one attacked is the blocker on the
+// BEST step — the hex the enemy wanted first — which is the only
+// choice that reads as "it hits what it is facing" and the only one
+// that keeps a scripted run repeatable.  `BLOCKER_NONE` for an enemy
+// that is not blocked by anyone.
+fn enemy_blocked_by(e: const Enemy, f: const FlowField,
+                    occ: const Occupancy, b: const BlockerMap) -> integer {
+    if !e.alive { return BLOCKER_NONE; }
 
-    ebp_saw = false;
+    ebp_hit = BLOCKER_NONE;
     for ebp_t in flow_steps(f, e.q, e.r) {
-        if vehicle_on(v, ebp_t.q, ebp_t.r) { ebp_saw = true; continue; }
-        if !occupancy_taken(occ, ebp_t.q, ebp_t.r) { return false; }
+        ebp_id = blocker_at(b, ebp_t.q, ebp_t.r);
+        if ebp_id != BLOCKER_NONE {
+            if ebp_hit == BLOCKER_NONE { ebp_hit = ebp_id; }
+            continue;
+        }
+        if !occupancy_taken(occ, ebp_t.q, ebp_t.r) { return BLOCKER_NONE; }
     }
-    if !ebp_saw { return false; }
+    if ebp_hit == BLOCKER_NONE { return BLOCKER_NONE; }
 
     for ebp_s in flow_sidesteps(f, e.q, e.r) {
-        if vehicle_on(v, ebp_s.q, ebp_s.r) { continue; }
-        if !occupancy_taken(occ, ebp_s.q, ebp_s.r) { return false; }
+        if blocker_taken(b, ebp_s.q, ebp_s.r) { continue; }
+        if !occupancy_taken(occ, ebp_s.q, ebp_s.r) { return BLOCKER_NONE; }
     }
-    true
+    ebp_hit
 }
 
 // Spend a tick of blocker damage on the player, and answer how many
@@ -1143,8 +1185,19 @@ fn enemy_blocked_by_player(e: const Enemy, f: const FlowField,
 // world, so all three halves of the exchange are spent against the
 // same tick — and the respawn a fatal blow causes lands at the END
 // with the deaths and the breaks.
+// ⚠ **Tallied per BLOCKER, then spent once each** (plan 14 H3).  The
+// rate is *per attacker*, so two enemies stopped by one helper cost it
+// twice as much and two enemies stopped by two different helpers cost
+// each of them once — which is the same sentence plan 13 V5 wrote when
+// the player was the only thing that could be hit.
+//
+// ⚠ The tally is a vector indexed by ID and not a lookup per enemy,
+// because the roster is at most seven long and the enemies are not.
 fn wave_block(state: WaveState, fields: const vector<ClassField>,
-              occ: const Occupancy) -> integer {
+              occ: const Occupancy, blockers: const BlockerMap) -> integer {
+    wb_hits: vector<integer> = [];
+    for _ in 0..(BLOCKER_CREW + len(state.crew)) { wb_hits += [0]; }
+
     wb_n = 0;
     for wb_e in state.enemies {
         wb_climb = climb_limit(wb_e.kind);
@@ -1153,15 +1206,26 @@ fn wave_block(state: WaveState, fields: const vector<ClassField>,
                 // ⚠ The field goes STRAIGHT into a `const` parameter —
                 // binding it to a local copies the whole cell hash
                 // (plan 11 F8).
-                if enemy_blocked_by_player(wb_e, wb_cf.field, occ, state.player) {
+                wb_id = enemy_blocked_by(wb_e, wb_cf.field, occ, blockers);
+                if wb_id != BLOCKER_NONE && wb_id < len(wb_hits) {
+                    wb_hits[wb_id] = (wb_hits[wb_id] ?? 0) + 1;
                     wb_n += 1;
                 }
             }
         }
     }
-    if wb_n > 0 {
-        vehicle_hurt(state.player,
-                     per_tick(ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND) * (wb_n as float));
+    if wb_n == 0 { return 0; }
+
+    wb_rate = per_tick(ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND);
+    wb_player = wb_hits[BLOCKER_PLAYER] ?? 0;
+    if wb_player > 0 {
+        vehicle_hurt(state.player, wb_rate * (wb_player as float));
+    }
+    wb_c = 0;
+    for wb_h in state.crew {
+        wb_took = wb_hits[BLOCKER_CREW + wb_c] ?? 0;
+        if wb_took > 0 { helper_hurt(wb_h, wb_rate * (wb_took as float)); }
+        wb_c += 1;
     }
     wb_n
 }
@@ -1245,6 +1309,7 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wt_fields = wave_fields(state, pal, pw, core);
     wt_desire = wave_desire(state, wt_fields, pal, pw, core);
     wt_occ    = wave_occupancy(state);
+    wt_block  = wave_blockers(state);
 
     // Every half of the exchange lands against the world the tick
     // STARTED with — towers shoot at where the enemies are now,
@@ -1253,7 +1318,7 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wave_fire(state, pal, pw, mw);
     wave_damage(state, pal, pw, wt_fields, wt_desire);
     wave_nibble(state, core);
-    wave_block(state, wt_fields, wt_occ);
+    wave_block(state, wt_fields, wt_occ, wt_block);
 
 
     for wt_i in move_order(state, wt_fields) {
@@ -1266,7 +1331,7 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         for wt_cf in wt_fields {
             if wt_cf.climb == wt_climb {
                 enemy_tick(wt_e, pal, pw, state.heights, wt_cf.field, wt_desire,
-                           wt_occ, state.player);
+                           wt_occ, wt_block);
             }
         }
     }
@@ -1347,6 +1412,20 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // tick it was struck in, exactly as a death and a breach do.
     if vehicle_present(state.player) && vehicle_hp(state.player) <= 0.0 {
         vehicle_respawn(state.player, core);
+    }
+
+    // ⚠ **And a helper does NOT come back** (plan 14 H3).  `DESIGN.md`
+    // § 9: *"No automatic respawn — retrieval is the only way back."*
+    // The two lines sit together on purpose: this is the one rule where
+    // the crew is not the player's chassis doing the player's job, and
+    // a reader who changes one has to see the other.
+    //
+    // ⚠ The wreck keeps its ROSTER SLOT and its hex.  `state.crew` is
+    // never compacted, so helper 2 is helper 2 for the whole run — which
+    // is what lets a script name it after it has died, and what H4's
+    // retrieval will need to put a recovered crew member back.
+    for wt_w in state.crew {
+        if wt_w.alive && helper_hp(wt_w) <= 0.0 { helper_wreck(wt_w); }
     }
 }
 

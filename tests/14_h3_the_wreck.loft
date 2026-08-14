@@ -1,0 +1,382 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 14 phase H3 — a helper can be LOST.
+//
+// ── The one rule where a helper is not the player ───────────────
+//
+// Everything plan 14 has built so far says the crew is the player's
+// chassis doing the player's job: it drives the same way (H1), it
+// clears the same way and earns into the same wallet (H2), and
+// `a-crew-that-clears-up.keys` reads the same number whoever is
+// driving.  This phase is the exception, and `DESIGN.md` § 9 states
+// it in four words: **"No automatic respawn — retrieval is the only
+// way back."**
+//
+// The player is destroyed and reappears inside the core, whole, on the
+// same tick (plan 13 V5).  A helper wrecks where it stood and stays
+// there.  So the SAME corridor, ticked the SAME number of times, has
+// to give two different answers depending on which vehicle is in it —
+// and that pair is this file's gate.
+//
+// ── ⚠ What a wreck is, and what it deliberately is not ──────────
+//
+// `alive` is the whole of it.  A wreck does not move, does not clear,
+// does not earn — every verb already asks — and it does NOT BLOCK.
+// That last one is a decision rather than an omission: a wreck that
+// went on blocking would be an obstruction with no HP left, which
+// every later wave would stop against and attack for ever.  The first
+// crew member to die in a corridor would become a free wall, and a
+// player who worked that out would station helpers to be killed on
+// purpose.
+//
+// ⚠ **And the slot is kept.**  `state.crew` is never compacted, so
+// helper 2 is helper 2 for the rest of the run — which is what lets a
+// script name a wreck, and what H4's retrieval will need to put a
+// recovered crew member back.
+//
+// ── What H3 does NOT build ──────────────────────────────────────
+//
+// Retrieval and recovery (H4, blocked on a carry model), the phase-3
+// boss's consequences (there is no boss), and any change to what a
+// wreck looks like — `PROXY_ART.md` § Helper § Damage describes a
+// damaged silver-grey cuboid and nothing renders helpers at all yet.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8, alive: true }
+}
+
+// A one-hex corridor: nowhere to go round, so a vehicle in it is a
+// blocker.  The same shape plan 13 V5 uses, for the same reason.
+fn corridor() -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in -3..=16 { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+// Five rows: an enemy can always step beside, so nobody is blocked.
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=16 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// ⚠ **READ through this and never WRITE through it.**  A struct
+// returned from a function is a COPY, so `helper_wreck(crew_of(s, 0))`
+// lands nowhere and reads back as a helper that shrugged off its own
+// death (`CLAUDE.md` § loft#894).  Every mutation below indexes the
+// vector inline, and this file cost that lesson once more to learn it.
+fn crew_of(state: WaveState, i: integer) -> Helper {
+    state.crew[i] ?? Helper { }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The roster is in the blocker rule now
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The rule is the MAP's, not the player's** — an enemy with room
+// to pass ignores an NPC exactly as it ignores the player (plan 13 V5's
+// negative control, asked of a helper).
+fn test_in_the_open_a_helper_is_ignored() {
+    tio_pw = band();
+    tio_s  = wave_state_empty();
+    tio_s.enemies += [robot(8, 0)];
+    tio_s.crew    += [helper_new(6, 0)];        // squarely on its route
+
+    play(tio_s, tio_pw, 12);
+
+    tio_h = crew_of(tio_s, 0);
+    assert(helper_hp(tio_h) == HELPER_HP, "untouched: {helper_hp(tio_h)} HP");
+    assert(tio_h.alive, "and still in the world");
+
+    tio_e = tio_s.enemies[0] ?? Enemy { };
+    assert(tio_e.q == 0 && tio_e.r == 0,
+           "the enemy walked round and got home: ({tio_e.q}, {tio_e.r})");
+}
+
+// ⚠ It went round rather than THROUGH.  Before H3 the mover asked
+// `vehicle_on(player, …)` and nothing else, so an enemy walked straight
+// over an NPC — which would have made every helper in a corridor safe
+// for the wrong reason.
+fn test_an_enemy_never_walks_through_a_helper() {
+    tan_pw = band();
+    tan_s  = wave_state_empty();
+    tan_s.enemies += [robot(8, 0)];
+    tan_s.crew    += [helper_new(6, 0)];
+
+    tan_pal = pal();
+    for _ in 0..12 {
+        wave_tick(tan_s, tan_pal, tan_pw, marker_empty(), core());
+        tan_e = tan_s.enemies[0] ?? Enemy { };
+        assert(!(tan_e.q == 6 && tan_e.r == 0),
+               "it stood on the helper at ({tan_e.q}, {tan_e.r})");
+    }
+}
+
+// In a chokepoint an NPC is the same liability the player is.
+fn test_in_a_corridor_a_helper_pays() {
+    tic_pw = corridor();
+    tic_s  = wave_state_empty();
+    tic_s.enemies += [robot(8, 0)];
+    tic_s.crew    += [helper_new(6, 0)];
+
+    play(tic_s, tic_pw, 3);
+
+    assert(helper_hp(crew_of(tic_s, 0)) < HELPER_HP,
+           "the helper is taking damage: {helper_hp(crew_of(tic_s, 0))} HP");
+    tic_e = tic_s.enemies[0] ?? Enemy { };
+    assert(tic_e.q == 7, "and the enemy is stopped against it: ({tic_e.q}, {tic_e.r})");
+}
+
+// ⚠ The rate is the blocker rate and it is per ATTACKER — one number
+// for the whole player's side, because it is a property of the ENEMY
+// (`numbers.json` § enemy_regular.damage_to_blocker).
+fn test_the_rate_is_the_same_five_hp_a_second() {
+    ttr_pw = corridor();
+    ttr_s  = wave_state_empty();
+    ttr_s.enemies += [robot(7, 0)];
+    ttr_s.crew    += [helper_new(6, 0)];
+
+    play(ttr_s, ttr_pw, 1);
+
+    ttr_want = HELPER_HP - ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND * TICK_SECONDS;
+    ttr_have = helper_hp(crew_of(ttr_s, 0));
+    assert(ttr_have > ttr_want - 0.0001 && ttr_have < ttr_want + 0.0001,
+           "one tick of one attacker: {ttr_have}, wanted {ttr_want}");
+}
+
+// ⚠ **Each blocker is charged for the enemies IT stopped.**  Two
+// helpers, one behind the other in a corridor, with one enemy against
+// each: both take exactly one attacker's worth, and the damage does not
+// pool.  This is what a roster made possible to get wrong — one tally
+// for the whole crew reads identically with one helper in the world.
+fn test_each_blocker_is_charged_for_its_own_attackers() {
+    teb_pw = corridor();
+    teb_s  = wave_state_empty();
+    teb_s.enemies += [robot(7, 0)];
+    teb_s.enemies += [robot(9, 0)];
+    teb_s.crew    += [helper_new(6, 0)];
+    teb_s.crew    += [helper_new(8, 0)];
+
+    play(teb_s, teb_pw, 1);
+
+    teb_want = HELPER_HP - ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND * TICK_SECONDS;
+    for teb_i in 0..2 {
+        teb_have = helper_hp(crew_of(teb_s, teb_i));
+        assert(teb_have > teb_want - 0.0001 && teb_have < teb_want + 0.0001,
+               "helper {teb_i} took one attacker's worth: {teb_have}, wanted {teb_want}");
+    }
+}
+
+// ⚠ And the PLAYER is one of them: a crew member behind the player in
+// the same corridor is not charged for what the player is blocking.
+fn test_the_player_and_the_crew_are_charged_apart() {
+    tpc_pw = corridor();
+    tpc_s  = wave_state_empty();
+    tpc_s.enemies += [robot(7, 0)];
+    vehicle_place(tpc_s.player, 6, 0);
+    tpc_s.crew += [helper_new(5, 0)];
+
+    play(tpc_s, tpc_pw, 3);
+
+    assert(vehicle_hp(tpc_s.player) < VEHICLE_HP_BLOCKER,
+           "the player is in the way and pays: {vehicle_hp(tpc_s.player)}");
+    assert(helper_hp(crew_of(tpc_s, 0)) == HELPER_HP,
+           "the helper behind it is untouched: {helper_hp(crew_of(tpc_s, 0))}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The wreck — and the phase in one pair of assertions
+// ─────────────────────────────────────────────────────────────────
+
+// `numbers.json` § helper.hp is 50 and the blocker rate is 5 HP/s, so a
+// helper alone in a corridor lasts ten seconds — half the player's
+// twenty, which is the same ratio their HP figures are in.
+fn test_a_blocking_helper_wrecks_on_a_ten_second_clock() {
+    tab_pw = corridor();
+    tab_s  = wave_state_empty();
+    tab_s.enemies += [robot(7, 0)];
+    tab_s.crew    += [helper_new(6, 0)];
+
+    tab_ticks = 0;
+    tab_pal   = pal();
+    for _ in 0..40 {
+        if helper_wrecked(crew_of(tab_s, 0)) { continue; }
+        wave_tick(tab_s, tab_pal, tab_pw, marker_empty(), core());
+        tab_ticks += 1;
+    }
+
+    tab_want = HELPER_HP / ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND;
+    tab_took = (tab_ticks as float) * TICK_SECONDS;
+    assert(tab_took > tab_want - 0.7 && tab_took < tab_want + 0.7,
+           "it lasted {tab_took} s of a wanted {tab_want}");
+}
+
+// ⚠⚠ **The phase.**  The wreck stays where it stood, keeps its roster
+// slot, and nothing brings it back — ticked twenty times past its
+// death, it is still down and still there.
+fn test_a_wrecked_helper_stays_down_where_it_stood() {
+    taw_pw = corridor();
+    taw_s  = wave_state_empty();
+    taw_s.enemies += [robot(7, 0)];
+    taw_s.crew    += [helper_new(6, 0)];
+
+    play(taw_s, taw_pw, 40);
+
+    taw_h = crew_of(taw_s, 0);
+    assert(helper_wrecked(taw_h), "it is down: {helper_hp(taw_h)} HP");
+    assert(taw_h.q == 6 && taw_h.r == 0,
+           "it wrecked where it stood: ({taw_h.q}, {taw_h.r})");
+    assert(len(taw_s.crew) == 1, "and it still holds its roster slot");
+    assert(!(taw_h.q == core().q && taw_h.r == core().r),
+           "nothing carried it home");
+}
+
+// ⚠ **The negative control, and it is the player.**  The same corridor,
+// the same attacker, the same forty ticks — and the player is at the
+// CORE, whole, because `DESIGN.md` § 8 says vehicle death is never a
+// game-loss.  A helper given that rule would pass every other assertion
+// in this file.
+fn test_the_player_in_the_same_corridor_comes_back()  {
+    tpi_pw = corridor();
+    tpi_s  = wave_state_empty();
+    tpi_s.enemies += [robot(7, 0)];
+    vehicle_place(tpi_s.player, 6, 0);
+
+    play(tpi_s, tpi_pw, 40);
+
+    assert(vehicle_present(tpi_s.player), "the player is in the world");
+    assert(tpi_s.player.q == core().q && tpi_s.player.r == core().r,
+           "back at the core: ({tpi_s.player.q}, {tpi_s.player.r})");
+    assert(vehicle_hp(tpi_s.player) > 0.0,
+           "and whole again: {vehicle_hp(tpi_s.player)} HP");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What a wreck stops doing
+// ─────────────────────────────────────────────────────────────────
+
+// It stops working: `helper_salvage` already asked, and this is the
+// assertion that says the tick agrees.
+fn test_a_wreck_clears_nothing() {
+    twc_pw = band();
+    twc_s  = wave_state_empty();
+    height_raise(twc_s.heights, 6, 0, 4.0, as_u8(RUBBLE_WRECKAGE));
+    twc_s.crew += [helper_new(7, 0)];
+
+    play(twc_s, twc_pw, 2);
+    twc_mid = height_rise(twc_s.heights, 6, 0);
+    assert(twc_mid < 4.0, "a live helper was clearing: {twc_mid}");
+
+    helper_wreck(twc_s.crew[0] ?? Helper { });
+    play(twc_s, twc_pw, 6);
+
+    assert(height_rise(twc_s.heights, 6, 0) == twc_mid,
+           "and a wreck cleared nothing more: {height_rise(twc_s.heights, 6, 0)}");
+    assert(wallet_left(twc_s.wallet) > WALLET_STARTING_POINTS,
+           "what it earned while alive is kept: {wallet_left(twc_s.wallet)}");
+}
+
+// It stops driving, even when it was pointed somewhere.
+fn test_a_wreck_does_not_drive() {
+    twd_pw = corridor();
+    twd_s  = wave_state_empty();
+    twd_s.crew += [helper_new(10, 0)];
+    helper_drive(twd_s.crew[0] ?? Helper { }, 0, 0);
+
+    play(twd_s, twd_pw, 2);
+    twd_moved = crew_of(twd_s, 0).q;
+    assert(twd_moved < 10, "it was on its way: q = {twd_moved}");
+
+    helper_wreck(twd_s.crew[0] ?? Helper { });
+    play(twd_s, twd_pw, 10);
+
+    assert(crew_of(twd_s, 0).q == twd_moved,
+           "and it stopped where it died: q = {crew_of(twd_s, 0).q}");
+}
+
+// ⚠ **And it stops BLOCKING** — the decision § What a wreck is names.
+// An enemy walks over the hex a wreck lies on, so a dead crew member
+// cannot be farmed into a free wall.
+fn test_a_wreck_is_not_a_wall() {
+    twn_pw = corridor();
+    twn_s  = wave_state_empty();
+    twn_s.enemies += [robot(8, 0)];
+    twn_s.crew    += [helper_new(6, 0)];
+    helper_wreck(twn_s.crew[0] ?? Helper { });
+
+    play(twn_s, twn_pw, 12);
+
+    twn_e = twn_s.enemies[0] ?? Enemy { };
+    assert(twn_e.q == 0 && twn_e.r == 0,
+           "the enemy walked over the wreck and got home: ({twn_e.q}, {twn_e.r})");
+    assert(helper_hp(crew_of(twn_s, 0)) == HELPER_HP,
+           "and never attacked it: {helper_hp(crew_of(twn_s, 0))} HP");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The map the rule is built on
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_blocker_map_names_who_is_standing_there() {
+    tbm_s = wave_state_empty();
+    vehicle_place(tbm_s.player, 4, 0);
+    tbm_s.crew += [helper_new(5, 0)];
+    tbm_s.crew += [helper_new(6, 0)];
+
+    tbm_b = wave_blockers(tbm_s);
+
+    assert(blocker_at(tbm_b, 4, 0) == BLOCKER_PLAYER, "the player is at (4, 0)");
+    assert(blocker_crew_index(blocker_at(tbm_b, 5, 0)) == 0, "helper 0 is at (5, 0)");
+    assert(blocker_crew_index(blocker_at(tbm_b, 6, 0)) == 1, "helper 1 is at (6, 0)");
+    assert(blocker_at(tbm_b, 9, 0) == BLOCKER_NONE, "and nobody is at (9, 0)");
+    assert(blocker_count(tbm_b) == 3, "three of them: {blocker_count(tbm_b)}");
+}
+
+// ⚠ A run with no vehicles has an EMPTY map rather than one holding a
+// parked-nowhere player at (0, 0) — the same trap `Vehicle.parked`
+// exists for, arriving one layer up.
+fn test_a_run_with_nobody_in_it_has_no_blockers() {
+    tar_s = wave_state_empty();
+    assert(blocker_count(wave_blockers(tar_s)) == 0,
+           "nobody is blocking: {blocker_count(wave_blockers(tar_s))}");
+}
+
+fn test_a_wreck_is_off_the_map() {
+    twm_s = wave_state_empty();
+    twm_s.crew += [helper_new(5, 0)];
+    twm_s.crew += [helper_new(6, 0)];
+    helper_wreck(twm_s.crew[0] ?? Helper { });
+
+    twm_b = wave_blockers(twm_s);
+    assert(blocker_at(twm_b, 5, 0) == BLOCKER_NONE, "the wreck blocks nothing");
+    assert(blocker_crew_index(blocker_at(twm_b, 6, 0)) == 1,
+           "and its crewmate is still itself: {blocker_at(twm_b, 6, 0)}");
+}

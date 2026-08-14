@@ -150,14 +150,14 @@ pub fn vehicle_empty() -> Vehicle {
 
 // ─── Blocker damage (plan 13 V5) ────────────────────────────────
 
-// Is the vehicle standing on this hex?
-//
-// The whole of "physically blocking" — `DESIGN.md` § 8's blocker
-// exception is about a POSITION, so this is the predicate the mover
-// and the damage pass both read.
-pub fn vehicle_on(v: const Vehicle, q: integer, r: integer) -> boolean {
-    v.parked && v.q == q && v.r == r
-}
+// ⚠ **`vehicle_on` is GONE (plan 14 H3), and its absence is the
+// point.**  Plan 13 V5 asked "is the vehicle standing on this hex?"
+// because the player was the only thing that could be; with a roster
+// the question is *who* is standing there, and the answer is
+// `occupancy.loft`'s `BlockerMap`, built once a tick by
+// `spawn.loft::wave_blockers`.  Keeping a per-vehicle predicate beside
+// it would be a second door onto one question — and the one a future
+// caller would reach for, because it needs no map.
 
 // What the vehicle has left, in HP.
 //

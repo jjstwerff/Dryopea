@@ -77,7 +77,7 @@ pointer, not a second copy.
 
 | [`13-the-vehicle`](13-the-vehicle/README.md) | G | MH | **Complete** (2026-08-14) | A player in the world — the crew plan 12 measured a need for.  It drives, boosts over its own wall, clears the bodies that beat the tower and gets PAID for them, taking the towered base from 95 ticks to 145 |
 
-| [`14-helpers`](14-helpers/README.md) | G | MH | **Active** (H0-H2 done; H3 blocked on a carry model) | The crew becomes a cooperative — the first mover whose speed does not fit the tick, and a roster that buys COVERAGE rather than throughput (77 → 214 → 242 ticks on a base with two fronts) |
+| [`14-helpers`](14-helpers/README.md) | G | MH | **Active** (H0-H3 done; H4 blocked on a carry model) | The crew becomes a cooperative — the first mover whose speed does not fit the tick, and a roster that buys COVERAGE rather than throughput (77 → 214 → 242 ticks on a base with two fronts), and a crew member who can be LOST for good |
 
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.

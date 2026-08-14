@@ -93,7 +93,7 @@ fn test_a_robot_halts_on_the_hex_before_the_wall() {
     paint(tar_pw, 3, 0, as_u8(WALL));
 
     tar_e = westbound(ENEMY_KIND_REGULAR, 6);
-    for _ in 0..10 { enemy_tick(tar_e, tar_pal, tar_pw, height_layer_empty(), field_for(ENEMY_KIND_REGULAR, tar_pw), desire_for(tar_pw), occupancy_empty(), vehicle_empty()); }
+    for _ in 0..10 { enemy_tick(tar_e, tar_pal, tar_pw, height_layer_empty(), field_for(ENEMY_KIND_REGULAR, tar_pw), desire_for(tar_pw), occupancy_empty(), blocker_empty()); }
 
     assert(tar_e.q == 4, "halted on the hex BEFORE the wall, not in it: q = {tar_e.q}");
     assert(tar_e.r == 0, "and did not drift off the corridor");
@@ -105,7 +105,7 @@ fn test_a_robot_halts_on_the_hex_before_the_wall() {
 fn test_the_same_march_with_no_wall_reaches_the_core() {
     tsm_e = westbound(ENEMY_KIND_REGULAR, 6);
     for _ in 0..10 { enemy_tick(tsm_e, load_palette(PALETTE), corridor(12), height_layer_empty(),
-                                field_for(ENEMY_KIND_REGULAR, corridor(12)), desire_for(corridor(12)), occupancy_empty(), vehicle_empty()); }
+                                field_for(ENEMY_KIND_REGULAR, corridor(12)), desire_for(corridor(12)), occupancy_empty(), blocker_empty()); }
 
     assert(tsm_e.q == 0, "walked the whole corridor to the core: q = {tsm_e.q}");
 }
@@ -121,7 +121,7 @@ fn test_a_gap_in_the_face_is_walked_through() {
     paint(tag_pw, 3,  1, as_u8(WALL));
 
     tag_e = westbound(ENEMY_KIND_REGULAR, 6);
-    for _ in 0..10 { enemy_tick(tag_e, tag_pal, tag_pw, height_layer_empty(), field_for(ENEMY_KIND_REGULAR, tag_pw), desire_for(tag_pw), occupancy_empty(), vehicle_empty()); }
+    for _ in 0..10 { enemy_tick(tag_e, tag_pal, tag_pw, height_layer_empty(), field_for(ENEMY_KIND_REGULAR, tag_pw), desire_for(tag_pw), occupancy_empty(), blocker_empty()); }
 
     assert(tag_e.q == 0, "the gap is at (3, 0) and it went through: q = {tag_e.q}");
 }
@@ -136,7 +136,7 @@ fn test_a_blocked_enemy_stays_alive_and_stays_put() {
     paint(tbe_pw, 3, 0, as_u8(WALL));
 
     tbe_e = westbound(ENEMY_KIND_REGULAR, 5);
-    for _ in 0..50 { enemy_tick(tbe_e, tbe_pal, tbe_pw, height_layer_empty(), field_for(ENEMY_KIND_REGULAR, tbe_pw), desire_for(tbe_pw), occupancy_empty(), vehicle_empty()); }
+    for _ in 0..50 { enemy_tick(tbe_e, tbe_pal, tbe_pw, height_layer_empty(), field_for(ENEMY_KIND_REGULAR, tbe_pw), desire_for(tbe_pw), occupancy_empty(), blocker_empty()); }
 
     assert(tbe_e.q == 4, "fifty ticks later it is still in front of the wall");
     assert(tbe_e.alive, "and still alive — stopping is not dying");
@@ -156,8 +156,8 @@ fn test_an_insect_climbs_the_wall_that_stopped_the_robot() {
     tai_botf = field_for(ENEMY_KIND_REGULAR, tai_pw);
     tai_bugf = field_for(ENEMY_KIND_INSECT,  tai_pw);
     for _ in 0..10 {
-        enemy_tick(tai_bot, tai_pal, tai_pw, height_layer_empty(), tai_botf, desire_for(tai_pw), occupancy_empty(), vehicle_empty());
-        enemy_tick(tai_bug, tai_pal, tai_pw, height_layer_empty(), tai_bugf, desire_for(tai_pw), occupancy_empty(), vehicle_empty());
+        enemy_tick(tai_bot, tai_pal, tai_pw, height_layer_empty(), tai_botf, desire_for(tai_pw), occupancy_empty(), blocker_empty());
+        enemy_tick(tai_bug, tai_pal, tai_pw, height_layer_empty(), tai_bugf, desire_for(tai_pw), occupancy_empty(), blocker_empty());
     }
 
     assert(tai_bot.q == 4, "the robot is stopped in front of it");
@@ -173,7 +173,7 @@ fn test_a_high_wall_stops_the_insect_too() {
     paint(tah_pw, 3, 0, as_u8(WALL_HIGH));
 
     tah_bug = westbound(ENEMY_KIND_INSECT, 6);
-    for _ in 0..10 { enemy_tick(tah_bug, tah_pal, tah_pw, height_layer_empty(), field_for(ENEMY_KIND_INSECT, tah_pw), desire_for(tah_pw), occupancy_empty(), vehicle_empty()); }
+    for _ in 0..10 { enemy_tick(tah_bug, tah_pal, tah_pw, height_layer_empty(), field_for(ENEMY_KIND_INSECT, tah_pw), desire_for(tah_pw), occupancy_empty(), blocker_empty()); }
 
     assert(tah_bug.q == 4, "5 m is past its climb — that is what wall_high is FOR");
 }
@@ -188,7 +188,7 @@ fn test_a_high_wall_stops_the_insect_too() {
 fn test_the_walk_stops_at_the_water_where_the_land_ends() {
     ttw_e = westbound(ENEMY_KIND_REGULAR, 4);
     for _ in 0..12 { enemy_tick(ttw_e, load_palette(PALETTE), corridor(4), height_layer_empty(),
-                                field_for(ENEMY_KIND_REGULAR, corridor(4)), desire_for(corridor(4)), occupancy_empty(), vehicle_empty()); }
+                                field_for(ENEMY_KIND_REGULAR, corridor(4)), desire_for(corridor(4)), occupancy_empty(), blocker_empty()); }
 
     assert(ttw_e.q == 0, "it stopped at the last painted hex: q = {ttw_e.q}");
 }
@@ -197,7 +197,7 @@ fn test_a_dead_enemy_still_does_not_move() {
     tdn_e = westbound(ENEMY_KIND_REGULAR, 6);
     tdn_e.alive = false;
     enemy_tick(tdn_e, load_palette(PALETTE), corridor(12), height_layer_empty(),
-               field_for(ENEMY_KIND_REGULAR, corridor(12)), desire_for(corridor(12)), occupancy_empty(), vehicle_empty());
+               field_for(ENEMY_KIND_REGULAR, corridor(12)), desire_for(corridor(12)), occupancy_empty(), blocker_empty());
 
     assert(tdn_e.q == 6, "dead: frozen, and not for a passability reason");
 }

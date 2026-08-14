@@ -62,7 +62,8 @@ exists today.
 | The player can be DESTROYED — but only by blocking a wave with nowhere to go round, which is a property of the map rather than of parking | [13](plans/13-the-vehicle/README.md), V5 shipped |
 | HELPERS: an NPC crew on the player's chassis, moving at 2.5 hex/s — the first mover whose speed does NOT fit the tick | [14](plans/14-helpers/README.md), H0-H1 shipped |
 | A helper WORKS: it clears and it earns, on one shared chassis — and a base with two fronts goes 77 → 214 → 242 ticks as the crew grows to cover them | [14](plans/14-helpers/README.md), H2 shipped |
-| **A helper cannot be hurt, retrieved or ordered, and no tower repair or scramble** | [14](plans/14-helpers/README.md), H3 next — blocked on a carry model |
+| A helper can be LOST: the blocker rule covers the whole crew, and a helper that dies WRECKS where it stood while the player respawns | [14](plans/14-helpers/README.md), H3 shipped |
+| **No retrieval, no ordering, no tower repair and no scramble** | [14](plans/14-helpers/README.md), H4 next — blocked on a CARRY model, which serves tower-tops and beacons too and wants its own plan |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -78,7 +79,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 849/849 green under `scripts/test.sh`** (~95 s measured
+**Suite: 864/864 green under `scripts/test.sh`** (~95 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -912,7 +913,17 @@ src/
                    ⚠ **The gate is a RATE**: a crew that is not in the
                    tick and a crew sharing ONE vehicle's bite both
                    empty the heap and both read exactly like one
-                   helper, so "the rubble is gone" cannot see either
+                   helper, so "the rubble is gone" cannot see either.
+                   H3 added `helper_wreck` / `helper_wrecked` — and
+                   `alive` IS the wreck, because every verb already
+                   asks it, so a downed crew member stops driving,
+                   clearing and BLOCKING at once.
+                   ⚠ **Nothing puts it back**, and that is the one rule
+                   where a helper is not the player's chassis doing the
+                   player's job: `vehicle_respawn` is three lines away
+                   in the tick and reads the opposite way.  The roster
+                   slot is KEPT (never compacted), which is what H4's
+                   retrieval will need
   wallet.loft      the run's budget, and the only END STATE dryopea
                    has (plan 12 B6) — WALLET_STARTING_POINTS (200),
                    NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,
@@ -943,8 +954,13 @@ src/
                    carapace pay, MASONRY pays nothing, or demolishing
                    your own wall would be an income stream.
                    V5 added blocker damage — `vehicle_hp` / _hurt /
-                   _on / _respawn plus `VEHICLE_HP_BLOCKER` — and
-                   `spawn.loft::enemy_blocked_by_player` is the rule.
+                   _respawn plus `VEHICLE_HP_BLOCKER` — and
+                   `spawn.loft::enemy_blocked_by` is the rule.
+                   ⚠ `vehicle_on` is DELETED (plan 14 H3): "who is
+                   standing on this hex" is the whole crew's question
+                   now, and `occupancy.loft`'s `BlockerMap` is its one
+                   door — a per-vehicle predicate beside it is the one
+                   a future caller would reach for.
                    ⚠ **Blocking is a property of the MAP**: an enemy
                    with a sidestep goes round and nobody is hurt, so
                    the player is only a liability in a chokepoint.
@@ -1001,7 +1017,21 @@ src/
                    stacked, so one of a pair stepping off must not free
                    the hex.  ⚠ It is not passability (that is the
                    GROUND, per class) and never a target — a companion
-                   blocks a step and is never attacked for it
+                   blocks a step and is never attacked for it.
+                   Plan 14 H3 added the OTHER map: BlockerMap +
+                   blocker_empty / _set / _at / _taken / _count /
+                   _crew_index, built by `spawn.loft::wave_blockers`.
+                   ⚠ **A second map rather than a second count**, and
+                   the asymmetry is why: an enemy steps BESIDE a
+                   companion and ATTACKS a vehicle, so one structure
+                   would be read with a "but which kind?" everywhere.
+                   ⚠ It answers WHO (`BLOCKER_PLAYER` is 0, helper `i`
+                   is `BLOCKER_CREW + i`, nobody is -1), because with a
+                   roster the damage must land on the vehicle that is
+                   actually in the way.
+                   ⚠ A WRECK is not in it — a downed helper blocks
+                   nothing, or the first crew member to die in a
+                   corridor would be a free wall with no HP left
   passable.loft    may a class of enemy make this move? (plan 11 F1 +
                    F6) — the enemy KIND discriminants + climb_limit()
                    + hex_height() + can_stand() / can_step() /
@@ -1411,6 +1441,8 @@ signature.
 | Raise a hex at runtime (bodies, broken walls) | `src/height.loft` — the rubble layer: a rise above what the palette paints, plus what it is made of.  Lives on `WaveState`, never saved.  ⚠ Shrinking a pile to nothing REMOVES its entry — a 0.0 m pile would still read as a rubble surface |
 | Ask what a hex's SURFACE is (vs what is painted on it) | `src/passable.loft::hex_ground` — rubble where a pile stands, the painted kind otherwise.  `painted_ground` is the other half and is what `hex_height` adds the layer to |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
+| Ask who on the PLAYER's side is standing on a hex | `src/occupancy.loft::blocker_at` over the map `spawn.loft::wave_blockers` builds each tick — it answers WHICH vehicle, because the blocker damage has to land on the one in the way.  ⚠ Never a per-vehicle predicate: `vehicle_on` was deleted for being the second door |
+| Take a crew member out of the run | `src/helper.loft::helper_wreck` — and the tick is the only caller, at the end, beside the deaths and the breaks.  ⚠ Nothing brings it back: retrieval is H4 and is blocked on a carry model |
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Ask whether a tower can HIT something | `src/tower.loft::tower_sees` — one straight line from the eye over `hex_height`.  ⚠ Never a "which kinds block" table: a `wall_high` beside the tower does not block and a `wall` near the target does |
 | Ask why a tower is not shooting | `src/tower.loft::tower_sight_fault` names the hex, the two heights and how far along the line it sits; `tower_black` is the other answer |

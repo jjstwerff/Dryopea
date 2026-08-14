@@ -115,10 +115,39 @@ pub fn helper_hp(h: const Helper) -> float {
     max(HELPER_HP - h.taken, 0.0)
 }
 
-// Land damage on a helper.  ⚠ It does not wreck it — that is H3's, and
-// one death path is the rule `enemy_hurt` and `vehicle_hurt` both keep.
+// Land damage on a helper.
+//
+// ⚠ **It does not wreck it.**  The wreck is the tick's, at the end,
+// beside the deaths and the breaks — the rule `enemy_hurt`,
+// `damage_apply` and `vehicle_hurt` all keep, so a script and the
+// simulation cannot drift about when a crew member is lost.
 pub fn helper_hurt(h: Helper, hp: float) {
     h.taken = max(h.taken + hp, 0.0);
+}
+
+// ─── Wrecked (plan 14 H3) ───────────────────────────────────────
+
+// Put a helper out of the run where it stands.
+//
+// ⚠ **`alive` IS the wreck**, and there is no second flag: `DESIGN.md`
+// § 9 says the vehicle wrecks at its hex and the helper inside is
+// *"downed but alive"*, so the crew member is not gone — the thing that
+// moves and works is.  Every verb that acts already asks `alive`
+// (`helper_tick`, `helper_salvage`) and `wave_blockers` asks it too, so
+// a wreck stops driving, stops clearing and stops blocking at once.
+//
+// ⚠ **And nothing puts it back.**  § 9: *"No automatic respawn —
+// retrieval is the only way back"*, which is the ONE rule where a
+// helper is not the player's chassis doing the player's job
+// (`vehicle_respawn` is the contrast, three lines away in the tick).
+// Retrieval is H4 and it is blocked on a carry model.
+pub fn helper_wreck(h: Helper) {
+    h.alive = false;
+}
+
+// Is this crew member down?
+pub fn helper_wrecked(h: const Helper) -> boolean {
+    !h.alive
 }
 
 // Bank one tick of movement and answer the whole hexes it releases.
