@@ -9,7 +9,37 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**C0 + C1 shipped** (2026-08-14).  C2 is next.
+**C0 + C1 + C2 shipped** (2026-08-14).  C3 is next.
+
+**C2 closed [plan 14](../14-helpers/README.md) H4.**  A downed crew
+member can be picked up, carried to the core and delivered; sixty
+seconds later they rejoin the roster, whole.  `take` / `drop` /
+`cargo` / `roster` are the verbs, and
+`tests/scripts/a-crew-member-comes-home.keys` plays the whole arc.
+Suite **898 green**, gate **23 scripts / 414 measurements**.
+
+⚠ **The epsilon prediction was confirmed against the running sim, not
+just the probe.**  Patching `helper_recover_tick` to a bare `> 0.0`
+makes the count read **91**, exactly as § C0.3 predicted — and every
+other assertion in `tests/15_c2_recovery.loft` stays green while it
+does.  ⚠ A worse variant fell out of trying it: with the epsilon in
+`helper_recovering` but not in the exit test, the helper **never
+recovers at all** — the residue is too small for one condition and too
+large for the other, so the clock stalls forever.  Two conditions over
+one timer have to agree, and disagreeing is worse than both being
+wrong.
+
+⚠ **`roster` is a new measurement because `helper <i> <q> <r>` cannot
+tell the story.**  A wreck keeps its slot and its hex (plan 14 H3), so
+"helper 0 is at (6, 0)" is true whether it is standing there or lying
+there.  What a run wants to say is *somebody is gone*, and then *they
+are back* — and a crew member in recovery is not standing either, which
+is what makes the sixty seconds visible to a script at all.
+
+⚠ **And the scenario is gated by removing the retrieval from it.**  Cut
+the two halves of the key out of the `.keys` file and `roster 1 1` goes
+red — so the file's ending depends on somebody having driven out and
+fetched the wreck, rather than merely containing lines that say so.
 
 **C1 built the model and its first producer.**  `src/carry.loft` holds
 one record per carryable thing with an `owner` field, so an object is on
@@ -189,7 +219,7 @@ drive are the cost the design already priced.
 |---|---|---|---|
 | **C0** — the probe: where a carried object lives | XS | the three measurements above, against the shipped sim | **Done** |
 | **C1** — an object exists, is taken, is put down, and is CONSERVED | S | `tests/15_c1_the_slot.loft` — a sum that cannot drift over a sequence of pickups and drops, and all three wrong implementations are red | **Done** |
-| **C2** — deposit at the core recovers the crew member | S | `tests/15_c2_recovery.loft` — exactly 90 ticks, and a `.keys` scenario where a lost helper rejoins the roster.  Closes [plan 14](../14-helpers/README.md) H4 | Planned |
+| **C2** — deposit at the core recovers the crew member | S | `tests/15_c2_recovery.loft` — exactly 90 ticks, and a `.keys` scenario where a lost helper rejoins the roster.  Closes [plan 14](../14-helpers/README.md) H4 | **Done** |
 | **C3** — what a retrieval is WORTH | S | a `.keys` pair differing only in whether the player fetches the wreck, and the measured clock | Planned |
 
 ### Why the order is this order
@@ -213,7 +243,7 @@ why C3 measures the clock rather than asserting the mechanic fired.
 |---|---|---|---|
 | **C0** ✓ | the tables above | the representation is chosen by what can be LOST, not by what reads well | — (C0 measures; C1 is its gate) |
 | **C1** | a carry object is on the ground **xor** in exactly one carrier's slot, always | conservation is structural — one record, one owner — so duplication is unrepresentable rather than prevented | a hash keyed by hex loses the second object on a shared hex; a two-write pickup duplicates on any path that does one write; a carrier that takes a second object has no slot rule |
-| **C2** | a deposited wreck recovers in **exactly 90 ticks** and rejoins the roster | retrieval is the ONLY way back (§ 9), and the timer is a count rather than a "did it come back" | a bare `> 0.0` gives 91 ticks and every arrival assertion stays green; a helper that recovers with nobody carrying it has been given the player's respawn |
+| **C2** ✓ | a deposited wreck recovers in **exactly 90 ticks** and rejoins the roster | retrieval is the ONLY way back (§ 9), and the timer is a count rather than a "did it come back" | ✓ measured: a bare `> 0.0` reads **91** and every arrival assertion stays green; ✓ a wreck nobody fetches is still down after 200 ticks; ✓ cutting the retrieval out of the scenario turns `roster 1 1` red |
 | **C3** | the measured clock, with and without the detour | a retrieval costs the base what the driver was not doing | a scenario whose fronts are not bracing-controlled reads a 99-tick artefact as a finding (plan 14 H2 § 3) |
 
 ## What this plan does NOT build

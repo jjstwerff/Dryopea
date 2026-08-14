@@ -132,7 +132,8 @@ docs:
 | `wave_system.wave_1_wall_trigger` + `wave_1_provocation_distance` | DESIGN.md § Updates: wave-start triggers | Either trigger fires wave 1 |
 | `wall.entrance_gap_recognition_hexes` | GROUND_TYPES.md § Entrances | Two ends form a gate when within this range |
 | `tower.shot_budget_per_charge` | `src/tower.loft`; PROXY_ART.md § Tower § lifecycle | Top goes black after this many shots — spent per SHOT and never per tick, so an idle tower never decays |
-| `helper.recovery_time_after_retrieval` | PROXY_ART.md § Helper § Damage | Time before retrieved helper rejoins |
+| `helper.recovery_time_after_retrieval` | `src/helper.loft`; PROXY_ART.md § Helper § Damage | Time before a retrieved helper rejoins the roster.  ⚠ 60.0 s over a 1/1.5 s tick is EXACTLY 90 ticks, and a timer that divides the tick exactly is the ONLY case where the banked-timer epsilon bites — a bare `> 0.0` gives 91.  The 5.0 s boost cooldown is 7.5 ticks and is immune, which is why the safe-looking numbers are the dangerous ones (plan 15 C0) |
+| `helper.carry_slot_count` | `src/carry.loft` | One slot, and its doc says *"Same as player"* — so the PLAYER's slot count is stated here and nowhere else.  ⚠ It is 1 for every kind of cargo the design names (loot cube, tower-top, beacon, downed helper), which is what makes a carried kind DATA rather than a code path |
 | `economy.tower_top_carryover_effect` | DESIGN.md § Q4 | Mechanic carries, effect deferred — validation = "none" |
 | `camera.swing_easing_time` | DESIGN.md § Updates: camera locked | Auto-reframe smoothing |
 | `wall.wall_hp` + `wall.brace_factor_*` | `src/damage.loft` | A wall's HP is its kind's figure scaled by how its neighbours brace it; `wall_hp` is the BRACED number and almost nothing on a real map gets it |

@@ -64,7 +64,8 @@ exists today.
 | A helper WORKS: it clears and it earns, on one shared chassis — and a base with two fronts goes 77 → 214 → 242 ticks as the crew grows to cover them | [14](plans/14-helpers/README.md), H2 shipped |
 | A helper can be LOST: the blocker rule covers the whole crew, and a helper that dies WRECKS where it stood while the player respawns | [14](plans/14-helpers/README.md), H3 shipped |
 | CARRY: one slot per vehicle, one record per carryable thing — an object is on the ground, in exactly one carrier's slot, or spent, and a lost helper leaves something to fetch | [15](plans/15-the-carry-model/README.md), C0-C1 shipped |
-| **No retrieval, no ordering, no tower repair and no scramble** | [15](plans/15-the-carry-model/README.md), C2 next — it closes [14](plans/14-helpers/README.md) H4 |
+| RETRIEVAL: a lost crew member is carried to the core and rejoins the roster after EXACTLY 90 ticks — and nothing else brings one back | [15](plans/15-the-carry-model/README.md), C2 shipped — closes [14](plans/14-helpers/README.md) H4, so plan 14 is **complete** |
+| **No ordering, no tower repair, no beacons and no scramble** | [15](plans/15-the-carry-model/README.md), C3 next — what a retrieval is WORTH |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -80,13 +81,13 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 883/883 green under `scripts/test.sh`** (~95 s measured
+**Suite: 898/898 green under `scripts/test.sh`** (~95 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
 plan 12 until H2 re-measured it; the figure grew with the scenario
 tests, not with any one phase).
-**Gate: 22 scripts green under `scripts/validate.sh`** (~10 s, 395
+**Gate: 23 scripts green under `scripts/validate.sh`** (~10 s, 414
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -667,7 +668,23 @@ src/
                    ⚠ It needs no core marker and no wave: the budget
                    belongs to the RUN, not to the battlefield, so 200
                    is the honest answer before a single enemy exists.
-                   B7 added `fall <max>` (tick until the wallet empties
+                   Plan 15 C2 added `take <who>` / `drop <who>` (`player`
+                  or a crew index) plus the `cargo` and `roster` bands.
+                  ⚠ **Two verbs for `DESIGN.md` § 11's ONE key** — the
+                  same choice `park` / `drive` made: the key is
+                  context-resolved on the carrier's state, and a script
+                  SAYS what it means so a line asserting a pickup cannot
+                  quietly have been a deposit.  What a script does NOT
+                  get to decide is where the cargo ends up: `drop` at
+                  the core retrieves where `drop` one hex out merely
+                  puts down.
+                  ⚠ `roster` counts crew STANDING, not enrolled —
+                  `len(crew)` never falls (a wreck keeps its slot) and
+                  `helper <i> <q> <r>` is true whether it is standing
+                  there or lying there, so neither can see a loss.  A
+                  crew member in RECOVERY is not standing either, which
+                  is what makes the 60 s visible to a script.
+                  B7 added `fall <max>` (tick until the wallet empties
                    — ⚠ still standing after `<max>` is an ERROR, or a
                    later `ticks` band would read a collapsed premise as
                    a measurement) and `ticks <lo> <hi>`, the run's
@@ -919,12 +936,29 @@ src/
                    `alive` IS the wreck, because every verb already
                    asks it, so a downed crew member stops driving,
                    clearing and BLOCKING at once.
-                   ⚠ **Nothing puts it back**, and that is the one rule
-                   where a helper is not the player's chassis doing the
-                   player's job: `vehicle_respawn` is three lines away
-                   in the tick and reads the opposite way.  The roster
-                   slot is KEPT (never compacted), which is what H4's
-                   retrieval will need
+                   ⚠ **Nothing puts it back BY ITSELF**, and that is the
+                   one rule where a helper is not the player's chassis
+                   doing the player's job: `vehicle_respawn` is three
+                   lines away in the tick and reads the opposite way.
+                   The roster slot is KEPT (never compacted), which is
+                   what retrieval needed.
+                   Plan 15 C2 added the way back: HELPER_RECOVERY_
+                   SECONDS (60.0), HELPER_TIMER_EPSILON, `helper_
+                   recovering` / `_lost` / `_begin_recovery` / `_recover_
+                   tick`.
+                   ⚠ **60.0 s is EXACTLY 90 ticks and a bare `> 0.0`
+                   gives 91** — the epsilon trap's FOURTH appearance and
+                   its least visible.  The discriminator inverts the
+                   intuition: the 5.0 s boost cooldown is 7.5 ticks and
+                   is IMMUNE, so the trap fires only where the timer
+                   divides the tick exactly — the case that looks
+                   safest.  ⚠ And the two conditions over the timer must
+                   AGREE: an epsilon in `helper_recovering` but not in
+                   the exit test stalls the clock for ever.
+                   ⚠ `helper_wrecked` is true during RECOVERY too (a
+                   crew member at the core is not driving, clearing,
+                   earning or blocking either); `helper_lost` is the one
+                   that means *still out there and needs fetching*
   carry.loft       what a vehicle is HOLDING (plan 15 C1) — CARGO_WRECK
                    / CARGO_NONE / CARGO_GONE, CarryObject + CargoLayer +
                    cargo_empty / _spawn / _count / _slots / _held_by /
@@ -959,7 +993,21 @@ src/
                    has broken the contract in `plans/15` § C0.4.
                    ⚠ `cargo_consume` is the ONE way out of the world;
                    a carrier that DIES calls `cargo_spill` instead, or
-                   dying becomes a free retrieval
+                   dying becomes a free retrieval.
+                   C2 added the destination half: CARGO_REACH_HEXES,
+                   `cargo_destination_ok` (a wreck goes to the CORE and
+                   nowhere else) and `cargo_deliver`.
+                   ⚠ ONE reach for both halves, because § 11's key is
+                   ONE key — two reaches would make it mean two
+                   distances depending on what the vehicle happens to
+                   hold.
+                   ⚠ An unknown kind has NO destination rather than
+                   every destination, or a kind added without a rule
+                   would be depositable anywhere and consumed silently.
+                   ⚠ `cargo_deliver` does NOT apply the effect: what
+                   arriving DOES needs the roster, and a carry model
+                   that knew about helpers could not serve tower-tops.
+                   `spawn.loft::wave_arrived` is the other half
   wallet.loft      the run's budget, and the only END STATE dryopea
                    has (plan 12 B6) — WALLET_STARTING_POINTS (200),
                    NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,
@@ -1480,6 +1528,7 @@ signature.
 | Ask what a hex's SURFACE is (vs what is painted on it) | `src/passable.loft::hex_ground` — rubble where a pile stands, the painted kind otherwise.  `painted_ground` is the other half and is what `hex_height` adds the layer to |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` — a separate question from passability, and a count rather than a flag |
 | Ask who on the PLAYER's side is standing on a hex | `src/occupancy.loft::blocker_at` over the map `spawn.loft::wave_blockers` builds each tick — it answers WHICH vehicle, because the blocker damage has to land on the one in the way.  ⚠ Never a per-vehicle predicate: `vehicle_on` was deleted for being the second door |
+| Bring a lost crew member back | `src/spawn.loft::wave_drop` at the core — and NOTHING else does it (`DESIGN.md` § 9: *"retrieval is the only way back"*).  ⚠ The clock is exactly 90 ticks and the epsilon in `helper_recover_tick` is what keeps it 90 rather than 91 |
 | Take a crew member out of the run | `src/helper.loft::helper_wreck` — and the tick is the only caller, at the end, beside the deaths and the breaks.  ⚠ It is TWO effects at one site since plan 15 C1: the helper goes down AND a carryable wreck appears where it stood.  ⚠ Nothing brings it back yet: retrieval is plan 15 C2 |
 | Pick something up, carry it, put it down | `src/carry.loft` — one record per object with an `owner`, so conservation is structural.  ⚠ Never add a "carried" field to a vehicle beside it: a slot on the carrier and an owner on the object are two facts that can disagree |
 | Add a new kind of carryable thing | a `CARGO_*` constant plus what a valid destination is and what arriving there does — and NOTHING in the carrying path.  ⚠ A kind that needs new carrying code has broken `plans/15` § C0.4 |

@@ -1,0 +1,101 @@
+# a-crew-member-comes-home — plan 15 C2, and plan 14 H4 closed.
+#
+# The arc `DESIGN.md` § 9 describes, played end to end in one run: a
+# crew member blocks a corridor, is destroyed, and lies there — until
+# somebody drives out, picks the wreck up, carries it to the core and
+# waits out the recovery clock.
+#
+# ⚠ **`roster` falls to 0 and comes back to 1, and that pair is the
+# file.**  `helper <i> <q> <r>` cannot tell the story: a wreck keeps its
+# roster slot and its hex (plan 14 H3), so "helper 0 is at (6, 0)" is
+# true whether it is standing there or lying there.
+#
+# ⚠ **Nothing here presses a key to clear or to earn**, and only two
+# lines press one at all.  `DESIGN.md` § 11 gives ONE context-resolved
+# key — empty hands = pickup, carrying = deposit — and `take` / `drop`
+# are its two outcomes written out, because a script says what it means.
+#
+# ⚠ **The corridor is one hex wide on purpose.**  A vehicle is only a
+# blocker where the wave has nowhere to go round (plan 13 V5), so this
+# is the map that can lose a crew member at all — and it is also why
+# fetching one costs something: the hex the wreck is on is the hex the
+# wave is coming through.
+
+echo a crew member comes home: lost in the corridor, carried back, on the roster again
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+# One row, and nothing beside it.
+palette 5
+drag -3 0 14 0
+count painted 18 18
+
+# The player waits at the core; the crew member stands in the corridor.
+park 0 0
+vehicle 0 0
+crew 6 0
+helper 0 6 0
+roster 1 1
+cargo 0 0
+
+wave 1
+count alive 1 1
+
+# ── It blocks, and it is destroyed ──────────────────────────────
+#
+# 50 HP at the blocker rate of 5 HP/s is ten seconds, and the walk out
+# is four hexes.
+tick 20
+roster 0 0
+cargo 1 1
+
+# ── The player drives out to fetch it ───────────────────────────
+#
+# ⚠ Straight through the wave, which is not a mistake: an enemy is not
+# something the player bumps into (`DESIGN.md` § 8), so the drive out is
+# free and standing still in the corridor is what costs.
+drive 6 0
+tick 3
+vehicle 6 0
+
+take player
+cargo 1 1
+
+# ── And carries it home ─────────────────────────────────────────
+drive 0 0
+tick 3
+vehicle 0 0
+
+drop player
+cargo 0 0
+roster 0 0
+
+# ── Sixty seconds of recovery ───────────────────────────────────
+#
+# ⚠ **Exactly 90 ticks, and the last one matters.**  60.0 s over a
+# 1/1.5 s tick divides exactly, which is the only case where the
+# banked-timer epsilon bites — without it this reads 91 and the line
+# below is red by one tick.  See `tests/15_c2_recovery.loft`.
+tick 89
+roster 0 0
+
+tick 1
+roster 1 1
+helper 0 0 0
+
+snap c2_a_crew_member_comes_home

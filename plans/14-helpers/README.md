@@ -9,9 +9,18 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**H0 + H1 + H2 + H3 shipped** (2026-08-14). H4 is next and is blocked
-on a carry model, which is bigger than this plan — see § Why the order
-is this order.
+**COMPLETE** (2026-08-14). H0-H3 shipped here; **H4 shipped as
+[plan 15](../15-the-carry-model/README.md) C2**, which is where the
+carry model it was blocked on ended up.
+
+⚠ **H4 left this plan and that was the right move, not a technicality.**
+It was blocked on a model serving tower-tops and beacons as well, so
+building it here would either have served the helper case alone or
+quietly become the carry plan with a helpers title on it (§ Why the
+order is this order said exactly this). Plan 15 built the model and
+closed H4 with it: a downed crew member is picked up, carried to the
+core and delivered, and rejoins the roster sixty seconds later —
+`tests/scripts/a-crew-member-comes-home.keys` plays the arc end to end.
 
 **H3 made a helper losable.** The blocker rule now covers the whole
 player's side through one per-tick map, each blocker is charged for the
@@ -290,7 +299,7 @@ precedent to copy.
 | **H1** ✓ | a helper covers 5 hexes every 3 ticks, forever | speed is a RATE and the remainder is BANKED, never dropped | a helper that covers 1 hex a tick has truncated (2.5 → 1.5 hex/s); one that covers 14 in 9 has no epsilon |
 | **H2** ✓ | two helpers clear a heap twice as fast as one; on a base, the second is worth 28 ticks on the OTHER front and 0 beside the first | a roster is N of the same thing, not a special case | a second helper that changes nothing is not in the tick — and it reads identically to one that shares a single bite, which is why the gate is a rate |
 | **H3** ✓ | a helper destroyed by blocking wrecks where it stood and does NOT respawn | retrieval is the only way back (§ 9) — unlike the player, who always returns | a helper that respawns at the core has been given the player's rule |
-| **H4** | a wreck can be carried home and its helper rejoins the roster | a carry is one SLOT and carrying is a cost, not an inventory | a helper that recovers without anyone fetching it has made retrieval optional |
+| **H4** ✓ ([15](../15-the-carry-model/README.md) C2) | a wreck can be carried home and its helper rejoins the roster after exactly 90 ticks | a carry is one SLOT and carrying is a cost, not an inventory | ✓ measured: a wreck nobody fetches is still down after 200 ticks, and cutting the retrieval out of the scenario turns `roster 1 1` red |
 
 ## Phases
 
@@ -300,7 +309,7 @@ precedent to copy.
 | **H1** — a helper exists and moves at exactly 2.5 hex/s | S | `tests/14_h1_the_helper.loft` — 5 hexes every 3 ticks, and both wrong implementations are red | **Done** |
 | **H2** — a roster that works: helpers clear rubble | S | `tests/14_h2_the_roster.loft` — N helpers clear N times as fast, and three `.keys` scenarios that differ only in their crew lines read 77 / 214 / 242 | **Done** |
 | **H3** — a helper can be LOST: blocker damage, wreck, no respawn | S | `tests/14_h3_the_wreck.loft` — the same corridor plan 13 V5 uses, and the player respawns where a helper does not | **Done** |
-| **H4** — retrieve + recover | M | a downed helper rejoins the roster only after someone carries it to the core | **Blocked on a carry model**, which is bigger than this plan |
+| **H4** — retrieve + recover | M | a downed helper rejoins the roster only after someone carries it to the core | **Done — as [plan 15](../15-the-carry-model/README.md) C2**, where the carry model it needed lives |
 
 ### Why the order is this order
 

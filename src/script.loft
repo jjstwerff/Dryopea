@@ -745,6 +745,43 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         return "";
     }
 
+    // How many carryable things are lying about or being carried.
+    // Plan 15 C2.
+    //
+    // ⚠ **Objects still IN THE WORLD**, so a delivered one is not
+    // counted: `cargo 0 0` is how a run says every crew member has been
+    // brought home, and the number falling is the only scripted sign
+    // that a deposit did anything.
+    if sm_cmd == "cargo" {
+        if sm_argc != 2 { return "cargo needs <lo> <hi>"; }
+        sm_glo = sm_a1 as integer?;
+        sm_ghi = sm_a2 as integer?;
+        if sm_glo == null || sm_ghi == null { return "cargo: <lo> and <hi> must be integers"; }
+        return measure_int(run, "cargo", cargo_count(run.wave.cargo),
+                           sm_glo ?? 0, sm_ghi ?? 0);
+    }
+
+    // How many crew members are STANDING — plan 15 C2, and the verb
+    // plan 14 H3 said would arrive with the scenario that wanted it.
+    //
+    // ⚠ **Standing, not enrolled.**  `len(crew)` never falls, because a
+    // wreck keeps its roster slot (H3); what a run wants to assert is
+    // that somebody is gone, and then that they are back.  ⚠ A crew
+    // member in RECOVERY is not standing either — they are at the core
+    // on a 60 s clock — so this reads one lower until the clock runs
+    // out, which is what makes the recovery visible to a script at all.
+    if sm_cmd == "roster" {
+        if sm_argc != 2 { return "roster needs <lo> <hi>"; }
+        sm_rlo = sm_a1 as integer?;
+        sm_rhi = sm_a2 as integer?;
+        if sm_rlo == null || sm_rhi == null { return "roster: <lo> and <hi> must be integers"; }
+        sm_rn = 0;
+        for sm_rh in run.wave.crew {
+            if sm_rh.alive { sm_rn += 1; }
+        }
+        return measure_int(run, "roster", sm_rn, sm_rlo ?? 0, sm_rhi ?? 0);
+    }
+
     // The run's CLOCK, in game-ticks — plan 12 B7.
     //
     // ⚠ **A band, and it has to be.**  `hp` and `kind` are exact
@@ -1466,6 +1503,66 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // Pick something up, and put it down.  Plan 15 C2.
+    //
+    // ⚠ **Two verbs for `DESIGN.md` § 11's ONE key**, and that is the
+    // same choice `park` / `drive` made: the key is context-resolved on
+    // the carrier's state (empty hands = pickup, carrying = deposit),
+    // and a script SAYS what it means so that a line asserting a pickup
+    // cannot quietly have been a deposit.  What a script must NOT get
+    // to decide is where the cargo ends up — that is the destination's
+    // to answer, and `drop` at the core retrieves where `drop` one hex
+    // out merely puts down.
+    //
+    // ⚠ Both are stricter than the key, per `boost`: a script that says
+    // `take player` is CLAIMING one happens, and a pickup that quietly
+    // found nothing would leave every assertion after it measuring an
+    // empty-handed run.
+    if sc_cmd == "take" || sc_cmd == "drop" {
+        if sc_argc != 1 { return "{sc_cmd} needs <who> — `player` or a crew index"; }
+
+        sc_who = CARGO_NONE;
+        if sc_a1 == "player" {
+            sc_who = BLOCKER_PLAYER;
+        } else {
+            sc_wi = sc_a1 as integer?;
+            if sc_wi == null {
+                return "{sc_cmd}: <who> is `player` or a crew index, not '{sc_a1}'";
+            }
+            sc_wn = sc_wi ?? 0;
+            if sc_wn < 0 || sc_wn >= len(run.wave.crew) {
+                return "{sc_cmd}: no helper {sc_wn} — the crew is {len(run.wave.crew)} strong";
+            }
+            sc_who = BLOCKER_CREW + sc_wn;
+        }
+
+        if !wave_carrier_ready(run.wave, sc_who) {
+            return "{sc_cmd}: {sc_a1} cannot carry — no vehicle in the world, or a wreck";
+        }
+
+        if sc_cmd == "take" {
+            if wave_take(run.wave, sc_who) == CARGO_NONE {
+                return "take: {sc_a1} picked nothing up — hands full, or nothing within {CARGO_REACH_HEXES} hex";
+            }
+            return "";
+        }
+
+        // ⚠ A drop needs the core, because the core is what makes it a
+        // DELIVERY — so `drop` demands the same one target marker a
+        // `tick` does, rather than silently treating "no core" as "no
+        // destination anywhere" and putting a rescued crew member down
+        // on the floor.
+        sc_dcore = script_core(s.mw);
+        if sc_dcore.0 != 1 {
+            return "drop: needs exactly ONE target marker to deliver to, found {sc_dcore.0}";
+        }
+        if wave_drop(run.wave, sc_who,
+                     Hex { q: sc_dcore.1, r: sc_dcore.2 }) == CARGO_NONE {
+            return "drop: {sc_a1} is not carrying anything";
+        }
+        return "";
+    }
+
     if sc_cmd == "tick" {
         if sc_argc != 1 { return "tick needs <ticks>"; }
         sc_n = sc_a1 as integer?;
@@ -1535,7 +1632,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target"
     || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
     || sc_cmd == "ticks" || sc_cmd == "vehicle" || sc_cmd == "hull"
-    || sc_cmd == "helper" {
+    || sc_cmd == "helper" || sc_cmd == "cargo" || sc_cmd == "roster" {
         return script_measure(s, run, tok);
     }
 

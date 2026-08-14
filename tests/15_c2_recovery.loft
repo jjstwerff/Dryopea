@@ -1,0 +1,426 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 15 phase C2 — carried home, and back on the roster.
+//
+// This is the phase that closes plan 14 H4.  `DESIGN.md` § 9 states the
+// whole arc in three steps — *"Helper vehicle wrecks at its hex …
+// player or another helper drives to the wreck + presses pickup …
+// deliver to the core → recovery state for ~60 s → helper rejoins the
+// roster"* — and ends on the sentence that makes it a mechanic rather
+// than a formality: **"No automatic respawn — retrieval is the only way
+// back."**
+//
+// ── ⚠ Why the gate is a COUNT and not an arrival ────────────────
+//
+// Recovery is 60.0 s and a tick is `1 / 1.5` s, so it is EXACTLY 90
+// ticks — and a bare `> 0.0` gives 91, because the ninetieth
+// subtraction leaves a hair of positive residue.  Every assertion that
+// the crew member came back is green either way.  So this file counts
+// the ticks, and asserts 90 rather than "about 60 seconds".
+//
+// ⚠ **The trap fires only where the timer divides the tick exactly**,
+// which inverts the intuition: the 5.0 s boost cooldown is 7.5 ticks,
+// is not a whole number, and is immune.  60.0 and 2.0 are the dangerous
+// ones because they look safest.  Fourth appearance — `tower.loft`'s
+// dropped third shot, plan 13 V4's four-tick boost, plan 14 H0's 6.7%
+// of a helper's speed, and now this.
+//
+// ── What C2 does NOT build ──────────────────────────────────────
+//
+// No ordering and no landers (a helper is still placed, never bought),
+// no stranded-helper persistence across bases, and no carry rendering.
+// Tower-tops and beacons are the two consumers the model was made
+// general for and neither is built — `plans/15` § C0.4 is the contract
+// they arrive under.
+
+#cwd
+
+use dryopea;
+
+const PALETTE:  text = "examples/palette.json";
+const SHOTS:    text = "tests/actual";
+const SCENARIO: text = "tests/scripts/a-crew-member-comes-home.keys";
+const GRASS:    integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn at(q: integer, r: integer) -> Hex {
+    Hex { q: q, r: r }
+}
+
+fn robot(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8, alive: true }
+}
+
+fn corridor() -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in -3..=16 { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=16 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+fn crew_of(state: WaveState, i: integer) -> Helper {
+    state.crew[i] ?? Helper { }
+}
+
+// A run with one crew member already down at (6, 0) and a wreck to
+// fetch — the state plan 14 H3 leaves behind, set up directly so the
+// tests below are about the retrieval rather than about the loss.
+fn a_downed_crew_member() -> WaveState {
+    ad_s = wave_state_empty();
+    ad_s.crew += [helper_new(6, 0)];
+    helper_wreck(ad_s.crew[0] ?? Helper { });
+    cargo_spawn(ad_s.cargo, CARGO_WRECK, 0, 6, 0);
+    ad_s
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Where a wreck may be delivered
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_core_is_a_wrecks_only_destination() {
+    assert(cargo_destination_ok(CARGO_WRECK, at(0, 0), core()),
+           "the core itself");
+    assert(cargo_destination_ok(CARGO_WRECK, at(1, 0), core()),
+           "and one hex out — the chassis reaches");
+    assert(!cargo_destination_ok(CARGO_WRECK, at(2, 0), core()),
+           "but not two");
+    assert(!cargo_destination_ok(CARGO_WRECK, at(9, 0), core()),
+           "and certainly not out on the field");
+}
+
+// ⚠ An unknown kind has NO destination rather than every destination —
+// a kind added without a rule would otherwise be depositable anywhere,
+// which consumes it silently.
+fn test_an_unknown_kind_has_nowhere_to_go() {
+    assert(!cargo_destination_ok(9 as u8, at(0, 0), core()),
+           "an unnamed kind is not deliverable to the core");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The phase: fetched, delivered, and back after exactly 90 ticks
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_delivered_wreck_starts_a_recovery() {
+    tad_s = a_downed_crew_member();
+    vehicle_place(tad_s.player, 6, 0);
+
+    assert(wave_take(tad_s, BLOCKER_PLAYER) == 0, "the player picked the wreck up");
+    assert(cargo_count(tad_s.cargo) == 1, "it is still in the world, being carried");
+
+    vehicle_place(tad_s.player, 0, 0);
+    assert(wave_drop(tad_s, BLOCKER_PLAYER, core()) == 0, "and delivered it");
+
+    assert(cargo_count(tad_s.cargo) == 0,
+           "the wreck has left the world: {cargo_count(tad_s.cargo)}");
+    assert(helper_recovering(crew_of(tad_s, 0)), "the crew member is recovering");
+    assert(!helper_lost(crew_of(tad_s, 0)), "and is no longer lying out there");
+    assert(!crew_of(tad_s, 0).alive, "but is not back on the roster yet");
+    assert(crew_of(tad_s, 0).q == 0 && crew_of(tad_s, 0).r == 0,
+           "it is at the core: ({crew_of(tad_s, 0).q}, {crew_of(tad_s, 0).r})");
+
+    // Nothing was ticked, so the clock is untouched.
+    assert(crew_of(tad_s, 0).recover == HELPER_RECOVERY_SECONDS,
+           "with the full clock: {crew_of(tad_s, 0).recover}");
+}
+
+// ⚠⚠ **The count.**  60.0 s over a `1 / 1.5` s tick is exactly 90, and
+// a bare `> 0.0` in `helper_recover_tick` gives 91.  Every other
+// assertion in this file is green under both.
+fn test_recovery_takes_exactly_ninety_ticks() {
+    trt_s  = a_downed_crew_member();
+    trt_pw = band();
+    vehicle_place(trt_s.player, 6, 0);
+    wave_take(trt_s, BLOCKER_PLAYER);
+    vehicle_place(trt_s.player, 0, 0);
+    wave_drop(trt_s, BLOCKER_PLAYER, core());
+
+    trt_n   = 0;
+    trt_pal = pal();
+    for _ in 0..200 {
+        if crew_of(trt_s, 0).alive { continue; }
+        wave_tick(trt_s, trt_pal, trt_pw, marker_empty(), core());
+        trt_n += 1;
+    }
+
+    trt_want = HELPER_RECOVERY_SECONDS / TICK_SECONDS;
+    assert(trt_n == 90,
+           "it took {trt_n} ticks, and {HELPER_RECOVERY_SECONDS} s is {trt_want}");
+    assert(crew_of(trt_s, 0).alive, "and the crew member is back");
+}
+
+// It rejoins WHOLE and at the core — a helper that came back on its
+// last HP would wreck again to the next stray attacker, and the roster
+// would decay across a run however well it was played.
+fn test_it_rejoins_whole_and_at_the_core() {
+    tir_s  = a_downed_crew_member();
+    tir_pw = band();
+    // It was hurt before it went down.
+    helper_hurt(tir_s.crew[0] ?? Helper { }, HELPER_HP);
+
+    vehicle_place(tir_s.player, 6, 0);
+    wave_take(tir_s, BLOCKER_PLAYER);
+    vehicle_place(tir_s.player, 0, 0);
+    wave_drop(tir_s, BLOCKER_PLAYER, core());
+    play(tir_s, tir_pw, 90);
+
+    tir_h = crew_of(tir_s, 0);
+    assert(tir_h.alive, "back on the roster");
+    assert(helper_hp(tir_h) == HELPER_HP, "at full HP: {helper_hp(tir_h)}");
+    assert(tir_h.q == 0 && tir_h.r == 0,
+           "standing at the core: ({tir_h.q}, {tir_h.r})");
+    assert(tir_h.recover == 0.0, "with the clock cleared: {tir_h.recover}");
+    assert(len(tir_s.crew) == 1, "and in its own roster slot");
+}
+
+// And it WORKS again — the point of getting it back.
+fn test_a_recovered_helper_goes_back_to_work() {
+    trw_s  = a_downed_crew_member();
+    trw_pw = band();
+    height_raise(trw_s.heights, 1, 0, 4.0, as_u8(RUBBLE_WRECKAGE));
+
+    vehicle_place(trw_s.player, 6, 0);
+    wave_take(trw_s, BLOCKER_PLAYER);
+    vehicle_place(trw_s.player, 0, 0);
+    wave_drop(trw_s, BLOCKER_PLAYER, core());
+
+    // ⚠ The player is parked one hex from that heap, so it would clear
+    // it on its own — drive it away first, or this measures the wrong
+    // vehicle.
+    vehicle_place(trw_s.player, 12, 0);
+
+    play(trw_s, trw_pw, 89);
+    trw_before = height_rise(trw_s.heights, 1, 0);
+    assert(trw_before == 4.0,
+           "nothing cleared it while recovering: {trw_before}");
+
+    play(trw_s, trw_pw, 6);
+    assert(height_rise(trw_s.heights, 1, 0) < trw_before,
+           "and back at work beside the core: {height_rise(trw_s.heights, 1, 0)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ Retrieval is the ONLY way back
+// ─────────────────────────────────────────────────────────────────
+
+// **The negative control plan 14 H4's invariant gate names.**  Nobody
+// fetches it, and 200 ticks later — more than twice the recovery clock
+// — it is still lying where it fell.
+fn test_a_wreck_nobody_fetches_never_comes_back() {
+    twn_s  = a_downed_crew_member();
+    twn_pw = band();
+
+    play(twn_s, twn_pw, 200);
+
+    twn_h = crew_of(twn_s, 0);
+    assert(!twn_h.alive, "still down after 200 ticks");
+    assert(helper_lost(twn_h), "still LOST rather than recovering");
+    assert(!helper_recovering(twn_h), "nothing started a clock");
+    assert(twn_h.q == 6 && twn_h.r == 0,
+           "still where it fell: ({twn_h.q}, {twn_h.r})");
+    assert(cargo_count(twn_s.cargo) == 1, "and still there to be fetched");
+}
+
+// ⚠ Carrying it around is not delivering it: a player who drives the
+// wreck across the map and parks does not get a crew member back.
+fn test_carrying_it_about_recovers_nobody() {
+    tca_s  = a_downed_crew_member();
+    tca_pw = band();
+    vehicle_place(tca_s.player, 6, 0);
+    wave_take(tca_s, BLOCKER_PLAYER);
+    vehicle_drive(tca_s.player, 14, 0);
+
+    play(tca_s, tca_pw, 100);
+
+    assert(!crew_of(tca_s, 0).alive, "the crew member is still down");
+    assert(!helper_recovering(crew_of(tca_s, 0)), "and no clock is running");
+    assert(cargo_owner(tca_s.cargo, 0) == BLOCKER_PLAYER,
+           "the player is still carrying it");
+}
+
+// ⚠ **A drop that is not AT the core is just a drop** — the destination
+// decides, so the same action one hex too far out puts a crew member on
+// the ground instead of retrieving them.
+fn test_a_drop_two_hexes_out_is_only_a_drop() {
+    tdt_s  = a_downed_crew_member();
+    tdt_pw = band();
+    vehicle_place(tdt_s.player, 6, 0);
+    wave_take(tdt_s, BLOCKER_PLAYER);
+    vehicle_place(tdt_s.player, 2, 0);
+
+    assert(wave_drop(tdt_s, BLOCKER_PLAYER, core()) == 0, "it was put down");
+
+    assert(cargo_count(tdt_s.cargo) == 1,
+           "and is still in the world: {cargo_count(tdt_s.cargo)}");
+    assert(cargo_owner(tdt_s.cargo, 0) == BLOCKER_NONE, "lying on the ground");
+    assert(!helper_recovering(crew_of(tdt_s, 0)), "nobody is recovering");
+
+    // One hex closer and the same action retrieves.
+    vehicle_place(tdt_s.player, 1, 0);
+    wave_take(tdt_s, BLOCKER_PLAYER);
+    assert(wave_drop(tdt_s, BLOCKER_PLAYER, core()) == 0, "delivered from (1, 0)");
+    assert(helper_recovering(crew_of(tdt_s, 0)), "and now it is recovering");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A helper can do the fetching
+// ─────────────────────────────────────────────────────────────────
+
+// `DESIGN.md` § 9: *"player **or another helper** drives to the wreck"*
+// — the shared chassis again, and it needs no code of its own.
+fn test_a_crewmate_can_carry_one_home() {
+    tcc_s  = a_downed_crew_member();
+    tcc_pw = band();
+    tcc_s.crew += [helper_new(6, 0)];         // helper 1, alive, beside it
+
+    assert(wave_take(tcc_s, BLOCKER_CREW + 1) == 0, "helper 1 picked it up");
+
+    helper_drive(tcc_s.crew[1] ?? Helper { }, 0, 0);
+    play(tcc_s, tcc_pw, 6);
+    assert(crew_of(tcc_s, 1).q == 0, "and drove it home: q = {crew_of(tcc_s, 1).q}");
+
+    assert(wave_drop(tcc_s, BLOCKER_CREW + 1, core()) == 0, "and delivered it");
+    assert(helper_recovering(crew_of(tcc_s, 0)), "helper 0 is recovering");
+    assert(crew_of(tcc_s, 1).alive, "and helper 1 is still standing");
+}
+
+// ⚠ A wreck cannot carry a wreck — `alive` again, and it is the same
+// sentence that stops it driving and clearing.
+fn test_a_wreck_cannot_do_the_fetching() {
+    twc_s = a_downed_crew_member();
+    twc_s.crew += [helper_new(6, 0)];
+    helper_wreck(twc_s.crew[1] ?? Helper { });
+
+    assert(!wave_carrier_ready(twc_s, BLOCKER_CREW + 1), "a wreck is not a carrier");
+    assert(wave_take(twc_s, BLOCKER_CREW + 1) == CARGO_NONE,
+           "and it picks nothing up");
+    assert(cargo_count(twc_s.cargo) == 1, "the wreck is untouched");
+}
+
+// ⚠ And a run with no player in it cannot fetch either — the same
+// `Vehicle.parked` rule, one layer up.
+fn test_a_run_with_no_player_cannot_fetch() {
+    trp_s = a_downed_crew_member();
+
+    assert(!wave_carrier_ready(trp_s, BLOCKER_PLAYER), "there is no player");
+    assert(wave_take(trp_s, BLOCKER_PLAYER) == CARGO_NONE, "so nothing is picked up");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The whole arc, through the tick
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **H3's corridor, played out to its end.**  A helper blocks, is
+// destroyed, leaves a wreck; the player drives out, fetches it, brings
+// it home; ninety ticks later the crew is whole again.  Nothing in this
+// test reaches past `wave_tick` except the two halves of the one key.
+fn test_the_whole_arc_from_a_loss_to_a_full_roster() {
+    twa_pw = corridor();
+    twa_s  = wave_state_empty();
+    twa_s.enemies += [robot(7, 0)];
+    twa_s.crew    += [helper_new(6, 0)];
+
+    // 1. It blocks the corridor and is destroyed.
+    play(twa_s, twa_pw, 40);
+    assert(!crew_of(twa_s, 0).alive, "the crew member was lost");
+    assert(cargo_count(twa_s.cargo) == 1, "and left a wreck at (6, 0)");
+
+    // 2. The player drives out to it.  ⚠ Parked at the core AFTER the
+    // loss, so it was never in the corridor to be destroyed itself.
+    vehicle_place(twa_s.player, 0, 0);
+    vehicle_drive(twa_s.player, 6, 0);
+    play(twa_s, twa_pw, 4);
+    assert(twa_s.player.q == 6, "and reached it: q = {twa_s.player.q}");
+
+    // 3. Fetch, and drive home.
+    assert(wave_take(twa_s, BLOCKER_PLAYER) == 0, "picked it up");
+    vehicle_drive(twa_s.player, 0, 0);
+    play(twa_s, twa_pw, 4);
+    assert(twa_s.player.q == 0, "carried it home: q = {twa_s.player.q}");
+
+    // 4. Deliver, and wait it out.
+    assert(wave_drop(twa_s, BLOCKER_PLAYER, core()) == 0, "delivered");
+    assert(cargo_count(twa_s.cargo) == 0, "the wreck is gone from the world");
+    play(twa_s, twa_pw, 90);
+
+    assert(crew_of(twa_s, 0).alive, "and the crew is whole again");
+    assert(helper_hp(crew_of(twa_s, 0)) == HELPER_HP,
+           "at full HP: {helper_hp(crew_of(twa_s, 0))}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario, and the line it depends on
+// ─────────────────────────────────────────────────────────────────
+
+fn source_of(path: text) -> text {
+    so_f = file(path);
+    so_f.content() ?? ""
+}
+
+// ⚠ **The scenario's negative control, and it is the shape plan 14 H2
+// uses**: take the gated `.keys` file, remove ONE thing, and check the
+// number moves.  Here the one thing is the retrieval itself — the two
+// halves of § 11's key, and the two measurements that only exist to
+// witness them — and what must then go red is `roster 1 1`.
+//
+// ⚠ Without this, `a-crew-member-comes-home.keys` proves only that a
+// run containing those lines is green.  With it, the file's ending
+// depends on somebody having driven out and fetched the wreck, which is
+// § 9's *"retrieval is the only way back"* asserted against the game
+// rather than against a unit.
+fn test_without_the_retrieval_the_roster_stays_one_short() {
+    twr_src = source_of(SCENARIO);
+    assert(twr_src.contains("take player\ncargo 1 1\n"),
+           "the scenario still fetches the wreck");
+    assert(twr_src.contains("drop player\ncargo 0 0\n"),
+           "and still delivers it");
+
+    twr_no = twr_src.replace("take player\ncargo 1 1\n", "")
+                    .replace("drop player\ncargo 0 0\n", "");
+    twr_run = script_run(editor_state_new(PALETTE), twr_no, SHOTS);
+
+    assert(!twr_run.ok, "with nobody fetching it, the crew must stay one short");
+    assert(twr_run.message.contains("roster"),
+           "and it is the ROSTER that says so: {script_describe(twr_run)}");
+}
+
+// ⚠ And the recovery clock is the scenario's too: hold the retrieval
+// and move the wait one tick earlier, and the last `roster 1 1` is red.
+// This is the 90-vs-91 count asserted through the game's own runner —
+// the same number `test_recovery_takes_exactly_ninety_ticks` measures
+// directly, so a change to the timer cannot pass one and fail the other
+// unnoticed.
+fn test_the_scenario_pins_the_ninety_tick_clock() {
+    tsp_src = source_of(SCENARIO);
+    assert(tsp_src.contains("tick 89\nroster 0 0\n"),
+           "the scenario still waits 89 ticks and finds nobody back");
+
+    tsp_short = tsp_src.replace("tick 89\nroster 0 0\n", "tick 88\nroster 0 0\n");
+    tsp_run   = script_run(editor_state_new(PALETTE), tsp_short, SHOTS);
+
+    assert(!tsp_run.ok,
+           "89 + 1 is the whole clock, so 88 + 1 must not finish it");
+}

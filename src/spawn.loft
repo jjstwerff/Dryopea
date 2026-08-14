@@ -1478,6 +1478,116 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         }
         wt_wi += 1;
     }
+
+    // ⚠ **And a RETRIEVED one comes back on its own clock** (plan 15
+    // C2).  `DESIGN.md` § 9: *"Deliver to the core → recovery state for
+    // ~60 s → helper rejoins the roster"* — so the line above and this
+    // one are the whole of § 9's *"No automatic respawn — retrieval is
+    // the only way back"*: nothing starts this clock except a delivery.
+    //
+    // ⚠ 60.0 s is EXACTLY 90 ticks, and the epsilon inside
+    // `helper_recover_tick` is what keeps it 90 rather than 91.
+    for wt_rc in state.crew {
+        helper_recover_tick(wt_rc, TICK_SECONDS, core);
+    }
+}
+
+// ─── The one action, from the run's side (plan 15 C2) ───────────
+//
+// `DESIGN.md` § 11 gives the player ONE key for this — empty hands =
+// pickup, carrying = deposit — so what a carrier can do is decided by
+// what it is holding and where it is standing, never by which verb was
+// typed.  These two functions are that key's two outcomes.
+//
+// ⚠ **They take an owner id and find the hex themselves**, which is the
+// point: a caller that passed its own idea of where the carrier is
+// could deposit a wreck at the core while the vehicle was somewhere
+// else entirely.  There is deliberately no variant that accepts a hex.
+
+// Where a carrier is standing.  `BLOCKER_PLAYER` or a crew id.
+pub fn wave_carrier_hex(state: const WaveState, owner: integer) -> Hex {
+    if owner == BLOCKER_PLAYER {
+        return Hex { q: state.player.q, r: state.player.r };
+    }
+    wch_want = blocker_crew_index(owner);
+    wch_i    = 0;
+    wch_at   = Hex { q: 0, r: 0 };
+    for wch_h in state.crew {
+        if wch_i == wch_want { wch_at = Hex { q: wch_h.q, r: wch_h.r }; }
+        wch_i += 1;
+    }
+    wch_at
+}
+
+// Can this carrier act at all?
+//
+// ⚠ **A wreck carries nothing**, which is `alive` doing the work again
+// (plan 14 H3): a downed crew member stops driving, clearing, earning,
+// blocking — and now carrying — because every verb asks the one flag.
+pub fn wave_carrier_ready(state: const WaveState, owner: integer) -> boolean {
+    if owner == BLOCKER_PLAYER { return vehicle_present(state.player); }
+
+    wcr_want = blocker_crew_index(owner);
+    if wcr_want < 0 || wcr_want >= len(state.crew) { return false; }
+
+    wcr_i  = 0;
+    wcr_ok = false;
+    for wcr_h in state.crew {
+        if wcr_i == wcr_want { wcr_ok = wcr_h.alive; }
+        wcr_i += 1;
+    }
+    wcr_ok
+}
+
+// Pick up whatever is in reach.  Answers the object taken, or
+// `CARGO_NONE`.
+pub fn wave_take(state: WaveState, owner: integer) -> integer {
+    if !wave_carrier_ready(state, owner) { return CARGO_NONE; }
+
+    wtk_at = wave_carrier_hex(state, owner);
+    wtk_i  = cargo_take(state.cargo, owner, wtk_at, CARGO_REACH_HEXES);
+    wtk_i
+}
+
+// Put down what this carrier is holding — DELIVERING it if where they
+// stand is a destination its kind accepts.  Answers the object, or
+// `CARGO_NONE` when its hands were empty.
+//
+// ⚠ **One verb, and the destination decides**, which is § 11's
+// context-resolved key: a player who drops a downed colleague at the
+// core has retrieved them, and the same press one hex further out has
+// merely put them down.  Two verbs would let a script deposit at a
+// place the game would not.
+pub fn wave_drop(state: WaveState, owner: integer, core: Hex) -> integer {
+    if !wave_carrier_ready(state, owner) { return CARGO_NONE; }
+
+    wdr_at = wave_carrier_hex(state, owner);
+    wdr_i  = cargo_deliver(state.cargo, owner, wdr_at, core);
+    if wdr_i != CARGO_NONE {
+        wave_arrived(state, wdr_i, core);
+        return wdr_i;
+    }
+    cargo_put(state.cargo, owner, wdr_at)
+}
+
+// What a delivered object DOES at its destination.
+//
+// ⚠ **The per-kind half that `carry.loft` deliberately does not have**
+// — it needs the roster, and a carry model that knew about helpers
+// could not serve tower-tops.  A later kind adds a branch here and a
+// row in `cargo_destination_ok`, and nothing else anywhere.
+//
+// ⚠ It reads the object AFTER it was consumed, which works because a
+// spent record keeps its slot (`CARGO_GONE` is a state, not a removal).
+fn wave_arrived(state: WaveState, i: integer, core: const Hex) {
+    wa_o = cargo_get(state.cargo, i);
+    if wa_o.kind != CARGO_WRECK { return; }
+
+    wa_j = 0;
+    for wa_h in state.crew {
+        if wa_j == wa_o.subj { helper_begin_recovery(wa_h, core); }
+        wa_j += 1;
+    }
 }
 
 // Count of alive enemies in the wave — wave-clear check.

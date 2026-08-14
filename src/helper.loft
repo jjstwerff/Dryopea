@@ -76,6 +76,31 @@ pub const HELPER_ROSTER_CAP:   integer = 6;
 // else.
 pub const HELPER_PROGRESS_EPSILON: float = 1.0e-9;
 
+// numbers.json § helper.recovery_time_after_retrieval — the time a
+// retrieved crew member spends at the core before rejoining.
+pub const HELPER_RECOVERY_SECONDS: float = 60.0;
+
+// ⚠ **The epsilon trap, a FOURTH time, and at its least visible**
+// (plan 15 C0).  60.0 s over a `1 / 1.5` s tick is EXACTLY 90 ticks, so
+// a bare `> 0.0` leaves a hair of positive residue after the ninetieth
+// and gives a ninety-FIRST — the same shape as `tower.loft`'s dropped
+// third shot and plan 13 V4's four-tick boost.
+//
+// ⚠ **The discriminator inverts the intuition**: the 5.0 s boost
+// cooldown is 7.5 ticks — *not* a whole number — and takes 8 ticks
+// either way, so it is immune.  The trap fires ONLY where the timer
+// divides the tick exactly, which is the case that looks safest.
+//
+// ⚠ And this is the appearance no arrival assertion can see: one tick
+// in ninety, against a tower losing a third of its shots and a helper
+// losing 6.7% of its speed.  Only COUNTING the ticks separates them,
+// which is why `tests/15_c2_recovery.loft` counts.
+//
+// Seconds, where `HELPER_PROGRESS_EPSILON` is hexes — a separate
+// constant for the reason that one is, rather than a shared number
+// meaning two things.
+pub const HELPER_TIMER_EPSILON: float = 1.0e-9;
+
 // ─── The helper ─────────────────────────────────────────────────
 
 // ⚠ Zero is the neutral value for all three of `progress`, `taken` and
@@ -92,12 +117,13 @@ pub struct Helper {
     alive:    boolean,
     progress: float,     // banked hexes, always < 1 between ticks
     taken:    float,     // damage ABSORBED, never HP remaining
+    recover:  float,     // seconds of recovery LEFT, 0 when not in it
 }
 
 // Factory: a helper standing at (q, r) with nothing banked.
 pub fn helper_new(q: integer, r: integer) -> Helper {
     Helper { q: q, r: r, to_q: q, to_r: r, alive: true,
-             progress: 0.0, taken: 0.0 }
+             progress: 0.0, taken: 0.0, recover: 0.0 }
 }
 
 // Point a helper at a hex.  It drives there over the next ticks.
@@ -146,8 +172,86 @@ pub fn helper_wreck(h: Helper) {
 }
 
 // Is this crew member down?
+//
+// ⚠ **True during RECOVERY too**, and that is deliberate: a crew member
+// at the core with 40 s left on the clock is not driving, not clearing,
+// not earning and not blocking, which is every consequence `alive`
+// carries.  `helper_recovering` is what tells the two apart, for the
+// one caller that cares — a measurement asking whether the crew is
+// whole.
 pub fn helper_wrecked(h: const Helper) -> boolean {
     !h.alive
+}
+
+// ─── Retrieved, and coming back (plan 15 C2) ────────────────────
+
+// Is this crew member in recovery at the core?
+pub fn helper_recovering(h: const Helper) -> boolean {
+    !h.alive && h.recover > HELPER_TIMER_EPSILON
+}
+
+// Is this crew member still lying on the battlefield?
+//
+// ⚠ The distinction `helper_wrecked` cannot make, and the one a player
+// acts on: a LOST helper needs fetching and a recovering one needs
+// nothing but time.
+pub fn helper_lost(h: const Helper) -> boolean {
+    !h.alive && h.recover <= HELPER_TIMER_EPSILON
+}
+
+// Start the recovery clock, at the core.  Answers whether it started.
+//
+// `DESIGN.md` § 9: *"Deliver to the core → recovery state for ~60 s →
+// helper rejoins the roster."*
+//
+// ⚠ **It moves the helper to the core**, because somebody carried it
+// there: leaving the record on the hex it died on would make "where is
+// helper 2" answer the battlefield while the crew member is at the
+// core, and a stale position is a lie that surfaces only once something
+// reads it (the same rule `cargo_follow` keeps for a carried object).
+//
+// ⚠ A crew member who is already up cannot start recovering — the
+// guard is here rather than at the call site so a second delivery path
+// could not skip it.
+pub fn helper_begin_recovery(h: Helper, core: const Hex) -> boolean {
+    if h.alive { return false; }
+    if h.recover > HELPER_TIMER_EPSILON { return false; }
+
+    h.recover = HELPER_RECOVERY_SECONDS;
+    h.q       = core.q;
+    h.r       = core.r;
+    h.to_q    = core.q;
+    h.to_r    = core.r;
+    true
+}
+
+// Spend one tick of recovery.  Answers whether the helper rejoined the
+// roster on this tick.
+//
+// ⚠ **The epsilon is the whole function** — see `HELPER_TIMER_EPSILON`.
+// 60.0 s is exactly 90 ticks and a bare `> 0.0` gives 91, which no
+// assertion that the crew member came back can see.
+//
+// ⚠ It rejoins WHOLE: the damage that downed it is cleared and the
+// banked progress reset, because what came back is a repaired vehicle
+// rather than the wreck that was carried in.  Anything less would make
+// a retrieved helper wreck again to the next stray attacker, and the
+// roster would decay across a run no matter how well it was played.
+pub fn helper_recover_tick(h: Helper, tick_seconds: float, core: const Hex) -> boolean {
+    if !helper_recovering(h) { return false; }
+
+    h.recover = h.recover - tick_seconds;
+    if h.recover > HELPER_TIMER_EPSILON { return false; }
+
+    h.recover  = 0.0;
+    h.alive    = true;
+    h.taken    = 0.0;
+    h.progress = 0.0;
+    h.q        = core.q;
+    h.r        = core.r;
+    h.to_q     = core.q;
+    h.to_r     = core.r;
+    true
 }
 
 // Bank one tick of movement and answer the whole hexes it releases.

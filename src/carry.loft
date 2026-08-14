@@ -292,6 +292,65 @@ pub fn cargo_put(cl: CargoLayer, owner: integer, at: const Hex) -> integer {
     cp_i
 }
 
+// ─── Where a thing is meant to end up (plan 15 C2) ──────────────
+
+// How far a carrier reaches, for BOTH halves of the action — to pick
+// something up off the ground, and to deposit it at a destination.
+//
+// ⚠ **One constant, because § 11's key is ONE key**: empty hands =
+// pickup, carrying = deposit.  Two reaches would make the same key mean
+// two distances depending on what the vehicle happens to be holding,
+// which is a rule a player cannot learn by playing.
+//
+// ⚠ **The chassis's reach, and it covers the carrier's own hex** —
+// `DESIGN.md` § 7 § Tower-core retrieval says *"drive next to it"*, and
+// `vehicle.loft`'s clearing already works that way.  Kept separate from
+// `VEHICLE_SALVAGE_REACH_HEXES` even though both are 1 today, because
+// the reasons differ: salvage's is FORCED by hover clearance (a vehicle
+// cannot stand on the 1.5 m heap it has to clear, plan 13 V2), and this
+// one is the design's sentence.  One could move without the other.
+pub const CARGO_REACH_HEXES: integer = 1;
+
+// Is `at` a valid destination for this kind of cargo?
+//
+// ⚠ **This is the ONLY thing that varies per kind**, and it is the
+// contract C0 § 4 sets for every later consumer: a tower-top
+// (`DESIGN.md` § 7) adds a row here and a second row for what arriving
+// does, and NOTHING in the carrying path.  A kind that needs more has
+// broken the model rather than extended it.
+//
+// A downed helper goes to the core and nowhere else — § 9: *"Deliver to
+// the core → recovery state"*.  ⚠ An unknown kind has NO destination
+// rather than every destination: a kind added without one would
+// otherwise be depositable anywhere, which silently consumes it.
+pub fn cargo_destination_ok(kind: u8, at: const Hex, core: const Hex) -> boolean {
+    if kind == CARGO_WRECK {
+        return lat_distance(at, core) <= CARGO_REACH_HEXES;
+    }
+    false
+}
+
+// Deposit what `owner` is holding, if `at` is a destination its kind
+// accepts.  Answers the object delivered, or `CARGO_NONE`.
+//
+// ⚠ **It does not apply the EFFECT**, and the split is deliberate: what
+// arriving does needs the roster, the wallet or the tower markers, none
+// of which a carry model should know about.  So this answers *which
+// object arrived* and the caller does the rest — and because a consumed
+// record keeps its slot, the caller can still read the kind and the
+// subject off it afterwards.
+pub fn cargo_deliver(cl: CargoLayer, owner: integer, at: const Hex,
+                     core: const Hex) -> integer {
+    cd_i = cargo_held_by(cl, owner);
+    if cd_i == CARGO_NONE { return CARGO_NONE; }
+
+    cd_o = cargo_get(cl, cd_i);
+    if !cargo_destination_ok(cd_o.kind, at, core) { return CARGO_NONE; }
+
+    cargo_consume(cl, cd_i);
+    cd_i
+}
+
 // Take an object out of the world — the ONE legitimate way out.
 //
 // ⚠ **Every other route out is the defect this model exists to
