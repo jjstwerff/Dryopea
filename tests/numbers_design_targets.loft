@@ -1,0 +1,362 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The design targets, gated against the running simulation.
+//
+// ── What this file is for, and why it is not a plan phase ───────
+//
+// [`docs/NUMBERS.md`](../docs/NUMBERS.md) § Design targets the
+// parameters anchor lists the *shapes* `examples/numbers.json` is
+// picked to produce — *"5 enemies on the core = 5 pt/s; 200 pts buys
+// 40 s"*, *"a lone enemy needs 100 s to break a wall"*, *"regular at
+// 30 HP = 3-shot kill"*.  Every one of them was prose, verified by
+// nobody, in a file whose whole purpose is to be **tuned**.
+//
+// That is the gap this file closes.  Each test below pins one stated
+// target to what the simulation actually does, so a future change to
+// a number fails HERE, naming the design promise it broke, rather
+// than drifting silently until somebody plays the game and finds it
+// unrecognisable.
+//
+// ⚠ **It is deliberately NOT a plan phase**, and so not named
+// `<plan>_<phase>_*`.  What it gates is a DOCUMENT — `numbers.json`
+// plus its § Design targets — which is cross-cutting by nature: the
+// wallet target constrains `wallet.loft`, the wall target
+// `damage.loft` and `spawn.loft`, the tower targets `tower.loft`.
+// The per-mechanic files already gate the mechanics; this one gates
+// the promises.
+//
+// ── The occasion for writing it ─────────────────────────────────
+//
+// Plan 11 F7b changed how every enemy walks, and every clock in the
+// game moved by roughly a third.  The obvious next move was to
+// rebalance the numbers against the new behaviour — and measuring
+// first showed that would have been **exactly wrong**: the design's
+// stated targets were met to within 2%, because F7b brought the sim
+// INTO agreement with numbers that had always described a wave which
+// reaches the core in numbers.  What had contradicted them was the
+// old queueing mover, in which only two enemies could ever nibble.
+//
+// So the rebalance was not made, and this file exists instead.  A
+// target nobody can check is a target that gets "rebalanced" on the
+// strength of whichever behaviour is in front of you.
+//
+// ── What is NOT gated here, and why ─────────────────────────────
+//
+// Two of the seven stated targets cannot be measured yet, and saying
+// so is the point of listing them:
+//
+//   - **"Single base session ≈ 15-25 minutes"** needs a PLAYER.  Every
+//     clock dryopea can measure is an unattended one, and an
+//     unattended base is a measuring instrument rather than the game
+//     (`plans/12` § What this plan does NOT build).
+//   - **"Economy ramps via loot"** needs loot COLLECTION, which needs
+//     the vehicle.  `numbers.json` § enemy_regular.loot_value is read
+//     by nobody, and `wallet.loft` deliberately has no credit verb.
+//
+// Both become gateable the day the vehicle lands, and this comment is
+// where to start.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot() -> u8 {
+    as_u8(ENEMY_KIND_REGULAR)
+}
+
+fn westbound(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: robot(), heading: 3 as u8, alive: true }
+}
+
+// Seconds, from a tick count — the unit every target below is stated
+// in.  `numbers.json` speaks per-SECOND rates throughout and the sim
+// speaks ticks, so a target check is only honest in seconds.
+fn seconds(ticks: integer) -> float {
+    (ticks as float) * TICK_SECONDS
+}
+
+// Within 5% of the stated figure.  A band rather than an equality
+// because a tick is 0.667 s and none of these targets is stated to
+// better than "≈" — but tight enough that doubling a rate cannot
+// hide in it.
+fn near(got: float, want: float) -> boolean {
+    got >= want * 0.95 && got <= want * 1.05
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TARGET: "Damage to wallet ≈ slow drain"
+//
+//   numbers.json § economy.starting_budget_first_base = 200
+//   numbers.json § enemy_regular.damage_to_core_wallet = 1 pt/s
+//   NUMBERS.md:  "5 enemies on the core = 5 pt/s; 200 pts buys 40 s
+//                 before zero.  Encourages keeping enemies AWAY."
+// ─────────────────────────────────────────────────────────────────
+
+fn field() -> PaintedWorld {
+    f_pw = painted_empty();
+    for f_r in -3..=3 {
+        for f_q in -3..=3 { paint(f_pw, f_q, f_r, as_u8(GRASS)); }
+    }
+    f_pw
+}
+
+// Put `n` enemies on the core's own footprint and tick until the
+// budget is gone.  Placed rather than walked in: the target is about
+// the DRAIN, and a walk would measure the approach as well.
+fn ticks_to_empty(n: integer) -> integer {
+    tte_pw  = field();
+    tte_s   = wave_state_empty();
+    tte_i   = 0;
+    for tte_h in lat_disc(core(), NIBBLE_REACH_HEXES) {
+        if tte_i < n {
+            tte_s.enemies += [westbound(tte_h.q, tte_h.r)];
+            tte_i += 1;
+        }
+    }
+    tte_pal = pal();
+    tte_t   = 0;
+    while !wallet_broke(tte_s.wallet) && tte_t < 2000 {
+        wave_tick(tte_s, tte_pal, tte_pw, marker_empty(), core());
+        tte_t += 1;
+    }
+    tte_t
+}
+
+fn test_five_nibblers_empty_the_budget_in_forty_seconds() {
+    tfn = seconds(ticks_to_empty(5));
+
+    assert(near(tfn, 40.0),
+           "NUMBERS.md § Design targets says 5 nibblers buy 40 s; measured {tfn:6.2} s");
+}
+
+// ⚠ **The other end of the same target, and the one that says the
+// rate is per-ENEMY rather than a constant.**  One nibbler is five
+// times as long, so "keeping enemies AWAY" is a real lever and not
+// flavour text.
+fn test_and_one_nibbler_takes_five_times_as_long() {
+    ton = seconds(ticks_to_empty(1));
+
+    assert(near(ton, 200.0),
+           "one nibbler should buy 5x40 s; measured {ton:6.2} s");
+}
+
+// ⚠ **The ceiling the target does not state, and every reading of the
+// wave list depends on it.**  Only the core's own footprint can nibble
+// — a centre hex and six neighbours, `numbers.json` §
+// core.footprint_layout — so the drain SATURATES at 7 pt/s.  A wave of
+// eighty is no more dangerous to the wallet than a wave of ten; the
+// rest of its weight lands on walls and towers.
+//
+// Worth gating rather than noting, because it is the fact that makes
+// `wave_list`'s later entries readable, and it would silently change
+// the moment anything let an eighth enemy reach the core.
+fn test_the_drain_saturates_at_the_cores_own_footprint() {
+    tds_seven = ticks_to_empty(7);
+    tds_ten   = ticks_to_empty(10);
+
+    assert(tds_seven == tds_ten,
+           "seven and ten drain alike — the footprint is the cap: {tds_seven} vs {tds_ten} ticks");
+    assert(near(seconds(tds_seven), WALLET_STARTING_POINTS / 7.0),
+           "and seven of them is 7 pt/s: {seconds(tds_seven):6.2} s");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TARGET: "Wall break-through ≈ rare"
+//
+//   numbers.json § wall.wall_hp = 100, § enemy_regular.damage_to_wall = 1 HP/s
+//   NUMBERS.md:  "A lone enemy needs 100 s to break a wall.
+//                 Wall-nibbling is the fallback when the perimeter is
+//                 fully closed."
+// ─────────────────────────────────────────────────────────────────
+
+// A sealed band `rows` deep, walled across q = 5, with `n` robots
+// walking into it from the east.  Answers the tick the first hex of
+// the wall came down on.
+fn ticks_to_breach(n: integer, rows: integer) -> integer {
+    ttb_pal = pal();
+    ttb_pw  = painted_empty();
+    for ttb_r in (0 - rows)..=rows {
+        for ttb_q in -3..=20 { paint(ttb_pw, ttb_q, ttb_r, as_u8(GRASS)); }
+    }
+    for ttb_w in (0 - rows)..=rows { paint(ttb_pw, 5, ttb_w, as_u8(WALL)); }
+
+    ttb_s = wave_state_empty();
+    for ttb_i in 0..n { ttb_s.enemies += [westbound(9 + ttb_i, 0)]; }
+
+    ttb_t = 0;
+    ttb_done = false;
+    while !ttb_done && ttb_t < 1500 {
+        wave_tick(ttb_s, ttb_pal, ttb_pw, marker_empty(), core());
+        ttb_t += 1;
+        for ttb_c in (0 - rows)..=rows {
+            if painted_kind_name(ttb_pal, ttb_pw, 5, ttb_c) != "wall" { ttb_done = true; }
+        }
+    }
+    ttb_t
+}
+
+// ⚠ **The stated figure is a LONE enemy against a BRACED hex**, and
+// both halves matter.  100 HP is `wall_hp` before bracing scales it
+// (plan 12 B3), and one robot at 1 HP/s is the arithmetic — so this
+// target says what a single attacker costs and deliberately says
+// nothing about a wave.
+fn test_a_lone_robot_needs_a_hundred_seconds_to_break_a_wall() {
+    tal = seconds(ticks_to_breach(1, 2));
+
+    // ~2 s over: the robot has to walk four hexes to the wall first.
+    assert(tal >= 100.0 && tal <= 110.0,
+           "NUMBERS.md § Design targets says 100 s for a lone enemy; measured {tal:6.2} s");
+}
+
+// ⚠ **"Rare" is true of a lone enemy and NOT of a wave**, and the gap
+// is 3x.  A handful of robots arrive as a front (plan 11 F7b) and
+// break a sealed wall in a third of the stated time — at its 30 HP
+// END, not the 100 HP hex the target's arithmetic uses.
+//
+// Gated because it is the honest reading of the target rather than a
+// contradiction of it: the number is right, the word "rare" describes
+// the lone case, and a player who seals a perimeter against a WAVE
+// should expect a breach in half a minute.
+fn test_but_a_wave_breaks_one_in_a_third_of_that() {
+    tbw_five   = seconds(ticks_to_breach(5, 2));
+    tbw_lone   = seconds(ticks_to_breach(1, 2));
+
+    assert(tbw_five < tbw_lone / 2.0,
+           "five robots are more than twice as fast as one: {tbw_five:6.2} s against {tbw_lone:6.2} s");
+    assert(tbw_five >= 25.0 && tbw_five <= 45.0,
+           "and it lands near half a minute: {tbw_five:6.2} s");
+}
+
+// ⚠ **And it SATURATES**, which is what keeps a sealed perimeter a
+// decision rather than a countdown: past a handful of attackers the
+// wall does not fall any faster, because only so many can reach the
+// hex that is closest to breaking.
+fn test_the_breach_clock_saturates_with_attackers() {
+    tbc_five     = ticks_to_breach(5, 2);
+    tbc_thirteen = ticks_to_breach(13, 2);
+
+    assert(tbc_thirteen >= tbc_five,
+           "thirteen are no faster than five: {tbc_thirteen} against {tbc_five} ticks");
+    assert(tbc_thirteen <= tbc_five + 10,
+           "and not much slower either: {tbc_thirteen} against {tbc_five} ticks");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TARGET: "Tower DPS ≈ 10/s" and "Combat economy ≈ 1 wave / 30 s"
+//
+//   numbers.json § tower.damage_per_shot = 10, fire_interval = 1.0 s,
+//                  shot_budget_per_charge = 30
+//   numbers.json § enemy_regular.hp = 30
+//   NUMBERS.md:  "Regular at 30 HP = 3-shot kill."
+//                "Tower shot budget 30 = the player needs to pace
+//                 towers across the wave."
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_regular_is_a_three_shot_kill() {
+    tar = ENEMY_REGULAR_HP / TOWER_DAMAGE_PER_SHOT;
+
+    assert(tar == 3.0,
+           "NUMBERS.md § Design targets says a regular is a 3-shot kill; the numbers say {tar}");
+}
+
+fn test_a_towers_dps_is_ten_a_second() {
+    tat = TOWER_DAMAGE_PER_SHOT / TOWER_FIRE_INTERVAL_S;
+
+    assert(near(tat, 10.0), "tower DPS should be 10/s; the numbers say {tat}");
+}
+
+// ⚠ **A whole magazine is TEN kills and thirty seconds**, which is
+// what "pace towers across the wave" costs in practice: one tower
+// cannot clear `wave_list`'s second wave of eight and its third of
+// twelve without a repair between them.
+fn test_a_full_magazine_is_thirty_seconds_and_ten_kills() {
+    tfm_seconds = (TOWER_SHOT_BUDGET as float) * TOWER_FIRE_INTERVAL_S;
+    tfm_kills   = (TOWER_SHOT_BUDGET as float) * TOWER_DAMAGE_PER_SHOT / ENEMY_REGULAR_HP;
+
+    assert(near(tfm_seconds, 30.0),
+           "a magazine should be 30 s of fire; the numbers say {tfm_seconds} s");
+    assert(tfm_kills == 10.0,
+           "and ten kills; the numbers say {tfm_kills}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TARGET: "Movement scale — an enemy at 1.5 hex/s gives time to react"
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ The tick's DURATION is derived from this rate rather than chosen
+// (plan 12 B0), so the target and the timestep are the same statement
+// read two ways — which is exactly why it is worth an assertion: the
+// design intends to break that coupling (`DESIGN.md` § Speed must NOT
+// be tied to the tick), and this is one of the places that will go red
+// when it does.
+fn test_an_enemy_covers_one_and_a_half_hexes_a_second() {
+    tae_pw = painted_empty();
+    for tae_q in -3..=12 { paint(tae_pw, tae_q, 0, as_u8(GRASS)); }
+
+    tae_s = wave_state_empty();
+    tae_s.enemies += [westbound(10, 0)];
+    tae_pal = pal();
+    for _ in 0..6 { wave_tick(tae_s, tae_pal, tae_pw, marker_empty(), core()); }
+
+    tae_e = tae_s.enemies[0] ?? Enemy { };
+    assert(tae_e.q == 4, "six ticks is six hexes: it is at q = {tae_e.q}");
+
+    // ⚠ A division answers `float?` in loft — zero seconds would be
+    // null — so it is discharged before the comparison rather than
+    // inside it, which is what keeps the suite warning-clean.
+    tae_rate = (6.0 / seconds(6)) ?? 0.0;
+    assert(near(tae_rate, ENEMY_SPEED_HEX_PER_SECOND),
+           "which is {tae_rate} hex/s, not {ENEMY_SPEED_HEX_PER_SECOND}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The constants ARE numbers.json's values
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **Nothing loads `numbers.json` yet**, so every constant above is
+// a hand-copied second copy of a row in it — `wallet.loft`,
+// `tower.loft`, `damage.loft` and `spawn.loft` each carry the note
+// saying so.  Until a loader lands, the drift this file cannot see is
+// a value edited in the JSON and not in the `.loft`.
+//
+// So the targets are pinned to the CONSTANTS above, and this test
+// pins the constants to the figures `docs/NUMBERS.md` quotes.  It is
+// the cheapest available stand-in for the loader, and it goes red the
+// moment somebody tunes one side only.
+fn test_the_constants_are_the_documented_figures() {
+    assert(WALLET_STARTING_POINTS == 200.0, "economy.starting_budget_first_base");
+    assert(NIBBLE_POINTS_PER_SECOND == 1.0, "enemy_regular.damage_to_core_wallet");
+    assert(ENEMY_DAMAGE_TO_WALL_PER_SECOND == 1.0, "enemy_regular.damage_to_wall");
+    assert(ENEMY_REGULAR_HP == 30.0, "enemy_regular.hp");
+    assert(ENEMY_SPEED_HEX_PER_SECOND == 1.5, "enemy_regular.speed_engage");
+    assert(WALL_HP == 100.0, "wall.wall_hp");
+    assert(WALL_HIGH_HP == 200.0, "wall.wall_high_hp");
+    assert(TOWER_RANGE_HEXES == 15, "tower.range");
+    assert(TOWER_FIRE_INTERVAL_S == 1.0, "tower.fire_interval");
+    assert(TOWER_DAMAGE_PER_SHOT == 10.0, "tower.damage_per_shot");
+    assert(TOWER_SHOT_BUDGET == 30, "tower.shot_budget_per_charge");
+    assert(TOWER_HEIGHT_METRES == 6.0, "tower.height");
+    assert(SCRAMBLER_BUBBLE_RADIUS == 25, "core.scrambler_bubble_radius");
+    assert(BODY_HEIGHT_METRES == 0.5, "enemy_regular.body_height");
+    assert(ENEMY_HEIGHT_METRES == 1.0, "enemy_regular.height");
+    assert(BRACE_FACTOR_FULL == 1.0 && BRACE_FACTOR_STRAIGHT == 0.6
+        && BRACE_FACTOR_END == 0.3 && BRACE_FACTOR_STUB == 0.15,
+           "wall.brace_factor_*");
+}

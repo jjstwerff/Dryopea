@@ -71,7 +71,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 749/749 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 761/761 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
 **Gate: 18 scripts green under `scripts/validate.sh`** (~6 s, 307
@@ -1265,6 +1265,7 @@ signature.
 | Find a mechanic that is designed but NOT built | [docs/DESIGN.md](docs/DESIGN.md) (the mechanics) and [plans/ROADMAP.md](plans/ROADMAP.md) (the index).  ⚠ `plans/12` § Design recorded during this plan POINTS at them rather than restating — a second copy is the one that drifts |
 | Understand the fiction | [docs/SETTING.md](docs/SETTING.md) |
 | Pick next work to do | [plans/ROADMAP.md](plans/ROADMAP.md) — 5-tier feature list |
+| TUNE a number | `examples/numbers.json`, then run `scripts/test.sh`.  ⚠ `tests/numbers_design_targets.loft` gates five of `docs/NUMBERS.md` § Design targets against the running sim, so a tuned value fails there naming the promise it broke.  ⚠ And nothing LOADS numbers.json: every value is hand-copied into a `.loft` constant, so edit BOTH — that test pins them together |
 | Continue plan 01 work | [plans/01-ground-editor/README.md](plans/01-ground-editor/README.md) § Implementation status |
 | Add a regression test | `tests/01_*.loft` for patterns; `golden.loft::assert_golden` for image tests |
 | Script a run of the editor | `tests/scripts/*.keys` for the vocabulary; `script.loft::script_run_file` to play one; `snap <name>` for a picture |

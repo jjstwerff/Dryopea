@@ -60,7 +60,7 @@
     "hp": { "value": 30, "units": "HP", "doc": "= 3 tower laser shots to kill." },
     "body_height": { "value": 0.5, "units": "m", "doc": "How far one dead robot raises the hex it falls on. NOT `height` (1.0 m) — that is a STANDING robot and a collapsed wreck is flatter. It is the unit the body ramp is counted in: a single-hex ramp onto a 3 m wall needs a pile of 1.0-2.0 m at a 2.0 m climb, so at 0.5 m per body two, three or four dead robots get the next one over and five is a heap it cannot climb. src/damage.loft BODY_HEIGHT_METRES; tests/12_b4_death.loft sweeps the band." },
     "damage_to_core_wallet": { "value": 1, "units": "points/s", "doc": "When nibbling the core, this rate drains the player's point wallet (core is invulnerable; points are the proxy)." },
-    "damage_to_wall": { "value": 1, "units": "HP/s", "doc": "When forced to attack a wall (closed perimeter, no path through), this rate. Slow — wall-breaking is a rare path, not the default." },
+    "damage_to_wall": { "value": 1, "units": "HP/s", "doc": "When forced to attack a wall (closed perimeter, no path through), this rate. ⚠ 'Rare' is true of a LONE enemy and not of a wave: measured, one robot needs 102 s to break a braced hex, five arrive as a front and breach a sealed wall in 33 s — at its 30 HP END, not the 100 HP middle (plan 11 F7b + plan 12 B3). Past a handful of attackers the clock saturates, because only so many can reach the hex closest to breaking. tests/numbers_design_targets.loft gates all three." },
     "damage_to_blocker": { "value": 5, "units": "HP/s", "doc": "When attacking a player/helper blocking their path to the core." },
     "loot_value": { "value": 10, "units": "points", "doc": "Points dropped on death; gold cube on the death hex." },
     "pre_walk_standstill": { "value": 5.0, "units": "s", "doc": "Seconds the enemy stands at its spawn marker after wave start before beginning approach. The player's scramble-decision window." }
@@ -81,7 +81,7 @@
     "_doc": "Pulsed-laser defensive tower. 7-hex footprint, ~6 m tall (peeks over wall_high). Decays by per-shot budget, not time.",
     "footprint_layout": { "value": "hex_disc_radius_1", "doc": "Centre hex + 6 neighbours = 7 hexes total." },
     "height": { "value": 6.0, "units": "m", "doc": "Body height; peeks 1 m over wall_high (5 m)." },
-    "range": { "value": 15, "units": "hex", "doc": "≈ 20 m. LOS blocked by wall_high + steep_rock; NOT by wall." },
+    "range": { "value": 15, "units": "hex", "doc": "≈ 20 m, measured as a lattice distance and nothing else. ⚠ LOS is a HEIGHT question, not a materials one — plan 12 B5b FALSIFIED the old note here ('blocked by wall_high + steep_rock; NOT by wall') in both directions. A shot descends from the tower eye (6.0 m) to the target body (1.0 m), so a plain `wall` DOES block once it stands past ~3/5 of the way to the target, and a `wall_high` right beside the tower does NOT. steep_rock blocks nothing at all, because terrain has no height until plan 02. The rule a player learns: a tower must overlook the wall it covers. src/tower.loft tower_sees." },
     "fire_interval": { "value": 1.0, "units": "s", "doc": "One laser shot per second. Pulsed; the recharge gap is visible." },
     "damage_per_shot": { "value": 10, "units": "HP", "doc": "= 3 hits to kill a regular enemy." },
     "shot_budget_per_charge": { "value": 30, "units": "shots", "doc": "Continuous fire before the tower goes black (decayed). At 1 shot/s = 30 s of firing." },

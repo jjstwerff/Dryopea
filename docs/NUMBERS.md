@@ -40,37 +40,82 @@ each section's leaves carrying `value` + `units` + `doc`:
 ## Design targets the parameters anchor
 
 The defaults are picked to produce these *shapes* (verify in
-play; tune freely):
+play; tune freely).
 
-- **Single base session ≈ 15-25 minutes.**  ~45 s pre-wave
+⚠ **Five of the seven are now GATED against the running
+simulation** — [`tests/numbers_design_targets.loft`](../tests/numbers_design_targets.loft)
+pins each one, so a tuned number fails there naming the design
+promise it broke.  Before that file existed every target on this
+page was prose verified by nobody, in a document whose whole
+purpose is to be tuned.  ✓ marks a gated target; the two without
+one say what they are waiting for.
+
+- ✗ **Single base session ≈ 15-25 minutes.**  ~45 s pre-wave
   commitment → 7 waves with 15 s gaps → ~5-6 min wave phase
   → free scramble or earlier exit.
-- **Tower DPS ≈ 10/s.**  Regular at 30 HP = 3-shot kill;
-  cluster of 3 enemies dies in ~10 s under one tower.
-- **Wall break-through ≈ rare.**  A lone enemy needs 100 s
-  to break a wall; bosses 5× faster.  Wall-nibbling is the
-  fallback when perimeter is fully closed; player intent is
-  to leave deliberate entrances.
-- **Economy ramps via loot.**  Wave 1 (5 enemies × 10 pts =
+  ⚠ **NOT gateable, and it needs a PLAYER.**  Every clock
+  dryopea can measure is an unattended one, and an unattended
+  base is a measuring instrument rather than the game — it
+  falls during wave 2 by design, because nothing kills, repairs
+  or collects.  Gateable the day the vehicle lands.
+- ✓ **Tower DPS ≈ 10/s.**  Regular at 30 HP = 3-shot kill;
+  cluster of 3 enemies dies in ~10 s under one tower.  A whole
+  30-shot magazine is 30 s and **ten kills**, which is what
+  "pace towers across the wave" costs: one tower cannot clear
+  wave 2 (eight) and wave 3 (twelve) without a repair between.
+- ✓ **Wall break-through ≈ rare — of a LONE enemy.**  One robot
+  needs 100 s to break a braced wall hex (measured: 102 s);
+  bosses 5× faster.  Wall-nibbling is the fallback when the
+  perimeter is fully closed; player intent is to leave
+  deliberate entrances.
+  ⚠ **A WAVE is three times faster, and this is the number to
+  read before authoring a base.**  Five robots arrive as a
+  front and breach a sealed wall in **33 s**, at its 30 HP END
+  rather than the 100 HP hex this target's arithmetic uses
+  (plan 12 B3's bracing, reachable since plan 11 F7b).  Past a
+  handful of attackers the clock **saturates** — thirteen are
+  no faster than five — because only so many can reach the hex
+  closest to breaking.  So a sealed perimeter is a decision
+  with a price, not a countdown that scales with the wave.
+- ✗ **Economy ramps via loot.**  ⚠ **NOT gateable:** loot
+  COLLECTION needs the vehicle, `enemy_regular.loot_value` is
+  read by nobody, and `wallet.loft` deliberately has no credit
+  verb — which is what enforces "the wallet never refills
+  unattended".  Wave 1 (5 enemies × 10 pts =
   50 pts) + 200 starting = 250 pts → 1 tower + 1 helper.
   Wave 2 (8 × 10 = 80 pts) plus carryover funds further
   expansion.  By mid-game the player should be running ~3-4
   towers + 4-6 helpers.
-- **Movement scale.**  Player at 3 hex/s normal = ~4 m/s; an
+- ✓ **Movement scale.**  Player at 3 hex/s normal = ~4 m/s; an
   enemy at 1.5 hex/s gives time to react.  Boost (6 hex/s)
   is for crossing the base, not winning fights.
-- **Combat economy ≈ 1 wave / 30 s of full-tower fire.**
+  ⚠ The enemy half is gated twice over, because the TICK's
+  duration is derived from it (`spawn.loft::TICK_SECONDS`) —
+  and `DESIGN.md` § Speed must NOT be tied to the tick intends
+  to break that coupling, so this is one of the assertions that
+  should go red the day it does.
+- ✓ **Combat economy ≈ 1 wave / 30 s of full-tower fire.**
   Tower shot budget 30 = the player needs to pace towers
   across the wave, salvage or repair between bursts.
-- **Damage to wallet ≈ slow drain.**  At 1 pt/s per nibbling
+  ⚠ **A tower with nobody to clean up after it makes a base
+  fall SOONER** — measured, plan 12 B7: its own dead pile into
+  a ramp over the wall it defends.  The budget is not the only
+  thing a tower spends.
+- ✓ **Damage to wallet ≈ slow drain.**  At 1 pt/s per nibbling
   enemy, 5 enemies on the core = 5 pt/s; 200 pts buys 40 s
   before zero.  Encourages keeping enemies AWAY, not just
-  outpacing the damage.  ✓ **Built and measured** (plan 12 B6):
+  outpacing the damage.  **Built and measured** (plan 12 B6):
   five nibblers empty the budget in 60 ticks = 40.0 s exactly,
   and ONE takes 301 ticks ≈ 200.7 s.  ⚠ 301 rather than the 300
   the arithmetic says — `1 / 1.5` has no exact float form, so
   three hundred ticks sum a hair under 200 s.  The floor itself
   is exact; only which tick crosses it moves.
+  ⚠ **The drain SATURATES at 7 pt/s**, and every reading of
+  `wave_system.wave_list` depends on it: only the core's own
+  footprint can nibble (`core.footprint_layout` is a radius-1
+  disc), so a wave of eighty is no more dangerous to the wallet
+  than a wave of ten.  The rest of a big wave's weight lands on
+  walls and towers, never on the budget.
 
 ## What gets used by what
 
@@ -79,6 +124,7 @@ docs:
 
 | Parameter | Referenced by | Why |
 |---|---|---|
+| **every gated target above** | [`tests/numbers_design_targets.loft`](../tests/numbers_design_targets.loft) | ⚠ **Tune a number and this file tells you which design promise you broke.**  It also pins the constants to the figures quoted here, which is the cheapest stand-in for the loader nothing has built: `numbers.json` is read by NOBODY yet, so every value is hand-copied into a `.loft` constant and the drift no test can see is a JSON edited without its twin |
 | `world.hex_diameter` | every distance in the design | Canonical unit |
 | `world.atmosphere_haze_radius` | SETTING.md § The atmosphere is thick; camera | Caps render + sight |
 | `core.scrambler_bubble_radius` | SETTING.md § The core is a scrambling tower; wave engage-mode handoff | The bubble boundary IS the approach→engage trigger |
