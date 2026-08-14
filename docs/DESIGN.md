@@ -1390,6 +1390,12 @@ because **every one of them is already combat-ready**; what they
 lack is a drive, and what escalation gives them is **command**,
 from a woken *old one*, on rare authored occasions.
 
+⚠ **Elementals are a SERVITOR RACE** — direct servants of the old
+ones, and *not the only kind* (`SETTING.md` § "Not all are
+elementals").  The other servants are **awakening-scale content
+only** and must not become a fourth tier: three is the settled
+taxonomy.
+
 ⚠⚠ **So two of the three escalations are quantity and the third
 is INTENT** — nothing about an elemental gets stronger, it simply
 starts wanting something.  Keeping that distinction is what stops

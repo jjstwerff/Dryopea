@@ -560,6 +560,11 @@ very special occasions to give the elementals orders."*
 that elementals have no escalation because they are not a society.
 They do have one — it is simply not made of units.
 
+⚠ **They are a SERVITOR RACE, and now placed** (owner, 2026-08-14):
+elementals are **direct servants of the old ones**, and *not the only
+kind* — see § "Not all are elementals".  That is what *"they lack a
+clear drive"* means: servants whose master sleeps.
+
 **They are already at full strength, always.**  There is no dormant
 military to wake because every elemental is combat-ready from the
 moment it is: no soldier caste, no mothballed stockpile, no brood.
@@ -1168,6 +1173,10 @@ caring that you exist, one by caring completely.  That is the spine of
 the deep setting, and it is a genuinely uncomfortable choice rather
 than a good-versus-evil one.
 
+⚠⚠ **And it has already been chosen once.**  The city's builders knew
+what the old ones were — they carved them — and took the portal
+anyway.  See § Answered: the builders took the portal.
+
 ### ⚠ The warriors are the world's immune response
 
 **From the portal come warriors — humans and other beings — to aid the
@@ -1187,24 +1196,78 @@ Three design constraints follow, and each protects the end-game:
   to help are what *previous* civilisations chose to become.  Nobody
   has to say this out loud; it is in the roster.
 
-### Open questions — all of them the owner's
+### ⚠⚠ Answered: the builders took the portal, and the statues are the old ones
 
-1. **Whose statues are they?**  The old ones, the portal being's
-   servants, or the city's builders?  It decides whether the
-   underground humans are living in a **temple** or a **sanctuary** —
-   and therefore whether the cloth is denial or protection.
-2. **Who built the city, and where did they go?**  The obvious answer
-   is that they took the portal.  That would make the covered statues
-   portraits of the people whose house this is, and the hive mind
-   partly *them* — which is either the best or the heaviest version of
-   this, and it is not a call to make casually.
-3. **Can the player enter?**  A terminal choice for a character in a
-   game built around a persistent co-op and a hub would be enormously
-   heavy.  It should probably exist and almost never be taken.
-4. **Does the hive mind KNOW things?**  It has absorbed civilisations.
-   Information from it would be the most valuable and most expensive
-   intel in the game — and § Future contact's no-shortcut rule is
-   exactly the discipline that should govern it.
+Owner, 2026-08-14, deciding both open questions at once: *"the city
+builders took the portal, statues are of the old ones and their direct
+servants (not all are elementals)."*
+
+**So the chain is complete, and it is a chain:**
+
+1. The city's builders **knew about the old ones** — well enough to
+   carve them, and their servants, accurately.
+2. Knowing that, they **went through the portal** and gave up their
+   individuality.
+3. The landing-ship survivors arrived long after, **moved into the
+   empty house**, and hung cloth over what its owners had left behind.
+
+⚠⚠ **It is a TEMPLE, not a sanctuary — and therefore the cloth is
+DENIAL.**  The statues are not art and not devotion: they are
+**documentation**.  A catalogue of what is out there, left in the
+open by people who thought it needed recording.  The current tenants
+have curtained a warning.
+
+⚠ **And the builders' choice reads as a verdict.**  A civilisation
+that understood the old ones well enough to sculpt them concluded
+that **dissolution into a hive mind was the better option**.  Nobody
+has to argue for the horror of the old ones anywhere in this game;
+the argument was settled by people who left the evidence and the
+answer in the same building.
+
+### ⚠ Which means the portal warriors include the builders
+
+The people who come back up through the portal when an old one wakes
+are, in part, **the ones who built the city**.  The humans living
+there now are tenants in a house whose owners left through the
+basement — and who return, no longer individuals, to defend the world
+above.
+
+Nothing needs to state this.  It is available to any player who works
+out what the statues are and who is missing.
+
+### ⚠ "Not all are elementals" — the statues are the bestiary
+
+The old ones have **direct servants**, of which the elementals
+(§ The third enemy) are **one kind**.  There are others.
+
+⚠ **This must not become a fourth enemy tier.**  dryopea has three,
+they are a settled taxonomy, and the other servants belong to
+**awakening-scale content only** — the many-player end-game of § The
+old ones are a Lovecraft reference, never routine play.
+
+⚠⚠ **The delivery is the good part: the statue gallery IS the
+bestiary.**  A player who reaches the city and lifts a sheet sees what
+else exists **before ever meeting it** — foreshadowing done as a place
+rather than as a cutscene, and exactly the diegetic discipline § No
+wave HUD imposes everywhere else.  It also gives the underground
+humans' cloth industry a second meaning: they are not only hiding
+their own fear, they are **hiding the only monster manual anyone
+has**.
+
+### Open questions — still the owner's
+
+1. **Can the player enter the portal?**  A terminal choice for a
+   character, in a game built around a persistent co-op and a hub,
+   would be enormously heavy.  It should probably exist and almost
+   never be taken.
+2. **Does the hive mind KNOW things?**  It has absorbed at least one
+   civilisation that studied the old ones directly — so it is the best
+   intelligence on them that exists.  ⚠ Getting anything out of it
+   should cost accordingly, and § Future contact's no-shortcut rule is
+   the discipline that governs it.
+3. **What are the other servants?**  Undesigned on purpose.  They are
+   statues until an awakening needs them, and each one designed early
+   is a temptation to spend it on an ordinary wave.
 
 ## Future contact — humans, AIs, and the no-shortcut rule
 
