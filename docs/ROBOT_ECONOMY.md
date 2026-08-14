@@ -555,6 +555,21 @@ Three layers, in the order a player meets them:
    demands**: the player learns the map's economy by watching who turns
    up, with no UI at all.
 
+## ⚠ The whole graph inverts in the end game
+
+`DESIGN.md` § The end game, and why it is still this game: when an old
+one wakes, robots and insects become **co-belligerents** — they can
+attack it and humans cannot — and every node and edge above **keeps its
+geometry and reverses its meaning**.  The road that delivered waves
+delivers allies; a repair point behind your line is an asset; a factory
+you were starving is one you now want fed.
+
+⚠ **So none of this is throwaway content.**  A player's mental model of
+the economy is *re-used* at the end rather than discarded, which is the
+cheapest possible way to make an end game feel different — and it is an
+argument for building the graph to be readable, since it has to be read
+twice and mean opposite things.
+
 ## What this design does NOT do
 
 - **No economy simulation.**  Nodes do not need inventories, production

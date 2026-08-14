@@ -183,6 +183,56 @@ position, terrain or timing?*  If it resolves into a statement
 about the player's **stats or abilities**, it is off-genre —
 however good the story is.
 
+#### ⚠⚠ The end game, and why it is still this game
+
+Owner, 2026-08-14: **in the end game the types of enemies change
+and the player's defence is still the same — build strong bases
+to overcome the challenge.  And the robots and insects are part
+of the solution: the humans cannot attack an old one, but both
+the other factions inherently can.**
+
+**Only two things change, and neither is the player's verb.**
+
+| | changes | stays |
+|---|---|---|
+| **who attacks** | the old one's other servants — the ones under the sheets in the buried city ([`SETTING.md`](SETTING.md) § "Not all are elementals") | — |
+| **who the robots and insects are** | co-belligerents rather than the threat | — |
+| **what the player does** | — | **builds strong bases** |
+
+⚠ **The player's inability is the design, not a limitation.**
+`SETTING.md` § The responses to the incomprehensible: resistance
+is the absence of the compulsion to comprehend, so a robot (which
+has a task) and an insect (which has a wound to guard) were never
+vulnerable, while a human is vulnerable *by being human*.  The
+player therefore **cannot be the one who fights it — ever** —
+and what is left for them is the thing they have been doing all
+along: **hold a place, and keep the ones who can fight supplied
+and alive.**
+
+⚠⚠ **So the human contribution to a cosmic war is logistics and
+architecture** — which is exactly what a tower-defence player
+does.  The end game does not graduate out of the genre; it is the
+genre's strongest possible justification, arriving last.
+
+**And the map inverts without changing shape.**  Everything
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) builds — routes, mines,
+factories, repair points — keeps its geometry and reverses its
+meaning: the road that delivered waves now delivers allies, and a
+repair point behind your line is an asset.  ⚠ A player's whole
+mental model of the map is re-used rather than discarded, which
+is the cheapest possible way to make an end game feel different.
+
+⚠ **Inference, flagged for a decision — the scrambler.**  The
+core's entire function is to **cut robot coordination** (§ 4);
+against an old one the player wants that swarm *coordinated*.
+The end-game move may therefore be to **shut down your own
+scrambler** — surrendering the bubble, the steering, and the
+thing every base in the game was built around, so that your
+co-belligerents can fight properly.  If so it is § What kind of
+game this is at cosmic scale: the largest advantage in the game,
+usable only by giving it up.  Not an owner statement; it follows
+from mechanics already shipped.
+
 **And it is what buys the variety.**  Because so many of the
 counters are **architectural** — decided by where the walls
 went rather than by how much damage the player brought — an

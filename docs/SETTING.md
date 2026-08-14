@@ -1216,16 +1216,39 @@ only way it knows to make someone survivable, and it is right.  A
 kindness that is also an annihilation, with no bad intent anywhere in
 it, is a far better antagonist-shaped thing than a malicious one.
 
-### The three responses to the incomprehensible
+### The responses to the incomprehensible — and who can FIGHT
 
-Everything in this section now sits on one scale — **how much self is
-left**:
+Owner, 2026-08-14, completing the structure: **the humans cannot
+attack an old one.  Both the other factions inherently can.**
 
-| who | response | self | outcome |
+⚠⚠ **And the reason is already written.**  What makes the hive-mind
+warriors resistant is that *nothing in them needs to know any more* —
+so resistance is the absence of the compulsion to comprehend.  A
+**robot** has no such compulsion; it has a task.  An **insect** has
+none either; it has a wound to guard.  Neither was ever vulnerable,
+because neither ever had the faculty.
+
+**So everything in this section sits on one scale — how much of the
+compulsion to understand is left:**
+
+| who | the compulsion | response | outcome |
 |---|---|---|---|
-| the city's builders | **understand it** | intact | destroyed |
-| the underground humans | **refuse to look** — the cloth | intact | surviving, by avoidance only |
-| the hive-mind warriors | **no longer care to** | gone | resistant |
+| the city's builders | **full** | understand it | **destroyed** |
+| the underground humans | full, disciplined | refuse to look — the cloth | surviving, by avoidance only |
+| the hive-mind warriors | **amputated** | no longer care to | resistant — **can fight** |
+| robots and insects | **never had it** | it does not arise | immune by nature — **can fight** |
+
+⚠⚠ **The old ones are only dangerous to things that want to
+understand them.**  Humanity's defining trait is precisely its
+vulnerability, and the two categories that can face one are the mind
+that gave the faculty up and the mind that never grew it.  That is the
+whole cosmology in one line, and it is now **mechanically
+load-bearing** rather than a theme.
+
+⚠ **Which is also why the factions will fight it.**  An old one is an
+existential threat to the robot economy and to the forest alike, and
+neither faction needs to like the other, or the player, to act on
+that.  No alliance has to be written; the interests simply coincide.
 
 ⚠ **The cloth is the human, partial version of what the hive mind
 achieves by deletion.**  Sheets are an external prosthesis for a
