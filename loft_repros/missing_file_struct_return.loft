@@ -1,0 +1,50 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A function that reads a MISSING file's content AND returns a struct
+// double-frees and SIGABRTs the interpreter.
+//
+//   loft: BUG (#306): refused to free the stack store (#0)
+//         (rec=0, pos=0, var='') — a stack-record ref was treated as
+//         an owned heap store
+//   free(): invalid pointer
+//   === loft crash (loft) SIGABRT caught ===
+//     last op:  OpFreeText (op=124)
+//
+//   $ loft --interpret missing_file_struct_return.loft   # SIGABRT
+//   $ loft --native     missing_file_struct_return.loft   # n = 0, fine
+//
+// ⚠ INTERPRETER ONLY — the native backend is correct.  That is the
+// worst direction for dryopea, whose two gates both run interpreted, so
+// the crash is one the test suite sees and a shipped build would not.
+//
+// It needs BOTH halves in one function:
+//   - `file(p).content() ?? ""` where the path does not exist, and
+//   - that same function returning a STRUCT.
+// A file that EXISTS is fine.  Taking the text as a parameter instead
+// of reading it here is fine.  Returning an integer instead of a struct
+// is fine.
+//
+// ⚠ The if-else EXPRESSION form does not dodge it, so this is NOT the
+// early-return-of-a-composite bug dryopea already works around in
+// `save.loft::load_map_or_empty`; both forms crash.
+//
+// WORKAROUND (dryopea `src/waves.loft`): split the read from the
+// build, so no single function does both —
+//
+//   fn read_text(p: text) -> text { r_c = file(p).content() ?? ""; r_c }
+//   fn parse(t: text) -> Box      { … }
+//   fn load(p: text) -> Box       { l_t = read_text(p); l_b = parse(l_t); l_b }
+
+struct Box { n: integer }
+
+fn load(p: text) -> Box {
+    l_t = file(p).content() ?? "";
+    if l_t == "" { return Box { n: 0 }; }
+    Box { n: len(l_t) }
+}
+
+fn main() {
+    m_b = load("no-such-file.json");
+    println("n = {m_b.n}");
+}

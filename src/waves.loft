@@ -1,0 +1,231 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The wave LIST, and the schedule that walks it — what makes a base
+// seven waves long instead of one.
+//
+// Plan 16 phase W1.  `docs/DESIGN.md` § Wave list authors a flat
+// sequence of enemy counts with a fixed lull between them, and
+// `examples/waves.json` holds it: `[5, 8, 12, 20, 30, 50, 80]`, fifteen
+// seconds apart.  Until this file, nothing read either — a `.keys`
+// script said `wave 8` and that was the whole of dryopea's pacing.
+//
+// ── ⚠ The schedule advances on a CLEAR, and needs no timeout ────
+//
+// `numbers.json` § wave_system.inter_wave_delay is *"wall-clock seconds
+// between the last enemy dying and the next wave's spawn"*, so the next
+// wave waits for the previous one to be dead.  Read quickly that sounds
+// fragile — what if a wave never dies?
+//
+// **Measured (plan 16 W0): a base that cannot clear its wave is a run
+// that has already ended.**  An undefended band playing a wave of five
+// never cleared it at all; the wallet emptied at tick 74 with all five
+// robots standing on the core.  A wall and one tower cleared the same
+// wave at tick 165 and never fell.  So "the wave never clears" and "the
+// player lost" are the same state, and a fallback timer would only
+// start wave 2 over a base that is already over.
+//
+// ⚠ The one state W0 did NOT produce is a stalemate — a wave that can
+// neither break in nor be killed.  `plans/16` § Open questions 1 keeps
+// it open deliberately: the schedule stalls honestly rather than
+// guessing, and a real map is what would settle it.
+//
+// ── ⚠ Neither timer needs an epsilon, and that is a DECISION ────
+//
+// Plan 15 C0 found that a banked timer loses a tick exactly when its
+// duration divides the tick length exactly — 60 s of helper recovery is
+// 90 ticks and a bare `> 0.0` gives 91.  Both timers here are the safe
+// kind: 15.0 s is **22.5** ticks and 5.0 s is **7.5**, neither of them
+// whole.
+//
+// So there is no epsilon in this file, and its absence is deliberate
+// rather than an oversight — the note is here so that a reader
+// comparing it with `helper.loft` does not add one, and so that anyone
+// who rounds either number to a whole count of seconds knows they have
+// just moved it into the dangerous class.
+
+use lattice;
+
+// ─── The authored list ──────────────────────────────────────────
+
+// numbers.json § wave_system.inter_wave_delay, and the same figure in
+// `waves.json`'s `inter_wave_delay_seconds`.
+//
+// ⚠ The fallback, for a run with no file loaded — `wave_list_default`
+// is what a test or a scripted scenario gets.  The FILE is the source
+// of truth when one is read.
+pub const INTER_WAVE_DELAY_SECONDS: float = 15.0;
+
+// One `waves.json`.
+//
+// ⚠ **This one really is LOADED**, which makes it the second file in
+// dryopea after the palette and the exception to `CLAUDE.md`'s rule
+// that every tunable is hand-copied into a `.loft` constant.  A `text
+// as` over one scalar and a `vector<integer>` reads correctly
+// (measured, plan 16 W0) — it is the `vector<Struct>` shape that hangs
+// and that miscompiles to zero entries on the native backend.
+pub struct WaveFile {
+    inter_wave_delay_seconds: integer,
+    waves: vector<integer>,
+}
+
+// ⚠ **Reading and parsing are SPLIT, and it is a loft bug rather than
+// a taste** ([loft#908](https://github.com/loft-lang/loft/issues/908),
+// `loft_repros/missing_file_struct_return.loft`).  A function that both
+// reads a MISSING file's content and returns a STRUCT double-frees and
+// SIGABRTs the interpreter — `BUG (#306): refused to free the stack
+// store … a stack-record ref was treated as an owned heap store`.
+//
+// ⚠ **It is interpreter-only and the native backend is fine**, which is
+// the worst possible direction: both of dryopea's gates run interpreted
+// (`CLAUDE.md` § Both gates run INTERPRETED), so this is a crash the
+// suite CAN see and a shipped build would not.
+//
+// ⚠ **The if-else expression form does NOT dodge it** — the workaround
+// `CLAUDE.md` § Loft language gotchas records for `load_map_or_empty`'s
+// early-return type error is a different bug and does not apply.  What
+// works is putting the file read in a function of its own, so no single
+// function both reads and returns a struct.
+
+// The authored wave list as TEXT, or "" when the path cannot be read.
+pub fn wave_file_text(path: text) -> text {
+    wft_c = file(path).content() ?? "";
+    wft_c
+}
+
+// Parse an authored wave list.  Answers an EMPTY file for empty text,
+// so a caller can tell "no list" from "a list of one".
+pub fn wave_file_parse(source: text) -> WaveFile {
+    if source == "" {
+        return WaveFile { inter_wave_delay_seconds: 0, waves: [] };
+    }
+    wfp_f = source as WaveFile;
+    wfp_f
+}
+
+// Read the authored wave list.
+pub fn wave_file_load(path: text) -> WaveFile {
+    wfl_txt = wave_file_text(path);
+    wfl_f   = wave_file_parse(wfl_txt);
+    wfl_f
+}
+
+// The design's default list, for a run that loads no file.
+pub fn wave_list_default() -> vector<integer> {
+    [5, 8, 12, 20, 30, 50, 80]
+}
+
+// ─── The schedule ───────────────────────────────────────────────
+
+// Where a run is in its wave list.
+//
+// ⚠ **`sent` counts waves ALREADY SPAWNED**, not the one to come, so
+// zero is the neutral value — a `WaveSchedule { }` literal is a run
+// that has sent nothing, which is what a fresh run is.  It is the same
+// rule `damage.loft` keeps with *damage taken* and `wallet.loft` with
+// *points spent*, and here it also makes `sent` the index of the next
+// wave with no arithmetic.
+//
+// ⚠ `running` is separate from `sent > 0` because a schedule that has
+// not STARTED is not the same as one that has finished — plan 16 W3
+// puts a trigger in front of this, and until it fires a run has a list
+// and is not playing it.
+pub struct WaveSchedule {
+    waves:   vector<integer>,
+    sent:    integer,     // waves spawned so far; also the next index
+    lull:    float,       // seconds left before the next wave
+    delay:   float,       // seconds between waves
+    running: boolean,
+}
+
+// Factory: a run with the design's list, not yet started.
+pub fn wave_schedule_new() -> WaveSchedule {
+    WaveSchedule { waves: wave_list_default(), sent: 0, lull: 0.0,
+                   delay: INTER_WAVE_DELAY_SECONDS, running: false }
+}
+
+// Factory: a run playing an explicit list — what a scenario uses when
+// it wants two short waves rather than the design's seven.
+pub fn wave_schedule_of(waves: vector<integer>, delay: float) -> WaveSchedule {
+    WaveSchedule { waves: waves, sent: 0, lull: 0.0,
+                   delay: delay, running: false }
+}
+
+// Start the schedule.  The first wave goes out on the next tick.
+//
+// ⚠ **Wave 1 does not wait for a lull**, because the lull is *between*
+// waves: `DESIGN.md` § Wave-1 triggers says wave 1 fires when its
+// trigger fires, and a fifteen-second pause after the player provoked
+// something would read as the trigger not having worked.
+pub fn wave_schedule_begin(ws: WaveSchedule) {
+    ws.running = true;
+    ws.lull    = 0.0;
+}
+
+pub fn wave_schedule_running(ws: const WaveSchedule) -> boolean {
+    ws.running
+}
+
+// How many waves this run has sent.
+pub fn wave_schedule_sent(ws: const WaveSchedule) -> integer {
+    ws.sent
+}
+
+// How many waves the list holds.
+pub fn wave_schedule_count(ws: const WaveSchedule) -> integer {
+    len(ws.waves)
+}
+
+// Has every wave been sent?
+//
+// ⚠ **Sent, not cleared** — `DESIGN.md` § Wave 7 cleared → free
+// scramble needs both, and the second one is `alive_count` at the call
+// site.  One question per function, because "the list is finished" and
+// "the battlefield is empty" become different at exactly the moment
+// that section is about.
+pub fn wave_schedule_done(ws: const WaveSchedule) -> boolean {
+    ws.sent >= len(ws.waves)
+}
+
+// The size of wave `i`, or 0 when the list has no such wave.
+pub fn wave_schedule_size(ws: const WaveSchedule, i: integer) -> integer {
+    ws.waves[i] ?? 0
+}
+
+// Seconds left before the next wave.
+pub fn wave_schedule_lull(ws: const WaveSchedule) -> float {
+    ws.lull
+}
+
+// Spend one tick of the lull, and answer the size of the wave to send
+// NOW — or 0 for "not yet".
+//
+// ⚠ **It decides and does not spawn**, because spawning needs the
+// marker world and the core, and a schedule that knew about those could
+// not be tested without building a map.  `spawn.loft::wave_schedule_
+// tick` is the half that puts enemies on the ground.
+//
+// ⚠ `cleared` is passed IN rather than read, for the same reason: the
+// roster belongs to the wave engine.  It is `alive_count(state) == 0`
+// at the only call site.
+pub fn wave_schedule_due(ws: WaveSchedule, cleared: boolean,
+                         tick_seconds: float) -> integer {
+    if !ws.running { return 0; }
+    if wave_schedule_done(ws) { return 0; }
+
+    // A wave is in the world: nothing to do, and the lull has not
+    // started.  ⚠ The `sent > 0` guard is what stops the FIRST wave
+    // being treated as a cleared one — a fresh run has an empty
+    // battlefield, which is `cleared` in every sense except the one
+    // that matters.
+    if ws.sent > 0 {
+        if !cleared { return 0; }
+        ws.lull = ws.lull - tick_seconds;
+        if ws.lull > 0.0 { return 0; }
+    }
+
+    wsd_size = ws.waves[ws.sent] ?? 0;
+    ws.sent  = ws.sent + 1;
+    ws.lull  = ws.delay;
+    wsd_size
+}

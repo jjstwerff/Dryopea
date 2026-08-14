@@ -782,6 +782,21 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         return measure_int(run, "roster", sm_rn, sm_rlo ?? 0, sm_rhi ?? 0);
     }
 
+    // How many waves the schedule has SENT — plan 16 W1.
+    //
+    // ⚠ **Sent, not cleared and not survived.**  It is the schedule's
+    // own counter, so `waves 2 2` says "the run got as far as wave 2"
+    // and says nothing about how that went — which is what lets a
+    // scenario assert that a base LASTED long enough to see one.
+    if sm_cmd == "waves" {
+        if sm_argc != 2 { return "waves needs <lo> <hi>"; }
+        sm_wvlo = sm_a1 as integer?;
+        sm_wvhi = sm_a2 as integer?;
+        if sm_wvlo == null || sm_wvhi == null { return "waves: <lo> and <hi> must be integers"; }
+        return measure_int(run, "waves", wave_schedule_sent(run.wave.schedule),
+                           sm_wvlo ?? 0, sm_wvhi ?? 0);
+    }
+
     // The run's CLOCK, in game-ticks — plan 12 B7.
     //
     // ⚠ **A band, and it has to be.**  `hp` and `kind` are exact
@@ -1503,6 +1518,34 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // Author a wave list and start it running.  Plan 16 W1.
+    //
+    // ⚠ **`schedule 5 8` is not `wave 5` twice.**  `wave` puts enemies
+    // on the ground now and the script says when; this hands the run a
+    // LIST and the simulation decides when — the next wave goes out
+    // once the previous one is dead and the lull has run.  A scenario
+    // using this has no line saying when wave 2 arrives, which is the
+    // whole point of gating it.
+    //
+    // ⚠ It starts the schedule as well as authoring it.  Plan 16 W3
+    // puts the design's provocation trigger in front of that, and when
+    // it lands this verb goes back to authoring only.
+    if sc_cmd == "schedule" {
+        if sc_argc < 1 { return "schedule needs at least one <count>"; }
+        sc_sched = script_ints(tok, sc_argc);
+        if len(sc_sched) != sc_argc {
+            return "schedule: every <count> must be an integer";
+        }
+        for sc_sc in sc_sched {
+            if sc_sc < 0 || sc_sc > SCRIPT_MAX_REPEAT {
+                return "schedule: each <count> must be 0..{SCRIPT_MAX_REPEAT}, got {sc_sc}";
+            }
+        }
+        run.wave.schedule = wave_schedule_of(sc_sched, INTER_WAVE_DELAY_SECONDS);
+        wave_schedule_begin(run.wave.schedule);
+        return "";
+    }
+
     // Pick something up, and put it down.  Plan 15 C2.
     //
     // ⚠ **Two verbs for `DESIGN.md` § 11's ONE key**, and that is the
@@ -1632,7 +1675,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target"
     || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
     || sc_cmd == "ticks" || sc_cmd == "vehicle" || sc_cmd == "hull"
-    || sc_cmd == "helper" || sc_cmd == "cargo" || sc_cmd == "roster" {
+    || sc_cmd == "helper" || sc_cmd == "cargo" || sc_cmd == "roster"
+    || sc_cmd == "waves" {
         return script_measure(s, run, tok);
     }
 

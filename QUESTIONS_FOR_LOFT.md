@@ -40,6 +40,40 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### Reading a MISSING file and returning a struct from one function SIGABRTs the interpreter
+
+**Filed:** [loft#908](https://github.com/loft-lang/loft/issues/908)
+**Repro:** [`loft_repros/missing_file_struct_return.loft`](loft_repros/missing_file_struct_return.loft)
+**Hit building:** plan 16 W1's wave-list loader (`src/waves.loft`).
+
+A function that both reads `file(p).content() ?? ""` for a path that does
+not exist **and** returns a struct double-frees:
+
+```
+loft: BUG (#306): refused to free the stack store (#0) (rec=0, pos=0, var='')
+      — a stack-record ref was treated as an owned heap store
+free(): invalid pointer
+=== loft crash (loft) SIGABRT caught ===  last op: OpFreeText (op=124)
+```
+
+⚠ **Interpreter only — `--native` answers correctly.**  That is the worst
+direction for dryopea: both gates run interpreted (`CLAUDE.md` § Both
+gates run INTERPRETED), so it is a crash the suite hits and a shipped
+native build would not.
+
+⚠ **Neither the `return` nor an empty-vector field is required.**  It
+reproduces with a plain `struct Box { n: integer }`, and the **if-else
+expression form crashes too** — so this is *not* the early-return-of-a-
+composite issue `save.loft::load_map_or_empty` already dodges, and that
+workaround does not apply here.
+
+**Workaround (`wa:partial`, in use):** split the read from the build so
+no single function does both — `wave_file_text` returns `text`,
+`wave_file_parse` takes `text` and returns the struct, `wave_file_load`
+calls the two.  Clean enough that it arguably improves testability, but
+it is a shape you have to know about, and the failure mode when you do
+not is a SIGABRT rather than an error.
+
 ### Mutating a struct RETURNED from a function is a silent no-op, and `lost-write` stays quiet
 
 **Filed:** [loft#894](https://github.com/loft-lang/loft/issues/894)

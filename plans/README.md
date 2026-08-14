@@ -81,6 +81,8 @@ pointer, not a second copy.
 
 | [`15-the-carry-model`](15-the-carry-model/README.md) | F | M | **Complete** (C0-C3, 2026-08-14) | One slot, one context-resolved action, and nothing is ever lost — the shared blocker helper retrieval, tower-tops and beacons all wait on.  ⚠ Conservation is STRUCTURAL (one record, one owner), so the wrong states cannot be written down; and it refuses the hash-keyed-by-hex shape every other runtime layer uses, because two carry objects on one hex is reachable and a hash deletes one.  C2 closed plan 14 H4: a lost crew member is carried home and rejoins the roster after exactly 90 ticks.  ⚠ C3 measured what that is WORTH and the answer is nothing yet — 85/79/79 ticks — because a 60 s recovery is priced against a SEVEN-wave base and dryopea plays one wave at a time |
 
+| [`16-the-wave-system`](16-the-wave-system/README.md) | G | M | **Active** (W0-W1 done) | Waves arrive on their own, in the authored order, with a lull — so a base is SEVEN waves long instead of one.  ⚠ Every clock plans 12-15 measured was measured during wave 1.  W0 found the design's inter-wave trigger is reachable exactly when a base can KILL: an undefended base never clears its wave and dies at tick 74, a defended one clears at 165 and stands |
+
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.
 

@@ -29,6 +29,7 @@ no longer reproducing).
 
 | File | Bug | Filed upstream |
 |---|---|---|
+| [`missing_file_struct_return.loft`](missing_file_struct_return.loft) | A function that reads a **MISSING** file's content AND returns a struct double-frees: `BUG (#306)` then SIGABRT on `OpFreeText`.  ⚠ Interpreter ONLY — native is correct, and both dryopea gates run interpreted.  Same guard as loft#867, which stays fixed; the residual hole is the missing-file path. | [loft#908](https://github.com/loft-lang/loft/issues/908) |
 | [`json_vector_cast_native_tail_return.loft`](json_vector_cast_native_tail_return.loft) | Native codegen SILENTLY answers `[]` for a `text as vector<Struct>` cast in tail-return position.  Empties dryopea's palette natively; no panic, no diagnostic. | [loft#866](https://github.com/loft-lang/loft/issues/866) |
 | [`struct_cast_via_text_local_returned.loft`](struct_cast_via_text_local_returned.loft) | A `text as Struct` cast returned out of a function trips guard #306 and SIGSEGVs on the interpreter; the native build fails to compile the emitted Rust. | [loft#867](https://github.com/loft-lang/loft/issues/867) |
 | [`format_struct_with_hash_field.loft`](format_struct_with_hash_field.loft) | `"{s}"` where `s` is a struct with a `hash<…>` field: SIGSEGV in `OpFormatDatabase` on the interpreter, silent exit 1 on `--native`.  Fires inside assertion messages, so a failing test loses its diagnostic. | [loft#873](https://github.com/loft-lang/loft/issues/873) |

@@ -1,0 +1,307 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 16 phase W1 — waves arrive on their own.
+//
+// Until this phase dryopea's pacing was a line in a `.keys` file:
+// `wave 8` put eight robots on the ground and the script said when.
+// `docs/DESIGN.md` § Wave list authors a sequence — `[5, 8, 12, 20, 30,
+// 50, 80]`, fifteen seconds apart — and `examples/waves.json` has held
+// it since plan 03 with nothing reading it.
+//
+// ── ⚠ What can go wrong, and what sees it ───────────────────────
+//
+// Two wrong schedules both put a second wave on the ground, and "wave
+// 2 arrived" is green under each:
+//
+// 1. **A pure timer.** Fire every 15 s regardless — then wave 2 lands
+//    on a base still fighting wave 1, the waves compound, and a base
+//    that would have held falls to arithmetic nobody authored.  What
+//    sees it is a base that takes LONGER than a lull to clear.
+// 2. **A clear with no lull.** Fire the instant the field empties —
+//    then the fifteen seconds the player is meant to spend collecting,
+//    repairing and repositioning do not exist.  What sees it is
+//    COUNTING the ticks between the clear and the spawn.
+//
+// So the gate below is the gap between two events, measured, and not
+// the arrival of the second wave.
+//
+// ── ⚠ The schedule advances on a CLEAR, and needs no timeout ────
+//
+// Measured in W0: an undefended band never cleared a wave of five at
+// all — the wallet emptied at tick 74 with all five robots on the core
+// — while a wall and one tower cleared the same wave at 165 and never
+// fell.  So "the wave never clears" and "the player lost" are the same
+// state, and § An undefended base never sees wave 2 is that as an
+// assertion.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A band with a spawn marker far enough out to be active, and
+// optionally a wall with a tower behind it.
+fn base(walled: boolean, towers: integer) -> MarkerWorld {
+    b_mw = marker_empty();
+    place_marker(b_mw, 14, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    if towers > 0 { place_marker(b_mw, 4, 0, MARKER_KIND_TOWER as u8, 0 as u8); }
+    if towers > 1 { place_marker(b_mw, 2, 0, MARKER_KIND_TOWER as u8, 0 as u8); }
+    b_mw
+}
+
+fn ground(walled: boolean) -> PaintedWorld {
+    g_pw = painted_empty();
+    for g_r in -3..=3 {
+        for g_q in -6..=20 { paint(g_pw, g_q, g_r, as_u8(GRASS)); }
+    }
+    if walled {
+        for g_r2 in -3..=3 { paint(g_pw, 6, g_r2, as_u8(WALL)); }
+    }
+    g_pw
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The list
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The file really is read** — the exception to `CLAUDE.md`'s rule
+// that every tunable is hand-copied into a constant.  If this goes red,
+// check the `text as` cast before checking the numbers.
+fn test_the_authored_wave_list_loads() {
+    ttl_f = wave_file_load("examples/waves.json");
+
+    assert(len(ttl_f.waves) == 7, "seven waves: {len(ttl_f.waves)}");
+    assert((ttl_f.waves[0] ?? 0) == 5, "the first is five: {ttl_f.waves[0] ?? 0}");
+    assert((ttl_f.waves[6] ?? 0) == 80, "the last is eighty: {ttl_f.waves[6] ?? 0}");
+    assert(ttl_f.inter_wave_delay_seconds == 15,
+           "fifteen seconds apart: {ttl_f.inter_wave_delay_seconds}");
+}
+
+// A missing file answers EMPTY rather than the default list, so a
+// caller can tell "no list" from "a list".
+fn test_a_missing_wave_file_is_empty_not_default() {
+    tam_f = wave_file_load("examples/no-such-waves.json");
+    assert(len(tam_f.waves) == 0, "nothing: {len(tam_f.waves)}");
+}
+
+fn test_the_default_list_matches_the_design() {
+    tdl = wave_list_default();
+    assert(len(tdl) == 7, "seven waves: {len(tdl)}");
+    assert((tdl[0] ?? 0) == 5 && (tdl[6] ?? 0) == 80, "5 through 80");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The schedule, without a map
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **Nothing happens until something starts it**, which is what keeps
+// every scenario that places its own enemies working unchanged — and
+// what plan 16 W3 hangs the provocation trigger on.
+fn test_a_schedule_is_inert_until_it_begins() {
+    tai_ws = wave_schedule_new();
+    assert(!wave_schedule_running(tai_ws), "not running");
+
+    for _ in 0..50 {
+        assert(wave_schedule_due(tai_ws, true, TICK_SECONDS) == 0,
+               "nothing is due");
+    }
+    assert(wave_schedule_sent(tai_ws) == 0, "and nothing was sent");
+}
+
+// ⚠ **Wave 1 does not wait for a lull.**  The lull is BETWEEN waves;
+// fifteen seconds of nothing after the player provoked something would
+// read as the trigger not having worked.
+fn test_the_first_wave_goes_out_at_once() {
+    tfw_ws = wave_schedule_of([5, 8], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tfw_ws);
+
+    assert(wave_schedule_due(tfw_ws, true, TICK_SECONDS) == 5,
+           "wave 1 is five, immediately");
+    assert(wave_schedule_sent(tfw_ws) == 1, "and one wave has been sent");
+}
+
+// ⚠⚠ **The lull is COUNTED, and 15.0 s is 22.5 ticks** — so the wave
+// lands on the 23rd tick after the field cleared, and the 22 before it
+// send nothing.  A schedule that fired the instant the field emptied
+// passes every "wave 2 arrived" assertion and fails this one.
+fn test_the_lull_is_fifteen_seconds_after_the_clear() {
+    tll_ws = wave_schedule_of([5, 8], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tll_ws);
+    wave_schedule_due(tll_ws, true, TICK_SECONDS);        // wave 1 out
+
+    // While the field is not clear, the lull does not even start.
+    for _ in 0..40 {
+        assert(wave_schedule_due(tll_ws, false, TICK_SECONDS) == 0,
+               "a wave is still alive, so nothing is due");
+    }
+
+    tll_n = 0;
+    tll_got = 0;
+    for _ in 0..60 {
+        if tll_got > 0 { continue; }
+        tll_got = wave_schedule_due(tll_ws, true, TICK_SECONDS);
+        tll_n += 1;
+    }
+
+    assert(tll_got == 8, "wave 2 is eight: {tll_got}");
+    assert(tll_n == 23,
+           "15.0 s is 22.5 ticks, so it lands on the 23rd: {tll_n}");
+}
+
+// ⚠ **Neither wave timer needs an epsilon**, and this is the assertion
+// that says so rather than a comment claiming it.  Plan 15 C0's rule:
+// a banked timer loses a tick exactly when its duration divides the
+// tick length exactly.  Both of these are half-integers.
+fn test_neither_wave_timer_divides_the_tick_exactly() {
+    tnw_lull = INTER_WAVE_DELAY_SECONDS / TICK_SECONDS;
+    assert(tnw_lull == 22.5, "the lull is 22.5 ticks: {tnw_lull}");
+
+    tnw_whole = (tnw_lull as integer? ?? 0) as float;
+    assert(tnw_lull != tnw_whole,
+           "and NOT a whole number, which is what makes it immune");
+}
+
+// The list runs out and stays run out.
+fn test_a_finished_list_sends_nothing_more() {
+    tfl_ws = wave_schedule_of([2], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tfl_ws);
+
+    assert(wave_schedule_due(tfl_ws, true, TICK_SECONDS) == 2, "the only wave");
+    assert(wave_schedule_done(tfl_ws), "the list is finished");
+
+    for _ in 0..100 {
+        assert(wave_schedule_due(tfl_ws, true, TICK_SECONDS) == 0,
+               "and nothing follows it");
+    }
+    assert(wave_schedule_sent(tfl_ws) == 1, "one wave, ever");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The phase: a base plays its own waves
+// ─────────────────────────────────────────────────────────────────
+
+// A defended base clears wave 1, waits, and gets wave 2 — with nothing
+// outside the tick asking for either.
+fn test_a_defended_base_plays_wave_one_then_wave_two() {
+    tad_pw  = ground(true);
+    tad_mw  = base(true, 2);
+    tad_pal = pal();
+    tad_s   = wave_state_empty();
+
+    tad_s.schedule = wave_schedule_of([3, 3], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tad_s.schedule);
+
+    assert(len(tad_s.enemies) == 0, "nothing on the ground yet");
+
+    tad_two = -1;
+    for tad_n in 0..500 {
+        if tad_two >= 0 { continue; }
+        wave_tick(tad_s, tad_pal, tad_pw, tad_mw, core());
+        if wave_schedule_sent(tad_s.schedule) == 2 { tad_two = tad_n; }
+    }
+
+    assert(tad_two >= 0, "wave 2 arrived on its own");
+    assert(wave_schedule_sent(tad_s.schedule) == 2,
+           "two waves sent: {wave_schedule_sent(tad_s.schedule)}");
+    assert(!wallet_broke(tad_s.wallet),
+           "and the base is still standing: {wallet_left(tad_s.wallet)} points");
+}
+
+// ⚠ **The first spawn is on the FIRST tick**, so no tick of the run
+// happens over an empty battlefield the schedule meant to fill.
+fn test_the_first_wave_lands_on_the_first_tick() {
+    tfl2_pw  = ground(true);
+    tfl2_mw  = base(true, 1);
+    tfl2_s   = wave_state_empty();
+    tfl2_s.schedule = wave_schedule_of([4], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tfl2_s.schedule);
+
+    wave_tick(tfl2_s, pal(), tfl2_pw, tfl2_mw, core());
+
+    assert(len(tfl2_s.enemies) == 4, "four enemies: {len(tfl2_s.enemies)}");
+    assert(wave_schedule_sent(tfl2_s.schedule) == 1, "one wave sent");
+}
+
+// ⚠⚠ **An undefended base never sees wave 2**, and that is W0's finding
+// as an assertion rather than a note.  It cannot kill, so the field
+// never clears, so the lull never starts — and the run ends with the
+// wallet rather than with the list.
+fn test_an_undefended_base_never_sees_wave_two() {
+    tau_pw  = ground(false);
+    tau_mw  = base(false, 0);
+    tau_pal = pal();
+    tau_s   = wave_state_empty();
+
+    tau_s.schedule = wave_schedule_of([3, 3], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tau_s.schedule);
+
+    for _ in 0..400 { wave_tick(tau_s, tau_pal, tau_pw, tau_mw, core()); }
+
+    assert(wallet_broke(tau_s.wallet), "the base fell");
+    assert(wave_schedule_sent(tau_s.schedule) == 1,
+           "and only ever saw wave 1: {wave_schedule_sent(tau_s.schedule)}");
+    assert(alive_count(tau_s) == 3,
+           "its wave is still standing on the core: {alive_count(tau_s)}");
+}
+
+// ⚠ **A wave still fighting does not advance the list**, which is the
+// pure-timer control: 400 ticks is seventeen lulls, and a schedule that
+// ignored the clear would have sent every wave in the list by now.
+fn test_a_timer_alone_would_have_emptied_the_list() {
+    tta_pw  = ground(false);
+    tta_mw  = base(false, 0);
+    tta_s   = wave_state_empty();
+    tta_s.schedule = wave_schedule_of([3, 3, 3, 3, 3], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tta_s.schedule);
+
+    tta_pal = pal();
+    for _ in 0..400 { wave_tick(tta_s, tta_pal, tta_pw, tta_mw, core()); }
+
+    tta_lulls = (400.0 * TICK_SECONDS) / INTER_WAVE_DELAY_SECONDS;
+    assert(tta_lulls > 5.0, "400 ticks is {tta_lulls} lulls — more than the list");
+    assert(wave_schedule_sent(tta_s.schedule) == 1,
+           "and still exactly one wave went out: {wave_schedule_sent(tta_s.schedule)}");
+}
+
+// ⚠ **The two spawners agree.**  `script.loft`'s `wave` verb and this
+// schedule are two code paths that put enemies on the ground, and they
+// each carry their own copy of the close-spawn radius because nothing
+// loads `numbers.json`.  A run whose marker sat between the two values
+// would spawn under one and not the other.
+fn test_the_two_spawners_agree_on_the_disable_radius() {
+    assert(SPAWN_DISABLE_RADIUS == SCRIPT_SPAWN_DISABLE_RADIUS,
+           "{SPAWN_DISABLE_RADIUS} vs {SCRIPT_SPAWN_DISABLE_RADIUS}");
+}
+
+// A marker inside the radius is silent for the schedule too — the same
+// rule, because it is the same `spawn_wave`.
+fn test_a_close_marker_sends_nothing() {
+    tcm_pw = ground(false);
+    tcm_mw = marker_empty();
+    place_marker(tcm_mw, 3, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+
+    tcm_s = wave_state_empty();
+    tcm_s.schedule = wave_schedule_of([5], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tcm_s.schedule);
+
+    wave_tick(tcm_s, pal(), tcm_pw, tcm_mw, core());
+
+    assert(len(tcm_s.enemies) == 0,
+           "a marker three hexes out is silenced: {len(tcm_s.enemies)}");
+}

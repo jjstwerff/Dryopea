@@ -40,6 +40,7 @@ use wallet;
 use vehicle;
 use helper;
 use carry;
+use waves;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -238,6 +239,7 @@ pub struct WaveState {
     player:      Vehicle,
     crew:        vector<Helper>,
     cargo:       CargoLayer,
+    schedule:    WaveSchedule,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0, the
@@ -252,6 +254,7 @@ pub fn wave_state_empty() -> WaveState {
         player:  vehicle_empty(),
         crew:    [],
         cargo:   cargo_empty(),
+        schedule: wave_schedule_new(),
     }
 }
 
@@ -1307,6 +1310,18 @@ fn wave_deaths(state: WaveState) -> integer {
 // stays the reference implementation and is not optimised away.
 pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
                  mw: MarkerWorld, core: Hex) {
+    // ⚠ **The schedule goes FIRST, before anything reads the roster**
+    // (plan 16 W1), so a wave that arrives this tick is a wave this
+    // tick's fields, occupancy and move order already know about.
+    // Spawning after the movers would put enemies into a world that had
+    // already been surveyed without them — the same reason the deaths
+    // and the breaks go last.
+    //
+    // ⚠ It is a no-op until something STARTS the schedule, so every
+    // scenario that places its own enemies and every test that calls
+    // this with `marker_empty()` behaves exactly as before.
+    wave_schedule_step(state, mw, core);
+
     // Everything the tick reads is fixed before anybody moves: the
     // fields, where everyone stands, and the order they act in.
     wt_fields = wave_fields(state, pal, pw, core);
@@ -1490,6 +1505,43 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     for wt_rc in state.crew {
         helper_recover_tick(wt_rc, TICK_SECONDS, core);
     }
+}
+
+// ─── The schedule's other half (plan 16 W1) ─────────────────────
+
+// Spawn markers this close to the core are silenced for the mission —
+// `numbers.json` § core.close_spawn_disable_radius.
+//
+// ⚠ A second copy of `script.loft::SCRIPT_SPAWN_DISABLE_RADIUS`, and
+// the duplication is the same one every engine file carries: nothing
+// loads `numbers.json`.  ⚠ But now TWO code paths spawn waves — the
+// script's `wave` verb and this schedule — so they have to agree, and
+// `tests/16_w1_the_schedule.loft` § The two spawners agree is what says
+// they do.
+pub const SPAWN_DISABLE_RADIUS: integer = 10;
+
+// Ask the schedule whether a wave is due, and put it on the ground if
+// one is.  Answers how many enemies were sent.
+//
+// ⚠ **The split with `waves.loft::wave_schedule_due` is deliberate**:
+// that half decides, knowing only a clock and whether the field is
+// clear, and can be tested without a map; this half needs the marker
+// world and the core, and is where the design's *"per-enemy spawn-
+// marker selection"* lives.
+//
+// ⚠ **`alive_count == 0` is the ONE definition of cleared** and there
+// is no second clock.  `DESIGN.md` says the lull runs *"between the
+// last enemy dying and the next wave's spawn"*, which is the same
+// statement given a clear is made of deaths — see `plans/16` § Open
+// questions 2.
+pub fn wave_schedule_step(state: WaveState, mw: MarkerWorld, core: Hex) -> integer {
+    wss_due = wave_schedule_due(state.schedule, alive_count(state) == 0,
+                                TICK_SECONDS);
+    if wss_due <= 0 { return 0; }
+
+    spawn_wave(state, wss_due, ENEMY_KIND_REGULAR as u8? ?? 0, mw,
+               core.q, core.r, SPAWN_DISABLE_RADIUS);
+    wss_due
 }
 
 // ─── The one action, from the run's side (plan 15 C2) ───────────

@@ -66,7 +66,8 @@ exists today.
 | CARRY: one slot per vehicle, one record per carryable thing — an object is on the ground, in exactly one carrier's slot, or spent, and a lost helper leaves something to fetch | [15](plans/15-the-carry-model/README.md), C0-C1 shipped |
 | RETRIEVAL: a lost crew member is carried to the core and rejoins the roster after EXACTLY 90 ticks — and nothing else brings one back | [15](plans/15-the-carry-model/README.md), C2 shipped — closes [14](plans/14-helpers/README.md) H4, so plan 14 is **complete** |
 | ⚠ What a retrieval is WORTH: nothing yet — 85/79/79 ticks, because a 60 s recovery is priced against a SEVEN-wave base and dryopea plays ONE wave | [15](plans/15-the-carry-model/README.md), C3 shipped — plan **complete** |
-| **No wave system, no ordering, no tower repair, no beacons and no scramble** | the wave SYSTEM is now the named trigger for re-measuring [15](plans/15-the-carry-model/README.md) C3 |
+| WAVES ARRIVE ON THEIR OWN: an authored list, a lull that is COUNTED, and a schedule that advances on a CLEAR — so a base can be more than one wave long | [16](plans/16-the-wave-system/README.md), W0-W1 shipped |
+| **No pre-walk window, no wave-1 trigger, no ordering, no tower repair, no beacons and no scramble** | [16](plans/16-the-wave-system/README.md), W2 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -82,7 +83,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 901/901 green under `scripts/test.sh`** (~95 s measured
+**Suite: 915/915 green under `scripts/test.sh`** (~95 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
