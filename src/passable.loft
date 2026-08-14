@@ -94,6 +94,17 @@ use height;
 pub const ENEMY_KIND_REGULAR: integer = 0;   // the ground robot
 pub const ENEMY_KIND_INSECT:  integer = 1;   // climbs a wall, not a high one
 
+// The player (plan 13 V1).  ⚠ **Not an enemy, and the `ENEMY_KIND_`
+// prefix on its two siblings is now a scar** — the same kind `lat_`
+// carries in `lattice.loft`, kept because every call site reads it.
+// What this table really enumerates is MOVERS, and the player is one.
+//
+// ⚠ **It shares the rule and nothing else.**  A second predicate for
+// the vehicle would be the exact thing plan 11 F1 exists to prevent:
+// one passability rule, per-class DATA.  The player's contribution is
+// a climb, like everybody else's.
+pub const KIND_VEHICLE: integer = 2;
+
 // Climb limits in metres — see § Where the climb limits come from.
 //
 // ── Why a robot climbs 2.0 m, and not 0.0 or 1.0 ────────────────
@@ -129,6 +140,19 @@ pub const ENEMY_KIND_INSECT:  integer = 1;   // climbs a wall, not a high one
 pub const CLIMB_REGULAR: float = 2.0;
 pub const CLIMB_INSECT:  float = 3.0;   // exactly a `wall`; a `wall_high` is 5.0
 
+// The player's climb is its HOVER CLEARANCE — `numbers.json` §
+// player_vehicle.hover_clearance_idle, and not a number this plan
+// invented.  It hovers 0.4 m over the local terrain, so it rides a
+// terrace and a shallow pile and is stopped by a 3.0 m `wall` exactly
+// as a robot is.
+//
+// ⚠ **Boost is 3.0 m and it does NOT live here**, because a climb
+// that changes while the thing is alive is not a property of its
+// class — `climb_limit` takes a kind and cannot express it.  Plan 13
+// V0 § 3 records the problem and V4 has to settle it; the same
+// question settles `DESIGN.md`'s *"a damaged robot moves slower"*.
+pub const CLIMB_VEHICLE: float = 0.4;
+
 // How far this class can step up, in metres.
 //
 // ⚠ **This is the class's WHOLE contribution to passability**, which
@@ -145,6 +169,7 @@ pub const CLIMB_INSECT:  float = 3.0;   // exactly a `wall`; a `wall_high` is 5.
 // the run of the map on the strength of a number nobody chose.
 pub fn climb_limit(kind: u8) -> float {
     if kind == ENEMY_KIND_INSECT as u8 { return CLIMB_INSECT; }
+    if kind == KIND_VEHICLE      as u8 { return CLIMB_VEHICLE; }
     CLIMB_REGULAR
 }
 
@@ -154,6 +179,7 @@ pub fn climb_limit(kind: u8) -> float {
 pub fn enemy_class_name(kind: u8) -> text {
     if kind == ENEMY_KIND_REGULAR as u8 { return "robot"; }
     if kind == ENEMY_KIND_INSECT  as u8 { return "insect"; }
+    if kind == KIND_VEHICLE       as u8 { return "vehicle"; }
     "class {kind as integer}"
 }
 

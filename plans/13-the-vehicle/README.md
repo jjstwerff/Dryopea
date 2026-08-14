@@ -1,0 +1,238 @@
+<!--
+Copyright (c) 2026 Jurjen Stellingwerff
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
+
+# 13 — The vehicle: a player in the world
+
+**Value:** `G` · **Effort:** `MH`
+
+## Status
+
+**V0 + V1 shipped** (2026-08-14). V2 is next and unblocked.
+
+**V1 put a player in the world.** `src/vehicle.loft` holds a hover
+unit that parks, is pointed at a hex, and covers **two hexes a tick**
+to a robot's one — read from `numbers.json` § player_vehicle.speed_
+normal rather than counted in steps. `park <q> <r>` / `drive <q> <r>`
+/ `vehicle <q> <r>` are the verbs. Suite **774 green**.
+
+⚠ **The trap this phase was built around**: a tick is *defined* as
+what a robot takes to cross a hex, so "one hex per tick" is the shape
+of every other mover in the codebase and would have looked entirely
+correct while silently halving the player. The gate runs BOTH movers
+over the same ticks in the same world, so it compares the game against
+itself rather than against a number somebody typed — and falsifying it
+(forcing one hex per tick) turns exactly that assertion red.
+
+⚠ **There is no vehicle passability code, and that is the phase's
+second claim.** The rule is `passable.loft`'s and the player is a
+third KIND with a climb of 0.4 m — so a `wall` stops it with no branch
+anywhere naming a wall, and a pile at exactly the clearance is
+drivable while one a hand's breadth deeper is not. Deleting the
+`can_step` call turns three assertions red.
+
+⚠ **`vehicle_tick` takes the tick's DURATION as a parameter**, and the
+compiler is what settled it: `TICK_SECONDS` lives in `spawn.loft`,
+which `use`s `vehicle.loft`, so reading it from there is a cycle. The
+error was right about the design — the wave engine may know about the
+player, and the player must not need the wave engine to move.
+
+## Goal
+
+The player exists in the world, drives, and does the one thing that
+makes a tower worth building: **clears up after it**.
+
+Plan 12 ended with a measurement nobody planned and nobody can act on:
+a base defended by a sealed wall and a tower falls **sooner** than the
+same base with the wall alone, because the tower's own dead pile into a
+ramp over it. `plans/12` § B7 called the missing piece *"a crew to
+collect bodies, which arrives with the vehicle"*. This plan is that
+crew's first member.
+
+⚠ **The clock B7 already measures is this plan's gate.** `tests/12_b7_
+the_clock.loft` plays three authored bases and compares their
+time-to-zero; a vehicle that clears bodies must move the towered base's
+number **up**, and nothing else about the scenario changes. That is a
+gate this plan did not have to build and cannot argue with.
+
+## Anchors
+
+Implements, and does not restate:
+
+- [`docs/DESIGN.md`](../../docs/DESIGN.md) § 8 (the vehicle: hover,
+  boost, noncombatant, blocker exception), § 11 (position triggers, not
+  key presses; the handful of keys), § Carry visibility.
+- [`examples/numbers.json`](../../examples/numbers.json)
+  § `player_vehicle` — every value this plan consumes already exists
+  there. **This plan adds no new tunable without a row in that file.**
+
+Source files it touches: a new `src/vehicle.loft`, plus
+`src/passable.loft` (a third kind), `src/spawn.loft` (the tick),
+`src/wallet.loft` (a credit, at V3), `src/height.loft`'s existing
+`height_clear` (which has had no caller since plan 12 B1) and
+`src/script.loft` (the verbs).
+
+## V0 — the probe (2026-08-14)
+
+No code, four measurements, and **two of them inverted what this plan
+was about to assume**.
+
+### ⚠ 1. The vehicle is the LAST entity whose speed fits the tick
+
+`docs/DESIGN.md` § Speed must NOT be tied to the tick, and the ledger
+in `plans/12` § What it needs that does not exist, both imply the
+vehicle forces the speed-decoupling work — a second mover that banks
+progress the way `tower.loft` banks a fire interval. **Measured
+against `numbers.json`, it does not.** A tick is `1 / 1.5` s, so:
+
+| entity | `numbers.json` | hexes per tick | fits a whole-hex tick? |
+|---|---|---|---|
+| enemy regular | 1.5 hex/s | 1.000 | ✓ |
+| **player vehicle** | **3.0 hex/s** | **2.000** | **✓** |
+| **vehicle, boosting** | **6.0 hex/s** | **4.000** | **✓** |
+| helper | 2.5 hex/s | 1.667 | ✗ |
+| boss (phase 3) | 1.0 hex/s | 0.667 | ✗ |
+
+So the vehicle moves **exactly two hexes a tick** and needs no banking
+whatever. What forces the decoupling is the **helper** (§ 9) and the
+boss — and neither is this plan's. That is worth knowing before V1,
+because building a progress-banking mover here would have been
+machinery with no case to justify it, gated by nothing.
+
+⚠ The corollary is the trigger to write down: **the day a helper moves,
+the tick stops being a hex.** `spawn.loft` § What a tick is worth
+already names the pattern to reuse (`tower.loft`'s charge, epsilon
+included).
+
+### ⚠ 2. Passability needs no new rule — the vehicle is a CLIMB
+
+`src/passable.loft` line 287 anticipated this in as many words: *"The
+day a class reads `walk_vehicle` instead, this gains a kind."* Two
+things the probe found on top of it:
+
+- **`walk_vehicle` is `true` for every one of the twelve palette
+  entries** — sea, water and `steep_rock` included. The vehicle
+  hovers, so the SURFACE question is a no-op for it and the **height
+  step is its whole passability**. One field of the two that
+  `passable.loft` asks does all the work.
+- Which means the vehicle's climb is its **hover clearance**, straight
+  out of `numbers.json`: 0.4 m idle. `climb_limit` already keys on a
+  kind, so this is a constant and a branch, not a mover.
+
+⚠ **And the numbers land exactly on the design's claims.**
+`hover_clearance_boost` is 3.0 m and a `wall` is 3.0 m, so a boosting
+vehicle clears a wall *at the limit* and a 5.0 m `wall_high` not at
+all. § 8 says boost *"can cross steep_rock, walls, closed
+perimeters"* — true, and the anti-insect barrier turns out to be
+anti-PLAYER too. Nobody wrote that down; it falls out of the two
+numbers meeting.
+
+### ⚠ 3. But BOOST breaks the shape `climb_limit` has
+
+`climb_limit(kind: u8)` is a function of CLASS. The vehicle's climb is
+0.4 m idle and 3.0 m boosting — a function of **state**, which that
+signature cannot express. It is the first mover in dryopea whose
+passability changes during its own life.
+
+Not V1's problem and named here so V4 does not discover it: the fix is
+a climb that is *passed* rather than *looked up*, or a second kind for
+"boosting", and the choice wants measuring rather than picking. ⚠ It
+is also the same shape the design's *"a damaged robot moves slower"*
+has, so whatever settles it settles that too.
+
+### 4. Where it lives: on `WaveState`, and the name is now a scar
+
+`WaveState` already carries the rubble layer, the damage ledger, the
+towers and the run's wallet — everything runtime that a tick threads.
+The wallet's own note says why: *"a second runtime container holding
+one float would be a second thing every caller has to remember to
+pass."* A vehicle is the same argument again.
+
+⚠ The honest cost: the struct is named for the wave and now holds the
+player. A rename to `RunState` is a mechanical change across ~60 call
+sites and it is **not** this plan's — recorded so the next person does
+not read the name as a claim.
+
+## Invariant gate
+
+| Phase | Expected result | Invariant | Negative control |
+|---|---|---|---|
+| **V0** ✓ | the speed table above; `walk_vehicle` uniformly true | the probe records what IS, before anything assumes it | — (V0 asserts the present; V1 is its gate) |
+| **V1** ✓ | the vehicle covers 2 hexes while an enemy covers 1, over the same ticks | speed is a RATE, read from `numbers.json`, not a step count | a vehicle that moves 1 hex a tick has silently adopted the enemy's rate; a vehicle that reaches a hex `can_step` refuses has no passability at all |
+| **V2** | driving onto a pile clears it, and the towered base's clock RISES | the crew is what makes a tower pay | a clock that does not move means the vehicle cleared nothing that mattered |
+| **V3** | a collected body credits the wallet; the wallet can go UP | loot is income, and it is the first thing that ever refills the budget | a wallet that rises with nobody collecting has a leak — B6 promised it never refills unattended |
+| **V4** | boosting clears a 3.0 m `wall` and never a 5.0 m `wall_high` | boost is a bigger CLIMB, not a new movement mode | a boost that crosses `wall_high` has stopped reading the height |
+
+## Phases
+
+| Phase | Effort | Verify | Status |
+|---|---|---|---|
+| **V0** — the probe: speed, passability, and where it lives | XS | measurements against `numbers.json`; three of the four answers are recorded above | **Done** |
+| **V1** — the vehicle exists, and it drives | S | `tests/13_v1_the_vehicle.loft` — two hexes to an enemy's one, and it stops at what it cannot climb | **Done** |
+| **V2** — it clears rubble, and a tower starts paying | S | `tests/12_b7_the_clock.loft`'s towered base — the clock RISES | Open |
+| **V3** — a body is worth points | S | `wallet.loft` gains its first credit; `tests/12_b6_wallet.loft`'s "never refills" becomes "never refills UNATTENDED" | Open |
+| **V4** — boost | S | clears a `wall`, refused by a `wall_high` | Blocked on § V0.3 |
+
+### Why the order is this order
+
+V1 before everything because a vehicle that cannot be positioned cannot
+trigger anything — every later phase is *"drive somewhere and something
+happens"*, which is § 11's whole input philosophy (**position triggers,
+not key presses**).
+
+V2 before V3 because clearing is the mechanic plan 12 measured a need
+for, and its gate already exists. V3 adds an income the wallet has
+never had, and B6 deliberately left no verb for it — so it is a
+contract change and wants its own phase.
+
+V4 last because § 3 above says it needs a decision `climb_limit` cannot
+currently express, and everything before it can be built without one.
+
+## What this plan does NOT build
+
+No helpers (§ 9 — and they are what forces the speed decoupling, so
+they want that work first), no wall-paint mode, no tower repair /
+boost / ordering, no force-launch or scramble, no blocker damage
+model, no carry rendering, no camera. **No 3D and no GL**: the vehicle
+is simulation state driven by `.keys`, exactly as the wave engine was
+for plans 11 and 12, and it reaches a player's hands the day a play
+mode exists.
+
+⚠ **Consequence worth stating: this plan gives the player no way to
+DIE.** § 8's blocker-damage model is the only thing that can hurt a
+vehicle and it is not built, so V1's vehicle is invulnerable and the
+run still ends only at the wallet. That is the right order — plan 12
+made the wallet the single end state on purpose — but it means "the
+player is safe" is a temporary property of an unfinished plan rather
+than a design claim.
+
+## Open questions
+
+1. **How does a climb that changes with STATE get expressed?** § 3.
+   Blocks V4; wants measuring rather than picking, and settles the
+   design's *"a damaged robot moves slower"* at the same time.
+2. **Does the vehicle collect a body, or clear a pile?** They are the
+   same hex and different mechanics: `height_clear` takes a pile away
+   (plan 12 B1 built it, with no caller) and loot is a value the pile
+   should have carried. `plans/12` § The rubble is the hill says
+   contents are an OPEN, MULTIPLE-per-hex axis and belong on plan 06
+   S1's stacked layer — which does not exist. *V3's job to settle;
+   recommendation: V3 credits a flat `loot_value` per body cleared and
+   does not model contents, so the stacked layer arrives later without
+   a migration.*
+3. **What drives it in a `.keys` script?** A destination is
+   pathfinding and § 11 says the player DRIVES. *Recommendation for
+   V1: `drive <q> <r>` walks the straight `lat_line` and stops at the
+   first step the height rule refuses — which is what driving into a
+   wall does, needs no route, and maps onto WASD later.*
+
+## See also
+
+- [`plans/12-combat-resolution`](../12-combat-resolution/README.md) —
+  § B7 is the measurement that motivates this plan, and its scenario is
+  V2's gate.
+- [`plans/08-game-validation`](../08-game-validation/README.md) — the
+  instrument every phase here asserts through.
+- [`plans/05-validation-scenario`](../05-validation-scenario/README.md)
+  — the consumer; its minimum-playable thing needs a player.

@@ -1,0 +1,312 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 13 phase V1 — the vehicle exists, and it drives.
+//
+// ── What has to be true for the rest of the plan to be buildable ──
+//
+// `docs/DESIGN.md` § 11 § Position triggers, not key presses: *"drive
+// into the core = force-launch, drive over loot = auto-pickup, drive
+// to a tower = repair / boost"*.  Every one of those is *"be
+// somewhere, and something happens"*, so V1 is the somewhere and each
+// later phase is one something.  A vehicle that cannot be positioned
+// accurately makes every one of them ungateable.
+//
+// ── The two claims, and why the second is the one that bites ─────
+//
+//   1. **It moves at its own SPEED.**  `numbers.json` §
+//      player_vehicle.speed_normal is 3.0 hex/s against an enemy's
+//      1.5, so the player covers two hexes while a robot covers one.
+//      ⚠ The trap is that the tick is *defined* by the enemy's speed,
+//      so an implementation that moved "one hex per tick" — the
+//      obvious thing, and what every other mover in the codebase does
+//      — would look completely correct and quietly halve the player.
+//      `test_the_player_covers_two_hexes_to_a_robots_one` is the
+//      discriminator, and it runs BOTH movers over the same ticks so
+//      the comparison is not against a number somebody typed.
+//
+//   2. **It is stopped by the same rule everything else is.**  A
+//      hover unit's climb is its clearance (0.4 m,
+//      `hover_clearance_idle`), so a 3.0 m `wall` stops it exactly as
+//      it stops a robot.  ⚠ There is no vehicle passability CODE — the
+//      rule is `passable.loft`'s and the player is a third kind — so
+//      what this file gates is that the wiring reaches it at all.
+//
+// ── What V1 deliberately does not do ────────────────────────────
+//
+// It does not route.  A player DRIVES: `vehicle_tick` walks the
+// straight `lat_line` and stops at the first step the ground refuses,
+// so a vehicle pointed through a wall parks against the wall and the
+// player is the one who has to go round.  Handing the player a flow
+// field would be the machine choosing the way — the feel § 11
+// rejects — and it is worth an assertion rather than a comment,
+// because a flow field is sitting right there and would have been
+// three lines.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A five-row band of grass, wide enough to drive around in.
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=16 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Presence: the zero value is NOT a hex
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **`q` and `r` default to 0, which is a real hex** — and (0, 0) is
+// the core in every scenario dryopea has.  So a vehicle that recorded
+// only its position would put the player on the core in every run that
+// never placed one, and `plans/13` § V2 wants to measure exactly that
+// hex.  The flag is what keeps "not in the world" separate.
+fn test_a_fresh_run_has_no_player_in_it() {
+    taf = wave_state_empty();
+
+    assert(!vehicle_present(taf.player),
+           "a run nobody parked a vehicle in has no player");
+}
+
+fn test_a_vehicle_built_without_mentioning_presence_is_absent() {
+    tav = Vehicle { };
+
+    assert(!vehicle_present(tav),
+           "an omitted flag means absent, not parked on the origin");
+}
+
+fn test_parking_puts_one_in_the_world_standing_still() {
+    tpp = wave_state_empty();
+    vehicle_place(tpp.player, 4, 1);
+
+    assert(vehicle_present(tpp.player), "there is a player now");
+    assert(tpp.player.q == 4 && tpp.player.r == 1,
+           "on the hex it was given: ({tpp.player.q}, {tpp.player.r})");
+    assert(vehicle_arrived(tpp.player),
+           "and it is not going anywhere until it is told to");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Speed: the player is TWICE the thing the tick is defined by
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The phase's discriminator.**  A tick is `1 / 1.5` s *because*
+// that is what a robot takes to cross a hex, so "one hex per tick" is
+// the shape of every other mover in the codebase and would look right
+// here.  Both movers run over the same ticks in the same world, so
+// this compares the game against itself rather than against a number.
+fn test_the_player_covers_two_hexes_to_a_robots_one() {
+    ttp_pw = band();
+    ttp_s  = wave_state_empty();
+
+    // ⚠ Both on row 0, so `q` alone measures the ground each covered.
+    // Off-axis the robot's route is a diagonal and its `q` falls by
+    // less than one a tick — measured, and it made the first version
+    // of this test read 3 where it wanted 4.  The vehicle holds no
+    // occupancy, so sharing the row costs nothing.
+    ttp_s.enemies += [Enemy { q: 12, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                              heading: 3 as u8, alive: true }];
+    vehicle_place(ttp_s.player, 12, 0);
+    vehicle_drive(ttp_s.player, 0, 0);
+
+    play(ttp_s, ttp_pw, 4);
+
+    ttp_e = ttp_s.enemies[0] ?? Enemy { };
+    ttp_robot_went  = 12 - ttp_e.q;
+    ttp_player_went = 12 - ttp_s.player.q;
+
+    assert(ttp_robot_went == 4, "four ticks is four hexes for a robot: {ttp_robot_went}");
+    assert(ttp_player_went == 2 * ttp_robot_went,
+           "and twice that for the player: {ttp_player_went} against {ttp_robot_went}");
+}
+
+// The rate is READ, not hard-coded — so it stays right if the tick's
+// duration ever changes, which `DESIGN.md` § Speed must NOT be tied to
+// the tick says it will.
+fn test_the_hexes_a_tick_come_from_the_speed_and_the_timestep() {
+    assert(vehicle_hexes_per_tick(TICK_SECONDS) == 2,
+           "3.0 hex/s over a {TICK_SECONDS} s tick is two hexes: {vehicle_hexes_per_tick(TICK_SECONDS)}");
+
+    // Halve the timestep and the vehicle covers half as much ground.
+    assert(vehicle_hexes_per_tick(TICK_SECONDS / 2.0) == 1,
+           "a half-length tick is one hex: {vehicle_hexes_per_tick(TICK_SECONDS / 2.0)}");
+}
+
+fn test_a_vehicle_nobody_pointed_anywhere_stays_put() {
+    tav_pw = band();
+    tav_s  = wave_state_empty();
+    vehicle_place(tav_s.player, 6, 0);
+
+    play(tav_s, tav_pw, 10);
+
+    assert(tav_s.player.q == 6 && tav_s.player.r == 0,
+           "it is where it was parked: ({tav_s.player.q}, {tav_s.player.r})");
+}
+
+fn test_it_stops_on_arrival_rather_than_overshooting() {
+    tis_pw = band();
+    tis_s  = wave_state_empty();
+    vehicle_place(tis_s.player, 5, 0);
+    vehicle_drive(tis_s.player, 0, 0);
+
+    play(tis_s, tis_pw, 20);
+
+    assert(tis_s.player.q == 0 && tis_s.player.r == 0,
+           "it arrived and stayed: ({tis_s.player.q}, {tis_s.player.r})");
+    assert(vehicle_arrived(tis_s.player), "and knows it");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Passability: the same rule, a different climb
+// ─────────────────────────────────────────────────────────────────
+
+// A 3.0 m `wall` is seven times the vehicle's 0.4 m hover clearance,
+// so it stops the player exactly as it stops a robot — with no branch
+// anywhere naming a wall.
+fn test_a_wall_stops_the_player_as_it_stops_a_robot() {
+    taw_pw = band();
+    for taw_r in -2..=2 { paint(taw_pw, 5, taw_r, as_u8(WALL)); }
+
+    taw_s = wave_state_empty();
+    vehicle_place(taw_s.player, 9, 0);
+    vehicle_drive(taw_s.player, 0, 0);
+
+    play(taw_s, taw_pw, 20);
+
+    assert(taw_s.player.q == 6 && taw_s.player.r == 0,
+           "it parked against the wall: ({taw_s.player.q}, {taw_s.player.r})");
+    assert(!vehicle_arrived(taw_s.player),
+           "and it never got where it was pointed");
+}
+
+// ⚠ **The negative control for § What V1 deliberately does not do.**
+// A flow field was sitting right there and routing round the wall
+// would have been three lines — so this asserts that the player is
+// NOT routed: pointed through a sealed wall with an open way round it,
+// it still parks against the wall.  `DESIGN.md` § 11 wants the player
+// to be the one who goes round.
+fn test_the_player_is_driven_and_never_routed() {
+    tpi_pw = band();
+    // A wall across the band with a gap at r = 2 — a robot's field
+    // would route through the gap without hesitating.
+    for tpi_r in -2..=1 { paint(tpi_pw, 5, tpi_r, as_u8(WALL)); }
+
+    tpi_s = wave_state_empty();
+    vehicle_place(tpi_s.player, 9, 0);
+    vehicle_drive(tpi_s.player, 0, 0);
+    play(tpi_s, tpi_pw, 20);
+
+    assert(tpi_s.player.q == 6 && tpi_s.player.r == 0,
+           "it drove into the wall rather than round it: ({tpi_s.player.q}, {tpi_s.player.r})");
+
+    // And the way round is genuinely open — the player has to use it
+    // by DRIVING, which is three instructions and not one: out to the
+    // open row, west through the gap, then home.
+    vehicle_drive(tpi_s.player, 6, 2);
+    play(tpi_s, tpi_pw, 6);
+    vehicle_drive(tpi_s.player, 3, 2);
+    play(tpi_s, tpi_pw, 6);
+    vehicle_drive(tpi_s.player, 0, 0);
+    play(tpi_s, tpi_pw, 20);
+
+    assert(tpi_s.player.q == 0 && tpi_s.player.r == 0,
+           "driven round the end, it gets home: ({tpi_s.player.q}, {tpi_s.player.r})");
+}
+
+// A pile under the hover clearance is not an obstacle; one over it is.
+// ⚠ Both directions, because a vehicle that ignored height entirely
+// would pass the first assertion on its own.
+fn test_it_rides_a_shallow_pile_and_is_stopped_by_a_deep_one() {
+    tir_pw = band();
+
+    tir_low = wave_state_empty();
+    height_raise(tir_low.heights, 5, 0, CLIMB_VEHICLE, as_u8(RUBBLE_WRECKAGE));
+    vehicle_place(tir_low.player, 9, 0);
+    vehicle_drive(tir_low.player, 0, 0);
+    play(tir_low, tir_pw, 20);
+    assert(tir_low.player.q == 0,
+           "a pile exactly at the clearance is drivable: it reached q = {tir_low.player.q}");
+
+    tir_high = wave_state_empty();
+    height_raise(tir_high.heights, 5, 0, CLIMB_VEHICLE + 0.1, as_u8(RUBBLE_WRECKAGE));
+    vehicle_place(tir_high.player, 9, 0);
+    vehicle_drive(tir_high.player, 0, 0);
+    play(tir_high, tir_pw, 20);
+    assert(tir_high.player.q == 6,
+           "a hand's breadth more stops it: it reached q = {tir_high.player.q}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The verbs
+// ─────────────────────────────────────────────────────────────────
+
+// The whole of V1 through the seam a player's keys go through.
+fn test_a_scripted_drive_crosses_the_map() {
+    tas_src =
+        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo toggle_mode\n"
+      + "palette 5\ndrag -3 0 16 0\n"
+      + "park 12 0\nvehicle 12 0\n"
+      + "drive 0 0\n"
+      + "tick 1\nvehicle 10 0\n"
+      + "tick 2\nvehicle 6 0\n"
+      + "tick 3\nvehicle 0 0\n";
+
+    tas = script_run(editor_state_new(PALETTE), tas_src, SHOTS);
+
+    assert(tas.ok, "{script_describe(tas)}");
+    assert(tas.checks == 4, "it made {tas.checks} measurements, expected 4");
+}
+
+// ⚠ "No vehicle in this run" and "a vehicle on (0, 0)" are two states
+// a single reading cannot tell apart, and (0, 0) is the core in every
+// scenario dryopea has — so the measurement refuses the first rather
+// than answering the origin, exactly as `hp` refuses a hex with
+// nothing breakable on it.
+fn test_the_verbs_refuse_a_run_with_no_player() {
+    ttv_a = script_run(editor_state_new(PALETTE), "vehicle 0 0", SHOTS);
+    assert(!ttv_a.ok && ttv_a.message.contains("no vehicle"), "{ttv_a.message}");
+
+    ttv_b = script_run(editor_state_new(PALETTE), "drive 0 0", SHOTS);
+    assert(!ttv_b.ok && ttv_b.message.contains("no vehicle"), "{ttv_b.message}");
+
+    // Parking first makes both legal.
+    ttv_c = script_run(editor_state_new(PALETTE), "park 2 0\ndrive 0 0\nvehicle 2 0", SHOTS);
+    assert(ttv_c.ok, "{script_describe(ttv_c)}");
+}
+
+fn test_the_verbs_check_their_arguments() {
+    ttc_a = script_run(editor_state_new(PALETTE), "park 1", SHOTS);
+    assert(!ttc_a.ok && ttc_a.message.contains("<q> <r>"), "{ttc_a.message}");
+
+    ttc_b = script_run(editor_state_new(PALETTE), "park x 0", SHOTS);
+    assert(!ttc_b.ok && ttc_b.message.contains("integers"), "{ttc_b.message}");
+
+    ttc_c = script_run(editor_state_new(PALETTE), "park 0 0\nvehicle 0", SHOTS);
+    assert(!ttc_c.ok && ttc_c.message.contains("<q> <r>"), "{ttc_c.message}");
+}

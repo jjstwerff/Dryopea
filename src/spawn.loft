@@ -37,6 +37,7 @@ use occupancy;
 use damage;
 use tower;
 use wallet;
+use vehicle;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -207,6 +208,13 @@ pub fn enemy_hurt(e: Enemy, hp: float) {
 // scripted run threads through a tick, and a second runtime container
 // holding one float would be a second thing every caller has to
 // remember to pass.
+//
+// ⚠ `player` is the same argument a second time (plan 13 V1), and by
+// now the NAME is a scar: this struct is the RUN's state and it is
+// called `WaveState`.  Renaming it to `RunState` is a mechanical
+// change across some sixty call sites and belongs to nobody's plan
+// yet — recorded here so the name is not read as a claim about what
+// it holds.
 pub struct WaveState {
     enemies:     vector<Enemy>,
     pick_cursor: integer,
@@ -214,6 +222,7 @@ pub struct WaveState {
     damage:      DamageLayer,
     towers:      TowerState,
     wallet:      Wallet,
+    player:      Vehicle,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0, the
@@ -225,6 +234,7 @@ pub fn wave_state_empty() -> WaveState {
         damage:  damage_layer_empty(),
         towers:  tower_state_empty(),
         wallet:  wallet_new(),
+        player:  vehicle_empty(),
     }
 }
 
@@ -1148,6 +1158,15 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wave_fire(state, pal, pw, mw);
     wave_damage(state, pal, pw, wt_fields, wt_desire);
     wave_nibble(state, core);
+
+    // ⚠ **The player moves with the exchange, not with the wave.**  It
+    // is driven rather than routed, so it reads no field and no
+    // occupancy: a vehicle is not a companion an enemy can be blocked
+    // by, and an enemy is not something the player bumps into.  Both
+    // of those are `DESIGN.md` § 8's blocker-damage model, which plan
+    // 13 does not build — see `plans/13` § What this plan does NOT
+    // build.
+    vehicle_tick(state.player, pal, pw, state.heights, TICK_SECONDS);
 
     for wt_i in move_order(state, wt_fields) {
         wt_e = state.enemies[wt_i] ?? Enemy {};

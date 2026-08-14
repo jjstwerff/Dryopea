@@ -89,6 +89,12 @@
 //                              stops at what its class cannot cross.
 //                              Since B2 it also lands the siege's
 //                              damage and breaks what has run out
+//   park <q> <r>               put the player on a hex (plan 13 V1)
+//   drive <q> <r>              point the player at a hex; the TICK
+//                              moves it, two hexes a tick, along the
+//                              straight line — a player DRIVES, so it
+//                              stops at what it cannot climb rather
+//                              than routing round it
 //   fall <max>                 tick until the base FALLS — the wallet
 //                              at zero — and stop (plan 12 B7).
 //                              ⚠ Still standing after <max> is an
@@ -128,6 +134,11 @@
 //                              only end state dryopea has, since the
 //                              core is invulnerable (plan 12 B6).
 //                              `wallet 0 0` is "the base fell"
+//   vehicle <q> <r>            EXACT hex of the player (plan 13 V1) —
+//                              an ERROR when no vehicle has been
+//                              placed, because "not in the world" and
+//                              "parked on the origin" are two states
+//                              one reading cannot tell apart
 //   ticks <lo> <hi>            game-ticks played so far — the run's
 //                              CLOCK, and plan 12 B7's deliverable.
 //                              A band, because a clock is the sum of
@@ -197,6 +208,7 @@ use height;
 use passable;
 use damage;
 use wallet;
+use vehicle;
 use occupancy;
 use spawn;
 use graphics;
@@ -652,6 +664,29 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sm_wlo == null || sm_whi == null { return "wallet: <lo> and <hi> must be numbers"; }
         return measure_float(run, "wallet", wallet_left(run.wave.wallet),
                              sm_wlo ?? 0.0, sm_whi ?? 0.0);
+    }
+
+    // Where the player is.  Plan 13 V1.
+    //
+    // ⚠ **An ERROR when nobody has parked one**, for the same reason
+    // `hp` refuses a hex with nothing breakable on it: "no vehicle in
+    // this run" and "a vehicle on (0, 0)" are two states, and a
+    // measurement that answered (0, 0) for both would be green over a
+    // run that never placed a player.
+    if sm_cmd == "vehicle" {
+        if sm_argc != 2 { return "vehicle needs <q> <r>"; }
+        sm_vv = script_ints(tok, 2);
+        if len(sm_vv) != 2 { return "vehicle: <q> and <r> must be integers"; }
+        if !vehicle_present(run.wave.player) {
+            return "vehicle: no vehicle in this run — `park <q> <r>` puts one in the world";
+        }
+        sm_vq = sm_vv[0] ?? 0;
+        sm_vr = sm_vv[1] ?? 0;
+        if run.wave.player.q != sm_vq || run.wave.player.r != sm_vr {
+            return "vehicle is at ({run.wave.player.q}, {run.wave.player.r}), expected ({sm_vq}, {sm_vr})";
+        }
+        measure_exact(run, "vehicle ({sm_vq}, {sm_vr})");
+        return "";
     }
 
     // The run's CLOCK, in game-ticks — plan 12 B7.
@@ -1308,6 +1343,30 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // also means a `tick` over an unpainted map moves nobody, because
     // an unpainted hex is sea.  A scenario that walks enemies has to
     // paint the ground they walk on.
+    // Put the player on a hex, and point it at one.  Plan 13 V1.
+    //
+    // ⚠ Two verbs and not one: parking is instantaneous authoring and
+    // driving is a thing the TICK does.  `park 4 0` then `drive 0 0`
+    // reads as a setup line and an instruction, which is what they
+    // are — and a single verb would have made "where the player is"
+    // and "where the player is going" the same statement.
+    if sc_cmd == "park" || sc_cmd == "drive" {
+        if sc_argc != 2 { return "{sc_cmd} needs <q> <r>"; }
+        sc_pv = script_ints(tok, 2);
+        if len(sc_pv) != 2 { return "{sc_cmd}: <q> and <r> must be integers"; }
+        sc_pq = sc_pv[0] ?? 0;
+        sc_pr = sc_pv[1] ?? 0;
+        if sc_cmd == "park" {
+            vehicle_place(run.wave.player, sc_pq, sc_pr);
+            return "";
+        }
+        if !vehicle_present(run.wave.player) {
+            return "drive: no vehicle — `park <q> <r>` puts one in the world first";
+        }
+        vehicle_drive(run.wave.player, sc_pq, sc_pr);
+        return "";
+    }
+
     if sc_cmd == "tick" {
         if sc_argc != 1 { return "tick needs <ticks>"; }
         sc_n = sc_a1 as integer?;
@@ -1376,7 +1435,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     || sc_cmd == "frame" || sc_cmd == "range"
     || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target"
     || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
-    || sc_cmd == "ticks" {
+    || sc_cmd == "ticks" || sc_cmd == "vehicle" {
         return script_measure(s, run, tok);
     }
 

@@ -55,7 +55,8 @@ exists today.
 | A tower SEES: one straight line from its eye over what `hex_height` says is in the way, and thirty shots before it goes black | [12](plans/12-combat-resolution/README.md), B5b shipped |
 | A wallet: an enemy standing on the core drains 1 pt/s off 200, and zero ends the run — the core stays invulnerable | [12](plans/12-combat-resolution/README.md), B6 shipped |
 | An unattended base falls on a measured clock — and a sealed wall nearly doubles it while a tower CUTS it | [12](plans/12-combat-resolution/README.md), B7 shipped — plan **complete** |
-| **No player, so nobody clears the bodies that beat the tower** | the vehicle — not in any open plan |
+| A PLAYER: a hover unit that parks, drives at two hexes a tick, and is stopped by the same height rule everything else is | [13](plans/13-the-vehicle/README.md), V0-V1 shipped |
+| **The player cannot yet DO anything — no clearing, no loot, no boost** | [13](plans/13-the-vehicle/README.md), V2 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -71,7 +72,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 761/761 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 774/774 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
 **Gate: 18 scripts green under `scripts/validate.sh`** (~6 s, 307
@@ -805,6 +806,27 @@ src/
                    where `WaveState` is: this file must not depend on
                    the wave engine, because the tick calls INTO it
 
+  vehicle.loft     the PLAYER (plan 13 V1) — VEHICLE_SPEED_HEX_PER_SECOND
+                   (3.0, twice an enemy), Vehicle + vehicle_empty /
+                   _place / _drive / _present / _arrived /
+                   _hexes_per_tick / vehicle_tick.
+                   ⚠ **Two hexes a tick, and it is a RATE** — the tick
+                   is DEFINED by an enemy's speed, so "one hex per
+                   tick" is what every other mover does and would
+                   silently halve the player.
+                   ⚠ **No passability code here.**  A hover unit's
+                   climb is its clearance (`CLIMB_VEHICLE`, 0.4 m) and
+                   the player is a third KIND in `passable.loft` —
+                   `walk_vehicle` is true for all twelve palette
+                   entries, so the height step is its whole
+                   passability.
+                   ⚠ **It DRIVES, never routes** — `lat_line` to where
+                   it is pointed, stopping at the first refused step.
+                   A flow field would be the machine choosing the way,
+                   which `DESIGN.md` § 11 rejects.
+                   ⚠ `vehicle_tick` takes the tick's DURATION as a
+                   parameter: `TICK_SECONDS` is in `spawn.loft`, which
+                   `use`s this file
   wallet.loft      the run's budget, and the only END STATE dryopea
                    has (plan 12 B6) — WALLET_STARTING_POINTS (200),
                    NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,
@@ -954,6 +976,7 @@ suite redirects its own shots into `tests/actual/`.
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the wave it is playing |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet — runtime, not editor state |
+| `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, and whether it is in the world at all — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario |
 | `Wallet` | `wallet.loft` | points SPENT out of the run's 200 — zero is a FULL wallet, and the ledger is clamped at the budget so a later credit is not swallowed |
 | `TowerState` | `tower.loft` | per tower: the seconds banked toward its next shot and the shots it has FIRED out of its 30 — runtime, never saved |
 | `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken }` — `taken` is damage ABSORBED, so an `Enemy { … }` literal that omits it is HEALTHY |
