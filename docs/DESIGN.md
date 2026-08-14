@@ -133,6 +133,56 @@ them something?*  A mechanic that hands out a permanent
 advantage for a one-time placement decision is the thing this
 design is avoiding.
 
+#### ⚠⚠ And the DEEP layers are what keep it a tower defence
+
+Owner, 2026-08-14: **the deeper layers of this game are also the
+ones that keep the game a tower-defence game.**
+
+That reads backwards at first — cosmic horror, hive minds and
+ancient cities sound like the material that turns a defence game
+into something else.  It is the opposite, and the mechanism is
+worth stating because it is what a future contributor would
+otherwise erode:
+
+**1. Every deep layer is unbeatable by personal power.**  Look at
+what [`SETTING.md`](SETTING.md) actually forbids: a solo player
+can never wake an old one, understanding them is the *failed*
+defence, resistance cannot be had without ceasing to be a person,
+and the portal's warriors answer the threat rather than the
+player.  ⚠ **Not one of those offers "become strong enough and
+win"** — which is the drift that would turn this into an action
+RPG.  With that route closed at every depth, the player's toolkit
+stays what it started as: position, terrain, towers, walls, crew,
+timing.
+
+**2. They keep the player permanently SMALL.**  A tower defence
+only makes sense while defending a place is the right size of
+activity.  The moment a player is the protagonist of the cosmos,
+holding a perimeter is beneath them.  Indifference on that scale
+is what guarantees it never becomes beneath them.
+
+**3. ⚠ Every deep element resolves into a fact about PLACE** —
+which is precisely what a tower defence is made of:
+
+| deep-layer element | what it actually is, mechanically |
+|---|---|
+| elementals | **spatially keyed** to stones |
+| an old one commanding them | ⚠ it **deletes that geography** — it attacks the spatial rule itself, which is the sharpest possible tower-defence threat |
+| an insect-guarded wound | a **place** held for a **duration** |
+| crystal, trees, shafts, caverns | places, and the routes between them |
+| the robot economy | a **map**: nodes and edges |
+| the portal's warriors | **anchors** — a position where the line holds |
+
+So the lore is not decorating the genre.  **It generates more of
+the genre's own material**, one layer up.
+
+⚠ **The test, extended.**  The § What kind of game this is
+question stays as written for mechanics.  For deep-layer content
+there is a second: *does it resolve into a statement about
+position, terrain or timing?*  If it resolves into a statement
+about the player's **stats or abilities**, it is off-genre —
+however good the story is.
+
 **And it is what buys the variety.**  Because so many of the
 counters are **architectural** — decided by where the walls
 went rather than by how much damage the player brought — an

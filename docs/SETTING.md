@@ -1668,6 +1668,20 @@ because it would be unrealistic to see anyway.
 
 ## How the setting shapes the mechanics
 
+⚠⚠ **And the deep layers are what keep it a TOWER DEFENCE** (owner,
+2026-08-14).  That reads backwards — cosmic horror sounds like the
+material that turns a defence game into something else — and it is the
+opposite: every deep layer here is **unbeatable by personal power**
+(no solo awakening, understanding is the failed defence, resistance
+costs the self), which closes the "get strong enough and win" route at
+every depth and leaves the player with position, terrain, towers,
+walls, crew and timing.  It also keeps the player permanently small
+enough that holding a perimeter stays the right size of activity, and
+**every deep element resolves into a fact about PLACE**.  The full
+argument, and the second design test it yields, is
+[`DESIGN.md`](DESIGN.md) § And the DEEP layers are what keep it a
+tower defence.
+
 | Mechanic | Why it fits the setting |
 |---|---|
 | **Robots have factories / supply lines / mines** | They were *colonization machines*; that is the program they keep running.  Disrupting their economy (DESIGN.md § Future expansion) is disrupting a corrupted infrastructure, not invading a society. |
