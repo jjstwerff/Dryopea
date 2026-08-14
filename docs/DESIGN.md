@@ -1021,6 +1021,10 @@ reach a target.  Target priority (highest first):
 
 1. **A player or NPC physically blocking the path to the
    core** (conditional damage — see [§ Player vehicle](#8-player-vehicle)).
+   ⚠ Built in plan 13 V5.  *"Blocking"* means the enemy has no
+   way forward AND no way round — in the open it goes round and
+   the player is ignored, exactly as this list's closing line
+   says.
 2. **The core itself** (via entrance / broken wall) —
    drains the player's wallet, not the core's HP.
 3. **The nearest wall hex** when no path through exists —
@@ -1160,6 +1164,26 @@ Consequences:
   a *liability*, not a defence.
 - The vehicle has a minimal damage model that **activates
   only by positioning choices**.
+
+⚠ **Built in [plan 13](../plans/13-the-vehicle/README.md) V5,
+and "blocking" turned out to be a property of the MAP rather
+than of parking.**  An enemy attacks the vehicle only when the
+vehicle is on one of its closer steps AND every other closer
+step is taken AND **every sidestep is taken too**.  In the open
+it simply walks round — which is this section's own *"in the
+absence of a blocker, the player is ignored"* arriving as a
+consequence instead of a second rule.  Both of the examples
+above are chokepoints, and that is exactly where the rule
+fires.
+
+⚠ **A companion is never attacked for the same obstruction.**
+Robots jam nose-to-tail without touching each other; they
+attack the thing that does not belong.
+
+⚠ **The "cannot tank" clause is arithmetic**: 100 HP at 5 HP/s
+is twenty seconds for one attacker and five for four —
+measured at 20.7 s.  Blocking buys a moment and costs the trip
+home.
 
 ### Hover + boost
 

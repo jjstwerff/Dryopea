@@ -121,7 +121,7 @@ fn test_the_route_leaves_the_headings_line() {
     // Ten ticks puts it on the bypass, off the r = 0 line.
     trl_off = false;
     for _ in 0..10 {
-        enemy_tick(trl_e, trl_pal, trl_pw, height_layer_empty(), trl_f, desire_for(trl_pw), occupancy_empty());
+        enemy_tick(trl_e, trl_pal, trl_pw, height_layer_empty(), trl_f, desire_for(trl_pw), occupancy_empty(), vehicle_empty());
         if trl_e.r != 0 { trl_off = true; }
     }
 
@@ -142,7 +142,7 @@ fn test_with_the_way_open_the_route_stays_on_the_line() {
     two_pal = load_palette(PALETTE);
 
     for _ in 0..10 {
-        enemy_tick(two_e, two_pal, two_pw, height_layer_empty(), two_f, desire_for(two_pw), occupancy_empty());
+        enemy_tick(two_e, two_pal, two_pw, height_layer_empty(), two_f, desire_for(two_pw), occupancy_empty(), vehicle_empty());
         assert(two_e.r == 0, "the direct route is shorter, so it is taken: r = {two_e.r}");
     }
     assert(two_e.q == 2, "ten steps down a twelve-hex corridor");
@@ -162,7 +162,7 @@ fn test_every_tick_closes_exactly_one_step() {
     assert(tet_d == 13, "the bypass route is 13 steps, field says {tet_d}");
 
     while tet_d > 0 {
-        enemy_tick(tet_e, tet_pal, tet_pw, height_layer_empty(), tet_f, desire_for(tet_pw), occupancy_empty());
+        enemy_tick(tet_e, tet_pal, tet_pw, height_layer_empty(), tet_f, desire_for(tet_pw), occupancy_empty(), vehicle_empty());
         tet_now = flow_distance(tet_f, tet_e.q, tet_e.r);
         assert(tet_now == tet_d - 1,
                "one step closer per tick: {tet_d} -> {tet_now}");
@@ -183,10 +183,10 @@ fn test_it_arrives_in_exactly_its_distance_in_ticks() {
     tia_d   = flow_distance(tia_f, 12, 0);
 
     // One tick short: not there yet.
-    for _ in 0..(tia_d - 1) { enemy_tick(tia_e, tia_pal, tia_pw, height_layer_empty(), tia_f, desire_for(tia_pw), occupancy_empty()); }
+    for _ in 0..(tia_d - 1) { enemy_tick(tia_e, tia_pal, tia_pw, height_layer_empty(), tia_f, desire_for(tia_pw), occupancy_empty(), vehicle_empty()); }
     assert(tia_e.q != 0 || tia_e.r != 0, "one tick short of arriving");
 
-    enemy_tick(tia_e, tia_pal, tia_pw, height_layer_empty(), tia_f, desire_for(tia_pw), occupancy_empty());
+    enemy_tick(tia_e, tia_pal, tia_pw, height_layer_empty(), tia_f, desire_for(tia_pw), occupancy_empty(), vehicle_empty());
     assert(tia_e.q == 0 && tia_e.r == 0, "and exactly on the {tia_d}th it arrives");
 }
 
@@ -195,7 +195,7 @@ fn test_an_enemy_at_the_core_stays_on_it() {
     tac_f   = field_for(ENEMY_KIND_REGULAR, tac_pw);
     tac_e   = westbound(ENEMY_KIND_REGULAR, 0);
 
-    for _ in 0..20 { enemy_tick(tac_e, load_palette(PALETTE), tac_pw, height_layer_empty(), tac_f, desire_for(tac_pw), occupancy_empty()); }
+    for _ in 0..20 { enemy_tick(tac_e, load_palette(PALETTE), tac_pw, height_layer_empty(), tac_f, desire_for(tac_pw), occupancy_empty(), vehicle_empty()); }
 
     assert(tac_e.q == 0 && tac_e.r == 0,
            "arrived is not a direction — it does not walk past the core: ({tac_e.q}, {tac_e.r})");
@@ -217,7 +217,7 @@ fn test_an_enemy_with_no_route_still_presses_in_and_stops() {
     tnr_e   = westbound(ENEMY_KIND_REGULAR, 8);
 
     assert(!flow_reachable(tnr_f, 8, 0), "the core is walled off from it");
-    for _ in 0..20 { enemy_tick(tnr_e, load_palette(PALETTE), tnr_pw, height_layer_empty(), tnr_f, desire_for(tnr_pw), occupancy_empty()); }
+    for _ in 0..20 { enemy_tick(tnr_e, load_palette(PALETTE), tnr_pw, height_layer_empty(), tnr_f, desire_for(tnr_pw), occupancy_empty(), vehicle_empty()); }
 
     assert(tnr_e.q == 4 && tnr_e.r == 0,
            "it walked its heading to the wall and stopped: ({tnr_e.q}, {tnr_e.r})");
@@ -322,7 +322,7 @@ fn test_the_insect_never_needed_the_bypass() {
     assert(flow_distance(tin_f, 12, 0) == 12, "straight over the wall is 12 steps");
     tin_used_bypass = false;
     for _ in 0..12 {
-        enemy_tick(tin_e, load_palette(PALETTE), tin_pw, height_layer_empty(), tin_f, desire_for(tin_pw), occupancy_empty());
+        enemy_tick(tin_e, load_palette(PALETTE), tin_pw, height_layer_empty(), tin_f, desire_for(tin_pw), occupancy_empty(), vehicle_empty());
         if tin_e.r != 0 { tin_used_bypass = true; }
     }
     assert(!tin_used_bypass, "so it never leaves the line the robot had to");

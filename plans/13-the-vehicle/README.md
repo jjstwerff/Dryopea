@@ -9,8 +9,43 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**COMPLETE — V0 through V4 shipped** (2026-08-14). The player exists,
-drives, clears up, boosts, and gets paid.
+**COMPLETE — V0 through V5 shipped** (2026-08-14). The player exists,
+drives, clears up, boosts, gets paid, and can now be destroyed.
+
+**V5 gave standing somewhere a price**, closing the caveat every phase
+since V2 had carried: *"nothing can hurt the vehicle yet, so standing
+in a kill zone is currently free — it is not meant to be."*
+
+⚠ **The whole phase is one condition, and it is not "standing on a
+route".** `DESIGN.md` § 8 says an enemy attacks a blocker *and* that
+*"in the absence of a blocker, the player and NPCs are ignored"*. Both
+clauses come out of the same three-part rule: the vehicle is on a
+closer step, every other closer step is taken, **and every sidestep is
+taken too**. In the OPEN an enemy simply walks round (plan 11 F7b) and
+nobody is hurt; in a **narrow entrance or a kill funnel** — the two
+examples § 8 gives — there is nowhere to go and the player is a
+liability. **The mechanic is emergent from the map**, not a rule about
+parking. Falsified: dropping the third condition makes an open-field
+player take damage and turns that assertion red.
+
+⚠ **A companion is never attacked for the same obstruction**
+(`occupancy.loft`), which is why the blocker exception needed its own
+predicate rather than reusing occupancy. Two robots jammed nose to
+tail cost the player nothing.
+
+⚠ **It cannot tank, on a clock the player can compute.** 100 HP at
+5 HP/s is twenty seconds for one attacker and five for four — measured
+at 20.7 s — so blocking buys a moment and costs the trip home.
+`DESIGN.md` § 8's *"the vehicle cannot tank for the core"* is that
+arithmetic and nothing else.
+
+⚠ **A respawn puts the player back where the wave is going.** Death is
+never a game-loss (§ 8), so the vehicle reappears at the core, whole —
+and in a corridor it is blocking again on the next tick. The design
+says a respawn also starts the launch countdown, with driving out the
+only way to cancel; **that half is NOT built**, because there is no
+scramble in dryopea yet. Today the player simply rematerialises in
+front of the wave.
 
 **V3 gave the wallet its first income.** Clearing wreckage credits 20
 points a metre — derived, not picked: the design prices a kill at 10
@@ -274,6 +309,7 @@ not read the name as a claim.
 | **V1** ✓ | the vehicle covers 2 hexes while an enemy covers 1, over the same ticks | speed is a RATE, read from `numbers.json`, not a step count | a vehicle that moves 1 hex a tick has silently adopted the enemy's rate; a vehicle that reaches a hex `can_step` refuses has no passability at all |
 | **V2** ✓ | driving BESIDE a pile clears it, and the towered base's clock rises 95 → 121 | the crew is what makes a tower pay | ⚠ the gate's own wording was falsified: a crew INSIDE the sealed base moves the clock by nothing, and so does one at a gate — the mechanic pays only where the ramp is the way IN |
 | **V3** ✓ | a collected body credits the wallet; the wallet can go UP, above its starting budget | loot is income, and it is the first thing that ever refills the budget | ✓ refused — crediting a flat point per tick turns five of B6's assertions red; and masonry paying would make demolishing your own wall an income |
+| **V5** ✓ | an enemy with a way round ignores the player; one with none attacks at 5 HP/s | blocking is a property of the MAP, not of parking | ✓ refused — drop the way-round condition and an open-field player takes damage; and a COMPANION blocking the same hex is never attacked |
 | **V4** ✓ | boosting clears a 3.0 m `wall` and never a 5.0 m `wall_high` | boost is a bigger CLIMB, not a new movement mode | a boost that crosses `wall_high` has stopped reading the height; one that lasts FOUR ticks has no epsilon |
 
 ## Phases
@@ -284,6 +320,7 @@ not read the name as a claim.
 | **V1** — the vehicle exists, and it drives | S | `tests/13_v1_the_vehicle.loft` — two hexes to an enemy's one, and it stops at what it cannot climb | **Done** |
 | **V2** — it clears rubble, and a tower starts paying | S | `tests/13_v2_the_crew.loft` + `a-crew-that-clears-up.keys` — 121 ticks against 95, and the wall is CHEWED rather than climbed | **Done** |
 | **V3** — a body is worth points | S | `tests/13_v3_loot.loft` — wreckage pays and masonry does not, the wallet exceeds its starting budget, and an unattended run still earns nothing | **Done** |
+| **V5** — the blocker exception: standing somewhere costs | S | `tests/13_v5_the_blocker.loft` — ignored in the open, a liability in a chokepoint, destroyed in twenty seconds, back at the core whole | **Done** |
 | **V4** — boost | S | `tests/13_v4_boost.loft` — clears a `wall`, refused by a `wall_high`, three ticks exactly, and a crew that boosts out of a sealed base, clears, and comes home | **Done**.  ⚠ Promoted by V2, and its stated blocker turned out to be already solved — see § Status |
 
 ### Why the order is this order
@@ -305,8 +342,8 @@ currently express, and everything before it can be built without one.
 
 No helpers (§ 9 — and they are what forces the speed decoupling, so
 they want that work first), no wall-paint mode, no tower repair /
-boost / ordering, no force-launch or scramble, no blocker damage
-model, no carry rendering, no camera. **No 3D and no GL**: the vehicle
+boost / ordering, no force-launch or scramble, no carry rendering, no
+camera.  (The blocker damage model WAS on this list; V5 built it.) **No 3D and no GL**: the vehicle
 is simulation state driven by `.keys`, exactly as the wave engine was
 for plans 11 and 12, and it reaches a player's hands the day a play
 mode exists.

@@ -152,7 +152,7 @@ fn besiege(e: Enemy, pw: PaintedWorld, ticks: integer) {
     b_f   = field_for(ENEMY_KIND_REGULAR, pw);
     b_d   = desire_for(pw);
     for _ in 0..ticks {
-        enemy_tick(e, b_pal, pw, flat(), b_f, b_d, occupancy_empty());
+        enemy_tick(e, b_pal, pw, flat(), b_f, b_d, occupancy_empty(), vehicle_empty());
     }
 }
 
@@ -263,7 +263,7 @@ fn test_a_besieging_enemy_is_never_where_it_cannot_be() {
     tbe_d   = desire_for(tbe_pw);
 
     for _ in 0..15 {
-        enemy_tick(tbe_e, tbe_pal, tbe_pw, flat(), tbe_f, tbe_d, occupancy_empty());
+        enemy_tick(tbe_e, tbe_pal, tbe_pw, flat(), tbe_f, tbe_d, occupancy_empty(), vehicle_empty());
         tbe_why = occupancy_fault(tbe_pal, tbe_pw, flat(), tbe_e.kind, tbe_e.q, tbe_e.r);
         assert(tbe_why == "", "({tbe_e.q}, {tbe_e.r}): {tbe_why}");
     }

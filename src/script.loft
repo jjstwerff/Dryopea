@@ -145,6 +145,11 @@
 //                              placed, because "not in the world" and
 //                              "parked on the origin" are two states
 //                              one reading cannot tell apart
+//   hull <lo> <hi>             the player's blocker HP (plan 13 V5) —
+//                              an ERROR with no vehicle in the run.
+//                              ⚠ NOT `hp`, which is a hex's structure:
+//                              one word for both would be a reading
+//                              whose meaning depends on knowing which
 //   ticks <lo> <hi>            game-ticks played so far — the run's
 //                              CLOCK, and plan 12 B7's deliverable.
 //                              A band, because a clock is the sum of
@@ -693,6 +698,25 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         }
         measure_exact(run, "vehicle ({sm_vq}, {sm_vr})");
         return "";
+    }
+
+    // What the player has left, in HP.  Plan 13 V5.
+    //
+    // ⚠ **`hull` and not `hp`.**  `hp <q> <r> <lo> <hi>` is a hex's
+    // structure and this is the vehicle's; one verb doing both would
+    // be a line whose meaning depends on knowing which, the same
+    // objection plan 12 B4 raised against overloading `damage` for
+    // enemies.
+    if sm_cmd == "hull" {
+        if sm_argc != 2 { return "hull needs <lo> <hi>"; }
+        sm_hlo2 = sm_a1 as float?;
+        sm_hhi2 = sm_a2 as float?;
+        if sm_hlo2 == null || sm_hhi2 == null { return "hull: <lo> and <hi> must be numbers"; }
+        if !vehicle_present(run.wave.player) {
+            return "hull: no vehicle in this run — `park <q> <r>` puts one in the world";
+        }
+        return measure_float(run, "hull", vehicle_hp(run.wave.player),
+                             sm_hlo2 ?? 0.0, sm_hhi2 ?? 0.0);
     }
 
     // The run's CLOCK, in game-ticks — plan 12 B7.
@@ -1460,7 +1484,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     || sc_cmd == "frame" || sc_cmd == "range"
     || sc_cmd == "enemy" || sc_cmd == "enemies" || sc_cmd == "target"
     || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
-    || sc_cmd == "ticks" || sc_cmd == "vehicle" {
+    || sc_cmd == "ticks" || sc_cmd == "vehicle" || sc_cmd == "hull" {
         return script_measure(s, run, tok);
     }
 

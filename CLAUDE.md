@@ -59,7 +59,8 @@ exists today.
 | A CREW: it clears rubble it stands on or beside at one body a second — and that turns a tower from a liability into an asset (95 → 121 ticks) | [13](plans/13-the-vehicle/README.md), V2 shipped |
 | BOOST: four hexes a tick and a 3.0 m climb for three ticks, so a crew leaves a sealed base and comes home | [13](plans/13-the-vehicle/README.md), V4 shipped |
 | LOOT: clearing wreckage pays 20 points a metre, so the wallet can rise for the first time — and a crew that clears AND collects takes the towered base from 95 ticks to 145 | [13](plans/13-the-vehicle/README.md), V3 shipped — plan **complete** |
-| **No helpers, no tower repair/ordering, no scramble, and nothing can hurt the player** | not in any open plan |
+| The player can be DESTROYED — but only by blocking a wave with nowhere to go round, which is a property of the map rather than of parking | [13](plans/13-the-vehicle/README.md), V5 shipped |
+| **No helpers, no tower repair/ordering, and no scramble — so a respawn starts no launch countdown** | not in any open plan |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -75,7 +76,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 805/805 green under `scripts/test.sh`** (~35 s — the `frame`
+**Suite: 818/818 green under `scripts/test.sh`** (~35 s — the `frame`
 measurements classify full 960x720 frames, and the cost gate ticks a
 radius-40 world twice, once defended).
 **Gate: 19 scripts green under `scripts/validate.sh`** (~7 s, 324
@@ -881,7 +882,16 @@ src/
                    the verb is missing.
                    ⚠ `loot_rate` reads the rubble SOURCE: wreckage and
                    carapace pay, MASONRY pays nothing, or demolishing
-                   your own wall would be an income stream
+                   your own wall would be an income stream.
+                   V5 added blocker damage — `vehicle_hp` / _hurt /
+                   _on / _respawn plus `VEHICLE_HP_BLOCKER` — and
+                   `spawn.loft::enemy_blocked_by_player` is the rule.
+                   ⚠ **Blocking is a property of the MAP**: an enemy
+                   with a sidestep goes round and nobody is hurt, so
+                   the player is only a liability in a chokepoint.
+                   ⚠ A COMPANION blocking the same hex is never
+                   attacked — which is why this needed its own
+                   predicate rather than reusing occupancy
   flow.loft        the distance field (plan 11 F2) — flow_build(pal,
                    pw, kind, core) -> FlowField, a BFS out from the
                    core over what that CLASS can occupy, plus

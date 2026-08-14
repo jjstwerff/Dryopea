@@ -69,6 +69,15 @@ pub const VEHICLE_BOOST_HEX_PER_SECOND: float = 6.0;
 pub const VEHICLE_CLIMB_METRES:       float = 0.4;
 pub const VEHICLE_BOOST_CLIMB_METRES: float = 3.0;
 
+// numbers.json § player_vehicle.hp_blocker.
+//
+// ⚠ **The only damage the vehicle can take**, and `DESIGN.md` § 8 is
+// emphatic about why: the player is a **noncombatant base manager**,
+// not a gunner.  It cannot harm an enemy and is not hunted by one.
+// This number exists solely so that BLOCKING has a price — *"a minimal
+// damage model that activates only by positioning choices"*.
+pub const VEHICLE_HP_BLOCKER: float = 100.0;
+
 // numbers.json § player_vehicle.boost_duration / boost_cooldown.
 pub const VEHICLE_BOOST_DURATION_S: float = 2.0;
 pub const VEHICLE_BOOST_COOLDOWN_S: float = 5.0;
@@ -130,12 +139,61 @@ pub struct Vehicle {
     parked:     boolean,   // false = not in the world at all
     boost_left: float,     // seconds of boost still burning
     cool_left:  float,     // seconds before another boost is available
+    taken:      float,     // blocker damage ABSORBED, never HP remaining
 }
 
 // Factory: no vehicle in the world.
 pub fn vehicle_empty() -> Vehicle {
     Vehicle { q: 0, r: 0, to_q: 0, to_r: 0, parked: false,
-              boost_left: 0.0, cool_left: 0.0 }
+              boost_left: 0.0, cool_left: 0.0, taken: 0.0 }
+}
+
+// ─── Blocker damage (plan 13 V5) ────────────────────────────────
+
+// Is the vehicle standing on this hex?
+//
+// The whole of "physically blocking" — `DESIGN.md` § 8's blocker
+// exception is about a POSITION, so this is the predicate the mover
+// and the damage pass both read.
+pub fn vehicle_on(v: const Vehicle, q: integer, r: integer) -> boolean {
+    v.parked && v.q == q && v.r == r
+}
+
+// What the vehicle has left, in HP.
+//
+// ⚠ Damage TAKEN, not HP remaining — the rule `Enemy.taken`,
+// `damage.loft` and `wallet.loft` all keep, and it matters here for
+// the same reason: a `Vehicle { }` literal must be a HEALTHY vehicle,
+// and zero is the only neutral value that gives it.
+pub fn vehicle_hp(v: const Vehicle) -> float {
+    max(VEHICLE_HP_BLOCKER - v.taken, 0.0)
+}
+
+// Land blocker damage on the vehicle.
+//
+// ⚠ **It does not destroy it.**  The respawn is the tick's, at the end,
+// for the reason `enemy_hurt` does not kill and `damage_apply` does
+// not break: one death path, so a script and the simulation cannot
+// drift apart about when it happens.
+pub fn vehicle_hurt(v: Vehicle, hp: float) {
+    v.taken = max(v.taken + hp, 0.0);
+}
+
+// Put the vehicle back at the core, whole.
+//
+// `DESIGN.md` § 8 § Respawn at core: *"Vehicle death is never a
+// game-loss"* — the player reappears inside the core with full HP.
+//
+// ⚠ **The launch countdown it is supposed to start is NOT built.**
+// The design says respawning ratifies a scramble unless the player
+// drives out to cancel; there is no scramble in dryopea yet, so what
+// this does is the movement half only.  Recorded rather than silently
+// approximated — see `plans/13` § V5.
+pub fn vehicle_respawn(v: Vehicle, core: const Hex) {
+    v.taken      = 0.0;
+    v.boost_left = 0.0;
+    v.cool_left  = 0.0;
+    vehicle_place(v, core.q, core.r);
 }
 
 // ─── Boost ──────────────────────────────────────────────────────

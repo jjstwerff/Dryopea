@@ -128,14 +128,14 @@ fn test_the_handoff_fires_at_the_exact_hex_the_radius_names() {
 
     // Five ticks of approach: straight down the leg, r never changes.
     for _ in 0..5 {
-        enemy_tick(thf_e, thf_pal, thf_pw, height_layer_empty(), thf_f, desire_for(thf_pw), occupancy_empty());
+        enemy_tick(thf_e, thf_pal, thf_pw, height_layer_empty(), thf_f, desire_for(thf_pw), occupancy_empty(), vehicle_empty());
         assert(thf_e.r == 0, "approach mode cannot change r: r = {thf_e.r}");
     }
     assert(thf_e.q == 25 && thf_e.r == 0,
            "and it is standing on the boundary hex: ({thf_e.q}, {thf_e.r})");
 
     // The sixth tick is the first one taken from INSIDE the bubble.
-    enemy_tick(thf_e, thf_pal, thf_pw, height_layer_empty(), thf_f, desire_for(thf_pw), occupancy_empty());
+    enemy_tick(thf_e, thf_pal, thf_pw, height_layer_empty(), thf_f, desire_for(thf_pw), occupancy_empty(), vehicle_empty());
     // (24, -1) is the odd-r name for the axial (25, -1) this used to
     // expect — the parity term, on the one row that has it.
     assert(thf_e.q == 24 && thf_e.r == -1,
@@ -155,7 +155,7 @@ fn test_one_hex_outside_it_ignores_a_route_it_could_have_followed() {
     assert(flow_reachable(tno_f, 26, 0), "so a route home exists from there");
 
     tno_e = enemy_at(26, 0, 3);
-    enemy_tick(tno_e, load_palette(PALETTE), tno_pw, height_layer_empty(), tno_f, desire_for(tno_pw), occupancy_empty());
+    enemy_tick(tno_e, load_palette(PALETTE), tno_pw, height_layer_empty(), tno_f, desire_for(tno_pw), occupancy_empty(), vehicle_empty());
 
     assert(tno_e.q == 25 && tno_e.r == 0,
            "and it took the HEADING instead: ({tno_e.q}, {tno_e.r})");
@@ -168,7 +168,7 @@ fn test_it_arrives_after_the_handoff() {
     tia_e   = enemy_at(30, 0, 3);
 
     // 5 approach steps to the boundary, then a 26-step route home.
-    for _ in 0..31 { enemy_tick(tia_e, tia_pal, tia_pw, height_layer_empty(), tia_f, desire_for(tia_pw), occupancy_empty()); }
+    for _ in 0..31 { enemy_tick(tia_e, tia_pal, tia_pw, height_layer_empty(), tia_f, desire_for(tia_pw), occupancy_empty(), vehicle_empty()); }
     assert(tia_e.q == 0 && tia_e.r == 0, "home: ({tia_e.q}, {tia_e.r})");
 }
 
@@ -192,7 +192,7 @@ fn test_a_heading_that_never_enters_the_bubble_is_kept_forever() {
     assert(flow_reachable(tah_f, 30, 0),
            "a route home exists from where it starts — it just cannot hear the core");
 
-    for _ in 0..30 { enemy_tick(tah_e, tah_pal, tah_pw, height_layer_empty(), tah_f, desire_for(tah_pw), occupancy_empty()); }
+    for _ in 0..30 { enemy_tick(tah_e, tah_pal, tah_pw, height_layer_empty(), tah_f, desire_for(tah_pw), occupancy_empty(), vehicle_empty()); }
 
     assert(tah_e.q == 40 && tah_e.r == 0,
            "it kept walking east to the end of the land: ({tah_e.q}, {tah_e.r})");
@@ -209,7 +209,7 @@ fn test_the_same_enemy_inside_the_bubble_turns_round() {
     tsi_f   = field_for(tsi_pw);
     tsi_e   = enemy_at(25, 0, 1);           // heading AWAY, but inside
 
-    for _ in 0..3 { enemy_tick(tsi_e, load_palette(PALETTE), tsi_pw, height_layer_empty(), tsi_f, desire_for(tsi_pw), occupancy_empty()); }
+    for _ in 0..3 { enemy_tick(tsi_e, load_palette(PALETTE), tsi_pw, height_layer_empty(), tsi_f, desire_for(tsi_pw), occupancy_empty(), vehicle_empty()); }
 
     assert(tsi_e.r == -1, "inside the bubble the field wins over the heading: r = {tsi_e.r}");
     assert(lat_distance(core(), Hex { q: tsi_e.q, r: tsi_e.r }) < 25,

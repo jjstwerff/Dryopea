@@ -1,0 +1,322 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 13 phase V5 — the blocker exception: standing somewhere costs.
+//
+// ── The gap this closes ─────────────────────────────────────────
+//
+// V2 put a crew in a kill zone and V4 gave it a way home, and every
+// phase since has carried the same caveat: **nothing could hurt the
+// player**, so standing in the middle of a wave was free.  It is not
+// meant to be.  `plans/13` § What this plan does NOT build said so
+// while building it, which is the right way round but not a place to
+// stop.
+//
+// ── The rule, and the condition that makes it a MISTAKE ─────────
+//
+// `docs/DESIGN.md` § 8 § Conditional damage: *"if a player vehicle (or
+// NPC helper) is physically blocking an enemy's path to the core, the
+// enemy attacks the blocker instead"*, and — decisively — *"in the
+// absence of a blocker, the player and NPCs are ignored"*.
+//
+// So the question the whole phase turns on is **what counts as
+// blocking**, and the answer is not "standing on a route":
+//
+//   1. the vehicle is on one of this enemy's strictly-closer steps;
+//   2. every other closer step is taken;
+//   3. **every sidestep is taken too.**
+//
+// ⚠ **Condition 3 is the phase.**  In the open an enemy walks round
+// (plan 11 F7b) and nobody is blocked or damaged — which is the
+// design's *"ignored"* clause arriving as a consequence rather than as
+// a special case.  It is in a **narrow entrance or a kill funnel** —
+// the two examples § 8 gives — that there is nowhere to go, and there
+// the player is a liability.  The mechanic is emergent from the MAP.
+//
+// ⚠ **And a companion is never attacked for the same obstruction**
+// (`occupancy.loft`).  That asymmetry is the design's: robots ignore
+// each other and attack the thing that does not belong.
+//
+// ── What it is NOT ──────────────────────────────────────────────
+//
+// Not a way to tank.  § 8: *"the vehicle cannot tank for the core"*.
+// At 5 HP/s against 100 HP one attacker kills a parked player in
+// twenty seconds and four do it in five — so blocking buys a moment
+// and costs the trip home.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn robot(q: integer, r: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8, alive: true }
+}
+
+// A one-hex corridor: nowhere to go round.
+fn corridor() -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in -3..=16 { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+// Five rows: an enemy can always step beside.
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=16 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, marker_empty(), core()); }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The ledger: a fresh vehicle is a healthy one
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_vehicle_built_without_mentioning_damage_is_whole() {
+    tav = Vehicle { };
+
+    assert(tav.taken == 0.0, "an omitted ledger is an untouched one");
+    assert(vehicle_hp(tav) == VEHICLE_HP_BLOCKER,
+           "so it is at full HP: {vehicle_hp(tav)}");
+}
+
+fn test_hurting_accumulates_and_floors_at_zero() {
+    thf = vehicle_empty();
+    vehicle_hurt(thf, 30.0);
+    vehicle_hurt(thf, 30.0);
+    assert(vehicle_hp(thf) == VEHICLE_HP_BLOCKER - 60.0,
+           "two blows have landed: {vehicle_hp(thf)}");
+
+    vehicle_hurt(thf, VEHICLE_HP_BLOCKER * 10.0);
+    assert(vehicle_hp(thf) == 0.0,
+           "overkill is not negative HP: {vehicle_hp(thf)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ In the OPEN the player is ignored — the design's own clause
+// ─────────────────────────────────────────────────────────────────
+
+// The negative control, and the one that decides whether this mechanic
+// is a rule about parking or a rule about MAPS.  An enemy with room to
+// pass simply passes.
+fn test_in_the_open_an_enemy_goes_round_and_nobody_is_hurt() {
+    tio_pw = band();
+    tio_s  = wave_state_empty();
+    tio_s.enemies += [robot(8, 0)];
+    vehicle_place(tio_s.player, 6, 0);        // squarely on its route
+
+    play(tio_s, tio_pw, 12);
+
+    assert(vehicle_hp(tio_s.player) == VEHICLE_HP_BLOCKER,
+           "untouched: {vehicle_hp(tio_s.player)} HP");
+    tio_e = tio_s.enemies[0] ?? Enemy { };
+    assert(tio_e.q == 0 && tio_e.r == 0,
+           "and it walked round and got home: ({tio_e.q}, {tio_e.r})");
+}
+
+// ⚠ It went round rather than through: the vehicle's hex is never
+// stepped on.  Without this a vehicle that blocked NOTHING would pass
+// the test above for the wrong reason.
+fn test_an_enemy_never_walks_through_the_player() {
+    tan_pw = band();
+    tan_s  = wave_state_empty();
+    tan_s.enemies += [robot(8, 0)];
+    vehicle_place(tan_s.player, 6, 0);
+
+    tan_pal = pal();
+    for _ in 0..12 {
+        wave_tick(tan_s, tan_pal, tan_pw, marker_empty(), core());
+        tan_e = tan_s.enemies[0] ?? Enemy { };
+        assert(!(tan_e.q == 6 && tan_e.r == 0),
+               "it stood on the player at ({tan_e.q}, {tan_e.r})");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ In a CHOKEPOINT it is a liability — and that is the same rule
+// ─────────────────────────────────────────────────────────────────
+
+fn test_in_a_corridor_there_is_no_way_round_and_the_player_pays() {
+    tic_pw = corridor();
+    tic_s  = wave_state_empty();
+    tic_s.enemies += [robot(8, 0)];
+    vehicle_place(tic_s.player, 6, 0);
+
+    play(tic_s, tic_pw, 12);
+
+    assert(vehicle_hp(tic_s.player) < VEHICLE_HP_BLOCKER,
+           "the player is taking damage: {vehicle_hp(tic_s.player)} HP");
+    tic_e = tic_s.enemies[0] ?? Enemy { };
+    assert(tic_e.q == 7,
+           "and the enemy is stopped against it: ({tic_e.q}, {tic_e.r})");
+}
+
+// ⚠ **The rate, and it is per ATTACKER** — `numbers.json` §
+// enemy_regular.damage_to_blocker, five times what the same robot does
+// to a wall.  Measured over one tick so no arithmetic accumulates.
+fn test_the_rate_is_five_hp_a_second_per_attacker() {
+    ttr_pw = corridor();
+    ttr_s  = wave_state_empty();
+    ttr_s.enemies += [robot(7, 0)];
+    vehicle_place(ttr_s.player, 6, 0);
+
+    play(ttr_s, ttr_pw, 1);
+
+    ttr_want = per_tick(ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND);
+    assert(ttr_s.player.taken > ttr_want - 0.0001
+        && ttr_s.player.taken < ttr_want + 0.0001,
+           "one attacker for one tick took {ttr_s.player.taken}, wanted {ttr_want}");
+    assert(ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND
+           == 5.0 * ENEMY_DAMAGE_TO_WALL_PER_SECOND,
+           "and it is five times a wall's rate");
+}
+
+// Two in the queue behind it, and only the FRONT one is blocked by the
+// player — the one behind is blocked by its companion, and companions
+// are never attacked.  So the rate does not double.
+fn test_only_the_enemy_the_player_is_actually_blocking_attacks() {
+    too_pw = corridor();
+    too_s  = wave_state_empty();
+    too_s.enemies += [robot(7, 0)];
+    too_s.enemies += [robot(8, 0)];
+    vehicle_place(too_s.player, 6, 0);
+
+    play(too_s, too_pw, 1);
+
+    too_want = per_tick(ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND);
+    assert(too_s.player.taken < too_want * 1.5,
+           "the one behind is blocked by a COMPANION, not by the player: took {too_s.player.taken}");
+}
+
+// ⚠ **The asymmetry stated on its own.**  Put a companion where the
+// player was and nothing is attacked at all — `occupancy.loft`'s rule,
+// and the reason the blocker exception needed its own predicate rather
+// than reusing occupancy.
+fn test_a_companion_in_the_way_is_never_attacked() {
+    tac_pw = corridor();
+    tac_s  = wave_state_empty();
+    tac_s.enemies += [robot(6, 0)];
+    tac_s.enemies += [robot(7, 0)];
+    vehicle_place(tac_s.player, 14, 0);       // far away, out of it
+
+    play(tac_s, tac_pw, 6);
+
+    assert(vehicle_hp(tac_s.player) == VEHICLE_HP_BLOCKER,
+           "a jam between robots costs the player nothing: {vehicle_hp(tac_s.player)}");
+    assert(damage_count(tac_s.damage) == 0,
+           "and they do not chew each other either: {damage_count(tac_s.damage)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// It cannot tank, and death is never a loss
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **`DESIGN.md` § 8: "the vehicle cannot tank for the core."**  100
+// HP at 5 HP/s is twenty seconds, so a player who parks in a corridor
+// to hold a wave back is destroyed on a clock they can compute — which
+// is what makes it a positioning MISTAKE rather than a tactic.
+fn test_a_parked_player_is_destroyed_on_a_twenty_second_clock() {
+    tap_pw = corridor();
+    tap_s  = wave_state_empty();
+    tap_s.enemies += [robot(8, 0)];
+    vehicle_place(tap_s.player, 6, 0);
+
+    tap_pal = pal();
+    tap_t   = 0;
+    while tap_s.player.q == 6 && tap_t < 200 {
+        wave_tick(tap_s, tap_pal, tap_pw, marker_empty(), core());
+        tap_t += 1;
+    }
+
+    tap_seconds = (tap_t as float) * TICK_SECONDS;
+    assert(tap_t < 200, "it did not survive: {tap_t} ticks");
+    assert(tap_seconds > 18.0 && tap_seconds < 26.0,
+           "and it lasted about twenty seconds: {tap_seconds:5.1} s");
+}
+
+// ⚠ **Death is never a game-loss** (`DESIGN.md` § 8 § Respawn at
+// core): the player reappears inside the core, whole.
+// ⚠ **Measured at the MOMENT of the respawn**, not some ticks later,
+// and the reason is a consequence worth knowing: the player reappears
+// at the CORE, which is where every enemy is already heading — so in a
+// corridor it is blocking again on the very next tick and its HP
+// starts falling immediately.  `DESIGN.md` § 8 says a respawn also
+// starts the launch countdown, with driving out the only way to
+// cancel; that half is NOT built, so today the player simply
+// rematerialises in front of the wave.  See `plans/13` § V5.
+fn test_a_destroyed_vehicle_respawns_at_the_core_whole() {
+    tad_pw = corridor();
+    tad_s  = wave_state_empty();
+    tad_s.enemies += [robot(8, 0)];
+    vehicle_place(tad_s.player, 6, 0);
+
+    tad_pal = pal();
+    tad_t   = 0;
+    while tad_s.player.q != 0 && tad_t < 200 {
+        wave_tick(tad_s, tad_pal, tad_pw, marker_empty(), core());
+        tad_t += 1;
+    }
+
+    assert(tad_t < 200, "it was destroyed and put back: {tad_t} ticks");
+    assert(vehicle_present(tad_s.player), "the player is still in the world");
+    assert(tad_s.player.q == 0 && tad_s.player.r == 0,
+           "back at the core: ({tad_s.player.q}, {tad_s.player.r})");
+    assert(vehicle_hp(tad_s.player) == VEHICLE_HP_BLOCKER,
+           "and whole again: {vehicle_hp(tad_s.player)} HP");
+}
+
+// A run with nobody in it is untouched by all of this — the same
+// negative control every phase of this plan carries.
+fn test_a_run_with_no_player_has_no_blocker() {
+    tar_pw = corridor();
+    tar_s  = wave_state_empty();
+    tar_s.enemies += [robot(8, 0)];
+
+    play(tar_s, tar_pw, 20);
+
+    tar_e = tar_s.enemies[0] ?? Enemy { };
+    assert(tar_e.q == 0, "the corridor is clear: ({tar_e.q}, {tar_e.r})");
+    assert(tar_s.player.taken == 0.0, "and nobody took anything");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The verb
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_hull_verb_reads_the_players_health() {
+    tth = script_run(editor_state_new(PALETTE),
+                     "park 0 0\nhull 100.0 100.0", SHOTS);
+    assert(tth.ok, "{script_describe(tth)}");
+    assert(tth.checks == 1, "and it counted: {tth.checks}");
+}
+
+// ⚠ `hull` and `hp` are different questions and the runner keeps them
+// apart: one is the player, the other is a hex's structure.
+fn test_the_hull_verb_refuses_a_run_with_no_player() {
+    ttv_a = script_run(editor_state_new(PALETTE), "hull 100.0 100.0", SHOTS);
+    assert(!ttv_a.ok && ttv_a.message.contains("no vehicle"), "{ttv_a.message}");
+
+    ttv_b = script_run(editor_state_new(PALETTE), "park 0 0\nhull 100.0", SHOTS);
+    assert(!ttv_b.ok && ttv_b.message.contains("<lo> <hi>"), "{ttv_b.message}");
+}

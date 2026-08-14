@@ -296,6 +296,13 @@ hex instead of waiting.  So enemies from different directions meet the
 perimeter at different hexes, AND a wave arriving down one approach
 fans out across the face rather than queueing at a point.
 
+⚠ **A PLAYER in the way is a third case, and it is attacked**
+(plan 13 V5).  A companion blocking a step is never a target; the
+player's vehicle blocking the *same* step is, but only where the enemy
+has no sidestep either — so in the open it walks round and the player
+is ignored, and in a chokepoint it is a liability.  `DESIGN.md` § 8
+§ Conditional damage.
+
 ⚠ **A COMPANION, never the GROUND — the condition is the rule.**  An
 enemy stopped by the wall must STAND and attack: it is at what it came
 to break, and the hex in front of it is what its second of damage is
