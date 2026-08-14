@@ -1173,9 +1173,11 @@ caring that you exist, one by caring completely.  That is the spine of
 the deep setting, and it is a genuinely uncomfortable choice rather
 than a good-versus-evil one.
 
-⚠⚠ **And it has already been chosen once.**  The city's builders knew
-what the old ones were — they carved them — and took the portal
-anyway.  See § Answered: the builders took the portal.
+⚠⚠ **And it has already been taken once — under duress.**  The city's
+builders were losing a war against the old ones, tried to understand
+them as a last defence, failed, and went through.  Not a verdict on
+individuality: the last door in a lost war.  See § Answered: the
+builders took the portal.
 
 ### ⚠ The warriors are the world's immune response
 
@@ -1202,27 +1204,76 @@ Owner, 2026-08-14, deciding both open questions at once: *"the city
 builders took the portal, statues are of the old ones and their direct
 servants (not all are elementals)."*
 
-**So the chain is complete, and it is a chain:**
+And the owner immediately supplied *why*: **the city builders were
+losing their battle.  They tried the ultimate defence — trying to
+understand the old ones — and failed in it.**
 
-1. The city's builders **knew about the old ones** — well enough to
-   carve them, and their servants, accurately.
-2. Knowing that, they **went through the portal** and gave up their
-   individuality.
-3. The landing-ship survivors arrived long after, **moved into the
-   empty house**, and hung cloth over what its owners had left behind.
+**So the chain is complete, and it is a tragedy rather than a
+verdict:**
 
-⚠⚠ **It is a TEMPLE, not a sanctuary — and therefore the cloth is
-DENIAL.**  The statues are not art and not devotion: they are
-**documentation**.  A catalogue of what is out there, left in the
-open by people who thought it needed recording.  The current tenants
-have curtained a warning.
+1. The builders **fought the old ones, and were losing.**
+2. Their last resort was **comprehension**: understand the enemy, and
+   you can fight it.  **The statues are that attempt.**  You carve a
+   thing in order to understand it; sculpting the incomprehensible is
+   a *method*, and it is the ultimate defence being mounted.
+3. **It failed.**
+4. Only then did they take the portal — not as a considered choice
+   between individuality and horror, but as **the last door left in a
+   war they had lost**.
+5. The landing-ship survivors arrived long after, moved into the empty
+   house, and hung cloth over what its owners had left behind.
 
-⚠ **And the builders' choice reads as a verdict.**  A civilisation
-that understood the old ones well enough to sculpt them concluded
-that **dissolution into a hive mind was the better option**.  Nobody
-has to argue for the horror of the old ones anywhere in this game;
-the argument was settled by people who left the evidence and the
-answer in the same building.
+⚠⚠ **This reverses an earlier reading of the cloth, and the reversal
+is the good version.**  The statues are not a catalogue left by
+scholars and the sheets are not denial of a warning.  The statues are
+**failed attempts at comprehension** — objects that invite
+understanding and defeat it, which is precisely what killed the people
+who made them.  Covering them is **the only defence anyone has ever
+found that works**, and it works by refusing the very thing the
+builders died attempting.
+
+⚠ **So the underground humans are not cowards curtaining a warning.
+They are the ones who learned the actual lesson**: against this,
+understanding is the trap, and looking away is not weakness but the
+whole of the available strategy.  ⚠ It is also an admission that the
+problem cannot be solved — only avoided — which is the most
+Lovecraftian statement in the setting and the one that should never be
+softened.
+
+⚠ **The tension with their own history is deliberate and human.**
+These are the same people who reached into an AI substrate they did
+not understand and unleashed a war they then watched from below
+(§ History).  They learned *"do not look at THOSE"* without ever
+learning the general form of it.  Nobody has to point this out.
+
+### ⚠⚠ It also means an old one has been fought before — and won
+
+The builders were **losing a battle**, which establishes that an old
+one has been awake on this planet before and that the last
+civilisation to face one **lost**.  Two things follow:
+
+- **The end-game event has precedent, and the precedent is defeat.**
+  That is what gives § End-game, and it takes MANY PLAYERS its weight:
+  the players are not the first to try.
+- **It explains why the portal answers at all.**  The being beyond it
+  has taken in at least one civilisation that lost this exact war.
+  The warriors it sends are, in part, that civilisation — coming back
+  up to fight the thing that beat them, with the individuality they
+  gave up in order to survive it.
+
+### ⚠ And it sets a hard rule for player-side mechanics
+
+**Understanding the old ones is the failed defence.**  Any mechanic
+that offers the player *research*, *analysis* or *comprehension* as a
+route to beating them is retreading the exact path that destroyed the
+city's builders, and it must be **dangerous or futile** — never a tech
+tree that pays out.
+
+⚠ This also settles most of § Open questions' hive-mind question: the
+hive mind absorbed a civilisation that **failed** to understand the
+old ones.  It holds the best intelligence that exists and *it is still
+a failure*.  **Nobody in this cosmology can explain them**, which is
+what keeps the mystery permanent instead of merely deferred.
 
 ### ⚠ Which means the portal warriors include the builders
 
@@ -1249,10 +1300,15 @@ old ones are a Lovecraft reference, never routine play.
 bestiary.**  A player who reaches the city and lifts a sheet sees what
 else exists **before ever meeting it** — foreshadowing done as a place
 rather than as a cutscene, and exactly the diegetic discipline § No
-wave HUD imposes everywhere else.  It also gives the underground
-humans' cloth industry a second meaning: they are not only hiding
-their own fear, they are **hiding the only monster manual anyone
-has**.
+wave HUD imposes everywhere else.
+
+⚠ **But it is an UNRELIABLE bestiary, and that is better.**  The
+statues are a failed attempt at comprehension (§ Answered), so what
+they show is *as close as anyone got and not close enough*.  A player
+who studies them is repeating the builders' ultimate defence.  The
+gallery should therefore inform and mislead in the same gesture —
+never a clean monster manual, and never a mechanic that pays out for
+looking harder.
 
 ### Open questions — still the owner's
 
@@ -1260,11 +1316,12 @@ has**.
    character, in a game built around a persistent co-op and a hub,
    would be enormously heavy.  It should probably exist and almost
    never be taken.
-2. **Does the hive mind KNOW things?**  It has absorbed at least one
-   civilisation that studied the old ones directly — so it is the best
-   intelligence on them that exists.  ⚠ Getting anything out of it
-   should cost accordingly, and § Future contact's no-shortcut rule is
-   the discipline that governs it.
+2. **Does the hive mind KNOW things?**  Largely answered by the
+   builders' failure: it holds the best intelligence on the old ones
+   that exists **and that intelligence is a failure**.  What is left
+   open is everything ELSE it knows — the builders' war, their
+   weapons, what the planet was before.  ⚠ Getting any of it should
+   cost accordingly, per § Future contact's no-shortcut rule.
 3. **What are the other servants?**  Undesigned on purpose.  They are
    statues until an awakening needs them, and each one designed early
    is a temptation to spend it on an ordinary wave.
