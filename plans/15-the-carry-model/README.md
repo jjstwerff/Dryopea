@@ -9,7 +9,47 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**C0 + C1 + C2 shipped** (2026-08-14).  C3 is next.
+**COMPLETE** (2026-08-14) — C0 + C1 + C2 + C3.  Suite **901 green**,
+gate **25 scripts / 447 measurements**.
+
+**C3 measured what a retrieval is worth, and today it is worth
+nothing** — for a reason that is a missing feature rather than a wrong
+number.  Three runs on one base, differing only in what the player does
+after a crew member is lost in the gate:
+
+| | ticks |
+|---|---|
+| stays at the core (`a-wreck-left-where-it-fell`) | **85** |
+| drives out to the wreck and back | 79 |
+| drives out, picks it up and delivers it (`a-wreck-fetched-under-fire`) | **79** |
+
+⚠ **The trip costs six ticks and the carry costs nothing**, and the
+third number being identical to the second is the finding.  The crew
+member never comes back: recovery is 60 s — exactly 90 ticks — and the
+base has 79 left when the wreck is delivered, so the delivery starts a
+clock longer than the base's remaining life.
+
+⚠ **The six ticks are the player's own body, not the errand.**  It was
+parked ON the core hex, where it blocks an enemy trying to step onto it;
+driving away unplugs that.  Comparing only the first and third runs
+would have called that the carry's cost, and it is not — which is why
+`tests/15_c3_what_it_is_worth.loft` runs the middle case as a control.
+
+⚠ **This is a wave-system gap, not a tuning error.**  `numbers.json`
+§ wave_system prices a base at SEVEN waves with a 15 s lull between
+them, and a 60 s recovery is sized for exactly that: lose somebody on
+wave 2, get them back for wave 5.  dryopea plays ONE wave at a time, so
+a base ends when the first wave gets in.  ⚠ **The trigger for
+re-measuring these files is the wave system** — shortening the recovery
+to fit a one-wave harness would be tuning a number to fit a test, and
+would be wrong again the moment waves 2..7 exist.
+
+⚠ **And the first base could not see it at all.**  A one-hex CORRIDOR
+caps the drain at the one or two enemies that fit beside the core, so
+its clock read 329 ticks for six attackers and 329 for two — the
+saturation trap plan 14 H2 § 2 hit from the other side, met again while
+choosing a base.  The gated band funnels (so a crew member can be lost)
+and then spreads (so the drain scales).
 
 **C2 closed [plan 14](../14-helpers/README.md) H4.**  A downed crew
 member can be picked up, carried to the core and delivered; sixty
@@ -220,7 +260,7 @@ drive are the cost the design already priced.
 | **C0** — the probe: where a carried object lives | XS | the three measurements above, against the shipped sim | **Done** |
 | **C1** — an object exists, is taken, is put down, and is CONSERVED | S | `tests/15_c1_the_slot.loft` — a sum that cannot drift over a sequence of pickups and drops, and all three wrong implementations are red | **Done** |
 | **C2** — deposit at the core recovers the crew member | S | `tests/15_c2_recovery.loft` — exactly 90 ticks, and a `.keys` scenario where a lost helper rejoins the roster.  Closes [plan 14](../14-helpers/README.md) H4 | **Done** |
-| **C3** — what a retrieval is WORTH | S | a `.keys` pair differing only in whether the player fetches the wreck, and the measured clock | Planned |
+| **C3** — what a retrieval is WORTH | S | `tests/15_c3_what_it_is_worth.loft` — three clocks on one base (85 / 79 / 79), and the middle one is the control that stops the trip's cost reading as the carry's | **Done** |
 
 ### Why the order is this order
 
@@ -244,7 +284,7 @@ why C3 measures the clock rather than asserting the mechanic fired.
 | **C0** ✓ | the tables above | the representation is chosen by what can be LOST, not by what reads well | — (C0 measures; C1 is its gate) |
 | **C1** | a carry object is on the ground **xor** in exactly one carrier's slot, always | conservation is structural — one record, one owner — so duplication is unrepresentable rather than prevented | a hash keyed by hex loses the second object on a shared hex; a two-write pickup duplicates on any path that does one write; a carrier that takes a second object has no slot rule |
 | **C2** ✓ | a deposited wreck recovers in **exactly 90 ticks** and rejoins the roster | retrieval is the ONLY way back (§ 9), and the timer is a count rather than a "did it come back" | ✓ measured: a bare `> 0.0` reads **91** and every arrival assertion stays green; ✓ a wreck nobody fetches is still down after 200 ticks; ✓ cutting the retrieval out of the scenario turns `roster 1 1` red |
-| **C3** | the measured clock, with and without the detour | a retrieval costs the base what the driver was not doing | a scenario whose fronts are not bracing-controlled reads a 99-tick artefact as a finding (plan 14 H2 § 3) |
+| **C3** ✓ | 85 / 79 / 79 — the trip costs six ticks, the carry costs and returns nothing | a retrieval costs the base what the driver was not doing, and pays back only if the base outlives the recovery | ✓ measured: the same trip WITHOUT the carry reads the same 79, so the six ticks are the drive; ✓ a corridor base reads 329 either way and cannot see the mechanic at all |
 
 ## What this plan does NOT build
 

@@ -1,0 +1,115 @@
+# a-wreck-fetched-under-fire — plan 15 C3, and the answer is a bet the
+# base does not live long enough to settle.
+#
+# `a-wreck-left-where-it-fell.keys` with the retrieval in it and nothing
+# else changed: the same band, the same gate, the same wall, the same
+# wave of eight, the same crew member lost in the same hex.  The only
+# difference is that the player drives out, picks the wreck up, carries
+# it to the core and delivers it.
+#
+#   nobody goes back for it        85 ticks
+#   this file — fetched            (see the band below)
+#
+# ⚠ **The crew member never comes back**, and that is the finding rather
+# than a bug.  Recovery is 60 s — exactly 90 ticks — and the base falls
+# about 85 ticks after the wave arrives, so the clock the delivery
+# starts is longer than the base has left.  Delivering is the whole
+# mechanic working correctly; there is simply no wave left for the
+# returning crew member to meet.
+#
+# ⚠ **And the reason is a feature that is missing, not a number that is
+# wrong.**  `numbers.json` § wave_system prices a base at SEVEN waves
+# with a 15 s lull between them, which is where a 60 s recovery belongs:
+# lose somebody on wave 2, get them back for wave 5.  dryopea plays ONE
+# wave at a time — `wave <n>` is authored by the script and there is no
+# wave system driving a list — so the base ends when the first wave gets
+# in.  ⚠ The trigger for re-measuring this file is that wave system, not
+# a tune of `helper.recovery_time_after_retrieval`.
+#
+# ⚠ What the fetch DOES buy is the drive itself: the player standing in
+# the gate is a blocker too, so the wave stops against it for as long as
+# it is there.  That is the whole difference between the two clocks, and
+# it is the player's own body rather than the crew member's return.
+
+echo a wreck fetched under fire: delivered, and the base falls before the clock runs out
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 18 0
+marker 18 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 20 -2
+drag -3 -1 20 -1
+drag -3 0 20 0
+drag -3 1 20 1
+drag -3 2 20 2
+count painted 120 120
+
+palette 9
+click 6 -2
+click 6 -1
+click 6 1
+click 6 2
+kind 6 0 grass
+kind 6 1 wall
+
+crew 6 0
+helper 0 6 0
+roster 1 1
+park 0 0
+
+wave 8
+count alive 8 8
+wallet 200.0 200.0
+
+# ── The loss ────────────────────────────────────────────────────
+#
+# Twelve hexes of walking and ten seconds of blocking at 5 HP/s.
+tick 30
+roster 0 0
+cargo 1 1
+
+# ── The fetch, into the hex the wave is coming through ──────────
+#
+# ⚠ This is the design test `CLAUDE.md` § What dryopea is applies to
+# every mechanic: using it costs something, and the cost here is not
+# invented.  The wreck lies in the gate, so going to get it means
+# parking in the one hex the wave has to use — and the player takes
+# blocker damage for every tick it stands there.
+drive 6 0
+tick 3
+vehicle 6 0
+
+take player
+cargo 1 1
+
+drive 0 0
+tick 3
+vehicle 0 0
+
+drop player
+cargo 0 0
+
+# The recovery clock has started, and the base will not outlive it.
+roster 0 0
+
+fall 800
+ticks 74 84
+
+# ⚠ **Still nobody**, 90 ticks of recovery never having finished.
+roster 0 0
+
+snap c3_a_wreck_fetched_under_fire

@@ -65,7 +65,8 @@ exists today.
 | A helper can be LOST: the blocker rule covers the whole crew, and a helper that dies WRECKS where it stood while the player respawns | [14](plans/14-helpers/README.md), H3 shipped |
 | CARRY: one slot per vehicle, one record per carryable thing — an object is on the ground, in exactly one carrier's slot, or spent, and a lost helper leaves something to fetch | [15](plans/15-the-carry-model/README.md), C0-C1 shipped |
 | RETRIEVAL: a lost crew member is carried to the core and rejoins the roster after EXACTLY 90 ticks — and nothing else brings one back | [15](plans/15-the-carry-model/README.md), C2 shipped — closes [14](plans/14-helpers/README.md) H4, so plan 14 is **complete** |
-| **No ordering, no tower repair, no beacons and no scramble** | [15](plans/15-the-carry-model/README.md), C3 next — what a retrieval is WORTH |
+| ⚠ What a retrieval is WORTH: nothing yet — 85/79/79 ticks, because a 60 s recovery is priced against a SEVEN-wave base and dryopea plays ONE wave | [15](plans/15-the-carry-model/README.md), C3 shipped — plan **complete** |
+| **No wave system, no ordering, no tower repair, no beacons and no scramble** | the wave SYSTEM is now the named trigger for re-measuring [15](plans/15-the-carry-model/README.md) C3 |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -81,13 +82,13 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 898/898 green under `scripts/test.sh`** (~95 s measured
+**Suite: 901/901 green under `scripts/test.sh`** (~95 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
 plan 12 until H2 re-measured it; the figure grew with the scenario
 tests, not with any one phase).
-**Gate: 23 scripts green under `scripts/validate.sh`** (~10 s, 414
+**Gate: 25 scripts green under `scripts/validate.sh`** (~10 s, 447
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -1542,6 +1543,7 @@ signature.
 | Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` — the rule with the climb passed rather than looked up.  ⚠ Never widen `climb_limit(kind)`: it is a CLASS lookup and a convenience for callers that have a kind.  `vehicle_climb` is the worked example |
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
 | Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock.  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; a tower CUTS it, because its bodies ramp over the wall it was defending |
+| Judge whether fetching a lost crew member is worth it | [plans/15](plans/15-the-carry-model/README.md) § Status — three clocks on one base (85 / 79 / 79).  ⚠ The trip costs six ticks and the CARRY costs nothing, and the middle run is the control that keeps those apart.  ⚠ It cannot pay until a base outlives the 90-tick recovery, which is the wave system's job |
 | Judge what another CREW MEMBER is worth | [plans/14](plans/14-helpers/README.md) § Status — three scenarios that differ only in their crew lines, and the measured clock (77 / 214 / 242).  ⚠ A roster buys COVERAGE, not throughput: a second helper beside the first is worth nothing at all, and the same helper on the other front is worth 28 ticks |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |

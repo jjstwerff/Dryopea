@@ -1,0 +1,75 @@
+# a-wreck-left-where-it-fell — plan 15 C3, the control.
+#
+# A base with ONE way in: a wall across a five-hex band with a single
+# gate hex.  A crew member stands in the gate, so it is a blocker with
+# nowhere for the wave to go round (plan 13 V5) — it holds the wave for
+# ten seconds, is destroyed, and the wreck lies in the gate while the
+# wave walks over it to the core.
+#
+# ⚠ **The gate is what makes this base measurable at all.**  A base
+# whose approach is a one-hex CORRIDOR caps the drain at the one or two
+# enemies that fit beside the core, so its clock reads the same for six
+# attackers as for two and cannot see anything the crew does — measured
+# while building this, and the same saturation trap plan 14 H2 § 2 hit
+# from the other side.  Here the wave funnels (so a helper can be lost)
+# and then spreads (so the drain scales).
+#
+# Nobody fetches the wreck.  `a-wreck-fetched-under-fire.keys` is the
+# same file with the retrieval in it, and § C3 of the plan is the two
+# clocks side by side.
+
+echo a wreck left where it fell: nobody goes back for it
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 18 0
+marker 18 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 20 -2
+drag -3 -1 20 -1
+drag -3 0 20 0
+drag -3 1 20 1
+drag -3 2 20 2
+count painted 120 120
+
+# The wall, with (6, 0) left open — the gate.
+palette 9
+click 6 -2
+click 6 -1
+click 6 1
+click 6 2
+kind 6 0 grass
+kind 6 1 wall
+
+# The crew member stands in the gate; the player waits at the core.
+crew 6 0
+helper 0 6 0
+roster 1 1
+park 0 0
+
+wave 8
+count alive 8 8
+wallet 200.0 200.0
+
+fall 800
+ticks 80 90
+
+# It was lost, and it is still lying in the gate.
+roster 0 0
+cargo 1 1
+helper 0 6 0
+
+snap c3_a_wreck_left_where_it_fell

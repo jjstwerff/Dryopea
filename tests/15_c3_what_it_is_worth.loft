@@ -1,0 +1,135 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 15 phase C3 — what a retrieval is worth, measured.
+//
+// C1 and C2 built the mechanic and gated that it WORKS.  This phase
+// asks the only question left, which is whether it is worth doing —
+// and the answer is that today it is not, for a reason that is a
+// missing feature rather than a wrong number.
+//
+// ── Three clocks on one base ────────────────────────────────────
+//
+// A five-hex band with a wall across it and ONE gate.  A crew member
+// stands in the gate, blocks the wave for its ten seconds, and is
+// destroyed there.  From that point the three runs differ only in what
+// the player does:
+//
+//   stays at the core                              85 ticks
+//   drives out to the wreck and back                79
+//   drives out, PICKS IT UP, and delivers it        79
+//
+// ⚠ **The trip costs six ticks and the carry costs nothing** — and the
+// third number being identical to the second is the phase's finding.
+// The crew member never comes back: recovery is 60 s, which is exactly
+// 90 ticks, and the base has 79 left when the wreck is delivered.  So
+// the delivery starts a clock longer than the base's remaining life.
+//
+// ⚠ **The six ticks are the player's own body, not the errand.**  It
+// was parked ON the core hex, where it blocks an enemy trying to step
+// onto it; driving away unplugs that.  A reading that compared only the
+// first and third runs would have called that the carry's cost.
+//
+// ── ⚠ Why this is a missing feature and not a bad number ────────
+//
+// `numbers.json` § wave_system prices a base at SEVEN waves with a 15 s
+// lull between them, and a 60 s recovery is sized for exactly that:
+// lose somebody on wave 2, get them back for wave 5.  dryopea plays ONE
+// wave at a time — `wave <n>` is authored by a script and no wave
+// system drives the list — so a base ends when the first wave gets in.
+//
+// ⚠ **So the trigger for re-measuring these files is the wave system**,
+// not a tune of `helper.recovery_time_after_retrieval`.  Shortening the
+// recovery to fit a one-wave base would be tuning a number to fit a
+// harness, and would be wrong again the moment waves 2..7 exist.
+//
+// ⚠ And it is the same shape as plan 14 H2 § 2 and plan 12 B5b: before
+// believing a flat reading, price the SUPPLY against the CAPACITY.  Here
+// the supply is 90 ticks of recovery and the capacity is 79 ticks of
+// base, so the mechanic could not have paid whatever it did.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+const LEFT:    text = "tests/scripts/a-wreck-left-where-it-fell.keys";
+const FETCHED: text = "tests/scripts/a-wreck-fetched-under-fire.keys";
+
+fn source_of(path: text) -> text {
+    so_f = file(path);
+    so_f.content() ?? ""
+}
+
+fn play(source: text) -> ScriptRun {
+    p_run = script_run(editor_state_new(PALETTE), source, SHOTS);
+    p_run
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The pair
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **Both files are in `scripts/validate.sh` and both pin their own
+// clock**, so this test is about the SEPARATION between them — the same
+// division of labour plan 12 B7 set up, because a band cannot say "six
+// ticks apart" and two bands that happen to be six apart do not say it
+// either.
+fn test_the_two_clocks_are_six_ticks_apart() {
+    ttc_left = play(source_of(LEFT));
+    ttc_go   = play(source_of(FETCHED));
+
+    assert(ttc_left.ok, "the control runs: {script_describe(ttc_left)}");
+    assert(ttc_go.ok,   "and so does the retrieval: {script_describe(ttc_go)}");
+
+    assert(ttc_left.ticks == 85,
+           "staying at the core: {ttc_left.ticks} ticks");
+    assert(ttc_go.ticks == 79,
+           "going to fetch: {ttc_go.ticks} ticks");
+    assert(ttc_left.ticks - ttc_go.ticks == 6,
+           "the errand costs six ticks: {ttc_left.ticks - ttc_go.ticks}");
+}
+
+// ⚠⚠ **The phase.**  Take the retrieval file and remove the two halves
+// of § 11's key — the same trip, no carry — and the clock does not move
+// by a single tick.  So the six ticks are the DRIVE and the carry is
+// worth exactly nothing on this base.
+//
+// ⚠ This is the control that stops the pair above being read as "the
+// carry costs six ticks", which is what the two files alone would
+// suggest and which is false.
+fn test_the_carry_itself_changes_nothing() {
+    tcc_src = source_of(FETCHED);
+    assert(tcc_src.contains("take player\ncargo 1 1\n"), "the file still fetches");
+    assert(tcc_src.contains("drop player\ncargo 0 0\n"), "and still delivers");
+
+    tcc_trip = tcc_src.replace("take player\ncargo 1 1\n", "")
+                      .replace("drop player\ncargo 0 0\n", "");
+
+    tcc_with = play(tcc_src);
+    tcc_bare = play(tcc_trip);
+
+    assert(tcc_with.ok && tcc_bare.ok,
+           "both run: {script_describe(tcc_with)} / {script_describe(tcc_bare)}");
+    assert(tcc_with.ticks == tcc_bare.ticks,
+           "the same trip with and without the carry: {tcc_with.ticks} vs {tcc_bare.ticks}");
+}
+
+// ⚠ **And the reason: the crew member never comes back.**  The wreck is
+// delivered and the recovery clock starts, but the base falls first —
+// so `roster` reads 0 at the end of a run in which retrieval succeeded
+// completely.
+//
+// ⚠ That assertion is the one to DELETE when the wave system lands: a
+// longer base is exactly what would make it fail, and it failing is the
+// mechanic starting to pay.
+fn test_recovery_outlives_the_base() {
+    tro_go = play(source_of(FETCHED));
+    assert(tro_go.ok, "the retrieval run is green: {script_describe(tro_go)}");
+
+    tro_left = HELPER_RECOVERY_SECONDS / TICK_SECONDS;
+    assert(tro_left > (tro_go.ticks as float),
+           "recovery is {tro_left} ticks and the whole base is {tro_go.ticks}");
+}
