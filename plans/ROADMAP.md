@@ -192,6 +192,8 @@ for the no-shortcut design rule.
 | **Robot economy — natural wave patterns** | drafted | [docs/ROBOT_ECONOMY.md](../docs/ROBOT_ECONOMY.md) | Six installation types + transport routes; traffic replaces the authored wave list and spawn markers.  ⚠ **Retires [plan 16](16-the-wave-system/README.md)**, which the owner has committed to removing before ship |
 | Faction territory awareness | drafted | SETTING § Robot diversity | Maps tagged with AI faction; affects compositions |
 | Side quests — underground human contact | drafted | SETTING § Future contact | Breadcrumb discovery → first contact → trade |
+| **The buried city + the portal** | sketch | [SETTING § The buried city](../docs/SETTING.md) | An ancient city the underground humans FOUND, its incomprehensible statues kept under cloth for sanity, and a portal beneath it to a benevolent being that accepts people at the price of their individuality |
+| **Portal warriors — the world's immune response** | sketch | [SETTING § The warriors are the world's immune response](../docs/SETTING.md) | Humans and other beings arrive when an old one wakes too far.  ⚠ Answers the OLD ONE, never the player — a summonable version would be a superweapon.  Makes the end-game a BATTLE rather than a doom |
 | Direct contact with an AI | drafted | SETTING § Future contact | Deep-lore: meet the girl-hacker AI as a person |
 | Truth discovery — government cordon paradox | drafted | SETTING § Future contact | Off-planet leverage |
 | Player-faction alignment | drafted | SETTING § Future contact | Ally with one AI vs another |

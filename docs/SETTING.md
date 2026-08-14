@@ -42,6 +42,12 @@ that earlier arrival shapes everything that came after.
   with no working knowledge of the underground inhabitants
   already present.  This is the "haywire colonization robots"
   context from below.
+- ⚠ **And the survivors were not first either.**  What they moved
+  into deep underground is an **ancient city somebody else built**,
+  full of statues they keep under cloth — see § The buried city,
+  the covered statues, and the portal below.  The planet has
+  **three layers of prior occupancy**, and the robots know about
+  none of them.
 - **The surface was never human territory — and still isn't.**
   The terraforming the colonisation programme was *supposed*
   to do has **not properly started**.  The surface atmosphere
@@ -646,6 +652,12 @@ hard rules fall out, and both protect the rest of the game:
    missions, `DESIGN.md` § Future expansion) rather than to a base, a
    sortie or a wave list.
 
+⚠ **And it is a battle rather than a doom**, because the world has an
+immune response: § The buried city, the covered statues, and the portal
+below — warriors come through the portal when an old one wakes too far.
+They answer the old one, never the player, which is what keeps them
+from being a summonable superweapon.
+
 ⚠ **This resolves the crystal-mining question below.**  The swarm's
 deep-crust extraction is what makes an old one *stir* — the slow,
 ambient, entirely non-player approach of the danger, which is the
@@ -1092,6 +1104,107 @@ Tied threads:
   machinery the controlling AI repurposes for hostility.
   When combat bots activate, they arrive alongside the
   economic units, not in place of them.
+
+## ⚠⚠ The buried city, the covered statues, and the portal below
+
+Owner, 2026-08-14.  The counterweight to the old ones, and the deepest
+layer of the setting.
+
+### They did not build the place they live in
+
+The underground humans of § History **found an ancient city** and moved
+into it.  It is not theirs and it is far older than they are.
+
+⚠ **So the planet now has three layers of prior occupancy**, and this
+is a structural fact about the setting rather than a detail:
+
+1. whoever **built the city** — oldest, unknown, gone;
+2. the survivors of the **ancient landing ship**, who found it and live
+   there now;
+3. the **colonisation robots**, who arrived last and know about none of
+   it.
+
+### ⚠⚠ The statues, and the cloth
+
+The city is full of **statues of beings its inhabitants cannot
+comprehend**.  Their response is neither worship nor study: they
+**manufacture great sheets of cloth and hang them over the statues, to
+keep them out of sight, for their sanity.**
+
+**This is the best image in the setting and it should be protected.**
+It is horror done the way the rest of dryopea does everything else —
+diegetically, through evidence, with no narrator:
+
+- A civilisation with a **cloth industry as a public-health measure**.
+  Somewhere down there, people weave the curtains full-time.
+- It says exactly who these people are, and it is the same instinct
+  twice: they **reached into an AI substrate they did not fully
+  understand** (§ History) and unleashed a war they then watched from
+  below — and they **hang sheets over what they cannot understand**
+  rather than look at it.  Curiosity without the nerve to keep looking.
+- ⚠ It is § Future contact's *knowing is dangerous* rule, already lived
+  by somebody, before the player ever arrives.
+
+### Beneath the city: the portal, and its price
+
+Under the city is a **portal to a different plane**, where a
+**benevolent ancient being** lives.
+
+**It will accept people — at the price of their individuality.**
+Anyone who chooses to enter joins a **hive mind**.  The being is not
+malicious and the offer is not a trap; it is simply total.
+
+⚠⚠ **That completes the cosmology, and the symmetry is the point:**
+
+| | the old ones | the being beyond the portal |
+|---|---|---|
+| disposition | **indifferent** — you are beneath notice | **benevolent** — you are welcome |
+| what it costs you | everything, incidentally | **yourself**, deliberately and with consent |
+| what it gives its servants | a drive (elementals get orders) | belonging, and an end to being alone |
+| how it reaches the world | disturbance from below wakes it | it *answers* — see below |
+
+**Two cosmic options, and both erase the individual** — one by not
+caring that you exist, one by caring completely.  That is the spine of
+the deep setting, and it is a genuinely uncomfortable choice rather
+than a good-versus-evil one.
+
+### ⚠ The warriors are the world's immune response
+
+**From the portal come warriors — humans and other beings — to aid the
+players and the world when an old one is waking up too much.**
+
+Three design constraints follow, and each protects the end-game:
+
+- **It answers the OLD ONE, not the player.**  Aid arrives because
+  something is waking too far, not because anyone called for it.  ⚠ A
+  summonable version would be a superweapon and would wreck the
+  looming-danger rule in § End-game, and it takes MANY PLAYERS.
+- **So an awakening is a BATTLE, not a doom.**  This is what stops the
+  end-game being simply "the world ends": the planet has an immune
+  system, and the many-player event is a fight with allies rather than
+  a countdown.
+- **"And other beings" is the quiet horror.**  The warriors that come
+  to help are what *previous* civilisations chose to become.  Nobody
+  has to say this out loud; it is in the roster.
+
+### Open questions — all of them the owner's
+
+1. **Whose statues are they?**  The old ones, the portal being's
+   servants, or the city's builders?  It decides whether the
+   underground humans are living in a **temple** or a **sanctuary** —
+   and therefore whether the cloth is denial or protection.
+2. **Who built the city, and where did they go?**  The obvious answer
+   is that they took the portal.  That would make the covered statues
+   portraits of the people whose house this is, and the hive mind
+   partly *them* — which is either the best or the heaviest version of
+   this, and it is not a call to make casually.
+3. **Can the player enter?**  A terminal choice for a character in a
+   game built around a persistent co-op and a hub would be enormously
+   heavy.  It should probably exist and almost never be taken.
+4. **Does the hive mind KNOW things?**  It has absorbed civilisations.
+   Information from it would be the most valuable and most expensive
+   intel in the game — and § Future contact's no-shortcut rule is
+   exactly the discipline that should govern it.
 
 ## Future contact — humans, AIs, and the no-shortcut rule
 
