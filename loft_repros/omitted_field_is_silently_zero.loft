@@ -1,0 +1,63 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A struct literal that OMITS a field takes that field's zero
+// silently — no warning, both backends — and there is no way to tell
+// the omission from an author who wrote the zero on purpose.
+//
+// The ask is a DIAGNOSTIC, not a semantics change, and the fix it
+// would point at already exists: loft supports a declared field
+// default (`palette_pick: integer = -1`), and the third case below
+// shows it working.  Nothing points you at it, so a project that does
+// not know the feature exists builds a second field instead — which is
+// what dryopea did.
+//
+// ── Why the zero is the dangerous value ─────────────────────────
+//
+// It is dangerous exactly when zero is a MEANINGFUL value of the
+// field's domain.  dryopea's `EditorInput` (src/editor_step.loft) is
+// one frame of player intent, built field-by-field by callers that do
+// not know what was added to the struct last week.  Its palette pick
+// wants a "nothing selected" sentinel of -1 — and an omitted field
+// makes that 0, which is palette entry 0, which is SEA, which erases
+// the hex under the cursor.
+//
+// So dryopea carries a two-field workaround — a boolean
+// `in_select_palette` beside the `in_palette_index` — for the sole
+// purpose of making "no action" the zero of every field.  A declared
+// default of -1 would have done it in one field, and a warning on the
+// partial literal is what would have found the feature.
+//
+// Expected output:
+//     no default, field omitted  : 0        <- silent; -1 was meant
+//     no default, field written  : -1
+//     declared default, omitted  : -1       <- the feature that fixes it
+
+struct NoDefault {
+    hover:        integer,
+    palette_pick: integer,
+}
+
+struct WithDefault {
+    hover:        integer,
+    palette_pick: integer = -1,
+}
+
+fn main() {
+    // 1. The field is omitted.  It reads 0, and 0 selects a palette
+    //    entry — the author meant "nothing selected".  No diagnostic
+    //    of any kind, on either backend.
+    a = NoDefault { hover: 3 };
+    println("no default, field omitted  : {a.palette_pick}");
+
+    // 2. The same struct with the sentinel written out — the only
+    //    version that means what the author intended, and nothing
+    //    tells them the one above differs.
+    b = NoDefault { hover: 3, palette_pick: -1 };
+    println("no default, field written  : {b.palette_pick}");
+
+    // 3. A DECLARED default makes the omission safe.  This is the fix
+    //    a warning on case 1 would lead the author to.
+    c = WithDefault { hover: 3 };
+    println("declared default, omitted  : {c.palette_pick}");
+}

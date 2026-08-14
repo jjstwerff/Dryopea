@@ -1293,11 +1293,18 @@ The following are dryopea-side workarounds for known loft
 behaviour.  Full reproducers + loft-side issue refs live in
 [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md):
 
-- **`now` is a builtin** (`default/02_images.loft`).  Don't
-  use as a local variable name — shadowing confuses type
-  inference and your `now = ticks()` ends up holding a `fn() ->
-  integer` reference rather than its result.  We renamed to
-  `tnow` in `src/main.loft`.
+- **A local may shadow a builtin, and that is now BY DESIGN** —
+  so a shadowing mistake is silent rather than caught.
+  [loft#852](https://github.com/loft-lang/loft/issues/852) made a
+  local carry a function's name in every binding form while the
+  function stays reachable as a call, so `ticks = 4` and `ticks()`
+  coexist in one scope and mean different things (measured
+  2026-08-14: `4` and the clock).  ⚠ The old note here — that
+  `now = ticks()` ends up holding a `fn() -> integer` — **no longer
+  reproduces**; `src/main.loft`'s `tnow` rename is a scar, not a
+  live workaround.  What survives is the § Profiling warning: a
+  parameter named `ticks` beside a `ticks()` call compiles clean
+  and measures the wrong thing, and nothing warns.
 - **`graphics::KEY_*` need explicit qualification.** Bare-name
   UPPER_CASE constants without `pub` don't re-export across
   `use` chains.  `gl_key_pressed(graphics::KEY_W)` works;
@@ -1328,16 +1335,26 @@ behaviour.  Full reproducers + loft-side issue refs live in
   never named.  `Expect token ;` on a `.0` / `.1` line means the
   tuple's producer didn't resolve; check the imports first.
 - **A struct literal that omits a field takes that field's
-  default silently.**  So in any struct that callers build
-  field-by-field — `EditorInput` above all — the NEUTRAL value
-  must be the ZERO value.  A "none" sentinel of `-1` becomes `0`
-  in every partial literal, which for a palette index means
-  "select sea", which erases.  Build from the `*_empty()`
-  factory, not from a literal.
+  default silently** ([loft#914](https://github.com/loft-lang/loft/issues/914)
+  — both backends, and `loft --check` says ok).  So in any struct
+  that callers build field-by-field — `EditorInput` above all —
+  the NEUTRAL value must be the ZERO value.  A "none" sentinel of
+  `-1` becomes `0` in every partial literal, which for a palette
+  index means "select sea", which erases.  Build from the
+  `*_empty()` factory, not from a literal.
+  ⚠ **loft HAS declared field defaults** — `palette_pick: integer
+  = -1` is honoured by a literal (measured 2026-08-14) — so the
+  rule above is a workaround for not knowing, and `EditorInput`'s
+  `in_select_palette` / `in_palette_index` PAIR could be one
+  field.  ⚠ Literal-only: a `text as Struct` cast IGNORES a
+  declared default ([loft#876](https://github.com/loft-lang/loft/issues/876)),
+  so nothing dryopea loads from JSON may lean on one.
 - **Loop variable name reuse must keep consistent type per
-  function-scope** — different types in different loops fails
-  ("loop variable 'i' has type text but was previously used as
-  integer").  Prefix loop vars per function.
+  function-scope** ([loft#915](https://github.com/loft-lang/loft/issues/915))
+  — different types in different loops fails ("loop variable 'i'
+  has type text but was previously used as integer"), and the
+  variable OUTLIVES its loop.  Prefix loop vars per function; 122
+  of `src/`'s 131 loops do.
 - **Two libraries may declare one struct name; qualify at the use
   site.** `camera::InputState` / `input::InputState` both work, and
   the bare name is a clean error naming its own fix.  The old

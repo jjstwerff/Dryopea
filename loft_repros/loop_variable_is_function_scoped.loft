@@ -1,0 +1,66 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A `for` loop's variable is an ordinary FUNCTION-scoped local: it
+// outlives its loop, and a second loop over a different element type
+// in the same function is a compile ERROR.
+//
+// The error is correct and well-worded — it is loft#690's fix, which
+// turned a silent corruption into a diagnostic, and that half is
+// closed.  What is left is the SCOPE: `i` in `for i in …` is not the
+// loop's, so two unrelated loops in one function share a name.
+//
+// ── What it costs a consumer ────────────────────────────────────
+//
+// dryopea gave up on short loop variables entirely.  122 of the 131
+// `for` loops in `src/` carry a per-FUNCTION prefix — `wt_i`, `wd_e`,
+// `ent_t`, `tslr_w`, `asm_e` — and `CLAUDE.md` § Naming records the
+// rule as a language workaround:
+//
+//     Loop variables prefixed per function (`tslr_w`, `tpi_pal`)
+//     to dodge the flat-namespace gotcha
+//
+// The prefix is not readability; it is collision avoidance, invented
+// once per function, and it is what a reader meets first in every
+// loop in the project.  A loop-scoped variable would delete the
+// convention outright.
+//
+// ⚠ It also bites in the direction the error cannot help with: adding
+// a second loop to a long function can fail to compile because of a
+// name a hundred lines away, and the fix is to rename the NEW loop.
+//
+// Expected output:
+//     error: loop variable 'i' has type integer but was previously used as text
+//
+// ⚠ Delete the `two_types` FUNCTION to see the controls — commenting
+// out the CALL is not enough, because the clash is a compile error.
+// The rest then runs and prints:
+//     0 1 0 1 0 1    <- the same name at the same type is fine
+//     leaked i = 1   <- and the variable outlives its loop
+
+fn same_type_twice() {
+    // Two loops, one name, one type: legal.  So the clash is by TYPE,
+    // not by name — which is what makes it surprising.
+    for i in 0..2 { println("{i}"); }
+    for i in 0..2 { println("{i}"); }
+}
+
+fn outlives_its_loop() {
+    for i in 0..2 { println("{i}"); }
+    // The loop is over and `i` is still in scope, holding its last
+    // value.  This is the scope the error above is enforcing.
+    println("leaked i = {i}");
+}
+
+fn two_types() {
+    for i in ["a", "b"] { println("{i}"); }
+    // error: loop variable 'i' has type integer but was previously
+    //        used as text
+    for i in 0..2 { println("{i}"); }
+}
+
+fn main() {
+    same_type_twice();
+    outlives_its_loop();
+    two_types();
+}

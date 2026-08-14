@@ -40,6 +40,67 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### A struct literal that omits a field silently takes the type's zero
+
+**Filed:** [loft#914](https://github.com/loft-lang/loft/issues/914)
+(`enhancement`, `wa:clean`, `sev:medium`, `area:parser`, `both-backends`,
+`hit-by:dryopea`).
+**Repro:** [`loft_repros/omitted_field_is_silently_zero.loft`](loft_repros/omitted_field_is_silently_zero.loft)
+— identical on both backends; `loft --check` says `ok`.
+
+A literal that omits a field takes that field's zero with no diagnostic,
+and nothing tells the omission apart from a deliberate zero.  Dangerous
+exactly when zero is a MEANINGFUL value: `EditorInput`'s palette pick
+wants a `-1` sentinel, and 0 is palette entry 0, which is sea, which
+erases.
+
+⚠ **The finding that made it worth filing: loft HAS declared field
+defaults** — `palette_pick: integer = -1` works in a literal — and
+dryopea did not know.  So both of dryopea's workarounds are for a
+missing signpost rather than a missing feature:
+
+- the two-field pair `in_select_palette: boolean` + `in_palette_index:
+  integer` in `src/editor_step.loft`, and
+- the `CLAUDE.md` § Loft language gotchas rule *"in any struct that
+  callers build field-by-field, the NEUTRAL value must be the ZERO
+  value"*.
+
+**The ask is a lint**, not a semantics change: warn when a literal omits
+a field that has NO declared default — the case where the value is the
+type's zero and nobody chose it.  A field with a default is the author
+saying the omission is fine.
+
+⚠ **A dryopea-side simplification falls out of this and is NOT yet
+done**: `EditorInput` could carry `in_palette_index: integer = -1` and
+drop `in_select_palette`.  It touches the seam every `.keys` script and
+the GL loop read, so it wants its own change rather than a drive-by.
+⚠ And it is literal-only — [loft#876](https://github.com/loft-lang/loft/issues/876)
+records that a `text as Struct` cast IGNORES a declared default, so no
+struct dryopea loads from JSON may rely on one.
+
+### A `for`-loop variable is function-scoped, so 122 of 131 loops carry a prefix
+
+**Filed:** [loft#915](https://github.com/loft-lang/loft/issues/915)
+(`enhancement`, `wa:clean`, `sev:low`, `area:parser`, `both-backends`,
+`needs-design`, `hit-by:dryopea`).
+**Repro:** [`loft_repros/loop_variable_is_function_scoped.loft`](loft_repros/loop_variable_is_function_scoped.loft).
+
+`for i in …` binds an ordinary function-scoped local: it outlives its
+loop (`leaked i = 1` after the closing brace), and a second loop over a
+different element type anywhere in the same function is a compile error.
+
+⚠ **The ERROR is right and is not what was filed** — it is
+[loft#690](https://github.com/loft-lang/loft/issues/690)'s fix, which
+turned a silent corruption of the second loop into a diagnostic.  What
+was filed is the SCOPE, which #690 did not cover.
+
+**What it costs dryopea:** `CLAUDE.md` § Naming's per-function loop
+prefix, on **122 of the 131 `for` loops in `src/`** — `wt_i`, `wd_e`,
+`ent_t`, `tslr_w`.  The prefix carries no meaning; it is collision
+avoidance invented once per function.  ⚠ And it bites where the error
+cannot help: adding a loop to a long function fails on a name a hundred
+lines away, and the rename lands on the edit that did nothing wrong.
+
 ### Reading a MISSING file and returning a struct from one function SIGABRTs the interpreter
 
 **Filed:** [loft#908](https://github.com/loft-lang/loft/issues/908)
