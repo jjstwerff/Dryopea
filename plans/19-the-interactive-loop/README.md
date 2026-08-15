@@ -78,7 +78,18 @@ is — which makes P0's question the one that can kill the design.
 
 ## P0 — can real time reproduce `tick N`? (2026-08-15)
 
-Yes, in every case, with an empty `state_diff` against the scripted run:
+The tick is 2/3 s and a frame is not, so the loop must bank elapsed
+seconds and spend whole ticks out of them — the pattern `helper.loft`,
+`tower.loft` and `vehicle.loft` already use, arriving a fourth time.
+Two things had to hold or the one-door design was wrong:
+
+1. **`n × TICK_SECONDS` through the accumulator is exactly `n` ticks.**
+   Otherwise every scripted measurement in the suite disagrees with the
+   played game.
+2. **The frame SIZE does not change the answer**, or the simulation is
+   frame-rate dependent and no measurement means anything.
+
+Yes to both, in every case, with an empty `state_diff` against the scripted run:
 
 | how the same 30 ticks were delivered | differs from `tick 30` |
 |---|---|
@@ -111,31 +122,11 @@ Measured with one at 1e-9 and the answer is identical.  Adding one would
 be the cargo-cult plan 16 W0 refused, and the note is here so a reader
 comparing this with `helper.loft` does not "fix" it.
 
-## ⚠ What P0 had to settle before anything was built
-
-**Can a real-time accumulator reproduce `tick N` exactly?**
-
-The tick is 2/3 s and a frame is not.  So the loop must bank elapsed
-seconds and spend whole ticks out of them — the pattern
-`helper.loft`, `tower.loft` and `vehicle.loft` already use, arriving a
-fourth time.  Two things must hold or the design is wrong:
-
-1. **`n × TICK_SECONDS` through the accumulator must be exactly `n`
-   ticks.**  If it is `n-1` or `n+1`, every scripted measurement in the
-   suite disagrees with the played game.
-2. **Variable frame times must not change the answer.**  Sixty frames of
-   1/60 s and one frame of 1 s must leave the same state, or the
-   simulation is frame-rate dependent and no measurement means anything.
-
-⚠ And plan 17 T1's finding is live here: a banked timer's DIRECTION is
-half the epsilon rule, and *neither counting up nor counting down is
-safe* — it has to be measured for this pair.
-
 ## Invariant gate
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
-| **P0** | the tables the probe produces | an accumulator is a REFINEMENT of `tick N`: same input, same state | ⚠ if 30 frames of 2/3 s and one `tick 30` differ by a single field, the one-door design is wrong and the plan stops |
+| **P0** ✓ | `tick 30` reproduced from 1, 30, 200, 600 and 1200 frames — every one an empty `state_diff` | an accumulator is a REFINEMENT of `tick N`: same elapsed time, same state | ✓ the plan's own falsifier was live — a single differing field would have stopped it; ✓ measured WITH an epsilon too, and identical, so its absence is a decision |
 | **P1** | all 520 gate measurements unchanged | the game has ONE door and the script runner goes through it | the corpus IS the control — every scenario's exact clock pins the behaviour, so a seam that changed anything goes red in 28 files |
 | **P2** | a `.keys` script and a keypress produce the same action | one key table, the I1 shape | ✗ a play action wired straight into the GL loop is invisible to every script — the exact defect I1 was built to stop |
 | **P3** | waves arrive in a window, on the wall clock | the loop owns the CLOCK and the seam owns the rules (`editor_step`'s existing split) | a frame-rate-dependent simulation: assert the same elapsed time gives the same state at two frame rates |
@@ -146,8 +137,8 @@ safe* — it has to be measured for this pair.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **P0** — the probe: can real time reproduce `tick N`? | XS | a probe, no `src/` change — feed `n × TICK_SECONDS` through an accumulator and compare the state with `tick n`, then vary the frame size.  ⚠ If they differ, the plan stops here | Open |
-| **P1** — the play session and its ONE door | M | `tests/19_p1_the_seam.loft` + the whole gate: `play_step(ps, input, seconds)` exists, `script.loft`'s `tick` routes through it, and **all 520 measurements are unchanged** | Blocked on P0 |
+| **P0** — the probe: can real time reproduce `tick N`? | XS | the table in § P0, measured against the shipped sim over five frame sizes | **Done** |
+| **P1** — the play session and its ONE door | M | `tests/19_p1_the_seam.loft` + the whole gate: `play_step(ps, input, seconds)` exists, `script.loft`'s `tick` routes through it, and **all 520 measurements are unchanged** | Open |
 | **P2** — play actions in the ONE key table | S | `tests/19_p2_the_keys.loft` — drive / boost / take / drop become `EditorAction` rows, and a script pressing the key does what the verb does | Blocked on P1 |
 | **P3** — the loop: the game runs in the window | M | `tests/19_p3_the_clock.loft` for the accumulator + a human check that `make play` plays.  ⚠ The headless half is what CI can hold | Blocked on P2 |
 | **P4** — drawing the game | M | `tests/19_p4_the_frame.loft` — `classify_world` pixel shares for enemies, the vehicle and the crew.  A `.keys` scenario with `snap` for human inspection | Blocked on P3 |
