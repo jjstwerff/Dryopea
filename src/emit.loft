@@ -1,0 +1,215 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A situation, written down.  Plan 18 phase S2.
+//
+// Takes the ground, the markers and the runtime state a run is in, and
+// writes the `.keys` file that reproduces them.  `script_run` reads it
+// back, and S0's `state_diff` / `world_diff` say whether anything was
+// lost — which is the whole gate: **capture → emit → replay → identical**.
+//
+// ── ⚠ It emits a STARTING POSITION, never a recording ───────────
+//
+// Nothing here writes a `tick`.  The output is the same kind of thing
+// every file in `tests/scripts/` already is — an authored setup — which
+// is what keeps a captured fixture out of the golden trap `plans/18`
+// § Decision describes: there is nothing derived in it to go stale,
+// because it says what the world IS rather than what the simulation
+// did.
+//
+// ── ⚠ ORDER is load-bearing ─────────────────────────────────────
+//
+// The verbs validate each other's subjects, so the file has to build
+// the world before the things that stand on it:
+//
+//   `flag` before `tower`   — a tower setter demands its marker
+//   `crew` before `object`  — an owner may be a crew index
+//   `place` before `hit` / `stand` / `dead` — they take a roster index
+//   `schedule` before `pending`             — it authors the list
+//
+// ⚠ Get one wrong and the emitted file fails to REPLAY, loudly, which
+// is the good direction: the round-trip gate names the line.
+//
+// ── ⚠ What is deliberately not optimised ────────────────────────
+//
+// The ground is one `click` per painted hex, grouped by palette entry
+// so the `palette` line is not repeated.  A 120-hex band is 120 lines.
+// `plans/18` § Open questions 2 weighed collapsing collinear runs into
+// `drag` and settled it: gate the emitter on the ROUND TRIP rather than
+// on how it reads, so the readable form is an optimisation with a test
+// already behind it rather than a thing to get right first.
+
+use lattice;
+use painted;
+use palette;
+use markers;
+use height;
+use damage;
+use tower;
+use wallet;
+use vehicle;
+use helper;
+use carry;
+use waves;
+use spawn;
+
+// ─── The pieces ─────────────────────────────────────────────────
+
+fn emit_markers(mw: const MarkerWorld) -> text {
+    em_out = "";
+    for em_m in mw.markers {
+        em_out = em_out + "flag {em_m.q} {em_m.r} "
+                        + marker_kind_name(em_m.kind as integer);
+        // Only a spawn marker's direction means anything, but writing
+        // it for all three costs nothing and keeps one shape.
+        em_out = em_out + " {em_m.direction as integer}\n";
+    }
+    em_out
+}
+
+// ⚠ Grouped by palette entry rather than by hex, so `palette` is
+// written once per KIND instead of once per hex.
+fn emit_ground(pal: vector<GroundType>, pw: const PaintedWorld) -> text {
+    eg_out = "";
+    eg_k = 0;
+    for _ in pal {
+        eg_any = false;
+        for eg_h in pw.painted {
+            if (eg_h.kind as integer) == eg_k {
+                if !eg_any {
+                    eg_out = eg_out + "palette {eg_k}\n";
+                    eg_any = true;
+                }
+                eg_out = eg_out + "click {eg_h.q} {eg_h.r}\n";
+            }
+        }
+        eg_k += 1;
+    }
+    eg_out
+}
+
+fn emit_enemies(state: const WaveState) -> text {
+    ee_out = "";
+    ee_i = 0;
+    for ee_e in state.enemies {
+        ee_out = ee_out + "place {ee_e.q} {ee_e.r} "
+                        + enemy_class_name(ee_e.kind)
+                        + " {ee_e.heading as integer}\n";
+        // ⚠ Only what is NOT neutral, so a captured fixture reads as
+        // the situation rather than as a dump: a healthy robot that is
+        // free to walk needs no line but its placement.
+        if ee_e.taken != 0.0 { ee_out = ee_out + "hit {ee_i} {ee_e.taken}\n"; }
+        if ee_e.stand != 0.0 { ee_out = ee_out + "stand {ee_i} {ee_e.stand}\n"; }
+        if !ee_e.alive { ee_out = ee_out + "dead {ee_i}\n"; }
+        ee_i += 1;
+    }
+    ee_out
+}
+
+fn emit_layers(state: const WaveState) -> text {
+    el_out = "";
+    for el_h in state.heights.cells {
+        el_out = el_out + "raise {el_h.q} {el_h.r} {el_h.metres} "
+                        + rubble_source_name(el_h.source) + "\n";
+    }
+    for el_d in state.damage.cells {
+        el_out = el_out + "damage {el_d.q} {el_d.r} {el_d.taken}\n";
+    }
+    for el_t in state.towers.cells {
+        el_out = el_out + "tower {el_t.q} {el_t.r} {el_t.shots} "
+                        + "{el_t.charge} {el_t.repair} "
+                        + (if el_t.top_removed { "off" } else { "on" }) + "\n";
+    }
+    if wallet_spent(state.wallet) != 0.0 {
+        el_out = el_out + "spent {wallet_spent(state.wallet)}\n";
+    }
+    el_out
+}
+
+fn emit_movers(state: const WaveState) -> text {
+    em2_out = "";
+
+    // ⚠ `park` always, even for a vehicle that is not in the world: the
+    // struct carries a hex either way, and the `player` line that
+    // follows is what says whether it is present.
+    em2_out = em2_out + "park {state.player.q} {state.player.r}\n";
+    em2_out = em2_out + "drive {state.player.to_q} {state.player.to_r}\n";
+    em2_out = em2_out + "player "
+                      + (if state.player.parked { "on" } else { "off" })
+                      + " {state.player.boost_left} {state.player.cool_left} "
+                      + "{state.player.taken}\n";
+
+    em2_i = 0;
+    for em2_h in state.crew {
+        em2_out = em2_out + "crew {em2_h.q} {em2_h.r}\n";
+        em2_out = em2_out + "send {em2_i} {em2_h.to_q} {em2_h.to_r}\n";
+        em2_out = em2_out + "member {em2_i} "
+                          + (if em2_h.alive { "on" } else { "off" })
+                          + " {em2_h.progress} {em2_h.taken} {em2_h.recover}\n";
+        em2_i += 1;
+    }
+    em2_out
+}
+
+fn emit_cargo(state: const WaveState) -> text {
+    ec_out = "";
+    for ec_o in state.cargo.items {
+        ec_who = "ground";
+        if ec_o.owner == CARGO_GONE { ec_who = "gone"; }
+        else if ec_o.owner == BLOCKER_PLAYER { ec_who = "player"; }
+        else if ec_o.owner != BLOCKER_NONE {
+            ec_who = "{blocker_crew_index(ec_o.owner)}";
+        }
+        ec_kind = "wreck";
+        if ec_o.kind == CARGO_TOP { ec_kind = "top"; }
+        ec_out = ec_out + "object {ec_o.q} {ec_o.r} " + ec_kind
+                        + " {ec_o.subj} " + ec_who + "\n";
+    }
+    ec_out
+}
+
+fn emit_schedule(state: const WaveState) -> text {
+    es_out = "";
+    if len(state.schedule.waves) > 0 {
+        es_out = es_out + "schedule";
+        for es_w in state.schedule.waves { es_out = es_out + " {es_w}"; }
+        es_out = es_out + "\n";
+        es_out = es_out + "pending {state.schedule.sent} {state.schedule.lull} "
+                        + "{state.schedule.delay} "
+                        + (if state.schedule.running { "on" } else { "off" })
+                        + "\n";
+    }
+    if state.pick_cursor != 0 {
+        es_out = es_out + "cursor {state.pick_cursor}\n";
+    }
+    es_out
+}
+
+// ─── The door ───────────────────────────────────────────────────
+//
+// ⚠ LAST, and every helper above it — loft#918 panics the parser on a
+// local bound to a call whose callee sits lower in the file.  Same scar
+// `compare.loft` carries.
+
+// Write the `.keys` file that reproduces this situation.  `origin` is a
+// free-text note about where it came from.
+//
+// ⚠ **The origin is a comment the runner ignores**, and it is what makes
+// a captured fixture explicable a year later — the difference between a
+// test somebody trusts and one they delete (`plans/18` § Open
+// questions 3).
+pub fn emit_keys(pal: vector<GroundType>, pw: const PaintedWorld,
+                 mw: const MarkerWorld, state: const WaveState,
+                 origin: text) -> text {
+    ek_out = "# captured: " + origin + "\n";
+    ek_out = ek_out + "# ⚠ GENERATED by `emit.loft` — a starting position, not a\n";
+    ek_out = ek_out + "#   recording.  Re-capture rather than hand-editing.\n";
+    ek_out = ek_out + emit_markers(mw);
+    ek_out = ek_out + emit_ground(pal, pw);
+    ek_out = ek_out + emit_enemies(state);
+    ek_out = ek_out + emit_layers(state);
+    ek_out = ek_out + emit_movers(state);
+    ek_out = ek_out + emit_cargo(state);
+    ek_out = ek_out + emit_schedule(state);
+    ek_out
+}

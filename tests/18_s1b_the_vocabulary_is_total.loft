@@ -83,7 +83,7 @@ fn test_every_field_of_the_state_is_reachable() {
         + "crew 2 1\nsend 0 8 1\nmember 0 off 0.5 15 45\n"
         // the cargo and the schedule
         + "object 7 0 wreck 0 player\n"
-        + "schedule 4 6\npending 1 5.0 on\n");
+        + "schedule 4 6\npending 1 5.0 9.0 on\n");
     assert(tef_run.ok, "the script runs: {script_describe(tef_run)}");
 
     // The same state, built by hand.
@@ -126,7 +126,12 @@ fn test_every_field_of_the_state_is_reachable() {
     tef_oi = cargo_spawn(tef_want.cargo, CARGO_WRECK, 0, 7, 0);
     (tef_want.cargo.items[tef_oi] ?? CarryObject { }).owner = BLOCKER_PLAYER;
 
-    tef_want.schedule = wave_schedule_of([4, 6], INTER_WAVE_DELAY_SECONDS);
+    // ⚠ A delay the DEFAULT would not produce.  The first version of
+    // this test used `INTER_WAVE_DELAY_SECONDS` on both sides, which
+    // made `WaveSchedule.delay` invisible: it had no setter at all and
+    // the totality test passed anyway.  A field at its default on both
+    // sides of a comparison compares equal and proves nothing.
+    tef_want.schedule = wave_schedule_of([4, 6], 9.0);
     tef_want.schedule.sent    = 1;
     tef_want.schedule.lull    = 5.0;
     tef_want.schedule.running = true;
@@ -235,11 +240,13 @@ fn test_a_member_index_past_the_crew_is_refused() {
 // `pending` says how far down it a run has got, which no play verb
 // reaches — and which decides when the next wave lands.
 fn test_where_the_wave_list_has_got_to_is_authorable() {
-    twl = played("schedule 4 6\npending 1 5.0 on\n");
+    twl = played("schedule 4 6\npending 1 5.0 9.0 on\n");
     assert(twl.ok, "it runs: {script_describe(twl)}");
     assert(wave_schedule_sent(twl.wave.schedule) == 1, "one wave sent");
     assert(wave_schedule_lull(twl.wave.schedule) == 5.0, "five seconds of lull");
     assert(wave_schedule_running(twl.wave.schedule), "and it is running");
+    assert(twl.wave.schedule.delay == 9.0,
+           "with a retuned lull LENGTH: {twl.wave.schedule.delay}");
 }
 
 fn test_the_round_robin_cursor_is_authorable() {
@@ -279,7 +286,7 @@ fn test_arity_is_checked() {
     assert(!played("spent\n").ok, "spent needs its points");
     assert(!played("player on 1.5 2.5\n").ok, "player needs four");
     assert(!played("crew 2 1\nmember 0 off 0.5 15\n").ok, "member needs five");
-    assert(!played("pending 1 5.0\n").ok, "pending needs three");
+    assert(!played("pending 1 5.0 9.0\n").ok, "pending needs four");
     assert(!played("cursor\n").ok, "cursor needs its index");
     assert(!played("object 7 0 wreck 0\n").ok, "object needs an owner");
 }
@@ -288,5 +295,5 @@ fn test_an_on_off_word_is_checked() {
     assert(!played("tower 4 0 1 0.0 0.0 yes\n").ok, "the top takes on|off");
     assert(!played("player true 0 0 0\n").ok, "and so does the player");
     assert(!played("crew 2 1\nmember 0 alive 0 0 0\n").ok, "and a member");
-    assert(!played("pending 0 0.0 maybe\n").ok, "and the schedule");
+    assert(!played("pending 0 0.0 0.0 maybe\n").ok, "and the schedule");
 }

@@ -9,8 +9,13 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**S0 + S1a + S1b shipped** (2026-08-15).  S2 is next.  Suite **1028
-green**, gate **28 scripts / 520 measurements**.
+**S0 + S1a + S1b + S2 shipped** (2026-08-15).  S3 is next.  Suite
+**1034 green**, gate **28 scripts / 520 measurements**.
+
+**S2 closed the round trip.**  `src/emit.loft::emit_keys` writes the
+`.keys` file that reproduces a situation, and **all 28 real scenarios**
+survive capture → emit → replay with both the state and the world
+identical.  § S2.
 
 **S0 built the oracle every later phase needs.**  `src/compare.loft`
 answers *how* two `WaveState`s differ — the first difference, named —
@@ -147,7 +152,7 @@ REFUSED rather than quietly emitted.
 | **S0** ✓ | equal states compare equal; a fork compares equal; one tick apart they do not | a comparison that sees **every** field, and is INDEPENDENT of the emitter | ✓ 35 per-field discriminations, verified by three blindness mutations rather than by reading; ✓ hash FILL ORDER is not a difference; ✓ one ulp IS one, so nobody adds an epsilon for tidiness |
 | **S1a** ✓ | a placed enemy is S0-identical to one built in loft, all seven fields | the script can express an `Enemy`'s whole state, and a bare placement is the NEUTRAL one | ✓ both zero-neutral fields verified by mutation — a placement that starts mid-window stops walking, one that starts pre-damaged reads as a corpse, and each turns three assertions red; ✓ `dead` deposits NO body, so `wave_deaths` stays the one death path |
 | **S1b** ✓ | one state with every field non-neutral, authored from `.keys` and S0-identical to the same state built in loft | the vocabulary is TOTAL over `WaveState` | ✓ three setters mutated to drop a field: each fails the TOTALITY test and `state_diff` names the field — *'towers (4, 0).repair: 0 vs 6'*.  ⚠ Seven separate 'this verb works' tests would stay green while the one state a capture needs is unreachable |
-| **S2** | capture → emit → replay → identical | **round-trip = identity**, the exact invariant this plan is built on | a state carrying a field the emitter forgot must go RED; S0's per-field comparison is what makes that possible |
+| **S2** ✓ | 28 of 28 scenarios round-trip, state and world identical | **round-trip = identity**, over the REAL corpus rather than a fixture | ✓ three dropped fields each go red and NAME themselves (*'towers (4, 0).charge: 0.4 vs 0'*); ✓ a hand-built state holds the fields no shipped scenario exercises; ✓ a state one TICK on survives, so the emitter handles what the SIMULATION produces and not only what a script authors |
 | **S3** | a cropped fixture reproduces the property | a crop is bounded by the RULES, not the picture | a crop that drops the core, or lands inside the bubble radius, is REFUSED — not emitted and left to read as a flaky test |
 | **S4** | the reduced fixture still shows the property | minimality is checkable: removing any one more line breaks it | a reducer with no predicate reduces to nothing and calls it minimal |
 
@@ -158,7 +163,7 @@ REFUSED rather than quietly emitted.
 | **S0** — the instrument: comparing two states | XS | `tests/18_s0_the_comparison.loft` — 15 tests; 35 per-field discriminations, and three blindness mutations verified (drop `Enemy.stand`, drop `CarryObject.owner`, compare a layer by count alone) each turn exactly one assertion red | **Done** |
 | **S1a** — an enemy becomes authorable | S | `tests/18_s1a_placing_an_enemy.loft` — 15 tests; a placed enemy is S0-identical to one built in loft, all seven fields; three mutations verified (a placement mid-window, a placement pre-damaged, and `dead` depositing a body) | **Done** |
 | **S1b** — the rest of the state becomes authorable | M | `tests/18_s1b_the_vocabulary_is_total.loft` — 15 tests, centred on ONE state with every field non-neutral built both ways; three dropped-setter mutations verified (`tower`'s repair, `cursor`, `member`'s recovery) | **Done** |
-| **S2** — the emitter, and the round trip | M | `tests/18_s2_the_round_trip.loft` — capture a state from each `tests/scripts/*.keys` run, emit, replay, and assert S0-identical.  ⚠ Sweeping the REAL scenarios rather than hand-built states, the shape `09_c5a` uses | Blocked on S1a + S1b |
+| **S2** — the emitter, and the round trip | M | `tests/18_s2_the_round_trip.loft` — all 28 real scenarios survive capture → emit → replay, state AND world; three dropped-field mutations verified (a tower's charge, a pile's source, the terrain) | **Done** |
 | **S3** — the crop | S | `tests/18_s3_the_crop.loft` — a cropped fixture reproduces its property; a crop that would drop the core or cut inside the bubble is refused | Blocked on S2 |
 | **S4** — the reduce | M | `tests/18_s4_the_reduce.loft` — delta-debug against a supplied predicate; the output still shows the property and is minimal | Blocked on S3 |
 
@@ -354,6 +359,60 @@ hands needs no player within fifteen hexes of it.
 
 `script_author`, not seven more branches of `script_command` — whose
 control-flow complexity the advice lint already flags at 214.
+
+## S2 — the emitter, and the round trip (2026-08-15)
+
+`src/emit.loft::emit_keys(pal, pw, mw, state, origin)` writes the
+`.keys` file that reproduces a situation.  The gate plays every file in
+`tests/scripts/`, captures the state it reached, emits it, replays it
+into a session that has never seen the map, and asserts both the state
+and the world are identical.  **28 of 28.**
+
+⚠ **The corpus, not a fixture** — `09_c5a_converter.loft`'s shape and
+its reason: a hand-built state exercises what its author remembered,
+the corpus exercises what the game produces.  Backed by two controls a
+sweep cannot give: a hand-built state holding the fields no shipped
+scenario exercises (a boost running, a recovery clock, a spent cargo
+slot, a retuned lull), and a state taken one TICK past a scenario's end,
+so the emitter is shown to handle what the SIMULATION produces.
+
+### ⚠⚠ The world is compared too
+
+Terrain and markers are not in `WaveState`, so a round trip comparing
+only the state would be green for an emitter that lost half the map.
+`compare.loft` grew `world_diff`, and mutating the emitter to drop the
+ground turns the sweep red — as a REPLAY failure, because the fixture
+then tries to damage a wall that is now sea.
+
+### ⚠ Order is load-bearing, and that is a feature
+
+The verbs validate each other's subjects — `flag` before `tower`,
+`crew` before an `object` owned by a crew index, `place` before `hit` /
+`stand` / `dead`, `schedule` before `pending`.  Get one wrong and the
+emitted file fails to REPLAY, loudly, naming the line.
+
+### ⚠ A direct marker verb, because the editor's dance is not emittable
+
+Every shipped scenario places a marker by toggling to MARKER mode,
+pressing `cycle_kind` the right number of times and clicking — and the
+right number depends on `MARKER_KIND_COUNT`, which grows.  A generated
+fixture written that way rots the day a kind is added, **silently
+placing the wrong one**.  So S2 added `flag <q> <r> <kind> [dir]`, and
+`marker` stays the assertion — the same split `place` / `enemy` keeps.
+
+### ⚠⚠ And S1b's totality test had a hole
+
+`WaveSchedule.delay` had **no setter at all** and the totality test
+passed anyway, because both the script and the hand-built state used
+`INTER_WAVE_DELAY_SECONDS`.  ⚠ **A field left at its DEFAULT on both
+sides of a comparison compares equal and proves nothing** — so a
+totality test has to hold every field at a value the default would not
+produce.  Fixed in `pending`, and S1b's fixture now uses a delay of 9.0.
+
+⚠ Note what would NOT have caught it: the round trip.  No shipped
+scenario has a non-default delay, so emit-and-replay would have agreed
+with itself for ever.  It took writing the emitter and asking *"which
+verb writes this field?"* to find it.
 
 ## Open questions
 

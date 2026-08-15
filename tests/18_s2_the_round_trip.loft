@@ -1,0 +1,212 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 18 phase S2 — the emitter, and the round trip.
+//
+// S0 built the oracle, S1a and S1b made the vocabulary total.  This is
+// what they were for: `emit_keys` writes the `.keys` file that
+// reproduces a situation, and the gate is
+//
+//     capture -> emit -> replay -> IDENTICAL
+//
+// ── ⚠⚠ Swept over the REAL scenarios ────────────────────────────
+//
+// The states under test are not hand-built: every file in
+// `tests/scripts/` is played, its state captured at the end, emitted,
+// replayed, and compared.  That is `09_c5a_converter.loft`'s shape and
+// for its reason — *"the converter is a bijection on the actual files,
+// not just on a swept window"*.  A hand-built state exercises what its
+// author remembered; the corpus exercises what the game produces.
+//
+// ⚠ **And the WORLD is compared as well as the state.**  Terrain and
+// markers are not in `WaveState`, so a round trip that compared only
+// the state would be green for an emitter that lost half the map.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SCRIPTS: text = "tests/scripts";
+const SHOTS:   text = "tests/actual";
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// Play a source and answer the session it left behind.
+fn play(src: text) -> EditorState {
+    p_s = editor_state_new(PALETTE);
+    script_run(p_s, src, SHOTS);
+    p_s
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ THE GATE: every real scenario survives the round trip
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The whole corpus, not a fixture.**  Each file is played to its
+// end, the state it reached is emitted, the emitted text is replayed
+// into a fresh session, and both the state and the world must be
+// identical.
+//
+// ⚠ A field the emitter forgot fails here and NAMES itself, because S0
+// compares field by field — which is the phase-ordering argument made
+// concrete for the third time.
+fn test_every_scenario_survives_the_round_trip() {
+    tes_pal = pal();
+    tes_n = 0;
+
+    for tes_f in validate_script_names(SCRIPTS) {
+        tes_src = file("{SCRIPTS}/{tes_f}.keys").content() ?? "";
+        assert(tes_src != "", "{tes_f} is readable");
+
+        // 1. Play it, and capture where it got to.
+        //
+        // ⚠ With a save path ATTACHED, the way `validate_one` builds a
+        // session — `round-trip.keys` saves, clears and reloads, and
+        // without one its reload restores nothing and the scenario
+        // fails to play at all.  A sweep over the real corpus has to
+        // set the sessions up the real runner's way.
+        tes_a = editor_state_new(PALETTE);
+        editor_state_attach(tes_a, "{SHOTS}/{tes_f}.s2.json",
+                            "{SHOTS}/{tes_f}.s2_markers.json");
+        tes_run = script_run(tes_a, tes_src, SHOTS);
+        assert(tes_run.ok, "{tes_f} plays: {script_describe(tes_run)}");
+
+        // 2. Write the situation down.
+        tes_keys = emit_keys(tes_pal, tes_a.pw, tes_a.mw, tes_run.wave,
+                             "{tes_f}");
+
+        // 3. Read it back into a session that has never seen the map.
+        tes_b = editor_state_new(PALETTE);
+        editor_state_attach(tes_b, "{SHOTS}/{tes_f}.s2b.json",
+                            "{SHOTS}/{tes_f}.s2b_markers.json");
+        tes_back = script_run(tes_b, tes_keys, SHOTS);
+        assert(tes_back.ok,
+               "{tes_f}: the captured fixture replays — {script_describe(tes_back)}");
+
+        // 4. And nothing moved.
+        assert(state_diff(tes_run.wave, tes_back.wave) == "",
+               "{tes_f}: state survives — "
+               + "'{state_diff(tes_run.wave, tes_back.wave)}'");
+        assert(world_diff(tes_a.pw, tes_a.mw,
+                          tes_b.pw, tes_b.mw) == "",
+               "{tes_f}: world survives — "
+               + "'{world_diff(tes_a.pw, tes_a.mw, tes_b.pw, tes_b.mw)}'");
+        tes_n += 1;
+    }
+
+    // ⚠ The sweep must have swept something.  A directory read that
+    // answered nothing would make every assertion above vacuous — the
+    // same refusal `validate.loft` makes about being green over no
+    // scripts at all.
+    assert(tes_n == 28, "all twenty-eight scenarios: {tes_n}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The negative controls
+// ─────────────────────────────────────────────────────────────────
+
+// A round trip is trivially green if the emitter and the comparison are
+// both blind to the same thing.  These build a state the corpus does
+// NOT contain and check it survives — the fields no shipped scenario
+// happens to exercise.
+fn test_the_fields_no_scenario_exercises_survive_too() {
+    tfn_head = "flag 0 0 target 0\nflag 4 0 tower 0\n"
+             + "palette 5\nclick 1 0\nclick 2 0\nclick 6 0\n";
+    tfn_body = "place 9 1 insect 4\nhit 0 7.5\nstand 0 1.25\ndead 0\n"
+             + "cursor 3\n"
+             + "raise 5 1 1.5 carapace\n"
+             + "tower 4 0 12 0.4 6.0 off\n"
+             + "spent 30\n"
+             + "park 1 0\ndrive 3 0\nplayer off 1.5 2.5 20\n"
+             + "crew 2 1\nsend 0 8 1\nmember 0 off 0.5 15 45\n"
+             + "object 7 0 top 12 player\nobject 7 1 wreck 0 gone\n"
+             + "schedule 4 6\npending 1 5.0 9.0 on\n";
+
+    tfn_a = editor_state_new(PALETTE);
+    tfn_run = script_run(tfn_a, tfn_head + tfn_body, SHOTS);
+    assert(tfn_run.ok, "the odd state builds: {script_describe(tfn_run)}");
+
+    tfn_keys = emit_keys(pal(), tfn_a.pw, tfn_a.mw, tfn_run.wave, "odd");
+    tfn_b = editor_state_new(PALETTE);
+    tfn_back = script_run(tfn_b, tfn_keys, SHOTS);
+    assert(tfn_back.ok, "and replays: {script_describe(tfn_back)}");
+
+    assert(state_diff(tfn_run.wave, tfn_back.wave) == "",
+           "including a boost running, a recovery clock, a stripped "
+           + "tower, a spent cargo slot and a retuned lull: "
+           + "'{state_diff(tfn_run.wave, tfn_back.wave)}'");
+}
+
+// ⚠ **A state one TICK on still survives**, which is what says the
+// emitter handles what the simulation produces rather than only what a
+// script authors — bodies on the ground, banked charge, spent shots,
+// part-walked movement.
+fn test_a_state_the_simulation_produced_survives() {
+    tas_src = file("{SCRIPTS}/a-defended-base.keys").content() ?? "";
+    assert(tas_src != "", "the scenario is readable");
+
+    tas_a = editor_state_new(PALETTE);
+    tas_run = script_run(tas_a, tas_src + "\ntick 40\n", SHOTS);
+    assert(tas_run.ok, "forty more ticks: {script_describe(tas_run)}");
+    assert(height_count(tas_run.wave.heights) > 0,
+           "and there are bodies on the ground: "
+           + "{height_count(tas_run.wave.heights)}");
+
+    tas_keys = emit_keys(pal(), tas_a.pw, tas_a.mw, tas_run.wave, "mid-wave");
+    tas_b = editor_state_new(PALETTE);
+    tas_back = script_run(tas_b, tas_keys, SHOTS);
+    assert(tas_back.ok, "it replays: {script_describe(tas_back)}");
+    assert(state_diff(tas_run.wave, tas_back.wave) == "",
+           "mid-wave state survives: "
+           + "'{state_diff(tas_run.wave, tas_back.wave)}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What the emitted file IS
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **A starting position, never a recording.**  Nothing in the output
+// ticks, which is what keeps a captured fixture out of the golden trap:
+// it says what the world IS, and there is nothing derived in it to go
+// stale.
+fn test_the_output_is_a_setup_and_not_a_recording() {
+    tos_a = editor_state_new(PALETTE);
+    tos_run = script_run(tos_a,
+        "flag 0 0 target 0\npalette 5\nclick 1 0\nplace 5 0 robot 3\n", SHOTS);
+    assert(tos_run.ok, "it runs");
+
+    tos_keys = emit_keys(pal(), tos_a.pw, tos_a.mw, tos_run.wave, "x");
+    assert(!tos_keys.contains("\ntick "), "no tick in the output");
+    assert(!tos_keys.contains("\nfall "), "and nothing that plays it out");
+    assert(!tos_keys.contains("\nwave "), "and no wave spawned by count");
+}
+
+// ⚠ The origin rides along as a comment the runner ignores, which is
+// what makes a captured fixture explicable a year later.
+fn test_the_origin_is_recorded() {
+    tor_a = editor_state_new(PALETTE);
+    tor_run = script_run(tor_a, "palette 5\nclick 1 0\n", SHOTS);
+    tor_keys = emit_keys(pal(), tor_a.pw, tor_a.mw, tor_run.wave,
+                         "a-wall-breaks at tick 40");
+    assert(tor_keys.contains("# captured: a-wall-breaks at tick 40"),
+           "the origin is in the file");
+    assert(tor_keys.contains("GENERATED"),
+           "and it says not to hand-edit it");
+}
+
+// ⚠ **Only what is NOT neutral.**  A healthy robot free to walk needs
+// no line but its placement, so a captured fixture reads as the
+// situation rather than as a dump of every field.
+fn test_a_neutral_enemy_emits_one_line() {
+    tan_a = editor_state_new(PALETTE);
+    tan_run = script_run(tan_a, "palette 5\nclick 1 0\nplace 5 0 robot 3\n", SHOTS);
+    tan_keys = emit_keys(pal(), tan_a.pw, tan_a.mw, tan_run.wave, "x");
+
+    assert(tan_keys.contains("place 5 0 robot 3"), "it is placed");
+    assert(!tan_keys.contains("hit 0"), "with no damage line");
+    assert(!tan_keys.contains("stand 0"), "no window line");
+    assert(!tan_keys.contains("dead 0"), "and no death line");
+}

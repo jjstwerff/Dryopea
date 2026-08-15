@@ -55,6 +55,8 @@ use helper;
 use carry;
 use waves;
 use spawn;
+use painted;
+use markers;
 
 // ─── The roster ─────────────────────────────────────────────────
 //
@@ -260,6 +262,49 @@ fn schedule_diff(a: const WaveSchedule, b: const WaveSchedule) -> text {
     ""
 }
 
+// ─── The WORLD, which is not part of WaveState ──────────────────
+//
+// ⚠ A fixture has to reproduce the ground and the markers as well as
+// the runtime state, and neither is in `WaveState` — so a round trip
+// that compared only the state would be green for an emitter that lost
+// half the map.  Same shape as the state: by KEY, never by iteration
+// order.
+
+fn painted_diff(a: const PaintedWorld, b: const PaintedWorld) -> text {
+    for pd_x in a.painted {
+        pd_y = b.painted[pd_x.q, pd_x.r];
+        if pd_y == null {
+            return "painted ({pd_x.q}, {pd_x.r}): kind {pd_x.kind} vs nothing";
+        }
+        if pd_x.kind != pd_y.kind {
+            return "painted ({pd_x.q}, {pd_x.r}): {pd_x.kind} vs {pd_y.kind}";
+        }
+    }
+    if len(a.painted) != len(b.painted) {
+        return "painted: {len(a.painted)} hexes vs {len(b.painted)}";
+    }
+    ""
+}
+
+fn markers_diff(a: const MarkerWorld, b: const MarkerWorld) -> text {
+    for md_x in a.markers {
+        md_y = b.markers[md_x.q, md_x.r];
+        if md_y == null {
+            return "marker ({md_x.q}, {md_x.r}): kind {md_x.kind} vs nothing";
+        }
+        if md_x.kind != md_y.kind {
+            return "marker ({md_x.q}, {md_x.r}).kind: {md_x.kind} vs {md_y.kind}";
+        }
+        if md_x.direction != md_y.direction {
+            return "marker ({md_x.q}, {md_x.r}).direction: {md_x.direction} vs {md_y.direction}";
+        }
+    }
+    if len(a.markers) != len(b.markers) {
+        return "markers: {len(a.markers)} vs {len(b.markers)}";
+    }
+    ""
+}
+
 // ─── ⚠ The one door, and it is LAST for a reason ────────────────
 //
 // Every helper above is declared before the function that calls it,
@@ -308,3 +353,11 @@ pub fn states_equal(a: const WaveState, b: const WaveState) -> boolean {
     state_diff(a, b) == ""
 }
 
+// How two WORLDS differ — the ground and the markers, which a fixture
+// must reproduce and `WaveState` does not hold.
+pub fn world_diff(pa: const PaintedWorld, ma: const MarkerWorld,
+                  pb: const PaintedWorld, mb: const MarkerWorld) -> text {
+    wd_p = painted_diff(pa, pb);
+    if wd_p != "" { return wd_p; }
+    markers_diff(ma, mb)
+}

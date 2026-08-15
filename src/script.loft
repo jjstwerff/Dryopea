@@ -1185,7 +1185,7 @@ fn script_ints(tok: vector<text>, n: integer) -> vector<integer> {
 fn is_author_cmd(name: text) -> boolean {
     name == "tower" || name == "object" || name == "spent"
     || name == "player" || name == "member" || name == "pending"
-    || name == "cursor"
+    || name == "cursor" || name == "flag"
 }
 
 // Read an on/off word.  -1 when it is neither, so a caller can refuse.
@@ -1198,6 +1198,42 @@ fn on_off(word: text) -> integer {
 fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     sa_cmd  = tok[0] ?? "";
     sa_argc = len(tok) - 1;
+
+    // A marker, placed directly (plan 18 S2).
+    //
+    // ⚠ **The editor's dance is not emittable.**  Every scenario in
+    // `tests/scripts/` places a marker by toggling to MARKER mode,
+    // pressing `cycle_kind` the right number of times and clicking —
+    // and the right number depends on `MARKER_KIND_COUNT`, which
+    // `CLAUDE.md` § Add a marker kind warns grows.  A generated fixture
+    // written that way rots the day a kind is added, silently placing
+    // the wrong one.  So the emitter says which kind it means.
+    //
+    // ⚠ `marker <q> <r> <kind>` stays the ASSERTION, the same split
+    // `place` / `enemy` keeps.
+    if sa_cmd == "flag" {
+        if sa_argc < 3 || sa_argc > 4 {
+            return "flag needs <q> <r> <kind> [dir]";
+        }
+        sa_fv = script_ints(tok, 2);
+        if len(sa_fv) != 2 { return "flag: <q> and <r> must be integers"; }
+        sa_fk = marker_kind_of(tok[3] ?? "");
+        if sa_fk < 0 {
+            return "flag: unknown kind '{tok[3] ?? ""}' — spawn, target, tower";
+        }
+        sa_fd = 0;
+        if sa_argc == 4 {
+            sa_fdv = (tok[4] ?? "") as integer?;
+            if sa_fdv == null { return "flag: <dir> must be an integer"; }
+            sa_fd = sa_fdv ?? 0;
+            if sa_fd < 0 || sa_fd >= NUM_HEX_DIRECTIONS {
+                return "flag: <dir> must be 0..{NUM_HEX_DIRECTIONS - 1}";
+            }
+        }
+        place_marker(s.mw, sa_fv[0] ?? 0, sa_fv[1] ?? 0,
+                     sa_fk as u8? ?? 0, sa_fd as u8? ?? 0);
+        return "";
+    }
 
     // A tower's whole top: what it has fired, what it has banked toward
     // its next shot, what has been banked toward a rebuild, and whether
@@ -1345,15 +1381,27 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     // Where the wave list has GOT to — what `schedule` does not reach,
     // because it authors the list and starts it at the beginning.
     if sa_cmd == "pending" {
-        if sa_argc != 3 { return "pending needs <sent> <lull> <on|off>"; }
+        if sa_argc != 4 {
+            return "pending needs <sent> <lull> <delay> <on|off>";
+        }
         sa_ps = (tok[1] ?? "") as integer?;
         if sa_ps == null { return "pending: <sent> must be an integer"; }
         sa_pl = (tok[2] ?? "") as float?;
         if sa_pl == null { return "pending: <lull> must be a number"; }
-        sa_pr = on_off(tok[3] ?? "");
-        if sa_pr < 0 { return "pending: <on|off> for running, not '{tok[3] ?? ""}'"; }
+        sa_pd = (tok[3] ?? "") as float?;
+        if sa_pd == null { return "pending: <delay> must be a number"; }
+        sa_pr = on_off(tok[4] ?? "");
+        if sa_pr < 0 { return "pending: <on|off> for running, not '{tok[4] ?? ""}'"; }
         run.wave.schedule.sent    = sa_ps ?? 0;
         run.wave.schedule.lull    = sa_pl ?? 0.0;
+        // ⚠ **The delay is here and not on `schedule`**, and finding
+        // that out is a plan 18 S2 story worth keeping: S1b's totality
+        // test missed this field entirely, because both the script and
+        // the hand-built state used `INTER_WAVE_DELAY_SECONDS` — and a
+        // field left at its DEFAULT on both sides of a comparison
+        // compares equal and proves nothing.  A totality test has to
+        // hold every field at a value the default would not produce.
+        run.wave.schedule.delay   = sa_pd ?? 0.0;
         run.wave.schedule.running = sa_pr == 1;
         return "";
     }
