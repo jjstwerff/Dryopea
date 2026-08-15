@@ -77,7 +77,8 @@ exists today.
 | THE GAME HAS A DOOR: `play.loft` owns the only call to `wave_tick`, asked by COUNT (`play_ticks`) or by DURATION (`play_advance`).  ⚠ **They are not interchangeable** — `n × TICK_SECONDS` through the accumulator is one tick SHORT for 602 of the first 1000 `n` | [19](plans/19-the-interactive-loop/README.md), P0-P1 shipped |
 | AND A KEYBOARD: WASD / Shift / E are rows in the ONE key table, and a `.keys` script presses them.  ⚠ WASD is SHARED with the camera pan — `editor_input_from(…, playing)` fills one set or the other, never both.  ⚠ W is TRUE north via a metre heading, measured at zero drift | [19](plans/19-the-interactive-loop/README.md), P2 shipped |
 | FOUR ROLES, ONE AI: scout / harvester / builder / miner — the same wave size at the same wall breaches at **20 / 35 / 50 / 96 / 456** ticks, and a harvester's body pays TRIPLE.  ⚠ `robot` keeps its rate, so **no existing measurement moved** | [23](plans/23-the-small-robots/README.md), K0 shipped |
-| A WAVE HAS COMPOSITION: `schedule 4 12` arms the list and `compose 1 4 miner 8 scout` fills a wave of it, in the order written.  ⚠ A wave's SIZE is **summed** from its parts and never stored, which DELETES the plan's own negative control (`@X055`).  ⚠ 569 measurements unchanged — a `vector<integer>` still means N waves of regulars | [23](plans/23-the-small-robots/README.md), K1 shipped — K2a next |
+| A WAVE HAS COMPOSITION: `schedule 4 12` arms the list and `compose 1 4 miner 8 scout` fills a wave of it, in the order written.  ⚠ A wave's SIZE is **summed** from its parts and never stored, which DELETES the plan's own negative control (`@X055`).  ⚠ 569 measurements unchanged — a `vector<integer>` still means N waves of regulars | [23](plans/23-the-small-robots/README.md), K1 shipped |
+| SPEED IS NO LONGER THE TICK: an enemy BANKS `speed × tick_seconds` and steps when a whole hex is due, so the timestep is a CHOICE (`@X058`) — and nothing moved (1128 tests, 569 measurements).  ⚠⚠ **1.5 hex/s is a speed at which the rounding guard cannot fire**: zero the epsilon and the whole corpus stays green (`@M014`), while 1.0 / 1.2 / 1.8 / 2.0 / 2.5 hex/s each lose a hex without it (`@M013`) | [23](plans/23-the-small-robots/README.md), K2a shipped — K2b next |
 | **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
@@ -94,7 +95,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1128/1128 green under `scripts/test.sh`** (~150 s measured
+**Suite: 1138/1138 green under `scripts/test.sh`** (~150 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -251,15 +252,19 @@ trigger for revisiting is the budget test going red, `numbers.json`
 raising the wave list or the world radius — or **the TICK getting
 shorter**, which is the one nobody would look for.
 
-⚠ **That third trigger is coming, and it is a design decision rather
-than a regression.**  A tick is 667 ms only because it is *defined* as
-the time an enemy takes to cross one hex, and the design intends to
-break that: speed varies by role, by tier, and by CONDITION (a damaged
-robot moves slower), so the tick becomes a simulation timestep chosen
-on its own merits and every enemy banks movement progress instead.
-Pick a shorter timestep for smooth varied speeds and the per-tick
-budget shrinks in direct proportion — the rebuild that fits at 667 ms
-does not fit at 100 ms.  See `spawn.loft` § What a tick is worth.
+⚠ **That third trigger is now ARMED, and it is a design decision rather
+than a regression.**  A tick was 667 ms because it was *defined* as the
+time an enemy takes to cross one hex; plan 23 K2a broke that definition
+— every enemy banks `speed × tick_seconds` and steps when a whole hex is
+due, so the timestep is a free choice and `TICK_SECONDS` is now what
+HOLDS it at 667 ms rather than what forces it (`@X058`).  Nothing has
+shortened it yet.  ⚠ The moment something does, the per-tick budget
+shrinks in direct proportion — the rebuild that fits at 667 ms does not
+fit at 100 ms — so [`plans/22`](plans/22-the-field-cache/README.md) is
+the prerequisite for the shorter tick, not a follow-up to it.
+⚠ And the epsilon travels with it: a **tenth-length tick loses a whole
+hex** without `ENEMY_PROGRESS_EPSILON` (`@M013`).  See `spawn.loft`
+§ What a tick is worth.
 
 ### Testing something that moves
 
@@ -395,6 +400,27 @@ zero-neutral rule as *damage taken* and *shots fired*.
 cannot fire** — `tests/17_t1_the_rebuild.loft::test_the_guard_can_fire`
 is the shape that fixes it: exercise the branch directly (bank a hair
 under the target) instead of relying on the tick arithmetic.
+
+⚠⚠ **And the branch test is NECESSARY, not SUFFICIENT — the third
+member of this family is a guard invisible at the value you shipped**
+(plan 23 K2a).  An enemy banks `speed × tick_seconds`, and at today's
+1.5 hex/s over a 1/1.5 s tick the product is **exactly 1.0 to the bit**,
+so the carry is 0.0 for ever and no scenario can reach the epsilon at
+all: set `ENEMY_PROGRESS_EPSILON` to 0.0 and **1128 tests and 569
+measurements stay green** (`@M014`).
+⚠ **1.5 is one of the FEW speeds with that property**, which is what
+makes it a trap rather than a curiosity — swept over sixty ticks, the
+epsilon is worth a whole hex at **1.0, 1.2, 1.8, 2.0 and 2.5** hex/s and
+nothing at 0.5, 0.75, 1.5, 2.25 and 3.0 (`@M013`).  ⚠ It is worth a hex
+to a **tenth-length tick** too, so this is the shorter tick's problem as
+much as the faster class's.
+⚠ **So sweep the NEIGHBOURS of the value you shipped.**  A guard that
+cannot fire at one speed is not dead code; it is a defect waiting for
+whoever changes that number, and it will report as *a wave that arrives
+a tick late* rather than as rounding.  ⚠ That is also why `enemy_bank`
+takes its speed as an ARGUMENT where `helper_bank` reads a constant
+(`@X060`) — a bank that read the constant could only ever be tested at
+the value that hides its own guard.
 
 ## Relationship to loft
 
@@ -539,7 +565,7 @@ navigational summary of it.
 | `map_file.loft` / `save.loft` | the save record (6 fields — see § Known constraints) and the save/load path |
 | `render.loft` | the software rasteriser over `graphics::Canvas` |
 | `picker.loft` / `hud.loft` / `editor_mode.loft` / `chunks.loft` / `history.loft` | palette UI, HUD, the mode flag, the dirty-chunk set, undo/redo |
-| `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS` |
+| `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS`, and since plan 23 K2a the banked `enemy_bank` / `enemy_step` pair the mover is built on |
 | `waves.loft` | the authored wave list, its lull, and what a wave is MADE OF — `WavePart` / `wave_schedule_compose`.  ⚠ A wave's size is SUMMED from its parts, never stored |
 | `flow.loft` | the distance field — `flow_build` / `flow_step` / `flow_steps` / `flow_desire` |
 | `passable.loft` | may a class MOVE here? — `can_stand` / `can_step` / `can_occupy`, and `hex_height` |
@@ -937,6 +963,7 @@ signature.
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the rule, taking a HEX, so the player and every helper read one implementation (`vehicle_salvage` / `helper_salvage` are the two doors).  The counter-play to `ENEMY_MOVEMENT.md` § Bodies are terrain.  ⚠ A crew inside a SEALED base can only reach the ramp by BOOSTING out (V4): the ramp forms outside the wall and an idle vehicle climbs 0.4 m — and no helper has a boost |
 | Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` — the rule with the climb passed rather than looked up.  ⚠ Never widen `climb_limit(kind)`: it is a CLASS lookup and a convenience for callers that have a kind.  `vehicle_climb` is the worked example |
 | Ask what STARTS the wave list | `src/spawn.loft::wave_provoke_step` — a live vehicle standing on a spawn marker `WAVE_1_PROVOCATION_HEXES` (12) or more from the core, read at the TOP of the tick and fired ONCE (plan 16 W3).  ⚠ Two thresholds: under 10 a marker is silenced entirely, 10–11 it sends enemies and cannot be poked, 12+ it does both — the middle band is what makes the distance test a rule rather than a restatement of "is this marker active".  ⚠ Never an occupancy test: a wave spawns ON its marker, so "is anybody here" lets wave 1 provoke wave 1 |
+| Ask how far an enemy moves in a tick, or make a class FASTER | `src/spawn.loft::enemy_bank` — `speed × tick_seconds` banked per enemy, whole hexes released to `enemy_step` (plan 23 K2a).  ⚠ **A tick is no longer a hex**: `TICK_SECONDS` HOLDS the timestep at one regular's hex, it does not force it (`@X058`).  ⚠ **Pick a new speed against `@M013`** — 1.5 is one of the few values at which the rounding guard cannot fire, and 1.0 / 1.2 / 1.8 / 2.0 / 2.5 each lose a hex every forty ticks without the epsilon.  ⚠ A hex the ground refuses is SPENT, not re-banked — the opposite of `helper_bank`, and deliberate (`@X059`) |
 | Ask why a fresh wave is not moving | `src/spawn.loft::enemy_standing` — the pre-walk window (plan 16 W2), 8 ticks at the marker.  ⚠ Spent ONCE per tick by `wave_stand`, at the END beside `helper_recover_tick`; the predicate only asks.  ⚠ A standing enemy does not move, attacks nothing and blocks nobody — but is NOT immune, which is what "stand visible" means |
 | Advance the GAME | `src/play.loft` — `play_ticks(ps, s, n)` for a COUNT, `play_advance(ps, s, seconds)` for elapsed time, `play_step(ps, s, input, seconds)` for a whole frame.  ⚠ Never call `wave_tick` directly: `play_one_tick` is its one caller, and a second one is a second game with the same numbers on it.  ⚠ And never spell a count as `n * TICK_SECONDS` — it is one tick short for 602 of the first 1000 `n` |
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` / `play_set_mode` (plan 19 P3).  ⚠ **It gates the CLOCK and never the seam**: `EditorInput.in_playing` says what the KEYS mean this frame, `PlayState.playing` says whether wall time reaches the simulation.  Gate `play_step`'s seconds on either and P1/P2 go red — a scripted frame's time is the SCRIPT's business.  ⚠ The window spends it through `play_frame_seconds`, which is a function rather than an `if` in `main.loft` because an entry point is compiled by nothing |

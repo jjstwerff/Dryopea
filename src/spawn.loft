@@ -59,39 +59,75 @@ pub const SCRAMBLER_BUBBLE_RADIUS: integer = 25;
 // for the same reason as the bubble radius above: nothing loads that
 // file yet.
 //
-// ⚠ **The tick's duration is DERIVED, not chosen.**  `enemy_tick`
-// advances an enemy by exactly one hex, and the design says an enemy
-// covers 1.5 hexes a second — so a tick is 1/1.5 s and there is no
-// second opinion to have about it.  `tests/12_b0_probe.loft` measures
-// the one-hex half against the running mover, which is what makes this
-// a derivation rather than a pair of numbers that happen to agree.
+// ⚠ **The tick's duration used to be DERIVED, and since plan 23 K2a it
+// is CHOSEN.**  It was a derivation while `enemy_tick` advanced an
+// enemy by exactly one hex: the design says an enemy covers 1.5 hexes
+// a second, so a tick was 1/1.5 s and there was no second opinion to
+// have about it.  `enemy_bank` below broke that — an enemy now banks
+// `speed * tick_seconds` and steps whenever a whole hex is due — so
+// the timestep is free and this expression is what KEEPS it at one
+// regular's hex.  Nothing derives it any more.
 //
-// ⚠ **And the design intends to BREAK it** — project owner,
-// 2026-08-13: *there will be a variety of speeds, so do not link speed
-// too closely to a tick*.  Three sources, and the second is decisive:
-// per role (the scout is faster), per CONDITION (**a damaged robot
-// moves slower**, so speed changes during a life and is not a class
-// constant at all), and per tier (insects differ again).
+// ⚠ **Why it is still spelled as a division.**  Holding the timestep
+// at exactly one hex for a 1.5 hex/s robot is what makes K2a's whole
+// gate available: the old path and the new one agree bit for bit, so
+// 1128 tests and 569 measurements are the comparison
+// (`plans/23-the-small-robots` § K2a).  Change the value and every
+// clock in the corpus moves for a reason that is not a defect.
 //
-// What replaces this derivation: the tick becomes a simulation
-// timestep chosen on its own merits, and every enemy banks movement
-// progress — `speed * TICK_SECONDS`, stepping a hex whenever a whole
-// one is due.  ⚠ That is the pattern `tower.loft` already implements
-// and `tests/12_b5a_tower.loft` already gates, float-rounding trap
-// included (`TOWER_CHARGE_EPSILON`) — so reuse it rather than
-// rediscovering that a repeating fraction sums a hair short.
+// The instruction it honours — project owner, 2026-08-13: *there will
+// be a variety of speeds, so do not link speed too closely to a tick*.
+// Three sources, and the second is decisive: per role (the scout is
+// faster — K2b), per CONDITION (**a damaged robot moves slower**, so
+// speed changes during a life and is not a class constant at all), and
+// per tier (insects differ again).  K2a builds the mechanism and moves
+// none of them.
 //
-// `tests/12_b0_probe.loft`'s `test_a_tick_advances_an_enemy_exactly_
-// one_hex` and `test_so_a_tick_is_two_thirds_of_a_second` are the two
-// assertions that will go red, and they SHOULD: they are the gate on
-// this paragraph, in the same inverted sense B0's § 1 was for B1.
+// ⚠ `tests/12_b0_probe.loft`'s `test_a_tick_advances_an_enemy_exactly_
+// one_hex` and `test_so_a_tick_is_two_thirds_of_a_second` are still
+// GREEN, and that is the point of holding the numbers: they now
+// measure a coincidence rather than a derivation, and K2b is what
+// makes the first of them go red — for the one class whose speed
+// moves, exactly as B0 § 1 was inverted for B1.
 //
-// ⚠ And it costs more than it looks: the tick's length is what plan 11
-// F8's budget is measured against.  A shorter timestep shrinks that
-// budget in proportion, and the from-scratch field rebuild that fits
-// comfortably at 667 ms does not fit at 100 ms.
+// ⚠ And a shorter timestep still costs more than it looks: the tick's
+// length is what plan 11 F8's budget is measured against.  Shortening
+// it shrinks that budget in proportion, and the from-scratch field
+// rebuild that fits comfortably at 667 ms does not fit at 100 ms —
+// which is `plans/22-the-field-cache`'s own trigger, *"the one nobody
+// would look for"*.  K2a makes the change
+// POSSIBLE and deliberately does not make it.
 pub const ENEMY_SPEED_HEX_PER_SECOND: float = 1.5;
 pub const TICK_SECONDS: float = 1.0 / ENEMY_SPEED_HEX_PER_SECOND;
+
+// ⚠ **Banked progress is in HEXES**, where `tower.loft`'s charge and
+// plan 13 V4's boost are in SECONDS — the same trap in a different
+// unit, so it gets its own constant rather than borrowing one that
+// means something else.  `helper.loft`'s `HELPER_PROGRESS_EPSILON` is
+// the same quantity for the crew, and the two are separate for the
+// reason that file gives: a shared epsilon is a shared decision.
+//
+// ⚠⚠ **This guard cannot fire at today's speed, and that is what
+// makes it dangerous rather than redundant.**  `1.5 * (1.0 / 1.5)` is
+// exactly 1.0 to the bit, so the carry is 0.0 for ever.  MEASURED
+// (2026-08-15, plan 23 K2a): setting this constant to 0.0 leaves all
+// **1128 pre-K2a tests green and all 569 measurements green**, and
+// fails only the three assertions written to go looking for it.  That
+// is exactly the shape `plans/17` T1 named — *an epsilon whose removal
+// leaves the suite green is a guard that cannot fire* — so the fix is
+// its fix: exercise the branch directly, and measure a speed the
+// constant does not take.
+//
+// ⚠ **It is load-bearing everywhere else.**  Measured over sixty ticks
+// of this timestep, the epsilon is worth a whole hex at 1.0, 1.2, 1.8,
+// 2.0 and 2.5 hex/s and worth nothing at 0.5, 0.75, 1.5, 2.25 and 3.0
+// — so 1.5 is one of the few values that hides it, and a class K2b
+// gives 1.0 hex/s would silently lose a hex every forty.  It is worth
+// a hex to a SHORTER TIMESTEP too: a tenth of a tick loses one over
+// 300 steps without it.  `tests/23_k2a_banked_movement.loft` exercises
+// the branch directly AND measures a speed that needs it, because
+// neither alone is a gate.
+pub const ENEMY_PROGRESS_EPSILON: float = 1.0e-9;
 
 // ── Why the SECONDS survive into the engine (plan 12 B0) ────────
 //
@@ -284,14 +320,24 @@ pub const PRE_WALK_SECONDS: float = 5.0;
 // is the one field here whose neutral value is not obviously the zero,
 // so it is worth saying: "seconds STOOD" would count the wrong way and
 // make every literal a robot that has not finished arriving.
+// ⚠ `progress` is the rule a FOURTH time (plan 23 K2a): it is the
+// fraction of a hex this enemy has banked and not yet spent, so zero is
+// an enemy standing squarely on its hex — which is what every literal
+// in the suite that predates the field already means.  It is the one
+// field here that is not a fact about the enemy at all but about the
+// simulation's remainder, and it is on the ENEMY rather than beside the
+// roster because `docs/DESIGN.md` says speed varies per CONDITION: a
+// damaged robot slows down, so the carry has to belong to whoever is
+// carrying it.
 pub struct Enemy {
-    q:       integer,
-    r:       integer,
-    kind:    u8,
-    heading: u8,
-    alive:   boolean,
-    taken:   float,
-    stand:   float,
+    q:        integer,
+    r:        integer,
+    kind:     u8,
+    heading:  u8,
+    alive:    boolean,
+    taken:    float,
+    stand:    float,
+    progress: float,
 }
 
 // What this enemy has left, in HP — 0.0 once it has absorbed its whole
@@ -497,9 +543,58 @@ pub fn spawn_wave(
     }
 }
 
-// Advance one alive enemy by one hex along its heading — unless the
-// hex it would enter is one its class cannot hold, in which case it
-// STAYS PUT.  Plan 11 F1b.
+// Bank one timestep of movement onto this enemy and answer the whole
+// hexes it releases — plan 23 K2a.
+//
+// ⚠ **The SPEED is a parameter and not a lookup**, which is the one
+// place this differs from `helper.loft::helper_bank`, and it is not a
+// style choice.  Every class moves at `ENEMY_SPEED_HEX_PER_SECOND`
+// today, and that value is precisely the one at which the epsilon
+// below cannot fire — so a bank that read the constant itself could
+// only ever be tested at the speed that hides its own guard.  Naming
+// the speed at the call site is what lets
+// `tests/23_k2a_banked_movement.loft` measure 1.0 hex/s, where the
+// guard is worth a hex every forty.  ⚠ K2b turns the argument into
+// `enemy_speed(e.kind)` and changes nothing else here.
+//
+// ⚠ **It keeps the REMAINDER rather than discarding it**, which is
+// what makes the average exact rather than merely close — the property
+// a shorter simulation timestep rests on entirely (`plans/22`).  Ten
+// steps of a tenth of a tick must be worth exactly one tick, and they
+// are.
+//
+// ⚠ **What it does NOT do is bank for an enemy that is not walking.**
+// `enemy_tick` asks the pre-walk window first and returns before it
+// gets here, so a wave that stood eight ticks at its marker does not
+// leave in one stride.  That ordering is the whole of plan 16 W2's
+// survival, and it is a line in the CALLER because a bank that knew
+// about standing would have to know about every other reason not to
+// move too.
+pub fn enemy_bank(e: Enemy, speed: float, tick_seconds: float) -> integer {
+    e.progress = e.progress + speed * tick_seconds;
+    eb_whole   = (e.progress + ENEMY_PROGRESS_EPSILON) as integer? ?? 0;
+    if eb_whole > 0 { e.progress = e.progress - (eb_whole as float); }
+    if e.progress < 0.0 { e.progress = 0.0; }
+    eb_whole
+}
+
+// Advance one alive enemy by the hexes this timestep owes it — plan 11
+// F1b, rebuilt on banked progress in plan 23 K2a.
+//
+// ⚠ **A tick is no longer a hex.**  This used to take exactly one step
+// because a tick was DEFINED as the time an enemy takes to cross one
+// (`TICK_SECONDS` above); it now asks `enemy_bank` how many whole hexes
+// are due and takes that many, which is 1 for every class in the game
+// today and is the point at which K2b can make it 2 for a scout without
+// touching a mover, a target or a field.
+//
+// ⚠ **A hex the ground refuses is SPENT, not re-banked**, and that is
+// the opposite of what `helper_bank` does for the crew.  A helper
+// parked against a wall goes on accumulating so its average stays a
+// rate; an enemy stopped by a wall must NOT, because it is besieging
+// rather than travelling — store the hexes and a robot that chewed a
+// breach for ten ticks crosses the base in one.  So the released hexes
+// go through `enemy_step` and whatever it cannot use is gone.
 //
 // Dead enemies are a no-op (the runtime keeps them in the roster for
 // post-mortem accounting; final-wave-clear checks alive_count to
@@ -514,6 +609,38 @@ pub fn spawn_wave(
 // silently, because an empty palette answers "no ground anywhere".
 // So the signature changed and every call site was made to say which
 // world it ticks against.  The compile errors were the point.
+// ⚠ `tick_seconds` joined them for the same reason (K2a): the
+// timestep is a CHOICE now, so a caller that did not state it would be
+// choosing the old one by accident.
+pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
+                  hl: const HeightLayer, f: const FlowField, desire: const FlowField,
+                  occ: Occupancy, blockers: const BlockerMap, tick_seconds: float) {
+    if !e.alive { return; }
+
+    // ⚠ **The pre-walk window** (plan 16 W2): an enemy that has not
+    // finished standing at its marker does not move — and, since K2a,
+    // does not BANK either.  It is spent at the END of the tick by
+    // `wave_stand`, never here — see `enemy_standing`.
+    if enemy_standing(e) { return; }
+
+    et_left = enemy_bank(e, ENEMY_SPEED_HEX_PER_SECOND, tick_seconds);
+    while et_left > 0 {
+        enemy_step(e, pal, pw, hl, f, desire, occ, blockers);
+        et_left = et_left - 1;
+    }
+}
+
+// One whole hex of movement, resolved against the world as it stands
+// right now — the body `enemy_tick` used to be, called once per hex
+// the bank released (plan 23 K2a).
+//
+// ⚠ **It re-asks everything, every step.**  Occupancy is updated by
+// `enemy_move_to` as the enemy moves, so a class taking two hexes in a
+// timestep sees its companions where they are after its first step
+// rather than where they were at the top of the tick.  That is what
+// keeps a fast class from walking through a queue it would have been
+// stopped by, and it costs nothing today because every class takes
+// exactly one step.
 //
 // ── What a blocked enemy does ───────────────────────────────────
 //
@@ -523,17 +650,9 @@ pub fn spawn_wave(
 // so approach mode's whole answer to a wall is to stop in front of
 // it.  Stopping is what makes the wall a wall; the attack is F5+ and
 // the routing round it is F5.
-pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
-                  hl: const HeightLayer, f: const FlowField, desire: const FlowField,
-                  occ: Occupancy, blockers: const BlockerMap) {
-    if !e.alive { return; }
-
-    // ⚠ **The pre-walk window** (plan 16 W2): an enemy that has not
-    // finished standing at its marker does not move.  It is spent at
-    // the END of the tick by `wave_stand`, never here — see
-    // `enemy_standing`.
-    if enemy_standing(e) { return; }
-
+fn enemy_step(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
+              hl: const HeightLayer, f: const FlowField, desire: const FlowField,
+              occ: Occupancy, blockers: const BlockerMap) {
     // ── Which mode? The bubble decides (plan 11 F5b) ─────────────
     //
     // `docs/ENEMY_MOVEMENT.md` § Two modes: outside the scrambler
@@ -575,11 +694,11 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
     // the core than it started — which is why F5c's
     // `test_a_blocked_enemy_never_moves_away_from_the_core` holds
     // unchanged through this phase.
-    et_d = flow_distance(f, e.q, e.r);
-    if et_d == 0 { return; }                    // arrived; attacking the core is combat's job
-    if et_d < FLOW_UNREACHABLE {
-        for et_t in flow_steps(f, e.q, e.r) {
-            if occupancy_taken(occ, et_t.q, et_t.r) { continue; }
+    es_d = flow_distance(f, e.q, e.r);
+    if es_d == 0 { return; }                    // arrived; attacking the core is combat's job
+    if es_d < FLOW_UNREACHABLE {
+        for es_t in flow_steps(f, e.q, e.r) {
+            if occupancy_taken(occ, es_t.q, es_t.r) { continue; }
             // ⚠ A vehicle blocks a step exactly as a companion does
             // (plan 13 V5).  What differs is the CONSEQUENCE, not the
             // movement: `wave_block` charges an enemy that has no way
@@ -589,8 +708,8 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
             // the player — one map, so an enemy cannot walk through an
             // NPC it would have been stopped by if the player were
             // driving it.
-            if blocker_taken(blockers, et_t.q, et_t.r) { continue; }
-            enemy_move_to(e, et_t.q, et_t.r, occ);
+            if blocker_taken(blockers, es_t.q, es_t.r) { continue; }
+            enemy_move_to(e, es_t.q, es_t.r, occ);
             return;
         }
         // F3's sweep proves the arrow never stalls on a reachable
@@ -598,10 +717,10 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
         // closer neighbour — the ground already said yes.  That makes
         // this branch the pure companion case, and moving beside is
         // exactly what the spec asks for.
-        for et_s in flow_sidesteps(f, e.q, e.r) {
-            if occupancy_taken(occ, et_s.q, et_s.r) { continue; }
-            if blocker_taken(blockers, et_s.q, et_s.r) { continue; }
-            enemy_move_to(e, et_s.q, et_s.r, occ);
+        for es_s in flow_sidesteps(f, e.q, e.r) {
+            if occupancy_taken(occ, es_s.q, es_s.r) { continue; }
+            if blocker_taken(blockers, es_s.q, es_s.r) { continue; }
+            enemy_move_to(e, es_s.q, es_s.r, occ);
             return;
         }
         // Hemmed in on every side at this distance too.  Standing
@@ -1539,7 +1658,7 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         for wt_cf in wt_fields {
             if wt_cf.climb == wt_climb {
                 enemy_tick(wt_e, pal, pw, state.heights, wt_cf.field, wt_desire,
-                           wt_occ, wt_block);
+                           wt_occ, wt_block, TICK_SECONDS);
             }
         }
     }

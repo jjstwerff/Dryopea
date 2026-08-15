@@ -9,7 +9,54 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**K0 + K1 shipped** (2026-08-15).  K2a is next.
+**K0 + K1 + K2a shipped** (2026-08-15).  K2b is next.
+
+⚠⚠ **SPEED IS NO LONGER THE TICK, and not one reading moved.**  An
+enemy banks `speed × tick_seconds` and steps when a whole hex is due;
+`enemy_tick` asks `enemy_bank` how many hexes this timestep owes it and
+takes that many.  Every number is held at today's value, so the old path
+and the new one agree bit for bit — **1128 → 1138 tests** (the ten new
+ones are K2a's own) and **30 scripts / 569 measurements UNCHANGED**
+(`@M015`).  `TICK_SECONDS = 1/ENEMY_SPEED_HEX_PER_SECOND` survives as
+the expression that HOLDS the timestep at one regular's hex rather than
+the one that forces it (`@X058`).
+
+⚠⚠ **The phase's real finding is that its own guard cannot fire.**
+`1.5 × (1.0/1.5)` is exactly 1.0 to the bit, so the carry is 0.0 for
+ever and the accumulator behaves like the `+ 1` it replaced.  MEASURED
+by setting `ENEMY_PROGRESS_EPSILON` to 0.0 and running both gates: **all
+1128 pre-K2a tests and all 569 measurements stay green**, and only the
+three assertions written to look for it fail (`@M014`).  That is
+`17-T1`'s shape — *an epsilon whose removal leaves the suite green is a
+guard that cannot fire* — arriving in the one phase whose whole gate is
+*nothing moved*.
+
+⚠⚠ **And 1.5 is one of the FEW speeds with that property, which is what
+turns a curiosity into a trap.**  Swept over sixty ticks of the real
+timestep, the epsilon is worth a whole hex at **1.0, 1.2, 1.8, 2.0 and
+2.5** hex/s and worth nothing at 0.5, 0.75, 1.5, 2.25 and 3.0 —
+so a class K2b hands 1.0 hex/s would silently lose a hex every forty,
+and the corpus would report it as *a wave that arrives a tick late*
+rather than as a rounding bug (`@M013`).  ⚠ It is worth a hex to a
+**tenth-length tick** too, so the guard is [`plan 22`](../22-the-field-cache/README.md)'s
+problem as much as K2b's.  ⚠ This is why `enemy_bank` takes its speed as
+an ARGUMENT where `helper_bank` reads a constant (`@X060`): a bank that
+read the constant could only ever be tested at the value that hides its
+own guard.
+
+⚠ **One asymmetry against the crew was decided rather than inherited**
+(`@X059`): a hex the ground refuses is **spent, not re-banked**.
+`helper_bank` does the opposite on purpose — a helper parked at a wall
+keeps accumulating so its average stays a rate — but an enemy stopped by
+a wall is BESIEGING, and storing the hexes would let a robot that chewed
+a breach for ten ticks cross the base the moment it opens.
+
+⚠ **`state_diff` learned `progress` as a TRIPWIRE, not because it can
+differ today.**  The carry is exactly 0.0 after every tick at 1×, so
+`emit.loft` has no verb for it and S2's round-trip is green without one.
+K2b is the phase where a captured scenario starts carrying a remainder,
+and the first thing that happens is `compare.loft` going red — which is
+the signal to give `place` its progress, not to loosen the comparison.
 
 ⚠ **A wave has COMPOSITION, and the design decision was to DELETE this
 plan's own negative control.**  `schedule 4 12` arms a list and
@@ -152,7 +199,7 @@ what it CARRIES, which would make it the richest salvage on the field"* — and
 |---|---|---|---|
 | **K0** | a 100 HP braced wall under 4 miners at 3 HP/s breaks at a measurably earlier tick than under 4 scouts at 0.2 HP/s — and the scouts do **not** break it at all within the scenario | *the class reaches the wall* — a per-class rate is READ, not defaulted | ⚠ `place 0 3 hauler` (an unknown name) must be **refused**, never silently a robot — `script.loft`'s existing rule, extended |
 | **K1** | ✅ a wave authored `8 miner` arrives as 8 enemies of kind miner, counted at the marker | *composition is conserved from the list to the roster* | ⚠ **the named control was DELETED** — *a mix whose parts do not sum to the wave's count* cannot be built, because the count is not stored (`@X055`).  What replaced it: composing 12 as `3 miner 2 scout` gives a wave of **five**; an unknown class, `vehicle`, a wave index off the end, an odd token count and an empty composition are each refused; and a composed list must survive **emit → replay → `state_diff` identical** |
-| **K2a** | **the whole corpus is unchanged** — 1094 tests, 520 measurements, every arrival tick identical, with banking in the mover and every class still at 1.5 hex/s | *banked movement at 1× is the identity* | ⚠ an epsilon whose removal leaves the suite green is a guard that cannot fire (`17-T1`) — bank a hair under a whole hex and require no step |
+| **K2a** | ✅ **the whole corpus is unchanged** — 1128 tests, 30 scripts / 569 measurements, every arrival tick identical, with banking in the mover and every class still at 1.5 hex/s | *banked movement at 1× is the identity* | ⚠ **the named control was necessary and NOT sufficient**, and measuring it is the phase's finding.  Banking a hair under a whole hex and requiring no step is built (§ The guard can fire, both directions) — but at 1.5 hex/s the tick arithmetic is EXACT, so the epsilon is unreachable from any scenario and its removal leaves 1128 tests + 569 measurements green (`@M014`).  What makes the guard gateable is banking at a speed the constant does not take (`@M013`), which is why the speed is an argument |
 | **K2b** | a scout wave crosses a measured corridor in the ratio of its speed to a robot's, ±1 tick | *speed is a rate, not a tick count* | a class at 0.0 hex/s must never advance and must not divide by zero |
 | **K3** | three waves of equal SIZE and different composition give three different clocks | *composition is legible in the outcome* | — (a measurement phase) |
 
@@ -162,8 +209,8 @@ what it CARRIES, which would make it the richest salvage on the field"* — and
 |---|---|---|---|
 | **K0** — the four classes as DATA | S | `tests/23_k0_the_classes.loft` (11 tests) + `a-wall-against-a-miner.keys` / `a-wall-against-a-scout.keys` — the same 15 HP stub, one word apart, rubble in one run and 12.8 HP in the other | ✅ **Shipped** |
 | **K1** — a wave has COMPOSITION | M | `tests/23_k1_composition.loft` (21 tests) — the roster counted BY KIND matches the list, in the ORDER written; the default list still plays IDENTICALLY; and a composed list round-trips through `emit_keys` | ✅ **Shipped** |
-| **K2a** — speed is BANKED, and nothing moves | M | ⚠ **the corpus is the gate**: `scripts/test.sh` 1128 green + `scripts/validate.sh` 569 measurements unchanged, with the coupling broken | Ready |
-| **K2b** — the scout is FASTER | S | a two-class corridor scenario; arrival ticks in the speed ratio.  ⚠ `tests/23_k1_composition.loft` § test_speed_is_still_the_same_for_every_class is the "not yet" pin it has to break | Blocked on K2a |
+| **K2a** — speed is BANKED, and nothing moves | M | ⚠ **the corpus is the gate**: 1128 pre-K2a tests green + 569 measurements unchanged, with the coupling broken — plus `tests/23_k2a_banked_movement.loft` (10 tests) for the three things the corpus CANNOT see: the guard, the speeds that need it, and the timestep being free | ✅ **Shipped** |
+| **K2b** — the scout is FASTER | S | a two-class corridor scenario; arrival ticks in the speed ratio.  ⚠ `tests/23_k1_composition.loft` § test_speed_is_still_the_same_for_every_class is the "not yet" pin it has to break, and `tests/12_b0_probe.loft` § test_a_tick_advances_an_enemy_exactly_one_hex is the second.  ⚠ **Pick the scout's speed against `@M013`** — 1.0, 1.2, 1.8, 2.0 and 2.5 hex/s all need the epsilon that 1.5 hides | Ready |
 | **K3** — what composition is WORTH | S | three equal-size waves, three compositions, three measured clocks — the repo's standard closing measurement.  ⚠ `compose` is what authors them, so this is a `.keys` phase with no new code | Blocked on K2b |
 
 ⚠ **K2 is cut in two on purpose, and the seam is where the safety is**

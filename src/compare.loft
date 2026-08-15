@@ -90,6 +90,19 @@ fn enemies_diff(a: const WaveState, b: const WaveState) -> text {
         if ed_x.stand != ed_y.stand {
             return "enemies[{ed_i}].stand: {ed_x.stand} vs {ed_y.stand}";
         }
+        // ⚠ **The banked sub-hex carry** (plan 23 K2a), and it is here
+        // as a TRIPWIRE rather than because it can differ today.  At
+        // 1.5 hex/s over a 1/1.5 s tick the carry is exactly 0.0 after
+        // every tick, so `emit.loft` has no verb for it and the S2
+        // round-trip is green without one.  K2b gives one class a speed
+        // that leaves a remainder, and the FIRST thing that happens is
+        // this line going red on a captured scenario — which is the
+        // signal to give `place` its progress, not to loosen the
+        // comparison.  Compared EXACTLY, per this file's own rule: an
+        // epsilon would hide the ulp of drift the gate exists to catch.
+        if ed_x.progress != ed_y.progress {
+            return "enemies[{ed_i}].progress: {ed_x.progress} vs {ed_y.progress}";
+        }
         ed_i += 1;
     }
     ""

@@ -392,7 +392,7 @@ fn test_approach_mode_will_not_climb_a_pile() {
     tap_e  = far_east(ENEMY_KIND_REGULAR, 30);
     tap_f  = field_for(ENEMY_KIND_REGULAR, tap_pw, tap_hl);
 
-    for _ in 0..10 { enemy_tick(tap_e, pal(), tap_pw, tap_hl, tap_f, flow_empty(), occupancy_empty(), blocker_empty()); }
+    for _ in 0..10 { enemy_tick(tap_e, pal(), tap_pw, tap_hl, tap_f, flow_empty(), occupancy_empty(), blocker_empty(), TICK_SECONDS); }
 
     assert(tap_e.q == 28 && tap_e.r == 0,
            "it stops the hex before the pile: ({tap_e.q}, {tap_e.r})");
@@ -404,7 +404,7 @@ fn test_but_it_walks_down_off_one() {
     tbw_e  = far_east(ENEMY_KIND_REGULAR, 30);
     tbw_f  = field_for(ENEMY_KIND_REGULAR, tbw_pw, tbw_hl);
 
-    enemy_tick(tbw_e, pal(), tbw_pw, tbw_hl, tbw_f, flow_empty(), occupancy_empty(), blocker_empty());
+    enemy_tick(tbw_e, pal(), tbw_pw, tbw_hl, tbw_f, flow_empty(), occupancy_empty(), blocker_empty(), TICK_SECONDS);
 
     assert(tbw_e.q == 29, "a drop is free: ({tbw_e.q}, {tbw_e.r})");
 }

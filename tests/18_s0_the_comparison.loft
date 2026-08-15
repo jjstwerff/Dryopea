@@ -169,6 +169,16 @@ fn test_the_roster_is_discriminated() {
     tri_8 = peopled();
     (tri_8.enemies[0] ?? Enemy { }).stand = 4.0;
     assert(saw(tri_8) != "", "an enemy's pre-walk window is seen");
+
+    // ⚠ .progress — the banked sub-hex carry (plan 23 K2a).  Nothing in
+    // the game can make it non-zero yet, so this row is the only thing
+    // covering it; without it the field would be invisible to the
+    // comparison on the day K2b's faster class starts leaving a
+    // remainder, and `emit.loft`'s round trip would certify a capture
+    // that had silently lost it.
+    tri_9 = peopled();
+    (tri_9.enemies[0] ?? Enemy { }).progress = 0.5;
+    assert(saw(tri_9) != "", "an enemy's banked progress is seen");
 }
 
 fn test_the_cursor_is_discriminated() {
