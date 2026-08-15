@@ -398,7 +398,30 @@ pub fn can_climb(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLaye
                  climb: float, from: const Hex, to: const Hex) -> boolean {
     if !hex_walkable(pal, pw, hl, from.q, from.r) { return false; }
     if !hex_walkable(pal, pw, hl, to.q, to.r) { return false; }
-    hex_height(pal, pw, hl, to.q, to.r) - hex_height(pal, pw, hl, from.q, from.r) <= climb
+    climb_ok(hex_height(pal, pw, hl, from.q, from.r),
+             hex_height(pal, pw, hl, to.q, to.r), climb)
+}
+
+// ⚠⚠ **The HEIGHT half on its own, and it is NOT the rule.**
+//
+// `can_climb` is the rule and is defined in terms of this, so the two
+// cannot disagree — this is a decomposition rather than a second door.
+// What it exists for is the one caller that already knows both heights:
+// `flow.loft::flow_sweep` asks the same frontier hex about six
+// neighbours, so its height and its walkability are invariant across
+// all six and computing them once is the same answer for a sixth of the
+// work (profiled 2026-08-15: the sweep and its lookups were 75% of the
+// suite's interpreted time).
+//
+// ⚠ **Calling this INSTEAD of `can_climb` is the bug `hex_walkable`
+// exists to prevent.**  A step is legal when both ends are ground the
+// class stands on AND the rise is within its climb; this is only the
+// second clause.  `wall` and `wall_high` are `walk_ground = true` — a
+// wall's walkable part is its top — so a height comparison on its own
+// walks robots through 3 m walls.  Any caller has to have asked
+// `hex_walkable` about BOTH ends first, and `flow_sweep` does.
+pub fn climb_ok(from_height: float, to_height: float, climb: float) -> boolean {
+    to_height - from_height <= climb
 }
 
 // ─── The position rule, for a measurement with no history ───────

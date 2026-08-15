@@ -89,7 +89,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 983/983 green under `scripts/test.sh`** (~145 s measured
+**Suite: 983/983 green under `scripts/test.sh`** (~130 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -362,21 +362,62 @@ per-function + per-line + call-path report over every run in the suite.
 - `ticks()` is in **microseconds** (`default/02_files.loft`), so a probe
   that prints it as ms overstates by 1000x.
 
-**Where the time goes (profiled 2026-08-12, 13.7 s interpreted of ~33 s
-wall — the rest is per-file process start + ~37 ms/file codegen):**
+**Where the time goes (re-profiled 2026-08-15: 2 780 440 samples,
+65.5 s interpreted of a ~130 s wall — the other half is compilation,
+below):**
 
-⚠ **58% is `graphics`'s `canvas()`**, and it is not dryopea's to fix.
-`graphics.loft:45` is `[for _ in 0..cw * ch { fill_color }]` — 691 200
-elements at 3 bytecodes each, ~231 ms per 960x720 canvas, ~35 canvases a
-run.  loft's `PERFORMANCE.md` § O8 describes exactly this cost but **O8.5
-would not fix it**: `cw * ch` is a runtime value, and 691 200 exceeds its
-hard 10 000-element unroll limit.  The gap is a *runtime* bulk fill
-(`zero_fill` / `copy_block` already exist in the store) and no design on
-that page covers it.  Worth ~7.5 s, i.e. 21% of the suite — the largest
-remaining win, and an upstream ask against `loft-libs-graphics`.
+⚠⚠ **This INVERTED between plan 12 and plan 17, and the old reading is
+the trap.**  The 2026-08-12 profile said *58% is `graphics`'s `canvas()`
+… the largest remaining win, an upstream ask*, and *"all of plan 11 …
+is under 15% put together"*.  Both are now false and each points a
+reader the wrong way:
 
-All of plan 11 — `flow_sweep`, `hex_neighbor`, `hex_ground`,
-`hex_height` — is under 15% put together.
+| | 2026-08-12 | 2026-08-15 |
+|---|---|---|
+| the flow field + its passability lookups | <15% | **~75%** |
+| `classify_canvas` + `Canvas` primitives | 58% | **7.5%** |
+
+**The distance field is the suite**, and every hot path reads
+`wave_tick → wave_fields → flow_build → flow_sweep → can_climb → …`.
+`flow_sweep` alone is 16.1% self, `painted_ground` 11.9%,
+`hex_neighbor` 8.5%, `hex_walkable` 6.7%, `lat_neighbour` 6.5%, and
+`lookup_painted` / `height_rise` / `painted_height_of` / `hex_ground`
+another 19.3%.  It grew because plans 13-17 added tests that run whole
+bases to their fall, and the field is rebuilt from scratch **every
+tick**.
+
+⚠ So the moral is not the numbers, it is that a profile ages: this one
+was three plans stale and still being quoted as the place to look.
+**Re-profile before optimising, and quote the date.**
+
+⚠⚠ **And quote the SAMPLE COUNT, because the wall clock lied again.**
+The `flow_sweep` hoist below measured **2 941 011 -> 2 780 440 samples,
+a 5.5% cut** — while two clean foreground runs of the whole suite read
+2m25 and 2m01, i.e. a 16% "improvement" that is mostly noise.  Half the
+suite is compilation and does not move at all, so 5.5% of the
+interpreted half is ~4% of the wall.  The op counter is deterministic;
+the clock is not.
+
+⚠ **What the hoist actually bought, and why the estimate was 3x too
+high.**  `flow_sweep`'s six-direction loop tests `cells[n] != null`
+BEFORE the expensive question, so in a BFS most neighbours are already
+labelled and the "6x recomputation of the frontier hex" was really 1-2x
+in practice.  What did pay was the neighbour's height, which
+`can_climb` computed and the `FlowCell` then computed again —
+`painted_height_of` fell 3.32 s -> 2.15 s and `can_climb` left the table
+entirely.  ⚠ Estimate the multiplier from the code path a profile
+actually walks, not from the loop bounds.
+
+⚠ **The other half of the wall clock is COMPILATION, not execution.**
+Measured 2026-08-15: a test file with no `use` costs 40 ms, one with
+`use lattice;` costs 52 ms, and one with `use dryopea;` costs **~490 ms**
+— so ~450 ms per file is rebuilding the aggregator, and all 67 test
+files pay it.  That is ~31 s of the suite for nothing, and it grows with
+BOTH the file count and the size of `src/`.  Filed as
+[loft#925](https://github.com/loft-lang/loft/issues/925); it is not
+dryopea's to fix, and the workaround it tempts you into — `use`ing
+single modules instead of the aggregator — makes tests stop exercising
+the entry point the program uses.
 
 ⚠ **`ticks()` is loft's clock builtin — never shadow it**, not even as
 a parameter name.  A probe that took `ticks` as a parameter compiled

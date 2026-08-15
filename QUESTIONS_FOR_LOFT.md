@@ -40,6 +40,27 @@ problems go straight to a GitHub issue; see
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### `loft test` recompiles the consumer library once per test file
+
+**Filed:** [loft#925](https://github.com/loft-lang/loft/issues/925)
+(`enhancement`, `sev:medium`, `area:packages`, `wa:none`,
+`hit-by:dryopea`).
+
+Measured 2026-08-15, three test files differing only in what they `use`:
+no `use` at all costs 40 ms, `use lattice;` costs 52 ms, and
+`use dryopea;` costs **~490 ms**.  So ~450 ms per file is rebuilding the
+aggregator, and all 67 dryopea test files pay it — **~31 s of a ~130 s
+suite**, spent compiling the same unchanged library 67 times.
+
+⚠ It is superlinear in project growth: a module added to `src/` slows
+every test file, and a test file added re-pays for every module.
+
+⚠ **No workaround worth taking.**  The obvious one — `use`ing single
+modules instead of the aggregator — is measured to be nearly free
+(52 ms), and it is exactly wrong: tests would stop exercising the entry
+point the program uses, which is the property `CLAUDE.md` § Architecture
+keeps the aggregator for.
+
 ### A local bound to a FORWARD-declared call panics the parser
 
 **Filed:** [loft#918](https://github.com/loft-lang/loft/issues/918)

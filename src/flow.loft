@@ -283,20 +283,54 @@ fn flow_sweep(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
         fb_d += 1;
         fb_next: vector<Hex> = [];
         for fb_h in fb_frontier {
+            // ⚠⚠ **The frontier hex's own two questions are asked ONCE,
+            // not six times**, and this is the whole of a 2026-08-15
+            // profiling pass: `flow_sweep` and the lookups under it were
+            // **75% of the suite's interpreted time**, and the largest
+            // single redundancy was here — `fb_h` is the `to` of all six
+            // steps, so its walkability and its height are invariant
+            // across the direction loop and were being recomputed for
+            // each one.  Each recomputation is a `painted_ground` (a
+            // hash lookup plus a palette index) and a `height_rise`.
+            //
+            // ⚠ It is a HOIST and not a rule change: the same values,
+            // computed at the same point, used six times instead of
+            // recomputed six times.  What proves that is the suite —
+            // the field decides every enemy's route, so every exact
+            // clock in it (247, 248, 321, 537 …) moves if this is
+            // wrong by a single cell.
+            if !hex_walkable(pal, pw, hl, fb_h.q, fb_h.r) { continue; }
+            fb_hh = hex_height(pal, pw, hl, fb_h.q, fb_h.r);
+
             for fb_dir in 0..6 {
                 fb_n = lat_neighbour(fb_h, fb_dir);
                 // Already labelled — and its label is smaller or
                 // equal, because BFS reaches every cell by a shortest
                 // route first.
                 if fb_f.cells[fb_n.q, fb_n.r] != null { continue; }
+                if !hex_walkable(pal, pw, hl, fb_n.q, fb_n.r) { continue; }
+
+                // ⚠ The neighbour's height, once, for BOTH the step
+                // test and the cell it is about to be written into —
+                // `can_climb` computed it and then the `FlowCell`
+                // computed it again.
+                fb_nh = hex_height(pal, pw, hl, fb_n.q, fb_n.r);
+
                 // ⚠ `fb_n -> fb_h`, not the other way round: the sweep
                 // runs outward and the ENEMY walks inward, so the move
                 // being tested is the one it will actually make.  See
                 // § What the field is over.
-                if !can_climb(pal, pw, hl, climb, fb_n, fb_h) { continue; }
+                //
+                // ⚠ `climb_ok` is the height half of `can_climb`, which
+                // is DEFINED in terms of it — and the two walkability
+                // questions it does not ask are the two asked above.
+                // Reaching for it without them is the `walk_ground`
+                // alone bug (`passable.loft` § climb_ok).
+                if !climb_ok(fb_nh, fb_hh, climb) { continue; }
+
                 fb_f.cells[fb_n.q, fb_n.r] = FlowCell {
                     q: fb_n.q, r: fb_n.r, dist: fb_d,
-                    height: hex_height(pal, pw, hl, fb_n.q, fb_n.r),
+                    height: fb_nh,
                 };
                 fb_next += [fb_n];
             }
