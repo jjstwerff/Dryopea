@@ -1,0 +1,42 @@
+// Probe 2 — the other half of the gate chain.
+//
+// A GL frame is only GATEABLE if dryopea can read it back and classify it
+// the way `measure.loft::classify_world` classifies a software Canvas.
+// `gl_screenshot` writes a PNG; `imaging::png` is the only decoder in the
+// registry.  So: can the colours survive the round trip?
+//
+// ⚠ The alpha hole in `imaging::Pixel` does NOT bite here, and that is the
+// point worth measuring: a CAPTURED FRAME IS OPAQUE.  Alpha only matters
+// for sprite cut-outs, which this design no longer has.
+
+#cwd
+
+use imaging;
+
+fn main() {
+    img = file("capture_out.png").png();
+    if img == null {
+        println("PROBE2: FAIL — could not decode");
+        return;
+    }
+    println("PROBE2: decoded {img.width}x{img.height}, {len(img.data)} pixels");
+
+    // Classify exactly the way `measure.loft` does: an EXACT lookup, not a
+    // nearest-colour match, because the rasteriser does not blend.
+    red   = 0;
+    green = 0;
+    back  = 0;
+    other = 0;
+    for p in img.data {
+        v = p.value();
+        if      v == 0xff0000 { red   += 1; }
+        else if v == 0x00ff00 { green += 1; }
+        else if v == 0x203040 { back  += 1; }
+        else                  { other += 1; }
+    }
+    total = len(img.data);
+    println("PROBE2: red   {red} ({(red   * 100 / total) ?? 0}%)  expect ~12.5%");
+    println("PROBE2: green {green} ({(green * 100 / total) ?? 0}%)  expect ~10%");
+    println("PROBE2: back  {back} ({(back  * 100 / total) ?? 0}%)");
+    println("PROBE2: other {other} ({(other * 100 / total) ?? 0}%)  <- antialiasing only");
+}

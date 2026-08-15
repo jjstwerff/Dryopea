@@ -1935,7 +1935,7 @@ spatial terms first.
 | **Tab** | Editor mode toggle (ground ↔ marker) |
 | **1-0, -** | Palette select (editor) |
 | **Esc** | Cancel / menu |
-| Mouse / right stick | Reserved for UI clicks (landing-spot pick, editor click, map markers); **NOT camera orbit** |
+| Mouse / right stick | Reserved for UI clicks (landing-spot pick, editor click, map markers); ~~**NOT camera orbit**~~ ⚠ **superseded** — see § 12's banner and [`RENDERER.md`](RENDERER.md) § R1 |
 
 Full mapping in
 [`../examples/numbers.json`](../examples/numbers.json) §
@@ -1950,6 +1950,23 @@ construction commits the order).  The vehicle's body tints red
 while paint mode is on (diegetic indicator).
 
 ## 12. Camera + HUD
+
+> ⚠⚠ **THE "LOCKED" HALF OF THIS SECTION IS SUPERSEDED AND NOT YET
+> REWRITTEN** (2026-08-15).  The project owner asked for *"the dynamic
+> camera of ../moros and not a static camera of the base or terrain"*,
+> with elevation and distance under the player's control — so **"locked
+> in pose — no mouse orbit" is false**, and so is § 11's *"Mouse …
+> **NOT** camera orbit"*.
+>
+> [`RENDERER.md`](RENDERER.md) § R1 carries what replaces it; plan 21 R1
+> is the phase that rewrites these two passages, deliberately in the
+> commit that lands the camera rather than ahead of it.
+>
+> ⚠ **What SURVIVES is the auto-reframe below**, and it survives
+> unchanged: the boom sweeping to a position that can see the vehicle is
+> moros's occlusion sweep, and `tower.loft::tower_sees` is the query it
+> should ask.  ⚠ Something also has to keep doing the work *"the mouse is
+> free for placement"* was doing in § 11.
 
 ### Camera — over-the-shoulder, locked, auto-reframe
 

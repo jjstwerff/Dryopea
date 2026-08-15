@@ -44,7 +44,38 @@ Severity tiers:
 
 ## Open
 
-*(none)*
+### @D002 — `cam.zoom` changes no pixel: the wheel moves a number no renderer reads
+
+- **Status:** Open
+- **Severity:** Med — the editor has a control that appears to work and
+  does nothing; and it removes a lever [`docs/PARTS.md`](docs/PARTS.md)
+  § What could kill this design was counting on.
+- **Found while:** writing `docs/PARTS.md` (plan 20), checking whether
+  "zoom in to see the detail" was an option if entity sprites read too
+  small at `VIEW_PPM` 24.
+- **Repro:** `grep -rn "\.zoom" src/` — `camera.loft` moves it on the
+  wheel (`ZOOM_MIN..ZOOM_MAX`), `save.loft` persists it, `script.loft`
+  walks the camera to it and prints it in the state line.  **No file
+  under `src/` that draws anything reads it**: `render.loft` does not
+  mention `zoom`, and `render_editor_frame` takes `VIEW_PPM` as a
+  constant.
+- **Expected:** scrolling the wheel changes how much world the frame
+  shows.
+- **Observed:** the number changes, is saved, is reported by `snap`'s
+  state line — and the picture is identical at `z1` and at `z6`.
+- **Workaround:** none needed today; nothing depends on it.  ⚠ But
+  `tests/scripts/*.keys` walk the camera to a zoom and `at` asserts it
+  arrives, so **the gate is green over a control that does nothing** —
+  which is why this is Med rather than Low.
+- **Fix plan:** deferred, and deliberately NOT a phase of plan 20 —
+  that plan must not grow a second subject.  The fix is to derive the
+  render scale from the camera (`ppm = VIEW_PPM / zoom`, or a table) in
+  the ONE place `render_editor_frame` passes it, so the GL loop and
+  `snap` cannot disagree.  ⚠ It rebaselines every golden taken at a
+  zoom other than the default.
+- **Test:** none yet.  The shape it wants: two `snap`s of one map at two
+  zooms, and `classify_world` shares that DIFFER — a golden would
+  agree with whatever it started drawing.
 
 ## Fixed
 

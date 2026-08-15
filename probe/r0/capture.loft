@@ -1,0 +1,41 @@
+// Probe: can a GL context be created and a frame captured with NO real
+// display — i.e. under xvfb, the way a CI gate would have to run?
+//
+// This is the question that decides whether dryopea's whole measurement
+// culture (1094 tests / 520 measurements / 32 shots, all headless)
+// survives moving the game to a GL renderer.
+//
+// Pass  = a PNG on disk with the colours this program drew.
+// Fail  = no context, or a capture that is not what was drawn.
+
+#cwd
+
+use graphics;
+
+fn main() {
+    if !gl_create_window(320, 240, "r0 capture") {
+        println("PROBE: FAIL — no GL context");
+        return;
+    }
+    println("PROBE: context created");
+
+    painter = create_painter_2d(320.0, 240.0);
+
+    // Draw something UNMISTAKEABLE through the software rasteriser, upload
+    // it as a texture, and blit — which is exactly dryopea's present frame
+    // path, so a pass says that path works headless too.
+    cv = canvas(320, 240, rgb(0x20, 0x30, 0x40));
+    fill_rect(cv, 40, 40, 120, 80, rgb(0xff, 0x00, 0x00));
+    fill_circle(cv, 220, 150, 50, rgb(0x00, 0xff, 0x00));
+    tex = gl_upload_canvas(cv.data, cv.width, cv.height);
+
+    gl_clear(rgb(0, 0, 0));
+    draw_texture_at(painter, tex, 0.0, 0.0, 320.0, 240.0);
+
+    // ⚠ BEFORE the swap — the doc says it reads GL_BACK.
+    ok = gl_screenshot(320, 240, "capture_out.png");
+    gl_swap_buffers();
+
+    println("PROBE: capture = {ok}");
+    gl_destroy_window();
+}

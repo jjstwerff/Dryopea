@@ -31,9 +31,33 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
-*(none — every entry is Submitted upstream or Resolved below.  New
-problems go straight to a GitHub issue; see
-[`CLAUDE.md`](CLAUDE.md) § Relationship to loft.)*
+### `imaging::Pixel` has no alpha, so a PNG cannot round-trip a sprite
+
+- **Found while:** designing [`docs/PARTS.md`](docs/PARTS.md) (plan 20) —
+  entity sprites are cut-outs blitted over the hex ground, so every one
+  of them is mostly transparent.
+- **Kind:** feature
+- **What dryopea needs:** an alpha channel on `imaging::Pixel`.  It is
+  `{ r, g, b }` today (`imaging` 0.2.1), and `png(self: File) -> Image`
+  is the registry's only PNG **decoder** — so a sprite written with
+  transparency comes back opaque.  ⚠ The asymmetry is the sharp part:
+  `graphics::Canvas` already *writes* alpha (`save_png` "automatically
+  uses RGBA if any pixel has alpha < 255") and already *composites* it
+  (`blend_pixel`).  So loft can produce a file it cannot read back.
+- **Workaround in dryopea (if any):** **the design avoids needing it** —
+  `docs/PARTS.md` § D5 renders part-trees straight into `Canvas` sprites
+  and treats PNGs as an ARTEFACT rather than a runtime input, so nothing
+  decodes one.  ⚠ A colour key (magenta = transparent) would also work
+  and is deliberately not taken: it is a 1990s workaround for a problem
+  this design does not have to have.
+  ⚠ **What it does block** is the other pipeline — hand-authored art
+  PNGs from an artist, loaded at runtime.  That is a real future ask,
+  not a hypothetical, which is why this is filed before it bites.
+- **Loft pointer:** `imaging` 0.2.1, `src/imaging.loft` — `Pixel`,
+  `value()` (which packs 24-bit `0xRRGGBB`), `load_png` / `n_load_png`.
+  ⚠ Belongs to whichever repo owns `imaging`; `graphics` moved to
+  `loft-libs-graphics`, so check there before filing against
+  `loft-lang/loft`.
 
 ## Submitted
 

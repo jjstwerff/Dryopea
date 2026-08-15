@@ -731,11 +731,16 @@ docs/
   SETTING.md            — fiction (AI-driven robots, faction lore,
                           surface-vs-underground, future contact gates)
   DESIGN_HISTORY.md     — 2023 prototype design seeds
+  PARTS.md              — entity art: the part-tree model and what an entity
+                          IS, in metres and turns (plan 20)
+  RENDERER.md           — the camera, the pipeline and the gate chain
+                          (plan 21).  ⚠ Retires DESIGN.md § 12
   GROUND_TYPES.md       — 11-type palette (water + land + structure)
   NUMBERS.md            — tunable values
   PROXY_ART.md          — placeholder shapes for entities
 
-PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; none open — @D001 fixed)
+PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; @D002 open — `cam.zoom`
+                          changes no pixel; @D001 fixed)
 QUESTIONS_FOR_LOFT.md   — outbound queue to loft (Open / Submitted / Resolved)
 README.md               — public project intro
 loft.toml               — package manifest (depends on graphics)
@@ -818,7 +823,9 @@ signature.
 | [docs/GROUND_TYPES.md](docs/GROUND_TYPES.md) | Palette spec — 11 painted types plus `rubble`, which the runtime deposits and nobody paints |
 | [docs/NUMBERS.md](docs/NUMBERS.md) | Guide to `examples/numbers.json` — what is in it, what reads it, and ⚠ that nothing LOADS it yet |
 | [loft_repros/README.md](loft_repros/README.md) | Minimal reproducers for loft bugs — filed, and ready to file |
-| [docs/PROXY_ART.md](docs/PROXY_ART.md) | Placeholder shapes |
+| [docs/PARTS.md](docs/PARTS.md) | ⚠ **Entity art — every entity is a PART-TREE and its GEOMETRY is derived** (plan 20).  The moros model (limbs on joints, three limb kinds, scale derived, hitbox a subset of the skin) and where dryopea deviates.  ⚠ Decisions D1-D8; moros's own `doc/claude/PARTS.md` § P9.0 is the authority on the model.  ⚠ § D4 replaced a SPRITE design — read it before quoting anything about pixels |
+| [docs/RENDERER.md](docs/RENDERER.md) | ⚠ **The camera and the pipeline** (plan 21) — moros's `RenderCamera`, FOLLOW behind the facing, and ⚠⚠ **`camera_overview` at 89° IS the editor's view**, so it is one camera with two presets.  ⚠ § R0 MEASURED that a GL frame survives `xvfb` → `gl_screenshot` → `imaging::png` → exact classification with **zero** colour drift — which is what makes going 3-D affordable at all.  ⚠ Retires `DESIGN.md` § 12 |
+| [docs/PROXY_ART.md](docs/PROXY_ART.md) | Placeholder shapes.  ⚠ Its SIZES stay and become a gate (`PARTS.md` § D6); its SHAPES retire entry by entry as plan 20's catalogue covers them |
 | [plans/README.md](plans/README.md) | Plan conventions (moros-style) + index |
 | [plans/_TEMPLATE.md](plans/_TEMPLATE.md) | Template for a new plan |
 | [plans/ROADMAP.md](plans/ROADMAP.md) | Comprehensive feature roadmap (5 tiers) |
@@ -850,6 +857,10 @@ signature.
 | Play the game in a window | `make play`, pan to the base, press **P** (plan 19 P3).  The crew lands at the core, WASD drives it, and waves arrive on the wall clock.  ⚠ **Nothing of the game is drawn yet** — P4 — so the console echo (a line per tick) is the whole of what you can see, and the camera does not follow the vehicle |
 | Turn a state you REACHED into a test | [plans/18](plans/18-scenario-capture/README.md) — the tool is BUILT (S0-S4); the loop to capture FROM now exists (plan 19 P3), and wiring a key to it is plan 19 P5.  ⚠ Emits `.keys` and never a state blob: a saved `WaveState` is a golden of the simulation and *a golden agrees with a shear*.  ⚠ The work is making the vocabulary TOTAL over `WaveState` — enemies, towers, wallet and cargo have no setters today.  ⚠ A crop has a MINIMUM radius set by the mechanics (the core, the 25-hex bubble, a tower's range 15), so a naive one silently changes enemy steering |
 | Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
+| Draw an ENTITY, or change what one looks like | [`docs/PARTS.md`](docs/PARTS.md) — a part-tree, and the GEOMETRY is derived from it (plan 20).  ⚠ **Never a shape drawn inline in `editor_view.loft`**: that is the *"second renderer that happens to live in the test harness"* its own header refuses, one layer down.  ⚠ The SIZE is the durable artefact and § D6 gates it against the simulation's constant |
+| Ask where the game's CAMERA lives, or why the editor's view is a mode of it | [`docs/RENDERER.md`](docs/RENDERER.md) § R1 — moros's `RenderCamera`, ported.  ⚠ `camera_overview` at elevation 89° reproduces the editor's top-down view, so there is ONE camera with two presets.  ⚠ The game's camera belongs on `PlayState`, never on `EditorState.cam` (that is `EditorCamera`, and its zoom is `@D002`) |
+| Gate anything that is DRAWN by GL | [`docs/RENDERER.md`](docs/RENDERER.md) § R0 + § R4 — `xvfb` → GL → `gl_screenshot` → `imaging::png` → `classify_world`, measured at **zero** colour drift.  ⚠ Render FLAT UNLIT for the gate: a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  ⚠ Never loosen to nearest-colour — that discards the property R0 measured |
+| Ask what a tower's top is, in the art | `docs/PARTS.md` § D3 — it is a SOCKET, and the simulation has had one since plan 17 T2 (`tower_detach_top` / `tower_mount_top`, which refuses an occupied tower).  ⚠ Which pose a tower draws in is ASKED of `TowerState`, never a second flag beside it |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
 | Author any part of a `WaveState` in a `.keys` file | `src/script.loft::script_author` (plan 18 S1b) — `tower` / `object` / `spent` / `player` / `member` / `pending` / `cursor` cover the layers and the condition fields no play verb reaches, so the vocabulary is TOTAL over the state.  ⚠ They AUTHOR and never simulate: a tower authored black fires nothing and an object authored into the player's hands checks no reach.  ⚠ SEVEN command words rather than one `set` with a subject, because `keys_schemas` keys a coordinate's position on the FIRST token — one `set` row would silently rewrite `set member 0 on 0.5` as if `0 on` were a hex |

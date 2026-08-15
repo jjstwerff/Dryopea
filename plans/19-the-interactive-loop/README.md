@@ -478,7 +478,7 @@ is still open.
 | **P1** ✓ | 520 gate measurements unchanged; suite 1065 | ONE caller of `wave_tick` — asked by COUNT or by DURATION, never one folded into the other | ⚠ **the control FIRED**: routing `tick` through the seconds door went red as `a-base-that-plays-its-list … waves = 0, outside 1..1`, a wave that never arrives rather than a clock a hair off |
 | **P2** ✓ | six rows on the design's own keys; 520 measurements unchanged; suite 1082 | one key table, the I1 shape — and one key means ONE thing per frame | ⚠ **the control was nearly fatal**: WASD is shared with the camera pan, so a merged reading would have driven a parked vehicle on every `at` in 28 scenarios.  ✓ § A camera frame does not drive; ✓ § The editor seam is blind to the play fields |
 | **P3** ✓ | 12 s of held-east frames drive the crew to a spawn marker and the wave list wakes — **no `tick` anywhere in the test**; 520 measurements unchanged; suite 1094 | the loop owns the CLOCK and nothing else — the mode gates the clock, never the seam | ✓ 60 fps against 12 fps over the same 12 s, through the KEYS, `state_diff` empty (⚠ stronger than P1's: the steering re-points every frame, so 60 fps had 5x the chances to disagree).  ⚠ **a control FIRED**: `09_i1_bindings`'s row count |
-| **P4** | enemies, the vehicle and the crew are drawn | measured frames, not goldens | ⚠ a golden AGREES WITH A SHEAR, so the gate is `classify_world` pixel shares — a thing not drawn reads as zero |
+| **P4** | ⚠ **moved to [plan 20](../20-entity-art/README.md) A5** — the row is kept because its negative control is the one that survived the move intact | measured frames, not goldens | ⚠ a golden AGREES WITH A SHEAR, so the gate is `classify_world` pixel shares — a thing not drawn reads as zero |
 | **P5** | a key writes the live situation as `.keys` | plan 18's emitter, driven from a session rather than a script | the emitted file must REPLAY to an S0-identical state |
 
 ## Phases
@@ -489,8 +489,8 @@ is still open.
 | **P1** — the play session and its ONE door | M | `tests/19_p1_the_seam.loft` (14 fns) + the whole gate: `play.loft` owns the only `wave_tick` call, `tick` / `fall` / every scripted frame route through it, and **all 520 measurements are unchanged** | **Done** |
 | **P2** — play actions in the ONE key table | S | `tests/19_p2_the_keys.loft` (17 fns) — WASD / Shift / E are `EditorAction` rows, a script pressing the key does what the verb does, and the 520 measurements are unchanged.  ⚠ They apply in `play_step`, not `editor_step`: the editor's seam has no roster | **Done** |
 | **P3** — the loop: the game runs in the window | M | `tests/19_p3_the_clock.loft` (12 fns) — P starts the clock, a held P toggles once, the crew lands at the core, the mode decides whether WASD pans or drives, **a wave arrives on 12 s of wall clock with no `tick` in the test**, and 60 fps and 12 fps play one game.  ⚠ The headless half is what CI can hold; the window is § Open questions 4 | **Done** |
-| **P4** — drawing the game | M | `tests/19_p4_the_frame.loft` — `classify_world` pixel shares for enemies, the vehicle and the crew.  A `.keys` scenario with `snap` for human inspection | Next |
-| **P5** — capture from a live session | S | `tests/19_p5_capture.loft` — a key writes the situation, and the file replays to an S0-identical state ([plan 18](../18-scenario-capture/README.md)) | Open |
+| **P4** — drawing the game | M | ⚠ **Superseded by [plan 20](../20-entity-art/README.md) A5** — the gate is unchanged (`classify_world` shares + a `snap`), but the source of truth for what an entity looks like is now a PART-TREE rather than primitives drawn inline.  See below | **Superseded** |
+| **P5** — capture from a live session | S | `tests/19_p5_capture.loft` — a key writes the situation, and the file replays to an S0-identical state ([plan 18](../18-scenario-capture/README.md)) | **Next** |
 
 ### Why the order is this order
 
@@ -507,6 +507,22 @@ deliberately: the ACCUMULATOR is testable headlessly and the window is
 not, so the part CI can hold is separated from the part a person checks.
 
 **P4 and P5 both after P3** and independent of each other.
+
+### ⚠ P4 moved out of this plan (2026-08-15)
+
+The project owner asked for *detailed* entity art built the moros way — a
+part-tree with moving parts, and PNGs for every mob and tower — which is
+[`docs/PARTS.md`](../../docs/PARTS.md) and [`plan 20`](../20-entity-art/README.md).
+
+⚠ **The gate did not change and the source of truth did.**  P4 would have drawn
+primitives inline in `editor_view.loft`; plan 20 A5 blits a cache rendered from
+part-trees.  The reason that matters is the reason `editor_view.loft` exists at
+all — its own header refuses *"a second renderer that happens to live in the
+test harness"* — and a per-entity shape drawn inline in the frame composition is
+that, one layer down.
+
+⚠ **So plan 19 is complete at P5**, not at P4.  P5 is unaffected: capturing a
+live session writes `.keys` and photographs nothing.
 
 ## What this plan does NOT build
 
