@@ -276,12 +276,12 @@ fn gate_run(towers: integer, mode: integer, limit: integer) -> RunFacts {
                 gr_stage = 1;
             } else if gr_stage == 1 && gr_s.player.q == GATE_Q
                       && gr_s.player.r == 0 {
-                if mode == FETCH { wave_take(gr_s, BLOCKER_PLAYER); }
+                if mode == FETCH { wave_take(gr_s, BLOCKER_PLAYER, gr_mw); }
                 vehicle_drive(gr_s.player, HOME_Q, HOME_R);
                 gr_stage = 2;
             } else if gr_stage == 2 && gr_s.player.q == HOME_Q
                       && gr_s.player.r == HOME_R {
-                if mode == FETCH { wave_drop(gr_s, BLOCKER_PLAYER, core()); }
+                if mode == FETCH { wave_drop(gr_s, BLOCKER_PLAYER, core(), gr_mw); }
                 gr_stage = 3;
             } else if gr_stage == 3 && mode == FETCH
                       && !helper_wrecked(gr_s.crew[0] ?? Helper { }) {

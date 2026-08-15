@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**T0 + T1 shipped** (2026-08-15).  T2 is next.  Suite **959 green**,
+**T0 + T1 + T2 shipped** (2026-08-15).  T3 is next.  Suite **976 green**,
 gate **27 scripts / 499 measurements**.
 
 **T0 tried to falsify the premise and could not.**  The magazine binds,
@@ -21,6 +21,12 @@ authored list at tick 332**.  § T0 has the tables.
 **T1 built the rebuild**, and it moved every measurement in the game
 that had a vehicle parked near a tower — including, already, the answer
 plan 16 W4 could not produce.  § T1.
+
+**T2 made the top a carryable thing** and moved the magazine off the
+HEX and onto the TOP, so detach-and-remount cannot refill.  The carry
+model's second consumer arrived under plan 15 C0.4's contract with
+**four non-comment lines in `carry.loft`** and none of them in the
+carrying path.  § T2.
 
 ⚠ **This plan exists because [plan 16](../16-the-wave-system/README.md)
 W4 named it, twice over.**  W4 measured the game at its real length and
@@ -88,6 +94,93 @@ swap is not an alternative to repair — it is the thing that *creates the
 grounded state repair needs*.  Repair is also the smaller half: it needs
 no carry model, it is the half W4 actually named, and it can go red on
 its own.
+
+## T2 — the top comes off (2026-08-15)
+
+A tower's top is now a `CARGO_TOP` carry object.  Take it off a tower
+and the tower stops firing; carry it to a spent tower and that one is
+red again instantly (`numbers.json` § tower.repair_time_top_transplant
+is 0.0); carry it to the core and it is evacuated for the next base.
+
+### ⚠⚠ The magazine moved off the HEX and onto the TOP
+
+`TowerState` is still keyed by hex, because a tower's PLACE is what has
+a charge and a rebuild in progress.  But `shots` is now the mounted
+**top's** spent count, and detaching carries the number off as
+`CarryObject.subj`.
+
+⚠ **Without that, detach-and-remount is a free repair** and two
+keypresses bypass everything T1 built.  `test_a_detached_top_remembers_
+what_it_spent` is the assertion, and it is the one to keep if only one
+survives: pull a top off a tower 25 shots down, put it straight back,
+and the tower is still 25 shots down.
+
+### ⚠⚠ The swap is COMPOSED, not primitive — and that is what conserves
+
+`DESIGN.md` § Tower overload spells the exchange out: *"strained top
+drops to the ground; spare goes onto the tower."*  So `tower_mount_top`
+**refuses** an occupied tower rather than overwriting it, and
+`wave_drop` composes the swap out of a detach and a mount.
+
+⚠ An overwrite would delete a top out of the world with nothing able to
+see it — exactly the state `carry.loft`'s representation exists to make
+unwritable.  Measured across a swap: one top in the world before, one
+after, and the displaced one is lying on the ground **still remembering
+its twenty shots**.
+
+### ⚠ `top_removed`, never `has_top`
+
+A struct literal that omits a field takes its ZERO silently
+([loft#914](https://github.com/loft-lang/loft/issues/914)), so `has_top`
+would default to *false* and disarm **every tower in the suite** from
+one added line.  Stored as the removal, zero means the top is on — the
+same rule `Enemy.stand`, *damage taken* and *shots fired* already keep.
+⚠ And an absent cell answers "has a top", because a tower nobody has
+ticked is a fresh one.
+
+### ⚠ The contract held, and it also showed its edge
+
+Plan 15 § C0.4 asked that a new kind cost a constant, a destination
+rule, and what arriving does — and **no new carrying code**.  Verified
+by diff: `carry.loft` gained four non-comment lines (the constant, a
+comment on `subj`, and three lines in `cargo_destination_ok`), and
+nothing in `cargo_take` / `_put` / `_follow` / `_spill` / `_consume`
+moved.
+
+⚠ **But a top has TWO destinations and only one of them fits that
+signature.**  The core is a function of `(kind, at, core)`; mounting on
+a tower asks *"is there a tower marker here, and what is on it?"* —
+the marker world and the tower state, which a carry model may not know
+about without becoming the thing C0.4 refuses.  So the rule is split:
+`carry.loft` owns what a kind can state on its own and
+`spawn.loft::wave_drop` owns the half that needs the world, which is
+the seam `cargo_deliver` already draws by not applying the EFFECT.
+⚠ Recorded rather than papered over: a reader looking for *"where can a
+top go"* now needs both halves, and that is the cost.
+
+### ⚠ Two ambiguous presses, resolved on purpose
+
+`DESIGN.md` § 11 gives the player ONE key, so both had to be decided:
+
+- **A loose object on the ground beats detaching a top.**  Picking
+  something up is recoverable; detaching costs a tower its firing until
+  somebody puts a top back — so an ambiguous press does the harmless
+  thing.  It also makes the loop terminate sensibly: a top just set down
+  beside its tower is picked back UP rather than a second one torn off.
+- **Mounting beats evacuating.**  A tower standing next to the core is
+  a mount, because a mount can be undone by picking the top back up and
+  an evacuation consumes it for the rest of the run.
+
+### ⚠ A vacuous test, caught by mutation
+
+`test_taking_a_top_stops_the_tower_firing` first put ONE enemy in range
+and ticked six times before taking the top — four shots at a 30 HP
+robot, so it was already dead and the tower would have fired nothing
+more whether it had a top or not.  **Deleting the `tower_has_top` guard
+from `wave_fire` left the whole file green.**  Six enemies and three
+ticks fixed it.  ⚠ The shape to watch: a test whose SUPPLY runs out
+before the thing under test gets a chance to misbehave — the same
+supply-versus-capacity check plan 14 H2 and plan 12 B5b both name.
 
 ## T1 — the rebuild (2026-08-15)
 
@@ -311,7 +404,7 @@ keep, and the same one that made B4's `taken` a count of damage ABSORBED.
 |---|---|---|---|
 | **T0** ✓ | 317 / 319 / 321 unrefilled at 7 / 5 / 3 towers; CLEARED at 332 with two helpers' worth of repair | the magazine is the binding constraint — W4 asserted it, this removes it and looks | ✓ the plan's own falsifier was live: a base with free refills that still played four waves would have stopped the plan.  It played seven |
 | **T1** ✓ | a black tower fires again on tick 30 and not 29 | repair is **presence-locked and time-priced**, and the progress belongs to the TOWER so a relief crew finishes it | ✓ all three verified by MUTATION rather than by reading: dropping the epsilon, resetting the charge and repairing a firing tower each turn exactly one assertion red.  ✓ An unattended black tower never recovers a shot in four rebuilds' worth of ticks |
-| **T2** | a detached top does not fire; installed on an empty tower it fires instantly | **conservation is structural** (plan 15 C1): a top is mounted, carried, on the ground, or spent — exactly one, and never two | ⚠ **detach and re-mount must not refill** — the shots travel with the top; installing onto a tower that already has one is REFUSED, not silently overwritten |
+| **T2** ✓ | a stripped tower fires nothing; a transplanted top fires instantly | **conservation is structural**: a top is mounted, carried, on the ground, or spent — exactly one, and a SWAP moves two without creating or destroying either | ✓ detach-and-remount does not refill (25 shots in, 25 shots out); ✓ mounting onto an occupied tower is REFUSED at the primitive and composed into a swap at the call site, with the count conserved across it; ✓ all three verified by mutation, and the third caught a VACUOUS test |
 | **T3** | the seven-wave list REACHED, and the three retrieval clocks re-measured | a base that can recover is a base that can be played | a reading taken with repair switched off must reproduce W4's 321 / 247 / 248 / 248 exactly, or the harness moved and not the mechanic.  ⚠ Measure WAVES, not the fall tick — T0 § 4 |
 
 ## Phases
@@ -320,7 +413,7 @@ keep, and the same one that made B4's `taken` a count of damage ABSORBED.
 |---|---|---|---|
 | **T0** — the probe: is the magazine really what binds? | XS | the tables in § T0, measured against the shipped sim | **Done** |
 | **T1** — the rebuild: a black tower comes back | M | `tests/17_t1_the_rebuild.loft` — 16 tests, and three mutations verified each goes red on its own assertion: drop the epsilon, reset the charge, or let a firing tower be repaired | **Done** |
-| **T2** — the top is a carry kind | M | `tests/17_t2_the_top.loft` — detach / install / deposit at the core, the budget travels WITH the top, and conservation asserted over the whole layer after every mutation (plan 15 C1's `assert_sound` shape).  ⚠ The diff must touch **no function in `carry.loft`'s carrying path** — that is plan 15 § C0.4's contract and is itself a gate | Blocked on T1 |
+| **T2** — the top is a carry kind | M | `tests/17_t2_the_top.loft` — 17 tests; three mutations verified (forget the magazine on detach, overwrite an occupied tower, let a topless tower fire).  ⚠ The C0.4 contract is verified BY DIFF: four non-comment lines in `carry.loft`, none in the carrying path | **Done** |
 | **T3** — the loop, measured | S | `tests/17_t3_what_upkeep_is_worth.loft` + a `.keys` scenario — W4's two measurements re-run with upkeep in the game.  ⚠ T0 predicts a two-helper seven-tower base clears the list; a reading that does not is the phase's finding | Blocked on T2 |
 
 ### Why the order is this order
@@ -378,14 +471,24 @@ rule the game does not have (§ Open questions 3).
    position only, so the wallet stays the run's clock and repair stays a
    labour decision — decided in T1, and it needs a `numbers.json` row if
    the answer changes.*
-3. **Is a top on the ground vulnerable, and does it block?**  Cargo is
+3. ⚠ **NEW, from T2: a GROUNDED top cannot be repaired, and the design
+   says it should be.**  `DESIGN.md` § 7 allows repair on *"a detached
+   top on the ground"*, and that half is not built: a grounded top is a
+   `CarryObject`, and healing one needs a timer on the object — which is
+   new carrying code and so is exactly what C0.4 refuses.  ⚠ It is not
+   a dead end today, because T1 repairs a spent top IN PLACE, so the
+   recovery loop closes without it.  *Recommendation: leave it out and
+   revisit with strain, where a top pulled off mid-life is the whole
+   point — a `CarryObject` that carries a timer wants a design, not a
+   field.*
+4. **Is a top on the ground vulnerable, and does it block?**  Cargo is
    inert today: it is not a blocker, nothing attacks it, and it does not
    decay.  A top parked in a kill zone being destroyed is exactly this
    game's kind of cost.  *Recommendation: leave it inert in this plan and
    record the gap — it belongs with wreck decay, which
    `plans/ROADMAP.md` already carries as its own designed-not-built
    entry.*
-4. **Can a helper be ORDERED to repair, or does it repair what it is
+5. **Can a helper be ORDERED to repair, or does it repair what it is
    standing next to?**  Every helper job so far is positional —
    `salvage_at` clears what is in reach with no key pressed.  *Recommendation:
    positional, for consistency and because `DESIGN.md` § 11 keeps

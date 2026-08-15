@@ -1103,7 +1103,14 @@ pub fn wave_fire(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
                  mw: MarkerWorld) -> integer {
     wf_shots = 0;
     for wf_m in mw.markers {
+        // ⚠ **A topless tower does not fire, whatever its magazine
+        // says** (plan 17 T2).  `tower_black` means SPENT and
+        // `tower_has_top` means there is something up there to spend —
+        // two different reasons not to shoot, and folding them into one
+        // predicate would make a freshly-detached tower read as a
+        // fully-loaded one.
         if wf_m.kind == MARKER_KIND_TOWER as u8
+           && tower_has_top(state.towers, wf_m.q, wf_m.r)
            && !tower_black(state.towers, wf_m.q, wf_m.r) {
             tower_bank(state.towers, wf_m.q, wf_m.r, TICK_SECONDS);
             wf_at = Hex { q: wf_m.q, r: wf_m.r };
@@ -1945,12 +1952,91 @@ pub fn wave_carrier_ready(state: const WaveState, owner: integer) -> boolean {
 
 // Pick up whatever is in reach.  Answers the object taken, or
 // `CARGO_NONE`.
-pub fn wave_take(state: WaveState, owner: integer) -> integer {
+// Which tower marker in reach of `at` has a top worth taking.  Answers
+// `at` itself when there is none, which `tower_detach_top` then refuses
+// (a hex with no tower cell has a top by definition and no marker, so
+// the caller's marker test is what stops it).
+//
+// ⚠ Ordered by coordinate, never by hash order — a scripted run has to
+// repeat.  Same argument `repair_target` and `tower_pick` make.
+fn top_source(state: const WaveState, mw: const MarkerWorld,
+              at: const Hex) -> Hex {
+    ts_best = Hex { q: at.q, r: at.r };
+    ts_have = false;
+    for ts_m in mw.markers {
+        if ts_m.kind == MARKER_KIND_TOWER as u8 {
+            ts_h = Hex { q: ts_m.q, r: ts_m.r };
+            if tower_in_repair_reach(ts_h, at)
+               && tower_has_top(state.towers, ts_m.q, ts_m.r) {
+                if !ts_have || ts_m.q < ts_best.q
+                   || (ts_m.q == ts_best.q && ts_m.r < ts_best.r) {
+                    ts_best = ts_h;
+                    ts_have = true;
+                }
+            }
+        }
+    }
+    if !ts_have { return Hex { q: at.q, r: at.r }; }
+    ts_best
+}
+
+// Which tower marker in reach of `at` a carried top could go onto.
+fn mount_site(mw: const MarkerWorld, at: const Hex) -> Hex {
+    ms_best = Hex { q: at.q, r: at.r };
+    ms_have = false;
+    for ms_m in mw.markers {
+        if ms_m.kind == MARKER_KIND_TOWER as u8 {
+            ms_h = Hex { q: ms_m.q, r: ms_m.r };
+            if tower_in_repair_reach(ms_h, at) {
+                if !ms_have || ms_m.q < ms_best.q
+                   || (ms_m.q == ms_best.q && ms_m.r < ms_best.r) {
+                    ms_best = ms_h;
+                    ms_have = true;
+                }
+            }
+        }
+    }
+    if !ms_have { return Hex { q: at.q, r: at.r }; }
+    ms_best
+}
+
+// Is there a tower marker at (q, r)?
+fn is_tower_marker(mw: const MarkerWorld, q: integer, r: integer) -> boolean {
+    marker_kind(mw, q, r) == MARKER_KIND_TOWER
+}
+
+pub fn wave_take(state: WaveState, owner: integer, mw: const MarkerWorld) -> integer {
     if !wave_carrier_ready(state, owner) { return CARGO_NONE; }
+    if cargo_carrying(state.cargo, owner) { return CARGO_NONE; }
 
     wtk_at = wave_carrier_hex(state, owner);
-    wtk_i  = cargo_take(state.cargo, owner, wtk_at, CARGO_REACH_HEXES);
-    wtk_i
+
+    // ⚠ **A loose object on the ground wins over detaching a top**, and
+    // the tie-break is deliberate: picking something up is recoverable
+    // and detaching is not — it costs a tower its firing until somebody
+    // puts a top back.  So an ambiguous press does the harmless thing,
+    // and a player who wants the top moves off the wreck first.
+    // ⚠ It also makes the loop terminate sensibly: a top just set down
+    // beside its tower is picked back UP rather than a second one being
+    // torn off.
+    wtk_i = cargo_take(state.cargo, owner, wtk_at, CARGO_REACH_HEXES);
+    if wtk_i != CARGO_NONE { return wtk_i; }
+
+    // ⚠ **Detaching is TWO effects at ONE site** — the tower loses its
+    // top and a carryable top appears in the taker's hands — which is
+    // the rule `break_structure` and `helper_wreck` both keep.  Split
+    // across two sites they drift, and the drift is a tower that stopped
+    // firing with nothing to show for it.
+    wtk_src = top_source(state, mw, wtk_at);
+    if !is_tower_marker(mw, wtk_src.q, wtk_src.r) { return CARGO_NONE; }
+
+    wtk_shots = tower_detach_top(state.towers, wtk_src.q, wtk_src.r);
+    if wtk_shots < 0 { return CARGO_NONE; }
+
+    wtk_new = cargo_spawn(state.cargo, CARGO_TOP, wtk_shots,
+                          wtk_at.q, wtk_at.r);
+    cargo_take(state.cargo, owner, wtk_at, CARGO_REACH_HEXES);
+    wtk_new
 }
 
 // Put down what this carrier is holding — DELIVERING it if where they
@@ -1962,11 +2048,50 @@ pub fn wave_take(state: WaveState, owner: integer) -> integer {
 // core has retrieved them, and the same press one hex further out has
 // merely put them down.  Two verbs would let a script deposit at a
 // place the game would not.
-pub fn wave_drop(state: WaveState, owner: integer, core: Hex) -> integer {
+pub fn wave_drop(state: WaveState, owner: integer, core: Hex,
+                 mw: const MarkerWorld) -> integer {
     if !wave_carrier_ready(state, owner) { return CARGO_NONE; }
 
     wdr_at = wave_carrier_hex(state, owner);
-    wdr_i  = cargo_deliver(state.cargo, owner, wdr_at, core);
+
+    // ⚠ **A top's OTHER destination, and it is this file's half**
+    // (plan 17 T2).  `carry.loft::cargo_destination_ok` answers what a
+    // kind can state from `(kind, at, core)` alone; mounting needs the
+    // marker world and the tower state, which a carry model may not
+    // know about — see that function's § A top has TWO destinations.
+    //
+    // ⚠ **Mounting comes FIRST**, so a tower standing next to the core
+    // is a mount rather than an evacuation: the destructive reading of
+    // an ambiguous press is the one you can undo by picking the top
+    // back up, where an evacuation consumes it for the rest of the run.
+    wdr_held = cargo_held_by(state.cargo, owner);
+    if wdr_held != CARGO_NONE {
+        wdr_o = cargo_get(state.cargo, wdr_held);
+        if wdr_o.kind == CARGO_TOP {
+            wdr_site = mount_site(mw, wdr_at);
+            if is_tower_marker(mw, wdr_site.q, wdr_site.r) {
+                // ⚠ **The HOT-SWAP, composed rather than primitive**:
+                // `DESIGN.md` § Tower overload — *"strained top drops to
+                // the ground; spare goes onto the tower"*.  The sitting
+                // top comes off into a ground object FIRST, so nothing
+                // is ever overwritten and the count is conserved across
+                // the whole exchange.
+                if tower_has_top(state.towers, wdr_site.q, wdr_site.r) {
+                    wdr_old = tower_detach_top(state.towers,
+                                               wdr_site.q, wdr_site.r);
+                    cargo_spawn(state.cargo, CARGO_TOP, wdr_old,
+                                wdr_at.q, wdr_at.r);
+                }
+                if tower_mount_top(state.towers, wdr_site.q, wdr_site.r,
+                                   wdr_o.subj) {
+                    cargo_consume(state.cargo, wdr_held);
+                    return wdr_held;
+                }
+            }
+        }
+    }
+
+    wdr_i = cargo_deliver(state.cargo, owner, wdr_at, core);
     if wdr_i != CARGO_NONE {
         wave_arrived(state, wdr_i, core);
         return wdr_i;

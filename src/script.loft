@@ -1592,7 +1592,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         }
 
         if sc_cmd == "take" {
-            if wave_take(run.wave, sc_who) == CARGO_NONE {
+            if wave_take(run.wave, sc_who, s.mw) == CARGO_NONE {
                 return "take: {sc_a1} picked nothing up — hands full, or nothing within {CARGO_REACH_HEXES} hex";
             }
             return "";
@@ -1608,7 +1608,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
             return "drop: needs exactly ONE target marker to deliver to, found {sc_dcore.0}";
         }
         if wave_drop(run.wave, sc_who,
-                     Hex { q: sc_dcore.1, r: sc_dcore.2 }) == CARGO_NONE {
+                     Hex { q: sc_dcore.1, r: sc_dcore.2 },
+                     s.mw) == CARGO_NONE {
             return "drop: {sc_a1} is not carrying anything";
         }
         return "";

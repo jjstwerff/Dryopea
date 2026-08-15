@@ -72,7 +72,7 @@ exists today.
 | ⚠ What a base is worth AT ITS REAL LENGTH: the authored seven-wave list plays **FOUR** and falls at 321 with every tower black, and a retrieval is worth **one tick** on a base where the crew member does come back | [16](plans/16-the-wave-system/README.md), W4 shipped — plan **complete** |
 | **No wall trigger, no ordering, no beacons and no scramble** | [plans/ROADMAP.md](plans/ROADMAP.md) |
 | UPKEEP: 20 s of standing at a black tower rebuilds it — so the lull is a REPAIR WINDOW and a base can outlive its own wave list | [17](plans/17-tower-hot-swap/README.md), T0-T1 shipped — T2 next |
-| **No hot-swap yet** — a tower-top is not a carryable thing, so firepower cannot be MOVED, only rebuilt in place | [17](plans/17-tower-hot-swap/README.md), T2 next |
+| HOT-SWAP: a tower's top is a CARRY object — take it off (the tower stops firing), transplant it onto a spent tower (red instantly), or evacuate it at the core.  ⚠ The magazine travels WITH the top, so detach-and-remount is not a free repair | [17](plans/17-tower-hot-swap/README.md), T2 shipped — T3 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -88,7 +88,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 959/959 green under `scripts/test.sh`** (~115 s measured
+**Suite: 976/976 green under `scripts/test.sh`** (~115 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -1597,7 +1597,8 @@ signature.
 | Bring a lost crew member back | `src/spawn.loft::wave_drop` at the core — and NOTHING else does it (`DESIGN.md` § 9: *"retrieval is the only way back"*).  ⚠ The clock is exactly 90 ticks and the epsilon in `helper_recover_tick` is what keeps it 90 rather than 91 |
 | Take a crew member out of the run | `src/helper.loft::helper_wreck` — and the tick is the only caller, at the end, beside the deaths and the breaks.  ⚠ It is TWO effects at one site since plan 15 C1: the helper goes down AND a carryable wreck appears where it stood.  ⚠ Nothing brings it back yet: retrieval is plan 15 C2 |
 | Pick something up, carry it, put it down | `src/carry.loft` — one record per object with an `owner`, so conservation is structural.  ⚠ Never add a "carried" field to a vehicle beside it: a slot on the carrier and an owner on the object are two facts that can disagree |
-| Add a new kind of carryable thing | a `CARGO_*` constant plus what a valid destination is and what arriving there does — and NOTHING in the carrying path.  ⚠ A kind that needs new carrying code has broken `plans/15` § C0.4 |
+| Add a new kind of carryable thing | a `CARGO_*` constant plus what a valid destination is and what arriving there does — and NOTHING in the carrying path.  ⚠ A kind that needs new carrying code has broken `plans/15` § C0.4.  ⚠ **The second consumer showed the contract's edge** (plan 17 T2): a tower-top has TWO destinations and `cargo_destination_ok`'s `(kind, at, core)` can only state one, so the tower-mount half lives in `spawn.loft::wave_drop` where the markers are.  Look in both places |
+| Take a tower's top off, move it, or evacuate it | `src/spawn.loft::wave_take` / `wave_drop` (plan 17 T2) — `tower.loft::tower_detach_top` / `tower_mount_top` are the primitives.  ⚠ The magazine is the TOP's, carried as `CarryObject.subj`, so a round trip is not a repair.  ⚠ `tower_mount_top` REFUSES an occupied tower; the hot-swap is COMPOSED out of a detach and a mount at the call site, which is what conserves the count.  ⚠ A loose object on the ground beats detaching, and mounting beats evacuating — both ambiguous presses decided in `plans/17` § T2 |
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Ask whether a tower can HIT something | `src/tower.loft::tower_sees` — one straight line from the eye over `hex_height`.  ⚠ Never a "which kinds block" table: a `wall_high` beside the tower does not block and a `wall` near the target does |
 | Ask why a tower is not shooting | `src/tower.loft::tower_sight_fault` names the hex, the two heights and how far along the line it sits; `tower_black` is the other answer |

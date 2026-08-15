@@ -1,0 +1,427 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 17 phase T2 — the tower-top becomes a carryable thing.
+//
+// `docs/DESIGN.md` § Tower-top salvage: *"A tower's red top is a
+// detachable carry object … press pickup → top detaches, tower goes
+// black (stops firing) … Two valid destinations: another black tower →
+// top installs there; the core → top added to scramble inventory."*
+// And § Tower overload names the swap exactly: *"strained top drops to
+// the ground; spare goes onto the tower."*
+//
+// This is the carry model's SECOND consumer, arriving under the
+// contract `plans/15` § C0.4 set: a kind constant, a destination rule,
+// and what arriving does — and **no new carrying code**.
+//
+// ── ⚠⚠ What this phase is really about: whose magazine it is ────
+//
+// Before T2 a tower's spent shots lived in `TowerState`, keyed by HEX.
+// That is right for a top that never moves and wrong the moment one can
+// be carried: **detach-and-remount would be a free repair**, and two
+// keypresses would bypass the whole upkeep loop T1 just built.  So the
+// magazine becomes a property of the TOP and travels with it, as
+// `CarryObject.subj`.
+//
+// § A detached top remembers what it spent is the assertion, and it is
+// the one to keep if only one survives.
+//
+// ── ⚠ What else can go wrong ────────────────────────────────────
+//
+// 1. **A top overwritten on mount.**  Mounting onto an occupied tower
+//    must not silently delete what was there — that is exactly the
+//    unwritable state `carry.loft`'s representation exists to prevent.
+//    The design's swap drops the sitting top to the GROUND, so the
+//    count is conserved across the exchange.
+// 2. **A topless tower that still fires.**  `tower_black` means SPENT
+//    and `tower_has_top` means there is something up there; folding
+//    them into one predicate makes a freshly-stripped tower read as a
+//    loaded one.
+// 3. **The zero-value trap.**  `has_top` would default FALSE in every
+//    literal that predates the field and disarm the whole game
+//    silently.  Stored as `top_removed`, zero means the top is ON.
+// 4. **A top mounted on open ground.**  A tower is a MARKER; without
+//    that test a player could stand a top in a field and have it shoot.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn ground() -> PaintedWorld {
+    g_pw = painted_empty();
+    for g_r in -3..=3 {
+        for g_q in -3..=20 { paint(g_pw, g_q, g_r, as_u8(GRASS)); }
+    }
+    g_pw
+}
+
+// Two towers, four hexes apart, and a core marker.
+fn two_towers() -> MarkerWorld {
+    tt_mw = marker_empty();
+    place_marker(tt_mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    place_marker(tt_mw, 4, 0, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(tt_mw, 8, 0, MARKER_KIND_TOWER as u8, 0 as u8);
+    tt_mw
+}
+
+// ⚠ **Conservation over the WHOLE layer, asserted after every
+// mutation** — plan 15 C1's `assert_sound` shape, and the reason is the
+// same: every claim about one object is green under all three wrong
+// implementations, because you look at the object you just touched.
+fn assert_sound(cl: const CargoLayer, where: text) {
+    as_fault = cargo_slot_fault(cl, HELPER_ROSTER_CAP);
+    assert(as_fault == CARGO_NONE,
+           "{where}: the cargo layer is sound, fault at slot {as_fault}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The tower's own half
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **An absent cell means the top is ON**, which is what `top_removed`
+// buys over `has_top`.  Every tower in every scenario that predates this
+// phase has no cell until it fires.
+fn test_a_tower_nobody_has_ticked_has_its_top() {
+    tat_ts = tower_state_empty();
+    assert(tower_has_top(tat_ts, 4, 0),
+           "a fresh tower has a top, from an empty state");
+}
+
+// ⚠⚠ **THE PHASE: the magazine travels with the top.**  Detach a tower
+// that has fired 25 shots and the number comes off with it; put the
+// same top back and the tower is still 25 shots down.
+//
+// Without this, detach-and-remount is a free repair and T1's twenty
+// seconds are a formality.
+fn test_a_detached_top_remembers_what_it_spent() {
+    tad_ts = tower_state_empty();
+    for _ in 0..25 { tower_spend_shot(tad_ts, 4, 0); }
+    assert(tower_shots(tad_ts, 4, 0) == 25, "twenty-five fired");
+
+    tad_carried = tower_detach_top(tad_ts, 4, 0);
+    assert(tad_carried == 25,
+           "the top carries its spent shots off with it: {tad_carried}");
+    assert(!tower_has_top(tad_ts, 4, 0), "and the tower has none");
+
+    assert(tower_mount_top(tad_ts, 4, 0, tad_carried), "put it straight back");
+    assert(tower_has_top(tad_ts, 4, 0), "the tower has a top again");
+    assert(tower_shots(tad_ts, 4, 0) == 25,
+           "and it is STILL twenty-five shots down — a round trip is not "
+           + "a repair: {tower_shots(tad_ts, 4, 0)}");
+}
+
+// ⚠ Mounting refuses an occupied tower rather than overwriting it.  The
+// design's swap is composed out of a detach and a mount at the call
+// site, so this primitive can stay a refusal.
+fn test_mounting_onto_an_occupied_tower_is_refused() {
+    tmo_ts = tower_state_empty();
+    for _ in 0..7 { tower_spend_shot(tmo_ts, 4, 0); }
+
+    assert(!tower_mount_top(tmo_ts, 4, 0, 0),
+           "a tower with a top refuses a second one");
+    assert(tower_shots(tmo_ts, 4, 0) == 7,
+           "and what was there is untouched: {tower_shots(tmo_ts, 4, 0)}");
+}
+
+// ⚠ Detaching discharges the capacitor and any rebuild in progress —
+// `DESIGN.md` § 7's *"the mount cools, the capacitors discharge"*, and
+// it closes the bank-charge-pull-remount exploit.
+fn test_detaching_discharges_the_capacitor() {
+    tdd_ts = tower_state_empty();
+    tower_bank(tdd_ts, 4, 0, 0.9);
+    assert(tower_charge(tdd_ts, 4, 0) == 0.9, "charge banked");
+
+    tower_detach_top(tdd_ts, 4, 0);
+    assert(tower_charge(tdd_ts, 4, 0) == 0.0,
+           "and it is gone with the top: {tower_charge(tdd_ts, 4, 0)}");
+}
+
+// ⚠ A topless tower cannot be repaired — there is nothing up there to
+// work on, which is a different refusal from T1's "it is still firing".
+fn test_a_topless_tower_cannot_be_repaired() {
+    ttc_ts = tower_state_empty();
+    for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(ttc_ts, 4, 0); }
+    assert(tower_repairable(ttc_ts, 4, 0), "black with a top: repairable");
+
+    tower_detach_top(ttc_ts, 4, 0);
+    assert(!tower_repairable(ttc_ts, 4, 0),
+           "and with the top gone there is nothing to repair");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ In the game: taking, mounting, evacuating
+// ─────────────────────────────────────────────────────────────────
+
+// A player beside a healthy tower takes its top, and the tower stops
+// firing — even though its magazine is full.
+fn test_taking_a_top_stops_the_tower_firing() {
+    tts_s   = wave_state_empty();
+    tts_mw  = two_towers();
+    tts_pw  = ground();
+    tts_pal = pal();
+    vehicle_place(tts_s.player, 4, 0);
+
+    // ⚠ **A STANDING supply of targets, and it is what makes this test
+    // able to fail.**  The first version put ONE enemy out there and
+    // ticked six times before taking the top — four shots, thirty HP,
+    // so the enemy was already dead and the tower would have fired
+    // nothing more whether it had a top or not.  Measured: deleting the
+    // `tower_has_top` guard from `wave_fire` left the whole file green.
+    // Six enemies is more than the magazine spends in the window.
+    for tts_n in 0..6 {
+        tts_s.enemies += [Enemy { q: 12 + tts_n, r: 0,
+                                  kind: ENEMY_KIND_REGULAR as u8,
+                                  heading: 3 as u8, alive: true }];
+    }
+
+    for _ in 0..3 { wave_tick(tts_s, tts_pal, tts_pw, tts_mw, core()); }
+    tts_fired = tower_shots(tts_s.towers, 4, 0);
+    assert(tts_fired > 0, "the tower is firing: {tts_fired}");
+    assert(alive_count(tts_s) > 0, "and there is still something to shoot");
+
+    assert(wave_take(tts_s, BLOCKER_PLAYER, tts_mw) != CARGO_NONE,
+           "the player takes its top");
+    assert_sound(tts_s.cargo, "after the detach");
+    assert(!tower_has_top(tts_s.towers, 4, 0), "the tower is stripped");
+    assert(cargo_carrying(tts_s.cargo, BLOCKER_PLAYER), "and it is carried");
+
+    for _ in 0..10 { wave_tick(tts_s, tts_pal, tts_pw, tts_mw, core()); }
+    assert(tower_shots(tts_s.towers, 4, 0) == tts_fired,
+           "and it has fired nothing since: {tower_shots(tts_s.towers, 4, 0)} "
+           + "vs {tts_fired}");
+}
+
+// ⚠ **A tower is a MARKER.**  A top cannot be stood up in a field —
+// dropping one away from any tower puts it on the ground, where it can
+// be picked back up.
+fn test_a_top_cannot_be_mounted_on_open_ground() {
+    tam_s   = wave_state_empty();
+    tam_mw  = two_towers();
+    tam_pw  = ground();
+    vehicle_place(tam_s.player, 4, 0);
+
+    wave_take(tam_s, BLOCKER_PLAYER, tam_mw);
+    vehicle_place(tam_s.player, 6, 2);          // nowhere near a tower
+
+    tam_i = wave_drop(tam_s, BLOCKER_PLAYER, core(), tam_mw);
+    assert(tam_i != CARGO_NONE, "it goes down");
+    assert_sound(tam_s.cargo, "after a drop in the open");
+    assert(cargo_owner(tam_s.cargo, tam_i) == BLOCKER_NONE,
+           "on the GROUND, not consumed: {cargo_owner(tam_s.cargo, tam_i)}");
+    assert(cargo_count(tam_s.cargo) == 1, "and still in the world");
+
+    // And it can be picked straight back up.
+    assert(wave_take(tam_s, BLOCKER_PLAYER, tam_mw) == tam_i,
+           "the same top is picked back up");
+    assert_sound(tam_s.cargo, "after picking it back up");
+}
+
+// ⚠⚠ **The transplant.**  Carry a full top to a BLACK tower and it
+// fires again instantly — `numbers.json` §
+// tower.repair_time_top_transplant is 0.0, the fast-repair path.
+fn test_a_transplant_brings_a_black_tower_back_instantly() {
+    tat_s   = wave_state_empty();
+    tat_mw  = two_towers();
+    tat_pw  = ground();
+
+    // (8, 0) is spent; (4, 0) is fresh.
+    for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(tat_s.towers, 8, 0); }
+    assert(tower_black(tat_s.towers, 8, 0), "the far tower is black");
+
+    vehicle_place(tat_s.player, 4, 0);
+    wave_take(tat_s, BLOCKER_PLAYER, tat_mw);
+    assert_sound(tat_s.cargo, "carrying the fresh top");
+
+    vehicle_place(tat_s.player, 8, 0);
+    assert(wave_drop(tat_s, BLOCKER_PLAYER, core(), tat_mw) != CARGO_NONE,
+           "it goes onto the black tower");
+    assert_sound(tat_s.cargo, "after the swap");
+
+    assert(!tower_black(tat_s.towers, 8, 0),
+           "which is red again at once: {tower_shots(tat_s.towers, 8, 0)} fired");
+    assert(tower_has_top(tat_s.towers, 8, 0), "with a top on it");
+}
+
+// ⚠⚠ **The SWAP conserves.**  Mounting onto a tower that still has a
+// top drops the sitting one to the ground — `DESIGN.md` § Tower
+// overload's own sentence — so nothing is overwritten and the number of
+// tops in the world is unchanged across the exchange.
+fn test_a_swap_drops_the_sitting_top_and_conserves() {
+    tas_s   = wave_state_empty();
+    tas_mw  = two_towers();
+
+    // The far tower has fired 20; the near one is fresh.
+    for _ in 0..20 { tower_spend_shot(tas_s.towers, 8, 0); }
+
+    vehicle_place(tas_s.player, 4, 0);
+    wave_take(tas_s, BLOCKER_PLAYER, tas_mw);
+    assert(cargo_count(tas_s.cargo) == 1, "one top in the world");
+
+    vehicle_place(tas_s.player, 8, 0);
+    wave_drop(tas_s, BLOCKER_PLAYER, core(), tas_mw);
+    assert_sound(tas_s.cargo, "after the swap");
+
+    // The fresh top is on the tower; the 20-shot one is on the ground.
+    assert(tower_shots(tas_s.towers, 8, 0) == 0,
+           "the tower took the fresh top: {tower_shots(tas_s.towers, 8, 0)}");
+    assert(cargo_count(tas_s.cargo) == 1,
+           "and there is STILL exactly one top in the world: "
+           + "{cargo_count(tas_s.cargo)}");
+
+    // ⚠ And it is the OLD one, with its 20 shots intact — the swap moved
+    // two tops and lost neither.
+    tas_ground = cargo_on_ground_near(tas_s.cargo,
+                                      Hex { q: 8, r: 0 }, CARGO_REACH_HEXES);
+    assert(tas_ground != CARGO_NONE, "the old top is lying there");
+    tas_o = cargo_get(tas_s.cargo, tas_ground);
+    assert(tas_o.kind == CARGO_TOP, "it is a top");
+    assert(tas_o.subj == 20,
+           "and it still remembers its twenty shots: {tas_o.subj}");
+}
+
+// ⚠ **The other destination: the core.**  A top delivered to the core is
+// EVACUATED — `DESIGN.md` § 2's scramble-and-salvage — so it leaves the
+// world, which is the one thing a drop on the ground never does.
+fn test_a_top_delivered_to_the_core_is_evacuated() {
+    tad_s   = wave_state_empty();
+    tad_mw  = two_towers();
+    vehicle_place(tad_s.player, 4, 0);
+
+    wave_take(tad_s, BLOCKER_PLAYER, tad_mw);
+    assert(cargo_count(tad_s.cargo) == 1, "one in the world");
+
+    vehicle_place(tad_s.player, 0, 0);
+    assert(wave_drop(tad_s, BLOCKER_PLAYER, core(), tad_mw) != CARGO_NONE,
+           "delivered at the core");
+    assert_sound(tad_s.cargo, "after the evacuation");
+
+    assert(cargo_count(tad_s.cargo) == 0,
+           "and it has left the world: {cargo_count(tad_s.cargo)}");
+    assert(cargo_slots(tad_s.cargo) == 1,
+           "its slot is KEPT, because an index is an identity: "
+           + "{cargo_slots(tad_s.cargo)}");
+    assert(!cargo_carrying(tad_s.cargo, BLOCKER_PLAYER), "hands empty");
+}
+
+// ⚠ **Hands full is hands full.**  One slot per vehicle
+// (`numbers.json` § helper.carry_slot_count), so a carrier already
+// holding something cannot tear a second top off a tower.
+fn test_a_full_carrier_cannot_take_a_second_top() {
+    taf_s  = wave_state_empty();
+    taf_mw = two_towers();
+    vehicle_place(taf_s.player, 4, 0);
+
+    assert(wave_take(taf_s, BLOCKER_PLAYER, taf_mw) != CARGO_NONE, "one top");
+    assert(wave_take(taf_s, BLOCKER_PLAYER, taf_mw) == CARGO_NONE,
+           "and no second one");
+    assert_sound(taf_s.cargo, "after a refused take");
+    assert(cargo_count(taf_s.cargo) == 1, "still one top in the world");
+    assert(tower_has_top(taf_s.towers, 8, 0),
+           "and the far tower was never touched");
+}
+
+// ⚠ **A loose object wins over detaching**, so an ambiguous press does
+// the harmless thing.  A wreck lying beside a tower is picked up; the
+// tower keeps firing.
+fn test_a_wreck_on_the_ground_wins_over_the_tower() {
+    taw_s  = wave_state_empty();
+    taw_mw = two_towers();
+    taw_s.crew += [helper_new(4, 0)];
+    helper_wreck(taw_s.crew[0] ?? Helper { });
+    cargo_spawn(taw_s.cargo, CARGO_WRECK, 0, 4, 0);
+
+    vehicle_place(taw_s.player, 4, 0);
+    taw_i = wave_take(taw_s, BLOCKER_PLAYER, taw_mw);
+    assert(taw_i != CARGO_NONE, "something was picked up");
+    assert_sound(taw_s.cargo, "after the pickup");
+
+    taw_o = cargo_get(taw_s.cargo, taw_i);
+    assert(taw_o.kind == CARGO_WRECK, "and it is the WRECK, not the top");
+    assert(tower_has_top(taw_s.towers, 4, 0),
+           "the tower kept its top");
+}
+
+// ⚠ A crew member does it too — the whole roster shares the chassis, so
+// helpers ferry tops exactly as they carry wrecks.
+fn test_a_helper_can_carry_a_top() {
+    tah_s  = wave_state_empty();
+    tah_mw = two_towers();
+    tah_s.crew += [helper_new(4, 0)];
+
+    assert(wave_take(tah_s, BLOCKER_CREW + 0, tah_mw) != CARGO_NONE,
+           "the helper takes the top");
+    assert_sound(tah_s.cargo, "after a helper's pickup");
+    assert(!tower_has_top(tah_s.towers, 4, 0), "the tower is stripped");
+    assert(cargo_carrying(tah_s.cargo, BLOCKER_CREW + 0), "it is carrying it");
+}
+
+// ⚠ **A carrier that DIES leaves the top where it fell** — dying is not
+// a delivery, the rule plan 15 C1 set for wrecks and which a second kind
+// must not quietly break.
+fn test_a_lost_carrier_leaves_the_top_on_the_ground() {
+    tal_s   = wave_state_empty();
+    tal_mw  = two_towers();
+    tal_s.crew += [helper_new(4, 0)];
+
+    wave_take(tal_s, BLOCKER_CREW + 0, tal_mw);
+    assert(cargo_count(tal_s.cargo) == 1, "one top, carried");
+
+    cargo_spill(tal_s.cargo, BLOCKER_CREW + 0, Hex { q: 4, r: 0 });
+    assert_sound(tal_s.cargo, "after the spill");
+    assert(cargo_count(tal_s.cargo) == 1, "still in the world");
+    assert(cargo_held_by(tal_s.cargo, BLOCKER_CREW + 0) == CARGO_NONE,
+           "and nobody is holding it");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What it does NOT change
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The wreck's rules are untouched.**  A second kind that changed
+// how the first one behaves would mean the kind was not data after all.
+fn test_a_wreck_still_goes_only_to_the_core() {
+    taw2_core = core();
+    assert(cargo_destination_ok(CARGO_WRECK, Hex { q: 0, r: 0 }, taw2_core),
+           "a wreck is delivered at the core");
+    assert(!cargo_destination_ok(CARGO_WRECK, Hex { q: 5, r: 0 }, taw2_core),
+           "and nowhere else");
+}
+
+// ⚠ **An unknown kind still has NO destination**, so a kind added
+// without a rule is undepositable rather than depositable anywhere.
+fn test_an_unknown_kind_still_has_no_destination() {
+    tau_core = core();
+    assert(!cargo_destination_ok(9 as u8, Hex { q: 0, r: 0 }, tau_core),
+           "kind 9 has no destination, not every destination");
+}
+
+// ⚠ **Every tower in the suite still fires.**  The zero-value trap
+// would have disarmed the lot, silently, and this is the assertion that
+// would have caught it.
+fn test_a_plain_tower_still_fires() {
+    tap_s   = wave_state_empty();
+    tap_mw  = two_towers();
+    tap_pw  = ground();
+    tap_s.enemies += [Enemy { q: 12, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 3 as u8, alive: true }];
+
+    for _ in 0..6 { wave_tick(tap_s, pal(), tap_pw, tap_mw, core()); }
+    assert(tower_shots(tap_s.towers, 8, 0) > 0,
+           "a tower nobody touched is shooting: "
+           + "{tower_shots(tap_s.towers, 8, 0)}");
+}

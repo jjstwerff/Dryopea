@@ -209,12 +209,31 @@ pub const TOWER_SIGHT_EPSILON: float = 1.0e-9;
 // ⚠ `repair` is seconds banked toward the REBUILD, and zero is the
 // neutral value a third time: a `TowerCharge { }` literal is a tower
 // nobody is working on.
+//
+// ⚠⚠ **`top_removed` and NEVER `has_top`** (plan 17 T2), and the name is
+// the whole safety argument.  A struct literal that omits a field takes
+// its ZERO silently ([loft#914](https://github.com/loft-lang/loft/issues/914)),
+// so a `has_top` would default to FALSE and disarm every tower in a
+// suite that had never heard of the field — a game-wide silent
+// regression from adding one line.  Stated as the removal, zero means
+// *the top is on*, which is what every literal that predates this
+// wants to mean.  Same rule as `Enemy.stand`, `damage taken` and
+// `shots fired`.
+//
+// ⚠⚠ **And this is where the magazine stops belonging to the HEX.**
+// `shots` is the mounted TOP's spent count, not the tower's: detach it
+// and the number leaves with it (as `CarryObject.subj`), so
+// detach-and-remount cannot refill.  The hash is still keyed by hex
+// because a tower's PLACE is what has a charge and a rebuild in
+// progress — but the ammunition is the top's, and that is the
+// distinction plan 17 exists to draw.
 pub struct TowerCharge {
-    q:      integer,
-    r:      integer,
-    charge: float,
-    shots:  integer,
-    repair: float,
+    q:           integer,
+    r:           integer,
+    charge:      float,
+    shots:       integer,
+    repair:      float,
+    top_removed: boolean,
 }
 
 // What every tower on the map has banked.  A hash must be a struct
@@ -258,7 +277,7 @@ pub fn tower_bank(ts: TowerState, q: integer, r: integer, seconds: float) {
         // that omits a field takes its zero SILENTLY, and this is the
         // site where a wrong one would hand out a black tower.
         ts.cells[q, r] = TowerCharge { q: q, r: r, charge: seconds, shots: 0,
-                                       repair: 0.0 };
+                                       repair: 0.0, top_removed: false };
     } else {
         tb_c.charge = tb_c.charge + seconds;
     }
@@ -301,7 +320,7 @@ pub fn tower_spend_shot(ts: TowerState, q: integer, r: integer) {
     tss_c = ts.cells[q, r];
     if tss_c == null {
         ts.cells[q, r] = TowerCharge { q: q, r: r, charge: 0.0, shots: 1,
-                                       repair: 0.0 };
+                                       repair: 0.0, top_removed: false };
     } else {
         tss_c.shots = tss_c.shots + 1;
     }
@@ -341,11 +360,15 @@ pub fn tower_count(ts: const TowerState) -> integer {
 // consequence is that upkeep has to be TIMED, which is what makes the
 // hot-swap in T2 a cycle rather than a convenience.
 //
-// ⚠ So this is `tower_black` today and will grow the detached case in
-// T2 — one door, so that the two states repair can apply to cannot
-// drift apart.
+// ⚠ **And there has to BE a top.**  A tower whose top has been carried
+// off is not a tower with a problem, it is a mast — there is nothing
+// there to work on.  ⚠ `DESIGN.md` § 7 also allows repairing a
+// **detached** top where it lies, and that half is NOT built: a
+// grounded top is a `CarryObject` and healing one needs a timer on the
+// object, which is new carrying code.  Recorded in `plans/17` § Open
+// questions rather than smuggled in.
 pub fn tower_repairable(ts: const TowerState, q: integer, r: integer) -> boolean {
-    tower_black(ts, q, r)
+    tower_has_top(ts, q, r) && tower_black(ts, q, r)
 }
 
 // Seconds banked toward (q, r)'s rebuild.  Zero for a tower nobody is
@@ -394,6 +417,86 @@ pub fn tower_repair_tick(ts: TowerState, q: integer, r: integer,
 
     trt_c.repair = 0.0;
     trt_c.shots  = 0;
+    true
+}
+
+// ─── The top comes off (plan 17 T2) ─────────────────────────────
+//
+// `DESIGN.md` § Tower-top salvage: *"A tower's red top is a detachable
+// carry object … player drives to a healthy tower, presses pickup → top
+// detaches, tower goes black (stops firing)."*  ⚠ "Goes black" there
+// means STOPS FIRING; in this engine `tower_black` already means
+// *spent*, so the two are kept apart: a topless tower does not fire
+// because it has nothing to fire WITH, whatever its magazine says.
+
+// Does (q, r) have a top on it?
+//
+// ⚠ **An absent cell answers TRUE**, and that is the whole reason the
+// field is `top_removed`: a tower nobody has ticked is a fresh tower
+// with its top on, and the sparse default has to say so.
+pub fn tower_has_top(ts: const TowerState, q: integer, r: integer) -> boolean {
+    tht_c = ts.cells[q, r];
+    if tht_c == null { return true; }
+    !tht_c.top_removed
+}
+
+// Take the top off (q, r).  Answers the shots it has FIRED — the
+// magazine that travels with it — or -1 if there was no top to take.
+//
+// ⚠ **The charge and any repair in progress are DISCHARGED**, and it is
+// the design's own fiction rather than bookkeeping: `DESIGN.md` § 7's
+// repair rule is that *"the mount cools, the capacitors discharge, the
+// safety interlocks unlatch"*.  It also closes the obvious exploit —
+// bank a charge, pull the top, put it straight back, fire instantly.
+//
+// ⚠ It does NOT create the carry object; `spawn.loft::wave_take` does
+// that, because a `CargoLayer` is not this file's business.  Two
+// effects at one SITE, the rule `damage.loft::break_structure` keeps —
+// and the site is the one that owns both halves.
+pub fn tower_detach_top(ts: TowerState, q: integer, r: integer) -> integer {
+    if !tower_has_top(ts, q, r) { return -1; }
+
+    tdt_c = ts.cells[q, r];
+    if tdt_c == null {
+        // A fresh tower nobody has ticked: its top is full.
+        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: 0.0, shots: 0,
+                                       repair: 0.0, top_removed: true };
+        return 0;
+    }
+
+    tdt_n = tdt_c.shots;
+    tdt_c.top_removed = true;
+    tdt_c.charge      = 0.0;
+    tdt_c.repair      = 0.0;
+    tdt_n
+}
+
+// Put a top carrying `shots` spent onto (q, r).  Answers whether it
+// went on.
+//
+// ⚠ **It REFUSES a tower that already has one**, and never overwrites:
+// an overwrite would delete a top out of the world with nothing able to
+// see it, which is the defect `carry.loft`'s whole representation
+// exists to make unwritable.  The design's hot-swap — *"strained top
+// drops to the ground; spare goes onto the tower"* — is therefore
+// COMPOSED at the call site out of a detach and a mount, rather than
+// being a third primitive that could disagree with them.
+//
+// ⚠ It also refuses a hex this state has never heard of, because such a
+// hex has a top by definition (§ `tower_has_top`).  Whether the hex is
+// a tower at ALL is the marker layer's question and `spawn.loft` asks
+// it — this file cannot see markers.
+pub fn tower_mount_top(ts: TowerState, q: integer, r: integer,
+                       shots: integer) -> boolean {
+    if tower_has_top(ts, q, r) { return false; }
+
+    tmt_c = ts.cells[q, r];
+    if tmt_c == null { return false; }
+
+    tmt_c.top_removed = false;
+    tmt_c.shots       = shots;
+    tmt_c.charge      = 0.0;
+    tmt_c.repair      = 0.0;
     true
 }
 
