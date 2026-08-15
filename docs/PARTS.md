@@ -269,10 +269,116 @@ rule as the mesher's.
 
 *Decision: parts get columns (they are assets and nothing routes over them);
 the terrain keeps its single surface until a mechanic needs otherwise.*
-⚠ **Trigger: the first thing a robot must walk UNDER** — a bridge, an overhang,
-a gantry.  That is the mechanic that makes one height per hex unable to answer,
-and it is also the point at which 1 094 tests written against `hex_height` need
-re-reading.
+
+### ⚠⚠ BRIDGES — and `DESIGN.md` already dodges the layer problem on purpose
+
+*(project owner, 2026-08-15: "there will be lots of bridges because how trees
+work, but robots have build them for themselves too for roads")*
+
+⚠ The trigger above names a bridge, so this looks like it fires immediately.
+**It does not, and the reason is already written down** —
+`DESIGN.md` § Trees as terrain:
+
+> **Limbs span caverns.**  A cavern is a **hole in the surface map** — a
+> **non-walkable kind, the way sea already is** — and a limb across it is a
+> walkable strip at height: a bridge one or two hexes wide.
+>
+> ⚠ **Caverns give the underground geography WITHOUT A SECOND LEVEL.**
+
+⚠⚠ **So a bridge over a HOLE needs no layers at all.**  The hex under the span
+is not walkable, so there is never a question of *which* surface a mover is on:
+the deck is simply the hex's height.  One surface per hex still answers, and
+`hex_height` / `can_step` / the flow field are untouched.
+
+⚠ **The layer question is therefore narrower than it looks**, and it is one
+question: **does a bridge ever span WALKABLE ground?**
+
+| span crosses | needs layers? | why |
+|---|---|---|
+| a cavern (tree limbs) | **no** | the design makes a cavern a hole — non-walkable, like sea |
+| water, a ravine | **no** | same dodge; `water` is already non-walkable |
+| **another road, a valley floor you can walk** | ⚠⚠ **yes** | two walkable surfaces over one hex is exactly what one height cannot say |
+
+### ⚠⚠ Answered: the walkable case IS wanted, so the trigger FIRES  `@X052`
+
+*(project owner, 2026-08-15: "and a base can have bridges too to reach places
+where robots can still walk under, but that is not yet designed")*
+
+So the cheap dodge covers the **natural** bridges (tree limbs over caverns) and
+**not** the built ones.  A base bridge whose whole point is that robots keep
+walking underneath is exactly two walkable surfaces over one hex.
+
+⚠⚠ **`@X048`'s trigger has fired.**  It is not an art change and it is not
+small:
+
+| what changes | today | with layers |
+|---|---|---|
+| the flow field's NODE | `Hex` | **`(Hex, layer)`** |
+| `hex_height(q, r)` | one number | one per layer — *"which layer is the surface"* becomes a real question |
+| `can_step` / `can_climb` | hex → hex | (hex, layer) → (hex, layer) |
+| `occupancy`, `BlockerMap` | keyed by hex | keyed by (hex, layer) |
+| the corpus | 1 094 tests written against one surface per hex | re-read |
+
+⚠ **It composes with [`plans/22`](../plans/22-the-field-cache/README.md) rather
+than fighting it** — layers are sparse, so the node count grows only where a
+bridge exists, and the roster-bounded sweep (`@X031`) already stops where nobody
+is standing.
+
+⚠ **The upstream answer exists**: `hex_voxel` carries a `Column` of absolute
+heights per layer, and `WORLD_MODEL.md` § *Which layer is the surface* is the
+rule for the FEET — which its own banner is careful to say is **not** the
+mesher's rule.  ⚠ Two different questions with one plausible answer between
+them is exactly the shape that goes wrong silently.
+
+⚠ **And dryopea has already named the feature**: `DESIGN.md` § Walls — economy +
+topology calls *"bridges between walls (the `cy`-layer deck mechanic)"* a
+**second-phase feature** with the same free-but-timed build economics as a wall.
+So the mechanic is on the list; what is undesigned is the **walk-under
+semantics**, and the project owner has flagged it as such.
+
+**Why it is likely worth the cost — three measured problems it answers**
+
+⚠ Recorded as SEEDS, not design.  Nothing below is decided:
+
+- ⚠⚠ **A tower on a bridge is not buried by its own kills.**  Plan 12 B7's
+  sharpest finding was that a tower's bodies **ramp over the wall it defends**
+  (`@M004` — which is why the pre-walk window later inverted it to +16).  A deck
+  above the kill zone is the one place a tower can fire without building the
+  staircase that defeats it.
+- **A route the enemy does not have.**  Repair is a POSITION (20 s within one
+  hex, `17-T1`) and upkeep is a positioning problem (`@M007`).  A bridge is a
+  crew route to a tower that does not pass through the wave.
+- **A way to NOT be in the way.**  Plan 13 V5: blocking is a property of the map,
+  and a parked crew member is a liability.  A deck is somewhere to be that is
+  not the enemy's path.
+
+*Decision: author bridges over NON-WALKABLE ground for now — the single surface
+holds and nothing is blocked.  The walkable case waits on its own design, and on
+whether the three seeds above survive being priced.*
+
+### ⚠ What a span already MEANS, and it is strong
+
+`DESIGN.md`, same section:
+
+> A span is the one chokepoint that **cannot be walled and cannot be flanked**,
+> which makes it the place where **a wall is pointless and a tower is
+> everything**.
+
+⚠⚠ **That inverts the game's most-measured lesson.**  `@M004`: a sealed wall
+nearly doubles the fall clock and a gate buys nothing — so *wall everything* is
+the learned optimum.  A span is terrain where that optimum is **wrong**, which
+is `DESIGN.md` § It shoots TOWERS' difficulty principle (*the first thing that
+invalidates a LEARNED OPTIMUM*) delivered by the map instead of by an enemy.
+
+⚠ **And the robots' roads make spans a READOUT.**  `ROBOT_ECONOMY.md` § 3 gives
+transport routes a counter-play — *"block, or interdict for salvage"* — and a
+bridge the robots built is both the route's weakest point and evidence of where
+the route goes.  A span is intel (`@X029`) and a chokepoint at once.
+
+⚠ **The gating note is already written**, and it is the one a builder would
+miss: *"a span is a 1-hex corridor, and `CLAUDE.md` § Testing something that
+moves records that a 1-hex-wide corridor cannot tell a flow field from a
+heading."*  So a bridge scenario must bend, or it gates nothing.
 
 ### ⚠⚠ A PLACEMENT layer, and joints that carry their own limits  `@X049` `@X050`
 
