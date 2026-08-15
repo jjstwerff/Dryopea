@@ -1,0 +1,463 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 19 phase P2 — the play actions join the ONE key table.
+//
+// P1 gave the game a door.  P2 gives it a keyboard, and does it the
+// way plan 09 I1 insists: the six play actions are rows in
+// `editor_actions()`, a `.keys` script presses the KEYS a player
+// presses, and what those keys mean is decided in exactly one place.
+//
+// ⚠⚠ **The defect this phase exists to prevent** is I1's, one level up:
+// a play action wired straight into the GL loop is invisible to every
+// script.  `do carry` going through the table is what makes a wrong E
+// binding fail a gate rather than fail a player.
+//
+// ── ⚠⚠ WASD is the camera AND the vehicle, and that is the design's ─
+//
+// `DESIGN.md` § The handful of keys gives movement to WASD;
+// `editor_actions()` already gave the camera pan the same four keys.
+// They are never both live: `editor_input_from` fills the pan set OR
+// the drive set on the strength of its `playing` argument, so the
+// frame decides which game it is playing and nothing remembers.
+//
+// ⚠ Without that exclusion every `at` in `scripts/validate.sh` — a
+// camera walk made of pan frames — would also drive whatever vehicle
+// the scenario had parked.  § A camera frame does not drive is the
+// assertion; the 520 measurements are the bulk control.
+//
+// ── ⚠ Why W means NORTH and not north-east ──────────────────────
+//
+// dryopea is pointy-top odd-r and has **no due-north neighbour**, so
+// the four keys cannot be four lattice directions.  P2 resolves a
+// heading in METRES instead and lets `lat_from_metres` name the hex —
+// see `src/play.loft` § WASD is a COMPASS heading.  § A held W goes
+// north and stays north is what would catch a drift.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// ⚠ Small records rather than tuples: loft has no vector-of-tuples
+// literal (`for x in [(a, b), …]` fails to resolve its element type),
+// and nothing else in the repo uses one either.
+struct KeyRow  { name: text, code: integer }
+struct NamePair { drive: text, pan: text }
+struct Way     { name: text, dq: integer, dr: integer }
+
+// An open field, so a vehicle can be steered in any direction without
+// the ground refusing the step and hiding a steering bug as terrain.
+fn field() -> EditorState {
+    fl_s = editor_state_new(PALETTE);
+    for fl_r in -12..13 {
+        for fl_q in -12..13 { paint(fl_s.pw, fl_q, fl_r, as_u8(GRASS)); }
+    }
+    place_marker(fl_s.mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    fl_s
+}
+
+fn game_at(q: integer, r: integer) -> PlayState {
+    ga_ps = play_state_new();
+    vehicle_place(ga_ps.wave.player, q, r);
+    ga_ps
+}
+
+// A frame with the named play keys held.  ⚠ Built through the TABLE,
+// never by setting `EditorInput` fields — a test that set the fields
+// would pass with the six rows deleted.
+fn play_frame(src: EditorInputSource, names: const vector<text>) -> EditorInput {
+    pf_kb = keyboard_empty();
+    for pf_n in names {
+        for pf_k in action_keys(src.eis_actions, pf_n) { pf_kb[pf_k] = true; }
+    }
+    input_source_feed(src, pf_kb, 0.0, 0.0, 0, 0);
+    editor_input_from(src, Hex { q: 0, r: 0 }, true, false, true)
+}
+
+// The same, as an EDIT frame — the pan reading of those keys.
+fn edit_frame(src: EditorInputSource, names: const vector<text>) -> EditorInput {
+    ef_kb = keyboard_empty();
+    for ef_n in names {
+        for ef_k in action_keys(src.eis_actions, ef_n) { ef_kb[ef_k] = true; }
+    }
+    input_source_feed(src, ef_kb, 0.0, 0.0, 0, 0);
+    editor_input_from(src, Hex { q: 0, r: 0 }, true, false, false)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The six actions are TABLE ROWS
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ On the keys `DESIGN.md` § The handful of keys names, checked
+// against the design's letters rather than against whatever the table
+// happens to say — a table asked what it contains agrees with itself.
+fn test_the_play_actions_are_on_the_designs_keys() {
+    tpa_src = input_source_new();
+    tpa_a   = tpa_src.eis_actions;
+
+    // W A S D, Shift, E — the design's own list, as ASCII codes.
+    tpa_rows: vector<KeyRow> = [
+        KeyRow { name: "drive_north", code: 119 },   // 'w'
+        KeyRow { name: "drive_west",  code:  97 },   // 'a'
+        KeyRow { name: "drive_south", code: 115 },   // 's'
+        KeyRow { name: "drive_east",  code: 100 },   // 'd'
+        KeyRow { name: "boost",       code: 132 },   // Shift
+        KeyRow { name: "carry",       code: 101 },   // 'e'
+    ];
+    for tpa_p in tpa_rows {
+        assert(action_exists(tpa_a, tpa_p.name), "{tpa_p.name} is a table row");
+        tpa_k = action_keys(tpa_a, tpa_p.name);
+        assert(len(tpa_k) == 1, "{tpa_p.name} has one key: {len(tpa_k)}");
+        assert((tpa_k[0] ?? -1) == tpa_p.code,
+               "{tpa_p.name} is key {tpa_p.code}, not {tpa_k[0] ?? -1}");
+    }
+
+    // ⚠ And they are not palette hotkeys, or `palette <n>` would start
+    // resolving to one.
+    tpa_names: vector<text> = ["drive_north", "drive_south", "drive_east",
+                               "drive_west", "boost", "carry"];
+    for tpa_n in tpa_names {
+        assert(action_palette_index(tpa_a, tpa_n) == -1,
+               "{tpa_n} selects no palette entry");
+    }
+}
+
+// ⚠ **The drive keys ARE the pan keys.**  Asserted rather than
+// tolerated: if someone "fixes" the collision by moving driving onto
+// spare letters, the design's WASD is gone and this says so.
+fn test_driving_and_panning_share_the_same_four_keys() {
+    tdp_a = input_source_new().eis_actions;
+    tdp_rows: vector<NamePair> = [
+        NamePair { drive: "drive_north", pan: "pan_north" },
+        NamePair { drive: "drive_south", pan: "pan_south" },
+        NamePair { drive: "drive_east",  pan: "pan_east"  },
+        NamePair { drive: "drive_west",  pan: "pan_west"  },
+    ];
+    for tdp_p in tdp_rows {
+        tdp_d = action_keys(tdp_a, tdp_p.drive);
+        tdp_n = action_keys(tdp_a, tdp_p.pan);
+        assert((tdp_d[0] ?? -1) == (tdp_n[0] ?? -2),
+               "{tdp_p.drive} and {tdp_p.pan} are one key: "
+               + "{tdp_d[0] ?? -1} vs {tdp_n[0] ?? -2}");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ One key, one meaning per frame
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_play_frame_drives_and_does_not_pan() {
+    tpf_n: vector<text> = ["drive_north"];
+    tpf_i = play_frame(input_source_new(), tpf_n);
+    assert(tpf_i.in_playing,      "the frame says it is playing");
+    assert(tpf_i.in_drive_north,  "north is held");
+    assert(!tpf_i.in_pan_north,   "and the camera is NOT panning");
+}
+
+// ⚠⚠ **The one that protects the gate.**  Every `at` is a camera walk
+// made of pan frames; if a pan frame also drove, 28 scenarios would
+// move their vehicles under themselves.
+fn test_a_camera_frame_pans_and_does_not_drive() {
+    tcf_n: vector<text> = ["pan_north"];
+    tcf_i = edit_frame(input_source_new(), tcf_n);
+    assert(!tcf_i.in_playing,     "the frame is an edit frame");
+    assert(tcf_i.in_pan_north,    "the camera pans");
+    assert(!tcf_i.in_drive_north, "and nothing drives");
+}
+
+// And the same for the other two, which have no editor counterpart at
+// all — an edit frame must still leave them alone, or a player holding
+// Shift to rotate anticlockwise would boost.
+fn test_an_edit_frame_neither_boosts_nor_carries() {
+    tef_src = input_source_new();
+    tef_n: vector<text> = ["boost", "carry"];
+    tef_i = edit_frame(tef_src, tef_n);
+    assert(!tef_i.in_boost, "Shift on an edit frame does not boost");
+    assert(!tef_i.in_carry, "E on an edit frame does not carry");
+    // ⚠ Shift still means anticlockwise there, which is what makes the
+    // exclusion a SHARING rather than a theft.
+    assert(tef_i.in_rotate_ccw, "and Shift still turns a rotation ccw");
+}
+
+// ⚠⚠ **The editor's seam is BLIND to all of them.**  The fields ride on
+// `EditorInput` because there is one input record; acting on them is
+// `play.loft`'s job, and an `editor_step` that grew a vehicle branch
+// would be the roster leaking into the seam that plan 08 V0 keeps
+// clean.
+fn test_the_editor_seam_is_blind_to_the_play_fields() {
+    tes_s  = field();
+    tes_in = editor_input_empty();
+    tes_in.in_playing     = true;
+    tes_in.in_drive_north = true;
+    tes_in.in_drive_east  = true;
+    tes_in.in_boost       = true;
+    tes_in.in_carry       = true;
+
+    tes_before = state_world_fingerprint(tes_s);
+    editor_step(tes_s, tes_in);
+    assert(state_world_fingerprint(tes_s) == tes_before,
+           "every play field set, and the editor changed nothing");
+    assert(!tes_s.render_needed || tes_s.render_needed,
+           "(the render flag is not part of the world)");
+}
+
+// A cheap stand-in for "did the editor do anything to the world".
+fn state_world_fingerprint(s: const EditorState) -> text {
+    "{painted_count(s.pw)}/{marker_count(s.mw)}/{s.cam.pos.q},{s.cam.pos.r}"
+    + "/{s.cam.zoom}/{s.mode}/{s.place_kind}/{s.picker.active}"
+    + "/{s.history.cursor}/{len(s.history.entries)}"
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ A key press does what the verb does
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **W really goes north**, which is the assertion the metres
+// resolution exists for: a (key -> lattice direction) table would have
+// had to send W to NE, and this would read the drift.
+fn test_a_held_w_goes_north_and_stays_north() {
+    thw_s  = field();
+    thw_ps = game_at(0, 0);
+    thw_src = input_source_new();
+    thw_n: vector<text> = ["drive_north"];
+
+    // ⚠ Five ticks, because `field()` is painted to r = 12 and an
+    // unpainted hex is SEA — a longer run would stop at the shore and
+    // read as a steering bug.
+    for _ in 0..5 {
+        play_step(thw_ps, thw_s, play_frame(thw_src, thw_n), TICK_SECONDS);
+    }
+    // ⚠ North is LARGER r (`camera.loft` says the same about a pan).
+    assert(thw_ps.wave.player.r == 10,
+           "five ticks north at two hexes a tick: r = {thw_ps.wave.player.r}");
+    // ⚠⚠ **Zero drift**, and that is the assertion the metres
+    // resolution was chosen for: a (key -> lattice direction) table
+    // would have had to send W to NE, which would read q = 5 here.
+    // Measured over 15 ticks on an open field: exactly 0, every tick.
+    assert(thw_ps.wave.player.q == 0,
+           "and not one hex sideways: q = {thw_ps.wave.player.q}");
+}
+
+// The other three axes, each ending on its own side of the origin and
+// nowhere near the others'.
+fn test_the_four_keys_go_four_ways() {
+    tfk_ways: vector<Way> = [
+        Way { name: "drive_north", dq: 0, dr:  1 },
+        Way { name: "drive_south", dq: 0, dr: -1 },
+        Way { name: "drive_east",  dq:  1, dr: 0 },
+        Way { name: "drive_west",  dq: -1, dr: 0 },
+    ];
+    for tfk_c in tfk_ways {
+        tfk_s   = field();
+        tfk_ps  = game_at(0, 0);
+        tfk_src = input_source_new();
+        tfk_hold: vector<text> = [tfk_c.name];
+        for _ in 0..4 {
+            play_step(tfk_ps, tfk_s, play_frame(tfk_src, tfk_hold), TICK_SECONDS);
+        }
+        tfk_q = tfk_ps.wave.player.q;
+        tfk_r = tfk_ps.wave.player.r;
+        // Eight hexes along its own axis, and nothing at all across it.
+        assert(tfk_q * tfk_c.dq + tfk_r * tfk_c.dr == 8,
+               "{tfk_c.name} went eight hexes its way: ({tfk_q}, {tfk_r})");
+        assert(tfk_q * tfk_c.dr - tfk_r * tfk_c.dq == 0,
+               "{tfk_c.name} went none across it: ({tfk_q}, {tfk_r})");
+    }
+}
+
+// ⚠ Two keys are a DIAGONAL, which is how four keys reach the six
+// directions a hex lattice actually has.
+fn test_two_keys_are_a_diagonal() {
+    ttk_s   = field();
+    ttk_ps  = game_at(0, 0);
+    ttk_src = input_source_new();
+    ttk_ne: vector<text> = ["drive_north", "drive_east"];
+    for _ in 0..4 {
+        play_step(ttk_ps, ttk_s, play_frame(ttk_src, ttk_ne), TICK_SECONDS);
+    }
+    assert(ttk_ps.wave.player.q > 0 && ttk_ps.wave.player.r > 0,
+           "north-east: ({ttk_ps.wave.player.q}, {ttk_ps.wave.player.r})");
+}
+
+// ⚠ **Releasing STOPS it.**  Without this the vehicle coasts to a
+// destination the player stopped asking for — and the coast is short,
+// so a test that only drove would never see it.
+fn test_releasing_the_key_stops_the_vehicle() {
+    trk_s   = field();
+    trk_ps  = game_at(0, 0);
+    trk_src = input_source_new();
+    trk_east: vector<text> = ["drive_east"];
+    for _ in 0..4 {
+        play_step(trk_ps, trk_s, play_frame(trk_src, trk_east), TICK_SECONDS);
+    }
+    trk_at = trk_ps.wave.player.q;
+    assert(trk_at > 0, "it drove: q = {trk_at}");
+
+    // Let go, and keep the clock running.
+    trk_none: vector<text> = [];
+    for _ in 0..6 {
+        play_step(trk_ps, trk_s, play_frame(trk_src, trk_none), TICK_SECONDS);
+    }
+    assert(trk_ps.wave.player.q == trk_at,
+           "and stopped where it was: {trk_at} -> {trk_ps.wave.player.q}");
+}
+
+// ⚠⚠ **An EDIT frame must not stop a vehicle a script pointed
+// somewhere.**  This is the failure mode that would have taken the
+// whole gate down: `drive 5 0` followed by any camera pan.
+fn test_an_edit_frame_leaves_a_scripted_destination_alone() {
+    tel_s   = field();
+    tel_ps  = game_at(0, 0);
+    tel_src = input_source_new();
+
+    vehicle_drive(tel_ps.wave.player, 8, 0);
+    // A camera pan, then time.
+    tel_n: vector<text> = ["pan_north"];
+    play_step(tel_ps, tel_s, edit_frame(tel_src, tel_n), TICK_SECONDS * 6.0);
+    assert(tel_ps.wave.player.q == 8,
+           "the scripted drive still arrived: q = {tel_ps.wave.player.q}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ Boost and carry, the two that are edges
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ `DESIGN.md` calls boost a HELD key and this edge-triggers it — see
+// `play.loft` § Boost.  Held is how the 2 s lift feels; re-arming a
+// second boost the moment the cooldown lapsed is a spend the player
+// did not decide to make.
+fn test_a_held_shift_boosts_once() {
+    tbs_s   = field();
+    tbs_ps  = game_at(0, 0);
+    tbs_src = input_source_new();
+
+    tbs_b: vector<text> = ["boost"];
+    play_step(tbs_ps, tbs_s, play_frame(tbs_src, tbs_b), 0.0);
+    assert(vehicle_boosting(tbs_ps.wave.player), "Shift started a boost");
+
+    // Hold it through the boost AND the whole cooldown.
+    for _ in 0..16 {
+        play_step(tbs_ps, tbs_s, play_frame(tbs_src, tbs_b), TICK_SECONDS);
+    }
+    assert(!vehicle_boosting(tbs_ps.wave.player),
+           "and holding it did not start a second one");
+    assert(vehicle_boost_ready(tbs_ps.wave.player),
+           "the cooldown has lapsed, so a fresh PRESS would work");
+}
+
+// Release and press again, and it does.
+fn test_a_second_press_boosts_again() {
+    tsp_s   = field();
+    tsp_ps  = game_at(0, 0);
+    tsp_src = input_source_new();
+    tsp_none: vector<text> = [];
+
+    tsp_b: vector<text> = ["boost"];
+    play_step(tsp_ps, tsp_s, play_frame(tsp_src, tsp_b), 0.0);
+    for _ in 0..16 {
+        play_step(tsp_ps, tsp_s, play_frame(tsp_src, tsp_none), TICK_SECONDS);
+    }
+    play_step(tsp_ps, tsp_s, play_frame(tsp_src, tsp_b), 0.0);
+    assert(vehicle_boosting(tsp_ps.wave.player), "a fresh press boosts");
+}
+
+// ⚠⚠ **ONE key, resolved on the hands.**  `DESIGN.md` § The handful of
+// keys is explicit — *empty hands = pickup, carrying = deposit* — and
+// the script keeps `take` / `drop` as two verbs so a scenario cannot
+// assert a pickup and have got a deposit.
+fn test_e_picks_up_and_e_puts_down() {
+    tep_s   = field();
+    tep_ps  = game_at(3, 0);
+    tep_src = input_source_new();
+    tep_none: vector<text> = [];
+    tep_e: vector<text> = ["carry"];
+
+    // Something to pick up, right where the vehicle is.
+    cargo_spawn(tep_ps.wave.cargo, CARGO_WRECK, 0, 3, 0);
+    assert(!cargo_carrying(tep_ps.wave.cargo, BLOCKER_PLAYER), "hands empty");
+
+    play_step(tep_ps, tep_s, play_frame(tep_src, tep_e), 0.0);
+    assert(cargo_carrying(tep_ps.wave.cargo, BLOCKER_PLAYER),
+           "E with empty hands picked it up");
+
+    // ⚠ Held, so no second edge — otherwise it would be put straight
+    // back down on the next frame.
+    play_step(tep_ps, tep_s, play_frame(tep_src, tep_e), 0.0);
+    assert(cargo_carrying(tep_ps.wave.cargo, BLOCKER_PLAYER),
+           "and holding E did not immediately drop it");
+
+    // Release, drive to the core, press again.
+    play_step(tep_ps, tep_s, play_frame(tep_src, tep_none), 0.0);
+    vehicle_place(tep_ps.wave.player, 0, 0);
+    cargo_follow(tep_ps.wave.cargo, BLOCKER_PLAYER, 0, 0);
+    play_step(tep_ps, tep_s, play_frame(tep_src, tep_e), 0.0);
+    assert(!cargo_carrying(tep_ps.wave.cargo, BLOCKER_PLAYER),
+           "E with full hands deposited it at the core");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ And a SCRIPT presses the same keys
+// ─────────────────────────────────────────────────────────────────
+
+// The phase's headline: `do carry` goes name → key code → `input` →
+// the resolver → the seam.  A wrong E binding fails HERE, which is the
+// whole reason the round trip exists (plan 09 I1).
+fn test_a_script_can_press_the_play_keys() {
+    tsk_s = editor_state_new(PALETTE);
+    tsk_r = script_run(tsk_s,
+        "palette 5\n"
+        + "drag -6 0 6 0\n"
+        + "flag 0 0 target 0\n"
+        + "park 0 0\n"
+        + "do drive_east\n"
+        + "tick 4\n", "tests/actual");
+    assert(tsk_r.ok, "the script plays: {script_describe(tsk_r)}");
+    // ⚠ `do` presses and then RELEASES, and the release is an EDIT
+    // frame — so it does not cancel the destination the press set.  The
+    // vehicle drives on under `tick`, which is what a player pressing a
+    // key and letting go would see.
+    assert(tsk_r.play.wave.player.q > 0,
+           "the keypress drove it east: q = {tsk_r.play.wave.player.q}");
+}
+
+// ⚠ **`hold` works too**, which is what a held key IS to a script —
+// and the drive keys are held rather than tapped.
+fn test_a_script_can_hold_a_drive_key() {
+    thd_s = editor_state_new(PALETTE);
+    thd_r = script_run(thd_s,
+        "palette 5\n"
+        + "drag -6 0 6 0\n"
+        + "flag 0 0 target 0\n"
+        + "park 0 0\n"
+        + "hold drive_west 3\n"
+        + "tick 4\n", "tests/actual");
+    assert(thd_r.ok, "the script plays: {script_describe(thd_r)}");
+    assert(thd_r.play.wave.player.q < 0,
+           "held W-est drove west: q = {thd_r.play.wave.player.q}");
+}
+
+// ⚠ And the SAME key name, pressed as a camera action, moves the
+// camera and not the vehicle — the two readings, side by side, in the
+// language a scenario is written in.
+fn test_the_same_key_pans_when_the_script_says_pan() {
+    tsw_s = editor_state_new(PALETTE);
+    tsw_r = script_run(tsw_s,
+        "palette 5\n"
+        + "drag -6 0 6 0\n"
+        + "flag 0 0 target 0\n"
+        + "park 0 0\n"
+        + "hold pan_west 3\n"
+        + "tick 4\n", "tests/actual");
+    assert(tsw_r.ok, "the script plays: {script_describe(tsw_r)}");
+    assert(tsw_r.play.wave.player.q == 0 && tsw_r.play.wave.player.r == 0,
+           "the vehicle did not move: ({tsw_r.play.wave.player.q}, "
+           + "{tsw_r.play.wave.player.r})");
+    assert(tsw_s.cam.pos.q < 0, "the camera did: q = {tsw_s.cam.pos.q}");
+}

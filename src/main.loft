@@ -236,7 +236,11 @@ fn main() {
         pre_markers = marker_count(s.mw);
         pre_cursor  = s.history.cursor;
         pre_dirty   = s.dirty;
-        ei = editor_input_from(isrc, hovered, pan_due, paint_tick_due);
+        // ⚠ `false` = this is an EDIT frame, so WASD pans the camera
+        // rather than driving (plan 19 P2).  This shell has no play
+        // mode yet — P3 is what gives it one, and this argument is the
+        // one line that will flip when it does.
+        ei = editor_input_from(isrc, hovered, pan_due, paint_tick_due, false);
         editor_step(s, ei);
 
         // Charge the rate limits only when they actually fired, so a

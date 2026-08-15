@@ -9,8 +9,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**P0 + P1 done** (2026-08-15).  P2 is next.  Suite **1065** green, gate
-28 scripts / **520 measurements unchanged**.
+**P0 + P1 + P2 done** (2026-08-15).  P3 is next.  Suite **1082** green,
+gate 28 scripts / **520 measurements unchanged**.
 
 **P1 built the seam — and FALSIFIED P0 while doing it.**  P0 said an
 accumulator reproduces `tick N` exactly, so one door taking SECONDS
@@ -30,16 +30,15 @@ entry point"; it is *one caller of `wave_tick`*, and `play_one_tick` is
 it.
 
 ⚠ **dryopea still cannot be played.**  `src/main.loft` opens a window
-and runs the EDITOR — P1 built the door the window will drive, and P3
-is what opens it.
+and runs the EDITOR — paint, markers, camera, save.  P1 built the door
+the window will drive and P2 gave it a keyboard; what is missing is the
+loop, and **one argument**: `main.loft` passes `playing: false`, so
+WASD still pans.  P3 is what flips it.
 
-⚠ **dryopea cannot be played.**  `src/main.loft` opens a window and runs
-the EDITOR — paint, markers, camera, save.  The game lives entirely
-inside `script_run`: `WaveState` rides on `ScriptRun`, and
-`editor_step.loft` does not mention it, because *"a session that is
-being edited has no enemies in it"*.  So every wave, every tower, every
-clock in this repo has been measured by a `.keys` file and never once
-played by a person.
+Before this plan, every wave, tower and clock in the repo had been
+measured by a `.keys` file and **never once played by a person** —
+`WaveState` rode on `ScriptRun` and `editor_step.loft` did not mention
+it, because *"a session that is being edited has no enemies in it"*.
 
 ## Goal
 
@@ -253,13 +252,93 @@ not what one IS.
   the guard that stops anyone folding the two doors back together, and
   if a loft release ever makes it exact the redness is good news.
 
+## P2 — the play actions join the ONE key table (2026-08-15)
+
+Six rows in `editor_actions()` — `drive_north` / `_south` / `_east` /
+`_west` (WASD), `boost` (Shift), `carry` (E) — which is
+`DESIGN.md` § The handful of keys' whole list bar the editor's own.
+`EditorInput` grew the seven fields they resolve into and
+`play.loft::play_actions` is what consumes them.
+
+### ⚠⚠ WASD is the camera AND the vehicle, and the exclusion is the phase
+
+`editor_actions()` already gave the camera pan W, A, S and D.  The
+design gives movement the same four.  They are never both live:
+`editor_input_from` gained a `playing` argument and fills the pan set
+**or** the drive set, never both.
+
+⚠ **Without that exclusion the gate dies in bulk**, and not subtly:
+every `at` is a camera walk made of pan frames, so each one would also
+drive whatever vehicle its scenario had parked.  `plans/19` § Open
+questions 2 said the mode belongs to the shell and must not be baked
+into the seam — a PARAMETER is the weakest form it can take, and
+nothing remembers it between frames.
+
+⚠ **And a script says which meaning it wants by ACTION NAME**, not by a
+mode verb: `do pan_north` presses W as a camera key and `do
+drive_north` presses the same W as a play key.  A `live` verb would
+have made a line's meaning depend on a line somewhere above it, which
+is exactly what `take` / `drop` refuse to do about one carry key.
+
+### ⚠⚠ W means NORTH, and there is no direction table
+
+dryopea is pointy-top odd-r: its six neighbours are E, SE, SW, W, NW,
+NE, so **there is no due-north neighbour** and the four keys cannot be
+four `lat_neighbour` directions.  Three ways out, two of which invent
+something:
+
+| | what it costs |
+|---|---|
+| a (key → lattice direction) table | W would mean NE, so holding "north" **drifts steadily east** — and it resurrects the constant direction table `lattice.loft` deliberately does not have |
+| drive to the hovered hex | free — it is the existing `drive <q> <r>` verb — but `DESIGN.md` § 11 reserves the mouse for UI clicks and gives movement to WASD |
+| **a heading in METRES** ✓ | one float round-trip per steering frame |
+
+The keys name a compass heading, the heading is added to the vehicle's
+metre position, and `lat_from_metres` names the hex.  ⚠ The arithmetic
+is `lattice.loft`'s own — including the y-negation that makes the
+compass true on dryopea's screen — so nothing new is invented and the
+four keys reach all eight compass headings through their combinations.
+
+⚠ **Measured, and it is exact**: fifteen ticks of held W on an open
+field give `(0, 2) (0, 4) … (0, 30)` — **zero drift in `q`, every
+tick**.  A NE mapping would have read `q = 15`.  E, S and W are equally
+clean and a two-key diagonal steps `(1, 2)` a tick.
+
+### ⚠ Three smaller decisions, each with a reason
+
+**Boost is EDGE-triggered, though `DESIGN.md` calls it a held key.**
+Held is how the 2 s lift *feels*; but `vehicle_boost` is a one-shot
+that refuses while boosting or cooling, so a held Shift would silently
+re-arm the instant the 5 s cooldown lapsed.  That is a second boost the
+player never decided to spend, and § The opportunity-cost layer is the
+whole reason spending one is a decision.
+
+**Releasing a drive key STOPS the vehicle**, spelled *drive to where
+you already are* so there is still exactly one way to set a
+destination.  ⚠ The stop is guarded on `in_playing`, because without
+that guard an EDIT frame would cancel a destination a script had set
+with `drive <q> <r>` — silently, on the next camera pan.
+
+**`PlayState` remembers its own previous frame** rather than reading
+`EditorState.prev`: that one is written at the END of `editor_step`, so
+a play action reading it would compare this frame against itself.
+
+### ⚠ A loft finding: there is no vector-of-TUPLES literal
+
+`for row in [("drive_north", 119), …]` fails with `fatal: cannot build
+this record — its type never resolved`, pointing at the last element
+rather than at the construct.  A one-line struct is the fix and reads
+better anyway.  Nothing else in `src/` or `tests/` uses the shape, so it
+had never come up — recorded in
+[`docs/LOFT_GOTCHAS.md`](../../docs/LOFT_GOTCHAS.md) § Literals.
+
 ## Invariant gate
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
 | **P0** ✓ | `tick 30` reproduced from 1, 30, 200, 600 and 1200 frames — every one an empty `state_diff` | ⚠ claimed *an accumulator is a REFINEMENT of `tick N`* — **too strong, corrected by P1**; what holds is that the frame SIZE does not reach the simulation | ✓ the falsifier was live for the frame size; ✗ **not for `n`** — five frame sizes over ONE tick count, and the defect was in the variable held fixed |
 | **P1** ✓ | 520 gate measurements unchanged; suite 1065 | ONE caller of `wave_tick` — asked by COUNT or by DURATION, never one folded into the other | ⚠ **the control FIRED**: routing `tick` through the seconds door went red as `a-base-that-plays-its-list … waves = 0, outside 1..1`, a wave that never arrives rather than a clock a hair off |
-| **P2** | a `.keys` script and a keypress produce the same action | one key table, the I1 shape | ✗ a play action wired straight into the GL loop is invisible to every script — the exact defect I1 was built to stop |
+| **P2** ✓ | six rows on the design's own keys; 520 measurements unchanged; suite 1082 | one key table, the I1 shape — and one key means ONE thing per frame | ⚠ **the control was nearly fatal**: WASD is shared with the camera pan, so a merged reading would have driven a parked vehicle on every `at` in 28 scenarios.  ✓ § A camera frame does not drive; ✓ § The editor seam is blind to the play fields |
 | **P3** | waves arrive in a window, on the wall clock | the loop owns the CLOCK and the seam owns the rules (`editor_step`'s existing split) | a frame-rate-dependent simulation: assert the same elapsed time gives the same state at two frame rates |
 | **P4** | enemies, the vehicle and the crew are drawn | measured frames, not goldens | ⚠ a golden AGREES WITH A SHEAR, so the gate is `classify_world` pixel shares — a thing not drawn reads as zero |
 | **P5** | a key writes the live situation as `.keys` | plan 18's emitter, driven from a session rather than a script | the emitted file must REPLAY to an S0-identical state |
@@ -270,8 +349,8 @@ not what one IS.
 |---|---|---|---|
 | **P0** — the probe: can real time reproduce `tick N`? | XS | the table in § P0, measured against the shipped sim over five frame sizes | **Done** |
 | **P1** — the play session and its ONE door | M | `tests/19_p1_the_seam.loft` (14 fns) + the whole gate: `play.loft` owns the only `wave_tick` call, `tick` / `fall` / every scripted frame route through it, and **all 520 measurements are unchanged** | **Done** |
-| **P2** — play actions in the ONE key table | S | `tests/19_p2_the_keys.loft` — drive / boost / take / drop become `EditorAction` rows, and a script pressing the key does what the verb does.  ⚠ They apply in `play_step`, not `editor_step`: the editor's seam has no roster | Open |
-| **P3** — the loop: the game runs in the window | M | `tests/19_p3_the_clock.loft` for the accumulator + a human check that `make play` plays.  ⚠ The headless half is what CI can hold | Blocked on P2 |
+| **P2** — play actions in the ONE key table | S | `tests/19_p2_the_keys.loft` (17 fns) — WASD / Shift / E are `EditorAction` rows, a script pressing the key does what the verb does, and the 520 measurements are unchanged.  ⚠ They apply in `play_step`, not `editor_step`: the editor's seam has no roster | **Done** |
+| **P3** — the loop: the game runs in the window | M | `tests/19_p3_the_clock.loft` for the accumulator + a human check that `make play` plays.  ⚠ The headless half is what CI can hold.  ⚠ `main.loft` passes `playing: false` today — that one argument is what P3 flips | Open |
 | **P4** — drawing the game | M | `tests/19_p4_the_frame.loft` — `classify_world` pixel shares for enemies, the vehicle and the crew.  A `.keys` scenario with `snap` for human inspection | Blocked on P3 |
 | **P5** — capture from a live session | S | `tests/19_p5_capture.loft` — a key writes the situation, and the file replays to an S0-identical state ([plan 18](../18-scenario-capture/README.md)) | Blocked on P3 |
 
@@ -317,7 +396,11 @@ a captured situation is a starting position, not a resumable game.
    `PlayState { wave, banked, ticks }`, and `ScriptRun` holds one.
    § Open question 1, answered by the compiler.
 2. **Does the editor become a MODE of the game, or the game a mode of
-   the editor?**  Today `main.loft` is an editor that could gain a play
+   the editor?**  ⚠ **P2 built the mechanism and deliberately not the
+   answer**: `editor_input_from`'s `playing` argument is a per-FRAME
+   parameter, so nothing remembers a mode and nothing pre-empts plan
+   05's landing flow.  `main.loft` passes `false`; P3 decides what
+   flips it.  The original recommendation stands —  Today `main.loft` is an editor that could gain a play
    mode; the shipped game is a game that has no editor.  *Recommendation:
    a mode flag in the shell for now and no decision baked into the seam,
    because the answer changes when a landing flow exists (plan 05) and

@@ -101,6 +101,9 @@
 use lattice;
 use markers;
 use editor_step;
+use occupancy;
+use carry;
+use vehicle;
 use spawn;
 
 // ─── State ──────────────────────────────────────────────────────
@@ -136,6 +139,13 @@ pub struct PlayState {
     // 3).  The accumulator changes who decides WHEN a tick happens; it
     // does not change what one IS.
     ticks: integer,
+
+    // Last frame's input, for the play actions' rising edges (plan 19
+    // P2).  ⚠ **Its own record, never `EditorState.prev`**: that one is
+    // written at the END of `editor_step`, so a play action reading it
+    // would compare this frame against itself.  Same shape, same
+    // `editor_input_copy`, one frame apart.
+    prev: EditorInput,
 }
 
 pub fn play_state_new() -> PlayState {
@@ -143,6 +153,7 @@ pub fn play_state_new() -> PlayState {
         wave:   wave_state_empty(),
         banked: 0.0,
         ticks:  0,
+        prev:   editor_input_empty(),
     }
 }
 
@@ -169,6 +180,132 @@ pub fn play_core(mw: const MarkerWorld) -> (integer, integer, integer) {
         }
     }
     (pc_n, pc_q, pc_r)
+}
+
+// ─── The play actions (plan 19 P2) ──────────────────────────────
+
+// ⚠⚠ **WASD is a COMPASS heading, resolved in METRES — there is no
+// direction table here and there must not be one.**
+//
+// `DESIGN.md` § The handful of keys says WASD moves.  dryopea is
+// pointy-top odd-r, whose six neighbours are E, SE, SW, W, NW and NE —
+// **there is no due-north neighbour at all**, so the four keys cannot
+// be four `lat_neighbour` directions.  Three ways out were open and
+// two of them invent something:
+//
+//   * a (key -> lattice direction) table: W would have to mean NE, so
+//     holding "north" would drift steadily east and the player would
+//     feel it.  It also resurrects the constant direction table
+//     `lattice.loft` deliberately does not have.
+//   * drive to the hovered hex: reproduces the existing `drive <q> <r>`
+//     verb exactly and costs nothing — but `DESIGN.md` § 11 reserves
+//     the mouse for UI clicks and gives movement to WASD.
+//   * **this**: the keys name a heading in METRES, the heading is added
+//     to the vehicle's metre position, and `lat_from_metres` names the
+//     hex.  W really is north, the four keys reach all eight compass
+//     headings through their combinations, and the arithmetic is
+//     `lattice.loft`'s own — including the y-negation that makes the
+//     compass true on dryopea's screen.
+//
+// ⚠ So a heading is (x, y) in metres with **+y SOUTH**, matching
+// `lat_to_metres`' frame and the canvas'.  Not normalised: a diagonal
+// is longer than an axis by √2, which only makes the target further
+// away, and the target is re-pointed every frame anyway.
+fn play_heading(input: const EditorInput) -> (float, float) {
+    ph_x = 0.0;
+    ph_y = 0.0;
+    if input.in_drive_east  { ph_x += 1.0; }
+    if input.in_drive_west  { ph_x -= 1.0; }
+    if input.in_drive_south { ph_y += 1.0; }
+    if input.in_drive_north { ph_y -= 1.0; }
+    (ph_x, ph_y)
+}
+
+// How far ahead a held direction points, in hexes.
+//
+// ⚠ **Derived from the vehicle, not chosen.**  It only has to exceed
+// what one tick can cover, because the target is re-pointed every
+// frame: shorter and a hold would stall on arrival, longer and a
+// RELEASE would coast further before § the stop takes effect.  A
+// boosting vehicle covers `vehicle_hexes_this_tick`, so one more than
+// that is the smallest honest answer — and it tracks a boost, which a
+// constant would not.
+fn play_steer_reach(v: const Vehicle) -> integer {
+    vehicle_hexes_this_tick(v, TICK_SECONDS) + 1
+}
+
+// Where a held heading points, as a hex.
+fn play_steer_target(v: const Vehicle, hx: float, hy: float) -> Hex {
+    pst_here  = lat_to_metres(Hex { q: v.q, r: v.r });
+    pst_reach = (play_steer_reach(v) as float) * HEX_FLAT_TO_FLAT;
+    lat_from_metres(pst_here.0 + hx * pst_reach, pst_here.1 + hy * pst_reach)
+}
+
+// Apply one frame of PLAY intent — what `editor_step` cannot, because
+// the editor's seam has no roster, no vehicle and no cargo.
+//
+// ⚠ **Nothing happens on an EDIT frame.**  `in_playing` is what says
+// which, and without that guard the release branch below would stop a
+// vehicle that a script had pointed somewhere with `drive <q> <r>` —
+// silently, on the next camera pan, in every scenario in the gate.
+fn play_actions(ps: PlayState, s: EditorState, input: const EditorInput) {
+    if !input.in_playing { return; }
+    if !vehicle_present(ps.wave.player) { return; }
+
+    // ── Steering ────────────────────────────────────────────────
+    //
+    // ⚠ **Held, not edge-triggered, and re-pointed EVERY frame.**  The
+    // vehicle carries a destination rather than a velocity, so a held
+    // key is a destination kept just ahead of it.  Re-pointing from the
+    // vehicle's CURRENT hex is what makes the result frame-rate
+    // independent: the frame decides where to aim, `vehicle_tick`
+    // decides how fast.
+    pa_head = play_heading(input);
+    if pa_head.0 != 0.0 || pa_head.1 != 0.0 {
+        pa_to = play_steer_target(ps.wave.player, pa_head.0, pa_head.1);
+        vehicle_drive(ps.wave.player, pa_to.q, pa_to.r);
+    } else {
+        // ⚠ **Releasing STOPS it**, rather than letting it coast to a
+        // destination the player has stopped asking for.  Stopping is
+        // spelled *drive to where you already are*, so there is still
+        // exactly one way to set a destination.
+        vehicle_drive(ps.wave.player, ps.wave.player.q, ps.wave.player.r);
+    }
+
+    // ── Boost ───────────────────────────────────────────────────
+    //
+    // ⚠ **Edge-triggered, though `DESIGN.md` calls it a held key.**
+    // Held is how it FEELS — the lift lasts 2 s whatever the finger
+    // does — but `vehicle_boost` is a one-shot that refuses while
+    // boosting or cooling, so a held Shift would silently re-arm the
+    // instant the 5 s cooldown expired.  That is a second boost the
+    // player did not decide to spend, and `DESIGN.md` § The
+    // opportunity-cost layer is the whole reason spending one is a
+    // decision.
+    if input.in_boost && !ps.prev.in_boost {
+        vehicle_boost(ps.wave.player);
+    }
+
+    // ── Carry: ONE key, resolved on what the hands hold ─────────
+    //
+    // ⚠ Edge-triggered for the obvious reason — a held E would pick a
+    // thing up and put it down again every frame.
+    //
+    // ⚠ **The order is the design's, not a coin toss**: `wave_take`
+    // first, and only a carrier with full hands deposits.  That is what
+    // makes the key *context-resolved on the carrier's state* rather
+    // than on what happens to be underfoot.
+    if input.in_carry && !ps.prev.in_carry {
+        if cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER) {
+            pa_core = play_core(s.mw);
+            if pa_core.0 == 1 {
+                wave_drop(ps.wave, BLOCKER_PLAYER,
+                          Hex { q: pa_core.1, r: pa_core.2 }, s.mw);
+            }
+        } else {
+            wave_take(ps.wave, BLOCKER_PLAYER, s.mw);
+        }
+    }
 }
 
 // ─── The tick ───────────────────────────────────────────────────
@@ -248,8 +385,19 @@ pub fn play_advance(ps: PlayState, s: EditorState, seconds: float) -> integer {
 // keeps internally, where everything the tick reads is fixed before
 // anybody moves.  Ticking first would make a keypress arrive one frame
 // late at 60 fps and thirty ticks late at 1.
+//
+// ⚠ And the EDITOR's half goes before the GAME's, so a play action
+// reads the world an editor action has already changed — the same
+// reason, one level down.
 pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
                  seconds: float) -> integer {
     editor_step(s, input);
+    play_actions(ps, s, input);
+    // ⚠ **Recorded on EVERY frame, including edit frames and frames
+    // with no vehicle** — `play_actions` returns early from both, and
+    // a `prev` that skipped them would leave a key looking held across
+    // the gap, firing an edge the player never made.  The same rule
+    // `editor_step`'s own `s.prev` keeps, and for the same reason.
+    ps.prev = editor_input_copy(input);
     play_advance(ps, s, seconds)
 }

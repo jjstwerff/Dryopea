@@ -171,7 +171,7 @@ fn compare_paths(
     cp_btn: integer = 0;
     if mb_left { cp_btn = 1; }
     input_source_feed(src, kb, 0.0, 0.0, cp_btn, wheel);
-    cp_new = editor_input_from(src, Hex { q: hq, r: hr }, pan_due, paint_due);
+    cp_new = editor_input_from(src, Hex { q: hq, r: hr }, pan_due, paint_due, false);
     cp_ref = ref_input(kb, wheel, mb_left, hq, hr, pan_due, paint_due);
     input_diff(cp_ref, cp_new)
 }
@@ -234,7 +234,7 @@ fn test_the_five_ctrl_combos_resolve() {
     tfc_kb[REF_S]    = true;
     tfc_kb[REF_CTRL] = true;
     input_source_feed(tfc_src, tfc_kb, 0.0, 0.0, 0, 0);
-    tfc_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false);
+    tfc_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false, false);
     assert(tfc_i.in_save, "Ctrl+S saves");
     assert(!tfc_i.in_pan_south, "and does NOT pan south");
 
@@ -243,7 +243,7 @@ fn test_the_five_ctrl_combos_resolve() {
     tfr_kb[REF_R]    = true;
     tfr_kb[REF_CTRL] = true;
     input_source_feed(tfc_src, tfr_kb, 0.0, 0.0, 0, 0);
-    tfr_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false);
+    tfr_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false, false);
     assert(tfr_i.in_reload, "Ctrl+R reloads");
     assert(!tfr_i.in_rotate, "and does NOT rotate");
 
@@ -252,7 +252,7 @@ fn test_the_five_ctrl_combos_resolve() {
     tfp_kb[REF_S] = true;
     tfp_kb[REF_R] = true;
     input_source_feed(tfc_src, tfp_kb, 0.0, 0.0, 0, 0);
-    tfp_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false);
+    tfp_i = editor_input_from(tfc_src, Hex { q: 0, r: 0 }, true, false, false);
     assert(tfp_i.in_pan_south && tfp_i.in_rotate, "plain S pans, plain R rotates");
     assert(!tfp_i.in_save && !tfp_i.in_reload, "and neither is the combo");
 }
@@ -264,16 +264,16 @@ fn test_the_wheel_drives_zoom() {
     twz_kb  = keyboard_empty();
 
     input_source_feed(twz_src, twz_kb, 0.0, 0.0, 0, 3);
-    twz_in = editor_input_from(twz_src, Hex { q: 0, r: 0 }, true, false);
+    twz_in = editor_input_from(twz_src, Hex { q: 0, r: 0 }, true, false, false);
     assert(twz_in.in_zoom_in && !twz_in.in_zoom_out, "wheel up zooms in");
 
     input_source_feed(twz_src, twz_kb, 0.0, 0.0, 0, -3);
-    twz_out = editor_input_from(twz_src, Hex { q: 0, r: 0 }, true, false);
+    twz_out = editor_input_from(twz_src, Hex { q: 0, r: 0 }, true, false, false);
     assert(twz_out.in_zoom_out && !twz_out.in_zoom_in, "wheel down zooms out");
 
     // Rate-limited like pan: the caller owns the clock.
     input_source_feed(twz_src, twz_kb, 0.0, 0.0, 0, 3);
-    twz_off = editor_input_from(twz_src, Hex { q: 0, r: 0 }, false, false);
+    twz_off = editor_input_from(twz_src, Hex { q: 0, r: 0 }, false, false, false);
     assert(!twz_off.in_zoom_in, "and not while the rate limit says no");
 }
 
@@ -287,7 +287,7 @@ fn test_the_mouse_is_held_state_not_an_edge() {
     tmh_down = 0;
     for _ in 0..4 {
         input_source_feed(tmh_src, tmh_kb, 0.0, 0.0, 1, 0);
-        tmh_i = editor_input_from(tmh_src, Hex { q: 0, r: 0 }, false, false);
+        tmh_i = editor_input_from(tmh_src, Hex { q: 0, r: 0 }, false, false, false);
         if tmh_i.in_mouse_left { tmh_down += 1; }
     }
 
@@ -304,7 +304,7 @@ fn test_a_held_key_reads_pressed_every_frame() {
     thk_on = 0;
     for _ in 0..5 {
         input_source_feed(thk_src, thk_kb, 0.0, 0.0, 0, 0);
-        thk_i = editor_input_from(thk_src, Hex { q: 0, r: 0 }, false, false);
+        thk_i = editor_input_from(thk_src, Hex { q: 0, r: 0 }, false, false, false);
         if thk_i.in_toggle_mode { thk_on += 1; }
     }
 
@@ -348,7 +348,9 @@ fn test_every_action_is_bound_to_a_real_key() {
         tea_n += 1;
     }
 
-    assert(tea_n == 26, "2 modifiers + 13 actions + 11 palette hotkeys — `rubble` has none");
+    assert(tea_n == 32,
+           "2 modifiers + 13 editor actions + 6 PLAY actions (plan 19 P2) "
+           + "+ 11 palette hotkeys — `rubble` has none");
 }
 
 // ─── Rebinding ──────────────────────────────────────────────────
@@ -379,13 +381,13 @@ fn test_rebinding_moves_the_key_and_the_old_one_goes_dead() {
     trb_kb = keyboard_empty();
     trb_kb[106] = true;
     input_source_feed(trb_src, trb_kb, 0.0, 0.0, 0, 0);
-    trb_new = editor_input_from(trb_src, Hex { q: 0, r: 0 }, false, false);
+    trb_new = editor_input_from(trb_src, Hex { q: 0, r: 0 }, false, false, false);
     assert(trb_new.in_toggle_mode, "the new key toggles the mode");
 
     trb_old = keyboard_empty();
     trb_old[REF_TAB] = true;
     input_source_feed(trb_src, trb_old, 0.0, 0.0, 0, 0);
-    trb_dead = editor_input_from(trb_src, Hex { q: 0, r: 0 }, false, false);
+    trb_dead = editor_input_from(trb_src, Hex { q: 0, r: 0 }, false, false, false);
     assert(!trb_dead.in_toggle_mode, "and Tab does nothing any more");
 }
 
@@ -411,14 +413,14 @@ fn test_rebinding_keeps_the_modifier_rule() {
     trk_plain = keyboard_empty();
     trk_plain[117] = true;
     input_source_feed(trk_src, trk_plain, 0.0, 0.0, 0, 0);
-    assert(!editor_input_from(trk_src, Hex { q: 0, r: 0 }, false, false).in_undo,
+    assert(!editor_input_from(trk_src, Hex { q: 0, r: 0 }, false, false, false).in_undo,
            "plain 'u' is not undo — the rule travelled with the rebind");
 
     trk_combo = keyboard_empty();
     trk_combo[117] = true;
     trk_combo[REF_CTRL] = true;
     input_source_feed(trk_src, trk_combo, 0.0, 0.0, 0, 0);
-    assert(editor_input_from(trk_src, Hex { q: 0, r: 0 }, false, false).in_undo,
+    assert(editor_input_from(trk_src, Hex { q: 0, r: 0 }, false, false, false).in_undo,
            "Ctrl+'u' is");
 }
 

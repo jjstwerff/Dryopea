@@ -351,15 +351,42 @@ struct ScriptPhys {
     sp_mouse: boolean,
     sp_wheel: integer,
     sp_paint: boolean,
+
+    // Is this frame a PLAY frame (plan 19 P2)?  WASD pans a camera and
+    // drives a vehicle, so one key has two meanings and the frame has
+    // to say which.
+    //
+    // ⚠ **Set by the ACTION NAME, not by a mode verb**, and that is the
+    // choice worth defending: `do pan_north` presses W as a camera key
+    // and `do drive_north` presses the same W as a play key, so a line
+    // SAYS which game it is playing.  A `live` verb would have made the
+    // meaning depend on a line somewhere above, which is exactly what
+    // `take` / `drop` refuse to do about one carry key.
+    //
+    // ⚠ Zero-neutral, so every scenario written before P2 keeps its
+    // meaning and all 520 gate measurements are untouched.
+    sp_playing: boolean,
 }
 
 fn script_phys_new() -> ScriptPhys {
     ScriptPhys {
-        sp_keys:  keyboard_empty(),
-        sp_mouse: false,
-        sp_wheel: 0,
-        sp_paint: false,
+        sp_keys:    keyboard_empty(),
+        sp_mouse:   false,
+        sp_wheel:   0,
+        sp_paint:   false,
+        sp_playing: false,
     }
+}
+
+// The play half of the key table, by name.  ⚠ Kept here rather than
+// asked of `bindings.loft`, because "does this action drive the game?"
+// is a question about the SCRIPT's frame, and an `EditorAction` row
+// carries keys and a modifier rule — a third field would be a mode
+// concept inside a key table.
+fn script_action_is_play(name: text) -> boolean {
+    name == "drive_north" || name == "drive_south"
+ || name == "drive_east"  || name == "drive_west"
+ || name == "boost"       || name == "carry"
 }
 
 fn script_press(p: ScriptPhys, keys: const vector<integer>) {
@@ -403,6 +430,10 @@ fn script_phys_action(run: ScriptRun, p: ScriptPhys, name: text) -> boolean {
     if action_ctrl(run.isrc.eis_actions, name) == CTRL_REQUIRED {
         script_press(p, action_keys(run.isrc.eis_actions, ACTION_MOD_CTRL));
     }
+    // ⚠ The name decides what the frame IS — see `ScriptPhys.sp_playing`.
+    // Set rather than assigned, so `hold drive_north 5` and a frame
+    // that pressed two actions both stay play frames.
+    if script_action_is_play(name) { p.sp_playing = true; }
     true
 }
 
@@ -426,7 +457,9 @@ fn script_frame(s: EditorState, run: ScriptRun, p: const ScriptPhys) {
     // GL frame are the same door (plan 19 P1), and 0.0 seconds is what
     // makes a script's clock the script's business: no wall time passes
     // while a scenario paints its map, so no tick is taken.
-    play_step(run.play, s, editor_input_from(run.isrc, sf_hover, true, p.sp_paint), 0.0);
+    play_step(run.play, s,
+              editor_input_from(run.isrc, sf_hover, true, p.sp_paint, p.sp_playing),
+              0.0);
     run.frames += 1;
 }
 

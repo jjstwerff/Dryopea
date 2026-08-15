@@ -130,6 +130,45 @@ pub struct EditorInput {
     in_save:   boolean,        // Ctrl+S
     in_reload: boolean,        // Ctrl+R — re-read both layers from disk
 
+    // ── The GAME's half (plan 19 P2) ──
+    //
+    // ⚠⚠ **`editor_step` reads NONE of the fields below, and that is
+    // the phase's invariant.**  They are carried here because there is
+    // ONE input record and ONE key table — plan 09 I1's rule — but the
+    // editor's seam has no roster, no vehicle and no cargo to act on
+    // them with.  `play.loft::play_actions` is what consumes them.
+    // `tests/19_p2_the_keys.loft` § The editor seam is blind to them
+    // is what keeps that true.
+    //
+    // Is this frame a PLAY frame or an EDIT frame?  WASD means *pan
+    // the camera* in the editor and *drive* in the game, so one key
+    // cannot mean both at once — the CALLER says which, and
+    // `editor_input_from` fills one set or the other, never both.
+    //
+    // ⚠ Zero-neutral, like every other field here: a frame that does
+    // not say is an EDIT frame, so every caller written before P2 —
+    // and all 28 scenarios in the gate — keeps its old meaning.
+    in_playing: boolean,
+
+    // Held direction, in COMPASS terms rather than lattice ones: this
+    // is what the player pressed, and turning it into a hex is
+    // `play.loft`'s job.  ⚠ Both axes may be held at once, which is how
+    // the four keys reach all eight compass headings.
+    in_drive_north: boolean,
+    in_drive_south: boolean,
+    in_drive_east:  boolean,
+    in_drive_west:  boolean,
+
+    // Shift — held, per `DESIGN.md` § Hover + boost.
+    in_boost: boolean,
+
+    // E — `DESIGN.md` § The handful of keys' ONE context-resolved key:
+    // empty hands is a pickup, full hands a deposit.  ⚠ ONE field for
+    // both, because it is one key; the script's `take` / `drop` stay
+    // two verbs so a line asserting a pickup cannot have been a
+    // deposit.
+    in_carry: boolean,
+
     // Palette hotkey: is one down, and which entry does it select.
     // One index rather than twelve booleans — the player presses one
     // hotkey, and a script says `key 5`.
@@ -169,12 +208,23 @@ pub fn editor_input_empty() -> EditorInput {
         in_clear_all:      false,
         in_save:           false,
         in_reload:         false,
+        in_playing:        false,
+        in_drive_north:    false,
+        in_drive_south:    false,
+        in_drive_east:     false,
+        in_drive_west:     false,
+        in_boost:          false,
+        in_carry:          false,
     }
 }
 
 // A detached copy, so remembering a frame can't alias the caller's
 // input record and mutate under us next frame.
-fn input_copy(ic: const EditorInput) -> EditorInput {
+//
+// ⚠ Public since plan 19 P2, because the PLAY seam remembers a frame
+// too (`PlayState.prev`) and must do it the same way — a second copy
+// helper is a second place to forget a new field.
+pub fn editor_input_copy(ic: const EditorInput) -> EditorInput {
     EditorInput {
         in_hover_q:        ic.in_hover_q,
         in_hover_r:        ic.in_hover_r,
@@ -198,6 +248,13 @@ fn input_copy(ic: const EditorInput) -> EditorInput {
         in_clear_all:      ic.in_clear_all,
         in_save:           ic.in_save,
         in_reload:         ic.in_reload,
+        in_playing:        ic.in_playing,
+        in_drive_north:    ic.in_drive_north,
+        in_drive_south:    ic.in_drive_south,
+        in_drive_east:     ic.in_drive_east,
+        in_drive_west:     ic.in_drive_west,
+        in_boost:          ic.in_boost,
+        in_carry:          ic.in_carry,
     }
 }
 
@@ -538,5 +595,5 @@ pub fn editor_step(s: EditorState, input: EditorInput) {
 
     // Remember this frame for the next one's edge detection.  Last,
     // so every action above sees the previous frame.
-    s.prev = input_copy(input);
+    s.prev = editor_input_copy(input);
 }

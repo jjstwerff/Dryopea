@@ -62,6 +62,42 @@ It bites hardest inside an assertion message, where it replaces the
 diagnostic of a failing test with a crash three lines from the real
 site.  Format the fields: `{flow_count(f)}`, never `{f}`.
 
+## Literals
+
+⚠ **There is no vector-of-TUPLES literal.**  A table written the
+obvious way —
+
+```loft
+for row in [("drive_north", 119), ("drive_west", 97)] { … }
+```
+
+— fails with `fatal: cannot build this record — its type never
+resolved`, pointing at the LAST element rather than at the construct.
+The element type is never inferred, so nothing tells you the shape
+itself is the problem.
+
+Write a one-line struct instead; it also reads better at the call site:
+
+```loft
+struct KeyRow { name: text, code: integer }
+rows: vector<KeyRow> = [
+    KeyRow { name: "drive_north", code: 119 },
+    KeyRow { name: "drive_west",  code:  97 },
+];
+for row in rows { … }
+```
+
+⚠ Tuples themselves are fine — a function may RETURN one, and
+`play_core` does.  It is only the vector literal of them that has no
+element type.  (Found in plan 19 P2; nothing else in `src/` or `tests/`
+uses the shape, so it had never come up.)
+
+⚠ **A vector literal passed straight as an argument needs a typed
+local too** in the same situation — `f(["a", "b"])` resolves, but
+binding it first (`names: vector<text> = ["a", "b"]; f(names)`) is what
+the repo does everywhere and what stays readable when the element type
+is a struct.
+
 ## The rest
 
 ### Loft language gotchas we hit

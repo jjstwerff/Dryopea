@@ -138,6 +138,42 @@ pub fn editor_actions() -> vector<EditorAction> {
     ea += [act("save",   graphics::KEY_S, CTRL_REQUIRED)];
     ea += [act("reload", graphics::KEY_R, CTRL_REQUIRED)];
 
+    // ── The GAME (plan 19 P2) ───────────────────────────────────
+    //
+    // `DESIGN.md` § The handful of keys, and its whole list bar the
+    // editor's own rows: WASD moves, Shift boosts, E is the ONE
+    // context-resolved carry key.
+    //
+    // ⚠⚠ **WASD is DELIBERATELY the same four keys the camera pans
+    // with**, and the collision is the design's rather than an
+    // oversight — `DESIGN.md` § 12 has the play camera *locked,
+    // auto-reframe*, so a played frame never pans and an edited one
+    // never drives.  `editor_input_from` fills ONE set or the other on
+    // the strength of its `playing` argument; the two are never both
+    // live in one frame, which is what stops `at`'s camera walk from
+    // driving a parked vehicle across all 28 gate scenarios.
+    //
+    // ⚠ Ctrl suppresses drive_south for the same reason it suppresses
+    // pan_south: Ctrl+S is save, and a player saving mid-run should
+    // not lurch southward.
+    ea += [act("drive_north", graphics::KEY_W, CTRL_IGNORED)];
+    ea += [act("drive_south", graphics::KEY_S, CTRL_FORBIDDEN)];
+    ea += [act("drive_east",  graphics::KEY_D, CTRL_IGNORED)];
+    ea += [act("drive_west",  graphics::KEY_A, CTRL_IGNORED)];
+
+    // ⚠ **Boost is a SECOND row on Shift**, beside `mod_shift`, rather
+    // than a reading of the modifier.  Shift means *anticlockwise* to a
+    // rotation and *boost* to a vehicle, and those are two actions on
+    // one key exactly as `rotate` / `reload` are two on R — so it is a
+    // row, and a remap moves it like any other.
+    ea += [act("boost", graphics::KEY_SHIFT, CTRL_IGNORED)];
+
+    // ⚠ **ONE row for take AND drop**, because § 11 gives them one key
+    // and resolves on the carrier's state.  The script keeps two verbs;
+    // the KEYBOARD has one, and this row is what makes `do carry` press
+    // what a player presses.
+    ea += [act("carry", graphics::KEY_E, CTRL_IGNORED)];
+
     // Palette hotkeys — 1..9, 0, - select entries 0..10.
     //
     // ⚠ **Eleven keys for twelve entries, and the twelfth is the
@@ -312,17 +348,31 @@ fn action_on(src: const EditorInputSource, name: text, ctrl: boolean) -> boolean
 // runner both come through here, so what a key means is decided in
 // exactly one place.
 //
-// The three things that are not keys arrive as parameters, because
-// they are the caller's to know: where the pointer is, and whether
-// the two rate limits are due.  Keeping the clock out here is what
-// plan 08 V0 bought and what makes a scripted run reproducible.
+// The things that are not keys arrive as parameters, because they are
+// the caller's to know: where the pointer is, whether the two rate
+// limits are due, and — since plan 19 P2 — whether this frame is a
+// PLAY frame.  Keeping the clock out here is what plan 08 V0 bought
+// and what makes a scripted run reproducible.
+//
+// ⚠⚠ **`playing` is a MODE and it lives on the caller, not in state.**
+// WASD pans a camera and drives a vehicle, so one key has two meanings
+// and something must choose; `plans/19` § Open questions 2 says that
+// choice belongs to the shell and must not be baked into the seam.  A
+// parameter is the weakest form it can take — the frame says which
+// meaning it wants, and nothing remembers.
+//
+// ⚠ The two sets are EXCLUSIVE, never merged.  Filling both would make
+// every camera pan in `scripts/validate.sh` also drive whatever
+// vehicle the scenario had parked.
 pub fn editor_input_from(
     src:       const EditorInputSource,
     hover:     const Hex,
     pan_due:   boolean,
     paint_due: boolean,
+    playing:   boolean,
 ) -> EditorInput {
     eif_i = editor_input_empty();
+    eif_i.in_playing = playing;
 
     eif_ctrl  = is_action_pressed(src.eis_state, ACTION_MOD_CTRL);
     eif_shift = is_action_pressed(src.eis_state, ACTION_MOD_SHIFT);
@@ -349,12 +399,29 @@ pub fn editor_input_from(
     eif_i.in_save      = action_on(src, "save",   eif_ctrl);
     eif_i.in_reload    = action_on(src, "reload", eif_ctrl);
 
+    // ── WASD: the camera, or the vehicle, never both ────────────
+    //
     // Camera pan is rate-limited by the caller; zoom comes off the
     // wheel rather than a key, so it has no table row.
-    eif_i.in_pan_north = pan_due && action_on(src, "pan_north", eif_ctrl);
-    eif_i.in_pan_south = pan_due && action_on(src, "pan_south", eif_ctrl);
-    eif_i.in_pan_east  = pan_due && action_on(src, "pan_east",  eif_ctrl);
-    eif_i.in_pan_west  = pan_due && action_on(src, "pan_west",  eif_ctrl);
+    //
+    // ⚠ The drive keys are NOT rate-limited: a pan steps a discrete
+    // hex per due-tick, while a drive states a HEADING that the
+    // vehicle's own speed then walks.  Gating it on `pan_due` would
+    // make the vehicle's speed the caller's to set, which is exactly
+    // what `vehicle_hexes_this_tick` exists to own.
+    if playing {
+        eif_i.in_drive_north = action_on(src, "drive_north", eif_ctrl);
+        eif_i.in_drive_south = action_on(src, "drive_south", eif_ctrl);
+        eif_i.in_drive_east  = action_on(src, "drive_east",  eif_ctrl);
+        eif_i.in_drive_west  = action_on(src, "drive_west",  eif_ctrl);
+        eif_i.in_boost       = action_on(src, "boost",       eif_ctrl);
+        eif_i.in_carry       = action_on(src, "carry",       eif_ctrl);
+    } else {
+        eif_i.in_pan_north = pan_due && action_on(src, "pan_north", eif_ctrl);
+        eif_i.in_pan_south = pan_due && action_on(src, "pan_south", eif_ctrl);
+        eif_i.in_pan_east  = pan_due && action_on(src, "pan_east",  eif_ctrl);
+        eif_i.in_pan_west  = pan_due && action_on(src, "pan_west",  eif_ctrl);
+    }
     eif_wheel = mouse_wheel(src.eis_state);
     eif_i.in_zoom_in   = pan_due && eif_wheel > 0;
     eif_i.in_zoom_out  = pan_due && eif_wheel < 0;
