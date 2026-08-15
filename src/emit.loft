@@ -213,3 +213,159 @@ pub fn emit_keys(pal: vector<GroundType>, pw: const PaintedWorld,
     ek_out = ek_out + emit_schedule(state);
     ek_out
 }
+
+// ─── Cropping a situation down (plan 18 S3) ─────────────────────
+//
+// A capture of a real base is the whole map, and most of it is not what
+// the fixture is about.  Cropping keeps a disc around the interesting
+// hex and drops the rest.
+//
+// ── ⚠⚠ A crop is bounded by the RULES, not by the picture ───────
+//
+// Dropping a hex is not neutral: the painted layer is **sea-default**,
+// so a cropped-away hex does not vanish, it becomes water — which is
+// not walkable, and which has no height.  So a crop can silently:
+//
+//   * make the flow field stop at the new edge, because sea is not a
+//     surface anything stands on;
+//   * UNBLOCK a tower's sight line, because `tower_sees` traces over
+//     `hex_height` and sea is 0 m where a wall was 3;
+//   * change a marker's MEANING, since `SPAWN_DISABLE_RADIUS` and
+//     `WAVE_1_PROVOCATION_HEXES` are distances from the core.
+//
+// ⚠ **And the core is the worst of them.**  Every enemy routes to it,
+// so a crop that drops it empties the flow field and every enemy falls
+// back to the DESIRE field — a different steering mode entirely
+// (`ENEMY_MOVEMENT.md` § Two modes).  The fixture would reproduce
+// nothing while looking perfectly well-formed.
+//
+// ── ⚠ The refusals are NECESSARY and not SUFFICIENT ─────────────
+//
+// `crop_fault` refuses the crops that certainly break.  It cannot
+// certify the rest: whether a particular crop preserved a particular
+// behaviour is a question about that behaviour, and the only honest
+// answer is to run both and compare — which is what
+// `tests/18_s3_the_crop.loft` § A tight crop changes the answer shows
+// happening.  Recorded here so nobody reads a clean `crop_fault` as
+// proof.
+
+// How far out a crop must reach whatever else it does.
+//
+// ⚠ **DERIVED from the longest reach anything inside has OUT of the
+// crop**, which is a tower's: `TOWER_RANGE_HEXES` is 15, and its sight
+// line reads `hex_height` at every hex along the way.  Crop tighter and
+// terrain that decided whether a shot landed is replaced by sea.
+pub const CROP_MIN_RADIUS_HEXES: integer = TOWER_RANGE_HEXES;
+
+// Why this crop must be refused — "" when it may go ahead.
+pub fn crop_fault(core: const Hex, centre: const Hex,
+                  radius: integer) -> text {
+    if radius < CROP_MIN_RADIUS_HEXES {
+        return "radius {radius} is under the {CROP_MIN_RADIUS_HEXES} a tower's sight line needs";
+    }
+    cf_d = lat_distance(centre, core);
+    if cf_d > radius {
+        return "the core at ({core.q}, {core.r}) is {cf_d} hexes out, outside a radius of {radius} — every enemy routes to it";
+    }
+    ""
+}
+
+fn in_crop(centre: const Hex, radius: integer, q: integer, r: integer) -> boolean {
+    lat_distance(centre, Hex { q: q, r: r }) <= radius
+}
+
+// Everything inside the disc, as a fresh painted world.
+fn crop_painted(pw: const PaintedWorld, centre: const Hex,
+                radius: integer) -> PaintedWorld {
+    cp_out = painted_empty();
+    for cp_h in pw.painted {
+        if in_crop(centre, radius, cp_h.q, cp_h.r) {
+            paint(cp_out, cp_h.q, cp_h.r, cp_h.kind);
+        }
+    }
+    cp_out
+}
+
+fn crop_markers(mw: const MarkerWorld, centre: const Hex,
+                radius: integer) -> MarkerWorld {
+    cm_out = marker_empty();
+    for cm_m in mw.markers {
+        if in_crop(centre, radius, cm_m.q, cm_m.r) {
+            place_marker(cm_out, cm_m.q, cm_m.r, cm_m.kind, cm_m.direction);
+        }
+    }
+    cm_out
+}
+
+// ⚠ **The per-hex layers and the ENEMIES are cropped; the crew, the
+// cargo and the player are NOT.**  An index is an identity here —
+// `cargo.subj` points into the crew roster — so dropping a crew member
+// would leave a wreck pointing at nobody.  They are few and they are
+// the interesting part of a situation anyway.
+fn crop_state(state: const WaveState, centre: const Hex,
+              radius: integer) -> WaveState {
+    cs_out = wave_state_empty();
+
+    for cs_e in state.enemies {
+        if in_crop(centre, radius, cs_e.q, cs_e.r) {
+            cs_out.enemies += [Enemy { q: cs_e.q, r: cs_e.r, kind: cs_e.kind,
+                                       heading: cs_e.heading, alive: cs_e.alive,
+                                       taken: cs_e.taken, stand: cs_e.stand }];
+        }
+    }
+    cs_out.pick_cursor = state.pick_cursor;
+
+    for cs_h in state.heights.cells {
+        if in_crop(centre, radius, cs_h.q, cs_h.r) {
+            height_raise(cs_out.heights, cs_h.q, cs_h.r, cs_h.metres, cs_h.source);
+        }
+    }
+    for cs_d in state.damage.cells {
+        if in_crop(centre, radius, cs_d.q, cs_d.r) {
+            damage_apply(cs_out.damage, cs_d.q, cs_d.r, cs_d.taken);
+        }
+    }
+    // ⚠ A tower's cell goes with its MARKER, by the same predicate — a
+    // cell kept without its marker would be unemittable, and a marker
+    // kept without its cell would replay as a fresh tower.
+    for cs_t in state.towers.cells {
+        if in_crop(centre, radius, cs_t.q, cs_t.r) {
+            tower_bank(cs_out.towers, cs_t.q, cs_t.r, 0.0);
+            cs_tc = cs_out.towers.cells[cs_t.q, cs_t.r];
+            if cs_tc != null {
+                cs_tc.shots       = cs_t.shots;
+                cs_tc.charge      = cs_t.charge;
+                cs_tc.repair      = cs_t.repair;
+                cs_tc.top_removed = cs_t.top_removed;
+            }
+        }
+    }
+
+    cs_out.wallet   = state.wallet;
+    cs_out.player   = state.player;
+    cs_out.crew     = state.crew;
+    cs_out.cargo    = state.cargo;
+    cs_out.schedule = state.schedule;
+    cs_out
+}
+
+// Write down only what is within `radius` of `centre`.  Answers "" and
+// writes nothing when `crop_fault` refuses.
+//
+// ⚠ **Refusing by writing nothing** rather than by emitting a smaller
+// file: a crop that broke the situation must not produce a fixture that
+// looks fine and reproduces something else.  The caller asks
+// `crop_fault` for the reason.
+pub fn crop_keys(pal: vector<GroundType>, pw: const PaintedWorld,
+                 mw: const MarkerWorld, state: const WaveState,
+                 core: const Hex, centre: const Hex, radius: integer,
+                 origin: text) -> text {
+    if crop_fault(core, centre, radius) != "" { return ""; }
+
+    ck_pw = crop_painted(pw, centre, radius);
+    ck_mw = crop_markers(mw, centre, radius);
+    ck_st = crop_state(state, centre, radius);
+    ck_t  = emit_keys(pal, ck_pw, ck_mw, ck_st,
+                      origin + " (cropped r{radius} at ({centre.q}, {centre.r}))");
+    ck_t
+}

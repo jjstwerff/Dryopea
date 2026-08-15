@@ -9,13 +9,17 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**S0 + S1a + S1b + S2 shipped** (2026-08-15).  S3 is next.  Suite
-**1034 green**, gate **28 scripts / 520 measurements**.
+**S0 + S1a + S1b + S2 + S3 shipped** (2026-08-15).  S4 is next.  Suite
+**1042 green**, gate **28 scripts / 520 measurements**.
 
 **S2 closed the round trip.**  `src/emit.loft::emit_keys` writes the
 `.keys` file that reproduces a situation, and **all 28 real scenarios**
 survive capture → emit → replay with both the state and the world
 identical.  § S2.
+
+**S3 built the crop, and measured its limit.**  A crop keeps a disc and
+refuses the ones that certainly break — but ⚠ **a LEGAL crop can still
+change the answer**, and the phase measures one doing it.  § S3.
 
 **S0 built the oracle every later phase needs.**  `src/compare.loft`
 answers *how* two `WaveState`s differ — the first difference, named —
@@ -153,7 +157,7 @@ REFUSED rather than quietly emitted.
 | **S1a** ✓ | a placed enemy is S0-identical to one built in loft, all seven fields | the script can express an `Enemy`'s whole state, and a bare placement is the NEUTRAL one | ✓ both zero-neutral fields verified by mutation — a placement that starts mid-window stops walking, one that starts pre-damaged reads as a corpse, and each turns three assertions red; ✓ `dead` deposits NO body, so `wave_deaths` stays the one death path |
 | **S1b** ✓ | one state with every field non-neutral, authored from `.keys` and S0-identical to the same state built in loft | the vocabulary is TOTAL over `WaveState` | ✓ three setters mutated to drop a field: each fails the TOTALITY test and `state_diff` names the field — *'towers (4, 0).repair: 0 vs 6'*.  ⚠ Seven separate 'this verb works' tests would stay green while the one state a capture needs is unreachable |
 | **S2** ✓ | 28 of 28 scenarios round-trip, state and world identical | **round-trip = identity**, over the REAL corpus rather than a fixture | ✓ three dropped fields each go red and NAME themselves (*'towers (4, 0).charge: 0.4 vs 0'*); ✓ a hand-built state holds the fields no shipped scenario exercises; ✓ a state one TICK on survives, so the emitter handles what the SIMULATION produces and not only what a script authors |
-| **S3** | a cropped fixture reproduces the property | a crop is bounded by the RULES, not the picture | a crop that drops the core, or lands inside the bubble radius, is REFUSED — not emitted and left to read as a flaky test |
+| **S3** ✓ | a radius-25 crop reproduces the run exactly 30 ticks on; a radius-15 crop of the same base silently stops the waves | a crop is bounded by the RULES, not the picture — and the rules are NECESSARY, not sufficient | ✓ dropping the core and cutting under a tower's reach are both refused, and a refused crop writes NOTHING; ✓ the tight crop is the control that stops this reading as 'cropping works'; ✓ three mutations (skip the core check, split a tower from its cell, ignore the radius) each go red |
 | **S4** | the reduced fixture still shows the property | minimality is checkable: removing any one more line breaks it | a reducer with no predicate reduces to nothing and calls it minimal |
 
 ## Phases
@@ -164,7 +168,7 @@ REFUSED rather than quietly emitted.
 | **S1a** — an enemy becomes authorable | S | `tests/18_s1a_placing_an_enemy.loft` — 15 tests; a placed enemy is S0-identical to one built in loft, all seven fields; three mutations verified (a placement mid-window, a placement pre-damaged, and `dead` depositing a body) | **Done** |
 | **S1b** — the rest of the state becomes authorable | M | `tests/18_s1b_the_vocabulary_is_total.loft` — 15 tests, centred on ONE state with every field non-neutral built both ways; three dropped-setter mutations verified (`tower`'s repair, `cursor`, `member`'s recovery) | **Done** |
 | **S2** — the emitter, and the round trip | M | `tests/18_s2_the_round_trip.loft` — all 28 real scenarios survive capture → emit → replay, state AND world; three dropped-field mutations verified (a tower's charge, a pile's source, the terrain) | **Done** |
-| **S3** — the crop | S | `tests/18_s3_the_crop.loft` — a cropped fixture reproduces its property; a crop that would drop the core or cut inside the bubble is refused | Blocked on S2 |
+| **S3** — the crop | S | `tests/18_s3_the_crop.loft` — 8 tests: a lossless crop reproduces the run tick for tick, a legal-but-tight one demonstrably does NOT, and the two certainly-broken crops are refused.  Three mutations verified | **Done** |
 | **S4** — the reduce | M | `tests/18_s4_the_reduce.loft` — delta-debug against a supplied predicate; the output still shows the property and is minimal | Blocked on S3 |
 
 ### Why the order is this order
@@ -413,6 +417,54 @@ produce.  Fixed in `pending`, and S1b's fixture now uses a delay of 9.0.
 scenario has a non-default delay, so emit-and-replay would have agreed
 with itself for ever.  It took writing the emitter and asking *"which
 verb writes this field?"* to find it.
+
+## S3 — the crop, and what it cannot promise (2026-08-15)
+
+`crop_keys(…, centre, radius, …)` keeps a disc and drops the rest.
+`crop_fault` refuses two crops outright:
+
+| refused | because |
+|---|---|
+| the core outside the disc | every enemy routes to it; without it the flow field is empty and every enemy falls back to the DESIRE field |
+| radius < `CROP_MIN_RADIUS_HEXES` (= `TOWER_RANGE_HEXES`, 15) | `tower_sees` traces `hex_height` up to 15 hexes, so terrain that decided whether a shot landed becomes sea |
+
+⚠ A refused crop **writes nothing** rather than emitting a smaller file:
+a crop that broke the situation must not leave a fixture that looks fine
+and reproduces something else.
+
+### ⚠⚠ THE FINDING: a legal crop can still change the answer
+
+The same band, cropped at radius 25 and at radius 15, both centred on
+the core and both passing every rule `crop_fault` knows:
+
+| crop | after 30 ticks |
+|---|---|
+| radius 25 | **identical** to the uncropped run, state for state |
+| radius 15 | the base is **never attacked at all** |
+
+The spawn marker sits eighteen hexes out, so the tight crop drops it —
+and the wave list still runs, still counts a wave as sent, and puts
+nobody on the ground.  ⚠ `SPAWN_DISABLE_RADIUS` and
+`WAVE_1_PROVOCATION_HEXES` are distances from the core, so **cropping
+moves what a marker MEANS** while nothing about the crop looks wrong.
+
+⚠⚠ So `crop_fault` is documented as **necessary and not sufficient**,
+and whether a particular crop preserved a particular behaviour is a
+question about that behaviour — answerable only by running both and
+comparing.  That is S4's predicate, and this phase is the argument for
+why it is needed rather than optional.  ⚠ A test that only showed crops
+working would have told the opposite of the truth.
+
+### ⚠ What travels together
+
+- **A tower's cell goes with its marker**, by the same predicate.  Kept
+  apart, a marker without its cell replays as a FRESH tower — full
+  magazine, top on — which is a different base that reads as the crop
+  working.
+- **The crew, the cargo and the player are never cropped.**  An index is
+  an identity and `cargo.subj` points into the crew roster, so dropping
+  a crew member leaves a wreck pointing at nobody.  They are few, and
+  they are the interesting part of a situation anyway.
 
 ## Open questions
 

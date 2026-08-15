@@ -1,0 +1,288 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 18 phase S3 — the crop.
+//
+// A capture of a real base is the whole map, and most of it is not what
+// the fixture is about.  `crop_keys` keeps a disc around the
+// interesting hex and drops the rest.
+//
+// ── ⚠⚠ Dropping a hex is NOT neutral ────────────────────────────
+//
+// The painted layer is sea-default, so a cropped-away hex does not
+// vanish — it becomes water.  Water is not walkable and it is 0 m high,
+// so a crop can quietly stop a flow field at its new edge, unblock a
+// tower's sight line where a wall used to stand, or move what a spawn
+// marker MEANS, since `SPAWN_DISABLE_RADIUS` and
+// `WAVE_1_PROVOCATION_HEXES` are distances from the core.
+//
+// ⚠ And the core is the worst: every enemy routes to it, so a crop that
+// drops it empties the flow field and every enemy falls back to the
+// DESIRE field — a different steering mode.  The fixture would
+// reproduce nothing while looking perfectly well-formed.
+//
+// ── ⚠⚠ So the refusals are NECESSARY and not SUFFICIENT ─────────
+//
+// That is this phase's real finding and § A tight crop changes the
+// answer is where it is measured: a crop can pass every rule
+// `crop_fault` knows and STILL change what the fixture does.  ⚠ A test
+// that only ever showed crops working would be telling you the opposite
+// of the truth.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A band with a core, a spawn marker eighteen hexes out and a wave list
+// armed and about to send.
+fn source() -> text {
+    s_t = "flag 0 0 target 0\nflag 18 0 spawn 3\npalette 5\n";
+    for s_r in -1..=1 {
+        for s_q in -2..=20 { s_t = s_t + "click {s_q} {s_r}\n"; }
+    }
+    s_t + "schedule 4 4\npending 0 0.0 15.0 on\n"
+}
+
+// Play a source and hand back the session and the run together.
+fn build(src: text) -> EditorState {
+    b_s = editor_state_new(PALETTE);
+    script_run(b_s, src, SHOTS);
+    b_s
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ A crop that keeps everything changes nothing
+// ─────────────────────────────────────────────────────────────────
+
+// The whole band is within 25 hexes of the core, so a radius-25 crop is
+// lossless — and ticking the cropped fixture must land in exactly the
+// state ticking the original does.
+//
+// ⚠ This is the assertion a crop that quietly dropped something fails,
+// and S0's comparison is what lets it be stated at all.
+fn test_a_crop_that_keeps_everything_reproduces_the_run() {
+    tac_a = editor_state_new(PALETTE);
+    tac_run = script_run(tac_a, source(), SHOTS);
+    assert(tac_run.ok, "the base builds: {script_describe(tac_run)}");
+
+    tac_keys = crop_keys(pal(), tac_a.pw, tac_a.mw, tac_run.wave,
+                         core(), core(), 25, "band");
+    assert(tac_keys != "", "a radius-25 crop is allowed");
+
+    tac_b = editor_state_new(PALETTE);
+    tac_back = script_run(tac_b, tac_keys, SHOTS);
+    assert(tac_back.ok, "and replays: {script_describe(tac_back)}");
+
+    // Nothing was lost.
+    assert(state_diff(tac_run.wave, tac_back.wave) == "",
+           "the state survives the crop: "
+           + "'{state_diff(tac_run.wave, tac_back.wave)}'");
+    assert(world_diff(tac_a.pw, tac_a.mw, tac_b.pw, tac_b.mw) == "",
+           "and so does the world: "
+           + "'{world_diff(tac_a.pw, tac_a.mw, tac_b.pw, tac_b.mw)}'");
+
+    // ⚠⚠ And it BEHAVES the same, which is the claim a fixture makes.
+    // Thirty ticks of a wave arriving and walking in.
+    //
+    // ⚠ Ticked inside ONE run each, not by calling `script_run` again
+    // on the same session: `WaveState` rides on the ScriptRun, so a
+    // second call starts from an EMPTY roster — which reads as "nothing
+    // attacked" and would have made this comparison vacuous.
+    tac_full = script_run(editor_state_new(PALETTE), source() + "tick 30\n", SHOTS);
+    tac_crop = script_run(editor_state_new(PALETTE), tac_keys + "tick 30\n", SHOTS);
+    assert(tac_full.ok && tac_crop.ok,
+           "both tick on: {script_describe(tac_full)} / {script_describe(tac_crop)}");
+    assert(state_diff(tac_full.wave, tac_crop.wave) == "",
+           "thirty ticks later they are still the same run: "
+           + "'{state_diff(tac_full.wave, tac_crop.wave)}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ THE FINDING: a legal crop can still change the answer
+// ─────────────────────────────────────────────────────────────────
+
+// A radius-15 crop centred on the core passes every rule `crop_fault`
+// knows — it is at the minimum radius and the core is inside it — and
+// it drops the spawn marker at eighteen hexes.  The wave list still
+// runs, still counts a wave as sent, and puts **nobody on the ground**.
+//
+// ⚠ So the fixture reproduces a base that is never attacked, which is
+// not the situation it was cropped from — and nothing about the crop
+// looked wrong.  `SPAWN_DISABLE_RADIUS` and `WAVE_1_PROVOCATION_HEXES`
+// are distances from the core, so cropping moves what a marker MEANS.
+//
+// ⚠⚠ **This is why `crop_fault` is documented as necessary and not
+// sufficient**, and why S4's predicate is the thing that certifies a
+// particular crop.  A test that only ever showed crops working would be
+// telling you the opposite of the truth.
+fn test_a_tight_crop_changes_the_answer() {
+    tat_a = editor_state_new(PALETTE);
+    tat_run = script_run(tat_a, source(), SHOTS);
+    assert(tat_run.ok, "the base builds");
+
+    // Allowed by every rule we have.
+    assert(crop_fault(core(), core(), CROP_MIN_RADIUS_HEXES) == "",
+           "a radius-15 crop is admissible: "
+           + "'{crop_fault(core(), core(), CROP_MIN_RADIUS_HEXES)}'");
+
+    tat_keys = crop_keys(pal(), tat_a.pw, tat_a.mw, tat_run.wave,
+                         core(), core(), CROP_MIN_RADIUS_HEXES, "band");
+    assert(tat_keys != "", "and it is emitted");
+
+    tat_b = editor_state_new(PALETTE);
+    tat_back = script_run(tat_b, tat_keys, SHOTS);
+    assert(tat_back.ok, "it replays: {script_describe(tat_back)}");
+
+    // The spawn marker was eighteen hexes out, so it is gone.
+    assert(marker_count(tat_b.mw) == 1,
+           "one marker left of two: {marker_count(tat_b.mw)}");
+
+    // And thirty ticks later the two runs are NOT the same base.
+    // ⚠ One run each — see the note in § A crop that keeps everything.
+    tat_full = script_run(editor_state_new(PALETTE), source() + "tick 30\n", SHOTS);
+    tat_crop = script_run(editor_state_new(PALETTE), tat_keys + "tick 30\n", SHOTS);
+    assert(tat_full.ok && tat_crop.ok,
+           "both tick on: {script_describe(tat_full)} / {script_describe(tat_crop)}");
+
+    assert(alive_count(tat_full.wave) > 0,
+           "the original is under attack: {alive_count(tat_full.wave)}");
+    assert(alive_count(tat_crop.wave) == 0,
+           "the cropped one never is: {alive_count(tat_crop.wave)}");
+    assert(state_diff(tat_full.wave, tat_crop.wave) != "",
+           "so a LEGAL crop changed the situation, and only running both "
+           + "could say so");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What a crop REFUSES
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **A crop that drops the core is refused.**  Every enemy routes to
+// it, so without it the flow field is empty and every enemy falls back
+// to the desire field — the fixture would look well-formed and
+// reproduce a different game.
+fn test_a_crop_that_drops_the_core_is_refused() {
+    tcd_far = Hex { q: 30, r: 0 };
+    tcd_why = crop_fault(core(), tcd_far, 20);
+    assert(tcd_why != "", "refused");
+    assert(tcd_why.contains("core"), "and it names the core: '{tcd_why}'");
+    assert(tcd_why.contains("routes"), "and why that matters");
+
+    tcd_a = editor_state_new(PALETTE);
+    tcd_run = script_run(tcd_a, source(), SHOTS);
+    assert(crop_keys(pal(), tcd_a.pw, tcd_a.mw, tcd_run.wave,
+                     core(), tcd_far, 20, "x") == "",
+           "and nothing is written — a refused crop must not leave a "
+           + "fixture that looks fine");
+}
+
+// ⚠ A radius under a tower's reach is refused: `tower_sees` traces
+// `hex_height` up to 15 hexes, so terrain that decided whether a shot
+// landed would be replaced by sea.
+fn test_a_radius_under_a_towers_reach_is_refused() {
+    tru_why = crop_fault(core(), core(), CROP_MIN_RADIUS_HEXES - 1);
+    assert(tru_why != "", "refused: '{tru_why}'");
+    assert(tru_why.contains("sight line"), "and it names the reason");
+
+    assert(crop_fault(core(), core(), CROP_MIN_RADIUS_HEXES) == "",
+           "while the minimum itself is allowed");
+}
+
+// ⚠ The minimum is DERIVED from a tower's range rather than picked, so
+// retuning the range moves it — and this is the assertion that says so.
+fn test_the_minimum_radius_is_derived() {
+    assert(CROP_MIN_RADIUS_HEXES == TOWER_RANGE_HEXES,
+           "the crop's floor is a tower's reach: {CROP_MIN_RADIUS_HEXES} "
+           + "vs {TOWER_RANGE_HEXES}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What a crop keeps together
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **A tower's cell goes with its marker.**  Kept apart, a marker
+// without its cell replays as a FRESH tower — full magazine, top on —
+// which is a different base and would read as the crop working.
+fn test_a_towers_cell_travels_with_its_marker() {
+    tat2_src = "flag 0 0 target 0\nflag 4 0 tower 0\nflag 30 0 tower 0\n"
+             + "palette 5\nclick 0 0\nclick 4 0\nclick 30 0\n"
+             + "tower 4 0 12 0.0 0.0 on\ntower 30 0 7 0.0 0.0 on\n";
+    tat2_a = editor_state_new(PALETTE);
+    tat2_run = script_run(tat2_a, tat2_src, SHOTS);
+    assert(tat2_run.ok, "two towers: {script_describe(tat2_run)}");
+
+    // A radius-20 crop keeps the near tower and drops the far one.
+    tat2_keys = crop_keys(pal(), tat2_a.pw, tat2_a.mw, tat2_run.wave,
+                          core(), core(), 20, "towers");
+    assert(tat2_keys != "", "the crop is allowed");
+
+    tat2_b = editor_state_new(PALETTE);
+    tat2_back = script_run(tat2_b, tat2_keys, SHOTS);
+    assert(tat2_back.ok, "it replays: {script_describe(tat2_back)}");
+
+    assert(tower_shots(tat2_back.wave.towers, 4, 0) == 12,
+           "the kept tower kept its magazine: "
+           + "{tower_shots(tat2_back.wave.towers, 4, 0)}");
+    assert(marker_count(tat2_b.mw) == 2,
+           "and the far tower's marker went with its cell: "
+           + "{marker_count(tat2_b.mw)}");
+}
+
+// ⚠ The crew, the cargo and the player are NOT cropped — an index is an
+// identity, and `cargo.subj` points into the crew roster, so dropping a
+// crew member would leave a wreck pointing at nobody.
+fn test_the_crew_and_its_cargo_are_never_cropped() {
+    tcc_src = "flag 0 0 target 0\npalette 5\nclick 0 0\nclick 40 0\n"
+            + "crew 40 0\nobject 40 0 wreck 0 ground\npark 40 0\n";
+    tcc_a = editor_state_new(PALETTE);
+    tcc_run = script_run(tcc_a, tcc_src, SHOTS);
+    assert(tcc_run.ok, "a crew member forty hexes out");
+
+    tcc_keys = crop_keys(pal(), tcc_a.pw, tcc_a.mw, tcc_run.wave,
+                         core(), core(), 20, "crew");
+    assert(tcc_keys != "", "the crop is allowed");
+
+    tcc_b = editor_state_new(PALETTE);
+    tcc_back = script_run(tcc_b, tcc_keys, SHOTS);
+    assert(tcc_back.ok, "it replays: {script_describe(tcc_back)}");
+
+    assert(len(tcc_back.wave.crew) == 1,
+           "the crew member is still there: {len(tcc_back.wave.crew)}");
+    assert(cargo_count(tcc_back.wave.cargo) == 1,
+           "and so is what it left behind");
+}
+
+// Enemies outside the disc ARE dropped, and the ones inside keep their
+// condition — the roster is renumbered by the emitter, so the fixture
+// is self-consistent.
+fn test_enemies_outside_the_disc_are_dropped() {
+    ted_src = "flag 0 0 target 0\npalette 5\nclick 5 0\nclick 40 0\n"
+            + "place 5 0 robot 3\nhit 0 7.5\n"
+            + "place 40 0 insect 1\n";
+    ted_a = editor_state_new(PALETTE);
+    ted_run = script_run(ted_a, ted_src, SHOTS);
+    assert(len(ted_run.wave.enemies) == 2, "two to start with");
+
+    ted_keys = crop_keys(pal(), ted_a.pw, ted_a.mw, ted_run.wave,
+                         core(), core(), 20, "roster");
+    ted_b = editor_state_new(PALETTE);
+    ted_back = script_run(ted_b, ted_keys, SHOTS);
+    assert(ted_back.ok, "it replays: {script_describe(ted_back)}");
+
+    assert(len(ted_back.wave.enemies) == 1, "one left");
+    ted_e = ted_back.wave.enemies[0] ?? Enemy { };
+    assert(ted_e.q == 5 && ted_e.taken == 7.5,
+           "and it is the near one, still hurt: ({ted_e.q}, {ted_e.r}) "
+           + "taken {ted_e.taken}");
+}
