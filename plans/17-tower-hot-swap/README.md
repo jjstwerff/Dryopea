@@ -9,8 +9,14 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Planned.**  Nothing built.  Suite 943 green, gate 27 scripts / 498
-measurements at the point this opens.
+**T0 done** (2026-08-15).  T1 is next.  No `src/` change yet; suite 943
+green, gate 27 scripts / 498 measurements.
+
+**T0 tried to falsify the premise and could not.**  The magazine binds,
+and harder than W4 could show: *without repair, building more towers
+buys nothing at all* — 3, 5 and 7 towers give 321, 319 and 317 ticks and
+four of seven waves each.  With repair, seven towers **clear the whole
+authored list at tick 332**.  § T0 has the tables.
 
 ⚠ **This plan exists because [plan 16](../16-the-wave-system/README.md)
 W4 named it, twice over.**  W4 measured the game at its real length and
@@ -79,6 +85,91 @@ grounded state repair needs*.  Repair is also the smaller half: it needs
 no carry model, it is the half W4 actually named, and it can go red on
 its own.
 
+## T0 — the probe (2026-08-15)
+
+No code.  W4 asserted the magazine binds by **exhausting** it; T0 asks
+the same question from the other direction — hand-refill the towers on a
+cadence and look.  The refill is idealised (every tower at once, no
+travel, no presence, no cost), because an idealised upper bound is what
+a falsifier needs.
+
+Cadences are chosen to mean something: `numbers.json`
+§ tower.repair_time_helper_rebuild is 20.0 s = **30 ticks per tower per
+helper**, so on the seven-tower band, *every 45 ticks* is about two
+helpers working the round.
+
+### ⚠⚠ 1. Without repair, tower COUNT buys nothing
+
+W4's band, the authored seven-wave list, no refill:
+
+| towers | fell | waves |
+|---|---|---|
+| 3 | 321 | 4/7 |
+| 5 | 319 | 4/7 |
+| 7 | **317** | 4/7 |
+
+**Tripling the towers moves the clock by four ticks, in the wrong
+direction.**  That is the finding T0 exists to produce: a base's
+firepower is capped by AMMUNITION, not by how much of it you built, so
+the one lever a player has over their own defence is inert.  W4 measured
+the ceiling; this says the ceiling does not care what you build under it.
+
+### ⚠⚠ 2. With repair, the seven-wave base EXISTS
+
+Free refill, same band and list:
+
+| towers | fell | waves | wall |
+|---|---|---|---|
+| 3 | 454 | 6/7 | broken |
+| 5 | 651 | 7/7 | 100 |
+| 7 | **never — CLEARED at 331** | 7/7 | 100 (never touched) |
+
+So the list `numbers.json` authors is playable, and W4's *"not
+survivable"* was a statement about upkeep rather than about the list.
+
+### 3. It takes about TWO helpers, and the third buys nothing
+
+Seven towers, cadence swept:
+
+| cadence | ≈ crew | result |
+|---|---|---|
+| never | — | 317, 4/7 |
+| 180 | ½ helper | 327, 5/7 |
+| 90 | 1 helper | 278, 6/7 |
+| **45** | **2 helpers** | **CLEARED 332** |
+| 30 | 3 helpers | CLEARED 331 |
+
+⚠ The knee is at two, and `numbers.json` § helper.roster_start is **2** —
+so the design's own starting crew is exactly the labour its own tower
+numbers need.  That is a target T1 can be built against rather than a
+coincidence to tune towards.  ⚠ Five towers never clear at any cadence
+(637 / 651), so labour does not substitute for firepower.
+
+### ⚠ 4. Fall tick is NOT a progress metric any more
+
+Seven towers at cadence 90 falls at **278** having played SIX waves;
+with no refill at all it falls at **317** having played four.  A base
+that kills faster **meets waves faster**, because the schedule advances
+on a clear (plan 16 W1).  ⚠ So T3 measures WAVES REACHED with the clock
+as a secondary reading, and W4's *"fell at 321"* was taken on a base
+whose schedule had stalled.
+
+### ⚠ 5. Two probe artefacts that are T1 design notes
+
+**A repair resets the MAGAZINE and not the CHARGE.**  Rebuilding the
+whole `TowerState` zeroes the banked charge too, and a tower needs 1.5
+ticks of charge to reach one firing interval — so a refill every tick
+left every tower permanently a hair short and it **never fired at all**:
+233 ticks, which is *exactly* the undefended band.  ⚠ `charge` and
+`shots` are two clocks on one struct and repair touches one of them;
+233 is the signature to recognise if T1 gets it wrong.
+
+**The ramp is unmanaged on a sealed base.**  Piles reach 28-36, and no
+helper can reach them — the ramp forms OUTSIDE the wall and helpers have
+no boost (plan 13 V4).  It did not decide anything at seven towers
+because nothing survived to climb it, and it will decide something on a
+base that is not overwhelming.
+
 ## ⚠⚠ The finding that shapes the plan: the budget is keyed by the wrong thing
 
 Today a tower's magazine lives in `TowerState`:
@@ -111,19 +202,19 @@ keep, and the same one that made B4's `taken` a count of damage ABSORBED.
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
-| **T0** | a table: waves played against refill cadence | the magazine is the binding constraint — W4 asserted it, this removes it and looks | a base with infinitely-refilled towers that STILL plays four waves falsifies the plan's premise, and the plan stops |
-| **T1** | a black tower fires again after 20 s of somebody standing at it | repair is **presence-locked and time-priced**; the ledger is clamped on the WRITE, so no tower ever holds more than `TOWER_SHOT_BUDGET` | a repair attempt on a **firing** tower is REFUSED (`DESIGN.md`'s rule); an unattended black tower never recovers a single shot |
+| **T0** ✓ | 317 / 319 / 321 unrefilled at 7 / 5 / 3 towers; CLEARED at 332 with two helpers' worth of repair | the magazine is the binding constraint — W4 asserted it, this removes it and looks | ✓ the plan's own falsifier was live: a base with free refills that still played four waves would have stopped the plan.  It played seven |
+| **T1** | a black tower fires again after 20 s of somebody standing at it | repair is **presence-locked and time-priced**; the ledger is clamped on the WRITE, so no tower ever holds more than `TOWER_SHOT_BUDGET` | a repair attempt on a **firing** tower is REFUSED (`DESIGN.md`'s rule); an unattended black tower never recovers a single shot; ⚠ **repair must not touch the CHARGE** — T0 § 5, and the signature of getting it wrong is a base that reads exactly like an undefended one (233 ticks) |
 | **T2** | a detached top does not fire; installed on an empty tower it fires instantly | **conservation is structural** (plan 15 C1): a top is mounted, carried, on the ground, or spent — exactly one, and never two | ⚠ **detach and re-mount must not refill** — the shots travel with the top; installing onto a tower that already has one is REFUSED, not silently overwritten |
-| **T3** | the seven-wave clock and the three retrieval clocks, re-measured | a base that can recover is a base that can be played | a reading taken with repair switched off must reproduce W4's 321 / 247 / 248 / 248 exactly, or the harness moved and not the mechanic |
+| **T3** | the seven-wave list REACHED, and the three retrieval clocks re-measured | a base that can recover is a base that can be played | a reading taken with repair switched off must reproduce W4's 321 / 247 / 248 / 248 exactly, or the harness moved and not the mechanic.  ⚠ Measure WAVES, not the fall tick — T0 § 4 |
 
 ## Phases
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **T0** — the probe: is the magazine really what binds? | XS | no code — hand-refill towers on a schedule in a test and tabulate waves played against refill cadence.  ⚠ If a base with free refills still plays four waves, the premise is wrong and this plan is wrong | Open |
-| **T1** — the rebuild: a black tower comes back | M | `tests/17_t1_the_rebuild.loft` — 20 s of a crew member standing at a black tower and it fires again; nobody there and it never does; a FIRING tower refuses repair; the ledger never exceeds the budget | Blocked on T0 |
+| **T0** — the probe: is the magazine really what binds? | XS | the tables in § T0, measured against the shipped sim | **Done** |
+| **T1** — the rebuild: a black tower comes back | M | `tests/17_t1_the_rebuild.loft` — 20 s of a crew member standing at a black tower and it fires again; nobody there and it never does; a FIRING tower refuses repair; the ledger never exceeds the budget; the CHARGE is untouched | Open |
 | **T2** — the top is a carry kind | M | `tests/17_t2_the_top.loft` — detach / install / deposit at the core, the budget travels WITH the top, and conservation asserted over the whole layer after every mutation (plan 15 C1's `assert_sound` shape).  ⚠ The diff must touch **no function in `carry.loft`'s carrying path** — that is plan 15 § C0.4's contract and is itself a gate | Blocked on T1 |
-| **T3** — the loop, measured | S | `tests/17_t3_what_upkeep_is_worth.loft` + a `.keys` scenario — W4's two measurements re-run with upkeep in the game | Blocked on T2 |
+| **T3** — the loop, measured | S | `tests/17_t3_what_upkeep_is_worth.loft` + a `.keys` scenario — W4's two measurements re-run with upkeep in the game.  ⚠ T0 predicts a two-helper seven-tower base clears the list; a reading that does not is the phase's finding | Blocked on T2 |
 
 ### Why the order is this order
 
