@@ -139,9 +139,9 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     assert(ttc_b.snaps == 1 && ttc_w.snaps == 1 && ttc_t.snaps == 1,
            "each took its picture: {ttc_b.snaps}, {ttc_w.snaps}, {ttc_t.snaps}");
 
-    assert(ttc_b.ticks == UNDEFENDED_TICKS, "bare clock {ttc_b.ticks}");
-    assert(ttc_w.ticks == WALLED_TICKS,     "walled clock {ttc_w.ticks}");
-    assert(ttc_t.ticks == TOWERED_TICKS,    "towered clock {ttc_t.ticks}");
+    assert(ttc_b.play.ticks == UNDEFENDED_TICKS, "bare clock {ttc_b.play.ticks}");
+    assert(ttc_w.play.ticks == WALLED_TICKS,     "walled clock {ttc_w.play.ticks}");
+    assert(ttc_t.play.ticks == TOWERED_TICKS,    "towered clock {ttc_t.play.ticks}");
 
     // ── The invariant, and its negative control, in one ratio ────
     //
@@ -153,10 +153,10 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     // every other number — same ground, core, spawn and wave list — so
     // whatever a later balance change does to the clock it does to
     // both, and the SEPARATION is what has to survive.
-    assert(ttc_w.ticks != ttc_b.ticks,
-           "equal clocks would mean the scenario measures nothing: both {ttc_b.ticks}");
-    assert((ttc_w.ticks as float) / (ttc_b.ticks as float) > 1.5,
-           "the wall bought {ttc_w.ticks} ticks against {ttc_b.ticks} — under half again as long");
+    assert(ttc_w.play.ticks != ttc_b.play.ticks,
+           "equal clocks would mean the scenario measures nothing: both {ttc_b.play.ticks}");
+    assert((ttc_w.play.ticks as float) / (ttc_b.play.ticks as float) > 1.5,
+           "the wall bought {ttc_w.play.ticks} ticks against {ttc_b.play.ticks} — under half again as long");
 
     // ── ⚠⚠ The inversion, INVERTED AGAIN by plan 16 W2 ───────────
     //
@@ -173,10 +173,10 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
     // first bodies pile up out there — 1.5 m on a hex that leads
     // nowhere — instead of at the foot of the wall where they would
     // have been a ramp.
-    assert(ttc_t.ticks > ttc_w.ticks,
-           "a tower now LENGTHENS the clock: {ttc_t.ticks} with one, {ttc_w.ticks} without");
-    assert(ttc_t.ticks > ttc_b.ticks,
-           "and the wall under it still buys something: {ttc_t.ticks} against {ttc_b.ticks} bare");
+    assert(ttc_t.play.ticks > ttc_w.play.ticks,
+           "a tower now LENGTHENS the clock: {ttc_t.play.ticks} with one, {ttc_w.play.ticks} without");
+    assert(ttc_t.play.ticks > ttc_b.play.ticks,
+           "and the wall under it still buys something: {ttc_t.play.ticks} against {ttc_b.play.ticks} bare");
 
     // ── The two endings, told apart by ONE hex ───────────────────
     //
@@ -200,16 +200,16 @@ fn test_the_clock_separates_and_a_tower_gives_it_back() {
            "the towered wall now breaks too: (5, -2) is '{painted_kind_name(ttc_ts.picker.palette, ttc_ts.pw, 5, -2)}'");
 
     // Masonry ON both breaches.
-    assert(height_rise(ttc_w.wave.heights, 5, -2) > 0.5,
-           "the breach carries its own masonry: {height_rise(ttc_w.wave.heights, 5, -2)} m");
+    assert(height_rise(ttc_w.play.wave.heights, 5, -2) > 0.5,
+           "the breach carries its own masonry: {height_rise(ttc_w.play.wave.heights, 5, -2)} m");
 
     // ⚠ **And the ramp is GONE** — this is the assertion that says the
     // window relocated the kills, and the one that would go red if the
     // window were deleted.
-    assert(height_rise(ttc_t.wave.heights, 6, 0) == 0.0,
-           "no ramp at the wall's foot: {height_rise(ttc_t.wave.heights, 6, 0)} m");
-    assert(height_rise(ttc_t.wave.heights, 11, 0) >= 1.0,
-           "the kills piled at the SPAWN MARKER instead: {height_rise(ttc_t.wave.heights, 11, 0)} m");
+    assert(height_rise(ttc_t.play.wave.heights, 6, 0) == 0.0,
+           "no ramp at the wall's foot: {height_rise(ttc_t.play.wave.heights, 6, 0)} m");
+    assert(height_rise(ttc_t.play.wave.heights, 11, 0) >= 1.0,
+           "the kills piled at the SPAWN MARKER instead: {height_rise(ttc_t.play.wave.heights, 11, 0)} m");
 }
 
 // ⚠ **A GATE is not a defence, and this is the measurement that says
@@ -227,8 +227,8 @@ fn test_a_wall_with_a_gate_in_it_buys_nothing() {
     // plan 11 F7b — the fan now costs a robot a single step to find
     // the doorway — and one tick in sixty-one is still "nothing" in
     // any sense a player could act on.
-    assert(taw.ticks - UNDEFENDED_TICKS <= 2 && taw.ticks >= UNDEFENDED_TICKS,
-           "a gate buys nothing: {taw.ticks} ticks walled-with-a-gate against {UNDEFENDED_TICKS} bare, where a SEAL buys {WALLED_TICKS}");
+    assert(taw.play.ticks - UNDEFENDED_TICKS <= 2 && taw.play.ticks >= UNDEFENDED_TICKS,
+           "a gate buys nothing: {taw.play.ticks} ticks walled-with-a-gate against {UNDEFENDED_TICKS} bare, where a SEAL buys {WALLED_TICKS}");
 }
 
 // `a-defended-base.keys` verbatim, except that (5, 0) is never

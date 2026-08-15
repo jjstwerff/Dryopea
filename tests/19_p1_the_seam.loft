@@ -1,0 +1,379 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 19 phase P1 — the play session and its ONE door.
+//
+// Plan 08 V0 gave the editor one seam so that a `.keys` script and a
+// keypress could not be two machines.  P1 is that rule for the GAME:
+// `src/play.loft` owns the only call to `wave_tick` in the repo, and
+// the script runner reaches it the same way a window will.
+//
+// ── ⚠⚠ What P1 measured, and what it FALSIFIED ──────────────────
+//
+// P0's table said an accumulator reproduces `tick N` exactly, so one
+// door taking SECONDS could serve both callers.  Building it showed
+// that generalisation is false:
+//
+//     play_advance(n * TICK_SECONDS)  ==  n ticks    for 398 of 1..1000
+//                                    ==  n - 1       for the other 602
+//
+// P0 measured n = 30, which is one of the 398.  What survives is
+// narrower and is still the property the design needs: the frame SIZE
+// does not reach the simulation, because the remainder CARRIES.
+//
+// ⚠ So the game has ONE tick and TWO ways to ask for it — a COUNT
+// (`play_ticks`, what the corpus is pinned to) and a DURATION
+// (`play_advance`, what a frame has).  § A count is not a duration is
+// the guard that keeps anyone from folding them back together.
+//
+// ── ⚠ The gate this phase really rests on is not in this file ───
+//
+// It is `scripts/validate.sh`: 28 scenarios, 520 measurements, every
+// one an exact clock over the shipped simulation.  A seam that changed
+// anything at all goes red there in bulk — and it did, once, naming
+// `a-base-that-plays-its-list` line 76 (`waves = 0, outside 1..1`)
+// when `tick` was routed through the seconds door.  ⚠ **One tick
+// short, at the end, is what that failure looks like from outside**:
+// not a clock a hair off, but a wave that never arrives.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// A one-hex corridor from a spawn at (12, 0) to the core at (0, 0).
+//
+// ⚠ A corridor cannot tell a flow field from a heading (`CLAUDE.md`
+// § Testing something that moves), and here that is exactly right:
+// what is under test is whether the simulation advanced AT ALL, and by
+// how much.
+fn fixture() -> EditorState {
+    fx_s = editor_state_new(PALETTE);
+    for fx_q in 0..=14 { paint(fx_s.pw, fx_q, 0, as_u8(GRASS)); }
+    place_marker(fx_s.mw, 0,  0, MARKER_KIND_TARGET as u8, 0 as u8);
+    place_marker(fx_s.mw, 12, 0, MARKER_KIND_SPAWN  as u8, 3 as u8);
+    fx_s
+}
+
+// A game on that corridor with four robots walking down it — state
+// that MOVES, so a missing tick is visible rather than merely
+// uncounted.
+fn game(s: EditorState) -> PlayState {
+    g_ps = play_state_new();
+    spawn_wave(g_ps.wave, 4, ENEMY_KIND_REGULAR as u8? ?? 0, s.mw, 0, 0, 10);
+    g_ps
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ A count is not a duration
+// ─────────────────────────────────────────────────────────────────
+
+// The measurement that killed the one-door design, kept as a guard.
+//
+// ⚠ **This asserts the WRONG answer on purpose.**  It is not a wish;
+// it is what IEEE-754 does to a repeating fraction, and the whole of
+// `play_ticks` exists because of it.  If a loft release ever makes
+// this exact, the test goes red and the note above it is what tells a
+// reader that the redness is good news.
+fn test_a_count_asked_for_in_seconds_comes_back_short() {
+    tcs_wrong = 0;
+    tcs_n     = 0;
+    for tcs_i in 1..1001 {
+        // The accumulator, in the small: bank `i` ticks' worth of
+        // seconds in ONE go and spend whole ticks out of it.
+        tcs_b = (tcs_i as float) * TICK_SECONDS;
+        tcs_c = 0;
+        while tcs_b >= TICK_SECONDS { tcs_b -= TICK_SECONDS; tcs_c += 1; }
+        if tcs_c != tcs_i { tcs_wrong += 1; }
+        tcs_n += 1;
+    }
+    assert(tcs_n == 1000, "the sweep swept: {tcs_n}");
+    assert(tcs_wrong == 602,
+           "n * TICK_SECONDS loses a tick for 602 of the first 1000 counts, "
+           + "not {tcs_wrong} — see plans/19 § P1");
+
+    // ⚠ Three of them by name, so a reader can reproduce one by hand.
+    // n = 12 is the sharpest: the product is EXACTLY 8.0 and the
+    // subtraction chain still comes back 11, which is why "make the
+    // product exact" is not the fix.
+    for tcs_k in [10, 12, 40] {
+        tcs_bb = (tcs_k as float) * TICK_SECONDS;
+        tcs_cc = 0;
+        while tcs_bb >= TICK_SECONDS { tcs_bb -= TICK_SECONDS; tcs_cc += 1; }
+        assert(tcs_cc == tcs_k - 1,
+               "n = {tcs_k} through the seconds door is {tcs_k - 1}, got {tcs_cc}");
+    }
+}
+
+// And the count door is exact for every one of them.
+fn test_the_count_door_is_exact() {
+    for tcd_n in [1, 2, 10, 12, 40, 50, 120] {
+        tcd_s  = fixture();
+        tcd_ps = game(tcd_s);
+        tcd_got = play_ticks(tcd_ps, tcd_s, tcd_n);
+        assert(tcd_got == tcd_n, "play_ticks({tcd_n}) reports {tcd_got}");
+        assert(tcd_ps.ticks == tcd_n,
+               "play_ticks({tcd_n}) played {tcd_ps.ticks}");
+    }
+}
+
+// ⚠ **A count does not spend a live session's remainder, and leaves
+// none behind.**  Without this, mixing the doors would make a scripted
+// tick steal part of a frame — and the drift would be sub-tick, so
+// nothing in the corpus could see it.
+fn test_a_count_does_not_touch_the_bank() {
+    tab_s  = fixture();
+    tab_ps = game(tab_s);
+
+    // Bank most of a tick without taking one.
+    play_advance(tab_ps, tab_s, TICK_SECONDS * 0.5);
+    assert(tab_ps.ticks == 0, "half a tick takes none: {tab_ps.ticks}");
+
+    play_ticks(tab_ps, tab_s, 3);
+    assert(tab_ps.ticks == 3, "three counted ticks: {tab_ps.ticks}");
+    assert(tab_ps.banked == TICK_SECONDS * 0.5,
+           "the half tick is still banked: {tab_ps.banked:8.6}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ P0's surviving finding: the frame SIZE does not reach the sim
+// ─────────────────────────────────────────────────────────────────
+
+// The same twenty seconds, delivered five ways, reaching one state —
+// and that state is `tick 30`.
+//
+// ⚠ The comparison is `state_diff`, plan 18 S0's oracle: it answers the
+// FIRST differing field by name, so a frame rate that moved one enemy
+// by one hex says which enemy and which hex rather than "not equal".
+fn test_the_frame_size_does_not_reach_the_simulation() {
+    tfs_s  = fixture();
+    tfs_ps = game(tfs_s);
+    play_ticks(tfs_ps, tfs_s, 30);
+    assert(tfs_ps.ticks == 30, "the reference played 30: {tfs_ps.ticks}");
+
+    // (frames, seconds per frame) — every pair is 20.0 s of wall clock.
+    for tfs_f in [1, 30, 200, 600, 1200] {
+        tfs_b   = fixture();
+        tfs_bps = game(tfs_b);
+        tfs_dt  = 20.0 / (tfs_f as float);
+        for _ in 0..tfs_f { play_advance(tfs_bps, tfs_b, tfs_dt); }
+
+        assert(tfs_bps.ticks == 30,
+               "{tfs_f} frames of {tfs_dt:8.6} s play 30 ticks, not {tfs_bps.ticks}");
+        assert(state_diff(tfs_ps.wave, tfs_bps.wave) == "",
+               "{tfs_f} frames reach the scripted state — "
+               + "'{state_diff(tfs_ps.wave, tfs_bps.wave)}'");
+    }
+}
+
+// ⚠ **The remainder CARRIES**, which is the whole reason a repeating
+// accumulator is immune to the one-shot timers' epsilon trap.  Two
+// half-tick frames are one tick between them; neither is one alone.
+fn test_the_remainder_carries() {
+    trc_s  = fixture();
+    trc_ps = game(trc_s);
+
+    trc_a = play_advance(trc_ps, trc_s, TICK_SECONDS * 0.5);
+    assert(trc_a == 0, "half a tick buys nothing: {trc_a}");
+    trc_b = play_advance(trc_ps, trc_s, TICK_SECONDS * 0.5);
+    assert(trc_b == 1, "the second half buys the tick: {trc_b}");
+    assert(trc_ps.ticks == 1, "one tick played: {trc_ps.ticks}");
+}
+
+// ⚠ **The negative control for the carry**: an accumulator that ZEROED
+// its remainder each frame would pass every assertion above except this
+// one.  Sixty frames of 0.4 s is 24.0 s — 36 ticks — and a zeroing
+// accumulator plays 0.
+fn test_a_frame_shorter_than_a_tick_still_advances_the_game() {
+    tfa_s  = fixture();
+    tfa_ps = game(tfa_s);
+    for _ in 0..60 { play_advance(tfa_ps, tfa_s, 0.4); }
+    assert(tfa_ps.ticks == 36,
+           "60 frames of 0.4 s is 24 s is 36 ticks, not {tfa_ps.ticks}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ No core, no game — and no BURST when one appears
+// ─────────────────────────────────────────────────────────────────
+
+// A half-built map has no target marker, so the wave has nothing to
+// walk towards.
+//
+// ⚠ The second half is the one worth having: the seconds are DROPPED
+// rather than banked.  Banking them would make placing the core replay
+// every second the session had been open as one burst of ticks — and a
+// test that only checked "no ticks yet" would be green for it.
+fn test_a_coreless_world_neither_ticks_nor_banks() {
+    tcw_s = editor_state_new(PALETTE);
+    for tcw_q in 0..=14 { paint(tcw_s.pw, tcw_q, 0, as_u8(GRASS)); }
+    place_marker(tcw_s.mw, 12, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    tcw_ps = play_state_new();
+
+    tcw_got = play_advance(tcw_ps, tcw_s, 60.0);
+    assert(tcw_got == 0, "a coreless minute plays nothing: {tcw_got}");
+    assert(tcw_ps.ticks == 0, "no ticks: {tcw_ps.ticks}");
+    assert(tcw_ps.banked == 0.0,
+           "and nothing is banked against the core arriving: {tcw_ps.banked:8.6}");
+
+    // Now the core is placed.  One frame, one tick — not ninety.
+    place_marker(tcw_s.mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    tcw_after = play_advance(tcw_ps, tcw_s, TICK_SECONDS);
+    assert(tcw_after == 1,
+           "the core arriving does not replay the wait: {tcw_after} ticks");
+
+    // ⚠ And `play_core` is what both doors ask — the same question the
+    // script runner asks, rather than a second answer beside it.
+    tcw_c = play_core(tcw_s.mw);
+    assert(tcw_c.0 == 1, "one core: {tcw_c.0}");
+    assert(tcw_c.1 == 0 && tcw_c.2 == 0, "at ({tcw_c.1}, {tcw_c.2})");
+}
+
+// Two cores is a different mistake from none, and the count is what
+// lets a caller tell them apart.
+fn test_play_core_counts_rather_than_answering_null() {
+    tpc_s = fixture();
+    place_marker(tpc_s.mw, 6, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    tpc_c = play_core(tpc_s.mw);
+    assert(tpc_c.0 == 2, "two target markers: {tpc_c.0}");
+
+    tpc_ps = play_state_new();
+    assert(play_ticks(tpc_ps, tpc_s, 5) == 0, "two cores plays nothing");
+    assert(play_advance(tpc_ps, tpc_s, 20.0) == 0, "and banks nothing either");
+    assert(tpc_ps.banked == 0.0, "banked {tpc_ps.banked:8.6}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ `play_step` is a FRAME: the input, then the time
+// ─────────────────────────────────────────────────────────────────
+
+// Both halves in one call, which is what makes a GL frame and a
+// scripted frame the same machine.
+//
+// ⚠ The editor half is the one that could silently go missing: a
+// `play_step` that forgot `editor_step` would still tick, so every
+// clock assertion in this file would stay green while no key a player
+// pressed reached anything.
+fn test_a_frame_carries_both_the_input_and_the_time() {
+    tfb_s  = fixture();
+    tfb_ps = game(tfb_s);
+
+    tfb_in = editor_input_empty();
+    tfb_in.in_recentre = true;
+    tfb_s.cam.pos.q = 7;     // somewhere to be moved back from
+
+    tfb_took = play_step(tfb_ps, tfb_s, tfb_in, TICK_SECONDS * 2.0);
+    assert(tfb_took == 2, "the frame played two ticks: {tfb_took}");
+    assert(tfb_s.cam.pos.q == 0,
+           "and the recentre reached the editor: cam q = {tfb_s.cam.pos.q}");
+}
+
+// ⚠ A frame with no time in it is still a frame — which is exactly how
+// every scripted `do` reaches the seam.
+fn test_a_frame_of_no_time_takes_no_tick() {
+    tfn_s  = fixture();
+    tfn_ps = game(tfn_s);
+    tfn_in = editor_input_empty();
+    tfn_in.in_recentre = true;
+    tfn_s.cam.pos.q = 7;
+
+    assert(play_step(tfn_ps, tfn_s, tfn_in, 0.0) == 0, "no time, no tick");
+    assert(tfn_ps.ticks == 0, "ticks: {tfn_ps.ticks}");
+    assert(tfn_s.cam.pos.q == 0, "the action still landed");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The script runner goes through the door
+// ─────────────────────────────────────────────────────────────────
+
+// `tick` writes the SAME clock `play_ticks` writes, because it IS
+// `play_ticks`.  Before P1 the runner kept its own loop and its own
+// counter beside the wave; two records of one fact is the drift this
+// phase deleted.
+// The same corridor and the same wave the fixtures above use, written
+// the way a scenario writes it — so the two halves of this section
+// differ ONLY in who advances the game.
+const SETUP: text = "palette 5\n"
+                  + "drag 0 0 14 0\n"
+                  + "flag 0 0 target 0\n"
+                  + "flag 12 0 spawn 3\n"
+                  + "wave 4\n";
+
+fn test_the_script_tick_is_the_count_door() {
+    tst_s = editor_state_new(PALETTE);
+    tst_r = script_run(tst_s, SETUP + "tick 30\n", "tests/actual");
+    assert(tst_r.ok, "the fixture plays: {script_describe(tst_r)}");
+    assert(tst_r.play.ticks == 30, "the run's clock: {tst_r.play.ticks}");
+}
+
+// ⚠⚠ **And it reaches the same state a direct `play_ticks` reaches.**
+// This is the one-seam property stated as a measurement: a script and a
+// caller that is not a script play one game.
+//
+// ⚠ Both sides are built by the SAME script text and fork only at the
+// advance, so a difference cannot be the two worlds disagreeing —
+// which is what a hand-painted twin would leave open.
+fn test_a_script_and_a_direct_call_play_one_game() {
+    tsd_a = editor_state_new(PALETTE);
+    tsd_ra = script_run(tsd_a, SETUP + "tick 30\n", "tests/actual");
+    assert(tsd_ra.ok, "the scripted side plays: {script_describe(tsd_ra)}");
+
+    tsd_b = editor_state_new(PALETTE);
+    tsd_rb = script_run(tsd_b, SETUP, "tests/actual");
+    assert(tsd_rb.ok, "the direct side sets up: {script_describe(tsd_rb)}");
+    assert(tsd_rb.play.ticks == 0, "and has not ticked: {tsd_rb.play.ticks}");
+    play_ticks(tsd_rb.play, tsd_b, 30);
+
+    assert(tsd_rb.play.ticks == 30, "the direct call played 30: {tsd_rb.play.ticks}");
+    assert(state_diff(tsd_ra.play.wave, tsd_rb.play.wave) == "",
+           "one game — '{state_diff(tsd_ra.play.wave, tsd_rb.play.wave)}'");
+}
+
+// ⚠ And a WALL-CLOCK caller reaches it too — the property a window
+// depends on, stated over a real scenario rather than over the toy
+// fixture above.
+fn test_and_so_does_twenty_seconds_of_wall_clock() {
+    taw_a = editor_state_new(PALETTE);
+    taw_ra = script_run(taw_a, SETUP + "tick 30\n", "tests/actual");
+    assert(taw_ra.ok, "the scripted side plays: {script_describe(taw_ra)}");
+
+    taw_b = editor_state_new(PALETTE);
+    taw_rb = script_run(taw_b, SETUP, "tests/actual");
+    assert(taw_rb.ok, "the frame side sets up: {script_describe(taw_rb)}");
+    for _ in 0..1200 { play_advance(taw_rb.play, taw_b, 1.0 / 60.0); }
+
+    assert(taw_rb.play.ticks == 30,
+           "1200 frames of 1/60 s play 30 ticks, not {taw_rb.play.ticks}");
+    assert(state_diff(taw_ra.play.wave, taw_rb.play.wave) == "",
+           "one game — '{state_diff(taw_ra.play.wave, taw_rb.play.wave)}'");
+}
+
+// ⚠ And a `fall` uses the same door one tick at a time, so a base that
+// falls and a base ticked to the same place cannot diverge.
+fn test_fall_and_tick_reach_the_same_place() {
+    // A wave already on the core, draining a wallet that has 200 pts —
+    // `fall` runs it dry, `tick` is told the number `fall` reports.
+    tft_src = "palette 5\n"
+            + "drag 0 0 14 0\n"
+            + "flag 0 0 target 0\n"
+            + "flag 12 0 spawn 3\n"
+            + "place 0 0 robot 3\n"
+            + "place 1 0 robot 3\n";
+
+    tft_a = editor_state_new(PALETTE);
+    tft_ra = script_run(tft_a, tft_src + "fall 400\n", "tests/actual");
+    assert(tft_ra.ok, "the fall plays: {script_describe(tft_ra)}");
+    assert(tft_ra.play.ticks > 0, "it took ticks: {tft_ra.play.ticks}");
+
+    tft_b = editor_state_new(PALETTE);
+    tft_rb = script_run(tft_b, tft_src + "tick {tft_ra.play.ticks}\n", "tests/actual");
+    assert(tft_rb.ok, "the tick plays: {script_describe(tft_rb)}");
+
+    assert(state_diff(tft_ra.play.wave, tft_rb.play.wave) == "",
+           "fall and tick agree — '{state_diff(tft_ra.play.wave, tft_rb.play.wave)}'");
+}

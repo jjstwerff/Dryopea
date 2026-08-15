@@ -75,15 +75,15 @@ fn test_a_placed_enemy_equals_one_built_by_hand() {
                                  heading: 3 as u8, alive: true,
                                  taken: 0.0, stand: 0.0 }];
 
-    assert(state_diff(tap_run.wave, tap_want) == "",
-           "identical: '{state_diff(tap_run.wave, tap_want)}'");
+    assert(state_diff(tap_run.play.wave, tap_want) == "",
+           "identical: '{state_diff(tap_run.play.wave, tap_want)}'");
 }
 
 // ⚠⚠ **A bare `place` is HEALTHY and WALKING**, which is the
 // zero-neutral rule holding at the script's edge.
 fn test_a_bare_placement_is_whole_and_free_to_move() {
     tbp_run = played("place 8 0 robot 3\n");
-    tbp_e = tbp_run.wave.enemies[0] ?? Enemy { };
+    tbp_e = tbp_run.play.wave.enemies[0] ?? Enemy { };
 
     assert(tbp_e.alive, "it is alive");
     assert(enemy_hp(tbp_e) == enemy_max_hp(as_u8(ENEMY_KIND_REGULAR)),
@@ -106,7 +106,7 @@ fn test_a_placed_enemy_walks() {
 fn test_the_class_is_named_and_a_typo_is_refused() {
     tcn_ok = played("place 8 0 insect\n");
     assert(tcn_ok.ok, "an insect is placed: {script_describe(tcn_ok)}");
-    assert((tcn_ok.wave.enemies[0] ?? Enemy { }).kind == ENEMY_KIND_INSECT as u8,
+    assert((tcn_ok.play.wave.enemies[0] ?? Enemy { }).kind == ENEMY_KIND_INSECT as u8,
            "and it IS an insect");
 
     tcn_bad = played("place 8 0 bettle\n");
@@ -128,7 +128,7 @@ fn test_a_heading_is_checked() {
 fn test_the_heading_defaults_to_zero() {
     thd_run = played("place 8 0 robot\n");
     assert(thd_run.ok, "it runs: {script_describe(thd_run)}");
-    assert((thd_run.wave.enemies[0] ?? Enemy { }).heading == 0 as u8,
+    assert((thd_run.play.wave.enemies[0] ?? Enemy { }).heading == 0 as u8,
            "heading 0");
 }
 
@@ -146,8 +146,8 @@ fn test_damage_taken_is_reachable_and_it_is_the_verb_that_existed() {
     tdt_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
                                  heading: 3 as u8, alive: true,
                                  taken: 10.0, stand: 0.0 }];
-    assert(state_diff(tdt_run.wave, tdt_want) == "",
-           "ten HP absorbed: '{state_diff(tdt_run.wave, tdt_want)}'");
+    assert(state_diff(tdt_run.play.wave, tdt_want) == "",
+           "ten HP absorbed: '{state_diff(tdt_run.play.wave, tdt_want)}'");
 }
 
 // `stand` reaches the pre-walk window.
@@ -159,9 +159,9 @@ fn test_the_pre_walk_window_is_reachable() {
     tpw2_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
                                  heading: 3 as u8, alive: true,
                                  taken: 0.0, stand: 2.5 }];
-    assert(state_diff(tpw2_run.wave, tpw2_want) == "",
+    assert(state_diff(tpw2_run.play.wave, tpw2_want) == "",
            "two and a half seconds of window: "
-           + "'{state_diff(tpw2_run.wave, tpw2_want)}'");
+           + "'{state_diff(tpw2_run.play.wave, tpw2_want)}'");
 
     // And it MEANS something: a standing enemy does not move.
     tpw2_still = played("place 8 0 robot 3\nstand 0 2.5\ntick 1\nenemy 0 8 0\n");
@@ -178,8 +178,8 @@ fn test_an_enemy_can_be_authored_down() {
     tae_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
                                  heading: 3 as u8, alive: false,
                                  taken: 0.0, stand: 0.0 }];
-    assert(state_diff(tae_run.wave, tae_want) == "",
-           "down: '{state_diff(tae_run.wave, tae_want)}'");
+    assert(state_diff(tae_run.play.wave, tae_want) == "",
+           "down: '{state_diff(tae_run.play.wave, tae_want)}'");
 }
 
 // ⚠⚠ **And `dead` deposits NO body**, which is `damage`'s rule for a
@@ -192,8 +192,8 @@ fn test_authoring_a_death_deposits_no_body() {
     tad_run = played("place 8 0 robot 3\ndead 0\npile 8 0 0.0 0.0\n");
     assert(tad_run.ok,
            "no rubble where it lies: {script_describe(tad_run)}");
-    assert(height_count(tad_run.wave.heights) == 0,
-           "and none anywhere: {height_count(tad_run.wave.heights)}");
+    assert(height_count(tad_run.play.wave.heights) == 0,
+           "and none anywhere: {height_count(tad_run.play.wave.heights)}");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -211,8 +211,8 @@ fn test_every_field_of_an_enemy_is_expressible() {
     tef_want.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_INSECT as u8,
                                  heading: 4 as u8, alive: false,
                                  taken: 7.5, stand: 1.25 }];
-    assert(state_diff(tef_run.wave, tef_want) == "",
-           "all seven fields: '{state_diff(tef_run.wave, tef_want)}'");
+    assert(state_diff(tef_run.play.wave, tef_want) == "",
+           "all seven fields: '{state_diff(tef_run.play.wave, tef_want)}'");
 }
 
 // Two placements are two enemies, in the order written — because an
@@ -221,7 +221,7 @@ fn test_placements_keep_their_order() {
     tpo_run = played("place 8 0 robot 3\nplace 9 0 insect 1\n"
                      + "enemy 0 8 0\nenemy 1 9 0\n");
     assert(tpo_run.ok, "in order: {script_describe(tpo_run)}");
-    assert((tpo_run.wave.enemies[1] ?? Enemy { }).kind == ENEMY_KIND_INSECT as u8,
+    assert((tpo_run.play.wave.enemies[1] ?? Enemy { }).kind == ENEMY_KIND_INSECT as u8,
            "and the second is the insect");
 }
 

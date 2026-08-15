@@ -75,7 +75,7 @@ fn test_every_scenario_survives_the_round_trip() {
         assert(tes_run.ok, "{tes_f} plays: {script_describe(tes_run)}");
 
         // 2. Write the situation down.
-        tes_keys = emit_keys(tes_pal, tes_a.pw, tes_a.mw, tes_run.wave,
+        tes_keys = emit_keys(tes_pal, tes_a.pw, tes_a.mw, tes_run.play.wave,
                              "{tes_f}");
 
         // 3. Read it back into a session that has never seen the map.
@@ -87,9 +87,9 @@ fn test_every_scenario_survives_the_round_trip() {
                "{tes_f}: the captured fixture replays — {script_describe(tes_back)}");
 
         // 4. And nothing moved.
-        assert(state_diff(tes_run.wave, tes_back.wave) == "",
+        assert(state_diff(tes_run.play.wave, tes_back.play.wave) == "",
                "{tes_f}: state survives — "
-               + "'{state_diff(tes_run.wave, tes_back.wave)}'");
+               + "'{state_diff(tes_run.play.wave, tes_back.play.wave)}'");
         assert(world_diff(tes_a.pw, tes_a.mw,
                           tes_b.pw, tes_b.mw) == "",
                "{tes_f}: world survives — "
@@ -129,15 +129,15 @@ fn test_the_fields_no_scenario_exercises_survive_too() {
     tfn_run = script_run(tfn_a, tfn_head + tfn_body, SHOTS);
     assert(tfn_run.ok, "the odd state builds: {script_describe(tfn_run)}");
 
-    tfn_keys = emit_keys(pal(), tfn_a.pw, tfn_a.mw, tfn_run.wave, "odd");
+    tfn_keys = emit_keys(pal(), tfn_a.pw, tfn_a.mw, tfn_run.play.wave, "odd");
     tfn_b = editor_state_new(PALETTE);
     tfn_back = script_run(tfn_b, tfn_keys, SHOTS);
     assert(tfn_back.ok, "and replays: {script_describe(tfn_back)}");
 
-    assert(state_diff(tfn_run.wave, tfn_back.wave) == "",
+    assert(state_diff(tfn_run.play.wave, tfn_back.play.wave) == "",
            "including a boost running, a recovery clock, a stripped "
            + "tower, a spent cargo slot and a retuned lull: "
-           + "'{state_diff(tfn_run.wave, tfn_back.wave)}'");
+           + "'{state_diff(tfn_run.play.wave, tfn_back.play.wave)}'");
 }
 
 // ⚠ **A state one TICK on still survives**, which is what says the
@@ -151,17 +151,17 @@ fn test_a_state_the_simulation_produced_survives() {
     tas_a = editor_state_new(PALETTE);
     tas_run = script_run(tas_a, tas_src + "\ntick 40\n", SHOTS);
     assert(tas_run.ok, "forty more ticks: {script_describe(tas_run)}");
-    assert(height_count(tas_run.wave.heights) > 0,
+    assert(height_count(tas_run.play.wave.heights) > 0,
            "and there are bodies on the ground: "
-           + "{height_count(tas_run.wave.heights)}");
+           + "{height_count(tas_run.play.wave.heights)}");
 
-    tas_keys = emit_keys(pal(), tas_a.pw, tas_a.mw, tas_run.wave, "mid-wave");
+    tas_keys = emit_keys(pal(), tas_a.pw, tas_a.mw, tas_run.play.wave, "mid-wave");
     tas_b = editor_state_new(PALETTE);
     tas_back = script_run(tas_b, tas_keys, SHOTS);
     assert(tas_back.ok, "it replays: {script_describe(tas_back)}");
-    assert(state_diff(tas_run.wave, tas_back.wave) == "",
+    assert(state_diff(tas_run.play.wave, tas_back.play.wave) == "",
            "mid-wave state survives: "
-           + "'{state_diff(tas_run.wave, tas_back.wave)}'");
+           + "'{state_diff(tas_run.play.wave, tas_back.play.wave)}'");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -178,7 +178,7 @@ fn test_the_output_is_a_setup_and_not_a_recording() {
         "flag 0 0 target 0\npalette 5\nclick 1 0\nplace 5 0 robot 3\n", SHOTS);
     assert(tos_run.ok, "it runs");
 
-    tos_keys = emit_keys(pal(), tos_a.pw, tos_a.mw, tos_run.wave, "x");
+    tos_keys = emit_keys(pal(), tos_a.pw, tos_a.mw, tos_run.play.wave, "x");
     assert(!tos_keys.contains("\ntick "), "no tick in the output");
     assert(!tos_keys.contains("\nfall "), "and nothing that plays it out");
     assert(!tos_keys.contains("\nwave "), "and no wave spawned by count");
@@ -189,7 +189,7 @@ fn test_the_output_is_a_setup_and_not_a_recording() {
 fn test_the_origin_is_recorded() {
     tor_a = editor_state_new(PALETTE);
     tor_run = script_run(tor_a, "palette 5\nclick 1 0\n", SHOTS);
-    tor_keys = emit_keys(pal(), tor_a.pw, tor_a.mw, tor_run.wave,
+    tor_keys = emit_keys(pal(), tor_a.pw, tor_a.mw, tor_run.play.wave,
                          "a-wall-breaks at tick 40");
     assert(tor_keys.contains("# captured: a-wall-breaks at tick 40"),
            "the origin is in the file");
@@ -203,7 +203,7 @@ fn test_the_origin_is_recorded() {
 fn test_a_neutral_enemy_emits_one_line() {
     tan_a = editor_state_new(PALETTE);
     tan_run = script_run(tan_a, "palette 5\nclick 1 0\nplace 5 0 robot 3\n", SHOTS);
-    tan_keys = emit_keys(pal(), tan_a.pw, tan_a.mw, tan_run.wave, "x");
+    tan_keys = emit_keys(pal(), tan_a.pw, tan_a.mw, tan_run.play.wave, "x");
 
     assert(tan_keys.contains("place 5 0 robot 3"), "it is placed");
     assert(!tan_keys.contains("hit 0"), "with no damage line");

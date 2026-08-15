@@ -1,0 +1,255 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The game's seam — plan 19 phase P1.
+//
+// Plan 08 V0 gave the EDITOR one door: every action a player can take
+// runs through `editor_step`, so a `.keys` script and a keypress are
+// the same machine.  This is that rule one level up, for the GAME.
+//
+// Before this file, the game had no door at all.  `WaveState` rode on
+// `ScriptRun` and `wave_tick` was called from two places inside the
+// script runner — which was fine only because there was exactly one
+// caller in the world.  The moment a GL loop advances the game itself,
+// **a script and a player play different games**, and the 520
+// measurements in `scripts/validate.sh` stop describing what a person
+// experiences.  Silently: every one of them would still be green.
+//
+// ── ⚠⚠ TWO ways to ask, ONE tick ────────────────────────────────
+//
+// A script says `tick 30`.  A frame says *16 ms passed*.  Those are
+// different QUESTIONS — a count and a duration — and P1 measured that
+// they cannot be made one:
+//
+//     play_advance(n * TICK_SECONDS)  is not  n ticks
+//
+// **It is wrong for 602 of the first 1000 values of `n`** (measured,
+// plan 19 P1), losing the last tick at n = 10, 12, 40, 50, 120, 200,
+// 500 and 595 others.  The subtraction chain is what does it, not the
+// product: n = 12 gives a product of exactly 8.0 and still comes back
+// 11, because eleven subtractions of a repeating fraction leave a
+// remainder a hair under the twelfth.
+//
+// ⚠⚠ **P0 said the opposite, and P0 was measuring n = 30.**  Thirty is
+// in the lucky 40%.  Its real finding survives and is narrower: the
+// frame SIZE does not reach the simulation, because the remainder
+// CARRIES — 1200 frames of 1/60 s and one frame of 20 s reach the same
+// state.  What does not survive is the generalisation from one `n`.
+//
+// So the game has one TICK and two ways to ask for it:
+//
+//   * `play_ticks(n)`   — a COUNT.  What `tick` and `fall` ask, and
+//                         what every one of the 520 gate measurements
+//                         is pinned to.  Exact by construction.
+//   * `play_advance(s)` — a DURATION.  What a GL frame asks, and the
+//                         only one that banks a remainder.
+//
+// Both spend `play_one_tick`, which is the one site in the repo that
+// calls `wave_tick`.  That is the invariant; a single entry point was
+// never it, and reaching for one would have made the corpus lie.
+//
+// ── ⚠⚠ And there is no epsilon, which is a DECISION ──────────────
+//
+// `helper.loft`, `tower.loft` and `vehicle.loft` all carry one, and a
+// reader arriving from any of them will want to add a fourth.  Do not.
+// Those are ONE-SHOT timers: their boundary is decided once and for
+// ever, so a float landing an ulp short costs a whole tick permanently.
+// This one REPEATS, and its remainder CARRIES — an ulp short defers a
+// tick to the next frame and nothing is lost.  1200 frames of 1/60 s
+// bank 20.000000000000146 s rather than 20.0, and it makes no
+// difference at all: the excess is 1.5e-13 against a tick of 0.667.
+// Measured with an epsilon of 1e-9 as well, and the state is identical.
+//
+// ⚠ An epsilon would NOT have rescued the count, either — it moves
+// which 602 values are wrong, not how many.  A count is exact because
+// it is counted, not because the arithmetic was nudged.
+//
+// ── ⚠ Why `PlayState` does not own the `EditorState` ─────────────
+//
+// The plan's own recommendation was a `PlayState` composing an
+// `EditorState` and a `WaveState`.  Measured, the first half cannot be
+// written: **a struct stored in a field of another struct is a COPY**,
+// not an alias (loft says so itself — `advice[avoidable-copy]`).  So a
+// `PlayState` built around the session the caller already holds would
+// fork the world in two: the script runner mutates `s`, the game reads
+// `ps.ed`, and the two drift with nothing to see it.
+//
+// A field read as a PARAMETER does alias, so owning it outright would
+// work — but only by inverting `script_run(s, …)`, whose whole contract
+// is that the caller keeps the session and asserts on it afterwards.
+//
+// So the world is PASSED and the game is OWNED.  `PlayState` is what a
+// live session has that an edited one does not: a roster, a clock, and
+// the seconds banked toward the next tick.
+//
+// ── ⚠ And a `tick` is not a FRAME either ────────────────────────
+//
+// `play_step` is a FRAME — input, then time — and it is what the GL
+// loop and every scripted frame call.  `play_ticks` is the simulation
+// alone, and it is what `tick` and `fall` call.
+//
+// That split is not tidiness either.  A script's `tick 30` has no
+// keypress in it; routed through `play_step` it would have to fabricate
+// a neutral input frame, and `editor_step` reads a neutral frame as
+// *the player let go* — it commits the in-flight paint stroke and
+// resets the edge history.  `tick` would silently release the player's
+// mouse.
+//
+// What the one-seam rule demands is that ONE function calls
+// `wave_tick`.  One does.
+
+use lattice;
+use markers;
+use editor_step;
+use spawn;
+
+// ─── State ──────────────────────────────────────────────────────
+
+// A game in progress.
+//
+// Deliberately NOT on `EditorState`: a session that is being edited has
+// no enemies in it, and folding a roster into the seam would make
+// `editor_step` answer for something no editor action touches.  That
+// argument is `ScriptRun.wave`'s, and it survives the move — this is
+// the same record, given a name and a clock so that something other
+// than a script can hold one.
+pub struct PlayState {
+    // The roster, the layers, the towers, the wallet, the crew, the
+    // cargo — everything the simulation owns.
+    wave: WaveState,
+
+    // Elapsed seconds not yet spent as whole ticks.
+    //
+    // ⚠ **The remainder is kept, and that is the whole design.**  A
+    // frame that delivers 0.4 s takes no tick and banks 0.4; the next
+    // one takes a tick and banks the rest.  Zeroing it here — or
+    // rounding to the nearest tick — makes the simulation frame-rate
+    // dependent, which is the property P0 measured and the one no
+    // measurement in this repo would survive losing.
+    banked: float,
+
+    // Whole ticks played, ever.  The run's CLOCK — plan 12 B7 compares
+    // it between a base with defences and the same base without, and
+    // plans 13-17 are built on those comparisons.
+    //
+    // ⚠ **A count of TICKS, not of seconds** (plan 19 § Open questions
+    // 3).  The accumulator changes who decides WHEN a tick happens; it
+    // does not change what one IS.
+    ticks: integer,
+}
+
+pub fn play_state_new() -> PlayState {
+    PlayState {
+        wave:   wave_state_empty(),
+        banked: 0.0,
+        ticks:  0,
+    }
+}
+
+// ─── Where the wave is walking to ───────────────────────────────
+
+// How many target markers the world has, and where the last one is.
+//
+// The core is a MARKER, so the answer lives with the markers rather
+// than with whoever is asking — the script runner asked this question
+// privately for six plans, and a GL loop needs the same answer.
+//
+// A count rather than a nullable hex, because "no core" and "three
+// cores" are different mistakes and a caller that can only see
+// `null` reports the wrong one.
+pub fn play_core(mw: const MarkerWorld) -> (integer, integer, integer) {
+    pc_n = 0;
+    pc_q = 0;
+    pc_r = 0;
+    for pc_m in mw.markers {
+        if pc_m.kind == MARKER_KIND_TARGET as u8 {
+            pc_n += 1;
+            pc_q = pc_m.q;
+            pc_r = pc_m.r;
+        }
+    }
+    (pc_n, pc_q, pc_r)
+}
+
+// ─── The tick ───────────────────────────────────────────────────
+
+// One tick of the game.
+//
+// ⚠ **The ONE caller of `wave_tick` in the whole repo.**  That is the
+// invariant this file exists to hold: a GL loop that ticked the game
+// itself, or a script verb that kept its own loop, would be a second
+// game wearing the same numbers.  Both doors below reach the
+// simulation through here and nowhere else.
+fn play_one_tick(ps: PlayState, s: EditorState, at: Hex) {
+    wave_tick(ps.wave, s.picker.palette, s.pw, s.mw, at);
+    ps.ticks += 1;
+}
+
+// ─── The two doors ──────────────────────────────────────────────
+
+// Play exactly `n` ticks, and answer how many that was.
+//
+// ⚠ **A COUNT, and it stays a count all the way down** — never `n`
+// converted to seconds and handed to `play_advance`, which is wrong for
+// 602 of the first 1000 values of `n` (§ TWO ways to ask).  The 520
+// measurements in `scripts/validate.sh` are pinned to exact tick
+// counts, and `a-base-that-plays-its-list` is the scenario that says
+// so out loud: through the seconds door its first wave never arrives.
+//
+// ⚠ **It does not touch `banked`.**  A count is not elapsed time, so
+// it neither spends a live session's remainder nor leaves one behind.
+pub fn play_ticks(ps: PlayState, s: EditorState, n: integer) -> integer {
+    // ⚠ **No core, no game.**  A half-built map has no target marker
+    // and the wave has nothing to walk towards.
+    pt_core = play_core(s.mw);
+    if pt_core.0 != 1 { return 0; }
+    pt_at = Hex { q: pt_core.1, r: pt_core.2 };
+
+    for _ in 0..n { play_one_tick(ps, s, pt_at); }
+    if n > 0 { n } else { 0 }
+}
+
+// Spend elapsed time on the game, and answer how many whole ticks that
+// bought.
+//
+// ⚠ **No clamp on the tick count, deliberately.**  A frame that
+// delivers 20 s really does play 30 ticks.  A clamp would make the
+// simulation frame-rate dependent at whatever length it chose — the one
+// property P0 proved this shape has and the one no measurement in the
+// repo would survive losing.
+pub fn play_advance(ps: PlayState, s: EditorState, seconds: float) -> integer {
+    // ⚠ **No core, no game — and the seconds are DROPPED, not banked.**
+    // A half-built map has no target marker, and banking through it
+    // would make placing the core fire every second that had passed
+    // since the session opened as one burst of ticks.
+    pa_core = play_core(s.mw);
+    if pa_core.0 != 1 { return 0; }
+    pa_at = Hex { q: pa_core.1, r: pa_core.2 };
+
+    ps.banked += seconds;
+    pa_taken = 0;
+    // ⚠ No epsilon on this comparison — see § And there is no epsilon.
+    while ps.banked >= TICK_SECONDS {
+        ps.banked -= TICK_SECONDS;
+        play_one_tick(ps, s, pa_at);
+        pa_taken += 1;
+    }
+    pa_taken
+}
+
+// One frame: what the player did, then how long it took.
+//
+// The GL loop calls this with what is held and the seconds since the
+// last frame; a scripted frame calls it with the keys the script
+// pressed and 0.0.  Both get the same machine, which is the point.
+//
+// ⚠ **Input first, then time.**  A key pressed this frame acts on the
+// world the ticks then play out over — the same ordering `wave_tick`
+// keeps internally, where everything the tick reads is fixed before
+// anybody moves.  Ticking first would make a keypress arrive one frame
+// late at 60 fps and thirty ticks late at 1.
+pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
+                 seconds: float) -> integer {
+    editor_step(s, input);
+    play_advance(ps, s, seconds)
+}

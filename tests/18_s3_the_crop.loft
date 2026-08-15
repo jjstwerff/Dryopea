@@ -76,7 +76,7 @@ fn test_a_crop_that_keeps_everything_reproduces_the_run() {
     tac_run = script_run(tac_a, source(), SHOTS);
     assert(tac_run.ok, "the base builds: {script_describe(tac_run)}");
 
-    tac_keys = crop_keys(pal(), tac_a.pw, tac_a.mw, tac_run.wave,
+    tac_keys = crop_keys(pal(), tac_a.pw, tac_a.mw, tac_run.play.wave,
                          core(), core(), 25, "band");
     assert(tac_keys != "", "a radius-25 crop is allowed");
 
@@ -85,9 +85,9 @@ fn test_a_crop_that_keeps_everything_reproduces_the_run() {
     assert(tac_back.ok, "and replays: {script_describe(tac_back)}");
 
     // Nothing was lost.
-    assert(state_diff(tac_run.wave, tac_back.wave) == "",
+    assert(state_diff(tac_run.play.wave, tac_back.play.wave) == "",
            "the state survives the crop: "
-           + "'{state_diff(tac_run.wave, tac_back.wave)}'");
+           + "'{state_diff(tac_run.play.wave, tac_back.play.wave)}'");
     assert(world_diff(tac_a.pw, tac_a.mw, tac_b.pw, tac_b.mw) == "",
            "and so does the world: "
            + "'{world_diff(tac_a.pw, tac_a.mw, tac_b.pw, tac_b.mw)}'");
@@ -103,9 +103,9 @@ fn test_a_crop_that_keeps_everything_reproduces_the_run() {
     tac_crop = script_run(editor_state_new(PALETTE), tac_keys + "tick 30\n", SHOTS);
     assert(tac_full.ok && tac_crop.ok,
            "both tick on: {script_describe(tac_full)} / {script_describe(tac_crop)}");
-    assert(state_diff(tac_full.wave, tac_crop.wave) == "",
+    assert(state_diff(tac_full.play.wave, tac_crop.play.wave) == "",
            "thirty ticks later they are still the same run: "
-           + "'{state_diff(tac_full.wave, tac_crop.wave)}'");
+           + "'{state_diff(tac_full.play.wave, tac_crop.play.wave)}'");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ fn test_a_tight_crop_changes_the_answer() {
            "a radius-15 crop is admissible: "
            + "'{crop_fault(core(), core(), CROP_MIN_RADIUS_HEXES)}'");
 
-    tat_keys = crop_keys(pal(), tat_a.pw, tat_a.mw, tat_run.wave,
+    tat_keys = crop_keys(pal(), tat_a.pw, tat_a.mw, tat_run.play.wave,
                          core(), core(), CROP_MIN_RADIUS_HEXES, "band");
     assert(tat_keys != "", "and it is emitted");
 
@@ -155,11 +155,11 @@ fn test_a_tight_crop_changes_the_answer() {
     assert(tat_full.ok && tat_crop.ok,
            "both tick on: {script_describe(tat_full)} / {script_describe(tat_crop)}");
 
-    assert(alive_count(tat_full.wave) > 0,
-           "the original is under attack: {alive_count(tat_full.wave)}");
-    assert(alive_count(tat_crop.wave) == 0,
-           "the cropped one never is: {alive_count(tat_crop.wave)}");
-    assert(state_diff(tat_full.wave, tat_crop.wave) != "",
+    assert(alive_count(tat_full.play.wave) > 0,
+           "the original is under attack: {alive_count(tat_full.play.wave)}");
+    assert(alive_count(tat_crop.play.wave) == 0,
+           "the cropped one never is: {alive_count(tat_crop.play.wave)}");
+    assert(state_diff(tat_full.play.wave, tat_crop.play.wave) != "",
            "so a LEGAL crop changed the situation, and only running both "
            + "could say so");
 }
@@ -181,7 +181,7 @@ fn test_a_crop_that_drops_the_core_is_refused() {
 
     tcd_a = editor_state_new(PALETTE);
     tcd_run = script_run(tcd_a, source(), SHOTS);
-    assert(crop_keys(pal(), tcd_a.pw, tcd_a.mw, tcd_run.wave,
+    assert(crop_keys(pal(), tcd_a.pw, tcd_a.mw, tcd_run.play.wave,
                      core(), tcd_far, 20, "x") == "",
            "and nothing is written — a refused crop must not leave a "
            + "fixture that looks fine");
@@ -223,7 +223,7 @@ fn test_a_towers_cell_travels_with_its_marker() {
     assert(tat2_run.ok, "two towers: {script_describe(tat2_run)}");
 
     // A radius-20 crop keeps the near tower and drops the far one.
-    tat2_keys = crop_keys(pal(), tat2_a.pw, tat2_a.mw, tat2_run.wave,
+    tat2_keys = crop_keys(pal(), tat2_a.pw, tat2_a.mw, tat2_run.play.wave,
                           core(), core(), 20, "towers");
     assert(tat2_keys != "", "the crop is allowed");
 
@@ -231,9 +231,9 @@ fn test_a_towers_cell_travels_with_its_marker() {
     tat2_back = script_run(tat2_b, tat2_keys, SHOTS);
     assert(tat2_back.ok, "it replays: {script_describe(tat2_back)}");
 
-    assert(tower_shots(tat2_back.wave.towers, 4, 0) == 12,
+    assert(tower_shots(tat2_back.play.wave.towers, 4, 0) == 12,
            "the kept tower kept its magazine: "
-           + "{tower_shots(tat2_back.wave.towers, 4, 0)}");
+           + "{tower_shots(tat2_back.play.wave.towers, 4, 0)}");
     assert(marker_count(tat2_b.mw) == 2,
            "and the far tower's marker went with its cell: "
            + "{marker_count(tat2_b.mw)}");
@@ -249,7 +249,7 @@ fn test_the_crew_and_its_cargo_are_never_cropped() {
     tcc_run = script_run(tcc_a, tcc_src, SHOTS);
     assert(tcc_run.ok, "a crew member forty hexes out");
 
-    tcc_keys = crop_keys(pal(), tcc_a.pw, tcc_a.mw, tcc_run.wave,
+    tcc_keys = crop_keys(pal(), tcc_a.pw, tcc_a.mw, tcc_run.play.wave,
                          core(), core(), 20, "crew");
     assert(tcc_keys != "", "the crop is allowed");
 
@@ -257,9 +257,9 @@ fn test_the_crew_and_its_cargo_are_never_cropped() {
     tcc_back = script_run(tcc_b, tcc_keys, SHOTS);
     assert(tcc_back.ok, "it replays: {script_describe(tcc_back)}");
 
-    assert(len(tcc_back.wave.crew) == 1,
-           "the crew member is still there: {len(tcc_back.wave.crew)}");
-    assert(cargo_count(tcc_back.wave.cargo) == 1,
+    assert(len(tcc_back.play.wave.crew) == 1,
+           "the crew member is still there: {len(tcc_back.play.wave.crew)}");
+    assert(cargo_count(tcc_back.play.wave.cargo) == 1,
            "and so is what it left behind");
 }
 
@@ -272,16 +272,16 @@ fn test_enemies_outside_the_disc_are_dropped() {
             + "place 40 0 insect 1\n";
     ted_a = editor_state_new(PALETTE);
     ted_run = script_run(ted_a, ted_src, SHOTS);
-    assert(len(ted_run.wave.enemies) == 2, "two to start with");
+    assert(len(ted_run.play.wave.enemies) == 2, "two to start with");
 
-    ted_keys = crop_keys(pal(), ted_a.pw, ted_a.mw, ted_run.wave,
+    ted_keys = crop_keys(pal(), ted_a.pw, ted_a.mw, ted_run.play.wave,
                          core(), core(), 20, "roster");
     ted_b = editor_state_new(PALETTE);
     ted_back = script_run(ted_b, ted_keys, SHOTS);
     assert(ted_back.ok, "it replays: {script_describe(ted_back)}");
 
-    assert(len(ted_back.wave.enemies) == 1, "one left");
-    ted_e = ted_back.wave.enemies[0] ?? Enemy { };
+    assert(len(ted_back.play.wave.enemies) == 1, "one left");
+    ted_e = ted_back.play.wave.enemies[0] ?? Enemy { };
     assert(ted_e.q == 5 && ted_e.taken == 7.5,
            "and it is the near one, still hurt: ({ted_e.q}, {ted_e.r}) "
            + "taken {ted_e.taken}");

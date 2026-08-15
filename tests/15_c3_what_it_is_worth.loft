@@ -84,12 +84,12 @@ fn test_the_two_clocks_are_six_ticks_apart() {
     assert(ttc_left.ok, "the control runs: {script_describe(ttc_left)}");
     assert(ttc_go.ok,   "and so does the retrieval: {script_describe(ttc_go)}");
 
-    assert(ttc_left.ticks == 93,
-           "staying at the core: {ttc_left.ticks} ticks");
-    assert(ttc_go.ticks == 87,
-           "going to fetch: {ttc_go.ticks} ticks");
-    assert(ttc_left.ticks - ttc_go.ticks == 6,
-           "the errand costs six ticks: {ttc_left.ticks - ttc_go.ticks}");
+    assert(ttc_left.play.ticks == 93,
+           "staying at the core: {ttc_left.play.ticks} ticks");
+    assert(ttc_go.play.ticks == 87,
+           "going to fetch: {ttc_go.play.ticks} ticks");
+    assert(ttc_left.play.ticks - ttc_go.play.ticks == 6,
+           "the errand costs six ticks: {ttc_left.play.ticks - ttc_go.play.ticks}");
 }
 
 // ⚠⚠ **The phase.**  Take the retrieval file and remove the two halves
@@ -113,8 +113,8 @@ fn test_the_carry_itself_changes_nothing() {
 
     assert(tcc_with.ok && tcc_bare.ok,
            "both run: {script_describe(tcc_with)} / {script_describe(tcc_bare)}");
-    assert(tcc_with.ticks == tcc_bare.ticks,
-           "the same trip with and without the carry: {tcc_with.ticks} vs {tcc_bare.ticks}");
+    assert(tcc_with.play.ticks == tcc_bare.play.ticks,
+           "the same trip with and without the carry: {tcc_with.play.ticks} vs {tcc_bare.play.ticks}");
 }
 
 // ⚠ **And the reason: the crew member never comes back.**  The wreck is
@@ -130,6 +130,6 @@ fn test_recovery_outlives_the_base() {
     assert(tro_go.ok, "the retrieval run is green: {script_describe(tro_go)}");
 
     tro_left = HELPER_RECOVERY_SECONDS / TICK_SECONDS;
-    assert(tro_left > (tro_go.ticks as float),
-           "recovery is {tro_left} ticks and the whole base is {tro_go.ticks}");
+    assert(tro_left > (tro_go.play.ticks as float),
+           "recovery is {tro_left} ticks and the whole base is {tro_go.play.ticks}");
 }

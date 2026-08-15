@@ -264,7 +264,7 @@ fn test_a_predicate_catches_the_crop_that_geometry_could_not() {
 
     // The generous crop keeps the property.
     tap2_wide = crop_keys(load_palette(PALETTE), tap2_a.pw, tap2_a.mw,
-                          tap2_run.wave, Hex { q: 0, r: 0 },
+                          tap2_run.play.wave, Hex { q: 0, r: 0 },
                           Hex { q: 0, r: 0 }, 25, "band");
     assert(reduce_fault(PALETTE, tap2_wide, tap2_prop, SHOTS) == "",
            "a radius-25 crop still shows the property: "
@@ -273,7 +273,7 @@ fn test_a_predicate_catches_the_crop_that_geometry_could_not() {
     // ⚠ The tight one — legal by every rule `crop_fault` knows — does
     // not, and the predicate is what says so.
     tap2_tight = crop_keys(load_palette(PALETTE), tap2_a.pw, tap2_a.mw,
-                           tap2_run.wave, Hex { q: 0, r: 0 },
+                           tap2_run.play.wave, Hex { q: 0, r: 0 },
                            Hex { q: 0, r: 0 }, CROP_MIN_RADIUS_HEXES, "band");
     assert(tap2_tight != "", "the tight crop is still ALLOWED by geometry");
     tap2_why = reduce_fault(PALETTE, tap2_tight, tap2_prop, SHOTS);

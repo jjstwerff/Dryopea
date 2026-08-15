@@ -223,17 +223,17 @@ fn test_a_crew_turns_the_tower_from_a_liability_into_an_asset() {
     assert(tac_t.ok, "a-tower-buries-its-own-wall: {script_describe(tac_t)}");
     assert(tac_c.checks == 17, "the crew scenario made {tac_c.checks} measurements, expected 17");
 
-    assert(tac_c.ticks == CREWED_TICKS,  "crewed clock {tac_c.ticks}");
-    assert(tac_t.ticks == TOWERED_TICKS, "towered clock {tac_t.ticks}");
+    assert(tac_c.play.ticks == CREWED_TICKS,  "crewed clock {tac_c.play.ticks}");
+    assert(tac_t.play.ticks == TOWERED_TICKS, "towered clock {tac_t.play.ticks}");
 
-    assert(tac_c.ticks > tac_t.ticks,
-           "the crew bought time: {tac_c.ticks} against {tac_t.ticks}");
+    assert(tac_c.play.ticks > tac_t.play.ticks,
+           "the crew bought time: {tac_c.play.ticks} against {tac_t.play.ticks}");
 
     // ⚠ **And it clears the bar B7 could not.**  A tower used to make
     // a base fall sooner than the wall alone; with a crew behind it,
     // the gun is finally worth its own bodies.
-    assert(tac_c.ticks > WALLED_TICKS,
-           "and the tower now beats a bare wall: {tac_c.ticks} against {WALLED_TICKS}");
+    assert(tac_c.play.ticks > WALLED_TICKS,
+           "and the tower now beats a bare wall: {tac_c.play.ticks} against {WALLED_TICKS}");
 
     // The mechanism, not the consequence: no ramp survives at the
     // wall's foot in either run.
@@ -247,14 +247,14 @@ fn test_a_crew_turns_the_tower_from_a_liability_into_an_asset() {
     //
     // So the crew's value can no longer be read off this hex, and the
     // honest statement is the one below: the crew still buys
-    // {tac_c.ticks - tac_t.ticks} ticks, and what it is clearing is no
+    // {tac_c.play.ticks - tac_t.play.ticks} ticks, and what it is clearing is no
     // longer the ramp this assertion was watching.  `plans/16` § W2
     // carries it; a scenario that can SEE a crew clearing a ramp again
     // is work this plan does not do.
-    assert(height_rise(tac_c.wave.heights, 6, 0) == 0.0,
-           "no ramp survived: {height_rise(tac_c.wave.heights, 6, 0)} m");
-    assert(height_rise(tac_t.wave.heights, 11, 0) >= 1.0,
-           "and the tower's kills went to the spawn marker: {height_rise(tac_t.wave.heights, 11, 0)} m");
+    assert(height_rise(tac_c.play.wave.heights, 6, 0) == 0.0,
+           "no ramp survived: {height_rise(tac_c.play.wave.heights, 6, 0)} m");
+    assert(height_rise(tac_t.play.wave.heights, 11, 0) >= 1.0,
+           "and the tower's kills went to the spawn marker: {height_rise(tac_t.play.wave.heights, 11, 0)} m");
 
     // ⚠⚠ **And the wall now ends in exactly the SAME state in both.**
     // It used to be the other half of the mechanism — the crewed base
@@ -267,8 +267,8 @@ fn test_a_crew_turns_the_tower_from_a_liability_into_an_asset() {
     // salvages earns (plan 13 V3), and `tests/13_v3_loot.loft` § The
     // scenario is funded as well as swept is the reading that prices
     // it.
-    tac_c_hp = structure_hp(tac_cs.picker.palette, tac_cs.pw, tac_c.wave.damage, 5, 0);
-    tac_t_hp = structure_hp(tac_ts.picker.palette, tac_ts.pw, tac_t.wave.damage, 5, 0);
+    tac_c_hp = structure_hp(tac_cs.picker.palette, tac_cs.pw, tac_c.play.wave.damage, 5, 0);
+    tac_t_hp = structure_hp(tac_ts.picker.palette, tac_ts.pw, tac_t.play.wave.damage, 5, 0);
     assert(tac_c_hp == tac_t_hp,
            "the wall ends the same either way: {tac_c_hp} against {tac_t_hp}");
 }

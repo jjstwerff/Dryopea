@@ -136,9 +136,9 @@ fn test_every_field_of_the_state_is_reachable() {
     tef_want.schedule.lull    = 5.0;
     tef_want.schedule.running = true;
 
-    assert(state_diff(tef_run.wave, tef_want) == "",
+    assert(state_diff(tef_run.play.wave, tef_want) == "",
            "every field said from a script: "
-           + "'{state_diff(tef_run.wave, tef_want)}'");
+           + "'{state_diff(tef_run.play.wave, tef_want)}'");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -148,11 +148,11 @@ fn test_every_field_of_the_state_is_reachable() {
 fn test_a_towers_whole_top_is_authorable() {
     tat = played("tower 4 0 12 0.4 6.0 off\n");
     assert(tat.ok, "it runs: {script_describe(tat)}");
-    assert(tower_shots(tat.wave.towers, 4, 0) == 12,
-           "shots: {tower_shots(tat.wave.towers, 4, 0)}");
-    assert(tower_charge(tat.wave.towers, 4, 0) == 0.4, "charge");
-    assert(tower_repair_progress(tat.wave.towers, 4, 0) == 6.0, "repair");
-    assert(!tower_has_top(tat.wave.towers, 4, 0), "and the top is off");
+    assert(tower_shots(tat.play.wave.towers, 4, 0) == 12,
+           "shots: {tower_shots(tat.play.wave.towers, 4, 0)}");
+    assert(tower_charge(tat.play.wave.towers, 4, 0) == 0.4, "charge");
+    assert(tower_repair_progress(tat.play.wave.towers, 4, 0) == 6.0, "repair");
+    assert(!tower_has_top(tat.play.wave.towers, 4, 0), "and the top is off");
 }
 
 // ⚠ It demands a tower MARKER, the refusal `shots` and `top` already
@@ -168,9 +168,9 @@ fn test_a_tower_without_a_marker_is_refused() {
 fn test_the_wallet_is_authorable() {
     twa = played("spent 30\n");
     assert(twa.ok, "it runs: {script_describe(twa)}");
-    assert(wallet_spent(twa.wave.wallet) == 30.0,
+    assert(wallet_spent(twa.play.wave.wallet) == 30.0,
            "points SPENT, the way the ledger stores it: "
-           + "{wallet_spent(twa.wave.wallet)}");
+           + "{wallet_spent(twa.play.wave.wallet)}");
 }
 
 // ⚠ The owner IS the state machine (`carry.loft`) — on the ground, in a
@@ -183,15 +183,15 @@ fn test_every_cargo_owner_is_authorable() {
                  + "object 7 3 top 3 gone\n");
     assert(teo.ok, "it runs: {script_describe(teo)}");
 
-    assert(cargo_owner(teo.wave.cargo, 0) == BLOCKER_NONE, "on the ground");
-    assert(cargo_owner(teo.wave.cargo, 1) == BLOCKER_PLAYER, "in the player's hands");
-    assert(cargo_owner(teo.wave.cargo, 2) == BLOCKER_CREW + 0, "in a helper's");
-    assert(cargo_owner(teo.wave.cargo, 3) == CARGO_GONE, "and spent");
+    assert(cargo_owner(teo.play.wave.cargo, 0) == BLOCKER_NONE, "on the ground");
+    assert(cargo_owner(teo.play.wave.cargo, 1) == BLOCKER_PLAYER, "in the player's hands");
+    assert(cargo_owner(teo.play.wave.cargo, 2) == BLOCKER_CREW + 0, "in a helper's");
+    assert(cargo_owner(teo.play.wave.cargo, 3) == CARGO_GONE, "and spent");
 
     // ⚠ Spent is not in the world, but it KEEPS its slot — an index is
     // an identity (plan 15 C1).
-    assert(cargo_count(teo.wave.cargo) == 3, "three still in the world");
-    assert(cargo_slots(teo.wave.cargo) == 4, "and four slots");
+    assert(cargo_count(teo.play.wave.cargo) == 3, "three still in the world");
+    assert(cargo_slots(teo.play.wave.cargo) == 4, "and four slots");
 }
 
 fn test_a_cargo_kind_is_named_and_a_typo_is_refused() {
@@ -213,18 +213,18 @@ fn test_an_unknown_owner_is_refused() {
 fn test_the_players_condition_is_authorable() {
     tpc = played("park 1 0\nplayer off 1.5 2.5 20\n");
     assert(tpc.ok, "it runs: {script_describe(tpc)}");
-    assert(!vehicle_present(tpc.wave.player),
+    assert(!vehicle_present(tpc.play.wave.player),
            "a player taken OUT of the world");
-    assert(tpc.wave.player.boost_left == 1.5, "a boost running");
-    assert(tpc.wave.player.cool_left == 2.5, "a cooldown");
-    assert(vehicle_hp(tpc.wave.player) == VEHICLE_HP_BLOCKER - 20.0,
-           "and damage taken: {vehicle_hp(tpc.wave.player)}");
+    assert(tpc.play.wave.player.boost_left == 1.5, "a boost running");
+    assert(tpc.play.wave.player.cool_left == 2.5, "a cooldown");
+    assert(vehicle_hp(tpc.play.wave.player) == VEHICLE_HP_BLOCKER - 20.0,
+           "and damage taken: {vehicle_hp(tpc.play.wave.player)}");
 }
 
 fn test_a_crew_members_condition_is_authorable() {
     tcc = played("crew 2 1\nmember 0 off 0.5 15 45\n");
     assert(tcc.ok, "it runs: {script_describe(tcc)}");
-    tcc_h = tcc.wave.crew[0] ?? Helper { };
+    tcc_h = tcc.play.wave.crew[0] ?? Helper { };
     assert(helper_wrecked(tcc_h), "down");
     assert(helper_recovering(tcc_h), "and in recovery — the 60 s clock");
     assert(tcc_h.progress == 0.5, "with banked movement");
@@ -242,17 +242,17 @@ fn test_a_member_index_past_the_crew_is_refused() {
 fn test_where_the_wave_list_has_got_to_is_authorable() {
     twl = played("schedule 4 6\npending 1 5.0 9.0 on\n");
     assert(twl.ok, "it runs: {script_describe(twl)}");
-    assert(wave_schedule_sent(twl.wave.schedule) == 1, "one wave sent");
-    assert(wave_schedule_lull(twl.wave.schedule) == 5.0, "five seconds of lull");
-    assert(wave_schedule_running(twl.wave.schedule), "and it is running");
-    assert(twl.wave.schedule.delay == 9.0,
-           "with a retuned lull LENGTH: {twl.wave.schedule.delay}");
+    assert(wave_schedule_sent(twl.play.wave.schedule) == 1, "one wave sent");
+    assert(wave_schedule_lull(twl.play.wave.schedule) == 5.0, "five seconds of lull");
+    assert(wave_schedule_running(twl.play.wave.schedule), "and it is running");
+    assert(twl.play.wave.schedule.delay == 9.0,
+           "with a retuned lull LENGTH: {twl.play.wave.schedule.delay}");
 }
 
 fn test_the_round_robin_cursor_is_authorable() {
     trc = played("cursor 3\n");
     assert(trc.ok, "it runs: {script_describe(trc)}");
-    assert(trc.wave.pick_cursor == 3, "the cursor: {trc.wave.pick_cursor}");
+    assert(trc.play.wave.pick_cursor == 3, "the cursor: {trc.play.wave.pick_cursor}");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -273,7 +273,7 @@ fn test_the_setters_trigger_nothing() {
                  + "count alive 0 0\npile 0 0 0.0 0.0\n");
     assert(tst.ok,
            "nothing was fired and nothing was dropped: {script_describe(tst)}");
-    assert(cargo_carrying(tst.wave.cargo, BLOCKER_PLAYER),
+    assert(cargo_carrying(tst.play.wave.cargo, BLOCKER_PLAYER),
            "the player is holding something fifteen hexes away");
 }
 

@@ -274,7 +274,7 @@ fn test_a_wave_spawns_and_walks_towards_the_core() {
         "{BASE}\ndo toggle_mode\npalette 5\ndrag 12 0 0 0\nwave 4\ncount alive 4 4\ntick 11\ncount alive 4 4");
 
     assert(taw_run.ok, "{script_describe(taw_run)}");
-    assert(alive_count(taw_run.wave) == 4, "four enemies are on the map");
+    assert(alive_count(taw_run.play.wave) == 4, "four enemies are on the map");
 
     // The measurement vocabulary cannot say "closer" yet — V3 needs
     // that and will add it. Reading the roster here says what the
@@ -287,7 +287,7 @@ fn test_a_wave_spawns_and_walks_towards_the_core() {
     // would now report "nobody moved" about a wave that is walking.
     taw_near = 999;
     taw_far  = 0;
-    for taw_e in taw_run.wave.enemies {
+    for taw_e in taw_run.play.wave.enemies {
         taw_d = lat_distance(Hex { q: 0, r: 0 }, Hex { q: taw_e.q, r: taw_e.r });
         if taw_d < taw_near { taw_near = taw_d; }
         if taw_d > taw_far  { taw_far  = taw_d; }

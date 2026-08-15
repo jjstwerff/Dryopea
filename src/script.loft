@@ -230,6 +230,7 @@ use vehicle;
 use helper;
 use occupancy;
 use spawn;
+use play;
 use graphics;
 
 // ─── The run record ─────────────────────────────────────────────
@@ -248,24 +249,27 @@ pub struct ScriptRun {
     snaps:    integer,   // pictures written
     checks:   integer,   // measurements that passed
 
-    // Game-ticks played, across every `tick` and `fall` in the run
-    // (plan 12 B7).  It is the run's CLOCK, and B7's whole gate is a
-    // comparison of it between two runs — a base with defences and
-    // the same base without.  On the record rather than measured on
-    // demand because a scenario ends when the base falls, and by then
-    // there is nothing left to count.
-    ticks:    integer,
-
     hover_q:  integer,
     hover_r:  integer,
 
-    // The wave the run is playing.  It lives here rather than on
-    // `EditorState` because it is not editor state: a session that
-    // is being edited has no enemies in it, and folding a roster
-    // into the seam would make `editor_step` answer for something
-    // no editor action touches.  A run has a pointer, a shots
-    // directory and a wave; the editor has none of the three.
-    wave: WaveState,
+    // The GAME the run is playing — the roster, the clock, and the
+    // seconds banked toward the next tick (plan 19 P1).
+    //
+    // It lives here rather than on `EditorState` because it is not
+    // editor state: a session that is being edited has no enemies in
+    // it, and folding a roster into the seam would make `editor_step`
+    // answer for something no editor action touches.  A run has a
+    // pointer, a shots directory and a game; the editor has none of
+    // the three.
+    //
+    // ⚠ **One record, not three fields.**  It was a bare `WaveState`
+    // plus a `ticks` counter until P1, and it cannot stay that way:
+    // `play_advance` takes a `PlayState`, so a run holding the pieces
+    // separately could not reach the door at all without handing over
+    // its own copies — which is the two-games defect `play.loft`
+    // exists to make unwritable.  `run.play.ticks` is plan 12 B7's
+    // clock, moved and not renamed.
+    play: PlayState,
 
     // Where `snap` writes.  Per-run rather than a constant, so the
     // suite can drop its shots in `tests/actual/` (wiped between
@@ -294,10 +298,9 @@ pub fn script_run_new(shots_dir: text) -> ScriptRun {
         frames:    0,
         snaps:     0,
         checks:    0,
-        ticks:     0,
         hover_q:   0,
         hover_r:   0,
-        wave:      wave_state_empty(),
+        play:      play_state_new(),
         shots_dir: shots_dir,
         isrc:      input_source_new(),
     }
@@ -419,7 +422,11 @@ fn script_frame(s: EditorState, run: ScriptRun, p: const ScriptPhys) {
     // A script's clock is one tick per scripted frame, so the pan
     // rate limit is always due; the paint one is due only on the
     // frames that say so.
-    editor_step(s, editor_input_from(run.isrc, sf_hover, true, p.sp_paint));
+    // ⚠ Through `play_step`, not `editor_step` — a scripted frame and a
+    // GL frame are the same door (plan 19 P1), and 0.0 seconds is what
+    // makes a script's clock the script's business: no wall time passes
+    // while a scenario paints its map, so no tick is taken.
+    play_step(run.play, s, editor_input_from(run.isrc, sf_hover, true, p.sp_paint), 0.0);
     run.frames += 1;
 }
 
@@ -515,18 +522,14 @@ fn script_kind_name(pal: vector<GroundType>, idx: integer) -> text {
 // EXACTLY one is required by the caller: a wave has to know what it
 // is walking towards, and "whichever one the hash yielded first" is
 // not an answer a run can repeat.
+// ⚠ **Delegates to `play_core`, and does not restate it.**  The core
+// is a marker, so "where is the wave walking to" belongs beside the
+// markers rather than inside the script runner — and `play_advance`
+// has to ask the same question, so a private copy here would be the
+// second answer that drifts.  The wrapper survives only because every
+// call site and every error message below reads it.
 fn script_core(mw: MarkerWorld) -> (integer, integer, integer) {
-    scr_n = 0;
-    scr_q = 0;
-    scr_r = 0;
-    for scr_m in mw.markers {
-        if scr_m.kind == MARKER_KIND_TARGET as u8 {
-            scr_n += 1;
-            scr_q = scr_m.q;
-            scr_r = scr_m.r;
-        }
-    }
-    (scr_n, scr_q, scr_r)
+    play_core(mw)
 }
 
 // How many DISTINCT hexes the live wave is attacking — plan 11 F7.
@@ -536,9 +539,9 @@ fn script_core(mw: MarkerWorld) -> (integer, integer, integer) {
 // walking peacefully besieges zero hexes, not one per enemy.
 fn script_distinct_targets(s: EditorState, run: ScriptRun, core: Hex) -> integer {
     sdt_seen: vector<Hex> = [];
-    sdt_ts   = wave_targets(run.wave, s.picker.palette, s.pw, core);
+    sdt_ts   = wave_targets(run.play.wave, s.picker.palette, s.pw, core);
     sdt_i    = 0;
-    for sdt_e in run.wave.enemies {
+    for sdt_e in run.play.wave.enemies {
         sdt_t = sdt_ts[sdt_i] ?? Hex { q: sdt_e.q, r: sdt_e.r };
         if sdt_e.alive && !(sdt_t.q == sdt_e.q && sdt_t.r == sdt_e.r) {
             sdt_new = true;
@@ -578,7 +581,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
             return measure_int(run, "count markers", marker_count(s.mw), sm_lo ?? 0, sm_hi ?? 0);
         }
         if sm_a1 == "alive" {
-            return measure_int(run, "count alive", alive_count(run.wave), sm_lo ?? 0, sm_hi ?? 0);
+            return measure_int(run, "count alive", alive_count(run.play.wave), sm_lo ?? 0, sm_hi ?? 0);
         }
         // ⚠ **The anti-collapse measurement** (plan 11 F7).  How many
         // DISTINCT hexes the wave is attacking — the set, not the
@@ -648,7 +651,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
             return "hp at ({sm_hq}, {sm_hr}): '{painted_kind_name(s.picker.palette, s.pw, sm_hq, sm_hr)}' has no HP — nothing there can break";
         }
         return measure_float(run, "hp ({sm_hq}, {sm_hr})",
-                             structure_hp(s.picker.palette, s.pw, run.wave.damage, sm_hq, sm_hr),
+                             structure_hp(s.picker.palette, s.pw, run.play.wave.damage, sm_hq, sm_hr),
                              sm_hlo ?? 0.0, sm_hhi ?? 0.0);
     }
 
@@ -665,7 +668,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_pq = sm_pv[0] ?? 0;
         sm_pr = sm_pv[1] ?? 0;
         return measure_float(run, "pile ({sm_pq}, {sm_pr})",
-                             height_rise(run.wave.heights, sm_pq, sm_pr),
+                             height_rise(run.play.wave.heights, sm_pq, sm_pr),
                              sm_plo ?? 0.0, sm_phi ?? 0.0);
     }
 
@@ -681,7 +684,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_wlo = sm_a1 as float?;
         sm_whi = sm_a2 as float?;
         if sm_wlo == null || sm_whi == null { return "wallet: <lo> and <hi> must be numbers"; }
-        return measure_float(run, "wallet", wallet_left(run.wave.wallet),
+        return measure_float(run, "wallet", wallet_left(run.play.wave.wallet),
                              sm_wlo ?? 0.0, sm_whi ?? 0.0);
     }
 
@@ -696,13 +699,13 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sm_argc != 2 { return "vehicle needs <q> <r>"; }
         sm_vv = script_ints(tok, 2);
         if len(sm_vv) != 2 { return "vehicle: <q> and <r> must be integers"; }
-        if !vehicle_present(run.wave.player) {
+        if !vehicle_present(run.play.wave.player) {
             return "vehicle: no vehicle in this run — `park <q> <r>` puts one in the world";
         }
         sm_vq = sm_vv[0] ?? 0;
         sm_vr = sm_vv[1] ?? 0;
-        if run.wave.player.q != sm_vq || run.wave.player.r != sm_vr {
-            return "vehicle is at ({run.wave.player.q}, {run.wave.player.r}), expected ({sm_vq}, {sm_vr})";
+        if run.play.wave.player.q != sm_vq || run.play.wave.player.r != sm_vr {
+            return "vehicle is at ({run.play.wave.player.q}, {run.play.wave.player.r}), expected ({sm_vq}, {sm_vr})";
         }
         measure_exact(run, "vehicle ({sm_vq}, {sm_vr})");
         return "";
@@ -720,10 +723,10 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_hlo2 = sm_a1 as float?;
         sm_hhi2 = sm_a2 as float?;
         if sm_hlo2 == null || sm_hhi2 == null { return "hull: <lo> and <hi> must be numbers"; }
-        if !vehicle_present(run.wave.player) {
+        if !vehicle_present(run.play.wave.player) {
             return "hull: no vehicle in this run — `park <q> <r>` puts one in the world";
         }
-        return measure_float(run, "hull", vehicle_hp(run.wave.player),
+        return measure_float(run, "hull", vehicle_hp(run.play.wave.player),
                              sm_hlo2 ?? 0.0, sm_hhi2 ?? 0.0);
     }
 
@@ -734,10 +737,10 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_hv2 = script_ints(tok, 3);
         if len(sm_hv2) != 3 { return "helper: <i>, <q> and <r> must be integers"; }
         sm_hi2 = sm_hv2[0] ?? 0;
-        if sm_hi2 < 0 || sm_hi2 >= len(run.wave.crew) {
-            return "helper: no helper {sm_hi2} — the crew is {len(run.wave.crew)} strong";
+        if sm_hi2 < 0 || sm_hi2 >= len(run.play.wave.crew) {
+            return "helper: no helper {sm_hi2} — the crew is {len(run.play.wave.crew)} strong";
         }
-        sm_hh = run.wave.crew[sm_hi2] ?? Helper { };
+        sm_hh = run.play.wave.crew[sm_hi2] ?? Helper { };
         if sm_hh.q != (sm_hv2[1] ?? 0) || sm_hh.r != (sm_hv2[2] ?? 0) {
             return "helper {sm_hi2} is at ({sm_hh.q}, {sm_hh.r}), expected ({sm_hv2[1] ?? 0}, {sm_hv2[2] ?? 0})";
         }
@@ -757,7 +760,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_glo = sm_a1 as integer?;
         sm_ghi = sm_a2 as integer?;
         if sm_glo == null || sm_ghi == null { return "cargo: <lo> and <hi> must be integers"; }
-        return measure_int(run, "cargo", cargo_count(run.wave.cargo),
+        return measure_int(run, "cargo", cargo_count(run.play.wave.cargo),
                            sm_glo ?? 0, sm_ghi ?? 0);
     }
 
@@ -776,7 +779,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_rhi = sm_a2 as integer?;
         if sm_rlo == null || sm_rhi == null { return "roster: <lo> and <hi> must be integers"; }
         sm_rn = 0;
-        for sm_rh in run.wave.crew {
+        for sm_rh in run.play.wave.crew {
             if sm_rh.alive { sm_rn += 1; }
         }
         return measure_int(run, "roster", sm_rn, sm_rlo ?? 0, sm_rhi ?? 0);
@@ -802,7 +805,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
             return "shots: no tower at ({sm_shq}, {sm_shr})";
         }
         return measure_int(run, "shots ({sm_shq}, {sm_shr})",
-                           tower_shots(run.wave.towers, sm_shq, sm_shr),
+                           tower_shots(run.play.wave.towers, sm_shq, sm_shr),
                            sm_shlo ?? 0, sm_shhi ?? 0);
     }
 
@@ -826,7 +829,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if marker_kind(s.mw, sm_tpq, sm_tpr) != MARKER_KIND_TOWER {
             return "top: no tower at ({sm_tpq}, {sm_tpr})";
         }
-        sm_tphas = tower_has_top(run.wave.towers, sm_tpq, sm_tpr);
+        sm_tphas = tower_has_top(run.play.wave.towers, sm_tpq, sm_tpr);
         if sm_tphas != (sm_tpw == "on") {
             return "top ({sm_tpq}, {sm_tpr}) is {if sm_tphas { "on" } else { "off" }}, expected {sm_tpw}";
         }
@@ -845,7 +848,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_wvlo = sm_a1 as integer?;
         sm_wvhi = sm_a2 as integer?;
         if sm_wvlo == null || sm_wvhi == null { return "waves: <lo> and <hi> must be integers"; }
-        return measure_int(run, "waves", wave_schedule_sent(run.wave.schedule),
+        return measure_int(run, "waves", wave_schedule_sent(run.play.wave.schedule),
                            sm_wvlo ?? 0, sm_wvhi ?? 0);
     }
 
@@ -863,7 +866,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_tlo = sm_a1 as integer?;
         sm_thi = sm_a2 as integer?;
         if sm_tlo == null || sm_thi == null { return "ticks: <lo> and <hi> must be integers"; }
-        return measure_int(run, "ticks", run.ticks, sm_tlo ?? 0, sm_thi ?? 0);
+        return measure_int(run, "ticks", run.play.ticks, sm_tlo ?? 0, sm_thi ?? 0);
     }
 
     if sm_cmd == "marker" {
@@ -939,7 +942,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_live = 0;
         sm_near = 0;
         sm_far  = 0;
-        for sm_e in run.wave.enemies {
+        for sm_e in run.play.wave.enemies {
             if sm_e.alive {
                 sm_dist = lat_distance(Hex { q: sm_core.1, r: sm_core.2 },
                                        Hex { q: sm_e.q,    r: sm_e.r });
@@ -985,7 +988,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_v = script_ints(tok, 3);
         if len(sm_v) != 3 { return "enemy: <index>, <q> and <r> must be integers"; }
         sm_i = sm_v[0] ?? 0;
-        sm_n = len(run.wave.enemies);
+        sm_n = len(run.play.wave.enemies);
         // A read past the end must fail loudly: an assertion about an
         // enemy that was never spawned is the confident meaningless
         // number this plan exists to stop.
@@ -995,7 +998,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         // Named `sm_one` and not `sm_e`: `sm_e` is the loop variable
         // the roster scans use, and loft rejects a loop variable that
         // shadows a local of the same name.
-        sm_one = run.wave.enemies[sm_i];
+        sm_one = run.play.wave.enemies[sm_i];
         if sm_one == null { return "enemy {sm_i}: the roster holds {sm_n}"; }
         sm_q = sm_v[1] ?? 0;
         sm_r = sm_v[2] ?? 0;
@@ -1022,7 +1025,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sm_v = script_ints(tok, 3);
         if len(sm_v) != 3 { return "target: <index>, <q> and <r> must be integers"; }
         sm_i = sm_v[0] ?? 0;
-        sm_n = len(run.wave.enemies);
+        sm_n = len(run.play.wave.enemies);
         if sm_i < 0 || sm_i >= sm_n {
             return "target {sm_i}: the roster holds {sm_n} — has the wave started?";
         }
@@ -1030,9 +1033,9 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sm_tc.0 != 1 {
             return "target: needs exactly ONE core marker to besiege, found {sm_tc.0}";
         }
-        sm_one = run.wave.enemies[sm_i];
+        sm_one = run.play.wave.enemies[sm_i];
         if sm_one == null { return "target {sm_i}: the roster holds {sm_n}"; }
-        sm_all = wave_targets(run.wave, s.picker.palette, s.pw,
+        sm_all = wave_targets(run.play.wave, s.picker.palette, s.pw,
                               Hex { q: sm_tc.1, r: sm_tc.2 });
         sm_t = sm_all[sm_i] ?? Hex { q: sm_one.q, r: sm_one.r };
         sm_q = sm_v[1] ?? 0;
@@ -1068,9 +1071,9 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         }
         sm_live = 0;
         sm_at   = 0;
-        for sm_e in run.wave.enemies {
+        for sm_e in run.play.wave.enemies {
             if sm_e.alive {
-                sm_why = occupancy_fault(s.picker.palette, s.pw, run.wave.heights,
+                sm_why = occupancy_fault(s.picker.palette, s.pw, run.play.wave.heights,
                                          sm_e.kind, sm_e.q, sm_e.r);
                 if sm_a1 == "passable" && sm_why != "" {
                     return "enemy {sm_at} at ({sm_e.q}, {sm_e.r}): {sm_why}";
@@ -1093,7 +1096,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         // F1's `enemies passable`, and the reason the assertion is
         // known to be able to fail.
         if sm_a1 == "distinct" {
-            sm_stack = occupancy_stacked(wave_occupancy(run.wave));
+            sm_stack = occupancy_stacked(wave_occupancy(run.play.wave));
             if sm_stack.n > 1 {
                 return "{sm_stack.n} enemies are stacked on ({sm_stack.q}, {sm_stack.r})";
             }
@@ -1265,8 +1268,8 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
 
         // Written through one cell so the four fields cannot disagree
         // about which tower they belong to.
-        tower_bank(run.wave.towers, sa_tq, sa_tr, 0.0);
-        sa_tc = run.wave.towers.cells[sa_tq, sa_tr];
+        tower_bank(run.play.wave.towers, sa_tq, sa_tr, 0.0);
+        sa_tc = run.play.wave.towers.cells[sa_tq, sa_tr];
         if sa_tc == null { return "tower: ({sa_tq}, {sa_tr}) has no cell"; }
         sa_tc.shots       = sa_tsh;
         sa_tc.charge      = sa_tch;
@@ -1306,15 +1309,15 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
                 return "object: <owner> is ground, gone, player or a crew index, not '{sa_ow}'";
             }
             sa_ocn = sa_oc ?? 0;
-            if sa_ocn < 0 || sa_ocn >= len(run.wave.crew) {
-                return "object: no helper {sa_ocn} — the crew is {len(run.wave.crew)} strong";
+            if sa_ocn < 0 || sa_ocn >= len(run.play.wave.crew) {
+                return "object: no helper {sa_ocn} — the crew is {len(run.play.wave.crew)} strong";
             }
             sa_owner = BLOCKER_CREW + sa_ocn;
         }
 
-        sa_oi = cargo_spawn(run.wave.cargo, sa_ok as u8? ?? 0, sa_osj ?? 0,
+        sa_oi = cargo_spawn(run.play.wave.cargo, sa_ok as u8? ?? 0, sa_osj ?? 0,
                             sa_ov[0] ?? 0, sa_ov[1] ?? 0);
-        (run.wave.cargo.items[sa_oi] ?? CarryObject { }).owner = sa_owner;
+        (run.play.wave.cargo.items[sa_oi] ?? CarryObject { }).owner = sa_owner;
         return "";
     }
 
@@ -1324,7 +1327,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_argc != 1 { return "spent needs <points>"; }
         sa_sp = (tok[1] ?? "") as float?;
         if sa_sp == null { return "spent: <points> must be a number"; }
-        run.wave.wallet.spent = sa_sp;
+        run.play.wave.wallet.spent = sa_sp;
         return "";
     }
 
@@ -1344,10 +1347,10 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_pb == null || sa_pc == null || sa_pt == null {
             return "player: <boost>, <cool> and <taken> must be numbers";
         }
-        run.wave.player.parked     = sa_pp == 1;
-        run.wave.player.boost_left = sa_pb ?? 0.0;
-        run.wave.player.cool_left  = sa_pc ?? 0.0;
-        run.wave.player.taken      = sa_pt ?? 0.0;
+        run.play.wave.player.parked     = sa_pp == 1;
+        run.play.wave.player.boost_left = sa_pb ?? 0.0;
+        run.play.wave.player.cool_left  = sa_pc ?? 0.0;
+        run.play.wave.player.taken      = sa_pt ?? 0.0;
         return "";
     }
 
@@ -1359,8 +1362,8 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_mi = (tok[1] ?? "") as integer?;
         if sa_mi == null { return "member: <i> must be an integer"; }
         sa_min = sa_mi ?? 0;
-        if sa_min < 0 || sa_min >= len(run.wave.crew) {
-            return "member: no helper {sa_min} — the crew is {len(run.wave.crew)} strong";
+        if sa_min < 0 || sa_min >= len(run.play.wave.crew) {
+            return "member: no helper {sa_min} — the crew is {len(run.play.wave.crew)} strong";
         }
         sa_ma = on_off(tok[2] ?? "");
         if sa_ma < 0 { return "member: <on|off> for standing, not '{tok[2] ?? ""}'"; }
@@ -1370,7 +1373,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_mp == null || sa_mt == null || sa_mr == null {
             return "member: <progress>, <taken> and <recover> must be numbers";
         }
-        sa_mh = run.wave.crew[sa_min] ?? Helper { };
+        sa_mh = run.play.wave.crew[sa_min] ?? Helper { };
         sa_mh.alive    = sa_ma == 1;
         sa_mh.progress = sa_mp ?? 0.0;
         sa_mh.taken    = sa_mt ?? 0.0;
@@ -1392,8 +1395,8 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_pd == null { return "pending: <delay> must be a number"; }
         sa_pr = on_off(tok[4] ?? "");
         if sa_pr < 0 { return "pending: <on|off> for running, not '{tok[4] ?? ""}'"; }
-        run.wave.schedule.sent    = sa_ps;
-        run.wave.schedule.lull    = sa_pl;
+        run.play.wave.schedule.sent    = sa_ps;
+        run.play.wave.schedule.lull    = sa_pl;
         // ⚠ **The delay is here and not on `schedule`**, and finding
         // that out is a plan 18 S2 story worth keeping: S1b's totality
         // test missed this field entirely, because both the script and
@@ -1401,8 +1404,8 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         // field left at its DEFAULT on both sides of a comparison
         // compares equal and proves nothing.  A totality test has to
         // hold every field at a value the default would not produce.
-        run.wave.schedule.delay   = sa_pd;
-        run.wave.schedule.running = sa_pr == 1;
+        run.play.wave.schedule.delay   = sa_pd;
+        run.play.wave.schedule.running = sa_pr == 1;
         return "";
     }
 
@@ -1414,7 +1417,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_argc != 1 { return "cursor needs <n>"; }
         sa_cn = (tok[1] ?? "") as integer?;
         if sa_cn == null { return "cursor: <n> must be an integer"; }
-        run.wave.pick_cursor = sa_cn;
+        run.play.wave.pick_cursor = sa_cn;
         return "";
     }
 
@@ -1621,17 +1624,17 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_core.0 > 1 {
             return "wave: {sc_core.0} target markers — a wave needs ONE core to walk towards";
         }
-        sc_before = alive_count(run.wave);
-        spawn_wave(run.wave, sc_count, sc_kind as u8? ?? 0, s.mw, sc_core.1, sc_core.2,
+        sc_before = alive_count(run.play.wave);
+        spawn_wave(run.play.wave, sc_count, sc_kind as u8? ?? 0, s.mw, sc_core.1, sc_core.2,
                    SCRIPT_SPAWN_DISABLE_RADIUS);
-        sc_emitted = alive_count(run.wave) - sc_before;
+        sc_emitted = alive_count(run.play.wave) - sc_before;
         // A wave that asks for five and emits none is the confident
         // meaningless number this plan exists to stop: every later
         // `count alive 0 0` would pass for the wrong reason.
         if sc_emitted != sc_count {
             return "wave: asked for {sc_count}, emitted {sc_emitted} — is any spawn marker at least {SCRIPT_SPAWN_DISABLE_RADIUS} hexes from the core?";
         }
-        println("script: wave {sc_count} {enemy_class_name(sc_kind as u8? ?? 0)} towards core ({sc_core.1}, {sc_core.2}) — {alive_count(run.wave)} alive");
+        println("script: wave {sc_count} {enemy_class_name(sc_kind as u8? ?? 0)} towards core ({sc_core.1}, {sc_core.2}) — {alive_count(run.play.wave)} alive");
         return "";
     }
 
@@ -1671,8 +1674,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         }
         sc_rq = sc_v[0] ?? 0;
         sc_rr = sc_v[1] ?? 0;
-        height_raise(run.wave.heights, sc_rq, sc_rr, sc_m ?? 0.0, sc_src as u8? ?? 0);
-        println("script: raise ({sc_rq}, {sc_rr}) by {sc_m ?? 0.0:4.2} m of {rubble_source_name(sc_src as u8? ?? 0)} — now {height_rise(run.wave.heights, sc_rq, sc_rr):4.2} m of pile");
+        height_raise(run.play.wave.heights, sc_rq, sc_rr, sc_m ?? 0.0, sc_src as u8? ?? 0);
+        println("script: raise ({sc_rq}, {sc_rr}) by {sc_m ?? 0.0:4.2} m of {rubble_source_name(sc_src as u8? ?? 0)} — now {height_rise(run.play.wave.heights, sc_rq, sc_rr):4.2} m of pile");
         return "";
     }
 
@@ -1706,8 +1709,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if !structure_breakable(s.picker.palette, s.pw, sc_dq, sc_dr) {
             return "damage: ({sc_dq}, {sc_dr}) is '{painted_kind_name(s.picker.palette, s.pw, sc_dq, sc_dr)}', which nothing can break";
         }
-        damage_apply(run.wave.damage, sc_dq, sc_dr, sc_dhp ?? 0.0);
-        println("script: damage ({sc_dq}, {sc_dr}) by {sc_dhp ?? 0.0:6.2} HP — {structure_hp(s.picker.palette, s.pw, run.wave.damage, sc_dq, sc_dr):6.2} HP left");
+        damage_apply(run.play.wave.damage, sc_dq, sc_dr, sc_dhp ?? 0.0);
+        println("script: damage ({sc_dq}, {sc_dr}) by {sc_dhp ?? 0.0:6.2} HP — {structure_hp(s.picker.palette, s.pw, run.play.wave.damage, sc_dq, sc_dr):6.2} HP left");
         return "";
     }
 
@@ -1775,11 +1778,11 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         // their zero, which is the neutral value for both (plan 12 B4,
         // plan 16 W2) — so a bare `place` is a robot that is whole and
         // free to move, and anything else has to be SAID.
-        run.wave.enemies += [Enemy { q: sc_pv2[0] ?? 0, r: sc_pv2[1] ?? 0,
+        run.play.wave.enemies += [Enemy { q: sc_pv2[0] ?? 0, r: sc_pv2[1] ?? 0,
                                      kind: sc_pk as u8? ?? 0,
                                      heading: sc_phd as u8? ?? 0,
                                      alive: true, taken: 0.0, stand: 0.0 }];
-        println("script: place {enemy_class_name(sc_pk as u8? ?? 0)} at ({sc_pv2[0] ?? 0}, {sc_pv2[1] ?? 0}) heading {sc_phd} — {len(run.wave.enemies)} in the roster");
+        println("script: place {enemy_class_name(sc_pk as u8? ?? 0)} at ({sc_pv2[0] ?? 0}, {sc_pv2[1] ?? 0}) heading {sc_phd} — {len(run.play.wave.enemies)} in the roster");
         return "";
     }
 
@@ -1791,10 +1794,10 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         sc_ssec = (tok[2] ?? "") as float?;
         if sc_ssec == null { return "stand: <seconds> must be a number"; }
         sc_sidx = sc_si2 ?? 0;
-        if sc_sidx < 0 || sc_sidx >= len(run.wave.enemies) {
-            return "stand: no enemy {sc_sidx} — the roster holds {len(run.wave.enemies)}";
+        if sc_sidx < 0 || sc_sidx >= len(run.play.wave.enemies) {
+            return "stand: no enemy {sc_sidx} — the roster holds {len(run.play.wave.enemies)}";
         }
-        (run.wave.enemies[sc_sidx] ?? Enemy { }).stand = sc_ssec;
+        (run.play.wave.enemies[sc_sidx] ?? Enemy { }).stand = sc_ssec;
         return "";
     }
 
@@ -1804,10 +1807,10 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         sc_di = sc_a1 as integer?;
         if sc_di == null { return "dead: <i> must be an integer"; }
         sc_didx = sc_di ?? 0;
-        if sc_didx < 0 || sc_didx >= len(run.wave.enemies) {
-            return "dead: no enemy {sc_didx} — the roster holds {len(run.wave.enemies)}";
+        if sc_didx < 0 || sc_didx >= len(run.play.wave.enemies) {
+            return "dead: no enemy {sc_didx} — the roster holds {len(run.play.wave.enemies)}";
         }
-        (run.wave.enemies[sc_didx] ?? Enemy { }).alive = false;
+        (run.play.wave.enemies[sc_didx] ?? Enemy { }).alive = false;
         return "";
     }
 
@@ -1821,10 +1824,10 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         // An index past the roster is an ERROR rather than a no-op: a
         // script that hit nobody and then asserted the wave was still
         // alive would be green for the wrong reason.
-        if sc_hidx < 0 || sc_hidx >= len(run.wave.enemies) {
-            return "hit: no enemy {sc_hidx} — the roster holds {len(run.wave.enemies)}";
+        if sc_hidx < 0 || sc_hidx >= len(run.play.wave.enemies) {
+            return "hit: no enemy {sc_hidx} — the roster holds {len(run.play.wave.enemies)}";
         }
-        sc_he = run.wave.enemies[sc_hidx] ?? Enemy {};
+        sc_he = run.play.wave.enemies[sc_hidx] ?? Enemy {};
         enemy_hurt(sc_he, sc_hhp ?? 0.0);
         println("script: hit {sc_hidx} for {sc_hhp ?? 0.0:6.2} HP — {enemy_hp(sc_he):6.2} HP left, alive={sc_he.alive}");
         return "";
@@ -1843,8 +1846,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if len(sc_cv2) != 2 { return "clear: <q> and <r> must be integers"; }
         sc_cq = sc_cv2[0] ?? 0;
         sc_cr = sc_cv2[1] ?? 0;
-        height_clear(run.wave.heights, sc_cq, sc_cr);
-        println("script: clear ({sc_cq}, {sc_cr}) — {height_count(run.wave.heights)} piles left");
+        height_clear(run.play.wave.heights, sc_cq, sc_cr);
+        println("script: clear ({sc_cq}, {sc_cr}) — {height_count(run.play.wave.heights)} piles left");
         return "";
     }
 
@@ -1870,13 +1873,13 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         sc_pq = sc_pv[0] ?? 0;
         sc_pr = sc_pv[1] ?? 0;
         if sc_cmd == "park" {
-            vehicle_place(run.wave.player, sc_pq, sc_pr);
+            vehicle_place(run.play.wave.player, sc_pq, sc_pr);
             return "";
         }
-        if !vehicle_present(run.wave.player) {
+        if !vehicle_present(run.play.wave.player) {
             return "drive: no vehicle — `park <q> <r>` puts one in the world first";
         }
-        vehicle_drive(run.wave.player, sc_pq, sc_pr);
+        vehicle_drive(run.play.wave.player, sc_pq, sc_pr);
         return "";
     }
 
@@ -1890,11 +1893,11 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // refusing a hex with nothing breakable on it.
     if sc_cmd == "boost" {
         if sc_argc != 0 { return "boost takes no arguments"; }
-        if !vehicle_present(run.wave.player) {
+        if !vehicle_present(run.play.wave.player) {
             return "boost: no vehicle — `park <q> <r>` puts one in the world first";
         }
-        if !vehicle_boost(run.wave.player) {
-            return "boost: the vehicle is not ready — {run.wave.player.cool_left:4.2} s of cooldown left, boosting = {vehicle_boosting(run.wave.player)}";
+        if !vehicle_boost(run.play.wave.player) {
+            return "boost: the vehicle is not ready — {run.play.wave.player.cool_left:4.2} s of cooldown left, boosting = {vehicle_boosting(run.play.wave.player)}";
         }
         return "";
     }
@@ -1904,10 +1907,10 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_argc != 2 { return "crew needs <q> <r>"; }
         sc_crw = script_ints(tok, 2);
         if len(sc_crw) != 2 { return "crew: <q> and <r> must be integers"; }
-        if len(run.wave.crew) >= HELPER_ROSTER_CAP {
-            return "crew: a base holds {HELPER_ROSTER_CAP} helpers and already has {len(run.wave.crew)}";
+        if len(run.play.wave.crew) >= HELPER_ROSTER_CAP {
+            return "crew: a base holds {HELPER_ROSTER_CAP} helpers and already has {len(run.play.wave.crew)}";
         }
-        run.wave.crew += [helper_new(sc_crw[0] ?? 0, sc_crw[1] ?? 0)];
+        run.play.wave.crew += [helper_new(sc_crw[0] ?? 0, sc_crw[1] ?? 0)];
         return "";
     }
 
@@ -1916,10 +1919,10 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         sc_sv = script_ints(tok, 3);
         if len(sc_sv) != 3 { return "send: <i>, <q> and <r> must be integers"; }
         sc_si = sc_sv[0] ?? 0;
-        if sc_si < 0 || sc_si >= len(run.wave.crew) {
-            return "send: no helper {sc_si} — the crew is {len(run.wave.crew)} strong";
+        if sc_si < 0 || sc_si >= len(run.play.wave.crew) {
+            return "send: no helper {sc_si} — the crew is {len(run.play.wave.crew)} strong";
         }
-        helper_drive(run.wave.crew[sc_si] ?? Helper { }, sc_sv[1] ?? 0, sc_sv[2] ?? 0);
+        helper_drive(run.play.wave.crew[sc_si] ?? Helper { }, sc_sv[1] ?? 0, sc_sv[2] ?? 0);
         return "";
     }
 
@@ -1954,7 +1957,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
                 return "schedule: each <count> must be 0..{SCRIPT_MAX_REPEAT}, got {sc_sc}";
             }
         }
-        run.wave.schedule = wave_schedule_of(sc_sched, INTER_WAVE_DELAY_SECONDS);
+        run.play.wave.schedule = wave_schedule_of(sc_sched, INTER_WAVE_DELAY_SECONDS);
         println("script: {len(sc_sched)} waves armed — a spawn marker {WAVE_1_PROVOCATION_HEXES}+ hexes out has to be driven onto before wave 1 goes");
         return "";
     }
@@ -1986,18 +1989,18 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
                 return "{sc_cmd}: <who> is `player` or a crew index, not '{sc_a1}'";
             }
             sc_wn = sc_wi ?? 0;
-            if sc_wn < 0 || sc_wn >= len(run.wave.crew) {
-                return "{sc_cmd}: no helper {sc_wn} — the crew is {len(run.wave.crew)} strong";
+            if sc_wn < 0 || sc_wn >= len(run.play.wave.crew) {
+                return "{sc_cmd}: no helper {sc_wn} — the crew is {len(run.play.wave.crew)} strong";
             }
             sc_who = BLOCKER_CREW + sc_wn;
         }
 
-        if !wave_carrier_ready(run.wave, sc_who) {
+        if !wave_carrier_ready(run.play.wave, sc_who) {
             return "{sc_cmd}: {sc_a1} cannot carry — no vehicle in the world, or a wreck";
         }
 
         if sc_cmd == "take" {
-            if wave_take(run.wave, sc_who, s.mw) == CARGO_NONE {
+            if wave_take(run.play.wave, sc_who, s.mw) == CARGO_NONE {
                 return "take: {sc_a1} picked nothing up — hands full, or nothing within {CARGO_REACH_HEXES} hex";
             }
             return "";
@@ -2012,7 +2015,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_dcore.0 != 1 {
             return "drop: needs exactly ONE target marker to deliver to, found {sc_dcore.0}";
         }
-        if wave_drop(run.wave, sc_who,
+        if wave_drop(run.play.wave, sc_who,
                      Hex { q: sc_dcore.1, r: sc_dcore.2 },
                      s.mw) == CARGO_NONE {
             return "drop: {sc_a1} is not carrying anything";
@@ -2034,11 +2037,17 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_tcore.0 != 1 {
             return "tick: needs exactly ONE target marker to walk towards, found {sc_tcore.0}";
         }
-        for _ in 0..sc_count {
-            wave_tick(run.wave, s.picker.palette, s.pw, s.mw,
-                      Hex { q: sc_tcore.1, r: sc_tcore.2 });
-            run.ticks += 1;
-        }
+        // ⚠ **A COUNT through the count door** (plan 19 P1), never
+        // `sc_count * TICK_SECONDS` through `play_advance`: that is
+        // wrong for 602 of the first 1000 counts, and it fails in the
+        // direction nothing notices — one tick SHORT, at the end, on a
+        // scenario that then reads a wave as never sent.
+        //
+        // ⚠ And not `play_step` either: a `tick` has no keypress in it,
+        // so the frame door would fabricate a neutral input, which
+        // `editor_step` reads as *the player let go* — committing an
+        // in-flight paint stroke and resetting the edge history.
+        play_ticks(run.play, s, sc_count);
         return "";
     }
 
@@ -2068,17 +2077,19 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_fcore.0 != 1 {
             return "fall: needs exactly ONE target marker to walk towards, found {sc_fcore.0}";
         }
+        // One tick at a time, because the stop condition is read
+        // BETWEEN ticks — but through the same door `tick` uses, so a
+        // base that falls and a base that is ticked to the same place
+        // cannot diverge.
         sc_fspent = 0;
-        while sc_fspent < sc_flim && !wallet_broke(run.wave.wallet) {
-            wave_tick(run.wave, s.picker.palette, s.pw, s.mw,
-                      Hex { q: sc_fcore.1, r: sc_fcore.2 });
-            run.ticks  += 1;
-            sc_fspent  += 1;
+        while sc_fspent < sc_flim && !wallet_broke(run.play.wave.wallet) {
+            play_ticks(run.play, s, 1);
+            sc_fspent += 1;
         }
-        if !wallet_broke(run.wave.wallet) {
-            return "fall: the base was still standing after {sc_flim} ticks — {wallet_left(run.wave.wallet):8.6} points left, {alive_count(run.wave)} enemies alive";
+        if !wallet_broke(run.play.wave.wallet) {
+            return "fall: the base was still standing after {sc_flim} ticks — {wallet_left(run.play.wave.wallet):8.6} points left, {alive_count(run.play.wave)} enemies alive";
         }
-        println("script: the base fell after {run.ticks} ticks ({(run.ticks as float) * TICK_SECONDS:8.6} s), {alive_count(run.wave)} enemies alive");
+        println("script: the base fell after {run.play.ticks} ticks ({(run.play.ticks as float) * TICK_SECONDS:8.6} s), {alive_count(run.play.wave)} enemies alive");
         return "";
     }
 

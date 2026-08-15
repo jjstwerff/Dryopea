@@ -9,13 +9,29 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**P0 done** (2026-08-15).  P1 is next.  No `src/` change yet; suite 1051
-green, gate 28 scripts / 520 measurements.
+**P0 + P1 done** (2026-08-15).  P2 is next.  Suite **1065** green, gate
+28 scripts / **520 measurements unchanged**.
 
-**P0 tried to kill the design and could not.**  A real-time accumulator
-reproduces `tick N` **exactly**, at every frame size tried — and the
-reason is structural rather than lucky: the remainder CARRIES, so a tick
-deferred by float error is taken on the next frame.  § P0.
+**P1 built the seam — and FALSIFIED P0 while doing it.**  P0 said an
+accumulator reproduces `tick N` exactly, so one door taking SECONDS
+could serve both callers.  It does not: `play_advance(n × TICK_SECONDS)`
+is **one tick short for 602 of the first 1000 values of `n`**.  P0
+measured n = 30, which is in the lucky 398.  § P1.
+
+⚠ **What survives from P0 is narrower and is still the load-bearing
+half**: the frame SIZE does not reach the simulation, because the
+remainder CARRIES.  1200 frames of 1/60 s and one `tick 30` reach an
+S0-identical state, measured over a real scenario.
+
+So the game has ONE tick and **two ways to ask for it** — a COUNT
+(`play_ticks`, what the 520 measurements are pinned to) and a DURATION
+(`play_advance`, what a frame has).  The one-seam rule was never "one
+entry point"; it is *one caller of `wave_tick`*, and `play_one_tick` is
+it.
+
+⚠ **dryopea still cannot be played.**  `src/main.loft` opens a window
+and runs the EDITOR — P1 built the door the window will drive, and P3
+is what opens it.
 
 ⚠ **dryopea cannot be played.**  `src/main.loft` opens a window and runs
 the EDITOR — paint, markers, camera, save.  The game lives entirely
@@ -68,13 +84,19 @@ wrong in the editor with all 14 scripts green"*.
 The same trap is open here, one level up.  If the GL loop advances the
 game itself, then **a script and a player play different games** — and
 the 520 measurements in `scripts/validate.sh` would stop describing
-what a person experiences, silently.  So the game gets one door,
-`play_step`, and both callers go through it.
+what a person experiences, silently.
 
-⚠ **The door takes SECONDS, not frames and not ticks.**  A script says
-`tick 30`; a frame says *16 ms passed*.  One door can serve both only if
-it takes elapsed time and decides for itself how many whole ticks that
-is — which makes P0's question the one that can kill the design.
+⚠⚠ **P1 sharpened this, and the sharpening matters.**  The rule is *one
+caller of `wave_tick`*, not *one entry point*.  A script asks for a
+COUNT and a frame asks for a DURATION, and those cannot be folded
+together without corrupting the count (§ P1: 602 of 1000).  What must
+not fork is the TICK, and `play_one_tick` is it.
+
+⚠ **A frame's door takes SECONDS, not frames and not ticks.**  A frame
+says *16 ms passed*, so it must bank elapsed time and decide for itself
+how many whole ticks that is — which makes P0's question the one that
+can kill the design for a window.  It survived; what did not survive is
+using the same arithmetic to serve `tick N`.
 
 ## P0 — can real time reproduce `tick N`? (2026-08-15)
 
@@ -122,12 +144,121 @@ Measured with one at 1e-9 and the answer is identical.  Adding one would
 be the cargo-cult plan 16 W0 refused, and the note is here so a reader
 comparing this with `helper.loft` does not "fix" it.
 
+### ⚠⚠ Where P0 over-generalised — read § P1 before quoting the table
+
+The table above is true and its conclusion was too strong.  Every row
+delivers **20.0 s**, and 20.0 s happens to be one of the elapsed times
+that recovers its tick count exactly.  P0 concluded *`n × TICK_SECONDS`
+through the accumulator is exactly `n` ticks* from a single `n`, and
+that is false for 602 of the first 1000.  P1 measured the sweep.
+
+⚠ The methodological cost is worth naming: the probe varied the FRAME
+SIZE (five values) and held `n` fixed at one.  Both were free to vary,
+and the one held fixed is where the defect was.
+
+## P1 — the play session and its ONE door (2026-08-15)
+
+`src/play.loft`.  `PlayState` (the roster, the clock, the banked
+seconds), `play_ticks`, `play_advance`, `play_step`, `play_core` — and
+`play_one_tick`, the only call to `wave_tick` in the repo.
+
+### ⚠⚠ A COUNT is not a DURATION, and 602 of 1000 say so
+
+The one-door design assumed `tick N` could be spelled
+`play_advance(N × TICK_SECONDS)`.  Built that way, the gate went red at
+once — and read as a GAME event rather than as a clock being a hair
+off:
+
+```
+validate: FAILED — a-base-that-plays-its-list line 76: waves = 0, outside 1..1
+```
+
+⚠ **One tick short, at the end, is what a float defect looks like from
+outside**: not a number slightly wrong, but a wave that never arrives.
+
+Swept, the shape is not marginal:
+
+| how `n` ticks were asked for | wrong for `n` in 1..1000 |
+|---|---|
+| `play_ticks(n)` | **0** |
+| `play_advance(n × TICK_SECONDS)` | **602** — always one SHORT |
+
+⚠ **And "make the product exact" is not the fix.**  `n = 12` gives a
+product of exactly `8.0` and still comes back **11**: it is the
+subtraction chain, not the multiplication.  Eleven subtractions of a
+repeating fraction leave a remainder a hair under the twelfth.
+
+⚠ **Nor is an epsilon.**  It moves WHICH 602 values are wrong, not how
+many.  A count is exact because it is counted.
+
+So the door split, and the split is the finding:
+
+* `play_ticks(ps, s, n)` — a COUNT.  `tick` and `fall` ask this, and
+  every one of the 520 gate measurements is pinned to it.
+* `play_advance(ps, s, seconds)` — a DURATION.  A GL frame asks this,
+  and it is the only one that banks a remainder.
+* `play_step(ps, s, input, seconds)` — a FRAME: the editor seam, then
+  the duration.  Both the window and every scripted frame call it.
+
+⚠ **`play_ticks` does not touch `banked`**, so mixing the doors cannot
+make a scripted tick steal part of a frame — a drift that would be
+sub-tick and therefore invisible to the whole corpus.
+
+### ⚠ Why a `tick` is not routed through `play_step` either
+
+A script's `tick 30` has no keypress in it.  Through the frame door it
+would have to fabricate a neutral `EditorInput`, and `editor_step` reads
+a neutral frame as *the player let go*: it commits the in-flight paint
+stroke and resets the edge history.  `tick` would silently release the
+player's mouse.
+
+### ⚠⚠ Open question 1, answered by the compiler: a nested struct is a COPY
+
+The plan recommended a `PlayState` composing an `EditorState` and a
+`WaveState`.  **The first half cannot be written.**  A struct stored in
+a field of another struct is copied, not aliased — loft says so itself:
+
+```
+advice[avoidable-copy]: copy of Inner — `i` is still used after this point
+```
+
+So a `PlayState` built around the session the caller already holds would
+fork the world in two: `script_run(s, …)` mutates `s`, the game reads
+`ps.ed`, and nothing exists that could see them drift.  ⚠ A field read as
+a PARAMETER *does* alias (measured, two levels deep), so owning the state
+outright would work — but only by inverting `script_run`, whose entire
+contract is that the caller keeps the session and asserts on it after.
+
+**The answer: the world is PASSED, the game is OWNED.**  `PlayState` is
+what a live session has that an edited one does not — a roster, a clock,
+and the seconds banked toward the next tick.
+
+### ⚠ Open question 3, answered: `ScriptRun.ticks` MOVED rather than staying
+
+It is `run.play.ticks` now, and plan 12 B7's clock is unchanged in
+meaning.  It could not stay a field beside a `WaveState`: `play_ticks`
+takes a `PlayState`, so a run holding the pieces separately could not
+reach the door at all without handing over copies — which is the
+two-games defect the file exists to prevent.  ⚠ It is a count of TICKS,
+not of seconds; the accumulator changes who decides WHEN a tick happens,
+not what one IS.
+
+### What the gate said
+
+* `scripts/validate.sh` — **28 scripts, 520 measurements, unchanged.**
+  This is the phase's real gate and it caught the one defect there was.
+* `scripts/test.sh` — 1065 green (1051 + `tests/19_p1_the_seam.loft`).
+* ⚠ `test_a_count_asked_for_in_seconds_comes_back_short` asserts the
+  **wrong** answer on purpose: 602, by name at n = 10, 12, 40.  It is
+  the guard that stops anyone folding the two doors back together, and
+  if a loft release ever makes it exact the redness is good news.
+
 ## Invariant gate
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
-| **P0** ✓ | `tick 30` reproduced from 1, 30, 200, 600 and 1200 frames — every one an empty `state_diff` | an accumulator is a REFINEMENT of `tick N`: same elapsed time, same state | ✓ the plan's own falsifier was live — a single differing field would have stopped it; ✓ measured WITH an epsilon too, and identical, so its absence is a decision |
-| **P1** | all 520 gate measurements unchanged | the game has ONE door and the script runner goes through it | the corpus IS the control — every scenario's exact clock pins the behaviour, so a seam that changed anything goes red in 28 files |
+| **P0** ✓ | `tick 30` reproduced from 1, 30, 200, 600 and 1200 frames — every one an empty `state_diff` | ⚠ claimed *an accumulator is a REFINEMENT of `tick N`* — **too strong, corrected by P1**; what holds is that the frame SIZE does not reach the simulation | ✓ the falsifier was live for the frame size; ✗ **not for `n`** — five frame sizes over ONE tick count, and the defect was in the variable held fixed |
+| **P1** ✓ | 520 gate measurements unchanged; suite 1065 | ONE caller of `wave_tick` — asked by COUNT or by DURATION, never one folded into the other | ⚠ **the control FIRED**: routing `tick` through the seconds door went red as `a-base-that-plays-its-list … waves = 0, outside 1..1`, a wave that never arrives rather than a clock a hair off |
 | **P2** | a `.keys` script and a keypress produce the same action | one key table, the I1 shape | ✗ a play action wired straight into the GL loop is invisible to every script — the exact defect I1 was built to stop |
 | **P3** | waves arrive in a window, on the wall clock | the loop owns the CLOCK and the seam owns the rules (`editor_step`'s existing split) | a frame-rate-dependent simulation: assert the same elapsed time gives the same state at two frame rates |
 | **P4** | enemies, the vehicle and the crew are drawn | measured frames, not goldens | ⚠ a golden AGREES WITH A SHEAR, so the gate is `classify_world` pixel shares — a thing not drawn reads as zero |
@@ -138,8 +269,8 @@ comparing this with `helper.loft` does not "fix" it.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **P0** — the probe: can real time reproduce `tick N`? | XS | the table in § P0, measured against the shipped sim over five frame sizes | **Done** |
-| **P1** — the play session and its ONE door | M | `tests/19_p1_the_seam.loft` + the whole gate: `play_step(ps, input, seconds)` exists, `script.loft`'s `tick` routes through it, and **all 520 measurements are unchanged** | Open |
-| **P2** — play actions in the ONE key table | S | `tests/19_p2_the_keys.loft` — drive / boost / take / drop become `EditorAction` rows, and a script pressing the key does what the verb does | Blocked on P1 |
+| **P1** — the play session and its ONE door | M | `tests/19_p1_the_seam.loft` (14 fns) + the whole gate: `play.loft` owns the only `wave_tick` call, `tick` / `fall` / every scripted frame route through it, and **all 520 measurements are unchanged** | **Done** |
+| **P2** — play actions in the ONE key table | S | `tests/19_p2_the_keys.loft` — drive / boost / take / drop become `EditorAction` rows, and a script pressing the key does what the verb does.  ⚠ They apply in `play_step`, not `editor_step`: the editor's seam has no roster | Open |
 | **P3** — the loop: the game runs in the window | M | `tests/19_p3_the_clock.loft` for the accumulator + a human check that `make play` plays.  ⚠ The headless half is what CI can hold | Blocked on P2 |
 | **P4** — drawing the game | M | `tests/19_p4_the_frame.loft` — `classify_world` pixel shares for enemies, the vehicle and the crew.  A `.keys` scenario with `snap` for human inspection | Blocked on P3 |
 | **P5** — capture from a live session | S | `tests/19_p5_capture.loft` — a key writes the situation, and the file replays to an S0-identical state ([plan 18](../18-scenario-capture/README.md)) | Blocked on P3 |
@@ -179,24 +310,23 @@ a captured situation is a starting position, not a resumable game.
 
 ## Open questions
 
-1. **Where does `WaveState` live in a live session?**  Not on
-   `EditorState` — `CLAUDE.md` § Architecture is explicit that folding a
-   roster into the seam *"would make `editor_step` answer for something
-   no editor action touches"*.  *Recommendation: a `PlayState` that
-   COMPOSES an `EditorState` and a `WaveState`, so the editor's seam
-   keeps its scope and the play seam is a second, narrower door.  P1
-   decides.*
+1. ~~**Where does `WaveState` live in a live session?**~~  **Answered by
+   P1, and not the way the recommendation guessed.**  A `PlayState`
+   cannot COMPOSE an `EditorState`: a struct in a field is a COPY, so
+   the world would fork.  The world is PASSED and the game is OWNED —
+   `PlayState { wave, banked, ticks }`, and `ScriptRun` holds one.
+   § Open question 1, answered by the compiler.
 2. **Does the editor become a MODE of the game, or the game a mode of
    the editor?**  Today `main.loft` is an editor that could gain a play
    mode; the shipped game is a game that has no editor.  *Recommendation:
    a mode flag in the shell for now and no decision baked into the seam,
    because the answer changes when a landing flow exists (plan 05) and
    nothing here should pre-empt it.*
-3. **What happens to `ScriptRun.ticks` when the clock is real?**  It is
-   the run's CLOCK and plan 12 B7's comparisons are built on it.
-   *Recommendation: it stays a count of TICKS rather than seconds — the
-   accumulator changes who decides when a tick happens, not what one
-   is.*
+3. ~~**What happens to `ScriptRun.ticks` when the clock is real?**~~
+   **Answered by P1:** it is a count of TICKS, as recommended — and it
+   MOVED, to `run.play.ticks`, because a run holding the wave and the
+   clock as separate fields could not reach `play_ticks` without handing
+   over copies of both.  § Open question 3, answered.
 4. **Can a person actually play it?**  The one question no test answers.
    ⚠ `docs/NUMBERS.md` § Design targets has a target that has been
    ungateable since it was written — *"a single base session ≈ 15-25
