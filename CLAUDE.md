@@ -108,6 +108,17 @@ measurement phase costs).
 **Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 652
 measurements).
 
+⚠⚠ **The 1161 is a LOFT-VERSION-dependent figure right now, and the
+suite is RED on today's loft** ([loft#939](https://github.com/loft-lang/loft/issues/939),
+2026-08-15).  `tests/18_s3_the_crop.loft` fails and the run SIGSEGVs,
+because returning a large struct by value poisons the store and the
+next unrelated call corrupts an already-returned one — a plain
+`integer` field reads back as a pointer.  ⚠ **Nothing in dryopea can
+work around it**; the two calls it needs are plan 18 S3's feature.  The
+1161/1161 above was measured on a loft built 2026-08-12 21:58 and the
+regression window is `0d46efef..a5ce016b`.  ⚠ Do not "fix" `18_s3` —
+it is the detector.
+
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
 

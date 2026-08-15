@@ -64,6 +64,54 @@ fix / feature, move it to **Resolved**.
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### Returning a large struct by value poisons the store — the NEXT unrelated call corrupts an already-returned struct
+
+- **Filed:** [loft#939](https://github.com/loft-lang/loft/issues/939)
+- **Found while:** inspecting the installed loft after plan 23 K3, when
+  `scripts/test.sh` went red on a tree whose two gates were green.
+- **Kind:** bug (memory safety), interpreter, **regression**
+- **What happens:** `emit.loft::crop_state` builds a whole `WaveState`
+  in a local and returns it **by value**.  That call is clean on its
+  own — but the **next** `script_run`, which never names the first
+  run's state, corrupts its `pick_cursor`: a plain `integer` field that
+  nothing in the run ever writes reads back as a pointer.
+
+  ```
+  assertion failed: the state survives the crop: 'pick_cursor: 16673063043072 vs 0'
+  ```
+
+- ⚠ **Six controls, and the pair is the whole finding:**
+
+  | # | sequence | `pick_cursor` |
+  |---|---|---|
+  | 1 | two `script_run`, no crop | 0 |
+  | 2 | `emit_keys` + a second run | 0 |
+  | 3 | crop **refused** (early return) + a second run | 0 |
+  | 4 | crop accepted, nothing after | 0 |
+  | 5 | crop accepted + 200 allocations | 0 |
+  | 6 | **crop accepted + a second `script_run`** | **garbage** |
+
+  (2) is the control that isolates it: `emit_keys` is the same emitter
+  over the same data and differs only in not calling `crop_state`.
+
+- ⚠ **The garbage is SHAPED** — `0xf2a00000000`, `0xf0500000000`,
+  `0x53c00000000`: low 32 bits always zero, upper half a small counter.
+  A field read landing one word off, not arbitrary freed memory.
+- ⚠ **Regression window `0d46efef..a5ce016b` (45 commits), not
+  bisected.**  The suite was **1161/1161 green** on a loft built
+  2026-08-12 21:58 and is red on every build since.
+  ⚠ **It is NOT loft#935's fix** — `b80fd632` post-dates a build that
+  already failed, so that commit neither caused nor cured it.
+- ⚠ **`--native` is INCONCLUSIVE, not correct.**  It answers 0, but
+  loft#866 empties the palette natively so the crop emits 255 chars
+  where the interpreter emits 1017 — a different workload.
+- **Dryopea-side workaround:** none.  The two calls it needs are the
+  feature (plan 18 S3), and `tests/18_s3_the_crop.loft` is what fails.
+- ⚠ **No standalone reproducer**, same wall as loft#935: a small
+  program with the identical shape runs clean, because the enclosing
+  frame sizes are the ingredient.  `loft test 18_s3_the_crop.loft` from
+  the dryopea root reproduces 3/3.
+
 ### A `vector<Struct>` local in a very large function corrupts the heap — and an unrelated test file is what dies
 
 - **Filed:** [loft#935](https://github.com/loft-lang/loft/issues/935)
