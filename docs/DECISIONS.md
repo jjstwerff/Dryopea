@@ -103,7 +103,9 @@ Every `@X` carries one, so the index can be filtered:
 | `@X020` | **exploration IS scouting** — already *the* progression activity; this design assembles rather than adds a pillar | `EXPLORATION.md` banner |
 | `@X021` | **the run already opens with a sortie** (`wave_provoke_step`), so "explore earlier" is CONTENT on a trip the player already takes | `EXPLORATION.md` § X2 |
 | `@X022` | ⚠⚠ **the game WAITS** — an unlimited recon window the player ends deliberately by poking a marker | `EXPLORATION.md` § X2b |
-| `@X023` | **the four robot classes gate the intel layer** — until they exist every wave is the same wave and a sortie predicts nothing.  ⚠ One row each in `numbers.json` + one branch in the damage-to-wall lookup | `EXPLORATION.md` § X2b |
+| `@X023` | **the four robot classes gate the intel layer** — until they exist every wave is the same wave and a sortie predicts nothing.  ⚠ One row each in `numbers.json` + one branch in the damage-to-wall lookup.  ⚠ **HALF DONE** — the wall-damage axis shipped as `23-K0` and was exactly that cheap; the SPEED axis is `23-K2` and is not a row (see `@X053`) | `EXPLORATION.md` § X2b, `plans/23` |
+| `@X053` | ⚠ **the harvester's role is what it CARRIES** — its body is `RUBBLE_CARGO` and cargo pays **3×**, so the one hole `DESIGN.md` § Small robots left open is filled by `body_source` → `loot_rate`, two lookups that already composed.  ⚠ Chosen against the genre test: at 90 points a body, letting one through and collecting it later is a real alternative to killing it at the wall | owner, 2026-08-15; `plans/23` § Open questions 1 |
+| `@X054` | ⚠ **`robot` is not retired and is not one of the four** — the small robots APPEND as kinds 3-6 and the baseline keeps 1.0 HP/s, which is what let four classes land without moving one of 1 094 tests or 520 measurements | `plans/23` § K0 |
 | `@X024` | **a find is a BUILD ACCELERANT**, and what decays is *the opportunity to use it* — so it must be found early | `EXPLORATION.md` § X2c, `@M006` |
 | `@X025` | **the PERMIT is the run clock**, and the cordon's teeth are at the exit.  ⚠ Expiry costs the **CARGO**, never the run — § 14 has no fail screen | `EXPLORATION.md` § X2d |
 | `@X026` | a find is **one marker row + one cargo row**, and nothing else.  ⚠ A find that needs a subsystem has become an economy | `EXPLORATION.md` § X4 |
@@ -150,6 +152,8 @@ number, and re-measure before optimising.**
 | `@M008` | binding a `FlowField` to a local **copies the heap value** — **2250×** the cost of reading it in place, live for four phases across 490 green tests | 2026-08-13 | `11-F8` |
 | `@M009` | the crew-size spread is **123 / 135 / 138 ticks** (was 77 / 214 / 242 before the pre-walk window) — a roster buys COVERAGE, not throughput | 2026-08-15 | `14-H2`, `16-W2` |
 | `@M010` | a **mirrored base is not a symmetric one** — 112 vs 211 ticks on a map that looks mirror-symmetric, until both walls were extended past the walkable band (214 vs 211) | 2026-08-14 | `14-H2` |
+| `@M011` | four of a class into a sealed band breach at **20 / 35 / 50 / 96 / 456 ticks** (miner / builder / robot / harvester / scout) — **23× between the two ends**, from a mover that cannot tell them apart | 2026-08-15 | `23-K0` |
+| `@M012` | ⚠ the scout's first rate was **wrong by measurement, not by arithmetic**: 0.2 HP/s breached at **231** ticks, inside the 321 a real base lasts (`@M005`), because the sum had been done against the 100 HP BRACED figure while the siege chews the 30 HP END | 2026-08-15 | `23-K0`, `12-B3` |
 
 ---
 

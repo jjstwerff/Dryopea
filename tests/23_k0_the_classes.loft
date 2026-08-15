@@ -1,0 +1,374 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 23 phase K0 — the four small robots exist, and a wall knows
+// the difference.
+//
+// ── What this file gates, and what it deliberately does not ─────
+//
+// `docs/DESIGN.md` § Small robots: four roles, one AI commits four
+// classes whose *"whole difference is numbers per role — damage to a
+// wall, and speed"*.  K0 builds the first of those two axes.  Speed
+// is plan 23 K2, because every enemy in the game moves exactly one
+// hex per tick by construction — `TICK_SECONDS` is DERIVED from
+// `ENEMY_SPEED_HEX_PER_SECOND` (`spawn.loft`) — so a faster class is
+// a change to the mover and not a row in a table.
+//
+// ⚠ **The gate is a WALL, not a lookup.**  Asserting that
+// `enemy_damage_to_wall(MINER)` returns 3.0 is a claim about the
+// table, checked against the table — `plans/README.md` § A self-test
+// is not validation names exactly that shape and refuses it.  What
+// can be surprised is a wall: the same count of the same-sized
+// robots, walking the same distance into the same perimeter, and a
+// breach clock that differs by the ratio of their rates.  Every
+// number below is measured through `wave_tick`.
+//
+// ⚠ **The negative control is the one that would have shipped
+// broken.**  `wave_damage` hoisted its bite OUT of the enemy loop
+// (plan 12 B2), which was correct while one rate served every class
+// and silently gives a mixed wave one class's rate now.  § A mixed
+// wave is what catches it: miners and scouts together must land
+// strictly between the two pure waves, which a hoisted rate cannot
+// produce.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// One enemy of `kind`, walking west into the wall.
+//
+// ⚠ `taken` and `stand` are omitted and take their defaults, which is
+// safe here for the reason `spawn.loft`'s `Enemy` header gives: both
+// are ZERO-neutral, so an omitted field spawns a healthy enemy that
+// has finished arriving.  Getting either backwards spawns a corpse.
+fn westbound(q: integer, r: integer, kind: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(kind), heading: 3 as u8, alive: true }
+}
+
+// A sealed band two rows deep, walled across `q = 5`, with `n`
+// enemies of `kind` walking into it from the east.  Answers the tick
+// the first hex of the wall came down on, or 1500 if it never did.
+//
+// Lifted from `tests/numbers_design_targets.loft::ticks_to_breach`
+// with one parameter added, because that file gates the REGULAR's
+// figure and must keep doing so unchanged.
+fn breach_tick(n: integer, kind: integer) -> integer {
+    bt_pal = pal();
+    bt_pw  = painted_empty();
+    for bt_r in -2..=2 {
+        for bt_q in -3..=20 { paint(bt_pw, bt_q, bt_r, as_u8(GRASS)); }
+    }
+    for bt_w in -2..=2 { paint(bt_pw, 5, bt_w, as_u8(WALL)); }
+
+    bt_s = wave_state_empty();
+    for bt_i in 0..n { bt_s.enemies += [westbound(9 + bt_i, 0, kind)]; }
+
+    bt_t = 0;
+    bt_done = false;
+    while !bt_done && bt_t < 1500 {
+        wave_tick(bt_s, bt_pal, bt_pw, marker_empty(), core());
+        bt_t += 1;
+        for bt_c in -2..=2 {
+            if painted_kind_name(bt_pal, bt_pw, 5, bt_c) != "wall" { bt_done = true; }
+        }
+    }
+    bt_t
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The axis: what a class does to a wall
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The headline claim, and the whole reason the roles exist**:
+// *"the same wave arriving at the same perimeter is a very different
+// problem depending on what is in it"* (`DESIGN.md` § Small robots).
+//
+// Four miners and four scouts differ in nothing a mover can see —
+// same climb, same HP, same size, same route, same distance walked.
+// The only thing between them is a rate, and it has to be worth
+// hundreds of ticks.
+// ⚠ **"Never gets through" is measured against a REAL base's length,
+// not against infinity.**  The longest base the corpus can play falls
+// at 321 ticks (`@M005`, plan 16 W4), so a class that needs more than
+// that has no wall-breaking role in any game anybody can play — which
+// is a falsifiable statement where *"the scenario cap was not
+// reached"* is only a statement about the cap.
+//
+// ⚠ This assertion is what caught the scout's first number.  At
+// 0.2 HP/s four of them breached at 231 — comfortably INSIDE a base
+// that lasts 321 — because the arithmetic had been done against the
+// 100 HP braced figure while the siege chews the 30 HP end.
+const LONGEST_BASE_TICKS: integer = 321;
+
+fn test_four_miners_breach_a_wall_four_scouts_cannot() {
+    tfm_miner = breach_tick(4, ENEMY_KIND_MINER);
+    tfm_scout = breach_tick(4, ENEMY_KIND_SCOUT);
+
+    assert(tfm_miner < 60,
+           "four miners cut a 30 HP end open fast; measured {tfm_miner} ticks");
+    assert(tfm_scout > LONGEST_BASE_TICKS,
+           "and four scouts outlast the longest base anyone can play "
+           + "({LONGEST_BASE_TICKS} ticks); measured {tfm_scout}");
+    assert(tfm_scout > tfm_miner * 10,
+           "an order of magnitude between the two roles: {tfm_scout} vs {tfm_miner} ticks");
+}
+
+// The middle of the spread, so the table is a RAMP rather than two
+// values that happen to differ.  A builder bites more than a robot
+// and a harvester less, and the wall reports the order.
+fn test_the_spread_is_monotonic_in_the_wall() {
+    tsm_miner     = breach_tick(4, ENEMY_KIND_MINER);
+    tsm_builder   = breach_tick(4, ENEMY_KIND_BUILDER);
+    tsm_robot     = breach_tick(4, ENEMY_KIND_REGULAR);
+    tsm_harvester = breach_tick(4, ENEMY_KIND_HARVESTER);
+
+    assert(tsm_miner < tsm_builder,
+           "a miner beats a builder: {tsm_miner} vs {tsm_builder} ticks");
+    assert(tsm_builder < tsm_robot,
+           "a builder beats a robot: {tsm_builder} vs {tsm_robot} ticks");
+    assert(tsm_robot < tsm_harvester,
+           "a robot beats a harvester: {tsm_robot} vs {tsm_harvester} ticks");
+}
+
+// ⚠ **The regular is UNTOUCHED, and this is the phase's safety
+// property.**  Four classes land without moving one of the 1094
+// tests or 520 measurements precisely because `robot` keeps its 1.0
+// HP/s and stays the class every existing scenario spawns.  Pinned
+// against `numbers_design_targets.loft`'s own harness rather than
+// trusted: if this drifts, that file's targets drift with it.
+fn test_the_baseline_did_not_move() {
+    tbd = breach_tick(1, ENEMY_KIND_REGULAR);
+
+    // 100 HP at 1 HP/s = 150 ticks, plus the walk to the wall.
+    assert(tbd >= 150 && tbd <= 170,
+           "a lone robot still needs ~100 s: measured {tbd} ticks");
+}
+
+// ⚠ **The negative control for the hoisted rate** (see this file's
+// header) — and its design is the whole of what makes it one.
+//
+// The obvious version does not work, and was measured not working:
+// two miners and two scouts breach in **20 ticks, exactly what four
+// pure miners do**, because the breach clock SATURATES past a handful
+// of attackers (`numbers_design_targets.loft` § test_the_breach_clock
+// _saturates_with_attackers) — only so many can reach the hex closest
+// to breaking, so the scouts in the wave are not slowing anything
+// down and there is nothing for a per-enemy rate to be right about.
+//
+// ⚠ What discriminates is the ORDER.  The scouts go in FIRST, so a
+// rate read once off the roster reads 0.1 and the wave needs ~460
+// ticks; a rate read per enemy lets the miners behind them chew at
+// 3.0 and the wall comes down in tens.  The gap is 20x and it exists
+// only if the rate is per-enemy.
+fn test_a_mixed_wave_chews_at_each_classs_own_rate() {
+    tam_pal = pal();
+    tam_pw  = painted_empty();
+    for tam_r in -2..=2 {
+        for tam_q in -3..=20 { paint(tam_pw, tam_q, tam_r, as_u8(GRASS)); }
+    }
+    for tam_w in -2..=2 { paint(tam_pw, 5, tam_w, as_u8(WALL)); }
+
+    // ⚠ Scouts at index 0 and 1 — see the header above.  Swap these
+    // four lines so a miner comes first and the test still passes
+    // while proving nothing.
+    tam_s = wave_state_empty();
+    tam_s.enemies += [westbound(9,  0, ENEMY_KIND_SCOUT)];
+    tam_s.enemies += [westbound(10, 0, ENEMY_KIND_SCOUT)];
+    tam_s.enemies += [westbound(11, 0, ENEMY_KIND_MINER)];
+    tam_s.enemies += [westbound(12, 0, ENEMY_KIND_MINER)];
+
+    tam_t = 0;
+    tam_done = false;
+    while !tam_done && tam_t < 1500 {
+        wave_tick(tam_s, tam_pal, tam_pw, marker_empty(), core());
+        tam_t += 1;
+        for tam_c in -2..=2 {
+            if painted_kind_name(tam_pal, tam_pw, 5, tam_c) != "wall" { tam_done = true; }
+        }
+    }
+
+    tam_scouts = breach_tick(4, ENEMY_KIND_SCOUT);
+
+    assert(tam_t < 100,
+           "the miners behind the scouts chew at 3.0, not at 0.1: {tam_t} ticks");
+    assert(tam_scouts > tam_t * 4,
+           "where a rate read once off the roster would have needed "
+           + "{tam_scouts} ticks — the scouts are FIRST in it");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The harvester's cargo — two existing lookups, composed
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The role that cost no new behaviour.**  `DESIGN.md` § Small
+// robots left the hauler with no mechanical distinction and floated
+// *what it CARRIES*; the owner committed it 2026-08-15.  The whole
+// mechanism is that `body_source` names a different material and
+// `loot_rate` prices a material — both tables written phases before
+// anything varied in them.
+fn test_a_harvester_body_is_cargo_and_cargo_pays_triple() {
+    thb_wreck = loot_rate(body_source(as_u8(ENEMY_KIND_REGULAR)));
+    thb_cargo = loot_rate(body_source(as_u8(ENEMY_KIND_HARVESTER)));
+
+    assert(thb_cargo == thb_wreck * 3.0,
+           "a hauler's body pays triple: {thb_cargo} against {thb_wreck}");
+    assert(loot_rate(body_source(as_u8(ENEMY_KIND_MINER))) == thb_wreck,
+           "and the other three leave plain wreckage");
+}
+
+// ⚠ **Masonry still pays nothing**, which the cargo branch sits in
+// front of.  Worth pinning beside it: `loot_rate` grew its first
+// second branch here, and the one rule it already had is the one a
+// new branch could shadow.
+fn test_masonry_is_still_worthless() {
+    assert(loot_rate(RUBBLE_MASONRY) == 0.0,
+           "a heap of your own broken wall is still a mess you made");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// One AI, per-class DATA — the rule the roles are built under
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **All four share the regular's climb, and that is the design
+// rule holding rather than an omission.**  `passable.loft` §
+// This is the class's WHOLE contribution: one climb means ONE
+// distance field serves all five classes, so four new roles cost
+// nothing in the tick.  A role that needed its own climb would
+// silently add a field per tick — invisible to every test here, and
+// visible only in `11_f8`'s budget.
+fn test_every_small_robot_walks_on_the_regulars_field() {
+    tes = climb_limit(as_u8(ENEMY_KIND_REGULAR));
+
+    assert(climb_limit(as_u8(ENEMY_KIND_SCOUT))     == tes, "a scout shares the climb");
+    assert(climb_limit(as_u8(ENEMY_KIND_HARVESTER)) == tes, "a harvester shares the climb");
+    assert(climb_limit(as_u8(ENEMY_KIND_BUILDER))   == tes, "a builder shares the climb");
+    assert(climb_limit(as_u8(ENEMY_KIND_MINER))     == tes, "a miner shares the climb");
+    assert(climb_limit(as_u8(ENEMY_KIND_INSECT))    != tes,
+           "and an insect still does not — the assertion above is not vacuous");
+}
+
+// The discriminants APPEND and never collide.  ⚠ `passable.loft` §
+// New variants APPEND: the numbers ride in enemy records, so a
+// reorder re-labels a run in progress underneath itself.
+fn test_the_discriminants_are_distinct_and_appended() {
+    assert(ENEMY_KIND_SCOUT     == 3, "scout is 3");
+    assert(ENEMY_KIND_HARVESTER == 4, "harvester is 4");
+    assert(ENEMY_KIND_BUILDER   == 5, "builder is 5");
+    assert(ENEMY_KIND_MINER     == 6, "miner is 6");
+    assert(KIND_VEHICLE         == 2,
+           "and the vehicle still sits in the middle of them — the scar stays put");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The vocabulary — one table, two verbs, and a round trip
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **`enemy_class_of` is the exact inverse of `enemy_class_name`**,
+// which is what makes `emit.loft`'s captured `place` lines replay as
+// the class they captured.  A class named by one and unknown to the
+// other emits a scenario that cannot be read back — silently, since
+// the emitter never parses what it wrote.
+fn test_the_class_names_round_trip() {
+    for tcn_k in 0..=6 {
+        if tcn_k != KIND_VEHICLE {
+            tcn_name = enemy_class_name(as_u8(tcn_k));
+            tcn_back = enemy_class_of(tcn_name);
+            assert(tcn_back != null,
+                   "'{tcn_name}' is a name a script can read back");
+            assert((tcn_back ?? -1) == tcn_k,
+                   "and it round-trips to {tcn_k}, not {tcn_back ?? -1}");
+        }
+    }
+}
+
+// ⚠ **The vehicle is NOT a class a wave can be made of.**  It shares
+// the kind table because it shares the passability rule and nothing
+// else (`passable.loft` § It shares the rule and nothing else), so
+// `wave 5 vehicle` has to fail rather than spawn five players.
+fn test_a_wave_cannot_be_made_of_vehicles() {
+    assert(enemy_class_of("vehicle") == null,
+           "'vehicle' names no enemy class");
+}
+
+// An unknown name is an ERROR and never a quiet fallback to robot —
+// `script.loft`'s own rule: *"a typo that spawns the wrong class
+// quietly turns a green run into a lie"*.
+fn test_an_unknown_class_is_refused() {
+    assert(enemy_class_of("hauler") == null,
+           "'hauler' is not a class — 'harvester' is, and the near-miss must not resolve");
+    assert(enemy_class_of("") == null, "and neither is nothing");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenarios — the same wall, twice, one word apart
+// ─────────────────────────────────────────────────────────────────
+//
+// `scripts/validate.sh` sweeps both, so the phase is visible as two
+// PLAYED runs and not only as a unit test.  ⚠ The pinned check counts
+// are what stop a scenario with its assertions deleted from reporting
+// a green run over nothing.
+//
+// ⚠ **Neither file is evidence on its own** — that is why they are
+// gated in one test.  A scout chewing slowly proves nothing; a scout
+// and a miner leaving the same 15 HP stub at 12.8 and at rubble, on
+// the same tick, from a mover that cannot tell them apart, is the
+// claim `DESIGN.md` § Small robots makes.
+
+const SHOTS: text = "shots";
+
+fn test_the_two_walls_play_green_and_disagree() {
+    ttw_ms = editor_state_new(PALETTE);
+    editor_state_attach(ttw_ms,
+                        "tests/actual/k0_miner.json",
+                        "tests/actual/k0_miner_markers.json");
+    ttw_m = script_run_file(ttw_ms, "tests/scripts/a-wall-against-a-miner.keys", SHOTS);
+
+    ttw_ss = editor_state_new(PALETTE);
+    editor_state_attach(ttw_ss,
+                        "tests/actual/k0_scout.json",
+                        "tests/actual/k0_scout_markers.json");
+    ttw_s = script_run_file(ttw_ss, "tests/scripts/a-wall-against-a-scout.keys", SHOTS);
+
+    assert(ttw_m.ok, "a-wall-against-a-miner: {script_describe(ttw_m)}");
+    assert(ttw_s.ok, "a-wall-against-a-scout: {script_describe(ttw_s)}");
+    assert(ttw_m.checks == 26, "the miner made {ttw_m.checks} measurements, expected 26");
+    assert(ttw_s.checks == 23, "the scout made {ttw_s.checks} measurements, expected 23");
+
+    // ⚠ The pair's whole point, asserted in ONE place rather than left
+    // to a reader comparing two logs: the same hex of the same wall,
+    // after the same number of ticks, is a wall in one run and rubble
+    // in the other — and the only difference between the two files is
+    // the word after `wave 1`.
+    // ⚠ Read off the EDITOR states rather than the runs: the world is
+    // the editor's and a `ScriptRun` carries only the game.  They are
+    // the states the scripts played against — a struct passed as a
+    // PARAMETER aliases, so these hold what the runs left behind.
+    ttw_pal = pal();
+    assert(painted_kind_name(ttw_pal, ttw_ss.pw, 2, 0) == "wall",
+           "the scout's seal is still a wall");
+    assert(painted_kind_name(ttw_pal, ttw_ms.pw, 2, 0) == "grass",
+           "and the miner's has come down");
+}
+
+fn test_both_scenario_files_are_on_disk() {
+    assert(file("tests/scripts/a-wall-against-a-miner.keys").exists(),
+           "a-wall-against-a-miner.keys is on disk");
+    assert(file("tests/scripts/a-wall-against-a-scout.keys").exists(),
+           "a-wall-against-a-scout.keys is on disk");
+}

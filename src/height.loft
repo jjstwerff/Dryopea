@@ -97,6 +97,27 @@ pub const RUBBLE_WRECKAGE: integer = 0;   // a machine that died
 pub const RUBBLE_CARAPACE: integer = 1;   // an insect that died
 pub const RUBBLE_MASONRY:  integer = 2;   // a structure that broke
 
+// A harvester that died — a machine, plus **what it was hauling**
+// (plan 23 K0).  `DESIGN.md` § Small robots gives the hauler its one
+// mechanical distinction as *what it CARRIES*, and this is the whole
+// of that mechanism: the body is a distinct source, and
+// `wallet.loft::loot_rate` already prices a source.
+//
+// ⚠ **So the harvester is a design decision that cost no new
+// behaviour** — the two lookups it needs (`damage.loft::body_source`
+// and `loot_rate`) were both written as tables years of phases before
+// anything varied in them.
+//
+// ⚠⚠ **A pile is named by its NEWEST deposit** (§ The source is one
+// per hex), so a robot dying on top of a harvester's cargo devalues
+// the whole heap to plain wreckage — and the reverse enriches it.
+// That is the existing one-source-per-hex simplification showing
+// through a much sharper number than it used to: with wreckage and
+// carapace both at 20 pt/m nobody could see it, and at 60 a player
+// can.  It is not a bug this plan introduces; it is plan 06 S1's
+// stacked layer earning its place.
+pub const RUBBLE_CARGO:    integer = 3;   // a hauler died with a load on
+
 // The source's name, for a message a player or a failing script can
 // read.  An unknown source names its number rather than guessing at a
 // material nobody chose — the same rule
@@ -105,6 +126,7 @@ pub fn rubble_source_name(source: u8) -> text {
     if source == RUBBLE_WRECKAGE as u8 { return "wreckage"; }
     if source == RUBBLE_CARAPACE as u8 { return "carapace"; }
     if source == RUBBLE_MASONRY  as u8 { return "masonry"; }
+    if source == RUBBLE_CARGO    as u8 { return "cargo"; }
     "source {source as integer}"
 }
 

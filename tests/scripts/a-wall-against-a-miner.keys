@@ -1,0 +1,129 @@
+# a-wall-against-a-miner — plan 23 K0.
+#
+# One miner, one sealed corridor, and a wall that comes down in
+# EIGHT ticks of siege where a robot needs twenty-three.
+#
+# ── Read it beside its twin ─────────────────────────────────────
+#
+# `a-wall-against-a-scout.keys` is this file with one word changed —
+# `wave 1 miner` becomes `wave 1 scout` — and the same wall in the
+# same corridor at the same moment reads 12.9-13.1 HP where this one
+# reads 8.9-9.1 after three ticks and is RUBBLE after eight.  The
+# pair is the measurement; neither file is one on its own.
+#
+# That is `docs/DESIGN.md` § Small robots stated as two runs: *"the
+# same wave arriving at the same perimeter is a very different
+# problem depending on what is in it"*.  A miner cuts rock for a
+# living and a scout has no real weapon at all.
+#
+# ── Why ONE enemy, and why a one-hex corridor ───────────────────
+#
+# Both are deliberate, and both are about keeping the reading
+# attributable to the CLASS:
+#
+#   - **one enemy**, because the breach clock SATURATES past a
+#     handful of attackers (`numbers_design_targets.loft` § the
+#     breach clock saturates) — with four, two miners already break
+#     the hex as fast as four do, and the rate stops being visible;
+#   - **a one-hex corridor**, because a wall FACE has ends worth 30%
+#     and a middle worth 100% (plan 12 B3) and the siege chews where
+#     the ROUTE meets it — so a wide band measures the geometry as
+#     much as the class.  A stub in a corridor is 15 HP with nothing
+#     to lean on and exactly one hex anybody can attack.
+#
+# ── The world (identical to its twin) ───────────────────────────
+#
+#   one corridor of grass, twelve hexes:  (12, 0) -> (0, 0)
+#   sealed at (2, 0) with a wall          15 HP — a STUB, unbraced
+#   core at (0, 0), spawn at (12, 0)
+
+echo a wall against a miner: 3 HP/s, and the seal does not last
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The spawn, twelve hexes out — clear of close_spawn_disable_radius
+# (10) and inside the scrambler bubble (25).
+# ⚠ TWICE: the place-kind cycle is spawn -> target -> tower -> spawn
+# since plan 12 B5a gave towers a marker kind of their own.
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 12 0
+marker 12 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag 12 0 0 0
+count painted 13 13
+
+palette 9
+click 2 0
+kind 2 0 wall
+count painted 13 13
+
+# ⚠ **15 HP, not 100** — the seal is a STUB with no structure
+# neighbours to push against (plan 12 B3).  Same figure as its twin,
+# which is what makes the two HP readings comparable at all.
+wave 1 miner
+count alive 1 1
+count targets 0 0
+hp 2 0 15.0 15.0
+
+# The pre-walk window (plan 16 W2): 8 ticks standing at the marker,
+# and a standing enemy chews nothing whatever its class.
+tick 8
+enemy 0 12 0
+hp 2 0 15.0 15.0
+
+# Nine ticks to arrive at (3, 0).  ⚠ The tick that CARRIES it there is
+# one in which it could still move, and an enemy that can move attacks
+# nothing — so the wall is untouched at the moment the siege begins.
+tick 9
+enemy 0 3 0
+enemies passable
+count targets 1 1
+target 0 2 0
+hp 2 0 15.0 15.0
+
+# ── Three ticks of siege, and this is the whole phase ───────────
+#
+# 3 x per_tick(3.0) = 6.0 HP off a 15 HP stub.  Its twin, at the same
+# moment, has lost 0.2.
+tick 3
+hp 2 0 8.9 9.1
+enemy 0 3 0
+
+# ── And through ────────────────────────────────────────────────
+#
+# Five more ticks is 10 HP against the 9 that are left, so the seal
+# goes down into a heap of masonry and the miner walks over it —
+# EIGHT ticks of siege, unaided.  `a-wall-breaks.keys` had to soften
+# its wall with a `damage` line to reach here at all, because a robot
+# would have needed twenty-three.
+tick 5
+kind 2 0 grass
+pile 2 0 0.9 1.1
+count targets 0 0
+
+snap k0-the-miner-on-the-breach
+
+# Onto the heap first — a 0.99 m step, inside a miner's 2.0 m climb,
+# which is the regular's climb because all four small robots share it
+# (`passable.loft` § The four small robots have no row here).
+tick 1
+enemy 0 2 0
+enemies passable
+
+tick 2
+enemy 0 0 0
+count alive 1 1
+range 0 0

@@ -1802,13 +1802,25 @@ artillery is for.  **Role composition and tower composition
 become a matching problem**, which is two design threads
 meeting rather than one bolted onto the other.
 
-⚠ **The harvester is the one role without a stated mechanical
-distinction yet.**  Scout has speed, miner has bite, builder
-has repair — and a hauler's obvious axis is what it CARRIES,
-which would make it the richest salvage on the field and the
-one worth letting through the kill zone to collect later.  Not
-committed; noted because a matrix with a hole in it invites one
-to be filled deliberately rather than by default.
+**The harvester's axis is what it CARRIES** — owner, 2026-08-15
+(`@X053`), filling the one hole this matrix had.  Scout has
+speed, miner has bite, builder has repair, and a hauler is the
+richest salvage on the field: **the one worth letting through
+the kill zone to collect later.**
+
+⚠ **It cost no new mechanism, which is why it is the right
+fill.**  A harvester's body is `RUBBLE_CARGO` rather than
+`RUBBLE_WRECKAGE`, and `wallet.loft::loot_rate` already prices
+a rubble source — two lookups written phases before anything
+varied in them (plan 23 K0).  At **3×**, one body is 90 points
+against a robot's 30, which is most of a helper order.
+
+⚠ **The multiplier is chosen against § What kind of game this
+is, not by feel.**  At 2× a player who was going to clear that
+hex anyway barely notices, and the role says nothing; at 3× the
+kill and the collection are a real decision with a cost on both
+sides — and the cost is the trip, at the moment a kill zone is
+the worst place to be.
 
 ⚠ **Their AI is not different.**  This is the first real payoff
 of the rule in § Combat dynamics § Retaliation: they route the

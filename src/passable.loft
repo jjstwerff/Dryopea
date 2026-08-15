@@ -105,6 +105,37 @@ pub const ENEMY_KIND_INSECT:  integer = 1;   // climbs a wall, not a high one
 // a climb, like everybody else's.
 pub const KIND_VEHICLE: integer = 2;
 
+// ── The four small robots (plan 23 K0) ──────────────────────────
+//
+// `DESIGN.md` § Small robots: four roles, one AI — scout, harvester,
+// builder and miner, economic roles from the colonisation programme
+// that are hostile only because their command links broke.
+//
+// ⚠ **They append AFTER the vehicle**, which reads oddly and is not a
+// choice: the discriminants are stored in enemy records and § New
+// variants APPEND says never reorder.  The vehicle sitting in the
+// middle of the enemy numbering is the same scar its own comment
+// names, one row further on.
+//
+// ⚠ **`robot` is not retired and is not one of the four.**  It stays
+// the neutral baseline every scenario in the suite was written
+// against, which is what lets this phase add four classes and move no
+// existing measurement.
+//
+// ⚠ **Their whole mechanical difference is two numbers** — what they
+// do to a wall (`spawn.loft::enemy_damage_to_wall`) and how fast they
+// arrive (plan 23 K2) — plus the harvester's cargo, which is not a
+// third mechanism but two existing lookups composing
+// (`damage.loft::body_source` → `wallet.loft::loot_rate`).  A class
+// that needs anything else has broken the rule this file exists for,
+// and the owner's *"we will eventually design more robots"*
+// (2026-08-15) is what makes that a load-bearing constraint rather
+// than tidiness.
+pub const ENEMY_KIND_SCOUT:     integer = 3;   // fast, and nearly harmless
+pub const ENEMY_KIND_HARVESTER: integer = 4;   // hauls — the richest salvage
+pub const ENEMY_KIND_BUILDER:   integer = 5;   // working tools, modest bite
+pub const ENEMY_KIND_MINER:     integer = 6;   // slow, and cuts rock for a living
+
 // Climb limits in metres — see § Where the climb limits come from.
 //
 // ── Why a robot climbs 2.0 m, and not 0.0 or 1.0 ────────────────
@@ -167,6 +198,15 @@ pub const CLIMB_VEHICLE: float = 0.4;
 // An unknown kind falls to the regular limit — the STRICTEST one.
 // A class the table has not learned about yet must not be handed
 // the run of the map on the strength of a number nobody chose.
+//
+// ⚠ **The four small robots have no row here on purpose** (plan 23
+// K0).  They are ground robots and share the regular's 2.0 m exactly,
+// so four branches returning `CLIMB_REGULAR` would be four lines that
+// cannot fail — and would hide the property that matters: one climb
+// means ONE distance field serves all five, which is what § This is
+// the class's WHOLE contribution says the field-per-climb design
+// rests on.  `tests/23_k0_the_classes.loft` asserts the sharing
+// directly, so it is pinned rather than merely intended.
 pub fn climb_limit(kind: u8) -> float {
     if kind == ENEMY_KIND_INSECT as u8 { return CLIMB_INSECT; }
     if kind == KIND_VEHICLE      as u8 { return CLIMB_VEHICLE; }
@@ -177,10 +217,45 @@ pub fn climb_limit(kind: u8) -> float {
 // read.  An unknown kind names its number rather than lying about
 // which class it is.
 pub fn enemy_class_name(kind: u8) -> text {
-    if kind == ENEMY_KIND_REGULAR as u8 { return "robot"; }
-    if kind == ENEMY_KIND_INSECT  as u8 { return "insect"; }
-    if kind == KIND_VEHICLE       as u8 { return "vehicle"; }
+    if kind == ENEMY_KIND_REGULAR   as u8 { return "robot"; }
+    if kind == ENEMY_KIND_INSECT    as u8 { return "insect"; }
+    if kind == KIND_VEHICLE         as u8 { return "vehicle"; }
+    if kind == ENEMY_KIND_SCOUT     as u8 { return "scout"; }
+    if kind == ENEMY_KIND_HARVESTER as u8 { return "harvester"; }
+    if kind == ENEMY_KIND_BUILDER   as u8 { return "builder"; }
+    if kind == ENEMY_KIND_MINER     as u8 { return "miner"; }
     "class {kind as integer}"
+}
+
+// The inverse — a class NAME to its discriminant, or `null` for a
+// name no class answers to.
+//
+// ⚠ **It exists so that the two script verbs cannot drift.**
+// `script.loft`'s `wave` and `place` each parsed the class list
+// inline, so a fifth class meant editing two `if` chains and the one
+// you forgot failed by SPAWNING THE WRONG THING quietly — which is
+// exactly what those sites' own comments refuse ("a typo that spawns
+// the wrong class quietly turns a green run into a lie").  One table,
+// two callers, and adding a class is one row.
+//
+// ⚠ **`vehicle` is deliberately absent.**  It is a mover and not a
+// class a wave can be made of, so a script that says `wave 5 vehicle`
+// must fail — see `tests/23_k0_the_classes.loft`.
+pub fn enemy_class_of(name: text) -> integer? {
+    if name == "robot"     { return ENEMY_KIND_REGULAR; }
+    if name == "insect"    { return ENEMY_KIND_INSECT; }
+    if name == "scout"     { return ENEMY_KIND_SCOUT; }
+    if name == "harvester" { return ENEMY_KIND_HARVESTER; }
+    if name == "builder"   { return ENEMY_KIND_BUILDER; }
+    if name == "miner"     { return ENEMY_KIND_MINER; }
+    null
+}
+
+// Every class a wave can be made of, in discriminant order — for the
+// error message a failing script reads, so the list cannot go stale
+// against `enemy_class_of` the way a hand-written string does.
+pub fn enemy_class_names() -> text {
+    "robot, insect, scout, harvester, builder, miner"
 }
 
 // ─── What a hex is ──────────────────────────────────────────────

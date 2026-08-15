@@ -1654,10 +1654,11 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         // the wrong class quietly turns a green run into a lie.
         sc_kind = ENEMY_KIND_REGULAR;
         if sc_argc == 2 {
-            if sc_a2 == "insect" { sc_kind = ENEMY_KIND_INSECT; }
-            else if sc_a2 != "robot" {
-                return "wave: unknown class '{sc_a2}' — robot, insect";
+            sc_kv = enemy_class_of(sc_a2);
+            if sc_kv == null {
+                return "wave: unknown class '{sc_a2}' — {enemy_class_names()}";
             }
+            sc_kind = sc_kv ?? ENEMY_KIND_REGULAR;
         }
         sc_core = script_core(s.mw);
         if sc_core.0 == 0 {
@@ -1799,12 +1800,12 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         // The class is NAMED, never numbered — `wave`'s rule, and an
         // unknown name is an error rather than a quiet fallback to
         // robot.
-        sc_pk = ENEMY_KIND_REGULAR;
         sc_pcls = tok[3] ?? "";
-        if sc_pcls == "insect" { sc_pk = ENEMY_KIND_INSECT; }
-        else if sc_pcls != "robot" {
-            return "place: unknown class '{sc_pcls}' — robot, insect";
+        sc_pkv = enemy_class_of(sc_pcls);
+        if sc_pkv == null {
+            return "place: unknown class '{sc_pcls}' — {enemy_class_names()}";
         }
+        sc_pk = sc_pkv ?? ENEMY_KIND_REGULAR;
 
         sc_phd = 0;
         if sc_argc == 4 {

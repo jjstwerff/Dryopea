@@ -265,8 +265,19 @@ pub fn enemy_max_hp(kind: u8) -> float {
 // wreckage and a heap of insect carapace are different salvage, and
 // the day they become different palette rows this is the only site
 // that has to know.
+// ⚠ **And plan 23 K0 is what it was written for.**  The harvester's
+// entire mechanical distinction is that its body is a different
+// material — `RUBBLE_CARGO`, which `wallet.loft::loot_rate` prices at
+// triple.  So *"the day they become different salvage this is the only
+// site that has to know"* came true exactly as written, and the role
+// cost one branch here and one there.
+//
+// ⚠ The other three small robots have no row, for `climb_limit`'s
+// reason: a scout and a miner leave plain wreckage, and a branch
+// returning the fallback is a line that cannot fail.
 pub fn body_source(kind: u8) -> integer {
-    if kind == ENEMY_KIND_INSECT as u8 { return RUBBLE_CARAPACE; }
+    if kind == ENEMY_KIND_INSECT    as u8 { return RUBBLE_CARAPACE; }
+    if kind == ENEMY_KIND_HARVESTER as u8 { return RUBBLE_CARGO; }
     RUBBLE_WRECKAGE
 }
 

@@ -140,6 +140,67 @@ pub fn per_tick(rate_per_second: float) -> float {
 // way in, and a base only falls to a wave that stays on it.
 pub const ENEMY_DAMAGE_TO_WALL_PER_SECOND: float = 1.0;
 
+// ── The four small robots' rates (plan 23 K0) ───────────────────
+//
+// `examples/numbers.json` § enemy_small_robots, and this is the branch
+// the paragraph above promised.  ⚠ **The regular's 1.0 is untouched**,
+// which is what lets four classes land without moving one of the 520
+// measurements in `scripts/validate.sh`.
+//
+// The spread is the design's, not a curve: *"a miner cuts rock for a
+// living; a scout has no real weapon at all"* (`DESIGN.md` § Small
+// robots).  What the numbers have to make true is that **the same wave
+// size against the same wall is a different problem** —
+//
+// MEASURED, four of them into a sealed two-row band
+// (`tests/23_k0_the_classes.loft::breach_tick`):
+//
+//   | class     | HP/s | ticks to breach | against the baseline    |
+//   |-----------|------|-----------------|-------------------------|
+//   | scout     | 0.1  | 456             | never, in any real base |
+//   | harvester | 0.5  |  96             |                         |
+//   | robot     | 1.0  |  50             | the baseline, unchanged |
+//   | builder   | 1.5  |  35             |                         |
+//   | miner     | 3.0  |  20             | 23x the scout           |
+//
+// ⚠ **The scout's figure is chosen to LOSE that race against a real
+// base's length, not merely to be small.**  The longest base the
+// corpus can play falls at **321 ticks** (`@M005`, plan 16 W4), so a
+// rate that needs 458 says *this class never opens a perimeter* in a
+// measurement rather than in a comment.  ⚠ It was 0.2 when this table
+// was first written, and the gate caught it: four scouts breached at
+// 231 — comfortably inside a base that lasts 321, which is the
+// opposite of what `DESIGN.md` means by *"a scout has no real weapon
+// at all"*.  The arithmetic had been done against the 100 HP braced
+// figure and the siege chews the 30 HP END (plan 12 B3).
+//
+// ⚠ **Zero would have been the lazy way to say it, and it says
+// something else.**  An enemy that does nothing at a wall makes
+// `wave_damage` skip it entirely, so `damage_count` — *"structures
+// under attack"* — would stop counting a wall four scouts are
+// standing on, and a player watching would be told nothing is
+// happening.  Which is false: they are chewing, and they will get
+// through eventually if the base lasts long enough to see it.
+pub const SCOUT_DAMAGE_TO_WALL_PER_SECOND:     float = 0.1;
+pub const HARVESTER_DAMAGE_TO_WALL_PER_SECOND: float = 0.5;
+pub const BUILDER_DAMAGE_TO_WALL_PER_SECOND:   float = 1.5;
+pub const MINER_DAMAGE_TO_WALL_PER_SECOND:     float = 3.0;
+
+// What this class does to the structure it is stopped by, per second.
+//
+// An unknown kind takes the regular's rate — the same fallback rule
+// `damage.loft::enemy_max_hp` gives: a class the table has not learned
+// about yet gets the only figure anyone has chosen, rather than 0,
+// which would make it silently harmless to every perimeter in the
+// game.
+pub fn enemy_damage_to_wall(kind: u8) -> float {
+    if kind == ENEMY_KIND_SCOUT     as u8 { return SCOUT_DAMAGE_TO_WALL_PER_SECOND; }
+    if kind == ENEMY_KIND_HARVESTER as u8 { return HARVESTER_DAMAGE_TO_WALL_PER_SECOND; }
+    if kind == ENEMY_KIND_BUILDER   as u8 { return BUILDER_DAMAGE_TO_WALL_PER_SECOND; }
+    if kind == ENEMY_KIND_MINER     as u8 { return MINER_DAMAGE_TO_WALL_PER_SECOND; }
+    ENEMY_DAMAGE_TO_WALL_PER_SECOND
+}
+
 // What an enemy does to a PLAYER or helper standing in its way, per
 // second — `numbers.json` § enemy_regular.damage_to_blocker, and five
 // times what it does to a wall.
@@ -192,7 +253,15 @@ pub const PRE_WALK_SECONDS: float = 5.0;
 // and friends — live in `passable.loft`, because a class IS its
 // climb limit as far as movement is concerned and the mover has to
 // be able to ask (plan 11 F1b).  They are in scope here through the
-// `use` above; the validation tier still emits only regulars.
+// `use` above.
+//
+// ⚠ **The SCHEDULE still emits only regulars** (plan 23 K1).  A
+// `.keys` script has said `wave 4 miner` since K0, but `wave_schedule`
+// carries a `vector<integer>` — a wave is a COUNT with no class in it
+// — so `wave_due` below hands `spawn_wave` a hard-coded
+// `ENEMY_KIND_REGULAR`.  Until that changes, every wave the game
+// sends itself is the same wave, and `ROBOT_ECONOMY.md`'s
+// *"composition is a readout"* reads one symbol.
 
 // One enemy on the map.  Mixes integer (q, r) with u8
 // (kind, heading) fields.  Not serialised today — vector<Enemy>
@@ -1161,9 +1230,15 @@ pub fn wave_fire(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
 // than "structures under attack".
 fn wave_damage(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
                fields: const vector<ClassField>, desire: const FlowField) {
-    wd_bite = per_tick(ENEMY_DAMAGE_TO_WALL_PER_SECOND);
     for wd_e in state.enemies {
         if wd_e.alive {
+            // ⚠ **The bite is per ENEMY since plan 23 K0**, where it
+            // used to be hoisted out of the loop.  A miner and a scout
+            // in one wave chew the same wall at different rates, so a
+            // single rate for the roster is no longer expressible —
+            // and hoisting it back would silently give the whole wave
+            // whichever class happened to be first.
+            wd_bite  = per_tick(enemy_damage_to_wall(wd_e.kind));
             wd_climb = climb_limit(wd_e.kind);
             for wd_cf in fields {
                 if wd_cf.climb == wd_climb {

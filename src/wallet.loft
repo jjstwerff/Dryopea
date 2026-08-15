@@ -182,8 +182,21 @@ pub const LOOT_POINTS_PER_METRE: float = 20.0;
 // existing one-source-per-hex simplification showing through rather
 // than a rule this file adds; the eventual fix is plan 06 S1's
 // stacked layer, which can hold several things at once.
+// ⚠ **Cargo pays TRIPLE, and it is the harvester's whole role**
+// (plan 23 K0).  `DESIGN.md` § Small robots leaves the hauler the one
+// role with no mechanical distinction and floats *what it CARRIES*;
+// the owner committed it on 2026-08-15.  Three times is a figure
+// chosen against the game's own test (§ What kind of game this is):
+// a harvester's body has to be worth a trip into a kill zone that a
+// robot's is not, and at 2x a player who was going to clear that hex
+// anyway barely notices.  At 3x — 90 points a body against 30 — one
+// harvester pays most of a helper order, so letting one through and
+// collecting it later is a real alternative to killing it at the wall.
+pub const LOOT_CARGO_MULTIPLIER: float = 3.0;
+
 pub fn loot_rate(source: integer) -> float {
     if source == RUBBLE_MASONRY { return 0.0; }
+    if source == RUBBLE_CARGO   { return LOOT_POINTS_PER_METRE * LOOT_CARGO_MULTIPLIER; }
     LOOT_POINTS_PER_METRE
 }
 
