@@ -22,7 +22,7 @@ and it is the part that most needs arguing with.
 
 ---
 
-## R0 — what was measured before anything was designed
+## R0 — what was measured before anything was designed  `@M002`
 
 Two probes, run before a line of this was written, because the whole of dryopea's
 engineering culture is headless measurement and a 3-D renderer is the obvious way
@@ -66,7 +66,7 @@ weakness is in a place this design never stands.
 
 ---
 
-## R1 — the camera is moros's, and it already contains dryopea's editor view
+## R1 — the camera is moros's, and it already contains dryopea's editor view  `@X009` `@X015`
 
 **The decision: adopt `moros_render`'s `RenderCamera` — an orbit camera around a
 target, in spherical coordinates.**
@@ -145,7 +145,7 @@ camera's own trace.
 
 ---
 
-## R2 — the pipeline: geometry is shared, rasterisation is not
+## R2 — the pipeline: geometry is shared, rasterisation is not  `@X010`
 
 **The decision: one geometry layer, and the rasteriser below it is swappable.**
 
@@ -182,7 +182,7 @@ migration rather than a rewrite.
 
 ---
 
-## R3 — the terrain has to become 3-D, and that is the biggest single item
+## R3 — the terrain has to become 3-D, and that is the biggest single item  `@X011`
 
 ⚠ **A follow camera at ground level over a flat top-down hex painting is
 incoherent.**  This is the part of the pivot that is easy to under-scope: entity
@@ -209,7 +209,7 @@ piling debris on a wall LOWERS it, visibly.
 
 ---
 
-## R4 — the gate chain, and it is the same instrument
+## R4 — the gate chain, and it is the same instrument  `@X012` `@X013`
 
 ```
 xvfb → GL context → render one frame → gl_screenshot → imaging::png
@@ -242,7 +242,7 @@ rather than the colour buffer.  § Open 3.
 
 ---
 
-## R5 — the cost, and what actually threatens it
+## R5 — the cost, and what actually threatens it  `@M001`
 
 The tick budget (`CLAUDE.md` § Cost) is about the SIMULATION and is unchanged by
 any of this — but the frame now has real work in it, where before it had a

@@ -73,7 +73,7 @@ turns-there hinge looks perfectly reasonable in both files.
 
 ---
 
-## D1 — dryopea gets its own part model, and does not take `hex_part`
+## D1 — dryopea gets its own part model, and does not take `hex_part`  `@X001`
 
 **The decision: a dryopea-native `src/part.loft` carrying moros's vocabulary,
 units and invariants — not a dependency on `hex_part`.**
@@ -108,7 +108,7 @@ other reason.
 
 ---
 
-## D2 — a limb's body is PRIMITIVES, not hex cells
+## D2 — a limb's body is PRIMITIVES, not hex cells  `@X002`
 
 **The decision: a limb's body is a list of BOXES and DISCS in the limb's own
 frame, in metres.**  This is the first deviation, and it is the sharpest.
@@ -151,7 +151,7 @@ Add one when a measurement says the box is the thing that looks wrong.
 
 ---
 
-## D3 — the tower already HAS a socket, and that is this design's proof
+## D3 — the tower already HAS a socket, and that is this design's proof  `@X003`
 
 This is the finding that turns the part model from *a nice way to draw things*
 into *the shape the game already has*.
@@ -184,7 +184,7 @@ project owner specified.  It is a `HING` and nothing else.
 
 ---
 
-## D4 — a part emits GEOMETRY; there is no sprite and no baked scale
+## D4 — a part emits GEOMETRY; there is no sprite and no baked scale  `@X004`
 
 ⚠⚠ **THIS SECTION REPLACES TWO EARLIER ONES, AND THE CORRECTION IS THE PROJECT
 OWNER'S.**  The first draft of this file specified a fixed three-quarter
@@ -232,7 +232,7 @@ The camera, the renderer and the gate that measures them are
 
 ---
 
-## D5 — a PNG is an ARTEFACT, and the gate reads one back
+## D5 — a PNG is an ARTEFACT, and the gate reads one back  `@X005`
 
 **The decision: PNGs are captured FRAMES, not inputs.**  Nothing in the runtime
 loads one.
@@ -261,7 +261,7 @@ output only ever resembled the game.
 
 ---
 
-## D6 — the durable artefact is the SIZE, and it is GATED
+## D6 — the durable artefact is the SIZE, and it is GATED  `@X006`
 
 moros § P9.7: *"a red blob at the right size beats a good mesh at the wrong
 one"* — sizes are not regenerable, art is.  dryopea can do better than record
@@ -284,7 +284,7 @@ where a robot may stand, and `passable.loft` is the one door for that.
 
 ---
 
-## D7 — the hover unit, specified
+## D7 — the hover unit, specified  `@X007`
 
 *"a big quad copter with fixed base with bigger behind the cockpit rotors …
 the cockpit can be opened upwards with a back hinge"*
@@ -353,7 +353,7 @@ rule getting something for free.
 
 ---
 
-## D8 — the crew is the same part, and the enemies are one part with DATA
+## D8 — the crew is the same part, and the enemies are one part with DATA  `@X008`
 
 **The crew.**  `DESIGN.md` § 9 opens with *"same chassis as the player"*, and
 the code already means it: `drive_along` is *"the shared chassis"* and
