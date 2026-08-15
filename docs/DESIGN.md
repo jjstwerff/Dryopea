@@ -1840,6 +1840,43 @@ the whole difference is **numbers per role** — damage to a wall,
 and speed.  Four enemy types, no new behaviour, no new code
 path.
 
+##### ⚠⚠ And a MIX is worth its fastest member, which the roles need fixing
+
+*"The same wave arriving at the same perimeter is a very
+different problem depending on what is in it"* is true, and plan
+23 K3 measured how much: three waves of twelve fall at **94 /
+126 / never** (`@M018`).  But it also measured the shape, and the
+shape is a problem for this design rather than for the engine:
+
+**every mixed wave behaves like a PURE wave of its fastest
+class.**  Four harvesters in front of eight miners takes the
+base at 164 ticks where twelve harvesters take it at 161 and
+twelve miners at 94 — so the eight miners, two thirds of the
+wave and the hardest-biting class in the game, contribute
+nothing at all.
+
+The cause is positional and every rule in it is one this
+document already asked for: only **three** hexes of a wall are
+ever attacked (the approach fan's width — a longer wall does not
+widen it, § Combat dynamics), a robot blocked by a companion
+attacks nothing, and the fast class arrives first.  So four
+robots hold the whole front.
+
+⚠ **What this costs the design is the interesting half.**  The
+matching problem two paragraphs up — role composition against
+tower composition — needs a mix to be a mix when it arrives.
+Today a convoy of miners screened by scouts is a *scout wave*,
+so [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md)'s traffic cannot
+express itself at the wall however carefully it is authored.
+
+⚠ **The fix is one already-designed rule**: the equal-distance
+sidestep, so a besieger spreads ALONG a face instead of queueing
+behind the hex its route landed on
+([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § The siege front is
+three hexes wide).  ⚠ It is **not** another class property —
+which is the rule holding: the roles stay four rows of numbers,
+and what needs building is the steering they are read through.
+
 #### ⚠ Speed must NOT be tied to the tick
 
 Owner, 2026-08-13, and it is a direct instruction rather than a

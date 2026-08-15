@@ -1,0 +1,158 @@
+# a-wave-screened-by-four — plan 23 K3, the TWIN.
+#
+# The same twelve robots into the same sealed band, with four of them
+# swapped for the weakest class in the game — and the wall does not
+# open at all.
+#
+# ── Read it beside its twin ─────────────────────────────────────
+#
+# `a-wave-of-twelve-miners.keys` is this file with
+#
+#     compose 0 4 scout 8 miner      ->      compose 0 12 miner
+#
+# and nothing else.  That file's base is gone in **94 ticks**.  This
+# one still has 100 HP on every hex the siege can reach after fifty,
+# and `23_k3` measures it standing at 321 — the longest base anybody
+# can play (`@M005`).
+#
+# ⚠⚠ **Two thirds of this wave is miners**, at 3.0 HP/s each, the
+# hardest-biting class in the game.  Not one of them lays a finger on
+# the wall.
+#
+# ── Why: three shipped rules, and none of them is wrong ─────────
+#
+#   1. **The siege front is the approach FAN's width, not the wall's**
+#      (plan 12 B3).  Exactly three hexes of this five-row wall are
+#      ever attacked — (6,-2), (6, 0) and (6, 1) — and a seven-row
+#      wall does not add a fourth.
+#   2. **An enemy blocked by a COMPANION attacks nothing** (plan 11
+#      F7b).  It steps beside if it can and stands if it cannot; what
+#      it never does is chew over its neighbour's shoulder.
+#   3. **Speed decides who gets there first** (plan 23 K2b).  A scout
+#      walks 2.5 hex/s against a miner's 1.0, so the scouts arrive
+#      first whatever order the roster put them in.
+#
+# So the four fastest robots in the wave fill all three attack hexes,
+# and the eight behind them stand in a field for the rest of the run.
+#
+# ⚠ **The missing rule is already named** — the equal-distance
+# sidestep that would let a besieger spread ALONG a wall face instead
+# of queueing behind the hex its route landed on.  `ENEMY_MOVEMENT.md`
+# and `CLAUDE.md` have both carried it as latent since plan 11 F7.
+# This pair is what it costs.
+#
+# ── The world (identical to its twin) ───────────────────────────
+#
+#   five rows of grass, twenty-four columns:  (-3, -2) .. (20, 2)
+#   sealed at q = 6 with a wall across all five rows
+#   core at (0, 0), spawn at (14, 0) facing west
+
+echo four scouts in front: the miners never reach the wall
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The spawn, fourteen hexes east — clear of close_spawn_disable_radius
+# (10) and well inside the scrambler bubble (25).
+# ⚠ TWICE more: the place-kind cycle is spawn -> target -> tower ->
+# spawn since plan 12 B5a gave towers a marker kind of their own.
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 14 0
+marker 14 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 20 -2
+drag -3 -1 20 -1
+drag -3 0 20 0
+drag -3 1 20 1
+drag -3 2 20 2
+count painted 120 120
+
+palette 9
+click 6 -2
+click 6 -1
+click 6 0
+click 6 1
+click 6 2
+kind 6 0 wall
+count painted 120 120
+
+# ── The wave, composed — and this is the only line that differs ──
+#
+# ⚠ The order written is the order spawned (plan 23 K1), so the four
+# scouts leave first here.  It makes no difference: § The roster order
+# is worth nothing in `23_k3` measures the same twelve with the scouts
+# LAST and with them alternated through the miners, and all three land
+# on the same tick.  Speed is the order now.
+schedule 12
+compose 0 4 scout 8 miner
+pending 0 0.0 15.0 on
+waves 0 0
+count alive 0 0
+
+tick 1
+waves 1 1
+count alive 12 12
+enemy 0 14 0
+
+# ── Nine ticks: standing, and the wall is untouched ─────────────
+tick 9
+hp 6 0 100.0 100.0
+hp 6 -2 30.0 30.0
+count targets 0 0
+
+# ── Thirty ticks: its twin's wall is two thirds gone ────────────
+#
+# At this exact tick `a-wave-of-twelve-miners.keys` reads 10 HP on
+# (6,-2) and 78 on (6, 0).  Here the end has lost **one point** and the
+# middle has lost one — because the three robots on the face are
+# scouts, at 0.1 HP/s against a miner's 3.0.
+tick 20
+count targets 3 3
+hp 6 -2 28.5 29.5
+hp 6 0 98.5 99.5
+hp 6 -1 100.0 100.0
+
+# ── Forty ticks: the formation, and it never changes again ──────
+#
+# ⚠ **The whole finding is these six lines.**  The four scouts hold
+# (7,-2), (7, 0), (7, 2) and (7,-1) — every hex from which the wall can
+# be reached — and the miners are stacked behind them at q = 8 and
+# q = 9 with nothing to attack.  Enemies 0-3 are the scouts, 4-11 the
+# miners, in the order `compose` wrote them.
+tick 10
+enemy 0 7 -2
+enemy 1 7 0
+enemy 2 7 2
+enemy 3 7 -1
+enemy 5 8 0
+enemy 11 9 -2
+count targets 3 3
+
+snap k3-four-scouts-screen-eight-miners
+
+# ── Fifty ticks, and nothing has moved ──────────────────────────
+#
+# ⚠ The wall is still a wall, the roster is still twelve, and the
+# wallet is still full — its twin's base fell forty-four ticks ago.
+# The siege is not slow here, it is HAPPENING: three hexes are under
+# attack every tick.  They are just under attack by scouts.
+tick 10
+kind 6 -2 wall
+kind 6 0 wall
+count alive 12 12
+count targets 3 3
+enemy 0 7 -2
+enemy 5 8 0
+wallet 200.0 200.0

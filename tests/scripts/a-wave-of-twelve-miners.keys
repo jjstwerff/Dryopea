@@ -1,0 +1,149 @@
+# a-wave-of-twelve-miners — plan 23 K3, the CONTROL.
+#
+# Twelve miners into a sealed band, and the base is gone in ninety-four
+# ticks.  It is the number its twin is measured against, and the twin
+# differs from this file by ONE line.
+#
+# ── Read it beside its twin ─────────────────────────────────────
+#
+# `a-wave-screened-by-four.keys` is this file with
+#
+#     compose 0 12 miner      ->      compose 0 4 scout 8 miner
+#
+# and nothing else.  Same band, same wall, same spawn, same twelve
+# robots, same tick loop.  Two thirds of that wave is still miners —
+# and it never opens the wall at all.
+#
+# ⚠⚠ **That is the phase.**  A wave is as dangerous as its FASTEST
+# class and no more: the four quickest robots in it fill the three
+# hexes the approach fan reaches, and everything behind them is stood
+# in a field.  `tests/23_k3_what_composition_is_worth.loft` measures the
+# whole ladder; this pair is what it looks like being played.
+#
+# ── Why the list is AUTHORED as running ─────────────────────────
+#
+# `pending 0 0.0 15.0 on` (plan 18 S1b) starts the schedule where
+# `a-base-that-plays-its-list.keys` drives a vehicle out to poke a
+# spawn marker.  Both are real; this one keeps the run about the wave.
+# A vehicle in the band is a second variable — it blocks, it salvages
+# and it can be killed — and the twin has to differ in the composition
+# and in nothing else.
+#
+# ── The world (identical to its twin) ───────────────────────────
+#
+#   five rows of grass, twenty-four columns:  (-3, -2) .. (20, 2)
+#   sealed at q = 6 with a wall across all five rows
+#   core at (0, 0), spawn at (14, 0) facing west
+#
+# ⚠ **Five rows, and the wall's ENDS are inside the fan here.**  The
+# approach fan from (14, 0) lands on (6,-2), (6, 0) and (6, 1) — and
+# (6,-2) is an END hex, worth 30 HP against a braced hex's 100 (plan 12
+# B3).  That is why this band breaks at 35 ticks where a seven-row one
+# needs 69: the fan is the same three hexes wide either way, and on a
+# five-row wall one of the three is cheap.
+
+echo twelve miners: a sealed band, and ninety-four ticks
+
+do toggle_mode
+
+# The core is where the target is.
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The spawn, fourteen hexes east — clear of close_spawn_disable_radius
+# (10) and well inside the scrambler bubble (25).
+# ⚠ TWICE more: the place-kind cycle is spawn -> target -> tower ->
+# spawn since plan 12 B5a gave towers a marker kind of their own.
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 14 0
+marker 14 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 20 -2
+drag -3 -1 20 -1
+drag -3 0 20 0
+drag -3 1 20 1
+drag -3 2 20 2
+count painted 120 120
+
+palette 9
+click 6 -2
+click 6 -1
+click 6 0
+click 6 1
+click 6 2
+kind 6 0 wall
+count painted 120 120
+
+# ── The wave, composed ──────────────────────────────────────────
+#
+# `schedule` arms a one-wave list and `compose` says what that wave is
+# made of (plan 23 K1, `@X056`).  ⚠ The size is SUMMED from the parts
+# and never stored, so `schedule 12` followed by `compose 0 12 miner`
+# is a wave of twelve because the parts say twelve — not because the
+# two lines agree.
+schedule 12
+compose 0 12 miner
+pending 0 0.0 15.0 on
+waves 0 0
+count alive 0 0
+
+# ── The wave goes out on the next tick ──────────────────────────
+#
+# A wave spawns STACKED on its marker hex and leaves one enemy per
+# tick, so `range` is a span rather than a point.
+tick 1
+waves 1 1
+count alive 12 12
+enemy 0 14 0
+
+# ── Nine ticks: standing, and the wall is untouched ─────────────
+#
+# The pre-walk window is 8 ticks (plan 16 W2) and a standing enemy
+# chews nothing whatever its class.  The braced middle is 100 HP and
+# both ends are 30 (plan 12 B3).
+tick 9
+hp 6 0 100.0 100.0
+hp 6 -2 30.0 30.0
+count targets 0 0
+
+# ── Thirty ticks: the siege is on, and it is on THREE hexes ─────
+#
+# ⚠⚠ **Three, on a wall that is five wide** — the front is the approach
+# fan's width, not the wall's, and widening the band to seven rows does
+# not add a fourth (measured in `23_k3`).  So a wave's usable width is
+# three, and this is the whole reason its twin exists: four robots is
+# enough to own the lot.
+tick 20
+count targets 3 3
+target 0 6 0
+hp 6 -2 9.5 10.5
+hp 6 0 77.0 79.0
+hp 6 -1 100.0 100.0
+
+# ── And through ────────────────────────────────────────────────
+#
+# The cheap end goes first, at 3.0 HP/s a miner against 30 HP with
+# nothing to lean on, and the breach is the way in.
+tick 5
+kind 6 -2 grass
+count painted 120 120
+
+# ── The clock ───────────────────────────────────────────────────
+#
+# ⚠ Ninety-four ticks from the arming of the list to a drained wallet.
+# Its twin is still standing at 321 — the longest base anybody can play
+# (`@M005`) — with the wall unopened.
+fall 200
+ticks 90 100
+wallet 0.0 0.0
+
+snap k3-twelve-miners-are-through

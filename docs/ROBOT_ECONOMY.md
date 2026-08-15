@@ -573,6 +573,17 @@ Three layers, in the order a player meets them:
    repair point.  ⚠ **This is diegetic in the way § No wave HUD
    demands**: the player learns the map's economy by watching who turns
    up, with no UI at all.
+   ⚠⚠ **BLOCKED, and by one movement rule rather than by anything
+   here** (plan 23 K3, `@M018`).  A convoy is a MIX, and a mixed wave
+   currently behaves like a pure wave of its fastest member: only three
+   hexes of a wall are ever attacked, and the quickest four robots hold
+   all of them while the rest stand in a field.  So *"miners at the
+   wall"* is not what a convoy of miners screened by scouts produces —
+   what reaches the wall is scouts, and the readout says *scouts*.
+   ⚠ The fix is the equal-distance sidestep
+   ([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § The siege front is three
+   hexes wide), and it is a prerequisite for this whole intel layer
+   rather than a polish item on it.
 
 ## ⚠⚠ The whole graph inverts in the end game
 

@@ -1,0 +1,474 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 23 phase K3 — what composition is WORTH, measured.
+//
+// K0 gave the four classes a bite, K1 gave a wave a COMPOSITION and
+// K2b gave the classes a speed.  This is the phase that plays the
+// three against each other on one perimeter and says what the axis
+// came to.
+//
+// ── The headline, and it is not the one the plan predicted ──────
+//
+// ⚠⚠ **A wave is as dangerous as its FASTEST class, and no more.**
+// Twelve of a class into one sealed band, and then four of a faster
+// class put in front of eight miners — measured, and the pair is the
+// whole finding:
+//
+//   | wave of twelve      | falls at | pure wave of the front class |
+//   |---------------------|----------|------------------------------|
+//   | 12 miner            |    94    | —                            |
+//   | 4 builder + 8 miner |   104    | 12 builder = 100             |
+//   | 4 robot   + 8 miner |   119    | 12 robot   = 115             |
+//   | 4 harvester+8 miner |   164    | 12 harvester = 161           |
+//   | 4 scout   + 8 miner |  never   | 12 scout   = never           |
+//
+// Every mixed wave lands within **four ticks** of a PURE wave of its
+// fastest class, and none of them lands anywhere near the eight miners
+// that make up two thirds of it.  Four robots of the quickest class in
+// the wave take the entire siege front and the rest of the wave is a
+// spectator — so putting the game's most dangerous class behind the
+// game's least dangerous one makes the wave FIVE TIMES weaker than
+// sending the dangerous class alone.
+//
+// ── Why, and every rule in it is one we shipped on purpose ──────
+//
+// Three rules compose into it, and none of them is wrong:
+//
+//   1. **The siege front is the approach FAN's width, not the wall's**
+//      (plan 12 B3, `CLAUDE.md` § The siege chews where the ROUTE meets
+//      the wall).  Measured here: exactly **three** hexes of the wall
+//      are ever attacked — (6,-2), (6,0), (6,1) — and widening the band
+//      from five rows to seven does not add a fourth.
+//   2. **An enemy blocked by a COMPANION attacks nothing** (plan 11
+//      F7b).  It sidesteps if it can and stands if it cannot; what it
+//      never does is chew the wall over its neighbour's shoulder.
+//   3. **Speed decides who gets there first** (plan 23 K2b).  Before
+//      K2b every class walked at 1.5 hex/s and the ROSTER order was the
+//      arrival order — which is what K0 measured at 20x.  It is not any
+//      more: § The roster order is worth nothing measures three
+//      orderings of the same twelve landing on the same tick.
+//
+// So the front rank is filled by whoever is quickest, it holds all
+// three attack hexes, and everybody behind it is stood in a field.
+//
+// ── ⚠ What this phase does NOT claim ────────────────────────────
+//
+// It does not claim a defect.  Every rule above is deliberate, tested
+// and documented, and the composition axis K0/K1 built is real — the
+// clocks below span 94 to *never* on one perimeter with one wave size.
+// What it claims is that the axis currently runs through **one symbol
+// per wave** rather than through the mix, which is the same shape the
+// plan opened by refusing (*"every wave is the same wave"*).
+//
+// ⚠ **The missing rule is already named**: the equal-distance sidestep
+// that would let a besieger spread ALONG a wall face instead of
+// queueing behind the hex its route landed on.  `docs/ENEMY_MOVEMENT.md`
+// and `CLAUDE.md` have both carried it as latent since plan 11 F7 —
+// *"a second steering rule and nobody has built it"* — and this is the
+// measurement that prices it.  ⚠ That is F7b's own story repeating: a
+// steering rule three phases judged latent turned out to set the whole
+// balance.
+//
+// ── ⚠ Read the cap, not the silence ─────────────────────────────
+//
+// The screened waves are asserted against `LONGEST_BASE_TICKS` — the
+// 321 of `@M005`, the longest base the corpus can play — and never
+// against the loop's own limit, for the reason `23_k0`'s header gives:
+// *"the scenario cap was not reached"* is a statement about the cap.
+// *"It outlasts the longest base anybody can play"* is falsifiable.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+// `@M005`, plan 16 W4 — the longest base the corpus can play.  A wave
+// that has not opened a perimeter by here has no perimeter-opening
+// role in any game anybody can sit through.
+const LONGEST_BASE_TICKS: integer = 321;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A sealed band `2 * w + 1` rows deep, walled across `q = 6`, with the
+// spawn fourteen hexes out — clear of `close_spawn_disable_radius` and
+// well inside the scrambler bubble.
+//
+// ⚠ The width is a PARAMETER because § Only three hexes are ever
+// attacked needs two of them: a finding about the approach fan that is
+// measured on one band width is a finding about that band.
+fn band(w: integer) -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -w..=w {
+        for b_q in -3..=20 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    for b_r2 in -w..=w { paint(b_pw, 6, b_r2, as_u8(WALL)); }
+    b_pw
+}
+
+fn base() -> MarkerWorld {
+    bs_mw = marker_empty();
+    place_marker(bs_mw, 14, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    bs_mw
+}
+
+fn part(count: integer, kind: integer) -> WavePart {
+    WavePart { wave: 0, count: count, kind: kind }
+}
+
+// A one-wave list, armed and composed, running from the next tick.
+//
+// ⚠ The size is SUMMED from the parts (`@X055`), so `schedule` is
+// handed the total the parts already agree on rather than a second
+// fact that could disagree with them.
+fn armed(parts: vector<WavePart>) -> WaveState {
+    a_s = wave_state_empty();
+    a_n = 0;
+    for a_p in parts { a_n += a_p.count; }
+    a_s.schedule = wave_schedule_of([a_n], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_compose(a_s.schedule, 0, parts);
+    wave_schedule_begin(a_s.schedule);
+    a_s
+}
+
+// What a wave came to.  ⚠ `fell` is 0 when the base was still standing
+// at the cap and `breach` is 0 when the wall never opened — both are
+// zero-neutral, so a run that did nothing reads as a run that did
+// nothing rather than as a run that finished instantly.
+struct Clock {
+    fell:   integer,
+    breach: integer,
+}
+
+fn play(parts: vector<WavePart>, w: integer, limit: integer) -> Clock {
+    p_pw  = band(w);
+    p_mw  = base();
+    p_pal = pal();
+    p_s   = armed(parts);
+
+    p_fell   = 0;
+    p_breach = 0;
+    for p_t in 1..=limit {
+        if p_fell > 0 { continue; }
+        wave_tick(p_s, p_pal, p_pw, p_mw, core());
+        if p_breach == 0 {
+            for p_c in -w..=w {
+                if painted_kind_name(p_pal, p_pw, 6, p_c) != "wall" && p_breach == 0 {
+                    p_breach = p_t;
+                }
+            }
+        }
+        if wallet_broke(p_s.wallet) { p_fell = p_t; }
+    }
+    Clock { fell: p_fell, breach: p_breach }
+}
+
+// A wave of twelve: `n` of `front`, then `12 - n` miners.
+fn screened(n: integer, front: integer) -> vector<WavePart> {
+    s_p: vector<WavePart> = [];
+    if n > 0     { s_p += [part(n, front)]; }
+    if n < 12    { s_p += [part(12 - n, ENEMY_KIND_MINER)]; }
+    s_p
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 1. ⚠⚠ THE PHASE — three waves of twelve, three clocks
+// ─────────────────────────────────────────────────────────────────
+
+// The gate this plan wrote for itself: *three waves of equal SIZE and
+// different composition give three different clocks*.  They do, and
+// the spread is the width of the whole game — a base that falls in 94
+// ticks, one that falls in 126, and one that is still standing when
+// the longest base anybody can play has been over for a hundred.
+//
+// ⚠ **One variable.** Same band, same wall, same spawn, same twelve
+// robots, same tick loop; the only thing that moves is how many of the
+// twelve are scouts.  That is `plans/12` § Invariant gate's rule — two
+// runs that differ in the thing under test and in nothing else.
+fn test_three_compositions_three_clocks() {
+    ttc_pure = play(screened(0, ENEMY_KIND_SCOUT), 2, LONGEST_BASE_TICKS);
+    ttc_two  = play(screened(2, ENEMY_KIND_SCOUT), 2, LONGEST_BASE_TICKS);
+    ttc_four = play(screened(4, ENEMY_KIND_SCOUT), 2, LONGEST_BASE_TICKS);
+
+    assert(ttc_pure.fell >= 90 && ttc_pure.fell <= 100,
+           "twelve miners take the base at ~94: measured {ttc_pure.fell}");
+    assert(ttc_two.fell >= 120 && ttc_two.fell <= 135,
+           "two scouts in front of ten miners costs the wave a third of "
+           + "its clock: measured {ttc_two.fell}");
+    assert(ttc_four.fell == 0,
+           "and four scouts in front of eight miners never take it at all "
+           + "— still standing after {LONGEST_BASE_TICKS} ticks, the "
+           + "longest base anyone can play; measured a fall at {ttc_four.fell}");
+    assert(ttc_four.breach == 0,
+           "the wall is not even OPEN: measured a breach at {ttc_four.breach}");
+}
+
+// ⚠ **The cliff is not a ramp**, and its shape is what says the
+// mechanism is positional rather than arithmetic.  If the wave's bite
+// were the sum of its members, swapping a miner for a scout would cost
+// a twelfth of it each time.  Measured, the first scout is worth
+// NOTHING and the fourth is worth the base.
+fn test_the_screen_is_a_cliff_not_a_ramp() {
+    tsc_0 = play(screened(0, ENEMY_KIND_SCOUT), 2, 200);
+    tsc_1 = play(screened(1, ENEMY_KIND_SCOUT), 2, 200);
+    tsc_4 = play(screened(4, ENEMY_KIND_SCOUT), 2, 200);
+
+    assert(tsc_1.fell == tsc_0.fell,
+           "the FIRST scout costs the wave nothing whatever — {tsc_1.fell} "
+           + "against {tsc_0.fell} ticks");
+    assert(tsc_4.fell == 0,
+           "and by the fourth the base is not falling at all: {tsc_4.fell}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 2. ⚠⚠ A wave is as dangerous as its FASTEST class, and no more
+// ─────────────────────────────────────────────────────────────────
+
+// The finding stated so it can fail: for a class `X` faster than a
+// miner, **four X plus eight miners behaves like twelve X**, not like
+// something between twelve X and twelve miners.
+//
+// ⚠ The negative control is built into the comparison rather than
+// added beside it: the miner is the hardest-biting class in the game
+// at 3.0 HP/s against a harvester's 0.5, so *a wave two thirds miner
+// performing like a pure harvester wave* cannot be produced by any
+// rate arithmetic at all.  It needs the miners to be doing NOTHING.
+//
+// ⚠ Both directions are asserted.  `mixed ≈ pure` alone would pass if
+// every wave of twelve took the same time; `mixed` being far from
+// `12 miner` is what makes the first comparison mean something.
+fn assert_front_class_decides(front: integer, name: text, lo: integer, hi: integer) {
+    afc_mixed = play(screened(4, front), 2, 200);
+    afc_pure  = play(screened(12, front), 2, 200);
+    afc_miner = play(screened(0, ENEMY_KIND_SCOUT), 2, 200);
+
+    assert(afc_pure.fell >= lo && afc_pure.fell <= hi,
+           "twelve {name}s take the base at {lo}..{hi}: measured {afc_pure.fell}");
+    assert(afc_mixed.fell - afc_pure.fell >= 0
+           && afc_mixed.fell - afc_pure.fell <= 6,
+           "four {name}s and EIGHT MINERS behave like twelve {name}s — "
+           + "{afc_mixed.fell} against {afc_pure.fell} ticks");
+    assert(afc_mixed.fell > afc_miner.fell,
+           "and never like the miners that are two thirds of the wave: "
+           + "{afc_mixed.fell} against {afc_miner.fell}");
+}
+
+fn test_four_builders_make_a_wave_of_builders() {
+    assert_front_class_decides(ENEMY_KIND_BUILDER, "builder", 95, 106);
+}
+
+fn test_four_harvesters_make_a_wave_of_harvesters() {
+    assert_front_class_decides(ENEMY_KIND_HARVESTER, "harvester", 155, 168);
+}
+
+// ⚠ **And the direction of the effect is the surprising half.**  Every
+// mixed wave measured is a few ticks SLOWER than the pure wave of its
+// front class — adding eight miners to four harvesters does not merely
+// fail to help, it costs the wave four ticks, because the miners take
+// fan hexes early and are then displaced out of them.
+//
+// ⚠ Asserted as an ORDER rather than a difference: the sign is the
+// claim and four ticks is the reading.
+fn test_the_miners_behind_are_worse_than_nothing() {
+    tmb_mixed = play(screened(4, ENEMY_KIND_HARVESTER), 2, 200);
+    tmb_pure  = play(screened(12, ENEMY_KIND_HARVESTER), 2, 200);
+
+    assert(tmb_mixed.fell > tmb_pure.fell,
+           "eight miners behind four harvesters make the wave SLOWER, not "
+           + "faster: {tmb_mixed.fell} against {tmb_pure.fell} ticks");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3. ⚠ The ROSTER order is worth nothing — speed is the order
+// ─────────────────────────────────────────────────────────────────
+
+// K0 measured a mix's ORDER at 20x on a breach clock, and that reading
+// is still true of what it measured: enemies PLACED at different
+// distances from the wall, in a world where every class walked at
+// 1.5 hex/s.
+//
+// ⚠ **A roster slot is a different thing from a position, and since
+// K2b it decides nothing.**  A wave spawns stacked on one marker and
+// leaves one enemy per tick, so the roster sets the departure order —
+// and then the faster class overtakes, whatever order it left in.
+// Measured: four scouts first, four scouts LAST, and four scouts
+// alternated through the miners all land on the same tick.
+fn test_the_roster_order_is_worth_nothing() {
+    tro_front = play([part(4, ENEMY_KIND_SCOUT), part(8, ENEMY_KIND_MINER)], 2, 150);
+    tro_back  = play([part(8, ENEMY_KIND_MINER), part(4, ENEMY_KIND_SCOUT)], 2, 150);
+    tro_mixed = play([part(2, ENEMY_KIND_MINER), part(2, ENEMY_KIND_SCOUT),
+                      part(4, ENEMY_KIND_MINER), part(2, ENEMY_KIND_SCOUT),
+                      part(2, ENEMY_KIND_MINER)], 2, 150);
+
+    assert(tro_front.fell == 0 && tro_back.fell == 0 && tro_mixed.fell == 0,
+           "none of the three orderings takes the base: {tro_front.fell} / "
+           + "{tro_back.fell} / {tro_mixed.fell}");
+    assert(tro_front.breach == 0 && tro_back.breach == 0 && tro_mixed.breach == 0,
+           "and none of them opens the wall: {tro_front.breach} / "
+           + "{tro_back.breach} / {tro_mixed.breach}");
+}
+
+// The overtake itself, watched rather than inferred — the miners leave
+// FIRST and the scouts are in front by the time anybody reaches the
+// wall.  ⚠ This is the mechanism; the test above is its consequence,
+// and a phase that asserted only the consequence would not know why.
+fn test_the_faster_class_takes_the_front_rank() {
+    ttf_pw  = band(2);
+    ttf_mw  = base();
+    ttf_pal = pal();
+    ttf_s   = armed([part(8, ENEMY_KIND_MINER), part(4, ENEMY_KIND_SCOUT)]);
+    ttf_t = 0;
+    while ttf_t < 40 {
+        wave_tick(ttf_s, ttf_pal, ttf_pw, ttf_mw, core());
+        ttf_t += 1;
+    }
+
+    ttf_front  = 0;
+    ttf_scouts = 0;
+    for ttf_e in ttf_s.enemies {
+        if ttf_e.alive && ttf_e.q == 7 {
+            ttf_front += 1;
+            if ttf_e.kind == ENEMY_KIND_SCOUT as u8 { ttf_scouts += 1; }
+        }
+    }
+    assert(ttf_front > 0, "somebody reached the wall's face: {ttf_front}");
+    assert(ttf_scouts == 4,
+           "and all FOUR scouts are in it, having left last: {ttf_scouts} "
+           + "of {ttf_front} on the face");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 4. ⚠⚠ Why — only three hexes of a wall are ever attacked
+// ─────────────────────────────────────────────────────────────────
+
+// How many DISTINCT wall hexes the roster is besieging, and how many
+// of the besiegers are of `kind`.
+fn siege_shape(parts: vector<WavePart>, w: integer, t: integer) -> (integer, integer) {
+    ss_pw  = band(w);
+    ss_mw  = base();
+    ss_pal = pal();
+    ss_s   = armed(parts);
+    ss_i = 0;
+    while ss_i < t {
+        wave_tick(ss_s, ss_pal, ss_pw, ss_mw, core());
+        ss_i += 1;
+    }
+
+    ss_ts    = wave_targets(ss_s, ss_pal, ss_pw, core());
+    ss_seen: vector<Hex> = [];
+    ss_miner = 0;
+    ss_k     = 0;
+    for ss_e in ss_s.enemies {
+        ss_t = ss_ts[ss_k] ?? Hex { q: ss_e.q, r: ss_e.r };
+        if ss_e.alive && !(ss_t.q == ss_e.q && ss_t.r == ss_e.r) {
+            if ss_e.kind == ENEMY_KIND_MINER as u8 { ss_miner += 1; }
+            ss_new = true;
+            for ss_h in ss_seen {
+                if ss_h.q == ss_t.q && ss_h.r == ss_t.r { ss_new = false; }
+            }
+            if ss_new { ss_seen += [Hex { q: ss_t.q, r: ss_t.r }]; }
+        }
+        ss_k += 1;
+    }
+    (len(ss_seen), ss_miner)
+}
+
+// ⚠⚠ **The cause, and it is a property of the ROUTE rather than of the
+// wall.**  Twelve robots against a five-row wall besiege three hexes of
+// it; the same twelve against a SEVEN-row wall besiege the same three.
+// Widening the perimeter adds nothing to the front, because the front
+// is where the approach fan lands (plan 12 B3) — so a wave's usable
+// width is three, and the four fastest robots in it own the lot.
+//
+// ⚠ The seven-row run is the control that makes this a statement about
+// the fan.  Measured on five rows alone, "three" reads as an accident
+// of a band that is five wide.
+fn test_only_three_hexes_are_ever_attacked() {
+    tot_five  = siege_shape(screened(0, ENEMY_KIND_SCOUT), 2, 30);
+    tot_seven = siege_shape(screened(0, ENEMY_KIND_SCOUT), 3, 30);
+
+    assert(tot_five.0 == 3,
+           "three hexes of a five-row wall are besieged: {tot_five.0}");
+    assert(tot_seven.0 == 3,
+           "and three of a SEVEN-row wall — the fan does not widen with "
+           + "the perimeter: {tot_seven.0}");
+}
+
+// And the screen stated at its own level: with four scouts in the
+// wave, the number of MINERS laying a finger on the wall is zero.
+//
+// ⚠ This is the assertion the whole phase rests on, and it is written
+// against the target list rather than against a clock — a clock says
+// the wave is slow, this says which robots are idle.
+fn test_four_scouts_leave_no_miner_touching_the_wall() {
+    tfs_none = siege_shape(screened(0, ENEMY_KIND_SCOUT), 2, 30);
+    tfs_four = siege_shape(screened(4, ENEMY_KIND_SCOUT), 2, 30);
+
+    assert(tfs_none.1 > 0,
+           "with no scouts, miners are on the wall: {tfs_none.1}");
+    assert(tfs_four.1 == 0,
+           "with four, not one of the EIGHT miners is: {tfs_four.1}");
+    assert(tfs_four.0 == 3,
+           "the wall is besieged just as hard — three hexes — and every "
+           + "besieger is a scout: {tfs_four.0} hexes");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 5. The scenarios
+// ─────────────────────────────────────────────────────────────────
+//
+// `scripts/validate.sh` sweeps them, so the phase is visible as a
+// PLAYED run through the whole seam — the editor's world, `schedule` +
+// `compose`, `play_ticks` — and not only as a `wave_tick` loop.
+//
+// ⚠ The twin differs by ONE `compose` line, the way K0's pair differs
+// by one word.  Neither file is a measurement on its own.
+//
+// ⚠ The pinned check counts are what stop a scenario with its
+// assertions deleted from reporting a green run over nothing.
+
+const SHOTS: text = "shots";
+
+fn test_the_miner_wave_scenario_plays_green() {
+    tmw_s = editor_state_new(PALETTE);
+    editor_state_attach(tmw_s,
+                        "tests/actual/k3_miners.json",
+                        "tests/actual/k3_miners_markers.json");
+    tmw_r = script_run_file(tmw_s, "tests/scripts/a-wave-of-twelve-miners.keys",
+                            SHOTS);
+    assert(tmw_r.ok, "a-wave-of-twelve-miners: {script_describe(tmw_r)}");
+    assert(tmw_r.checks == 23,
+           "it made {tmw_r.checks} measurements, expected 23");
+}
+
+fn test_the_screened_wave_scenario_plays_green() {
+    tsw_s = editor_state_new(PALETTE);
+    editor_state_attach(tsw_s,
+                        "tests/actual/k3_screened.json",
+                        "tests/actual/k3_screened_markers.json");
+    tsw_r = script_run_file(tsw_s, "tests/scripts/a-wave-screened-by-four.keys",
+                            SHOTS);
+    assert(tsw_r.ok, "a-wave-screened-by-four: {script_describe(tsw_r)}");
+    assert(tsw_r.checks == 32,
+           "it made {tsw_r.checks} measurements, expected 32");
+}
+
+fn test_the_scenario_files_are_on_disk() {
+    assert(file("tests/scripts/a-wave-of-twelve-miners.keys").exists(),
+           "a-wave-of-twelve-miners.keys is on disk");
+    assert(file("tests/scripts/a-wave-screened-by-four.keys").exists(),
+           "a-wave-screened-by-four.keys is on disk");
+}

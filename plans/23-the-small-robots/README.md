@@ -9,8 +9,58 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**K0 + K1 + K2a + K2b shipped** (2026-08-15).  K3 is next, and it needs
-no new code.
+**K0 + K1 + K2a + K2b + K3 shipped** (2026-08-15) — the plan is
+**complete**.
+
+⚠⚠ **A WAVE IS AS DANGEROUS AS ITS FASTEST CLASS, AND NO MORE.**  K3
+put three waves of TWELVE into one sealed band and the clocks are 94 /
+126 / *never* — the gate this plan wrote for itself, passed with room.
+But the phase's real finding is the shape of that spread, and the plan
+did not predict it (`@M018`):
+
+| wave of twelve | falls at | pure wave of its FRONT class |
+|---|---|---|
+| 12 miner | **94** | — |
+| 4 builder + 8 miner | **104** | 12 builder = 100 |
+| 4 robot + 8 miner | **119** | 12 robot = 115 |
+| 4 harvester + 8 miner | **164** | 12 harvester = 161 |
+| 4 scout + 8 miner | **never** | 12 scout = never |
+
+Every mixed wave lands within **four ticks of a PURE wave of its
+fastest class**, and none of them lands anywhere near the eight miners
+that are two thirds of it.  ⚠ The direction is the surprising half:
+adding the game's hardest-biting class BEHIND a weaker one makes the
+wave *slower*, not faster.
+
+⚠ **Three shipped rules compose into it and none of them is wrong.**
+The siege front is the approach FAN's width rather than the wall's
+(plan 12 B3) — measured at exactly **three hexes**, and a seven-row
+wall does not add a fourth; an enemy blocked by a COMPANION attacks
+nothing (plan 11 F7b); and since K2b **speed decides who arrives
+first**.  So the four quickest robots in a wave hold every hex the wall
+can be reached from, and the rest of the wave stands in a field.
+
+⚠⚠ **K0's "order is worth 20x" is now a statement about POSITION, not
+about the roster.**  Four scouts first, four scouts LAST and four
+scouts alternated through the miners all land on the same tick —
+because they overtake.  A `compose` line still decides everything about
+a wave; it just no longer decides it through the order written.
+
+⚠ **The missing rule is already named, and this is what it costs.**
+The equal-distance sidestep — a besieger spreading ALONG a wall face
+instead of queueing behind the hex its route landed on — has been
+carried as latent by `ENEMY_MOVEMENT.md` and `CLAUDE.md` since plan 11
+F7.  ⚠ That is F7b's own story repeating exactly: *a steering rule
+three phases judged latent turned out to set the whole balance*
+(161/311/180 → 61/104/95 when it landed).  K3 does not build it —
+`@X064` — because a second steering rule is a plan, and a measurement
+phase that quietly changes the thing it measures has measured nothing.
+
+⚠ **The screen is a CLIFF, not a ramp**, and the shape is what says the
+mechanism is positional rather than arithmetic: the FIRST scout swapped
+into twelve miners costs the wave **nothing whatever** (94 → 94) and
+the fourth costs it the base.  A wave whose bite were the sum of its
+members would lose a twelfth each time.
 
 ⚠⚠ **The scout is FASTER and the miner is SLOWER, and the phase cost
 one lookup.**  `enemy_speed(kind)` answers 2.5 hex/s for a scout, 1.0
@@ -273,7 +323,7 @@ what it CARRIES, which would make it the richest salvage on the field"* — and
 | **K1** | ✅ a wave authored `8 miner` arrives as 8 enemies of kind miner, counted at the marker | *composition is conserved from the list to the roster* | ⚠ **the named control was DELETED** — *a mix whose parts do not sum to the wave's count* cannot be built, because the count is not stored (`@X055`).  What replaced it: composing 12 as `3 miner 2 scout` gives a wave of **five**; an unknown class, `vehicle`, a wave index off the end, an odd token count and an empty composition are each refused; and a composed list must survive **emit → replay → `state_diff` identical** |
 | **K2a** | ✅ **the whole corpus is unchanged** — 1128 tests, 30 scripts / 569 measurements, every arrival tick identical, with banking in the mover and every class still at 1.5 hex/s | *banked movement at 1× is the identity* | ⚠ **the named control was necessary and NOT sufficient**, and measuring it is the phase's finding.  Banking a hair under a whole hex and requiring no step is built (§ The guard can fire, both directions) — but at 1.5 hex/s the tick arithmetic is EXACT, so the epsilon is unreachable from any scenario and its removal leaves 1128 tests + 569 measurements green (`@M014`).  What makes the guard gateable is banking at a speed the constant does not take (`@M013`), which is why the speed is an argument |
 | **K2b** | ✅ nine hexes of one corridor in **6 / 9 / 14** ticks — scout / robot / miner, the ratio of 2.5 / 1.5 / 1.0 within ±1 tick (`@M016`) | *speed is a rate, not a tick count* | ⚠ **the named control was already paid for and is not what the phase risked.**  *A class at 0.0 hex/s must never advance and must not divide by zero* was K2a's `test_a_zero_timestep_moves_nothing`, because the bank has no division in it at all.  What K2b risked is a speed read ONCE for the roster — `wave_damage`'s hoisted bite, one axis over — and no single-class scenario can see it: the control is a scout and a miner in ONE roster whose gap must OPEN from three hexes to nine.  ⚠ The second is that harvester and builder did NOT move, which a lookup answering 2.5 for every small robot would pass everything else |
-| **K3** | three waves of equal SIZE and different composition give three different clocks | *composition is legible in the outcome* | — (a measurement phase) |
+| **K3** | ✅ three waves of TWELVE — pure miners, two scouts in front, four scouts in front — fall at **94 / 126 / never** (`@M018`) | *composition is legible in the outcome* | ⚠ **a measurement phase is not supposed to have one, and this one grew two.**  The clock spread alone would be produced by *any* per-wave lookup, so the phase asserts two things a single symbol cannot: **four X + eight miners lands within four ticks of twelve X** for X ∈ {builder, harvester} — which no rate arithmetic can give, since a miner bites 6x a harvester — and **not one of the eight miners is targeting the wall** at the tick the pure wave has taken two thirds of it.  ⚠ The second is asserted against the TARGET LIST rather than a clock: a clock says the wave is slow, this says which robots are idle |
 
 ## Phases
 
@@ -283,7 +333,7 @@ what it CARRIES, which would make it the richest salvage on the field"* — and
 | **K1** — a wave has COMPOSITION | M | `tests/23_k1_composition.loft` (21 tests) — the roster counted BY KIND matches the list, in the ORDER written; the default list still plays IDENTICALLY; and a composed list round-trips through `emit_keys` | ✅ **Shipped** |
 | **K2a** — speed is BANKED, and nothing moves | M | ⚠ **the corpus is the gate**: 1128 pre-K2a tests green + 569 measurements unchanged, with the coupling broken — plus `tests/23_k2a_banked_movement.loft` (10 tests) for the three things the corpus CANNOT see: the guard, the speeds that need it, and the timestep being free | ✅ **Shipped** |
 | **K2b** — the scout is FASTER | S | `tests/23_k2b_the_scout.loft` (11 tests) + `three-speeds-one-corridor.keys` — three classes, one corridor, one tick loop, 15 / 9 / 6 hexes after nine ticks.  ⚠ K1's `test_speed_is_still_the_same_for_every_class` broke as planned and is kept INVERTED; `12_b0`'s tick-is-a-hex test did NOT break, because it is written about the regular | ✅ **Shipped** |
-| **K3** — what composition is WORTH | S | three equal-size waves, three compositions, three measured clocks — the repo's standard closing measurement.  ⚠ `compose` is what authors them, so this is a `.keys` phase with no new code.  ⚠ Since K2b the clock contains BOTH axes: a composed wave differs in when it arrives as well as in what it does when it gets there | Ready |
+| **K3** — what composition is WORTH | S | `tests/23_k3_what_composition_is_worth.loft` (12 tests) + `a-wave-of-twelve-miners.keys` / `a-wave-screened-by-four.keys` — the same twelve robots one `compose` line apart, 94 ticks in one run and a full wallet at 50 in the other.  ⚠ No new code, exactly as scoped | ✅ **Shipped** |
 
 ⚠ **K2 is cut in two on purpose, and the seam is where the safety is**
 (`plans/README.md` § What makes a step SAFE).  K2a changes the *mechanism* with
@@ -302,6 +352,16 @@ two possible causes.
 - **Speed per CONDITION.**  *"A damaged robot moves slower"* is the design's
   second source of variety and the one that makes speed a running quantity.  K2a
   makes it possible (progress is banked per enemy); nothing here reads `taken`.
+- **The equal-distance SIDESTEP** — and K3 is what makes it urgent
+  (`@X064`).  A besieger that spread ALONG a wall face instead of
+  queueing behind the hex its route landed on would give a mixed wave
+  more than three attackers, which is the whole of `@M018`.  ⚠ It is
+  refused HERE and not deferred generally: a second steering rule is a
+  plan, and a measurement phase that changed the thing it was measuring
+  would have measured nothing.  `ENEMY_MOVEMENT.md` § A wall's HP is
+  structural and `CLAUDE.md` have both carried it since plan 11 F7;
+  K3's contribution is a price on it rather than another note that it
+  is missing.
 - **The boss.**  A 2×2 footprint is a different question from a class row.
 - **Insects.**  `ENEMY_KIND_INSECT` exists and stays as it is; this plan is the
   four SMALL ROBOTS, which are all `climb_limit` 2.0.

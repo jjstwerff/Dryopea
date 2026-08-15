@@ -79,7 +79,8 @@ exists today.
 | FOUR ROLES, ONE AI: scout / harvester / builder / miner — the same wave size at the same wall breaches at **23 / 35 / 50 / 96 / 454** ticks, and a harvester's body pays TRIPLE.  ⚠ `robot` keeps its rate, so **no existing measurement moved** | [23](plans/23-the-small-robots/README.md), K0 shipped |
 | A WAVE HAS COMPOSITION: `schedule 4 12` arms the list and `compose 1 4 miner 8 scout` fills a wave of it, in the order written.  ⚠ A wave's SIZE is **summed** from its parts and never stored, which DELETES the plan's own negative control (`@X055`).  ⚠ 569 measurements unchanged — a `vector<integer>` still means N waves of regulars | [23](plans/23-the-small-robots/README.md), K1 shipped |
 | SPEED IS NO LONGER THE TICK: an enemy BANKS `speed × tick_seconds` and steps when a whole hex is due, so the timestep is a CHOICE (`@X058`) — and nothing moved (1128 tests, 569 measurements).  ⚠⚠ **1.5 hex/s is a speed at which the rounding guard cannot fire**: zero the epsilon and the whole corpus stays green (`@M014`), while 1.0 / 1.2 / 1.8 / 2.0 / 2.5 hex/s each lose a hex without it (`@M013`) | [23](plans/23-the-small-robots/README.md), K2a shipped |
-| THE SCOUT IS FASTER: 2.5 hex/s against a miner's 1.0 and a robot's 1.5, so nine hexes of one corridor take **6 / 9 / 14** ticks (`@M016`) — one lookup, no new mover.  ⚠⚠ **The guard that could not fire now DOES**: 2.25 and 3.0 were refused *because* they hide it as 1.5 does, so zeroing the epsilon today turns the suite RED (`@M017`, `@X063`) | [23](plans/23-the-small-robots/README.md), K2b shipped — K3 next |
+| THE SCOUT IS FASTER: 2.5 hex/s against a miner's 1.0 and a robot's 1.5, so nine hexes of one corridor take **6 / 9 / 14** ticks (`@M016`) — one lookup, no new mover.  ⚠⚠ **The guard that could not fire now DOES**: 2.25 and 3.0 were refused *because* they hide it as 1.5 does, so zeroing the epsilon today turns the suite RED (`@M017`, `@X063`) | [23](plans/23-the-small-robots/README.md), K2b shipped |
+| ⚠⚠ **A WAVE IS AS DANGEROUS AS ITS FASTEST CLASS, AND NO MORE**: three waves of twelve fall at **94 / 126 / never**, so composition is legible — but every MIX lands within four ticks of a PURE wave of its front class, because only **three** hexes of a wall are ever attacked and the quickest four robots own all of them (`@M018`).  ⚠ The ROSTER order is worth nothing; speed is the order | [23](plans/23-the-small-robots/README.md), K3 shipped — plan **complete** |
 | **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
@@ -96,7 +97,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1149/1149 green under `scripts/test.sh`** (~150 s measured
+**Suite: 1161/1161 green under `scripts/test.sh`** (~150 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -104,11 +105,31 @@ plan 12 until H2 re-measured it; the figure grew with the scenario
 tests, not with any one phase — and plan 16 W4 alone is **13 s**, six
 whole-base simulations of 200-320 ticks each, which is what a
 measurement phase costs).
-**Gate: 31 scripts green under `scripts/validate.sh`** (~11 s, 597
+**Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 652
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
+
+⚠⚠ **If every PNG/GL test fails with *"native function not loaded"*,
+the toolchain is at fault and not the code** — and the fix is an
+environment variable, not a rebuild.  loft re-checks the `graphics`
+cdylib's loft-ffi fingerprint on every run; when a second loft build
+exists on the box (an in-tree `target/release/loft` beside the
+installed one) the two disagree, and loft's rebuild **stamps back the
+fingerprint it just rejected** — so it rebuilds for ever, and under
+`loft test`'s parallelism the workers clobber each other's artefact.
+Build it once by hand and pin it:
+
+```bash
+(cd ~/.loft/registry/graphics-<ver>/native && \
+   CARGO_TARGET_DIR=~/.loft/build-cache/graphics-<ver> cargo build --release)
+LOFT_NO_AUTO_REBUILD=1 scripts/test.sh      # and the same for validate.sh
+```
+
+⚠ Symptoms that look like something else: a `[timeout] hard-kill after
+300s` in an unrelated file's PARSE phase (a cdylib build in flight), and
+a `SIGABRT`/`SIGSEGV` at the end of an otherwise green run.
 
 ⚠ **Both gates run INTERPRETED**, and that is not a preference.  On the
 NATIVE backend `load_palette` answers 0 entries — a silent `text as
@@ -212,6 +233,30 @@ the braced middle, because the approaches converge on the hexes their
 routes cross.  So B3's bracing rule is exact and its consequence is
 latent; the missing half is F7's equal-distance sidestep, which is a
 second steering rule and still nobody has built it.
+
+⚠⚠ **THE SIEGE FRONT IS THREE HEXES WIDE, and that collapses a wave's
+COMPOSITION back to one symbol** (plan 23 K3, `@M018`).  Twelve robots
+walking from one spawn marker besiege exactly three hexes of a five-row
+wall — and exactly three of a SEVEN-row one, because the front is where
+the approach fan lands rather than how long the wall is.  Everybody
+else is blocked by a companion, and a companion-blocked enemy attacks
+nothing (F7b).  ⚠ Since K2b the fastest class fills that front, so
+**a wave is as dangerous as its fastest class and no more**: four
+harvesters in front of eight miners behaves like twelve harvesters
+(164 vs 161 ticks) and never like the miners that are two thirds of it,
+where twelve miners alone take the base at 94.  ⚠ It is a CLIFF — the
+first scout swapped into twelve miners costs the wave nothing at all,
+the fourth costs it the base — which is what says the mechanism is
+positional rather than arithmetic.
+⚠ **So a `compose` line's ORDER decides nothing** (K0's 20x was
+measured on POSITIONS, before classes had speeds): scouts first, scouts
+last and scouts alternated all land on the same tick, because they
+overtake.
+⚠ **And this is the third phase to bill F7's sidestep**, after 12 B3
+and 11 F7b.  It is refused inside plan 23 on purpose (`@X064`) — a
+measurement phase that changed the thing it measured would have
+measured nothing — and it is now [`ROADMAP.md`](plans/ROADMAP.md)
+§ The critical path item **1b**.
 
 ### Cost
 
@@ -909,7 +954,7 @@ signature.
 | Judge a PROGRESSION idea (upgrades, unlocks, XP) | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0 — ⚠ **the progression is the player's own skill with the controls**, which passes `DESIGN.md`'s genre test in its purest form: there are no stats to resolve into.  ⚠⚠ **The player's vehicle must not get faster** — the moment speed is a purchase, skill stops separating a good run from a bad one.  (§ 9's *"Scouting — faster movement"* is a HELPER skill and is unaffected) |
 | Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; § X2 shows the run already opens with a sortie and § X2b that the game waits until you poke a marker.  ⚠ **The cost of leaving is already MEASURED** (plan 17 T3: parked vs shuttling helpers = two waves of the authored list), so exploration needs no new cost mechanic.  ⚠ The first scenario is a `.keys` file, not a feature |
 | Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c — a find is a BUILD ACCELERANT, and what decays is **the opportunity to use it**, not the thing itself.  ⚠ Already measured twice by accident: the same retrieval is worth **one tick** when the job is gone (plan 16 W4) and **+76 points** when it is not (plan 17 T3) |
-| Author what a WAVE IS MADE OF | `schedule 4 12` arms the list, `compose 1 4 miner 8 scout` says what one wave of it is made of ([plan 23](plans/23-the-small-robots/README.md) K1, `@X056`).  ⚠ **`compose` REPLACES a wave and a later `schedule` line WIPES it**, so the order `emit.loft` writes is a requirement, not a style.  ⚠ A wave's SIZE is SUMMED from its parts and never stored (`@X055`), so `schedule 12` + `compose 0 3 miner 2 scout` is a wave of **five** — there is no total to disagree with.  ⚠ ORDER inside a wave is load-bearing: K0 measured the same mix at 20x depending on which group is in front.  ⚠ `examples/waves.json` is NOT the place — `WaveFile` deliberately has no composition (`@X057`) |
+| Author what a WAVE IS MADE OF | `schedule 4 12` arms the list, `compose 1 4 miner 8 scout` says what one wave of it is made of ([plan 23](plans/23-the-small-robots/README.md) K1, `@X056`).  ⚠ **`compose` REPLACES a wave and a later `schedule` line WIPES it**, so the order `emit.loft` writes is a requirement, not a style.  ⚠ A wave's SIZE is SUMMED from its parts and never stored (`@X055`), so `schedule 12` + `compose 0 3 miner 2 scout` is a wave of **five** — there is no total to disagree with.  ⚠⚠ **The ORDER you write is worth NOTHING** (plan 23 K3, `@M018`) — it sets the departure order, and since K2b the faster class overtakes, so four scouts first, four scouts LAST and four scouts alternated all land on the same tick.  K0's *"order is worth 20x"* was measured on enemies PLACED at different distances, before classes had speeds.  ⚠⚠ **What a mix IS worth is its FASTEST member and nothing else** — four harvesters in front of eight miners behaves like twelve harvesters, not like anything in between — so write compositions expecting the quickest class to decide the outcome.  ⚠ `examples/waves.json` is NOT the place — `WaveFile` deliberately has no composition (`@X057`) |
 | Judge a PROGRESSION idea (upgrades, unlocks, XP) | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0 — ⚠ **the progression is the player's own skill with the controls**, which passes `DESIGN.md`'s genre test in its purest form: there are no stats to resolve into.  ⚠⚠ **The player's vehicle must not get faster** — the moment speed is a purchase, skill stops separating a good run from a bad one.  (§ 9's *"Scouting — faster movement"* is a HELPER skill and is unaffected) |
 | Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; § X2 shows the run already opens with a sortie and § X2b that the game WAITS until you poke a marker.  ⚠ The cost of leaving is already MEASURED (plan 17 T3: parked vs shuttling helpers = two waves of the authored list).  ⚠ The first scenario is a `.keys` file, not a feature |
 | Ask what CLOCKS a run, or why the player must be efficient | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2d — the **permit**.  `DESIGN.md` § 2 hires the player on a *"permit-bound sortie"*, `SETTING.md` § History calls them *"limited-time sorties"*, and § The quarantine puts the teeth at the exit: *"orbital exit is the chokepoint … permit on file = pass; permit missing = destroyed"*.  ⚠ Expiry must cost the CARGO, never the run — § 14 has no fail screen, and a bad run is one with *"meagre carryover"*.  ⚠ It also turns `NUMBERS.md`'s ungateable *"15-25 minutes"* into a tunable — but today's longest base falls at **321 ticks (~3.5 min)**, so the window is derived from content, not chosen |
@@ -979,6 +1024,7 @@ signature.
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` / `play_set_mode` (plan 19 P3).  ⚠ **It gates the CLOCK and never the seam**: `EditorInput.in_playing` says what the KEYS mean this frame, `PlayState.playing` says whether wall time reaches the simulation.  Gate `play_step`'s seconds on either and P1/P2 go red — a scripted frame's time is the SCRIPT's business.  ⚠ The window spends it through `play_frame_seconds`, which is a function rather than an `if` in `main.loft` because an entry point is compiled by nothing |
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
 | Understand the DIFFICULTY CURVE's shape | [docs/DESIGN.md](docs/DESIGN.md) § It shoots TOWERS — the first real challenge.  Early = a RUSH (volume).  Then the combat boss, which is the first enemy that makes the player POORER rather than merely closer to losing — and the first that invalidates a LEARNED OPTIMUM (the tight funnel that denied a 2×2 repair platform is worthless against something that shoots from outside) |
+| Judge what a wave's COMPOSITION is worth | [plans/23](plans/23-the-small-robots/README.md) § K3 and [`docs/ENEMY_MOVEMENT.md`](docs/ENEMY_MOVEMENT.md) § The siege front is three hexes wide — three waves of twelve fall at **94 / 126 / never** (`@M018`).  ⚠⚠ **But a mix is worth its FASTEST class and no more**: only three hexes of a wall are ever attacked, whatever the wall's length, and the quickest four robots own all of them.  ⚠ So price a wave by what is in FRONT of it, never by its roster — and expect a slow, hard-hitting class behind a fast one to contribute nothing at all |
 | Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock (69 / 112 / 128 since plan 16 W2).  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; and a tower now ADDS 16 ticks where it used to cost 9 — because the pre-walk window moved its kills off the wall's foot, so the ramp that used to bury it no longer forms there |
 | Judge whether fetching a lost crew member is worth it | [plans/17](plans/17-tower-hot-swap/README.md) § T3 — **+76 POINTS** over the errand control, on a base with upkeep where nothing falls (~45 / ~41 / ~117 points left).  ⚠ The currency is the WALLET, not the clock: a base that can recover stops falling, so the clock saturates and *points left* is what "how well did you do" means.  ⚠ Earlier readings are history rather than alternatives: [plans/16](plans/16-the-wave-system/README.md) § W4 — **247 / 248 / 248** on a base where the crew member genuinely does come back (tick 187), so it is worth ONE tick.  ⚠ The reason is no longer "the base ends first" (that was [plans/15](plans/15-the-carry-model/README.md) C3's 93/87/87): the JOB is gone by the time they return — the gate is worth 53 ticks while the wave is outside and nothing while it is on the core.  ⚠ The middle run is the control that keeps the drive and the carry apart |
 | Judge whether a TRANSPLANT is worth doing | [plans/17](plans/17-tower-hot-swap/README.md) § T3 — **+3 ticks at best, −50 if the donor was firing.**  ⚠ A tower close enough to donate cheaply is close enough to be shooting, which is `DESIGN.md` § The opportunity-cost layer measured.  Its payoff needs swap pits and STRAIN — pulling a top BEFORE it is spent — and neither is built |

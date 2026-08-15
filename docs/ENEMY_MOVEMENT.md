@@ -28,6 +28,7 @@ document is about getting there.
 - [The tick resolves once](#the-tick-resolves-once)
 - [Sealing the perimeter is punished, not forbidden](#sealing-the-perimeter-is-punished-not-forbidden)
 - [A wall's HP is structural, not a constant](#a-walls-hp-is-structural-not-a-constant)
+- [The siege front is three hexes wide](#the-siege-front-is-three-hexes-wide)
 - [Retaliation — designed, not built](#retaliation--designed-not-built)
 - [What a broken wall leaves](#what-a-broken-wall-leaves)
 
@@ -452,6 +453,85 @@ with.
 ⚠ **Terrain does not brace.**  Support comes from a hex's structure
 neighbours, so a wall anchored against a cliff is still an end.
 Arguable as design; written down rather than assumed.
+
+## The siege front is three hexes wide
+
+⚠⚠ **Measured, plan 23 K3 (`@M018`).**  § A wall's HP is structural
+already says the front has a WIDTH and that a longer perimeter hides
+its ends.  K3 put a number on it and the number is small: **three**.
+Twelve robots walking from one spawn marker into a five-row sealed band
+besiege exactly three hexes of it — and the same twelve against a
+SEVEN-row wall besiege the same three.  Widening the perimeter does not
+widen the front, because the front is where the approach fan lands.
+
+⚠ **So a wave's usable size is three, and everything past that is
+queueing.**  The other nine robots are blocked by companions, and an
+enemy blocked by a COMPANION attacks nothing — it steps beside if it
+can and stands if it cannot (plan 11 F7b).  What it never does is chew
+over its neighbour's shoulder.
+
+### ⚠⚠ What that does to a wave's COMPOSITION
+
+Three shipped rules meet here, and the result is the one thing in this
+document that reads like a defect and is not:
+
+1. the front is three hexes wide (above);
+2. a companion-blocked enemy attacks nothing (F7b);
+3. since plan 23 K2b, **speed decides who gets there first**.
+
+So the front rank is filled by whichever class is quickest, and
+**a wave is as dangerous as its fastest class and no more**.  Twelve
+robots into one band, measured:
+
+| wave of twelve | falls at | pure wave of the FRONT class |
+|---|---|---|
+| 12 miner | **94** | — |
+| 4 builder + 8 miner | **104** | 12 builder = 100 |
+| 4 robot + 8 miner | **119** | 12 robot = 115 |
+| 4 harvester + 8 miner | **164** | 12 harvester = 161 |
+| 4 scout + 8 miner | **never** | 12 scout = never |
+
+⚠ Every mix lands within **four ticks of a PURE wave of its front
+class**, and never anywhere near the eight miners that are two thirds
+of it.  The miner is the hardest-biting class in the game — 3.0 HP/s
+against a harvester's 0.5 — so *a wave two thirds miner performing like
+a pure harvester wave* cannot be produced by rate arithmetic at all.
+It needs the miners to be doing **nothing**, and the target list says
+they are: with four scouts in the wave, the number of miners touching
+the wall is zero.
+
+⚠ **It is a cliff, not a ramp.**  The first scout swapped into twelve
+miners costs the wave nothing whatever (94 → 94); the fourth costs it
+the base.  A wave whose bite were the SUM of its members would lose a
+twelfth each time — the step shape is what says the mechanism is
+positional.
+
+⚠ **And adding the dangerous class makes the wave WORSE.**  Every mixed
+row above is a few ticks slower than the pure wave of its front class,
+because the miners take fan hexes early and are then displaced out of
+them.
+
+⚠⚠ **The ROSTER order decides nothing.**  Plan 23 K0 measured a mix's
+order at 20x on a breach clock, and that reading stands — it was about
+enemies PLACED at different distances, in a world where every class
+walked at 1.5 hex/s.  A `compose` line sets the DEPARTURE order, and
+since K2b the faster class simply overtakes: four scouts first, four
+scouts last and four scouts alternated through the miners all land on
+the same tick.
+
+### The fix, and why it is not built
+
+⚠ **The equal-distance sidestep** — a besieger spreading ALONG a wall
+face instead of queueing behind the hex its route landed on.  It is the
+same rule § A wall's HP is structural has wanted since plan 11 F7, and
+K3 is what prices it: it is not only *which* hex gets chewed, it is how
+much of a wave can chew at all.
+
+⚠ Refused inside plan 23 deliberately (`@X064`): a second steering rule
+is a plan, and a measurement phase that changed the thing it was
+measuring would have measured nothing.  ⚠ That is plan 11 F7b's own
+story — a steering rule three phases judged latent, which turned out to
+set the whole balance when it landed (161/311/180 → 61/104/95).
 
 ## Retaliation — designed, not built
 
