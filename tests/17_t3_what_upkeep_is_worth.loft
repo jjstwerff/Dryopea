@@ -1,0 +1,520 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 17 phase T3 — what upkeep is worth, measured.
+//
+// T0 asked whether the tower's magazine is what binds a base and found
+// that it is: without repair, building MORE towers buys nothing at all.
+// T1 built the rebuild and T2 the transplant.  This is the phase that
+// says what they came to.
+//
+// ── The three findings ──────────────────────────────────────────
+//
+// 1. **The authored seven-wave list is playable**, which plan 16 W4
+//    said it was not.  Seven towers and two shuttling helpers clear all
+//    205 robots and the base is still standing with points in hand.
+//
+// 2. **POSITION is the whole of it.**  The same two helpers PARKED on
+//    towers reach five of seven and the base falls; SHUTTLING to
+//    whichever tower is black, they clear the list.  Same crew, same
+//    rate, same base — the difference is being where the damage is.
+//
+// 3. **A retrieval finally pays**, and in the WALLET rather than the
+//    clock, because a base with upkeep stops falling.
+//
+// ── ⚠ Measure WAVES, not the fall tick ──────────────────────────
+//
+// T0 § 4: a base that kills faster MEETS waves faster, because the
+// schedule advances on a clear (plan 16 W1).  Seven towers at one
+// repair cadence fall at 278 having played six waves where the
+// unrepaired base falls at 317 having played four.  So the clock and
+// the progress move in opposite directions and only one of them is
+// progress.
+//
+// ── ⚠ The negative control lives in plan 16's test ──────────────
+//
+// `tests/16_w4_the_real_length.loft` is the reading with upkeep OFF —
+// its vehicles park two hexes from the nearest tower on purpose — and
+// it still asserts 321 / 247 / 248 / 248.  If this phase's numbers move
+// because the harness moved rather than because the mechanic did, that
+// file goes red first.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// What a run came to.  ⚠ `cleared` is the reading that matters and
+// `fell` is the one that misleads — see § Measure WAVES above.
+struct Outcome {
+    fell:    integer,
+    cleared: integer,
+    waves:   integer,
+    alive:   integer,
+    wallet:  float,
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 1. The seven-wave list, with a crew doing the upkeep
+// ─────────────────────────────────────────────────────────────────
+
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -3..=3 {
+        for b_q in -6..=20 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    for b_r2 in -3..=3 { paint(b_pw, 6, b_r2, as_u8(WALL)); }
+    b_pw
+}
+
+fn tower_hexes(n: integer) -> vector<Hex> {
+    th_all = [Hex { q: 4, r: 0 }, Hex { q: 4, r:  2 }, Hex { q: 4, r: -2 },
+              Hex { q: 2, r: 1 }, Hex { q: 2, r: -1 }, Hex { q: 2, r:  3 },
+              Hex { q: 2, r: -3 }];
+    th_out: vector<Hex> = [];
+    th_i = 0;
+    for th_h in th_all {
+        if th_i < n { th_out += [Hex { q: th_h.q, r: th_h.r }]; }
+        th_i += 1;
+    }
+    th_out
+}
+
+fn seven_base(n: integer) -> MarkerWorld {
+    sb_mw = marker_empty();
+    place_marker(sb_mw, 14, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    for sb_h in tower_hexes(n) {
+        place_marker(sb_mw, sb_h.q, sb_h.r, MARKER_KIND_TOWER as u8, 0 as u8);
+    }
+    sb_mw
+}
+
+// The nearest tower that is black and still has its top — where a
+// repairer should be.  Answers `from` when there is none, so a crew
+// with nothing to do stays put.
+fn nearest_black(state: const WaveState, hexes: const vector<Hex>,
+                 from: const Hex) -> Hex {
+    nb_best = Hex { q: from.q, r: from.r };
+    nb_have = false;
+    nb_d    = 0;
+    for nb_h in hexes {
+        if tower_repairable(state.towers, nb_h.q, nb_h.r) {
+            nb_dd = lat_distance(nb_h, from);
+            if !nb_have || nb_dd < nb_d {
+                nb_best = Hex { q: nb_h.q, r: nb_h.r };
+                nb_d    = nb_dd;
+                nb_have = true;
+            }
+        }
+    }
+    nb_best
+}
+
+const PARKED:  integer = 0;   // the crew stands on its towers and stays
+const SHUTTLE: integer = 1;   // the crew goes to whichever tower is black
+
+fn play_seven(towers: integer, crew: integer, policy: integer,
+              limit: integer) -> Outcome {
+    ps_pw    = band();
+    ps_mw    = seven_base(towers);
+    ps_hexes = tower_hexes(towers);
+    ps_pal   = pal();
+    ps_s     = wave_state_empty();
+    ps_s.schedule = wave_schedule_of(wave_list_default(), INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(ps_s.schedule);
+
+    ps_c = 0;
+    for ps_h in ps_hexes {
+        if ps_c < crew {
+            ps_s.crew += [helper_new(ps_h.q, ps_h.r)];
+            ps_c += 1;
+        }
+    }
+
+    ps_fell = 0;
+    ps_done = 0;
+    for ps_n in 1..=limit {
+        if ps_fell > 0 || ps_done > 0 { continue; }
+
+        if policy == SHUTTLE {
+            for ps_hp in ps_s.crew {
+                if ps_hp.alive {
+                    ps_go = nearest_black(ps_s, ps_hexes,
+                                          Hex { q: ps_hp.q, r: ps_hp.r });
+                    helper_drive(ps_hp, ps_go.q, ps_go.r);
+                }
+            }
+        }
+
+        wave_tick(ps_s, ps_pal, ps_pw, ps_mw, core());
+
+        if wallet_broke(ps_s.wallet) { ps_fell = ps_n; }
+        if wave_schedule_done(ps_s.schedule) && alive_count(ps_s) == 0 {
+            ps_done = ps_n;
+        }
+    }
+
+    Outcome { fell: ps_fell, cleared: ps_done,
+              waves: wave_schedule_sent(ps_s.schedule),
+              alive: alive_count(ps_s), wallet: wallet_left(ps_s.wallet) }
+}
+
+// ⚠⚠ **THE PHASE: the authored list is playable, and it takes the crew
+// the design starts you with.**  `numbers.json` § helper.roster_start is
+// 2, and two shuttling helpers clear all 205 robots.
+//
+// Plan 16 W4 measured this same band playing FOUR of seven and falling
+// at 321 with every tower black.  The only thing that changed is that
+// somebody can put a tower back.
+// ⚠⚠ **And POSITION is the difference, which is the same run said
+// twice.**  The same two helpers, the same base, the same 20 s rate —
+// parked on their towers they reach five of seven and the base falls;
+// sent to whichever tower is black they clear the list.
+//
+// ⚠ That is what makes upkeep a `DESIGN.md` § What kind of game this is
+// mechanic rather than a resource: repair is presence-locked, so it is
+// a POSITIONING problem, and a player who parks the crew and looks away
+// gets most of the labour and none of the value.
+//
+// ⚠ One test for both halves, because the shuttling run is the most
+// expensive simulation in the suite — 537 ticks over seven towers and
+// an eighty-robot wave — and the headline and the contrast are two
+// readings of it rather than two experiments.
+fn test_the_authored_list_is_playable_with_two_helpers() {
+    tal = play_seven(7, 2, SHUTTLE, 700);
+
+    assert(tal.waves == 7, "all seven waves went out: {tal.waves}");
+    assert(tal.cleared > 0,
+           "and the last of them was CLEARED, at tick {tal.cleared}");
+    assert(tal.fell == 0, "the base never fell: {tal.fell}");
+    assert(tal.alive == 0, "nothing is left standing: {tal.alive}");
+    assert(tal.wallet > 0.0, "with points in hand: {tal.wallet}");
+
+    // The same crew, parked.
+    tal_parked = play_seven(7, 2, PARKED, 700);
+    assert(tal_parked.fell > 0,
+           "parked, the base falls at {tal_parked.fell}");
+    assert(tal_parked.waves < 7,
+           "having played {tal_parked.waves} of seven — same crew, same "
+           + "rate, and the difference is where they stood");
+}
+
+// ⚠ **And the crew is not optional.**  The same seven towers with
+// nobody to work on them is plan 16 W4's reading, unchanged: four waves
+// and a fall.  So the towers did not get better — somebody started
+// maintaining them.
+fn test_seven_towers_alone_still_play_four_waves() {
+    tst = play_seven(7, 0, PARKED, 700);
+
+    assert(tst.waves == 4, "four of seven: {tst.waves}");
+    assert(tst.fell > 0, "and the base falls: {tst.fell}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 2. ⚠⚠ What a retrieval is worth, on a base that can recover
+// ─────────────────────────────────────────────────────────────────
+//
+// Plan 16 W4's gated band, with the player waiting at the CORE — which
+// is one hex from the tower at (1, 0), so it repairs it.  W4 ran the
+// same three scenarios with the player parked out of repair reach and
+// measured 247 / 248 / 248 ticks; that file still does, and is this
+// phase's negative control.
+
+const GATE_Q: integer = 6;
+
+fn gate_ground() -> PaintedWorld {
+    gg_pw = painted_empty();
+    for gg_r in -2..=2 {
+        for gg_q in -3..=20 { paint(gg_pw, gg_q, gg_r, as_u8(GRASS)); }
+    }
+    paint(gg_pw, 6, -2, as_u8(WALL));
+    paint(gg_pw, 6, -1, as_u8(WALL));
+    paint(gg_pw, 6,  1, as_u8(WALL));
+    paint(gg_pw, 6,  2, as_u8(WALL));
+    gg_pw
+}
+
+fn gate_base() -> MarkerWorld {
+    gb_mw = marker_empty();
+    place_marker(gb_mw, 18, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    place_marker(gb_mw, 1,  0, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(gb_mw, 1,  2, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(gb_mw, 1, -2, MARKER_KIND_TOWER as u8, 0 as u8);
+    gb_mw
+}
+
+const STAY:   integer = 0;   // wait at the core — which is upkeep
+const ERRAND: integer = 1;   // drive out to the wreck and back, no carry
+const FETCH:  integer = 2;   // carry it home, and send them back out
+
+fn gate_run(mode: integer, limit: integer) -> Outcome {
+    gr_pw  = gate_ground();
+    gr_mw  = gate_base();
+    gr_pal = pal();
+    gr_s   = wave_state_empty();
+    gr_s.schedule = wave_schedule_of([12, 12, 12, 12], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(gr_s.schedule);
+    gr_s.crew += [helper_new(GATE_Q, 0)];
+    vehicle_place(gr_s.player, 0, 0);
+
+    gr_fell  = 0;
+    gr_lost  = 0;
+    gr_stage = 0;
+    for gr_i in 1..=limit {
+        if gr_fell > 0 { continue; }
+
+        if gr_lost > 0 && mode > STAY {
+            if gr_stage == 0 {
+                vehicle_drive(gr_s.player, GATE_Q, 0);
+                gr_stage = 1;
+            } else if gr_stage == 1 && gr_s.player.q == GATE_Q
+                      && gr_s.player.r == 0 {
+                if mode == FETCH { wave_take(gr_s, BLOCKER_PLAYER, gr_mw); }
+                vehicle_drive(gr_s.player, 0, 0);
+                gr_stage = 2;
+            } else if gr_stage == 2 && gr_s.player.q == 0
+                      && gr_s.player.r == 0 {
+                if mode == FETCH {
+                    wave_drop(gr_s, BLOCKER_PLAYER, core(), gr_mw);
+                }
+                gr_stage = 3;
+            } else if gr_stage == 3 && mode == FETCH
+                      && !helper_wrecked(gr_s.crew[0] ?? Helper { }) {
+                helper_drive(gr_s.crew[0] ?? Helper { }, GATE_Q, 0);
+                gr_stage = 4;
+            }
+        }
+
+        wave_tick(gr_s, gr_pal, gr_pw, gr_mw, core());
+
+        if gr_lost == 0 && helper_wrecked(gr_s.crew[0] ?? Helper { }) {
+            gr_lost = gr_i;
+        }
+        if wallet_broke(gr_s.wallet) { gr_fell = gr_i; }
+    }
+
+    Outcome { fell: gr_fell, cleared: 0,
+              waves: wave_schedule_sent(gr_s.schedule),
+              alive: alive_count(gr_s), wallet: wallet_left(gr_s.wallet) }
+}
+
+// ⚠⚠ **A retrieval finally pays — and it pays in POINTS.**  The base no
+// longer falls in any of the three runs, so the clock is saturated and
+// *points left* is what "how well did you do" means.
+//
+//   stays at the core          ~45 points
+//   drives out and back        ~41   (the errand control)
+//   FETCHES and sends them out ~117
+//
+// Plan 15 C3 measured 85/79/79 ticks and could not answer; plan 16 W4
+// measured 247/248/248 and answered "one tick".  This is the reading
+// both of them were waiting for, and what changed is that the base can
+// now recover.
+//
+// ⚠ The middle run is still the control that keeps the DRIVE and the
+// CARRY apart — without it the pair reads as the errand being worth 72
+// points, which is false.
+fn test_a_retrieval_pays_in_points() {
+    tar_stay   = gate_run(STAY,   500);
+    tar_errand = gate_run(ERRAND, 500);
+    tar_fetch  = gate_run(FETCH,  500);
+
+    assert(tar_stay.fell == 0 && tar_errand.fell == 0 && tar_fetch.fell == 0,
+           "no base falls any more: {tar_stay.fell} / {tar_errand.fell} / "
+           + "{tar_fetch.fell}");
+    assert(tar_stay.waves == 4 && tar_fetch.waves == 4,
+           "and all four waves played: {tar_stay.waves} / {tar_fetch.waves}");
+
+    assert(tar_fetch.wallet - tar_errand.wallet > 70.0,
+           "the CARRY is worth more than seventy points over the errand "
+           + "control: {tar_fetch.wallet} vs {tar_errand.wallet}");
+    assert(tar_stay.wallet - tar_errand.wallet < 10.0,
+           "while the errand itself is worth about nothing: "
+           + "{tar_stay.wallet} vs {tar_errand.wallet}");
+}
+
+// ⚠ **A CARRIER cannot repair** — one slot per vehicle
+// (`numbers.json` § helper.carry_slot_count is 1), so a vehicle holding
+// a downed colleague or a tower-top is not also doing twenty seconds of
+// manual work on a mast.
+//
+// ⚠ `DESIGN.md` does not state this; it is derived from the one slot,
+// and it keeps the transplant a real choice — without it a player
+// ferrying a spare top rebuilds the target tower on the way in, and the
+// fast path arrives at something already coming back.
+fn test_a_carrier_cannot_repair() {
+    tac_s   = wave_state_empty();
+    tac_mw  = gate_base();
+    tac_pw  = gate_ground();
+    tac_pal = pal();
+
+    // A black tower, and a player standing at it holding something.
+    for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(tac_s.towers, 1, 0); }
+    vehicle_place(tac_s.player, 1, 0);
+    cargo_spawn(tac_s.cargo, CARGO_WRECK, 0, 1, 0);
+    cargo_take(tac_s.cargo, BLOCKER_PLAYER, Hex { q: 1, r: 0 },
+               CARGO_REACH_HEXES);
+    assert(cargo_carrying(tac_s.cargo, BLOCKER_PLAYER), "hands full");
+
+    for _ in 0..40 { wave_tick(tac_s, tac_pal, tac_pw, tac_mw, core()); }
+    assert(tower_black(tac_s.towers, 1, 0),
+           "forty ticks with full hands and the tower is still black");
+    assert(!tower_repairing(tac_s.towers, 1, 0),
+           "with nothing even banked against it");
+
+    // Put it down and the same forty ticks bring it back.
+    cargo_put(tac_s.cargo, BLOCKER_PLAYER, Hex { q: 1, r: 0 });
+    for _ in 0..31 { wave_tick(tac_s, tac_pal, tac_pw, tac_mw, core()); }
+    assert(!tower_black(tac_s.towers, 1, 0),
+           "and with empty hands it comes back");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3. ⚠⚠ What a TRANSPLANT is worth — and why it is not the answer
+// ─────────────────────────────────────────────────────────────────
+
+const FRONT_Q: integer = 4;
+
+// ⚠ Five rows rather than the seven-wave band's seven, and it is a COST
+// decision: this section runs four whole bases to their fall, and the
+// claim under test is a comparison between two of them rather than an
+// absolute, so a narrower band changes both sides equally.
+fn donor_ground() -> PaintedWorld {
+    dg_pw = painted_empty();
+    for dg_r in -2..=2 {
+        for dg_q in -6..=20 { paint(dg_pw, dg_q, dg_r, as_u8(GRASS)); }
+    }
+    for dg_r2 in -2..=2 { paint(dg_pw, 6, dg_r2, as_u8(WALL)); }
+    dg_pw
+}
+
+// One tower on the front and one donor, whose distance is the variable.
+fn donor_base(spare_q: integer) -> MarkerWorld {
+    db_mw = marker_empty();
+    place_marker(db_mw, 14, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    place_marker(db_mw, FRONT_Q, 0, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(db_mw, spare_q, 0, MARKER_KIND_TOWER as u8, 0 as u8);
+    db_mw
+}
+
+const REBUILD: integer = 0;   // stand at the front tower and rebuild it
+const FERRY:   integer = 1;   // bring the donor's top forward instead
+
+fn donor_run(spare_q: integer, policy: integer, limit: integer) -> Outcome {
+    dr_pw  = donor_ground();
+    dr_mw  = donor_base(spare_q);
+    dr_pal = pal();
+    dr_s   = wave_state_empty();
+    dr_s.schedule = wave_schedule_of(wave_list_default(), INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(dr_s.schedule);
+    vehicle_place(dr_s.player, FRONT_Q, 0);
+
+    dr_fell  = 0;
+    dr_stage = 0;
+    for dr_n in 1..=limit {
+        if dr_fell > 0 { continue; }
+
+        if policy == FERRY {
+            if dr_stage == 0 && tower_black(dr_s.towers, FRONT_Q, 0) {
+                vehicle_drive(dr_s.player, spare_q, 0);
+                dr_stage = 1;
+            } else if dr_stage == 1 && dr_s.player.q == spare_q {
+                wave_take(dr_s, BLOCKER_PLAYER, dr_mw);
+                vehicle_drive(dr_s.player, FRONT_Q, 0);
+                dr_stage = 2;
+            } else if dr_stage == 2 && dr_s.player.q == FRONT_Q {
+                wave_drop(dr_s, BLOCKER_PLAYER, core(), dr_mw);
+                dr_stage = 3;
+            }
+        }
+
+        wave_tick(dr_s, dr_pal, dr_pw, dr_mw, core());
+        if wallet_broke(dr_s.wallet) { dr_fell = dr_n; }
+    }
+
+    Outcome { fell: dr_fell, cleared: 0,
+              waves: wave_schedule_sent(dr_s.schedule),
+              alive: alive_count(dr_s), wallet: wallet_left(dr_s.wallet) }
+}
+
+// ⚠ **A transplant restores a tower the instant it lands** —
+// `numbers.json` § tower.repair_time_top_transplant is 0.0, against 30
+// ticks of standing for a rebuild.  That is what T2 bought, and it is
+// exact rather than a clock.
+fn test_a_transplant_is_instant_where_a_rebuild_is_thirty_ticks() {
+    tat_ts = tower_state_empty();
+    for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(tat_ts, 4, 0); }
+    assert(tower_black(tat_ts, 4, 0), "black");
+
+    // A fresh top, carried in from somewhere.
+    tower_detach_top(tat_ts, 4, 0);
+    assert(tower_mount_top(tat_ts, 4, 0, 0), "the fresh top goes on");
+    assert(!tower_black(tat_ts, 4, 0),
+           "and it is red again with no time passing at all");
+
+    // Where a rebuild is thirty ticks of somebody standing there.
+    assert(TOWER_REPAIR_SECONDS / TICK_SECONDS == 30.0,
+           "a rebuild is thirty ticks: {TOWER_REPAIR_SECONDS / TICK_SECONDS}");
+}
+
+// ⚠⚠ **But on a one-front base it does not pay, and the reason is
+// structural rather than a tuning miss.**  `DESIGN.md` § The
+// opportunity-cost layer says it: *"A spare top sitting in a swap pit
+// is a top that is NOT firing on a different tower."*
+//
+// Measured, one front tower and one donor:
+//
+//   donor 10 hexes back, out of range 15 of the wave — ferry is worth
+//     about THREE ticks over rebuilding (374 vs 371)
+//   donor 2 hexes back, which is INSIDE range — ferry is worth minus
+//     FIFTY (305 vs 355), because the donor was firing all along
+//
+// ⚠ So a tower close enough to donate cheaply is close enough to be
+// shooting, and one far enough to be idle costs the trip.  The
+// transplant's value is that it is INSTANT, which matters when thirty
+// ticks is time you do not have — and a base with room to stand and
+// rebuild is not that base.  ⚠ The design's answer is swap pits and
+// STRAIN (pulling a top BEFORE it is spent), both of which
+// `plans/17` § What this plan does NOT build leaves out.
+fn test_a_transplant_does_not_pay_on_a_one_front_base() {
+    // A genuinely idle donor: twenty hexes from the spawn marker, so
+    // permanently outside a tower's range of 15.
+    tat_rebuild = donor_run(-6, REBUILD, 500);
+    tat_ferry   = donor_run(-6, FERRY,   500);
+
+    assert(tat_rebuild.fell > 0 && tat_ferry.fell > 0,
+           "both bases fall: {tat_rebuild.fell} / {tat_ferry.fell}");
+    assert(tat_ferry.fell - tat_rebuild.fell < 10,
+           "and ferrying an IDLE top forward is worth almost nothing: "
+           + "{tat_ferry.fell} vs {tat_rebuild.fell}");
+}
+
+// ⚠⚠ **And ferrying a WORKING top is strictly worse.**  The same base
+// with the donor two hexes back — inside range, so it was shooting —
+// and the ferry costs the base fifty ticks.
+//
+// This is the assertion that stops "hot-swap is good" being read off
+// the mechanic rather than off a measurement.
+fn test_ferrying_a_firing_top_is_worse_than_leaving_it() {
+    tfa_rebuild = donor_run(2, REBUILD, 500);
+    tfa_ferry   = donor_run(2, FERRY,   500);
+
+    assert(tfa_ferry.fell < tfa_rebuild.fell,
+           "taking a FIRING tower's top costs the base: "
+           + "{tfa_ferry.fell} vs {tfa_rebuild.fell}");
+}

@@ -9,8 +9,15 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**T0 + T1 + T2 shipped** (2026-08-15).  T3 is next.  Suite **976 green**,
-gate **27 scripts / 499 measurements**.
+**COMPLETE** (2026-08-15) — T0 + T1 + T2 + T3.  Suite **983 green**
+(~145 s; T3's measurements are 23 s of whole-base simulations), gate
+**28 scripts / 520 measurements**.
+
+**The authored seven-wave list is playable.**  Plan 16 W4 measured it
+playing FOUR and falling at 321 with every tower black; seven towers and
+**two shuttling helpers** now clear all 205 robots with the base still
+standing.  ⚠ And a retrieval finally pays — **+76 points** over the
+errand control, in a run where nothing falls.  § T3.
 
 **T0 tried to falsify the premise and could not.**  The magazine binds,
 and harder than W4 could show: *without repair, building more towers
@@ -21,6 +28,10 @@ authored list at tick 332**.  § T0 has the tables.
 **T1 built the rebuild**, and it moved every measurement in the game
 that had a vehicle parked near a tower — including, already, the answer
 plan 16 W4 could not produce.  § T1.
+
+**T3 measured what they came to**, and found that POSITION is the whole
+of it: the same two helpers PARKED on their towers reach five of seven
+and the base falls.  § T3.
 
 **T2 made the top a carryable thing** and moved the magazine off the
 HEX and onto the TOP, so detach-and-remount cannot refill.  The carry
@@ -94,6 +105,100 @@ swap is not an alternative to repair — it is the thing that *creates the
 grounded state repair needs*.  Repair is also the smaller half: it needs
 no carry model, it is the half W4 actually named, and it can go red on
 its own.
+
+## T3 — what upkeep is worth (2026-08-15)
+
+### ⚠⚠ 1. The authored seven-wave list is playable
+
+Plan 16 W4's own band, the authored `[5, 8, 12, 20, 30, 50, 80]`:
+
+| the base | waves | outcome |
+|---|---|---|
+| 7 towers, no crew | 4/7 | falls at 317 — W4's reading, unchanged |
+| 7 towers, 2 helpers **parked** on them | 5/7 | falls at 265 |
+| 7 towers, 2 helpers **shuttling** | **7/7** | **CLEARED at 537**, 165 points left |
+
+⚠ **Two helpers, and `numbers.json` § helper.roster_start is 2** — the
+crew the design starts you with is exactly the labour its own tower
+numbers need.  T0 predicted it from an idealised refill and the real,
+presence-locked mechanic lands on the same number.
+
+### ⚠⚠ 2. POSITION is the whole of it
+
+Same crew, same base, same 20 s rate: **parked, the base falls at 265
+having played five waves; shuttling to whichever tower is black, it
+clears the list.**
+
+⚠ That is what makes upkeep a `DESIGN.md` § What kind of game this is
+mechanic rather than a resource.  Repair is presence-locked, so it is a
+POSITIONING problem — and a player who parks the crew and looks away
+gets most of the labour and none of the value.
+
+### ⚠⚠ 3. A retrieval finally pays, and in POINTS
+
+W4's gated band, with the player waiting at the core — which is one hex
+from a tower, so it repairs:
+
+| after the crew member is lost | points left |
+|---|---|
+| stays at the core | ~45 |
+| drives out and back, no carry | ~41 |
+| **fetches, delivers, sends them back out** | **~117** |
+
+**+76 over the errand control.**  Plan 15 C3 measured 85/79/79 ticks and
+could not answer; plan 16 W4 measured 247/248/248 and answered *"one
+tick"*.  ⚠ The currency changed because the base stopped falling: the
+clock is saturated and *points left* is what "how well did you do"
+means.  ⚠ The middle run is still the control that keeps the DRIVE and
+the CARRY apart.
+
+### ⚠⚠ 4. But the TRANSPLANT does not pay, and the reason is structural
+
+A transplant is instant where a rebuild is thirty ticks.  Measured
+anyway, one front tower and one donor:
+
+| donor | worth |
+|---|---|
+| 10 hexes back, outside range 15 — genuinely idle | **+3 ticks** |
+| 2 hexes back, inside range — was firing all along | **−50 ticks** |
+
+⚠ **A tower close enough to donate cheaply is close enough to be
+shooting**, which is `DESIGN.md` § The opportunity-cost layer measured
+rather than asserted: *"A spare top sitting in a swap pit is a top that
+is NOT firing on a different tower."*  The transplant's value is that it
+is INSTANT, which matters when thirty ticks is time you do not have —
+and a base with room to stand and rebuild is not that base.
+
+⚠ **So T2 shipped a mechanic whose payoff is out of this plan's scope**,
+and that is worth saying plainly: what makes it pay is swap pits and
+STRAIN — pulling a top BEFORE it is spent — both of which § What this
+plan does NOT build leaves out.  ⚠ The scenario shows it happening; the
+measurement shows it is not yet worth doing.
+
+### ⚠ A rule the scenario found: a CARRIER cannot repair
+
+`a-tower-brought-back.keys` could not tell the transplant from the
+rebuild, because a player ferrying a spare top **rebuilt the target
+tower on the way in**.  One slot per vehicle
+(`numbers.json` § helper.carry_slot_count), so a vehicle holding a
+downed colleague or a tower-top is not also doing twenty seconds of
+manual work on a mast.  ⚠ `DESIGN.md` does not state this — it is
+derived from the one slot — so it ships with its own test rather than as
+an unfalsifiable line of code.
+
+### ⚠ And a second finding the scenario handed over for free
+
+The "idle" donor at (-4, 0) is eighteen hexes from the spawn marker and
+had still fired **fifteen shots**, because the robots walk to the CORE,
+which is four hexes away.  So the transplant arrived carrying fifteen
+spent shots — the magazine travelling with the top, visible in a
+`.keys` file.  ⚠ A run reading 0 there would mean detach-and-remount was
+a free repair.
+
+⚠ The player also needed **forty ticks to drive eight hexes back**,
+because the approach was full of the tower's own dead and a hover unit
+climbs 0.4 m against a 0.5 m body.  Bodies-are-terrain charging for the
+swap, unprompted.
 
 ## T2 — the top comes off (2026-08-15)
 
@@ -405,7 +510,7 @@ keep, and the same one that made B4's `taken` a count of damage ABSORBED.
 | **T0** ✓ | 317 / 319 / 321 unrefilled at 7 / 5 / 3 towers; CLEARED at 332 with two helpers' worth of repair | the magazine is the binding constraint — W4 asserted it, this removes it and looks | ✓ the plan's own falsifier was live: a base with free refills that still played four waves would have stopped the plan.  It played seven |
 | **T1** ✓ | a black tower fires again on tick 30 and not 29 | repair is **presence-locked and time-priced**, and the progress belongs to the TOWER so a relief crew finishes it | ✓ all three verified by MUTATION rather than by reading: dropping the epsilon, resetting the charge and repairing a firing tower each turn exactly one assertion red.  ✓ An unattended black tower never recovers a shot in four rebuilds' worth of ticks |
 | **T2** ✓ | a stripped tower fires nothing; a transplanted top fires instantly | **conservation is structural**: a top is mounted, carried, on the ground, or spent — exactly one, and a SWAP moves two without creating or destroying either | ✓ detach-and-remount does not refill (25 shots in, 25 shots out); ✓ mounting onto an occupied tower is REFUSED at the primitive and composed into a swap at the call site, with the count conserved across it; ✓ all three verified by mutation, and the third caught a VACUOUS test |
-| **T3** | the seven-wave list REACHED, and the three retrieval clocks re-measured | a base that can recover is a base that can be played | a reading taken with repair switched off must reproduce W4's 321 / 247 / 248 / 248 exactly, or the harness moved and not the mechanic.  ⚠ Measure WAVES, not the fall tick — T0 § 4 |
+| **T3** ✓ | 7/7 waves cleared at 537; the retrieval worth +76 points; the transplant worth +3 ticks | a base that can recover is a base that can be played | ✓ `tests/16_w4_the_real_length.loft` is the upkeep-OFF control and still asserts 321 / 247 / 248 / 248, so a harness move goes red there first; ✓ the parked-crew run is the control that isolates POSITION from labour; ✓ the errand run keeps the drive and the carry apart |
 
 ## Phases
 
@@ -414,7 +519,7 @@ keep, and the same one that made B4's `taken` a count of damage ABSORBED.
 | **T0** — the probe: is the magazine really what binds? | XS | the tables in § T0, measured against the shipped sim | **Done** |
 | **T1** — the rebuild: a black tower comes back | M | `tests/17_t1_the_rebuild.loft` — 16 tests, and three mutations verified each goes red on its own assertion: drop the epsilon, reset the charge, or let a firing tower be repaired | **Done** |
 | **T2** — the top is a carry kind | M | `tests/17_t2_the_top.loft` — 17 tests; three mutations verified (forget the magazine on detach, overwrite an occupied tower, let a topless tower fire).  ⚠ The C0.4 contract is verified BY DIFF: four non-comment lines in `carry.loft`, none in the carrying path | **Done** |
-| **T3** — the loop, measured | S | `tests/17_t3_what_upkeep_is_worth.loft` + a `.keys` scenario — W4's two measurements re-run with upkeep in the game.  ⚠ T0 predicts a two-helper seven-tower base clears the list; a reading that does not is the phase's finding | Blocked on T2 |
+| **T3** — the loop, measured | S | `tests/17_t3_what_upkeep_is_worth.loft` + `tests/scripts/a-tower-brought-back.keys` — the list CLEARED at 537 by two shuttling helpers, the retrieval worth +76 points, and the transplant worth +3 ticks at best | **Done** |
 
 ### Why the order is this order
 

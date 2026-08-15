@@ -782,6 +782,58 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         return measure_int(run, "roster", sm_rn, sm_rlo ?? 0, sm_rhi ?? 0);
     }
 
+    // How many shots a tower has FIRED, out of its budget — plan 17 T3.
+    //
+    // ⚠ **Fired, never remaining**, so the band reads the same way the
+    // engine stores it (`tower.loft` § shots FIRED) — and `shots 4 0
+    // 0 0` is how a run says "that tower has been rebuilt".
+    if sm_cmd == "shots" {
+        if sm_argc != 4 { return "shots needs <q> <r> <lo> <hi>"; }
+        sm_shv = script_ints(tok, 2);
+        if len(sm_shv) != 2 { return "shots: <q> and <r> must be integers"; }
+        sm_shlo = (tok[3] ?? "") as integer?;
+        sm_shhi = (tok[4] ?? "") as integer?;
+        if sm_shlo == null || sm_shhi == null {
+            return "shots: <lo> and <hi> must be integers";
+        }
+        sm_shq = sm_shv[0] ?? 0;
+        sm_shr = sm_shv[1] ?? 0;
+        if marker_kind(s.mw, sm_shq, sm_shr) != MARKER_KIND_TOWER {
+            return "shots: no tower at ({sm_shq}, {sm_shr})";
+        }
+        return measure_int(run, "shots ({sm_shq}, {sm_shr})",
+                           tower_shots(run.wave.towers, sm_shq, sm_shr),
+                           sm_shlo ?? 0, sm_shhi ?? 0);
+    }
+
+    // Whether a tower still has its top on — plan 17 T2.
+    //
+    // ⚠ **A word rather than a number**, because `top 4 0 0` would read
+    // as a count and this is a state.  ⚠ And it REFUSES a hex with no
+    // tower marker: "no top" and "no tower" are the two things a
+    // stripped tower sits between, and one answer for both is green
+    // before the tower is placed and after it is taken away.
+    if sm_cmd == "top" {
+        if sm_argc != 3 { return "top needs <q> <r> <on|off>"; }
+        sm_tpv = script_ints(tok, 2);
+        if len(sm_tpv) != 2 { return "top: <q> and <r> must be integers"; }
+        sm_tpq = sm_tpv[0] ?? 0;
+        sm_tpr = sm_tpv[1] ?? 0;
+        sm_tpw = tok[3] ?? "";
+        if sm_tpw != "on" && sm_tpw != "off" {
+            return "top: <on|off>, not '{sm_tpw}'";
+        }
+        if marker_kind(s.mw, sm_tpq, sm_tpr) != MARKER_KIND_TOWER {
+            return "top: no tower at ({sm_tpq}, {sm_tpr})";
+        }
+        sm_tphas = tower_has_top(run.wave.towers, sm_tpq, sm_tpr);
+        if sm_tphas != (sm_tpw == "on") {
+            return "top ({sm_tpq}, {sm_tpr}) is {if sm_tphas { "on" } else { "off" }}, expected {sm_tpw}";
+        }
+        measure_exact(run, "top ({sm_tpq}, {sm_tpr}) {sm_tpw}");
+        return "";
+    }
+
     // How many waves the schedule has SENT — plan 16 W1.
     //
     // ⚠ **Sent, not cleared and not survived.**  It is the schedule's
@@ -1685,7 +1737,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
     || sc_cmd == "ticks" || sc_cmd == "vehicle" || sc_cmd == "hull"
     || sc_cmd == "helper" || sc_cmd == "cargo" || sc_cmd == "roster"
-    || sc_cmd == "waves" {
+    || sc_cmd == "waves" || sc_cmd == "shots" || sc_cmd == "top" {
         return script_measure(s, run, tok);
     }
 

@@ -69,7 +69,16 @@ is worth 53 ticks (the same base with them parked by the core falls 53
 ticks earlier), and the wave is on the core long before the ninety
 ticks are up.
 
-⚠ **So the wave system was not the cure, and the next trigger is
+⚠⚠ **AND THAT TRIGGER FIRED: the answer is now +76 POINTS.**
+[Plan 17](../17-tower-hot-swap/README.md) T3 re-measured on a base with
+upkeep — where the towers are maintained and nothing falls — and the
+three runs are ~45 / ~41 / **~117** points left.  ⚠ The currency changed
+because the base stopped falling: the clock saturates, and *points left*
+is what "how well did you do" means.  So C3's question is answered, two
+plans later, and the rule it set held all the way: the recovery time was
+never shortened.
+
+⚠ **So the wave system was not the cure, and the next trigger was
 `DESIGN.md` § 7's tower repair / hot-swap** — the thing that would let a
 base RECOVER between waves so that a returning crew member has a base
 worth returning to.  It is this plan's own second consumer.  ⚠ The rule

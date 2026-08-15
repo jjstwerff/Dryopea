@@ -72,7 +72,8 @@ exists today.
 | ⚠ What a base is worth AT ITS REAL LENGTH: the authored seven-wave list plays **FOUR** and falls at 321 with every tower black, and a retrieval is worth **one tick** on a base where the crew member does come back | [16](plans/16-the-wave-system/README.md), W4 shipped — plan **complete** |
 | **No wall trigger, no ordering, no beacons and no scramble** | [plans/ROADMAP.md](plans/ROADMAP.md) |
 | UPKEEP: 20 s of standing at a black tower rebuilds it — so the lull is a REPAIR WINDOW and a base can outlive its own wave list | [17](plans/17-tower-hot-swap/README.md), T0-T1 shipped — T2 next |
-| HOT-SWAP: a tower's top is a CARRY object — take it off (the tower stops firing), transplant it onto a spent tower (red instantly), or evacuate it at the core.  ⚠ The magazine travels WITH the top, so detach-and-remount is not a free repair | [17](plans/17-tower-hot-swap/README.md), T2 shipped — T3 next |
+| HOT-SWAP: a tower's top is a CARRY object — take it off (the tower stops firing), transplant it onto a spent tower (red instantly), or evacuate it at the core.  ⚠ The magazine travels WITH the top, so detach-and-remount is not a free repair | [17](plans/17-tower-hot-swap/README.md), T2 shipped |
+| ⚠ **The authored SEVEN-WAVE list is playable**: seven towers and two SHUTTLING helpers clear all 205 robots.  ⚠ Parked on their towers the same two reach 5/7 and the base falls — upkeep is a POSITIONING problem, not a resource | [17](plans/17-tower-hot-swap/README.md), T3 shipped — plan **complete** |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -88,7 +89,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 976/976 green under `scripts/test.sh`** (~115 s measured
+**Suite: 983/983 green under `scripts/test.sh`** (~145 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -96,7 +97,7 @@ plan 12 until H2 re-measured it; the figure grew with the scenario
 tests, not with any one phase — and plan 16 W4 alone is **13 s**, six
 whole-base simulations of 200-320 ticks each, which is what a
 measurement phase costs).
-**Gate: 27 scripts green under `scripts/validate.sh`** (~11 s, 499
+**Gate: 28 scripts green under `scripts/validate.sh`** (~11 s, 520
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -1613,7 +1614,8 @@ signature.
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
 | Understand the DIFFICULTY CURVE's shape | [docs/DESIGN.md](docs/DESIGN.md) § It shoots TOWERS — the first real challenge.  Early = a RUSH (volume).  Then the combat boss, which is the first enemy that makes the player POORER rather than merely closer to losing — and the first that invalidates a LEARNED OPTIMUM (the tight funnel that denied a 2×2 repair platform is worthless against something that shoots from outside) |
 | Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock (69 / 112 / 128 since plan 16 W2).  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; and a tower now ADDS 16 ticks where it used to cost 9 — because the pre-walk window moved its kills off the wall's foot, so the ramp that used to bury it no longer forms there |
-| Judge whether fetching a lost crew member is worth it | [plans/16](plans/16-the-wave-system/README.md) § W4 — **247 / 248 / 248** on a base where the crew member genuinely does come back (tick 187), so it is worth ONE tick.  ⚠ The reason is no longer "the base ends first" (that was [plans/15](plans/15-the-carry-model/README.md) C3's 93/87/87): the JOB is gone by the time they return — the gate is worth 53 ticks while the wave is outside and nothing while it is on the core.  ⚠ The middle run is the control that keeps the drive and the carry apart |
+| Judge whether fetching a lost crew member is worth it | [plans/17](plans/17-tower-hot-swap/README.md) § T3 — **+76 POINTS** over the errand control, on a base with upkeep where nothing falls (~45 / ~41 / ~117 points left).  ⚠ The currency is the WALLET, not the clock: a base that can recover stops falling, so the clock saturates and *points left* is what "how well did you do" means.  ⚠ Earlier readings are history rather than alternatives: [plans/16](plans/16-the-wave-system/README.md) § W4 — **247 / 248 / 248** on a base where the crew member genuinely does come back (tick 187), so it is worth ONE tick.  ⚠ The reason is no longer "the base ends first" (that was [plans/15](plans/15-the-carry-model/README.md) C3's 93/87/87): the JOB is gone by the time they return — the gate is worth 53 ticks while the wave is outside and nothing while it is on the core.  ⚠ The middle run is the control that keeps the drive and the carry apart |
+| Judge whether a TRANSPLANT is worth doing | [plans/17](plans/17-tower-hot-swap/README.md) § T3 — **+3 ticks at best, −50 if the donor was firing.**  ⚠ A tower close enough to donate cheaply is close enough to be shooting, which is `DESIGN.md` § The opportunity-cost layer measured.  Its payoff needs swap pits and STRAIN — pulling a top BEFORE it is spent — and neither is built |
 | Find out why a base cannot be played to its end | [plans/16](plans/16-the-wave-system/README.md) § W4 — **the tower's 30-shot magazine**.  The authored list is 205 robots = 6150 HP and a tower is 300 HP for the whole run, so seven waves needs 21 perfectly-aimed towers; the best band the suite can build plays FOUR and falls at 321 with every tower black.  ⚠ Nothing lets a base RECOVER between waves, so the lull is a pause rather than a repair window — and that is what blocks retrieval, hot-swap and every mechanic priced across waves.  [plans/17](plans/17-tower-hot-swap/README.md) is the fix |
 | Judge what another CREW MEMBER is worth | [plans/14](plans/14-helpers/README.md) § Status — three scenarios that differ only in their crew lines, and the measured clock (⚠ **123 / 135 / 138** since plan 16 W2, from 77 / 214 / 242).  ⚠ A roster buys COVERAGE, not throughput — but the base can now barely express it: the pre-walk window means far fewer ramps form for a crew to clear, so the whole spread is 15 ticks where it was 165 |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |

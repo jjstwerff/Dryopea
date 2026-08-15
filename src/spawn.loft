@@ -1786,11 +1786,28 @@ fn repair_target(state: const WaveState, mw: const MarkerWorld,
 // tower is working on it.  `DESIGN.md` § 11 keeps the player's
 // instructions to a destination, and every helper job so far is
 // positional.
+// ⚠ **A carrier's hands are FULL** (plan 17 T3).  `numbers.json`
+// § helper.carry_slot_count is 1 for the player and a helper alike, so
+// a vehicle holding a downed colleague or a tower-top is not also doing
+// twenty seconds of manual work on a mast.
+//
+// ⚠ **It also keeps the transplant a real choice**: without it a player
+// ferrying a spare top to a black tower rebuilds that tower on the way
+// in, so the fast path arrives at something already coming back and the
+// two mechanics cannot be told apart.
+//
+// ⚠ `DESIGN.md` does not state this rule; it is derived from the one
+// slot, and `tests/17_t3_what_upkeep_is_worth.loft` § A carrier cannot
+// repair is what stops it being an unfalsifiable line of code.
+fn carrier_free(state: const WaveState, owner: integer) -> boolean {
+    !cargo_carrying(state.cargo, owner)
+}
+
 fn wave_repair(state: WaveState, mw: const MarkerWorld,
                tick_seconds: float) -> integer {
     wr_done = 0;
 
-    if vehicle_present(state.player) {
+    if vehicle_present(state.player) && carrier_free(state, BLOCKER_PLAYER) {
         wr_at = Hex { q: state.player.q, r: state.player.r };
         wr_t  = repair_target(state, mw, wr_at);
         if tower_repair_tick(state.towers, wr_t.q, wr_t.r, tick_seconds) {
@@ -1801,14 +1818,16 @@ fn wave_repair(state: WaveState, mw: const MarkerWorld,
     // ⚠ `alive` is the whole filter — a wreck is not working on
     // anything, and neither is a crew member in recovery at the core.
     // The same test `wave_blockers` and `wave_provoked` apply.
+    wr_ci = 0;
     for wr_h in state.crew {
-        if wr_h.alive {
+        if wr_h.alive && carrier_free(state, BLOCKER_CREW + wr_ci) {
             wr_hat = Hex { q: wr_h.q, r: wr_h.r };
             wr_ht  = repair_target(state, mw, wr_hat);
             if tower_repair_tick(state.towers, wr_ht.q, wr_ht.r, tick_seconds) {
                 wr_done += 1;
             }
         }
+        wr_ci += 1;
     }
 
     wr_done

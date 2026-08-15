@@ -1,0 +1,127 @@
+# a-tower-brought-back — plan 17 T1 + T2, the upkeep loop as the player
+# meets it.
+#
+# Before plan 17 a tower was a one-shot resource: thirty shots and black
+# for the rest of the run, which is why plan 16 W4 measured the authored
+# seven-wave list playing FOUR and falling with every tower spent.
+#
+# This file plays both halves of the answer through the real seam:
+#
+#   1. the REBUILD — the player stands beside a black tower for 20 s and
+#      it fires again; no key is pressed, because repair is a POSITION
+#   2. the TRANSPLANT — a spare top carried from a second tower goes on
+#      instantly, and the magazine travels WITH it
+#
+# ⚠ The spare tower at (-4, 0) is eighteen hexes from the spawn marker,
+# so it is permanently outside a tower's range of 15 and never fires a
+# shot.  That is what makes its top a spare rather than a loss — and
+# `plans/17` § T3 measures what happens when it is NOT: ferrying a
+# firing tower's top forward costs the base fifty ticks.
+
+echo a tower brought back: rebuilt by standing there, then transplanted
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+click 4 0
+click -4 0
+marker 4 0 tower
+marker -4 0 tower
+
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 14 0
+marker 14 0 spawn 3
+
+count markers 4 4
+do toggle_mode
+
+palette 5
+drag -6 -1 18 -1
+drag -6 0 18 0
+drag -6 1 18 1
+count painted 75 75
+
+# Nobody is in the world yet, and both towers are loaded.
+top 4 0 on
+top -4 0 on
+shots 4 0 0 0
+
+# ── The tower spends itself ─────────────────────────────────────
+#
+# ⚠ TWO waves of eight, because one costs only seventeen shots — a
+# wave big enough to empty a magazine in one go is also big enough to
+# reach the core and end the run before the second half of this file.
+wave 8
+tick 60
+wave 8
+tick 60
+shots 4 0 30 30
+
+# ── 1. The REBUILD: stand there and it comes back ───────────────
+#
+# ⚠ No key is pressed.  The player parks inside the tower's own
+# footprint and twenty seconds later the magazine is full.
+park 4 0
+tick 31
+shots 4 0 0 0
+top 4 0 on
+
+# ── 2. The TRANSPLANT: a spare top, carried ─────────────────────
+#
+# ⚠ The player has to LEAVE first, and that is the mechanic rather than
+# a scripting detail: standing beside the tower is what rebuilds it, so
+# a player who never moves never has a black tower to swap.
+drive -4 0
+tick 8
+vehicle -4 0
+
+wave 8
+tick 60
+wave 8
+tick 60
+shots 4 0 30 30
+
+# ⚠⚠ **And the "spare" is not idle after all** — it is eighteen hexes
+# from the spawn marker, but the robots WALK to the core, which is four
+# hexes away, so it has been shooting them off the doorstep.  Fifteen
+# shots gone.  That is `plans/17` § T3's finding at the game level: a
+# tower close enough to donate cheaply is close enough to be firing.
+shots -4 0 15 15
+
+take player
+top -4 0 off
+
+# ⚠ **Forty ticks for eight hexes, and the delay is the game.**  The
+# approach is full of the tower's own dead, a body is 0.5 m and a hover
+# unit climbs 0.4 — so the player has to CLEAR its way back in, one
+# corpse at a time, through the kill zone it is trying to reload.  That
+# is `ENEMY_MOVEMENT.md` § Bodies are terrain charging for the swap.
+drive 4 0
+tick 40
+vehicle 4 0
+drop player
+
+# ⚠ **Instant** — `numbers.json` § tower.repair_time_top_transplant is
+# 0.0 — and the tower it came from is a bare mast now.
+#
+# ⚠⚠ **But it arrives with FIFTEEN shots already gone**, because the
+# magazine belongs to the TOP and travels with it (plan 17 T2).  A
+# transplant moves firepower; it does not create any.  A run that read
+# 0 here would mean detach-and-remount was a free repair, and the whole
+# upkeep loop could be bypassed with two keypresses.
+shots 4 0 15 15
+top 4 0 on
+top -4 0 off
+
+# ⚠ And the SPENT top is lying where the swap dropped it, still
+# remembering its thirty shots.  Nothing was overwritten.
+cargo 1 1
+
+snap t2_a_tower_brought_back
