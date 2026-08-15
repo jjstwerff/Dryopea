@@ -1458,6 +1458,92 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // apart.  A script that hits an enemy for its whole HP and then
     // asserts `count alive` without a `tick` between is asserting that
     // — plan 12 B4.
+    // ─── Authoring one enemy (plan 18 S1a) ──────────────────────
+    //
+    // `wave <n>` puts a whole wave on the markers and is how a scenario
+    // starts a fight.  These three put ONE enemy in a stated condition,
+    // which is what a captured fixture needs: `plans/18` § So the real
+    // work is making `.keys` TOTAL over the state.
+    //
+    // ⚠ **A separate verb rather than an overload of `enemy`**, which is
+    // an ASSERTION (`enemy <i> <q> <r>`).  Plan 12 B4 set the rule when
+    // it refused to overload `damage` for enemies: a line whose meaning
+    // depends on knowing which reading applies is a line nobody can
+    // check by looking at it.
+    //
+    // ⚠ **They AUTHOR and never simulate**, the rule `damage <q> <r>
+    // <hp>` already keeps — it fills the ledger and *"cannot BREAK
+    // anything, only a tick does, so it stays one code path"*.  So
+    // `dead` marks an enemy down and deposits NO body: a captured state
+    // carries the body as its own `raise` line, and `wave_deaths` stays
+    // the one death path in the engine.
+    if sc_cmd == "place" {
+        if sc_argc < 3 || sc_argc > 4 {
+            return "place needs <q> <r> <class> [heading]";
+        }
+        sc_pv2 = script_ints(tok, 2);
+        if len(sc_pv2) != 2 { return "place: <q> and <r> must be integers"; }
+
+        // The class is NAMED, never numbered — `wave`'s rule, and an
+        // unknown name is an error rather than a quiet fallback to
+        // robot.
+        sc_pk = ENEMY_KIND_REGULAR;
+        sc_pcls = tok[3] ?? "";
+        if sc_pcls == "insect" { sc_pk = ENEMY_KIND_INSECT; }
+        else if sc_pcls != "robot" {
+            return "place: unknown class '{sc_pcls}' — robot, insect";
+        }
+
+        sc_phd = 0;
+        if sc_argc == 4 {
+            sc_phv = (tok[4] ?? "") as integer?;
+            if sc_phv == null { return "place: <heading> must be an integer"; }
+            sc_phd = sc_phv ?? 0;
+            if sc_phd < 0 || sc_phd >= NUM_HEX_DIRECTIONS {
+                return "place: <heading> must be 0..{NUM_HEX_DIRECTIONS - 1}";
+            }
+        }
+
+        // ⚠ **Healthy, and walking.**  `taken` and `stand` are left at
+        // their zero, which is the neutral value for both (plan 12 B4,
+        // plan 16 W2) — so a bare `place` is a robot that is whole and
+        // free to move, and anything else has to be SAID.
+        run.wave.enemies += [Enemy { q: sc_pv2[0] ?? 0, r: sc_pv2[1] ?? 0,
+                                     kind: sc_pk as u8? ?? 0,
+                                     heading: sc_phd as u8? ?? 0,
+                                     alive: true, taken: 0.0, stand: 0.0 }];
+        println("script: place {enemy_class_name(sc_pk as u8? ?? 0)} at ({sc_pv2[0] ?? 0}, {sc_pv2[1] ?? 0}) heading {sc_phd} — {len(run.wave.enemies)} in the roster");
+        return "";
+    }
+
+    // Seconds still to stand at the marker — plan 16 W2's window.
+    if sc_cmd == "stand" {
+        if sc_argc != 2 { return "stand needs <i> <seconds>"; }
+        sc_si2 = sc_a1 as integer?;
+        if sc_si2 == null { return "stand: <i> must be an integer"; }
+        sc_ssec = (tok[2] ?? "") as float?;
+        if sc_ssec == null { return "stand: <seconds> must be a number"; }
+        sc_sidx = sc_si2 ?? 0;
+        if sc_sidx < 0 || sc_sidx >= len(run.wave.enemies) {
+            return "stand: no enemy {sc_sidx} — the roster holds {len(run.wave.enemies)}";
+        }
+        (run.wave.enemies[sc_sidx] ?? Enemy { }).stand = sc_ssec ?? 0.0;
+        return "";
+    }
+
+    // Mark an enemy down.  ⚠ It deposits NO body — see the note above.
+    if sc_cmd == "dead" {
+        if sc_argc != 1 { return "dead needs <i>"; }
+        sc_di = sc_a1 as integer?;
+        if sc_di == null { return "dead: <i> must be an integer"; }
+        sc_didx = sc_di ?? 0;
+        if sc_didx < 0 || sc_didx >= len(run.wave.enemies) {
+            return "dead: no enemy {sc_didx} — the roster holds {len(run.wave.enemies)}";
+        }
+        (run.wave.enemies[sc_didx] ?? Enemy { }).alive = false;
+        return "";
+    }
+
     if sc_cmd == "hit" {
         if sc_argc != 2 { return "hit needs <i> <hp>"; }
         sc_hi = sc_a1 as integer?;

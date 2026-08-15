@@ -1,0 +1,262 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 18 phase S1a — an enemy becomes authorable.
+//
+// `plans/18` emits a captured situation as `.keys`, so the script
+// vocabulary has to be able to SAY every part of a `WaveState`.  The
+// roster was the biggest hole: `wave <n>` puts a whole wave on the
+// markers, stacked, healthy and standing — and `enemy <i> <q> <r>` is
+// an ASSERTION.  There was no way to put ONE enemy anywhere, in any
+// condition.
+//
+// `place <q> <r> <class> [heading]` does, and `stand <i> <seconds>` and
+// `dead <i>` reach the two fields a placement leaves neutral.
+//
+// ── ⚠⚠ The gate is the ZERO-NEUTRAL half ────────────────────────
+//
+// `Enemy` has two fields whose neutral value is not obvious, and both
+// were chosen so that a struct literal omitting them means the useful
+// thing (`CLAUDE.md` § Loft language gotchas — an omitted field takes
+// its ZERO, silently):
+//
+//   `taken` is damage ABSORBED, so 0 is a HEALTHY robot (plan 12 B4)
+//   `stand` is seconds LEFT at the marker, so 0 is one free to WALK
+//           (plan 16 W2)
+//
+// So a bare `place` must give a robot that is whole and moving.  ⚠ Get
+// either backwards and the fixture spawns a corpse that has not
+// finished arriving — and every assertion about "the wave is there"
+// stays green while nothing moves.
+//
+// ── ⚠ It AUTHORS and never simulates ────────────────────────────
+//
+// `dead <i>` marks an enemy down and deposits **no body**.  That is
+// `damage <q> <r> <hp>`'s rule — it fills the ledger and cannot BREAK
+// anything, because only a tick does — and it is what keeps
+// `wave_deaths` the one death path in the engine.  A captured state
+// carries the body as its own `raise` line, so replay reproduces both
+// without a second path that could drift.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// A session with a core and some ground, which `tick` needs and
+// `place` does not.
+fn played(src: text) -> ScriptRun {
+    p_s = editor_state_new(PALETTE);
+    p_r = script_run(p_s, "do toggle_mode\ndo cycle_kind\nclick 0 0\n"
+                          + "do toggle_mode\npalette 5\ndrag -2 0 16 0\n" + src,
+                     "tests/actual");
+    p_r
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The phase: a placed enemy IS one built in loft
+// ─────────────────────────────────────────────────────────────────
+
+// The whole claim of S1a, and S0's comparison is what can state it: a
+// state authored by a `.keys` line and one built by hand differ in
+// NOTHING.
+fn test_a_placed_enemy_equals_one_built_by_hand() {
+    tap_run = played("place 8 0 robot 3\n");
+    assert(tap_run.ok, "the script runs: {script_describe(tap_run)}");
+
+    tap_want = wave_state_empty();
+    tap_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                                 heading: 3 as u8, alive: true,
+                                 taken: 0.0, stand: 0.0 }];
+
+    assert(state_diff(tap_run.wave, tap_want) == "",
+           "identical: '{state_diff(tap_run.wave, tap_want)}'");
+}
+
+// ⚠⚠ **A bare `place` is HEALTHY and WALKING**, which is the
+// zero-neutral rule holding at the script's edge.
+fn test_a_bare_placement_is_whole_and_free_to_move() {
+    tbp_run = played("place 8 0 robot 3\n");
+    tbp_e = tbp_run.wave.enemies[0] ?? Enemy { };
+
+    assert(tbp_e.alive, "it is alive");
+    assert(enemy_hp(tbp_e) == enemy_max_hp(as_u8(ENEMY_KIND_REGULAR)),
+           "at full HP: {enemy_hp(tbp_e)}");
+    assert(!enemy_standing(tbp_e),
+           "and free to walk — no pre-walk window left to spend");
+}
+
+// And it really does walk, which is the end-to-end form of the above:
+// a fixture whose enemies cannot move is a fixture that reproduces
+// nothing.
+fn test_a_placed_enemy_walks() {
+    tpw_run = played("place 8 0 robot 3\ntick 1\nenemy 0 7 0\n");
+    assert(tpw_run.ok, "it stepped towards the core: {script_describe(tpw_run)}");
+}
+
+// ⚠ The class is NAMED, and an unknown one is an ERROR — `wave`'s rule.
+// A typo that quietly placed a robot would make a test about insects
+// assert the opposite of what it says.
+fn test_the_class_is_named_and_a_typo_is_refused() {
+    tcn_ok = played("place 8 0 insect\n");
+    assert(tcn_ok.ok, "an insect is placed: {script_describe(tcn_ok)}");
+    assert((tcn_ok.wave.enemies[0] ?? Enemy { }).kind == ENEMY_KIND_INSECT as u8,
+           "and it IS an insect");
+
+    tcn_bad = played("place 8 0 bettle\n");
+    assert(!tcn_bad.ok, "a typo is refused rather than defaulted");
+    assert(tcn_bad.message.contains("unknown class"),
+           "and says so: '{tcn_bad.message}'");
+}
+
+// A heading out of range is refused rather than wrapped.
+fn test_a_heading_is_checked() {
+    thc_ok = played("place 8 0 robot 5\n");
+    assert(thc_ok.ok, "five is a direction");
+    thc_bad = played("place 8 0 robot 6\n");
+    assert(!thc_bad.ok, "six is not: '{thc_bad.message}'");
+}
+
+// The heading is optional, and its default is the zero — which for a
+// direction is a real direction (east), not a sentinel.
+fn test_the_heading_defaults_to_zero() {
+    thd_run = played("place 8 0 robot\n");
+    assert(thd_run.ok, "it runs: {script_describe(thd_run)}");
+    assert((thd_run.wave.enemies[0] ?? Enemy { }).heading == 0 as u8,
+           "heading 0");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The two fields a placement leaves neutral
+// ─────────────────────────────────────────────────────────────────
+
+// `hit` already existed and is what reaches `taken` — reused rather
+// than duplicated, so there is one way to hurt an enemy from a script.
+fn test_damage_taken_is_reachable_and_it_is_the_verb_that_existed() {
+    tdt_run = played("place 8 0 robot 3\nhit 0 10\n");
+    assert(tdt_run.ok, "it runs: {script_describe(tdt_run)}");
+
+    tdt_want = wave_state_empty();
+    tdt_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                                 heading: 3 as u8, alive: true,
+                                 taken: 10.0, stand: 0.0 }];
+    assert(state_diff(tdt_run.wave, tdt_want) == "",
+           "ten HP absorbed: '{state_diff(tdt_run.wave, tdt_want)}'");
+}
+
+// `stand` reaches the pre-walk window.
+fn test_the_pre_walk_window_is_reachable() {
+    tpw2_run = played("place 8 0 robot 3\nstand 0 2.5\n");
+    assert(tpw2_run.ok, "it runs: {script_describe(tpw2_run)}");
+
+    tpw2_want = wave_state_empty();
+    tpw2_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                                 heading: 3 as u8, alive: true,
+                                 taken: 0.0, stand: 2.5 }];
+    assert(state_diff(tpw2_run.wave, tpw2_want) == "",
+           "two and a half seconds of window: "
+           + "'{state_diff(tpw2_run.wave, tpw2_want)}'");
+
+    // And it MEANS something: a standing enemy does not move.
+    tpw2_still = played("place 8 0 robot 3\nstand 0 2.5\ntick 1\nenemy 0 8 0\n");
+    assert(tpw2_still.ok,
+           "it stood its ground: {script_describe(tpw2_still)}");
+}
+
+// `dead` reaches `alive`.
+fn test_an_enemy_can_be_authored_down() {
+    tae_run = played("place 8 0 robot 3\ndead 0\n");
+    assert(tae_run.ok, "it runs: {script_describe(tae_run)}");
+
+    tae_want = wave_state_empty();
+    tae_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                                 heading: 3 as u8, alive: false,
+                                 taken: 0.0, stand: 0.0 }];
+    assert(state_diff(tae_run.wave, tae_want) == "",
+           "down: '{state_diff(tae_run.wave, tae_want)}'");
+}
+
+// ⚠⚠ **And `dead` deposits NO body**, which is `damage`'s rule for a
+// wall applied to an enemy: a setter authors the ledger and never the
+// consequence, so `wave_deaths` stays the engine's one death path.
+//
+// A captured state carries the body as its own `raise` line, so replay
+// reproduces both without a second path that could drift from the tick.
+fn test_authoring_a_death_deposits_no_body() {
+    tad_run = played("place 8 0 robot 3\ndead 0\npile 8 0 0.0 0.0\n");
+    assert(tad_run.ok,
+           "no rubble where it lies: {script_describe(tad_run)}");
+    assert(height_count(tad_run.wave.heights) == 0,
+           "and none anywhere: {height_count(tad_run.wave.heights)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The whole of an Enemy, in one file
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **Every field of `Enemy` at a non-neutral value at once** — the
+// state S2 will have to emit and replay.  If a field had no verb this
+// would be the test that could not be written.
+fn test_every_field_of_an_enemy_is_expressible() {
+    tef_run = played("place 9 1 insect 4\nhit 0 7.5\nstand 0 1.25\ndead 0\n");
+    assert(tef_run.ok, "it runs: {script_describe(tef_run)}");
+
+    tef_want = wave_state_empty();
+    tef_want.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_INSECT as u8,
+                                 heading: 4 as u8, alive: false,
+                                 taken: 7.5, stand: 1.25 }];
+    assert(state_diff(tef_run.wave, tef_want) == "",
+           "all seven fields: '{state_diff(tef_run.wave, tef_want)}'");
+}
+
+// Two placements are two enemies, in the order written — because an
+// index is an identity to every other verb (`hit 1`, `enemy 1 …`).
+fn test_placements_keep_their_order() {
+    tpo_run = played("place 8 0 robot 3\nplace 9 0 insect 1\n"
+                     + "enemy 0 8 0\nenemy 1 9 0\n");
+    assert(tpo_run.ok, "in order: {script_describe(tpo_run)}");
+    assert((tpo_run.wave.enemies[1] ?? Enemy { }).kind == ENEMY_KIND_INSECT as u8,
+           "and the second is the insect");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What the verbs REFUSE
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ An index past the roster is an ERROR, never a no-op — `hit`'s rule,
+// and the reason is the same: a script that conditioned nobody and then
+// asserted the state would be green for the wrong reason.
+fn test_an_index_past_the_roster_is_refused() {
+    tai_s = played("place 8 0 robot\nstand 3 1.0\n");
+    assert(!tai_s.ok, "stand refuses: '{tai_s.message}'");
+    tai_d = played("place 8 0 robot\ndead 2\n");
+    assert(!tai_d.ok, "and so does dead: '{tai_d.message}'");
+}
+
+// Arity is checked, so a half-written line fails at the line rather
+// than by producing something odd later.
+fn test_arity_is_checked() {
+    tac_1 = played("place 8 0\n");
+    assert(!tac_1.ok, "place needs a class: '{tac_1.message}'");
+    tac_2 = played("place 8 0 robot 3 extra\n");
+    assert(!tac_2.ok, "and no more than a heading: '{tac_2.message}'");
+    tac_3 = played("place 8 0 robot\nstand 0\n");
+    assert(!tac_3.ok, "stand needs its seconds: '{tac_3.message}'");
+}
+
+// ⚠ **`enemy` is still an ASSERTION**, and that is why `place` is a
+// separate verb.  Plan 12 B4's rule: a line whose meaning depends on
+// knowing which reading applies cannot be checked by looking at it.
+fn test_enemy_is_still_an_assertion() {
+    tei_ok = played("place 8 0 robot\nenemy 0 8 0\n");
+    assert(tei_ok.ok, "it asserts where enemy 0 is");
+
+    tei_no = played("place 8 0 robot\nenemy 0 1 1\n");
+    assert(!tei_no.ok, "and fails when that is not where it is");
+}

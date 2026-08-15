@@ -89,7 +89,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 998/998 green under `scripts/test.sh`** (~130 s measured
+**Suite: 1013/1013 green under `scripts/test.sh`** (~130 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -1632,6 +1632,7 @@ signature.
 | Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
+| Author ONE enemy in a `.keys` file | `place <q> <r> <class> [heading]` (plan 18 S1a), plus `stand <i> <secs>` and `dead <i>` for the two fields a placement leaves neutral; `hit <i> <hp>` is the third and already existed.  ⚠ A bare `place` is HEALTHY and WALKING — `taken` and `stand` are both zero-neutral, and getting either backwards spawns a corpse that has not finished arriving while every "the wave is there" assertion stays green.  ⚠ `dead` deposits NO body: it authors the ledger and never the consequence, so `wave_deaths` stays the one death path |
 | Add a `.keys` verb that takes a hex | `src/script.loft`, AND a row in `src/convert.loft::keys_schemas` + the vocabulary list in `tests/09_c5a_converter.loft`.  A missing schema row is silent: the converter passes an unknown command through untouched |
 | Place or restore a marker of any kind | `src/markers.loft::place_marker` (and `history.loft::place_marker_and_record`) — the ONE dispatch.  ⚠ Sidecar load, undo and redo each used to fall through to SPAWN, so a kind they had not learned about arrived as a wave source with a heading |
 | Add a marker kind | append a constant in `markers.loft`, bump `MARKER_KIND_COUNT`, add a row to `place_marker` + `marker_kind_name`.  ⚠ The editor's place-kind CYCLE grows, so every `.keys` script that cycles back to spawn needs another press — B5a paid that for nine scenarios |

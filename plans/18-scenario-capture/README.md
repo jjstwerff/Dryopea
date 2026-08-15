@@ -9,13 +9,18 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**S0 shipped** (2026-08-15).  S1a is next.  Suite **998 green**, gate
-**28 scripts / 520 measurements**.
+**S0 + S1a shipped** (2026-08-15).  S1b is next.  Suite **1013 green**,
+gate **28 scripts / 520 measurements**.
 
 **S0 built the oracle every later phase needs.**  `src/compare.loft`
 answers *how* two `WaveState`s differ — the first difference, named —
 and `tests/18_s0_the_comparison.loft` discriminates **every field of
 every struct in the state**, one case each.  § S0.
+
+**S1a made the roster authorable.**  `place <q> <r> <class> [heading]`
+puts ONE enemy down, and `stand` / `dead` reach the two fields a
+placement leaves neutral — so all seven fields of an `Enemy` can now be
+said in a `.keys` file.  § S1a.
 
 ⚠ **Two facts measured while opening it**, both of which move the risk:
 
@@ -133,7 +138,7 @@ REFUSED rather than quietly emitted.
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
 | **S0** ✓ | equal states compare equal; a fork compares equal; one tick apart they do not | a comparison that sees **every** field, and is INDEPENDENT of the emitter | ✓ 35 per-field discriminations, verified by three blindness mutations rather than by reading; ✓ hash FILL ORDER is not a difference; ✓ one ulp IS one, so nobody adds an epsilon for tidiness |
-| **S1a** | an enemy placed by a `.keys` line matches one built in loft | the script can express an `Enemy`'s whole state | `stand` and `taken` are zero-neutral (plan 12 B4, plan 16 W2), so a line that omits them must give a HEALTHY robot that walks, not a corpse that has not arrived |
+| **S1a** ✓ | a placed enemy is S0-identical to one built in loft, all seven fields | the script can express an `Enemy`'s whole state, and a bare placement is the NEUTRAL one | ✓ both zero-neutral fields verified by mutation — a placement that starts mid-window stops walking, one that starts pre-damaged reads as a corpse, and each turns three assertions red; ✓ `dead` deposits NO body, so `wave_deaths` stays the one death path |
 | **S1b** | ditto for towers, wallet, cargo, and the condition fields | the vocabulary is TOTAL over `WaveState` | a field with no setter must fail S2's round trip loudly rather than be dropped silently |
 | **S2** | capture → emit → replay → identical | **round-trip = identity**, the exact invariant this plan is built on | a state carrying a field the emitter forgot must go RED; S0's per-field comparison is what makes that possible |
 | **S3** | a cropped fixture reproduces the property | a crop is bounded by the RULES, not the picture | a crop that drops the core, or lands inside the bubble radius, is REFUSED — not emitted and left to read as a flaky test |
@@ -144,7 +149,7 @@ REFUSED rather than quietly emitted.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **S0** — the instrument: comparing two states | XS | `tests/18_s0_the_comparison.loft` — 15 tests; 35 per-field discriminations, and three blindness mutations verified (drop `Enemy.stand`, drop `CarryObject.owner`, compare a layer by count alone) each turn exactly one assertion red | **Done** |
-| **S1a** — an enemy becomes authorable | S | `tests/18_s1a_placing_an_enemy.loft` — `enemy` gains a setter form (or a new verb); a placed enemy equals one built in loft, including heading, damage taken and the pre-walk window | Blocked on S0 |
+| **S1a** — an enemy becomes authorable | S | `tests/18_s1a_placing_an_enemy.loft` — 15 tests; a placed enemy is S0-identical to one built in loft, all seven fields; three mutations verified (a placement mid-window, a placement pre-damaged, and `dead` depositing a body) | **Done** |
 | **S1b** — the rest of the state becomes authorable | M | `tests/18_s1b_the_vocabulary_is_total.loft` — setters for towers, wallet and cargo plus the condition fields, and a test that walks every `WaveState` field asserting each has one | Blocked on S0 |
 | **S2** — the emitter, and the round trip | M | `tests/18_s2_the_round_trip.loft` — capture a state from each `tests/scripts/*.keys` run, emit, replay, and assert S0-identical.  ⚠ Sweeping the REAL scenarios rather than hand-built states, the shape `09_c5a` uses | Blocked on S1a + S1b |
 | **S3** — the crop | S | `tests/18_s3_the_crop.loft` — a cropped fixture reproduces its property; a crop that would drop the core or cut inside the bubble is refused | Blocked on S2 |
@@ -248,6 +253,52 @@ is at the bottom, which reads backwards.  It is
 bound to a call whose callee sits lower in the file panics the parser.
 dryopea filed it from a plan 17 probe and this file hit it on the first
 compile.
+
+## S1a — placing one enemy (2026-08-15)
+
+`place <q> <r> <class> [heading]` puts one enemy on a hex.  `stand <i>
+<seconds>` sets the pre-walk window and `dead <i>` marks one down;
+`hit <i> <hp>` already existed and is what reaches damage taken, reused
+rather than duplicated.
+
+⚠ **A separate verb rather than an overload of `enemy`**, which is an
+ASSERTION.  Plan 12 B4 set the rule when it refused to overload
+`damage` for enemies: *a line whose meaning depends on knowing which
+reading applies* cannot be checked by looking at it.
+
+### ⚠⚠ The gate is the zero-neutral half
+
+`Enemy` has two fields whose neutral value is not obvious, and both
+were chosen so an omitted field means the useful thing:
+
+| field | 0 means | set by |
+|---|---|---|
+| `taken` — damage ABSORBED (plan 12 B4) | a HEALTHY robot | `hit` |
+| `stand` — seconds LEFT at the marker (plan 16 W2) | one free to WALK | `stand` |
+
+So a bare `place` must give a robot that is whole and moving.  ⚠ Get
+either backwards and the fixture spawns a corpse that has not finished
+arriving, while every assertion about *"the wave is there"* stays green
+and nothing moves.  Verified by mutation: a placement that starts
+mid-window turns three assertions red, and one that starts pre-damaged
+turns three others.
+
+### ⚠ It AUTHORS and never simulates
+
+`dead <i>` marks an enemy down and deposits **no body**.  That is
+`damage <q> <r> <hp>`'s rule — it fills the ledger and *"cannot BREAK
+anything, only a tick does"* — and it is what keeps `wave_deaths` the
+engine's one death path.  A captured state carries the body as its own
+`raise` line, so replay reproduces both without a second path to drift.
+⚠ Mutated to deposit one and three assertions go red.
+
+### ⚠ S0 paid for itself immediately
+
+Every equality here is `state_diff`, and when a mutation broke a
+placement the failure read **`enemies[0].stand: 5 vs 0`** — the field
+and both values, not "the states differ".  That is the phase-ordering
+argument made concrete: S1a's gate would have been a hand-written pile
+of per-field assertions without it.
 
 ## Open questions
 
