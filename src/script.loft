@@ -1158,6 +1158,221 @@ fn script_ints(tok: vector<text>, n: integer) -> vector<integer> {
 //
 // `rest` is the raw remainder of the line after the command word,
 // which only `echo` wants.
+// ─── Authoring the rest of the state (plan 18 S1b) ──────────────
+//
+// `plans/18` emits a captured situation as `.keys`, so the vocabulary
+// has to be able to SAY every field of a `WaveState`.  S1a did the
+// roster; these seven do the layers and the conditions that had no
+// setter at all — towers, the wallet, cargo, and the fields on the
+// player, the crew and the schedule that no play verb reaches.
+//
+// ⚠ **Seven command words rather than one `set` with a subject**, and
+// the converter is why.  `convert.loft::keys_schemas` keys a
+// coordinate's POSITION on the first token, so a single `set` would
+// need one pair position for `set tower 4 0 …` and another for
+// `set wallet 30` — and the mismatch is silent: a lattice conversion
+// would rewrite `set member 0 on 0.5` as if `0 on` were a hex.  That is
+// the exact failure `tests/09_c5a_converter.loft` § What must NOT be
+// touched exists to refuse.
+//
+// ⚠ **They AUTHOR and never simulate**, S1a's rule and `damage`'s
+// before it: each writes a field and triggers no consequence.  `tower`
+// does not fire, `object` does not check reach, `player` does not
+// respawn.  A captured state carries every consequence as its own line.
+//
+// ⚠ In its own function rather than another seven branches of
+// `script_command`, which the complexity advice already flags at 214.
+fn is_author_cmd(name: text) -> boolean {
+    name == "tower" || name == "object" || name == "spent"
+    || name == "player" || name == "member" || name == "pending"
+    || name == "cursor"
+}
+
+// Read an on/off word.  -1 when it is neither, so a caller can refuse.
+fn on_off(word: text) -> integer {
+    if word == "on"  { return 1; }
+    if word == "off" { return 0; }
+    -1
+}
+
+fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
+    sa_cmd  = tok[0] ?? "";
+    sa_argc = len(tok) - 1;
+
+    // A tower's whole top: what it has fired, what it has banked toward
+    // its next shot, what has been banked toward a rebuild, and whether
+    // the top is on it at all.
+    //
+    // ⚠ It demands a tower MARKER, the same refusal `shots` and `top`
+    // make: "no top" and "no tower" are the two states a stripped tower
+    // sits between, and one answer for both is green before the tower
+    // is placed and after it is taken away.
+    if sa_cmd == "tower" {
+        if sa_argc != 6 {
+            return "tower needs <q> <r> <shots> <charge> <repair> <on|off>";
+        }
+        sa_tv = script_ints(tok, 2);
+        if len(sa_tv) != 2 { return "tower: <q> and <r> must be integers"; }
+        sa_tq = sa_tv[0] ?? 0;
+        sa_tr = sa_tv[1] ?? 0;
+        if marker_kind(s.mw, sa_tq, sa_tr) != MARKER_KIND_TOWER {
+            return "tower: no tower marker at ({sa_tq}, {sa_tr})";
+        }
+        sa_tsh = (tok[3] ?? "") as integer?;
+        if sa_tsh == null { return "tower: <shots> must be an integer"; }
+        sa_tch = (tok[4] ?? "") as float?;
+        if sa_tch == null { return "tower: <charge> must be a number"; }
+        sa_trp = (tok[5] ?? "") as float?;
+        if sa_trp == null { return "tower: <repair> must be a number"; }
+        sa_ttp = on_off(tok[6] ?? "");
+        if sa_ttp < 0 { return "tower: <on|off> for the top, not '{tok[6] ?? ""}'"; }
+
+        // Written through one cell so the four fields cannot disagree
+        // about which tower they belong to.
+        tower_bank(run.wave.towers, sa_tq, sa_tr, 0.0);
+        sa_tc = run.wave.towers.cells[sa_tq, sa_tr];
+        if sa_tc == null { return "tower: ({sa_tq}, {sa_tr}) has no cell"; }
+        sa_tc.shots       = sa_tsh ?? 0;
+        sa_tc.charge      = sa_tch ?? 0.0;
+        sa_tc.repair      = sa_trp ?? 0.0;
+        sa_tc.top_removed = sa_ttp == 0;
+        return "";
+    }
+
+    // One carryable thing.  ⚠ Coordinates FIRST, so the converter's
+    // pair position matches every other coordinate verb.
+    if sa_cmd == "object" {
+        if sa_argc != 5 {
+            return "object needs <q> <r> <kind> <subj> <owner>";
+        }
+        sa_ov = script_ints(tok, 2);
+        if len(sa_ov) != 2 { return "object: <q> and <r> must be integers"; }
+        sa_okw = tok[3] ?? "";
+        sa_ok = CARGO_WRECK;
+        if sa_okw == "top" { sa_ok = CARGO_TOP; }
+        else if sa_okw != "wreck" {
+            return "object: unknown kind '{sa_okw}' — wreck, top";
+        }
+        sa_osj = (tok[4] ?? "") as integer?;
+        if sa_osj == null { return "object: <subj> must be an integer"; }
+
+        // The owner IS the state machine (`carry.loft`): on the ground,
+        // in a carrier's slot, or spent.  Named the way `take` / `drop`
+        // name a carrier, so one vocabulary covers both.
+        sa_ow = tok[5] ?? "";
+        sa_owner = BLOCKER_NONE;
+        if sa_ow == "ground" { sa_owner = BLOCKER_NONE; }
+        else if sa_ow == "gone" { sa_owner = CARGO_GONE; }
+        else if sa_ow == "player" { sa_owner = BLOCKER_PLAYER; }
+        else {
+            sa_oc = sa_ow as integer?;
+            if sa_oc == null {
+                return "object: <owner> is ground, gone, player or a crew index, not '{sa_ow}'";
+            }
+            sa_ocn = sa_oc ?? 0;
+            if sa_ocn < 0 || sa_ocn >= len(run.wave.crew) {
+                return "object: no helper {sa_ocn} — the crew is {len(run.wave.crew)} strong";
+            }
+            sa_owner = BLOCKER_CREW + sa_ocn;
+        }
+
+        sa_oi = cargo_spawn(run.wave.cargo, sa_ok as u8? ?? 0, sa_osj ?? 0,
+                            sa_ov[0] ?? 0, sa_ov[1] ?? 0);
+        (run.wave.cargo.items[sa_oi] ?? CarryObject { }).owner = sa_owner;
+        return "";
+    }
+
+    // Points SPENT out of the run's budget — the way `wallet.loft`
+    // stores it, so the fixture says what the ledger says.
+    if sa_cmd == "spent" {
+        if sa_argc != 1 { return "spent needs <points>"; }
+        sa_sp = (tok[1] ?? "") as float?;
+        if sa_sp == null { return "spent: <points> must be a number"; }
+        run.wave.wallet.spent = sa_sp ?? 0.0;
+        return "";
+    }
+
+    // The player's condition — what `park` and `drive` do not reach.
+    // ⚠ `<on|off>` is IN THE WORLD, not alive: a vehicle that has never
+    // been parked is at (0, 0) and not present, and (0, 0) is a real
+    // hex (`vehicle.loft`).
+    if sa_cmd == "player" {
+        if sa_argc != 4 {
+            return "player needs <on|off> <boost> <cool> <taken>";
+        }
+        sa_pp = on_off(tok[1] ?? "");
+        if sa_pp < 0 { return "player: <on|off> for in-the-world, not '{tok[1] ?? ""}'"; }
+        sa_pb = (tok[2] ?? "") as float?;
+        sa_pc = (tok[3] ?? "") as float?;
+        sa_pt = (tok[4] ?? "") as float?;
+        if sa_pb == null || sa_pc == null || sa_pt == null {
+            return "player: <boost>, <cool> and <taken> must be numbers";
+        }
+        run.wave.player.parked     = sa_pp == 1;
+        run.wave.player.boost_left = sa_pb ?? 0.0;
+        run.wave.player.cool_left  = sa_pc ?? 0.0;
+        run.wave.player.taken      = sa_pt ?? 0.0;
+        return "";
+    }
+
+    // One crew member's condition — what `crew` and `send` do not reach.
+    if sa_cmd == "member" {
+        if sa_argc != 5 {
+            return "member needs <i> <on|off> <progress> <taken> <recover>";
+        }
+        sa_mi = (tok[1] ?? "") as integer?;
+        if sa_mi == null { return "member: <i> must be an integer"; }
+        sa_min = sa_mi ?? 0;
+        if sa_min < 0 || sa_min >= len(run.wave.crew) {
+            return "member: no helper {sa_min} — the crew is {len(run.wave.crew)} strong";
+        }
+        sa_ma = on_off(tok[2] ?? "");
+        if sa_ma < 0 { return "member: <on|off> for standing, not '{tok[2] ?? ""}'"; }
+        sa_mp = (tok[3] ?? "") as float?;
+        sa_mt = (tok[4] ?? "") as float?;
+        sa_mr = (tok[5] ?? "") as float?;
+        if sa_mp == null || sa_mt == null || sa_mr == null {
+            return "member: <progress>, <taken> and <recover> must be numbers";
+        }
+        sa_mh = run.wave.crew[sa_min] ?? Helper { };
+        sa_mh.alive    = sa_ma == 1;
+        sa_mh.progress = sa_mp ?? 0.0;
+        sa_mh.taken    = sa_mt ?? 0.0;
+        sa_mh.recover  = sa_mr ?? 0.0;
+        return "";
+    }
+
+    // Where the wave list has GOT to — what `schedule` does not reach,
+    // because it authors the list and starts it at the beginning.
+    if sa_cmd == "pending" {
+        if sa_argc != 3 { return "pending needs <sent> <lull> <on|off>"; }
+        sa_ps = (tok[1] ?? "") as integer?;
+        if sa_ps == null { return "pending: <sent> must be an integer"; }
+        sa_pl = (tok[2] ?? "") as float?;
+        if sa_pl == null { return "pending: <lull> must be a number"; }
+        sa_pr = on_off(tok[3] ?? "");
+        if sa_pr < 0 { return "pending: <on|off> for running, not '{tok[3] ?? ""}'"; }
+        run.wave.schedule.sent    = sa_ps ?? 0;
+        run.wave.schedule.lull    = sa_pl ?? 0.0;
+        run.wave.schedule.running = sa_pr == 1;
+        return "";
+    }
+
+    // The round-robin index into the active markers.  ⚠ It decides
+    // which marker the NEXT wave uses, so a fixture that dropped it
+    // would replay identically until a wave spawned and then diverge —
+    // `plans/18` § Open questions 1.
+    if sa_cmd == "cursor" {
+        if sa_argc != 1 { return "cursor needs <n>"; }
+        sa_cn = (tok[1] ?? "") as integer?;
+        if sa_cn == null { return "cursor: <n> must be an integer"; }
+        run.wave.pick_cursor = sa_cn ?? 0;
+        return "";
+    }
+
+    "unknown author command '{sa_cmd}'"
+}
+
 fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text) -> text {
     sc_cmd  = tok[0] ?? "";
     sc_argc = len(tok) - 1;
@@ -1170,6 +1385,10 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         println("script: {rest}");
         return "";
     }
+
+    // The fixture-authoring verbs (plan 18 S1b) live in their own
+    // function — see `script_author`.
+    if is_author_cmd(sc_cmd) { return script_author(s, run, tok); }
 
     if sc_cmd == "at" {
         if sc_argc != 2 && sc_argc != 3 { return "at needs <q> <r> [zoom]"; }

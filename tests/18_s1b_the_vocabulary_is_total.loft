@@ -1,0 +1,292 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 18 phase S1b — the vocabulary becomes TOTAL over `WaveState`.
+//
+// S1a made the roster authorable.  This does the rest: the towers, the
+// wallet and the cargo had no setter at all, and the player, the crew
+// and the schedule each had fields no play verb reaches — a boost
+// running, a recovery clock, how far down the wave list a run has got.
+//
+// After this a `.keys` file can say every field of a `WaveState`, which
+// is what makes S2's emitter nearly trivial and its round-trip gate
+// meaningful.
+//
+// ── ⚠⚠ The gate is the TOTALITY test ────────────────────────────
+//
+// § Every field of the state is reachable builds ONE state in which
+// every field of every struct holds a non-neutral value, entirely from
+// a `.keys` source, and asserts it is S0-identical to the same state
+// built in loft.  A field with no setter cannot pass it: the two states
+// differ, and `state_diff` names the field.
+//
+// ⚠ That is the property, and it is stronger than seven separate
+// "this verb works" tests — those are green while the ONE state a
+// capture actually needs is unreachable.
+//
+// ── ⚠ Seven command words, not one `set` with a subject ─────────
+//
+// `convert.loft::keys_schemas` keys a coordinate's POSITION on the
+// first token.  A single `set` would need one pair position for
+// `set tower 4 0 …` and another for `set wallet 30`, and the mismatch
+// is SILENT — a lattice conversion would rewrite `set member 0 on 0.5`
+// as though `0 on` were a hex.  `09_c5a_converter.loft` § What must NOT
+// be touched is the file that refuses exactly that.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// A session with a core, a tower marker and some ground.
+fn played(src: text) -> ScriptRun {
+    p_head = "do toggle_mode\n"
+           + "do cycle_kind\nclick 0 0\n"          // target at (0, 0)
+           + "do cycle_kind\nclick 4 0\n"          // tower at (4, 0)
+           + "do toggle_mode\npalette 5\ndrag -2 0 16 0\n"
+           // ⚠ A wall, because `damage` refuses a hex with nothing
+           // breakable on it — "at 0 HP" and "no wall here" are the two
+           // states a break moves BETWEEN, and one number for both is
+           // green before the siege and after the wall is gone.
+           + "palette 9\nclick 6 0\n";
+    p_r = script_run(editor_state_new(PALETTE), p_head + src, "tests/actual");
+    p_r
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ THE GATE: every field of the state is reachable
+// ─────────────────────────────────────────────────────────────────
+
+// One state, every field non-neutral, authored entirely from `.keys` —
+// and S0 says whether anything was missed.
+//
+// ⚠ **A field with no setter fails this and names itself.**  That is
+// what the phase is for: not "each verb works" but "the state a capture
+// needs can be said at all".
+fn test_every_field_of_the_state_is_reachable() {
+    tef_run = played(
+        // the roster (S1a)
+          "place 9 1 insect 4\nhit 0 7.5\nstand 0 1.25\ndead 0\n"
+        + "cursor 3\n"
+        // the runtime layers
+        + "raise 5 1 1.5 carapace\n"
+        + "damage 6 0 25\n"
+        + "tower 4 0 12 0.4 6.0 off\n"
+        + "spent 30\n"
+        // the movers
+        + "park 1 0\ndrive 3 0\nplayer on 1.5 2.5 20\n"
+        + "crew 2 1\nsend 0 8 1\nmember 0 off 0.5 15 45\n"
+        // the cargo and the schedule
+        + "object 7 0 wreck 0 player\n"
+        + "schedule 4 6\npending 1 5.0 on\n");
+    assert(tef_run.ok, "the script runs: {script_describe(tef_run)}");
+
+    // The same state, built by hand.
+    tef_want = wave_state_empty();
+
+    tef_want.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_INSECT as u8,
+                                 heading: 4 as u8, alive: false,
+                                 taken: 7.5, stand: 1.25 }];
+    tef_want.pick_cursor = 3;
+
+    height_raise(tef_want.heights, 5, 1, 1.5, as_u8(RUBBLE_CARAPACE));
+    damage_apply(tef_want.damage, 6, 0, 25.0);
+
+    tower_bank(tef_want.towers, 4, 0, 0.0);
+    tef_wc = tef_want.towers.cells[4, 0];
+    if tef_wc != null {
+        tef_wc.shots       = 12;
+        tef_wc.charge      = 0.4;
+        tef_wc.repair      = 6.0;
+        tef_wc.top_removed = true;
+    }
+
+    wallet_drain(tef_want.wallet, 30.0);
+
+    vehicle_place(tef_want.player, 1, 0);
+    vehicle_drive(tef_want.player, 3, 0);
+    tef_want.player.parked     = true;
+    tef_want.player.boost_left = 1.5;
+    tef_want.player.cool_left  = 2.5;
+    tef_want.player.taken      = 20.0;
+
+    tef_want.crew += [helper_new(2, 1)];
+    helper_drive(tef_want.crew[0] ?? Helper { }, 8, 1);
+    tef_wh = tef_want.crew[0] ?? Helper { };
+    tef_wh.alive    = false;
+    tef_wh.progress = 0.5;
+    tef_wh.taken    = 15.0;
+    tef_wh.recover  = 45.0;
+
+    tef_oi = cargo_spawn(tef_want.cargo, CARGO_WRECK, 0, 7, 0);
+    (tef_want.cargo.items[tef_oi] ?? CarryObject { }).owner = BLOCKER_PLAYER;
+
+    tef_want.schedule = wave_schedule_of([4, 6], INTER_WAVE_DELAY_SECONDS);
+    tef_want.schedule.sent    = 1;
+    tef_want.schedule.lull    = 5.0;
+    tef_want.schedule.running = true;
+
+    assert(state_diff(tef_run.wave, tef_want) == "",
+           "every field said from a script: "
+           + "'{state_diff(tef_run.wave, tef_want)}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The individual verbs
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_towers_whole_top_is_authorable() {
+    tat = played("tower 4 0 12 0.4 6.0 off\n");
+    assert(tat.ok, "it runs: {script_describe(tat)}");
+    assert(tower_shots(tat.wave.towers, 4, 0) == 12,
+           "shots: {tower_shots(tat.wave.towers, 4, 0)}");
+    assert(tower_charge(tat.wave.towers, 4, 0) == 0.4, "charge");
+    assert(tower_repair_progress(tat.wave.towers, 4, 0) == 6.0, "repair");
+    assert(!tower_has_top(tat.wave.towers, 4, 0), "and the top is off");
+}
+
+// ⚠ It demands a tower MARKER, the refusal `shots` and `top` already
+// make: "no top" and "no tower" are the two states a stripped tower
+// sits between, and one answer for both is green both before the tower
+// is placed and after it is taken away.
+fn test_a_tower_without_a_marker_is_refused() {
+    taw = played("tower 9 9 1 0.0 0.0 on\n");
+    assert(!taw.ok, "refused: '{taw.message}'");
+    assert(taw.message.contains("no tower marker"), "and says why");
+}
+
+fn test_the_wallet_is_authorable() {
+    twa = played("spent 30\n");
+    assert(twa.ok, "it runs: {script_describe(twa)}");
+    assert(wallet_spent(twa.wave.wallet) == 30.0,
+           "points SPENT, the way the ledger stores it: "
+           + "{wallet_spent(twa.wave.wallet)}");
+}
+
+// ⚠ The owner IS the state machine (`carry.loft`) — on the ground, in a
+// carrier's slot, or spent — so all three have to be sayable.
+fn test_every_cargo_owner_is_authorable() {
+    teo = played("crew 2 1\n"
+                 + "object 7 0 wreck 0 ground\n"
+                 + "object 7 1 top 12 player\n"
+                 + "object 7 2 wreck 1 0\n"
+                 + "object 7 3 top 3 gone\n");
+    assert(teo.ok, "it runs: {script_describe(teo)}");
+
+    assert(cargo_owner(teo.wave.cargo, 0) == BLOCKER_NONE, "on the ground");
+    assert(cargo_owner(teo.wave.cargo, 1) == BLOCKER_PLAYER, "in the player's hands");
+    assert(cargo_owner(teo.wave.cargo, 2) == BLOCKER_CREW + 0, "in a helper's");
+    assert(cargo_owner(teo.wave.cargo, 3) == CARGO_GONE, "and spent");
+
+    // ⚠ Spent is not in the world, but it KEEPS its slot — an index is
+    // an identity (plan 15 C1).
+    assert(cargo_count(teo.wave.cargo) == 3, "three still in the world");
+    assert(cargo_slots(teo.wave.cargo) == 4, "and four slots");
+}
+
+fn test_a_cargo_kind_is_named_and_a_typo_is_refused() {
+    tck = played("object 7 0 beacon 0 ground\n");
+    assert(!tck.ok, "an unbuilt kind is refused: '{tck.message}'");
+    assert(tck.message.contains("unknown kind"), "and says so");
+}
+
+fn test_an_unknown_owner_is_refused() {
+    tuo = played("object 7 0 wreck 0 nobody\n");
+    assert(!tuo.ok, "refused: '{tuo.message}'");
+    tuo2 = played("object 7 0 wreck 0 2\n");
+    assert(!tuo2.ok, "and a crew index with no crew: '{tuo2.message}'");
+}
+
+// ⚠ `<on|off>` on the player is IN THE WORLD, not alive — a vehicle
+// that has never been parked sits at (0, 0) and is absent, and (0, 0)
+// is a real hex (`vehicle.loft` § parked).
+fn test_the_players_condition_is_authorable() {
+    tpc = played("park 1 0\nplayer off 1.5 2.5 20\n");
+    assert(tpc.ok, "it runs: {script_describe(tpc)}");
+    assert(!vehicle_present(tpc.wave.player),
+           "a player taken OUT of the world");
+    assert(tpc.wave.player.boost_left == 1.5, "a boost running");
+    assert(tpc.wave.player.cool_left == 2.5, "a cooldown");
+    assert(vehicle_hp(tpc.wave.player) == VEHICLE_HP_BLOCKER - 20.0,
+           "and damage taken: {vehicle_hp(tpc.wave.player)}");
+}
+
+fn test_a_crew_members_condition_is_authorable() {
+    tcc = played("crew 2 1\nmember 0 off 0.5 15 45\n");
+    assert(tcc.ok, "it runs: {script_describe(tcc)}");
+    tcc_h = tcc.wave.crew[0] ?? Helper { };
+    assert(helper_wrecked(tcc_h), "down");
+    assert(helper_recovering(tcc_h), "and in recovery — the 60 s clock");
+    assert(tcc_h.progress == 0.5, "with banked movement");
+    assert(helper_hp(tcc_h) == HELPER_HP - 15.0, "and damage taken");
+}
+
+fn test_a_member_index_past_the_crew_is_refused() {
+    tmi = played("crew 2 1\nmember 3 on 0 0 0\n");
+    assert(!tmi.ok, "refused: '{tmi.message}'");
+}
+
+// ⚠ `schedule` authors the LIST and starts it at the beginning;
+// `pending` says how far down it a run has got, which no play verb
+// reaches — and which decides when the next wave lands.
+fn test_where_the_wave_list_has_got_to_is_authorable() {
+    twl = played("schedule 4 6\npending 1 5.0 on\n");
+    assert(twl.ok, "it runs: {script_describe(twl)}");
+    assert(wave_schedule_sent(twl.wave.schedule) == 1, "one wave sent");
+    assert(wave_schedule_lull(twl.wave.schedule) == 5.0, "five seconds of lull");
+    assert(wave_schedule_running(twl.wave.schedule), "and it is running");
+}
+
+fn test_the_round_robin_cursor_is_authorable() {
+    trc = played("cursor 3\n");
+    assert(trc.ok, "it runs: {script_describe(trc)}");
+    assert(trc.wave.pick_cursor == 3, "the cursor: {trc.wave.pick_cursor}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// They author, and never simulate
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **`tower` does not fire and `object` does not check reach.**  It is
+// `damage <q> <r> <hp>`'s rule a third time: a setter fills the ledger
+// and triggers no consequence, so the engine keeps one code path for
+// each thing that actually happens.
+fn test_the_setters_trigger_nothing() {
+    // A tower authored black does not go looking for a target, and an
+    // object authored into the player's hands does not need the player
+    // to be anywhere near it.
+    tst = played("tower 4 0 30 0.0 0.0 on\n"
+                 + "park 15 0\n"
+                 + "object 0 0 wreck 0 player\n"
+                 + "count alive 0 0\npile 0 0 0.0 0.0\n");
+    assert(tst.ok,
+           "nothing was fired and nothing was dropped: {script_describe(tst)}");
+    assert(cargo_carrying(tst.wave.cargo, BLOCKER_PLAYER),
+           "the player is holding something fifteen hexes away");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Arity and type are checked
+// ─────────────────────────────────────────────────────────────────
+
+fn test_arity_is_checked() {
+    assert(!played("tower 4 0 12 0.4 6.0\n").ok, "tower needs its top state");
+    assert(!played("spent\n").ok, "spent needs its points");
+    assert(!played("player on 1.5 2.5\n").ok, "player needs four");
+    assert(!played("crew 2 1\nmember 0 off 0.5 15\n").ok, "member needs five");
+    assert(!played("pending 1 5.0\n").ok, "pending needs three");
+    assert(!played("cursor\n").ok, "cursor needs its index");
+    assert(!played("object 7 0 wreck 0\n").ok, "object needs an owner");
+}
+
+fn test_an_on_off_word_is_checked() {
+    assert(!played("tower 4 0 1 0.0 0.0 yes\n").ok, "the top takes on|off");
+    assert(!played("player true 0 0 0\n").ok, "and so does the player");
+    assert(!played("crew 2 1\nmember 0 alive 0 0 0\n").ok, "and a member");
+    assert(!played("pending 0 0.0 maybe\n").ok, "and the schedule");
+}

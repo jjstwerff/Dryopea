@@ -9,8 +9,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**S0 + S1a shipped** (2026-08-15).  S1b is next.  Suite **1013 green**,
-gate **28 scripts / 520 measurements**.
+**S0 + S1a + S1b shipped** (2026-08-15).  S2 is next.  Suite **1028
+green**, gate **28 scripts / 520 measurements**.
 
 **S0 built the oracle every later phase needs.**  `src/compare.loft`
 answers *how* two `WaveState`s differ — the first difference, named —
@@ -21,6 +21,12 @@ every struct in the state**, one case each.  § S0.
 puts ONE enemy down, and `stand` / `dead` reach the two fields a
 placement leaves neutral — so all seven fields of an `Enemy` can now be
 said in a `.keys` file.  § S1a.
+
+**S1b made the vocabulary TOTAL.**  Seven more verbs — `tower`,
+`object`, `spent`, `player`, `member`, `pending`, `cursor` — and every
+field of a `WaveState` can now be authored from a script.  The gate is
+one state with every field non-neutral, built both ways and compared.
+§ S1b.
 
 ⚠ **Two facts measured while opening it**, both of which move the risk:
 
@@ -93,19 +99,20 @@ exists and touches none of that.
 
 Checked field by field against `WaveState`:
 
-| field | authorable today |
-|---|---|
-| `heights` | ✓ `raise <q> <r> <m> [source]` |
-| `damage` | ✓ `damage <q> <r> <hp>` |
-| `player` | ~ `park <q> <r>` — position only, not hull, boost or cooldown |
-| `crew` | ~ `crew <q> <r>` — not HP, not wrecked, not recovery |
-| `schedule` | ~ `schedule <counts…>` — arms a list, cannot start mid-list |
-| `enemies` | ✗ `wave <n>` spawns stacked at markers; `enemy <i> <q> <r>` is an **assertion** |
-| `towers` | ✗ `shots` / `top` are measurements, not setters |
-| `wallet` | ✗ |
-| `cargo` | ✗ |
+| field | authorable | by |
+|---|---|---|
+| `heights` | ✓ | `raise <q> <r> <m> [source]` |
+| `damage` | ✓ | `damage <q> <r> <hp>` |
+| `enemies` | ✓ **S1a** | `place` + `hit` / `stand` / `dead` |
+| `towers` | ✓ **S1b** | `tower <q> <r> <shots> <charge> <repair> <on\|off>` |
+| `wallet` | ✓ **S1b** | `spent <points>` |
+| `cargo` | ✓ **S1b** | `object <q> <r> <kind> <subj> <owner>` |
+| `player` | ✓ **S1b** | `park` / `drive` + `player <on\|off> <boost> <cool> <taken>` |
+| `crew` | ✓ **S1b** | `crew` / `send` + `member <i> <on\|off> <progress> <taken> <recover>` |
+| `schedule` | ✓ **S1b** | `schedule <counts…>` + `pending <sent> <lull> <on\|off>` |
+| `pick_cursor` | ✓ **S1b** | `cursor <n>` |
 
-⚠ Once every field has a setter, the emitter is nearly trivial and the
+⚠ Every field has a setter, so the emitter is nearly trivial and the
 gate falls out: **capture → emit → replay, and the two states must be
 identical**.  That is an exact invariant with a real oracle, which is
 what makes the tool trustworthy rather than plausible.
@@ -139,7 +146,7 @@ REFUSED rather than quietly emitted.
 |---|---|---|---|
 | **S0** ✓ | equal states compare equal; a fork compares equal; one tick apart they do not | a comparison that sees **every** field, and is INDEPENDENT of the emitter | ✓ 35 per-field discriminations, verified by three blindness mutations rather than by reading; ✓ hash FILL ORDER is not a difference; ✓ one ulp IS one, so nobody adds an epsilon for tidiness |
 | **S1a** ✓ | a placed enemy is S0-identical to one built in loft, all seven fields | the script can express an `Enemy`'s whole state, and a bare placement is the NEUTRAL one | ✓ both zero-neutral fields verified by mutation — a placement that starts mid-window stops walking, one that starts pre-damaged reads as a corpse, and each turns three assertions red; ✓ `dead` deposits NO body, so `wave_deaths` stays the one death path |
-| **S1b** | ditto for towers, wallet, cargo, and the condition fields | the vocabulary is TOTAL over `WaveState` | a field with no setter must fail S2's round trip loudly rather than be dropped silently |
+| **S1b** ✓ | one state with every field non-neutral, authored from `.keys` and S0-identical to the same state built in loft | the vocabulary is TOTAL over `WaveState` | ✓ three setters mutated to drop a field: each fails the TOTALITY test and `state_diff` names the field — *'towers (4, 0).repair: 0 vs 6'*.  ⚠ Seven separate 'this verb works' tests would stay green while the one state a capture needs is unreachable |
 | **S2** | capture → emit → replay → identical | **round-trip = identity**, the exact invariant this plan is built on | a state carrying a field the emitter forgot must go RED; S0's per-field comparison is what makes that possible |
 | **S3** | a cropped fixture reproduces the property | a crop is bounded by the RULES, not the picture | a crop that drops the core, or lands inside the bubble radius, is REFUSED — not emitted and left to read as a flaky test |
 | **S4** | the reduced fixture still shows the property | minimality is checkable: removing any one more line breaks it | a reducer with no predicate reduces to nothing and calls it minimal |
@@ -150,7 +157,7 @@ REFUSED rather than quietly emitted.
 |---|---|---|---|
 | **S0** — the instrument: comparing two states | XS | `tests/18_s0_the_comparison.loft` — 15 tests; 35 per-field discriminations, and three blindness mutations verified (drop `Enemy.stand`, drop `CarryObject.owner`, compare a layer by count alone) each turn exactly one assertion red | **Done** |
 | **S1a** — an enemy becomes authorable | S | `tests/18_s1a_placing_an_enemy.loft` — 15 tests; a placed enemy is S0-identical to one built in loft, all seven fields; three mutations verified (a placement mid-window, a placement pre-damaged, and `dead` depositing a body) | **Done** |
-| **S1b** — the rest of the state becomes authorable | M | `tests/18_s1b_the_vocabulary_is_total.loft` — setters for towers, wallet and cargo plus the condition fields, and a test that walks every `WaveState` field asserting each has one | Blocked on S0 |
+| **S1b** — the rest of the state becomes authorable | M | `tests/18_s1b_the_vocabulary_is_total.loft` — 15 tests, centred on ONE state with every field non-neutral built both ways; three dropped-setter mutations verified (`tower`'s repair, `cursor`, `member`'s recovery) | **Done** |
 | **S2** — the emitter, and the round trip | M | `tests/18_s2_the_round_trip.loft` — capture a state from each `tests/scripts/*.keys` run, emit, replay, and assert S0-identical.  ⚠ Sweeping the REAL scenarios rather than hand-built states, the shape `09_c5a` uses | Blocked on S1a + S1b |
 | **S3** — the crop | S | `tests/18_s3_the_crop.loft` — a cropped fixture reproduces its property; a crop that would drop the core or cut inside the bubble is refused | Blocked on S2 |
 | **S4** — the reduce | M | `tests/18_s4_the_reduce.loft` — delta-debug against a supplied predicate; the output still shows the property and is minimal | Blocked on S3 |
@@ -299,6 +306,54 @@ placement the failure read **`enemies[0].stand: 5 vs 0`** — the field
 and both values, not "the states differ".  That is the phase-ordering
 argument made concrete: S1a's gate would have been a hand-written pile
 of per-field assertions without it.
+
+## S1b — the vocabulary becomes total (2026-08-15)
+
+Seven verbs: `tower <q> <r> <shots> <charge> <repair> <on|off>`,
+`object <q> <r> <kind> <subj> <owner>`, `spent <points>`,
+`player <on|off> <boost> <cool> <taken>`,
+`member <i> <on|off> <progress> <taken> <recover>`,
+`pending <sent> <lull> <on|off>` and `cursor <n>`.
+
+### ⚠⚠ The gate is the TOTALITY test, not seven verb tests
+
+One state in which **every field of every struct holds a non-neutral
+value**, authored entirely from a `.keys` source and asserted
+S0-identical to the same state built in loft.  A field with no setter
+cannot pass it.
+
+⚠ That is strictly stronger than seven *"this verb works"* tests, which
+stay green while the ONE state a capture actually needs is unreachable.
+Verified by mutation: `tower` dropping its repair field, `cursor` made a
+no-op, `member` dropping the recovery clock — each fails the totality
+test, and `state_diff` names it (*"towers (4, 0).repair: 0 vs 6"*).
+
+### ⚠ Seven command words, and the CONVERTER is why
+
+The tidy design is one `set` verb with a subject — `set tower 4 0 …`,
+`set wallet 30`.  It is wrong here: `convert.loft::keys_schemas` keys a
+coordinate's POSITION on the first token, so one `set` row would need
+the pair at index 2 for a tower and nowhere for a wallet.  The mismatch
+is **silent** — a lattice conversion would rewrite `set member 0 on 0.5`
+as though `0 on` were a hex, which is exactly what
+`09_c5a_converter.loft` § What must NOT be touched exists to refuse.
+
+⚠ `object` therefore takes its coordinates FIRST, before the kind, so
+its pair sits where every other coordinate verb's does.
+
+### ⚠ They author and never simulate
+
+`tower` does not fire, `object` does not check reach, `player` does not
+respawn.  `damage <q> <r> <hp>`'s rule for the third time: a setter
+fills the ledger and triggers no consequence, so the engine keeps one
+code path for each thing that actually happens.  ⚠ Asserted — a tower
+authored black shoots nothing and an object authored into the player's
+hands needs no player within fifteen hexes of it.
+
+### ⚠ And they live in their own function
+
+`script_author`, not seven more branches of `script_command` — whose
+control-flow complexity the advice lint already flags at 214.
 
 ## Open questions
 
