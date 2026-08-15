@@ -112,24 +112,30 @@ measurements).
 `tests/actual/`, so they clobber each other and fail for no reason.
 
 ⚠⚠ **If every PNG/GL test fails with *"native function not loaded"*,
-the toolchain is at fault and not the code** — and the fix is an
-environment variable, not a rebuild.  loft re-checks the `graphics`
-cdylib's loft-ffi fingerprint on every run; when a second loft build
-exists on the box (an in-tree `target/release/loft` beside the
-installed one) the two disagree, and loft's rebuild **stamps back the
-fingerprint it just rejected** — so it rebuilds for ever, and under
-`loft test`'s parallelism the workers clobber each other's artefact.
-Build it once by hand and pin it:
+suspect TWO loft binaries before suspecting the code.**  loft re-checks
+the `graphics` cdylib's loft-ffi fingerprint on every run and rebuilds
+on a mismatch, stamping its own fingerprint.  That is correct for one
+loft — the rebuild happens once and the next run is quiet.  ⚠ With an
+in-tree `target/release/loft` beside an older installed one, the two
+stamp **different** fingerprints into the same
+`~/.loft/build-cache/graphics-<ver>`, so each run rejects the other's
+artefact and rebuilds for ever — and under `loft test`'s parallelism the
+workers destroy each other's half-built `.so`.
+⚠ **The fix is to make the two agree** (`make install` in the loft tree,
+so the installed binary IS the tree build).  Diagnosed 2026-08-15, when
+`/usr/local/bin/loft` was three days behind the checkout.
+
+⚠ Symptoms that read as something else entirely: a `[timeout] hard-kill
+after 300s` in an unrelated file's PARSE phase (a cdylib build in
+flight), and a `SIGABRT` at the end of an otherwise green run.  ⚠ To
+gate while the toolchain is being sorted out, build the cdylib once by
+hand and stop loft touching it:
 
 ```bash
 (cd ~/.loft/registry/graphics-<ver>/native && \
    CARGO_TARGET_DIR=~/.loft/build-cache/graphics-<ver> cargo build --release)
 LOFT_NO_AUTO_REBUILD=1 scripts/test.sh      # and the same for validate.sh
 ```
-
-⚠ Symptoms that look like something else: a `[timeout] hard-kill after
-300s` in an unrelated file's PARSE phase (a cdylib build in flight), and
-a `SIGABRT`/`SIGSEGV` at the end of an otherwise green run.
 
 ⚠ **Both gates run INTERPRETED**, and that is not a preference.  On the
 NATIVE backend `load_palette` answers 0 entries — a silent `text as
