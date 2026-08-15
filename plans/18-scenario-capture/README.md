@@ -9,8 +9,13 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Planned.**  Nothing built.  Suite 983 green, gate 28 scripts / 520
-measurements at the point this opens.
+**S0 shipped** (2026-08-15).  S1a is next.  Suite **998 green**, gate
+**28 scripts / 520 measurements**.
+
+**S0 built the oracle every later phase needs.**  `src/compare.loft`
+answers *how* two `WaveState`s differ — the first difference, named —
+and `tests/18_s0_the_comparison.loft` discriminates **every field of
+every struct in the state**, one case each.  § S0.
 
 ⚠ **Two facts measured while opening it**, both of which move the risk:
 
@@ -127,7 +132,7 @@ REFUSED rather than quietly emitted.
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
-| **S0** | two states built the same way compare EQUAL | a state comparison that can see **every** field | ⚠ the load-bearing half: two states differing in ONE field must compare UNEQUAL, field by field — a digest that skips a field passes the equality test and makes every later gate vacuous |
+| **S0** ✓ | equal states compare equal; a fork compares equal; one tick apart they do not | a comparison that sees **every** field, and is INDEPENDENT of the emitter | ✓ 35 per-field discriminations, verified by three blindness mutations rather than by reading; ✓ hash FILL ORDER is not a difference; ✓ one ulp IS one, so nobody adds an epsilon for tidiness |
 | **S1a** | an enemy placed by a `.keys` line matches one built in loft | the script can express an `Enemy`'s whole state | `stand` and `taken` are zero-neutral (plan 12 B4, plan 16 W2), so a line that omits them must give a HEALTHY robot that walks, not a corpse that has not arrived |
 | **S1b** | ditto for towers, wallet, cargo, and the condition fields | the vocabulary is TOTAL over `WaveState` | a field with no setter must fail S2's round trip loudly rather than be dropped silently |
 | **S2** | capture → emit → replay → identical | **round-trip = identity**, the exact invariant this plan is built on | a state carrying a field the emitter forgot must go RED; S0's per-field comparison is what makes that possible |
@@ -138,7 +143,7 @@ REFUSED rather than quietly emitted.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **S0** — the instrument: comparing two states | XS | `tests/18_s0_the_comparison.loft` — equal states compare equal, and a state differing in exactly one field compares unequal, **once per field**.  ⚠ There is no `WaveState` equality today, so every later gate has no oracle until this exists | Open |
+| **S0** — the instrument: comparing two states | XS | `tests/18_s0_the_comparison.loft` — 15 tests; 35 per-field discriminations, and three blindness mutations verified (drop `Enemy.stand`, drop `CarryObject.owner`, compare a layer by count alone) each turn exactly one assertion red | **Done** |
 | **S1a** — an enemy becomes authorable | S | `tests/18_s1a_placing_an_enemy.loft` — `enemy` gains a setter form (or a new verb); a placed enemy equals one built in loft, including heading, damage taken and the pre-walk window | Blocked on S0 |
 | **S1b** — the rest of the state becomes authorable | M | `tests/18_s1b_the_vocabulary_is_total.loft` — setters for towers, wallet and cargo plus the condition fields, and a test that walks every `WaveState` field asserting each has one | Blocked on S0 |
 | **S2** — the emitter, and the round trip | M | `tests/18_s2_the_round_trip.loft` — capture a state from each `tests/scripts/*.keys` run, emit, replay, and assert S0-identical.  ⚠ Sweeping the REAL scenarios rather than hand-built states, the shape `09_c5a` uses | Blocked on S1a + S1b |
@@ -184,6 +189,65 @@ plan 17 T3's finding is literally *"537 ticks later it cleared"* — so
 there is no interesting spot to crop to and the whole run is the
 finding.  ⚠ Suite time is a separate question and it wants a profile
 first.
+
+## S0 — the comparison (2026-08-15)
+
+`src/compare.loft::state_diff(a, b)` answers `""` when two states are
+identical and otherwise names the **first** difference and both values
+— *"cargo[2].owner: 3 vs -1"*.  A gate that fails with *"the states
+differ"* sends you to a debugger; this sends you to the line, which is
+the choice `validate.loft` makes in reporting the number that moved.
+`states_equal` is defined in terms of it, so the boolean cannot
+disagree with the message.
+
+### ⚠⚠ It is NOT built on the emitter, and that is the phase
+
+The shortcut is to define equal as *emit both and compare the text*.
+That makes S2's round-trip gate **circular**: an emitter that silently
+dropped a field produces identical text for two states that differ in
+it, and the gate is green precisely where the tool is broken.  So this
+reads the state field by field and knows nothing about how a state is
+written down.
+
+### ⚠⚠ The gate is the per-field discrimination, not the equality
+
+*"Two states built the same way compare equal"* is true of
+`fn states_equal(a, b) { true }`.  So the file spends 35 assertions
+building two states that differ in **exactly one field** and checking
+the diff sees it — every field of `WaveState` and of `Enemy`, `Helper`,
+`Vehicle`, `HexRise`, `StructureHit`, `TowerCharge`, `Wallet`,
+`CarryObject` and `WaveSchedule`.
+
+⚠ Verified by MUTATION rather than by reading: made the diff blind to
+`Enemy.stand`, then to `CarryObject.owner`, then compared a whole layer
+by count alone.  Each turns exactly one assertion red.
+
+### ⚠ Three things the phase settled
+
+- **Hash fill order is not a difference.**  Layers are compared by KEY
+  — walk A, look each entry up in B, then check the counts — because
+  iteration order is *"stable within a single program run but not
+  across runs"*.  Walking both in step would make identical states
+  differ on some runs and not others.
+- **Floats are compared EXACTLY.**  An epsilon would hide the ulp of
+  drift S2 exists to catch, which inverts the rule `helper.loft` and
+  `tower.loft` follow for *deciding* a timer — and `one ulp IS a
+  difference` is asserted so nobody adds one for tidiness.
+- **A withdrawal does not rename a pile.**  The first draft asserted
+  that raising a pile by 0.0 m with a different source is visible; it
+  is not, because `height_raise` renames only on a deposit
+  (`if metres > 0.0`).  ⚠ The test was wrong and the comparison was
+  right — the direction that costs a debugging session if you assume
+  the other one.
+
+### ⚠ And the file order is a scar
+
+Every helper is declared **before** its caller and the one public door
+is at the bottom, which reads backwards.  It is
+[loft#918](https://github.com/loft-lang/loft/issues/918) — a local
+bound to a call whose callee sits lower in the file panics the parser.
+dryopea filed it from a plan 17 probe and this file hit it on the first
+compile.
 
 ## Open questions
 

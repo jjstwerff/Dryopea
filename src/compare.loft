@@ -1,0 +1,310 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Are two runs in the same state?  Plan 18 phase S0.
+//
+// ── Why this is a PHASE and not a helper ────────────────────────
+//
+// `plans/18` builds a tool that captures a situation, emits it as a
+// `.keys` file and replays it, and its whole claim is *"the two states
+// are identical"*.  dryopea could not say that at all: there is no
+// `WaveState` equality anywhere, and the suite compares runs by picking
+// out the one number a test happens to care about.  So the instrument
+// comes first — plan 08's own rule, and here it is literal, because
+// every later phase's gate is this function.
+//
+// ── ⚠⚠ It must NOT be built on the emitter ──────────────────────
+//
+// The obvious shortcut is to define "equal" as *emit both and compare
+// the text*.  That would make S2's round-trip gate **circular**: an
+// emitter that silently dropped a field would produce identical text
+// for two states that differ in it, and the gate would be green
+// precisely where the tool is broken.
+//
+// So this reads the STATE, field by field, and knows nothing about how
+// a state is written down.  It is the independent oracle, and the cost
+// of that independence is § The field list is hand-maintained.
+//
+// ── ⚠ Exact float comparison, deliberately ──────────────────────
+//
+// Every timer here is a float and none of them is compared with an
+// epsilon.  That is the opposite of the rule `helper.loft` and
+// `tower.loft` follow for *deciding* whether a timer has run out — and
+// it is right for the same reason those need one: an epsilon exists to
+// stop a comparison being decided by an ulp, and here an ulp of drift
+// is exactly what the gate is for.  Measured (plan 18, opening): a
+// float round-trips through text unchanged, so a difference this
+// reports is a real difference and never formatting.
+//
+// ── ⚠ Hash order is not part of the state ───────────────────────
+//
+// `active_spawn_markers` records that a hash's iteration order is
+// *"stable within a single program run but not across runs"*.  So every
+// layer here is compared by KEY — walk A's entries, look each one up in
+// B, then check the counts match — and never by walking both in step.
+// Comparing in iteration order would make two identical states differ
+// on a run where the hashes happened to fill differently.
+
+use lattice;
+use height;
+use damage;
+use tower;
+use wallet;
+use vehicle;
+use helper;
+use carry;
+use waves;
+use spawn;
+
+// ─── The roster ─────────────────────────────────────────────────
+//
+// ⚠ Compared by INDEX and not as a set, because an index is an identity
+// here: `WaveState.crew` is never compacted (a wreck keeps its slot,
+// plan 14 H3) and `cargo.subj` points into it, so two states with the
+// same crew members in a different order are NOT the same state.
+
+fn enemies_diff(a: const WaveState, b: const WaveState) -> text {
+    if len(a.enemies) != len(b.enemies) {
+        return "enemies: {len(a.enemies)} vs {len(b.enemies)}";
+    }
+    ed_i = 0;
+    for ed_x in a.enemies {
+        ed_y = b.enemies[ed_i] ?? Enemy { };
+        if ed_x.q != ed_y.q || ed_x.r != ed_y.r {
+            return "enemies[{ed_i}] at ({ed_x.q}, {ed_x.r}) vs ({ed_y.q}, {ed_y.r})";
+        }
+        if ed_x.kind != ed_y.kind {
+            return "enemies[{ed_i}].kind: {ed_x.kind} vs {ed_y.kind}";
+        }
+        if ed_x.heading != ed_y.heading {
+            return "enemies[{ed_i}].heading: {ed_x.heading} vs {ed_y.heading}";
+        }
+        if ed_x.alive != ed_y.alive {
+            return "enemies[{ed_i}].alive: {ed_x.alive} vs {ed_y.alive}";
+        }
+        if ed_x.taken != ed_y.taken {
+            return "enemies[{ed_i}].taken: {ed_x.taken} vs {ed_y.taken}";
+        }
+        if ed_x.stand != ed_y.stand {
+            return "enemies[{ed_i}].stand: {ed_x.stand} vs {ed_y.stand}";
+        }
+        ed_i += 1;
+    }
+    ""
+}
+
+fn crew_diff(a: const WaveState, b: const WaveState) -> text {
+    if len(a.crew) != len(b.crew) {
+        return "crew: {len(a.crew)} vs {len(b.crew)}";
+    }
+    cd_i = 0;
+    for cd_x in a.crew {
+        cd_y = b.crew[cd_i] ?? Helper { };
+        if cd_x.q != cd_y.q || cd_x.r != cd_y.r {
+            return "crew[{cd_i}] at ({cd_x.q}, {cd_x.r}) vs ({cd_y.q}, {cd_y.r})";
+        }
+        if cd_x.to_q != cd_y.to_q || cd_x.to_r != cd_y.to_r {
+            return "crew[{cd_i}] heading for ({cd_x.to_q}, {cd_x.to_r}) vs ({cd_y.to_q}, {cd_y.to_r})";
+        }
+        if cd_x.alive != cd_y.alive {
+            return "crew[{cd_i}].alive: {cd_x.alive} vs {cd_y.alive}";
+        }
+        if cd_x.progress != cd_y.progress {
+            return "crew[{cd_i}].progress: {cd_x.progress} vs {cd_y.progress}";
+        }
+        if cd_x.taken != cd_y.taken {
+            return "crew[{cd_i}].taken: {cd_x.taken} vs {cd_y.taken}";
+        }
+        if cd_x.recover != cd_y.recover {
+            return "crew[{cd_i}].recover: {cd_x.recover} vs {cd_y.recover}";
+        }
+        cd_i += 1;
+    }
+    ""
+}
+
+fn vehicle_diff(a: const Vehicle, b: const Vehicle) -> text {
+    if a.q != b.q || a.r != b.r {
+        return "player at ({a.q}, {a.r}) vs ({b.q}, {b.r})";
+    }
+    if a.to_q != b.to_q || a.to_r != b.to_r {
+        return "player heading for ({a.to_q}, {a.to_r}) vs ({b.to_q}, {b.to_r})";
+    }
+    if a.parked != b.parked { return "player.parked: {a.parked} vs {b.parked}"; }
+    if a.boost_left != b.boost_left {
+        return "player.boost_left: {a.boost_left} vs {b.boost_left}";
+    }
+    if a.cool_left != b.cool_left {
+        return "player.cool_left: {a.cool_left} vs {b.cool_left}";
+    }
+    if a.taken != b.taken { return "player.taken: {a.taken} vs {b.taken}"; }
+    ""
+}
+
+// ─── The layers, compared by KEY ────────────────────────────────
+
+fn heights_diff(a: const HeightLayer, b: const HeightLayer) -> text {
+    for hd_x in a.cells {
+        hd_y = b.cells[hd_x.q, hd_x.r];
+        if hd_y == null {
+            return "heights ({hd_x.q}, {hd_x.r}): {hd_x.metres} m vs nothing";
+        }
+        if hd_x.metres != hd_y.metres {
+            return "heights ({hd_x.q}, {hd_x.r}): {hd_x.metres} vs {hd_y.metres} m";
+        }
+        if hd_x.source != hd_y.source {
+            return "heights ({hd_x.q}, {hd_x.r}).source: {hd_x.source} vs {hd_y.source}";
+        }
+    }
+    // ⚠ The count is what catches an entry B has and A does not — the
+    // walk above can only see the other direction.
+    if len(a.cells) != len(b.cells) {
+        return "heights: {len(a.cells)} piles vs {len(b.cells)}";
+    }
+    ""
+}
+
+fn damage_diff(a: const DamageLayer, b: const DamageLayer) -> text {
+    for dd_x in a.cells {
+        dd_y = b.cells[dd_x.q, dd_x.r];
+        if dd_y == null {
+            return "damage ({dd_x.q}, {dd_x.r}): {dd_x.taken} vs nothing";
+        }
+        if dd_x.taken != dd_y.taken {
+            return "damage ({dd_x.q}, {dd_x.r}): {dd_x.taken} vs {dd_y.taken}";
+        }
+    }
+    if len(a.cells) != len(b.cells) {
+        return "damage: {len(a.cells)} hexes vs {len(b.cells)}";
+    }
+    ""
+}
+
+fn towers_diff(a: const TowerState, b: const TowerState) -> text {
+    for td_x in a.cells {
+        td_y = b.cells[td_x.q, td_x.r];
+        if td_y == null {
+            return "towers ({td_x.q}, {td_x.r}): a cell vs nothing";
+        }
+        if td_x.charge != td_y.charge {
+            return "towers ({td_x.q}, {td_x.r}).charge: {td_x.charge} vs {td_y.charge}";
+        }
+        if td_x.shots != td_y.shots {
+            return "towers ({td_x.q}, {td_x.r}).shots: {td_x.shots} vs {td_y.shots}";
+        }
+        if td_x.repair != td_y.repair {
+            return "towers ({td_x.q}, {td_x.r}).repair: {td_x.repair} vs {td_y.repair}";
+        }
+        if td_x.top_removed != td_y.top_removed {
+            return "towers ({td_x.q}, {td_x.r}).top_removed: {td_x.top_removed} vs {td_y.top_removed}";
+        }
+    }
+    if len(a.cells) != len(b.cells) {
+        return "towers: {len(a.cells)} cells vs {len(b.cells)}";
+    }
+    ""
+}
+
+// ─── The rest ───────────────────────────────────────────────────
+
+fn wallet_diff(a: const Wallet, b: const Wallet) -> text {
+    if a.spent != b.spent { return "wallet.spent: {a.spent} vs {b.spent}"; }
+    ""
+}
+
+// ⚠ By SLOT, because a slot is an identity: `carry.loft` never compacts
+// the vector, a consumed object keeps its place, and `subj` is read off
+// it after the fact.
+fn cargo_diff(a: const CargoLayer, b: const CargoLayer) -> text {
+    if len(a.items) != len(b.items) {
+        return "cargo: {len(a.items)} slots vs {len(b.items)}";
+    }
+    gd_i = 0;
+    for gd_x in a.items {
+        gd_y = b.items[gd_i] ?? CarryObject { };
+        if gd_x.kind != gd_y.kind {
+            return "cargo[{gd_i}].kind: {gd_x.kind} vs {gd_y.kind}";
+        }
+        if gd_x.subj != gd_y.subj {
+            return "cargo[{gd_i}].subj: {gd_x.subj} vs {gd_y.subj}";
+        }
+        if gd_x.q != gd_y.q || gd_x.r != gd_y.r {
+            return "cargo[{gd_i}] at ({gd_x.q}, {gd_x.r}) vs ({gd_y.q}, {gd_y.r})";
+        }
+        if gd_x.owner != gd_y.owner {
+            return "cargo[{gd_i}].owner: {gd_x.owner} vs {gd_y.owner}";
+        }
+        gd_i += 1;
+    }
+    ""
+}
+
+fn schedule_diff(a: const WaveSchedule, b: const WaveSchedule) -> text {
+    if len(a.waves) != len(b.waves) {
+        return "schedule: {len(a.waves)} waves vs {len(b.waves)}";
+    }
+    kd_i = 0;
+    for kd_w in a.waves {
+        kd_o = b.waves[kd_i] ?? 0;
+        if kd_w != kd_o {
+            return "schedule.waves[{kd_i}]: {kd_w} vs {kd_o}";
+        }
+        kd_i += 1;
+    }
+    if a.sent != b.sent { return "schedule.sent: {a.sent} vs {b.sent}"; }
+    if a.lull != b.lull { return "schedule.lull: {a.lull} vs {b.lull}"; }
+    if a.delay != b.delay { return "schedule.delay: {a.delay} vs {b.delay}"; }
+    if a.running != b.running {
+        return "schedule.running: {a.running} vs {b.running}";
+    }
+    ""
+}
+
+// ─── ⚠ The one door, and it is LAST for a reason ────────────────
+//
+// Every helper above is declared before the function that calls it,
+// which reads backwards and is not a style choice:
+// [loft#918](https://github.com/loft-lang/loft/issues/918) — a local
+// bound to a call whose callee sits LOWER in the file panics the
+// parser with an H5 cross-pass divergence, on both backends.  dryopea
+// filed it from a plan 17 probe and this file hit it on the first
+// compile.  Move the door to the top and `sd_e = enemies_diff(a, b)`
+// aborts the build.
+
+// How two states differ — "" when they do not.
+//
+// ⚠ **The FIRST difference, named**, rather than a boolean.  A gate
+// that fails with *"the states differ"* sends you to a debugger; one
+// that fails with *"cargo[2].owner: 3 vs -1"* sends you to the line.
+// It is the same choice `validate.loft` makes in reporting the first
+// failing measurement with the number that moved, and `tower_sight_
+// fault` in naming the hex and the two heights.
+pub fn state_diff(a: const WaveState, b: const WaveState) -> text {
+    sd_e = enemies_diff(a, b);
+    if sd_e != "" { return sd_e; }
+    if a.pick_cursor != b.pick_cursor {
+        return "pick_cursor: {a.pick_cursor} vs {b.pick_cursor}";
+    }
+    sd_h = heights_diff(a.heights, b.heights);
+    if sd_h != "" { return sd_h; }
+    sd_d = damage_diff(a.damage, b.damage);
+    if sd_d != "" { return sd_d; }
+    sd_t = towers_diff(a.towers, b.towers);
+    if sd_t != "" { return sd_t; }
+    sd_w = wallet_diff(a.wallet, b.wallet);
+    if sd_w != "" { return sd_w; }
+    sd_p = vehicle_diff(a.player, b.player);
+    if sd_p != "" { return sd_p; }
+    sd_c = crew_diff(a, b);
+    if sd_c != "" { return sd_c; }
+    sd_g = cargo_diff(a.cargo, b.cargo);
+    if sd_g != "" { return sd_g; }
+    schedule_diff(a.schedule, b.schedule)
+}
+
+// Are two states identical?  ⚠ Defined in terms of `state_diff` rather
+// than beside it, so the boolean can never disagree with the message.
+pub fn states_equal(a: const WaveState, b: const WaveState) -> boolean {
+    state_diff(a, b) == ""
+}
+

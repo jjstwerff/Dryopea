@@ -1,0 +1,408 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 18 phase S0 — the instrument: comparing two states.
+//
+// `plans/18` captures a situation, emits it as `.keys` and replays it,
+// and its whole claim is *"the two states are identical"*.  dryopea
+// could not say that: there is no `WaveState` equality anywhere.  So
+// the instrument comes first, and this file is what makes it worth
+// trusting.
+//
+// ── ⚠⚠ The load-bearing half is the NEGATIVE control ────────────
+//
+// "Two states built the same way compare equal" is true of
+// `fn states_equal(a, b) -> boolean { true }`.  It is true of a
+// comparison that reads three fields and ignores seven.  It is true of
+// every broken version of this function, which is why it is the cheap
+// half and not the gate.
+//
+// **The gate is one test per FIELD**: build two states differing in
+// exactly that field, and assert the diff SEES it.  A comparison that
+// skipped a field would pass every equality assertion in this file and
+// make every later phase's round-trip gate vacuous — green precisely
+// where the tool is broken.
+//
+// ── ⚠ The field list is hand-maintained, and that is the weakness ─
+//
+// loft has no reflection, so § Every field is discriminated is a list
+// somebody wrote.  A field added to `WaveState` or to one of its
+// structs is NOT automatically covered, and nothing here goes red when
+// one appears.  It is the same limitation `convert.loft::keys_schemas`
+// carries with `tests/09_c5a_converter.loft`'s vocabulary list, and it
+// is recorded rather than solved.  ⚠ `plans/18` § Open questions has
+// it; adding a field to a state struct means adding a row here.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+// A state with something in EVERY layer, so a comparison that ignores
+// one has something to ignore.
+//
+// ⚠ Built by the game's own verbs rather than by struct literals, so
+// the fixture is a state the engine can actually produce — and so a
+// field whose neutral value is not its zero (`Enemy.stand`,
+// `Enemy.taken`) is populated the way a run populates it.
+fn peopled() -> WaveState {
+    p_s = wave_state_empty();
+
+    p_s.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                            heading: 3 as u8, alive: true, taken: 10.0,
+                            stand: 2.0 }];
+    p_s.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_REGULAR as u8,
+                            heading: 3 as u8, alive: true }];
+    p_s.pick_cursor = 3;
+
+    height_raise(p_s.heights, 4, 0, 1.5, as_u8(RUBBLE_CARAPACE));
+    height_raise(p_s.heights, 5, 1, 0.5, as_u8(RUBBLE_MASONRY));
+
+    damage_apply(p_s.damage, 6, 0, 25.0);
+
+    tower_spend_shot(p_s.towers, 2, 0);
+    tower_bank(p_s.towers, 2, 0, 0.4);
+
+    wallet_drain(p_s.wallet, 30.0);
+
+    vehicle_place(p_s.player, 1, 0);
+    vehicle_drive(p_s.player, 3, 0);
+
+    p_s.crew += [helper_new(2, 1)];
+    p_s.crew += [helper_new(2, -1)];
+
+    cargo_spawn(p_s.cargo, CARGO_WRECK, 0, 7, 0);
+    cargo_spawn(p_s.cargo, CARGO_TOP, 12, 2, 0);
+
+    p_s.schedule = wave_schedule_of([4, 6], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(p_s.schedule);
+
+    p_s
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The cheap half
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_state_equals_itself() {
+    tas_a = peopled();
+    tas_b = peopled();
+
+    assert(state_diff(tas_a, tas_b) == "",
+           "two states built the same way are equal: '{state_diff(tas_a, tas_b)}'");
+    assert(states_equal(tas_a, tas_b), "and the boolean agrees");
+}
+
+// ⚠ **A FORK is equal too**, which is the property plan 18's whole
+// capture idea rests on: `b = a` is a deep copy in loft (measured while
+// opening the plan), so an untouched fork must compare identical.
+fn test_a_fork_equals_its_original() {
+    taf_a = peopled();
+    taf_b = taf_a;
+
+    assert(state_diff(taf_a, taf_b) == "",
+           "a fork starts identical: '{state_diff(taf_a, taf_b)}'");
+}
+
+// An empty state is a state, and it equals another empty one.
+fn test_two_empty_states_are_equal() {
+    assert(states_equal(wave_state_empty(), wave_state_empty()),
+           "nothing equals nothing");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ THE GATE: every field is discriminated
+// ─────────────────────────────────────────────────────────────────
+//
+// One case per field of `WaveState` and of every struct inside it.
+// Each builds the fixture twice, changes exactly one thing, and asserts
+// the diff SEES it.
+
+// Change one field and answer what the comparison said about it.
+// "" means the comparison is blind to that field.
+fn saw(b: const WaveState) -> text {
+    s_a = peopled();
+    s_d = state_diff(s_a, b);
+    s_d
+}
+
+fn test_the_roster_is_discriminated() {
+    // enemies: length
+    tri_1 = peopled();
+    tri_1.enemies += [Enemy { q: 1, r: 1, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 0 as u8, alive: true }];
+    assert(saw(tri_1) != "", "an extra enemy is seen");
+
+    // enemies[i].q / .r
+    tri_2 = peopled();
+    (tri_2.enemies[0] ?? Enemy { }).q = 99;
+    assert(saw(tri_2) != "", "an enemy's q is seen");
+    tri_3 = peopled();
+    (tri_3.enemies[0] ?? Enemy { }).r = 99;
+    assert(saw(tri_3) != "", "an enemy's r is seen");
+
+    // .kind / .heading / .alive
+    tri_4 = peopled();
+    (tri_4.enemies[0] ?? Enemy { }).kind = as_u8(ENEMY_KIND_INSECT);
+    assert(saw(tri_4) != "", "an enemy's kind is seen");
+    tri_5 = peopled();
+    (tri_5.enemies[0] ?? Enemy { }).heading = as_u8(5);
+    assert(saw(tri_5) != "", "an enemy's heading is seen");
+    tri_6 = peopled();
+    (tri_6.enemies[0] ?? Enemy { }).alive = false;
+    assert(saw(tri_6) != "", "an enemy's alive is seen");
+
+    // ⚠ .taken and .stand — the two whose neutral value is not obvious,
+    // and the two a hand-built fixture is most likely to leave at zero.
+    tri_7 = peopled();
+    (tri_7.enemies[0] ?? Enemy { }).taken = 20.0;
+    assert(saw(tri_7) != "", "an enemy's damage TAKEN is seen");
+    tri_8 = peopled();
+    (tri_8.enemies[0] ?? Enemy { }).stand = 4.0;
+    assert(saw(tri_8) != "", "an enemy's pre-walk window is seen");
+}
+
+fn test_the_cursor_is_discriminated() {
+    tci = peopled();
+    tci.pick_cursor = 4;
+    assert(saw(tci) != "", "the round-robin cursor is seen");
+}
+
+fn test_the_crew_is_discriminated() {
+    tcd_1 = peopled();
+    tcd_1.crew += [helper_new(9, 9)];
+    assert(saw(tcd_1) != "", "an extra crew member is seen");
+
+    tcd_2 = peopled();
+    (tcd_2.crew[0] ?? Helper { }).q = 77;
+    assert(saw(tcd_2) != "", "a crew member's q is seen");
+    tcd_3 = peopled();
+    (tcd_3.crew[0] ?? Helper { }).to_r = 77;
+    assert(saw(tcd_3) != "", "where a crew member is HEADING is seen");
+    tcd_4 = peopled();
+    helper_wreck(tcd_4.crew[0] ?? Helper { });
+    assert(saw(tcd_4) != "", "a wrecked crew member is seen");
+    tcd_5 = peopled();
+    (tcd_5.crew[0] ?? Helper { }).progress = 0.5;
+    assert(saw(tcd_5) != "", "banked movement progress is seen");
+    tcd_6 = peopled();
+    (tcd_6.crew[0] ?? Helper { }).taken = 15.0;
+    assert(saw(tcd_6) != "", "a crew member's damage taken is seen");
+    tcd_7 = peopled();
+    (tcd_7.crew[0] ?? Helper { }).recover = 30.0;
+    assert(saw(tcd_7) != "", "a recovery clock is seen");
+}
+
+fn test_the_player_is_discriminated() {
+    tpd_1 = peopled();
+    tpd_1.player.q = 42;
+    assert(saw(tpd_1) != "", "the player's q is seen");
+    tpd_2 = peopled();
+    tpd_2.player.to_q = 42;
+    assert(saw(tpd_2) != "", "where the player is heading is seen");
+    tpd_3 = peopled();
+    tpd_3.player.parked = false;
+    assert(saw(tpd_3) != "", "a player NOT IN THE WORLD is seen");
+    tpd_4 = peopled();
+    tpd_4.player.boost_left = 1.0;
+    assert(saw(tpd_4) != "", "a running boost is seen");
+    tpd_5 = peopled();
+    tpd_5.player.cool_left = 1.0;
+    assert(saw(tpd_5) != "", "a boost cooldown is seen");
+    tpd_6 = peopled();
+    tpd_6.player.taken = 20.0;
+    assert(saw(tpd_6) != "", "the player's damage taken is seen");
+}
+
+fn test_the_runtime_layers_are_discriminated() {
+    // heights: a new pile, a changed depth, and a changed SOURCE
+    thl_1 = peopled();
+    height_raise(thl_1.heights, 12, 2, 0.5, as_u8(RUBBLE_WRECKAGE));
+    assert(saw(thl_1) != "", "a new pile is seen");
+    thl_2 = peopled();
+    height_raise(thl_2.heights, 4, 0, 0.5, as_u8(RUBBLE_CARAPACE));
+    assert(saw(thl_2) != "", "a deeper pile is seen");
+    // ⚠ The SOURCE, isolated — and it needs its own pair rather than a
+    // tweak of the fixture.  `height_raise` renames a pile only on a
+    // deposit (`if metres > 0.0`), so raising by 0.0 with a different
+    // source is a no-op the engine performs deliberately: a withdrawal
+    // leaves the name alone.  Asking for it here failed, and the
+    // comparison was right.
+    thl_3a = wave_state_empty();
+    height_raise(thl_3a.heights, 1, 0, 0.5, as_u8(RUBBLE_WRECKAGE));
+    thl_3b = wave_state_empty();
+    height_raise(thl_3b.heights, 1, 0, 0.5, as_u8(RUBBLE_MASONRY));
+    assert(state_diff(thl_3a, thl_3b) != "",
+           "the same depth of a different MATERIAL is seen");
+
+    // ⚠ A pile REMOVED — the direction a one-way walk cannot see.
+    thl_4 = peopled();
+    height_clear(thl_4.heights, 4, 0);
+    assert(saw(thl_4) != "", "a pile that is GONE is seen");
+
+    // damage
+    thl_5 = peopled();
+    damage_apply(thl_5.damage, 6, 0, 5.0);
+    assert(saw(thl_5) != "", "more damage on a wall is seen");
+    thl_6 = peopled();
+    damage_apply(thl_6.damage, 9, 0, 5.0);
+    assert(saw(thl_6) != "", "damage on a different wall is seen");
+
+    // towers: charge, shots, repair, and the top
+    thl_7 = peopled();
+    tower_bank(thl_7.towers, 2, 0, 0.1);
+    assert(saw(thl_7) != "", "a tower's banked charge is seen");
+    thl_8 = peopled();
+    tower_spend_shot(thl_8.towers, 2, 0);
+    assert(saw(thl_8) != "", "a tower's spent shot is seen");
+    thl_9 = peopled();
+    for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(thl_9.towers, 2, 0); }
+    tower_repair_tick(thl_9.towers, 2, 0, 1.0);
+    assert(saw(thl_9) != "", "a rebuild in progress is seen");
+    thl_10 = peopled();
+    tower_detach_top(thl_10.towers, 2, 0);
+    assert(saw(thl_10) != "", "a tower with its top off is seen");
+    thl_11 = peopled();
+    tower_bank(thl_11.towers, 15, 15, 0.5);
+    assert(saw(thl_11) != "", "a tower this state had never heard of is seen");
+}
+
+fn test_the_wallet_is_discriminated() {
+    twd = peopled();
+    wallet_drain(twd.wallet, 1.0);
+    assert(saw(twd) != "", "a point spent is seen");
+}
+
+fn test_the_cargo_is_discriminated() {
+    tcg_1 = peopled();
+    cargo_spawn(tcg_1.cargo, CARGO_WRECK, 1, 3, 3);
+    assert(saw(tcg_1) != "", "a new carryable is seen");
+    tcg_2 = peopled();
+    (tcg_2.cargo.items[0] ?? CarryObject { }).kind = CARGO_TOP;
+    assert(saw(tcg_2) != "", "a carryable's KIND is seen");
+    tcg_3 = peopled();
+    (tcg_3.cargo.items[0] ?? CarryObject { }).subj = 9;
+    assert(saw(tcg_3) != "", "a carryable's payload is seen");
+    tcg_4 = peopled();
+    (tcg_4.cargo.items[0] ?? CarryObject { }).q = 9;
+    assert(saw(tcg_4) != "", "a carryable's hex is seen");
+
+    // ⚠ The owner IS the state machine (`carry.loft`) — on the ground,
+    // in a carrier's slot, or spent — so it is the one field here that
+    // must never be missed.
+    tcg_5 = peopled();
+    (tcg_5.cargo.items[0] ?? CarryObject { }).owner = BLOCKER_PLAYER;
+    assert(saw(tcg_5) != "", "a carryable being CARRIED is seen");
+    tcg_6 = peopled();
+    cargo_consume(tcg_6.cargo, 0);
+    assert(saw(tcg_6) != "", "a carryable that has been SPENT is seen");
+}
+
+fn test_the_schedule_is_discriminated() {
+    tsd_1 = peopled();
+    tsd_1.schedule = wave_schedule_of([4, 6, 8], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tsd_1.schedule);
+    assert(saw(tsd_1) != "", "a longer wave list is seen");
+
+    tsd_2 = peopled();
+    tsd_2.schedule = wave_schedule_of([4, 7], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(tsd_2.schedule);
+    assert(saw(tsd_2) != "", "a different wave SIZE is seen");
+
+    tsd_3 = peopled();
+    tsd_3.schedule.sent = 1;
+    assert(saw(tsd_3) != "", "how far the list has got is seen");
+    tsd_4 = peopled();
+    tsd_4.schedule.lull = 5.0;
+    assert(saw(tsd_4) != "", "the lull left is seen");
+    tsd_5 = peopled();
+    tsd_5.schedule.delay = 9.0;
+    assert(saw(tsd_5) != "", "a retuned lull LENGTH is seen");
+    tsd_6 = peopled();
+    tsd_6.schedule.running = false;
+    assert(saw(tsd_6) != "", "a list that has not started is seen");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What the diff SAYS
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The message names the field and both values.**  A gate that fails
+// with "the states differ" sends you to a debugger; this sends you to
+// the line — the same choice `validate.loft` makes in reporting the
+// first failing measurement with the number that moved.
+fn test_the_diff_names_what_moved() {
+    tdn_b = peopled();
+    tdn_b.player.q = 42;
+
+    tdn_m = saw(tdn_b);
+    assert(tdn_m.contains("player"), "it names the player: '{tdn_m}'");
+    assert(tdn_m.contains("42"), "and the value that moved: '{tdn_m}'");
+}
+
+// ⚠ **Hash iteration order is not part of the state.**  Two layers
+// filled in a different ORDER hold the same thing, and a comparison
+// that walked both in step would call them different — on some runs and
+// not others, which is the worst way for a gate to be wrong.
+fn test_fill_order_is_not_a_difference() {
+    tfo_a = wave_state_empty();
+    height_raise(tfo_a.heights, 1, 0, 0.5, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tfo_a.heights, 2, 0, 1.0, as_u8(RUBBLE_MASONRY));
+    height_raise(tfo_a.heights, 3, 0, 1.5, as_u8(RUBBLE_CARAPACE));
+
+    tfo_b = wave_state_empty();
+    height_raise(tfo_b.heights, 3, 0, 1.5, as_u8(RUBBLE_CARAPACE));
+    height_raise(tfo_b.heights, 1, 0, 0.5, as_u8(RUBBLE_WRECKAGE));
+    height_raise(tfo_b.heights, 2, 0, 1.0, as_u8(RUBBLE_MASONRY));
+
+    assert(state_diff(tfo_a, tfo_b) == "",
+           "the same piles in a different order are the same state: "
+           + "'{state_diff(tfo_a, tfo_b)}'");
+}
+
+// ⚠ **Floats are compared EXACTLY, and an ulp is a difference.**  This
+// is the assertion that stops somebody adding an epsilon for tidiness:
+// a round-trip that lost the last bit of a banked timer is exactly what
+// S2 exists to catch, and an epsilon would hide it.
+fn test_one_ulp_of_drift_is_a_difference() {
+    tou_b = peopled();
+    tou_b.player.boost_left = 0.0 + 1.0e-15;
+
+    assert(saw(tou_b) != "",
+           "a difference too small to matter to the game still matters "
+           + "to the gate");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The tick moves the state, which is the whole point
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ A comparison nothing can make unequal would pass every test above
+// that asserts INEQUALITY — but this is the one that says it tracks a
+// real simulation rather than a fixture: tick one of two identical
+// states and they part.
+fn test_a_tick_makes_two_states_differ() {
+    tat_pw = painted_empty();
+    for tat_q in -2..=16 { paint(tat_pw, tat_q, 0, as_u8(5)); }
+    tat_mw = marker_empty();
+
+    tat_a = wave_state_empty();
+    tat_a.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 3 as u8, alive: true }];
+    tat_b = tat_a;
+
+    assert(states_equal(tat_a, tat_b), "identical to start with");
+
+    wave_tick(tat_b, load_palette(PALETTE), tat_pw, tat_mw, core());
+    assert(state_diff(tat_a, tat_b) != "",
+           "and one tick apart they are not");
+}

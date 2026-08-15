@@ -89,7 +89,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 983/983 green under `scripts/test.sh`** (~130 s measured
+**Suite: 998/998 green under `scripts/test.sh`** (~130 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -657,6 +657,16 @@ src/
                    editor's frame and not a harness renderer's.
                    Also owns VIEW_W / VIEW_H / VIEW_PPM (the window
                    size IS the shot size).  Never mutates the state
+  compare.loft     are two runs in the same state? (plan 18 S0) —
+                   state_diff(a, b) answers the FIRST difference and
+                   both values, "" when identical; states_equal is
+                   defined in terms of it so the two cannot disagree.
+                   ⚠ Deliberately knows NOTHING about how a state is
+                   written down: defining equality as "emit both and
+                   compare the text" makes the round-trip gate circular.
+                   ⚠ Every helper is declared ABOVE its caller and the
+                   one door is at the BOTTOM — loft#918 panics the
+                   parser on a local bound to a forward-declared call
   measure.loft     frame measurement (plan 08 V2) — classify_canvas
                    / classify_world -> FrameCounts.  Reads the WORLD
                    layer, never the composited shot (the HUD puts a
@@ -1617,6 +1627,7 @@ signature.
 | Add a regression test | `tests/01_*.loft` for patterns; `golden.loft::assert_golden` for image tests |
 | Script a run of the editor | `tests/scripts/*.keys` for the vocabulary; `script.loft::script_run_file` to play one; `snap <name>` for a picture |
 | Add a validation scenario | a new `tests/scripts/<name>.keys` + one test in `tests/08_v3_scenarios.loft` (pin its check count — a scenario with its measurements deleted still reports ok) |
+| Ask whether two runs are in the same STATE | `src/compare.loft::state_diff` — the first difference, NAMED, or `""` (plan 18 S0).  ⚠ It reads the state field by field and knows nothing about the emitter: define equality as "emit both and compare the text" and S2's round-trip gate is CIRCULAR — green precisely where the tool is broken.  ⚠ Layers are compared by KEY, because hash iteration order is not part of the state.  ⚠ Floats EXACTLY — an epsilon would hide the ulp of drift the gate exists to catch.  ⚠ Its field list is hand-maintained: a new field on a state struct needs a row in `tests/18_s0_the_comparison.loft` or nothing covers it |
 | Turn a state you REACHED into a test | [plans/18](plans/18-scenario-capture/README.md) — planned, not built.  ⚠ Emits `.keys` and never a state blob: a saved `WaveState` is a golden of the simulation and *a golden agrees with a shear*.  ⚠ The work is making the vocabulary TOTAL over `WaveState` — enemies, towers, wallet and cargo have no setters today.  ⚠ A crop has a MINIMUM radius set by the mechanics (the core, the 25-hex bubble, a tower's range 15), so a naive one silently changes enemy steering |
 | Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
