@@ -1,0 +1,473 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 17 phase T1 — the rebuild: a black tower comes back.
+//
+// `docs/DESIGN.md` § 7: *"The player walks up to a black-in-place tower
+// and refills the budget"*, and the rule that shapes everything after
+// it — *"a firing (red) tower cannot be repaired … an actively-firing
+// tower must be stopped first"*.  `numbers.json` §
+// tower.repair_time_helper_rebuild prices it at 20.0 s.
+//
+// Until this phase a tower was a one-shot resource: thirty shots and
+// black for the rest of the run, so plan 16 W4 measured a base that
+// spends its magazines and its wall and has no way back up.
+//
+// ── ⚠ What can go wrong, and what sees it ───────────────────────
+//
+// 1. **A repair that also resets the CHARGE.**  `charge` and `shots`
+//    are two clocks on one struct and a rebuild touches one of them.
+//    Plan 17 T0 hit this twice: a tower needs 1.5 ticks of charge to
+//    reach one firing interval, so a repair that zeroes it leaves the
+//    tower permanently a hair short and it **never fires at all** — and
+//    the base reads exactly like an undefended one.  What sees it is
+//    § The charge is not touched, and the signature to recognise in the
+//    field is 233 ticks with towers standing in the base.
+// 2. **The epsilon.**  20.0 s over a 1/1.5 s tick is EXACTLY 30 ticks,
+//    which is plan 15 C0's dangerous class — a bare comparison gives 31
+//    and every assertion about "it came back" stays green.  What sees
+//    it is § Exactly thirty ticks.
+// 3. **Repairing a FIRING tower.**  The design's rule, and the one that
+//    makes T2's hot-swap a cycle rather than a convenience.  A repair
+//    that ignored it would let a player top up a tower mid-wave and
+//    delete the timing decision entirely.
+// 4. **Progress stored on the VEHICLE.**  A rebuild that belonged to a
+//    particular helper would be silently discarded when that helper was
+//    lost, with nothing able to see it.  What sees it is § A second
+//    crew member finishes what the first started.
+// 5. **A repair nobody is standing at.**  The whole mechanic is
+//    presence-locked; an unattended base recovering on its own would
+//    undo `wallet.loft`'s promise that nothing refills unattended.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// 20.0 s over a 1/1.5 s tick — the number this file is about, written
+// once.
+const REBUILD_TICKS: integer = 30;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// Open ground with one tower at (4, 0) and a spawn marker far out.
+fn ground() -> PaintedWorld {
+    g_pw = painted_empty();
+    for g_r in -2..=2 {
+        for g_q in -2..=20 { paint(g_pw, g_q, g_r, as_u8(GRASS)); }
+    }
+    g_pw
+}
+
+fn one_tower() -> MarkerWorld {
+    ot_mw = marker_empty();
+    place_marker(ot_mw, 4, 0, MARKER_KIND_TOWER as u8, 0 as u8);
+    ot_mw
+}
+
+// A state whose tower at (4, 0) has fired every shot it has.
+//
+// ⚠ Built by SPENDING shots rather than by writing the field, so the
+// black state under test is the one the game produces.
+fn blacked() -> WaveState {
+    b_s = wave_state_empty();
+    for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(b_s.towers, 4, 0); }
+    b_s
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The numbers
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **20.0 s DIVIDES the tick exactly** — 30 ticks — which is plan 15
+// C0's dangerous class.  But the class is not the whole rule, and the
+// two assertions below are why.
+fn test_the_rebuild_divides_the_tick_exactly() {
+    ttr_ticks = TOWER_REPAIR_SECONDS / TICK_SECONDS;
+    assert(ttr_ticks == (REBUILD_TICKS as float),
+           "20.0 s is exactly {REBUILD_TICKS} ticks: {ttr_ticks}");
+
+    // ⚠ This models what `tower_repair_tick` ACTUALLY does — it BANKS,
+    // so it adds.  An earlier version of this test subtracted from 20.0
+    // the way `helper_recover_tick` does, "proved" the epsilon was
+    // load-bearing, and was measuring arithmetic the implementation
+    // never performs.
+    ttr_up = 0.0;
+    for _ in 0..REBUILD_TICKS { ttr_up = ttr_up + TICK_SECONDS; }
+    assert(ttr_up == TOWER_REPAIR_SECONDS,
+           "counting UP, thirty ticks land on the nose: {ttr_up}");
+
+    ttr_short = 0.0;
+    for _ in 0..(REBUILD_TICKS - 1) { ttr_short = ttr_short + TICK_SECONDS; }
+    assert(ttr_short < TOWER_REPAIR_SECONDS,
+           "and twenty-nine do not: {ttr_short}");
+}
+
+// ⚠⚠ **The DIRECTION of the count is part of C0's rule**, and this is
+// the measurement that says so.  Counting down from 20.0 leaves a
+// positive residue where counting up to it lands exact — so the same
+// duration needs an epsilon in one direction and not the other.
+//
+// ⚠ Every other banked timer in dryopea counts DOWN; this one counts UP
+// because `repair` has to be *seconds banked* for zero to be the
+// neutral value.  That is what puts it on the other side of the rule.
+fn test_counting_up_and_counting_down_are_not_the_same() {
+    tcu_down = TOWER_REPAIR_SECONDS;
+    for _ in 0..REBUILD_TICKS { tcu_down = tcu_down - TICK_SECONDS; }
+
+    tcu_up = 0.0;
+    for _ in 0..REBUILD_TICKS { tcu_up = tcu_up + TICK_SECONDS; }
+
+    assert(tcu_down > 0.0,
+           "counting DOWN leaves a residue — a bare `> 0.0` would buy a "
+           + "31st tick: {tcu_down}");
+    assert(tcu_up >= TOWER_REPAIR_SECONDS,
+           "counting UP does not: {tcu_up}");
+    assert(tcu_down < TOWER_REPAIR_EPSILON,
+           "and the epsilon covers the residue either way: {tcu_down}");
+}
+
+// ⚠⚠ **The guard can fire** — and this is the assertion that keeps
+// `TOWER_REPAIR_EPSILON` honest rather than decorative.
+//
+// Today's value needs no epsilon at all: 20.0 counting up lands exactly
+// (§ above), so REMOVING the constant leaves every other test in this
+// file green.  Measured, by removing it.  What the epsilon is actually
+// for is the NEIGHBOURING tunings — 10.0, 40.0 and 60.0 seconds all
+// fall short counting up, and each would cost a tick — so it is what
+// makes the number tunable.
+//
+// This test exercises the branch directly instead of relying on the
+// tick arithmetic, so a "simplification" of the epsilon goes red here
+// and nowhere else.
+fn test_the_guard_can_fire() {
+    tgc_s = wave_state_empty();
+    for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(tgc_s.towers, 4, 0); }
+
+    // A hair under the target — inside the epsilon, outside a bare `>=`.
+    tgc_hair = TOWER_REPAIR_SECONDS - 1.0e-12;
+    assert(tgc_hair < TOWER_REPAIR_SECONDS, "it really is short: {tgc_hair}");
+    assert(tgc_hair > TOWER_REPAIR_SECONDS - TOWER_REPAIR_EPSILON,
+           "and inside the epsilon");
+
+    assert(tower_repair_tick(tgc_s.towers, 4, 0, tgc_hair),
+           "so it COMPLETES — a bare `>=` would leave this tower black "
+           + "with 19.999999999999 s of work banked against it");
+    assert(tower_shots(tgc_s.towers, 4, 0) == 0, "and the magazine is full");
+}
+
+fn test_the_constants_are_the_documented_figures() {
+    assert(TOWER_REPAIR_SECONDS == 20.0,
+           "numbers.json § tower.repair_time_helper_rebuild: "
+           + "{TOWER_REPAIR_SECONDS}");
+    assert(TOWER_REPAIR_REACH_HEXES == 1,
+           "a radius-1 footprint means a reach of 1: "
+           + "{TOWER_REPAIR_REACH_HEXES}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The phase: a black tower comes back
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **Exactly thirty ticks, and the ticks before it change nothing.**
+// Asserted tick by tick rather than at the end: "it is black after 29"
+// is also true of a tower that never recovers, and "it fires by 31" is
+// true of one with the epsilon missing.  Both halves are the number.
+fn test_a_crew_member_rebuilds_it_in_exactly_thirty_ticks() {
+    tac_s   = blacked();
+    tac_mw  = one_tower();
+    tac_pw  = ground();
+    tac_pal = pal();
+    tac_s.crew += [helper_new(4, 0)];
+
+    assert(tower_black(tac_s.towers, 4, 0), "it starts black");
+
+    for tac_n in 1..=(REBUILD_TICKS - 1) {
+        wave_tick(tac_s, tac_pal, tac_pw, tac_mw, core());
+        assert(tower_black(tac_s.towers, 4, 0),
+               "tick {tac_n} of {REBUILD_TICKS}: still black");
+    }
+
+    // The thirtieth.
+    wave_tick(tac_s, tac_pal, tac_pw, tac_mw, core());
+    assert(!tower_black(tac_s.towers, 4, 0),
+           "and on tick {REBUILD_TICKS} it comes back");
+    assert(tower_shots(tac_s.towers, 4, 0) == 0,
+           "with a full magazine: {tower_shots(tac_s.towers, 4, 0)}");
+    assert(!tower_repairing(tac_s.towers, 4, 0),
+           "and no repair left banked");
+}
+
+// The player does it too, on the same clock — `numbers.json` has one
+// rate and this asserts there is not quietly a second.
+fn test_the_player_rebuilds_it_on_the_same_clock() {
+    tpr_s   = blacked();
+    tpr_mw  = one_tower();
+    tpr_pw  = ground();
+    tpr_pal = pal();
+    vehicle_place(tpr_s.player, 4, 0);
+
+    for _ in 0..(REBUILD_TICKS - 1) {
+        wave_tick(tpr_s, tpr_pal, tpr_pw, tpr_mw, core());
+    }
+    assert(tower_black(tpr_s.towers, 4, 0), "still black after 29");
+
+    wave_tick(tpr_s, tpr_pal, tpr_pw, tpr_mw, core());
+    assert(!tower_black(tpr_s.towers, 4, 0), "and back on 30");
+}
+
+// ⚠⚠ **The CHARGE is not touched**, which is the failure T0 hit twice
+// and which no assertion about "it came back" can see.  A tower whose
+// charge was reset comes back black-free and never fires, because a
+// firing interval is 1.5 ticks and it is permanently a hair short.
+fn test_the_rebuild_leaves_the_charge_alone() {
+    trl_s = blacked();
+
+    // Bank a known part-interval, the way a tick would.
+    tower_bank(trl_s.towers, 4, 0, 0.5);
+    trl_before = tower_charge(trl_s.towers, 4, 0);
+    assert(trl_before == 0.5, "half a second banked: {trl_before}");
+
+    // Repair it in one call, so nothing else can have moved the charge.
+    assert(tower_repair_tick(trl_s.towers, 4, 0, TOWER_REPAIR_SECONDS),
+           "one call finishes it");
+
+    assert(tower_charge(trl_s.towers, 4, 0) == trl_before,
+           "and the charge is exactly where it was: "
+           + "{tower_charge(trl_s.towers, 4, 0)} vs {trl_before}");
+    assert(tower_shots(trl_s.towers, 4, 0) == 0, "the magazine is full");
+}
+
+// ⚠ And the same thing end to end: a rebuilt tower actually SHOOTS.
+// The charge assertion above is exact and this is what it is for — a
+// tower that came back and cannot fire is the whole failure mode.
+fn test_a_rebuilt_tower_fires_again() {
+    tar_s   = blacked();
+    tar_mw  = one_tower();
+    tar_pw  = ground();
+    tar_pal = pal();
+    tar_s.crew += [helper_new(4, 0)];
+
+    // Something to shoot at, within range and in the open.
+    tar_s.enemies += [Enemy { q: 10, r: 0, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 3 as u8, alive: true }];
+
+    for _ in 0..REBUILD_TICKS {
+        wave_tick(tar_s, tar_pal, tar_pw, tar_mw, core());
+    }
+    assert(!tower_black(tar_s.towers, 4, 0), "back on the roster of the living");
+
+    tar_before = tower_shots(tar_s.towers, 4, 0);
+    for _ in 0..6 {
+        wave_tick(tar_s, tar_pal, tar_pw, tar_mw, core());
+    }
+    assert(tower_shots(tar_s.towers, 4, 0) > tar_before,
+           "and it is spending shots again: {tower_shots(tar_s.towers, 4, 0)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ What repair REFUSES
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **A firing tower cannot be repaired** — `DESIGN.md` § 7's rule,
+// and the one that makes T2's swap a cycle rather than a convenience.
+// Without it a player tops a tower up mid-wave and the timing decision
+// disappears.
+fn test_a_firing_tower_refuses_repair() {
+    taf_s = wave_state_empty();
+    for _ in 0..10 { tower_spend_shot(taf_s.towers, 4, 0); }
+
+    assert(!tower_black(taf_s.towers, 4, 0), "it is firing, not black");
+    assert(!tower_repairable(taf_s.towers, 4, 0), "so it refuses repair");
+    assert(!tower_repair_tick(taf_s.towers, 4, 0, TOWER_REPAIR_SECONDS),
+           "and a full rebuild's worth of work does nothing");
+    assert(tower_shots(taf_s.towers, 4, 0) == 10,
+           "its magazine is untouched: {tower_shots(taf_s.towers, 4, 0)}");
+    assert(!tower_repairing(taf_s.towers, 4, 0),
+           "and nothing was even banked against it");
+}
+
+// ⚠⚠ **Nothing recovers unattended.**  `wallet.loft` § B6 promises the
+// budget never refills with nobody in the world; this is the same
+// promise for the magazine, and it is what keeps repair a decision the
+// player makes with their position.
+fn test_an_unattended_black_tower_never_recovers() {
+    tau_s   = blacked();
+    tau_mw  = one_tower();
+    tau_pw  = ground();
+    tau_pal = pal();
+
+    assert(!vehicle_present(tau_s.player), "nobody in the world");
+    assert(len(tau_s.crew) == 0, "and no crew");
+
+    for _ in 0..(REBUILD_TICKS * 4) {
+        wave_tick(tau_s, tau_pal, tau_pw, tau_mw, core());
+    }
+    assert(tower_black(tau_s.towers, 4, 0),
+           "four rebuilds' worth of ticks and it is still black");
+    assert(!tower_repairing(tau_s.towers, 4, 0), "with nothing banked");
+}
+
+// A vehicle standing too far away is not standing at the tower.  Reach
+// is 1 — the tower's own footprint — so (6, 0) is two hexes out and
+// does nothing.
+fn test_out_of_reach_repairs_nothing() {
+    tor_s   = blacked();
+    tor_mw  = one_tower();
+    tor_pw  = ground();
+    tor_pal = pal();
+    tor_s.crew += [helper_new(6, 0)];
+
+    assert(!tower_in_repair_reach(Hex { q: 4, r: 0 }, Hex { q: 6, r: 0 }),
+           "two hexes is out of reach");
+
+    for _ in 0..(REBUILD_TICKS * 2) {
+        wave_tick(tor_s, tor_pal, tor_pw, tor_mw, core());
+    }
+    assert(tower_black(tor_s.towers, 4, 0), "so it stays black");
+
+    // And one hex out — inside the footprint — does work.
+    tor_s.crew += [helper_new(5, 0)];
+    assert(tower_in_repair_reach(Hex { q: 4, r: 0 }, Hex { q: 5, r: 0 }),
+           "one hex is in reach");
+    for _ in 0..REBUILD_TICKS {
+        wave_tick(tor_s, tor_pal, tor_pw, tor_mw, core());
+    }
+    assert(!tower_black(tor_s.towers, 4, 0), "and it comes back");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Whose work it is
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **The progress belongs to the TOWER**, so a crew member who is
+// lost half-way through does not take the work with them — a second one
+// finishes what the first started.
+//
+// Stored on the vehicle instead, this reads green everywhere else and
+// silently discards a rebuild exactly when a base can least afford it.
+fn test_a_second_crew_member_finishes_what_the_first_started() {
+    tas_s   = blacked();
+    tas_mw  = one_tower();
+    tas_pw  = ground();
+    tas_pal = pal();
+    tas_s.crew += [helper_new(4, 0)];
+
+    for _ in 0..20 {
+        wave_tick(tas_s, tas_pal, tas_pw, tas_mw, core());
+    }
+    tas_part = tower_repair_progress(tas_s.towers, 4, 0);
+    assert(tas_part > 0.0, "twenty ticks of work is banked: {tas_part}");
+    assert(tower_black(tas_s.towers, 4, 0), "and it is not done yet");
+
+    // The first one is lost where it stood.
+    helper_wreck(tas_s.crew[0] ?? Helper { });
+    assert(helper_wrecked(tas_s.crew[0] ?? Helper { }), "it is down");
+
+    // A second arrives and finishes the remaining ten.
+    tas_s.crew += [helper_new(4, 0)];
+    for _ in 0..10 {
+        wave_tick(tas_s, tas_pal, tas_pw, tas_mw, core());
+    }
+    assert(!tower_black(tas_s.towers, 4, 0),
+           "the relief finished the rebuild in the ten ticks that were left");
+}
+
+// ⚠ **A crew of N rebuilds N times as fast** — each vehicle banks its
+// own turn into the same tower, the shape `helper_salvage` already has
+// on one heap.  Three of them do a 30-tick job in 10.
+//
+// ⚠ This is a RATE assertion, and it has to be: a crew that shared ONE
+// turn and a crew that was not in the tick at all both finish
+// eventually, and "the tower came back" cannot tell either from a
+// working one.
+fn test_three_crew_rebuild_it_three_times_as_fast() {
+    ttc_s   = blacked();
+    ttc_mw  = one_tower();
+    ttc_pw  = ground();
+    ttc_pal = pal();
+    ttc_s.crew += [helper_new(4, 0)];
+    ttc_s.crew += [helper_new(4, 1)];
+    ttc_s.crew += [helper_new(3, 0)];
+
+    for ttc_n in 1..=9 {
+        wave_tick(ttc_s, ttc_pal, ttc_pw, ttc_mw, core());
+        assert(tower_black(ttc_s.towers, 4, 0),
+               "tick {ttc_n}: three crew, not done yet");
+    }
+    wave_tick(ttc_s, ttc_pal, ttc_pw, ttc_mw, core());
+    assert(!tower_black(ttc_s.towers, 4, 0),
+           "and on tick 10 — a third of {REBUILD_TICKS} — it is back");
+}
+
+// ⚠ A wrecked crew member repairs nothing, the same filter
+// `wave_blockers` and `wave_provoked` apply.  A downed helper lying
+// against a tower is debris.
+fn test_a_wreck_repairs_nothing() {
+    twr_s   = blacked();
+    twr_mw  = one_tower();
+    twr_pw  = ground();
+    twr_pal = pal();
+    twr_s.crew += [helper_new(4, 0)];
+    helper_wreck(twr_s.crew[0] ?? Helper { });
+
+    for _ in 0..(REBUILD_TICKS * 2) {
+        wave_tick(twr_s, twr_pal, twr_pw, twr_mw, core());
+    }
+    assert(tower_black(twr_s.towers, 4, 0), "it stays black");
+    assert(!tower_repairing(twr_s.towers, 4, 0), "with nothing banked");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What it does NOT change
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **A tower nobody blacked is untouched**, and a vehicle parked
+// beside a healthy one is doing nothing at all — which is what keeps
+// every pre-T1 scenario in the suite reading the same.
+fn test_a_healthy_tower_is_left_alone() {
+    tah_s   = wave_state_empty();
+    tah_mw  = one_tower();
+    tah_pw  = ground();
+    tah_pal = pal();
+    tah_s.crew += [helper_new(4, 0)];
+    vehicle_place(tah_s.player, 4, 0);
+
+    for _ in 0..(REBUILD_TICKS * 2) {
+        wave_tick(tah_s, tah_pal, tah_pw, tah_mw, core());
+    }
+    assert(tower_shots(tah_s.towers, 4, 0) == 0,
+           "it never fired: {tower_shots(tah_s.towers, 4, 0)}");
+    assert(!tower_repairing(tah_s.towers, 4, 0),
+           "and nobody was working on it");
+}
+
+// ⚠ **The magazine is never over-full.**  Repair sets shots to zero and
+// nothing subtracts past it, so no tower can hold more than the budget
+// — the clamp-on-the-write rule `wallet.loft` keeps for the same reason.
+fn test_the_magazine_never_exceeds_the_budget() {
+    tmn_s = blacked();
+
+    // Repair it, then repair it again — the second call has no black
+    // tower to work on and must do nothing.
+    assert(tower_repair_tick(tmn_s.towers, 4, 0, TOWER_REPAIR_SECONDS),
+           "the first rebuild finishes");
+    assert(tower_shots(tmn_s.towers, 4, 0) == 0, "full");
+    assert(!tower_repair_tick(tmn_s.towers, 4, 0, TOWER_REPAIR_SECONDS),
+           "and the second finds nothing to repair");
+    assert(tower_budget_left(tmn_s.towers, 4, 0) == TOWER_SHOT_BUDGET,
+           "the budget is exactly the budget: "
+           + "{tower_budget_left(tmn_s.towers, 4, 0)}");
+}

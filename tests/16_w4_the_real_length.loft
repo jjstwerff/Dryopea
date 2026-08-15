@@ -218,6 +218,34 @@ const ERRAND:  integer = 1;   // drive out to the wreck and back, no carry
 const FETCH:   integer = 2;   // carry it home, and send it back out
 const NO_GATE: integer = 4;   // the crew member never stands in the gate
 
+// ⚠⚠ **Where the player waits is a CONTROL, and plan 17 T1 is what made
+// it one.**  T1 gave a vehicle standing within one hex of a black tower
+// the ability to rebuild it — no key pressed, because repair is a
+// position — so a player parked at the core, which is one hex from the
+// tower at (1, 0), silently repairs it.  Measured: every run below then
+// SURVIVES all four waves and the whole comparison saturates.
+//
+// This phase measures a base with no upkeep, so it has to say so.
+// (-1, 0) is one hex from the core — near enough that `wave_drop`'s
+// delivery still lands, since `CARGO_REACH_HEXES` is 1 — and two hexes
+// from the nearest tower, which is out of `TOWER_REPAIR_REACH_HEXES`.
+// The NO_GATE crew member moves off (0, 1) for the same reason: in
+// odd-r, (0, 1) is adjacent to (1, 0).
+//
+// ⚠ It is not contrivance, it is controlling a variable that did not
+// exist when these numbers were taken — the same move plan 14 H2 had to
+// make for BRACING before it could compare two fronts.  With the
+// control in place the three headline clocks reproduce EXACTLY.
+const HOME_Q: integer = -1;
+const HOME_R: integer = 0;
+
+// And where the NO_GATE crew member waits — (-1, 1), also core-adjacent
+// and two hexes from the nearest tower.  ⚠ Its own hex rather than the
+// player's: two vehicles stacked on one hex is a different blocker
+// geometry and reads as a four-tick shift in the clock.
+const IDLE_Q: integer = -1;
+const IDLE_R: integer = 1;
+
 // ⚠ **The player's script is driven off EVENTS, never tick numbers.**
 // A run scripted by tick number measures the ticks it was given; one
 // that reacts to the loss measures the base.
@@ -229,11 +257,11 @@ fn gate_run(towers: integer, mode: integer, limit: integer) -> RunFacts {
     gr_s.schedule = wave_schedule_of([12, 12, 12, 12], INTER_WAVE_DELAY_SECONDS);
     wave_schedule_begin(gr_s.schedule);
     if mode == NO_GATE {
-        gr_s.crew += [helper_new(0, 1)];
+        gr_s.crew += [helper_new(IDLE_Q, IDLE_R)];
     } else {
         gr_s.crew += [helper_new(GATE_Q, 0)];
     }
-    vehicle_place(gr_s.player, 0, 0);
+    vehicle_place(gr_s.player, HOME_Q, HOME_R);
 
     gr_fell  = 0;
     gr_lost  = 0;
@@ -249,9 +277,10 @@ fn gate_run(towers: integer, mode: integer, limit: integer) -> RunFacts {
             } else if gr_stage == 1 && gr_s.player.q == GATE_Q
                       && gr_s.player.r == 0 {
                 if mode == FETCH { wave_take(gr_s, BLOCKER_PLAYER); }
-                vehicle_drive(gr_s.player, 0, 0);
+                vehicle_drive(gr_s.player, HOME_Q, HOME_R);
                 gr_stage = 2;
-            } else if gr_stage == 2 && gr_s.player.q == 0 && gr_s.player.r == 0 {
+            } else if gr_stage == 2 && gr_s.player.q == HOME_Q
+                      && gr_s.player.r == HOME_R {
                 if mode == FETCH { wave_drop(gr_s, BLOCKER_PLAYER, core()); }
                 gr_stage = 3;
             } else if gr_stage == 3 && mode == FETCH
@@ -326,12 +355,12 @@ fn test_the_three_clocks_on_a_multi_wave_base() {
 fn test_the_crew_member_now_comes_back_and_it_changes_nothing() {
     tcm = gate_run(3, FETCH, 400);
 
-    assert(tcm.back == 187, "back on the roster at tick 187: {tcm.back}");
+    assert(tcm.back == 189, "back on the roster at tick 189: {tcm.back}");
     assert(tcm.back - tcm.lost >= 90,
            "which is the whole 90-tick recovery after the loss: "
            + "{tcm.back - tcm.lost}");
-    assert(tcm.fell - tcm.back == 61,
-           "and the base lives another 61 ticks with them back: "
+    assert(tcm.fell - tcm.back == 59,
+           "and the base lives another 59 ticks with them back: "
            + "{tcm.fell - tcm.back}");
 
     // The negative control.
@@ -347,7 +376,7 @@ fn test_the_crew_member_now_comes_back_and_it_changes_nothing() {
 // 3. ⚠⚠ The dichotomy — why no base pays
 // ─────────────────────────────────────────────────────────────────
 
-// **Dying in the gate is worth 53 ticks.  Coming back is worth one.**
+// **Dying in the gate is worth 54 ticks.  Coming back is worth one.**
 //
 // The same base with the crew member parked beside the core instead of
 // in the gate falls at 194 — 53 ticks EARLIER than the run where it
@@ -364,9 +393,9 @@ fn test_dying_in_the_gate_is_worth_more_than_coming_back() {
 
     assert(tdg_never.lost == 0,
            "the crew member beside the core is never lost: {tdg_never.lost}");
-    assert(tdg_never.fell == 194, "and its base falls at 194: {tdg_never.fell}");
-    assert(tdg_held.fell - tdg_never.fell == 53,
-           "so standing in the gate and dying there is worth 53 ticks: "
+    assert(tdg_never.fell == 193, "and its base falls at 193: {tdg_never.fell}");
+    assert(tdg_held.fell - tdg_never.fell == 54,
+           "so standing in the gate and dying there is worth 54 ticks: "
            + "{tdg_held.fell - tdg_never.fell}");
 
     // Against one tick for the whole retrieval.

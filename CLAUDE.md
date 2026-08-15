@@ -71,7 +71,8 @@ exists today.
 | A run STARTS ITSELF: driving onto a spawn marker 12+ hexes out wakes the list — and a marker at 11, which really does send the wave, is safe to stand on | [16](plans/16-the-wave-system/README.md), W3 shipped |
 | ⚠ What a base is worth AT ITS REAL LENGTH: the authored seven-wave list plays **FOUR** and falls at 321 with every tower black, and a retrieval is worth **one tick** on a base where the crew member does come back | [16](plans/16-the-wave-system/README.md), W4 shipped — plan **complete** |
 | **No wall trigger, no ordering, no beacons and no scramble** | [plans/ROADMAP.md](plans/ROADMAP.md) |
-| **No tower REPAIR — and it is the named blocker on everything priced across waves**, so a base spends its magazines and its wall and has no way back up | [17](plans/17-tower-hot-swap/README.md), planned — T0 next |
+| UPKEEP: 20 s of standing at a black tower rebuilds it — so the lull is a REPAIR WINDOW and a base can outlive its own wave list | [17](plans/17-tower-hot-swap/README.md), T0-T1 shipped — T2 next |
+| **No hot-swap yet** — a tower-top is not a carryable thing, so firepower cannot be MOVED, only rebuilt in place | [17](plans/17-tower-hot-swap/README.md), T2 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -87,7 +88,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 943/943 green under `scripts/test.sh`** (~112 s measured
+**Suite: 959/959 green under `scripts/test.sh`** (~115 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -95,7 +96,7 @@ plan 12 until H2 re-measured it; the figure grew with the scenario
 tests, not with any one phase — and plan 16 W4 alone is **13 s**, six
 whole-base simulations of 200-320 ticks each, which is what a
 measurement phase costs).
-**Gate: 27 scripts green under `scripts/validate.sh`** (~11 s, 498
+**Gate: 27 scripts green under `scripts/validate.sh`** (~11 s, 499
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -408,6 +409,21 @@ it answers the fallback on the interpreter and PANICS on native
 (loft#877).  Bind the call to a local, then index it.  It bites hardest
 where the fallback is a sane default, because a function that returns
 only its default still looks like a working function.
+
+⚠ **A banked timer's DIRECTION is half the epsilon rule** (plan 17 T1).
+Plan 15 C0 said a timer loses a tick exactly when its duration divides
+the tick length exactly — true, and incomplete.  Counting DOWN from `T`
+and counting UP to `T` do not accumulate the same way: over a 1/1.5 s
+tick, 20.0 s counting up lands on **exactly** 20.0 (no epsilon needed)
+while counting down leaves a residue; 10.0, 40.0 and 60.0 counting up
+all fall SHORT.  ⚠ **Neither direction is safe** — measure the pair.
+⚠ And the direction is not free to choose: `repair` counts UP because
+zero has to mean *nobody is working on this*, which is the same
+zero-neutral rule as *damage taken* and *shots fired*.
+⚠ **An epsilon whose removal leaves the suite green is a guard that
+cannot fire** — `tests/17_t1_the_rebuild.loft::test_the_guard_can_fire`
+is the shape that fixes it: exercise the branch directly (bank a hair
+under the target) instead of relying on the tick arithmetic.
 
 ⚠ **But bind it ABOVE the callee's definition and the parser PANICS**
 ([loft#918](https://github.com/loft-lang/loft/issues/918), both
@@ -1220,7 +1236,7 @@ suite redirects its own shots into `tests/actual/`.
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet + the crew + the cargo — runtime, not editor state |
 | `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, and whether it is in the world at all — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario |
 | `Wallet` | `wallet.loft` | points SPENT out of the run's 200 — zero is a FULL wallet, and the ledger is clamped at the budget so a later credit is not swallowed |
-| `TowerState` | `tower.loft` | per tower: the seconds banked toward its next shot and the shots it has FIRED out of its 30 — runtime, never saved |
+| `TowerState` | `tower.loft` | per tower: the seconds banked toward its next shot, the shots it has FIRED out of its 30, and the seconds banked toward a REBUILD — runtime, never saved.  ⚠ Three clocks, and repair touches exactly one of them |
 | `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken }` — `taken` is damage ABSORBED, so an `Enemy { … }` literal that omits it is HEALTHY |
 | `CarryObject` | `carry.loft` | one carryable thing — ⚠ `owner` is the WHOLE state machine (ground / a carrier / spent), because two fields that can disagree about one fact is the defect the model exists to make unwritable |
 | `CargoLayer` | `carry.loft` | every carryable thing in the run — ⚠ a VECTOR with stable slots, never a hash by hex: two objects share a hex and a hash deletes one |
@@ -1585,6 +1601,7 @@ signature.
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` — per route, never a global "nearest wall" |
 | Ask whether a tower can HIT something | `src/tower.loft::tower_sees` — one straight line from the eye over `hex_height`.  ⚠ Never a "which kinds block" table: a `wall_high` beside the tower does not block and a `wall` near the target does |
 | Ask why a tower is not shooting | `src/tower.loft::tower_sight_fault` names the hex, the two heights and how far along the line it sits; `tower_black` is the other answer |
+| Bring a spent tower back | `src/tower.loft::tower_repair_tick` — 20 s of a vehicle standing within one hex, banked ON THE TOWER so a relief crew finishes what a lost one started (plan 17 T1).  `spawn.loft::wave_repair` is the tick's turn, at the END beside the salvage.  ⚠ No key is pressed — repair is a POSITION, so a player parked beside a tower is working on it whether it meant to or not.  ⚠ A FIRING tower REFUSES (`DESIGN.md` § 7), which is what makes upkeep a timing decision.  ⚠ It refills the MAGAZINE and never the CHARGE — get that wrong and the base reads exactly like an undefended one |
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — max minus taken.  ⚠ 0.0 answers BOTH "broken" and "never a structure"; ask `structure_breakable` first if you need to tell them apart |
 | Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — the kind's figure scaled by `brace_of`.  ⚠ `numbers.json`'s wall_hp (100) is the BRACED number; a lone plug in a corridor is a STUB and gets 15 |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves.  The tick calls `damage_resolve` AFTER every enemy has moved, so a breach belongs to the NEXT tick |

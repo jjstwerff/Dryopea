@@ -9,14 +9,18 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**T0 done** (2026-08-15).  T1 is next.  No `src/` change yet; suite 943
-green, gate 27 scripts / 498 measurements.
+**T0 + T1 shipped** (2026-08-15).  T2 is next.  Suite **959 green**,
+gate **27 scripts / 499 measurements**.
 
 **T0 tried to falsify the premise and could not.**  The magazine binds,
 and harder than W4 could show: *without repair, building more towers
 buys nothing at all* — 3, 5 and 7 towers give 321, 319 and 317 ticks and
 four of seven waves each.  With repair, seven towers **clear the whole
 authored list at tick 332**.  § T0 has the tables.
+
+**T1 built the rebuild**, and it moved every measurement in the game
+that had a vehicle parked near a tower — including, already, the answer
+plan 16 W4 could not produce.  § T1.
 
 ⚠ **This plan exists because [plan 16](../16-the-wave-system/README.md)
 W4 named it, twice over.**  W4 measured the game at its real length and
@@ -84,6 +88,109 @@ swap is not an alternative to repair — it is the thing that *creates the
 grounded state repair needs*.  Repair is also the smaller half: it needs
 no carry model, it is the half W4 actually named, and it can go red on
 its own.
+
+## T1 — the rebuild (2026-08-15)
+
+Twenty seconds of somebody standing at a black tower and it fires again.
+`tower_repair_tick` banks the work, `spawn.loft::wave_repair` gives every
+live vehicle its turn, and it runs at the end of the tick beside the
+salvage — so a rebuild that finishes this tick fires for the first time
+in the next one.
+
+**No key is pressed**: repair is a POSITION, exactly as clearing rubble
+is, and reach is 1 because `numbers.json` § tower.footprint_layout is a
+radius-1 disc.  Both the player and the crew do it, on the one rate the
+file carries.
+
+### ⚠⚠ The epsilon was cargo-cult, and finding that out sharpened C0's rule
+
+20.0 s over a 1/1.5 s tick is exactly 30 ticks — plan 15 C0's dangerous
+class — so this shipped with an epsilon and a paragraph explaining it.
+**Then the mutation test came back green**: removing the epsilon changed
+nothing.  Measured, and the reason is a second half to C0's rule that
+nobody had written down:
+
+> **The DIRECTION of the count is part of it.**  Every other banked
+> timer in dryopea counts DOWN; this one counts UP, because `repair` has
+> to be *seconds banked* for zero to be the neutral value.  And the two
+> directions do not accumulate the same way.
+
+| T | ticks | counting UP | counting DOWN |
+|---|---|---|---|
+| 4.0 s | 6 | 3.9999999999999996 | residue > 0 |
+| 10.0 s | 15 | 9.999999999999998 | residue > 0 |
+| **20.0 s** | **30** | **exactly 20.0** | residue > 0 |
+| 30.0 s | 45 | 30.000000000000018 | residue < 0 |
+| 60.0 s | 90 | 59.99999999999992 | residue > 0 |
+
+⚠ **Neither direction is safe and today's value is exact by LUCK.**  So
+the epsilon stays — not because 20.0 needs it, but because 10.0, 40.0
+and 60.0 would, which makes it what keeps the number TUNABLE.  And
+because a guard that cannot fire is worse than no guard, T1 ships
+`test_the_guard_can_fire`, which banks a hair under the target and
+asserts it completes: it goes red the moment the epsilon is removed, and
+it is the only test that does.
+
+⚠ The first version of the timer test *"proved"* the epsilon was
+load-bearing by **subtracting** from 20.0 the way `helper_recover_tick`
+does — measuring arithmetic the implementation never performs.  That is
+the shape to watch for: a test that models the neighbouring
+implementation rather than this one.
+
+### ⚠⚠ It moved every measurement with a vehicle parked near a tower
+
+A vehicle within one hex of a black tower now repairs it, and **nothing
+in the suite had to opt in**.  Two gates went red and both were the
+phase working:
+
+- `tests/16_w4_the_real_length.loft` — the player waits at the core,
+  which is one hex from the tower at (1, 0), so it silently repaired.
+  Every run then survived all four waves and the whole comparison
+  saturated.
+- `tests/scripts/a-base-that-plays-its-list.keys` — same cause; the base
+  stopped falling.
+
+⚠ **W4's numbers are intact and the fix was a CONTROL, not a
+re-baseline.**  W4 measures a base with no upkeep, and after T1 that has
+to be *authored* rather than assumed: its vehicles now park at (-1, 0)
+and (-1, 1) — one hex from the core, so `wave_drop`'s delivery still
+lands, and two from the nearest tower, so nobody repairs.  With the
+control in place the three headline clocks reproduce **exactly**
+(247 / 248 / 248); only the two secondary numbers shift by a tick or two
+because the vehicles moved one hex (rejoin 187 → 189, the no-gate base
+194 → 193, so the gate is worth 54 rather than 53).  ⚠ It is the same
+move plan 14 H2 had to make for BRACING before it could compare two
+fronts.
+
+⚠ The `.keys` scenario went the other way and was **re-measured on
+purpose**: it is the game-level gate, so it should show the game as it
+is.  It used to fall at 256 having played two waves; it now plays all
+four, clears them and finishes with 44.7 points in hand — the first
+scenario in the suite where a base outlives its own wave list.
+
+### ⚠⚠ And a retrieval already pays — in the WALLET, not the clock
+
+Measured while restoring W4's control, on W4's own base with the player
+waiting at the core (so it repairs):
+
+| after the crew member is lost | ticks | points left |
+|---|---|---|
+| stays at the core | never falls | 44.7 |
+| drives out and back, no carry | never falls | 40.7 |
+| **fetches, delivers, sends them back out** | never falls | **117.3** |
+| (never lost at all — the ceiling) | never falls | 298 |
+
+**+76.6 points over the errand control** — the number plan 15 C3 and
+plan 16 W4 both failed to produce.  ⚠ And it arrives in a different
+currency: the base no longer falls, so the CLOCK is saturated and
+*points left* is what "how well did you do" means.  Losing the crew
+member costs 253 points and fetching them back recovers 29% of it.
+
+⚠ **This is T3's headline arriving two phases early, and it is NOT T3.**
+It is one base, one wave list, measured in passing while fixing a
+control.  T3 owns the real measurement — the seven-wave list, the
+scenario, and the negative control that the same reading with nobody in
+repair reach reproduces W4 exactly.
 
 ## T0 — the probe (2026-08-15)
 
@@ -203,7 +310,7 @@ keep, and the same one that made B4's `taken` a count of damage ABSORBED.
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
 | **T0** ✓ | 317 / 319 / 321 unrefilled at 7 / 5 / 3 towers; CLEARED at 332 with two helpers' worth of repair | the magazine is the binding constraint — W4 asserted it, this removes it and looks | ✓ the plan's own falsifier was live: a base with free refills that still played four waves would have stopped the plan.  It played seven |
-| **T1** | a black tower fires again after 20 s of somebody standing at it | repair is **presence-locked and time-priced**; the ledger is clamped on the WRITE, so no tower ever holds more than `TOWER_SHOT_BUDGET` | a repair attempt on a **firing** tower is REFUSED (`DESIGN.md`'s rule); an unattended black tower never recovers a single shot; ⚠ **repair must not touch the CHARGE** — T0 § 5, and the signature of getting it wrong is a base that reads exactly like an undefended one (233 ticks) |
+| **T1** ✓ | a black tower fires again on tick 30 and not 29 | repair is **presence-locked and time-priced**, and the progress belongs to the TOWER so a relief crew finishes it | ✓ all three verified by MUTATION rather than by reading: dropping the epsilon, resetting the charge and repairing a firing tower each turn exactly one assertion red.  ✓ An unattended black tower never recovers a shot in four rebuilds' worth of ticks |
 | **T2** | a detached top does not fire; installed on an empty tower it fires instantly | **conservation is structural** (plan 15 C1): a top is mounted, carried, on the ground, or spent — exactly one, and never two | ⚠ **detach and re-mount must not refill** — the shots travel with the top; installing onto a tower that already has one is REFUSED, not silently overwritten |
 | **T3** | the seven-wave list REACHED, and the three retrieval clocks re-measured | a base that can recover is a base that can be played | a reading taken with repair switched off must reproduce W4's 321 / 247 / 248 / 248 exactly, or the harness moved and not the mechanic.  ⚠ Measure WAVES, not the fall tick — T0 § 4 |
 
@@ -212,7 +319,7 @@ keep, and the same one that made B4's `taken` a count of damage ABSORBED.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **T0** — the probe: is the magazine really what binds? | XS | the tables in § T0, measured against the shipped sim | **Done** |
-| **T1** — the rebuild: a black tower comes back | M | `tests/17_t1_the_rebuild.loft` — 20 s of a crew member standing at a black tower and it fires again; nobody there and it never does; a FIRING tower refuses repair; the ledger never exceeds the budget; the CHARGE is untouched | Open |
+| **T1** — the rebuild: a black tower comes back | M | `tests/17_t1_the_rebuild.loft` — 16 tests, and three mutations verified each goes red on its own assertion: drop the epsilon, reset the charge, or let a firing tower be repaired | **Done** |
 | **T2** — the top is a carry kind | M | `tests/17_t2_the_top.loft` — detach / install / deposit at the core, the budget travels WITH the top, and conservation asserted over the whole layer after every mutation (plan 15 C1's `assert_sound` shape).  ⚠ The diff must touch **no function in `carry.loft`'s carrying path** — that is plan 15 § C0.4's contract and is itself a gate | Blocked on T1 |
 | **T3** — the loop, measured | S | `tests/17_t3_what_upkeep_is_worth.loft` + a `.keys` scenario — W4's two measurements re-run with upkeep in the game.  ⚠ T0 predicts a two-helper seven-tower base clears the list; a reading that does not is the phase's finding | Blocked on T2 |
 

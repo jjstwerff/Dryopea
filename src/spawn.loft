@@ -1546,6 +1546,23 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         }
     }
 
+    // ⚠ **Upkeep takes its turn with the other work** (plan 17 T1),
+    // beside the salvage and for the same reason: it is what a vehicle
+    // does by BEING somewhere, and what it changes about the world
+    // belongs to tick N+1.  So a rebuild that finishes at the end of
+    // this tick fires for the first time in the next one — the same
+    // rule a body and a breach follow.
+    //
+    // ⚠ **After the movers**, so a vehicle works on the tower it ENDED
+    // this tick beside and never on one a later mover would have taken
+    // it away from.
+    //
+    // ⚠ Called as a bare statement rather than bound to a local:
+    // `wave_repair` is declared below and binding a FORWARD-declared
+    // call to a local panics the parser
+    // ([loft#918](https://github.com/loft-lang/loft/issues/918)).
+    wave_repair(state, mw, TICK_SECONDS);
+
     wave_deaths(state);
     damage_resolve(pal, pw, state.damage, state.heights);
 
@@ -1689,6 +1706,105 @@ pub fn wave_schedule_step(state: WaveState, mw: MarkerWorld, core: Hex) -> integ
     spawn_wave(state, wss_due, ENEMY_KIND_REGULAR as u8? ?? 0, mw,
                core.q, core.r, SPAWN_DISABLE_RADIUS);
     wss_due
+}
+
+// ─── Upkeep: bringing a black tower back (plan 17 T1) ───────────
+//
+// `DESIGN.md` § 7 gives the player a way to refill a spent tower, and
+// plan 16 W4 measured what its absence costs: a base spends its
+// magazines and its wall and has no way back up, so the lull between
+// waves is a pause rather than a repair window.  Plan 17 T0 then
+// measured the other side — without repair, building MORE towers buys
+// nothing at all (3, 5 and 7 towers give 321, 319 and 317 ticks and
+// four of seven waves each), and with it seven towers clear the whole
+// authored list.
+//
+// ⚠ **The crew repairs as well as the player** (project owner,
+// 2026-08-15).  `DESIGN.md`'s prose says *"the player walks up to a
+// black-in-place tower"* while `numbers.json`'s only rate is
+// `repair_time_HELPER_rebuild` — a conflict in the sources, resolved by
+// honouring both: repair stays PRESENCE-LOCKED, which is § What kind of
+// game this is' test, and the crew gets a job that exists BETWEEN
+// waves, which is exactly what W4 found missing when a retrieved crew
+// member came back to nothing.
+
+// Which black tower `at` should work on — the nearest, ties by `q` then
+// `r`.  Answers a hex with no marker on it when there is none in reach.
+//
+// ⚠ **Ordered by coordinate and never by hash order.**  `mw.markers` is
+// stable within one run and not across them (`active_spawn_markers`
+// says so), and a scripted run has to repeat — the same argument
+// `tower_pick` makes about roster order.
+fn repair_target(state: const WaveState, mw: const MarkerWorld,
+                 at: const Hex) -> Hex {
+    rt_best = Hex { q: 0, r: 0 };
+    rt_have = false;
+    rt_dist = 0;
+    for rt_m in mw.markers {
+        if rt_m.kind == MARKER_KIND_TOWER as u8 {
+            rt_h = Hex { q: rt_m.q, r: rt_m.r };
+            if tower_in_repair_reach(rt_h, at)
+               && tower_repairable(state.towers, rt_m.q, rt_m.r) {
+                rt_d = lat_distance(rt_h, at);
+                if !rt_have || rt_d < rt_dist
+                   || (rt_d == rt_dist
+                       && (rt_m.q < rt_best.q
+                           || (rt_m.q == rt_best.q && rt_m.r < rt_best.r))) {
+                    rt_best = rt_h;
+                    rt_dist = rt_d;
+                    rt_have = true;
+                }
+            }
+        }
+    }
+    // ⚠ Nothing in reach answers the vehicle's OWN hex, and that is safe
+    // rather than lucky: `tower_repair_tick` refuses any hex that is not
+    // a repairable tower, and a hex with no tower marker on it has no
+    // `TowerState` cell — only `tower_spend_shot` creates one — so it
+    // reads zero shots fired and is not black.
+    if !rt_have { return Hex { q: at.q, r: at.r }; }
+    rt_best
+}
+
+// Every vehicle's turn at a black tower.  Answers how many rebuilds
+// FINISHED this tick.
+//
+// ⚠ **One tower per vehicle per tick, and any number of vehicles per
+// tower** — the same shape `helper_salvage` has on one heap, and it is
+// what makes a crew of N rebuild N times as fast.  Each asks the state
+// as its turn comes, so order decides only who lands the last fraction.
+//
+// ⚠ **No key is pressed.**  Repair is a POSITION, exactly as clearing
+// rubble is (`vehicle.loft` § salvage): a vehicle parked beside a black
+// tower is working on it.  `DESIGN.md` § 11 keeps the player's
+// instructions to a destination, and every helper job so far is
+// positional.
+fn wave_repair(state: WaveState, mw: const MarkerWorld,
+               tick_seconds: float) -> integer {
+    wr_done = 0;
+
+    if vehicle_present(state.player) {
+        wr_at = Hex { q: state.player.q, r: state.player.r };
+        wr_t  = repair_target(state, mw, wr_at);
+        if tower_repair_tick(state.towers, wr_t.q, wr_t.r, tick_seconds) {
+            wr_done += 1;
+        }
+    }
+
+    // ⚠ `alive` is the whole filter — a wreck is not working on
+    // anything, and neither is a crew member in recovery at the core.
+    // The same test `wave_blockers` and `wave_provoked` apply.
+    for wr_h in state.crew {
+        if wr_h.alive {
+            wr_hat = Hex { q: wr_h.q, r: wr_h.r };
+            wr_ht  = repair_target(state, mw, wr_hat);
+            if tower_repair_tick(state.towers, wr_ht.q, wr_ht.r, tick_seconds) {
+                wr_done += 1;
+            }
+        }
+    }
+
+    wr_done
 }
 
 // ─── What starts the list at all (plan 16 W3) ───────────────────

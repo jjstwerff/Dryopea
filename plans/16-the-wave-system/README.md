@@ -168,6 +168,29 @@ is seen by the NEXT one.  Measured as a relation rather than a tick
 number — `fired == arrived + 1` — so it survives any change to the
 vehicle's speed.
 
+#### ⚠ W4's numbers need a CONTROL since plan 17 T1
+
+[Plan 17](../17-tower-hot-swap/README.md) T1 gave a vehicle standing
+within one hex of a black tower the ability to rebuild it, and W4's
+player waits at the core — one hex from the tower at (1, 0).  So it
+silently repaired, every run survived all four waves and the comparison
+saturated.
+
+⚠ **The finding is intact and the fix is a control, not a re-baseline.**
+W4 measures a base with NO upkeep, and after T1 that has to be authored
+rather than assumed: the test now parks at (-1, 0) and (-1, 1) — still
+core-adjacent so the delivery lands, two hexes from the nearest tower so
+nobody repairs — and the three headline clocks reproduce **exactly**.
+Only the secondary numbers moved a tick or two with the vehicles: the
+rejoin is 189 (was 187), the no-gate base falls at 193 (was 194), so the
+gate is worth **54** rather than 53.
+
+⚠ **And W4's answer has since changed on a base that DOES have upkeep**
+— plan 17 T1 measured the same three runs with the player repairing and
+the retrieval is worth **+76.6 points**, in a run where nothing falls at
+all.  W4's *"worth one tick"* is a statement about a game with no way to
+recover, which is exactly what it concluded.
+
 #### What it moved: nothing, and that is the assertion
 
 Every clock in the suite is unchanged, because the trigger asks a

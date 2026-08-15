@@ -117,6 +117,64 @@ pub const TOWER_SHOT_BUDGET: integer = 30;
 // `test_the_cadence_does_not_drift_over_a_long_run` is the gate for.
 pub const TOWER_CHARGE_EPSILON: float = 1.0e-9;
 
+// ─── What it takes to bring a black tower back (plan 17 T1) ─────
+
+// `numbers.json` § tower.repair_time_helper_rebuild — *"Time for a
+// helper to repair a black tower from scratch."*
+//
+// ⚠ **ONE rate for the player and for a helper**, because the file has
+// one row.  A separate player figure would be a tunable this plan
+// invented, which is the rule `vehicle.loft` § salvage already keeps —
+// there is no helper salvage RATE for the same reason.
+pub const TOWER_REPAIR_SECONDS: float = 20.0;
+
+// ⚠⚠ **The banked-timer rule has a second half, and plan 17 T1 is what
+// found it: the DIRECTION of the count is part of it.**
+//
+// Plan 15 C0's rule was *"a timer loses a tick exactly when its
+// duration divides the tick length exactly"* — 60.0 s of helper
+// recovery is 90 ticks and a bare `> 0.0` gives 91.  True, and
+// incomplete.  Every other banked timer in dryopea counts DOWN
+// (`helper.recover`, `Vehicle.boost_left`, `Enemy.stand`,
+// `WaveSchedule.lull`); this one counts UP, because `repair` has to be
+// *seconds banked* for zero to be the neutral value.  And the two
+// directions do not accumulate the same way.
+//
+// Measured, over a 1/1.5 s tick, for durations that ARE exact
+// multiples:
+//
+//   | T      | ticks | counting UP        | counting DOWN     |
+//   |---|---|---|---|
+//   |  4.0 s |    6  | 3.9999999999999996 | residue > 0       |
+//   | 10.0 s |   15  | 9.999999999999998  | residue > 0       |
+//   | 20.0 s |   30  | **exactly 20.0**   | residue > 0       |
+//   | 30.0 s |   45  | 30.000000000000018 | residue < 0       |
+//   | 40.0 s |   60  | 39.99999999999999  | residue > 0       |
+//   | 60.0 s |   90  | 59.99999999999992  | residue > 0       |
+//
+// ⚠ **So NEITHER direction is safe, and today's value is exact by
+// LUCK.**  20.0 counting up lands on the nose and needs no epsilon at
+// all; 10.0, 40.0 and 60.0 counting up all fall short and would each
+// cost a tick.  This constant therefore is not what makes 20.0 work —
+// it is what makes the number TUNABLE, and `tests/17_t1_the_rebuild.
+// loft` § The guard can fire is the assertion that keeps it honest
+// rather than decorative.
+//
+// ⚠ Do not "simplify" this away after checking that the suite stays
+// green: it stays green because of the luck above, and the first person
+// to retune the repair time pays for it.
+pub const TOWER_REPAIR_EPSILON: float = 1.0e-9;
+
+// How close a vehicle has to be to work on a tower.
+//
+// ⚠ **DERIVED, not picked**: `numbers.json` § tower.footprint_layout is
+// `hex_disc_radius_1`, so a tower occupies its hex and all six
+// neighbours — and a vehicle within one hex is standing ON it.  It is
+// the same derivation `wallet.loft`'s `NIBBLE_REACH_HEXES` makes from
+// the core's footprint, and it lands on the same number as
+// `CARGO_REACH_HEXES` by arithmetic rather than by copying.
+pub const TOWER_REPAIR_REACH_HEXES: integer = 1;
+
 // How far above the sight line an obstacle has to reach before it
 // blocks the shot — a metre-scale rule decided at 1 nanometre.
 //
@@ -137,11 +195,26 @@ pub const TOWER_SIGHT_EPSILON: float = 1.0e-9;
 // `damage.loft` makes for a wall: zero is the neutral value, so a
 // tower this struct has never heard of is a fresh one rather than a
 // black one.  A `TowerCharge {}` literal is a working tower.
+// ⚠ **`charge` and `shots` are TWO CLOCKS and a repair touches ONE of
+// them** (plan 17 T1), which is worth saying beside the fields because
+// getting it wrong is invisible.  `charge` is seconds banked toward the
+// NEXT shot and `shots` is the magazine; a rebuild refills the magazine
+// and must leave the charge exactly where it was.  T0 measured what
+// happens otherwise: a tower needs 1.5 ticks of charge to reach one
+// firing interval, so a repair that also zeroed the charge left every
+// tower permanently a hair short and it **never fired at all** — a base
+// that reads exactly like an undefended one, 233 ticks, with three
+// towers standing in it.
+//
+// ⚠ `repair` is seconds banked toward the REBUILD, and zero is the
+// neutral value a third time: a `TowerCharge { }` literal is a tower
+// nobody is working on.
 pub struct TowerCharge {
     q:      integer,
     r:      integer,
     charge: float,
     shots:  integer,
+    repair: float,
 }
 
 // What every tower on the map has banked.  A hash must be a struct
@@ -184,7 +257,8 @@ pub fn tower_bank(ts: TowerState, q: integer, r: integer, seconds: float) {
         // `shots: 0` is spelled out rather than defaulted — a literal
         // that omits a field takes its zero SILENTLY, and this is the
         // site where a wrong one would hand out a black tower.
-        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: seconds, shots: 0 };
+        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: seconds, shots: 0,
+                                       repair: 0.0 };
     } else {
         tb_c.charge = tb_c.charge + seconds;
     }
@@ -226,7 +300,8 @@ pub fn tower_shots(ts: const TowerState, q: integer, r: integer) -> integer {
 pub fn tower_spend_shot(ts: TowerState, q: integer, r: integer) {
     tss_c = ts.cells[q, r];
     if tss_c == null {
-        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: 0.0, shots: 1 };
+        ts.cells[q, r] = TowerCharge { q: q, r: r, charge: 0.0, shots: 1,
+                                       repair: 0.0 };
     } else {
         tss_c.shots = tss_c.shots + 1;
     }
@@ -252,6 +327,83 @@ pub fn tower_budget_left(ts: const TowerState, q: integer, r: integer) -> intege
 // How many towers have been ticked at least once.
 pub fn tower_count(ts: const TowerState) -> integer {
     len(ts.cells)
+}
+
+// ─── Bringing one back (plan 17 T1) ─────────────────────────────
+
+// May (q, r) be repaired at all?
+//
+// ⚠ **A FIRING tower may not**, and it is `DESIGN.md` § 7's rule rather
+// than a convenience: *"a firing (red) tower cannot be repaired —
+// repair only applies to a tower whose top is either black (decayed in
+// place, no longer firing) or detached"*.  The fiction is that you do
+// not fiddle with a heavy energy weapon while it is powered on; the
+// consequence is that upkeep has to be TIMED, which is what makes the
+// hot-swap in T2 a cycle rather than a convenience.
+//
+// ⚠ So this is `tower_black` today and will grow the detached case in
+// T2 — one door, so that the two states repair can apply to cannot
+// drift apart.
+pub fn tower_repairable(ts: const TowerState, q: integer, r: integer) -> boolean {
+    tower_black(ts, q, r)
+}
+
+// Seconds banked toward (q, r)'s rebuild.  Zero for a tower nobody is
+// working on, which is also a tower nobody has ever ticked.
+pub fn tower_repair_progress(ts: const TowerState, q: integer, r: integer) -> float {
+    trp_c = ts.cells[q, r];
+    if trp_c == null { return 0.0; }
+    trp_c.repair
+}
+
+// Is somebody part-way through a rebuild here?
+pub fn tower_repairing(ts: const TowerState, q: integer, r: integer) -> boolean {
+    tower_repair_progress(ts, q, r) > TOWER_REPAIR_EPSILON
+}
+
+// Bank one turn of repair into (q, r).  Answers whether THIS call
+// finished it.
+//
+// ⚠ **The progress lives on the TOWER, not on whoever is working on
+// it** (`plans/17` § Open questions 1).  A crew member driven off at 19
+// of 20 seconds leaves the work where it stands, and a second one — or
+// the player — finishes it.  Storing it on the vehicle would make a
+// rebuild the property of a particular helper, so losing that helper
+// would silently discard the work with nothing able to see it.
+//
+// ⚠ **It refills the MAGAZINE and never touches the CHARGE** — see the
+// warning on `TowerCharge`.  This is the one line where getting it
+// wrong produces a base that reads exactly like an undefended one.
+//
+// ⚠ The comparison needs `TOWER_REPAIR_EPSILON`: 20.0 s is exactly 30
+// ticks and a bare `>=` gives 31.
+pub fn tower_repair_tick(ts: TowerState, q: integer, r: integer,
+                         seconds: float) -> boolean {
+    if !tower_repairable(ts, q, r) { return false; }
+    trt_c = ts.cells[q, r];
+    // A tower that is black HAS a cell by construction — `tower_black`
+    // is `shots >= 30` and shots only rise through `tower_spend_shot`,
+    // which creates one.  The guard is here so the null case has an
+    // answer rather than because it is reachable.
+    if trt_c == null { return false; }
+
+    trt_c.repair = trt_c.repair + seconds;
+    if trt_c.repair < TOWER_REPAIR_SECONDS - TOWER_REPAIR_EPSILON {
+        return false;
+    }
+
+    trt_c.repair = 0.0;
+    trt_c.shots  = 0;
+    true
+}
+
+// Is `at` close enough to the tower at `tower` to work on it?
+//
+// ⚠ Stated once, here, so no call site reaches for a `+ 1` on a q or an
+// r to decide it — `lat_distance` and nothing else, the same rule
+// `tower_in_range` carries.
+pub fn tower_in_repair_reach(tower: const Hex, at: const Hex) -> boolean {
+    lat_distance(tower, at) <= TOWER_REPAIR_REACH_HEXES
 }
 
 // ─── Range ──────────────────────────────────────────────────────
