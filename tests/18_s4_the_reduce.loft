@@ -1,0 +1,284 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 18 phase S4 — the reduce.
+//
+// S3 crops by geometry and measured its own limit: a LEGAL crop
+// silently stopped every wave, because a spawn marker's meaning is a
+// distance from the core.  Its conclusion was that whether a cut
+// preserved a behaviour is a question about that behaviour.  This is
+// the half that answers it — state the behaviour, then remove
+// everything the behaviour does not need.
+//
+// ── ⚠⚠ The predicate is a `.keys` FRAGMENT, and that is the phase ─
+//
+// `plans/18` § Open questions 4 asked whether a test's own assertions
+// could BE the predicate, and left it open because nobody knew whether
+// the runner could be driven that way.  It can, and it needed no
+// machinery at all: a predicate is script text appended to the fixture,
+// and it holds when the whole thing runs green.  The measurement
+// vocabulary the suite already speaks is the predicate language.
+//
+// ── ⚠⚠ And a predicate that cannot FAIL deletes everything ──────
+//
+// The reducer drops a line whenever the predicate still holds without
+// it.  Hand it one that holds over an EMPTY fixture and every line is
+// removable — so it returns nothing and calls it minimal.  That is the
+// negative control this phase exists to have, and § A predicate that
+// cannot fail is refused is where it is checked.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// A fixture with plenty in it that the property below does NOT need:
+// three towers, a crew member, cargo, a second enemy on another row,
+// and a strip of ground nobody walks on.
+//
+// ⚠ The towers sit twenty hexes back, OUT of their own range of 15.
+// The first draft put them at (3, 0) and they shot the robot dead
+// before it ever reached the wall — so the property did not hold over
+// the fixture at all, and `reduce_fault` refused it.  A fixture has to
+// exhibit the property before anything can be reduced against it.
+fn fixture() -> text {
+    f_t = "# captured: a hand-built situation\n"
+        + "flag 0 0 target 0\n"
+        + "flag -20 0 tower 0\n"
+        + "flag -20 2 tower 0\n"
+        + "flag -20 -2 tower 0\n"
+        + "palette 5\n";
+    for f_q in -2..=12 { f_t = f_t + "click {f_q} 0\n"; }
+    for f_q2 in -2..=12 { f_t = f_t + "click {f_q2} 2\n"; }
+    f_t = f_t + "palette 9\nclick 6 0\n"
+        + "place 8 0 robot 3\n"
+        + "place 8 2 robot 3\n"
+        + "crew 1 0\n"
+        + "object 1 0 wreck 0 ground\n"
+        + "spent 30\n";
+    f_t
+}
+
+// What the fixture is FOR: the robot on row 0 chews the wall at (6, 0)
+// and it is still standing.
+//
+// ⚠ It is the ordinary measurement vocabulary — no predicate language
+// was invented for this.
+//
+// ⚠ The band is MEASURED, not guessed.  (6, 0) is a lone wall hex, so
+// plan 12 B3 makes it a 15 HP stub rather than the 100 HP a braced one
+// gets, and one robot chews it to nothing by tick ~25: 12.3 at tick 5,
+// 9.0 at 10, 5.67 at 15, 2.3 at 20, gone by 30.  The first draft asked
+// for tick 40 and the wall had BROKEN — `hp` then refuses the hex,
+// because "at 0 HP" and "nothing here to break" are different states.
+fn property() -> text {
+    "tick 15\nhp 6 0 5.0 6.5\n"
+}
+
+fn reduced() -> text {
+    r_t = reduce_keys(PALETTE, fixture(), property(), SHOTS);
+    r_t
+}
+
+fn runs(src: text) -> ScriptRun {
+    r_r = script_run(editor_state_new(PALETTE), src, SHOTS);
+    r_r
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The phase: it reduces, and what is left still shows the property
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_predicate_holds_before_and_after() {
+    tph_full = runs(fixture() + property());
+    assert(tph_full.ok,
+           "the property holds over the whole fixture: "
+           + "{script_describe(tph_full)}");
+
+    tph_cut = reduced();
+    assert(tph_cut != "", "it reduces: '{reduce_fault(PALETTE, fixture(), property(), SHOTS)}'");
+
+    tph_run = runs(tph_cut + property());
+    assert(tph_run.ok,
+           "and still holds over what is left: {script_describe(tph_run)}");
+}
+
+// ⚠ It actually REMOVED something — a reducer that returned its input
+// would pass every assertion above.
+fn test_it_removes_what_the_property_does_not_need() {
+    tir_before = len(fixture().split('\n'));
+    tir_after  = len(reduced().split('\n'));
+
+    assert(tir_after < tir_before,
+           "shorter: {tir_after} lines of {tir_before}");
+    // The far tower and the second row of ground have nothing to do
+    // with a robot chewing a wall on row 0.
+    assert(!reduced().contains("flag -20 2 tower"),
+           "the tower that never fired is gone");
+    assert(!reduced().contains("click 12 2"),
+           "and so is the ground nobody walked on");
+}
+
+// ⚠⚠ **1-MINIMAL, and that is the claim.**  When the reducer returns,
+// removing any ONE remaining line breaks the property.  Checked by
+// doing exactly that, line by line.
+//
+// ⚠ It is not the SMALLEST fixture that could exist — a pair of lines
+// that only matter together survives — and the difference between
+// 1-minimal and minimal is the difference between a guarantee and a
+// hope.
+fn test_the_result_is_one_minimal() {
+    tom_cut   = reduced();
+    tom_lines = tom_cut.split('\n');
+    tom_tried = 0;
+
+    tom_i = 0;
+    for tom_l in tom_lines {
+        tom_t = tom_l.trim();
+        if tom_t != "" && !tom_t.starts_with("#") {
+            // Rebuild without this one.
+            tom_try = "";
+            tom_j = 0;
+            for tom_m in tom_lines {
+                if tom_j != tom_i {
+                    if tom_try != "" { tom_try = tom_try + "\n"; }
+                    tom_try = tom_try + tom_m;
+                }
+                tom_j += 1;
+            }
+            tom_r = runs(tom_try + property());
+            assert(!tom_r.ok,
+                   "line {tom_i} '{tom_t}' is load-bearing — without it the "
+                   + "property must fail, and it did not");
+            tom_tried += 1;
+        }
+        tom_i += 1;
+    }
+
+    // ⚠ The sweep must have swept something: a reduction to nothing
+    // would pass the loop above vacuously.
+    assert(tom_tried > 0, "there are lines left to check: {tom_tried}");
+}
+
+// ⚠ The origin survives, which is what keeps a reduced fixture
+// explicable — the difference between a test somebody trusts and one
+// they delete.
+fn test_the_origin_survives_reduction() {
+    assert(reduced().contains("# captured: a hand-built situation"),
+           "the comment is pinned");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The negative controls
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **A predicate that cannot fail is refused.**  The reducer drops a
+// line whenever the predicate still holds without it, so one that holds
+// over an EMPTY fixture makes every line removable — it would return
+// nothing and call it minimal.
+//
+// This is the whole difference between a reducer and a delete button.
+fn test_a_predicate_that_cannot_fail_is_refused() {
+    // ⚠ `wallet 0.0 200.0` is the real thing: the budget belongs to the
+    // RUN rather than the battlefield, so it needs no core, no wave and
+    // no map — it is true of a file with nothing in it.
+    tap_why = reduce_fault(PALETTE, fixture(), "wallet 0.0 200.0\n", SHOTS);
+    assert(tap_why != "", "refused: '{tap_why}'");
+    assert(tap_why.contains("EMPTY"), "and it names why: '{tap_why}'");
+    assert(reduce_keys(PALETTE, fixture(), "wallet 0.0 200.0\n", SHOTS) == "",
+           "and nothing is returned rather than an empty fixture that "
+           + "looks reduced");
+
+    // An empty predicate is the same mistake spelled shorter.
+    assert(reduce_fault(PALETTE, fixture(), "", SHOTS) != "",
+           "an empty predicate is refused too");
+}
+
+// ⚠ **A WEAK predicate is not a vacuous one, and the guard is right to
+// let it through.**  `tick 0` asserts nothing about the situation — but
+// it does not hold over an empty fixture either, because `tick` demands
+// exactly ONE target marker.  So it discriminates, barely: reducing
+// against it honestly strips the fixture back to the core marker it
+// needs and nothing else.
+//
+// ⚠ The first draft of this file used `tick 0` as its example of a
+// predicate that cannot fail, and the guard did not fire — correctly.
+// The distinction is worth keeping: the guard catches predicates that
+// hold over NOTHING, not ones that ask for little.
+fn test_a_weak_predicate_is_allowed_and_strips_nearly_everything() {
+    taw_why = reduce_fault(PALETTE, fixture(), "tick 0\n", SHOTS);
+    assert(taw_why == "", "a weak predicate is usable: '{taw_why}'");
+
+    taw_cut = reduce_keys(PALETTE, fixture(), "tick 0\n", SHOTS);
+    assert(taw_cut != "", "and it reduces");
+    assert(taw_cut.contains("flag 0 0 target"),
+           "keeping the one line `tick` needs");
+    assert(!taw_cut.contains("place 8 0"),
+           "and dropping everything it does not — nothing else is "
+           + "load-bearing for a predicate that asks for nothing");
+}
+
+// ⚠ A predicate that does not hold over the fixture is refused as well:
+// reducing against it would quietly return the input, since no removal
+// could ever be accepted.
+fn test_a_predicate_that_does_not_hold_is_refused() {
+    tan_why = reduce_fault(PALETTE, fixture(), "tick 40\nhp 6 0 100.0 100.0\n",
+                           SHOTS);
+    assert(tan_why != "", "refused: '{tan_why}'");
+    assert(tan_why.contains("does not hold"), "and says which way round");
+}
+
+// ⚠ **The reduced fixture still RUNS.**  A removal that broke the file
+// — dropping a `place` while keeping the `hit` that indexes it — makes
+// the script error, which fails the predicate, which rejects the
+// removal.  The reducer is self-correcting, and this is the assertion
+// that says so rather than assuming it.
+fn test_nothing_reduces_to_a_broken_file() {
+    tnr = runs(reduced());
+    assert(tnr.ok, "what is left is a valid script: {script_describe(tnr)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// S3's crop and S4's reduce, together
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **The answer to S3's finding.**  S3 measured a legal crop silently
+// stopping every wave and could not tell — because a crop knows only
+// geometry.  A predicate can: reduce the same too-tight crop against
+// the property it is supposed to preserve and the reduction is REFUSED,
+// because the property no longer holds.
+fn test_a_predicate_catches_the_crop_that_geometry_could_not() {
+    // The band from S3: a spawn marker eighteen hexes out, a wave list
+    // about to send, and a property that says the base gets attacked.
+    tap2_src = "flag 0 0 target 0\nflag 18 0 spawn 3\npalette 5\n";
+    for tap2_q in -2..=20 { tap2_src = tap2_src + "click {tap2_q} 0\n"; }
+    tap2_src = tap2_src + "schedule 4 4\npending 0 0.0 15.0 on\n";
+
+    tap2_prop = "tick 30\ncount alive 4 4\n";
+
+    tap2_a = editor_state_new(PALETTE);
+    tap2_run = script_run(tap2_a, tap2_src, SHOTS);
+    assert(tap2_run.ok, "the band builds");
+
+    // The generous crop keeps the property.
+    tap2_wide = crop_keys(load_palette(PALETTE), tap2_a.pw, tap2_a.mw,
+                          tap2_run.wave, Hex { q: 0, r: 0 },
+                          Hex { q: 0, r: 0 }, 25, "band");
+    assert(reduce_fault(PALETTE, tap2_wide, tap2_prop, SHOTS) == "",
+           "a radius-25 crop still shows the property: "
+           + "'{reduce_fault(PALETTE, tap2_wide, tap2_prop, SHOTS)}'");
+
+    // ⚠ The tight one — legal by every rule `crop_fault` knows — does
+    // not, and the predicate is what says so.
+    tap2_tight = crop_keys(load_palette(PALETTE), tap2_a.pw, tap2_a.mw,
+                           tap2_run.wave, Hex { q: 0, r: 0 },
+                           Hex { q: 0, r: 0 }, CROP_MIN_RADIUS_HEXES, "band");
+    assert(tap2_tight != "", "the tight crop is still ALLOWED by geometry");
+    tap2_why = reduce_fault(PALETTE, tap2_tight, tap2_prop, SHOTS);
+    assert(tap2_why != "",
+           "but the property does not survive it — which geometry could "
+           + "not have told us");
+    assert(tap2_why.contains("does not hold"), "named: '{tap2_why}'");
+}

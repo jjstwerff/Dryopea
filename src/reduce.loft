@@ -1,0 +1,172 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Cutting a fixture down to what the situation needs.  Plan 18 phase S4.
+//
+// S3 crops by GEOMETRY and can only refuse the crops that certainly
+// break — it measured a legal crop silently stopping every wave, and
+// concluded that whether a particular cut preserved a particular
+// behaviour is a question about that behaviour.  This is the half that
+// can answer it: state the behaviour, then remove everything the
+// behaviour does not need.
+//
+// ── ⚠⚠ The predicate is a `.keys` FRAGMENT ──────────────────────
+//
+// `plans/18` § Open questions 4 asked whether the reducer could use a
+// test's own assertions as its predicate.  It can, and the answer
+// needed no machinery: a predicate is just script text appended to the
+// fixture, and it holds when the whole thing RUNS GREEN.
+//
+//     tick 30
+//     count alive 4 4
+//     hp 6 0 0.0 0.0
+//
+// So the measurement vocabulary the suite already speaks is the
+// predicate language, an assertion that fails is a predicate that does
+// not hold, and there is nothing new to learn or to keep in step.
+//
+// ── ⚠⚠ A predicate that cannot FAIL reduces everything to nothing ─
+//
+// The reducer removes a line whenever the predicate still holds
+// without it.  Hand it one that holds over an EMPTY fixture — `tick 0`,
+// or `wallet 0.0 200.0`, or nothing at all — and every line is
+// removable, so it returns an empty file and calls it minimal.
+//
+// ⚠ So `reduce_fault` runs the predicate against an empty fixture
+// FIRST and refuses if it passes.  That is the whole difference between
+// a reducer and a delete button, and it is the negative control
+// `plans/18` § Invariant gate names for this phase.
+
+use palette;
+use editor_step;
+use script;
+
+// ─── What makes a predicate usable ──────────────────────────────
+
+// Does `fixture + predicate` run green?
+fn holds(palette_path: text, fixture: text, predicate: text,
+         shots_dir: text) -> boolean {
+    h_s = editor_state_new(palette_path);
+    h_r = script_run(h_s, fixture + "\n" + predicate, shots_dir);
+    h_r.ok
+}
+
+// Why this predicate cannot be reduced against — "" when it can.
+//
+// ⚠ **The empty-fixture test is the load-bearing one.**  A predicate
+// that holds over nothing at all cannot tell one fixture from another,
+// so reducing against it removes every line and reports success.
+pub fn reduce_fault(palette_path: text, fixture: text, predicate: text,
+                    shots_dir: text) -> text {
+    if predicate == "" { return "the predicate is empty — it would hold over anything"; }
+    if holds(palette_path, "", predicate, shots_dir) {
+        return "the predicate holds over an EMPTY fixture, so it cannot say what this one is for";
+    }
+    if !holds(palette_path, fixture, predicate, shots_dir) {
+        return "the predicate does not hold over the fixture it was given";
+    }
+    ""
+}
+
+// ─── The reduction ──────────────────────────────────────────────
+
+// Is this line one the reducer must never touch?
+//
+// ⚠ Comments are KEPT, which is not laziness: the `# captured:` line
+// `emit.loft` writes is what makes a fixture explicable a year later,
+// and a reducer that removed it would be trading the only thing
+// connecting the file to where it came from for two bytes.
+fn pinned(line: text) -> boolean {
+    p_t = line.trim();
+    p_t == "" || p_t.starts_with("#")
+}
+
+// Rebuild a source with line `skip` left out.  `skip` of -1 keeps all.
+fn without(lines: vector<text>, skip: integer) -> text {
+    w_out = "";
+    w_i = 0;
+    for w_l in lines {
+        if w_i != skip {
+            if w_out != "" { w_out = w_out + "\n"; }
+            w_out = w_out + w_l;
+        }
+        w_i += 1;
+    }
+    w_out
+}
+
+// One greedy pass: try each line in turn and drop the ones the
+// predicate does not need.  Answers the surviving source.
+fn reduce_pass(palette_path: text, fixture: text, predicate: text,
+               shots_dir: text) -> text {
+    rp_cur = fixture;
+    rp_i = 0;
+    rp_n = len(rp_cur.split('\n'));
+    while rp_i < rp_n {
+        rp_lines = rp_cur.split('\n');
+        rp_line = rp_lines[rp_i] ?? "";
+        if !pinned(rp_line) {
+            rp_try = without(rp_lines, rp_i);
+            if holds(palette_path, rp_try, predicate, shots_dir) {
+                // ⚠ It went, so every later index shifts down by one and
+                // this one is now a different line — do NOT advance.
+                rp_cur = rp_try;
+                rp_n = len(rp_cur.split('\n'));
+                rp_i = rp_i - 1;
+            }
+        }
+        rp_i += 1;
+    }
+    rp_cur
+}
+
+// ─── The door, LAST ─────────────────────────────────────────────
+//
+// ⚠ Every helper above its caller — loft#918 panics the parser on a
+// local bound to a call whose callee sits lower in the file.  The same
+// scar `compare.loft` and `emit.loft` carry.
+
+// Cut `fixture` down to the lines its `predicate` needs.  Answers "" if
+// the predicate is unusable — ask `reduce_fault` why.
+//
+// ⚠ **1-minimal, and that is the claim being made**: when this returns,
+// removing any ONE remaining line breaks the predicate.  It is not the
+// smallest fixture that could exist — a pair of lines that only matter
+// together survives — and saying so is the difference between a
+// guarantee and a hope.  `ddmin`'s subset search is what buys more, and
+// it costs a run per subset rather than a run per line.
+//
+// ⚠ It repeats until a whole pass removes nothing.  A pass walks
+// forward and re-tries the same index after each removal, so it settles
+// for that ORDER — but removing a line late in the file can make one
+// early in it removable, and a single forward pass never looks back.
+//
+// ⚠ **Measured: the second pass is not exercised by any fixture in the
+// suite.**  Cutting `reduce_keys` to one pass leaves
+// `tests/18_s4_the_reduce.loft` entirely green.  That is recorded
+// rather than removed, because the gate is `test_the_result_is_one_
+// minimal` — which checks the PROPERTY of the output by trying every
+// remaining line, and does not care how many passes produced it.  The
+// loop is a mechanism whose result is checked, not a guard that cannot
+// fire.
+pub fn reduce_keys(palette_path: text, fixture: text, predicate: text,
+                   shots_dir: text) -> text {
+    if reduce_fault(palette_path, fixture, predicate, shots_dir) != "" {
+        return "";
+    }
+    rk_cur = fixture;
+    for _ in 0..REDUCE_MAX_PASSES {
+        rk_next = reduce_pass(palette_path, rk_cur, predicate, shots_dir);
+        if rk_next == rk_cur { return rk_cur; }
+        rk_cur = rk_next;
+    }
+    rk_cur
+}
+
+// How many times to sweep before giving up.
+//
+// ⚠ A bound rather than a `while`, because a reducer that cannot settle
+// is a bug and looping for ever hides it.  Each pass strictly shortens
+// the file or ends the loop, so reaching this means something is
+// non-deterministic — which is worth failing over rather than spinning.
+pub const REDUCE_MAX_PASSES: integer = 8;

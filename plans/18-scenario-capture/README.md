@@ -9,8 +9,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**S0 + S1a + S1b + S2 + S3 shipped** (2026-08-15).  S4 is next.  Suite
-**1042 green**, gate **28 scripts / 520 measurements**.
+**COMPLETE** (2026-08-15) — S0 + S1a + S1b + S2 + S3 + S4.  Suite
+**1051 green**, gate **28 scripts / 520 measurements**.
+
+**A situation can now be captured, written down, cut to size and cut to
+the bone.**  The tool exists end to end; what it is still waiting for is
+an interactive loop to capture FROM — § What this plan does NOT build.
 
 **S2 closed the round trip.**  `src/emit.loft::emit_keys` writes the
 `.keys` file that reproduces a situation, and **all 28 real scenarios**
@@ -20,6 +24,11 @@ identical.  § S2.
 **S3 built the crop, and measured its limit.**  A crop keeps a disc and
 refuses the ones that certainly break — but ⚠ **a LEGAL crop can still
 change the answer**, and the phase measures one doing it.  § S3.
+
+**S4 answered S3 with a predicate**, and the predicate turned out to be
+a `.keys` fragment — the measurement vocabulary the suite already
+speaks.  ⚠ Open question 4 is closed: a test's own assertions ARE the
+predicate, and it needed no machinery.  § S4.
 
 **S0 built the oracle every later phase needs.**  `src/compare.loft`
 answers *how* two `WaveState`s differ — the first difference, named —
@@ -158,7 +167,7 @@ REFUSED rather than quietly emitted.
 | **S1b** ✓ | one state with every field non-neutral, authored from `.keys` and S0-identical to the same state built in loft | the vocabulary is TOTAL over `WaveState` | ✓ three setters mutated to drop a field: each fails the TOTALITY test and `state_diff` names the field — *'towers (4, 0).repair: 0 vs 6'*.  ⚠ Seven separate 'this verb works' tests would stay green while the one state a capture needs is unreachable |
 | **S2** ✓ | 28 of 28 scenarios round-trip, state and world identical | **round-trip = identity**, over the REAL corpus rather than a fixture | ✓ three dropped fields each go red and NAME themselves (*'towers (4, 0).charge: 0.4 vs 0'*); ✓ a hand-built state holds the fields no shipped scenario exercises; ✓ a state one TICK on survives, so the emitter handles what the SIMULATION produces and not only what a script authors |
 | **S3** ✓ | a radius-25 crop reproduces the run exactly 30 ticks on; a radius-15 crop of the same base silently stops the waves | a crop is bounded by the RULES, not the picture — and the rules are NECESSARY, not sufficient | ✓ dropping the core and cutting under a tower's reach are both refused, and a refused crop writes NOTHING; ✓ the tight crop is the control that stops this reading as 'cropping works'; ✓ three mutations (skip the core check, split a tower from its cell, ignore the radius) each go red |
-| **S4** | the reduced fixture still shows the property | minimality is checkable: removing any one more line breaks it | a reducer with no predicate reduces to nothing and calls it minimal |
+| **S4** ✓ | the fixture shrinks and what is left still shows the property | **1-minimal**: removing any ONE remaining line breaks the predicate, checked line by line | ✓ a predicate holding over an EMPTY fixture is REFUSED — the whole difference between a reducer and a delete button; ✓ a predicate that does not hold over the fixture is refused too; ✓ the origin comment is pinned, so a reduced fixture stays explicable |
 
 ## Phases
 
@@ -169,7 +178,7 @@ REFUSED rather than quietly emitted.
 | **S1b** — the rest of the state becomes authorable | M | `tests/18_s1b_the_vocabulary_is_total.loft` — 15 tests, centred on ONE state with every field non-neutral built both ways; three dropped-setter mutations verified (`tower`'s repair, `cursor`, `member`'s recovery) | **Done** |
 | **S2** — the emitter, and the round trip | M | `tests/18_s2_the_round_trip.loft` — all 28 real scenarios survive capture → emit → replay, state AND world; three dropped-field mutations verified (a tower's charge, a pile's source, the terrain) | **Done** |
 | **S3** — the crop | S | `tests/18_s3_the_crop.loft` — 8 tests: a lossless crop reproduces the run tick for tick, a legal-but-tight one demonstrably does NOT, and the two certainly-broken crops are refused.  Three mutations verified | **Done** |
-| **S4** — the reduce | M | `tests/18_s4_the_reduce.loft` — delta-debug against a supplied predicate; the output still shows the property and is minimal | Blocked on S3 |
+| **S4** — the reduce | M | `tests/18_s4_the_reduce.loft` — 9 tests: greedy line removal against a `.keys` predicate, 1-minimality checked by removing every surviving line, and a predicate that holds over an EMPTY fixture refused | **Done** |
 
 ### Why the order is this order
 
@@ -466,6 +475,77 @@ working would have told the opposite of the truth.
   a crew member leaves a wreck pointing at nobody.  They are few, and
   they are the interesting part of a situation anyway.
 
+## S4 — the reduce (2026-08-15)
+
+`reduce_keys(palette, fixture, predicate, shots)` removes every line the
+predicate does not need, and `reduce_fault` says why it will not try.
+
+### ⚠⚠ The predicate is a `.keys` fragment — open question 4, closed
+
+The plan left it open whether a test's own assertions could BE the
+predicate, *"unknown whether the runner can be driven that way"*.  They
+can, and it needed **no machinery at all**: a predicate is script text
+appended to the fixture, and it holds when the whole thing runs green.
+
+```
+tick 15
+hp 6 0 5.0 6.5
+```
+
+So the measurement vocabulary the suite already speaks is the predicate
+language, an assertion that fails is a predicate that does not hold, and
+there is nothing new to keep in step.
+
+### ⚠⚠ A predicate that cannot FAIL is a delete button
+
+The reducer drops a line whenever the predicate still holds without it.
+Hand it one that holds over an **empty** fixture and every line is
+removable — it returns nothing and calls it minimal.  So `reduce_fault`
+runs the predicate against an empty fixture first and refuses if it
+passes.  That is the negative control this phase exists to have.
+
+⚠ **And a WEAK predicate is not a vacuous one.**  The first draft used
+`tick 0` as its example of a predicate that cannot fail — and the guard
+correctly did **not** fire, because `tick` demands exactly one target
+marker and so fails over nothing.  `tick 0` is legal and nearly
+worthless: reducing against it honestly strips the fixture back to the
+core marker.  The real example is `wallet 0.0 200.0`, which needs no
+core, no wave and no map, because the budget belongs to the RUN.
+
+### ⚠ 1-minimal, which is a guarantee rather than a hope
+
+When the reducer returns, removing any ONE remaining line breaks the
+predicate — checked by doing exactly that to every surviving line.  It
+is **not** the smallest fixture that could exist: a pair of lines that
+only matter together survives.  `ddmin`'s subset search buys more and
+costs a run per subset rather than a run per line.
+
+⚠ **The multi-pass loop is not exercised by any fixture in the suite** —
+cutting `reduce_keys` to a single pass leaves the file green.  Recorded
+rather than removed, because the gate is the 1-minimality test, which
+checks the OUTPUT and does not care how many passes produced it.
+
+### ⚠⚠ And it answers S3
+
+S3 measured a legal crop silently stopping every wave and could not
+tell, because a crop knows only geometry.  Reduce the same too-tight
+crop against the property it is meant to preserve and the reduction is
+**refused** — the property no longer holds.  That is the phase's closing
+argument: geometry proposes, and a predicate disposes.
+
+### ⚠ Two fixture lessons, both caught by the gate rather than by reading
+
+- **The towers shot the robot before it reached the wall.**  Three
+  towers at (3, 0) are well within range 15, so the property never held
+  over the fixture and `reduce_fault` refused it.  A fixture must
+  exhibit its property before anything can be reduced against it.
+- **The HP band was guessed and the wall had already broken.**  (6, 0)
+  is a lone wall hex, so plan 12 B3 makes it a **15 HP stub** rather
+  than 100, and one robot chews it to nothing by tick ~25.  Asking about
+  it at tick 40 made `hp` refuse the hex — "at 0 HP" and "nothing here
+  to break" are different states.  Measured: 12.3 / 9.0 / 5.67 / 2.3 at
+  ticks 5 / 10 / 15 / 20.
+
 ## Open questions
 
 1. **Does `pick_cursor` need to round-trip?**  It is the round-robin
@@ -487,10 +567,10 @@ working would have told the opposite of the truth.
    they delete.  *Recommendation: yes, as a `#` header the runner
    ignores — S2, and it costs nothing.*
 4. **Can the reducer use a test's own assertions as its predicate?**
-   That would make S4 nearly free at the call site: point it at a
-   failing measurement and let it shrink.  Unknown whether the runner
-   can be driven that way.  *S4 decides, and it is the phase most
-   likely to be deferred if the answer is no.*
+   ⚠ **ANSWERED — yes, and it needed no machinery.**  A predicate is
+   `.keys` text appended to the fixture, and it holds when the whole
+   thing runs green.  The measurement vocabulary is the predicate
+   language.  See § S4.
 
 ## See also
 
