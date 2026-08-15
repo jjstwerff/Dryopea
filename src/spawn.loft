@@ -77,18 +77,21 @@ pub const SCRAMBLER_BUBBLE_RADIUS: integer = 25;
 //
 // The instruction it honours — project owner, 2026-08-13: *there will
 // be a variety of speeds, so do not link speed too closely to a tick*.
-// Three sources, and the second is decisive: per role (the scout is
-// faster — K2b), per CONDITION (**a damaged robot moves slower**, so
-// speed changes during a life and is not a class constant at all), and
-// per tier (insects differ again).  K2a builds the mechanism and moves
-// none of them.
+// Three sources: per role (the scout is faster, the miner slower —
+// **built, K2b**, see § How fast each class arrives), per CONDITION
+// (**a damaged robot moves slower**, so speed changes during a life and
+// is not a class constant at all — not built), and per tier (insects
+// differ again — not built).  K2a built the mechanism and moved none of
+// them; K2b moved the first.
 //
 // ⚠ `tests/12_b0_probe.loft`'s `test_a_tick_advances_an_enemy_exactly_
 // one_hex` and `test_so_a_tick_is_two_thirds_of_a_second` are still
-// GREEN, and that is the point of holding the numbers: they now
-// measure a coincidence rather than a derivation, and K2b is what
-// makes the first of them go red — for the one class whose speed
-// moves, exactly as B0 § 1 was inverted for B1.
+// GREEN after K2b, and the reason is worth stating because it is not
+// the one that was predicted: both are written about the REGULAR, and
+// the regular's speed is exactly what K2b held. What the ticks-are-
+// hexes claim lost is its scope — it is now a statement about one
+// class rather than about the engine, which is why this constant is
+// called what HOLDS the timestep rather than what sets it (`@X058`).
 //
 // ⚠ And a shorter timestep still costs more than it looks: the tick's
 // length is what plan 11 F8's budget is measured against.  Shortening
@@ -121,13 +124,92 @@ pub const TICK_SECONDS: float = 1.0 / ENEMY_SPEED_HEX_PER_SECOND;
 // ⚠ **It is load-bearing everywhere else.**  Measured over sixty ticks
 // of this timestep, the epsilon is worth a whole hex at 1.0, 1.2, 1.8,
 // 2.0 and 2.5 hex/s and worth nothing at 0.5, 0.75, 1.5, 2.25 and 3.0
-// — so 1.5 is one of the few values that hides it, and a class K2b
-// gives 1.0 hex/s would silently lose a hex every forty.  It is worth
-// a hex to a SHORTER TIMESTEP too: a tenth of a tick loses one over
-// 300 steps without it.  `tests/23_k2a_banked_movement.loft` exercises
-// the branch directly AND measures a speed that needs it, because
-// neither alone is a gate.
+// — so 1.5 is one of the few values that hides it.  It is worth a hex
+// to a SHORTER TIMESTEP too: a tenth of a tick loses one over 300 steps
+// without it.  `tests/23_k2a_banked_movement.loft` exercises the branch
+// directly AND measures a speed that needs it, because neither alone is
+// a gate.
+//
+// ⚠⚠ **And since K2b it is no longer invisible: it fires on BOTH
+// gates.**  K2a's warning was that *a class K2b gives 1.0 hex/s would
+// silently lose a hex every forty* — the scout took 2.5 and the miner
+// took 1.0, and both are on that list.  MEASURED (2026-08-15, `@M017`),
+// the same experiment with the classes in it: set this to 0.0 and **7
+// of 1149 tests fail and `scripts/validate.sh` goes red**, where at K2a
+// the identical change left everything green.  ⚠ Only three of the
+// seven are assertions written to look for it; the rest are ordinary
+// behaviour.  ⚠ And it takes THREE ticks, not sixty — three of
+// `2.5 * (1.0/1.5)` sum to 4.999999999999999, so the fifth hex exists
+// only because this constant releases it.
 pub const ENEMY_PROGRESS_EPSILON: float = 1.0e-9;
+
+// ── How fast each class arrives (plan 23 K2b) ───────────────────
+//
+// `examples/numbers.json` § enemy_small_robots — the second of the two
+// axes `DESIGN.md` § Small robots commits, and the one K2a built the
+// mechanism for.  ⚠ **The regular's 1.5 is untouched**, for the same
+// reason its damage rate was in K0: it is the baseline every scenario
+// in the corpus was written against, so two classes can move and the
+// other 569 measurements cannot.
+//
+// ⚠ **A speed is a RATE now, not a tick count** (`@X058`).  These
+// numbers reach the mover through `enemy_bank`, which banks
+// `speed * tick_seconds` and releases whole hexes — so 2.5 hex/s is
+// five hexes every three ticks rather than "two per tick, sometimes".
+//
+// MEASURED, one enemy walking nine hexes of open corridor into a
+// sealed stub (`tests/23_k2b_the_scout.loft`, and the same nine hexes
+// in `a-wall-against-a-*.keys`):
+//
+//   | class | hex/s | hex/tick | ticks to walk 9 | vs the robot |
+//   |-------|-------|----------|-----------------|--------------|
+//   | scout | 2.5   | 1.667    |  6              | 0.67x        |
+//   | robot | 1.5   | 1.0      |  9              | the baseline |
+//   | miner | 1.0   | 0.667    | 14              | 1.56x        |
+//
+// ⚠ **The pairing is the design and not a curve.**  The scout is fast
+// AND nearly harmless (0.1 HP/s, K0): *"it arrives first and does
+// almost nothing when it gets there"*, which is what makes it the unit
+// artillery cannot hit and the unit not worth hitting.  The miner is
+// the inversion — slow, and 3.0 HP/s into a perimeter.  A class that
+// were fast and deadly would collapse the matching problem the two
+// axes exist to create.
+//
+// ⚠ **Harvester and builder are deliberately absent**, and that is the
+// `numbers.json` shape rather than an omission: that section is
+// DELTAS, and a field a role does not list is the regular's.  Giving
+// all four a row would make two of them tunables this plan invented.
+//
+// ⚠⚠ **Both figures are speeds at which `ENEMY_PROGRESS_EPSILON` is
+// load-bearing** (`@M013`), and that was checked before they were
+// chosen rather than after.  2.25 and 3.0 would have been *"quite a
+// bit faster"* too, and both hide the guard exactly as 1.5 does — so
+// picking one would have left the roster with no class that can see
+// its own rounding.
+pub const SCOUT_SPEED_HEX_PER_SECOND: float = 2.5;
+pub const MINER_SPEED_HEX_PER_SECOND: float = 1.0;
+
+// How fast this class walks, in hexes per second.
+//
+// An unknown kind takes the regular's speed — the same fallback rule
+// `enemy_damage_to_wall` and `damage.loft::enemy_max_hp` give, and for
+// a sharper reason here: 0.0 would be a class that never arrives, so a
+// discriminant this table has not learned about yet would produce a
+// wave that spawns and then stands in the field for ever, with every
+// "the wave exists" assertion green.
+//
+// ⚠ **It is a CLASS lookup, and that is its limit.**  `DESIGN.md`
+// § Speed must NOT be tied to the tick names three sources of variety
+// and this covers one of them; *"a damaged robot moves slower"* is a
+// running quantity that reads `taken`, and it belongs at the CALL SITE
+// in `enemy_tick` — the shape `passable.loft::can_climb` already uses,
+// where the rule takes the climb rather than looking it up.  Widening
+// this function to take an `Enemy` is what would close that door.
+pub fn enemy_speed(kind: u8) -> float {
+    if kind == ENEMY_KIND_SCOUT as u8 { return SCOUT_SPEED_HEX_PER_SECOND; }
+    if kind == ENEMY_KIND_MINER as u8 { return MINER_SPEED_HEX_PER_SECOND; }
+    ENEMY_SPEED_HEX_PER_SECOND
+}
 
 // ── Why the SECONDS survive into the engine (plan 12 B0) ────────
 //
@@ -193,11 +275,21 @@ pub const ENEMY_DAMAGE_TO_WALL_PER_SECOND: float = 1.0;
 //
 //   | class     | HP/s | ticks to breach | against the baseline    |
 //   |-----------|------|-----------------|-------------------------|
-//   | scout     | 0.1  | 456             | never, in any real base |
+//   | scout     | 0.1  | 454             | never, in any real base |
 //   | harvester | 0.5  |  96             |                         |
 //   | robot     | 1.0  |  50             | the baseline, unchanged |
 //   | builder   | 1.5  |  35             |                         |
-//   | miner     | 3.0  |  20             | 23x the scout           |
+//   | miner     | 3.0  |  23             | 20x the scout           |
+//
+// ⚠ **Two of those five moved in K2b and NOT because a rate changed.**
+// They were 456 and 20 while every class walked at 1.5 hex/s; a breach
+// clock counts from the tick the wave was PLACED, so it contains the
+// walk as well as the chewing, and the scout now arrives sooner while
+// the miner arrives later.  The three unmoved rows are what say the
+// rates themselves are untouched.  ⚠ It is a small contamination here
+// (four hexes of approach against tens of ticks of siege) and it would
+// not be on a real base — price a class against `@M016`'s arrival
+// clocks and this table separately, never against this table alone.
 //
 // ⚠ **The scout's figure is chosen to LOSE that race against a real
 // base's length, not merely to be small.**  The longest base the
@@ -554,8 +646,17 @@ pub fn spawn_wave(
 // only ever be tested at the speed that hides its own guard.  Naming
 // the speed at the call site is what lets
 // `tests/23_k2a_banked_movement.loft` measure 1.0 hex/s, where the
-// guard is worth a hex every forty.  ⚠ K2b turns the argument into
-// `enemy_speed(e.kind)` and changes nothing else here.
+// guard is worth a hex every forty.  ⚠ K2b did exactly that and
+// changed nothing else here: the caller now passes
+// `enemy_speed(e.kind)`, and the argument is what keeps this function
+// testable at speeds no class currently takes.
+//
+// ⚠ **It stays an argument even though a lookup now exists**, and the
+// reason has outlived K2a's: `DESIGN.md` § Speed must NOT be tied to
+// the tick wants speed to vary *within a life* — *"a damaged robot
+// moves slower"* — so the number this is banked at is a property of the
+// enemy's CONDITION and not of its class.  A bank that looked its own
+// speed up would have to be widened again the day that lands.
 //
 // ⚠ **It keeps the REMAINDER rather than discarding it**, which is
 // what makes the average exact rather than merely close — the property
@@ -584,9 +685,10 @@ pub fn enemy_bank(e: Enemy, speed: float, tick_seconds: float) -> integer {
 // ⚠ **A tick is no longer a hex.**  This used to take exactly one step
 // because a tick was DEFINED as the time an enemy takes to cross one
 // (`TICK_SECONDS` above); it now asks `enemy_bank` how many whole hexes
-// are due and takes that many, which is 1 for every class in the game
-// today and is the point at which K2b can make it 2 for a scout without
-// touching a mover, a target or a field.
+// are due and takes that many — which since K2b is **2 for a scout in
+// two ticks out of three, and 0 for a miner in one tick out of three**,
+// with no change to a mover, a target or a field.  The loop below is
+// the whole of what a faster class cost.
 //
 // ⚠ **A hex the ground refuses is SPENT, not re-banked**, and that is
 // the opposite of what `helper_bank` does for the crew.  A helper
@@ -623,7 +725,11 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
     // `wave_stand`, never here — see `enemy_standing`.
     if enemy_standing(e) { return; }
 
-    et_left = enemy_bank(e, ENEMY_SPEED_HEX_PER_SECOND, tick_seconds);
+    // ⚠ The speed is looked up HERE and not inside the bank (plan 23
+    // K2b, `@X061`).  This is the one line that knows an enemy's class
+    // decides its pace, which is where a per-CONDITION speed will also
+    // go when *"a damaged robot moves slower"* lands.
+    et_left = enemy_bank(e, enemy_speed(e.kind), tick_seconds);
     while et_left > 0 {
         enemy_step(e, pal, pw, hl, f, desire, occ, blockers);
         et_left = et_left - 1;
@@ -639,8 +745,9 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 // timestep sees its companions where they are after its first step
 // rather than where they were at the top of the tick.  That is what
 // keeps a fast class from walking through a queue it would have been
-// stopped by, and it costs nothing today because every class takes
-// exactly one step.
+// stopped by — and since K2b the scout is that class, twice in every
+// three ticks, so the property is now exercised rather than merely
+// prepared for.
 //
 // ── What a blocked enemy does ───────────────────────────────────
 //

@@ -24,7 +24,7 @@
 //
 //   `flag` before `tower`   — a tower setter demands its marker
 //   `crew` before `object`  — an owner may be a crew index
-//   `place` before `hit` / `stand` / `dead` — they take a roster index
+//   `place` before `hit` / `stand` / `banked` / `dead` — roster indices
 //   `schedule` before `pending`             — it authors the list
 //
 // ⚠ Get one wrong and the emitted file fails to REPLAY, loudly, which
@@ -100,6 +100,15 @@ fn emit_enemies(state: const WaveState) -> text {
         // free to walk needs no line but its placement.
         if ee_e.taken != 0.0 { ee_out = ee_out + "hit {ee_i} {ee_e.taken}\n"; }
         if ee_e.stand != 0.0 { ee_out = ee_out + "stand {ee_i} {ee_e.stand}\n"; }
+        // ⚠ **Added by plan 23 K2b, and the tripwire is what found it.**
+        // K2a banked movement per enemy and `compare.loft` learned
+        // `progress` while no scenario could hold a non-zero one — at
+        // 1.5 hex/s the carry is exactly 0.0 after every tick.  K2b
+        // shipped a scout at 2.5 and a miner at 1.0, and `18_s2`'s
+        // round trip went red naming `enemies[0].progress` on the very
+        // first suite run.  A tripwire that fires on the phase it was
+        // written for is the cheapest kind of coverage there is.
+        if ee_e.progress != 0.0 { ee_out = ee_out + "banked {ee_i} {ee_e.progress}\n"; }
         if !ee_e.alive { ee_out = ee_out + "dead {ee_i}\n"; }
         ee_i += 1;
     }
@@ -333,9 +342,14 @@ fn crop_state(state: const WaveState, centre: const Hex,
 
     for cs_e in state.enemies {
         if in_crop(centre, radius, cs_e.q, cs_e.r) {
+            // ⚠ **Every field, spelled out** — a literal that omits one
+            // takes its default SILENTLY (loft#914), so a crop that
+            // forgot `progress` would quietly reset a scout's carry and
+            // move the very clock a cropped fixture exists to preserve.
             cs_out.enemies += [Enemy { q: cs_e.q, r: cs_e.r, kind: cs_e.kind,
                                        heading: cs_e.heading, alive: cs_e.alive,
-                                       taken: cs_e.taken, stand: cs_e.stand }];
+                                       taken: cs_e.taken, stand: cs_e.stand,
+                                       progress: cs_e.progress }];
         }
     }
     cs_out.pick_cursor = state.pick_cursor;

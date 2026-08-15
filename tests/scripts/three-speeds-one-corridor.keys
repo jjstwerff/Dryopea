@@ -1,0 +1,132 @@
+# three-speeds-one-corridor — plan 23 K2b.
+#
+# A scout, a robot and a miner walking the SAME corridor in the same
+# tick loop, and pulling apart at the ratio of their rates.
+#
+# ── Why one corridor and not three runs ─────────────────────────
+#
+# K0's twin scenarios measure a class against a wall, and they have to
+# be two files because the same hex cannot be both rubble and wall.  A
+# speed measurement has no such problem, and putting all three in one
+# world is strictly stronger: same tick, same field rebuild, same
+# occupancy pass, one clock.  A per-ROSTER speed — the defect `wave_
+# damage` actually shipped with in plan 12 B2, one axis over — keeps
+# these three in formation, and no single-class scenario can see it.
+#
+# ── The arithmetic, so a reader can check it without running it ──
+#
+# A tick is 1/1.5 s.  An enemy banks `speed x tick_seconds` and steps
+# whenever a whole hex is due (plan 23 K2a), so after nine ticks:
+#
+#   scout 2.5 hex/s -> 1.667 hex/tick -> 15 hexes
+#   robot 1.5 hex/s -> 1.0   hex/tick ->  9 hexes
+#   miner 1.0 hex/s -> 0.667 hex/tick ->  6 hexes
+#
+# ⚠⚠ **This file is the repo's witness for `@M017`, and it does not
+# take nine ticks to become one — it takes THREE.**  2.5 x (1.0/1.5) is
+# 1.6666666666666665, and three of them sum to 4.999999999999999, a
+# hair under five.  `ENEMY_PROGRESS_EPSILON` is what releases that
+# fifth hex; zero it and this file goes red at `enemy 0 15 0` below
+# (measured: it reads 16) while the robot's and the miner's lines on
+# the same tick stay green.  That is the guard `@M014` measured as
+# UNREACHABLE, made reachable by shipping a class whose speed is not
+# 1.5 — and `scripts/validate.sh` fails on it, so the second gate sees
+# it too.
+#
+# ── The world ───────────────────────────────────────────────────
+#
+#   one corridor of grass, thirty-one hexes:  (30, 0) -> (0, 0)
+#   core at (0, 0) — no wall, no tower, nothing to stop anybody
+#   scout at (20, 0), robot at (25, 0), miner at (30, 0)
+#
+# ⚠ The three start APART and in that order — fastest in front — so
+# nobody ever queues behind anybody and every reading is the class's
+# own pace rather than a traffic jam.  `23_k2b_the_scout.loft`
+# § A longer stride is still checked hex by hex is where the queue is
+# measured on purpose.
+
+echo three speeds down one corridor: 2.5, 1.5 and 1.0 hex/s
+
+do toggle_mode
+
+# The core is where the target is — `play_core` reads the marker, so
+# without this there is nothing for the field to point at.
+do cycle_kind
+click 0 0
+marker 0 0 target
+count markers 1 1
+
+do toggle_mode
+
+palette 5
+drag 30 0 0 0
+count painted 31 31
+
+# ── The roster, authored rather than spawned ────────────────────
+#
+# `place` (plan 18 S1a) puts an enemy down healthy and WALKING — no
+# spawn marker, no wave, and no pre-walk window to subtract from every
+# reading below.  Heading 3 is WEST, which is `(q - 1, r)` on both row
+# parities, so a heading can never change `r`.
+place 20 0 scout 3
+place 25 0 robot 3
+place 30 0 miner 3
+
+count alive 3 3
+enemy 0 20 0
+enemy 1 25 0
+enemy 2 30 0
+enemies distinct
+enemies passable
+
+# ── One tick, and the three are already three ───────────────────
+#
+# ⚠ **The miner has not moved at all**, and that is the reading that
+# says a speed is a RATE rather than a tick count.  It banked two
+# thirds of a hex and owes nothing, so it stands still — where the old
+# mover advanced every enemy exactly one hex because a tick WAS a hex
+# (`@X058`).  The scout banked 1.667 and released one, carrying the
+# other two thirds into the next tick rather than losing it.
+tick 1
+enemy 0 19 0
+enemy 1 24 0
+enemy 2 30 0
+
+# ── Three ticks: the spread is visible ──────────────────────────
+#
+# The scout has released 5 hexes, the robot 3 and the miner 2 — and
+# the miner's two arrived on ticks 2 and 3, never on tick 1.
+tick 2
+enemy 0 15 0
+enemy 1 22 0
+enemy 2 28 0
+enemies distinct
+
+# ── Nine ticks: 15 / 9 / 6, exactly the rates ───────────────────
+tick 6
+enemy 0 5 0
+enemy 1 16 0
+enemy 2 24 0
+enemies distinct
+enemies passable
+count alive 3 3
+
+# ⚠ Nothing has been attacked and nothing has arrived: the corridor is
+# open all the way to the core, so this file measures WALKING and only
+# walking.  A drained wallet here would mean somebody got home early.
+count targets 0 0
+wallet 200 200
+
+snap k2b-three-speeds-one-corridor
+
+# ── And the order never inverts ─────────────────────────────────
+#
+# Six more ticks: the scout is home and nibbling, the robot is still
+# walking and the miner is not halfway.  ⚠ This is the reading that
+# would survive a re-baseline of the numbers above — whatever the
+# timestep, the fast class arrives first.
+tick 6
+enemy 0 0 0
+enemy 1 10 0
+enemy 2 20 0
+count targets 0 0

@@ -8,11 +8,20 @@
 //
 // `docs/DESIGN.md` § Small robots: four roles, one AI commits four
 // classes whose *"whole difference is numbers per role — damage to a
-// wall, and speed"*.  K0 builds the first of those two axes.  Speed
-// is plan 23 K2, because every enemy in the game moves exactly one
-// hex per tick by construction — `TICK_SECONDS` is DERIVED from
-// `ENEMY_SPEED_HEX_PER_SECOND` (`spawn.loft`) — so a faster class is
-// a change to the mover and not a row in a table.
+// wall, and speed"*.  K0 builds the first of those two axes.  Speed was
+// plan 23 K2 and is now SHIPPED (K2a's banked mover, K2b's two
+// numbers), which is why it took a phase and not a row: every enemy
+// moved exactly one hex per tick by construction, because
+// `TICK_SECONDS` was DERIVED from `ENEMY_SPEED_HEX_PER_SECOND`.
+//
+// ⚠ **Two of this file's breach clocks moved when K2b landed, and no
+// rate did.**  A breach clock counts from placement, so it contains
+// the WALK as well as the chewing — the miner went 20 → 23 and the
+// scout 456 → 454, which are exactly the two classes whose speed
+// moved.  ⚠ So the assertions below are written as ORDERS and BANDS
+// rather than as equalities: `tests/23_k2b_the_scout.loft` owns the
+// pure arrival clocks, and neither file should be read as measuring
+// the other's axis.
 //
 // ⚠ **The gate is a WALL, not a lookup.**  Asserting that
 // `enemy_damage_to_wall(MINER)` returns 3.0 is a claim about the

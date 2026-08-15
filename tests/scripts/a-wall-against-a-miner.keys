@@ -84,10 +84,17 @@ tick 8
 enemy 0 12 0
 hp 2 0 15.0 15.0
 
-# Nine ticks to arrive at (3, 0).  ⚠ The tick that CARRIES it there is
-# one in which it could still move, and an enemy that can move attacks
-# nothing — so the wall is untouched at the moment the siege begins.
-tick 9
+# FOURTEEN ticks to arrive at (3, 0) — nine hexes at 1.0 hex/s, where
+# a robot needs nine and a scout six (plan 23 K2b).  ⚠ The tick that
+# CARRIES it there is one in which it could still move, and an enemy
+# that can move attacks nothing — so the wall is untouched at the
+# moment the siege begins.
+#
+# ⚠ **This line was `tick 9` until K2b and the HP lines below did not
+# move with it**, which is the property worth reading off the pair: a
+# class's speed decides when the siege STARTS and its bite decides how
+# the siege goes, and the two axes do not contaminate each other.
+tick 14
 enemy 0 3 0
 enemies passable
 count targets 1 1
@@ -119,11 +126,17 @@ snap k0-the-miner-on-the-breach
 # Onto the heap first — a 0.99 m step, inside a miner's 2.0 m climb,
 # which is the regular's climb because all four small robots share it
 # (`passable.loft` § The four small robots have no row here).
+#
+# ⚠ **One tick is one hex only because the bank happens to owe one
+# here.**  A miner at 1.0 hex/s owes a whole hex on two ticks in every
+# three (plan 23 K2b), so a reading like this is a statement about
+# WHICH tick as much as about how many — which is why the last two
+# hexes below take three ticks and not two.
 tick 1
 enemy 0 2 0
 enemies passable
 
-tick 2
+tick 3
 enemy 0 0 0
 count alive 1 1
 range 0 0

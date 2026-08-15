@@ -76,9 +76,10 @@ exists today.
 | ⚠ **The authored SEVEN-WAVE list is playable**: seven towers and two SHUTTLING helpers clear all 205 robots.  ⚠ Parked on their towers the same two reach 5/7 and the base falls — upkeep is a POSITIONING problem, not a resource | [17](plans/17-tower-hot-swap/README.md), T3 shipped — plan **complete** |
 | THE GAME HAS A DOOR: `play.loft` owns the only call to `wave_tick`, asked by COUNT (`play_ticks`) or by DURATION (`play_advance`).  ⚠ **They are not interchangeable** — `n × TICK_SECONDS` through the accumulator is one tick SHORT for 602 of the first 1000 `n` | [19](plans/19-the-interactive-loop/README.md), P0-P1 shipped |
 | AND A KEYBOARD: WASD / Shift / E are rows in the ONE key table, and a `.keys` script presses them.  ⚠ WASD is SHARED with the camera pan — `editor_input_from(…, playing)` fills one set or the other, never both.  ⚠ W is TRUE north via a metre heading, measured at zero drift | [19](plans/19-the-interactive-loop/README.md), P2 shipped |
-| FOUR ROLES, ONE AI: scout / harvester / builder / miner — the same wave size at the same wall breaches at **20 / 35 / 50 / 96 / 456** ticks, and a harvester's body pays TRIPLE.  ⚠ `robot` keeps its rate, so **no existing measurement moved** | [23](plans/23-the-small-robots/README.md), K0 shipped |
+| FOUR ROLES, ONE AI: scout / harvester / builder / miner — the same wave size at the same wall breaches at **23 / 35 / 50 / 96 / 454** ticks, and a harvester's body pays TRIPLE.  ⚠ `robot` keeps its rate, so **no existing measurement moved** | [23](plans/23-the-small-robots/README.md), K0 shipped |
 | A WAVE HAS COMPOSITION: `schedule 4 12` arms the list and `compose 1 4 miner 8 scout` fills a wave of it, in the order written.  ⚠ A wave's SIZE is **summed** from its parts and never stored, which DELETES the plan's own negative control (`@X055`).  ⚠ 569 measurements unchanged — a `vector<integer>` still means N waves of regulars | [23](plans/23-the-small-robots/README.md), K1 shipped |
-| SPEED IS NO LONGER THE TICK: an enemy BANKS `speed × tick_seconds` and steps when a whole hex is due, so the timestep is a CHOICE (`@X058`) — and nothing moved (1128 tests, 569 measurements).  ⚠⚠ **1.5 hex/s is a speed at which the rounding guard cannot fire**: zero the epsilon and the whole corpus stays green (`@M014`), while 1.0 / 1.2 / 1.8 / 2.0 / 2.5 hex/s each lose a hex without it (`@M013`) | [23](plans/23-the-small-robots/README.md), K2a shipped — K2b next |
+| SPEED IS NO LONGER THE TICK: an enemy BANKS `speed × tick_seconds` and steps when a whole hex is due, so the timestep is a CHOICE (`@X058`) — and nothing moved (1128 tests, 569 measurements).  ⚠⚠ **1.5 hex/s is a speed at which the rounding guard cannot fire**: zero the epsilon and the whole corpus stays green (`@M014`), while 1.0 / 1.2 / 1.8 / 2.0 / 2.5 hex/s each lose a hex without it (`@M013`) | [23](plans/23-the-small-robots/README.md), K2a shipped |
+| THE SCOUT IS FASTER: 2.5 hex/s against a miner's 1.0 and a robot's 1.5, so nine hexes of one corridor take **6 / 9 / 14** ticks (`@M016`) — one lookup, no new mover.  ⚠⚠ **The guard that could not fire now DOES**: 2.25 and 3.0 were refused *because* they hide it as 1.5 does, so zeroing the epsilon today turns the suite RED (`@M017`, `@X063`) | [23](plans/23-the-small-robots/README.md), K2b shipped — K3 next |
 | **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
@@ -95,7 +96,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1138/1138 green under `scripts/test.sh`** (~150 s measured
+**Suite: 1149/1149 green under `scripts/test.sh`** (~150 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -103,7 +104,7 @@ plan 12 until H2 re-measured it; the figure grew with the scenario
 tests, not with any one phase — and plan 16 W4 alone is **13 s**, six
 whole-base simulations of 200-320 ticks each, which is what a
 measurement phase costs).
-**Gate: 30 scripts green under `scripts/validate.sh`** (~11 s, 569
+**Gate: 31 scripts green under `scripts/validate.sh`** (~11 s, 597
 measurements).
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
@@ -421,6 +422,15 @@ a tick late* rather than as rounding.  ⚠ That is also why `enemy_bank`
 takes its speed as an ARGUMENT where `helper_bank` reads a constant
 (`@X060`) — a bank that read the constant could only ever be tested at
 the value that hides its own guard.
+
+⚠⚠ **And then SHIP a value that can see it, if the design leaves you a
+choice** (plan 23 K2b, `@X063`).  The scout had to be *"quite a bit
+faster"* and five speeds said that; 2.25 and 3.0 hide the guard exactly
+as 1.5 does, 2.5 does not, so the tie was broken on testability.  Zero
+`ENEMY_PROGRESS_EPSILON` today and the suite goes **red** (`@M017`)
+where at K2a it stayed entirely green — the same experiment, the same
+constant, and the difference is one number in `numbers.json`.  ⚠ A
+guard nobody can reach is a guard nobody maintains.
 
 ## Relationship to loft
 
@@ -929,7 +939,7 @@ signature.
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |
 | Author any part of a `WaveState` in a `.keys` file | `src/script.loft::script_author` (plan 18 S1b) — `tower` / `object` / `spent` / `player` / `member` / `pending` / `cursor` cover the layers and the condition fields no play verb reaches, so the vocabulary is TOTAL over the state.  ⚠ They AUTHOR and never simulate: a tower authored black fires nothing and an object authored into the player's hands checks no reach.  ⚠ SEVEN command words rather than one `set` with a subject, because `keys_schemas` keys a coordinate's position on the FIRST token — one `set` row would silently rewrite `set member 0 on 0.5` as if `0 on` were a hex |
-| Author ONE enemy in a `.keys` file | `place <q> <r> <class> [heading]` (plan 18 S1a), plus `stand <i> <secs>` and `dead <i>` for the two fields a placement leaves neutral; `hit <i> <hp>` is the third and already existed.  ⚠ A bare `place` is HEALTHY and WALKING — `taken` and `stand` are both zero-neutral, and getting either backwards spawns a corpse that has not finished arriving while every "the wave is there" assertion stays green.  ⚠ `dead` deposits NO body: it authors the ledger and never the consequence, so `wave_deaths` stays the one death path |
+| Author ONE enemy in a `.keys` file | `place <q> <r> <class> [heading]` (plan 18 S1a), plus `stand <i> <secs>`, `banked <i> <hexes>` and `dead <i>` for the three fields a placement leaves neutral; `hit <i> <hp>` is the fourth and already existed.  ⚠ A bare `place` is HEALTHY, WALKING and carrying NOTHING — `taken`, `stand` and `progress` are all zero-neutral, and getting any of them backwards spawns a corpse that has not finished arriving while every "the wave is there" assertion stays green.  ⚠ `dead` deposits NO body: it authors the ledger and never the consequence, so `wave_deaths` stays the one death path.  ⚠ `banked` arrived in plan 23 K2b, because `18_s2`'s round trip went red the moment a class walked at a speed whose carry is not zero — until then the field had no setter and nothing in the repo could tell |
 | Add a `.keys` verb that takes a hex | `src/script.loft`, AND a row in `src/convert.loft::keys_schemas` + the vocabulary list in `tests/09_c5a_converter.loft`.  A missing schema row is silent: the converter passes an unknown command through untouched |
 | Place or restore a marker of any kind | `src/markers.loft::place_marker` (and `history.loft::place_marker_and_record`) — the ONE dispatch.  ⚠ Sidecar load, undo and redo each used to fall through to SPAWN, so a kind they had not learned about arrived as a wave source with a heading |
 | Add a marker kind | append a constant in `markers.loft`, bump `MARKER_KIND_COUNT`, add a row to `place_marker` + `marker_kind_name`.  ⚠ The editor's place-kind CYCLE grows, so every `.keys` script that cycles back to spawn needs another press — B5a paid that for nine scenarios |
@@ -963,7 +973,7 @@ signature.
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the rule, taking a HEX, so the player and every helper read one implementation (`vehicle_salvage` / `helper_salvage` are the two doors).  The counter-play to `ENEMY_MOVEMENT.md` § Bodies are terrain.  ⚠ A crew inside a SEALED base can only reach the ramp by BOOSTING out (V4): the ramp forms outside the wall and an idle vehicle climbs 0.4 m — and no helper has a boost |
 | Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` — the rule with the climb passed rather than looked up.  ⚠ Never widen `climb_limit(kind)`: it is a CLASS lookup and a convenience for callers that have a kind.  `vehicle_climb` is the worked example |
 | Ask what STARTS the wave list | `src/spawn.loft::wave_provoke_step` — a live vehicle standing on a spawn marker `WAVE_1_PROVOCATION_HEXES` (12) or more from the core, read at the TOP of the tick and fired ONCE (plan 16 W3).  ⚠ Two thresholds: under 10 a marker is silenced entirely, 10–11 it sends enemies and cannot be poked, 12+ it does both — the middle band is what makes the distance test a rule rather than a restatement of "is this marker active".  ⚠ Never an occupancy test: a wave spawns ON its marker, so "is anybody here" lets wave 1 provoke wave 1 |
-| Ask how far an enemy moves in a tick, or make a class FASTER | `src/spawn.loft::enemy_bank` — `speed × tick_seconds` banked per enemy, whole hexes released to `enemy_step` (plan 23 K2a).  ⚠ **A tick is no longer a hex**: `TICK_SECONDS` HOLDS the timestep at one regular's hex, it does not force it (`@X058`).  ⚠ **Pick a new speed against `@M013`** — 1.5 is one of the few values at which the rounding guard cannot fire, and 1.0 / 1.2 / 1.8 / 2.0 / 2.5 each lose a hex every forty ticks without the epsilon.  ⚠ A hex the ground refuses is SPENT, not re-banked — the opposite of `helper_bank`, and deliberate (`@X059`) |
+| Ask how far an enemy moves in a tick, or make a class FASTER | `src/spawn.loft::enemy_speed` for the CLASS's rate (plan 23 K2b — scout 2.5, miner 1.0, everybody else 1.5), then `enemy_bank` for what a timestep owes it: `speed × tick_seconds` banked per enemy, whole hexes released to `enemy_step`.  ⚠ **A tick is no longer a hex**: `TICK_SECONDS` HOLDS the timestep at one regular's hex, it does not force it (`@X058`).  ⚠ **Pick a new speed against `@M013`** — 1.5, 2.25 and 3.0 are values at which the rounding guard cannot fire, and 1.0 / 1.2 / 1.8 / 2.0 / 2.5 each lose a hex every forty ticks without the epsilon; 2.5 was picked partly for that (`@X063`).  ⚠ The lookup is at the CALL SITE and not in the bank, because *"a damaged robot moves slower"* makes speed a property of a CONDITION (`@X061`).  ⚠ A hex the ground refuses is SPENT, not re-banked — the opposite of `helper_bank`, and deliberate (`@X059`) |
 | Ask why a fresh wave is not moving | `src/spawn.loft::enemy_standing` — the pre-walk window (plan 16 W2), 8 ticks at the marker.  ⚠ Spent ONCE per tick by `wave_stand`, at the END beside `helper_recover_tick`; the predicate only asks.  ⚠ A standing enemy does not move, attacks nothing and blocks nobody — but is NOT immune, which is what "stand visible" means |
 | Advance the GAME | `src/play.loft` — `play_ticks(ps, s, n)` for a COUNT, `play_advance(ps, s, seconds)` for elapsed time, `play_step(ps, s, input, seconds)` for a whole frame.  ⚠ Never call `wave_tick` directly: `play_one_tick` is its one caller, and a second one is a second game with the same numbers on it.  ⚠ And never spell a count as `n * TICK_SECONDS` — it is one tick short for 602 of the first 1000 `n` |
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` / `play_set_mode` (plan 19 P3).  ⚠ **It gates the CLOCK and never the seam**: `EditorInput.in_playing` says what the KEYS mean this frame, `PlayState.playing` says whether wall time reaches the simulation.  Gate `play_step`'s seconds on either and P1/P2 go red — a scripted frame's time is the SCRIPT's business.  ⚠ The window spends it through `play_frame_seconds`, which is a function rather than an `if` in `main.loft` because an entry point is compiled by nothing |

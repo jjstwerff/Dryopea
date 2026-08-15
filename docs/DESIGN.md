@@ -1791,6 +1791,17 @@ of the swarm ([`SETTING.md`](SETTING.md) § Robot diversity),
 and it is built to look rather than to fight: it arrives first
 and does almost nothing when it gets there.
 
+⚠ **BUILT, and measured** (plan 23 K2b): the scout walks at
+**2.5 hex/s** and the miner at **1.0** against the robot's 1.5,
+so the same nine hexes of corridor take **6 / 9 / 14** ticks
+(`@M016`).  Read that beside K0's damage table and the pairing
+is the whole design in two numbers — the class that arrives
+first is the class that needs 454 ticks to open a wall the
+miner opens in 23.  ⚠ **The other two roles took no speed row**
+(`@X062`): harvester and builder walk at the regular's pace,
+because `numbers.json` § enemy_small_robots is a DELTAS section
+and inventing two tunables to say *unchanged* is not free.
+
 ⚠ That pairing is what makes it interesting rather than
 filler.  Speed is not just "arrives sooner" — § Damage TYPE
 already gives it a defensive role, because artillery has travel
@@ -1867,6 +1878,24 @@ one is due.  The codebase already has that pattern, built and
 tested: a tower banks its fire interval exactly this way
 ([`plans/12`](../plans/12-combat-resolution/README.md) B5a),
 float-rounding trap included.
+
+⚠ **BUILT** — [`plans/23`](../plans/23-the-small-robots/README.md)
+K2a built the banking with every number held (the corpus was
+the gate: 569 measurements unchanged, `@M015`) and K2b then
+moved two of them.  `TICK_SECONDS` survives as the expression
+that HOLDS the timestep at one regular's hex rather than the
+one that forces it (`@X058`).
+
+⚠⚠ **And the float-rounding trap was not a footnote.**  1.5
+hex/s over a 1/1.5 s tick is exactly 1.0 to the bit, so the
+guard against it could not fire at all — measured, by deleting
+it and watching 1128 tests stay green (`@M014`).  Two of the
+five speeds that would have read as *"quite a bit faster"* have
+that same property, so the scout's 2.5 was chosen partly
+because it does NOT (`@X063`); zero the epsilon today and the
+suite goes red (`@M017`).  **The number a design picks decides
+whether its own guards are testable**, which is not a thing a
+design document usually has to say.
 
 ⚠ **And it has a COST consequence nobody would look for.**  The
 tick's length is what the simulation's per-tick budget is

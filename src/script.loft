@@ -1928,6 +1928,38 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // Whole hexes an enemy has banked but not yet spent — the
+    // `progress` field `enemy_bank` carries (plan 23 K2a), authorable
+    // since K2b.
+    //
+    // ⚠ **It is `stand`'s sibling and not `place`'s argument**, for the
+    // reason `place`'s own header gives: `progress` is ZERO-neutral, so
+    // a bare `place` is an enemy that has banked nothing, and a field
+    // that has a neutral value gets a verb of its own rather than a
+    // positional slot nobody fills.
+    //
+    // ⚠ **This is the line plan 23 K2a predicted would be needed and
+    // deliberately did not write.**  At 1.5 hex/s the carry is exactly
+    // 0.0 after every tick, so no captured scenario could hold a
+    // remainder and `state_diff` learned the field as a TRIPWIRE.  K2b
+    // shipped two classes whose carry is not zero, `18_s2`'s round trip
+    // went red on `enemies[0].progress` within one suite run, and the
+    // answer was to make the emitter total rather than to loosen the
+    // comparison.
+    if sc_cmd == "banked" {
+        if sc_argc != 2 { return "banked needs <i> <hexes>"; }
+        sc_bi = sc_a1 as integer?;
+        if sc_bi == null { return "banked: <i> must be an integer"; }
+        sc_bhx = (tok[2] ?? "") as float?;
+        if sc_bhx == null { return "banked: <hexes> must be a number"; }
+        sc_bidx = sc_bi ?? 0;
+        if sc_bidx < 0 || sc_bidx >= len(run.play.wave.enemies) {
+            return "banked: no enemy {sc_bidx} — the roster holds {len(run.play.wave.enemies)}";
+        }
+        (run.play.wave.enemies[sc_bidx] ?? Enemy { }).progress = sc_bhx;
+        return "";
+    }
+
     // Mark an enemy down.  ⚠ It deposits NO body — see the note above.
     if sc_cmd == "dead" {
         if sc_argc != 1 { return "dead needs <i>"; }

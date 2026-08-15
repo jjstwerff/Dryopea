@@ -9,7 +9,79 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**K0 + K1 + K2a shipped** (2026-08-15).  K2b is next.
+**K0 + K1 + K2a + K2b shipped** (2026-08-15).  K3 is next, and it needs
+no new code.
+
+⚠⚠ **The scout is FASTER and the miner is SLOWER, and the phase cost
+one lookup.**  `enemy_speed(kind)` answers 2.5 hex/s for a scout, 1.0
+for a miner and the regular's 1.5 for everybody else; `enemy_tick` hands
+it to the bank K2a built and nothing else moved — no mover, no target,
+no field.  MEASURED, nine hexes of identical corridor: **6 / 9 / 14
+ticks** (`@M016`).  ⚠ A miner stands STILL on one tick in three and a
+scout takes TWO hexes on two in three, which is what a rate looks like
+once a tick is no longer a hex.
+
+⚠⚠ **The guard `@M014` measured as unreachable now FIRES, and that was
+a REASON for the numbers rather than a consequence of them.**  `@M013`
+listed the speeds at which `ENEMY_PROGRESS_EPSILON` is worth a whole
+hex; 2.25 and 3.0 hex/s would both have read as *"quite a bit faster"*
+and both hide the guard exactly as 1.5 does, so picking one would have
+left the whole roster unable to see its own rounding (`@X063`).  2.5
+does not, and it takes only **three ticks** to say so: three of
+`2.5 × (1.0/1.5)` sum to 4.999999999999999, and the fifth hex exists
+only because the epsilon releases it.  MEASURED (`@M017`) — zero the
+constant and **7 of 1149 tests fail and `scripts/validate.sh` goes
+red**, where the identical change at K2a left everything green.  ⚠ Only
+three of the seven are assertions written to look for it; the other four
+are ordinary behaviour — a round trip, a gap, a bank total and the
+`.keys` file.
+
+⚠ **The phase's own prediction about `12_b0` was WRONG, and the way it
+was wrong is the useful part.**  K2a wrote that K2b *"is what makes
+`test_a_tick_advances_an_enemy_exactly_one_hex` go red"*.  It did not,
+and could not: that test is written about the REGULAR, whose speed is
+exactly what K2b held.  What the ticks-are-hexes claim lost is its
+SCOPE — it is now a statement about one class rather than about the
+engine.  ⚠ The pin that did have to break was K1's
+`test_speed_is_still_the_same_for_every_class`, and it is kept
+INVERTED (`test_a_scout_now_outruns_a_miner`) rather than deleted,
+because a pin and its inversion are one measurement and a deleted pin
+says nothing.
+
+⚠ **K2a's OTHER prediction was exactly right, and it paid within one
+suite run.**  *"K2b is the phase where a captured scenario starts
+carrying a remainder, and the first thing that happens is `compare.loft`
+going red — which is the signal to give `place` its progress, not to
+loosen the comparison."*  `tests/18_s2_the_round_trip.loft` failed
+naming `enemies[0].progress: 0.33333333333333326 vs 0` on the first
+full run after the constants changed.  The answer was a `banked <i>
+<hexes>` verb (`stand`'s sibling, because `progress` is zero-neutral
+too), a line in `emit_enemies`, and a field in `crop_state`'s literal —
+where an omitted field takes its default SILENTLY (loft#914), so a crop
+would have reset the very carry a cropped fixture exists to preserve.
+⚠ **A tripwire written for a value that cannot occur is worth writing**:
+this one fired on the phase it was written for and named the field.
+
+⚠ **Two of `@M011`'s five breach clocks moved, and no rate did.**
+20 / 35 / 50 / 96 / 456 → **23 / 35 / 50 / 96 / 454**.  A breach clock
+counts from the tick the wave was PLACED, so it contains the walk as
+well as the chewing, and the two that moved are exactly the two classes
+whose speed moved.  ⚠ The three unmoved rows are what say the damage
+rates are untouched — and the general lesson is that **a composite
+clock re-baselines when either of its parts moves**, which is why
+`@M016`'s pure arrival clocks exist beside it rather than instead of
+it.
+
+⚠ **The corpus is not the gate any more, and saying so is the
+obligation.**  K2a's gate was *nothing moved*; K2b moves two numbers, so
+what the corpus can still certify is the OTHER 569 measurements — the
+suite went **1138 → 1149 tests** and the gate **30 → 31 scripts / 569 →
+597 measurements**, where the +28 is exactly the new scenario's own
+checks and the readings that changed are exactly the two K0 scenario
+files' walking lines.  Their HP lines did not move, which is the
+property worth reading off the pair: a class's speed decides when the
+siege STARTS, its bite decides how the siege goes, and the two axes do
+not contaminate each other.
 
 ⚠⚠ **SPEED IS NO LONGER THE TICK, and not one reading moved.**  An
 enemy banks `speed × tick_seconds` and steps when a whole hex is due;
@@ -200,7 +272,7 @@ what it CARRIES, which would make it the richest salvage on the field"* — and
 | **K0** | a 100 HP braced wall under 4 miners at 3 HP/s breaks at a measurably earlier tick than under 4 scouts at 0.2 HP/s — and the scouts do **not** break it at all within the scenario | *the class reaches the wall* — a per-class rate is READ, not defaulted | ⚠ `place 0 3 hauler` (an unknown name) must be **refused**, never silently a robot — `script.loft`'s existing rule, extended |
 | **K1** | ✅ a wave authored `8 miner` arrives as 8 enemies of kind miner, counted at the marker | *composition is conserved from the list to the roster* | ⚠ **the named control was DELETED** — *a mix whose parts do not sum to the wave's count* cannot be built, because the count is not stored (`@X055`).  What replaced it: composing 12 as `3 miner 2 scout` gives a wave of **five**; an unknown class, `vehicle`, a wave index off the end, an odd token count and an empty composition are each refused; and a composed list must survive **emit → replay → `state_diff` identical** |
 | **K2a** | ✅ **the whole corpus is unchanged** — 1128 tests, 30 scripts / 569 measurements, every arrival tick identical, with banking in the mover and every class still at 1.5 hex/s | *banked movement at 1× is the identity* | ⚠ **the named control was necessary and NOT sufficient**, and measuring it is the phase's finding.  Banking a hair under a whole hex and requiring no step is built (§ The guard can fire, both directions) — but at 1.5 hex/s the tick arithmetic is EXACT, so the epsilon is unreachable from any scenario and its removal leaves 1128 tests + 569 measurements green (`@M014`).  What makes the guard gateable is banking at a speed the constant does not take (`@M013`), which is why the speed is an argument |
-| **K2b** | a scout wave crosses a measured corridor in the ratio of its speed to a robot's, ±1 tick | *speed is a rate, not a tick count* | a class at 0.0 hex/s must never advance and must not divide by zero |
+| **K2b** | ✅ nine hexes of one corridor in **6 / 9 / 14** ticks — scout / robot / miner, the ratio of 2.5 / 1.5 / 1.0 within ±1 tick (`@M016`) | *speed is a rate, not a tick count* | ⚠ **the named control was already paid for and is not what the phase risked.**  *A class at 0.0 hex/s must never advance and must not divide by zero* was K2a's `test_a_zero_timestep_moves_nothing`, because the bank has no division in it at all.  What K2b risked is a speed read ONCE for the roster — `wave_damage`'s hoisted bite, one axis over — and no single-class scenario can see it: the control is a scout and a miner in ONE roster whose gap must OPEN from three hexes to nine.  ⚠ The second is that harvester and builder did NOT move, which a lookup answering 2.5 for every small robot would pass everything else |
 | **K3** | three waves of equal SIZE and different composition give three different clocks | *composition is legible in the outcome* | — (a measurement phase) |
 
 ## Phases
@@ -210,8 +282,8 @@ what it CARRIES, which would make it the richest salvage on the field"* — and
 | **K0** — the four classes as DATA | S | `tests/23_k0_the_classes.loft` (11 tests) + `a-wall-against-a-miner.keys` / `a-wall-against-a-scout.keys` — the same 15 HP stub, one word apart, rubble in one run and 12.8 HP in the other | ✅ **Shipped** |
 | **K1** — a wave has COMPOSITION | M | `tests/23_k1_composition.loft` (21 tests) — the roster counted BY KIND matches the list, in the ORDER written; the default list still plays IDENTICALLY; and a composed list round-trips through `emit_keys` | ✅ **Shipped** |
 | **K2a** — speed is BANKED, and nothing moves | M | ⚠ **the corpus is the gate**: 1128 pre-K2a tests green + 569 measurements unchanged, with the coupling broken — plus `tests/23_k2a_banked_movement.loft` (10 tests) for the three things the corpus CANNOT see: the guard, the speeds that need it, and the timestep being free | ✅ **Shipped** |
-| **K2b** — the scout is FASTER | S | a two-class corridor scenario; arrival ticks in the speed ratio.  ⚠ `tests/23_k1_composition.loft` § test_speed_is_still_the_same_for_every_class is the "not yet" pin it has to break, and `tests/12_b0_probe.loft` § test_a_tick_advances_an_enemy_exactly_one_hex is the second.  ⚠ **Pick the scout's speed against `@M013`** — 1.0, 1.2, 1.8, 2.0 and 2.5 hex/s all need the epsilon that 1.5 hides | Ready |
-| **K3** — what composition is WORTH | S | three equal-size waves, three compositions, three measured clocks — the repo's standard closing measurement.  ⚠ `compose` is what authors them, so this is a `.keys` phase with no new code | Blocked on K2b |
+| **K2b** — the scout is FASTER | S | `tests/23_k2b_the_scout.loft` (11 tests) + `three-speeds-one-corridor.keys` — three classes, one corridor, one tick loop, 15 / 9 / 6 hexes after nine ticks.  ⚠ K1's `test_speed_is_still_the_same_for_every_class` broke as planned and is kept INVERTED; `12_b0`'s tick-is-a-hex test did NOT break, because it is written about the regular | ✅ **Shipped** |
+| **K3** — what composition is WORTH | S | three equal-size waves, three compositions, three measured clocks — the repo's standard closing measurement.  ⚠ `compose` is what authors them, so this is a `.keys` phase with no new code.  ⚠ Since K2b the clock contains BOTH axes: a composed wave differs in when it arrives as well as in what it does when it gets there | Ready |
 
 ⚠ **K2 is cut in two on purpose, and the seam is where the safety is**
 (`plans/README.md` § What makes a step SAFE).  K2a changes the *mechanism* with

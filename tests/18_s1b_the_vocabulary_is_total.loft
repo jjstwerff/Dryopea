@@ -71,7 +71,7 @@ fn played(src: text) -> ScriptRun {
 fn test_every_field_of_the_state_is_reachable() {
     tef_run = played(
         // the roster (S1a)
-          "place 9 1 insect 4\nhit 0 7.5\nstand 0 1.25\ndead 0\n"
+          "place 9 1 insect 4\nhit 0 7.5\nstand 0 1.25\nbanked 0 0.75\ndead 0\n"
         + "cursor 3\n"
         // the runtime layers
         + "raise 5 1 1.5 carapace\n"
@@ -90,9 +90,14 @@ fn test_every_field_of_the_state_is_reachable() {
     // The same state, built by hand.
     tef_want = wave_state_empty();
 
+    // ⚠ `progress` joined this literal in plan 23 K2b.  It was a field
+    // with no setter and it passed this test anyway, because at 1.5
+    // hex/s the carry is exactly 0.0 on both sides — the same
+    // *default-on-both-sides* blindness the delay note below describes,
+    // caught by `18_s2`'s round trip instead.
     tef_want.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_INSECT as u8,
                                  heading: 4 as u8, alive: false,
-                                 taken: 7.5, stand: 1.25 }];
+                                 taken: 7.5, stand: 1.25, progress: 0.75 }];
     tef_want.pick_cursor = 3;
 
     height_raise(tef_want.heights, 5, 1, 1.5, as_u8(RUBBLE_CARAPACE));

@@ -1,0 +1,378 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 23 phase K2b — the scout is FASTER, and the miner is slower.
+//
+// ── What this file gates ────────────────────────────────────────
+//
+// K2a built the mechanism and held every number, so its gate was the
+// corpus refusing to move.  K2b moves two numbers —
+// `SCOUT_SPEED_HEX_PER_SECOND` 2.5 and `MINER_SPEED_HEX_PER_SECOND`
+// 1.0, against the regular's 1.5 — and the corpus can no longer be the
+// gate for what CHANGED, only for what did not.  So this file measures
+// the change and the two K0 scenario files measure it again at the
+// scale of a whole run.
+//
+// ⚠ **The gate is a CLOCK, not a lookup.**  Asserting that
+// `enemy_speed(SCOUT)` answers 2.5 is a claim about the table checked
+// against the table, which `plans/README.md` § A self-test is not
+// validation refuses.  What can be surprised is the tick an enemy
+// arrives on: same corridor, same distance, same climb, same route,
+// and three clocks in the ratio of three rates.
+//
+// ── ⚠ The negative control this phase actually needed ───────────
+//
+// The obvious one — *a class at 0.0 hex/s must never advance and must
+// not divide by zero* — was already paid for by K2a
+// (`test_a_zero_timestep_moves_nothing`), because the bank has no
+// division in it at all.  It is restated here for the lookup's side and
+// it is not what this phase risks.
+//
+// What this phase risks is a speed read ONCE for the roster instead of
+// per enemy — the exact defect K0 found in `wave_damage`'s hoisted bite
+// — and a wall clock cannot see it, because a scenario with one class
+// in it agrees with both.  § The rate is per ENEMY is the control: a
+// scout and a miner in ONE roster, ticked together, whose gap has to
+// OPEN.  A hoisted speed keeps it constant whichever value it hoisted.
+//
+// ⚠ **The second thing a one-class scenario cannot see** is that
+// harvester and builder did NOT move.  `numbers.json` § enemy_small_
+// robots is a DELTAS section — a role that lists no speed takes the
+// regular's — so a lookup that answered 2.5 for every small robot
+// passes every scout assertion in this file.  § Two roles took no row
+// is what refuses it.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A one-hex corridor along r = 0, from (hi, 0) down to the core.
+//
+// ⚠ **One hex wide on purpose.**  `CLAUDE.md` § Testing something that
+// moves warns that a corridor cannot tell a flow field from a fixed
+// heading — true, and irrelevant here: this file measures a RATE, and
+// the narrow corridor is what keeps the route length identical for
+// every class so the only difference left is the clock.
+fn corridor(hi: integer) -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=hi { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+// One enemy of `kind` at (q, 0), healthy and walking west.
+//
+// ⚠ `taken` and `stand` are omitted and take their defaults, which is
+// safe for the reason `spawn.loft`'s `Enemy` header gives: both are
+// ZERO-neutral, so an omitted field spawns a healthy enemy that has
+// finished arriving.  A `stand` left backwards is a wave still standing
+// at its marker, and every clock in this file would read eight ticks
+// long.
+fn westbound(q: integer, kind: integer) -> Enemy {
+    Enemy { q: q, r: 0, kind: as_u8(kind), heading: 3 as u8, alive: true }
+}
+
+// The tick a lone `kind` first stands on `to`, walking west from
+// `from` down an open corridor.  1500 if it never gets there.
+//
+// ⚠ Through `wave_tick`, not `enemy_tick` — the field rebuild, the
+// occupancy and the per-climb roster loop are all in the path an
+// arrival clock actually takes.
+fn ticks_to_walk(kind: integer, from: integer, to: integer) -> integer {
+    ttw_pal = pal();
+    ttw_pw  = corridor(from);
+    ttw_s   = wave_state_empty();
+    ttw_s.enemies += [westbound(from, kind)];
+
+    ttw_t = 0;
+    ttw_at = from;
+    while ttw_at > to && ttw_t < 1500 {
+        wave_tick(ttw_s, ttw_pal, ttw_pw, marker_empty(), core());
+        ttw_t += 1;
+        ttw_at = (ttw_s.enemies[0] ?? Enemy { }).q;
+    }
+    ttw_t
+}
+
+// Whole hexes released by banking `n` timesteps of `secs` at the speed
+// this CLASS walks at.  ⚠ Through the shipped `enemy_speed` and the
+// shipped `enemy_bank`, never a copy of either.
+fn banked_by(kind: integer, secs: float, n: integer) -> integer {
+    bb_e   = westbound(9, kind);
+    bb_got = 0;
+    for _ in 0..n { bb_got = bb_got + enemy_bank(bb_e, enemy_speed(as_u8(kind)), secs); }
+    bb_got
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The axis: how fast a class arrives
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The headline, and the second of the two things the roles are
+// for**: *"the scout is quite a bit faster than the others"*
+// (`DESIGN.md` § Small robots).  Nine hexes of identical corridor, and
+// three clocks.
+//
+// The arithmetic these have to match, spelled out because a reader
+// should be able to check it without running anything: a tick is
+// 1/1.5 s, so nine hexes is 9/speed seconds is `9 * 1.5 / speed`
+// ticks, rounded UP to the tick a whole hex lands on —
+//
+//   scout 2.5 hex/s -> 5.4 ticks ->  6
+//   robot 1.5 hex/s -> 9.0 ticks ->  9
+//   miner 1.0 hex/s -> 13.5 ticks -> 14
+fn test_three_classes_walk_nine_hexes_on_three_clocks() {
+    ttc_scout = ticks_to_walk(ENEMY_KIND_SCOUT,   12, 3);
+    ttc_robot = ticks_to_walk(ENEMY_KIND_REGULAR, 12, 3);
+    ttc_miner = ticks_to_walk(ENEMY_KIND_MINER,   12, 3);
+
+    assert(ttc_scout == 6,
+           "a scout walks nine hexes in 6 ticks, measured {ttc_scout}");
+    assert(ttc_robot == 9,
+           "a robot in 9 — the baseline, unmoved — measured {ttc_robot}");
+    assert(ttc_miner == 14,
+           "a miner in 14, measured {ttc_miner}");
+
+    // ⚠ The ORDER as a separate assertion, because the three numbers
+    // above are a re-baseline away from meaning nothing and this is
+    // not: whatever the timestep, the fast class arrives first.
+    assert(ttc_scout < ttc_robot && ttc_robot < ttc_miner,
+           "and the order is the rates': {ttc_scout} < {ttc_robot} < {ttc_miner}");
+}
+
+// The same claim as a RATIO, which survives a change of timestep where
+// the three tick counts above do not.  ±1 tick, because a hex is
+// released whole and the last partial one has to land somewhere.
+fn test_the_clocks_are_the_ratio_of_the_rates() {
+    tcr_scout = ticks_to_walk(ENEMY_KIND_SCOUT, 12, 3) as float;
+    tcr_miner = ticks_to_walk(ENEMY_KIND_MINER, 12, 3) as float;
+    tcr_robot = ticks_to_walk(ENEMY_KIND_REGULAR, 12, 3) as float;
+
+    // A scout at 2.5 against a robot at 1.5 should take 0.6 of its time.
+    tcr_want_s = tcr_robot * ENEMY_SPEED_HEX_PER_SECOND / SCOUT_SPEED_HEX_PER_SECOND;
+    assert(tcr_scout - tcr_want_s < 1.0 && tcr_want_s - tcr_scout < 1.0,
+           "the scout's clock is the rate ratio: wanted ~{tcr_want_s:5.2}, "
+           + "measured {tcr_scout:5.2}");
+
+    tcr_want_m = tcr_robot * ENEMY_SPEED_HEX_PER_SECOND / MINER_SPEED_HEX_PER_SECOND;
+    assert(tcr_miner - tcr_want_m < 1.0 && tcr_want_m - tcr_miner < 1.0,
+           "and the miner's: wanted ~{tcr_want_m:5.2}, measured {tcr_miner:5.2}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The rate is per ENEMY, not per roster
+// ─────────────────────────────────────────────────────────────────
+
+// The control that matters, and the reason is history: `wave_damage`
+// hoisted its bite out of the enemy loop while one rate served every
+// class, and K0 had to unhoist it.  A speed read once for the roster
+// is the same defect one axis over, and every single-class scenario in
+// this file and in `tests/scripts/` agrees with it.
+//
+// Two enemies, one roster, one tick loop: a scout in front and a miner
+// three hexes behind.  The gap has to OPEN, at 1.5 hexes a tick's worth
+// of difference.  Hoist the speed and it stays exactly three, whichever
+// of the two values got hoisted.
+fn test_the_gap_between_a_scout_and_a_miner_opens() {
+    trp_pal = pal();
+    trp_pw  = corridor(30);
+    trp_s   = wave_state_empty();
+    trp_s.enemies += [westbound(20, ENEMY_KIND_SCOUT)];
+    trp_s.enemies += [westbound(23, ENEMY_KIND_MINER)];
+
+    for _ in 0..6 { wave_tick(trp_s, trp_pal, trp_pw, marker_empty(), core()); }
+
+    trp_scout = (trp_s.enemies[0] ?? Enemy { }).q;
+    trp_miner = (trp_s.enemies[1] ?? Enemy { }).q;
+    assert(trp_scout == 10,
+           "six ticks carry the scout ten hexes, to ({trp_scout}, 0)");
+    assert(trp_miner == 19,
+           "and the miner four, to ({trp_miner}, 0)");
+    assert(trp_miner - trp_scout == 9,
+           "so a gap of three has opened to nine — a hoisted speed leaves "
+           + "it at three, measured {trp_miner - trp_scout}");
+}
+
+// ⚠ **Two roles took no row, and a one-class scenario cannot tell.**
+// `numbers.json` § enemy_small_robots is DELTAS: harvester and builder
+// list a damage rate and no speed, so they walk at the regular's pace.
+// A lookup that answered the scout's 2.5 for every small robot passes
+// every other assertion in this file.
+fn test_two_roles_still_walk_at_the_regulars_pace() {
+    ttr_robot     = ticks_to_walk(ENEMY_KIND_REGULAR,   12, 3);
+    ttr_harvester = ticks_to_walk(ENEMY_KIND_HARVESTER, 12, 3);
+    ttr_builder   = ticks_to_walk(ENEMY_KIND_BUILDER,   12, 3);
+
+    assert(ttr_harvester == ttr_robot,
+           "a harvester keeps the regular's pace: {ttr_harvester} vs {ttr_robot}");
+    assert(ttr_builder == ttr_robot,
+           "and a builder: {ttr_builder} vs {ttr_robot}");
+}
+
+// The insect is not one of the four small robots and this phase did not
+// touch it — worth a line, because `enemy_speed`'s fallback is what
+// keeps it true and a fallback of 0.0 would have parked the whole tier
+// silently.
+fn test_an_unlisted_class_keeps_the_baseline() {
+    tul_insect = ticks_to_walk(ENEMY_KIND_INSECT, 12, 3);
+    tul_robot  = ticks_to_walk(ENEMY_KIND_REGULAR, 12, 3);
+    assert(tul_insect == tul_robot,
+           "an insect walks the regular's clock: {tul_insect} vs {tul_robot}");
+    assert(tul_insect < 1500,
+           "and it ARRIVES — a 0.0 fallback would stand in the field for "
+           + "ever with every 'the wave exists' assertion green");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ A longer stride is still checked hex by hex
+// ─────────────────────────────────────────────────────────────────
+
+// The scout takes two hexes in two ticks out of three, and each one
+// goes through `enemy_step` against the world as it stands right then.
+// So a wall it would have "stepped over" in one 2-hex stride stops it
+// exactly where it stops a robot.
+fn test_the_ground_stops_a_two_hex_stride() {
+    tgs_pal = pal();
+    tgs_pw  = corridor(12);
+    paint(tgs_pw, 2, 0, as_u8(WALL));
+
+    tgs_s = wave_state_empty();
+    tgs_s.enemies += [westbound(12, ENEMY_KIND_SCOUT)];
+    for _ in 0..30 { wave_tick(tgs_s, tgs_pal, tgs_pw, marker_empty(), core()); }
+
+    tgs_at = (tgs_s.enemies[0] ?? Enemy { }).q;
+    assert(tgs_at == 3,
+           "the scout is stopped on the hex before the wall, at ({tgs_at}, 0) "
+           + "— a stride that skipped the check lands on 1");
+}
+
+// And the same rule against a COMPANION rather than the ground:
+// occupancy is updated as the enemy moves, so the second hex of a
+// stride sees the queue as it is after the first.
+//
+// ⚠ **The leader is a HARVESTER and the tick count is short, and both
+// are about keeping the wall standing.**  The obvious cast — a miner in
+// front — measured (0, 0): eight ticks at 3.0 HP/s is 16 HP against a
+// 15 HP stub, so the leader eats the obstacle this test is built on and
+// walks home, and the assertion reads like a stride that skipped its
+// check.  A harvester takes 2.7 HP in the same eight ticks.
+fn test_a_scout_does_not_stride_through_a_companion() {
+    tsc_pal = pal();
+    tsc_pw  = corridor(12);
+    paint(tsc_pw, 2, 0, as_u8(WALL));
+
+    // The harvester arrives first and stops at (3, 0); the scout comes
+    // up behind it and must queue rather than pass through it.
+    tsc_s = wave_state_empty();
+    tsc_s.enemies += [westbound(6, ENEMY_KIND_HARVESTER)];
+    tsc_s.enemies += [westbound(12, ENEMY_KIND_SCOUT)];
+    for _ in 0..8 { wave_tick(tsc_s, tsc_pal, tsc_pw, marker_empty(), core()); }
+
+    tsc_h = (tsc_s.enemies[0] ?? Enemy { }).q;
+    tsc_c = (tsc_s.enemies[1] ?? Enemy { }).q;
+    assert(painted_kind_name(tsc_pal, tsc_pw, 2, 0) == "wall",
+           "the wall this test leans on is still standing");
+    assert(tsc_h == 3, "the harvester holds the hex at the wall, at ({tsc_h}, 0)");
+    assert(tsc_c == 4,
+           "and the scout queues behind it at ({tsc_c}, 0) — never on top of it");
+    assert(tsc_h != tsc_c, "two enemies, two hexes");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The guard K2a could not reach now fires for a shipped class
+// ─────────────────────────────────────────────────────────────────
+
+// `@M014` measured that `ENEMY_PROGRESS_EPSILON` could be set to 0.0
+// with all 1128 tests and all 569 measurements green, because
+// `1.5 * (1.0 / 1.5)` is exactly 1.0 to the bit.  `@M013` measured
+// which speeds are not like that — and BOTH of the two K2b ships are on
+// that list, which was checked before the numbers were chosen.
+//
+// So this is the same experiment with the classes in it: zero the
+// epsilon and these two assertions go red on their own, which is what
+// turns an unreachable branch into a guard the roster depends on.
+fn test_the_epsilon_is_reachable_from_a_shipped_class() {
+    // 2.5 hex/s over 60 ticks of 1/1.5 s is exactly 100 hexes.  Without
+    // the guard the repeating fraction sums a hair short and this lands
+    // on 99 — one hex in a hundred, reported as a wave that arrives a
+    // tick late.
+    ter_scout = banked_by(ENEMY_KIND_SCOUT, TICK_SECONDS, 60);
+    assert(ter_scout == 100,
+           "a scout banks 100 hexes over 60 ticks, got {ter_scout}");
+
+    // And 1.0 hex/s is the same trap the other way: 40 hexes, or 39
+    // without it.
+    ter_miner = banked_by(ENEMY_KIND_MINER, TICK_SECONDS, 60);
+    assert(ter_miner == 40,
+           "and a miner 40, got {ter_miner}");
+
+    // ⚠ The control that says the two above are about the GUARD and not
+    // about the multiplication — the regular is exact with or without
+    // it, which is the whole of why K2a could not gate its own epsilon.
+    ter_robot = banked_by(ENEMY_KIND_REGULAR, TICK_SECONDS, 60);
+    assert(ter_robot == 60,
+           "where the regular is exact either way, got {ter_robot}");
+}
+
+// The named negative control, restated for the lookup's side.  No class
+// takes 0.0 today and `enemy_speed`'s fallback is the regular's rather
+// than zero, so this is a statement about the BANK: it has no division
+// in it, so a zero rate is not a special case, it is just no progress.
+fn test_a_class_at_zero_never_advances_and_never_divides() {
+    tcz_e = westbound(9, ENEMY_KIND_REGULAR);
+    for _ in 0..50 {
+        tcz_got = enemy_bank(tcz_e, 0.0, TICK_SECONDS);
+        assert(tcz_got == 0, "0.0 hex/s releases nothing, got {tcz_got}");
+    }
+    assert(tcz_e.progress == 0.0,
+           "and banks nothing either ({tcz_e.progress})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The scenario — three classes, one corridor, one tick loop
+// ─────────────────────────────────────────────────────────────────
+//
+// `scripts/validate.sh` sweeps it, so the phase is visible as a PLAYED
+// run and not only as a unit test.  ⚠ The pinned check count is what
+// stops a scenario with its assertions deleted from reporting a green
+// run over nothing.
+//
+// ⚠ It is a different measurement from § The rate is per ENEMY above,
+// even though it looks like the same one: this walks all three classes
+// at once through the whole seam — the editor's world, the schedule,
+// `play_ticks` — where the tests above call `wave_tick` on a state they
+// built by hand.
+
+const SHOTS: text = "shots";
+
+fn test_the_three_speeds_scenario_plays_green() {
+    tts_s = editor_state_new(PALETTE);
+    editor_state_attach(tts_s,
+                        "tests/actual/k2b_speeds.json",
+                        "tests/actual/k2b_speeds_markers.json");
+    tts_r = script_run_file(tts_s, "tests/scripts/three-speeds-one-corridor.keys",
+                            SHOTS);
+    assert(tts_r.ok, "three-speeds-one-corridor: {script_describe(tts_r)}");
+    assert(tts_r.checks == 28,
+           "it made {tts_r.checks} measurements, expected 28");
+}
+
+fn test_the_scenario_file_is_on_disk() {
+    assert(file("tests/scripts/three-speeds-one-corridor.keys").exists(),
+           "three-speeds-one-corridor.keys is on disk");
+}

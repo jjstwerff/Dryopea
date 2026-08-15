@@ -397,22 +397,32 @@ fn test_two_lists_of_equal_size_and_different_composition_differ() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// What K1 does NOT claim
+// ⚠ What K1 did not claim, and K2b made true
 // ─────────────────────────────────────────────────────────────────
 
-// ⚠ **A scout still moves at a robot's speed**, and will until K2.
-// Worth pinning here so that K3's measurement is read as *what
-// composition is worth on the WALL axis alone* — the speed axis is not
-// in it yet, and a reader who assumed otherwise would price the result
-// against a mechanic that does not exist.
-fn test_speed_is_still_the_same_for_every_class() {
+// This was K1's *"not yet"* pin — *a scout still moves at a robot's
+// speed, and will until K2* — kept here rather than deleted, INVERTED,
+// because the pin and its inversion are the same measurement and the
+// pair is what says the phase landed.  A deleted pin says nothing.
+//
+// ⚠ **What K3 has to be read against changed with it.**  While this
+// read `==`, K3's measurement was *what composition is worth on the
+// WALL axis alone*; now that it reads `<`, a composed wave differs in
+// when it arrives as well as in what it does when it gets there, and
+// the two axes are not separable in a clock.
+fn test_a_scout_now_outruns_a_miner() {
     tsp_a = played(band() + "schedule 1\ncompose 0 1 scout\npark 14 0\ntick 10\n");
     tsp_b = played(band() + "schedule 1\ncompose 0 1 miner\npark 14 0\ntick 10\n");
     assert(tsp_a.ok && tsp_b.ok, "both run");
 
+    // West is DECREASING q, so the leader is the smaller number.  Two
+    // ticks of walking after the eight-tick pre-walk window: the scout
+    // owes three hexes and the miner one.
     tsp_s = (tsp_a.play.wave.enemies[0] ?? Enemy { }).q;
     tsp_m = (tsp_b.play.wave.enemies[0] ?? Enemy { }).q;
-    assert(tsp_s == tsp_m,
-           "a scout and a miner are still on the same hex at tick 10 "
-           + "({tsp_s} vs {tsp_m}) — speed is plan 23 K2");
+    assert(tsp_s < tsp_m,
+           "the scout is ahead of the miner at tick 10 "
+           + "({tsp_s} vs {tsp_m}) — plan 23 K2b");
+    assert(tsp_s == 11 && tsp_m == 13,
+           "and by two hexes out of three: scout at {tsp_s}, miner at {tsp_m}");
 }
